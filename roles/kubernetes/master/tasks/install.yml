@@ -1,0 +1,34 @@
+---
+- name: Write kube-apiserver systemd init file
+  template: src=systemd-init/kube-apiserver.service.j2 dest=/etc/systemd/system/kube-apiserver.service
+  notify: restart daemons
+
+- name: Write kube-controller-manager systemd init file
+  template: src=systemd-init/kube-controller-manager.service.j2 dest=/etc/systemd/system/kube-controller-manager.service
+  notify: restart daemons
+
+- name: Write kube-scheduler systemd init file
+  template: src=systemd-init/kube-scheduler.service.j2 dest=/etc/systemd/system/kube-scheduler.service
+  notify: restart daemons
+
+- name: Write kube-proxy systemd init file
+  template: src=systemd-init/kube-proxy.service.j2 dest=/etc/systemd/system/kube-proxy.service
+  notify: restart daemons
+
+- name: Install kubernetes binaries
+  copy: 
+     src={{ local_release_dir }}/kubernetes/bin/{{ item }}
+     dest={{ bin_dir }}
+     owner=kube
+     mode=u+x
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager 
+    - kube-scheduler
+    - kube-proxy
+    - kubectl
+  notify:
+    - restart daemons
+
+- name: Allow apiserver to bind on both secure and insecure ports
+  shell: setcap cap_net_bind_service+ep {{ bin_dir }}/kube-apiserver

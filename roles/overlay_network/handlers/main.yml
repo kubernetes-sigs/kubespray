@@ -1,0 +1,28 @@
+---
+- name: restart calico-node
+  service: name=calico-node state=restarted
+
+- name: restart docker
+  service: name=docker state=restarted
+
+- name: restart flannel
+  service: name=flannel state=restarted
+  notify:
+    - reload systemd
+    - stop docker
+    - delete docker0
+    - start docker
+  when: inventory_hostname in groups['kube-node']
+
+- name: stop docker
+  service: name=docker state=stopped
+
+- name: delete docker0
+  command: ip link delete docker0
+  ignore_errors: yes
+
+- name: start docker
+  service: name=docker state=started
+
+- name : reload systemd
+  shell: systemctl daemon-reload

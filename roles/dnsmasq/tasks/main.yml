@@ -1,0 +1,58 @@
+---
+- name: populate inventory into hosts file
+  lineinfile:
+    dest: /etc/hosts
+    regexp: "^{{ hostvars[item].ansible_default_ipv4.address }} {{ item }}$"
+    line: "{{ hostvars[item].ansible_default_ipv4.address }} {{ item }}"
+    state: present
+  when: hostvars[item].ansible_default_ipv4.address is defined
+  with_items: groups['all']
+
+- name: clean hosts file
+  lineinfile:
+    dest: /etc/hosts
+    regexp: "{{ item }}"
+    state: absent
+  with_items:
+    - '^127\.0\.0\.1(\s+){{ inventory_hostname }}.*'
+    - '^::1(\s+){{ inventory_hostname }}.*'
+
+- name: install dnsmasq and bindr9utils
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - dnsmasq
+    - bind9utils
+  when: inventory_hostname in groups['kube-master'][0]
+
+- name: ensure dnsmasq.d directory exists
+  file:
+    path: /etc/dnsmasq.d
+    state: directory
+  when: inventory_hostname in groups['kube-master'][0]
+
+- name: configure dnsmasq
+  template:
+    src: 01-kube-dns.conf.j2
+    dest: /etc/dnsmasq.d/01-kube-dns.conf
+    mode: 755
+  notify:
+    - restart dnsmasq
+  when: inventory_hostname in groups['kube-master'][0]
+
+- name: enable dnsmasq
+  service:
+    name: dnsmasq
+    state: started
+    enabled: yes
+  when: inventory_hostname in groups['kube-master'][0]
+
+- name: update resolv.conf with new DNS setup
+  template:
+    src: resolv.conf.j2
+    dest: /etc/resolv.conf
+    mode: 644
+
+- name: disable resolv.conf modification by dhclient
+  copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient-enter-hooks.d/nodnsupdate mode=u+x

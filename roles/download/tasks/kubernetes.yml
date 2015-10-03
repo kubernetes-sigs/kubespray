@@ -1,0 +1,47 @@
+---
+- name: Create kubernetes release directory
+  local_action: file
+     path={{ local_release_dir }}/kubernetes
+     state=directory
+
+- name: Check if kubernetes release archive has been downloaded
+  local_action: stat
+     path={{ local_release_dir }}/kubernetes/kubernetes.tar.gz
+  register: k_tar
+
+# issues with get_url module and redirects, to be tested again in the near future
+- name: Download kubernetes
+  local_action: shell
+    curl -o {{ local_release_dir }}/kubernetes/kubernetes.tar.gz -Ls {{ kube_download_url }}/{{ kube_version }}/kubernetes.tar.gz
+  when: not k_tar.stat.exists or k_tar.stat.checksum != "{{ kube_sha1 }}"
+  register: dl_kube
+
+- name: Compare kubernetes archive checksum
+  local_action: stat
+     path={{ local_release_dir }}/kubernetes/kubernetes.tar.gz
+  register: k_tar
+  failed_when: k_tar.stat.checksum != "{{ kube_sha1 }}"
+  when: dl_kube|changed
+
+- name: Extract kubernetes archive
+  local_action: unarchive
+     src={{ local_release_dir }}/kubernetes/kubernetes.tar.gz
+     dest={{ local_release_dir }}/kubernetes copy=no
+  when: dl_kube|changed
+
+- name: Extract kubernetes binaries archive
+  local_action: unarchive
+     src={{ local_release_dir }}/kubernetes/kubernetes/server/kubernetes-server-linux-amd64.tar.gz
+     dest={{ local_release_dir }}/kubernetes copy=no
+  when: dl_kube|changed
+
+- name: Pick up only kubernetes binaries
+  local_action: synchronize
+     src={{ local_release_dir }}/kubernetes/kubernetes/server/bin
+     dest={{ local_release_dir }}/kubernetes
+  when: dl_kube|changed
+
+- name: Delete unused kubernetes files
+  local_action: file
+     path={{ local_release_dir }}/kubernetes/kubernetes state=absent
+  when: dl_kube|changed

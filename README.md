@@ -1,31 +1,40 @@
-This playbook deploys a whole kubernetes cluster, configures network overlay and some addons.
+kubernetes-ansible
+========
 
-# Download necessary binaries
-Note: a variable 'local_release_dir' defines where the binaries will be downloaded.
-Ensure you've enough disk space
+Install and configure a kubernetes cluster including network overlay and optionnal addons.
+Based on [CiscoCloud](https://github.com/CiscoCloud/kubernetes-ansible) work.
 
-# Kubernetes
-Kubernetes services are configured with the nodePort type.
-eg: each node opoens the same tcp port and forwards the traffic to the target pod wherever it is located.
+Requirements
+------------
+Tested on debian Jessie and Ubuntu.
+The target servers must have access to the Internet in order to pull docker imaqes
 
-master :
-  - apiserver :
-  Currently the apiserver listen on both secure and unsecure ports
-  todo, secure everything. Calico especially
-  - scheduler :
-  - controller :
-  - proxy
-node :
-  - kubelet :
-  kubelet is configured to call calico whenever a pod is created/destroyed
-  - proxy
-  configures all the forwarding rules
 
-# Overlay network
-You can choose between 2 network overlays. Only one must be chosen.
-flannel: gre/vxlan (layer 2) networking
-calico: bgp (layer 3) networking.
+Ansible
+-------------------------
+## Variables
 
-# Loadbalancer
-The machine where ansible is ran must be allowed to access to the master ip on port 8080 (kubernetes api).
-Indeed it gathered the services definition in order to know which NodePort is configured.
+## Run ansible playbook
+It is possible to define variables for different environments.
+For instance, in order to deploy the cluster on 'dev' environment run the following command.
+```
+ansible-playbook -i environments/dev/inventory cluster.yml
+```
+
+Kubernetes
+-------------------------
+## Check cluster status
+
+
+Known issues
+-------------
+## Node reboot and Calico
+
+## Monitoring addon
+
+## Etcd failover
+
+Author Information
+------------------
+
+Smana - Smaine Kahlouch (smaine.kahlouch@gmail.com)

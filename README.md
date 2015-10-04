@@ -68,14 +68,16 @@ Kubernetes
 
 ### Network Overlay
 You can choose between 2 network overlays. Only one must be chosen.
-**flannel**: gre/vxlan (layer 2) networking
-**calico**: bgp (layer 3) networking.
+
+* **flannel**: gre/vxlan (layer 2) networking. ([official docs]('https://github.com/coreos/flannel'))
+
+* **calico**: bgp (layer 3) networking. ([official docs]('http://docs.projectcalico.org/en/0.13/'))
 
 The choice is defined with the variable '**overlay_network_plugin**'
 
 ### Expose a service
-There are several loadbalancing solution.
-The main ones i found suitable for kubernetes are [Vulcand]('http://vulcand.io/') and [Haproxy]('http://www.haproxy.org/')
+There are several loadbalancing solutions.
+The ones i found suitable for kubernetes are [Vulcand]('http://vulcand.io/') and [Haproxy]('http://www.haproxy.org/')
 
 My cluster is working with haproxy and kubernetes services are configured with the loadbalancing type 'nodePort'.
 eg: each node opens the same tcp port and forwards the traffic to the target pod wherever it is located.
@@ -140,6 +142,8 @@ kubectl create -f busybox.yaml
 kubectl exec busybox -- nslookup kubernetes.default
 ```
 You should get an answer from the configured dns server
+
+Congrats ! now you can go through [kubernetes basics]('http://kubernetes.io/v1.0/basicstutorials.html')
 
 Known issues
 -------------

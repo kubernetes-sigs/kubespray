@@ -79,7 +79,7 @@ The choice is defined with the variable '**overlay_network_plugin**'
 There are several loadbalancing solutions.
 The ones i found suitable for kubernetes are [Vulcand]('http://vulcand.io/') and [Haproxy]('http://www.haproxy.org/')
 
-My cluster is working with haproxy and kubernetes services are configured with the loadbalancing type 'nodePort'.
+My cluster is working with haproxy and kubernetes services are configured with the loadbalancing type '**nodePort**'.
 eg: each node opens the same tcp port and forwards the traffic to the target pod wherever it is located.
 
 Then Haproxy can be configured to request kubernetes's api in order to loadbalance on the proper tcp port on the nodes.
@@ -89,6 +89,24 @@ Please refer to the proper kubernetes documentation on [Services]('https://githu
 ### Check cluster status
 
 #### Kubernetes components
+Master processes : kube-apiserver, kube-scheduler, kube-controller, kube-proxy
+Nodes processes : kubelet, kube-proxy, [calico-node|flanneld]
+
+* Check the status of the processes
+```
+systemctl status [process_name]
+```
+
+* Check the logs
+```
+journalctl -ae -u [process_name]
+```
+
+* Check the NAT rules
+```
+iptables -nLv -t nat
+```
+
 
 #### Calico networking
 Check if the calico-node container is running
@@ -107,13 +125,13 @@ calicoctl status
 calicoctl pool show
 ```
 
-* Show the workloads (ip addresses of containers and where they're located)
+* Show the workloads (ip addresses of containers and their located)
 ```
 calicoctl endpoint show --detail
 ```
 #### Flannel networking
 
-#### Test dns server
+#### Test the dns server
 * Create a file 'busybox.yaml' with the following content
 ```
 apiVersion: v1
@@ -143,14 +161,14 @@ kubectl exec busybox -- nslookup kubernetes.default
 ```
 You should get an answer from the configured dns server
 
-Congrats ! now you can go through [kubernetes basics]('http://kubernetes.io/v1.0/basicstutorials.html')
+Congrats ! now you can go through [kubernetes basics](http://kubernetes.io/v1.0/basicstutorials.html)
 
 Known issues
 -------------
 ### Node reboot and Calico
 There is a major issur with calico-kubernetes version 0.5.1 and kubernetes prior to 1.1 :
 After host reboot, the pods networking are not configured again, they are started without any network configuration.
-This issue will be fixed when kubernetes 1.1 will be released as described in this [issue]('https://github.com/projectcalico/calico-kubernetes/issues/34')
+This issue will be fixed when kubernetes 1.1 will be released as described in this [issue](https://github.com/projectcalico/calico-kubernetes/issues/34)
 
 ### Monitoring addon
 Until now i didn't managed to get the monitoring addon working.

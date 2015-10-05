@@ -6,7 +6,7 @@ Based on [CiscoCloud](https://github.com/CiscoCloud/kubernetes-ansible) work.
 
 ### Requirements
 Tested on **Debian Jessie** and **Ubuntu** (14.10, 15.04, 15.10).
-The target servers must have access to the Internet in order to pull docker imaqes
+The target servers must have access to the Internet in order to pull docker imaqes.
 The firewalls are not managed, you'll need to implement your own rules the way you used to.
 
 Ansible v1.9.x
@@ -17,6 +17,7 @@ Ansible v1.9.x
 * [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.5.1
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.3
 * [docker-gc](https://github.com/spotify/docker-gc)
+* [docker](https://www.docker.com/) v1.8.2
 
 
 Ansible
@@ -61,7 +62,7 @@ The main variables to change are located in the directory ```environments/[env_n
 It is possible to define variables for different environments.
 For instance, in order to deploy the cluster on 'dev' environment run the following command.
 ```
-ansible-playbook -i environments/dev/inventory cluster.yml
+ansible-playbook -i environments/dev/inventory cluster.yml -u root
 ```
 
 Kubernetes
@@ -190,4 +191,4 @@ Will be fixed soon.
 Author Information
 ------------------
 
-Smana - Smaine Kahlouch (smaine.kahlouch@gmail.com)
+Smana - Smaine Kahlouch (smainklh@gmail.com)

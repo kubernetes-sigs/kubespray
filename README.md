@@ -5,8 +5,9 @@ Install and configure a kubernetes cluster including network overlay and optionn
 Based on [CiscoCloud](https://github.com/CiscoCloud/kubernetes-ansible) work.
 
 ### Requirements
-Tested on debian Jessie and Ubuntu.
+Tested on **Debian Jessie** and **Ubuntu** (14.10, 15.04, 15.10).
 The target servers must have access to the Internet in order to pull docker imaqes
+The firewalls are not managed, you'll need to implement your own rules the way you used to.
 
 Ansible v1.9.x
 
@@ -108,6 +109,14 @@ iptables -nLv -t nat
 ```
 
 
+#### Available addons
+By default 2 addons are enabled
+* [Kube-ui](https://github.com/kubernetes/kube-ui) which is a simple dashboard which shows kubernete's components, url : ``` http://[master_ip]:8080/ui```
+* [Fabric8](http://fabric8.io/), console management for kubernetes : ```http://[master_ip]:8080/api/v1/proxy/namespaces/kube-system/services/fabric8``` 
+
+Other addons : logging, monitoring
+
+
 #### Calico networking
 Check if the calico-node container is running
 ```
@@ -161,7 +170,7 @@ kubectl exec busybox -- nslookup kubernetes.default
 ```
 You should get an answer from the configured dns server
 
-Congrats ! now you can go through [kubernetes basics](http://kubernetes.io/v1.0/basicstutorials.html)
+Congrats ! now you can walk through [kubernetes basics](http://kubernetes.io/v1.0/basicstutorials.html)
 
 Known issues
 -------------

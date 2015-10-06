@@ -111,9 +111,10 @@ iptables -nLv -t nat
 
 
 #### Available addons
-By default 2 addons are enabled
+By default 3 addons are enabled
+* A dns server in order to resolve kubernetes services names
 * [Kube-ui](https://github.com/kubernetes/kube-ui) which is a simple dashboard which shows kubernete's components, url : ``` http://[master_ip]:8080/ui```
-* [Fabric8](http://fabric8.io/), console management for kubernetes : ```http://[master_ip]:8080/api/v1/proxy/namespaces/kube-system/services/fabric8``` 
+* [Fabric8](http://fabric8.io/), console management for kubernetes : ```http://[master_ip]:8080/api/v1/proxy/namespaces/default/services/fabric8``` 
 
 Other addons : logging, monitoring
 
@@ -176,7 +177,7 @@ Congrats ! now you can walk through [kubernetes basics](http://kubernetes.io/v1.
 Known issues
 -------------
 ### Node reboot and Calico
-There is a major issur with calico-kubernetes version 0.5.1 and kubernetes prior to 1.1 :
+There is a major issue with calico-kubernetes version 0.5.1 and kubernetes prior to 1.1 :
 After host reboot, the pods networking are not configured again, they are started without any network configuration.
 This issue will be fixed when kubernetes 1.1 will be released as described in this [issue](https://github.com/projectcalico/calico-kubernetes/issues/34)
 

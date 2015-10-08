@@ -16,7 +16,6 @@ Ansible v1.9.x
 * [etcd](https://github.com/coreos/etcd/releases) v2.2.0
 * [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.5.1
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.3
-* [docker-gc](https://github.com/spotify/docker-gc)
 * [docker](https://www.docker.com/) v1.8.2
 
 

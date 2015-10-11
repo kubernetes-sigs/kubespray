@@ -50,7 +50,8 @@ The main variables to change are located in the directory ```environments/[env_n
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
-    - { role: addons, tags: addons }
+    - { role: k8s-skydns, tags: skydns }
+    - { role: k8s-kube-ui, tags: kube-ui }
 
 - hosts: kube-node
   roles:
@@ -109,14 +110,31 @@ iptables -nLv -t nat
 ```
 
 
-#### Available addons
-By default 3 addons are enabled
-* A dns server in order to resolve kubernetes services names
-* [Kube-ui](https://github.com/kubernetes/kube-ui) which is a simple dashboard which shows kubernete's components, url : ``` http://[master_ip]:8080/ui```
-* [Fabric8](http://fabric8.io/), console management for kubernetes : ```http://[master_ip]:8080/api/v1/proxy/namespaces/default/services/fabric8``` 
+#### Available apps, installation procedure
+Additionnal apps can be installed as git submodules.
+These submodules install Ansible roles, one role per app.
 
-Other addons : logging, monitoring
+You can list available submodules with the following command:
+```
+grep path .gitmodules | sed 's/.*= //'
+```
 
+For instance if you will probably want to install a [dns server](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns) as it is **strongly recommanded**.
+In order to use this role you'll need to follow these steps
+```
+git submodule init roles/k8s-skydns
+git submodule update
+```
+Then update your playbook with the chosen role
+```
+...
+- hosts: kube-master
+  roles:
+    - { role: kubernetes/master, tags: master }
+    - { role: k8s-skydns, tags: skydns }
+...
+```
+Please refer to the [k8s-skydns readme](https://github.com/ansibl8s/k8s-skydns) for additionnal info.
 
 #### Calico networking
 Check if the calico-node container is running
@@ -140,36 +158,6 @@ calicoctl pool show
 calicoctl endpoint show --detail
 ```
 #### Flannel networking
-
-#### Test the dns server
-* Create a file 'busybox.yaml' with the following content
-```
-apiVersion: v1
-kind: Pod
-metadata:
-  name: busybox
-  namespace: default
-spec:
-  containers:
-  - image: busybox
-    command:
-      - sleep
-      - "3600"
-    imagePullPolicy: IfNotPresent
-    name: busybox
-  restartPolicy: Always
-```
-
-* Create the pod
-```
-kubectl create -f busybox.yaml
-```
-
-* When the pod is ready, execute the following command
-```
-kubectl exec busybox -- nslookup kubernetes.default
-```
-You should get an answer from the configured dns server
 
 Congrats ! now you can walk through [kubernetes basics](http://kubernetes.io/v1.0/basicstutorials.html)
 

@@ -50,8 +50,8 @@ The main variables to change are located in the directory ```environments/[env_n
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
-    - { role: k8s-skydns, tags: skydns }
-    - { role: k8s-kube-ui, tags: kube-ui }
+    - { role: apps/k8s-skydns, tags: skydns }
+    - { role: apps/k8s-kube-ui, tags: kube-ui }
 
 - hosts: kube-node
   roles:
@@ -122,7 +122,7 @@ grep path .gitmodules | sed 's/.*= //'
 For instance if you will probably want to install a [dns server](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns) as it is **strongly recommanded**.
 In order to use this role you'll need to follow these steps
 ```
-git submodule init roles/apps/k8s-skydns
+git submodule init roles/apps/k8s-common roles/apps/k8s-skydns
 git submodule update
 ```
 Then update your playbook with the chosen role

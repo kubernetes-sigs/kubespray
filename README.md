@@ -122,7 +122,7 @@ grep path .gitmodules | sed 's/.*= //'
 For instance if you will probably want to install a [dns server](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns) as it is **strongly recommanded**.
 In order to use this role you'll need to follow these steps
 ```
-git submodule init roles/k8s-skydns
+git submodule init roles/apps/k8s-skydns
 git submodule update
 ```
 Then update your playbook with the chosen role
@@ -131,7 +131,7 @@ Then update your playbook with the chosen role
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
-    - { role: k8s-skydns, tags: skydns }
+    - { role: apps/k8s-skydns, tags: skydns }
 ...
 ```
 Please refer to the [k8s-skydns readme](https://github.com/ansibl8s/k8s-skydns) for additionnal info.
@@ -171,12 +171,7 @@ This issue will be fixed when kubernetes 1.1 will be released as described in th
 ### Monitoring addon
 Until now i didn't managed to get the monitoring addon working.
 
-### Listen on secure port only
+### Apiserver listen on secure port only
 Currently the api-server listens on both secure and insecure ports.
 The insecure port is mainly used for calico.
 Will be fixed soon.
-
-Author Information
-------------------
-
-Smana - Smaine Kahlouch (smainklh@gmail.com)

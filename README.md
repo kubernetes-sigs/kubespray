@@ -128,7 +128,12 @@ In order to use this role you'll need the following entries in the file '*requir
 ```
 **Note**: the role common is required by all the apps and provides the tasks and libraries needed.
 
-Then update your playbook with the chosen role
+Then download the roles with ansible-galaxy
+```
+ansible-galaxy install -r requirements.yml
+```
+
+Finally update your playbook with the chosen role, and run it
 ```
 ...
 - hosts: kube-master

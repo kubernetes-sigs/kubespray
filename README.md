@@ -50,8 +50,8 @@ The main variables to change are located in the directory ```environments/[env_n
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
-    - { role: apps/k8s-skydns, tags: skydns }
-    - { role: apps/k8s-kube-ui, tags: kube-ui }
+    - { role: apps/k8s-skydns, tags: ['skydns', 'apps']  }
+    - { role: apps/k8s-fabric8, tags: ['fabric8', 'apps']  }
 
 - hosts: kube-node
   roles:
@@ -111,27 +111,30 @@ iptables -nLv -t nat
 
 
 #### Available apps, installation procedure
-Additionnal apps can be installed as git submodules.
-These submodules install Ansible roles, one role per app.
-
-You can list available submodules with the following command:
-```
-grep path .gitmodules | sed 's/.*= //'
-```
+Additionnal apps can be installed with ```ansible-galaxy```.
+you'll need to edit the file '*requirements.yml*' in order to chose needed apps.
+The list of available apps are available [there](https://github.com/ansibl8s)
 
 For instance if you will probably want to install a [dns server](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns) as it is **strongly recommanded**.
-In order to use this role you'll need to follow these steps
+In order to use this role you'll need the following entries in the file '*requirements.yml*' 
 ```
-git submodule init roles/apps/k8s-common roles/apps/k8s-skydns
-git submodule update
+- src: https://github.com/ansibl8s/k8s-common.git
+  path: roles/apps
+  # version: v1.0
+
+- src: https://github.com/ansibl8s/k8s-skydns.git
+  path: roles/apps
+  # version: v1.0
 ```
+**Note**: the role common is required by all the apps and provides the tasks and libraries needed.
+
 Then update your playbook with the chosen role
 ```
 ...
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
-    - { role: apps/k8s-skydns, tags: skydns }
+    - { role: apps/k8s-skydns, tags: ['skydns', 'apps']  }
 ...
 ```
 Please refer to the [k8s-skydns readme](https://github.com/ansibl8s/k8s-skydns) for additionnal info.
@@ -175,3 +178,22 @@ Until now i didn't managed to get the monitoring addon working.
 Currently the api-server listens on both secure and insecure ports.
 The insecure port is mainly used for calico.
 Will be fixed soon.
+
+How to contribute
+------------------
+
+### Update available roles
+Alternatively the roles can be installed as git submodules.
+That way is easier if you want to do some changes and commit them.
+
+You can list available submodules with the following command:
+```
+grep path .gitmodules | sed 's/.*= //'
+```
+
+For instance if you will probably want to install a [dns server](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns) as it is **strongly recommanded**.
+In order to use this role you'll need to follow these steps
+```
+git submodule init roles/apps/k8s-common roles/apps/k8s-skydns
+git submodule update
+```

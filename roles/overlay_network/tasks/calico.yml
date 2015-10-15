@@ -1,37 +1,46 @@
 ---
-- name: Install calicoctl bin
+- name: Calico | Install calicoctl bin
   copy: 
      src={{ local_release_dir }}/calico/bin/calicoctl
      dest={{ bin_dir }}
      mode=u+x
   notify: restart calico-node
 
-- name: Create calicoctl symlink (needed by kubelet)
+- name: Calico | Create calicoctl symlink (needed by kubelet)
   file: src=/usr/local/bin/calicoctl dest=/usr/bin/calicoctl state=link
 
-- name: Write calico-node systemd init file
+- name: Calico | Write calico-node systemd init file
   template: src=calico/calico-node.service.j2 dest=/etc/systemd/system/calico-node.service
   notify: 
     - reload systemd
     - restart calico-node
 
-- name: Write network-environment
+- name: Calico | Write network-environment
   template: src=calico/network-environment.j2 dest=/etc/network-environment mode=u+x
   notify: 
     - reload systemd
     - restart calico-node
 
-- name: Enable calico-node
+- name: Calico | Enable calico-node
   service: name=calico-node enabled=yes state=started
 
-- name: Configure calico-node remove default pool
+- name: Calico | Configure calico-node remove default pool
   shell: calicoctl pool remove 192.168.0.0/16
   environment: 
      ETCD_AUTHORITY: "{{ groups['kube-master'][0] }}:4001"
   run_once: true
 
-- name: Configure calico-node desired pool
+- name: Calico | Configure calico-node desired pool
   shell: calicoctl pool add {{ overlay_network_subnet }}
   environment: 
      ETCD_AUTHORITY: "{{ groups['kube-master'][0] }}:4001"
   run_once: true
+
+- name: Calico | Disable node mesh
+  shell: calicoctl bgp node-mesh off
+  when: peer_with_router and inventory_hostname in groups['kube-node']
+
+- name: Calico | Configure peering with router(s)
+  shell: calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}
+  with_items: peers
+  when: peer_with_router and inventory_hostname in groups['kube-node']

@@ -50,7 +50,7 @@ The main variables to change are located in the directory ```environments/[env_n
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
-    - { role: apps/k8s-skydns, tags: ['skydns', 'apps']  }
+    - { role: apps/k8s-kubedns, tags: ['kubedns', 'apps']  }
     - { role: apps/k8s-fabric8, tags: ['fabric8', 'apps']  }
 
 - hosts: kube-node
@@ -122,7 +122,7 @@ In order to use this role you'll need the following entries in the file '*requir
   path: roles/apps
   # version: v1.0
 
-- src: https://github.com/ansibl8s/k8s-skydns.git
+- src: https://github.com/ansibl8s/k8s-kubedns.git
   path: roles/apps
   # version: v1.0
 ```
@@ -139,10 +139,10 @@ Finally update your playbook with the chosen role, and run it
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
-    - { role: apps/k8s-skydns, tags: ['skydns', 'apps']  }
+    - { role: apps/k8s-kubedns, tags: ['kubedns', 'apps']  }
 ...
 ```
-Please refer to the [k8s-skydns readme](https://github.com/ansibl8s/k8s-skydns) for additionnal info.
+Please refer to the [k8s-kubdns readme](https://github.com/ansibl8s/k8s-kubedns) for additionnal info.
 
 #### Calico networking
 Check if the calico-node container is running
@@ -199,6 +199,6 @@ grep path .gitmodules | sed 's/.*= //'
 For instance if you will probably want to install a [dns server](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns) as it is **strongly recommanded**.
 In order to use this role you'll need to follow these steps
 ```
-git submodule init roles/apps/k8s-common roles/apps/k8s-skydns
+git submodule init roles/apps/k8s-common roles/apps/k8s-kubedns
 git submodule update
 ```

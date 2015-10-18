@@ -112,6 +112,7 @@ iptables -nLv -t nat
 
 #### Available apps, installation procedure
 Additionnal apps can be installed with ```ansible-galaxy```.
+
 you'll need to edit the file '*requirements.yml*' in order to chose needed apps.
 The list of available apps are available [there](https://github.com/ansibl8s)
 
@@ -127,6 +128,11 @@ In order to use this role you'll need the following entries in the file '*requir
   # version: v1.0
 ```
 **Note**: the role common is required by all the apps and provides the tasks and libraries needed.
+
+And empty the apps directory
+```
+rm -rf roles/apps/*
+```
 
 Then download the roles with ansible-galaxy
 ```

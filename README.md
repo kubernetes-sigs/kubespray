@@ -110,7 +110,12 @@ iptables -nLv -t nat
 ```
 
 
-#### Available apps, installation procedure
+### Available apps, installation procedure
+
+There are two ways of installing new apps
+
+#### Ansible galaxy
+
 Additionnal apps can be installed with ```ansible-galaxy```.
 
 you'll need to edit the file '*requirements.yml*' in order to chose needed apps.
@@ -137,6 +142,22 @@ rm -rf roles/apps/*
 Then download the roles with ansible-galaxy
 ```
 ansible-galaxy install -r requirements.yml
+```
+
+#### Git submodules
+Alternatively the roles can be installed as git submodules.
+That way is easier if you want to do some changes and commit them.
+
+You can list available submodules with the following command:
+```
+grep path .gitmodules | sed 's/.*= //'
+```
+
+For instance if you will probably want to install a [dns server](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns) as it is **strongly recommanded**.
+In order to use this role you'll need to follow these steps
+```
+git submodule init roles/apps/k8s-common roles/apps/k8s-kubedns
+git submodule update
 ```
 
 Finally update your playbook with the chosen role, and run it
@@ -189,22 +210,3 @@ Until now i didn't managed to get the monitoring addon working.
 Currently the api-server listens on both secure and insecure ports.
 The insecure port is mainly used for calico.
 Will be fixed soon.
-
-How to contribute
-------------------
-
-### Update available roles
-Alternatively the roles can be installed as git submodules.
-That way is easier if you want to do some changes and commit them.
-
-You can list available submodules with the following command:
-```
-grep path .gitmodules | sed 's/.*= //'
-```
-
-For instance if you will probably want to install a [dns server](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns) as it is **strongly recommanded**.
-In order to use this role you'll need to follow these steps
-```
-git submodule init roles/apps/k8s-common roles/apps/k8s-kubedns
-git submodule update
-```

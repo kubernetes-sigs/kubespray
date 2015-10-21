@@ -50,12 +50,16 @@ The main variables to change are located in the directory ```environments/[env_n
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
-    - { role: apps/k8s-kubedns, tags: ['kubedns', 'apps']  }
     - { role: apps/k8s-fabric8, tags: ['fabric8', 'apps']  }
 
 - hosts: kube-node
   roles:
     - { role: kubernetes/node, tags: node }
+
+- hosts: kube-master
+  roles:
+    - { role: apps/k8s-kubedns, tags: ['kubedns', 'apps']  }
+    - { role: apps/k8s-fabric8, tags: ['fabric8', 'apps']  }
 ```
 
 ### Run
@@ -165,7 +169,6 @@ Finally update your playbook with the chosen role, and run it
 ...
 - hosts: kube-master
   roles:
-    - { role: kubernetes/master, tags: master }
     - { role: apps/k8s-kubedns, tags: ['kubedns', 'apps']  }
 ...
 ```

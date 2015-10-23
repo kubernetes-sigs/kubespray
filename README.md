@@ -50,7 +50,6 @@ The main variables to change are located in the directory ```environments/[env_n
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
-    - { role: apps/k8s-fabric8, tags: ['fabric8', 'apps']  }
 
 - hosts: kube-node
   roles:

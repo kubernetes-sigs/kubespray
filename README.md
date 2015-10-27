@@ -1,7 +1,7 @@
 kubernetes-ansible
 ========
 
-Install and configure a kubernetes cluster including network overlay and optionnal addons.
+Install and configure a kubernetes cluster including network plugin and optionnal addons.
 Based on [CiscoCloud](https://github.com/CiscoCloud/kubernetes-ansible) work.
 
 ### Requirements
@@ -32,6 +32,49 @@ Please ensure that you have enough disk space there (about **1G**).
 ### Variables
 The main variables to change are located in the directory ```environments/[env_name]/group_vars/k8s-cluster.yml```.
 
+### Inventory
+Below is an example of an inventory.
+Note : The bgp vars (local_as, peers) are not mandatory if the var "peer_with_router" is set to false
+```
+[downloader]
+10.99.0.26
+
+[kube-master]
+# NB : the br_addr must be in the {{ calico_pool }} subnet
+# it will assign a /24 subnet per node
+10.99.0.26 br_addr=10.99.64.1
+
+[etcd]
+10.99.0.26
+
+[kube-node]
+10.99.0.4
+10.99.0.5
+10.99.0.6
+10.99.0.36
+10.99.0.37
+
+[itx2]
+10.99.0.26 br_addr=10.99.16.1
+10.99.0.4 br_addr=10.99.65.1 local_as=xxxxxxxx
+10.99.0.5 br_addr=10.99.66.1 local_as=xxxxxxxx
+10.99.0.6 br_addr=10.99.69.1 local_as=xxxxxxxx
+
+[rmv]
+10.99.0.36 br_addr=10.99.67.1 local_as=xxxxxxxx
+10.99.0.37 br_addr=10.99.68.1 local_as=xxxxxxxx
+
+[k8s-cluster:children]
+kube-node
+kube-master
+
+[itx2:vars]
+peers=[{"router_id": "10.99.0.2", "as": "65xxx"}, {"router_id": "10.99.0.3", "as": "65xxx"}]
+
+[rmv:vars]
+peers=[{"router_id": "10.99.0.34", "as": "65xxx"}, {"router_id": "10.99.0.35", "as": "65xxx"}]
+```
+
 ### Playbook
 ```
 ---
@@ -44,7 +87,7 @@ The main variables to change are located in the directory ```environments/[env_n
   roles:
     - { role: etcd, tags: etcd }
     - { role: docker, tags: docker }
-    - { role: overlay_network, tags: ['calico', 'flannel', 'network'] }
+    - { role: network_plugin, tags: ['calico', 'flannel', 'network'] }
     - { role: dnsmasq, tags: dnsmasq }
 
 - hosts: kube-master
@@ -72,13 +115,13 @@ Kubernetes
 -------------------------
 
 ### Network Overlay
-You can choose between 2 network overlays. Only one must be chosen.
+You can choose between 2 network plugins. Only one must be chosen.
 
 * **flannel**: gre/vxlan (layer 2) networking. ([official docs]('https://github.com/coreos/flannel'))
 
 * **calico**: bgp (layer 3) networking. ([official docs]('http://docs.projectcalico.org/en/0.13/'))
 
-The choice is defined with the variable '**overlay_network_plugin**'
+The choice is defined with the variable '**kube_network_plugin**'
 
 ### Expose a service
 There are several loadbalancing solutions.

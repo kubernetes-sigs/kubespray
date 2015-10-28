@@ -16,7 +16,7 @@ Ansible v1.9.x
 * [etcd](https://github.com/coreos/etcd/releases) v2.2.0
 * [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.5.1
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.3
-* [docker](https://www.docker.com/) v1.8.2
+* [docker](https://www.docker.com/) v1.8.3
 
 
 Ansible
@@ -34,7 +34,10 @@ The main variables to change are located in the directory ```environments/[env_n
 
 ### Inventory
 Below is an example of an inventory.
-Note : The bgp vars (local_as, peers) are not mandatory if the var "peer_with_router" is set to false
+Note : The bgp vars local_as and peers are not mandatory if the var "peer_with_router" is set to false
+By default this variable is set to false and therefore all the nodes are configure in "node-mesh" mode.
+In node-mesh mode the nodes peers with all the nodes in order to exchange routes.
+
 ```
 [downloader]
 10.99.0.26

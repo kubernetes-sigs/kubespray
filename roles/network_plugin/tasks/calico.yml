@@ -1,6 +1,6 @@
 ---
 - name: Calico | Install calicoctl bin
-  copy: 
+  copy:
      src={{ local_release_dir }}/calico/bin/calicoctl
      dest={{ bin_dir }}
      mode=u+x
@@ -11,22 +11,28 @@
 
 - name: Calico | Write calico-node systemd init file
   template: src=calico/calico-node.service.j2 dest=/etc/systemd/system/calico-node.service
-  notify: 
+  register: newservice
+  notify:
     - reload systemd
     - restart calico-node
+
+- name: Calico | daemon-reload
+  command: systemctl daemon-reload
+  when: newservice|changed
+  changed_when: False
 
 - name: Calico | Enable calico-node
   service: name=calico-node enabled=yes state=started
 
 - name: Calico | Configure calico-node remove default pool
   shell: calicoctl pool remove 192.168.0.0/16
-  environment: 
+  environment:
      ETCD_AUTHORITY: "{{ groups['kube-master'][0] }}:4001"
   run_once: true
 
 - name: Calico | Configure calico-node desired pool
   shell: calicoctl pool add {{ kube_pods_subnet }}
-  environment: 
+  environment:
      ETCD_AUTHORITY: "{{ groups['kube-master'][0] }}:4001"
   run_once: true
 

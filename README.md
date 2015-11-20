@@ -203,13 +203,15 @@ grep path .gitmodules | sed 's/.*= //'
 ```
 
 For instance if you will probably want to install a [dns server](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns) as it is **strongly recommanded**.
+Please refer to the [k8s-kubdns readme](https://github.com/ansibl8s/k8s-kubedns) for additionnal info.
+
 In order to use this role you'll need to follow these steps
 ```
 git submodule init roles/apps/k8s-common roles/apps/k8s-kubedns
 git submodule update
 ```
 
-Finally update your playbook with the chosen role, and run it
+Finally update the playbook ```apps.yml``` with the chosen roles, and run it
 ```
 ...
 - hosts: kube-master
@@ -217,7 +219,11 @@ Finally update your playbook with the chosen role, and run it
     - { role: apps/k8s-kubedns, tags: ['kubedns', 'apps']  }
 ...
 ```
-Please refer to the [k8s-kubdns readme](https://github.com/ansibl8s/k8s-kubedns) for additionnal info.
+
+```
+ansible-playbook -i environments/dev/inventory apps.yml -u root
+```
+
 
 #### Calico networking
 Check if the calico-node container is running

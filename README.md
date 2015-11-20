@@ -160,7 +160,7 @@ There are two ways of installing new apps
 
 Additionnal apps can be installed with ```ansible-galaxy```.
 
-you'll need to edit the file '*requirements.yml*' in order to chose needed apps.
+ou'll need to edit the file '*requirements.yml*' in order to chose needed apps.
 The list of available apps are available [there](https://github.com/ansibl8s)
 
 For instance it is **strongly recommanded** to install a dns server which resolves kubernetes service names.

@@ -12,17 +12,17 @@ The firewalls are not managed, you'll need to implement your own rules the way y
 Ansible v1.9.x
 
 ### Components
-* [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.0.6
-* [etcd](https://github.com/coreos/etcd/releases) v2.2.0
+* [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.2
+* [etcd](https://github.com/coreos/etcd/releases) v2.2.2
 * [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.5.1
-* [flanneld](https://github.com/coreos/flannel/releases) v0.5.3
+* [flanneld](https://github.com/coreos/flannel/releases) v0.5.5
 * [docker](https://www.docker.com/) v1.8.3
 
 
 Ansible
 -------------------------
 ### Download binaries
-A role allows to download required binaries which will be stored in a directory defined by the variable
+A role allows to download required binaries. They will be stored in a directory defined by the variable
 **'local_release_dir'** (by default /tmp).
 Please ensure that you have enough disk space there (about **1G**).
 
@@ -34,8 +34,8 @@ The main variables to change are located in the directory ```environments/[env_n
 
 ### Inventory
 Below is an example of an inventory.
-Note : The bgp vars local_as and peers are not mandatory if the var "peer_with_router" is set to false
-By default this variable is set to false and therefore all the nodes are configure in "node-mesh" mode.
+Note : The bgp vars local_as and peers are not mandatory if the var **'peer_with_router'** is set to false
+By default this variable is set to false and therefore all the nodes are configure in **'node-mesh'** mode.
 In node-mesh mode the nodes peers with all the nodes in order to exchange routes.
 
 ```
@@ -43,9 +43,7 @@ In node-mesh mode the nodes peers with all the nodes in order to exchange routes
 10.99.0.26
 
 [kube-master]
-# NB : the br_addr must be in the {{ calico_pool }} subnet
-# it will assign a /24 subnet per node
-10.99.0.26 br_addr=10.99.64.1
+10.99.0.26
 
 [etcd]
 10.99.0.26
@@ -58,14 +56,14 @@ In node-mesh mode the nodes peers with all the nodes in order to exchange routes
 10.99.0.37
 
 [itx2]
-10.99.0.26 br_addr=10.99.16.1
-10.99.0.4 br_addr=10.99.65.1 local_as=xxxxxxxx
-10.99.0.5 br_addr=10.99.66.1 local_as=xxxxxxxx
-10.99.0.6 br_addr=10.99.69.1 local_as=xxxxxxxx
+10.99.0.26
+10.99.0.4 local_as=xxxxxxxx
+10.99.0.5 local_as=xxxxxxxx
+10.99.0.6 local_as=xxxxxxxx
 
 [rmv]
-10.99.0.36 br_addr=10.99.67.1 local_as=xxxxxxxx
-10.99.0.37 br_addr=10.99.68.1 local_as=xxxxxxxx
+10.99.0.36 local_as=xxxxxxxx
+10.99.0.37 local_as=xxxxxxxx
 
 [k8s-cluster:children]
 kube-node
@@ -100,11 +98,6 @@ peers=[{"router_id": "10.99.0.34", "as": "65xxx"}, {"router_id": "10.99.0.35", "
 - hosts: kube-node
   roles:
     - { role: kubernetes/node, tags: node }
-
-- hosts: kube-master
-  roles:
-    - { role: apps/k8s-kubedns, tags: ['kubedns', 'apps']  }
-    - { role: apps/k8s-fabric8, tags: ['fabric8', 'apps']  }
 ```
 
 ### Run
@@ -170,8 +163,9 @@ Additionnal apps can be installed with ```ansible-galaxy```.
 you'll need to edit the file '*requirements.yml*' in order to chose needed apps.
 The list of available apps are available [there](https://github.com/ansibl8s)
 
-For instance if you will probably want to install a [dns server](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns) as it is **strongly recommanded**.
+For instance it is **strongly recommanded** to install a dns server which resolves kubernetes service names.
 In order to use this role you'll need the following entries in the file '*requirements.yml*' 
+Please refer to the [k8s-kubdns readme](https://github.com/ansibl8s/k8s-kubedns) for additionnal info.
 ```
 - src: https://github.com/ansibl8s/k8s-common.git
   path: roles/apps
@@ -202,14 +196,13 @@ You can list available submodules with the following command:
 grep path .gitmodules | sed 's/.*= //'
 ```
 
-For instance if you will probably want to install a [dns server](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns) as it is **strongly recommanded**.
-In order to use this role you'll need to follow these steps
+In order to install the dns addon you'll need to follow these steps
 ```
 git submodule init roles/apps/k8s-common roles/apps/k8s-kubedns
 git submodule update
 ```
 
-Finally update your playbook with the chosen role, and run it
+Finally update the playbook ```apps.yml``` with the chosen roles, and run it
 ```
 ...
 - hosts: kube-master
@@ -217,7 +210,11 @@ Finally update your playbook with the chosen role, and run it
     - { role: apps/k8s-kubedns, tags: ['kubedns', 'apps']  }
 ...
 ```
-Please refer to the [k8s-kubdns readme](https://github.com/ansibl8s/k8s-kubedns) for additionnal info.
+
+```
+ansible-playbook -i environments/dev/inventory apps.yml -u root
+```
+
 
 #### Calico networking
 Check if the calico-node container is running
@@ -242,19 +239,4 @@ calicoctl endpoint show --detail
 ```
 #### Flannel networking
 
-Congrats ! now you can walk through [kubernetes basics](http://kubernetes.io/v1.0/basicstutorials.html)
-
-Known issues
--------------
-### Node reboot and Calico
-There is a major issue with calico-kubernetes version 0.5.1 and kubernetes prior to 1.1 :
-After host reboot, the pods networking are not configured again, they are started without any network configuration.
-This issue will be fixed when kubernetes 1.1 will be released as described in this [issue](https://github.com/projectcalico/calico-kubernetes/issues/34)
-
-### Monitoring addon
-Until now i didn't managed to get the monitoring addon working.
-
-### Apiserver listen on secure port only
-Currently the api-server listens on both secure and insecure ports.
-The insecure port is mainly used for calico.
-Will be fixed soon.
+Congrats ! now you can walk through [kubernetes basics](http://kubernetes.io/v1.1/basicstutorials.html)

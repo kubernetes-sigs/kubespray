@@ -51,17 +51,15 @@ In node-mesh mode the nodes peers with all the nodes in order to exchange routes
 [kube-node]
 10.99.0.4
 10.99.0.5
-10.99.0.6
 10.99.0.36
 10.99.0.37
 
-[itx2]
+[paris]
 10.99.0.26
 10.99.0.4 local_as=xxxxxxxx
 10.99.0.5 local_as=xxxxxxxx
-10.99.0.6 local_as=xxxxxxxx
 
-[rmv]
+[usa]
 10.99.0.36 local_as=xxxxxxxx
 10.99.0.37 local_as=xxxxxxxx
 
@@ -69,10 +67,10 @@ In node-mesh mode the nodes peers with all the nodes in order to exchange routes
 kube-node
 kube-master
 
-[itx2:vars]
+[paris:vars]
 peers=[{"router_id": "10.99.0.2", "as": "65xxx"}, {"router_id": "10.99.0.3", "as": "65xxx"}]
 
-[rmv:vars]
+[usa:vars]
 peers=[{"router_id": "10.99.0.34", "as": "65xxx"}, {"router_id": "10.99.0.35", "as": "65xxx"}]
 ```
 

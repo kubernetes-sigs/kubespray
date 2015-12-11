@@ -1,18 +1,24 @@
 [Service]
 Environment="KUBE_LOGTOSTDERR=--logtostderr=true"
-Environment="KUBE_LOG_LEVEL=--v=0"
+Environment="KUBE_LOG_LEVEL={{ kube_log_level | default('--v=2') }}"
 Environment="KUBE_ALLOW_PRIV=--allow_privileged=true"
-Environment="KUBE_MASTER=--master=https://{{ groups['kube-master'][0] }}:{{ kube_master_port }}"
+{% if inventory_hostname in groups['kube-master'] %}
+Environment="KUBELET_API_SERVER=--api_servers=http://{{ hostvars[inventory_hostname]['ip'] | default(hostvars[inventory_hostname]['ansible_default_ipv4']['address']) }}:{{ kube_apiserver_insecure_port }}"
+{% else %}
+Environment="KUBELET_API_SERVER=--api_servers=https://{{ groups['kube-master'][0]}}:{{ kube_apiserver_port }}"
+{% endif %}
 # The address for the info server to serve on (set to 0.0.0.0 or "" for all interfaces)
 Environment="KUBELET_ADDRESS=--address=0.0.0.0"
 # The port for the info server to serve on
 # Environment="KUBELET_PORT=--port=10250"
 # You may leave this blank to use the actual hostname
 Environment="KUBELET_HOSTNAME=--hostname_override={{ inventory_hostname }}"
+{% if inventory_hostname in groups['kube-master'] and inventory_hostname not in groups['kube-node'] %}
+Environment="KUBELET_REGISTER_NODE=--register-node=false"
+{% endif %}
 # location of the api-server
-Environment="KUBELET_API_SERVER=--api_servers=https://{{ groups['kube-master'][0]}}:{{ kube_master_port }}"
 {% if dns_setup %}
-Environment="KUBELET_ARGS=--cluster_dns={{ dns_server }} --cluster_domain={{ dns_domain }} --kubeconfig={{ kube_config_dir}}/kubelet.kubeconfig --config={{ kube_manifest_dir }}"
+Environment="KUBELET_ARGS=--cluster_dns={{ dns_server }} --cluster_domain={{ dns_domain }} --kubeconfig={{ kube_config_dir}}/node-kubeconfig.yaml --config={{ kube_manifest_dir }}"
 {% else %}
 Environment="KUBELET_ARGS=--kubeconfig={{ kube_config_dir}}/kubelet.kubeconfig --config={{ kube_manifest_dir }}"
 {% endif %}

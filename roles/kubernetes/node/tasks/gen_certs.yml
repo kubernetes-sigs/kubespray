@@ -1,0 +1,28 @@
+---
+- name: certs | install cert generation script
+  copy:
+    src=make-ssl.sh
+    dest={{ kube_script_dir }}
+    mode=0500
+  changed_when: false
+
+- name: certs | write openssl config
+  template:
+    src: "openssl.conf.j2"
+    dest: "{{ kube_config_dir }}/.openssl.conf"
+
+- name: certs | run cert generation script
+  shell: >
+    {{ kube_script_dir }}/make-ssl.sh
+    -f {{ kube_config_dir }}/.openssl.conf
+    -g {{ kube_cert_group }}
+    -d {{ kube_cert_dir }}
+  args:
+    creates: "{{ kube_cert_dir }}/apiserver.pem"
+
+- name: certs | check certificate permissions
+  file:
+    path={{ kube_cert_dir }}
+    group={{ kube_cert_group }}
+    owner=kube
+    recurse=yes

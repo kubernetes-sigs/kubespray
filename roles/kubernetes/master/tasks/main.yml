@@ -1,3 +1,81 @@
 ---
-- include: install.yml
-- include: config.yml
+- name: Install kubectl binary
+  copy:
+     src={{ local_release_dir }}/kubernetes/bin/kubectl
+     dest={{ bin_dir }}
+     owner=kube
+     mode=u+x
+  notify:
+    - restart daemons
+
+- name: Copy kubectl bash completion
+  copy:
+    src: kubectl_bash_completion.sh
+    dest: /etc/bash_completion.d/kubectl.sh
+
+- name: populate users for basic auth in API
+  lineinfile:
+    dest: "{{ kube_users_dir }}/known_users.csv"
+    create: yes
+    line: '{{ item.value.pass }},{{ item.key }},{{ item.value.role }}'
+    backup: yes
+  with_dict: "{{ kube_users }}"
+
+# Sync masters
+- name: synchronize auth directories for masters
+  synchronize:
+    src: "{{ item }}"
+    dest: "{{ kube_config_dir }}"
+    recursive: yes
+    delete: yes
+    rsync_opts: [ '--one-file-system']
+  with_items:
+    - "{{ kube_token_dir }}"
+    - "{{ kube_cert_dir }}"
+    - "{{ kube_users_dir }}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
+
+# Write manifests
+- name: Write kube-apiserver manifest
+  template:
+    src: manifests/kube-apiserver.manifest.j2
+    dest: "{{ kube_manifest_dir }}/kube-apisever.manifest"
+  notify:
+    - restart kubelet
+
+- meta: flush_handlers
+
+- name: wait for the apiserver to be running (pulling image and running container)
+  wait_for:
+    port: 8080
+
+- name: install required python module 'httplib2'
+  apt:
+    name: "python-httplib2"
+    state: present
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Create 'kube-system' namespace
+  uri:
+    url: http://{{ groups['kube-master'][0]}}:{{ kube_apiserver_insecure_port }}/api/v1/namespaces
+    method: POST
+    body: '{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"kube-system"}}'
+    status_code: 201,409
+    body_format: json
+  run_once: yes
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Write kube-controller-manager manifest
+  template:
+    src: manifests/kube-controller-manager.manifest.j2
+    dest: "{{ kube_config_dir }}/kube-controller-manager.manifest"
+
+- name: Write kube-scheduler manifest
+  template:
+    src: manifests/kube-scheduler.manifest.j2
+    dest: "{{ kube_config_dir }}/kube-scheduler.manifest"
+
+- name: Write podmaster manifest
+  template:
+    src: manifests/kube-podmaster.manifest.j2
+    dest: "{{ kube_manifest_dir }}/kube-podmaster.manifest"

@@ -14,9 +14,9 @@ Ansible v1.9.x
 ### Components
 * [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.2
 * [etcd](https://github.com/coreos/etcd/releases) v2.2.2
-* [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.11.0
+* [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.12.0
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.5
-* [docker](https://www.docker.com/) v1.8.3
+* [docker](https://www.docker.com/) v1.9.1
 
 
 Ansible

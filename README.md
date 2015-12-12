@@ -18,6 +18,33 @@ Ansible v1.9.x
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.5
 * [docker](https://www.docker.com/) v1.9.1
 
+Quickstart
+-------------------------
+The following steps will quickly setup a kubernetes cluster with default configuration.
+These defaults are good for a test purposes.
+
+Edit the inventory according to the number of servers
+```
+[downloader]
+10.115.99.1
+
+[kube-master]
+10.115.99.31
+
+[kube-node]
+10.115.99.32
+10.115.99.33
+
+[k8s-cluster:children]
+kube-node
+kube-master
+```
+
+Run the playbook
+```
+ansible-playbook -i environments/production/inventory cluster.yml -u root
+```
+
 
 Ansible
 -------------------------
@@ -44,11 +71,10 @@ In node-mesh mode the nodes peers with all the nodes in order to exchange routes
 
 [kube-master]
 10.99.0.26
-
-[etcd]
-10.99.0.26
+10.99.0.59
 
 [kube-node]
+10.99.0.59
 10.99.0.4
 10.99.0.5
 10.99.0.36
@@ -60,6 +86,7 @@ In node-mesh mode the nodes peers with all the nodes in order to exchange routes
 10.99.0.5 local_as=xxxxxxxx
 
 [usa]
+10.99.0.59 local_as=xxxxxxxx
 10.99.0.36 local_as=xxxxxxxx
 10.99.0.37 local_as=xxxxxxxx
 
@@ -69,9 +96,11 @@ kube-master
 
 [paris:vars]
 peers=[{"router_id": "10.99.0.2", "as": "65xxx"}, {"router_id": "10.99.0.3", "as": "65xxx"}]
+loadbalancer_address="10.99.0.24"
 
 [usa:vars]
 peers=[{"router_id": "10.99.0.34", "as": "65xxx"}, {"router_id": "10.99.0.35", "as": "65xxx"}]
+loadbalancer_address="10.99.0.44"
 ```
 
 ### Playbook

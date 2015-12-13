@@ -12,7 +12,7 @@ The firewalls are not managed, you'll need to implement your own rules the way y
 Ansible v1.9.x
 
 ### Components
-* [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.2
+* [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.3
 * [etcd](https://github.com/coreos/etcd/releases) v2.2.2
 * [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.12.0
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.5

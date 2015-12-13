@@ -6,8 +6,9 @@ Based on [CiscoCloud](https://github.com/CiscoCloud/kubernetes-ansible) work.
 
 ### Requirements
 Tested on **Debian Jessie** and **Ubuntu** (14.10, 15.04, 15.10).
-The target servers must have access to the Internet in order to pull docker imaqes.
-The firewalls are not managed, you'll need to implement your own rules the way you used to.
+* The target servers must have access to the Internet in order to pull docker imaqes.
+* The firewalls are not managed, you'll need to implement your own rules the way you used to.
+* the following packages are required: openssl, curl, dnsmasq, python-httplib2 on remote servers and python-ipaddr on deployment machine.
 
 Ansible v1.9.x
 
@@ -21,7 +22,7 @@ Ansible v1.9.x
 Quickstart
 -------------------------
 The following steps will quickly setup a kubernetes cluster with default configuration.
-These defaults are good for a test purposes.
+These defaults are good for tests purposes.
 
 Edit the inventory according to the number of servers
 ```
@@ -44,6 +45,8 @@ Run the playbook
 ```
 ansible-playbook -i environments/production/inventory cluster.yml -u root
 ```
+
+You can jump directly to "*Available apps, installation procedure*"
 
 
 Ansible
@@ -111,20 +114,25 @@ loadbalancer_address="10.99.0.44"
   roles:
     - { role: download, tags: download }
 
-- hosts: k8s-cluster
+# etcd must be running on master(s) before going on
+- hosts: kube-master
   roles:
     - { role: etcd, tags: etcd }
+
+- hosts: k8s-cluster
+  roles:
     - { role: docker, tags: docker }
-    - { role: network_plugin, tags: ['calico', 'flannel', 'network'] }
     - { role: dnsmasq, tags: dnsmasq }
+    - { role: network_plugin, tags: ['calico', 'flannel', 'network'] }
+
+- hosts: kube-node
+  roles:
+    - { role: kubernetes/node, tags: node }
 
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
 
-- hosts: kube-node
-  roles:
-    - { role: kubernetes/node, tags: node }
 ```
 
 ### Run
@@ -136,6 +144,14 @@ ansible-playbook -i environments/dev/inventory cluster.yml -u root
 
 Kubernetes
 -------------------------
+### Multi master notes
+* You can choose where to install the master components. If you want your master node to act both as master (api,scheduler,controller) and node (e.g. accept workloads, create pods ...), 
+the server address has to be present on both groups 'kube-master' and 'kube-node'.
+
+* Almost all kubernetes components are running into pods except *kubelet*. These pods are managed by kubelet which ensure they're always running
+
+* One etcd cluster member per node will be configured. For safety reasons, you should have at least two master nodes.
+ 
 
 ### Network Overlay
 You can choose between 2 network plugins. Only one must be chosen.

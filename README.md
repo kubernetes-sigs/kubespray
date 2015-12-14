@@ -32,6 +32,10 @@ Edit the inventory according to the number of servers
 [kube-master]
 10.115.99.31
 
+[etcd]
+10.115.99.31
+10.115.99.32
+
 [kube-node]
 10.115.99.32
 10.115.99.33
@@ -76,6 +80,10 @@ In node-mesh mode the nodes peers with all the nodes in order to exchange routes
 10.99.0.26
 10.99.0.59
 
+[etcd]
+10.99.0.26
+10.99.0.59
+
 [kube-node]
 10.99.0.59
 10.99.0.4
@@ -115,7 +123,7 @@ loadbalancer_address="10.99.0.44"
     - { role: download, tags: download }
 
 # etcd must be running on master(s) before going on
-- hosts: kube-master
+- hosts: etcd
   roles:
     - { role: etcd, tags: etcd }
 

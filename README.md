@@ -35,6 +35,7 @@ Edit the inventory according to the number of servers
 [etcd]
 10.115.99.31
 10.115.99.32
+10.115.99.33
 
 [kube-node]
 10.115.99.32
@@ -82,6 +83,7 @@ In node-mesh mode the nodes peers with all the nodes in order to exchange routes
 
 [etcd]
 10.99.0.26
+10.99.0.4
 10.99.0.59
 
 [kube-node]

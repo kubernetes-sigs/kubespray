@@ -48,7 +48,7 @@ kube-master
 
 Run the playbook
 ```
-ansible-playbook -i environments/production/inventory cluster.yml -u root
+ansible-playbook -i environments/test/inventory cluster.yml -u root
 ```
 
 You can jump directly to "*Available apps, installation procedure*"
@@ -59,7 +59,7 @@ Ansible
 ### Download binaries
 A role allows to download required binaries. They will be stored in a directory defined by the variable
 **'local_release_dir'** (by default /tmp).
-Please ensure that you have enough disk space there (about **1G**).
+Please ensure that you have enough disk space there (about **300M**).
 
 **Note**: Whenever you'll need to change the version of a software, you'll have to erase the content of this directory.
 
@@ -116,13 +116,9 @@ kube-master
   roles:
     - { role: download, tags: download }
 
-# etcd must be running on master(s) before going on
-- hosts: etcd
-  roles:
-    - { role: etcd, tags: etcd }
-
 - hosts: k8s-cluster
   roles:
+    - { role: etcd, tags: etcd }
     - { role: docker, tags: docker }
     - { role: dnsmasq, tags: dnsmasq }
     - { role: network_plugin, tags: ['calico', 'flannel', 'network'] }

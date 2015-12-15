@@ -48,7 +48,7 @@ kube-master
 
 Run the playbook
 ```
-ansible-playbook -i environments/production/inventory cluster.yml -u root
+ansible-playbook -i environments/test/inventory cluster.yml -u root
 ```
 
 You can jump directly to "*Available apps, installation procedure*"
@@ -59,7 +59,7 @@ Ansible
 ### Download binaries
 A role allows to download required binaries. They will be stored in a directory defined by the variable
 **'local_release_dir'** (by default /tmp).
-Please ensure that you have enough disk space there (about **1G**).
+Please ensure that you have enough disk space there (about **300M**).
 
 **Note**: Whenever you'll need to change the version of a software, you'll have to erase the content of this directory.
 
@@ -106,14 +106,6 @@ In node-mesh mode the nodes peers with all the nodes in order to exchange routes
 [k8s-cluster:children]
 kube-node
 kube-master
-
-[paris:vars]
-peers=[{"router_id": "10.99.0.2", "as": "65xxx"}, {"router_id": "10.99.0.3", "as": "65xxx"}]
-loadbalancer_address="10.99.0.24"
-
-[usa:vars]
-peers=[{"router_id": "10.99.0.34", "as": "65xxx"}, {"router_id": "10.99.0.35", "as": "65xxx"}]
-loadbalancer_address="10.99.0.44"
 ```
 
 ### Playbook
@@ -124,13 +116,9 @@ loadbalancer_address="10.99.0.44"
   roles:
     - { role: download, tags: download }
 
-# etcd must be running on master(s) before going on
-- hosts: etcd
-  roles:
-    - { role: etcd, tags: etcd }
-
 - hosts: k8s-cluster
   roles:
+    - { role: etcd, tags: etcd }
     - { role: docker, tags: docker }
     - { role: dnsmasq, tags: dnsmasq }
     - { role: network_plugin, tags: ['calico', 'flannel', 'network'] }
@@ -161,6 +149,9 @@ the server address has to be present on both groups 'kube-master' and 'kube-node
 * Almost all kubernetes components are running into pods except *kubelet*. These pods are managed by kubelet which ensure they're always running
 
 * One etcd cluster member per node will be configured. For safety reasons, you should have at least two master nodes.
+
+* Kube-proxy doesn't support multiple apiservers on startup ([#18174]('https://github.com/kubernetes/kubernetes/issues/18174')). An external loadbalancer needs to be configured.
+In order to do so, some variables have to be used '**loadbalancer_apiserver**' and '**apiserver_loadbalancer_domain_name**' 
  
 
 ### Network Overlay

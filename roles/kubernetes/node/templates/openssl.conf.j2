@@ -1,0 +1,20 @@
+[req]
+req_extensions = v3_req
+distinguished_name = req_distinguished_name
+[req_distinguished_name]
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = kubernetes
+DNS.2 = kubernetes.default
+DNS.3 = kubernetes.default.svc.{{ dns_domain }}
+{% if loadbalancer_apiserver is defined  and apiserver_loadbalancer_domain_name is defined %}
+DNS.4 = {{ apiserver_loadbalancer_domain_name }}
+{% endif %}
+{% for host in groups['kube-master'] %}
+IP.{{ loop.index }} = {{ hostvars[host]['ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}
+{% endfor %}
+{% set idx =  groups['kube-master'] | length | int + 1 %}
+IP.{{ idx | string }} = {{ kube_apiserver_ip }}

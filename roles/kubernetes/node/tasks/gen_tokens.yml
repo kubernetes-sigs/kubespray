@@ -1,0 +1,26 @@
+---
+- name: tokens | copy the token gen script
+  copy:
+    src=kube-gen-token.sh
+    dest={{ kube_script_dir }}
+    mode=u+x
+
+- name: tokens | generate tokens for master components
+  command: "{{ kube_script_dir }}/kube-gen-token.sh {{ item[0] }}-{{ item[1] }}"
+  environment:
+    TOKEN_DIR: "{{ kube_token_dir }}"
+  with_nested:
+    - [ "system:kubectl" ]
+    - "{{ groups['kube-master'] }}"
+  register: gentoken
+  changed_when: "'Added' in gentoken.stdout"
+
+- name: tokens | generate tokens for node components
+  command: "{{ kube_script_dir }}/kube-gen-token.sh {{ item[0] }}-{{ item[1] }}"
+  environment:
+    TOKEN_DIR: "{{ kube_token_dir }}"
+  with_nested:
+    - [ 'system:kubelet' ]
+    - "{{ groups['kube-node'] }}"
+  register: gentoken
+  changed_when: "'Added' in gentoken.stdout"

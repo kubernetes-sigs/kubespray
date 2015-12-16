@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kube-proxy
+  namespace: kube-system
+spec:
+  hostNetwork: true
+  containers:
+  - name: kube-proxy
+    image: {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}
+    command:
+    - /hyperkube
+    - proxy
+    - --v={{ kube_log_level | default('2') }}
+{% if inventory_hostname in groups['kube-master'] %}
+    - --master=http://127.0.0.1:{{kube_apiserver_insecure_port}}
+{% else %}
+{%   if loadbalancer_apiserver is defined and apiserver_loadbalancer_domain_name is defined %}
+    - --master=https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port }}
+{%   else %}
+    - --master=https://{{ groups['kube-master'][0] }}:{{ kube_apiserver_port }}
+{%   endif%}
+    - --kubeconfig=/etc/kubernetes/node-kubeconfig.yaml
+{% endif %}
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - mountPath: /etc/ssl/certs
+      name: ssl-certs-host
+      readOnly: true
+    - mountPath: /etc/kubernetes/node-kubeconfig.yaml
+      name: "kubeconfig"
+      readOnly: true
+    - mountPath: /etc/kubernetes/ssl
+      name: "etc-kube-ssl"
+      readOnly: true
+  volumes:
+  - name: ssl-certs-host
+    hostPath:
+      path: /usr/share/ca-certificates
+  - name: "kubeconfig"
+    hostPath:
+      path: "/etc/kubernetes/node-kubeconfig.yaml"
+  - name: "etc-kube-ssl"
+    hostPath:
+      path: "/etc/kubernetes/ssl"

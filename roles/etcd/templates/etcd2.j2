@@ -1,17 +1,21 @@
 # etcd2.0
 [Service]
-{% if inventory_hostname in groups['kube-master'] %}
-Environment="ETCD_ADVERTISE_CLIENT_URLS=http://{{ ansible_default_ipv4.address }}:2379,http://{{ ansible_default_ipv4.address }}:4001"
-Environment="ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{ ansible_default_ipv4.address }}:2380"
-Environment="ETCD_INITIAL_CLUSTER=master=http://{{ ansible_default_ipv4.address }}:2380"
+{% if inventory_hostname in groups['etcd'] %}
+{% set etcd = {} %}
+{% for srv in groups['etcd'] %}
+{% if inventory_hostname == srv %}
+{% set _dummy = etcd.update({'name':"master"+loop.index|string}) %}
+{% endif %}
+{% endfor %}
+Environment="ETCD_ADVERTISE_CLIENT_URLS=http://{{ hostvars[inventory_hostname]['ip'] | default( ansible_default_ipv4.address) }}:2379"
+Environment="ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{ hostvars[inventory_hostname]['ip'] | default( ansible_default_ipv4.address)  }}:2380"
+Environment="ETCD_INITIAL_CLUSTER={% for srv in groups['etcd'] %}master{{ loop.index|string }}=http://{{ srv }}:2380{% if not loop.last %},{% endif %}{% endfor %}"
 Environment="ETCD_INITIAL_CLUSTER_STATE=new"
 Environment="ETCD_INITIAL_CLUSTER_TOKEN=k8s_etcd"
-Environment="ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379,http://0.0.0.0:4001"
-Environment="ETCD_LISTEN_PEER_URLS=http://:2380,http://{{ ansible_default_ipv4.address }}:7001"
-Environment="ETCD_NAME=master"
-{% else %}
-Environment="ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379,http://0.0.0.0:4001"
-Environment="ETCD_INITIAL_CLUSTER=master=http://{{ groups['kube-master'][0] }}:2380"
-Environment="ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379,http://0.0.0.0:4001"
-Environment="ETCD_PROXY=on"
+Environment="ETCD_LISTEN_CLIENT_URLS=http://{{ hostvars[inventory_hostname]['ip'] | default( ansible_default_ipv4.address)  }}:2379,http://127.0.0.1:2379"
+Environment="ETCD_LISTEN_PEER_URLS=http://{{ hostvars[inventory_hostname]['ip'] | default( ansible_default_ipv4.address)  }}:2380"
+Environment="ETCD_NAME={{ etcd.name }}"
+{% else  %}
+Environment="ETCD_INITIAL_CLUSTER={% for srv in groups['etcd'] %}master{{ loop.index|string }}=http://{{ srv }}:2380{% if not loop.last %},{% endif %}{% endfor %}"
+Environment="ETCD_LISTEN_CLIENT_URLS=http://127.0.0.1:23799"
 {% endif %}

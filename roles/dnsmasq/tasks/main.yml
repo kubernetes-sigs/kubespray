@@ -8,6 +8,14 @@
   when: hostvars[item].ansible_default_ipv4.address is defined
   with_items: groups['all']
 
+- name: populate kubernetes loadbalancer address into hosts file
+  lineinfile:
+    dest: /etc/hosts
+    regexp: ".*{{ apiserver_loadbalancer_domain_name }}$"
+    line: "{{ loadbalancer_apiserver.address }} lb-apiserver.kubernetes.local"
+    state: present
+  when: loadbalancer_apiserver is defined and apiserver_loadbalancer_domain_name is defined
+
 - name: clean hosts file
   lineinfile:
     dest: /etc/hosts
@@ -21,16 +29,17 @@
   apt:
     name: "{{ item }}"
     state: present
+    update_cache: yes
   with_items:
     - dnsmasq
     - bind9utils
-  when: inventory_hostname in groups['kube-master'][0]
+  when: inventory_hostname in groups['kube-master']
 
 - name: ensure dnsmasq.d directory exists
   file:
     path: /etc/dnsmasq.d
     state: directory
-  when: inventory_hostname in groups['kube-master'][0]
+  when: inventory_hostname in groups['kube-master']
 
 - name: configure dnsmasq
   template:
@@ -39,14 +48,14 @@
     mode: 755
   notify:
     - restart dnsmasq
-  when: inventory_hostname in groups['kube-master'][0]
+  when: inventory_hostname in groups['kube-master']
 
 - name: enable dnsmasq
   service:
     name: dnsmasq
     state: started
     enabled: yes
-  when: inventory_hostname in groups['kube-master'][0]
+  when: inventory_hostname in groups['kube-master']
 
 - name: update resolv.conf with new DNS setup
   template:
@@ -56,3 +65,5 @@
 
 - name: disable resolv.conf modification by dhclient
   copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient-enter-hooks.d/nodnsupdate mode=u+x
+
+- meta: flush_handlers

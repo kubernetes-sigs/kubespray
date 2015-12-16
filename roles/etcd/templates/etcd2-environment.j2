@@ -1,0 +1,20 @@
+ETCD_DATA_DIR="/var/lib/etcd2"
+{% if inventory_hostname in groups['etcd'] %}
+{% set etcd = {} %}
+{% for srv in groups['etcd'] %}
+{% if inventory_hostname == srv %}
+{% set _dummy = etcd.update({'name':"master"+loop.index|string}) %}
+{% endif %}
+{% endfor %}
+ETCD_ADVERTISE_CLIENT_URLS="http://{{ hostvars[inventory_hostname]['ip'] | default( ansible_default_ipv4.address) }}:2379"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://{{ hostvars[inventory_hostname]['ip'] | default( ansible_default_ipv4.address)  }}:2380"
+ETCD_INITIAL_CLUSTER="{% for srv in groups['etcd'] %}master{{ loop.index|string }}=http://{{ srv }}:2380{% if not loop.last %},{% endif %}{% endfor %}"
+ETCD_INITIAL_CLUSTER_STATE="new"
+ETCD_INITIAL_CLUSTER_TOKEN="k8s_etcd"
+ETCD_LISTEN_CLIENT_URLS="http://{{ hostvars[inventory_hostname]['ip'] | default( ansible_default_ipv4.address)  }}:2379,http://127.0.0.1:2379"
+ETCD_LISTEN_PEER_URLS="http://{{ hostvars[inventory_hostname]['ip'] | default( ansible_default_ipv4.address)  }}:2380"
+ETCD_NAME="{{ etcd.name }}"
+{% else  %}
+ETCD_INITIAL_CLUSTER="{% for srv in groups['etcd'] %}master{{ loop.index|string }}=http://{{ srv }}:2380{% if not loop.last %},{% endif %}{% endfor %}"
+ETCD_LISTEN_CLIENT_URLS="http://127.0.0.1:23799"
+{% endif %}

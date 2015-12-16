@@ -8,24 +8,27 @@
 - name: Make sure manifest directory exists
   file: path={{ kube_manifest_dir }} state=directory
 
+
+- name: certs | create system kube-cert groups
+  group: name={{ kube_cert_group }} state=present system=yes
+
+- name: create system kube user
+  user:
+    name=kube
+    comment="Kubernetes user"
+    shell=/sbin/nologin
+    state=present
+    system=yes
+    groups={{ kube_cert_group }}
+
+- include: install.yml
+
 - include: secrets.yml
   tags:
     - secrets
 
-- include: install.yml
-
-- name: write the global config file
-  template:
-    src: config.j2
-    dest: "{{ kube_config_dir }}/config"
-  notify:
-    - restart kubelet
-
-- name: Create kubelet environment vars dir
-  file: path=/etc/systemd/system/kubelet.service.d state=directory
-
 - name: Write kubelet config file
-  template: src=kubelet.j2 dest=/etc/systemd/system/kubelet.service.d/10-kubelet.conf backup=yes
+  template: src=kubelet.j2 dest={{ kube_config_dir }}/kubelet.conf backup=yes
   notify:
     - restart kubelet
 

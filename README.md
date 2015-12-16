@@ -123,13 +123,13 @@ kube-master
     - { role: dnsmasq, tags: dnsmasq }
     - { role: network_plugin, tags: ['calico', 'flannel', 'network'] }
 
-- hosts: kube-node
-  roles:
-    - { role: kubernetes/node, tags: node }
-
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
+
+- hosts: kube-node
+  roles:
+    - { role: kubernetes/node, tags: node }
 
 ```
 

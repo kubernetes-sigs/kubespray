@@ -148,29 +148,29 @@ the server address has to be present on both groups 'kube-master' and 'kube-node
 
 * For safety reasons, you should have at least two master nodes and 3 etcd servers
 
-* Kube-proxy doesn't support multiple apiservers on startup ([Issue 18174]('https://github.com/kubernetes/kubernetes/issues/18174')). An external loadbalancer needs to be configured.
+* Kube-proxy doesn't support multiple apiservers on startup ([Issue 18174](https://github.com/kubernetes/kubernetes/issues/18174)). An external loadbalancer needs to be configured.
 In order to do so, some variables have to be used '**loadbalancer_apiserver**' and '**apiserver_loadbalancer_domain_name**' 
  
 
 ### Network Overlay
 You can choose between 2 network plugins. Only one must be chosen.
 
-* **flannel**: gre/vxlan (layer 2) networking. ([official docs]('https://github.com/coreos/flannel'))
+* **flannel**: gre/vxlan (layer 2) networking. ([official docs](https://github.com/coreos/flannel))
 
-* **calico**: bgp (layer 3) networking. ([official docs]('http://docs.projectcalico.org/en/0.13/'))
+* **calico**: bgp (layer 3) networking. ([official docs](http://docs.projectcalico.org/en/0.13/))
 
 The choice is defined with the variable '**kube_network_plugin**'
 
 ### Expose a service
 There are several loadbalancing solutions.
-The one i found suitable for kubernetes are [Vulcand]('http://vulcand.io/') and [Haproxy]('http://www.haproxy.org/')
+The one i found suitable for kubernetes are [Vulcand](http://vulcand.io/) and [Haproxy](http://www.haproxy.org/)
 
 My cluster is working with haproxy and kubernetes services are configured with the loadbalancing type '**nodePort**'.
 eg: each node opens the same tcp port and forwards the traffic to the target pod wherever it is located.
 
 Then Haproxy can be configured to request kubernetes's api in order to loadbalance on the proper tcp port on the nodes.
 
-Please refer to the proper kubernetes documentation on [Services]('https://github.com/kubernetes/kubernetes/blob/release-1.0/docs/user-guide/services.md')
+Please refer to the proper kubernetes documentation on [Services](https://github.com/kubernetes/kubernetes/blob/release-1.0/docs/user-guide/services.md)
 
 ### Check cluster status
 
@@ -210,7 +210,7 @@ The list of available apps are available [there](https://github.com/ansibl8s)
 
 For instance it is **strongly recommanded** to install a dns server which resolves kubernetes service names.
 In order to use this role you'll need the following entries in the file '*requirements.yml*' 
-Please refer to the [k8s-kubdns readme](https://github.com/ansibl8s/k8s-kubedns) for additionnal info.
+Please refer to the [k8s-kubedns readme](https://github.com/ansibl8s/k8s-kubedns) for additionnal info.
 ```
 - src: https://github.com/ansibl8s/k8s-common.git
   path: roles/apps

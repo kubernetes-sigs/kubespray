@@ -72,34 +72,35 @@ By default this variable is set to false and therefore all the nodes are configu
 In node-mesh mode the nodes peers with all the nodes in order to exchange routes.
 
 ```
+
 [downloader]
-10.99.0.26
+node1 ansible_ssh_host=10.99.0.26
 
 [kube-master]
-10.99.0.26
-10.99.0.59
+node1 ansible_ssh_host=10.99.0.26
+node2 ansible_ssh_host=10.99.0.27
 
 [etcd]
-10.99.0.26
-10.99.0.4
-10.99.0.59
+node1 ansible_ssh_host=10.99.0.26
+node2 ansible_ssh_host=10.99.0.27
+node3 ansible_ssh_host=10.99.0.4
 
 [kube-node]
-10.99.0.59
-10.99.0.4
-10.99.0.5
-10.99.0.36
-10.99.0.37
+node2 ansible_ssh_host=10.99.0.27
+node3 ansible_ssh_host=10.99.0.4
+node4 ansible_ssh_host=10.99.0.5
+node5 ansible_ssh_host=10.99.0.36
+node6 ansible_ssh_host=10.99.0.37
 
 [paris]
-10.99.0.26
-10.99.0.4 local_as=xxxxxxxx
-10.99.0.5 local_as=xxxxxxxx
+node1 ansible_ssh_host=10.99.0.26
+node3 ansible_ssh_host=10.99.0.4 local_as=xxxxxxxx
+node4 ansible_ssh_host=10.99.0.5 local_as=xxxxxxxx
 
-[usa]
-10.99.0.59 local_as=xxxxxxxx
-10.99.0.36 local_as=xxxxxxxx
-10.99.0.37 local_as=xxxxxxxx
+[new-york]
+node2 ansible_ssh_host=10.99.0.27
+node5 ansible_ssh_host=10.99.0.36 local_as=xxxxxxxx
+node6 ansible_ssh_host=10.99.0.37 local_as=xxxxxxxx
 
 [k8s-cluster:children]
 kube-node

@@ -1,21 +1,19 @@
 kubernetes-ansible
 ========
 
-Install and configure a kubernetes cluster including network plugin and optionnal addons.
-Based on [CiscoCloud](https://github.com/CiscoCloud/kubernetes-ansible) work.
+Install and configure a kubernetes cluster including network plugin.
 
 ### Requirements
 Tested on **Debian Jessie** and **Ubuntu** (14.10, 15.04, 15.10).
 * The target servers must have access to the Internet in order to pull docker imaqes.
 * The firewalls are not managed, you'll need to implement your own rules the way you used to.
-* the following packages are required: openssl, curl, dnsmasq, python-httplib2 on remote servers and python-ipaddr on deployment machine.
 
 Ansible v1.9.x
 
 ### Components
 * [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.3
 * [etcd](https://github.com/coreos/etcd/releases) v2.2.2
-* [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.12.0
+* [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.13.0
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.5
 * [docker](https://www.docker.com/) v1.9.1
 
@@ -48,7 +46,7 @@ kube-master
 
 Run the playbook
 ```
-ansible-playbook -i environments/test/inventory cluster.yml -u root
+ansible-playbook -i inventory/inventory.cfg cluster.yml -u root
 ```
 
 You can jump directly to "*Available apps, installation procedure*"
@@ -65,7 +63,7 @@ Please ensure that you have enough disk space there (about **300M**).
 
 
 ### Variables
-The main variables to change are located in the directory ```environments/[env_name]/group_vars/k8s-cluster.yml```.
+The main variables to change are located in the directory ```inventory/group_vars/all.yml```.
 
 ### Inventory
 Below is an example of an inventory.
@@ -137,7 +135,7 @@ kube-master
 It is possible to define variables for different environments.
 For instance, in order to deploy the cluster on 'dev' environment run the following command.
 ```
-ansible-playbook -i environments/dev/inventory cluster.yml -u root
+ansible-playbook -i inventory/dev/inventory.cfg cluster.yml -u root
 ```
 
 Kubernetes
@@ -148,9 +146,9 @@ the server address has to be present on both groups 'kube-master' and 'kube-node
 
 * Almost all kubernetes components are running into pods except *kubelet*. These pods are managed by kubelet which ensure they're always running
 
-* One etcd cluster member per node will be configured. For safety reasons, you should have at least two master nodes.
+* For safety reasons, you should have at least two master nodes and 3 etcd servers
 
-* Kube-proxy doesn't support multiple apiservers on startup ([#18174]('https://github.com/kubernetes/kubernetes/issues/18174')). An external loadbalancer needs to be configured.
+* Kube-proxy doesn't support multiple apiservers on startup ([Issue 18174]('https://github.com/kubernetes/kubernetes/issues/18174')). An external loadbalancer needs to be configured.
 In order to do so, some variables have to be used '**loadbalancer_apiserver**' and '**apiserver_loadbalancer_domain_name**' 
  
 
@@ -165,7 +163,7 @@ The choice is defined with the variable '**kube_network_plugin**'
 
 ### Expose a service
 There are several loadbalancing solutions.
-The ones i found suitable for kubernetes are [Vulcand]('http://vulcand.io/') and [Haproxy]('http://www.haproxy.org/')
+The one i found suitable for kubernetes are [Vulcand]('http://vulcand.io/') and [Haproxy]('http://www.haproxy.org/')
 
 My cluster is working with haproxy and kubernetes services are configured with the loadbalancing type '**nodePort**'.
 eg: each node opens the same tcp port and forwards the traffic to the target pod wherever it is located.
@@ -177,22 +175,25 @@ Please refer to the proper kubernetes documentation on [Services]('https://githu
 ### Check cluster status
 
 #### Kubernetes components
-Master processes : kube-apiserver, kube-scheduler, kube-controller, kube-proxy
-Nodes processes : kubelet, kube-proxy, [calico-node|flanneld]
 
 * Check the status of the processes
 ```
-systemctl status [process_name]
+systemctl status kubelet
 ```
 
 * Check the logs
 ```
-journalctl -ae -u [process_name]
+journalctl -ae -u kubelet
 ```
 
 * Check the NAT rules
 ```
 iptables -nLv -t nat
+```
+
+For the master nodes you'll have to see the docker logs for the apiserver
+```
+docker logs [apiserver docker id]
 ```
 
 

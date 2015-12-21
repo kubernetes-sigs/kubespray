@@ -19,7 +19,10 @@ token_file="${token_dir}/known_tokens.csv"
 
 create_accounts=($@)
 
-touch "${token_file}"
+if [ ! -e "${token_file}" ]; then
+  touch "${token_file}"
+fi
+
 for account in "${create_accounts[@]}"; do
   if grep ",${account}," "${token_file}" ; then
     continue

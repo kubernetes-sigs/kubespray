@@ -1,0 +1,54 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: etcd
+  namespace: kube-system
+spec:
+  hostNetwork: true
+  containers:
+    - name: etcd
+      image: quay.io/coreos/etcd:v2.2.2
+      resources:
+        limits:
+          cpu: 100m
+          memory: 256M
+      args:
+{% if inventory_hostname in groups['etcd'] %}
+        - --name
+        - etcd-{{inventory_hostname}}-master
+        - --advertise-client-urls
+        - "http://{{ hostvars[inventory_hostname]['ip'] | default( ansible_default_ipv4.address) }}:2379"
+        - --listen-peer-urls
+        - http://0.0.0.0:2380
+        - --initial-advertise-peer-urls
+        - http://{{ hostvars[inventory_hostname]['ip'] | default( ansible_default_ipv4.address) }}:2380
+        - --data-dir
+        - /var/etcd/data
+        - --initial-cluster-state
+        - new
+{% else %}
+        - --proxy
+        - 'on'
+{% endif %}
+        - --listen-client-urls
+        - "http://{{ hostvars[inventory_hostname]['ip'] | default( ansible_default_ipv4.address)  }}:2379,http://127.0.0.1:2379"
+        - --initial-cluster
+        - "{% for host in groups['etcd'] %}etcd-{{host}}-master=http://{{ hostvars[host]['ip'] | default( hostvars[host]['ansible_default_ipv4']['address'])   }}:2380{% if not loop.last %},{% endif %}{% endfor %}"
+        - --initial-cluster-token
+        - etcd-k8s-cluster
+      ports:
+        - name: etcd-client
+          containerPort: 2379
+          hostPort: 2379
+        - name: etcd-peer
+          containerPort: 2380
+          hostPort: 2380
+      volumeMounts:
+        - name: varetcd
+          mountPath: /var/etcd
+          readOnly: false
+  volumes:
+    - name: varetcd
+      hostPath:
+        path: /containers/pods/etcd-{{inventory_hostname}}/rootfs/var/etcd

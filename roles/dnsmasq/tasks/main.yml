@@ -5,6 +5,7 @@
     regexp: "^{{ hostvars[item].ansible_default_ipv4.address }} {{ item }}$"
     line: "{{ hostvars[item].ansible_default_ipv4.address }} {{ item }}"
     state: present
+    backup: yes
   when: hostvars[item].ansible_default_ipv4.address is defined
   with_items: groups['all']
 
@@ -14,6 +15,7 @@
     regexp: ".*{{ apiserver_loadbalancer_domain_name }}$"
     line: "{{ loadbalancer_apiserver.address }} lb-apiserver.kubernetes.local"
     state: present
+    backup: yes
   when: loadbalancer_apiserver is defined and apiserver_loadbalancer_domain_name is defined
 
 - name: clean hosts file
@@ -21,6 +23,7 @@
     dest: /etc/hosts
     regexp: "{{ item }}"
     state: absent
+    backup: yes
   with_items:
     - '^127\.0\.0\.1(\s+){{ inventory_hostname }}.*'
     - '^::1(\s+){{ inventory_hostname }}.*'
@@ -46,6 +49,7 @@
     src: 01-kube-dns.conf.j2
     dest: /etc/dnsmasq.d/01-kube-dns.conf
     mode: 755
+    backup: yes
   notify:
     - restart dnsmasq
   when: inventory_hostname in groups['kube-master']
@@ -64,6 +68,6 @@
     mode: 644
 
 - name: disable resolv.conf modification by dhclient
-  copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient-enter-hooks.d/nodnsupdate mode=u+x
+  copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient-enter-hooks.d/nodnsupdate mode=u+x backup=yes
 
 - meta: flush_handlers

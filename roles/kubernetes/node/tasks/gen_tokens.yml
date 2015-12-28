@@ -4,6 +4,7 @@
     src=kube-gen-token.sh
     dest={{ kube_script_dir }}
     mode=u+x
+  when: inventory_hostname == groups['kube-master'][0]
 
 - name: tokens | generate tokens for master components
   command: "{{ kube_script_dir }}/kube-gen-token.sh {{ item[0] }}-{{ item[1] }}"
@@ -14,6 +15,7 @@
     - "{{ groups['kube-master'] }}"
   register: gentoken
   changed_when: "'Added' in gentoken.stdout"
+  when: inventory_hostname == groups['kube-master'][0]
 
 - name: tokens | generate tokens for node components
   command: "{{ kube_script_dir }}/kube-gen-token.sh {{ item[0] }}-{{ item[1] }}"
@@ -24,3 +26,30 @@
     - "{{ groups['kube-node'] }}"
   register: gentoken
   changed_when: "'Added' in gentoken.stdout"
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: tokens | generate tokens for calico
+  command: "{{ kube_script_dir }}/kube-gen-token.sh {{ item[0] }}-{{ item[1] }}"
+  environment:
+    TOKEN_DIR: "{{ kube_token_dir }}"
+  with_nested:
+    - [ "system:calico" ]
+    - "{{ groups['k8s-cluster'] }}"
+  register: gentoken
+  changed_when: "'Added' in gentoken.stdout"
+  when: kube_network_plugin == "calico"
+  delegate_to: "{{ groups['kube-master'][0] }}"
+
+- name: tokens | get the calico token values
+  slurp:
+    src: "{{ kube_token_dir }}/system:calico-{{ inventory_hostname }}.token"
+  register: calico_token
+  when: kube_network_plugin == "calico"
+  delegate_to: "{{ groups['kube-master'][0] }}"
+
+- name: tokens | Add KUBE_AUTH_TOKEN for calico
+  lineinfile:
+    regexp: "^KUBE_AUTH_TOKEN=.*$"
+    line: "KUBE_AUTH_TOKEN={{ calico_token.content|b64decode }}"
+    dest: "/etc/network-environment"
+  when: kube_network_plugin == "calico"

@@ -1,18 +1,46 @@
 ---
 - name: Calico | Install calicoctl bin
   copy:
-     src={{ local_release_dir }}/calico/bin/calicoctl
-     dest={{ bin_dir }}
-     mode=0755
+    src: "{{ local_release_dir }}/calico/bin/calicoctl"
+    dest: "{{ bin_dir }}"
+    mode: 0755
   notify: restart calico-node
 
 - name: Calico | Create calicoctl symlink (needed by kubelet)
-  file: src=/usr/local/bin/calicoctl dest=/usr/bin/calicoctl state=link
+  file:
+    src: /usr/local/bin/calicoctl
+    dest: /usr/bin/calicoctl
+    state: link
 
-- name: Calico | Configure calico-node desired pool
+- name: Calico | Check if calico network pool has already been configured
+  uri:
+    url: "http://127.0.0.1:2379/v2/keys/calico/v1/ipam/v4/pool"
+    return_content: yes
+    status_code: 200,404
+  register: calico_conf
+  run_once: true
+  delegate_to: "{{ groups['etcd'][0] }}"
+
+- name: Calico | Configure calico network pool
   shell: calicoctl pool add {{ kube_pods_subnet }}
-  environment:
-     ETCD_AUTHORITY: "{{ groups['etcd'][0] }}:2379"
+  run_once: true
+  when: calico_conf.status == 404
+  delegate_to: "{{ groups['etcd'][0] }}"
+
+- name: Calico | Get calico configuration from etcd
+  uri:
+    url: "http://127.0.0.1:2379/v2/keys/calico/v1/ipam/v4/pool"
+    return_content: yes
+  register: calico_pools
+  run_once: true
+  delegate_to: "{{ groups['etcd'][0] }}"
+
+- name: Calico | Check if calico pool is properly configured
+  fail:
+    msg: 'Only one network pool must be configured and it must be the subnet {{ kube_pods_subnet }}.
+    Please erase calico configuration and run the playbook again ("etcdctl rm --recursive /calico/v1/ipam/v4/pool")'
+  when: ( calico_pools.json['node']['nodes'] | length > 1 ) or 
+        ( not calico_pools.json['node']['nodes'][0]['key'] | search(".*{{ kube_pods_subnet | ipaddr('network') }}.*") )
   run_once: true
   delegate_to: "{{ groups['etcd'][0] }}"
 
@@ -33,9 +61,13 @@
 
 - name: Calico | Disable node mesh
   shell: calicoctl bgp node-mesh off
+  environment:
+     ETCD_AUTHORITY: "{{ groups['etcd'][0] }}:2379"
   when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']
 
 - name: Calico | Configure peering with router(s)
   shell: calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}
+  environment:
+     ETCD_AUTHORITY: "{{ groups['etcd'][0] }}:2379"
   with_items: peers
   when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']

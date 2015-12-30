@@ -1,0 +1,27 @@
+---
+- name: Create calico release directory
+  local_action: file
+     path={{ local_release_dir }}/calico/bin
+     recurse=yes
+     state=directory
+  delegate_to: "{{ groups['kube-master'][0] }}"
+
+- name: Check if calicoctl has been downloaded
+  local_action: stat
+     path={{ local_release_dir }}/calico/bin/calicoctl
+  register: c_tar
+  delegate_to: "{{ groups['kube-master'][0] }}"
+
+# issues with get_url module and redirects, to be tested again in the near future
+- name: Download calico
+  local_action: shell
+    curl -o {{ local_release_dir }}/calico/bin/calicoctl -Ls {{ calico_download_url }}/{{ calico_version }}/calicoctl
+  when: not c_tar.stat.exists
+  register: dl_calico
+  delegate_to: "{{ groups['kube-master'][0] }}"
+
+
+- name: Download calico-kubernetes-plugin
+  local_action: get_url
+    url="{{calico_plugin_download_url}}"
+    dest="{{ local_release_dir }}/calico/bin/calico"

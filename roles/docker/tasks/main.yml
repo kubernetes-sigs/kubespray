@@ -1,3 +1,53 @@
 ---
-- include: install.yml
-- include: configure.yml
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
+      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+      - "{{ ansible_distribution|lower }}.yml"
+      - "{{ ansible_os_family|lower }}.yml"
+      - defaults.yml
+      paths:
+      - ../vars
+
+- name: check for minimum kernel version
+  fail:
+    msg: >
+          docker requires a minimum kernel version of
+          {{ docker_kernel_min_version }} on
+          {{ ansible_distribution }}-{{ ansible_distribution_version }}
+  when: ansible_kernel|version_compare(docker_kernel_min_version, "<")
+
+- name: ensure docker requirements packages are installed
+  action: "{{ docker_package_info.pkg_mgr }}"
+  args: docker_package_info.args
+  with_items: docker_package_info.pre_pkgs
+  when: docker_package_info.pre_pkgs|length > 0
+
+- name: ensure docker repository public key is installed
+  action: "{{ docker_repo_key_info.pkg_key }}"
+  args: docker_repo_key_info.args
+  with_items: docker_repo_key_info.repo_keys
+  when: docker_repo_key_info.repo_keys|length > 0
+
+- name: ensure docker repository is enabled
+  action: "{{ docker_repo_info.pkg_repo }}"
+  args: docker_repo_info.args
+  with_items: docker_repo_info.repos
+  when: docker_repo_info.repos|length > 0
+
+- name: ensure docker packages are installed
+  action: "{{ docker_package_info.pkg_mgr }}"
+  args: docker_package_info.args
+  with_items: docker_package_info.pkgs
+  when: docker_package_info.pkgs|length > 0
+
+- name: ensure docker service is started and enabled
+  service:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  with_items:
+    - docker

@@ -28,7 +28,6 @@
     - '^127\.0\.0\.1(\s+){{ inventory_hostname }}.*'
     - '^::1(\s+){{ inventory_hostname }}.*'
 
-
 - name: ensure dnsmasq.d directory exists
   file:
     path: /etc/dnsmasq.d
@@ -41,9 +40,19 @@
     dest: /etc/dnsmasq.d/01-kube-dns.conf
     mode: 755
     backup: yes
-  notify:
-    - restart dnsmasq
   when: inventory_hostname in groups['kube-master']
+
+- name: create dnsmasq pod template
+  template: src=dnsmasq-pod.yml dest=/etc/kubernetes/manifests/dnsmasq-pod.manifest
+  when: inventory_hostname in groups['kube-master']
+
+- name: Check for dnsmasq port
+  wait_for:
+    port: 53
+    delay: 5
+    timeout: 100
+  when: inventory_hostname in groups['kube-master']
+
 
 - name: update resolv.conf with new DNS setup
   template:

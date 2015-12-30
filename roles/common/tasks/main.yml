@@ -3,10 +3,24 @@
   delegate_to: localhost
   when: inventory_hostname == "{{ groups['kube-master'][0] }}"
 
-- include: pip-bootstrap.yml
+- name: "Identify init system"
+  shell: >
+    if $(pgrep systemd > /dev/null); then
+      echo systemd;
+      else echo sysvinit;
+    fi
+  always_run: True
+  register: init_system_output
 
-- name: Install httplib2 python module
-  pip:
-    executable: "{{ ansible_user_dir }}/bin/pip"
+- set_fact:
+    init_system: "{{ init_system_output.stdout }}"
+
+- name: Install debian packages requirements
+  apt:
     name: "{{ item }}"
-  with_items: pip_python_modules
+    state: latest
+  when: ansible_os_family == "Debian"
+  with_items: req_debian_pkg
+
+- include: python-bootstrap.yml
+  when: ansible_os_family not in [ "Debian", "RedHat" ]

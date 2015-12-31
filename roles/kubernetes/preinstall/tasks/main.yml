@@ -1,13 +1,10 @@
 ---
-- include: download.yml
-  run_once: true
-  delegate_to: "{{ groups['downloader'][0] }}"
-
 - name: "Identify init system"
   shell: >
     if $(pgrep systemd > /dev/null); then
       echo systemd;
-      else echo sysvinit;
+    else
+      echo sysvinit;
     fi
   always_run: True
   register: init_system_output
@@ -15,12 +12,27 @@
 - set_fact:
     init_system: "{{ init_system_output.stdout }}"
 
+- name: Install packages requirements
+  action:
+    module: "{{ ansible_pkg_mgr }}"
+    name: "{{ item }}"
+    state: latest
+  with_items: common_required_pkgs
+
 - name: Install debian packages requirements
   apt:
     name: "{{ item }}"
     state: latest
   when: ansible_os_family == "Debian"
-  with_items: req_debian_pkg
+  with_items: debian_required_pkgs
+
+- name: Install redhat packages requirements
+  action:
+    module: "{{ ansible_pkg_mgr }}"
+    name: "{{ item }}"
+    state: latest
+  when: ansible_os_family == "RedHat"
+  with_items: rh_required_pkgs
 
 - include: python-bootstrap.yml
   when: ansible_os_family not in [ "Debian", "RedHat" ]

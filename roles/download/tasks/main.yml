@@ -1,76 +1,19 @@
 ---
-- name: Create calico release directory
-  local_action: file
-     path={{ local_release_dir }}/calico/bin
-     recurse=yes
-     state=directory
+- name: Create dest directories
+  file: path={{local_release_dir}}/{{item.dest|dirname}} state=directory recurse=yes
+  with_items: downloads
 
-- name: Check if calicoctl has been downloaded
-  local_action: stat
-     path={{ local_release_dir }}/calico/bin/calicoctl
-  register: c_tar
+- name: Download items
+  get_url:
+    url: "{{item.url}}"
+    dest: "{{local_release_dir}}/{{item.dest}}"
+    sha256sum: "{{item.sha256 | default(omit)}}"
+  with_items: downloads
 
-# issues with get_url module and redirects, to be tested again in the near future
-- name: Download calico
-  local_action: shell
-    curl -o {{ local_release_dir }}/calico/bin/calicoctl -Ls {{ calico_download_url }}/{{ calico_version }}/calicoctl
-  when: not c_tar.stat.exists
-  register: dl_calico
-
-
-- name: Download calico-kubernetes-plugin
-  local_action: get_url
-    url="{{calico_plugin_download_url}}"
-    dest="{{ local_release_dir }}/calico/bin/calico"
-
-- name: Create flannel release directory
-  local_action: file
-     path={{ local_release_dir }}/flannel
-     recurse=yes
-     state=directory
-
-- name: Check if flannel release archive has been downloaded
-  local_action: stat
-     path={{ local_release_dir }}/flannel/flannel-{{ flannel_version }}-linux-amd64.tar.gz
-  register: f_tar
-
-# issues with get_url module and redirects, to be tested again in the near future
-- name: Download flannel
-  local_action: shell
-    curl -o {{ local_release_dir }}/flannel/flannel-{{ flannel_version }}-linux-amd64.tar.gz -Ls {{ flannel_download_url }}/v{{ flannel_version }}/flannel-{{ flannel_version }}-linux-amd64.tar.gz
-  when: not f_tar.stat.exists
-  register: dl_flannel
-
-- name: Extract flannel archive
-  local_action: unarchive
-     src={{ local_release_dir }}/flannel/flannel-{{ flannel_version }}-linux-amd64.tar.gz
-     dest={{ local_release_dir }}/flannel copy=no
-  when: dl_flannel|changed
-
-- name: Pick up only flannel binaries
-  local_action: copy
-     src={{ local_release_dir }}/flannel/flannel-{{ flannel_version }}/flanneld
-     dest={{ local_release_dir }}/flannel/bin
-  when: dl_flannel|changed
-
-- name: Delete unused flannel files
-  local_action: file
-     path={{ local_release_dir }}/flannel/flannel-{{ flannel_version }} state=absent
-  when: dl_flannel|changed
-
-- name: Create kubernetes binary directory
-  local_action: file
-     path="{{ local_release_dir }}/kubernetes/bin"
-     state=directory
-     recurse=yes
-
-- name: Download kubelet and kubectl
-  local_action: get_url
-    url="{{ kube_download_url }}/{{ item.name }}"
-    dest="{{ local_release_dir }}/kubernetes/bin"
-    sha256sum="{{ item.checksum }}"
-  with_items:
-    - name: kubelet
-      checksum: "{{ kubelet_checksum }}"
-    - name: kubectl
-      checksum: "{{ kubectl_checksum }}"
+- name: Extract archives
+  unarchive:
+     src: "{{ local_release_dir }}/{{item.dest}}"
+     dest: "{{ local_release_dir }}/{{item.dest|dirname}}"
+     copy: no
+  when: "{{item.unarchive is defined and item.unarchive == True}}"
+  with_items: downloads

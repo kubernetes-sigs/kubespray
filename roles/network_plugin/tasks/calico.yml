@@ -44,30 +44,24 @@
   run_once: true
   delegate_to: "{{ groups['etcd'][0] }}"
 
+- name: Calico | Write calico-node configuration
+  template: src=calico/calico.conf.j2 dest=/usr/libexec/kubernetes/kubelet-plugins/net/exec/calico/calico_kubernetes.ini
+  notify: restart calico-node
+
 - name: Calico | Write calico-node systemd init file
   template: src=calico/calico-node.service.j2 dest=/etc/systemd/system/calico-node.service
-  register: newservice
-  notify:
-    - reload systemd
-    - restart calico-node
+  when: init_system == "systemd"
+  notify: restart calico-node
 
-- name: Calico | daemon-reload
-  command: systemctl daemon-reload
-  when: newservice|changed
-  changed_when: False
+- name: Calico | Write calico-node initd script
+  template: src=calico/deb-calico.initd.j2 dest=/etc/init.d/calico-node owner=root mode=755
+  when: init_system == "sysvinit" and ansible_os_family == "Debian"
+  notify: restart calico-node
+
+- name: Calico | Write calico-node initd script
+  template: src=calico/rh-calico.initd.j2 dest=/etc/init.d/calico-node owner=root mode=755
+  when: init_system == "sysvinit" and ansible_os_family == "RedHat"
+  notify: restart calico-node
 
 - name: Calico | Enable calico-node
   service: name=calico-node enabled=yes state=started
-
-- name: Calico | Disable node mesh
-  shell: calicoctl bgp node-mesh off
-  environment:
-     ETCD_AUTHORITY: "{{ groups['etcd'][0] }}:2379"
-  when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']
-
-- name: Calico | Configure peering with router(s)
-  shell: calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}
-  environment:
-     ETCD_AUTHORITY: "{{ groups['etcd'][0] }}:2379"
-  with_items: peers
-  when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']

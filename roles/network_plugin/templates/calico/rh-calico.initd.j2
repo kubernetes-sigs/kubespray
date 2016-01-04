@@ -1,0 +1,130 @@
+#!/bin/bash
+#
+#       /etc/rc.d/init.d/calico-node
+#
+# chkconfig:   2345 95 95
+# description: Daemon for calico-node (http://www.projectcalico.org/)
+
+### BEGIN INIT INFO
+# Provides:       calico-node
+# Required-Start: $local_fs $network $syslog cgconfig
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
+# Default-Start: 2 3 4 5
+# Default-Stop:  0 1 6
+# Short-Description: start and stop calico-node
+# Description:
+#   Manage calico-docker container
+### END INIT INFO
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+prog="calicoctl"
+exec="{{ bin_dir }}/$prog"
+dockerexec="$(which docker)"
+logfile="/var/log/$prog"
+
+[ -e /etc/network-environment ] && for i in $(cat /etc/network-environment | egrep '(^$|^#)'); do export $i; done
+
+do_status()
+{
+    if [ $($dockerexec ps | awk '{ print $2 }' | grep calico/node | wc -l) -ne 1 ]; then
+        return 1
+    fi
+}
+
+do_start() {
+    if [ ! -x $exec ]; then
+      if [ ! -e $exec ]; then
+        echo "calico-node executable $exec not found"
+      else
+        echo "You do not have permission to execute the calico-node executable $exec"
+      fi	      
+      exit 5
+    fi
+
+    [ -x "$dockerexec" ] || exit 0
+
+    do_status
+    retval=$?
+    if [ $retval -ne 0 ]; then
+        printf "Starting $prog:\t"
+        echo "\n$(date)\n" >> $logfile
+        $exec node --ip=${DEFAULT_IPV4} &>>$logfile 
+        success
+        echo
+    else
+        echo -n "calico-node's already running"
+        success
+        exit 0
+    fi
+}
+
+do_stop() {
+    echo -n $"Stopping $prog: "
+    $exec node stop >> /dev/null || $exec node stop --force >> /dev/null
+    retval=$?
+    echo
+    return $retval
+}
+
+restart() {
+    do_stop
+    do_start
+}
+
+reload() {
+    restart
+}
+
+force_reload() {
+    restart
+}
+
+case "$1" in
+    start)
+        do_start
+        case "$?" in
+                0|1) success || exit 0 ;;
+                2) failure || exit 1 ;;
+        esac
+        ;;
+    stop)
+        echo -n "Stopping $DESC" "$NAME"
+        if do_stop; then
+            success
+            echo
+        else
+            echo -n "Can't stop calico-node"
+            failure
+            echo
+        fi
+        ;;
+    restart)
+        $1
+        ;;
+    reload)
+        $1
+        ;;
+    force-reload)
+        force_reload
+        ;;
+    status)
+        if do_status; then
+            echo -n "Calico-node is running"
+            success
+            echo
+        else
+            echo -n "Calico-node is not running"
+            failure
+            echo
+        fi
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|reload|force-reload}"
+        exit 2
+esac
+
+exit $?

@@ -4,7 +4,8 @@ kubernetes-ansible
 Install and configure a kubernetes cluster including network plugin.
 
 ### Requirements
-Tested on **Debian Jessie** and **Ubuntu** (14.10, 15.04, 15.10).
+Tested on **Debian Wheezy/Jessie** and **Ubuntu** (14.10, 15.04, 15.10).
+Should work on RedHat/Fedora/Centos plateforms (to be tested)
 * The target servers must have access to the Internet in order to pull docker imaqes.
 * The firewalls are not managed, you'll need to implement your own rules the way you used to.
 
@@ -54,14 +55,6 @@ You can jump directly to "*Available apps, installation procedure*"
 
 Ansible
 -------------------------
-### Download binaries
-A role allows to download required binaries. They will be stored in a directory defined by the variable
-**'local_release_dir'** (by default /tmp).
-Please ensure that you have enough disk space there (about **300M**).
-
-**Note**: Whenever you'll need to change the version of a software, you'll have to erase the content of this directory.
-
-
 ### Variables
 The main variables to change are located in the directory ```inventory/group_vars/all.yml```.
 
@@ -117,18 +110,16 @@ kube-master
 
 - hosts: k8s-cluster
   roles:
-    - { role: etcd, tags: etcd }
+    - { role: kubernetes/preinstall, tags: preinstall }
     - { role: docker, tags: docker }
+    - { role: kubernetes/node, tags: node }
+    - { role: etcd, tags: etcd }
     - { role: dnsmasq, tags: dnsmasq }
     - { role: network_plugin, tags: ['calico', 'flannel', 'network'] }
 
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
-
-- hosts: kube-node
-  roles:
-    - { role: kubernetes/node, tags: node }
 
 ```
 

@@ -1,10 +1,17 @@
 ---
+
 - name: Calico | Install calicoctl bin
-  copy:
+  synchronize:
     src: "{{ local_release_dir }}/calico/bin/calicoctl"
-    dest: "{{ bin_dir }}"
-    mode: 0755
+    dest: "{{ bin_dir }}/calicoctl"
+    mode: pull
+    archive: no
+    times: yes
+  delegate_to: "{{ groups['downloader'][0] }}"
   notify: restart calico-node
+
+- name: Calico | install calicoctl
+  file: path={{ bin_dir }}/calicoctl mode=0755 state=file
 
 - name: Calico | Create calicoctl symlink (needed by kubelet)
   file:
@@ -39,7 +46,7 @@
   fail:
     msg: 'Only one network pool must be configured and it must be the subnet {{ kube_pods_subnet }}.
     Please erase calico configuration and run the playbook again ("etcdctl rm --recursive /calico/v1/ipam/v4/pool")'
-  when: ( calico_pools.json['node']['nodes'] | length > 1 ) or 
+  when: ( calico_pools.json['node']['nodes'] | length > 1 ) or
         ( not calico_pools.json['node']['nodes'][0]['key'] | search(".*{{ kube_pods_subnet | ipaddr('network') }}.*") )
   run_once: true
   delegate_to: "{{ groups['etcd'][0] }}"

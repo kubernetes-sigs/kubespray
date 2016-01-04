@@ -15,22 +15,33 @@
   notify: restart kubelet
 
 - name: Install kubelet binary
-  copy:
-     src={{ local_release_dir }}/kubernetes/bin/kubelet
-     dest={{ bin_dir }}
-     owner=kube
-     mode=0755
+  synchronize:
+     src: "{{ local_release_dir }}/kubernetes/bin/kubelet"
+     dest: "{{ bin_dir }}/kubelet"
+     mode: pull
+     times: yes
+     archive: no
+  delegate_to: "{{ groups['downloader'][0] }}"
   notify:
     - restart kubelet
+
+- name: Perms kubelet binary
+  file: path={{ bin_dir }}/kubelet owner=kube mode=0755 state=file
 
 - name: Calico-plugin | Directory
   file: path=/usr/libexec/kubernetes/kubelet-plugins/net/exec/calico/ state=directory
   when: kube_network_plugin == "calico"
 
 - name: Calico-plugin | Binary
-  copy:
-    src={{ local_release_dir }}/calico/bin/calico
-    dest=/usr/libexec/kubernetes/kubelet-plugins/net/exec/calico/calico
-    mode=0755
+  synchronize:
+    src: "{{ local_release_dir }}/calico/bin/calico"
+    dest: "/usr/libexec/kubernetes/kubelet-plugins/net/exec/calico/calico"
+    mode: "pull"
+    times: yes
+    archive: no
+  delegate_to: "{{ groups['downloader'][0] }}"
   when: kube_network_plugin == "calico"
   notify: restart kubelet
+
+- name: Perms calico plugin binary
+  file: path=/usr/libexec/kubernetes/kubelet-plugins/net/exec/calico/calico owner=kube mode=0755 state=file

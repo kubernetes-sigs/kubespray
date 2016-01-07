@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/ansibl8s/setup-kubernetes.svg)](https://travis-ci.org/ansibl8s/setup-kubernetes)
 kubernetes-ansible
 ========
 

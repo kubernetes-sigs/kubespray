@@ -2,7 +2,7 @@
 kubernetes-ansible
 ========
 
-Install and configure a kubernetes cluster including network plugin.
+Install and configure a Multi-Master/HA kubernetes cluster including network plugin.
 
 ### Requirements
 Tested on **Debian Wheezy/Jessie** and **Ubuntu** (14.10, 15.04, 15.10).

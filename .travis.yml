@@ -1,0 +1,41 @@
+sudo: required
+dist: trusty
+language: python
+python: "2.7"
+
+addons:
+  hosts:
+    - node1
+
+env:
+  - SITE=cluster.yml
+
+before_install:
+  - sudo apt-get update -qq
+
+install:
+  # Install Ansible.
+  - sudo -H pip install ansible
+  - sudo -H pip install netaddr
+
+cache:
+  directories:
+    - $HOME/releases
+    - $HOME/.cache/pip
+
+before_script:
+  - export PATH=$PATH:/usr/local/bin
+
+script:
+  # Check the role/playbook's syntax.
+  - "sudo -H ansible-playbook -i inventory/local-tests.cfg $SITE --syntax-check"
+
+  # Run the role/playbook with ansible-playbook.
+  - "sudo -H ansible-playbook -i inventory/local-tests.cfg $SITE --connection=local"
+
+  # Run the role/playbook again, checking to make sure it's idempotent.
+  - >
+    sudo -H ansible-playbook -i inventory/local-tests.cfg $SITE --connection=local
+    | tee /dev/stderr | grep -q 'changed=0.*failed=0'
+    && (echo 'Idempotence test: pass' && exit 0)
+    || (echo 'Idempotence test: fail' && exit 1)

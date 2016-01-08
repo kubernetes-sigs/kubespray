@@ -26,7 +26,7 @@ These defaults are good for tests purposes.
 Edit the inventory according to the number of servers
 ```
 [downloader]
-10.115.99.1
+localhost ansible_connection=local ansible_python_interpreter=python2
 
 [kube-master]
 10.115.99.31
@@ -67,7 +67,7 @@ In node-mesh mode the nodes peers with all the nodes in order to exchange routes
 ```
 
 [downloader]
-node1 ansible_ssh_host=10.99.0.26
+localhost ansible_connection=local ansible_python_interpreter=python2
 
 [kube-master]
 node1 ansible_ssh_host=10.99.0.26
@@ -249,7 +249,7 @@ Finally update the playbook ```apps.yml``` with the chosen roles, and run it
 ```
 
 ```
-ansible-playbook -i environments/dev/inventory apps.yml -u root
+ansible-playbook -i inventory/inventory.cfg apps.yml -u root
 ```
 
 

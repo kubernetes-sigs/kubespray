@@ -4,12 +4,17 @@ kubernetes-ansible
 
 Install and configure a Multi-Master/HA kubernetes cluster including network plugin.
 
+Linux distributions tested:
+* Debian Wheezy, Jessie
+* Ubuntu 14.10, 15.04, 15.10
+* Fedora 23
+
 ### Requirements
-Tested on **Debian Wheezy/Jessie** and **Ubuntu** (14.10, 15.04, 15.10).
-Should work on **RedHat/Fedora/Centos** platforms (to be tested)
-* The target servers must have access to the Internet in order to pull docker imaqes.
+* The target servers must have **access to the Internet** in order to pull docker imaqes.
 * The firewalls are not managed, you'll need to implement your own rules the way you used to.
-* Ansible v1.9.x and python-netaddr
+in order to avoid any issue during deployment you should **disable your firewall**
+* **Copy your ssh keys** to all the servers part of your inventory.
+* **Ansible v1.9.x and python-netaddr**
 
 ### Components
 * [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.3

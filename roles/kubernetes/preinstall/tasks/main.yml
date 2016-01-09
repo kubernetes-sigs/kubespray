@@ -1,4 +1,17 @@
 ---
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
+      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+      - "{{ ansible_distribution|lower }}.yml"
+      - "{{ ansible_os_family|lower }}.yml"
+      - defaults.yml
+      paths:
+      - ../vars
+
 - name: "Identify init system"
   shell: >
     $(pgrep systemd > /dev/null && systemctl status > /dev/null);
@@ -14,13 +27,8 @@
 - set_fact:
     init_system: "{{ init_system_output.stdout }}"
 
-# Todo : selinux configuration
-- name: Change selinux policy to permissive
-  selinux: policy=targeted state=permissive
-  when: ansible_os_family == "RedHat"
-
 - name: Install python-dnf for latest RedHat versions
-  shell: dnf install -y python-dnf
+  shell: dnf install -y python-dnf yum
   when: ansible_distribution == "Fedora" and
         ansible_distribution_major_version > 21
   changed_when: False
@@ -30,22 +38,12 @@
     module: "{{ ansible_pkg_mgr }}"
     name: "{{ item }}"
     state: latest
-  with_items: common_required_pkgs
+  with_items: common_required_pkgs + required_pkgs
 
-- name: Install debian packages requirements
-  apt:
-    name: "{{ item }}"
-    state: latest
-  when: ansible_os_family == "Debian"
-  with_items: debian_required_pkgs
-
-- name: Install redhat packages requirements
-  action:
-    module: "{{ ansible_pkg_mgr }}"
-    name: "{{ item }}"
-    state: latest
+# Todo : selinux configuration
+- name: Change selinux policy to permissive
+  selinux: policy=targeted state=permissive
   when: ansible_os_family == "RedHat"
-  with_items: rh_required_pkgs
 
 - include: python-bootstrap.yml
   when: ansible_os_family not in [ "Debian", "RedHat" ]

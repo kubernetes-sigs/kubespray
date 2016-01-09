@@ -1,12 +1,23 @@
 ---
-- name : reload systemd
-  shell: systemctl daemon-reload
-
 - name: restart systemd-calico-node
   command: /bin/true
   notify:
     - reload systemd
     - restart calico-node
+
+- name: restart systemd-docker
+  command: /bin/true
+  notify:
+    - reload systemd
+    - restart docker
+
+- name: delete default docker bridge
+  command: ip link delete docker0
+  ignore_errors: yes
+  notify: restart docker
+
+- name : reload systemd
+  shell: systemctl daemon-reload
 
 - name: restart calico-node
   service:
@@ -14,23 +25,6 @@
     state: restarted
 
 - name: restart docker
-  service: name=docker state=restarted
-
-- name: restart flannel
-  service: name=flannel state=restarted
-  notify:
-    - reload systemd
-    - stop docker
-    - delete docker0
-    - start docker
-  when: inventory_hostname in groups['kube-node']
-
-- name: stop docker
-  service: name=docker state=stopped
-
-- name: delete docker0
-  command: ip link delete docker0
-  ignore_errors: yes
-
-- name: start docker
-  service: name=docker state=started
+  service:
+    name: docker
+    state: restarted

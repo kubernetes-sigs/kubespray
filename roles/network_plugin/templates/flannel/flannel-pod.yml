@@ -1,0 +1,46 @@
+---
+  kind: "Pod"
+  apiVersion: "v1"
+  metadata:
+    name: "flannel"
+    namespace: "kube-system"
+    labels:
+      app: "flannel"
+      version: "v0.1"
+  spec:
+    volumes:
+      - name: "subnetenv"
+        hostPath:
+          path: "/run/flannel"
+      - name: "networkconfig"
+        hostPath:
+          path: "/etc/flannel-network.json"
+    containers:
+      - name: "flannel-server-helper"
+        image: "gcr.io/google_containers/flannel-server-helper:0.1"
+        args:
+          - "--network-config=/etc/flannel-network.json"
+          - "--etcd-prefix=/{{ cluster_name }}/network"
+          - "--etcd-server=http://{{ groups['etcd'][0] }}:2379"
+        volumeMounts:
+          - name: "networkconfig"
+            mountPath: "/etc/flannel-network.json"
+        imagePullPolicy: "Always"
+      - name: "flannel-container"
+        image: "quay.io/coreos/flannel:0.5.5"
+        command:
+          - "/bin/sh"
+          - "-c"
+          - "/opt/bin/flanneld -etcd-endpoints {% for srv in groups['etcd'] %}http://{{ srv }}:2379{% if not loop.last %},{% endif %}{% endfor %} -etcd-prefix /{{ cluster_name }}/network 1>>/var/log/flannel_server.log 2>&1"
+        ports:
+          - hostPort: 10253
+            containerPort: 10253
+        resources:
+          limits:
+            cpu: "100m"
+        volumeMounts:
+          - name: "subnetenv"
+            mountPath: "/run/flannel"
+        securityContext:
+          privileged: true
+    hostNetwork: true

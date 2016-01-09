@@ -1,57 +1,25 @@
 ---
-- name: Create flannel user
-  user: name=flannel shell=/bin/nologin
-
-- name: Install flannel binaries
-  synchronize:
-     src: "{{ local_release_dir }}/flannel/bin/flanneld"
-     dest: "{{ bin_dir }}/flanneld"
-     archive: no
-     times: yes
-  delegate_to: "{{ groups['downloader'][0] }}"
-  notify:
-    - restart flannel
-
-- name: Perms flannel binary
-  file: path={{ bin_dir }}/flanneld owner=flannel mode=0755 state=file
-
-- name: Write flannel.service systemd file
+- name: Flannel | Write flannel configuration
   template:
-    src: flannel/systemd-flannel.service.j2
-    dest: /etc/systemd/system/flannel.service
+    src: flannel/network.json
+    dest: /etc/flannel-network.json
+    backup: yes
+  when: inventory_hostname in groups['kube-node']
+
+- name: Flannel | Create flannel pod manifest
+  template:
+    src: flannel/flannel-pod.yml
+    dest: /etc/kubernetes/manifests/flannel-pod.manifest
   notify: restart flannel
 
-- name: Write docker.service systemd file
+- name: Flannel | Check for flannel port
+  wait_for:
+    port: 10253
+    delay: 5
+    timeout: 100
+
+- name: Flannel | Write docker.service systemd file
   template:
-    src: flannel/systemd-docker.service.j2
+    src: flannel/systemd-docker.service
     dest: /lib/systemd/system/docker.service
   notify: restart docker
-
-- name: Set fact for ectcd command conf file location
-  set_fact:
-    conf_file: "/tmp/flannel-conf.json"
-  run_once: true
-  delegate_to: "{{ groups['kube-master'][0] }}"
-
-- name: Create flannel config file to go in etcd
-  template: src=flannel/flannel-conf.json.j2 dest={{ conf_file }}
-  run_once: true
-  delegate_to: "{{ groups['kube-master'][0] }}"
-
-- name: Flannel configuration into etcd
-  shell: "{{ bin_dir }}/etcdctl set /{{ cluster_name }}/network/config < {{ conf_file }}"
-  delegate_to: "{{ groups['kube-master'][0] }}"
-  notify: restart flannel
-
-- name: Clean up the flannel config file
-  file: path=/tmp/flannel-config.json state=absent
-  run_once: true
-  delegate_to: "{{ groups['kube-master'][0] }}"
-
-- name: Launch Flannel
-  service: name=flannel state=started enabled=yes
-  notify:
-    - restart flannel
-
-- name: Enable Docker
-  service: name=docker enabled=yes state=started

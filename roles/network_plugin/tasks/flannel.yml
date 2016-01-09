@@ -11,15 +11,40 @@
     src: flannel/flannel-pod.yml
     dest: /etc/kubernetes/manifests/flannel-pod.manifest
 
-- name: Flannel | Check for flannel port
+- name: Flannel | Wait for flannel subnet.env file presence
   wait_for:
-    port: 10253
+    path: /run/flannel/subnet.env
     delay: 5
-    timeout: 100
+
+- name: Get flannel_subnet from subnet.env
+  shell: cat /run/flannel/subnet.env | awk -F'=' '$1 == "FLANNEL_SUBNET" {print $2}'
+  register: flannel_subnet_output
+  changed_when: false
+
+- set_fact:
+    flannel_subnet: "{{ flannel_subnet_output.stdout }}"
+
+- name: Get flannel_mtu from subnet.env
+  shell: cat /run/flannel/subnet.env | awk -F'=' '$1 == "FLANNEL_MTU" {print $2}'
+  register: flannel_mtu_output
+  changed_when: false
+
+- set_fact:
+    flannel_mtu: "{{ flannel_mtu_output.stdout }}"
+
+- name: Set docker daemon options
+  template:
+    src: docker
+    dest: "/etc/default/docker"
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - restart systemd-docker
 
 - name: Flannel | Write docker.service systemd file
   template:
-    src: flannel/systemd-docker.service
+    src: systemd-docker.service
     dest: /lib/systemd/system/docker.service
-  notify: restart docker
+  notify: restart systemd-docker
   when: init_system == "systemd"

@@ -5,9 +5,10 @@ kubernetes-ansible
 Install and configure a Multi-Master/HA kubernetes cluster including network plugin.
 
 Linux distributions tested:
-* Debian Wheezy, Jessie
-* Ubuntu 14.10, 15.04, 15.10
-* Fedora 23
+* **Debian** Wheezy, Jessie
+* **Ubuntu** 14.10, 15.04, 15.10
+* **Fedora** 23
+* **CentOS** (Currently with flannel only)
 
 ### Requirements
 * The target servers must have **access to the Internet** in order to pull docker imaqes.
@@ -282,7 +283,7 @@ calicoctl endpoint show --detail
 
 #### Flannel networking
 
-Flannel configuration file should have been created there
+* Flannel configuration file should have been created there
 ```
 cat /run/flannel/subnet.env
 FLANNEL_NETWORK=10.233.0.0/18
@@ -316,5 +317,16 @@ replicationcontroller "test" created
 kubectl describe po test-34ozs | grep ^IP
 IP:				10.233.16.2
 ```
+
+```
+kubectl exec test-34ozs -- ip a show dev eth0
+8: eth0@if9: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1450 qdisc noqueue 
+    link/ether 02:42:0a:e9:2b:03 brd ff:ff:ff:ff:ff:ff
+    inet 10.233.16.2/24 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:aff:fee9:2b03/64 scope link tentative flags 08 
+       valid_lft forever preferred_lft forever
+```
+
 
 Congrats ! now you can walk through [kubernetes basics](http://kubernetes.io/v1.1/basicstutorials.html)

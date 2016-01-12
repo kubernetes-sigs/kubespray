@@ -8,7 +8,7 @@ Linux distributions tested:
 * **Debian** Wheezy, Jessie
 * **Ubuntu** 14.10, 15.04, 15.10
 * **Fedora** 23
-* **CentOS** (Currently with flannel only)
+* **CentOS** 7 (Currently with flannel only)
 
 ### Requirements
 * The target servers must have **access to the Internet** in order to pull docker imaqes.

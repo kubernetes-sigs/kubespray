@@ -74,3 +74,16 @@
 
 - name: Calico | Enable calico-node
   service: name=calico-node enabled=yes state=started
+
+- name: Calico | Disable node mesh
+  shell: calicoctl bgp node-mesh off
+  environment:
+     ETCD_AUTHORITY: "{{ groups['etcd'][0] }}:2379"
+  when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']
+
+- name: Calico | Configure peering with router(s)
+  shell: calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}
+  environment:
+     ETCD_AUTHORITY: "{{ groups['etcd'][0] }}:2379"
+  with_items: peers
+  when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']

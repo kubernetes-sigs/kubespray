@@ -1,57 +1,34 @@
 ---
-- name: Create flannel user
-  user: name=flannel shell=/bin/nologin
-
-- name: Install flannel binaries
-  synchronize:
-     src: "{{ local_release_dir }}/flannel/bin/flanneld"
-     dest: "{{ bin_dir }}/flanneld"
-     archive: no
-     times: yes
-  delegate_to: "{{ groups['downloader'][0] }}"
-  notify:
-    - restart flannel
-
-- name: Perms flannel binary
-  file: path={{ bin_dir }}/flanneld owner=flannel mode=0755 state=file
-
-- name: Write flannel.service systemd file
+- name: Flannel | Write flannel configuration
   template:
-    src: flannel/systemd-flannel.service.j2
-    dest: /etc/systemd/system/flannel.service
-  notify: restart flannel
+    src: flannel/network.json
+    dest: /etc/flannel-network.json
+    backup: yes
+  when: inventory_hostname in groups['kube-node']
 
-- name: Write docker.service systemd file
+- name: Flannel | Create flannel pod manifest
   template:
-    src: flannel/systemd-docker.service.j2
-    dest: /lib/systemd/system/docker.service
-  notify: restart docker
+    src: flannel/flannel-pod.yml
+    dest: /etc/kubernetes/manifests/flannel-pod.manifest
+  notify: delete default docker bridge
 
-- name: Set fact for ectcd command conf file location
-  set_fact:
-    conf_file: "/tmp/flannel-conf.json"
-  run_once: true
-  delegate_to: "{{ groups['kube-master'][0] }}"
+- name: Flannel | Wait for flannel subnet.env file presence
+  wait_for:
+    path: /run/flannel/subnet.env
+    delay: 5
 
-- name: Create flannel config file to go in etcd
-  template: src=flannel/flannel-conf.json.j2 dest={{ conf_file }}
-  run_once: true
-  delegate_to: "{{ groups['kube-master'][0] }}"
+- name: Get flannel_subnet from subnet.env
+  shell: cat /run/flannel/subnet.env | awk -F'=' '$1 == "FLANNEL_SUBNET" {print $2}'
+  register: flannel_subnet_output
+  changed_when: false
 
-- name: Flannel configuration into etcd
-  shell: "{{ bin_dir }}/etcdctl set /{{ cluster_name }}/network/config < {{ conf_file }}"
-  delegate_to: "{{ groups['kube-master'][0] }}"
-  notify: restart flannel
+- set_fact:
+    flannel_subnet: "{{ flannel_subnet_output.stdout }}"
 
-- name: Clean up the flannel config file
-  file: path=/tmp/flannel-config.json state=absent
-  run_once: true
-  delegate_to: "{{ groups['kube-master'][0] }}"
+- name: Get flannel_mtu from subnet.env
+  shell: cat /run/flannel/subnet.env | awk -F'=' '$1 == "FLANNEL_MTU" {print $2}'
+  register: flannel_mtu_output
+  changed_when: false
 
-- name: Launch Flannel
-  service: name=flannel state=started enabled=yes
-  notify:
-    - restart flannel
-
-- name: Enable Docker
-  service: name=docker enabled=yes state=started
+- set_fact:
+    flannel_mtu: "{{ flannel_mtu_output.stdout }}"

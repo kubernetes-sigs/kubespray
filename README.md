@@ -4,7 +4,7 @@ kubernetes-ansible
 
 This project allows to
 - Install and configure a **Multi-Master/HA kubernetes** cluster.
-- Choose the **network plugin** to be used withini the cluster
+- Choose the **network plugin** to be used within the cluster
 - A **set of roles** in order to install applications over the k8s cluster
 - A **flexible method** which helps to create new roles for apps.
 

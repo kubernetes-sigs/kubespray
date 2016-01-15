@@ -249,6 +249,8 @@ Alternatively the roles can be installed as git submodules.
 That way is easier if you want to do some changes and commit them.
 
 
+### Networking
+
 #### Calico networking
 Check if the calico-node container is running
 ```

@@ -16,6 +16,7 @@ Should work on **RedHat/Fedora/Centos** platforms (to be tested)
 in order to avoid any issue during deployment you should **disable your firewall**
 * **Copy your ssh keys** to all the servers part of your inventory.
 * **Ansible v1.9.x/v2.x and python-netaddr**
+* Base knowledge on Ansible. Please refer to [Ansible documentation](http://www.ansible.com/how-ansible-works)
 
 ### Components
 * [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.3

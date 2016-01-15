@@ -2,14 +2,20 @@
 kubernetes-ansible
 ========
 
-Install and configure a Multi-Master/HA kubernetes cluster including network plugin.
+This project allows to
+- Install and configure a **Multi-Master/HA kubernetes** cluster.
+- Choose the **network plugin** to be used withini the cluster
+- A **set of roles** in order to install applications over the k8s cluster
+- A **flexible method** which helps to create new roles for apps.
 
 ### Requirements
 Tested on **Debian Wheezy/Jessie** and **Ubuntu** (14.10, 15.04, 15.10).
 Should work on **RedHat/Fedora/Centos** platforms (to be tested)
 * The target servers must have access to the Internet in order to pull docker imaqes.
 * The firewalls are not managed, you'll need to implement your own rules the way you used to.
-* Ansible v1.9.x and python-netaddr
+in order to avoid any issue during deployment you should **disable your firewall**
+* **Copy your ssh keys** to all the servers part of your inventory.
+* **Ansible v1.9.x/v2.x and python-netaddr**
 
 ### Components
 * [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.3
@@ -133,7 +139,7 @@ ansible-playbook -i inventory/dev/inventory.cfg cluster.yml -u root
 Kubernetes
 -------------------------
 ### Multi master notes
-* You can choose where to install the master components. If you want your master node to act both as master (api,scheduler,controller) and node (e.g. accept workloads, create pods ...), 
+* You can choose where to install the master components. If you want your master node to act both as master (api,scheduler,controller) and node (e.g. accept workloads, create pods ...),
 the server address has to be present on both groups 'kube-master' and 'kube-node'.
 
 * Almost all kubernetes components are running into pods except *kubelet*. These pods are managed by kubelet which ensure they're always running
@@ -141,8 +147,8 @@ the server address has to be present on both groups 'kube-master' and 'kube-node
 * For safety reasons, you should have at least two master nodes and 3 etcd servers
 
 * Kube-proxy doesn't support multiple apiservers on startup ([Issue 18174](https://github.com/kubernetes/kubernetes/issues/18174)). An external loadbalancer needs to be configured.
-In order to do so, some variables have to be used '**loadbalancer_apiserver**' and '**apiserver_loadbalancer_domain_name**' 
- 
+In order to do so, some variables have to be used '**loadbalancer_apiserver**' and '**apiserver_loadbalancer_domain_name**'
+
 
 ### Network Overlay
 You can choose between 2 network plugins. Only one must be chosen.
@@ -201,7 +207,7 @@ ou'll need to edit the file '*requirements.yml*' in order to chose needed apps.
 The list of available apps are available [there](https://github.com/ansibl8s)
 
 For instance it is **strongly recommanded** to install a dns server which resolves kubernetes service names.
-In order to use this role you'll need the following entries in the file '*requirements.yml*' 
+In order to use this role you'll need the following entries in the file '*requirements.yml*'
 Please refer to the [k8s-kubedns readme](https://github.com/ansibl8s/k8s-kubedns) for additionnal info.
 ```
 - src: https://github.com/ansibl8s/k8s-common.git
@@ -224,21 +230,6 @@ Then download the roles with ansible-galaxy
 ansible-galaxy install -r requirements.yml
 ```
 
-#### Git submodules
-Alternatively the roles can be installed as git submodules.
-That way is easier if you want to do some changes and commit them.
-
-You can list available submodules with the following command:
-```
-grep path .gitmodules | sed 's/.*= //'
-```
-
-In order to install the dns addon you'll need to follow these steps
-```
-git submodule init roles/apps/k8s-common roles/apps/k8s-kubedns
-git submodule update
-```
-
 Finally update the playbook ```apps.yml``` with the chosen roles, and run it
 ```
 ...
@@ -251,6 +242,10 @@ Finally update the playbook ```apps.yml``` with the chosen roles, and run it
 ```
 ansible-playbook -i inventory/inventory.cfg apps.yml -u root
 ```
+
+#### Git submodules
+Alternatively the roles can be installed as git submodules.
+That way is easier if you want to do some changes and commit them.
 
 
 #### Calico networking

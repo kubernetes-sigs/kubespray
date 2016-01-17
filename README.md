@@ -23,9 +23,9 @@ in order to avoid any issue during deployment you should **disable your firewall
 * Base knowledge on Ansible. Please refer to [Ansible documentation](http://www.ansible.com/how-ansible-works)
 
 ### Components
-* [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.3
+* [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.4
 * [etcd](https://github.com/coreos/etcd/releases) v2.2.2
-* [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.13.0
+* [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.14.0
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.5
 * [docker](https://www.docker.com/) v1.9.1
 

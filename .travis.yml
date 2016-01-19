@@ -1,3 +1,4 @@
+---
 sudo: required
 dist: trusty
 language: python
@@ -8,14 +9,20 @@ addons:
     - node1
 
 env:
-  - SITE=cluster.yml ANSIBLE_VERSION=2.0.0
-  - SITE=cluster.yml ANSIBLE_VERSION=1.9.4
+  - SITE=cluster.yml ANSIBLE_VERSION=1.9.4 DIST=ubuntu DIST_RELEASE=wily64 INVENTORY=1node.cfg
 
 before_install:
+  - wget -q http://download.virtualbox.org/virtualbox/debian/oracle_vbox.asc -O- | sudo apt-key add -
+  - echo "deb http://download.virtualbox.org/virtualbox/debian $(lsb_release -sc) contrib" | sudo tee /etc/apt/sources.list.d/virtualbox.list
   - sudo apt-get update -qq
+  - sudo apt-get install -y -q virtualbox-4.3 inux-headers-3.19.0-30-generic dkms
+  - sudo wget -nv https://releases.hashicorp.com/vagrant/1.8.1/vagrant_1.8.1_x86_64.deb
+  - sudo dpkg -i vagrant_1.8.1_x86_64.deb
+  - sudo /etc/init.d/vboxdrv setup
+  - mkdir -p $HOME/.ssh
+  - ssh-keygen -t rsa -b 4096 -C "build@ansibl8s.io" -f $HOME/.ssh/id_rsa -P ""
 
 install:
-  # Install Ansible.
   - sudo -H pip install ansible==${ANSIBLE_VERSION}
   - sudo -H pip install netaddr
 
@@ -26,17 +33,18 @@ cache:
 
 before_script:
   - export PATH=$PATH:/usr/local/bin
+  - "cd tests/vagrants/$DIST/$DIST_RELEASE && vagrant up"
 
 script:
   # Check the role/playbook's syntax.
-  - "sudo -H ansible-playbook -i inventory/local-tests.cfg $SITE --syntax-check"
+  - "sudo -H ansible-playbook -i tests/inventory/$INVENTORY $SITE --syntax-check"
 
   # Run the role/playbook with ansible-playbook.
-  - "sudo -H ansible-playbook -i inventory/local-tests.cfg $SITE --connection=local"
+  - "sudo -H ansible-playbook -i tests/inventory/$INVENTORY $SITE -e ansible_ssh_user=root"
 
   # Run the role/playbook again, checking to make sure it's idempotent.
   - >
-    sudo -H ansible-playbook -i inventory/local-tests.cfg $SITE --connection=local
+    sudo -H ansible-playbook -i tests/inventory/$INVENTORY $SITE -e ansible_ssh_user=root
     | tee /dev/stderr | grep -q 'changed=0.*failed=0'
     && (echo 'Idempotence test: pass' && exit 0)
     || (echo 'Idempotence test: fail' && exit 1)

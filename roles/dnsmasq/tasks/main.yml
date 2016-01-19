@@ -32,7 +32,6 @@
   file:
     path: /etc/dnsmasq.d
     state: directory
-  when: inventory_hostname in groups['kube-master']
 
 - name: Write dnsmasq configuration
   template:
@@ -40,17 +39,14 @@
     dest: /etc/dnsmasq.d/01-kube-dns.conf
     mode: 755
     backup: yes
-  when: inventory_hostname in groups['kube-master']
 
 - name: Create dnsmasq pod manifest
   template: src=dnsmasq-pod.yml dest=/etc/kubernetes/manifests/dnsmasq-pod.manifest
-  when: inventory_hostname in groups['kube-master']
 
 - name: Check for dnsmasq port (pulling image and running container)
   wait_for:
     port: 53
     delay: 5
-  when: inventory_hostname in groups['kube-master']
 
 - name: check resolvconf
   stat: path=/etc/resolvconf/resolv.conf.d/head
@@ -63,22 +59,34 @@
 
 - name: Add search resolv.conf
   lineinfile:
-    line: search {{ [ 'default.svc.' + dns_domain, 'svc.' + dns_domain, dns_domain ] | join(' ') }}
+    line: "search {{ [ 'default.svc.' + dns_domain, 'svc.' + dns_domain, dns_domain ] | join(' ') }}"
     dest: "{{resolvconffile}}"
     state: present
     insertbefore: BOF
     backup: yes
     follow: yes
 
-- name: Add all masters as nameserver
+- name: Add local dnsmasq to resolv.conf
   lineinfile:
-    line: nameserver {{ hostvars[item]['ansible_default_ipv4']['address'] }}
+    line: "nameserver 127.0.0.1"
     dest: "{{resolvconffile}}"
     state: present
     insertafter: "^search.*$"
     backup: yes
     follow: yes
-  with_items: groups['kube-master']
+
+- name: Add options to resolv.conf
+  lineinfile:
+    line: options {{ item }}
+    dest: "{{resolvconffile}}"
+    state: present
+    regexp: "^options.*{{ item }}$"
+    insertafter: EOF
+    backup: yes
+    follow: yes
+  with_items:
+    - timeout:2
+    - attempts:2
 
 - name: disable resolv.conf modification by dhclient
   copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient-enter-hooks.d/nodnsupdate mode=u+x backup=yes

@@ -1,0 +1,27 @@
+---
+- name: Copy etcd.service systemd file
+  template:
+    src: etcd.service.j2
+    dest: /lib/systemd/system/etcd.service
+    backup: yes
+  when: init_system == "systemd"
+  notify:
+    - restart systemd-etcd
+
+- name: Write calico-node initd script
+  template:
+    src: deb-etcd.initd.j2
+    dest: /etc/init.d/etcd
+    owner: root
+    mode: 755
+  when: init_system == "sysvinit" and ansible_os_family == "Debian"
+  notify: restart etcd
+
+- name: Create etcd environment vars file
+  template:
+    src: etcd.j2
+    dest: /etc/etcd.env
+  notify: restart etcd
+
+- name: Ensure etcd is running
+  service: name=etcd state=started enabled=yes

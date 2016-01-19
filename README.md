@@ -24,7 +24,7 @@ in order to avoid any issue during deployment you should **disable your firewall
 
 ### Components
 * [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.4
-* [etcd](https://github.com/coreos/etcd/releases) v2.2.2
+* [etcd](https://github.com/coreos/etcd/releases) v2.2.4
 * [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.14.0
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.5
 * [docker](https://www.docker.com/) v1.9.1
@@ -255,7 +255,7 @@ That way is easier if you want to do some changes and commit them.
 
 ### Networking
 
-#### Calico networking
+#### Calico
 Check if the calico-node container is running
 ```
 docker ps | grep calico
@@ -277,7 +277,7 @@ calicoctl pool show
 calicoctl endpoint show --detail
 ```
 
-#### Flannel networking
+#### Flannel
 
 * Flannel configuration file should have been created there
 ```

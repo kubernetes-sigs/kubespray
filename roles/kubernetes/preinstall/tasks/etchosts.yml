@@ -1,0 +1,35 @@
+---
+- name: Hosts | populate inventory into hosts file
+  lineinfile:
+    dest: /etc/hosts
+    regexp: "^{{ hostvars[item]['ip'] | default(hostvars[item].ansible_default_ipv4.address) }} {{ item }}$"
+    line: "{{ hostvars[item]['ip'] | default(hostvars[item].ansible_default_ipv4.address) }} {{ item }}"
+    state: present
+    backup: yes
+  when: hostvars[item].ansible_default_ipv4.address is defined
+  with_items: groups['all']
+
+- name: Hosts | populate kubernetes loadbalancer address into hosts file
+  lineinfile:
+    dest: /etc/hosts
+    regexp: ".*{{ apiserver_loadbalancer_domain_name }}$"
+    line: "{{ loadbalancer_apiserver.address }} {{ apiserver_loadbalancer_domain_name| default('lb-apiserver.kubernetes.local') }}"
+    state: present
+    backup: yes
+  when: loadbalancer_apiserver is defined and apiserver_loadbalancer_domain_name is defined
+
+- name: Hosts | localhost ipv4 in hosts file
+  lineinfile:
+    dest: /etc/hosts
+    line: "127.0.0.1 localhost localhost.localdomain"
+    regexp: '^127.0.0.1.*$'
+    state: present
+    backup: yes
+
+- name: Hosts | localhost ipv6 in hosts file
+  lineinfile:
+    dest: /etc/hosts
+    line: "::1 localhost6 localhost6.localdomain"
+    regexp: '^::1.*$'
+    state: present
+    backup: yes

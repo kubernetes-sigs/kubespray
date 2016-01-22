@@ -36,9 +36,6 @@ These defaults are good for tests purposes.
 
 Edit the inventory according to the number of servers
 ```
-[downloader]
-localhost ansible_connection=local ansible_python_interpreter=python2
-
 [kube-master]
 10.115.99.31
 
@@ -76,9 +73,6 @@ By default this variable is set to false and therefore all the nodes are configu
 In node-mesh mode the nodes peers with all the nodes in order to exchange routes.
 
 ```
-
-[downloader]
-localhost ansible_connection=local ansible_python_interpreter=python2
 
 [kube-master]
 node1 ansible_ssh_host=10.99.0.26

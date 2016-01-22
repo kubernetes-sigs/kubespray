@@ -1,4 +1,22 @@
 ---
+- name: certs | create system kube-cert groups
+  group: name={{ kube_cert_group }} state=present system=yes
+
+- name: Create system kube user
+  user:
+    name=kube
+    comment="Kubernetes user"
+    shell=/sbin/nologin
+    state=present
+    system=yes
+    groups={{ kube_cert_group }}
+
+- name: Create etcd user
+  user:
+    name: etcd
+    shell: /bin/nologin
+    home: /var/lib/etcd
+
 - name: Create dest directories
   file: path={{local_release_dir}}/{{item.dest|dirname}} state=directory recurse=yes
   with_items: downloads
@@ -8,6 +26,8 @@
     url: "{{item.url}}"
     dest: "{{local_release_dir}}/{{item.dest}}"
     sha256sum: "{{item.sha256 | default(omit)}}"
+    owner: "{{ item.owner|default(omit) }}"
+    mode: "{{ item.mode|default(omit) }}"
   with_items: downloads
 
 - name: Extract archives

@@ -1,13 +1,18 @@
 ---
+- include: gen_kube_tokens.yml
+  tags: tokens
+
 - name: Copy kubectl bash completion
   copy:
     src: kubectl_bash_completion.sh
     dest: /etc/bash_completion.d/kubectl.sh
 
-- name: Install kubectl binary
-  command: cp -pf "{{ local_release_dir }}/kubernetes/bin/kubectl" "{{ bin_dir }}/kubectl"
+- name: Install kubernetes binaries
+  command: cp -pf "{{ local_release_dir }}/kubernetes/bin/{{ item }}" "{{ bin_dir }}/{{ item }}"
   changed_when: false
-  notify: restart kubelet
+  with_items:
+    - kubectl
+    - kube-apiserver
 
 - name: populate users for basic auth in API
   lineinfile:
@@ -16,6 +21,7 @@
     line: '{{ item.value.pass }},{{ item.key }},{{ item.value.role }}'
     backup: yes
   with_dict: "{{ kube_users }}"
+  notify: restart kube-apiserver
 
 # Sync masters
 - name: synchronize auth directories for masters
@@ -33,21 +39,48 @@
   delegate_to: "{{ groups['kube-master'][0] }}"
   when: inventory_hostname != "{{ groups['kube-master'][0] }}"
 
-# Write manifests
-- name: Write kube-apiserver manifest
+- name: install | Write kube-apiserver systemd init file
   template:
-    src: manifests/kube-apiserver.manifest.j2
-    dest: "{{ kube_manifest_dir }}/kube-apisever.manifest"
-  notify: restart kubelet
+    src: "kube-apiserver.service.j2"
+    dest: "/etc/systemd/system/kube-apiserver.service"
+    backup: yes
+  when: init_system == "systemd"
+  notify: restart systemd-kube-apiserver
 
-- meta: flush_handlers
+- name: install | Write kube-apiserver initd script
+  template:
+    src: "deb-kube-apiserver.initd.j2"
+    dest: "/etc/init.d/kube-apiserver"
+    owner: root
+    mode: 755
+    backup: yes
+  when: init_system == "sysvinit" and ansible_os_family == "Debian"
+  notify: restart kube-apiserver
 
-- name: wait for the apiserver to be running (pulling image and running container)
-  wait_for:
-    port: "{{kube_apiserver_insecure_port}}"
-    delay: 10
-    timeout: 60
+- name: Allow apiserver to bind on both secure and insecure ports
+  shell: setcap cap_net_bind_service+ep {{ bin_dir }}/kube-apiserver
+  changed_when: false
 
+- name: Write kube-apiserver config file
+  template:
+    src: "kube-apiserver.j2"
+    dest: "{{ kube_config_dir }}/kube-apiserver.env"
+    backup: yes
+  notify: restart kube-apiserver
+
+# restart apiserver if calico tokens list has changed
+- name: Reload tokens (restart apiserver)
+  command: /bin/true
+  notify: restart kube-apiserver
+  changed_when: is_gentoken_calico|default(false)
+
+- name: Enable apiserver
+  service:
+    name: kube-apiserver
+    enabled: yes
+    state: started
+
+# Create kube-system namespace
 - name: copy 'kube-system' namespace manifest
   copy: src=namespace.yml dest=/etc/kubernetes/kube-system-ns.yml
   run_once: yes
@@ -60,12 +93,18 @@
   ignore_errors: yes
   run_once: yes
 
+- name: wait for the apiserver to be running
+  wait_for:
+    port: "{{kube_apiserver_insecure_port}}"
+    delay: 10
+    timeout: 60
+
 - name: Create 'kube-system' namespace
   command: kubectl create -f /etc/kubernetes/kube-system-ns.yml
-  when: kubesystem|failed
   changed_when: False
-  run_once: yes
+  when: kubesystem|failed and inventory_hostname == groups['kube-master'][0]
 
+# Write manifests
 - name: Write kube-controller-manager manifest
   template:
     src: manifests/kube-controller-manager.manifest.j2

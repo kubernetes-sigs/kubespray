@@ -7,12 +7,14 @@
     src: kubectl_bash_completion.sh
     dest: /etc/bash_completion.d/kubectl.sh
 
-- name: Install kubernetes binaries
-  command: cp -pf "{{ local_release_dir }}/kubernetes/bin/{{ item }}" "{{ bin_dir }}/{{ item }}"
+- name: Copy kube-apiserver binary
+  command: rsync -piu "{{ local_release_dir }}/kubernetes/bin/kube-apiserver" "{{ bin_dir }}/kube-apiserver"
+  register: kube_apiserver_copy
   changed_when: false
-  with_items:
-    - kubectl
-    - kube-apiserver
+
+- name: Copy kubectl binary
+  command: rsync -piu "{{ local_release_dir }}/kubernetes/bin/kubectl" "{{ bin_dir }}/kubectl"
+  changed_when: false
 
 - name: populate users for basic auth in API
   lineinfile:
@@ -55,7 +57,11 @@
     mode: 755
     backup: yes
   when: init_system == "sysvinit" and ansible_os_family == "Debian"
+
+- name: Restart apiserver
+  command: /bin/true
   notify: restart kube-apiserver
+  changed_when: is_gentoken_calico|default(false) or kube_apiserver_copy.stdout_lines
 
 - name: Allow apiserver to bind on both secure and insecure ports
   shell: setcap cap_net_bind_service+ep {{ bin_dir }}/kube-apiserver

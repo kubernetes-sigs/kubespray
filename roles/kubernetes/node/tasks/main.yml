@@ -1,12 +1,28 @@
 ---
-- name: create kubernetes config directory
-  file: path={{ kube_config_dir }} state=directory
+- name: Create kubernetes config directory
+  file:
+    path: "{{ kube_config_dir }}"
+    state: directory
+    owner: kube
 
-- name: create kubernetes script directory
-  file: path={{ kube_script_dir }} state=directory
+- name: Create kubernetes script directory
+  file:
+    path: "{{ kube_script_dir }}"
+    state: directory
+    owner: kube
 
-- name: Make sure manifest directory exists
-  file: path={{ kube_manifest_dir }} state=directory
+- name: Create kubernetes manifests directory
+  file:
+    path: "{{ kube_manifest_dir }}"
+    state: directory
+    owner: kube
+
+- name: Create kubernetes logs directory
+  file:
+    path: "{{ kube_log_dir }}"
+    state: directory
+    owner: kube
+  when: init_system == "sysvinit"
 
 - include: secrets.yml
   tags:
@@ -15,7 +31,7 @@
 - include: install.yml
 
 - name: Write kubelet config file
-  template: src=kubelet.j2 dest={{ kube_config_dir }}/kubelet backup=yes
+  template: src=kubelet.j2 dest={{ kube_config_dir }}/kubelet.env backup=yes
   notify:
     - restart kubelet
 
@@ -28,6 +44,11 @@
   template: 
     src: manifests/kube-proxy.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-proxy.manifest"
+
+- name: Restart kubelet if binary changed
+  command: /bin/true
+  notify: restart kubelet
+  when: kubelet_copy.stdout_lines
 
 - name: Enable kubelet
   service:

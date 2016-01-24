@@ -58,15 +58,6 @@
     backup: yes
   when: init_system == "sysvinit" and ansible_os_family == "Debian"
 
-- name: Restart apiserver
-  command: /bin/true
-  notify: restart kube-apiserver
-  changed_when: is_gentoken_calico|default(false) or kube_apiserver_copy.stdout_lines
-
-- name: Allow apiserver to bind on both secure and insecure ports
-  shell: setcap cap_net_bind_service+ep {{ bin_dir }}/kube-apiserver
-  changed_when: false
-
 - name: Write kube-apiserver config file
   template:
     src: "kube-apiserver.j2"
@@ -74,11 +65,14 @@
     backup: yes
   notify: restart kube-apiserver
 
-# restart apiserver if calico tokens list has changed
-- name: Reload tokens (restart apiserver)
-  command: /bin/true
+- name: Allow apiserver to bind on both secure and insecure ports
+  shell: setcap cap_net_bind_service+ep {{ bin_dir }}/kube-apiserver
+  changed_when: false
+
+- name: Restart apiserver
+  command: "/bin/true"
   notify: restart kube-apiserver
-  changed_when: is_gentoken_calico|default(false)
+  when: is_gentoken_calico|default(false) or kube_apiserver_copy.stdout_lines
 
 # reload-systemd
 - meta: flush_handlers
@@ -105,7 +99,6 @@
 - name: wait for the apiserver to be running
   wait_for:
     port: "{{kube_apiserver_insecure_port}}"
-    delay: 10
     timeout: 60
 
 - name: Create 'kube-system' namespace
@@ -128,3 +121,15 @@
   template:
     src: manifests/kube-podmaster.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-podmaster.manifest"
+
+- name: restart kubelet
+  service:
+    name: kubelet
+    state: restarted
+  changed_when: false
+
+- name: Enable apiserver
+  service:
+    name: kube-apiserver
+    enabled: yes
+    state: started

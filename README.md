@@ -108,13 +108,10 @@ kube-master
 ### Playbook
 ```
 ---
-- hosts: downloader
-  sudo: no
-  roles:
-    - { role: download, tags: download }
 
 - hosts: k8s-cluster
   roles:
+    - { role: download, tags: download }
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: docker, tags: docker }
     - { role: kubernetes/node, tags: node }

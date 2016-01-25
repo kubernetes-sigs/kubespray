@@ -4,12 +4,32 @@
     path: /etc/dnsmasq.d
     state: directory
 
+- name: ensure dnsmasq.d-available directory exists
+  file:
+    path: /etc/dnsmasq.d-available
+    state: directory
+
 - name: Write dnsmasq configuration
   template:
     src: 01-kube-dns.conf.j2
-    dest: /etc/dnsmasq.d/01-kube-dns.conf
-    mode: 755
+    dest: /etc/dnsmasq.d-available/01-kube-dns.conf
+    mode: 0755
     backup: yes
+
+- name: Stat dnsmasq configuration
+  stat: path=/etc/dnsmasq.d/01-kube-dns.conf
+  register: sym
+
+- name: Move previous configuration
+  command: mv /etc/dnsmasq.d/01-kube-dns.conf /etc/dnsmasq.d-available/01-kube-dns.conf.bak
+  changed_when: False
+  when: sym.stat.islnk is defined and sym.stat.islnk == False
+
+- name: Enable dnsmasq configuration
+  file:
+    src: /etc/dnsmasq.d-available/01-kube-dns.conf
+    dest: /etc/dnsmasq.d/01-kube-dns.conf
+    state: link
 
 - name: Create dnsmasq pod manifest
   template: src=dnsmasq-pod.yml dest=/etc/kubernetes/manifests/dnsmasq-pod.manifest
@@ -60,7 +80,7 @@
     - attempts:2
 
 - name: disable resolv.conf modification by dhclient
-  copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient-enter-hooks.d/nodnsupdate mode=u+x backup=yes
+  copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient-enter-hooks.d/nodnsupdate mode=0755 backup=yes
   when: ansible_os_family == "Debian"
 
 - name: disable resolv.conf modification by dhclient

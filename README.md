@@ -19,7 +19,7 @@ Linux distributions tested:
 * The firewalls are not managed, you'll need to implement your own rules the way you used to.
 in order to avoid any issue during deployment you should **disable your firewall**
 * **Copy your ssh keys** to all the servers part of your inventory.
-* **Ansible v1.9.x/v2.x and python-netaddr**
+* **Ansible v2.x and python-netaddr**
 * Base knowledge on Ansible. Please refer to [Ansible documentation](http://www.ansible.com/how-ansible-works)
 
 ### Components

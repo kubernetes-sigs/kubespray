@@ -25,13 +25,11 @@
     status_code: 200,404
   register: calico_conf
   run_once: true
-  delegate_to: "{{ groups['etcd'][0] }}"
 
 - name: Calico | Configure calico network pool
   shell: calicoctl pool add {{ kube_pods_subnet }}
   run_once: true
   when: calico_conf.status == 404
-  delegate_to: "{{ groups['etcd'][0] }}"
 
 - name: Calico | Get calico configuration from etcd
   uri:
@@ -39,7 +37,6 @@
     return_content: yes
   register: calico_pools
   run_once: true
-  delegate_to: "{{ groups['etcd'][0] }}"
 
 - name: Calico | Check if calico pool is properly configured
   fail:
@@ -48,7 +45,6 @@
   when: ( calico_pools.json['node']['nodes'] | length > 1 ) or
         ( not calico_pools.json['node']['nodes'][0]['key'] | search(".*{{ kube_pods_subnet | ipaddr('network') }}.*") )
   run_once: true
-  delegate_to: "{{ groups['etcd'][0] }}"
 
 - name: Calico | Write calico-node configuration
   template: src=calico/calico.conf.j2 dest=/usr/libexec/kubernetes/kubelet-plugins/net/exec/calico/calico_kubernetes.ini
@@ -83,12 +79,12 @@
 - name: Calico | Disable node mesh
   shell: calicoctl bgp node-mesh off
   environment:
-     ETCD_AUTHORITY: "{{ groups['etcd'][0] }}:2379"
+     ETCD_AUTHORITY: "127.0.0.1:2379"
   when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']
 
 - name: Calico | Configure peering with router(s)
   shell: calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}
   environment:
-     ETCD_AUTHORITY: "{{ groups['etcd'][0] }}:2379"
+     ETCD_AUTHORITY: "127.0.0.1:2379"
   with_items: peers
   when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']

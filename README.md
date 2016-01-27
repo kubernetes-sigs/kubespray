@@ -16,8 +16,8 @@ Linux distributions tested:
 
 ### Requirements
 * The target servers must have **access to the Internet** in order to pull docker imaqes.
-* The firewalls are not managed, you'll need to implement your own rules the way you used to.
-in order to avoid any issue during deployment you should **disable your firewall**
+* The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
+in order to avoid any issue during deployment you should disable your firewall
 * **Copy your ssh keys** to all the servers part of your inventory.
 * **Ansible v2.x and python-netaddr**
 * Base knowledge on Ansible. Please refer to [Ansible documentation](http://www.ansible.com/how-ansible-works)
@@ -37,16 +37,20 @@ These defaults are good for tests purposes.
 Edit the inventory according to the number of servers
 ```
 [kube-master]
-10.115.99.31
+node1
+node2
 
 [etcd]
-10.115.99.31
-10.115.99.32
-10.115.99.33
+node1
+node2
+node3
 
 [kube-node]
-10.115.99.32
-10.115.99.33
+node2
+node3
+node4
+node5
+node6
 
 [k8s-cluster:children]
 kube-node
@@ -68,37 +72,32 @@ The main variables to change are located in the directory ```inventory/group_var
 
 ### Inventory
 Below is an example of an inventory.
-Note : The bgp vars local_as and peers are not mandatory if the var **'peer_with_router'** is set to false
-By default this variable is set to false and therefore all the nodes are configure in **'node-mesh'** mode.
-In node-mesh mode the nodes peers with all the nodes in order to exchange routes.
 
 ```
+## Configure 'ip' variable to bind kubernetes services on a
+## different ip than the default iface
+node1 ansible_ssh_host=95.54.0.12  # ip=10.3.0.1
+node2 ansible_ssh_host=95.54.0.13  # ip=10.3.0.2
+node3 ansible_ssh_host=95.54.0.14  # ip=10.3.0.3
+node4 ansible_ssh_host=95.54.0.15  # ip=10.3.0.4
+node5 ansible_ssh_host=95.54.0.16  # ip=10.3.0.5
+node6 ansible_ssh_host=95.54.0.17  # ip=10.3.0.6
 
 [kube-master]
-node1 ansible_ssh_host=10.99.0.26
-node2 ansible_ssh_host=10.99.0.27
+node1
+node2
 
 [etcd]
-node1 ansible_ssh_host=10.99.0.26
-node2 ansible_ssh_host=10.99.0.27
-node3 ansible_ssh_host=10.99.0.4
+node1
+node2
+node3
 
 [kube-node]
-node2 ansible_ssh_host=10.99.0.27
-node3 ansible_ssh_host=10.99.0.4
-node4 ansible_ssh_host=10.99.0.5
-node5 ansible_ssh_host=10.99.0.36
-node6 ansible_ssh_host=10.99.0.37
-
-[paris]
-node1 ansible_ssh_host=10.99.0.26
-node3 ansible_ssh_host=10.99.0.4 local_as=xxxxxxxx
-node4 ansible_ssh_host=10.99.0.5 local_as=xxxxxxxx
-
-[new-york]
-node2 ansible_ssh_host=10.99.0.27
-node5 ansible_ssh_host=10.99.0.36 local_as=xxxxxxxx
-node6 ansible_ssh_host=10.99.0.37 local_as=xxxxxxxx
+node2
+node3
+node4
+node5
+node6
 
 [k8s-cluster:children]
 kube-node
@@ -138,8 +137,6 @@ Kubernetes
 * You can choose where to install the master components. If you want your master node to act both as master (api,scheduler,controller) and node (e.g. accept workloads, create pods ...),
 the server address has to be present on both groups 'kube-master' and 'kube-node'.
 
-* Almost all kubernetes components are running into pods except *kubelet*. These pods are managed by kubelet which ensure they're always running
-
 * For safety reasons, you should have at least two master nodes and 3 etcd servers
 
 * Kube-proxy doesn't support multiple apiservers on startup ([Issue 18174](https://github.com/kubernetes/kubernetes/issues/18174)). An external loadbalancer needs to be configured.
@@ -155,16 +152,6 @@ You can choose between 2 network plugins. Only one must be chosen.
 
 The choice is defined with the variable '**kube_network_plugin**'
 
-### Expose a service
-There are several loadbalancing solutions.
-The one i found suitable for kubernetes are [Vulcand](http://vulcand.io/) and [Haproxy](http://www.haproxy.org/)
-
-My cluster is working with haproxy and kubernetes services are configured with the loadbalancing type '**nodePort**'.
-eg: each node opens the same tcp port and forwards the traffic to the target pod wherever it is located.
-
-Then Haproxy can be configured to request kubernetes's api in order to loadbalance on the proper tcp port on the nodes.
-
-Please refer to the proper kubernetes documentation on [Services](https://github.com/kubernetes/kubernetes/blob/release-1.0/docs/user-guide/services.md)
 
 ### Check cluster status
 
@@ -199,7 +186,7 @@ There are two ways of installing new apps
 
 Additionnal apps can be installed with ```ansible-galaxy```.
 
-ou'll need to edit the file '*requirements.yml*' in order to chose needed apps.
+you'll need to edit the file '*requirements.yml*' in order to chose needed apps.
 The list of available apps are available [there](https://github.com/ansibl8s)
 
 For instance it is **strongly recommanded** to install a dns server which resolves kubernetes service names.
@@ -267,6 +254,18 @@ calicoctl pool show
 ```
 calicoctl endpoint show --detail
 ```
+
+##### Optionnal : BGP Peering with border routers
+
+In some cases you may want to route the pods subnet and so NAT is not needed on the nodes.
+For instance if you have a cluster spread on different locations and you want your pods to talk each other no matter where they are located.
+The following variables need to be set:
+**peer_with_router**  enable the peering with border router of the datacenter (default value: false).
+you'll need to edit the inventory and add a and a hostvar **local_as** by node. 
+```
+node1 ansible_ssh_host=95.54.0.12 local_as=xxxxxx
+```
+
 
 #### Flannel
 

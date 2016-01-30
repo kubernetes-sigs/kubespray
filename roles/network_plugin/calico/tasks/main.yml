@@ -1,7 +1,34 @@
 ---
+- name: Calico | Set docker daemon options
+  template:
+    src: docker
+    dest: "/etc/default/docker"
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - restart docker
+
+- name: Calico | Write docker.service systemd file
+  template:
+    src: systemd-docker.service
+    dest: /lib/systemd/system/docker.service
+  notify: restart docker
+  when: init_system == "systemd"
+
+- meta: flush_handlers
+
 - name: Calico | Install calicoctl bin
   command: rsync -piu "{{ local_release_dir }}/calico/bin/calicoctl" "{{ bin_dir }}/calicoctl"
   register: calico_copy
+  changed_when: false
+
+- name: Calico | Install calico cni bin
+  command: rsync -piu "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico"
+  changed_when: false
+
+- name: Calico | Install calico-ipam cni bin
+  command: rsync -piu "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico-ipam"
   changed_when: false
 
 - name: Calico | install calicoctl
@@ -51,33 +78,32 @@
         ( not calico_pools.json['node']['nodes'][0]['key'] | search(".*{{ kube_pods_subnet | ipaddr('network') }}.*") )
   run_once: true
 
-- name: Calico | Write calico-node configuration
-  template: src=calico/calico.conf.j2 dest=/usr/libexec/kubernetes/kubelet-plugins/net/exec/calico/calico_kubernetes.ini
-  notify: restart calico-node
-
 - name: Calico | Write /etc/network-environment
-  template: src=calico/network-environment.j2 dest=/etc/network-environment
+  template: src=network-environment.j2 dest=/etc/network-environment
   when: init_system == "sysvinit"
 
 - name: Calico | Write calico-node systemd init file
-  template: src=calico/calico-node.service.j2 dest=/etc/systemd/system/calico-node.service
+  template: src=calico-node.service.j2 dest=/etc/systemd/system/calico-node.service
   when: init_system == "systemd"
   notify: restart calico-node
 
 - name: Calico | Write calico-node initd script
-  template: src=calico/deb-calico.initd.j2 dest=/etc/init.d/calico-node owner=root mode=0755
+  template: src=deb-calico.initd.j2 dest=/etc/init.d/calico-node owner=root mode=0755
   when: init_system == "sysvinit" and ansible_os_family == "Debian"
   notify: restart calico-node
 
 - name: Calico | Write calico-node initd script
-  template: src=calico/rh-calico.initd.j2 dest=/etc/init.d/calico-node owner=root mode=0755
+  template: src=rh-calico.initd.j2 dest=/etc/init.d/calico-node owner=root mode=0755
   when: init_system == "sysvinit" and ansible_os_family == "RedHat"
   notify: restart calico-node
 
 - meta: flush_handlers
 
 - name: Calico | Enable calico-node
-  service: name=calico-node enabled=yes state=started
+  service:
+    name: calico-node
+    state: started
+    enabled: yes
 
 - name: Calico | Restart calico if binary changed
   service:

@@ -25,7 +25,7 @@ in order to avoid any issue during deployment you should disable your firewall
 ### Components
 * [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.4
 * [etcd](https://github.com/coreos/etcd/releases) v2.2.4
-* [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.14.0
+* [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.16.0
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.5
 * [docker](https://www.docker.com/) v1.9.1
 
@@ -107,21 +107,20 @@ kube-master
 ### Playbook
 ```
 ---
-
 - hosts: k8s-cluster
   roles:
+    - { role: adduser, tags: adduser }
     - { role: download, tags: download }
     - { role: kubernetes/preinstall, tags: preinstall }
+    - { role: etcd, tags: etcd }
     - { role: docker, tags: docker }
     - { role: kubernetes/node, tags: node }
-    - { role: etcd, tags: etcd }
+    - { role: network_plugin, tags: network }
     - { role: dnsmasq, tags: dnsmasq }
-    - { role: network_plugin, tags: ['calico', 'flannel', 'network'] }
 
 - hosts: kube-master
   roles:
     - { role: kubernetes/master, tags: master }
-
 ```
 
 ### Run
@@ -143,14 +142,14 @@ the server address has to be present on both groups 'kube-master' and 'kube-node
 In order to do so, some variables have to be used '**loadbalancer_apiserver**' and '**apiserver_loadbalancer_domain_name**'
 
 
-### Network Overlay
+### Network Plugin
 You can choose between 2 network plugins. Only one must be chosen.
 
 * **flannel**: gre/vxlan (layer 2) networking. ([official docs](https://github.com/coreos/flannel))
 
 * **calico**: bgp (layer 3) networking. ([official docs](http://docs.projectcalico.org/en/0.13/))
 
-The choice is defined with the variable '**kube_network_plugin**'
+The choice is defined with the variable **kube_network_plugin**
 
 
 ### Check cluster status

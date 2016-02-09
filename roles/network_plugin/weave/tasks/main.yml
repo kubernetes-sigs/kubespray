@@ -1,0 +1,64 @@
+---
+- name: Set docker daemon options
+  template:
+    src: docker
+    dest: "/etc/default/docker"
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - restart docker
+
+- name: Write docker.service systemd file
+  template:
+    src: systemd-docker.service
+    dest: /lib/systemd/system/docker.service
+  notify: restart docker
+  when: init_system == "systemd"
+
+- meta: flush_handlers
+
+- name: Weave | Install weave
+  command: rsync -piu "{{ local_release_dir }}/weave/bin/weave" "{{ bin_dir }}/weave"
+  changed_when: false
+
+- name: Weave | pull weave images
+  shell: "{{ bin_dir }}/weave setup"
+  changed_when: false
+
+- name: Weave | set perms
+  file: path="{{ bin_dir }}/weave" mode=0755 state=file
+
+- name: Weave | Set options
+  template:
+    src: weave.j2
+    dest: "/etc/weave.env"
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - restart systemd-weave
+
+- name: Weave | Write weave systemd init file
+  template: src=weave.service.j2 dest=/etc/systemd/system/weave.service
+  when: init_system == "systemd"
+  notify: restart systemd-weave
+
+- name: Weave | Write weaveproxy systemd init file
+  template: src=weaveproxy.service.j2 dest=/etc/systemd/system/weaveproxy.service
+  when: init_system == "systemd"
+  notify: restart systemd-weaveproxy
+
+- name: Weave | Write weaveexpose systemd init file
+  template: src=weaveexpose.service.j2 dest=/etc/systemd/system/weaveexpose.service
+  when: init_system == "systemd"
+  notify: restart systemd-weaveexpose
+
+- name: Weave | Enable weave
+  service: name=weave enabled=yes state=started
+
+- name: Weave | Enable weaveproxy
+  service: name=weaveproxy enabled=yes state=started
+
+- name: Weave | Enable weaveexpose
+  service: name=weaveexpose enabled=yes state=started

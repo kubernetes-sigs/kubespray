@@ -1,0 +1,21 @@
+---
+- hosts: node1
+
+  tasks:
+
+  - name: Get pod names
+    shell: "kubectl get pods -o json"
+    register: pods
+
+  - set_fact:
+      pod_names: "{{ (pods.stdout | from_json)['items'] | map(attribute = 'metadata.name') | list }}"
+      pod_ips: "{{ (pods.stdout | from_json)['items'] | map(attribute = 'status.podIP') | list }}"
+
+  - name: Check pods IP are in correct network
+    assert:
+      that: item | ipaddr(kube_pods_subnet)
+    with_items: pod_ips
+
+
+  - name: Ping between pods is working
+    shell: "kubectl exec {{pod_names[0]}} -- ping -c 4 {{ pod_ips[1] }}"

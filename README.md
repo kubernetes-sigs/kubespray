@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/ansibl8s/setup-kubernetes.svg)](https://travis-ci.org/ansibl8s/setup-kubernetes)
+[![Build Status](https://travis-ci.org/kubespray/setup-kubernetes.svg)](https://travis-ci.org/kubespray/setup-kubernetes)
 kubernetes-ansible
 ========
 
@@ -27,6 +27,7 @@ in order to avoid any issue during deployment you should disable your firewall
 * [etcd](https://github.com/coreos/etcd/releases) v2.2.4
 * [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.16.0
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.5
+* [weave](http://weave.works/) v1.4.4
 * [docker](https://www.docker.com/) v1.9.1
 
 Quickstart
@@ -143,11 +144,13 @@ In order to do so, some variables have to be used '**loadbalancer_apiserver**' a
 
 
 ### Network Plugin
-You can choose between 2 network plugins. Only one must be chosen.
+You can choose between 3 network plugins. Only one must be chosen.
 
 * **flannel**: gre/vxlan (layer 2) networking. ([official docs](https://github.com/coreos/flannel))
 
 * **calico**: bgp (layer 3) networking. ([official docs](http://docs.projectcalico.org/en/0.13/))
+
+* **weave**: Weave is a lightweight container overlay network that doesn't require an external K/V database cluster. ([official docs](http://weave.works/docs/))
 
 The choice is defined with the variable **kube_network_plugin**
 

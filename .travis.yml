@@ -1,38 +1,142 @@
-sudo: required
-dist: trusty
-language: python
-python: "2.7"
+sudo: false
 
-addons:
-  hosts:
-    - node1
+git:
+  depth: 5
 
 env:
-  - SITE=cluster.yml ANSIBLE_VERSION=2.0.0
+  global:
+    GCE_USER=travis
+    SSH_USER=$GCE_USER
+    TEST_ID=$TRAVIS_JOB_NUMBER
+    CONTAINER_ENGINE=docker
+    PRIVATE_KEY=$GCE_PRIVATE_KEY
+    ANSIBLE_KEEP_REMOTE_FILES=1
+  matrix:
+    # Debian Jessie
+    - >-
+      KUBE_NETWORK_PLUGIN=flannel
+      CLOUD_IMAGE=debian-8
+      CLOUD_REGION=europe-west1-b
+    - >-
+      KUBE_NETWORK_PLUGIN=calico
+      CLOUD_IMAGE=debian-8
+      CLOUD_REGION=europe-west1-b
+    - >-
+      KUBE_NETWORK_PLUGIN=weave
+      CLOUD_IMAGE=debian-8
+      CLOUD_REGION=europe-west1-b
 
-install:
+    # Centos 7
+    - >-
+      KUBE_NETWORK_PLUGIN=flannel
+      CLOUD_IMAGE=centos-7-sudo
+      CLOUD_REGION=us-central1-c
+
+    # - >-
+    #   KUBE_NETWORK_PLUGIN=calico
+    #   CLOUD_IMAGE=centos-7-sudo
+    #   CLOUD_REGION=us-central1-c
+
+
+   # # Redhat 7
+    - >-
+      KUBE_NETWORK_PLUGIN=flannel
+      CLOUD_IMAGE=rhel-7-sudo
+      CLOUD_REGION=us-east1-d
+
+   #  - >-
+   #    KUBE_NETWORK_PLUGIN=calico
+   #    CLOUD_IMAGE=rhel-7-sudo
+   #    CLOUD_REGION=us-east1-d
+
+    # Ubuntu 14.04
+    - >-
+      KUBE_NETWORK_PLUGIN=flannel
+      CLOUD_IMAGE=ubuntu-1404-trusty
+      CLOUD_REGION=europe-west1-c
+    - >-
+      KUBE_NETWORK_PLUGIN=calico
+      CLOUD_IMAGE=ubuntu-1404-trusty
+      CLOUD_REGION=europe-west1-c
+    - >-
+      KUBE_NETWORK_PLUGIN=weave
+      CLOUD_IMAGE=ubuntu-1404-trusty
+      CLOUD_REGION=europe-west1-c
+
+    # # Ubuntu 15.10
+    # - >-
+    #   KUBE_NETWORK_PLUGIN=flannel
+    #   CLOUD_IMAGE=ubuntu-1510-wily
+    #   CLOUD_REGION=us-central1-a
+    # - >-
+    #   KUBE_NETWORK_PLUGIN=calico
+    #   CLOUD_IMAGE=ubuntu-1510-wily
+    #   CLOUD_REGION=us-central1-a
+    # - >-
+    #   KUBE_NETWORK_PLUGIN=weave
+    #   CLOUD_IMAGE=ubuntu-1510-wily
+    #   CLOUD_REGION=us-central1-a
+
+
+matrix:
+  allow_failures:
+    - env: KUBE_NETWORK_PLUGIN=flannel CLOUD_IMAGE=centos-7-sudo CLOUD_REGION=us-central1-c
+    - env: KUBE_NETWORK_PLUGIN=flannel CLOUD_IMAGE=rhel-7-sudo CLOUD_REGION=us-east1-d
+    - env: KUBE_NETWORK_PLUGIN=weave CLOUD_IMAGE=ubuntu-1404-trusty CLOUD_REGION=europe-west1-c
+
+before_install:
   # Install Ansible.
-  - sudo -H pip install ansible==${ANSIBLE_VERSION}
-  - sudo -H pip install netaddr
+  - pip install --user boto -U
+  - pip install --user ansible
+  - pip install --user netaddr
+  - pip install --user apache-libcloud
 
 cache:
-  directories:
-    - $HOME/releases
+  - directories:
     - $HOME/.cache/pip
+    - $HOME/.local
 
 before_script:
-  - export PATH=$PATH:/usr/local/bin
+  - echo "RUN $TRAVIS_JOB_NUMBER $KUBE_NETWORK_PLUGIN $CONTAINER_ENGINE "
+  - mkdir -p $HOME/.ssh
+  - echo $PRIVATE_KEY | base64 -d > $HOME/.ssh/id_rsa
+  - echo $GCE_PEM_FILE | base64 -d > $HOME/.ssh/gce
+  - chmod 400 $HOME/.ssh/id_rsa
+  - chmod 755 $HOME/.local/bin/ansible-playbook
+  - $HOME/.local/bin/ansible-playbook --version
+  - cp tests/ansible.cfg .
+#  - "echo $HOME/.local/bin/ansible-playbook -i inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root -e '{\"cloud_provider\": true}'  $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} setup-kubernetes/cluster.yml"
 
 script:
-  # Check the role/playbook's syntax.
-  - "sudo -H ansible-playbook -i inventory/local-tests.cfg $SITE --syntax-check"
-
-  # Run the role/playbook with ansible-playbook.
-  - "sudo -H ansible-playbook -i inventory/local-tests.cfg $SITE --connection=local"
-
-  # Run the role/playbook again, checking to make sure it's idempotent.
   - >
-    sudo -H ansible-playbook -i inventory/local-tests.cfg $SITE --connection=local
-    | tee /dev/stderr | grep -q 'changed=0.*failed=0'
-    && (echo 'Idempotence test: pass' && exit 0)
-    || (echo 'Idempotence test: fail' && exit 1)
+    $HOME/.local/bin/ansible-playbook tests/cloud_playbooks/create-gce.yml -i tests/local_inventory/hosts -c local $LOG_LEVEL
+    -e test_id=${TEST_ID}
+    -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+    -e gce_project_id=${GCE_PROJECT_ID}
+    -e gce_service_account_email=${GCE_ACCOUNT}
+    -e gce_pem_file=${HOME}/.ssh/gce
+    -e cloud_image=${CLOUD_IMAGE}
+    -e inventory_path=${PWD}/inventory/inventory.ini
+    -e cloud_region=${CLOUD_REGION}
+
+    # Create cluster
+  - "$HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root -e '{\"cloud_provider\": true}'  $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} cluster.yml"
+    # Tests Cases
+    ## Test Master API
+  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini tests/testcases/010_check-apiserver.yml $LOG_LEVEL
+    ## Create a POD
+  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/020_check-create-pod.yml $LOG_LEVEL
+    ## Ping the between 2 pod
+  - $HOME/.local/bin/ansible-playbook -i setup-kubernetes/inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
+
+after_script:
+  - >
+    $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini tests/cloud_playbooks/delete-gce.yml -c local  $LOG_LEVEL
+    -e test_id=${TEST_ID}
+    -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+    -e gce_project_id=${GCE_PROJECT_ID}
+    -e gce_service_account_email=${GCE_ACCOUNT}
+    -e gce_pem_file=${HOME}/.ssh/gce
+    -e cloud_image=${CLOUD_IMAGE}
+    -e inventory_path=${PWD}/inventory/inventory.ini
+    -e cloud_region=${CLOUD_REGION}

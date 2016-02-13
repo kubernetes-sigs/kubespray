@@ -23,12 +23,12 @@ in order to avoid any issue during deployment you should disable your firewall
 * Base knowledge on Ansible. Please refer to [Ansible documentation](http://www.ansible.com/how-ansible-works)
 
 ### Components
-* [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.7
+* [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.4
 * [etcd](https://github.com/coreos/etcd/releases) v2.2.4
 * [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.16.0
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.5
 * [weave](http://weave.works/) v1.4.4
-* [docker](https://www.docker.com/) v1.9.1
+* [docker](https://www.docker.com/) v1.9
 
 Quickstart
 -------------------------

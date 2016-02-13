@@ -1,7 +1,4 @@
 ---
-- include: gen_kube_tokens.yml
-  tags: tokens
-
 - name: Copy kubectl bash completion
   copy:
     src: kubectl_bash_completion.sh
@@ -15,31 +12,6 @@
 - name: Copy kubectl binary
   command: rsync -piu "{{ local_release_dir }}/kubernetes/bin/kubectl" "{{ bin_dir }}/kubectl"
   changed_when: false
-
-- name: populate users for basic auth in API
-  lineinfile:
-    dest: "{{ kube_users_dir }}/known_users.csv"
-    create: yes
-    line: '{{ item.value.pass }},{{ item.key }},{{ item.value.role }}'
-    backup: yes
-  with_dict: "{{ kube_users }}"
-  notify: restart kube-apiserver
-
-# Sync masters
-- name: synchronize auth directories for masters
-  synchronize:
-    src: "{{ item }}"
-    dest: "{{ kube_config_dir }}"
-    recursive: yes
-    delete: yes
-    rsync_opts: [ '--one-file-system']
-    set_remote_user: false
-  with_items:
-    - "{{ kube_token_dir }}"
-    - "{{ kube_cert_dir }}"
-    - "{{ kube_users_dir }}"
-  delegate_to: "{{ groups['kube-master'][0] }}"
-  when: inventory_hostname != "{{ groups['kube-master'][0] }}"
 
 - name: install | Write kube-apiserver systemd init file
   template:
@@ -119,3 +91,9 @@
     name: kubelet
     state: restarted
   changed_when: false
+
+- name: restart kube-apiserver
+  service:
+    name: kube-apiserver
+    state: restarted
+  when: secret_changed | default(false)

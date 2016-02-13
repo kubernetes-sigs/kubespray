@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Author: skahlouc@skahlouc-laptop
+# Author: Smana smainklh@gmail.com
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,15 +22,13 @@ usage()
     cat << EOF
 Create self signed certificates
 
-Usage : $(basename $0) -f <config> [-c <cloud_provider>] [-d <ssldir>] [-g <ssl_group>]
+Usage : $(basename $0) -f <config> [-d <ssldir>]
       -h | --help         : Show this message
       -f | --config       : Openssl configuration file
-      -c | --cloud        : Cloud provider (GCE, AWS or AZURE)
       -d | --ssldir       : Directory where the certificates will be installed
-      -g | --sslgrp       : Group of the certificates
                
                ex : 
-               $(basename $0) -f openssl.conf -c GCE -d /srv/ssl -g kube
+               $(basename $0) -f openssl.conf -d /srv/ssl
 EOF
 }
 
@@ -39,9 +37,7 @@ while (($#)); do
     case "$1" in
         -h | --help)   usage;   exit 0;;
         -f | --config) CONFIG=${2}; shift 2;;
-        -c | --cloud) CLOUD=${2}; shift 2;;
         -d | --ssldir) SSLDIR="${2}"; shift 2;; 
-        -g | --group) SSLGRP="${2}"; shift 2;;
         *)
             usage
             echo "ERROR : Unknown option"
@@ -56,26 +52,6 @@ if [ -z ${CONFIG} ]; then
 fi
 if [ -z ${SSLDIR} ]; then
     SSLDIR="/etc/kubernetes/certs"
-fi
-if [ -z ${SSLGRP} ]; then
-    SSLGRP="kube-cert"
-fi
-
-#echo "config=$CONFIG, cloud=$CLOUD, certdir=$SSLDIR, certgroup=$SSLGRP"
-
-SUPPORTED_CLOUDS="GCE AWS AZURE"
-
-# TODO: Add support for discovery on other providers?
-if [ "${CLOUD}" == "GCE" ]; then
-  CLOUD_IP=$(curl -s -H Metadata-Flavor:Google http://metadata.google.internal./computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip)
-fi
-
-if [ "${CLOUD}" == "AWS" ]; then
-  CLOUD_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
-fi
-
-if [ "${CLOUD}" == "AZURE" ]; then
-  CLOUD_IP=$(uname -n | awk -F. '{ print $2 }').cloudapp.net
 fi
 
 tmpdir=$(mktemp -d --tmpdir kubernetes_cacert.XXXXXX)
@@ -102,6 +78,3 @@ done
 
 # Install certs
 mv *.pem ${SSLDIR}/
-chgrp ${SSLGRP} ${SSLDIR}/*
-chmod 600 ${SSLDIR}/*-key.pem
-chown root:root ${SSLDIR}/*-key.pem

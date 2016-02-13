@@ -34,19 +34,19 @@ should_deploy_cluster() {
 }
 
 should_api_server_respond() {
-  ansible-playbook -i inventory.ini ${private_key} testcases/check-apiserver.yml
+  ansible-playbook -i inventory.ini ${private_key} testcases/010_check-apiserver.yml
 
   assertion__status_code_is_success $?
 }
 
 should_create_pod() {
-  ansible-playbook -i inventory.ini -s ${private_key} testcases/check-create-pod.yml -vv
+  ansible-playbook -i inventory.ini -s ${private_key} testcases/020_check-create-pod.yml -vv
 
   assertion__status_code_is_success $?
 }
 
 should_pod_be_in_expected_subnet() {
-  ansible-playbook -i inventory.ini -s ${private_key} testcases/check-network.yml -vv
+  ansible-playbook -i inventory.ini -s ${private_key} testcases/030_check-network.yml -vv
 
   assertion__status_code_is_success $?
 }

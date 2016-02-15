@@ -12,7 +12,7 @@ Linux distributions tested:
 * **Debian** Wheezy, Jessie
 * **Ubuntu** 14.10, 15.04, 15.10
 * **Fedora** 23
-* **CentOS** 7 (Currently with flannel only)
+* **CentOS/RHEL** 7
 
 ### Requirements
 * The target servers must have **access to the Internet** in order to pull docker imaqes.
@@ -23,7 +23,7 @@ in order to avoid any issue during deployment you should disable your firewall
 * Base knowledge on Ansible. Please refer to [Ansible documentation](http://www.ansible.com/how-ansible-works)
 
 ### Components
-* [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.4
+* [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.1.7
 * [etcd](https://github.com/coreos/etcd/releases) v2.2.4
 * [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.16.0
 * [flanneld](https://github.com/coreos/flannel/releases) v0.5.5

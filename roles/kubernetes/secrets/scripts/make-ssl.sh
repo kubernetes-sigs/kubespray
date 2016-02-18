@@ -54,7 +54,7 @@ if [ -z ${SSLDIR} ]; then
     SSLDIR="/etc/kubernetes/certs"
 fi
 
-tmpdir=$(mktemp -d --tmpdir kubernetes_cacert.XXXXXX)
+tmpdir=$(mktemp -d /tmp/kubernetes_cacert.XXXXXX)
 trap 'rm -rf "${tmpdir}"' EXIT
 cd "${tmpdir}"
 

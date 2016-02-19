@@ -14,6 +14,12 @@
       - defaults.yml
       paths:
       - ../vars
+      skip: true
+
+- name: Force binaries directory for CoreOS
+  set_fact:
+    bin_dir: "/opt/bin"
+  when: ansible_os_family == "CoreOS"
 
 - name: Create kubernetes config directory
   file:
@@ -85,8 +91,8 @@
     module: "{{ ansible_pkg_mgr }}"
     name: "{{ item }}"
     state: latest
-  with_items: "{{required_pkgs | union(common_required_pkgs)}}"
-  when: ansible_os_family in [ "Debian", "RedHat" ]
+  with_items: "{{required_pkgs | default([]) | union(common_required_pkgs|default([]))}}"
+  when: ansible_os_family != "CoreOS"
 
 # Todo : selinux configuration
 - name: Set selinux policy to permissive
@@ -95,6 +101,3 @@
   changed_when: False
 
 - include: etchosts.yml
-
-- include: python-bootstrap.yml
-  when: ansible_os_family not in [ "Debian", "RedHat" ]

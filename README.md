@@ -13,6 +13,7 @@ Linux distributions tested:
 * **Ubuntu** 14.10, 15.04, 15.10
 * **Fedora** 23
 * **CentOS/RHEL** 7
+* **CoreOS**
 
 ### Requirements
 * The target servers must have **access to the Internet** in order to pull docker imaqes.
@@ -68,6 +69,18 @@ You can jump directly to "*Available apps, installation procedure*"
 
 Ansible
 -------------------------
+### Coreos bootstrap
+Before running the cluster playbook you must satisfy the following requirements:
+* On each CoreOS nodes a writable directory **/opt/bin** (~400M disk space)
+
+* Uncomment the variable **ansible_python_interpreter** in the file `inventory/group_vars/all.yml`
+
+* run the Python bootstrap playbook
+```
+ansible-playbook -u smana -e ansible_ssh_user=smana  -b --become-user=root -i inventory/inventory.cfg coreos-bootstrap.yml
+```
+Then you can proceed to cluster deployment
+
 ### Variables
 The main variables to change are located in the directory ```inventory/group_vars/all.yml```.
 
@@ -178,7 +191,6 @@ For the master nodes you'll have to see the docker logs for the apiserver
 ```
 docker logs [apiserver docker id]
 ```
-
 
 ### Available apps, installation procedure
 

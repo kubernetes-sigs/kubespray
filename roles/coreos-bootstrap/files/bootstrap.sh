@@ -1,7 +1,7 @@
 #/bin/bash
 set -e
 
-BINDIR="/usr/local/bin"
+BINDIR="/opt/bin"
 
 cd $BINDIR
 

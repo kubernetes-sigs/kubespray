@@ -1,41 +1,40 @@
 ---
-- name: Python | Check if bootstrap is needed
-  raw: stat {{ bin_dir}}/.bootstrapped
+- name: Bootstrap | Check if bootstrap is needed
+  raw: stat /opt/bin/.bootstrapped
   register: need_bootstrap
   ignore_errors: True
 
-- name: Python | Run bootstrap.sh
+- name: Bootstrap | Run bootstrap.sh
   script: bootstrap.sh
   when: need_bootstrap | failed
 
 - set_fact:
-    ansible_python_interpreter: "{{ bin_dir }}/python"
+    ansible_python_interpreter: "/opt/bin/python"
 
-- name: Python | Check if we need to install pip
+- name: Bootstrap | Check if we need to install pip
   shell: "{{ansible_python_interpreter}} -m pip --version"
   register: need_pip
   ignore_errors: True
   changed_when: false
   when: need_bootstrap | failed
 
-- name: Python | Copy get-pip.py
+- name: Bootstrap | Copy get-pip.py
   copy: src=get-pip.py dest=~/get-pip.py
   when: need_pip | failed
 
-- name: Python | Install pip
+- name: Bootstrap | Install pip
   shell: "{{ansible_python_interpreter}} ~/get-pip.py"
   when: need_pip | failed
 
-- name: Python | Remove get-pip.py
+- name: Bootstrap | Remove get-pip.py
   file: path=~/get-pip.py state=absent
   when: need_pip | failed
 
-- name: Python | Install pip launcher
-  copy: src=runner dest={{ bin_dir }}/pip mode=0755
+- name: Bootstrap | Install pip launcher
+  copy: src=runner dest=/opt/bin/pip mode=0755
   when: need_pip | failed
 
 - name: Install required python modules
   pip:
     name: "{{ item }}"
   with_items: pip_python_modules
-

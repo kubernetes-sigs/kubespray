@@ -4,7 +4,6 @@
     src: network.json
     dest: /etc/flannel-network.json
     backup: yes
-
 - name: Flannel | Create flannel pod manifest
   template:
     src: flannel-pod.yml
@@ -15,6 +14,7 @@
   wait_for:
     path: /run/flannel/subnet.env
     delay: 5
+    timeout: 600
 
 - name: Flannel | Get flannel_subnet from subnet.env
   shell: cat /run/flannel/subnet.env | awk -F'=' '$1 == "FLANNEL_SUBNET" {print $2}'
@@ -42,11 +42,18 @@
   notify:
     - restart docker
 
+- name: Flannel | Create docker config symlink for CoreOS
+  file:
+    src: "/etc/default/docker"
+    dest: "/run/flannel_docker_opts.env"
+    state: link
+  when: ansible_os_family == "CoreOS"
+
 - name: Flannel | Write docker.service systemd file
   template:
     src: systemd-docker.service
     dest: /lib/systemd/system/docker.service
   notify: restart docker
-  when: ansible_service_mgr == "systemd"
+  when: ansible_service_mgr == "systemd" and ansible_os_family != "CoreOS"
 
 - meta: flush_handlers

@@ -283,6 +283,8 @@ node1 ansible_ssh_host=95.54.0.12 local_as=xxxxxx
 
 #### Flannel
 
+You can choose the [backend](https://github.com/coreos/flannel/blob/master/README.md) type by changing the variable **flannel_backend_type** (default: vxlan)
+
 * Flannel configuration file should have been created there
 ```
 cat /run/flannel/subnet.env

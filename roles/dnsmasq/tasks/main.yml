@@ -31,11 +31,32 @@
     dest: /etc/dnsmasq.d/01-kube-dns.conf
     state: link
 
-- name: Create dnsmasq pod manifest
-  template: src=dnsmasq-pod.yml dest=/etc/kubernetes/manifests/dnsmasq-pod.manifest
+- name: Create dnsmasq manifests
+  template: src={{item.file}} dest=/etc/kubernetes/{{item.file}}
+  with_items:
+    - {file: dnsmasq-ds.yml, type: ds}
+    - {file: dnsmasq-svc.yml, type: svc}
+  register: manifests
+
+# - name: Start resources
+#   command:  create -f /etc/kubernetes/{{item.item.file}} --namespace=kube-system
+#   ignore_errors: yes
+
+- name: Start Resources
+  kube:
+    name: dnsmasq
+    namespace: kube-system
+    kubectl: /usr/local/bin/kubectl
+    resource: "{{item.item.type}}"
+    filename: /etc/kubernetes/{{item.item.file}}
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: manifests.results
+
+
 
 - name: Check for dnsmasq port (pulling image and running container)
   wait_for:
+    host: "{{dns_server}}"
     port: 53
     delay: 5
 
@@ -59,7 +80,7 @@
 
 - name: Add local dnsmasq to resolv.conf
   lineinfile:
-    line: "nameserver 127.0.0.1"
+    line: "nameserver {{dns_server}}"
     dest: "{{resolvconffile}}"
     state: present
     insertafter: "^search.*$"

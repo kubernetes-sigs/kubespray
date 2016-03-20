@@ -1,0 +1,50 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: kube-proxy
+  namespace: kube-system
+  labels:
+    k8s-app: kube-proxy
+spec:
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-proxy
+    spec:
+      hostNetwork: true
+      containers:
+      - name: kube-proxy
+        image: {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}
+        command:
+        - /hyperkube
+        - proxy
+        - --v={{ kube_log_level | default('2') }}
+{%      if loadbalancer_apiserver is defined and apiserver_loadbalancer_domain_name is defined %}
+        - --master=https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port }}
+{%-     else %}
+        - --master=https://{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(hostvars[groups['kube-master'][0]]['ansible_default_ipv4']['address'])) }}:{{ kube_apiserver_port }}
+{%      endif%}
+        - --kubeconfig=/etc/kubernetes/node-kubeconfig.yaml
+        - --proxy-mode={{ kube_proxy_mode }}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /etc/ssl/certs
+          name: ssl-certs-host
+          readOnly: true
+        - mountPath: /etc/kubernetes/node-kubeconfig.yaml
+          name: "kubeconfig"
+          readOnly: true
+        - mountPath: /etc/kubernetes/ssl
+          name: "etc-kube-ssl"
+          readOnly: true
+      volumes:
+      - name: ssl-certs-host
+        hostPath:
+          path: /usr/share/ca-certificates
+      - name: "kubeconfig"
+        hostPath:
+          path: "/etc/kubernetes/node-kubeconfig.yaml"
+      - name: "etc-kube-ssl"
+        hostPath:
+          path: "/etc/kubernetes/ssl"

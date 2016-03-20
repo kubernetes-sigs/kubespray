@@ -36,18 +36,18 @@
   with_items:
     - {file: dnsmasq-ds.yml, type: ds}
     - {file: dnsmasq-svc.yml, type: svc}
-  register: manifests
+  register: dnsmasq_manifests
   when: inventory_hostname == groups['kube-master'][0]
 
-- name: Start Resources
+- name: Start dnsmasq Resources
   kube:
     name: dnsmasq
     namespace: kube-system
-    kubectl: /usr/local/bin/kubectl
+    kubectl: "{{bin_dir}}/kubectl"
     resource: "{{item.item.type}}"
     filename: /etc/kubernetes/{{item.item.file}}
     state: "{{item.changed | ternary('latest','present') }}"
-  with_items: manifests.results
+  with_items: dnsmasq_manifests.results
   when: inventory_hostname == groups['kube-master'][0]
 
 - name: Check for dnsmasq port (pulling image and running container)
@@ -55,8 +55,8 @@
     host: "{{dns_server}}"
     port: 53
     delay: 5
-  when: inventory_hostname == groups['kube-master'][0]
-
+    timeout: 500
+  when: inventory_hostname == groups['kube-node'][0]
 
 - name: check resolvconf
   stat: path=/etc/resolvconf/resolv.conf.d/head

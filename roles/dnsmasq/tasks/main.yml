@@ -37,10 +37,7 @@
     - {file: dnsmasq-ds.yml, type: ds}
     - {file: dnsmasq-svc.yml, type: svc}
   register: manifests
-
-# - name: Start resources
-#   command:  create -f /etc/kubernetes/{{item.item.file}} --namespace=kube-system
-#   ignore_errors: yes
+  when: inventory_hostname == groups['kube-master'][0]
 
 - name: Start Resources
   kube:
@@ -51,14 +48,15 @@
     filename: /etc/kubernetes/{{item.item.file}}
     state: "{{item.changed | ternary('latest','present') }}"
   with_items: manifests.results
-
-
+  when: inventory_hostname == groups['kube-master'][0]
 
 - name: Check for dnsmasq port (pulling image and running container)
   wait_for:
     host: "{{dns_server}}"
     port: 53
     delay: 5
+  when: inventory_hostname == groups['kube-master'][0]
+
 
 - name: check resolvconf
   stat: path=/etc/resolvconf/resolv.conf.d/head

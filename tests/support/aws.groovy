@@ -58,7 +58,7 @@ def install_cluster(inventory_path, credentialsId, network_plugin) {
         extraVars: [
             kube_network_plugin: network_plugin
         ],
-        extras: "-e '{\"cloud_provider\": true}'",
+        extras: "-e cloud_provider=aws",
         colorized: true
     )
 }

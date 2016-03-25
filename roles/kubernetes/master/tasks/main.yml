@@ -5,13 +5,13 @@
     dest: /etc/bash_completion.d/kubectl.sh
   when: ansible_os_family in ["Debian","RedHat"]
 
+- name: Copy kubectl binary
+  command: rsync -piu "{{ local_release_dir }}/kubernetes/bin/kubectl" "{{ bin_dir }}/kubectl"
+  changed_when: false
+
 - name: Copy kube-apiserver binary
   command: rsync -piu "{{ local_release_dir }}/kubernetes/bin/kube-apiserver" "{{ bin_dir }}/kube-apiserver"
   register: kube_apiserver_copy
-  changed_when: false
-
-- name: Copy kubectl binary
-  command: rsync -piu "{{ local_release_dir }}/kubernetes/bin/kubectl" "{{ bin_dir }}/kubectl"
   changed_when: false
 
 - name: install | Write kube-apiserver systemd init file
@@ -87,3 +87,23 @@
     name: kubelet
     state: restarted
   changed_when: false
+
+# Run daemonsets
+- name: Start Resources
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: kube-system
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: /etc/kubernetes/{{item.item.file}}
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: proxy_ds_manifest.results
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Check for kube-proxy port (pulling image and running container)
+  wait_for:
+    host: 127.0.0.1
+    port: 10249
+    delay: 5
+    timeout: 500
+  when: inventory_hostname in groups['kube-node']

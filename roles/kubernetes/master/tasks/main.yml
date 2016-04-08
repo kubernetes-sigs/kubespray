@@ -3,6 +3,7 @@
   copy:
     src: kubectl_bash_completion.sh
     dest: /etc/bash_completion.d/kubectl.sh
+  when: ansible_os_family in ["Debian","RedHat"]
 
 - name: Copy kube-apiserver binary
   command: rsync -piu "{{ local_release_dir }}/kubernetes/bin/kube-apiserver" "{{ bin_dir }}/kube-apiserver"
@@ -44,7 +45,7 @@
 - meta: flush_handlers
 
 - include: start.yml
-  with_items: groups['kube-master']
+  with_items: "{{ groups['kube-master'] }}"
   when: "{{ hostvars[item].inventory_hostname == inventory_hostname }}"
 
 # Create kube-system namespace
@@ -74,17 +75,12 @@
 - name: Write kube-controller-manager manifest
   template:
     src: manifests/kube-controller-manager.manifest.j2
-    dest: "{{ kube_config_dir }}/kube-controller-manager.manifest"
+    dest: "{{ kube_manifest_dir }}/kube-controller-manager.manifest"
 
 - name: Write kube-scheduler manifest
   template:
     src: manifests/kube-scheduler.manifest.j2
-    dest: "{{ kube_config_dir }}/kube-scheduler.manifest"
-
-- name: Write podmaster manifest
-  template:
-    src: manifests/kube-podmaster.manifest.j2
-    dest: "{{ kube_manifest_dir }}/kube-podmaster.manifest"
+    dest: "{{ kube_manifest_dir }}/kube-scheduler.manifest"
 
 - name: restart kubelet
   service:

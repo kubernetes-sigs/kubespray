@@ -14,6 +14,12 @@
       - defaults.yml
       paths:
       - ../vars
+      skip: true
+
+- name: Force binaries directory for CoreOS
+  set_fact:
+    bin_dir: "/opt/bin"
+  when: ansible_os_family == "CoreOS"
 
 - name: Create kubernetes config directory
   file:
@@ -40,6 +46,14 @@
     owner: kube
   when: ansible_service_mgr in ["sysvinit","upstart"]
 
+- name: check cloud_provider value
+  fail:
+    msg: "If set the 'cloud_provider' var must be set either to 'gce', 'aws' or 'openstack'"
+  when: cloud_provider is defined and cloud_provider not in ['gce', 'aws', 'openstack']
+
+- include: openstack-credential-check.yml
+  when: cloud_provider is defined and cloud_provider == 'openstack'
+
 - name: Create cni directories
   file:
     path: "{{ item }}"
@@ -50,18 +64,13 @@
     - "/opt/cni/bin"
   when: kube_network_plugin == "calico"
 
-- name: Update package management cache (APT)
-  apt: update_cache=yes
-  when: ansible_pkg_mgr == 'apt'
-
 - name: Update package management cache (YUM)
   yum: update_cache=yes name='*'
   when: ansible_pkg_mgr == 'yum'
 
-- name: Install python-apt for Debian distribs
-  command: apt-get install -y python-apt
+- name: Install latest version of python-apt for Debian distribs
+  apt: name=python-apt state=latest update_cache=yes cache_valid_time=3600
   when: ansible_os_family == "Debian"
-  changed_when: False
 
 - name: Install python-dnf for latest RedHat versions
   command: dnf install -y python-dnf yum
@@ -85,7 +94,8 @@
     module: "{{ ansible_pkg_mgr }}"
     name: "{{ item }}"
     state: latest
-  with_items: "{{required_pkgs | union(common_required_pkgs)}}"
+  with_items: "{{required_pkgs | default([]) | union(common_required_pkgs|default([]))}}"
+  when: ansible_os_family != "CoreOS"
 
 # Todo : selinux configuration
 - name: Set selinux policy to permissive
@@ -93,7 +103,12 @@
   when: ansible_os_family == "RedHat"
   changed_when: False
 
-- include: etchosts.yml
+- name: Write openstack cloud-config
+  template:
+    src: openstack-cloud-config.j2
+    dest: "{{ kube_config_dir }}/cloud_config"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  when: cloud_provider is defined and cloud_provider == "openstack"
 
-- include: python-bootstrap.yml
-  when: ansible_os_family not in [ "Debian", "RedHat" ]
+- include: etchosts.yml

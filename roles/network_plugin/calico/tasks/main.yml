@@ -8,13 +8,14 @@
     mode: 0644
   notify:
     - restart docker
+  when: ansible_os_family != "CoreOS"
 
 - name: Calico | Write docker.service systemd file
   template:
     src: systemd-docker.service
     dest: /lib/systemd/system/docker.service
   notify: restart docker
-  when: ansible_service_mgr == "systemd"
+  when: ansible_service_mgr == "systemd" and ansible_os_family != "CoreOS"
 
 - meta: flush_handlers
 
@@ -34,12 +35,6 @@
 - name: Calico | install calicoctl
   file: path={{ bin_dir }}/calicoctl mode=0755 state=file
 
-- name: Calico | Create calicoctl symlink (needed by kubelet)
-  file:
-    src: /usr/local/bin/calicoctl
-    dest: /usr/bin/calicoctl
-    state: link
-
 - name: Calico | wait for etcd
   wait_for:
     port: 2379
@@ -53,15 +48,23 @@
   register: calico_conf
   run_once: true
 
-- name: Calico | Configure calico network pool for cloud
-  command: "calicoctl pool add {{ kube_pods_subnet }} --ipip --nat-outgoing"
-  run_once: true
-  when: calico_conf.status == 404 and cloud_provider is defined and cloud_provider == True
-
 - name: Calico | Configure calico network pool
-  command: "calicoctl pool add {{ kube_pods_subnet }}"
+  command: "{{ bin_dir }}/calicoctl pool add {{ kube_pods_subnet }}"
   run_once: true
-  when: calico_conf.status == 404 and (cloud_provider is not defined or cloud_provider != True)
+  when: calico_conf.status == 404 and cloud_provider is not defined
+        and not nat_outgoing|default(false) or
+        (nat_outgoing|default(false) and peer_with_router|default(false))
+
+- name: Calico | Configure calico network pool for cloud
+  command: "{{ bin_dir }}/calicoctl pool add {{ kube_pods_subnet }} --ipip --nat-outgoing"
+  run_once: true
+  when: calico_conf.status == 404 and cloud_provider is defined
+
+- name: Calico | Configure calico network pool with nat outgoing
+  command: "{{ bin_dir}}/calicoctl pool add {{ kube_pods_subnet }} --nat-outgoing"
+  run_once: true
+  when: calico_conf.status == 404 and cloud_provider is not defined
+        and nat_outgoing|default(false) and not peer_with_router|default(false)
 
 - name: Calico | Get calico configuration from etcd
   uri:
@@ -112,13 +115,13 @@
   when: calico_copy.stdout_lines
 
 - name: Calico | Disable node mesh
-  shell: calicoctl bgp node-mesh off
+  shell: "{{ bin_dir }}/calicoctl bgp node-mesh off"
   environment:
      ETCD_AUTHORITY: "127.0.0.1:2379"
   when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']
 
 - name: Calico | Configure peering with router(s)
-  shell: calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}
+  shell: "{{ bin_dir }}/calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}"
   environment:
      ETCD_AUTHORITY: "127.0.0.1:2379"
   with_items: peers

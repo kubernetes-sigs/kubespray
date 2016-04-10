@@ -10,6 +10,6 @@
 - **Continuous integration tests**
 
 For an easy way to use it, check out [**kargo-cli**](https://github.com/kubespray/kargo-cli) </br>
-A complete **documentation** can be found [THERE](https://docs.kubespray.io)
+A complete **documentation** can be found [**here**](https://docs.kubespray.io)
 
 [![Build Status](https://travis-ci.org/kubespray/kargo.svg)](https://travis-ci.org/kubespray/kargo)

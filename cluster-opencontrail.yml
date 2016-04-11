@@ -1,0 +1,47 @@
+---
+
+#
+# To use Opencontrail with Kubernetes, you will need to do the following:
+# 1. checkout https://github.com/rackn/container-networking-ansible
+# 2. Copy the filters directory from container-network-ansible to this directory.
+# 3. Copy the roles/* directory content to the roles directory
+# 
+# Update your inventory file to use opencontrail as the network_plugin.
+# Update your inventory to have masters group that is the same as kube-master
+# Update your inventory to have nodes group that is the same as kube-node
+# Update your inventory to have a gateway group
+# 
+# Add vars to group_var file:
+# Publics IP Opencontrail should use to expose services.
+# opencontrail_public_subnet=192.0.2.0/24
+# opencontrail_kube_release=1.1
+#
+# See here for more info: https://github.com/rackn/container-networking-ansible
+#
+
+
+- hosts: k8s-cluster
+  roles:
+    - { role: adduser, tags: adduser }
+    - { role: download, tags: download }
+    - { role: kubernetes/preinstall, tags: preinstall }
+    - { role: etcd, tags: etcd }
+    - { role: docker, tags: docker, when: ansible_os_family != "CoreOS" }
+    - { role: kubernetes/node, tags: node }
+    - { role: network_plugin, tags: network, when: kube_network_plugin != 'opencontrail' }
+    - { role: opencontrail_facts, when: kube_network_plugin == 'opencontrail' }
+    - { role: opencontrail, when: kube_network_plugin == 'opencontrail' }
+
+- hosts: kube-master
+  roles:
+    - { role: kubernetes/master, tags: master }
+
+- hosts: k8s-cluster
+  roles:
+    - { role: opencontrail_facts, when: kube_network_plugin == 'opencontrail' }
+    - { role: opencontrail_provision, when: kube_network_plugin == 'opencontrail' }
+
+- hosts: k8s-cluster
+  roles:
+    - { role: dnsmasq, tags: dnsmasq }
+

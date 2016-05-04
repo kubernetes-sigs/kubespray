@@ -37,6 +37,11 @@ options:
     default: 'None'
     description:
       - The package version
+  variables:
+    required: false
+    default: 'None'
+    description:
+      - Set package variables
   state:
     required: false
     choices: ['present', 'absent']
@@ -78,11 +83,13 @@ def main():
                         state = dict(default='present', choices=['present', 'absent']),
                         name = dict(required=True),
                         force = dict(required=False, default=False, type='bool'),
+                        variables = dict(required=False, default=None, type='dict'),
                         registry = dict(required=False, default="https://api.kpm.sh"),
                         namespace=dict(default='default', required=False)))
 
         params = {"version": module.params.get("version"),
                   "namespace": module.params.get('namespace'),
+                  "variables": module.params.get('variables'),
                   "endpoint": module.params.get('registry'),
                   "dry": module.check_mode,
                   "proxy": None,

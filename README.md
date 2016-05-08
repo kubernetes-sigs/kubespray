@@ -9,6 +9,8 @@
 - Support most popular **Linux distributions**
 - **Continuous integration tests**
 
+To create a cluster in vagrant simply run `vagrant up`
+
 For an easy way to use it, check out [**kargo-cli**](https://github.com/kubespray/kargo-cli) </br>
 A complete **documentation** can be found [**here**](https://docs.kubespray.io)
 

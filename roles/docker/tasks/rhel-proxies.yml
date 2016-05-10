@@ -1,0 +1,21 @@
+---
+- name: create docker service directory for RHEL family
+  file: path=/etc/systemd/system/docker.service.d state=directory
+  when: ansible_distribution in ["CentOS","RedHat"] and
+        ansible_distribution_major_version >= 7
+
+- name: drop docker environment for RHEL family
+  template:
+    src: http-proxy.conf.j2
+    dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+  when: ansible_distribution in ["CentOS","RedHat"] and
+        ansible_distribution_major_version >= 7
+  register: rheldockerproxy
+
+- name: reload systemctl daemons for RHEL family
+  shell: systemctl daemon-reload
+  when: rheldockerproxy.changed
+
+- name: restart docker for RHEL family
+  service: name=docker state=restarted
+  when: rheldockerproxy.changed

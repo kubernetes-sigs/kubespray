@@ -1,4 +1,5 @@
 
+
 ![Kubespray Logo](http://s9.postimg.org/md5dyjl67/kubespray_logoandkubespray_small.png)
 
 ##Deploy a production ready kubernetes cluster
@@ -18,7 +19,7 @@ To deploy the cluster you can use :
 
 A complete **documentation** can be found [**here**](https://docs.kubespray.io)
 
-if you have any question you can **chat** with us [**here**](https://chat.kubespray.io)
+if you have any question you can **chat** with us  [![SlackStatus](https://slack.kubespray.io/badge.svg)](https://kubespray.slack.com)
 
 [![Build Status](https://travis-ci.org/kubespray/kargo.svg)](https://travis-ci.org/kubespray/kargo) </br>
 CI tests sponsored by Google (GCE), and [TeutoNet](https://teuto.net/) for OpenStack.

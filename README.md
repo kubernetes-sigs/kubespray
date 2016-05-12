@@ -9,9 +9,16 @@
 - Support most popular **Linux distributions**
 - **Continuous integration tests**
 
-To create a cluster in vagrant simply run `vagrant up`
 
-For an easy way to use it, check out [**kargo-cli**](https://github.com/kubespray/kargo-cli) </br>
+To deploy the cluster you can use :
+
+* [**kargo-cli**](https://github.com/kubespray/kargo-cli)
+* **vagrant** by simply running `vagrant up`
+* **Ansible** usual commands
+
 A complete **documentation** can be found [**here**](https://docs.kubespray.io)
 
-[![Build Status](https://travis-ci.org/kubespray/kargo.svg)](https://travis-ci.org/kubespray/kargo)
+if you have any question you can **chat** with us [**here**](https://chat.kubespray.io)
+
+[![Build Status](https://travis-ci.org/kubespray/kargo.svg)](https://travis-ci.org/kubespray/kargo) </br>
+CI tests sponsored by Google (GCE), and [TeutoNet](https://teuto.net/) for OpenStack.

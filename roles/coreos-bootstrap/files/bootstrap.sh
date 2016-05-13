@@ -3,6 +3,8 @@ set -e
 
 BINDIR="/opt/bin"
 
+mkdir -p $BINDIR
+
 cd $BINDIR
 
 if [[ -e $BINDIR/.bootstrapped ]]; then

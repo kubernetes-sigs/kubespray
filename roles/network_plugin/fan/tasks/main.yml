@@ -1,0 +1,33 @@
+---
+
+- name: "Fan | Ensure ubuntu-fan installed"
+  apt:
+    name: "ubuntu-fan"
+
+- name: "Fan | Install fan cni bin's"
+  command: rsync -piu "{{ local_release_dir }}/cni/{{ item }}" "/opt/cni/bin/{{ item }}"
+  with_items:
+    - "dhcp"
+    - "bridge"
+    - "loopback"
+  changed_when: false
+
+- name: "Fan | Ensure fan configured properly"
+  assert:
+    that:
+      - kube_pods_subnet is defined and kube_pods_subnet|ipaddr
+      - kube_network_fan_underlay is defined and kube_network_fan_underlay|ipaddr
+
+- name: "Fan | Determine if fan is configured"
+  shell: >
+    fanctl show | grep -q {{ kube_pods_subnet }}
+  register: kube_network_fan_up
+  changed_when: False
+  ignore_errors: yes
+
+- name: "Fan | Bring fan up (if down)"
+  command: >
+    fanctl up --underlay={{ kube_network_fan_underlay }} --overlay={{ kube_pods_subnet }} --dhcp --enable
+  when: kube_network_fan_up|failed
+
+- include: dhcp-daemon.yml

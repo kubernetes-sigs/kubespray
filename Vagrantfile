@@ -11,7 +11,7 @@ CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
 $num_instances = 3
 $instance_name_prefix = "k8s"
 $vm_gui = false
-$vm_memory = 1024
+$vm_memory = 1536
 $vm_cpus = 1
 $shared_folders = {}
 $forwarded_ports = {}
@@ -53,8 +53,8 @@ Vagrant.configure("2") do |config|
   config.vm.provider :virtualbox do |v|
     # On VirtualBox, we don't have guest additions or a functional vboxsf
     # in CoreOS, so tell Vagrant that so it can be smarter.
-    v.check_guest_additions = false
-    v.functional_vboxsf     = false
+    # v.check_guest_additions = false
+    # v.functional_vboxsf     = false
   end
 
   # plugin conflict
@@ -92,7 +92,8 @@ Vagrant.configure("2") do |config|
         "ip" => ip,
         "access_ip" => ip,
         "flannel_interface" => ip,
-        "flannel_backend_type" => "host-gw"
+        "flannel_backend_type" => "host-gw",
+        "local_release_dir" => "/vagrant/temp"
       }
       config.vm.network :private_network, ip: ip
 

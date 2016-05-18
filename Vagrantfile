@@ -79,7 +79,8 @@ Vagrant.configure("2") do |config|
         "access_ip" => ip,
         "flannel_interface" => ip,
         "flannel_backend_type" => "host-gw",
-        "local_release_dir" => "/vagrant/temp"
+        "local_release_dir" => "/vagrant/temp",
+        "download_run_once" => "True"
       }
       config.vm.network :private_network, ip: ip
 
@@ -96,6 +97,7 @@ Vagrant.configure("2") do |config|
           ansible.host_key_checking = false
           ansible.raw_arguments = ["--forks=#{$num_instances}"]
           ansible.host_vars = host_vars
+          #ansible.tags = ['download']
           ansible.groups = {
             # The first three nodes should be etcd servers
             "etcd" => ["k8s-0[1:3]"],

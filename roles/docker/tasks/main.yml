@@ -19,7 +19,7 @@
           docker requires a minimum kernel version of
           {{ docker_kernel_min_version }} on
           {{ ansible_distribution }}-{{ ansible_distribution_version }}
-  when: ansible_kernel|version_compare(docker_kernel_min_version, "<")
+  when: (ansible_os_family != "CoreOS") and (ansible_kernel|version_compare(docker_kernel_min_version, "<"))
 
 
 - name: ensure docker repository public key is installed
@@ -29,6 +29,7 @@
     keyserver: "{{docker_repo_key_info.keyserver}}"
     state: present
   with_items: "{{ docker_repo_key_info.repo_keys }}"
+  when: ansible_os_family != "CoreOS"
 
 - name: ensure docker repository is enabled
   action: "{{ docker_repo_info.pkg_repo }}"
@@ -36,7 +37,7 @@
     repo: "{{item}}"
     state: present
   with_items: "{{ docker_repo_info.repos }}"
-  when: docker_repo_info.repos|length > 0
+  when: (ansible_os_family != "CoreOS") and (docker_repo_info.repos|length > 0)
 
 - name: Configure docker repository on RedHat/CentOS
   copy:
@@ -51,21 +52,12 @@
     pkg: "{{item}}"
     state: present
   with_items: "{{ docker_package_info.pkgs }}"
-  when: docker_package_info.pkgs|length > 0
+  when: (ansible_os_family != "CoreOS") and (docker_package_info.pkgs|length > 0)
 
 - name: allow for proxies on systems using systemd
   include: systemd-proxies.yml
   when: ansible_service_mgr == "systemd" and
         (http_proxy is defined or https_proxy is defined or no_proxy is defined)
-
-- name: create docker defaults file
-  file: path=/etc/default/docker state=touch
-  when: insecure_registry is defined
-
-- name: allow for insecure registries in docker defaults
-  lineinfile: dest=/etc/default/docker line="INSECURE_REGISTRY=\"{% for registry in insecure_registry %}--insecure-registry={{ registry }} {% endfor %}\""
-  when: insecure_registry is defined
-  notify: restart docker
 
 - meta: flush_handlers
 

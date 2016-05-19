@@ -1,0 +1,16 @@
+---
+- name: create docker defaults file
+  file: path=/etc/default/docker state=touch
+  when: insecure_registry is defined
+
+- name: allow for insecure registries (CoreOS/Debian)
+  lineinfile: dest=/etc/default/docker regexp='^DOCKER_OPTS=\"(.*)\"' line='DOCKER_OPTS=\"\1 {% for registry in insecure_registry %}--insecure-registry={{ registry }} {% endfor %}\"' backrefs=yes
+  when: insecure_registry is defined and (ansible_os_family == "CoreOS" or ansible_os_family == "Debian")
+  notify: restart docker
+
+- name: allow for insecure registries (CentOS/RHEL)
+  lineinfile: dest=/etc/default/docker regexp='^OPTIONS=\"(.*)\"' line='OPTIONS=\"\1 {% for registry in insecure_registry %}--insecure-registry={{ registry }} {% endfor %}\"' backrefs=yes
+  when: insecure_registry is defined and (ansible_os_family != "CoreOS" and ansible_os_family != "Debian")
+  notify: restart docker
+
+- meta: flush_handlers

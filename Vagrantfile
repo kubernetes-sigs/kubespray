@@ -11,11 +11,12 @@ CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
 $num_instances = 3
 $instance_name_prefix = "k8s"
 $vm_gui = false
-$vm_memory = 1024
+$vm_memory = 1536
 $vm_cpus = 1
 $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
+$box = "bento/ubuntu-14.04"
 
 host_vars = {}
 
@@ -40,22 +41,7 @@ end
 Vagrant.configure("2") do |config|
   # always use Vagrants insecure key
   config.ssh.insert_key = false
-
-  config.vm.box = "ubuntu-14.04"
-  config.vm.box_url = "https://storage.googleapis.com/%s.release.core-os.net/amd64-usr/%s/coreos_production_vagrant.json" % [$update_channel, $image_version]
-
-  ["vmware_fusion", "vmware_workstation"].each do |vmware|
-    config.vm.provider vmware do |v, override|
-      override.vm.box_url = "https://storage.googleapis.com/%s.release.core-os.net/amd64-usr/%s/coreos_production_vagrant_vmware_fusion.json" % [$update_channel, $image_version]
-    end
-  end
-
-  config.vm.provider :virtualbox do |v|
-    # On VirtualBox, we don't have guest additions or a functional vboxsf
-    # in CoreOS, so tell Vagrant that so it can be smarter.
-    v.check_guest_additions = false
-    v.functional_vboxsf     = false
-  end
+  config.vm.box = $box
 
   # plugin conflict
   if Vagrant.has_plugin?("vagrant-vbguest") then
@@ -92,7 +78,9 @@ Vagrant.configure("2") do |config|
         "ip" => ip,
         "access_ip" => ip,
         "flannel_interface" => ip,
-        "flannel_backend_type" => "host-gw"
+        "flannel_backend_type" => "host-gw",
+        "local_release_dir" => "/vagrant/temp",
+        "download_run_once" => "True"
       }
       config.vm.network :private_network, ip: ip
 
@@ -109,6 +97,7 @@ Vagrant.configure("2") do |config|
           ansible.host_key_checking = false
           ansible.raw_arguments = ["--forks=#{$num_instances}"]
           ansible.host_vars = host_vars
+          #ansible.tags = ['download']
           ansible.groups = {
             # The first three nodes should be etcd servers
             "etcd" => ["k8s-0[1:3]"],

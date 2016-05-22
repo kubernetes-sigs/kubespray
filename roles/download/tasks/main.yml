@@ -1,36 +1,39 @@
 ---
+- name: downloading...
+  debug:
+    msg: "{{ download.url }}"
+  when: "{{ download.enabled|bool }}"
+
 - name: Create dest directories
-  file: path={{local_release_dir}}/{{item.dest|dirname}} state=directory recurse=yes
-  with_items: "{{ downloads }}"
+  file: path={{local_release_dir}}/{{download.dest|dirname}} state=directory recurse=yes
+  when: "{{ download.enabled|bool }}"
   run_once: "{{ download_run_once|bool }}"
 
 - name: Download items
   get_url:
-    url: "{{item.url}}"
-    dest: "{{local_release_dir}}/{{item.dest}}"
-    sha256sum: "{{item.sha256 | default(omit)}}"
-    owner: "{{ item.owner|default(omit) }}"
-    mode: "{{ item.mode|default(omit) }}"
-  with_items: "{{ downloads }}"
+    url: "{{download.url}}"
+    dest: "{{local_release_dir}}/{{download.dest}}"
+    sha256sum: "{{download.sha256 | default(omit)}}"
+    owner: "{{ download.owner|default(omit) }}"
+    mode: "{{ download.mode|default(omit) }}"
+  when: "{{ download.enabled|bool }}"
   run_once: "{{ download_run_once|bool }}"
 
 - name: Extract archives
   unarchive:
-    src: "{{ local_release_dir }}/{{item.dest}}"
-    dest: "{{ local_release_dir }}/{{item.dest|dirname}}"
-    owner: "{{ item.owner|default(omit) }}"
-    mode: "{{ item.mode|default(omit) }}"
+    src: "{{ local_release_dir }}/{{download.dest}}"
+    dest: "{{ local_release_dir }}/{{download.dest|dirname}}"
+    owner: "{{ download.owner|default(omit) }}"
+    mode: "{{ download.mode|default(omit) }}"
     copy: no
-  when: "{{item.unarchive is defined and item.unarchive == True}}"
-  with_items: "{{ downloads }}"
+  when: "{{ download.enabled|bool }} and ({{download.unarchive is defined and download.unarchive == True}})"
   run_once: "{{ download_run_once|bool }}"
 
 - name: Fix permissions
   file:
     state: file
-    path: "{{local_release_dir}}/{{item.dest}}"
-    owner: "{{ item.owner|default(omit) }}"
-    mode: "{{ item.mode|default(omit) }}"
-  when: "{{item.unarchive is not defined or item.unarchive == False}}"
-  with_items: "{{ downloads }}"
+    path: "{{local_release_dir}}/{{download.dest}}"
+    owner: "{{ download.owner|default(omit) }}"
+    mode: "{{ download.mode|default(omit) }}"
+  when: "{{ download.enabled|bool }} and ({{download.unarchive is not defined or download.unarchive == False}})"
   run_once: "{{ download_run_once|bool }}"

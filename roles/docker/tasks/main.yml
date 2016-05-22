@@ -53,10 +53,40 @@
   with_items: "{{ docker_package_info.pkgs }}"
   when: docker_package_info.pkgs|length > 0
 
+- name: ensure docker defaults exists
+  file:
+    path: /etc/default/docker
+    state: touch
+
+- name: Set docker daemon options for Debian/CoreOS
+  lineinfile:
+    dest: /etc/default/docker
+    regexp: "# DOCKER_OPTIONS"
+    line: "DOCKER_OPTS=\"$DOCKER_OPTS {{ docker_options }}\" # DOCKER_OPTIONS"
+  when: docker_options and (ansible_os_family == "Debian" or ansible_os_family == "CoreOS")
+  notify:
+    - restart docker
+
+- name: Set docker daemon options for redhat
+  lineinfile:
+    dest: /etc/default/docker
+    regexp: "# DOCKER_OPTIONS"
+    line: "OPTIONS=\"$OPTIONS {{ docker_options }}\" # DOCKER_OPTIONS"
+  when: docker_options and ansible_os_family == "RedHat"
+  notify:
+    - restart docker
+
 - name: allow for proxies on systems using systemd
   include: systemd-proxies.yml
   when: ansible_service_mgr == "systemd" and
         (http_proxy is defined or https_proxy is defined or no_proxy is defined)
+
+- name: write docker.service systemd file
+  template:
+    src: systemd-docker.service
+    dest: /lib/systemd/system/docker.service
+  notify: restart docker
+  when: ansible_service_mgr == "systemd" and ansible_os_family != "CoreOS"
 
 - meta: flush_handlers
 

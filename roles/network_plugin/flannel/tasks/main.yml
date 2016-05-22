@@ -33,13 +33,21 @@
 - set_fact:
     flannel_mtu: "{{ flannel_mtu_output.stdout }}"
 
-- name: Flannel | Set docker daemon options
-  template:
-    src: docker
-    dest: "/etc/default/docker"
-    owner: root
-    group: root
-    mode: 0644
+- name: Flannel | Set docker daemon options for Debian/CoreOS
+  lineinfile:
+    dest: /etc/default/docker
+    regexp: "# NETWORK_OVERLAY"
+    line: "DOCKER_OPTS=\"$DOCKER_OPTS --bip={{ flannel_subnet }} --mtu={{ flannel_mtu }}\" # NETWORK_OVERLAY"
+  when: ansible_os_family == "Debian" or ansible_os_family == "CoreOS"
+  notify:
+    - restart docker
+
+- name: Flannel | Set docker daemon options for redhat
+  lineinfile:
+    dest: /etc/default/docker
+    regexp: "# NETWORK_OVERLAY"
+    line: "OPTIONS=\"$OPTIONS --bip={{ flannel_subnet }} --mtu={{ flannel_mtu }}\" # NETWORK_OVERLAY"
+  when: ansible_os_family == "RedHat"
   notify:
     - restart docker
 
@@ -49,12 +57,5 @@
     dest: "/run/flannel_docker_opts.env"
     state: link
   when: ansible_os_family == "CoreOS"
-
-- name: Flannel | Write docker.service systemd file
-  template:
-    src: systemd-docker.service
-    dest: /lib/systemd/system/docker.service
-  notify: restart docker
-  when: ansible_service_mgr == "systemd" and ansible_os_family != "CoreOS"
 
 - meta: flush_handlers

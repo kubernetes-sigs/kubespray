@@ -19,7 +19,7 @@ To deploy the cluster you can use :
 
 A complete **documentation** can be found [**here**](https://docs.kubespray.io)
 
-if you have any question you can [invite yourself](https://slack.kubespray.io/) to **chat** with us on Slack! [![SlackStatus](https://slack.kubespray.io/badge.svg)](https://kubespray.slack.com)
+If you have questions, you can [invite yourself](https://slack.kubespray.io/) to **chat** with us on Slack! [![SlackStatus](https://slack.kubespray.io/badge.svg)](https://kubespray.slack.com)
 
 [![Build Status](https://travis-ci.org/kubespray/kargo.svg)](https://travis-ci.org/kubespray/kargo) </br>
 CI tests sponsored by Google (GCE), and [teuto.net](https://teuto.net/) for OpenStack.

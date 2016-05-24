@@ -1,21 +1,21 @@
 ---
-- name: Calico | Set docker daemon options
-  template:
-    src: docker
-    dest: "/etc/default/docker"
-    owner: root
-    group: root
-    mode: 0644
+- name: Calico | Set docker daemon options for Debian/CoreOS
+  lineinfile:
+    dest: /etc/default/docker
+    regexp: "# NETWORK_OVERLAY"
+    line: "DOCKER_OPTS=$DOCKER_OPTS --bip={{ flannel_subnet }} --mtu={{ flannel_mtu }} # NETWORK_OVERLAY"
+  when: ansible_os_family == "Debian" or ansible_os_family == "CoreOS"
   notify:
     - restart docker
-  when: ansible_os_family != "CoreOS"
 
-- name: Calico | Write docker.service systemd file
-  template:
-    src: systemd-docker.service
-    dest: /lib/systemd/system/docker.service
-  notify: restart docker
-  when: ansible_service_mgr == "systemd" and ansible_os_family != "CoreOS"
+- name: Calico | Set docker daemon options for redhat
+  lineinfile:
+    dest: /etc/default/docker
+    regexp: "# NETWORK_OVERLAY"
+    line: DOCKER_NETWORK_OPTIONS="$DOCKER_NETWORK_OPTIONS --bip={{ flannel_subnet }} --mtu={{ flannel_mtu }} # NETWORK_OVERLAY"
+  when: ansible_os_family == "RedHat"
+  notify:
+    - restart docker
 
 - meta: flush_handlers
 

@@ -97,7 +97,9 @@ Vagrant.configure("2") do |config|
           ansible.host_key_checking = false
           ansible.raw_arguments = ["--forks=#{$num_instances}"]
           ansible.host_vars = host_vars
-          #ansible.tags = ['download']
+          if ENV['ansible_tags']
+            ansible.tags = ENV['ansible_tags'].split(',')
+          end
           ansible.groups = {
             # The first three nodes should be etcd servers
             "etcd" => ["k8s-0[1:3]"],

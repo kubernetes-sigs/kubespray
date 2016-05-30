@@ -1,0 +1,90 @@
+---
+- name: Copy deis binary
+  command: rsync -piu "{{ local_release_dir }}/deis/deis-{{ deis_version }}" "{{ bin_dir }}/deis"
+  changed_when: false
+
+- name: create deis config path
+  file:
+    path: /etc/deis
+    state: directory
+
+- name: tell helm about deis chart repo
+  command: "{{ deis_helm_command }} repo add deis {{ deis_chart_repo }}"
+  args:
+    creates: /etc/deis/helm/cache/deis
+
+- name: fetch deis charts
+  command: "{{ deis_helm_command }} fetch {{ deis_remote_chart_name }}"
+  args:
+    creates: "/etc/deis/helm/workspace/charts/{{ deis_local_chart_name }}/Chart.yaml"
+  notify:
+    - generate deis manifest
+
+- meta: flush_handlers
+
+- name: check if deis namespace exists
+  uri:
+    url: http://localhost:8080/api/v1/namespaces/deis
+    method: GET
+  register: deis_namespace
+  failed_when: false
+  run_once: true
+
+- name: install deis
+  command: "{{ deis_helm_command }} install {{ deis_local_chart_name }}"
+  when: deis_namespace.status != 200
+  run_once: true
+  notify:
+    - give k8s a chance to get deis pods scheduled
+
+- meta: flush_handlers
+
+- name: get deis router IP
+  shell: "kubectl --namespace=deis describe service deis-router | grep IP | awk '{ print $2 }'"
+  register: deis_router_ip
+  retries: 10
+  delay: 60
+  changed_when: false
+
+- name: check deis API
+  uri:
+    url: "http://deis.{{ deis_router_ip.stdout }}.{{ deis_wildcard_provider }}/v2/"
+    method: GET
+  register: check_deis_api
+  run_once: true
+  failed_when: check_deis_api.status != 401
+  until: check_deis_api.status == 401
+  retries: "{{ deis_check_api_retries }}"
+  delay: "{{ deis_check_api_interval }}"
+
+- name: check if deis admin credentials work
+  uri:
+    url: "http://deis.{{ deis_router_ip.stdout }}.{{ deis_wildcard_provider }}/v2/auth/login/"
+    body: "{{ deis_admin_register | to_json }}"
+    method: POST
+    body_format: json
+  register: check_deis_admin_creds
+  run_once: true
+  failed_when: false
+
+- name: set deis admin credentials.
+  uri:
+    url: "http://deis.{{ deis_router_ip.stdout }}.{{ deis_wildcard_provider }}/v2/auth/register/"
+    method: POST
+    body: "{{ deis_admin_register | to_json }}"
+    body_format: json
+  register: set_deis_admin_user
+  run_once: true
+  failed_when: false
+  when: check_deis_admin_creds.status == 401
+
+- name: check if deis admin credentials work
+  uri:
+    url: "http://deis.{{ deis_router_ip.stdout }}.{{ deis_wildcard_provider }}/v2/auth/login/"
+    body: "{{ deis_admin_register | to_json }}"
+    method: POST
+    body_format: json
+  register: check_deis_admin_creds_after_creation
+  when: check_deis_admin_creds.status == 401
+  run_once: true
+  failed_when: check_deis_admin_creds_after_creation.status != 200

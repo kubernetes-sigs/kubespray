@@ -1,5 +1,16 @@
 ---
-- name: Configure |  Copy etcd.service systemd file
+- name: Configure | Check if member is in cluster
+  shell: "etcdctl --peers={{ etcd_access_addresses }} member list | grep -q {{ etcd_access_address }}"
+  register: etcd_member_in_cluster
+  ignore_errors: true
+  changed_when: false
+  when: is_etcd_master
+
+- name: Configure | Add member to the cluster if it is not there
+  when: is_etcd_master and etcd_member_in_cluster.rc != 0 and etcd_cluster_is_healthy.rc == 0
+  shell: "etcdctl --peers={{ etcd_access_addresses }} member add {{ etcd_member_name }} {{ etcd_peer_url }}"
+
+- name: Configure | Copy etcd.service systemd file
   template:
     src: etcd.service.j2
     dest: /etc/systemd/system/etcd.service
@@ -7,17 +18,11 @@
   when: ansible_service_mgr == "systemd"
   notify: restart etcd
 
-- name: Configure |  Write etcd  initd script
+- name: Configure | Write etcd initd script
   template:
     src: deb-etcd.initd.j2
     dest: /etc/init.d/etcd
     owner: root
     mode: 0755
   when: ansible_service_mgr in ["sysvinit","upstart"] and ansible_os_family == "Debian"
-  notify: restart etcd
-
-- name: Configure |  Create etcd config file
-  template:
-    src: etcd.j2
-    dest: /etc/etcd.env
   notify: restart etcd

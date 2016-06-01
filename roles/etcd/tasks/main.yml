@@ -1,18 +1,26 @@
 ---
+- include: set_facts.yml
 - include: install.yml
+- include: set_cluster_health.yml
 - include: configure.yml
+- include: refresh_config.yml
 
 - name: Restart etcd if binary changed
   command: /bin/true
   notify: restart etcd
   when: etcd_copy.stdout_lines
 
-# reload systemd before starting service
+# Reload systemd before starting service
 - meta: flush_handlers
-
 
 - name: Ensure etcd is running
   service:
     name: etcd
     state: started
     enabled: yes
+
+# After etcd cluster is assembled, make sure that
+# initial state of the cluster is in `existing`
+# state insted of `new`.
+- include: set_cluster_health.yml
+- include: refresh_config.yml

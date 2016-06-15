@@ -12,3 +12,5 @@ sudo rm -rf /root/.ssh
 sudo mv ~vagrant/ssh /root/.ssh
 sudo echo -e 'Host 10.210.*\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile=/dev/null' >> /root/.ssh/config
 sudo chown -R root: /root/.ssh
+
+sudo echo 'cd /root/kargo ; ansible-playbook -vvv -i inv/inventory.cfg cluster.yml -u root -f 7' > /root/README

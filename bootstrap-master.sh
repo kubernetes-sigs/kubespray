@@ -3,7 +3,7 @@ echo master > /var/tmp/role
 
 sudo apt-get --yes update
 sudo apt-get --yes upgrade
-sudo apt-get --yes install ansible git screen vim
+sudo apt-get --yes install ansible git screen vim telnet tcpdump
 sudo git clone https://github.com/kubespray/kargo /root/kargo
 sudo git clone https://github.com/adidenko/vagrant-k8s /root/vagrant-k8s
 sudo cp -a /root/vagrant-k8s/kargo/inv /root/kargo/inv

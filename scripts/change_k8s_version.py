@@ -15,11 +15,14 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+import os
 import sys
 import hashlib
 import urllib2
 import yaml
 import argparse
+import shutil
+from re import sub
 
 
 def get_remote_sha256_sum(url, max_file_size=100*1024*1024):
@@ -55,9 +58,20 @@ def get_kube_sha256(version, download_url, binaries):
     for k in binaries:
         s = get_remote_sha256_sum(download_url + '/' + k)
         kube_sha256[k] = s
-        kube_sha256[k + '_checksum'] = kube_sha256.pop(k)
-    kube_sha256['kube_apiserver_checksum'] = kube_sha256.pop('kube-apiserver_checksum')
+    kube_sha256['kube_apiserver'] = kube_sha256.pop('kube-apiserver')
     return(kube_sha256)
+
+
+def file_sub(file, regex, string):
+    "Substitute string in a file"
+    shutil.move(file, file + '~')
+    f = open(file + '~', 'r')
+    data = f.read()
+    o = open(file, 'w')
+    o.write(sub(regex, string, data))
+    f.close()
+    o.close()
+    os.remove(file + '~')
 
 
 if __name__ == '__main__':
@@ -70,16 +84,22 @@ if __name__ == '__main__':
         '-v', '--version', dest='kube_version', required=True,
         help="kubernetes version"
     )
+    parser.add_argument(
+        '-r', '--repository', dest='docker_repository', required=True,
+        help="hyperkube docker repository"
+    )
     args = parser.parse_args()
 
+    file_sub('../roles/kubernetes/node/defaults/main.yml', r'.*hyperkube_image_repo.*', 'hyperkube_image_repo: "%s"' % args.docker_repository)
+    file_sub('../roles/kubernetes/node/defaults/main.yml', r'.*hyperkube_image_tag.*', 'hyperkube_image_tag: "%s"' % args.kube_version)
+
     kube_binaries = ['kubelet', 'kubectl', 'kube-apiserver']
-    kargo_root = ".."
     var_files = ['../roles/uploads/defaults/kube_versions.yml', '../roles/download/defaults/kube_versions.yml']
     kube_download_url = "https://storage.googleapis.com/kubernetes-release/release/%s/bin/linux/amd64" % args.kube_version
 
     new = get_kube_sha256(args.kube_version, kube_download_url, kube_binaries)
     for f in var_files:
         current = read_vars(f)
-        current['kube_version'][args.kube_version] = new
+        current['kube_checksum'][args.kube_version] = new
         with open(f, 'w') as out:
             out.write(yaml.dump(current, indent=4, default_flow_style=False))

@@ -1,4 +1,3 @@
-# Controlled by puppet
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 

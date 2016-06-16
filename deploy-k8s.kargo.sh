@@ -1,8 +1,6 @@
 #!/bin/bash
 
-custom_opts='--ansible-opts=\"-e kargo/custom.yaml\"'
 nodes=""
-
 i=0
 for nodeip in `cat /root/nodes` ; do
   i=$(( $i+1 ))
@@ -17,6 +15,7 @@ else
 fi
 
 echo "Running deployment..."
+kargo deploy -y --ansible-opts="-e kargo/custom.yaml"
 deploy_res=$?
 
 if [ "$deploy_res" -eq "0" ]; then

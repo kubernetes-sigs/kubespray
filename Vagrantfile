@@ -15,11 +15,16 @@ $private_subnet = prefix.to_s + ".1"
 $mgmt_cidr = prefix.to_s + ".2.0/24"
 
 $instance_name_prefix = "#{$user}-k8s"
+
 # Boxes with libvirt provider support:
 #$box = "yk0/ubuntu-xenial" #900M
 #$box = "centos/7"
 $box = "nrclark/xenial64-minimal-libvirt"
 
+# Create SSH keys for future lab
+system 'bash ssh-keygen.sh'
+
+# Create nodes list for future kargo deployment
 nodes=""
 (1..$num_instances).each do |i|
   ip = "#{$private_subnet}.#{i+10}"
@@ -27,6 +32,7 @@ nodes=""
 end
 File.open("nodes", 'w') { |file| file.write(nodes) }
 
+# Create the lab
 Vagrant.configure("2") do |config|
   (1..$num_instances).each do |i|
     # First node would be master node
@@ -37,11 +43,15 @@ Vagrant.configure("2") do |config|
       bootstrap_script = "bootstrap-node.sh"
       master = false
     end
+
     config.ssh.insert_key = false
     vm_name = "%s-%02d" % [$instance_name_prefix, i]
+
     config.vm.define vm_name do |test_vm|
       test_vm.vm.box = $box
       test_vm.vm.hostname = vm_name
+
+      # Libvirt provider settings
       test_vm.vm.provider :libvirt do |domain|
         domain.uri = "qemu+unix:///system"
         domain.memory = $vm_memory

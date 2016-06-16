@@ -26,7 +26,7 @@ system 'bash ssh-keygen.sh'
 
 # Create nodes list for future kargo deployment
 nodes=""
-(1..$num_instances).each do |i|
+(2..$num_instances).each do |i|
   ip = "#{$private_subnet}.#{i+10}"
   nodes = "#{nodes}#{ip}\n"
 end
@@ -79,6 +79,7 @@ Vagrant.configure("2") do |config|
         config.vm.provision "file", source: "custom.yaml", destination: "~/custom.yaml"
         config.vm.provision "file", source: "nodes", destination: "~/nodes"
       end
+
       config.vm.provision "file", source: "ssh", destination: "~/ssh"
       config.vm.provision :shell, :path => bootstrap_script
 

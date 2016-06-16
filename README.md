@@ -6,8 +6,10 @@ Scripts to create libvirt lab with vagrant and prepare some stuff for `k8s` depl
 Requirements
 ============
 
-* vagrant
-* vagrant-libvirt plugin
+* `libvirt`
+* `vagrant`
+* `vagrant-libvirt` plugin
+* `$USER` should be able to connect to libvirt (test with `virsh list --all`)
 
 How-to
 ======

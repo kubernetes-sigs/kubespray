@@ -6,11 +6,6 @@ sudo apt-get --yes update
 sudo apt-get --yes upgrade
 sudo apt-get --yes install ansible git screen vim telnet tcpdump python-setuptools gcc python-dev python-pip libssl-dev libffi-dev software-properties-common
 
-# Kargo and custom inventory
-sudo git clone https://github.com/kubespray/kargo /root/kargo
-sudo git clone https://github.com/adidenko/vagrant-k8s /root/vagrant-k8s
-sudo cp -a /root/vagrant-k8s/kargo/inv /root/kargo/inv
-
 # Kargo-cli
 sudo git clone https://github.com/kubespray/kargo-cli.git /root/kargo-cli
 sudo sh -c 'cd /root/kargo-cli && python setup.py install'

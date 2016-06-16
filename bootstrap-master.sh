@@ -20,7 +20,7 @@ sudo cp -a ~vagrant/custom.yaml /root/kargo/custom.yaml
 # SSH keys and config
 sudo rm -rf /root/.ssh
 sudo mv ~vagrant/ssh /root/.ssh
-sudo echo -e 'Host 10.210.*\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile=/dev/null' >> /root/.ssh/config
+sudo echo -e 'Host 10.*\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile=/dev/null' >> /root/.ssh/config
 sudo chown -R root: /root/.ssh
 
 # Copy nodes list

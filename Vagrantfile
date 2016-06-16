@@ -23,7 +23,6 @@ $box = "nrclark/xenial64-minimal-libvirt"
 nodes=""
 (1..$num_instances).each do |i|
   ip = "#{$private_subnet}.#{i+10}"
-  test_vm.vm.network :private_network, :ip => "#{ip}"
   nodes = "#{nodes}#{ip}\n"
 end
 File.open("nodes", 'w') { |file| file.write(nodes) }

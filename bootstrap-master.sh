@@ -19,8 +19,8 @@ sudo sh -c 'cd /root/kargo-cli && python setup.py install'
 sudo pip install kpm
 
 # k8s deploy script and config
-sudo sh -c 'cp -a ~/deploy-k8s.kargo.sh /root/ && chmod 755 /root/deploy-k8s.kargo.sh'
-sudo cp -a ~/custom.yaml /root/kargo/custom.yaml
+sudo sh -c 'cp -a ~vagrant/deploy-k8s.kargo.sh /root/ && chmod 755 /root/deploy-k8s.kargo.sh'
+sudo cp -a ~vagrant/custom.yaml /root/kargo/custom.yaml
 
 # SSH keys and config
 sudo rm -rf /root/.ssh
@@ -28,8 +28,8 @@ sudo mv ~vagrant/ssh /root/.ssh
 sudo echo -e 'Host 10.210.*\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile=/dev/null' >> /root/.ssh/config
 sudo chown -R root: /root/.ssh
 
-# Save nodes list
-sudo cp ~/nodes /root/nodes
+# Copy nodes list
+sudo cp ~vagrant/nodes /root/nodes
 
 # README
 sudo echo 'cd /root/kargo ; ansible-playbook -vvv -i inv/inventory.cfg cluster.yml -u root -f 7' > /root/README

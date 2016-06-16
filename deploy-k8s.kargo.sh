@@ -1,7 +1,7 @@
 #!/bin/bash
 
 nodes=""
-i=0
+i=1
 for nodeip in `cat /root/nodes` ; do
   i=$(( $i+1 ))
   nodes+=" node${i}[ansible_ssh_host=${nodeip},ip=${nodeip}]"

@@ -81,6 +81,112 @@ provider "aws" {
   region = "${var.awsRegion}"
 }
 
+variable "iam_prefix" {
+  type = "string"
+  description = "Prefix name for IAM profiles"
+}
+
+resource "aws_iam_instance_profile" "kubernetes_master_profile" {
+  name = "${var.iam_prefix}_kubernetes_master_profile"
+  roles = ["${aws_iam_role.kubernetes_master_role.name}"]
+}
+
+resource "aws_iam_role" "kubernetes_master_role" {
+  name = "${var.iam_prefix}_kubernetes_master_role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Service": "ec2.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "kubernetes_master_policy" {
+    name = "${var.iam_prefix}_kubernetes_master_policy"
+    role = "${aws_iam_role.kubernetes_master_role.id}"
+    policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["ec2:*"],
+      "Resource": ["*"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["elasticloadbalancing:*"],
+      "Resource": ["*"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_instance_profile" "kubernetes_node_profile" {
+  name = "${var.iam_prefix}_kubernetes_node_profile"
+  roles = ["${aws_iam_role.kubernetes_node_role.name}"]
+}
+
+resource "aws_iam_role" "kubernetes_node_role" {
+  name = "${var.iam_prefix}_kubernetes_node_role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Service": "ec2.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "kubernetes_node_policy" {
+    name = "${var.iam_prefix}_kubernetes_node_policy"
+    role = "${aws_iam_role.kubernetes_node_role.id}"
+    policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "ec2:Describe*",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "ec2:AttachVolume",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "ec2:DetachVolume",
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
 resource "aws_instance" "master" {
     count = "${var.numControllers}"
     ami = "${var.ami}"
@@ -89,6 +195,7 @@ resource "aws_instance" "master" {
     vpc_security_group_ids = ["${var.securityGroups}"]
     key_name = "${var.SSHKey}"
     disable_api_termination = "${var.terminate_protect}"
+    iam_instance_profile = "${aws_iam_instance_profile.kubernetes_master_profile.id}"
     root_block_device {
       volume_size = "${var.volSizeController}"
     }
@@ -122,12 +229,21 @@ resource "aws_instance" "minion" {
     vpc_security_group_ids = ["${var.securityGroups}"]
     key_name = "${var.SSHKey}"
     disable_api_termination = "${var.terminate_protect}"
+    iam_instance_profile = "${aws_iam_instance_profile.kubernetes_node_profile.id}"
     root_block_device {
       volume_size = "${var.volSizeNodes}"
     }
     tags {
       Name = "${var.deploymentName}-minion-${count.index + 1}"
     }
+}
+
+output "kubernetes_master_profile" {
+  value = "${aws_iam_instance_profile.kubernetes_master_profile.id}"
+}
+
+output "kubernetes_node_profile" {
+  value = "${aws_iam_instance_profile.kubernetes_node_profile.id}"
 }
 
 output "master-ip" {
@@ -141,3 +257,5 @@ output "etcd-ip" {
 output "minion-ip" {
     value = "${join(", ", aws_instance.minion.*.private_ip)}"
 }
+
+

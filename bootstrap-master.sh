@@ -18,8 +18,7 @@ sudo pip install kpm
 
 # k8s deploy script and config
 sudo sh -c 'cp -a ~vagrant/deploy-k8s.kargo.sh /root/ && chmod 755 /root/deploy-k8s.kargo.sh'
-sudo git clone https://github.com/kubespray/kargo /root/kargo
-sudo cp -a ~vagrant/custom.yaml /root/kargo/custom.yaml
+sudo cp -a ~vagrant/custom.yaml /root/custom.yaml
 
 # SSH keys and config
 sudo rm -rf /root/.ssh

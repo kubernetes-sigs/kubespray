@@ -68,8 +68,21 @@ Vagrant.configure("2") do |config|
         domain.disk_bus = "virtio"
       end
 
+      # Networks and interfaces
       ip = "#{$private_subnet}.#{i+10}"
-      test_vm.vm.network :private_network, :ip => "#{ip}"
+      pub_ip = "#{$public_subnet}.#{i+10}"
+      # "public" network with nat forwarding
+      test_vm.vm.network :private_network,
+        :ip => pub_ip,
+        :model_type => "e1000",
+        :libvirt__dhcp_enabled => false,
+        :libvirt__forward_mode => "nat"
+      # "private" isolated network
+      test_vm.vm.network :private_network,
+        :ip => ip,
+        :model_type => "e1000",
+        :libvirt__dhcp_enabled => false,
+        :libvirt__forward_mode => "none"
 
       # Provisioning
       config.vm.provision "file", source: "ssh", destination: "~/ssh"

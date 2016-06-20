@@ -15,7 +15,7 @@ else
 fi
 
 echo "Running deployment..."
-kargo deploy -y --ansible-opts="-e kargo/custom.yaml"
+kargo deploy -y --ansible-opts="-e @kargo/custom.yaml"
 deploy_res=$?
 
 if [ "$deploy_res" -eq "0" ]; then

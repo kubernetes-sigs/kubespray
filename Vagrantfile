@@ -1,8 +1,9 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+pool = ENV["VAGRANT_POOL"] || "10.250.0.0/16"
+
 ENV["VAGRANT_DEFAULT_PROVIDER"] = "libvirt"
-pool = ENV["VAGRANT_POOL"] || "10.210.0.0/16"
 prefix = pool.gsub(/\.\d+\.\d+\/16$/, "")
 
 $num_instances = 7

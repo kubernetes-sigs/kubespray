@@ -8,16 +8,21 @@ Requirements
 
 * `libvirt`
 * `vagrant`
-* `vagrant-libvirt` plugin
+* `vagrant-libvirt` plugin (`vagrant plugin install vagrant-libvirt`)
 * `$USER` should be able to connect to libvirt (test with `virsh list --all`)
 
 How-to
 ======
 
-* Prepare the virtual lab:
+* Change default IP pool for vagrant networks if you want:
 
 ```bash
 export VAGRANT_POOL="10.100.0.0/16"
+```
+
+* Prepare the virtual lab:
+
+```bash
 git clone https://github.com/adidenko/vagrant-k8s
 cd vagrant-k8s
 vagrant up

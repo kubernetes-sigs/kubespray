@@ -13,12 +13,10 @@ sudo sh -c 'apt-add-repository -y ppa:ansible/ansible;apt-get update;apt-get ins
 sudo git clone https://github.com/kubespray/kargo-cli.git /root/kargo-cli
 sudo sh -c 'cd /root/kargo-cli && python setup.py install'
 
-# Pip
-sudo pip install kpm
-
-# k8s deploy script and config
+# k8s deploy script and configs
 sudo sh -c 'cp -a ~vagrant/deploy-k8s.kargo.sh /root/ && chmod 755 /root/deploy-k8s.kargo.sh'
 sudo cp -a ~vagrant/custom.yaml /root/custom.yaml
+sudo cp -a ~vagrant/kubedns.yaml /root/kubedns.yaml
 
 # SSH keys and config
 sudo rm -rf /root/.ssh

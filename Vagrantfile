@@ -37,10 +37,8 @@ Vagrant.configure("2") do |config|
   (1..$num_instances).each do |i|
     # First node would be master node
     if i == 1
-      bootstrap_script = "bootstrap-master.sh"
       master = true
     else
-      bootstrap_script = "bootstrap-node.sh"
       master = false
     end
 
@@ -74,14 +72,16 @@ Vagrant.configure("2") do |config|
       test_vm.vm.network :private_network, :ip => "#{ip}"
 
       # Provisioning
-      if master
-        config.vm.provision "file", source: "deploy-k8s.kargo.sh", destination: "~/deploy-k8s.kargo.sh"
-        config.vm.provision "file", source: "custom.yaml", destination: "~/custom.yaml"
-        config.vm.provision "file", source: "nodes", destination: "~/nodes"
-      end
-
       config.vm.provision "file", source: "ssh", destination: "~/ssh"
-      config.vm.provision :shell, :path => bootstrap_script
+      if master
+        config.vm.provision "deploy-k8s", type: "file", source: "deploy-k8s.kargo.sh", destination: "~/deploy-k8s.kargo.sh"
+        config.vm.provision "custom.yaml", type: "file", source: "custom.yaml", destination: "~/custom.yaml"
+        config.vm.provision "kubedns.yaml", type: "file", source: "kubedns.yaml", destination: "~/kubedns.yaml"
+        config.vm.provision "nodes", type: "file", source: "nodes", destination: "~/nodes"
+        config.vm.provision "bootstrap", type: "shell", path: "bootstrap-master.sh"
+      else
+        config.vm.provision "bootstrap", type: "shell", path: "bootstrap-node.sh"
+      end
 
     end
   end

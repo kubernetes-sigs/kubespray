@@ -75,14 +75,14 @@ Vagrant.configure("2") do |config|
       test_vm.vm.network :private_network,
         :ip => pub_ip,
         :model_type => "e1000",
-        :libvirt__network_name => "#{instance_name_prefix}-public",
+        :libvirt__network_name => "#{$instance_name_prefix}-public",
         :libvirt__dhcp_enabled => false,
         :libvirt__forward_mode => "nat"
       # "private" isolated network
       test_vm.vm.network :private_network,
         :ip => ip,
         :model_type => "e1000",
-        :libvirt__network_name => "#{instance_name_prefix}-private",
+        :libvirt__network_name => "#{$instance_name_prefix}-private",
         :libvirt__dhcp_enabled => false,
         :libvirt__forward_mode => "none"
 

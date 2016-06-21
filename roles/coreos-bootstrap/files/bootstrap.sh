@@ -11,7 +11,7 @@ if [[ -e $BINDIR/.bootstrapped ]]; then
   exit 0
 fi
 
-PYPY_VERSION=2.4.0
+PYPY_VERSION=5.1.0
 
 wget -O - https://bitbucket.org/pypy/pypy/downloads/pypy-$PYPY_VERSION-linux64.tar.bz2 |tar -xjf -
 mv -n pypy-$PYPY_VERSION-linux64 pypy

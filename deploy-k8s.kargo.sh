@@ -22,5 +22,5 @@ deploy_res=$?
 
 if [ "$deploy_res" -eq "0" ]; then
   echo "Setting up kubedns..."
-  ansible-playbook -i $INVENTORY kubedns.yaml
+  ansible-playbook -i $INVENTORY playbooks/kubedns.yaml
 fi

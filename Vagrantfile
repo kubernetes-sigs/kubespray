@@ -92,7 +92,7 @@ Vagrant.configure("2") do |config|
       if master
         config.vm.provision "deploy-k8s", type: "file", source: "deploy-k8s.kargo.sh", destination: "~/deploy-k8s.kargo.sh"
         config.vm.provision "custom.yaml", type: "file", source: "custom.yaml", destination: "~/custom.yaml"
-        config.vm.provision "kubedns.yaml", type: "file", source: "kubedns.yaml", destination: "~/kubedns.yaml"
+        config.vm.provision "playbooks", type: "file", source: "playbooks", destination: "~/playbooks"
         config.vm.provision "nodes", type: "file", source: "nodes", destination: "~/nodes"
         config.vm.provision "bootstrap", type: "shell", path: "bootstrap-master.sh"
       else

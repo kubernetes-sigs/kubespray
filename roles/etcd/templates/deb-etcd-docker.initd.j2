@@ -12,15 +12,27 @@ set -a
 #   etcd is a distributed, consistent key-value store for shared configuration and service discovery
 ### END INIT INFO
 
-PATH=/sbin:/usr/sbin:/bin:/usr/bin
+PATH=/sbin:/usr/sbin:/bin/:/usr/bin
 DESC="etcd k/v store"
 NAME=etcd
-DAEMON={{ bin_dir }}/etcd
-{% if inventory_hostname in groups['etcd'] %}
-DAEMON_ARGS=""
-{% else %}
-DAEMON_ARGS="-proxy on"
+DAEMON={{ docker_bin_dir | default("/usr/bin") }}/docker
+{% if is_etcd_master %}
+DAEMON_ARGS='--restart=always --env-file=/etc/etcd.env \
+--net=host \
+-v /usr/share/ca-certificates/:/etc/ssl/certs:ro \
+-v /var/lib/etcd:/var/lib/etcd:rw \
+--name={{ etcd_member_name | default("etcd-proxy") }} \
+{{ etcd_image_repo }}:{{ etcd_image_tag }} \
+{% if etcd_after_v3 %}
+{{ etcd_container_bin_dir }}etcd \
 {% endif %}
+{% if is_etcd_master %}
+--proxy off
+{% else %}
+--proxy on
+{% endif %}'
+
+
 SCRIPTNAME=/etc/init.d/$NAME
 DAEMON_USER=etcd
 STOP_SCHEDULE="${STOP_SCHEDULE:-QUIT/5/TERM/5/KILL/5}"
@@ -111,3 +123,4 @@ case "$1" in
         exit 3
         ;;
 esac
+

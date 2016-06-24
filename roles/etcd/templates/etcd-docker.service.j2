@@ -1,0 +1,33 @@
+[Unit]
+Description=etcd docker wrapper
+Requires=docker.service
+After=docker.service
+
+[Service]
+User=root
+PermissionsStartOnly=true
+ExecStart={{ docker_bin_dir | default("/usr/bin") }}/docker run --restart=always \
+--env-file=/etc/etcd.env \
+{# TODO(mattymo): Allow docker IP binding and disable in envfile
+   -p 2380:2380 -p 2379:2379 #}
+--net=host \
+-v /usr/share/ca-certificates/:/etc/ssl/certs:ro \
+-v /var/lib/etcd:/var/lib/etcd:rw \
+--name={{ etcd_member_name | default("etcd-proxy") }} \
+{{ etcd_image_repo }}:{{ etcd_image_tag }} \
+{% if etcd_after_v3 %}
+{{ etcd_container_bin_dir }}etcd \
+{% endif %}
+{% if is_etcd_master %}
+--proxy off
+{% else %}
+--proxy on
+{% endif %}
+ExecStartPre=-{{ docker_bin_dir | default("/usr/bin") }}/docker rm -f {{ etcd_member_name | default("etcd-proxy") }}
+ExecReload={{ docker_bin_dir | default("/usr/bin") }}/docker restart {{ etcd_member_name | default("etcd-proxy") }}
+ExecStop={{ docker_bin_dir | default("/usr/bin") }}/docker stop {{ etcd_member_name | default("etcd-proxy") }}
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

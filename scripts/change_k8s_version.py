@@ -94,7 +94,7 @@ if __name__ == '__main__':
     file_sub('../roles/kubernetes/node/defaults/main.yml', r'.*hyperkube_image_tag.*', 'hyperkube_image_tag: "%s"' % args.kube_version)
 
     kube_binaries = ['kubelet', 'kubectl', 'kube-apiserver']
-    var_files = ['../roles/uploads/defaults/kube_versions.yml', '../roles/download/defaults/kube_versions.yml']
+    var_files = ['../roles/uploads/vars/kube_versions.yml', '../roles/download/vars/kube_versions.yml']
     kube_download_url = "https://storage.googleapis.com/kubernetes-release/release/%s/bin/linux/amd64" % args.kube_version
 
     new = get_kube_sha256(args.kube_version, kube_download_url, kube_binaries)

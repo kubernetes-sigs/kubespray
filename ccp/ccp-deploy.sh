@@ -19,5 +19,5 @@ create_network_conf
 assign_node_roles
 
 kubectl delete namespace openstack && sleep 40
-mcp-microservices  --config-file=/root/mcp.conf deploy -t /root/cluster-topology.yaml
+mcp-microservices --config-file=/root/mcp.conf deploy -t /root/cluster-topology.yaml
 

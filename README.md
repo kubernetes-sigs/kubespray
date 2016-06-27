@@ -20,6 +20,14 @@ How-to
 export VAGRANT_POOL="10.100.0.0/16"
 ```
 
+* If you want to run OpenStack CCP (Containerised Control Plane) then you need to pull CCP repos and patches:
+
+```bash
+pushd ccp
+./ccp-pull.sh
+popd
+```
+
 * Prepare the virtual lab:
 
 ```bash
@@ -36,3 +44,13 @@ vagrant ssh $USER-k8s-01
 sudo su -
 ./deploy-k8s.kargo.sh
 ```
+
+* In order to deploy OpenStack CCP login to your master node and run this:
+
+```bash
+vagrant ssh $USER-k8s-01
+# Inside your master VM run this:
+sudo su -
+./deploy-ccp.sh
+```
+

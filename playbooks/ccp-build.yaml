@@ -1,0 +1,24 @@
+- hosts: kube-master
+  pre_tasks:
+    - name: Rsync CCP repos
+      synchronize: src=/root/ccp/microservices-repos/ dest=/root/microservices-repos/
+    - name: Rsync MCP scripts and repo
+      synchronize:
+        src: /root/ccp/
+        dest: /root/ccp/
+        rsync_opts:
+          - "--exclude=/microservices-repos"
+  tasks:
+    - name: Install MCP
+      shell: "{{ item }}"
+      args:
+        chdir: /root/ccp/microservices/
+        creates: /usr/local/bin/mcp-microservices
+      with_items:
+        - pip install .
+        - python setup.py develop
+    - name: Build CCP images
+      shell: ./ccp-build.sh
+      args:
+        chdir: /root/ccp
+      run_once: true

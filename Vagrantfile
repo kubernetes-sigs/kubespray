@@ -23,7 +23,7 @@ $instance_name_prefix = "#{$user}-k8s"
 $box = "nrclark/xenial64-minimal-libvirt"
 
 # Create SSH keys for future lab
-system 'bash ssh-keygen.sh'
+system 'bash vagrant-scripts/ssh-keygen.sh'
 
 # Create nodes list for future kargo deployment
 nodes=""
@@ -94,9 +94,10 @@ Vagrant.configure("2") do |config|
         config.vm.provision "custom.yaml", type: "file", source: "custom.yaml", destination: "~/custom.yaml"
         config.vm.provision "playbooks", type: "file", source: "playbooks", destination: "~/playbooks"
         config.vm.provision "nodes", type: "file", source: "nodes", destination: "~/nodes"
-        config.vm.provision "bootstrap", type: "shell", path: "bootstrap-master.sh"
+        config.vm.provision "ccp", type: "file", source: "ccp", destination: "~/ccp"
+        config.vm.provision "bootstrap", type: "shell", path: "vagrant-scripts/bootstrap-master.sh"
       else
-        config.vm.provision "bootstrap", type: "shell", path: "bootstrap-node.sh"
+        config.vm.provision "bootstrap", type: "shell", path: "vagrant-scripts/bootstrap-node.sh"
       end
 
     end

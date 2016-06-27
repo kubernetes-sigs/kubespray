@@ -1,20 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Copyright 2016 Kubespray
 #
-# This file is part of Kargo.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    Foobar is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#    Foobar is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import sys
 import hashlib
@@ -90,11 +89,22 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
-    file_sub('../roles/kubernetes/node/defaults/main.yml', r'.*hyperkube_image_repo.*', 'hyperkube_image_repo: "%s"' % args.docker_repository)
-    file_sub('../roles/kubernetes/node/defaults/main.yml', r'.*hyperkube_image_tag.*', 'hyperkube_image_tag: "%s"' % args.kube_version)
+    kargo_root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    file_sub(
+        os.path.join(kargo_root_path, 'roles/kubernetes/node/defaults/main.yml'),
+        r'.*hyperkube_image_repo.*', 'hyperkube_image_repo: "%s"' % args.docker_repository
+    )
+    file_sub(
+        os.path.join(kargo_root_path, 'roles/kubernetes/node/defaults/main.yml'),
+        r'.*hyperkube_image_tag.*', 'hyperkube_image_tag: "%s"' % args.kube_version
+    )
 
     kube_binaries = ['kubelet', 'kubectl', 'kube-apiserver']
-    var_files = ['../roles/uploads/vars/kube_versions.yml', '../roles/download/vars/kube_versions.yml']
+    var_files = [
+        os.path.join(kargo_root_path, 'roles/uploads/vars/kube_versions.yml'),
+        os.path.join(kargo_root_path, 'roles/download/vars/kube_versions.yml')
+    ]
     kube_download_url = "https://storage.googleapis.com/kubernetes-release/release/%s/bin/linux/amd64" % args.kube_version
 
     new = get_kube_sha256(args.kube_version, kube_download_url, kube_binaries)

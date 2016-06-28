@@ -4,7 +4,7 @@ echo node > /var/tmp/role
 # Packages
 sudo apt-get --yes update
 sudo apt-get --yes upgrade
-sudo apt-get --yes install screen vim telnet tcpdump python-pip traceroute iperf3 nmap ethtool
+sudo apt-get --yes install screen vim telnet tcpdump python-pip traceroute iperf3 nmap ethtool curl
 
 # Pip
 sudo pip install kpm

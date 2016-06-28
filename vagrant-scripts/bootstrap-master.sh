@@ -4,7 +4,7 @@ echo master > /var/tmp/role
 # Packages
 sudo apt-get --yes update
 sudo apt-get --yes upgrade
-sudo apt-get --yes install git screen vim telnet tcpdump python-setuptools gcc python-dev python-pip libssl-dev libffi-dev software-properties-common
+sudo apt-get --yes install git screen vim telnet tcpdump python-setuptools gcc python-dev python-pip libssl-dev libffi-dev software-properties-common curl
 
 # Get ansible-2.1+, vanilla ubuntu-16.04 ansible (2.0.0.2) is broken due to https://github.com/ansible/ansible/issues/13876
 sudo sh -c 'apt-add-repository -y ppa:ansible/ansible;apt-get update;apt-get install -y ansible'

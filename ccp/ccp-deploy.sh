@@ -3,11 +3,9 @@
 set -e
 
 create_network_conf() {
-  # FIXME: hardcoded network topology:
-  #   public_ip:  \d+.\d+.0.\d+  pubcic_iface:  eth1
-  #   private_ip: \d+.\d+.1.\d+  private_iface: eth2
   kubectl get nodes -o go-template='{{range .items}}{{range .status.addresses}}{{if or (eq .type "ExternalIP") (eq .type "LegacyHostIP")}}{{.address}}{{print "\n"}}{{end}}{{end}}{{end}}'> /tmp/nodes
-  ( echo "network:"; i=2; for ip in `cat /tmp/nodes `; do echo -e "  node$i:\n    private:\n      iface: eth2\n      address: $ip"; pip=`echo $ip | perl -pe 's/(\d+).(\d+).1/\${1}.\${2}.0/g'`; echo -e "    public:\n      iface: eth1\n      address: $pip" ; i=$(( i+=1 )) ;done ) > /root/cluster-topology.yaml
+#  ( echo "network:"; i=2; for ip in `cat /tmp/nodes `; do echo -e "  node$i:\n    private:\n      iface: eth2\n      address: $ip"; pip=`echo $ip | perl -pe 's/(\d+).(\d+).1/\${1}.\${2}.0/g'`; echo -e "    public:\n      iface: eth1\n      address: $pip" ; i=$(( i+=1 )) ;done ) > /root/cluster-topology.yaml
+  ( echo "network:"; i=2; for ip in `cat /tmp/nodes `; do echo -e "  node$i:\n    private:\n      address: $ip"; i=$(( i+=1 )) ; done ) > /root/cluster-topology.yaml
 }
 
 assign_node_roles() {

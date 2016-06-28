@@ -3,7 +3,7 @@
 set -e
 
 create_network_conf() {
-  ( echo "network:"; i=2; for ip in `cat /root/nodes `; do echo -e "  node$i:\n    private:\n      iface: eth2\n      address: $ip"; pip=`echo $ip | perl -pe "s/(\d+).(\d+).1/\${1}.\${2}.0/g"`; echo -e "    public:\n      iface: eth1\n      address: $pip" ; i=$(( i+=1 )) ;done ) > /root/cluster-topology.yaml
+  ( echo "network:"; i=2; for ip in `cat /root/nodes `; do echo -e "  node$i:\n    private:\n      iface: eth2\n      address: $ip"; pip=`echo $ip | perl -pe 's/(\d+).(\d+).1/\${1}.\${2}.0/g'`; echo -e "    public:\n      iface: eth1\n      address: $pip" ; i=$(( i+=1 )) ;done ) > /root/cluster-topology.yaml
 }
 
 assign_node_roles() {

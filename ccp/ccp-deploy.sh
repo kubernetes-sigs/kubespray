@@ -7,12 +7,12 @@ create_network_conf() {
 }
 
 assign_node_roles() {
-  kubectl label nodes node2 openstack-role=controller
-  kubectl label nodes node3 openstack-role=controller
-  kubectl label nodes node4 openstack-role=compute
-  kubectl label nodes node5 openstack-role=compute
-  kubectl label nodes node6 openstack-role=compute
-  kubectl label nodes node7 openstack-role=compute
+  kubectl label nodes node2 openstack-controller=true
+  kubectl label nodes node3 openstack-controller=true
+  kubectl label nodes node4 openstack-controller=true
+  kubectl label nodes node5 openstack-compute=true
+  kubectl label nodes node6 openstack-compute=true
+  kubectl label nodes node7 openstack-compute=true
 }
 
 create_network_conf

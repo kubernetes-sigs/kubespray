@@ -15,6 +15,7 @@ sudo sh -c 'cd /root/kargo-cli && python setup.py install'
 
 # k8s deploy script and configs
 sudo sh -c 'cp -a ~vagrant/deploy-k8s.kargo.sh /root/ && chmod 755 /root/deploy-k8s.kargo.sh'
+sudo sh -c 'cp -a ~vagrant/deploy-ccp.sh /root/ && chmod 755 /root/deploy-ccp.sh'
 sudo cp -a ~vagrant/custom.yaml /root/custom.yaml
 sudo cp -a ~vagrant/playbooks /root/playbooks
 sudo cp -a ~vagrant/ccp /root/ccp

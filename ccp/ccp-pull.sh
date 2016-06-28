@@ -78,18 +78,6 @@ fetch_app_def() {
 
   cd $LOCAL_REPO
 
-  cd ms-mariadb
-  git review -d $mariadb
-  cd -
-  cd ms-keystone
-  git review -d $keystone
-  cd -
-  cd ms-memcached
-  git review -d $memcached
-  cd -
-  cd ms-rabbitmq
-  git review -d $rabbitmq
-  cd -
   cd ms-horizon
   git review -d $horizon
   cd -

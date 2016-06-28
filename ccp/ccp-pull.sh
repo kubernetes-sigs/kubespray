@@ -51,9 +51,6 @@ cleanup() {
 
 fetch_mcp() {
   git clone "${PROTO}review.fuel-infra.org:29418/nextgen/microservices"
-  pushd microservices
-  git review -d 22325
-  popd
 }
 
 fetch_repos() {

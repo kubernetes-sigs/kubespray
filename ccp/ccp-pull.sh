@@ -51,6 +51,9 @@ cleanup() {
 
 fetch_mcp() {
   git clone "${PROTO}review.fuel-infra.org:29418/nextgen/microservices"
+  pushd microservices
+  git review -d 22660
+  popd
 }
 
 fetch_repos() {
@@ -63,21 +66,12 @@ fetch_repos() {
 
 fetch_app_def() {
   echo "Fetch app-def repos"
-  mariadb=21637
-  keystone=21848
-  memcached=21849
-  rabbitmq=22053
-  horizon=21850
   neutron=21886
   ovs=21951
   nova=21871
-  glance=21998
 
   cd $LOCAL_REPO
 
-  cd ms-horizon
-  git review -d $horizon
-  cd -
   cd ms-neutron
   git review -d $neutron
   cd -
@@ -86,9 +80,6 @@ fetch_app_def() {
   cd -
   cd ms-nova
   git review -d $nova
-  cd -
-  cd ms-glance
-  git review -d $glance
   cd -
 }
 

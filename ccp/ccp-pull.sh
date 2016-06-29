@@ -86,6 +86,6 @@ fetch_app_def() {
 cleanup
 fetch_mcp
 fetch_repos
-fetch_app_def
+#fetch_app_def
 
 echo "Microservices pull is complete"

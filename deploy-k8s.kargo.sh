@@ -17,7 +17,8 @@ else
 fi
 
 echo "Running deployment..."
-kargo deploy -y --ansible-opts="-e @custom.yaml"
+#kargo deploy -y --ansible-opts="-e @custom.yaml"
+ansible-playbook -i $INVENTORY kargo/cluster.yml -e @custom.yaml
 deploy_res=$?
 
 if [ "$deploy_res" -eq "0" ]; then

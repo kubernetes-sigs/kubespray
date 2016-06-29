@@ -21,7 +21,7 @@ assign_node_roles() {
 create_network_conf
 assign_node_roles
 
-kubectl delete namespace openstack && sleep 120
+kubectl delete namespace openstack && while kubectl get namespace | grep -q ^openstack ; do sleep 5; done
 
 mcp-microservices --config-file=/root/mcp.conf deploy -t /root/cluster-topology.yaml
 

@@ -67,6 +67,7 @@ Vagrant.configure("2") do |config|
         domain.cpu_mode = "host-passthrough"
         domain.volume_cache = "unsafe"
         domain.disk_bus = "virtio"
+        domain.storage :file, :type => 'qcow2', :bus => 'virtio', :size => '20G', :device => 'vdb'
       end
 
       # Networks and interfaces

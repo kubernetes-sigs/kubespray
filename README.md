@@ -92,8 +92,8 @@ cd ~/mcp
 ./deploy-ccp.sh
 ```
 
-Checking status in kubernetes
------------------------------
+Working with kubernetes
+-----------------------
 
 * Login to one of your kube-master nodes (see `/root/kargo/inventory/inventory.cfg`
 on master node) and run:

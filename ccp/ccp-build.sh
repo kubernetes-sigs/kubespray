@@ -38,7 +38,7 @@ build_images() {
     fi
     sleep 1
   done
-  mcp-microservices --config-file /root/mcp.conf build
+  mcp-microservices --config-file /root/mcp.conf build &> /var/log/mcp-build.log
 }
 
 create_mcp_conf

@@ -23,5 +23,5 @@ assign_node_roles
 
 kubectl delete namespace openstack && while kubectl get namespace | grep -q ^openstack ; do sleep 5; done
 
-mcp-microservices --config-file=/root/mcp.conf deploy -t /root/cluster-topology.yaml
+mcp-microservices --config-file=/root/mcp.conf deploy -t /root/cluster-topology.yaml &> /var/log/mcp-deploy.log
 

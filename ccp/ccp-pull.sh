@@ -51,9 +51,9 @@ cleanup() {
 
 fetch_mcp() {
   git clone "${PROTO}review.fuel-infra.org:29418/nextgen/microservices"
-  pushd microservices
-  git review -d 22660
-  popd
+#  pushd microservices
+#  git review -d 22660
+#  popd
 }
 
 fetch_repos() {
@@ -86,6 +86,7 @@ fetch_app_def() {
 cleanup
 fetch_mcp
 fetch_repos
+
 #fetch_app_def
 
 echo "Microservices pull is complete"

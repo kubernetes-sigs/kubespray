@@ -20,7 +20,8 @@ $instance_name_prefix = "#{$user}-k8s"
 # Boxes with libvirt provider support:
 #$box = "yk0/ubuntu-xenial" #900M
 #$box = "centos/7"
-$box = "nrclark/xenial64-minimal-libvirt"
+#$box = "nrclark/xenial64-minimal-libvirt"
+$box = "peru/ubuntu-16.04-server-amd64"
 
 # Create SSH keys for future lab
 system 'bash vagrant-scripts/ssh-keygen.sh'
@@ -67,7 +68,8 @@ Vagrant.configure("2") do |config|
         domain.cpu_mode = "host-passthrough"
         domain.volume_cache = "unsafe"
         domain.disk_bus = "virtio"
-        domain.storage :file, :type => 'qcow2', :bus => 'virtio', :size => '20G', :device => 'vdb'
+        # DISABLED: switched to new box which has 100G / partition
+        #domain.storage :file, :type => 'qcow2', :bus => 'virtio', :size => '20G', :device => 'vdb'
       end
 
       # Networks and interfaces

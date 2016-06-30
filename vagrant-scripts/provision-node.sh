@@ -6,9 +6,6 @@ sudo apt-get --yes update
 sudo apt-get --yes upgrade
 sudo apt-get --yes install screen vim telnet tcpdump python-pip traceroute iperf3 nmap ethtool curl
 
-# Pip kpm
-sudo pip install kpm
-
 # SSH
 sudo rm -rf /root/.ssh
 sudo mv ~vagrant/ssh /root/.ssh

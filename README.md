@@ -71,6 +71,13 @@ cd ~/mcp
 ./bootstrap-master.sh
 ```
 
+* Check nodes list and make sure you have SSH access to them
+
+```bash
+cd ~/mcp
+cat nodes
+```
+
 * Deploy k8s using kargo playbooks
 
 ```bash

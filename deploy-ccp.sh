@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INVENTORY="kargo/inventory/inventory.cfg"
+INVENTORY="/root/kargo/inventory/inventory.cfg"
 
 echo "Createing repository and CCP images, it may take a while..."
 ansible-playbook -i $INVENTORY playbooks/ccp-build.yaml

@@ -51,13 +51,15 @@ build_images() {
   mcp-microservices --config-file /root/mcp.conf build &> /var/log/mcp-build.log
 }
 
-hack_base_image() {
-  cp /root/resolv.conf ccp/microservices-repos/ms-debian-base/docker/base/
-  sed '/COPY requirements.txt/a COPY resolv.conf /etc/resolv.conf' -i ccp/microservices-repos/ms-debian-base/docker/base/Dockerfile.j2
+hack_images() {
+  for dir in ~/microservices-repos/ms-{nova,neutron}*/docker/* ; do
+    cp /root/resolv.conf $dir/
+    sed '/MAINTAINER/a COPY resolv.conf /etc/resolv.conf' -i $dir/Dockerfile.j2
+  done
 }
 
 create_mcp_conf
 create_registry
 create_resolvconf
-hack_base_image
+hack_images
 build_images

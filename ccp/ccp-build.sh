@@ -17,6 +17,16 @@ skip_empty = True
 EOF
 }
 
+create_resolvconf() {
+  DNS_IP=`kubectl get service/kubedns --namespace=kube-system --template={{.spec.clusterIP}}`
+  cat > /root/resolv.conf << EOF
+search openstack.svc.cluster.local svc.cluster.local cluster.local default.svc.cluster.local svc.cluster.local cluster.local
+nameserver $DNS_IP
+options attempts:2
+options ndots:5
+EOF
+}
+
 create_registry() {
   if kubectl get pods | grep registry ; then
     echo "Registry is already running"
@@ -41,6 +51,13 @@ build_images() {
   mcp-microservices --config-file /root/mcp.conf build &> /var/log/mcp-build.log
 }
 
+hack_base_image() {
+  cp /root/resolv.conf ccp/microservices-repos/ms-debian-base/docker/base/
+  sed '/COPY requirements.txt/a COPY resolv.conf /etc/resolv.conf' -i ccp/microservices-repos/ms-debian-base/docker/base/Dockerfile.j2
+}
+
 create_mcp_conf
 create_registry
+create_resolvconf
+hack_base_image
 build_images

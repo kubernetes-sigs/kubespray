@@ -93,15 +93,16 @@ Vagrant.configure("2") do |config|
       # Provisioning
       config.vm.provision "file", source: "ssh", destination: "~/ssh"
       if master
-        config.vm.provision "deploy-k8s", type: "file", source: "deploy-k8s.kargo.sh", destination: "~/deploy-k8s.kargo.sh"
-        config.vm.provision "deploy-ccp", type: "file", source: "deploy-ccp.sh", destination: "~/deploy-ccp.sh"
-        config.vm.provision "custom.yaml", type: "file", source: "custom.yaml", destination: "~/custom.yaml"
-        config.vm.provision "playbooks", type: "file", source: "playbooks", destination: "~/playbooks"
-        config.vm.provision "nodes", type: "file", source: "nodes", destination: "~/nodes"
-        config.vm.provision "ccp", type: "file", source: "ccp", destination: "~/ccp"
-        config.vm.provision "bootstrap", type: "shell", path: "vagrant-scripts/bootstrap-master.sh"
+        config.vm.provision "nodes", type: "file", source: "nodes", destination: "/var/tmp/nodes"
+        config.vm.provision "microservices", type: "file",
+          source: "ccp/microservices",
+          destination: "/var/tmp/microservices"
+        config.vm.provision "microservices-repos", type: "file",
+          source: "ccp/microservices-repos",
+          destination: "/var/tmp/microservices-repos"
+        config.vm.provision "bootstrap", type: "shell", path: "vagrant-scripts/provision-master.sh"
       else
-        config.vm.provision "bootstrap", type: "shell", path: "vagrant-scripts/bootstrap-node.sh"
+        config.vm.provision "bootstrap", type: "shell", path: "vagrant-scripts/provision-node.sh"
       end
 
     end

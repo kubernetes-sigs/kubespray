@@ -14,13 +14,17 @@ Requirements
 How-to
 ======
 
+Vargant lab preparation
+-----------------------
+
 * Change default IP pool for vagrant networks if you want:
 
 ```bash
 export VAGRANT_POOL="10.100.0.0/16"
 ```
 
-* If you want to run OpenStack CCP (Containerised Control Plane) then you need to pull CCP repos and patches:
+* If you want to run OpenStack CCP (Containerised Control Plane) then you need
+to pull CCP repos and patches:
 
 ```bash
 pushd ccp
@@ -36,21 +40,43 @@ cd vagrant-k8s
 vagrant up
 ```
 
-* Login to master node and deploy k8s with kargo:
+Deployment on a lab
+-------------------
+
+* Login to master node and sudo to root:
 
 ```bash
 vagrant ssh $USER-k8s-01
-# Inside your master VM run this:
 sudo su -
+```
+
+* Clone this repo
+
+```bash
+git clone https://github.com/adidenko/vagrant-k8s ~/mcp
+```
+
+* Install required software and pull needed repos (modify script if you're not
+running it on Vagrant lab, you'll need to create `nodes` list manually and
+clone `microservices` and `microservices-repos` repositories, see ccp-pull.sh
+for details)
+
+```bash
+cd ~/mcp
+./bootstrap-master.sh
+```
+
+* Deploy k8s using kargo playbooks
+
+```bash
+cd ~/mcp
 ./deploy-k8s.kargo.sh
 ```
 
-* In order to deploy OpenStack CCP login to your master node and run this:
+* Deploy OpenStack CCP:
 
 ```bash
-vagrant ssh $USER-k8s-01
-# Inside your master VM run this:
-sudo su -
+cd ~/mcp
 ./deploy-ccp.sh
 ```
 

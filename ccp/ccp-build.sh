@@ -52,6 +52,7 @@ build_images() {
 }
 
 hack_images() {
+  # useless, but let's keep it just in case we need to hack something else
   for dir in ~/microservices-repos/ms-{nova,neutron}*/docker/* ; do
     cp /root/resolv.conf $dir/
     sed '/MAINTAINER/a COPY resolv.conf /etc/resolv.conf' -i $dir/Dockerfile.j2
@@ -61,5 +62,4 @@ hack_images() {
 create_mcp_conf
 create_registry
 create_resolvconf
-hack_images
 build_images

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INVENTORY="kargo/inventory/inventory.cfg"
+INVENTORY="/root/kargo/inventory/inventory.cfg"
 
 nodes=""
 i=1
@@ -18,7 +18,7 @@ fi
 
 echo "Running deployment..."
 #kargo deploy -y --ansible-opts="-e @custom.yaml"
-ansible-playbook -i $INVENTORY kargo/cluster.yml -e @custom.yaml
+ansible-playbook -i $INVENTORY /root/kargo/cluster.yml -e @custom.yaml
 deploy_res=$?
 
 if [ "$deploy_res" -eq "0" ]; then

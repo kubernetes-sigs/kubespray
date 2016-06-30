@@ -10,7 +10,9 @@ apt-add-repository -y ppa:ansible/ansible;apt-get update;apt-get install -y ansi
 
 # Kargo-cli
 git clone https://github.com/kubespray/kargo-cli.git /root/kargo-cli
-cd /root/kargo-cli && python setup.py install
+pushd /root/kargo-cli
+python setup.py install
+popd
 
 # Copy/create nodes list
 cp /var/tmp/nodes ./nodes

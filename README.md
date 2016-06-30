@@ -23,6 +23,13 @@ Vargant lab preparation
 export VAGRANT_POOL="10.100.0.0/16"
 ```
 
+* Clone this repo
+
+```bash
+git clone https://github.com/adidenko/vagrant-k8s
+cd vagrant-k8s
+```
+
 * If you want to run OpenStack CCP (Containerised Control Plane) then you need
 to pull CCP repos and patches:
 
@@ -35,8 +42,6 @@ popd
 * Prepare the virtual lab:
 
 ```bash
-git clone https://github.com/adidenko/vagrant-k8s
-cd vagrant-k8s
 vagrant up
 ```
 

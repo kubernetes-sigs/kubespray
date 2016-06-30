@@ -13,8 +13,8 @@ git clone https://github.com/kubespray/kargo-cli.git /root/kargo-cli
 cd /root/kargo-cli && python setup.py install
 
 # Copy/create nodes list
-cp /var/tmp/nodes mcp/nodes
+cp /var/tmp/nodes ./nodes
 
 # Either pull or copy microservices repos
-cp -a /var/tmp/microservices* mcp/ccp/
+cp -a /var/tmp/microservices* ./ccp/
 

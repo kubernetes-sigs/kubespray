@@ -92,3 +92,34 @@ cd ~/mcp
 ./deploy-ccp.sh
 ```
 
+Checking status in kubernetes
+-----------------------------
+
+* Login to one of your kube-master nodes (see `/root/kargo/inventory/inventory.cfg`
+on master node) and run:
+
+```bash
+# List images in registry
+curl -s 127.0.0.1:31500/v2/_catalog | python -mjson.tool
+
+# Check CCP jobs status
+kubectl --namespace=openstack get jobs
+
+# Check CCP pods
+kubectl --namespace=openstack get pods -o wide
+```
+
+* Troubleshooting
+
+```bash
+# Get logs from pod
+kubectl --namespace=openstack logs $POD_NAME
+
+# Exec command from pod
+kubectl --namespace=openstack exec $POD_NAME cat /etc/resolv.conf
+kubectl --namespace=openstack exec $POD_NAME curl http://etcd-client:2379/health
+
+# Run a container
+docker run -t -i 127.0.0.1:31500/mcp/neutron-dhcp-agent /bin/bash
+```
+

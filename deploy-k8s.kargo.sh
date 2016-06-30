@@ -4,7 +4,7 @@ INVENTORY="kargo/inventory/inventory.cfg"
 
 nodes=""
 i=1
-for nodeip in `cat /root/nodes` ; do
+for nodeip in `cat nodes` ; do
   i=$(( $i+1 ))
   nodes+=" node${i}[ansible_ssh_host=${nodeip},ip=${nodeip}]"
 done

@@ -16,5 +16,5 @@ cd /root/kargo-cli && python setup.py install
 cp /var/tmp/nodes mcp/nodes
 
 # Either pull or copy microservices repos
-cp -a /vat/tmp/microservices* mcp/ccp/
+cp -a /var/tmp/microservices* mcp/ccp/
 

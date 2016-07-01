@@ -62,5 +62,5 @@ hack_images() {
 create_mcp_conf
 create_registry
 create_resolvconf
-hack_images
+#hack_images
 build_images

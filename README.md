@@ -4,15 +4,12 @@ Scripts to create libvirt lab with vagrant and prepare some stuff for `k8s` depl
 
 
 Requirements
-============
+------------
 
 * `libvirt`
 * `vagrant`
 * `vagrant-libvirt` plugin (`vagrant plugin install vagrant-libvirt`)
 * `$USER` should be able to connect to libvirt (test with `virsh list --all`)
-
-How-to
-======
 
 Vargant lab preparation
 -----------------------
@@ -111,8 +108,6 @@ kubectl --namespace=openstack get pods -o wide
 
 * Troubleshooting
 
-    * Some basic commands
-
 ```bash
 # Get logs from pod
 kubectl --namespace=openstack logs $POD_NAME
@@ -125,7 +120,7 @@ kubectl --namespace=openstack exec $POD_NAME curl http://etcd-client:2379/health
 docker run -t -i 127.0.0.1:31500/mcp/neutron-dhcp-agent /bin/bash
 ```
 
-    * Network checker
+* Network checker
 
 ```bash
 cd ~/mcp
@@ -133,4 +128,3 @@ cd ~/mcp
 # or in openstack namespace
 ./deploy-netchecker.sh openstack
 ```
-

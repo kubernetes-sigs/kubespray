@@ -19,6 +19,24 @@ skip_empty = True
 EOF
 }
 
+create_mirantis_mcp_conf() {
+  echo "Create mcp config"
+  cat > /root/mcp.conf << EOF
+[builder]
+push = False
+
+[registry]
+address = "registry01-bud.ng.mirantis.net:5800"
+insecure = True
+
+[kubernetes]
+environment = "openstack"
+
+[repositories]
+skip_empty = True
+EOF
+}
+
 create_resolvconf() {
   DNS_IP=`kubectl get service/kubedns --namespace=kube-system --template={{.spec.clusterIP}}`
   cat > /root/resolv.conf << EOF
@@ -61,8 +79,9 @@ hack_images() {
   done
 }
 
-create_mcp_conf
+# Switch to using prebuild images from ccp team
+#create_mcp_conf
+create_mirantis_mcp_conf
 create_registry
-create_resolvconf
-#hack_images
-build_images
+#create_resolvconf
+#build_images

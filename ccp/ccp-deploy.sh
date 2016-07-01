@@ -14,9 +14,12 @@ nodes=( \
 )
 
 create_network_conf() {
-  kubectl get nodes -o go-template='{{range .items}}{{range .status.addresses}}{{if or (eq .type "ExternalIP") (eq .type "LegacyHostIP")}}{{.address}}{{print "\n"}}{{end}}{{end}}{{end}}'> /tmp/nodes
-#  ( echo "network:"; i=2; for ip in `cat /tmp/nodes `; do echo -e "  node$i:\n    private:\n      iface: eth2\n      address: $ip"; pip=`echo $ip | perl -pe 's/(\d+).(\d+).1/\${1}.\${2}.0/g'`; echo -e "    public:\n      iface: eth1\n      address: $pip" ; i=$(( i+=1 )) ;done ) > /root/cluster-topology.yaml
-  ( echo "network:"; i=2; for ip in `cat /tmp/nodes `; do echo -e "  node$i:\n    private:\n      address: $ip"; i=$(( i+=1 )) ; done ) > /root/cluster-topology.yaml
+  if [ -f /root/cluster-topology.yaml ] ; then
+    echo "/root/cluster-topology.yaml already exists"
+  else
+    kubectl get nodes -o go-template='{{range .items}}{{range .status.addresses}}{{if or (eq .type "ExternalIP") (eq .type "LegacyHostIP")}}{{.address}}{{print "\n"}}{{end}}{{end}}{{end}}'> /tmp/nodes
+    ( echo "network:"; i=2; for ip in `cat /tmp/nodes `; do echo -e "  node$i:\n    private:\n      address: $ip"; i=$(( i+=1 )) ; done ) > /root/cluster-topology.yaml
+  fi
 }
 
 assign_node_roles() {
@@ -28,10 +31,15 @@ assign_node_roles() {
   done
 }
 
+delete_namespace() {
+  kubectl delete namespace openstack && while kubectl get namespace | grep -q ^openstack ; do sleep 5; done
+}
+
+deploy_microservices() {
+  mcp-microservices --config-file=/root/mcp.conf deploy -t /root/cluster-topology.yaml &> /var/log/mcp-deploy.log
+}
+
 create_network_conf
 assign_node_roles
-
-kubectl delete namespace openstack && while kubectl get namespace | grep -q ^openstack ; do sleep 5; done
-
-mcp-microservices --config-file=/root/mcp.conf deploy -t /root/cluster-topology.yaml &> /var/log/mcp-deploy.log
-
+delete_namespace
+deploy_microservices

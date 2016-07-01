@@ -27,15 +27,6 @@ git clone https://github.com/adidenko/vagrant-k8s
 cd vagrant-k8s
 ```
 
-* If you want to run OpenStack CCP (Containerised Control Plane) then you need
-to pull CCP repos and patches:
-
-```bash
-pushd ccp
-./ccp-pull.sh
-popd
-```
-
 * Prepare the virtual lab:
 
 ```bash

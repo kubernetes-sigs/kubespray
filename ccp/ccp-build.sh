@@ -26,8 +26,11 @@ create_mirantis_mcp_conf() {
 push = False
 
 [registry]
-address = "registry01-bud.ng.mirantis.net:5800"
+address = "registry01-bud.ng.mirantis.net"
 insecure = True
+
+[images]
+namespace = "nextgen"
 
 [kubernetes]
 environment = "openstack"

@@ -7,7 +7,9 @@ create_mcp_conf() {
   cat > /root/mcp.conf << EOF
 [builder]
 push = True
-registry = "127.0.0.1:31500"
+
+[registry]
+address = "127.0.0.1:31500"
 
 [kubernetes]
 environment = "openstack"

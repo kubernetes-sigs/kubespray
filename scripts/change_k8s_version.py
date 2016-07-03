@@ -24,7 +24,7 @@ import shutil
 from re import sub
 
 
-def get_remote_sha256_sum(url, max_file_size=100*1024*1024):
+def get_remote_sha256_sum(url, max_file_size=1024*1024*1024):
     remote = urllib2.urlopen(url)
     hash = hashlib.sha256()
     total_read = 0
@@ -111,5 +111,6 @@ if __name__ == '__main__':
     for f in var_files:
         current = read_vars(f)
         current['kube_checksum'][args.kube_version] = new
+        current['kube_version'] = args.kube_version
         with open(f, 'w') as out:
             out.write(yaml.dump(current, indent=4, default_flow_style=False))

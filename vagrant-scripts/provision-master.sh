@@ -4,7 +4,7 @@ echo master > /var/tmp/role
 # Some debug tools
 sudo apt-get --yes update
 sudo apt-get --yes upgrade
-sudo apt-get --yes install screen vim telnet tcpdump python-pip traceroute iperf3 nmap ethtool curl git
+sudo apt-get --yes install screen vim telnet tcpdump python-pip traceroute iperf3 nmap ethtool curl git dnsutils
 
 # SSH keys and config
 sudo rm -rf /root/.ssh

@@ -19,10 +19,15 @@
 
 - meta: flush_handlers
 
-- name: Calico | Install calicoctl bin
-  command: rsync -piu "{{ local_release_dir }}/calico/bin/calicoctl" "{{ bin_dir }}/calicoctl"
-  register: calico_copy
+- name: Calico | Install calicoctl container script
+  template:
+    src: calicoctl-container.j2
+    dest: "{{ bin_dir }}/calicoctl"
+    mode: 0755
+    owner: root
+    group: root
   changed_when: false
+  notify: restart calico-node
 
 - name: Calico | Install calico cni bin
   command: rsync -piu "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico"
@@ -31,9 +36,6 @@
 - name: Calico | Install calico-ipam cni bin
   command: rsync -piu "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico-ipam"
   changed_when: false
-
-- name: Calico | install calicoctl
-  file: path={{ bin_dir }}/calicoctl mode=0755 state=file
 
 - name: Calico | wait for etcd
   wait_for:
@@ -108,21 +110,12 @@
     state: started
     enabled: yes
 
-- name: Calico | Restart calico if binary changed
-  service:
-    name: calico-node
-    state: restarted
-  when: calico_copy.stdout_lines
-
 - name: Calico | Disable node mesh
   shell: "{{ bin_dir }}/calicoctl bgp node-mesh off"
-  environment:
-     ETCD_AUTHORITY: "127.0.0.1:2379"
   when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']
 
 - name: Calico | Configure peering with router(s)
   shell: "{{ bin_dir }}/calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}"
-  environment:
-     ETCD_AUTHORITY: "127.0.0.1:2379"
   with_items: peers
   when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']
+

@@ -2,6 +2,8 @@
 
 set -e
 
+PREBUILT="$1"
+
 create_mcp_conf() {
   echo "Create mcp config"
   cat > /root/mcp.conf << EOF
@@ -82,9 +84,11 @@ hack_images() {
   done
 }
 
-# Switch to using prebuild images from ccp team
-#create_mcp_conf
-create_mirantis_mcp_conf
 create_registry
-#create_resolvconf
-#build_images
+
+if [ -n "$PREBUILT" ]; then
+  create_mirantis_mcp_conf
+else
+  create_mcp_conf
+  build_images
+fi

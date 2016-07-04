@@ -1,0 +1,21 @@
+# FXIME: add persistent routing rule
+- hosts: kube-master
+  tasks:
+    - name: Get DNS clusterIP
+      shell: kubectl get svc --namespace kube-system dnsmasq --template=\{\{.spec.clusterIP\}\}
+      register: dnsmasq_ip
+      run_once: true
+- hosts: all
+  tasks:
+    - name: Get local IP
+      shell: "calicoctl status | grep IP: | awk '{print $2}'"
+      register: local_ip
+    - name: Get route
+      shell: ip ro ls | grep "^{{ hostvars[groups['kube-master'][0]]['dnsmasq_ip']['stdout'] }}" || echo ""
+      register: local_route
+    - name: Clean up route
+      shell: ip ro del {{ hostvars[groups['kube-master'][0]]['dnsmasq_ip']['stdout'] }} || true
+      when: local_route.stdout.find('{{ local_ip.stdout }}') == -1
+    - name: Setup route
+      shell: ip ro add {{ hostvars[groups['kube-master'][0]]['dnsmasq_ip']['stdout'] }} via {{ local_ip.stdout }}
+      when: local_route.stdout.find('{{ local_ip.stdout }}') == -1

@@ -32,7 +32,9 @@ assign_node_roles() {
 }
 
 delete_namespace() {
-  kubectl delete namespace openstack && while kubectl get namespace | grep -q ^openstack ; do sleep 5; done
+  if kubectl get namespace | grep -q ^openstack ; then
+    kubectl delete namespace openstack && while kubectl get namespace | grep -q ^openstack ; do sleep 5; done
+  fi
 }
 
 deploy_microservices() {

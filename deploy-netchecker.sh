@@ -31,7 +31,6 @@ pushd netchecker-agent
 popd
 
 echo "DONE"
-curl -s -X GET 'http://localhost:31081/api/v1/agents/' | python -mjson.tool
 echo
 echo "use the following command to check agents:"
 echo "curl -s -X GET 'http://localhost:31081/api/v1/agents/' | python -mjson.tool"

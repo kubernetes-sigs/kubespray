@@ -1,0 +1,21 @@
+# FXIME: add persistent routing rule
+- hosts: kube-master
+  tasks:
+    - name: Get kube service net
+      shell: grep KUBE_SERVICE_ADDRESSES /etc/kubernetes/kube-apiserver.env | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}\b"
+      register: kube_service_addresses
+      run_once: true
+- hosts: all
+  tasks:
+    - name: Get local IP
+      shell: "calicoctl status | grep IP: | awk '{print $2}'"
+      register: local_ip
+    - name: Get route
+      shell: ip ro ls | grep "^{{ hostvars[groups['kube-master'][0]]['kube_service_addresses']['stdout'] }}" || echo ""
+      register: local_route
+    - name: Clean up route
+      shell: ip ro del {{ hostvars[groups['kube-master'][0]]['kube_service_addresses']['stdout'] }} || true
+      when: local_route.stdout.find('{{ local_ip.stdout }}') == -1
+    - name: Setup route
+      shell: ip ro add {{ hostvars[groups['kube-master'][0]]['kube_service_addresses']['stdout'] }} via {{ local_ip.stdout }}
+      when: local_route.stdout.find('{{ local_ip.stdout }}') == -1

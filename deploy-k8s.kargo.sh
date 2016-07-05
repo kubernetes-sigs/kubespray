@@ -27,5 +27,5 @@ if [ "$deploy_res" -eq "0" ]; then
   echo "Setting up kubedashboard..."
   ansible-playbook -i $INVENTORY playbooks/kubedashboard.yaml
   echo "Setting up ip route work-around for DNS clusterIP availability..."
-  ansible-playbook -i $INVENTORY playbooks/ipro_for_dnsmasq.yaml
+  ansible-playbook -i $INVENTORY playbooks/ipro_for_cluster_ips.yaml
 fi

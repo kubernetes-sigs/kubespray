@@ -40,7 +40,7 @@ delete_namespace() {
 }
 
 deploy_microservices() {
-  mcp-microservices --config-file=/root/mcp.conf --deploy-config=mcp-deploy-config.yaml deploy &> /var/log/mcp-deploy.log
+  mcp-microservices --config-file=/root/mcp.conf --deploy-config=deploy-config.yaml deploy &> /var/log/mcp-deploy.log
 }
 
 create_network_conf

@@ -23,11 +23,13 @@ create_network_conf() {
 }
 
 assign_node_roles() {
+  all_label='openstack-compute-controller=true'
   for i in "${!nodes[@]}"
   do
     node=$i
     label=${nodes[$i]}
     kubectl get nodes $node --show-labels | grep -q "$label" || kubectl label nodes $node $label
+    kubectl get nodes $node --show-labels | grep -q "$all_label" || kubectl label nodes $node $all_label
   done
 }
 
@@ -38,7 +40,7 @@ delete_namespace() {
 }
 
 deploy_microservices() {
-  mcp-microservices --config-file=/root/mcp.conf deploy -t /root/cluster-topology.yaml &> /var/log/mcp-deploy.log
+  mcp-microservices --config-file=/root/mcp.conf --deploy-config=mcp-deploy-config.yaml deploy &> /var/log/mcp-deploy.log
 }
 
 create_network_conf

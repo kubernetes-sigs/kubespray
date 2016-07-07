@@ -89,6 +89,12 @@ Vagrant.configure("2") do |config|
         :libvirt__network_name => "#{$instance_name_prefix}-private",
         :libvirt__dhcp_enabled => false,
         :libvirt__forward_mode => "none"
+      # "neutron" isolated network
+      test_vm.vm.network :private_network,
+        :model_type => "e1000",
+        :libvirt__network_name => "#{$instance_name_prefix}-neutron",
+        :libvirt__dhcp_enabled => false,
+        :libvirt__forward_mode => "none"
 
       # Provisioning
       config.vm.provision "file", source: "ssh", destination: "~/ssh"

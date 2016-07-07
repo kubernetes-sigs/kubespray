@@ -24,5 +24,5 @@ kargo --version || (
 test -f ./nodes || cp /var/tmp/nodes ./nodes
 
 # Either pull or copy microservices repos
-cp -a /var/tmp/microservices* ./ccp/
+cp -a /var/tmp/microservices* ./ccp/ || touch /var/tmp/ccp-download
 

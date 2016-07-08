@@ -12,17 +12,11 @@ ansible --version || (
   apt-get install -y ansible
 )
 
-# Kargo-cli
-kargo --version || (
-  git clone https://github.com/kubespray/kargo-cli.git /root/kargo-cli
-  pushd /root/kargo-cli
-  python setup.py install
-  popd
-)
-
 # Copy/create nodes list
 test -f ./nodes || cp /var/tmp/nodes ./nodes
 
 # Either pull or copy microservices repos
 cp -a /var/tmp/microservices* ./ccp/ || touch /var/tmp/ccp-download
 
+# Pull kargo
+git clone https://github.com/kubespray/kargo ~/kargo

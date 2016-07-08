@@ -2,15 +2,10 @@
 
 INVENTORY="nodes_to_inv.py"
 
-nodes=""
-i=1
-for nodeip in `cat nodes` ; do
-  i=$(( $i+1 ))
-  nodes+=" node${i}[ansible_ssh_host=${nodeip},ip=${nodeip}]"
-done
+echo "Installing requirements on nodes..."
+ansible-playbook -i $INVENTORY playbooks/bootstrap-nodes.yaml
 
 echo "Running deployment..."
-#kargo deploy -y --ansible-opts="-e @custom.yaml"
 ansible-playbook -i $INVENTORY /root/kargo/cluster.yml -e @custom.yaml
 deploy_res=$?
 

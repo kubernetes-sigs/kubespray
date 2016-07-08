@@ -109,12 +109,6 @@ Vagrant.configure("2") do |config|
       config.vm.provision "file", source: "ssh", destination: "~/ssh"
       if master
         config.vm.provision "nodes", type: "file", source: "nodes", destination: "/var/tmp/nodes"
-        config.vm.provision "microservices", type: "file",
-          source: "ccp/microservices",
-          destination: "/var/tmp/microservices"
-        config.vm.provision "microservices-repos", type: "file",
-          source: "ccp/microservices-repos",
-          destination: "/var/tmp/microservices-repos"
         config.vm.provision "bootstrap", type: "shell", path: "vagrant-scripts/provision-master.sh"
       else
         config.vm.provision "bootstrap", type: "shell", path: "vagrant-scripts/provision-node.sh"

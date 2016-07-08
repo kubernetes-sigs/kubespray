@@ -64,6 +64,7 @@ cd ~/mcp
 ```bash
 cd ~/mcp
 cat nodes
+ansible all -m ping -i nodes_to_inv.py
 ```
 
 * Deploy k8s using kargo playbooks
@@ -104,8 +105,8 @@ kubectl --namespace=openstack get pods -o wide
 kubectl --namespace=openstack logs $POD_NAME
 
 # Exec command from pod
-kubectl --namespace=openstack exec $POD_NAME cat /etc/resolv.conf
-kubectl --namespace=openstack exec $POD_NAME curl http://etcd-client:2379/health
+kubectl --namespace=openstack exec $POD_NAME -- cat /etc/resolv.conf
+kubectl --namespace=openstack exec $POD_NAME -- curl http://etcd-client:2379/health
 
 # Run a container
 docker run -t -i 127.0.0.1:31500/mcp/neutron-dhcp-agent /bin/bash

@@ -1,42 +1,60 @@
 - hosts: kube-master
+
   pre_tasks:
+
     - name: Download fuel-ccp
       git:
         repo: https://git.openstack.org/openstack/fuel-ccp
         dest: /usr/local/src/fuel-ccp
         version: master
+
     - name: Upload ccp configs to master nodes
       synchronize:
         src: ../ccp/
         dest: /root/ccp/
+
   tasks:
+
     - name: Install CCP cli tool
       shell: pip install -U fuel-ccp/
       args:
         chdir: /usr/local/src
         creates: /usr/local/bin/mcp-microservices
+
     - name: Get pods
       shell: kubectl get pods
       register: get_pod
       run_once: true
+
     - name: Get services
       shell: kubectl get svc
       register: get_svc
       run_once: true
+
     - name: Create registry pod
       shell: kubectl create -f registry_pod.yaml
       args:
         chdir: /root/ccp
       run_once: true
+
     - name: Create registry svc
       shell: kubectl create -f registry_svc.yaml
       args:
         chdir: /root/ccp
       run_once: true
       when: get_svc.stdout.find('registry') == -1
+
     - name: Fetch CCP images
       shell: mcp-microservices --config-file=/root/ccp/ccp.conf fetch
       run_once: true
+
     - name: Build CCP images
       shell: mcp-microservices --config-file=/root/ccp/ccp.conf build
       run_once: true
+
+- hosts: k8s-cluster
+
+  tasks:
+
+    - name: Check number of built images
+      shell: test $(curl -s 127.0.0.1:31500/v2/_catalog | python -mjson.tool | grep mcp/ | wc -l) -ge 29

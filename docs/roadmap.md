@@ -49,7 +49,9 @@ While waiting for the issue [kubernetes/kubernetes#18174](https://github.com/kub
 ### Kargo-cli
 - Delete instances
 - `kargo vagrant` to setup a test cluster locally
+- `kargo azure` for Microsoft Azure support
 - switch to Terraform instead of Ansible for provisionning
+- update $HOME/.kube/config when a cluster is deployed. Optionally switch to this context
 
 ### Kargo API
 - Perform all actions through an **API**

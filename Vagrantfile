@@ -6,9 +6,11 @@ pool = ENV["VAGRANT_POOL"] || "10.250.0.0/16"
 ENV["VAGRANT_DEFAULT_PROVIDER"] = "libvirt"
 prefix = pool.gsub(/\.\d+\.\d+\/16$/, "")
 
-$num_instances = 7
-$vm_memory = 2048
+$num_instances = 4
+$vm_memory = 6144
 $vm_cpus = 2
+$master_memory = 1024
+$master_cpus = 1
 
 $user = ENV["USER"]
 $public_subnet = prefix.to_s + ".0"
@@ -55,8 +57,13 @@ Vagrant.configure("2") do |config|
       # Libvirt provider settings
       test_vm.vm.provider :libvirt do |domain|
         domain.uri = "qemu+unix:///system"
-        domain.memory = $vm_memory
-        domain.cpus = $vm_cpus
+        if master
+          domain.memory = $master_memory
+          domain.cpus = $master_cpus
+        else
+          domain.memory = $vm_memory
+          domain.cpus = $vm_cpus
+        end
         domain.driver = "kvm"
         domain.host = "localhost"
         domain.connect_via_ssh = false

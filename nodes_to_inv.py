@@ -29,6 +29,7 @@ def nodes_to_hash(nodes_list, masters):
               'children': ['kube-node', 'kube-master']
           }
         }
+    i = 1
 
     for node_ip in nodes_list:
         nodes['all']['hosts'].append("%s" % node_ip)
@@ -37,6 +38,7 @@ def nodes_to_hash(nodes_list, masters):
             nodes['kube-master']['hosts'].append("%s" % node_ip)
         if i <= 3:
             nodes['etcd']['hosts'].append("%s" % node_ip)
+        i += 1
 
     return nodes
 

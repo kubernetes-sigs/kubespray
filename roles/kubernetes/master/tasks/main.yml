@@ -1,52 +1,34 @@
 ---
+- include: pre-upgrade.yml
+
 - name: Copy kubectl bash completion
   copy:
     src: kubectl_bash_completion.sh
     dest: /etc/bash_completion.d/kubectl.sh
   when: ansible_os_family in ["Debian","RedHat"]
 
-- name: Copy kube-apiserver binary
-  command: rsync -piu "{{ local_release_dir }}/kubernetes/bin/kube-apiserver" "{{ bin_dir }}/kube-apiserver"
-  register: kube_apiserver_copy
-  changed_when: false
-
 - name: Copy kubectl binary
   command: rsync -piu "{{ local_release_dir }}/kubernetes/bin/kubectl" "{{ bin_dir }}/kubectl"
   changed_when: false
 
-- name: install | Write kube-apiserver systemd init file
-  template:
-    src: "kube-apiserver.service.j2"
-    dest: "/etc/systemd/system/kube-apiserver.service"
-    backup: yes
-  when: ansible_service_mgr == "systemd"
-  notify: restart kube-apiserver
-
-- name: install | Write kube-apiserver initd script
-  template:
-    src: "deb-kube-apiserver.initd.j2"
-    dest: "/etc/init.d/kube-apiserver"
-    owner: root
-    mode: 0755
-    backup: yes
-  when: ansible_service_mgr in ["sysvinit","upstart"] and ansible_os_family == "Debian"
-
-- name: Write kube-apiserver config file
-  template:
-    src: "kube-apiserver.j2"
-    dest: "{{ kube_config_dir }}/kube-apiserver.env"
-    backup: yes
-  notify: restart kube-apiserver
-
-- name: Allow apiserver to bind on both secure and insecure ports
-  shell: setcap cap_net_bind_service+ep {{ bin_dir }}/kube-apiserver
-  changed_when: false
-
 - meta: flush_handlers
 
-- include: start.yml
-  with_items: "{{ groups['kube-master'] }}"
-  when: "{{ hostvars[item].inventory_hostname == inventory_hostname }}"
+- name: Write kube-apiserver manifest
+  template:
+    src: manifests/kube-apiserver.manifest.j2
+    dest: "{{ kube_manifest_dir }}/kube-apiserver.manifest"
+  register: apiserver_manifest
+
+- name: restart kubelet
+  service:
+    name: kubelet
+    state: restarted
+  when: apiserver_manifest.changed
+
+- name: wait for the apiserver to be running
+  wait_for:
+    port: "{{kube_apiserver_insecure_port}}"
+    timeout: 60
 
 # Create kube-system namespace
 - name: copy 'kube-system' namespace manifest
@@ -61,17 +43,13 @@
   failed_when: False
   run_once: yes
 
-- name: wait for the apiserver to be running
-  wait_for:
-    port: "{{kube_apiserver_insecure_port}}"
-    timeout: 60
 
 - name: Create 'kube-system' namespace
   command: "{{ bin_dir }}/kubectl create -f /etc/kubernetes/kube-system-ns.yml"
   changed_when: False
   when: kubesystem|failed and inventory_hostname == groups['kube-master'][0]
 
-# Write manifests
+# Write other manifests
 - name: Write kube-controller-manager manifest
   template:
     src: manifests/kube-controller-manager.manifest.j2
@@ -81,9 +59,3 @@
   template:
     src: manifests/kube-scheduler.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-scheduler.manifest"
-
-- name: restart kubelet
-  service:
-    name: kubelet
-    state: restarted
-  changed_when: false

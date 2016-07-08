@@ -14,6 +14,7 @@ $user = ENV["USER"]
 $public_subnet = prefix.to_s + ".0"
 $private_subnet = prefix.to_s + ".1"
 $mgmt_cidr = prefix.to_s + ".2.0/24"
+$neutron_subnet = "172.30.250"
 
 $instance_name_prefix = "#{$user}-k8s"
 
@@ -91,6 +92,7 @@ Vagrant.configure("2") do |config|
         :libvirt__forward_mode => "none"
       # "neutron" isolated network
       test_vm.vm.network :private_network,
+        :ip => "#{$neutron_subnet}.#{i+10}",
         :model_type => "e1000",
         :libvirt__network_name => "#{$instance_name_prefix}-neutron",
         :libvirt__dhcp_enabled => false,

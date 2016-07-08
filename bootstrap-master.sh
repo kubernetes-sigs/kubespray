@@ -3,7 +3,7 @@
 # Packages
 apt-get --yes update
 apt-get --yes upgrade
-apt-get --yes install git screen vim telnet tcpdump python-setuptools gcc python-dev python-pip libssl-dev libffi-dev software-properties-common curl
+apt-get --yes install git screen vim telnet tcpdump python-setuptools gcc python-dev python-pip libssl-dev libffi-dev software-properties-common curl python-netaddr
 
 # Get ansible-2.1+, vanilla ubuntu-16.04 ansible (2.0.0.2) is broken due to https://github.com/ansible/ansible/issues/13876
 ansible --version || (

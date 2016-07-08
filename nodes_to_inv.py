@@ -5,6 +5,7 @@
 
 import argparse
 import json
+import os
 import yaml
 
 def read_nodes_from_file(filename):
@@ -17,11 +18,11 @@ def read_vars_from_file(src="/root/kargo/inventory/group_vars/all.yml"):
         content = yaml.load(f)
     return content
 
-def nodes_to_hash(nodes_list, masters):
+def nodes_to_hash(nodes_list, masters, group_vars):
     nodes = {
           'all': {
               'hosts': [],
-              'vars': read_vars_from_file()
+              'vars': group_vars
           },
           'etcd': {
               'hosts': [],
@@ -50,20 +51,34 @@ def nodes_to_hash(nodes_list, masters):
     return nodes
 
 def main():
-    parser = argparse.ArgumentParser(description='Ansible dynamic inventory')
-    parser.add_argument('--nodes', help='File with list of nodes, one IP per line', default='nodes')
-    parser.add_argument('--masters', type=int, help='Number of master nodes, will be taken from the top of list', default=2)
+    parser = argparse.ArgumentParser(description='Kargo inventory simulator')
     parser.add_argument('--list', action='store_true')
     parser.add_argument('--host', default=False)
     args = parser.parse_args()
 
-    nodes_list = read_nodes_from_file(args.nodes)
+    # Read params from ENV since ansible does not support passing args to dynamic inv scripts
+    if os.environ.get('K8S_NODES_FILE'):
+        nodes_file = os.environ['K8S_NODES_FILE']
+    else:
+        nodes_file = 'nodes'
+
+    if os.environ.get('K8S_MASTERS'):
+        masters = int(os.environ['K8S_MASTERS'])
+    else:
+        masters = 2
+
+    if os.environ.get('KARGO_GROUP_VARS'):
+        vars_file = os.environ['KARGO_GROUP_VARS']
+    else:
+        vars_file = "/root/kargo/inventory/group_vars/all.yml"
+
+    nodes_list = read_nodes_from_file(nodes_file)
 
     if len(nodes_list) < 3:
         print "Error: requires at least 3 nodes"
         return
 
-    nodes = nodes_to_hash(nodes_list, args.masters)
+    nodes = nodes_to_hash(nodes_list, masters, read_vars_from_file(vars_file))
 
     if args.host:
         print "{}"

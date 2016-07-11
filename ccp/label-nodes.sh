@@ -5,12 +5,9 @@ set -e
 # FIXME: hardcoded roles
 declare -A nodes
 nodes=( \
-["node2"]="openstack-controller=true"
-["node3"]="openstack-controller=true"
-["node4"]="openstack-controller=true"
-["node5"]="openstack-compute=true"
-["node6"]="openstack-compute=true"
-["node7"]="openstack-compute=true"
+["node1"]="openstack-controller=true"
+["node2"]="openstack-compute=true"
+["node3"]="openstack-compute=true"
 )
 
 label_nodes() {

@@ -6,6 +6,13 @@
     - start etcd
     - reload etcd
 
+- name: restart etcd-proxy
+  command: /bin/true
+  notify:
+    - reload systemd
+    - start etcd-proxy
+    - reload etcd-proxy
+
 - name: reload systemd
   command: systemctl daemon-reload
   when: ansible_service_mgr == "systemd"
@@ -15,8 +22,23 @@
     name: etcd
     enabled: yes
     state: started
+  when: is_etcd_master
+
+- name: start etcd-proxy
+  service:
+    name: etcd-proxy
+    enabled: yes
+    state: started
+  when: is_etcd_proxy
 
 - name: reload etcd
   service:
     name: etcd
     state: "{{ 'restarted' if etcd_deployment_type == 'host' else 'reloaded' }}"
+  when: is_etcd_master
+
+- name: reload etcd-proxy
+  service:
+    name: etcd-proxy
+    state: "{{ 'restarted' if etcd_deployment_type == 'host' else 'reloaded' }}"
+  when: is_etcd_proxy

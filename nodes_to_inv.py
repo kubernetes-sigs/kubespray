@@ -35,17 +35,25 @@ def nodes_to_hash(nodes_list, masters, group_vars):
           },
           'k8s-cluster': {
               'children': ['kube-node', 'kube-master']
+          },
+          '_meta': {
+              'hostvars': {}
           }
-        }
+    }
     i = 1
 
     for node_ip in nodes_list:
-        nodes['all']['hosts'].append("%s" % node_ip)
-        nodes['kube-node']['hosts'].append("%s" % node_ip)
+        node_name = "node%s" % i
+        nodes['all']['hosts'].append(node_name)
+        nodes['_meta']['hostvars'][node_name] = {
+            'ansible_ssh_host': node_ip,
+            'ip': node_ip,
+        }
+        nodes['kube-node']['hosts'].append(node_name)
         if i <= masters:
-            nodes['kube-master']['hosts'].append("%s" % node_ip)
+            nodes['kube-master']['hosts'].append(node_name)
         if i <= 3:
-            nodes['etcd']['hosts'].append("%s" % node_ip)
+            nodes['etcd']['hosts'].append(node_name)
         i += 1
 
     return nodes
@@ -81,7 +89,7 @@ def main():
     nodes = nodes_to_hash(nodes_list, masters, read_vars_from_file(vars_file))
 
     if args.host:
-        print "{}"
+        print json.dumps(nodes['_meta']['hostvars'][args.host])
     else:
         print json.dumps(nodes)
 

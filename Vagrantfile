@@ -31,7 +31,7 @@ system 'bash vagrant-scripts/ssh-keygen.sh'
 
 # Create nodes list for future kargo deployment
 nodes=""
-(2..$num_instances).each do |i|
+(1..$num_instances-1).each do |i|
   ip = "#{$private_subnet}.#{i+10}"
   nodes = "#{nodes}#{ip}\n"
 end
@@ -39,13 +39,9 @@ File.open("nodes", 'w') { |file| file.write(nodes) }
 
 # Create the lab
 Vagrant.configure("2") do |config|
-  (1..$num_instances).each do |i|
+  (0..$num_instances-1).each do |i|
     # First node would be master node
-    if i == 1
-      master = true
-    else
-      master = false
-    end
+    master = i == 0
 
     config.ssh.insert_key = false
     vm_name = "%s-%02d" % [$instance_name_prefix, i]

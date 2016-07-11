@@ -120,3 +120,21 @@ cd ~/mcp
 # or in openstack namespace
 ./deploy-netchecker.sh openstack
 ```
+
+* CCP
+
+```bash
+# Run a bash in one of containers
+docker run -t -i 127.0.0.1:31500/mcp/nova-base /bin/bash
+
+# Inside container export credentials
+export OS_USERNAME=admin
+export OS_PASSWORD=password
+export OS_TENANT_NAME=admin
+export OS_REGION_NAME=RegionOne
+export OS_AUTH_URL=http://keystone:35357
+
+# Run CLI commands
+openstack service list
+neutron agent-list
+```

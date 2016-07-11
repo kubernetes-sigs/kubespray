@@ -8,7 +8,12 @@
 - name: Restart etcd if binary changed
   command: /bin/true
   notify: restart etcd
-  when: etcd_deployment_type == "host" and etcd_copy.stdout_lines
+  when: etcd_deployment_type == "host" and etcd_copy.stdout_lines and is_etcd_master
+
+- name: Restart etcd-proxy if binary changed
+  command: /bin/true
+  notify: restart etcd-proxy
+  when: etcd_deployment_type == "host" and etcd_copy.stdout_lines and is_etcd_proxy
 
 # Reload systemd before starting service
 - meta: flush_handlers
@@ -18,6 +23,14 @@
     name: etcd
     state: started
     enabled: yes
+  when: is_etcd_master
+
+- name: Ensure etcd-proxy is running
+  service:
+    name: etcd-proxy
+    state: started
+    enabled: yes
+  when: is_etcd_proxy
 
 # After etcd cluster is assembled, make sure that
 # initial state of the cluster is in `existing`

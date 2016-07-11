@@ -105,7 +105,6 @@ Vagrant.configure("2") do |config|
             "kube-master" => ["k8s-0[1:2]"],
             # all nodes should be kube nodes
             "kube-node" => ["k8s-0[1:#{$num_instances}]"],
-            "k8s-cluster:children" => ["kube-master", "kube-node"],
           }
         end
       end

@@ -1,14 +1,18 @@
 ---
 - include: set_facts.yml
-- include: install.yml
-- include: set_cluster_health.yml
-- include: configure.yml
-- include: refresh_config.yml
 
-- name: Restart etcd if binary changed
-  command: /bin/true
-  notify: restart etcd
-  when: etcd_deployment_type == "host" and etcd_copy.stdout_lines
+- name: Install | Copy etcdctl binary from container
+  command: sh -c "/usr/bin/docker rm -f etcdctl-binarycopy;
+           /usr/bin/docker create --name etcdctl-binarycopy {{ etcd_image_repo }}:{{ etcd_image_tag }} &&
+           /usr/bin/docker cp etcdctl-binarycopy:{{ etcd_container_bin_dir }}etcdctl {{ bin_dir }}/etcdctl &&
+           /usr/bin/docker rm -f etcdctl-binarycopy"
+  changed_when: false
+
+- include: set_cluster_health.yml
+
+- include: configure.yml
+
+- include: refresh_config.yml
 
 # Reload systemd before starting service
 - meta: flush_handlers

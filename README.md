@@ -39,7 +39,7 @@ Deployment on a lab
 * Login to master node and sudo to root:
 
 ```bash
-vagrant ssh $USER-k8s-01
+vagrant ssh $USER-k8s-00
 sudo su -
 ```
 

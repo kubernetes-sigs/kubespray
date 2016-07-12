@@ -78,7 +78,10 @@ cd ~/mcp
 
 ```bash
 cd ~/mcp
-./deploy-ccp.sh
+# Build CCP images
+ansible-playbook -i nodes_to_inv.py playbooks/ccp-build.yaml
+# Deploy CCP
+ansible-playbook -i nodes_to_inv.py playbooks/ccp-deploy.yaml
 ```
 
 Working with kubernetes

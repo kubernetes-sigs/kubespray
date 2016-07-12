@@ -18,3 +18,8 @@ iptables -I FORWARD -d 10.210.0.12 -j ACCEPT
 ```
 
 Where `10.210.0.12` is IP of one of your k8s minions and `32643` is nodePort of Horizon service.
+
+* You can do the same for novnc:
+```bash
+echo $(kubectl --namespace=openstack get svc/nova-novncproxy -o go-template='{{(index .spec.ports 0).nodePort}}')
+```

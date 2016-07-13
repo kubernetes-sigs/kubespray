@@ -95,8 +95,7 @@ curl -i -s $ANY_K8S_NODE_IP:$HORIZON_PORT
 Working with kubernetes
 -----------------------
 
-* Login to one of your kube-master nodes (see `/root/kargo/inventory/inventory.cfg`
-on master node) and run:
+* Login to one of your kube-master nodes and run:
 
 ```bash
 # List images in registry

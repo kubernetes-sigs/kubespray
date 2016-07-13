@@ -53,7 +53,7 @@ cluster_name: cluster.local
 
 # Service endpoints. May be a VIP or a load balanced frontend IP, like one
 # that a HAProxy or Nginx provides, or just a local service endpoint.
-#
+
 # Etcd endpoints use a local etcd-proxies to reach the etcd cluster via
 # auto-evaluated endpoints. Those will reuse the access_ip for etcd cluster,
 # if specified, or defer to the localhost:2379 as well.
@@ -64,15 +64,64 @@ cluster_name: cluster.local
 # This may be the case if clients support and loadbalance multiple etcd servers  natively.
 etcd_multiaccess: false
 
-#
-# TODO apiserver localhost:8080 and localhost:443 endpoints for kubelets and
-# (hyper)kube-* and networking components.
+# The port the API Server will be listening on.
+kube_apiserver_port: 443 # (https)
+kube_apiserver_insecure_port: 8080 # (http)
+
+# For multi masters architecture:
+# kube-proxy doesn't support multiple apiservers for the time being so you'll need to configure your own loadbalancer
+# This domain name will be inserted into the /etc/hosts file of all servers
+# configuration example with haproxy:
+# listen kubernetes-apiserver-https
+#   bind 10.99.0.21:8383
+#    option ssl-hello-chk
+#    mode tcp
+#    timeout client 3h
+#    timeout server 3h
+#    server master1 10.99.0.26:443
+#    server master2 10.99.0.27:443
+#    balance roundrobin
+
+# And the corresponding example config vars:
+# apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
+# loadbalancer_apiserver:
+#   adress: 10.99.0.21
+#   port: 8383
+
+# For internal only multi-masters architecture:
+# Assume there is no loadbalancers configured for internal access. Enable this flag,
+# if a loadbalancer listens the localhost, which may be the case when there is neither
+# loadbalancer_apiserver nor access_ip is configured, or you want to override both.
+loadbalancer_apiserver_localhost: false
+
+# The internal kube-apiserver endpoints:
+# The secure endpoint is auto-evaluated. If loadbalancer_apiserver_localhost=true,
+# it uses the localhost:kube_apiserver_port. Otherwise, it uses the external
+# apiserver_loadbalancer_domain_name:loadbalancer_apiserver.port. Or defers to the
+# access_ip:kube_apiserver_port, then ip, then default ansible ip.
+
+# The insecure endpoint ignores the apiserver_loadbalancer_domain_name and access_ip.
+# By default, it is a localhost:kube_apiserver_insecure_port.
+# If loadbalancer_apiserver_localhost, it defers to ip, then default ansible ip.
+
+# Apiserver access modes:
+# Configure clients to access all of the apiservers directly as the
+# "http(s)://hostX:port, http(s)://hostY:port, ..." and ignore the loadbalancers, if any.
+# This may be the case, if clients support and loadbalance multiple apiservers or
+# when there is no loadbalancers configured.
+kube_apiserver_multiaccess: true
+
+# Define connections security for kube controllers, schedulers and proxies
+kube_proxy_insecure: true
+kube_controller_insecure: true
+kube_scheduler_insecure: true
 
 # Choose network plugin (calico, weave or flannel)
 kube_network_plugin: flannel
 
 # Kubernetes internal network for services, unused block of space.
 kube_service_addresses: 10.233.0.0/18
+kube_apiserver_ip: "{{ kube_service_addresses|ipaddr('net')|ipaddr(1)|ipaddr('address') }}"
 
 # internal network. When used, it will assign IP
 # addresses from this range to individual pods.
@@ -92,11 +141,6 @@ kube_network_node_prefix: 24
 peer_with_router: false
 # Warning : enabling router peering will disable calico's default behavior ('node mesh').
 # The subnets of each nodes will be distributed by the datacenter router
-
-# The port the API Server will be listening on.
-kube_apiserver_ip: "{{ kube_service_addresses|ipaddr('net')|ipaddr(1)|ipaddr('address') }}"
-kube_apiserver_port: 443 # (https)
-kube_apiserver_insecure_port: 8080 # (http)
 
 # Internal DNS configuration.
 # Kubernetes can create and mainatain its own DNS server to resolve service names
@@ -125,21 +169,6 @@ dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address')
 # When openstack is used make sure to source in the openstack credentials
 # like you would do when using nova-client before starting the playbook.
 # cloud_provider:
-
-# For multi masters architecture:
-# kube-proxy doesn't support multiple apiservers for the time being so you'll need to configure your own loadbalancer
-# This domain name will be inserted into the /etc/hosts file of all servers
-# configuration example with haproxy :
-# listen kubernetes-apiserver-https
-#   bind 10.99.0.21:8383
-#    option ssl-hello-chk
-#    mode tcp
-#    timeout client 3h
-#    timeout server 3h
-#    server master1 10.99.0.26:443
-#    server master2 10.99.0.27:443
-#    balance roundrobin
-# apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
 
 ## Set these proxy values in order to update docker daemon to use proxies
 # http_proxy: ""

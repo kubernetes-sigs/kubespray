@@ -81,6 +81,17 @@ ansible-playbook -i nodes_to_inv.py playbooks/ccp-build.yaml
 ansible-playbook -i nodes_to_inv.py playbooks/ccp-deploy.yaml
 ```
 
+* Wait for CCP deployment to complete
+
+```bash
+# On k8s master node
+# Check CCP pods, all should become running
+kubectl --namespace=openstack get pods -o wide
+
+# Check CCP jobs status, wait until all complete
+kubectl --namespace=openstack get jobs
+```
+
 * Check Horizon:
 
 ```bash

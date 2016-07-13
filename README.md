@@ -49,17 +49,14 @@ sudo su -
 git clone https://github.com/adidenko/vagrant-k8s ~/mcp
 ```
 
-* Install required software and pull needed repos (modify script if you're not
-running it on Vagrant lab, you'll need to create `nodes` list manually and
-clone `microservices` and `microservices-repos` repositories, see ccp-pull.sh
-for details)
+* Install required software and pull needed repos:
 
 ```bash
 cd ~/mcp
 ./bootstrap-master.sh
 ```
 
-* Check nodes list and make sure you have SSH access to them
+* Check `nodes` list and make sure you have SSH access to them
 
 ```bash
 cd ~/mcp
@@ -82,6 +79,17 @@ cd ~/mcp
 ansible-playbook -i nodes_to_inv.py playbooks/ccp-build.yaml
 # Deploy CCP
 ansible-playbook -i nodes_to_inv.py playbooks/ccp-deploy.yaml
+```
+
+* Check Horizon:
+
+```bash
+# On k8s master node check nodePort of Horizon service
+HORIZON_PORT=$(kubectl --namespace=openstack get svc/horizon -o go-template='{{(index .spec.ports 0).nodePort}}')
+echo $HORIZON_PORT
+
+# Access Horizon via nodePort
+curl -i -s $ANY_K8S_NODE_IP:$HORIZON_PORT
 ```
 
 Working with kubernetes

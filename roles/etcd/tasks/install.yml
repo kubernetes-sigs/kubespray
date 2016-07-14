@@ -11,12 +11,24 @@
   changed_when: false
 
 #Plan A: no docker-py deps
-- name: Install | Copy etcdctl binary from container
+- name: Install | Copy etcdctl binary from docker container
   command: sh -c "/usr/bin/docker rm -f etcdctl-binarycopy;
            /usr/bin/docker create --name etcdctl-binarycopy {{ etcd_image_repo }}:{{ etcd_image_tag }} &&
-           /usr/bin/docker cp etcdctl-binarycopy:{{ etcd_container_bin_dir }}etcdctl {{ bin_dir }}/etcdctl &&
+           /usr/bin/docker cp etcdctl-binarycopy:{{ etcd_container_bin_dir }}/etcdctl {{ bin_dir }}/etcdctl &&
            /usr/bin/docker rm -f etcdctl-binarycopy"
-  when: etcd_deployment_type == "docker"
+  when: etcd_deployment_type == "container" and kube_container_engine == "docker"
+  register: etcd_task_result
+  until: etcd_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+
+- name: Install | Copy etcdctl binary from rkt container
+  command: sh -c "{{ bin_dir }}/rkt run {{ etcd_image_repo }}:{{ etcd_image_tag }}
+           --insecure-options=image --volume bindir,kind=host,source={{ bin_dir }} --mount volume=bindir,target=/etcd
+           --exec cp -- {{ etcd_container_bin_dir }}/etcdctl /etcd &&
+           {{ bin_dir }}/rkt gc --grace-period=0"
+  when: etcd_deployment_type == "container" and kube_container_engine == "rkt"
   register: etcd_task_result
   until: etcd_task_result.rc == 0
   retries: 4
@@ -29,15 +41,15 @@
 #    name: etcd-binarycopy
 #    state: present
 #    image: "{{ etcd_image_repo }}:{{ etcd_image_tag }}"
-#  when: etcd_deployment_type == "docker"
+#  when: etcd_deployment_type == "container"
 #
 #- name: Install | Copy etcdctl from etcd-binarycopy container
 #  command: /usr/bin/docker cp "etcd-binarycopy:{{ etcd_container_bin_dir }}etcdctl" "{{ bin_dir }}/etcdctl"
-#  when: etcd_deployment_type == "docker"
+#  when: etcd_deployment_type == "container"
 #
 #- name: Install | Clean up etcd-binarycopy container
 #  docker:
 #    name: etcd-binarycopy
 #    state: absent
 #    image: "{{ etcd_image_repo }}:{{ etcd_image_tag }}"
-#  when: etcd_deployment_type == "docker"
+#  when: etcd_deployment_type == "container"

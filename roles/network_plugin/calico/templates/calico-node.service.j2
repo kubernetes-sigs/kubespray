@@ -8,17 +8,33 @@ Wants=docker.socket
 User=root
 PermissionsStartOnly=true
 {% if legacy_calicoctl %}
-{% if inventory_hostname in groups['kube-node'] and peer_with_router|default(false)%}
-ExecStart={{ bin_dir }}/calicoctl node --ip={{ip | default(ansible_default_ipv4.address) }} --as={{ local_as }} --detach=false --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+  {%- if inventory_hostname in groups['kube-node'] and peer_with_router|default(false)%}
+ExecStart={{ bin_dir }}/calicoctl node \
+    {%- if kube_container_engine == 'rkt' %}
+--runtime=rkt \
+    {%- endif %}
+--ip={{ip | default(ansible_default_ipv4.address) }} \
+--as={{ local_as }} \
+--detach=false \
+--node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+  {% else %}
+ExecStart={{ bin_dir }}/calicoctl node \
+    {%- if kube_container_engine == 'rkt' %}
+--runtime=rkt \
+    {%- endif %}
+--ip={{ip | default(ansible_default_ipv4.address) }} \
+--detach=false \
+--node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+  {%- endif %}
 {% else %}
-ExecStart={{ bin_dir }}/calicoctl node --ip={{ip | default(ansible_default_ipv4.address) }} --detach=false --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
-{% endif %}
-{% else %}
-{% if inventory_hostname in groups['kube-node'] and peer_with_router|default(false)%}
-ExecStart={{ bin_dir }}/calicoctl node run --ip={{ip | default(ansible_default_ipv4.address) }} --as={{ local_as }} --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
-{%     else %}
+  {%- if inventory_hostname in groups['kube-node'] and peer_with_router|default(false)%}
+ExecStart={{ bin_dir }}/calicoctl node run \
+--ip={{ip | default(ansible_default_ipv4.address) }} \
+--as={{ local_as }} \
+--node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+  {%- else %}
 ExecStart={{ bin_dir }}/calicoctl node run --ip={{ip | default(ansible_default_ipv4.address) }} --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
-{% endif %}
+  {%- endif %}
 {% endif %}
 Restart=always
 RestartSec=10s

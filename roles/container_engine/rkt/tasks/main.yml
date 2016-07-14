@@ -1,0 +1,48 @@
+---
+- name: Copy rkt binary from downloaddir
+  command: rsync -piu "{{ rkt_bin_dir }}/rkt" "{{ bin_dir }}/rkt"
+  changed_when: false
+
+- name: Create rkt stage1 image directory
+  file:
+    path: "{{ rkt_stage1_dir }}"
+    state: directory
+    owner: rkt
+    recurse: yes
+
+- name: Copy rkt stage1 images from downloaddir
+  command: rsync -piu "{{ rkt_bin_dir }}/stage1-{{ item }}.aci" "{{ rkt_stage1_dir }}"
+  changed_when: false
+  with_items:
+    - coreos
+    - fly
+    - kvm
+
+- name: Copy rkt manpages from downloaddir
+  command: rsync -piu "{{ rkt_bin_dir }}/manpages" "/usr/share/man/man1"
+  changed_when: false
+
+- name: Copy systemd units from downloaddir
+  command: rsync -piu "{{ rkt_bin_dir }}/init/systemd/{{ item }}" "/usr/lib/systemd/system"
+  changed_when: false
+  with_items:
+    - rkt-gc.service
+    - rkt-gc.timer
+    - rkt-metadata.socket
+    - rkt-metadata.service
+
+- name: Create rkt network config directory
+  file:
+    path: "{{ rkt_netconfig_dir }}"
+    state: directory
+    owner: root
+    recurse: yes
+
+- name: Trust CoreOS images repository
+  command: rkt trust --prefix quay.io/coreos --skip-fingerprint-review
+  changed_when: false
+
+- name: Configure flannel network plugin for rkt
+  template:
+    src: flannel_cni.conf
+    dest: "{{ rkt_netconfig_dir }}"

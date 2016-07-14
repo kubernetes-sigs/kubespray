@@ -1,12 +1,12 @@
 - name: "Pre-upgrade | check for etcd-proxy unit file"
   stat:
     path: /etc/systemd/system/etcd-proxy.service
-  register: kube_apiserver_service_file
+  register: etcd_proxy_service_file
 
 - name: "Pre-upgrade | check for etcd-proxy init script"
   stat:
     path: /etc/init.d/etcd-proxy
-  register: kube_apiserver_init_script
+  register: etcd_proxy_init_script
 
 - name: "Pre-upgrade | stop etcd-proxy if service defined"
   service:
@@ -23,12 +23,16 @@
     - /etc/systemd/system/etcd-proxy.service
     - /etc/init.d/etcd-proxy
 
-- name: "Pre-upgrade | find etcd-proxy container"
-  command: docker ps -aq --filter "name=etcd-proxy*"
-  register: etcd_proxy_container
+# TODO: Smana
+#- name: "Pre-upgrade | stop etcd-proxy service"
+#  systemd:
+#    name: etcd-proxy
+#    state: stopped
+#  register: etcd_proxy_status
+
+#- debug: msg={{etcd_proxy_status}}
+
+- name: "Pre-upgrade | remove etcd-proxy container if it exists"
+  command: docker rm -f etcd-proxy
   ignore_errors: true
-
-- name: "Pre-upgrade | remove etcd-proxy if it exists"
-  command: "docker rm -f {{item}}"
-  with_items: "{{etcd_proxy_container.stdout_lines}}"
-
+  when: "{{ kube_container_engine == 'docker' }}"

@@ -54,7 +54,7 @@
   until: pull_task_result.rc == 0
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  when: "{{ download.enabled|bool and download.container|bool }}"
+  when: "{{ download.enabled|bool and download.container|bool and kube_container_engine == 'docker' }}"
   delegate_to: "{{ groups['kube-master'][0] if download_run_once|bool else inventory_hostname }}"
   run_once: "{{ download_run_once|bool }}"
 
@@ -68,7 +68,7 @@
 - name: "Update the 'container_changed' fact"
   set_fact:
     container_changed: "{{ not 'up to date' in pull_task_result.stdout }}"
-  when: "{{ download.enabled|bool and download.container|bool }}"
+  when: "{{ download.enabled|bool and download.container|bool and kube_container_engine == 'docker' }}"
   delegate_to: "{{ groups['kube-master'][0] if download_run_once|bool else inventory_hostname }}"
   run_once: "{{ download_run_once|bool }}"
 
@@ -76,7 +76,7 @@
   shell: docker save "{{ download.repo }}:{{ download.tag }}" > "{{ fname }}"
   delegate_to: "{{groups['kube-master'][0]}}"
   run_once: true
-  when: ansible_os_family != "CoreOS" and download_run_once|bool and download.enabled|bool and download.container|bool and container_changed|bool
+  when: ansible_os_family != "CoreOS" and download_run_once|bool and download.enabled|bool and download.container|bool and container_changed|bool and kube_container_engine == 'docker'
 
 - name: Download | get container images
   synchronize:
@@ -87,8 +87,12 @@
   until: get_task|success
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  when: ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] and download_run_once|bool and download.enabled|bool and download.container|bool and container_changed|bool
+  when: ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] 
+    and download_run_once|bool and download.enabled|bool and download.container|bool
+    and container_changed|bool and kube_container_engine == 'docker'
 
 - name: Download | load container images
   shell: docker load < "{{ fname }}"
-  when: ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] and download_run_once|bool and download.enabled|bool and download.container|bool and container_changed|bool
+  when: ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] 
+    and download_run_once|bool and download.enabled|bool and download.container|bool
+    and container_changed|bool and kube_container_engine == 'docker'

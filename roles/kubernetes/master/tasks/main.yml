@@ -7,8 +7,21 @@
     dest: /etc/bash_completion.d/kubectl.sh
   when: ansible_os_family in ["Debian","RedHat"]
 
-- name: Copy kubectl from hyperkube container
+- name: Copy kubectl from hyperkube container (docker)
   command: "/usr/bin/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp /hyperkube /systembindir/kubectl"
+  when: kube_container_engine == "docker"
+  register: kube_task_result
+  until: kube_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+
+- name: Copy kubectl from hyperkube container (rkt)
+  command: sh -c "{{ bin_dir }}/rkt run --insecure-options=image {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}
+           --volume bindir,kind=host,source={{ bin_dir }} --mount volume=bindir,target=/systembindir
+           --exec cp -- /hyperkube /systembindir/kubectl &&
+           {{ bin_dir }}/rkt gc --grace-period=0"
+  when: kube_container_engine == "rkt"
   register: kube_task_result
   until: kube_task_result.rc == 0
   retries: 4

@@ -1,17 +1,28 @@
 ---
-- set_fact: etcd_access_address="{{ access_ip | default(ip | default(ansible_default_ipv4['address'])) }}"
+- set_fact: etcd_address="{{ ip | default(ansible_default_ipv4['address']) }}"
+- set_fact: etcd_access_address="{{ access_ip | default(etcd_address) }}"
 - set_fact: etcd_peer_url="http://{{ etcd_access_address }}:2380"
 - set_fact: etcd_client_url="http://{{ etcd_access_address }}:2379"
+- set_fact: etcd_authority="{{ access_ip|default('127.0.0.1') }}:2379"
+- set_fact: etcd_endpoint="http://{{ etcd_authority }}"
 - set_fact:
     etcd_access_addresses: |-
       {% for item in groups['etcd'] -%}
         http://{{ hostvars[item].etcd_access_address }}:2379{% if not loop.last %},{% endif %}
       {%- endfor %}
+- set_fact: etcd_access_endpoint="{% if etcd_multiaccess %}{{ etcd_access_addresses }}{% else %}{{ etcd_endpoint }}{% endif %}"
 - set_fact:
     etcd_member_name: |-
       {% for host in groups['etcd'] %}
       {%   if inventory_hostname == host %}{{"etcd"+loop.index|string }}{% endif %}
       {% endfor %}
+- set_fact:
+    etcd_proxy_member_name: |-
+      {% for host in groups['k8s-cluster'] %}
+      {%   if inventory_hostname == host %}{{"etcd-proxy"+loop.index|string }}{% endif %}
+      {% endfor %}
+- set_fact:
+    is_etcd_proxy: "{{ inventory_hostname in groups['k8s-cluster'] }}"
 - set_fact:
     is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"
 - set_fact:

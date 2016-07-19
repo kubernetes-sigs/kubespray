@@ -15,7 +15,7 @@
     src: "etcd-{{ etcd_deployment_type }}.service.j2"
     dest: /etc/systemd/system/etcd.service
     backup: yes
-  when: ansible_service_mgr == "systemd"
+  when: ansible_service_mgr == "systemd" and is_etcd_master
   notify: restart etcd
 
 - name: Configure | Write etcd initd script
@@ -24,5 +24,21 @@
     dest: /etc/init.d/etcd
     owner: root
     mode: 0755
-  when: ansible_service_mgr in ["sysvinit","upstart"] and ansible_os_family == "Debian"
+  when: ansible_service_mgr in ["sysvinit","upstart"] and ansible_os_family == "Debian" and is_etcd_master
   notify: restart etcd
+
+- name: Configure | Copy etcd-proxy.service systemd file
+  template:
+    src: "etcd-proxy-{{ etcd_deployment_type }}.service.j2"
+    dest: /etc/systemd/system/etcd-proxy.service
+    backup: yes
+  when: ansible_service_mgr == "systemd" and is_etcd_proxy
+  notify: restart etcd-proxy
+- name: Configure | Write etcd-proxy initd script
+  template:
+    src: "deb-etcd-proxy-{{ etcd_deployment_type }}.initd.j2"
+    dest: /etc/init.d/etcd-proxy
+    owner: root
+    mode: 0755
+  when: ansible_service_mgr in ["sysvinit","upstart"] and ansible_os_family == "Debian" and is_etcd_proxy
+  notify: restart etcd-proxy

@@ -3,42 +3,35 @@
   command: /bin/true
   notify:
     - reload systemd
-    - start etcd
     - reload etcd
+    - wait for etcd up
 
 - name: restart etcd-proxy
   command: /bin/true
   notify:
     - reload systemd
-    - start etcd-proxy
     - reload etcd-proxy
+    - wait for etcd up
 
 - name: reload systemd
   command: systemctl daemon-reload
   when: ansible_service_mgr == "systemd"
 
-- name: start etcd
-  service:
-    name: etcd
-    enabled: yes
-    state: started
-  when: is_etcd_master
-
-- name: start etcd-proxy
-  service:
-    name: etcd-proxy
-    enabled: yes
-    state: started
-  when: is_etcd_proxy
+- name: wait for etcd up
+  uri: url=http://localhost:2379/health
+  register: result
+  until: result.status == 200
+  retries: 10
+  delay: 5
 
 - name: reload etcd
   service:
     name: etcd
-    state: "{{ 'restarted' if etcd_deployment_type == 'host' else 'reloaded' }}"
+    state: restarted
   when: is_etcd_master
 
 - name: reload etcd-proxy
   service:
     name: etcd-proxy
-    state: "{{ 'restarted' if etcd_deployment_type == 'host' else 'reloaded' }}"
+    state: restarted
   when: is_etcd_proxy

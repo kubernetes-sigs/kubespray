@@ -12,10 +12,14 @@ spec:
     - /hyperkube
     - proxy
     - --v={{ kube_log_level | default('2') }}
-{% if kube_proxy_insecure %}
-    - --master={{ kube_apiserver_insecure_endpoint }}
+{% if inventory_hostname in groups['kube-master'] %}
+    - --master=http://127.0.0.1:{{kube_apiserver_insecure_port}}
 {% else %}
-    - --master={{ kube_apiserver_access_endpoint }}
+{%   if loadbalancer_apiserver is defined and apiserver_loadbalancer_domain_name is defined %}
+    - --master=https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port }}
+{%   else %}
+    - --master=https://{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(hostvars[groups['kube-master'][0]]['ansible_default_ipv4']['address'])) }}:{{ kube_apiserver_port }}
+{%   endif%}
     - --kubeconfig=/etc/kubernetes/node-kubeconfig.yaml
 {% endif %}
     - --bind-address={{ ip | default(ansible_default_ipv4.address) }}

@@ -1,4 +1,26 @@
 ---
+- set_fact: kube_apiserver_count="{{ groups['kube-master'] | length }}"
+- set_fact: kube_apiserver_address="{{ ip | default(ansible_default_ipv4['address']) }}"
+- set_fact: kube_apiserver_access_address="{{ access_ip | default(kube_apiserver_address) }}"
+- set_fact: is_kube_master="{{ inventory_hostname in groups['kube-master'] }}"
+- set_fact: first_kube_master="{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(hostvars[groups['kube-master'][0]]['ansible_default_ipv4']['address'])) }}"
+- set_fact:
+    kube_apiserver_insecure_bind_address: |-
+      {% if loadbalancer_apiserver_localhost %}{{ kube_apiserver_address }}{% else %}127.0.0.1{% endif %}
+- set_fact:
+    kube_apiserver_endpoint: |-
+      {% if loadbalancer_apiserver_localhost -%}
+           http://127.0.0.1:{{ kube_apiserver_insecure_port }}
+      {%- elif is_kube_master and loadbalancer_apiserver is not defined -%}
+           http://127.0.0.1:{{ kube_apiserver_insecure_port }}
+      {%- else -%}
+      {%-   if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
+           https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      {%-   else -%}
+           https://{{ first_kube_master }}:{{ kube_apiserver_port }}
+      {%-  endif -%}
+      {%- endif %}
+
 - set_fact: etcd_address="{{ ip | default(ansible_default_ipv4['address']) }}"
 - set_fact: etcd_access_address="{{ access_ip | default(etcd_address) }}"
 - set_fact: etcd_peer_url="http://{{ etcd_access_address }}:2380"

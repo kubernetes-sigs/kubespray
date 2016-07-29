@@ -53,23 +53,28 @@
   register: calico_conf
   run_once: true
 
-- name: Calico | Configure calico network pool
-  command: "{{ bin_dir }}/calicoctl pool add {{ kube_pods_subnet }}"
+- name: Calico | Define ipip pool argument
   run_once: true
-  when: calico_conf.status == 404 and cloud_provider is not defined
-        and not nat_outgoing|default(false) or
-        (nat_outgoing|default(false) and peer_with_router|default(false))
+  set_fact:
+    ipip_arg: "--ipip"
+  when: cloud_provider is defined or ipip|default(false)
 
-- name: Calico | Configure calico network pool for cloud
-  command: "{{ bin_dir }}/calicoctl pool add {{ kube_pods_subnet }} --ipip --nat-outgoing"
+- name: Calico | Define nat-outgoing pool argument
   run_once: true
-  when: calico_conf.status == 404 and cloud_provider is defined
+  set_fact:
+    nat_arg: "--nat-outgoing"
+  when: nat_outgoing|default(false) and not peer_with_router|default(false)
 
-- name: Calico | Configure calico network pool with nat outgoing
-  command: "{{ bin_dir}}/calicoctl pool add {{ kube_pods_subnet }} --nat-outgoing"
+- name: Calico | Define calico pool task name
   run_once: true
-  when: calico_conf.status == 404 and cloud_provider is not defined
-        and nat_outgoing|default(false) and not peer_with_router|default(false)
+  set_fact:
+    pool_task_name: "with options {{ ipip_arg|default('') }} {{ nat_arg|default('') }}"
+  when: ipip_arg|default(false) or nat_arg|default(false)
+
+- name: Calico | Configure calico network pool {{ pool_task_name|default('') }}
+  command: "{{ bin_dir}}/calicoctl pool add {{ kube_pods_subnet }} {{ ipip_arg|default('') }} {{ nat_arg|default('') }}"
+  run_once: true
+  when: calico_conf.status == 404
 
 - name: Calico | Get calico configuration from etcd
   uri:

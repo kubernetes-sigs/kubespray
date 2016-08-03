@@ -1,4 +1,35 @@
 ---
-- name: restart kube-apiserver
-  set_fact:
-    restart_apimaster: True
+- name: Master | restart kubelet
+  command: /bin/true
+  notify:
+    - Kubelet | reload systemd
+    - Kubelet | reload kubelet
+
+- name: wait for master static pods
+  command: /bin/true
+  notify:
+    - wait for kube-scheduler
+    - wait for kube-controller-manager
+
+- name: Master | reload systemd
+  command: systemctl daemon-reload
+  when: ansible_service_mgr == "systemd"
+
+- name: Master | reload kubelet
+  service:
+    name: kubelet
+    state: restarted
+
+- name: wait for kube-scheduler
+  uri: url=http://localhost:10251/healthz
+  register: scheduler_result
+  until: scheduler_result.status == 200
+  retries: 15
+  delay: 5
+
+- name: wait for kube-controller-manager
+  uri: url=http://localhost:10252/healthz
+  register: controller_manager_result
+  until: controller_manager_result.status == 200
+  retries: 15
+  delay: 5

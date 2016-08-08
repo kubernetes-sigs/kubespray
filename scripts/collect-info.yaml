@@ -1,0 +1,71 @@
+---
+- hosts: all
+  become: true
+  gather_facts: no
+
+  vars:
+    debug: false
+    commands:
+      - name: git_info
+        cmd: cat {kargo,.}/.git/logs/HEAD
+      - name: timedate_info
+        cmd: timedatectl status
+      - name: boots_info
+        cmd: journalctl --list-boots --utc --no-pager
+      - name: space_info
+        cmd: df -h
+      - name: kernel_info
+        cmd: uname -r
+      - name: distro_info
+        cmd: cat /etc/issue.net
+      - name: docker_info
+        cmd: docker info
+      - name: ip_info
+        cmd: ip -4 -o a
+      - name: route_info
+        cmd: ip ro
+      - name: proc_info
+        cmd: ps auxf | grep -v ]$
+      - name: systemctl_info
+        cmd: systemctl status
+      - name: k8s_info
+        cmd: kubectl get all --all-namespaces -o wide
+      - name: k8s_dump_info
+        cmd: kubectl get all --all-namespaces -o yaml
+      - name: errors_info
+        cmd: journalctl -p err --utc --no-pager
+
+    logs:
+      - /var/log/ansible.log
+      - /var/log/ansible/ansible.log
+      - /var/log/syslog
+      - /var/log/daemon.log
+      - /var/log/kern.log
+      - inventory/inventory.ini
+      - cluster.yml
+      - kargo/kargo_default_ubuntu.yaml
+      - kargo/kargo_default_debian.yaml
+      - kargo/kargo_default_common.yaml
+      - kargo/inventory/inventory.cfg
+
+  tasks:
+    - name: Storing commands output
+      shell: "{{ item.cmd }} 2>&1 | tee {{ item.name }}"
+      register: output
+      ignore_errors: true
+      with_items: "{{commands}}"
+
+    - debug: var=item
+      with_items: output.results
+      when: debug
+
+    - name: Fetch results
+      fetch: src={{ item.name }} dest=/tmp/collect-info/commands
+      with_items: "{{commands}}"
+
+    - name: Fetch logs
+      fetch: src={{ item }} dest=/tmp/collect-info/logs
+      with_items: "{{logs}}"
+
+    - name: Pack results and logs
+      local_action: shell GZIP=-9 tar cvzf logs.tar.gz -C /tmp collect-info

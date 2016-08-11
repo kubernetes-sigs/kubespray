@@ -24,7 +24,7 @@ To deploy the cluster you can use :
 *  [CoreOS bootstrap](docs/coreos.md)
 *  [Ansible variables](docs/ansible.md)
 *  [Cloud providers](docs/cloud.md)
-*  [Openstack](docs/openstack.md)
+*  [OpenStack](docs/openstack.md)
 *  [Network plugins](#network-plugins)
 *  [Roadmap](docs/roadmap.md)
 

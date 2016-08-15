@@ -16,7 +16,8 @@ PATH=/sbin:/usr/sbin:/bin/:/usr/bin
 DESC="etcd-proxy"
 NAME=etcd-proxy
 DAEMON={{ docker_bin_dir | default("/usr/bin") }}/docker
-DAEMON_ARGS='--restart=always --env-file=/etc/etcd-proxy.env \
+DAEMON_EXEC=`basename $DAEMON`
+DAEMON_ARGS="run --restart=always --env-file=/etc/etcd-proxy.env \
 --net=host \
 --stop-signal=SIGKILL \
 -v /usr/share/ca-certificates/:/etc/ssl/certs:ro \
@@ -24,11 +25,11 @@ DAEMON_ARGS='--restart=always --env-file=/etc/etcd-proxy.env \
 {{ etcd_image_repo }}:{{ etcd_image_tag }} \
 {% if etcd_after_v3 %}
 {{ etcd_container_bin_dir }}etcd
-{% endif %}'
+{% endif %}"
 
 
 SCRIPTNAME=/etc/init.d/$NAME
-DAEMON_USER=etcd
+DAEMON_USER=root
 STOP_SCHEDULE="${STOP_SCHEDULE:-QUIT/5/TERM/5/KILL/5}"
 PID=/var/run/etcd-proxy.pid
 
@@ -49,6 +50,8 @@ do_status()
 #
 do_start()
 {
+    {{ docker_bin_dir | default("/usr/bin") }}/docker rm -f {{ etcd_proxy_member_name | default("etcd-proxy") }} &>/dev/null || true
+    sleep 1
     start-stop-daemon --background --start --quiet --make-pidfile --pidfile $PID --user $DAEMON_USER --exec $DAEMON -- \
         $DAEMON_ARGS \
         || return 2
@@ -59,7 +62,7 @@ do_start()
 #
 do_stop()
 {
-    start-stop-daemon --stop --quiet --retry=$STOP_SCHEDULE --pidfile $PID --name $NAME
+    start-stop-daemon --stop --quiet --retry=$STOP_SCHEDULE --pidfile $PID --name $DAEMON_EXEC
     RETVAL="$?"
 
     sleep 1

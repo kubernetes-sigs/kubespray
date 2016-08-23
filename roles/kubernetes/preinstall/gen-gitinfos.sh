@@ -54,7 +54,7 @@ EOF
            printf "unstaged changes=\"/etc/.git-ansible.diff\""
         fi
 
-        if [ ${current_commit} == ${latest_tag_commit} ]; then
+        if [ "${current_commit}" = "${latest_tag_commit}" ]; then
             printf "\ncurrent_commit_tag=\"${latest_tag}\""
         else
            printf "\nlast tag was "$(git describe --tags | awk -F- '{print $2}')" commits ago =\""

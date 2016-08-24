@@ -1,4 +1,4 @@
-OpenStack
+AWS
 ===============
 
 To deploy kubespray on [AWS](https://www.openstack.org/) uncomment the `cloud_provider` option in `group_vars/all.yml` and set it to `'aws'`.

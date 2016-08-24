@@ -68,17 +68,9 @@
     resolvconffile: >-
       {%- if resolvconf.rc == 0 -%}/etc/resolvconf/resolv.conf.d/head{%- else -%}/etc/resolv.conf{%- endif -%}
 
-- name: generate search domains to resolvconf
-  set_fact:
-    searchentries="{{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join(' ') }}"
-
-- name: generate nameservers to resolvconf
-  set_fact:
-    nameserverentries="{{ nameservers|default([]) + [ dns_server ] }}"
-
 - name: Add search resolv.conf
   lineinfile:
-    line: "search {{searchentries}}"
+    line: "search {{ [ 'default.svc.' + dns_domain, 'svc.' + dns_domain, dns_domain ] | join(' ') }}"
     dest: "{{resolvconffile}}"
     state: present
     insertbefore: BOF
@@ -87,13 +79,12 @@
 
 - name: Add local dnsmasq to resolv.conf
   lineinfile:
-    line: "nameserver {{item}}"
+    line: "nameserver {{dns_server}}"
     dest: "{{resolvconffile}}"
     state: present
     insertafter: "^search.*$"
     backup: yes
     follow: yes
-  with_items: "{{nameserverentries}}"
 
 - name: Add options to resolv.conf
   lineinfile:
@@ -109,13 +100,11 @@
     - attempts:2
 
 - name: disable resolv.conf modification by dhclient
-  copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient-enter-hooks.d/znodnsupdate mode=0755 backup=yes
-  notify: Dnsmasq | restart network
+  copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient-enter-hooks.d/nodnsupdate mode=0755 backup=yes
   when: ansible_os_family == "Debian"
 
 - name: disable resolv.conf modification by dhclient
-  copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient.d/znodnsupdate mode=u+x backup=yes
-  notify: Dnsmasq | restart network
+  copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient.d/nodnsupdate mode=u+x backup=yes
   when: ansible_os_family == "RedHat"
 
 - name: update resolvconf

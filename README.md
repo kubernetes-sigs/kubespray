@@ -25,6 +25,7 @@ To deploy the cluster you can use :
 *  [Ansible variables](docs/ansible.md)
 *  [Cloud providers](docs/cloud.md)
 *  [OpenStack](docs/openstack.md)
+*  [AWS](docs/aws.md)
 *  [Network plugins](#network-plugins)
 *  [Roadmap](docs/roadmap.md)
 

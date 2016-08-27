@@ -45,7 +45,7 @@ Versions
 [etcd](https://github.com/coreos/etcd/releases) v3.0.1 <br>
 [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.20.0 <br>
 [flanneld](https://github.com/coreos/flannel/releases) v0.5.5 <br>
-[weave](http://weave.works/) v1.5.0 <br>
+[weave](http://weave.works/) v1.6.1 <br>
 [docker](https://www.docker.com/) v1.10.3 <br>
 
 

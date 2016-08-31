@@ -1,4 +1,14 @@
 - name: Dnsmasq | restart network
+  command: /bin/true
+  notify:
+    - Dnsmasq | reload network
+    - Dnsmasq | Wait for network reloaded
+    - Dnsmasq | update resolvconf
+  when: ansible_os_family != "CoreOS"
+
+- name: Dnsmasq | reload network
+  vars:
+    ansible_ssh_pipelining: yes
   service:
     name: >-
       {% if ansible_os_family == "RedHat" -%}
@@ -7,4 +17,19 @@
       networking
       {%- endif %}
     state: restarted
-  when: ansible_os_family != "CoreOS"
+  register: network_runner
+  async: 600
+  poll: 0
+
+- name: Dnsmasq | Wait for network reloaded
+  vars:
+    ansible_ssh_pipelining: yes
+  async_status: jid={{ network_runner.ansible_job_id }}
+  register: network_jobs
+  until: network_jobs.finished
+  retries: 60
+  delay: 10
+
+- name: Dnsmasq | update resolvconf
+  command: /sbin/resolvconf -u
+  ignore_errors: true

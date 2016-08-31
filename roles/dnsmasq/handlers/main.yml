@@ -1,10 +1,20 @@
 - name: Dnsmasq | restart network
-  service:
-    name: >-
+  async: 0
+  poll: 0
+  vars:
+    ansible_ssh_pipelining: no
+  shell: >-
       {% if ansible_os_family == "RedHat" -%}
-      network
+      {%-  if ansible_service_mgr == "systemd" -%}
+      systemctl restart network
+      {%-  else -%}
+      service network restart
+      {%-  endif -%}
       {%- elif ansible_os_family == "Debian" -%}
-      networking
+      {%-  if ansible_service_mgr == "systemd" -%}
+      systemctl restart networking && /sbin/dhclient -v $(awk '/^iface.*dhcp$/ {print $2}' /etc/network/interfaces)
+      {%-  else -%}
+      service networking restart && /sbin/dhclient -v $(awk '/^iface.*dhcp$/ {print $2}' /etc/network/interfaces)
+      {%-  endif -%}
       {%- endif %}
-    state: restarted
   when: ansible_os_family != "CoreOS"

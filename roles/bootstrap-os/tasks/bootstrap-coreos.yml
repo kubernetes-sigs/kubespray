@@ -3,50 +3,47 @@
   raw: stat /opt/bin/.bootstrapped
   register: need_bootstrap
   ignore_errors: True
-  when: bootstrap_os == "coreos"
+
 
 - name: Bootstrap | Run bootstrap.sh
   script: bootstrap.sh
-  when: (bootstrap_os == "coreos" and need_bootstrap | failed)
+  when: (need_bootstrap | failed)
 
 - set_fact:
     ansible_python_interpreter: "/opt/bin/python"
-  when: bootstrap_os == "coreos"
 
 - name: Bootstrap | Check if we need to install pip
   shell: "{{ansible_python_interpreter}} -m pip --version"
   register: need_pip
   ignore_errors: True
   changed_when: false
-  when: (bootstrap_os == "coreos" and need_bootstrap | failed)
+  when: (need_bootstrap | failed)
 
 - name: Bootstrap | Copy get-pip.py
   copy: src=get-pip.py dest=~/get-pip.py
-  when: (bootstrap_os == "coreos" and need_pip | failed)
+  when: (need_pip | failed)
 
 - name: Bootstrap | Install pip
   shell: "{{ansible_python_interpreter}} ~/get-pip.py"
-  when: (bootstrap_os == "coreos" and need_pip | failed)
+  when: (need_pip | failed)
 
 - name: Bootstrap | Remove get-pip.py
   file: path=~/get-pip.py state=absent
-  when: (bootstrap_os == "coreos" and need_pip | failed)
+  when: (need_pip | failed)
 
 - name: Bootstrap | Install pip launcher
   copy: src=runner dest=/opt/bin/pip mode=0755
-  when: (bootstrap_os == "coreos" and need_pip | failed)
+  when: (need_pip | failed)
 
 - name: Install required python modules
   pip:
     name: "{{ item }}"
   with_items: "{{pip_python_modules}}"
-  when: bootstrap_os == "coreos"
 
 - name: Check configured hostname
   shell: hostname
   register: configured_hostname
-  when: bootstrap_os == "coreos"
 
 - name: Assign inventory name to unconfigured hostnames
   shell: sh -c "echo \"{{inventory_hostname}}\" > /etc/hostname; hostname \"{{inventory_hostname}}\""
-  when: (bootstrap_os == "coreos" and configured_hostname.stdout == 'localhost')
+  when: (configured_hostname.stdout == 'localhost')

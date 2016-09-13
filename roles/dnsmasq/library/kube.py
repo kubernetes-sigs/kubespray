@@ -44,12 +44,6 @@ options:
     default: null
     description:
       - The url for the API server that commands are executed against.
-  api_version:
-    required: false
-    choices: ['v1', 'v1beta3']
-    default: v1
-    description:
-      - The API version associated with cluster.
   force:
     required: false
     default: false
@@ -105,10 +99,6 @@ class KubeManager(object):
         if self.kubectl is None:
             self.kubectl =  module.get_bin_path('kubectl', True)
         self.base_cmd = [self.kubectl]
-        self.api_version = module.params.get('api_version')
-
-        if self.api_version:
-            self.base_cmd.append('--api-version=' + self.api_version)
 
         if module.params.get('server'):
             self.base_cmd.append('--server=' + module.params.get('server'))
@@ -164,8 +154,6 @@ class KubeManager(object):
             return []
 
         cmd = ['replace']
-        if self.api_version != 'v1':
-            cmd = ['update']
 
         if self.force:
             cmd.append('--force')
@@ -271,7 +259,6 @@ def main():
             label=dict(),
             server=dict(),
             kubectl=dict(),
-            api_version=dict(default='v1', choices=['v1', 'v1beta3']),
             force=dict(default=False, type='bool'),
             all=dict(default=False, type='bool'),
             log_level=dict(default=0, type='int'),

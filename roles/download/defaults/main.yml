@@ -13,6 +13,8 @@ etcd_version: v3.0.6
 calico_version: v0.20.0
 calico_cni_version: v1.3.1
 weave_version: v1.6.1
+flannel_version: 0.5.5
+flannel_server_helper_version: 0.1
 
 # Download URL's
 etcd_download_url: "https://storage.googleapis.com/kargo/{{etcd_version}}_etcd"
@@ -26,6 +28,22 @@ calico_cni_ipam_checksum: "3df6951a30749c279229e7e318e74ac4e41263996125be65257db
 weave_checksum: "9bf9d6e5a839e7bcbb28cc00c7acae9d09284faa3e7a3720ca9c2b9e93c68580"
 etcd_checksum: "385afd518f93e3005510b7aaa04d38ee4a39f06f5152cd33bb86d4f0c94c7485"
 
+# Containers
+# Possible values: host, docker
+etcd_deployment_type: "docker"
+etcd_image_repo: "quay.io/coreos/etcd"
+etcd_image_tag: "{{ etcd_version }}"
+flannel_server_helper_image_repo: "gcr.io/google_containers/flannel-server-helper"
+flannel_server_helper_image_tag: "{{ flannel_server_helper_version }}"
+flannel_image_repo: "quay.io/coreos/flannel"
+flannel_image_tag: "{{ flannel_version }}"
+calicoctl_image_repo: "calico/ctl"
+calicoctl_image_tag: "{{ calico_version }}"
+calico_node_image_repo: "calico/node"
+calico_node_image_tag: "{{ calico_version }}"
+hyperkube_image_repo: "quay.io/coreos/hyperkube"
+hyperkube_image_tag: "{{ kube_version }}_coreos.0"
+
 downloads:
   calico_cni_plugin:
     dest: calico/bin/calico
@@ -35,6 +53,7 @@ downloads:
     url: "{{ calico_cni_download_url }}"
     owner: "root"
     mode: "0755"
+    enabled: "{{ kube_network_plugin == 'calico' }}"
   calico_cni_plugin_ipam:
     dest: calico/bin/calico-ipam
     version: "{{calico_cni_version}}"
@@ -43,6 +62,7 @@ downloads:
     url: "{{ calico_cni_ipam_download_url }}"
     owner: "root"
     mode: "0755"
+    enabled: "{{ kube_network_plugin == 'calico' }}"
   weave:
     dest: weave/bin/weave
     version: "{{weave_version}}"
@@ -51,6 +71,7 @@ downloads:
     sha256: "{{ weave_checksum }}"
     owner: "root"
     mode: "0755"
+    enabled: "{{ kube_network_plugin == 'weave' }}"
   etcd:
     version: "{{etcd_version}}"
     dest: "etcd/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
@@ -60,10 +81,38 @@ downloads:
     unarchive: true
     owner: "etcd"
     mode: "0755"
-  nothing:
-    enabled: false
+    container: "{{ etcd_deployment_type == 'docker' }}"
+    repo: "{{ etcd_image_repo }}"
+    tag: "{{ etcd_image_tag }}"
+  hyperkube:
+    container: true
+    repo: "{{ hyperkube_image_repo }}"
+    tag: "{{ hyperkube_image_tag }}"
+  flannel:
+    container: true
+    repo: "{{ flannel_image_repo }}"
+    tag: "{{ flannel_image_tag }}"
+    enabled: "{{ kube_network_plugin == 'flannel' }}"
+  flannel_server_helper:
+    container: true
+    repo: "{{ flannel_server_helper_image_repo }}"
+    tag: "{{ flannel_server_helper_image_tag }}"
+    enabled: "{{ kube_network_plugin == 'flannel' }}"
+  calicoctl:
+    container: true
+    repo: "{{ calicoctl_image_repo }}"
+    tag: "{{ calicoctl_image_tag }}"
+    enabled: "{{ kube_network_plugin == 'calico' }}"
+  calico_node:
+    container: true
+    repo: "{{ calico_node_image_repo }}"
+    tag: "{{ calico_node_image_tag }}"
+    enabled: "{{ kube_network_plugin == 'calico' }}"
 
 download:
+  container: "{{ file.container|default('false') }}"
+  repo: "{{ file.repo|default(None) }}"
+  tag: "{{ file.tag|default(None) }}"
   enabled: "{{ file.enabled|default('true') }}"
   dest: "{{ file.dest|default(None) }}"
   version: "{{ file.version|default(None) }}"

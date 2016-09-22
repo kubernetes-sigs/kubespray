@@ -1,0 +1,100 @@
+---
+- name: check resolvconf
+  shell: which resolvconf
+  register: resolvconf
+  ignore_errors: yes
+
+- name: target resolv.conf file
+  set_fact:
+    resolvconffile: >-
+      {%- if resolvconf.rc == 0 -%}/etc/resolvconf/resolv.conf.d/head{%- else -%}/etc/resolv.conf{%- endif -%}
+
+- name: generate search domains to resolvconf
+  set_fact:
+    searchentries:
+      "{{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join(' ') }}"
+
+- name: pick dnsmasq cluster IP
+  set_fact:
+    dnsmasq_server: >-
+      {%- if skip_dnsmasq|bool -%}{{ [ skydns_server ] + upstream_dns_servers|default([]) }}{%- else -%}{{ [ dns_server ] }}{%- endif -%}
+
+- name: generate nameservers to resolvconf
+  set_fact:
+    nameserverentries:
+      "{{ nameservers|default([]) + dnsmasq_server|default([]) }}"
+
+- name: Remove search and nameserver options from resolvconf head
+  lineinfile:
+    dest: /etc/resolvconf/resolv.conf.d/head
+    state: absent
+    regexp: "^{{ item }}.*$"
+    backup: yes
+    follow: yes
+  with_items:
+    - search
+    - nameserver
+  when: resolvconf.rc == 0
+  notify: Dnsmasq | update resolvconf
+
+- name: Add search resolv.conf
+  lineinfile:
+    line: "search {{searchentries}}"
+    dest: "{{resolvconffile}}"
+    state: present
+    insertbefore: BOF
+    backup: yes
+    follow: yes
+  notify: Dnsmasq | update resolvconf
+
+- name: Add local dnsmasq to resolv.conf
+  blockinfile:
+    dest: "{{resolvconffile}}"
+    block: |-
+      {% for item in nameserverentries -%}
+      nameserver {{ item }}
+      {% endfor %}
+    state: present
+    insertafter: "^search.*$"
+    create: yes
+    backup: yes
+    follow: yes
+    marker: "# Ansible nameservers {mark}"
+  notify: Dnsmasq | update resolvconf
+
+- name: Add options to resolv.conf
+  lineinfile:
+    line: options {{ item }}
+    dest: "{{resolvconffile}}"
+    state: present
+    regexp: "^options.*{{ item }}$"
+    insertafter: EOF
+    backup: yes
+    follow: yes
+  with_items:
+    - timeout:2
+    - attempts:2
+  notify: Dnsmasq | update resolvconf
+
+- name: Remove search and nameserver options from resolvconf base
+  lineinfile:
+    dest: /etc/resolvconf/resolv.conf.d/base
+    state: absent
+    regexp: "^{{ item }}.*$"
+    backup: yes
+    follow: yes
+  with_items:
+    - search
+    - nameserver
+  when: resolvconf.rc == 0
+  notify: Dnsmasq | update resolvconf
+
+- name: disable resolv.conf modification by dhclient
+  copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient-enter-hooks.d/znodnsupdate mode=0755
+  notify: Dnsmasq | restart network
+  when: ansible_os_family == "Debian"
+
+- name: disable resolv.conf modification by dhclient
+  copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient.d/nodnsupdate mode=u+x
+  notify: Dnsmasq | restart network
+  when: ansible_os_family == "RedHat"

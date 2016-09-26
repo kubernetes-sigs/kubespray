@@ -1,6 +1,38 @@
 K8s DNS stack by Kargo
 ======================
 
+Kargo configures a [Kubernetes DNS](http://kubernetes.io/docs/admin/dns/)
+[cluster add-on](http://releases.k8s.io/master/cluster/addons/README.md)
+to serve as an authoritative DNS server for a given ``dns_domain`` and its
+``svc, default.svc`` default subdomains (a total of ``ndots: 5`` max levels).
+
+Note, additional search (sub)domains may be defined in the ``searchdomains``
+var. And additional recursive DNS resolvers in the `` upstream_dns_servers``,
+``nameservers`` vars. Intranet DNS resolvers should be specified in the first
+place, followed by external resolvers, for example:
+
+```
+skip_dnsmasq: true
+nameservers: [8.8.8.8]
+upstream_dns_servers: [172.18.32.6]
+```
+or
+```
+skip_dnsmasq: false
+upstream_dns_servers: [172.18.32.6, 172.18.32.7, 8.8.8.8, 8.8.8.4]
+```
+
+Remember the limitations (the vars are explained below):
+
+* the ``searchdomains`` have a limitation of a 6 names and 256 chars
+  length. Due to default ``svc, default.svc`` subdomains, the actual
+  limits are a 4 names and 239 chars respectively.
+* the ``nameservers`` have a limitation of a 3 servers, although there
+  is a way to mitigate that with the ``upstream_dns_servers``,
+  see below. Anyway, the ``nameservers`` can take no more than a two
+  custom DNS servers because of one slot is reserved for a Kubernetes
+  cluster needs.
+
 Here is an approximate picture of how DNS things working and
 being configured by Kargo ansible playbooks:
 

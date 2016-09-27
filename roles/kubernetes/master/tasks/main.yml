@@ -19,17 +19,9 @@
   template:
     src: manifests/kube-apiserver.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-apiserver.manifest"
-  register: apiserver_manifest
-  notify: Master | restart kubelet
+  notify: Master | wait for the apiserver to be running
 
-- name: wait for the apiserver to be running
-  uri: url=http://localhost:8080/healthz
-  register: result
-  until: result.status == 200
-  retries: 10
-  delay: 6
-
-
+- meta: flush_handlers
 # Create kube-system namespace
 - name: copy 'kube-system' namespace manifest
   copy: src=namespace.yml dest=/etc/kubernetes/kube-system-ns.yml
@@ -43,7 +35,6 @@
   failed_when: False
   run_once: yes
 
-
 - name: Create 'kube-system' namespace
   command: "{{ bin_dir }}/kubectl create -f /etc/kubernetes/kube-system-ns.yml"
   changed_when: False
@@ -54,12 +45,10 @@
   template:
     src: manifests/kube-controller-manager.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-controller-manager.manifest"
-  notify: wait for kube-controller-manager
+  notify: Master | wait for kube-controller-manager
 
 - name: Write kube-scheduler manifest
   template:
     src: manifests/kube-scheduler.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-scheduler.manifest"
-  notify: wait for kube-scheduler
-
-- meta: flush_handlers
+  notify: Master | wait for kube-scheduler

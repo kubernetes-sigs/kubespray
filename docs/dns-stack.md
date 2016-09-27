@@ -7,7 +7,7 @@ to serve as an authoritative DNS server for a given ``dns_domain`` and its
 ``svc, default.svc`` default subdomains (a total of ``ndots: 5`` max levels).
 
 Note, additional search (sub)domains may be defined in the ``searchdomains``
-var. And additional recursive DNS resolvers in the `` upstream_dns_servers``,
+and ``ndots`` vars. And additional recursive DNS resolvers in the `` upstream_dns_servers``,
 ``nameservers`` vars. Intranet DNS resolvers should be specified in the first
 place, followed by external resolvers, for example:
 
@@ -21,17 +21,10 @@ or
 skip_dnsmasq: false
 upstream_dns_servers: [172.18.32.6, 172.18.32.7, 8.8.8.8, 8.8.8.4]
 ```
+The vars are explained below as well.
 
-Remember the limitations (the vars are explained below):
-
-* the ``searchdomains`` have a limitation of a 6 names and 256 chars
-  length. Due to default ``svc, default.svc`` subdomains, the actual
-  limits are a 4 names and 239 chars respectively.
-* the ``nameservers`` have a limitation of a 3 servers, although there
-  is a way to mitigate that with the ``upstream_dns_servers``,
-  see below. Anyway, the ``nameservers`` can take no more than a two
-  custom DNS servers because of one slot is reserved for a Kubernetes
-  cluster needs.
+DNS configuration details
+-------------------------
 
 Here is an approximate picture of how DNS things working and
 being configured by Kargo ansible playbooks:
@@ -73,7 +66,27 @@ Those may be specified either in ``nameservers`` or ``upstream_dns_servers``
 and will be merged together with the ``skydns_server`` IP into the hots'
 ``/etc/resolv.conf``.
 
-Kargo has yet ways to configure Kubedns addon to forward requests SkyDns can
-not answer with authority to arbitrary recursive resolvers. This task is left
-for future. See [official SkyDns docs](https://github.com/skynetservices/skydns)
-for details.
+Limitations
+-----------
+
+* Kargo has yet ways to configure Kubedns addon to forward requests SkyDns can
+  not answer with authority to arbitrary recursive resolvers. This task is left
+  for future. See [official SkyDns docs](https://github.com/skynetservices/skydns)
+  for details.
+
+* There is
+  [no way to specify a custom value](https://github.com/kubernetes/kubernetes/issues/33554)
+  for the SkyDNS ``ndots`` param via an
+  [option for KubeDNS](https://github.com/kubernetes/kubernetes/blob/master/cmd/kube-dns/app/options/options.go)
+  add-on, while SkyDNS supports it though. Thus, DNS SRV records may not work
+  as expected as they require the ``ndots:7``.
+
+* the ``searchdomains`` have a limitation of a 6 names and 256 chars
+  length. Due to default ``svc, default.svc`` subdomains, the actual
+  limits are a 4 names and 239 chars respectively.
+
+* the ``nameservers`` have a limitation of a 3 servers, although there
+  is a way to mitigate that with the ``upstream_dns_servers``,
+  see below. Anyway, the ``nameservers`` can take no more than a two
+  custom DNS servers because of one slot is reserved for a Kubernetes
+  cluster needs.

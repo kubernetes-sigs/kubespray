@@ -33,15 +33,27 @@ Kube-apiserver
 --------------
 
 K8s components require a loadbalancer to access the apiservers via a reverse
-proxy. A kube-proxy does not support multiple apiservers for the time being so
+proxy. Kargo includes support for an nginx-based proxy that resides on each
+non-master Kubernetes node. This is referred to as localhost loadbalancing. It
+is less efficient than a dedicated load balancer because it creates extra
+health checks on the Kubernetes apiserver, but is more practical for scenarios
+where an external LB or virtual IP management is inconvenient.
+
+This option is configured by the variable `loadbalancer_apiserver_localhost`.
 you will need to configure your own loadbalancer to achieve HA. Note that
 deploying a loadbalancer is up to a user and is not covered by ansible roles
 in Kargo. By default, it only configures a non-HA endpoint, which points to
 the `access_ip` or IP address of the first server node in the `kube-master`
 group. It can also configure clients to use endpoints for a given loadbalancer
-type.
+type. The following diagram shows how traffic to the apiserver is directed.
 
-A loadbalancer (LB) may be an external or internal one. An external LB
+![Image](figures/loadbalancer_localhost.png?raw=true)
+
+..note:: Kubernetes master nodes still use insecure localhost access because
+  there are bugs in Kubernetes <1.5.0 in using TLS auth on master role
+  services.
+
+A user may opt to use an external loadbalancer (LB) instead. An external LB
 provides access for external clients, while the internal LB accepts client
 connections only to the localhost, similarly to the etcd-proxy HA endpoints.
 Given a frontend `VIP` address and `IP1, IP2` addresses of backends, here is
@@ -71,35 +83,11 @@ into the `/etc/hosts` file of all servers in the `k8s-cluster` group. Note that
 the HAProxy service should as well be HA and requires a VIP management, which
 is out of scope of this doc.
 
-The internal LB may be the case if you do not want to operate a VIP management
-HA stack and require no external and no secure access to the K8s API. The group
-var `loadbalancer_apiserver_localhost` (defaults to `false`) controls that
-deployment layout. When enabled, it is expected each node in the `k8s-cluster`
-group to run a loadbalancer that listens the localhost frontend and has all
-of the apiservers as backends. Here is an example configuration for a HAProxy
- service acting as an internal LB:
-
-```
-listen kubernetes-apiserver-http
-  bind localhost:8080
-  mode tcp
-  timeout client 3h
-  timeout server 3h
-  server master1 <IP1>:8080
-  server master2 <IP2>:8080
-  balance leastconn
-```
-
-And the corresponding example global vars config:
-```
-loadbalancer_apiserver_localhost: true
-```
-
-This var overrides an external LB configuration, if any. Note that for this
-example, the `kubernetes-apiserver-http` endpoint has backends receiving
-unencrypted traffic, which may be a security issue when interconnecting
-different nodes, or may be not, if those belong to the isolated management
-network without external access.
+Specifying an external LB overrides any internal localhost LB configuration.
+Note that for this example, the `kubernetes-apiserver-http` endpoint
+has backends receiving unencrypted traffic, which may be a security issue
+when interconnecting different nodes, or maybe not, if those belong to the
+isolated management network without external access.
 
 In order to achieve HA for HAProxy instances, those must be running on the
 each node in the `k8s-cluster` group as well, but require no VIP, thus
@@ -109,8 +97,8 @@ Access endpoints are evaluated automagically, as the following:
 
 | Endpoint type                | kube-master   | non-master          |
 |------------------------------|---------------|---------------------|
-| Local LB (overrides ext)     | http://lc:p   | http://lc:p         |
-| External LB, no internal     | https://lb:lp | https://lb:lp       |
+| Local LB                     | http://lc:p   | http://lc:sp        |
+| External LB, no internal     | http://lc:p   | https://lb:lp       |
 | No ext/int LB (default)      | http://lc:p   | https://m[0].aip:sp |
 
 Where:

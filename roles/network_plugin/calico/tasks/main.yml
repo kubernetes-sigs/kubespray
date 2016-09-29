@@ -32,24 +32,24 @@
     use_hyperkube_cni: true
   when: kube_version | version_compare('v1.3.4','>=')
 
-- name: Calico | Install calico cni bin
-  command: rsync -piu "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico"
-  changed_when: false
-  when: "{{ not use_hyperkube_cni|bool }}"
-
-- name: Calico | Install calico-ipam cni bin
-  command: rsync -piu "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico-ipam"
-  changed_when: false
-  when: "{{ not use_hyperkube_cni|bool }}"
-
 - name: Calico | Copy cni plugins from hyperkube
-  command: "/usr/bin/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp -r /opt/cni/bin/. /cnibindir/"
+  command: "/usr/bin/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/rsync -a /opt/cni/bin/ /cnibindir/"
   register: cni_task_result
   until: cni_task_result.rc == 0
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
   when: "{{ use_hyperkube_cni|bool }}"
+
+- name: Calico | Install calico cni bin
+  command: rsync -pi "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico"
+  changed_when: false
+  when: "{{ not use_hyperkube_cni|bool or overwrite_hyperkube_cni|bool }}"
+
+- name: Calico | Install calico-ipam cni bin
+  command: rsync -pi "{{ local_release_dir }}/calico/bin/calico-ipam" "/opt/cni/bin/calico-ipam"
+  changed_when: false
+  when: "{{ not use_hyperkube_cni|bool or overwrite_hyperkube_cni|bool }}"
 
 - name: Calico | wait for etcd
   uri: url=http://localhost:2379/health

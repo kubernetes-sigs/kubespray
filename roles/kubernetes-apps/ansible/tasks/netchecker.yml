@@ -1,0 +1,20 @@
+- name: Kubernetes Apps | Lay Down Netchecker Template
+  template: src={{item.file}} dest={{kube_config_dir}}/{{item.file}}
+  with_items:
+    - {file: netchecker-agent-ds.yml, type: ds, name: netchecker-agent}
+    - {file: netchecker-agent-hostnet-ds.yml, type: ds, name: netchecker-agent-hostnet}
+    - {file: netchecker-server-pod.yml, type: po, name: netchecker-server}
+    - {file: netchecker-server-svc.yml, type: svc, name: netchecker-service}
+  register: manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Kubernetes Apps | Start Netchecker Resources
+  kube:
+    name: "{{item.item.name}}"
+    namespace: "{{netcheck_namespace}}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: "{{ manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]

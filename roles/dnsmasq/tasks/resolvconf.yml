@@ -48,7 +48,20 @@
   when: resolvconf.rc == 0
   notify: Dnsmasq | update resolvconf
 
-- name: Add search domains to resolv.conf
+- name: Remove search and nameserver options from resolvconf cloud init temporary file
+  lineinfile:
+    dest: "{{resolvconffile}}"
+    state: absent
+    regexp: "^{{ item }}.*$"
+    backup: yes
+    follow: yes
+  with_items:
+    - search
+    - nameserver
+  when: ansible_os_family == "CoreOS"
+  notify: Dnsmasq | update resolvconf for CoreOS
+
+- name: Add search domains to resolvconf file
   lineinfile:
     line: "search {{searchentries}}"
     dest: "{{resolvconffile}}"
@@ -66,7 +79,7 @@
       nameserver {{ item }}
       {% endfor %}
     state: present
-    insertafter: "^search.*$"
+    insertafter: "^search default.svc.*$"
     create: yes
     backup: yes
     follow: yes

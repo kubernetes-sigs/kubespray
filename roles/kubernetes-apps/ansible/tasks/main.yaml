@@ -1,6 +1,6 @@
 ---
 - name: Kubernetes Apps | Lay Down KubeDNS Template
-  template: src={{item.file}} dest=/etc/kubernetes/{{item.file}}
+  template: src={{item.file}} dest={{kube_config_dir}}/{{item.file}}
   with_items:
     - {file: kubedns-rc.yml, type: rc}
     - {file: kubedns-svc.yml, type: svc}
@@ -10,10 +10,10 @@
 - name: Kubernetes Apps | Start Resources
   kube:
     name: kubedns
-    namespace: kube-system
+    namespace: "{{ kube_namespace }}"
     kubectl: "{{bin_dir}}/kubectl"
     resource: "{{item.item.type}}"
-    filename: /etc/kubernetes/{{item.item.file}}
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
     state: "{{item.changed | ternary('latest','present') }}"
   with_items: "{{ manifests.results }}"
   when: inventory_hostname == groups['kube-master'][0]
@@ -21,3 +21,7 @@
 - include: tasks/calico-policy-controller.yml
   when: ( enable_network_policy is defined and enable_network_policy == True ) or
     ( kube_network_plugin == 'canal' )
+
+- name: Kubernetes Apps | Netchecker
+  include: tasks/netchecker.yml
+  when: deploy_netchecker

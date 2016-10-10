@@ -13,7 +13,7 @@ If you have questions, you can [invite yourself](https://slack.kubespray.io/) to
 
 To deploy the cluster you can use :
 
-[**kargo-cli**](https://github.com/kubespray/kargo-cli) <br>
+[**kargo-cli**](https://github.com/kubespray/kargo-cli) (deprecated, a newer [go](https://github.com/Smana/kargo-cli/tree/kargogo) version soon)<br>
 **Ansible** usual commands <br>
 **vagrant** by simply running `vagrant up` (for tests purposes) <br>
 
@@ -41,7 +41,7 @@ Supported Linux distributions
 Versions
 --------------
 
-[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.3.0 <br>
+[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.4.0 <br>
 [etcd](https://github.com/coreos/etcd/releases) v3.0.1 <br>
 [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.20.0 <br>
 [flanneld](https://github.com/coreos/flannel/releases) v0.5.5 <br>

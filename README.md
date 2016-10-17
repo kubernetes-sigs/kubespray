@@ -41,7 +41,7 @@ Supported Linux distributions
 Versions
 --------------
 
-[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.4.0 <br>
+[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.4.2 <br>
 [etcd](https://github.com/coreos/etcd/releases) v3.0.1 <br>
 [flanneld](https://github.com/coreos/flannel/releases) v0.6.2 <br>
 [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.22.0 <br>

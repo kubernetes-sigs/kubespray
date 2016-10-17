@@ -49,9 +49,11 @@ type. The following diagram shows how traffic to the apiserver is directed.
 
 ![Image](figures/loadbalancer_localhost.png?raw=true)
 
-..note:: Kubernetes master nodes still use insecure localhost access because
+  Note: Kubernetes master nodes still use insecure localhost access because
   there are bugs in Kubernetes <1.5.0 in using TLS auth on master role
-  services.
+  services. This makes backends receiving unencrypted traffic and may be a
+  security issue when interconnecting different nodes, or maybe not, if those
+  belong to the isolated management network without external access.
 
 A user may opt to use an external loadbalancer (LB) instead. An external LB
 provides access for external clients, while the internal LB accepts client
@@ -81,24 +83,19 @@ loadbalancer_apiserver:
 This domain name, or default "lb-apiserver.kubernetes.local", will be inserted
 into the `/etc/hosts` file of all servers in the `k8s-cluster` group. Note that
 the HAProxy service should as well be HA and requires a VIP management, which
-is out of scope of this doc.
+is out of scope of this doc. Specifying an external LB overrides any internal
+localhost LB configuration.
 
-Specifying an external LB overrides any internal localhost LB configuration.
-Note that for this example, the `kubernetes-apiserver-http` endpoint
-has backends receiving unencrypted traffic, which may be a security issue
-when interconnecting different nodes, or maybe not, if those belong to the
-isolated management network without external access.
-
-In order to achieve HA for HAProxy instances, those must be running on the
-each node in the `k8s-cluster` group as well, but require no VIP, thus
-no VIP management.
+  Note: In order to achieve HA for HAProxy instances, those must be running on
+  the each node in the `k8s-cluster` group as well, but require no VIP, thus
+  no VIP management.
 
 Access endpoints are evaluated automagically, as the following:
 
 | Endpoint type                | kube-master   | non-master          |
 |------------------------------|---------------|---------------------|
-| Local LB                     | http://lc:p   | http://lc:sp        |
-| External LB, no internal     | http://lc:p   | https://lb:lp       |
+| Local LB                     | http://lc:p   | https://lc:sp       |
+| External LB, no internal     | https://lb:lp | https://lb:lp       |
 | No ext/int LB (default)      | http://lc:p   | https://m[0].aip:sp |
 
 Where:

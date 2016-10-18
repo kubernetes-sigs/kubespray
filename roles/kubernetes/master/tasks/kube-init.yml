@@ -1,0 +1,25 @@
+---
+- name: check for bootstrap
+  command: kubectl get nodes
+  register: kube_bootstrap
+  ignore_errors: true
+
+- name: initialize the kubernetes master
+  command: "kubeadm init --token {{ init_token }} \
+           --api-advertise-addresses {{ kube_apiserver_access_address }} \
+           --service-cidr {{ kube_service_addresses }} \
+           --external-etcd-endpoints {{ etcd_access_addresses }} \
+           --service-dns-domain {{ cluster_name }} \
+           {% if cloud_provider is defined %}--cloud-provider {{ cloud_provider }}{% endif %}"
+  when: "'localhost:8080 was refused' in kube_bootstrap.stderr"
+  register: initout
+  ignore_errors: true
+
+# NOTE(bogdando) we want ansible to control configs/manifests instead of kubeadm, yet
+- name: purge kube manifests created by kubeadm
+  file: path="{{ kube_manifest_dir }}/{{ item }}.json" state=absent
+  with_items: [ "kube-controller-manager", "kube-apiserver", "kube-scheduler" ]
+
+- name: purge kube configs created by kubeadm
+  file: path="{{ kube_config_dir }}/{{ item }}.conf" state=absent
+  with_items: [ "kubelet", "admin" ]

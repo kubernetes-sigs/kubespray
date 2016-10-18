@@ -15,7 +15,7 @@
 # limitations under the License.
 
 token_dir=${TOKEN_DIR:-/var/srv/kubernetes}
-token_file="${token_dir}/known_tokens.csv"
+token_file="${token_dir}/tokens.csv"
 
 create_accounts=($@)
 

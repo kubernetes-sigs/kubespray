@@ -1,0 +1,88 @@
+{
+  "kind": "Pod",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "kube-controller-manager",
+    "namespace": "kube-system",
+    "creationTimestamp": null,
+    "labels": {
+      "component": "kube-controller-manager",
+      "tier": "control-plane"
+    }
+  },
+  "spec": {
+    "volumes": [
+{% if cloud_provider is defined and cloud_provider == "openstack" %}
+      {
+        "name": "cloudconfig",
+        "hostPath": {
+          "path": "{{ kube_config_dir }}/cloud_config"
+        }
+      },
+{% endif %}
+      {
+        "name": "pki",
+        "hostPath": {
+          "path": "{{ kube_config_dir }}"
+        }
+      }
+    ],
+    "containers": [
+      {
+        "name": "kube-controller-manager",
+        "image": "{{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}",
+        "command": [
+          "/hyperkube",
+          "controller-manager",
+          "--v={{ kube_log_level | default('2') }}",
+          "--address=127.0.0.1",
+          "--leader-elect",
+          "--master={{ kube_apiserver_endpoint }}",
+          "--enable-hostpath-provisioner={{ kube_hostpath_dynamic_provisioner }}",
+          "--cluster-name=kubernetes",
+          "--root-ca-file={{ kubeadm_certs_dir }}/ca.pem",
+          "--service-account-private-key-file={{ kubeadm_certs_dir }}/apiserver-key.pem",
+          "--cluster-signing-cert-file={{ kubeadm_certs_dir }}/ca.pem",
+          "--cluster-signing-key-file={{ kubeadm_certs_dir }}/ca-key.pem",
+{% if cloud_provider is defined and cloud_provider == "openstack" %}
+          "--cloud-provider={{cloud_provider}}",
+          "--cloud-config={{ kube_config_dir }}/cloud_config",
+{% elif cloud_provider is defined and cloud_provider == "aws" %}
+          "--cloud-provider={{cloud_provider}}",
+{% endif %}
+          "--insecure-experimental-approve-all-kubelet-csrs-for-group=system:kubelet-bootstrap"
+        ],
+        "resources": {
+          "requests": {
+            "cpu": "200m"
+          }
+        },
+        "volumeMounts": [
+{% if cloud_provider is defined and cloud_provider == "openstack" %}
+          {
+            "name": "cloudconfig",
+            "readOnly": true,
+            "mountPath": "{{ kube_config_dir }}/cloud_config"
+          },
+{% endif %}
+          {
+            "name": "pki",
+            "readOnly": true,
+            "mountPath": "{{ kube_config_dir }}"
+          }
+        ],
+        "livenessProbe": {
+          "httpGet": {
+            "path": "/healthz",
+            "port": 10252,
+            "host": "127.0.0.1"
+          },
+          "initialDelaySeconds": 15,
+          "timeoutSeconds": 15
+        }
+      }
+    ],
+    "hostNetwork": true
+  },
+  "status": {}
+}

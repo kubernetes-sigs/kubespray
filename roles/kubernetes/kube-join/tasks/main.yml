@@ -1,0 +1,18 @@
+---
+# TODO(bogdando) kubeadm init/join/taint on RedHat/CoreOS
+- name: join workers to the initialized kubernetes cluster
+  command: "kubeadm join --token {{ init_token }} {{ first_kube_master }}"
+  when: (ansible_os_family in ["Debian"]) and ({{ use_kubeadm|bool }})
+
+# NOTE(bogdando) we want ansible to control manifests instead of kubeadm, yet
+- name: purge kube manifests created by kubeadm
+  file: path="{{ kube_manifest_dir }}/{{ item }}.json" state=absent
+  with_items: [ "kube-proxy" ]
+
+- name: allow all nodes to be picked by schedulers
+  command: "kubectl taint nodes --all dedicated-"
+  when: (ansible_os_family in ["Debian"]) and ({{ use_kubeadm|bool }})
+  ignore_errors: true
+
+- include: kubeadm-system-pods.yml
+  when: (ansible_os_family in ["Debian"]) and ({{ use_kubeadm|bool }})

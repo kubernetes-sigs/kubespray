@@ -15,40 +15,13 @@
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
 
-- name: Write kube-apiserver manifest
-  template:
-    src: manifests/kube-apiserver.manifest.j2
-    dest: "{{ kube_manifest_dir }}/kube-apiserver.manifest"
-  notify: Master | wait for the apiserver to be running
+- include: system-pods.yml
+  when: ({{ not use_kubeadm|bool }})
 
-- meta: flush_handlers
-# Create kube-system namespace
-- name: copy 'kube-system' namespace manifest
-  copy: src=namespace.yml dest=/etc/kubernetes/kube-system-ns.yml
-  run_once: yes
-  when: inventory_hostname == groups['kube-master'][0]
+# TODO(bogdando) kubeadm init/update pods on RedHat/CoreOS
+- include: kube-init.yml
+  when: (ansible_os_family in ["Debian"]) and ({{ use_kubeadm|bool }}) and (inventory_hostname == groups['kube-master'][0])
+  run_once: true
 
-- name: Check if kube-system exists
-  command: "{{ bin_dir }}/kubectl get ns kube-system"
-  register: 'kubesystem'
-  changed_when: False
-  failed_when: False
-  run_once: yes
-
-- name: Create 'kube-system' namespace
-  command: "{{ bin_dir }}/kubectl create -f /etc/kubernetes/kube-system-ns.yml"
-  changed_when: False
-  when: kubesystem|failed and inventory_hostname == groups['kube-master'][0]
-
-# Write other manifests
-- name: Write kube-controller-manager manifest
-  template:
-    src: manifests/kube-controller-manager.manifest.j2
-    dest: "{{ kube_manifest_dir }}/kube-controller-manager.manifest"
-  notify: Master | wait for kube-controller-manager
-
-- name: Write kube-scheduler manifest
-  template:
-    src: manifests/kube-scheduler.manifest.j2
-    dest: "{{ kube_manifest_dir }}/kube-scheduler.manifest"
-  notify: Master | wait for kube-scheduler
+- include: kubeadm-system-pods.yml
+  when: (ansible_os_family in ["Debian"]) and ({{ use_kubeadm|bool }})

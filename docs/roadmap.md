@@ -1,6 +1,10 @@
 Kargo's roadmap
 =================
 
+### Kubeadm
+- Propose kubeadm as an option in order to setup the kubernetes cluster.
+That would probably improve deployment speed and certs management [#553](https://github.com/kubespray/kargo/issues/553)
+
 ### Self deployment (pull-mode) [#320](https://github.com/kubespray/kargo/issues/320)
 - the playbook would install and configure docker/rkt and the etcd cluster
 - the following data would be inserted into etcd: certs,tokens,users,inventory,group_vars.

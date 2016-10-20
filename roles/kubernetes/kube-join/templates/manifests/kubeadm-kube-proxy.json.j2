@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kube-proxy
+  namespace: kube-system
+spec:
+  hostNetwork: true
+  containers:
+  - name: kube-proxy
+    image: {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}
+    command:
+    - /hyperkube
+    - proxy
+    - --v={{ kube_log_level | default('2') }}
+    - --master={{ kube_apiserver_endpoint }}
+{% if not is_kube_master %}
+    - --kubeconfig=/etc/kubernetes/node-kubeconfig.yaml
+{% endif %}
+    - --bind-address={{ ip | default(ansible_default_ipv4.address) }}
+    - --cluster-cidr={{ kube_pods_subnet }}
+    - --proxy-mode={{ kube_proxy_mode }}
+{% if kube_proxy_masquerade_all and kube_proxy_mode == "iptables" %}
+    - --masquerade-all
+{% endif %}
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - mountPath: /etc/ssl/certs
+      name: ssl-certs-host
+      readOnly: true
+    - mountPath: /etc/kubernetes/node-kubeconfig.yaml
+      name: "kubeconfig"
+      readOnly: true
+    - mountPath: /etc/kubernetes/ssl
+      name: "etc-kube-ssl"
+      readOnly: true
+  volumes:
+  - name: ssl-certs-host
+    hostPath:
+      path: /usr/share/ca-certificates
+  - name: "kubeconfig"
+    hostPath:
+      path: "/etc/kubernetes/node-kubeconfig.yaml"
+  - name: "etc-kube-ssl"
+    hostPath:
+      path: "/etc/kubernetes/ssl"

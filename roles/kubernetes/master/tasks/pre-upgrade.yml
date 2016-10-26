@@ -1,0 +1,25 @@
+---
+- name: "Pre-upgrade | check for kube-apiserver unit file"
+  stat:
+    path: /etc/systemd/system/kube-apiserver.service
+  register: kube_apiserver_service_file
+
+- name: "Pre-upgrade | check for kube-apiserver init script"
+  stat:
+    path: /etc/init.d/kube-apiserver
+  register: kube_apiserver_init_script
+
+- name: "Pre-upgrade | stop kube-apiserver if service defined"
+  service:
+    name: kube-apiserver
+    state: stopped
+  when: (kube_apiserver_service_file.stat.exists|default(False) or kube_apiserver_init_script.stat.exists|default(False))
+
+- name: "Pre-upgrade | remove kube-apiserver service definition"
+  file:
+    path: "{{ item }}"
+    state: absent
+  when: (kube_apiserver_service_file.stat.exists|default(False) or kube_apiserver_init_script.stat.exists|default(False))
+  with_items:
+    - /etc/systemd/system/kube-apiserver.service
+    - /etc/init.d/kube-apiserver

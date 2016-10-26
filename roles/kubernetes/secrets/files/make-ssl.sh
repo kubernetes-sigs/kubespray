@@ -26,8 +26,8 @@ Usage : $(basename $0) -f <config> [-d <ssldir>]
       -h | --help         : Show this message
       -f | --config       : Openssl configuration file
       -d | --ssldir       : Directory where the certificates will be installed
-               
-               ex : 
+
+               ex :
                $(basename $0) -f openssl.conf -d /srv/ssl
 EOF
 }
@@ -37,7 +37,7 @@ while (($#)); do
     case "$1" in
         -h | --help)   usage;   exit 0;;
         -f | --config) CONFIG=${2}; shift 2;;
-        -d | --ssldir) SSLDIR="${2}"; shift 2;; 
+        -d | --ssldir) SSLDIR="${2}"; shift 2;;
         *)
             usage
             echo "ERROR : Unknown option"
@@ -68,6 +68,7 @@ openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN
 openssl genrsa -out apiserver-key.pem 2048 > /dev/null 2>&1
 openssl req -new -key apiserver-key.pem -out apiserver.csr -subj "/CN=kube-apiserver" -config ${CONFIG} > /dev/null 2>&1
 openssl x509 -req -in apiserver.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out apiserver.pem -days 365 -extensions v3_req -extfile ${CONFIG} > /dev/null 2>&1
+cat ca.pem >> apiserver.pem
 
 # Nodes and Admin
 for i in node admin; do

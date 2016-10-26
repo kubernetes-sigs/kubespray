@@ -6,36 +6,38 @@ KUBE_LOGGING="--log-dir={{ kube_log_dir }} --logtostderr=true"
 KUBE_LOGGING="--logtostderr=true"
 {% endif %}
 KUBE_LOG_LEVEL="--v={{ kube_log_level | default('2') }}"
-KUBE_ALLOW_PRIV="--allow_privileged=true"
 {% if inventory_hostname in groups['kube-node'] %}
-KUBELET_API_SERVER="--api_servers={% for host in groups['kube-master'] %}https://{{ hostvars[host]['access_ip'] | default(hostvars[host]['ip'] | default(hostvars[host]['ansible_default_ipv4']['address'])) }}:{{ kube_apiserver_port }}{% if not loop.last %},{% endif %}{% endfor %}"
+KUBELET_API_SERVER="--api_servers={{ kube_apiserver_endpoint }}"
 {% endif %}
 # The address for the info server to serve on (set to 0.0.0.0 or "" for all interfaces)
 KUBELET_ADDRESS="--address={{ ip | default("0.0.0.0") }}"
 # The port for the info server to serve on
 # KUBELET_PORT="--port=10250"
 # You may leave this blank to use the actual hostname
-KUBELET_HOSTNAME="--hostname_override={{ inventory_hostname }}"
+KUBELET_HOSTNAME="--hostname-override={{ inventory_hostname }}"
 {% if inventory_hostname in groups['kube-master'] and inventory_hostname not in groups['kube-node'] %}
 KUBELET_REGISTER_NODE="--register-node=false"
 {% endif %}
 # location of the api-server
-{% if dns_setup %}
-KUBELET_ARGS="--cluster_dns={{ dns_server }} --cluster_domain={{ dns_domain }} --kubeconfig={{ kube_config_dir}}/node-kubeconfig.yaml --config={{ kube_manifest_dir }}"
+{% if dns_setup|bool and skip_dnsmasq|bool %}
+KUBELET_ARGS="--cluster_dns={{ skydns_server }} --cluster_domain={{ dns_domain }} --kubeconfig={{ kube_config_dir}}/node-kubeconfig.yaml --config={{ kube_manifest_dir }} --resolv-conf={{ kube_resolv_conf }} --pod-infra-container-image={{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}"
+{% elif dns_setup|bool %}
+KUBELET_ARGS="--cluster_dns={{ dns_server }} --cluster_domain={{ dns_domain }} --kubeconfig={{ kube_config_dir}}/node-kubeconfig.yaml --config={{ kube_manifest_dir }} --resolv-conf={{ kube_resolv_conf }} --pod-infra-container-image={{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}"
 {% else %}
-KUBELET_ARGS="--kubeconfig={{ kube_config_dir}}/kubelet.kubeconfig --config={{ kube_manifest_dir }}"
+KUBELET_ARGS="--kubeconfig={{ kube_config_dir}}/kubelet.kubeconfig --config={{ kube_manifest_dir }} --pod-infra-container-image={{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}"
 {% endif %}
 {% if kube_network_plugin is defined and kube_network_plugin in ["calico", "weave"] %}
-KUBELET_NETWORK_PLUGIN="--network_plugin=cni --network-plugin-dir=/etc/cni/net.d"
+KUBELET_NETWORK_PLUGIN="--network-plugin=cni --network-plugin-dir=/etc/cni/net.d"
 {% elif kube_network_plugin is defined and kube_network_plugin == "weave" %}
 DOCKER_SOCKET="--docker-endpoint=unix:/var/run/weave/weave.sock"
 {% endif %}
 # Should this cluster be allowed to run privileged docker containers
-KUBE_ALLOW_PRIV="--allow_privileged=true"
+KUBE_ALLOW_PRIV="--allow-privileged=true"
 {% if cloud_provider is defined and cloud_provider == "openstack" %}
 KUBELET_CLOUDPROVIDER="--cloud-provider={{ cloud_provider }} --cloud-config={{ kube_config_dir }}/cloud_config"
+{% elif cloud_provider is defined and cloud_provider == "aws" %}
+KUBELET_CLOUDPROVIDER="--cloud-provider={{ cloud_provider }}"
 {% else %}
-{# TODO: gce and aws don't need the cloud provider to be set? #}
 KUBELET_CLOUDPROVIDER=""
 {% endif %}
 {% if ansible_service_mgr in ["sysvinit","upstart"] %}

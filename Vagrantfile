@@ -76,7 +76,7 @@ Vagrant.configure("2") do |config|
       ip = "#{$subnet}.#{i+100}"
       host_vars[vm_name] = {
         "ip" => ip,
-        "access_ip" => ip,
+        #"access_ip" => ip,
         "flannel_interface" => ip,
         "flannel_backend_type" => "host-gw",
         "local_release_dir" => "/vagrant/temp",
@@ -100,11 +100,11 @@ Vagrant.configure("2") do |config|
           #ansible.tags = ['download']
           ansible.groups = {
             # The first three nodes should be etcd servers
-            "etcd" => ["k8s-0[1:3]"],
+            "etcd" => ["#{$instance_name_prefix}-0[1:3]"],
             # The first two nodes should be masters
-            "kube-master" => ["k8s-0[1:2]"],
+            "kube-master" => ["#{$instance_name_prefix}-0[1:2]"],
             # all nodes should be kube nodes
-            "kube-node" => ["k8s-0[1:#{$num_instances}]"],
+            "kube-node" => ["#{$instance_name_prefix}-0[1:#{$num_instances}]"],
             "k8s-cluster:children" => ["kube-master", "kube-node"],
           }
         end

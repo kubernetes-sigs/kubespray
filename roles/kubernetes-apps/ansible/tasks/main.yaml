@@ -1,0 +1,23 @@
+---
+- name: Kubernetes Apps | Lay Down KubeDNS Template
+  template: src={{item.file}} dest=/etc/kubernetes/{{item.file}}
+  with_items:
+    - {file: kubedns-rc.yml, type: rc}
+    - {file: kubedns-svc.yml, type: svc}
+  register: manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Kubernetes Apps | Start Resources
+  kube:
+    name: kubedns
+    namespace: kube-system
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: /etc/kubernetes/{{item.item.file}}
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: "{{ manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]
+
+
+- include: tasks/calico-policy-controller.yml
+  when: enable_network_policy is defined and enable_network_policy == True

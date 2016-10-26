@@ -4,14 +4,14 @@ Ansible variables
 
 Inventory
 -------------
-The inventory is composed of 3 groups: 
+The inventory is composed of 3 groups:
 
 * **kube-node** : list of kubernetes nodes where the pods will run.
-* **kube-master** : list of servers where kubernetes master components (apiserver, scheduler, controller) will run. 
+* **kube-master** : list of servers where kubernetes master components (apiserver, scheduler, controller) will run.
   Note: if you want the server to act both as master and node the server must be defined on both groups _kube-master_ and _kube-node_
 * **etcd**: list of server to compose the etcd server. you should have at least 3 servers for failover purposes.
 
-Below is a complete inventory example: 
+Below is a complete inventory example:
 
 ```
 ## Configure 'ip' variable to bind kubernetes services on a

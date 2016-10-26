@@ -9,14 +9,13 @@
   notify:
     - restart docker
 
-- name: Write docker.service systemd file
-  template:
-    src: systemd-docker.service
-    dest: /lib/systemd/system/docker.service
-  notify: restart docker
-  when: ansible_service_mgr == "systemd" and ansible_os_family != "CoreOS"
-
-- meta: flush_handlers
+- name: Weave | Copy cni plugins from hyperkube
+  command: "/usr/bin/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp -r /opt/cni/bin/. /cnibindir/"
+  register: cni_task_result
+  until: cni_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
 
 - name: Weave | Install weave
   command: rsync -piu "{{ local_release_dir }}/weave/bin/weave" "{{ bin_dir }}/weave"
@@ -37,22 +36,24 @@
     group: root
     mode: 0644
   notify:
-    - restart systemd-weave
+    - restart weave
 
 - name: Weave | Write weave systemd init file
   template: src=weave.service.j2 dest=/etc/systemd/system/weave.service
   when: ansible_service_mgr == "systemd"
-  notify: restart systemd-weave
+  notify: restart weave
 
 - name: Weave | Write weaveproxy systemd init file
   template: src=weaveproxy.service.j2 dest=/etc/systemd/system/weaveproxy.service
   when: ansible_service_mgr == "systemd"
-  notify: restart systemd-weaveproxy
+  notify: restart weaveproxy
 
 - name: Weave | Write weaveexpose systemd init file
   template: src=weaveexpose.service.j2 dest=/etc/systemd/system/weaveexpose.service
   when: ansible_service_mgr == "systemd"
-  notify: restart systemd-weaveexpose
+  notify: restart weaveexpose
+
+- meta: flush_handlers
 
 - name: Weave | Enable weave
   service: name=weave enabled=yes state=started

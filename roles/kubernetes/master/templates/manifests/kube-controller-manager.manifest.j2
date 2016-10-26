@@ -11,15 +11,17 @@ spec:
     command:
     - /hyperkube
     - controller-manager
-    - --master=http://127.0.0.1:{{kube_apiserver_insecure_port}}
+    - --master={{ kube_apiserver_endpoint }}
     - --leader-elect=true
     - --service-account-private-key-file={{ kube_cert_dir }}/apiserver-key.pem
     - --root-ca-file={{ kube_cert_dir }}/ca.pem
     - --enable-hostpath-provisioner={{ kube_hostpath_dynamic_provisioner }}
     - --v={{ kube_log_level | default('2') }}
 {% if cloud_provider is defined and cloud_provider == "openstack" %}
-    - --cloud-provider=openstack
+    - --cloud-provider={{cloud_provider}}
     - --cloud-config={{ kube_config_dir }}/cloud_config
+{% elif cloud_provider is defined and cloud_provider == "aws" %}
+    - --cloud-provider={{cloud_provider}}
 {% endif %}
     livenessProbe:
       httpGet:
@@ -32,9 +34,6 @@ spec:
     - mountPath: {{ kube_cert_dir }}
       name: ssl-certs-kubernetes
       readOnly: true
-    - mountPath: /etc/ssl/certs
-      name: ssl-certs-host
-      readOnly: true
 {% if cloud_provider is defined and cloud_provider == "openstack" %}
     - mountPath: {{ kube_config_dir }}/cloud_config
       name: cloudconfig
@@ -44,9 +43,6 @@ spec:
   - hostPath:
       path: {{ kube_cert_dir }}
     name: ssl-certs-kubernetes
-  - hostPath:
-      path: /etc/ssl/certs/
-    name: ssl-certs-host
 {% if cloud_provider is defined and cloud_provider == "openstack" %}
   - hostPath:
       path: {{ kube_config_dir }}/cloud_config

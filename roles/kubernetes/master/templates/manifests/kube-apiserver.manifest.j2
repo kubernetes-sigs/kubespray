@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: kube-apiserver
+  namespace: kube-system
 spec:
   hostNetwork: true
   containers:
@@ -11,13 +12,17 @@ spec:
     - /hyperkube
     - apiserver
     - --advertise-address={{ ip | default(ansible_default_ipv4.address) }}
-    - --etcd-servers={% for srv in groups['etcd'] %}http://{{ hostvars[srv]['access_ip'] | default(hostvars[srv]['ip']|default(hostvars[srv]['ansible_default_ipv4']['address'])) }}:2379{% if not loop.last %},{% endif %}{% endfor %}
-    - --admission-control=NamespaceLifecycle,NamespaceExists,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota
+    - --etcd-servers={{ etcd_access_endpoint }}
+    - --etcd-quorum-read=true
+    - --insecure-bind-address={{ kube_apiserver_insecure_bind_address }}
+    - --apiserver-count={{ kube_apiserver_count }}
+    - --admission-control=NamespaceLifecycle,NamespaceExists,LimitRanger,ServiceAccount,ResourceQuota
     - --service-cluster-ip-range={{ kube_service_addresses }}
     - --client-ca-file={{ kube_cert_dir }}/ca.pem
     - --basic-auth-file={{ kube_users_dir }}/known_users.csv
     - --tls-cert-file={{ kube_cert_dir }}/apiserver.pem
     - --tls-private-key-file={{ kube_cert_dir }}/apiserver-key.pem
+    - --token-auth-file={{ kube_token_dir }}/known_tokens.csv
     - --service-account-key-file={{ kube_cert_dir }}/apiserver-key.pem
     - --secure-port={{ kube_apiserver_port }}
     - --insecure-port={{ kube_apiserver_insecure_port }}
@@ -26,16 +31,18 @@ spec:
     - --runtime-config={{ conf }}
 {%   endfor %}
 {% endif %}
-    - --token-auth-file={{ kube_token_dir }}/known_tokens.csv
+{% if enable_network_policy is defined and enable_network_policy == True %}
+    - --runtime-config=extensions/v1beta1/networkpolicies=true
+{% endif %}
     - --v={{ kube_log_level | default('2') }}
     - --allow-privileged=true
-    ports:
-    - containerPort: {{ kube_apiserver_port }}
-      hostPort: {{ kube_apiserver_port }}
-      name: https
-    - containerPort: {{ kube_apiserver_insecure_port }}
-      hostPort: {{ kube_apiserver_insecure_port }}
-      name: local
+{% if cloud_provider is defined and cloud_provider == "openstack" %}
+    - --cloud-provider={{ cloud_provider }}
+    - --cloud-config={{ kube_config_dir }}/cloud_config
+{% elif cloud_provider is defined and cloud_provider == "aws" %}
+    - --cloud-provider={{ cloud_provider }}
+{% endif %}
+    - 2>&1 >> {{ kube_log_dir }}/kube-apiserver.log
     volumeMounts:
     - mountPath: {{ kube_config_dir }}
       name: kubernetes-config
@@ -43,6 +50,8 @@ spec:
     - mountPath: /etc/ssl/certs
       name: ssl-certs-host
       readOnly: true
+    - mountPath: /var/log/
+      name: logfile
   volumes:
   - hostPath:
       path: {{ kube_config_dir }}
@@ -50,3 +59,6 @@ spec:
   - hostPath:
       path: /etc/ssl/certs/
     name: ssl-certs-host
+  - hostPath:
+      path: /var/log/
+    name: logfile

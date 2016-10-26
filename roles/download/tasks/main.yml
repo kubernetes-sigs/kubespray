@@ -1,15 +1,12 @@
 ---
-- include_vars: kube_versions.yml
-
 - name: downloading...
   debug:
     msg: "{{ download.url }}"
-  when: "{{ download.enabled|bool }}"
+  when: "{{ download.enabled|bool and not download.container|bool }}"
 
 - name: Create dest directories
   file: path={{local_release_dir}}/{{download.dest|dirname}} state=directory recurse=yes
-  when: "{{ download.enabled|bool }}"
-  run_once: "{{ download_run_once|bool }}"
+  when: "{{ download.enabled|bool and not download.container|bool }}"
 
 - name: Download items
   get_url:
@@ -18,8 +15,11 @@
     sha256sum: "{{download.sha256 | default(omit)}}"
     owner: "{{ download.owner|default(omit) }}"
     mode: "{{ download.mode|default(omit) }}"
-  when: "{{ download.enabled|bool }}"
-  run_once: "{{ download_run_once|bool }}"
+  register: get_url_result
+  until: "'OK' in get_url_result.msg or 'file already exists' in get_url_result.msg"
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: "{{ download.enabled|bool and not download.container|bool }}"
 
 - name: Extract archives
   unarchive:
@@ -28,8 +28,7 @@
     owner: "{{ download.owner|default(omit) }}"
     mode: "{{ download.mode|default(omit) }}"
     copy: no
-  when: "{{ download.enabled|bool }} and ({{download.unarchive is defined and download.unarchive == True}})"
-  run_once: "{{ download_run_once|bool }}"
+  when: "{{ download.enabled|bool and not download.container|bool and download.unarchive is defined and download.unarchive == True }}"
 
 - name: Fix permissions
   file:
@@ -37,5 +36,59 @@
     path: "{{local_release_dir}}/{{download.dest}}"
     owner: "{{ download.owner|default(omit) }}"
     mode: "{{ download.mode|default(omit) }}"
-  when: "{{ download.enabled|bool }} and ({{download.unarchive is not defined or download.unarchive == False}})"
+  when: "{{ download.enabled|bool and not download.container|bool and (download.unarchive is not defined or download.unarchive == False) }}"
+
+- name: pulling...
+  debug:
+    msg: "{{ download.repo }}:{{ download.tag }}"
+  when: "{{ download.enabled|bool and download.container|bool }}"
+
+- name: Create dest directory for saved/loaded container images
+  file: path="{{local_release_dir}}/containers" state=directory recurse=yes
+  when: "{{ download.enabled|bool and download.container|bool }}"
+
+#NOTE(bogdando) this brings no docker-py deps for nodes
+- name: Download containers
+  command: "/usr/bin/docker pull {{ download.repo }}:{{ download.tag }}"
+  register: pull_task_result
+  until: pull_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: "{{ download.enabled|bool and download.container|bool }}"
+  delegate_to: "{{ groups['kube-master'][0] if download_run_once|bool else inventory_hostname }}"
   run_once: "{{ download_run_once|bool }}"
+
+- set_fact:
+    fname: "{{local_release_dir}}/containers/{{download.repo|regex_replace('/|\0|:', '_')}}:{{download.tag|regex_replace('/|\0|:', '_')}}.tar"
+
+- name: "Set default value for 'container_changed' to false"
+  set_fact:
+    container_changed: false
+
+- name: "Update the 'container_changed' fact"
+  set_fact:
+    container_changed: "{{ not 'up to date' in pull_task_result.stdout }}"
+  when: "{{ download.enabled|bool and download.container|bool }}"
+  delegate_to: "{{ groups['kube-master'][0] if download_run_once|bool else inventory_hostname }}"
+  run_once: "{{ download_run_once|bool }}"
+
+- name: Download | save container images
+  shell: docker save "{{ download.repo }}:{{ download.tag }}" > "{{ fname }}"
+  delegate_to: "{{groups['kube-master'][0]}}"
+  run_once: true
+  when: ansible_os_family != "CoreOS" and download_run_once|bool and download.enabled|bool and download.container|bool and container_changed|bool
+
+- name: Download | get container images
+  synchronize:
+    src: "{{ fname }}"
+    dest: "{{local_release_dir}}/containers"
+    mode: push
+  register: get_task
+  until: get_task|success
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] and download_run_once|bool and download.enabled|bool and download.container|bool and container_changed|bool
+
+- name: Download | load container images
+  shell: docker load < "{{ fname }}"
+  when: ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] and download_run_once|bool and download.enabled|bool and download.container|bool and container_changed|bool

@@ -10,13 +10,6 @@
     - restart docker
   when: ansible_os_family != "CoreOS"
 
-- name: Calico | Write docker.service systemd file
-  template:
-    src: systemd-docker.service
-    dest: /lib/systemd/system/docker.service
-  notify: restart docker
-  when: ansible_service_mgr == "systemd" and ansible_os_family != "CoreOS"
-
 - meta: flush_handlers
 
 - name: Calico | Install calicoctl container script
@@ -29,48 +22,68 @@
   changed_when: false
   notify: restart calico-node
 
-- name: Calico | Install calico cni bin
-  command: rsync -piu "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico"
+- name: Calico | Copy cni plugins from hyperkube
+  command: "/usr/bin/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/rsync -a /opt/cni/bin/ /cnibindir/"
+  register: cni_task_result
+  until: cni_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
+
+- name: Calico | Install calico cni bin
+  command: rsync -pi "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico"
+  changed_when: false
+  when: "{{ overwrite_hyperkube_cni|bool }}"
 
 - name: Calico | Install calico-ipam cni bin
-  command: rsync -piu "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico-ipam"
+  command: rsync -pi "{{ local_release_dir }}/calico/bin/calico-ipam" "/opt/cni/bin/calico-ipam"
   changed_when: false
+  when: "{{ overwrite_hyperkube_cni|bool }}"
 
 - name: Calico | wait for etcd
-  wait_for:
-    port: 2379
+  uri: url=http://localhost:2379/health
+  register: result
+  until: result.status == 200
+  retries: 10
+  delay: 5
   when: inventory_hostname in groups['kube-master']
 
 - name: Calico | Check if calico network pool has already been configured
   uri:
-    url: "http://127.0.0.1:2379/v2/keys/calico/v1/ipam/v4/pool"
+    url: "{{ etcd_endpoint }}/v2/keys/calico/v1/ipam/v4/pool"
     return_content: yes
     status_code: 200,404
   register: calico_conf
   run_once: true
 
-- name: Calico | Configure calico network pool
-  command: "{{ bin_dir }}/calicoctl pool add {{ kube_pods_subnet }}"
+- name: Calico | Define ipip pool argument
   run_once: true
-  when: calico_conf.status == 404 and cloud_provider is not defined
-        and not nat_outgoing|default(false) or
-        (nat_outgoing|default(false) and peer_with_router|default(false))
+  set_fact:
+    ipip_arg: "--ipip"
+  when: cloud_provider is defined or ipip|default(false)
 
-- name: Calico | Configure calico network pool for cloud
-  command: "{{ bin_dir }}/calicoctl pool add {{ kube_pods_subnet }} --ipip --nat-outgoing"
+- name: Calico | Define nat-outgoing pool argument
   run_once: true
-  when: calico_conf.status == 404 and cloud_provider is defined
+  set_fact:
+    nat_arg: "--nat-outgoing"
+  when: nat_outgoing|default(false) and not peer_with_router|default(false)
 
-- name: Calico | Configure calico network pool with nat outgoing
-  command: "{{ bin_dir}}/calicoctl pool add {{ kube_pods_subnet }} --nat-outgoing"
+- name: Calico | Define calico pool task name
   run_once: true
-  when: calico_conf.status == 404 and cloud_provider is not defined
-        and nat_outgoing|default(false) and not peer_with_router|default(false)
+  set_fact:
+    pool_task_name: "with options {{ ipip_arg|default('') }} {{ nat_arg|default('') }}"
+  when: ipip_arg|default(false) or nat_arg|default(false)
+
+- name: Calico | Configure calico network pool {{ pool_task_name|default('') }}
+  command: "{{ bin_dir}}/calicoctl pool add {{ kube_pods_subnet }} {{ ipip_arg|default('') }} {{ nat_arg|default('') }}"
+  environment:
+    NO_DEFAULT_POOLS: true
+  run_once: true
+  when: calico_conf.status == 404 or "nodes" not in calico_conf.content
 
 - name: Calico | Get calico configuration from etcd
   uri:
-    url: "http://127.0.0.1:2379/v2/keys/calico/v1/ipam/v4/pool"
+    url: "{{ etcd_endpoint }}/v2/keys/calico/v1/ipam/v4/pool"
     return_content: yes
   register: calico_pools
   run_once: true

@@ -38,6 +38,13 @@ if ! File.exist?(File.join(File.dirname($inventory), "hosts"))
   end
 end
 
+if Vagrant.has_plugin?("vagrant-proxyconf")
+    $no_proxy = ENV['NO_PROXY'] || ENV['no_proxy'] || "127.0.0.1,localhost"
+    (1..$num_instances).each do |i|
+        $no_proxy += ",#{$subnet}.#{i+100}"
+    end
+end
+
 Vagrant.configure("2") do |config|
   # always use Vagrants insecure key
   config.ssh.insert_key = false
@@ -51,6 +58,12 @@ Vagrant.configure("2") do |config|
   (1..$num_instances).each do |i|
     config.vm.define vm_name = "%s-%02d" % [$instance_name_prefix, i] do |config|
       config.vm.hostname = vm_name
+
+      if Vagrant.has_plugin?("vagrant-proxyconf")
+        config.proxy.http     = ENV['HTTP_PROXY'] || ENV['http_proxy'] || ""
+        config.proxy.https    = ENV['HTTPS_PROXY'] || ENV['https_proxy'] ||  ""
+        config.proxy.no_proxy = $no_proxy
+      end
 
       if $expose_docker_tcp
         config.vm.network "forwarded_port", guest: 2375, host: ($expose_docker_tcp + i - 1), auto_correct: true

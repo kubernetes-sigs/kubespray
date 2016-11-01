@@ -16,7 +16,7 @@ $vm_cpus = 1
 $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
-$box = "bento/ubuntu-14.04"
+$box = "bento/ubuntu-16.04"
 
 host_vars = {}
 

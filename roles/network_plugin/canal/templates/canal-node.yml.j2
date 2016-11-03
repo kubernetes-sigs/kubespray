@@ -1,0 +1,112 @@
+---
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: canal-node
+  labels:
+    k8s-app: canal-node
+spec:
+  selector:
+    matchLabels:
+      k8s-app: canal-node
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly", "operator":"Exists"}]'
+      labels:
+        k8s-app: canal-node
+    spec:
+      hostNetwork: true
+      volumes:
+        # Used by flannel-server-helper
+        - name: "networkconfig"
+          hostPath:
+            path: "/etc/flannel-network.json"
+        # Used by calico/node.
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: var-run-calico
+          hostPath:
+            path: /var/run/calico
+        # Used to install CNI.
+        - name: cni-bin-dir
+          hostPath:
+            path: /opt/cni/bin
+        - name: cni-net-dir
+          hostPath:
+            path: /etc/cni/net.d
+        # Used by flannel daemon.
+        - name: run-flannel
+          hostPath:
+            path: /run/flannel
+        - name: resolv
+          hostPath:
+            path: /etc/resolv.conf
+      containers:
+        - name: "flannel-server-helper"
+          image: "{{ flannel_server_helper_image_repo }}:{{ flannel_server_helper_image_tag }}"
+          args:
+            - "--network-config=/etc/flannel-network.json"
+            - "--etcd-prefix=/{{ cluster_name }}/network"
+            - "--etcd-server={{ etcd_endpoint }}"
+          volumeMounts:
+            - name: "networkconfig"
+              mountPath: "/etc/flannel-network.json"
+          imagePullPolicy: "Always"
+        # Runs the flannel daemon to enable vxlan networking between
+        # container hosts.
+        - name: flannel
+          image: "{{ flannel_image_repo }}:{{ flannel_image_tag }}"
+          env:
+            # The location of the etcd cluster.
+            - name: FLANNELD_ETCD_ENDPOINTS
+              value: "{{ etcd_access_endpoint }}"
+            # The interface flannel should run on.
+            - name: FLANNELD_IFACE
+              value: "{{ canal_iface }}"
+            # Perform masquerade on traffic leaving the pod cidr.
+            - name: FLANNELD_IP_MASQ
+              value: "{{ canal_masquerade }}"
+            # Write the subnet.env file to the mounted directory.
+            - name: FLANNELD_SUBNET_FILE
+              value: "/run/flannel/subnet.env"
+          command:
+            - "/bin/sh"
+            - "-c"
+            - "/opt/bin/flanneld -etcd-endpoints {{ etcd_access_endpoint }} -etcd-prefix /{{ cluster_name }}/network {% if canal_iface %}-iface {{ canal_iface }}{% endif %}"
+          ports:
+            - hostPort: 10253
+              containerPort: 10253
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: "resolv"
+              mountPath: "/etc/resolv.conf"
+            - name: "run-flannel"
+              mountPath: "/run/flannel"
+        # Runs calico/node container on each Kubernetes node.  This
+        # container programs network policy and local routes on each
+        # host.
+        - name: calico-node
+          image: "{{ calico_node_image_repo }}:{{ calico_node_image_tag }}"
+          env:
+            # The location of the etcd cluster.
+            - name: ETCD_ENDPOINTS
+              value: "{{ etcd_access_endpoint }}"
+            # Disable Calico BGP.  Calico is simply enforcing policy.
+            - name: CALICO_NETWORKING
+              value: "false"
+            # Disable file logging so `kubectl logs` works.
+            - name: CALICO_DISABLE_FILE_LOGGING
+              value: "true"
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - mountPath: /var/run/calico
+              name: var-run-calico
+              readOnly: false

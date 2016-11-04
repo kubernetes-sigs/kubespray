@@ -1,0 +1,24 @@
+---
+- name: Create docker service systemd directory if it doesn't exist
+  file: path=/etc/systemd/system/docker.service.d state=directory
+
+- name: Write docker proxy drop-in
+  template:
+    src: http-proxy.conf.j2
+    dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+  when: http_proxy is defined or https_proxy is defined or no_proxy is defined
+
+- name: Write docker.service systemd file
+  template:
+    src: docker.service.j2
+    dest: /etc/systemd/system/docker.service
+  register: docker_service_file
+  when: ansible_os_family != "CoreOS"
+
+- name: Write docker options systemd drop-in
+  template:
+    src: docker-options.conf.j2
+    dest: "/etc/systemd/system/docker.service.d/docker-options.conf"
+  notify: restart docker
+
+- meta: flush_handlers

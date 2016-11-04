@@ -1,9 +1,14 @@
+# Valid bootstrap options (required): xenial, coreos, none
+bootstrap_os: "none" 
+
 # Directory where the binaries will be installed
 bin_dir: /usr/local/bin
 
 # Where the binaries will be downloaded.
 # Note: ensure that you've enough disk space (about 1G)
 local_release_dir: "/tmp/releases"
+# Random shifts for retrying failed ops like pushing/downloading
+retry_stagger: 5
 
 # Uncomment this line for CoreOS only.
 # Directory where python binary is installed
@@ -28,6 +33,8 @@ kube_users:
 
 # Kubernetes cluster name, also will be used as DNS domain
 cluster_name: cluster.local
+# Subdomains of DNS domain to be resolved via /etc/resolv.conf
+ndots: 5
 
 # For some environments, each node has a pubilcally accessible
 # address and an address it should bind services to.  These are
@@ -50,6 +57,16 @@ cluster_name: cluster.local
 # environments where the nodes are accessed remotely by the "public" ip,
 # but don't know about that address themselves.
 # access_ip: 1.1.1.1
+
+# Etcd access modes:
+# Enable multiaccess to configure clients to access all of the etcd members directly
+# as the "http://hostX:port, http://hostY:port, ..." and ignore the proxy loadbalancers.
+# This may be the case if clients support and loadbalance multiple etcd servers  natively.
+etcd_multiaccess: false
+
+# Assume there are no internal loadbalancers for apiservers exist and listen on
+# kube_apiserver_port (default 443)
+loadbalancer_apiserver_localhost: true
 
 # Choose network plugin (calico, weave or flannel)
 kube_network_plugin: flannel
@@ -89,10 +106,12 @@ kube_apiserver_insecure_port: 8080 # (http)
 # You still must manually configure all your containers to use this DNS server,
 # Kubernetes won't do this for you (yet).
 
+# Do not install additional dnsmasq
+skip_dnsmasq: false
 # Upstream dns servers used by dnsmasq
-upstream_dns_servers:
-  - 8.8.8.8
-  - 8.8.4.4
+#upstream_dns_servers:
+#  - 8.8.8.8
+#  - 8.8.4.4
 #
 # # Use dns server : https://github.com/ansibl8s/k8s-skydns/blob/master/skydns-README.md
 dns_setup: true
@@ -109,21 +128,6 @@ dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address')
 # like you would do when using nova-client before starting the playbook.
 # cloud_provider:
 
-# For multi masters architecture:
-# kube-proxy doesn't support multiple apiservers for the time being so you'll need to configure your own loadbalancer
-# This domain name will be inserted into the /etc/hosts file of all servers
-# configuration example with haproxy :
-# listen kubernetes-apiserver-https
-#   bind 10.99.0.21:8383
-#    option ssl-hello-chk
-#    mode tcp
-#    timeout client 3h
-#    timeout server 3h
-#    server master1 10.99.0.26:443
-#    server master2 10.99.0.27:443
-#    balance roundrobin
-# apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
-
 ## Set these proxy values in order to update docker daemon to use proxies
 # http_proxy: ""
 # https_proxy: ""
@@ -134,3 +138,7 @@ dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address')
 ## An obvious use case is allowing insecure-registry access
 ## to self hosted registries like so:
 docker_options: "--insecure-registry={{ kube_service_addresses }}"
+
+# default packages to install within the cluster
+kpm_packages: []
+#  - name: kube-system/grafana

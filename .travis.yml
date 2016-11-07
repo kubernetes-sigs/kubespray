@@ -10,81 +10,95 @@ env:
     TEST_ID=$TRAVIS_JOB_NUMBER
     CONTAINER_ENGINE=docker
     PRIVATE_KEY=$GCE_PRIVATE_KEY
+    GS_ACCESS_KEY_ID=$GS_KEY
+    GS_SECRET_ACCESS_KEY=$GS_SECRET
     ANSIBLE_KEEP_REMOTE_FILES=1
+    CLUSTER_MODE=default
   matrix:
     # Debian Jessie
     - >-
       KUBE_NETWORK_PLUGIN=flannel
       CLOUD_IMAGE=debian-8-kubespray
       CLOUD_REGION=europe-west1-b
+      CLUSTER_MODE=default
     - >-
       KUBE_NETWORK_PLUGIN=calico
       CLOUD_IMAGE=debian-8-kubespray
       CLOUD_REGION=us-central1-c
+      CLUSTER_MODE=default
     - >-
       KUBE_NETWORK_PLUGIN=weave
       CLOUD_IMAGE=debian-8-kubespray
       CLOUD_REGION=us-east1-d
+      CLUSTER_MODE=default
 
     # Centos 7
     - >-
       KUBE_NETWORK_PLUGIN=flannel
       CLOUD_IMAGE=centos-7-sudo
       CLOUD_REGION=asia-east1-c
-
+      CLUSTER_MODE=default
     - >-
       KUBE_NETWORK_PLUGIN=calico
       CLOUD_IMAGE=centos-7-sudo
       CLOUD_REGION=europe-west1-b
-
+      CLUSTER_MODE=default
     - >-
       KUBE_NETWORK_PLUGIN=weave
       CLOUD_IMAGE=centos-7-sudo
       CLOUD_REGION=us-central1-c
+      CLUSTER_MODE=default
 
    # Redhat 7
     - >-
       KUBE_NETWORK_PLUGIN=flannel
       CLOUD_IMAGE=rhel-7-sudo
       CLOUD_REGION=us-east1-d
-
+      CLUSTER_MODE=default
     - >-
       KUBE_NETWORK_PLUGIN=calico
       CLOUD_IMAGE=rhel-7-sudo
       CLOUD_REGION=asia-east1-c
-
+      CLUSTER_MODE=default
     - >-
       KUBE_NETWORK_PLUGIN=weave
       CLOUD_IMAGE=rhel-7-sudo
       CLOUD_REGION=europe-west1-b
+      CLUSTER_MODE=default
 
     # Ubuntu 16.04
     - >-
       KUBE_NETWORK_PLUGIN=flannel
       CLOUD_IMAGE=ubuntu-1604-xenial
       CLOUD_REGION=us-central1-c
+      CLUSTER_MODE=default
     - >-
       KUBE_NETWORK_PLUGIN=calico
       CLOUD_IMAGE=ubuntu-1604-xenial
       CLOUD_REGION=us-east1-d
+      CLUSTER_MODE=default
     - >-
       KUBE_NETWORK_PLUGIN=weave
       CLOUD_IMAGE=ubuntu-1604-xenial
       CLOUD_REGION=asia-east1-c
+      CLUSTER_MODE=default
 
-    # Ubuntu 15.10
+    # Extra cases for separated roles
     - >-
       KUBE_NETWORK_PLUGIN=flannel
-      CLOUD_IMAGE=ubuntu-1510-wily
+      CLOUD_IMAGE=rhel-7-sudo
       CLOUD_REGION=europe-west1-b
+      CLUSTER_MODE=separate
     - >-
       KUBE_NETWORK_PLUGIN=calico
-      CLOUD_IMAGE=ubuntu-1510-wily
+      CLOUD_IMAGE=ubuntu-1604-xenial
       CLOUD_REGION=us-central1-a
+      CLUSTER_MODE=separate
     - >-
       KUBE_NETWORK_PLUGIN=weave
-      CLOUD_IMAGE=ubuntu-1510-wily
+      CLOUD_IMAGE=debian-8-kubespray
       CLOUD_REGION=us-east1-d
+      CLUSTER_MODE=separate
 
 
 before_install:
@@ -92,7 +106,8 @@ before_install:
   - pip install --user boto -U
   - pip install --user ansible
   - pip install --user netaddr
-  - pip install --user apache-libcloud
+  # W/A https://github.com/ansible/ansible-modules-core/issues/5196#issuecomment-253766186
+  - pip install --user apache-libcloud==0.20.1
 
 cache:
   - directories:
@@ -109,12 +124,11 @@ before_script:
   - $HOME/.local/bin/ansible-playbook --version
   - cp tests/ansible.cfg .
 #  - "echo $HOME/.local/bin/ansible-playbook -i inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root -e '{\"cloud_provider\": true}'  $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} setup-kubernetes/cluster.yml"
-    ## Configure ansible deployment logs to be collected as an artifact. Enable when GCS configured, see https://docs.travis-ci.com/user/deployment/gcs
-#  - $HOME/.local/bin/ansible-playbook -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root scritps/configure-logs.yaml
 
 script:
   - >
-    $HOME/.local/bin/ansible-playbook tests/cloud_playbooks/create-gce.yml -i tests/local_inventory/hosts -c local $LOG_LEVEL
+    $HOME/.local/bin/ansible-playbook tests/cloud_playbooks/create-gce.yml -i tests/local_inventory/hosts.cfg -c local $LOG_LEVEL
+    -e mode=${CLUSTER_MODE}
     -e test_id=${TEST_ID}
     -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
     -e gce_project_id=${GCE_PROJECT_ID}
@@ -133,8 +147,15 @@ script:
   - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/020_check-create-pod.yml $LOG_LEVEL
     ## Ping the between 2 pod
   - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
-    ## Collect env info, enable it once GCS configured, see https://docs.travis-ci.com/user/deployment/gcs
-#  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root scritps/collect-info.yaml
+
+after_failure:
+  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root scripts/collect-info.yaml >/dev/null
+  - >
+    $HOME/.local/bin/ansible-playbook tests/cloud_playbooks/upload-logs-gcs.yml -i "localhost," -c local
+    -e test_id=${TEST_ID}
+    -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+    -e gs_key=${GS_ACCESS_KEY_ID}
+    -e gs_skey=${GS_SECRET_ACCESS_KEY}
 
 after_script:
   - >

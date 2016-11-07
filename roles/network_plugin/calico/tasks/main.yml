@@ -22,16 +22,6 @@
   changed_when: false
   notify: restart calico-node
 
-- name: Calico | Do not use hyperkube cni if kube_version under v1.3.4
-  set_fact:
-    use_hyperkube_cni: false
-  when: kube_version | version_compare('v1.3.4','<')
-
-- name: Calico | Use hyperkube cni if kube_version above v1.3.4
-  set_fact:
-    use_hyperkube_cni: true
-  when: kube_version | version_compare('v1.3.4','>=')
-
 - name: Calico | Copy cni plugins from hyperkube
   command: "/usr/bin/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/rsync -a /opt/cni/bin/ /cnibindir/"
   register: cni_task_result
@@ -39,17 +29,16 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
-  when: "{{ use_hyperkube_cni|bool }}"
 
 - name: Calico | Install calico cni bin
   command: rsync -pi "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico"
   changed_when: false
-  when: "{{ not use_hyperkube_cni|bool or overwrite_hyperkube_cni|bool }}"
+  when: "{{ overwrite_hyperkube_cni|bool }}"
 
 - name: Calico | Install calico-ipam cni bin
   command: rsync -pi "{{ local_release_dir }}/calico/bin/calico-ipam" "/opt/cni/bin/calico-ipam"
   changed_when: false
-  when: "{{ not use_hyperkube_cni|bool or overwrite_hyperkube_cni|bool }}"
+  when: "{{ overwrite_hyperkube_cni|bool }}"
 
 - name: Calico | wait for etcd
   uri: url=http://localhost:2379/health
@@ -90,7 +79,7 @@
   environment:
     NO_DEFAULT_POOLS: true
   run_once: true
-  when: calico_conf.status == 404
+  when: calico_conf.status == 404 or "nodes" not in calico_conf.content
 
 - name: Calico | Get calico configuration from etcd
   uri:

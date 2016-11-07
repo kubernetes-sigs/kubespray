@@ -1,6 +1,10 @@
 Kargo's roadmap
 =================
 
+### Kubeadm
+- Propose kubeadm as an option in order to setup the kubernetes cluster.
+That would probably improve deployment speed and certs management [#553](https://github.com/kubespray/kargo/issues/553)
+
 ### Self deployment (pull-mode) [#320](https://github.com/kubespray/kargo/issues/320)
 - the playbook would install and configure docker/rkt and the etcd cluster
 - the following data would be inserted into etcd: certs,tokens,users,inventory,group_vars.
@@ -26,13 +30,14 @@ Kargo's roadmap
 - single test with the Ansible version n-1 per day
 - Test idempotency on on single OS but for all network plugins/container engines
 - single test on AWS per day
-- test different achitectures : 
+- test different achitectures :
            - 3 instances, 3 are members of the etcd cluster, 2 of them acting as master and node, 1 as node
            - 5 instances, 3 are etcd and nodes, 2 are masters only
            - 7 instances, 3 etcd only, 2 masters, 2 nodes
 - test scale up cluster:  +1 etcd, +1 master, +1 node
 
 ### Lifecycle
+- Adopt the kubeadm tool by delegating CM tasks it is capable to accomplish well [#553](https://github.com/kubespray/kargo/issues/553)
 - Drain worker node when upgrading k8s components in a worker node. [#154](https://github.com/kubespray/kargo/issues/154)
 - Drain worker node when shutting down/deleting an instance
 
@@ -56,7 +61,7 @@ While waiting for the issue [kubernetes/kubernetes#18174](https://github.com/kub
 ### Kargo API
 - Perform all actions through an **API**
 - Store inventories / configurations of mulltiple clusters
-- make sure that state of cluster is completely saved in no more than one config file beyond hosts inventory 
+- make sure that state of cluster is completely saved in no more than one config file beyond hosts inventory
 
 ### Addons (with kpm)
 Include optionals deployments to init the cluster:
@@ -65,7 +70,7 @@ Include optionals deployments to init the cluster:
 - **Prometheus**
 
 ##### Others
- 
+
 ##### Dashboards:
  - kubernetes-dashboard
  - Fabric8

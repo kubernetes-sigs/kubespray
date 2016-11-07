@@ -1,0 +1,43 @@
+---
+- hosts: localhost
+  become: false
+  gather_facts: no
+
+  vars:
+    expire: 72000
+
+  tasks:
+    - name: replace_test_id
+      set_fact:
+        test_name: "{{ test_id | regex_replace('\\.', '-') }}"
+
+    - name: Create a bucket
+      gc_storage:
+        bucket: "{{ test_name }}"
+        mode: create
+        expiration: "{{ expire }}"
+        permission: private
+        gs_access_key: gs_key
+        gs_secret_key: gs_skey
+
+    - name: Upload collected diagnostic info
+      gc_storage:
+        bucket: "{{ test_name }}"
+        mode: put
+        permission: private
+        expiration: "{{ expire }}"
+        object: "build-{{ test_name }}-{{ kube_network_plugin }}-logs.tar.gz"
+        src: logs.tar.gz
+        gs_access_key: gs_key
+        gs_secret_key: gs_skey
+
+    - name: Get a link
+      gc_storage:
+        bucket: "{{ test_name }}"
+        object: "build-{{ test_name }}-{{ kube_network_plugin }}-logs.tar.gz"
+        mode: get_url
+        register: url
+        gs_access_key: gs_key
+        gs_secret_key: gs_skey
+
+    - debug: msg="Download URL {{get_url}}"

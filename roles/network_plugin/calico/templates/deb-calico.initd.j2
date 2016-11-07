@@ -37,7 +37,7 @@ DAEMON_USER=root
 
 do_status()
 {
-    if [ $($DOCKER ps | awk '{ print $2 }' | grep calico/node | wc -l) -eq 1 ]; then
+    if [ $($DOCKER ps --format "{{.Image}}" | grep -cw 'calico/node') -eq 1 ]; then
         return 0
     else
         return 1
@@ -51,7 +51,11 @@ do_start()
     do_status
     retval=$?
     if [ $retval -ne 0 ]; then
+{% if legacy_calicoctl %}
         ${DAEMON} node --ip=${DEFAULT_IPV4} >>/dev/null && return 0 || return 2
+{% else %}
+         ${DAEMON} node run --ip=${DEFAULT_IPV4} >>/dev/null && return 0 || return 2
+{% endif %}
     else
         return 1
     fi
@@ -62,7 +66,12 @@ do_start()
 #
 do_stop()
 {
+{% if legacy_calicoctl %}
     ${DAEMON} node stop >> /dev/null || ${DAEMON} node stop --force >> /dev/null
+{% else %}
+    echo "Current version of ${DAEMON} doesn't support 'node stop' command!"
+    return 1
+{% endif %}
 }
 
 

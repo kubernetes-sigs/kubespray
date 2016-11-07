@@ -9,17 +9,6 @@
   notify:
     - restart docker
 
-- name: Weave | Determine hyperkube cni to use depending of the version of kube
-  set_fact:
-    use_hyperkube_cni: >
-      {%- if kube_version | version_compare('v1.3.4','>=') -%}
-        true
-      {%- elif kube_version | version_compare('v1.3.4','<') -%}
-        false
-      {%- else -%}
-        {{ ErrorCannotRecognizeVersion }}
-      {%- endif -%}
-
 - name: Weave | Copy cni plugins from hyperkube
   command: "/usr/bin/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp -r /opt/cni/bin/. /cnibindir/"
   register: cni_task_result
@@ -27,7 +16,6 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
-  when: "{{ use_hyperkube_cni|bool }}"
 
 - name: Weave | Install weave
   command: rsync -piu "{{ local_release_dir }}/weave/bin/weave" "{{ bin_dir }}/weave"

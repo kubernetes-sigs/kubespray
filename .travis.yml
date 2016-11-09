@@ -103,11 +103,11 @@ env:
 
 before_install:
   # Install Ansible.
-  - pip install --user boto -U
   - pip install --user ansible
   - pip install --user netaddr
   # W/A https://github.com/ansible/ansible-modules-core/issues/5196#issuecomment-253766186
   - pip install --user apache-libcloud==0.20.1
+  - pip install --user boto==2.9.0 -U
 
 cache:
   - directories:
@@ -149,16 +149,19 @@ script:
   - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
 
 after_failure:
-  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root scripts/collect-info.yaml
+  - >
+    $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER
+    -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root -e dir=$HOME
+    scripts/collect-info.yaml
   - >
     $HOME/.local/bin/ansible-playbook tests/cloud_playbooks/upload-logs-gcs.yml -i "localhost," -c local
-    -e test_id=${TEST_ID}
     -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+    -e gce_project_id=${GCE_PROJECT_ID}
     -e gs_key=${GS_ACCESS_KEY_ID}
     -e gs_skey=${GS_SECRET_ACCESS_KEY}
     -e ostype=${CLOUD_IMAGE}
     -e commit=${TRAVIS_COMMIT}
-    -e pr=${TRAVIS_PULL_REQUEST}
+    -e dir=${HOME}
 
 after_script:
   - >

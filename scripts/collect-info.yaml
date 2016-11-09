@@ -1,10 +1,9 @@
 ---
 - hosts: all
-  become: true
+  become: false
   gather_facts: no
 
   vars:
-    debug: false
     commands:
       - name: timedate_info
         cmd: timedatectl status
@@ -26,6 +25,37 @@
         cmd: journalctl -p err --utc --no-pager
       - name: etcd_info
         cmd: etcdctl --debug cluster-health
+      - name: weave_info
+        cmd: weave report | jq "."
+      - name: weave_logs
+        cmd: docker logs weave > weave.log
+      - name: kubedns_logs
+        cmd: sh -c "for i in `kubectl get pods --all-namespaces -l k8s-app=kubedns -o name`;
+          do kubectl logs $i --namespace kube-system kubedns > kubedns.log; done"
+      - name: apiserver_logs
+        cmd: sh -c "for i in `kubectl get pods --all-namespaces -l k8s-app=kube-apiserver -o name`;
+          do kubectl logs $i --namespace kube-system > kube-apiserver.log; done"
+      - name: controller_logs
+        cmd: sh -c "for i in `kubectl get pods --all-namespaces -l k8s-app=kube-controller -o name`;
+          do kubectl logs $i --namespace kube-system > kube-controller.log; done"
+      - name: scheduler_logs
+        cmd: sh -c "for i in `kubectl get pods --all-namespaces -l k8s-app=kube-scheduler -o name`;
+          do kubectl logs $i --namespace kube-system > kube-scheduler.log; done"
+      - name: proxy_logs
+        cmd: sh -c "for i in `kubectl get pods --all-namespaces -l k8s-app=kube-proxy -o name`;
+          do kubectl logs $i --namespace kube-system > kube-proxy.log; done"
+      - name: nginx_logs
+        cmd: sh -c "for i in `kubectl get pods --all-namespaces -l k8s-app=kube-nginx -o name`;
+          do kubectl logs $i --namespace kube-system > kube-nginx.log; done"
+      - name: flannel_logs
+        cmd: sh -c "for i in `kubectl get pods --all-namespaces -l app=flannel -o name`;
+          do kubectl logs $i --namespace kube-system flannel-container > flannel.log; done"
+      - name: canal_logs
+        cmd: sh -c "for i in `kubectl get pods --all-namespaces -l k8s-app=canal-node -o name`;
+          do kubectl logs $i --namespace kube-system flannel > flannel.log; done"
+      - name: calico_policy_logs
+        cmd: sh -c "for i in `kubectl get pods --all-namespaces -l k8s-app=calico-policy -o name`;
+          do kubectl logs $i --namespace kube-system calico-policy-controller > calico-policy-controller.log; done"
 
     logs:
       - /var/log/syslog
@@ -38,6 +68,15 @@
       - /var/log/calico/bird6/current
       - /var/log/calico/felix/current
       - /var/log/calico/confd/current
+      - weave.log
+      - kubedns.log
+      - kube-apiserver.log
+      - kube-controller.log
+      - kube-scheduler.log
+      - kube-proxy.log
+      - kube-nginx.log
+      - flannel.log
+      - calico-policy-controller.log
 
   tasks:
     - name: Storing commands output
@@ -46,10 +85,6 @@
       ignore_errors: true
       with_items: "{{commands}}"
       no_log: True
-
-    - debug: var=item
-      with_items: "{{output.results}}"
-      when: debug
 
     - name: Fetch results
       fetch: src={{ item.name }} dest=/tmp/collect-info/commands
@@ -60,7 +95,7 @@
       with_items: "{{logs}}"
 
     - name: Pack results and logs
-      local_action: shell GZIP=-9 tar --remove-files -cvzf logs.tar.gz -C /tmp collect-info
+      local_action: shell GZIP=-9 tar --remove-files -cvzf {{dir|default(".")}}/logs.tar.gz -C /tmp collect-info
       run_once: true
 
     - name: Clean up collected command outputs

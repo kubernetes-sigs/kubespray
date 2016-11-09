@@ -3,41 +3,65 @@
   become: false
   gather_facts: no
 
-  vars:
-    expire: 72000
-
   tasks:
+    - name: Generate uniq bucket name prefix
+      shell: date +%s | sha256sum | base64 | head -c 32
+      register: out
+
     - name: replace_test_id
       set_fact:
-        test_name: "{{ test_id | regex_replace('\\.', '-') }}"
+        test_name: "kargo-{{ commit }}-{{ pr }}-{{ out.stdout|lower }}-{{ test_id | regex_replace('\\.', '-') }}"
 
     - name: Create a bucket
       gc_storage:
         bucket: "{{ test_name }}"
         mode: create
-        expiration: "{{ expire }}"
         permission: private
-        gs_access_key: gs_key
-        gs_secret_key: gs_skey
+        gs_access_key: "{{ gs_key }}"
+        gs_secret_key: "{{ gs_skey }}"
+      no_log: True
+
+    - name: Download gsutil cp installer
+      get_url:
+        url: https://dl.google.com/dl/cloudsdk/channels/rapid/install_google_cloud_sdk.bash
+        dest: /tmp/gcp-installer.sh
+
+    - name: Get gsutil tool
+      script: /tmp/gcp-installer.sh
+      environment:
+        CLOUDSDK_CORE_DISABLE_PROMPTS: 1
+      no_log: True
+
+    - name: Create a lifecycle template for the bucket
+      file: src=gcs_life.json path=/tmp/gcs_life.json
+
+    - name: Hack the boto config for GCS access keys
+      lineinfile:
+        dest: .boto
+        line: "gs_access_key_id = {{ gs_key }}"
+        regexp: "^#gs_access_key_id = .*$"
+      no_log: True
+
+    - name: Hack the boto config for GCS secret access keys
+      lineinfile:
+        dest: .boto
+        line: "gs_secret_access_key = {{ gs_skey }}"
+        regexp: "^#gs_secret_access_key = .*$"
+      no_log: True
+
+    - name: Apply the lifecycle rules
+      shell: bash google-cloud-sdk/bin/gsutil lifecycle set /tmp/gcs_life.json gs://{{ test_name }}
+      environment:
+        BOTO_CONFIG: .boto
 
     - name: Upload collected diagnostic info
       gc_storage:
         bucket: "{{ test_name }}"
         mode: put
         permission: private
-        expiration: "{{ expire }}"
-        object: "build-{{ test_name }}-{{ kube_network_plugin }}-logs.tar.gz"
+        object: "build-{{ ostype }}-{{ kube_network_plugin }}-logs.tar.gz"
         src: logs.tar.gz
-        gs_access_key: gs_key
-        gs_secret_key: gs_skey
-
-    - name: Get a link
-      gc_storage:
-        bucket: "{{ test_name }}"
-        object: "build-{{ test_name }}-{{ kube_network_plugin }}-logs.tar.gz"
-        mode: get_url
-        register: url
-        gs_access_key: gs_key
-        gs_secret_key: gs_skey
-
-    - debug: msg="Download URL {{get_url}}"
+        headers: '{"Content-Encoding": "x-gzip"}'
+        gs_access_key: "{{ gs_key }}"
+        gs_secret_key: "{{ gs_skey }}"
+      ignore_errors: true

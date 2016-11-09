@@ -12,6 +12,24 @@
 
 - meta: flush_handlers
 
+- name: Calico | Create calico certs directory
+  file:
+    dest: "{{ calico_cert_dir }}"
+    state: directory
+    mode: 0750
+    owner: root
+    group: root
+
+- name: Calico | Link etcd certificates for calico-node
+  file:
+    src: "{{ etcd_cert_dir }}/{{ item.s }}"
+    dest: "{{ calico_cert_dir }}/{{ item.d }}"
+    state: hard
+  with_items:
+    - {s: "ca.pem", d: "ca_cert.crt"}
+    - {s: "node.pem", d: "cert.crt"}
+    - {s: "node-key.pem", d: "key.pem"}
+
 - name: Calico | Install calicoctl container script
   template:
     src: calicoctl-container.j2
@@ -41,7 +59,7 @@
   when: "{{ overwrite_hyperkube_cni|bool }}"
 
 - name: Calico | wait for etcd
-  uri: url=http://localhost:2379/health
+  uri: url=https://localhost:2379/health validate_certs=no
   register: result
   until: result.status == 200 or result.status == 401
   retries: 10
@@ -87,7 +105,11 @@
 
 - name: Calico | Get calico configuration from etcd
   command: |-
-    curl http://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
+    curl \
+      --cacert {{ etcd_cert_dir }}/ca.pem \
+      --cert {{ etcd_cert_dir}}/admin.pem \
+      --key {{ etcd_cert_dir }}/admin-key.pem \
+      https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
   register: calico_pools_raw
   delegate_to: "{{groups['etcd'][0]}}"
   run_once: true

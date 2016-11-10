@@ -48,13 +48,12 @@
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
 
-- name: Calico | Install calico cni bin
-  command: rsync -pi "{{ local_release_dir }}/calico/bin/calico" "/opt/cni/bin/calico"
-  changed_when: false
-  when: "{{ overwrite_hyperkube_cni|bool }}"
-
-- name: Calico | Install calico-ipam cni bin
-  command: rsync -pi "{{ local_release_dir }}/calico/bin/calico-ipam" "/opt/cni/bin/calico-ipam"
+- name: Calico | Copy cni plugins from calico/cni container
+  command: "/usr/bin/docker run --rm -v /opt/cni/bin:/cnibindir {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }} sh -c 'cp -a /opt/cni/bin/* /cnibindir/'"
+  register: cni_task_result
+  until: cni_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
   when: "{{ overwrite_hyperkube_cni|bool }}"
 

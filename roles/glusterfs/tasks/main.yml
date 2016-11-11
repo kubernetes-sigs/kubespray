@@ -1,0 +1,49 @@
+---
+# Include variables and define needed variables.
+- name: Include OS-specific variables.
+  include_vars: "{{ ansible_os_family }}.yml"
+
+# Instal xfs package
+- name: install xfs Debian
+  apt: name=xfsprogs state=present
+  when: ansible_os_family == "Debian"
+
+- name: install xfs RedHat
+  yum: name=xfsprogs state=present
+  when: ansible_os_family == "RedHat"
+
+# Format external volumes in xfs
+- name: Format volumes in xfs
+  filesystem: fstype=xfs dev=/dev/vdb
+
+# Mount external volumes
+- name: mounting new xfs filesystem
+  mount: "name={{ gluster_volume_node_mount_dir }} src=/dev/vdb fstype=xfs state=mounted"
+
+# Setup/install tasks.
+- include: setup-RedHat.yml
+  when: ansible_os_family == 'RedHat'
+
+- include: setup-Debian.yml
+  when: ansible_os_family == 'Debian'
+
+- name: Ensure GlusterFS is started and enabled at boot.
+  service: "name={{ glusterfs_daemon }} state=started enabled=yes"
+
+- name: Ensure Gluster brick and mount directories exist.
+  file: "path={{ item }} state=directory mode=0775"
+  with_items:
+     - "{{ gluster_brick_dir }}"
+     - "{{ gluster_mount_dir }}"
+
+- name: Configure Gluster volume.
+  gluster_volume:
+        state: present
+        name: "{{ gluster_brick_name }}"
+        brick: "{{ gluster_brick_dir }}"
+        replicas: "{{ groups['gfs-cluster'] | length }}"
+        cluster: "{{ groups['gfs-cluster'] | map('extract', hostvars, ['ansible_eth0', 'ipv4', 'address']) | join(',') }}"
+        host: "{{ inventory_hostname }}"
+        force: yes
+  run_once: true
+

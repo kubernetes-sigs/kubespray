@@ -83,6 +83,21 @@ number_of_k8s_nodes = "0"
 ```
 This will provision one VM as master using a floating ip, two additional masters using no floating ips (these will only have private ips inside your tenancy) and one VM as node, again without a floating ip.
 
+Additionally, now the terraform based installation supports provisioning of a GlusterFS shared file system based on a separate set of VMs, running either a Debian or RedHat based set of VMs. To enable this, you need to add to your `my-terraform-vars.tfvars` the following variables:
+
+```
+# Flavour depends on your openstack installation, you can get available flavours through `nova list-flavors`
+flavor_gfs_node = "af659280-5b8a-42b5-8865-a703775911da"
+# This is the name of an image already available in your openstack installation.
+image_gfs = "Ubuntu 15.10"
+number_of_gfs_nodes_no_floating_ip = "3"
+# This is the size of the non-ephemeral volumes to be attached to store the GlusterFS bricks.
+gfs_volume_size_in_gb = "50"
+# The user needed for the image choosen for GlusterFS.
+ssh_user_gfs = "ubuntu"
+```
+
+If these variables are provided, this will give rise to a new ansible group called `gfs-cluster`, for which we have added ansible roles to execute in the ansible provisioning step. If you are using CoreOS, these GlusterFS VM necessarily need to be either Debian or RedHat based VMs, CoreOS cannot serve GlusterFS, but can connect to it through binaries available on hyperkube v1.4.3_coreos.0 or higher.
 
 
 # Provision a Kubernetes Cluster on OpenStack

@@ -130,6 +130,36 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
     }
 }
 
+resource "openstack_blockstorage_volume_v2" "glusterfs_volume" {
+  name = "${var.cluster_name}-gfs-nephe-vol-${count.index+1}"
+  count = "${var.number_of_gfs_nodes_no_floating_ip}"
+  description = "Non-ephemeral volume for GlusterFS"
+  size = "${var.gfs_volume_size_in_gb}"
+}
+
+resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
+    name = "${var.cluster_name}-gfs-node-nf-${count.index+1}"
+    count = "${var.number_of_gfs_nodes_no_floating_ip}"
+    image_name = "${var.image_gfs}"
+    flavor_id = "${var.flavor_gfs_node}"
+    key_pair = "${openstack_compute_keypair_v2.k8s.name}"
+    network {
+        name = "${var.network_name}"
+    }
+    security_groups = ["${openstack_compute_secgroup_v2.k8s.name}" ]
+    metadata = {
+        ssh_user = "${var.ssh_user_gfs}"
+        kubespray_groups = "gfs-cluster"
+    }
+    volume {
+        volume_id = "${element(openstack_blockstorage_volume_v2.glusterfs_volume.*.id, count.index)}"
+        device = "/dev/vdb"
+    }
+    provisioner "local-exec" {
+	command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(openstack_networking_floatingip_v2.k8s_master.*.address, 0)}/ > contrib/terraform/openstack/group_vars/gfs-cluster.yml"        
+    }
+}
+
 
 
 

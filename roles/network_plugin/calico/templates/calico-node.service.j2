@@ -7,11 +7,19 @@ Wants=docker.socket
 [Service]
 User=root
 PermissionsStartOnly=true
+{% if legacy_calicoctl %}
 {% if inventory_hostname in groups['kube-node'] and peer_with_router|default(false)%}
 ExecStart={{ bin_dir }}/calicoctl node --ip={{ip | default(ansible_default_ipv4.address) }} --as={{ local_as }} --detach=false --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
-{%     else %}
+{% else %}
 ExecStart={{ bin_dir }}/calicoctl node --ip={{ip | default(ansible_default_ipv4.address) }} --detach=false --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
-{%     endif %}
+{% endif %}
+{% else %}
+{% if inventory_hostname in groups['kube-node'] and peer_with_router|default(false)%}
+ExecStart={{ bin_dir }}/calicoctl node run --ip={{ip | default(ansible_default_ipv4.address) }} --as={{ local_as }} --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+{%     else %}
+ExecStart={{ bin_dir }}/calicoctl node run --ip={{ip | default(ansible_default_ipv4.address) }} --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+{% endif %}
+{% endif %}
 Restart=always
 RestartSec=10s
 

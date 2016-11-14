@@ -11,16 +11,40 @@ The **calicoctl** command allows to check the status of the network workloads.
 * Check the status of Calico nodes
 
 ```
+calicoctl node status
+```
+
+or for versions prior *v1.0.0*:
+
+```
 calicoctl status
 ```
 
 * Show the configured network subnet for containers
 
 ```
+ calicoctl get ippool -o wide
+```
+
+or for versions prior *v1.0.0*:
+
+```
 calicoctl pool show
 ```
 
 * Show the workloads (ip addresses of containers and their located)
+
+```
+calicoctl get workloadEndpoint -o wide
+```
+
+and
+
+```
+calicoctl get hostEndpoint -o wide
+```
+
+or for versions prior *v1.0.0*:
 
 ```
 calicoctl endpoint show --detail

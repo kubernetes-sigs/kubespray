@@ -3,6 +3,8 @@ kind: Pod
 metadata:
   name: kube-apiserver
   namespace: kube-system
+  labels:
+    k8s-app: kube-apiserver
 spec:
   hostNetwork: true
   containers:
@@ -14,9 +16,12 @@ spec:
     - --advertise-address={{ ip | default(ansible_default_ipv4.address) }}
     - --etcd-servers={{ etcd_access_endpoint }}
     - --etcd-quorum-read=true
+    - --etcd-cafile={{ etcd_cert_dir }}/ca.pem
+    - --etcd-certfile={{ etcd_cert_dir }}/node.pem
+    - --etcd-keyfile={{ etcd_cert_dir }}/node-key.pem
     - --insecure-bind-address={{ kube_apiserver_insecure_bind_address }}
     - --apiserver-count={{ kube_apiserver_count }}
-    - --admission-control=NamespaceLifecycle,NamespaceExists,LimitRanger,ServiceAccount,ResourceQuota
+    - --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota
     - --service-cluster-ip-range={{ kube_service_addresses }}
     - --client-ca-file={{ kube_cert_dir }}/ca.pem
     - --basic-auth-file={{ kube_users_dir }}/known_users.csv
@@ -50,6 +55,9 @@ spec:
     - mountPath: /etc/ssl/certs
       name: ssl-certs-host
       readOnly: true
+    - mountPath: {{ etcd_cert_dir }}
+      name: etcd-certs
+      readOnly: true
     - mountPath: /var/log/
       name: logfile
   volumes:
@@ -59,6 +67,9 @@ spec:
   - hostPath:
       path: /etc/ssl/certs/
     name: ssl-certs-host
+  - hostPath:
+      path: {{ etcd_cert_dir }}
+    name: etcd-certs
   - hostPath:
       path: /var/log/
     name: logfile

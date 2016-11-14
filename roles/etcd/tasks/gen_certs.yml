@@ -1,0 +1,112 @@
+---
+
+- name: Gen_certs | create etcd script dir
+  file:
+    path: "{{ etcd_script_dir }}"
+    state: directory
+    owner: root
+  when: inventory_hostname == groups['etcd'][0]
+
+- name: Gen_certs | create etcd cert dir
+  file:
+    path={{ etcd_cert_dir }}
+    group={{ etcd_cert_group }}
+    state=directory
+    owner=root
+    recurse=yes
+
+- name: Gen_certs | write openssl config
+  template:
+    src: "openssl.conf.j2"
+    dest: "{{ etcd_config_dir }}/openssl.conf"
+  run_once: yes
+  delegate_to: "{{groups['etcd'][0]}}"
+  when: gen_certs|default(false)
+
+- name: Gen_certs | copy certs generation script
+  copy:
+    src: "make-ssl-etcd.sh"
+    dest: "{{ etcd_script_dir }}/make-ssl-etcd.sh"
+    mode: 0700
+  run_once: yes
+  delegate_to: "{{groups['etcd'][0]}}"
+  when: gen_certs|default(false)
+
+- name: Gen_certs | run cert generation script
+  command: "{{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
+  run_once: yes
+  delegate_to: "{{groups['etcd'][0]}}"
+  when: gen_certs|default(false)
+  notify: set etcd_secret_changed
+
+- set_fact:
+    master_certs: ['ca-key.pem', 'admin.pem', 'admin-key.pem', 'member.pem', 'member-key.pem']
+    node_certs: ['ca.pem', 'node.pem', 'node-key.pem']
+
+- name: Gen_certs | Gather etcd master certs
+  shell: "tar cfz - -C {{ etcd_cert_dir }} {{ master_certs|join(' ') }} {{ node_certs|join(' ') }}| base64 --wrap=0"
+  register: etcd_master_cert_data
+  delegate_to: "{{groups['etcd'][0]}}"
+  run_once: true
+  when: sync_certs|default(false)
+  notify: set etcd_secret_changed
+
+- name: Gen_certs | Gather etcd node certs
+  shell: "tar cfz - -C {{ etcd_cert_dir }} {{ node_certs|join(' ') }} | base64 --wrap=0"
+  register: etcd_node_cert_data
+  delegate_to: "{{groups['etcd'][0]}}"
+  run_once: true
+  when: sync_certs|default(false)
+  notify: set etcd_secret_changed
+
+- name: Gen_certs | Copy certs on masters
+  shell: "echo '{{etcd_master_cert_data.stdout|quote}}' | base64 -d | tar xz -C {{ etcd_cert_dir }}"
+  changed_when: false
+  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
+        inventory_hostname != groups['etcd'][0]
+
+- name: Gen_certs | Copy certs on nodes
+  shell: "echo '{{etcd_node_cert_data.stdout|quote}}' | base64 -d | tar xz -C {{ etcd_cert_dir }}"
+  changed_when: false
+  when: inventory_hostname in groups['k8s-cluster'] and sync_certs|default(false) and
+        inventory_hostname not in groups['etcd']
+
+- name: Gen_certs | check certificate permissions
+  file:
+    path={{ etcd_cert_dir }}
+    group={{ etcd_cert_group }}
+    state=directory
+    owner=kube
+    recurse=yes
+
+- name: Gen_certs | set permissions on keys
+  shell: chmod 0600 {{ etcd_cert_dir}}/*key.pem
+  when: inventory_hostname in groups['etcd']
+  changed_when: false
+
+- name: Gen_certs | target ca-certificate store file
+  set_fact:
+    ca_cert_path: |-
+      {% if ansible_os_family == "Debian" -%}
+      /usr/local/share/ca-certificates/etcd-ca.crt
+      {%- elif ansible_os_family == "RedHat" -%}
+      /etc/pki/ca-trust/source/anchors/etcd-ca.crt
+      {%- elif ansible_os_family == "CoreOS" -%}
+      /etc/ssl/certs/etcd-ca.pem
+      {%- endif %}
+
+- name: Gen_certs | add CA to trusted CA dir
+  copy:
+    src: "{{ etcd_cert_dir }}/ca.pem"
+    dest: "{{ ca_cert_path }}"
+    remote_src: true
+  register: etcd_ca_cert
+
+- name: Gen_certs | update ca-certificates (Debian/Ubuntu/CoreOS)
+  command: update-ca-certificates
+  when: etcd_ca_cert.changed and ansible_os_family in ["Debian", "CoreOS"]
+
+- name: Gen_certs | update ca-certificates (RedHat)
+  command: update-ca-trust extract
+  when: etcd_ca_cert.changed and ansible_os_family == "RedHat"
+

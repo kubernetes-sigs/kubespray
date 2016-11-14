@@ -12,6 +12,24 @@
 
 - meta: flush_handlers
 
+- name: Calico | Create calico certs directory
+  file:
+    dest: "{{ calico_cert_dir }}"
+    state: directory
+    mode: 0750
+    owner: root
+    group: root
+
+- name: Calico | Link etcd certificates for calico-node
+  file:
+    src: "{{ etcd_cert_dir }}/{{ item.s }}"
+    dest: "{{ calico_cert_dir }}/{{ item.d }}"
+    state: hard
+  with_items:
+    - {s: "ca.pem", d: "ca_cert.crt"}
+    - {s: "node.pem", d: "cert.crt"}
+    - {s: "node-key.pem", d: "key.pem"}
+
 - name: Calico | Install calicoctl container script
   template:
     src: calicoctl-container.j2
@@ -41,59 +59,95 @@
   when: "{{ overwrite_hyperkube_cni|bool }}"
 
 - name: Calico | wait for etcd
-  uri: url=http://localhost:2379/health
+  uri: url=https://localhost:2379/health validate_certs=no
   register: result
-  until: result.status == 200
+  until: result.status == 200 or result.status == 401
   retries: 10
   delay: 5
-  when: inventory_hostname in groups['kube-master']
-
-- name: Calico | Check if calico network pool has already been configured
-  uri:
-    url: "{{ etcd_endpoint }}/v2/keys/calico/v1/ipam/v4/pool"
-    return_content: yes
-    status_code: 200,404
-  register: calico_conf
+  delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
 
-- name: Calico | Define ipip pool argument
+- name: Calico | Check if calico network pool has already been configured
+  command: |-
+    curl \
+      --cacert {{ etcd_cert_dir }}/ca.pem \
+      --cert {{ etcd_cert_dir}}/admin.pem \
+      --key {{ etcd_cert_dir }}/admin-key.pem \
+      https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
+  register: calico_conf
+  delegate_to: "{{groups['etcd'][0]}}"
+  run_once: true
+
+- name: Calico | Check calicoctl version
+  run_once: true
+  set_fact:
+    legacy_calicoctl: "{{ calicoctl_image_tag | version_compare('v1.0.0', '<') }}"
+
+- name: Calico | Configure calico network pool
+  shell: >
+    echo '{
+    "kind": "ipPool",
+    "spec": {"disabled": false, "ipip": {"enabled": {{ cloud_provider is defined or ipip }}},
+             "nat-outgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }}},
+    "apiVersion": "v1",
+    "metadata": {"cidr": "{{ kube_pods_subnet }}"}
+    }'
+    | {{ bin_dir }}/calicoctl create -f -
+  environment:
+    NO_DEFAULT_POOLS: true
+  run_once: true
+  when: (not legacy_calicoctl and
+         "Key not found" in calico_conf.stdout or "nodes" not in calico_conf.stdout)
+
+- name: Calico (old) | Define ipip pool argument
   run_once: true
   set_fact:
     ipip_arg: "--ipip"
-  when: cloud_provider is defined or ipip|default(false)
+  when: (legacy_calicoctl and
+         cloud_provider is defined or ipip)
 
-- name: Calico | Define nat-outgoing pool argument
+- name: Calico (old) | Define nat-outgoing pool argument
   run_once: true
   set_fact:
     nat_arg: "--nat-outgoing"
-  when: nat_outgoing|default(false) and not peer_with_router|default(false)
+  when: (legacy_calicoctl and
+         nat_outgoing|default(false) and not peer_with_router|default(false))
 
-- name: Calico | Define calico pool task name
+- name: Calico (old) | Define calico pool task name
   run_once: true
   set_fact:
     pool_task_name: "with options {{ ipip_arg|default('') }} {{ nat_arg|default('') }}"
-  when: ipip_arg|default(false) or nat_arg|default(false)
+  when: (legacy_calicoctl and ipip_arg|default(false) or nat_arg|default(false))
 
-- name: Calico | Configure calico network pool {{ pool_task_name|default('') }}
+- name: Calico (old) | Configure calico network pool {{ pool_task_name|default('') }}
   command: "{{ bin_dir}}/calicoctl pool add {{ kube_pods_subnet }} {{ ipip_arg|default('') }} {{ nat_arg|default('') }}"
   environment:
     NO_DEFAULT_POOLS: true
   run_once: true
-  when: calico_conf.status == 404 or "nodes" not in calico_conf.content
+  when: (legacy_calicoctl and
+         "Key not found" in calico_conf.stdout or "nodes" not in calico_conf.stdout)
 
 - name: Calico | Get calico configuration from etcd
-  uri:
-    url: "{{ etcd_endpoint }}/v2/keys/calico/v1/ipam/v4/pool"
-    return_content: yes
-  register: calico_pools
+  command: |-
+    curl \
+      --cacert {{ etcd_cert_dir }}/ca.pem \
+      --cert {{ etcd_cert_dir}}/admin.pem \
+      --key {{ etcd_cert_dir }}/admin-key.pem \
+      https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
+  register: calico_pools_raw
+  delegate_to: "{{groups['etcd'][0]}}"
+  run_once: true
+
+- set_fact:
+    calico_pools: "{{ calico_pools_raw.stdout | from_json }}"
   run_once: true
 
 - name: Calico | Check if calico pool is properly configured
   fail:
     msg: 'Only one network pool must be configured and it must be the subnet {{ kube_pods_subnet }}.
     Please erase calico configuration and run the playbook again ("etcdctl rm --recursive /calico/v1/ipam/v4/pool")'
-  when: ( calico_pools.json['node']['nodes'] | length > 1 ) or
-        ( not calico_pools.json['node']['nodes'][0]['key'] | search(".*{{ kube_pods_subnet | ipaddr('network') }}.*") )
+  when: ( calico_pools['node']['nodes'] | length > 1 ) or
+        ( not calico_pools['node']['nodes'][0]['key'] | search(".*{{ kube_pods_subnet | ipaddr('network') }}.*") )
   run_once: true
 
 - name: Calico | Write /etc/network-environment
@@ -124,11 +178,30 @@
     enabled: yes
 
 - name: Calico | Disable node mesh
-  shell: "{{ bin_dir }}/calicoctl bgp node-mesh off"
-  when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']
+  shell: "{{ bin_dir }}/calicoctl config set nodeToNodeMesh off"
+  when: (not legacy_calicoctl and
+         peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
 
 - name: Calico | Configure peering with router(s)
+  shell: >
+   echo '{
+   "kind": "bgppeer",
+   "spec": {"asNumber": {{ item.as }}},
+   "apiVersion": "v1",
+   "metadata": {"node": "rack1-host1", "scope": "node", "peerIP": "{{ item.router_id }}"}
+   }'
+   | {{ bin_dir }}/calicoctl create -f -
+  with_items: peers
+  when: (not legacy_calicoctl and
+         peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
+
+- name: Calico (old) | Disable node mesh
+  shell: "{{ bin_dir }}/calicoctl bgp node-mesh off"
+  when: (legacy_calicoctl and
+         peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
+
+- name: Calico (old) | Configure peering with router(s)
   shell: "{{ bin_dir }}/calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}"
   with_items: peers
-  when: peer_with_router|default(false) and inventory_hostname in groups['kube-node']
-
+  when: (legacy_calicoctl and
+         peer_with_router|default(false) and inventory_hostname in groups['kube-node'])

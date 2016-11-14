@@ -1,8 +1,15 @@
 ---
+- include: pre_upgrade.yml
+- include: check_certs.yml
+- include: gen_certs.yml
 - include: install.yml
+  when: is_etcd_master
 - include: set_cluster_health.yml
+  when: is_etcd_master
 - include: configure.yml
+  when: is_etcd_master
 - include: refresh_config.yml
+  when: is_etcd_master
 
 - name: Ensure etcd is running
   service:
@@ -11,22 +18,10 @@
     enabled: yes
   when: is_etcd_master
 
-- name: Ensure etcd-proxy is running
-  service:
-    name: etcd-proxy
-    state: started
-    enabled: yes
-  when: is_etcd_proxy
-
 - name: Restart etcd if binary changed
   command: /bin/true
   notify: restart etcd
   when: etcd_deployment_type == "host" and etcd_copy.stdout_lines and is_etcd_master
-
-- name: Restart etcd-proxy if binary changed
-  command: /bin/true
-  notify: restart etcd-proxy
-  when: etcd_deployment_type == "host" and etcd_copy.stdout_lines and is_etcd_proxy
 
 # Reload systemd before starting service
 - meta: flush_handlers
@@ -35,4 +30,6 @@
 # initial state of the cluster is in `existing`
 # state insted of `new`.
 - include: set_cluster_health.yml
+  when: is_etcd_master
 - include: refresh_config.yml
+  when: is_etcd_master

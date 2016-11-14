@@ -40,6 +40,9 @@ spec:
         - name: resolv
           hostPath:
             path: /etc/resolv.conf
+        - name: "canal-certs"
+          hostPath:
+            path: "{{ canal_cert_dir }}"
       containers:
         # Runs the flannel daemon to enable vxlan networking between
         # container hosts.
@@ -76,10 +79,26 @@ spec:
             # Write the subnet.env file to the mounted directory.
             - name: FLANNELD_SUBNET_FILE
               value: "/run/flannel/subnet.env"
+            # Etcd SSL vars
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_cafile
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_certfile
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_keyfile
           command:
             - "/bin/sh"
             - "-c"
-            - "/opt/bin/flanneld -etcd-prefix /$(CLUSTER_NAME)/network"
+            - "/opt/bin/flanneld -etcd-prefix /$(CLUSTER_NAME)/network -etcd-cafile $(ETCD_CA_CERT_FILE) -etcd-certfile $(ETCD_CERT_FILE) -etcd-keyfile $(ETCD_KEY_FILE)"
           ports:
             - hostPort: 10253
               containerPort: 10253
@@ -90,6 +109,8 @@ spec:
               mountPath: "/etc/resolv.conf"
             - name: "run-flannel"
               mountPath: "/run/flannel"
+            - name: "canal-certs"
+              mountPath: "{{ canal_cert_dir }}"
         # Runs calico/node container on each Kubernetes node.  This
         # container programs network policy and local routes on each
         # host.
@@ -108,6 +129,22 @@ spec:
             # Disable file logging so `kubectl logs` works.
             - name: CALICO_DISABLE_FILE_LOGGING
               value: "true"
+            # Etcd SSL vars
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_cafile
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_certfile
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_keyfile
           securityContext:
             privileged: true
           volumeMounts:
@@ -117,3 +154,5 @@ spec:
             - mountPath: /var/run/calico
               name: var-run-calico
               readOnly: false
+            - name: "canal-certs"
+              mountPath: "{{ canal_cert_dir }}"

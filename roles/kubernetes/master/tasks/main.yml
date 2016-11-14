@@ -1,11 +1,6 @@
 ---
 - include: pre-upgrade.yml
 
-- name: Copy kubectl bash completion
-  copy:
-    src: kubectl_bash_completion.sh
-    dest: /etc/bash_completion.d/kubectl.sh
-  when: ansible_os_family in ["Debian","RedHat"]
 
 - name: Copy kubectl from hyperkube container
   command: "/usr/bin/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp /hyperkube /systembindir/kubectl"
@@ -14,6 +9,21 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
+
+- name: Gather kubectl bash completion
+  command: "{{ bin_dir }}/kubectl completion bash"
+  no_log: true
+  register: kubectl_bash_completion
+  when: ansible_os_family in ["Debian","RedHat"]
+
+- name: Write kubectl bash completion
+  copy:
+    content: "{{ kubectl_bash_completion.stdout }}"
+    dest: /etc/bash_completion.d/kubectl.sh
+    owner: root
+    group: root
+    mode: 0755
+  when: ansible_os_family in ["Debian","RedHat"] and kubectl_bash_completion.changed
 
 - name: Write kube-apiserver manifest
   template:

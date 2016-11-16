@@ -44,7 +44,7 @@
   when: "{{ download.enabled|bool and download.container|bool }}"
 
 - name: Create dest directory for saved/loaded container images
-  file: path="{{local_release_dir}}/containers" state=directory recurse=yes
+  file: path="{{local_release_dir}}/containers" state=directory recurse=yes mode=0755 owner="{{ansible_ssh_user}}"
   when: "{{ download.enabled|bool and download.container|bool }}"
 
 #NOTE(bogdando) this brings no docker-py deps for nodes
@@ -78,11 +78,29 @@
   run_once: true
   when: ansible_os_family != "CoreOS" and download_run_once|bool and download.enabled|bool and download.container|bool and container_changed|bool
 
-- name: Download | get container images
+- name: Download | create local directory for saved/loaded container images
+  file: path="{{local_release_dir}}/containers" state=directory recurse=yes mode=0755
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when: "{{ download.enabled|bool and download.container|bool }}"
+
+- name: Download | copy container images to ansible host
   synchronize:
     src: "{{ fname }}"
-    dest: "{{local_release_dir}}/containers"
+    dest: "{{ fname }}"
+    mode: pull
+  delegate_to: localhost
+  become: false
+  when: ansible_os_family != "CoreOS" and inventory_hostname == groups['kube-master'][0] and download_run_once|bool and download.enabled|bool and download.container|bool
+
+- name: Download | upload container images to nodes
+  synchronize:
+    src: "{{ fname }}"
+    dest: "{{ fname }}"
     mode: push
+  delegate_to: localhost
+  become: false
   register: get_task
   until: get_task|success
   retries: 4

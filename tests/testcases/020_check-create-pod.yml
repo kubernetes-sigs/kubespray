@@ -2,11 +2,21 @@
 - hosts: node1
 
   tasks:
+
+  - name: Force binaries directory for CoreOS
+    set_fact:
+      bin_dir: "/opt/bin"
+    when: ansible_os_family == "CoreOS"
+
+  - set_fact:
+      bin_dir: "/usr/local/bin"
+    when: ansible_os_family != "CoreOS"
+
   - name: Run a replica controller composed of 2 pods
-    shell: "/usr/local/bin/kubectl run test --image=busybox --replicas=2 --command -- tail -f /dev/null"
+    shell: "{{bin_dir}}/kubectl run test --image=busybox --replicas=2 --command -- tail -f /dev/null"
 
   - name: Pods are running
-    shell: "/usr/local/bin/kubectl get pods --no-headers -o json"
+    shell: "{{bin_dir}}/kubectl get pods --no-headers -o json"
     register: run_pods_log
     until: [ '(run_pods_log.stdout | from_json)["items"] | map(attribute = "status.phase") | join(",") == "Running,Running"' ]
     retries: 24

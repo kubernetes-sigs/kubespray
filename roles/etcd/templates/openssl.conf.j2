@@ -1,0 +1,39 @@
+[req]
+req_extensions = v3_req
+distinguished_name = req_distinguished_name
+
+[req_distinguished_name]
+
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+
+[ ssl_client ]
+extendedKeyUsage = clientAuth, serverAuth
+basicConstraints = CA:FALSE
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+subjectAltName = @alt_names
+
+[ v3_ca ]
+basicConstraints = CA:TRUE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+authorityKeyIdentifier=keyid:always,issuer
+
+[alt_names]
+DNS.1 = localhost
+{% for host in groups['etcd'] %}
+DNS.{{ 1 + loop.index }} = {{ host }}
+{% endfor %}
+{% if loadbalancer_apiserver is defined  and apiserver_loadbalancer_domain_name is defined %}
+{% set idx =  groups['etcd'] | length | int + 1 %}
+DNS.{{ idx | string }} = {{ apiserver_loadbalancer_domain_name }}
+{% endif %}
+{% for host in groups['etcd'] %}
+IP.{{ 2 * loop.index - 1 }} = {{ hostvars[host]['access_ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}
+IP.{{ 2 * loop.index }} = {{ hostvars[host]['ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}
+{% endfor %}
+{% set idx =  groups['etcd'] | length | int * 2 + 1 %}
+IP.{{ idx }} = 127.0.0.1

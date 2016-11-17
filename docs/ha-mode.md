@@ -5,10 +5,6 @@ The following components require a highly available endpoints:
 * etcd cluster,
 * kube-apiserver service instances.
 
-The former provides the
-[etcd-proxy](https://coreos.com/etcd/docs/latest/proxy.html) service to access
-the cluster members in HA fashion.
-
 The latter relies on a 3rd side reverse proxies, like Nginx or HAProxy, to
 achieve the same goal.
 
@@ -57,7 +53,7 @@ type. The following diagram shows how traffic to the apiserver is directed.
 
 A user may opt to use an external loadbalancer (LB) instead. An external LB
 provides access for external clients, while the internal LB accepts client
-connections only to the localhost, similarly to the etcd-proxy HA endpoints.
+connections only to the localhost.
 Given a frontend `VIP` address and `IP1, IP2` addresses of backends, here is
 an example configuration for a HAProxy service acting as an external LB:
 ```

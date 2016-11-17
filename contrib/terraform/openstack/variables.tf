@@ -6,7 +6,15 @@ variable "number_of_k8s_masters" {
   default = 2
 }
 
+variable "number_of_k8s_masters_no_floating_ip" {
+  default = 2
+}
+
 variable "number_of_k8s_nodes" {
+  default = 1
+}
+
+variable "number_of_k8s_nodes_no_floating_ip" {
   default = 1
 }
 

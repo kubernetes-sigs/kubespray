@@ -1,0 +1,36 @@
+---
+- name: "Check_certs | check if the certs have already been generated on first master"
+  stat:
+    path: "{{ etcd_cert_dir }}/ca.pem"
+  delegate_to: "{{groups['etcd'][0]}}"
+  register: etcdcert_master
+  run_once: true
+
+- name: "Check_certs | Set default value for 'sync_certs' and 'gen_certs' to false"
+  set_fact:
+    sync_certs: false
+    gen_certs: false
+
+- name: "Check_certs | Set 'sync_certs' and 'gen_certs' to true"
+  set_fact:
+    gen_certs: true
+  when: not etcdcert_master.stat.exists
+  run_once: true
+
+- name: "Check certs | check if a cert already exists"
+  stat:
+    path: "{{ etcd_cert_dir }}/ca.pem"
+  register: etcdcert
+
+- name: "Check_certs | Set 'sync_certs' to true"
+  set_fact:
+    sync_certs: true
+  when: >-
+      {%- set certs = {'sync': False} -%}
+      {%- for server in play_hosts
+         if (not hostvars[server].etcdcert.stat.exists|default(False)) or
+         (hostvars[server].etcdcert.stat.checksum|default('') != etcdcert_master.stat.checksum|default('')) -%}
+         {%- set _ = certs.update({'sync': True}) -%}
+      {%- endfor -%}
+      {{ certs.sync }}
+  run_once: true

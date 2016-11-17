@@ -46,6 +46,7 @@ That would probably improve deployment speed and certs management [#553](https:/
 - Configure network policy for Calico. [#159](https://github.com/kubespray/kargo/issues/159)
 - Opencontrail
 - Canal
+- Cloud Provider native networking (instead of our network plugins)
 
 ### High availability
 - (to be discussed) option to set a loadbalancer for the apiservers like ucarp/packemaker/keepalived

@@ -31,7 +31,7 @@ logfile="/var/log/$prog"
 
 do_status()
 {
-    if [ $($dockerexec ps | awk '{ print $2 }' | grep calico/node | wc -l) -ne 1 ]; then
+    if [ $($dockerexec ps --format "{{.Image}}" | grep -cw 'calico/node') -ne 1 ]; then
         return 1
     fi
 }
@@ -53,7 +53,11 @@ do_start() {
     if [ $retval -ne 0 ]; then
         printf "Starting $prog:\t"
         echo "\n$(date)\n" >> $logfile
-        $exec node --ip=${DEFAULT_IPV4} &>>$logfile 
+{% if legacy_calicoctl %}
+        $exec node --ip=${DEFAULT_IPV4} &>>$logfile
+{% else %}
+        $exec node run --ip=${DEFAULT_IPV4} &>>$logfile
+{% endif %}
         success
         echo
     else
@@ -65,7 +69,12 @@ do_start() {
 
 do_stop() {
     echo -n $"Stopping $prog: "
+{% if legacy_calicoctl %}
     $exec node stop >> /dev/null || $exec node stop --force >> /dev/null
+{% else %}
+    echo "Current version of ${exec} doesn't support 'node stop' command!"
+    return 1
+{% endif %}
     retval=$?
     echo
     return $retval

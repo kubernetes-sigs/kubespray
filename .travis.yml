@@ -14,6 +14,7 @@ env:
     GS_SECRET_ACCESS_KEY=$GS_SECRET
     ANSIBLE_KEEP_REMOTE_FILES=1
     CLUSTER_MODE=default
+    BOOTSTRAP_OS=none
   matrix:
     # Debian Jessie
     - >-
@@ -25,11 +26,6 @@ env:
       KUBE_NETWORK_PLUGIN=calico
       CLOUD_IMAGE=debian-8-kubespray
       CLOUD_REGION=us-central1-c
-      CLUSTER_MODE=default
-    - >-
-      KUBE_NETWORK_PLUGIN=weave
-      CLOUD_IMAGE=debian-8-kubespray
-      CLOUD_REGION=us-east1-d
       CLUSTER_MODE=default
 
     # Centos 7
@@ -51,11 +47,6 @@ env:
 
    # Redhat 7
     - >-
-      KUBE_NETWORK_PLUGIN=flannel
-      CLOUD_IMAGE=rhel-7-sudo
-      CLOUD_REGION=us-east1-d
-      CLUSTER_MODE=default
-    - >-
       KUBE_NETWORK_PLUGIN=calico
       CLOUD_IMAGE=rhel-7-sudo
       CLOUD_REGION=asia-east1-c
@@ -68,14 +59,9 @@ env:
 
     # Ubuntu 16.04
     - >-
-      KUBE_NETWORK_PLUGIN=flannel
+      KUBE_NETWORK_PLUGIN=canal
       CLOUD_IMAGE=ubuntu-1604-xenial
       CLOUD_REGION=us-central1-c
-      CLUSTER_MODE=default
-    - >-
-      KUBE_NETWORK_PLUGIN=calico
-      CLOUD_IMAGE=ubuntu-1604-xenial
-      CLOUD_REGION=us-east1-d
       CLUSTER_MODE=default
     - >-
       KUBE_NETWORK_PLUGIN=weave
@@ -83,9 +69,23 @@ env:
       CLOUD_REGION=asia-east1-c
       CLUSTER_MODE=default
 
+    # CoreOS stable
+    - >-
+      KUBE_NETWORK_PLUGIN=weave
+      CLOUD_IMAGE=coreos-stable
+      CLOUD_REGION=europe-west1-b
+      CLUSTER_MODE=default
+      BOOTSTRAP_OS=coreos
+    - >-
+      KUBE_NETWORK_PLUGIN=canal
+      CLOUD_IMAGE=coreos-stable
+      CLOUD_REGION=us-east1-d
+      CLUSTER_MODE=default
+      BOOTSTRAP_OS=coreos
+
     # Extra cases for separated roles
     - >-
-      KUBE_NETWORK_PLUGIN=flannel
+      KUBE_NETWORK_PLUGIN=canal
       CLOUD_IMAGE=rhel-7-sudo
       CLOUD_REGION=europe-west1-b
       CLUSTER_MODE=separate
@@ -99,15 +99,21 @@ env:
       CLOUD_IMAGE=debian-8-kubespray
       CLOUD_REGION=us-east1-d
       CLUSTER_MODE=separate
+    - >-
+      KUBE_NETWORK_PLUGIN=calico
+      CLOUD_IMAGE=coreos-stable
+      CLOUD_REGION=asia-east1-c
+      CLUSTER_MODE=separate
+      BOOTSTRAP_OS=coreos
 
 
 before_install:
   # Install Ansible.
-  - pip install --user boto -U
   - pip install --user ansible
   - pip install --user netaddr
   # W/A https://github.com/ansible/ansible-modules-core/issues/5196#issuecomment-253766186
   - pip install --user apache-libcloud==0.20.1
+  - pip install --user boto==2.9.0 -U
 
 cache:
   - directories:
@@ -123,6 +129,7 @@ before_script:
   - chmod 755 $HOME/.local/bin/ansible-playbook
   - $HOME/.local/bin/ansible-playbook --version
   - cp tests/ansible.cfg .
+  - export PYPATH=$([ $BOOTSTRAP_OS = none ] && echo /usr/bin/python || echo /opt/bin/python)
 #  - "echo $HOME/.local/bin/ansible-playbook -i inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root -e '{\"cloud_provider\": true}'  $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} setup-kubernetes/cluster.yml"
 
 script:
@@ -139,23 +146,37 @@ script:
     -e cloud_region=${CLOUD_REGION}
 
     # Create cluster
-  - "$HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root -e cloud_provider=gce  $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} cluster.yml"
+  - >
+    $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
+    -b --become-user=root -e cloud_provider=gce  $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+    -e bootstrap_os=${BOOTSTRAP_OS}
+    -e ansible_python_interpreter=${PYPATH}
+    cluster.yml
+
     # Tests Cases
     ## Test Master API
-  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini tests/testcases/010_check-apiserver.yml $LOG_LEVEL
+  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} tests/testcases/010_check-apiserver.yml $LOG_LEVEL
     ## Create a POD
-  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/020_check-create-pod.yml $LOG_LEVEL
+  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/020_check-create-pod.yml $LOG_LEVEL
     ## Ping the between 2 pod
-  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
+  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
 
 after_failure:
-  - $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root scripts/collect-info.yaml >/dev/null
+  - >
+    $HOME/.local/bin/ansible-playbook -i inventory/inventory.ini -u $SSH_USER
+    -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root -e dir=$HOME
+    -e ansible_python_interpreter=${PYPATH}
+    scripts/collect-info.yaml
   - >
     $HOME/.local/bin/ansible-playbook tests/cloud_playbooks/upload-logs-gcs.yml -i "localhost," -c local
-    -e test_id=${TEST_ID}
     -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+    -e gce_project_id=${GCE_PROJECT_ID}
     -e gs_key=${GS_ACCESS_KEY_ID}
     -e gs_skey=${GS_SECRET_ACCESS_KEY}
+    -e ostype=${CLOUD_IMAGE}
+    -e commit=${TRAVIS_COMMIT}
+    -e dir=${HOME}
+    -e ansible_python_interpreter=${PYPATH}
 
 after_script:
   - >

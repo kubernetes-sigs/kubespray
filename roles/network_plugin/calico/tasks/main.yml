@@ -46,8 +46,21 @@
   changed_when: false
   notify: restart calico-node
 
-- name: Calico | Copy cni plugins from hyperkube
+- name: Calico | Copy cni plugins from hyperkube (docker)
   command: "/usr/bin/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/rsync -a /opt/cni/bin/ /cnibindir/"
+  when: kube_container_engine == "docker"
+  register: cni_task_result
+  until: cni_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+
+- name: Calico | Copy cni plugins from hyperkube (rkt)
+  command: sh -c "{{ bin_dir }}/rkt run {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}
+           --volume cnibindir,kind=host,source={{ bin_dir }} --mount volume=cnibindir,target=/cnibindir
+           --exec /usr/bin/rsync -- -a /opt/cni/bin /cnibindir &&
+           {{ bin_dir }}/rkt gc --grace-period=0"
+  when: kube_container_engine == "rkt"
   register: cni_task_result
   until: cni_task_result.rc == 0
   retries: 4

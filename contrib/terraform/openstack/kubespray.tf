@@ -153,7 +153,6 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
     }
     volume {
         volume_id = "${element(openstack_blockstorage_volume_v2.glusterfs_volume.*.id, count.index)}"
-        device = "/dev/vdb"
     }
     provisioner "local-exec" {
 	command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(openstack_networking_floatingip_v2.k8s_master.*.address, 0)}/ > contrib/terraform/openstack/group_vars/gfs-cluster.yml"        

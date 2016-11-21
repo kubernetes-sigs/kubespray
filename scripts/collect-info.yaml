@@ -1,6 +1,6 @@
 ---
 - hosts: all
-  become: false
+  become: true
   gather_facts: no
 
   vars:
@@ -24,11 +24,13 @@
       - name: errors_info
         cmd: journalctl -p err --no-pager
       - name: etcd_info
-        cmd: etcdctl --debug cluster-health
+        cmd: etcdctl --peers={{ etcd_access_addresses }} cluster-health
       - name: weave_info
-        cmd: weave report | jq "."
+        cmd: weave report
       - name: weave_logs
         cmd: docker logs weave
+      - name: kube_describe_all
+        cmd: kubectl describe all --all-namespaces
       - name: kubedns_logs
         cmd: "for i in `kubectl get pods --all-namespaces -l k8s-app=kubedns -o jsonpath={.items..metadata.name}`;
           do kubectl logs ${i} --namespace kube-system kubedns; done"
@@ -70,6 +72,12 @@
       - /var/log/calico/confd/current
 
   tasks:
+    - set_fact:
+        etcd_access_addresses: |-
+          {% for item in groups['etcd'] -%}
+            https://{{ item }}:2379{% if not loop.last %},{% endif %}
+          {%- endfor %}
+
     - name: Storing commands output
       shell: "{{ item.cmd }} 2>&1 | tee {{ item.name }}"
       register: output

@@ -32,6 +32,6 @@ resource "null_resource" "ansible-provision" {
   }
 
   provisioner "local-exec" {
-    command =  "echo \"\n[k8s-cluster:children]\nkube-node\nkube-master\netcd\" >> inventory"
+    command =  "echo \"\n[k8s-cluster:children]\nkube-node\nkube-master\" >> inventory"
   }
 }

@@ -43,19 +43,36 @@
     msg: "{{ download.repo }}:{{ download.tag }}"
   when: "{{ download.enabled|bool and download.container|bool }}"
 
+- set_fact:
+    download_delegate: "{% if download_localhost %}localhost{% else %}{{groups['kube-master'][0]}}{% endif %}"
+
 - name: Create dest directory for saved/loaded container images
-  file: path="{{local_release_dir}}/containers" state=directory recurse=yes
+  file: path="{{local_release_dir}}/containers" state=directory recurse=yes mode=0755 owner={{ansible_ssh_user}}
   when: "{{ download.enabled|bool and download.container|bool }}"
+
+# This is required for the download_localhost delegate to work smooth with CoreOS cluster nodes
+- name: Hack python binary path for localhost
+  raw: sh -c "mkdir -p /opt/bin; ln -sf /usr/bin/python /opt/bin/python"
+  when: "{{ download_delegate == 'localhost' }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Download | create local directory for saved/loaded container images
+  file: path="{{local_release_dir}}/containers" state=directory recurse=yes
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when: "{{ download_run_once|bool and download.enabled|bool and download.container|bool and download_delegate == 'localhost' }}"
 
 #NOTE(bogdando) this brings no docker-py deps for nodes
 - name: Download containers
   command: "/usr/bin/docker pull {{ download.repo }}:{{ download.tag }}"
   register: pull_task_result
-  until: pull_task_result.rc == 0
+  until: pull_task_result|success
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   when: "{{ download.enabled|bool and download.container|bool }}"
-  delegate_to: "{{ groups['kube-master'][0] if download_run_once|bool else inventory_hostname }}"
+  delegate_to: "{{ download_delegate if download_run_once|bool else inventory_hostname }}"
   run_once: "{{ download_run_once|bool }}"
 
 - set_fact:
@@ -69,26 +86,48 @@
   set_fact:
     container_changed: "{{ not 'up to date' in pull_task_result.stdout }}"
   when: "{{ download.enabled|bool and download.container|bool }}"
-  delegate_to: "{{ groups['kube-master'][0] if download_run_once|bool else inventory_hostname }}"
+  delegate_to: "{{ download_delegate if download_run_once|bool else inventory_hostname }}"
   run_once: "{{ download_run_once|bool }}"
 
-- name: Download | save container images
-  shell: docker save "{{ download.repo }}:{{ download.tag }}" > "{{ fname }}"
-  delegate_to: "{{groups['kube-master'][0]}}"
+- name: Stat saved container image
+  stat: path="{{fname}}"
+  register: img
+  changed_when: false
+  when: "{{ download.enabled|bool and download.container|bool and download_run_once|bool }}"
+  delegate_to: "{{ download_delegate }}"
+  become: false
   run_once: true
-  when: ansible_os_family != "CoreOS" and download_run_once|bool and download.enabled|bool and download.container|bool and container_changed|bool
 
-- name: Download | get container images
+- name: Download | save container images
+  shell: docker save "{{ download.repo }}:{{ download.tag }}" | gzip -{{ download_compress }} > "{{ fname }}"
+  delegate_to: "{{ download_delegate }}"
+  register: saved
+  run_once: true
+  become: false
+  when: (ansible_os_family != "CoreOS" or download_delegate == "localhost") and download_run_once|bool and download.enabled|bool and download.container|bool and (container_changed|bool or not img.stat.exists)
+
+- name: Download | copy container images to ansible host
   synchronize:
     src: "{{ fname }}"
-    dest: "{{local_release_dir}}/containers"
+    dest: "{{ fname }}"
+    mode: pull
+  delegate_to: localhost
+  become: false
+  when: ansible_os_family != "CoreOS" and inventory_hostname == groups['kube-master'][0] and download_delegate != "localhost" and download_run_once|bool and download.enabled|bool and download.container|bool and saved.changed
+
+- name: Download | upload container images to nodes
+  synchronize:
+    src: "{{ fname }}"
+    dest: "{{ fname }}"
     mode: push
+  delegate_to: localhost
+  become: false
   register: get_task
   until: get_task|success
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  when: ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] and download_run_once|bool and download.enabled|bool and download.container|bool and container_changed|bool
+  when: (ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] or download_delegate == "localhost") and download_run_once|bool and download.enabled|bool and download.container|bool
 
 - name: Download | load container images
   shell: docker load < "{{ fname }}"
-  when: ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] and download_run_once|bool and download.enabled|bool and download.container|bool and container_changed|bool
+  when: (ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] or download_delegate == "localhost") and download_run_once|bool and download.enabled|bool and download.container|bool

@@ -14,7 +14,7 @@
 
 # Format external volumes in xfs
 - name: Format volumes in xfs
-  filesystem: fstype=xfs dev=/dev/vdb
+  filesystem: "fstype=xfs dev={{ disk_volume_device_1 }}"
 
 # Mount external volumes
 - name: mounting new xfs filesystem
@@ -42,7 +42,7 @@
         name: "{{ gluster_brick_name }}"
         brick: "{{ gluster_brick_dir }}"
         replicas: "{{ groups['gfs-cluster'] | length }}"
-        cluster: "{{ groups['gfs-cluster'] | map('extract', hostvars, ['ip']) | join(',') }}"
+        cluster: "{% for item in groups['gfs-cluster'] -%}{{ hostvars[item]['ip']|default(hostvars[item].ansible_default_ipv4['address']) }}{% if not loop.last %},{% endif %}{%- endfor %}"
         host: "{{ inventory_hostname }}"
         force: yes
   run_once: true
@@ -50,7 +50,7 @@
 - name: Mount glusterfs to retrieve disk size
   mount:
     name: "{{ gluster_mount_dir }}"
-    src: "{{ hostvars[groups['gfs-cluster'][0]]['ip'] }}:/gluster" 
+    src: "{{ ip|default(ansible_default_ipv4['address']) }}:/gluster" 
     fstype: glusterfs
     opts: "defaults,_netdev"
     state: mounted
@@ -66,12 +66,17 @@
      gluster_disk_size_gb: "{{ (mounts_data.ansible_facts.ansible_mounts | selectattr('mount', 'equalto', gluster_mount_dir) | map(attribute='size_total') | first | int / (1024*1024*1024)) | int }}"
   when: groups['gfs-cluster'] is defined and inventory_hostname == groups['gfs-cluster'][0]
 
+- name: Create file on GlusterFS
+  template:
+      dest: "{{ gluster_mount_dir }}/.test-file.txt"
+      src: test-file.txt
+  when: groups['gfs-cluster'] is defined and inventory_hostname == groups['gfs-cluster'][0]
 
 - name: Unmount glusterfs
   mount:
     name: "{{ gluster_mount_dir }}"
     fstype: glusterfs
-    src: "{{ hostvars[groups['gfs-cluster'][0]]['ip'] }}:/gluster"
+    src: "{{ ip|default(ansible_default_ipv4['address']) }}:/gluster"
     state: unmounted
   when: groups['gfs-cluster'] is defined and inventory_hostname == groups['gfs-cluster'][0]
 

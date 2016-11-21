@@ -1,0 +1,20 @@
+---
+- name: Kubernetes Apps | Lay Down k8s GlusterFS Endpoint and PV
+  template: src={{item.file}} dest=/etc/kubernetes/{{item.dest}}
+  with_items:
+          - { file: glusterfs-kubernetes-endpoint.json.j2, type: ep, dest: glusterfs-kubernetes-endpoint.json}
+          - { file: glusterfs-kubernetes-pv.yml.j2, type: pv, dest: glusterfs-kubernetes-pv.yml}
+ow to deploy it.
+  register: gluster_pv
+  when: inventory_hostname == groups['kube-master'][0] and groups['gfs-cluster'] is defined and hostvars[groups['gfs-cluster'][0]].gluster_disk_size_gb is defined
+
+- name: Kubernetes Apps | Set GlusterFS endpoint and PV
+  kube:
+    name: glusterfs
+    namespace: default
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "/etc/kubernetes/{{item.item.dest}}"
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: "{{ gluster_pv.results }}"
+  when: inventory_hostname == groups['kube-master'][0] and groups['gfs-cluster'] is defined

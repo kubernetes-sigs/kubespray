@@ -50,6 +50,16 @@ or for versions prior *v1.0.0*:
 calicoctl endpoint show --detail
 ```
 
+##### Optionnal : Define network backend
+
+In some cases you may want to define Calico network backend. Allowed values are 'bird', 'gobgp' or 'none'. Bird is a default value.
+
+To re-define you need to edit the inventory and add a group variable `calico_network_backend`
+
+```
+calico_network_backend: none
+```
+
 ##### Optionnal : BGP Peering with border routers
 
 In some cases you may want to route the pods subnet and so NAT is not needed on the nodes.

@@ -15,6 +15,15 @@
     owner=root
     recurse=yes
 
+- name: Gen_certs | create ext etcd cert dir
+  file:
+    path={{ network_plugin_etcd_cert_dir }}
+    group={{ etcd_cert_group }}
+    state=directory
+    owner=root
+    recurse=yes
+  when: "{{ network_plugin_etcd_access_endpoint.defined }}"
+
 - name: Gen_certs | write openssl config
   template:
     src: "openssl.conf.j2"
@@ -42,6 +51,7 @@
 - set_fact:
     master_certs: ['ca-key.pem', 'admin.pem', 'admin-key.pem', 'member.pem', 'member-key.pem']
     node_certs: ['ca.pem', 'node.pem', 'node-key.pem']
+    network_plugin_etcd_certs: ['ca-key.pem', 'admin.pem', 'admin-key.pem', 'ca.pem', 'node.pem', 'node-key.pem']
   tags: facts
 
 - name: Gen_certs | Gather etcd master certs
@@ -60,6 +70,14 @@
   when: sync_certs|default(false)
   notify: set etcd_secret_changed
 
+- name: Gen_certs | Gather ext etcd node certs
+  shell: "tar cfz - -C {{ network_plugin_etcd_cert_dir }} {{ network_plugin_etcd_certs|join(' ') }} | base64 --wrap=0"
+  register: ext_etcd_node_cert_data
+  delegate_to: "{{groups['etcd'][0]}}"
+  run_once: true
+  when: "{{ ext_sync_certs|default(false) and network_plugin_etcd_access_endpoint.defined }}"
+  notify: set ext_etcd_secret_changed
+
 - name: Gen_certs | Copy certs on masters
   shell: "echo '{{etcd_master_cert_data.stdout|quote}}' | base64 -d | tar xz -C {{ etcd_cert_dir }}"
   changed_when: false
@@ -72,6 +90,12 @@
   when: inventory_hostname in groups['k8s-cluster'] and sync_certs|default(false) and
         inventory_hostname not in groups['etcd']
 
+- name: Gen_certs | Copy ext etcd certs on nodes
+  shell: "echo '{{ext_etcd_node_cert_data.stdout|quote}}' | base64 -d | tar xz -C {{ network_plugin_etcd_cert_dir }}"
+  changed_when: false
+  when: "{{ inventory_hostname in groups['k8s-cluster'] and  ext_sync_certs|default(false) and
+        inventory_hostname != groups['etcd'] and network_plugin_etcd_access_endpoint.defined }}"
+
 - name: Gen_certs | check certificate permissions
   file:
     path={{ etcd_cert_dir }}
@@ -81,10 +105,26 @@
     recurse=yes
   tags: facts
 
+- name: Gen_certs | check ext etcd certificate permissions
+  file:
+    path={{ network_plugin_etcd_cert_dir }}
+    group={{ etcd_cert_group }}
+    state=directory
+    owner=kube
+    recurse=yes
+  when: "{{ network_plugin_etcd_access_endpoint.defined }}"
+  tags: facts
+
 - name: Gen_certs | set permissions on keys
   shell: chmod 0600 {{ etcd_cert_dir}}/*key.pem
   when: inventory_hostname in groups['etcd']
   changed_when: false
+
+- name: Gen_certs | set permissions on ext etcd keys
+  shell: chmod 0600 {{ network_plugin_etcd_cert_dir}}/*key.pem
+  when: inventory_hostname in groups['k8s-cluster']
+  changed_when: false
+  when: "{{ network_plugin_etcd_access_endpoint.defined }}"
 
 - name: Gen_certs | target ca-certificate store file
   set_fact:
@@ -105,11 +145,18 @@
     remote_src: true
   register: etcd_ca_cert
 
+- name: Gen_certs | add ext etcd CA to trusted CA dir
+  copy:
+    src: "{{ network_plugin_etcd_cert_dir }}/ca.pem"
+    dest: "{{ ca_cert_path }}"
+    remote_src: true
+  register: ext_etcd_ca_cert
+  when: "{{ network_plugin_etcd_access_endpoint.defined }}"
+
 - name: Gen_certs | update ca-certificates (Debian/Ubuntu/CoreOS)
   command: update-ca-certificates
-  when: etcd_ca_cert.changed and ansible_os_family in ["Debian", "CoreOS"]
+  when: (etcd_ca_cert.changed or ext_etcd_ca_cert.changed) and ansible_os_family in ["Debian", "CoreOS"]
 
 - name: Gen_certs | update ca-certificates (RedHat)
   command: update-ca-trust extract
-  when: etcd_ca_cert.changed and ansible_os_family == "RedHat"
-
+  when: (etcd_ca_cert.changed or ext_etcd_ca_cert.changed) and ansible_os_family == "RedHat"

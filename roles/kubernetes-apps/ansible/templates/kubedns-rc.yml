@@ -8,7 +8,7 @@ metadata:
     version: v19
     kubernetes.io/cluster-service: "true"
 spec:
-  replicas: 1
+  replicas: {{ dns_replicas }}
   selector:
     k8s-app: kubedns
     version: v19
@@ -29,11 +29,11 @@ spec:
           # guaranteed class. Currently, this container falls into the
           # "burstable" category so the kubelet doesn't backoff from restarting it.
           limits:
-            cpu: 100m
-            memory: 170Mi
+            cpu: {{ dns_cpu_limit }}
+            memory: {{ dns_memory_limit }}
           requests:
-            cpu: 100m
-            memory: 70Mi
+            cpu: {{ dns_cpu_requests }}
+            memory: {{ dns_memory_requests }}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -56,6 +56,7 @@ spec:
         # command = "/kube-dns"
         - --domain={{ dns_domain }}.
         - --dns-port=10053
+        - --v={{ kube_log_level }}
         ports:
         - containerPort: 10053
           name: dns-local
@@ -66,11 +67,21 @@ spec:
       - name: dnsmasq
         image: "{{ kubednsmasq_image_repo }}:{{ kubednsmasq_image_tag }}"
         imagePullPolicy: {{ k8s_image_pull_policy }}
+        resources:
+          limits:
+            cpu: {{ dns_cpu_limit }}
+            memory: {{ dns_memory_limit }}
+          requests:
+            cpu: {{ dns_cpu_requests }}
+            memory: {{ dns_memory_requests }}
         args:
         - --log-facility=-
         - --cache-size=1000
         - --no-resolv
         - --server=127.0.0.1#10053
+{% if kube_log_level == 4 %}
+        - --log-queries
+{% endif %}
         ports:
         - containerPort: 53
           name: dns

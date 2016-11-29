@@ -4,7 +4,7 @@
 
 If you have questions, you can [invite yourself](https://slack.kubespray.io/) to **chat** with us on Slack! [![SlackStatus](https://slack.kubespray.io/badge.svg)](https://kubespray.slack.com)
 
-- Can be deployed on **AWS, GCE, OpenStack or Baremetal**
+- Can be deployed on **AWS, GCE, Azure, OpenStack or Baremetal**
 - **High available** cluster
 - **Composable** (Choice of the network plugin for instance)
 - Support most popular **Linux distributions**
@@ -26,6 +26,7 @@ To deploy the cluster you can use :
 *  [Cloud providers](docs/cloud.md)
 *  [OpenStack](docs/openstack.md)
 *  [AWS](docs/aws.md)
+*  [Azure](docs/azure.md)
 *  [Network plugins](#network-plugins)
 *  [Roadmap](docs/roadmap.md)
 

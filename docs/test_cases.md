@@ -8,21 +8,15 @@ Here is the test matrix for the Travis CI gates:
 
 |           Network plugin|                  OS type|               GCE region|             Nodes layout|
 |-------------------------|-------------------------|-------------------------|-------------------------|
-|                  flannel|                 debian-8|           europe-west1-b|                  default|
-|                   calico|                 debian-8|            us-central1-c|                  default|
-|                  flannel|                 centos-7|             asia-east1-c|                  default|
+|                    canal|                 debian-8|           europe-west1-d|                  default|
+|                   calico|                 debian-8|            us-central1-b|                  default|
+|                  flannel|                 centos-7|           europe-west1-d|                  default|
 |                   calico|                 centos-7|           europe-west1-b|                  default|
-|                    weave|                 centos-7|            us-central1-c|                  default|
-|                   calico|                   rhel-7|             asia-east1-c|                  default|
 |                    weave|                   rhel-7|           europe-west1-b|                  default|
-|                    canal|       ubuntu-1604-xenial|            us-central1-c|                  default|
-|                    weave|       ubuntu-1604-xenial|             asia-east1-c|                  default|
-|                    weave|            coreos-stable|           europe-west1-b|                  default|
 |                    canal|            coreos-stable|               us-east1-d|                  default|
-|                    canal|                   rhel-7|           europe-west1-b|                 separate|
-|                   calico|       ubuntu-1604-xenial|            us-central1-a|                 separate|
-|                    weave|                 debian-8|               us-east1-d|                 separate|
-|                   calico|            coreos-stable|             asia-east1-c|                 separate|
+|                    canal|                   rhel-7|           europe-west1-c|                 separate|
+|                    weave|       ubuntu-1604-xenial|               us-west1-b|                 separate|
+|                   calico|            coreos-stable|            us-central1-f|                 separate|
 
 Where the nodes layout `default` is that is given in the example inventory file.
 And the `separate` layout is when there is only node of each type, which is a kube master,

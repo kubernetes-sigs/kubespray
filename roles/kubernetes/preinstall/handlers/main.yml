@@ -2,9 +2,10 @@
   command: /bin/true
   notify:
     - Preinstall | reload network
-    - Preinstall | update resolvconf
+    - Preinstall | reload kubelet
   when: ansible_os_family != "CoreOS"
 
+  # FIXME(bogdando) https://github.com/projectcalico/felix/issues/1185
 - name: Preinstall | reload network
   service:
     name: >-
@@ -14,14 +15,7 @@
       networking
       {%- endif %}
     state: restarted
-  when: ansible_os_family != "RedHat" and ansible_os_family != "CoreOS"
-
-- name: Preinstall | update resolvconf
-  command: /bin/true
-  notify:
-    - Preinstall | reload resolvconf
-    - Preinstall | reload kubelet
-  when: ansible_os_family != "CoreOS"
+  when: ansible_os_family != "CoreOS" or kube_network_plugin not in ['canal', 'calico']
 
 - name: Preinstall | update resolvconf for CoreOS
   command: /bin/true
@@ -29,10 +23,6 @@
     - Preinstall | apply resolvconf cloud-init
     - Preinstall | reload kubelet
   when: ansible_os_family == "CoreOS"
-
-- name: Preinstall | reload resolvconf
-  command: /sbin/resolvconf -u
-  ignore_errors: true
 
 - name: Preinstall | apply resolvconf cloud-init
   command: /usr/bin/coreos-cloudinit --from-file {{ resolveconf_cloud_init_conf }}

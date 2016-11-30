@@ -51,6 +51,13 @@ aforementioned vars:
 * Resolvconf's head/base files are disabled from populating anything into the
   `/etc/resolv.conf`.
 
+It is important to note that multiple search domains combined with high ``ndots``
+values lead to poor performance of DNS stack, so please choose it wisely.
+The dnsmasq DaemonSet can accept lower ``ndots`` values and return NXDOMAIN
+replies for [bogus internal FQDNS](https://github.com/kubernetes/kubernetes/issues/19634#issuecomment-253948954)
+before it even hits the kubedns app. This enables dnsmasq to serve as a
+protective, but still recursive resolver in front of kubedns.
+
 DNS configuration details
 -------------------------
 
@@ -106,8 +113,7 @@ Limitations
   [no way to specify a custom value](https://github.com/kubernetes/kubernetes/issues/33554)
   for the SkyDNS ``ndots`` param via an
   [option for KubeDNS](https://github.com/kubernetes/kubernetes/blob/master/cmd/kube-dns/app/options/options.go)
-  add-on, while SkyDNS supports it though. Thus, DNS SRV records may not work
-  as expected as they require the ``ndots:7``.
+  add-on, while SkyDNS supports it though.
 
 * the ``searchdomains`` have a limitation of a 6 names and 256 chars
   length. Due to default ``svc, default.svc`` subdomains, the actual

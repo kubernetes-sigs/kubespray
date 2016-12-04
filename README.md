@@ -75,7 +75,7 @@ The choice is defined with the variable `kube_network_plugin`
 
 ## CI Tests
 
-[![Build Status](https://travis-ci.org/kubespray/kargo.svg)](https://travis-ci.org/kubespray/kargo) </br>
+[![Build Status](https://travis-ci.org/kubernetes-incubator/kargo.svg)](https://travis-ci.org/kubernetes-incubator/kargo) </br>
 
 ### Google Compute Engine
 

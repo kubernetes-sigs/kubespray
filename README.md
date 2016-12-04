@@ -13,7 +13,7 @@ If you have questions, join us on the [kubernetes slack](https://slack.k8s.io), 
 
 To deploy the cluster you can use :
 
-[**kargo-cli**](https://github.com/kubespray/kargo-cli) (deprecated, a newer [go](https://github.com/kubespray/kargo-cli/tree/kargogo) version soon)<br>
+[**kargo-cli**](https://github.com/kubespray/kargo-cli) <br>
 **Ansible** usual commands <br>
 **vagrant** by simply running `vagrant up` (for tests purposes) <br>
 

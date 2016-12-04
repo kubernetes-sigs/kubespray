@@ -2,7 +2,7 @@
 
 ##Deploy a production ready kubernetes cluster
 
-If you have questions, you can [invite yourself](https://slack.kubespray.io/) to **chat** with us on Slack! [![SlackStatus](https://slack.kubespray.io/badge.svg)](https://kubespray.slack.com)
+If you have questions, join us on the [kubernetes slack](https://slack.k8s.io), channel **#kargo**.
 
 - Can be deployed on **AWS, GCE, Azure, OpenStack or Baremetal**
 - **High available** cluster
@@ -13,7 +13,7 @@ If you have questions, you can [invite yourself](https://slack.kubespray.io/) to
 
 To deploy the cluster you can use :
 
-[**kargo-cli**](https://github.com/kubespray/kargo-cli) (deprecated, a newer [go](https://github.com/Smana/kargo-cli/tree/kargogo) version soon)<br>
+[**kargo-cli**](https://github.com/kubespray/kargo-cli) <br>
 **Ansible** usual commands <br>
 **vagrant** by simply running `vagrant up` (for tests purposes) <br>
 
@@ -75,7 +75,7 @@ The choice is defined with the variable `kube_network_plugin`
 
 ## CI Tests
 
-[![Build Status](https://travis-ci.org/kubespray/kargo.svg)](https://travis-ci.org/kubespray/kargo) </br>
+[![Build Status](https://travis-ci.org/kubernetes-incubator/kargo.svg)](https://travis-ci.org/kubernetes-incubator/kargo) </br>
 
 ### Google Compute Engine
 

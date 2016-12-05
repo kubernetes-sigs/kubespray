@@ -1,28 +1,34 @@
 [Unit]
-Description=Calico per-node agent
-Documentation=https://github.com/projectcalico/calico-docker
-After=docker.service docker.socket
-Wants=docker.socket
+Description=calico-node
+After=docker.service
+Requires=docker.service
 
 [Service]
-User=root
-PermissionsStartOnly=true
-{% if legacy_calicoctl %}
-{% if inventory_hostname in groups['kube-node'] and peer_with_router|default(false)%}
-ExecStart={{ bin_dir }}/calicoctl node --ip={{ip | default(ansible_default_ipv4.address) }} --as={{ local_as }} --detach=false --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
-{% else %}
-ExecStart={{ bin_dir }}/calicoctl node --ip={{ip | default(ansible_default_ipv4.address) }} --detach=false --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
-{% endif %}
-{% else %}
-{% if inventory_hostname in groups['kube-node'] and peer_with_router|default(false)%}
-ExecStart={{ bin_dir }}/calicoctl node run --ip={{ip | default(ansible_default_ipv4.address) }} --as={{ local_as }} --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }} {% if calico_network_backend is defined %}--backend={{calico_network_backend }}{% endif %}
-{%     else %}
-ExecStart={{ bin_dir }}/calicoctl node run --ip={{ip | default(ansible_default_ipv4.address) }} --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }} {% if calico_network_backend is defined %}--backend={{calico_network_backend }}{% endif %}
-{% endif %}
-{% endif %}
+EnvironmentFile=/etc/calico/calico.env
+ExecStartPre=-/usr/bin/docker rm -f calico-node
+ExecStart=/usr/bin/docker run --net=host --privileged \
+ --name=calico-node \
+ -e IP=${CALICO_IP} \
+ -e IP6=${CALICO_IP6} \
+ -e CALICO_NETWORKING_BACKEND=${CALICO_NETWORKING_BACKEND} \
+ -e AS=${CALICO_AS} \
+ -e NO_DEFAULT_POOLS=${CALICO_NO_DEFAULT_POOLS} \
+ -e CALICO_LIBNETWORK_ENABLED=${CALICO_LIBNETWORK_ENABLED} \
+ -e ETCD_ENDPOINTS=${ETCD_ENDPOINTS} \
+ -e ETCD_CA_CERT_FILE=${ETCD_CA_CERT_FILE} \
+ -e ETCD_CERT_FILE=${ETCD_CERT_FILE} \
+ -e ETCD_KEY_FILE=${ETCD_KEY_FILE} \
+ -v /var/log/calico:/var/log/calico \
+ -v /run/docker/plugins:/run/docker/plugins \
+ -v /lib/modules:/lib/modules \
+ -v /var/run/calico:/var/run/calico \
+ -v {{ calico_cert_dir }}:{{ calico_cert_dir }}:ro \
+ {{ calico_node_image_repo }}:{{ calico_node_image_tag }}
 
 Restart=always
 RestartSec=10s
+
+ExecStop=-/usr/bin/docker stop calico-node
 
 [Install]
 WantedBy=multi-user.target

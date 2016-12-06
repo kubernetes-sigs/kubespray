@@ -196,17 +196,18 @@
   shell: "{{ bin_dir }}/calicoctl config set nodeToNodeMesh off"
   when: (not legacy_calicoctl and
          peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
+  run_once: true
 
 - name: Calico | Configure peering with router(s)
   shell: >
    echo '{
-   "kind": "bgppeer",
-   "spec": {"asNumber": {{ item.as }}},
+   "kind": "bgpPeer",
+   "spec": {"asNumber": "{{ item.as }}"},
    "apiVersion": "v1",
-   "metadata": {"node": "rack1-host1", "scope": "node", "peerIP": "{{ item.router_id }}"}
+   "metadata": {"node": "{{ inventory_hostname }}", "scope": "node", "peerIP": "{{ item.router_id }}"}
    }'
    | {{ bin_dir }}/calicoctl create -f -
-  with_items: peers
+  with_items: "{{ peers|default([]) }}"
   when: (not legacy_calicoctl and
          peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
 
@@ -214,9 +215,10 @@
   shell: "{{ bin_dir }}/calicoctl bgp node-mesh off"
   when: (legacy_calicoctl and
          peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
+  run_once: true
 
 - name: Calico (old) | Configure peering with router(s)
   shell: "{{ bin_dir }}/calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}"
-  with_items: peers
+  with_items: "{{ peers|default([]) }}"
   when: (legacy_calicoctl and
          peer_with_router|default(false) and inventory_hostname in groups['kube-node'])

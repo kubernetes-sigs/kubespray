@@ -347,6 +347,15 @@ def openstack_host(resource, module_name):
     if 'metadata.ssh_user' in raw_attrs:
         attrs['ansible_ssh_user'] = raw_attrs['metadata.ssh_user']
 
+    if 'volume.#' in raw_attrs.keys() and int(raw_attrs['volume.#']) > 0:
+        device_index = 1
+        for key, value in raw_attrs.items():
+            match = re.search("^volume.*.device$", key)
+            if match:
+                attrs['disk_volume_device_'+str(device_index)] = value
+                device_index += 1
+
+
     # attrs specific to Mantl
     attrs.update({
         'consul_dc': _clean_dc(attrs['metadata'].get('dc', module_name)),

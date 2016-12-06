@@ -23,7 +23,7 @@ calicoctl status
 * Show the configured network subnet for containers
 
 ```
- calicoctl get ippool -o wide
+calicoctl get ippool -o wide
 ```
 
 or for versions prior *v1.0.0*:

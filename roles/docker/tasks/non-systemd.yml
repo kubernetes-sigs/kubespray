@@ -1,0 +1,61 @@
+---
+# This uses lineinfile instead of templates for idempotency in files that may be modified by different roles
+- name: Set docker options config file path
+  set_fact:
+    docker_options_file: >-
+      {%- if ansible_os_family == "Debian" -%}/etc/default/docker{%- elif ansible_os_family == "RedHat" -%}/etc/sysconfig/docker{%- endif -%}
+
+- name: Set docker options config variable name
+  set_fact:
+    docker_options_name: >-
+      {%- if ansible_os_family == "Debian" -%}DOCKER_OPTS{%- elif ansible_os_family == "RedHat" -%}other_args{%- endif -%}
+
+- name: Set docker options config value to be written
+  set_fact:
+    docker_options_value: '"{{ docker_options }} $DOCKER_NETWORK_OPTIONS $DOCKER_STORAGE_OPTIONS $INSECURE_REGISTRY"'
+
+- name: Set docker options config line to be written
+  set_fact:
+    docker_options_line: "{{ docker_options_name }}={{ docker_options_value }}"
+
+- name: Set docker proxy lines to be written
+  set_fact:
+    docker_proxy_lines:
+     - { name: "HTTP_PROXY", value: '"{{ http_proxy }}"' }
+     - { name: "HTTPS_PROXY", value: '"{{ https_proxy }}"' }
+     - { name: "NO_PROXY", value: '"{{ no_proxy }}"' }
+
+- name: Remove docker daemon proxy config lines that don't match desired lines
+  lineinfile:
+    dest: "{{ docker_options_file }}"
+    regexp: "^{{ item.name }}=(?!{{ item.value|regex_escape() }})"
+    state: absent
+  with_items: "{{ docker_proxy_lines|default([]) }}"
+  when: item.value is defined and (item.value | trim != '')
+
+- name: Write docker daemon proxy config lines
+  lineinfile:
+    dest: "{{ docker_options_file }}"
+    line: "{{ item.name }}={{ item.value }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items: "{{ docker_proxy_lines|default([]) }}"
+  when: item.value is defined and (item.value | trim != '')
+
+- name: Remove docker daemon options lines that don't match desired line
+  lineinfile:
+    dest: "{{ docker_options_file }}"
+    regexp: "^(DOCKER_OPTS|OPTIONS|other_args)=(?!{{ docker_options_value|regex_escape() }})"
+    state: absent
+
+- name: Write docker daemon options line
+  lineinfile:
+    dest: "{{ docker_options_file }}"
+    line: "{{ docker_options_line }}"
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart docker
+
+- meta: flush_handlers

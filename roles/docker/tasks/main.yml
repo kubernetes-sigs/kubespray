@@ -62,20 +62,13 @@
   with_items: "{{ docker_package_info.pkgs }}"
   when: (ansible_os_family != "CoreOS") and (docker_package_info.pkgs|length > 0)
 
-- name: allow for proxies on systems using systemd
-  include: systemd-proxies.yml
-  when: ansible_service_mgr == "systemd" and
-        (http_proxy is defined or https_proxy is defined or no_proxy is defined)
+- name: Set docker upstart and sysvinit config
+  include: non-systemd.yml
+  when: ansible_service_mgr in ["sysvinit","upstart"]
 
-- name: Write docker.service systemd file
-  template:
-    src: systemd-docker.service.j2
-    dest: /etc/systemd/system/docker.service
-  register: docker_service_file
-  notify: restart docker
-  when: ansible_service_mgr == "systemd" and ansible_os_family != "CoreOS"
-
-- meta: flush_handlers
+- name: Set docker systemd config
+  include: systemd.yml
+  when: ansible_service_mgr == "systemd"
 
 - name: ensure docker service is started and enabled
   service:

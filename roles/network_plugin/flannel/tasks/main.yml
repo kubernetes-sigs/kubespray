@@ -35,27 +35,42 @@
 - set_fact:
     flannel_mtu: "{{ flannel_mtu_output.stdout }}"
 
-- name: Flannel | Set docker daemon options
-  template:
-    src: docker
-    dest: "/etc/default/docker"
+- set_fact:
+    docker_options_file: >-
+      {%- if ansible_os_family == "Debian" -%}/etc/default/docker{%- elif ansible_os_family == "RedHat" -%}/etc/sysconfig/docker{%- endif -%}
+
+- set_fact:
+    docker_options_name: >-
+      {%- if ansible_os_family == "Debian" -%}DOCKER_OPTS{%- elif ansible_os_family == "RedHat" -%}other_args{%- endif -%}
+
+- set_fact:
+    docker_network_options: '"--bip={{ flannel_subnet }} --mtu={{ flannel_mtu }}"'
+
+- name: Flannel | Remove non-systemd docker daemon network options that don't match desired line
+  lineinfile:
+    dest: "{{ docker_options_file }}"
+    regexp: "^DOCKER_NETWORK_OPTIONS=(?!{{ docker_network_options|regex_escape() }})"
+    state: absent
+  when: ansible_service_mgr in ["sysvinit","upstart"]
+
+- name: Flannel | Set non-systemd docker daemon network options
+  lineinfile:
+    dest: "{{ docker_options_file }}"
+    line: DOCKER_NETWORK_OPTIONS={{ docker_network_options }}
+    insertbefore: ^{{ docker_options_name }}=
     owner: root
     group: root
     mode: 0644
   notify:
     - restart docker
-  when: ansible_os_family != "CoreOS"
+  when: ansible_service_mgr in ["sysvinit","upstart"]
 
-- name: Flannel | Create docker service path for CoreOS
-  file: path=/etc/systemd/system/docker.service.d state=directory
-  when: ansible_os_family == "CoreOS"
-
-- name: Flannel | Create docker dropin for CoreOS
+- name: Flannel | Create docker network systemd drop-in
   template:
-    src: docker-systemd
+    src: flannel-options.conf.j2
     dest: "/etc/systemd/system/docker.service.d/flannel-options.conf"
   notify:
     - restart docker
-  when: ansible_os_family == "CoreOS"
+  when: ansible_service_mgr == "systemd"
 
 - meta: flush_handlers

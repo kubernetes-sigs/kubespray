@@ -63,6 +63,7 @@ The following tags are defined in playbooks:
 |                    canal | Network plugin Canal
 |           cloud-provider | Cloud-provider related tasks
 |                  dnsmasq | Configuring DNS stack for hosts and K8s apps
+|                   docker | Configuring docker for hosts
 |                 download | Fetching container images
 |                     etcd | Configuring etcd cluster
 |         etcd-pre-upgrade | Upgrading etcd cluster

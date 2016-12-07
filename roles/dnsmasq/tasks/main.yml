@@ -1,7 +1,61 @@
 ---
-- include: dnsmasq.yml
-  when: "{{ not skip_dnsmasq_k8s|bool }}"
-  tags: dnsmasq
+- name: ensure dnsmasq.d directory exists
+  file:
+    path: /etc/dnsmasq.d
+    state: directory
+  tags: bootstrap-os
 
-- include: resolvconf.yml
-  tags: resolvconf
+- name: ensure dnsmasq.d-available directory exists
+  file:
+    path: /etc/dnsmasq.d-available
+    state: directory
+  tags: bootstrap-os
+
+- name: Write dnsmasq configuration
+  template:
+    src: 01-kube-dns.conf.j2
+    dest: /etc/dnsmasq.d-available/01-kube-dns.conf
+    mode: 0755
+    backup: yes
+
+- name: Stat dnsmasq configuration
+  stat: path=/etc/dnsmasq.d/01-kube-dns.conf
+  register: sym
+
+- name: Move previous configuration
+  command: mv /etc/dnsmasq.d/01-kube-dns.conf /etc/dnsmasq.d-available/01-kube-dns.conf.bak
+  changed_when: False
+  when: sym.stat.islnk is defined and sym.stat.islnk == False
+
+- name: Enable dnsmasq configuration
+  file:
+    src: /etc/dnsmasq.d-available/01-kube-dns.conf
+    dest: /etc/dnsmasq.d/01-kube-dns.conf
+    state: link
+
+- name: Create dnsmasq manifests
+  template: src={{item.file}} dest=/etc/kubernetes/{{item.file}}
+  with_items:
+    - {file: dnsmasq-ds.yml, type: ds}
+    - {file: dnsmasq-svc.yml, type: svc}
+  register: manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Start Resources
+  kube:
+    name: dnsmasq
+    namespace: kube-system
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: /etc/kubernetes/{{item.item.file}}
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: "{{ manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Check for dnsmasq port (pulling image and running container)
+  wait_for:
+    host: "{{dns_server}}"
+    port: 53
+    delay: 5
+  when: inventory_hostname == groups['kube-node'][0]
+  tags: facts

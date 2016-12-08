@@ -1,6 +1,6 @@
 ---
 - include: pre-upgrade.yml
-
+  tags: k8s-pre-upgrade
 
 - name: Copy kubectl from hyperkube container
   command: "/usr/bin/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp /hyperkube /systembindir/kubectl"
@@ -9,12 +9,14 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
+  tags: [hyperkube, kubectl, upgrade]
 
 - name: Gather kubectl bash completion
   command: "{{ bin_dir }}/kubectl completion bash"
   no_log: true
   register: kubectl_bash_completion
   when: ansible_os_family in ["Debian","RedHat"]
+  tags: kubectl
 
 - name: Write kubectl bash completion
   copy:
@@ -24,12 +26,14 @@
     group: root
     mode: 0755
   when: ansible_os_family in ["Debian","RedHat"] and kubectl_bash_completion.changed
+  tags: [kubectl, upgrade]
 
 - name: Write kube-apiserver manifest
   template:
     src: manifests/kube-apiserver.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-apiserver.manifest"
   notify: Master | wait for the apiserver to be running
+  tags: kube-apiserver
 
 - meta: flush_handlers
 # Create kube-system namespace
@@ -37,6 +41,7 @@
   copy: src=namespace.yml dest=/etc/kubernetes/kube-system-ns.yml
   run_once: yes
   when: inventory_hostname == groups['kube-master'][0]
+  tags: apps
 
 - name: Check if kube-system exists
   command: "{{ bin_dir }}/kubectl get ns kube-system"
@@ -44,11 +49,13 @@
   changed_when: False
   failed_when: False
   run_once: yes
+  tags: apps
 
 - name: Create 'kube-system' namespace
   command: "{{ bin_dir }}/kubectl create -f /etc/kubernetes/kube-system-ns.yml"
   changed_when: False
   when: kubesystem|failed and inventory_hostname == groups['kube-master'][0]
+  tags: apps
 
 # Write other manifests
 - name: Write kube-controller-manager manifest
@@ -56,9 +63,11 @@
     src: manifests/kube-controller-manager.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-controller-manager.manifest"
   notify: Master | wait for kube-controller-manager
+  tags: kube-controller-manager
 
 - name: Write kube-scheduler manifest
   template:
     src: manifests/kube-scheduler.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-scheduler.manifest"
   notify: Master | wait for kube-scheduler
+  tags: kube-scheduler

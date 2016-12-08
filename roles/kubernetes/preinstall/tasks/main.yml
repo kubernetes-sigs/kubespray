@@ -3,6 +3,7 @@
   set_fact:
     bin_dir: "/opt/bin"
   when: ansible_os_family == "CoreOS"
+  tags: facts
 
 - name: check bin dir exists
   file:
@@ -10,11 +11,14 @@
     state: directory
     owner: root
   become: true
+  tags: bootstrap-os
 
 - include: gitinfos.yml
   when: run_gitinfos
+  tags: facts
 
 - include: set_facts.yml
+  tags: facts
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -29,6 +33,7 @@
       paths:
       - ../vars
       skip: true
+  tags: facts
 
 - name: Create kubernetes config directory
   file:
@@ -36,6 +41,7 @@
     state: directory
     owner: kube
   when: "{{ inventory_hostname in groups['k8s-cluster'] }}"
+  tags: [kubelet, k8s-secrets, kube-controller-manager, kube-apiserver, bootstrap-os, apps, network, master, node]
 
 - name: Create kubernetes script directory
   file:
@@ -43,6 +49,7 @@
     state: directory
     owner: kube
   when: "{{ inventory_hostname in groups['k8s-cluster'] }}"
+  tags: [k8s-secrets, bootstrap-os]
 
 - name: Create kubernetes manifests directory
   file:
@@ -50,6 +57,7 @@
     state: directory
     owner: kube
   when: "{{ inventory_hostname in groups['k8s-cluster'] }}"
+  tags: [kubelet, bootstrap-os, master, node]
 
 - name: Create kubernetes logs directory
   file:
@@ -57,17 +65,21 @@
     state: directory
     owner: kube
   when: ansible_service_mgr in ["sysvinit","upstart"] and "{{ inventory_hostname in groups['k8s-cluster'] }}"
+  tags: [bootstrap-os, master, node]
 
 - name: check cloud_provider value
   fail:
     msg: "If set the 'cloud_provider' var must be set either to 'generic', 'gce', 'aws', 'azure' or 'openstack'"
   when: cloud_provider is defined and cloud_provider not in ['generic', 'gce', 'aws', 'openstack', 'azure']
+  tags: [cloud-provider, facts]
 
 - include: openstack-credential-check.yml
   when: cloud_provider is defined and cloud_provider == 'openstack'
+  tags: [cloud-provider, openstack, facts]
 
 - include: azure-credential-check.yml
   when: cloud_provider is defined and cloud_provider == 'azure'
+  tags: [cloud-provider, azure, facts]
 
 - name: Fix ipv4 forward rule in GCE security policy
   lineinfile:
@@ -79,6 +91,7 @@
     backup: yes
     validate: 'sysctl -f %s'
   when: cloud_provider is defined and cloud_provider == 'gce'
+  tags: [cloud-provider, gce, bootstrap-os]
 
 - name: Create cni directories
   file:
@@ -89,26 +102,31 @@
     - "/etc/cni/net.d"
     - "/opt/cni/bin"
   when: kube_network_plugin in ["calico", "weave", "canal"] and "{{ inventory_hostname in groups['k8s-cluster'] }}"
+  tags: [network, calico, weave, canal, bootstrap-os]
 
 - name: Update package management cache (YUM)
   yum: update_cache=yes name='*'
   when: ansible_pkg_mgr == 'yum'
+  tags: bootstrap-os
 
 - name: Install latest version of python-apt for Debian distribs
   apt: name=python-apt state=latest update_cache=yes cache_valid_time=3600
   when: ansible_os_family == "Debian"
+  tags: bootstrap-os
 
 - name: Install python-dnf for latest RedHat versions
   command: dnf install -y python-dnf yum
   when: ansible_distribution == "Fedora" and
         ansible_distribution_major_version > 21
   changed_when: False
+  tags: bootstrap-os
 
 - name: Install epel-release on RedHat/CentOS
   shell: rpm -qa | grep epel-release || rpm -ivh {{ epel_rpm_download_url }}
   when: ansible_distribution in ["CentOS","RedHat"] and
         ansible_distribution_major_version >= 7
   changed_when: False
+  tags: bootstrap-os
 
 - name: Install packages requirements
   action:
@@ -121,6 +139,7 @@
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{required_pkgs | default([]) | union(common_required_pkgs|default([]))}}"
   when: ansible_os_family != "CoreOS"
+  tags: bootstrap-os
 
 - name: Disable IPv6 DNS lookup
   lineinfile:
@@ -129,12 +148,14 @@
     state: present
     backup: yes
   when: disable_ipv6_dns and ansible_os_family != "CoreOS"
+  tags: bootstrap-os
 
 # Todo : selinux configuration
 - name: Set selinux policy to permissive
   selinux: policy=targeted state=permissive
   when: ansible_os_family == "RedHat"
   changed_when: False
+  tags: bootstrap-os
 
 - name: Write openstack cloud-config
   template:
@@ -143,6 +164,7 @@
     group: "{{ kube_cert_group }}"
     mode: 0640
   when: cloud_provider is defined and cloud_provider == "openstack"
+  tags: [cloud-provider, openstack]
 
 - name: Write azure cloud-config
   template:
@@ -151,5 +173,7 @@
     group: "{{ kube_cert_group }}"
     mode: 0640
   when: cloud_provider is defined and cloud_provider == "azure"
+  tags: [cloud-provider, azure]
 
 - include: etchosts.yml
+  tags: [bootstrap-os, etchosts]

@@ -1,15 +1,24 @@
 K8s DNS stack by Kargo
 ======================
 
-Kargo configures a [Kubernetes DNS](http://kubernetes.io/docs/admin/dns/)
+For K8s cluster nodes, kargo configures a [Kubernetes DNS](http://kubernetes.io/docs/admin/dns/)
 [cluster add-on](http://releases.k8s.io/master/cluster/addons/README.md)
 to serve as an authoritative DNS server for a given ``dns_domain`` and its
 ``svc, default.svc`` default subdomains (a total of ``ndots: 5`` max levels).
 
-Note, additional search (sub)domains may be defined in the ``searchdomains``
+Other nodes in the inventory, like external storage nodes or a separate etcd cluster
+node group, considered non-cluster and left up to the user to configure DNS resolve.
+
+Note, custom ``ndots`` values affect only the dnsmasq daemon set (explained below).
+While the kubedns has the ``ndots=5`` hardcoded, which is not recommended due to
+[DNS performance reasons](https://github.com/kubernetes/kubernetes/issues/14051).
+You can use config maps for the kubedns app to workaround the issue, which is
+yet in the Kargo scope.
+
+Additional search (sub)domains may be defined in the ``searchdomains``
 and ``ndots`` vars. And additional recursive DNS resolvers in the `` upstream_dns_servers``,
-``nameservers`` vars. Intranet DNS resolvers should be specified in the first
-place, followed by external resolvers, for example:
+``nameservers`` vars. Intranet/cloud provider DNS resolvers should be specified
+in the first place, followed by external resolvers, for example:
 
 ```
 skip_dnsmasq: true
@@ -21,7 +30,13 @@ or
 skip_dnsmasq: false
 upstream_dns_servers: [172.18.32.6, 172.18.32.7, 8.8.8.8, 8.8.8.4]
 ```
-The vars are explained below as well.
+The vars are explained below. For the early cluster deployment stage, when there
+is yet K8s cluster and apps exist, a user may expect local repos to be
+accessible via authoritative intranet resolvers. For that case, if none custom vars
+was specified, the default resolver is set to either the cloud provider default
+or `8.8.8.8`. And domain is set to the default ``dns_domain`` value as well.
+Later, the nameservers will be reconfigured to the DNS service IP that Kargo
+configures for K8s cluster.
 
 DNS configuration details
 -------------------------

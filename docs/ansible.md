@@ -119,3 +119,17 @@ ansible-playbook -i inventory/inventory.ini cluster.yaml \
 ```
 
 Note: use `--tags` and `--skip-tags` wise and only if you're 100% sure what you're doing.
+
+Bastion host
+--------------
+If you prefer to not make your nodes publicly accessible (nodes with private IPs only),
+you can use a so called *bastion* host to connect to your nodes. To specify and use a bastion,
+simply add a line to your inventory, where you have to replace x.x.x.x with the public IP of the
+bastion host.
+
+```
+bastion ansible_ssh_host=x.x.x.x
+```
+
+For more information about Ansible and bastion hosts, read 
+[Running Ansible Through an SSH Bastion Host](http://blog.scottlowe.org/2015/12/24/running-ansible-through-ssh-bastion-host/)

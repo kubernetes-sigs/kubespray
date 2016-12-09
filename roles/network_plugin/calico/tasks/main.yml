@@ -3,6 +3,7 @@
   run_once: true
   set_fact:
     legacy_calicoctl: "{{ calicoctl_image_tag | version_compare('v1.0.0', '<') }}"
+  tags: facts
 
 - name: Calico | Write Calico cni config
   template:
@@ -46,6 +47,7 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
+  tags: [hyperkube, upgrade]
 
 - name: Calico | Copy cni plugins from calico/cni container
   command: "/usr/bin/docker run --rm -v /opt/cni/bin:/cnibindir {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }} sh -c 'cp -a /opt/cni/bin/* /cnibindir/'"
@@ -55,6 +57,7 @@
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
   when: "{{ overwrite_hyperkube_cni|bool }}"
+  tags: [hyperkube, upgrade]
 
 - name: Calico | wait for etcd
   uri: url=https://localhost:2379/health validate_certs=no
@@ -75,6 +78,7 @@
   register: calico_conf
   delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
+  tags: facts
 
 - name: Calico | Configure calico network pool
   shell: >
@@ -98,6 +102,7 @@
     ipip_arg: "--ipip"
   when: (legacy_calicoctl and
          cloud_provider is defined or ipip)
+  tags: facts
 
 - name: Calico (old) | Define nat-outgoing pool argument
   run_once: true
@@ -105,12 +110,14 @@
     nat_arg: "--nat-outgoing"
   when: (legacy_calicoctl and
          nat_outgoing|default(false) and not peer_with_router|default(false))
+  tags: facts
 
 - name: Calico (old) | Define calico pool task name
   run_once: true
   set_fact:
     pool_task_name: "with options {{ ipip_arg|default('') }} {{ nat_arg|default('') }}"
   when: (legacy_calicoctl and ipip_arg|default(false) or nat_arg|default(false))
+  tags: facts
 
 - name: Calico (old) | Configure calico network pool {{ pool_task_name|default('') }}
   command: "{{ bin_dir}}/calicoctl pool add {{ kube_pods_subnet }} {{ ipip_arg|default('') }} {{ nat_arg|default('') }}"
@@ -134,6 +141,7 @@
 - set_fact:
     calico_pools: "{{ calico_pools_raw.stdout | from_json }}"
   run_once: true
+  tags: facts
 
 - name: Calico | Check if calico pool is properly configured
   fail:
@@ -142,6 +150,7 @@
   when: ( calico_pools['node']['nodes'] | length > 1 ) or
         ( not calico_pools['node']['nodes'][0]['key'] | search(".*{{ kube_pods_subnet | ipaddr('network') }}.*") )
   run_once: true
+  tags: facts
 
 - name: Calico | Write /etc/network-environment
   template: src=network-environment.j2 dest=/etc/network-environment

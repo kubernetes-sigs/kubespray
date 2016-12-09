@@ -7,6 +7,7 @@
 - name: Create dest directories
   file: path={{local_release_dir}}/{{download.dest|dirname}} state=directory recurse=yes
   when: "{{ download.enabled|bool and not download.container|bool }}"
+  tags: bootstrap-os
 
 - name: Download items
   get_url:
@@ -50,6 +51,7 @@
 - name: Create dest directory for saved/loaded container images
   file: path="{{local_release_dir}}/containers" state=directory recurse=yes mode=0755 owner={{ansible_ssh_user|default(ansible_user_id)}}
   when: "{{ download.enabled|bool and download.container|bool }}"
+  tags: bootstrap-os
 
 # This is required for the download_localhost delegate to work smooth with CoreOS cluster nodes
 - name: Hack python binary path for localhost
@@ -58,6 +60,7 @@
   delegate_to: localhost
   ignore_errors: true
   run_once: true
+  tags: localhost
 
 - name: Download | create local directory for saved/loaded container images
   file: path="{{local_release_dir}}/containers" state=directory recurse=yes
@@ -65,6 +68,7 @@
   become: false
   run_once: true
   when: "{{ download_run_once|bool and download.enabled|bool and download.container|bool and download_delegate == 'localhost' }}"
+  tags: localhost
 
 #NOTE(bogdando) this brings no docker-py deps for nodes
 - name: Download containers
@@ -101,6 +105,7 @@
   delegate_to: "{{ download_delegate }}"
   become: false
   run_once: true
+  tags: facts
 
 - name: Download | save container images
   shell: docker save "{{ download.repo }}:{{ download.tag }}" | gzip -{{ download_compress }} > "{{ fname }}"
@@ -130,7 +135,9 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   when: (ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] or download_delegate == "localhost") and download_run_once|bool and download.enabled|bool and download.container|bool
+  tags: [upload, upgrade]
 
 - name: Download | load container images
   shell: docker load < "{{ fname }}"
   when: (ansible_os_family != "CoreOS" and inventory_hostname != groups['kube-master'][0] or download_delegate == "localhost") and download_run_once|bool and download.enabled|bool and download.container|bool
+  tags: [upload, upgrade]

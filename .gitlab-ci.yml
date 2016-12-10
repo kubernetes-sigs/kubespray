@@ -1,0 +1,65 @@
+stages:
+  - unit-tests
+  - local-deployment
+  - calico
+  - flannel
+  - canal
+  - weave
+
+variables:
+  FAILFASTCI_NAMESPACE: 'kargo-ci'
+
+
+cache:
+  paths:
+    - cache
+
+before_script:
+    - pip install ansible
+    - pip install netaddr
+    - pip install apache-libcloud==0.20.1
+    - pip install boto==2.9.0
+    - mkdir -p /.ssh
+    - cp tests/ansible.cfg .
+
+.job: &job
+  tags:
+    - kubernetes
+    - docker
+  image: quay.io/ant31/kargo:master
+
+.docker_service: &docker_service
+  variables:
+    DOCKER_DRIVER: overlay
+    DOCKER_HOST: tcp://localhost:2375
+  services:
+     - docker:dind
+
+.create_cluster: &create_cluster
+  <<: *job
+  <<: *docker_service
+
+
+syntax-check:
+  <<: *job
+  stage: unit-tests
+  script:
+    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root cluster.yml -vvv  --syntax-check
+
+
+local-dry-run:
+  stage: unit-tests
+  <<: *job
+  <<: *docker_service
+  script:
+    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root -b --become-user=root cluster.yml -vv -c local --check
+  allow_failure: true
+
+
+idempotent:
+  stage: local-deployment
+  <<: *job
+  <<: *docker_service
+  script:
+    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root -b --become-user=root cluster.yml -vv -c local
+  allow_failure: true

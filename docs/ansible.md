@@ -57,6 +57,7 @@ The following tags are defined in playbooks:
 |--------------------------|---------
 |                     apps | K8s apps definitions
 |                    azure | Cloud-provider Azure
+|                  bastion | Setup ssh config for bastion
 |             bootstrap-os | Anything related to host OS configuration
 |                   calico | Network plugin Calico
 |                    canal | Network plugin Canal

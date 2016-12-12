@@ -51,7 +51,6 @@ The main variables to change are located in the directory ```inventory/group_var
 
 Ansible tags
 ------------
-
 The following tags are defined in playbooks:
 
 |                 Tag name | Used for
@@ -64,7 +63,7 @@ The following tags are defined in playbooks:
 |           cloud-provider | Cloud-provider related tasks
 |                  dnsmasq | Configuring DNS stack for hosts and K8s apps
 |                   docker | Configuring docker for hosts
-|                 download | Fetching container images
+|                 download | Fetching container images to a delegate host
 |                     etcd | Configuring etcd cluster
 |         etcd-pre-upgrade | Upgrading etcd cluster
 |             etcd-secrets | Configuring etcd certs/keys
@@ -82,6 +81,7 @@ The following tags are defined in playbooks:
 |                  kubelet | Configuring kubelet service
 |               kube-proxy | Configuring self-hosted kube-proxy
 |           kube-scheduler | Configuring self-hosted kube-scheduler
+|                localhost | Special steps for the localhost (ansible runner)
 |                   master | Configuring K8s master node role
 |               netchecker | Installing netchecker K8s app
 |                  network | Configuring networking plugins for K8s
@@ -91,12 +91,15 @@ The following tags are defined in playbooks:
 |               preinstall | Preliminary configuration steps
 |               resolvconf | Configuring /etc/resolv.conf for hosts/apps
 |                  upgrade | Upgrading, f.e. container images/binaries
+|                   upload | Distributing images/binaries across hosts
 |                    weave | Network plugin Weave
 
 Note: Use the ``bash scripts/gen_tags.sh`` command to generate a list of all
 tags found in the codebase. New tags will be listed with the empty "Used for"
 field.
 
+Example commands
+----------------
 Example command to filter and apply only DNS configuration tasks and skip
 everything else related to host OS configuration and downloading images of containers:
 
@@ -106,6 +109,13 @@ ansible-playbook -i inventory/inventory.ini cluster.yml  --tags preinstall,dnsma
 And this play only removes the K8s cluster DNS resolver IP from hosts' /etc/resolv.conf files:
 ```
 ansible-playbook -i inventory/inventory.ini -e dns_server='' cluster.yml --tags resolvconf
+```
+And this prepares all container images localy (at the ansible runner node) without installing
+or upgrading related stuff or trying to upload container to K8s cluster nodes:
+```
+ansible-playbook -i inventory/inventory.ini cluster.yaml \
+    -e download_run_once=true -e download_localhost=true \
+    --tags download --skip-tags upload,upgrade
 ```
 
 Note: use `--tags` and `--skip-tags` wise and only if you're 100% sure what you're doing.

@@ -38,6 +38,13 @@ or `8.8.8.8`. And domain is set to the default ``dns_domain`` value as well.
 Later, the nameservers will be reconfigured to the DNS service IP that Kargo
 configures for K8s cluster.
 
+Important to note that multiple search domains combined with high ``ndots``
+values lead to poor performance of DNS stack, so please choose it wise.
+The dnsmasq daemon set can take lower ``ndots`` values and return NXDOMAIN
+replies for [bogus internal FQDNS](https://github.com/kubernetes/kubernetes/issues/19634#issuecomment-253948954)
+before it even hits the kubedns app. Which makes it to be serving as a guarding
+recursive resolver in front of the kubedns running SkyDNS as an authoritative resolver.
+
 DNS configuration details
 -------------------------
 
@@ -93,8 +100,7 @@ Limitations
   [no way to specify a custom value](https://github.com/kubernetes/kubernetes/issues/33554)
   for the SkyDNS ``ndots`` param via an
   [option for KubeDNS](https://github.com/kubernetes/kubernetes/blob/master/cmd/kube-dns/app/options/options.go)
-  add-on, while SkyDNS supports it though. Thus, DNS SRV records may not work
-  as expected as they require the ``ndots:7``.
+  add-on, while SkyDNS supports it though.
 
 * the ``searchdomains`` have a limitation of a 6 names and 256 chars
   length. Due to default ``svc, default.svc`` subdomains, the actual

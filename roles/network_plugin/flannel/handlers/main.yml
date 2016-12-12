@@ -1,8 +1,42 @@
 ---
-- name: delete default docker bridge
+- name: Flannel | delete default docker bridge
   command: ip link delete docker0
   ignore_errors: yes
-  notify: restart docker
+  notify: Flannel | restart docker
+
+- name: Flannel | restart docker
+  command: /bin/true
+  notify:
+    - Flannel | reload systemd
+    - Flannel | reload docker.socket
+    - Flannel | reload docker
+    - Flannel | pause while Docker restarts
+    - Flannel | wait for docker
+
+- name : Flannel | reload systemd
+  shell: systemctl daemon-reload
+  when: ansible_service_mgr == "systemd"
+
+- name: Flannel | reload docker.socket
+  service:
+    name: docker.socket
+    state: restarted
+  when: ansible_os_family == 'CoreOS'
+
+- name: Flannel | reload docker
+  service:
+    name: docker
+    state: restarted
+
+- name: Flannel | pause while Docker restarts
+  pause: seconds=10 prompt="Waiting for docker restart"
+
+- name: Flannel | wait for docker
+  command: /usr/bin/docker images
+  register: docker_ready
+  retries: 10
+  delay: 5
+  until: docker_ready.rc == 0
 
 - name: Flannel | reload kubelet
   service:

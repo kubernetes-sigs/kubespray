@@ -1,11 +1,11 @@
-- name: Dnsmasq | restart network
+- name: Preinstall | restart network
   command: /bin/true
   notify:
-    - Dnsmasq | reload network
-    - Dnsmasq | update resolvconf
+    - Preinstall | reload network
+    - Preinstall | update resolvconf
   when: ansible_os_family != "CoreOS"
 
-- name: Dnsmasq | reload network
+- name: Preinstall | reload network
   service:
     name: >-
       {% if ansible_os_family == "RedHat" -%}
@@ -16,31 +16,30 @@
     state: restarted
   when: ansible_os_family != "RedHat" and ansible_os_family != "CoreOS"
 
-- name: Dnsmasq | update resolvconf
+- name: Preinstall | update resolvconf
   command: /bin/true
   notify:
-    - Dnsmasq | reload resolvconf
-    - Dnsmasq | reload kubelet
+    - Preinstall | reload resolvconf
+    - Preinstall | reload kubelet
   when: ansible_os_family != "CoreOS"
 
-- name: Dnsmasq | update resolvconf for CoreOS
+- name: Preinstall | update resolvconf for CoreOS
   command: /bin/true
   notify:
-    - Dnsmasq | apply resolvconf cloud-init
-    - Dnsmasq | reload kubelet
+    - Preinstall | apply resolvconf cloud-init
+    - Preinstall | reload kubelet
   when: ansible_os_family == "CoreOS"
 
-- name: Dnsmasq | reload resolvconf
+- name: Preinstall | reload resolvconf
   command: /sbin/resolvconf -u
   ignore_errors: true
 
-- name: Dnsmasq | apply resolvconf cloud-init
+- name: Preinstall | apply resolvconf cloud-init
   command: /usr/bin/coreos-cloudinit --from-file {{ resolveconf_cloud_init_conf }}
   when: ansible_os_family == "CoreOS"
 
-- name: Dnsmasq | reload kubelet
+- name: Preinstall | reload kubelet
   service:
     name: kubelet
     state: restarted
-  when: "{{ inventory_hostname in groups['kube-master'] }}"
-  ignore_errors: true
+  when: "{{ inventory_hostname in groups['kube-master'] and not dns_early|bool }}"

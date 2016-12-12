@@ -1,0 +1,47 @@
+---
+
+- name: reset | stop services
+  service: name={{item}} state=stopped
+  with_items:
+    - kubelet
+    - etcd
+  failed_when: false
+
+- name: reset | remove services
+  file:
+    path: "/etc/systemd/system/{{ item }}.service"
+    state: absent
+  with_items:
+    - kubelet
+    - etcd
+  register: services_removed
+
+- name: reset | systemctl daemon-reload
+  command: systemctl daemon-reload
+  when: ansible_service_mgr == "systemd" and services_removed.changed
+
+- name: reset | remove all containers
+  shell: docker ps -aq | xargs -r docker rm -fv
+
+- name: reset | gather mounted kubelet dirs
+  shell: mount | grep /var/lib/kubelet | awk '{print $3}'
+  register: mounted_dirs
+
+- name: reset | unmount kubelet dirs
+  command: umount {{item}}
+  with_items: '{{ mounted_dirs.stdout_lines | reverse }}'
+
+- name: reset | delete some files and directories
+  file: path={{ item }} state=absent
+  with_items:
+    - /etc/kubernetes/
+    - /var/lib/kubelet
+    - /var/lib/etcd
+    - /etc/ssl/etcd
+    - /var/log/calico
+    - /etc/cni
+    - /etc/nginx
+    - /etc/dnsmasq.d
+    - /etc/etcd.env
+    - /etc/calico
+    - /opt/cni

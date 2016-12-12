@@ -4,17 +4,33 @@
   register: resolvconf
   ignore_errors: yes
   changed_when: false
+  tags: facts
+
+- name: check kubelet
+  stat:
+    path: "{{ bin_dir }}/kubelet"
+  register: kubelet
+  changed_when: false
+  tags: facts
+
+- name: check if early DNS configuration stage
+  set_fact:
+    dns_early: >-
+      {%- if kubelet.stat.exists -%}false{%- else -%}true{%- endif -%}
+  tags: facts
 
 - name: target resolv.conf file
   set_fact:
     resolvconffile: >-
       {%- if resolvconf.rc == 0 -%}/etc/resolvconf/resolv.conf.d/head{%- else -%}/etc/resolv.conf{%- endif -%}
   when: ansible_os_family != "CoreOS"
+  tags: facts
 
 - name: target temporary resolvconf cloud init file
   set_fact:
     resolvconffile: /tmp/resolveconf_cloud_init_conf
   when: ansible_os_family == "CoreOS"
+  tags: facts
 
 - name: create temporary resolveconf cloud init file
   command: cp -f /etc/resolv.conf "{{ resolvconffile }}"
@@ -24,16 +40,30 @@
   set_fact:
     searchentries:
       "{{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join(' ') }}"
+  tags: facts
 
-- name: pick dnsmasq cluster IP
+- name: decide on dns server IP
   set_fact:
-    dnsmasq_server: >-
-      {%- if skip_dnsmasq|bool -%}{{ [ skydns_server ] + upstream_dns_servers|default([]) }}{%- else -%}{{ [ dns_server ] }}{%- endif -%}
+    dns_server_real: >-
+      {%- if dns_early|bool -%}{{default_resolver}}{%- else -%}{{dns_server}}{%- endif -%}
+
+- name: pick dnsmasq cluster IP or default resolver
+  set_fact:
+    dnsmasq_server: |-
+      {%- if skip_dnsmasq|bool and not dns_early|bool -%}
+        {{ [ skydns_server ] + upstream_dns_servers|default([]) }}
+      {%- elif dns_early|bool -%}
+        {{ [ dns_server_real ] + upstream_dns_servers|default([]) }}
+      {%- else -%}
+        {{ [ dns_server ] }}
+      {%- endif -%}
+  tags: facts
 
 - name: generate nameservers to resolvconf
   set_fact:
     nameserverentries:
       "{{ dnsmasq_server|default([]) + nameservers|default([]) }}"
+  tags: facts
 
 - name: Remove search and nameserver options from resolvconf head
   lineinfile:
@@ -46,7 +76,7 @@
     - search
     - nameserver
   when: resolvconf.rc == 0
-  notify: Dnsmasq | update resolvconf
+  notify: Preinstall | update resolvconf
 
 - name: Remove search and nameserver options from resolvconf cloud init temporary file
   lineinfile:
@@ -59,7 +89,7 @@
     - search
     - nameserver
   when: ansible_os_family == "CoreOS"
-  notify: Dnsmasq | update resolvconf for CoreOS
+  notify: Preinstall | update resolvconf for CoreOS
 
 - name: Add search domains to resolvconf file
   lineinfile:
@@ -69,7 +99,7 @@
     insertbefore: BOF
     backup: yes
     follow: yes
-  notify: Dnsmasq | update resolvconf
+  notify: Preinstall | update resolvconf
 
 - name: Add nameservers to resolv.conf
   blockinfile:
@@ -84,7 +114,7 @@
     backup: yes
     follow: yes
     marker: "# Ansible nameservers {mark}"
-  notify: Dnsmasq | update resolvconf
+  notify: Preinstall | update resolvconf
 
 - name: Add options to resolv.conf
   lineinfile:
@@ -99,7 +129,7 @@
     - ndots:{{ ndots }}
     - timeout:2
     - attempts:2
-  notify: Dnsmasq | update resolvconf
+  notify: Preinstall | update resolvconf
 
 - name: Remove search and nameserver options from resolvconf base
   lineinfile:
@@ -112,16 +142,16 @@
     - search
     - nameserver
   when: resolvconf.rc == 0
-  notify: Dnsmasq | update resolvconf
+  notify: Preinstall | update resolvconf
 
 - name: disable resolv.conf modification by dhclient
   copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient-enter-hooks.d/znodnsupdate mode=0755
-  notify: Dnsmasq | restart network
+  notify: Preinstall | restart network
   when: ansible_os_family == "Debian"
 
 - name: disable resolv.conf modification by dhclient
   copy: src=dhclient_nodnsupdate dest=/etc/dhcp/dhclient.d/nodnsupdate mode=u+x
-  notify: Dnsmasq | restart network
+  notify: Preinstall | restart network
   when: ansible_os_family == "RedHat"
 
 - name: get temporary resolveconf cloud init file content
@@ -135,5 +165,5 @@
     src: resolvconf.j2
     owner: root
     mode: 0644
-  notify: Dnsmasq | update resolvconf for CoreOS
+  notify: Preinstall | update resolvconf for CoreOS
   when: ansible_os_family == "CoreOS"

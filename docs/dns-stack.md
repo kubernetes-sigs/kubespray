@@ -39,15 +39,17 @@ Later, the nameservers will be reconfigured to the DNS service IP that Kargo
 configures for K8s cluster.
 
 Also note, existing records will be purged from the `/etc/resolv.conf`,
-including base/head/cloud-init config files and those that come from dhclient.
+including resolvconf's base/head/cloud-init config files and those that come from dhclient.
 This is required for hostnet pods networking and for [kubelet to not exceed search domains
 limits](https://github.com/kubernetes/kubernetes/issues/9229).
 
-New search, nameserver records and options will be defined from the aforementioned vars:
-* Via resolvconf's head file, if resolvconf installed.
-* Via dhclient's DNS update hook.
-* Via cloud-init (CoreOS only).
-* Statically in the `/etc/resolv.conf`, if none of above is applicable.
+Instead, new domain, search, nameserver records and options will be defined from the
+aforementioned vars:
+* Superseded via dhclient's DNS update hook.
+* Generated via cloud-init (CoreOS only).
+* Statically defined in the `/etc/resolv.conf`, if none of above is applicable.
+* Resolvconf's head/base files are disabled from populating anything into the
+  `/etc/resolv.conf`.
 
 DNS configuration details
 -------------------------

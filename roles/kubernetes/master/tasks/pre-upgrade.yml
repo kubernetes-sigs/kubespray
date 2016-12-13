@@ -23,3 +23,14 @@
   with_items:
     - /etc/systemd/system/kube-apiserver.service
     - /etc/init.d/kube-apiserver
+
+- name: "Purge kube-apiserver manifest if secrets were changed"
+  file:
+    path: /etc/kubernetes/manifests/kube-apiserver.manifest
+    state: absent
+  register: purged_kubeapiserver_manifest
+  when: secret_changed|default(false) or etcd_secret_changed|default(false)
+
+- name: "Pause while waiting for kubelet to delete kube-apiserver pod"
+  pause: seconds=20
+  when: purged_kubeapiserver_manifest.changed

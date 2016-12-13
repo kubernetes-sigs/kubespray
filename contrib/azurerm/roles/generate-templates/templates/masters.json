@@ -1,0 +1,196 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+  },
+  "variables": {
+    "lbDomainName": "{{nameSuffix}}-api",
+    "lbPublicIPAddressName": "kubernetes-api-pubip",
+    "lbPublicIPAddressType": "Static",
+    "lbPublicIPAddressID": "[resourceId('Microsoft.Network/publicIPAddresses',variables('lbPublicIPAddressName'))]",
+    "lbName": "kubernetes-api",
+    "lbID": "[resourceId('Microsoft.Network/loadBalancers',variables('lbName'))]",
+
+    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', '{{virtualNetworkName}}')]",
+    "kubeMastersSubnetRef": "[concat(variables('vnetID'),'/subnets/', '{{subnetMastersName}}')]"
+  },
+  "resources": [
+    {
+      "apiVersion": "{{apiVersion}}",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('lbPublicIPAddressName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publicIPAllocationMethod": "[variables('lbPublicIPAddressType')]",
+        "dnsSettings": {
+          "domainNameLabel": "[variables('lbDomainName')]"
+        }
+      }
+    },
+    {
+      "apiVersion": "{{apiVersion}}",
+      "name": "[variables('lbName')]",
+      "type": "Microsoft.Network/loadBalancers",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('lbPublicIPAddressName'))]"
+      ],
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "name": "kube-api-frontend",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[variables('lbPublicIPAddressID')]"
+              }
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "kube-api-backend"
+          }
+        ],
+        "loadBalancingRules": [
+          {
+            "name": "kube-api",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(variables('lbID'), '/frontendIPConfigurations/kube-api-frontend')]"
+              },
+              "backendAddressPool": {
+                "id": "[concat(variables('lbID'), '/backendAddressPools/kube-api-backend')]"
+              },
+              "protocol": "tcp",
+              "frontendPort": 443,
+              "backendPort": 443,
+              "enableFloatingIP": false,
+              "idleTimeoutInMinutes": 5,
+              "probe": {
+                "id": "[concat(variables('lbID'), '/probes/kube-api')]"
+              }
+            }
+          }
+        ],
+        "probes": [
+          {
+            "name": "kube-api",
+            "properties": {
+              "protocol": "tcp",
+              "port": 443,
+              "intervalInSeconds": 5,
+              "numberOfProbes": 2
+            }
+          }
+        ]
+      }
+    },
+    {% for i in range(number_of_k8s_masters) %}
+    {% if not use_bastion %}
+    {
+      "apiVersion": "{{apiVersion}}",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "master-{{i}}-pubip",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publicIPAllocationMethod": "Static"
+      }
+    },
+    {% endif %}
+    {
+      "apiVersion": "{{apiVersion}}",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "master-{{i}}-nic",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        {% if not use_bastion %}
+        "[concat('Microsoft.Network/publicIPAddresses/', 'master-{{i}}-pubip')]",
+        {% endif %}
+        "[concat('Microsoft.Network/loadBalancers/', variables('lbName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "MastersIpConfig",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              {% if not use_bastion %}
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'master-{{i}}-pubip')]"
+              },
+              {% endif %}
+              "subnet": {
+                "id": "[variables('kubeMastersSubnetRef')]"
+              },
+	          "loadBalancerBackendAddressPools": [
+                {
+                  "id": "[concat(variables('lbID'), '/backendAddressPools/kube-api-backend')]"
+                }
+              ]
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', '{{securityGroupName}}')]"
+        },
+        "enableIPForwarding": true
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "master-{{i}}",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', 'master-{{i}}-nic')]"
+      ],
+      "tags": {
+        "roles": "kube-master,etcd"
+      },
+      "apiVersion": "{{apiVersion}}",
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', '{{availabilitySetMasters}}')]"
+        },
+        "hardwareProfile": {
+          "vmSize": "{{masters_vm_size}}"
+        },
+        "osProfile": {
+          "computerName": "master-{{i}}",
+          "adminUsername": "{{admin_username}}",
+          "adminPassword": "{{admin_password}}",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": "{{disablePasswordAuthentication}}",
+            "ssh": {
+              "publicKeys": [
+                {
+                  "path": "{{sshKeyPath}}",
+                  "keyData": "{{ssh_public_key}}"
+                }
+              ]
+            }
+          }
+        },
+        "storageProfile": {
+          "imageReference": {{imageReferenceJson}},
+          "osDisk": {
+            "name": "ma{{nameSuffix}}{{i}}",
+            "vhd": {
+              "uri": "[concat('http://','{{storageAccountName}}','.blob.core.windows.net/vhds/master-{{i}}.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "diskSizeGB": "{{masters_os_disk_size}}"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'master-{{i}}-nic')]"
+            }
+          ]
+        }
+      }
+    } {% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}

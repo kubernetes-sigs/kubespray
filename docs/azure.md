@@ -51,4 +51,6 @@ This is the AppId from the last command
 
 azure\_aad\_client\_id musst be set to the AppId, azure\_aad\_client\_secret is your choosen secret.
 
+## Provisioning Azure with Resource Group Templates
 
+You'll find Resource Group Templates and scripts to provision the required infrastructore to Azure in [*contrib/azurerm*](../contrib/azurerm/README.md)

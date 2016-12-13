@@ -1,0 +1,99 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+  },
+  "variables": {
+    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', '{{virtualNetworkName}}')]",
+    "subnetAdminRef": "[concat(variables('vnetID'),'/subnets/', '{{subnetAdminName}}')]"
+  },
+  "resources": [
+    {% if use_bastion %}
+    {
+      "apiVersion": "{{apiVersion}}",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "{{bastionIPAddressName}}",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publicIPAllocationMethod": "Static"
+      }
+    },
+    {
+      "apiVersion": "{{apiVersion}}",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "{{bastionVMName}}-nic",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', '{{bastionIPAddressName}}')]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "BastionIpConfig",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', '{{bastionIPAddressName}}')]"
+              },
+              "subnet": {
+                "id": "[variables('subnetAdminRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "{{apiVersion}}",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "{{bastionVMName}}",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', '{{bastionVMName}}-nic')]"
+      ],
+      "tags": {
+        "roles": "bastion"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "{{bastionVmSize}}"
+        },
+        "osProfile": {
+          "computerName": "{{bastionVMName}}",
+          "adminUsername": "{{admin_username}}",
+          "adminPassword": "{{admin_password}}",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": "true",
+            "ssh": {
+              "publicKeys": [
+                {
+                  "path": "{{sshKeyPath}}",
+                  "keyData": "{{ssh_public_key}}"
+                }
+              ]
+            }
+          }
+        },
+        "storageProfile": {
+          "imageReference": {{imageReferenceJson}},
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://', '{{storageAccountName}}', '.blob.core.windows.net/vhds/', '{{bastionVMName}}', '-osdisk.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', '{{bastionVMName}}-nic')]"
+            }
+          ]
+        }
+      }
+    }
+    {% endif %}
+  ]
+}

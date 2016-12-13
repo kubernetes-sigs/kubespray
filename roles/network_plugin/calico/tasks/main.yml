@@ -27,8 +27,8 @@
     force: yes
   with_items:
     - {s: "ca.pem", d: "ca_cert.crt"}
-    - {s: "node.pem", d: "cert.crt"}
-    - {s: "node-key.pem", d: "key.pem"}
+    - {s: "node-{{ inventory_hostname }}.pem", d: "cert.crt"}
+    - {s: "node-{{ inventory_hostname }}-key.pem", d: "key.pem"}
 
 - name: Calico | Install calicoctl container script
   template:
@@ -72,8 +72,8 @@
   command: |-
     curl \
       --cacert {{ etcd_cert_dir }}/ca.pem \
-      --cert {{ etcd_cert_dir}}/admin.pem \
-      --key {{ etcd_cert_dir }}/admin-key.pem \
+      --cert {{ etcd_cert_dir}}/admin-{{ groups['etcd'][0] }}.pem \
+      --key {{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem \
       https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
   register: calico_conf
   delegate_to: "{{groups['etcd'][0]}}"
@@ -131,8 +131,8 @@
   command: |-
     curl \
       --cacert {{ etcd_cert_dir }}/ca.pem \
-      --cert {{ etcd_cert_dir}}/admin.pem \
-      --key {{ etcd_cert_dir }}/admin-key.pem \
+      --cert {{ etcd_cert_dir}}/admin-{{ groups['etcd'][0] }}.pem \
+      --key {{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem \
       https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
   register: calico_pools_raw
   delegate_to: "{{groups['etcd'][0]}}"
@@ -189,6 +189,11 @@
 - name: Calico | Write calico-node initd script
   template: src=rh-calico.initd.j2 dest=/etc/init.d/calico-node owner=root mode=0755
   when: ansible_service_mgr in ["sysvinit","upstart"] and ansible_os_family == "RedHat"
+  notify: restart calico-node
+
+- name: Calico | Restart calico-node if secrets changed
+  command: /bin/true
+  when: secret_changed|default(false) or etcd_secret_changed|default(false)
   notify: restart calico-node
 
 - meta: flush_handlers

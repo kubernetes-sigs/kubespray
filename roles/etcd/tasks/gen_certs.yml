@@ -34,29 +34,56 @@
 
 - name: Gen_certs | run cert generation script
   command: "{{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
+  environment:
+    - MASTERS: "{% for m in groups['etcd'] %}
+                  {% if hostvars[m].sync_certs|default(false) %}
+                    {{ m }}
+                  {% endif %}
+                {% endfor %}"
+    - HOSTS: "{% for h in groups['k8s-cluster'] %}
+                {% if hostvars[h].sync_certs|default(false) %}
+                    {{ h }}
+                {% endif %}
+              {% endfor %}"
   run_once: yes
   delegate_to: "{{groups['etcd'][0]}}"
   when: gen_certs|default(false)
   notify: set etcd_secret_changed
 
 - set_fact:
-    master_certs: ['ca-key.pem', 'admin.pem', 'admin-key.pem', 'member.pem', 'member-key.pem']
-    node_certs: ['ca.pem', 'node.pem', 'node-key.pem']
+    all_master_certs: "['ca-key.pem',
+                      {% for node in groups['etcd'] %}
+                      'admin-{{ node }}.pem',
+                      'admin-{{ node }}-key.pem',
+                      'member-{{ node }}.pem',
+                      'member-{{ node }}-key.pem',
+                      {% endfor %}]"
+    my_master_certs: ['ca-key.pem',
+                     'admin-{{ inventory_hostname }}.pem',
+                     'admin-{{ inventory_hostname }}-key.pem',
+                     'member-{{ inventory_hostname }}.pem',
+                     'member-{{ inventory_hostname }}-key.pem'
+                     ]
+    all_node_certs: "['ca.pem',
+                    {% for node in groups['k8s-cluster'] %}
+                    'node-{{ node }}.pem',
+                    'node-{{ node }}-key.pem',
+                    {% endfor %}]"
+    my_node_certs: ['ca.pem', 'node-{{ inventory_hostname }}.pem', 'node-{{ inventory_hostname }}-key.pem']
   tags: facts
 
 - name: Gen_certs | Gather etcd master certs
-  shell: "tar cfz - -C {{ etcd_cert_dir }} {{ master_certs|join(' ') }} {{ node_certs|join(' ') }}| base64 --wrap=0"
+  shell: "tar cfz - -C {{ etcd_cert_dir }} {{ my_master_certs|join(' ') }} {{ all_node_certs|join(' ') }}| base64 --wrap=0"
   register: etcd_master_cert_data
   delegate_to: "{{groups['etcd'][0]}}"
-  run_once: true
+  #run_once: true
   when: sync_certs|default(false)
   notify: set etcd_secret_changed
 
 - name: Gen_certs | Gather etcd node certs
-  shell: "tar cfz - -C {{ etcd_cert_dir }} {{ node_certs|join(' ') }} | base64 --wrap=0"
+  shell: "tar cfz - -C {{ etcd_cert_dir }} {{ my_node_certs|join(' ') }} | base64 --wrap=0"
   register: etcd_node_cert_data
   delegate_to: "{{groups['etcd'][0]}}"
-  run_once: true
   when: sync_certs|default(false)
   notify: set etcd_secret_changed
 

@@ -1,0 +1,71 @@
+---
+- hosts: kube-node
+  tasks:
+    - name: Test tunl0 routes
+      shell: "! /sbin/ip ro | grep '/26 via' | grep -v tunl0"
+      when: (ipip|default(false) or cloud_provider is defined) and (kube_network_plugin == 'calico')
+
+- hosts: k8s-cluster
+  vars:
+    agent_report_interval: 10
+    netcheck_namespace: default
+    netchecker_port: 31081
+
+  tasks:
+    - name: Force binaries directory for CoreOS
+      set_fact:
+        bin_dir: "/opt/bin"
+      when: ansible_os_family == "CoreOS"
+
+    - set_fact:
+        bin_dir: "/usr/local/bin"
+      when: ansible_os_family != "CoreOS"
+
+    - name: Wait for netchecker server
+      shell: "{{ bin_dir }}/kubectl get pods --namespace {{netcheck_namespace}} | grep ^netchecker-server"
+      delegate_to: "{{groups['kube-master'][0]}}"
+      run_once: true
+      register: ncs_pod
+      until: ncs_pod.stdout.find('Running') != -1
+      retries: 10
+      delay: 10
+
+    - name: Wait for netchecker agents
+      shell: "{{ bin_dir }}/kubectl get pods --namespace {{netcheck_namespace}} | grep '^netchecker-agent-.*Running'"
+      run_once: true
+      delegate_to: "{{groups['kube-master'][0]}}"
+      register: nca_pod
+      until: "{{ nca_pod.stdout_lines|length }} >= {{ groups['kube-node']|length * 2 }}"
+      retries: 10
+      delay: 10
+
+    - name: Get netchecker agents
+      uri: url=http://localhost:{{netchecker_port}}/api/v1/agents/ return_content=yes
+      run_once: true
+      delegate_to: "{{groups['kube-node'][0]}}"
+      register: agents
+      retries: 20
+      delay: "{{ agent_report_interval }}"
+      until: "{{ agents.content != 'No JSON object could be decoded' and agents.content != '{}' and (agents.content|default('{}'))|from_json|length >= groups['kube-node']|length * 2 }}"
+      ignore_errors: true
+      no_log: true
+
+    - debug: var=agents.content|from_json
+      failed_when: not agents|success
+      delegate_to: "{{groups['kube-node'][0]}}"
+      run_once: true
+
+    - name: Check netchecker status
+      uri: url=http://localhost:{{netchecker_port}}/api/v1/connectivity_check status_code=200 return_content=yes
+      delegate_to: "{{groups['kube-node'][0]}}"
+      run_once: true
+      register: result
+      retries: 5
+      delay: "{{ agent_report_interval }}"
+      no_log: true
+      ignore_errors: true
+
+    - debug: var=result.content|from_json
+      failed_when: not result|success
+      delegate_to: "{{groups['kube-node'][0]}}"
+      run_once: true

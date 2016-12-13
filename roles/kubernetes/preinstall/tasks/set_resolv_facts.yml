@@ -64,18 +64,13 @@
     supersede_domain:
       supersede domain-name "{{ dns_domain }}";
 
-- name: decide on dns server IP
-  set_fact:
-    dns_server_real: >-
-      {%- if dns_early|bool -%}{{default_resolver}}{%- else -%}{{dns_server}}{%- endif -%}
-
 - name: pick dnsmasq cluster IP or default resolver
   set_fact:
     dnsmasq_server: |-
       {%- if skip_dnsmasq|bool and not dns_early|bool -%}
         {{ [ skydns_server ] + upstream_dns_servers|default([]) }}
       {%- elif dns_early|bool -%}
-        {{ [ dns_server_real ] + upstream_dns_servers|default([]) }}
+        {{ upstream_dns_servers|default([default_resolver]) }}
       {%- else -%}
         {{ [ dns_server ] }}
       {%- endif -%}
@@ -83,6 +78,6 @@
 - name: generate nameservers to resolvconf
   set_fact:
     nameserverentries:
-      nameserver {{( dnsmasq_server|default([]) + nameservers|default([])) | join(',nameserver ')}}
-    prepend_nameserver:
-      prepend domain-name-servers {{( dnsmasq_server|default([]) + nameservers|default([])) | join(', ') }};
+      nameserver {{( dnsmasq_server + nameservers|default([])) | join(',nameserver ')}}
+    supersede_nameserver:
+      supersede domain-name-servers {{( dnsmasq_server + nameservers|default([])) | join(', ') }};

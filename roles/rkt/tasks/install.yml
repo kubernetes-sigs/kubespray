@@ -1,0 +1,41 @@
+---
+- name: gather os specific variables for rkt
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
+      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+      - "{{ ansible_distribution|lower }}.yml"
+      - "{{ ansible_os_family|lower }}.yml"
+      - defaults.yml
+      paths:
+      - ../vars
+      skip: true
+  tags: facts
+
+#- name: download rkt pkg
+#  get_url:
+#    url: "{{ rkt_download_url }}/{{rkt_pkg_name}}"
+#    dest: "{{ local_release_dir }}" 
+#  when: (ansible_os_family != "CoreOS") and "rkt" in [ etcd_deployment_type, kubelet_deployment_type ]
+
+- name: install rkt pkg on ubuntu
+  apt:
+    deb: "{{ rkt_download_url }}/{{ rkt_pkg_name }}"
+    state: present
+  register: rkt_task_result
+  until: rkt_task_result|success
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: ansible_os_family == "Debian" and "rkt" in [ etcd_deployment_type, kubelet_deployment_type ]
+
+- name: "install rkt pkg on centos"
+  yum:
+    pkg: "{{ rkt_download_url }}/{{ rkt_pkg_name }}"
+    state: present
+  register: rkt_task_result
+  until: rkt_task_result|success
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: ansible_os_family == "RedHat" and "rkt" in [ etcd_deployment_type, kubelet_deployment_type ]

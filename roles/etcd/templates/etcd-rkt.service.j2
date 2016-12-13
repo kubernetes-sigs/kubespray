@@ -1,0 +1,29 @@
+[Unit]
+Description=etcd rkt wrapper
+Documentation=https://github.com/coreos/etcd
+Wants=network.target
+
+[Service]
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=0
+LimitNOFILE=40000
+
+ExecStart={{ rkt_bin_dir | default("/usr/bin") }}/rkt run \
+--uuid-file-save=/var/run/etcd.uuid \
+--volume=etc-ssl-certs,kind=host,source=/etc/ssl/certs,readOnly=true \
+--mount=volume=etc-ssl-certs,target=/etc/ssl/certs \
+--volume=etcd-cert-dir,kind=host,source={{ etcd_cert_dir }},readOnly=true \
+--mount=volume=etcd-cert-dir,target={{ etcd_cert_dir }} \
+--volume=var-lib-etcd,kind=host,source=/var/lib/etcd,readOnly=false \
+--mount=volume=var-lib-etcd,target=/var/lib/etcd \
+--set-env-file=/etc/etcd.env \
+--stage1-from-dir=stage1-fly.aci \
+{{ etcd_image_repo }}:{{ etcd_image_tag }} \
+--name={{ etcd_member_name | default("etcd") }}
+
+ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/run/etcd.uuid
+ExecStop=-/usr/bin/rkt stop --uuid-file=/var/run/etcd.uuid
+
+[Install]
+WantedBy=multi-user.target

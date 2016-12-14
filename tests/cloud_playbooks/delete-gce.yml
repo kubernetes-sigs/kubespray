@@ -4,15 +4,24 @@
   gather_facts: no
   vars:
     cloud_machine_type: f1-micro
+    mode: default
 
   tasks:
     - name: replace_test_id
       set_fact:
         test_name: "{{test_id |regex_replace('\\.', '-')}}"
 
+    - set_fact:
+        instance_names: >-
+          {%- if mode in ['separate', 'ha'] -%}
+          k8s-{{test_name}}-1,k8s-{{test_name}}-2,k8s-{{test_name}}-3
+          {%- else -%}
+          k8s-{{test_name}}-1,k8s-{{test_name}}-2
+          {%- endif -%}
+
     - name: delete gce instances
       gce:
-        instance_names: "k8s-{{test_name}}-1,k8s-{{test_name}}-2,k8s-{{test_name}}-3"
+        instance_names: "{{instance_names}}"
         machine_type: "{{ cloud_machine_type }}"
         image: "{{ cloud_image }}"
         service_account_email: "{{ gce_service_account_email }}"

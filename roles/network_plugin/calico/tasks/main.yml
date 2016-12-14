@@ -152,6 +152,16 @@
   run_once: true
   tags: facts
 
+- name: Calico | Set global as_num
+  command: "{{ bin_dir}}/calicoctl config set asNumber {{ global_as_num }}"
+  run_once: true
+  when: not legacy_calicoctl
+
+- name: Calico (old) | Set global as_num
+  command: "{{ bin_dir}}/calicoctl bgp default-node-as {{ global_as_num }}"
+  run_once: true
+  when: legacy_calicoctl
+
 - name: Calico | Write /etc/network-environment
   template: src=network-environment.j2 dest=/etc/network-environment
   when: ansible_service_mgr in ["sysvinit","upstart"]
@@ -191,8 +201,9 @@
 
 - name: Calico | Disable node mesh
   shell: "{{ bin_dir }}/calicoctl config set nodeToNodeMesh off"
-  when: (not legacy_calicoctl and
-         peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
+  when: ((peer_with_router|default(false) or peer_with_calico_rr|default(false))
+          and inventory_hostname in groups['kube-node']
+          and not legacy_calicoctl)
   run_once: true
 
 - name: Calico | Configure peering with router(s)
@@ -208,10 +219,27 @@
   when: (not legacy_calicoctl and
          peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
 
+- name: Calico | Configure peering with route reflectors
+  shell: >
+   echo '{
+   "kind": "bgpPeer",
+   "spec": {"asNumber": "{{ local_as | default(global_as_num)}}"},
+   "apiVersion": "v1",
+   "metadata": {"node": "{{ inventory_hostname }}",
+     "scope": "node",
+     "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"]) }}"}
+   }'
+   | {{ bin_dir }}/calicoctl create --skip-exists -f -
+  with_items: "{{ groups['calico-rr'] | default([]) }}"
+  when: (not legacy_calicoctl and
+         peer_with_calico_rr|default(false) and inventory_hostname in groups['kube-node']
+         and hostvars[item]['cluster_id'] == cluster_id)
+
 - name: Calico (old) | Disable node mesh
   shell: "{{ bin_dir }}/calicoctl bgp node-mesh off"
-  when: (legacy_calicoctl and
-         peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
+  when: ((peer_with_router|default(false) or peer_with_calico_rr|default(false))
+          and inventory_hostname in groups['kube-node']
+          and legacy_calicoctl)
   run_once: true
 
 - name: Calico (old) | Configure peering with router(s)
@@ -219,3 +247,10 @@
   with_items: "{{ peers|default([]) }}"
   when: (legacy_calicoctl and
          peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
+
+- name: Calico (old) | Configure peering with route reflectors
+  shell: "{{ bin_dir }}/calicoctl node bgp peer add {{ hostvars[item]['calico_rr_ip']|default(hostvars[item]['ip']) }} as {{ local_as | default(global_as_num) }}"
+  with_items: "{{ groups['calico-rr'] | default([]) }}"
+  when: (legacy_calicoctl and
+         peer_with_calico_rr|default(false) and inventory_hostname in groups['kube-node']
+         and hostvars[item]['cluster_id'] == cluster_id)

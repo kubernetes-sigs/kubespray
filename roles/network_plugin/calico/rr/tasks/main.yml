@@ -1,0 +1,63 @@
+---
+# Required from inventory:
+#   calico_rr_ip - which specific IP to use for RR, defaults to
+#   "ip" from inventory or "ansible_default_ipv4.address"
+
+- name: Calico-rr | Set IP fact
+  set_fact:
+    rr_ip: "{{ calico_rr_ip | default(ip) | default(ansible_default_ipv4.address) }}"
+
+- name: Calico | Create calico certs directory
+  file:
+    dest: "{{ calico_cert_dir }}"
+    state: directory
+    mode: 0750
+    owner: root
+    group: root
+
+- name: Calico | Link etcd certificates for calico-node
+  file:
+    src: "{{ kube_cert_dir }}/{{ item.s }}"
+    dest: "{{ calico_cert_dir }}/{{ item.d }}"
+    state: hard
+    force: yes
+  with_items:
+    - {s: "ca.pem", d: "ca_cert.crt"}
+    - {s: "node.pem", d: "cert.crt"}
+    - {s: "node-key.pem", d: "key.pem"}
+
+- name: Calico-rr | Create dir for logs
+  file:
+    path: /var/log/calico-rr
+    state: directory
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Calico-rr | Write calico-rr.env for systemd init file
+  template: src=calico-rr.env.j2 dest=/etc/calico/calico-rr.env
+  when: ansible_service_mgr == "systemd"
+  notify: restart calico-rr
+
+- name: Calico-rr | Write calico-rr systemd init file
+  template: src=calico-rr.service.j2 dest=/etc/systemd/system/calico-rr.service
+  when: ansible_service_mgr == "systemd"
+  notify: restart calico-rr
+
+- name: Calico-rr | Configure route reflector
+  command: |-
+    {{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses }} \
+    set /calico/bgp/v1/rr_v4/{{ rr_ip }} \
+    '{
+       "ip": "{{ rr_ip }}",
+       "cluster_id": "{{ cluster_id }}"
+     }'
+  delegate_to: "{{groups['etcd'][0]}}"
+
+- meta: flush_handlers
+
+- name: Calico-rr | Enable calico-rr
+  service:
+    name: calico-rr
+    state: started
+    enabled: yes

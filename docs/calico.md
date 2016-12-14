@@ -50,7 +50,7 @@ or for versions prior *v1.0.0*:
 calicoctl endpoint show --detail
 ```
 
-##### Optionnal : Define network backend
+##### Optional : Define network backend
 
 In some cases you may want to define Calico network backend. Allowed values are 'bird', 'gobgp' or 'none'. Bird is a default value.
 
@@ -60,7 +60,7 @@ To re-define you need to edit the inventory and add a group variable `calico_net
 calico_network_backend: none
 ```
 
-##### Optionnal : BGP Peering with border routers
+##### Optional : BGP Peering with border routers
 
 In some cases you may want to route the pods subnet and so NAT is not needed on the nodes.
 For instance if you have a cluster spread on different locations and you want your pods to talk each other no matter where they are located.
@@ -71,6 +71,81 @@ you'll need to edit the inventory and add a and a hostvar `local_as` by node.
 ```
 node1 ansible_ssh_host=95.54.0.12 local_as=xxxxxx
 ```
+
+##### Optional : Define global AS number
+
+Optional parameter `global_as_num` defines Calico global AS number (`/calico/bgp/v1/global/as_num` etcd key).
+It defaults to "64512".
+
+##### Optional : BGP Peering with route reflectors
+
+At large scale you may want to disable full node-to-node mesh in order to
+optimize your BGP topology and improve `calico-node` containers' start times.
+
+To do so you can deploy BGP route reflectors and peer `calico-node` with them as
+recommended here:
+
+* https://hub.docker.com/r/calico/routereflector/
+* http://docs.projectcalico.org/v2.0/reference/private-cloud/l3-interconnect-fabric
+
+You need to edit your inventory and add:
+
+* `calico-rr` group with nodes in it. At the moment it's incompatible with
+  `kube-node` due to BGP port conflict with `calico-node` container. So you
+  should not have nodes in both `calico-rr` and `kube-node` groups.
+* `cluster_id` by route reflector node/group (see details
+[here](https://hub.docker.com/r/calico/routereflector/))
+
+Here's an example of Kargo inventory with route reflectors:
+
+```
+[all]
+rr0 ansible_ssh_host=10.210.1.10 ip=10.210.1.10
+rr1 ansible_ssh_host=10.210.1.11 ip=10.210.1.11
+node2 ansible_ssh_host=10.210.1.12 ip=10.210.1.12
+node3 ansible_ssh_host=10.210.1.13 ip=10.210.1.13
+node4 ansible_ssh_host=10.210.1.14 ip=10.210.1.14
+node5 ansible_ssh_host=10.210.1.15 ip=10.210.1.15
+
+[kube-master]
+node2
+node3
+
+[etcd]
+node2
+node3
+node4
+
+[kube-node]
+node2
+node3
+node4
+node5
+
+[k8s-cluster:children]
+kube-node
+kube-master
+
+[calico-rr]
+rr0
+rr1
+
+[rack0]
+rr0
+rr1
+node2
+node3
+node4
+node5
+
+[rack0:vars]
+cluster_id="1.0.0.1"
+```
+
+The inventory above will deploy the following topology assuming that calico's
+`global_as_num` is set to `65400`:
+
+![Image](figures/kargo-calico-rr.png?raw=true)
 
 Cloud providers configuration
 =============================

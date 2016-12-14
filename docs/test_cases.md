@@ -8,14 +8,14 @@ Here is the test matrix for the Travis CI gates:
 
 |           Network plugin|                  OS type|               GCE region|             Nodes layout|
 |-------------------------|-------------------------|-------------------------|-------------------------|
-|                    canal|                 debian-8|           europe-west1-d|                  default|
-|                   calico|                 debian-8|            us-central1-b|                  default|
-|                  flannel|                 centos-7|           europe-west1-d|                  default|
-|                   calico|                 centos-7|           europe-west1-b|                  default|
-|                    weave|                   rhel-7|           europe-west1-b|                  default|
-|                    canal|            coreos-stable|               us-east1-d|                  default|
+|                    canal|       debian-8-kubespray|             asia-east1-a|                  default|
+|                   calico|       debian-8-kubespray|        asia-northeast1-b|                  default|
+|                  flannel|                 centos-7|           europe-west1-c|                  default|
+|                   calico|                 centos-7|            us-central1-b|                  default|
+|                    weave|                   rhel-7|               us-east1-c|                  default|
+|                    canal|            coreos-stable|               us-west1-b|                  default|
 |                    canal|                   rhel-7|           europe-west1-c|                 separate|
-|                    weave|       ubuntu-1604-xenial|               us-west1-b|                 separate|
+|                    weave|       ubuntu-1604-xenial|           europe-west1-d|                 separate|
 |                   calico|            coreos-stable|            us-central1-f|                 separate|
 
 Where the nodes layout `default` is that is given in the example inventory file.

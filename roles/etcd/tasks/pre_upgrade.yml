@@ -34,3 +34,12 @@
   command: "docker rm -f {{item}}"
   with_items: "{{etcd_proxy_container.stdout_lines}}"
 
+- name: "Pre-upgrade | check if member list is non-SSL"
+  command: etcdctl member list
+  register: etcd_member_list
+  ignore_errors: true
+
+- name: "Pre-upgrade | change peer names to SSL"
+  shell: >-
+    etcdctl member list | awk -F"[: =]" '{print "etcdctl member update "$1" https:"$7":"$8}' | bash
+  when: 'etcd_member_list is defined and "http://" in etcd_member_list.stdout'

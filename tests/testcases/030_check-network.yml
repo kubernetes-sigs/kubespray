@@ -15,16 +15,44 @@
   - name: Get pod names
     shell: "{{bin_dir}}/kubectl get pods -o json"
     register: pods
+    no_log: true
+
+  - name: Get hostnet pods
+    command: "{{bin_dir}}/kubectl get pods -o
+             jsonpath='{range .items[?(.spec.hostNetwork)]}{.metadata.name} {.status.podIP} {end}'"
+    register: hostnet_pods
+
+  - name: Get running pods
+    command: "{{bin_dir}}/kubectl get pods -o
+             jsonpath='{range .items[?(.status.phase==\"Running\")]}{.metadata.name} {.status.podIP} {end}'"
+    register: running_pods
 
   - set_fact:
       pod_names: "{{ (pods.stdout | from_json)['items'] | map(attribute = 'metadata.name') | list }}"
-      pod_ips: "{{ (pods.stdout | from_json)['items'] | map(attribute = 'status.podIP') | list }}"
+      pod_ips: "{{ (pods.stdout | from_json)['items'] | selectattr('status.podIP', 'defined') | map(attribute = 'status.podIP') | list }}"
+      pods_hostnet: |
+        {% set list = hostnet_pods.stdout.split(" ") %}
+        {{list}}
+      pods_running: |
+        {% set list = running_pods.stdout.split(" ") %}
+        {{list}}
 
   - name: Check pods IP are in correct network
     assert:
       that: item | ipaddr(kube_pods_subnet)
+    when: not item in pods_hostnet and item in pods_running
     with_items: "{{pod_ips}}"
 
-
   - name: Ping between pods is working
-    shell: "{{bin_dir}}/kubectl exec {{pod_names[0]}} -- ping -c 4 {{ pod_ips[1] }}"
+    shell: "{{bin_dir}}/kubectl exec {{item[0]}} -- ping -c 4 {{ item[1] }}"
+    when: not item[0] in pods_hostnet and not item[1] in pods_hostnet
+    with_nested:
+      - "{{pod_names}}"
+      - "{{pod_ips}}"
+
+  - name: Ping between hostnet pods is working
+    shell: "{{bin_dir}}/kubectl exec {{item[0]}} -- ping -c 4 {{ item[1] }}"
+    when: item[0] in pods_hostnet and item[1] in pods_hostnet
+    with_nested:
+      - "{{pod_names}}"
+      - "{{pod_ips}}"

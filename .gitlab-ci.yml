@@ -2,7 +2,7 @@ stages:
   - unit-tests
   - deploy-gce-part1
   - deploy-gce-part2
-  - deploy-gce-separated
+  - deploy-gce-special
 
 variables:
   FAILFASTCI_NAMESPACE: 'kargo-ci'
@@ -101,6 +101,7 @@ before_script:
       -e ansible_python_interpreter=${PYPATH}
       -e download_run_once=true
       -e download_localhost=true
+      -e deploy_netchecker=true
       -e local_release_dir=${PWD}/downloads
       cluster.yml
 
@@ -109,15 +110,16 @@ before_script:
     ## Test Master API
     - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/010_check-apiserver.yml $LOG_LEVEL
 
-    ## Create a POD
-    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/020_check-create-pod.yml $LOG_LEVEL
-
     ## Ping the between 2 pod
     - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
+
+    ## Advanced DNS checks
+    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/040_check-network-adv.yml $LOG_LEVEL
 
   after_script:
     - >
       ansible-playbook -i inventory/inventory.ini tests/cloud_playbooks/delete-gce.yml -c local  $LOG_LEVEL
+      -e mode=${CLUSTER_MODE}
       -e test_id=${TEST_ID}
       -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
       -e gce_project_id=${GCE_PROJECT_ID}
@@ -127,7 +129,21 @@ before_script:
       -e inventory_path=${PWD}/inventory/inventory.ini
       -e cloud_region=${CLOUD_REGION}
 
-debian8-flannel:
+coreos-calico:
+  stage: deploy-gce-part1
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    KUBE_NETWORK_PLUGIN: calico
+    CLOUD_IMAGE: coreos-stable
+    CLOUD_REGION: us-west1-b
+    CLUSTER_MODE: separated
+    BOOTSTRAP_OS: coreos
+  when: on_success
+  #only: [/^pr-.*$/]
+
+debian8-canal:
   stage: deploy-gce-part1
   <<: *job
   <<: *gce
@@ -135,21 +151,10 @@ debian8-flannel:
     <<: *gce_variables
     KUBE_NETWORK_PLUGIN: canal
     CLOUD_IMAGE: debian-8-kubespray
-    CLOUD_REGION: us-west1-a
-    CLUSTER_MODE: default
-
-
-coreos-canal:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    KUBE_NETWORK_PLUGIN: canal
-    CLOUD_IMAGE: coreos-stable
     CLOUD_REGION: us-east1-b
-    CLUSTER_MODE: default
-    BOOTSTRAP_OS: coreos
+    CLUSTER_MODE: ha
+  when: manual
+  #only: [/^pr-.*$/]
 
 rhel7-weave:
   stage: deploy-gce-part1
@@ -161,6 +166,8 @@ rhel7-weave:
     CLOUD_IMAGE: rhel-7
     CLOUD_REGION: europe-west1-b
     CLUSTER_MODE: default
+  when: manual
+  #only: [/^pr-.*$/]
 
 centos7-flannel:
   stage: deploy-gce-part2
@@ -172,8 +179,8 @@ centos7-flannel:
     CLOUD_IMAGE: centos-7
     CLOUD_REGION: us-west1-a
     CLUSTER_MODE: default
-  only:
-    - master
+  when: manual
+  only: ['master']
 
 debian8-calico:
   stage: deploy-gce-part2
@@ -185,24 +192,25 @@ debian8-calico:
     CLOUD_IMAGE: debian-8-kubespray
     CLOUD_REGION: us-central1-b
     CLUSTER_MODE: default
-  only:
-    - master
+  when: manual
+  only: ['master']
 
-centos7-calico:
+coreos-canal:
   stage: deploy-gce-part2
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    KUBE_NETWORK_PLUGIN: calico
-    CLOUD_IMAGE: centos-7
-    CLOUD_REGION: europe-west1-b
+    KUBE_NETWORK_PLUGIN: canal
+    CLOUD_IMAGE: coreos-stable
+    CLOUD_REGION: us-east1-b
     CLUSTER_MODE: default
-  only:
-    - master
+    BOOTSTRAP_OS: coreos
+  when: manual
+  only: ['master']
 
 rhel7-canal:
-  stage: deploy-gce-separated
+  stage: deploy-gce-special
   <<: *job
   <<: *gce
   variables:
@@ -211,11 +219,11 @@ rhel7-canal:
     CLOUD_IMAGE: rhel-7
     CLOUD_REGION: us-east1-b
     CLUSTER_MODE: separated
-  only:
-    - master
+  when: manual
+  only: ['master']
 
 ubuntu-weave:
-  stage: deploy-gce-separated
+  stage: deploy-gce-special
   <<: *job
   <<: *gce
   variables:
@@ -224,23 +232,21 @@ ubuntu-weave:
     CLOUD_IMAGE: ubuntu-1604-xenial
     CLOUD_REGION: us-central1-b
     CLUSTER_MODE: separated
-  only:
-    - master
+  when: manual
+  only: ['master']
 
-coreos-calico:
-  stage: deploy-gce-separated
+centos7-calico:
+  stage: deploy-gce-special
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
     KUBE_NETWORK_PLUGIN: calico
-    CLOUD_IMAGE: coreos-stable
-    CLOUD_REGION: us-west1-b
-    CLUSTER_MODE: separated
-    BOOTSTRAP_OS: coreos
-  only:
-    - master
-
+    CLOUD_IMAGE: centos-7
+    CLOUD_REGION: europe-west1-b
+    CLUSTER_MODE: ha
+  when: manual
+  only: ['master']
 
 syntax-check:
   <<: *job

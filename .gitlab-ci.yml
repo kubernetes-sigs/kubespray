@@ -1,18 +1,20 @@
 stages:
   - unit-tests
-  - local-deployment
-  - calico
-  - flannel
-  - canal
-  - weave
+  - deploy-gce-part1
+  - deploy-gce-part2
+  - deploy-gce-separated
 
 variables:
   FAILFASTCI_NAMESPACE: 'kargo-ci'
+#  DOCKER_HOST: tcp://localhost:2375
+  ANSIBLE_FORCE_COLOR: "true"
 
-
-cache:
-  paths:
-    - cache
+# asia-east1-a
+# asia-northeast1-a
+# europe-west1-b
+# us-central1-a
+# us-east1-b
+# us-west1-a
 
 before_script:
     - pip install ansible
@@ -29,9 +31,6 @@ before_script:
   image: quay.io/ant31/kargo:master
 
 .docker_service: &docker_service
-  variables:
-    DOCKER_DRIVER: overlay
-    DOCKER_HOST: tcp://localhost:2375
   services:
      - docker:dind
 
@@ -39,27 +38,212 @@ before_script:
   <<: *job
   <<: *docker_service
 
+.gce_variables: &gce_variables
+  GCE_USER: travis
+  SSH_USER: $GCE_USER
+  TEST_ID: "$CI_PIPELINE_ID-$CI_BUILD_ID"
+  CONTAINER_ENGINE: docker
+  PRIVATE_KEY: $GCE_PRIVATE_KEY
+  GS_ACCESS_KEY_ID: $GS_KEY
+  GS_SECRET_ACCESS_KEY: $GS_SECRET
+  ANSIBLE_KEEP_REMOTE_FILES: "1"
+  CLUSTER_MODE: default
+  BOOTSTRAP_OS: none
+  LOG_LEVEL: "-vv"
+
+.gce: &gce
+  <<: *job
+  <<: *docker_service
+  cache:
+    key: "$CI_BUILD_REF_NAME"
+    paths:
+      - downloads/
+      - $HOME/.cache
+  stage: deploy-gce
+  before_script:
+    - docker info
+    - pip install ansible==2.1.3.0
+    - pip install netaddr
+    - pip install apache-libcloud==0.20.1
+    - pip install boto==2.9.0
+    - mkdir -p /.ssh
+    - cp tests/ansible.cfg .
+    - mkdir -p $HOME/.ssh
+    - echo $PRIVATE_KEY | base64 -d > $HOME/.ssh/id_rsa
+    - echo $GCE_PEM_FILE | base64 -d > $HOME/.ssh/gce
+    - echo $GCE_CREDENTIALS > $HOME/.ssh/gce.json
+    - chmod 400 $HOME/.ssh/id_rsa
+    - ansible-playbook --version
+    - cp tests/ansible.cfg .
+    - export PYPATH=$([ $BOOTSTRAP_OS = none ] && echo /usr/bin/python || echo /opt/bin/python)
+  script:
+    - pwd
+    - ls
+    - echo ${PWD}
+    - >
+      ansible-playbook tests/cloud_playbooks/create-gce.yml -i tests/local_inventory/hosts.cfg -c local $LOG_LEVEL
+      -e mode=${CLUSTER_MODE}
+      -e test_id=${TEST_ID}
+      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      -e gce_project_id=${GCE_PROJECT_ID}
+      -e gce_service_account_email=${GCE_ACCOUNT}
+      -e gce_credentials_file=${HOME}/.ssh/gce.json
+      -e cloud_image=${CLOUD_IMAGE}
+      -e inventory_path=${PWD}/inventory/inventory.ini
+      -e cloud_region=${CLOUD_REGION}
+
+    # Create cluster
+    - >
+      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
+      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      --private-key=${HOME}/.ssh/id_rsa
+      -e bootstrap_os=${BOOTSTRAP_OS}
+      -e ansible_python_interpreter=${PYPATH}
+      -e download_run_once=true
+      -e download_localhost=true
+      -e local_release_dir=${PWD}/downloads
+      cluster.yml
+
+
+    # Tests Cases
+    ## Test Master API
+    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/010_check-apiserver.yml $LOG_LEVEL
+
+    ## Create a POD
+    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/020_check-create-pod.yml $LOG_LEVEL
+
+    ## Ping the between 2 pod
+    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
+
+  after_script:
+    - >
+      ansible-playbook -i inventory/inventory.ini tests/cloud_playbooks/delete-gce.yml -c local  $LOG_LEVEL
+      -e test_id=${TEST_ID}
+      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      -e gce_project_id=${GCE_PROJECT_ID}
+      -e gce_service_account_email=${GCE_ACCOUNT}
+      -e gce_credentials_file=${HOME}/.ssh/gce.json
+      -e cloud_image=${CLOUD_IMAGE}
+      -e inventory_path=${PWD}/inventory/inventory.ini
+      -e cloud_region=${CLOUD_REGION}
+
+debian8-flannel:
+  stage: deploy-gce-part1
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    KUBE_NETWORK_PLUGIN: canal
+    CLOUD_IMAGE: debian-8-kubespray
+    CLOUD_REGION: us-west1-a
+    CLUSTER_MODE: default
+
+
+coreos-canal:
+  stage: deploy-gce-part1
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    KUBE_NETWORK_PLUGIN: canal
+    CLOUD_IMAGE: coreos-stable
+    CLOUD_REGION: us-east1-b
+    CLUSTER_MODE: default
+    BOOTSTRAP_OS: coreos
+
+rhel7-weave:
+  stage: deploy-gce-part1
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    KUBE_NETWORK_PLUGIN: weave
+    CLOUD_IMAGE: rhel-7
+    CLOUD_REGION: europe-west1-b
+    CLUSTER_MODE: default
+
+centos7-flannel:
+  stage: deploy-gce-part2
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    KUBE_NETWORK_PLUGIN: flannel
+    CLOUD_IMAGE: centos-7
+    CLOUD_REGION: us-west1-a
+    CLUSTER_MODE: default
+  only:
+    - master
+
+debian8-calico:
+  stage: deploy-gce-part2
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    KUBE_NETWORK_PLUGIN: calico
+    CLOUD_IMAGE: debian-8-kubespray
+    CLOUD_REGION: us-central1-b
+    CLUSTER_MODE: default
+  only:
+    - master
+
+centos7-calico:
+  stage: deploy-gce-part2
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    KUBE_NETWORK_PLUGIN: calico
+    CLOUD_IMAGE: centos-7
+    CLOUD_REGION: europe-west1-b
+    CLUSTER_MODE: default
+  only:
+    - master
+
+rhel7-canal:
+  stage: deploy-gce-separated
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    KUBE_NETWORK_PLUGIN: canal
+    CLOUD_IMAGE: rhel-7
+    CLOUD_REGION: us-east1-b
+    CLUSTER_MODE: separated
+  only:
+    - master
+
+ubuntu-weave:
+  stage: deploy-gce-separated
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    KUBE_NETWORK_PLUGIN: weave
+    CLOUD_IMAGE: ubuntu-1604-xenial
+    CLOUD_REGION: us-central1-b
+    CLUSTER_MODE: separated
+  only:
+    - master
+
+coreos-calico:
+  stage: deploy-gce-separated
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    KUBE_NETWORK_PLUGIN: calico
+    CLOUD_IMAGE: coreos-stable
+    CLOUD_REGION: us-west1-b
+    CLUSTER_MODE: separated
+    BOOTSTRAP_OS: coreos
+  only:
+    - master
+
 
 syntax-check:
   <<: *job
   stage: unit-tests
   script:
     - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root cluster.yml -vvv  --syntax-check
-
-
-local-dry-run:
-  stage: unit-tests
-  <<: *job
-  <<: *docker_service
-  script:
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root -b --become-user=root cluster.yml -vv -c local --syntax-check
-  allow_failure: true
-
-
-idempotent:
-  stage: local-deployment
-  <<: *job
-  <<: *docker_service
-  script:
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root -b --become-user=root cluster.yml -vv -c local --syntax-check
-  allow_failure: true

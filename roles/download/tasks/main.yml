@@ -39,11 +39,6 @@
     mode: "{{ download.mode|default(omit) }}"
   when: "{{ download.enabled|bool and not download.container|bool and (download.unarchive is not defined or download.unarchive == False) }}"
 
-- name: pulling...
-  debug:
-    msg: "{{ download.repo }}:{{ download.tag }}"
-  when: "{{ download.enabled|bool and download.container|bool }}"
-
 - set_fact:
     download_delegate: "{% if download_localhost %}localhost{% else %}{{groups['kube-master'][0]}}{% endif %}"
   tags: facts
@@ -70,29 +65,41 @@
   when: "{{ download_run_once|bool and download.enabled|bool and download.container|bool and download_delegate == 'localhost' }}"
   tags: localhost
 
+- name: Make download decision if pull is required by tag or sha256
+  include: set_docker_image_facts.yml
+  when: "{{ download.enabled|bool and download.container|bool }}"
+  delegate_to: "{{ download_delegate if download_run_once|bool else inventory_hostname }}"
+  run_once: "{{ download_run_once|bool }}"
+  tags: facts
+
+- name: pulling...
+  debug:
+    msg: "{{ pull_args }}"
+  when: "{{ download.enabled|bool and download.container|bool }}"
+
 #NOTE(bogdando) this brings no docker-py deps for nodes
-- name: Download containers
-  command: "/usr/bin/docker pull {{ download.repo }}:{{ download.tag }}"
+- name: Download containers if pull is required or told to always pull
+  command: "/usr/bin/docker pull {{ pull_args }}"
   register: pull_task_result
   until: pull_task_result|success
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  when: "{{ download.enabled|bool and download.container|bool }}"
+  when: "{{ download.enabled|bool and download.container|bool and pull_required|bool|default(download_always_pull) }}"
   delegate_to: "{{ download_delegate if download_run_once|bool else inventory_hostname }}"
   run_once: "{{ download_run_once|bool }}"
 
 - set_fact:
-    fname: "{{local_release_dir}}/containers/{{download.repo|regex_replace('/|\0|:', '_')}}:{{download.tag|regex_replace('/|\0|:', '_')}}.tar"
+    fname: "{{local_release_dir}}/containers/{{download.repo|regex_replace('/|\0|:', '_')}}:{{download.tag|default(download.sha256)|regex_replace('/|\0|:', '_')}}.tar"
   tags: facts
 
 - name: "Set default value for 'container_changed' to false"
   set_fact:
-    container_changed: false
+    container_changed: "{{pull_required|bool|default(false)}}"
 
 - name: "Update the 'container_changed' fact"
   set_fact:
-    container_changed: "{{ not 'up to date' in pull_task_result.stdout }}"
-  when: "{{ download.enabled|bool and download.container|bool }}"
+    container_changed: "{{ pull_required|bool|default(false) or not 'up to date' in pull_task_result.stdout }}"
+  when: "{{ download.enabled|bool and download.container|bool and pull_required|bool|default(download_always_pull) }}"
   delegate_to: "{{ download_delegate if download_run_once|bool else inventory_hostname }}"
   run_once: "{{ download_run_once|bool }}"
   tags: facts
@@ -108,7 +115,7 @@
   tags: facts
 
 - name: Download | save container images
-  shell: docker save "{{ download.repo }}:{{ download.tag }}" | gzip -{{ download_compress }} > "{{ fname }}"
+  shell: docker save "{{ pull_args }}" | gzip -{{ download_compress }} > "{{ fname }}"
   delegate_to: "{{ download_delegate }}"
   register: saved
   run_once: true

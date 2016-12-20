@@ -49,5 +49,6 @@ GCE instances
 |             special|               canal|              rhel-7|          us-east1-b|           separated|
 |             special|               weave|  ubuntu-1604-xenial|       us-central1-b|           separated|
 |             special|              calico|            centos-7|      europe-west1-b|                  ha|
+|             special|               weave|        coreos-alpha|          us-west1-a|                  ha|
 
 The "Stage" means a build step of the build pipeline. The steps are ordered as `part1->part2->special`.

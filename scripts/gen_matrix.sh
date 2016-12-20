@@ -12,13 +12,13 @@ for i in `echo $a`; do
 done
 
 echo
-a=$(perl -ne '/^\s{2}(stage:\sdeploy-gce-|when:\s)(\S+)$/ && print "$2\n";/^\s{4}(CLOUD_IMAGE|KUBE_NETWORK_PLUGIN|CLOUD_REGION|CLUSTER_MODE):\s(\S+)$/ && print "$2\n"' .gitlab-ci.yml)
+a=$(perl -ne '/^#\sstage:\sdeploy-gce-(\S+)$/ && print "$1\n";/^\s{2}(CLOUD_IMAGE|KUBE_NETWORK_PLUGIN|CLOUD_REGION|CLUSTER_MODE):\s(\S+)$/ && print "$2\n"' .gitlab-ci.yml)
 echo Gitlab-CI
-printf "|%18s|%18s|%18s|%18s|%18s|%18s|\n"  "Stage" "Network plugin" "OS type" "GCE region" "Nodes layout" "When"
-echo "|------------------|------------------|------------------|------------------|------------------|------------------|"
+printf "|%20s|%20s|%20s|%20s|%20s\n"  "Stage" "Network plugin" "OS type" "GCE region" "Nodes layout"
+echo "|--------------------|--------------------|--------------------|--------------------|--------------------|"
 c=0
 for i in `echo $a`; do
-  printf "|%18s" $i
-  [ $(($c % 6)) -eq 5 ] && printf "|\n"
+  printf "|%20s" $i
+  [ $(($c % 5)) -eq 4 ] && printf "|\n"
   c=$(( c + 1))
 done

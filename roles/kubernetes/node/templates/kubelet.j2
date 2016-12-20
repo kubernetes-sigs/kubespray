@@ -12,21 +12,28 @@ KUBELET_ADDRESS="--address={{ ip | default("0.0.0.0") }}"
 # KUBELET_PORT="--port=10250"
 # You may leave this blank to use the actual hostname
 KUBELET_HOSTNAME="--hostname-override={{ ansible_hostname }}"
-# location of the api-server
+
+{# Base kubelet args #}
 {% set kubelet_args_base %}--pod-manifest-path={{ kube_manifest_dir }} --pod-infra-container-image={{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}{% endset %}
+
+{# DNS settings for kubelet #}
 {% if dns_setup|bool and skip_dnsmasq|bool %}
-{% set kubelet_args_dns %}--cluster_dns={{ skydns_server }} --cluster_domain={{ dns_domain }} --resolv-conf={{ kube_resolv_conf }} {{ kubelet_args_base }}{% endset %}
+{% set kubelet_args_cluster_dns %}--cluster_dns={{ skydns_server }}{% endset %}
 {% elif dns_setup|bool %}
-{% set kubelet_args_dns %}--cluster_dns={{ dns_server }} --cluster_domain={{ dns_domain }} --resolv-conf={{ kube_resolv_conf }} {{ kubelet_args_base }}{% endset %}
+{% set kubelet_args_cluster_dns %}--cluster_dns={{ dns_server }}{% endset %}
 {% else %}
-{% set kubelet_args_dns = kubelet_args_base %}
+{% set kubelet_args_cluster_dns %}{% endset %}
 {% endif %}
-{% if not standalone_kubelet|bool %}
-{% set kubelet_args %}--kubeconfig={{ kube_config_dir}}/node-kubeconfig.yaml --require-kubeconfig {{ kubelet_args_dns }}{% endset %}
-{% else %}
-{% set kubelet_args = kubelet_args_dns %}
+{% set kubelet_args_dns %}{{ kubelet_args_cluster_dns }} --cluster_domain={{ dns_domain }} --resolv-conf={{ kube_resolv_conf }}{% endset %}
+
+{# Location of the apiserver #}
+{% set kubelet_args_kubeconfig %}--kubeconfig={{ kube_config_dir}}/node-kubeconfig.yaml --require-kubeconfig{% endset %}
+{% if standalone_kubelet|bool %}
+{# We are on a master-only host. Make the master unschedulable in this case. #}
+{% set kubelet_args_kubeconfig %}{{ kubelet_args_kubeconfig }} --register-schedulable=false{% endset %}
 {% endif %}
-KUBELET_ARGS="{{ kubelet_args }}"
+
+KUBELET_ARGS="{{ kubelet_args_base }} {{ kubelet_args_dns }} {{ kubelet_args_kubeconfig }}"
 {% if kube_network_plugin is defined and kube_network_plugin in ["calico", "weave", "canal"] %}
 KUBELET_NETWORK_PLUGIN="--network-plugin=cni --network-plugin-dir=/etc/cni/net.d"
 {% elif kube_network_plugin is defined and kube_network_plugin == "weave" %}
@@ -46,6 +53,6 @@ KUBELET_CLOUDPROVIDER=""
 {% endif %}
 {% if ansible_service_mgr in ["sysvinit","upstart"] %}
 DAEMON_ARGS="$KUBE_LOGGING $KUBE_LOG_LEVEL $KUBE_ALLOW_PRIV $KUBELET_API_SERVER $KUBELET_ADDRESS \
-$KUBELET_HOSTNAME $KUBELET_REGISTER_NODE $KUBELET_ARGS $DOCKER_SOCKET $KUBELET_ARGS $KUBELET_NETWORK_PLUGIN \
+$KUBELET_HOSTNAME $KUBELET_ARGS $DOCKER_SOCKET $KUBELET_ARGS $KUBELET_NETWORK_PLUGIN \
 $KUBELET_CLOUDPROVIDER"
 {% endif %}

@@ -93,7 +93,7 @@ Vagrant.configure("2") do |config|
         "flannel_interface" => ip,
         "flannel_backend_type" => "host-gw",
         "local_release_dir" => "/vagrant/temp",
-        "download_run_once" => "True"
+        "download_run_once" => "False"
       }
       config.vm.network :private_network, ip: ip
 

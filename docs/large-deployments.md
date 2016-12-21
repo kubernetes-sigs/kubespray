@@ -8,14 +8,8 @@ For a large scaled deployments, consider the following configuration changes:
 
 * Override containers' `foo_image_repo` vars to point to intranet registry.
 
-* Override the ``download_run_once: true`` to download container images only once
-  then push to cluster nodes in batches. The default delegate node
-  for pushing images is the first kube-master. Note, if you have passwordless sudo
-  and docker enabled on the separate admin node, you may want to define the
-  ``download_localhost: true``, which makes that node a delegate for pushing images
-  while running the deployment with ansible. This maybe the case if cluster nodes
-  cannot access each over via ssh or you want to use local docker images as a cache
-  for multiple clusters.
+* Override the ``download_run_once: true`` and/or ``download_localhost: true``.
+  See download modes for details.
 
 * Adjust the `retry_stagger` global var as appropriate. It should provide sane
   load on a delegate (the first K8s master node) then retrying failed

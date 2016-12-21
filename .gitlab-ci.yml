@@ -47,6 +47,7 @@ before_script:
   GS_ACCESS_KEY_ID: $GS_KEY
   GS_SECRET_ACCESS_KEY: $GS_SECRET
   ANSIBLE_KEEP_REMOTE_FILES: "1"
+  CLUSTER_MODE: default
   BOOTSTRAP_OS: none
   LOG_LEVEL: "-vv"
 
@@ -128,127 +129,33 @@ before_script:
       -e inventory_path=${PWD}/inventory/inventory.ini
       -e cloud_region=${CLOUD_REGION}
 
-# Test matrix. Leave the comments for markup scripts.
-.coreos_calico_sep_variables: &coreos_calico_sep_variables
-# stage: deploy-gce-part1
-  KUBE_NETWORK_PLUGIN: calico
-  CLOUD_IMAGE: coreos-stable
-  CLOUD_REGION: us-west1-b
-  CLUSTER_MODE: separated
-  BOOTSTRAP_OS: coreos
-
-.debian8_canal_ha_variables: &debian8_canal_ha_variables
-# stage: deploy-gce-part1
-  KUBE_NETWORK_PLUGIN: canal
-  CLOUD_IMAGE: debian-8-kubespray
-  CLOUD_REGION: us-east1-b
-  CLUSTER_MODE: ha
-
-.rhel7_weave_variables: &rhel7_weave_variables
-# stage: deploy-gce-part1
-  KUBE_NETWORK_PLUGIN: weave
-  CLOUD_IMAGE: rhel-7
-  CLOUD_REGION: europe-west1-b
-  CLUSTER_MODE: default
-
-.centos7_flannel_variables: &centos7_flannel_variables
-# stage: deploy-gce-part2
-  KUBE_NETWORK_PLUGIN: flannel
-  CLOUD_IMAGE: centos-7
-  CLOUD_REGION: us-west1-a
-  CLUSTER_MODE: default
-
-.debian8_calico_variables: &debian8_calico_variables
-# stage: deploy-gce-part2
-  KUBE_NETWORK_PLUGIN: calico
-  CLOUD_IMAGE: debian-8-kubespray
-  CLOUD_REGION: us-central1-b
-  CLUSTER_MODE: default
-
-.coreos_canal_variables: &coreos_canal_variables
-# stage: deploy-gce-part2
-  KUBE_NETWORK_PLUGIN: canal
-  CLOUD_IMAGE: coreos-stable
-  CLOUD_REGION: us-east1-b
-  CLUSTER_MODE: default
-  BOOTSTRAP_OS: coreos
-
-.rhel7_canal_sep_variables: &rhel7_canal_sep_variables
-# stage: deploy-gce-special
-  KUBE_NETWORK_PLUGIN: canal
-  CLOUD_IMAGE: rhel-7
-  CLOUD_REGION: us-east1-b
-  CLUSTER_MODE: separated
-
-.ubuntu_weave_sep_variables: &ubuntu_weave_sep_variables
-# stage: deploy-gce-special
-  KUBE_NETWORK_PLUGIN: weave
-  CLOUD_IMAGE: ubuntu-1604-xenial
-  CLOUD_REGION: us-central1-b
-  CLUSTER_MODE: separated
-
-.centos7_calico_ha_variables: &centos7_calico_ha_variables
-# stage: deploy-gce-special
-  KUBE_NETWORK_PLUGIN: calico
-  CLOUD_IMAGE: centos-7
-  CLOUD_REGION: europe-west1-b
-  CLUSTER_MODE: ha
-
-# Builds for PRs only (auto)
 coreos-calico-sep:
   stage: deploy-gce-part1
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *coreos_calico_sep_variables
+    KUBE_NETWORK_PLUGIN: calico
+    CLOUD_IMAGE: coreos-stable
+    CLOUD_REGION: us-west1-b
+    CLUSTER_MODE: separated
+    BOOTSTRAP_OS: coreos
   when: on_success
   except: ['triggers']
   only: [/^pr-.*$/]
 
-centos7-flannel:
-  stage: deploy-gce-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_flannel_variables
-  when: on_success
-  except: ['triggers']
-  only: [/^pr-.*$/]
-
-ubuntu-weave-sep:
-  stage: deploy-gce-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_weave_sep_variables
-  when: on_success
-  except: ['triggers']
-  only: [/^pr-.*$/]
-
-# More builds for PRs/merges (manual) and triggers (auto)
 debian8-canal-ha:
   stage: deploy-gce-part1
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *debian8_canal_ha_variables
+    KUBE_NETWORK_PLUGIN: canal
+    CLOUD_IMAGE: debian-8-kubespray
+    CLOUD_REGION: us-east1-b
+    CLUSTER_MODE: ha
   when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-debian8-canal-ha-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *debian8_canal_ha_variables
-  when: on_success
-  only: ['triggers']
+  only: ['master', /^pr-.*$/, 'triggers']
 
 rhel7-weave:
   stage: deploy-gce-part1
@@ -256,20 +163,26 @@ rhel7-weave:
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *rhel7_weave_variables
+    KUBE_NETWORK_PLUGIN: weave
+    CLOUD_IMAGE: rhel-7
+    CLOUD_REGION: europe-west1-b
+    CLUSTER_MODE: default
   when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+  only: ['master', /^pr-.*$/, 'triggers']
 
-rhel7-weave-triggers:
-  stage: deploy-gce-part1
+centos7-flannel:
+  stage: deploy-gce-part2
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *rhel7_weave_variables
+    KUBE_NETWORK_PLUGIN: flannel
+    CLOUD_IMAGE: centos-7
+    CLOUD_REGION: us-west1-a
+    CLUSTER_MODE: default
   when: on_success
-  only: ['triggers']
+  except: ['triggers']
+  only: [/^pr-.*$/]
 
 debian8-calico:
   stage: deploy-gce-part2
@@ -277,20 +190,12 @@ debian8-calico:
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *debian8_calico_variables
+    KUBE_NETWORK_PLUGIN: calico
+    CLOUD_IMAGE: debian-8-kubespray
+    CLOUD_REGION: us-central1-b
+    CLUSTER_MODE: default
   when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-debian8-calico-triggers:
-  stage: deploy-gce-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *debian8_calico_variables
-  when: on_success
-  only: ['triggers']
+  only: ['master', /^pr-.*$/, 'triggers']
 
 coreos-canal:
   stage: deploy-gce-part2
@@ -298,20 +203,13 @@ coreos-canal:
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *coreos_canal_variables
+    KUBE_NETWORK_PLUGIN: canal
+    CLOUD_IMAGE: coreos-stable
+    CLOUD_REGION: us-east1-b
+    CLUSTER_MODE: default
+    BOOTSTRAP_OS: coreos
   when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-coreos-canal-triggers:
-  stage: deploy-gce-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *coreos_canal_variables
-  when: on_success
-  only: ['triggers']
+  only: ['master', /^pr-.*$/, 'triggers']
 
 rhel7-canal-sep:
   stage: deploy-gce-special
@@ -319,20 +217,26 @@ rhel7-canal-sep:
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *rhel7_canal_sep_variables
+    KUBE_NETWORK_PLUGIN: canal
+    CLOUD_IMAGE: rhel-7
+    CLOUD_REGION: us-east1-b
+    CLUSTER_MODE: separated
   when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/,]
+  only: ['master', /^pr-.*$/, 'triggers']
 
-rhel7-canal-sep-triggers:
+ubuntu-weave-sep:
   stage: deploy-gce-special
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *rhel7_canal_sep_variables
+    KUBE_NETWORK_PLUGIN: weave
+    CLOUD_IMAGE: ubuntu-1604-xenial
+    CLOUD_REGION: us-central1-b
+    CLUSTER_MODE: separated
   when: on_success
-  only: ['triggers']
+  except: ['triggers']
+  only: [/^pr-.*$/]
 
 centos7-calico-ha:
   stage: deploy-gce-special
@@ -340,22 +244,12 @@ centos7-calico-ha:
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *centos7_calico_ha_variables
+    KUBE_NETWORK_PLUGIN: calico
+    CLOUD_IMAGE: centos-7
+    CLOUD_REGION: europe-west1-b
+    CLUSTER_MODE: ha
   when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-centos7-calico-ha-triggers:
-  stage: deploy-gce-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_calico_ha_variables
-  when: on_success
-  only: ['triggers']
-
-#TODO(bogdando) add coreos-weave and *triggers
+  only: ['master', /^pr-.*$/, 'triggers']
 
 syntax-check:
   <<: *job

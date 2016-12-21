@@ -38,16 +38,17 @@ Gitlab CI test matrix
 GCE instances
 -------------
 
-|               Stage|      Network plugin|             OS type|          GCE region|        Nodes layout
-|--------------------|--------------------|--------------------|--------------------|--------------------|
-|               part1|              calico|       coreos-stable|          us-west1-b|           separated|
-|               part1|               canal|  debian-8-kubespray|          us-east1-b|                  ha|
-|               part1|               weave|              rhel-7|      europe-west1-b|             default|
-|               part2|             flannel|            centos-7|          us-west1-a|             default|
-|               part2|              calico|  debian-8-kubespray|       us-central1-b|             default|
-|               part2|               canal|       coreos-stable|          us-east1-b|             default|
-|             special|               canal|              rhel-7|          us-east1-b|           separated|
-|             special|               weave|  ubuntu-1604-xenial|       us-central1-b|           separated|
-|             special|              calico|            centos-7|      europe-west1-b|                  ha|
+|             Stage|    Network plugin|           OS type|        GCE region|      Nodes layout|              When|
+|------------------|------------------|------------------|------------------|------------------|------------------|
+|             part1|            calico|     coreos-stable|        us-west1-b|         separated|        on_success|
+|             part1|             canal|debian-8-kubespray|        us-east1-b|                ha|            manual|
+|             part1|             weave|            rhel-7|    europe-west1-b|           default|            manual|
+|             part2|           flannel|          centos-7|        us-west1-a|           default|        on_success|
+|             part2|            calico|debian-8-kubespray|     us-central1-b|           default|            manual|
+|             part2|             canal|     coreos-stable|        us-east1-b|           default|            manual|
+|           special|             canal|            rhel-7|        us-east1-b|         separated|            manual|
+|           special|             weave|ubuntu-1604-xenial|     us-central1-b|         separated|        on_success|
+|           special|            calico|          centos-7|    europe-west1-b|                ha|            manual|
 
 The "Stage" means a build step of the build pipeline. The steps are ordered as `part1->part2->special`.
+The "When" stands for the build step trigger condition.

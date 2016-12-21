@@ -14,6 +14,10 @@
       skip: true
   tags: facts
 
+- include: set_facts_dns.yml
+  when: dns_mode != 'none' and resolvconf_mode == 'docker_dns'
+  tags: facts
+
 - name: check for minimum kernel version
   fail:
     msg: >
@@ -62,6 +66,13 @@
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{ docker_package_info.pkgs }}"
   when: (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]) and (docker_package_info.pkgs|length > 0)
+
+- name: check minimum docker version for docker_dns mode. You need at least docker version >= 1.12 for resolvconf_mode=docker_dns
+  shell: docker version -f "{{ '{{' }}.Client.Version{{ '}}' }}"
+  register: docker_version
+  failed_when: docker_version.stdout|version_compare('1.12', '<')
+  changed_when: false
+  when: dns_mode != 'none' and resolvconf_mode == 'docker_dns'
 
 - name: Set docker systemd config
   include: systemd.yml

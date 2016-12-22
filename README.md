@@ -30,6 +30,10 @@ To deploy the cluster you can use :
 *  [Network plugins](#network-plugins)
 *  [Roadmap](docs/roadmap.md)
 
+Kargo vs [Kops](https://github.com/kubernetes/kops)
+---------------
+Kargo runs on bare metal and most clouds, using Ansible as its substrate for provisioning and orchestration. Kops performs the provisioning and orchestration itself, and as such is less flexible in deployment platforms. For people with familiarity with Ansible, existing Ansible deployments or the desire to run a Kubernetes cluster across multiple platforms, Kargo is a good choice. Kops, however, iss more tightly integrated with the unique features of the clouds it supports so it could be a better choice if you know that you will only be using one platform for the foreseeable future.
+
 Supported Linux distributions
 ===============
 

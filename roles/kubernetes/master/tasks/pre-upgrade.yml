@@ -27,3 +27,23 @@
     - /etc/systemd/system/kube-apiserver.service
     - /etc/init.d/kube-apiserver
   tags: kube-apiserver
+
+- name: "Pre-upgrade | See if kube-apiserver manifest exists"
+  stat:
+    path: /etc/kubernetes/manifests/kube-apiserver.manifest
+  register: kube_apiserver_manifest
+  when: secret_changed|default(false) or etcd_secret_changed|default(false)
+
+- name: "Pre-upgrade | Write invalid image to kube-apiserver manifest if secrets were changed"
+  replace:
+    dest: /etc/kubernetes/manifests/kube-apiserver.manifest
+    regexp: '(\s+)image:\s+.*?$'
+    replace: '\1image: kill.apiserver.using.fake.image.in:manifest'
+  register: kube_apiserver_manifest_replaced
+  when: (secret_changed|default(false) or etcd_secret_changed|default(false)) and kube_apiserver_manifest.stat.exists
+
+- name: "Pre-upgrade | Pause while waiting for kubelet to delete kube-apiserver pod"
+  pause: seconds=20
+  when: (secret_changed|default(false) or etcd_secret_changed|default(false)) and kube_apiserver_manifest.stat.exists
+  tags: kube-apiserver
+

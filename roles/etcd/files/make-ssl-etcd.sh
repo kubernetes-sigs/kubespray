@@ -16,7 +16,6 @@
 
 set -o errexit
 set -o pipefail
-
 usage()
 {
     cat << EOF
@@ -61,20 +60,43 @@ cd "${tmpdir}"
 mkdir -p "${SSLDIR}"
 
 # Root CA
-openssl genrsa -out ca-key.pem 2048 > /dev/null 2>&1
-openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN=etcd-ca" > /dev/null 2>&1
+if [ -e "$SSLDIR/ca-key.pem" ]; then
+    # Reuse existing CA
+    cp $SSLDIR/{ca.pem,ca-key.pem} .
+else
+    openssl genrsa -out ca-key.pem 2048 > /dev/null 2>&1
+    openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN=etcd-ca" > /dev/null 2>&1
+fi
 
 # ETCD member
-openssl genrsa -out member-key.pem 2048 > /dev/null 2>&1
-openssl req -new -key member-key.pem -out member.csr -subj "/CN=etcd-member" -config ${CONFIG} > /dev/null 2>&1
-openssl x509 -req -in member.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out member.pem -days 365 -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
+if [ -n "$MASTERS" ]; then
+    for host in $MASTERS; do
+        openssl genrsa -out member-${host}-key.pem 2048 > /dev/null 2>&1
+        openssl req -new -key member-${host}-key.pem -out member-${host}.csr -subj "/CN=etcd-member-${host}" -config ${CONFIG} > /dev/null 2>&1
+        openssl x509 -req -in member-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out member-${host}.pem -days 365 -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
+    done
+else
+    openssl genrsa -out member-key.pem 2048 > /dev/null 2>&1
+    openssl req -new -key member-key.pem -out member.csr -subj "/CN=etcd-member" -config ${CONFIG} > /dev/null 2>&1
+    openssl x509 -req -in member.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out member.pem -days 365 -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
+fi
 
-# Nodes and Admin
-for i in node admin; do
-    openssl genrsa -out ${i}-key.pem 2048 > /dev/null 2>&1
-    openssl req -new -key ${i}-key.pem -out ${i}.csr -subj "/CN=kube-${i}" > /dev/null 2>&1
-    openssl x509 -req -in ${i}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${i}.pem -days 365 -extensions ssl_client  -extfile ${CONFIG} > /dev/null 2>&1
-done
+# Node and admin keys
+if [ -n "$HOSTS" ]; then
+    for host in $HOSTS; do
+        for i in node admin; do
+            openssl genrsa -out ${i}-${host}-key.pem 2048 > /dev/null 2>&1
+            openssl req -new -key ${i}-${host}-key.pem -out ${i}-${host}.csr -subj "/CN=kube-${i}-${host}" > /dev/null 2>&1
+            openssl x509 -req -in ${i}-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${i}-${host}.pem -days 365 -extensions ssl_client  -extfile ${CONFIG} > /dev/null 2>&1
+        done
+     done
+else
+    for i in node admin; do
+        openssl genrsa -out ${i}-key.pem 2048 > /dev/null 2>&1
+        openssl req -new -key ${i}-key.pem -out ${i}.csr -subj "/CN=kube-${i}" > /dev/null 2>&1
+        openssl x509 -req -in ${i}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${i}.pem -days 365 -extensions ssl_client  -extfile ${CONFIG} > /dev/null 2>&1
+    done
+fi
 
 # Install certs
 mv *.pem ${SSLDIR}/

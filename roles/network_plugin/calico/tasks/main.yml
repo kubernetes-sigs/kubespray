@@ -21,7 +21,7 @@
 
 - name: Calico | Link etcd certificates for calico-node
   file:
-    src: "{{ etcd_cert_dir }}/{{ item.s }}"
+    src: "{{ network_plugin_etcd_cert_dir_real }}/{{ item.s }}"
     dest: "{{ calico_cert_dir }}/{{ item.d }}"
     state: hard
     force: yes
@@ -66,17 +66,18 @@
   retries: 10
   delay: 5
   delegate_to: "{{groups['etcd'][0]}}"
+  when: not network_plugin_etcd_access_endpoint.defined
   run_once: true
 
 - name: Calico | Check if calico network pool has already been configured
   command: |-
     curl \
-      --cacert {{ etcd_cert_dir }}/ca.pem \
-      --cert {{ etcd_cert_dir}}/admin.pem \
-      --key {{ etcd_cert_dir }}/admin-key.pem \
-      https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
+      --cacert {{ network_plugin_etcd_cert_dir_real }}/ca.pem \
+      --cert {{ network_plugin_etcd_cert_dir_real }}/admin.pem \
+      --key {{ network_plugin_etcd_cert_dir_real }}/admin-key.pem \
+      https://{%- if etcd_multiaccess -%}{{network_plugin_etcd_access_endpoint[0]}}{%- else -%}{{network_plugin_etcd_access_endpoint}}{%- endif -%}:2379/v2/keys/calico/v1/ipam/v4/pool
   register: calico_conf
-  delegate_to: "{{groups['etcd'][0]}}"
+  delegate_to: "{{network_plugins_etcd_access_delagate}}"
   run_once: true
   tags: facts
 
@@ -130,12 +131,12 @@
 - name: Calico | Get calico configuration from etcd
   command: |-
     curl \
-      --cacert {{ etcd_cert_dir }}/ca.pem \
-      --cert {{ etcd_cert_dir}}/admin.pem \
-      --key {{ etcd_cert_dir }}/admin-key.pem \
-      https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
+      --cacert {{ network_plugins_etcd_cert_dir_real }}/ca.pem \
+      --cert {{ network_plugins_etcd_cert_dir_real }}/admin.pem \
+      --key {{ network_plugins_etcd_cert_dir_real }}/admin-key.pem \
+      https://{%- if etcd_multiaccess -%}{{network_plugin_etcd_access_endpoint[0]}}{%- else -%}{{network_plugin_etcd_access_endpoint}}{%- endif -%}:2379/v2/keys/calico/v1/ipam/v4/pool
   register: calico_pools_raw
-  delegate_to: "{{groups['etcd'][0]}}"
+  delegate_to: "{{network_plugins_etcd_access_delegate}}"
   run_once: true
 
 - set_fact:

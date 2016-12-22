@@ -1,0 +1,30 @@
+---
+- name: "Check_certs | check if expected external etcd certs exist on first etcd master"
+  stat:
+    path: "{{ network_plugin_etcd_cert_dir }}/ca.pem"
+  delegate_to: "{{groups['etcd'][0]}}"
+  register: ext_etcdcert_master
+  failed_when: not ext_etcdcert_master.stat.exists
+  run_once: true
+
+- name: "Check_certs | Set default value for 'ext_sync_certs' to false"
+  set_fact:
+    ext_sync_certs: false
+
+- name: "Check certs | check if a cert already exists"
+  stat:
+    path: "{{ network_plugin_etcd_cert_dir }}/ca.pem"
+  register: ext_etcdcert
+
+- name: "Check_certs | Set 'sync_certs' to true"
+  set_fact:
+    sync_certs: true
+  when: >-
+      {%- set ext_certs = {'sync': False} -%}
+      {%- for server in play_hosts
+         if (not hostvars[server].ext_etcdcert.stat.exists|default(False)) or
+         (hostvars[server].ext_etcdcert.stat.checksum|default('') != ext_etcdcert_master.stat.checksum|default('')) -%}
+         {%- set _ = ext_certs.update({'sync': True}) -%}
+      {%- endfor -%}
+      {{ ext_certs.sync }}
+  run_once: true

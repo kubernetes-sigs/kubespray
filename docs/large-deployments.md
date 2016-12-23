@@ -20,5 +20,12 @@ For a large scaled deployments, consider the following configuration changes:
   ``dns_cpu_requests``, ``dns_memory_limit``, ``dns_memory_requests``.
   Please note that limits must always be greater than or equal to requests.
 
+* Tune CPU/memory limits and requests. Those are located in roles' defaults
+  and named like ``foo_memory_limit``, ``foo_memory_requests`` and
+  ``foo_cpu_limit``, ``foo_cpu_requests``. Note that 'Mi' memory units for K8s
+  will be submitted as 'M', if applied for ``docker run``, and cpu K8s units will
+  end up with the 'm' skipped for docker as well. This is required as docker does not
+  understand k8s units well.
+
 For example, when deploying 200 nodes, you may want to run ansible with
 ``--forks=50``, ``--timeout=600`` and define the ``retry_stagger: 60``.

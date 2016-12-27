@@ -40,8 +40,7 @@
                     {{ m }}
                   {% endif %}
                 {% endfor %}"
-    - HOSTS: "{% set all_kube_hosts = groups['k8s-cluster']|union(groups['calico-rr']|default([]))|unique %}
-              {% for h in all_kube_hosts %}
+    - HOSTS: "{% for h in groups['k8s-cluster'] %}
                 {% if hostvars[h].sync_certs|default(false) %}
                     {{ h }}
                 {% endif %}
@@ -66,8 +65,7 @@
                      'member-{{ inventory_hostname }}-key.pem'
                      ]
     all_node_certs: "['ca.pem',
-                    {% set all_kube_hosts = groups['k8s-cluster']|union(groups['calico-rr']|default([]))|unique %}
-                    {% for node in all_kube_hosts %}
+                    {% for node in groups['k8s-cluster'] %}
                     'node-{{ node }}.pem',
                     'node-{{ node }}-key.pem',
                     {% endfor %}]"
@@ -78,14 +76,16 @@
   shell: "tar cfz - -C {{ etcd_cert_dir }} {{ my_master_certs|join(' ') }} {{ all_node_certs|join(' ') }}| base64 --wrap=0"
   register: etcd_master_cert_data
   delegate_to: "{{groups['etcd'][0]}}"
-  when: sync_certs|default(false)
+  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
+        inventory_hostname != groups['etcd'][0]
   notify: set etcd_secret_changed
 
 - name: Gen_certs | Gather etcd node certs
   shell: "tar cfz - -C {{ etcd_cert_dir }} {{ my_node_certs|join(' ') }} | base64 --wrap=0"
   register: etcd_node_cert_data
   delegate_to: "{{groups['etcd'][0]}}"
-  when: sync_certs|default(false)
+  when: inventory_hostname in groups['k8s-cluster'] and sync_certs|default(false) and
+        inventory_hostname not in groups['etcd']
   notify: set etcd_secret_changed
 
 - name: Gen_certs | Copy certs on masters
@@ -97,7 +97,8 @@
 - name: Gen_certs | Copy certs on nodes
   shell: "echo '{{etcd_node_cert_data.stdout|quote}}' | base64 -d | tar xz -C {{ etcd_cert_dir }}"
   changed_when: false
-  when: sync_certs|default(false) and inventory_hostname not in groups['etcd']
+  when: sync_certs|default(false) and
+        inventory_hostname not in groups['etcd']
 
 - name: Gen_certs | check certificate permissions
   file:

@@ -11,15 +11,9 @@ achieve the same goal.
 Etcd
 ----
 
-Etcd proxies are deployed on each node in the `k8s-cluster` group. A proxy is
-a separate etcd process. It has a `localhost:2379` frontend and all of the etcd
-cluster members as backends. Note that the `access_ip` is used as the backend
-IP, if specified. Frontend endpoints cannot be accessed externally as they are
-bound to a localhost only.
-
 The `etcd_access_endpoint` fact provides an access pattern for clients. And the
-`etcd_multiaccess` (defaults to `false`) group var controlls that behavior.
-When enabled, it makes deployed components to access the etcd cluster members
+`etcd_multiaccess` (defaults to `True`) group var controlls that behavior.
+It makes deployed components to access the etcd cluster members
 directly: `http://ip1:2379, http://ip2:2379,...`. This mode assumes the clients
 do a loadbalancing and handle HA for connections. Note, a pod definition of a
 flannel networking plugin always uses a single `--etcd-server` endpoint!
@@ -34,8 +28,8 @@ non-master Kubernetes node. This is referred to as localhost loadbalancing. It
 is less efficient than a dedicated load balancer because it creates extra
 health checks on the Kubernetes apiserver, but is more practical for scenarios
 where an external LB or virtual IP management is inconvenient.  This option is
-configured by the variable `loadbalancer_apiserver_localhost`.  You may also
-define the port the local internal loadbalancer users by changing,
+configured by the variable `loadbalancer_apiserver_localhost` (defaults to `False`).
+You may also define the port the local internal loadbalancer users by changing,
 `nginx_kube_apiserver_port`.  This defaults to the value of `kube_apiserver_port`.
 It is also import to note that Kargo will only configure kubelet and kube-proxy
 on non-master nodes to use the local internal loadbalancer.

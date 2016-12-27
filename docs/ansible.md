@@ -67,7 +67,9 @@ Group vars and overriding variables precedence
 ----------------------------------------------
 
 The group variables to control main deployment options are located in the directory ``inventory/group_vars``.
-
+Optional variables are located in the ```inventory/group_vars/all.yml```.
+Mandatory variables that are common for at least one role (or a node group) can be found in the
+```inventory/group_vars/k8s-cluster.yml```.
 There are also role vars for docker, rkt, kubernetes preinstall and master roles.
 According to the [ansible docs](http://docs.ansible.com/ansible/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),
 those cannot be overriden from the group vars. In order to override, one should use

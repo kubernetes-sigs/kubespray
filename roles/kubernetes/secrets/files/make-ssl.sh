@@ -27,8 +27,11 @@ Usage : $(basename $0) -f <config> [-d <ssldir>]
       -f | --config       : Openssl configuration file
       -d | --ssldir       : Directory where the certificates will be installed
 
-               ex :
-               $(basename $0) -f openssl.conf -d /srv/ssl
+      Environmental variables MASTERS and HOSTS should be set to generate keys
+      for each host.
+
+           ex :
+           MASTERS=node1 HOSTS="node1 node2" $(basename $0) -f openssl.conf -d /srv/ssl
 EOF
 }
 
@@ -61,21 +64,37 @@ cd "${tmpdir}"
 mkdir -p "${SSLDIR}"
 
 # Root CA
-openssl genrsa -out ca-key.pem 2048 > /dev/null 2>&1
-openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN=kube-ca" > /dev/null 2>&1
+if [ -e "$SSLDIR/ca-key.pem" ]; then
+    # Reuse existing CA
+    cp $SSLDIR/{ca.pem,ca-key.pem} .
+else
+    openssl genrsa -out ca-key.pem 2048 > /dev/null 2>&1
+    openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN=kube-ca" > /dev/null 2>&1
+fi
 
-# Apiserver
-openssl genrsa -out apiserver-key.pem 2048 > /dev/null 2>&1
-openssl req -new -key apiserver-key.pem -out apiserver.csr -subj "/CN=kube-apiserver" -config ${CONFIG} > /dev/null 2>&1
-openssl x509 -req -in apiserver.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out apiserver.pem -days 365 -extensions v3_req -extfile ${CONFIG} > /dev/null 2>&1
-cat ca.pem >> apiserver.pem
+if [ -n "$MASTERS" ]; then
+    for host in $MASTERS; do
+        # kube-apiserver key
+        openssl genrsa -out apiserver-${host}-key.pem 2048 > /dev/null 2>&1
+        openssl req -new -key apiserver-${host}-key.pem -out apiserver-${host}.csr -subj "/CN=kube-apiserver-${host}" -config ${CONFIG} > /dev/null 2>&1
+        openssl x509 -req -in apiserver-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out apiserver-${host}.pem -days 365 -extensions v3_req -extfile ${CONFIG} > /dev/null 2>&1
+        cat ca.pem >> apiserver-${host}.pem
+
+        # admin key
+        openssl genrsa -out admin-${host}-key.pem 2048 > /dev/null 2>&1
+        openssl req -new -key admin-${host}-key.pem -out admin-${host}.csr -subj "/CN=kube-admin-${host}" > /dev/null 2>&1
+        openssl x509 -req -in admin-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out admin-${host}.pem -days 365 > /dev/null 2>&1
+    done
+fi
 
 # Nodes and Admin
-for i in node admin; do
-    openssl genrsa -out ${i}-key.pem 2048 > /dev/null 2>&1
-    openssl req -new -key ${i}-key.pem -out ${i}.csr -subj "/CN=kube-${i}" > /dev/null 2>&1
-    openssl x509 -req -in ${i}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${i}.pem -days 365 > /dev/null 2>&1
-done
+if [ -n "$HOSTS" ]; then
+    for host in $HOSTS; do
+        openssl genrsa -out node-${host}-key.pem 2048 > /dev/null 2>&1
+        openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=kube-node-${host}" > /dev/null 2>&1
+        openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 365 > /dev/null 2>&1
+    done
+fi
 
 # Install certs
 mv *.pem ${SSLDIR}/

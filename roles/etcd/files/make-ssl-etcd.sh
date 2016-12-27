@@ -71,30 +71,24 @@ fi
 # ETCD member
 if [ -n "$MASTERS" ]; then
     for host in $MASTERS; do
+        # Member key
         openssl genrsa -out member-${host}-key.pem 2048 > /dev/null 2>&1
         openssl req -new -key member-${host}-key.pem -out member-${host}.csr -subj "/CN=etcd-member-${host}" -config ${CONFIG} > /dev/null 2>&1
         openssl x509 -req -in member-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out member-${host}.pem -days 365 -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
+
+        # Admin key
+        openssl genrsa -out admin-${host}-key.pem 2048 > /dev/null 2>&1
+        openssl req -new -key admin-${host}-key.pem -out admin-${host}.csr -subj "/CN=etcd-admin-${host}" > /dev/null 2>&1
+        openssl x509 -req -in admin-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out admin-${host}.pem -days 365 -extensions ssl_client  -extfile ${CONFIG} > /dev/null 2>&1
     done
-else
-    openssl genrsa -out member-key.pem 2048 > /dev/null 2>&1
-    openssl req -new -key member-key.pem -out member.csr -subj "/CN=etcd-member" -config ${CONFIG} > /dev/null 2>&1
-    openssl x509 -req -in member.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out member.pem -days 365 -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
 fi
 
-# Node and admin keys
+# Node keys
 if [ -n "$HOSTS" ]; then
     for host in $HOSTS; do
-        for i in node admin; do
-            openssl genrsa -out ${i}-${host}-key.pem 2048 > /dev/null 2>&1
-            openssl req -new -key ${i}-${host}-key.pem -out ${i}-${host}.csr -subj "/CN=kube-${i}-${host}" > /dev/null 2>&1
-            openssl x509 -req -in ${i}-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${i}-${host}.pem -days 365 -extensions ssl_client  -extfile ${CONFIG} > /dev/null 2>&1
-        done
-     done
-else
-    for i in node admin; do
-        openssl genrsa -out ${i}-key.pem 2048 > /dev/null 2>&1
-        openssl req -new -key ${i}-key.pem -out ${i}.csr -subj "/CN=kube-${i}" > /dev/null 2>&1
-        openssl x509 -req -in ${i}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${i}.pem -days 365 -extensions ssl_client  -extfile ${CONFIG} > /dev/null 2>&1
+        openssl genrsa -out node-${host}-key.pem 2048 > /dev/null 2>&1
+        openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=etcd-node-${host}" > /dev/null 2>&1
+        openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 365 -extensions ssl_client  -extfile ${CONFIG} > /dev/null 2>&1
     done
 fi
 

@@ -40,7 +40,8 @@
                     {{ m }}
                   {% endif %}
                 {% endfor %}"
-    - HOSTS: "{% for h in groups['k8s-cluster'] %}
+    - HOSTS: "{% set all_kube_hosts = groups['k8s-cluster']|union(groups['calico-rr']|default([]))|unique %}
+              {% for h in all_kube_hosts %}
                 {% if hostvars[h].sync_certs|default(false) %}
                     {{ h }}
                 {% endif %}
@@ -65,7 +66,8 @@
                      'member-{{ inventory_hostname }}-key.pem'
                      ]
     all_node_certs: "['ca.pem',
-                    {% for node in groups['k8s-cluster'] %}
+                    {% set all_kube_hosts = groups['k8s-cluster']|union(groups['calico-rr']|default([]))|unique %}
+                    {% for node in all_kube_hosts %}
                     'node-{{ node }}.pem',
                     'node-{{ node }}-key.pem',
                     {% endfor %}]"
@@ -76,7 +78,6 @@
   shell: "tar cfz - -C {{ etcd_cert_dir }} {{ my_master_certs|join(' ') }} {{ all_node_certs|join(' ') }}| base64 --wrap=0"
   register: etcd_master_cert_data
   delegate_to: "{{groups['etcd'][0]}}"
-  #run_once: true
   when: sync_certs|default(false)
   notify: set etcd_secret_changed
 
@@ -96,8 +97,7 @@
 - name: Gen_certs | Copy certs on nodes
   shell: "echo '{{etcd_node_cert_data.stdout|quote}}' | base64 -d | tar xz -C {{ etcd_cert_dir }}"
   changed_when: false
-  when: inventory_hostname in groups['k8s-cluster'] and sync_certs|default(false) and
-        inventory_hostname not in groups['etcd']
+  when: sync_certs|default(false) and inventory_hostname not in groups['etcd']
 
 - name: Gen_certs | check certificate permissions
   file:

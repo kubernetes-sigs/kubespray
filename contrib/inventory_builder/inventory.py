@@ -86,8 +86,12 @@ class KargoInventory(object):
         self.write_config(self.config_file)
 
     def write_config(self, config_file):
-        with open(config_file, 'w') as f:
-            self.config.write(f)
+        if config_file:
+            with open(config_file, 'w') as f:
+                self.config.write(f)
+        else:
+            print("WARNING: Unable to save config. Make sure you set "
+                  "CONFIG_FILE env var.")
 
     def debug(self, msg):
         if DEBUG:

@@ -19,6 +19,16 @@
 # Add another host after initial creation: inventory.py 10.10.1.5
 # Delete a host: inventory.py -10.10.1.3
 # Delete a host by id: inventory.py -node1
+#
+# Load a YAML or JSON file with inventory data: inventory.py load hosts.yaml
+# YAML file should be in the following format:
+#    group1:
+#      host1:
+#        ip: X.X.X.X
+#        var: val
+#    group2:
+#      host2:
+#        ip: X.X.X.X
 
 from collections import OrderedDict
 try:
@@ -32,7 +42,7 @@ import sys
 
 ROLES = ['kube-master', 'all', 'k8s-cluster:children', 'kube-node', 'etcd']
 PROTECTED_NAMES = ROLES
-AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips']
+AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'load']
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
                    '0': False, 'no': False, 'false': False, 'off': False}
 
@@ -51,8 +61,9 @@ class KargoInventory(object):
     def __init__(self, changed_hosts=None, config_file=None):
         self.config = configparser.ConfigParser(allow_no_value=True,
                                                 delimiters=('\t', ' '))
-        if config_file:
-            self.config.read(config_file)
+        self.config_file = config_file
+        if self.config_file:
+            self.config.read(self.config_file)
 
         if changed_hosts and changed_hosts[0] in AVAILABLE_COMMANDS:
             self.parse_command(changed_hosts[0], changed_hosts[1:])
@@ -72,9 +83,15 @@ class KargoInventory(object):
             self.show_help()
             sys.exit(0)
 
+        self.write_config(self.config_file)
+
+    def write_config(self, config_file):
         if config_file:
             with open(config_file, 'w') as f:
                 self.config.write(f)
+        else:
+            print("WARNING: Unable to save config. Make sure you set "
+                  "CONFIG_FILE env var.")
 
     def debug(self, msg):
         if DEBUG:
@@ -93,6 +110,7 @@ class KargoInventory(object):
     def ensure_required_groups(self, groups):
         for group in groups:
             try:
+                self.debug("Adding group {0}".format(group))
                 self.config.add_section(group)
             except configparser.DuplicateSectionError:
                 pass
@@ -195,6 +213,44 @@ class KargoInventory(object):
         for host in hosts:
             self.add_host_to_group('etcd', host)
 
+    def load_file(self, files=None):
+        '''Directly loads JSON, or YAML file to inventory.'''
+
+        if not files:
+            raise Exception("No input file specified.")
+
+        import json
+        import yaml
+
+        for filename in list(files):
+            # Try JSON, then YAML
+            try:
+                with open(filename, 'r') as f:
+                    data = json.load(f)
+            except ValueError:
+                try:
+                    with open(filename, 'r') as f:
+                        data = yaml.load(f)
+                        print("yaml")
+                except ValueError:
+                    raise Exception("Cannot read %s as JSON, YAML, or CSV",
+                                    filename)
+
+            self.ensure_required_groups(ROLES)
+            self.set_k8s_cluster()
+            for group, hosts in data.items():
+                self.ensure_required_groups([group])
+                for host, opts in hosts.items():
+                    optstring = "ansible_host={0} ip={0}".format(opts['ip'])
+                    for key, val in opts.items():
+                        if key == "ip":
+                            continue
+                        optstring += " {0}={1}".format(key, val)
+
+                    self.add_host_to_group('all', host, optstring)
+                    self.add_host_to_group(group, host)
+            self.write_config(self.config_file)
+
     def parse_command(self, command, args=None):
         if command == 'help':
             self.show_help()
@@ -202,6 +258,8 @@ class KargoInventory(object):
             self.print_config()
         elif command == 'print_ips':
             self.print_ips()
+        elif command == 'load':
+            self.load_file(args)
         else:
             raise Exception("Invalid command specified.")
 

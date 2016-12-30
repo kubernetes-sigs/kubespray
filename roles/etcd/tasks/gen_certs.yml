@@ -73,7 +73,9 @@
   tags: facts
 
 - name: Gen_certs | Gather etcd master certs
-  shell: "tar cfz - -C {{ etcd_cert_dir }} {{ my_master_certs|join(' ') }} {{ all_node_certs|join(' ') }}| base64 --wrap=0"
+  shell: "tar cfz - -C {{ etcd_cert_dir }} -T /dev/stdin <<< {{ my_master_certs|join(' ') }} {{ all_node_certs|join(' ') }} | base64 --wrap=0"
+  args:
+    executable: /bin/bash
   register: etcd_master_cert_data
   delegate_to: "{{groups['etcd'][0]}}"
   when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
@@ -81,7 +83,9 @@
   notify: set etcd_secret_changed
 
 - name: Gen_certs | Gather etcd node certs
-  shell: "tar cfz - -C {{ etcd_cert_dir }} {{ my_node_certs|join(' ') }} | base64 --wrap=0"
+  shell: "tar cfz - -C {{ etcd_cert_dir }} -T /dev/stdin <<< {{ my_node_certs|join(' ') }} | base64 --wrap=0"
+  args:
+    executable: /bin/bash
   register: etcd_node_cert_data
   delegate_to: "{{groups['etcd'][0]}}"
   when: inventory_hostname in groups['k8s-cluster'] and sync_certs|default(false) and
@@ -89,13 +93,17 @@
   notify: set etcd_secret_changed
 
 - name: Gen_certs | Copy certs on masters
-  shell: "echo '{{etcd_master_cert_data.stdout|quote}}' | base64 -d | tar xz -C {{ etcd_cert_dir }}"
+  shell: "base64 -d <<< '{{etcd_master_cert_data.stdout|quote}}' | tar xz -C {{ etcd_cert_dir }}"
+  args:
+    executable: /bin/bash
   changed_when: false
   when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
         inventory_hostname != groups['etcd'][0]
 
 - name: Gen_certs | Copy certs on nodes
-  shell: "echo '{{etcd_node_cert_data.stdout|quote}}' | base64 -d | tar xz -C {{ etcd_cert_dir }}"
+  shell: "base64 -d <<< '{{etcd_node_cert_data.stdout|quote}}' | tar xz -C {{ etcd_cert_dir }}"
+  args:
+    executable: /bin/bash
   changed_when: false
   when: sync_certs|default(false) and
         inventory_hostname not in groups['etcd']

@@ -57,7 +57,7 @@ Requirements
 * The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
 in order to avoid any issue during deployment you should disable your firewall
 * **Copy your ssh keys** to all the servers part of your inventory.
-* **Ansible v2.x and python-netaddr**
+* **Ansible v2.1 (or newer) and python-netaddr**
 
 
 ## Network plugins

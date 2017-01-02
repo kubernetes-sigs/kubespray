@@ -51,31 +51,11 @@
     docker_network_options: '"--bip={{ flannel_subnet }} --mtu={{ flannel_mtu }}"'
   tags: facts
 
-- name: Flannel | Remove non-systemd docker daemon network options that don't match desired line
-  lineinfile:
-    dest: "{{ docker_options_file }}"
-    regexp: "^DOCKER_NETWORK_OPTIONS=(?!{{ docker_network_options|regex_escape() }})"
-    state: absent
-  when: ansible_service_mgr in ["sysvinit","upstart"]
-
-- name: Flannel | Set non-systemd docker daemon network options
-  lineinfile:
-    dest: "{{ docker_options_file }}"
-    line: DOCKER_NETWORK_OPTIONS={{ docker_network_options }}
-    insertbefore: ^{{ docker_options_name }}=
-    owner: root
-    group: root
-    mode: 0644
-  notify:
-    - Flannel | restart docker
-  when: ansible_service_mgr in ["sysvinit","upstart"]
-
 - name: Flannel | Ensure path for docker network systemd drop-in
   file:
     path: "/etc/systemd/system/docker.service.d"
     state: directory
     owner: root
-  when: ansible_service_mgr == "systemd"
 
 - name: Flannel | Create docker network systemd drop-in
   template:
@@ -83,6 +63,3 @@
     dest: "/etc/systemd/system/docker.service.d/flannel-options.conf"
   notify:
     - Flannel | restart docker
-  when: ansible_service_mgr == "systemd"
-
-- meta: flush_handlers

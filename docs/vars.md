@@ -33,7 +33,7 @@ Some variables of note include:
 
 * *ip* - IP to use for binding services (host var)
 * *access_ip* - IP for other hosts to use to connect to. Often required when
-  deploying from a cloud, such as OpenStack or GCE and you have separate 
+  deploying from a cloud, such as OpenStack or GCE and you have separate
   public/floating and private IPs.
 * *ansible_default_ipv4.address* - Not Kargo-specific, but it is used if ip
   and access_ip are undefined
@@ -66,6 +66,10 @@ following default cluster paramters:
   OpenStack (default is unset)
 * *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in
   Kubernetes
+
+Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
+private addresses, make sure to pick another values for ``kube_service_addresses``
+and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.
 
 #### DNS variables
 

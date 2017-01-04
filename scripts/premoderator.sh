@@ -11,4 +11,5 @@ issue=$(echo ${CI_BUILD_REF_NAME} | perl -ne '/^pr-(\d+)-\S+$/ && print $1')
 user=$(curl ${CURL_ARGS} "https://api.github.com/repos/kubernetes-incubator/kargo/issues/${issue}/comments" \
   | jq -M "map(select(.body | contains (\"$MAGIC\"))) | .[0] .user.login" | tr -d '"')
 # Check for the required user group membership to allow (exit 0) or decline (exit >0) the pipeline
+[ "$user" != "null" ] || exit 1
 curl ${CURL_ARGS} "https://api.github.com/orgs/kubernetes-incubator/members/${user}"

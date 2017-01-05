@@ -51,7 +51,8 @@ before_script:
   LOG_LEVEL: "-vv"
   ETCD_DEPLOYMENT: "docker"
   KUBELET_DEPLOYMENT: "docker"
-
+  MAGIC: "ci check this"
+  
 .gce: &gce
   <<: *job
   <<: *docker_service
@@ -215,7 +216,7 @@ before_script:
   ETCD_DEPLOYMENT: rkt
   KUBELET_DEPLOYMENT: rkt
 
-# Builds for PRs only (auto) and triggers (auto)
+# Builds for PRs only (premoderated by unit-tests step) and triggers (auto)
 coreos-calico-sep:
   stage: deploy-gce-part1
   <<: *job
@@ -429,12 +430,16 @@ ubuntu-rkt-sep:
   except: ['triggers']
   only: ['master', /^pr-.*$/]
 
+# Premoderated with manual actions
 syntax-check:
   <<: *job
   stage: unit-tests
+  before_script:
+    - apt-get -y install jq
   script:
     - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root cluster.yml -vvv  --syntax-check
-  except: ['triggers']
+    - /bin/sh scripts/premoderator.sh
+  except: ['triggers', 'master']
 
 tox-inventory-builder:
   stage: unit-tests
@@ -443,4 +448,4 @@ tox-inventory-builder:
     - pip install tox
     - cd contrib/inventory_builder && tox
   when: manual
-  except: ['triggers']
+  except: ['triggers', 'master']

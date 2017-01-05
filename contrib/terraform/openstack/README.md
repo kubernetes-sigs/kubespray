@@ -36,7 +36,7 @@ Ensure your OpenStack credentials are loaded in environment variables. This can 
 $ source ~/.stackrc
 ```
 
-You will need two networks before installing, an internal network and 
+You will need two networks before installing, an internal network and
 an external (floating IP Pool) network. The internet network can be shared as
 we use security groups to provide network segregation. Due to the many
 differences between OpenStack installs the Terraform does not attempt to create
@@ -97,7 +97,7 @@ gfs_volume_size_in_gb = "50"
 ssh_user_gfs = "ubuntu"
 ```
 
-If these variables are provided, this will give rise to a new ansible group called `gfs-cluster`, for which we have added ansible roles to execute in the ansible provisioning step. If you are using CoreOS, these GlusterFS VM necessarily need to be either Debian or RedHat based VMs, CoreOS cannot serve GlusterFS, but can connect to it through binaries available on hyperkube v1.4.3_coreos.0 or higher.
+If these variables are provided, this will give rise to a new ansible group called `gfs-cluster`, for which we have added ansible roles to execute in the ansible provisioning step. If you are using Container Linux by CoreOS, these GlusterFS VM necessarily need to be either Debian or RedHat based VMs, Container Linux by CoreOS cannot serve GlusterFS, but can connect to it through binaries available on hyperkube v1.4.3_coreos.0 or higher.
 
 
 # Provision a Kubernetes Cluster on OpenStack
@@ -133,20 +133,20 @@ Make sure you can connect to the hosts:
 ```
 $ ansible -i contrib/terraform/openstack/hosts -m ping all
 example-k8s_node-1 | SUCCESS => {
-    "changed": false, 
+    "changed": false,
     "ping": "pong"
 }
 example-etcd-1 | SUCCESS => {
-    "changed": false, 
+    "changed": false,
     "ping": "pong"
 }
 example-k8s-master-1 | SUCCESS => {
-    "changed": false, 
+    "changed": false,
     "ping": "pong"
 }
 ```
 
-if you are deploying a system that needs bootstrapping, like CoreOS, these might have a state `FAILED` due to CoreOS not having python. As long as the state is not `UNREACHABLE`, this is fine.
+if you are deploying a system that needs bootstrapping, like Container Linux by CoreOS, these might have a state `FAILED` due to Container Linux by CoreOS not having python. As long as the state is not `UNREACHABLE`, this is fine.
 
 if it fails try to connect manually via SSH ... it could be somthing as simple as a stale host key.
 

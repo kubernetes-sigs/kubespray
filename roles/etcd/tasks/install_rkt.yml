@@ -1,0 +1,26 @@
+---
+- name: Trust etcd container
+  command: >-
+    /usr/bin/rkt trust
+    --skip-fingerprint-review
+    --root
+    https://quay.io/aci-signing-key
+  register: etcd_rkt_trust_result
+  until: etcd_rkt_trust_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+
+- name: Install | Copy etcdctl binary from rkt container
+  command: >-
+    /usr/bin/rkt run
+    --volume=bin-dir,kind=host,source={{ bin_dir}},readOnly=false
+    --mount=volume=bin-dir,target=/host/bin
+    {{ etcd_image_repo }}:{{ etcd_image_tag }}
+    --name=etcdctl-binarycopy
+    --exec=/bin/cp -- {{ etcd_container_bin_dir }}/etcdctl /host/bin/etcdctl
+  register: etcd_task_result
+  until: etcd_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false

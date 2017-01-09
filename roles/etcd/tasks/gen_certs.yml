@@ -40,7 +40,7 @@
                     {{ m }}
                   {% endif %}
                 {% endfor %}"
-    - HOSTS: "{% for h in groups['k8s-cluster'] %}
+    - HOSTS: "{% for h in (groups['k8s-cluster'] + groups['calico-rr']|default([]))|unique %}
                 {% if hostvars[h].sync_certs|default(false) %}
                     {{ h }}
                 {% endif %}
@@ -65,7 +65,7 @@
                      'member-{{ inventory_hostname }}-key.pem'
                      ]
     all_node_certs: "['ca.pem',
-                    {% for node in groups['k8s-cluster'] %}
+                    {% for node in (groups['k8s-cluster'] + groups['calico-rr']|default([]))|unique %}
                     'node-{{ node }}.pem',
                     'node-{{ node }}-key.pem',
                     {% endfor %}]"
@@ -88,8 +88,9 @@
     executable: /bin/bash
   register: etcd_node_cert_data
   delegate_to: "{{groups['etcd'][0]}}"
-  when: inventory_hostname in groups['k8s-cluster'] and sync_certs|default(false) and
-        inventory_hostname not in groups['etcd']
+  when: (('calico-rr' in groups and inventory_hostname in groups['calico-rr']) or
+        inventory_hostname in groups['k8s-cluster']) and
+        sync_certs|default(false) and inventory_hostname not in groups['etcd']
   notify: set etcd_secret_changed
 
 - name: Gen_certs | Copy certs on masters

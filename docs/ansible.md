@@ -48,8 +48,7 @@ etcd
 Group vars and overriding variables precedence
 ----------------------------------------------
 
-The group variables to control main deployment options are located in the directory
-```inventory/group_vars```.
+The group variables to control main deployment options are located in the directory ``inventory/group_vars``.
 
 There are also role vars for docker, rkt, kubernetes preinstall and master roles.
 According to the [ansible docs](http://docs.ansible.com/ansible/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),

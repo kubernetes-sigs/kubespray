@@ -45,9 +45,38 @@ kube-master
 etcd
 ```
 
-Group vars
---------------
-The main variables to change are located in the directory ```inventory/group_vars/all.yml```.
+Group vars and overriding variables precedence
+----------------------------------------------
+
+The group variables to control main deployment options are located in the directory
+```inventory/group_vars```.
+
+There are also role vars for docker, rkt, kubernetes preinstall and master roles.
+According to the [ansible docs](http://docs.ansible.com/ansible/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),
+those cannot be overriden from the group vars. In order to override, one should use
+the `-e ` runtime flags (most simple way) or other layers described in the docs.
+
+Kargo uses only a few layers to override things (or expect them to
+be overriden for roles):
+
+Layer | Comment
+------|--------
+**role defaults** | provides best UX to override things for Kargo deployments
+inventory vars | Unused
+**inventory group_vars** | Expects users to use ``all.yml``,``k8s-cluster.yml`` etc. to override things
+inventory host_vars | Unused
+playbook group_vars | Unuses
+playbook host_vars | Unused
+**host facts** | Kargo overrides for internal roles' logic, like state flags
+play vars | Unused
+play vars_prompt | Unused
+play vars_files | Unused
+registered vars | Unused
+set_facts | Kargo overrides those, for some places
+**role and include vars** | Provides bad UX to override things! Use extra vars to enforce
+block vars (only for tasks in block) | Kargo overrides for internal roles' logic
+task vars (only for the task) | Unused for roles, but only for helper scripts
+**extra vars** (always win precedence) | override with ``ansible-playbook -e @foo.yml``
 
 Ansible tags
 ------------
@@ -132,5 +161,5 @@ bastion host.
 bastion ansible_ssh_host=x.x.x.x
 ```
 
-For more information about Ansible and bastion hosts, read 
+For more information about Ansible and bastion hosts, read
 [Running Ansible Through an SSH Bastion Host](http://blog.scottlowe.org/2015/12/24/running-ansible-through-ssh-bastion-host/)

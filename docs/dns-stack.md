@@ -9,47 +9,14 @@ to serve as an authoritative DNS server for a given ``dns_domain`` and its
 Other nodes in the inventory, like external storage nodes or a separate etcd cluster
 node group, considered non-cluster and left up to the user to configure DNS resolve.
 
-Note, custom ``ndots`` values affect only the dnsmasq daemon set (explained below).
-While the kubedns has the ``ndots=5`` hardcoded, which is not recommended due to
-[DNS performance reasons](https://github.com/kubernetes/kubernetes/issues/14051).
-You can use config maps for the kubedns app to workaround the issue, which is
-yet in the Kargo scope.
 
-Additional search (sub)domains may be defined in the ``searchdomains``
-and ``ndots`` vars. And additional recursive DNS resolvers in the `` upstream_dns_servers``,
-``nameservers`` vars. Intranet/cloud provider DNS resolvers should be specified
-in the first place, followed by external resolvers, for example:
+DNS variables
+=============
 
-```
-skip_dnsmasq: true
-nameservers: [8.8.8.8]
-upstream_dns_servers: [172.18.32.6]
-```
-or
-```
-skip_dnsmasq: false
-upstream_dns_servers: [172.18.32.6, 172.18.32.7, 8.8.8.8, 8.8.8.4]
-```
-The vars are explained below. For the early cluster deployment stage, when there
-is yet K8s cluster and apps exist, a user may expect local repos to be
-accessible via authoritative intranet resolvers. For that case, if none custom vars
-was specified, the default resolver is set to either the cloud provider default
-or `8.8.8.8`. And domain is set to the default ``dns_domain`` value as well.
-Later, the nameservers will be reconfigured to the DNS service IP that Kargo
-configures for K8s cluster.
+There are several global variables which can be used to modify DNS settings:
 
-Also note, existing records will be purged from the `/etc/resolv.conf`,
-including resolvconf's base/head/cloud-init config files and those that come from dhclient.
-This is required for hostnet pods networking and for [kubelet to not exceed search domains
-limits](https://github.com/kubernetes/kubernetes/issues/9229).
-
-Instead, new domain, search, nameserver records and options will be defined from the
-aforementioned vars:
-* Superseded via dhclient's DNS update hook.
-* Generated via cloud-init (CoreOS only).
-* Statically defined in the `/etc/resolv.conf`, if none of above is applicable.
-* Resolvconf's head/base files are disabled from populating anything into the
-  `/etc/resolv.conf`.
+#### ndots
+ndots value to be used in ``/etc/resolv.conf``
 
 It is important to note that multiple search domains combined with high ``ndots``
 values lead to poor performance of DNS stack, so please choose it wisely.
@@ -58,48 +25,97 @@ replies for [bogus internal FQDNS](https://github.com/kubernetes/kubernetes/issu
 before it even hits the kubedns app. This enables dnsmasq to serve as a
 protective, but still recursive resolver in front of kubedns.
 
-DNS configuration details
--------------------------
+#### searchdomains
+Custom search domains to be added in addition to the cluster search domains (``default.svc.{{ dns_domain }}, svc.{{ dns_domain }}``).
 
-Here is an approximate picture of how DNS things working and
-being configured by Kargo ansible playbooks:
+Most Linux systems limit the total number of search domains to 6 and the total length of all search domains
+to 256 characters. Depending on the length of ``dns_domain``, you're limitted to less then the total limit.
 
-![Image](figures/dns.jpeg?raw=true)
+Please note that ``resolvconf_mode: docker_dns`` will automatically add your systems search domains as
+additional search domains. Please take this into the accounts for the limits.
 
-Note that an additional dnsmasq daemon set is installed by Kargo
-by default. Kubelet will configure DNS base of all pods to use the
-given dnsmasq cluster IP, which is defined via the ``dns_server`` var.
-The dnsmasq forwards requests for a given cluster ``dns_domain`` to
-Kubedns's SkyDns service. The SkyDns server is configured to be an
-authoritative DNS server for the given cluser domain (and its subdomains
-up to ``ndots:5`` depth). Note: you should scale its replication controller
-up, if SkyDns chokes. These two layered DNS forwarders provide HA for the
-DNS cluster IP endpoint, which is a critical moving part for Kubernetes apps.
+#### nameservers
+This variable is only used by ``resolvconf_mode: host_resolvconf``. These nameservers are added to the hosts
+``/etc/resolv.conf`` *after* ``upstream_dns_servers`` and thus serve as backup nameservers. If this variable
+is not set, a default resolver is chosen (depending on cloud provider or 8.8.8.8 when no cloud provider is specified).
 
-Nameservers are as well configured in the hosts' ``/etc/resolv.conf`` files,
-as the given DNS cluster IP merged with ``nameservers`` values. While the
-DNS cluster IP merged with the ``upstream_dns_servers`` defines additional
-nameservers for the aforementioned nsmasq daemon set running on all hosts.
-This mitigates existing Linux limitation of max 3 nameservers in the
-``/etc/resolv.conf`` and also brings an additional caching layer for the
-clustered DNS services.
+#### upstream_dns_servers
+DNS servers to be added *after* the cluster DNS. Used by all ``resolvconf_mode`` modes. These serve as backup
+DNS servers in early cluster deployment when no cluster DNS is available yet. These are also added as upstream
+DNS servers used by ``dnsmasq`` (when deployed with ``dns_mode: dnsmasq_kubedns``).
 
-You can skip the dnsmasq daemon set install steps by setting the
-``skip_dnsmasq: true``. This may be the case, if you're fine with
-the nameservers limitation. Sadly, there is no way to work around the
-search domain limitations of a 256 chars and 6 domains. Thus, you can
-use the ``searchdomains`` var to define no more than a three custom domains.
-Remaining three slots are reserved for K8s cluster default subdomains.
+DNS modes supported by kargo
+============================
 
-When dnsmasq skipped, Kargo redefines the DNS cluster IP to point directly
-to SkyDns cluster IP ``skydns_server`` and configures Kubelet's
-``--dns_cluster`` to use that IP as well. While this greatly simplifies
-things, it comes by the price of limited nameservers though. As you know now,
-the DNS cluster IP takes a slot in the ``/etc/resolv.conf``, thus you can
-specify no more than a two nameservers for infra and/or external use.
-Those may be specified either in ``nameservers`` or ``upstream_dns_servers``
-and will be merged together with the ``skydns_server`` IP into the hots'
-``/etc/resolv.conf``.
+You can modify how kargo sets up DNS for your cluster with the variables ``dns_mode`` and ``resolvconf_mode``.
+
+## dns_mode
+``dns_mode`` configures how kargo will setup cluster DNS. There are three modes available:
+
+#### dnsmasq_kubedns (default)
+This installs an additional dnsmasq DaemonSet which gives more flexibility and lifts some
+limitations (e.g. number of nameservers). Kubelet is instructed to use dnsmasq instead of kubedns/skydns.
+It is configured to forward all DNS queries belonging to cluster services to kubedns/skydns. All
+other queries are forwardet to the nameservers found in ``upstream_dns_servers`` or ``default_resolver``
+
+#### kubedns
+This does not install the dnsmasq DaemonSet and instructs kubelet to directly use kubedns/skydns for
+all queries.
+
+#### none
+This does not install any of dnsmasq and kubedns/skydns. This basically disables cluster DNS completely and
+leaves you with a non functional cluster.
+
+## resolvconf_mode
+``resolvconf_mode`` configures how kargo will setup DNS for ``hostNetwork: true`` PODs and non-k8s containers.
+There are three modes available:
+
+#### docker_dns (default)
+This sets up the docker daemon with additional --dns/--dns-search/--dns-opt flags.
+
+The following nameservers are added to the docker daemon (in the same order as listed here):
+* cluster nameserver (depends on dns_mode)
+* content of optional upstream_dns_servers variable
+* host system nameservers (read from hosts /etc/resolv.conf)
+
+The following search domains are added to the docker daemon (in the same order as listed here):
+* cluster domains (``default.svc.{{ dns_domain }}``, ``svc.{{ dns_domain }}``)
+* content of optional searchdomains variable
+* host system search domains (read from hosts /etc/resolv.conf)
+
+The following dns options are added to the docker daemon
+* ndots:{{ ndots }}
+* timeout:2
+* attempts:2
+
+For normal PODs, k8s will ignore these options and setup its own DNS settings for the PODs, taking
+the --cluster_dns (either dnsmasq or kubedns, depending on dns_mode) kubelet option into account.
+For ``hostNetwork: true`` PODs however, k8s will let docker setup DNS settings. Docker containers which
+are not started/managed by k8s will also use these docker options.
+
+The host system name servers are added to ensure name resolution is also working while cluster DNS is not
+running yet. This is especially important in early stages of cluster deployment. In this early stage,
+DNS queries to the cluster DNS will timeout after a few seconds, resulting in the system nameserver being
+used as a backup nameserver. After cluster DNS is running, all queries will be answered by the cluster DNS
+servers, which in turn will forward queries to the system nameserver if required.
+
+#### host_resolvconf
+This activates the classic kargo behaviour that modifies the hosts ``/etc/resolv.conf`` file and dhclient
+configuration to point to the cluster dns server (either dnsmasq or kubedns, depending on dns_mode).
+
+As cluster DNS is not available on early deployment stage, this mode is split into 2 stages. In the first
+stage (``dns_early: true``), ``/etc/resolv.conf`` is configured to use the DNS servers found in ``upstream_dns_servers``
+and ``nameservers``. Later, ``/etc/resolv.conf`` is reconfigured to use the cluster DNS server first, leaving
+the other nameservers as backups.
+
+Also note, existing records will be purged from the `/etc/resolv.conf`,
+including resolvconf's base/head/cloud-init config files and those that come from dhclient.
+
+#### none
+Does nothing regarding ``/etc/resolv.conf``. This leaves you with a cluster that works as expected in most cases.
+The only exception is that ``hostNetwork: true`` PODs and non-k8s managed containers will not be able to resolve
+cluster service names.
+
 
 Limitations
 -----------

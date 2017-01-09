@@ -1,0 +1,61 @@
+---
+
+- name: set dns server for docker
+  set_fact:
+    docker_dns_servers: |-
+      {%- if dns_mode == 'kubedns' -%}
+        {{ [ skydns_server ] }}
+      {%- elif dns_mode == 'dnsmasq_kubedns' -%}
+        {{ [ dns_server ] }}
+      {%- endif -%}
+
+- name: set base docker dns facts
+  set_fact:
+    docker_dns_search_domains:
+      - 'default.svc.{{ dns_domain }}'
+      - 'svc.{{ dns_domain }}'
+    docker_dns_options:
+      - ndots:{{ ndots }}
+      - timeout:2
+      - attempts:2
+
+- name: add upstream dns servers (only when dnsmasq is not used)
+  set_fact:
+    docker_dns_servers: "{{ docker_dns_servers + upstream_dns_servers|default([]) }}"
+  when: dns_mode == 'kubedns'
+
+- name: add global searchdomains
+  set_fact:
+    docker_dns_search_domains: "{{ docker_dns_search_domains + searchdomains|default([]) }}"
+
+- name: check system nameservers
+  shell: grep "^nameserver" /etc/resolv.conf | sed 's/^nameserver\s*//'
+  changed_when: False
+  register: system_nameservers
+
+- name: check system search domains
+  shell: grep "^search" /etc/resolv.conf | sed 's/^search\s*//'
+  changed_when: False
+  register: system_search_domains
+
+- name: add system nameservers to docker options
+  set_fact:
+    docker_dns_servers: "{{ docker_dns_servers + [item] }}"
+  with_items: "{{ system_nameservers.stdout_lines|default([]) }}"
+
+- name: add system search domains to docker options
+  set_fact:
+    docker_dns_search_domains: "{{ docker_dns_search_domains + [item] }}"
+  with_items: "{{ system_search_domains.stdout.split(' ') }}"
+
+- name: check number of nameservers
+  fail: msg="Too many nameservers"
+  when: docker_dns_servers|length > 3
+
+- name: check number of search domains
+  fail: msg="Too many search domains"
+  when: docker_dns_search_domains|length > 6
+
+- name: check length of search domains
+  fail: msg="Search domains exceeded limit of 256 characters"
+  when: docker_dns_search_domains|join(' ')|length > 256

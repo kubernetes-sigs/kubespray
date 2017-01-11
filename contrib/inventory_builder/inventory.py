@@ -40,7 +40,8 @@ import os
 import re
 import sys
 
-ROLES = ['kube-master', 'all', 'k8s-cluster:children', 'kube-node', 'etcd']
+ROLES = ['all', 'kube-master', 'kube-node', 'etcd', 'k8s-cluster:children',
+         'calico-rr']
 PROTECTED_NAMES = ROLES
 AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'load']
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
@@ -51,9 +52,17 @@ def get_var_as_bool(name, default):
     value = os.environ.get(name, '')
     return _boolean_states.get(value.lower(), default)
 
+# Configurable as shell vars start
+
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory.cfg")
+# Reconfigures cluster distribution at scale
+SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 50))
+MASSIVE_SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 200))
+
 DEBUG = get_var_as_bool("DEBUG", True)
 HOST_PREFIX = os.environ.get("HOST_PREFIX", "node")
+
+# Configurable as shell vars end
 
 
 class KargoInventory(object):
@@ -74,11 +83,16 @@ class KargoInventory(object):
         if changed_hosts:
             self.hosts = self.build_hostnames(changed_hosts)
             self.purge_invalid_hosts(self.hosts.keys(), PROTECTED_NAMES)
-            self.set_kube_master(list(self.hosts.keys())[:2])
             self.set_all(self.hosts)
             self.set_k8s_cluster()
-            self.set_kube_node(self.hosts.keys())
             self.set_etcd(list(self.hosts.keys())[:3])
+            if len(self.hosts) >= SCALE_THRESHOLD:
+                self.set_kube_master(list(self.hosts.keys())[3:5])
+            else:
+                self.set_kube_master(list(self.hosts.keys())[:2])
+            self.set_kube_node(self.hosts.keys())
+            if len(self.hosts) >= SCALE_THRESHOLD:
+                self.set_calico_rr(list(self.hosts.keys())[:3])
         else:  # Show help if no options
             self.show_help()
             sys.exit(0)
@@ -205,8 +219,32 @@ class KargoInventory(object):
         self.add_host_to_group('k8s-cluster:children', 'kube-node')
         self.add_host_to_group('k8s-cluster:children', 'kube-master')
 
+    def set_calico_rr(self, hosts):
+        for host in hosts:
+            if host in self.config.items('kube-master'):
+                    self.debug("Not adding {0} to calico-rr group because it "
+                               "conflicts with kube-master group".format(host))
+                    continue
+            if host in self.config.items('kube-node'):
+                    self.debug("Not adding {0} to calico-rr group because it "
+                               "conflicts with kube-node group".format(host))
+                    continue
+            self.add_host_to_group('calico-rr', host)
+
     def set_kube_node(self, hosts):
         for host in hosts:
+            if len(self.config['all']) >= SCALE_THRESHOLD:
+                if self.config.has_option('etcd', host):
+                    self.debug("Not adding {0} to kube-node group because of "
+                               "scale deployment and host is in etcd "
+                               "group.".format(host))
+                    continue
+            if len(self.config['all']) >= MASSIVE_SCALE_THRESHOLD:
+                if self.config.has_option('kube-master', host):
+                    self.debug("Not adding {0} to kube-node group because of "
+                               "scale deployment and host is in kube-master "
+                               "group.".format(host))
+                    continue
             self.add_host_to_group('kube-node', host)
 
     def set_etcd(self, hosts):
@@ -275,7 +313,15 @@ print_ips - Write a space-delimited list of IPs from "all" group
 Advanced usage:
 Add another host after initial creation: inventory.py 10.10.1.5
 Delete a host: inventory.py -10.10.1.3
-Delete a host by id: inventory.py -node1'''
+Delete a host by id: inventory.py -node1
+
+Configurable env vars:
+DEBUG                   Enable debug printing. Default: True
+CONFIG_FILE             File to write config to Default: ./inventory.cfg
+HOST_PREFIX             Host prefix for generated hosts. Default: node
+SCALE_THRESHOLD         Separate ETCD role if # of nodes >= 50
+MASSIVE_SCALE_THRESHOLD Separate K8s master and ETCD if # of nodes >= 200
+'''
         print(help_text)
 
     def print_config(self):

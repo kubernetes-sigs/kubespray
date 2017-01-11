@@ -1,0 +1,22 @@
+---
+
+# These tasks will undo changes done by kargo in the past if needed (e.g. when upgrading from kargo 2.0.x
+# or when changing resolvconf_mode)
+
+- name: Remove kargo specific config from dhclient config
+  blockinfile:
+    dest: "{{dhclientconffile}}"
+    state: absent
+    backup: yes
+    follow: yes
+    marker: "# Ansible entries {mark}"
+  notify: Preinstall | restart network
+
+- name: Remove kargo specific dhclient hook
+  file: path="{{ dhclienthookfile }}" state=absent
+  notify: Preinstall | restart network
+  when: ansible_os_family != "RedHat"
+
+# We need to make sure the network is restarted early enough so that docker can later pick up the correct system
+# nameservers and search domains
+- meta: flush_handlers

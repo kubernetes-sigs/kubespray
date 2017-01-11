@@ -8,20 +8,39 @@ The inventory is composed of 3 groups:
 
 * **kube-node** : list of kubernetes nodes where the pods will run.
 * **kube-master** : list of servers where kubernetes master components (apiserver, scheduler, controller) will run.
-  Note: if you want the server to act both as master and node the server must be defined on both groups _kube-master_ and _kube-node_
 * **etcd**: list of server to compose the etcd server. you should have at least 3 servers for failover purposes.
+
+Note: do not modify the children of _k8s-cluster_, like putting
+the _etcd_ group into the _k8s-cluster_, unless you are certain
+to do that and you have it fully contained in the latter:
+
+```
+k8s-cluster ⊂ etcd => kube-node ∩ etcd = etcd
+```
+
+When _kube-node_ contains _etcd_, you define your etcd cluster to be as well schedulable for Kubernetes workloads.
+If you want it a standalone, make sure those groups do not intersect.
+If you want the server to act both as master and node, the server must be defined
+on both groups _kube-master_ and _kube-node_. If you want a standalone and
+unschedulable master, the server must be defined only in the _kube-master_ and
+not _kube-node_.
+
+There are also two special groups:
+
+* **calico-rr**  : explained for [advanced Calico networking cases](docs/calico.md)
+* **bastion** : configure a bastion host if your nodes are not directly reachable
 
 Below is a complete inventory example:
 
 ```
 ## Configure 'ip' variable to bind kubernetes services on a
 ## different ip than the default iface
-node1 ansible_ssh_host=95.54.0.12  # ip=10.3.0.1
-node2 ansible_ssh_host=95.54.0.13  # ip=10.3.0.2
-node3 ansible_ssh_host=95.54.0.14  # ip=10.3.0.3
-node4 ansible_ssh_host=95.54.0.15  # ip=10.3.0.4
-node5 ansible_ssh_host=95.54.0.16  # ip=10.3.0.5
-node6 ansible_ssh_host=95.54.0.17  # ip=10.3.0.6
+node1 ansible_ssh_host=95.54.0.12 ip=10.3.0.1
+node2 ansible_ssh_host=95.54.0.13 ip=10.3.0.2
+node3 ansible_ssh_host=95.54.0.14 ip=10.3.0.3
+node4 ansible_ssh_host=95.54.0.15 ip=10.3.0.4
+node5 ansible_ssh_host=95.54.0.16 ip=10.3.0.5
+node6 ansible_ssh_host=95.54.0.17 ip=10.3.0.6
 
 [kube-master]
 node1
@@ -42,7 +61,6 @@ node6
 [k8s-cluster:children]
 kube-node
 kube-master
-etcd
 ```
 
 Group vars and overriding variables precedence

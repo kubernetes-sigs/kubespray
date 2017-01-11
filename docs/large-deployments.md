@@ -27,5 +27,15 @@ For a large scaled deployments, consider the following configuration changes:
   end up with the 'm' skipped for docker as well. This is required as docker does not
   understand k8s units well.
 
+* Add calico-rr nodes if you are deploying with Calico or Canal. Nodes recover
+  from host/network interruption much quicker with calico-rr. Note that
+  calico-rr role must be on a host without kube-master or kube-node role (but
+  etcd role is okay).
+
+* Check out the
+  [Inventory](https://github.com/kubernetes-incubator/kargo/blob/master/docs/getting-started.md#building-your-own-inventory)
+  section of the Getting started guide for tips on creating a large scale
+  Ansible inventory.
+
 For example, when deploying 200 nodes, you may want to run ansible with
 ``--forks=50``, ``--timeout=600`` and define the ``retry_stagger: 60``.

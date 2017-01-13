@@ -76,17 +76,6 @@
   when: cloud_provider is defined and cloud_provider == 'azure'
   tags: [cloud-provider, azure, facts]
 
-- name: Enable ip forwarding
-  lineinfile:
-    dest: /etc/sysctl.d/99-sysctl.conf
-    regexp: '^net.ipv4.ip_forward='
-    line: 'net.ipv4.ip_forward=1'
-    state: present
-    create: yes
-    backup: yes
-    validate: 'sysctl -f %s'
-  tags: bootstrap-os
-
 - name: Create cni directories
   file:
     path: "{{ item }}"
@@ -134,6 +123,13 @@
   when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
   tags: bootstrap-os
 
+# Todo : selinux configuration
+- name: Set selinux policy to permissive
+  selinux: policy=targeted state=permissive
+  when: ansible_os_family == "RedHat"
+  changed_when: False
+  tags: bootstrap-os
+
 - name: Disable IPv6 DNS lookup
   lineinfile:
     dest: /etc/gai.conf
@@ -143,11 +139,15 @@
   when: disable_ipv6_dns and not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
   tags: bootstrap-os
 
-# Todo : selinux configuration
-- name: Set selinux policy to permissive
-  selinux: policy=targeted state=permissive
-  when: ansible_os_family == "RedHat"
-  changed_when: False
+- name: Enable ip forwarding
+  lineinfile:
+    dest: /etc/sysctl.d/99-sysctl.conf
+    regexp: '^net.ipv4.ip_forward='
+    line: 'net.ipv4.ip_forward=1'
+    state: present
+    create: yes
+    backup: yes
+    validate: 'sysctl -f %s'
   tags: bootstrap-os
 
 - name: Write openstack cloud-config

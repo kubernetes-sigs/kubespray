@@ -1,0 +1,50 @@
+---
+
+# This could be a role or custom module
+
+- name: gen_cert | Ensure target directory exists
+  file:
+    path: "{{ gen_cert_path | dirname }}" 
+    state: directory
+
+- name: gen_cert | Generate the cert
+  uri:
+    url: "{{ gen_cert_vault_url}}/v1/pki/issue/{{ gen_cert_vault_role }}"
+    headers: "{{ gen_cert_vault_headers }}"
+    method: POST
+    body_format: json
+    body:
+      alt_names: "{{ gen_cert_alt_names|default([]) }}"
+      common_name: "{{ gen_cert_path.rsplit('/', 1)[1].rsplit('.', 1)[0] }}"
+      format: "{{ gen_cert_format|default('pem') }}"
+      ip_sans: "{{ gen_cert_ip_sans|default([]) }}"
+  register: gen_cert_result
+  when: inventory_hostname == gen_cert_hosts|first
+
+- name: gen_cert | Copy the cert to all hosts
+  copy:
+    content: "{{ hostvars[gen_cert_hosts|first]['gen_cert_result']['json']['data']['certificate'] }}"
+    dest: "{{ gen_cert_path }}"
+
+- name: gen_cert | Copy the key to all hosts
+  copy:
+    content: "{{ hostvars[gen_cert_hosts|first]['gen_cert_result']['json']['data']['private_key'] }}"
+    dest: "{{ gen_cert_path.rsplit('.', 1)|first + '-key.' + gen_cert_path.rsplit('.', 1)|last }}"
+
+- name: gen_cert | Copy issuing CA cert
+  copy:
+    content: "{{ hostvars[gen_cert_hosts|first]['gen_cert_result']['json']['data']['issuing_ca'] }}"
+    dest: "{{ gen_cert_path | dirname }}/ca.pem"
+  when: gen_cert_copy_ca|default(false)|bool
+
+- name: gen_cert | Unset common variables to avoid bleed over
+  set_fact:
+    gen_cert_copy_ca: false
+    gen_cert_alt_names: []
+    gen_cert_format: pem
+    gen_cert_hosts: []
+    gen_cert_ip_sans: []
+    gen_cert_path: ''
+    gen_cert_vault_headers: ''
+    gen_cert_vault_role: ''
+    gen_cert_vault_url: ''

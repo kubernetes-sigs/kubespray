@@ -82,9 +82,10 @@ fi
 
 if [ -n "$MASTERS" ]; then
     for host in $MASTERS; do
+        cn="${host%%.*}"
         # admin key
         openssl genrsa -out admin-${host}-key.pem 2048 > /dev/null 2>&1
-        openssl req -new -key admin-${host}-key.pem -out admin-${host}.csr -subj "/CN=kube-admin-${host}" > /dev/null 2>&1
+        openssl req -new -key admin-${host}-key.pem -out admin-${host}.csr -subj "/CN=kube-admin-${cn}" > /dev/null 2>&1
         openssl x509 -req -in admin-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out admin-${host}.pem -days 365 > /dev/null 2>&1
     done
 fi
@@ -92,9 +93,10 @@ fi
 # Nodes and Admin
 if [ -n "$HOSTS" ]; then
     for host in $HOSTS; do
+        cn="${host%%.*}"
         # node key
         openssl genrsa -out node-${host}-key.pem 2048 > /dev/null 2>&1
-        openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=kube-node-${host}" > /dev/null 2>&1
+        openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=kube-node-${cn}" > /dev/null 2>&1
         openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 365 > /dev/null 2>&1
     done
 fi

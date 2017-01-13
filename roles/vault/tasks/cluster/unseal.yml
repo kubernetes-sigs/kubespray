@@ -1,0 +1,26 @@
+---
+
+- name: cluster/unseal | Unseal Vault
+  uri:
+    url: "https://localhost:{{ vault_port }}/v1/sys/unseal"
+    headers: "{{ vault_headers }}"
+    method: POST
+    body_format: json
+    body:
+      key: "{{ item }}"
+  with_items: "{{ vault_unseal_keys|default([]) }}"
+  when: vault_is_sealed
+
+- name: cluster/unseal | Find the current leader
+  uri:
+    url: "https://localhost:{{ vault_port }}/v1/sys/health"
+    headers: "{{ vault_headers }}"
+    method: HEAD
+    status_code: 200,429
+  register: vault_leader_check
+
+- name: cluster/unseal | Set fact for current leader
+  set_fact:
+    vault_leader: "{{ item }}"
+  with_items: "{{ groups.vault }}"
+  when: 'hostvars[item]["vault_leader_check"]["status"] == 200'

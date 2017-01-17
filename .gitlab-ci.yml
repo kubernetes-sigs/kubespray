@@ -48,12 +48,13 @@ before_script:
   GS_SECRET_ACCESS_KEY: $GS_SECRET
   ANSIBLE_KEEP_REMOTE_FILES: "1"
   BOOTSTRAP_OS: none
+  IDEMPOT_CHECK: "false"
   RESOLVCONF_MODE: docker_dns
   LOG_LEVEL: "-vv"
   ETCD_DEPLOYMENT: "docker"
   KUBELET_DEPLOYMENT: "docker"
   MAGIC: "ci check this"
-  
+
 .gce: &gce
   <<: *job
   <<: *docker_service
@@ -122,6 +123,69 @@ before_script:
     ## Advanced DNS checks
     - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/040_check-network-adv.yml $LOG_LEVEL
 
+    ## Idempotency checks 1/5 (repeat deployment)
+    - >
+      if [ "${IDEMPOT_CHECK}" = "true" ]; then
+      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS 
+      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
+      --private-key=${HOME}/.ssh/id_rsa 
+      -e bootstrap_os=${BOOTSTRAP_OS} 
+      -e ansible_python_interpreter=${PYPATH} 
+      -e download_run_once=true 
+      -e download_localhost=true 
+      -e deploy_netchecker=true 
+      -e resolvconf_mode=${RESOLVCONF_MODE} 
+      -e local_release_dir=${PWD}/downloads 
+      -e etcd_deployment_type=${ETCD_DEPLOYMENT} 
+      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT} 
+      cluster.yml;
+      fi
+
+    ## Idempotency checks 2/5 (Advanced DNS checks)
+    - >
+      if [ "${IDEMPOT_CHECK}" = "true" ]; then
+      ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} 
+      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root 
+      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+      fi
+
+    ## Idempotency checks 3/5 (reset deployment)
+    - >
+      if [ "${IDEMPOT_CHECK}" = "true" ]; then
+      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS 
+      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
+      --private-key=${HOME}/.ssh/id_rsa 
+      -e bootstrap_os=${BOOTSTRAP_OS} 
+      -e ansible_python_interpreter=${PYPATH} 
+      reset.yml;
+      fi
+
+    ## Idempotency checks 4/5 (redeploy after reset)
+    - >
+      if [ "${IDEMPOT_CHECK}" = "true" ]; then
+      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS 
+      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
+      --private-key=${HOME}/.ssh/id_rsa 
+      -e bootstrap_os=${BOOTSTRAP_OS} 
+      -e ansible_python_interpreter=${PYPATH} 
+      -e download_run_once=true 
+      -e download_localhost=true 
+      -e deploy_netchecker=true 
+      -e resolvconf_mode=${RESOLVCONF_MODE} 
+      -e local_release_dir=${PWD}/downloads 
+      -e etcd_deployment_type=${ETCD_DEPLOYMENT} 
+      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT} 
+      cluster.yml;
+      fi
+
+    ## Idempotency checks 5/5 (Advanced DNS checks)
+    - >
+      if [ "${IDEMPOT_CHECK}" = "true" ]; then
+      ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} 
+      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root 
+      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+      fi
+
   after_script:
     - >
       ansible-playbook -i inventory/inventory.ini tests/cloud_playbooks/delete-gce.yml -c local  $LOG_LEVEL
@@ -181,6 +245,7 @@ before_script:
   CLUSTER_MODE: default
   BOOTSTRAP_OS: coreos
   RESOLVCONF_MODE: host_resolvconf # This is required as long as the CoreOS stable channel uses docker < 1.12
+  IDEMPOT_CHECK: "true"
 
 .rhel7_canal_sep_variables: &rhel7_canal_sep_variables
 # stage: deploy-gce-special
@@ -195,6 +260,7 @@ before_script:
   CLOUD_IMAGE: ubuntu-1604-xenial
   CLOUD_REGION: us-central1-b
   CLUSTER_MODE: separated
+  IDEMPOT_CHECK: "true"
 
 .centos7_calico_ha_variables: &centos7_calico_ha_variables
 # stage: deploy-gce-special
@@ -202,6 +268,7 @@ before_script:
   CLOUD_IMAGE: centos-7
   CLOUD_REGION: europe-west1-b
   CLUSTER_MODE: ha
+  IDEMPOT_CHECK: "true"
 
 .coreos_alpha_weave_ha_variables: &coreos_alpha_weave_ha_variables
 # stage: deploy-gce-special

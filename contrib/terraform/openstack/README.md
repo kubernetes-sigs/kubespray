@@ -30,7 +30,7 @@ requirements.
 
 #### OpenStack
 
-Ensure your OpenStack credentials are loaded in environment variables. This can be done by downloading a credentials .rc file from your OpenStack dashboard and sourcing it:
+Ensure your OpenStack **Identity v2** credentials are loaded in environment variables. This can be done by downloading a credentials .rc file from your OpenStack dashboard and sourcing it:
 
 ```
 $ source ~/.stackrc

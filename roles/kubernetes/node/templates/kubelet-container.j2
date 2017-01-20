@@ -1,16 +1,23 @@
 #!/bin/bash
-{{ docker_bin_dir }}/docker run --privileged \
---net=host --pid=host --name=kubelet --restart=on-failure:5 \
--v /etc/cni:/etc/cni:ro \
--v /opt/cni:/opt/cni:ro \
--v {{kube_config_dir}}:{{kube_config_dir}} \
--v /sys:/sys \
--v /dev:/dev \
--v {{ docker_daemon_graph }}:/var/lib/docker \
--v /var/run:/var/run \
--v /var/lib/kubelet:/var/lib/kubelet \
---memory={{ kubelet_memory_limit|regex_replace('Mi', 'M') }} --cpu-shares={{ kubelet_cpu_limit|regex_replace('m', '')  }} \
-{{ hyperkube_image_repo }}:{{ hyperkube_image_tag}} \
-nsenter --target=1 --mount --wd=. -- \
-./hyperkube kubelet \
-$@
+{{ docker_bin_dir }}/docker run \
+  --net=host \
+  --pid=host \
+  --privileged \
+  --name=kubelet \
+  --restart=on-failure:5 \
+  --memory={{ kubelet_memory_limit|regex_replace('Mi', 'M') }} \
+  --cpu-shares={{ kubelet_cpu_limit|regex_replace('m', '')  }} \
+  -v /etc/cni:/etc/cni:ro \
+  -v /opt/cni:/opt/cni:ro \
+  -v /etc/ssl:/etc/ssl:ro \
+  {% for dir in ssl_ca_dirs -%}
+  -v {{ dir }}:{{ dir }}:ro \
+  {% endfor -%}
+  -v /sys:/sys:ro \
+  -v {{ docker_daemon_graph }}:/var/lib/docker:rw \
+  -v /var/lib/kubelet:/var/lib/kubelet:shared \
+  -v /var/run:/var/run:rw \
+  -v {{kube_config_dir}}:{{kube_config_dir}}:ro \
+  {{ hyperkube_image_repo }}:{{ hyperkube_image_tag}} \
+  ./hyperkube kubelet \
+  $@

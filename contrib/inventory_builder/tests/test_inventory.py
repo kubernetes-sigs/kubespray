@@ -210,3 +210,31 @@ class TestInventory(unittest.TestCase):
 
         self.inv.set_etcd([host])
         self.assertTrue(host in self.inv.config[group])
+
+    def test_scale_scenario_one(self):
+        num_nodes = 50
+        hosts = OrderedDict()
+
+        for hostid in range(1, num_nodes+1):
+            hosts["node" + str(hostid)] = ""
+
+        self.inv.set_all(hosts)
+        self.inv.set_etcd(hosts.keys()[0:3])
+        self.inv.set_kube_master(hosts.keys()[0:2])
+        self.inv.set_kube_node(hosts.keys())
+        for h in range(3):
+            self.assertFalse(hosts.keys()[h] in self.inv.config['kube-node'])
+
+    def test_scale_scenario_two(self):
+        num_nodes = 500
+        hosts = OrderedDict()
+
+        for hostid in range(1, num_nodes+1):
+            hosts["node" + str(hostid)] = ""
+
+        self.inv.set_all(hosts)
+        self.inv.set_etcd(hosts.keys()[0:3])
+        self.inv.set_kube_master(hosts.keys()[3:5])
+        self.inv.set_kube_node(hosts.keys())
+        for h in range(5):
+            self.assertFalse(hosts.keys()[h] in self.inv.config['kube-node'])

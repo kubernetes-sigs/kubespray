@@ -23,19 +23,17 @@ Building your own inventory
 
 Ansible inventory can be stored in 3 formats: YAML, JSON, or inifile. There is
 an example inventory located
-[here](https://github.com/kubernetes-incubator/kargo/blob/master/inventory/inventory.example):
+[here](https://github.com/kubernetes-incubator/kargo/blob/master/inventory/inventory.example).
 
-```
-cp -r inventory my_inventory
-cp my_inventory/inventory.example my_inventory/inventory.cfg
-# edit the inventory file as needed
-```
-
-Or you can use an
+You can use an
 [inventory generator](https://github.com/kubernetes-incubator/kargo/blob/master/contrib/inventory_builder/inventory.py)
 to create or modify an Ansible inventory. Currently, it is limited in
 functionality and is only use for making a basic Kargo cluster, but it does
-support creating large clusters. For example:
+support creating large clusters. It now supports
+separated ETCD and Kubernetes master roles from node role if the size exceeds a
+certain threshold. Run inventory.py help for more information.
+
+Example inventory generator usage:
 
 ```
 cp -r inventory my_inventory

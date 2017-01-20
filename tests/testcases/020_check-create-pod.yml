@@ -1,5 +1,5 @@
 ---
-- hosts: node1
+- hosts: kube-master[0]
 
   vars:
     test_image_repo: busybox
@@ -16,11 +16,14 @@
       bin_dir: "/usr/local/bin"
     when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
 
-  - name: Run a replica controller composed of 2 pods
-    shell: "{{bin_dir}}/kubectl run test --image={{test_image_repo}}:{{test_image_tag}} --replicas=2 --command -- tail -f /dev/null"
+  - name: Create test namespace
+    shell: "{{bin_dir}}/kubectl create namespace test"
+
+  - name: Run a replica controller composed of 2 pods in test ns
+    shell: "{{bin_dir}}/kubectl run test --image={{test_image_repo}}:{{test_image_tag}} --namespace test --replicas=2 --command -- tail -f /dev/null"
 
   - name: Pods are running
-    shell: "{{bin_dir}}/kubectl get pods --no-headers -o json"
+    shell: "{{bin_dir}}/kubectl get pods --namespace test --no-headers -o json"
     register: run_pods_log
     until: [ '(run_pods_log.stdout | from_json)["items"] | map(attribute = "status.phase") | join(",") == "Running,Running"' ]
     retries: 18

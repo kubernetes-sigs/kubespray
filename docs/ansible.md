@@ -135,6 +135,7 @@ The following tags are defined in playbooks:
 |                    nginx | Configuring LB for kube-apiserver instances
 |                     node | Configuring K8s minion (compute) node role
 |                openstack | Cloud-provider OpenStack
+|             reset_images | Controls if the reset role purges images as well
 |               preinstall | Preliminary configuration steps
 |               resolvconf | Configuring /etc/resolv.conf for hosts/apps
 |                  upgrade | Upgrading, f.e. container images/binaries

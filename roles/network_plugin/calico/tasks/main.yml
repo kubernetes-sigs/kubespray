@@ -193,7 +193,7 @@
 - name: Calico | Disable node mesh
   shell: "{{ bin_dir }}/calicoctl config set nodeToNodeMesh off"
   when: ((peer_with_router|default(false) or peer_with_calico_rr|default(false))
-          and inventory_hostname in groups['kube-node']
+          and inventory_hostname in groups['k8s-cluster']
           and not legacy_calicoctl)
   run_once: true
 
@@ -208,7 +208,7 @@
    | {{ bin_dir }}/calicoctl create -f -
   with_items: "{{ peers|default([]) }}"
   when: (not legacy_calicoctl and
-         peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
+         peer_with_router|default(false) and inventory_hostname in groups['k8s-cluster'])
 
 - name: Calico | Configure peering with route reflectors
   shell: >
@@ -223,13 +223,13 @@
    | {{ bin_dir }}/calicoctl create --skip-exists -f -
   with_items: "{{ groups['calico-rr'] | default([]) }}"
   when: (not legacy_calicoctl and
-         peer_with_calico_rr|default(false) and inventory_hostname in groups['kube-node']
+         peer_with_calico_rr|default(false) and inventory_hostname in groups['k8s-cluster']
          and hostvars[item]['cluster_id'] == cluster_id)
 
 - name: Calico (old) | Disable node mesh
   shell: "{{ bin_dir }}/calicoctl bgp node-mesh off"
   when: ((peer_with_router|default(false) or peer_with_calico_rr|default(false))
-          and inventory_hostname in groups['kube-node']
+          and inventory_hostname in groups['k8s-cluster']
           and legacy_calicoctl)
   run_once: true
 
@@ -237,11 +237,11 @@
   shell: "{{ bin_dir }}/calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}"
   with_items: "{{ peers|default([]) }}"
   when: (legacy_calicoctl and
-         peer_with_router|default(false) and inventory_hostname in groups['kube-node'])
+         peer_with_router|default(false) and inventory_hostname in groups['k8s-cluster'])
 
 - name: Calico (old) | Configure peering with route reflectors
   shell: "{{ bin_dir }}/calicoctl node bgp peer add {{ hostvars[item]['calico_rr_ip']|default(hostvars[item]['ip']) }} as {{ local_as | default(global_as_num) }}"
   with_items: "{{ groups['calico-rr'] | default([]) }}"
   when: (legacy_calicoctl and
-         peer_with_calico_rr|default(false) and inventory_hostname in groups['kube-node']
+         peer_with_calico_rr|default(false) and inventory_hostname in groups['k8s-cluster']
          and hostvars[item]['cluster_id'] == cluster_id)

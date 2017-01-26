@@ -1,0 +1,51 @@
+---
+# https://raw.githubusercontent.com/kubernetes/kubernetes/v1.5.2/cluster/addons/fluentd-elasticsearch/es-controller.yaml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: elasticsearch-logging-v1
+  namespace: "{{ system_namespace }}"
+  labels:
+    k8s-app: elasticsearch-logging
+    version: "{{ elasticsearch_image_tag }}"
+    kubernetes.io/cluster-service: "true"
+spec:
+  replicas: 2
+  selector:
+    k8s-app: elasticsearch-logging
+    version: "{{ elasticsearch_image_tag }}"
+  template:
+    metadata:
+      labels:
+        k8s-app: elasticsearch-logging
+        version: "{{ elasticsearch_image_tag }}"
+        kubernetes.io/cluster-service: "true"
+    spec:
+      containers:
+      - image: "{{ elasticsearch_image_repo }}:{{ elasticsearch_image_tag }}"
+        name: elasticsearch-logging
+        resources:
+          # need more cpu upon initialization, therefore burstable class
+          limits:
+            cpu: {{ elasticsearch_cpu_limit }}
+{% if elasticsearch_mem_limit is defined and elasticsearch_mem_limit != "0M" %}
+            mem: {{ elasticsearch_mem_limit }}
+{% endif %}
+          requests:
+            cpu: {{ elasticsearch_cpu_requests }}
+{% if elasticsearch_mem_requests is defined and elasticsearch_mem_requests != "0M" %}
+            mem: {{ elasticsearch_mem_requests }}
+{% endif %}
+        ports:
+        - containerPort: 9200
+          name: db
+          protocol: TCP
+        - containerPort: 9300
+          name: transport
+          protocol: TCP
+        volumeMounts:
+        - name: es-persistent-storage
+          mountPath: /data
+      volumes:
+      - name: es-persistent-storage
+        emptyDir: {}

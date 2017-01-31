@@ -1,0 +1,24 @@
+- name: Weave | Start Resources
+  run_once: true
+  kube:
+    name: "weave-kube"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/weave-kube.yml"
+    resource: "ds"
+    namespace: "{{system_namespace}}"
+    state: "{{ item | ternary('latest','present') }}"
+  with_items: "{{ weave_manifest.changed }}"
+
+
+- name: "Weave | wait for weave to become available"
+  uri:
+    url: http://127.0.0.1:6784/status
+    return_content: yes
+  register: weave_status
+  retries: 10
+  delay: "{{ retry_stagger | random + 3 }}"
+  until: weave_status.status == 200
+
+- name: "Weave | check if weave is ready"
+  fail:
+  when: "'Status: ready' not in weave_status.content"

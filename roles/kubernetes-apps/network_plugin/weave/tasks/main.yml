@@ -8,17 +8,17 @@
     namespace: "{{system_namespace}}"
     state: "{{ item | ternary('latest','present') }}"
   with_items: "{{ weave_manifest.changed }}"
+  delegate_to: "{{groups['kube-master'][0]}}"
 
 
 - name: "Weave | wait for weave to become available"
   uri:
     url: http://127.0.0.1:6784/status
     return_content: yes
+  run_once: true
   register: weave_status
   retries: 10
   delay: "{{ retry_stagger | random + 3 }}"
-  until: weave_status.status == 200
-
-- name: "Weave | check if weave is ready"
-  fail:
-  when: "'Status: ready' not in weave_status.content"
+  until: "{{ weave_status.status == 200 and
+    'Status: ready' in weave_status.content }}"
+  delegate_to: "{{groups['kube-master'][0]}}"

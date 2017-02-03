@@ -1,0 +1,58 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: {{ grafana_image_repo }}:{{ grafana_image_tag }}
+        env:
+        - name: GF_AUTH_BASIC_ENABLED
+          value: "true"
+        - name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "true"
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/grafana-storage
+        ports:
+        - name: web
+          containerPort: 3000
+        resources:
+          requests:
+            memory: {{ grafana_mem_requests }}
+            cpu: {{ grafana_cpu_requests }}
+          limits:
+            memory: {{ grafana_mem_limit }}
+            cpu: {{ grafana_cpu_limit }}
+      - name: grafana-watcher
+        image: {{ grafana_watcher_image_repo }}:{{ grafana_watcher_image_tag }}
+        args:
+          - '--watch-dir=/var/grafana-dashboards'
+          - '--grafana-url=http://admin:admin@localhost:3000'
+        volumeMounts:
+        - name: grafana-dashboards
+          mountPath: /var/grafana-dashboards
+        resources:
+          requests:
+            memory: {{ grafana_watcher_mem_requests }}
+            cpu: {{ grafana_watcher_cpu_requests }}
+          limits:
+            memory: {{ grafana_watcher_mem_limit }}
+            cpu: {{ grafana_watcher_cpu_limit }}
+        volumeMounts:
+        - name: grafana-dashboards
+          mountPath: /var/grafana-dashboards
+      volumes:
+      - name: grafana-storage
+        emptyDir: {}
+      - name: grafana-dashboards
+        configMap:
+          name: grafana-dashboards
+
+

@@ -1,0 +1,61 @@
+---
+- name: "Prometheus | Check is Prometheus namespace exists"
+  command: "{{bin_dir}}/kubectl get ns {{ prometheus_namespace }}"
+  register: prom_ns_check
+  changed_when: False
+  failed_when: False
+  run_once: true
+
+- name: "Prometheus | Create Prometheus namespace"
+  command: "{{bin_dir}}/kubectl create namespace {{ prometheus_namespace }}"
+  changed_when: False
+  when: prom_ns_check|failed
+  run_once: true
+
+- name: "Prometheus | Create apps directory"
+  file:
+    path: "{{ kube_config_dir }}/apps"
+    state: directory
+
+- name: "Prometheus | Write prometheus manifests"
+  template:
+    src: "{{ item.name }}-{{ item.type }}.yml.j2"
+    dest: "{{ kube_config_dir }}/apps/{{ item.name }}-{{ item.type }}.yml"
+  register: prometheus_templates
+  with_items:
+    - "{{ prometheus_resources }}"
+
+- name: "Prometheus | Create Prometheus Operator deployment"
+  kube:
+    filename: "{{ kube_config_dir }}/apps/{{ item.item.name }}-{{ item.item.type }}.yml"
+    kubectl: "{{bin_dir}}/kubectl"
+    name: "{{ item.item.name }}"
+    namespace: "{{ prometheus_namespace }}"
+    resource: "{{ item.item.type }}"
+    state: "{{ item.changed | ternary('latest','present') }}"
+  when: item.item.name == 'prometheus-operator'
+  with_items: "{{ prometheus_templates.results }}"
+  run_once: true
+
+- name: "Prometheus | Wait for TPRs to become available"
+  command: "{{ bin_dir }}/kubectl get {{ item }} --namespace={{ prometheus_namespace }}"
+  register: tpr_available
+  until: tpr_available.rc == 0
+  retries: 10
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - servicemonitor
+    - prometheus
+    - alertmanager
+
+- name: "Prometheus | Create prometheus resources"
+  kube:
+    filename: "{{ kube_config_dir }}/apps/{{ item.item.name }}-{{ item.item.type }}.yml"
+    kubectl: "{{bin_dir}}/kubectl"
+    name: "{{ item.item.name }}"
+    namespace: "{{ prometheus_namespace }}"
+    resource: "{{ item.item.type }}"
+    state: "{{ item.changed | ternary('latest','present') }}"
+  when: item.item.name != 'prometheus-operator'
+  with_items: "{{ prometheus_templates.results }}"
+  run_once: true

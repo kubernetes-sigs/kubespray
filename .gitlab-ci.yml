@@ -50,6 +50,7 @@ before_script:
   ANSIBLE_KEEP_REMOTE_FILES: "1"
   BOOTSTRAP_OS: none
   IDEMPOT_CHECK: "false"
+  UPGRADE_TEST: "false"
   RESOLVCONF_MODE: docker_dns
   LOG_LEVEL: "-vv"
   ETCD_DEPLOYMENT: "docker"
@@ -98,6 +99,9 @@ before_script:
       -e mode=${CLUSTER_MODE}
       -e test_id=${TEST_ID}
 
+    # Check out latest tag if testing upgrade
+    - [ "${UPGRADE_TEST}" = "true" ] && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
+
     # Create cluster
     - >
       ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u $SSH_USER
@@ -119,6 +123,28 @@ before_script:
       -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
       cluster.yml
 
+    # Repeat deployment if testing upgrade
+    - [ "${UPGRADE_TEST}" = "true" ] && git checkout "${CI_BUILD_REF}"
+    #FIXME(mattymo): repeat "Create cluster" above without duplicating code
+    - >
+      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u $SSH_USER
+      ${SSH_ARGS}
+      ${LOG_LEVEL}
+      -e ansible_python_interpreter=${PYPATH}
+      -e ansible_ssh_user=${SSH_USER} 
+      -e bootstrap_os=${BOOTSTRAP_OS}
+      -e cloud_provider=gce
+      -e deploy_netchecker=true
+      -e download_localhost=true
+      -e download_run_once=true
+      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      -e local_release_dir=${PWD}/downloads
+      -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
+      -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
+      cluster.yml
 
     # Tests Cases
     ## Test Master API
@@ -213,6 +239,7 @@ before_script:
   CLOUD_IMAGE: coreos-stable-1235-6-0-v20170111        
   CLOUD_REGION: us-west1-b
   CLUSTER_MODE: separate
+  UPGRADE_TEST: "true"
   BOOTSTRAP_OS: coreos
   RESOLVCONF_MODE: host_resolvconf # This is required as long as the CoreOS stable channel uses docker < 1.12
 

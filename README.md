@@ -55,7 +55,7 @@ Versions of supported components
 [flanneld](https://github.com/coreos/flannel/releases) v0.6.2 <br>
 [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.23.0 <br>
 [canal](https://github.com/projectcalico/canal) (given calico/flannel versions) <br>
-[weave](http://weave.works/) v1.6.1 <br>
+[weave](http://weave.works/) v1.8.2 <br>
 [docker](https://www.docker.com/) v1.12.5 <br>
 [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 <br>
 

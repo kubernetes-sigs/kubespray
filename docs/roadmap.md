@@ -27,7 +27,7 @@ That would probably improve deployment speed and certs management [#553](https:/
 (a test is currently a deployment on a 3 node cluste, testing k8s api, ping between 2 pods)
 - [x] Full tests on GCE per day (All OS's, all network plugins)
 - [x] trigger a single test per pull request
-- [ ] ~~single test with the Ansible version n-1 per day~~~ 
+- [ ] ~~single test with the Ansible version n-1 per day~~
 - [x] Test idempotency on on single OS but for all network plugins/container engines
 - [ ] single test on AWS per day
 - [x] test different achitectures :

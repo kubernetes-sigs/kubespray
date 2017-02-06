@@ -1,13 +1,35 @@
 ---
+- name: User | Create Certificate Access Groups
+  group: name={{ item }} system=yes
+  with_items: "{{ user.groups.split(',') }}"
+
 - name: User | Create User Group
   group: name={{user.group|default(user.name)}} system={{user.system|default(omit)}}
+
+- name: User | Create cloud-init user
+  template:
+    dest: /etc/{{ user.name }}_user_cloud_init_conf
+    src: users.j2
+    owner: root
+    mode: 0640
+  notify: User | update users for cloud-init
+  when: "{{ user.type|default('standard') == 'cloud-init' }}"
+
+- meta: flush_handlers
+
+- name: User | Hack groups for existing cloud-init users CoreOS
+  command: /usr/sbin/usermod -aG {{ item }} {{ user.name }}
+  with_items: "{{ user.groups.split(',') }}"
+  when: "{{ ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] and user.type|default('standard') == 'cloud-init' }}"
 
 - name: User | Create User
   user:
     comment: "{{user.comment|default(omit)}}"
-    createhome: "{{user.create_home|default(omit)}}"
+    createhome: "{{user.createhome|default(omit)}}"
     group: "{{user.group|default(user.name)}}"
+    groups: "{{user.groups|default(omit)}}"
     home: "{{user.home|default(omit)}}"
     shell: "{{user.shell|default(omit)}}"
     name: "{{user.name}}"
     system: "{{user.system|default(omit)}}"
+  when: "{{ user.type|default('standard') != 'cloud-init' }}"

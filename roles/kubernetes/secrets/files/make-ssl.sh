@@ -101,8 +101,5 @@ if [ -n "$HOSTS" ]; then
     done
 fi
 
-# Grant the group read access
-chmod g+r *.pem
-
 # Install certs
 mv *.pem ${SSLDIR}/

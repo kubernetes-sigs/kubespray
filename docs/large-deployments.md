@@ -3,7 +3,8 @@ Large deployments of K8s
 
 For a large scaled deployments, consider the following configuration changes:
 
-* Tune [ansible settings](http://docs.ansible.com/ansible/intro_configuration.html)
+* Tune [ansible settings]
+  (http://docs.ansible.com/ansible/intro_configuration.html)
   for `forks` and `timeout` vars to fit large numbers of nodes being deployed.
 
 * Override containers' `foo_image_repo` vars to point to intranet registry.
@@ -23,9 +24,15 @@ For a large scaled deployments, consider the following configuration changes:
 * Tune CPU/memory limits and requests. Those are located in roles' defaults
   and named like ``foo_memory_limit``, ``foo_memory_requests`` and
   ``foo_cpu_limit``, ``foo_cpu_requests``. Note that 'Mi' memory units for K8s
-  will be submitted as 'M', if applied for ``docker run``, and cpu K8s units will
-  end up with the 'm' skipped for docker as well. This is required as docker does not
-  understand k8s units well.
+  will be submitted as 'M', if applied for ``docker run``, and cpu K8s units
+  will end up with the 'm' skipped for docker as well. This is required as
+  docker does not understand k8s units well.
+
+* Tune ``kubelet_status_update_frequency`` to increase reliability of kubelet.
+  ``kube_controller_node_monitor_grace_period``,
+  ``kube_controller_node_monitor_period``,
+  ``kube_controller_pod_eviction_timeout`` for better Kubernetes reliability.
+  Check out [Kubernetes Reliability](kubernetes-reliability.md)
 
 * Add calico-rr nodes if you are deploying with Calico or Canal. Nodes recover
   from host/network interruption much quicker with calico-rr. Note that
@@ -33,7 +40,7 @@ For a large scaled deployments, consider the following configuration changes:
   etcd role is okay).
 
 * Check out the
-  [Inventory](https://github.com/kubernetes-incubator/kargo/blob/master/docs/getting-started.md#building-your-own-inventory)
+  [Inventory](getting-started.md#building-your-own-inventory)
   section of the Getting started guide for tips on creating a large scale
   Ansible inventory.
 

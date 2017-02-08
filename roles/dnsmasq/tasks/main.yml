@@ -11,6 +11,20 @@
     state: directory
   tags: bootstrap-os
 
+- name: check system nameservers
+  shell: awk '/^nameserver/ {print $NF}' /etc/resolv.conf
+  changed_when: False
+  register: system_nameservers
+
+- name: init system_and_upstream_dns_servers
+  set_fact:
+    system_and_upstream_dns_servers: "{{ upstream_dns_servers|default([]) }}"
+
+- name: combine upstream_dns_servers and system nameservers (only for docker_dns)
+  set_fact:
+    system_and_upstream_dns_servers: "{{ system_and_upstream_dns_servers | union(system_nameservers.stdout_lines) | unique }}"
+  when: system_nameservers.stdout != "" and resolvconf_mode != 'host_resolvconf'
+
 - name: Write dnsmasq configuration
   template:
     src: 01-kube-dns.conf.j2

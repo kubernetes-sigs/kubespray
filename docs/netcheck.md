@@ -2,7 +2,7 @@ Network Checker Application
 ===========================
 
 With the ``deploy_netchecker`` var enabled (defaults to false), Kargo deploys a
-Network Checker Application from the 3rd side `l23network/mcp-netchecker` docker
+Network Checker Application from the 3rd side `l23network/k8s-netchecker` docker
 images. It consists of the server and agents trying to reach the server by usual
 for Kubernetes applications network connectivity meanings. Therefore, this
 automagically verifies a pod to pod connectivity via the cluster IP and checks
@@ -25,8 +25,8 @@ There are related application specifc variables:
 netchecker_port: 31081
 agent_report_interval: 15
 netcheck_namespace: default
-agent_img: "quay.io/l23network/mcp-netchecker-agent:v0.1"
-server_img: "quay.io/l23network/mcp-netchecker-server:v0.1"
+agent_img: "quay.io/l23network/k8s-netchecker-agent:v1.0"
+server_img: "quay.io/l23network/k8s-netchecker-server:v1.0"
 ```
 
 Note that the application verifies DNS resolve for FQDNs comprising only the

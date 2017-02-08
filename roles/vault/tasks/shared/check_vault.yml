@@ -1,0 +1,31 @@
+---
+
+# Stop temporary Vault if it's running (can linger if playbook fails out)
+- name: stop vault-temp container
+  shell: docker stop {{ vault_temp_container_name }} || rkt stop {{ vault_temp_container_name }}
+  failed_when: false
+  register: vault_temp_stop
+  changed_when: vault_temp_stop|succeeded
+
+# Check if vault is reachable on the localhost
+- name: check_vault | Attempt to pull local https Vault health
+  uri:
+    url: "{{ vault_config.listener.tcp.tls_disable|d()|ternary('http', 'https') }}://localhost:{{ vault_port }}/v1/sys/health"
+    headers: "{{ vault_client_headers }}"
+    status_code: 200,429,500,501
+    validate_certs: no
+  failed_when: false
+  register: vault_local_service_health
+
+- name: check_vault | Set facts about local Vault health
+  set_fact:
+    vault_is_running: "{{ vault_local_service_health|succeeded }}"
+    vault_is_initialized: "{{ vault_local_service_health.get('json', {}).get('initialized', false) }}"
+    vault_is_sealed: "{{ vault_local_service_health.get('json', {}).get('sealed', true) }}"
+    #vault_in_standby: "{{ vault_local_service_health.get('json', {}).get('standby', true) }}"
+    #vault_run_version: "{{ vault_local_service_health.get('json', {}).get('version', '') }}"
+
+- name: check_vault | Set fact about the Vault cluster's initialization state
+  set_fact:
+    vault_cluster_is_initialized: "{{ vault_is_initialized or hostvars[item]['vault_is_initialized'] }}"
+  with_items: "{{ groups.vault }}"

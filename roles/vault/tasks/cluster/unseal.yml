@@ -11,16 +11,12 @@
   with_items: "{{ vault_unseal_keys|default([]) }}"
   when: vault_is_sealed
 
-- name: cluster/unseal | Find the current leader
+- name: cluster/unseal | Wait until server is ready
   uri:
     url: "https://localhost:{{ vault_port }}/v1/sys/health"
     headers: "{{ vault_headers }}"
     method: HEAD
-    status_code: 200,429
-  register: vault_leader_check
-
-- name: cluster/unseal | Set fact for current leader
-  set_fact:
-    vault_leader: "{{ item }}"
-  with_items: "{{ groups.vault }}"
-  when: 'hostvars[item]["vault_leader_check"]["status"] == 200'
+    status_code: 200, 429
+  register: vault_node_ready
+  until: vault_node_ready|succeeded
+  retries: 5

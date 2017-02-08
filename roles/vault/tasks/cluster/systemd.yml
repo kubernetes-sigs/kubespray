@@ -1,0 +1,45 @@
+---
+
+- name: cluster/systemd | Ensure mount points exist prior to vault.service startup
+  file:
+    mode: 0750
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - "{{ vault_config_dir }}"
+    - "{{ vault_log_dir }}"
+    - "{{ vault_secrets_dir }}"
+    - /var/lib/vault/
+
+- name: cluster/systemd | Ensure the vault user has access to needed directories
+  file:
+    owner: vault
+    path: "{{ item }}"
+    recurse: true
+  with_items:
+    - "{{ vault_base_dir }}"
+    - "{{ vault_log_dir }}"
+    - /var/lib/vault
+
+- name: cluster/systemd | Copy down vault.service systemd file
+  template:
+    src: "{{ vault_deployment_type }}.service.j2"
+    dest: /etc/systemd/system/vault.service
+    backup: yes
+  register: vault_systemd_placement
+
+- name: cluster/systemd | Enable vault.service
+  systemd:
+    daemon_reload: true
+    enabled: yes
+    name: vault
+    state: started
+
+- name: cluster/systemd | Query local vault until service is up
+  uri:
+    url: "{{ vault_config.listener.tcp.tls_disable|d()|ternary('http', 'https') }}://localhost:{{ vault_port }}/v1/sys/health"
+    headers: "{{ vault_client_headers }}"
+    status_code: 200,429,500,501
+  register: vault_health_check
+  until: vault_health_check|succeeded
+  retries: 10

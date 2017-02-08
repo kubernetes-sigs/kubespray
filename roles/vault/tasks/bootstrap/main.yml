@@ -1,60 +1,58 @@
 ---
 
+- include: ../shared/check_vault.yml
+  when: inventory_hostname in groups.vault
+- include: sync_secrets.yml
+  when: inventory_hostname in groups.vault
+- include: ../shared/find_leader.yml
+  when: inventory_hostname in groups.vault and vault_cluster_is_initialized|d()
+
 ## Sync Certs
 
-- include: bootstrap/sync_vault_certs.yml
+- include: sync_vault_certs.yml
   when: inventory_hostname in groups.vault
-
-- include: bootstrap/sync_etcd_certs.yml
-  when: inventory_hostname in groups.etcd
-
-- include: bootstrap/sync_etcd_node_certs.yml
-  when: inventory_hostname in groups["k8s-cluster"] | union(groups.etcd)
 
 ## Generate Certs
 
 # Start a temporary instance of Vault
-- include: bootstrap/start_vault_temp.yml
-  when: >-
-        ( hostvars[groups.etcd|first].get("vault_etcd_certs_needed", [])|length > 0 or
-        hostvars[groups.etcd|first].get("vault_etcd_node_certs_needed", [])|length > 0 or
-        hostvars[groups.vault|first]["vault_ca_cert_needed"] ) and
-        inventory_hostname == groups.vault|first
-
-# Generate root CA certs for Vault if none exist
-- include: bootstrap/gen_vault_certs.yml
-  when: >-
-        ( hostvars[groups.vault|first]["vault_ca_cert_needed"] or
-        hostvars[groups.vault|first]["vault_api_cert_needed"] ) and
-        inventory_hostname in groups.vault
-
-# Change vault-temp's issuing CA to use existing ca.pem/ca-key.pem
-- include: config_ca.yml
-  vars:
-    vault_url: "http://{{ groups.vault|first }}:{{ vault_temp_port }}"
-  when: >-
-        ( hostvars[groups.etcd|first].get("vault_etcd_certs_needed", [])|length > 0 or
-        hostvars[groups["k8s-cluster"]|first].get("vault_etcd_node_certs_needed", [])|length > 0 or
-        hostvars[groups.vault|first]["vault_api_cert_needed"] ) and
-        not hostvars[groups.vault|first]["vault_ca_cert_needed"] and
-        inventory_hostname == groups.vault|first
-
-# Generate etcd certs for etcd cluster members
-- include: bootstrap/gen_etcd_certs.yml
-  when: >- 
-        hostvars[groups.etcd|first].get("vault_etcd_certs_needed", [])|length > 0 and
-        inventory_hostname in groups.etcd
-
-# Generate etcd node certs for all k8s-cluster
-- include: bootstrap/gen_etcd_node_certs.yml
-  when: >-
-        hostvars[groups["k8s-cluster"]|first].get("vault_etcd_node_certs_needed", [])|length > 0 and
-        inventory_hostname in groups["k8s-cluster"] | union(groups.etcd)
-
-# Stop temporary vault
-- include: bootstrap/stop_vault_temp.yml
+- include: start_vault_temp.yml
   when: >-
         inventory_hostname == groups.vault|first and
-        hostvars[groups.vault|first]["vault_temp_start"]|succeeded
+        not vault_cluster_is_initialized
 
+# NOTE: The next 2 steps run against temp Vault and long-term Vault
+
+# Ensure PKI mount exists
+- include: ../shared/pki_mount.yml
+  when: >-
+        inventory_hostname == groups.vault|first
+
+# If the Root CA already exists, ensure Vault's PKI is using it
+- include: ../shared/config_ca.yml
+  vars:
+    ca_name: ca
+    mount_name: pki
+  when: >-
+        inventory_hostname == groups.vault|first and
+        not vault_ca_cert_needed
+
+# Generate root CA certs for Vault if none exist
+- include: gen_ca.yml
+  when: >-
+        inventory_hostname in groups.vault and
+        not vault_cluster_is_initialized and
+        vault_ca_cert_needed
+
+# Generate Vault API certs
+- include: gen_vault_certs.yml
+  when: inventory_hostname in groups.vault and vault_api_cert_needed
+
+# Update all host's CA bundle
 - include: ca_trust.yml
+
+## Add Etcd Role to Vault (if needed)
+
+- include: role_auth_cert.yml
+  when: vault_role_auth_method == "cert"
+- include: role_auth_userpass.yml
+  when: vault_role_auth_method == "userpass"

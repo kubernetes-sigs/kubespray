@@ -1,0 +1,66 @@
+---
+
+# This could be a role or custom module
+
+# Vars:
+#   issue_cert_alt_name:    Requested Subject Alternative Names, in a list.
+#   issue_cert_common_name: Common Name included in the cert
+#   issue_cert_dir_mode:    Mode of the placed cert directory
+#   issue_cert_file_group:  Group of the placed cert file and directory
+#   issue_cert_file_mode:   Mode of the placed cert file
+#   issue_cert_file_owner:  Owner of the placed cert file and directory
+#   issue_cert_format:      Format for returned data. Can be pem, der, or pem_bundle
+#   issue_cert_headers:     Headers passed into the issue request
+#   issue_cert_hosts:       List of hosts to distribute the cert to
+#   issue_cert_ip_sans:     Requested IP Subject Alternative Names, in a list
+#   issue_cert_mount:       Mount point in Vault to make the request to
+#   issue_cert_path:        Full path to the cert, include its name
+#   issue_cert_role:        The Vault role to issue the cert with
+#   issue_cert_url:         Url to reach Vault, including protocol and port
+
+- name: issue_cert | Ensure target directory exists
+  file:
+    path: "{{ issue_cert_path | dirname }}" 
+    state: directory
+    group: "{{ issue_cert_file_group | d('root' )}}"
+    mode: "{{ issue_cert_dir_mode | d('0755') }}"
+    owner: "{{ issue_cert_file_owner | d('root') }}"
+
+- name: issue_cert | Generate the cert
+  uri:
+    url: "{{ issue_cert_url }}/v1/{{ issue_cert_mount|d('pki') }}/issue/{{ issue_cert_role }}"
+    headers: "{{ issue_cert_headers }}"
+    method: POST
+    body_format: json
+    body:
+      alt_names: "{{ issue_cert_alt_names | d([]) | join(',') }}"
+      common_name: "{{ issue_cert_common_name | d(issue_cert_path.rsplit('/', 1)[1].rsplit('.', 1)[0]) }}"
+      format: "{{ issue_cert_format | d('pem') }}"
+      ip_sans: "{{ issue_cert_ip_sans | default([]) | join(',') }}"
+  register: issue_cert_result
+  when: inventory_hostname == issue_cert_hosts|first
+
+- name: issue_cert | Copy the cert to all hosts
+  copy:
+    content: "{{ hostvars[issue_cert_hosts|first]['issue_cert_result']['json']['data']['certificate'] }}"
+    dest: "{{ issue_cert_path }}"
+    group: "{{ issue_cert_file_group | d('root' )}}"
+    mode: "{{ issue_cert_file_mode | d('0644') }}"
+    owner: "{{ issue_cert_file_owner | d('root') }}"
+
+- name: issue_cert | Copy the key to all hosts
+  copy:
+    content: "{{ hostvars[issue_cert_hosts|first]['issue_cert_result']['json']['data']['private_key'] }}"
+    dest: "{{ issue_cert_path.rsplit('.', 1)|first }}-key.{{ issue_cert_path.rsplit('.', 1)|last }}"
+    group: "{{ issue_cert_file_group | d('root' )}}"
+    mode: "{{ issue_cert_file_mode | d('0640') }}"
+    owner: "{{ issue_cert_file_owner | d('root') }}"
+
+- name: issue_cert | Copy issuing CA cert
+  copy:
+    content: "{{ hostvars[issue_cert_hosts|first]['issue_cert_result']['json']['data']['issuing_ca'] }}"
+    dest: "{{ issue_cert_path | dirname }}/ca.pem"
+    group: "{{ issue_cert_file_group | d('root' )}}"
+    mode: "{{ issue_cert_file_mode | d('0644') }}"
+    owner: "{{ issue_cert_file_owner | d('root') }}"
+  when: issue_cert_copy_ca|default(false)

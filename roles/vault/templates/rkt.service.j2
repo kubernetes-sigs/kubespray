@@ -1,0 +1,33 @@
+[Unit]
+Description=hashicorp vault on rkt
+Documentation=https://github.com/hashicorp/vault
+Wants=network.target
+
+[Service]
+User=root
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=5
+LimitNOFILE=40000
+# Container has the following internal mount points:
+#   /vault/file/    # File backend storage location
+#   /vault/logs/    # Log files
+ExecStart=/usr/bin/rkt run \
+--insecure-options=image \
+--volume=volume-vault-file,kind=host,source=/var/lib/vault \
+--volume=volume-vault-logs,kind=host,source={{ vault_log_dir }} \
+--volume=vault-cert-dir,kind=host,source={{ vault_cert_dir }} \
+--mount=volume=vault-cert-dir,target={{ vault_cert_dir }} \
+--volume=vault-conf-dir,kind=host,source={{ vault_config_dir }} \
+--mount=volume=vault-conf-dir,target={{ vault_config_dir }} \
+--volume=vault-secrets-dir,kind=host,source={{ vault_secrets_dir }} \
+--mount=volume=vault-secrets-dir,target={{ vault_secrets_dir }} \
+--volume=vault-roles-dir,kind=host,source={{ vault_roles_dir }} \
+--mount=volume=vault-roles-dir,target={{ vault_roles_dir }} \
+docker://{{ vault_image_repo }}:{{ vault_image_tag }} \
+--name={{ vault_container_name }} --net=host \
+--caps-retain=CAP_IPC_LOCK \
+--exec vault -- server --config={{ vault_config_dir }}/config.json
+
+[Install]
+WantedBy=multi-user.target

@@ -1,47 +1,8 @@
 ---
 
-- name: bootstrap/gen_vault_certs | Ensure vault_cert_dir exists
-  file:
-    path: "{{ vault_cert_dir }}"
-    state: directory
-
-- name: bootstrap/gen_vault_certs | Generate Root CA in vault-temp
-  uri:
-    url: "http://localhost:{{ vault_temp_port }}/v1/pki/root/generate/exported"
-    headers: "{{ vault_headers }}"
-    method: POST
-    body_format: json
-    body: "{{ vault_ca_options }}"
-  register: vault_ca_gen
-  when: inventory_hostname == groups.vault|first and vault_ca_cert_needed
-
-- name: bootstrap/gen_vault_certs | Set facts for ca cert and key
-  set_fact:
-    vault_ca_cert: "{{ vault_ca_gen.json.data.certificate }}"
-    vault_ca_key: "{{ vault_ca_gen.json.data.private_key }}"
-  when: inventory_hostname == groups.vault|first and vault_ca_cert_needed
-
-- name: bootstrap/gen_vault_certs | Set cert and key facts for all hosts other than groups.vault|first
-  set_fact:
-    vault_ca_cert: "{{ hostvars[groups.vault|first]['vault_ca_cert'] }}"
-    vault_ca_key: "{{ hostvars[groups.vault|first]['vault_ca_key'] }}"
-  when: inventory_hostname != groups.vault|first and vault_ca_cert_needed
-
-- name: bootstrap/gen_vault_certs | Copy root CA cert locally
-  copy:
-    content: "{{ vault_ca_cert }}"
-    dest: "{{ vault_cert_dir }}/ca.pem"
-  when: vault_ca_cert_needed
-
-- name: bootstrap/gen_vault_certs | Copy root CA key locally
-  copy:
-    content: "{{vault_ca_key}}"
-    dest: "{{vault_cert_dir}}/ca-key.pem"
-  when: vault_ca_cert_needed
-
 - name: boostrap/gen_vault_certs | Add the vault role
   uri:
-    url: "http://localhost:{{ vault_temp_port }}/v1/pki/roles/vault"
+    url: "{{ vault_leader_url }}/v1/pki/roles/vault"
     headers: "{{ vault_headers }}"
     method: POST
     body_format: json
@@ -49,18 +10,19 @@
     status_code: 204
   when: inventory_hostname == groups.vault|first and vault_api_cert_needed
 
-- include: ../gen_cert.yml
+- include: ../shared/issue_cert.yml
   vars:
-    gen_cert_alt_names: "{{ groups.vault | join(',') }},localhost"
-    gen_cert_hosts: "{{ groups.vault }}"
-    gen_cert_ip_sans: >-
+    issue_cert_alt_names: "{{ groups.vault + ['localhost'] }}"
+    issue_cert_hosts: "{{ groups.vault }}"
+    issue_cert_ip_sans: >-
+        [
         {%- for host in groups.vault -%}
-        {{ hostvars[host]["ansible_default_ipv4"]["address"] }}
-        {%- if not loop.last -%},{%- endif -%}
+        "{{ hostvars[host]['ansible_default_ipv4']['address'] }}",
         {%- endfor -%}
-        ,127.0.0.1,::1
-    gen_cert_path: "{{ vault_cert_dir }}/api.pem"
-    gen_cert_vault_headers: "{{ hostvars[groups.vault|first]['vault_headers'] }}"
-    gen_cert_vault_role: vault
-    gen_cert_vault_url: "http://{{ groups.vault|first }}:{{ vault_temp_port }}"
+        "127.0.0.1","::1"
+        ]
+    issue_cert_path: "{{ vault_cert_dir }}/api.pem"
+    issue_cert_headers: "{{ hostvars[groups.vault|first]['vault_headers'] }}"
+    issue_cert_role: vault
+    issue_cert_url: "{{ vault_leader_url }}"
   when: vault_api_cert_needed

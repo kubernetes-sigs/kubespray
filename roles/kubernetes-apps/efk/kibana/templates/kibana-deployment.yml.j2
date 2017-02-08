@@ -1,0 +1,46 @@
+---
+# https://raw.githubusercontent.com/kubernetes/kubernetes/v1.5.2/cluster/addons/fluentd-kibana/kibana-controller.yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: kibana-logging
+  namespace: "{{ system_namespace  }}"
+  labels:
+    k8s-app: kibana-logging
+    kubernetes.io/cluster-service: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: kibana-logging
+  template:
+    metadata:
+      labels:
+        k8s-app: kibana-logging
+    spec:
+      containers:
+      - name: kibana-logging
+        image: "{{ kibana_image_repo }}:{{ kibana_image_tag }}"
+        resources:
+          # keep request = limit to keep this container in guaranteed class
+          limits:
+            cpu: {{ kibana_cpu_limit }}
+{% if kibana_mem_limit is defined and kibana_mem_limit != "0M" %}
+            mem: {{ kibana_mem_limit }}
+{% endif %}
+          requests:
+            cpu: {{ kibana_cpu_requests }}
+{% if kibana_mem_requests is defined and kibana_mem_requests != "0M" %}
+            mem: {{ kibana_mem_requests }}
+{% endif %}
+        env:
+          - name: "ELASTICSEARCH_URL"
+            value: "http://elasticsearch-logging:{{ elasticsearch_service_port }}"
+{% if kibana_base_url is defined and kibana_base_url != "" %}
+          - name: "KIBANA_BASE_URL"
+            value: "{{ kibana_base_url }}"
+{% endif %}
+        ports:
+        - containerPort: 5601
+          name: ui
+          protocol: TCP

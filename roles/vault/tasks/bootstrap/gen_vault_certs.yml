@@ -1,0 +1,28 @@
+---
+
+- name: boostrap/gen_vault_certs | Add the vault role
+  uri:
+    url: "{{ vault_leader_url }}/v1/pki/roles/vault"
+    headers: "{{ vault_headers }}"
+    method: POST
+    body_format: json
+    body: "{{ vault_default_role_permissions }}"
+    status_code: 204
+  when: inventory_hostname == groups.vault|first and vault_api_cert_needed
+
+- include: ../shared/issue_cert.yml
+  vars:
+    issue_cert_alt_names: "{{ groups.vault + ['localhost'] }}"
+    issue_cert_hosts: "{{ groups.vault }}"
+    issue_cert_ip_sans: >-
+        [
+        {%- for host in groups.vault -%}
+        "{{ hostvars[host]['ansible_default_ipv4']['address'] }}",
+        {%- endfor -%}
+        "127.0.0.1","::1"
+        ]
+    issue_cert_path: "{{ vault_cert_dir }}/api.pem"
+    issue_cert_headers: "{{ hostvars[groups.vault|first]['vault_headers'] }}"
+    issue_cert_role: vault
+    issue_cert_url: "{{ vault_leader_url }}"
+  when: vault_api_cert_needed

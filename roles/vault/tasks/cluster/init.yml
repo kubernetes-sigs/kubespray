@@ -1,0 +1,52 @@
+---
+
+- name: cluster/init | Initialize Vault
+  uri:
+    url: "https://{{ groups.vault|first }}:{{ vault_port }}/v1/sys/init"
+    headers: "{{ vault_client_headers }}"
+    method: POST
+    body_format: json
+    body:
+      secret_shares: "{{ vault_secret_shares }}"
+      secret_threshold: "{{ vault_secret_threshold }}"
+    validate_certs: false
+  register: vault_init_result
+  when: not vault_cluster_is_initialized and inventory_hostname == groups.vault|first
+
+- name: cluster/init | Set facts on the results of the initialization
+  set_fact:
+    vault_unseal_keys: "{{ vault_init_result.json['keys'] }}"
+    vault_root_token: "{{ vault_init_result.json.root_token }}"
+    vault_headers: "{{ vault_client_headers|combine({'X-Vault-Token': vault_init_result.json.root_token}) }}"
+  when: not vault_cluster_is_initialized and inventory_hostname == groups.vault|first
+
+- name: cluster/init | Ensure all hosts have these facts
+  set_fact:
+    vault_unseal_keys: "{{ hostvars[groups.vault|first]['vault_unseal_keys'] }}"
+    vault_root_token: "{{ hostvars[groups.vault|first]['vault_root_token'] }}"
+  when: not vault_cluster_is_initialized and inventory_hostname != groups.vault|first
+
+- name: cluster/init | Ensure the vault_secrets_dir exists
+  file:
+    mode: 0750
+    path: "{{ vault_secrets_dir }}"
+    state: directory
+
+- name: cluster/init | Ensure all in groups.vault have the unseal_keys locally
+  copy:
+    content: "{{ vault_unseal_keys|join('\n') }}"
+    dest: "{{ vault_secrets_dir }}/unseal_keys"
+    mode: 0640
+  when: not vault_cluster_is_initialized
+
+- name: cluster/init | Ensure all in groups.vault have the root_token locally
+  copy:
+    content: "{{ vault_root_token }}"
+    dest: "{{ vault_secrets_dir }}/root_token"
+    mode: 0640
+  when: not vault_cluster_is_initialized
+
+- name: cluster/init | Ensure vault_headers and vault statuses are updated
+  set_fact:
+    vault_headers: "{{ vault_client_headers | combine({'X-Vault-Token': vault_root_token})}}"
+    vault_cluster_is_initialized: true

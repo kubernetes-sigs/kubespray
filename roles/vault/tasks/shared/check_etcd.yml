@@ -1,0 +1,19 @@
+---
+
+- name: check_etcd | Check if etcd is up an reachable
+  uri:
+    url: "{{ vault_etcd_url }}/health"
+    validate_certs: no
+  failed_when: false
+  register: vault_etcd_health_check
+
+- name: check_etcd | Set fact based off the etcd_health_check response
+  set_fact:
+    vault_etcd_available: "{{ vault_etcd_health_check.get('json', {}).get('health')|bool  }}"
+
+- name: check_etcd | Fail if etcd is not available and needed
+  fail:
+    msg: >
+         Unable to start Vault cluster! Etcd is not available at
+         {{ vault_etcd_url }} however it is needed by Vault as a backend.
+  when: vault_etcd_needed|d() and not vault_etcd_available

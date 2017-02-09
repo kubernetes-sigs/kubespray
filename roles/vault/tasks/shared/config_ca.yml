@@ -1,0 +1,30 @@
+---
+
+- name: config_ca | Read root CA cert for Vault
+  command: "cat /etc/vault/ssl/{{ ca_name }}.pem"
+  register: vault_ca_cert_cat
+
+- name: config_ca | Pull current CA cert from Vault
+  uri:
+    url: "{{ vault_leader_url }}/v1/{{ mount_name }}/ca/pem"
+    headers: "{{ vault_headers }}"
+    return_content: true
+    status_code: 200,204
+    validate_certs: no
+  register: vault_pull_current_ca
+
+- name: config_ca | Read root CA key for Vault
+  command: "cat /etc/vault/ssl/{{ ca_name }}-key.pem"
+  register: vault_ca_key_cat
+  when: vault_ca_cert_cat.stdout.strip() != vault_pull_current_ca.content.strip()
+
+- name: config_ca | Configure pki mount to use the found root CA cert and key
+  uri:
+    url: "{{ vault_leader_url }}/v1/{{ mount_name }}/config/ca"
+    headers: "{{ vault_headers }}"
+    method: POST
+    body_format: json
+    body:
+      pem_bundle: "{{ vault_ca_cert_cat.stdout + '\n' + vault_ca_key_cat.stdout }}"
+    status_code: 204
+  when: vault_ca_cert_cat.stdout.strip() != vault_pull_current_ca.get("content","").strip()

@@ -1,0 +1,30 @@
+---
+
+- name: shared/gen_userpass | Create the Username/Password combo for the role
+  uri:
+    url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}/v1/auth/userpass/users/{{ gen_userpass_username }}"
+    headers: "{{ hostvars[groups.vault|first]['vault_headers'] }}"
+    method: POST
+    body_format: json
+    body:
+      username: "{{ gen_userpass_username }}"
+      password: "{{ gen_userpass_password }}"
+      policies: "{{ gen_userpass_role }}"
+    status_code: 204
+  when: inventory_hostname == groups[gen_userpass_group]|first
+
+- name: shared/gen_userpass | Ensure destination directory exists
+  file:
+    path: "{{ vault_roles_dir }}/{{ gen_userpass_role }}"
+    state: directory
+  when: inventory_hostname in groups[gen_userpass_group]
+
+- name: shared/gen_userpass | Copy credentials to all hosts in the group
+  copy:
+    content: >
+             {{ 
+             {'username': gen_userpass_username,
+              'password': gen_userpass_password} | to_nice_json(indent=4)
+             }}
+    dest: "{{ vault_roles_dir }}/{{ gen_userpass_role }}/userpass"
+  when: inventory_hostname in groups[gen_userpass_group]

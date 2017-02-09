@@ -1,0 +1,32 @@
+[Unit]
+Description=hashicorp vault on docker
+Documentation=https://github.com/hashicorp/vault
+Wants=docker.socket
+After=docker.service
+
+[Service]
+User=root
+Restart=always
+RestartSec=15s
+TimeoutStartSec=5
+LimitNOFILE=10000
+ExecReload={{ docker_bin_dir }}/docker restart {{ vault_container_name }}
+ExecStop={{ docker_bin_dir }}/docker stop {{ vault_container_name }}
+ExecStartPre=-{{ docker_bin_dir }}/docker rm -f {{ vault_container_name }}
+# Container has the following internal mount points:
+#   /vault/file/    # File backend storage location
+#   /vault/logs/    # Log files
+ExecStart={{ docker_bin_dir }}/docker run \
+--name {{ vault_container_name }} --net=host \
+--cap-add=IPC_LOCK \
+-v {{ vault_cert_dir }}:{{ vault_cert_dir }} \
+-v {{ vault_config_dir }}:{{ vault_config_dir }} \
+-v {{ vault_log_dir }}:/vault/logs \
+-v {{ vault_roles_dir }}:{{ vault_roles_dir }} \
+-v {{ vault_secrets_dir }}:{{ vault_secrets_dir }} \
+--entrypoint=vault \
+{{ vault_image_repo }}:{{ vault_image_tag }} \
+server --config={{ vault_config_dir }}/config.json
+
+[Install]
+WantedBy=multi-user.target

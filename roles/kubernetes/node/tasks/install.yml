@@ -25,6 +25,20 @@
   template: "src=kubelet.{{ kubelet_deployment_type }}.service.j2 dest=/etc/systemd/system/kubelet.service backup=yes"
   notify: restart kubelet
 
+- name: install | Set SSL CA directories
+  set_fact:
+    ssl_ca_dirs: "[
+      {% if ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] -%}
+      '/usr/share/ca-certificates',
+      {% elif ansible_os_family == 'RedHat' -%}
+      '/etc/pki/tls',
+      '/etc/pki/ca-trust',
+      {% elif ansible_os_family == 'Debian' -%}
+      '/usr/share/ca-certificates',
+      {% endif -%}
+    ]"
+  tags: facts
+
 - name: install | Install kubelet launch script
   template: src=kubelet-container.j2 dest="{{ bin_dir }}/kubelet" owner=kube mode=0755 backup=yes
   notify: restart kubelet

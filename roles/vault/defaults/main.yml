@@ -1,0 +1,90 @@
+---
+
+vault_adduser_vars:
+  comment: "Hashicorp Vault User"
+  createhome: no
+  name: vault
+  shell: /sbin/nologin
+  system: yes
+vault_base_dir: /etc/vault
+# https://releases.hashicorp.com/vault/0.6.4/vault_0.6.4_SHA256SUMS
+vault_binary_checksum: 04d87dd553aed59f3fe316222217a8d8777f40115a115dac4d88fac1611c51a6
+vault_bootstrap: false
+vault_ca_options:
+  common_name: kube-cluster-ca
+  format: pem
+  ttl: 87600h
+vault_cert_dir: "{{ vault_base_dir }}/ssl"
+vault_client_headers:
+  Accept: "application/json"
+  Content-Type: "application/json"
+vault_config:
+  backend:
+    etcd:
+      address: "{{ vault_etcd_url }}"
+      ha_enabled: "true"
+      redirect_addr: "https://{{ ansible_default_ipv4.address }}:{{ vault_port }}"
+      tls_ca_file: "{{ vault_cert_dir }}/ca.pem"
+  cluster_name: "kubernetes-vault"
+  default_lease_ttl: "{{ vault_default_lease_ttl }}"
+  listener:
+    tcp:
+      address: "0.0.0.0:{{ vault_port }}"
+      tls_cert_file: "{{ vault_cert_dir }}/api.pem"
+      tls_key_file: "{{ vault_cert_dir }}/api-key.pem"
+  max_lease_ttl: "{{ vault_max_lease_ttl }}"
+vault_config_dir: "{{ vault_base_dir }}/config"
+vault_container_name: kube-hashicorp-vault
+# This variable is meant to match the GID of vault inside Hashicorp's official Vault Container
+vault_default_lease_ttl: 720h
+vault_default_role_permissions:
+  allow_any_name: true
+vault_deployment_type: docker
+vault_download_url: "https://releases.hashicorp.com/vault/{{ vault_version }}/vault_{{ vault_version }}_linux_amd64.zip"
+vault_download_vars:
+  container: "{{ vault_deployment_type != 'host' }}"
+  dest: "vault/vault_{{ vault_version }}_linux_amd64.zip"
+  enabled: true
+  mode: "0755"
+  owner: "vault"
+  repo: "{{ vault_image_repo }}"
+  sha256: "{{ vault_binary_checksum if vault_deployment_type == 'host' else vault_digest_checksum|d(none) }}"
+  source_url: "{{ vault_download_url }}"
+  tag: "{{ vault_image_tag }}"
+  unarchive: true
+  url: "{{ vault_download_url }}"
+  version: "{{ vault_version }}"
+vault_etcd_url: "https://{{ hostvars[groups.etcd[0]]['ansible_default_ipv4']['address'] }}:2379"
+vault_image_repo: "vault"
+vault_image_tag: "{{ vault_version }}"
+vault_log_dir: "/var/log/vault"
+vault_max_lease_ttl: 87600h
+vault_needs_gen: false
+vault_port: 8200
+# Although "cert" is an option, ansible has no way to auth via cert until
+# upstream merges: https://github.com/ansible/ansible/pull/18141
+vault_role_auth_method: userpass 
+vault_roles:
+  - name: etcd
+    group: etcd
+    policy_rules: default
+    role_options: default
+  - name: kube
+    group: k8s-cluster
+    policy_rules: default
+    role_options: default
+vault_roles_dir: "{{ vault_base_dir }}/roles"
+vault_secret_shares: 1
+vault_secret_threshold: 1
+vault_secrets_dir: "{{ vault_base_dir }}/secrets"
+vault_temp_config:
+  default_lease_ttl: "{{ vault_default_lease_ttl }}"
+  backend:
+    file:
+      path: /vault/file
+  listener:
+    tcp:
+      address: "0.0.0.0:{{ vault_port }}"
+      tls_disable: "true"
+vault_temp_container_name: vault-temp
+vault_version: 0.6.4

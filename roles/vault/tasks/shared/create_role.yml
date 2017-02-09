@@ -1,0 +1,74 @@
+---
+
+# The JSON inside JSON here is intentional (Vault API wants it)
+- name: create_role | Create a policy for the new role allowing issuing
+  uri:
+    url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}/v1/sys/policy/{{ create_role_name }}"
+    headers: "{{ hostvars[groups.vault|first]['vault_headers'] }}"
+    method: PUT
+    body_format: json
+    body:
+      rules: >-
+             {%- if create_role_policy_rules|d("default") == "default" -%}
+             {{
+             { 'path': {
+                 'pki/issue/' + create_role_name: {'policy': 'write'},
+                 'pki/roles/' + create_role_name: {'policy': 'read'}
+             }} | to_json + '\n'
+             }}
+             {%- else -%}
+             {{ create_role_policy_rules | to_json + '\n' }}
+             {%- endif -%}
+    status_code: 204
+  when: inventory_hostname == groups[create_role_group]|first
+
+- name: create_role | Create the new role in the pki mount
+  uri:
+    url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}/v1/pki/roles/{{ create_role_name }}"
+    headers: "{{ hostvars[groups.vault|first]['vault_headers'] }}"
+    method: POST
+    body_format: json
+    body: >-
+          {%- if create_role_options|d("default") == "default" -%}
+          {'allow_any_name': true}
+          {%- else -%}
+          {{ create_role_options }}
+          {%- endif -%}
+    status_code: 204
+  when: inventory_hostname == groups[create_role_group]|first
+
+## Cert based auth method
+
+- include: gen_cert.yml
+  vars:
+    gen_cert_copy_ca: true
+    gen_cert_hosts: "{{ groups[create_role_group] }}"
+    gen_cert_mount: "auth-pki"
+    gen_cert_path: "{{ vault_roles_dir }}/{{ create_role_name }}/issuer.pem"
+    gen_cert_vault_headers: "{{ hostvars[groups.vault|first]['vault_headers'] }}"
+    gen_cert_vault_role: "dummy"
+    gen_cert_vault_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
+  when: vault_role_auth_method == "cert" and inventory_hostname in groups[create_role_group]
+
+- name: create_role | Insert the auth-pki CA as the authenticating CA for that role
+  uri:
+    url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}/v1/auth/cert/certs/{{ create_role_name }}"
+    headers: "{{ hostvars[groups.vault|first]['vault_headers'] }}"
+    method: POST
+    body_format: json
+    body:
+      certificate: "{{ hostvars[groups[create_role_group]|first]['gen_cert_result']['json']['data']['issuing_ca'] }}"
+      policies: "{{ create_role_name }}"
+    status_code: 204
+  when: vault_role_auth_method == "cert" and inventory_hostname == groups[create_role_group]|first
+
+## Userpass based auth method
+
+- include: gen_userpass.yml
+  vars:
+    gen_userpass_group: "{{ create_role_group }}"
+    gen_userpass_password: "{{ create_role_password|d(''|to_uuid) }}"
+    gen_userpass_policies: "{{ create_role_name }}"
+    gen_userpass_role: "{{ create_role_name }}"
+    gen_userpass_username: "{{ create_role_name }}"
+  when: vault_role_auth_method == "userpass" and inventory_hostname in groups[create_role_group]

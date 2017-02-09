@@ -1,0 +1,22 @@
+---
+
+- name: cluster/unseal | Unseal Vault
+  uri:
+    url: "https://localhost:{{ vault_port }}/v1/sys/unseal"
+    headers: "{{ vault_headers }}"
+    method: POST
+    body_format: json
+    body:
+      key: "{{ item }}"
+  with_items: "{{ vault_unseal_keys|default([]) }}"
+  when: vault_is_sealed
+
+- name: cluster/unseal | Wait until server is ready
+  uri:
+    url: "https://localhost:{{ vault_port }}/v1/sys/health"
+    headers: "{{ vault_headers }}"
+    method: HEAD
+    status_code: 200, 429
+  register: vault_node_ready
+  until: vault_node_ready|succeeded
+  retries: 5

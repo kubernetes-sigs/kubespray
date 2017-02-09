@@ -1,0 +1,58 @@
+---
+
+- include: ../shared/check_vault.yml
+  when: inventory_hostname in groups.vault
+- include: sync_secrets.yml
+  when: inventory_hostname in groups.vault
+- include: ../shared/find_leader.yml
+  when: inventory_hostname in groups.vault and vault_cluster_is_initialized|d()
+
+## Sync Certs
+
+- include: sync_vault_certs.yml
+  when: inventory_hostname in groups.vault
+
+## Generate Certs
+
+# Start a temporary instance of Vault
+- include: start_vault_temp.yml
+  when: >-
+        inventory_hostname == groups.vault|first and
+        not vault_cluster_is_initialized
+
+# NOTE: The next 2 steps run against temp Vault and long-term Vault
+
+# Ensure PKI mount exists
+- include: ../shared/pki_mount.yml
+  when: >-
+        inventory_hostname == groups.vault|first
+
+# If the Root CA already exists, ensure Vault's PKI is using it
+- include: ../shared/config_ca.yml
+  vars:
+    ca_name: ca
+    mount_name: pki
+  when: >-
+        inventory_hostname == groups.vault|first and
+        not vault_ca_cert_needed
+
+# Generate root CA certs for Vault if none exist
+- include: gen_ca.yml
+  when: >-
+        inventory_hostname in groups.vault and
+        not vault_cluster_is_initialized and
+        vault_ca_cert_needed
+
+# Generate Vault API certs
+- include: gen_vault_certs.yml
+  when: inventory_hostname in groups.vault and vault_api_cert_needed
+
+# Update all host's CA bundle
+- include: ca_trust.yml
+
+## Add Etcd Role to Vault (if needed)
+
+- include: role_auth_cert.yml
+  when: vault_role_auth_method == "cert"
+- include: role_auth_userpass.yml
+  when: vault_role_auth_method == "userpass"

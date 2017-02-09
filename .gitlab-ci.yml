@@ -54,6 +54,7 @@ before_script:
   LOG_LEVEL: "-vv"
   ETCD_DEPLOYMENT: "docker"
   KUBELET_DEPLOYMENT: "docker"
+  VAULT_DEPLOYMENT: "docker"
   WEAVE_CPU_LIMIT: "100m"
   MAGIC: "ci check this"
 
@@ -106,6 +107,7 @@ before_script:
       -e ansible_python_interpreter=${PYPATH}
       -e ansible_ssh_user=${SSH_USER} 
       -e bootstrap_os=${BOOTSTRAP_OS}
+      -e cert_management=${CERT_MGMT:-script}
       -e cloud_provider=gce
       -e deploy_netchecker=true
       -e download_localhost=true
@@ -115,6 +117,7 @@ before_script:
       -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
       -e local_release_dir=${PWD}/downloads
       -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e vault_deployment_type=${VAULT_DEPLOYMENT}
       cluster.yml
 
 
@@ -291,6 +294,14 @@ before_script:
   CLUSTER_MODE: separate
   ETCD_DEPLOYMENT: rkt
   KUBELET_DEPLOYMENT: rkt
+
+.ubuntu_vault_sep_variables: &ubuntu_vault_sep_variables
+# stage: deploy-gce-part1
+  KUBE_NETWORK_PLUGIN: canal
+  CERT_MGMT: vault
+  CLOUD_IMAGE: ubuntu-1604-xenial
+  CLOUD_REGION: us-central1-b
+  CLUSTER_MODE: separate
 
 # Builds for PRs only (premoderated by unit-tests step) and triggers (auto)
 coreos-calico-sep:
@@ -502,6 +513,17 @@ ubuntu-rkt-sep:
   variables:
     <<: *gce_variables
     <<: *ubuntu_rkt_sep_variables
+  when: manual
+  except: ['triggers']
+  only: ['master', /^pr-.*$/]
+
+ubuntu-vault-sep:
+  stage: deploy-gce-part1
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    <<: *ubuntu_vault_sep_variables
   when: manual
   except: ['triggers']
   only: ['master', /^pr-.*$/]

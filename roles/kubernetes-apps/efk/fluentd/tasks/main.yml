@@ -1,9 +1,20 @@
 ---
 - name: "Fluentd | Write fluentd daemonset"
-  template: 
+  template:
     src: fluentd-ds.yml.j2
     dest: "{{ kube_config_dir }}/fluentd-ds.yaml"
   register: fluentd_ds_manifest
+
+#FIXME: remove if kubernetes/features#124 is implemented
+- name: "Fluentd | Purge old fluentd daemonset"
+  kube:
+    filename: "{{kube_config_dir}}/fluentd-ds.yaml"
+    kubectl: "{{bin_dir}}/kubectl"
+    name: "fluentd-es-v{{ fluentd_version }}"
+    namespace: "{{system_namespace}}"
+    resource: "ds"
+    state: absent
+  when: inventory_hostname == groups['kube-master'][0] and fluentd_ds_manifest.changed
 
 - name: "Fluentd | Create fluentd daemonset"
   kube:

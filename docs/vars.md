@@ -92,6 +92,10 @@ Stack](https://github.com/kubernetes-incubator/kargo/blob/master/docs/dns-stack.
   ``--insecure-registry=myregistry.mydomain:5000``
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy
+* *kubelet_load_modules* - For some things, kubelet needs to load kernel modules.  For example,
+  dynamic kernel services are needed for mounting persistent volumes into containers.  These may not be
+  loaded by preinstall kubernetes processes.  For example, ceph and rbd backed volumes.  Set this variable to
+  true to let kubelet load kernel modules.
 
 #### User accounts
 

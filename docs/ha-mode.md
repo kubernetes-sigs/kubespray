@@ -15,8 +15,7 @@ The `etcd_access_endpoint` fact provides an access pattern for clients. And the
 `etcd_multiaccess` (defaults to `True`) group var controlls that behavior.
 It makes deployed components to access the etcd cluster members
 directly: `http://ip1:2379, http://ip2:2379,...`. This mode assumes the clients
-do a loadbalancing and handle HA for connections. Note, a pod definition of a
-flannel networking plugin always uses a single `--etcd-server` endpoint!
+do a loadbalancing and handle HA for connections.
 
 
 Kube-apiserver

@@ -48,8 +48,10 @@ before_script:
   GS_ACCESS_KEY_ID: $GS_KEY
   GS_SECRET_ACCESS_KEY: $GS_SECRET
   ANSIBLE_KEEP_REMOTE_FILES: "1"
+  ANSIBLE_CONFIG: ./tests/ansible.cfg
   BOOTSTRAP_OS: none
   IDEMPOT_CHECK: "false"
+  UPGRADE_TEST: "false"
   RESOLVCONF_MODE: docker_dns
   LOG_LEVEL: "-vv"
   ETCD_DEPLOYMENT: "docker"
@@ -73,14 +75,12 @@ before_script:
     - pip install apache-libcloud==0.20.1
     - pip install boto==2.9.0
     - mkdir -p /.ssh
-    - cp tests/ansible.cfg .
     - mkdir -p $HOME/.ssh
     - echo $PRIVATE_KEY | base64 -d > $HOME/.ssh/id_rsa
     - echo $GCE_PEM_FILE | base64 -d > $HOME/.ssh/gce
     - echo $GCE_CREDENTIALS > $HOME/.ssh/gce.json
     - chmod 400 $HOME/.ssh/id_rsa
     - ansible-playbook --version
-    - cp tests/ansible.cfg .
     - export PYPATH=$([ $BOOTSTRAP_OS = none ] && echo /usr/bin/python || echo /opt/bin/python)
   script:
     - pwd
@@ -98,6 +98,12 @@ before_script:
       -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
       -e mode=${CLUSTER_MODE}
       -e test_id=${TEST_ID}
+
+    # Check out latest tag if testing upgrade
+    # Uncomment when gitlab kargo repo has tags
+    #- test "${UPGRADE_TEST}" = "true" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
+    - test "${UPGRADE_TEST}" = "true" && git checkout 031cf565ec3ccd3ebbe80eeef3454c3780e5c598 && pip install ansible==2.2.0
+
 
     # Create cluster
     - >
@@ -120,6 +126,31 @@ before_script:
       -e vault_deployment_type=${VAULT_DEPLOYMENT}
       cluster.yml
 
+    # Repeat deployment if testing upgrade
+    #FIXME(mattymo): repeat "Create cluster" above without duplicating code 
+    - >
+      if [ "${UPGRADE_TEST}" = "true" ]; then 
+      pip install ansible==2.2.1.0; 
+      git checkout "${CI_BUILD_REF}"; 
+      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u $SSH_USER 
+      ${SSH_ARGS} 
+      ${LOG_LEVEL} 
+      -e ansible_python_interpreter=${PYPATH} 
+      -e ansible_ssh_user=${SSH_USER} 
+      -e bootstrap_os=${BOOTSTRAP_OS} 
+      -e cloud_provider=gce 
+      -e deploy_netchecker=true 
+      -e download_localhost=true 
+      -e download_run_once=true 
+      -e etcd_deployment_type=${ETCD_DEPLOYMENT} 
+      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
+      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT} 
+      -e local_release_dir=${PWD}/downloads 
+      -e resolvconf_mode=${RESOLVCONF_MODE} 
+      -e weave_cpu_requests=${WEAVE_CPU_LIMIT} 
+      -e weave_cpu_limit=${WEAVE_CPU_LIMIT} 
+      cluster.yml; 
+      fi
 
     # Tests Cases
     ## Test Master API
@@ -222,6 +253,7 @@ before_script:
   KUBE_NETWORK_PLUGIN: canal
   CLOUD_IMAGE: debian-8-kubespray
   CLOUD_REGION: us-east1-b
+  UPGRADE_TEST: "true"
   CLUSTER_MODE: ha
 
 .rhel7_weave_variables: &rhel7_weave_variables
@@ -229,6 +261,7 @@ before_script:
   KUBE_NETWORK_PLUGIN: weave
   CLOUD_IMAGE: rhel-7
   CLOUD_REGION: europe-west1-b
+  UPGRADE_TEST: "true"
   CLUSTER_MODE: default
 
 .centos7_flannel_variables: &centos7_flannel_variables

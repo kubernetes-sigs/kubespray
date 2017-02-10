@@ -31,6 +31,7 @@
     dest: /etc/dnsmasq.d-available/01-kube-dns.conf
     mode: 0755
     backup: yes
+  register: dnsmasq_config
 
 - name: Stat dnsmasq configuration
   stat: path=/etc/dnsmasq.d/01-kube-dns.conf
@@ -54,6 +55,23 @@
     - {file: dnsmasq-svc.yml, type: svc}
   register: manifests
   when: inventory_hostname == groups['kube-master'][0]
+
+#FIXME: remove manifests.changed condition if kubernetes/features#124 is implemented
+- name: Delete existing dnsmasq daemonset 
+  kube:
+    name: dnsmasq
+    namespace: "{{system_namespace}}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/weave-net.yml"
+    resource: "ds"
+    namespace: "{{system_namespace}}"
+    state: absent
+  with_items: "{{ manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0] and item.item.type == "ds" and (manifests.changed or dnsmasq_config.changed)
+
 
 - name: Start Resources
   kube:

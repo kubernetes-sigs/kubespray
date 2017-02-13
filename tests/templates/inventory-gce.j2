@@ -2,12 +2,11 @@
 {% set node2 = gce.instance_data[1].name %}
 {{node1}} ansible_ssh_host={{gce.instance_data[0].public_ip}}
 {{node2}} ansible_ssh_host={{gce.instance_data[1].public_ip}}
-{% if mode is defined and mode in ["separate", "ha"] %}
+{% if mode is defined and mode in ["separate", "separate-scale"] %}
 {% set node3 = gce.instance_data[2].name %}
 {{node3}} ansible_ssh_host={{gce.instance_data[2].public_ip}}
 {% endif %}
-
-{% if mode is defined and mode == "separate" %}
+{% if mode is defined and mode in ["separate", "separate-scale"] %}
 [kube-master]
 {{node1}}
 
@@ -19,7 +18,7 @@
 
 [vault]
 {{node3}}
-{% elif mode is defined and mode == "ha" %}
+{% elif mode is defined and mode in ["ha", "ha-scale"] %}
 [kube-master]
 {{node1}}
 {{node2}}
@@ -51,3 +50,12 @@
 [k8s-cluster:children]
 kube-node
 kube-master
+
+{% if mode is defined and mode in ["scale", "separate-scale", "ha-scale"] %}
+[fake_hosts]
+fake_scale_host[1:200]
+
+[kube-node:children]
+fake_hosts
+{% endif %}
+

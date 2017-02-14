@@ -18,7 +18,7 @@ versions. Here are all version vars for each component:
 * flannel_version
 * kubedns_version
 
-#### Example
+#### Unsafe upgrade example
 
 If you wanted to upgrade just kube_version from v1.4.3 to v1.4.6, you could
 deploy the following way:
@@ -31,6 +31,20 @@ And then repeat with v1.4.6 as kube_version:
 
 ```
 ansible-playbook cluster.yml -i inventory/inventory.cfg -e kube_version=v1.4.6
+```
+
+#### Graceful upgrade
+
+Kargo also supports cordon, drain and uncordoning of nodes when performing 
+a cluster upgrade. There is a separate playbook used for this purpose. It is
+important to note that upgrade-cluster.yml can only be used for upgrading an
+existing cluster. That means there must be at least 1 kube-master already
+deployed.
+
+```
+git fetch origin
+git checkout origin/master
+ansible-playbook upgrade-cluster cluster.yml -i inventory/inventory.cfg
 ```
 
 #### Upgrade order

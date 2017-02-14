@@ -47,8 +47,9 @@ Starting custom deployment
 Once you have an inventory, you may want to customize deployment data vars
 and start the deployment:
 
+**IMPORTANT: Edit my_inventory/groups_vars/*.yaml to override data vars**
+
 ```
-# Edit my_inventory/groups_vars/*.yaml to override data vars
 ansible-playbook -i my_inventory/inventory.cfg cluster.yaml -b -v \
   --private-key=~/.ssh/private_key
 ```

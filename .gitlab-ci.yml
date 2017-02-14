@@ -101,8 +101,8 @@ before_script:
 
     # Check out latest tag if testing upgrade
     # Uncomment when gitlab kargo repo has tags
-    #- test "${UPGRADE_TEST}" = "true" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
-    - test "${UPGRADE_TEST}" = "true" && git checkout 031cf565ec3ccd3ebbe80eeef3454c3780e5c598 && pip install ansible==2.2.0
+    #- test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
+    - test "${UPGRADE_TEST}" != "false" && git checkout 031cf565ec3ccd3ebbe80eeef3454c3780e5c598 && pip install ansible==2.2.0
 
 
     # Create cluster
@@ -127,9 +127,10 @@ before_script:
       cluster.yml
 
     # Repeat deployment if testing upgrade
-    #FIXME(mattymo): repeat "Create cluster" above without duplicating code 
     - >
-      if [ "${UPGRADE_TEST}" = "true" ]; then 
+      if [ "${UPGRADE_TEST}" != "false" ]; then 
+      test "${UPGRADE_TEST}" == "basic" && PLAYBOOK="cluster.yml";
+      test "${UPGRADE_TEST}" == "graceful" && PLAYBOOK="upgrade-cluster.yml";
       pip install ansible==2.2.1.0; 
       git checkout "${CI_BUILD_REF}"; 
       ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u $SSH_USER 
@@ -149,7 +150,7 @@ before_script:
       -e resolvconf_mode=${RESOLVCONF_MODE} 
       -e weave_cpu_requests=${WEAVE_CPU_LIMIT} 
       -e weave_cpu_limit=${WEAVE_CPU_LIMIT} 
-      cluster.yml; 
+      $PLAYBOOK; 
       fi
 
     # Tests Cases
@@ -253,7 +254,7 @@ before_script:
   KUBE_NETWORK_PLUGIN: canal
   CLOUD_IMAGE: debian-8-kubespray
   CLOUD_REGION: us-east1-b
-  UPGRADE_TEST: "true"
+  UPGRADE_TEST: "basic"
   CLUSTER_MODE: ha
 
 .rhel7_weave_variables: &rhel7_weave_variables
@@ -261,7 +262,7 @@ before_script:
   KUBE_NETWORK_PLUGIN: weave
   CLOUD_IMAGE: rhel-7
   CLOUD_REGION: europe-west1-b
-  UPGRADE_TEST: "true"
+  UPGRADE_TEST: "graceful"
   CLUSTER_MODE: default
 
 .centos7_flannel_variables: &centos7_flannel_variables

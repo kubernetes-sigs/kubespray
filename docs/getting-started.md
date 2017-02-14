@@ -21,7 +21,7 @@ kargo deploy --aws -u centos -n calico
 Building your own inventory
 ---------------------------
 
-Ansible inventory can be stored in 3 formats: YAML, JSON, or inifile. There is
+Ansible inventory can be stored in 3 formats: YAML, JSON, or INI-like. There is
 an example inventory located
 [here](https://github.com/kubernetes-incubator/kargo/blob/master/inventory/inventory.example).
 

@@ -8,7 +8,7 @@ The inventory is composed of 3 groups:
 
 * **kube-node** : list of kubernetes nodes where the pods will run.
 * **kube-master** : list of servers where kubernetes master components (apiserver, scheduler, controller) will run.
-* **etcd**: list of server to compose the etcd server. you should have at least 3 servers for failover purposes.
+* **etcd**: list of servers to compose the etcd server. You should have at least 3 servers for failover purpose.
 
 Note: do not modify the children of _k8s-cluster_, like putting
 the _etcd_ group into the _k8s-cluster_, unless you are certain

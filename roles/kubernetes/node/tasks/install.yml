@@ -1,26 +1,4 @@
 ---
-- name: Trust kubelet container
-  command: >-
-    /usr/bin/rkt trust
-    --skip-fingerprint-review
-    --root
-    {{ item }}
-  register: kubelet_rkt_trust_result
-  until: kubelet_rkt_trust_result.rc == 0
-  with_items:
-    - "https://quay.io/aci-signing-key"
-    - "https://coreos.com/dist/pubkeys/aci-pubkeys.gpg"
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: false
-  when: kubelet_deployment_type == "rkt"
-
-- name: create kubelet working directory
-  file:
-    state: directory
-    path: /var/lib/kubelet
-  when: kubelet_deployment_type == "rkt"
-
 - name: install | Set SSL CA directories
   set_fact:
     ssl_ca_dirs: "[
@@ -35,11 +13,12 @@
     ]"
   tags: facts
 
+- include: "install_{{ kubelet_deployment_type }}.yml"
+
 - name: install | Write kubelet systemd init file
-  template: "src=kubelet.{{ kubelet_deployment_type }}.service.j2 dest=/etc/systemd/system/kubelet.service backup=yes"
+  template: 
+    src: "kubelet.{{ kubelet_deployment_type }}.service.j2"
+    dest: "/etc/systemd/system/kubelet.service"
+    backup: "yes"
   notify: restart kubelet
 
-- name: install | Install kubelet launch script
-  template: src=kubelet-container.j2 dest="{{ bin_dir }}/kubelet" owner=kube mode=0755 backup=yes
-  notify: restart kubelet
-  when: kubelet_deployment_type == "docker"

@@ -1,0 +1,33 @@
+---
+- name: Trust kubelet container
+  command: >-
+    /usr/bin/rkt trust
+    --skip-fingerprint-review
+    --root
+    {{ item }}
+  register: kubelet_rkt_trust_result
+  until: kubelet_rkt_trust_result.rc == 0
+  with_items:
+    - "https://quay.io/aci-signing-key"
+    - "https://coreos.com/dist/pubkeys/aci-pubkeys.gpg"
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+
+- name: create kubelet working directory
+  file:
+    state: directory
+    path: /var/lib/kubelet
+
+- name: Create kubelet service systemd directory
+  file: 
+    path: /etc/systemd/system/kubelet.service.d 
+    state: directory
+
+- name: Write kubelet proxy drop-in
+  template:
+    src: http-proxy.conf.j2
+    dest: /etc/systemd/system/kubelet.service.d/http-proxy.conf
+  when: http_proxy is defined or https_proxy is defined or no_proxy is defined
+  notify: restart kubelet
+

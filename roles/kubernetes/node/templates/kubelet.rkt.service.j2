@@ -21,11 +21,9 @@ EnvironmentFile={{kube_config_dir}}/kubelet.env
 # stage1-fly mounts /proc /sys /dev so no need to duplicate the mounts
 ExecStart=/usr/bin/rkt run \
         --volume dns,kind=host,source=/etc/resolv.conf \
-        --volume etc-cni,kind=host,source=/etc/cni,readOnly=true \
         --volume etc-kubernetes,kind=host,source={{ kube_config_dir }},readOnly=false \
         --volume etc-ssl-certs,kind=host,source=/etc/ssl/certs,readOnly=true \
         --volume etcd-ssl,kind=host,source={{ etcd_config_dir }},readOnly=true \
-        --volume opt-cni,kind=host,source=/opt/cni,readOnly=true \
         --volume run,kind=host,source=/run,readOnly=false \
         {% for dir in ssl_ca_dirs -%}
         --volume {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }},kind=host,source={{ dir }},readOnly=true \
@@ -33,12 +31,16 @@ ExecStart=/usr/bin/rkt run \
         --volume var-lib-docker,kind=host,source={{ docker_daemon_graph }},readOnly=false \
         --volume var-lib-kubelet,kind=host,source=/var/lib/kubelet,readOnly=false \
         --volume var-log,kind=host,source=/var/log \
-        --mount volume=dns,target=/etc/resolv.conf \
+{% if kube_network_plugin in ["calico", "weave", "canal"] %}
+        --volume etc-cni,kind=host,source=/etc/cni,readOnly=true \
+        --volume opt-cni,kind=host,source=/opt/cni,readOnly=true \
         --mount volume=etc-cni,target=/etc/cni \
+        --mount volume=opt-cni,target=/opt/cni \
+{% endif %}
+        --mount volume=dns,target=/etc/resolv.conf \
         --mount volume=etc-kubernetes,target={{ kube_config_dir }} \
         --mount volume=etc-ssl-certs,target=/etc/ssl/certs \
         --mount volume=etcd-ssl,target={{ etcd_config_dir }} \
-        --mount volume=opt-cni,target=/opt/cni \
         --mount volume=run,target=/run \
         {% for dir in ssl_ca_dirs -%}
         --mount volume={{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }},target={{ dir }} \

@@ -23,7 +23,7 @@ Some variables of note include:
 * *hyperkube_image_repo* - Specify the Docker repository where Hyperkube
   resides
 * *hyperkube_image_tag* - Specify the Docker tag where Hyperkube resides
-* *kube_network_plugin* - Changes k8s plugin to Calico
+* *kube_network_plugin* - Sets k8s network plugin (default Calico)
 * *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
 * *kube_version* - Specify a given Kubernetes hyperkube version
 * *searchdomains* - Array of DNS domains to search when looking up hostnames

@@ -96,8 +96,16 @@ if [ -n "$HOSTS" ]; then
         cn="${host%%.*}"
         # node key
         openssl genrsa -out node-${host}-key.pem 2048 > /dev/null 2>&1
-        openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=kube-node-${cn}" > /dev/null 2>&1
-        openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 3650 > /dev/null 2>&1
+        # Let's add SAN if needed
+        if [ -e "${CRT_TMP_DIR}/${host}.san" ]; then
+          CSR_OPTS="-config ${CRT_TMP_DIR}/${host}.san"
+          CRT_OPTS="-extensions v3_req -extfile ${CRT_TMP_DIR}/${host}.san"
+        else
+          CSR_OPTS=""
+          CRT_OPTS=""
+        fi
+        openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=kube-node-${cn}" $CSR_OPTS > /dev/null 2>&1
+        openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 3650 $CRT_OPTS > /dev/null 2>&1
     done
 fi
 

@@ -17,6 +17,12 @@ $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
 $box = "bento/ubuntu-16.04"
+# The first three nodes are etcd servers
+$etcd_instances = $num_instances
+# The first two nodes are masters
+$kube_master_instances = $num_instances == 1 ? $num_instances : ($num_instances - 1)
+# All nodes are kube nodes
+$kube_node_instances = $num_instances
 
 host_vars = {}
 
@@ -112,12 +118,9 @@ Vagrant.configure("2") do |config|
           ansible.host_vars = host_vars
           #ansible.tags = ['download']
           ansible.groups = {
-            # The first three nodes should be etcd servers
-            "etcd" => ["#{$instance_name_prefix}-0[1:3]"],
-            # The first two nodes should be masters
-            "kube-master" => ["#{$instance_name_prefix}-0[1:2]"],
-            # all nodes should be kube nodes
-            "kube-node" => ["#{$instance_name_prefix}-0[1:#{$num_instances}]"],
+            "etcd" => ["#{$instance_name_prefix}-0[1:#{$etcd_instances}]"],
+            "kube-master" => ["#{$instance_name_prefix}-0[1:#{$kube_master_instances}]"],
+            "kube-node" => ["#{$instance_name_prefix}-0[1:#{$kube_node_instances}]"],
             "k8s-cluster:children" => ["kube-master", "kube-node"],
           }
         end

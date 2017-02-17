@@ -64,21 +64,13 @@
 
 - name: check cloud_provider value
   fail:
-    msg: "If set the 'cloud_provider' var must be set either to 'generic', 'gce', 'aws', 'azure', 'vsphere',  or 'openstack'"
-  when: cloud_provider is defined and cloud_provider not in ['generic', 'gce', 'aws', 'openstack', 'azure', 'vsphere']
+    msg: "If set the 'cloud_provider' var must be set either to 'generic', 'gce', 'aws', 'azure', 'openstack' or 'vsphere'"
+  when: cloud_provider is defined and cloud_provider not in ['generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere']
   tags: [cloud-provider, facts]
 
-- include: openstack-credential-check.yml
-  when: cloud_provider is defined and cloud_provider == 'openstack'
-  tags: [cloud-provider, openstack, facts]
-
-- include: azure-credential-check.yml
-  when: cloud_provider is defined and cloud_provider == 'azure'
-  tags: [cloud-provider, azure, facts]
-
-- include: vsphere-credential-check.yml
-  when: cloud_provider is defined and cloud_provider == 'vsphere'
-  tags: [cloud-provider, vsphere, facts]
+- include: "{{ cloud_provider }}-credential-check.yml"
+  when: cloud_provider is defined and cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
+  tags: [cloud-provider, "{{ cloud_provider }}", facts]
 
 - name: Create cni directories
   file:
@@ -183,23 +175,14 @@
     state: present
   tags: bootstrap-os
 
-- name: "Write {{ cloud_provider}} cloud-config"
+- name: Write cloud-config
   template:
     src: "{{ cloud_provider }}-cloud-config.j2"
     dest: "{{ kube_config_dir }}/cloud_config"
     group: "{{ kube_cert_group }}"
     mode: 0640
-  when: inventory_hostname in groups['k8s-cluster'] and cloud_provider is defined and cloud_provider in [ "openstack", "vsphere" ]
-  tags: [cloud-provider, openstack, vsphere]
-
-- name: Write azure cloud-config
-  template:
-    src: azure-cloud-config.j2
-    dest: "{{ kube_config_dir }}/cloud_config"
-    group: "{{ kube_cert_group }}"
-    mode: 0640
-  when: inventory_hostname in groups['k8s-cluster'] and cloud_provider is defined and cloud_provider == "azure"
-  tags: [cloud-provider, azure]
+  when: inventory_hostname in groups['k8s-cluster'] and cloud_provider is defined and cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
+  tags: [cloud-provider, "{{ cloud_provider }}"]
 
 - include: etchosts.yml
   tags: [bootstrap-os, etchosts]

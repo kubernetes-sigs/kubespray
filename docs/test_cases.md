@@ -57,13 +57,13 @@ GCE instances
 |--------------------|--------------------|--------------------|--------------------|--------------------|
 |               part1|              calico|       coreos-stable|          us-west1-b|            separate|
 |               part1|               canal|  debian-8-kubespray|          us-east1-b|                  ha|
-|               part1|               weave|              rhel-7|      europe-west1-b|               scale|
+|               part1|               weave|              rhel-7|      europe-west1-b|             default|
 |               part2|             flannel|            centos-7|          us-west1-a|             default|
 |               part2|              calico|  debian-8-kubespray|       us-central1-b|             default|
 |               part2|               canal|       coreos-stable|          us-east1-b|             default|
 |             special|               canal|              rhel-7|          us-east1-b|            separate|
-|             special|               weave|  ubuntu-1604-xenial|       us-central1-b|               scale|
+|             special|               weave|  ubuntu-1604-xenial|       us-central1-b|             default|
 |             special|              calico|            centos-7|      europe-west1-b|            ha-scale|
-|             special|               weave|        coreos-alpha|          us-west1-a|                  ha|
+|             special|               weave|        coreos-alpha|          us-west1-a|            ha-scale|
 
 The "Stage" means a build step of the build pipeline. The steps are ordered as `part1->part2->special`.

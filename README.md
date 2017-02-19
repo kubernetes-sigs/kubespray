@@ -73,6 +73,7 @@ in order to avoid any issue during deployment you should disable your firewall.
 * The target servers are configured to allow **IPv4 forwarding**.
 * **Copy your ssh keys** to all the servers part of your inventory.
 * **Ansible v2.2 (or newer) and python-netaddr**
+  * Build and source a venv `make && venv/bin/activate`
 
 
 ## Network plugins

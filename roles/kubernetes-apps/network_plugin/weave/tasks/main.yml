@@ -1,6 +1,5 @@
 #FIXME: remove if kubernetes/features#124 is implemented
 - name: Weave | Purge old weave daemonset
-  run_once: true
   kube:
     name: "weave-net"
     kubectl: "{{ bin_dir }}/kubectl"
@@ -12,7 +11,6 @@
 
 
 - name: Weave | Start Resources
-  run_once: true
   kube:
     name: "weave-net"
     kubectl: "{{ bin_dir }}/kubectl"
@@ -21,17 +19,16 @@
     namespace: "{{system_namespace}}"
     state: "{{ item | ternary('latest','present') }}"
   with_items: "{{ weave_manifest.changed }}"
-  delegate_to: "{{groups['kube-master'][0]}}"
+  when: inventory_hostname == groups['kube-master'][0]
 
 
 - name: "Weave | wait for weave to become available"
   uri:
     url: http://127.0.0.1:6784/status
     return_content: yes
-  run_once: true
   register: weave_status
-  retries: 12
+  retries: 180
   delay: 10
   until: "{{ weave_status.status == 200 and
     'Status: ready' in weave_status.content }}"
-  delegate_to: "{{groups['kube-master'][0]}}"
+  when: inventory_hostname == groups['kube-master'][0]

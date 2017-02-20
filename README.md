@@ -71,7 +71,7 @@ Requirements
   that will run Ansible commands**
 * The target servers must have **access to the Internet** in order to pull docker images.
 * The target servers are configured to allow **IPv4 forwarding**.
-* All **your ssh keys must be copied** to all the servers part of your inventory.
+* **Your ssh key must be copied** to all the servers part of your inventory.
 * The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
 in order to avoid any issue during deployment you should disable your firewall.
 

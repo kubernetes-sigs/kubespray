@@ -67,12 +67,13 @@ plugins can be deployed for a given single cluster.
 Requirements
 --------------
 
+* **Ansible v2.2 (or newer) and python-netaddr is installed on the machine
+  that will run Ansible commands**
 * The target servers must have **access to the Internet** in order to pull docker images.
+* The target servers are configured to allow **IPv4 forwarding**.
+* All **your ssh keys must be copied** to all the servers part of your inventory.
 * The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
 in order to avoid any issue during deployment you should disable your firewall.
-* The target servers are configured to allow **IPv4 forwarding**.
-* **Copy your ssh keys** to all the servers part of your inventory.
-* **Ansible v2.2 (or newer) and python-netaddr**
 
 
 ## Network plugins

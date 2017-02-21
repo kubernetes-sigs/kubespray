@@ -1,7 +1,7 @@
 Azure
 ===============
 
-To deploy kubespray on [Azure](https://azure.microsoft.com) uncomment the `cloud_provider` option in `group_vars/all.yml` and set it to `'azure'`.
+To deploy Kubernetes on [Azure](https://azure.microsoft.com) uncomment the `cloud_provider` option in `group_vars/all.yml` and set it to `'azure'`.
 
 All your instances are required to run in a resource group and a routing table has to be attached to the subnet your instances are in.
 
@@ -49,8 +49,8 @@ This is the AppId from the last command
 - Create the role assignment with:
 `azure role assignment create --spn http://kubernetes -o "Owner" -c /subscriptions/SUBSCRIPTION_ID`
 
-azure\_aad\_client\_id musst be set to the AppId, azure\_aad\_client\_secret is your choosen secret.
+azure\_aad\_client\_id must be set to the AppId, azure\_aad\_client\_secret is your choosen secret.
 
 ## Provisioning Azure with Resource Group Templates
 
-You'll find Resource Group Templates and scripts to provision the required infrastructore to Azure in [*contrib/azurerm*](../contrib/azurerm/README.md)
+You'll find Resource Group Templates and scripts to provision the required infrastructure to Azure in [*contrib/azurerm*](../contrib/azurerm/README.md)

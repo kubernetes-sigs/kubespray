@@ -1,4 +1,5 @@
 stages:
+  - deploy-do-part1
   - moderator
   - unit-tests
   - deploy-gce-part1
@@ -235,6 +236,178 @@ before_script:
       -e gce_credentials_file=${HOME}/.ssh/gce.json
       -e inventory_path=${PWD}/inventory/sample/hosts.ini
 
+.do: &do
+  <<: *job
+  <<: *gce
+  cache:
+    key: "$CI_BUILD_REF_NAME"
+    paths:
+      - downloads/
+      - $HOME/.cache
+  before_script:
+    - docker info
+    - pip install ansible==2.2.1.0
+    - pip install netaddr
+    - pip install apache-libcloud==0.20.1
+    - pip install boto==2.9.0
+    - pip install dopy==0.3.5
+    - ansible-playbook --version
+    - export PYPATH=$([ $BOOTSTRAP_OS = none ] && echo /usr/bin/python || echo /opt/bin/python)
+  script:
+    - pwd
+    - ls
+    - echo ${PWD}
+    - >
+      ansible-playbook tests/cloud_playbooks/create-do.yml -i tests/local_inventory/hosts.cfg -c local
+      ${LOG_LEVEL}
+      -e cloud_image=${CLOUD_IMAGE}
+      -e cloud_region=${CLOUD_REGION}
+      -e inventory_path=${PWD}/inventory/inventory.ini
+      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      -e mode=${CLUSTER_MODE}
+      -e test_id=${TEST_ID}
+
+    # Check out latest tag if testing upgrade
+    # Uncomment when gitlab kargo repo has tags
+    #- test "${UPGRADE_TEST}" = "true" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
+    - test "${UPGRADE_TEST}" = "true" && git checkout 031cf565ec3ccd3ebbe80eeef3454c3780e5c598 && pip install ansible==2.2.0
+
+
+    # Create cluster
+    - >
+      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u $SSH_USER
+      ${SSH_ARGS}
+      ${LOG_LEVEL}
+      -e state=present
+      -e ansible_python_interpreter=${PYPATH}
+      -e ansible_ssh_user=${SSH_USER}
+      -e bootstrap_os=${BOOTSTRAP_OS}
+      -e cert_management=${CERT_MGMT:-script}
+      -e cloud_provider=gce
+      -e deploy_netchecker=true
+      -e download_localhost=true
+      -e download_run_once=true
+      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      -e local_release_dir=${PWD}/downloads
+      -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e vault_deployment_type=${VAULT_DEPLOYMENT}
+      cluster.yml
+
+    # Repeat deployment if testing upgrade
+    #FIXME(mattymo): repeat "Create cluster" above without duplicating code
+    - >
+      if [ "${UPGRADE_TEST}" = "true" ]; then
+      pip install ansible==2.2.1.0;
+      git checkout "${CI_BUILD_REF}";
+      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u $SSH_USER
+      ${SSH_ARGS}
+      ${LOG_LEVEL}
+      -e ansible_python_interpreter=${PYPATH}
+      -e ansible_ssh_user=${SSH_USER}
+      -e bootstrap_os=${BOOTSTRAP_OS}
+      -e cloud_provider=gce
+      -e deploy_netchecker=true
+      -e download_localhost=true
+      -e download_run_once=true
+      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      -e local_release_dir=${PWD}/downloads
+      -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
+      -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
+      cluster.yml;
+      fi
+
+    # Tests Cases
+    ## Test Master API
+    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/010_check-apiserver.yml $LOG_LEVEL
+
+    ## Ping the between 2 pod
+    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
+
+    ## Advanced DNS checks
+    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/040_check-network-adv.yml $LOG_LEVEL
+
+    ## Idempotency checks 1/5 (repeat deployment)
+    - >
+      if [ "${IDEMPOT_CHECK}" = "true" ]; then
+      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
+      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      --private-key=${HOME}/.ssh/id_rsa
+      -e bootstrap_os=${BOOTSTRAP_OS}
+      -e ansible_python_interpreter=${PYPATH}
+      -e download_run_once=true
+      -e download_localhost=true
+      -e deploy_netchecker=true
+      -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e local_release_dir=${PWD}/downloads
+      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      cluster.yml;
+      fi
+
+    ## Idempotency checks 2/5 (Advanced DNS checks)
+    - >
+      if [ "${IDEMPOT_CHECK}" = "true" ]; then
+      ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH}
+      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
+      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+      fi
+
+    ## Idempotency checks 3/5 (reset deployment)
+    - >
+      if [ "${IDEMPOT_CHECK}" = "true" ]; then
+      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
+      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      --private-key=${HOME}/.ssh/id_rsa
+      -e bootstrap_os=${BOOTSTRAP_OS}
+      -e ansible_python_interpreter=${PYPATH}
+      reset.yml;
+      fi
+
+    ## Idempotency checks 4/5 (redeploy after reset)
+    - >
+      if [ "${IDEMPOT_CHECK}" = "true" ]; then
+      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
+      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      --private-key=${HOME}/.ssh/id_rsa
+      -e bootstrap_os=${BOOTSTRAP_OS}
+      -e ansible_python_interpreter=${PYPATH}
+      -e download_run_once=true
+      -e download_localhost=true
+      -e deploy_netchecker=true
+      -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e local_release_dir=${PWD}/downloads
+      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      cluster.yml;
+      fi
+
+    ## Idempotency checks 5/5 (Advanced DNS checks)
+    - >
+      if [ "${IDEMPOT_CHECK}" = "true" ]; then
+      ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH}
+      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
+      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+      fi
+
+  after_script:
+    - >
+      ansible-playbook -i inventory/inventory.ini tests/cloud_playbooks/create-do.yml -c local  $LOG_LEVEL
+      -e state=absent
+      -e mode=${CLUSTER_MODE}
+      -e test_id=${TEST_ID}
+      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      -e gce_project_id=${GCE_PROJECT_ID}
+      -e gce_service_account_email=${GCE_ACCOUNT}
+      -e gce_credentials_file=${HOME}/.ssh/gce.json
+      -e cloud_image=${CLOUD_IMAGE}
+      -e inventory_path=${PWD}/inventory/inventory.ini
+      -e cloud_region=${CLOUD_REGION}
+
 # Test matrix. Leave the comments for markup scripts.
 .coreos_calico_aio_variables: &coreos_calico_aio_variables
 # stage: deploy-gce-part1
@@ -308,6 +481,19 @@ coreos-calico-aio:
   variables:
     <<: *gce_variables
     <<: *coreos_calico_aio_variables
+  when: on_success
+  except: ['triggers']
+  only: [/^pr-.*$/]
+
+coreos-calico-sep-do:
+  stage: deploy-do-part1
+  <<: *job
+  <<: *do
+  variables:
+    <<: *gce_variables
+    <<: *coreos_calico_sep_variables
+    CLOUD_IMAGE: coreos-stable
+    CLOUD_REGION: NYC3
   when: on_success
   except: ['triggers']
   only: [/^pr-.*$/]

@@ -251,8 +251,14 @@ before_script:
     - pip install apache-libcloud==0.20.1
     - pip install boto==2.9.0
     - pip install dopy==0.3.5
+    - mkdir -p /.ssh
+    - mkdir -p $HOME/.ssh
+    - echo $DO_PRIVATE_KEY | base64 -d > $HOME/.ssh/id_rsa
+    - chmod 400 $HOME/.ssh/id_rsa
+    - md5sum ~/.ssh/id_rsa
     - ansible-playbook --version
-    - export PYPATH=$([ $BOOTSTRAP_OS = none ] && echo /usr/bin/python || echo /opt/bin/python)
+    - export PYPATH=$([ $BOOTSTRAP_OS = coreos ] && echo /opt/bin/python || echo /usr/bin/python )
+    - echo $PYPATH
   script:
     - pwd
     - ls
@@ -275,12 +281,12 @@ before_script:
 
     # Create cluster
     - >
-      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u $SSH_USER
+      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u root
       ${SSH_ARGS}
       ${LOG_LEVEL}
       -e state=present
       -e ansible_python_interpreter=${PYPATH}
-      -e ansible_ssh_user=${SSH_USER}
+      -e ansible_ssh_user=root
       -e bootstrap_os=${BOOTSTRAP_OS}
       -e cert_management=${CERT_MGMT:-script}
       -e cloud_provider=gce
@@ -301,11 +307,11 @@ before_script:
       if [ "${UPGRADE_TEST}" = "true" ]; then
       pip install ansible==2.2.1.0;
       git checkout "${CI_BUILD_REF}";
-      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u $SSH_USER
+      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u root
       ${SSH_ARGS}
       ${LOG_LEVEL}
       -e ansible_python_interpreter=${PYPATH}
-      -e ansible_ssh_user=${SSH_USER}
+      -e ansible_ssh_user=root
       -e bootstrap_os=${BOOTSTRAP_OS}
       -e cloud_provider=gce
       -e deploy_netchecker=true
@@ -323,18 +329,18 @@ before_script:
 
     # Tests Cases
     ## Test Master API
-    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/010_check-apiserver.yml $LOG_LEVEL
+    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root tests/testcases/010_check-apiserver.yml $LOG_LEVEL
 
     ## Ping the between 2 pod
-    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
+    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
 
     ## Advanced DNS checks
-    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root tests/testcases/040_check-network-adv.yml $LOG_LEVEL
+    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root tests/testcases/040_check-network-adv.yml $LOG_LEVEL
 
     ## Idempotency checks 1/5 (repeat deployment)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
+      ansible-playbook -i inventory/inventory.ini -u root -e ansible_ssh_user=root $SSH_ARGS
       -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
       --private-key=${HOME}/.ssh/id_rsa
       -e bootstrap_os=${BOOTSTRAP_OS}
@@ -353,14 +359,14 @@ before_script:
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
       ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH}
-      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
+      -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root
       tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
       fi
 
     ## Idempotency checks 3/5 (reset deployment)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
+      ansible-playbook -i inventory/inventory.ini -u root -e ansible_ssh_user=root $SSH_ARGS
       -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
       --private-key=${HOME}/.ssh/id_rsa
       -e bootstrap_os=${BOOTSTRAP_OS}
@@ -371,7 +377,7 @@ before_script:
     ## Idempotency checks 4/5 (redeploy after reset)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
+      ansible-playbook -i inventory/inventory.ini -u root -e ansible_ssh_user=root $SSH_ARGS
       -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
       --private-key=${HOME}/.ssh/id_rsa
       -e bootstrap_os=${BOOTSTRAP_OS}
@@ -390,7 +396,7 @@ before_script:
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
       ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH}
-      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
+      -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root
       tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
       fi
 
@@ -453,6 +459,15 @@ before_script:
 # stage: deploy-gce-special
   MOVED_TO_GROUP_VARS: "true"
 
+.ubuntu_calico_variables: &ubuntu_calico_variables
+# stage: deploy-gce-special
+  KUBE_NETWORK_PLUGIN: calico
+  CLOUD_IMAGE: ubuntu-1604-xenial
+  CLOUD_REGION: us-central1-b
+  CLUSTER_MODE: separate
+  IDEMPOT_CHECK: "false"
+  BOOTSTRAP_OS: ubuntu
+
 .centos7_calico_ha_variables: &centos7_calico_ha_variables
 # stage: deploy-gce-special
   MOVED_TO_GROUP_VARS: "true"
@@ -485,14 +500,14 @@ coreos-calico-aio:
   except: ['triggers']
   only: [/^pr-.*$/]
 
-coreos-calico-sep-do:
+ubuntu-calico-sep-do:
   stage: deploy-do-part1
   <<: *job
   <<: *do
   variables:
     <<: *gce_variables
-    <<: *coreos_calico_sep_variables
-    CLOUD_IMAGE: coreos-stable
+    <<: *ubuntu_calico_variables
+    CLOUD_IMAGE: ubuntu-16-04-x64
     CLOUD_REGION: NYC3
   when: on_success
   except: ['triggers']

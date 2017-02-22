@@ -13,7 +13,7 @@
 
     - set_fact:
         instance_names: >-
-          {%- if mode in ['separate', 'ha'] -%}
+          {%- if mode in ['separate', 'separate-scale', 'ha', 'ha-scale'] -%}
           k8s-{{test_name}}-1,k8s-{{test_name}}-2,k8s-{{test_name}}-3
           {%- else -%}
           k8s-{{test_name}}-1,k8s-{{test_name}}-2
@@ -38,6 +38,18 @@
       template:
         src: ../templates/inventory-gce.j2
         dest: "{{ inventory_path }}"
+
+    - name: Make group_vars directory
+      file:
+        path: "{{ inventory_path|dirname }}/group_vars"
+        state: directory
+      when: mode in ['scale', 'separate-scale', 'ha-scale']
+
+    - name: Template fake hosts group vars
+      template:
+        src: ../templates/fake_hosts.yml.j2
+        dest: "{{ inventory_path|dirname }}/group_vars/fake_hosts.yml"
+      when: mode in ['scale', 'separate-scale', 'ha-scale']
 
     - name: Wait for SSH to come up
       wait_for: host={{item.public_ip}} port=22 delay=10 timeout=180 state=started

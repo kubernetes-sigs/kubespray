@@ -1,8 +1,36 @@
+## Required for bootstrap-os/preinstall/download roles and setting facts
 # Valid bootstrap options (required): ubuntu, coreos, centos, none
 bootstrap_os: none
+kube_api_anonymous_auth: false
+
+## Change this to use another Kubernetes version, e.g. a current beta release
+kube_version: v1.5.3
 
 # Directory where the binaries will be installed
 bin_dir: /usr/local/bin
+docker_bin_dir: /usr/bin
+
+# Where the binaries will be downloaded.
+# Note: ensure that you've enough disk space (about 1G)
+local_release_dir: "/tmp/releases"
+# Random shifts for retrying failed ops like pushing/downloading
+retry_stagger: 5
+
+# DNS configuration.
+# Kubernetes cluster name, also will be used as DNS domain
+cluster_name: cluster.local
+# Subdomains of DNS domain to be resolved via /etc/resolv.conf for hostnet pods
+ndots: 2
+# Can be dnsmasq_kubedns, kubedns or none
+dns_mode: dnsmasq_kubedns
+# Can be docker_dns, host_resolvconf or none
+resolvconf_mode: docker_dns
+# Deploy netchecker app to verify DNS resolve as an HTTP service
+deploy_netchecker: false
+# Ip address of the kubernetes skydns service
+skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('address') }}"
+dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
+dns_domain: "{{ cluster_name }}"
 
 # Kubernetes configuration dirs and system namespace.
 # Those are where all the additional config stuff goes
@@ -26,16 +54,6 @@ kube_token_dir: "{{ kube_config_dir }}/tokens"
 # This is where to save basic auth file
 kube_users_dir: "{{ kube_config_dir }}/users"
 
-kube_api_anonymous_auth: false
-
-## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.5.3
-
-# Where the binaries will be downloaded.
-# Note: ensure that you've enough disk space (about 1G)
-local_release_dir: "/tmp/releases"
-# Random shifts for retrying failed ops like pushing/downloading
-retry_stagger: 5
 
 # This is the group that the cert creation scripts chgrp the
 # cert files to. Not really changable...
@@ -76,22 +94,6 @@ kube_apiserver_ip: "{{ kube_service_addresses|ipaddr('net')|ipaddr(1)|ipaddr('ad
 kube_apiserver_port: 443 # (https)
 kube_apiserver_insecure_port: 8080 # (http)
 
-# DNS configuration.
-# Kubernetes cluster name, also will be used as DNS domain
-cluster_name: cluster.local
-# Subdomains of DNS domain to be resolved via /etc/resolv.conf for hostnet pods
-ndots: 2
-# Can be dnsmasq_kubedns, kubedns or none
-dns_mode: dnsmasq_kubedns
-# Can be docker_dns, host_resolvconf or none
-resolvconf_mode: docker_dns
-# Deploy netchecker app to verify DNS resolve as an HTTP service
-deploy_netchecker: false
-# Ip address of the kubernetes skydns service
-skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('address') }}"
-dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
-dns_domain: "{{ cluster_name }}"
-
 # Path used to store Docker data
 docker_daemon_graph: "/var/lib/docker"
 
@@ -100,7 +102,6 @@ docker_daemon_graph: "/var/lib/docker"
 ## An obvious use case is allowing insecure-registry access
 ## to self hosted registries like so:
 docker_options: "--insecure-registry={{ kube_service_addresses }} --graph={{ docker_daemon_graph }} --iptables=false"
-docker_bin_dir: "/usr/bin"
 
 # Settings for containerized control plane (etcd/kubelet/secrets)
 etcd_deployment_type: docker
@@ -110,6 +111,3 @@ vault_deployment_type: docker
 
 # K8s image pull policy (imagePullPolicy)
 k8s_image_pull_policy: IfNotPresent
-
-# Monitoring apps for k8s
-efk_enabled: false

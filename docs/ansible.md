@@ -162,7 +162,7 @@ ansible-playbook -i inventory/inventory.ini -e dns_server='' cluster.yml --tags 
 And this prepares all container images localy (at the ansible runner node) without installing
 or upgrading related stuff or trying to upload container to K8s cluster nodes:
 ```
-ansible-playbook -i inventory/inventory.ini cluster.yaml \
+ansible-playbook -i inventory/inventory.ini cluster.yml \
     -e download_run_once=true -e download_localhost=true \
     --tags download --skip-tags upload,upgrade
 ```

@@ -50,7 +50,7 @@ and start the deployment:
 **IMPORTANT: Edit my_inventory/groups_vars/*.yaml to override data vars**
 
 ```
-ansible-playbook -i my_inventory/inventory.cfg cluster.yaml -b -v \
+ansible-playbook -i my_inventory/inventory.cfg cluster.yml -b -v \
   --private-key=~/.ssh/private_key
 ```
 

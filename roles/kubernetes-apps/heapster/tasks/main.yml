@@ -1,0 +1,23 @@
+---
+- name: Heapster | Lay Down Heaspter Templates
+  template: src={{item.file}} dest={{kube_config_dir}}/{{item.file}}
+  with_items:
+    - {file: grafana-deployment.yaml, type: deployment, name: monitoring-grafana}
+    - {file: grafana-service.yaml, type: svc, name: monitoring-grafana}
+    - {file: heapster-deployment.yaml, type: deployment, name: heapster}
+    - {file: heapster-service.yaml, type: svc, name: heapster}
+    - {file: influxdb-deployment.yaml, type: deployment, name: monitoring-influxdb}
+    - {file: influxdb-service.yaml, type: svc, name: monitoring-influxdb}
+  register: manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Heapster| Start Resources
+  kube:
+    name: "{{item.item.name}}"
+    namespace: "{{heapster_namespace}}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: "{{ manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]

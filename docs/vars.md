@@ -41,8 +41,9 @@ Some variables of note include:
   address instead of localhost for kube-masters and kube-master[0] for
   kube-nodes. See more details in the
   [HA guide](https://github.com/kubernetes-incubator/kargo/blob/master/docs/ha-mode.md).
-* *loadbalancer_apiserver_localhost* - If enabled, all hosts will connect to
-  the apiserver internally load balanced endpoint.  See more details in the
+* *loadbalancer_apiserver_localhost* - makes all hosts to connect to
+  the apiserver internally load balanced endpoint. Mutual exclusive to the
+  `loadbalancer_apiserver`. See more details in the
   [HA guide](https://github.com/kubernetes-incubator/kargo/blob/master/docs/ha-mode.md).
 
 #### Cluster variables

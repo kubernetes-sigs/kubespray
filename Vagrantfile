@@ -94,12 +94,14 @@ Vagrant.configure("2") do |config|
 
       ip = "#{$subnet}.#{i+100}"
       host_vars[vm_name] = {
-        "ip" => ip,
-        #"access_ip" => ip,
-        "flannel_interface" => ip,
-        "flannel_backend_type" => "host-gw",
-        "local_release_dir" => "/vagrant/temp",
-        "download_run_once" => "False"
+        "ip": ip,
+        "flannel_interface": ip,
+        "flannel_backend_type": "host-gw",
+        "local_release_dir": "/vagrant/temp",
+        "download_run_once": "False",
+        # Override the default 'calico' with flannel.
+        # inventory/group_vars/k8s-cluster.yml
+        "kube_network_plugin": "flannel",
       }
       config.vm.network :private_network, ip: ip
 

@@ -61,8 +61,8 @@ listen kubernetes-apiserver-https
   mode tcp
   timeout client 3h
   timeout server 3h
-  server master1 <IP1>:443
-  server master2 <IP2>:443
+  server master1 <IP1>:6443
+  server master2 <IP2>:6443
   balance roundrobin
 ```
 

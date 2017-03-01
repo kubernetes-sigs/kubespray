@@ -2,27 +2,34 @@
 
 **Overview:**
 
-- This will create nodes in a VPC inside of AWS
+This project will create:
+* VPC with Public and Private Subnets in # Availability Zones
+* Bastion Hosts and NAT Gateways in the Public Subnet
+* A dynamic number of masters, etcd, and worker nodes in the Private Subnet
+ * even distributed over the # of Availability Zones
+* AWS ELB in the Public Subnet for accessing the Kubernetes API from the internet
 
-- A dynamic number of masters, etcd, and nodes can be created
-
-- These scripts currently expect Private IP connectivity with the nodes that are created. This means that you may need a tunnel to your VPC or to run these scripts from a VM inside the VPC. Will be looking into how to work around this later.
+**Requirements**
+- Terraform 0.8.7 or newer
 
 **How to Use:**
 
-- Export the variables for your Amazon credentials:
+- Export the variables for your AWS credentials or edit credentials.tfvars:
 
 ```
-export AWS_ACCESS_KEY_ID="xxx"
-export AWS_SECRET_ACCESS_KEY="yyy"
+export aws_access_key="xxx"
+export aws_secret_key="yyy"
+export aws_ssh_key_name="zzz"
 ```
 
 - Update contrib/terraform/aws/terraform.tfvars with your data
 
-- Run with `terraform apply`
+- Run with `terraform apply -var-file="credentials.tfvars"` or `terraform apply` depending if you exported your AWS credentials
 
-- Once the infrastructure is created, you can run the kubespray playbooks and supply contrib/terraform/aws/inventory with the `-i` flag.
+- Once the infrastructure is created, you can run the kargo playbooks and supply inventory/hosts with the `-i` flag.
 
-**Future Work:**
+**Architecture**
 
-- Update the inventory creation file to be something a little more reasonable. It's just a local-exec from Terraform now, using terraform.py or something may make sense in the future.
+Pictured is an AWS Infrastructure created with this Terraform project distributed over two Availability Zones.
+
+![AWS Infrastructure with Terraform  ](docs/aws_kargo.png)

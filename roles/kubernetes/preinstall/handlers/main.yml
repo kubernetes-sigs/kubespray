@@ -3,6 +3,10 @@
   notify:
     - Preinstall | reload network
     - Preinstall | reload kubelet
+    - Preinstall | kube-controller configured
+    - Preinstall | stop controller
+    - Preinstall | pause for controller
+    - Preinstall | restart controller
   when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
 
   # FIXME(bogdando) https://github.com/projectcalico/felix/issues/1185
@@ -32,4 +36,33 @@
   service:
     name: kubelet
     state: restarted
-  when: "{{ inventory_hostname in groups['kube-master'] and not dns_early|bool }}"
+  notify:
+    - Preinstall | kube-controller configured
+    - Preinstall | stop controller
+    - Preinstall | pause for controller
+    - Preinstall | restart controller
+  when: inventory_hostname in groups['kube-master'] and not dns_early|bool
+
+- name: Preinstall | kube-controller configured
+  stat: path="{{ kube_manifest_dir }}/kube-controller-manager.manifest"
+  register: kube_controller_set
+  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
+
+- name: Preinstall | stop controller
+  replace:
+    dest: "{{ kube_manifest_dir }}/kube-controller-manager.manifest"
+    regexp: '(\s+)image:\s+.*?$'
+    replace: '\1image: kill.controller.using.fake.image.in:manifest'
+  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf' and kube_controller_set.stat.exists
+
+- name: Preinstall | pause for controller
+  pause: seconds=20
+  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf' and kube_controller_set.stat.exists
+
+- name: Preinstall | restart controller
+  replace:
+    dest: "{{ kube_manifest_dir }}/kube-controller-manager.manifest"
+    regexp: '(\s+)image:\s+.*?$'
+    replace: '\1image: {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}'
+  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf' and kube_controller_set.stat.exists
+

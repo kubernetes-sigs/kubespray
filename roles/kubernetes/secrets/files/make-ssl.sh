@@ -96,13 +96,8 @@ if [ -n "$HOSTS" ]; then
         cn="${host%%.*}"
         # node key
         openssl genrsa -out node-${host}-key.pem 2048 > /dev/null 2>&1
-<<<<<<< 24b9734e1ae72abeb39d9cef1b6a374867810c46
-        openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=kube-node-${cn}" > /dev/null 2>&1
-        openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 3650 > /dev/null 2>&1
-=======
         openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=kube-node-${cn}/O=system:node" > /dev/null 2>&1
         openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 365 > /dev/null 2>&1
->>>>>>> add system groups to certificates
     done
 fi
 

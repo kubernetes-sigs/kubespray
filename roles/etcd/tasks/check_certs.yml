@@ -4,6 +4,8 @@
     path: "{{ etcd_cert_dir }}/{{ item }}"
     get_md5: no
   delegate_to: "{{groups['etcd'][0]}}"
+  async: 1000
+  poll: 0
   register: etcdcert_master
   run_once: true
   with_items: >-
@@ -13,6 +15,12 @@
        'node-{{ host }}-key.pem'
        {% if not loop.last %}{{','}}{% endif %}
        {% endfor %}]
+
+- name: "Check_certs | check on checking certs"
+  async_status: jid={{ etcdcert_master.ansible_job_id }}
+  register: job_result
+  until: job_result.finished
+  retries: 30
 
 - name: "Check_certs | Set default value for 'sync_certs', 'gen_certs' and 'etcd_secret_changed' to false"
   set_fact:

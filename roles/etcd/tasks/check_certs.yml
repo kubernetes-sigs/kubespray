@@ -1,18 +1,11 @@
 ---
 - name: "Check_certs | check if all certs have already been generated on first master"
-  stat:
-    path: "{{ etcd_cert_dir }}/{{ item }}"
-    get_md5: no
+  find:
+    paths: "{{ etcd_cert_dir }}"
+    patterns: "ca.pem,node*.pem"
   delegate_to: "{{groups['etcd'][0]}}"
   register: etcdcert_master
   run_once: true
-  with_items: >-
-       ['ca.pem',
-       {% set all_etcd_hosts = groups['k8s-cluster']|union(groups['etcd'])|union(groups['calico-rr']|default([]))|unique %}
-       {% for host in all_etcd_hosts %}
-       'node-{{ host }}-key.pem'
-       {% if not loop.last %}{{','}}{% endif %}
-       {% endfor %}]
 
 - name: "Check_certs | Set default value for 'sync_certs', 'gen_certs' and 'etcd_secret_changed' to false"
   set_fact:
@@ -20,34 +13,56 @@
     gen_certs: false
     etcd_secret_changed: false
 
-- name: "Check_certs | Set 'gen_certs' to true"
-  set_fact:
-    gen_certs: true
-  when: "not {{item.stat.exists}}"
-  run_once: true
-  with_items: "{{etcdcert_master.results}}"
-
-- name: "Check certs | check if a cert already exists"
+- name: "Check certs | check if a cert already exists on node"
   stat:
     path: "{{ etcd_cert_dir }}/{{ item }}"
-  register: etcdcert
+  register: etcdcert_node
   with_items:
     - ca.pem
     - node-{{ inventory_hostname }}-key.pem
+
+
+- name: "Check_certs | Set 'gen_certs' to true"
+  set_fact:
+    gen_certs: true
+  when: "not '{{ item }}' in etcdcert_master.files|map(attribute='path') | list"
+  run_once: true
+  with_items: >-
+       ['{{etcd_cert_dir}}/ca.pem',
+       {% set all_etcd_hosts = groups['k8s-cluster']|union(groups['etcd'])|union(groups['calico-rr']|default([]))|unique|sort %}
+       {% for host in all_etcd_hosts %}
+       '{{etcd_cert_dir}}/node-{{ host }}-key.pem'
+       {% if not loop.last %}{{','}}{% endif %}
+       {% endfor %}]
+
+
+- name: "Check_certs | Set 'gen_node_certs' to true"
+  set_fact:
+    gen_node_certs: |-
+      {
+      {% set all_etcd_hosts = groups['k8s-cluster']|union(groups['etcd'])|union(groups['calico-rr']|default([]))|unique|sort -%}
+      {% set existing_certs = etcdcert_master.files|map(attribute='path')|list|sort %}
+      {% for host in all_etcd_hosts -%}
+        {% set host_cert = "%s/node-%s-key.pem"|format(etcd_cert_dir, host) %}
+        {% if host_cert in existing_certs -%}
+        "{{ host }}": False,
+        {% else -%}
+        "{{ host }}": True,
+        {% endif -%}
+      {% endfor %}
+      }
+  run_once: true
 
 - name: "Check_certs | Set 'sync_certs' to true"
   set_fact:
     sync_certs: true
   when: >-
       {%- set certs = {'sync': False} -%}
-      {% set all_etcd_hosts = groups['k8s-cluster']|union(groups['etcd'])|union(groups['calico-rr']|default([]))|unique %}
-      {% for host in all_etcd_hosts %}
-        {% if host == inventory_hostname %}
-          {% if (not etcdcert.results[0].stat.exists|default(False)) or
-              (not etcdcert.results[1].stat.exists|default(False)) or
-              (etcdcert.results[1].stat.checksum|default('') != etcdcert_master.results[loop.index].stat.checksum|default('')) -%}
-            {%- set _ = certs.update({'sync': True}) -%}
-          {% endif %}
-        {% endif %}
-      {%- endfor -%}
+      {% if gen_node_certs[inventory_hostname] or 
+        (not etcdcert_node.results[0].stat.exists|default(False)) or
+          (not etcdcert_node.results[1].stat.exists|default(False)) or
+            (etcdcert_node.results[1].stat.checksum|default('') != etcdcert_master.files|selectattr("path", "equalto", etcdcert_node.results[1].stat.path)|first|map(attribute="checksum")|default('')) -%}
+              {%- set _ = certs.update({'sync': True}) -%}
+      {% endif %}
       {{ certs.sync }}
+

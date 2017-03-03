@@ -23,6 +23,7 @@ $etcd_instances = $num_instances
 $kube_master_instances = $num_instances == 1 ? $num_instances : ($num_instances - 1)
 # All nodes are kube nodes
 $kube_node_instances = $num_instances
+$local_release_dir = "/vagrant/temp"
 
 host_vars = {}
 
@@ -97,7 +98,7 @@ Vagrant.configure("2") do |config|
         "ip": ip,
         "flannel_interface": ip,
         "flannel_backend_type": "host-gw",
-        "local_release_dir": "/vagrant/temp",
+        "local_release_dir" => $local_release_dir,
         "download_run_once": "False",
         # Override the default 'calico' with flannel.
         # inventory/group_vars/k8s-cluster.yml

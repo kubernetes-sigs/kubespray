@@ -43,15 +43,15 @@
   when: gen_certs|default(false)
 
 - name: Gen_certs | run cert generation script
-  command: "{{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
+  command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
   environment:
     - MASTERS: "{% for m in groups['etcd'] %}
-                  {% if hostvars[m].sync_certs|default(false) %}
+                  {% if gen_node_certs[m] %}
                     {{ m }}
                   {% endif %}
                 {% endfor %}"
     - HOSTS: "{% for h in (groups['k8s-cluster'] + groups['calico-rr']|default([]))|unique %}
-                {% if hostvars[h].sync_certs|default(false) %}
+                {% if gen_node_certs[h] %}
                     {{ h }}
                 {% endif %}
               {% endfor %}"
@@ -107,14 +107,38 @@
         sync_certs|default(false) and inventory_hostname not in groups['etcd']
   notify: set etcd_secret_changed
 
-- name: Gen_certs | Copy certs on masters
-  shell: "base64 -d <<< '{{etcd_master_cert_data.stdout|quote}}' | tar xz -C {{ etcd_cert_dir }}"
-  args:
-    executable: /bin/bash
-  no_log: true
-  changed_when: false
+#NOTE(mattymo): Use temporary file to copy master certs because we have a ~200k 
+#char limit when using shell command                                            
+                                                                                
+#FIXME(mattymo): Use tempfile module in ansible 2.3                             
+- name: Gen_certs | Prepare tempfile for unpacking certs                        
+  shell: mktemp /tmp/certsXXXXX.tar.gz                                          
+  register: cert_tempfile                                                       
+                                                                                
+- name: Gen_certs | Write master certs to tempfile                              
+  copy:                                                                         
+    content: "{{etcd_master_cert_data.stdout}}"                                      
+    dest: "{{cert_tempfile.stdout}}"                                            
+    owner: root                                                                 
+    mode: "0600"                                                                
   when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]
+        inventory_hostname != groups['etcd'][0]                          
+                                                                                
+- name: Gen_certs | Unpack certs on masters                                     
+  shell: "base64 -d < {{ cert_tempfile.stdout }} | tar xz -C {{ etcd_cert_dir }}"
+  no_log: true                                                                  
+  changed_when: false                                                           
+  check_mode: no                                                                
+  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
+        inventory_hostname != groups['etcd'][0]                          
+  notify: set secret_changed                                                    
+                                                                                
+- name: Gen_certs | Cleanup tempfile                                            
+  file:                                                                         
+    path: "{{cert_tempfile.stdout}}"                                            
+    state: absent                                                               
+  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
+        inventory_hostname != groups['etcd'][0]  
 
 - name: Gen_certs | Copy certs on nodes
   shell: "base64 -d <<< '{{etcd_node_cert_data.stdout|quote}}' | tar xz -C {{ etcd_cert_dir }}"
@@ -163,4 +187,3 @@
 - name: Gen_certs | update ca-certificates (RedHat)
   command: update-ca-trust extract
   when: etcd_ca_cert.changed and ansible_os_family == "RedHat"
-

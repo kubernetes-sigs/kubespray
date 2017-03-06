@@ -92,11 +92,23 @@ The choice is defined with the variable `kube_network_plugin`. There is also an
 option to leverage built-in cloud provider networking instead.
 See also [Network checker](docs/netcheck.md).
 
+## Community docs and resources
+ - [kubernetes.io/docs/getting-started-guides/kargo/](https://kubernetes.io/docs/getting-started-guides/kargo/)
+ - [kargo, monitoring and logging](https://github.com/gregbkr/kubernetes-kargo-logging-monitoring) by @gregbkr
+ - [Deploy Kubernetes w/ Ansible & Terraform](https://rsmitty.github.io/Terraform-Ansible-Kubernetes/) by @rsmitty
+ - [Deploy a Kubernets Cluster with Kargo (video)](https://www.youtube.com/watch?v=N9q51JgbWu8)
+
+## Tools and projects on top of Kargo
+ - [Digital Rebar](https://github.com/digitalrebar/digitalrebar)
+ - [Kargo-cli](https://github.com/kubespray/kargo-cli)
+ - [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
+ - [Terraform Contrib](https://github.com/kubernetes-incubator/kargo/tree/master/contrib/terraform)
+
 ## CI Tests
 
 ![Gitlab Logo](https://s27.postimg.org/wmtaig1wz/gitlabci.png)
 
 [![Build graphs](https://gitlab.com/kargo-ci/kubernetes-incubator__kargo/badges/master/build.svg)](https://gitlab.com/kargo-ci/kubernetes-incubator__kargo/pipelines) </br>
 
-CI/end-to-end tests sponsored by Google (GCE), and [teuto.net](https://teuto.net/) for OpenStack.
+CI/end-to-end tests sponsored by Google (GCE), DigitalOcean, [teuto.net](https://teuto.net/) (openstack).
 See the [test matrix](docs/test_cases.md) for details.

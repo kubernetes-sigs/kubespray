@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: {{ system_namespace }}
+data:
+  Corefile: |
+    .:53 {
+        etcd {{ federation_name }} {
+          stubzones
+          path /skydns
+          endpoint coredns-etcd.{{ system_namespace }}
+          # FIXME(mattymo): https://github.com/kubernetes/kubernetes/issues/42995
+          #endpoint {{ etcd_access_addresses }}
+          #tls {{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem {{ etcd_cert_dir }}/node-{{inventory_hostname }}-key.pem {{ etcd_cert_dir }}/ca.pem
+        }
+        errors
+        log stdout
+        health
+        proxy . /etc/resolv.conf
+        cache 30
+    }
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: coredns
+  namespace: {{ system_namespace }}
+  labels:
+    k8s-app: coredns
+    kubernetes.io/cluster-service: "true"
+    kubernetes.io/name: "CoreDNS"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: coredns
+  template:
+    metadata:
+      labels:
+        k8s-app: coredns
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly", "operator":"Exists"}]'
+    spec:
+      containers:
+      - name: coredns
+        image: coredns/coredns:latest
+        imagePullPolicy: Always
+        args: [ "-conf", "/etc/coredns/Corefile" ]
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/coredns
+        - name: etcd-certs
+          mountPath: {{ etcd_cert_dir }}
+          readOnly: true
+        ports:
+        - containerPort: 53
+          name: dns
+          protocol: UDP
+        - containerPort: 53
+          name: dns-tcp
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+      dnsPolicy: Default
+      volumes:
+        - name: config-volume
+          configMap:
+            name: coredns
+            items:
+            - key: Corefile
+              path: Corefile
+        - hostPath:
+            path: {{ etcd_cert_dir }}
+          name: etcd-certs
+

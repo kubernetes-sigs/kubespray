@@ -1,0 +1,68 @@
+---
+#TODO - name: See if federation is already started
+- name: fedstart
+  command: /bin/true
+
+- include: coredns.yml
+  when: federation_master|default(false)
+
+- name: Copy kubefed from releases dir
+  copy:
+    src: "{{ local_release_dir }}/kubernetes_client/kubernetes/client/bin/kubefed"
+    dest: "{{ bin_dir }}/kubefed"
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Set up coredns federation config
+  template:
+    src: "federation-coredns.conf.j2"
+    dest: "{{ kube_config_dir }}/federation-coredns.conf"
+    owner: root
+    group: root
+    mode: 0640
+
+
+- name: See if namespace is created
+  command: "{{ bin_dir }}/kubectl get namespaces {{ federation_namespace }}"
+  register: federation_namespace_created
+  failed_when: false
+  when: federation_master|default(false)
+
+- name: Run kubefed init
+  command: >-
+    {{ bin_dir }}/kubefed init {{ federation_name }}
+    --host-cluster-context=kubelet-{{ cluster_name }}
+    --kubeconfig={{ kube_config_dir }}/node-kubeconfig.yaml
+    --federation-system-namespace={{ federation_namespace }}
+    --api-server-service-type=NodePort
+    --etcd-persistent-storage=false
+    --dns-provider=coredns
+    --dns-provider-config={{ kube_config_dir }}/federation-coredns.conf
+    --dns-zone-name={{ federation_dns_zone }}
+    --image={{ hyperkube_image_repo}}:{{ hyperkube_image_tag }}
+  when: federation_master|default(false) and federation_namespace_created.rc != 0
+
+#- name: Create federation context if necessary
+#  command: >-
+#    kubectl create config {{ federation_context }} blah blah
+#  when: not federation_master|default(false)
+
+- name: Run kubefed join
+  command: >-
+    {{ bin_dir }}/kubefed join {{ federation-name }}
+    --kubeconfig={{ kube_config_dir }}/node-kubeconfig.yaml
+    --host-cluster-context=kubelet-{{ cluster_name }}
+    --cluster-context={{ federation_context }}
+    --api-server-service-type=NodePort
+    --dns-zone-name={{ dns_domain }}
+  when: not federation_master|default(false)
+
+
+- name: Verify federation is enabled
+  command: "{{ bin_dir }}/kubectl --context={{ federation_name }} get clusters"
+  environment:
+    KUBECONFIG: "{{ kube_config_dir }}/node-kubeconfig.yaml"
+  retries: 12
+  delay: "{{ retry_stagger | random + 3 }}"
+

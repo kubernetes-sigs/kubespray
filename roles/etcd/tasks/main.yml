@@ -1,5 +1,6 @@
 ---
 - include: pre_upgrade.yml
+  when: etcd_cluster_setup
   tags: etcd-pre-upgrade
 
 - include: check_certs.yml
@@ -27,19 +28,18 @@
   tags: upgrade
 
 - include: set_cluster_health.yml
-  when: is_etcd_master
+  when: is_etcd_master and etcd_cluster_setup
 
 - include: configure.yml
-  when: is_etcd_master
+  when: is_etcd_master and etcd_cluster_setup
 
 - include: refresh_config.yml
-  when: is_etcd_master
+  when: is_etcd_master and etcd_cluster_setup
 
-- name: Restart etcd if binary or certs changed
+- name: Restart etcd if certs changed
   command: /bin/true
   notify: restart etcd
-  when: etcd_deployment_type == "host" and etcd_copy.stdout_lines and is_etcd_master
-    or etcd_secret_changed|default(false)
+  when: is_etcd_master and etcd_secret_changed|default(false)
 
 # reload-systemd
 - meta: flush_handlers
@@ -49,13 +49,13 @@
     name: etcd
     state: started
     enabled: yes
-  when: is_etcd_master
+  when: is_etcd_master and etcd_cluster_setup
 
 # After etcd cluster is assembled, make sure that
 # initial state of the cluster is in `existing`
 # state insted of `new`.
 - include: set_cluster_health.yml
-  when: is_etcd_master
+  when: is_etcd_master and etcd_cluster_setup
 
 - include: refresh_config.yml
-  when: is_etcd_master
+  when: is_etcd_master and etcd_cluster_setup

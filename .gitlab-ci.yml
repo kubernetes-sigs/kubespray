@@ -44,6 +44,7 @@ before_script:
   SSH_USER: $GCE_USER
   TEST_ID: "$CI_PIPELINE_ID-$CI_BUILD_ID"
   CONTAINER_ENGINE: docker
+  CLOUD_PROVIDER: "-e CLOUD_PROVIDER=gce"
   PRIVATE_KEY: $GCE_PRIVATE_KEY
   GS_ACCESS_KEY_ID: $GS_KEY
   GS_SECRET_ACCESS_KEY: $GS_SECRET
@@ -114,7 +115,7 @@ before_script:
       -e ansible_ssh_user=${SSH_USER} 
       -e bootstrap_os=${BOOTSTRAP_OS}
       -e cert_management=${CERT_MGMT:-script}
-      -e cloud_provider=gce
+      ${CLOUD_PROVIDER}
       -e deploy_netchecker=true
       -e download_localhost=true
       -e download_run_once=true
@@ -140,7 +141,7 @@ before_script:
       -e ansible_python_interpreter=${PYPATH} 
       -e ansible_ssh_user=${SSH_USER} 
       -e bootstrap_os=${BOOTSTRAP_OS} 
-      -e cloud_provider=gce 
+      ${CLOUD_PROVIDER}
       -e deploy_netchecker=true 
       -e download_localhost=true 
       -e download_run_once=true 
@@ -169,7 +170,7 @@ before_script:
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
       ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS 
-      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
+      -b --become-user=root ${CLOUD_PROVIDER} $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
       --private-key=${HOME}/.ssh/id_rsa 
       -e bootstrap_os=${BOOTSTRAP_OS} 
       -e ansible_python_interpreter=${PYPATH} 
@@ -197,7 +198,7 @@ before_script:
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
       ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS 
-      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
+      -b --become-user=root ${CLOUD_PROVIDER} $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
       --private-key=${HOME}/.ssh/id_rsa 
       -e bootstrap_os=${BOOTSTRAP_OS} 
       -e ansible_python_interpreter=${PYPATH} 
@@ -210,7 +211,7 @@ before_script:
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
       ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS 
-      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
+      -b --become-user=root ${CLOUD_PROVIDER} $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
       --private-key=${HOME}/.ssh/id_rsa 
       -e bootstrap_os=${BOOTSTRAP_OS} 
       -e ansible_python_interpreter=${PYPATH} 
@@ -345,6 +346,13 @@ before_script:
   CLOUD_IMAGE: ubuntu-1604-xenial
   CLOUD_REGION: us-central1-b
   CLUSTER_MODE: separate
+
+.ubuntu_no_cloud_sep_variables: &ubuntu_no_cloud_sep_variables
+# stage: deploy-gce-part1
+  CLOUD_IMAGE: ubuntu-1604-xenial
+  CLOUD_REGION: us-central1-b
+  CLUSTER_MODE: separate
+  CLOUD_PROVIDER: ""
 
 # Builds for PRs only (premoderated by unit-tests step) and triggers (auto)
 coreos-calico-sep:
@@ -567,6 +575,17 @@ ubuntu-vault-sep:
   variables:
     <<: *gce_variables
     <<: *ubuntu_vault_sep_variables
+  when: manual
+  except: ['triggers']
+  only: ['master', /^pr-.*$/]
+
+ubuntu-no-cloud-sep:
+  stage: deploy-gce-part1
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    <<: *ubuntu_no_cloud_sep_variables
   when: manual
   except: ['triggers']
   only: ['master', /^pr-.*$/]

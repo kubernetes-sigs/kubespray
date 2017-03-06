@@ -22,7 +22,7 @@
     kube_apiserver_endpoint: |-
       {% if not is_kube_master and loadbalancer_apiserver_localhost|default(false) -%}
            https://localhost:{{ nginx_kube_apiserver_port|default(kube_apiserver_port) }}
-      {%- elif is_kube_master and loadbalancer_apiserver is not defined -%}
+      {%- elif is_kube_master -%}
            http://127.0.0.1:{{ kube_apiserver_insecure_port }}
       {%- else -%}
       {%-   if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
@@ -82,6 +82,18 @@
 
 - set_fact:
     peer_with_calico_rr: "{{ 'calico-rr' in groups and groups['calico-rr']|length > 0 }}"
+
+- name: check if atomic host
+  stat:
+    path: /run/ostree-booted
+  register: ostree
+
+- set_fact:
+    is_atomic: "{{ ostree.stat.exists }}"
+
+- set_fact:
+    kube_cert_group: "kube"
+  when: is_atomic
 
 - include: set_resolv_facts.yml
   tags: [bootstrap-os, resolvconf, facts]

@@ -31,7 +31,17 @@ KUBELET_HOSTNAME="--hostname-override={{ ansible_hostname }}"
 {% set kubelet_args_kubeconfig %}{{ kubelet_args_kubeconfig }} --register-schedulable=false{% endset %}
 {% endif %}
 
-KUBELET_ARGS="{{ kubelet_args_base }} {{ kubelet_args_dns }} {{ kubelet_args_kubeconfig }}"
+{# Kubelet node labels #}
+{% if inventory_hostname in groups['kube-master'] %}
+{%   set node_labels %}--node-labels=node-role.kubernetes.io/master=true{% endset %}
+{%   if not standalone_kubelet|bool %}
+{%     set node_labels %}{{ node_labels }},node-role.kubernetes.io/node=true{% endset %}
+{%   endif %}
+{% else %}
+{%   set node_labels %}--node-labels=node-role.kubernetes.io/node=true{% endset %}
+{% endif %}
+
+KUBELET_ARGS="{{ kubelet_args_base }} {{ kubelet_args_dns }} {{ kubelet_args_kubeconfig }} {{ node_labels }}"
 {% if kube_network_plugin is defined and kube_network_plugin in ["calico", "weave", "canal"] %}
 KUBELET_NETWORK_PLUGIN="--network-plugin=cni --network-plugin-dir=/etc/cni/net.d"
 {% elif kube_network_plugin is defined and kube_network_plugin == "weave" %}

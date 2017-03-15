@@ -69,6 +69,7 @@ Requirements
 
 * **Ansible v2.2 (or newer) and python-netaddr is installed on the machine
   that will run Ansible commands**
+* **Jinja 2.8 (or newer) is required to run the Ansible Playbooks**
 * The target servers must have **access to the Internet** in order to pull docker images.
 * The target servers are configured to allow **IPv4 forwarding**.
 * **Your ssh key must be copied** to all the servers part of your inventory.

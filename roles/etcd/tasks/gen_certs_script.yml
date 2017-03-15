@@ -107,38 +107,38 @@
         sync_certs|default(false) and inventory_hostname not in groups['etcd']
   notify: set etcd_secret_changed
 
-#NOTE(mattymo): Use temporary file to copy master certs because we have a ~200k 
-#char limit when using shell command                                            
-                                                                                
-#FIXME(mattymo): Use tempfile module in ansible 2.3                             
-- name: Gen_certs | Prepare tempfile for unpacking certs                        
-  shell: mktemp /tmp/certsXXXXX.tar.gz                                          
-  register: cert_tempfile                                                       
-                                                                                
-- name: Gen_certs | Write master certs to tempfile                              
-  copy:                                                                         
-    content: "{{etcd_master_cert_data.stdout}}"                                      
-    dest: "{{cert_tempfile.stdout}}"                                            
-    owner: root                                                                 
-    mode: "0600"                                                                
+#NOTE(mattymo): Use temporary file to copy master certs because we have a ~200k
+#char limit when using shell command
+
+#FIXME(mattymo): Use tempfile module in ansible 2.3
+- name: Gen_certs | Prepare tempfile for unpacking certs
+  shell: mktemp /tmp/certsXXXXX.tar.gz
+  register: cert_tempfile
+
+- name: Gen_certs | Write master certs to tempfile
+  copy:
+    content: "{{etcd_master_cert_data.stdout}}"
+    dest: "{{cert_tempfile.stdout}}"
+    owner: root
+    mode: "0600"
   when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]                          
-                                                                                
-- name: Gen_certs | Unpack certs on masters                                     
+        inventory_hostname != groups['etcd'][0]
+
+- name: Gen_certs | Unpack certs on masters
   shell: "base64 -d < {{ cert_tempfile.stdout }} | tar xz -C {{ etcd_cert_dir }}"
-  no_log: true                                                                  
-  changed_when: false                                                           
-  check_mode: no                                                                
+  no_log: true
+  changed_when: false
+  check_mode: no
   when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]                          
-  notify: set secret_changed                                                    
-                                                                                
-- name: Gen_certs | Cleanup tempfile                                            
-  file:                                                                         
-    path: "{{cert_tempfile.stdout}}"                                            
-    state: absent                                                               
+        inventory_hostname != groups['etcd'][0]
+  notify: set secret_changed
+
+- name: Gen_certs | Cleanup tempfile
+  file:
+    path: "{{cert_tempfile.stdout}}"
+    state: absent
   when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]  
+        inventory_hostname != groups['etcd'][0]
 
 - name: Gen_certs | Copy certs on nodes
   shell: "base64 -d <<< '{{etcd_node_cert_data.stdout|quote}}' | tar xz -C {{ etcd_cert_dir }}"

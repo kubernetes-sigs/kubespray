@@ -41,7 +41,7 @@
   notify: restart calico-node
 
 - name: Calico | Copy cni plugins from hyperkube
-  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/rsync -a /opt/cni/bin/ /cnibindir/"
+  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/rsync -ac /opt/cni/bin/ /cnibindir/"
   register: cni_task_result
   until: cni_task_result.rc == 0
   retries: 4
@@ -58,6 +58,14 @@
   changed_when: false
   when: "{{ overwrite_hyperkube_cni|bool }}"
   tags: [hyperkube, upgrade]
+
+- name: Calico | Set cni directory permissions
+  file:
+    path: /opt/cni/bin
+    state: directory
+    owner: kube
+    recurse: true
+    mode: 0755
 
 - name: Calico | wait for etcd
   uri:
@@ -80,6 +88,7 @@
   register: calico_conf
   delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
+  changed_when: false
 
 - name: Calico | Configure calico network pool
   shell: >

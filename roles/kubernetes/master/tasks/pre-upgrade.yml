@@ -32,19 +32,64 @@
   stat:
     path: /etc/kubernetes/manifests/kube-apiserver.manifest
   register: kube_apiserver_manifest
-  when: secret_changed|default(false) or etcd_secret_changed|default(false)
 
-- name: "Pre-upgrade | Write invalid image to kube-apiserver manifest if secrets were changed"
+- name: "Pre-upgrade | etcd3 upgrade | see if old config exists"
+  command: "{{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses }} ls /registry/minions"
+  environment:
+    ETCDCTL_API: 2
+  register: old_data_exists
+  delegate_to: "{{groups['kube-master'][0]}}"
+  when: kube_apiserver_storage_backend == "etcd3"
+  failed_when: false
+
+- name: "Pre-upgrade | etcd3 upgrade | see if data was already migrated"
+  command: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }} get --limit=1 --prefix=true /registry/minions"
+  environment:
+    ETCDCTL_API: 3
+  register: data_migrated
+  delegate_to: "{{groups['etcd'][0]}}"
+  when: kube_apiserver_storage_backend == "etcd3"
+  failed_when: false
+
+- name: "Pre-upgrade | etcd3 upgrade | set needs_etcd_migration"
+  set_fact:
+    needs_etcd_migration: "{{ kube_apiserver_storage_backend == 'etcd3' and data_migrated.stdout_lines|length == 0 and old_data_exists.rc == 0 }}"
+
+- name: "Pre-upgrade | Write invalid image to kube-apiserver manifest if necessary"
   replace:
     dest: /etc/kubernetes/manifests/kube-apiserver.manifest
     regexp: '(\s+)image:\s+.*?$'
     replace: '\1image: kill.apiserver.using.fake.image.in:manifest'
   register: kube_apiserver_manifest_replaced
-  when: (secret_changed|default(false) or etcd_secret_changed|default(false)) and kube_apiserver_manifest.stat.exists
+  when: (secret_changed|default(false) or etcd_secret_changed|default(false) or needs_etcd_migration|bool) and kube_apiserver_manifest.stat.exists
 
 - name: "Pre-upgrade | Pause while waiting for kubelet to delete kube-apiserver pod"
   pause:
     seconds: 20
-  when: (secret_changed|default(false) or etcd_secret_changed|default(false)) and kube_apiserver_manifest.stat.exists
+  when: kube_apiserver_manifest_replaced.changed
   tags: kube-apiserver
 
+- name: "Pre-upgrade | etcd3 upgrade | stop etcd"
+  service:
+    name: etcd
+    state: stopped
+  delegate_to: "{{item}}"
+  with_items: "{{groups['etcd']}}"
+  when: needs_etcd_migration|bool
+
+- name: "Pre-upgrade | etcd3 upgrade | migrate data"
+  command: "{{ bin_dir }}/etcdctl migrate --data-dir=\"{{ etcd_data_dir }}\" --wal-dir=\"{{ etcd_data_dir }}/member/wal\""
+  environment:
+    ETCDCTL_API: 3
+  delegate_to: "{{item}}"
+  with_items: "{{groups['etcd']}}"
+  register: etcd_migrated
+  when: needs_etcd_migration|bool
+
+- name: "Pre-upgrade | etcd3 upgrade | start etcd"
+  service:
+    name: etcd
+    state: started
+  delegate_to: "{{item}}"
+  with_items: "{{groups['etcd']}}"
+  when: needs_etcd_migration|bool

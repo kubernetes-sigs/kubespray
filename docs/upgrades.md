@@ -44,7 +44,7 @@ deployed.
 ```
 git fetch origin
 git checkout origin/master
-ansible-playbook upgrade-cluster cluster.yml -i inventory/inventory.cfg
+ansible-playbook upgrade-cluster.yml -b -i inventory/inventory.cfg
 ```
 
 #### Upgrade order
@@ -53,9 +53,9 @@ As mentioned above, components are upgraded in the order in which they were
 installed in the Ansible playbook. The order of component installation is as
 follows:
 
-# Docker
-# etcd
-# kubelet and kube-proxy
-# network_plugin (such as Calico or Weave)
-# kube-apiserver, kube-scheduler, and kube-controller-manager
-# Add-ons (such as KubeDNS)
+* Docker
+* etcd
+* kubelet and kube-proxy
+* network_plugin (such as Calico or Weave)
+* kube-apiserver, kube-scheduler, and kube-controller-manager
+* Add-ons (such as KubeDNS)

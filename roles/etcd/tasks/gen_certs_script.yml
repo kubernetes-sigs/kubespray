@@ -4,7 +4,8 @@
     path: "{{ etcd_cert_dir }}"
     group: "{{ etcd_cert_group }}"
     state: directory
-    owner: root
+    owner: kube
+    mode: 0700
     recurse: yes
 
 - name: "Gen_certs | create etcd script dir (on {{groups['etcd'][0]}})"
@@ -12,6 +13,7 @@
     path: "{{ etcd_script_dir }}"
     state: directory
     owner: root
+    mode: 0700
   run_once: yes
   delegate_to: "{{groups['etcd'][0]}}"
 
@@ -20,8 +22,9 @@
     path: "{{ etcd_cert_dir }}"
     group: "{{ etcd_cert_group }}"
     state: directory
-    owner: root
+    owner: kube
     recurse: yes
+    mode: 0700
   run_once: yes
   delegate_to: "{{groups['etcd'][0]}}"
 
@@ -41,6 +44,7 @@
   run_once: yes
   delegate_to: "{{groups['etcd'][0]}}"
   when: gen_certs|default(false)
+
 
 - name: Gen_certs | run cert generation script
   command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
@@ -107,20 +111,22 @@
         sync_certs|default(false) and inventory_hostname not in groups['etcd']
   notify: set etcd_secret_changed
 
-#NOTE(mattymo): Use temporary file to copy master certs because we have a ~200k
-#char limit when using shell command
+#NOTE(mattymo): Use temporary file to copy master certs because we have a ~200k 
+#char limit when using shell command                                            
+                                                                                
+#FIXME(mattymo): Use tempfile module in ansible 2.3                             
+- name: Gen_certs | Prepare tempfile for unpacking certs                        
+  shell: mktemp /tmp/certsXXXXX.tar.gz                                          
+  register: cert_tempfile                                                       
+  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
+        inventory_hostname != groups['etcd'][0]                          
 
-#FIXME(mattymo): Use tempfile module in ansible 2.3
-- name: Gen_certs | Prepare tempfile for unpacking certs
-  shell: mktemp /tmp/certsXXXXX.tar.gz
-  register: cert_tempfile
-
-- name: Gen_certs | Write master certs to tempfile
-  copy:
-    content: "{{etcd_master_cert_data.stdout}}"
-    dest: "{{cert_tempfile.stdout}}"
-    owner: root
-    mode: "0600"
+- name: Gen_certs | Write master certs to tempfile                              
+  copy:                                                                         
+    content: "{{etcd_master_cert_data.stdout}}"                                      
+    dest: "{{cert_tempfile.stdout}}"                                            
+    owner: root                                                                 
+    mode: "0600"                                                                
   when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
         inventory_hostname != groups['etcd'][0]
 
@@ -154,12 +160,8 @@
     group: "{{ etcd_cert_group }}"
     state: directory
     owner: kube
+    mode: "u=rwX,g-rwx,o-rwx"
     recurse: yes
-
-- name: Gen_certs | set permissions on keys
-  shell: chmod 0600 {{ etcd_cert_dir}}/*key.pem
-  when: inventory_hostname in groups['etcd']
-  changed_when: false
 
 - name: Gen_certs | target ca-certificate store file
   set_fact:

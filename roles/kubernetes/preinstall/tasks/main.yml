@@ -87,6 +87,10 @@
   yum:
     update_cache: yes
     name: '*'
+  register: yum_task_result
+  until: yum_task_result|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
   when: ansible_pkg_mgr == 'yum' and not is_atomic
   tags: bootstrap-os
 
@@ -101,6 +105,10 @@
 
 - name: Install python-dnf for latest RedHat versions
   command: dnf install -y python-dnf yum
+  register: dnf_task_result
+  until: dnf_task_result|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
   when: ansible_distribution == "Fedora" and
         ansible_distribution_major_version > 21
   changed_when: False
@@ -109,6 +117,10 @@
 - name: Install epel-release on RedHat/CentOS
   shell: rpm -qa | grep epel-release || rpm -ivh {{ epel_rpm_download_url }}
   when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+  register: epel_task_result
+  until: epel_task_result|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
   changed_when: False
   check_mode: no
   tags: bootstrap-os
@@ -119,7 +131,7 @@
     name: "{{ item }}"
     state: latest
   register: pkgs_task_result
-  until: pkgs_task_result|success
+  until: pkgs_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{required_pkgs | default([]) | union(common_required_pkgs|default([]))}}"

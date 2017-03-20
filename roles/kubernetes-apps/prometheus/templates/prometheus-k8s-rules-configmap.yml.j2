@@ -1,0 +1,449 @@
+#jinja2:variable_start_string:'[[' , variable_end_string:']]', block_start_string:'[%' , block_end_string:'%]'
+---
+apiVersion: v1
+data:
+  etcd2.rules: "### General cluster availability ###\n\n# alert if another failed
+    peer will result in an unavailable cluster\nALERT InsufficientPeers\n  IF count(up{job=\"etcd-k8s\"}
+    == 0) > (count(up{job=\"etcd-k8s\"}) / 2 - 1)\n  FOR 3m\n  LABELS {\n    severity
+    = \"critical\"\n  }\n  ANNOTATIONS {\n    summary = \"Etcd cluster small\",\n
+    \   description = \"If one more etcd peer goes down the cluster will be unavailable\",\n
+    \ }\n\n### HTTP requests alerts ###\n\n# alert if more than 1% of requests to
+    an HTTP endpoint have failed with a non 4xx response\nALERT HighNumberOfFailedHTTPRequests\n
+    \ IF sum by(method) (rate(etcd_http_failed_total{job=\"etcd-k8s\", code!~\"4[0-9]{2}\"}[5m]))\n
+    \   / sum by(method) (rate(etcd_http_received_total{job=\"etcd-k8s\"}[5m])) >
+    0.01\n  FOR 10m\n  LABELS {\n    severity = \"warning\"\n  }\n  ANNOTATIONS {\n
+    \   summary = \"a high number of HTTP requests are failing\",\n    description
+    = \"{{ $value }}% of requests for {{ $labels.method }} failed on etcd instance
+    {{ $labels.instance }}\",\n  }\n\n# alert if more than 5% of requests to an HTTP
+    endpoint have failed with a non 4xx response\nALERT HighNumberOfFailedHTTPRequests\n
+    \ IF sum by(method) (rate(etcd_http_failed_total{job=\"etcd-k8s\", code!~\"4[0-9]{2}\"}[5m]))
+    \n    / sum by(method) (rate(etcd_http_received_total{job=\"etcd-k8s\"}[5m]))
+    > 0.05\n  FOR 5m\n  LABELS {\n    severity = \"critical\"\n  }\n  ANNOTATIONS
+    {\n    summary = \"a high number of HTTP requests are failing\",\n    description
+    = \"{{ $value }}% of requests for {{ $labels.method }} failed on etcd instance
+    {{ $labels.instance }}\",\n  }\n\n# alert if 50% of requests get a 4xx response\nALERT
+    HighNumberOfFailedHTTPRequests\n  IF sum by(method) (rate(etcd_http_failed_total{job=\"etcd-k8s\",
+    code=~\"4[0-9]{2}\"}[5m]))\n    / sum by(method) (rate(etcd_http_received_total{job=\"etcd-k8s\"}[5m]))
+    > 0.5\n  FOR 10m\n  LABELS {\n    severity = \"critical\"\n  }\n  ANNOTATIONS
+    {\n    summary = \"a high number of HTTP requests are failing\",\n    description
+    = \"{{ $value }}% of requests for {{ $labels.method }} failed with 4xx responses
+    on etcd instance {{ $labels.instance }}\",\n  }\n\n# alert if the 99th percentile
+    of HTTP requests take more than 150ms\nALERT HTTPRequestsSlow\n  IF histogram_quantile(0.99,
+    rate(etcd_http_successful_duration_second_bucket[5m])) > 0.15\n  FOR 10m\n  LABELS
+    {\n    severity = \"warning\"\n  }\n  ANNOTATIONS {\n    summary = \"slow HTTP
+    requests\",\n    description = \"on ectd instance {{ $labels.instance }} HTTP
+    requests to {{ $label.method }} are slow\",\n  }\n\n### File descriptor alerts
+    ###\n\ninstance:fd_utilization = process_open_fds / process_max_fds\n\n# alert
+    if file descriptors are likely to exhaust within the next 4 hours\nALERT FdExhaustionClose\n
+    \ IF predict_linear(instance:fd_utilization[1h], 3600 * 4) > 1\n  FOR 10m\n  LABELS
+    {\n    severity = \"warning\"\n  }\n  ANNOTATIONS {\n    summary = \"file descriptors
+    soon exhausted\",\n    description = \"{{ $labels.job }} instance {{ $labels.instance
+    }} will exhaust in file descriptors soon\",\n  }\n\n# alert if file descriptors
+    are likely to exhaust within the next hour\nALERT FdExhaustionClose\n  IF predict_linear(instance:fd_utilization[10m],
+    3600) > 1\n  FOR 10m\n  LABELS {\n    severity = \"critical\"\n  }\n  ANNOTATIONS
+    {\n    summary = \"file descriptors soon exhausted\",\n    description = \"{{
+    $labels.job }} instance {{ $labels.instance }} will exhaust in file descriptors
+    soon\",\n  }\n\n### etcd proposal alerts ###\n\n# alert if there are several failed
+    proposals within an hour\nALERT HighNumberOfFailedProposals\n  IF increase(etcd_server_proposal_failed_total{job=\"etcd\"}[1h])
+    > 5\n  LABELS {\n    severity = \"warning\"\n  }\n  ANNOTATIONS {\n    summary
+    = \"a high number of failed proposals within the etcd cluster are happening\",\n
+    \   description = \"etcd instance {{ $labels.instance }} has seen {{ $value }}
+    proposal failures within the last hour\",\n  }\n\n### etcd disk io latency alerts
+    ###\n\n# alert if 99th percentile of fsync durations is higher than 500ms\nALERT
+    HighFsyncDurations\n  IF histogram_quantile(0.99, rate(etcd_wal_fsync_durations_seconds_bucket[5m]))
+    > 0.5\n  FOR 10m\n  LABELS {\n    severity = \"warning\"\n  }\n  ANNOTATIONS {\n
+    \   summary = \"high fsync durations\",\n    description = \"ectd instance {{
+    $labels.instance }} fync durations are high\",\n  }\n"
+  kubernetes.rules: |+
+    # NOTE: These rules were kindly contributed by the SoundCloud engineering team.
+
+    ### Container resources ###
+
+    cluster_namespace_controller_pod_container:spec_memory_limit_bytes =
+      sum by (cluster,namespace,controller,pod_name,container_name) (
+        label_replace(
+          container_spec_memory_limit_bytes{container_name!=""},
+          "controller", "$1",
+          "pod_name", "^(.*)-[a-z0-9]+"
+        )
+      )
+
+    cluster_namespace_controller_pod_container:spec_cpu_shares =
+      sum by (cluster,namespace,controller,pod_name,container_name) (
+        label_replace(
+          container_spec_cpu_shares{container_name!=""},
+          "controller", "$1",
+          "pod_name", "^(.*)-[a-z0-9]+"
+        )
+      )
+
+    cluster_namespace_controller_pod_container:cpu_usage:rate =
+      sum by (cluster,namespace,controller,pod_name,container_name) (
+        label_replace(
+          irate(
+            container_cpu_usage_seconds_total{container_name!=""}[5m]
+          ),
+          "controller", "$1",
+          "pod_name", "^(.*)-[a-z0-9]+"
+        )
+      )
+
+    cluster_namespace_controller_pod_container:memory_usage:bytes =
+      sum by (cluster,namespace,controller,pod_name,container_name) (
+        label_replace(
+          container_memory_usage_bytes{container_name!=""},
+          "controller", "$1",
+          "pod_name", "^(.*)-[a-z0-9]+"
+        )
+      )
+
+    cluster_namespace_controller_pod_container:memory_working_set:bytes =
+      sum by (cluster,namespace,controller,pod_name,container_name) (
+        label_replace(
+          container_memory_working_set_bytes{container_name!=""},
+          "controller", "$1",
+          "pod_name", "^(.*)-[a-z0-9]+"
+        )
+      )
+
+    cluster_namespace_controller_pod_container:memory_rss:bytes =
+      sum by (cluster,namespace,controller,pod_name,container_name) (
+        label_replace(
+          container_memory_rss{container_name!=""},
+          "controller", "$1",
+          "pod_name", "^(.*)-[a-z0-9]+"
+        )
+      )
+
+    cluster_namespace_controller_pod_container:memory_cache:bytes =
+      sum by (cluster,namespace,controller,pod_name,container_name) (
+        label_replace(
+          container_memory_cache{container_name!=""},
+          "controller", "$1",
+          "pod_name", "^(.*)-[a-z0-9]+"
+        )
+      )
+
+    cluster_namespace_controller_pod_container:disk_usage:bytes =
+      sum by (cluster,namespace,controller,pod_name,container_name) (
+        label_replace(
+          container_disk_usage_bytes{container_name!=""},
+          "controller", "$1",
+          "pod_name", "^(.*)-[a-z0-9]+"
+        )
+      )
+
+    cluster_namespace_controller_pod_container:memory_pagefaults:rate =
+      sum by (cluster,namespace,controller,pod_name,container_name,scope,type) (
+        label_replace(
+          irate(
+            container_memory_failures_total{container_name!=""}[5m]
+          ),
+          "controller", "$1",
+          "pod_name", "^(.*)-[a-z0-9]+"
+        )
+      )
+
+    cluster_namespace_controller_pod_container:memory_oom:rate =
+      sum by (cluster,namespace,controller,pod_name,container_name,scope,type) (
+        label_replace(
+          irate(
+            container_memory_failcnt{container_name!=""}[5m]
+          ),
+          "controller", "$1",
+          "pod_name", "^(.*)-[a-z0-9]+"
+        )
+      )
+
+    ### Cluster resources ###
+
+    cluster:memory_allocation:percent =
+      100 * sum by (cluster) (
+        container_spec_memory_limit_bytes{pod_name!=""}
+      ) / sum by (cluster) (
+        machine_memory_bytes
+      )
+
+    cluster:memory_used:percent =
+      100 * sum by (cluster) (
+        container_memory_usage_bytes{pod_name!=""}
+      ) / sum by (cluster) (
+        machine_memory_bytes
+      )
+
+    cluster:cpu_allocation:percent =
+      100 * sum by (cluster) (
+        container_spec_cpu_shares{pod_name!=""}
+      ) / sum by (cluster) (
+        container_spec_cpu_shares{id="/"} * on(cluster,instance) machine_cpu_cores
+      )
+
+    cluster:node_cpu_use:percent =
+      100 * sum by (cluster) (
+        rate(node_cpu{mode!="idle"}[5m])
+      ) / sum by (cluster) (
+        machine_cpu_cores
+      )
+
+    ### API latency ###
+
+    # Raw metrics are in microseconds. Convert to seconds.
+    cluster_resource_verb:apiserver_latency:quantile_seconds{quantile="0.99"} =
+      histogram_quantile(
+        0.99,
+        sum by(le,cluster,job,resource,verb) (apiserver_request_latencies_bucket)
+      ) / 1e6
+    cluster_resource_verb:apiserver_latency:quantile_seconds{quantile="0.9"} =
+      histogram_quantile(
+        0.9,
+        sum by(le,cluster,job,resource,verb) (apiserver_request_latencies_bucket)
+      ) / 1e6
+    cluster_resource_verb:apiserver_latency:quantile_seconds{quantile="0.5"} =
+      histogram_quantile(
+        0.5,
+        sum by(le,cluster,job,resource,verb) (apiserver_request_latencies_bucket)
+      ) / 1e6
+
+    ### Scheduling latency ###
+
+    cluster:scheduler_e2e_scheduling_latency:quantile_seconds{quantile="0.99"} =
+      histogram_quantile(0.99,sum by (le,cluster) (scheduler_e2e_scheduling_latency_microseconds_bucket)) / 1e6
+    cluster:scheduler_e2e_scheduling_latency:quantile_seconds{quantile="0.9"} =
+      histogram_quantile(0.9,sum by (le,cluster) (scheduler_e2e_scheduling_latency_microseconds_bucket)) / 1e6
+    cluster:scheduler_e2e_scheduling_latency:quantile_seconds{quantile="0.5"} =
+      histogram_quantile(0.5,sum by (le,cluster) (scheduler_e2e_scheduling_latency_microseconds_bucket)) / 1e6
+
+    cluster:scheduler_scheduling_algorithm_latency:quantile_seconds{quantile="0.99"} =
+      histogram_quantile(0.99,sum by (le,cluster) (scheduler_scheduling_algorithm_latency_microseconds_bucket)) / 1e6
+    cluster:scheduler_scheduling_algorithm_latency:quantile_seconds{quantile="0.9"} =
+      histogram_quantile(0.9,sum by (le,cluster) (scheduler_scheduling_algorithm_latency_microseconds_bucket)) / 1e6
+    cluster:scheduler_scheduling_algorithm_latency:quantile_seconds{quantile="0.5"} =
+      histogram_quantile(0.5,sum by (le,cluster) (scheduler_scheduling_algorithm_latency_microseconds_bucket)) / 1e6
+
+    cluster:scheduler_binding_latency:quantile_seconds{quantile="0.99"} =
+      histogram_quantile(0.99,sum by (le,cluster) (scheduler_binding_latency_microseconds_bucket)) / 1e6
+    cluster:scheduler_binding_latency:quantile_seconds{quantile="0.9"} =
+      histogram_quantile(0.9,sum by (le,cluster) (scheduler_binding_latency_microseconds_bucket)) / 1e6
+    cluster:scheduler_binding_latency:quantile_seconds{quantile="0.5"} =
+      histogram_quantile(0.5,sum by (le,cluster) (scheduler_binding_latency_microseconds_bucket)) / 1e6
+
+    ALERT K8SNodeDown
+      IF up{job="kubelet"} == 0
+      FOR 1h
+      LABELS {
+        service = "k8s",
+        severity = "warning"
+      }
+      ANNOTATIONS {
+        summary = "Kubelet cannot be scraped",
+        description = "Prometheus could not scrape a {{ $labels.job }} for more than one hour",
+      }
+
+    ALERT K8SNodeNotReady
+      IF kube_node_status_ready{condition="true"} == 0
+      FOR 1h
+      LABELS {
+        service = "k8s",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "Node status is NotReady",
+        description = "The Kubelet on {{ $labels.node }} has not checked in with the API, or has set itself to NotReady, for more than an hour",
+      }
+
+    ALERT K8SManyNodesNotReady
+      IF
+        count by (cluster) (kube_node_status_ready{condition="true"} == 0) > 1
+        AND
+          (
+            count by (cluster) (kube_node_status_ready{condition="true"} == 0)
+          /
+            count by (cluster) (kube_node_status_ready{condition="true"})
+          ) > 0.2
+      FOR 1m
+      LABELS {
+        service = "k8s",
+        severity = "critical",
+      }
+      ANNOTATIONS {
+        summary = "Many K8s nodes are Not Ready",
+        description = "{{ $value }} K8s nodes (more than 10% of cluster {{ $labels.cluster }}) are in the NotReady state.",
+      }
+
+    ALERT K8SKubeletNodeExporterDown
+      IF up{job="node-exporter"} == 0
+      FOR 15m
+      LABELS {
+        service = "k8s",
+        severity = "warning"
+      }
+      ANNOTATIONS {
+        summary = "Kubelet node_exporter cannot be scraped",
+        description = "Prometheus could not scrape a {{ $labels.job }} for more than one hour.",
+      }
+
+    ALERT K8SKubeletDown
+      IF absent(up{job="kubelet"}) or count by (cluster) (up{job="kubelet"} == 0) / count by (cluster) (up{job="kubelet"}) > 0.1
+      FOR 1h
+      LABELS {
+        service = "k8s",
+        severity = "critical"
+      }
+      ANNOTATIONS {
+        summary = "Many Kubelets cannot be scraped",
+        description = "Prometheus failed to scrape more than 10% of kubelets, or all Kubelets have disappeared from service discovery.",
+      }
+
+    ALERT K8SApiserverDown
+      IF up{job="kubernetes"} == 0
+      FOR 15m
+      LABELS {
+        service = "k8s",
+        severity = "warning"
+      }
+      ANNOTATIONS {
+        summary = "API server unreachable",
+        description = "An API server could not be scraped.",
+      }
+
+    # Disable for non HA kubernetes setups.
+    ALERT K8SApiserverDown
+      IF absent({job="kubernetes"}) or (count by(cluster) (up{job="kubernetes"} == 1) < count by(cluster) (up{job="kubernetes"}))
+      FOR 5m
+      LABELS {
+        service = "k8s",
+        severity = "critical"
+      }
+      ANNOTATIONS {
+        summary = "API server unreachable",
+        description = "Prometheus failed to scrape multiple API servers, or all API servers have disappeared from service discovery.",
+      }
+
+    ALERT K8SSchedulerDown
+      IF absent(up{job="kube-scheduler"}) or (count by(cluster) (up{job="kube-scheduler"} == 1) == 0)
+      FOR 5m
+      LABELS {
+        service = "k8s",
+        severity = "critical",
+      }
+      ANNOTATIONS {
+        summary = "Scheduler is down",
+        description = "There is no running K8S scheduler. New pods are not being assigned to nodes.",
+      }
+
+    ALERT K8SControllerManagerDown
+      IF absent(up{job="kube-controller-manager"}) or (count by(cluster) (up{job="kube-controller-manager"} == 1) == 0)
+      FOR 5m
+      LABELS {
+        service = "k8s",
+        severity = "critical",
+      }
+      ANNOTATIONS {
+        summary = "Controller manager is down",
+        description = "There is no running K8S controller manager. Deployments and replication controllers are not making progress.",
+      }
+
+    ALERT K8SConntrackTableFull
+      IF 100*node_nf_conntrack_entries / node_nf_conntrack_entries_limit > 50
+      FOR 10m
+      LABELS {
+        service = "k8s",
+        severity = "warning"
+      }
+      ANNOTATIONS {
+        summary = "Number of tracked connections is near the limit",
+        description = "The nf_conntrack table is {{ $value }}% full.",
+      }
+
+    ALERT K8SConntrackTableFull
+      IF 100*node_nf_conntrack_entries / node_nf_conntrack_entries_limit > 90
+      LABELS {
+        service = "k8s",
+        severity = "critical"
+      }
+      ANNOTATIONS {
+        summary = "Number of tracked connections is near the limit",
+        description = "The nf_conntrack table is {{ $value }}% full.",
+      }
+
+    # To catch the conntrack sysctl de-tuning when it happens
+    ALERT K8SConntrackTuningMissing
+      IF node_nf_conntrack_udp_timeout > 10
+      FOR 10m
+      LABELS {
+        service = "k8s",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "Node does not have the correct conntrack tunings",
+        description = "Nodes keep un-setting the correct tunings, investigate when it happens.",
+      }
+
+    ALERT K8STooManyOpenFiles
+      IF 100*process_open_fds{job=~"kubelet|kubernetes"} / process_max_fds > 50
+      FOR 10m
+      LABELS {
+        service = "k8s",
+        severity = "warning"
+      }
+      ANNOTATIONS {
+        summary = "{{ $labels.job }} has too many open file descriptors",
+        description = "{{ $labels.node }} is using {{ $value }}% of the available file/socket descriptors.",
+      }
+
+    ALERT K8STooManyOpenFiles
+      IF 100*process_open_fds{job=~"kubelet|kubernetes"} / process_max_fds > 80
+      FOR 10m
+      LABELS {
+        service = "k8s",
+        severity = "critical"
+      }
+      ANNOTATIONS {
+        summary = "{{ $labels.job }} has too many open file descriptors",
+        description = "{{ $labels.node }} is using {{ $value }}% of the available file/socket descriptors.",
+      }
+
+    # Some verbs excluded because they are expected to be long-lasting:
+    # WATCHLIST is long-poll, CONNECT is `kubectl exec`.
+    ALERT K8SApiServerLatency
+      IF histogram_quantile(
+          0.99,
+          sum without (instance,node,resource) (apiserver_request_latencies_bucket{verb!~"CONNECT|WATCHLIST|WATCH"})
+        ) / 1e6 > 1.0
+      FOR 10m
+      LABELS {
+        service = "k8s",
+        severity = "warning"
+      }
+      ANNOTATIONS {
+        summary = "Kubernetes apiserver latency is high",
+        description = "99th percentile Latency for {{ $labels.verb }} requests to the kube-apiserver is higher than 1s.",
+      }
+
+    ALERT K8SApiServerEtcdAccessLatency
+      IF etcd_request_latencies_summary{quantile="0.99"} / 1e6 > 1.0
+      FOR 15m
+      LABELS {
+        service = "k8s",
+        severity = "warning"
+      }
+      ANNOTATIONS {
+        summary = "Access to etcd is slow",
+        description = "99th percentile latency for apiserver to access etcd is higher than 1s.",
+      }
+
+    ALERT K8SKubeletTooManyPods
+      IF kubelet_running_pod_count > 100
+      LABELS {
+        service = "k8s",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "Kubelet is close to pod limit",
+        description = "Kubelet {{$labels.instance}} is running {{$value}} pods, close to the limit of 110",
+      }
+
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: prometheus-k8s-rules

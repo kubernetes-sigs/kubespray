@@ -76,7 +76,7 @@ resource "aws_route_table" "kubernetes-private" {
     vpc_id = "${aws_vpc.cluster-vpc.id}"
     route {
         cidr_block = "0.0.0.0/0"
-        gateway_id = "${element(aws_nat_gateway.cluster-nat-gateway.*.id, count.index)}"
+        nat_gateway_id = "${element(aws_nat_gateway.cluster-nat-gateway.*.id, count.index)}"
     }
     tags {
         Name = "kubernetes-${var.aws_cluster_name}-routetable-private-${count.index}"

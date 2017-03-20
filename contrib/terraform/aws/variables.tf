@@ -33,12 +33,12 @@ variable "aws_avail_zones" {
 }
 
 variable "aws_cidr_subnets_private" {
-  description = "CIDR Blocks for private subnets in Availability zones1"
+  description = "CIDR Blocks for private subnets in Availability Zones"
   type = "list"
 }
 
 variable "aws_cidr_subnets_public" {
-  description = "CIDR Blocks for public subnets in Availability zones1"
+  description = "CIDR Blocks for public subnets in Availability Zones"
   type = "list"
 }
 

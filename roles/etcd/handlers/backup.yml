@@ -1,0 +1,45 @@
+---
+- name: Backup etcd data
+  command: /bin/true
+  notify:
+    - Refresh Time Fact
+    - Set etcd Backup Directory Prefix
+    - Set Backup Directory
+    - Create Backup Directory
+    - Backup etcd v2 data
+    - Backup etcd v3 data
+  when: etcd_cluster_is_healthy.rc == 0
+
+- name: Refresh Time Fact
+  setup: filter=ansible_date_time
+
+- name: Set etcd Backup Directory Prefix
+  set_fact:
+    etcd_backup_prefix: '/var/backups'
+
+- name: Set Backup Directory
+  set_fact:
+    etcd_backup_directory: "{{ etcd_backup_prefix }}/etcd-{{ ansible_date_time.date }}_{{ ansible_date_time.time }}"
+
+- name: Create Backup Directory
+  file:
+    path: "{{ etcd_backup_directory }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Backup etcd v2 data
+  command: "{{ bin_dir }}/etcdctl backup --data-dir {{ etcd_data_dir }} --backup-dir {{ etcd_backup_directory }}"
+  environment:
+    ETCDCTL_API: 2
+  retries: 3
+  delay: "{{ retry_stagger | random + 3 }}"
+
+- name: Backup etcd v3 data
+  command: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }} snapshot save {{ etcd_backup_directory }}/snapshot.db"
+  environment:
+    ETCDCTL_API: 3
+  retries: 3
+  delay: "{{ retry_stagger | random + 3 }}"
+

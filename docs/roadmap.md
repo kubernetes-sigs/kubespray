@@ -5,7 +5,7 @@ Kargo's roadmap
 - Propose kubeadm as an option in order to setup the kubernetes cluster.
 That would probably improve deployment speed and certs management [#553](https://github.com/kubespray/kargo/issues/553)
 
-### Self deployment (pull-mode) [#320](https://github.com/kubespray/kargo/issues/320)
+### Self deployment (pull-mode) [#320](https://github.com/kubespray/kargo/issues/320)
 - the playbook would install and configure docker/rkt and the etcd cluster
 - the following data would be inserted into etcd: certs,tokens,users,inventory,group_vars.
 - a "kubespray" container would be deployed (kargo-cli, ansible-playbook, kpm)
@@ -18,7 +18,7 @@ That would probably improve deployment speed and certs management [#553](https:/
 - [ ] On Azure autoscaling, create loadbalancer [#297](https://github.com/kubespray/kargo/issues/297)
 - [ ] On GCE be able to create a loadbalancer automatically (IAM ?) [#280](https://github.com/kubespray/kargo/issues/280)
 - [x] **TLS boostrap** support for kubelet [#234](https://github.com/kubespray/kargo/issues/234)
-  (related issues: https://github.com/kubernetes/kubernetes/pull/20439 <br>
+  (related issues: https://github.com/kubernetes/kubernetes/pull/20439 <br>
    https://github.com/kubernetes/kubernetes/issues/18112)
 
 ### Tests

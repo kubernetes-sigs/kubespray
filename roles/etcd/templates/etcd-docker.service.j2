@@ -6,25 +6,8 @@ After=docker.service
 [Service]
 User=root
 PermissionsStartOnly=true
-ExecStart={{ docker_bin_dir }}/docker run --restart=on-failure:5 \
---env-file=/etc/etcd.env \
-{# TODO(mattymo): Allow docker IP binding and disable in envfile
-   -p 2380:2380 -p 2379:2379 #}
---net=host \
--v /etc/ssl/certs:/etc/ssl/certs:ro \
--v {{ etcd_cert_dir }}:{{ etcd_cert_dir }}:ro \
--v {{ etcd_data_dir }}:/var/lib/etcd:rw \
-{% if etcd_memory_limit is defined %}
---memory={{ etcd_memory_limit|regex_replace('Mi', 'M') }} \
-{% endif %}
-{% if etcd_cpu_limit is defined %}
---cpu-shares={{ etcd_cpu_limit|regex_replace('m', '') }} \
-{% endif %}
---name={{ etcd_member_name | default("etcd") }} \
-{{ etcd_image_repo }}:{{ etcd_image_tag }} \
-{% if etcd_after_v3 %}
-{{ etcd_container_bin_dir }}etcd
-{% endif %}
+EnvironmentFile=/etc/etcd.env
+ExecStart={{ bin_dir }}/etcd
 ExecStartPre=-{{ docker_bin_dir }}/docker rm -f {{ etcd_member_name | default("etcd") }}
 ExecReload={{ docker_bin_dir }}/docker restart {{ etcd_member_name | default("etcd") }}
 ExecStop={{ docker_bin_dir }}/docker stop {{ etcd_member_name | default("etcd") }}

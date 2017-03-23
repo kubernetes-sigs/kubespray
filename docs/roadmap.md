@@ -49,7 +49,7 @@ That would probably improve deployment speed and certs management [#553](https:/
 - [x] Canal
 - [x] Cloud Provider native networking (instead of our network plugins)
 
-### High availability
+### High availability
 - (to be discussed) option to set a loadbalancer for the apiservers like ucarp/packemaker/keepalived
 While waiting for the issue [kubernetes/kubernetes#18174](https://github.com/kubernetes/kubernetes/issues/18174) to be fixed.
 
@@ -73,7 +73,7 @@ Include optionals deployments to init the cluster:
 
 ##### Others
 
-##### Dashboards:
+##### Dashboards:
  - kubernetes-dashboard
  - Fabric8
  - Tectonic

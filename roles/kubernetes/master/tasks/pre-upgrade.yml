@@ -55,13 +55,15 @@
   set_fact:
     needs_etcd_migration: "{{ kube_apiserver_storage_backend == 'etcd3' and data_migrated.stdout_lines|length == 0 and old_data_exists.rc == 0 }}"
 
-- name: "Pre-upgrade | Write invalid image to kube-apiserver manifest if necessary on all kube-masters"
+- name: "Pre-upgrade | Write invalid image to master manifests on all kube-masters"
   replace:
-    dest: /etc/kubernetes/manifests/kube-apiserver.manifest
+    dest: "/etc/kubernetes/manifests/{{item[1]}}.manifest"
     regexp: '(\s+)image:\s+.*?$'
     replace: '\1image: kill.apiserver.using.fake.image.in:manifest'
-  delegate_to: "{{item}}"
-  with_items: "{{groups['kube-master']}}"
+  delegate_to: "{{item[0]}}"
+  with_nested:
+    - "{{groups['kube-master']}}"
+    - ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   register: kube_apiserver_manifest_replaced
   when: (secret_changed|default(false) or etcd_secret_changed|default(false) or needs_etcd_migration|bool) and kube_apiserver_manifest.stat.exists
 
@@ -95,13 +97,3 @@
   delegate_to: "{{item}}"
   with_items: "{{groups['etcd']}}"
   when: needs_etcd_migration|bool
-
-- name: "Pre-upgrade | restart kubelet on all masters"
-  service:
-    name: kubelet
-    state: restarted
-  delegate_to: "{{item}}"
-  with_items: "{{groups['kube-master']}}"
-  register: kube_apiserver_manifest_replaced
-  when: needs_etcd_migration|bool
-

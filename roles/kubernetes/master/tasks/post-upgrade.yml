@@ -1,11 +1,23 @@
 ---
-- name: "Post-upgrade | restart kubelet on all masters"
+- name: "Post-upgrade | stop kubelet on all masters"
   service:
     name: kubelet
-    state: restarted
+    state: stopped
   delegate_to: "{{item}}"
   with_items: "{{groups['kube-master']}}"
-  register: kube_apiserver_manifest_replaced
+  when: needs_etcd_migration|bool
+
+- name: "Post-upgrade | Pause for kubelet stop"
+  pause:
+    seconds: 10
+  when: needs_etcd_migration|bool
+
+- name: "Post-upgrade | stop kubelet on all masters"
+  service:
+    name: kubelet
+    state: started
+  delegate_to: "{{item}}"
+  with_items: "{{groups['kube-master']}}"
   when: needs_etcd_migration|bool
 
 - name: "Post-upgrade | etcd3 upgrade | purge etcd2 k8s data"

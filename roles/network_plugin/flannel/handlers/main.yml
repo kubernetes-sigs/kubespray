@@ -9,7 +9,9 @@
   notify:
     - Flannel | reload systemd
     - Flannel | reload docker.socket
+    - Flannel | reconfigure docker restart behavior (atomic)
     - Flannel | reload docker
+    - Flannel | restore docker restart behavior (atomic)
     - Flannel | reload docker (atomic)
     - Flannel | pause while Docker restarts
     - Flannel | wait for docker
@@ -23,14 +25,29 @@
     state: restarted
   when: ansible_os_family in ['CoreOS', 'Container Linux by CoreOS']
 
+- name: Flannel | reconfigure docker restart behavior (atomic)
+  replace:
+    name: /etc/docker/daemon.json
+    regexp: '"live-restore":.*true'
+    replace: '"live-restore": false'
+  when: is_atomic
+
 - name: Flannel | reload docker
   service:
     name: docker
     state: restarted
-  when: not is_atomic
+
+- name: Flannel | restore docker restart behavior (atomic)
+  replace:
+    name: /etc/docker/daemon.json
+    regexp: '"live-restore": false'
+    replace: '"live-restore": true'
+  when: is_atomic
 
 - name: Flannel | reload docker (atomic)
-  shell: systemctl stop docker && runc list | awk '!/ID/ {print $1}' | xargs -n 1 -I ID runc kill ID KILL && systemctl start docker
+  service:
+    name: docker
+    state: restarted
   when: is_atomic
 
 - name: Flannel | pause while Docker restarts

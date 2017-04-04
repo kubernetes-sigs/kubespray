@@ -38,9 +38,14 @@
   environment:
     ETCDCTL_API: 2
   register: old_data_exists
-  delegate_to: "{{groups['kube-master'][0]}}"
+  delegate_to: "{{groups['etcd'][0]}}"
   when: kube_apiserver_storage_backend == "etcd3"
   failed_when: false
+
+- name: "Pre-upgrade | etcd3 upgrade | use etcd2 unless forced to etc3"
+  set_fact:
+    kube_apiserver_storage_backend: "etcd2"
+  when: old_data_exists.rc == 0 and not force_etcd3|bool
 
 - name: "Pre-upgrade | etcd3 upgrade | see if data was already migrated"
   command: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }} get --limit=1 --prefix=true /registry/minions"
@@ -53,21 +58,27 @@
 
 - name: "Pre-upgrade | etcd3 upgrade | set needs_etcd_migration"
   set_fact:
-    needs_etcd_migration: "{{ kube_apiserver_storage_backend == 'etcd3' and data_migrated.stdout_lines|length == 0 and old_data_exists.rc == 0 }}"
+    needs_etcd_migration: "{{ force_etcd3|default(false) and kube_apiserver_storage_backend == 'etcd3' and data_migrated.stdout_lines|length == 0 and old_data_exists.rc == 0 }}"
 
-- name: "Pre-upgrade | Write invalid image to kube-apiserver manifest if necessary"
-  replace:
-    dest: /etc/kubernetes/manifests/kube-apiserver.manifest
-    regexp: '(\s+)image:\s+.*?$'
-    replace: '\1image: kill.apiserver.using.fake.image.in:manifest'
+- name: "Pre-upgrade | Delete master manifests on all kube-masters"
+  file:
+    path: "/etc/kubernetes/manifests/{{item[1]}}.manifest"
+    state: absent
+  delegate_to: "{{item[0]}}"
+  with_nested:
+    - "{{groups['kube-master']}}"
+    - ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   register: kube_apiserver_manifest_replaced
   when: (secret_changed|default(false) or etcd_secret_changed|default(false) or needs_etcd_migration|bool) and kube_apiserver_manifest.stat.exists
 
-- name: "Pre-upgrade | Pause while waiting for kubelet to delete kube-apiserver pod"
-  pause:
-    seconds: 20
-  when: kube_apiserver_manifest_replaced.changed
-  tags: kube-apiserver
+- name: "Pre-upgrade | Delete master containers forcefully on all kube-masters"
+  shell: "docker ps -f name=k8s-{{item}}* -q | xargs --no-run-if-empty docker rm -f"
+  delegate_to: "{{item[0]}}"
+  with_nested:
+    - "{{groups['kube-master']}}"
+    - ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
+  register: kube_apiserver_manifest_replaced
+  when: (secret_changed|default(false) or etcd_secret_changed|default(false) or needs_etcd_migration|bool) and kube_apiserver_manifest.stat.exists
 
 - name: "Pre-upgrade | etcd3 upgrade | stop etcd"
   service:

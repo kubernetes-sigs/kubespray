@@ -1,12 +1,30 @@
 ---
+- name: See if node is in ready state
+  shell: "kubectl get nodes | grep {{ inventory_hostname }}"
+  register: kubectl_nodes
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  failed_when: false
+
+- set_fact:
+    needs_cordoning: >-
+      {% if " Ready" in kubectl_nodes.stdout %}
+      true
+      {% else %}
+      false
+      {% endif %}
 
 - name: Cordon node
   command: "{{ bin_dir }}/kubectl cordon {{ ansible_hostname }}"
   delegate_to: "{{ groups['kube-master'][0] }}"
+  when: needs_cordoning
 
 - name: Drain node
-  command: "{{ bin_dir }}/kubectl drain --force --ignore-daemonsets --grace-period 30 --delete-local-data {{ ansible_hostname }}"
+  command: >-
+    {{ bin_dir }}/kubectl drain
+      --force
+      --ignore-daemonsets
+      --grace-period {{ drain_grace_period }}
+      --timeout {{ drain_timeout }}
+      --delete-local-data {{ ansible_hostname }}
   delegate_to: "{{ groups['kube-master'][0] }}"
-
-- name: Sleep for grace period for draining
-  pause: seconds=30
+  when: needs_cordoning

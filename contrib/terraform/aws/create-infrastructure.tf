@@ -173,6 +173,7 @@ data "template_file" "inventory" {
         list_etcd = "${join("\n",aws_instance.k8s-etcd.*.tags.Name)}"
         elb_api_fqdn = "apiserver_loadbalancer_domain_name=\"${module.aws-elb.aws_elb_api_fqdn}\""
         elb_api_port = "loadbalancer_apiserver.port=${var.aws_elb_api_port}"
+        kube_insecure_apiserver_address = "kube_apiserver_insecure_bind_address: ${var.kube_insecure_apiserver_address}"
 
     }
 }

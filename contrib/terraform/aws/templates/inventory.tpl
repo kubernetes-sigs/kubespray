@@ -25,3 +25,4 @@ kube-master
 [k8s-cluster:vars]
 ${elb_api_fqdn}
 ${elb_api_port}
+${kube_insecure_apiserver_address}

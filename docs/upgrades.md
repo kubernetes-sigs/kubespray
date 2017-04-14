@@ -44,7 +44,15 @@ deployed.
 ```
 git fetch origin
 git checkout origin/master
-ansible-playbook upgrade-cluster.yml -b -i inventory/inventory.cfg
+ansible-playbook upgrade-cluster.yml -b -i inventory/inventory.cfg -e kube_version=v1.6.0
+```
+
+After a successul upgrade, the Server Version should be updated:
+
+```
+$ kubectl version
+Client Version: version.Info{Major:"1", Minor:"6", GitVersion:"v1.6.0", GitCommit:"fff5156092b56e6bd60fff75aad4dc9de6b6ef37", GitTreeState:"clean", BuildDate:"2017-03-28T19:15:41Z", GoVersion:"go1.8", Compiler:"gc", Platform:"darwin/amd64"}
+Server Version: version.Info{Major:"1", Minor:"6", GitVersion:"v1.6.0+coreos.0", GitCommit:"8031716957d697332f9234ddf85febb07ac6c3e3", GitTreeState:"clean", BuildDate:"2017-03-29T04:33:09Z", GoVersion:"go1.7.5", Compiler:"gc", Platform:"linux/amd64"}
 ```
 
 #### Upgrade order

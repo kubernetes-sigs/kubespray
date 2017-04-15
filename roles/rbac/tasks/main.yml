@@ -1,0 +1,34 @@
+---
+- name: Create RBAC manifests
+  template:
+    src: "{{item.file}}"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {name: calico-cni-plugin, file: calico-cni-plugin-serviceaccount.yml, type: serviceaccount}
+    - {name: calico-cni-plugin, file: calico-cni-plugin-clusterrole.yml, type: clusterrole}
+    - {name: calico-cni-plugin, file: calico-cni-plugin-clusterrolebinding.yml, type: clusterrolebinding}
+    - {name: calico-policy-controller, file: calico-policy-controller-serviceaccount.yml, type: serviceaccount}
+    - {name: calico-policy-controller, file: calico-policy-controller-clusterrole.yml, type: clusterrole}
+    - {name: calico-policy-controller, file: calico-policy-controller-clusterrolebinding.yml, type: clusterrolebinding}
+    - {name: cluster-proportional-autoscaler, file: cluster-proportional-autoscaler-serviceaccount.yml, type: serviceaccount}
+    - {name: cluster-proportional-autoscaler, file: cluster-proportional-autoscaler-clusterrole.yml, type: clusterrole}
+    - {name: cluster-proportional-autoscaler, file: cluster-proportional-autoscaler-clusterrolebinding.yml, type: clusterrolebinding}
+    - {name: 'custom:system:kube-dns', file: 'custom:system:kube-dns-clusterrole.yml', type: clusterrole}
+    - {name: 'custom:system:kube-dns', file: 'custom:system:kube-dns-clusterrolebinding.yml', type: clusterrolebinding}
+    - {name: fluentd, file: fluentd-clusterrole.yml, type: clusterrole}
+    - {name: fluentd, file: fluentd-clusterrolebinding.yml, type: clusterrolebinding}
+  register: manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Start Resources
+  kube:
+    name: "{{item.item.name}}"
+    namespace: "{{system_namespace}}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: "{{ manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]
+
+

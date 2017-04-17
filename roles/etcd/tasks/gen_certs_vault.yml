@@ -1,4 +1,12 @@
 ---
+- include: sync_etcd_master_certs.yml
+  when: inventory_hostname in groups.etcd
+  tags: etcd-secrets
+
+- include: sync_etcd_node_certs.yml
+  when: inventory_hostname in etcd_node_cert_hosts
+  tags: etcd-secrets
+
 
 - name: gen_certs_vault | Read in the local credentials
   command: cat /etc/vault/roles/etcd/userpass
@@ -15,7 +23,7 @@
     url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}/v1/auth/userpass/login/{{ etcd_vault_creds.username }}"
     headers:
       Accept: application/json
-      Content-Type: application/json 
+      Content-Type: application/json
     method: POST
     body_format: json
     body:
@@ -37,7 +45,7 @@
     issue_cert_copy_ca: "{{ item == etcd_master_certs_needed|first }}"
     issue_cert_file_group: "{{ etcd_cert_group }}"
     issue_cert_file_owner: kube
-    issue_cert_headers: "{{ etcd_vault_headers }}" 
+    issue_cert_headers: "{{ etcd_vault_headers }}"
     issue_cert_hosts: "{{ groups.etcd }}"
     issue_cert_ip_sans: >-
         [
@@ -60,7 +68,7 @@
     issue_cert_copy_ca: "{{ item == etcd_node_certs_needed|first }}"
     issue_cert_file_group: "{{ etcd_cert_group }}"
     issue_cert_file_owner: kube
-    issue_cert_headers: "{{ etcd_vault_headers }}" 
+    issue_cert_headers: "{{ etcd_vault_headers }}"
     issue_cert_hosts: "{{ etcd_node_cert_hosts }}"
     issue_cert_ip_sans: >-
         [
@@ -75,3 +83,5 @@
   with_items: "{{ etcd_node_certs_needed|d([]) }}"
   when: inventory_hostname in etcd_node_cert_hosts
   notify: set etcd_secret_changed
+
+

@@ -38,7 +38,7 @@ Example inventory generator usage:
 ```
 cp -r inventory my_inventory
 declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
-CONFIG_FILE=my_inventory/inventory.cfg python3 contrib/inventory_builder/inventory.py ${IPS}
+CONFIG_FILE=my_inventory/inventory.cfg python3 contrib/inventory_builder/inventory.py ${IPS[@]}
 ```
 
 Starting custom deployment

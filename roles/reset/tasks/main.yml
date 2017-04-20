@@ -8,6 +8,7 @@
     - kubelet
     - etcd
   failed_when: false
+  tags: ['services']
 
 - name: reset | remove services
   file:
@@ -17,6 +18,7 @@
     - kubelet
     - etcd
   register: services_removed
+  tags: ['services']
 
 - name: reset | remove docker dropins
   file:
@@ -26,6 +28,7 @@
     - docker-dns.conf
     - docker-options.conf
   register: docker_dropins_removed
+  tags: ['docker']
 
 - name: reset | systemctl daemon-reload
   command: systemctl daemon-reload
@@ -33,25 +36,31 @@
 
 - name: reset | remove all containers
   shell: "{{ docker_bin_dir }}/docker ps -aq | xargs -r docker rm -fv"
+  tags: ['docker']
 
 - name: reset | restart docker if needed
   service:
     name: docker
     state: restarted
   when: docker_dropins_removed.changed
+  tags: ['docker']
 
 - name: reset | gather mounted kubelet dirs
   shell: mount | grep /var/lib/kubelet | awk '{print $3}' | tac
   check_mode: no
   register: mounted_dirs
+  tags: ['mounts']
 
 - name: reset | unmount kubelet dirs
   command: umount {{item}}
   with_items: '{{ mounted_dirs.stdout_lines }}'
+  tags: ['mounts']
 
 - name: flush iptables
   iptables:
     flush: yes
+  when: flush_iptables|bool
+  tags: ['iptables']
 
 - name: reset | delete some files and directories
   file:
@@ -74,6 +83,8 @@
     - /etc/dhcp/dhclient.d/zdnsupdate.sh
     - /etc/dhcp/dhclient-exit-hooks.d/zdnsupdate
     - "{{ bin_dir }}/kubelet"
+  tags: ['files']
+
 
 - name: reset | remove dns settings from dhclient.conf
   blockinfile:
@@ -85,6 +96,7 @@
   with_items:
     - /etc/dhclient.conf
     - /etc/dhcp/dhclient.conf
+  tags: ['files', 'dns']
 
 - name: reset | remove host entries from /etc/hosts
   blockinfile:
@@ -92,6 +104,7 @@
     state: absent
     follow: yes
     marker: "# Ansible inventory hosts {mark}"
+  tags: ['files', 'dns']
 
 - name: reset | Restart network
   service:
@@ -103,3 +116,4 @@
       {%- endif %}
     state: restarted
   when: ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+  tags: ['services', 'network']

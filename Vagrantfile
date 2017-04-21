@@ -111,9 +111,11 @@ Vagrant.configure("2") do |config|
       if i == $num_instances
         config.vm.provision "ansible" do |ansible|
           ansible.playbook = "cluster.yml"
+          
           if File.exist?(File.join(File.dirname($inventory), "hosts"))
             ansible.inventory_path = $inventory
           end
+          
           ansible.sudo = true
           ansible.limit = "all"
           ansible.host_key_checking = false

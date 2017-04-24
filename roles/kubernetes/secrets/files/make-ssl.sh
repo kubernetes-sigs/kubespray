@@ -86,7 +86,7 @@ if [ -n "$MASTERS" ]; then
         # admin key
         openssl genrsa -out admin-${host}-key.pem 2048 > /dev/null 2>&1
         openssl req -new -key admin-${host}-key.pem -out admin-${host}.csr -subj "/CN=kube-admin-${cn}/O=system:masters" > /dev/null 2>&1
-        openssl x509 -req -in admin-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out admin-${host}.pem -days 365 > /dev/null 2>&1
+        openssl x509 -req -in admin-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out admin-${host}.pem -days 3650 > /dev/null 2>&1
     done
 fi
 
@@ -97,7 +97,7 @@ if [ -n "$HOSTS" ]; then
         # node key
         openssl genrsa -out node-${host}-key.pem 2048 > /dev/null 2>&1
         openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=kube-node-${cn}/O=system:nodes" > /dev/null 2>&1
-        openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 365 > /dev/null 2>&1
+        openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 3650 > /dev/null 2>&1
     done
 fi
 

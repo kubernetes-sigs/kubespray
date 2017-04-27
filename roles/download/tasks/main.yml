@@ -2,14 +2,18 @@
 - name: downloading...
   debug:
     msg: "{{ download.url }}"
-  when: "{{ download.enabled|bool and not download.container|bool }}"
+  when:
+    - download.enabled|bool
+    - not download.container|bool
 
 - name: Create dest directories
   file:
     path: "{{local_release_dir}}/{{download.dest|dirname}}"
     state: directory
     recurse: yes
-  when: "{{ download.enabled|bool and not download.container|bool }}"
+  when:
+    - download.enabled|bool
+    - not download.container|bool
   tags: bootstrap-os
 
 - name: Download items
@@ -23,7 +27,9 @@
   until: "'OK' in get_url_result.msg or 'file already exists' in get_url_result.msg"
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  when: "{{ download.enabled|bool and not download.container|bool }}"
+  when:
+    - download.enabled|bool
+    - not download.container|bool
 
 - name: Extract archives
   unarchive:
@@ -32,7 +38,11 @@
     owner: "{{ download.owner|default(omit) }}"
     mode: "{{ download.mode|default(omit) }}"
     copy: no
-  when: "{{ download.enabled|bool and not download.container|bool and download.unarchive is defined and download.unarchive == True }}"
+  when:
+    - download.enabled|bool
+    - not download.container|bool
+    - download.unarchive is defined
+    - download.unarchive == True
 
 - name: Fix permissions
   file:
@@ -40,7 +50,10 @@
     path: "{{local_release_dir}}/{{download.dest}}"
     owner: "{{ download.owner|default(omit) }}"
     mode: "{{ download.mode|default(omit) }}"
-  when: "{{ download.enabled|bool and not download.container|bool and (download.unarchive is not defined or download.unarchive == False) }}"
+  when:
+    - download.enabled|bool
+    - not download.container|bool
+    - (download.unarchive is not defined or download.unarchive == False)
 
 - set_fact:
     download_delegate: "{% if download_localhost %}localhost{% else %}{{groups['kube-master'][0]}}{% endif %}"
@@ -53,13 +66,15 @@
     recurse: yes
     mode: 0755
     owner: "{{ansible_ssh_user|default(ansible_user_id)}}"
-  when: "{{ download.enabled|bool and download.container|bool }}"
+  when:
+    - download.enabled|bool
+    - download.container|bool
   tags: bootstrap-os
 
 # This is required for the download_localhost delegate to work smooth with Container Linux by CoreOS cluster nodes
 - name: Hack python binary path for localhost
   raw: sh -c "mkdir -p /opt/bin; ln -sf /usr/bin/python /opt/bin/python"
-  when: "{{ download_delegate == 'localhost' }}"
+  when: download_delegate == 'localhost'
   delegate_to: localhost
   failed_when: false
   run_once: true
@@ -73,12 +88,18 @@
   delegate_to: localhost
   become: false
   run_once: true
-  when: "{{ download_run_once|bool and download.enabled|bool and download.container|bool and download_delegate == 'localhost' }}"
+  when:
+    - download_run_once|bool
+    - download.enabled|bool
+    - download.container|bool
+    - download_delegate == 'localhost'
   tags: localhost
 
 - name: Make download decision if pull is required by tag or sha256
   include: set_docker_image_facts.yml
-  when: "{{ download.enabled|bool and download.container|bool }}"
+  when:
+    - download.enabled|bool
+    - download.container|bool
   delegate_to: "{{ download_delegate if download_run_once|bool else inventory_hostname }}"
   run_once: "{{ download_run_once|bool }}"
   tags: facts
@@ -86,7 +107,9 @@
 - name: pulling...
   debug:
     msg: "{{ pull_args }}"
-  when: "{{ download.enabled|bool and download.container|bool }}"
+  when:
+    - download.enabled|bool
+    - download.container|bool
 
 #NOTE(bogdando) this brings no docker-py deps for nodes
 - name: Download containers if pull is required or told to always pull
@@ -95,7 +118,10 @@
   until: pull_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  when: "{{ download.enabled|bool and download.container|bool and pull_required|bool|default(download_always_pull) }}"
+  when:
+    - download.enabled|bool
+    - download.container|bool
+    - pull_required|bool|default(download_always_pull)
   delegate_to: "{{ download_delegate if download_run_once|bool else inventory_hostname }}"
   run_once: "{{ download_run_once|bool }}"
 
@@ -110,7 +136,10 @@
 - name: "Update the 'container_changed' fact"
   set_fact:
     container_changed: "{{ pull_required|bool|default(false) or not 'up to date' in pull_task_result.stdout }}"
-  when: "{{ download.enabled|bool and download.container|bool and pull_required|bool|default(download_always_pull) }}"
+  when:
+    - download.enabled|bool
+    - download.container|bool
+    - pull_required|bool|default(download_always_pull)
   delegate_to: "{{ download_delegate if download_run_once|bool else inventory_hostname }}"
   run_once: "{{ download_run_once|bool }}"
   tags: facts
@@ -120,7 +149,10 @@
     path: "{{fname}}"
   register: img
   changed_when: false
-  when: "{{ download.enabled|bool and download.container|bool and download_run_once|bool }}"
+  when:
+    - download.enabled|bool
+    - download.container|bool
+    - download_run_once|bool
   delegate_to: "{{ download_delegate }}"
   become: false
   run_once: true
@@ -131,7 +163,12 @@
   delegate_to: "{{ download_delegate }}"
   register: saved
   run_once: true
-  when: (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or download_delegate == "localhost") and download_run_once|bool and download.enabled|bool and download.container|bool and (container_changed|bool or not img.stat.exists)
+  when:
+    - (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or download_delegate == "localhost")
+    - download_run_once|bool
+    - download.enabled|bool
+    - download.container|bool
+    - (container_changed|bool or not img.stat.exists)
 
 - name: Download | copy container images to ansible host
   synchronize:
@@ -140,7 +177,14 @@
     mode: pull
   delegate_to: localhost
   become: false
-  when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] and inventory_hostname == groups['kube-master'][0] and download_delegate != "localhost" and download_run_once|bool and download.enabled|bool and download.container|bool and saved.changed
+  when:
+    - not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+    - inventory_hostname == groups['kube-master'][0]
+    - download_delegate != "localhost"
+    - download_run_once|bool
+    - download.enabled|bool
+    - download.container|bool
+    - saved.changed
 
 - name: Download | upload container images to nodes
   synchronize:
@@ -153,10 +197,21 @@
   until: get_task|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  when: (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] and inventory_hostname != groups['kube-master'][0] or download_delegate == "localhost") and download_run_once|bool and download.enabled|bool and download.container|bool
+  when:
+    - (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] and
+      inventory_hostname != groups['kube-master'][0] or
+      download_delegate == "localhost")
+    - download_run_once|bool
+    - download.enabled|bool
+    - download.container|bool
   tags: [upload, upgrade]
 
 - name: Download | load container images
   shell: "{{ docker_bin_dir }}/docker load < {{ fname }}"
-  when: (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] and inventory_hostname != groups['kube-master'][0] or download_delegate == "localhost") and download_run_once|bool and download.enabled|bool and download.container|bool
+  when:
+    - (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] and
+      inventory_hostname != groups['kube-master'][0] or download_delegate == "localhost")
+    - download_run_once|bool
+    - download.enabled|bool
+    - download.container|bool
   tags: [upload, upgrade]

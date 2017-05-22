@@ -109,6 +109,7 @@ Vagrant.configure("2") do |config|
       # Only execute once the Ansible provisioner,
       # when all the machines are up and ready.
       if i == $num_instances
+        config.vm.provision :shell, inline: '[[ -x "$(command -v yum)" ]] && ifup eth1', privileged: true
         config.vm.provision "ansible" do |ansible|
           ansible.playbook = "cluster.yml"
           if File.exist?(File.join(File.dirname($inventory), "hosts"))

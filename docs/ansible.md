@@ -27,7 +27,7 @@ not _kube-node_.
 
 There are also two special groups:
 
-* **calico-rr**  : explained for [advanced Calico networking cases](docs/calico.md)
+* **calico-rr**  : explained for [advanced Calico networking cases](calico.md)
 * **bastion** : configure a bastion host if your nodes are not directly reachable
 
 Below is a complete inventory example:

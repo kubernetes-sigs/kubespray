@@ -9,7 +9,7 @@ metadata:
 spec:
   hostNetwork: true
 {% if kube_version | version_compare('v1.6', '>=')  %}
-  dnsPolicy: ClusterFirstWithHostNet
+  dnsPolicy: ClusterFirst
 {% endif %}
   containers:
   - name: kube-apiserver
@@ -33,7 +33,7 @@ spec:
     - --etcd-keyfile={{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem
     - --insecure-bind-address={{ kube_apiserver_insecure_bind_address }}
     - --apiserver-count={{ kube_apiserver_count }}
-    - --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota
+    - --admission-control={{ kube_apiserver_admission_control | join(',') }}
     - --service-cluster-ip-range={{ kube_service_addresses }}
     - --service-node-port-range={{ kube_apiserver_node_port_range }}
     - --client-ca-file={{ kube_cert_dir }}/ca.pem
@@ -80,6 +80,13 @@ spec:
 {% endif %}
 {% if kube_api_anonymous_auth is defined and kube_version | version_compare('v1.5', '>=')  %}
     - --anonymous-auth={{ kube_api_anonymous_auth }}
+{% endif %}
+{% if apiserver_custom_flags is string %}
+    - {{ apiserver_custom_flags }}
+{% else %}
+{%   for flag in apiserver_custom_flags %}
+    - {{ flag }}
+{%   endfor %}
 {% endif %}
     livenessProbe:
       httpGet:

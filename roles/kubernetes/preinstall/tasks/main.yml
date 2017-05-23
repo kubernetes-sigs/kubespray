@@ -43,7 +43,7 @@
     path: "{{ kube_config_dir }}"
     state: directory
     owner: kube
-  when: "{{ inventory_hostname in groups['k8s-cluster'] }}"
+  when: inventory_hostname in groups['k8s-cluster']
   tags: [kubelet, k8s-secrets, kube-controller-manager, kube-apiserver, bootstrap-os, apps, network, master, node]
 
 - name: Create kubernetes script directory
@@ -51,7 +51,7 @@
     path: "{{ kube_script_dir }}"
     state: directory
     owner: kube
-  when: "{{ inventory_hostname in groups['k8s-cluster'] }}"
+  when: "inventory_hostname in groups['k8s-cluster']"
   tags: [k8s-secrets, bootstrap-os]
 
 - name: Create kubernetes manifests directory
@@ -59,17 +59,21 @@
     path: "{{ kube_manifest_dir }}"
     state: directory
     owner: kube
-  when: "{{ inventory_hostname in groups['k8s-cluster'] }}"
+  when: "inventory_hostname in groups['k8s-cluster']"
   tags: [kubelet, bootstrap-os, master, node]
 
 - name: check cloud_provider value
   fail:
     msg: "If set the 'cloud_provider' var must be set either to 'generic', 'gce', 'aws', 'azure', 'openstack' or 'vsphere'"
-  when: cloud_provider is defined and cloud_provider not in ['generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere']
+  when:
+    - cloud_provider is defined
+    - cloud_provider not in ['generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere']
   tags: [cloud-provider, facts]
 
 - include: "{{ cloud_provider }}-credential-check.yml"
-  when: cloud_provider is defined and cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
+  when:
+    - cloud_provider is defined
+    - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
   tags: [cloud-provider, facts]
 
 - name: Create cni directories
@@ -80,7 +84,9 @@
   with_items:
     - "/etc/cni/net.d"
     - "/opt/cni/bin"
-  when: kube_network_plugin in ["calico", "weave", "canal"] and "{{ inventory_hostname in groups['k8s-cluster'] }}"
+  when:
+    - kube_network_plugin in ["calico", "weave", "canal"]
+    - inventory_hostname in groups['k8s-cluster']
   tags: [network, calico, weave, canal, bootstrap-os]
 
 - name: Update package management cache (YUM)
@@ -91,7 +97,9 @@
   until: yum_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  when: ansible_pkg_mgr == 'yum' and not is_atomic
+  when:
+    - ansible_pkg_mgr == 'yum'
+    - not is_atomic
   tags: bootstrap-os
 
 - name: Install latest version of python-apt for Debian distribs
@@ -109,14 +117,17 @@
   until: dnf_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  when: ansible_distribution == "Fedora" and
-        ansible_distribution_major_version > 21
+  when:
+    - ansible_distribution == "Fedora"
+    - ansible_distribution_major_version > 21
   changed_when: False
   tags: bootstrap-os
 
 - name: Install epel-release on RedHat/CentOS
   shell: rpm -qa | grep epel-release || rpm -ivh {{ epel_rpm_download_url }}
-  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+  when:
+    - ansible_distribution in ["CentOS","RedHat"]
+    - not is_atomic
   register: epel_task_result
   until: epel_task_result|succeeded
   retries: 4
@@ -149,7 +160,9 @@
   selinux:
     policy: targeted
     state: permissive
-  when: ansible_os_family == "RedHat" and slc.stat.exists == True
+  when:
+    - ansible_os_family == "RedHat"
+    - slc.stat.exists == True
   changed_when: False
   tags: bootstrap-os
 
@@ -159,7 +172,9 @@
     line: "precedence ::ffff:0:0/96  100"
     state: present
     backup: yes
-  when: disable_ipv6_dns and not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+  when:
+    - disable_ipv6_dns
+    - not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
   tags: bootstrap-os
 
 - name: set default sysctl file path
@@ -176,7 +191,9 @@
 - name: Change sysctl file path to link source if linked
   set_fact:
     sysctl_file_path: "{{sysctl_file_stat.stat.lnk_source}}"
-  when: sysctl_file_stat.stat.islnk is defined and sysctl_file_stat.stat.islnk
+  when:
+    - sysctl_file_stat.stat.islnk is defined
+    - sysctl_file_stat.stat.islnk
   tags: bootstrap-os
 
 - name: Enable ip forwarding
@@ -193,22 +210,33 @@
     dest: "{{ kube_config_dir }}/cloud_config"
     group: "{{ kube_cert_group }}"
     mode: 0640
-  when: inventory_hostname in groups['k8s-cluster'] and cloud_provider is defined and cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - cloud_provider is defined
+    - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
   tags: [cloud-provider]
 
 - include: etchosts.yml
   tags: [bootstrap-os, etchosts]
 
 - include: resolvconf.yml
-  when: dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
   tags: [bootstrap-os, resolvconf]
 
 - include: dhclient-hooks.yml
-  when: dns_mode != 'none' and resolvconf_mode == 'host_resolvconf' and not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
   tags: [bootstrap-os, resolvconf]
 
 - include: dhclient-hooks-undo.yml
-  when: dns_mode != 'none' and resolvconf_mode != 'host_resolvconf' and not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode != 'host_resolvconf'
+    - not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
   tags: [bootstrap-os, resolvconf]
 
 - name: Check if we are running inside a Azure VM
@@ -218,7 +246,7 @@
   tags: bootstrap-os
 
 - include: growpart-azure-centos-7.yml
-  when: azure_check.stat.exists and
-        ansible_distribution in ["CentOS","RedHat"]
+  when:
+    - azure_check.stat.exists
+    - ansible_distribution in ["CentOS","RedHat"]
   tags: bootstrap-os
-

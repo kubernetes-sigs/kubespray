@@ -98,6 +98,20 @@ Stack](https://github.com/kubernetes-incubator/kargo/blob/master/docs/dns-stack.
   loaded by preinstall kubernetes processes.  For example, ceph and rbd backed volumes.  Set this variable to
   true to let kubelet load kernel modules.
 
+##### Custom flags for Kube Components
+For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments. This can be done by providing a list of flags. Example:
+```
+kubelet_custom_flags:
+  - "--eviction-hard=memory.available<100Mi"
+  - "--eviction-soft-grace-period=memory.available=30s"
+  - "--eviction-soft=memory.available<300Mi"
+```
+The possible vars are:
+* *apiserver_custom_flags*
+* *controller_mgr_custom_flags*
+* *scheduler_custom_flags*
+* *kubelet_custom_flags*
+
 #### User accounts
 
 Kargo sets up two Kubernetes accounts by default: ``root`` and ``kube``. Their

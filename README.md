@@ -50,13 +50,14 @@ Note: Upstart/SysV init based OS types are not supported.
 Versions of supported components
 --------------------------------
 
+
 [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.6.4 <br>
 [etcd](https://github.com/coreos/etcd/releases) v3.0.17 <br>
 [flanneld](https://github.com/coreos/flannel/releases) v0.6.2 <br>
 [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.23.0 <br>
 [canal](https://github.com/projectcalico/canal) (given calico/flannel versions) <br>
 [weave](http://weave.works/) v1.8.2 <br>
-[docker](https://www.docker.com/) v1.12.5 <br>
+[docker](https://www.docker.com/) v1.13.1 <br>
 [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 <br>
 
 Note: rkt support as docker alternative is limited to control plane (etcd and
@@ -67,9 +68,9 @@ plugins can be deployed for a given single cluster.
 Requirements
 --------------
 
-* **Ansible v2.2 (or newer) and python-netaddr is installed on the machine
+* **Ansible v2.3 (or newer) and python-netaddr is installed on the machine
   that will run Ansible commands**
-* **Jinja 2.8 (or newer) is required to run the Ansible Playbooks**
+* **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
 * The target servers must have **access to the Internet** in order to pull docker images.
 * The target servers are configured to allow **IPv4 forwarding**.
 * **Your ssh key must be copied** to all the servers part of your inventory.

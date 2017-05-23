@@ -18,3 +18,7 @@ output "etcd" {
 output "aws_elb_api_fqdn" {
     value = "${module.aws-elb.aws_elb_api_fqdn}:${var.aws_elb_api_port}"
 }
+
+output "inventory" {
+    value = "${data.template_file.inventory.rendered}"
+}

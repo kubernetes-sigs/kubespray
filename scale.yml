@@ -1,0 +1,34 @@
+---
+
+##Bootstrap any new workers
+- hosts: kube-node
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  gather_facts: false
+  vars:
+    ansible_ssh_pipelining: false
+  roles:
+    - { role: kargo-defaults}
+    - { role: bootstrap-os, tags: bootstrap-os}
+
+##We still have to gather facts about our masters and etcd nodes
+- hosts: k8s-cluster:etcd:calico-rr
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  vars:
+    ansible_ssh_pipelining: true
+  gather_facts: true
+
+##Target only workers to get kubelet installed and checking in on any new nodes
+- hosts: kube-node
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kargo-defaults}
+    - { role: kernel-upgrade, tags: kernel-upgrade, when: kernel_upgrade is defined and kernel_upgrade }
+    - { role: kubernetes/preinstall, tags: preinstall }
+    - { role: docker, tags: docker }
+    - role: rkt
+      tags: rkt
+      when: "'rkt' in [etcd_deployment_type, kubelet_deployment_type, vault_deployment_type]"
+    - { role: etcd, tags: etcd, etcd_cluster_setup: false }
+    - { role: vault, tags: vault, when: "cert_management == 'vault'"}
+    - { role: kubernetes/node, tags: node }
+    - { role: network_plugin, tags: network }

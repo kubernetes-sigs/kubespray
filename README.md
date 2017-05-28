@@ -57,10 +57,12 @@ Versions of supported components
 [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.23.0 <br>
 [canal](https://github.com/projectcalico/canal) (given calico/flannel versions) <br>
 [weave](http://weave.works/) v1.8.2 <br>
-[docker](https://www.docker.com/) v1.13.1 <br>
-[rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 <br>
+[docker](https://www.docker.com/) v1.13.1 (see note)<br>
+[rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 (see Note 2)<br>
 
-Note: rkt support as docker alternative is limited to control plane (etcd and
+Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+
+Note 2: rkt support as docker alternative is limited to control plane (etcd and
 kubelet). Docker is still used for Kubernetes cluster workloads and network
 plugins' related OS services. Also note, only one of the supported network
 plugins can be deployed for a given single cluster.

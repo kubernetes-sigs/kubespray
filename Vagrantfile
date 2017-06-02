@@ -7,6 +7,13 @@ Vagrant.require_version ">= 1.8.0"
 
 CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
 
+SUPPORTED_OS = {
+  "coreos-stable" => {box: "coreos-stable",      bootstrap_os: "coreos"},
+  "coreos-alpha"  => {box: "coreos-alpha",       bootstrap_os: "coreos"},
+  "coreos-beta"   => {box: "coreos-beta",        bootstrap_os: "coreos"},
+  "ubuntu"        => {box: "bento/ubuntu-16.04", bootstrap_os: "ubuntu"},
+}
+
 # Defaults for config options defined in CONFIG
 $num_instances = 3
 $instance_name_prefix = "k8s"
@@ -16,7 +23,8 @@ $vm_cpus = 1
 $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
-$box = "bento/ubuntu-16.04"
+$os = "coreos-stable"
+$box = SUPPORTED_OS[$os][:box]
 # The first three nodes are etcd servers
 $etcd_instances = $num_instances
 # The first two nodes are masters
@@ -103,6 +111,7 @@ Vagrant.configure("2") do |config|
         # Override the default 'calico' with flannel.
         # inventory/group_vars/k8s-cluster.yml
         "kube_network_plugin": "flannel",
+        "bootstrap_os": SUPPORTED_OS[$os][:bootstrap_os]
       }
       config.vm.network :private_network, ip: ip
 

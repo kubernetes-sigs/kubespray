@@ -8,10 +8,10 @@ Vagrant.require_version ">= 1.8.0"
 CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
 
 SUPPORTED_OS = {
-  "coreos-stable" => {box: "coreos-stable",      bootstrap_os: "coreos"},
-  "coreos-alpha"  => {box: "coreos-alpha",       bootstrap_os: "coreos"},
-  "coreos-beta"   => {box: "coreos-beta",        bootstrap_os: "coreos"},
-  "ubuntu"        => {box: "bento/ubuntu-16.04", bootstrap_os: "ubuntu"},
+  "coreos-stable" => {box: "coreos-stable",      bootstrap_os: "coreos", user: "core"},
+  "coreos-alpha"  => {box: "coreos-alpha",       bootstrap_os: "coreos", user: "core"},
+  "coreos-beta"   => {box: "coreos-beta",        bootstrap_os: "coreos", user: "core"},
+  "ubuntu"        => {box: "bento/ubuntu-16.04", bootstrap_os: "ubuntu", user: "ubuntu"},
 }
 
 # Defaults for config options defined in CONFIG
@@ -64,6 +64,7 @@ Vagrant.configure("2") do |config|
   # always use Vagrants insecure key
   config.ssh.insert_key = false
   config.vm.box = $box
+  config.ssh.username = SUPPORTED_OS[$os][:user]
 
   # plugin conflict
   if Vagrant.has_plugin?("vagrant-vbguest") then

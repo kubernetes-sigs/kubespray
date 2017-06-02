@@ -23,7 +23,7 @@ $vm_cpus = 1
 $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
-$os = "coreos-stable"
+$os = "ubuntu"
 $box = SUPPORTED_OS[$os][:box]
 # The first three nodes are etcd servers
 $etcd_instances = $num_instances

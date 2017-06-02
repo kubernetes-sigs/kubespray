@@ -39,3 +39,11 @@ k8s-01    Ready     45s
 k8s-02    Ready     45s
 k8s-03    Ready     45s
 ```
+
+Use alternative OS for Vagrant
+==============================
+
+By default, Vagrant uses Ubuntu 16.04 box to provision a local cluster. You may use an alternative supported
+operating system for your local cluster. Change `$os` variable in `Vagrantfile` to another operating system to change
+the vagrant base box. The supported operating systems for vagrant are defined in the `SUPPORTED_OS` constant in
+the `Vagrantfile`.

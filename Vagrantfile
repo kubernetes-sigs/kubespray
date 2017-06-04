@@ -7,10 +7,12 @@ Vagrant.require_version ">= 1.8.0"
 
 CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
 
+COREOS_URL_TEMPLATE = "https://storage.googleapis.com/%s.release.core-os.net/amd64-usr/current/coreos_production_vagrant.json"
+
 SUPPORTED_OS = {
-  "coreos-stable" => {box: "coreos-stable",      bootstrap_os: "coreos", user: "core"},
-  "coreos-alpha"  => {box: "coreos-alpha",       bootstrap_os: "coreos", user: "core"},
-  "coreos-beta"   => {box: "coreos-beta",        bootstrap_os: "coreos", user: "core"},
+  "coreos-stable" => {box: "coreos-stable",      bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["stable"]},
+  "coreos-alpha"  => {box: "coreos-alpha",       bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["alpha"]},
+  "coreos-beta"   => {box: "coreos-beta",        bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]},
   "ubuntu"        => {box: "bento/ubuntu-16.04", bootstrap_os: "ubuntu", user: "ubuntu"},
 }
 
@@ -24,7 +26,6 @@ $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
 $os = "ubuntu"
-$box = SUPPORTED_OS[$os][:box]
 # The first three nodes are etcd servers
 $etcd_instances = $num_instances
 # The first two nodes are masters
@@ -39,6 +40,7 @@ if File.exist?(CONFIG)
   require CONFIG
 end
 
+$box = SUPPORTED_OS[$os][:box]
 # if $inventory is not set, try to use example
 $inventory = File.join(File.dirname(__FILE__), "inventory") if ! $inventory
 
@@ -64,8 +66,10 @@ Vagrant.configure("2") do |config|
   # always use Vagrants insecure key
   config.ssh.insert_key = false
   config.vm.box = $box
+  if SUPPORTED_OS[$os].has_key? :box_url
+    config.vm.box_url = SUPPORTED_OS[$os][:box_url]
+  end
   config.ssh.username = SUPPORTED_OS[$os][:user]
-
   # plugin conflict
   if Vagrant.has_plugin?("vagrant-vbguest") then
     config.vbguest.auto_update = false

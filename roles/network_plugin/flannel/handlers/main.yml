@@ -4,11 +4,16 @@
   failed_when: false
   notify: Flannel | restart docker
 
+# special cases for atomic because it defaults to live-restore: true
+# So we disable live-restore to pickup the new flannel IP.  After
+# we enable it, we have to restart docker again to pickup the new
+# setting and restore the original behavior
 - name: Flannel | restart docker
   command: /bin/true
   notify:
     - Flannel | reload systemd
     - Flannel | reload docker.socket
+    - Flannel | configure docker live-restore true (atomic)
     - Flannel | reload docker
     - Flannel | pause while Docker restarts
     - Flannel | wait for docker
@@ -21,6 +26,13 @@
     name: docker.socket
     state: restarted
   when: ansible_os_family in ['CoreOS', 'Container Linux by CoreOS']
+
+- name: Flannel | configure docker live-restore true (atomic)
+  replace:
+    name: /etc/docker/daemon.json
+    regexp: '"live-restore":.*true'
+    replace: '"live-restore": false'
+  when: is_atomic
 
 - name: Flannel | reload docker
   service:

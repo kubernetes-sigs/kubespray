@@ -26,6 +26,23 @@
     - {s: "node-{{ inventory_hostname }}.pem", d: "cert.crt"}
     - {s: "node-{{ inventory_hostname }}-key.pem", d: "key.pem"}
 
+- name: Calico-rr | Create confd templates directory
+  file:
+    dest: "/templates"
+    state: directory
+    mode: 0750
+    owner: root
+    group: root
+
+- name: Calico-rr | Link confd templates for calico-node
+  copy:
+    src: "{{ item }}"
+    dest: "/templates/{{ item }}"
+  with_items:
+    - bird.cfg.template
+    - bird6.cfg.template
+  notify: restart calico-rr
+
 - name: Calico-rr | Create dir for logs
   file:
     path: /var/log/calico-rr
@@ -55,6 +72,18 @@
        "cluster_id": "{{ cluster_id }}"
      }'
   delegate_to: "{{groups['etcd'][0]}}"
+
+- name: Calico-rr | Configure OSPF Export
+  command: |-
+    {{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses }} \
+    set /calico/bgp/v1/ospf_to_hosts/{{item.ip}} \
+    '{
+       "IP": "{{item.ip}}",
+       "eligible": {{item.eligible}}
+     }'
+  delegate_to: "{{groups['etcd'][0]}}"
+  with_items: calico_ospf_peers
+  when: (calico_ospf_peers is defined and calico_ospf_peers|length > 0)
 
 - meta: flush_handlers
 

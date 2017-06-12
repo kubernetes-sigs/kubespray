@@ -84,7 +84,7 @@ Layer | Comment
 inventory vars | Unused
 **inventory group_vars** | Expects users to use ``all.yml``,``k8s-cluster.yml`` etc. to override things
 inventory host_vars | Unused
-playbook group_vars | Unuses
+playbook group_vars | Unused
 playbook host_vars | Unused
 **host facts** | Kargo overrides for internal roles' logic, like state flags
 play vars | Unused

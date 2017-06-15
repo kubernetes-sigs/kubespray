@@ -103,9 +103,15 @@ if [ -n "$HOSTS" ]; then
 fi
 
 # system:kube-proxy
-openssl genrsa -out kube-proxy-key.pem 2048 > /dev/null 2>&1
-openssl req -new -key kube-proxy-key.pem -out kube-proxy.csr -subj "/CN=system:kube-proxy" > /dev/null 2>&1
-openssl x509 -req -in kube-proxy.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out kube-proxy.pem -days 3650 > /dev/null 2>&1
+if [ -n "$HOSTS" ]; then
+    for host in $HOSTS; do
+        cn="${host%%.*}"
+        # kube-proxy key
+        openssl genrsa -out kube-proxy-${host}-key.pem 2048 > /dev/null 2>&1
+        openssl req -new -key kube-proxy-${host}-key.pem -out kube-proxy-${host}.csr -subj "/CN=system:kube-proxy" > /dev/null 2>&1
+        openssl x509 -req -in kube-proxy-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out kube-proxy-${host}.pem -days 3650 > /dev/null 2>&1
+    done
+fi
 
 
 # Install certs

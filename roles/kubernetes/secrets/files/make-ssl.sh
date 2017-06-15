@@ -80,6 +80,7 @@ if [ ! -e "$SSLDIR/ca-key.pem" ]; then
     cat ca.pem >> apiserver.pem
 fi
 
+# Admins
 if [ -n "$MASTERS" ]; then
     for host in $MASTERS; do
         cn="${host%%.*}"
@@ -90,16 +91,22 @@ if [ -n "$MASTERS" ]; then
     done
 fi
 
-# Nodes and Admin
+# Nodes
 if [ -n "$HOSTS" ]; then
     for host in $HOSTS; do
         cn="${host%%.*}"
         # node key
         openssl genrsa -out node-${host}-key.pem 2048 > /dev/null 2>&1
-        openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=kube-node-${cn}" > /dev/null 2>&1
+        openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=kube-node-${cn}/O=system:nodes" > /dev/null 2>&1
         openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 3650 > /dev/null 2>&1
     done
 fi
+
+# system:kube-proxy
+openssl genrsa -out kube-proxy-key.pem 2048 > /dev/null 2>&1
+openssl req -new -key kube-proxy-key.pem -out kube-proxy.csr -subj "/CN=system:kube-proxy" > /dev/null 2>&1
+openssl x509 -req -in kube-proxy.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out kube-proxy.pem -days 3650 > /dev/null 2>&1
+
 
 # Install certs
 mv *.pem ${SSLDIR}/

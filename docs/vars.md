@@ -67,7 +67,11 @@ following default cluster paramters:
   OpenStack (default is unset)
 * *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in
   Kubernetes
-
+* *authorization_mode* - Set this to "RBAC" (upper-case, no quotes) 
+[to enable Role Based Access Control](https://kubernetes.io/docs/admin/authorization/rbac/)
+* *rotate_kubernetes_certs* - Set this to true to regenerate kubernetes Node certificates. *Warning: Will overwrite old certs.*
+ 
+ 
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``
 and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.
@@ -116,3 +120,4 @@ The possible vars are:
 
 Kargo sets up two Kubernetes accounts by default: ``root`` and ``kube``. Their
 passwords default to changeme. You can set this by changing ``kube_api_pwd``.
+

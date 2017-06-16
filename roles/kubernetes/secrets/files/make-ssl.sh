@@ -72,22 +72,30 @@ else
     openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN=kube-ca" > /dev/null 2>&1
 fi
 
+gen_key_and_cert() {
+    local name=$1
+    local subject=$2
+    openssl genrsa -out ${name}-key.pem 2048 > /dev/null 2>&1
+    openssl req -new -key ${name}-key.pem -out ${name}.csr -subj "${subject}" -config ${CONFIG} > /dev/null 2>&1
+    openssl x509 -req -in ${name}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${name}.pem -days 3650 -extensions v3_req -extfile ${CONFIG} > /dev/null 2>&1
+}
+
 if [ ! -e "$SSLDIR/ca-key.pem" ]; then
-    # kube-apiserver key
-    openssl genrsa -out apiserver-key.pem 2048 > /dev/null 2>&1
-    openssl req -new -key apiserver-key.pem -out apiserver.csr -subj "/CN=kube-apiserver" -config ${CONFIG} > /dev/null 2>&1
-    openssl x509 -req -in apiserver.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out apiserver.pem -days 3650 -extensions v3_req -extfile ${CONFIG} > /dev/null 2>&1
+    # kube-apiserver
+    gen_key_and_cert "apiserver" "/CN=kube-apiserver"
     cat ca.pem >> apiserver.pem
+    # kube-scheduler
+    gen_key_and_cert "kube-scheduler" "/CN=system:kube-scheduler"
+    # kube-controller-manager
+    gen_key_and_cert "kube-controller-manager" "/CN=system:kube-controller-manager"
 fi
 
 # Admins
 if [ -n "$MASTERS" ]; then
     for host in $MASTERS; do
         cn="${host%%.*}"
-        # admin key
-        openssl genrsa -out admin-${host}-key.pem 2048 > /dev/null 2>&1
-        openssl req -new -key admin-${host}-key.pem -out admin-${host}.csr -subj "/CN=kube-admin-${cn}/O=system:masters" > /dev/null 2>&1
-        openssl x509 -req -in admin-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out admin-${host}.pem -days 3650 > /dev/null 2>&1
+        # admin
+        gen_key_and_cert "admin-${host}" "/CN=kube-admin-${cn}/O=system:masters"
     done
 fi
 
@@ -95,10 +103,7 @@ fi
 if [ -n "$HOSTS" ]; then
     for host in $HOSTS; do
         cn="${host%%.*}"
-        # node key
-        openssl genrsa -out node-${host}-key.pem 2048 > /dev/null 2>&1
-        openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=kube-node-${cn}/O=system:nodes" > /dev/null 2>&1
-        openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 3650 > /dev/null 2>&1
+        gen_key_and_cert "node-${host}" "/CN=kube-node-${cn}/O=system:nodes"
     done
 fi
 
@@ -106,13 +111,10 @@ fi
 if [ -n "$HOSTS" ]; then
     for host in $HOSTS; do
         cn="${host%%.*}"
-        # kube-proxy key
-        openssl genrsa -out kube-proxy-${host}-key.pem 2048 > /dev/null 2>&1
-        openssl req -new -key kube-proxy-${host}-key.pem -out kube-proxy-${host}.csr -subj "/CN=system:kube-proxy" > /dev/null 2>&1
-        openssl x509 -req -in kube-proxy-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out kube-proxy-${host}.pem -days 3650 > /dev/null 2>&1
+        # kube-proxy
+        gen_key_and_cert "kube-proxy-${host}" "/CN=system:kube-proxy"
     done
 fi
-
 
 # Install certs
 mv *.pem ${SSLDIR}/

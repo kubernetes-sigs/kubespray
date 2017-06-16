@@ -33,10 +33,10 @@ class SearchEC2Tags(object):
     hosts = {}
     hosts['_meta'] = { 'hostvars': {} }
 
-    ##Search ec2 three times to find nodes of each group type. Relies on kargo-role key/value.
+    ##Search ec2 three times to find nodes of each group type. Relies on kubespray-role key/value.
     for group in ["kube-master", "kube-node", "etcd"]:
       hosts[group] = []
-      tag_key = "kargo-role"
+      tag_key = "kubespray-role"
       tag_value = ["*"+group+"*"]
       region = os.environ['REGION']
 

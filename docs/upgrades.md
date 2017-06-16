@@ -1,11 +1,11 @@
-Upgrading Kubernetes in Kargo
+Upgrading Kubernetes in Kubespray
 =============================
 
 #### Description
 
-Kargo handles upgrades the same way it handles initial deployment. That is to
+Kubespray handles upgrades the same way it handles initial deployment. That is to
 say that each component is laid down in a fixed order. You should be able to
-upgrade from Kargo tag 2.0 up to the current master without difficulty. You can
+upgrade from Kubespray tag 2.0 up to the current master without difficulty. You can
 also individually control versions of components by explicitly defining their
 versions. Here are all version vars for each component:
 
@@ -35,7 +35,7 @@ ansible-playbook cluster.yml -i inventory/inventory.cfg -e kube_version=v1.4.6
 
 #### Graceful upgrade
 
-Kargo also supports cordon, drain and uncordoning of nodes when performing 
+Kubespray also supports cordon, drain and uncordoning of nodes when performing 
 a cluster upgrade. There is a separate playbook used for this purpose. It is
 important to note that upgrade-cluster.yml can only be used for upgrading an
 existing cluster. That means there must be at least 1 kube-master already

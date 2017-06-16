@@ -14,12 +14,12 @@ If you have questions, join us on the [kubernetes slack](https://slack.k8s.io), 
 To deploy the cluster you can use :
 
 [**kargo-cli**](https://github.com/kubespray/kargo-cli) <br>
-**Ansible** usual commands and [**inventory builder**](https://github.com/kubernetes-incubator/kargo/blob/master/contrib/inventory_builder/inventory.py) <br>
+**Ansible** usual commands and [**inventory builder**](https://github.com/kubernetes-incubator/kubespray/blob/master/contrib/inventory_builder/inventory.py) <br>
 **vagrant** by simply running `vagrant up` (for tests purposes) <br>
 
 
 *  [Requirements](#requirements)
-*  [Kargo vs ...](docs/comparisons.md)
+*  [Kubespray vs ...](docs/comparisons.md)
 *  [Getting started](docs/getting-started.md)
 *  [Ansible inventory and tags](docs/ansible.md)
 *  [Deployment data variables](docs/vars.md)
@@ -100,13 +100,13 @@ See also [Network checker](docs/netcheck.md).
  - [kubernetes.io/docs/getting-started-guides/kargo/](https://kubernetes.io/docs/getting-started-guides/kargo/)
  - [kargo, monitoring and logging](https://github.com/gregbkr/kubernetes-kargo-logging-monitoring) by @gregbkr
  - [Deploy Kubernetes w/ Ansible & Terraform](https://rsmitty.github.io/Terraform-Ansible-Kubernetes/) by @rsmitty
- - [Deploy a Kubernets Cluster with Kargo (video)](https://www.youtube.com/watch?v=N9q51JgbWu8)
+ - [Deploy a Kubernetes Cluster with Kargo (video)](https://www.youtube.com/watch?v=N9q51JgbWu8)
 
-## Tools and projects on top of Kargo
+## Tools and projects on top of Kubespray
  - [Digital Rebar](https://github.com/digitalrebar/digitalrebar)
  - [Kargo-cli](https://github.com/kubespray/kargo-cli)
  - [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
- - [Terraform Contrib](https://github.com/kubernetes-incubator/kargo/tree/master/contrib/terraform)
+ - [Terraform Contrib](https://github.com/kubernetes-incubator/kubespray/tree/master/contrib/terraform)
 
 ## CI Tests
 

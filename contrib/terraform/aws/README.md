@@ -33,7 +33,7 @@ export AWS_DEFAULT_REGION="zzz"
 
 - Terraform automatically creates an Ansible Inventory file called `hosts` with the created infrastructure in the directory `inventory`
 
-- Once the infrastructure is created, you can run the kargo playbooks and supply inventory/hosts with the `-i` flag.
+- Once the infrastructure is created, you can run the kubespray playbooks and supply inventory/hosts with the `-i` flag.
 
 **Troubleshooting**
 
@@ -54,4 +54,4 @@ It could happen that Terraform doesnt create an Ansible Inventory file automatic
 
 Pictured is an AWS Infrastructure created with this Terraform project distributed over two Availability Zones.
 
-![AWS Infrastructure with Terraform  ](docs/aws_kargo.png)
+![AWS Infrastructure with Terraform  ](docs/aws_kubespray.png)

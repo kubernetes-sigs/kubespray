@@ -1,4 +1,4 @@
-# Deploying a Kargo Kubernetes Cluster with GlusterFS
+# Deploying a Kubespray Kubernetes Cluster with GlusterFS
 
 You can either deploy using Ansible on its own by supplying your own inventory file or by using Terraform to create the VMs and then providing a dynamic inventory to Ansible. The following two sections are self-contained, you don't need to go through one to use the other. So, if you want to provision with Terraform, you can skip the **Using an Ansible inventory** section, and if you want to provision with a pre-built ansible inventory, you can neglect the **Using Terraform and Ansible**  section.
 
@@ -6,7 +6,7 @@ You can either deploy using Ansible on its own by supplying your own inventory f
 
 In the same directory of this ReadMe file you should find a file named `inventory.example` which contains an example setup. Please note that, additionally to the Kubernetes nodes/masters, we define a set of machines for GlusterFS and we add them to the group `[gfs-cluster]`, which in turn is added to the larger `[network-storage]` group as a child group.
 
-Change that file to reflect your local setup (adding more machines or removing them and setting the adequate ip numbers), and save it to `inventory/k8s_gfs_inventory`. Make sure that the settings on `inventory/group_vars/all.yml` make sense with your deployment. Then execute change to the kargo root folder, and execute (supposing that the machines are all using ubuntu):
+Change that file to reflect your local setup (adding more machines or removing them and setting the adequate ip numbers), and save it to `inventory/k8s_gfs_inventory`. Make sure that the settings on `inventory/group_vars/all.yml` make sense with your deployment. Then execute change to the kubespray root folder, and execute (supposing that the machines are all using ubuntu):
 
 ```
 ansible-playbook -b --become-user=root -i inventory/k8s_gfs_inventory --user=ubuntu ./cluster.yml
@@ -28,7 +28,7 @@ k8s-master-node-2 ansible_ssh_host=192.168.0.146 ip=192.168.0.146 ansible_ssh_us
 
 ## Using Terraform and Ansible
 
-First step is to fill in a `my-kargo-gluster-cluster.tfvars` file with the specification desired for your cluster. An example with all required variables would look like:
+First step is to fill in a `my-kubespray-gluster-cluster.tfvars` file with the specification desired for your cluster. An example with all required variables would look like:
 
 ```
 cluster_name = "cluster1"
@@ -65,15 +65,15 @@ $ echo Setting up Terraform creds && \
   export TF_VAR_auth_url=${OS_AUTH_URL}
 ```
 
-Then, standing on the kargo directory (root base of the Git checkout), issue the following terraform command to create the VMs for the cluster:
+Then, standing on the kubespray directory (root base of the Git checkout), issue the following terraform command to create the VMs for the cluster:
 
 ```
-terraform apply -state=contrib/terraform/openstack/terraform.tfstate -var-file=my-kargo-gluster-cluster.tfvars contrib/terraform/openstack
+terraform apply -state=contrib/terraform/openstack/terraform.tfstate -var-file=my-kubespray-gluster-cluster.tfvars contrib/terraform/openstack
 ```
 
 This will create both your Kubernetes and Gluster VMs. Make sure that the ansible file `contrib/terraform/openstack/group_vars/all.yml` includes any ansible variable that you want to setup (like, for instance, the type of machine for bootstrapping).
 
-Then, provision your Kubernetes (Kargo) cluster with the following ansible call:
+Then, provision your Kubernetes (kubespray) cluster with the following ansible call:
 
 ```
 ansible-playbook -b --become-user=root -i contrib/terraform/openstack/hosts ./cluster.yml
@@ -88,5 +88,5 @@ ansible-playbook -b --become-user=root -i contrib/terraform/openstack/hosts ./co
 If you need to destroy the cluster, you can run:
 
 ```
-terraform destroy -state=contrib/terraform/openstack/terraform.tfstate -var-file=my-kargo-gluster-cluster.tfvars contrib/terraform/openstack
+terraform destroy -state=contrib/terraform/openstack/terraform.tfstate -var-file=my-kubespray-gluster-cluster.tfvars contrib/terraform/openstack
 ```

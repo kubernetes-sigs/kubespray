@@ -10,10 +10,28 @@
     mode: 0755
   register: helm_container
 
+- name: Helm | Configure tiller service account for RBAC
+  command: kubectl create serviceaccount tiller --namespace=kube-system
+  ignore_errors: yes
+  when: rbac_enabled
+
+- name: Helm | Configure tiller rolebindings for RBAC
+  command: kubectl create clusterrolebinding tiller --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+  ignore_errors: yes
+  when: rbac_enabled
+
 - name: Helm | Install/upgrade helm
   command: "{{ bin_dir }}/helm init --upgrade --tiller-image={{ tiller_image_repo }}:{{ tiller_image_tag }}"
   when: helm_container.changed
 
+- name: Helm | Patch tiller deployment for RBAC
+  shell: >
+    kubectl --namespace=kube-system get deployment tiller-deploy -o json | \
+    python -c 'import sys,json;a=json.load(sys.stdin);a["spec"]["template"]["spec"]["serviceAccount"]="tiller";json.dump(a,sys.stdout)' | \
+    kubectl apply -f -
+  when: rbac_enabled
+
 - name: Helm | Set up bash completion
   shell: "umask 022 && {{ bin_dir }}/helm completion >/etc/bash_completion.d/helm.sh"
   when: ( helm_container.changed and not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] )
+

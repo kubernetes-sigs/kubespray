@@ -13,11 +13,15 @@
     src: "{{item.file}}"
     dest: "{{kube_config_dir}}/{{item.file}}"
   with_items:
+    - {name: kubedns, file: kubedns-sa.yml, type: sa}
     - {name: kubedns, file: kubedns-deploy.yml, type: deployment}
     - {name: kubedns, file: kubedns-svc.yml, type: svc}
+    - {name: kubedns-autoscaler, file: kubedns-autoscaler-sa.yml, type: sa}
+    - {name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrole.yml, type: clusterrole}
+    - {name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrolebinding.yml, type: clusterrolebinding}
     - {name: kubedns-autoscaler, file: kubedns-autoscaler.yml, type: deployment}
   register: manifests
-  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
+  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0] and (item.type not in rbac_resources or rbac_enabled)
   tags: dnsmasq
 
 - name: Kubernetes Apps | Start Resources
@@ -29,6 +33,7 @@
     filename: "{{kube_config_dir}}/{{item.item.file}}"
     state: "{{item.changed | ternary('latest','present') }}"
   with_items: "{{ manifests.results }}"
+  failed_when: manifests|failed and "Error from server (AlreadyExists)" not in manifests.msg
   when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
   tags: dnsmasq
 
@@ -36,3 +41,4 @@
   include: tasks/netchecker.yml
   when: deploy_netchecker
   tags: netchecker
+

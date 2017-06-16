@@ -22,7 +22,7 @@ Kube-apiserver
 --------------
 
 K8s components require a loadbalancer to access the apiservers via a reverse
-proxy. Kargo includes support for an nginx-based proxy that resides on each
+proxy. Kubespray includes support for an nginx-based proxy that resides on each
 non-master Kubernetes node. This is referred to as localhost loadbalancing. It
 is less efficient than a dedicated load balancer because it creates extra
 health checks on the Kubernetes apiserver, but is more practical for scenarios
@@ -30,12 +30,12 @@ where an external LB or virtual IP management is inconvenient.  This option is
 configured by the variable `loadbalancer_apiserver_localhost` (defaults to `True`).
 You may also define the port the local internal loadbalancer users by changing,
 `nginx_kube_apiserver_port`.  This defaults to the value of `kube_apiserver_port`.
-It is also import to note that Kargo will only configure kubelet and kube-proxy
+It is also import to note that Kubespray will only configure kubelet and kube-proxy
 on non-master nodes to use the local internal loadbalancer.
 
 If you choose to NOT use the local internal loadbalancer, you will need to configure
 your own loadbalancer to achieve HA. Note that deploying a loadbalancer is up to
-a user and is not covered by ansible roles in Kargo. By default, it only configures
+a user and is not covered by ansible roles in Kubespray. By default, it only configures
 a non-HA endpoint, which points to the `access_ip` or IP address of the first server
 node in the `kube-master` group. It can also configure clients to use endpoints
 for a given loadbalancer type. The following diagram shows how traffic to the

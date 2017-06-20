@@ -68,11 +68,6 @@ following default cluster paramters:
 * *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in
   Kubernetes
 * *authorization_mode* - A list of authorization modes that the apiserver should be configured. 
-Supported values are `['AlwaysAllow', 'RBAC']` (Default: `['AlwaysAllow']`)
-* *rotate_kubernetes_certs* - Set this to true to regenerate kubernetes node and master certificates.
-Useful if the authorization mode was changed and certificate format
-needs to be updated. This will not regenerate the root CA. *(!!Warning!!: Will overwrite old certs.)*
- 
  
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``

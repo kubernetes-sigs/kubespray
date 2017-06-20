@@ -120,4 +120,3 @@ The possible vars are:
 
 Kargo sets up two Kubernetes accounts by default: ``root`` and ``kube``. Their
 passwords default to changeme. You can set this by changing ``kube_api_pwd``.
-

@@ -186,7 +186,7 @@
     - download.container|bool
     - saved.changed
 
-- name: Download | upload container images to nodes
+- name: Download | upload container images to nodes, using kube-master[0]
   synchronize:
     src: "{{ fname }}"
     dest: "{{ fname }}"
@@ -199,7 +199,29 @@
   delay: "{{ retry_stagger | random + 3 }}"
   when:
     - (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] and
-      inventory_hostname != groups['kube-master'][0] or
+      inventory_hostname != groups['kube-master'][0] and
+      download_delegate != "localhost")
+    - download_run_once|bool
+    - download.enabled|bool
+    - download.container|bool
+  tags: [upload, upgrade]
+
+# don't `delegate_to: localhost` if we're download_localhost.
+# it causes problem when we have different user name for control machine and
+# targets ( synchronize module will use control machine's user name, not
+# configured ansible_user ).
+- name: Download | upload container images to nodes, using localhost
+  synchronize:
+    src: "{{ fname }}"
+    dest: "{{ fname }}"
+    mode: push
+  become: false
+  register: get_task
+  until: get_task|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] and
       download_delegate == "localhost")
     - download_run_once|bool
     - download.enabled|bool

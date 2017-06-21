@@ -2,18 +2,34 @@
 - name: Helm | Make sure HELM_HOME directory exists
   file: path={{ helm_home_dir }} state=directory
 
-- name: Helm | Set up helm launcher
+- name: Helm | Remove helm
+  file:
+    path: "{{ bin_dir }}/helm"
+    state: absent
+
+- name: Helm | Set up docker helm launcher
   template:
     src: helm-container.j2
     dest: "{{ bin_dir }}/helm"
     owner: root
     mode: 0755
-  register: helm_container
+  when: helm_deployment_type == "docker"
+
+- name: Helm | Set up binary helm launcher
+  shell: "{{local_release_dir}}/{{downloads.helm.dest}} --version {{ helm_version }}"
+  when: helm_deployment_type == "host"
 
 - name: Helm | Install/upgrade helm
   command: "{{ bin_dir }}/helm init --upgrade --tiller-image={{ tiller_image_repo }}:{{ tiller_image_tag }}"
-  when: helm_container.changed
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Helm | Set up bash completion
+  shell: "umask 022 && {{ bin_dir }}/helm completion >/etc/bash_completion.d/helm.sh"
+  when: ( not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+          and helm_version < "v2.4.0" )
 
 - name: Helm | Set up bash completion
   shell: "umask 022 && {{ bin_dir }}/helm completion bash >/etc/bash_completion.d/helm.sh"
-  when: ( helm_container.changed and not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] )
+  when: ( not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+          and helm_version >= "v2.4.0" )
+

@@ -67,7 +67,7 @@ following default cluster paramters:
   OpenStack (default is unset)
 * *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in
   Kubernetes
-* *authorization_mode* - A list of [authorization modes](
+* *authorization_modes* - A list of [authorization mode](
 https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
  that the cluster should be configured for. Defaults to `['AlwaysAllow']`. 
  Note: Only `AlwaysAllow`, `AlwaysDeny` and `RBAC` are tested.   

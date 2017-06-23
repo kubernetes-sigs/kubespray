@@ -1,10 +1,10 @@
 CoreOS bootstrap
 ===============
 
-Example with **kargo-cli**:
+Example with **kubespray-cli**:
 
 ```
-kargo deploy --gce --coreos
+kubespray deploy --gce --coreos
 ```
 
 Or with Ansible:

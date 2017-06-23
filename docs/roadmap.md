@@ -8,7 +8,7 @@ That would probably improve deployment speed and certs management [#553](https:/
 ### Self deployment (pull-mode) [#320](https://github.com/kubespray/kubespray/issues/320)
 - the playbook would install and configure docker/rkt and the etcd cluster
 - the following data would be inserted into etcd: certs,tokens,users,inventory,group_vars.
-- a "kubespray" container would be deployed (kargo-cli, ansible-playbook, kpm)
+- a "kubespray" container would be deployed (kubespray-cli, ansible-playbook, kpm)
 - to be discussed, a way to provide the inventory
 - **self deployment** of the node from inside a container [#321](https://github.com/kubespray/kubespray/issues/321)
 
@@ -53,10 +53,10 @@ That would probably improve deployment speed and certs management [#553](https:/
 - (to be discussed) option to set a loadbalancer for the apiservers like ucarp/packemaker/keepalived
 While waiting for the issue [kubernetes/kubernetes#18174](https://github.com/kubernetes/kubernetes/issues/18174) to be fixed.
 
-### Kargo-cli
+### Kubespray-cli
 - Delete instances
-- `kargo vagrant` to setup a test cluster locally
-- `kargo azure` for Microsoft Azure support
+- `kubespray vagrant` to setup a test cluster locally
+- `kubespray azure` for Microsoft Azure support
 - switch to Terraform instead of Ansible for provisionning
 - update $HOME/.kube/config when a cluster is deployed. Optionally switch to this context
 

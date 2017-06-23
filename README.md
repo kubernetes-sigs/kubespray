@@ -2,7 +2,7 @@
 
 ## Deploy a production ready kubernetes cluster
 
-If you have questions, join us on the [kubernetes slack](https://slack.k8s.io), channel **#kargo**.
+If you have questions, join us on the [kubernetes slack](https://slack.k8s.io), channel **#kubespray**.
 
 - Can be deployed on **AWS, GCE, Azure, OpenStack or Baremetal**
 - **High available** cluster
@@ -13,7 +13,7 @@ If you have questions, join us on the [kubernetes slack](https://slack.k8s.io), 
 
 To deploy the cluster you can use :
 
-[**kargo-cli**](https://github.com/kubespray/kargo-cli) <br>
+[**kubespray-cli**](https://github.com/kubespray/kubespray-cli) <br>
 **Ansible** usual commands and [**inventory builder**](https://github.com/kubernetes-incubator/kubespray/blob/master/contrib/inventory_builder/inventory.py) <br>
 **vagrant** by simply running `vagrant up` (for tests purposes) <br>
 
@@ -97,14 +97,14 @@ option to leverage built-in cloud provider networking instead.
 See also [Network checker](docs/netcheck.md).
 
 ## Community docs and resources
- - [kubernetes.io/docs/getting-started-guides/kargo/](https://kubernetes.io/docs/getting-started-guides/kargo/)
- - [kargo, monitoring and logging](https://github.com/gregbkr/kubernetes-kargo-logging-monitoring) by @gregbkr
+ - [kubernetes.io/docs/getting-started-guides/kubespray/](https://kubernetes.io/docs/getting-started-guides/kubespray/)
+ - [kubespray, monitoring and logging](https://github.com/gregbkr/kubernetes-kargo-logging-monitoring) by @gregbkr
  - [Deploy Kubernetes w/ Ansible & Terraform](https://rsmitty.github.io/Terraform-Ansible-Kubernetes/) by @rsmitty
- - [Deploy a Kubernetes Cluster with Kargo (video)](https://www.youtube.com/watch?v=N9q51JgbWu8)
+ - [Deploy a Kubernetes Cluster with Kubespray (video)](https://www.youtube.com/watch?v=N9q51JgbWu8)
 
 ## Tools and projects on top of Kubespray
  - [Digital Rebar](https://github.com/digitalrebar/digitalrebar)
- - [Kargo-cli](https://github.com/kubespray/kargo-cli)
+ - [Kubespray-cli](https://github.com/kubespray/kubespray-cli)
  - [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
  - [Terraform Contrib](https://github.com/kubernetes-incubator/kubespray/tree/master/contrib/terraform)
 
@@ -112,7 +112,7 @@ See also [Network checker](docs/netcheck.md).
 
 ![Gitlab Logo](https://s27.postimg.org/wmtaig1wz/gitlabci.png)
 
-[![Build graphs](https://gitlab.com/kargo-ci/kubernetes-incubator__kargo/badges/master/build.svg)](https://gitlab.com/kargo-ci/kubernetes-incubator__kargo/pipelines) </br>
+[![Build graphs](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/badges/master/build.svg)](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/pipelines) </br>
 
 CI/end-to-end tests sponsored by Google (GCE), DigitalOcean, [teuto.net](https://teuto.net/) (openstack).
 See the [test matrix](docs/test_cases.md) for details.

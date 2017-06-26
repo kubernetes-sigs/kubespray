@@ -35,14 +35,12 @@ Then you can use the instance ids to find the connected [neutron](https://wiki.o
     | 5662a4e0-e646-47f0-bf88-d80fbd2d99ef | e1f48aad-df96-4bce-bf61-62ae12bf3f95 |
     | e5ae2045-a1e1-4e99-9aac-4353889449a7 | 725cd548-6ea3-426b-baaa-e7306d3c8052 |
 
-Given the port ids on the left, you can set the `allowed_address_pairs` in neutron:
+Given the port ids on the left, you can set the `allowed_address_pairs` in neutron.
+Note that you have to allow both of `kube_service_addresses` (default `10.233.0.0/18`)
+and `kube_pods_subnet` (default `10.233.64.0/18`.)
 
-    # allow kube_service_addresses network
-    neutron port-update 5662a4e0-e646-47f0-bf88-d80fbd2d99ef --allowed_address_pairs list=true type=dict ip_address=10.233.0.0/18
-    neutron port-update e5ae2045-a1e1-4e99-9aac-4353889449a7 --allowed_address_pairs list=true type=dict ip_address=10.233.0.0/18
-
-    # allow kube_pods_subnet network
-    neutron port-update 5662a4e0-e646-47f0-bf88-d80fbd2d99ef --allowed_address_pairs list=true type=dict ip_address=10.233.64.0/18
-    neutron port-update e5ae2045-a1e1-4e99-9aac-4353889449a7 --allowed_address_pairs list=true type=dict ip_address=10.233.64.0/18
+    # allow kube_service_addresses and kube_pods_subnet network
+    neutron port-update 5662a4e0-e646-47f0-bf88-d80fbd2d99ef --allowed_address_pairs list=true type=dict ip_address=10.233.0.0/18 ip_address=10.233.64.0/18
+    neutron port-update e5ae2045-a1e1-4e99-9aac-4353889449a7 --allowed_address_pairs list=true type=dict ip_address=10.233.0.0/18 ip_address=10.233.64.0/18
 
 Now you can finally run the playbook.

@@ -22,6 +22,7 @@ To deploy the cluster you can use :
 *  [Kargo vs ...](docs/comparisons.md)
 *  [Getting started](docs/getting-started.md)
 *  [Ansible inventory and tags](docs/ansible.md)
+*  [Integration with existing ansible repo](docs/integration.md)
 *  [Deployment data variables](docs/vars.md)
 *  [DNS stack](docs/dns-stack.md)
 *  [HA mode](docs/ha-mode.md)

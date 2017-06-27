@@ -1,7 +1,7 @@
 Network Checker Application
 ===========================
 
-With the ``deploy_netchecker`` var enabled (defaults to false), Kargo deploys a
+With the ``deploy_netchecker`` var enabled (defaults to false), Kubespray deploys a
 Network Checker Application from the 3rd side `l23network/k8s-netchecker` docker
 images. It consists of the server and agents trying to reach the server by usual
 for Kubernetes applications network connectivity meanings. Therefore, this
@@ -17,7 +17,7 @@ any of the cluster nodes:
 ```
 curl http://localhost:31081/api/v1/connectivity_check
 ```
-Note that Kargo does not invoke the check but only deploys the application, if
+Note that Kubespray does not invoke the check but only deploys the application, if
 requested.
 
 There are related application specifc variables:

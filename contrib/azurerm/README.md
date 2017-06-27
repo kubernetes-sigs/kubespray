@@ -5,7 +5,7 @@ Provision the base infrastructure for a Kubernetes cluster by using [Azure Resou
 ## Status
 
 This will provision the base infrastructure (vnet, vms, nics, ips, ...) needed for Kubernetes in Azure into the specified
-Resource Group. It will not install Kubernetes itself, this has to be done in a later step by yourself (using kargo of course).
+Resource Group. It will not install Kubernetes itself, this has to be done in a later step by yourself (using kubespray of course).
 
 ## Requirements
 
@@ -47,7 +47,7 @@ $ ./clear-rg.sh <resource_group_name>
 **WARNING** this really deletes everything from your resource group, including everything that was later created by you!
 
 
-## Generating an inventory for kargo
+## Generating an inventory for kubespray
 
 After you have applied the templates, you can generate an inventory with this call:
 
@@ -55,10 +55,10 @@ After you have applied the templates, you can generate an inventory with this ca
 $ ./generate-inventory.sh <resource_group_name>
 ```
 
-It will create the file ./inventory which can then be used with kargo, e.g.:
+It will create the file ./inventory which can then be used with kubespray, e.g.:
 
 ```shell
-$ cd kargo-root-dir
+$ cd kubespray-root-dir
 $ ansible-playbook -i contrib/azurerm/inventory -u devops --become -e "@inventory/group_vars/all.yml" cluster.yml
 ```
 

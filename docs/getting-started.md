@@ -1,21 +1,21 @@
 Getting started
 ===============
 
-The easiest way to run the deployement is to use the **kargo-cli** tool.
-A complete documentation can be found in its [github repository](https://github.com/kubespray/kargo-cli).
+The easiest way to run the deployement is to use the **kubespray-cli** tool.
+A complete documentation can be found in its [github repository](https://github.com/kubespray/kubespray-cli).
 
 Here is a simple example on AWS:
 
 * Create instances and generate the inventory
 
 ```
-kargo aws --instances 3
+kubespray aws --instances 3
 ```
 
 * Run the deployment
 
 ```
-kargo deploy --aws -u centos -n calico
+kubespray deploy --aws -u centos -n calico
 ```
 
 Building your own inventory
@@ -23,12 +23,12 @@ Building your own inventory
 
 Ansible inventory can be stored in 3 formats: YAML, JSON, or INI-like. There is
 an example inventory located
-[here](https://github.com/kubernetes-incubator/kargo/blob/master/inventory/inventory.example).
+[here](https://github.com/kubernetes-incubator/kubespray/blob/master/inventory/inventory.example).
 
 You can use an
-[inventory generator](https://github.com/kubernetes-incubator/kargo/blob/master/contrib/inventory_builder/inventory.py)
+[inventory generator](https://github.com/kubernetes-incubator/kubespray/blob/master/contrib/inventory_builder/inventory.py)
 to create or modify an Ansible inventory. Currently, it is limited in
-functionality and is only use for making a basic Kargo cluster, but it does
+functionality and is only use for making a basic Kubespray cluster, but it does
 support creating large clusters. It now supports
 separated ETCD and Kubernetes master roles from node role if the size exceeds a
 certain threshold. Run inventory.py help for more information.

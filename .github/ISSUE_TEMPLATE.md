@@ -24,7 +24,7 @@ explain why.
 - **Version of Ansible** (`ansible --version`):
 
 
-**Kargo version (commit) (`git rev-parse --short HEAD`):**
+**Kubespray version (commit) (`git rev-parse --short HEAD`):**
 
 
 **Network plugin used**:

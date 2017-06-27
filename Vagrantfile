@@ -100,6 +100,10 @@ Vagrant.configure("2") do |config|
         end
       end
 
+      $shared_folders.each do |src, dst|
+        config.vm.synced_folder src, dst
+      end
+
       config.vm.provider :virtualbox do |vb|
         vb.gui = $vm_gui
         vb.memory = $vm_memory

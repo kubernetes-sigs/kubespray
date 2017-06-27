@@ -10,9 +10,35 @@
     mode: 0755
   register: helm_container
 
+- name: Helm | Lay Down Helm Manifests (RBAC)
+  template:
+    src: "{{item.file}}"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {name: tiller, file: tiller-sa.yml, type: sa}
+    - {name: tiller, file: tiller-clusterrolebinding.yml, type: clusterrolebinding}
+  register: manifests
+  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0] and rbac_enabled
+
+- name: Helm | Apply Helm Manifests (RBAC)
+  kube:
+    name: "{{item.item.name}}"
+    namespace: "{{ system_namespace }}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: "{{ manifests.results }}"
+  failed_when: manifests|failed and "Error from server (AlreadyExists)" not in manifests.msg
+  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0] and rbac_enabled
+
 - name: Helm | Install/upgrade helm
   command: "{{ bin_dir }}/helm init --upgrade --tiller-image={{ tiller_image_repo }}:{{ tiller_image_tag }}"
   when: helm_container.changed
+
+- name: Helm | Patch tiller deployment for RBAC
+  command: kubectl patch deployment tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}' -n {{ system_namespace }}
+  when: rbac_enabled
 
 - name: Helm | Set up bash completion
   shell: "umask 022 && {{ bin_dir }}/helm completion bash >/etc/bash_completion.d/helm.sh"

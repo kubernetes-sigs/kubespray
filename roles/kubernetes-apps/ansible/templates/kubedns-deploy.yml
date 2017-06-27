@@ -1,25 +1,39 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: kubedns
-  namespace: {{ system_namespace }}
+  name: kube-dns
+  namespace: "{{system_namespace}}"
   labels:
-    k8s-app: kubedns
-    version: v19
+    k8s-app: kube-dns
     kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
 spec:
-  replicas: {{ kubedns_min_replicas }}
+  # replicas: not specified here:
+  # 1. In order to make Addon Manager do not reconcile this replicas parameter.
+  # 2. Default is 1.
+  # 3. Will be tuned in real time if DNS horizontal auto-scaling is turned on.
+  strategy:
+    rollingUpdate:
+      maxSurge: 10%
+      maxUnavailable: 0
   selector:
     matchLabels:
-      k8s-app: kubedns
-      version: v19
+      k8s-app: kube-dns
   template:
     metadata:
       labels:
-        k8s-app: kubedns
-        version: v19
-        kubernetes.io/cluster-service: "true"
+        k8s-app: kube-dns
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
     spec:
+      tolerations:
+      - key: "CriticalAddonsOnly"
+        operator: "Exists"
+      volumes:
+      - name: kube-dns-config
+        configMap:
+          name: kube-dns
+          optional: true
       containers:
       - name: kubedns
         image: "{{ kubedns_image_repo }}:{{ kubedns_image_tag }}"
@@ -30,15 +44,14 @@ spec:
           # guaranteed class. Currently, this container falls into the
           # "burstable" category so the kubelet doesn't backoff from restarting it.
           limits:
-            cpu: {{ dns_cpu_limit }}
             memory: {{ dns_memory_limit }}
           requests:
             cpu: {{ dns_cpu_requests }}
             memory: {{ dns_memory_requests }}
         livenessProbe:
           httpGet:
-            path: /healthz
-            port: 8080
+            path: /healthcheck/kubedns
+            port: 10054
             scheme: HTTP
           initialDelaySeconds: 60
           timeoutSeconds: 5
@@ -51,13 +64,16 @@ spec:
             scheme: HTTP
           # we poll on pod startup for the Kubernetes master service and
           # only setup the /readiness HTTP server once that's available.
-          initialDelaySeconds: 30
+          initialDelaySeconds: 3
           timeoutSeconds: 5
         args:
-        # command = "/kube-dns"
         - --domain={{ dns_domain }}.
         - --dns-port=10053
+        - --config-dir=/kube-dns-config
         - --v={{ kube_log_level }}
+        env:
+        - name: PROMETHEUS_PORT
+          value: "10055"
         ports:
         - containerPort: 10053
           name: dns-local
@@ -65,25 +81,36 @@ spec:
         - containerPort: 10053
           name: dns-tcp-local
           protocol: TCP
+        - containerPort: 10055
+          name: metrics
+          protocol: TCP
+        volumeMounts:
+        - name: kube-dns-config
+          mountPath: /kube-dns-config
       - name: dnsmasq
-        image: "{{ kubednsmasq_image_repo }}:{{ kubednsmasq_image_tag }}"
+        image: "{{ dnsmasq_nanny_image_repo }}:{{ dnsmasq_nanny_image_tag }}"
         imagePullPolicy: {{ k8s_image_pull_policy }}
-        resources:
-          limits:
-            cpu: {{ dns_cpu_limit }}
-            memory: {{ dns_memory_limit }}
-          requests:
-            cpu: {{ dns_cpu_requests }}
-            memory: {{ dns_memory_requests }}
+        livenessProbe:
+          httpGet:
+            path: /healthcheck/dnsmasq
+            port: 10054
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
         args:
-        - --log-facility=-
+        - -v={{ kube_log_level }}
+        - -logtostderr
+        - -configDir=/etc/k8s/dns/dnsmasq-nanny
+        - -restartDnsmasq=true
+        - --
+        - -k
         - --cache-size=1000
-        - --no-resolv
-        - --server=127.0.0.1#10053
-{% if kube_log_level == '4' %}
-        - --log-queries
-{% endif %}
-        - --local=/{{ bogus_domains }}
+        - --log-facility=-
+        - --server=/{{ dns_domain }}/127.0.0.1#10053
+        - --server=/in-addr.arpa/127.0.0.1#10053
+        - --server=/ip6.arpa/127.0.0.1#10053
         ports:
         - containerPort: 53
           name: dns
@@ -91,26 +118,37 @@ spec:
         - containerPort: 53
           name: dns-tcp
           protocol: TCP
-      - name: healthz
-        image: "{{ exechealthz_image_repo }}:{{ exechealthz_image_tag }}"
-        imagePullPolicy: {{ k8s_image_pull_policy }}
+        # see: https://github.com/kubernetes/kubernetes/issues/29055 for details
         resources:
-          # keep request = limit to keep this container in guaranteed class
-          limits:
-            cpu: 10m
-            memory: 50Mi
           requests:
-            cpu: 10m
-            # Note that this container shouldn't really need 50Mi of memory. The
-            # limits are set higher than expected pending investigation on #29688.
-            # The extra memory was stolen from the kubedns container to keep the
-            # net memory requested by the pod constant.
-            memory: 50Mi
+            cpu: 150m
+            memory: 20Mi
+        volumeMounts:
+        - name: kube-dns-config
+          mountPath: /etc/k8s/dns/dnsmasq-nanny
+      - name: sidecar
+        image: "{{ dnsmasq_sidecar_image_repo }}:{{ dnsmasq_sidecar_image_tag }}"
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 10054
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
         args:
-        - -cmd=nslookup kubernetes.default.svc.{{ dns_domain }} 127.0.0.1 >/dev/null && nslookup kubernetes.default.svc.{{ dns_domain }} 127.0.0.1:10053 >/dev/null
-        - -port=8080
-        - -quiet
+        - --v={{ kube_log_level }}
+        - --logtostderr
+        - --probe=kubedns,127.0.0.1:10053,kubernetes.default.svc.{{ dns_domain }},5,A
+        - --probe=dnsmasq,127.0.0.1:53,kubernetes.default.svc.{{ dns_domain }},5,A
         ports:
-        - containerPort: 8080
+        - containerPort: 10054
+          name: metrics
           protocol: TCP
+        resources:
+          requests:
+            memory: 20Mi
+            cpu: 10m
       dnsPolicy: Default  # Don't use cluster DNS.
+

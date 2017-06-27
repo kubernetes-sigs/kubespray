@@ -157,7 +157,7 @@ resource "aws_instance" "k8s-worker" {
 
 
 /*
-* Create Kargo Inventory File
+* Create Kubespray Inventory File
 *
 */
 data "template_file" "inventory" {

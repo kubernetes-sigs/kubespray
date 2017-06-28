@@ -60,12 +60,36 @@
   when: kubesystem|failed and inventory_hostname == groups['kube-master'][0]
   tags: apps
 
-- name: Write kube-controller-manager manifest
+- name: Lay Down kubelet PSP Resources (RBAC)
   template:
-    src: manifests/kube-controller-manager.manifest.j2
-    dest: "{{ kube_manifest_dir }}/kube-controller-manager.manifest"
-  notify: Master | wait for kube-controller-manager
-  tags: kube-controller-manager
+    src: "{{item.file}}"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {name: kubelet-psp, file: kubelet-psp.yaml, type: psp}
+    - {name: kubelet-psp, file: kubelet-psp-clusterrole.yaml, type: clusterrole}
+    - {name: kubelet-psp, file: kubelet-psp-clusterrolebinding.yaml, type: clusterrolebinding}
+  register: manifests
+  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0] and rbac_enabled and psp_enabled
+  tags: apps
+
+- name: Apply kubelet PSP Resources (RBAC)
+  kube:
+    name: "{{item.item.name}}"
+    namespace: "{{ system_namespace }}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: "{{ manifests.results }}"
+  failed_when: manifests|failed and "Error from server (AlreadyExists)" not in manifests.msg
+  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0] and rbac_enabled and psp_enabled
+  tags: apps
+
+- name: Write kube-scheduler kubeconfig
+  template:
+    src: kube-scheduler-kubeconfig.yaml.j2
+    dest: "{{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml"
+  tags: kube-scheduler
 
 - name: Write kube-scheduler manifest
   template:
@@ -73,6 +97,19 @@
     dest: "{{ kube_manifest_dir }}/kube-scheduler.manifest"
   notify: Master | wait for kube-scheduler
   tags: kube-scheduler
+
+- name: Write kube-controller-manager kubeconfig
+  template:
+    src: kube-controller-manager-kubeconfig.yaml.j2
+    dest: "{{ kube_config_dir }}/kube-controller-manager-kubeconfig.yaml"
+  tags: kube-controller-manager
+
+- name: Write kube-controller-manager manifest
+  template:
+    src: manifests/kube-controller-manager.manifest.j2
+    dest: "{{ kube_manifest_dir }}/kube-controller-manager.manifest"
+  notify: Master | wait for kube-controller-manager
+  tags: kube-controller-manager
 
 - include: post-upgrade.yml
   tags: k8s-post-upgrade

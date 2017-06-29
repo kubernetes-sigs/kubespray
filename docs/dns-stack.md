@@ -1,7 +1,7 @@
-K8s DNS stack by Kargo
+K8s DNS stack by Kubespray
 ======================
 
-For K8s cluster nodes, kargo configures a [Kubernetes DNS](http://kubernetes.io/docs/admin/dns/)
+For K8s cluster nodes, Kubespray configures a [Kubernetes DNS](http://kubernetes.io/docs/admin/dns/)
 [cluster add-on](http://releases.k8s.io/master/cluster/addons/README.md)
 to serve as an authoritative DNS server for a given ``dns_domain`` and its
 ``svc, default.svc`` default subdomains (a total of ``ndots: 5`` max levels).
@@ -44,13 +44,13 @@ DNS servers to be added *after* the cluster DNS. Used by all ``resolvconf_mode``
 DNS servers in early cluster deployment when no cluster DNS is available yet. These are also added as upstream
 DNS servers used by ``dnsmasq`` (when deployed with ``dns_mode: dnsmasq_kubedns``).
 
-DNS modes supported by kargo
+DNS modes supported by Kubespray
 ============================
 
-You can modify how kargo sets up DNS for your cluster with the variables ``dns_mode`` and ``resolvconf_mode``.
+You can modify how Kubespray sets up DNS for your cluster with the variables ``dns_mode`` and ``resolvconf_mode``.
 
 ## dns_mode
-``dns_mode`` configures how kargo will setup cluster DNS. There are three modes available:
+``dns_mode`` configures how Kubespray will setup cluster DNS. There are three modes available:
 
 #### dnsmasq_kubedns (default)
 This installs an additional dnsmasq DaemonSet which gives more flexibility and lifts some
@@ -67,7 +67,7 @@ This does not install any of dnsmasq and kubedns/skydns. This basically disables
 leaves you with a non functional cluster.
 
 ## resolvconf_mode
-``resolvconf_mode`` configures how kargo will setup DNS for ``hostNetwork: true`` PODs and non-k8s containers.
+``resolvconf_mode`` configures how Kubespray will setup DNS for ``hostNetwork: true`` PODs and non-k8s containers.
 There are three modes available:
 
 #### docker_dns (default)
@@ -100,7 +100,7 @@ used as a backup nameserver. After cluster DNS is running, all queries will be a
 servers, which in turn will forward queries to the system nameserver if required.
 
 #### host_resolvconf
-This activates the classic kargo behaviour that modifies the hosts ``/etc/resolv.conf`` file and dhclient
+This activates the classic Kubespray behaviour that modifies the hosts ``/etc/resolv.conf`` file and dhclient
 configuration to point to the cluster dns server (either dnsmasq or kubedns, depending on dns_mode).
 
 As cluster DNS is not available on early deployment stage, this mode is split into 2 stages. In the first
@@ -120,7 +120,7 @@ cluster service names.
 Limitations
 -----------
 
-* Kargo has yet ways to configure Kubedns addon to forward requests SkyDns can
+* Kubespray has yet ways to configure Kubedns addon to forward requests SkyDns can
   not answer with authority to arbitrary recursive resolvers. This task is left
   for future. See [official SkyDns docs](https://github.com/skynetservices/skydns)
   for details.

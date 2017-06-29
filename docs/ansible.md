@@ -75,25 +75,25 @@ According to the [ansible docs](http://docs.ansible.com/ansible/playbooks_variab
 those cannot be overriden from the group vars. In order to override, one should use
 the `-e ` runtime flags (most simple way) or other layers described in the docs.
 
-Kargo uses only a few layers to override things (or expect them to
+Kubespray uses only a few layers to override things (or expect them to
 be overriden for roles):
 
 Layer | Comment
 ------|--------
-**role defaults** | provides best UX to override things for Kargo deployments
+**role defaults** | provides best UX to override things for Kubespray deployments
 inventory vars | Unused
 **inventory group_vars** | Expects users to use ``all.yml``,``k8s-cluster.yml`` etc. to override things
 inventory host_vars | Unused
-playbook group_vars | Unuses
+playbook group_vars | Unused
 playbook host_vars | Unused
-**host facts** | Kargo overrides for internal roles' logic, like state flags
+**host facts** | Kubespray overrides for internal roles' logic, like state flags
 play vars | Unused
 play vars_prompt | Unused
 play vars_files | Unused
 registered vars | Unused
-set_facts | Kargo overrides those, for some places
+set_facts | Kubespray overrides those, for some places
 **role and include vars** | Provides bad UX to override things! Use extra vars to enforce
-block vars (only for tasks in block) | Kargo overrides for internal roles' logic
+block vars (only for tasks in block) | Kubespray overrides for internal roles' logic
 task vars (only for the task) | Unused for roles, but only for helper scripts
 **extra vars** (always win precedence) | override with ``ansible-playbook -e @foo.yml``
 

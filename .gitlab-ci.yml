@@ -62,6 +62,7 @@ before_script:
   KUBELET_DEPLOYMENT: "docker"
   VAULT_DEPLOYMENT: "docker"
   WEAVE_CPU_LIMIT: "100m"
+  AUTHORIZATION_MODES: "{ 'authorization_modes': ['AlwaysAllow'] }"
   MAGIC: "ci check this"
 
 .gce: &gce
@@ -132,6 +133,7 @@ before_script:
       -e local_release_dir=${PWD}/downloads
       -e resolvconf_mode=${RESOLVCONF_MODE}
       -e vault_deployment_type=${VAULT_DEPLOYMENT}
+      -e "${AUTHORIZATION_MODES}"
       --limit "all:!fake_hosts"
       cluster.yml
 
@@ -373,6 +375,15 @@ before_script:
   CLUSTER_MODE: separate
   STARTUP_SCRIPT: ""
 
+.ubuntu_calico_rbac_variables: &ubuntu_calico_rbac_variables
+# stage: deploy-gce-special
+  AUTHORIZATION_MODES: "{ 'authorization_modes':  [ 'RBAC' ] }"
+  KUBE_NETWORK_PLUGIN: calico
+  CLOUD_IMAGE: ubuntu-1604-xenial
+  CLOUD_REGION: europe-west1-b
+  CLUSTER_MODE: separate
+  STARTUP_SCRIPT: ""
+
 # Builds for PRs only (premoderated by unit-tests step) and triggers (auto)
 coreos-calico-sep:
   stage: deploy-gce-part1
@@ -594,6 +605,17 @@ ubuntu-vault-sep:
   variables:
     <<: *gce_variables
     <<: *ubuntu_vault_sep_variables
+  when: manual
+  except: ['triggers']
+  only: ['master', /^pr-.*$/]
+
+ubuntu-calico-rbac-sep:
+  stage: deploy-gce-special
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    <<: *ubuntu_calico_rbac_variables
   when: manual
   except: ['triggers']
   only: ['master', /^pr-.*$/]

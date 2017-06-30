@@ -124,12 +124,12 @@ The following tags are defined in playbooks:
 |          k8s-pre-upgrade | Upgrading K8s cluster
 |              k8s-secrets | Configuring K8s certs/keys
 |                      kpm | Installing K8s apps definitions with KPM
-|           kube-apiserver | Configuring self-hosted kube-apiserver
-|  kube-controller-manager | Configuring self-hosted kube-controller-manager
+|           kube-apiserver | Configuring static pod kube-apiserver
+|  kube-controller-manager | Configuring static pod kube-controller-manager
 |                  kubectl | Installing kubectl and bash completion
 |                  kubelet | Configuring kubelet service
-|               kube-proxy | Configuring self-hosted kube-proxy
-|           kube-scheduler | Configuring self-hosted kube-scheduler
+|               kube-proxy | Configuring static pod kube-proxy
+|           kube-scheduler | Configuring static pod kube-scheduler
 |                localhost | Special steps for the localhost (ansible runner)
 |                   master | Configuring K8s master node role
 |               netchecker | Installing netchecker K8s app

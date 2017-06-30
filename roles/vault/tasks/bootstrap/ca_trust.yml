@@ -4,6 +4,7 @@
   command: "cat {{ vault_cert_dir }}/ca.pem"
   register: vault_cert_file_cat
   delegate_to: "{{ groups['vault']|first }}"
+  ignore_errors: "{{ vault_existent_crt is defined and vault_existent_key is defined }}"
 
 # This part is mostly stolen from the etcd role
 - name: bootstrap/ca_trust | target ca-certificate store file
@@ -17,9 +18,17 @@
       /etc/ssl/certs/kube-cluster-ca.pem
       {%- endif %}
 
+- set_fact:
+   ca_file_content: "{{ vault_cert_file_cat.get('stdout') }}"
+  when: not ( vault_existent_crt is defined and vault_existent_key is defined )
+
+- set_fact:
+   ca_file_content: "{{ vault_existent_crt }}"
+  when: vault_existent_crt is defined and vault_existent_key is defined
+
 - name: bootstrap/ca_trust | add CA to trusted CA dir
   copy:
-    content: "{{ vault_cert_file_cat.get('stdout') }}"
+    content: "{{ ca_file_content }}"
     dest: "{{ ca_cert_path }}"
   register: vault_ca_cert
 

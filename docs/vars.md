@@ -16,7 +16,7 @@ Some variables of note include:
 
 * *calico_version* - Specify version of Calico to use
 * *calico_cni_version* - Specify version of Calico CNI plugin to use
-* *docker_version* - Specify version of Docker to used (should be quoted
+* *docker_version* - Specify version of Docker to use (should be quoted
   string)
 * *etcd_version* - Specify version of ETCD to use
 * *ipip* - Enables Calico ipip encapsulation by default
@@ -26,6 +26,7 @@ Some variables of note include:
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)
 * *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
 * *kube_version* - Specify a given Kubernetes hyperkube version
+* *helm_version* - Specify version of helm to use
 * *searchdomains* - Array of DNS domains to search when looking up hostnames
 * *nameservers* - Array of nameservers to use for DNS lookup
 

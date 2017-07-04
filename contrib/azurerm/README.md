@@ -13,7 +13,7 @@ Resource Group. It will not install Kubernetes itself, this has to be done in a 
 - [Login with azure-cli](https://docs.microsoft.com/en-us/azure/xplat-cli-connect)
 - Dedicated Resource Group created in the Azure Portal or through azure-cli
 
-## Configuration through group_vars/all
+## Configuration through group_vars/k8s-cluster.yml
 
 You have to modify at least one variable in group_vars/all, which is the **cluster_name** variable. It must be globally
 unique due to some restrictions in Azure. Most other variables should be self explanatory if you have some basic Kubernetes

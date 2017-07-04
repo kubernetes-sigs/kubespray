@@ -1,0 +1,49 @@
+- name: Weave seed | Set seed first time
+  set_fact:
+    weave_seed: '{% for host in groups["k8s-cluster"] %}{{ hostvars[host]["ansible_default_ipv4"]["macaddress"] }}{% if not loop.last %},{% endif %}{% endfor %}'
+  when: "seed == 'unset'"
+  run_once: true
+  tags: confweave
+
+- name: Weave seed | Set seed
+  set_fact:
+    weave_seed: '{{ seed }}'
+  when: "seed != 'unset'"
+  run_once: true
+  tags: confweave
+
+- name: Weave seed | Set peers fist time
+  set_fact:
+    weave_peers: '{{ weave_ip_current_cluster }}'
+  when: "peers == 'unset'"
+  run_once: true
+  tags: confweave
+
+- name: Weave seed | Set peers with existing peers
+  set_fact:
+    weave_peers: '{{ peers }}{% if weave_ip_current_cluster not in peers %} {{ weave_ip_current_cluster }}{% endif %}'
+  when: "peers != 'unset'"
+  run_once: true
+  tags: confweave
+
+- name: Weave seed | Save seed
+  lineinfile:
+    dest: "./inventory/group_vars/k8s-fede.yml"
+    state: present
+    regexp: '^seed:'
+    line: 'seed: {{ weave_seed }}'
+  become_user: $USER
+  delegate_to: 127.0.0.1
+  run_once: true
+  tags: confweave
+
+- name: Weave seed | Save peers
+  lineinfile:
+    dest: "./inventory/group_vars/k8s-fede.yml"
+    state: present
+    regexp: '^peers:'
+    line: 'peers: {{ weave_peers }}'
+  become_user: $USER
+  delegate_to: 127.0.0.1
+  run_once: true
+  tags: confweave

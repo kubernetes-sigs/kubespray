@@ -8,6 +8,7 @@
 - name: Bootstrap | Run bootstrap.sh
   script: bootstrap.sh
   when: (need_bootstrap | failed)
+  environment: "{{ proxy_env }}"
 
 - set_fact:
     ansible_python_interpreter: "/opt/bin/python"
@@ -27,10 +28,12 @@
     src: get-pip.py
     dest: ~/get-pip.py
   when: (need_pip | failed)
+  environment: "{{ proxy_env }}"
 
 - name: Bootstrap | Install pip
   shell: "{{ansible_python_interpreter}} ~/get-pip.py"
   when: (need_pip | failed)
+  environment: "{{ proxy_env }}"
 
 - name: Bootstrap | Remove get-pip.py
   file:
@@ -49,4 +52,17 @@
   pip:
     name: "{{ item }}"
   with_items: "{{pip_python_modules}}"
+  environment: "{{ proxy_env }}"
 
+- name: Create update-engine service systemd drop-in directory
+  file:
+    path: /etc/systemd/system/update-engine.service.d
+    state: directory
+
+- name: Configure proxy for ContainerLinux update-engine
+  template:
+    src: update-engine-proxy.conf.j2
+    dest: "/etc/systemd/system/update-engine.service.d/10-proxy.conf"
+  notify:
+    - reload systemd
+    - reload update-engine

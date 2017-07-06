@@ -92,7 +92,7 @@ before_script:
     - echo ${PWD}
     - echo "${STARTUP_SCRIPT}"
     - >
-      ansible-playbook tests/cloud_playbooks/create-gce.yml -i tests/local_inventory/hosts.cfg -c local 
+      ansible-playbook tests/cloud_playbooks/create-gce.yml -i tests/local_inventory/hosts.cfg -c local
       ${LOG_LEVEL}
       -e cloud_image=${CLOUD_IMAGE}
       -e cloud_region=${CLOUD_REGION}
@@ -118,7 +118,7 @@ before_script:
       ${SSH_ARGS}
       ${LOG_LEVEL}
       -e ansible_python_interpreter=${PYPATH}
-      -e ansible_ssh_user=${SSH_USER} 
+      -e ansible_ssh_user=${SSH_USER}
       -e bootstrap_os=${BOOTSTRAP_OS}
       -e cert_management=${CERT_MGMT:-script}
       -e cloud_provider=gce
@@ -127,6 +127,7 @@ before_script:
       -e download_run_once=${DOWNLOAD_RUN_ONCE}
       -e etcd_deployment_type=${ETCD_DEPLOYMENT}
       -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      -e kubedns_min_replicas=1
       -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
       -e local_release_dir=${PWD}/downloads
       -e resolvconf_mode=${RESOLVCONF_MODE}
@@ -136,30 +137,31 @@ before_script:
 
     # Repeat deployment if testing upgrade
     - >
-      if [ "${UPGRADE_TEST}" != "false" ]; then 
+      if [ "${UPGRADE_TEST}" != "false" ]; then
       test "${UPGRADE_TEST}" == "basic" && PLAYBOOK="cluster.yml";
       test "${UPGRADE_TEST}" == "graceful" && PLAYBOOK="upgrade-cluster.yml";
-      pip install ansible==2.3.0; 
-      git checkout "${CI_BUILD_REF}"; 
-      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u $SSH_USER 
-      ${SSH_ARGS} 
-      ${LOG_LEVEL} 
-      -e ansible_python_interpreter=${PYPATH} 
-      -e ansible_ssh_user=${SSH_USER} 
-      -e bootstrap_os=${BOOTSTRAP_OS} 
-      -e cloud_provider=gce 
-      -e deploy_netchecker=true 
-      -e download_localhost=${DOWNLOAD_LOCALHOST} 
-      -e download_run_once=${DOWNLOAD_RUN_ONCE} 
-      -e etcd_deployment_type=${ETCD_DEPLOYMENT} 
-      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
-      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT} 
-      -e local_release_dir=${PWD}/downloads 
-      -e resolvconf_mode=${RESOLVCONF_MODE} 
-      -e weave_cpu_requests=${WEAVE_CPU_LIMIT} 
-      -e weave_cpu_limit=${WEAVE_CPU_LIMIT} 
-      --limit "all:!fake_hosts" 
-      $PLAYBOOK; 
+      pip install ansible==2.3.0;
+      git checkout "${CI_BUILD_REF}";
+      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u $SSH_USER
+      ${SSH_ARGS}
+      ${LOG_LEVEL}
+      -e ansible_python_interpreter=${PYPATH}
+      -e ansible_ssh_user=${SSH_USER}
+      -e bootstrap_os=${BOOTSTRAP_OS}
+      -e cloud_provider=gce
+      -e deploy_netchecker=true
+      -e download_localhost=${DOWNLOAD_LOCALHOST}
+      -e download_run_once=${DOWNLOAD_RUN_ONCE}
+      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      -e kubedns_min_replicas=1
+      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      -e local_release_dir=${PWD}/downloads
+      -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
+      -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
+      --limit "all:!fake_hosts"
+      $PLAYBOOK;
       fi
 
     # Tests Cases
@@ -175,40 +177,41 @@ before_script:
     ## Idempotency checks 1/5 (repeat deployment)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS 
-      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
-      --private-key=${HOME}/.ssh/id_rsa 
-      -e bootstrap_os=${BOOTSTRAP_OS} 
-      -e ansible_python_interpreter=${PYPATH} 
-      -e download_localhost=${DOWNLOAD_LOCALHOST} 
-      -e download_run_once=${DOWNLOAD_RUN_ONCE} 
-      -e deploy_netchecker=true 
-      -e resolvconf_mode=${RESOLVCONF_MODE} 
-      -e local_release_dir=${PWD}/downloads 
-      -e etcd_deployment_type=${ETCD_DEPLOYMENT} 
-      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT} 
-      --limit "all:!fake_hosts" 
+      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
+      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      --private-key=${HOME}/.ssh/id_rsa
+      -e bootstrap_os=${BOOTSTRAP_OS}
+      -e ansible_python_interpreter=${PYPATH}
+      -e download_localhost=${DOWNLOAD_LOCALHOST}
+      -e download_run_once=${DOWNLOAD_RUN_ONCE}
+      -e deploy_netchecker=true
+      -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e local_release_dir=${PWD}/downloads
+      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+      -e kubedns_min_replicas=1
+      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      --limit "all:!fake_hosts"
       cluster.yml;
       fi
 
     ## Idempotency checks 2/5 (Advanced DNS checks)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} 
-      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root 
-      --limit "all:!fake_hosts" 
+      ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH}
+      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
+      --limit "all:!fake_hosts"
       tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
       fi
 
     ## Idempotency checks 3/5 (reset deployment)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" AND "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS 
-      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
-      --private-key=${HOME}/.ssh/id_rsa 
-      -e bootstrap_os=${BOOTSTRAP_OS} 
-      -e ansible_python_interpreter=${PYPATH} 
-      -e reset_confirmation=yes 
+      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
+      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      --private-key=${HOME}/.ssh/id_rsa
+      -e bootstrap_os=${BOOTSTRAP_OS}
+      -e ansible_python_interpreter=${PYPATH}
+      -e reset_confirmation=yes
       --limit "all:!fake_hosts"
       reset.yml;
       fi
@@ -216,28 +219,29 @@ before_script:
     ## Idempotency checks 4/5 (redeploy after reset)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" AND "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS 
-      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN} 
-      --private-key=${HOME}/.ssh/id_rsa 
-      -e bootstrap_os=${BOOTSTRAP_OS} 
-      -e ansible_python_interpreter=${PYPATH} 
-      -e download_localhost=${DOWNLOAD_LOCALHOST} 
-      -e download_run_once=${DOWNLOAD_RUN_ONCE} 
-      -e deploy_netchecker=true 
-      -e resolvconf_mode=${RESOLVCONF_MODE} 
-      -e local_release_dir=${PWD}/downloads 
-      -e etcd_deployment_type=${ETCD_DEPLOYMENT} 
-      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT} 
-      --limit "all:!fake_hosts" 
+      ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
+      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+      --private-key=${HOME}/.ssh/id_rsa
+      -e bootstrap_os=${BOOTSTRAP_OS}
+      -e ansible_python_interpreter=${PYPATH}
+      -e download_localhost=${DOWNLOAD_LOCALHOST}
+      -e download_run_once=${DOWNLOAD_RUN_ONCE}
+      -e deploy_netchecker=true
+      -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e local_release_dir=${PWD}/downloads
+      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+      -e kubedns_min_replicas=1
+      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      --limit "all:!fake_hosts"
       cluster.yml;
       fi
 
     ## Idempotency checks 5/5 (Advanced DNS checks)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" AND "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} 
-      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root 
-      --limit "all:!fake_hosts" 
+      ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH}
+      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
+      --limit "all:!fake_hosts"
       tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
       fi
 
@@ -603,7 +607,7 @@ ci-authorized:
   script:
     - /bin/sh scripts/premoderator.sh
   except: ['triggers', 'master']
-  
+
 syntax-check:
   <<: *job
   stage: unit-tests

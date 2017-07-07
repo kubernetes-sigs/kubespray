@@ -69,7 +69,7 @@ following default cluster paramters:
   Kubernetes
 * *authorization_modes* - A list of [authorization mode](
 https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
-  that the cluster should be configured for. Defaults to `['AlwaysAllow']`.
+  that the cluster should be configured for. Defaults to `[]` (i.e. no authorization).
   Note: Only `AlwaysAllow`, `AlwaysDeny` and `RBAC` are tested.
 
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'

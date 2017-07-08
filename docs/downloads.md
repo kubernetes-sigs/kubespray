@@ -1,7 +1,7 @@
 Downloading binaries and containers
 ===================================
 
-Kargo supports several download/upload modes. The default is:
+Kubespray supports several download/upload modes. The default is:
 
 * Each node downloads binaries and container images on its own, which is
   ``download_run_once: False``.

@@ -31,7 +31,7 @@ class TestInventory(unittest.TestCase):
         sys_mock.exit = mock.Mock()
         super(TestInventory, self).setUp()
         self.data = ['10.90.3.2', '10.90.3.3', '10.90.3.4']
-        self.inv = inventory.KargoInventory()
+        self.inv = inventory.KubesprayInventory()
 
     def test_get_ip_from_opts(self):
         optstring = "ansible_host=10.90.3.2 ip=10.90.3.2"

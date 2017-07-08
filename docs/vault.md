@@ -39,7 +39,7 @@ vault group.
 It is *highly* recommended that these secrets are removed from the servers after
 your cluster has been deployed, and kept in a safe location of your choosing.
 Naturally, the seriousness of the situation depends on what you're doing with
-your Kargo cluster, but with these secrets, an attacker will have the ability
+your Kubespray cluster, but with these secrets, an attacker will have the ability
 to authenticate to almost everything in Kubernetes and decode all private
 (HTTPS) traffic on your network signed by Vault certificates.
 

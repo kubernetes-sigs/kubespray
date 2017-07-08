@@ -3,17 +3,17 @@ Cloud providers
 
 #### Provisioning
 
-You can use kargo-cli to start new instances on cloud providers
+You can use kubespray-cli to start new instances on cloud providers
 here's an example
 ```
-kargo [aws|gce] --nodes 2 --etcd 3 --cluster-name test-smana
+kubespray [aws|gce] --nodes 2 --etcd 3 --cluster-name test-smana
 ```
 
 #### Deploy kubernetes
 
-With kargo-cli
+With kubespray-cli
 ```
-kargo deploy [--aws|--gce] -u admin
+kubespray deploy [--aws|--gce] -u admin
 ```
 
 Or ansible-playbook command

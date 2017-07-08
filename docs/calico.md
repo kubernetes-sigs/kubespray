@@ -96,7 +96,7 @@ You need to edit your inventory and add:
 * `cluster_id` by route reflector node/group (see details
 [here](https://hub.docker.com/r/calico/routereflector/))
 
-Here's an example of Kargo inventory with route reflectors:
+Here's an example of Kubespray inventory with route reflectors:
 
 ```
 [all]
@@ -145,11 +145,11 @@ cluster_id="1.0.0.1"
 The inventory above will deploy the following topology assuming that calico's
 `global_as_num` is set to `65400`:
 
-![Image](figures/kargo-calico-rr.png?raw=true)
+![Image](figures/kubespray-calico-rr.png?raw=true)
 
 ##### Optional : Define default endpoint to host action
 
-By default Calico blocks traffic from endpoints to the host itself by using an iptables DROP action. When using it in kubernetes the action has to be changed to RETURN (default in kargo) or ACCEPT (see https://github.com/projectcalico/felix/issues/660 and https://github.com/projectcalico/calicoctl/issues/1389). Otherwise all network packets from pods (with hostNetwork=False) to services endpoints (with hostNetwork=True) withing the same node are dropped.
+By default Calico blocks traffic from endpoints to the host itself by using an iptables DROP action. When using it in kubernetes the action has to be changed to RETURN (default in kubespray) or ACCEPT (see https://github.com/projectcalico/felix/issues/660 and https://github.com/projectcalico/calicoctl/issues/1389). Otherwise all network packets from pods (with hostNetwork=False) to services endpoints (with hostNetwork=True) withing the same node are dropped.
 
 
 To re-define default action please set the following variable in your inventory:

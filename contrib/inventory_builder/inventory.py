@@ -65,7 +65,7 @@ HOST_PREFIX = os.environ.get("HOST_PREFIX", "node")
 # Configurable as shell vars end
 
 
-class KargoInventory(object):
+class KubesprayInventory(object):
 
     def __init__(self, changed_hosts=None, config_file=None):
         self.config = configparser.ConfigParser(allow_no_value=True,
@@ -337,7 +337,7 @@ MASSIVE_SCALE_THRESHOLD Separate K8s master and ETCD if # of nodes >= 200
 def main(argv=None):
     if not argv:
         argv = sys.argv[1:]
-    KargoInventory(argv, CONFIG_FILE)
+    KubesprayInventory(argv, CONFIG_FILE)
 
 if __name__ == "__main__":
     sys.exit(main())

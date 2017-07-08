@@ -116,7 +116,17 @@ efk_enabled: false
 enable_network_policy: false
 
 # Configure proxy environment variable map
+default_no_proxy_list: |
+  127.0.0.1,127.0.1.1,127.1.1.1,localhost,
+  {{kube_service_addresses}},{{kube_pods_subnet}},
+  {{apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local')}},
+  .{{cluster_name}}
 proxy_env: "{
+{% if bypass_proxy_for_cluster_hosts %}
+{% set default_no_proxy_list = default_no_proxy_list + ',' + groups['all']|\
+                                                             map('extract', hostvars, ['ip'])|\ ## ansible_default_ipv4.address ?!?
+                                                             join(,) %}
+{% endif %}
 {% if http_proxy|d(None) %}
 {% for key in ('http_proxy', 'HTTP_PROXY') %}
   '{{ key }}': '{{ http_proxy }}',
@@ -132,9 +142,9 @@ proxy_env: "{
   '{{ key }}': '{{ https_proxy|default(None) }}',
 {% endfor %}
 {% endif %}
-{% if no_proxy|d(None) %}
+{% if http_proxy|d(None) or https_proxy|d(None) %}
 {% for key in ('no_proxy', 'NO_PROXY') %}
-  '{{ key }}': '{{ no_proxy }}',
+  '{{ key }}': '{{ default_no_proxy_list }},{{ no_proxy }}',
 {% endfor %}
 {% endif %}
 }"

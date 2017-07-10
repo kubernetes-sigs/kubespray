@@ -70,7 +70,8 @@ following default cluster paramters:
 * *authorization_modes* - A list of [authorization mode](
 https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
   that the cluster should be configured for. Defaults to `[]` (i.e. no authorization).
-  Note: Only `AlwaysAllow`, `AlwaysDeny` and `RBAC` are tested.
+  Note: `RBAC` is currently in experimental phase, and do not support either calico or
+  vault.
 
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``

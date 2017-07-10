@@ -3,31 +3,6 @@
   when: kube_network_plugin == 'canal'
   tags: [facts, canal]
 
-- name: Lay Down calico-policy-controller RBAC Template
-  template:
-    src: "{{item.file}}"
-    dest: "{{kube_config_dir}}/{{item.file}}"
-  with_items:
-    - {name: calico-policy-controller, file: calico-policy-controller-sa.yml, type: sa}
-    - {name: calico-policy-controller, file: calico-policy-controller-clusterrole.yml, type: clusterrole}
-    - {name: calico-policy-controller, file: calico-policy-controller-clusterrolebinding.yml, type: clusterrolebinding}
-  register: manifests
-  when: inventory_hostname == groups['kube-master'][0] and rbac_enabled
-  tags: canal
-
-- name: Create calico-policy-controller RBAC Resources
-  kube:
-    name: "{{item.item.name}}"
-    namespace: "{{ system_namespace }}"
-    kubectl: "{{bin_dir}}/kubectl"
-    resource: "{{item.item.type}}"
-    filename: "{{kube_config_dir}}/{{item.item.file}}"
-    state: "{{item.changed | ternary('latest','present') }}"
-  with_items: "{{ manifests.results }}"
-  failed_when: manifests|failed and "Error from server (AlreadyExists)" not in manifests.msg
-  when: inventory_hostname == groups['kube-master'][0] and rbac_enabled
-  tags: canal
-
 - name: Write calico-policy-controller yaml
   template:
     src: calico-policy-controller.yml.j2

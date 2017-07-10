@@ -26,6 +26,23 @@
     - rbac_enabled or item.type not in kubedns_rbac_resources
   tags: dnsmasq
 
+# see https://github.com/kubernetes/kubernetes/issues/45084
+# TODO: this is only needed for "old" kube-dns
+- name: Kubernetes Apps | Patch system:kube-dns ClusterRole
+  command: >
+    {{bin_dir}}/kubectl patch clusterrole system:kube-dns
+    --patch='{
+               "rules": [
+                 {
+                   "apiGroups" : [""],
+                   "resources" : ["endpoints", "services"],
+                   "verbs": ["list", "watch", "get"]
+                 }
+               ]
+             }'
+  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0] and rbac_enabled
+  tags: dnsmasq
+
 - name: Kubernetes Apps | Start Resources
   kube:
     name: "{{item.item.name}}"

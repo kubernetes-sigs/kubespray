@@ -52,7 +52,7 @@ Versions of supported components
 --------------------------------
 
 
-[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.6.4 <br>
+[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.6.7 <br>
 [etcd](https://github.com/coreos/etcd/releases) v3.0.17 <br>
 [flanneld](https://github.com/coreos/flannel/releases) v0.6.2 <br>
 [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.23.0 <br>

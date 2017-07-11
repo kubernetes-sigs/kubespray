@@ -109,13 +109,17 @@ Edit `inventory/group_vars/all.yml`:
 # Valid bootstrap options (required): ubuntu, coreos, centos, none
 bootstrap_os: coreos
 ```
-- And **bin_dir**
+- **bin_dir**
 ```
 # Directory where the binaries will be installed
 # Default:
 # bin_dir: /usr/local/bin
 # For Container Linux by CoreOS:
 bin_dir: /opt/bin
+```
+- and **cloud_provider**
+```
+cloud_provider: openstack
 ```
 Edit `inventory/group_vars/k8s-cluster.yml`:
 - Set variable **kube_network_plugin** according selected networking
@@ -127,9 +131,16 @@ kube_network_plugin: flannel
 > flannel works out-of-the-box
 
 > calico requires allowing service's and pod's subnets on according OpenStack Neutron ports
+- Set variable **resolvconf_mode**
+```
+# Can be docker_dns, host_resolvconf or none
+# Default:
+# resolvconf_mode: docker_dns
+# For Container Linux by CoreOS:
+resolvconf_mode: host_resolvconf
+```
 
-Configure OpenStack Neutron ports:
-[OpenStack](/docs/openstack.md)
+For calico configure OpenStack Neutron ports: [OpenStack](/docs/openstack.md)
 
 # Provision a Kubernetes Cluster on OpenStack
 

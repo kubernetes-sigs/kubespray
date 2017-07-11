@@ -36,6 +36,8 @@ Ensure your OpenStack **Identity v2** credentials are loaded in environment vari
 $ source ~/.stackrc
 ```
 
+> You must set **OS_REGION_NAME** and **OS_TENANT_ID** environment variables not required by openstack CLI
+
 You will need two networks before installing, an internal network and
 an external (floating IP Pool) network. The internet network can be shared as
 we use security groups to provide network segregation. Due to the many
@@ -99,6 +101,46 @@ ssh_user_gfs = "ubuntu"
 
 If these variables are provided, this will give rise to a new ansible group called `gfs-cluster`, for which we have added ansible roles to execute in the ansible provisioning step. If you are using Container Linux by CoreOS, these GlusterFS VM necessarily need to be either Debian or RedHat based VMs, Container Linux by CoreOS cannot serve GlusterFS, but can connect to it through binaries available on hyperkube v1.4.3_coreos.0 or higher.
 
+# Configure Cluster variables
+
+Edit `inventory/group_vars/all.yml`:
+- Set variable **bootstrap_os** according selected image
+```
+# Valid bootstrap options (required): ubuntu, coreos, centos, none
+bootstrap_os: coreos
+```
+- **bin_dir**
+```
+# Directory where the binaries will be installed
+# Default:
+# bin_dir: /usr/local/bin
+# For Container Linux by CoreOS:
+bin_dir: /opt/bin
+```
+- and **cloud_provider**
+```
+cloud_provider: openstack
+```
+Edit `inventory/group_vars/k8s-cluster.yml`:
+- Set variable **kube_network_plugin** according selected networking
+```
+# Choose network plugin (calico, weave or flannel)
+# Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
+kube_network_plugin: flannel
+```
+> flannel works out-of-the-box
+
+> calico requires allowing service's and pod's subnets on according OpenStack Neutron ports
+- Set variable **resolvconf_mode**
+```
+# Can be docker_dns, host_resolvconf or none
+# Default:
+# resolvconf_mode: docker_dns
+# For Container Linux by CoreOS:
+resolvconf_mode: host_resolvconf
+```
+
+For calico configure OpenStack Neutron ports: [OpenStack](/docs/openstack.md)
 
 # Provision a Kubernetes Cluster on OpenStack
 
@@ -155,6 +197,54 @@ Deploy kubernetes:
 ```
 $ ansible-playbook --become -i contrib/terraform/openstack/hosts cluster.yml
 ```
+
+# Set up local kubectl
+1. Install kubectl on your workstation:
+[Install and Set Up kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+2. Add route to internal IP of master node (if needed):
+```
+sudo route add [master-internal-ip] gw [router-ip]
+```
+or
+```
+sudo route add -net [internal-subnet]/24 gw [router-ip]
+```
+3. List Kubernetes certs&keys:
+```
+ssh [os-user]@[master-ip] sudo ls /etc/kubernetes/ssl/
+```
+4. Get admin's certs&key:
+```
+ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-[cluster_name]-k8s-master-1-key.pem > admin-key.pem
+ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-[cluster_name]-k8s-master-1.pem > admin.pem
+ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/ca.pem > ca.pem
+```
+5. Edit OpenStack Neutron master's Security Group to allow TCP connections to port 6443
+6. Configure kubectl:
+```
+kubectl config set-cluster default-cluster --server=https://[master-internal-ip]:6443 \
+    --certificate-authority=ca.pem 
+
+kubectl config set-credentials default-admin \
+    --certificate-authority=ca.pem \
+    --client-key=admin-key.pem \
+    --client-certificate=admin.pem      
+
+kubectl config set-credentials default-admin \
+    --certificate-authority=ca.pem \
+    --client-key=admin-key.pem \
+    --client-certificate=admin.pem 
+
+kubectl config set-context default-system --cluster=default-cluster --user=default-admin
+kubectl config use-context default-system
+```
+7. Check it:
+```
+kubectl version
+```
+
+# What's next
+[Start Hello Kubernetes Service](https://kubernetes.io/docs/tasks/access-application-cluster/service-access-application-cluster/)
 
 # clean up:
 

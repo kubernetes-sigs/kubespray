@@ -34,6 +34,7 @@ To deploy the cluster you can use :
 *  [OpenStack](docs/openstack.md)
 *  [AWS](docs/aws.md)
 *  [Azure](docs/azure.md)
+*  [vSphere](docs/vsphere.md)
 *  [Large deployments](docs/large-deployments.md)
 *  [Upgrades basics](docs/upgrades.md)
 *  [Roadmap](docs/roadmap.md)

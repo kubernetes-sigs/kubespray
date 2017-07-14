@@ -114,6 +114,9 @@ before_script:
 
     # Create cluster
     - >
+      args_array=( ${ANSIBLE_ARGS} );
+      for i in $( [[ ${#args_array[@]} -ne 0 ]] && echo ${!args_array[@]} || echo 0 );      
+      do
       ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -133,7 +136,9 @@ before_script:
       -e resolvconf_mode=${RESOLVCONF_MODE}
       -e vault_deployment_type=${VAULT_DEPLOYMENT}
       --limit "all:!fake_hosts"
-      cluster.yml
+      ${args_array[$i]//\"}
+      cluster.yml;
+      done
 
     # Repeat deployment if testing upgrade
     - >
@@ -269,6 +274,8 @@ before_script:
   RESOLVCONF_MODE: host_resolvconf # This is required as long as the CoreOS stable channel uses docker < 1.12
   ##User-data to simply turn off coreos upgrades
   STARTUP_SCRIPT: 'systemctl disable locksmithd && systemctl stop locksmithd'
+  # Run dry-run check on the first pass to allow fast fail
+  ANSIBLE_ARGS: '"--check" ""'
 
 .ubuntu_canal_ha_variables: &ubuntu_canal_ha_variables
 # stage: deploy-gce-part1

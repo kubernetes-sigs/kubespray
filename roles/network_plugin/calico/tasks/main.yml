@@ -47,6 +47,7 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
   tags: [hyperkube, upgrade]
 
 - name: Calico | Copy cni plugins from calico/cni container
@@ -56,6 +57,7 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
   when: overwrite_hyperkube_cni|bool
   tags: [hyperkube, upgrade]
 
@@ -77,6 +79,7 @@
   delay: 5
   delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Calico | Check if calico network pool has already been configured
   command: |-
@@ -103,6 +106,7 @@
   environment:
     NO_DEFAULT_POOLS: true
   run_once: true
+  ignore_errors: "{{ ansible_check_mode }}"
   when: not legacy_calicoctl and
          ("Key not found" in calico_conf.stdout or "nodes" not in calico_conf.stdout)
 
@@ -150,11 +154,13 @@
 - set_fact:
     calico_pools: "{{ calico_pools_raw.stdout | from_json }}"
   run_once: true
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Calico | Check if calico pool is properly configured
   fail:
     msg: 'Only one network pool must be configured and it must be the subnet {{ kube_pods_subnet }}.
     Please erase calico configuration and run the playbook again ("etcdctl rm --recursive /calico/v1/ipam/v4/pool")'
+  ignore_errors: "{{ ansible_check_mode }}"
   when: ( calico_pools['node']['nodes'] | length > 1 ) or
         ( not calico_pools['node']['nodes'][0]['key'] | search(".*{{ kube_pods_subnet | ipaddr('network') }}.*") )
   run_once: true
@@ -202,6 +208,7 @@
     name: calico-node
     state: started
     enabled: yes
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Calico | Disable node mesh
   shell: "{{ bin_dir }}/calicoctl config set nodeToNodeMesh off"

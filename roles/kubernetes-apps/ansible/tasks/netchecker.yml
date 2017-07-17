@@ -5,10 +5,15 @@
   with_items:
     - {file: netchecker-agent-ds.yml.j2, type: ds, name: netchecker-agent}
     - {file: netchecker-agent-hostnet-ds.yml.j2, type: ds, name: netchecker-agent-hostnet}
+    - {file: netchecker-server-sa.yml.j2, type: sa, name: netchecker-server}
+    - {file: netchecker-server-clusterrole.yml.j2, type: clusterrole, name: netchecker-server}
+    - {file: netchecker-server-clusterrolebinding.yml.j2, type: clusterrolebinding, name: netchecker-server}
     - {file: netchecker-server-deployment.yml.j2, type: po, name: netchecker-server}
     - {file: netchecker-server-svc.yml.j2, type: svc, name: netchecker-service}
   register: manifests
-  when: inventory_hostname == groups['kube-master'][0]
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - rbac_enabled or item.type not in rbac_resources
 
 #FIXME: remove if kubernetes/features#124 is implemented
 - name: Kubernetes Apps | Purge old Netchecker daemonsets
@@ -31,4 +36,5 @@
     filename: "{{kube_config_dir}}/{{item.item.file}}"
     state: "{{item.changed | ternary('latest','present') }}"
   with_items: "{{ manifests.results }}"
+  failed_when: manifests|failed and "Error from server (AlreadyExists)" not in manifests.msg
   when: inventory_hostname == groups['kube-master'][0]

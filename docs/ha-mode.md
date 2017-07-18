@@ -12,7 +12,7 @@ Etcd
 ----
 
 The `etcd_access_endpoint` fact provides an access pattern for clients. And the
-`etcd_multiaccess` (defaults to `True`) group var controlls that behavior.
+`etcd_multiaccess` (defaults to `True`) group var controls that behavior.
 It makes deployed components to access the etcd cluster members
 directly: `http://ip1:2379, http://ip2:2379,...`. This mode assumes the clients
 do a loadbalancing and handle HA for connections.
@@ -28,9 +28,9 @@ is less efficient than a dedicated load balancer because it creates extra
 health checks on the Kubernetes apiserver, but is more practical for scenarios
 where an external LB or virtual IP management is inconvenient.  This option is
 configured by the variable `loadbalancer_apiserver_localhost` (defaults to `True`).
-You may also define the port the local internal loadbalancer users by changing,
+You may also define the port the local internal loadbalancer uses by changing,
 `nginx_kube_apiserver_port`.  This defaults to the value of `kube_apiserver_port`.
-It is also import to note that Kubespray will only configure kubelet and kube-proxy
+It is also important to note that Kubespray will only configure kubelet and kube-proxy
 on non-master nodes to use the local internal loadbalancer.
 
 If you choose to NOT use the local internal loadbalancer, you will need to configure

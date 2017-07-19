@@ -27,7 +27,7 @@ non-master Kubernetes node. This is referred to as localhost loadbalancing. It
 is less efficient than a dedicated load balancer because it creates extra
 health checks on the Kubernetes apiserver, but is more practical for scenarios
 where an external LB or virtual IP management is inconvenient.  This option is
-configured by the variable `loadbalancer_apiserver_localhost` (defaults to `True`).
+configured by the variable `loadbalancer_apiserver_localhost` (defaults to `False`).
 You may also define the port the local internal loadbalancer uses by changing,
 `nginx_kube_apiserver_port`.  This defaults to the value of `kube_apiserver_port`.
 It is also important to note that Kubespray will only configure kubelet and kube-proxy
@@ -88,9 +88,9 @@ Access endpoints are evaluated automagically, as the following:
 
 | Endpoint type                | kube-master   | non-master          |
 |------------------------------|---------------|---------------------|
-| Local LB (default)           | http://lc:p   | https://lc:nsp      |
+| Local LB                     | http://lc:p   | https://lc:nsp      |
 | External LB, no internal     | https://lb:lp | https://lb:lp       |
-| No ext/int LB                | http://lc:p   | https://m[0].aip:sp |
+| No ext/int LB (default)      | http://lc:p   | https://m[0].aip:sp |
 
 Where:
 * `m[0]` - the first node in the `kube-master` group;

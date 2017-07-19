@@ -1,0 +1,61 @@
+# vSphere cloud provider
+
+Kubespray can be deployed with vSphere as Cloud provider. This feature supports
+- Volumes
+- Persistent Volumes
+- Storage Classes and provisioning of volumes.
+- vSphere Storage Policy Based Management for Containers orchestrated by Kubernetes.
+
+## Prerequisites
+
+You need at first to configure you vSphere environement by following the [official documentation](https://kubernetes.io/docs/getting-started-guides/vsphere/#vsphere-cloud-provider).
+
+After this step you should have:
+- UUID activated for each VM where Kubernetes will be deployed
+- A vSphere account with required privileges
+
+## Kubespray configuration
+
+Fist you must define the cloud provider in `inventory/group_vars/all.yml` and set it to `vsphere`.
+```yml
+cloud_provider: vsphere
+```
+
+Then, in the same file, you need to declare your vCenter credential following the description bellow.
+
+| Variable                     | Required | Type    | Choices                    | Default | Comment                                                                                                                                                                                       |
+|------------------------------|----------|---------|----------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| vsphere_vcenter_ip           | TRUE     | string  |                            |         | IP/URL of the vCenter                                                                                                                                                                         |
+| vsphere_vcenter_port         | TRUE     | integer |                            |         | Port of the vCenter API. Commonly 443                                                                                                                                                         |
+| vsphere_insecure             | TRUE     | integer | 1, 0                       |         | set to 1 if the host above uses a self-signed cert                                                                                                                                            |
+| vsphere_user                 | TRUE     | string  |                            |         | User name for vCenter with required privileges                                                                                                                                                |
+| vsphere_password             | TRUE     | string  |                            |         | Password for vCenter                                                                                                                                                                          |
+| vsphere_datacenter           | TRUE     | string  |                            |         | Datacenter name to use                                                                                                                                                                        |
+| vsphere_datastore            | TRUE     | string  |                            |         | Datastore name to use                                                                                                                                                                         |
+| vsphere_working_dir          | TRUE     | string  |                            |         | Working directory from the view "VMs and template" in the   vCenter where VM are placed                                                                                                       |
+| vsphere_scsi_controller_type | TRUE     | string  | buslogic, pvscsi, parallel | pvscsi  | SCSI controller name. Commonly "pvscsi".                                                                                                                                                      |
+| vsphere_vm_uuid              | FALSE    | string  |                            |         | VM Instance UUID of virtual machine that host K8s master. Can be   retrieved from instanceUuid property in VmConfigInfo, or as vc.uuid in VMX   file or in `/sys/class/dmi/id/product_serial` |
+| vsphere_public_network       | FALSE    | string  |                            | Blank   | Name of the   network the VMs are joined to                                                                                                                                                   |
+
+Example configuration
+```yml
+vsphere_vcenter_ip: "myvcenter.domain.com"
+vsphere_vcenter_port: 443
+vsphere_insecure: 1
+vsphere_user: "k8s@vsphere.local"
+vsphere_password: "K8s_admin"
+vsphere_datacenter: "DATACENTER_name"
+vsphere_datastore: "DATASTORE_name"
+vsphere_working_dir: "Docker_hosts"
+vsphere_scsi_controller_type: "pvscsi"
+```
+
+## Deployment
+
+Once the configuration is set, you can execute the playbook again to apply the new configuration
+```
+cd kubespray
+ansible-playbook -i inventory/inventory.cfg -b -v cluster.yml
+```
+
+You'll find some usefull examples [here](https://github.com/kubernetes/kubernetes/tree/master/examples/volumes/vsphere) to test your configuration.

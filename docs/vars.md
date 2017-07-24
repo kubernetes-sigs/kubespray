@@ -71,7 +71,7 @@ following default cluster paramters:
 https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
   that the cluster should be configured for. Defaults to `[]` (i.e. no authorization).
   Note: `RBAC` is currently in experimental phase, and do not support either calico or
-  vault.
+  vault. Upgrade from non-RBAC to RBAC is not tested.
 
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``

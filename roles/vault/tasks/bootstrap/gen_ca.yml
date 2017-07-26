@@ -14,18 +14,45 @@
     body_format: json
     body: "{{ vault_ca_options }}"
   register: vault_ca_gen
-  when: inventory_hostname == groups.vault|first and vault_ca_cert_needed
+  when: inventory_hostname == groups.vault|first and vault_ca_cert_needed and
+        not ( vault_existent_crt is defined and vault_existent_key is defined )
+
+- name: bootstrap/gen_ca | Configure pki mount to use the found root CA cert and key
+  uri:
+    url: "{{ vault_leader_url }}/v1/pki/config/ca"
+    headers: "{{ vault_headers }}"
+    method: POST
+    body_format: json
+    body:
+      pem_bundle: "{{ vault_existent_crt + vault_existent_key }}"
+    status_code: 204
+  when: inventory_hostname == groups.vault|first and vault_ca_cert_needed and
+        vault_existent_crt is defined and vault_existent_key is defined
+
+- name: config_ca | Copy existent certificate data
+  copy:
+    content: "{{ item.content }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  when: item.content != ''
+  with_items:
+    - { content: "{{ vault_existent_crt|default() }}", dest: "{{ vault_cert_dir }}/ca.pem", mode: 644 }
+    - { content: "{{ vault_existent_key|default() }}", dest: "{{ vault_cert_dir }}/ca-key.pem", mode: 400 }
 
 - name: bootstrap/gen_ca | Copy root CA cert locally
   copy:
     content: "{{ hostvars[groups.vault|first]['vault_ca_gen']['json']['data']['certificate'] }}"
     dest: "{{ vault_cert_dir }}/ca.pem"
     mode: 0644
-  when: vault_ca_cert_needed
+  when: vault_ca_cert_needed and
+        not ( vault_existent_crt is defined and vault_existent_key is defined )
 
 - name: bootstrap/gen_ca | Copy root CA key locally
   copy:
     content: "{{ hostvars[groups.vault|first]['vault_ca_gen']['json']['data']['private_key'] }}"
     dest: "{{ vault_cert_dir }}/ca-key.pem"
     mode: 0640
-  when: vault_ca_cert_needed
+  when: vault_ca_cert_needed and
+        not ( vault_existent_crt is defined and vault_existent_key is defined )

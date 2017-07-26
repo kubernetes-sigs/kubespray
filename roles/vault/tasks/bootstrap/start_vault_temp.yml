@@ -35,6 +35,24 @@
     vault_temp_unseal_keys: "{{ vault_temp_init.json['keys'] }}"
     vault_temp_root_token: "{{ vault_temp_init.json.root_token }}"
     vault_headers: "{{ vault_client_headers|combine({'X-Vault-Token': vault_temp_init.json.root_token}) }}"
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: "bootstrap/start_vault_temp | Check {{vault_leader_url}}"
+  uri:
+    url: "{{ vault_leader_url}}/v1/sys/health"
+    headers: "{{ vault_client_headers }}"
+    status_code: 200,429,500,501
+    timeout: 5
+  ignore_errors: true
+  register: vault_leader_url_check
+
+- debug: var=vault_leader_url_check verbosity=2
+
+- name: bootstrap/start_vault_temp | Tune vault_leader_url url
+  set_fact:
+    vault_leader_url: "http://localhost:{{ vault_port }}"
+  when: vault_leader_url_check|failed
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: bootstrap/start_vault_temp | Unseal vault-temp
   uri:

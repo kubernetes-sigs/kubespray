@@ -45,7 +45,7 @@
 - name: "Pre-upgrade | etcd3 upgrade | use etcd2 unless forced to etc3"
   set_fact:
     kube_apiserver_storage_backend: "etcd2"
-  when: old_data_exists.rc == 0 and not force_etcd3|bool
+  when: not old_data_exists|skipped and old_data_exists.rc == 0 and not force_etcd3|bool
 
 - name: "Pre-upgrade | etcd3 upgrade | see if data was already migrated"
   command: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }} get --limit=1 --prefix=true /registry/minions"
@@ -79,6 +79,7 @@
     - ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   register: kube_apiserver_manifest_replaced
   when: (secret_changed|default(false) or etcd_secret_changed|default(false) or needs_etcd_migration|bool) and kube_apiserver_manifest.stat.exists
+  run_once: true
 
 - name: "Pre-upgrade | etcd3 upgrade | stop etcd"
   service:
@@ -87,6 +88,7 @@
   delegate_to: "{{item}}"
   with_items: "{{groups['etcd']}}"
   when: needs_etcd_migration|bool
+  run_once: true
 
 - name: "Pre-upgrade | etcd3 upgrade | migrate data"
   command: "{{ bin_dir }}/etcdctl migrate --data-dir=\"{{ etcd_data_dir }}\" --wal-dir=\"{{ etcd_data_dir }}/member/wal\""
@@ -96,6 +98,7 @@
   with_items: "{{groups['etcd']}}"
   register: etcd_migrated
   when: needs_etcd_migration|bool
+  run_once: true
 
 - name: "Pre-upgrade | etcd3 upgrade | start etcd"
   service:
@@ -104,3 +107,4 @@
   delegate_to: "{{item}}"
   with_items: "{{groups['etcd']}}"
   when: needs_etcd_migration|bool
+  run_once: true

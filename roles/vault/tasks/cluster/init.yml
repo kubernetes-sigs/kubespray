@@ -2,7 +2,7 @@
 
 - name: cluster/init | Initialize Vault
   uri:
-    url: "https://{{ groups.vault|first }}:{{ vault_port }}/v1/sys/init"
+    url: "https://localhost:{{ vault_port }}/v1/sys/init"
     headers: "{{ vault_client_headers }}"
     method: POST
     body_format: json
@@ -19,6 +19,17 @@
     vault_root_token: "{{ vault_init_result.json.root_token }}"
     vault_headers: "{{ vault_client_headers|combine({'X-Vault-Token': vault_init_result.json.root_token}) }}"
   when: not vault_cluster_is_initialized and inventory_hostname == groups.vault|first
+
+- name: "cluster/init | Get existent root_token"
+  command: "cat {{ vault_secrets_dir }}/root_token"
+  register: existent_root_token
+  when: vault_cluster_is_initialized
+
+- name: cluster/init | Fix facts for existent vault cluster
+  set_fact:
+    vault_root_token: "{{ existent_root_token.stdout }}"
+    vault_headers: "{{ vault_client_headers|combine({'X-Vault-Token': existent_root_token.stdout}) }}"
+  when: vault_cluster_is_initialized
 
 - name: cluster/init | Ensure all hosts have these facts
   set_fact:

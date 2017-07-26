@@ -34,6 +34,7 @@
 - name: "Pre-upgrade | remove etcd-proxy if it exists"
   command: "{{ docker_bin_dir }}/docker rm -f {{item}}"
   with_items: "{{etcd_proxy_container.stdout_lines}}"
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: "Pre-upgrade | see if etcdctl is installed"
   stat:
@@ -45,11 +46,12 @@
   register: etcd_member_list
   retries: 10
   delay: 3
-  until: etcd_member_list.rc != 2
+  until: etcd_member_list.rc != 2 or ansible_check_mode
   run_once: true
   when: etcdctl_installed.stat.exists
   changed_when: false
   failed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: "Pre-upgrade | change peer names to SSL"
   shell: >-
@@ -57,3 +59,4 @@
     awk -F"[: =]" '{print "{{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses | regex_replace('https','http') }} member update "$1" https:"$7":"$8}' | bash
   run_once: true
   when: 'etcdctl_installed.stat.exists and etcd_member_list.rc == 0 and "http://" in etcd_member_list.stdout'
+  ignore_errors: "{{ ansible_check_mode }}"

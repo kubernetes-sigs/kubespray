@@ -28,15 +28,23 @@ This mode is to fixed cluster
 
 ### Seed mode
 This mode is to dynamic cluster
+
+the seed mode allows multi clouds simultaneously and also hybrid on premise/cloud clusters
 * Change censensus mode to seed mode
 ```
 # In file ./inventory/group_vars/k8s-cluster.yml
 weave_mode_seed: true
 ```
-the seed mode allows multi clouds simultaneously and also hybrid on premise/cloud clusters
-
+This two variables are use to have automaticaly dynamic cluster (**/!\ do not manually change these values**)
 ```
 # In file ./inventory/group_vars/k8s-cluster.yml
 weave_seed: uninitialized
 weave_peers: uninitialized
 ```
+The first variable, `weave_seed`, allows to save the first or firsts node of the weave network
+
+The seconde variable, `weave_peers`, allows to save IP of all node of the weave network
+
+these two allows to connecte a new node to the weave network. this new node need to know the first node (seed) and list of IP to all node of network
+
+For reset these variables set there values to `uninitialized`

@@ -228,11 +228,6 @@ kubectl config set-cluster default-cluster --server=https://[master-internal-ip]
 kubectl config set-credentials default-admin \
     --certificate-authority=ca.pem \
     --client-key=admin-key.pem \
-    --client-certificate=admin.pem      
-
-kubectl config set-credentials default-admin \
-    --certificate-authority=ca.pem \
-    --client-key=admin-key.pem \
     --client-certificate=admin.pem 
 
 kubectl config set-context default-system --cluster=default-cluster --user=default-admin

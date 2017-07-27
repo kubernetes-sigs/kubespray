@@ -53,12 +53,12 @@ Versions of supported components
 --------------------------------
 
 
-[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.6.7 <br>
+[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.6.4 <br>
 [etcd](https://github.com/coreos/etcd/releases) v3.0.17 <br>
 [flanneld](https://github.com/coreos/flannel/releases) v0.6.2 <br>
 [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.23.0 <br>
 [canal](https://github.com/projectcalico/canal) (given calico/flannel versions) <br>
-[weave](http://weave.works/) v1.8.2 <br>
+[weave](http://weave.works/) v2.0.1 <br>
 [docker](https://www.docker.com/) v1.13.1 (see note)<br>
 [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 (see Note 2)<br>
 
@@ -91,7 +91,7 @@ You can choose between 4 network plugins. (default: `calico`)
 
 * [**canal**](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
 
-* **weave**: Weave is a lightweight container overlay network that doesn't require an external K/V database cluster. <br>
+* [**weave**](https://github.com/weaveworks/weave): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster. <br>
 (Please refer to `weave` [troubleshooting documentation](http://docs.weave.works/weave/latest_release/troubleshooting.html)).
 
 The choice is defined with the variable `kube_network_plugin`. There is also an

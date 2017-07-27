@@ -2,8 +2,8 @@ Weave
 =======
 
 Weave 2.0.1 is supported by kubespray
-Weave be use with [**consensus**](https://www.weave.works/docs/net/latest/ipam/#initialization) mode (default mode) and [**seed**](https://www.weave.works/docs/net/latest/ipam/#initialization) mode
 
+Weave be use with [**consensus**](https://www.weave.works/docs/net/latest/ipam/#initialization) mode (default mode) and [**seed**](https://www.weave.works/docs/net/latest/ipam/#initialization) mode
 
 In kubespray, Weave encryption for all communication is supported
 * For use Weave encryption, it's necessary to specify password

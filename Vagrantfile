@@ -30,8 +30,6 @@ $os = "ubuntu"
 $etcd_instances = $num_instances
 # The first two nodes are masters
 $kube_master_instances = $num_instances == 1 ? $num_instances : ($num_instances - 1)
-# All nodes are kube nodes
-$kube_node_instances = $num_instances
 $local_release_dir = "/vagrant/temp"
 
 host_vars = {}
@@ -39,6 +37,9 @@ host_vars = {}
 if File.exist?(CONFIG)
   require CONFIG
 end
+
+# All nodes are kube nodes
+$kube_node_instances = $num_instances
 
 $box = SUPPORTED_OS[$os][:box]
 # if $inventory is not set, try to use example

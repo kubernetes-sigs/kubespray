@@ -66,7 +66,7 @@ options:
     description:
       - present handles checking existence or creating if definition file provided,
         absent handles deleting resource(s) based on other options,
-        latest handles creating ore updating based on existence,
+        latest handles creating or updating based on existence,
         reloaded handles updating resource(s) definition using definition file,
         stopped handles stopping resource(s) based on other options.
 requirements:

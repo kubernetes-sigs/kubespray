@@ -1,0 +1,50 @@
+---
+- name: Weave seed | Set seed if first time
+  set_fact:
+    seed: '{% for host in groups["k8s-cluster"] %}{{ hostvars[host]["ansible_default_ipv4"]["macaddress"] }}{% if not loop.last %},{% endif %}{% endfor %}'
+  when: "weave_seed == 'uninitialized'"
+  run_once: true
+  tags: confweave
+
+- name: Weave seed | Set seed if not first time
+  set_fact:
+    seed: '{{ weave_seed }}'
+  when: "weave_seed != 'uninitialized'"
+  run_once: true
+  tags: confweave
+
+- name: Weave seed | Set peers if fist time
+  set_fact:
+    peers: '{{ weave_ip_current_cluster }}'
+  when: "weave_peers == 'uninitialized'"
+  run_once: true
+  tags: confweave
+
+- name: Weave seed | Set peers if existing peers
+  set_fact:
+    peers: '{{ weave_peers }}{% for ip in weave_ip_current_cluster.split(" ") %}{% if ip not in weave_peers.split(" ") %} {{ ip }}{% endif %}{% endfor %}'
+  when: "weave_peers != 'uninitialized'"
+  run_once: true
+  tags: confweave
+
+- name: Weave seed | Save seed
+  lineinfile:
+    dest: "./inventory/group_vars/k8s-cluster.yml"
+    state: present
+    regexp: '^weave_seed:'
+    line: 'weave_seed: {{ seed }}'
+  become: no
+  delegate_to: 127.0.0.1
+  run_once: true
+  tags: confweave
+
+- name: Weave seed | Save peers
+  lineinfile:
+    dest: "./inventory/group_vars/k8s-cluster.yml"
+    state: present
+    regexp: '^weave_peers:'
+    line: 'weave_peers: {{ peers }}'
+  become: no
+  delegate_to: 127.0.0.1
+  run_once: true
+  tags: confweave

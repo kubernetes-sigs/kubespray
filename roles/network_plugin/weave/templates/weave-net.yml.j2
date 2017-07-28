@@ -1,104 +1,156 @@
 ---
-apiVersion: extensions/v1beta1
-kind: DaemonSet
-metadata:
-  name: weave-net
-  namespace: {{ system_namespace }}
-  labels:
-    version: {{ weave_version }}
-spec:
-  template:
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: v1
+    kind: ServiceAccount
     metadata:
+      name: weave-net
       labels:
         name: weave-net
-      annotations:
-        scheduler.alpha.kubernetes.io/tolerations: |
-          [
-            {
-              "key": "dedicated",
-              "operator": "Equal",
-              "value": "master",
-              "effect": "NoSchedule"
-            }
-          ]
+      namespace: {{ system_namespace }}
+  - apiVersion: rbac.authorization.k8s.io/v1beta1
+    kind: ClusterRole
+    metadata:
+      name: weave-net
+      labels:
+        name: weave-net
+    rules:
+      - apiGroups:
+          - ''
+        resources:
+          - pods
+          - namespaces
+          - nodes
+        verbs:
+          - get
+          - list
+          - watch
+      - apiGroups:
+          - extensions
+        resources:
+          - networkpolicies
+        verbs:
+          - get
+          - list
+          - watch
+  - apiVersion: rbac.authorization.k8s.io/v1beta1
+    kind: ClusterRoleBinding
+    metadata:
+      name: weave-net
+      labels:
+        name: weave-net
+    roleRef:
+      kind: ClusterRole
+      name: weave-net
+      apiGroup: rbac.authorization.k8s.io
+    subjects:
+      - kind: ServiceAccount
+        name: weave-net
+        namespace: kube-system
+  - apiVersion: extensions/v1beta1
+    kind: DaemonSet
+    metadata:
+      name: weave-net
+      labels:
+        name: weave-net
+        version: {{ weave_version }}
+      namespace: {{ system_namespace }}
     spec:
-      hostNetwork: true
-      hostPID: true
-      containers:
-        - name: weave
-          image: {{ weave_kube_image_repo }}:{{ weave_kube_image_tag }}
-          imagePullPolicy: Always
-          command:
-            - /home/weave/launch.sh
-          env:
-            - name: IPALLOC_RANGE
-              value: {{ kube_pods_subnet }}
-{% if weave_checkpoint_disable is defined %}
-            - name: CHECKPOINT_DISABLE
-              value: {{ weave_checkpoint_disable }}
+      template:
+        metadata:
+          labels:
+            name: weave-net
+        spec:
+          containers:
+            - name: weave
+              command:
+{% if weave_mode_seed == true %}
+                - /bin/sh
+                - -c
+                - export EXTRA_ARGS=--name=$(cat /sys/class/net/{{ ansible_default_ipv4['interface'] }}/address) && /home/weave/launch.sh
+{% else %}
+                - /home/weave/launch.sh
 {% endif %}
-{% if weave_expect_npc is defined %}
-            - name: EXPECT_NPC
-              value: {{ weave_expect_npc }}
+              env:
+                - name: HOSTNAME
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: spec.nodeName
+                - name: IPALLOC_RANGE
+                  value: {{ kube_pods_subnet }}
+{% if weave_mode_seed == true %}
+                - name: KUBE_PEERS
+                  value: {{ peers }}
+                - name: IPALLOC_INIT
+                  value: seed={{ seed }}
 {% endif %}
-{% if weave_kube_peers is defined %}
-            - name: KUBE_PEERS
-              value: {{ weave_kube_peers }}
-{% endif %}
-{% if weave_ipalloc_init is defined %}
-            - name: IPALLOC_INIT
-              value: {{ weave_ipalloc_init }}
-{% endif %}
-{% if weave_expose_ip is defined %}
-            - name: WEAVE_EXPOSE_IP
-              value: {{ weave_expose_ip }}
-{% endif %}
-          livenessProbe:
-            initialDelaySeconds: 60
-            httpGet:
-              host: 127.0.0.1
-              path: /status
-              port: 6784
+                - name: WEAVE_PASSWORD
+                  value: {{ weave_password }}
+              image: {{ weave_kube_image_repo }}:{{ weave_kube_image_tag }}
+              imagePullPolicy: Always
+              livenessProbe:
+                httpGet:
+                  host: 127.0.0.1
+                  path: /status
+                  port: 6784
+                initialDelaySeconds: 30
+              resources:
+                requests:
+                  cpu: 10m
+              securityContext:
+                privileged: true
+              volumeMounts:
+                - name: weavedb
+                  mountPath: /weavedb
+                - name: cni-bin
+                  mountPath: /host/opt
+                - name: cni-bin2
+                  mountPath: /host/home
+                - name: cni-conf
+                  mountPath: /host/etc
+                - name: dbus
+                  mountPath: /host/var/lib/dbus
+                - name: lib-modules
+                  mountPath: /lib/modules
+            - name: weave-npc
+              image: {{ weave_npc_image_repo }}:{{ weave_npc_image_tag }}
+              imagePullPolicy: Always
+              resources:
+                requests:
+                  cpu: {{ weave_cpu_requests }}
+                  memory: {{ weave_memory_requests }}
+                limits:
+                  cpu: {{ weave_cpu_limit }}
+                  memory: {{ weave_memory_limit }}
+              securityContext:
+                privileged: true
+          hostNetwork: true
+          hostPID: true
+          restartPolicy: Always
           securityContext:
-            privileged: true
-          volumeMounts:
+            seLinuxOptions: {}
+          serviceAccountName: weave-net
+          tolerations:
+            - effect: NoSchedule
+              operator: Exists
+          volumes:
             - name: weavedb
-              mountPath: /weavedb
+              hostPath:
+                path: /var/lib/weave
             - name: cni-bin
-              mountPath: /opt
+              hostPath:
+                path: /opt
             - name: cni-bin2
-              mountPath: /host_home
+              hostPath:
+                path: /home
             - name: cni-conf
-              mountPath: /etc
-          resources:
-            requests:
-              cpu: {{ weave_cpu_requests }}
-              memory: {{ weave_memory_requests }}
-            limits:
-              cpu: {{ weave_cpu_limit }}
-              memory: {{ weave_memory_limit }}
-        - name: weave-npc
-          image: {{ weave_npc_image_repo }}:{{ weave_npc_image_tag }}
-          imagePullPolicy: Always
-          resources:
-            requests:
-              cpu: {{ weave_cpu_requests }}
-              memory: {{ weave_memory_requests }}
-            limits:
-              cpu: {{ weave_cpu_limit }}
-              memory: {{ weave_memory_limit }}
-          securityContext:
-            privileged: true
-      restartPolicy: Always
-      volumes:
-        - name: weavedb
-          emptyDir: {}
-        - name: cni-bin
-          hostPath:
-            path: /opt
-        - name: cni-bin2
-          hostPath:
-            path: /home
-        - name: cni-conf
-          hostPath:
-            path: /etc
+              hostPath:
+                path: /etc
+            - name: dbus
+              hostPath:
+                path: /var/lib/dbus
+            - name: lib-modules
+              hostPath:
+                path: /lib/modules

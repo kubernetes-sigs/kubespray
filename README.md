@@ -91,7 +91,7 @@ You can choose between 4 network plugins. (default: `calico`)
 
 * [**canal**](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
 
-* [**weave**](https://github.com/weaveworks/weave): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster. <br>
+* [**weave**](docs/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster. <br>
 (Please refer to `weave` [troubleshooting documentation](http://docs.weave.works/weave/latest_release/troubleshooting.html)).
 
 The choice is defined with the variable `kube_network_plugin`. There is also an

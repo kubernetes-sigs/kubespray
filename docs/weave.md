@@ -5,6 +5,8 @@ Weave 2.0.1 is supported by kubespray
 
 Weave uses [**consensus**](https://www.weave.works/docs/net/latest/ipam/#initialization) mode (default mode) and [**seed**](https://www.weave.works/docs/net/latest/ipam/#initialization) mode.
 
+`Consensus` mode is best to use on static size cluster and `seed` mode is best to use on dynamic size cluster
+
 Weave encryption is supported for all communication
 
 * To use Weave encryption, specify a strong password (if no password, no encrytion)

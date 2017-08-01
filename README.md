@@ -55,7 +55,7 @@ Versions of supported components
 
 [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.6.7 <br>
 [etcd](https://github.com/coreos/etcd/releases) v3.0.17 <br>
-[flanneld](https://github.com/coreos/flannel/releases) v0.6.2 <br>
+[flanneld](https://github.com/coreos/flannel/releases) v0.8.0 <br>
 [calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.23.0 <br>
 [canal](https://github.com/projectcalico/canal) (given calico/flannel versions) <br>
 [weave](http://weave.works/) v1.8.2 <br>

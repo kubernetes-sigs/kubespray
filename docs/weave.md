@@ -29,7 +29,7 @@ kubectl -n kube-system get pods | grep weave
 weave-net-50wd2                       2/2       Running   0          2m
 weave-net-js9rb                       2/2       Running   0          2m
 ```
-There must be as many pods as nodes (here kubernetes have 2 nodes so there are 2 pods weave).
+There must be as many pods as nodes (here kubernetes have 2 nodes so there are 2 weave pods).
 
 * Check status of weave (connection,encryption ...) for each node
 

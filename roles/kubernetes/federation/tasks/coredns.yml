@@ -1,0 +1,29 @@
+- name: Federation | coredns | Create coredns config
+  template:
+    src: federation-coredns.conf.j2
+    dest: "{{ kube_config_dir }}/federation-coredns.conf"
+  tags: coredns
+
+- name: Federation | coredns | Lay Down coredns Template
+  template:
+    src: "{{item.file}}"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {name: coredns-etcd, file: etcd-pod.yml.j2, type: pod}
+    - {name: coredns-etcd, file: etcd-svc.yml.j2, type: svc}
+    - {name: coredns, file: coredns-deploy.yml.j2, type: deployment}
+    - {name: coredns, file: coredns-svc.yml.j2, type: svc}
+  register: manifests
+  tags: coredns
+
+- name: Federation | coredns | Start Resources
+  kube:
+    name: "{{item.item.name}}"
+    namespace: "{{ system_namespace }}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: "{{ manifests.results }}"
+  tags: coredns
+

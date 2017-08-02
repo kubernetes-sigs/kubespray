@@ -161,3 +161,11 @@ Cloud providers configuration
 =============================
 
 Please refer to the official documentation, for example [GCE configuration](http://docs.projectcalico.org/v1.5/getting-started/docker/installation/gce) requires a security rule for calico ip-ip tunnels. Note, calico is always configured with ``ipip: true`` if the cloud provider was defined.
+
+##### Optional : Ignore kernel's RPF check setting
+
+By default the felix agent(calico-node) will abort if the Kernel RPF setting is not 'strict'. If you want Calico to ignore the Kernel setting:
+
+```
+calico_node_ignorelooserpf: true
+```

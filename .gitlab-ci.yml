@@ -62,6 +62,7 @@ before_script:
   KUBELET_DEPLOYMENT: "docker"
   VAULT_DEPLOYMENT: "docker"
   WEAVE_CPU_LIMIT: "100m"
+  AUTHORIZATION_MODES: "{ 'authorization_modes': [] }"
   MAGIC: "ci check this"
 
 .gce: &gce
@@ -132,6 +133,7 @@ before_script:
       -e local_release_dir=${PWD}/downloads
       -e resolvconf_mode=${RESOLVCONF_MODE}
       -e vault_deployment_type=${VAULT_DEPLOYMENT}
+      -e "${AUTHORIZATION_MODES}"
       --limit "all:!fake_hosts"
       cluster.yml
 
@@ -160,6 +162,7 @@ before_script:
       -e resolvconf_mode=${RESOLVCONF_MODE}
       -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
       -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
+      -e "${AUTHORIZATION_MODES}"
       --limit "all:!fake_hosts"
       $PLAYBOOK;
       fi
@@ -190,6 +193,7 @@ before_script:
       -e etcd_deployment_type=${ETCD_DEPLOYMENT}
       -e kubedns_min_replicas=1
       -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      -e "${AUTHORIZATION_MODES}"
       --limit "all:!fake_hosts"
       cluster.yml;
       fi
@@ -232,6 +236,7 @@ before_script:
       -e etcd_deployment_type=${ETCD_DEPLOYMENT}
       -e kubedns_min_replicas=1
       -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      -e "${AUTHORIZATION_MODES}"
       --limit "all:!fake_hosts"
       cluster.yml;
       fi
@@ -370,6 +375,15 @@ before_script:
   CERT_MGMT: vault
   CLOUD_IMAGE: ubuntu-1604-xenial
   CLOUD_REGION: us-central1-b
+  CLUSTER_MODE: separate
+  STARTUP_SCRIPT: ""
+
+.ubuntu_flannel_rbac_variables: &ubuntu_flannel_rbac_variables
+# stage: deploy-gce-special
+  AUTHORIZATION_MODES: "{ 'authorization_modes':  [ 'RBAC' ] }"
+  KUBE_NETWORK_PLUGIN: flannel
+  CLOUD_IMAGE: ubuntu-1604-xenial
+  CLOUD_REGION: europe-west1-b
   CLUSTER_MODE: separate
   STARTUP_SCRIPT: ""
 
@@ -594,6 +608,17 @@ ubuntu-vault-sep:
   variables:
     <<: *gce_variables
     <<: *ubuntu_vault_sep_variables
+  when: manual
+  except: ['triggers']
+  only: ['master', /^pr-.*$/]
+
+ubuntu-flannel-rbac-sep:
+  stage: deploy-gce-special
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    <<: *ubuntu_flannel_rbac_variables
   when: manual
   except: ['triggers']
   only: ['master', /^pr-.*$/]

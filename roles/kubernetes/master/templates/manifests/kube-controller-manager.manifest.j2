@@ -24,7 +24,7 @@ spec:
     command:
     - /hyperkube
     - controller-manager
-    - --master={{ kube_apiserver_endpoint }}
+    - --kubeconfig={{ kube_config_dir }}/kube-controller-manager-kubeconfig.yaml
     - --leader-elect=true
     - --service-account-private-key-file={{ kube_cert_dir }}/apiserver-key.pem
     - --root-ca-file={{ kube_cert_dir }}/ca.pem
@@ -35,6 +35,9 @@ spec:
     - --node-monitor-period={{ kube_controller_node_monitor_period }}
     - --pod-eviction-timeout={{ kube_controller_pod_eviction_timeout }}
     - --v={{ kube_log_level }}
+{% if rbac_enabled %}
+    - --use-service-account-credentials
+{% endif %}
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"] %}
     - --cloud-provider={{cloud_provider}}
     - --cloud-config={{ kube_config_dir }}/cloud_config
@@ -61,20 +64,36 @@ spec:
       initialDelaySeconds: 30
       timeoutSeconds: 10
     volumeMounts:
-    - mountPath: {{ kube_cert_dir }}
-      name: ssl-certs-kubernetes
+    - mountPath: /etc/ssl/certs
+      name: ssl-certs-host
+      readOnly: true
+    - mountPath: "{{kube_config_dir}}/ssl"
+      name: etc-kube-ssl
+      readOnly: true
+    - mountPath: "{{ kube_config_dir }}/kube-controller-manager-kubeconfig.yaml"
+      name: kubeconfig
       readOnly: true
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere" ] %}
-    - mountPath: {{ kube_config_dir }}/cloud_config
+    - mountPath: "{{ kube_config_dir }}/cloud_config"
       name: cloudconfig
       readOnly: true
 {% endif %}
   volumes:
-  - hostPath:
-      path: {{ kube_cert_dir }}
-    name: ssl-certs-kubernetes
+  - name: ssl-certs-host
+    hostPath:
+{% if ansible_os_family == 'RedHat' %}
+      path: /etc/pki/tls
+{% else %}
+      path: /usr/share/ca-certificates
+{% endif %}
+  - name: etc-kube-ssl
+    hostPath:
+      path: "{{ kube_config_dir }}/ssl"
+  - name: kubeconfig
+    hostPath:
+      path: "{{ kube_config_dir }}/kube-controller-manager-kubeconfig.yaml"
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"] %}
   - hostPath:
-      path: {{ kube_config_dir }}/cloud_config
+      path: "{{ kube_config_dir }}/cloud_config"
     name: cloudconfig
 {% endif %}

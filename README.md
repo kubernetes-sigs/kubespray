@@ -83,7 +83,8 @@ in order to avoid any issue during deployment you should disable your firewall.
 
 
 ## Network plugins
-You can choose between 4 network plugins. (default: `calico`)
+
+You can choose between 4 network plugins. (default: `calico`, except Vagrant uses `flannel`)
 
 * [**flannel**](docs/flannel.md): gre/vxlan (layer 2) networking.
 

@@ -15,8 +15,8 @@ Kubespray vs [Kubeadm](https://github.com/kubernetes/kubeadm)
 
 Kubeadm provides domain Knowledge of Kubernetes clusters' life cycle
 management, including self-hosted layouts, dynamic discovery services and so
-on. Had it belong to the new [operators world](https://coreos.com/blog/introducing-operators.html),
-it would've likely been named a "Kubernetes cluster operator". Kubespray however,
+on. Had it belonged to the new [operators world](https://coreos.com/blog/introducing-operators.html),
+it may have been named a "Kubernetes cluster operator". Kubespray however,
 does generic configuration management tasks from the "OS operators" ansible
 world, plus some initial K8s clustering (with networking plugins included) and
 control plane bootstrapping. Kubespray [strives](https://github.com/kubernetes-incubator/kubespray/issues/553)

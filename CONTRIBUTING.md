@@ -1,5 +1,5 @@
 # Contributing guidelines
-
+TEST PATCH
 ## How to become a contributor and submit your own code
 
 ### Contributing A Patch

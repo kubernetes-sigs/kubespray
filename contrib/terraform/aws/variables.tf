@@ -22,7 +22,6 @@ variable "aws_cluster_name" {
 
 
 //AWS VPC Variables
-
 variable "aws_vpc_cidr_block" {
   description = "CIDR Block for VPC"
 }
@@ -50,6 +49,9 @@ variable "aws_bastion_ami" {
 
 variable "aws_bastion_size" {
     description = "EC2 Instance Size of Bastion Host"
+}
+variable "aws_bastion_ssh_user" {
+    description = "Default SSH username for Bastion Host, depends on selected AMI"
 }
 
 /*
@@ -84,6 +86,11 @@ variable "aws_kube_worker_size" {
 variable "aws_cluster_ami" {
     description = "AMI ID for Kubernetes Cluster"
 }
+
+variable "aws_cluster_ssh_user" {
+    description = "Default SSH username for Kubernetes Cluster, depends on selected AMI"
+}
+
 /*
 * AWS ELB Settings
 *

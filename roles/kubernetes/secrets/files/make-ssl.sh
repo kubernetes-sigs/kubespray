@@ -80,7 +80,9 @@ gen_key_and_cert() {
     openssl x509 -req -in ${name}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${name}.pem -days 3650 -extensions v3_req -extfile ${CONFIG} > /dev/null 2>&1
 }
 
-if [ ! -e "$SSLDIR/ca-key.pem" ]; then
+# Admins
+if [ -n "$MASTERS" ]; then
+    # If any host requires new certs, just regenerate all master certs
     # kube-apiserver
     gen_key_and_cert "apiserver" "/CN=kube-apiserver"
     cat ca.pem >> apiserver.pem
@@ -88,10 +90,7 @@ if [ ! -e "$SSLDIR/ca-key.pem" ]; then
     gen_key_and_cert "kube-scheduler" "/CN=system:kube-scheduler"
     # kube-controller-manager
     gen_key_and_cert "kube-controller-manager" "/CN=system:kube-controller-manager"
-fi
 
-# Admins
-if [ -n "$MASTERS" ]; then
     for host in $MASTERS; do
         cn="${host%%.*}"
         # admin

@@ -5,11 +5,12 @@
 Name:           ansible-kubespray
 Version:        XXX
 Release:        XXX
-Summary:        Ansible modules for installing Kubernetes clusters
+Summary:        Ansible modules for installing Kubernetes
 
-Group:          System Environment/Base
+Group:          System Environment/Libraries
 License:        ASL 2.0
-URL:            https://github.com/kubernetes-incubator/kubespray
+Vendor:         Kubespray <smainklh@gmail.com>
+Url:            https://github.com/kubernetes-incubator/kubespray
 Source0:        https://github.com/kubernetes-incubator/kubespray/archive/%{upstream_version}.tar.gz
 
 BuildArch:      noarch
@@ -25,8 +26,9 @@ Requires: python-netaddr
 
 %description
 
-Ansible-kubespray is a set of Ansible modules and playbooks for installing
-a Kubernetes cluster.
+Ansible-kubespray is a set of Ansible modules and playbooks for
+installing a Kubernetes cluster. If you have questions, join us
+on the https://slack.k8s.io, channel '#kubespray'.
 
 %prep
 %autosetup -n %{name}-%{upstream_version} -S git
@@ -52,6 +54,7 @@ export SKIP_PIP_INSTALL=1
 %{python2_sitelib}/%{srcname}-%{version}-py%{python2_version}.egg-info
 /usr/local/share/kubespray/roles/
 /usr/local/share/kubespray/playbooks/
+%defattr(-,root,root)
 
 
 %changelog

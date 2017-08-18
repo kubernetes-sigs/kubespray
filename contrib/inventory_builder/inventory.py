@@ -41,7 +41,7 @@ import re
 import sys
 
 ROLES = ['all', 'kube-master', 'kube-node', 'etcd', 'k8s-cluster:children',
-         'calico-rr']
+         'calico-rr', 'vault']
 PROTECTED_NAMES = ROLES
 AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'load']
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
@@ -250,6 +250,7 @@ class KubesprayInventory(object):
     def set_etcd(self, hosts):
         for host in hosts:
             self.add_host_to_group('etcd', host)
+            self.add_host_to_group('vault', host)
 
     def load_file(self, files=None):
         '''Directly loads JSON, or YAML file to inventory.'''

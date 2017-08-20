@@ -9,7 +9,7 @@ if [ "$AZURE_RESOURCE_GROUP" == "" ]; then
     exit 1
 fi
 
-if [ $(az &>/dev/null) ] ; then
+if az &>/dev/null; then
     echo "azure cli 2.0 found, using it instead of 1.0"
     ./clear-rg_2.sh "$AZURE_RESOURCE_GROUP"
 else

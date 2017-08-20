@@ -89,14 +89,44 @@
     - inventory_hostname in groups['k8s-cluster']
   tags: [network, calico, weave, canal, bootstrap-os]
 
-- name: Update package management cache (YUM)
-  yum:
-    update_cache: yes
-    name: '*'
-  register: yum_task_result
-  until: yum_task_result|succeeded
+- name: Install epel-release on non-YUM RedHat/CentOS
+  shell: rpm -qa | grep epel-release || rpm -ivh {{ epel_rpm_download_url }}
+  environment:
+    http_proxy: "{{http_proxy|default('')}}"
+    https_proxy: "{{https_proxy|default('')}}"
+    no_proxy: "{{no_proxy|default('')}}"
+  when:
+    - ansible_distribution in ["CentOS","RedHat"]
+    - ansible_pkg_mgr != 'yum'
+    - not is_atomic
+  register: epel_task_result
+  until: epel_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: False
+  check_mode: no
+  tags: bootstrap-os
+
+- block:
+  - name: Install and enable epel-release for YUM
+    yum_repository:
+      name: epel
+      description: YUM EPEL repo
+      baseurl: https://download.fedoraproject.org/pub/epel/$releasever/$basearch/
+      gpgkey: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-$releasever
+      enabled: yes
+  - name: yum-clean-metadata
+    command: yum clean metadata
+    args:
+      warn: no
+  - name: Update package management cache (YUM)
+    yum:
+      update_cache: yes
+      name: '*'
+    register: yum_task_result
+    until: yum_task_result|succeeded
+    retries: 4
+    delay: "{{ retry_stagger | random + 3 }}"
   when:
     - ansible_pkg_mgr == 'yum'
     - not is_atomic
@@ -121,19 +151,6 @@
     - ansible_distribution == "Fedora"
     - ansible_distribution_major_version > 21
   changed_when: False
-  tags: bootstrap-os
-
-- name: Install epel-release on RedHat/CentOS
-  shell: rpm -qa | grep epel-release || rpm -ivh {{ epel_rpm_download_url }}
-  when:
-    - ansible_distribution in ["CentOS","RedHat"]
-    - not is_atomic
-  register: epel_task_result
-  until: epel_task_result|succeeded
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: False
-  check_mode: no
   tags: bootstrap-os
 
 - name: Install packages requirements

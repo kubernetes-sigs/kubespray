@@ -98,6 +98,11 @@ Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-st
   ``--insecure-registry=myregistry.mydomain:5000``
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy
+* *kubelet_deployment_type* - Controls which platform to deploy kubelet on. 
+  Available options are ``host``, ``rkt``, and ``docker``. ``docker`` mode
+  is unlikely to work on newer releases. Starting with Kubernetes v1.7 
+  series, this now defaults to ``host``. Before v1.7, the default was Docker.
+  This is because of cgroup [issues](https://github.com/kubernetes/kubernetes/issues/43704).
 * *kubelet_load_modules* - For some things, kubelet needs to load kernel modules.  For example,
   dynamic kernel services are needed for mounting persistent volumes into containers.  These may not be
   loaded by preinstall kubernetes processes.  For example, ceph and rbd backed volumes.  Set this variable to

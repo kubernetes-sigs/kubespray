@@ -36,7 +36,13 @@ KUBELET_HOSTNAME="--hostname-override={{ kube_override_hostname }}"
 {% set kubelet_args_kubeconfig %}--kubeconfig={{ kube_config_dir}}/node-kubeconfig.yaml --require-kubeconfig{% endset %}
 {% if standalone_kubelet|bool %}
 {# We are on a master-only host. Make the master unschedulable in this case. #}
+{% if kube_version | version_compare('v1.6', '>=') %}
+{# Set taints on the master so that it's unschedulable by default. Use node-role.kubernetes.io/master taint like kubeadm. #}
+{% set kubelet_args_kubeconfig %}{{ kubelet_args_kubeconfig }} --register-with-taints=node-role.kubernetes.io/master=:NoSchedule{% endset %}
+{% else %}
+{# --register-with-taints was added in 1.6 so just register unschedulable if Kubernetes < 1.6 #}
 {% set kubelet_args_kubeconfig %}{{ kubelet_args_kubeconfig }} --register-schedulable=false{% endset %}
+{% endif %}
 {% endif %}
 
 {# Kubelet node labels #}

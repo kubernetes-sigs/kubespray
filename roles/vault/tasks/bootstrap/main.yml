@@ -14,6 +14,9 @@
 - include: sync_vault_certs.yml
   when: inventory_hostname in groups.vault
 
+- include: sync_etcd_certs.yml
+  when: inventory_hostname in groups.etcd
+
 ## Generate Certs
 
 # Start a temporary instance of Vault
@@ -30,22 +33,22 @@
 
 # NOTE: The next 2 steps run against temp Vault and long-term Vault
 
-# Ensure PKI mount exists
-- include: ../shared/pki_mount.yml
-  when: >-
-        inventory_hostname == groups.vault|first
-
-# If the Root CA already exists, ensure Vault's PKI is using it
-- include: ../shared/config_ca.yml
+# Ensure PKI mounts exists
+- include: ../shared/create_mount.yml
   vars:
-    ca_name: ca
-    mount_name: pki
-  when: >-
-        inventory_hostname == groups.vault|first and
-        not vault_ca_cert_needed
+    create_mount_path: "{{ vault_ca_options.common_name }}"
+    create_mount_default_lease_ttl: "{{ vault_default_lease_ttl }}"
+    create_mount_max_lease_ttl: "{{ vault_max_lease_ttl }}"
+    create_mount_description: "Vault Root CA"
+    create_mount_cert_dir: "{{ vault_cert_dir }}"
+    create_mount_config_ca_needed: "{{ not vault_ca_cert_needed }}"
+  when: inventory_hostname == groups.vault|first
 
 # Generate root CA certs for Vault if none exist
-- include: gen_ca.yml
+- include: ../shared/gen_ca.yml
+  vars:
+    gen_ca_cert_dir: "{{ vault_cert_dir }}"
+    gen_ca_mount_path: "{{ vault_ca_options.common_name }}"
   when: >-
         inventory_hostname in groups.vault and
         not vault_cluster_is_initialized and
@@ -55,13 +58,25 @@
 - include: gen_vault_certs.yml
   when: inventory_hostname in groups.vault and vault_api_cert_needed
 
-# Update all host's CA bundle
+- include: ../shared/create_mount.yml
+  vars:
+    create_mount_path: "{{ vault_etcd_mount_path }}"
+    create_mount_default_lease_ttl: "{{ vault_etcd_default_lease_ttl }}"
+    create_mount_max_lease_ttl: "{{ vault_etcd_max_lease_ttl }}"
+    create_mount_description: "Etcd Root CA"
+    create_mount_cert_dir: "{{ vault_etcd_cert_dir }}"
+    create_mount_config_ca_needed: "{{ not vault_etcd_ca_cert_needed }}"
+  when: inventory_hostname == groups.vault|first
+
+# Generate root CA certs for etcd if none exist
+- include: ../shared/gen_ca.yml
+  vars:
+    gen_ca_cert_dir: "{{ vault_etcd_cert_dir }}"
+    gen_ca_mount_path: "{{ vault_etcd_mount_path }}"
+  when: inventory_hostname in groups.etcd and vault_etcd_ca_cert_needed
+
+- include: create_etcd_role.yml
+  when: inventory_hostname in groups.etcd
+
+# Update all host's CA bundle, etcd CA will be added in etcd role
 - include: ca_trust.yml
-
-## Add Etcd Role to Vault (if needed)
-
-- include: role_auth_cert.yml
-  when: vault_role_auth_method == "cert"
-
-- include: role_auth_userpass.yml
-  when: vault_role_auth_method == "userpass"

@@ -25,19 +25,42 @@
 - include: ../shared/find_leader.yml
   when: inventory_hostname in groups.vault
 
-- include: ../shared/pki_mount.yml
+- include: ../shared/create_mount.yml
+  vars:
+    create_mount_path: "{{ vault_ca_options.common_name }}"
+    create_mount_default_lease_ttl: "{{ vault_default_lease_ttl }}"
+    create_mount_max_lease_ttl: "{{ vault_max_lease_ttl }}"
+    create_mount_description: "Vault Root CA"
+    create_mount_cert_dir: "{{ vault_cert_dir }}"
+    create_mount_config_ca_needed: true
   when: inventory_hostname == groups.vault|first
 
-- include: ../shared/config_ca.yml
+- include: ../shared/create_mount.yml
   vars:
-    ca_name: ca
-    mount_name: pki
+    create_mount_path: "{{ vault_etcd_mount_path }}"
+    create_mount_default_lease_ttl: "{{ vault_etcd_default_lease_ttl }}"
+    create_mount_max_lease_ttl: "{{ vault_etcd_max_lease_ttl }}"
+    create_mount_description: "Etcd Root CA"
+    create_mount_cert_dir: "{{ vault_etcd_cert_dir }}"
+    create_mount_config_ca_needed: true
   when: inventory_hostname == groups.vault|first
+
+- include: ../shared/create_mount.yml
+  vars:
+    create_mount_path: "{{ vault_kube_mount_path }}"
+    create_mount_default_lease_ttl: "{{ vault_kube_default_lease_ttl }}"
+    create_mount_max_lease_ttl: "{{ vault_kube_max_lease_ttl }}"
+    create_mount_description: "Kubernetes Root CA"
+    create_mount_cert_dir: "{{ vault_kube_cert_dir }}"
+    create_mount_config_ca_needed: false
+  when: inventory_hostname == groups.vault|first
+
+- include: ../shared/gen_ca.yml
+  vars:
+    gen_ca_cert_dir: "{{ vault_kube_cert_dir }}"
+    gen_ca_mount_path: "{{ vault_kube_mount_path }}"
+  when: inventory_hostname in groups['k8s-cluster']
 
 ## Vault Policies, Roles, and Auth Backends
 
-- include: role_auth_cert.yml
-  when: vault_role_auth_method == "cert"
-
-- include: role_auth_userpass.yml
-  when: vault_role_auth_method == "userpass"
+- include: create_roles.yml

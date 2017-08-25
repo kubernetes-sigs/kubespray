@@ -23,13 +23,6 @@ ip a show dev flannel.1
        valid_lft forever preferred_lft forever
 ```
 
-* Docker must be configured with a bridge ip in the flannel subnet.
-
-```
-ps aux | grep docker
-root     20196  1.7  2.7 1260616 56840 ?       Ssl  10:18   0:07 /usr/bin/docker daemon --bip=10.233.16.1/24 --mtu=1450
-```
-
 * Try to run a container and check its ip address
 
 ```

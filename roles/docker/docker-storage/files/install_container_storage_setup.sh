@@ -17,4 +17,6 @@ rm -rf /var/lib/container-storage-setup/$profile_name $dir
 set +e
 
 /usr/bin/container-storage-setup create $profile_name /etc/sysconfig/docker-storage-setup && /usr/bin/container-storage-setup activate $profile_name
+# FIXME: exit status can be 1 for both fatal and non fatal errors in current release, 
+# could be improved by matching error strings 
 exit 0

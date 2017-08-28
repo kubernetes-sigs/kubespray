@@ -55,14 +55,13 @@ KUBELET_HOSTNAME="--hostname-override={{ kube_override_hostname }}"
 {%   set node_labels %}--node-labels=node-role.kubernetes.io/node=true{% endset %}
 {% endif %}
 
-KUBELET_ARGS="{{ kubelet_args_base }} {{ kubelet_args_dns }} {{ kubelet_args_kubeconfig }} {{ node_labels }} {% if kubelet_custom_flags is string %} {{kubelet_custom_flags}} {% else %}{% for flag in kubelet_custom_flags %} {{flag}} {% endfor %}{% endif %}"
-{% if kube_network_plugin is defined and kube_network_plugin in ["calico", "weave", "canal"] %}
+KUBELET_ARGS="{{ kubelet_args_base }} {{ kubelet_args_dns }} {{ kubelet_args_kubeconfig }} {{ node_labels }} {% if kube_feature_gates %} --feature-gates={{ kube_feature_gates|join(',') }} {% endif %} {% if kubelet_custom_flags is string %} {{kubelet_custom_flags}} {% else %}{% for flag in kubelet_custom_flags %} {{flag}} {% endfor %}{% endif %}"
+{% if kube_network_plugin is defined and kube_network_plugin in ["calico", "canal", "flannel", "weave"] %}
 KUBELET_NETWORK_PLUGIN="--network-plugin=cni --network-plugin-dir=/etc/cni/net.d --cni-bin-dir=/opt/cni/bin"
 {% elif kube_network_plugin is defined and kube_network_plugin == "weave" %}
 DOCKER_SOCKET="--docker-endpoint=unix:/var/run/weave/weave.sock"
 {% elif kube_network_plugin is defined and kube_network_plugin == "cloud" %}
-# Please note that --reconcile-cidr is deprecated and a no-op in Kubernetes 1.5 but still required in 1.4
-KUBELET_NETWORK_PLUGIN="--hairpin-mode=promiscuous-bridge --network-plugin=kubenet --reconcile-cidr=true"
+KUBELET_NETWORK_PLUGIN="--hairpin-mode=promiscuous-bridge --network-plugin=kubenet"
 {% endif %}
 # Should this cluster be allowed to run privileged docker containers
 KUBE_ALLOW_PRIV="--allow-privileged=true"

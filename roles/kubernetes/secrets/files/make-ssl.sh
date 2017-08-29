@@ -82,10 +82,13 @@ gen_key_and_cert() {
 
 # Admins
 if [ -n "$MASTERS" ]; then
-    # If any host requires new certs, just regenerate all master certs
     # kube-apiserver
-    gen_key_and_cert "apiserver" "/CN=kube-apiserver"
-    cat ca.pem >> apiserver.pem
+    # Generate only if we don't have existing ca and apiserver certs
+    if ! [ -e "$SSLDIR/ca-key.pem" ] || ! [ -e "$SSLDIR/apiserver-key.pem" ]; then
+      gen_key_and_cert "apiserver" "/CN=kube-apiserver"
+      cat ca.pem >> apiserver.pem
+    fi
+    # If any host requires new certs, just regenerate scheduler and controller-manager master certs
     # kube-scheduler
     gen_key_and_cert "kube-scheduler" "/CN=system:kube-scheduler"
     # kube-controller-manager

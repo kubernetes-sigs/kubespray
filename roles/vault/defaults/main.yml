@@ -8,10 +8,11 @@ vault_adduser_vars:
   system: yes
 vault_base_dir: /etc/vault
 # https://releases.hashicorp.com/vault/0.6.4/vault_0.6.4_SHA256SUMS
+vault_version: 0.6.4
 vault_binary_checksum: 04d87dd553aed59f3fe316222217a8d8777f40115a115dac4d88fac1611c51a6
 vault_bootstrap: false
 vault_ca_options:
-  common_name: kube-cluster-ca
+  common_name: vault
   format: pem
   ttl: 87600h
 vault_cert_dir: "{{ vault_base_dir }}/ssl"
@@ -24,7 +25,7 @@ vault_config:
       address: "{{ vault_etcd_url }}"
       ha_enabled: "true"
       redirect_addr: "https://{{ ansible_default_ipv4.address }}:{{ vault_port }}"
-      tls_ca_file: "{{ vault_cert_dir }}/ca.pem"
+      tls_ca_file: "{{ vault_etcd_cert_dir }}/ca.pem"
   cluster_name: "kubernetes-vault"
   default_lease_ttl: "{{ vault_default_lease_ttl }}"
   listener:
@@ -61,18 +62,6 @@ vault_log_dir: "/var/log/vault"
 vault_max_lease_ttl: 87600h
 vault_needs_gen: false
 vault_port: 8200
-# Although "cert" is an option, ansible has no way to auth via cert until
-# upstream merges: https://github.com/ansible/ansible/pull/18141
-vault_role_auth_method: userpass
-vault_roles:
-  - name: etcd
-    group: etcd
-    policy_rules: default
-    role_options: default
-  - name: kube
-    group: k8s-cluster
-    policy_rules: default
-    role_options: default
 vault_roles_dir: "{{ vault_base_dir }}/roles"
 vault_secret_shares: 1
 vault_secret_threshold: 1
@@ -88,4 +77,25 @@ vault_temp_config:
       tls_disable: "true"
   max_lease_ttl: "{{ vault_max_lease_ttl }}"
 vault_temp_container_name: vault-temp
-vault_version: 0.6.4
+# etcd pki mount options
+vault_etcd_cert_dir: /etc/ssl/etcd/ssl
+vault_etcd_mount_path: etcd
+vault_etcd_default_lease_ttl: 720h
+vault_etcd_max_lease_ttl: 87600h
+vault_etcd_role:
+  name: etcd
+  group: etcd
+  policy_rules: default
+  role_options: default
+  mount_path: "{{ vault_etcd_mount_path }}"
+# kubernetes pki mount options
+vault_kube_cert_dir: "{{ kube_cert_dir }}"
+vault_kube_mount_path: kube
+vault_kube_default_lease_ttl: 720h
+vault_kube_max_lease_ttl: 87600h
+vault_kube_role:
+  name: kube
+  group: k8s-cluster
+  policy_rules: default
+  role_options: default
+  mount_path: "{{ vault_kube_mount_path }}"

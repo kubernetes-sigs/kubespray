@@ -11,7 +11,6 @@
 #   issue_cert_file_mode:   Mode of the placed cert file
 #   issue_cert_file_owner:  Owner of the placed cert file and directory
 #   issue_cert_format:      Format for returned data. Can be pem, der, or pem_bundle
-#   issue_cert_headers:     Headers passed into the issue request
 #   issue_cert_hosts:       List of hosts to distribute the cert to
 #   issue_cert_ip_sans:     Requested IP Subject Alternative Names, in a list
 #   issue_cert_mount_path:  Mount point in Vault to make the request to
@@ -27,7 +26,47 @@
     mode: "{{ issue_cert_dir_mode | d('0755') }}"
     owner: "{{ issue_cert_file_owner | d('root') }}"
 
-- name: "issue_cert | Generate the cert for {{ issue_cert_role }}"
+- name: "issue_cert | Read in the local credentials"
+  command: cat {{ vault_roles_dir }}/{{ issue_cert_role }}/userpass
+  register: vault_creds_cat
+  delegate_to: "{{ issue_cert_hosts|first }}"
+  run_once: true
+
+- name: gen_certs_vault | Set facts for read Vault Creds
+  set_fact:
+    user_vault_creds: "{{ vault_creds_cat.stdout|from_json }}"
+  delegate_to: "{{ issue_cert_hosts|first }}"
+  run_once: true
+
+- name: gen_certs_vault | Log into Vault and obtain an token
+  uri:
+    url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}/v1/auth/userpass/login/{{ user_vault_creds.username }}"
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+    method: POST
+    body_format: json
+    body:
+      password: "{{ user_vault_creds.password }}"
+  register: vault_login_result
+  delegate_to: "{{ issue_cert_hosts|first }}"
+  run_once: true
+
+- name: gen_certs_vault | Set fact for vault_client_token
+  set_fact:
+    vault_client_token: "{{ vault_login_result.get('json', {}).get('auth', {}).get('client_token') }}"
+  run_once: true
+
+- name: gen_certs_vault | Set fact for Vault API token
+  set_fact:
+    issue_cert_headers:
+      Accept: application/json
+      Content-Type: application/json
+      X-Vault-Token: "{{ vault_client_token }}"
+  run_once: true
+  when: vault_client_token != ""
+
+- name: "issue_cert | Generate {{ issue_cert_path }} for {{ issue_cert_role }} role"
   uri:
     url: "{{ issue_cert_url }}/v1/{{ issue_cert_mount_path|d('pki') }}/issue/{{ issue_cert_role }}"
     headers: "{{ issue_cert_headers }}"
@@ -70,7 +109,7 @@
 - name: issue_cert | Copy certificate serial to all hosts
   copy:
     content: "{{ hostvars[issue_cert_hosts|first]['issue_cert_result']['json']['data']['serial_number'] }}"
-    dest: "{{ issue_cert_path.rsplit('.', 1)|first }}.serial }}"
+    dest: "{{ issue_cert_path.rsplit('.', 1)|first }}.serial"
     group: "{{ issue_cert_file_group | d('root' )}}"
     mode: "{{ issue_cert_file_mode | d('0640') }}"
     owner: "{{ issue_cert_file_owner | d('root') }}"

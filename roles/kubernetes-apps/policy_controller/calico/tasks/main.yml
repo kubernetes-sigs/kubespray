@@ -4,19 +4,27 @@
   when: kube_network_plugin == 'canal'
   tags: [facts, canal]
 
-- name: Write calico-policy-controller yaml
+- name: Create calico-policy-controller manifests
   template:
-    src: calico-policy-controller.yml.j2
-    dest: "{{kube_config_dir}}/calico-policy-controller.yml"
-  when: inventory_hostname == groups['kube-master'][0]
-  tags: canal
+    src: "{{item.file}}.j2"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {name: calico-policy-controller, file: calico-policy-controller.yml, type: rs}
+    - {name: calico-policy-controller, file: calico-policy-sa.yml, type: sa}
+    - {name: calico-policy-controller, file: calico-policy-cr.yml, type: clusterrole}
+    - {name: calico-policy-controller, file: calico-policy-crb.yml, type: clusterrolebinding}
+  register: calico_policy_manifests
+  when:
+    - rbac_enabled or item.type not in rbac_resources
 
 - name: Start of Calico policy controller
   kube:
-    name: "calico-policy-controller"
+    name: "{{item.item.name}}"
+    namespace: "{{ system_namespace }}"
     kubectl: "{{bin_dir}}/kubectl"
-    filename: "{{kube_config_dir}}/calico-policy-controller.yml"
-    namespace: "{{system_namespace}}"
-    resource: "rs"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: "{{item.changed | ternary('latest','present') }}"
+  with_items: "{{ calico_policy_manifests.results }}"
+  failed_when: calico_policy_manifests|failed and "Error from server (AlreadyExists)" not in calico_policy_manifests.msg
   when: inventory_hostname == groups['kube-master'][0]
-  tags: canal

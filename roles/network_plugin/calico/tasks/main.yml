@@ -1,9 +1,10 @@
 ---
-- name: Calico | Check calicoctl version
-  run_once: true
-  set_fact:
-    legacy_calicoctl: "{{ calicoctl_image_tag | version_compare('v1.0.0', '<') }}"
-  tags: facts
+- name: Calico | Disable calico-node service if it exists
+  service:
+    name: calico-node
+    state: stopped
+    enabled: yes
+  failed_when: false
 
 - name: Calico | Write Calico cni config
   template:
@@ -38,7 +39,6 @@
     owner: root
     group: root
   changed_when: false
-  notify: restart calico-node
 
 - name: Calico | Copy cni plugins from hyperkube
   command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/rsync -ac /opt/cni/bin/ /cnibindir/"
@@ -103,38 +103,7 @@
   environment:
     NO_DEFAULT_POOLS: true
   run_once: true
-  when: not legacy_calicoctl and
-         ("Key not found" in calico_conf.stdout or "nodes" not in calico_conf.stdout)
-
-- name: Calico (old) | Define ipip pool argument
-  run_once: true
-  set_fact:
-    ipip_arg: "--ipip"
-  when: (legacy_calicoctl and ipip )
-  tags: facts
-
-- name: Calico (old) | Define nat-outgoing pool argument
-  run_once: true
-  set_fact:
-    nat_arg: "--nat-outgoing"
-  when: (legacy_calicoctl and
-         nat_outgoing|default(false) and not peer_with_router|default(false))
-  tags: facts
-
-- name: Calico (old) | Define calico pool task name
-  run_once: true
-  set_fact:
-    pool_task_name: "with options {{ ipip_arg|default('') }} {{ nat_arg|default('') }}"
-  when: (legacy_calicoctl and ipip_arg|default(false) or nat_arg|default(false))
-  tags: facts
-
-- name: Calico (old) | Configure calico network pool {{ pool_task_name|default('') }}
-  command: "{{ bin_dir}}/calicoctl pool add {{ kube_pods_subnet }} {{ ipip_arg|default('') }} {{ nat_arg|default('') }}"
-  environment:
-    NO_DEFAULT_POOLS: true
-  run_once: true
-  when: legacy_calicoctl and
-         ("Key not found" in calico_conf.stdout or "nodes" not in calico_conf.stdout)
+  when: ("Key not found" in calico_conf.stdout or "nodes" not in calico_conf.stdout)
 
 - name: Calico | Get calico configuration from etcd
   command: |-
@@ -162,52 +131,11 @@
 - name: Calico | Set global as_num
   command: "{{ bin_dir}}/calicoctl config set asNumber {{ global_as_num }}"
   run_once: true
-  when: not legacy_calicoctl
-
-- name: Calico (old) | Set global as_num
-  command: "{{ bin_dir}}/calicoctl bgp default-node-as {{ global_as_num }}"
-  run_once: true
-  when: legacy_calicoctl
-
-- name: Calico (old) | Write calico-node systemd init file
-  template:
-    src: calico-node.service.legacy.j2
-    dest: /etc/systemd/system/calico-node.service
-  when: legacy_calicoctl
-  notify: restart calico-node
-
-- name: Calico | Write calico.env for systemd init file
-  template:
-    src: calico.env.j2
-    dest: /etc/calico/calico.env
-  when: not legacy_calicoctl
-  notify: restart calico-node
-
-- name: Calico | Write calico-node systemd init file
-  template:
-    src: calico-node.service.j2
-    dest: /etc/systemd/system/calico-node.service
-  when: not legacy_calicoctl
-  notify: restart calico-node
-
-- name: Calico | Restart calico-node if secrets changed
-  command: /bin/true
-  when: secret_changed|default(false) or etcd_secret_changed|default(false)
-  notify: restart calico-node
-
-- meta: flush_handlers
-
-- name: Calico | Enable calico-node
-  service:
-    name: calico-node
-    state: started
-    enabled: yes
 
 - name: Calico | Disable node mesh
   shell: "{{ bin_dir }}/calicoctl config set nodeToNodeMesh off"
   when: ((peer_with_router|default(false) or peer_with_calico_rr|default(false))
-          and inventory_hostname in groups['k8s-cluster']
-          and not legacy_calicoctl)
+          and inventory_hostname in groups['k8s-cluster'])
   run_once: true
 
 - name: Calico | Configure peering with router(s)
@@ -220,8 +148,7 @@
    }'
    | {{ bin_dir }}/calicoctl create --skip-exists -f -
   with_items: "{{ peers|default([]) }}"
-  when: (not legacy_calicoctl and
-         peer_with_router|default(false) and inventory_hostname in groups['k8s-cluster'])
+  when: peer_with_router|default(false) and inventory_hostname in groups['k8s-cluster']
 
 - name: Calico | Configure peering with route reflectors
   shell: >
@@ -235,26 +162,20 @@
    }'
    | {{ bin_dir }}/calicoctl create --skip-exists -f -
   with_items: "{{ groups['calico-rr'] | default([]) }}"
-  when: (not legacy_calicoctl and
-         peer_with_calico_rr|default(false) and inventory_hostname in groups['k8s-cluster']
+  when: (peer_with_calico_rr|default(false) and inventory_hostname in groups['k8s-cluster']
          and hostvars[item]['cluster_id'] == cluster_id)
 
-- name: Calico (old) | Disable node mesh
-  shell: "{{ bin_dir }}/calicoctl bgp node-mesh off"
-  when: ((peer_with_router|default(false) or peer_with_calico_rr|default(false))
-          and inventory_hostname in groups['k8s-cluster']
-          and legacy_calicoctl)
-  run_once: true
-
-- name: Calico (old) | Configure peering with router(s)
-  shell: "{{ bin_dir }}/calicoctl node bgp peer add {{ item.router_id }} as {{ item.as }}"
-  with_items: "{{ peers|default([]) }}"
-  when: (legacy_calicoctl and
-         peer_with_router|default(false) and inventory_hostname in groups['k8s-cluster'])
-
-- name: Calico (old) | Configure peering with route reflectors
-  shell: "{{ bin_dir }}/calicoctl node bgp peer add {{ hostvars[item]['calico_rr_ip']|default(hostvars[item]['ip'])|default(hostvars[item]['ansible_default_ipv4.address']) }} as {{ local_as | default(global_as_num) }}"
-  with_items: "{{ groups['calico-rr'] | default([]) }}"
-  when: (legacy_calicoctl and
-         peer_with_calico_rr|default(false) and inventory_hostname in groups['k8s-cluster']
-         and hostvars[item]['cluster_id'] == cluster_id)
+- name: Calico | Create calico manifests
+  template:
+    src: "{{item.file}}.j2"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {name: calico-config, file: calico-config.yml, type: cm}
+    - {name: calico-node, file: calico-node.yml, type: ds}
+    - {name: calico, file: calico-node-sa.yml, type: sa}
+    - {name: calico, file: calico-cr.yml, type: clusterrole}
+    - {name: calico, file: calico-crb.yml, type: clusterrolebinding}
+  register: calico_node_manifests
+  when:
+    - inventory_hostname in groups['kube-master']
+    - rbac_enabled or item.type not in rbac_resources

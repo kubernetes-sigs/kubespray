@@ -270,7 +270,6 @@ def main():
 
     manager = KubeManager(module)
     state = module.params.get('state')
-
     if state == 'present':
         result = manager.create()
 

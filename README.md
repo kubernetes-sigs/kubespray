@@ -16,7 +16,7 @@ To deploy the cluster you can use :
 [**kubespray-cli**](https://github.com/kubespray/kubespray-cli) <br>
 **Ansible** usual commands and [**inventory builder**](https://github.com/kubernetes-incubator/kubespray/blob/master/contrib/inventory_builder/inventory.py) <br>
 **vagrant** by simply running `vagrant up` (for tests purposes) <br>
-
+asdf
 
 *  [Requirements](#requirements)
 *  [Kubespray vs ...](docs/comparisons.md)

@@ -1,86 +1,34 @@
-- name: install systemd-containers on ubunt
-  apt:
-      name: systemd-container
-      state: installed
-  when: ansible_os_family == "Debian"
-# nspawn binary path
-- name: set systemd nspawn binary path on ubuntu
-  set_fact: 
-      ipsec_nspawn_binary: /usr/bin/systemd-nspawn
-  when: ansible_os_family == "Debian"
-- name: set systemd nspawn binary path on ubuntu
-  set_fact: 
-      ipsec_nspawn_binary: /bin/systemd-nspawn
-  when: ansible_os_family != "Debian"
-# modprobe binary path
-- name: set systemd nspawn binary path on ubuntu
-  set_fact: 
-      ipsec_modprobe_binary: /sbin/modprobe
-  when: ansible_os_family == "Debian"
-- name: set systemd nspawn binary path on ubuntu
-  set_fact: 
-      ipsec_modprobe_binary: /usr/sbin/modprobe
-  when: ansible_os_family != 'Deboam'
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+      paths:
+        - ../vars
+      skip: true
+  tags: facts
 
 - name: create directories
   file:
       path: '{{ item }}'
       state: directory
-  with_items: 
+  with_items:
       - /etc/ipsec.d
   become: yes
-- name: copy machine instllation script
-  copy:
-      content: |
-          #!/bin/bash
-          set -e
-          docker rm -f foo || true
-          mkdir -p /var/lib/machines/ipsec-libreswan
-          docker export $(docker create --name foo fedora bash) | tar -x -C /var/lib/machines/ipsec-libreswan  -f -
-          docker rm -f foo
-          systemd-machine-id-setup --root /var/lib/machines/ipsec-libreswan
-          systemd-nspawn -M ipsec-libreswan dnf clean all
-          systemd-nspawn  \
-          --bind /etc/ipsec.d --machine=ipsec-libreswan  \
-          dnf -y install libreswan
 
-
-          systemd-nspawn  \
-          --bind /etc/ipsec.d --machine=ipsec-libreswan  \
-          systemctl enable ipsec
-      dest: /tmp/create-container
-      mode: 744
-  become: yes
-
-- name: create machine
-  block:
-    - name: create machine 
-      shell: /tmp/create-container
-      args:
-        creates: /var/lib/machines/ipsec-libreswan
-        executable: /bin/bash
-      become: yes
-  rescue:
-    - shell: rm -rf /var/lib/machines/ipsec-libreswan
-    - fail:
-        msg: ipsec-libreswan machine creation failed
-#  - name: set quota for mache
-#    shell: machinectl set-limit ipsec-libreswan 1G
-#    become: yes
 - name: intit nsss
   shell: |
       set -e
-      systemd-nspawn  \
-          --bind /etc/ipsec.d  --machine=ipsec-libreswan  \
-          ipsec initnss
+      docker run -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan  \
+      ipsec initnss
   become: yes
   args:
      creates: /etc/ipsec.d/cert9.db
 
 - name: create hostkey
   shell: |
-      systemd-nspawn  \
-          --bind /etc/ipsec.d   --bind /tmp --machine=ipsec-libreswan  \
+      docker run -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
           ipsec newhostkey --output /etc/ipsec.d/{{ ansible_hostname }}.secrets
   become: yes
   args:
@@ -88,25 +36,22 @@
 
 - name: register host key
   shell: |
-      systemd-nspawn -x -M tmp -D /var/lib/machines/ipsec-libreswan \
-          --bind /etc/ipsec.d  \
+      docker run -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
            ipsec showhostkey --list | sed -n '1s/.* //p'
   register: ipsec_ckaid
   become: yes
   changed_when: false
 - name: register ipsec_left
   shell: |
-      systemd-nspawn -x -M tmp -D /var/lib/machines/ipsec-libreswan \
-          --bind /etc/ipsec.d   \
+      docker run -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
            ipsec showhostkey --left --ckaid {{ ipsec_ckaid.stdout }}
   register: ipsec_left
   changed_when: false
   become: yes
 - name: register ipsec_right
   shell: |
-      systemd-nspawn -x -M tmp -D /var/lib/machines/ipsec-libreswan \
-          --bind /etc/ipsec.d \
-           ipsec showhostkey --right --ckaid {{ ipsec_ckaid.stdout }}
+      docker run -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
+               ipsec showhostkey --right --ckaid {{ ipsec_ckaid.stdout }}
   register: ipsec_right
   become: yes
   changed_when: false
@@ -117,7 +62,8 @@
       src: templates/cluster.conf.j2
   become: yes
   register: ipsec_cluster_conf
-- name: creaty ipsec service
+
+- name: create ipsec service
   copy:
       content: |
           [Unit]
@@ -125,21 +71,22 @@
           After=network-online.target
           Wants=network-online.target
           [Service]
-          ExecStartPre={{ ipsec_modprobe_binary }} af_key
-          ExecStart={{ ipsec_nspawn_binary }} --quiet --capability CAP_NET_ADMIN,CAP_SYS_MODULE --tmpfs /var/run/pluto --bind /proc/sys/net --bind /proc/net --bind-ro /lib/modules \
-                    --bind /etc/ipsec.d  --machine=ipsec-libreswan -jb
-          ExecStop=/bin/machinectl poweroff ipsec-libreswan
-          ExecReload=/bin/systemctl --machine ipsec-libreswan reload ipsec
+          ExecStartPre={{ ipsec_modprobe_binary }}  af_key
+          ExecStartPre=/usr/bin/docker pull cornelius/docker-ipsec-libreswan
+          ExecStartPre=-/usr/bin/docker rm -f ipsec-libreswan
+          ExecStart=/usr/bin/docker run --privileged --net host -v /etc/ipsec.d:/etc/ipsec.d --name=ipsec-libreswan cornelius/docker-ipsec-libreswan
+          ExecStop=/usr/bin/docker stop ipsec-libreswan
+          ExecReload=/usr/bin/docker exec ipsec-libreswan systemctl reload ipsec
+          Restart=always
           [Install]
-          WantedBy=multi-user.target
+          WantedBy=network-online.target
       dest: /etc/systemd/system/ipsec.service
-  become: yes
-  register: ipsec_unit_file
+  register: ipsec_systemd_unit_file
 
-- name: enable ipsec service
+- name: start and enable ipsec service
   systemd:
-      name: ipsec
-      state: '{{ ipsec_cluster_conf.changed | ternary("restarted","started") }}'
-      daemon_reload: '{{ ipsec_unit_file.changed }}'
-      enabled: true
-  become: yes
+    name: ipsec
+    state: '{{ ipsec_cluster_conf.changed|ternary("restarted","started") }}'
+    enabled: yes
+    daemon_reload: '{{ ipsec_systemd_unit_file|changed }}'
+

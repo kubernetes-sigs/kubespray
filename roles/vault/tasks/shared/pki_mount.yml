@@ -1,11 +1,27 @@
 ---
+- name: "shared/mount | Test if {{ pki_mount_path }} PKI mount exists"
+  uri:
+    url: "{{ vault_leader_url }}/v1/sys/mounts/{{ pki_mount_path }}/tune"
+    headers: "{{ vault_headers }}"
+  ignore_errors: true
+  register: vault_pki_mount_check
 
-- include: mount.yml
-  vars:
-    mount_name: pki
-    mount_options:
-      config:
-        default_lease_ttl: "{{ vault_default_lease_ttl }}"
-        max_lease_ttl: "{{ vault_max_lease_ttl }}"
-      description: The default PKI mount for Kubernetes
-      type: pki
+- name: shared/mount | Set pki mount type
+  set_fact:
+    mount_options: "{{ pki_mount_options | combine({'type': 'pki'}) }}"
+  when: vault_pki_mount_check|failed
+
+- name: shared/mount | Mount {{ pki_mount_path }} PKI mount if needed
+  uri:
+    url: "{{ vault_leader_url }}/v1/sys/mounts/{{ pki_mount_path }}"
+    headers: "{{ vault_headers }}"
+    method: POST
+    body_format: json
+    body: "{{ mount_options|d() }}"
+    status_code: 204
+  when: vault_pki_mount_check|failed
+
+- name: shared/mount | Unset mount options
+  set_fact:
+    mount_options: {}
+  when: vault_pki_mount_check|failed

@@ -5,8 +5,6 @@
 - include: ../shared/check_etcd.yml
   when: inventory_hostname in groups.vault
 
-## Vault Cluster Setup
-
 - include: configure.yml
   when: inventory_hostname in groups.vault
 
@@ -25,42 +23,23 @@
 - include: ../shared/find_leader.yml
   when: inventory_hostname in groups.vault
 
-- include: ../shared/create_mount.yml
-  vars:
-    create_mount_path: "{{ vault_ca_options.common_name }}"
-    create_mount_default_lease_ttl: "{{ vault_default_lease_ttl }}"
-    create_mount_max_lease_ttl: "{{ vault_max_lease_ttl }}"
-    create_mount_description: "Vault Root CA"
-    create_mount_cert_dir: "{{ vault_cert_dir }}"
-    create_mount_config_ca_needed: true
-  when: inventory_hostname == groups.vault|first
-
-- include: ../shared/create_mount.yml
-  vars:
-    create_mount_path: "{{ vault_etcd_mount_path }}"
-    create_mount_default_lease_ttl: "{{ vault_etcd_default_lease_ttl }}"
-    create_mount_max_lease_ttl: "{{ vault_etcd_max_lease_ttl }}"
-    create_mount_description: "Etcd Root CA"
-    create_mount_cert_dir: "{{ vault_etcd_cert_dir }}"
-    create_mount_config_ca_needed: true
-  when: inventory_hostname == groups.vault|first
-
-- include: ../shared/create_mount.yml
-  vars:
-    create_mount_path: "{{ vault_kube_mount_path }}"
-    create_mount_default_lease_ttl: "{{ vault_kube_default_lease_ttl }}"
-    create_mount_max_lease_ttl: "{{ vault_kube_max_lease_ttl }}"
-    create_mount_description: "Kubernetes Root CA"
-    create_mount_cert_dir: "{{ vault_kube_cert_dir }}"
-    create_mount_config_ca_needed: false
+- include: create_mounts.yml
   when: inventory_hostname == groups.vault|first
 
 - include: ../shared/gen_ca.yml
   vars:
-    gen_ca_cert_dir: "{{ vault_kube_cert_dir }}"
-    gen_ca_mount_path: "{{ vault_kube_mount_path }}"
+    gen_ca_cert_dir: "{{ vault_pki_mounts.kube.cert_dir }}"
+    gen_ca_mount_path: "{{ vault_pki_mounts.kube.name }}"
+    gen_ca_vault_headers: "{{ vault_headers }}"
+    gen_ca_vault_options: "{{ vault_ca_options.kube }}"
   when: inventory_hostname in groups.vault
 
-## Vault Policies, Roles, and Auth Backends
+- include: ../shared/auth_backend.yml
+  vars:
+    auth_backend_description: A Username/Password Auth Backend primarily used for services needing to issue certificates
+    auth_backend_path: userpass
+    auth_backend_type: userpass
+  when: inventory_hostname == groups.vault|first
 
 - include: create_roles.yml
+  when: inventory_hostname in groups.vault

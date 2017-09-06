@@ -1,37 +1,6 @@
 ---
 - include: pre-upgrade.yml
 
-- name: Flannel | Verify if br_netfilter module exists
-  shell: "modinfo br_netfilter"
-  register: modinfo_br_netfilter
-  failed_when: modinfo_br_netfilter.rc not in [0, 1]
-  changed_when: false
-
-- name: Flannel | Enable br_netfilter module
-  modprobe:
-    name: br_netfilter
-    state: present
-  when: modinfo_br_netfilter.rc == 0
-
-# kube-proxy needs net.bridge.bridge-nf-call-iptables enabled when found if br_netfilter is not a module
-- name: Flannel | Check if bridge-nf-call-iptables key exists
-  command: "sysctl net.bridge.bridge-nf-call-iptables"
-  failed_when: false
-  changed_when: false
-  register: sysctl_bridge_nf_call_iptables
-
-- name: Flannel | Enable bridge-nf-call tables
-  sysctl:
-    name: "{{ item }}"
-    state: present
-    value: 1
-    reload: yes
-  when: modinfo_br_netfilter.rc == 1 and sysctl_bridge_nf_call_iptables.rc == 0
-  with_items:
-    - net.bridge.bridge-nf-call-iptables
-    - net.bridge.bridge-nf-call-arptables
-    - net.bridge.bridge-nf-call-ip6tables
-
 - name: Flannel | Create cni-flannel-rbac manifest
   template:
     src: cni-flannel-rbac.yml.j2

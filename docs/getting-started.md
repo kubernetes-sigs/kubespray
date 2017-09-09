@@ -89,3 +89,15 @@ file yourself.
 
 For more information on kubeconfig and accessing a Kubernetes cluster, refer to
 the Kubernetes [documentation](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/).
+
+Accessing Kubernetes Dashboard
+------------------------------
+
+If the variable `dashboard_enabled` is set (default is true), then you can
+access the Kubernetes Dashboard at the following URL:
+
+  https://kube:_kube-password_@_host_:6443/ui/
+
+To see the password, refer to the section above, titled *Connecting to
+Kubernetes*. The host can be any kube-master or kube-node or loadbalancer
+(when enabled).

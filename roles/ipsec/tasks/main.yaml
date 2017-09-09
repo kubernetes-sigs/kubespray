@@ -20,7 +20,7 @@
 - name: intit nsss
   shell: |
       set -e
-      docker run -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan  \
+      docker run --rm  -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan  \
       ipsec initnss
   become: yes
   args:
@@ -28,7 +28,7 @@
 
 - name: create hostkey
   shell: |
-      docker run -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
+      docker run --rm  -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
           ipsec newhostkey --output /etc/ipsec.d/{{ ansible_hostname }}.secrets
   become: yes
   args:
@@ -36,21 +36,21 @@
 
 - name: register host key
   shell: |
-      docker run -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
+      docker run --rm  -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
            ipsec showhostkey --list | sed -n '1s/.* //p'
   register: ipsec_ckaid
   become: yes
   changed_when: false
 - name: register ipsec_left
   shell: |
-      docker run -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
+      docker run --rm -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
            ipsec showhostkey --left --ckaid {{ ipsec_ckaid.stdout }}
   register: ipsec_left
   changed_when: false
   become: yes
 - name: register ipsec_right
   shell: |
-      docker run -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
+      docker run --rm  -v /etc/ipsec.d:/etc/ipsec.d cornelius/docker-ipsec-libreswan   \
                ipsec showhostkey --right --ckaid {{ ipsec_ckaid.stdout }}
   register: ipsec_right
   become: yes
@@ -64,23 +64,9 @@
   register: ipsec_cluster_conf
 
 - name: create ipsec service
-  copy:
-      content: |
-          [Unit]
-          Description=LibreSwan IPSEC running in ipsec-libreswan
-          After=network-online.target
-          Wants=network-online.target
-          [Service]
-          ExecStartPre={{ ipsec_modprobe_binary }}  af_key
-          ExecStartPre=/usr/bin/docker pull cornelius/docker-ipsec-libreswan
-          ExecStartPre=-/usr/bin/docker rm -f ipsec-libreswan
-          ExecStart=/usr/bin/docker run --privileged --net host -v /etc/ipsec.d:/etc/ipsec.d --name=ipsec-libreswan cornelius/docker-ipsec-libreswan
-          ExecStop=/usr/bin/docker stop ipsec-libreswan
-          ExecReload=/usr/bin/docker exec ipsec-libreswan systemctl reload ipsec
-          Restart=always
-          [Install]
-          WantedBy=network-online.target
-      dest: /etc/systemd/system/ipsec.service
+  template:
+    src: ipsec.service.j2
+    dest: /etc/systemd/system/ipsec.service
   register: ipsec_systemd_unit_file
 
 - name: start and enable ipsec service

@@ -81,7 +81,7 @@ Kubespray permits connecting to the cluster remotely on any IP of any
 kube-master host on port 6443 by default. However, this requires 
 authentication. One could generate a kubeconfig based on one installed 
 kube-master hosts (needs improvement) or connect with a username and password.
-By default, two users are created: `kube` and `admin` with the same password.
+By default, a user with admin rights is created, named `kube`.
 The password can be viewed after deployment by looking at the file 
 `PATH_TO_KUBESPRAY/credentials/kube_user`. This contains a randomly generated
 password. If you wish to set your own password, just precreate/modify this

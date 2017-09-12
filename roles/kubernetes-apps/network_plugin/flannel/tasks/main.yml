@@ -1,0 +1,22 @@
+---
+- name: "Flannel | Create ServiceAccount ClusterRole and ClusterRoleBinding"
+  command: "{{ bin_dir }}/kubectl apply -f {{ kube_config_dir }}/cni-flannel-rbac.yml"
+  run_once: true
+  when: rbac_enabled and flannel_rbac_manifest.changed
+
+- name: Flannel | Start Resources
+  kube:
+    name: "kube-flannel"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/cni-flannel.yml"
+    resource: "ds"
+    namespace: "{{system_namespace}}"
+    state: "latest"
+  with_items: "{{ flannel_manifest.changed }}"
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Flannel | Wait for flannel subnet.env file presence
+  wait_for:
+    path: /run/flannel/subnet.env
+    delay: 5
+    timeout: 600

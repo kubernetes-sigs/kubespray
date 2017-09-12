@@ -1,7 +1,7 @@
 ---
 - name: Kubernetes Apps | Wait for kube-apiserver
   uri:
-    url: http://localhost:{{ kube_apiserver_insecure_port }}/healthz
+    url: "{{ kube_apiserver_insecure_endpoint }}/healthz"
   register: result
   until: result.status == 200
   retries: 10
@@ -14,12 +14,12 @@
     dest: "{{kube_config_dir}}/{{item.file}}"
   with_items:
     - {name: kubedns, file: kubedns-sa.yml, type: sa}
-    - {name: kubedns, file: kubedns-deploy.yml, type: deployment}
+    - {name: kubedns, file: kubedns-deploy.yml.j2, type: deployment}
     - {name: kubedns, file: kubedns-svc.yml, type: svc}
     - {name: kubedns-autoscaler, file: kubedns-autoscaler-sa.yml, type: sa}
     - {name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrole.yml, type: clusterrole}
     - {name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrolebinding.yml, type: clusterrolebinding}
-    - {name: kubedns-autoscaler, file: kubedns-autoscaler.yml, type: deployment}
+    - {name: kubedns-autoscaler, file: kubedns-autoscaler.yml.j2, type: deployment}
   register: manifests
   when:
     - dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
@@ -51,13 +51,20 @@
     kubectl: "{{bin_dir}}/kubectl"
     resource: "{{item.item.type}}"
     filename: "{{kube_config_dir}}/{{item.item.file}}"
-    state: "{{item.changed | ternary('latest','present') }}"
+    state: "latest"
   with_items: "{{ manifests.results }}"
-  failed_when: manifests|failed and "Error from server (AlreadyExists)" not in manifests.msg
-  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
+  when:
+    - dns_mode != 'none'
+    - inventory_hostname == groups['kube-master'][0]
+    - not item|skipped
   tags: dnsmasq
 
 - name: Kubernetes Apps | Netchecker
   include: tasks/netchecker.yml
   when: deploy_netchecker
   tags: netchecker
+
+- name: Kubernetes Apps | Dashboard
+  include: tasks/dashboard.yml
+  when: dashboard_enabled
+  tags: dashboard

@@ -162,7 +162,7 @@ resource "aws_instance" "k8s-worker" {
 */
 data "template_file" "inventory" {
     template = "${file("${path.module}/templates/inventory.tpl")}"
-
+  
     vars {
         public_ip_address_bastion = "${join("\n",formatlist("bastion ansible_ssh_host=%s" , aws_instance.bastion-server.*.public_ip))}"
         connection_strings_master = "${join("\n",formatlist("%s ansible_ssh_host=%s",aws_instance.k8s-master.*.tags.Name, aws_instance.k8s-master.*.private_ip))}"
@@ -173,14 +173,18 @@ data "template_file" "inventory" {
         list_etcd = "${join("\n",aws_instance.k8s-etcd.*.tags.Name)}"
         elb_api_fqdn = "apiserver_loadbalancer_domain_name=\"${module.aws-elb.aws_elb_api_fqdn}\""
         elb_api_port = "loadbalancer_apiserver.port=${var.aws_elb_api_port}"
-        kube_insecure_apiserver_address = "kube_apiserver_insecure_bind_address: ${var.kube_insecure_apiserver_address}"
-
+        loadbalancer_apiserver_address = "loadbalancer_apiserver.address=${var.loadbalancer_apiserver_address}"
     }
+
 }
 
 resource "null_resource" "inventories" {
   provisioner "local-exec" {
       command = "echo '${data.template_file.inventory.rendered}' > ../../../inventory/hosts"
+  }
+
+  triggers {
+      template = "${data.template_file.inventory.rendered}"
   }
 
 }

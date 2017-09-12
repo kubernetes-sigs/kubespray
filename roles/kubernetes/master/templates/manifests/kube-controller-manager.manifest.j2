@@ -5,6 +5,9 @@ metadata:
   namespace: {{system_namespace}}
   labels:
     k8s-app: kube-controller
+  annotations:
+    kubespray.etcd-cert/serial: "{{ etcd_node_cert_serial }}"
+    kubespray.controller-manager-cert/serial: "{{ controller_manager_cert_serial }}"
 spec:
   hostNetwork: true
 {% if kube_version | version_compare('v1.6', '>=') %}
@@ -45,9 +48,15 @@ spec:
     - --cloud-provider={{cloud_provider}}
 {% endif %}
 {% if kube_network_plugin is defined and kube_network_plugin == 'cloud' %}
-    - --allocate-node-cidrs=true
     - --configure-cloud-routes=true
+{% endif %}
+{% if kube_network_plugin is defined and kube_network_plugin in ["cloud", "flannel"] %}
+    - --allocate-node-cidrs=true
     - --cluster-cidr={{ kube_pods_subnet }}
+    - --service-cluster-ip-range={{ kube_service_addresses }}
+{% endif %}
+{% if kube_feature_gates %}
+    - --feature-gates={{ kube_feature_gates|join(',') }}
 {% endif %}
 {% if controller_mgr_custom_flags is string %}
     - {{ controller_mgr_custom_flags }}
@@ -64,9 +73,14 @@ spec:
       initialDelaySeconds: 30
       timeoutSeconds: 10
     volumeMounts:
-    - mountPath: /etc/ssl/certs
+    - mountPath: /etc/ssl
       name: ssl-certs-host
       readOnly: true
+{% for dir in ssl_ca_dirs %}
+    - mountPath: {{ dir }}
+      name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+      readOnly: true
+{% endfor %}
     - mountPath: "{{kube_config_dir}}/ssl"
       name: etc-kube-ssl
       readOnly: true
@@ -81,11 +95,12 @@ spec:
   volumes:
   - name: ssl-certs-host
     hostPath:
-{% if ansible_os_family == 'RedHat' %}
-      path: /etc/pki/tls
-{% else %}
-      path: /usr/share/ca-certificates
-{% endif %}
+      path: /etc/ssl
+{% for dir in ssl_ca_dirs %}
+  - name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+    hostPath:
+      path: {{ dir }}
+{% endfor %}
   - name: etc-kube-ssl
     hostPath:
       path: "{{ kube_config_dir }}/ssl"

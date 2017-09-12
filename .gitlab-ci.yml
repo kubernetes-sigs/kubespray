@@ -18,10 +18,7 @@ variables:
 # us-west1-a
 
 before_script:
-    - pip install ansible==2.3.0
-    - pip install netaddr
-    - pip install apache-libcloud==0.20.1
-    - pip install boto==2.9.0
+    - pip install -r tests/requirements.txt
     - mkdir -p /.ssh
     - cp tests/ansible.cfg .
 
@@ -75,10 +72,7 @@ before_script:
       - $HOME/.cache
   before_script:
     - docker info
-    - pip install ansible==2.3.0
-    - pip install netaddr
-    - pip install apache-libcloud==0.20.1
-    - pip install boto==2.9.0
+    - pip install -r tests/requirements.txt
     - mkdir -p /.ssh
     - mkdir -p $HOME/.ssh
     - echo $PRIVATE_KEY | base64 -d > $HOME/.ssh/id_rsa
@@ -265,6 +259,7 @@ before_script:
 # Test matrix. Leave the comments for markup scripts.
 .coreos_calico_sep_variables: &coreos_calico_sep_variables
 # stage: deploy-gce-part1
+  AUTHORIZATION_MODES: "{ 'authorization_modes':  [ 'RBAC' ] }"
   KUBE_NETWORK_PLUGIN: calico
   CLOUD_IMAGE: coreos-stable-1465-6-0-v20170817
   CLOUD_REGION: us-west1-b
@@ -275,9 +270,10 @@ before_script:
   ##User-data to simply turn off coreos upgrades
   STARTUP_SCRIPT: 'systemctl disable locksmithd && systemctl stop locksmithd'
 
-.ubuntu_canal_ha_variables: &ubuntu_canal_ha_variables
+.ubuntu_canal_ha_rbac_variables: &ubuntu_canal_ha_rbac_variables
 # stage: deploy-gce-part1
   KUBE_NETWORK_PLUGIN: canal
+  AUTHORIZATION_MODES: "{ 'authorization_modes':  [ 'RBAC' ] }"
   CLOUD_IMAGE: ubuntu-1604-xenial
   CLOUD_REGION: europe-west1-b
   CLUSTER_MODE: ha
@@ -370,6 +366,8 @@ before_script:
 
 .ubuntu_vault_sep_variables: &ubuntu_vault_sep_variables
 # stage: deploy-gce-part1
+  AUTHORIZATION_MODES: "{ 'authorization_modes':  [ 'RBAC' ] }"
+  CLOUD_MACHINE_TYPE: "n1-standard-2"
   KUBE_NETWORK_PLUGIN: canal
   CERT_MGMT: vault
   CLOUD_IMAGE: ubuntu-1604-xenial
@@ -451,24 +449,24 @@ ubuntu-weave-sep-triggers:
   only: ['triggers']
 
 # More builds for PRs/merges (manual) and triggers (auto)
-ubuntu-canal-ha:
+ubuntu-canal-ha-rbac:
   stage: deploy-gce-part1
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *ubuntu_canal_ha_variables
+    <<: *ubuntu_canal_ha_rbac_variables
   when: manual
   except: ['triggers']
   only: ['master', /^pr-.*$/]
 
-ubuntu-canal-ha-triggers:
+ubuntu-canal-ha-rbac-triggers:
   stage: deploy-gce-part1
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *ubuntu_canal_ha_variables
+    <<: *ubuntu_canal_ha_rbac_variables
   when: on_success
   only: ['triggers']
 
@@ -640,6 +638,13 @@ syntax-check:
     - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root upgrade-cluster.yml -vvv  --syntax-check
     - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root reset.yml -vvv  --syntax-check
     - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root extra_playbooks/upgrade-only-k8s.yml -vvv  --syntax-check
+  except: ['triggers', 'master']
+
+yamllint:
+  <<: *job
+  stage: unit-tests
+  script:
+    - yamllint roles
   except: ['triggers', 'master']
 
 tox-inventory-builder:

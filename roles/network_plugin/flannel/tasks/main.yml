@@ -1,83 +1,16 @@
 ---
-- name: Flannel | Set Flannel etcd configuration
-  command: |-
-    {{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses }} \
-    set /{{ cluster_name }}/network/config \
-    '{ "Network": "{{ kube_pods_subnet }}", "SubnetLen": {{ kube_network_node_prefix }}, "Backend": { "Type": "{{ flannel_backend_type }}" } }'
-  delegate_to: "{{groups['etcd'][0]}}"
-  run_once: true
+- include: pre-upgrade.yml
 
-- name: Flannel | Create flannel certs directory
-  file:
-    dest: "{{ flannel_cert_dir }}"
-    state: directory
-    mode: 0750
-    owner: root
-    group: root
-
-- name: Flannel | Link etcd certificates for flanneld
-  file:
-    src: "{{ etcd_cert_dir }}/{{ item.s }}"
-    dest: "{{ flannel_cert_dir }}/{{ item.d }}"
-    state: hard
-    force: yes
-  with_items:
-    - {s: "ca.pem", d: "ca_cert.crt"}
-    - {s: "node-{{ inventory_hostname }}.pem", d: "cert.crt"}
-    - {s: "node-{{ inventory_hostname }}-key.pem", d: "key.pem"}
-
-- name: Flannel | Create flannel pod manifest
+- name: Flannel | Create cni-flannel-rbac manifest
   template:
-    src: flannel-pod.yml
-    dest: "{{kube_manifest_dir}}/flannel-pod.manifest"
-  notify: Flannel | delete default docker bridge
+    src: cni-flannel-rbac.yml.j2
+    dest: "{{ kube_config_dir }}/cni-flannel-rbac.yml"
+  register: flannel_rbac_manifest
+  when: inventory_hostname == groups['kube-master'][0] and rbac_enabled
 
-- name: Flannel | Wait for flannel subnet.env file presence
-  wait_for:
-    path: /run/flannel/subnet.env
-    delay: 5
-    timeout: 600
-
-- name: Flannel | Get flannel_subnet from subnet.env
-  shell: cat /run/flannel/subnet.env | awk -F'=' '$1 == "FLANNEL_SUBNET" {print $2}'
-  register: flannel_subnet_output
-  changed_when: false
-  check_mode: no
-
-- set_fact:
-    flannel_subnet: "{{ flannel_subnet_output.stdout }}"
-
-- name: Flannel | Get flannel_mtu from subnet.env
-  shell: cat /run/flannel/subnet.env | awk -F'=' '$1 == "FLANNEL_MTU" {print $2}'
-  register: flannel_mtu_output
-  changed_when: false
-  check_mode: no
-
-- set_fact:
-    flannel_mtu: "{{ flannel_mtu_output.stdout }}"
-
-- set_fact:
-    docker_options_file: >-
-      {%- if ansible_os_family == "Debian" -%}/etc/default/docker{%- elif ansible_os_family == "RedHat" -%}/etc/sysconfig/docker{%- endif -%}
-  tags: facts
-
-- set_fact:
-    docker_options_name: >-
-      {%- if ansible_os_family == "Debian" -%}DOCKER_OPTS{%- elif ansible_os_family == "RedHat" -%}other_args{%- endif -%}
-  tags: facts
-
-- set_fact:
-    docker_network_options: '"--bip={{ flannel_subnet }} --mtu={{ flannel_mtu }}"'
-
-- name: Flannel | Ensure path for docker network systemd drop-in
-  file:
-    path: "/etc/systemd/system/docker.service.d"
-    state: directory
-    owner: root
-
-- name: Flannel | Create docker network systemd drop-in
+- name: Flannel | Create cni-flannel manifest
   template:
-    src: flannel-options.conf.j2
-    dest: "/etc/systemd/system/docker.service.d/flannel-options.conf"
-  notify:
-    - Flannel | restart docker
+    src: cni-flannel.yml.j2
+    dest: "{{ kube_config_dir }}/cni-flannel.yml"
+  register: flannel_manifest
+  when: inventory_hostname == groups['kube-master'][0]

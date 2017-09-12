@@ -25,15 +25,28 @@ export AWS_DEFAULT_REGION="zzz"
 - Rename `contrib/terraform/aws/terraform.tfvars.example` to `terraform.tfvars`
 
 - Update `contrib/terraform/aws/terraform.tfvars` with your data
- - Allocate new AWS Elastic IPs: Depending on # of Availability Zones used (2 for each AZ)
- - Create an AWS EC2 SSH Key
-
-
+- Allocate a new AWS Elastic IP. Use this for your `loadbalancer_apiserver_address` value (below)
+- Create an AWS EC2 SSH Key
 - Run with `terraform apply --var-file="credentials.tfvars"` or `terraform apply` depending if you exported your AWS credentials
+
+Example:
+```commandline
+terraform apply -var-file=credentials.tfvars -var 'loadbalancer_apiserver_address=34.212.228.77'
+```
 
 - Terraform automatically creates an Ansible Inventory file called `hosts` with the created infrastructure in the directory `inventory`
 
+- Ansible will automatically generate an ssh config file for your bastion hosts. To make use of it, make sure you have a line in your `ansible.cfg` file that looks like the following:
+```commandline
+ssh_args = -F ./ssh-bastion.conf -o ControlMaster=auto -o ControlPersist=30m 
+```
+
 - Once the infrastructure is created, you can run the kubespray playbooks and supply inventory/hosts with the `-i` flag.
+
+Example (this one assumes you are using CoreOS)
+```commandline
+ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_ssh_user=core -e bootstrap_os=coreos -b --become-user=root --flush-cache 
+```
 
 **Troubleshooting**
 

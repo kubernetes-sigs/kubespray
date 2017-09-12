@@ -21,10 +21,20 @@
 - name: Gather nodes hostnames
   setup:
     gather_subset: '!all'
-    filter: ansible_hostname
+    filter: ansible_*
 
-- name: Assign inventory name to unconfigured hostnames
+- name: Assign inventory name to unconfigured hostnames (non-CoreOS)
   hostname:
     name: "{{inventory_hostname}}"
-  when: ansible_hostname == 'localhost'
+  when: ansible_os_family not in ['CoreOS', 'Container Linux by CoreOS']
 
+- name: Assign inventory name to unconfigured hostnames (CoreOS only)
+  command: "hostnamectl set-hostname  {{inventory_hostname}}"
+  register: hostname_changed
+  when: ansible_hostname == 'localhost' and ansible_os_family in ['CoreOS', 'Container Linux by CoreOS']
+
+- name: Update hostname fact (CoreOS only)
+  setup:
+    gather_subset: '!all'
+    filter: ansible_hostname
+  when: ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] and hostname_changed.changed

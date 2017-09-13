@@ -1,0 +1,61 @@
+---
+- name: Write kube-apiserver manifest
+  template:
+    src: manifests/kube-apiserver.manifest.j2
+    dest: "{{ kube_manifest_dir }}/kube-apiserver.manifest"
+  notify: Master | wait for the apiserver to be running
+  tags: kube-apiserver
+
+- meta: flush_handlers
+
+- name: Write kube system namespace manifest
+  template:
+    src: namespace.j2
+    dest: "{{kube_config_dir}}/{{system_namespace}}-ns.yml"
+  run_once: yes
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: apps
+
+- name: Check if kube system namespace exists
+  command: "{{ bin_dir }}/kubectl get ns {{system_namespace}}"
+  register: 'kubesystem'
+  changed_when: False
+  failed_when: False
+  run_once: yes
+  tags: apps
+
+- name: Create kube system namespace
+  command: "{{ bin_dir }}/kubectl create -f {{kube_config_dir}}/{{system_namespace}}-ns.yml"
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  register: create_system_ns
+  until: create_system_ns.rc == 0
+  changed_when: False
+  when: kubesystem|failed and inventory_hostname == groups['kube-master'][0]
+  tags: apps
+
+- name: Write kube-scheduler kubeconfig
+  template:
+    src: kube-scheduler-kubeconfig.yaml.j2
+    dest: "{{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml"
+  tags: kube-scheduler
+
+- name: Write kube-scheduler manifest
+  template:
+    src: manifests/kube-scheduler.manifest.j2
+    dest: "{{ kube_manifest_dir }}/kube-scheduler.manifest"
+  notify: Master | wait for kube-scheduler
+  tags: kube-scheduler
+
+- name: Write kube-controller-manager kubeconfig
+  template:
+    src: kube-controller-manager-kubeconfig.yaml.j2
+    dest: "{{ kube_config_dir }}/kube-controller-manager-kubeconfig.yaml"
+  tags: kube-controller-manager
+
+- name: Write kube-controller-manager manifest
+  template:
+    src: manifests/kube-controller-manager.manifest.j2
+    dest: "{{ kube_manifest_dir }}/kube-controller-manager.manifest"
+  notify: Master | wait for kube-controller-manager
+  tags: kube-controller-manager

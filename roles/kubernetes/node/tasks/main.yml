@@ -20,13 +20,23 @@
   when: is_kube_master == false and loadbalancer_apiserver_localhost|default(true)
   tags: nginx
 
-- name: Write kubelet config file
+- name: Write kubelet config file (non-kubeadm)
   template:
-    src: kubelet.j2
+    src: kubelet.standard.env.j2
     dest: "{{ kube_config_dir }}/kubelet.env"
     backup: yes
+  when: not kubeadm_enabled
   notify: restart kubelet
   tags: kubelet
+
+- name: Write kubelet config file (kubeadm)
+  template:
+    src: kubelet.kubeadm.env.j2
+    dest: "{{ kube_config_dir }}/kubelet.env"
+    backup: yes
+  when: kubeadm_enabled
+  notify: restart kubelet
+  tags: ['kubelet', 'kubeadm']
 
 - name: write the kubecfg (auth) file for kubelet
   template:
@@ -36,6 +46,7 @@
   with_items:
     - node
     - kube-proxy
+  when: not kubeadm_enabled
   notify: restart kubelet
   tags: kubelet
 
@@ -84,6 +95,7 @@
   template:
     src: manifests/kube-proxy.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-proxy.manifest"
+  when: not kubeadm_enabled
   tags: kube-proxy
 
 # reload-systemd

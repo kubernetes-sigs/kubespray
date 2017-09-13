@@ -1,0 +1,35 @@
+---
+- name: kubeadm | aggregate all SANs
+  set_fact:
+    apiserver_sans: >-
+      kubernetes
+      kubernetes.default
+      kubernetes.default.svc
+      kubernetes.default.svc.{{ dns_domain }}
+      {{ kube_apiserver_ip }}
+      localhost
+      127.0.0.1
+      {{ ' '.join(groups['kube-master']) }}
+      {%- if loadbalancer_apiserver is defined and apiserver_loadbalancer_domain_name is defined %}
+      {{ apiserver_loadbalancer_domain_name }}
+      {%- endif %}
+      {%- for host in groups['kube-master'] -%}
+      {%- if hostvars[host]['access_ip'] is defined %}{{ hostvars[host]['access_ip'] }}{% endif -%}
+      {{ hostvars[host]['ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}
+      {%- endfor %}
+  tags: facts
+
+- name: kubeadm | Copy etcd cert dir under k8s cert dir
+  command: "cp -TR {{ etcd_cert_dir }} {{ kube_config_dir }}/ssl/etcd"
+  changed_when: false
+
+- name: kubeadm | Create kubeadm config
+  template:
+    src: kubeadm-config.yaml.j2
+    dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kubeadm_config
+
+- name: kubeadm | Initialize cluster
+  command: timeout -k 240s 240s kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
+  register: kubeadm_init
+  when: kubeadm_config.changed

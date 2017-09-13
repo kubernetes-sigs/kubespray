@@ -1,5 +1,26 @@
 ---
 
+- name:
+  set_fact:
+    hostname: "{{ ansible_default_ipv4.address|regex_replace('\\.','-')}}"
+
+- name:
+  set_fact:
+    ansible_hostname: "{{hostname}}"
+
+- name: set /etc/sysconfig/network
+  template: src=network.j2 dest=/etc/sysconfig/network
+
+- name: set /etc/hosts
+  lineinfile: dest=/etc/hosts regexp="127.0.0.1 {{hostname}}" state=absent
+
+- name: set /etc/hosts
+  lineinfile: dest=/etc/hosts regexp="^{{ansible_default_ipv4.address}} {{hostname}}$" line="{{ansible_default_ipv4.address}} {{hostname}}"
+
+- name: hostnamectl --static set-hostname {{hostname}}
+  shell: hostnamectl --static set-hostname {{hostname}}
+  ignore_errors: yes
+
 - name: Check presence of fastestmirror.conf
   stat:
     path: /etc/yum/pluginconf.d/fastestmirror.conf

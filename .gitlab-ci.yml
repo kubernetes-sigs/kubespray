@@ -53,6 +53,7 @@ before_script:
   IDEMPOT_CHECK: "false"
   RESET_CHECK: "false"
   UPGRADE_TEST: "false"
+  KUBEADM_ENABLED: "false"
   RESOLVCONF_MODE: docker_dns
   LOG_LEVEL: "-vv"
   ETCD_DEPLOYMENT: "docker"
@@ -117,9 +118,9 @@ before_script:
       -e bootstrap_os=${BOOTSTRAP_OS}
       -e cert_management=${CERT_MGMT:-script}
       -e cloud_provider=gce
-      -e deploy_netchecker=true
-      -e download_localhost=${DOWNLOAD_LOCALHOST}
-      -e download_run_once=${DOWNLOAD_RUN_ONCE}
+      -e "{deploy_netchecker: true}"
+      -e "{download_localhost: ${DOWNLOAD_LOCALHOST}}"
+      -e "{download_run_once: ${DOWNLOAD_RUN_ONCE}}"
       -e etcd_deployment_type=${ETCD_DEPLOYMENT}
       -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
       -e kubedns_min_replicas=1
@@ -127,6 +128,9 @@ before_script:
       -e local_release_dir=${PWD}/downloads
       -e resolvconf_mode=${RESOLVCONF_MODE}
       -e vault_deployment_type=${VAULT_DEPLOYMENT}
+      -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
+      -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
+      -e "{kubeadm_enabled: ${KUBEADM_ENABLED}}"
       -e "${AUTHORIZATION_MODES}"
       --limit "all:!fake_hosts"
       cluster.yml
@@ -144,17 +148,19 @@ before_script:
       -e ansible_ssh_user=${SSH_USER}
       -e bootstrap_os=${BOOTSTRAP_OS}
       -e cloud_provider=gce
-      -e deploy_netchecker=true
-      -e download_localhost=${DOWNLOAD_LOCALHOST}
-      -e download_run_once=${DOWNLOAD_RUN_ONCE}
+      -e "{deploy_netchecker: true}"
+      -e "{download_localhost: ${DOWNLOAD_LOCALHOST}}"
+      -e "{download_run_once: ${DOWNLOAD_RUN_ONCE}}"
       -e etcd_deployment_type=${ETCD_DEPLOYMENT}
       -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
       -e kubedns_min_replicas=1
       -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
       -e local_release_dir=${PWD}/downloads
       -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e vault_deployment_type=${VAULT_DEPLOYMENT}
       -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
       -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
+      -e "{kubeadm_enabled: ${KUBEADM_ENABLED}}"
       -e "${AUTHORIZATION_MODES}"
       --limit "all:!fake_hosts"
       $PLAYBOOK;
@@ -178,14 +184,18 @@ before_script:
       --private-key=${HOME}/.ssh/id_rsa
       -e bootstrap_os=${BOOTSTRAP_OS}
       -e ansible_python_interpreter=${PYPATH}
-      -e download_localhost=${DOWNLOAD_LOCALHOST}
-      -e download_run_once=${DOWNLOAD_RUN_ONCE}
-      -e deploy_netchecker=true
-      -e resolvconf_mode=${RESOLVCONF_MODE}
-      -e local_release_dir=${PWD}/downloads
+      -e "{deploy_netchecker: true}"
+      -e "{download_localhost: ${DOWNLOAD_LOCALHOST}}"
+      -e "{download_run_once: ${DOWNLOAD_RUN_ONCE}}"
       -e etcd_deployment_type=${ETCD_DEPLOYMENT}
       -e kubedns_min_replicas=1
       -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      -e local_release_dir=${PWD}/downloads
+      -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e vault_deployment_type=${VAULT_DEPLOYMENT}
+      -e "{kubeadm_enabled: ${KUBEADM_ENABLED}}"
+      -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
+      -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
       -e "${AUTHORIZATION_MODES}"
       --limit "all:!fake_hosts"
       cluster.yml;
@@ -221,14 +231,18 @@ before_script:
       --private-key=${HOME}/.ssh/id_rsa
       -e bootstrap_os=${BOOTSTRAP_OS}
       -e ansible_python_interpreter=${PYPATH}
-      -e download_localhost=${DOWNLOAD_LOCALHOST}
-      -e download_run_once=${DOWNLOAD_RUN_ONCE}
-      -e deploy_netchecker=true
-      -e resolvconf_mode=${RESOLVCONF_MODE}
-      -e local_release_dir=${PWD}/downloads
+      -e "{deploy_netchecker: true}"
+      -e "{download_localhost: ${DOWNLOAD_LOCALHOST}}"
+      -e "{download_run_once: ${DOWNLOAD_RUN_ONCE}}"
       -e etcd_deployment_type=${ETCD_DEPLOYMENT}
       -e kubedns_min_replicas=1
       -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+      -e local_release_dir=${PWD}/downloads
+      -e resolvconf_mode=${RESOLVCONF_MODE}
+      -e vault_deployment_type=${VAULT_DEPLOYMENT}
+      -e "{kubeadm_enabled: ${KUBEADM_ENABLED}}"
+      -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
+      -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
       -e "${AUTHORIZATION_MODES}"
       --limit "all:!fake_hosts"
       cluster.yml;
@@ -278,6 +292,17 @@ before_script:
   CLOUD_REGION: europe-west1-b
   CLUSTER_MODE: ha
   UPGRADE_TEST: "graceful"
+  STARTUP_SCRIPT: ""
+
+.ubuntu_canal_kubeadm_variables: &ubuntu_canal_kubeadm_variables
+# stage: deploy-gce-part1
+  KUBE_NETWORK_PLUGIN: canal
+  AUTHORIZATION_MODES: "{ 'authorization_modes':  [ 'RBAC' ] }"
+  CLOUD_IMAGE: ubuntu-1604-xenial
+  CLOUD_MACHINE_TYPE: "n1-standard-2"
+  CLOUD_REGION: europe-west1-b
+  CLUSTER_MODE: default
+  KUBEADM_ENABLED: "true"
   STARTUP_SCRIPT: ""
 
 .rhel7_weave_variables: &rhel7_weave_variables
@@ -467,6 +492,27 @@ ubuntu-canal-ha-rbac-triggers:
   variables:
     <<: *gce_variables
     <<: *ubuntu_canal_ha_rbac_variables
+  when: on_success
+  only: ['triggers']
+
+ubuntu-canal-kubeadm-rbac:
+  stage: deploy-gce-part1
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    <<: *ubuntu_canal_kubeadm_variables
+  when: manual
+  except: ['triggers']
+  only: ['master', /^pr-.*$/]
+
+ubuntu-canal-kubeadm-triggers:
+  stage: deploy-gce-part1
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    <<: *ubuntu_canal_kubeadm_variables
   when: on_success
   only: ['triggers']
 

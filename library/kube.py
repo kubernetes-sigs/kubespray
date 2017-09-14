@@ -135,11 +135,14 @@ class KubeManager(object):
             return None
         return out.splitlines()
 
-    def create(self, check=True):
+    def create(self, check=True, force=True):
         if check and self.exists():
             return []
 
         cmd = ['apply']
+
+        if force:
+            cmd.append('--force')
 
         if not self.filename:
             self.module.fail_json(msg='filename required to create')
@@ -148,11 +151,11 @@ class KubeManager(object):
 
         return self._execute(cmd)
 
-    def replace(self):
+    def replace(self, force=True):
 
         cmd = ['apply']
 
-        if self.force:
+        if force:
             cmd.append('--force')
 
         if not self.filename:

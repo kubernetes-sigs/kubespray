@@ -1,4 +1,34 @@
 ---
+- name: kubeadm | Check if old apiserver cert exists on host
+  stat:
+    path: "{{ kube_cert_dir }}/apiserver.pem"
+  register: old_apiserver_cert
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+
+- name: kubeadm | Check if kubeadm has already run
+  stat:
+    path: "{{ kube_config_dir }}/admin.conf"
+  register: admin_conf
+
+- name: kubeadm | Migrate certificates to prepare for kubeadm
+  include: kubeadm-migrate-certs.yml
+  when:
+    - inventory_hostname == groups['kube-master']|first
+    - old_apiserver_cert.stat.exists
+
+- name: kubeadm | Delete old static pods
+  file:
+    path: "{{ kube_config_dir }}/manifests/{{item}}.manifest"
+    state: absent
+  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
+  when: old_apiserver_cert.stat.exists
+
+- name: kubeadm | Forcefully delete old static pods
+  shell: "docker ps -f name=k8s-{{item}}* -q | xargs --no-run-if-empty docker rm -f"
+  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
+  when: old_apiserver_cert.stat.exists
+
 - name: kubeadm | aggregate all SANs
   set_fact:
     apiserver_sans: >-
@@ -29,10 +59,6 @@
     dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
   register: kubeadm_config
 
-- name: Check if kubeadm has already run
-  stat:
-    path: "{{ kube_config_dir }}/admin.conf"
-  register: admin_conf
 
 
 - name: kubeadm | Initialize first master
@@ -80,3 +106,7 @@
   #Retry is because upload config sometimes fails
   retries: 3
   when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed or not admin_conf.stat.exists or copy_kubeadm_certs.changed)
+
+- name: kubeadm | cleanup old certs if necessary
+  include: kubeadm_cleanup_old_certs.yml
+  when: old_apiserver_cert.stat.exists

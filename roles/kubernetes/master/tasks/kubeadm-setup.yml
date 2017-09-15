@@ -6,26 +6,27 @@
   delegate_to: "{{groups['kube-master']|first}}"
   run_once: true
 
+- name: kubeadm | Check service account key
+  stat:
+    path: "{{ kube_cert_dir }}/sa.key"
+  register: sa_key_before
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+
 - name: kubeadm | Check if kubeadm has already run
   stat:
     path: "{{ kube_config_dir }}/admin.conf"
   register: admin_conf
 
-- name: kubeadm | Migrate certificates to prepare for kubeadm
-  include: kubeadm-migrate-certs.yml
-  when:
-    - inventory_hostname == groups['kube-master']|first
-    - old_apiserver_cert.stat.exists
-
 - name: kubeadm | Delete old static pods
   file:
     path: "{{ kube_config_dir }}/manifests/{{item}}.manifest"
     state: absent
-  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
+  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler", "kube-proxy"]
   when: old_apiserver_cert.stat.exists
 
 - name: kubeadm | Forcefully delete old static pods
-  shell: "docker ps -f name=k8s-{{item}}* -q | xargs --no-run-if-empty docker rm -f"
+  shell: "docker ps -f name=k8s_{{item}} -q | xargs --no-run-if-empty docker rm -f"
   with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   when: old_apiserver_cert.stat.exists
 
@@ -59,8 +60,6 @@
     dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
   register: kubeadm_config
 
-
-
 - name: kubeadm | Initialize first master
   command: timeout -k 240s 240s kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
   register: kubeadm_init
@@ -88,7 +87,7 @@
   delegate_to: "{{ groups['kube-master']|first }}"
   run_once: true
 
-- name: write out kubeadm certs
+- name: kubeadm | write out kubeadm certs
   copy:
     dest: "{{ item.item }}"
     content: "{{ item.content | b64decode }}"
@@ -107,6 +106,18 @@
   retries: 3
   when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed or not admin_conf.stat.exists or copy_kubeadm_certs.changed)
 
+- name: kubeadm | Check service account key again
+  stat:
+    path: "{{ kube_cert_dir }}/sa.key"
+  register: sa_key_after
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+
+- name: kubeadm | Set secret_changed if service account key was updated
+  command: /bin/true
+  notify: Master | set secret_changed
+  when: sa_key_before.stat.checksum|default("") != sa_key_after.stat.checksum
+
 - name: kubeadm | cleanup old certs if necessary
-  include: kubeadm_cleanup_old_certs.yml
+  include: kubeadm-cleanup-old-certs.yml
   when: old_apiserver_cert.stat.exists

@@ -10,6 +10,11 @@
   when: not is_kube_master
   tags: facts
 
+- name: Check if kubelet.conf exists
+  stat:
+    path: "{{ kube_config_dir }}/kubelet.conf"
+  register: kubelet_conf
+
 - name: Create kubeadm client config
   template:
     src: kubeadm-client.conf.j2
@@ -21,7 +26,13 @@
 - name: Join to cluster if needed
   command: kubeadm join --config {{ kube_config_dir}}/kubeadm-client.conf --skip-preflight-checks
   register: kubeadm_join
-  when: not is_kube_master and kubeadm_client_conf.changed
+  when: not is_kube_master and (kubeadm_client_conf.changed or not kubelet_conf.stat.exists)
+
+- name: Wait for kubelet bootstrap to create config
+  wait_for:
+    path: "{{ kube_config_dir }}/kubelet.conf"
+    delay: 1
+    timeout: 60
 
 - name: Update server field in kubelet kubeconfig
   replace:

@@ -61,7 +61,7 @@
   register: kubeadm_config
 
 - name: kubeadm | Initialize first master
-  command: timeout -k 240s 240s kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
+  command: timeout -k 240s 240s kubeadm upgrade --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
   register: kubeadm_init
   #Retry is because upload config sometimes fails
   retries: 3
@@ -99,11 +99,16 @@
   with_items: "{{ kubeadm_certs.results }}"
   when: inventory_hostname != groups['kube-master']|first
 
-- name: kubeadm | Initialize other masters
-  command: timeout -k 240s 240s kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
+- name: kubeadm | Quick join other masters
+  command: timeout -k 240s 240s kubeadm alpha phase {{ item }} --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
   register: kubeadm_init
   #Retry is because upload config sometimes fails
   retries: 3
+  with_items:
+    - controlplane apiserver
+    - controlplane scheduler
+    - controlplane controller-manager
+    - bootstrap mark-master
   when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed or not admin_conf.stat.exists or copy_kubeadm_certs.changed)
 
 - name: kubeadm | Check service account key again

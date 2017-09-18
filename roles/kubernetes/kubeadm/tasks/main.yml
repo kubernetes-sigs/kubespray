@@ -1,0 +1,52 @@
+---
+- name: Set kubeadm_discovery_address
+  set_fact:
+    kubeadm_discovery_address: >-
+      {%- if "127.0.0.1" or "localhost" in kube_apiserver_endpoint -%}
+      {{ first_kube_master }}:{{ kube_apiserver_port }}
+      {%- else -%}
+      {{ kube_apiserver_endpoint }}
+      {%- endif %}
+  when: not is_kube_master
+  tags: facts
+
+- name: Check if kubelet.conf exists
+  stat:
+    path: "{{ kube_config_dir }}/kubelet.conf"
+  register: kubelet_conf
+
+- name: Create kubeadm client config
+  template:
+    src: kubeadm-client.conf.j2
+    dest: "{{ kube_config_dir }}/kubeadm-client.conf"
+    backup: yes
+  when: not is_kube_master
+  register: kubeadm_client_conf
+
+- name: Join to cluster if needed
+  command: kubeadm join --config {{ kube_config_dir}}/kubeadm-client.conf --skip-preflight-checks
+  register: kubeadm_join
+  when: not is_kube_master and (kubeadm_client_conf.changed or not kubelet_conf.stat.exists)
+
+- name: Wait for kubelet bootstrap to create config
+  wait_for:
+    path: "{{ kube_config_dir }}/kubelet.conf"
+    delay: 1
+    timeout: 60
+
+- name: Update server field in kubelet kubeconfig
+  replace:
+    path: "{{ kube_config_dir }}/kubelet.conf"
+    regexp: '(\s+){{ first_kube_master }}:{{ kube_apiserver_port }}(\s+.*)?$'
+    replace: '\1{{ kube_apiserver_endpoint }}\2'
+    backup: yes
+  when: not is_kube_master and kubeadm_discovery_address != kube_apiserver_endpoint
+
+# FIXME(mattymo): Reconcile kubelet kubeconfig filename for both deploy modes
+- name: Symlink kubelet kubeconfig for calico/canal
+  file:
+    src: "{{ kube_config_dir }}//kubelet.conf"
+    dest: "{{ kube_config_dir }}/node-kubeconfig.yaml"
+    state: link
+    force: yes
+  when: kube_network_plugin in ['calico','canal']

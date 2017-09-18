@@ -1,0 +1,82 @@
+---
+- name: kubeadm | aggregate all SANs
+  set_fact:
+    apiserver_sans: >-
+      kubernetes
+      kubernetes.default
+      kubernetes.default.svc
+      kubernetes.default.svc.{{ dns_domain }}
+      {{ kube_apiserver_ip }}
+      localhost
+      127.0.0.1
+      {{ ' '.join(groups['kube-master']) }}
+      {%- if loadbalancer_apiserver is defined and apiserver_loadbalancer_domain_name is defined %}
+      {{ apiserver_loadbalancer_domain_name }}
+      {%- endif %}
+      {%- for host in groups['kube-master'] -%}
+      {%- if hostvars[host]['access_ip'] is defined %}{{ hostvars[host]['access_ip'] }}{% endif %}
+      {{ hostvars[host]['ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}
+      {%- endfor %}
+  tags: facts
+
+- name: kubeadm | Copy etcd cert dir under k8s cert dir
+  command: "cp -TR {{ etcd_cert_dir }} {{ kube_config_dir }}/ssl/etcd"
+  changed_when: false
+
+- name: kubeadm | Create kubeadm config
+  template:
+    src: kubeadm-config.yaml.j2
+    dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kubeadm_config
+
+- name: Check if kubeadm has already run
+  stat:
+    path: "{{ kube_config_dir }}/admin.conf"
+  register: admin_conf
+
+
+- name: kubeadm | Initialize first master
+  command: timeout -k 240s 240s kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
+  register: kubeadm_init
+  #Retry is because upload config sometimes fails
+  retries: 3
+  when: inventory_hostname == groups['kube-master']|first and (kubeadm_config.changed or not admin_conf.stat.exists)
+
+- name: slurp kubeadm certs
+  slurp:
+    src: "{{ item }}"
+  with_items:
+    - "{{ kube_cert_dir }}/apiserver.crt"
+    - "{{ kube_cert_dir }}/apiserver.key"
+    - "{{ kube_cert_dir }}/apiserver-kubelet-client.crt"
+    - "{{ kube_cert_dir }}/apiserver-kubelet-client.key"
+    - "{{ kube_cert_dir }}/ca.crt"
+    - "{{ kube_cert_dir }}/ca.key"
+    - "{{ kube_cert_dir }}/front-proxy-ca.crt"
+    - "{{ kube_cert_dir }}/front-proxy-ca.key"
+    - "{{ kube_cert_dir }}/front-proxy-client.crt"
+    - "{{ kube_cert_dir }}/front-proxy-client.key"
+    - "{{ kube_cert_dir }}/sa.key"
+    - "{{ kube_cert_dir }}/sa.pub"
+  register: kubeadm_certs
+  delegate_to: "{{ groups['kube-master']|first }}"
+  run_once: true
+
+- name: write out kubeadm certs
+  copy:
+    dest: "{{ item.item }}"
+    content: "{{ item.content | b64decode }}"
+    owner: root
+    group: root
+    mode: 0700
+  no_log: true
+  register: copy_kubeadm_certs
+  with_items: "{{ kubeadm_certs.results }}"
+  when: inventory_hostname != groups['kube-master']|first
+
+- name: kubeadm | Initialize other masters
+  command: timeout -k 240s 240s kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
+  register: kubeadm_init
+  #Retry is because upload config sometimes fails
+  retries: 3
+  when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed or not admin_conf.stat.exists or copy_kubeadm_certs.changed)

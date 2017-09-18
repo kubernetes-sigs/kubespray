@@ -101,3 +101,17 @@ access the Kubernetes Dashboard at the following URL:
 To see the password, refer to the section above, titled *Connecting to
 Kubernetes*. The host can be any kube-master or kube-node or loadbalancer
 (when enabled).
+
+Accessing Kubernetes API
+------------------------
+
+The main client of Kubernetes is `kubectl`. It is installed on each kube-master
+host and can optionally be configured on your ansible host by setting
+`kubeconfig_localhost: true` in the configuration. If enabled, kubectl and
+admin.conf will appear in the artifacts/ directory after deployment. You can
+see a list of nodes by running the following commands:
+
+    cd artifacts/
+    ./kubectl --kubeconfig admin.conf get nodes
+
+If desired, copy kubectl to your bin dir and admin.conf to ~/.kube/config.

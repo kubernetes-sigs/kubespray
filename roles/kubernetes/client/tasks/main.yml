@@ -1,0 +1,66 @@
+---
+- name: Set first kube master
+  set_fact:
+    first_kube_master: "{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(hostvars[groups['kube-master'][0]]['ansible_default_ipv4']['address'])) }}"
+
+- name: Set external kube-apiserver endpoint
+  set_fact:
+    external_apiserver_endpoint: >-
+      {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
+      https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      {%- else -%}
+      https://{{ first_kube_master }}:{{ kube_apiserver_port }}
+      {%- endif -%}
+  tags: facts
+
+- name: Gather certs for admin kubeconfig
+  slurp:
+    src: "{{ item }}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_facts: no
+  register: admin_certs
+  with_items:
+    - "{{ kube_cert_dir }}/ca.pem"
+    - "{{ kube_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    - "{{ kube_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+  when: not kubeadm_enabled|d(false)|bool
+
+- name: Write admin kubeconfig
+  template:
+    src: admin.conf.j2
+    dest: "{{ kube_config_dir }}/admin.conf"
+  when: not kubeadm_enabled|d(false)|bool
+
+- name: Create kube config dir
+  file:
+    path: "/root/.kube"
+    mode: "0700"
+    state: directory
+
+- name: Copy admin kubeconfig to root user home
+  copy:
+    src: "{{ kube_config_dir }}/admin.conf"
+    dest: "/root/.kube/config"
+    remote_src: yes
+    mode: "0700"
+    backup: yes
+
+- name: Copy admin kubeconfig to ansible host
+  fetch:
+    src: "{{ kube_config_dir }}/admin.conf"
+    dest: "{{ artifacts_dir }}/admin.conf"
+    flat: yes
+    validate_checksum: no
+  become: no
+  run_once: yes
+  when: kubeconfig_localhost|default(false)
+
+- name: Copy kubectl binary to ansible host
+  fetch:
+    src: "{{ bin_dir }}/kubectl"
+    dest: "{{ artifacts_dir }}/kubectl"
+    flat: yes
+    validate_checksum: no
+  become: no
+  run_once: yes
+  when: kubectl_localhost|default(false)

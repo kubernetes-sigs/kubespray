@@ -28,10 +28,10 @@ an example inventory located
 You can use an
 [inventory generator](https://github.com/kubernetes-incubator/kubespray/blob/master/contrib/inventory_builder/inventory.py)
 to create or modify an Ansible inventory. Currently, it is limited in
-functionality and is only use for making a basic Kubespray cluster, but it does
-support creating large clusters. It now supports
+functionality and is only used for configuring a basic Kubespray cluster inventory, but it does
+support creating inventory file for large clusters as well. It now supports
 separated ETCD and Kubernetes master roles from node role if the size exceeds a
-certain threshold. Run inventory.py help for more information.
+certain threshold. Run `python3 contrib/inventory_builder/inventory.py help` help for more information.
 
 Example inventory generator usage:
 
@@ -59,7 +59,7 @@ See more details in the [ansible guide](ansible.md).
 Adding nodes
 ------------
 
-You may want to add worker nodes to your existing cluster. This can be done by re-running the `cluster.yml` playbook, or you can target the bare minimum needed to get kubelet installed on the worker and talking to your masters. This is especially helpful when doing something like autoscaling your clusters.
+You may want to add **worker** nodes to your existing cluster. This can be done by re-running the `cluster.yml` playbook, or you can target the bare minimum needed to get kubelet installed on the worker and talking to your masters. This is especially helpful when doing something like autoscaling your clusters.
 
 - Add the new worker node to your inventory under kube-node (or utilize a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html)).
 - Run the ansible-playbook command, substituting `scale.yml` for `cluster.yml`:
@@ -75,7 +75,7 @@ kube-apiserver via port 8080. A kubeconfig file is not necessary in this case,
 because kubectl will use http://localhost:8080 to connect. The kubeconfig files
 generated will point to localhost (on kube-masters) and kube-node hosts will
 connect either to a localhost nginx proxy or to a loadbalancer if configured.
-More details on this process is in the [HA guide](ha.md).
+More details on this process are in the [HA guide](ha.md).
 
 Kubespray permits connecting to the cluster remotely on any IP of any 
 kube-master host on port 6443 by default. However, this requires 

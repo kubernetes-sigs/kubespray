@@ -23,6 +23,12 @@ class SearchEC2Tags(object):
     else:
       self.vpc_visibility = "private"
 
+    ##Check if CLUSTER_NAME is set, ignore it otherwise
+    if "CLUSTER_NAME" in os.environ:
+      self.cluster_name = os.environ['CLUSTER_NAME']
+    else:
+      self.cluster_name = False
+
     ##Support --list and --host flags. We largely ignore the host one.
     parser = argparse.ArgumentParser()
     parser.add_argument('--list', action='store_true', default=False, help='List instances')
@@ -42,7 +48,17 @@ class SearchEC2Tags(object):
 
       ec2 = boto3.resource('ec2', region)
 
-      instances = ec2.instances.filter(Filters=[{'Name': 'tag:'+tag_key, 'Values': tag_value}, {'Name': 'instance-state-name', 'Values': ['running']}])
+      ##Default filters
+      running_filter = {'Name': 'instance-state-name', 'Values': ['running']}
+      role_filter = {'Name': 'tag:'+tag_key, 'Values': tag_value}
+
+      ##filter on the CLUSTER_NAME envvar, if it's in use
+      filter_list = [running_filter, role_filter]
+      if self.cluster_name:
+        filter_list.append({'Name': 'tag:cluster-name', 'Values': [self.cluster_name]})
+      ##Lookup instances
+      instances = ec2.instances.filter(Filters=filter_list)
+      ##Process instances and assemble JSON
       for instance in instances:
         if self.vpc_visibility == "public":
           hosts[group].append(instance.public_dns_name)

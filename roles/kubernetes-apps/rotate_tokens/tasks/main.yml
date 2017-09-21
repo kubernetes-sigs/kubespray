@@ -3,7 +3,6 @@
   command: >-
     {{ bin_dir }}/kubectl get pods --all-namespaces
     -o 'jsonpath={range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{" "}{.spec.volumes[*].name}{"\n"}{end}'
-
   register: pods_secrets
   run_once: true
 
@@ -15,28 +14,12 @@
   register: tokens_to_delete
   run_once: true
 
-- name: view pods_secrets
-  debug: msg="{{ pods_secrets.stdout_lines }}"
-
-- name: view pods_secrets2
-  #debug: msg="{{ item.split(" ")[0] }}"
-  debug: msg="{{ item.split(" ")[0] }} {{ item.split(" ")[1] }}"
-  with_items: "{{ tokens_to_delete.stdout_lines }}"
-
 - name: Rotate Tokens | Delete expired tokens
   command: "{{ bin_dir }}/kubectl delete secrets -n {{ item.split(' ')[0] }} {{ item.split(' ')[1] }}"
   with_items: "{{ tokens_to_delete.stdout_lines }}"
   run_once: true
 
-- set_fact:
-    t2d: |-
-       ["default default-token-38nh5",
-        "kube-public default-token-cx54r",
-        "kube-system default-token-d6dfh",
-        "default default-token-b58hs"
-       ]
-
-- name: Rotate Tokens | Delete pods with default tokens
+- name: Rotate Tokens | Delete pods
   command: "{{ bin_dir }}/kubectl delete pod -n {{ item.split(' ')[0] }} {{ item.split(' ')[1] }}"
   with_items: "{{ pods_secrets.stdout_lines }}"
   register: delete_pods

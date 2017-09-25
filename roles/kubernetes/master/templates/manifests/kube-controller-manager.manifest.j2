@@ -5,9 +5,6 @@ metadata:
   namespace: {{system_namespace}}
   labels:
     k8s-app: kube-controller
-  annotations:
-    kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
-    kubespray.controller-manager-cert/serial: "{{ controller_manager_cert_serial }}"
 spec:
   hostNetwork: true
 {% if kube_version | version_compare('v1.6', '>=') %}
@@ -73,14 +70,9 @@ spec:
       initialDelaySeconds: 30
       timeoutSeconds: 10
     volumeMounts:
-    - mountPath: /etc/ssl
+    - mountPath: /etc/ssl/certs
       name: ssl-certs-host
       readOnly: true
-{% for dir in ssl_ca_dirs %}
-    - mountPath: {{ dir }}
-      name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
-      readOnly: true
-{% endfor %}
     - mountPath: "{{kube_config_dir}}/ssl"
       name: etc-kube-ssl
       readOnly: true
@@ -95,12 +87,11 @@ spec:
   volumes:
   - name: ssl-certs-host
     hostPath:
-      path: /etc/ssl
-{% for dir in ssl_ca_dirs %}
-  - name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
-    hostPath:
-      path: {{ dir }}
-{% endfor %}
+{% if ansible_os_family == 'RedHat' %}
+      path: /etc/pki/tls
+{% else %}
+      path: /usr/share/ca-certificates
+{% endif %}
   - name: etc-kube-ssl
     hostPath:
       path: "{{ kube_config_dir }}/ssl"

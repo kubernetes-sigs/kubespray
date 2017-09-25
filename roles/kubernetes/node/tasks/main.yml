@@ -20,23 +20,13 @@
   when: is_kube_master == false and loadbalancer_apiserver_localhost|default(true)
   tags: nginx
 
-- name: Write kubelet config file (non-kubeadm)
+- name: Write kubelet config file
   template:
-    src: kubelet.standard.env.j2
+    src: kubelet.j2
     dest: "{{ kube_config_dir }}/kubelet.env"
     backup: yes
-  when: not kubeadm_enabled
   notify: restart kubelet
   tags: kubelet
-
-- name: Write kubelet config file (kubeadm)
-  template:
-    src: kubelet.kubeadm.env.j2
-    dest: "{{ kube_config_dir }}/kubelet.env"
-    backup: yes
-  when: kubeadm_enabled
-  notify: restart kubelet
-  tags: ['kubelet', 'kubeadm']
 
 - name: write the kubecfg (auth) file for kubelet
   template:
@@ -46,7 +36,6 @@
   with_items:
     - node
     - kube-proxy
-  when: not kubeadm_enabled
   notify: restart kubelet
   tags: kubelet
 
@@ -60,42 +49,10 @@
   when: kube_apiserver_node_port_range is defined
   tags: kube-proxy
 
-- name: Verify if br_netfilter module exists
-  shell: "modinfo br_netfilter"
-  register: modinfo_br_netfilter
-  failed_when: modinfo_br_netfilter.rc not in [0, 1]
-  changed_when: false
-
-- name: Enable br_netfilter module
-  modprobe:
-    name: br_netfilter
-    state: present
-  when: modinfo_br_netfilter.rc == 0
-
-# kube-proxy needs net.bridge.bridge-nf-call-iptables enabled when found if br_netfilter is not a module
-- name: Check if bridge-nf-call-iptables key exists
-  command: "sysctl net.bridge.bridge-nf-call-iptables"
-  failed_when: false
-  changed_when: false
-  register: sysctl_bridge_nf_call_iptables
-
-- name: Enable bridge-nf-call tables
-  sysctl:
-    name: "{{ item }}"
-    state: present
-    value: 1
-    reload: yes
-  when: modinfo_br_netfilter.rc == 1 and sysctl_bridge_nf_call_iptables.rc == 0
-  with_items:
-    - net.bridge.bridge-nf-call-iptables
-    - net.bridge.bridge-nf-call-arptables
-    - net.bridge.bridge-nf-call-ip6tables
-
 - name: Write proxy manifest
   template:
     src: manifests/kube-proxy.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-proxy.manifest"
-  when: not kubeadm_enabled
   tags: kube-proxy
 
 # reload-systemd

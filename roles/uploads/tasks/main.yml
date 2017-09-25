@@ -1,0 +1,27 @@
+---
+- name: Create dest directories
+  file:
+    path: "{{local_release_dir}}/{{item.dest|dirname}}"
+    state: directory
+    recurse: yes
+  with_items: '{{downloads}}'
+
+- name: Download items
+  get_url:
+    url: "{{item.source_url}}"
+    dest: "{{local_release_dir}}/{{item.dest}}"
+    sha256sum: "{{item.sha256 | default(omit)}}"
+    owner: "{{ item.owner|default(omit) }}"
+    mode: "{{ item.mode|default(omit) }}"
+  with_items: '{{downloads}}'
+
+- name: uploads items
+  gc_storage:
+    bucket: kargo
+    object: "{{item.version}}_{{item.name}}"
+    src: "{{ local_release_dir }}/{{item.dest}}"
+    mode: put
+    permission: public-read
+    gs_access_key: 'changeme'
+    gs_secret_key: 'changeme'
+  with_items: '{{downloads}}'

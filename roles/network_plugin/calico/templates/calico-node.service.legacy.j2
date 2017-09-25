@@ -1,0 +1,19 @@
+[Unit]
+Description=Calico per-node agent
+Documentation=https://github.com/projectcalico/calico-docker
+After=docker.service docker.socket
+Wants=docker.socket
+
+[Service]
+User=root
+PermissionsStartOnly=true
+{% if inventory_hostname in groups['k8s-cluster'] and peer_with_router|default(false)%}
+ExecStart={{ bin_dir }}/calicoctl node --ip={{ip | default(ansible_default_ipv4.address) }} --as={{ local_as }} --detach=false --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+{% else %}
+ExecStart={{ bin_dir }}/calicoctl node --ip={{ip | default(ansible_default_ipv4.address) }} --detach=false --node-image={{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+{% endif %}
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

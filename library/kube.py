@@ -135,14 +135,11 @@ class KubeManager(object):
             return None
         return out.splitlines()
 
-    def create(self, check=True, force=True):
+    def create(self, check=True):
         if check and self.exists():
             return []
 
-        cmd = ['apply']
-
-        if force:
-            cmd.append('--force')
+        cmd = ['create']
 
         if not self.filename:
             self.module.fail_json(msg='filename required to create')
@@ -151,11 +148,14 @@ class KubeManager(object):
 
         return self._execute(cmd)
 
-    def replace(self, force=True):
+    def replace(self):
 
-        cmd = ['apply']
+        if not self.force and not self.exists():
+            return []
 
-        if force:
+        cmd = ['replace']
+
+        if self.force:
             cmd.append('--force')
 
         if not self.filename:
@@ -270,8 +270,9 @@ def main():
 
     manager = KubeManager(module)
     state = module.params.get('state')
+
     if state == 'present':
-        result = manager.create(check=False)
+        result = manager.create()
 
     elif state == 'absent':
         result = manager.delete()
@@ -283,7 +284,11 @@ def main():
         result = manager.stop()
 
     elif state == 'latest':
-        result = manager.replace()
+        if manager.exists():
+            manager.force = True
+            result = manager.replace()
+        else:
+            result = manager.create(check=False)
 
     else:
         module.fail_json(msg='Unrecognized state %s.' % state)

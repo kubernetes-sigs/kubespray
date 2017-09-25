@@ -1,22 +1,4 @@
 ---
-
-- name: Kubernetes Apps | Check if netchecker-server manifest already exists
-  stat:
-    path: "{{ kube_config_dir }}/netchecker-server-deployment.yml.j2"
-  register: netchecker_server_manifest
-  tags: ['facts', 'upgrade']
-
-- name: Kubernetes Apps | Apply netchecker-server manifest to update annotations
-  kube:
-    name: "netchecker-server"
-    namespace: "{{ netcheck_namespace }}"
-    filename: "{{ netchecker_server_manifest.stat.path }}"
-    kubectl: "{{bin_dir}}/kubectl"
-    resource: "deploy"
-    state: latest
-  when: inventory_hostname == groups['kube-master'][0] and netchecker_server_manifest.stat.exists
-  tags: upgrade
-
 - name: Kubernetes Apps | Lay Down Netchecker Template
   template:
     src: "{{item.file}}"
@@ -43,6 +25,18 @@
     state: absent
   when: inventory_hostname == groups['kube-master'][0]
 
+# FIXME: remove if kubernetes/features#124 is implemented
+- name: Kubernetes Apps | Purge old Netchecker daemonsets
+  kube:
+    name: "{{item.item.name}}"
+    namespace: "{{netcheck_namespace}}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: absent
+  with_items: "{{ manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0] and item.item.type == "ds" and item.changed
+
 - name: Kubernetes Apps | Start Netchecker Resources
   kube:
     name: "{{item.item.name}}"
@@ -50,6 +44,7 @@
     kubectl: "{{bin_dir}}/kubectl"
     resource: "{{item.item.type}}"
     filename: "{{kube_config_dir}}/{{item.item.file}}"
-    state: "latest"
+    state: "{{item.changed | ternary('latest','present') }}"
   with_items: "{{ manifests.results }}"
-  when: inventory_hostname == groups['kube-master'][0] and not item|skipped
+  failed_when: manifests|failed and "Error from server (AlreadyExists)" not in manifests.msg
+  when: inventory_hostname == groups['kube-master'][0]

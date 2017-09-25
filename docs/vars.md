@@ -109,6 +109,9 @@ Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-st
   dynamic kernel services are needed for mounting persistent volumes into containers.  These may not be
   loaded by preinstall kubernetes processes.  For example, ceph and rbd backed volumes.  Set this variable to
   true to let kubelet load kernel modules.
+* *kubelet_cgroup_driver* - Allows manual override of the
+  cgroup-driver option for Kubelet. By default autodetection is used
+  to match Docker configuration.
 
 ##### Custom flags for Kube Components
 For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments. This can be done by providing a list of flags. Example:

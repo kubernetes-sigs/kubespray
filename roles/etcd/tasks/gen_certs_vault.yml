@@ -7,62 +7,29 @@
   when: inventory_hostname in etcd_node_cert_hosts
   tags: etcd-secrets
 
-
-- name: gen_certs_vault | Read in the local credentials
-  command: cat /etc/vault/roles/etcd/userpass
-  register: etcd_vault_creds_cat
-  when: inventory_hostname == groups.etcd|first
-
-- name: gen_certs_vault | Set facts for read Vault Creds
-  set_fact:
-    etcd_vault_creds: "{{ hostvars[groups.etcd|first]['etcd_vault_creds_cat']['stdout']|from_json }}"
-  when: inventory_hostname == groups.etcd|first
-
-- name: gen_certs_vault | Log into Vault and obtain an token
-  uri:
-    url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}/v1/auth/userpass/login/{{ etcd_vault_creds.username }}"
-    headers:
-      Accept: application/json
-      Content-Type: application/json
-    method: POST
-    body_format: json
-    body:
-      password: "{{ etcd_vault_creds.password }}"
-  register: etcd_vault_login_result
-  when: inventory_hostname == groups.etcd|first
-
-- name: gen_certs_vault | Set fact for vault_client_token
-  set_fact:
-    vault_client_token:  "{{ etcd_vault_login_result.get('json', {}).get('auth', {}).get('client_token') }}"
-  delegate_to: "{{ groups['etcd'][0] }}"
-
-- name: gen_certs_vault | Set fact for Vault API token
-  set_fact:
-    etcd_vault_headers:
-        Accept: application/json
-        Content-Type: application/json
-        X-Vault-Token: "{{ vault_client_token }}"
-  when: vault_client_token != ""
-
 # Issue master certs to Etcd nodes
 - include: ../../vault/tasks/shared/issue_cert.yml
   vars:
+    issue_cert_common_name: "etcd:master:{{ item.rsplit('/', 1)[1].rsplit('.', 1)[0] }}"
     issue_cert_alt_names: "{{ groups.etcd + ['localhost'] }}"
     issue_cert_copy_ca: "{{ item == etcd_master_certs_needed|first }}"
     issue_cert_file_group: "{{ etcd_cert_group }}"
     issue_cert_file_owner: kube
-    issue_cert_headers: "{{ etcd_vault_headers }}"
     issue_cert_hosts: "{{ groups.etcd }}"
     issue_cert_ip_sans: >-
         [
         {%- for host in groups.etcd  -%}
         "{{ hostvars[host]['ansible_default_ipv4']['address'] }}",
+        {%- if hostvars[host]['ip'] is defined -%}
+        "{{ hostvars[host]['ip'] }}",
+        {%- endif -%}
         {%- endfor -%}
         "127.0.0.1","::1"
         ]
     issue_cert_path: "{{ item }}"
     issue_cert_role: etcd
     issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
+    issue_cert_mount_path: "{{ etcd_vault_mount_path }}"
   with_items: "{{ etcd_master_certs_needed|d([]) }}"
   when: inventory_hostname in groups.etcd
   notify: set etcd_secret_changed
@@ -70,24 +37,26 @@
 # Issue node certs to everyone else
 - include: ../../vault/tasks/shared/issue_cert.yml
   vars:
+    issue_cert_common_name: "etcd:node:{{ item.rsplit('/', 1)[1].rsplit('.', 1)[0] }}"
     issue_cert_alt_names: "{{ etcd_node_cert_hosts }}"
     issue_cert_copy_ca: "{{ item == etcd_node_certs_needed|first }}"
     issue_cert_file_group: "{{ etcd_cert_group }}"
     issue_cert_file_owner: kube
-    issue_cert_headers: "{{ etcd_vault_headers }}"
     issue_cert_hosts: "{{ etcd_node_cert_hosts }}"
     issue_cert_ip_sans: >-
         [
         {%- for host in etcd_node_cert_hosts -%}
         "{{ hostvars[host]['ansible_default_ipv4']['address'] }}",
+        {%- if hostvars[host]['ip'] is defined -%}
+        "{{ hostvars[host]['ip'] }}",
+        {%- endif -%}
         {%- endfor -%}
         "127.0.0.1","::1"
         ]
     issue_cert_path: "{{ item }}"
     issue_cert_role: etcd
     issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
+    issue_cert_mount_path: "{{ etcd_vault_mount_path }}"
   with_items: "{{ etcd_node_certs_needed|d([]) }}"
   when: inventory_hostname in etcd_node_cert_hosts
   notify: set etcd_secret_changed
-
-

@@ -1,7 +1,11 @@
+---
 ## Required for bootstrap-os/preinstall/download roles and setting facts
 # Valid bootstrap options (required): ubuntu, coreos, centos, none
 bootstrap_os: none
 kube_api_anonymous_auth: false
+
+# Default value, but will be set to true automatically if detected
+is_atomic: false
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
 kube_version: v1.6.7
@@ -65,9 +69,6 @@ kube_users:
   kube:
     pass: "{{kube_api_pwd}}"
     role: admin
-  root:
-    pass: "{{kube_api_pwd}}"
-    role: admin
 
 # Choose network plugin (calico, weave or flannel)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
@@ -88,8 +89,11 @@ kube_network_node_prefix: 24
 
 # The port the API Server will be listening on.
 kube_apiserver_ip: "{{ kube_service_addresses|ipaddr('net')|ipaddr(1)|ipaddr('address') }}"
-kube_apiserver_port: 6443 # (https)
-kube_apiserver_insecure_port: 8080 # (http)
+# https
+kube_apiserver_port: 6443
+# http
+kube_apiserver_insecure_bind_address: 127.0.0.1
+kube_apiserver_insecure_port: 8080
 
 # Path used to store Docker data
 docker_daemon_graph: "/var/lib/docker"
@@ -110,7 +114,44 @@ kubelet_deployment_type: docker
 cert_management: script
 vault_deployment_type: docker
 
+# Enable kubeadm deployment (experimental)
+kubeadm_enabled: false
+kubeadm_token: "abcdef.0123456789abcdef"
+
+# Make a copy of kubeconfig on the host that runs Ansible in GITDIR/artifacts
+kubeconfig_localhost: false
+# Download kubectl onto the host that runs Ansible in GITDIR/artifacts
+kubectl_localhost: false
+
 # K8s image pull policy (imagePullPolicy)
 k8s_image_pull_policy: IfNotPresent
 efk_enabled: false
 enable_network_policy: false
+
+## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (https://github.com/kubernetes/kubernetes/issues/50461)
+#openstack_blockstorage_version: "v1/v2/auto (default)"
+## When OpenStack is used, if LBaaSv2 is available you can enable it with the following variables.
+openstack_lbaas_enabled: false
+#openstack_lbaas_subnet_id: "Neutron subnet ID (not network ID) to create LBaaS VIP"
+#openstack_lbaas_floating_network_id: "Neutron network ID (not subnet ID) to get floating IP from, disabled by default"
+#openstack_lbaas_create_monitor: "yes"
+#openstack_lbaas_monitor_delay: false
+#openstack_lbaas_monitor_timeout: false
+#openstack_lbaas_monitor_max_retries: false
+
+## List of authorization modes that must be configured for
+## the k8s cluster. Only 'AlwaysAllow','AlwaysDeny', and
+## 'RBAC' modes are tested.
+authorization_modes: []
+rbac_enabled: "{{ 'RBAC' in authorization_modes }}"
+
+## List of key=value pairs that describe feature gates for
+## the k8s cluster.
+kube_feature_gates: []
+
+# Vault data dirs.
+vault_base_dir: /etc/vault
+vault_cert_dir: "{{ vault_base_dir }}/ssl"
+vault_config_dir: "{{ vault_base_dir }}/config"
+vault_roles_dir: "{{ vault_base_dir }}/roles"
+vault_secrets_dir: "{{ vault_base_dir }}/secrets"

@@ -6,6 +6,9 @@ metadata:
   labels:
     k8s-app: kube-apiserver
     kubespray: v2
+  annotations:
+    kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
+    kubespray.apiserver-cert/serial: "{{ apiserver_cert_serial }}"
 spec:
   hostNetwork: true
 {% if kube_version | version_compare('v1.6', '>=')  %}
@@ -81,6 +84,12 @@ spec:
 {% if kube_api_anonymous_auth is defined and kube_version | version_compare('v1.5', '>=')  %}
     - --anonymous-auth={{ kube_api_anonymous_auth }}
 {% endif %}
+{% if authorization_modes %}
+    - --authorization-mode={{ authorization_modes|join(',') }}
+{% endif %}
+{% if kube_feature_gates %}
+    - --feature-gates={{ kube_feature_gates|join(',') }}
+{% endif %}
 {% if apiserver_custom_flags is string %}
     - {{ apiserver_custom_flags }}
 {% else %}
@@ -99,9 +108,14 @@ spec:
     - mountPath: {{ kube_config_dir }}
       name: kubernetes-config
       readOnly: true
-    - mountPath: /etc/ssl/certs
+    - mountPath: /etc/ssl
       name: ssl-certs-host
       readOnly: true
+{% for dir in ssl_ca_dirs %}
+    - mountPath: {{ dir }}
+      name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+      readOnly: true
+{% endfor %}
     - mountPath: {{ etcd_cert_dir }}
       name: etcd-certs
       readOnly: true
@@ -114,9 +128,14 @@ spec:
   - hostPath:
       path: {{ kube_config_dir }}
     name: kubernetes-config
-  - hostPath:
-      path: /etc/ssl/certs/
-    name: ssl-certs-host
+  - name: ssl-certs-host
+    hostPath:
+      path: /etc/ssl
+{% for dir in ssl_ca_dirs %}
+  - name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+    hostPath:
+      path: {{ dir }}
+{% endfor %}
   - hostPath:
       path: {{ etcd_cert_dir }}
     name: etcd-certs

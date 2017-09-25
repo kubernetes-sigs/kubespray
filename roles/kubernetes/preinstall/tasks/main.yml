@@ -1,6 +1,6 @@
 ---
 - include: pre-upgrade.yml
-  tags: [upgrade,  bootstrap-os]
+  tags: [upgrade, bootstrap-os]
 
 - name: Force binaries directory for Container Linux by CoreOS
   set_fact:
@@ -16,10 +16,6 @@
   become: true
   tags: bootstrap-os
 
-- include: gitinfos.yml
-  when: run_gitinfos
-  tags: facts
-
 - include: set_facts.yml
   tags: facts
 
@@ -27,40 +23,29 @@
   include_vars: "{{ item }}"
   with_first_found:
     - files:
-      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
-      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
-      - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
-      - "{{ ansible_distribution|lower }}.yml"
-      - "{{ ansible_os_family|lower }}.yml"
-      - defaults.yml
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
       paths:
-      - ../vars
+        - ../vars
       skip: true
   tags: facts
 
-- name: Create kubernetes config directory
+- name: Create kubernetes directories
   file:
-    path: "{{ kube_config_dir }}"
+    path: "{{ item }}"
     state: directory
     owner: kube
   when: inventory_hostname in groups['k8s-cluster']
   tags: [kubelet, k8s-secrets, kube-controller-manager, kube-apiserver, bootstrap-os, apps, network, master, node]
-
-- name: Create kubernetes script directory
-  file:
-    path: "{{ kube_script_dir }}"
-    state: directory
-    owner: kube
-  when: "inventory_hostname in groups['k8s-cluster']"
-  tags: [k8s-secrets, bootstrap-os]
-
-- name: Create kubernetes manifests directory
-  file:
-    path: "{{ kube_manifest_dir }}"
-    state: directory
-    owner: kube
-  when: "inventory_hostname in groups['k8s-cluster']"
-  tags: [kubelet, bootstrap-os, master, node]
+  with_items:
+    - "{{ kube_config_dir }}"
+    - "{{ kube_config_dir }}/ssl"
+    - "{{ kube_manifest_dir }}"
+    - "{{ kube_script_dir }}"
 
 - name: check cloud_provider value
   fail:
@@ -85,7 +70,7 @@
     - "/etc/cni/net.d"
     - "/opt/cni/bin"
   when:
-    - kube_network_plugin in ["calico", "weave", "canal"]
+    - kube_network_plugin in ["calico", "weave", "canal", "flannel"]
     - inventory_hostname in groups['k8s-cluster']
   tags: [network, calico, weave, canal, bootstrap-os]
 
@@ -128,6 +113,7 @@
   when:
     - ansible_distribution in ["CentOS","RedHat"]
     - not is_atomic
+    - epel_rpm_download_url != ''
   register: epel_task_result
   until: epel_task_result|succeeded
   retries: 4

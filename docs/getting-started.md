@@ -57,7 +57,7 @@ ansible-playbook -i my_inventory/inventory.cfg cluster.yml -b -v \
 See more details in the [ansible guide](ansible.md).
 
 Adding nodes
---------------------------
+------------
 
 You may want to add worker nodes to your existing cluster. This can be done by re-running the `cluster.yml` playbook, or you can target the bare minimum needed to get kubelet installed on the worker and talking to your masters. This is especially helpful when doing something like autoscaling your clusters.
 
@@ -67,3 +67,51 @@ You may want to add worker nodes to your existing cluster. This can be done by r
 ansible-playbook -i my_inventory/inventory.cfg scale.yml -b -v \
   --private-key=~/.ssh/private_key
 ```
+
+Connecting to Kubernetes
+------------------------
+By default, Kubespray configures kube-master hosts with insecure access to
+kube-apiserver via port 8080. A kubeconfig file is not necessary in this case,
+because kubectl will use http://localhost:8080 to connect. The kubeconfig files
+generated will point to localhost (on kube-masters) and kube-node hosts will
+connect either to a localhost nginx proxy or to a loadbalancer if configured.
+More details on this process is in the [HA guide](ha.md).
+
+Kubespray permits connecting to the cluster remotely on any IP of any 
+kube-master host on port 6443 by default. However, this requires 
+authentication. One could generate a kubeconfig based on one installed 
+kube-master hosts (needs improvement) or connect with a username and password.
+By default, a user with admin rights is created, named `kube`.
+The password can be viewed after deployment by looking at the file 
+`PATH_TO_KUBESPRAY/credentials/kube_user`. This contains a randomly generated
+password. If you wish to set your own password, just precreate/modify this
+file yourself. 
+
+For more information on kubeconfig and accessing a Kubernetes cluster, refer to
+the Kubernetes [documentation](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/).
+
+Accessing Kubernetes Dashboard
+------------------------------
+
+If the variable `dashboard_enabled` is set (default is true), then you can
+access the Kubernetes Dashboard at the following URL:
+
+  https://kube:_kube-password_@_host_:6443/ui/
+
+To see the password, refer to the section above, titled *Connecting to
+Kubernetes*. The host can be any kube-master or kube-node or loadbalancer
+(when enabled).
+
+Accessing Kubernetes API
+------------------------
+
+The main client of Kubernetes is `kubectl`. It is installed on each kube-master
+host and can optionally be configured on your ansible host by setting
+`kubeconfig_localhost: true` in the configuration. If enabled, kubectl and
+admin.conf will appear in the artifacts/ directory after deployment. You can
+see a list of nodes by running the following commands:
+
+    cd artifacts/
+    ./kubectl --kubeconfig admin.conf get nodes
+
+If desired, copy kubectl to your bin dir and admin.conf to ~/.kube/config.

@@ -1,12 +1,5 @@
 ---
-- name: downloading...
-  debug:
-    msg: "{{ download.url }}"
-  when:
-    - download.enabled|bool
-    - not download.container|bool
-
-- name: Create dest directories
+- name: file_download | Create dest directories
   file:
     path: "{{local_release_dir}}/{{download.dest|dirname}}"
     state: directory
@@ -16,7 +9,7 @@
     - not download.container|bool
   tags: bootstrap-os
 
-- name: Download items
+- name: file_download | Download item
   get_url:
     url: "{{download.url}}"
     dest: "{{local_release_dir}}/{{download.dest}}"
@@ -31,7 +24,7 @@
     - download.enabled|bool
     - not download.container|bool
 
-- name: Extract archives
+- name: file_download | Extract archives
   unarchive:
     src: "{{ local_release_dir }}/{{download.dest}}"
     dest: "{{ local_release_dir }}/{{download.dest|dirname}}"
@@ -41,10 +34,9 @@
   when:
     - download.enabled|bool
     - not download.container|bool
-    - download.unarchive is defined
-    - download.unarchive == True
+    - download.unarchive|default(False)
 
-- name: Fix permissions
+- name: file_download | Fix permissions
   file:
     state: file
     path: "{{local_release_dir}}/{{download.dest}}"
@@ -56,10 +48,11 @@
     - (download.unarchive is not defined or download.unarchive == False)
 
 - set_fact:
-    download_delegate: "{% if download_localhost %}localhost{% else %}{{groups['kube-master'][0]}}{% endif %}"
+    download_delegate: "{% if download_localhost|bool %}localhost{% else %}{{groups['kube-master'][0]}}{% endif %}"
+  run_once: true
   tags: facts
 
-- name: Create dest directory for saved/loaded container images
+- name: container_download | Create dest directory for saved/loaded container images
   file:
     path: "{{local_release_dir}}/containers"
     state: directory
@@ -72,15 +65,14 @@
   tags: bootstrap-os
 
 # This is required for the download_localhost delegate to work smooth with Container Linux by CoreOS cluster nodes
-- name: Hack python binary path for localhost
+- name: container_download | Hack python binary path for localhost
   raw: sh -c "mkdir -p /opt/bin; ln -sf /usr/bin/python /opt/bin/python"
-  when: download_delegate == 'localhost'
   delegate_to: localhost
+  when: download_delegate == 'localhost'
   failed_when: false
-  run_once: true
   tags: localhost
 
-- name: Download | create local directory for saved/loaded container images
+- name: container_download | create local directory for saved/loaded container images
   file:
     path: "{{local_release_dir}}/containers"
     state: directory
@@ -95,24 +87,16 @@
     - download_delegate == 'localhost'
   tags: localhost
 
-- name: Make download decision if pull is required by tag or sha256
+- name: container_download | Make download decision if pull is required by tag or sha256
   include: set_docker_image_facts.yml
   when:
     - download.enabled|bool
     - download.container|bool
-  delegate_to: "{{ download_delegate if download_run_once|bool else inventory_hostname }}"
+  delegate_to: "{{ download_delegate if download_run_once|bool or omit }}"
   run_once: "{{ download_run_once|bool }}"
   tags: facts
 
-- name: pulling...
-  debug:
-    msg: "{{ pull_args }}"
-  when:
-    - download.enabled|bool
-    - download.container|bool
-
-#NOTE(bogdando) this brings no docker-py deps for nodes
-- name: Download containers if pull is required or told to always pull
+- name: container_download | Download containers if pull is required or told to always pull
   command: "{{ docker_bin_dir }}/docker pull {{ pull_args }}"
   register: pull_task_result
   until: pull_task_result|succeeded
@@ -122,29 +106,29 @@
     - download.enabled|bool
     - download.container|bool
     - pull_required|bool|default(download_always_pull)
-  delegate_to: "{{ download_delegate if download_run_once|bool else inventory_hostname }}"
+  delegate_to: "{{ download_delegate if download_run_once|bool or omit }}"
   run_once: "{{ download_run_once|bool }}"
 
 - set_fact:
     fname: "{{local_release_dir}}/containers/{{download.repo|regex_replace('/|\0|:', '_')}}:{{download.tag|default(download.sha256)|regex_replace('/|\0|:', '_')}}.tar"
+  run_once: true
   tags: facts
 
-- name: "Set default value for 'container_changed' to false"
+- name: "container_download | Set default value for 'container_changed' to false"
   set_fact:
     container_changed: "{{pull_required|default(false)|bool}}"
 
-- name: "Update the 'container_changed' fact"
+- name: "container_download | Update the 'container_changed' fact"
   set_fact:
     container_changed: "{{ pull_required|bool|default(false) or not 'up to date' in pull_task_result.stdout }}"
   when:
     - download.enabled|bool
     - download.container|bool
     - pull_required|bool|default(download_always_pull)
-  delegate_to: "{{ download_delegate if download_run_once|bool else inventory_hostname }}"
   run_once: "{{ download_run_once|bool }}"
   tags: facts
 
-- name: Stat saved container image
+- name: container_download | Stat saved container image
   stat:
     path: "{{fname}}"
   register: img
@@ -158,7 +142,7 @@
   run_once: true
   tags: facts
 
-- name: Download | save container images
+- name: container_download | save container images
   shell: "{{ docker_bin_dir }}/docker save {{ pull_args }} | gzip -{{ download_compress }} > {{ fname }}"
   delegate_to: "{{ download_delegate }}"
   register: saved
@@ -170,7 +154,7 @@
     - download.container|bool
     - (container_changed|bool or not img.stat.exists)
 
-- name: Download | copy container images to ansible host
+- name: container_download | copy container images to ansible host
   synchronize:
     src: "{{ fname }}"
     dest: "{{ fname }}"
@@ -186,7 +170,7 @@
     - download.container|bool
     - saved.changed
 
-- name: Download | upload container images to nodes
+- name: container_download | upload container images to nodes
   synchronize:
     src: "{{ fname }}"
     dest: "{{ fname }}"
@@ -206,7 +190,7 @@
     - download.container|bool
   tags: [upload, upgrade]
 
-- name: Download | load container images
+- name: container_download | load container images
   shell: "{{ docker_bin_dir }}/docker load < {{ fname }}"
   when:
     - (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] and

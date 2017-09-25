@@ -2,9 +2,11 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: kube-scheduler
-  namespace: kube-system
+  namespace: {{ system_namespace }}
   labels:
     k8s-app: kube-scheduler
+  annotations:
+    kubespray.scheduler-cert/serial: "{{ scheduler_cert_serial }}"
 spec:
   hostNetwork: true
 {% if kube_version | version_compare('v1.6', '>=') %}
@@ -25,8 +27,11 @@ spec:
     - /hyperkube
     - scheduler
     - --leader-elect=true
-    - --master={{ kube_apiserver_endpoint }}
+    - --kubeconfig={{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml
     - --v={{ kube_log_level }}
+{% if kube_feature_gates %}
+    - --feature-gates={{ kube_feature_gates|join(',') }}
+{% endif %}
 {% if scheduler_custom_flags is string %}
     - {{ scheduler_custom_flags }}
 {% else %}
@@ -41,3 +46,33 @@ spec:
         port: 10251
       initialDelaySeconds: 30
       timeoutSeconds: 10
+    volumeMounts:
+    - mountPath: /etc/ssl
+      name: ssl-certs-host
+      readOnly: true
+{% for dir in ssl_ca_dirs %}
+    - mountPath: {{ dir }}
+      name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+      readOnly: true
+{% endfor %}
+    - mountPath: "{{ kube_config_dir }}/ssl"
+      name: etc-kube-ssl
+      readOnly: true
+    - mountPath: "{{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml"
+      name: kubeconfig
+      readOnly: true
+  volumes:
+  - name: ssl-certs-host
+    hostPath:
+      path: /etc/ssl
+{% for dir in ssl_ca_dirs %}
+  - name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+    hostPath:
+      path: {{ dir }}
+{% endfor %}
+  - name: etc-kube-ssl
+    hostPath:
+      path: "{{ kube_config_dir }}/ssl"
+  - name: kubeconfig
+    hostPath:
+      path: "{{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml"

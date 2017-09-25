@@ -17,17 +17,20 @@ spec:
         kubernetes.io/cluster-service: "true"
         version: "v{{ fluentd_version }}"
     spec:
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
       containers:
       - name: fluentd-es
         image: "{{ fluentd_image_repo }}:{{ fluentd_image_tag }}"
         command:
           - '/bin/sh'
           - '-c'
-          - '/usr/sbin/td-agent 2>&1 >> /var/log/fluentd.log'
+          - '/usr/sbin/td-agent -c {{ fluentd_config_dir }}/{{ fluentd_config_file}} 2>&1 >> /var/log/fluentd.log'
         resources:
           limits:
 {% if fluentd_cpu_limit is defined and fluentd_cpu_limit != "0m" %}
-            mem: {{ fluentd_cpu_limit }}
+            cpu: {{ fluentd_cpu_limit }}
 {% endif %}
             memory: {{ fluentd_mem_limit }}
           requests:
@@ -39,6 +42,8 @@ spec:
         - name: varlibdockercontainers
           mountPath: /var/lib/docker/containers
           readOnly: true
+        - name: config
+          mountPath: "{{ fluentd_config_dir }}"
       terminationGracePeriodSeconds: 30
       volumes:
       - name: varlog
@@ -47,3 +52,9 @@ spec:
       - name: varlibdockercontainers
         hostPath:
           path: /var/lib/docker/containers
+      - name: config
+        configMap: 
+          name: fluentd-config
+{% if rbac_enabled %}
+      serviceAccountName: efk 
+{% endif %}

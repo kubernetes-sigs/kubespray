@@ -1,6 +1,4 @@
 ---
-- include: pre_upgrade.yml
-
 - name: ensure dnsmasq.d directory exists
   file:
     path: /etc/dnsmasq.d
@@ -56,6 +54,26 @@
     dest: /etc/dnsmasq.d/01-kube-dns.conf
     state: link
 
+- name: Create dnsmasq RBAC manifests
+  template:
+    src: "{{ item }}"
+    dest: "{{ kube_config_dir }}/{{ item }}"
+  with_items:
+    - "dnsmasq-clusterrolebinding.yml"
+    - "dnsmasq-serviceaccount.yml"
+  when: rbac_enabled
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+
+- name: Apply dnsmasq RBAC manifests
+  command: "{{ bin_dir }}/kubectl apply -f {{ kube_config_dir }}/{{ item }}"
+  with_items:
+    - "dnsmasq-clusterrolebinding.yml"
+    - "dnsmasq-serviceaccount.yml"
+  when: rbac_enabled
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+
 - name: Create dnsmasq manifests
   template:
     src: "{{item.file}}"
@@ -63,7 +81,7 @@
   with_items:
     - {name: dnsmasq, file: dnsmasq-deploy.yml, type: deployment}
     - {name: dnsmasq, file: dnsmasq-svc.yml, type: svc}
-    - {name: dnsmasq-autoscaler, file: dnsmasq-autoscaler.yml, type: deployment}
+    - {name: dnsmasq-autoscaler, file: dnsmasq-autoscaler.yml.j2, type: deployment}
   register: manifests
   delegate_to: "{{ groups['kube-master'][0] }}"
   run_once: true
@@ -75,7 +93,7 @@
     kubectl: "{{bin_dir}}/kubectl"
     resource: "{{item.item.type}}"
     filename: "{{kube_config_dir}}/{{item.item.file}}"
-    state: "{{item.changed | ternary('latest','present') }}"
+    state: "latest"
   with_items: "{{ manifests.results }}"
   delegate_to: "{{ groups['kube-master'][0] }}"
   run_once: true
@@ -86,4 +104,3 @@
     port: 53
     timeout: 180
   when: inventory_hostname == groups['kube-node'][0] and groups['kube-node'][0] in ansible_play_hosts
-

@@ -1,0 +1,70 @@
+apiVersion: kubeadm.k8s.io/v1alpha1
+kind: MasterConfiguration
+api:
+  advertiseAddress: {{ ip | default(ansible_default_ipv4.address) }}
+  bindPort: {{ kube_apiserver_port }}
+etcd:
+  endpoints:
+{% for endpoint in etcd_access_endpoint.split(',') %}
+  - {{ endpoint }}
+{% endfor %}
+  caFile: {{ kube_config_dir }}/ssl/etcd/ca.pem
+  certFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}.pem
+  keyFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}-key.pem
+networking:
+  dnsDomain: {{ dns_domain }}
+  serviceSubnet: {{ kube_service_addresses }}
+  podSubnet: {{ kube_pods_subnet }}
+kubernetesVersion: {{ kube_version }}
+cloudProvider: {{ cloud_provider|default('') }}
+#TODO: cloud provider conf file
+authorizationModes:
+- Node
+{% for mode in authorization_modes %}
+- {{ mode }}
+{% endfor %}
+token: {{ kubeadm_token }}
+tokenTTL: "{{ kubeadm_token_ttl }}"
+selfHosted: false
+apiServerExtraArgs:
+  insecure-bind-address: {{ kube_apiserver_insecure_bind_address }}
+  insecure-port: "{{ kube_apiserver_insecure_port }}"
+  admission-control: {{ kube_apiserver_admission_control | join(',') }}
+  apiserver-count: "{{ kube_apiserver_count }}"
+  service-node-port-range: {{ kube_apiserver_node_port_range }}
+{% if kube_basic_auth|default(true) %}
+  basic-auth-file: {{ kube_users_dir }}/known_users.csv
+{% endif %}
+{% if kube_oidc_auth|default(false) and kube_oidc_url is defined and kube_oidc_client_id is defined %}
+  oidc-issuer-url: {{ kube_oidc_url }}
+  oidc-client-id: {{ kube_oidc_client_id }}
+{%   if kube_oidc_ca_file is defined %}
+  oidc-ca-file: {{ kube_oidc_ca_file }}
+{%   endif %}
+{%   if kube_oidc_username_claim is defined %}
+  oidc-username-claim: {{ kube_oidc_username_claim }}
+{%   endif %}
+{%   if kube_oidc_groups_claim is defined %}
+  oidc-groups-claim: {{ kube_oidc_groups_claim }}
+{%   endif %}
+{% endif %}
+  storage-backend: {{ kube_apiserver_storage_backend }}
+{% if kube_api_runtime_config is defined %}
+  runtime-config: {{ kube_api_runtime_config }}
+{% endif %}
+  allow-privileged: "true"
+#TODO: Custom flags compatible with kubeadm
+controllerManagerExtraArgs:
+  node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
+  node-monitor-period: {{ kube_controller_node_monitor_period }}
+  pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
+{% if kube_feature_gates %}
+  feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
+#schedulerExtraArgs:
+apiServerCertSANs:
+{% for san in  apiserver_sans.split(' ') | unique %}
+  - {{ san }}
+{% endfor %}
+certificatesDir: {{ kube_config_dir }}/ssl
+unifiedControlPlaneImage: "{{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}"

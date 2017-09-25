@@ -15,6 +15,8 @@
         instance_names: >-
           {%- if mode in ['separate', 'separate-scale', 'ha', 'ha-scale'] -%}
           k8s-{{test_name}}-1,k8s-{{test_name}}-2,k8s-{{test_name}}-3
+          {%- elif mode == 'aio' -%}
+          k8s-{{test_name}}-1
           {%- else -%}
           k8s-{{test_name}}-1,k8s-{{test_name}}-2
           {%- endif -%}
@@ -34,6 +36,10 @@
         tags: "build-{{test_name}},{{kube_network_plugin}}"
       register: gce
 
+    - name: Add instances to host group
+      add_host: hostname={{item.public_ip}} groupname="waitfor_hosts"
+      with_items: '{{gce.instance_data}}'
+
     - name: Template the inventory
       template:
         src: ../templates/inventory-gce.j2
@@ -51,6 +57,10 @@
         dest: "{{ inventory_path|dirname }}/group_vars/fake_hosts.yml"
       when: mode in ['scale', 'separate-scale', 'ha-scale']
 
-    - name: Wait for SSH to come up
-      wait_for: host={{item.public_ip}} port=22 delay=30 timeout=180 state=started
-      with_items: "{{gce.instance_data}}"
+
+- name: Wait for instances
+  hosts: "waitfor_hosts"
+  gather_facts: false
+  tasks:
+    - name: Wait for SSH to come up.
+      local_action: wait_for host={{inventory_hostname}} port=22 delay=60 timeout=240 state=started

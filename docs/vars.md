@@ -67,6 +67,13 @@ following default cluster paramters:
   OpenStack (default is unset)
 * *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in
   Kubernetes
+* *kube_feature_gates* - A list of key=value pairs that describe feature gates for
+  alpha/experimental Kubernetes features. (defaults is `[]`)
+* *authorization_modes* - A list of [authorization mode](
+https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
+  that the cluster should be configured for. Defaults to `[]` (i.e. no authorization).
+  Note: `RBAC` is currently in experimental phase, and do not support either calico or
+  vault. Upgrade from non-RBAC to RBAC is not tested.
 
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``
@@ -93,6 +100,11 @@ Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-st
   ``--insecure-registry=myregistry.mydomain:5000``
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy
+* *kubelet_deployment_type* - Controls which platform to deploy kubelet on. 
+  Available options are ``host``, ``rkt``, and ``docker``. ``docker`` mode
+  is unlikely to work on newer releases. Starting with Kubernetes v1.7 
+  series, this now defaults to ``host``. Before v1.7, the default was Docker.
+  This is because of cgroup [issues](https://github.com/kubernetes/kubernetes/issues/43704).
 * *kubelet_load_modules* - For some things, kubelet needs to load kernel modules.  For example,
   dynamic kernel services are needed for mounting persistent volumes into containers.  These may not be
   loaded by preinstall kubernetes processes.  For example, ceph and rbd backed volumes.  Set this variable to

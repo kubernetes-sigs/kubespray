@@ -1,38 +1,4 @@
 ---
-- name: "Pre-upgrade | check for kube-apiserver unit file"
-  stat:
-    path: /etc/systemd/system/kube-apiserver.service
-  register: kube_apiserver_service_file
-  tags: [facts, kube-apiserver]
-
-- name: "Pre-upgrade | check for kube-apiserver init script"
-  stat:
-    path: /etc/init.d/kube-apiserver
-  register: kube_apiserver_init_script
-  tags: [facts, kube-apiserver]
-
-- name: "Pre-upgrade | stop kube-apiserver if service defined"
-  service:
-    name: kube-apiserver
-    state: stopped
-  when: (kube_apiserver_service_file.stat.exists|default(False) or kube_apiserver_init_script.stat.exists|default(False))
-  tags: kube-apiserver
-
-- name: "Pre-upgrade | remove kube-apiserver service definition"
-  file:
-    path: "{{ item }}"
-    state: absent
-  when: (kube_apiserver_service_file.stat.exists|default(False) or kube_apiserver_init_script.stat.exists|default(False))
-  with_items:
-    - /etc/systemd/system/kube-apiserver.service
-    - /etc/init.d/kube-apiserver
-  tags: kube-apiserver
-
-- name: "Pre-upgrade | See if kube-apiserver manifest exists"
-  stat:
-    path: /etc/kubernetes/manifests/kube-apiserver.manifest
-  register: kube_apiserver_manifest
-
 - name: "Pre-upgrade | etcd3 upgrade | see if old config exists"
   command: "{{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses }} ls /registry/minions"
   environment:
@@ -42,69 +8,23 @@
   when: kube_apiserver_storage_backend == "etcd3"
   failed_when: false
 
-- name: "Pre-upgrade | etcd3 upgrade | use etcd2 unless forced to etc3"
+- name: "Pre-upgrade | etcd3 upgrade | use etcd2 unless forced to etcd3"
   set_fact:
     kube_apiserver_storage_backend: "etcd2"
   when: old_data_exists.rc == 0 and not force_etcd3|bool
 
-- name: "Pre-upgrade | etcd3 upgrade | see if data was already migrated"
-  command: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }} get --limit=1 --prefix=true /registry/minions"
-  environment:
-    ETCDCTL_API: 3
-  register: data_migrated
-  delegate_to: "{{groups['etcd'][0]}}"
-  when: kube_apiserver_storage_backend == "etcd3"
-  failed_when: false
-
-- name: "Pre-upgrade | etcd3 upgrade | set needs_etcd_migration"
-  set_fact:
-    needs_etcd_migration: "{{ force_etcd3|default(false) and kube_apiserver_storage_backend == 'etcd3' and data_migrated.stdout_lines|length == 0 and old_data_exists.rc == 0 }}"
-
-- name: "Pre-upgrade | Delete master manifests on all kube-masters"
+- name: "Pre-upgrade | Delete master manifests"
   file:
-    path: "/etc/kubernetes/manifests/{{item[1]}}.manifest"
+    path: "/etc/kubernetes/manifests/{{item}}.manifest"
     state: absent
-  delegate_to: "{{item[0]}}"
   with_nested:
-    - "{{groups['kube-master']}}"
     - ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   register: kube_apiserver_manifest_replaced
-  when: (secret_changed|default(false) or etcd_secret_changed|default(false) or needs_etcd_migration|bool) and kube_apiserver_manifest.stat.exists
+  when: (secret_changed|default(false) or etcd_secret_changed|default(false))
 
-- name: "Pre-upgrade | Delete master containers forcefully on all kube-masters"
+- name: "Pre-upgrade | Delete master containers forcefully"
   shell: "docker ps -f name=k8s-{{item}}* -q | xargs --no-run-if-empty docker rm -f"
-  delegate_to: "{{item[0]}}"
   with_nested:
-    - "{{groups['kube-master']}}"
     - ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
-  register: kube_apiserver_manifest_replaced
-  when: (secret_changed|default(false) or etcd_secret_changed|default(false) or needs_etcd_migration|bool) and kube_apiserver_manifest.stat.exists
-  run_once: true
-
-- name: "Pre-upgrade | etcd3 upgrade | stop etcd"
-  service:
-    name: etcd
-    state: stopped
-  delegate_to: "{{item}}"
-  with_items: "{{groups['etcd']}}"
-  when: needs_etcd_migration|bool
-  run_once: true
-
-- name: "Pre-upgrade | etcd3 upgrade | migrate data"
-  command: "{{ bin_dir }}/etcdctl migrate --data-dir=\"{{ etcd_data_dir }}\" --wal-dir=\"{{ etcd_data_dir }}/member/wal\""
-  environment:
-    ETCDCTL_API: 3
-  delegate_to: "{{item}}"
-  with_items: "{{groups['etcd']}}"
-  register: etcd_migrated
-  when: needs_etcd_migration|bool
-  run_once: true
-
-- name: "Pre-upgrade | etcd3 upgrade | start etcd"
-  service:
-    name: etcd
-    state: started
-  delegate_to: "{{item}}"
-  with_items: "{{groups['etcd']}}"
-  when: needs_etcd_migration|bool
+  when: kube_apiserver_manifest_replaced.changed
   run_once: true

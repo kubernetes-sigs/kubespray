@@ -1,32 +1,11 @@
-- name: Create canal ConfigMap
-  run_once: true
+---
+- name: Canal | Start Resources
   kube:
-    name: "canal-config"
+    name: "{{item.item.name}}"
+    namespace: "{{ system_namespace }}"
     kubectl: "{{bin_dir}}/kubectl"
-    filename: "{{kube_config_dir}}/canal-config.yaml"
-    resource: "configmap"
-    namespace: "{{system_namespace}}"
-
-#FIXME: remove if kubernetes/features#124 is implemented
-- name: Purge old flannel and canal-node
-  run_once: true
-  kube:
-    name: "canal-node"
-    kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/canal-node.yaml"
-    resource: "ds"
-    namespace: "{{system_namespace}}"
-    state: absent
-  when: inventory_hostname == groups['kube-master'][0] and canal_node_manifest.changed
-
-- name: Start flannel and calico-node
-  run_once: true
-  kube:
-    name: "canal-node"
-    kubectl: "{{bin_dir}}/kubectl"
-    filename: "{{kube_config_dir}}/canal-node.yaml"
-    resource: "ds"
-    namespace: "{{system_namespace}}"
-    state: "{{ item | ternary('latest','present') }}"
-  with_items: "{{ canal_node_manifest.changed }}"
-
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: "latest"
+  with_items: "{{ canal_manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0] and not item|skipped

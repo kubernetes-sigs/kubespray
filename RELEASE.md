@@ -31,6 +31,7 @@ The Kubespray Project is released on an as-needed basis. The process is as follo
   the contributed addons or bound versions of Kubernetes and other components, are
   considered out of Kubespray scope and are up to the components' teams to deal with and
   document.
+  test
 
 * Minor releases can change components' versions, but not the major ``kube_version``.
   Greater ``kube_version`` requires a new major or minor release. For example, if Kubespray v2.0.0

@@ -1,4 +1,18 @@
 ---
+- name: Rotate Tokens | Test if default certificate is expired
+  shell: >-
+    kubectl run -i test-rotate-tokens
+    --image={{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}
+    --restart=Never --rm
+    kubectl get nodes
+  register: check_secret
+  failed_when: false
+  run_once: true
+
+- name: Rotate Tokens | Determine if certificate is expired
+  set_fact:
+    needs_rotation: '{{ "You must be logged in" in check_secret.stderr }}'
+
 #FIXME(mattymo): Exclude built in secrets that were automatically rotated,
 #instead of filtering manually
 - name: Rotate Tokens | Get all serviceaccount tokens to expire
@@ -9,12 +23,15 @@
     | egrep 'default-token|kube-proxy|kube-dns|dnsmasq|netchecker|weave|calico|canal|flannel|dashboard|cluster-proportional-autoscaler|efk|tiller'
   register: tokens_to_delete
   run_once: true
+  when: needs_rotation
 
 - name: Rotate Tokens | Delete expired tokens
   command: "{{ bin_dir }}/kubectl delete secrets -n {{ item.split(' ')[0] }} {{ item.split(' ')[1] }}"
   with_items: "{{ tokens_to_delete.stdout_lines }}"
   run_once: true
+  when: needs_rotation
 
 - name: Rotate Tokens | Delete pods in system namespace
   command: "{{ bin_dir }}/kubectl delete pods -n {{ system_namespace }} --all"
   run_once: true
+  when: needs_rotation

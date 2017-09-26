@@ -1,4 +1,35 @@
 ---
+- name: kubeadm | Check if old apiserver cert exists on host
+  stat:
+    path: "{{ kube_cert_dir }}/apiserver.pem"
+  register: old_apiserver_cert
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+
+- name: kubeadm | Check service account key
+  stat:
+    path: "{{ kube_cert_dir }}/sa.key"
+  register: sa_key_before
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+
+- name: kubeadm | Check if kubeadm has already run
+  stat:
+    path: "{{ kube_config_dir }}/admin.conf"
+  register: admin_conf
+
+- name: kubeadm | Delete old static pods
+  file:
+    path: "{{ kube_config_dir }}/manifests/{{item}}.manifest"
+    state: absent
+  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler", "kube-proxy"]
+  when: old_apiserver_cert.stat.exists
+
+- name: kubeadm | Forcefully delete old static pods
+  shell: "docker ps -f name=k8s_{{item}} -q | xargs --no-run-if-empty docker rm -f"
+  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
+  when: old_apiserver_cert.stat.exists
+
 - name: kubeadm | aggregate all SANs
   set_fact:
     apiserver_sans: >-
@@ -29,18 +60,29 @@
     dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
   register: kubeadm_config
 
-- name: Check if kubeadm has already run
-  stat:
-    path: "{{ kube_config_dir }}/admin.conf"
-  register: admin_conf
-
-
 - name: kubeadm | Initialize first master
-  command: timeout -k 240s 240s kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
+  command: timeout -k 240s 240s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
   register: kubeadm_init
   #Retry is because upload config sometimes fails
   retries: 3
-  when: inventory_hostname == groups['kube-master']|first and (kubeadm_config.changed or not admin_conf.stat.exists)
+  when: inventory_hostname == groups['kube-master']|first and not admin_conf.stat.exists
+  failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
+  notify: Master | restart kubelet
+
+- name: kubeadm | Upgrade first master
+  command: timeout -k 240s 240s {{ bin_dir }}/kubeadm upgrade apply --config={{ kube_config_dir }}/kubeadm-config.yaml {{ kube_version }} --skip-preflight-checks
+  register: kubeadm_upgrade
+  #Retry is because upload config sometimes fails
+  retries: 3
+  when: inventory_hostname == groups['kube-master']|first and (kubeadm_config.changed and admin_conf.stat.exists)
+  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
+  notify: Master | restart kubelet
+
+# FIXME(mattymo): remove when https://github.com/kubernetes/kubeadm/issues/433 is fixed
+- name: kubeadm | Enable kube-proxy
+  command: "{{ bin_dir }}/kubeadm alpha phase addon kube-proxy --config={{ kube_config_dir }}/kubeadm-config.yaml"
+  when: inventory_hostname == groups['kube-master']|first
+  changed_when: false
 
 - name: slurp kubeadm certs
   slurp:
@@ -62,7 +104,7 @@
   delegate_to: "{{ groups['kube-master']|first }}"
   run_once: true
 
-- name: write out kubeadm certs
+- name: kubeadm | write out kubeadm certs
   copy:
     dest: "{{ item.item }}"
     content: "{{ item.content | b64decode }}"
@@ -74,9 +116,32 @@
   with_items: "{{ kubeadm_certs.results }}"
   when: inventory_hostname != groups['kube-master']|first
 
-- name: kubeadm | Initialize other masters
-  command: timeout -k 240s 240s kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
+- name: kubeadm | Init other uninitialized masters
+  command: timeout -k 240s 240s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
   register: kubeadm_init
-  #Retry is because upload config sometimes fails
-  retries: 3
-  when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed or not admin_conf.stat.exists or copy_kubeadm_certs.changed)
+  when: inventory_hostname != groups['kube-master']|first and not admin_conf.stat.exists
+  failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
+  notify: Master | restart kubelet
+
+- name: kubeadm | Upgrade other masters
+  command: timeout -k 240s 240s {{ bin_dir }}/kubeadm upgrade apply --config={{ kube_config_dir }}/kubeadm-config.yaml {{ kube_version }} --skip-preflight-checks
+  register: kubeadm_upgrade
+  when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed and admin_conf.stat.exists)
+  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
+  notify: Master | restart kubelet
+
+- name: kubeadm | Check service account key again
+  stat:
+    path: "{{ kube_cert_dir }}/sa.key"
+  register: sa_key_after
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+
+- name: kubeadm | Set secret_changed if service account key was updated
+  command: /bin/true
+  notify: Master | set secret_changed
+  when: sa_key_before.stat.checksum|default("") != sa_key_after.stat.checksum
+
+- name: kubeadm | cleanup old certs if necessary
+  include: kubeadm-cleanup-old-certs.yml
+  when: old_apiserver_cert.stat.exists

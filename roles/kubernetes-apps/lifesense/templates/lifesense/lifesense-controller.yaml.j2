@@ -1,0 +1,129 @@
+{% if item.rest %}
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: {{item.name}}-services-rest
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{item.name}}-services-rest
+    spec:
+      containers:
+      - name: {{item.name}}-services-rest
+        image: 10.10.185.222/rest/{{item.name}}-services:develop_35ce277_156
+        env:
+        - name: DISCONF_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: env-config
+              key: DISCONF_ENV
+        - name: TingYun
+          valueFrom:
+            configMapKeyRef:
+              name: env-config
+              key: TingYun
+        - name: OPTS
+          valueFrom:
+            configMapKeyRef:
+              name: env-config
+              key: OPTS
+        - name: lifesense_gray
+          valueFrom:
+            configMapKeyRef:
+              name: env-config
+              key: lifesense_gray
+        - name: lifesense_dubbo_version
+          valueFrom:
+            configMapKeyRef:
+              name: env-config
+              key: lifesense_dubbo_version                            
+        livenessProbe:
+          httpGet:
+            path: /echo?requestId=k8s
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 300
+          timeoutSeconds: 30
+          successThreshold: 1
+          failureThreshold: 5
+          periodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /echo?requestId=k8s
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 30
+          successThreshold: 1
+          failureThreshold: 5
+          periodSeconds: 30
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+{% endif %}
+{% if item.dubbo %}
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: {{item.name}}-services-soa
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{item.name}}-services-soa
+    spec:
+      containers:
+      - name: {{item.name}}-services-soa
+        image: 10.10.185.222/soa/{{item.name}}-services:develop_35ce277_156
+        env:
+        - name: DISCONF_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: env-config
+              key: DISCONF_ENV
+        - name: TingYun
+          valueFrom:
+            configMapKeyRef:
+              name: env-config
+              key: TingYun
+        - name: OPTS
+          valueFrom:
+            configMapKeyRef:
+              name: env-config
+              key: OPTS
+        - name: lifesense_gray
+          valueFrom:
+            configMapKeyRef:
+              name: env-config
+              key: lifesense_gray
+        - name: lifesense_dubbo_version
+          valueFrom:
+            configMapKeyRef:
+              name: env-config
+              key: lifesense_dubbo_version               
+        livenessProbe:
+          exec:
+            command:
+            - /data/apps/livenessProbe
+            - check_dubbo
+          initialDelaySeconds: 600
+          timeoutSeconds: 30
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 20882
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          successThreshold: 1
+          failureThreshold: 5      
+        ports:
+        - containerPort: 20882
+          name: dubbo
+          protocol: TCP
+{% endif %}      

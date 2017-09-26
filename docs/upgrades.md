@@ -67,3 +67,17 @@ follows:
 * network_plugin (such as Calico or Weave)
 * kube-apiserver, kube-scheduler, and kube-controller-manager
 * Add-ons (such as KubeDNS)
+
+#### Upgrade considerations
+
+Kubespray supports rotating certificates used for etcd and Kubernetes
+components, but some manual steps may be required. If you have a pod that
+requires use of a service token and is deployed in a namespace other than
+`kube-system`, you will need to manually delete the affected pods after
+rotating certificates. This is because all service account tokens are dependent
+on the apiserver token that is used to generate them. When the certificate
+rotates, all service account tokens must be rotated as well. During the
+kubernetes-apps/rotate_tokens role, only pods in kube-system are destroyed and
+recreated. All other invalidated service account tokens are cleaned up
+automatically, but other pods are not deleted out of an abundance of caution
+for impact to user deployed pods.

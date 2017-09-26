@@ -1,17 +1,30 @@
-resource "openstack_networking_floatingip_v2" "k8s_master" {
-    count = "${var.number_of_k8s_masters}"
-    pool = "${var.floatingip_pool}"
+resource "openstack_networking_router_v2" "k8s" {
+  name             = "internal"
+  admin_state_up   = "true"
+  external_gateway = "${var.external_net}"
 }
 
-resource "openstack_networking_floatingip_v2" "k8s_node" {
-    count = "${var.number_of_k8s_nodes}"
-    pool = "${var.floatingip_pool}"
+resource "openstack_networking_network_v2" "k8s" {
+  name           = "${var.network_name}"
+  admin_state_up = "true"
 }
 
+resource "openstack_networking_subnet_v2" "k8s" {
+  name            = "internal"
+  network_id      = "${openstack_networking_network_v2.k8s.id}"
+  cidr            = "10.0.0.0/24"
+  ip_version      = 4
+  dns_nameservers = ["8.8.8.8", "8.8.4.4"]
+}
+
+resource "openstack_networking_router_interface_v2" "k8s" {
+  router_id = "${openstack_networking_router_v2.k8s.id}"
+  subnet_id = "${openstack_networking_subnet_v2.k8s.id}"
+}
 
 resource "openstack_compute_keypair_v2" "k8s" {
     name = "kubernetes-${var.cluster_name}"
-    public_key = "${file(var.public_key_path)}"
+    public_key = "${chomp(file(var.public_key_path))}"
 }
 
 resource "openstack_compute_secgroup_v2" "k8s_master" {
@@ -54,6 +67,50 @@ resource "openstack_compute_secgroup_v2" "k8s" {
     }
 }
 
+resource "openstack_networking_floatingip_v2" "bastion" {
+    count = "${var.number_of_bastions}"
+    pool = "${var.floatingip_pool}"
+    depends_on = ["openstack_networking_router_interface_v2.k8s"]
+}
+
+resource "openstack_networking_floatingip_v2" "k8s_master" {
+    count = "${var.number_of_k8s_masters}"
+    pool = "${var.floatingip_pool}"
+    depends_on = ["openstack_networking_router_interface_v2.k8s"]
+}
+
+resource "openstack_networking_floatingip_v2" "k8s_node" {
+    count = "${var.number_of_k8s_nodes}"
+    pool = "${var.floatingip_pool}"
+    depends_on = ["openstack_networking_router_interface_v2.k8s"]
+}
+
+resource "openstack_compute_instance_v2" "bastion" {
+    name = "${var.cluster_name}-bastion-${count.index+1}"
+    count = "${var.number_of_bastions}"
+    image_name = "${var.image}"
+    flavor_id = "${var.flavor_bastion}"
+    key_pair = "${openstack_compute_keypair_v2.k8s.name}"
+    network {
+        name = "${var.network_name}"
+    }
+    security_groups = [ "${openstack_compute_secgroup_v2.k8s.name}",
+                        "default" ]
+    floating_ip = "${element(openstack_networking_floatingip_v2.bastion.*.address, count.index)}"
+    metadata = {
+        ssh_user = "${var.ssh_user}"
+        kubespray_groups = "bastion"
+    }
+
+    provisioner "local-exec" {
+	command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(openstack_networking_floatingip_v2.bastion.*.address, 0)}/ > group_vars/no-floating.yml"
+    }
+
+    user_data = "#cloud-config\nmanage_etc_hosts: localhost\npackage_update: true\npackage_upgrade: true"
+
+    depends_on = [ "openstack_networking_network_v2.k8s" ]
+}
+
 resource "openstack_compute_instance_v2" "k8s_master" {
     name = "${var.cluster_name}-k8s-master-${count.index+1}"
     count = "${var.number_of_k8s_masters}"
@@ -64,15 +121,17 @@ resource "openstack_compute_instance_v2" "k8s_master" {
         name = "${var.network_name}"
     }
     security_groups = [ "${openstack_compute_secgroup_v2.k8s_master.name}",
-                        "${openstack_compute_secgroup_v2.k8s.name}" ]
+                        "${openstack_compute_secgroup_v2.k8s.name}",
+                        "default" ]
     floating_ip = "${element(openstack_networking_floatingip_v2.k8s_master.*.address, count.index)}"
     metadata = {
         ssh_user = "${var.ssh_user}"
         kubespray_groups = "etcd,kube-master,kube-node,k8s-cluster,vault"
     }
-    
-}
+    user_data = "#cloud-config\nmanage_etc_hosts: localhost\npackage_update: true\npackage_upgrade: true"
 
+    depends_on = [ "openstack_networking_network_v2.k8s" ]
+}
 
 resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
     name = "${var.cluster_name}-k8s-master-nf-${count.index+1}"
@@ -84,14 +143,15 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
         name = "${var.network_name}"
     }
     security_groups = [ "${openstack_compute_secgroup_v2.k8s_master.name}",
-                        "${openstack_compute_secgroup_v2.k8s.name}" ]
+                        "${openstack_compute_secgroup_v2.k8s.name}",
+                        "default" ]
     metadata = {
         ssh_user = "${var.ssh_user}"
         kubespray_groups = "etcd,kube-master,kube-node,k8s-cluster,vault,no-floating"
     }
-    provisioner "local-exec" {
-        command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(openstack_networking_floatingip_v2.k8s_master.*.address, 0)}/ > contrib/terraform/openstack/group_vars/no-floating.yml"
-    }
+    user_data = "#cloud-config\nmanage_etc_hosts: localhost\npackage_update: true\npackage_upgrade: true"
+
+    depends_on = [ "openstack_networking_network_v2.k8s" ]
 }
 
 resource "openstack_compute_instance_v2" "k8s_node" {
@@ -103,12 +163,16 @@ resource "openstack_compute_instance_v2" "k8s_node" {
     network {
         name = "${var.network_name}"
     }
-    security_groups = ["${openstack_compute_secgroup_v2.k8s.name}" ]
+    security_groups = [ "${openstack_compute_secgroup_v2.k8s.name}",
+                        "default" ]
     floating_ip = "${element(openstack_networking_floatingip_v2.k8s_node.*.address, count.index)}"
     metadata = {
         ssh_user = "${var.ssh_user}"
-        kubespray_groups = "kube-node,k8s-cluster,vault"
+        kubespray_groups = "kube-node,k8s-cluster"
     }
+    user_data = "#cloud-config\nmanage_etc_hosts: localhost\npackage_update: true\npackage_upgrade: true"
+
+    depends_on = [ "openstack_networking_network_v2.k8s" ]
 }
 
 resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
@@ -120,14 +184,15 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
     network {
         name = "${var.network_name}"
     }
-    security_groups = ["${openstack_compute_secgroup_v2.k8s.name}" ]
+    security_groups = [ "${openstack_compute_secgroup_v2.k8s.name}",
+                        "default" ]
     metadata = {
         ssh_user = "${var.ssh_user}"
-        kubespray_groups = "kube-node,k8s-cluster,vault,no-floating"
+        kubespray_groups = "kube-node,k8s-cluster,no-floating"
     }
-    provisioner "local-exec" {
-	command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(openstack_networking_floatingip_v2.k8s_master.*.address, 0)}/ > contrib/terraform/openstack/group_vars/no-floating.yml"        
-    }
+    user_data = "#cloud-config\nmanage_etc_hosts: localhost\npackage_update: true\npackage_upgrade: true"
+
+    depends_on = [ "openstack_networking_network_v2.k8s" ]
 }
 
 resource "openstack_blockstorage_volume_v2" "glusterfs_volume" {
@@ -146,22 +211,21 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
     network {
         name = "${var.network_name}"
     }
-    security_groups = ["${openstack_compute_secgroup_v2.k8s.name}" ]
+    security_groups = ["${openstack_compute_secgroup_v2.k8s.name}",
+                        "default" ]
     metadata = {
         ssh_user = "${var.ssh_user_gfs}"
         kubespray_groups = "gfs-cluster,network-storage"
     }
+    user_data = "#cloud-config\nmanage_etc_hosts: localhost\npackage_update: true\npackage_upgrade: true"
+
+    depends_on = [ "openstack_networking_network_v2.k8s" ]
     volume {
         volume_id = "${element(openstack_blockstorage_volume_v2.glusterfs_volume.*.id, count.index)}"
-    }
-    provisioner "local-exec" {
-	command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(openstack_networking_floatingip_v2.k8s_master.*.address, 0)}/ > contrib/terraform/openstack/group_vars/gfs-cluster.yml"        
     }
 }
 
 
-
-
-#output "msg" {
-#    value = "Your hosts are ready to go!\nYour ssh hosts are: ${join(", ", openstack_networking_floatingip_v2.k8s_master.*.address )}"
-#}
+output "msg" {
+    value = "Your hosts are ready to go!\nYour ssh hosts are: ${join(", ", openstack_networking_floatingip_v2.k8s_master.*.address, openstack_networking_floatingip_v2.bastion.*.address )}"
+}

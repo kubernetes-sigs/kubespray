@@ -11,7 +11,7 @@ services.
 
 There are some assumptions made to try and ensure it will work on your openstack cluster.
 
-* floating-ips are used for access, but you can have masters and nodes that don't use floating-ips if needed. You need currently at least 1 floating ip, which we would suggest is used on a master.
+* floating-ips are used for access, but you can have masters and nodes that don't use floating-ips if needed. You need currently at least 1 floating ip, which needs to be used on a master. If using more than one, at least one should be on a master for bastions to work fine.
 * you already have a suitable OS image in glance
 * you already have both an internal network and a floating-ip pool created
 * you have security-groups enabled
@@ -75,7 +75,9 @@ $ echo Setting up Terraform creds && \
   export TF_VAR_auth_url=${OS_AUTH_URL}
 ```
 
-If you want to provision master or node VMs that don't use floating ips, write on a `my-terraform-vars.tfvars` file, for example:
+##### Alternative: etcd inside masters
+
+If you want to provision master or node VMs that don't use floating ips and where etcd is inside masters, write on a `my-terraform-vars.tfvars` file, for example:
 
 ```
 number_of_k8s_masters = "1"
@@ -84,6 +86,28 @@ number_of_k8s_nodes_no_floating_ip = "1"
 number_of_k8s_nodes = "0"
 ```
 This will provision one VM as master using a floating ip, two additional masters using no floating ips (these will only have private ips inside your tenancy) and one VM as node, again without a floating ip.
+
+##### Alternative: etcd on separate machines
+
+If you want to provision master or node VMs that don't use floating ips and where **etcd is on separate nodes from Kubernetes masters**, write on a `my-terraform-vars.tfvars` file, for example:
+
+```
+number_of_etcd = "3"
+number_of_k8s_masters = "0"
+number_of_k8s_masters_no_etcd = "1"
+number_of_k8s_masters_no_floating_ip = "0"
+number_of_k8s_masters_no_floating_ip_no_etcd = "2"
+number_of_k8s_nodes_no_floating_ip = "1"
+number_of_k8s_nodes = "2"
+
+flavor_k8s_node = "desired-flavor-id" 
+flavor_k8s_master = "desired-flavor-id"
+flavor_etcd = "desired-flavor-id"
+```
+
+This will provision one VM as master using a floating ip, two additional masters using no floating ips (these will only have private ips inside your tenancy), two VMs as nodes with floating ips, one VM as node without floating ip and three VMs for etcd. 
+
+##### Alternative: add GlusterFS
 
 Additionally, now the terraform based installation supports provisioning of a GlusterFS shared file system based on a separate set of VMs, running either a Debian or RedHat based set of VMs. To enable this, you need to add to your `my-terraform-vars.tfvars` the following variables:
 

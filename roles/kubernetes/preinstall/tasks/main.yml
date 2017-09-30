@@ -1,6 +1,6 @@
 ---
-- include: pre-upgrade.yml
-  tags: [upgrade, bootstrap-os]
+- include: verify-settings.yml
+  tags: asserts
 
 - name: Force binaries directory for Container Linux by CoreOS
   set_fact:
@@ -34,29 +34,18 @@
       skip: true
   tags: facts
 
-- name: Create kubernetes config directory
+- name: Create kubernetes directories
   file:
-    path: "{{ kube_config_dir }}"
+    path: "{{ item }}"
     state: directory
     owner: kube
   when: inventory_hostname in groups['k8s-cluster']
   tags: [kubelet, k8s-secrets, kube-controller-manager, kube-apiserver, bootstrap-os, apps, network, master, node]
-
-- name: Create kubernetes script directory
-  file:
-    path: "{{ kube_script_dir }}"
-    state: directory
-    owner: kube
-  when: "inventory_hostname in groups['k8s-cluster']"
-  tags: [k8s-secrets, bootstrap-os]
-
-- name: Create kubernetes manifests directory
-  file:
-    path: "{{ kube_manifest_dir }}"
-    state: directory
-    owner: kube
-  when: "inventory_hostname in groups['k8s-cluster']"
-  tags: [kubelet, bootstrap-os, master, node]
+  with_items:
+    - "{{ kube_config_dir }}"
+    - "{{ kube_config_dir }}/ssl"
+    - "{{ kube_manifest_dir }}"
+    - "{{ kube_script_dir }}"
 
 - name: check cloud_provider value
   fail:
@@ -125,6 +114,7 @@
     - ansible_distribution in ["CentOS","RedHat"]
     - not is_atomic
     - epel_rpm_download_url != ''
+    - epel_enabled|bool
   register: epel_task_result
   until: epel_task_result|succeeded
   retries: 4

@@ -1,7 +1,5 @@
 ---
-- set_fact:
-    standalone_kubelet: >-
-      {%- if inventory_hostname in groups['kube-master'] and inventory_hostname not in groups['kube-node'] -%}true{%- else -%}false{%- endif -%}
+- include: facts.yml
   tags: facts
 
 - include: pre_upgrade.yml
@@ -20,13 +18,23 @@
   when: is_kube_master == false and loadbalancer_apiserver_localhost|default(true)
   tags: nginx
 
-- name: Write kubelet config file
+- name: Write kubelet config file (non-kubeadm)
   template:
-    src: kubelet.j2
+    src: kubelet.standard.env.j2
     dest: "{{ kube_config_dir }}/kubelet.env"
     backup: yes
+  when: not kubeadm_enabled
   notify: restart kubelet
   tags: kubelet
+
+- name: Write kubelet config file (kubeadm)
+  template:
+    src: kubelet.kubeadm.env.j2
+    dest: "{{ kube_config_dir }}/kubelet.env"
+    backup: yes
+  when: kubeadm_enabled
+  notify: restart kubelet
+  tags: ['kubelet', 'kubeadm']
 
 - name: write the kubecfg (auth) file for kubelet
   template:
@@ -36,6 +44,7 @@
   with_items:
     - node
     - kube-proxy
+  when: not kubeadm_enabled
   notify: restart kubelet
   tags: kubelet
 
@@ -84,6 +93,14 @@
   template:
     src: manifests/kube-proxy.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-proxy.manifest"
+  when: not kubeadm_enabled
+  tags: kube-proxy
+
+- name: Purge proxy manifest for kubeadm
+  file:
+    path: "{{ kube_manifest_dir }}/kube-proxy.manifest"
+    state: absent
+  when: kubeadm_enabled
   tags: kube-proxy
 
 # reload-systemd

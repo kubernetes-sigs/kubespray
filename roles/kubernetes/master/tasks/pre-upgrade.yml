@@ -13,22 +13,18 @@
     kube_apiserver_storage_backend: "etcd2"
   when: old_data_exists.rc == 0 and not force_etcd3|bool
 
-- name: "Pre-upgrade | Delete master manifests on all kube-masters"
+- name: "Pre-upgrade | Delete master manifests"
   file:
-    path: "/etc/kubernetes/manifests/{{item[1]}}.manifest"
+    path: "/etc/kubernetes/manifests/{{item}}.manifest"
     state: absent
-  delegate_to: "{{item[0]}}"
-  with_nested:
-    - "{{groups['kube-master']}}"
+  with_items:
     - ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   register: kube_apiserver_manifest_replaced
   when: (secret_changed|default(false) or etcd_secret_changed|default(false))
 
-- name: "Pre-upgrade | Delete master containers forcefully on all kube-masters"
+- name: "Pre-upgrade | Delete master containers forcefully"
   shell: "docker ps -f name=k8s-{{item}}* -q | xargs --no-run-if-empty docker rm -f"
-  delegate_to: "{{item[0]}}"
-  with_nested:
-    - "{{groups['kube-master']}}"
+  with_items:
     - ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   when: kube_apiserver_manifest_replaced.changed
   run_once: true

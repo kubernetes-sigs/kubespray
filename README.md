@@ -15,7 +15,6 @@ To deploy the cluster you can use :
 
 [**kubespray-cli**](https://github.com/kubespray/kubespray-cli) <br>
 **Ansible** usual commands and [**inventory builder**](https://github.com/kubernetes-incubator/kubespray/blob/master/contrib/inventory_builder/inventory.py) <br>
-**vagrant** by simply running `vagrant up` (for tests purposes) <br>
 
 
 *  [Requirements](#requirements)
@@ -27,7 +26,6 @@ To deploy the cluster you can use :
 *  [DNS stack](docs/dns-stack.md)
 *  [HA mode](docs/ha-mode.md)
 *  [Network plugins](#network-plugins)
-*  [Vagrant install](docs/vagrant.md)
 *  [CoreOS bootstrap](docs/coreos.md)
 *  [Downloaded artifacts](docs/downloads.md)
 *  [Cloud providers](docs/cloud.md)
@@ -84,7 +82,7 @@ in order to avoid any issue during deployment you should disable your firewall.
 
 ## Network plugins
 
-You can choose between 4 network plugins. (default: `calico`, except Vagrant uses `flannel`)
+You can choose between 4 network plugins. (default: `calico`)
 
 * [**flannel**](docs/flannel.md): gre/vxlan (layer 2) networking.
 

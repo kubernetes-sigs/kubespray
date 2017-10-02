@@ -27,10 +27,13 @@ $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
 $os = "ubuntu"
+$network_plugin = "flannel"
 # The first three nodes are etcd servers
 $etcd_instances = $num_instances
-# The first two nodes are masters
+# The first two nodes are kube masters
 $kube_master_instances = $num_instances == 1 ? $num_instances : ($num_instances - 1)
+# All nodes are kube nodes
+$kube_node_instances = $num_instances
 $local_release_dir = "/vagrant/temp"
 
 host_vars = {}
@@ -38,9 +41,6 @@ host_vars = {}
 if File.exist?(CONFIG)
   require CONFIG
 end
-
-# All nodes are kube nodes
-$kube_node_instances = $num_instances
 
 $box = SUPPORTED_OS[$os][:box]
 # if $inventory is not set, try to use example
@@ -115,15 +115,12 @@ Vagrant.configure("2") do |config|
       ip = "#{$subnet}.#{i+100}"
       host_vars[vm_name] = {
         "ip": ip,
-        "flannel_interface": ip,
-        "flannel_backend_type": "host-gw",
+        "bootstrap_os": SUPPORTED_OS[$os][:bootstrap_os],
         "local_release_dir" => $local_release_dir,
         "download_run_once": "False",
-        # Override the default 'calico' with flannel.
-        # inventory/group_vars/k8s-cluster.yml
-        "kube_network_plugin": "flannel",
-        "bootstrap_os": SUPPORTED_OS[$os][:bootstrap_os]
+        "kube_network_plugin": $network_plugin
       }
+
       config.vm.network :private_network, ip: ip
 
       # Only execute once the Ansible provisioner,
@@ -137,7 +134,7 @@ Vagrant.configure("2") do |config|
           ansible.sudo = true
           ansible.limit = "all"
           ansible.host_key_checking = false
-          ansible.raw_arguments = ["--forks=#{$num_instances}"]
+          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache"]
           ansible.host_vars = host_vars
           #ansible.tags = ['download']
           ansible.groups = {

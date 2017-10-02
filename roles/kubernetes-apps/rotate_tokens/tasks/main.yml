@@ -1,17 +1,28 @@
 ---
-- name: Rotate Tokens | Test if default certificate is expired
-  shell: >-
-    kubectl run -i test-rotate-tokens
-    --image={{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}
-    --restart=Never --rm
-    kubectl get nodes
-  register: check_secret
-  failed_when: false
+- name: Rotate Tokens | Get default token name
+  shell: "{{ bin_dir }}/kubectl get secrets -o custom-columns=name:{.metadata.name} --no-headers | grep -m1 default-token"
+  register: default_token
+
+- name: Rotate Tokens | Get default token data
+  command: "{{ bin_dir }}/kubectl get secrets {{ default_token.stdout }} -ojson"
+  register: default_token_data
   run_once: true
+
+- name: Rotate Tokens | Test if default certificate is expired
+  uri:
+    url: https://{{ kube_apiserver_ip }}/api/v1/nodes
+    method: GET
+    return_content: no
+    validate_certs: no
+    headers:
+      Authorization: "Bearer {{ (default_token_data.stdout|from_json)['data']['token']|b64decode }}"
+  register: check_secret
+  run_once: true
+  failed_when: false
 
 - name: Rotate Tokens | Determine if certificate is expired
   set_fact:
-    needs_rotation: '{{ "You must be logged in" in check_secret.stderr }}'
+    needs_rotation: '{{ check_secret.status not in [200, 403] }}'
 
 # FIXME(mattymo): Exclude built in secrets that were automatically rotated,
 # instead of filtering manually

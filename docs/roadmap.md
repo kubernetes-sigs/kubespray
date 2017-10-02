@@ -55,7 +55,6 @@ While waiting for the issue [kubernetes/kubernetes#18174](https://github.com/kub
 
 ### Kubespray-cli
 - Delete instances
-- `kubespray vagrant` to setup a test cluster locally
 - `kubespray azure` for Microsoft Azure support
 - switch to Terraform instead of Ansible for provisionning
 - update $HOME/.kube/config when a cluster is deployed. Optionally switch to this context

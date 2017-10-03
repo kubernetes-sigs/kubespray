@@ -27,11 +27,17 @@ $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
 $os = "ubuntu"
+$network = "flannel"
 # The first three nodes are etcd servers
 $etcd_instances = $num_instances
-# The first two nodes are masters
-$kube_master_instances = $num_instances == 1 ? $num_instances : ($num_instances - 1)
 $local_release_dir = "/vagrant/temp"
+
+if $network == "flannel"
+  # Flannel not supported multi master setup
+  $kube_master_instances = 1
+else
+  $kube_master_instances = $num_instances == 1 ? $num_instances : ($num_instances - 1)
+end
 
 host_vars = {}
 
@@ -115,15 +121,17 @@ Vagrant.configure("2") do |config|
       ip = "#{$subnet}.#{i+100}"
       host_vars[vm_name] = {
         "ip": ip,
-        "flannel_interface": ip,
-        "flannel_backend_type": "host-gw",
+        "bootstrap_os": SUPPORTED_OS[$os][:bootstrap_os],
         "local_release_dir" => $local_release_dir,
-        "download_run_once": "False",
-        # Override the default 'calico' with flannel.
-        # inventory/group_vars/k8s-cluster.yml
-        "kube_network_plugin": "flannel",
-        "bootstrap_os": SUPPORTED_OS[$os][:bootstrap_os]
+        "download_run_once": "False"
       }
+
+      if $network == "flannel"
+        host_vars[vm_name]["kube_network_plugin"] = "flannel"
+        host_vars[vm_name]["flannel_interface"] = ip
+        host_vars[vm_name]["flannel_backend_type"] = "host-gw"
+      end
+
       config.vm.network :private_network, ip: ip
 
       # Only execute once the Ansible provisioner,

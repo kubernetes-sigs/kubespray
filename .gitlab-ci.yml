@@ -262,18 +262,18 @@ before_script:
       tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
       fi
 
-  after_script:
-    - >
-      ansible-playbook -i inventory/inventory.ini tests/cloud_playbooks/delete-gce.yml -c local  $LOG_LEVEL
-      -e mode=${CLUSTER_MODE}
-      -e test_id=${TEST_ID}
-      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
-      -e gce_project_id=${GCE_PROJECT_ID}
-      -e gce_service_account_email=${GCE_ACCOUNT}
-      -e gce_credentials_file=${HOME}/.ssh/gce.json
-      -e cloud_image=${CLOUD_IMAGE}
-      -e inventory_path=${PWD}/inventory/inventory.ini
-      -e cloud_region=${CLOUD_REGION}
+#  after_script:
+#    - >
+#      ansible-playbook -i inventory/inventory.ini tests/cloud_playbooks/delete-gce.yml -c local  $LOG_LEVEL
+#      -e mode=${CLUSTER_MODE}
+#      -e test_id=${TEST_ID}
+#      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+#      -e gce_project_id=${GCE_PROJECT_ID}
+#      -e gce_service_account_email=${GCE_ACCOUNT}
+#      -e gce_credentials_file=${HOME}/.ssh/gce.json
+#      -e cloud_image=${CLOUD_IMAGE}
+#      -e inventory_path=${PWD}/inventory/inventory.ini
+#      -e cloud_region=${CLOUD_REGION}
 
 # Test matrix. Leave the comments for markup scripts.
 .coreos_calico_aio_variables: &coreos_calico_aio_variables
@@ -349,13 +349,12 @@ before_script:
   STARTUP_SCRIPT: ""
 
 .coreos_canal_variables: &coreos_canal_variables
-# stage: deploy-gce-part2
+# stage: deploy-gce-part1
   KUBE_NETWORK_PLUGIN: canal
   CLOUD_IMAGE: coreos-stable-1465-6-0-v20170817
   CLOUD_REGION: us-east1-b
   CLUSTER_MODE: default
   BOOTSTRAP_OS: coreos
-  IDEMPOT_CHECK: "true"
   RESOLVCONF_MODE: host_resolvconf # This is required as long as the CoreOS stable channel uses docker < 1.12
   STARTUP_SCRIPT: 'systemctl disable locksmithd && systemctl stop locksmithd'
 
@@ -434,8 +433,8 @@ coreos-calico-aio:
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *coreos_calico_aio_variables
-  when: on_success
+    <<: *coreos_calico_sep_variables
+  when: manual
   except: ['triggers']
   only: [/^pr-.*$/]
 
@@ -445,8 +444,8 @@ coreos-calico-sep-triggers:
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *coreos_calico_aio_variables
-  when: on_success
+    <<: *coreos_calico_sep_variables
+  when: manual
   only: ['triggers']
 
 centos7-flannel:
@@ -598,15 +597,15 @@ debian8-calico-triggers:
   only: ['triggers']
 
 coreos-canal:
-  stage: deploy-gce-part2
+  stage: deploy-gce-part1
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
     <<: *coreos_canal_variables
-  when: manual
+  when: on_success
   except: ['triggers']
-  only: ['master', /^pr-.*$/]
+  only: [/^pr-.*$/]
 
 coreos-canal-triggers:
   stage: deploy-gce-part1

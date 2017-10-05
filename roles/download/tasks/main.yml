@@ -7,7 +7,8 @@
   when:
     - download.enabled|bool
     - not download.container|bool
-  tags: bootstrap-os
+  tags:
+    - bootstrap-os
 
 - name: file_download | Download item
   get_url:
@@ -50,7 +51,8 @@
 - set_fact:
     download_delegate: "{% if download_localhost|bool %}localhost{% else %}{{groups['kube-master'][0]}}{% endif %}"
   run_once: true
-  tags: facts
+  tags:
+    - facts
 
 - name: container_download | Create dest directory for saved/loaded container images
   file:
@@ -62,7 +64,8 @@
   when:
     - download.enabled|bool
     - download.container|bool
-  tags: bootstrap-os
+  tags:
+    - bootstrap-os
 
 # This is required for the download_localhost delegate to work smooth with Container Linux by CoreOS cluster nodes
 - name: container_download | Hack python binary path for localhost
@@ -70,7 +73,8 @@
   delegate_to: localhost
   when: download_delegate == 'localhost'
   failed_when: false
-  tags: localhost
+  tags:
+    - localhost
 
 - name: container_download | create local directory for saved/loaded container images
   file:
@@ -85,7 +89,8 @@
     - download.enabled|bool
     - download.container|bool
     - download_delegate == 'localhost'
-  tags: localhost
+  tags:
+    - localhost
 
 - name: container_download | Make download decision if pull is required by tag or sha256
   include: set_docker_image_facts.yml
@@ -94,7 +99,8 @@
     - download.container|bool
   delegate_to: "{{ download_delegate if download_run_once|bool or omit }}"
   run_once: "{{ download_run_once|bool }}"
-  tags: facts
+  tags:
+    - facts
 
 - name: container_download | Download containers if pull is required or told to always pull
   command: "{{ docker_bin_dir }}/docker pull {{ pull_args }}"
@@ -112,7 +118,8 @@
 - set_fact:
     fname: "{{local_release_dir}}/containers/{{download.repo|regex_replace('/|\0|:', '_')}}:{{download.tag|default(download.sha256)|regex_replace('/|\0|:', '_')}}.tar"
   run_once: true
-  tags: facts
+  tags:
+    - facts
 
 - name: "container_download | Set default value for 'container_changed' to false"
   set_fact:
@@ -126,7 +133,8 @@
     - download.container|bool
     - pull_required|bool|default(download_always_pull)
   run_once: "{{ download_run_once|bool }}"
-  tags: facts
+  tags:
+    - facts
 
 - name: container_download | Stat saved container image
   stat:
@@ -140,7 +148,8 @@
   delegate_to: "{{ download_delegate }}"
   become: false
   run_once: true
-  tags: facts
+  tags:
+    - facts
 
 - name: container_download | save container images
   shell: "{{ docker_bin_dir }}/docker save {{ pull_args }} | gzip -{{ download_compress }} > {{ fname }}"
@@ -188,7 +197,9 @@
     - download_run_once|bool
     - download.enabled|bool
     - download.container|bool
-  tags: [upload, upgrade]
+  tags:
+    - upload
+    - upgrade
 
 - name: container_download | load container images
   shell: "{{ docker_bin_dir }}/docker load < {{ fname }}"
@@ -198,4 +209,6 @@
     - download_run_once|bool
     - download.enabled|bool
     - download.container|bool
-  tags: [upload, upgrade]
+  tags:
+    - upload
+    - upgrade

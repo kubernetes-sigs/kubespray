@@ -166,16 +166,23 @@ vault_secrets_dir: "{{ vault_base_dir }}/secrets"
 no_proxy: >-
   127.0.0.1
   localhost
-  {{ apiserver_loadbalancer_domain_name| default('') }}
-  {{ loadbalancer_apiserver.address | default('') }}
+  {% if loadbalancer_apiserver is defined %}
+    {{ apiserver_loadbalancer_domain_name| default('') }}
+    {{ loadbalancer_apiserver.address | default('') }}
+  {% endif %}
   {% for item in (groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]))|unique -%}
     {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}
-    {% if (item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }} 
+    {% if (item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }}
       {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }}
     {% endif %}
     {{ item }}
     {{ item }}.{{ dns_domain }}
   {% endfor %}
+
+proxy_env:
+  http_proxy: "{{ http_proxy| default ('') }}"
+  https_proxy: "{{ https_proxy| default ('') }}"
+  no_proxy: "{{ no_proxy }}"
 
 # Vars for pointing to kubernetes api endpoints
 is_kube_master: "{{ inventory_hostname in groups['kube-master'] }}"

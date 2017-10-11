@@ -5,12 +5,11 @@
   ignore_errors: true
   changed_when: false
   check_mode: no
-  when: is_etcd_master
   tags:
     - facts
 
 - name: Configure | Add member to the cluster if it is not there
-  when: is_etcd_master and etcd_member_in_cluster.rc != 0 and etcd_cluster_is_healthy.rc == 0
+  when: etcd_member_in_cluster.rc != 0 and etcd_cluster_is_healthy.rc == 0
   shell: "{{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses }} member add {{ etcd_member_name }} {{ etcd_peer_url }}"
 
 - name: Install etcd launch script
@@ -27,5 +26,12 @@
     src: "etcd-{{ etcd_deployment_type }}.service.j2"
     dest: /etc/systemd/system/etcd.service
     backup: yes
-  when: is_etcd_master
   notify: restart etcd
+
+- name: Confugure | Set etcd data dir permissions
+  file:
+    path: "{{ etcd_data_dir }}"
+    owner: etcd
+    group: etcd
+    state: directory
+    recuse: yes

@@ -101,7 +101,8 @@ Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-st
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
-  proxy
+  proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
+  that correspond to each node.
 * *kubelet_deployment_type* - Controls which platform to deploy kubelet on. 
   Available options are ``host``, ``rkt``, and ``docker``. ``docker`` mode
   is unlikely to work on newer releases. Starting with Kubernetes v1.7 

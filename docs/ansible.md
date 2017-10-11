@@ -157,7 +157,7 @@ ansible-playbook -i inventory/inventory.ini cluster.yml  --tags preinstall,dnsma
 ```
 And this play only removes the K8s cluster DNS resolver IP from hosts' /etc/resolv.conf files:
 ```
-ansible-playbook -i inventory/inventory.ini -e dns_server='' cluster.yml --tags resolvconf
+ansible-playbook -i inventory/inventory.ini -e dnsmasq_dns_server='' cluster.yml --tags resolvconf
 ```
 And this prepares all container images localy (at the ansible runner node) without installing
 or upgrading related stuff or trying to upload container to K8s cluster nodes:

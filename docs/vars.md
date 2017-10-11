@@ -28,6 +28,7 @@ Some variables of note include:
 * *kube_version* - Specify a given Kubernetes hyperkube version
 * *searchdomains* - Array of DNS domains to search when looking up hostnames
 * *nameservers* - Array of nameservers to use for DNS lookup
+* *preinstall_selinux_state* - Set selinux state, permitted values are permissive and disabled.
 
 #### Addressing variables
 
@@ -61,7 +62,7 @@ following default cluster paramters:
 * *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remainin
   bits in kube_pods_subnet dictates how many kube-nodes can be in cluster.
 * *dns_setup* - Enables dnsmasq
-* *dns_server* - Cluster IP for dnsmasq (default is 10.233.0.2)
+* *dnsmasq_dns_server* - Cluster IP for dnsmasq (default is 10.233.0.2)
 * *skydns_server* - Cluster IP for KubeDNS (default is 10.233.0.3)
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)

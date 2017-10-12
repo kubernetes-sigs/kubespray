@@ -15,8 +15,8 @@
 
 - name: kubeadm | Check if kubeadm has already run
   stat:
-    path: "{{ kube_config_dir }}/admin.conf"
-  register: admin_conf
+    path: "{{ kube_cert_dir }}/ca.key"
+  register: kubeadm_ca
 
 - name: kubeadm | Delete old static pods
   file:
@@ -66,7 +66,7 @@
   register: kubeadm_init
   # Retry is because upload config sometimes fails
   retries: 3
-  when: inventory_hostname == groups['kube-master']|first and not admin_conf.stat.exists
+  when: inventory_hostname == groups['kube-master']|first and not kubeadm_ca.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   notify: Master | restart kubelet
 
@@ -82,7 +82,7 @@
   register: kubeadm_upgrade
   # Retry is because upload config sometimes fails
   retries: 3
-  when: inventory_hostname == groups['kube-master']|first and (kubeadm_config.changed and admin_conf.stat.exists)
+  when: inventory_hostname == groups['kube-master']|first and (kubeadm_config.changed and kubeadm_ca.stat.exists)
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   notify: Master | restart kubelet
 
@@ -127,7 +127,7 @@
 - name: kubeadm | Init other uninitialized masters
   command: timeout -k 240s 240s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --skip-preflight-checks
   register: kubeadm_init
-  when: inventory_hostname != groups['kube-master']|first and not admin_conf.stat.exists
+  when: inventory_hostname != groups['kube-master']|first and not kubeadm_ca.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   notify: Master | restart kubelet
 
@@ -141,7 +141,7 @@
     --allow-experimental-upgrades
     --allow-release-candidate-upgrades
   register: kubeadm_upgrade
-  when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed and admin_conf.stat.exists)
+  when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed and kubeadm_ca.stat.exists)
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   notify: Master | restart kubelet
 

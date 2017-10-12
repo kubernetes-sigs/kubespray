@@ -29,6 +29,7 @@ To deploy the cluster you can use :
 *  [Network plugins](#network-plugins)
 *  [Vagrant install](docs/vagrant.md)
 *  [CoreOS bootstrap](docs/coreos.md)
+*  [Debian Jessie](docs/debian.md)
 *  [Downloaded artifacts](docs/downloads.md)
 *  [Cloud providers](docs/cloud.md)
 *  [OpenStack](docs/openstack.md)

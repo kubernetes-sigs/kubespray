@@ -72,8 +72,9 @@ following default cluster paramters:
   alpha/experimental Kubernetes features. (defaults is `[]`)
 * *authorization_modes* - A list of [authorization mode](
 https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
-  that the cluster should be configured for. Defaults to `['RBAC', 'Node']` (RBAC and Node authorizers).
-  Note: `RBAC` is enabled by default. Previously deployed clusters can be
+  that the cluster should be configured for. Defaults to `['Node', 'RBAC']`
+  (Node and RBAC authorizers).
+  Note: `Node` and `RBAC` are enabled by default. Previously deployed clusters can be
   converted to RBAC mode. However, your apps which rely on Kubernetes API will
   require a service account and cluster role bindings. You can override this
   setting by setting authorization_modes to `[]`.

@@ -105,6 +105,7 @@
   until: yum_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
+  environment: "{{ proxy_env }}"
   when:
     - ansible_pkg_mgr == 'yum'
     - not is_atomic
@@ -117,6 +118,7 @@
     state: latest
     update_cache: yes
     cache_valid_time: 3600
+  environment: "{{ proxy_env }}"
   when: ansible_os_family == "Debian"
   tags:
     - bootstrap-os
@@ -127,6 +129,7 @@
   until: dnf_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
+  environment: "{{ proxy_env }}"
   when:
     - ansible_distribution == "Fedora"
     - ansible_distribution_major_version > 21
@@ -136,16 +139,17 @@
 
 - name: Install epel-release on RedHat/CentOS
   shell: rpm -qa | grep epel-release || rpm -ivh {{ epel_rpm_download_url }}
+  register: epel_task_result
+  until: epel_task_result|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  environment: "{{ proxy_env }}"
+  changed_when: False
   when:
     - ansible_distribution in ["CentOS","RedHat"]
     - not is_atomic
     - epel_rpm_download_url != ''
     - epel_enabled|bool
-  register: epel_task_result
-  until: epel_task_result|succeeded
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: False
   check_mode: no
   tags:
     - bootstrap-os
@@ -159,6 +163,7 @@
   until: pkgs_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
+  environment: "{{ proxy_env }}"
   with_items: "{{required_pkgs | default([]) | union(common_required_pkgs|default([]))}}"
   when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or is_atomic)
   tags:
@@ -171,10 +176,10 @@
   when: ansible_os_family == "RedHat"
   register: slc
 
-- name: Set selinux policy to permissive
+- name: Set selinux policy
   selinux:
     policy: targeted
-    state: permissive
+    state: "{{ preinstall_selinux_state }}"
   when:
     - ansible_os_family == "RedHat"
     - slc.stat.exists == True

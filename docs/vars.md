@@ -28,6 +28,7 @@ Some variables of note include:
 * *kube_version* - Specify a given Kubernetes hyperkube version
 * *searchdomains* - Array of DNS domains to search when looking up hostnames
 * *nameservers* - Array of nameservers to use for DNS lookup
+* *preinstall_selinux_state* - Set selinux state, permitted values are permissive and disabled.
 
 #### Addressing variables
 
@@ -61,7 +62,7 @@ following default cluster paramters:
 * *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remainin
   bits in kube_pods_subnet dictates how many kube-nodes can be in cluster.
 * *dns_setup* - Enables dnsmasq
-* *dns_server* - Cluster IP for dnsmasq (default is 10.233.0.2)
+* *dnsmasq_dns_server* - Cluster IP for dnsmasq (default is 10.233.0.2)
 * *skydns_server* - Cluster IP for KubeDNS (default is 10.233.0.3)
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)
@@ -101,7 +102,8 @@ Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-st
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
-  proxy
+  proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
+  that correspond to each node.
 * *kubelet_deployment_type* - Controls which platform to deploy kubelet on. 
   Available options are ``host``, ``rkt``, and ``docker``. ``docker`` mode
   is unlikely to work on newer releases. Starting with Kubernetes v1.7 

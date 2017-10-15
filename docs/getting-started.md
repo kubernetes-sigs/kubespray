@@ -93,7 +93,8 @@ the Kubernetes [documentation](https://kubernetes.io/docs/tasks/access-applicati
 Accessing Kubernetes Dashboard
 ------------------------------
 
-If the variable `dashboard_enabled` is set (default is true), then you can
+If the variable `dashboard_enabled` is set (default is true) as well as
+kube_basic_auth (default is false), then you can
 access the Kubernetes Dashboard at the following URL:
 
   https://kube:_kube-password_@_host_:6443/ui/
@@ -101,6 +102,9 @@ access the Kubernetes Dashboard at the following URL:
 To see the password, refer to the section above, titled *Connecting to
 Kubernetes*. The host can be any kube-master or kube-node or loadbalancer
 (when enabled).
+
+To access the Dashboard with basic auth disabled, follow the instructions here:
+https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/#command-line-proxy
 
 Accessing Kubernetes API
 ------------------------

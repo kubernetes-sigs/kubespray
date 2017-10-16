@@ -1,7 +1,8 @@
 Debian Jessie
 ===============
 
-Debian Jessie Pre-Installation Notes:
+Debian Jessie installation Notes:
+
 - Add 
   
   ```GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"```
@@ -14,14 +15,13 @@ Debian Jessie Pre-Installation Notes:
    sudo reboot
   ```
   
-- Add the [backports](https://backports.debian.org/Instructions/) which contain Systemd 2.30.
-  
-  The needed "Delegate" directive is not supported in service files by the default Systemd version (2.15)
-  Then reinstall Systemd
+- Add the [backports](https://backports.debian.org/Instructions/) which contain Systemd 2.30 and update Systemd.
   
   ```apt-get -t jessie-backports install systemd```
   
-- Add the Ansible repository and install ansible
+  (Necessary because the default Systemd version (2.15) does not support the "Delegate" directive in service files)
+  
+- Add the Ansible repository and install Ansible to get a proper version
 
   ```
   sudo add-apt-repository ppa:ansible/ansible

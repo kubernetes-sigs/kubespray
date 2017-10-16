@@ -112,7 +112,7 @@ fi
 # system:node-proxier
 if [ -n "$HOSTS" ]; then
     for host in $HOSTS; do
-        cn="${host%%.*}"
+        cn="${host%%.*}" 
         # kube-proxy
         gen_key_and_cert "kube-proxy-${host}" "/CN=system:kube-proxy/O=system:node-proxier"
     done

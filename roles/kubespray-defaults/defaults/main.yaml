@@ -10,6 +10,9 @@ is_atomic: false
 ## Change this to use another Kubernetes version, e.g. a current beta release
 kube_version: v1.6.7
 
+# Set to true to allow pre-checks to fail and continue deployment
+ignore_assert_errors: false
+
 # Directory where the binaries will be installed
 bin_dir: /usr/local/bin
 docker_bin_dir: /usr/bin
@@ -33,7 +36,7 @@ resolvconf_mode: docker_dns
 deploy_netchecker: false
 # Ip address of the kubernetes skydns service
 skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('address') }}"
-dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
+dnsmasq_dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
 dns_domain: "{{ cluster_name }}"
 
 # Kubernetes configuration dirs and system namespace.
@@ -73,6 +76,9 @@ kube_users:
 # Choose network plugin (calico, weave or flannel)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
 kube_network_plugin: calico
+
+# Determines if calico-rr group exists
+peer_with_calico_rr: "{{ 'calico-rr' in groups and groups['calico-rr']|length > 0 }}"
 
 # Kubernetes internal network for services, unused block of space.
 kube_service_addresses: 10.233.0.0/18
@@ -129,25 +135,25 @@ efk_enabled: false
 enable_network_policy: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (https://github.com/kubernetes/kubernetes/issues/50461)
-#openstack_blockstorage_version: "v1/v2/auto (default)"
+# openstack_blockstorage_version: "v1/v2/auto (default)"
 ## When OpenStack is used, if LBaaSv2 is available you can enable it with the following variables.
 openstack_lbaas_enabled: false
-#openstack_lbaas_subnet_id: "Neutron subnet ID (not network ID) to create LBaaS VIP"
-#openstack_lbaas_floating_network_id: "Neutron network ID (not subnet ID) to get floating IP from, disabled by default"
-#openstack_lbaas_create_monitor: "yes"
-#openstack_lbaas_monitor_delay: false
-#openstack_lbaas_monitor_timeout: false
-#openstack_lbaas_monitor_max_retries: false
+# openstack_lbaas_subnet_id: "Neutron subnet ID (not network ID) to create LBaaS VIP"
+# openstack_lbaas_floating_network_id: "Neutron network ID (not subnet ID) to get floating IP from, disabled by default"
+# openstack_lbaas_create_monitor: "yes"
+# openstack_lbaas_monitor_delay: false
+# openstack_lbaas_monitor_timeout: false
+# openstack_lbaas_monitor_max_retries: false
 
 ## List of authorization modes that must be configured for
-## the k8s cluster. Only 'AlwaysAllow','AlwaysDeny', and
-## 'RBAC' modes are tested.
-authorization_modes: []
-rbac_enabled: "{{ 'RBAC' in authorization_modes }}"
+## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
+## 'RBAC' modes are tested. Order is important.
+authorization_modes: ['Node', 'RBAC']
+rbac_enabled: "{{ 'RBAC' in authorization_modes or kubeadm_enabled }}"
 
 ## List of key=value pairs that describe feature gates for
 ## the k8s cluster.
-kube_feature_gates: []
+kube_feature_gates: ['Initializers=true']
 
 # Vault data dirs.
 vault_base_dir: /etc/vault
@@ -155,3 +161,65 @@ vault_cert_dir: "{{ vault_base_dir }}/ssl"
 vault_config_dir: "{{ vault_base_dir }}/config"
 vault_roles_dir: "{{ vault_base_dir }}/roles"
 vault_secrets_dir: "{{ vault_base_dir }}/secrets"
+
+## Set no_proxy to all assigned cluster IPs and hostnames
+no_proxy: >-
+  {%- if loadbalancer_apiserver is defined -%}
+  {{ apiserver_loadbalancer_domain_name| default('') }},
+  {{ loadbalancer_apiserver.address | default('') }},
+  {%- endif -%}
+  {%- for item in (groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]))|unique -%}
+  {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }},
+  {%-   if (item != hostvars[item]['ansible_hostname']) -%}
+  {{ hostvars[item]['ansible_hostname'] }},
+  {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }},
+  {%-   endif -%}
+  {{ item }},{{ item }}.{{ dns_domain }},
+  {%- endfor -%}
+  127.0.0.1,localhost
+
+proxy_env:
+  http_proxy: "{{ http_proxy| default ('') }}"
+  https_proxy: "{{ https_proxy| default ('') }}"
+  no_proxy: "{{ no_proxy }}"
+
+# Vars for pointing to kubernetes api endpoints
+is_kube_master: "{{ inventory_hostname in groups['kube-master'] }}"
+kube_apiserver_count: "{{ groups['kube-master'] | length }}"
+kube_apiserver_address: "{{ ip | default(ansible_default_ipv4['address']) }}"
+kube_apiserver_access_address: "{{ access_ip | default(kube_apiserver_address) }}"
+first_kube_master: "{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(hostvars[groups['kube-master'][0]]['ansible_default_ipv4']['address'])) }}"
+loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
+kube_apiserver_endpoint: |-
+  {% if not is_kube_master and loadbalancer_apiserver_localhost|default(true) -%}
+       https://localhost:{{ nginx_kube_apiserver_port|default(kube_apiserver_port) }}
+  {%- elif is_kube_master -%}
+       https://127.0.0.1:{{ kube_apiserver_port }}
+  {%- else -%}
+  {%-   if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
+       https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+  {%-   else -%}
+       https://{{ first_kube_master }}:{{ kube_apiserver_port }}
+  {%-  endif -%}
+  {%- endif %}
+kube_apiserver_insecure_endpoint: >-
+  http://{{ kube_apiserver_insecure_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_insecure_port }}
+
+# Vars for pointing to etcd endpoints
+is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"
+etcd_address: "{{ ip | default(ansible_default_ipv4['address']) }}"
+etcd_access_address: "{{ access_ip | default(etcd_address) }}"
+etcd_peer_url: "https://{{ etcd_access_address }}:2380"
+etcd_client_url: "https://{{ etcd_access_address }}:2379"
+etcd_access_addresses: |-
+  {% for item in groups['etcd'] -%}
+    https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2379{% if not loop.last %},{% endif %}
+  {%- endfor %}
+etcd_member_name: |-
+  {% for host in groups['etcd'] %}
+  {%   if inventory_hostname == host %}{{"etcd"+loop.index|string }}{% endif %}
+  {% endfor %}
+etcd_peer_addresses: |-
+  {% for item in groups['etcd'] -%}
+    {{ "etcd"+loop.index|string }}=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2380{% if not loop.last %},{% endif %}
+  {%- endfor %}

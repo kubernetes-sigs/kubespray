@@ -5,7 +5,7 @@
   vars:
     cloud_machine_type: g1-small
     mode: default
-
+    preemptible: no
   tasks:
     - name: replace_test_id
       set_fact:
@@ -25,8 +25,8 @@
       gce:
         instance_names: "{{instance_names}}"
         machine_type: "{{ cloud_machine_type }}"
-        image: "{{ cloud_image }}"
-        preemptible: no
+        image_family: "{{ cloud_image }}"
+        preemptible: "{{ preemptible }}"
         service_account_email: "{{ gce_service_account_email }}"
         pem_file: "{{ gce_pem_file | default(omit)}}"
         credentials_file: "{{gce_credentials_file | default(omit)}}"
@@ -34,6 +34,8 @@
         zone: "{{cloud_region}}"
         metadata: '{"test_id": "{{test_id}}", "network": "{{kube_network_plugin}}", "startup-script": "{{startup_script}}"}'
         tags: "build-{{test_name}},{{kube_network_plugin}}"
+        ip_forward: yes
+        service_account_permissions: ['compute-rw']
       register: gce
 
     - name: Add instances to host group
@@ -63,4 +65,4 @@
   gather_facts: false
   tasks:
     - name: Wait for SSH to come up.
-      local_action: wait_for host={{ansible_host}} port=22 delay=60 timeout=240 state=started
+      local_action: wait_for host={{inventory_hostname}} port=22 delay=60 timeout=240 state=started

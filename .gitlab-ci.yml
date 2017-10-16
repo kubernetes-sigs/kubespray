@@ -45,6 +45,7 @@ before_script:
   GS_ACCESS_KEY_ID: $GS_KEY
   GS_SECRET_ACCESS_KEY: $GS_SECRET
   CLOUD_MACHINE_TYPE: "g1-small"
+  GCE_PREEMPTIBLE: "false"
   ANSIBLE_KEEP_REMOTE_FILES: "1"
   ANSIBLE_CONFIG: ./tests/ansible.cfg
   BOOTSTRAP_OS: none
@@ -60,7 +61,7 @@ before_script:
   KUBELET_DEPLOYMENT: "host"
   VAULT_DEPLOYMENT: "docker"
   WEAVE_CPU_LIMIT: "100m"
-  AUTHORIZATION_MODES: "{ 'authorization_modes': [] }"
+  EXTRA_SETTINGS: "{}"
   MAGIC: "ci check this"
 
 .gce: &gce
@@ -81,7 +82,7 @@ before_script:
     - echo $GCE_CREDENTIALS > $HOME/.ssh/gce.json
     - chmod 400 $HOME/.ssh/id_rsa
     - ansible-playbook --version
-    - export PYPATH=$([ $BOOTSTRAP_OS = none ] && echo /usr/bin/python || echo /opt/bin/python)
+    - export PYPATH=$([ "$BOOTSTRAP_OS" != "coreos" ] && echo /usr/bin/python || echo /opt/bin/python)
   script:
     - pwd
     - ls
@@ -100,6 +101,7 @@ before_script:
       -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
       -e mode=${CLUSTER_MODE}
       -e test_id=${TEST_ID}
+      -e preemptible=$GCE_PREEMPTIBLE
       -e startup_script="'${STARTUP_SCRIPT}'"
 
     # Check out latest tag if testing upgrade
@@ -116,8 +118,8 @@ before_script:
       -e ansible_python_interpreter=${PYPATH}
       -e ansible_ssh_user=${SSH_USER}
       -e bootstrap_os=${BOOTSTRAP_OS}
-      -e cert_management=${CERT_MGMT:-script}
       -e cloud_provider=gce
+      -e cert_management=${CERT_MGMT:-script}
       -e "{deploy_netchecker: true}"
       -e "{download_localhost: ${DOWNLOAD_LOCALHOST}}"
       -e "{download_run_once: ${DOWNLOAD_RUN_ONCE}}"
@@ -131,7 +133,7 @@ before_script:
       -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
       -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
       -e "{kubeadm_enabled: ${KUBEADM_ENABLED}}"
-      -e "${AUTHORIZATION_MODES}"
+      -e "${EXTRA_SETTINGS}"
       --limit "all:!fake_hosts"
       cluster.yml
 
@@ -161,7 +163,7 @@ before_script:
       -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
       -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
       -e "{kubeadm_enabled: ${KUBEADM_ENABLED}}"
-      -e "${AUTHORIZATION_MODES}"
+      -e "${EXTRA_SETTINGS}"
       --limit "all:!fake_hosts"
       $PLAYBOOK;
       fi
@@ -185,6 +187,7 @@ before_script:
       -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
       --private-key=${HOME}/.ssh/id_rsa
       -e bootstrap_os=${BOOTSTRAP_OS}
+      -e cloud_provider=gce
       -e ansible_python_interpreter=${PYPATH}
       -e "{deploy_netchecker: true}"
       -e "{download_localhost: ${DOWNLOAD_LOCALHOST}}"
@@ -198,7 +201,7 @@ before_script:
       -e "{kubeadm_enabled: ${KUBEADM_ENABLED}}"
       -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
       -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
-      -e "${AUTHORIZATION_MODES}"
+      -e "${EXTRA_SETTINGS}"
       --limit "all:!fake_hosts"
       cluster.yml;
       fi
@@ -214,11 +217,12 @@ before_script:
 
     ## Idempotency checks 3/5 (reset deployment)
     - >
-      if [ "${IDEMPOT_CHECK}" = "true" AND "${RESET_CHECK}" = "true" ]; then
+      if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
       ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
       -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
       --private-key=${HOME}/.ssh/id_rsa
       -e bootstrap_os=${BOOTSTRAP_OS}
+      -e cloud_provider=gce
       -e ansible_python_interpreter=${PYPATH}
       -e reset_confirmation=yes
       --limit "all:!fake_hosts"
@@ -227,11 +231,12 @@ before_script:
 
     ## Idempotency checks 4/5 (redeploy after reset)
     - >
-      if [ "${IDEMPOT_CHECK}" = "true" AND "${RESET_CHECK}" = "true" ]; then
+      if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
       ansible-playbook -i inventory/inventory.ini -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS
       -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
       --private-key=${HOME}/.ssh/id_rsa
       -e bootstrap_os=${BOOTSTRAP_OS}
+      -e cloud_provider=gce
       -e ansible_python_interpreter=${PYPATH}
       -e "{deploy_netchecker: true}"
       -e "{download_localhost: ${DOWNLOAD_LOCALHOST}}"
@@ -245,14 +250,14 @@ before_script:
       -e "{kubeadm_enabled: ${KUBEADM_ENABLED}}"
       -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
       -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
-      -e "${AUTHORIZATION_MODES}"
+      -e "${EXTRA_SETTINGS}"
       --limit "all:!fake_hosts"
       cluster.yml;
       fi
 
     ## Idempotency checks 5/5 (Advanced DNS checks)
     - >
-      if [ "${IDEMPOT_CHECK}" = "true" AND "${RESET_CHECK}" = "true" ]; then
+      if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
       ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH}
       -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
       --limit "all:!fake_hosts"
@@ -275,9 +280,8 @@ before_script:
 # Test matrix. Leave the comments for markup scripts.
 .coreos_calico_aio_variables: &coreos_calico_aio_variables
 # stage: deploy-gce-part1
-  AUTHORIZATION_MODES: "{ 'authorization_modes':  [ 'RBAC' ] }"
   KUBE_NETWORK_PLUGIN: calico
-  CLOUD_IMAGE: coreos-stable-1465-6-0-v20170817
+  CLOUD_IMAGE: coreos-stable
   CLOUD_REGION: us-west1-b
   CLOUD_MACHINE_TYPE: "n1-standard-2"
   CLUSTER_MODE: aio
@@ -286,22 +290,31 @@ before_script:
   ##User-data to simply turn off coreos upgrades
   STARTUP_SCRIPT: 'systemctl disable locksmithd && systemctl stop locksmithd'
 
-.ubuntu_canal_ha_rbac_variables: &ubuntu_canal_ha_rbac_variables
+.ubuntu_canal_ha_variables: &ubuntu_canal_ha_variables
 # stage: deploy-gce-part1
   KUBE_NETWORK_PLUGIN: canal
-  AUTHORIZATION_MODES: "{ 'authorization_modes':  [ 'RBAC' ] }"
-  CLOUD_IMAGE: ubuntu-1604-xenial
+  CLOUD_IMAGE: ubuntu-1604-lts
   CLOUD_REGION: europe-west1-b
   CLUSTER_MODE: ha
+  UPGRADE_TEST: "graceful"
+  STARTUP_SCRIPT: ""
+
+.centos_weave_kubeadm_variables: &centos_weave_kubeadm_variables
+# stage: deploy-gce-part1
+  KUBE_NETWORK_PLUGIN: weave
+  CLOUD_IMAGE: centos-7
+  CLOUD_MACHINE_TYPE: "n1-standard-1"
+  CLOUD_REGION: us-central1-b
+  CLUSTER_MODE: ha
+  KUBEADM_ENABLED: "true"
   UPGRADE_TEST: "graceful"
   STARTUP_SCRIPT: ""
 
 .ubuntu_canal_kubeadm_variables: &ubuntu_canal_kubeadm_variables
 # stage: deploy-gce-part1
   KUBE_NETWORK_PLUGIN: canal
-  AUTHORIZATION_MODES: "{ 'authorization_modes':  [ 'RBAC' ] }"
-  CLOUD_IMAGE: ubuntu-1604-xenial
-  CLOUD_MACHINE_TYPE: "n1-standard-2"
+  CLOUD_IMAGE:  ubuntu-1604-lts
+  CLOUD_MACHINE_TYPE: "n1-standard-1"
   CLOUD_REGION: europe-west1-b
   CLUSTER_MODE: ha
   KUBEADM_ENABLED: "true"
@@ -315,13 +328,17 @@ before_script:
   CLUSTER_MODE: default
   STARTUP_SCRIPT: ""
 
-.centos7_flannel_variables: &centos7_flannel_variables
+.centos7_flannel_addons_variables: &centos7_flannel_addons_variables
 # stage: deploy-gce-part2
   KUBE_NETWORK_PLUGIN: flannel
   CLOUD_IMAGE: centos-7
   CLOUD_REGION: us-west1-a
-  CLOUD_MACHINE_TYPE: "n1-standard-2"
+  CLOUD_MACHINE_TYPE: "n1-standard-1"
   CLUSTER_MODE: default
+  EXTRA_SETTINGS: >-
+    { helm_enabled: true,
+      istio_enabled: true,
+      efk_enabled: true }
   STARTUP_SCRIPT: ""
   
 .debian8_calico_variables: &debian8_calico_variables
@@ -330,12 +347,13 @@ before_script:
   CLOUD_IMAGE: debian-8-kubespray
   CLOUD_REGION: us-central1-b
   CLUSTER_MODE: default
+  BOOTSTRAP_OS: debian
   STARTUP_SCRIPT: ""
 
 .coreos_canal_variables: &coreos_canal_variables
 # stage: deploy-gce-part2
   KUBE_NETWORK_PLUGIN: canal
-  CLOUD_IMAGE: coreos-stable-1465-6-0-v20170817
+  CLOUD_IMAGE: coreos-stable
   CLOUD_REGION: us-east1-b
   CLUSTER_MODE: default
   BOOTSTRAP_OS: coreos
@@ -354,7 +372,7 @@ before_script:
 .ubuntu_weave_sep_variables: &ubuntu_weave_sep_variables
 # stage: deploy-gce-special
   KUBE_NETWORK_PLUGIN: weave
-  CLOUD_IMAGE: ubuntu-1604-xenial
+  CLOUD_IMAGE: ubuntu-1604-lts
   CLOUD_REGION: us-central1-b
   CLUSTER_MODE: separate
   IDEMPOT_CHECK: "false"
@@ -374,7 +392,7 @@ before_script:
 .coreos_alpha_weave_ha_variables: &coreos_alpha_weave_ha_variables
 # stage: deploy-gce-special
   KUBE_NETWORK_PLUGIN: weave
-  CLOUD_IMAGE: coreos-alpha-1506-0-0-v20170817
+  CLOUD_IMAGE: coreos-alpha
   CLOUD_REGION: us-west1-a
   CLUSTER_MODE: ha-scale
   BOOTSTRAP_OS: coreos
@@ -384,7 +402,7 @@ before_script:
 .ubuntu_rkt_sep_variables: &ubuntu_rkt_sep_variables
 # stage: deploy-gce-part1
   KUBE_NETWORK_PLUGIN: flannel
-  CLOUD_IMAGE: ubuntu-1604-xenial
+  CLOUD_IMAGE: ubuntu-1604-lts
   CLOUD_REGION: us-central1-b
   CLUSTER_MODE: separate
   ETCD_DEPLOYMENT: rkt
@@ -393,20 +411,18 @@ before_script:
 
 .ubuntu_vault_sep_variables: &ubuntu_vault_sep_variables
 # stage: deploy-gce-part1
-  AUTHORIZATION_MODES: "{ 'authorization_modes':  [ 'RBAC' ] }"
-  CLOUD_MACHINE_TYPE: "n1-standard-2"
+  CLOUD_MACHINE_TYPE: "n1-standard-1"
   KUBE_NETWORK_PLUGIN: canal
   CERT_MGMT: vault
-  CLOUD_IMAGE: ubuntu-1604-xenial
+  CLOUD_IMAGE: ubuntu-1604-lts
   CLOUD_REGION: us-central1-b
   CLUSTER_MODE: separate
   STARTUP_SCRIPT: ""
 
-.ubuntu_flannel_rbac_variables: &ubuntu_flannel_rbac_variables
+.ubuntu_flannel_variables: &ubuntu_flannel_variables
 # stage: deploy-gce-special
-  AUTHORIZATION_MODES: "{ 'authorization_modes':  [ 'RBAC' ] }"
   KUBE_NETWORK_PLUGIN: flannel
-  CLOUD_IMAGE: ubuntu-1604-xenial
+  CLOUD_IMAGE: ubuntu-1604-lts
   CLOUD_REGION: europe-west1-b
   CLUSTER_MODE: separate
   STARTUP_SCRIPT: ""
@@ -433,24 +449,24 @@ coreos-calico-sep-triggers:
   when: on_success
   only: ['triggers']
 
-centos7-flannel:
+centos7-flannel-addons:
   stage: deploy-gce-part2
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *centos7_flannel_variables
+    <<: *centos7_flannel_addons_variables
   when: on_success
   except: ['triggers']
   only: [/^pr-.*$/]
 
-centos7-flannel-triggers:
+centos7-flannel-addons-triggers:
   stage: deploy-gce-part1
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *centos7_flannel_variables
+    <<: *centos7_flannel_addons_variables
   when: on_success
   only: ['triggers']
 
@@ -476,28 +492,28 @@ ubuntu-weave-sep-triggers:
   only: ['triggers']
 
 # More builds for PRs/merges (manual) and triggers (auto)
-ubuntu-canal-ha-rbac:
+ubuntu-canal-ha:
   stage: deploy-gce-part1
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *ubuntu_canal_ha_rbac_variables
+    <<: *ubuntu_canal_ha_variables
   when: manual
   except: ['triggers']
   only: ['master', /^pr-.*$/]
 
-ubuntu-canal-ha-rbac-triggers:
+ubuntu-canal-ha-triggers:
   stage: deploy-gce-part1
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *ubuntu_canal_ha_rbac_variables
+    <<: *ubuntu_canal_ha_variables
   when: on_success
   only: ['triggers']
 
-ubuntu-canal-kubeadm-rbac:
+ubuntu-canal-kubeadm:
   stage: deploy-gce-part1
   <<: *job
   <<: *gce
@@ -515,6 +531,27 @@ ubuntu-canal-kubeadm-triggers:
   variables:
     <<: *gce_variables
     <<: *ubuntu_canal_kubeadm_variables
+  when: on_success
+  only: ['triggers']
+
+centos-weave-kubeadm:
+  stage: deploy-gce-part1
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    <<: *centos_weave_kubeadm_variables
+  when: manual
+  except: ['triggers']
+  only: ['master', /^pr-.*$/]
+
+centos-weave-kubeadm-triggers:
+  stage: deploy-gce-part1
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    <<: *centos_weave_kubeadm_variables
   when: on_success
   only: ['triggers']
 
@@ -657,13 +694,13 @@ ubuntu-vault-sep:
   except: ['triggers']
   only: ['master', /^pr-.*$/]
 
-ubuntu-flannel-rbac-sep:
+ubuntu-flannel-sep:
   stage: deploy-gce-special
   <<: *job
   <<: *gce
   variables:
     <<: *gce_variables
-    <<: *ubuntu_flannel_rbac_variables
+    <<: *ubuntu_flannel_variables
   when: manual
   except: ['triggers']
   only: ['master', /^pr-.*$/]

@@ -1,22 +1,32 @@
 ---
 - include: check_certs.yml
   when: cert_management == "script"
-  tags: [etcd-secrets, facts]
+  tags:
+    - etcd-secrets
+    - facts
 
 - include: "gen_certs_{{ cert_management }}.yml"
-  tags: etcd-secrets
+  tags:
+    - etcd-secrets
 
 - include: upd_ca_trust.yml
-  tags: etcd-secrets
+  tags:
+    - etcd-secrets
 
 - name: "Gen_certs | Get etcd certificate serials"
   shell: "openssl x509 -in {{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem -noout -serial | cut -d= -f2"
-  register: "etcd_client_cert_serial"
+  register: "etcd_client_cert_serial_result"
+  when: inventory_hostname in groups['k8s-cluster']|union(groups['etcd'])|union(groups['calico-rr']|default([]))|unique|sort
+
+- name: Set etcd_client_cert_serial
+  set_fact:
+    etcd_client_cert_serial: "{{ etcd_client_cert_serial_result.stdout }}"
   when: inventory_hostname in groups['k8s-cluster']|union(groups['etcd'])|union(groups['calico-rr']|default([]))|unique|sort
 
 - include: "install_{{ etcd_deployment_type }}.yml"
   when: is_etcd_master
-  tags: upgrade
+  tags:
+    - upgrade
 
 - include: set_cluster_health.yml
   when: is_etcd_master and etcd_cluster_setup

@@ -18,9 +18,8 @@ download_localhost: False
 download_always_pull: False
 
 # Versions
-kube_version: v1.7.5
-# Change to kube_version after v1.8.0 release
-kubeadm_version: "v1.8.0-beta.1"
+kube_version: v1.8.0
+kubeadm_version: "{{ kube_version }}"
 etcd_version: v3.2.4
 # TODO(mattymo): Move calico versions to roles/network_plugins/calico/defaults
 # after migration to container download
@@ -28,22 +27,24 @@ calico_version: "v2.5.0"
 calico_ctl_version: "v1.5.0"
 calico_cni_version: "v1.10.0"
 calico_policy_version: "v0.7.0"
-weave_version: 2.0.1
+calico_rr_version: "v0.4.0"
+weave_version: 2.0.4
 flannel_version: "v0.8.0"
 flannel_cni_version: "v0.2.0"
 pod_infra_version: 3.0
 
 # Download URLs
-etcd_download_url: "https://storage.googleapis.com/kargo/{{etcd_version}}_etcd"
 kubeadm_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubeadm_version }}/bin/linux/amd64/kubeadm"
 
 # Checksums
-etcd_checksum: "274c46a7f8d26f7ae99d6880610f54933cbcf7f3beafa19236c52eb5df8c7a0b"
-kubeadm_checksum: "ddd5949699d6bdbc0b90b379e7e534f137b1058db1acc8f26cc54843f017ffbf"
+kubeadm_checksum: "9f4b9cf255d5ef45481d5a1b20bfe84c1d633d67cd50eeaa5c8712fb8fc1bd5b"
+
+istio_version: "0.2.6"
+
+istioctl_download_url: "https://storage.googleapis.com/istio-release/releases/{{ istio_version }}/istioctl/istioctl-linux"
+istioctl_checksum: fd703063c540b8c0ab943f478c05ab257d88ae27224c746a27d0526ddbf7c370
 
 # Containers
-# Possible values: host, docker
-etcd_deployment_type: "docker"
 etcd_image_repo: "quay.io/coreos/etcd"
 etcd_image_tag: "{{ etcd_version }}"
 flannel_image_repo: "quay.io/coreos/flannel"
@@ -59,7 +60,7 @@ calico_cni_image_tag: "{{ calico_cni_version }}"
 calico_policy_image_repo: "quay.io/calico/kube-policy-controller"
 calico_policy_image_tag: "{{ calico_policy_version }}"
 calico_rr_image_repo: "quay.io/calico/routereflector"
-calico_rr_image_tag: "v0.3.0"
+calico_rr_image_tag: "{{ calico_rr_version }}"
 hyperkube_image_repo: "quay.io/coreos/hyperkube"
 hyperkube_image_tag: "{{ kube_version }}_coreos.0"
 pod_infra_image_repo: "gcr.io/google_containers/pause-amd64"
@@ -78,10 +79,10 @@ weave_npc_image_tag: "{{ weave_version }}"
 
 nginx_image_repo: nginx
 nginx_image_tag: 1.11.4-alpine
-dnsmasq_version: 2.72
+dnsmasq_version: 2.78
 dnsmasq_image_repo: "andyshinn/dnsmasq"
 dnsmasq_image_tag: "{{ dnsmasq_version }}"
-kubedns_version: 1.14.2
+kubedns_version: 1.14.5
 kubedns_image_repo: "gcr.io/google_containers/k8s-dns-kube-dns-amd64"
 kubedns_image_tag: "{{ kubedns_version }}"
 dnsmasq_nanny_image_repo: "gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64"
@@ -124,24 +125,25 @@ downloads:
     sha256: "{{ netcheck_agent_digest_checksum|default(None) }}"
     enabled: "{{ deploy_netchecker|bool }}"
   etcd:
-    version: "{{etcd_version}}"
-    dest: "etcd/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
-    sha256: >-
-      {%- if etcd_deployment_type in [ 'docker', 'rkt' ] -%}{{etcd_digest_checksum|default(None)}}{%- else -%}{{etcd_checksum}}{%- endif -%}
-    source_url: "{{ etcd_download_url }}"
-    url: "{{ etcd_download_url }}"
-    unarchive: true
-    owner: "etcd"
-    mode: "0755"
-    container: "{{ etcd_deployment_type in [ 'docker', 'rkt' ] }}"
+    container: true
     repo: "{{ etcd_image_repo }}"
     tag: "{{ etcd_image_tag }}"
+    sha256: "{{ etcd_digest_checksum|default(None) }}"
   kubeadm:
     version: "{{ kubeadm_version }}"
     dest: "kubeadm"
     sha256: "{{ kubeadm_checksum }}"
     source_url: "{{ kubeadm_download_url }}"
     url: "{{ kubeadm_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+  istioctl:
+    version: "{{ istio_version }}"
+    dest: "istio/istioctl"
+    sha256: "{{ istioctl_checksum }}"
+    source_url: "{{ istioctl_download_url }}"
+    url: "{{ istioctl_download_url }}"
     unarchive: false
     owner: "root"
     mode: "0755"

@@ -28,6 +28,7 @@ Some variables of note include:
 * *kube_version* - Specify a given Kubernetes hyperkube version
 * *searchdomains* - Array of DNS domains to search when looking up hostnames
 * *nameservers* - Array of nameservers to use for DNS lookup
+* *preinstall_selinux_state* - Set selinux state, permitted values are permissive and disabled.
 
 #### Addressing variables
 
@@ -61,7 +62,7 @@ following default cluster paramters:
 * *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remainin
   bits in kube_pods_subnet dictates how many kube-nodes can be in cluster.
 * *dns_setup* - Enables dnsmasq
-* *dns_server* - Cluster IP for dnsmasq (default is 10.233.0.2)
+* *dnsmasq_dns_server* - Cluster IP for dnsmasq (default is 10.233.0.2)
 * *skydns_server* - Cluster IP for KubeDNS (default is 10.233.0.3)
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)
@@ -71,9 +72,12 @@ following default cluster paramters:
   alpha/experimental Kubernetes features. (defaults is `[]`)
 * *authorization_modes* - A list of [authorization mode](
 https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
-  that the cluster should be configured for. Defaults to `[]` (i.e. no authorization).
-  Note: `RBAC` is currently in experimental phase, and do not support either calico or
-  vault. Upgrade from non-RBAC to RBAC is not tested.
+  that the cluster should be configured for. Defaults to `['Node', 'RBAC']`
+  (Node and RBAC authorizers).
+  Note: `Node` and `RBAC` are enabled by default. Previously deployed clusters can be
+  converted to RBAC mode. However, your apps which rely on Kubernetes API will
+  require a service account and cluster role bindings. You can override this
+  setting by setting authorization_modes to `[]`.
 
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``
@@ -99,7 +103,8 @@ Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-st
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
-  proxy
+  proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
+  that correspond to each node.
 * *kubelet_deployment_type* - Controls which platform to deploy kubelet on. 
   Available options are ``host``, ``rkt``, and ``docker``. ``docker`` mode
   is unlikely to work on newer releases. Starting with Kubernetes v1.7 
@@ -109,6 +114,9 @@ Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-st
   dynamic kernel services are needed for mounting persistent volumes into containers.  These may not be
   loaded by preinstall kubernetes processes.  For example, ceph and rbd backed volumes.  Set this variable to
   true to let kubelet load kernel modules.
+* *kubelet_cgroup_driver* - Allows manual override of the
+  cgroup-driver option for Kubelet. By default autodetection is used
+  to match Docker configuration.
 
 ##### Custom flags for Kube Components
 For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments. This can be done by providing a list of flags. Example:
@@ -126,5 +134,8 @@ The possible vars are:
 
 #### User accounts
 
-Kubespray sets up two Kubernetes accounts by default: ``root`` and ``kube``. Their
-passwords default to changeme. You can set this by changing ``kube_api_pwd``.
+By default, a user with admin rights is created, named `kube`.
+The password can be viewed after deployment by looking at the file
+`PATH_TO_KUBESPRAY/credentials/kube_user`. This contains a randomly generated
+password. If you wish to set your own password, just precreate/modify this
+file yourself or change `kube_api_pwd` var.

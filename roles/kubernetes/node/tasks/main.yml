@@ -1,11 +1,11 @@
 ---
-- set_fact:
-    standalone_kubelet: >-
-      {%- if inventory_hostname in groups['kube-master'] and inventory_hostname not in groups['kube-node'] -%}true{%- else -%}false{%- endif -%}
-  tags: facts
+- include: facts.yml
+  tags:
+    - facts
 
 - include: pre_upgrade.yml
-  tags: kubelet
+  tags:
+    - kubelet
 
 - name: Ensure /var/lib/cni exists
   file:
@@ -14,11 +14,13 @@
     mode: 0755
 
 - include: install.yml
-  tags: kubelet
+  tags:
+    - kubelet
 
 - include: nginx-proxy.yml
   when: is_kube_master == false and loadbalancer_apiserver_localhost|default(true)
-  tags: nginx
+  tags:
+    - nginx
 
 - name: Write kubelet config file (non-kubeadm)
   template:
@@ -27,7 +29,8 @@
     backup: yes
   when: not kubeadm_enabled
   notify: restart kubelet
-  tags: kubelet
+  tags:
+    - kubelet
 
 - name: Write kubelet config file (kubeadm)
   template:
@@ -36,7 +39,9 @@
     backup: yes
   when: kubeadm_enabled
   notify: restart kubelet
-  tags: ['kubelet', 'kubeadm']
+  tags:
+    - kubelet
+    - kubeadm
 
 - name: write the kubecfg (auth) file for kubelet
   template:
@@ -48,7 +53,8 @@
     - kube-proxy
   when: not kubeadm_enabled
   notify: restart kubelet
-  tags: kubelet
+  tags:
+    - kubelet
 
 - name: Ensure nodePort range is reserved
   sysctl:
@@ -58,7 +64,8 @@
     state: present
     reload: yes
   when: kube_apiserver_node_port_range is defined
-  tags: kube-proxy
+  tags:
+    - kube-proxy
 
 - name: Verify if br_netfilter module exists
   shell: "modinfo br_netfilter"
@@ -70,6 +77,12 @@
   modprobe:
     name: br_netfilter
     state: present
+  when: modinfo_br_netfilter.rc == 0
+
+- name: Persist br_netfilter module
+  copy:
+    dest: /etc/modules-load.d/kubespray-br_netfilter.conf
+    content: br_netfilter
   when: modinfo_br_netfilter.rc == 0
 
 # kube-proxy needs net.bridge.bridge-nf-call-iptables enabled when found if br_netfilter is not a module
@@ -96,7 +109,16 @@
     src: manifests/kube-proxy.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-proxy.manifest"
   when: not kubeadm_enabled
-  tags: kube-proxy
+  tags:
+    - kube-proxy
+
+- name: Purge proxy manifest for kubeadm
+  file:
+    path: "{{ kube_manifest_dir }}/kube-proxy.manifest"
+    state: absent
+  when: kubeadm_enabled
+  tags:
+    - kube-proxy
 
 # reload-systemd
 - meta: flush_handlers
@@ -106,4 +128,5 @@
     name: kubelet
     enabled: yes
     state: started
-  tags: kubelet
+  tags:
+    - kubelet

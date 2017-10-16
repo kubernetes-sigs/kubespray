@@ -104,7 +104,7 @@ fi
 # Nodes
 if [ -n "$HOSTS" ]; then
     for host in $HOSTS; do
-        cn="${host}"
+        cn="${host%%.*}"
         gen_key_and_cert "node-${host}" "/CN=system:node:${cn}/O=system:nodes"
     done
 fi

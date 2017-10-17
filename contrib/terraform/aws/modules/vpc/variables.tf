@@ -22,3 +22,8 @@ variable "aws_cidr_subnets_public" {
   description = "CIDR Blocks for public subnets in Availability zones"
   type    = "list"
 }
+
+variable "default_tags" {
+  description = "Default tags for all resources"
+  type = "map"
+}

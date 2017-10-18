@@ -14,3 +14,8 @@ output "aws_security_group" {
     value = ["${aws_security_group.kubernetes.*.id}"]
 
 }
+
+output "default_tags" {
+    value = "${default_tags}"
+
+}

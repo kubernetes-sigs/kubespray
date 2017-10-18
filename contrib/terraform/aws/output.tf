@@ -22,3 +22,7 @@ output "aws_elb_api_fqdn" {
 output "inventory" {
     value = "${data.template_file.inventory.rendered}"
 }
+
+output "default_tags" {
+    value = "${default_tags}"
+}

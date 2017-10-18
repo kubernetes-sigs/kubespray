@@ -129,10 +129,10 @@ EOF
 
 resource "aws_iam_instance_profile" "kube-master" {
     name = "kube_${var.aws_cluster_name}_master_profile"
-    roles = ["${aws_iam_role.kube-master.name}"]
+    role = "${aws_iam_role.kube-master.name}"
 }
 
 resource "aws_iam_instance_profile" "kube-worker" {
     name = "kube_${var.aws_cluster_name}_node_profile"
-    roles = ["${aws_iam_role.kube-worker.name}"]
+    role = "${aws_iam_role.kube-worker.name}"
 }

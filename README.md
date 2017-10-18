@@ -2,7 +2,7 @@
 
 ## Deploy a production ready kubernetes cluster
 
-If you have questions, join us on the [kubernetes slack](https://slack.k8s.io), channel **#kubespray**.
+If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **#kubespray**.
 
 - Can be deployed on **AWS, GCE, Azure, OpenStack or Baremetal**
 - **High available** cluster

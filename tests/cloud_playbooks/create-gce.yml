@@ -6,7 +6,11 @@
     cloud_machine_type: g1-small
     mode: default
     preemptible: no
+    ci_job_name: "{{ lookup('env', 'CI_JOB_NAME') }}"
   tasks:
+    - name: include vars for test {{ ci_test_name }}
+      include_vars: "../files/{{ ci_job_name }}.yml"
+
     - name: replace_test_id
       set_fact:
         test_name: "{{test_id |regex_replace('\\.', '-')}}"
@@ -32,7 +36,7 @@
         credentials_file: "{{gce_credentials_file | default(omit)}}"
         project_id: "{{ gce_project_id }}"
         zone: "{{cloud_region}}"
-        metadata: '{"test_id": "{{test_id}}", "network": "{{kube_network_plugin}}", "startup-script": "{{startup_script}}"}'
+        metadata: '{"test_id": "{{test_id}}", "network": "{{kube_network_plugin}}", "startup-script": "{{startup_script|default("")}}"}'
         tags: "build-{{test_name}},{{kube_network_plugin}}"
         ip_forward: yes
         service_account_permissions: ['compute-rw']
@@ -58,7 +62,6 @@
         src: ../templates/fake_hosts.yml.j2
         dest: "{{ inventory_path|dirname }}/group_vars/fake_hosts.yml"
       when: mode in ['scale', 'separate-scale', 'ha-scale']
-
 
 - name: Wait for instances
   hosts: "waitfor_hosts"

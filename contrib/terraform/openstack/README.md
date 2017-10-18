@@ -125,6 +125,8 @@ ssh_user_gfs = "ubuntu"
 
 If these variables are provided, this will give rise to a new ansible group called `gfs-cluster`, for which we have added ansible roles to execute in the ansible provisioning step. If you are using Container Linux by CoreOS, these GlusterFS VM necessarily need to be either Debian or RedHat based VMs, Container Linux by CoreOS cannot serve GlusterFS, but can connect to it through binaries available on hyperkube v1.4.3_coreos.0 or higher.
 
+GlusterFS is not deployed by the standard `cluster.yml` playbook, see the [glusterfs playbook documentation](../../network-storage/glusterfs/README.md) for instructions.
+
 # Configure Cluster variables
 
 Edit `inventory/group_vars/all.yml`:

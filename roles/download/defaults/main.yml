@@ -1,6 +1,9 @@
 ---
 local_release_dir: /tmp
 
+# Used to only evaluate vars from download role
+skip_downloads: false
+
 # if this is set to true will only download files once. Doesn't work
 # on Container Linux by CoreOS unless the download_localhost is true and localhost
 # is running another OS type. Default compress level is 1 (fastest).
@@ -16,6 +19,9 @@ download_localhost: False
 
 # Always pull images if set to True. Otherwise check by the repo's tag/digest.
 download_always_pull: False
+
+# Use the first kube-master if download_localhost is not set
+download_delegate: "{% if download_localhost %}localhost{% else %}{{groups['kube-master'][0]}}{% endif %}"
 
 # Versions
 kube_version: v1.8.0
@@ -43,6 +49,13 @@ istio_version: "0.2.6"
 
 istioctl_download_url: "https://storage.googleapis.com/istio-release/releases/{{ istio_version }}/istioctl/istioctl-linux"
 istioctl_checksum: fd703063c540b8c0ab943f478c05ab257d88ae27224c746a27d0526ddbf7c370
+
+vault_version: 0.8.1
+vault_binary_checksum: 3c4d70ba71619a43229e65c67830e30e050eab7a81ac6b28325ff707e5914188
+vault_download_url: "https://releases.hashicorp.com/vault/{{ vault_version }}/vault_{{ vault_version }}_linux_amd64.zip"
+vault_image_repo: "vault"
+vault_image_tag: "{{ vault_version }}"
+
 
 # Containers
 etcd_image_repo: "quay.io/coreos/etcd"
@@ -113,23 +126,26 @@ tiller_image_tag: "{{ tiller_version }}"
 
 downloads:
   netcheck_server:
+    enabled: "{{ deploy_netchecker }}"
     container: true
     repo: "{{ netcheck_server_img_repo }}"
     tag: "{{ netcheck_server_tag }}"
     sha256: "{{ netcheck_server_digest_checksum|default(None) }}"
-    enabled: "{{ deploy_netchecker|bool }}"
   netcheck_agent:
+    enabled: "{{ deploy_netchecker }}"
     container: true
     repo: "{{ netcheck_agent_img_repo }}"
     tag: "{{ netcheck_agent_tag }}"
     sha256: "{{ netcheck_agent_digest_checksum|default(None) }}"
-    enabled: "{{ deploy_netchecker|bool }}"
   etcd:
+    enabled: true
     container: true
     repo: "{{ etcd_image_repo }}"
     tag: "{{ etcd_image_tag }}"
     sha256: "{{ etcd_digest_checksum|default(None) }}"
   kubeadm:
+    enabled: "{{ kubeadm_enabled }}"
+    file: true
     version: "{{ kubeadm_version }}"
     dest: "kubeadm"
     sha256: "{{ kubeadm_checksum }}"
@@ -139,6 +155,8 @@ downloads:
     owner: "root"
     mode: "0755"
   istioctl:
+    enabled: "{{ istio_enabled }}"
+    file: true
     version: "{{ istio_version }}"
     dest: "istio/istioctl"
     sha256: "{{ istioctl_checksum }}"
@@ -148,145 +166,173 @@ downloads:
     owner: "root"
     mode: "0755"
   hyperkube:
+    enabled: true
     container: true
     repo: "{{ hyperkube_image_repo }}"
     tag: "{{ hyperkube_image_tag }}"
     sha256: "{{ hyperkube_digest_checksum|default(None) }}"
   flannel:
+    enabled: "{{ kube_network_plugin == 'flannel' or kube_network_plugin == 'canal' }}"
     container: true
     repo: "{{ flannel_image_repo }}"
     tag: "{{ flannel_image_tag }}"
     sha256: "{{ flannel_digest_checksum|default(None) }}"
-    enabled: "{{ kube_network_plugin == 'flannel' or kube_network_plugin == 'canal' }}"
   flannel_cni:
+    enabled: "{{ kube_network_plugin == 'flannel' }}"
     container: true
     repo: "{{ flannel_cni_image_repo }}"
     tag: "{{ flannel_cni_image_tag }}"
     sha256: "{{ flannel_cni_digest_checksum|default(None) }}"
-    enabled: "{{ kube_network_plugin == 'flannel' }}"
   calicoctl:
+    enabled: "{{ kube_network_plugin == 'calico' or kube_network_plugin == 'canal' }}"
     container: true
     repo: "{{ calicoctl_image_repo }}"
     tag: "{{ calicoctl_image_tag }}"
     sha256: "{{ calicoctl_digest_checksum|default(None) }}"
-    enabled: "{{ kube_network_plugin == 'calico' or kube_network_plugin == 'canal' }}"
   calico_node:
+    enabled: "{{ kube_network_plugin == 'calico' or kube_network_plugin == 'canal' }}"
     container: true
     repo: "{{ calico_node_image_repo }}"
     tag: "{{ calico_node_image_tag }}"
     sha256: "{{ calico_node_digest_checksum|default(None) }}"
-    enabled: "{{ kube_network_plugin == 'calico' or kube_network_plugin == 'canal' }}"
   calico_cni:
+    enabled: "{{ kube_network_plugin == 'calico' or kube_network_plugin == 'canal' }}"
     container: true
     repo: "{{ calico_cni_image_repo }}"
     tag: "{{ calico_cni_image_tag }}"
     sha256: "{{ calico_cni_digest_checksum|default(None) }}"
-    enabled: "{{ kube_network_plugin == 'calico' or kube_network_plugin == 'canal' }}"
   calico_policy:
+    enabled: "{{ enable_network_policy or kube_network_plugin == 'canal' }}"
     container: true
     repo: "{{ calico_policy_image_repo }}"
     tag: "{{ calico_policy_image_tag }}"
     sha256: "{{ calico_policy_digest_checksum|default(None) }}"
-    enabled: "{{ kube_network_plugin == 'canal' }}"
   calico_rr:
+    enabled: "{{ peer_with_calico_rr is defined and peer_with_calico_rr}} and kube_network_plugin == 'calico'"
     container: true
     repo: "{{ calico_rr_image_repo }}"
     tag: "{{ calico_rr_image_tag }}"
     sha256: "{{ calico_rr_digest_checksum|default(None) }}"
-    enabled: "{{ peer_with_calico_rr is defined and peer_with_calico_rr}} and kube_network_plugin == 'calico'"
   weave_kube:
+    enabled: "{{ kube_network_plugin == 'weave' }}"
     container: true
     repo: "{{ weave_kube_image_repo }}"
     tag: "{{ weave_kube_image_tag }}"
     sha256: "{{ weave_kube_digest_checksum|default(None) }}"
-    enabled: "{{ kube_network_plugin == 'weave' }}"
   weave_npc:
+    enabled: "{{ kube_network_plugin == 'weave' }}"
     container: true
     repo: "{{ weave_npc_image_repo }}"
     tag: "{{ weave_npc_image_tag }}"
     sha256: "{{ weave_npc_digest_checksum|default(None) }}"
-    enabled: "{{ kube_network_plugin == 'weave' }}"
   pod_infra:
+    enabled: true
     container: true
     repo: "{{ pod_infra_image_repo }}"
     tag: "{{ pod_infra_image_tag }}"
     sha256: "{{ pod_infra_digest_checksum|default(None) }}"
   install_socat:
+    enabled: "{{ ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] }}"
     container: true
     repo: "{{ install_socat_image_repo }}"
     tag: "{{ install_socat_image_tag }}"
     sha256: "{{ install_socat_digest_checksum|default(None) }}"
   nginx:
+    enabled: true
     container: true
     repo: "{{ nginx_image_repo }}"
     tag: "{{ nginx_image_tag }}"
     sha256: "{{ nginx_digest_checksum|default(None) }}"
   dnsmasq:
+    enabled: "{{ dns_mode == 'dnsmasq_kubedns' }}"
     container: true
     repo: "{{ dnsmasq_image_repo }}"
     tag: "{{ dnsmasq_image_tag }}"
     sha256: "{{ dnsmasq_digest_checksum|default(None) }}"
   kubedns:
+    enabled: true
     container: true
     repo: "{{ kubedns_image_repo }}"
     tag: "{{ kubedns_image_tag }}"
     sha256: "{{ kubedns_digest_checksum|default(None) }}"
   dnsmasq_nanny:
+    enabled: true
     container: true
     repo: "{{ dnsmasq_nanny_image_repo }}"
     tag: "{{ dnsmasq_nanny_image_tag }}"
     sha256: "{{ dnsmasq_nanny_digest_checksum|default(None) }}"
   dnsmasq_sidecar:
+    enabled: true
     container: true
     repo: "{{ dnsmasq_sidecar_image_repo }}"
     tag: "{{ dnsmasq_sidecar_image_tag }}"
     sha256: "{{ dnsmasq_sidecar_digest_checksum|default(None) }}"
   kubednsautoscaler:
+    enabled: true
     container: true
     repo: "{{ kubednsautoscaler_image_repo }}"
     tag: "{{ kubednsautoscaler_image_tag }}"
     sha256: "{{ kubednsautoscaler_digest_checksum|default(None) }}"
   testbox:
+    enabled: true
     container: true
     repo: "{{ test_image_repo }}"
     tag: "{{ test_image_tag }}"
     sha256: "{{ testbox_digest_checksum|default(None) }}"
   elasticsearch:
+    enabled: "{{ efk_enabled }}"
     container: true
     repo: "{{ elasticsearch_image_repo }}"
     tag: "{{ elasticsearch_image_tag }}"
     sha256: "{{ elasticsearch_digest_checksum|default(None) }}"
   fluentd:
+    enabled: "{{ efk_enabled }}"
     container: true
     repo: "{{ fluentd_image_repo }}"
     tag: "{{ fluentd_image_tag }}"
     sha256: "{{ fluentd_digest_checksum|default(None) }}"
   kibana:
+    enabled: "{{ efk_enabled }}"
     container: true
     repo: "{{ kibana_image_repo }}"
     tag: "{{ kibana_image_tag }}"
     sha256: "{{ kibana_digest_checksum|default(None) }}"
   helm:
+    enabled: "{{ helm_enabled }}"
     container: true
     repo: "{{ helm_image_repo }}"
     tag: "{{ helm_image_tag }}"
     sha256: "{{ helm_digest_checksum|default(None) }}"
   tiller:
+    enabled: "{{ helm_enabled }}"
     container: true
     repo: "{{ tiller_image_repo }}"
     tag: "{{ tiller_image_tag }}"
     sha256: "{{ tiller_digest_checksum|default(None) }}"
+  vault:
+    enabled: "{{ cert_management == 'vault' }}"
+    container: "{{ vault_deployment_type != 'host' }}"
+    file: "{{ vault_deployment_type == 'host' }}"
+    dest: "vault/vault_{{ vault_version }}_linux_amd64.zip"
+    mode: "0755"
+    owner: "vault"
+    repo: "{{ vault_image_repo }}"
+    sha256: "{{ vault_binary_checksum if vault_deployment_type == 'host' else vault_digest_checksum|d(none) }}"
+    source_url: "{{ vault_download_url }}"
+    tag: "{{ vault_image_tag }}"
+    unarchive: true
+    url: "{{ vault_download_url }}"
+    version: "{{ vault_version }}"
 
-download:
-  container: "{{ file.container|default(false) }}"
-  repo: "{{ file.repo|default(None) }}"
-  tag: "{{ file.tag|default(None) }}"
-  enabled: "{{ file.enabled|default(true) }}"
-  dest: "{{ file.dest|default(None) }}"
-  version: "{{ file.version|default(None) }}"
-  sha256: "{{ file.sha256|default(None) }}"
-  source_url: "{{ file.source_url|default(None) }}"
-  url: "{{ file.url|default(None) }}"
-  unarchive: "{{ file.unarchive|default(false) }}"
-  owner: "{{ file.owner|default('kube') }}"
-  mode: "{{ file.mode|default(None) }}"
+download_defaults:
+  container: false
+  file: false
+  repo: None
+  tag: None
+  enabled: false
+  dest: None
+  version: None
+  url: None
+  unarchive: false
+  owner: kube
+  mode: None

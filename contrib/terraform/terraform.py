@@ -71,7 +71,7 @@ def iterhosts(resources):
 
 
 def iterips(resources):
-    '''yield ip tuples of (ip, instance_id)'''
+    '''yield ip tuples of (instance_id, ip)'''
     for module_name, key, resource in resources:
         resource_type, name = key.split('.', 1)
         if resource_type == 'openstack_compute_floatingip_associate_v2':
@@ -313,6 +313,10 @@ def openstack_floating_ips(resource):
         'instance_id': raw_attrs['instance_id'],
     }
     return attrs
+
+def openstack_floating_ips(resource):
+    raw_attrs = resource['primary']['attributes']
+    return raw_attrs['instance_id'], raw_attrs['floating_ip']
 
 @parses('openstack_compute_instance_v2')
 @calculate_mantl_vars
@@ -674,15 +678,16 @@ def clc_server(resource, module_name):
 
 
 def iter_host_ips(hosts, ips):
+    '''Update hosts that have an entry in the floating IP list'''
     for host in hosts:
-        for ip in ips:
-            if host[1]['id'] == ip['instance_id']:
-                host[1].update({
-                    'access_ip_v4': ip['ip'],
-                    'public_ipv4': ip['ip'],
-                    'ansible_ssh_host': ip['ip'],
-                })
-            break
+        host_id = host[1]['id']
+        if host_id in ips:
+            ip = ips[host_id]
+            host[1].update({
+                'access_ip_v4': ip,
+                'public_ipv4': ip,
+                'ansible_ssh_host': ip,
+            })
         yield host
 
 
@@ -756,7 +761,10 @@ def main():
         parser.exit()
 
     hosts = iterhosts(iterresources(tfstates(args.root)))
-    ips = list(iterips(iterresources(tfstates(args.root))))
+
+    # Perform a second pass on the file to pick up floating_ip entries to update the ip address of referenced hosts
+    ips = dict(iterips(iterresources(tfstates(args.root))))
+
     if ips:
         hosts = iter_host_ips(hosts, ips)
 

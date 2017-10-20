@@ -70,6 +70,14 @@ def iterhosts(resources):
         yield parser(resource, module_name)
 
 
+def iterips(resources):
+    '''yield ip tuples of (ip, instance_id)'''
+    for module_name, key, resource in resources:
+        resource_type, name = key.split('.', 1)
+        if resource_type == 'openstack_compute_floatingip_associate_v2':
+            yield openstack_floating_ips(resource)
+
+
 def parses(prefix):
     def inner(func):
         PARSERS[prefix] = func
@@ -298,6 +306,13 @@ def softlayer_host(resource, module_name):
 
     return name, attrs, groups
 
+def openstack_floating_ips(resource):
+    raw_attrs = resource['primary']['attributes']
+    attrs = {
+        'ip': raw_attrs['floating_ip'],
+        'instance_id': raw_attrs['instance_id'],
+    }
+    return attrs
 
 @parses('openstack_compute_instance_v2')
 @calculate_mantl_vars
@@ -342,6 +357,8 @@ def openstack_host(resource, module_name):
         })
     except (KeyError, ValueError):
         attrs.update({'ansible_ssh_host': '', 'publicly_routable': False})
+
+    # Handling of floating IPs has changed: https://github.com/terraform-providers/terraform-provider-openstack/blob/master/CHANGELOG.md#010-june-21-2017
 
     # attrs specific to Ansible
     if 'metadata.ssh_user' in raw_attrs:
@@ -656,6 +673,18 @@ def clc_server(resource, module_name):
     return name, attrs, groups
 
 
+def iter_host_ips(hosts, ips):
+    for host in hosts:
+        for ip in ips:
+            if host[1]['id'] == ip['instance_id']:
+                host[1].update({
+                    'access_ip_v4': ip['ip'],
+                    'public_ipv4': ip['ip'],
+                    'ansible_ssh_host': ip['ip'],
+                })
+            break
+        yield host
+
 
 ## QUERY TYPES
 def query_host(hosts, target):
@@ -727,6 +756,10 @@ def main():
         parser.exit()
 
     hosts = iterhosts(iterresources(tfstates(args.root)))
+    ips = list(iterips(iterresources(tfstates(args.root))))
+    if ips:
+        hosts = iter_host_ips(hosts, ips)
+
     if args.list:
         output = query_list(hosts)
         if args.nometa:

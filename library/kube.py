@@ -288,8 +288,6 @@ def main():
     else:
         module.fail_json(msg='Unrecognized state %s.' % state)
 
-    if result:
-        changed = True
     module.exit_json(changed=changed,
                      msg='success: %s' % (' '.join(result))
                      )

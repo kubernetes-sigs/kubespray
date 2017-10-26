@@ -37,5 +37,34 @@
 
 
 # 工具机准备
+
+- 机器信息:
+
+ - ip:`192.168.1.230`
+ - 操作系统:`CentOS7.3`
+ 
+- 关闭防火墙
+    ```
+    systemctl stop firewalld
+    systemctl disable firewalld
+
+    ```
+
 - 安装ansible `yum install ansible`
-- 安装httpd，用于放置二进制文件 `yum install httpd`
+
+- 安装`kubespray`
+
+    ```
+    yum install epel-release
+    yum install python-pip
+    pip install kubespray
+    
+    ```
+
+- 安装httpd，用于放置二进制文件(kubeadm,istioctl-linux)
+ 
+    ```
+    yum install httpd
+    systemctl start httpd
+    systemctl disable httpd
+    ```

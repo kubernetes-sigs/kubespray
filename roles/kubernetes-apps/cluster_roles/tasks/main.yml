@@ -1,0 +1,56 @@
+---
+- name: Kubernetes Apps | Wait for kube-apiserver
+  uri:
+    url: "{{ kube_apiserver_insecure_endpoint }}/healthz"
+  register: result
+  until: result.status == 200
+  retries: 10
+  delay: 6
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Kubernetes Apps | Add ClusterRoleBinding to admit nodes
+  template:
+    src: "node-crb.yml.j2"
+    dest: "{{ kube_config_dir }}/node-crb.yml"
+  register: node_crb_manifest
+  when: rbac_enabled
+
+- name: Apply workaround to allow all nodes with cert O=system:nodes to register
+  kube:
+    name: "system:node"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "clusterrolebinding"
+    filename: "{{ kube_config_dir }}/node-crb.yml"
+    state: latest
+  when:
+    - rbac_enabled
+    - node_crb_manifest.changed
+
+# This is not a cluster role, but should be run after kubeconfig is set on master
+- name: Write kube system namespace manifest
+  template:
+    src: namespace.j2
+    dest: "{{kube_config_dir}}/{{system_namespace}}-ns.yml"
+  when: inventory_hostname == groups['kube-master'][0]
+  tags:
+    - apps
+
+- name: Check if kube system namespace exists
+  command: "{{ bin_dir }}/kubectl get ns {{system_namespace}}"
+  register: 'kubesystem'
+  changed_when: False
+  failed_when: False
+  when: inventory_hostname == groups['kube-master'][0]
+  tags:
+    - apps
+
+- name: Create kube system namespace
+  command: "{{ bin_dir }}/kubectl create -f {{kube_config_dir}}/{{system_namespace}}-ns.yml"
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  register: create_system_ns
+  until: create_system_ns.rc == 0
+  changed_when: False
+  when: inventory_hostname == groups['kube-master'][0] and kubesystem.rc != 0
+  tags:
+    - apps

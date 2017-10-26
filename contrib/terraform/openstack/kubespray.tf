@@ -310,7 +310,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
                         "default" ]
     metadata = {
         ssh_user = "${var.ssh_user_gfs}"
-        kubespray_groups = "gfs-cluster,network-storage"
+        kubespray_groups = "gfs-cluster,network-storage,no-floating"
     }
     user_data = "#cloud-config\nmanage_etc_hosts: localhost\npackage_update: true\npackage_upgrade: true"
 

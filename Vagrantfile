@@ -129,6 +129,9 @@ Vagrant.configure("2") do |config|
         config.vm.provision "shell", inline: "service network restart", run: "always"
       end
 
+      # Disable swap for each vm
+      config.vm.provision "shell", inline: "swapoff -a"
+
       # Only execute once the Ansible provisioner,
       # when all the machines are up and ready.
       if i == $num_instances

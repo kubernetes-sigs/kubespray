@@ -36,9 +36,10 @@ terraform apply -var-file=credentials.tfvars -var 'loadbalancer_apiserver_addres
 
 - Terraform automatically creates an Ansible Inventory file called `hosts` with the created infrastructure in the directory `inventory`
 
-- Ansible will automatically generate an ssh config file for your bastion hosts. To make use of it, make sure you have a line in your `ansible.cfg` file that looks like the following:
+- Ansible will automatically generate an ssh config file for your bastion hosts. To connect to hosts with ssh using bastion host use generated ssh-bastion.conf. 
+  Ansible automatically detects bastion and changes ssh_args  
 ```commandline
-ssh_args = -F ./ssh-bastion.conf -o ControlMaster=auto -o ControlPersist=30m 
+ssh -F ./ssh-bastion.conf user@$ip 
 ```
 
 - Once the infrastructure is created, you can run the kubespray playbooks and supply inventory/hosts with the `-i` flag.

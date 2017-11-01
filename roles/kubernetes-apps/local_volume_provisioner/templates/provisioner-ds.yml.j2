@@ -1,0 +1,42 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: local-volume-provisioner
+  namespace: "{{ system_namespace }}"
+spec:
+  template:
+    metadata:
+      labels:
+        app: local-volume-provisioner
+    spec:
+      containers:
+      - name: provisioner
+        image: {{ local_volume_provisioner_image_repo }}:{{ local_volume_provisioner_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: discovery-vol
+          mountPath: "/local-disks"
+        - name: local-volume-config
+          mountPath: /etc/provisioner/config/
+        env:
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: MY_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+      volumes:
+      - name: discovery-vol
+        hostPath:
+          path: "{{ local_volume_base_dir }}"
+      - configMap:
+          defaultMode: 420
+          name: local-volume-config
+        name: local-volume-config
+      serviceAccount: local-storage-admin

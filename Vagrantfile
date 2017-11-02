@@ -122,7 +122,7 @@ Vagrant.configure("2") do |config|
       }
 
       config.vm.network :private_network, ip: ip
-      
+
       # workaround for Vagrant 1.9.1 and centos vm
       # https://github.com/hashicorp/vagrant/issues/8096
       if Vagrant::VERSION == "1.9.1" && $os == "centos"
@@ -140,7 +140,7 @@ Vagrant.configure("2") do |config|
           if File.exist?(File.join(File.dirname($inventory), "hosts"))
             ansible.inventory_path = $inventory
           end
-          ansible.sudo = true
+          ansible.become = true
           ansible.limit = "all"
           ansible.host_key_checking = false
           ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache"]

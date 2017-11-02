@@ -3,12 +3,7 @@
   file: path={{ helm_home_dir }} state=directory
 
 - name: Helm | Set up helm launcher
-  template:
-    src: helm-container.j2
-    dest: "{{ bin_dir }}/helm"
-    owner: root
-    mode: 0755
-  register: helm_container
+  include: "install_{{ helm_deployment_type }}.yml"
 
 - name: Helm | Lay Down Helm Manifests (RBAC)
   template:
@@ -33,7 +28,7 @@
 
 - name: Helm | Install/upgrade helm
   command: "{{ bin_dir }}/helm init --upgrade --tiller-image={{ tiller_image_repo }}:{{ tiller_image_tag }}"
-  when: helm_container.changed
+  when: (helm_container is defined and helm_container.changed) or (helm_task_result is defined and helm_task_result.changed)
 
 - name: Helm | Patch tiller deployment for RBAC
   command: "{{bin_dir}}/kubectl patch deployment tiller-deploy -p '{\"spec\":{\"template\":{\"spec\":{\"serviceAccount\":\"tiller\"}}}}' -n {{ system_namespace }}"
@@ -41,4 +36,4 @@
 
 - name: Helm | Set up bash completion
   shell: "umask 022 && {{ bin_dir }}/helm completion bash >/etc/bash_completion.d/helm.sh"
-  when: ( helm_container.changed and not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] )
+  when: (helm_container is defined and helm_container.changed) or (helm_task_result is defined and helm_task_result.changed) and not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]

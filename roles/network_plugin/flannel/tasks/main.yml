@@ -1,16 +1,14 @@
 ---
 - include: pre-upgrade.yml
 
-- name: Flannel | Create cni-flannel-rbac manifest
+- name: Flannel | Create Flannel manifests
   template:
-    src: cni-flannel-rbac.yml.j2
-    dest: "{{ kube_config_dir }}/cni-flannel-rbac.yml"
-  register: flannel_rbac_manifest
-  when: inventory_hostname == groups['kube-master'][0] and rbac_enabled
-
-- name: Flannel | Create cni-flannel manifest
-  template:
-    src: cni-flannel.yml.j2
-    dest: "{{ kube_config_dir }}/cni-flannel.yml"
-  register: flannel_manifest
-  when: inventory_hostname == groups['kube-master'][0]
+    src: "{{item.file}}.j2"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {name: flannel, file: cni-flannel-rbac.yml, type: sa}
+    - {name: kube-flannel, file: cni-flannel.yml, type: ds}
+  register: flannel_node_manifests
+  when:
+    - inventory_hostname in groups['kube-master']
+    - rbac_enabled or item.type not in rbac_resources

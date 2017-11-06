@@ -91,7 +91,7 @@ weave_peers: uninitialized
 
 The first variable, `weave_seed`, contains the initial nodes of the weave network
 
-The seconde variable, `weave_peers`, saves the IPs of all nodes joined to the weave network
+The second variable, `weave_peers`, saves the IPs of all nodes joined to the weave network
 
 These two variables are used to connect a new node to the weave network. The new node needs to know the firsts nodes (seed) and the list of IPs of all nodes.
 

@@ -107,7 +107,7 @@ See also [Network checker](docs/netcheck.md).
  - [Deploy a Kubernetes Cluster with Kubespray (video)](https://www.youtube.com/watch?v=N9q51JgbWu8)
 
 ## Tools and projects on top of Kubespray
- - [Digital Rebar](https://github.com/digitalrebar/digitalrebar)
+ - [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/master/doc/integrations/ansible.rst)
  - [Kubespray-cli](https://github.com/kubespray/kubespray-cli)
  - [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
  - [Terraform Contrib](https://github.com/kubernetes-incubator/kubespray/tree/master/contrib/terraform)

@@ -8,7 +8,6 @@ aws_cidr_subnets_public = ["10.250.224.0/20","10.250.240.0/20"]
 aws_avail_zones = ["us-west-2a","us-west-2b"]
 
 #Bastion Host
-aws_bastion_ami = "ami-db56b9a3"
 aws_bastion_size = "t2.medium"
 
 

@@ -44,10 +44,6 @@ variable "aws_cidr_subnets_public" {
 
 //AWS EC2 Settings
 
-variable "aws_bastion_ami" {
-    description = "AMI ID for Bastion Host in chosen AWS Region"
-}
-
 variable "aws_bastion_size" {
     description = "EC2 Instance Size of Bastion Host"
 }

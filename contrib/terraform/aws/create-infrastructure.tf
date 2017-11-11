@@ -49,8 +49,24 @@ module "aws-iam" {
 * Create Bastion Instances in AWS
 *
 */
+data "aws_ami" "coreos" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["CoreOS-stable-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["595879546273"]
+}
+
 resource "aws_instance" "bastion-server" {
-    ami = "${var.aws_bastion_ami}"
+    ami = "${data.aws_ami.coreos.id}"
     instance_type = "${var.aws_bastion_size}"
     count = "${length(var.aws_cidr_subnets_public)}"
     associate_public_ip_address = true
@@ -162,7 +178,7 @@ resource "aws_instance" "k8s-worker" {
 */
 data "template_file" "inventory" {
     template = "${file("${path.module}/templates/inventory.tpl")}"
-  
+
     vars {
         public_ip_address_bastion = "${join("\n",formatlist("bastion ansible_host=%s" , aws_instance.bastion-server.*.public_ip))}"
         connection_strings_master = "${join("\n",formatlist("%s ansible_host=%s",aws_instance.k8s-master.*.tags.Name, aws_instance.k8s-master.*.private_ip))}"

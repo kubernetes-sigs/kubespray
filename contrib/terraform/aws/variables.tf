@@ -27,11 +27,6 @@ variable "aws_vpc_cidr_block" {
   description = "CIDR Block for VPC"
 }
 
-variable "aws_avail_zones" {
-  description = "Availability Zones Used"
-  type = "list"
-}
-
 variable "aws_cidr_subnets_private" {
   description = "CIDR Blocks for private subnets in Availability Zones"
   type = "list"
@@ -43,10 +38,6 @@ variable "aws_cidr_subnets_public" {
 }
 
 //AWS EC2 Settings
-
-variable "aws_bastion_ami" {
-    description = "AMI ID for Bastion Host in chosen AWS Region"
-}
 
 variable "aws_bastion_size" {
     description = "EC2 Instance Size of Bastion Host"
@@ -81,9 +72,6 @@ variable "aws_kube_worker_size" {
     description = "Instance size of Kubernetes Worker Nodes"
 }
 
-variable "aws_cluster_ami" {
-    description = "AMI ID for Kubernetes Cluster"
-}
 /*
 * AWS ELB Settings
 *

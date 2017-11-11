@@ -27,11 +27,6 @@ variable "aws_vpc_cidr_block" {
   description = "CIDR Block for VPC"
 }
 
-variable "aws_avail_zones" {
-  description = "Availability Zones Used"
-  type = "list"
-}
-
 variable "aws_cidr_subnets_private" {
   description = "CIDR Blocks for private subnets in Availability Zones"
   type = "list"

@@ -72,9 +72,6 @@ variable "aws_kube_worker_size" {
     description = "Instance size of Kubernetes Worker Nodes"
 }
 
-variable "aws_cluster_ami" {
-    description = "AMI ID for Kubernetes Cluster"
-}
 /*
 * AWS ELB Settings
 *

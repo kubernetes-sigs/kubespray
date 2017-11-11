@@ -64,7 +64,7 @@ data "aws_ami" "coreos" {
     values = ["hvm"]
   }
 
-  owners = ["595879546273"]
+  owners = ["595879546273"] #CoreOS
 }
 
 resource "aws_instance" "bastion-server" {
@@ -94,7 +94,7 @@ resource "aws_instance" "bastion-server" {
 */
 
 resource "aws_instance" "k8s-master" {
-    ami = "${var.aws_cluster_ami}"
+    ami = "${data.aws_ami.coreos.id}"
     instance_type = "${var.aws_kube_master_size}"
 
     count = "${var.aws_kube_master_num}"
@@ -126,7 +126,7 @@ resource "aws_elb_attachment" "attach_master_nodes" {
 
 
 resource "aws_instance" "k8s-etcd" {
-    ami = "${var.aws_cluster_ami}"
+    ami = "${data.aws_ami.coreos.id}"
     instance_type = "${var.aws_etcd_size}"
 
     count = "${var.aws_etcd_num}"
@@ -150,7 +150,7 @@ resource "aws_instance" "k8s-etcd" {
 
 
 resource "aws_instance" "k8s-worker" {
-    ami = "${var.aws_cluster_ami}"
+    ami = "${data.aws_ami.coreos.id}"
     instance_type = "${var.aws_kube_worker_size}"
 
     count = "${var.aws_kube_worker_num}"

@@ -127,12 +127,14 @@ spec:
       labels:
         k8s-app: kubernetes-dashboard
     spec:
+{% if not dashboard_use_custom_certs %}
       initContainers:
       - name: kubernetes-dashboard-init
         image: {{ dashboard_init_image_repo }}:{{ dashboard_init_image_tag }}
         volumeMounts:
         - name: kubernetes-dashboard-certs
           mountPath: /certs
+{% endif %}
       containers:
       - name: kubernetes-dashboard
         image: {{ dashboard_image_repo }}:{{ dashboard_image_tag }}
@@ -148,8 +150,8 @@ spec:
         - containerPort: 8443
           protocol: TCP
         args:
-          - --tls-key-file=/certs/dashboard.key
-          - --tls-cert-file=/certs/dashboard.crt
+          - --tls-key-file=/certs/{{ dashboard_tls_key_file }}
+          - --tls-cert-file=/certs/{{ dashboard_tls_cert_file }}
           - --authentication-mode=token{% if kube_basic_auth|default(false) %},basic{% endif %}
           # Uncomment the following line to manually specify Kubernetes API server Host
           # If not specified, Dashboard will attempt to auto discover the API server and connect
@@ -172,7 +174,7 @@ spec:
       volumes:
       - name: kubernetes-dashboard-certs
         secret:
-          secretName: kubernetes-dashboard-certs
+          secretName: {{ dashboard_certs_secret_name }}
       - name: tmp-volume
         emptyDir: {}
       serviceAccountName: kubernetes-dashboard

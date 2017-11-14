@@ -51,21 +51,6 @@ module "aws-iam" {
 * Create Bastion Instances in AWS
 *
 */
-data "aws_ami" "coreos" {
-  most_recent = true
-
-  filter {
-    name   = "name"
-    values = ["CoreOS-stable-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-
-  owners = ["595879546273"] #CoreOS
-}
 
 resource "aws_instance" "bastion-server" {
     ami = "${data.aws_ami.coreos.id}"

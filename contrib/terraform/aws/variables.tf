@@ -20,6 +20,21 @@ variable "aws_cluster_name" {
   description = "Name of AWS Cluster"
 }
 
+data "aws_ami" "coreos" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["CoreOS-stable-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["595879546273"] #CoreOS
+}
 
 //AWS VPC Variables
 

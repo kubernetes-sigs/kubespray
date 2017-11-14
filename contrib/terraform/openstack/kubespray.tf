@@ -4,6 +4,7 @@ module "network" {
 
   external_net = "${var.external_net}"
   network_name = "${var.network_name}"
+  cluster_name = "${var.cluster_name}"
 }
 
 

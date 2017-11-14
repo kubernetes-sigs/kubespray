@@ -1,6 +1,6 @@
 
 resource "openstack_networking_router_v2" "k8s" {
-  name             = "internal"
+  name             = "${var.cluster_name}-router"
   admin_state_up   = "true"
   external_gateway = "${var.external_net}"
 }
@@ -11,7 +11,7 @@ resource "openstack_networking_network_v2" "k8s" {
 }
 
 resource "openstack_networking_subnet_v2" "k8s" {
-  name            = "internal"
+  name            = "${var.cluster_name}-internal-network"
   network_id      = "${openstack_networking_network_v2.k8s.id}"
   cidr            = "10.0.0.0/24"
   ip_version      = 4

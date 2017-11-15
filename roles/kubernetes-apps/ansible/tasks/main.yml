@@ -1,24 +1,73 @@
 ---
 - name: Kubernetes Apps | Wait for kube-apiserver
   uri:
-    url: http://localhost:8080/healthz
+    url: "{{ kube_apiserver_insecure_endpoint }}/healthz"
   register: result
   until: result.status == 200
   retries: 10
-  delay: 6
+  delay: 2
   when: inventory_hostname == groups['kube-master'][0]
+
+- name: Kubernetes Apps | Delete old kubedns resources
+  kube:
+    name: "kubedns"
+    namespace: "{{ system_namespace }}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{ item }}"
+    state: absent
+  with_items: ['deploy', 'svc']
+  tags:
+    - upgrade
+
+- name: Kubernetes Apps | Delete kubeadm kubedns
+  kube:
+    name: "kubedns"
+    namespace: "{{ system_namespace }}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "deploy"
+    state: absent
+  when:
+    - kubeadm_enabled|default(false)
+    - kubeadm_init.changed|default(false)
+    - inventory_hostname == groups['kube-master'][0]
 
 - name: Kubernetes Apps | Lay Down KubeDNS Template
   template:
     src: "{{item.file}}"
     dest: "{{kube_config_dir}}/{{item.file}}"
   with_items:
-    - {name: kube-dns, file: kubedns-deploy.yml, type: deployment}
+    - {name: kube-dns, file: kubedns-sa.yml, type: sa}
+    - {name: kube-dns, file: kubedns-deploy.yml.j2, type: deployment}
     - {name: kube-dns, file: kubedns-svc.yml, type: svc}
-    - {name: kubedns-autoscaler, file: kubedns-autoscaler.yml, type: deployment}
+    - {name: kubedns-autoscaler, file: kubedns-autoscaler-sa.yml, type: sa}
+    - {name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrole.yml, type: clusterrole}
+    - {name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrolebinding.yml, type: clusterrolebinding}
+    - {name: kubedns-autoscaler, file: kubedns-autoscaler.yml.j2, type: deployment}
   register: manifests
-  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
-  tags: dnsmasq
+  when:
+    - dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
+    - rbac_enabled or item.type not in rbac_resources
+  tags:
+    - dnsmasq
+
+# see https://github.com/kubernetes/kubernetes/issues/45084, only needed for "old" kube-dns
+- name: Kubernetes Apps | Patch system:kube-dns ClusterRole
+  command: >
+    {{bin_dir}}/kubectl patch clusterrole system:kube-dns
+    --patch='{
+               "rules": [
+                 {
+                   "apiGroups" : [""],
+                   "resources" : ["endpoints", "services"],
+                   "verbs": ["list", "watch", "get"]
+                 }
+               ]
+             }'
+  when:
+    - dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
+    - rbac_enabled and kubedns_version|version_compare("1.11.0", "<", strict=True)
+  tags:
+    - dnsmasq
 
 - name: Kubernetes Apps | Start Resources
   kube:
@@ -27,12 +76,23 @@
     kubectl: "{{bin_dir}}/kubectl"
     resource: "{{item.item.type}}"
     filename: "{{kube_config_dir}}/{{item.item.file}}"
-    state: "{{item.changed | ternary('latest','present') }}"
+    state: "latest"
   with_items: "{{ manifests.results }}"
-  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
-  tags: dnsmasq
+  when:
+    - dns_mode != 'none'
+    - inventory_hostname == groups['kube-master'][0]
+    - not item|skipped
+  tags:
+    - dnsmasq
 
 - name: Kubernetes Apps | Netchecker
   include: tasks/netchecker.yml
   when: deploy_netchecker
-  tags: netchecker
+  tags:
+    - netchecker
+
+- name: Kubernetes Apps | Dashboard
+  include: tasks/dashboard.yml
+  when: dashboard_enabled
+  tags:
+    - dashboard

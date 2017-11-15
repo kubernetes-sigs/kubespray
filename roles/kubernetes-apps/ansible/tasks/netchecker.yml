@@ -1,3 +1,25 @@
+---
+
+- name: Kubernetes Apps | Check if netchecker-server manifest already exists
+  stat:
+    path: "{{ kube_config_dir }}/netchecker-server-deployment.yml.j2"
+  register: netchecker_server_manifest
+  tags:
+    - facts
+    - upgrade
+
+- name: Kubernetes Apps | Apply netchecker-server manifest to update annotations
+  kube:
+    name: "netchecker-server"
+    namespace: "{{ netcheck_namespace }}"
+    filename: "{{ netchecker_server_manifest.stat.path }}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "deploy"
+    state: latest
+  when: inventory_hostname == groups['kube-master'][0] and netchecker_server_manifest.stat.exists
+  tags:
+    - upgrade
+
 - name: Kubernetes Apps | Lay Down Netchecker Template
   template:
     src: "{{item.file}}"
@@ -5,22 +27,24 @@
   with_items:
     - {file: netchecker-agent-ds.yml.j2, type: ds, name: netchecker-agent}
     - {file: netchecker-agent-hostnet-ds.yml.j2, type: ds, name: netchecker-agent-hostnet}
-    - {file: netchecker-server-deployment.yml.j2, type: po, name: netchecker-server}
+    - {file: netchecker-server-sa.yml.j2, type: sa, name: netchecker-server}
+    - {file: netchecker-server-clusterrole.yml.j2, type: clusterrole, name: netchecker-server}
+    - {file: netchecker-server-clusterrolebinding.yml.j2, type: clusterrolebinding, name: netchecker-server}
+    - {file: netchecker-server-deployment.yml.j2, type: deployment, name: netchecker-server}
     - {file: netchecker-server-svc.yml.j2, type: svc, name: netchecker-service}
   register: manifests
-  when: inventory_hostname == groups['kube-master'][0]
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - rbac_enabled or item.type not in rbac_resources
 
-#FIXME: remove if kubernetes/features#124 is implemented
-- name: Kubernetes Apps | Purge old Netchecker daemonsets
+- name: Kubernetes Apps | Purge old Netchecker server
   kube:
-    name: "{{item.item.name}}"
-    namespace: "{{netcheck_namespace}}"
+    name: "netchecker-server"
+    namespace: "{{ netcheck_namespace }}"
     kubectl: "{{bin_dir}}/kubectl"
-    resource: "{{item.item.type}}"
-    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    resource: "po"
     state: absent
-  with_items: "{{ manifests.results }}"
-  when: inventory_hostname == groups['kube-master'][0] and item.item.type == "ds" and item.changed
+  when: inventory_hostname == groups['kube-master'][0]
 
 - name: Kubernetes Apps | Start Netchecker Resources
   kube:
@@ -29,6 +53,6 @@
     kubectl: "{{bin_dir}}/kubectl"
     resource: "{{item.item.type}}"
     filename: "{{kube_config_dir}}/{{item.item.file}}"
-    state: "{{item.changed | ternary('latest','present') }}"
+    state: "latest"
   with_items: "{{ manifests.results }}"
-  when: inventory_hostname == groups['kube-master'][0]
+  when: inventory_hostname == groups['kube-master'][0] and not item|skipped

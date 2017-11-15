@@ -124,12 +124,12 @@ The following tags are defined in playbooks:
 |          k8s-pre-upgrade | Upgrading K8s cluster
 |              k8s-secrets | Configuring K8s certs/keys
 |                      kpm | Installing K8s apps definitions with KPM
-|           kube-apiserver | Configuring self-hosted kube-apiserver
-|  kube-controller-manager | Configuring self-hosted kube-controller-manager
+|           kube-apiserver | Configuring static pod kube-apiserver
+|  kube-controller-manager | Configuring static pod kube-controller-manager
 |                  kubectl | Installing kubectl and bash completion
 |                  kubelet | Configuring kubelet service
-|               kube-proxy | Configuring self-hosted kube-proxy
-|           kube-scheduler | Configuring self-hosted kube-scheduler
+|               kube-proxy | Configuring static pod kube-proxy
+|           kube-scheduler | Configuring static pod kube-scheduler
 |                localhost | Special steps for the localhost (ansible runner)
 |                   master | Configuring K8s master node role
 |               netchecker | Installing netchecker K8s app
@@ -157,7 +157,7 @@ ansible-playbook -i inventory/inventory.ini cluster.yml  --tags preinstall,dnsma
 ```
 And this play only removes the K8s cluster DNS resolver IP from hosts' /etc/resolv.conf files:
 ```
-ansible-playbook -i inventory/inventory.ini -e dns_server='' cluster.yml --tags resolvconf
+ansible-playbook -i inventory/inventory.ini -e dnsmasq_dns_server='' cluster.yml --tags resolvconf
 ```
 And this prepares all container images localy (at the ansible runner node) without installing
 or upgrading related stuff or trying to upload container to K8s cluster nodes:

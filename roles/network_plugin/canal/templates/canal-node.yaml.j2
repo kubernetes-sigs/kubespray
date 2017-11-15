@@ -1,0 +1,194 @@
+---
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: canal-node
+  namespace: {{ system_namespace }}
+  labels:
+    k8s-app: canal-node
+spec:
+  selector:
+    matchLabels:
+      k8s-app: canal-node
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly", "operator":"Exists"}]'
+      labels:
+        k8s-app: canal-node
+    spec:
+      hostNetwork: true
+{% if rbac_enabled %}
+      serviceAccountName: canal
+{% endif %}
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      volumes:
+        # Used by calico/node.
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: var-run-calico
+          hostPath:
+            path: /var/run/calico
+        # Used to install CNI.
+        - name: cni-bin-dir
+          hostPath:
+            path: /opt/cni/bin
+        - name: cni-net-dir
+          hostPath:
+            path: /etc/cni/net.d
+        # Used by flannel daemon.
+        - name: run-flannel
+          hostPath:
+            path: /run/flannel
+        - name: resolv
+          hostPath:
+            path: /etc/resolv.conf
+        - name: "canal-certs"
+          hostPath:
+            path: "{{ canal_cert_dir }}"
+      containers:
+        # Runs the flannel daemon to enable vxlan networking between
+        # container hosts.
+        - name: flannel
+          image: "{{ flannel_image_repo }}:{{ flannel_image_tag }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          resources:
+            limits:
+              cpu: {{ flannel_cpu_limit }}
+              memory: {{ flannel_memory_limit }}
+            requests:
+              cpu: {{ flannel_cpu_requests }}
+              memory: {{ flannel_memory_requests }}
+          env:
+            # Cluster name
+            - name: CLUSTER_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: cluster_name
+            # The location of the etcd cluster.
+            - name: FLANNELD_ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_endpoints
+            # The interface flannel should run on.
+            - name: FLANNELD_IFACE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: flanneld_iface
+            # Perform masquerade on traffic leaving the pod cidr.
+            - name: FLANNELD_IP_MASQ
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: masquerade
+            # Set etcd-prefix
+            - name: DOCKER_OPT_ETCD_PREFIX
+              value: "-etcd-prefix=/$(CLUSTER_NAME)/network"
+            # Write the subnet.env file to the mounted directory.
+            - name: FLANNELD_SUBNET_FILE
+              value: "/run/flannel/subnet.env"
+            # Etcd SSL vars
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_cafile
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_certfile
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_keyfile
+          command:
+            - "/bin/sh"
+            - "-c"
+            - "/opt/bin/flanneld -etcd-prefix /$(CLUSTER_NAME)/network -etcd-cafile $(ETCD_CA_CERT_FILE) -etcd-certfile $(ETCD_CERT_FILE) -etcd-keyfile $(ETCD_KEY_FILE)"
+          ports:
+            - hostPort: 10253
+              containerPort: 10253
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: "resolv"
+              mountPath: "/etc/resolv.conf"
+            - name: "run-flannel"
+              mountPath: "/run/flannel"
+            - name: "canal-certs"
+              mountPath: "{{ canal_cert_dir }}"
+              readOnly: true
+        # Runs calico/node container on each Kubernetes node.  This
+        # container programs network policy and local routes on each
+        # host.
+        - name: calico-node
+          image: "{{ calico_node_image_repo }}:{{ calico_node_image_tag }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          resources:
+            limits:
+              cpu: {{ calico_node_cpu_limit }}
+              memory: {{ calico_node_memory_limit }}
+            requests:
+              cpu: {{ calico_node_cpu_requests }}
+              memory: {{ calico_node_memory_requests }}
+          env:
+            # The location of the etcd cluster.
+            - name: ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_endpoints
+            # Disable Calico BGP.  Calico is simply enforcing policy.
+            - name: CALICO_NETWORKING
+              value: "false"
+            # Cluster type to identify the deployment type
+            - name: CLUSTER_TYPE
+              value: "kubespray,canal"
+            # Disable file logging so `kubectl logs` works.
+            - name: CALICO_DISABLE_FILE_LOGGING
+              value: "true"
+            # Etcd SSL vars
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_cafile
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_certfile
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: canal-config
+                  key: etcd_keyfile
+            - name: NODENAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - mountPath: /var/run/calico
+              name: var-run-calico
+              readOnly: false
+            - name: "canal-certs"
+              mountPath: "{{ canal_cert_dir }}"
+              readOnly: true
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: {{ serial | default('20%') }}
+    type: RollingUpdate

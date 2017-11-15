@@ -32,8 +32,7 @@ Conduct may be permanently removed from the project team.
 This code of conduct applies both within project spaces and in public spaces
 when an individual is representing the project or its community.
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by
-opening an issue or contacting one or more of the project maintainers.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting a Kubernetes maintainer, Sarah Novotny <sarahnovotny@google.com>, and/or Dan Kohn <dan@linuxfoundation.org>.
 
 This Code of Conduct is adapted from the Contributor Covenant
 (http://contributor-covenant.org), version 1.2.0, available at
@@ -53,7 +52,7 @@ The Kubernetes team does not condone any statements by speakers contrary to thes
 team reserves the right to deny entrance and/or eject from an event (without refund) any individual found to
 be engaging in discriminatory or offensive speech or actions.
 
-Please bring any concerns to to the immediate attention of Kubernetes event staff
+Please bring any concerns to the immediate attention of Kubernetes event staff.
 
 
 [![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/code-of-conduct.md?pixel)]()

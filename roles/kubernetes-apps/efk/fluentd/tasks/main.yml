@@ -1,28 +1,22 @@
 ---
+- name: "Fluentd | copy config file"
+  template:
+    src: fluentd-config.yml.j2
+    dest: "{{ kube_config_dir }}/fluentd-config.yaml"
+  register: fluentd_config
+
+- name: "Fluentd | create configMap"
+  command: "{{bin_dir}}/kubectl apply -f {{ kube_config_dir }}/fluentd-config.yaml"
+  run_once: true
+  when: fluentd_config.changed
+
 - name: "Fluentd | Write fluentd daemonset"
   template:
     src: fluentd-ds.yml.j2
     dest: "{{ kube_config_dir }}/fluentd-ds.yaml"
   register: fluentd_ds_manifest
 
-#FIXME: remove if kubernetes/features#124 is implemented
-- name: "Fluentd | Purge old fluentd daemonset"
-  kube:
-    filename: "{{kube_config_dir}}/fluentd-ds.yaml"
-    kubectl: "{{bin_dir}}/kubectl"
-    name: "fluentd-es-v{{ fluentd_version }}"
-    namespace: "{{system_namespace}}"
-    resource: "ds"
-    state: absent
-  when: inventory_hostname == groups['kube-master'][0] and fluentd_ds_manifest.changed
-
 - name: "Fluentd | Create fluentd daemonset"
-  kube:
-    filename: "{{kube_config_dir}}/fluentd-ds.yaml"
-    kubectl: "{{bin_dir}}/kubectl"
-    name: "fluentd-es-v{{ fluentd_version }}"
-    namespace: "{{system_namespace}}"
-    resource: "ds"
-    state: "{{ item | ternary('latest','present') }}"
-  with_items: "{{ fluentd_ds_manifest.changed }}"
+  command: "{{ bin_dir }}/kubectl apply -f {{ kube_config_dir }}/fluentd-ds.yaml -n {{ system_namespace }}"
   run_once: true
+  when: fluentd_ds_manifest.changed

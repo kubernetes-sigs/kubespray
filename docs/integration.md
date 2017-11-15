@@ -35,7 +35,7 @@
 7. Modify path to library and roles in your ansible.cfg file (role naming should be uniq, you may have to rename your existent roles if they have same names as kubespray project):
    ```
    ...
-   library        = 3d/kubespray/library/
+   library       = 3d/kubespray/library/
    roles_path    = 3d/kubespray/roles/
    ...
    ```
@@ -73,7 +73,7 @@ You could rename *all.yml* config to something else, i.e. *kubespray.yml* and cr
 10. Now you can include kargo tasks in you existent playbooks by including cluster.yml file: 
      ```
      - name: Include kargo tasks
-     include: 3d/kubespray/cluster.yml
+       include: 3d/kubespray/cluster.yml
      ``` 
      Or your could copy separate tasks from cluster.yml into your ansible repository.
 

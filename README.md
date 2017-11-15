@@ -2,7 +2,7 @@
 
 ## Deploy a production ready kubernetes cluster
 
-If you have questions, join us on the [kubernetes slack](https://slack.k8s.io), channel **#kubespray**.
+If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **#kubespray**.
 
 - Can be deployed on **AWS, GCE, Azure, OpenStack or Baremetal**
 - **High available** cluster
@@ -29,11 +29,13 @@ To deploy the cluster you can use :
 *  [Network plugins](#network-plugins)
 *  [Vagrant install](docs/vagrant.md)
 *  [CoreOS bootstrap](docs/coreos.md)
+*  [Debian Jessie setup](docs/debian.md)
 *  [Downloaded artifacts](docs/downloads.md)
 *  [Cloud providers](docs/cloud.md)
 *  [OpenStack](docs/openstack.md)
 *  [AWS](docs/aws.md)
 *  [Azure](docs/azure.md)
+*  [vSphere](docs/vsphere.md)
 *  [Large deployments](docs/large-deployments.md)
 *  [Upgrades basics](docs/upgrades.md)
 *  [Roadmap](docs/roadmap.md)
@@ -52,13 +54,13 @@ Versions of supported components
 --------------------------------
 
 
-[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.6.4 <br>
-[etcd](https://github.com/coreos/etcd/releases) v3.0.17 <br>
-[flanneld](https://github.com/coreos/flannel/releases) v0.6.2 <br>
-[calicoctl](https://github.com/projectcalico/calico-docker/releases) v0.23.0 <br>
+[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.8.2 <br>
+[etcd](https://github.com/coreos/etcd/releases) v3.2.4 <br>
+[flanneld](https://github.com/coreos/flannel/releases) v0.8.0 <br>
+[calico](https://docs.projectcalico.org/v2.5/releases/) v2.5.0 <br>
 [canal](https://github.com/projectcalico/canal) (given calico/flannel versions) <br>
-[weave](http://weave.works/) v1.8.2 <br>
-[docker](https://www.docker.com/) v1.13.1 (see note)<br>
+[weave](http://weave.works/) v2.0.1 <br>
+[docker](https://www.docker.com/) v1.13 (see note)<br>
 [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 (see Note 2)<br>
 
 Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
@@ -71,7 +73,7 @@ plugins can be deployed for a given single cluster.
 Requirements
 --------------
 
-* **Ansible v2.3 (or newer) and python-netaddr is installed on the machine
+* **Ansible v2.4 (or newer) and python-netaddr is installed on the machine
   that will run Ansible commands**
 * **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
 * The target servers must have **access to the Internet** in order to pull docker images.
@@ -82,7 +84,8 @@ in order to avoid any issue during deployment you should disable your firewall.
 
 
 ## Network plugins
-You can choose between 4 network plugins. (default: `calico`)
+
+You can choose between 4 network plugins. (default: `calico`, except Vagrant uses `flannel`)
 
 * [**flannel**](docs/flannel.md): gre/vxlan (layer 2) networking.
 
@@ -90,7 +93,7 @@ You can choose between 4 network plugins. (default: `calico`)
 
 * [**canal**](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
 
-* **weave**: Weave is a lightweight container overlay network that doesn't require an external K/V database cluster. <br>
+* [**weave**](docs/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster. <br>
 (Please refer to `weave` [troubleshooting documentation](http://docs.weave.works/weave/latest_release/troubleshooting.html)).
 
 The choice is defined with the variable `kube_network_plugin`. There is also an
@@ -104,7 +107,7 @@ See also [Network checker](docs/netcheck.md).
  - [Deploy a Kubernetes Cluster with Kubespray (video)](https://www.youtube.com/watch?v=N9q51JgbWu8)
 
 ## Tools and projects on top of Kubespray
- - [Digital Rebar](https://github.com/digitalrebar/digitalrebar)
+ - [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/master/doc/integrations/ansible.rst)
  - [Kubespray-cli](https://github.com/kubespray/kubespray-cli)
  - [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
  - [Terraform Contrib](https://github.com/kubernetes-incubator/kubespray/tree/master/contrib/terraform)

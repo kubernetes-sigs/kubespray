@@ -1,8 +1,8 @@
 ---
 - name: Canal | Write Canal cni config
   template:
-    src: "cni-canal.conf.j2"
-    dest: "/etc/cni/net.d/10-canal.conf"
+    src: "cni-canal.conflist.j2"
+    dest: "/etc/cni/net.d/10-canal.conflist"
     owner: kube
 
 - name: Canal | Create canal certs directory
@@ -30,36 +30,47 @@
     set /{{ cluster_name }}/network/config \
     '{ "Network": "{{ kube_pods_subnet }}", "SubnetLen": {{ kube_network_node_prefix }}, "Backend": { "Type": "{{ flannel_backend_type }}" } }'
   delegate_to: "{{groups['etcd'][0]}}"
+  changed_when: false
   run_once: true
 
-- name: Canal | Write canal configmap
+- name: Canal | Create canal node manifests
   template:
-    src: canal-config.yml.j2
-    dest: "{{kube_config_dir}}/canal-config.yaml"
-
-- name: Canal | Write canal node configuration
-  template:
-    src: canal-node.yml.j2
-    dest: "{{kube_config_dir}}/canal-node.yaml"
-  register: canal_node_manifest
+    src: "{{item.file}}.j2"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {name: canal-config, file: canal-config.yaml, type: cm}
+    - {name: canal-node, file: canal-node.yaml, type: ds}
+    - {name: canal, file: canal-node-sa.yml, type: sa}
+    - {name: calico, file: canal-cr-calico.yml, type: clusterrole}
+    - {name: flannel, file: canal-cr-flannel.yml, type: clusterrole}
+    - {name: canal-calico, file: canal-crb-calico.yml, type: clusterrolebinding}
+    - {name: canal-flannel, file: canal-crb-flannel.yml, type: clusterrolebinding}
+  register: canal_manifests
+  when:
+    - inventory_hostname in groups['kube-master']
+    - rbac_enabled or item.type not in rbac_resources
 
 - name: Canal | Copy cni plugins from hyperkube
-  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/rsync -ac /opt/cni/bin/ /cnibindir/"
+  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp -r /opt/cni/bin/. /cnibindir/"
   register: cni_task_result
   until: cni_task_result.rc == 0
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
-  tags: [hyperkube, upgrade]
+  tags:
+    - hyperkube
+    - upgrade
 
 - name: Canal | Copy cni plugins from calico/cni
-  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }} sh -c 'cp -a /opt/cni/bin/* /cnibindir/'"
+  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }} sh -c 'cp /opt/cni/bin/* /cnibindir/'"
   register: cni_task_result
   until: cni_task_result.rc == 0
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
-  tags: [hyperkube, upgrade]
+  tags:
+    - hyperkube
+    - upgrade
 
 - name: Canal | Set cni directory permissions
   file:
@@ -76,7 +87,6 @@
     mode: 0755
     owner: root
     group: root
-  changed_when: false
 
 - name: Canal | Create network policy directory
   file:

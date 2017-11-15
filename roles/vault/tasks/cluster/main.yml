@@ -1,12 +1,9 @@
 ---
-
 - include: ../shared/check_vault.yml
   when: inventory_hostname in groups.vault
 
 - include: ../shared/check_etcd.yml
   when: inventory_hostname in groups.vault
-
-## Vault Cluster Setup
 
 - include: configure.yml
   when: inventory_hostname in groups.vault
@@ -26,19 +23,29 @@
 - include: ../shared/find_leader.yml
   when: inventory_hostname in groups.vault
 
-- include: ../shared/pki_mount.yml 
+- include: create_mounts.yml
   when: inventory_hostname == groups.vault|first
 
-- include: ../shared/config_ca.yml
+- include: ../shared/gen_ca.yml
   vars:
-    ca_name: ca
-    mount_name: pki
+    gen_ca_cert_dir: "{{ vault_pki_mounts.kube.cert_dir }}"
+    gen_ca_mount_path: "{{ vault_pki_mounts.kube.name }}"
+    gen_ca_vault_headers: "{{ vault_headers }}"
+    gen_ca_vault_options: "{{ vault_ca_options.kube }}"
+  when: inventory_hostname in groups.vault
+
+- include: ../shared/auth_backend.yml
+  vars:
+    auth_backend_description: A Username/Password Auth Backend primarily used for services needing to issue certificates
+    auth_backend_path: userpass
+    auth_backend_type: userpass
   when: inventory_hostname == groups.vault|first
 
-## Vault Policies, Roles, and Auth Backends
-
-- include: role_auth_cert.yml
-  when: vault_role_auth_method == "cert"
-
-- include: role_auth_userpass.yml
-  when: vault_role_auth_method == "userpass"
+- include: create_roles.yml
+  with_items:
+    - "{{ vault_pki_mounts.vault }}"
+    - "{{ vault_pki_mounts.etcd }}"
+    - "{{ vault_pki_mounts.kube }}"
+  loop_control:
+    loop_var: mount
+  when: inventory_hostname in groups.vault

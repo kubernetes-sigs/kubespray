@@ -5,29 +5,26 @@
 
 - set_fact:
     pull_args: >-
-      {%- if pull_by_digest|bool %}{{download.repo}}@sha256:{{download.sha256}}{%- else -%}{{download.repo}}:{{download.tag}}{%- endif -%}
+      {%- if pull_by_digest %}{{download.repo}}@sha256:{{download.sha256}}{%- else -%}{{download.repo}}:{{download.tag}}{%- endif -%}
 
 - name: Register docker images info
   raw: >-
-    {{ docker_bin_dir }}/docker images -q | xargs {{ docker_bin_dir }}/docker inspect -f "{{ '{{' }} .RepoTags {{ '}}' }},{{ '{{' }} .RepoDigests {{ '}}' }}"
+    {{ docker_bin_dir }}/docker images -q | xargs {{ docker_bin_dir }}/docker inspect -f "{{ '{{' }} (index .RepoTags 0) {{ '}}' }},{{ '{{' }} (index .RepoDigests 0) {{ '}}' }}" | tr '\n' ','
   no_log: true
-  register: docker_images_raw
+  register: docker_images
   failed_when: false
   changed_when: false
   check_mode: no
-  when: not download_always_pull|bool
-
-- set_fact:
-    docker_images: "{{docker_images_raw.stdout|regex_replace('\\[|\\]|\\n]','')|regex_replace('\\s',',')}}"
-  no_log: true
-  when: not download_always_pull|bool
+  when: not download_always_pull
 
 - set_fact:
     pull_required: >-
-      {%- if pull_args in docker_images.split(',') %}false{%- else -%}true{%- endif -%}
-  when: not download_always_pull|bool
+      {%- if pull_args in docker_images.stdout.split(',') %}false{%- else -%}true{%- endif -%}
+  when: not download_always_pull
 
 - name: Check the local digest sha256 corresponds to the given image tag
   assert:
-    that: "{{download.repo}}:{{download.tag}} in docker_images.split(',')"
-  when: not download_always_pull|bool and not pull_required|bool and pull_by_digest|bool
+    that: "{{download.repo}}:{{download.tag}} in docker_images.stdout.split(',')"
+  when: not download_always_pull and not pull_required and pull_by_digest
+  tags:
+    - asserts

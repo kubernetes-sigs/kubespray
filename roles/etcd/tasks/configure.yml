@@ -1,16 +1,13 @@
 ---
 - name: Configure | Check if member is in cluster
-  shell: "{{ bin_dir }}/etcdctl --no-sync --peers={{ etcd_access_addresses }} member list | grep -q {{ etcd_access_address }}"
+  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses }} member list | grep -q {{ etcd_access_address }}"
   register: etcd_member_in_cluster
-  failed_when: false
+  ignore_errors: true
   changed_when: false
   check_mode: no
   when: is_etcd_master
-  tags: facts
-
-- name: Configure | Add member to the cluster if it is not there
-  when: is_etcd_master and etcd_member_in_cluster.rc != 0 and etcd_cluster_is_healthy.rc == 0
-  shell: "{{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses }} member add {{ etcd_member_name }} {{ etcd_peer_url }}"
+  tags:
+    - facts
 
 - name: Install etcd launch script
   template:
@@ -28,3 +25,12 @@
     backup: yes
   when: is_etcd_master
   notify: restart etcd
+
+- name: Configure | Join member(s) to cluster one at a time
+  include: join_member.yml
+  vars:
+    target_node: "{{ item }}"
+  loop_control:
+    pause: 10
+  with_items: "{{ groups['etcd'] }}"
+  when: inventory_hostname == item and etcd_member_in_cluster.rc != 0 and etcd_cluster_is_healthy.rc == 0

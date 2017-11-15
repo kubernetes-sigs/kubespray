@@ -2,9 +2,9 @@ resource "aws_security_group" "aws-elb" {
     name = "kubernetes-${var.aws_cluster_name}-securitygroup-elb"
     vpc_id = "${var.aws_vpc_id}"
 
-    tags {
-        Name = "kubernetes-${var.aws_cluster_name}-securitygroup-elb"
-    }
+    tags = "${merge(var.default_tags, map(
+      "Name", "kubernetes-${var.aws_cluster_name}-securitygroup-elb"
+    ))}"
 }
 
 
@@ -52,7 +52,7 @@ resource "aws_elb" "aws-elb-api" {
   connection_draining = true
   connection_draining_timeout = 400
 
-  tags {
-    Name = "kubernetes-${var.aws_cluster_name}-elb-api"
-  }
+  tags = "${merge(var.default_tags, map(
+    "Name", "kubernetes-${var.aws_cluster_name}-elb-api"
+  ))}"
 }

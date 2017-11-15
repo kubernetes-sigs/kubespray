@@ -1,0 +1,25 @@
+---
+- name: container_download | Make download decision if pull is required by tag or sha256
+  include: set_docker_image_facts.yml
+  delegate_to: "{{ download_delegate if download_run_once or omit }}"
+  delegate_facts: no
+  run_once: "{{ download_run_once }}"
+  when:
+    - download.enabled
+    - download.container
+  tags:
+    - facts
+
+- name: container_download | Download containers if pull is required or told to always pull
+  command: "{{ docker_bin_dir }}/docker pull {{ pull_args }}"
+  register: pull_task_result
+  until: pull_task_result|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - download.enabled
+    - download.container
+    - pull_required|default(download_always_pull)
+  delegate_to: "{{ download_delegate if download_run_once or omit }}"
+  delegate_facts: no
+  run_once: "{{ download_run_once }}"

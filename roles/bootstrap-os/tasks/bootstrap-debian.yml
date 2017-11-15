@@ -1,0 +1,24 @@
+---
+#  raw: cat /etc/issue.net | grep '{{ bootstrap_versions }}'
+
+- name: Bootstrap | Check if bootstrap is needed
+  raw: which "{{ item }}"
+  register: need_bootstrap
+  failed_when: false
+  changed_when: false
+  with_items:
+    - python
+    - pip
+    - dbus-daemon
+  tags: facts
+
+- name: Bootstrap | Install python 2.x, pip, and dbus
+  raw:
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y python-minimal python-pip dbus
+  when:
+    need_bootstrap.results | map(attribute='rc') | sort | last | bool
+
+- set_fact:
+    ansible_python_interpreter: "/usr/bin/python"
+  tags: facts

@@ -4,7 +4,10 @@ metadata:
   name: kube-controller-manager
   namespace: {{system_namespace}}
   labels:
-    k8s-app: kube-controller
+    k8s-app: kube-controller-manager
+  annotations:
+    kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
+    kubespray.controller-manager-cert/serial: "{{ controller_manager_cert_serial }}"
 spec:
   hostNetwork: true
 {% if kube_version | version_compare('v1.6', '>=') %}
@@ -24,7 +27,7 @@ spec:
     command:
     - /hyperkube
     - controller-manager
-    - --master={{ kube_apiserver_endpoint }}
+    - --kubeconfig={{ kube_config_dir }}/kube-controller-manager-kubeconfig.yaml
     - --leader-elect=true
     - --service-account-private-key-file={{ kube_cert_dir }}/apiserver-key.pem
     - --root-ca-file={{ kube_cert_dir }}/ca.pem
@@ -34,7 +37,12 @@ spec:
     - --node-monitor-grace-period={{ kube_controller_node_monitor_grace_period }}
     - --node-monitor-period={{ kube_controller_node_monitor_period }}
     - --pod-eviction-timeout={{ kube_controller_pod_eviction_timeout }}
+    - --profiling=false
+    - --terminated-pod-gc-threshold=12500
     - --v={{ kube_log_level }}
+{% if rbac_enabled %}
+    - --use-service-account-credentials=true
+{% endif %}
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"] %}
     - --cloud-provider={{cloud_provider}}
     - --cloud-config={{ kube_config_dir }}/cloud_config
@@ -42,9 +50,16 @@ spec:
     - --cloud-provider={{cloud_provider}}
 {% endif %}
 {% if kube_network_plugin is defined and kube_network_plugin == 'cloud' %}
-    - --allocate-node-cidrs=true
     - --configure-cloud-routes=true
+{% endif %}
+{% if kube_network_plugin is defined and kube_network_plugin in ["cloud", "flannel", "canal"] %}
+    - --allocate-node-cidrs=true
     - --cluster-cidr={{ kube_pods_subnet }}
+    - --service-cluster-ip-range={{ kube_service_addresses }}
+    - --node-cidr-mask-size={{ kube_network_node_prefix }}
+{% endif %}
+{% if kube_feature_gates %}
+    - --feature-gates={{ kube_feature_gates|join(',') }}
 {% endif %}
 {% if controller_mgr_custom_flags is string %}
     - {{ controller_mgr_custom_flags }}
@@ -61,20 +76,42 @@ spec:
       initialDelaySeconds: 30
       timeoutSeconds: 10
     volumeMounts:
-    - mountPath: {{ kube_cert_dir }}
-      name: ssl-certs-kubernetes
+    - mountPath: /etc/ssl
+      name: ssl-certs-host
+      readOnly: true
+{% for dir in ssl_ca_dirs %}
+    - mountPath: {{ dir }}
+      name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+      readOnly: true
+{% endfor %}
+    - mountPath: "{{kube_config_dir}}/ssl"
+      name: etc-kube-ssl
+      readOnly: true
+    - mountPath: "{{ kube_config_dir }}/kube-controller-manager-kubeconfig.yaml"
+      name: kubeconfig
       readOnly: true
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere" ] %}
-    - mountPath: {{ kube_config_dir }}/cloud_config
+    - mountPath: "{{ kube_config_dir }}/cloud_config"
       name: cloudconfig
       readOnly: true
 {% endif %}
   volumes:
-  - hostPath:
-      path: {{ kube_cert_dir }}
-    name: ssl-certs-kubernetes
+  - name: ssl-certs-host
+    hostPath:
+      path: /etc/ssl
+{% for dir in ssl_ca_dirs %}
+  - name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+    hostPath:
+      path: {{ dir }}
+{% endfor %}
+  - name: etc-kube-ssl
+    hostPath:
+      path: "{{ kube_config_dir }}/ssl"
+  - name: kubeconfig
+    hostPath:
+      path: "{{ kube_config_dir }}/kube-controller-manager-kubeconfig.yaml"
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"] %}
   - hostPath:
-      path: {{ kube_config_dir }}/cloud_config
+      path: "{{ kube_config_dir }}/cloud_config"
     name: cloudconfig
 {% endif %}

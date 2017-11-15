@@ -1,0 +1,20 @@
+---
+- name: Kubernetes Apps | Lay down dashboard template
+  template:
+    src: "{{item.file}}"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {file: dashboard.yml.j2, type: deploy, name: netchecker-agent}
+  register: manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Kubernetes Apps | Start dashboard
+  kube:
+    name: "{{item.item.name}}"
+    namespace: "{{system_namespace}}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: "latest"
+  with_items: "{{ manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]

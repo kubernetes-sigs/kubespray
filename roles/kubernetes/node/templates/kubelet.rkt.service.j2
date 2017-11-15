@@ -1,12 +1,7 @@
 [Unit]
 Description=Kubernetes Kubelet Server
 Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-{% if kube_network_plugin is defined and kube_network_plugin == "calico" %}
-After=calico-node.service
-Wants=network.target calico-node.service
-{% else %}
 Wants=network.target
-{% endif %}
 
 [Service]
 Restart=on-failure
@@ -20,7 +15,12 @@ ExecStartPre=-/bin/mkdir -p /var/lib/kubelet
 EnvironmentFile={{kube_config_dir}}/kubelet.env
 # stage1-fly mounts /proc /sys /dev so no need to duplicate the mounts
 ExecStart=/usr/bin/rkt run \
+{% if kubelet_load_modules == true %}
+        --volume modprobe,kind=host,source=/usr/sbin/modprobe \
+        --volume lib-modules,kind=host,source=/lib/modules \
+{% endif %}
         --volume os-release,kind=host,source=/etc/os-release,readOnly=true \
+        --volume hosts,kind=host,source=/etc/hosts,readOnly=true \
         --volume dns,kind=host,source=/etc/resolv.conf \
         --volume etc-kubernetes,kind=host,source={{ kube_config_dir }},readOnly=false \
         --volume etc-ssl-certs,kind=host,source=/etc/ssl/certs,readOnly=true \
@@ -30,12 +30,19 @@ ExecStart=/usr/bin/rkt run \
         --volume {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }},kind=host,source={{ dir }},readOnly=true \
         {% endfor -%}
         --volume var-lib-docker,kind=host,source={{ docker_daemon_graph }},readOnly=false \
-        --volume var-lib-kubelet,kind=host,source=/var/lib/kubelet,readOnly=false \
+        --volume var-lib-kubelet,kind=host,source=/var/lib/kubelet,readOnly=false,recursive=true \
         --volume var-log,kind=host,source=/var/log \
-{% if kube_network_plugin in ["calico", "weave", "canal"] %}
+{% if local_volumes_enabled == true %}
+        --volume local-volume-base-dir,kind=host,source={{ local_volume_base_dir }},readOnly=false,recursive=true \
+{% endif %}
+{% if kube_network_plugin in ["calico", "weave", "canal", "flannel"] %}
         --volume etc-cni,kind=host,source=/etc/cni,readOnly=true \
         --volume opt-cni,kind=host,source=/opt/cni,readOnly=true \
         --volume var-lib-cni,kind=host,source=/var/lib/cni,readOnly=false \
+{% if kubelet_load_modules == true %}
+        --mount volume=modprobe,target=/usr/sbin/modprobe \
+        --mount volume=lib-modules,target=/lib/modules \
+{% endif %}
         --mount volume=etc-cni,target=/etc/cni \
         --mount volume=opt-cni,target=/opt/cni \
         --mount volume=var-lib-cni,target=/var/lib/cni \
@@ -52,6 +59,10 @@ ExecStart=/usr/bin/rkt run \
         --mount volume=var-lib-docker,target=/var/lib/docker \
         --mount volume=var-lib-kubelet,target=/var/lib/kubelet \
         --mount volume=var-log,target=/var/log \
+        --mount volume=hosts,target=/etc/hosts \
+{% if local_volumes_enabled == true %}
+        --mount volume=local-volume-base-dir,target={{ local_volume_base_dir }} \
+{% endif %}
         --stage1-from-dir=stage1-fly.aci \
 {% if kube_hyperkube_image_repo == "docker" %}
         --insecure-options=image \

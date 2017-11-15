@@ -3,7 +3,7 @@
 
 require 'fileutils'
 
-Vagrant.require_version ">= 1.8.0"
+Vagrant.require_version ">= 1.9.0"
 
 CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
 
@@ -14,21 +14,23 @@ SUPPORTED_OS = {
   "coreos-alpha"  => {box: "coreos-alpha",       bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["alpha"]},
   "coreos-beta"   => {box: "coreos-beta",        bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]},
   "ubuntu"        => {box: "bento/ubuntu-16.04", bootstrap_os: "ubuntu", user: "vagrant"},
+  "centos"        => {box: "bento/centos-7.3",   bootstrap_os: "centos", user: "vagrant"},
 }
 
 # Defaults for config options defined in CONFIG
 $num_instances = 3
 $instance_name_prefix = "k8s"
 $vm_gui = false
-$vm_memory = 1536
+$vm_memory = 2048
 $vm_cpus = 1
 $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
 $os = "ubuntu"
+$network_plugin = "flannel"
 # The first three nodes are etcd servers
 $etcd_instances = $num_instances
-# The first two nodes are masters
+# The first two nodes are kube masters
 $kube_master_instances = $num_instances == 1 ? $num_instances : ($num_instances - 1)
 # All nodes are kube nodes
 $kube_node_instances = $num_instances
@@ -113,16 +115,22 @@ Vagrant.configure("2") do |config|
       ip = "#{$subnet}.#{i+100}"
       host_vars[vm_name] = {
         "ip": ip,
-        "flannel_interface": ip,
-        "flannel_backend_type": "host-gw",
+        "bootstrap_os": SUPPORTED_OS[$os][:bootstrap_os],
         "local_release_dir" => $local_release_dir,
         "download_run_once": "False",
-        # Override the default 'calico' with flannel.
-        # inventory/group_vars/k8s-cluster.yml
-        "kube_network_plugin": "flannel",
-        "bootstrap_os": SUPPORTED_OS[$os][:bootstrap_os]
+        "kube_network_plugin": $network_plugin
       }
+
       config.vm.network :private_network, ip: ip
+      
+      # workaround for Vagrant 1.9.1 and centos vm
+      # https://github.com/hashicorp/vagrant/issues/8096
+      if Vagrant::VERSION == "1.9.1" && $os == "centos"
+        config.vm.provision "shell", inline: "service network restart", run: "always"
+      end
+
+      # Disable swap for each vm
+      config.vm.provision "shell", inline: "swapoff -a"
 
       # Only execute once the Ansible provisioner,
       # when all the machines are up and ready.
@@ -135,7 +143,7 @@ Vagrant.configure("2") do |config|
           ansible.sudo = true
           ansible.limit = "all"
           ansible.host_key_checking = false
-          ansible.raw_arguments = ["--forks=#{$num_instances}"]
+          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache"]
           ansible.host_vars = host_vars
           #ansible.tags = ['download']
           ansible.groups = {

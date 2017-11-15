@@ -26,18 +26,20 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
-    - { role: kernel-upgrade, tags: kernel-upgrade, when: kernel_upgrade is defined and kernel_upgrade }
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: docker, tags: docker }
     - role: rkt
       tags: rkt
       when: "'rkt' in [etcd_deployment_type, kubelet_deployment_type, vault_deployment_type]"
+    - { role: download, tags: download, skip_downloads: false }
+  environment: "{{proxy_env}}"
 
 - hosts: etcd:k8s-cluster:vault
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults, when: "cert_management == 'vault'" }
     - { role: vault, tags: vault, vault_bootstrap: true, when: "cert_management == 'vault'" }
+  environment: "{{proxy_env}}"
 
 - hosts: etcd
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -56,19 +58,35 @@
   roles:
     - { role: kubespray-defaults}
     - { role: vault, tags: vault, when: "cert_management == 'vault'"}
+  environment: "{{proxy_env}}"
 
 - hosts: k8s-cluster
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes/node, tags: node }
-    - { role: network_plugin, tags: network }
+  environment: "{{proxy_env}}"
 
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes/master, tags: master }
+    - { role: kubernetes/client, tags: client }
+    - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
+
+- hosts: k8s-cluster
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: kubernetes/kubeadm, tags: kubeadm, when: "kubeadm_enabled" }
+    - { role: network_plugin, tags: network }
+
+- hosts: kube-master
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: kubernetes-apps/rotate_tokens, tags: rotate_tokens, when: "secret_changed|default(false)" }
     - { role: kubernetes-apps/network_plugin, tags: network }
     - { role: kubernetes-apps/policy_controller, tags: policy-controller }
 
@@ -84,6 +102,7 @@
     - { role: kubespray-defaults}
     - { role: dnsmasq, when: "dns_mode == 'dnsmasq_kubedns'", tags: dnsmasq }
     - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }
+  environment: "{{proxy_env}}"
 
 - hosts: kube-master[0]
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"

@@ -6,7 +6,19 @@ variable "number_of_k8s_masters" {
   default = 2
 }
 
+variable "number_of_k8s_masters_no_etcd" {
+  default = 2
+}
+
+variable "number_of_etcd" {
+  default = 2
+}
+
 variable "number_of_k8s_masters_no_floating_ip" {
+  default = 2
+}
+
+variable "number_of_k8s_masters_no_floating_ip_no_etcd" {
   default = 2
 }
 
@@ -56,6 +68,10 @@ variable "flavor_k8s_master" {
 }
 
 variable "flavor_k8s_node" {
+  default = 3
+}
+
+variable "flavor_etcd" {
   default = 3
 }
 

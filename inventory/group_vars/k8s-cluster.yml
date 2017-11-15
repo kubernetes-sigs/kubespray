@@ -23,7 +23,7 @@ kube_users_dir: "{{ kube_config_dir }}/users"
 kube_api_anonymous_auth: false
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.6.4
+kube_version: v1.8.2
 
 # Where the binaries will be downloaded.
 # Note: ensure that you've enough disk space (about 1G)
@@ -39,16 +39,14 @@ kube_cert_group: kube-cert
 kube_log_level: 2
 
 # Users to create for basic auth in Kubernetes API via HTTP
-kube_api_pwd: "changeme"
+# Optionally add groups for user
+kube_api_pwd: "{{ lookup('password', 'credentials/kube_user length=15 chars=ascii_letters,digits') }}"
 kube_users:
   kube:
     pass: "{{kube_api_pwd}}"
     role: admin
-  root:
-    pass: "{{kube_api_pwd}}"
-    role: admin
-
-
+    groups:
+      - system:masters
 
 ## It is possible to activate / deactivate selected authentication methods (basic auth, static token auth)
 #kube_oidc_auth: false
@@ -70,6 +68,23 @@ kube_users:
 # Choose network plugin (calico, weave or flannel)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
 kube_network_plugin: calico
+
+# weave's network password for encryption
+# if null then no network encryption
+# you can use --extra-vars to pass the password in command line
+weave_password: EnterPasswordHere
+
+# Weave uses consensus mode by default
+# Enabling seed mode allow to dynamically add or remove hosts
+# https://www.weave.works/docs/net/latest/ipam/
+weave_mode_seed: false
+
+# This two variable are automatically changed by the weave's role, do not manually change these values
+# To reset values :
+# weave_seed: uninitialized
+# weave_peers: uninitialized
+weave_seed: uninitialized
+weave_peers: uninitialized
 
 # Enable kubernetes network policies
 enable_network_policy: false
@@ -105,7 +120,7 @@ resolvconf_mode: docker_dns
 deploy_netchecker: false
 # Ip address of the kubernetes skydns service
 skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('address') }}"
-dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
+dnsmasq_dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
 dns_domain: "{{ cluster_name }}"
 
 # Path used to store Docker data
@@ -115,20 +130,51 @@ docker_daemon_graph: "/var/lib/docker"
 ## This string should be exactly as you wish it to appear.
 ## An obvious use case is allowing insecure-registry access
 ## to self hosted registries like so:
-docker_options: "--insecure-registry={{ kube_service_addresses }} --graph={{ docker_daemon_graph }}"
+
+docker_options: "--insecure-registry={{ kube_service_addresses }} --graph={{ docker_daemon_graph }}  {{ docker_log_opts }}"
 docker_bin_dir: "/usr/bin"
 
 # Settings for containerized control plane (etcd/kubelet/secrets)
 etcd_deployment_type: docker
-kubelet_deployment_type: docker
-cert_management: script
+kubelet_deployment_type: host
 vault_deployment_type: docker
+helm_deployment_type: docker
 
 # K8s image pull policy (imagePullPolicy)
 k8s_image_pull_policy: IfNotPresent
+
+# Kubernetes dashboard (available at http://first_master:6443/ui by default)
+dashboard_enabled: true
 
 # Monitoring apps for k8s
 efk_enabled: false
 
 # Helm deployment
 helm_enabled: false
+
+# Istio deployment
+istio_enabled: false
+
+# Local volume provisioner deployment
+local_volumes_enabled: false
+
+# Make a copy of kubeconfig on the host that runs Ansible in GITDIR/artifacts
+# kubeconfig_localhost: false
+# Download kubectl onto the host that runs Ansible in GITDIR/artifacts
+# kubectl_localhost: false
+
+# dnsmasq
+# dnsmasq_upstream_dns_servers:
+#  - /resolvethiszone.with/10.0.4.250
+#  - 8.8.8.8
+
+#  Enable creation of QoS cgroup hierarchy, if true top level QoS and pod cgroups are created. (default true)
+# kubelet_cgroups_per_qos: true
+
+# A comma separated list of levels of node allocatable enforcement to be enforced by kubelet.
+# Acceptible options are 'pods', 'system-reserved', 'kube-reserved' and ''. Default is "".
+# kubelet_enforce_node_allocatable: pods
+
+## Supplementary addresses that can be added in kubernetes ssl keys.
+## That can be usefull for example to setup a keepalived virtual IP
+# supplementary_addresses_in_ssl_keys: [10.0.0.1, 10.0.0.2, 10.0.0.3]

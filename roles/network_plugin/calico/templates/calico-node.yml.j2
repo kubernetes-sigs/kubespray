@@ -1,0 +1,176 @@
+---
+# This manifest installs the calico/node container, as well
+# as the Calico CNI plugins and network config on
+# each master and worker node in a Kubernetes cluster.
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: calico-node
+  namespace: {{ system_namespace }}
+  labels:
+    k8s-app: calico-node
+spec:
+  selector:
+    matchLabels:
+      k8s-app: calico-node
+  template:
+    metadata:
+      labels:
+        k8s-app: calico-node
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+        kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
+    spec:
+      hostNetwork: true
+{% if rbac_enabled %}
+      serviceAccountName: calico-node
+{% endif %}
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+        # Runs calico/node container on each Kubernetes node.  This
+        # container programs network policy and routes on each
+        # host.
+        - name: calico-node
+          image: {{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+          env:
+            # The location of the Calico etcd cluster.
+            - name: ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_endpoints
+            # Choose the backend to use.
+            - name: CALICO_NETWORKING_BACKEND
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: calico_backend
+            # Cluster type to identify the deployment type
+            - name: CLUSTER_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: cluster_type
+            # Disable file logging so `kubectl logs` works.
+            - name: CALICO_DISABLE_FILE_LOGGING
+              value: "true"
+            # Set Felix endpoint to host default action to ACCEPT.
+            - name: FELIX_DEFAULTENDPOINTTOHOSTACTION
+              value: "{{ calico_endpoint_to_host_action|default('RETURN') }}"
+# should be set in etcd before deployment
+#            # Configure the IP Pool from which Pod IPs will be chosen.
+#            - name: CALICO_IPV4POOL_CIDR
+#              value: "192.168.0.0/16"
+#            - name: CALICO_IPV4POOL_IPIP
+#              value: "always"
+            # Disable IPv6 on Kubernetes.
+            - name: FELIX_IPV6SUPPORT
+              value: "false"
+            # Set Felix logging to "info"
+            - name: FELIX_LOGSEVERITYSCREEN
+              value: "info"
+            # Disable autocreation of pools
+            - name: CALICO_NO_DEFAULT_POOLS
+              value: "true"
+            # Enable libnetwork
+            - name: CALICO_LIBNETWORK_ENABLED
+              value: "true"
+            # Set MTU for tunnel device used if ipip is enabled
+{% if calico_mtu is defined %}
+            - name: FELIX_IPINIPMTU
+              value: "{{ calico_mtu }}"
+{% endif %}
+            - name: FELIX_PROMETHEUSMETRICSENABLED
+              value: "{{ calico_felix_prometheusmetricsenabled }}"
+            - name: FELIX_PROMETHEUSMETRICSPORT
+              value: "{{ calico_felix_prometheusmetricsport }}"
+            - name: FELIX_PROMETHEUSGOMETRICSENABLED
+              value: "{{ calico_felix_prometheusgometricsenabled }}"
+            - name: FELIX_PROMETHEUSPROCESSMETRICSENABLED
+              value: "{{ calico_felix_prometheusprocessmetricsenabled }}"
+            # Location of the CA certificate for etcd.
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_ca
+            # Location of the client key for etcd.
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_key
+            # Location of the client certificate for etcd.
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_cert
+            - name: IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: NODENAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: FELIX_HEALTHENABLED
+              value: "true"
+            - name: FELIX_IGNORELOOSERPF
+              value: "{{ calico_node_ignorelooserpf }}"
+          securityContext:
+            privileged: true
+          resources:
+            limits:
+              cpu: {{ calico_node_cpu_limit }}
+              memory: {{ calico_node_memory_limit }}
+            requests:
+              cpu: {{ calico_node_cpu_requests }}
+              memory: {{ calico_node_memory_requests }}
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 9099
+            periodSeconds: 10
+            initialDelaySeconds: 10
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 9099
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - mountPath: /var/run/calico
+              name: var-run-calico
+              readOnly: false
+            - mountPath: /calico-secrets
+              name: etcd-certs
+      volumes:
+        # Used by calico/node.
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: var-run-calico
+          hostPath:
+            path: /var/run/calico
+        # Used to install CNI.
+        - name: cni-bin-dir
+          hostPath:
+            path: /opt/cni/bin
+        - name: cni-net-dir
+          hostPath:
+            path: /etc/cni/net.d
+        # Mount in the etcd TLS secrets.
+        - name: etcd-certs
+          hostPath:
+            path: "{{ calico_cert_dir }}"
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: {{ serial | default('20%') }}
+    type: RollingUpdate
+

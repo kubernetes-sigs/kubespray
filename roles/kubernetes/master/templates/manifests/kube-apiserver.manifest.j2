@@ -6,6 +6,9 @@ metadata:
   labels:
     k8s-app: kube-apiserver
     kubespray: v2
+  annotations:
+    kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
+    kubespray.apiserver-cert/serial: "{{ apiserver_cert_serial }}"
 spec:
   hostNetwork: true
 {% if kube_version | version_compare('v1.6', '>=')  %}
@@ -26,7 +29,7 @@ spec:
     - /hyperkube
     - apiserver
     - --advertise-address={{ ip | default(ansible_default_ipv4.address) }}
-    - --etcd-servers={{ etcd_access_endpoint }}
+    - --etcd-servers={{ etcd_access_addresses }}
     - --etcd-quorum-read=true
     - --etcd-cafile={{ etcd_cert_dir }}/ca.pem
     - --etcd-certfile={{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem
@@ -37,11 +40,18 @@ spec:
     - --service-cluster-ip-range={{ kube_service_addresses }}
     - --service-node-port-range={{ kube_apiserver_node_port_range }}
     - --client-ca-file={{ kube_cert_dir }}/ca.pem
+    - --profiling=false
+    - --repair-malformed-updates=false
+    - --kubelet-client-certificate={{ kube_cert_dir }}/node-{{ inventory_hostname }}.pem
+    - --kubelet-client-key={{ kube_cert_dir }}/node-{{ inventory_hostname }}-key.pem
+    - --service-account-lookup=true
 {% if kube_basic_auth|default(true) %}
     - --basic-auth-file={{ kube_users_dir }}/known_users.csv
 {% endif %}
     - --tls-cert-file={{ kube_cert_dir }}/apiserver.pem
     - --tls-private-key-file={{ kube_cert_dir }}/apiserver-key.pem
+    - --proxy-client-cert-file={{ kube_cert_dir }}/apiserver.pem
+    - --proxy-client-key-file={{ kube_cert_dir }}/apiserver-key.pem
 {% if kube_token_auth|default(true) %}
     - --token-auth-file={{ kube_token_dir }}/known_tokens.csv
 {% endif %}
@@ -68,7 +78,9 @@ spec:
 {%   endfor %}
 {% endif %}
 {% if enable_network_policy %}
+{%   if kube_version | version_compare('v1.8', '<')  %}
     - --runtime-config=extensions/v1beta1/networkpolicies=true
+{%   endif %}
 {% endif %}
     - --v={{ kube_log_level }}
     - --allow-privileged=true
@@ -81,6 +93,12 @@ spec:
 {% if kube_api_anonymous_auth is defined and kube_version | version_compare('v1.5', '>=')  %}
     - --anonymous-auth={{ kube_api_anonymous_auth }}
 {% endif %}
+{% if authorization_modes %}
+    - --authorization-mode={{ authorization_modes|join(',') }}
+{% endif %}
+{% if kube_feature_gates %}
+    - --feature-gates={{ kube_feature_gates|join(',') }}
+{% endif %}
 {% if apiserver_custom_flags is string %}
     - {{ apiserver_custom_flags }}
 {% else %}
@@ -92,16 +110,21 @@ spec:
       httpGet:
         host: 127.0.0.1
         path: /healthz
-        port: 8080
+        port: {{ kube_apiserver_insecure_port }}
       initialDelaySeconds: 30
       timeoutSeconds: 10
     volumeMounts:
     - mountPath: {{ kube_config_dir }}
       name: kubernetes-config
       readOnly: true
-    - mountPath: /etc/ssl/certs
+    - mountPath: /etc/ssl
       name: ssl-certs-host
       readOnly: true
+{% for dir in ssl_ca_dirs %}
+    - mountPath: {{ dir }}
+      name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+      readOnly: true
+{% endfor %}
     - mountPath: {{ etcd_cert_dir }}
       name: etcd-certs
       readOnly: true
@@ -114,9 +137,14 @@ spec:
   - hostPath:
       path: {{ kube_config_dir }}
     name: kubernetes-config
-  - hostPath:
-      path: /etc/ssl/certs/
-    name: ssl-certs-host
+  - name: ssl-certs-host
+    hostPath:
+      path: /etc/ssl
+{% for dir in ssl_ca_dirs %}
+  - name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+    hostPath:
+      path: {{ dir }}
+{% endfor %}
   - hostPath:
       path: {{ etcd_cert_dir }}
     name: etcd-certs

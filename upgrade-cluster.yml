@@ -24,14 +24,15 @@
 
 - hosts: k8s-cluster:etcd:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  serial: "{{ serial | default('20%') }}"
   roles:
     - { role: kubespray-defaults}
-    - { role: kernel-upgrade, tags: kernel-upgrade, when: kernel_upgrade is defined and kernel_upgrade }
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: docker, tags: docker }
     - role: rkt
       tags: rkt
       when: "'rkt' in [etcd_deployment_type, kubelet_deployment_type, vault_deployment_type]"
+    - { role: download, tags: download, skip_downloads: false }
 
 - hosts: etcd:k8s-cluster:vault
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -66,7 +67,10 @@
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
     - { role: kubernetes/node, tags: node }
     - { role: kubernetes/master, tags: master }
+    - { role: kubernetes/client, tags: client }
+    - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
     - { role: network_plugin, tags: network }
+    - { role: upgrade/post-upgrade, tags: post-upgrade }
 
 #Finally handle worker upgrades, based on given batch size
 - hosts: kube-node:!kube-master
@@ -78,14 +82,17 @@
     - { role: kubernetes/node, tags: node }
     - { role: network_plugin, tags: network }
     - { role: upgrade/post-upgrade, tags: post-upgrade }
+    - { role: kubernetes/kubeadm, tags: kubeadm, when: "kubeadm_enabled" }
     - { role: kubespray-defaults}
 
 - hosts: kube-master
   any_errors_fatal: true
   roles:
     - { role: kubespray-defaults}
+    - { role: kubernetes-apps/rotate_tokens, tags: rotate_tokens, when: "secret_changed|default(false)" }
     - { role: kubernetes-apps/network_plugin, tags: network }
     - { role: kubernetes-apps/policy_controller, tags: policy-controller }
+    - { role: kubernetes/client, tags: client }
 
 - hosts: calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"

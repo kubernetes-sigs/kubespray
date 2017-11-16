@@ -20,7 +20,7 @@ variable "aws_cluster_name" {
   description = "Name of AWS Cluster"
 }
 
-data "aws_ami" "coreos" {
+data "aws_ami" "distro" {
   most_recent = true
 
   filter {

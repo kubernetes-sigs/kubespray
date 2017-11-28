@@ -114,6 +114,7 @@ ones:
 |---------|-------------|
 |`cluster_name` | All OpenStack resources will use the Terraform variable`cluster_name` (default`example`) in their name to make it easier to track. For example the first compute resource will be named`example-kubernetes-1`. |
 |`network_name` | The name to be given to the internal network that will be generated |
+|`dns_nameservers`| An array of DNS name server names to be used by hosts in the internal subnet. | 
 |`floatingip_pool` | Name of the pool from which floating IPs will be allocated |
 |`external_net` | UUID of the external network that will be routed to |
 |`flavor_k8s_master`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through`nova flavor-list` |

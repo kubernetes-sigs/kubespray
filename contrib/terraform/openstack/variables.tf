@@ -97,6 +97,12 @@ variable "network_name" {
   default = "internal"
 }
 
+variable "dns_nameservers"{
+  description = "An array of DNS name server names used by hosts in this subnet."
+  type = "list"
+  default = []
+}
+
 variable "floatingip_pool" {
   description = "name of the floating ip pool to use"
   default = "external"

@@ -98,6 +98,8 @@
       --key {{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem \
       https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
   register: calico_conf
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
   delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
   changed_when: false
@@ -125,6 +127,8 @@
       --key {{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem \
       https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
   register: calico_pools_raw
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
   delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
 
@@ -146,6 +150,8 @@
 
 - name: Calico | Disable node mesh
   shell: "{{ bin_dir }}/calicoctl config set nodeToNodeMesh off"
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
   when: ((peer_with_router|default(false) or peer_with_calico_rr|default(false))
           and inventory_hostname in groups['k8s-cluster'])
   run_once: true
@@ -159,6 +165,8 @@
    "metadata": {"node": "{{ inventory_hostname }}", "scope": "node", "peerIP": "{{ item.router_id }}"}
    }'
    | {{ bin_dir }}/calicoctl create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{ peers|default([]) }}"
   when: peer_with_router|default(false) and inventory_hostname in groups['k8s-cluster']
 
@@ -173,6 +181,8 @@
      "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(hostvars[item]["ansible_default_ipv4"]["address"]) }}"}
    }'
    | {{ bin_dir }}/calicoctl create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{ groups['calico-rr'] | default([]) }}"
   when: (peer_with_calico_rr|default(false) and inventory_hostname in groups['k8s-cluster']
          and hostvars[item]['cluster_id'] == cluster_id)

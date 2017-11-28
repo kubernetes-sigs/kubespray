@@ -7,15 +7,7 @@
     - facts
     - canal
 
-- name: Get calico-policy-controller version if running
-  shell: "{{ bin_dir }}/kubectl -n {{ system_namespace }} get rs calico-policy-controller -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | cut -d':' -f2"
-  register: existing_calico_policy_version
-  run_once: true
-  changed_when: false
-  failed_when: false
-
-# FIXME(mattymo): This should not be necessary
-- name: Delete calico-policy-controller if an old one is installed
+- name: Delete the old calico-policy-controller if it exist
   kube:
     name: calico-policy-controller
     kubectl: "{{bin_dir}}/kubectl"
@@ -23,24 +15,21 @@
     namespace: "{{ system_namespace }}"
     state: absent
   run_once: true
-  when:
-    - not "NotFound" in existing_calico_policy_version.stderr
-    - existing_calico_policy_version.stdout | version_compare('v0.7.0', '<')
 
-- name: Create calico-policy-controller manifests
+- name: Create calico-kube-controllers manifests
   template:
     src: "{{item.file}}.j2"
     dest: "{{kube_config_dir}}/{{item.file}}"
   with_items:
-    - {name: calico-policy-controller, file: calico-policy-controller.yml, type: rs}
-    - {name: calico-policy-controller, file: calico-policy-sa.yml, type: sa}
-    - {name: calico-policy-controller, file: calico-policy-cr.yml, type: clusterrole}
-    - {name: calico-policy-controller, file: calico-policy-crb.yml, type: clusterrolebinding}
-  register: calico_policy_manifests
+    - {name: calico-kube-controllers, file: calico-kube-controllers.yml, type: deployment}
+    - {name: calico-kube-controllers, file: calico-kube-sa.yml, type: sa}
+    - {name: calico-kube-controllers, file: calico-kube-cr.yml, type: clusterrole}
+    - {name: calico-kube-controllers, file: calico-kube-crb.yml, type: clusterrolebinding}
+  register: calico_kube_manifests
   when:
     - rbac_enabled or item.type not in rbac_resources
 
-- name: Start of Calico policy controller
+- name: Start of Calico kube controllers
   kube:
     name: "{{item.item.name}}"
     namespace: "{{ system_namespace }}"
@@ -48,5 +37,5 @@
     resource: "{{item.item.type}}"
     filename: "{{kube_config_dir}}/{{item.item.file}}"
     state: "latest"
-  with_items: "{{ calico_policy_manifests.results }}"
+  with_items: "{{ calico_kube_manifests.results }}"
   when: inventory_hostname == groups['kube-master'][0] and not item|skipped

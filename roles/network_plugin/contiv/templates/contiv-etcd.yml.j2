@@ -1,0 +1,44 @@
+---
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: contiv-etcd
+  namespace: {{ system_namespace }}
+  labels:
+    k8s-app: contiv-etcd
+spec:
+  selector:
+    matchLabels:
+      k8s-app: contiv-etcd
+  template:
+    metadata:
+      labels:
+        k8s-app: contiv-etcd
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+        - name: contiv-etcd
+          image: {{ etcd_image_repo }}:{{ etcd_image_tag }}
+          command: ["sh","-c"]
+          args:
+            - '. {{ contiv_etcd_conf_dir }}/contiv-etcd.env && /usr/local/bin/etcd'
+          volumeMounts:
+            - name: etc-contiv-etcd
+              mountPath: {{ contiv_etcd_conf_dir }}
+            - name: var-lib-etcd-contiv-data
+              mountPath: {{ contiv_etcd_data_dir }}
+          securityContext:
+            privileged: true
+      volumes:
+        - name: etc-contiv-etcd
+          hostPath:
+            path: {{ contiv_etcd_conf_dir }}
+        - name: var-lib-etcd-contiv-data
+          hostPath:
+            path: {{ contiv_etcd_data_dir }}

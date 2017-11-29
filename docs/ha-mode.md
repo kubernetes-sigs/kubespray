@@ -76,6 +76,12 @@ loadbalancer_apiserver:
   port: 8383
 ```
 
+  Note: The default kubernetes apiserver configuration binds to all interfaces,
+  so you will need to use a different port for the vip from that the API is
+  listening on, or set the kube_apiserver_bind_address so that the API only
+  listens on a specific interface (to avoid conflict with haproxy binding the
+  port on the VIP adddress)
+
 This domain name, or default "lb-apiserver.kubernetes.local", will be inserted
 into the `/etc/hosts` file of all servers in the `k8s-cluster` group. Note that
 the HAProxy service should as well be HA and requires a VIP management, which

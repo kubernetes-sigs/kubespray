@@ -54,6 +54,20 @@ spec:
 {% if rbac_enabled %}
       serviceAccountName: flannel
 {% endif %}
+      initContainers:
+      - name: install-cni
+        image: {{ flannel_image_repo }}:{{ flannel_image_tag }}
+        command:
+        - cp
+        args:
+        - -f
+        - /etc/kube-flannel/cni-conf.json
+        - /etc/cni/net.d/10-flannel.conf
+        volumeMounts:
+        - name: cni
+          mountPath: /etc/cni/net.d
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
       containers:
       - name: kube-flannel
         image: {{ flannel_image_repo }}:{{ flannel_image_tag }}
@@ -80,27 +94,8 @@ spec:
         volumeMounts:
         - name: run
           mountPath: /run
-        - name: cni
-          mountPath: /etc/cni/net.d
         - name: flannel-cfg
           mountPath: /etc/kube-flannel/
-      - name: install-cni
-        image: {{ flannel_cni_image_repo }}:{{ flannel_cni_image_tag }}
-        command: ["/install-cni.sh"]
-        env:
-        # The CNI network config to install on each node.
-        - name: CNI_NETWORK_CONFIG
-          valueFrom:
-            configMapKeyRef:
-              name: kube-flannel-cfg
-              key: cni-conf.json
-        - name: CNI_CONF_NAME
-          value: "10-flannel.conflist"
-        volumeMounts:
-        - name: cni
-          mountPath: /host/etc/cni/net.d
-        - name: host-cni-bin
-          mountPath: /host/opt/cni/bin/
       hostNetwork: true
       tolerations:
       - key: node-role.kubernetes.io/master
@@ -116,9 +111,6 @@ spec:
         - name: flannel-cfg
           configMap:
             name: kube-flannel-cfg
-        - name: host-cni-bin
-          hostPath:
-            path: /opt/cni/bin
   updateStrategy:
     rollingUpdate:
       maxUnavailable: {{ serial | default('20%') }}

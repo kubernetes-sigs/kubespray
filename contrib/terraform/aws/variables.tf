@@ -99,10 +99,6 @@ variable "k8s_secure_api_port" {
     description = "Secure Port of K8S API Server"
 }
 
-variable "loadbalancer_apiserver_address" {
-    description= "Bind Address for ELB of K8s API Server"
-}
-
 variable "default_tags" {
   description = "Default tags for all resources"
   type = "map"

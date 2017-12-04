@@ -34,7 +34,8 @@ resource "aws_subnet" "cluster-vpc-subnets-public" {
     cidr_block = "${element(var.aws_cidr_subnets_public, count.index)}"
 
     tags = "${merge(var.default_tags, map(
-      "Name", "kubernetes-${var.aws_cluster_name}-${element(var.aws_avail_zones, count.index)}-public"
+      "Name", "kubernetes-${var.aws_cluster_name}-${element(var.aws_avail_zones, count.index)}-public",
+      "kubernetes.io/cluster/${var.aws_cluster_name}", "member"
     ))}"
 }
 

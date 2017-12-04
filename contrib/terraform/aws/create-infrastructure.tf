@@ -98,7 +98,7 @@ resource "aws_instance" "k8s-master" {
 
     tags = "${merge(var.default_tags, map(
       "Name", "kubernetes-${var.aws_cluster_name}-master${count.index}",
-      "Cluster", "${var.aws_cluster_name}",
+      "kubernetes.io/cluster/${var.aws_cluster_name}", "member",
       "Role", "master"
     ))}"
 }
@@ -127,7 +127,7 @@ resource "aws_instance" "k8s-etcd" {
 
     tags = "${merge(var.default_tags, map(
       "Name", "kubernetes-${var.aws_cluster_name}-etcd${count.index}",
-      "Cluster", "${var.aws_cluster_name}",
+      "kubernetes.io/cluster/${var.aws_cluster_name}", "member",
       "Role", "etcd"
     ))}"
 
@@ -151,7 +151,7 @@ resource "aws_instance" "k8s-worker" {
 
     tags = "${merge(var.default_tags, map(
       "Name", "kubernetes-${var.aws_cluster_name}-worker${count.index}",
-      "Cluster", "${var.aws_cluster_name}",
+      "kubernetes.io/cluster/${var.aws_cluster_name}", "member",
       "Role", "worker"
     ))}"
 

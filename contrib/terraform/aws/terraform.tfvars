@@ -31,3 +31,5 @@ default_tags = {
 #  Env = "devtest"
 #  Product = "kubernetes"
 }
+
+inventory_file = "../../../inventory/hosts"

@@ -175,7 +175,6 @@ data "template_file" "inventory" {
         list_node = "${join("\n",aws_instance.k8s-worker.*.tags.Name)}"
         list_etcd = "${join("\n",aws_instance.k8s-etcd.*.tags.Name)}"
         elb_api_fqdn = "apiserver_loadbalancer_domain_name=\"${module.aws-elb.aws_elb_api_fqdn}\""
-        elb_api_server = "loadbalancer_apiserver={\"port\": ${var.aws_elb_api_port}, \"address\": \"${var.loadbalancer_apiserver_address}\"}"
     }
 
 }

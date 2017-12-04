@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rescheduler-v0.3.1
+  namespace: {{ system_namespace }}
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ''
+  labels:
+    k8s-app: rescheduler
+    version: {{ rescheduler_version }}
+    kubernetes.io/cluster-service: "true"
+    kubernetes.io/name: "Rescheduler"
+spec:
+  hostNetwork: true
+  containers:
+  - image: gcr.io/google-containers/rescheduler:{{ rescheduler_version }}
+    imagePullPolicy: {{ k8s_image_pull_policy }}
+    name: rescheduler
+    volumeMounts:
+    - mountPath: /var/log/rescheduler.log
+      name: logfile
+      readOnly: false
+    resources:
+      limits:
+        cpu: {{ rescheduler_cpu_limit }}
+        memory: {{ rescheduler_memory_limit }}
+      requests:
+        cpu: {{ rescheduler_cpu_requests }}
+        memory: {{ rescheduler_memory_requests }}
+    command:
+    # TODO: split this out into args when we no longer need to pipe stdout to a file #6428
+    - sh
+    - -c
+    - '/rescheduler --running-in-cluster=false 1>>/var/log/rescheduler.log 2>&1'
+  volumes:
+  - hostPath:
+      path: /var/log/rescheduler.log
+      type: FileOrCreate
+    name: logfile

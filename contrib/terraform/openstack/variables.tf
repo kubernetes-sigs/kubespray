@@ -2,6 +2,10 @@ variable "cluster_name" {
   default = "example"
 }
 
+variable "number_of_bastions" {
+  default = 1
+}
+
 variable "number_of_k8s_masters" {
   default = 2
 }
@@ -63,19 +67,28 @@ variable "ssh_user_gfs" {
   default = "ubuntu"
 }
 
+variable "flavor_bastion" {
+  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
+  default = 3
+}
+
 variable "flavor_k8s_master" {
+  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
   default = 3
 }
 
 variable "flavor_k8s_node" {
+  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
   default = 3
 }
 
 variable "flavor_etcd" {
+  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
   default = 3
 }
 
 variable "flavor_gfs_node" {
+  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
   default = 3
 }
 
@@ -84,9 +97,19 @@ variable "network_name" {
   default = "internal"
 }
 
+variable "dns_nameservers"{
+  description = "An array of DNS name server names used by hosts in this subnet."
+  type = "list"
+  default = []
+}
+
 variable "floatingip_pool" {
   description = "name of the floating ip pool to use"
   default = "external"
+}
+
+variable "external_net" {
+  description = "uuid of the external/public network"
 }
 
 variable "username" {

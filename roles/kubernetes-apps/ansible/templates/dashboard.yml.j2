@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2017 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Configuration to deploy head version of the Dashboard UI compatible with
-# Kubernetes 1.6 (RBAC enabled).
+# Configuration to deploy release version of the Dashboard UI compatible with
+# Kubernetes 1.7.
 #
 # Example usage: kubectl create -f <this_file>
 
-{% if rbac_enabled %}
+# ------------------- Dashboard Secret ------------------- #
+
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard-certs
+  namespace: {{ system_namespace }}
+type: Opaque
+
+---
+# ------------------- Dashboard Service Account ------------------- #
+
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -25,23 +38,77 @@ metadata:
     k8s-app: kubernetes-dashboard
   name: kubernetes-dashboard
   namespace: {{ system_namespace }}
+
+---
+# ------------------- Dashboard Role & Role Binding ------------------- #
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: kubernetes-dashboard-minimal
+  namespace: {{ system_namespace }}
+rules:
+  # Allow Dashboard to create and watch for changes of 'kubernetes-dashboard-key-holder' secret.
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  # Allow Dashboard to get, update and delete 'kubernetes-dashboard-key-holder' secret.
+  resourceNames: ["kubernetes-dashboard-key-holder", "kubernetes-dashboard-certs"]
+  verbs: ["get", "update", "delete"]
+  # Allow Dashboard to get metrics from heapster.
+- apiGroups: [""]
+  resources: ["services"]
+  resourceNames: ["heapster"]
+  verbs: ["proxy"]
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
-  name: kubernetes-dashboard
-  labels:
-    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard-minimal
+  namespace: {{ system_namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
+  kind: Role
+  name: kubernetes-dashboard-minimal
 subjects:
 - kind: ServiceAccount
   name: kubernetes-dashboard
   namespace: {{ system_namespace }}
-{% endif %}
+
 ---
+# ------------------- Gross Hack For anonymous auth through api proxy ------------------- #
+# Allows users to reach login page and other proxied dashboard URLs
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kubernetes-dashboard-anonymous
+rules:
+- apiGroups: [""]
+  resources: ["services/proxy"]
+  resourceNames: ["https:kubernetes-dashboard:"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- nonResourceURLs: ["/ui", "/ui/*", "/api/v1/namespaces/{{ system_namespace }}/services/https:kubernetes-dashboard:/proxy/*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubernetes-dashboard-anonymous
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubernetes-dashboard-anonymous
+subjects:
+- kind: User
+  name: system:anonymous
+
+---
+# ------------------- Dashboard Deployment ------------------- #
+
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
@@ -60,10 +127,17 @@ spec:
       labels:
         k8s-app: kubernetes-dashboard
     spec:
+{% if not dashboard_use_custom_certs %}
+      initContainers:
+      - name: kubernetes-dashboard-init
+        image: {{ dashboard_init_image_repo }}:{{ dashboard_init_image_tag }}
+        volumeMounts:
+        - name: kubernetes-dashboard-certs
+          mountPath: /certs
+{% endif %}
       containers:
       - name: kubernetes-dashboard
         image: {{ dashboard_image_repo }}:{{ dashboard_image_tag }}
-        # Image is tagged and updated with :head, so always pull it.
         imagePullPolicy: Always
         resources:
           limits:
@@ -73,27 +147,45 @@ spec:
             cpu: {{ dashboard_cpu_requests }}
             memory: {{ dashboard_memory_requests }}
         ports:
-        - containerPort: 9090
+        - containerPort: 8443
           protocol: TCP
         args:
+          - --tls-key-file=/certs/{{ dashboard_tls_key_file }}
+          - --tls-cert-file=/certs/{{ dashboard_tls_cert_file }}
+          - --authentication-mode=token{% if kube_basic_auth|default(false) %},basic{% endif %}
           # Uncomment the following line to manually specify Kubernetes API server Host
           # If not specified, Dashboard will attempt to auto discover the API server and connect
           # to it. Uncomment only if the default does not work.
           # - --apiserver-host=http://my-address:port
+        volumeMounts:
+        - name: kubernetes-dashboard-certs
+          mountPath: /certs
+          readOnly: true
+          # Create on-disk volume to store exec logs
+        - mountPath: /tmp
+          name: tmp-volume
         livenessProbe:
           httpGet:
+            scheme: HTTPS
             path: /
-            port: 9090
+            port: 8443
           initialDelaySeconds: 30
           timeoutSeconds: 30
-{% if rbac_enabled %}
+      volumes:
+      - name: kubernetes-dashboard-certs
+        secret:
+          secretName: {{ dashboard_certs_secret_name }}
+      - name: tmp-volume
+        emptyDir: {}
       serviceAccountName: kubernetes-dashboard
-{% endif %}
       # Comment the following tolerations if Dashboard must not be deployed on master
       tolerations:
       - key: node-role.kubernetes.io/master
         effect: NoSchedule
+
 ---
+# ------------------- Dashboard Service ------------------- #
+
 kind: Service
 apiVersion: v1
 metadata:
@@ -103,8 +195,7 @@ metadata:
   namespace: {{ system_namespace }}
 spec:
   ports:
-  - port: 80
-    targetPort: 9090
+    - port: 443
+      targetPort: 8443
   selector:
     k8s-app: kubernetes-dashboard
-

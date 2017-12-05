@@ -2,11 +2,12 @@
 - name: Rotate Tokens | Get default token name
   shell: "{{ bin_dir }}/kubectl get secrets -o custom-columns=name:{.metadata.name} --no-headers | grep -m1 default-token"
   register: default_token
+  changed_when: false
 
 - name: Rotate Tokens | Get default token data
   command: "{{ bin_dir }}/kubectl get secrets {{ default_token.stdout }} -ojson"
   register: default_token_data
-  run_once: true
+  changed_when: false
 
 - name: Rotate Tokens | Test if default certificate is expired
   uri:
@@ -17,7 +18,6 @@
     headers:
       Authorization: "Bearer {{ (default_token_data.stdout|from_json)['data']['token']|b64decode }}"
   register: check_secret
-  run_once: true
   failed_when: false
 
 - name: Rotate Tokens | Determine if certificate is expired
@@ -33,16 +33,13 @@
     | grep kubernetes.io/service-account-token
     | egrep 'default-token|kube-proxy|kube-dns|dnsmasq|netchecker|weave|calico|canal|flannel|dashboard|cluster-proportional-autoscaler|efk|tiller'
   register: tokens_to_delete
-  run_once: true
   when: needs_rotation
 
 - name: Rotate Tokens | Delete expired tokens
   command: "{{ bin_dir }}/kubectl delete secrets -n {{ item.split(' ')[0] }} {{ item.split(' ')[1] }}"
   with_items: "{{ tokens_to_delete.stdout_lines }}"
-  run_once: true
   when: needs_rotation
 
 - name: Rotate Tokens | Delete pods in system namespace
   command: "{{ bin_dir }}/kubectl delete pods -n {{ system_namespace }} --all"
-  run_once: true
   when: needs_rotation

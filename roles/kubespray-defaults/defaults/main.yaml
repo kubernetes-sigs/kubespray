@@ -2,13 +2,18 @@
 ## Required for bootstrap-os/preinstall/download roles and setting facts
 # Valid bootstrap options (required): ubuntu, coreos, centos, none
 bootstrap_os: none
+
+# Use proxycommand if bastion host is in group all
+# This change obseletes editing ansible.cfg file depending on bastion existance
+ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ ansible_user }}@{{hostvars['bastion']['ansible_host']}} ' {% endif %}"
+
 kube_api_anonymous_auth: false
 
 # Default value, but will be set to true automatically if detected
 is_atomic: false
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.8.1
+kube_version: v1.8.4
 
 # Set to true to allow pre-checks to fail and continue deployment
 ignore_assert_errors: false
@@ -119,6 +124,7 @@ etcd_deployment_type: docker
 kubelet_deployment_type: docker
 cert_management: script
 vault_deployment_type: docker
+helm_deployment_type: host
 
 # Enable kubeadm deployment (experimental)
 kubeadm_enabled: false
@@ -131,10 +137,16 @@ kubectl_localhost: false
 
 # K8s image pull policy (imagePullPolicy)
 k8s_image_pull_policy: IfNotPresent
+
+# Addons which can be enabled
 efk_enabled: false
 helm_enabled: false
 istio_enabled: false
 enable_network_policy: false
+local_volumes_enabled: false
+
+# Base path for local volume provisioner addon
+local_volume_base_dir: /mnt/disks
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -155,7 +167,7 @@ rbac_enabled: "{{ 'RBAC' in authorization_modes or kubeadm_enabled }}"
 
 ## List of key=value pairs that describe feature gates for
 ## the k8s cluster.
-kube_feature_gates: ['Initializers=true']
+kube_feature_gates: ['Initializers={{ istio_enabled|string }}', 'PersistentLocalVolumes={{ local_volumes_enabled|string }}']
 
 # Vault data dirs.
 vault_base_dir: /etc/vault
@@ -192,8 +204,10 @@ kube_apiserver_address: "{{ ip | default(ansible_default_ipv4['address']) }}"
 kube_apiserver_access_address: "{{ access_ip | default(kube_apiserver_address) }}"
 first_kube_master: "{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(hostvars[groups['kube-master'][0]]['ansible_default_ipv4']['address'])) }}"
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
+# applied if only external loadbalancer_apiserver is defined, otherwise ignored
+apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
 kube_apiserver_endpoint: |-
-  {% if not is_kube_master and loadbalancer_apiserver_localhost|default(true) -%}
+  {% if not is_kube_master and loadbalancer_apiserver_localhost -%}
        https://localhost:{{ nginx_kube_apiserver_port|default(kube_apiserver_port) }}
   {%- elif is_kube_master -%}
        https://127.0.0.1:{{ kube_apiserver_port }}

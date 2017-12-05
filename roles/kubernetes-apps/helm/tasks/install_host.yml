@@ -1,0 +1,23 @@
+---
+- name: Helm | Compare host helm with hyperkube container
+  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir --entrypoint /usr/bin/cmp {{ helm_image_repo }}:{{ helm_image_tag }} /usr/local/bin/helm /systembindir/helm"
+  register: helm_task_compare_result
+  until: helm_task_compare_result.rc in [0,1,2]
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+  failed_when: "helm_task_compare_result.rc not in [0,1,2]"
+
+- name: Helm | Copy helm from helm container
+  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir --entrypoint /bin/cp {{ helm_image_repo }}:{{ helm_image_tag }} -f /usr/local/bin/helm /systembindir/helm"
+  when: helm_task_compare_result.rc != 0
+  register: helm_task_result
+  until: helm_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+
+- name: Helm | Copy socat wrapper for Container Linux
+  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/opt/bin {{ install_socat_image_repo }}:{{ install_socat_image_tag }}"
+  args:
+    creates: "{{ bin_dir }}/socat"
+  when: ansible_os_family in ['CoreOS', 'Container Linux by CoreOS']

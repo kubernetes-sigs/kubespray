@@ -20,16 +20,26 @@ variable "aws_cluster_name" {
   description = "Name of AWS Cluster"
 }
 
+data "aws_ami" "distro" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["CoreOS-stable-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["595879546273"] #CoreOS
+}
 
 //AWS VPC Variables
 
 variable "aws_vpc_cidr_block" {
   description = "CIDR Block for VPC"
-}
-
-variable "aws_avail_zones" {
-  description = "Availability Zones Used"
-  type = "list"
 }
 
 variable "aws_cidr_subnets_private" {
@@ -43,10 +53,6 @@ variable "aws_cidr_subnets_public" {
 }
 
 //AWS EC2 Settings
-
-variable "aws_bastion_ami" {
-    description = "AMI ID for Bastion Host in chosen AWS Region"
-}
 
 variable "aws_bastion_size" {
     description = "EC2 Instance Size of Bastion Host"
@@ -81,9 +87,6 @@ variable "aws_kube_worker_size" {
     description = "Instance size of Kubernetes Worker Nodes"
 }
 
-variable "aws_cluster_ami" {
-    description = "AMI ID for Kubernetes Cluster"
-}
 /*
 * AWS ELB Settings
 *
@@ -94,10 +97,6 @@ variable "aws_elb_api_port" {
 
 variable "k8s_secure_api_port" {
     description = "Secure Port of K8S API Server"
-}
-
-variable "loadbalancer_apiserver_address" {
-    description= "Bind Address for ELB of K8s API Server"
 }
 
 variable "default_tags" {

@@ -60,6 +60,7 @@
     - "{{ kube_config_dir }}/ssl"
     - "{{ kube_manifest_dir }}"
     - "{{ kube_script_dir }}"
+    - "{{ local_volume_base_dir }}"
 
 - name: check cloud_provider value
   fail:
@@ -88,13 +89,14 @@
     - "/etc/cni/net.d"
     - "/opt/cni/bin"
   when:
-    - kube_network_plugin in ["calico", "weave", "canal", "flannel"]
+    - kube_network_plugin in ["calico", "weave", "canal", "flannel", "contiv"]
     - inventory_hostname in groups['k8s-cluster']
   tags:
     - network
     - calico
     - weave
     - canal
+    - contiv
     - bootstrap-os
 
 - include: resolvconf.yml
@@ -113,7 +115,6 @@
   until: yum_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  environment: "{{ proxy_env }}"
   when:
     - ansible_pkg_mgr == 'yum'
     - not is_atomic
@@ -126,7 +127,6 @@
     state: latest
     update_cache: yes
     cache_valid_time: 3600
-  environment: "{{ proxy_env }}"
   when: ansible_os_family == "Debian"
   tags:
     - bootstrap-os
@@ -137,7 +137,6 @@
   until: dnf_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  environment: "{{ proxy_env }}"
   when:
     - ansible_distribution == "Fedora"
     - ansible_distribution_major_version > 21
@@ -152,7 +151,6 @@
   until: epel_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  environment: "{{ proxy_env }}"
   changed_when: False
   when:
     - ansible_distribution in ["CentOS","RedHat"]
@@ -172,7 +170,6 @@
   until: pkgs_task_result|succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  environment: "{{ proxy_env }}"
   with_items: "{{required_pkgs | default([]) | union(common_required_pkgs|default([]))}}"
   when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or is_atomic)
   tags:
@@ -236,6 +233,7 @@
     name: net.ipv4.ip_forward
     value: 1
     state: present
+    reload: yes
   tags:
     - bootstrap-os
 

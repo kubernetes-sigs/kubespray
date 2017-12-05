@@ -26,13 +26,13 @@ Debian Jessie installation Notes:
   ```
   sudo add-apt-repository ppa:ansible/ansible
   sudo apt-get update
-  sudo apt.get install ansible
+  sudo apt-get install ansible
 
   ```
 
 - Install Jinja2 and Python-Netaddr
 
-  ```sudo apt-get install phyton-jinja2=2.8-1~bpo8+1 python-netaddr```
+  ```sudo apt-get install python-jinja2=2.8-1~bpo8+1 python-netaddr```
   
   
 Now you can continue with [Preparing your deployment](getting-started.md#starting-custom-deployment)

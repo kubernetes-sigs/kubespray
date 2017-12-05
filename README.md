@@ -54,11 +54,12 @@ Versions of supported components
 --------------------------------
 
 
-[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.8.1 <br>
+[kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.8.4 <br>
 [etcd](https://github.com/coreos/etcd/releases) v3.2.4 <br>
 [flanneld](https://github.com/coreos/flannel/releases) v0.8.0 <br>
 [calico](https://docs.projectcalico.org/v2.5/releases/) v2.5.0 <br>
 [canal](https://github.com/projectcalico/canal) (given calico/flannel versions) <br>
+[contiv](https://github.com/contiv/install/releases) v1.0.3 <br>
 [weave](http://weave.works/) v2.0.1 <br>
 [docker](https://www.docker.com/) v1.13 (see note)<br>
 [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 (see Note 2)<br>
@@ -93,6 +94,9 @@ You can choose between 4 network plugins. (default: `calico`, except Vagrant use
 
 * [**canal**](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
 
+* [**contiv**](docs/contiv.md): supports vlan, vxlan, bgp and Cisco SDN networking. This plugin is able to
+  apply firewall policies, segregate containers in multiple network and bridging pods onto physical networks.
+
 * [**weave**](docs/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster. <br>
 (Please refer to `weave` [troubleshooting documentation](http://docs.weave.works/weave/latest_release/troubleshooting.html)).
 
@@ -107,7 +111,7 @@ See also [Network checker](docs/netcheck.md).
  - [Deploy a Kubernetes Cluster with Kubespray (video)](https://www.youtube.com/watch?v=N9q51JgbWu8)
 
 ## Tools and projects on top of Kubespray
- - [Digital Rebar](https://github.com/digitalrebar/digitalrebar)
+ - [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/master/doc/integrations/ansible.rst)
  - [Kubespray-cli](https://github.com/kubespray/kubespray-cli)
  - [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
  - [Terraform Contrib](https://github.com/kubernetes-incubator/kubespray/tree/master/contrib/terraform)

@@ -25,5 +25,3 @@ kube-master
 
 [k8s-cluster:vars]
 ${elb_api_fqdn}
-${elb_api_port}
-${loadbalancer_apiserver_address}

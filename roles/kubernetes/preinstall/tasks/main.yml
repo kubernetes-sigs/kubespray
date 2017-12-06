@@ -117,9 +117,35 @@
   delay: "{{ retry_stagger | random + 3 }}"
   when:
     - ansible_pkg_mgr == 'yum'
+    - ansible_distribution != 'RedHat'
     - not is_atomic
-  tags:
-    - bootstrap-os
+  tags: bootstrap-os
+
+- name: Expire management cache (YUM) for Updation - Redhat
+  shell: yum clean expire-cache
+  register: expire_cache_output
+  until: expire_cache_output|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - ansible_pkg_mgr == 'yum'
+    - ansible_distribution == 'RedHat'
+    - not is_atomic
+  tags: bootstrap-os
+
+- name: Update package management cache (YUM) - Redhat
+  shell: yum makecache
+  register: make_cache_output
+  until: make_cache_output|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - ansible_pkg_mgr == 'yum'
+    - ansible_distribution == 'RedHat'
+    - expire_cache_output.rc == 0
+    - not is_atomic
+  tags: bootstrap-os
+
 
 - name: Install latest version of python-apt for Debian distribs
   apt:

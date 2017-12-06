@@ -53,3 +53,27 @@ module "compute" {
 
   network_id = "${module.network.router_id}"
 }
+
+output "private_subnet_id" {
+  value = "${module.network.subnet_id}"
+}
+
+output "floating_network_id" {
+  value = "${var.external_net}"
+}
+
+output "router_id" {
+  value = "${module.network.router_id}"
+}
+
+output "k8s_master_fips" {
+  value = "${module.ips.k8s_master_fips}"
+}
+
+output "k8s_node_fips" {
+  value = "${module.ips.k8s_node_fips}"
+}
+
+output "bastion_fips" {
+  value = "${module.ips.bastion_fips}"
+}

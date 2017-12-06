@@ -111,19 +111,3 @@ variable "floatingip_pool" {
 variable "external_net" {
   description = "uuid of the external/public network"
 }
-
-variable "username" {
-  description = "Your openstack username"
-}
-
-variable "password" {
-  description = "Your openstack password"
-}
-
-variable "tenant" {
-  description = "Your openstack tenant/project"
-}
-
-variable "auth_url" {
-  description = "Your openstack auth URL"
-}

@@ -28,6 +28,11 @@ $forwarded_ports = {}
 $subnet = "172.17.8"
 $os = "ubuntu"
 $network_plugin = "flannel"
+
+if File.exist?(CONFIG)
+  require CONFIG
+end
+
 # The first two nodes are kube masters
 if $num_instances == 1
   $kube_master_instances = $num_instances
@@ -43,10 +48,6 @@ $kube_node_instances = $num_instances
 $local_release_dir = "/vagrant/temp"
 
 host_vars = {}
-
-if File.exist?(CONFIG)
-  require CONFIG
-end
 
 $box = SUPPORTED_OS[$os][:box]
 # if $inventory is not set, try to use example

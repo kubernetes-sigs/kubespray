@@ -6,7 +6,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ istio_namespace }}
+  name: istio-system
 ---
 ################################
 # Istio RBAC
@@ -34,8 +34,11 @@ rules:
   resources: ["thirdpartyresources", "thirdpartyresources.extensions", "ingresses", "ingresses/status"]
   verbs: ["*"]
 - apiGroups: [""]
-  resources: ["configmaps", "endpoints", "pods", "services"]
-  verbs: ["*"]
+  resources: ["configmaps"]
+  verbs: ["create", "get", "list", "watch", "update"]
+- apiGroups: [""]
+  resources: ["endpoints", "pods", "services"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["namespaces", "nodes", "secrets"]
   verbs: ["get", "list", "watch"]
@@ -157,20 +160,6 @@ roleRef:
   name: istio-pilot-istio-system
   apiGroup: rbac.authorization.k8s.io
 ---
-# Grant permissions to the Egress controller.
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: istio-egress-admin-role-binding-istio-system
-subjects:
-- kind: ServiceAccount
-  name: istio-egress-service-account
-  namespace: {{ istio_namespace }}
-roleRef:
-  kind: ClusterRole
-  name: istio-pilot-istio-system
-  apiGroup: rbac.authorization.k8s.io
----
 # Grant permissions to the sidecar.
 # TEMPORARY: the istioctl should generate a separate service account for the proxy, and permission
 # granted only to that account !
@@ -219,8 +208,10 @@ metadata:
     istio: mixer
 spec:
   ports:
-  - name: tcp
+  - name: tcp-plain
     port: 9091
+  - name: tcp-mtls
+    port: 15004
   - name: http-health
     port: 9093
   - name: configapi
@@ -258,8 +249,8 @@ spec:
       serviceAccountName: istio-mixer-service-account
       containers:
       - name: statsd-to-prometheus
-        image: {{ istio_statsd_image_repo }}:{{ istio_statsd_image_tag }}
-        imagePullPolicy: IfNotPresent
+        image: {{ istio_statsd_image_repo }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         ports:
         - containerPort: 9102
         - containerPort: 9125
@@ -271,7 +262,7 @@ spec:
           mountPath: /etc/statsd
       - name: mixer
         image: {{ istio_mixer_image_repo }}:{{ istio_mixer_image_tag }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         ports:
         - containerPort: 9091
         - containerPort: 9094
@@ -280,11 +271,33 @@ spec:
           - --configStoreURL=fs:///etc/opt/mixer/configroot
           - --configStore2URL=k8s://
           - --configDefaultNamespace=istio-system
-          - --traceOutput=http://zipkin:9411/api/v1/spans
+          - --zipkinURL=http://zipkin:9411/api/v1/spans
           - --logtostderr
           - -v
           - "2"
+      - name: istio-proxy
+        image: {{ istio_proxy_debug_image_repo }}:{{ istio_proxy_debug_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        ports:
+        - containerPort: 15004
+        args:
+        - proxy
+        - mixer
+        - -v
+        - "2"
+        - --controlPlaneAuthPolicy
+        - NONE #--controlPlaneAuthPolicy
+        - --customConfigFile
+        - /etc/istio/proxy/envoy_mixer.json
+        volumeMounts:
+        - name: istio-certs
+          mountPath: /etc/certs
+          readOnly: true
       volumes:
+      - name: istio-certs
+        secret:
+          secretName: istio.istio-mixer-service-account
+          optional: true
       - name: config-volume
         configMap:
           name: istio-mixer
@@ -649,6 +662,22 @@ spec:
       valueType: TIMESTAMP
     context.time:
       valueType: TIMESTAMP
+    api.service:
+      valueType: STRING
+    api.version:
+      valueType: STRING
+    api.operation:
+      valueType: STRING
+    api.protocol:
+      valueType: STRING
+    request.auth.principal:
+      valueType: STRING
+    request.auth.audiences:
+      valueType: STRING
+    request.auth.presenter:
+      valueType: STRING
+    request.api_key:
+      valueType: STRING
 
 ---
 apiVersion: "config.istio.io/v1alpha2"
@@ -932,6 +961,11 @@ data:
     # Uncomment the following line to enable mutual TLS between proxies
     # authPolicy: MUTUAL_TLS
     #
+    # Edit this list to avoid using mTLS to connect to these services.
+    # Typically, these are control services (e.g kubernetes API server) that don't have Istio sidecar
+    # to transparently terminate mTLS authentication.
+    mtlsExcludedServices: ["kubernetes.default.svc.cluster.local"]
+
     # Set the following variable to true to disable policy checks by the Mixer.
     # Note that metrics will still be reported to the Mixer.
     disablePolicyChecks: false
@@ -940,10 +974,9 @@ data:
     #
     # To disable the mixer completely (including metrics), comment out
     # the following line
-    mixerAddress: istio-mixer.istio-system:9091
+    mixerAddress: istio-mixer.istio-system:15004
     # This is the ingress service name, update if you used a different name
     ingressService: istio-ingress
-    egressProxyAddress: istio-egress.istio-system:80
     #
     # Along with discoveryRefreshDelay, this setting determines how
     # frequently should Envoy fetch and update its internal configuration
@@ -953,6 +986,8 @@ data:
     rdsRefreshDelay: 1s
     #
     defaultConfig:
+      # NOTE: If you change any values in this section, make sure to make
+      # the same changes in start up args in istio-ingress pods.
       # See rdsRefreshDelay for explanation about this setting.
       discoveryRefreshDelay: 1s
       #
@@ -979,7 +1014,7 @@ data:
       proxyAdminPort: 15000
       #
       # Address where Istio Pilot service is running
-      discoveryAddress: istio-pilot.istio-system:8080
+      discoveryAddress: istio-pilot.istio-system:15003
       #
       # Zipkin trace collector
       zipkinAddress: zipkin.istio-system:9411
@@ -987,6 +1022,9 @@ data:
       # Statsd metrics collector. Istio mixer exposes a UDP endpoint
       # to collect and convert statsd metrics into Prometheus metrics.
       statsdUdpAddress: istio-mixer.istio-system:9125
+      # Uncomment the following line to enable mutual TLS authentication between
+      # sidecars and istio control plane.
+      # controlPlaneAuthPolicy: MUTUAL_TLS
 ---
 ################################
 # Pilot
@@ -1044,10 +1082,10 @@ metadata:
     istio: pilot
 spec:
   ports:
-  - port: 8080
+  - port: 15003
     name: http-discovery
   - port: 443
-    name: http-admission-webhook
+    name: admission-webhook
   selector:
     istio: pilot
 ---
@@ -1076,7 +1114,7 @@ spec:
       - name: discovery
         image: {{ istio_pilot_image_repo }}:{{ istio_pilot_image_tag }}
         imagePullPolicy: IfNotPresent
-        args: ["discovery", "-v", "2", "--admission-service", "istio-pilot-external"]
+        args: ["discovery", "-v", "2", "--admission-service", "istio-pilot"]
         ports:
         - containerPort: 8080
         - containerPort: 443
@@ -1094,10 +1132,34 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/istio/config
+      - name: istio-proxy
+        image: {{ istio_proxy_debug_image_repo }}:{{ istio_proxy_debug_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        ports:
+        - containerPort: 15003
+        args:
+        - proxy
+        - pilot
+        - -v
+        - "2"
+        - --discoveryAddress
+        - istio-pilot:15003
+        - --controlPlaneAuthPolicy
+        - NONE #--controlPlaneAuthPolicy
+        - --customConfigFile
+        - /etc/istio/proxy/envoy_pilot.json
+        volumeMounts:
+        - name: istio-certs
+          mountPath: /etc/certs
+          readOnly: true
       volumes:
       - name: config-volume
         configMap:
           name: istio
+      - name: istio-certs
+        secret:
+          secretName: istio.istio-pilot-service-account
+          optional: true
 ---
 ################################
 # Istio ingress
@@ -1150,8 +1212,26 @@ spec:
         - -v
         - "2"
         - --discoveryAddress
-        - istio-pilot:8080
-        imagePullPolicy: IfNotPresent
+        - istio-pilot:15003
+        - --discoveryRefreshDelay
+        - '1s' #discoveryRefreshDelay
+        - --drainDuration
+        - '45s' #drainDuration
+        - --parentShutdownDuration
+        - '1m0s' #parentShutdownDuration
+        - --connectTimeout
+        - '10s' #connectTimeout
+        - --serviceCluster
+        - istio-ingress
+        - --zipkinAddress
+        - zipkin:9411
+        - --statsdUdpAddress
+        - istio-mixer:9125
+        - --proxyAdminPort
+        - "15000"
+        - --controlPlaneAuthPolicy
+        - NONE #--controlPlaneAuthPolicy
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         ports:
         - containerPort: 80
         - containerPort: 443
@@ -1184,73 +1264,6 @@ spec:
           optional: true
 ---
 ################################
-# Istio egress
-################################
-apiVersion: v1
-kind: Service
-metadata:
-  name: istio-egress
-  namespace: {{ istio_namespace }}
-spec:
-  ports:
-  - port: 80
-  selector:
-    istio: egress
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: istio-egress-service-account
-  namespace: {{ istio_namespace }}
----
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: istio-egress
-  namespace: {{ istio_namespace }}
-  annotations:
-    sidecar.istio.io/inject: "false"
-spec:
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        istio: egress
-    spec:
-      serviceAccountName: istio-egress-service-account
-      containers:
-      - name: proxy
-        image: {{ istio_proxy_debug_image_repo }}:{{ istio_proxy_debug_image_tag }}
-        imagePullPolicy: IfNotPresent
-        args:
-        - proxy
-        - egress
-        - -v
-        - "2"
-        - --discoveryAddress
-        - istio-pilot:8080
-        env:
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.name
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.namespace
-        volumeMounts:
-        - name: istio-certs
-          mountPath: /etc/certs
-          readOnly: true
-      volumes:
-      - name: istio-certs
-        secret:
-          secretName: istio.default
-          optional: true
----
-################################
 # Istio-CA cluster-wide
 ################################
 # Service account CA
@@ -1280,6 +1293,13 @@ spec:
       containers:
       - name: istio-ca
         image: {{ istio_ca_image_repo }}:{{ istio_ca_image_tag }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        command: ["/usr/local/bin/istio_ca"]
+        args:
+          - --grpc-port=8060
+          - --grpc-hostname=istio-ca
+          - --self-signed-ca=true
+          - --logtostderr
+          - --stderrthreshold
+          - INFO
 ---
-

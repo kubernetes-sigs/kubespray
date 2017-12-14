@@ -28,10 +28,10 @@ $forwarded_ports = {}
 $subnet = "172.17.8"
 $os = "ubuntu"
 $network_plugin = "flannel"
-# The first three nodes are etcd servers
-$etcd_instances = $num_instances
 # The first two nodes are kube masters
 $kube_master_instances = $num_instances == 1 ? $num_instances : ($num_instances - 1)
+# The first three nodes are etcd servers
+$etcd_instances = $kube_master_instances < 3 ? 3 : $kube_master_instances
 # All nodes are kube nodes
 $kube_node_instances = $num_instances
 $local_release_dir = "/vagrant/temp"

@@ -33,13 +33,14 @@ if File.exist?(CONFIG)
   require CONFIG
 end
 
-# The first two nodes are kube masters
-if $num_instances == 1
-  $kube_master_instances = $num_instances
-elsif $num_instances > 1 and $num_instances <= 3
-  $kube_master_instances = 2
-elsif $num_instances > 3
-  $kube_master_instances = 3
+if $kube_master_instances.nil?
+  if $num_instances == 1
+    $kube_master_instances = $num_instances
+  elsif $num_instances > 1 and $num_instances <= 3
+    $kube_master_instances = 2
+  elsif $num_instances > 3
+    $kube_master_instances = 3
+  end
 end
 # The first three nodes are etcd servers
 $etcd_instances = $kube_master_instances < 3 ? 3 : $kube_master_instances

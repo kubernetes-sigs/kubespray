@@ -1,0 +1,21 @@
+---
+- name: Kubernetes Persistent Volumes | Lay down OpenStack Cinder Storage Class template
+  template:
+    src: "{{item.file}}"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {file: openstack-storage-class.yml, type: StorageClass, name: storage-class }
+  register: manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Kubernetes Persistent Volumes | Add OpenStack Cinder Storage Class
+  kube:
+    name: "{{item.item.name}}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: "latest"
+  with_items: "{{ manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]

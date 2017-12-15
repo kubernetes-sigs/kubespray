@@ -92,22 +92,27 @@ localhost LB configuration.
   the each node in the `k8s-cluster` group as well, but require no VIP, thus
   no VIP management.
 
-Access endpoints are evaluated automagically, as the following:
+Access API endpoints are evaluated automagically, as the following:
 
-| Endpoint type                | kube-master   | non-master          |
-|------------------------------|---------------|---------------------|
-| Local LB (default)           | http://lc:p   | https://lc:nsp      |
-| External LB, no internal     | https://lb:lp | https://lb:lp       |
-| No ext/int LB                | http://lc:p   | https://m[0].aip:sp |
+| Endpoint type                | kube-master    | non-master          |
+|------------------------------|----------------|---------------------|
+| Local LB (default)           | https://lc:sp  | https://lc:nsp      |
+| External LB, no internal     | https://lb:lp  | https://lb:lp       |
+| No ext/int LB, bind 0.0.0.0  | https://lc:sp  | https://m[0].aip:sp |
+| No ext/int LB, a custom bind | https://bip:sp | https://m[0].aip:sp |
 
 Where:
 * `m[0]` - the first node in the `kube-master` group;
 * `lb` - LB FQDN, `apiserver_loadbalancer_domain_name`;
 * `lc` - localhost;
-* `p` - insecure port, `kube_apiserver_insecure_port`
-* `nsp` - nginx secure port, `nginx_kube_apiserver_port`;
+* `bip` - a custom bind IP value (defaults to '0.0.0.0');
+* `nsp` - nginx secure port, `nginx_kube_apiserver_port`, defers to `sp`;
 * `sp` - secure port, `kube_apiserver_port`;
 * `lp` - LB port, `loadbalancer_apiserver.port`, defers to the secure port;
 * `ip` - the node IP, defers to the ansible IP;
 * `aip` - `access_ip`, defers to the ip.
 
+**Note** that for some cases, like healthchecks of applications deployed by
+Kubespray, the masters' APIs are accessed via the insecure endpoint, which
+consists of the local `kube_apiserver_insecure_bind_address` and
+`kube_apiserver_insecure_port`.

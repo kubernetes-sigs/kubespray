@@ -16,6 +16,13 @@
     path: "{{ kube_config_dir }}/kubelet.conf"
   register: kubelet_conf
 
+
+- name: Calculate kubeadm CA cert hash
+  shell: openssl x509 -pubkey -in {{ kube_config_dir }}/ssl/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+  register: kubeadm_ca_hash
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+
 - name: Create kubeadm client config
   template:
     src: kubeadm-client.conf.j2
@@ -25,7 +32,10 @@
   register: kubeadm_client_conf
 
 - name: Join to cluster if needed
-  command: "{{ bin_dir }}/kubeadm join --config {{ kube_config_dir}}/kubeadm-client.conf --skip-preflight-checks"
+  command: >-
+    {{ bin_dir }}/kubeadm join
+    --config {{ kube_config_dir}}/kubeadm-client.conf
+    --ignore-preflight-errors=all
   register: kubeadm_join
   when: not is_kube_master and (kubeadm_client_conf.changed or not kubelet_conf.stat.exists)
 

@@ -96,16 +96,15 @@ Access API endpoints are evaluated automagically, as the following:
 
 | Endpoint type                | kube-master    | non-master          |
 |------------------------------|----------------|---------------------|
-| Local LB (default)           | https://lc:sp  | https://lc:nsp      |
+| Local LB (default)           | https://bip:sp | https://lc:nsp      |
 | External LB, no internal     | https://lb:lp  | https://lb:lp       |
-| No ext/int LB, bind 0.0.0.0  | https://lc:sp  | https://m[0].aip:sp |
-| No ext/int LB, a custom bind | https://bip:sp | https://m[0].aip:sp |
+| No ext/int LB                | https://bip:sp | https://m[0].aip:sp |
 
 Where:
 * `m[0]` - the first node in the `kube-master` group;
 * `lb` - LB FQDN, `apiserver_loadbalancer_domain_name`;
 * `lc` - localhost;
-* `bip` - a custom bind IP value (defaults to '0.0.0.0');
+* `bip` - a custom bind IP or localhost for the default bind IP '0.0.0.0';
 * `nsp` - nginx secure port, `nginx_kube_apiserver_port`, defers to `sp`;
 * `sp` - secure port, `kube_apiserver_port`;
 * `lp` - LB port, `loadbalancer_apiserver.port`, defers to the secure port;

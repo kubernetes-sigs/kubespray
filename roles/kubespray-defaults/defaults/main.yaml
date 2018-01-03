@@ -98,8 +98,12 @@ kube_pods_subnet: 10.233.64.0/18
 # room for 4096 nodes with 254 pods per node.
 kube_network_node_prefix: 24
 
-# The port the API Server will be listening on.
+# The virtual cluster IP, real host IPs and ports the API Server will be
+# listening on.
+# NOTE: loadbalancer_apiserver_localhost somewhat alters the final API enpdoint
+# access IP value (automatically evaluated below)
 kube_apiserver_ip: "{{ kube_service_addresses|ipaddr('net')|ipaddr(1)|ipaddr('address') }}"
+kube_apiserver_bind_address: 0.0.0.0
 # https
 kube_apiserver_port: 6443
 # http
@@ -211,7 +215,7 @@ kube_apiserver_endpoint: |-
   {% if not is_kube_master and loadbalancer_apiserver_localhost -%}
        https://localhost:{{ nginx_kube_apiserver_port|default(kube_apiserver_port) }}
   {%- elif is_kube_master -%}
-       https://127.0.0.1:{{ kube_apiserver_port }}
+       https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_port }}
   {%- else -%}
   {%-   if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
        https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}

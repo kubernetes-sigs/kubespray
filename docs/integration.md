@@ -84,7 +84,7 @@ Other members of your team should use ```git submodule sync```, ```git submodule
 # Contributing
 If you made useful changes or fixed a bug in existent kubespray repo, use this flow for PRs to original kubespray repo.
 
-0. Sign the [CNCF CLA](https://github.com/kubernetes/kubernetes/wiki/CLA-FAQ).
+0. Sign the [CNCF CLA](https://git.k8s.io/community/CLA.md).
 
 1. Change working directory to git submodule directory (3d/kubespray).
 

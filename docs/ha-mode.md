@@ -98,6 +98,9 @@ for it.
 
   Note: TLS/SSL termination for externally accessed API endpoints' will **not**
   be covered by Kubespray for that case. Make sure your external LB provides it.
+  Alternatively you may specify an externally load balanced VIPs in the
+  `supplementary_addresses_in_ssl_keys` list. Then, kubespray will add them into
+  the generated cluster certifactes as well.
 
 Aside of that specific case, the `loadbalancer_apiserver` considered mutually
 exclusive to `loadbalancer_apiserver_localhost`.

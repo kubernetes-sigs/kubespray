@@ -24,5 +24,5 @@ output "inventory" {
 }
 
 output "default_tags" {
-    value = "${default_tags}"
+    value = "${var.default_tags}"
 }

@@ -120,6 +120,10 @@ Vagrant.configure("2") do |config|
         vb.cpus = $vm_cpus
       end
 
+     config.vm.provider :libvirt do |lv|
+       lv.memory = $vm_memory
+     end
+
       ip = "#{$subnet}.#{i+100}"
       host_vars[vm_name] = {
         "ip": ip,

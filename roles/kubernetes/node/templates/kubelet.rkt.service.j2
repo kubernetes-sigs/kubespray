@@ -12,6 +12,10 @@ LimitNOFILE=40000
 ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/run/kubelet.uuid
 ExecStartPre=-/bin/mkdir -p /var/lib/kubelet
 
+{% if kubelet_flexvolumes_plugins_dir is defined %}
+ExecStartPre=-/bin/mkdir -p {{ kubelet_flexvolumes_plugins_dir }}
+{% endif %}
+
 EnvironmentFile={{kube_config_dir}}/kubelet.env
 # stage1-fly mounts /proc /sys /dev so no need to duplicate the mounts
 ExecStart=/usr/bin/rkt run \
@@ -39,6 +43,9 @@ ExecStart=/usr/bin/rkt run \
         --volume etc-cni,kind=host,source=/etc/cni,readOnly=true \
         --volume opt-cni,kind=host,source=/opt/cni,readOnly=true \
         --volume var-lib-cni,kind=host,source=/var/lib/cni,readOnly=false \
+{% if kubelet_flexvolumes_plugins_dir is defined %}
+        --volume flexvolumes,kind=host,source={{ kubelet_flexvolumes_plugins_dir }},readOnly=false \
+{% endif %}
 {% if kubelet_load_modules == true %}
         --mount volume=modprobe,target=/usr/sbin/modprobe \
         --mount volume=lib-modules,target=/lib/modules \
@@ -63,6 +70,9 @@ ExecStart=/usr/bin/rkt run \
 {% if local_volumes_enabled == true %}
         --mount volume=local-volume-base-dir,target={{ local_volume_base_dir }} \
 {% endif %}
+{% if kubelet_flexvolumes_plugins_dir is defined %}
+        --mount volume=flexvolumes,target={{ kubelet_flexvolumes_plugins_dir }} \
+{% endif %}
         --stage1-from-dir=stage1-fly.aci \
 {% if kube_hyperkube_image_repo == "docker" %}
         --insecure-options=image \
@@ -83,6 +93,7 @@ ExecStart=/usr/bin/rkt run \
                 $DOCKER_SOCKET \
                 $KUBELET_REGISTER_NODE \
                 $KUBELET_NETWORK_PLUGIN \
+                $KUBELET_VOLUME_PLUGIN \
                 $KUBELET_CLOUDPROVIDER
 
 ExecStop=-/usr/bin/rkt stop --uuid-file=/var/run/kubelet.uuid

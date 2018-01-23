@@ -25,18 +25,17 @@ export AWS_DEFAULT_REGION="zzz"
 - Rename `contrib/terraform/aws/terraform.tfvars.example` to `terraform.tfvars`
 
 - Update `contrib/terraform/aws/terraform.tfvars` with your data. By default, the Terraform scripts use CoreOS as base image. If you want to change this behaviour, see note "Using other distrib than CoreOs" below.
-- Allocate a new AWS Elastic IP. Use this for your `loadbalancer_apiserver_address` value (below)
 - Create an AWS EC2 SSH Key
 - Run with `terraform apply --var-file="credentials.tfvars"` or `terraform apply` depending if you exported your AWS credentials
 
 Example:
 ```commandline
-terraform apply -var-file=credentials.tfvars -var 'loadbalancer_apiserver_address=34.212.228.77'
+terraform apply -var-file=credentials.tfvars
 ```
 
 - Terraform automatically creates an Ansible Inventory file called `hosts` with the created infrastructure in the directory `inventory`
 
-- Ansible will automatically generate an ssh config file for your bastion hosts. To connect to hosts with ssh using bastion host use generated ssh-bastion.conf.
+- Ansible will automatically generate an ssh config file for your bastion hosts. To connect to hosts with ssh using bastion host use generated ssh-bastion.conf. This is generated after running Ansible for first time.
   Ansible automatically detects bastion and changes ssh_args  
 ```commandline
 ssh -F ./ssh-bastion.conf user@$ip
@@ -46,7 +45,7 @@ ssh -F ./ssh-bastion.conf user@$ip
 
 Example (this one assumes you are using CoreOS)
 ```commandline
-ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_ssh_user=core -e bootstrap_os=coreos -b --become-user=root --flush-cache
+ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_user=core -e bootstrap_os=coreos -b --become-user=root --flush-cache
 ```
 ***Using other distrib than CoreOs***
 If you want to use another distribution than CoreOS, you can modify the search filters of the 'data "aws_ami" "distro"' in variables.tf.

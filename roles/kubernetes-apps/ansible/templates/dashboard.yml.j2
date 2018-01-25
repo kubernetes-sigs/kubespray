@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Configuration to deploy release version of the Dashboard UI compatible with
-# Kubernetes 1.7.
+# Kubernetes 1.8.
 #
 # Example usage: kubectl create -f <this_file>
 
@@ -43,28 +43,41 @@ metadata:
 # ------------------- Dashboard Role & Role Binding ------------------- #
 
 kind: Role
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: kubernetes-dashboard-minimal
   namespace: {{ system_namespace }}
 rules:
-  # Allow Dashboard to create and watch for changes of 'kubernetes-dashboard-key-holder' secret.
+  # Allow Dashboard to create 'kubernetes-dashboard-key-holder' secret.
 - apiGroups: [""]
   resources: ["secrets"]
-  verbs: ["create", "watch"]
+  verbs: ["create"]
+  # Allow Dashboard to create 'kubernetes-dashboard-settings' config map.
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create"]
+  # Allow Dashboard to get, update and delete Dashboard exclusive secrets.
 - apiGroups: [""]
   resources: ["secrets"]
-  # Allow Dashboard to get, update and delete 'kubernetes-dashboard-key-holder' secret.
   resourceNames: ["kubernetes-dashboard-key-holder", "kubernetes-dashboard-certs"]
   verbs: ["get", "update", "delete"]
+  # Allow Dashboard to get and update 'kubernetes-dashboard-settings' config map.
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["kubernetes-dashboard-settings"]
+  verbs: ["get", "update"]
   # Allow Dashboard to get metrics from heapster.
 - apiGroups: [""]
   resources: ["services"]
   resourceNames: ["heapster"]
   verbs: ["proxy"]
+- apiGroups: [""]
+  resources: ["services/proxy"]
+  resourceNames: ["heapster", "http:heapster:", "https:heapster:"]
+  verbs: ["get"]
 
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: kubernetes-dashboard-minimal
@@ -110,7 +123,7 @@ subjects:
 # ------------------- Dashboard Deployment ------------------- #
 
 kind: Deployment
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1beta2
 metadata:
   labels:
     k8s-app: kubernetes-dashboard
@@ -127,18 +140,10 @@ spec:
       labels:
         k8s-app: kubernetes-dashboard
     spec:
-{% if not dashboard_use_custom_certs %}
-      initContainers:
-      - name: kubernetes-dashboard-init
-        image: {{ dashboard_init_image_repo }}:{{ dashboard_init_image_tag }}
-        volumeMounts:
-        - name: kubernetes-dashboard-certs
-          mountPath: /certs
-{% endif %}
       containers:
       - name: kubernetes-dashboard
         image: {{ dashboard_image_repo }}:{{ dashboard_image_tag }}
-        imagePullPolicy: Always
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         resources:
           limits:
             cpu: {{ dashboard_cpu_limit }}
@@ -150,8 +155,12 @@ spec:
         - containerPort: 8443
           protocol: TCP
         args:
-          - --tls-key-file=/certs/{{ dashboard_tls_key_file }}
-          - --tls-cert-file=/certs/{{ dashboard_tls_cert_file }}
+{% if dashboard_use_custom_certs %}
+          - --tls-key-file={{ dashboard_tls_key_file }}
+          - --tls-cert-file={{ dashboard_tls_cert_file }}
+{% else %}
+          - --auto-generate-certificates
+{% endif %}
           - --authentication-mode=token{% if kube_basic_auth|default(false) %},basic{% endif %}
           # Uncomment the following line to manually specify Kubernetes API server Host
           # If not specified, Dashboard will attempt to auto discover the API server and connect
@@ -160,7 +169,6 @@ spec:
         volumeMounts:
         - name: kubernetes-dashboard-certs
           mountPath: /certs
-          readOnly: true
           # Create on-disk volume to store exec logs
         - mountPath: /tmp
           name: tmp-volume

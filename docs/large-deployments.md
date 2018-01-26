@@ -34,6 +34,9 @@ For a large scaled deployments, consider the following configuration changes:
   ``kube_controller_pod_eviction_timeout`` for better Kubernetes reliability.
   Check out [Kubernetes Reliability](kubernetes-reliability.md)
 
+* Tune network prefix sizes. Those are ``kube_network_node_prefix``,
+  ``kube_service_addresses`` and ``kube_pods_subnet``.
+
 * Add calico-rr nodes if you are deploying with Calico or Canal. Nodes recover
   from host/network interruption much quicker with calico-rr. Note that
   calico-rr role must be on a host without kube-master or kube-node role (but

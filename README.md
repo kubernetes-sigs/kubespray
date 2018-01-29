@@ -60,7 +60,7 @@ Versions of supported components
 [calico](https://docs.projectcalico.org/v2.5/releases/) v2.5.0 <br>
 [canal](https://github.com/projectcalico/canal) (given calico/flannel versions) <br>
 [contiv](https://github.com/contiv/install/releases) v1.0.3 <br>
-[weave](http://weave.works/) v2.0.1 <br>
+[weave](http://weave.works/) v2.1.3 <br>
 [docker](https://www.docker.com/) v1.13 (see note)<br>
 [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 (see Note 2)<br>
 

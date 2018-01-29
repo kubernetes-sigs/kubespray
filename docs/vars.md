@@ -100,8 +100,11 @@ Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-st
 
 #### Other service variables
 
-* *docker_options* - Commonly used to set
-  ``--insecure-registry=myregistry.mydomain:5000``
+* *docker_options* - Explicit list of dockerd's options. In most cases you should not change that.
+  
+* *docker_extra_opts* - Append extra options to ``docker_extra_opts``. Commonly
+  used to set ``--insecure-registry=myregistry.mydomain:5000``
+
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.

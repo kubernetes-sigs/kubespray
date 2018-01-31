@@ -34,10 +34,12 @@ Then, in the same file, you need to declare your vCenter credential following th
 | vsphere_datastore            | TRUE     | string  |                            |         | Datastore name to use                                                                                                                                                                         |
 | vsphere_working_dir          | TRUE     | string  |                            |         | Working directory from the view "VMs and template" in the   vCenter where VM are placed                                                                                                       |
 | vsphere_scsi_controller_type | TRUE     | string  | buslogic, pvscsi, parallel | pvscsi  | SCSI controller name. Commonly "pvscsi".                                                                                                                                                      |
-| vsphere_vm_uuid              | FALSE    | string  |                            |         | VM Instance UUID of virtual machine that host K8s master. Can be   retrieved from instanceUuid property in VmConfigInfo, or as vc.uuid in VMX   file or in `/sys/class/dmi/id/product_serial` |
+| vsphere_vm_uuid              | FALSE    | string  |                            |         | VM Instance UUID of virtual machine that host K8s master. Can be   retrieved from instanceUuid property in VmConfigInfo, or as vc.uuid in VMX   file or in `/sys/class/dmi/id/product_serial` (Optional, only used for Kubernetes <= 1.9.2) |
 | vsphere_public_network       | FALSE    | string  |                            | Blank   | Name of the   network the VMs are joined to                                                                                                                                                   |
+| vsphere_resource_pool       | FALSE    | string  |                            | Blank   | Name of the Resource pool where the VMs are located (Optional, only used for Kubernetes >= 1.9.2)                                                                                                                                                 |
 
 Example configuration
+
 ```yml
 vsphere_vcenter_ip: "myvcenter.domain.com"
 vsphere_vcenter_port: 443
@@ -48,6 +50,7 @@ vsphere_datacenter: "DATACENTER_name"
 vsphere_datastore: "DATASTORE_name"
 vsphere_working_dir: "Docker_hosts"
 vsphere_scsi_controller_type: "pvscsi"
+vsphere_resource_pool: "K8s-Pool"
 ```
 
 ## Deployment

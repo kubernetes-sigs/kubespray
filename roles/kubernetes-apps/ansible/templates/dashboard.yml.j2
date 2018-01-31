@@ -152,14 +152,23 @@ spec:
             cpu: {{ dashboard_cpu_requests }}
             memory: {{ dashboard_memory_requests }}
         ports:
+{% if dashboard_enable_insecure_port %}
+        - containerPort: 9090
+          protocol: TCP
+{% else %}
         - containerPort: 8443
           protocol: TCP
+{% endif %}
         args:
+{% if dashboard_enable_insecure_port %}
+          - --enable-insecure-login
+{% else  %}
 {% if dashboard_use_custom_certs %}
           - --tls-key-file={{ dashboard_tls_key_file }}
           - --tls-cert-file={{ dashboard_tls_cert_file }}
 {% else %}
           - --auto-generate-certificates
+{% endif %}
 {% endif %}
           - --authentication-mode=token{% if kube_basic_auth|default(false) %},basic{% endif %}
           # Uncomment the following line to manually specify Kubernetes API server Host
@@ -174,9 +183,15 @@ spec:
           name: tmp-volume
         livenessProbe:
           httpGet:
+{% if dashboard_enable_insecure_port %}
+            scheme: HTTP
+            path: /
+            port: 9090
+{% else %}
             scheme: HTTPS
             path: /
             port: 8443
+{% endif %}
           initialDelaySeconds: 30
           timeoutSeconds: 30
       volumes:
@@ -203,7 +218,11 @@ metadata:
   namespace: {{ system_namespace }}
 spec:
   ports:
+{% if dashboard_enable_insecure_port %}
+    - port: 9090
+{% else %}
     - port: 443
       targetPort: 8443
+{% endif %}
   selector:
     k8s-app: kubernetes-dashboard

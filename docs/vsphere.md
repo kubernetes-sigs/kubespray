@@ -37,7 +37,9 @@ Then, in the same file, you need to declare your vCenter credential following th
 | vsphere_vm_uuid              | FALSE    | string  |                            |         | VM Instance UUID of virtual machine that host K8s master. Can be   retrieved from instanceUuid property in VmConfigInfo, or as vc.uuid in VMX   file or in `/sys/class/dmi/id/product_serial` (only optional for Kubernetes <= 1.9.2) |
 | vsphere_public_network       | FALSE    | string  |                            | Blank   | Name of the   network the VMs are joined to                                                                                                                                                   |
 | vsphere_resource_pool       | FALSE    | string  |                            | Blank   | Name of the Resource pool where the VMs are located (optional for Kubernetes >= 1.9.2)                                                                                                                                                 |
+
 Example configuration
+
 ```yml
 vsphere_vcenter_ip: "myvcenter.domain.com"
 vsphere_vcenter_port: 443

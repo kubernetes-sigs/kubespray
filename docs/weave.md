@@ -12,7 +12,7 @@ Weave encryption is supported for all communication
 * To use Weave encryption, specify a strong password (if no password, no encrytion)
 
 ```
-# In file ./inventory/group_vars/k8s-cluster.yml
+# In file ./inventory/sample/group_vars/k8s-cluster.yml
 weave_password: EnterPasswordHere
 ```
 
@@ -77,14 +77,14 @@ The seed mode also allows multi-clouds and hybrid on-premise/cloud clusters depl
 * Switch from consensus mode to seed mode
 
 ```
-# In file ./inventory/group_vars/k8s-cluster.yml
+# In file ./inventory/sample/group_vars/k8s-cluster.yml
 weave_mode_seed: true
 ```
 
 These two variables are only used when `weave_mode_seed` is set to `true` (**/!\ do not manually change these values**)
 
 ```
-# In file ./inventory/group_vars/k8s-cluster.yml
+# In file ./inventory/sample/group_vars/k8s-cluster.yml
 weave_seed: uninitialized
 weave_peers: uninitialized
 ```

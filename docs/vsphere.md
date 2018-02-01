@@ -16,7 +16,7 @@ After this step you should have:
 
 ## Kubespray configuration
 
-Fist you must define the cloud provider in `inventory/group_vars/all.yml` and set it to `vsphere`.
+Fist you must define the cloud provider in `inventory/sample/group_vars/all.yml` and set it to `vsphere`.
 ```yml
 cloud_provider: vsphere
 ```
@@ -58,7 +58,7 @@ vsphere_resource_pool: "K8s-Pool"
 Once the configuration is set, you can execute the playbook again to apply the new configuration
 ```
 cd kubespray
-ansible-playbook -i inventory/inventory.cfg -b -v cluster.yml
+ansible-playbook -i inventory/sample/hosts.ini -b -v cluster.yml
 ```
 
 You'll find some usefull examples [here](https://github.com/kubernetes/kubernetes/tree/master/examples/volumes/vsphere) to test your configuration.

@@ -1,0 +1,55 @@
+---
+- name: Cilium | Ensure BFPFS mounted
+  mount:
+    fstype: bpf
+    path: /sys/fs/bpf
+    src: bpffs
+    state: mounted
+
+- name: Cilium | Create Cilium certs directory
+  file:
+    dest: "{{ cilium_cert_dir }}"
+    state: directory
+    mode: 0750
+    owner: root
+    group: root
+
+- name: Cilium | Link etcd certificates for cilium
+  file:
+    src: "{{ etcd_cert_dir }}/{{ item.s }}"
+    dest: "{{ cilium_cert_dir }}/{{ item.d }}"
+    state: hard
+    force: yes
+  with_items:
+    - {s: "ca.pem", d: "ca_cert.crt"}
+    - {s: "node-{{ inventory_hostname }}.pem", d: "cert.crt"}
+    - {s: "node-{{ inventory_hostname }}-key.pem", d: "key.pem"}
+
+- name: Cilium | Create Cilium node manifests
+  template:
+    src: "{{item.file}}.j2"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {name: cilium, file: cilium-config.yml, type: cm}
+    - {name: cilium, file: cilium-crb.yml, type: clusterrolebinding}
+    - {name: cilium, file: cilium-cr.yml, type: clusterrole}
+    - {name: cilium, file: cilium-ds.yml, type: ds}
+    - {name: cilium, file: cilium-sa.yml, type: sa}
+  register: cilium_node_manifests
+  when:
+    - inventory_hostname in groups['kube-master']
+    - rbac_enabled or item.type not in rbac_resources
+
+- name: Cilium | Set CNI directory permissions
+  file:
+    path: /opt/cni/bin
+    state: directory
+    owner: kube
+    recurse: true
+    mode: 0755
+  register: cni_bin_dir
+
+- name: Cilium | Create network policy directory
+  file:
+    path: "{{ cilium_policy_dir }}"
+    state: directory

@@ -1,23 +1,6 @@
 Getting started
 ===============
 
-The easiest way to run the deployement is to use the **kubespray-cli** tool.
-A complete documentation can be found in its [github repository](https://github.com/kubespray/kubespray-cli).
-
-Here is a simple example on AWS:
-
-* Create instances and generate the inventory
-
-```
-kubespray aws --instances 3
-```
-
-* Run the deployment
-
-```
-kubespray deploy --aws -u centos -n calico
-```
-
 Building your own inventory
 ---------------------------
 

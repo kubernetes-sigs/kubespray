@@ -313,8 +313,6 @@ data:
 {% if fluentd_elasticsearch_passwd is defined %}
        password {{ fluentd_elasticsearch_passwd }}
 {% endif %}
-       log_level info
-       include_tag_key true
 {% if efk_enabled %}
        host elasticsearch-logging
 {% else %}
@@ -322,11 +320,30 @@ data:
 {% endif %}
        scheme {{ fluentd_elasticsearch_scheme }}
        port {{ fluentd_elasticsearch_port }}
+       log_level info
+       include_tag_key true
        logstash_format true
+{% if fluentd_elasticsearch_on_aws %}
+       request_timeout 30s
+       resurrect_after 5
+       # avoid https://discuss.elastic.co/t/elasitcsearch-ruby-raises-cannot-get
+       # -new-connection-from-pool-error/36252/6
+       reload_connections false
+       logstash_format true
+       logstash_prefix syslog
+       # @timestamp: use event time, not time of indexing
+       time_key time
+       include_tag_key true
+       # https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/
+       # aes-limits.html
+       buffer_chunk_limit 8m
+       buffer_queue_limit 2048    # 8m * 2048 = 16GB
+{% else %}
        # Set the chunk limit the same as for fluentd-gcp.
        buffer_chunk_limit 2M
        # Cap buffer memory usage to 2MiB/chunk * 32 chunks = 64 MiB
        buffer_queue_limit 32
+{% fi %}
        flush_interval 5s
        # Never wait longer than 5 minutes between retries.
        max_retry_wait 30

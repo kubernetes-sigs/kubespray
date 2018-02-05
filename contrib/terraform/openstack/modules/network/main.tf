@@ -16,6 +16,7 @@ resource "openstack_networking_subnet_v2" "k8s" {
   cidr            = "10.0.0.0/24"
   ip_version      = 4
   dns_nameservers = "${var.dns_nameservers}"
+  host_routes     = "${var.host_routes}"
 }
 
 resource "openstack_networking_router_interface_v2" "k8s" {

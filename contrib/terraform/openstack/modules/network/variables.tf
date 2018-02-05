@@ -11,3 +11,7 @@ variable "cluster_name" {
 variable "dns_nameservers"{
   type = "list"
 }
+
+variable "host_routes" {
+  type = "list"
+}

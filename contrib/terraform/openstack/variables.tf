@@ -103,6 +103,12 @@ variable "dns_nameservers"{
   default = []
 }
 
+variable "host_routes" {
+  description = "An array of routes that should be used by devices with IPs from this subnet."
+  type = "list"
+  default = []
+}
+
 variable "floatingip_pool" {
   description = "name of the floating ip pool to use"
   default = "external"

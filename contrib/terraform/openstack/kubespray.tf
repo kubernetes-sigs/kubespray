@@ -6,6 +6,7 @@ module "network" {
   network_name = "${var.network_name}"
   cluster_name = "${var.cluster_name}"
   dns_nameservers = "${var.dns_nameservers}"
+  host_routes = "${var.host_routes}"
 }
 
 

@@ -13,7 +13,6 @@ If you have questions, join us on the [kubernetes slack](https://kubernetes.slac
 
 To deploy the cluster you can use :
 
-[**kubespray-cli**](https://github.com/kubespray/kubespray-cli) <br>
 **Ansible** usual commands and [**inventory builder**](https://github.com/kubernetes-incubator/kubespray/blob/master/contrib/inventory_builder/inventory.py) <br>
 **vagrant** by simply running `vagrant up` (for tests purposes) <br>
 
@@ -112,7 +111,6 @@ See also [Network checker](docs/netcheck.md).
 
 ## Tools and projects on top of Kubespray
  - [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/master/doc/integrations/ansible.rst)
- - [Kubespray-cli](https://github.com/kubespray/kubespray-cli)
  - [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
  - [Terraform Contrib](https://github.com/kubernetes-incubator/kubespray/tree/master/contrib/terraform)
 

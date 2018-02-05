@@ -1,13 +1,7 @@
 CoreOS bootstrap
 ===============
 
-Example with **kubespray-cli**:
-
-```
-kubespray deploy --gce --coreos
-```
-
-Or with Ansible:
+Example with Ansible:
 
 Before running the cluster playbook you must satisfy the following requirements:
 

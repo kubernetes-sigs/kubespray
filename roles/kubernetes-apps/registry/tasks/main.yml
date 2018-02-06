@@ -1,0 +1,31 @@
+---
+
+- name: Registry | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/registry"
+    owner: root
+    group: root
+    mode: 0755
+    recurse: true
+
+- name: Registry | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/registry/{{ item.file }}"
+  with_items:
+    - { name: registry-svc, file: registry-svc.yml, type: service }
+    - { name: registry-rc, file: registry-rc.yml, type: replicationcontroller }
+    - { name: registry-ds, file: registry-ds.yml, type: daemonset }
+  register: registry_manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Registry | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ system_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/registry/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ registry_manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]

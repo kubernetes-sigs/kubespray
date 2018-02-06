@@ -7,6 +7,9 @@ Wants=docker-storage-setup.service
 {% elif ansible_os_family == "Debian" %}
 After=network.target docker.socket
 Wants=docker.socket
+{% elif ansible_os_family == "Suse" %}
+After=network.target containerd.socket containerd.service
+Requires=containerd.socket containerd.service
 {% endif %}
 
 [Service]
@@ -19,6 +22,9 @@ ExecReload=/bin/kill -s HUP $MAINPID
 Delegate=yes
 KillMode=process
 ExecStart={{ docker_bin_dir }}/docker{% if installed_docker_version.stdout|version_compare('17.03', '<') %} daemon{% else %}d{% endif %} \
+{% if ansible_os_family == "Suse" %}
+          --containerd /run/containerd/containerd.sock --add-runtime oci=/usr/bin/docker-runc \
+{% endif %}
           $DOCKER_OPTS \
           $DOCKER_STORAGE_OPTIONS \
           $DOCKER_NETWORK_OPTIONS \

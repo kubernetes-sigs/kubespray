@@ -61,7 +61,7 @@ if ! File.exist?(File.join(File.dirname($inventory), "hosts"))
                        "provisioners", "ansible")
   FileUtils.mkdir_p($vagrant_ansible) if ! File.exist?($vagrant_ansible)
   if ! File.exist?(File.join($vagrant_ansible,"inventory"))
-    FileUtils.ln_s($inventory, $vagrant_ansible)
+    FileUtils.ln_s($inventory, File.join($vagrant_ansible,"inventory"))
   end
 end
 

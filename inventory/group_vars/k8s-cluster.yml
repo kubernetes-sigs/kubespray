@@ -8,9 +8,6 @@ kube_script_dir: "{{ bin_dir }}/kubernetes-scripts"
 kube_manifest_dir: "{{ kube_config_dir }}/manifests"
 system_namespace: kube-system
 
-# Logging directory (sysvinit systems)
-kube_log_dir: "/var/log/kubernetes"
-
 # This is where all the cert scripts and certs will be located
 kube_cert_dir: "{{ kube_config_dir }}/ssl"
 
@@ -20,10 +17,10 @@ kube_token_dir: "{{ kube_config_dir }}/tokens"
 # This is where to save basic auth file
 kube_users_dir: "{{ kube_config_dir }}/users"
 
-kube_api_anonymous_auth: false
+kube_api_anonymous_auth: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.8.4
+kube_version: v1.9.2
 
 # Where the binaries will be downloaded.
 # Note: ensure that you've enough disk space (about 1G)
@@ -86,6 +83,9 @@ weave_mode_seed: false
 weave_seed: uninitialized
 weave_peers: uninitialized
 
+# Set the MTU of Weave (default 1376, Jumbo Frames: 8916)
+weave_mtu: 1376
+
 # Enable kubernetes network policies
 enable_network_policy: false
 
@@ -106,14 +106,23 @@ kube_network_node_prefix: 24
 kube_apiserver_ip: "{{ kube_service_addresses|ipaddr('net')|ipaddr(1)|ipaddr('address') }}"
 kube_apiserver_port: 6443 # (https)
 kube_apiserver_insecure_port: 8080 # (http)
+# Set to 0 to disable insecure port - Requires RBAC in authorization_modes and kube_api_anonymous_auth: true
+#kube_apiserver_insecure_port: 0 # (disabled)
+
+# Kube-proxy proxyMode configuration.
+# Can be ipvs, iptables
+kube_proxy_mode: iptables 
 
 # DNS configuration.
 # Kubernetes cluster name, also will be used as DNS domain
 cluster_name: cluster.local
 # Subdomains of DNS domain to be resolved via /etc/resolv.conf for hostnet pods
 ndots: 2
-# Can be dnsmasq_kubedns, kubedns or none
+# Can be dnsmasq_kubedns, kubedns, manual or none
 dns_mode: kubedns
+# Set manual server if using a custom cluster DNS server
+#manual_dns_server: 10.x.x.x
+
 # Can be docker_dns, host_resolvconf or none
 resolvconf_mode: docker_dns
 # Deploy netchecker app to verify DNS resolve as an HTTP service
@@ -156,8 +165,14 @@ helm_enabled: false
 # Istio deployment
 istio_enabled: false
 
+# Registry deployment
+registry_enabled: false
+
 # Local volume provisioner deployment
-local_volumes_enabled: false
+local_volume_provisioner_enabled: false
+
+# Add Persistent Volumes Storage Class for corresponding cloud provider ( OpenStack is only supported now )
+persistent_volumes_enabled: false
 
 # Make a copy of kubeconfig on the host that runs Ansible in GITDIR/artifacts
 # kubeconfig_localhost: false
@@ -173,9 +188,14 @@ local_volumes_enabled: false
 # kubelet_cgroups_per_qos: true
 
 # A comma separated list of levels of node allocatable enforcement to be enforced by kubelet.
-# Acceptible options are 'pods', 'system-reserved', 'kube-reserved' and ''. Default is "".
+# Acceptable options are 'pods', 'system-reserved', 'kube-reserved' and ''. Default is "".
 # kubelet_enforce_node_allocatable: pods
 
 ## Supplementary addresses that can be added in kubernetes ssl keys.
-## That can be usefull for example to setup a keepalived virtual IP
+## That can be useful for example to setup a keepalived virtual IP
 # supplementary_addresses_in_ssl_keys: [10.0.0.1, 10.0.0.2, 10.0.0.3]
+
+## Running on top of openstack vms with cinder enabled may lead to unschedulable pods due to NoVolumeZoneConflict restriction in kube-scheduler.
+## See https://github.com/kubernetes-incubator/kubespray/issues/2141
+## Set this variable to true to get rid of this issue
+volume_cross_zone_attachment: false

@@ -16,7 +16,15 @@ networking:
   serviceSubnet: {{ kube_service_addresses }}
   podSubnet: {{ kube_pods_subnet }}
 kubernetesVersion: {{ kube_version }}
-cloudProvider: {{ cloud_provider|default('') }}
+{% if cloud_provider is defined and cloud_provider != "gce" %}
+cloudProvider: {{ cloud_provider }}
+{% endif %}
+{% if kube_proxy_mode == 'ipvs' %}
+kubeProxy:
+  config:
+    featureGates: SupportIPVSProxyMode=true
+    mode: ipvs
+{% endif %}
 authorizationModes:
 {% for mode in authorization_modes %}
 - {{ mode }}
@@ -58,6 +66,15 @@ controllerManagerExtraArgs:
   pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
+{% for key in kube_kubeadm_controller_extra_args %}
+  {{ key }}: {{ kube_kubeadm_controller_extra_args[key] }}
+{% endfor %}
+{% if kube_kubeadm_scheduler_extra_args|length > 0 %}
+schedulerExtraArgs:
+{% for key in kube_kubeadm_scheduler_extra_args %}
+  {{ key }}: {{ kube_kubeadm_scheduler_extra_args[key] }}
+{% endfor %}
 {% endif %}
 apiServerCertSANs:
 {% for san in  apiserver_sans.split(' ') | unique %}

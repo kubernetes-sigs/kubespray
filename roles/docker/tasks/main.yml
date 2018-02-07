@@ -15,7 +15,7 @@
   tags:
     - facts
 
-- include: set_facts_dns.yml
+- include_tasks: set_facts_dns.yml
   when: dns_mode != 'none' and resolvconf_mode == 'docker_dns'
   tags:
     - facts
@@ -71,15 +71,24 @@
   notify: restart docker
   when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or is_atomic) and (docker_package_info.pkgs|length > 0)
 
-- name: check minimum docker version for docker_dns mode. You need at least docker version >= 1.12 for resolvconf_mode=docker_dns
+- name: flush handlers so we can wait for docker to come up
+  meta: flush_handlers
+
+- name: set fact for docker_version
   command: "docker version -f '{{ '{{' }}.Client.Version{{ '}}' }}'"
-  register: docker_version
-  failed_when: docker_version.stdout|version_compare('1.12', '<')
+  register: installed_docker_version
   changed_when: false
-  when: dns_mode != 'none' and resolvconf_mode == 'docker_dns'
+
+- name: check minimum docker version for docker_dns mode. You need at least docker version >= 1.12 for resolvconf_mode=docker_dns
+  fail:
+    msg: "You need at least docker version >= 1.12 for resolvconf_mode=docker_dns"
+  when: >
+        dns_mode != 'none' and
+        resolvconf_mode == 'docker_dns' and
+        installed_docker_version.stdout|version_compare('1.12', '<')
 
 - name: Set docker systemd config
-  include: systemd.yml
+  import_tasks: systemd.yml
 
 - name: ensure docker service is started and enabled
   service:

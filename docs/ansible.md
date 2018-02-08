@@ -27,7 +27,7 @@ not _kube-node_.
 
 There are also two special groups:
 
-* **calico-rr**  : explained for [advanced Calico networking cases](calico.md)
+* **calico-rr** : explained for [advanced Calico networking cases](calico.md)
 * **bastion** : configure a bastion host if your nodes are not directly reachable
 
 Below is a complete inventory example:
@@ -66,10 +66,10 @@ kube-master
 Group vars and overriding variables precedence
 ----------------------------------------------
 
-The group variables to control main deployment options are located in the directory ``inventory/group_vars``.
-Optional variables are located in the `inventory/group_vars/all.yml`.
+The group variables to control main deployment options are located in the directory ``inventory/sample/group_vars``.
+Optional variables are located in the `inventory/sample/group_vars/all.yml`.
 Mandatory variables that are common for at least one role (or a node group) can be found in the
-`inventory/group_vars/k8s-cluster.yml`.
+`inventory/sample/group_vars/k8s-cluster.yml`.
 There are also role vars for docker, rkt, kubernetes preinstall and master roles.
 According to the [ansible docs](http://docs.ansible.com/ansible/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),
 those cannot be overriden from the group vars. In order to override, one should use
@@ -153,16 +153,16 @@ Example command to filter and apply only DNS configuration tasks and skip
 everything else related to host OS configuration and downloading images of containers:
 
 ```
-ansible-playbook -i inventory/inventory.ini cluster.yml  --tags preinstall,dnsmasq,facts --skip-tags=download,bootstrap-os
+ansible-playbook -i inventory/sample/hosts.ini cluster.yml --tags preinstall,dnsmasq,facts --skip-tags=download,bootstrap-os
 ```
 And this play only removes the K8s cluster DNS resolver IP from hosts' /etc/resolv.conf files:
 ```
-ansible-playbook -i inventory/inventory.ini -e dnsmasq_dns_server='' cluster.yml --tags resolvconf
+ansible-playbook -i inventory/sample/hosts.ini -e dnsmasq_dns_server='' cluster.yml --tags resolvconf
 ```
 And this prepares all container images localy (at the ansible runner node) without installing
 or upgrading related stuff or trying to upload container to K8s cluster nodes:
 ```
-ansible-playbook -i inventory/inventory.ini cluster.yml \
+ansible-playbook -i inventory/sample/hosts.ini cluster.yml \
     -e download_run_once=true -e download_localhost=true \
     --tags download --skip-tags upload,upgrade
 ```

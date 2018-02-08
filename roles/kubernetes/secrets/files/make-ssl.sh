@@ -93,6 +93,8 @@ if [ -n "$MASTERS" ]; then
     gen_key_and_cert "kube-scheduler" "/CN=system:kube-scheduler"
     # kube-controller-manager
     gen_key_and_cert "kube-controller-manager" "/CN=system:kube-controller-manager"
+    # metrics aggregator
+    gen_key_and_cert "front-proxy-client" "/CN=front-proxy-client"
 
     for host in $MASTERS; do
         cn="${host%%.*}"

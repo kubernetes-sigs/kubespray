@@ -19,26 +19,48 @@ spec:
     spec:
       hostNetwork: true
       hostPID: true
+      nodeSelector:
+        node-role.kubernetes.io/master: "true"
       tolerations:
-      - key: node-role.kubernetes.io/master
-        effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+      initContainers:
+        - name: contiv-etcd-init
+          image: ferest/etcd-initer:latest
+          imagePullPolicy: Always
+          env:
+            - name: ETCD_INIT_ARGSFILE
+              value: '{{ contiv_etcd_conf_dir }}/contiv-etcd-args'
+            - name: ETCD_INIT_LISTEN_PORT
+              value: '{{ contiv_etcd_listen_port }}'
+            - name: ETCD_INIT_PEER_PORT
+              value: '{{ contiv_etcd_peer_port }}'
+            - name: ETCD_INIT_CLUSTER
+              value: '{{ contiv_etcd_endpoints }}'
+            - name: ETCD_INIT_DATA_DIR
+              value: '{{ contiv_etcd_data_dir }}'
+          volumeMounts:
+            - name: contiv-etcd-conf-dir
+              mountPath: {{ contiv_etcd_conf_dir }}
       containers:
         - name: contiv-etcd
-          image: {{ etcd_image_repo }}:{{ etcd_image_tag }}
-          command: ["sh","-c"]
-          args:
-            - '. {{ contiv_etcd_conf_dir }}/contiv-etcd.env && /usr/local/bin/etcd'
+          image: {{ contiv_etcd_image_repo }}:{{ contiv_etcd_image_tag }}
+          command:
+            - sh
+            - -c
+            - "/usr/local/bin/etcd $(cat $ETCD_INIT_ARGSFILE)"
+          env:
+            - name: ETCD_INIT_ARGSFILE
+              value: {{ contiv_etcd_conf_dir }}/contiv-etcd-args
           volumeMounts:
-            - name: etc-contiv-etcd
+            - name: contiv-etcd-conf-dir
               mountPath: {{ contiv_etcd_conf_dir }}
-            - name: var-lib-etcd-contiv-data
+            - name: contiv-etcd-data-dir
               mountPath: {{ contiv_etcd_data_dir }}
-          securityContext:
-            privileged: true
       volumes:
-        - name: etc-contiv-etcd
-          hostPath:
-            path: {{ contiv_etcd_conf_dir }}
-        - name: var-lib-etcd-contiv-data
+        - name: contiv-etcd-data-dir
           hostPath:
             path: {{ contiv_etcd_data_dir }}
+        - name: contiv-etcd-conf-dir
+          hostPath:
+            path: {{ contiv_etcd_conf_dir }}

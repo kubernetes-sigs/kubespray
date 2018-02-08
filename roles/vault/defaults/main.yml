@@ -66,6 +66,8 @@ vault_config:
       ha_enabled: "true"
       redirect_addr: "https://{{ ansible_default_ipv4.address }}:{{ vault_port }}"
       tls_ca_file: "{{ vault_etcd_cert_dir }}/ca.pem"
+      tls_cert_file: "{{ vault_etcd_cert_dir}}/node-{{ inventory_hostname }}.pem"
+      tls_key_file: "{{ vault_etcd_cert_dir}}/node-{{ inventory_hostname }}-key.pem"
   cluster_name: "kubernetes-vault"
   default_lease_ttl: "{{ vault_default_lease_ttl }}"
   max_lease_ttl: "{{ vault_max_lease_ttl }}"
@@ -113,7 +115,7 @@ vault_pki_mounts:
     roles:
       - name: vault
         group: vault
-        password: "{{ lookup('password', 'credentials/vault/vault length=15') }}"
+        password: "{{ lookup('password', inventory_dir + '/credentials/vault/vault length=15') }}"
         policy_rules: default
         role_options: default
   etcd:
@@ -125,7 +127,7 @@ vault_pki_mounts:
     roles:
       - name: etcd
         group: etcd
-        password: "{{ lookup('password', 'credentials/vault/etcd length=15') }}"
+        password: "{{ lookup('password', inventory_dir + '/credentials/vault/etcd length=15') }}"
         policy_rules: default
         role_options:
           allow_any_name: true
@@ -140,7 +142,7 @@ vault_pki_mounts:
     roles:
       - name: kube-master
         group: kube-master
-        password: "{{ lookup('password', 'credentials/vault/kube-master length=15') }}"
+        password: "{{ lookup('password', inventory_dir + '/credentials/vault/kube-master length=15') }}"
         policy_rules: default
         role_options:
           allow_any_name: true
@@ -148,7 +150,7 @@ vault_pki_mounts:
           organization: "system:masters"
       - name: kube-node
         group: k8s-cluster
-        password: "{{ lookup('password', 'credentials/vault/kube-node length=15') }}"
+        password: "{{ lookup('password', inventory_dir + '/credentials/vault/kube-node length=15') }}"
         policy_rules: default
         role_options:
           allow_any_name: true
@@ -156,9 +158,17 @@ vault_pki_mounts:
           organization: "system:nodes"
       - name: kube-proxy
         group: k8s-cluster
-        password: "{{ lookup('password', 'credentials/vault/kube-proxy length=15') }}"
+        password: "{{ lookup('password', inventory_dir + '/credentials/vault/kube-proxy length=15') }}"
         policy_rules: default
         role_options:
           allow_any_name: true
           enforce_hostnames: false
           organization: "system:node-proxier"
+      - name: front-proxy-client
+        group: k8s-cluster
+        password: "{{ lookup('password', 'credentials/vault/kube-proxy length=15') }}"
+        policy_rules: default
+        role_options:
+          allow_any_name: true
+          enforce_hostnames: false
+          organization: "system:front-proxy"

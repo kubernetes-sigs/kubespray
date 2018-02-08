@@ -1,5 +1,5 @@
 def run(username, credentialsId, ami, network_plugin, aws_access, aws_secret) {
-      def inventory_path = pwd() + "/inventory/inventory-test.ini"
+      def inventory_path = pwd() + "/inventory/sample/hosts.ini"
       dir('tests') {
           wrap([$class: 'AnsiColorBuildWrapper', colorMapName: "xterm"]) {
               try {

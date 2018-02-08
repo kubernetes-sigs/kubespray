@@ -1,0 +1,36 @@
+---
+
+- name: CephFS Provisioner | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/cephfs_provisioner"
+    owner: root
+    group: root
+    mode: 0755
+    recurse: true
+
+- name: CephFS Provisioner | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/cephfs_provisioner/{{ item.file }}"
+  with_items:
+    - { name: cephfs-provisioner-sa, file: cephfs-provisioner-sa.yml, type: sa }
+    - { name: cephfs-provisioner-role, file: cephfs-provisioner-role.yml, type: role }
+    - { name: cephfs-provisioner-rolebinding, file: cephfs-provisioner-rolebinding.yml, type: rolebinding }
+    - { name: cephfs-provisioner-clusterrole, file: cephfs-provisioner-clusterrole.yml, type: clusterrole }
+    - { name: cephfs-provisioner-clusterrolebinding, file: cephfs-provisioner-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: cephfs-provisioner-deploy, file: cephfs-provisioner-deploy.yml, type: deploy }
+    - { name: cephfs-provisioner-secret, file: cephfs-provisioner-secret.yml, type: secret }
+    - { name: cephfs-provisioner-sc, file: cephfs-provisioner-sc.yml, type: sc }
+  register: cephfs_manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: CephFS Provisioner | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ system_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/cephfs_provisioner/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ cephfs_manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]

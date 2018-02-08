@@ -200,7 +200,7 @@ if it fails try to connect manually via SSH ... it could be something as simple 
 
 ## Configure Cluster variables
 
-Edit`inventory/group_vars/all.yml`:
+Edit `inventory/sample/group_vars/all.yml`:
 - Set variable **bootstrap_os** according selected image
 ```
 # Valid bootstrap options (required): ubuntu, coreos, centos, none
@@ -218,7 +218,7 @@ bin_dir: /opt/bin
 ```
 cloud_provider: openstack
 ```
-Edit`inventory/group_vars/k8s-cluster.yml`:
+Edit `inventory/sample/group_vars/k8s-cluster.yml`:
 - Set variable **kube_network_plugin** according selected networking
 ```
 # Choose network plugin (calico, weave or flannel)

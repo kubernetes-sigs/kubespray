@@ -1,5 +1,5 @@
 stages:
-  - deploy-do-part1
+  - deploy-do
   - moderator
   - unit-tests
   - deploy-gce-part1
@@ -10,6 +10,21 @@ variables:
   FAILFASTCI_NAMESPACE: 'kargo-ci'
 #  DOCKER_HOST: tcp://localhost:2375
   ANSIBLE_FORCE_COLOR: "true"
+  MAGIC: "ci check this"
+  TEST_ID: "$CI_PIPELINE_ID-$CI_BUILD_ID"
+  CI_TEST_VARS: "./tests/files/${CI_JOB_NAME}.yml"
+  GS_ACCESS_KEY_ID: $GS_KEY
+  GS_SECRET_ACCESS_KEY: $GS_SECRET
+  CONTAINER_ENGINE: docker
+  SSH_USER: $GCE_USER
+  GCE_PREEMPTIBLE: "false"
+  ANSIBLE_KEEP_REMOTE_FILES: "1"
+  ANSIBLE_CONFIG: ./tests/ansible.cfg
+  IDEMPOT_CHECK: "false"
+  RESET_CHECK: "false"
+  UPGRADE_TEST: "false"
+  KUBEADM_ENABLED: "false"
+  LOG_LEVEL: "-vv"
 
 # asia-east1-a
 # asia-northeast1-a
@@ -39,24 +54,16 @@ before_script:
 .gce_variables: &gce_variables
   GCE_USER: travis
   SSH_USER: $GCE_USER
-  TEST_ID: "$CI_PIPELINE_ID-$CI_BUILD_ID"
-  CI_TEST_VARS: "./tests/files/${CI_JOB_NAME}.yml"
-  CONTAINER_ENGINE: docker
-  PRIVATE_KEY: $GCE_PRIVATE_KEY
-  GS_ACCESS_KEY_ID: $GS_KEY
-  GS_SECRET_ACCESS_KEY: $GS_SECRET
   CLOUD_MACHINE_TYPE: "g1-small"
-  GCE_PREEMPTIBLE: "false"
-  ANSIBLE_KEEP_REMOTE_FILES: "1"
-  ANSIBLE_CONFIG: ./tests/ansible.cfg
-  IDEMPOT_CHECK: "false"
-  RESET_CHECK: "false"
-  UPGRADE_TEST: "false"
-  KUBEADM_ENABLED: "false"
-  LOG_LEVEL: "-vv"
-  MAGIC: "ci check this"
+  CI_PLATFORM: "gce"
+  PRIVATE_KEY: $GCE_PRIVATE_KEY
 
-.gce: &gce
+.do_variableS: &do_variables
+  PRIVATE_KEY: $DO_PRIVATE_KEY
+  CI_PLATFORM: "do"
+
+
+.testcases: &testcases
   <<: *job
   <<: *docker_service
   cache:
@@ -69,10 +76,6 @@ before_script:
     - pip install -r tests/requirements.txt
     - mkdir -p /.ssh
     - mkdir -p $HOME/.ssh
-    - echo $PRIVATE_KEY | base64 -d > $HOME/.ssh/id_rsa
-    - echo $GCE_PEM_FILE | base64 -d > $HOME/.ssh/gce
-    - echo $GCE_CREDENTIALS > $HOME/.ssh/gce.json
-    - chmod 400 $HOME/.ssh/id_rsa
     - ansible-playbook --version
     - export PYPATH=$([[ ! "$CI_JOB_NAME" =~ "coreos" ]] && echo /usr/bin/python || echo /opt/bin/python)
     - echo "CI_JOB_NAME is $CI_JOB_NAME"
@@ -82,15 +85,7 @@ before_script:
     - ls
     - echo ${PWD}
     - echo "${STARTUP_SCRIPT}"
-    - >
-      ansible-playbook tests/cloud_playbooks/create-gce.yml -i tests/local_inventory/hosts.cfg -c local
-      ${LOG_LEVEL}
-      -e gce_credentials_file=${HOME}/.ssh/gce.json
-      -e gce_project_id=${GCE_PROJECT_ID}
-      -e gce_service_account_email=${GCE_ACCOUNT}
-      -e inventory_path=${PWD}/inventory/sample/hosts.ini
-      -e test_id=${TEST_ID}
-      -e preemptible=$GCE_PREEMPTIBLE
+    - cd tests && make create-${CI_PLATFORM} -s ; cd -
 
     # Check out latest tag if testing upgrade
     # Uncomment when gitlab kargo repo has tags
@@ -227,192 +222,195 @@ before_script:
       fi
 
   after_script:
-    - >
-      ansible-playbook -i inventory/sample/hosts.ini tests/cloud_playbooks/delete-gce.yml -c local  $LOG_LEVEL
-      -e @${CI_TEST_VARS}
-      -e test_id=${TEST_ID}
-      -e gce_project_id=${GCE_PROJECT_ID}
-      -e gce_service_account_email=${GCE_ACCOUNT}
-      -e gce_credentials_file=${HOME}/.ssh/gce.json
-      -e inventory_path=${PWD}/inventory/sample/hosts.ini
+    - cd tests && make delete-${CI_PLATFORM} -s ; cd -
+
+.gce: &gce
+  <<: *testcases
+  variables:
+    <<: *gce_variables
 
 .do: &do
-  <<: *job
-  <<: *gce
-  cache:
-    key: "$CI_BUILD_REF_NAME"
-    paths:
-      - downloads/
-      - $HOME/.cache
-  before_script:
-    - docker info
-    - pip install ansible==2.2.1.0
-    - pip install netaddr
-    - pip install apache-libcloud==0.20.1
-    - pip install boto==2.9.0
-    - pip install dopy==0.3.5
-    - mkdir -p /.ssh
-    - mkdir -p $HOME/.ssh
-    - echo $DO_PRIVATE_KEY | base64 -d > $HOME/.ssh/id_rsa
-    - chmod 400 $HOME/.ssh/id_rsa
-    - md5sum ~/.ssh/id_rsa
-    - ansible-playbook --version
-    - export PYPATH=$([ $BOOTSTRAP_OS = coreos ] && echo /opt/bin/python || echo /usr/bin/python )
-    - echo $PYPATH
-  script:
-    - pwd
-    - ls
-    - echo ${PWD}
-    - >
-      ansible-playbook tests/cloud_playbooks/create-do.yml -i tests/local_inventory/hosts.cfg -c local
-      ${LOG_LEVEL}
-      -e cloud_image=${CLOUD_IMAGE}
-      -e cloud_region=${CLOUD_REGION}
-      -e inventory_path=${PWD}/inventory/inventory.ini
-      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
-      -e mode=${CLUSTER_MODE}
-      -e test_id=${TEST_ID}
+  variables:
+    <<: *do_variables
+  <<: *testcases
 
-    # Check out latest tag if testing upgrade
-    # Uncomment when gitlab kargo repo has tags
-    #- test "${UPGRADE_TEST}" = "true" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
-    - test "${UPGRADE_TEST}" = "true" && git checkout 031cf565ec3ccd3ebbe80eeef3454c3780e5c598 && pip install ansible==2.2.0
+# .do: &do
+#   <<: *job
+#   <<: *gce
+#   cache:
+#     key: "$CI_BUILD_REF_NAME"
+#     paths:
+#       - downloads/
+#       - $HOME/.cache
+#   before_script:
+#     - docker info
+#     - pip install ansible==2.2.1.0
+#     - pip install netaddr
+#     - pip install apache-libcloud==0.20.1
+#     - pip install boto==2.9.0
+#     - pip install dopy==0.3.5
+#     - mkdir -p /.ssh
+#     - mkdir -p $HOME/.ssh
+#     - echo $DO_PRIVATE_KEY | base64 -d > $HOME/.ssh/id_rsa
+#     - chmod 400 $HOME/.ssh/id_rsa
+#     - md5sum ~/.ssh/id_rsa
+#     - ansible-playbook --version
+#     - export PYPATH=$([ $BOOTSTRAP_OS = coreos ] && echo /opt/bin/python || echo /usr/bin/python )
+#     - echo $PYPATH
+#   script:
+#     - pwd
+#     - ls
+#     - echo ${PWD}
+#     - >
+#       ansible-playbook tests/cloud_playbooks/create-do.yml -i tests/local_inventory/hosts.cfg -c local
+#       ${LOG_LEVEL}
+#       -e cloud_image=${CLOUD_IMAGE}
+#       -e cloud_region=${CLOUD_REGION}
+#       -e inventory_path=${PWD}/inventory/inventory.ini
+#       -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+#       -e mode=${CLUSTER_MODE}
+#       -e test_id=${TEST_ID}
+
+#     # Check out latest tag if testing upgrade
+#     # Uncomment when gitlab kargo repo has tags
+#     #- test "${UPGRADE_TEST}" = "true" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
+#     - test "${UPGRADE_TEST}" = "true" && git checkout 031cf565ec3ccd3ebbe80eeef3454c3780e5c598 && pip install ansible==2.2.0
 
 
-    # Create cluster
-    - >
-      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u root
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e state=present
-      -e ansible_python_interpreter=${PYPATH}
-      -e ansible_ssh_user=root
-      -e bootstrap_os=${BOOTSTRAP_OS}
-      -e cert_management=${CERT_MGMT:-script}
-      -e cloud_provider=gce
-      -e deploy_netchecker=true
-      -e download_localhost=true
-      -e download_run_once=true
-      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
-      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
-      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
-      -e local_release_dir=${PWD}/downloads
-      -e resolvconf_mode=${RESOLVCONF_MODE}
-      -e vault_deployment_type=${VAULT_DEPLOYMENT}
-      cluster.yml
+#     # Create cluster
+#     - >
+#       ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u root
+#       ${SSH_ARGS}
+#       ${LOG_LEVEL}
+#       -e state=present
+#       -e ansible_python_interpreter=${PYPATH}
+#       -e ansible_ssh_user=root
+#       -e bootstrap_os=${BOOTSTRAP_OS}
+#       -e cert_management=${CERT_MGMT:-script}
+#       -e cloud_provider=gce
+#       -e deploy_netchecker=true
+#       -e download_localhost=true
+#       -e download_run_once=true
+#       -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+#       -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+#       -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+#       -e local_release_dir=${PWD}/downloads
+#       -e resolvconf_mode=${RESOLVCONF_MODE}
+#       -e vault_deployment_type=${VAULT_DEPLOYMENT}
+#       cluster.yml
 
-    # Repeat deployment if testing upgrade
-    #FIXME(mattymo): repeat "Create cluster" above without duplicating code
-    - >
-      if [ "${UPGRADE_TEST}" = "true" ]; then
-      pip install ansible==2.2.1.0;
-      git checkout "${CI_BUILD_REF}";
-      ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u root
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e ansible_python_interpreter=${PYPATH}
-      -e ansible_ssh_user=root
-      -e bootstrap_os=${BOOTSTRAP_OS}
-      -e cloud_provider=gce
-      -e deploy_netchecker=true
-      -e download_localhost=true
-      -e download_run_once=true
-      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
-      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
-      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
-      -e local_release_dir=${PWD}/downloads
-      -e resolvconf_mode=${RESOLVCONF_MODE}
-      -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
-      -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
-      cluster.yml;
-      fi
+#     # Repeat deployment if testing upgrade
+#     #FIXME(mattymo): repeat "Create cluster" above without duplicating code
+#     - >
+#       if [ "${UPGRADE_TEST}" = "true" ]; then
+#       pip install ansible==2.2.1.0;
+#       git checkout "${CI_BUILD_REF}";
+#       ansible-playbook -i inventory/inventory.ini -b --become-user=root --private-key=${HOME}/.ssh/id_rsa -u root
+#       ${SSH_ARGS}
+#       ${LOG_LEVEL}
+#       -e ansible_python_interpreter=${PYPATH}
+#       -e ansible_ssh_user=root
+#       -e bootstrap_os=${BOOTSTRAP_OS}
+#       -e cloud_provider=gce
+#       -e deploy_netchecker=true
+#       -e download_localhost=true
+#       -e download_run_once=true
+#       -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+#       -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+#       -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+#       -e local_release_dir=${PWD}/downloads
+#       -e resolvconf_mode=${RESOLVCONF_MODE}
+#       -e weave_cpu_requests=${WEAVE_CPU_LIMIT}
+#       -e weave_cpu_limit=${WEAVE_CPU_LIMIT}
+#       cluster.yml;
+#       fi
 
-    # Tests Cases
-    ## Test Master API
-    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root tests/testcases/010_check-apiserver.yml $LOG_LEVEL
+#     # Tests Cases
+#     ## Test Master API
+#     - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root tests/testcases/010_check-apiserver.yml $LOG_LEVEL
 
-    ## Ping the between 2 pod
-    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
+#     ## Ping the between 2 pod
+#     - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root tests/testcases/030_check-network.yml $LOG_LEVEL
 
-    ## Advanced DNS checks
-    - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root tests/testcases/040_check-network-adv.yml $LOG_LEVEL
+#     ## Advanced DNS checks
+#     - ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH} -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root tests/testcases/040_check-network-adv.yml $LOG_LEVEL
 
-    ## Idempotency checks 1/5 (repeat deployment)
-    - >
-      if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -u root -e ansible_ssh_user=root $SSH_ARGS
-      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
-      --private-key=${HOME}/.ssh/id_rsa
-      -e bootstrap_os=${BOOTSTRAP_OS}
-      -e ansible_python_interpreter=${PYPATH}
-      -e download_run_once=true
-      -e download_localhost=true
-      -e deploy_netchecker=true
-      -e resolvconf_mode=${RESOLVCONF_MODE}
-      -e local_release_dir=${PWD}/downloads
-      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
-      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
-      cluster.yml;
-      fi
+#     ## Idempotency checks 1/5 (repeat deployment)
+#     - >
+#       if [ "${IDEMPOT_CHECK}" = "true" ]; then
+#       ansible-playbook -i inventory/inventory.ini -u root -e ansible_ssh_user=root $SSH_ARGS
+#       -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+#       --private-key=${HOME}/.ssh/id_rsa
+#       -e bootstrap_os=${BOOTSTRAP_OS}
+#       -e ansible_python_interpreter=${PYPATH}
+#       -e download_run_once=true
+#       -e download_localhost=true
+#       -e deploy_netchecker=true
+#       -e resolvconf_mode=${RESOLVCONF_MODE}
+#       -e local_release_dir=${PWD}/downloads
+#       -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+#       -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+#       cluster.yml;
+#       fi
 
-    ## Idempotency checks 2/5 (Advanced DNS checks)
-    - >
-      if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH}
-      -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root
-      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
-      fi
+#     ## Idempotency checks 2/5 (Advanced DNS checks)
+#     - >
+#       if [ "${IDEMPOT_CHECK}" = "true" ]; then
+#       ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH}
+#       -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root
+#       tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+#       fi
 
-    ## Idempotency checks 3/5 (reset deployment)
-    - >
-      if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -u root -e ansible_ssh_user=root $SSH_ARGS
-      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
-      --private-key=${HOME}/.ssh/id_rsa
-      -e bootstrap_os=${BOOTSTRAP_OS}
-      -e ansible_python_interpreter=${PYPATH}
-      reset.yml;
-      fi
+#     ## Idempotency checks 3/5 (reset deployment)
+#     - >
+#       if [ "${IDEMPOT_CHECK}" = "true" ]; then
+#       ansible-playbook -i inventory/inventory.ini -u root -e ansible_ssh_user=root $SSH_ARGS
+#       -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+#       --private-key=${HOME}/.ssh/id_rsa
+#       -e bootstrap_os=${BOOTSTRAP_OS}
+#       -e ansible_python_interpreter=${PYPATH}
+#       reset.yml;
+#       fi
 
-    ## Idempotency checks 4/5 (redeploy after reset)
-    - >
-      if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -u root -e ansible_ssh_user=root $SSH_ARGS
-      -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
-      --private-key=${HOME}/.ssh/id_rsa
-      -e bootstrap_os=${BOOTSTRAP_OS}
-      -e ansible_python_interpreter=${PYPATH}
-      -e download_run_once=true
-      -e download_localhost=true
-      -e deploy_netchecker=true
-      -e resolvconf_mode=${RESOLVCONF_MODE}
-      -e local_release_dir=${PWD}/downloads
-      -e etcd_deployment_type=${ETCD_DEPLOYMENT}
-      -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
-      cluster.yml;
-      fi
+#     ## Idempotency checks 4/5 (redeploy after reset)
+#     - >
+#       if [ "${IDEMPOT_CHECK}" = "true" ]; then
+#       ansible-playbook -i inventory/inventory.ini -u root -e ansible_ssh_user=root $SSH_ARGS
+#       -b --become-user=root -e cloud_provider=gce $LOG_LEVEL -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+#       --private-key=${HOME}/.ssh/id_rsa
+#       -e bootstrap_os=${BOOTSTRAP_OS}
+#       -e ansible_python_interpreter=${PYPATH}
+#       -e download_run_once=true
+#       -e download_localhost=true
+#       -e deploy_netchecker=true
+#       -e resolvconf_mode=${RESOLVCONF_MODE}
+#       -e local_release_dir=${PWD}/downloads
+#       -e etcd_deployment_type=${ETCD_DEPLOYMENT}
+#       -e kubelet_deployment_type=${KUBELET_DEPLOYMENT}
+#       cluster.yml;
+#       fi
 
-    ## Idempotency checks 5/5 (Advanced DNS checks)
-    - >
-      if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH}
-      -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root
-      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
-      fi
+#     ## Idempotency checks 5/5 (Advanced DNS checks)
+#     - >
+#       if [ "${IDEMPOT_CHECK}" = "true" ]; then
+#       ansible-playbook -i inventory/inventory.ini -e ansible_python_interpreter=${PYPATH}
+#       -u root -e ansible_ssh_user=root $SSH_ARGS -b --become-user=root
+#       tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+#       fi
 
-  after_script:
-    - >
-      ansible-playbook -i inventory/inventory.ini tests/cloud_playbooks/create-do.yml -c local  $LOG_LEVEL
-      -e state=absent
-      -e mode=${CLUSTER_MODE}
-      -e test_id=${TEST_ID}
-      -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
-      -e gce_project_id=${GCE_PROJECT_ID}
-      -e gce_service_account_email=${GCE_ACCOUNT}
-      -e gce_credentials_file=${HOME}/.ssh/gce.json
-      -e cloud_image=${CLOUD_IMAGE}
-      -e inventory_path=${PWD}/inventory/inventory.ini
-      -e cloud_region=${CLOUD_REGION}
+#   after_script:
+#     - >
+#       ansible-playbook -i inventory/inventory.ini tests/cloud_playbooks/create-do.yml -c local  $LOG_LEVEL
+#       -e state=absent
+#       -e mode=${CLUSTER_MODE}
+#       -e test_id=${TEST_ID}
+#       -e kube_network_plugin=${KUBE_NETWORK_PLUGIN}
+#       -e gce_project_id=${GCE_PROJECT_ID}
+#       -e gce_service_account_email=${GCE_ACCOUNT}
+#       -e gce_credentials_file=${HOME}/.ssh/gce.json
+#       -e cloud_image=${CLOUD_IMAGE}
+#       -e inventory_path=${PWD}/inventory/inventory.ini
+#       -e cloud_region=${CLOUD_REGION}
 
 # Test matrix. Leave the comments for markup scripts.
 .coreos_calico_aio_variables: &coreos_calico_aio_variables
@@ -459,15 +457,6 @@ before_script:
 # stage: deploy-gce-special
   MOVED_TO_GROUP_VARS: "true"
 
-.ubuntu_calico_variables: &ubuntu_calico_variables
-# stage: deploy-gce-special
-  KUBE_NETWORK_PLUGIN: calico
-  CLOUD_IMAGE: ubuntu-1604-xenial
-  CLOUD_REGION: us-central1-b
-  CLUSTER_MODE: separate
-  IDEMPOT_CHECK: "false"
-  BOOTSTRAP_OS: ubuntu
-
 .centos7_calico_ha_variables: &centos7_calico_ha_variables
 # stage: deploy-gce-special
   MOVED_TO_GROUP_VARS: "true"
@@ -490,7 +479,8 @@ before_script:
 
 # Builds for PRs only (premoderated by unit-tests step) and triggers (auto)
 coreos-calico-aio:
-  stage: deploy-gce-part1
+  stage: deploy-do
+  # stage: deploy-gce-part1
   <<: *job
   <<: *gce
   variables:
@@ -498,330 +488,327 @@ coreos-calico-aio:
     <<: *coreos_calico_aio_variables
   when: on_success
   except: ['triggers']
-  only: [/^pr-.*$/]
+  # only: [/^pr-.*$/]
 
-ubuntu-calico-sep-do:
-  stage: deploy-do-part1
+ubuntu-canal-ha-do:
+  stage: deploy-do
   <<: *job
   <<: *do
   variables:
     <<: *gce_variables
-    <<: *ubuntu_calico_variables
-    CLOUD_IMAGE: ubuntu-16-04-x64
-    CLOUD_REGION: NYC3
   when: on_success
   except: ['triggers']
-  only: [/^pr-.*$/]
+  # only: [/^pr-.*$/]
 
-coreos-calico-sep-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *coreos_calico_aio_variables
-  when: on_success
-  only: ['triggers']
+# coreos-calico-sep-triggers:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *coreos_calico_aio_variables
+#   when: on_success
+#   only: ['triggers']
 
-centos7-flannel-addons:
-  stage: deploy-gce-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_flannel_addons_variables
-  when: on_success
-  except: ['triggers']
-  only: [/^pr-.*$/]
+# centos7-flannel-addons:
+#   stage: deploy-gce-part2
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *centos7_flannel_addons_variables
+#   when: on_success
+#   except: ['triggers']
+#   only: [/^pr-.*$/]
 
-centos7-flannel-addons-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_flannel_addons_variables
-  when: on_success
-  only: ['triggers']
+# centos7-flannel-addons-triggers:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *centos7_flannel_addons_variables
+#   when: on_success
+#   only: ['triggers']
 
-ubuntu-weave-sep:
-  stage: deploy-gce-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_weave_sep_variables
-  when: on_success
-  except: ['triggers']
-  only: [/^pr-.*$/]
+# ubuntu-weave-sep:
+#   stage: deploy-gce-special
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *ubuntu_weave_sep_variables
+#   when: on_success
+#   except: ['triggers']
+#   only: [/^pr-.*$/]
 
-ubuntu-weave-sep-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_weave_sep_variables
-  when: on_success
-  only: ['triggers']
+# ubuntu-weave-sep-triggers:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *ubuntu_weave_sep_variables
+#   when: on_success
+#   only: ['triggers']
 
-# More builds for PRs/merges (manual) and triggers (auto)
-ubuntu-canal-ha:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_canal_ha_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# # More builds for PRs/merges (manual) and triggers (auto)
+# ubuntu-canal-ha:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *ubuntu_canal_ha_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-ubuntu-canal-ha-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_canal_ha_variables
-  when: on_success
-  only: ['triggers']
+# ubuntu-canal-ha-triggers:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *ubuntu_canal_ha_variables
+#   when: on_success
+#   only: ['triggers']
 
-ubuntu-canal-kubeadm:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_canal_kubeadm_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# ubuntu-canal-kubeadm:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *ubuntu_canal_kubeadm_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-ubuntu-canal-kubeadm-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_canal_kubeadm_variables
-  when: on_success
-  only: ['triggers']
+# ubuntu-canal-kubeadm-triggers:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *ubuntu_canal_kubeadm_variables
+#   when: on_success
+#   only: ['triggers']
 
-centos-weave-kubeadm:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos_weave_kubeadm_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# centos-weave-kubeadm:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *centos_weave_kubeadm_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-centos-weave-kubeadm-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos_weave_kubeadm_variables
-  when: on_success
-  only: ['triggers']
+# centos-weave-kubeadm-triggers:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *centos_weave_kubeadm_variables
+#   when: on_success
+#   only: ['triggers']
 
-ubuntu-contiv-sep:
-  stage: deploy-gce-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_contiv_sep_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# ubuntu-contiv-sep:
+#   stage: deploy-gce-special
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *ubuntu_contiv_sep_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-rhel7-weave:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *rhel7_weave_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# rhel7-weave:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *rhel7_weave_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-rhel7-weave-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *rhel7_weave_variables
-  when: on_success
-  only: ['triggers']
+# rhel7-weave-triggers:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *rhel7_weave_variables
+#   when: on_success
+#   only: ['triggers']
 
-debian8-calico-upgrade:
-  stage: deploy-gce-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *debian8_calico_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# debian8-calico-upgrade:
+#   stage: deploy-gce-part2
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *debian8_calico_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-debian8-calico-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *debian8_calico_variables
-  when: on_success
-  only: ['triggers']
+# debian8-calico-triggers:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *debian8_calico_variables
+#   when: on_success
+#   only: ['triggers']
 
-coreos-canal:
-  stage: deploy-gce-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *coreos_canal_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# coreos-canal:
+#   stage: deploy-gce-part2
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *coreos_canal_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-coreos-canal-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *coreos_canal_variables
-  when: on_success
-  only: ['triggers']
+# coreos-canal-triggers:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *coreos_canal_variables
+#   when: on_success
+#   only: ['triggers']
 
-rhel7-canal-sep:
-  stage: deploy-gce-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *rhel7_canal_sep_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/,]
+# rhel7-canal-sep:
+#   stage: deploy-gce-special
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *rhel7_canal_sep_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/,]
 
-rhel7-canal-sep-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *rhel7_canal_sep_variables
-  when: on_success
-  only: ['triggers']
+# rhel7-canal-sep-triggers:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *rhel7_canal_sep_variables
+#   when: on_success
+#   only: ['triggers']
 
-centos7-calico-ha:
-  stage: deploy-gce-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_calico_ha_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# centos7-calico-ha:
+#   stage: deploy-gce-special
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *centos7_calico_ha_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-centos7-calico-ha-triggers:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_calico_ha_variables
-  when: on_success
-  only: ['triggers']
+# centos7-calico-ha-triggers:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *centos7_calico_ha_variables
+#   when: on_success
+#   only: ['triggers']
 
-# no triggers yet https://github.com/kubernetes-incubator/kargo/issues/613
-coreos-alpha-weave-ha:
-  stage: deploy-gce-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *coreos_alpha_weave_ha_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# # no triggers yet https://github.com/kubernetes-incubator/kargo/issues/613
+# coreos-alpha-weave-ha:
+#   stage: deploy-gce-special
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *coreos_alpha_weave_ha_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-ubuntu-rkt-sep:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_rkt_sep_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# ubuntu-rkt-sep:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *ubuntu_rkt_sep_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-ubuntu-vault-sep:
-  stage: deploy-gce-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_vault_sep_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# ubuntu-vault-sep:
+#   stage: deploy-gce-part1
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *ubuntu_vault_sep_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-ubuntu-flannel-sep:
-  stage: deploy-gce-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_flannel_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
+# ubuntu-flannel-sep:
+#   stage: deploy-gce-special
+#   <<: *job
+#   <<: *gce
+#   variables:
+#     <<: *gce_variables
+#     <<: *ubuntu_flannel_variables
+#   when: manual
+#   except: ['triggers']
+#   only: ['master', /^pr-.*$/]
 
-# Premoderated with manual actions
-ci-authorized:
-  <<: *job
-  stage: moderator
-  before_script:
-    - apt-get -y install jq
-  script:
-    - /bin/sh scripts/premoderator.sh
-  except: ['triggers', 'master']
+# # Premoderated with manual actions
+# ci-authorized:
+#   <<: *job
+#   stage: moderator
+#   before_script:
+#     - apt-get -y install jq
+#   script:
+#     - /bin/sh scripts/premoderator.sh
+#   except: ['triggers', 'master']
 
-syntax-check:
-  <<: *job
-  stage: unit-tests
-  script:
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root cluster.yml -vvv  --syntax-check
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root upgrade-cluster.yml -vvv  --syntax-check
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root reset.yml -vvv  --syntax-check
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root extra_playbooks/upgrade-only-k8s.yml -vvv  --syntax-check
-  except: ['triggers', 'master']
+# syntax-check:
+#   <<: *job
+#   stage: unit-tests
+#   script:
+#     - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root cluster.yml -vvv  --syntax-check
+#     - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root upgrade-cluster.yml -vvv  --syntax-check
+#     - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root reset.yml -vvv  --syntax-check
+#     - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root extra_playbooks/upgrade-only-k8s.yml -vvv  --syntax-check
+#   except: ['triggers', 'master']
 
-yamllint:
-  <<: *job
-  stage: unit-tests
-  script:
-    - yamllint roles
-  except: ['triggers', 'master']
+# yamllint:
+#   <<: *job
+#   stage: unit-tests
+#   script:
+#     - yamllint roles
+#   except: ['triggers', 'master']
 
-tox-inventory-builder:
-  stage: unit-tests
-  <<: *job
-  script:
-    - pip install tox
-    - cd contrib/inventory_builder && tox
-  when: manual
-  except: ['triggers', 'master']
+# tox-inventory-builder:
+#   stage: unit-tests
+#   <<: *job
+#   script:
+#     - pip install tox
+#     - cd contrib/inventory_builder && tox
+#   when: manual
+#   except: ['triggers', 'master']

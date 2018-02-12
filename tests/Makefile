@@ -1,3 +1,5 @@
+INVENTORY=$(PWD)/../inventory/sample/hosts.ini
+
 $(HOME)/.ssh/id_rsa:
 	mkdir -p $(HOME)/.ssh
 	echo $(PRIVATE_KEY) | base64 -d > $(HOME)/.ssh/id_rsa
@@ -17,33 +19,33 @@ create-gce: init-gce
 	-e gce_credentials_file=$(HOME)/.ssh/gce.json \
 	-e gce_project_id=$(GCE_PROJECT_ID) \
 	-e gce_service_account_email=$(GCE_ACCOUNT) \
-	-e inventory_path=$(PWD)/../inventory/sample/hosts.ini \
+	-e inventory_path=$(INVENTORY) \
 	-e test_id=$(TEST_ID) \
 	-e preemptible=$(GCE_PREEMPTIBLE)
 
 
 delete-gce:
-	ansible-playbook -i ../inventory/sample/hosts.ini cloud_playbooks/delete-gce.yml -c local \
+	ansible-playbook -i $(INVENTORY) cloud_playbooks/delete-gce.yml -c local \
 	$(LOG_LEVEL) \
 	-e @"files/${CI_JOB_NAME}.yml" \
 	-e test_id=$(TEST_ID) \
 	-e gce_project_id=$(GCE_PROJECT_ID) \
 	-e gce_service_account_email=$(GCE_ACCOUNT) \
 	-e gce_credentials_file=$(HOME)/.ssh/gce.json \
-	-e inventory_path=$(PWD)/inventory/sample/hosts.ini
+	-e inventory_path=$(INVENTORY)
 
 create-do: init-do
 	ansible-playbook cloud_playbooks/create-do.yml -i local_inventory/hosts.cfg -c local \
 	${LOG_LEVEL} \
 	-e @"files/${CI_JOB_NAME}.yml" \
-	-e inventory_path=${PWD}/../inventory/hosts.ini \
+	-e inventory_path=$(INVENTORY) \
 	-e test_id=${TEST_ID}
 
 
 delete-do:
-	ansible-playbook -i ../inventory/sample/hosts.ini cloud_playbooks/create-do.yml -c local \
+	ansible-playbook -i $(INVENTORY) cloud_playbooks/create-do.yml -c local \
 	$(LOG_LEVEL) \
 	-e @"files/${CI_JOB_NAME}.yml" \
 	-e state=absent \
 	-e test_id=${TEST_ID} \
-	-e inventory_path=${PWD}/../inventory/inventory.ini \
+	-e inventory_path=$(INVENTORY)

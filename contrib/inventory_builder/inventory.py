@@ -54,7 +54,7 @@ def get_var_as_bool(name, default):
 
 # Configurable as shell vars start
 
-CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory.cfg")
+CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory/sample/hosts.ini")
 # Reconfigures cluster distribution at scale
 SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 50))
 MASSIVE_SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 200))
@@ -318,7 +318,7 @@ Delete a host by id: inventory.py -node1
 
 Configurable env vars:
 DEBUG                   Enable debug printing. Default: True
-CONFIG_FILE             File to write config to Default: ./inventory.cfg
+CONFIG_FILE             File to write config to Default: ./inventory/sample/hosts.ini
 HOST_PREFIX             Host prefix for generated hosts. Default: node
 SCALE_THRESHOLD         Separate ETCD role if # of nodes >= 50
 MASSIVE_SCALE_THRESHOLD Separate K8s master and ETCD if # of nodes >= 200

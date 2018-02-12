@@ -5,10 +5,9 @@ $(HOME)/.ssh/id_rsa:
 
 init-gce: $(HOME)/.ssh/id_rsa
 	# echo $(GCE_PEM_FILE) | base64 -d > $(HOME)/.ssh/gce
-	echo "$(GCE_CREDENTIALS_B64)" > $(HOME)/.ssh/gce.json
+	echo "$(GCE_CREDENTIALS_B64)" | base64 -d > $(HOME)/.ssh/gce.json
 
 init-do: $(HOME)/.ssh/id_rsa
-	pip install dopy==0.3.5
 	echo $(DO_PRIVATE_KEY) | base64 -d > $(HOME)/.ssh/id_rsa
 
 create-gce: init-gce
@@ -43,7 +42,7 @@ create-do: init-do
 
 delete-do:
 	ansible-playbook -i ../inventory/sample/hosts.ini cloud_playbooks/create-do.yml -c local \
-	$LOG_LEVEL \
+	$(LOG_LEVEL) \
 	-e @"files/${CI_JOB_NAME}.yml" \
 	-e state=absent \
 	-e test_id=${TEST_ID} \

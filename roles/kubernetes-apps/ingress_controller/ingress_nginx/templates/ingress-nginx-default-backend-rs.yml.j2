@@ -1,0 +1,37 @@
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: ingress-nginx-default-backend-v{{ ingress_nginx_default_backend_image_tag }}
+  namespace: {{ ingress_nginx_namespace }}
+  labels:
+    k8s-app: ingress-nginx-default-backend
+    version: v{{ ingress_nginx_default_backend_image_tag }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: ingress-nginx-default-backend
+      version: v{{ ingress_nginx_default_backend_image_tag }}
+  template:
+    metadata:
+      labels:
+        k8s-app: ingress-nginx-default-backend
+        version: v{{ ingress_nginx_default_backend_image_tag }}
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: ingress-nginx-default-backend
+          # Any image is permissible as long as:
+          # 1. It serves a 404 page at /
+          # 2. It serves 200 on a /healthz endpoint
+          image: {{ ingress_nginx_default_backend_image_repo }}:{{ ingress_nginx_default_backend_image_tag }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+          ports:
+            - containerPort: 8080

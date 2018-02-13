@@ -1,0 +1,42 @@
+---
+
+- name: NGINX Ingress Controller | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/ingress_nginx"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: NGINX Ingress Controller | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/ingress_nginx/{{ item.file }}"
+  with_items:
+    - { name: ingress-nginx-ns, file: ingress-nginx-ns.yml, type: ns }
+    - { name: ingress-nginx-sa, file: ingress-nginx-sa.yml, type: sa }
+    - { name: ingress-nginx-role, file: ingress-nginx-role.yml, type: role }
+    - { name: ingress-nginx-rolebinding, file: ingress-nginx-rolebinding.yml, type: rolebinding }
+    - { name: ingress-nginx-clusterrole, file: ingress-nginx-clusterrole.yml, type: clusterrole }
+    - { name: ingress-nginx-clusterrolebinding, file: ingress-nginx-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: ingress-nginx-cm, file: ingress-nginx-cm.yml, type: cm }
+    - { name: ingress-nginx-tcp-servicecs-cm, file: ingress-nginx-tcp-servicecs-cm.yml, type: cm }
+    - { name: ingress-nginx-udp-servicecs-cm, file: ingress-nginx-udp-servicecs-cm.yml, type: cm }
+    - { name: ingress-nginx-default-backend-svc, file: ingress-nginx-default-backend-svc.yml, type: svc }
+    - { name: ingress-nginx-default-backend-rs, file: ingress-nginx-default-backend-rs.yml, type: rs }
+    - { name: ingress-nginx-controller-ds, file: ingress-nginx-controller-ds.yml, type: ds }
+  register: ingress_nginx_manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: NGINX Ingress Controller | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ ingress_nginx_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/ingress_nginx/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ ingress_nginx_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]

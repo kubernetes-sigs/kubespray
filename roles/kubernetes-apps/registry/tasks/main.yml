@@ -13,11 +13,12 @@
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/addons/registry/{{ item.file }}"
   with_items:
-    - { name: registry-svc, file: registry-svc.yml, type: service }
-    - { name: registry-rc, file: registry-rc.yml, type: replicationcontroller }
-    - { name: registry-ds, file: registry-ds.yml, type: daemonset }
+    - { name: registry-pvc, file: registry-pvc.yml, type: pvc }
   register: registry_manifests
-  when: inventory_hostname == groups['kube-master'][0]
+  when: 
+    - registry_storage_class != none
+    - registry_disk_size != none
+    - inventory_hostname == groups['kube-master'][0]
 
 - name: Registry | Apply manifests
   kube:
@@ -28,4 +29,31 @@
     filename: "{{ kube_config_dir }}/addons/registry/{{ item.item.file }}"
     state: "latest"
   with_items: "{{ registry_manifests.results }}"
-  when: inventory_hostname == groups['kube-master'][0]
+  when: 
+    - registry_storage_class != none
+    - registry_disk_size != none
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Registry | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/registry/{{ item.file }}"
+  with_items:
+    - { name: registry-svc, file: registry-svc.yml, type: svc }
+    - { name: registry-rs, file: registry-rs.yml, type: rs }
+    - { name: registry-ds, file: registry-ds.yml, type: ds }
+  register: registry_manifests
+  when: 
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Registry | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ system_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/registry/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ registry_manifests.results }}"
+  when: 
+    - inventory_hostname == groups['kube-master'][0]

@@ -11,9 +11,17 @@ spec:
         k8s-app: cilium
         kubernetes.io/cluster-service: "true"
       annotations:
+        # This annotation plus the CriticalAddonsOnly toleration makes
+        # cilium to be a critical pod in the cluster, which ensures cilium
+        # gets priority scheduling.
+        # https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
         scheduler.alpha.kubernetes.io/critical-pod: ''
         scheduler.alpha.kubernetes.io/tolerations: >-
           [{"key":"dedicated","operator":"Equal","value":"master","effect":"NoSchedule"}]
+{% if cilium_enable_prometheus %}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+{% endif %}
     spec:
 {% if rbac_enabled %}
       serviceAccountName: cilium
@@ -32,6 +40,11 @@ spec:
           - "--kvstore-opt"
           - "etcd.config=/var/lib/etcd-config/etcd.config"
           - "--disable-ipv4=$(DISABLE_IPV4)"
+{% if cilium_enable_prometheus %}
+        ports:
+          - name: prometheus
+            containerPort: 9090
+{% endif %}
         lifecycle:
           postStart:
             exec:
@@ -56,12 +69,25 @@ spec:
               configMapKeyRef:
                 name: cilium-config
                 key: disable-ipv4
+{% if cilium_enable_prometheus %}
+          # Note: this variable is a no-op if not defined, and is used in the
+          # prometheus examples.
+          - name: "CILIUM_PROMETHEUS_SERVE_ADDR"
+            valueFrom:
+              configMapKeyRef:
+                name: cilium-metrics-config
+                optional: true
+                key: prometheus-serve-addr
+{% endif %}
         livenessProbe:
           exec:
             command:
             - cilium
             - status
-          initialDelaySeconds: 180
+          # The initial delay for the liveness probe is intentionally large to
+          # avoid an endless kill & restart cycle if in the event that the initial
+          # bootstrapping takes longer than expected.
+          initialDelaySeconds: 120
           failureThreshold: 10
           periodSeconds: 10
         readinessProbe:
@@ -69,8 +95,8 @@ spec:
             command:
             - cilium
             - status
-          initialDelaySeconds: 180
-          periodSeconds: 15
+          initialDelaySeconds: 5
+          periodSeconds: 5
         volumeMounts:
           - name: bpf-maps
             mountPath: /sys/fs/bpf
@@ -132,5 +158,6 @@ spec:
       - effect: NoSchedule
         key: node.cloudprovider.kubernetes.io/uninitialized
         value: "true"
+      # Mark cilium's pod as critical for rescheduling
       - key: CriticalAddonsOnly
         operator: "Exists"

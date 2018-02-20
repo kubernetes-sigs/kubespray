@@ -4,6 +4,7 @@ pipeline {
     stage('build') {
       steps {
         sh 'ls -la'
+        sh 'pwd'
       }
     }
     stage('test') {

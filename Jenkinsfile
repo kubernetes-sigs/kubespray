@@ -1,14 +1,19 @@
 pipeline {
   agent any
   stages {
-    stage('error') {
+    stage('build') {
       steps {
-        validateDeclarativePipeline 'Jenkinsfile\''
+        sh 'ls -la'
+      }
+    }
+    stage('test') {
+      steps {
+        validateDeclarativePipeline 'Jenkinsfile'
       }
     }
     stage('deploy') {
       steps {
-        validateDeclarativePipeline 'Jenkinsfile'
+        echo 'finish'
       }
     }
   }

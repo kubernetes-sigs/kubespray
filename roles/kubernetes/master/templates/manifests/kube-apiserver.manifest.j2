@@ -30,7 +30,9 @@ spec:
     - apiserver
     - --advertise-address={{ ip | default(ansible_default_ipv4.address) }}
     - --etcd-servers={{ etcd_access_addresses }}
+{%   if kube_version | version_compare('v1.9', '<')  %}
     - --etcd-quorum-read=true
+{% endif %}
     - --etcd-cafile={{ etcd_cert_dir }}/ca.pem
     - --etcd-certfile={{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem
     - --etcd-keyfile={{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem
@@ -97,18 +99,28 @@ spec:
 {% if authorization_modes %}
     - --authorization-mode={{ authorization_modes|join(',') }}
 {% endif %}
-{% if encrypt_secret_data|default(false) %}
+{% if kube_encrypt_secret_data %}
     - --experimental-encryption-provider-config={{ kube_config_dir }}/secrets_encryption.yaml
 {% endif %}
 {% if kube_feature_gates %}
     - --feature-gates={{ kube_feature_gates|join(',') }}
 {% endif %}
+{% if kube_version | version_compare('v1.9', '>=') %}
+    - --requestheader-client-ca-file={{ kube_cert_dir }}/ca.pem
+    - --requestheader-allowed-names=front-proxy-client
+    - --requestheader-extra-headers-prefix=X-Remote-Extra-
+    - --requestheader-group-headers=X-Remote-Group
+    - --requestheader-username-headers=X-Remote-User
+    - --enable-aggregator-routing={{ kube_api_aggregator_routing }}
+    - --proxy-client-cert-file={{ kube_cert_dir }}/front-proxy-client.pem
+    - --proxy-client-key-file={{ kube_cert_dir }}/front-proxy-client-key.pem
+{% endif %}
 {% if apiserver_custom_flags is string %}
     - {{ apiserver_custom_flags }}
 {% else %}
-{%   for flag in apiserver_custom_flags %}
+{% for flag in apiserver_custom_flags %}
     - {{ flag }}
-{%   endfor %}
+{% endfor %}
 {% endif %}
     livenessProbe:
       httpGet:

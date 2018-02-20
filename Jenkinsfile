@@ -1,9 +1,9 @@
 pipeline {
   agent any
   stages {
-    stage('') {
+    stage('error') {
       steps {
-        echo 'Start'
+        validateDeclarativePipeline 'Jenkinsfile\''
       }
     }
     stage('deploy') {

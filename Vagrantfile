@@ -19,6 +19,7 @@ SUPPORTED_OS = {
   "ubuntu"        => {box: "bento/ubuntu-16.04", bootstrap_os: "ubuntu", user: "vagrant"},
   "centos"        => {box: "centos/7",           bootstrap_os: "centos", user: "vagrant"},
   "opensuse"      => {box: "opensuse/openSUSE-42.3-x86_64", bootstrap_os: "opensuse", use: "vagrant"},
+  "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", bootstrap_os: "opensuse", use: "vagrant"},
 }
 
 # Defaults for config options defined in CONFIG

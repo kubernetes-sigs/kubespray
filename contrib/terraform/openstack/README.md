@@ -34,7 +34,7 @@ floating IP addresses or not.
 Note that the Ansible script will report an invalid configuration if you wind up
 with an even number of etcd instances since that is not a valid configuration.
 
-### Gluster FS
+### GlusterFS
 The Terraform configuration supports provisioning of an optional GlusterFS
 shared file system based on a separate set of VMs. To enable this, you need to
 specify:
@@ -95,18 +95,19 @@ This will be the base for subsequent Terraform commands.
 #### OpenStack access and credentials
 
 No provider variables are hardcoded inside `variables.tf` because Terraform
-supports various authentication method for OpenStack, between identity v2 and
-v3 API, `openrc` or `clouds.yaml`.
+supports various authentication methods for OpenStack: the older script and 
+environment method (using `openrc`) as well as a newer declarative method, and 
+different OpenStack environments may support Identity API version 2 or 3.
 
 These are examples and may vary depending on your OpenStack cloud provider,
 for an exhaustive list on how to authenticate on OpenStack with Terraform
 please read the [OpenStack provider documentation](https://www.terraform.io/docs/providers/openstack/).
 
-##### Recommended method: clouds.yaml
+##### Declarative method (recommended)
 
-Newer recommended authentication method is to use a `clouds.yaml` file that can be store in:
+The recommended authentication method is to describe credentials in a YAML file `clouds.yaml` that can be stored in:
 
-* `Current Directory`
+* the current directory
 * `~/.config/openstack`
 * `/etc/openstack`
 
@@ -128,18 +129,18 @@ clouds:
 ```
 
 If you have multiple clouds defined in your `clouds.yaml` file you can choose
-the one you want to use with the environment variable `OS_CLOUD` :
+the one you want to use with the environment variable `OS_CLOUD`:
 
 ```
 export OS_CLOUD=mycloud
 ```
 
-##### Deprecated method : openrc
+##### Openrc method (deprecated)
 
 When using classic environment variables, Terraform uses default `OS_*`
-environment variables :
+environment variables:
 
-With identity v2 :
+With identity v2:
 
 ```
 source openrc
@@ -176,7 +177,7 @@ OS_USER_DOMAIN_NAME=Default
 ```
 
 Terraform does not support a mix of DomainName and DomainID, choose one or the
-other :
+other:
 
 ```
 * provider.openstack: You must provide exactly one of DomainID or DomainName to authenticate by Username

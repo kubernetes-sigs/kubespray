@@ -9,12 +9,15 @@ CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
 
 COREOS_URL_TEMPLATE = "https://storage.googleapis.com/%s.release.core-os.net/amd64-usr/current/coreos_production_vagrant.json"
 
+# Uniq disk UUID for libvirt
+DISK_UUID = Time.now.utc.to_i
+
 SUPPORTED_OS = {
   "coreos-stable" => {box: "coreos-stable",      bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["stable"]},
   "coreos-alpha"  => {box: "coreos-alpha",       bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["alpha"]},
   "coreos-beta"   => {box: "coreos-beta",        bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]},
   "ubuntu"        => {box: "bento/ubuntu-16.04", bootstrap_os: "ubuntu", user: "vagrant"},
-  "centos"        => {box: "bento/centos-7.3",   bootstrap_os: "centos", user: "vagrant"},
+  "centos"        => {box: "centos/7",           bootstrap_os: "centos", user: "vagrant"},
 }
 
 # Defaults for config options defined in CONFIG
@@ -34,6 +37,11 @@ $etcd_instances = $num_instances
 $kube_master_instances = $num_instances == 1 ? $num_instances : ($num_instances - 1)
 # All nodes are kube nodes
 $kube_node_instances = $num_instances
+# The following only works when using the libvirt provider
+$kube_node_instances_with_disks = false
+$kube_node_instances_with_disks_size = "20G"
+$kube_node_instances_with_disks_number = 2
+
 $local_release_dir = "/vagrant/temp"
 
 host_vars = {}
@@ -53,7 +61,7 @@ if ! File.exist?(File.join(File.dirname($inventory), "hosts"))
                        "provisioners", "ansible")
   FileUtils.mkdir_p($vagrant_ansible) if ! File.exist?($vagrant_ansible)
   if ! File.exist?(File.join($vagrant_ansible,"inventory"))
-    FileUtils.ln_s($inventory, $vagrant_ansible)
+    FileUtils.ln_s($inventory, File.join($vagrant_ansible,"inventory"))
   end
 end
 
@@ -112,6 +120,10 @@ Vagrant.configure("2") do |config|
         vb.cpus = $vm_cpus
       end
 
+     config.vm.provider :libvirt do |lv|
+       lv.memory = $vm_memory
+     end
+
       ip = "#{$subnet}.#{i+100}"
       host_vars[vm_name] = {
         "ip": ip,
@@ -122,7 +134,7 @@ Vagrant.configure("2") do |config|
       }
 
       config.vm.network :private_network, ip: ip
-      
+
       # workaround for Vagrant 1.9.1 and centos vm
       # https://github.com/hashicorp/vagrant/issues/8096
       if Vagrant::VERSION == "1.9.1" && $os == "centos"
@@ -131,6 +143,18 @@ Vagrant.configure("2") do |config|
 
       # Disable swap for each vm
       config.vm.provision "shell", inline: "swapoff -a"
+
+      if $kube_node_instances_with_disks
+        # Libvirt
+        driverletters = ('a'..'z').to_a
+        config.vm.provider :libvirt do |lv|
+          # always make /dev/sd{a/b/c} so that CI can ensure that
+          # virtualbox and libvirt will have the same devices to use for OSDs
+          (1..$kube_node_instances_with_disks_number).each do |d|
+            lv.storage :file, :device => "hd#{driverletters[d]}", :path => "disk-#{i}-#{d}-#{DISK_UUID}.disk", :size => $kube_node_instances_with_disks_size, :bus => "ide"
+          end
+        end
+      end
 
       # Only execute once the Ansible provisioner,
       # when all the machines are up and ready.

@@ -1,9 +1,9 @@
 ---
-- include: facts.yml
+- import_tasks: facts.yml
   tags:
     - facts
 
-- include: pre_upgrade.yml
+- import_tasks: pre_upgrade.yml
   tags:
     - kubelet
 
@@ -13,11 +13,11 @@
     state: directory
     mode: 0755
 
-- include: install.yml
+- import_tasks: install.yml
   tags:
     - kubelet
 
-- include: nginx-proxy.yml
+- import_tasks: nginx-proxy.yml
   when: is_kube_master == false and loadbalancer_apiserver_localhost
   tags:
     - nginx
@@ -98,11 +98,25 @@
     state: present
     value: 1
     reload: yes
-  when: modinfo_br_netfilter.rc == 1 and sysctl_bridge_nf_call_iptables.rc == 0
+  when: sysctl_bridge_nf_call_iptables.rc == 0
   with_items:
     - net.bridge.bridge-nf-call-iptables
     - net.bridge.bridge-nf-call-arptables
     - net.bridge.bridge-nf-call-ip6tables
+
+- name: Modprode Kernel Module for IPVS
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  when: kube_proxy_mode == 'ipvs'
+  with_items:
+    - ip_vs
+    - ip_vs_rr
+    - ip_vs_wrr
+    - ip_vs_sh
+    - nf_conntrack_ipv4
+  tags:
+    - kube-proxy
 
 - name: Write proxy manifest
   template:

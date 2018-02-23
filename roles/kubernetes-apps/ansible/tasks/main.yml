@@ -1,7 +1,10 @@
 ---
 - name: Kubernetes Apps | Wait for kube-apiserver
   uri:
-    url: "{{ kube_apiserver_insecure_endpoint }}/healthz"
+    url: "{{ kube_apiserver_endpoint }}/healthz"
+    validate_certs: no
+    client_cert: "{{ kube_apiserver_client_cert }}"
+    client_key: "{{ kube_apiserver_client_key }}"
   register: result
   until: result.status == 200
   retries: 10
@@ -12,7 +15,7 @@
   kube:
     name: "kubedns"
     namespace: "{{ system_namespace }}"
-    kubectl: "{{bin_dir}}/kubectl"
+    kubectl: "{{ bin_dir }}/kubectl"
     resource: "{{ item }}"
     state: absent
   with_items:
@@ -25,7 +28,7 @@
   kube:
     name: "kubedns"
     namespace: "{{ system_namespace }}"
-    kubectl: "{{bin_dir}}/kubectl"
+    kubectl: "{{ bin_dir }}/kubectl"
     resource: "deploy"
     state: absent
   when:
@@ -35,16 +38,16 @@
 
 - name: Kubernetes Apps | Lay Down KubeDNS Template
   template:
-    src: "{{item.file}}"
-    dest: "{{kube_config_dir}}/{{item.file}}"
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
   with_items:
-    - {name: kube-dns, file: kubedns-sa.yml, type: sa}
-    - {name: kube-dns, file: kubedns-deploy.yml.j2, type: deployment}
-    - {name: kube-dns, file: kubedns-svc.yml, type: svc}
-    - {name: kubedns-autoscaler, file: kubedns-autoscaler-sa.yml, type: sa}
-    - {name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrole.yml, type: clusterrole}
-    - {name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrolebinding.yml, type: clusterrolebinding}
-    - {name: kubedns-autoscaler, file: kubedns-autoscaler.yml.j2, type: deployment}
+    - { name: kube-dns, file: kubedns-sa.yml, type: sa }
+    - { name: kube-dns, file: kubedns-deploy.yml, type: deployment }
+    - { name: kube-dns, file: kubedns-svc.yml, type: svc }
+    - { name: kubedns-autoscaler, file: kubedns-autoscaler-sa.yml, type: sa }
+    - { name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrole.yml, type: clusterrole }
+    - { name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: kubedns-autoscaler, file: kubedns-autoscaler.yml, type: deployment }
   register: manifests
   when:
     - dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
@@ -55,7 +58,7 @@
 # see https://github.com/kubernetes/kubernetes/issues/45084, only needed for "old" kube-dns
 - name: Kubernetes Apps | Patch system:kube-dns ClusterRole
   command: >
-    {{bin_dir}}/kubectl patch clusterrole system:kube-dns
+    {{ bin_dir }}/kubectl patch clusterrole system:kube-dns
     --patch='{
                "rules": [
                  {
@@ -73,11 +76,11 @@
 
 - name: Kubernetes Apps | Start Resources
   kube:
-    name: "{{item.item.name}}"
+    name: "{{ item.item.name }}"
     namespace: "{{ system_namespace }}"
-    kubectl: "{{bin_dir}}/kubectl"
-    resource: "{{item.item.type}}"
-    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
     state: "latest"
   with_items: "{{ manifests.results }}"
   when:
@@ -88,13 +91,13 @@
     - dnsmasq
 
 - name: Kubernetes Apps | Netchecker
-  include: tasks/netchecker.yml
+  import_tasks: tasks/netchecker.yml
   when: deploy_netchecker
   tags:
     - netchecker
 
 - name: Kubernetes Apps | Dashboard
-  include: tasks/dashboard.yml
+  import_tasks: tasks/dashboard.yml
   when: dashboard_enabled
   tags:
     - dashboard

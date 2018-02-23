@@ -23,6 +23,16 @@ spec:
       requests:
         cpu: {{ kube_proxy_cpu_requests }}
         memory: {{ kube_proxy_memory_requests }}
+    livenessProbe:
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10256
+      failureThreshold: 8
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 15
     command:
     - /hyperkube
     - proxy
@@ -31,8 +41,17 @@ spec:
     - --bind-address={{ ip | default(ansible_default_ipv4.address) }}
     - --cluster-cidr={{ kube_pods_subnet }}
     - --proxy-mode={{ kube_proxy_mode }}
+    - --oom-score-adj=-998
+    - --healthz-bind-address=127.0.0.1
 {% if kube_proxy_masquerade_all and kube_proxy_mode == "iptables" %}
     - --masquerade-all
+{% elif kube_proxy_mode == 'ipvs' %}
+    - --masquerade-all
+    - --feature-gates=SupportIPVSProxyMode=true
+    - --proxy-mode=ipvs
+    - --ipvs-min-sync-period=5s
+    - --ipvs-sync-period=5s
+    - --ipvs-scheduler=rr
 {% endif %}
     securityContext:
       privileged: true
@@ -48,6 +67,12 @@ spec:
       readOnly: true
     - mountPath: /var/run/dbus
       name: var-run-dbus
+      readOnly: false
+    - mountPath: /lib/modules
+      name: lib-modules
+      readOnly: true
+    - mountPath: /run/xtables.lock
+      name: xtables-lock
       readOnly: false
   volumes:
   - name: ssl-certs-host
@@ -66,3 +91,10 @@ spec:
   - name: var-run-dbus
     hostPath:
       path: /var/run/dbus
+  - hostPath:
+      path: /lib/modules
+    name: lib-modules
+  - hostPath:
+      path: /run/xtables.lock
+      type: FileOrCreate
+    name: xtables-lock

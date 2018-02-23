@@ -1,5 +1,5 @@
 ---
-- include: verify-settings.yml
+- import_tasks: verify-settings.yml
   tags:
     - asserts
 
@@ -19,7 +19,7 @@
   tags:
     - bootstrap-os
 
-- include: set_facts.yml
+- import_tasks: set_facts.yml
   tags:
     - facts
 
@@ -72,7 +72,7 @@
     - cloud-provider
     - facts
 
-- include: "{{ cloud_provider }}-credential-check.yml"
+- include_tasks: "{{ cloud_provider }}-credential-check.yml"
   when:
     - cloud_provider is defined
     - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
@@ -89,17 +89,18 @@
     - "/etc/cni/net.d"
     - "/opt/cni/bin"
   when:
-    - kube_network_plugin in ["calico", "weave", "canal", "flannel", "contiv"]
+    - kube_network_plugin in ["calico", "weave", "canal", "flannel", "contiv", "cilium"]
     - inventory_hostname in groups['k8s-cluster']
   tags:
     - network
+    - cilium
     - calico
     - weave
     - canal
     - contiv
     - bootstrap-os
 
-- include: resolvconf.yml
+- import_tasks: resolvconf.yml
   when:
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
@@ -147,10 +148,8 @@
   tags: bootstrap-os
 
 
-- name: Install latest version of python-apt for Debian distribs
+- name: Update package management cache (APT)
   apt:
-    name: python-apt
-    state: latest
     update_cache: yes
     cache_valid_time: 3600
   when: ansible_os_family == "Debian"
@@ -172,18 +171,13 @@
     - bootstrap-os
 
 - name: Install epel-release on RedHat/CentOS
-  shell: rpm -qa | grep epel-release || rpm -ivh {{ epel_rpm_download_url }}
-  register: epel_task_result
-  until: epel_task_result|succeeded
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: False
+  yum:
+    name: epel-release
+    state: present
   when:
     - ansible_distribution in ["CentOS","RedHat"]
     - not is_atomic
-    - epel_rpm_download_url != ''
     - epel_enabled|bool
-  check_mode: no
   tags:
     - bootstrap-os
 
@@ -276,12 +270,12 @@
   tags:
     - cloud-provider
 
-- include: etchosts.yml
+- import_tasks: etchosts.yml
   tags:
     - bootstrap-os
     - etchosts
 
-- include: dhclient-hooks.yml
+- import_tasks: dhclient-hooks.yml
   when:
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
@@ -290,7 +284,7 @@
     - bootstrap-os
     - resolvconf
 
-- include: dhclient-hooks-undo.yml
+- import_tasks: dhclient-hooks-undo.yml
   when:
     - dns_mode != 'none'
     - resolvconf_mode != 'host_resolvconf'
@@ -306,7 +300,7 @@
   tags:
     - bootstrap-os
 
-- include: growpart-azure-centos-7.yml
+- import_tasks: growpart-azure-centos-7.yml
   when:
     - azure_check.stat.exists
     - ansible_distribution in ["CentOS","RedHat"]

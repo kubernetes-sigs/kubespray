@@ -82,23 +82,102 @@ used to deploy and provision the software requirements.
 
 #### OpenStack
 
-Ensure your OpenStack **Identity v2** credentials are loaded in environment
-variables. This can be done by downloading a credentials .rc file from your
-OpenStack dashboard and sourcing it:
+No provider variables are hard coded inside `variables.tf` because Terraform
+supports various authentication method for OpenStack, between identity v2 and
+v3 API, `openrc` or `clouds.yaml`.
+
+These are examples and may vary depending on your OpenStack cloud provider,
+for an exhaustive list on how to authenticate on OpenStack with Terraform
+please read the [OpenStack provider documentation](https://www.terraform.io/docs/providers/openstack/).
+
+##### Recommended method : clouds.yaml
+
+Newer recommended authentication method is to use a `clouds.yaml` file that can be store in :
+
+* `Current Directory`
+* `~/.config/openstack`
+* `/etc/openstack`
+
+`clouds.yaml` :
 
 ```
-$ source ~/.stackrc
+clouds:
+  mycloud:
+    auth:
+      auth_url: https://openstack:5000/v3
+      username: "username"
+      project_name: "projectname"
+      project_id: projectid
+      user_domain_name: "Default"
+      password: "password"
+    region_name: "RegionOne"
+    interface: "public"
+    identity_api_version: 3
 ```
 
-Ensure that you have your Openstack credentials loaded into Terraform
-environment variables. Likely via a command similar to:
+If you have multiple clouds defined in your `clouds.yaml` file you can choose
+the one you want to use with the environment variable `OS_CLOUD` :
 
 ```
-$ echo Setting up Terraform creds && \
-  export TF_VAR_username=${OS_USERNAME} && \
-  export TF_VAR_password=${OS_PASSWORD} && \
-  export TF_VAR_tenant=${OS_TENANT_NAME} && \
-  export TF_VAR_auth_url=${OS_AUTH_URL}
+export OS_CLOUD=mycloud
+```
+
+##### Deprecated method : openrc
+
+When using classic environment variables, Terraform uses default `OS_*`
+environment variables :
+
+With identity v2 :
+
+```
+source openrc
+
+env | grep OS
+
+OS_AUTH_URL=https://openstack:5000/v2.0
+OS_PROJECT_ID=projectid
+OS_PROJECT_NAME=projectname
+OS_USERNAME=username
+OS_PASSWORD=password
+OS_REGION_NAME=RegionOne
+OS_INTERFACE=public
+OS_IDENTITY_API_VERSION=2
+```
+
+With identity v3 :
+
+```
+source openrc
+
+env | grep OS
+
+OS_AUTH_URL=https://openstack:5000/v3
+OS_PROJECT_ID=projectid
+OS_PROJECT_NAME=username
+OS_PROJECT_DOMAIN_ID=default
+OS_USERNAME=username
+OS_PASSWORD=password
+OS_REGION_NAME=RegionOne
+OS_INTERFACE=public
+OS_IDENTITY_API_VERSION=3
+OS_USER_DOMAIN_NAME=Default
+```
+
+Terraform does not support a mix of DomainName and DomainID, choose one or the
+other :
+
+```
+* provider.openstack: You must provide exactly one of DomainID or DomainName to authenticate by Username
+```
+
+```
+unset OS_USER_DOMAIN_NAME
+export OS_USER_DOMAIN_ID=default
+
+or
+
+unset OS_PROJECT_DOMAIN_ID
+set OS_PROJECT_DOMAIN_NAME=Default
 ```
 
 ### Terraform Variables
@@ -114,7 +193,7 @@ ones:
 |---------|-------------|
 |`cluster_name` | All OpenStack resources will use the Terraform variable`cluster_name` (default`example`) in their name to make it easier to track. For example the first compute resource will be named`example-kubernetes-1`. |
 |`network_name` | The name to be given to the internal network that will be generated |
-|`dns_nameservers`| An array of DNS name server names to be used by hosts in the internal subnet. | 
+|`dns_nameservers`| An array of DNS name server names to be used by hosts in the internal subnet. |
 |`floatingip_pool` | Name of the pool from which floating IPs will be allocated |
 |`external_net` | UUID of the external network that will be routed to |
 |`flavor_k8s_master`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through`nova flavor-list` |
@@ -129,7 +208,21 @@ ones:
 |`number_of_gfs_nodes_no_floating_ip` | Number of gluster servers to provision. |
 | `gfs_volume_size_in_gb` | Size of the non-ephemeral volumes to be attached to store the GlusterFS bricks |
 
+### Terraform files
+
+In the root folder, the following files might be created (either by Terraform
+or manually), to prevent you from pushing them accidentally they are in a
+`.gitignore` file in the `terraform/openstack` directory :
+
+* `.terraform`
+* `.tfvars`
+* `.tfstate`
+* `.tfstate.backup`
+
+You can still add them manually if you want to.
+
 ## Initializing Terraform
+
 Before Terraform can operate on your cluster you need to install required
 plugins. This is accomplished with the command
 
@@ -163,6 +256,12 @@ $ terraform destroy -state=contrib/terraform/openstack/terraform.tfstate -var-fi
 You can enable debugging output from Terraform by setting
 `OS_DEBUG` to 1 and`TF_LOG` to`DEBUG` before runing the terraform command
 
+## Terraform output
+
+Terraform can output useful values that need to be reused if you want to use Kubernetes OpenStack cloud provider with Neutron/Octavia LBaaS or Cinder persistent Volume provisioning:
+
+ - `private_subnet_id`: the subnet where your instances are running, maps to `openstack_lbaas_subnet_id`
+ - `floating_network_id`: the network_id where the floating IP are provisioned, maps to `openstack_lbaas_floating_network_id`
 
 # Running the Ansible Script
 Ensure your local ssh-agent is running and your ssh key has been added. This
@@ -200,7 +299,7 @@ if it fails try to connect manually via SSH ... it could be something as simple 
 
 ## Configure Cluster variables
 
-Edit`inventory/group_vars/all.yml`:
+Edit `inventory/sample/group_vars/all.yml`:
 - Set variable **bootstrap_os** according selected image
 ```
 # Valid bootstrap options (required): ubuntu, coreos, centos, none
@@ -218,7 +317,7 @@ bin_dir: /opt/bin
 ```
 cloud_provider: openstack
 ```
-Edit`inventory/group_vars/k8s-cluster.yml`:
+Edit `inventory/sample/group_vars/k8s-cluster.yml`:
 - Set variable **kube_network_plugin** according selected networking
 ```
 # Choose network plugin (calico, weave or flannel)

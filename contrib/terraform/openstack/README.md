@@ -86,8 +86,8 @@ Create an inventory directory for your cluster by copying the existing sample an
 
 ```ShellSession
 $ cp -LRp contrib/terraform/openstack/sample-inventory inventory/$CLUSTER
-$ ln -s contrib/terraform/openstack/hosts inventory/$CLUSTER/
 $ cd inventory/$CLUSTER
+$ ln -s ../../contrib/terraform/openstack/hosts
 ```
 
 This will be the base for subsequent Terraform commands.
@@ -138,7 +138,8 @@ export OS_CLOUD=mycloud
 ##### Openrc method (deprecated)
 
 When using classic environment variables, Terraform uses default `OS_*`
-environment variables:
+environment variables.  A script suitable for your environment may be available
+from Horizon under *Project* -> *Compute* -> *Access & Security* -> *API Access*.
 
 With identity v2:
 
@@ -157,7 +158,7 @@ OS_INTERFACE=public
 OS_IDENTITY_API_VERSION=2
 ```
 
-With identity v3 :
+With identity v3:
 
 ```
 source openrc
@@ -238,7 +239,7 @@ plugins. This is accomplished as follows:
 
 ```ShellSession
 $ cd inventory/$CLUSTER
-$ terraform init contrib/terraform/openstack
+$ terraform init ../../contrib/terraform/openstack
 ```
 
 This should finish fairly quickly telling you Terraform has successfully initialized and loaded necessary modules.
@@ -263,6 +264,11 @@ You can destroy your new cluster with the following command issued from the clus
 ```ShellSession
 $ terraform destroy -var-file=cluster.tf ../../contrib/terraform/openstack
 ```
+
+If you've started the Ansible run, it may also be a good idea to do some manual cleanup:
+
+* remove SSH keys from the destroyed cluster from your `~/.ssh/known_hosts` file
+* clean up any temporary cache files: `rm /tmp/$CLUSTER-*`
 
 ### Debugging
 You can enable debugging output from Terraform by setting

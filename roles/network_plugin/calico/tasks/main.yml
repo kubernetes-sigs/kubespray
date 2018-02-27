@@ -83,26 +83,24 @@
   uri:
     url: https://localhost:2379/health
     validate_certs: no
-    client_cert: "{{ etcd_cert_dir }}/node-{{ groups['etcd'][0] }}.pem"
-    client_key: "{{ etcd_cert_dir }}/node-{{ groups['etcd'][0] }}-key.pem"
+    client_cert: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem"
+    client_key: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem"
   register: result
   until: result.status == 200 or result.status == 401
   retries: 10
   delay: 5
-  delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
 
 - name: Calico | Check if calico network pool has already been configured
   command: |-
     curl \
       --cacert {{ etcd_cert_dir }}/ca.pem \
-      --cert {{ etcd_cert_dir}}/admin-{{ groups['etcd'][0] }}.pem \
-      --key {{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem \
+      --cert {{ etcd_cert_dir}}/node-{{ inventory_hostname }}.pem \
+      --key {{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem \
       https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
   register: calico_conf
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
   changed_when: false
 
@@ -125,13 +123,12 @@
   command: |-
     curl \
       --cacert {{ etcd_cert_dir }}/ca.pem \
-      --cert {{ etcd_cert_dir}}/admin-{{ groups['etcd'][0] }}.pem \
-      --key {{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem \
+      --cert {{ etcd_cert_dir}}/node-{{ inventory_hostname }}.pem \
+      --key {{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem \
       https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
   register: calico_pools_raw
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
 
 - set_fact:

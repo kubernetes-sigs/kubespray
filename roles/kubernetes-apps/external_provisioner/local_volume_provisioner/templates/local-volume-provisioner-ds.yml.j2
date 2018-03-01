@@ -1,0 +1,45 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: local-volume-provisioner
+  namespace: {{ local_volume_provisioner_namespace }}
+  labels:
+    k8s-app: local-volume-provisioner
+    version: {{ local_volume_provisioner_image_tag }}
+spec:
+  selector:
+    matchLabels:
+      k8s-app: local-volume-provisioner
+      version: {{ local_volume_provisioner_image_tag }}
+  template:
+    metadata:
+      labels:
+        k8s-app: local-volume-provisioner
+        version: {{ local_volume_provisioner_image_tag }}
+    spec:
+      serviceAccountName: local-volume-provisioner
+      containers:
+        - name: provisioner
+          image: {{ local_volume_provisioner_image_repo }}:{{ local_volume_provisioner_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          securityContext:
+            privileged: true
+          env:
+          - name: MY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          volumeMounts:
+            - name: local-volume-provisioner
+              mountPath: /etc/provisioner/config
+              readOnly: true
+            - name: local-volume-provisioner-hostpath-mnt-disks
+              mountPath: {{ local_volume_provisioner_mount_dir }}
+      volumes:
+        - name: local-volume-provisioner
+          configMap:
+            name: local-volume-provisioner
+        - name: local-volume-provisioner-hostpath-mnt-disks
+          hostPath:
+            path: {{ local_volume_provisioner_base_dir }}

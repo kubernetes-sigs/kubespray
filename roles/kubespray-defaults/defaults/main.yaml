@@ -170,14 +170,9 @@ helm_enabled: false
 istio_enabled: false
 registry_enabled: false
 enable_network_policy: false
-local_volume_provisioner_enabled: false
+local_volume_provisioner_enabled: "{{ local_volumes_enabled | default('false') }}"
 persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
-
-# Base path for local volume provisioner addon
-local_volume_base_dir: /mnt/disks
-local_volume_mount_dir: /local-disks
-local_volume_storage_class: local-storage
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -203,7 +198,11 @@ rbac_enabled: "{{ 'RBAC' in authorization_modes or kubeadm_enabled }}"
 
 ## List of key=value pairs that describe feature gates for
 ## the k8s cluster.
-kube_feature_gates: ['Initializers={{ istio_enabled|string }}', 'PersistentLocalVolumes={{ local_volume_provisioner_enabled|string }}']
+kube_feature_gates:
+  - "Initializers={{ istio_enabled | string }}"
+  - "PersistentLocalVolumes={{ local_volume_provisioner_enabled | string }}"
+  - "VolumeScheduling={{ local_volume_provisioner_enabled | string }}"
+  - "MountPropagation={{ local_volume_provisioner_enabled | string }}"
 
 # Vault data dirs.
 vault_base_dir: /etc/vault
@@ -289,15 +288,24 @@ kube_apiserver_client_key: |-
   {{ kube_cert_dir }}/apiserver-key.pem
   {%- endif %}
 
+# Set to true to deploy etcd-events cluster
+etcd_events_cluster_setup: false
+
 # Vars for pointing to etcd endpoints
 is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"
 etcd_address: "{{ ip | default(ansible_default_ipv4['address']) }}"
 etcd_access_address: "{{ access_ip | default(etcd_address) }}"
 etcd_peer_url: "https://{{ etcd_access_address }}:2380"
 etcd_client_url: "https://{{ etcd_access_address }}:2379"
+etcd_events_peer_url: "https://{{ etcd_access_address }}:2382"
+etcd_events_client_url: "https://{{ etcd_access_address }}:2381"
 etcd_access_addresses: |-
   {% for item in groups['etcd'] -%}
     https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2379{% if not loop.last %},{% endif %}
+  {%- endfor %}
+etcd_events_access_addresses: |-
+  {% for item in groups['etcd'] -%}
+    https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2381{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_member_name: |-
   {% for host in groups['etcd'] %}
@@ -306,4 +314,8 @@ etcd_member_name: |-
 etcd_peer_addresses: |-
   {% for item in groups['etcd'] -%}
     {{ "etcd"+loop.index|string }}=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2380{% if not loop.last %},{% endif %}
+  {%- endfor %}
+etcd_events_peer_addresses: |-
+  {% for item in groups['etcd'] -%}
+    {{ "etcd"+loop.index|string }}-events=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2382{% if not loop.last %},{% endif %}
   {%- endfor %}

@@ -77,13 +77,13 @@ Versions of supported components
 
 -   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.9.3
 -   [etcd](https://github.com/coreos/etcd/releases) v3.2.4
--   [flanneld](https://github.com/coreos/flannel/releases) v0.8.0
+-   [flanneld](https://github.com/coreos/flannel/releases) v0.9.1
 -   [calico](https://docs.projectcalico.org/v2.5/releases/) v2.5.0
 -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
 -   [cilium](https://github.com/cilium/cilium) v1.0.0-rc4
 -   [contiv](https://github.com/contiv/install/releases) v1.0.3
 -   [weave](http://weave.works/) v2.0.1
--   [docker](https://www.docker.com/) v1.13 (see note)
+-   [docker](https://www.docker.com/) v17.03 (see note)
 -   [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 (see Note 2)
 
 Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).

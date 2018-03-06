@@ -122,6 +122,7 @@ Vagrant.configure("2") do |config|
 
      config.vm.provider :libvirt do |lv|
        lv.memory = $vm_memory
+       lv.cpus = $vm_cpus
      end
 
       ip = "#{$subnet}.#{i+100}"

@@ -80,7 +80,7 @@ Versions of supported components
 -   [flanneld](https://github.com/coreos/flannel/releases) v0.9.1
 -   [calico](https://docs.projectcalico.org/v2.5/releases/) v2.5.0
 -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
--   [cilium](https://github.com/cilium/cilium) v1.0.0-rc5
+-   [cilium](https://github.com/cilium/cilium) v1.0.0-rc6
 -   [contiv](https://github.com/contiv/install/releases) v1.0.3
 -   [weave](http://weave.works/) v2.0.1
 -   [docker](https://www.docker.com/) v17.03 (see note)

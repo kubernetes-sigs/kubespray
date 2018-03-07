@@ -46,5 +46,8 @@ For a large scaled deployments, consider the following configuration changes:
   section of the Getting started guide for tips on creating a large scale
   Ansible inventory.
 
+* Override the ``etcd_events_cluster_setup: true`` store events in a separate
+  dedicated etcd instance.
+
 For example, when deploying 200 nodes, you may want to run ansible with
 ``--forks=50``, ``--timeout=600`` and define the ``retry_stagger: 60``.

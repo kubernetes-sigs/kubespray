@@ -1,0 +1,48 @@
+---
+- name: ensure docker nvidia repository public key is installed
+  action: "{{ docker_nvidia_repo_key_info.pkg_key }}"
+  args:
+    id: "{{item}}"
+    url: "{{docker_nvidia_repo_key_info.url}}"
+    state: present
+  register: keyserver_task_result
+  until: keyserver_task_result|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items: "{{ docker_nvidia_repo_key_info.repo_keys }}"
+  when: ansible_distribution is 'Ubuntu' 
+
+- name: download docker nvidia apt list
+  get_url:
+    url: "{{ docker_nvidia_apt_repo_url }}"
+    dest: "/etc/apt/sources.list.d/nvidia-docker.list"
+  register: result
+  when: ansible_distribution is 'Ubuntu'
+
+- name: apt-get update
+  apt: update_cache=yes
+  when: result.changed and ansible_distribution is 'Ubuntu'
+
+- name: ensure docker nvidia packages are installed
+  action: "{{ docker_nvidia_package_info.pkg_mgr }}"
+  args:
+    pkg: "{{item.name}}"
+    force: "{{item.force|default(omit)}}"
+    state: present
+  register: docker_task_result
+  until: docker_task_result|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items: "{{ docker_nvidia_package_info.pkgs }}"
+  when: ansible_distribution is 'Ubuntu' 
+
+- set_fact:
+    docker_options: "{{ docker_options }} --default-runtime=nvidia"
+
+    #- name: set nvidia as default container runtime
+    #  template:
+    #    src: templates/docker-daemon.json.j2
+    #    dest: /etc/docker/daemon.json
+    #    owner: root
+    #    group: root
+    #    mode: 0640

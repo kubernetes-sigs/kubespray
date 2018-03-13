@@ -51,6 +51,18 @@ ansible-playbook -i inventory/mycluster/hosts.ini scale.yml -b -v \
   --private-key=~/.ssh/private_key
 ```
 
+Remove nodes
+------------
+
+You may want to remove **worker** nodes to your existing cluster. This can be done by re-running the `remove-node.yml` playbook. First, all nodes will be drained, then stop some kubernetes services and delete some certificates, and finally execute the kubectl command to delete these nodes. This can be combined with the add node function, This is generally helpful when doing something like autoscaling your clusters. Of course if a node is not working, you can remove the node and install it again.
+
+- Add worker nodes to the list under kube-node if you want to delete them (or utilize a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html)).
+- Run the ansible-playbook command, substituting `remove-node.yml`:
+```
+ansible-playbook -i inventory/mycluster/hosts.ini remove-node.yml -b -v \
+  --private-key=~/.ssh/private_key
+```
+
 Connecting to Kubernetes
 ------------------------
 By default, Kubespray configures kube-master hosts with insecure access to

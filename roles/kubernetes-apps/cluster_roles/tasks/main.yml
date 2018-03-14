@@ -75,6 +75,18 @@
     - node_webhook_crb_manifest.changed
   tags: node-webhook
 
+- name: Check if vsphere-cloud-provider ClusterRole exists
+  command: "{{ bin_dir }}/kubectl get clusterroles system:vsphere-cloud-provider"
+  register: vsphere_cloud_provider
+  ignore_errors: true
+  when:
+    - rbac_enabled
+    - cloud_provider is defined
+    - cloud_provider == 'vsphere'
+    - kube_version | version_compare('v1.9.0', '>=')
+    - kube_version | version_compare('v1.9.3', '<=')
+  tags: vsphere
+
 - name: Write vsphere-cloud-provider ClusterRole manifest
   template:
     src: "vsphere-rbac.yml.j2"
@@ -84,7 +96,9 @@
     - rbac_enabled
     - cloud_provider is defined
     - cloud_provider == 'vsphere'
+    - vsphere_cloud_provider.rc != 0
     - kube_version | version_compare('v1.9.0', '>=')
+    - kube_version | version_compare('v1.9.3', '<=')
   tags: vsphere
 
 - name: Apply vsphere-cloud-provider ClusterRole
@@ -98,8 +112,9 @@
     - rbac_enabled
     - cloud_provider is defined
     - cloud_provider == 'vsphere'
-    - vsphere_rbac_manifest.changed
+    - vsphere_cloud_provider.rc != 0
     - kube_version | version_compare('v1.9.0', '>=')
+    - kube_version | version_compare('v1.9.3', '<=')
   tags: vsphere
 
 # This is not a cluster role, but should be run after kubeconfig is set on master

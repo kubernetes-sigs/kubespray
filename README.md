@@ -69,6 +69,7 @@ Supported Linux Distributions
 -   **Debian** Jessie
 -   **Ubuntu** 16.04
 -   **CentOS/RHEL** 7
+-   **Fedora/CentOS** Atomic
 
 Note: Upstart/SysV init based OS types are not supported.
 
@@ -150,5 +151,5 @@ CI Tests
 
 [![Build graphs](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/badges/master/build.svg)](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/pipelines)
 
-CI/end-to-end tests sponsored by Google (GCE), DigitalOcean, [teuto.net](https://teuto.net/) (openstack).
+CI/end-to-end tests sponsored by Google (GCE)
 See the [test matrix](docs/test_cases.md) for details.

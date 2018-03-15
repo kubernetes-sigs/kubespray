@@ -22,13 +22,19 @@
     - loadbalancer_apiserver is defined
     - loadbalancer_apiserver.address is defined
 
+- name: Hosts | Retrieve hosts file content
+  slurp:
+    src: /etc/hosts
+  register: etc_hosts_content
 
 - name: Hosts | Extract existing entries for localhost from hosts file
   set_fact:
     entry: "{{ item | regex_replace('[ ]+', ' ')|regex_replace('#.+$')|trim }}"
-  with_items: "{{ lookup('file', '/etc/hosts').split('\n') }}"
+  with_items: "{{ (etc_hosts_content['content'] | b64decode).split('\n') }}"
   register: etc_hosts_localhosts
-  when: (item|match('^::1 .*') or item|match('^127.0.0.1 .*'))
+  when: 
+    - etc_hosts_content.content is defined
+    - (item|match('^::1 .*') or item|match('^127.0.0.1 .*'))
 
 - name: Hosts | Convert extract entries for localhost as dict
   set_fact:

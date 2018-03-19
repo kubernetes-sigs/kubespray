@@ -76,7 +76,7 @@ Note: Upstart/SysV init based OS types are not supported.
 Versions of supported components
 --------------------------------
 
--   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.9.3
+-   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.9.5
 -   [etcd](https://github.com/coreos/etcd/releases) v3.2.4
 -   [flanneld](https://github.com/coreos/flannel/releases) v0.9.1
 -   [calico](https://docs.projectcalico.org/v2.5/releases/) v2.5.0

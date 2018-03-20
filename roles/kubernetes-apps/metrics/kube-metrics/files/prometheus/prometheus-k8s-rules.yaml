@@ -1,0 +1,483 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-k8s-rules
+  labels:
+    role: prometheus-rulefiles
+    prometheus: k8s
+data:
+  alertmanager.rules.yaml: |+
+    groups:
+    - name: ./alertmanager.rules
+      rules:
+      - alert: AlertmanagerConfigInconsistent
+        expr: count_values("config_hash", alertmanager_config_hash) BY (service) / ON(service)
+          GROUP_LEFT() label_replace(prometheus_operator_alertmanager_spec_replicas, "service",
+          "alertmanager-$1", "alertmanager", "(.*)") != 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          description: The configuration of the instances of the Alertmanager cluster
+            `{{$labels.service}}` are out of sync.
+          summary: Alertmanager configurations are inconsistent
+      - alert: AlertmanagerDownOrMissing
+        expr: label_replace(prometheus_operator_alertmanager_spec_replicas, "job", "alertmanager-$1",
+          "alertmanager", "(.*)") / ON(job) GROUP_RIGHT() sum(up) BY (job) != 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: An unexpected number of Alertmanagers are scraped or Alertmanagers
+            disappeared from discovery.
+          summary: Alertmanager down or not discovered
+      - alert: FailedReload
+        expr: alertmanager_config_last_reload_successful == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: Reloading Alertmanager's configuration has failed for {{ $labels.namespace
+            }}/{{ $labels.pod}}.
+          summary: Alertmanager configuration reload has failed
+  etcd3.rules.yaml: |+
+    groups:
+    - name: ./etcd3.rules
+      rules:
+      - alert: InsufficientMembers
+        expr: count(up{job="etcd"} == 0) > (count(up{job="etcd"}) / 2 - 1)
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          description: If one more etcd member goes down the cluster will be unavailable
+          summary: etcd cluster insufficient members
+      - alert: NoLeader
+        expr: etcd_server_has_leader{job="etcd"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          description: etcd member {{ $labels.instance }} has no leader
+          summary: etcd member has no leader
+      - alert: HighNumberOfLeaderChanges
+        expr: increase(etcd_server_leader_changes_seen_total{job="etcd"}[1h]) > 3
+        labels:
+          severity: warning
+        annotations:
+          description: etcd instance {{ $labels.instance }} has seen {{ $value }} leader
+            changes within the last hour
+          summary: a high number of leader changes within the etcd cluster are happening
+      - alert: HighNumberOfFailedGRPCRequests
+        expr: sum(rate(etcd_grpc_requests_failed_total{job="etcd"}[5m])) BY (grpc_method)
+          / sum(rate(etcd_grpc_total{job="etcd"}[5m])) BY (grpc_method) > 0.01
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: '{{ $value }}% of requests for {{ $labels.grpc_method }} failed
+            on etcd instance {{ $labels.instance }}'
+          summary: a high number of gRPC requests are failing
+      - alert: HighNumberOfFailedGRPCRequests
+        expr: sum(rate(etcd_grpc_requests_failed_total{job="etcd"}[5m])) BY (grpc_method)
+          / sum(rate(etcd_grpc_total{job="etcd"}[5m])) BY (grpc_method) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          description: '{{ $value }}% of requests for {{ $labels.grpc_method }} failed
+            on etcd instance {{ $labels.instance }}'
+          summary: a high number of gRPC requests are failing
+      - alert: GRPCRequestsSlow
+        expr: histogram_quantile(0.99, rate(etcd_grpc_unary_requests_duration_seconds_bucket[5m]))
+          > 0.15
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          description: on etcd instance {{ $labels.instance }} gRPC requests to {{ $labels.grpc_method
+            }} are slow
+          summary: slow gRPC requests
+      - alert: HighNumberOfFailedHTTPRequests
+        expr: sum(rate(etcd_http_failed_total{job="etcd"}[5m])) BY (method) / sum(rate(etcd_http_received_total{job="etcd"}[5m]))
+          BY (method) > 0.01
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: '{{ $value }}% of requests for {{ $labels.method }} failed on etcd
+            instance {{ $labels.instance }}'
+          summary: a high number of HTTP requests are failing
+      - alert: HighNumberOfFailedHTTPRequests
+        expr: sum(rate(etcd_http_failed_total{job="etcd"}[5m])) BY (method) / sum(rate(etcd_http_received_total{job="etcd"}[5m]))
+          BY (method) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          description: '{{ $value }}% of requests for {{ $labels.method }} failed on etcd
+            instance {{ $labels.instance }}'
+          summary: a high number of HTTP requests are failing
+      - alert: HTTPRequestsSlow
+        expr: histogram_quantile(0.99, rate(etcd_http_successful_duration_seconds_bucket[5m]))
+          > 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: on etcd instance {{ $labels.instance }} HTTP requests to {{ $labels.method
+            }} are slow
+          summary: slow HTTP requests
+      - alert: EtcdMemberCommunicationSlow
+        expr: histogram_quantile(0.99, rate(etcd_network_member_round_trip_time_seconds_bucket[5m]))
+          > 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: etcd instance {{ $labels.instance }} member communication with
+            {{ $labels.To }} is slow
+          summary: etcd member communication is slow
+      - alert: HighNumberOfFailedProposals
+        expr: increase(etcd_server_proposals_failed_total{job="etcd"}[1h]) > 5
+        labels:
+          severity: warning
+        annotations:
+          description: etcd instance {{ $labels.instance }} has seen {{ $value }} proposal
+            failures within the last hour
+          summary: a high number of proposals within the etcd cluster are failing
+      - alert: HighFsyncDurations
+        expr: histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m]))
+          > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: etcd instance {{ $labels.instance }} fync durations are high
+          summary: high fsync durations
+      - alert: HighCommitDurations
+        expr: histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket[5m]))
+          > 0.25
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: etcd instance {{ $labels.instance }} commit durations are high
+          summary: high commit durations
+  general.rules.yaml: |+
+    groups:
+    - name: ./general.rules
+      rules:
+      - alert: TargetDown
+        expr: 100 * (count(up == 0) BY (job) / count(up) BY (job)) > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: '{{ $value }}% or more of {{ $labels.job }} targets are down.'
+          summary: Targets are down
+      - alert: DeadMansSwitch
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          description: This is a DeadMansSwitch meant to ensure that the entire Alerting
+            pipeline is functional.
+          summary: Alerting DeadMansSwitch
+      - alert: TooManyOpenFileDescriptors
+        expr: 100 * (process_open_fds / process_max_fds) > 95
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          description: '{{ $labels.job }}: {{ $labels.namespace }}/{{ $labels.pod }} ({{
+            $labels.instance }}) is using {{ $value }}% of the available file/socket descriptors.'
+          summary: too many open file descriptors
+      - record: instance:fd_utilization
+        expr: process_open_fds / process_max_fds
+      - alert: FdExhaustionClose
+        expr: predict_linear(instance:fd_utilization[1h], 3600 * 4) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: '{{ $labels.job }}: {{ $labels.namespace }}/{{ $labels.pod }} ({{
+            $labels.instance }}) instance will exhaust in file/socket descriptors soon'
+          summary: file descriptors soon exhausted
+      - alert: FdExhaustionClose
+        expr: predict_linear(instance:fd_utilization[10m], 3600) > 1
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          description: '{{ $labels.job }}: {{ $labels.namespace }}/{{ $labels.pod }} ({{
+            $labels.instance }}) instance will exhaust in file/socket descriptors soon'
+          summary: file descriptors soon exhausted
+  kube-apiserver.rules.yaml: |+
+    groups:
+    - name: ./kube-apiserver.rules
+      rules:
+      - alert: K8SApiserverDown
+        expr: absent(up{job="apiserver"} == 1)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          description: Prometheus failed to scrape API server(s), or all API servers have
+            disappeared from service discovery.
+          summary: API server unreachable
+      - alert: K8SApiServerLatency
+        expr: histogram_quantile(0.99, sum(apiserver_request_latencies_bucket{subresource!="log",verb!~"^(?:CONNECT|WATCHLIST|WATCH|PROXY)$"})
+          WITHOUT (instance, resource)) / 1e+06 > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: 99th percentile Latency for {{ $labels.verb }} requests to the
+            kube-apiserver is higher than 1s.
+          summary: Kubernetes apiserver latency is high
+  kube-controller-manager.rules.yaml: |+
+    groups:
+    - name: ./kube-controller-manager.rules
+      rules:
+      - alert: K8SControllerManagerDown
+        expr: absent(up{job="kube-controller-manager"} == 1)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          description: There is no running K8S controller manager. Deployments and replication
+            controllers are not making progress.
+          runbook: https://coreos.com/tectonic/docs/latest/troubleshooting/controller-recovery.html#recovering-a-controller-manager
+          summary: Controller manager is down
+  kube-scheduler.rules.yaml: |+
+    groups:
+    - name: ./kube-scheduler.rules
+      rules:
+      - alert: K8SSchedulerDown
+        expr: absent(up{job="kube-scheduler"} == 1)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          description: There is no running K8S scheduler. New pods are not being assigned
+            to nodes.
+          runbook: https://coreos.com/tectonic/docs/latest/troubleshooting/controller-recovery.html#recovering-a-scheduler
+          summary: Scheduler is down
+  kubelet.rules.yaml: |+
+    groups:
+    - name: ./kubelet.rules
+      rules:
+      - alert: K8SNodeNotReady
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          description: The Kubelet on {{ $labels.node }} has not checked in with the API,
+            or has set itself to NotReady, for more than an hour
+          summary: Node status is NotReady
+      - alert: K8SManyNodesNotReady
+        expr: count(kube_node_status_condition{condition="Ready",status="true"} == 0)
+          > 1 and (count(kube_node_status_condition{condition="Ready",status="true"} ==
+          0) / count(kube_node_status_condition{condition="Ready",status="true"})) > 0.2
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          description: '{{ $value }} Kubernetes nodes (more than 10% are in the NotReady
+            state).'
+          summary: Many Kubernetes nodes are Not Ready
+      - alert: K8SKubeletDown
+        expr: count(up{job="kubelet"} == 0) / count(up{job="kubelet"}) > 0.03
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          description: Prometheus failed to scrape {{ $value }}% of kubelets.
+          summary: Many Kubelets cannot be scraped
+      - alert: K8SKubeletDown
+        expr: absent(up{job="kubelet"} == 1) or count(up{job="kubelet"} == 0) / count(up{job="kubelet"})
+          > 0.1
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          description: Prometheus failed to scrape {{ $value }}% of kubelets, or all Kubelets
+            have disappeared from service discovery.
+          summary: Many Kubelets cannot be scraped
+      - alert: K8SKubeletTooManyPods
+        expr: kubelet_running_pod_count > 100
+        labels:
+          severity: warning
+        annotations:
+          description: Kubelet {{$labels.instance}} is running {{$value}} pods, close
+            to the limit of 110
+          summary: Kubelet is close to pod limit
+  kubernetes.rules.yaml: |+
+    groups:
+    - name: ./kubernetes.rules
+      rules:
+      - record: cluster_namespace_controller_pod_container:spec_memory_limit_bytes
+        expr: sum(label_replace(container_spec_memory_limit_bytes{container_name!=""},
+          "controller", "$1", "pod_name", "^(.*)-[a-z0-9]+")) BY (cluster, namespace,
+          controller, pod_name, container_name)
+      - record: cluster_namespace_controller_pod_container:spec_cpu_shares
+        expr: sum(label_replace(container_spec_cpu_shares{container_name!=""}, "controller",
+          "$1", "pod_name", "^(.*)-[a-z0-9]+")) BY (cluster, namespace, controller, pod_name,
+          container_name)
+      - record: cluster_namespace_controller_pod_container:cpu_usage:rate
+        expr: sum(label_replace(irate(container_cpu_usage_seconds_total{container_name!=""}[5m]),
+          "controller", "$1", "pod_name", "^(.*)-[a-z0-9]+")) BY (cluster, namespace,
+          controller, pod_name, container_name)
+      - record: cluster_namespace_controller_pod_container:memory_usage:bytes
+        expr: sum(label_replace(container_memory_usage_bytes{container_name!=""}, "controller",
+          "$1", "pod_name", "^(.*)-[a-z0-9]+")) BY (cluster, namespace, controller, pod_name,
+          container_name)
+      - record: cluster_namespace_controller_pod_container:memory_working_set:bytes
+        expr: sum(label_replace(container_memory_working_set_bytes{container_name!=""},
+          "controller", "$1", "pod_name", "^(.*)-[a-z0-9]+")) BY (cluster, namespace,
+          controller, pod_name, container_name)
+      - record: cluster_namespace_controller_pod_container:memory_rss:bytes
+        expr: sum(label_replace(container_memory_rss{container_name!=""}, "controller",
+          "$1", "pod_name", "^(.*)-[a-z0-9]+")) BY (cluster, namespace, controller, pod_name,
+          container_name)
+      - record: cluster_namespace_controller_pod_container:memory_cache:bytes
+        expr: sum(label_replace(container_memory_cache{container_name!=""}, "controller",
+          "$1", "pod_name", "^(.*)-[a-z0-9]+")) BY (cluster, namespace, controller, pod_name,
+          container_name)
+      - record: cluster_namespace_controller_pod_container:disk_usage:bytes
+        expr: sum(label_replace(container_disk_usage_bytes{container_name!=""}, "controller",
+          "$1", "pod_name", "^(.*)-[a-z0-9]+")) BY (cluster, namespace, controller, pod_name,
+          container_name)
+      - record: cluster_namespace_controller_pod_container:memory_pagefaults:rate
+        expr: sum(label_replace(irate(container_memory_failures_total{container_name!=""}[5m]),
+          "controller", "$1", "pod_name", "^(.*)-[a-z0-9]+")) BY (cluster, namespace,
+          controller, pod_name, container_name, scope, type)
+      - record: cluster_namespace_controller_pod_container:memory_oom:rate
+        expr: sum(label_replace(irate(container_memory_failcnt{container_name!=""}[5m]),
+          "controller", "$1", "pod_name", "^(.*)-[a-z0-9]+")) BY (cluster, namespace,
+          controller, pod_name, container_name, scope, type)
+      - record: cluster:memory_allocation:percent
+        expr: 100 * sum(container_spec_memory_limit_bytes{pod_name!=""}) BY (cluster)
+          / sum(machine_memory_bytes) BY (cluster)
+      - record: cluster:memory_used:percent
+        expr: 100 * sum(container_memory_usage_bytes{pod_name!=""}) BY (cluster) / sum(machine_memory_bytes)
+          BY (cluster)
+      - record: cluster:cpu_allocation:percent
+        expr: 100 * sum(container_spec_cpu_shares{pod_name!=""}) BY (cluster) / sum(container_spec_cpu_shares{id="/"}
+          * ON(cluster, instance) machine_cpu_cores) BY (cluster)
+      - record: cluster:node_cpu_use:percent
+        expr: 100 * sum(rate(node_cpu{mode!="idle"}[5m])) BY (cluster) / sum(machine_cpu_cores)
+          BY (cluster)
+      - record: cluster_resource_verb:apiserver_latency:quantile_seconds
+        expr: histogram_quantile(0.99, sum(apiserver_request_latencies_bucket) BY (le,
+          cluster, job, resource, verb)) / 1e+06
+        labels:
+          quantile: "0.99"
+      - record: cluster_resource_verb:apiserver_latency:quantile_seconds
+        expr: histogram_quantile(0.9, sum(apiserver_request_latencies_bucket) BY (le,
+          cluster, job, resource, verb)) / 1e+06
+        labels:
+          quantile: "0.9"
+      - record: cluster_resource_verb:apiserver_latency:quantile_seconds
+        expr: histogram_quantile(0.5, sum(apiserver_request_latencies_bucket) BY (le,
+          cluster, job, resource, verb)) / 1e+06
+        labels:
+          quantile: "0.5"
+      - record: cluster:scheduler_e2e_scheduling_latency:quantile_seconds
+        expr: histogram_quantile(0.99, sum(scheduler_e2e_scheduling_latency_microseconds_bucket)
+          BY (le, cluster)) / 1e+06
+        labels:
+          quantile: "0.99"
+      - record: cluster:scheduler_e2e_scheduling_latency:quantile_seconds
+        expr: histogram_quantile(0.9, sum(scheduler_e2e_scheduling_latency_microseconds_bucket)
+          BY (le, cluster)) / 1e+06
+        labels:
+          quantile: "0.9"
+      - record: cluster:scheduler_e2e_scheduling_latency:quantile_seconds
+        expr: histogram_quantile(0.5, sum(scheduler_e2e_scheduling_latency_microseconds_bucket)
+          BY (le, cluster)) / 1e+06
+        labels:
+          quantile: "0.5"
+      - record: cluster:scheduler_scheduling_algorithm_latency:quantile_seconds
+        expr: histogram_quantile(0.99, sum(scheduler_scheduling_algorithm_latency_microseconds_bucket)
+          BY (le, cluster)) / 1e+06
+        labels:
+          quantile: "0.99"
+      - record: cluster:scheduler_scheduling_algorithm_latency:quantile_seconds
+        expr: histogram_quantile(0.9, sum(scheduler_scheduling_algorithm_latency_microseconds_bucket)
+          BY (le, cluster)) / 1e+06
+        labels:
+          quantile: "0.9"
+      - record: cluster:scheduler_scheduling_algorithm_latency:quantile_seconds
+        expr: histogram_quantile(0.5, sum(scheduler_scheduling_algorithm_latency_microseconds_bucket)
+          BY (le, cluster)) / 1e+06
+        labels:
+          quantile: "0.5"
+      - record: cluster:scheduler_binding_latency:quantile_seconds
+        expr: histogram_quantile(0.99, sum(scheduler_binding_latency_microseconds_bucket)
+          BY (le, cluster)) / 1e+06
+        labels:
+          quantile: "0.99"
+      - record: cluster:scheduler_binding_latency:quantile_seconds
+        expr: histogram_quantile(0.9, sum(scheduler_binding_latency_microseconds_bucket)
+          BY (le, cluster)) / 1e+06
+        labels:
+          quantile: "0.9"
+      - record: cluster:scheduler_binding_latency:quantile_seconds
+        expr: histogram_quantile(0.5, sum(scheduler_binding_latency_microseconds_bucket)
+          BY (le, cluster)) / 1e+06
+        labels:
+          quantile: "0.5"
+  node.rules.yaml: |+
+    groups:
+    - name: ./node.rules
+      rules:
+      - alert: NodeExporterDown
+        expr: absent(up{job="node-exporter"} == 1)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: Prometheus could not scrape a node-exporter for more than 10m,
+            or node-exporters have disappeared from discovery.
+          summary: node-exporter cannot be scraped
+      - alert: K8SNodeOutOfDisk
+        expr: kube_node_status_condition{condition="OutOfDisk",status="true"} == 1
+        labels:
+          service: k8s
+          severity: critical
+        annotations:
+          description: '{{ $labels.node }} has run out of disk space.'
+          summary: Node ran out of disk space.
+      - alert: K8SNodeMemoryPressure
+        expr: kube_node_status_condition{condition="MemoryPressure",status="true"} ==
+          1
+        labels:
+          service: k8s
+          severity: warning
+        annotations:
+          description: '{{ $labels.node }} is under memory pressure.'
+          summary: Node is under memory pressure.
+      - alert: K8SNodeDiskPressure
+        expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+        labels:
+          service: k8s
+          severity: warning
+        annotations:
+          description: '{{ $labels.node }} is under disk pressure.'
+          summary: Node is under disk pressure.
+  prometheus.rules.yaml: |+
+    groups:
+    - name: ./prometheus.rules
+      rules:
+      - alert: FailedReload
+        expr: prometheus_config_last_reload_successful == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          description: Reloading Prometheus' configuration has failed for {{ $labels.namespace
+            }}/{{ $labels.pod}}.
+          summary: Prometheus configuration reload has failed

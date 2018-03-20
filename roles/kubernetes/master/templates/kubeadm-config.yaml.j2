@@ -16,8 +16,11 @@ networking:
   serviceSubnet: {{ kube_service_addresses }}
   podSubnet: {{ kube_pods_subnet }}
 kubernetesVersion: {{ kube_version }}
-{% if cloud_provider is defined and cloud_provider != "gce" %}
-cloudProvider: {{ cloud_provider }}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"] %}
+  cloud-provider: {{ cloud_provider }}
+  cloud-config: {{ kube_config_dir }}/cloud_config
+{% elif cloud_provider is defined and cloud_provider == "aws" %}
+  cloud-provider: {{ cloud_provider }}
 {% endif %}
 {% if kube_proxy_mode == 'ipvs' %}
 kubeProxy:
@@ -50,6 +53,9 @@ apiServerExtraArgs:
 {% if kube_basic_auth|default(true) %}
   basic-auth-file: {{ kube_users_dir }}/known_users.csv
 {% endif %}
+{% if kube_token_auth|default(true) %}
+  token-auth-file: {{ kube_token_dir }}/known_tokens.csv
+{% endif %}
 {% if kube_oidc_auth|default(false) and kube_oidc_url is defined and kube_oidc_client_id is defined %}
   oidc-issuer-url: {{ kube_oidc_url }}
   oidc-client-id: {{ kube_oidc_client_id }}
@@ -79,6 +85,22 @@ controllerManagerExtraArgs:
   node-monitor-period: {{ kube_controller_node_monitor_period }}
   pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
   enable-hostpath-provisioner: "{{ kube_hostpath_dynamic_provisioner }}"
+  profiling: {{ kube_profiling }}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"] %}
+  cloud-provider: {{cloud_provider}}
+  cloud-config: {{ kube_config_dir }}/cloud_config
+{% elif cloud_provider is defined and cloud_provider in ["aws", "external"] %}
+  cloud-provider: {{cloud_provider}}
+{% endif %}
+{% if kube_network_plugin is defined and kube_network_plugin == 'cloud' %}
+  configure-cloud-routes: "true"
+{% endif %}
+{% if kube_network_plugin is defined and kube_network_plugin in ["cloud", "flannel", "canal", "cilium"] %}
+  allocate-node-cidrs: true
+  cluster-cidr: {{ kube_pods_subnet }}
+  service-cluster-ip-range: {{ kube_service_addresses }}
+  node-cidr-mask-size: {{ kube_network_node_prefix }}
+{% endif %}
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -87,6 +109,13 @@ controllerManagerExtraArgs:
 {% endfor %}
 {% if kube_kubeadm_scheduler_extra_args|length > 0 %}
 schedulerExtraArgs:
+{% if volume_cross_zone_attachment %}
+  policy-config-file: {{ kube_config_dir }}/kube-scheduler-policy.yaml
+{% endif %}
+  profiling: {{ kube_profiling }}
+{% if kube_feature_gates %}
+  feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
 {% for key in kube_kubeadm_scheduler_extra_args %}
   {{ key }}: "{{ kube_kubeadm_scheduler_extra_args[key] }}"
 {% endfor %}

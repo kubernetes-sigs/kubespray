@@ -137,6 +137,6 @@ The possible vars are:
 
 By default, a user with admin rights is created, named `kube`.
 The password can be viewed after deployment by looking at the file
-`PATH_TO_KUBESPRAY/credentials/kube_user`. This contains a randomly generated
+`PATH_TO_KUBESPRAY/credentials/kube_user.creds`. This contains a randomly generated
 password. If you wish to set your own password, just precreate/modify this
 file yourself or change `kube_api_pwd` var.

@@ -1,0 +1,51 @@
+---
+# - name: "Kubernetes Monitoring | make directory for configs"
+#  file: 'path="{{ dst_dir }}" state=directory'
+
+- name: "Kubernetes Monitoring | preparing directory "
+  file:
+    path: "{{ dst_dir }}/{{ item }}"
+    state: "directory"
+  with_items:
+    - "node-exporter"
+    - "kube-state-metrics"
+    - "grafana"
+    - "prometheus"
+    - "prometheus-roles"
+    - "alertmanager"
+
+- name: "Kubernetes Monitoring | Copy manifests"
+  copy:
+    src: "{{ item }}"
+    dest: "{{ dst_dir }}/{{ item }}"
+    directory_mode: yes
+  with_items:
+    - "node-exporter/"
+    - "kube-state-metrics/"
+    - "grafana/"
+    - "prometheus/"
+    - "prometheus-roles/"
+    - "alertmanager/"
+
+- name: "Kubernetes Monitoring | Copy wait script"
+  template:
+    src: "wait.sh"
+    dest: "{{ dst_dir }}/wait.sh"
+
+- name: "Prometheus Operator | Run waiting script"
+  command: "bash {{ dst_dir }}/wait.sh"
+
+- name: "Kubernetes Monitoring | Create roles"
+  command: "{{ bin_dir }}/kubectl apply -f {{ dst_dir }}/{{ item }}"
+  with_items:
+    - prometheus-roles
+
+- name: "Kubernetes Monitoring | Run monitoring objects"
+  command: "{{ bin_dir }}/kubectl apply --namespace {{ monitoring_namespace }} -f {{ dst_dir }}/{{ item }}"
+  with_items:
+    - node-exporter
+    - kube-state-metrics
+    - grafana/grafana-credentials.yaml
+    - grafana
+    - prometheus
+    - alertmanager

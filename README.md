@@ -78,7 +78,7 @@ Versions of supported components
 
 -   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.9.3
 -   [etcd](https://github.com/coreos/etcd/releases) v3.2.4
--   [flanneld](https://github.com/coreos/flannel/releases) v0.9.1
+-   [flanneld](https://github.com/coreos/flannel/releases) v0.10.0
 -   [calico](https://docs.projectcalico.org/v2.5/releases/) v2.5.0
 -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
 -   [cilium](https://github.com/cilium/cilium) v1.0.0-rc4

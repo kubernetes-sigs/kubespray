@@ -16,7 +16,9 @@
     src: "node-crb.yml.j2"
     dest: "{{ kube_config_dir }}/node-crb.yml"
   register: node_crb_manifest
-  when: rbac_enabled
+  when:
+    - rbac_enabled
+    - inventory_hostname == groups['kube-master'][0]
 
 - name: Apply workaround to allow all nodes with cert O=system:nodes to register
   kube:
@@ -28,6 +30,7 @@
   when:
     - rbac_enabled
     - node_crb_manifest.changed
+    - inventory_hostname == groups['kube-master'][0]
 
 - name: Kubernetes Apps | Add webhook ClusterRole that grants access to proxy, stats, log, spec, and metrics on a kubelet
   template:
@@ -37,6 +40,7 @@
   when:
     - rbac_enabled
     - kubelet_authorization_mode_webhook
+    - inventory_hostname == groups['kube-master'][0]
   tags: node-webhook
 
 - name: Apply webhook ClusterRole
@@ -50,6 +54,7 @@
     - rbac_enabled
     - kubelet_authorization_mode_webhook
     - node_webhook_cr_manifest.changed
+    - inventory_hostname == groups['kube-master'][0]
   tags: node-webhook
 
 - name: Kubernetes Apps | Add ClusterRoleBinding for system:nodes to webhook ClusterRole
@@ -60,6 +65,7 @@
   when:
     - rbac_enabled
     - kubelet_authorization_mode_webhook
+    - inventory_hostname == groups['kube-master'][0]
   tags: node-webhook
 
 - name: Grant system:nodes the webhook ClusterRole
@@ -73,6 +79,7 @@
     - rbac_enabled
     - kubelet_authorization_mode_webhook
     - node_webhook_crb_manifest.changed
+    - inventory_hostname == groups['kube-master'][0]
   tags: node-webhook
 
 - name: Check if vsphere-cloud-provider ClusterRole exists
@@ -85,6 +92,7 @@
     - cloud_provider == 'vsphere'
     - kube_version | version_compare('v1.9.0', '>=')
     - kube_version | version_compare('v1.9.3', '<=')
+    - inventory_hostname == groups['kube-master'][0]
   tags: vsphere
 
 - name: Write vsphere-cloud-provider ClusterRole manifest
@@ -99,6 +107,7 @@
     - vsphere_cloud_provider.rc != 0
     - kube_version | version_compare('v1.9.0', '>=')
     - kube_version | version_compare('v1.9.3', '<=')
+    - inventory_hostname == groups['kube-master'][0]
   tags: vsphere
 
 - name: Apply vsphere-cloud-provider ClusterRole
@@ -115,6 +124,7 @@
     - vsphere_cloud_provider.rc != 0
     - kube_version | version_compare('v1.9.0', '>=')
     - kube_version | version_compare('v1.9.3', '<=')
+    - inventory_hostname == groups['kube-master'][0]
   tags: vsphere
 
 # This is not a cluster role, but should be run after kubeconfig is set on master

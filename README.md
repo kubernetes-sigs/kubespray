@@ -79,11 +79,11 @@ Versions of supported components
 -   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.9.5
 -   [etcd](https://github.com/coreos/etcd/releases) v3.2.4
 -   [flanneld](https://github.com/coreos/flannel/releases) v0.10.0
--   [calico](https://docs.projectcalico.org/v2.5/releases/) v2.5.0
+-   [calico](https://docs.projectcalico.org/v2.5/releases/) v2.6.2
 -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
--   [cilium](https://github.com/cilium/cilium) v1.0.0-rc4
--   [contiv](https://github.com/contiv/install/releases) v1.0.3
--   [weave](http://weave.works/) v2.0.1
+-   [cilium](https://github.com/cilium/cilium) v1.0.0-rc8
+-   [contiv](https://github.com/contiv/install/releases) v1.1.7
+-   [weave](http://weave.works/) v2.2.0
 -   [docker](https://www.docker.com/) v17.03 (see note)
 -   [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 (see Note 2)
 

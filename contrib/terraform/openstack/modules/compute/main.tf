@@ -111,6 +111,10 @@ resource "openstack_compute_instance_v2" "k8s_master" {
     depends_on       = "${var.network_id}"
   }
 
+  provisioner "local-exec" {
+    command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.number_of_bastions > 0 ? var.k8s_master_fips[0] : var.k8s_master_fips[0]}/ > contrib/terraform/openstack/group_vars/no-floating.yml"
+  }
+
 }
 
 resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
@@ -125,6 +129,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   }
 
   security_groups = ["${openstack_compute_secgroup_v2.k8s_master.name}",
+    "${openstack_compute_secgroup_v2.bastion.name}",
     "${openstack_compute_secgroup_v2.k8s.name}",
   ]
 
@@ -132,6 +137,10 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-master,k8s-cluster,vault"
     depends_on       = "${var.network_id}"
+  }
+
+  provisioner "local-exec" {
+    command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.number_of_bastions > 0 ? var.k8s_master_fips[0] : var.k8s_master_fips[0]}/ > contrib/terraform/openstack/group_vars/no-floating.yml"
   }
 
 }
@@ -224,6 +233,10 @@ resource "openstack_compute_instance_v2" "k8s_node" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-node,k8s-cluster"
     depends_on       = "${var.network_id}"
+  }
+
+  provisioner "local-exec" {
+    command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.number_of_bastions > 0 ? var.k8s_master_fips[0] : var.k8s_node_fips[0]}/ > contrib/terraform/openstack/group_vars/no-floating.yml"
   }
 
 }

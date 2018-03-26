@@ -10,16 +10,24 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{ docker_nvidia_repo_key_info.repo_keys }}"
+  when: ansible_distribution in ["Ubuntu"]
 
 - name: download docker nvidia apt list
   get_url:
     url: "{{ docker_nvidia_apt_repo_url }}"
     dest: "/etc/apt/sources.list.d/nvidia-docker.list"
   register: result
+  when: ansible_distribution in ["Ubuntu"]
 
 - name: apt-get update
   apt: update_cache=yes
-  when: result.changed
+  when: result.changed and ansible_distribution in ["Ubuntu"]
+
+- name: Configure nvidia docker repository on RedHat/CentOS
+  template:
+    src: "rh_nvidia_docker.repo.j2"
+    dest: "/etc/yum.repos.d/nvidia-docker.repo"
+  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
 
 - name: ensure docker nvidia packages are installed
   action: "{{ docker_nvidia_package_info.pkg_mgr }}"
@@ -27,6 +35,8 @@
     pkg: "{{item.name}}"
     force: "{{item.force|default(omit)}}"
     state: present
+    update_cache: yes
+    disable_gpg_check: "{{item.disable_gpg_check|default(omit)}}"
   register: docker_task_result
   until: docker_task_result|succeeded
   retries: 4

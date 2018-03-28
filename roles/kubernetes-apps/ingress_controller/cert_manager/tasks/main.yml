@@ -1,0 +1,38 @@
+---
+
+- name: Cert Manager | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/cert_manager"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Cert Manager | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/cert_manager/{{ item.file }}"
+  with_items:
+    - { name: cert-manager-ns, file: cert-manager-ns.yml, type: ns }
+    - { name: cert-manager-sa, file: cert-manager-sa.yml, type: sa }
+    - { name: cert-manager-clusterrole, file: cert-manager-clusterrole.yml, type: clusterrole }
+    - { name: cert-manager-clusterrolebinding, file: cert-manager-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: cert-manager-issuer-crd, file: cert-manager-issuer-crd.yml, type: crd }
+    - { name: cert-manager-clusterissuer-crd, file: cert-manager-clusterissuer-crd.yml, type: crd }
+    - { name: cert-manager-certificate-crd, file: cert-manager-certificate-crd.yml, type: crd }
+    - { name: cert-manager-deploy, file: cert-manager-deploy.yml, type: deploy }
+  register: cert_manager_manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Cert Manager | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ cert_manager_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/cert_manager/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ cert_manager_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]

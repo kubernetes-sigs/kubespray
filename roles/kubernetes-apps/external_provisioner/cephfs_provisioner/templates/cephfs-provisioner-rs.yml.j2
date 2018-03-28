@@ -1,21 +1,28 @@
 ---
-apiVersion: extensions/v1beta1
-kind: Deployment
+apiVersion: apps/v1
+kind: ReplicaSet
 metadata:
-  name: cephfs-provisioner
+  name: cephfs-provisioner-v{{ cephfs_provisioner_image_tag }}
   namespace: {{ cephfs_provisioner_namespace }}
+  labels:
+    k8s-app: cephfs-provisioner
+    version: v{{ cephfs_provisioner_image_tag }}
 spec:
   replicas: 1
-  strategy:
-    type: Recreate
+  selector:
+    matchLabels:
+      k8s-app: cephfs-provisioner
+      version: v{{ cephfs_provisioner_image_tag }}
   template:
     metadata:
       labels:
-        app: cephfs-provisioner
+        k8s-app: cephfs-provisioner
+        version: v{{ cephfs_provisioner_image_tag }}
     spec:
       containers:
         - name: cephfs-provisioner
           image: {{ cephfs_provisioner_image_repo }}:{{ cephfs_provisioner_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
           env:
             - name: PROVISIONER_NAME
               value: ceph.com/cephfs
@@ -23,4 +30,6 @@ spec:
             - "/usr/local/bin/cephfs-provisioner"
           args:
             - "-id=cephfs-provisioner-1"
+{% if rbac_enabled %}
       serviceAccount: cephfs-provisioner
+{% endif %}

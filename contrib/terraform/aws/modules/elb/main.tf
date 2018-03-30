@@ -13,7 +13,7 @@ resource "aws_security_group_rule" "aws-allow-api-access" {
     from_port = "${var.aws_elb_api_port}"
     to_port = "${var.k8s_secure_api_port}"
     protocol = "TCP"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["${var.kube_insecure_apiserver_address}"]
     security_group_id = "${aws_security_group.aws-elb.id}"
 }
 

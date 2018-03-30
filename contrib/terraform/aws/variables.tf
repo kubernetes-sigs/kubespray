@@ -99,6 +99,12 @@ variable "k8s_secure_api_port" {
     description = "Secure Port of K8S API Server"
 }
 
+variable "kube_insecure_apiserver_address" {
+    description = "IP addresses allowed to access your apiserver elb"
+    type = "list"
+    default = ["0.0.0.0/0"]
+}
+
 variable "default_tags" {
   description = "Default tags for all resources"
   type = "map"

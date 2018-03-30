@@ -37,6 +37,7 @@ module "aws-elb" {
   aws_subnet_ids_public="${module.aws-vpc.aws_subnet_ids_public}"
   aws_elb_api_port = "${var.aws_elb_api_port}"
   k8s_secure_api_port = "${var.k8s_secure_api_port}"
+  kube_insecure_apiserver_address="${var.kube_insecure_apiserver_address}"
   default_tags="${var.default_tags}"
 
 }

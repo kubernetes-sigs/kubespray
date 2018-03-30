@@ -27,6 +27,12 @@ variable "aws_subnet_ids_public" {
     type = "list"
 }
 
+variable "kube_insecure_apiserver_address" {
+    description = "IP addresses allowed to access your apiserver elb"
+    type = "list"
+    default = ["0.0.0.0/0"]
+}
+
 variable "default_tags" {
     description = "Tags for all resources"
     type = "map"

@@ -25,7 +25,9 @@ aws_kube_worker_size = "t2.medium"
 
 aws_elb_api_port = 6443
 k8s_secure_api_port = 6443
-kube_insecure_apiserver_address = "0.0.0.0"
+
+#IP addresses allowed to access your apiserver elb
+kube_insecure_apiserver_address = ["0.0.0.0/0","10.10.10.10/32"]
 
 default_tags = {
 #  Env = "devtest"

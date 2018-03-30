@@ -11,66 +11,26 @@
   delay: 2
   when: inventory_hostname == groups['kube-master'][0]
 
-- name: Kubernetes Apps | Delete old kubedns resources
-  kube:
-    name: "kubedns"
-    namespace: "{{ system_namespace }}"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item }}"
-    state: absent
-  with_items:
-    - 'deploy'
-    - 'svc'
+- name: Kubernetes Apps | Cleanup DNS
+  import_tasks: tasks/cleanup_dns.yml
+  when:
+    - inventory_hostname == groups['kube-master'][0]
   tags:
     - upgrade
 
-- name: Kubernetes Apps | Delete kubeadm kubedns
-  kube:
-    name: "kubedns"
-    namespace: "{{ system_namespace }}"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "deploy"
-    state: absent
+- name: Kubernetes Apps | CoreDNS
+  import_tasks: "tasks/coredns.yml"
   when:
-    - kubeadm_enabled|default(false)
-    - kubeadm_init.changed|default(false)
+    - dns_mode in ['coredns', 'coredns_dual']
     - inventory_hostname == groups['kube-master'][0]
-
-- name: Kubernetes Apps | Lay Down KubeDNS Template
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-  with_items:
-    - { name: kube-dns, file: kubedns-sa.yml, type: sa }
-    - { name: kube-dns, file: kubedns-deploy.yml, type: deployment }
-    - { name: kube-dns, file: kubedns-svc.yml, type: svc }
-    - { name: kubedns-autoscaler, file: kubedns-autoscaler-sa.yml, type: sa }
-    - { name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrole.yml, type: clusterrole }
-    - { name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrolebinding.yml, type: clusterrolebinding }
-    - { name: kubedns-autoscaler, file: kubedns-autoscaler.yml, type: deployment }
-  register: manifests
-  when:
-    - dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
-    - rbac_enabled or item.type not in rbac_resources
   tags:
-    - dnsmasq
+    - coredns
 
-# see https://github.com/kubernetes/kubernetes/issues/45084, only needed for "old" kube-dns
-- name: Kubernetes Apps | Patch system:kube-dns ClusterRole
-  command: >
-    {{ bin_dir }}/kubectl patch clusterrole system:kube-dns
-    --patch='{
-               "rules": [
-                 {
-                   "apiGroups" : [""],
-                   "resources" : ["endpoints", "services"],
-                   "verbs": ["list", "watch", "get"]
-                 }
-               ]
-             }'
+- name: Kubernetes Apps | KubeDNS
+  import_tasks: "tasks/kubedns.yml"
   when:
-    - dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
-    - rbac_enabled and kubedns_version|version_compare("1.11.0", "<", strict=True)
+    - dns_mode in ['kubedns', 'dnsmasq_kubedns']
+    - inventory_hostname == groups['kube-master'][0]
   tags:
     - dnsmasq
 
@@ -82,11 +42,18 @@
     resource: "{{ item.item.type }}"
     filename: "{{ kube_config_dir }}/{{ item.item.file }}"
     state: "latest"
-  with_items: "{{ manifests.results }}"
+  with_items:
+    - "{{ kubedns_manifests.results | default({}) }}"
+    - "{{ coredns_manifests.results | default({}) }}"
+    - "{{ coredns_secondary_manifests.results | default({}) }}"
   when:
     - dns_mode != 'none'
     - inventory_hostname == groups['kube-master'][0]
     - not item|skipped
+  register: resource_result
+  until: resource_result|succeeded
+  retries: 4
+  delay: 5
   tags:
     - dnsmasq
 

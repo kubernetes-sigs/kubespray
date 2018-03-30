@@ -63,7 +63,8 @@ following default cluster paramters:
   bits in kube_pods_subnet dictates how many kube-nodes can be in cluster.
 * *dns_setup* - Enables dnsmasq
 * *dnsmasq_dns_server* - Cluster IP for dnsmasq (default is 10.233.0.2)
-* *skydns_server* - Cluster IP for KubeDNS (default is 10.233.0.3)
+* *skydns_server* - Cluster IP for DNS (default is 10.233.0.3)
+* *skydns_server_secondary* - Secondary Cluster IP for CoreDNS used with coredns_dual deployment (default is 10.233.0.4)
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)
 * *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in
@@ -105,9 +106,9 @@ Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-st
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.
-* *kubelet_deployment_type* - Controls which platform to deploy kubelet on. 
+* *kubelet_deployment_type* - Controls which platform to deploy kubelet on.
   Available options are ``host``, ``rkt``, and ``docker``. ``docker`` mode
-  is unlikely to work on newer releases. Starting with Kubernetes v1.7 
+  is unlikely to work on newer releases. Starting with Kubernetes v1.7
   series, this now defaults to ``host``. Before v1.7, the default was Docker.
   This is because of cgroup [issues](https://github.com/kubernetes/kubernetes/issues/43704).
 * *kubelet_load_modules* - For some things, kubelet needs to load kernel modules.  For example,
@@ -136,6 +137,6 @@ The possible vars are:
 
 By default, a user with admin rights is created, named `kube`.
 The password can be viewed after deployment by looking at the file
-`PATH_TO_KUBESPRAY/credentials/kube_user`. This contains a randomly generated
+`PATH_TO_KUBESPRAY/credentials/kube_user.creds`. This contains a randomly generated
 password. If you wish to set your own password, just precreate/modify this
 file yourself or change `kube_api_pwd` var.

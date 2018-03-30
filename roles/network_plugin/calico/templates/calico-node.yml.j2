@@ -28,6 +28,9 @@ spec:
       tolerations:
         - effect: NoSchedule
           operator: Exists
+      # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
+      # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
+      terminationGracePeriodSeconds: 0
       containers:
         # Runs calico/node container on each Kubernetes node.  This
         # container programs network policy and routes on each
@@ -53,6 +56,11 @@ spec:
                 configMapKeyRef:
                   name: calico-config
                   key: cluster_type
+            # Set noderef for node controller.
+            - name: CALICO_K8S_NODE_REF
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             # Disable file logging so `kubectl logs` works.
             - name: CALICO_DISABLE_FILE_LOGGING
               value: "true"
@@ -108,10 +116,15 @@ spec:
                 configMapKeyRef:
                   name: calico-config
                   key: etcd_cert
+{% if calico_ip_auto_method is defined %}
+            - name: IP_AUTODETECTION_METHOD
+              value: "{{ calico_ip_auto_method }}"
+{% else %}
             - name: IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
+{% endif %}
             - name: NODENAME
               valueFrom:
                 fieldRef:

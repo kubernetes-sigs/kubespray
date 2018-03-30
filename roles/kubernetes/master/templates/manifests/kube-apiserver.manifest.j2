@@ -42,6 +42,9 @@ spec:
     - --insecure-bind-address={{ kube_apiserver_insecure_bind_address }}
     - --bind-address={{ kube_apiserver_bind_address }}
     - --apiserver-count={{ kube_apiserver_count }}
+{% if kube_version | version_compare('v1.9', '>=') %}
+    - --endpoint-reconciler-type=lease
+{% endif %}
     - --admission-control={{ kube_apiserver_admission_control | join(',') }}
     - --service-cluster-ip-range={{ kube_service_addresses }}
     - --service-node-port-range={{ kube_apiserver_node_port_range }}
@@ -51,13 +54,12 @@ spec:
     - --kubelet-client-certificate={{ kube_cert_dir }}/node-{{ inventory_hostname }}.pem
     - --kubelet-client-key={{ kube_cert_dir }}/node-{{ inventory_hostname }}-key.pem
     - --service-account-lookup=true
+    - --kubelet-preferred-address-types={{ kubelet_preferred_address_types }}
 {% if kube_basic_auth|default(true) %}
     - --basic-auth-file={{ kube_users_dir }}/known_users.csv
 {% endif %}
     - --tls-cert-file={{ kube_cert_dir }}/apiserver.pem
     - --tls-private-key-file={{ kube_cert_dir }}/apiserver-key.pem
-    - --proxy-client-cert-file={{ kube_cert_dir }}/apiserver.pem
-    - --proxy-client-key-file={{ kube_cert_dir }}/apiserver-key.pem
 {% if kube_token_auth|default(true) %}
     - --token-auth-file={{ kube_token_dir }}/known_tokens.csv
 {% endif %}
@@ -101,6 +103,9 @@ spec:
 {% endif %}
 {% if authorization_modes %}
     - --authorization-mode={{ authorization_modes|join(',') }}
+{% endif %}
+{% if kube_encrypt_secret_data %}
+    - --experimental-encryption-provider-config={{ kube_config_dir }}/ssl/secrets_encryption.yaml
 {% endif %}
 {% if kube_feature_gates %}
     - --feature-gates={{ kube_feature_gates|join(',') }}

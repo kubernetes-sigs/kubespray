@@ -148,6 +148,8 @@ spec:
       - name: image-store
         persistentVolumeClaim:
           claimName: kube-registry-pvc
+      nodeSelector:
+          beta.kubernetes.io/os: linux
 ```
 <!-- END MUNGE: EXAMPLE registry-rc.yaml -->
 
@@ -220,6 +222,8 @@ spec:
         - name: registry
           containerPort: 80
           hostPort: 5000
+      nodeSelector:
+          beta.kubernetes.io/os: linux
 ```
 <!-- END MUNGE: EXAMPLE ../../saltbase/salt/kube-registry-proxy/kube-registry-proxy.yaml -->
 

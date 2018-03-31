@@ -82,6 +82,17 @@ gen_key_and_cert() {
 
 # Admins
 if [ -n "$MASTERS" ]; then
+
+    # service-account
+    # If --service-account-private-key-file was previously configured to use apiserver-key.pem then copy that to the new dedicated service-account signing key location to avoid disruptions
+    if [ -e "$SSLDIR/apiserver-key.pem" ] && ! [ -e "$SSLDIR/service-account-key.pem" ]; then
+       cp $SSLDIR/apiserver-key.pem $SSLDIR/service-account-key.pem
+    fi
+    # Generate dedicated service account signing key if one doesn't exist
+    if ! [ -e "$SSLDIR/apiserver-key.pem" ] && ! [ -e "$SSLDIR/service-account-key.pem" ]; then
+        openssl genrsa -out service-account-key.pem 2048 > /dev/null 2>&1
+    fi
+
     # kube-apiserver
     # Generate only if we don't have existing ca and apiserver certs
     if ! [ -e "$SSLDIR/ca-key.pem" ] || ! [ -e "$SSLDIR/apiserver-key.pem" ]; then

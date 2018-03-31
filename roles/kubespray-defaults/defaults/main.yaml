@@ -61,7 +61,6 @@ dns_domain: "{{ cluster_name }}"
 kube_config_dir: /etc/kubernetes
 kube_script_dir: "{{ bin_dir }}/kubernetes-scripts"
 kube_manifest_dir: "{{ kube_config_dir }}/manifests"
-system_namespace: kube-system
 
 # This is where all the cert scripts and certs will be located
 kube_cert_dir: "{{ kube_config_dir }}/ssl"
@@ -175,6 +174,7 @@ local_volume_provisioner_enabled: "{{ local_volumes_enabled | default('false') }
 persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
 ingress_nginx_enabled: false
+cert_manager_enabled: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -241,6 +241,7 @@ weave_peers: uninitialized
 
 ## Set no_proxy to all assigned cluster IPs and hostnames
 no_proxy: >-
+  {%- if http_proxy is defined or https_proxy is defined %}
   {%- if loadbalancer_apiserver is defined -%}
   {{ apiserver_loadbalancer_domain_name| default('') }},
   {{ loadbalancer_apiserver.address | default('') }},
@@ -254,11 +255,12 @@ no_proxy: >-
   {{ item }},{{ item }}.{{ dns_domain }},
   {%- endfor -%}
   127.0.0.1,localhost
+  {%- endif %}
 
 proxy_env:
   http_proxy: "{{ http_proxy| default ('') }}"
   https_proxy: "{{ https_proxy| default ('') }}"
-  no_proxy: "{{ no_proxy }}"
+  no_proxy: "{{ no_proxy| default ('') }}"
 
 # Vars for pointing to kubernetes api endpoints
 is_kube_master: "{{ inventory_hostname in groups['kube-master'] }}"

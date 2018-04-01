@@ -314,10 +314,6 @@ def openstack_floating_ips(resource):
     }
     return attrs
 
-def openstack_floating_ips(resource):
-    raw_attrs = resource['primary']['attributes']
-    return raw_attrs['instance_id'], raw_attrs['floating_ip']
-
 @parses('openstack_compute_instance_v2')
 @calculate_mantl_vars
 def openstack_host(resource, module_name):

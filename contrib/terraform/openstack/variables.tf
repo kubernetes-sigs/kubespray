@@ -34,6 +34,10 @@ variable "number_of_k8s_nodes_no_floating_ip" {
   default = 1
 }
 
+variable "number_of_k8s_ingress_nodes" {
+  default = 0
+}
+
 variable "number_of_gfs_nodes_no_floating_ip" {
   default = 0
 }

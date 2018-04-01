@@ -251,6 +251,30 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
 
 }
 
+resource "openstack_compute_instance_v2" "k8s_ingress" {
+    name = "${var.cluster_name}-ingress"
+    count = "${var.number_of_k8s_ingress_nodes}"
+    image_name = "${var.image}"
+    flavor_id = "${var.flavor_k8s_node}"
+    key_pair = "${openstack_compute_keypair_v2.k8s.name}"
+    
+    network {
+        name = "${var.network_name}"
+    }
+    security_groups = [ "${openstack_compute_secgroup_v2.k8s.name}",
+                        "${openstack_compute_secgroup_v2.bastion.name}",
+                        "default"
+    ]
+
+    metadata = {
+        ssh_user = "${var.ssh_user}"
+        kubespray_groups = "kube-node,kube-ingress,k8s-cluster"
+        depends_on = "${var.network_id}"
+    }
+
+    user_data = "${file("bootstrap.sh")}"
+}
+
 resource "openstack_compute_floatingip_associate_v2" "bastion" {
   count       = "${var.number_of_bastions}"
   floating_ip = "${var.bastion_fips[count.index]}"
@@ -267,6 +291,12 @@ resource "openstack_compute_floatingip_associate_v2" "k8s_node" {
   count       = "${var.number_of_k8s_nodes}"
   floating_ip = "${var.k8s_node_fips[count.index]}"
   instance_id = "${element(openstack_compute_instance_v2.k8s_node.*.id, count.index)}"
+}
+
+resource "openstack_compute_floatingip_associate_v2" "k8s_ingress" {
+    count = "${var.number_of_k8s_ingress_nodes}"
+    floating_ip = "${var.k8s_ingress_node_fips[count.index]}"
+    instance_id = "${element(openstack_compute_instance_v2.k8s_ingress.*.id, count.index)}"
 }
 
 resource "openstack_blockstorage_volume_v2" "glusterfs_volume" {

@@ -9,3 +9,7 @@ output "k8s_node_fips" {
 output "bastion_fips" {
   value = ["${openstack_networking_floatingip_v2.bastion.*.address}"]
 }
+
+output "k8s_ingress_node_fips" {
+    value = ["${openstack_networking_floatingip_v2.k8s_ingress.address}"]
+}

@@ -111,3 +111,8 @@ variable "floatingip_pool" {
 variable "external_net" {
   description = "uuid of the external/public network"
 }
+
+variable "cidr_pool" {
+  description = "Cluster CIDR"
+  default     = "10.0.0.0/24"
+}

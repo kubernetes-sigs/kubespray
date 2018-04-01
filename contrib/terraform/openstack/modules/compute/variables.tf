@@ -55,3 +55,6 @@ variable "k8s_node_fips" {
 variable "bastion_fips" {
   type = "list"
 }
+
+variable "cidr_pool" {
+}

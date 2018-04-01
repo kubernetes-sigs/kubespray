@@ -7,3 +7,5 @@ variable "cluster_name" {}
 variable "dns_nameservers" {
   type = "list"
 }
+
+variable "cidr_pool" {}

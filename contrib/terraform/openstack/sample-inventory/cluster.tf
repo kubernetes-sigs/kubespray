@@ -42,4 +42,4 @@ number_of_k8s_nodes_no_floating_ip = 4
 network_name = "<network>"
 external_net = "<UUID>"
 floatingip_pool = "<pool>"
-
+cidr_pool = "10.0.0.0/24"

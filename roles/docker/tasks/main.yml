@@ -30,6 +30,8 @@
   tags:
     - facts
 
+- import_tasks: pre-upgrade.yml
+
 - name: ensure docker-ce repository public key is installed
   action: "{{ docker_repo_key_info.pkg_key }}"
   args:
@@ -78,11 +80,27 @@
     dest: "/etc/yum.repos.d/docker.repo"
   when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
 
+- name: Copy yum.conf for editing
+  copy:
+    src: "{{ yum_conf }}"
+    dest: "{{ docker_yum_conf }}"
+    remote_src: yes
+  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+
+- name: Edit copy of yum.conf to set obsoletes=0
+  lineinfile:
+    path: "{{ docker_yum_conf }}"
+    state: present
+    regexp: '^obsoletes='
+    line: 'obsoletes=0'
+  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+
 - name: ensure docker packages are installed
   action: "{{ docker_package_info.pkg_mgr }}"
   args:
     pkg: "{{item.name}}"
     force: "{{item.force|default(omit)}}"
+    conf_file: "{{item.yum_conf|default(omit)}}"
     state: present
   register: docker_task_result
   until: docker_task_result|succeeded

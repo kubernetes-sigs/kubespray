@@ -118,6 +118,14 @@ Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-st
 * *kubelet_cgroup_driver* - Allows manual override of the
   cgroup-driver option for Kubelet. By default autodetection is used
   to match Docker configuration.
+* *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
+  For example, labels can be set in the inventory as variables or more widely in group_vars.
+  *node_labels* must be defined as a dict:
+```
+node_labels:
+  label1_name: label1_value
+  label2_name: label2_value
+```
 
 ##### Custom flags for Kube Components
 For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments. This can be done by providing a list of flags. Example:

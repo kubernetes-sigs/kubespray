@@ -54,7 +54,7 @@ module "compute" {
 }
 
 output "private_subnet_id" {
-  value = "${module.network.network_id}"
+  value = "${module.network.subnet_id}"
 }
 
 output "floating_network_id" {

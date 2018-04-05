@@ -75,6 +75,16 @@ k8s_master_fips = ["151.101.129.67"]
 k8s_node_fips = ["151.101.129.68"]
 ```
 
+## Environment
+
+To follow this procedure, some initial variables need to be set up.  First, decide on the name of your Kubernetes cluster, and then the rest follows from that.
+
+```ShellSession
+$ CLUSTER=<your-cluster-name-here>
+$ TFSTATE=inventory/$CLUSTER/terraform.tfstate
+$ TFVARS=inventory/$CLUSTER/cluster.tf
+```
+
 ## Terraform
 Terraform will be used to provision all of the OpenStack resources with base software as appropriate.
 
@@ -88,9 +98,8 @@ Create an inventory directory for your cluster by copying the existing sample an
 $ cp -LRp contrib/terraform/openstack/sample-inventory inventory/$CLUSTER
 $ cd inventory/$CLUSTER
 $ ln -s ../../contrib/terraform/openstack/hosts
+$ cd -
 ```
-
-This will be the base for subsequent Terraform commands.
 
 #### OpenStack access and credentials
 
@@ -103,39 +112,9 @@ These are examples and may vary depending on your OpenStack cloud provider,
 for an exhaustive list on how to authenticate on OpenStack with Terraform
 please read the [OpenStack provider documentation](https://www.terraform.io/docs/providers/openstack/).
 
-##### Declarative method (recommended)
+Note that the declarative method may not work for all deployments.  If you try the declarative method and run into Ansible errors based on missing authentication variables (such as `$OS_AUTH_URL`) please switch to the OpenRC method. 
 
-The recommended authentication method is to describe credentials in a YAML file `clouds.yaml` that can be stored in:
-
-* the current directory
-* `~/.config/openstack`
-* `/etc/openstack`
-
-`clouds.yaml`:
-
-```
-clouds:
-  mycloud:
-    auth:
-      auth_url: https://openstack:5000/v3
-      username: "username"
-      project_name: "projectname"
-      project_id: projectid
-      user_domain_name: "Default"
-      password: "password"
-    region_name: "RegionOne"
-    interface: "public"
-    identity_api_version: 3
-```
-
-If you have multiple clouds defined in your `clouds.yaml` file you can choose
-the one you want to use with the environment variable `OS_CLOUD`:
-
-```
-export OS_CLOUD=mycloud
-```
-
-##### Openrc method (deprecated)
+##### Openrc method
 
 When using classic environment variables, Terraform uses default `OS_*`
 environment variables.  A script suitable for your environment may be available
@@ -194,6 +173,38 @@ unset OS_PROJECT_DOMAIN_ID
 set OS_PROJECT_DOMAIN_NAME=Default
 ```
 
+##### Declarative method
+
+In this authentication method is to describe credentials in a YAML file `clouds.yaml` that can be stored in:
+
+* the current directory
+* `~/.config/openstack`
+* `/etc/openstack`
+
+`clouds.yaml`:
+
+```
+clouds:
+  mycloud:
+    auth:
+      auth_url: https://openstack:5000/v3
+      username: "username"
+      project_name: "projectname"
+      project_id: projectid
+      user_domain_name: "Default"
+      password: "password"
+    region_name: "RegionOne"
+    interface: "public"
+    identity_api_version: 3
+```
+
+If you have multiple clouds defined in your `clouds.yaml` file you can choose
+the one you want to use with the environment variable `OS_CLOUD`:
+
+```
+export OS_CLOUD=mycloud
+```
+
 #### Cluster variables
 The construction of the cluster is driven by values found in
 [variables.tf](variables.tf).
@@ -238,8 +249,7 @@ Before Terraform can operate on your cluster you need to install the required
 plugins. This is accomplished as follows:
 
 ```ShellSession
-$ cd inventory/$CLUSTER
-$ terraform init ../../contrib/terraform/openstack
+$ terraform init contrib/terraform/openstack
 ```
 
 This should finish fairly quickly telling you Terraform has successfully initialized and loaded necessary modules.
@@ -248,7 +258,7 @@ This should finish fairly quickly telling you Terraform has successfully initial
 You can apply the Terraform configuration to your cluster with the following command
 issued from your cluster's inventory directory (`inventory/$CLUSTER`):
 ```ShellSession
-$ terraform apply -var-file=cluster.tf ../../contrib/terraform/openstack
+$ terraform apply -state=$TFSTATE -var-file=$TFVARS contrib/terraform/openstack
 ```
 
 If you chose to create a bastion host, this script will create
@@ -262,7 +272,7 @@ pick it up automatically.
 You can destroy your new cluster with the following command issued from the cluster's inventory directory:
 
 ```ShellSession
-$ terraform destroy -var-file=cluster.tf ../../contrib/terraform/openstack
+$ terraform destroy -state=$TFSTATE -var-file=$TFVARS contrib/terraform/openstack
 ```
 
 If you've started the Ansible run, it may also be a good idea to do some manual cleanup:
@@ -282,12 +292,6 @@ Terraform can output values that are useful for configure Neutron/Octavia LBaaS 
  - `floating_network_id`: the network_id where the floating IP are provisioned is used for `openstack_lbaas_floating_network_id`
 
 ## Ansible
-
-The next part of this procedure is executed from the Kubespray root directory.  If you've been following along you should be able to get away with:
-
-```ShellSession
-$ cd -
-```
 
 ### Node access
 

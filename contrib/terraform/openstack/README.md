@@ -251,7 +251,7 @@ issued from your cluster's inventory directory (`inventory/$CLUSTER`):
 $ terraform apply -var-file=cluster.tf ../../contrib/terraform/openstack
 ```
 
-if you chose to create a bastion host, this script will create
+If you chose to create a bastion host, this script will create
 `contrib/terraform/openstack/k8s-cluster.yml` with an ssh command for Ansible to
 be able to access your machines tunneling  through the bastion's IP address. If
 you want to manually handle the ssh tunneling to these machines, please delete
@@ -282,6 +282,12 @@ Terraform can output values that are useful for configure Neutron/Octavia LBaaS 
  - `floating_network_id`: the network_id where the floating IP are provisioned is used for `openstack_lbaas_floating_network_id`
 
 ## Ansible
+
+The next part of this procedure is executed from the Kubespray root directory.  If you've been following along you should be able to get away with:
+
+```ShellSession
+$ cd -
+```
 
 ### Node access
 

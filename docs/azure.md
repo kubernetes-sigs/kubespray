@@ -11,7 +11,7 @@ Not all features are supported yet though, for a list of the current status have
 
 Before creating the instances you must first set the `azure_` variables in the `group_vars/all.yml` file.
 
-All of the values can be retrieved using the azure cli tool which can be downloaded here: https://docs.microsoft.com/en-gb/azure/xplat-cli-install
+All of the values can be retrieved using the azure cli classic tool which can be downloaded here: https://docs.microsoft.com/en-us/cli/azure/install-cli-version-1.0
 After installation you have to run `azure login` to get access to your account.
 
 

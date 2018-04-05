@@ -5,7 +5,7 @@ module "network" {
   network_name    = "${var.network_name}"
   cluster_name    = "${var.cluster_name}"
   dns_nameservers = "${var.dns_nameservers}"
-  cidr_pool = "${var.cidr_pool}"
+  cidr_pool       = "${var.cidr_pool}"
 }
 
 module "ips" {
@@ -49,7 +49,7 @@ module "compute" {
   k8s_master_fips                              = "${module.ips.k8s_master_fips}"
   k8s_node_fips                                = "${module.ips.k8s_node_fips}"
   bastion_fips                                 = "${module.ips.bastion_fips}"
-  cidr_pool = "${var.cidr_pool}"
+  cidr_pool                                    = "${var.cidr_pool}"
 
   network_id = "${module.network.router_id}"
 }

@@ -66,7 +66,7 @@ Supported Linux Distributions
 -----------------------------
 
 -   **Container Linux by CoreOS**
--   **Debian** Jessie
+-   **Debian** Jessie, Stretch, Wheezy
 -   **Ubuntu** 16.04
 -   **CentOS/RHEL** 7
 -   **Fedora/CentOS** Atomic

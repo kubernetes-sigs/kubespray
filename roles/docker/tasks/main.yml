@@ -30,7 +30,9 @@
   tags:
     - facts
 
-- name: ensure docker repository public key is installed
+- import_tasks: pre-upgrade.yml
+
+- name: ensure docker-ce repository public key is installed
   action: "{{ docker_repo_key_info.pkg_key }}"
   args:
     id: "{{item}}"
@@ -41,15 +43,36 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{ docker_repo_key_info.repo_keys }}"
-  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or is_atomic)
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat"] or is_atomic)
 
-- name: ensure docker repository is enabled
+- name: ensure docker-ce repository is enabled
   action: "{{ docker_repo_info.pkg_repo }}"
   args:
     repo: "{{item}}"
     state: present
   with_items: "{{ docker_repo_info.repos }}"
-  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or is_atomic) and (docker_repo_info.repos|length > 0)
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat"] or is_atomic) and (docker_repo_info.repos|length > 0)
+
+- name: ensure docker-engine repository public key is installed
+  action: "{{ dockerproject_repo_key_info.pkg_key }}"
+  args:
+    id: "{{item}}"
+    url: "{{dockerproject_repo_key_info.url}}"
+    state: present
+  register: keyserver_task_result
+  until: keyserver_task_result|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items: "{{ dockerproject_repo_key_info.repo_keys }}"
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat"] or is_atomic)
+
+- name: ensure docker-engine repository is enabled
+  action: "{{ dockerproject_repo_info.pkg_repo }}"
+  args:
+    repo: "{{item}}"
+    state: present
+  with_items: "{{ dockerproject_repo_info.repos }}"
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat"] or is_atomic) and (dockerproject_repo_info.repos|length > 0)
 
 - name: Configure docker repository on RedHat/CentOS
   template:
@@ -57,11 +80,27 @@
     dest: "/etc/yum.repos.d/docker.repo"
   when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
 
+- name: Copy yum.conf for editing
+  copy:
+    src: "{{ yum_conf }}"
+    dest: "{{ docker_yum_conf }}"
+    remote_src: yes
+  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+
+- name: Edit copy of yum.conf to set obsoletes=0
+  lineinfile:
+    path: "{{ docker_yum_conf }}"
+    state: present
+    regexp: '^obsoletes='
+    line: 'obsoletes=0'
+  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+
 - name: ensure docker packages are installed
   action: "{{ docker_package_info.pkg_mgr }}"
   args:
     pkg: "{{item.name}}"
     force: "{{item.force|default(omit)}}"
+    conf_file: "{{item.yum_conf|default(omit)}}"
     state: present
   register: docker_task_result
   until: docker_task_result|succeeded

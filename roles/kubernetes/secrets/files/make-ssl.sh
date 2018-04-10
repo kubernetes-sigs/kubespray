@@ -69,7 +69,7 @@ if [ -e "$SSLDIR/ca-key.pem" ]; then
     cp $SSLDIR/{ca.pem,ca-key.pem} .
 else
     openssl genrsa -out ca-key.pem 2048 > /dev/null 2>&1
-    openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN=kube-ca" > /dev/null 2>&1
+    openssl req -x509 -new -nodes -key ca-key.pem -days 36500 -out ca.pem -subj "/CN=kube-ca" > /dev/null 2>&1
 fi
 
 gen_key_and_cert() {
@@ -77,11 +77,22 @@ gen_key_and_cert() {
     local subject=$2
     openssl genrsa -out ${name}-key.pem 2048 > /dev/null 2>&1
     openssl req -new -key ${name}-key.pem -out ${name}.csr -subj "${subject}" -config ${CONFIG} > /dev/null 2>&1
-    openssl x509 -req -in ${name}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${name}.pem -days 3650 -extensions v3_req -extfile ${CONFIG} > /dev/null 2>&1
+    openssl x509 -req -in ${name}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${name}.pem -days 36500 -extensions v3_req -extfile ${CONFIG} > /dev/null 2>&1
 }
 
 # Admins
 if [ -n "$MASTERS" ]; then
+
+    # service-account
+    # If --service-account-private-key-file was previously configured to use apiserver-key.pem then copy that to the new dedicated service-account signing key location to avoid disruptions
+    if [ -e "$SSLDIR/apiserver-key.pem" ] && ! [ -e "$SSLDIR/service-account-key.pem" ]; then
+       cp $SSLDIR/apiserver-key.pem $SSLDIR/service-account-key.pem
+    fi
+    # Generate dedicated service account signing key if one doesn't exist
+    if ! [ -e "$SSLDIR/apiserver-key.pem" ] && ! [ -e "$SSLDIR/service-account-key.pem" ]; then
+        openssl genrsa -out service-account-key.pem 2048 > /dev/null 2>&1
+    fi
+
     # kube-apiserver
     # Generate only if we don't have existing ca and apiserver certs
     if ! [ -e "$SSLDIR/ca-key.pem" ] || ! [ -e "$SSLDIR/apiserver-key.pem" ]; then

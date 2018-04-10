@@ -41,7 +41,7 @@ import re
 import sys
 
 ROLES = ['all', 'kube-master', 'kube-node', 'etcd', 'k8s-cluster:children',
-         'calico-rr', 'vault']
+         'calico-rr', 'vault', 'kube-ingress']
 PROTECTED_NAMES = ROLES
 AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'load']
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
@@ -91,6 +91,10 @@ class KubesprayInventory(object):
             else:
                 self.set_kube_master(list(self.hosts.keys())[:2])
             self.set_kube_node(self.hosts.keys())
+            if len(self.hosts) >= SCALE_THRESHOLD:
+                self.set_kube_ingress(list(self.hosts.keys())[3:5])
+            else:
+                self.set_kube_ingress(list(self.hosts.keys())[:2])
             if len(self.hosts) >= SCALE_THRESHOLD:
                 self.set_calico_rr(list(self.hosts.keys())[:3])
         else:  # Show help if no options
@@ -211,13 +215,18 @@ class KubesprayInventory(object):
         for host in hosts:
             self.add_host_to_group('kube-master', host)
 
+    def set_kube_ingress(self, hosts):
+        for host in hosts:
+            self.add_host_to_group('kube-ingress', host)
+
     def set_all(self, hosts):
         for host, opts in hosts.items():
             self.add_host_to_group('all', host, opts)
 
     def set_k8s_cluster(self):
-        self.add_host_to_group('k8s-cluster:children', 'kube-node')
         self.add_host_to_group('k8s-cluster:children', 'kube-master')
+        self.add_host_to_group('k8s-cluster:children', 'kube-node')
+        self.add_host_to_group('k8s-cluster:children', 'kube-ingress')
 
     def set_calico_rr(self, hosts):
         for host in hosts:

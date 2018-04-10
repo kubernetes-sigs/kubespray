@@ -16,11 +16,13 @@
     src: "node-crb.yml.j2"
     dest: "{{ kube_config_dir }}/node-crb.yml"
   register: node_crb_manifest
-  when: rbac_enabled
+  when:
+    - rbac_enabled
+    - inventory_hostname == groups['kube-master'][0]
 
 - name: Apply workaround to allow all nodes with cert O=system:nodes to register
   kube:
-    name: "system:node"
+    name: "kubespray:system:node"
     kubectl: "{{bin_dir}}/kubectl"
     resource: "clusterrolebinding"
     filename: "{{ kube_config_dir }}/node-crb.yml"
@@ -28,32 +30,101 @@
   when:
     - rbac_enabled
     - node_crb_manifest.changed
+    - inventory_hostname == groups['kube-master'][0]
 
-# This is not a cluster role, but should be run after kubeconfig is set on master
-- name: Write kube system namespace manifest
+- name: Kubernetes Apps | Add webhook ClusterRole that grants access to proxy, stats, log, spec, and metrics on a kubelet
   template:
-    src: namespace.j2
-    dest: "{{kube_config_dir}}/{{system_namespace}}-ns.yml"
-  when: inventory_hostname == groups['kube-master'][0]
-  tags:
-    - apps
+    src: "node-webhook-cr.yml.j2"
+    dest: "{{ kube_config_dir }}/node-webhook-cr.yml"
+  register: node_webhook_cr_manifest
+  when:
+    - rbac_enabled
+    - kubelet_authorization_mode_webhook
+    - inventory_hostname == groups['kube-master'][0]
+  tags: node-webhook
 
-- name: Check if kube system namespace exists
-  command: "{{ bin_dir }}/kubectl get ns {{system_namespace}}"
-  register: 'kubesystem'
-  changed_when: False
-  failed_when: False
-  when: inventory_hostname == groups['kube-master'][0]
-  tags:
-    - apps
+- name: Apply webhook ClusterRole
+  kube:
+    name: "system:node-webhook"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "clusterrole"
+    filename: "{{ kube_config_dir }}/node-webhook-cr.yml"
+    state: latest
+  when:
+    - rbac_enabled
+    - kubelet_authorization_mode_webhook
+    - node_webhook_cr_manifest.changed
+    - inventory_hostname == groups['kube-master'][0]
+  tags: node-webhook
 
-- name: Create kube system namespace
-  command: "{{ bin_dir }}/kubectl create -f {{kube_config_dir}}/{{system_namespace}}-ns.yml"
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  register: create_system_ns
-  until: create_system_ns.rc == 0
-  changed_when: False
-  when: inventory_hostname == groups['kube-master'][0] and kubesystem.rc != 0
-  tags:
-    - apps
+- name: Kubernetes Apps | Add ClusterRoleBinding for system:nodes to webhook ClusterRole
+  template:
+    src: "node-webhook-crb.yml.j2"
+    dest: "{{ kube_config_dir }}/node-webhook-crb.yml"
+  register: node_webhook_crb_manifest
+  when:
+    - rbac_enabled
+    - kubelet_authorization_mode_webhook
+    - inventory_hostname == groups['kube-master'][0]
+  tags: node-webhook
+
+- name: Grant system:nodes the webhook ClusterRole
+  kube:
+    name: "system:node-webhook"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "clusterrolebinding"
+    filename: "{{ kube_config_dir }}/node-webhook-crb.yml"
+    state: latest
+  when:
+    - rbac_enabled
+    - kubelet_authorization_mode_webhook
+    - node_webhook_crb_manifest.changed
+    - inventory_hostname == groups['kube-master'][0]
+  tags: node-webhook
+
+- name: Check if vsphere-cloud-provider ClusterRole exists
+  command: "{{ bin_dir }}/kubectl get clusterroles system:vsphere-cloud-provider"
+  register: vsphere_cloud_provider
+  ignore_errors: true
+  when:
+    - rbac_enabled
+    - cloud_provider is defined
+    - cloud_provider == 'vsphere'
+    - kube_version | version_compare('v1.9.0', '>=')
+    - kube_version | version_compare('v1.9.3', '<=')
+    - inventory_hostname == groups['kube-master'][0]
+  tags: vsphere
+
+- name: Write vsphere-cloud-provider ClusterRole manifest
+  template:
+    src: "vsphere-rbac.yml.j2"
+    dest: "{{ kube_config_dir }}/vsphere-rbac.yml"
+  register: vsphere_rbac_manifest
+  when:
+    - rbac_enabled
+    - cloud_provider is defined
+    - cloud_provider == 'vsphere'
+    - vsphere_cloud_provider.rc is defined
+    - vsphere_cloud_provider.rc != 0
+    - kube_version | version_compare('v1.9.0', '>=')
+    - kube_version | version_compare('v1.9.3', '<=')
+    - inventory_hostname == groups['kube-master'][0]
+  tags: vsphere
+
+- name: Apply vsphere-cloud-provider ClusterRole
+  kube:
+    name: "system:vsphere-cloud-provider"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "clusterrolebinding"
+    filename: "{{ kube_config_dir }}/vsphere-rbac.yml"
+    state: latest
+  when:
+    - rbac_enabled
+    - cloud_provider is defined
+    - cloud_provider == 'vsphere'
+    - vsphere_cloud_provider.rc is defined
+    - vsphere_cloud_provider.rc != 0
+    - kube_version | version_compare('v1.9.0', '>=')
+    - kube_version | version_compare('v1.9.3', '<=')
+    - inventory_hostname == groups['kube-master'][0]
+  tags: vsphere

@@ -1,0 +1,29 @@
+---
+
+- hosts: all
+  gather_facts: true
+
+- hosts: etcd:k8s-cluster:vault:calico-rr
+  vars_prompt:
+    name: "delete_nodes_confirmation"
+    prompt: "Are you sure you want to delete nodes state? Type 'yes' to delete nodes."
+    default: "no"
+    private: no
+
+  pre_tasks:
+    - name: check confirmation
+      fail:
+        msg: "Delete nodes confirmation failed"
+      when: delete_nodes_confirmation != "yes"
+
+- hosts: kube-master
+  roles:
+    - { role: remove-node/pre-remove, tags: pre-remove }
+
+- hosts: kube-node
+  roles:
+    - { role: reset, tags: reset }
+
+- hosts: kube-master
+  roles:
+    - { role: remove-node/post-remove, tags: post-remove }

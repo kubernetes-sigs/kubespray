@@ -3,6 +3,11 @@
   tags:
     - asserts
 
+# This is run before bin_dir is pinned because these tasks are run on localhost
+- import_tasks: pre_upgrade.yml
+  tags:
+    - upgrade
+
 - name: Force binaries directory for Container Linux by CoreOS
   set_fact:
     bin_dir: "/opt/bin"
@@ -60,7 +65,6 @@
     - "{{ kube_config_dir }}/ssl"
     - "{{ kube_manifest_dir }}"
     - "{{ kube_script_dir }}"
-    - "{{ local_volume_base_dir }}"
 
 - name: check cloud_provider value
   fail:
@@ -68,14 +72,6 @@
   when:
     - cloud_provider is defined
     - cloud_provider not in ['generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere', 'external']
-  tags:
-    - cloud-provider
-    - facts
-
-- include_tasks: "{{ cloud_provider }}-credential-check.yml"
-  when:
-    - cloud_provider is defined
-    - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
   tags:
     - cloud-provider
     - facts
@@ -256,19 +252,6 @@
     reload: yes
   tags:
     - bootstrap-os
-
-- name: Write cloud-config
-  template:
-    src: "{{ cloud_provider }}-cloud-config.j2"
-    dest: "{{ kube_config_dir }}/cloud_config"
-    group: "{{ kube_cert_group }}"
-    mode: 0640
-  when:
-    - inventory_hostname in groups['k8s-cluster']
-    - cloud_provider is defined
-    - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
-  tags:
-    - cloud-provider
 
 - import_tasks: etchosts.yml
   tags:

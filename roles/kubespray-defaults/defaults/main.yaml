@@ -5,15 +5,19 @@ bootstrap_os: none
 
 # Use proxycommand if bastion host is in group all
 # This change obseletes editing ansible.cfg file depending on bastion existance
-ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ ansible_user }}@{{hostvars['bastion']['ansible_host']}} ' {% endif %}"
+ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ ansible_user }}@{{hostvars['bastion']['ansible_host']}} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
 
 kube_api_anonymous_auth: false
 
 # Default value, but will be set to true automatically if detected
 is_atomic: false
 
+
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.9.2
+kube_version: v1.9.5
+
+## Kube Proxy mode One of ['iptables','ipvs']
+kube_proxy_mode: iptables
 
 # Set to true to allow pre-checks to fail and continue deployment
 ignore_assert_errors: false
@@ -45,6 +49,7 @@ resolvconf_mode: docker_dns
 deploy_netchecker: false
 # Ip address of the kubernetes skydns service
 skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('address') }}"
+skydns_server_secondary: "{{ kube_service_addresses|ipaddr('net')|ipaddr(4)|ipaddr('address') }}"
 dnsmasq_dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
 dns_domain: "{{ cluster_name }}"
 
@@ -56,7 +61,6 @@ dns_domain: "{{ cluster_name }}"
 kube_config_dir: /etc/kubernetes
 kube_script_dir: "{{ bin_dir }}/kubernetes-scripts"
 kube_manifest_dir: "{{ kube_config_dir }}/manifests"
-system_namespace: kube-system
 
 # This is where all the cert scripts and certs will be located
 kube_cert_dir: "{{ kube_config_dir }}/ssl"
@@ -123,7 +127,7 @@ kube_apiserver_insecure_bind_address: 127.0.0.1
 kube_apiserver_insecure_port: 8080
 
 # Aggregator
-kube_api_aggregator_routing: true
+kube_api_aggregator_routing: false
 
 # Path used to store Docker data
 docker_daemon_graph: "/var/lib/docker"
@@ -148,9 +152,9 @@ helm_deployment_type: host
 # Enable kubeadm deployment (experimental)
 kubeadm_enabled: false
 
-# Make a copy of kubeconfig on the host that runs Ansible in GITDIR/artifacts
+# Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
 kubeconfig_localhost: false
-# Download kubectl onto the host that runs Ansible in GITDIR/artifacts
+# Download kubectl onto the host that runs Ansible in {{ bin_dir }}
 kubectl_localhost: false
 
 # K8s image pull policy (imagePullPolicy)
@@ -166,14 +170,11 @@ helm_enabled: false
 istio_enabled: false
 registry_enabled: false
 enable_network_policy: false
-local_volume_provisioner_enabled: false
+local_volume_provisioner_enabled: "{{ local_volumes_enabled | default('false') }}"
 persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
-
-# Base path for local volume provisioner addon
-local_volume_base_dir: /mnt/disks
-local_volume_mount_dir: /local-disks
-local_volume_storage_class: local-storage
+ingress_nginx_enabled: false
+cert_manager_enabled: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -197,9 +198,19 @@ openstack_lbaas_monitor_max_retries: "3"
 authorization_modes: ['Node', 'RBAC']
 rbac_enabled: "{{ 'RBAC' in authorization_modes or kubeadm_enabled }}"
 
+# When enabled, API bearer tokens (including service account tokens) can be used to authenticate to the kubelet’s HTTPS endpoint
+kubelet_authentication_token_webhook: false
+
+# When enabled, access to the kubelet API requires authorization by delegation to the API server
+kubelet_authorization_mode_webhook: false
+
 ## List of key=value pairs that describe feature gates for
 ## the k8s cluster.
-kube_feature_gates: ['Initializers={{ istio_enabled|string }}', 'PersistentLocalVolumes={{ local_volume_provisioner_enabled|string }}']
+kube_feature_gates:
+  - "Initializers={{ istio_enabled | string }}"
+  - "PersistentLocalVolumes={{ local_volume_provisioner_enabled | string }}"
+  - "VolumeScheduling={{ local_volume_provisioner_enabled | string }}"
+  - "MountPropagation={{ local_volume_provisioner_enabled | string }}"
 
 # Vault data dirs.
 vault_base_dir: /etc/vault
@@ -230,6 +241,7 @@ weave_peers: uninitialized
 
 ## Set no_proxy to all assigned cluster IPs and hostnames
 no_proxy: >-
+  {%- if http_proxy is defined or https_proxy is defined %}
   {%- if loadbalancer_apiserver is defined -%}
   {{ apiserver_loadbalancer_domain_name| default('') }},
   {{ loadbalancer_apiserver.address | default('') }},
@@ -243,11 +255,12 @@ no_proxy: >-
   {{ item }},{{ item }}.{{ dns_domain }},
   {%- endfor -%}
   127.0.0.1,localhost
+  {%- endif %}
 
 proxy_env:
   http_proxy: "{{ http_proxy| default ('') }}"
   https_proxy: "{{ https_proxy| default ('') }}"
-  no_proxy: "{{ no_proxy }}"
+  no_proxy: "{{ no_proxy| default ('') }}"
 
 # Vars for pointing to kubernetes api endpoints
 is_kube_master: "{{ inventory_hostname in groups['kube-master'] }}"
@@ -285,15 +298,24 @@ kube_apiserver_client_key: |-
   {{ kube_cert_dir }}/apiserver-key.pem
   {%- endif %}
 
+# Set to true to deploy etcd-events cluster
+etcd_events_cluster_setup: false
+
 # Vars for pointing to etcd endpoints
 is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"
 etcd_address: "{{ ip | default(ansible_default_ipv4['address']) }}"
 etcd_access_address: "{{ access_ip | default(etcd_address) }}"
 etcd_peer_url: "https://{{ etcd_access_address }}:2380"
 etcd_client_url: "https://{{ etcd_access_address }}:2379"
+etcd_events_peer_url: "https://{{ etcd_access_address }}:2382"
+etcd_events_client_url: "https://{{ etcd_access_address }}:2381"
 etcd_access_addresses: |-
   {% for item in groups['etcd'] -%}
     https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2379{% if not loop.last %},{% endif %}
+  {%- endfor %}
+etcd_events_access_addresses: |-
+  {% for item in groups['etcd'] -%}
+    https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2381{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_member_name: |-
   {% for host in groups['etcd'] %}
@@ -302,4 +324,8 @@ etcd_member_name: |-
 etcd_peer_addresses: |-
   {% for item in groups['etcd'] -%}
     {{ "etcd"+loop.index|string }}=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2380{% if not loop.last %},{% endif %}
+  {%- endfor %}
+etcd_events_peer_addresses: |-
+  {% for item in groups['etcd'] -%}
+    {{ "etcd"+loop.index|string }}-events=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2382{% if not loop.last %},{% endif %}
   {%- endfor %}

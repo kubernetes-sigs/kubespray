@@ -86,7 +86,6 @@ Vagrant.configure("2") do |config|
   if Vagrant.has_plugin?("vagrant-vbguest") then
     config.vbguest.auto_update = false
   end
-
   (1..$num_instances).each do |i|
     config.vm.define vm_name = "%s-%02d" % [$instance_name_prefix, i] do |config|
       config.vm.hostname = vm_name
@@ -112,8 +111,10 @@ Vagrant.configure("2") do |config|
         end
       end
 
+      config.vm.synced_folder ".", "/vagrant", type: "rsync", rsync__args: ['--verbose', '--archive', '--delete', '-z']
+
       $shared_folders.each do |src, dst|
-        config.vm.synced_folder src, dst
+        config.vm.synced_folder src, dst, type: "rsync", rsync__args: ['--verbose', '--archive', '--delete', '-z']
       end
 
       config.vm.provider :virtualbox do |vb|

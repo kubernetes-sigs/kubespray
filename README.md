@@ -105,6 +105,9 @@ Requirements
 -   **Your ssh key must be copied** to all the servers part of your inventory.
 -   The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
     in order to avoid any issue during deployment you should disable your firewall.
+-   If kubespray is ran from non-root user account, correct privilege escalation method
+    should be configured in the target servers. Then the `ansible_become` flag
+    or command parameters `--become or -b` should be specified.
 
 Network Plugins
 ---------------

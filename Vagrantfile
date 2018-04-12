@@ -54,7 +54,7 @@ end
 
 $box = SUPPORTED_OS[$os][:box]
 # if $inventory is not set, try to use example
-$inventory = File.join(File.dirname(__FILE__), "inventory") if ! $inventory
+$inventory = File.join(File.dirname(__FILE__), "inventory", "sample") if ! $inventory
 
 # if $inventory has a hosts file use it, otherwise copy over vars etc
 # to where vagrant expects dynamic inventory to be.

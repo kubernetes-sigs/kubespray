@@ -4,6 +4,7 @@ Documentation=https://github.com/GoogleCloudPlatform/kubernetes
 Wants=network.target
 
 [Service]
+User=root
 Restart=on-failure
 RestartSec=10s
 TimeoutStartSec=0
@@ -11,10 +12,7 @@ LimitNOFILE=40000
 
 ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/run/kubelet.uuid
 ExecStartPre=-/bin/mkdir -p /var/lib/kubelet
-
-{% if kubelet_flexvolumes_plugins_dir is defined %}
 ExecStartPre=-/bin/mkdir -p {{ kubelet_flexvolumes_plugins_dir }}
-{% endif %}
 
 EnvironmentFile={{kube_config_dir}}/kubelet.env
 # stage1-fly mounts /proc /sys /dev so no need to duplicate the mounts
@@ -36,16 +34,23 @@ ExecStart=/usr/bin/rkt run \
         --volume var-lib-docker,kind=host,source={{ docker_daemon_graph }},readOnly=false \
         --volume var-lib-kubelet,kind=host,source=/var/lib/kubelet,readOnly=false,recursive=true \
         --volume var-log,kind=host,source=/var/log \
-{% if local_volume_provisioner_enabled == true %}
-        --volume local-volume-base-dir,kind=host,source={{ local_volume_base_dir }},readOnly=false,recursive=true \
-{% endif %}
 {% if kube_network_plugin in ["calico", "weave", "canal", "flannel", "contiv", "cilium"] %}
         --volume etc-cni,kind=host,source=/etc/cni,readOnly=true \
         --volume opt-cni,kind=host,source=/opt/cni,readOnly=true \
         --volume var-lib-cni,kind=host,source=/var/lib/cni,readOnly=false \
-{% if kubelet_flexvolumes_plugins_dir is defined %}
+{# we can run into issues with double mounting /var/lib/kubelet #}
+{# surely there's a better way to do this #}
+{% if '/var/lib/kubelet' not in kubelet_flexvolumes_plugins_dir %}
         --volume flexvolumes,kind=host,source={{ kubelet_flexvolumes_plugins_dir }},readOnly=false \
 {% endif %}
+{% if local_volume_provisioner_enabled %}
+        --volume local_volume_provisioner_base_dir,kind=host,source={{ local_volume_provisioner_base_dir }},readOnly=false \
+{# Not pretty, but needed to avoid double mount #}
+{% if local_volume_provisioner_base_dir not in local_volume_provisioner_mount_dir and local_volume_provisioner_mount_dir not in local_volume_provisioner_base_dir %}
+        --volume local_volume_provisioner_mount_dir,kind=host,source={{ local_volume_provisioner_mount_dir }},readOnly=false \
+{% endif %}
+{% endif %}
+
 {% if kubelet_load_modules == true %}
         --mount volume=modprobe,target=/usr/sbin/modprobe \
         --mount volume=lib-modules,target=/lib/modules \
@@ -67,12 +72,19 @@ ExecStart=/usr/bin/rkt run \
         --mount volume=var-lib-kubelet,target=/var/lib/kubelet \
         --mount volume=var-log,target=/var/log \
         --mount volume=hosts,target=/etc/hosts \
-{% if local_volume_provisioner_enabled == true %}
-        --mount volume=local-volume-base-dir,target={{ local_volume_base_dir }} \
-{% endif %}
-{% if kubelet_flexvolumes_plugins_dir is defined %}
+{# we can run into issues with double mounting /var/lib/kubelet #}
+{# surely there's a better way to do this #}
+{% if '/var/lib/kubelet' not in kubelet_flexvolumes_plugins_dir %}
         --mount volume=flexvolumes,target={{ kubelet_flexvolumes_plugins_dir }} \
 {% endif %}
+{% if local_volume_provisioner_enabled %}
+        --mount local_volume_provisioner_base_dir,target={{ local_volume_provisioner_base_dir }} \
+{# Not pretty, but needed to avoid double mount #}
+{% if local_volume_provisioner_base_dir not in local_volume_provisioner_mount_dir and local_volume_provisioner_mount_dir not in local_volume_provisioner_base_dir %}
+        --volume local_volume_provisioner_mount_dir,target={{ local_volume_provisioner_mount_dir }} \
+{% endif %}
+{% endif %}
+
         --stage1-from-dir=stage1-fly.aci \
 {% if kube_hyperkube_image_repo == "docker" %}
         --insecure-options=image \

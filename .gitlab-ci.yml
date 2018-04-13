@@ -20,6 +20,7 @@ variables:
   GCE_PREEMPTIBLE: "false"
   ANSIBLE_KEEP_REMOTE_FILES: "1"
   ANSIBLE_CONFIG: ./tests/ansible.cfg
+  ANSIBLE_INVENTORY: ./inventory/sample/${CI_JOB_NAME}-${BUILD_NUMBER}.ini
   IDEMPOT_CHECK: "false"
   RESET_CHECK: "false"
   UPGRADE_TEST: "false"
@@ -90,9 +91,9 @@ before_script:
     - cd tests && make create-${CI_PLATFORM} -s ; cd -
 
     # Check out latest tag if testing upgrade
-    # Uncomment when gitlab kargo repo has tags
+    # Uncomment when gitlab kubespray repo has tags
     #- test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
-    - test "${UPGRADE_TEST}" != "false" && git checkout ba0a03a8ba2d97a73d06242ec4bb3c7e2012e58c
+    - test "${UPGRADE_TEST}" != "false" && git checkout f7d52564aad2ff8e337634951beb4a881c0e8aa6
     # Checkout the CI vars file so it is available
     - test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
     # Workaround https://github.com/kubernetes-incubator/kubespray/issues/2021
@@ -102,14 +103,13 @@ before_script:
     # Create cluster
     - >
       ansible-playbook
-      -i inventory/sample/hosts.ini
+      -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
       --private-key=${HOME}/.ssh/id_rsa
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
       -e @${CI_TEST_VARS}
-      -e ansible_python_interpreter=${PYPATH}
       -e ansible_ssh_user=${SSH_USER}
       -e local_release_dir=${PWD}/downloads
       --limit "all:!fake_hosts"
@@ -122,14 +122,13 @@ before_script:
       test "${UPGRADE_TEST}" == "graceful" && PLAYBOOK="upgrade-cluster.yml";
       git checkout "${CI_BUILD_REF}";
       ansible-playbook
-      -i inventory/sample/hosts.ini
+      -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
       --private-key=${HOME}/.ssh/id_rsa
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
       -e @${CI_TEST_VARS}
-      -e ansible_python_interpreter=${PYPATH}
       -e ansible_ssh_user=${SSH_USER}
       -e local_release_dir=${PWD}/downloads
       --limit "all:!fake_hosts"
@@ -139,20 +138,20 @@ before_script:
     # Tests Cases
     ## Test Master API
     - >
-      ansible-playbook -i inventory/sample/hosts.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root --limit "all:!fake_hosts" tests/testcases/010_check-apiserver.yml $LOG_LEVEL
+      ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root --limit "all:!fake_hosts" tests/testcases/010_check-apiserver.yml $LOG_LEVEL
       -e "{kubeadm_enabled: ${KUBEADM_ENABLED}}"
 
     ## Ping the between 2 pod
-    - ansible-playbook -i inventory/sample/hosts.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root --limit "all:!fake_hosts" tests/testcases/030_check-network.yml $LOG_LEVEL
+    - ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root --limit "all:!fake_hosts" tests/testcases/030_check-network.yml $LOG_LEVEL
 
     ## Advanced DNS checks
-    - ansible-playbook -i inventory/sample/hosts.ini -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root --limit "all:!fake_hosts" tests/testcases/040_check-network-adv.yml $LOG_LEVEL
+    - ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root --limit "all:!fake_hosts" tests/testcases/040_check-network-adv.yml $LOG_LEVEL
 
     ## Idempotency checks 1/5 (repeat deployment)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
       ansible-playbook
-      -i inventory/sample/hosts.ini
+      -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
       --private-key=${HOME}/.ssh/id_rsa
       -u $SSH_USER
@@ -169,7 +168,7 @@ before_script:
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
       ansible-playbook
-      -i inventory/sample/hosts.ini
+      -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
       --private-key=${HOME}/.ssh/id_rsa
       -u $SSH_USER
@@ -184,7 +183,7 @@ before_script:
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
       ansible-playbook
-      -i inventory/sample/hosts.ini
+      -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
       --private-key=${HOME}/.ssh/id_rsa
       -u $SSH_USER
@@ -201,7 +200,7 @@ before_script:
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
       ansible-playbook
-      -i inventory/sample/hosts.ini
+      -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
       --private-key=${HOME}/.ssh/id_rsa
       -u $SSH_USER
@@ -217,7 +216,7 @@ before_script:
     ## Idempotency checks 5/5 (Advanced DNS checks)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook -i inventory/sample/hosts.ini -e ansible_python_interpreter=${PYPATH}
+      ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH}
       -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
       --limit "all:!fake_hosts"
       tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
@@ -257,10 +256,14 @@ before_script:
 # stage: deploy-special
   MOVED_TO_GROUP_VARS: "true"
 
-.ubuntu_cilium_sep_variables: &ubuntu_cilium_sep_variables
+.coreos_cilium_variables: &coreos_cilium_variables
 # stage: deploy-special
   MOVED_TO_GROUP_VARS: "true"
 
+.ubuntu_cilium_sep_variables: &ubuntu_cilium_sep_variables
+# stage: deploy-special
+  MOVED_TO_GROUP_VARS: "true"
+  
 .rhel7_weave_variables: &rhel7_weave_variables
 # stage: deploy-part1
   MOVED_TO_GROUP_VARS: "true"
@@ -305,6 +308,10 @@ before_script:
 # stage: deploy-special
   MOVED_TO_GROUP_VARS: "true"
 
+.opensuse_canal_variables: &opensuse_canal_variables
+# stage: deploy-part2
+  MOVED_TO_GROUP_VARS: "true"
+
 
 # Builds for PRs only (premoderated by unit-tests step) and triggers (auto)
 ### PR JOBS PART1
@@ -320,16 +327,6 @@ gce_coreos-calico-aio:
   only: [/^pr-.*$/]
 
 ### PR JOBS PART2
-do_ubuntu-canal-ha:
-  stage: deploy-part2
-  <<: *job
-  <<: *do
-  variables:
-    <<: *do_variables
-  when: on_success
-  except: ['triggers']
-  only: [/^pr-.*$/]
-
 gce_centos7-flannel-addons:
   stage: deploy-part2
   <<: *job
@@ -363,7 +360,6 @@ gce_coreos-calico-sep-triggers:
   when: on_success
   only: ['triggers']
 
-
 gce_ubuntu-canal-ha-triggers:
   stage: deploy-part2
   <<: *job
@@ -396,6 +392,16 @@ gce_ubuntu-weave-sep-triggers:
   only: ['triggers']
 
 # More builds for PRs/merges (manual) and triggers (auto)
+do_ubuntu-canal-ha:
+  stage: deploy-part2
+  <<: *job
+  <<: *do
+  variables:
+    <<: *do_variables
+  when: manual
+  except: ['triggers']
+  only: ['master', /^pr-.*$/]
+
 gce_ubuntu-canal-ha:
   stage: deploy-part2
   <<: *job
@@ -456,6 +462,17 @@ gce_ubuntu-contiv-sep:
   variables:
     <<: *gce_variables
     <<: *ubuntu_contiv_sep_variables
+  when: manual
+  except: ['triggers']
+  only: ['master', /^pr-.*$/]
+
+gce_coreos-cilium:
+  stage: deploy-special
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    <<: *coreos_cilium_variables
   when: manual
   except: ['triggers']
   only: ['master', /^pr-.*$/]
@@ -575,6 +592,17 @@ gce_centos7-calico-ha-triggers:
     <<: *centos7_calico_ha_variables
   when: on_success
   only: ['triggers']
+
+gce_opensuse-canal:
+  stage: deploy-part2
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    <<: *opensuse_canal_variables
+  when: manual
+  except: ['triggers']
+  only: ['master', /^pr-.*$/]
 
 # no triggers yet https://github.com/kubernetes-incubator/kargo/issues/613
 gce_coreos-alpha-weave-ha:

@@ -62,6 +62,14 @@ other queries are forwardet to the nameservers found in ``upstream_dns_servers``
 This does not install the dnsmasq DaemonSet and instructs kubelet to directly use kubedns/skydns for
 all queries.
 
+#### coredns
+This does not install the dnsmasq DaemonSet and instructs kubelet to directly use CoreDNS for
+all queries.
+
+#### coredns_dual
+This does not install the dnsmasq DaemonSet and instructs kubelet to directly use CoreDNS for
+all queries. It will also deploy a secondary CoreDNS stack
+
 #### manual
 This does not install dnsmasq or kubedns, but allows you to specify
 `manual_dns_server`, which will be configured on nodes for handling Pod DNS.

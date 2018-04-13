@@ -1,4 +1,4 @@
-INVENTORY=$(PWD)/../inventory/sample/hosts.ini
+INVENTORY=$(PWD)/../inventory/sample/${CI_JOB_NAME}-${BUILD_NUMBER}.ini
 
 $(HOME)/.ssh/id_rsa:
 	mkdir -p $(HOME)/.ssh

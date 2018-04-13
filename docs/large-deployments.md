@@ -3,8 +3,7 @@ Large deployments of K8s
 
 For a large scaled deployments, consider the following configuration changes:
 
-* Tune [ansible settings]
-  (http://docs.ansible.com/ansible/intro_configuration.html)
+* Tune [ansible settings](http://docs.ansible.com/ansible/intro_configuration.html)
   for `forks` and `timeout` vars to fit large numbers of nodes being deployed.
 
 * Override containers' `foo_image_repo` vars to point to intranet registry.
@@ -46,6 +45,9 @@ For a large scaled deployments, consider the following configuration changes:
   [Inventory](getting-started.md#building-your-own-inventory)
   section of the Getting started guide for tips on creating a large scale
   Ansible inventory.
+
+* Override the ``etcd_events_cluster_setup: true`` store events in a separate
+  dedicated etcd instance.
 
 For example, when deploying 200 nodes, you may want to run ansible with
 ``--forks=50``, ``--timeout=600`` and define the ``retry_stagger: 60``.

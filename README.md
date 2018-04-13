@@ -5,7 +5,7 @@ Deploy a Production Ready Kubernetes Cluster
 
 If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 
--   Can be deployed on **AWS, GCE, Azure, OpenStack or Baremetal**
+-   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere or Baremetal**
 -   **High available** cluster
 -   **Composable** (Choice of the network plugin for instance)
 -   Support most popular **Linux distributions**
@@ -52,6 +52,7 @@ Documents
 -   [Vagrant install](docs/vagrant.md)
 -   [CoreOS bootstrap](docs/coreos.md)
 -   [Debian Jessie setup](docs/debian.md)
+-   [openSUSE setup](docs/opensuse.md)
 -   [Downloaded artifacts](docs/downloads.md)
 -   [Cloud providers](docs/cloud.md)
 -   [OpenStack](docs/openstack.md)
@@ -66,24 +67,26 @@ Supported Linux Distributions
 -----------------------------
 
 -   **Container Linux by CoreOS**
--   **Debian** Jessie
+-   **Debian** Jessie, Stretch, Wheezy
 -   **Ubuntu** 16.04
 -   **CentOS/RHEL** 7
+-   **Fedora/CentOS** Atomic
+-   **openSUSE** Leap 42.3/Tumbleweed
 
 Note: Upstart/SysV init based OS types are not supported.
 
 Versions of supported components
 --------------------------------
 
--   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.9.2
+-   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.9.5
 -   [etcd](https://github.com/coreos/etcd/releases) v3.2.4
--   [flanneld](https://github.com/coreos/flannel/releases) v0.8.0
--   [calico](https://docs.projectcalico.org/v2.5/releases/) v2.5.0
+-   [flanneld](https://github.com/coreos/flannel/releases) v0.10.0
+-   [calico](https://docs.projectcalico.org/v2.6/releases/) v2.6.8
 -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
--   [cilium](https://github.com/cilium/cilium) v1.0.0-rc4
--   [contiv](https://github.com/contiv/install/releases) v1.0.3
--   [weave](http://weave.works/) v2.0.1
--   [docker](https://www.docker.com/) v1.13 (see note)
+-   [cilium](https://github.com/cilium/cilium) v1.0.0-rc8
+-   [contiv](https://github.com/contiv/install/releases) v1.1.7
+-   [weave](http://weave.works/) v2.2.1
+-   [docker](https://www.docker.com/) v17.03 (see note)
 -   [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 (see Note 2)
 
 Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
@@ -104,6 +107,9 @@ Requirements
 -   **Your ssh key must be copied** to all the servers part of your inventory.
 -   The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
     in order to avoid any issue during deployment you should disable your firewall.
+-   If kubespray is ran from non-root user account, correct privilege escalation method
+    should be configured in the target servers. Then the `ansible_become` flag
+    or command parameters `--become or -b` should be specified.
 
 Network Plugins
 ---------------
@@ -150,5 +156,5 @@ CI Tests
 
 [![Build graphs](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/badges/master/build.svg)](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/pipelines)
 
-CI/end-to-end tests sponsored by Google (GCE), DigitalOcean, [teuto.net](https://teuto.net/) (openstack).
+CI/end-to-end tests sponsored by Google (GCE)
 See the [test matrix](docs/test_cases.md) for details.

@@ -1,6 +1,53 @@
+#https://raw.githubusercontent.com/kubernetes/kubernetes/v1.10.0/cluster/addons/fluentd-elasticsearch/fluentd-es-ds.yaml
 ---
-# https://raw.githubusercontent.com/kubernetes/kubernetes/v1.5.2/cluster/addons/fluentd-elasticsearch/es-controller.yaml
-apiVersion: extensions/v1beta1
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluentd-es
+  namespace: kube-system
+  labels:
+    k8s-app: fluentd-es
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fluentd-es
+  labels:
+    k8s-app: fluentd-es
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - "namespaces"
+  - "pods"
+  verbs:
+  - "get"
+  - "watch"
+  - "list"
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fluentd-es
+  labels:
+    k8s-app: fluentd-es
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+subjects:
+- kind: ServiceAccount
+  name: fluentd-es
+  namespace: kube-system
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: fluentd-es
+  apiGroup: ""
+---
+apiVersion: extensions/v1
 kind: DaemonSet
 metadata:
   name: "fluentd-es-v{{ fluentd_version }}"
@@ -9,24 +56,32 @@ metadata:
     k8s-app: fluentd-es
     kubernetes.io/cluster-service: "true"
     version: "v{{ fluentd_version }}"
+    addonmanager.kubernetes.io/mode: Reconcile
 spec:
+  selector:
+    matchLabels:
+      k8s-app: fluentd-es
+      version: "v{{ fluentd_version }}"
   template:
     metadata:
       labels:
         k8s-app: fluentd-es
         kubernetes.io/cluster-service: "true"
         version: "v{{ fluentd_version }}"
+        # This annotation ensures that fluentd does not get evicted if the node
+      # supports critical pod annotation based priority scheme.
+      # Note that this does not guarantee admission on the nodes (#40573).
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
     spec:
-      tolerations:
-        - effect: NoSchedule
-          operator: Exists
+      priorityClassName: system-node-critical
+      serviceAccountName: fluentd-es
       containers:
       - name: fluentd-es
         image: "{{ fluentd_image_repo }}:{{ fluentd_image_tag }}"
-        command:
-          - '/bin/sh'
-          - '-c'
-          - '/usr/sbin/td-agent -c {{ fluentd_config_dir }}/{{ fluentd_config_file}} 2>&1 >> /var/log/fluentd.log'
+        env:
+        - name: FLUENTD_ARGS
+          value: --no-supervisor -q
         resources:
           limits:
 {% if fluentd_cpu_limit is defined and fluentd_cpu_limit != "0m" %}
@@ -39,22 +94,21 @@ spec:
         volumeMounts:
         - name: varlog
           mountPath: /var/log
-        - name: dockercontainers
+        - name: varlibdockercontainers
           mountPath: "{{ docker_daemon_graph }}/containers"
           readOnly: true
         - name: config
           mountPath: "{{ fluentd_config_dir }}"
+      nodeSelector:
+        beta.kubernetes.io/fluentd-ds-ready: "true"
       terminationGracePeriodSeconds: 30
       volumes:
       - name: varlog
         hostPath:
           path: /var/log
-      - name: dockercontainers
+      - name: varlibdockercontainers
         hostPath:
           path: {{ docker_daemon_graph }}/containers
       - name: config
         configMap: 
           name: fluentd-config
-{% if rbac_enabled %}
-      serviceAccountName: efk 
-{% endif %}

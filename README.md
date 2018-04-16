@@ -1,4 +1,4 @@
-![Kubernetes Logo](https://raw.githubusercontent.com/Arslanbekov/kubespray/kubernetes-logo/docs/img/kubernetes-logo.png)
+![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-incubator/kubespray/master/docs/img/kubernetes-logo.png)
 
 Deploy a Production Ready Kubernetes Cluster
 ============================================

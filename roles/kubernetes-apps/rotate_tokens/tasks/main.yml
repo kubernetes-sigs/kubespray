@@ -1,0 +1,48 @@
+---
+- name: Rotate Tokens | Get default token name
+  shell: "{{ bin_dir }}/kubectl get secrets -o custom-columns=name:{.metadata.name} --no-headers | grep -m1 default-token"
+  register: default_token
+  changed_when: false
+  until: default_token.rc == 0
+  delay: 1
+  retries: 5
+
+- name: Rotate Tokens | Get default token data
+  command: "{{ bin_dir }}/kubectl get secrets {{ default_token.stdout }} -ojson"
+  register: default_token_data
+  changed_when: false
+
+- name: Rotate Tokens | Test if default certificate is expired
+  uri:
+    url: https://{{ kube_apiserver_ip }}/api/v1/nodes
+    method: GET
+    return_content: no
+    validate_certs: no
+    headers:
+      Authorization: "Bearer {{ (default_token_data.stdout|from_json)['data']['token']|b64decode }}"
+  register: check_secret
+  failed_when: false
+
+- name: Rotate Tokens | Determine if certificate is expired
+  set_fact:
+    needs_rotation: '{{ check_secret.status not in [200, 403] }}'
+
+# FIXME(mattymo): Exclude built in secrets that were automatically rotated,
+# instead of filtering manually
+- name: Rotate Tokens | Get all serviceaccount tokens to expire
+  shell: >-
+    {{ bin_dir }}/kubectl get secrets --all-namespaces
+    -o 'jsonpath={range .items[*]}{"\n"}{.metadata.namespace}{" "}{.metadata.name}{" "}{.type}{end}'
+    | grep kubernetes.io/service-account-token
+    | egrep 'default-token|kube-proxy|kube-dns|dnsmasq|netchecker|weave|calico|canal|flannel|dashboard|cluster-proportional-autoscaler|efk|tiller|local-volume-provisioner'
+  register: tokens_to_delete
+  when: needs_rotation
+
+- name: Rotate Tokens | Delete expired tokens
+  command: "{{ bin_dir }}/kubectl delete secrets -n {{ item.split(' ')[0] }} {{ item.split(' ')[1] }}"
+  with_items: "{{ tokens_to_delete.stdout_lines }}"
+  when: needs_rotation
+
+- name: Rotate Tokens | Delete pods in system namespace
+  command: "{{ bin_dir }}/kubectl delete pods -n kube-system --all"
+  when: needs_rotation

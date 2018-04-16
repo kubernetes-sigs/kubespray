@@ -6,6 +6,10 @@ kube_hostpath_dynamic_provisioner: "false"
 # change to 0.0.0.0 to enable insecure access from anywhere (not recommended)
 kube_apiserver_insecure_bind_address: 127.0.0.1
 
+# By default the external API listens on all interfaces, this can be changed to
+# listen on a specific address/interface.
+kube_apiserver_bind_address: 0.0.0.0
+
 # A port range to reserve for services with NodePort visibility.
 # Inclusive at both ends of the range.
 kube_apiserver_node_port_range: "30000-32767"
@@ -39,15 +43,26 @@ kube_apiserver_cpu_requests: 100m
 
 # Admission control plug-ins
 kube_apiserver_admission_control:
+  - Initializers
   - NamespaceLifecycle
   - LimitRanger
   - ServiceAccount
   - DefaultStorageClass
+  - >-
+      {%- if kube_version | version_compare('v1.9', '<') -%}
+      GenericAdmissionWebhook
+      {%- else -%}
+      MutatingAdmissionWebhook,ValidatingAdmissionWebhook
+      {%- endif -%}
   - ResourceQuota
 
+# extra runtime config
+kube_api_runtime_config:
+  - admissionregistration.k8s.io/v1alpha1
+
 ## Enable/Disable Kube API Server Authentication Methods
-kube_basic_auth: true
-kube_token_auth: true
+kube_basic_auth: false
+kube_token_auth: false
 kube_oidc_auth: false
 
 ## Variables for OpenID Connect Configuration https://kubernetes.io/docs/admin/authentication/
@@ -63,10 +78,23 @@ kube_oidc_auth: false
 ## Variables for custom flags
 apiserver_custom_flags: []
 
+# List of the preferred NodeAddressTypes to use for kubelet connections.
+kubelet_preferred_address_types: 'InternalDNS,InternalIP,Hostname,ExternalDNS,ExternalIP'
+
 controller_mgr_custom_flags: []
 
 scheduler_custom_flags: []
 
-# kubeadm settings
-# Value of 0 means it never expires
-kubeadm_token_ttl: 0
+## Extra args for k8s components passing by kubeadm
+kube_kubeadm_apiserver_extra_args: {}
+kube_kubeadm_controller_extra_args: {}
+kube_kubeadm_scheduler_extra_args: {}
+
+## Variable for influencing kube-scheduler behaviour
+volume_cross_zone_attachment: false
+
+## Encrypting Secret Data at Rest
+kube_encrypt_secret_data: false
+kube_encrypt_token: "{{ lookup('password', inventory_dir + '/credentials/kube_encrypt_token.creds length=32 chars=ascii_letters,digits') }}"
+# Must be either: aescbc, secretbox or aesgcm
+kube_encryption_algorithm: "aescbc"

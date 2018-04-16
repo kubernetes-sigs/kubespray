@@ -2,8 +2,9 @@ Kubespray's roadmap
 =================
 
 ### Kubeadm
-- Propose kubeadm as an option in order to setup the kubernetes cluster.
-That would probably improve deployment speed and certs management [#553](https://github.com/kubespray/kubespray/issues/553)
+- Switch to kubeadm deployment as the default method after some bugs are fixed:
+  * Support for basic auth
+  * cloudprovider cloud-config mount [#484](https://github.com/kubernetes/kubeadm/issues/484)
 
 ### Self deployment (pull-mode) [#320](https://github.com/kubespray/kubespray/issues/320)
 - the playbook would install and configure docker/rkt and the etcd cluster
@@ -12,60 +13,35 @@ That would probably improve deployment speed and certs management [#553](https:/
 - to be discussed, a way to provide the inventory
 - **self deployment** of the node from inside a container [#321](https://github.com/kubespray/kubespray/issues/321)
 
-### Provisionning and cloud providers
+### Provisioning and cloud providers
 - [ ] Terraform to provision instances on **GCE, AWS, Openstack, Digital Ocean, Azure**
 - [ ] On AWS autoscaling, multi AZ
 - [ ] On Azure autoscaling, create loadbalancer [#297](https://github.com/kubespray/kubespray/issues/297)
 - [ ] On GCE be able to create a loadbalancer automatically (IAM ?) [#280](https://github.com/kubespray/kubespray/issues/280)
-- [x] **TLS boostrap** support for kubelet [#234](https://github.com/kubespray/kubespray/issues/234)
+- [x] **TLS boostrap** support for kubelet (covered by kubeadm, but not in standard deployment) [#234](https://github.com/kubespray/kubespray/issues/234)
   (related issues: https://github.com/kubernetes/kubernetes/pull/20439 <br>
    https://github.com/kubernetes/kubernetes/issues/18112)
 
 ### Tests
-- [x] Run kubernetes e2e tests
-- [x] migrate to jenkins
-(a test is currently a deployment on a 3 node cluste, testing k8s api, ping between 2 pods)
-- [x] Full tests on GCE per day (All OS's, all network plugins)
-- [x] trigger a single test per pull request
-- [ ] ~~single test with the Ansible version n-1 per day~~
-- [x] Test idempotency on on single OS but for all network plugins/container engines
+- [ ] Run kubernetes e2e tests
+- [ ] Test idempotency on on single OS but for all network plugins/container engines
 - [ ] single test on AWS per day
-- [x] test different achitectures :
-           - 3 instances, 3 are members of the etcd cluster, 2 of them acting as master and node, 1 as node
-           - 5 instances, 3 are etcd and nodes, 2 are masters only
-           - 7 instances, 3 etcd only, 2 masters, 2 nodes
 - [ ] test scale up cluster:  +1 etcd, +1 master, +1 node
+- [ ] Reorganize CI test vars into group var files
 
 ### Lifecycle
-- [ ] Adopt the kubeadm tool by delegating CM tasks it is capable to accomplish well [#553](https://github.com/kubespray/kubespray/issues/553)
-- [x] Drain worker node when upgrading k8s components in a worker node. [#154](https://github.com/kubespray/kubespray/issues/154)
-- [ ] Drain worker node when shutting down/deleting an instance
 - [ ] Upgrade granularity: select components to upgrade and skip others
 
 ### Networking
-- [ ] romana.io support [#160](https://github.com/kubespray/kubespray/issues/160)
-- [ ] Configure network policy for Calico. [#159](https://github.com/kubespray/kubespray/issues/159)
 - [ ] Opencontrail
-- [x] Canal
-- [x] Cloud Provider native networking (instead of our network plugins)
-
-### High availability
-- (to be discussed) option to set a loadbalancer for the apiservers like ucarp/packemaker/keepalived
-While waiting for the issue [kubernetes/kubernetes#18174](https://github.com/kubernetes/kubernetes/issues/18174) to be fixed.
-
-### Kubespray-cli
-- Delete instances
-- `kubespray vagrant` to setup a test cluster locally
-- `kubespray azure` for Microsoft Azure support
-- switch to Terraform instead of Ansible for provisionning
-- update $HOME/.kube/config when a cluster is deployed. Optionally switch to this context
+- [ ] Consolidate network_plugins and kubernetes-apps/network_plugins
 
 ### Kubespray API
 - Perform all actions through an **API**
 - Store inventories / configurations of mulltiple clusters
 - make sure that state of cluster is completely saved in no more than one config file beyond hosts inventory
 
-### Addons (with kpm)
+### Addons (helm or native ansible)
 Include optionals deployments to init the cluster:
 ##### Monitoring
 - Heapster / Grafana ....
@@ -85,10 +61,10 @@ Include optionals deployments to init the cluster:
  - Deis Workflow
 
 ### Others
-- remove nodes  (adding is already supported)
-- being able to choose any k8s version (almost done)
-- **rkt** support [#59](https://github.com/kubespray/kubespray/issues/59)
-- Review documentation (split in categories)
+- remove nodes (adding is already supported)
+- Organize and update documentation (split in categories)
+- Refactor downloads so it all runs in the beginning of deployment
+- Make bootstrapping OS more consistent
 - **consul** -> if officialy supported by k8s
 - flex volumes options (e.g. **torrus** support) [#312](https://github.com/kubespray/kubespray/issues/312)
 - Clusters federation option (aka **ubernetes**) [#329](https://github.com/kubespray/kubespray/issues/329)

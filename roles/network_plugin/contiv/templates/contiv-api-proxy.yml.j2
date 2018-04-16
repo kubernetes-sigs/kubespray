@@ -1,0 +1,59 @@
+# This manifest deploys the Contiv API Proxy Server on Kubernetes.
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: contiv-api-proxy
+  namespace: kube-system
+  labels:
+    k8s-app: contiv-api-proxy
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      name: contiv-api-proxy
+      namespace: kube-system
+      labels:
+        k8s-app: contiv-api-proxy
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      # The API proxy must run in the host network namespace so that
+      # it isn't governed by policy that would prevent it from working.
+      hostNetwork: true
+      hostPID: true
+      nodeSelector:
+        node-role.kubernetes.io/master: "true"
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+{% if rbac_enabled %}
+      serviceAccountName: contiv-netmaster
+{% endif %}
+      containers:
+        - name: contiv-api-proxy
+          image: {{ contiv_auth_proxy_image_repo }}:{{ contiv_auth_proxy_image_tag }}
+          args:
+            - --listen-address=0.0.0.0:{{ contiv_api_proxy_port }}
+            - --tls-key-file=/var/contiv/auth_proxy_key.pem
+            - --tls-certificate=/var/contiv/auth_proxy_cert.pem
+            - --data-store-address=$(CONTIV_ETCD)
+            - --netmaster-address=127.0.0.1:{{ contiv_netmaster_port }}
+          env:
+            - name: NO_NETMASTER_STARTUP_CHECK
+              value: "0"
+            - name: CONTIV_ETCD
+              valueFrom:
+                configMapKeyRef:
+                  name: contiv-config
+                  key: cluster_store
+          securityContext:
+            privileged: false
+          volumeMounts:
+            - mountPath: /var/contiv
+              name: var-contiv
+              readOnly: false
+      volumes:
+        - name: var-contiv
+          hostPath:
+            path: /var/contiv

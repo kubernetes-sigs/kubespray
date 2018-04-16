@@ -1,6 +1,7 @@
 ---
-- include: pre-upgrade.yml
-  tags: k8s-pre-upgrade
+- import_tasks: pre-upgrade.yml
+  tags:
+    - k8s-pre-upgrade
 
 # upstream bug: https://github.com/kubernetes/kubeadm/issues/441
 - name: Disable kube_basic_auth until kubeadm/441 is fixed
@@ -8,22 +9,43 @@
     kube_basic_auth: false
   when: kubeadm_enabled|bool|default(false)
 
-- include: users-file.yml
+- import_tasks: users-file.yml
   when: kube_basic_auth|default(true)
 
-- name: Copy kubectl from hyperkube container
-  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp /hyperkube /systembindir/kubectl"
-  register: kube_task_result
-  until: kube_task_result.rc == 0
+- import_tasks: encrypt-at-rest.yml
+  when: kube_encrypt_secret_data
+
+- name: Compare host kubectl with hyperkube container
+  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/cmp /hyperkube /systembindir/kubectl"
+  register: kubectl_task_compare_result
+  until: kubectl_task_compare_result.rc in [0,1,2]
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
-  tags: [hyperkube, kubectl, upgrade]
+  failed_when: "kubectl_task_compare_result.rc not in [0,1,2]"
+  tags:
+    - hyperkube
+    - kubectl
+    - upgrade
+
+- name: Copy kubectl from hyperkube container
+  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp /hyperkube /systembindir/kubectl"
+  when: kubectl_task_compare_result.rc != 0
+  register: kubectl_task_result
+  until: kubectl_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+  tags:
+    - hyperkube
+    - kubectl
+    - upgrade
 
 - name: Install kubectl bash completion
   shell: "{{ bin_dir }}/kubectl completion bash >/etc/bash_completion.d/kubectl.sh"
-  when: ansible_os_family in ["Debian","RedHat"]
-  tags: kubectl
+  when: kubectl_task_compare_result.rc != 0 and ansible_os_family in ["Debian","RedHat"]
+  tags:
+    - kubectl
 
 - name: Set kubectl bash completion file
   file:
@@ -32,12 +54,14 @@
     group: root
     mode: 0755
   when: ansible_os_family in ["Debian","RedHat"]
-  tags: [kubectl, upgrade]
+  tags:
+    - kubectl
+    - upgrade
 
-- task: Include kubeadm setup if enabled
-  include: kubeadm-setup.yml
+- name: Include kubeadm setup if enabled
+  import_tasks: kubeadm-setup.yml
   when: kubeadm_enabled|bool|default(false)
 
-- task: Include static pod setup if not using kubeadm
-  include: static-pod-setup.yml
+- name: Include static pod setup if not using kubeadm
+  import_tasks: static-pod-setup.yml
   when: not kubeadm_enabled|bool|default(false)

@@ -1,0 +1,130 @@
+---
+- name: Kubernetes Apps | Wait for kube-apiserver
+  uri:
+    url: "{{ kube_apiserver_endpoint }}/healthz"
+    validate_certs: no
+    client_cert: "{{ kube_apiserver_client_cert }}"
+    client_key: "{{ kube_apiserver_client_key }}"
+  register: result
+  until: result.status == 200
+  retries: 10
+  delay: 6
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Kubernetes Apps | Add ClusterRoleBinding to admit nodes
+  template:
+    src: "node-crb.yml.j2"
+    dest: "{{ kube_config_dir }}/node-crb.yml"
+  register: node_crb_manifest
+  when:
+    - rbac_enabled
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Apply workaround to allow all nodes with cert O=system:nodes to register
+  kube:
+    name: "kubespray:system:node"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "clusterrolebinding"
+    filename: "{{ kube_config_dir }}/node-crb.yml"
+    state: latest
+  when:
+    - rbac_enabled
+    - node_crb_manifest.changed
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Kubernetes Apps | Add webhook ClusterRole that grants access to proxy, stats, log, spec, and metrics on a kubelet
+  template:
+    src: "node-webhook-cr.yml.j2"
+    dest: "{{ kube_config_dir }}/node-webhook-cr.yml"
+  register: node_webhook_cr_manifest
+  when:
+    - rbac_enabled
+    - kubelet_authorization_mode_webhook
+    - inventory_hostname == groups['kube-master'][0]
+  tags: node-webhook
+
+- name: Apply webhook ClusterRole
+  kube:
+    name: "system:node-webhook"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "clusterrole"
+    filename: "{{ kube_config_dir }}/node-webhook-cr.yml"
+    state: latest
+  when:
+    - rbac_enabled
+    - kubelet_authorization_mode_webhook
+    - node_webhook_cr_manifest.changed
+    - inventory_hostname == groups['kube-master'][0]
+  tags: node-webhook
+
+- name: Kubernetes Apps | Add ClusterRoleBinding for system:nodes to webhook ClusterRole
+  template:
+    src: "node-webhook-crb.yml.j2"
+    dest: "{{ kube_config_dir }}/node-webhook-crb.yml"
+  register: node_webhook_crb_manifest
+  when:
+    - rbac_enabled
+    - kubelet_authorization_mode_webhook
+    - inventory_hostname == groups['kube-master'][0]
+  tags: node-webhook
+
+- name: Grant system:nodes the webhook ClusterRole
+  kube:
+    name: "system:node-webhook"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "clusterrolebinding"
+    filename: "{{ kube_config_dir }}/node-webhook-crb.yml"
+    state: latest
+  when:
+    - rbac_enabled
+    - kubelet_authorization_mode_webhook
+    - node_webhook_crb_manifest.changed
+    - inventory_hostname == groups['kube-master'][0]
+  tags: node-webhook
+
+- name: Check if vsphere-cloud-provider ClusterRole exists
+  command: "{{ bin_dir }}/kubectl get clusterroles system:vsphere-cloud-provider"
+  register: vsphere_cloud_provider
+  ignore_errors: true
+  when:
+    - rbac_enabled
+    - cloud_provider is defined
+    - cloud_provider == 'vsphere'
+    - kube_version | version_compare('v1.9.0', '>=')
+    - kube_version | version_compare('v1.9.3', '<=')
+    - inventory_hostname == groups['kube-master'][0]
+  tags: vsphere
+
+- name: Write vsphere-cloud-provider ClusterRole manifest
+  template:
+    src: "vsphere-rbac.yml.j2"
+    dest: "{{ kube_config_dir }}/vsphere-rbac.yml"
+  register: vsphere_rbac_manifest
+  when:
+    - rbac_enabled
+    - cloud_provider is defined
+    - cloud_provider == 'vsphere'
+    - vsphere_cloud_provider.rc is defined
+    - vsphere_cloud_provider.rc != 0
+    - kube_version | version_compare('v1.9.0', '>=')
+    - kube_version | version_compare('v1.9.3', '<=')
+    - inventory_hostname == groups['kube-master'][0]
+  tags: vsphere
+
+- name: Apply vsphere-cloud-provider ClusterRole
+  kube:
+    name: "system:vsphere-cloud-provider"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "clusterrolebinding"
+    filename: "{{ kube_config_dir }}/vsphere-rbac.yml"
+    state: latest
+  when:
+    - rbac_enabled
+    - cloud_provider is defined
+    - cloud_provider == 'vsphere'
+    - vsphere_cloud_provider.rc is defined
+    - vsphere_cloud_provider.rc != 0
+    - kube_version | version_compare('v1.9.0', '>=')
+    - kube_version | version_compare('v1.9.3', '<=')
+    - inventory_hostname == groups['kube-master'][0]
+  tags: vsphere

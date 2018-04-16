@@ -1,0 +1,41 @@
+---
+- name: container_download | Make download decision if pull is required by tag or sha256
+  include_tasks: set_docker_image_facts.yml
+  delegate_to: "{{ download_delegate if download_run_once or omit }}"
+  delegate_facts: yes
+  run_once: "{{ download_run_once }}"
+  when:
+    - download.enabled
+    - download.container
+  tags:
+    - facts
+
+# FIXME(mattymo): In Ansible 2.4 omitting download delegate is broken. Move back
+#                 to one task in the future.
+- name: container_download | Download containers if pull is required or told to always pull (delegate)
+  command: "{{ docker_bin_dir }}/docker pull {{ pull_args }}"
+  register: pull_task_result
+  until: pull_task_result|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - download_run_once
+    - download.enabled
+    - download.container
+    - pull_required|default(download_always_pull)
+  delegate_to: "{{ download_delegate }}"
+  delegate_facts: yes
+  run_once: yes
+
+- name: container_download | Download containers if pull is required or told to always pull (all nodes)
+  command: "{{ docker_bin_dir }}/docker pull {{ pull_args }}"
+  register: pull_task_result
+  until: pull_task_result|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - not download_run_once
+    - download.enabled
+    - download.container
+    - pull_required|default(download_always_pull)
+    - group_names | intersect(download.groups) | length

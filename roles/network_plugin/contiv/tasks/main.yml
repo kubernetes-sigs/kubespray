@@ -1,0 +1,117 @@
+---
+- name: Contiv | Load openvswitch kernel module
+  copy:
+    dest: /etc/modules-load.d/openvswitch.conf
+    content: "openvswitch"
+  notify:
+    - Contiv | Reload kernel modules
+
+- name: Contiv | Create contiv etcd directories
+  file:
+    dest: "{{ item }}"
+    state: directory
+    mode: 0750
+    owner: root
+    group: root
+  with_items:
+    - "{{ contiv_etcd_conf_dir }}"
+    - "{{ contiv_etcd_data_dir }}"
+
+- set_fact:
+    contiv_config_dir: "{{ contiv_config_dir }}"
+    contiv_enable_api_proxy: "{{ contiv_enable_api_proxy }}"
+    contiv_fabric_mode: "{{ contiv_fabric_mode }}"
+    contiv_fwd_mode: "{{ contiv_fwd_mode }}"
+    contiv_netmaster_port: "{{ contiv_netmaster_port }}"
+    contiv_networks: "{{ contiv_networks }}"
+    contiv_manifests:
+      - {name: contiv-config, file: contiv-config.yml, type: configmap}
+      - {name: contiv-netmaster, file: contiv-netmaster-clusterrolebinding.yml, type: clusterrolebinding}
+      - {name: contiv-netmaster, file: contiv-netmaster-clusterrole.yml, type: clusterrole}
+      - {name: contiv-netmaster, file: contiv-netmaster-serviceaccount.yml, type: serviceaccount}
+      - {name: contiv-netplugin, file: contiv-netplugin-clusterrolebinding.yml, type: clusterrolebinding}
+      - {name: contiv-netplugin, file: contiv-netplugin-clusterrole.yml, type: clusterrole}
+      - {name: contiv-netplugin, file: contiv-netplugin-serviceaccount.yml, type: serviceaccount}
+      - {name: contiv-etcd, file: contiv-etcd.yml, type: daemonset}
+      - {name: contiv-etcd-proxy, file: contiv-etcd-proxy.yml, type: daemonset}
+      - {name: contiv-netplugin, file: contiv-netplugin.yml, type: daemonset}
+      - {name: contiv-netmaster, file: contiv-netmaster.yml, type: daemonset}
+
+- set_fact:
+    contiv_manifests: |-
+      {% set _ = contiv_manifests.append({"name": "contiv-api-proxy", "file": "contiv-api-proxy.yml", "type": "daemonset"}) %}
+      {{ contiv_manifests }}
+  when: contiv_enable_api_proxy
+
+- name: Contiv | Create /var/contiv
+  file:
+    path: /var/contiv
+    state: directory
+
+- name: Contiv | Create contiv config directory
+  file:
+    dest: "{{ contiv_config_dir }}"
+    state: directory
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Contiv | Install all Kubernetes resources
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ contiv_config_dir }}/{{ item.file }}"
+  with_items: "{{ contiv_manifests }}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+  register: contiv_manifests_results
+
+- name: Contiv | Generate contiv-api-proxy certificates
+  script: generate-certificate.sh
+  args:
+    creates: /var/contiv/auth_proxy_key.pem
+  when: "contiv_enable_api_proxy and contiv_generate_certificate"
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+
+- name: Contiv | Fetch the generated certificate
+  fetch:
+    src: "/var/contiv/{{ item }}"
+    dest: "/tmp/kubespray-contiv-{{ item }}"
+    flat: yes
+  with_items:
+    - auth_proxy_key.pem
+    - auth_proxy_cert.pem
+  when: "contiv_enable_api_proxy and contiv_generate_certificate"
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+
+- name: Contiv | Copy the generated certificate on nodes
+  copy:
+    src: "/tmp/kubespray-contiv-{{ item }}"
+    dest: "/var/contiv/{{ item }}"
+  with_items:
+    - auth_proxy_key.pem
+    - auth_proxy_cert.pem
+  when: "inventory_hostname != groups['kube-master'][0]
+         and inventory_hostname in groups['kube-master']
+         and contiv_enable_api_proxy and contiv_generate_certificate"
+
+- name: Contiv | Copy cni plugins from hyperkube
+  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/bash -c '/bin/cp -a /opt/cni/bin/* /cnibindir/'"
+  register: cni_task_result
+  until: cni_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+  tags: [hyperkube, upgrade]
+
+- name: Contiv | Copy netctl binary from docker container
+  command: sh -c "{{ docker_bin_dir }}/docker rm -f netctl-binarycopy;
+           {{ docker_bin_dir }}/docker create --name netctl-binarycopy {{ contiv_image_repo }}:{{ contiv_image_tag }} &&
+           {{ docker_bin_dir }}/docker cp netctl-binarycopy:/contiv/bin/netctl {{ bin_dir }}/netctl &&
+           {{ docker_bin_dir }}/docker rm -f netctl-binarycopy"
+  register: contiv_task_result
+  until: contiv_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false

@@ -26,3 +26,8 @@ variable "aws_subnet_ids_public" {
     description = "IDs of Public Subnets"
     type = "list"
 }
+
+variable "default_tags" {
+    description = "Tags for all resources"
+    type = "map"
+}

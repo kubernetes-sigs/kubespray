@@ -1,0 +1,126 @@
+---
+- name: container_download | Make download decision if pull is required by tag or sha256
+  include: set_docker_image_facts.yml
+  delegate_to: "{{ download_delegate if download_run_once or omit }}"
+  delegate_facts: no
+  run_once: "{{ download_run_once }}"
+  when:
+    - download.enabled
+    - download.container
+  tags:
+    - facts
+
+- set_fact:
+    fname: "{{local_release_dir}}/containers/{{download.repo|regex_replace('/|\0|:', '_')}}:{{download.tag|default(download.sha256)|regex_replace('/|\0|:', '_')}}.tar"
+  run_once: true
+  when:
+    - download.enabled
+    - download.container
+    - download_run_once
+
+  tags:
+    - facts
+
+- name: "container_download | Set default value for 'container_changed' to false"
+  set_fact:
+    container_changed: "{{pull_required|default(false)}}"
+  when:
+    - download.enabled
+    - download.container
+    - download_run_once
+
+- name: "container_download | Update the 'container_changed' fact"
+  set_fact:
+    container_changed: "{{ pull_required|default(false) or not 'up to date' in pull_task_result.stdout }}"
+  when:
+    - download.enabled
+    - download.container
+    - download_run_once
+    - pull_required|default(download_always_pull)
+  run_once: "{{ download_run_once }}"
+  tags:
+    - facts
+
+- name: container_download | Stat saved container image
+  stat:
+    path: "{{ fname }}"
+  register: img
+  changed_when: false
+  delegate_to: "{{ download_delegate }}"
+  delegate_facts: no
+  become: false
+  run_once: true
+  when:
+    - download.enabled
+    - download.container
+    - download_run_once
+  tags:
+    - facts
+
+- name: container_download | save container images
+  shell: "{{ docker_bin_dir }}/docker save {{ pull_args }} | gzip -{{ download_compress }} > {{ fname }}"
+  delegate_to: "{{ download_delegate }}"
+  delegate_facts: no
+  register: saved
+  run_once: true
+  when:
+    - download.enabled
+    - download.container
+    - download_run_once
+    - (ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"] or download_delegate == "localhost")
+    - (container_changed or not img.stat.exists)
+
+- name: container_download | copy container images to ansible host
+  synchronize:
+    src: "{{ fname }}"
+    dest: "{{ fname }}"
+    use_ssh_args: "{{ has_bastion | default(false) }}"
+    mode: pull
+  delegate_to: localhost
+  delegate_facts: no
+  run_once: true
+  become: false
+  when:
+    - download.enabled
+    - download.container
+    - download_run_once
+    - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+    - inventory_hostname == download_delegate
+    - download_delegate != "localhost"
+    - saved.changed
+
+- name: container_download | upload container images to nodes
+  synchronize:
+    src: "{{ fname }}"
+    dest: "{{ fname }}"
+    use_ssh_args: "{{ has_bastion | default(false) }}"
+    mode: push
+  delegate_to: localhost
+  delegate_facts: no
+  become: false
+  register: get_task
+  until: get_task|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - download.enabled
+    - download.container
+    - download_run_once
+    - (ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"] and
+      inventory_hostname != download_delegate or
+      download_delegate == "localhost")
+  tags:
+    - upload
+    - upgrade
+
+- name: container_download | load container images
+  shell: "{{ docker_bin_dir }}/docker load < {{ fname }}"
+  when:
+    - download.enabled
+    - download.container
+    - download_run_once
+    - (ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"] and
+      inventory_hostname != download_delegate or download_delegate == "localhost")
+  tags:
+    - upload
+    - upgrade

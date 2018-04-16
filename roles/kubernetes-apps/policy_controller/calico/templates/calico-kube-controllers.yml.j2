@@ -1,0 +1,68 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: calico-kube-controllers
+  namespace: kube-system
+  labels:
+    k8s-app: calico-kube-controllers
+    kubernetes.io/cluster-service: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      kubernetes.io/cluster-service: "true"
+      k8s-app: calico-kube-controllers
+  template:
+    metadata:
+      name: calico-kube-controllers
+      namespace: kube-system
+      labels:
+        kubernetes.io/cluster-service: "true"
+        k8s-app: calico-kube-controllers
+    spec:
+      hostNetwork: true
+{% if rbac_enabled %}
+      serviceAccountName: calico-kube-controllers
+{% endif %}
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+        - name: calico-kube-controllers
+          image: {{ calico_policy_image_repo }}:{{ calico_policy_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          resources:
+            limits:
+              cpu: {{ calico_policy_controller_cpu_limit }}
+              memory: {{ calico_policy_controller_memory_limit }}
+            requests:
+              cpu: {{ calico_policy_controller_cpu_requests }}
+              memory: {{ calico_policy_controller_memory_requests }}
+          env:
+            - name: ETCD_ENDPOINTS
+              value: "{{ etcd_access_addresses }}"
+            - name: ETCD_CA_CERT_FILE
+              value: "{{ calico_cert_dir }}/ca_cert.crt"
+            - name: ETCD_CERT_FILE
+              value: "{{ calico_cert_dir }}/cert.crt"
+            - name: ETCD_KEY_FILE
+              value: "{{ calico_cert_dir }}/key.pem"
+            # Location of the Kubernetes API - this shouldn't need to be
+            # changed so long as it is used in conjunction with
+            # CONFIGURE_ETC_HOSTS="true".
+            - name: K8S_API
+              value: "https://kubernetes.default"
+            # Configure /etc/hosts within the container to resolve
+            # the kubernetes.default Service to the correct clusterIP
+            # using the environment provided by the kubelet.
+            # This removes the need for KubeDNS to resolve the Service.
+            - name: CONFIGURE_ETC_HOSTS
+              value: "true"
+          volumeMounts:
+          - mountPath: {{ calico_cert_dir }}
+            name: etcd-certs
+            readOnly: true
+      volumes:
+      - hostPath:
+          path: {{ calico_cert_dir }}
+        name: etcd-certs

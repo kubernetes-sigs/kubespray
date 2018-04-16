@@ -50,7 +50,7 @@ DNS modes supported by Kubespray
 You can modify how Kubespray sets up DNS for your cluster with the variables ``dns_mode`` and ``resolvconf_mode``.
 
 ## dns_mode
-``dns_mode`` configures how Kubespray will setup cluster DNS. There are three modes available:
+``dns_mode`` configures how Kubespray will setup cluster DNS. There are four modes available:
 
 #### dnsmasq_kubedns (default)
 This installs an additional dnsmasq DaemonSet which gives more flexibility and lifts some
@@ -61,6 +61,20 @@ other queries are forwardet to the nameservers found in ``upstream_dns_servers``
 #### kubedns
 This does not install the dnsmasq DaemonSet and instructs kubelet to directly use kubedns/skydns for
 all queries.
+
+#### coredns
+This does not install the dnsmasq DaemonSet and instructs kubelet to directly use CoreDNS for
+all queries.
+
+#### coredns_dual
+This does not install the dnsmasq DaemonSet and instructs kubelet to directly use CoreDNS for
+all queries. It will also deploy a secondary CoreDNS stack
+
+#### manual
+This does not install dnsmasq or kubedns, but allows you to specify
+`manual_dns_server`, which will be configured on nodes for handling Pod DNS.
+Use this method if you plan to install your own DNS server in the cluster after
+initial deployment.
 
 #### none
 This does not install any of dnsmasq and kubedns/skydns. This basically disables cluster DNS completely and

@@ -1,23 +1,18 @@
 ---
-- name: Set first kube master
-  set_fact:
-    first_kube_master: "{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(hostvars[groups['kube-master'][0]]['ansible_default_ipv4']['address'])) }}"
-
 - name: Set external kube-apiserver endpoint
   set_fact:
     external_apiserver_endpoint: >-
       {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
       {%- else -%}
-      https://{{ first_kube_master }}:{{ kube_apiserver_port }}
+      https://{{ kube_apiserver_address }}:{{ kube_apiserver_port }}
       {%- endif -%}
-  tags: facts
+  tags:
+    - facts
 
 - name: Gather certs for admin kubeconfig
   slurp:
     src: "{{ item }}"
-  delegate_to: "{{ groups['kube-master'][0] }}"
-  delegate_facts: no
   register: admin_certs
   with_items:
     - "{{ kube_cert_dir }}/ca.pem"
@@ -29,6 +24,9 @@
   template:
     src: admin.conf.j2
     dest: "{{ kube_config_dir }}/admin.conf"
+    owner: root
+    group: "{{ kube_cert_group }}"
+    mode: 0640
   when: not kubeadm_enabled|d(false)|bool
 
 - name: Create kube config dir
@@ -51,7 +49,6 @@
     dest: "{{ artifacts_dir }}/admin.conf"
     flat: yes
     validate_checksum: no
-  become: no
   run_once: yes
   when: kubeconfig_localhost|default(false)
 
@@ -64,3 +61,15 @@
   become: no
   run_once: yes
   when: kubectl_localhost|default(false)
+
+- name: create helper script kubectl.sh on ansible host
+  copy:
+    content: |
+      #!/bin/bash
+      kubectl --kubeconfig=admin.conf $@
+    dest: "{{ artifacts_dir }}/kubectl.sh"
+    mode: 0755
+  become: no
+  run_once: yes
+  delegate_to: localhost
+  when: kubectl_localhost|default(false) and kubeconfig_localhost|default(false)

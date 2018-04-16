@@ -6,9 +6,12 @@
     state: stopped
   with_items:
     - kubelet
+    - vault
     - etcd
+    - etcd-events
   failed_when: false
-  tags: ['services']
+  tags:
+    - services
 
 - name: reset | remove services
   file:
@@ -17,10 +20,12 @@
   with_items:
     - kubelet
     - etcd
+    - etcd-events
     - vault
     - calico-node
   register: services_removed
-  tags: ['services']
+  tags:
+    - services
 
 - name: reset | remove docker dropins
   file:
@@ -29,8 +34,10 @@
   with_items:
     - docker-dns.conf
     - docker-options.conf
+    - http-proxy.conf
   register: docker_dropins_removed
-  tags: ['docker']
+  tags:
+    - docker
 
 - name: reset | systemctl daemon-reload
   command: systemctl daemon-reload
@@ -42,31 +49,44 @@
   retries: 4
   until: remove_all_containers.rc == 0
   delay: 5
-  tags: ['docker']
+  tags:
+    - docker
 
 - name: reset | restart docker if needed
   service:
     name: docker
     state: restarted
   when: docker_dropins_removed.changed
-  tags: ['docker']
+  tags:
+    - docker
 
 - name: reset | gather mounted kubelet dirs
   shell: mount | grep /var/lib/kubelet | awk '{print $3}' | tac
   check_mode: no
   register: mounted_dirs
-  tags: ['mounts']
+  tags:
+    - mounts
 
 - name: reset | unmount kubelet dirs
   command: umount {{item}}
   with_items: '{{ mounted_dirs.stdout_lines }}'
-  tags: ['mounts']
+  register: umount_dir
+  retries: 4
+  until: umount_dir.rc == 0
+  delay: 5
+  tags:
+    - mounts
 
 - name: flush iptables
   iptables:
+    table: "{{ item }}"
     flush: yes
+  with_items:
+    - filter
+    - nat
   when: flush_iptables|bool
-  tags: ['iptables']
+  tags:
+    - iptables
 
 - name: reset | delete some files and directories
   file:
@@ -75,7 +95,10 @@
   with_items:
     - "{{kube_config_dir}}"
     - /var/lib/kubelet
+    - /root/.kube
+    - /root/.helm
     - "{{ etcd_data_dir }}"
+    - /var/lib/etcd-events
     - /etc/ssl/etcd
     - /var/log/calico
     - /etc/cni
@@ -106,6 +129,7 @@
     - "{{ bin_dir }}/kubelet"
     - "{{ bin_dir }}/etcd-scripts"
     - "{{ bin_dir }}/etcd"
+    - "{{ bin_dir }}/etcd-events"
     - "{{ bin_dir }}/etcdctl"
     - "{{ bin_dir }}/kubernetes-scripts"
     - "{{ bin_dir }}/kubectl"
@@ -113,7 +137,11 @@
     - "{{ bin_dir }}/helm"
     - "{{ bin_dir }}/calicoctl"
     - "{{ bin_dir }}/weave"
-  tags: ['files']
+    - /var/lib/rkt
+    - /etc/vault
+  ignore_errors: yes
+  tags:
+    - files
 
 - name: reset | remove dns settings from dhclient.conf
   blockinfile:
@@ -125,7 +153,9 @@
   with_items:
     - /etc/dhclient.conf
     - /etc/dhcp/dhclient.conf
-  tags: ['files', 'dns']
+  tags:
+    - files
+    - dns
 
 - name: reset | remove host entries from /etc/hosts
   blockinfile:
@@ -133,7 +163,37 @@
     state: absent
     follow: yes
     marker: "# Ansible inventory hosts {mark}"
-  tags: ['files', 'dns']
+  tags:
+    - files
+    - dns
+
+- name: reset | check cni network device
+  stat:
+    path: /sys/class/net/cni0
+  register: cni
+  when: kube_network_plugin == 'flannel'
+  tags:
+    - flannel
+
+- name: reset | remove the network device created by the flannel
+  command: ip link del cni0
+  when: kube_network_plugin == 'flannel' and cni.stat.exists
+  tags:
+    - flannel
+
+- name: reset | check flannel network device
+  stat:
+    path: /sys/class/net/flannel.1
+  register: flannel
+  when: kube_network_plugin == 'flannel'
+  tags:
+    - flannel
+
+- name: reset | remove the network device created by the flannel
+  command: ip link del flannel.1
+  when: kube_network_plugin == 'flannel' and flannel.stat.exists
+  tags:
+    - flannel
 
 - name: reset | Restart network
   service:
@@ -144,5 +204,7 @@
       networking
       {%- endif %}
     state: restarted
-  when: ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
-  tags: ['services', 'network']
+  when: ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"] and reset_restart_network
+  tags:
+    - services
+    - network

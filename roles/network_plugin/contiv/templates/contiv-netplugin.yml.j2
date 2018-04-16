@@ -1,0 +1,104 @@
+# This manifest installs contiv-netplugin container, as well
+# as the Contiv CNI plugins and network config on
+# each master and worker node in a Kubernetes cluster.
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: contiv-netplugin
+  namespace: kube-system
+  labels:
+    k8s-app: contiv-netplugin
+spec:
+  selector:
+    matchLabels:
+      k8s-app: contiv-netplugin
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        k8s-app: contiv-netplugin
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+{% if rbac_enabled %}
+      serviceAccountName: contiv-netplugin
+{% endif %}
+      containers:
+        # Runs netplugin container on each Kubernetes node. This
+        # container programs network policy and routes on each
+        # host.
+        - name: contiv-netplugin
+          image: {{ contiv_image_repo }}:{{ contiv_image_tag }}
+          args:
+            - -pkubernetes
+            - -x
+          env:
+            - name: VLAN_IF
+              value: {{ contiv_vlan_interface }}
+            - name: VTEP_IP
+              valueFrom:
+                 fieldRef:
+                    fieldPath: status.podIP
+            - name: CONTIV_ETCD
+              valueFrom:
+                configMapKeyRef:
+                  name: contiv-config
+                  key: cluster_store
+            - name: CONTIV_CNI_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: contiv-config
+                  key: cni_config
+            - name: CONTIV_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: contiv-config
+                  key: config
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /etc/openvswitch
+              name: etc-openvswitch
+              readOnly: false
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: false
+            - mountPath: /var/run
+              name: var-run
+              readOnly: false
+            - mountPath: /var/contiv
+              name: var-contiv
+              readOnly: false
+            - mountPath: /opt/cni/bin
+              name: cni-bin-dir
+              readOnly: false
+            - mountPath: /etc/cni/net.d/
+              name: etc-cni-dir
+              readOnly: false
+      volumes:
+        # Used by contiv-netplugin
+        - name: etc-openvswitch
+          hostPath:
+            path: /etc/openvswitch
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: var-run
+          hostPath:
+            path: /var/run
+        - name: var-contiv
+          hostPath:
+            path: /var/contiv
+        # Used to install CNI.
+        - name: cni-bin-dir
+          hostPath:
+            path: /opt/cni/bin
+        - name: etc-cni-dir
+          hostPath:
+            path: /etc/cni/net.d/

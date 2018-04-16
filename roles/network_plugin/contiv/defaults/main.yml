@@ -1,0 +1,41 @@
+---
+
+contiv_config_dir: "{{ kube_config_dir }}/contiv"
+contiv_etcd_conf_dir: "/etc/contiv/etcd"
+contiv_etcd_data_dir: "/var/lib/etcd/contiv-data"
+contiv_netmaster_port: 9999
+contiv_cni_version: 0.1.0
+
+contiv_etcd_image_repo: "{{ etcd_image_repo }}"
+contiv_etcd_image_tag: "{{ etcd_image_tag }}"
+contiv_etcd_listen_port: 6666
+contiv_etcd_peer_port: 6667
+contiv_etcd_endpoints: |-
+  {% for host in groups['kube-master'] -%}
+    contiv_etcd{{ loop.index }}=http://{{ hostvars[host]['ip'] | default(hostvars[host].ansible_default_ipv4['address']) }}:{{ contiv_etcd_peer_port }}{% if not loop.last %},{% endif %}
+  {%- endfor %}
+
+# Parameters for Contiv api-proxy
+contiv_enable_api_proxy: true
+contiv_api_proxy_port: 10000
+contiv_generate_certificate: true
+
+# Forwarding mode: bridge or routing
+contiv_fwd_mode: routing
+
+# Fabric mode: aci, aci-opflex or default
+contiv_fabric_mode: default
+
+# Dataplane interface
+contiv_vlan_interface: ""
+
+# Default network configuration
+contiv_networks:
+  - name: contivh1
+    subnet: "10.233.128.0/18"
+    gateway: "10.233.128.1"
+    nw_type: infra
+  - name: default-net
+    subnet: "{{ kube_pods_subnet }}"
+    gateway: "{{ kube_pods_subnet|ipaddr('net')|ipaddr(1)|ipaddr('address') }}"
+    pkt_tag: 10

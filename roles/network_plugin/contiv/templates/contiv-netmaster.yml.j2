@@ -1,0 +1,60 @@
+# This manifest deploys the Contiv API Server on Kubernetes.
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: contiv-netmaster
+  namespace: kube-system
+  labels:
+    k8s-app: contiv-netmaster
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      name: contiv-netmaster
+      namespace: kube-system
+      labels:
+        k8s-app: contiv-netmaster
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      # The netmaster must run in the host network namespace so that
+      # it isn't governed by policy that would prevent it from working.
+      hostNetwork: true
+      hostPID: true
+      nodeSelector:
+        node-role.kubernetes.io/master: "true"
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+{% if rbac_enabled %}
+      serviceAccountName: contiv-netmaster
+{% endif %}
+      containers:
+        - name: contiv-netmaster
+          image: {{ contiv_image_repo }}:{{ contiv_image_tag }}
+          args:
+            - -m
+            - -pkubernetes
+          env:
+            - name: CONTIV_ETCD
+              valueFrom:
+                configMapKeyRef:
+                  name: contiv-config
+                  key: cluster_store
+            - name: CONTIV_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: contiv-config
+                  key: config
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /var/contiv
+              name: var-contiv
+              readOnly: false
+      volumes:
+        # Used by contiv-netmaster
+        - name: var-contiv
+          hostPath:
+            path: /var/contiv

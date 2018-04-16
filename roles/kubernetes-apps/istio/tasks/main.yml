@@ -1,0 +1,45 @@
+---
+- name: istio | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/istio"
+    owner: root
+    group: root
+    mode: 0755
+    recurse: yes
+
+- name: istio | Lay out manifests
+  template:
+    src: "{{item.file}}.j2"
+    dest: "{{kube_config_dir}}/addons/istio/{{item.file}}"
+  with_items:
+    - {name: istio-mixer, file: istio.yml, type: deployment }
+    - {name: istio-initializer, file: istio-initializer.yml, type: deployment }
+  register: manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: istio | Copy istioctl binary from download dir
+  command: rsync -piu "{{ local_release_dir }}/istio/istioctl" "{{ bin_dir }}/istioctl"
+  changed_when: false
+
+- name: istio | Set up bash completion
+  shell: "{{ bin_dir }}/istioctl completion >/etc/bash_completion.d/istioctl.sh"
+  when: ansible_os_family in ["Debian","RedHat"]
+
+- name: istio | Set bash completion file
+  file:
+    path: /etc/bash_completion.d/istioctl.sh
+    owner: root
+    group: root
+    mode: 0755
+  when: ansible_os_family in ["Debian","RedHat"]
+
+- name: istio | apply manifests
+  kube:
+    name: "{{item.item.name}}"
+    namespace: "{{ istio_namespace }}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/addons/istio/{{item.item.file}}"
+    state: "latest"
+  with_items: "{{ manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]

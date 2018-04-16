@@ -21,23 +21,32 @@
   vars:
     ansible_ssh_pipelining: true
   gather_facts: true
+  pre_tasks:
+    - name: gather facts from all instances
+      setup:
+      delegate_to: "{{item}}"
+      delegate_facts: True
+      with_items: "{{ groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]) }}"
 
 - hosts: k8s-cluster:etcd:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  serial: "{{ serial | default('20%') }}"
   roles:
     - { role: kubespray-defaults}
-    - { role: kernel-upgrade, tags: kernel-upgrade, when: kernel_upgrade is defined and kernel_upgrade }
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: docker, tags: docker }
     - role: rkt
       tags: rkt
       when: "'rkt' in [etcd_deployment_type, kubelet_deployment_type, vault_deployment_type]"
+    - { role: download, tags: download, skip_downloads: false }
+  environment: "{{proxy_env}}"
 
 - hosts: etcd:k8s-cluster:vault
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults, when: "cert_management == 'vault'" }
     - { role: vault, tags: vault, vault_bootstrap: true, when: "cert_management == 'vault'" }
+  environment: "{{proxy_env}}"
 
 - hosts: etcd
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -56,6 +65,7 @@
   roles:
     - { role: kubespray-defaults, when: "cert_management == 'vault'"}
     - { role: vault, tags: vault, when: "cert_management == 'vault'"}
+  environment: "{{proxy_env}}"
 
 #Handle upgrades to master components first to maintain backwards compat.
 - hosts: kube-master
@@ -66,9 +76,11 @@
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
     - { role: kubernetes/node, tags: node }
     - { role: kubernetes/master, tags: master }
+    - { role: kubernetes/client, tags: client }
+    - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
     - { role: network_plugin, tags: network }
-    - { role: kubernetes/kubeadm, tags: kubeadm, when: "kubeadm_enabled" }
     - { role: upgrade/post-upgrade, tags: post-upgrade }
+  environment: "{{proxy_env}}"
 
 #Finally handle worker upgrades, based on given batch size
 - hosts: kube-node:!kube-master
@@ -82,6 +94,13 @@
     - { role: upgrade/post-upgrade, tags: post-upgrade }
     - { role: kubernetes/kubeadm, tags: kubeadm, when: "kubeadm_enabled" }
     - { role: kubespray-defaults}
+  environment: "{{proxy_env}}"
+
+- hosts: kube-master[0]
+  any_errors_fatal: true
+  roles:
+    - { role: kubespray-defaults}
+    - { role: kubernetes-apps/rotate_tokens, tags: rotate_tokens, when: "secret_changed|default(false)" }
 
 - hosts: kube-master
   any_errors_fatal: true

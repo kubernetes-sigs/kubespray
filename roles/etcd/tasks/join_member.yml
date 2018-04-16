@@ -1,0 +1,47 @@
+---
+- name: Join Member | Add member to cluster
+  shell: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }} member add {{ etcd_member_name }} {{ etcd_peer_url }}"
+  register: member_add_result
+  until: member_add_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: target_node == inventory_hostname
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+
+- include_tasks: refresh_config.yml
+  vars:
+    etcd_peer_addresses: >-
+      {% for host in groups['etcd'] -%}
+        {%- if hostvars[host]['etcd_member_in_cluster'].rc == 0 -%}
+          {{ "etcd"+loop.index|string }}=https://{{ hostvars[host].access_ip | default(hostvars[host].ip | default(hostvars[host].ansible_default_ipv4['address'])) }}:2380,
+        {%- endif -%}
+        {%- if loop.last -%}
+          {{ etcd_member_name }}={{ etcd_peer_url }}
+        {%- endif -%}
+      {%- endfor -%}
+  when: target_node == inventory_hostname
+
+- name: Join Member | reload systemd
+  command: systemctl daemon-reload
+  when: target_node == inventory_hostname
+
+- name: Join Member | Ensure etcd is running
+  service:
+    name: etcd
+    state: started
+    enabled: yes
+  when: target_node == inventory_hostname
+
+- name: Join Member | Ensure member is in cluster
+  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses }} member list | grep -q {{ etcd_access_address }}"
+  register: etcd_member_in_cluster
+  changed_when: false
+  check_mode: no
+  tags:
+    - facts
+  when: target_node == inventory_hostname
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"

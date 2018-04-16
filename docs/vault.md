@@ -24,7 +24,7 @@ hardcoded to only create a Vault role for Etcd.
 This step is where the long-term Vault cluster is started and configured. Its
 first task, is to stop any temporary instances of Vault, to free the port for
 the long-term. At the end of this task, the entire Vault cluster should be up
-and read to go.
+and ready to go.
 
 Keys to the Kingdom
 -------------------

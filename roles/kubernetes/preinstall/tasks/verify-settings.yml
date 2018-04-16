@@ -1,0 +1,97 @@
+---
+- name: Stop if ansible version is too low
+  assert:
+    that:
+      - ansible_version.full|version_compare('2.3.0', '>=')
+  run_once: yes
+
+- name: Stop if non systemd OS type
+  assert:
+    that: ansible_service_mgr == "systemd"
+  ignore_errors: "{{ ignore_assert_errors }}"
+
+- name: Stop if unknown OS
+  assert:
+    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'CoreOS', 'Container Linux by CoreOS', 'openSUSE Leap', 'openSUSE Tumbleweed']
+  ignore_errors: "{{ ignore_assert_errors }}"
+
+- name: Stop if unknown network plugin
+  assert:
+    that: network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud']
+  when: network_plugin is defined
+  ignore_errors: "{{ ignore_assert_errors }}"
+
+- name: Stop if incompatible network plugin and cloudprovider
+  assert:
+    that: network_plugin != 'calico'
+    msg: "Azure and Calico are not compatible. See https://github.com/projectcalico/calicoctl/issues/949 for details."
+  when: cloud_provider is defined and cloud_provider == 'azure'
+  ignore_errors: "{{ ignore_assert_errors }}"
+
+# simplify this items-list when   https://github.com/ansible/ansible/issues/15753  is resolved
+- name: "Stop if known booleans are set as strings (Use JSON format on CLI: -e \"{'key': true }\")"
+  assert:
+    that: item.value|type_debug == 'bool'
+    msg: "{{item.value}} isn't a bool"
+  run_once: yes
+  with_items:
+    - { name: kubeadm_enabled, value: "{{ kubeadm_enabled }}" }
+    - { name: download_run_once, value: "{{ download_run_once }}" }
+    - { name: deploy_netchecker, value: "{{ deploy_netchecker }}" }
+    - { name: download_always_pull, value: "{{ download_always_pull }}" }
+    - { name: efk_enabled, value: "{{ efk_enabled }}" }
+    - { name: helm_enabled, value: "{{ helm_enabled }}" }
+    - { name: openstack_lbaas_enabled, value: "{{ openstack_lbaas_enabled }}" }
+  ignore_errors: "{{ ignore_assert_errors }}"
+
+- name: Stop if even number of etcd hosts
+  assert:
+    that: groups.etcd|length is not divisibleby 2
+  ignore_errors: "{{ ignore_assert_errors }}"
+
+- name: Stop if memory is too small for masters
+  assert:
+    that: ansible_memtotal_mb >= 1500
+  ignore_errors: "{{ ignore_assert_errors }}"
+  when: inventory_hostname in groups['kube-master']
+
+- name: Stop if memory is too small for nodes
+  assert:
+    that: ansible_memtotal_mb >= 1024
+  ignore_errors: "{{ ignore_assert_errors }}"
+  when: inventory_hostname in groups['kube-node']
+
+- name: Stop if ip var does not match local ips
+  assert:
+    that: ip in ansible_all_ipv4_addresses
+  ignore_errors: "{{ ignore_assert_errors }}"
+  when: ip is defined
+
+- name: Stop if access_ip is not pingable
+  command: ping -c1 {{ access_ip }}
+  when: access_ip is defined
+  ignore_errors: "{{ ignore_assert_errors }}"
+
+- name: Stop if swap enabled
+  assert:
+    that: ansible_swaptotal_mb == 0
+  when: kubelet_fail_swap_on|default(true)
+  ignore_errors: "{{ ignore_assert_errors }}"
+
+- name: Stop if RBAC is not enabled when dashboard is enabled
+  assert:
+    that: rbac_enabled
+  when: dashboard_enabled
+  ignore_errors: "{{ ignore_assert_errors }}"
+
+- name: Stop if RBAC and anonymous-auth are not enabled when insecure port is disabled
+  assert:
+    that: rbac_enabled and kube_api_anonymous_auth
+  when: kube_apiserver_insecure_port == 0
+  ignore_errors: "{{ ignore_assert_errors }}"
+
+- name: Stop if kernel version is too low
+  assert:
+    that: ansible_kernel.split('-')[0]|version_compare('4.8', '>=')
+  when: kube_network_plugin == 'cilium'
+  ignore_errors: "{{ ignore_assert_errors }}"

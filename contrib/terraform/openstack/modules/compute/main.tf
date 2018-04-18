@@ -83,7 +83,7 @@ resource "openstack_compute_instance_v2" "bastion" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.bastion_fips[0]}/ > contrib/terraform/openstack/group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.bastion_fips[0]}/ > group_vars/no-floating.yml"
   }
 
 }

@@ -5,7 +5,7 @@ bootstrap_os: none
 
 # Use proxycommand if bastion host is in group all
 # This change obseletes editing ansible.cfg file depending on bastion existance
-ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ ansible_user }}@{{hostvars['bastion']['ansible_host']}} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
+ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ hostvars['bastion']['ansible_user'] }}@{{ hostvars['bastion']['ansible_host'] }} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
 
 kube_api_anonymous_auth: false
 
@@ -61,7 +61,6 @@ dns_domain: "{{ cluster_name }}"
 kube_config_dir: /etc/kubernetes
 kube_script_dir: "{{ bin_dir }}/kubernetes-scripts"
 kube_manifest_dir: "{{ kube_config_dir }}/manifests"
-system_namespace: kube-system
 
 # This is where all the cert scripts and certs will be located
 kube_cert_dir: "{{ kube_config_dir }}/ssl"
@@ -175,6 +174,7 @@ local_volume_provisioner_enabled: "{{ local_volumes_enabled | default('false') }
 persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
 ingress_nginx_enabled: false
+cert_manager_enabled: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -219,6 +219,10 @@ vault_config_dir: "{{ vault_base_dir }}/config"
 vault_roles_dir: "{{ vault_base_dir }}/roles"
 vault_secrets_dir: "{{ vault_base_dir }}/secrets"
 
+# Local volume provisioner dirs
+local_volume_provisioner_base_dir: /mnt/disks
+local_volume_provisioner_mount_dir: /mnt/disks
+
 ## Running on top of openstack vms with cinder enabled may lead to unschedulable pods due to NoVolumeZoneConflict restriction in kube-scheduler.
 ## See https://github.com/kubernetes-incubator/kubespray/issues/2141
 ## Set this variable to true to get rid of this issue
@@ -241,6 +245,7 @@ weave_peers: uninitialized
 
 ## Set no_proxy to all assigned cluster IPs and hostnames
 no_proxy: >-
+  {%- if http_proxy is defined or https_proxy is defined %}
   {%- if loadbalancer_apiserver is defined -%}
   {{ apiserver_loadbalancer_domain_name| default('') }},
   {{ loadbalancer_apiserver.address | default('') }},
@@ -254,11 +259,12 @@ no_proxy: >-
   {{ item }},{{ item }}.{{ dns_domain }},
   {%- endfor -%}
   127.0.0.1,localhost
+  {%- endif %}
 
 proxy_env:
   http_proxy: "{{ http_proxy| default ('') }}"
   https_proxy: "{{ https_proxy| default ('') }}"
-  no_proxy: "{{ no_proxy }}"
+  no_proxy: "{{ no_proxy| default ('') }}"
 
 # Vars for pointing to kubernetes api endpoints
 is_kube_master: "{{ inventory_hostname in groups['kube-master'] }}"

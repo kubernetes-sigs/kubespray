@@ -3,7 +3,7 @@
 
 require 'fileutils'
 
-Vagrant.require_version ">= 1.9.0"
+Vagrant.require_version ">= 2.0.0"
 
 CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
 
@@ -18,6 +18,8 @@ SUPPORTED_OS = {
   "coreos-beta"   => {box: "coreos-beta",        bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]},
   "ubuntu"        => {box: "bento/ubuntu-16.04", bootstrap_os: "ubuntu", user: "vagrant"},
   "centos"        => {box: "centos/7",           bootstrap_os: "centos", user: "vagrant"},
+  "opensuse"      => {box: "opensuse/openSUSE-42.3-x86_64", bootstrap_os: "opensuse", use: "vagrant"},
+  "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", bootstrap_os: "opensuse", use: "vagrant"},
 }
 
 # Defaults for config options defined in CONFIG
@@ -52,7 +54,7 @@ end
 
 $box = SUPPORTED_OS[$os][:box]
 # if $inventory is not set, try to use example
-$inventory = File.join(File.dirname(__FILE__), "inventory") if ! $inventory
+$inventory = File.join(File.dirname(__FILE__), "inventory", "sample") if ! $inventory
 
 # if $inventory has a hosts file use it, otherwise copy over vars etc
 # to where vagrant expects dynamic inventory to be.
@@ -84,7 +86,6 @@ Vagrant.configure("2") do |config|
   if Vagrant.has_plugin?("vagrant-vbguest") then
     config.vbguest.auto_update = false
   end
-
   (1..$num_instances).each do |i|
     config.vm.define vm_name = "%s-%02d" % [$instance_name_prefix, i] do |config|
       config.vm.hostname = vm_name
@@ -110,8 +111,10 @@ Vagrant.configure("2") do |config|
         end
       end
 
+      config.vm.synced_folder ".", "/vagrant", type: "rsync", rsync__args: ['--verbose', '--archive', '--delete', '-z']
+
       $shared_folders.each do |src, dst|
-        config.vm.synced_folder src, dst
+        config.vm.synced_folder src, dst, type: "rsync", rsync__args: ['--verbose', '--archive', '--delete', '-z']
       end
 
       config.vm.provider :virtualbox do |vb|
@@ -134,12 +137,6 @@ Vagrant.configure("2") do |config|
       }
 
       config.vm.network :private_network, ip: ip
-
-      # workaround for Vagrant 1.9.1 and centos vm
-      # https://github.com/hashicorp/vagrant/issues/8096
-      if Vagrant::VERSION == "1.9.1" && $os == "centos"
-        config.vm.provision "shell", inline: "service network restart", run: "always"
-      end
 
       # Disable swap for each vm
       config.vm.provision "shell", inline: "swapoff -a"
@@ -164,7 +161,7 @@ Vagrant.configure("2") do |config|
           if File.exist?(File.join(File.dirname($inventory), "hosts"))
             ansible.inventory_path = $inventory
           end
-          ansible.sudo = true
+          ansible.become = true
           ansible.limit = "all"
           ansible.host_key_checking = false
           ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache"]

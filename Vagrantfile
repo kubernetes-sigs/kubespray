@@ -26,12 +26,12 @@ SUPPORTED_OS = {
 $num_instances = 3
 $instance_name_prefix = "k8s"
 $vm_gui = false
-$vm_memory = 1024
+$vm_memory = 2048
 $vm_cpus = 1
 $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
-$os = "coreos-stable"
+$os = "ubuntu"
 $network_plugin = "flannel"
 # The first three nodes are etcd servers
 $etcd_instances = $num_instances

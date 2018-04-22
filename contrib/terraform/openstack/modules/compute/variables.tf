@@ -57,3 +57,8 @@ variable "k8s_node_fips" {
 variable "bastion_fips" {
   type = "list"
 }
+
+variable "k8s_ingress_node_fips" {
+  type = "list"
+}
+

@@ -11,5 +11,5 @@ output "bastion_fips" {
 }
 
 output "k8s_ingress_node_fips" {
-    value = ["${openstack_networking_floatingip_v2.k8s_ingress.address}"]
+  value = ["${openstack_networking_floatingip_v2.k8s_ingress.*.address}"]
 }

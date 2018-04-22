@@ -17,8 +17,9 @@ resource "openstack_networking_floatingip_v2" "k8s_node" {
 }
 
 resource "openstack_networking_floatingip_v2" "k8s_ingress" {
-    pool = "${var.floatingip_pool}"
-    depends_on = ["null_resource.dummy_dependency"]
+  count      = "${var.number_of_k8s_ingress_nodes}"
+  pool       = "${var.floatingip_pool}"
+  depends_on = ["null_resource.dummy_dependency"]
 }
 
 resource "openstack_networking_floatingip_v2" "bastion" {

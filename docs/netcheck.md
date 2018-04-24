@@ -25,8 +25,8 @@ There are related application specifc variables:
 netchecker_port: 31081
 agent_report_interval: 15
 netcheck_namespace: default
-agent_img: "quay.io/l23network/k8s-netchecker-agent:v1.0"
-server_img: "quay.io/l23network/k8s-netchecker-server:v1.0"
+agent_img: "mirantis/k8s-netchecker-agent:v1.2.2"
+server_img: "mirantis/k8s-netchecker-server:v1.2.2"
 ```
 
 Note that the application verifies DNS resolve for FQDNs comprising only the

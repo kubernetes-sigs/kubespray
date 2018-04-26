@@ -22,8 +22,6 @@
     state: directory
     owner: root
   become: true
-  tags:
-    - bootstrap-os
 
 - import_tasks: set_facts.yml
   tags:
@@ -56,7 +54,6 @@
     - k8s-secrets
     - kube-controller-manager
     - kube-apiserver
-    - bootstrap-os
     - apps
     - network
     - master
@@ -95,7 +92,6 @@
     - weave
     - canal
     - contiv
-    - bootstrap-os
 
 - name: Create local volume provisioner directories
   file:
@@ -116,7 +112,6 @@
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
   tags:
-    - bootstrap-os
     - resolvconf
 
 - name: Update package management cache (YUM)
@@ -131,7 +126,6 @@
     - ansible_pkg_mgr == 'yum'
     - ansible_distribution != 'RedHat'
     - not is_atomic
-  tags: bootstrap-os
 
 - name: Expire management cache (YUM) for Updation - Redhat
   shell: yum clean expire-cache
@@ -143,7 +137,6 @@
     - ansible_pkg_mgr == 'yum'
     - ansible_distribution == 'RedHat'
     - not is_atomic
-  tags: bootstrap-os
 
 - name: Update package management cache (YUM) - Redhat
   shell: yum makecache
@@ -156,7 +149,6 @@
     - ansible_distribution == 'RedHat'
     - expire_cache_output.rc == 0
     - not is_atomic
-  tags: bootstrap-os
 
 - name: Update package management cache (zypper) - SUSE
   shell: zypper -n --gpg-auto-import-keys ref
@@ -166,15 +158,12 @@
   delay: "{{ retry_stagger | random + 3 }}"
   when:
     - ansible_pkg_mgr == 'zypper'
-  tags: bootstrap-os
 
 - name: Update package management cache (APT)
   apt:
     update_cache: yes
     cache_valid_time: 3600
   when: ansible_os_family == "Debian"
-  tags:
-    - bootstrap-os
 
 - name: Install python-dnf for latest RedHat versions
   command: dnf install -y python-dnf yum
@@ -187,8 +176,6 @@
     - ansible_distribution_major_version > 21
     - not is_atomic
   changed_when: False
-  tags:
-    - bootstrap-os
 
 - name: Install epel-release on RedHat/CentOS
   yum:
@@ -198,8 +185,6 @@
     - ansible_distribution in ["CentOS","RedHat"]
     - not is_atomic
     - epel_enabled|bool
-  tags:
-    - bootstrap-os
 
 - name: Install packages requirements
   action:
@@ -212,8 +197,6 @@
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{required_pkgs | default([]) | union(common_required_pkgs|default([]))}}"
   when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or is_atomic)
-  tags:
-    - bootstrap-os
 
 # Todo : selinux configuration
 - name: Confirm selinux deployed
@@ -230,8 +213,6 @@
     - ansible_os_family == "RedHat"
     - slc.stat.exists == True
   changed_when: False
-  tags:
-    - bootstrap-os
 
 - name: Disable IPv6 DNS lookup
   lineinfile:
@@ -242,21 +223,15 @@
   when:
     - disable_ipv6_dns
     - not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
-  tags:
-    - bootstrap-os
 
 - name: set default sysctl file path
   set_fact:
     sysctl_file_path: "/etc/sysctl.d/99-sysctl.conf"
-  tags:
-    - bootstrap-os
 
 - name: Stat sysctl file configuration
   stat:
     path: "{{sysctl_file_path}}"
   register: sysctl_file_stat
-  tags:
-    - bootstrap-os
 
 - name: Change sysctl file path to link source if linked
   set_fact:
@@ -264,8 +239,6 @@
   when:
     - sysctl_file_stat.stat.islnk is defined
     - sysctl_file_stat.stat.islnk
-  tags:
-    - bootstrap-os
 
 - name: Enable ip forwarding
   sysctl:
@@ -274,12 +247,9 @@
     value: 1
     state: present
     reload: yes
-  tags:
-    - bootstrap-os
 
 - import_tasks: etchosts.yml
   tags:
-    - bootstrap-os
     - etchosts
 
 - import_tasks: dhclient-hooks.yml
@@ -288,7 +258,6 @@
     - resolvconf_mode == 'host_resolvconf'
     - not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
   tags:
-    - bootstrap-os
     - resolvconf
 
 - import_tasks: dhclient-hooks-undo.yml
@@ -297,19 +266,14 @@
     - resolvconf_mode != 'host_resolvconf'
     - not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
   tags:
-    - bootstrap-os
     - resolvconf
 
 - name: Check if we are running inside a Azure VM
   stat:
     path: /var/lib/waagent/
   register: azure_check
-  tags:
-    - bootstrap-os
 
 - import_tasks: growpart-azure-centos-7.yml
   when:
     - azure_check.stat.exists
     - ansible_distribution in ["CentOS","RedHat"]
-  tags:
-    - bootstrap-os

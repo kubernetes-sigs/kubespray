@@ -16,9 +16,11 @@ vault_cert_dir: "{{ vault_base_dir }}/ssl"
 vault_config_dir: "{{ vault_base_dir }}/config"
 vault_roles_dir: "{{ vault_base_dir }}/roles"
 vault_secrets_dir: "{{ vault_base_dir }}/secrets"
+vault_lib_dir: "/var/lib/vault"
 vault_log_dir: "/var/log/vault"
 
-vault_version: 0.8.1
+vault_version: 0.10.1
+#FIXME: set new checksum
 vault_binary_checksum: 3c4d70ba71619a43229e65c67830e30e050eab7a81ac6b28325ff707e5914188
 vault_download_url: "https://releases.hashicorp.com/vault/{{ vault_version }}/vault_{{ vault_version }}_linux_amd64.zip"
 vault_download_vars:
@@ -80,6 +82,8 @@ vault_config:
 vault_secret_shares: 1
 vault_secret_threshold: 1
 
+vault_successful_http_codes: ["200","429","500","501", "503"]
+
 vault_ca_options:
   vault:
     common_name: vault
@@ -106,6 +110,20 @@ vault_etcd_cert_dir: /etc/ssl/etcd/ssl
 vault_kube_cert_dir: /etc/kubernetes/ssl
 
 vault_pki_mounts:
+  userpass:
+    name: userpass
+    default_lease_ttl: "{{ vault_default_lease_ttl }}"
+    max_lease_ttl: "{{ vault_max_lease_ttl }}"
+    description: "Userpass"
+    cert_dir: "{{ vault_cert_dir }}"
+    roles:
+      - name: userpass
+        group: userpass
+        password: "{{ lookup('password', inventory_dir + '/credentials/vault/userpass.creds length=15') }}"
+        policy_rules: default
+        role_options:
+          allow_any_name: true
+
   vault:
     name: vault
     default_lease_ttl: "{{ vault_default_lease_ttl }}"
@@ -117,7 +135,8 @@ vault_pki_mounts:
         group: vault
         password: "{{ lookup('password', inventory_dir + '/credentials/vault/vault.creds length=15') }}"
         policy_rules: default
-        role_options: default
+        role_options:
+          allow_any_name: true
   etcd:
     name: etcd
     default_lease_ttl: "{{ vault_default_lease_ttl }}"

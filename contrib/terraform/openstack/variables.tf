@@ -111,3 +111,8 @@ variable "floatingip_pool" {
 variable "external_net" {
   description = "uuid of the external/public network"
 }
+
+variable "supplementary_master_groups" {
+  description = "supplementary kubespray ansible groups for masters, such kube-node"
+  default = ""
+}

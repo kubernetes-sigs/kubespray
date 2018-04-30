@@ -55,3 +55,7 @@ variable "k8s_node_fips" {
 variable "bastion_fips" {
   type = "list"
 }
+
+variable "supplementary_master_groups" {
+  default = ""
+}

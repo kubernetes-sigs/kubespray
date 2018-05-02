@@ -72,12 +72,29 @@ else
     openssl req -x509 -new -nodes -key ca-key.pem -days 36500 -out ca.pem -subj "/CN=kube-ca" > /dev/null 2>&1
 fi
 
+# Front proxy client CA
+if [ -e "$SSLDIR/front-proxy-ca-key.pem" ]; then
+    # Reuse existing front proxy CA
+    cp $SSLDIR/{front-proxy-ca.pem,front-proxy-ca-key.pem} .
+else
+    openssl genrsa -out front-proxy-ca-key.pem 2048 > /dev/null 2>&1
+    openssl req -x509 -new -nodes -key front-proxy-ca-key.pem -days 36500 -out front-proxy-ca.pem -subj "/CN=front-proxy-ca" > /dev/null 2>&1
+fi
+
 gen_key_and_cert() {
     local name=$1
     local subject=$2
     openssl genrsa -out ${name}-key.pem 2048 > /dev/null 2>&1
     openssl req -new -key ${name}-key.pem -out ${name}.csr -subj "${subject}" -config ${CONFIG} > /dev/null 2>&1
     openssl x509 -req -in ${name}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${name}.pem -days 36500 -extensions v3_req -extfile ${CONFIG} > /dev/null 2>&1
+}
+
+gen_key_and_cert_front_proxy() {
+    local name=$1
+    local subject=$2
+    openssl genrsa -out ${name}-key.pem 2048 > /dev/null 2>&1
+    openssl req -new -key ${name}-key.pem -out ${name}.csr -subj "${subject}" -config ${CONFIG} > /dev/null 2>&1
+    openssl x509 -req -in ${name}.csr -CA front-proxy-ca.pem -CAkey front-proxy-ca-key.pem -CAcreateserial -out ${name}.pem -days 36500 -extensions v3_req -extfile ${CONFIG} > /dev/null 2>&1
 }
 
 # Admins
@@ -105,7 +122,7 @@ if [ -n "$MASTERS" ]; then
     # kube-controller-manager
     gen_key_and_cert "kube-controller-manager" "/CN=system:kube-controller-manager"
     # metrics aggregator
-    gen_key_and_cert "front-proxy-client" "/CN=front-proxy-client"
+    gen_key_and_cert_front_proxy "front-proxy-client" "/CN=front-proxy-client"
 
     for host in $MASTERS; do
         cn="${host%%.*}"

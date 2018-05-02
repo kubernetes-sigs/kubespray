@@ -46,7 +46,7 @@ ssh -F ./ssh-bastion.conf user@$ip
 
 Example (this one assumes you are using CoreOS)
 ```commandline
-ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_ssh_user=core -e bootstrap_os=coreos -b --become-user=root --flush-cache
+ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_user=core -e bootstrap_os=coreos -b --become-user=root --flush-cache
 ```
 ***Using other distrib than CoreOs***
 If you want to use another distribution than CoreOS, you can modify the search filters of the 'data "aws_ami" "distro"' in variables.tf.

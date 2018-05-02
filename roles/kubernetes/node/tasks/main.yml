@@ -61,6 +61,7 @@
     name: net.ipv4.ip_local_reserved_ports
     value: "{{ kube_apiserver_node_port_range }}"
     sysctl_set: yes
+    sysctl_file: "{{ sysctl_file_path }}"
     state: present
     reload: yes
   when: kube_apiserver_node_port_range is defined
@@ -96,6 +97,7 @@
   sysctl:
     name: "{{ item }}"
     state: present
+    sysctl_file: "{{ sysctl_file_path }}"
     value: 1
     reload: yes
   when: sysctl_bridge_nf_call_iptables.rc == 0
@@ -118,6 +120,19 @@
   tags:
     - kube-proxy
 
+- name: Persist ip_vs modules
+  copy:
+    dest: /etc/modules-load.d/kube_proxy-ipvs.conf
+    content: |
+      ip_vs
+      ip_vs_rr
+      ip_vs_wrr
+      ip_vs_sh
+      nf_conntrack_ipv4
+  when: kube_proxy_mode == 'ipvs'
+  tags:
+    - kube-proxy
+
 - name: Write proxy manifest
   template:
     src: manifests/kube-proxy.manifest.j2
@@ -133,6 +148,14 @@
   when: kubeadm_enabled
   tags:
     - kube-proxy
+
+- include_tasks: "{{ cloud_provider }}-credential-check.yml"
+  when:
+    - cloud_provider is defined
+    - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
+  tags:
+    - cloud-provider
+    - facts
 
 - name: Write cloud-config
   template:

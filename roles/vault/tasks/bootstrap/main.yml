@@ -23,14 +23,14 @@
   when: not vault_cluster_is_initialized
 
 - import_tasks: create_mounts.yml
-  when: inventory_hostname == groups.vault|first
+  when: inventory_hostname == groups.vault|first and not vault_cluster_is_initialized
 
 - include_tasks: ../shared/auth_backend.yml
   vars:
     auth_backend_description: A Username/Password Auth Backend primarily used for services needing to issue certificates
     auth_backend_path: userpass
     auth_backend_type: userpass
-  when: inventory_hostname == groups.vault|first
+  when: inventory_hostname == groups.vault|first and not vault_cluster_is_initialized
 
 - include_tasks: create_roles.yml
   with_items:
@@ -38,7 +38,7 @@
     - "{{ vault_pki_mounts.etcd }}"
   loop_control:
     loop_var: mount
-  when: inventory_hostname in groups.vault
+  when: inventory_hostname == groups.vault and not vault_cluster_is_initialized
 
 - include_tasks: ../shared/gen_ca.yml
   vars:
@@ -58,9 +58,9 @@
     gen_ca_vault_headers: "{{ vault_headers }}"
     gen_ca_vault_options: "{{ vault_ca_options.etcd }}"
     gen_ca_copy_group: "etcd"
-  when: inventory_hostname in groups.etcd and vault_etcd_ca_cert_needed
+  when: inventory_hostname in groups.etcd and not vault_cluster_is_initialized and vault_etcd_ca_cert_needed
 
 - import_tasks: gen_vault_certs.yml
-  when: inventory_hostname in groups.vault and vault_api_cert_needed
+  when: inventory_hostname in groups.vault and not vault_cluster_is_initialized and vault_api_cert_needed
 
 - import_tasks: ca_trust.yml

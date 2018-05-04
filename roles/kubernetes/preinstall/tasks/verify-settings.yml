@@ -21,11 +21,21 @@
   when: network_plugin is defined
   ignore_errors: "{{ ignore_assert_errors }}"
 
-- name: Stop if incompatible network plugin and cloudprovider
+- name: Prevent incompatible combination of Calico and MS Azure
   assert:
-    that: network_plugin != 'calico'
-    msg: "Azure and Calico are not compatible. See https://github.com/projectcalico/calicoctl/issues/949 for details."
-  when: cloud_provider is defined and cloud_provider == 'azure'
+    that:
+      - azure_route_table_name is defined
+      - calico_network_backend is defined
+      - calico_network_backend == 'none'
+      - kube_network_node_prefix is defined
+      - kube_pods_subnet is defined
+      - kube_service_addresses is defined
+    msg: "Azure and Calico are only compatible when Azure routing tables are used (and connected to the subnet the cluster nodes are placed in). See https://github.com/projectcalico/calicoctl/issues/949 and https://docs.projectcalico.org/v3.1/reference/public-cloud/azure for details."
+  when:
+    - cloud_provider is defined
+    - cloud_provider == 'azure'
+    - kube_network_plugin is defined
+    - kube_network_plugin == 'calico'
   ignore_errors: "{{ ignore_assert_errors }}"
 
 # simplify this items-list when   https://github.com/ansible/ansible/issues/15753  is resolved

@@ -24,24 +24,25 @@
     # vault_in_standby: "{{ vault_health_check.get('json', {}).get('standby', true) }}"
     # vault_run_version: "{{ vault_local_service_health.get('json', {}).get('version', '') }}"
 
-- name: check_vault | Check is vault is initailized in etcd if vault is not running
+- name: check_vault | Check is vault is initialized in etcd if vault is not running
   command: |-
     curl \
       --cacert {{ etcd_cert_dir }}/ca.pem \
       --cert {{ etcd_cert_dir}}/node-{{ inventory_hostname }}.pem \
       --key {{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem \
-      {{ etcd_access_addresses.split(',') | first }}/v2/keys/vault
-  register: vault_exists
+      -X POST -d '{"key": "{{ "/vault/core/seal-config" | b64encode }}"}' \
+      {{ etcd_access_addresses.split(',') | first }}/v3alpha/kv/range
+  register: vault_etcd_exists
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   run_once: true
-  when: not vault_is_running
+  when: not vault_is_running and vault_etcd_available
   changed_when: false
 
 - name: check_vault | Set fact about the Vault cluster's initialization state
   set_fact:
     vault_cluster_is_initialized: >-
-      {{ vault_is_initialized or 
+      {{ vault_is_initialized or
          hostvars[item]['vault_is_initialized'] or
          'Key not found' not in vault_etcd_exists.stdout|default('Key not found') }}
   with_items: "{{ groups.vault }}"

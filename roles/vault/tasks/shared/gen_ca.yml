@@ -1,14 +1,17 @@
 ---
-- name: "bootstrap/gen_ca | Ensure cert_dir {{ gen_ca_cert_dir }} exists"
+- name: "bootstrap/gen_ca | Ensure cert_dir {{ gen_ca_cert_dir }} exists on necessary hosts"
   file:
     mode: 0755
     path: "{{ gen_ca_cert_dir }}"
     state: directory
+  delegate_to: "{{ item }}"
+  with_items: "{{ (groups[gen_ca_copy_group|default('vault')]) | union(groups['vault']) }}"
 
 - name: "bootstrap/gen_ca | Generate {{ gen_ca_mount_path }} root CA"
   hashivault_write:
     url: "{{ vault_leader_url }}"
     token: "{{ vault_root_token }}"
+    ca_cert: "{{ vault_cert_dir }}/ca.pem"
     secret: "{{ gen_ca_mount_path }}/root/generate/exported"
     data: "{{ gen_ca_vault_options }}"
   run_once: true
@@ -21,6 +24,8 @@
     dest: "{{ gen_ca_cert_dir }}/ca.pem"
     mode: 0644
   when: '"data" in vault_ca_gen.keys()'
+  delegate_to: "{{ item }}"
+  with_items: "{{ (groups[gen_ca_copy_group|default('vault')]) | union(groups['vault']) }}"
 
 
 - name: "bootstrap/gen_ca | Copy {{ gen_ca_mount_path }} root CA key to necessary hosts"

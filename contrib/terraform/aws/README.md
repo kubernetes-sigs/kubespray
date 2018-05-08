@@ -25,13 +25,12 @@ export AWS_DEFAULT_REGION="zzz"
 - Rename `contrib/terraform/aws/terraform.tfvars.example` to `terraform.tfvars`
 
 - Update `contrib/terraform/aws/terraform.tfvars` with your data. By default, the Terraform scripts use CoreOS as base image. If you want to change this behaviour, see note "Using other distrib than CoreOs" below.
-- Allocate a new AWS Elastic IP. Use this for your `loadbalancer_apiserver_address` value (below)
 - Create an AWS EC2 SSH Key
 - Run with `terraform apply --var-file="credentials.tfvars"` or `terraform apply` depending if you exported your AWS credentials
 
 Example:
 ```commandline
-terraform apply -var-file=credentials.tfvars -var 'loadbalancer_apiserver_address=34.212.228.77'
+terraform apply -var-file=credentials.tfvars
 ```
 
 - Terraform automatically creates an Ansible Inventory file called `hosts` with the created infrastructure in the directory `inventory`

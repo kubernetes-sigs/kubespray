@@ -39,6 +39,27 @@
   delegate_to: "{{ groups.vault|first }}"
   run_once: true
 
+- name: gen_certs_vault | Ensure vault cert dir exists
+  file:
+    path: "{{ vault_cert_dir }}"
+    state: directory
+    recurse: yes
+    owner: "vault"
+    group: "vault"
+    mode: 0755
+
+- name: gen_certs_vault | install hvac
+  pip:
+    name: "hvac"
+    state: "present"
+
+- name: gen_certs_vault | Pull vault CA
+  get_url:
+    url: "{{ issue_cert_url }}/v1/vault/ca/pem"
+    dest: "{{ vault_cert_dir }}/ca.pem"
+    validate_certs: no
+  when: '"https" in issue_cert_url'
+
 - name: gen_certs_vault | Log into Vault and obtain a scoped token
   hashivault_token_create:
     url: "{{ issue_cert_url }}"
@@ -58,7 +79,7 @@
   hashivault_write:
     url: "{{ issue_cert_url }}"
     token: "{{ vault_client_token }}"
-    ca_cert: "{{ vault_cert_dir }}/ca.pem"
+    ca_cert: "{% if 'https' in issue_cert_url %}{{ vault_cert_dir }}/ca.pem{% endif %}"
     secret: "{{ issue_cert_mount_path|d('/pki') }}/issue/{{ issue_cert_role }}"
     data:
       alt_names: "{{ issue_cert_alt_names | d([]) | join(',') }}"

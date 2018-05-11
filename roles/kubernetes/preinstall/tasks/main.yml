@@ -3,6 +3,12 @@
   tags:
     - asserts
 
+# This is run before bin_dir is pinned because these tasks are run on localhost
+- import_tasks: pre_upgrade.yml
+  run_once: true
+  tags:
+    - upgrade
+
 - name: Force binaries directory for Container Linux by CoreOS
   set_fact:
     bin_dir: "/opt/bin"
@@ -71,14 +77,6 @@
     - cloud-provider
     - facts
 
-- include_tasks: "{{ cloud_provider }}-credential-check.yml"
-  when:
-    - cloud_provider is defined
-    - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
-  tags:
-    - cloud-provider
-    - facts
-
 - name: Create cni directories
   file:
     path: "{{ item }}"
@@ -98,6 +96,20 @@
     - canal
     - contiv
     - bootstrap-os
+
+- name: Create local volume provisioner directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: kube
+  with_items:
+    - "{{ local_volume_provisioner_base_dir }}"
+    - "{{ local_volume_provisioner_mount_dir }}"
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - local_volume_provisioner_enabled
+  tags:
+    - persistent_volumes
 
 - import_tasks: resolvconf.yml
   when:
@@ -146,6 +158,15 @@
     - not is_atomic
   tags: bootstrap-os
 
+- name: Update package management cache (zypper) - SUSE
+  shell: zypper -n --gpg-auto-import-keys ref
+  register: make_cache_output
+  until: make_cache_output|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - ansible_pkg_mgr == 'zypper'
+  tags: bootstrap-os
 
 - name: Update package management cache (APT)
   apt:
@@ -221,12 +242,6 @@
   when:
     - disable_ipv6_dns
     - not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
-  tags:
-    - bootstrap-os
-
-- name: set default sysctl file path
-  set_fact:
-    sysctl_file_path: "/etc/sysctl.d/99-sysctl.conf"
   tags:
     - bootstrap-os
 

@@ -11,6 +11,9 @@
 - import_tasks: bootstrap-centos.yml
   when: bootstrap_os == "centos"
 
+- import_tasks: bootstrap-opensuse.yml
+  when: bootstrap_os == "opensuse"
+
 - import_tasks: setup-pipelining.yml
 
 - name: check if atomic host
@@ -26,18 +29,25 @@
     gather_subset: '!all'
     filter: ansible_*
 
-- name: Assign inventory name to unconfigured hostnames (non-CoreOS)
+- name: Assign inventory name to unconfigured hostnames (non-CoreOS and Tumbleweed)
   hostname:
     name: "{{inventory_hostname}}"
-  when: ansible_os_family not in ['CoreOS', 'Container Linux by CoreOS'] and override_system_hostname
+  when:
+    - override_system_hostname
+    - ansible_distribution not in ['openSUSE Tumbleweed']
+    - ansible_os_family not in ['CoreOS', 'Container Linux by CoreOS']
 
-- name: Assign inventory name to unconfigured hostnames (CoreOS only)
+- name: Assign inventory name to unconfigured hostnames (CoreOS and Tumbleweed only)
   command: "hostnamectl set-hostname  {{inventory_hostname}}"
   register: hostname_changed
-  when: ansible_hostname == 'localhost' and ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] and override_system_hostname
+  when:
+    - ansible_hostname == 'localhost'
+    - ansible_distribution in ['openSUSE Tumbleweed'] or ansible_os_family in ['CoreOS', 'Container Linux by CoreOS']
+    - override_system_hostname
 
-- name: Update hostname fact (CoreOS only)
+- name: Update hostname fact (CoreOS and Tumbleweed only)
   setup:
     gather_subset: '!all'
     filter: ansible_hostname
-  when: ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] and hostname_changed.changed
+  when:
+    - hostname_changed.changed

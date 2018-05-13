@@ -31,7 +31,7 @@ server_img: "mirantis/k8s-netchecker-server:v1.2.2"
 
 Note that the application verifies DNS resolve for FQDNs comprising only the
 combination of the ``netcheck_namespace.dns_domain`` vars, for example the
-``netchecker-service.default.cluster.local``. If you want to deploy the application
+``netchecker-service.default.svc.cluster.local``. If you want to deploy the application
 to the non default namespace, make sure as well to adjust the ``searchdomains`` var
 so the resulting search domain records to contain that namespace, like:
 

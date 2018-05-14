@@ -17,6 +17,8 @@ Quick Start
 To deploy the cluster you can use :
 
 ### Ansible
+    # Install dependencies from ``requirements.txt``
+    sudo pip install -r requirements.txt
 
     # Copy ``inventory/sample`` as ``inventory/mycluster``
     cp -rfp inventory/sample inventory/mycluster

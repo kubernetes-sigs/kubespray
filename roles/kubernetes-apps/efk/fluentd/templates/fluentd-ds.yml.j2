@@ -1,5 +1,5 @@
 ---
-# https://raw.githubusercontent.com/kubernetes/kubernetes/release-1.10/cluster/addons/fluentd-elasticsearch/fluentd-es-ds.yaml
+# https://raw.githubusercontent.com/kubernetes/kubernetes/v1.10.2/cluster/addons/fluentd-elasticsearch/fluentd-es-ds.yaml
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -7,8 +7,8 @@ metadata:
   namespace: "kube-system"
   labels:
     k8s-app: fluentd-es
-    kubernetes.io/cluster-service: "true"
     version: "{{ fluentd_version }}"
+    kubernetes.io/cluster-service: "true"
     addonmanager.kubernetes.io/mode: Reconcile
 spec:
   selector:
@@ -26,6 +26,11 @@ spec:
       # Note that this does not guarantee admission on the nodes (#40573).
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      priorityClassName: system-node-critical
+{% if rbac_enabled %}
+      serviceAccountName: efk
+{% endif %}
       containers:
       - name: fluentd-es
         image: "{{ fluentd_image_repo }}:{{ fluentd_image_tag }}"
@@ -39,12 +44,12 @@ spec:
 {% endif %}
             memory: {{ fluentd_mem_limit }}
           requests:
-            cpu:  {{ fluentd_cpu_requests }}
+            cpu: {{ fluentd_cpu_requests }}
             memory: {{ fluentd_mem_requests }}
         volumeMounts:
         - name: varlog
           mountPath: /var/log
-        - name: dockercontainers
+        - name: varlibdockercontainers
           mountPath: "{{ docker_daemon_graph }}/containers"
           readOnly: true
         - name: config-volume
@@ -56,12 +61,9 @@ spec:
       - name: varlog
         hostPath:
           path: /var/log
-      - name: dockercontainers
+      - name: varlibdockercontainers
         hostPath:
           path: {{ docker_daemon_graph }}/containers
       - name: config-volume
-        configMap: 
+        configMap:
           name: fluentd-config
-{% if rbac_enabled %}
-      serviceAccountName: efk 
-{% endif %}

@@ -97,7 +97,7 @@ Supported Components
 -   Network Plugin
     -   [calico](https://github.com/projectcalico/calico) v2.6.8
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-    -   [cilium](https://github.com/cilium/cilium) v1.0.0-rc8
+    -   [cilium](https://github.com/cilium/cilium) v1.0.4
     -   [contiv](https://github.com/contiv/install) v1.1.7
     -   [flanneld](https://github.com/coreos/flannel) v0.10.0
     -   [weave](https://github.com/weaveworks/weave) v2.3.0

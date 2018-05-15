@@ -34,11 +34,18 @@ To deploy the cluster you can use :
 
 ### Vagrant
 
-    Check if Python and pip are installed: python -v && pip -v
-    If this returns the version of the software you're good to go if not download and install Python from here https://www.python.org/downloads/source/
-    Install the necessary requirements
-    sudo pip install -r requirements.txt
-    vagrant up
+    Check if Python and pip are installed: 
+```sh
+python -v && pip -v
+```
+    
+   If this returns the version of the software you're good to go if not download and install Python from here https://www.python.org/downloads/source/
+   Install the necessary requirements
+    
+```sh
+sudo pip install -r requirements.txt
+vagrant up
+```
 
 Documents
 ---------

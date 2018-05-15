@@ -34,7 +34,7 @@ To deploy the cluster you can use :
 
 ### Vagrant
 
-    Check if Python and pip are installed: 
+   Check if Python and pip are installed: 
 ```sh
 python -v && pip -v
 ```

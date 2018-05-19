@@ -55,3 +55,7 @@ variable "k8s_node_fips" {
 variable "bastion_fips" {
   type = "list"
 }
+
+variable "kube_service_addresses" {}
+
+variable "kube_pods_subnet" {}

@@ -43,3 +43,6 @@ network_name = "<network>"
 external_net = "<UUID>"
 floatingip_pool = "<pool>"
 
+# Additional variables when using calico
+#kube_service_addresses = "<kube services CIDR>"
+#kube_pods_subnet = "<kube PODs CIDR>"

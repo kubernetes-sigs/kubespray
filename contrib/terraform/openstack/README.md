@@ -217,7 +217,8 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tf`.
 |`number_of_k8s_nodes`, `number_of_k8s_nodes_no_floating_ip` | Kubernetes worker nodes. These can be provisioned with or without floating ip addresses. |
 |`number_of_bastions` | Number of bastion hosts to create. Scripts assume this is really just zero or one |
 |`number_of_gfs_nodes_no_floating_ip` | Number of gluster servers to provision. |
-| `gfs_volume_size_in_gb` | Size of the non-ephemeral volumes to be attached to store the GlusterFS bricks |
+|`gfs_volume_size_in_gb` | Size of the non-ephemeral volumes to be attached to store the GlusterFS bricks |
+|`kube_service_addresses`, `kube_pods_subnet` | Prevent filtering and dropping of Calico packages by OpenStack of its anti-spoofing model |
 
 #### Terraform state files
 

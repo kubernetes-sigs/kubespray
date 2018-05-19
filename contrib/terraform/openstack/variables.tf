@@ -116,3 +116,13 @@ variable "supplementary_master_groups" {
   description = "supplementary kubespray ansible groups for masters, such kube-node"
   default = ""
 }
+
+variable "kube_service_addresses" {
+  description = "Allow the routing of Calico packages with the IP addresses of the services"
+  default     = "10.233.0.0/18"
+}
+
+variable "kube_pods_subnet" {
+  description = "Allow the routing of Calico packages with the IP addresses of the PODs"
+  default     = "10.233.64.0/18"
+}

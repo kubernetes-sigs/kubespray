@@ -49,6 +49,8 @@ module "compute" {
   k8s_node_fips                                = "${module.ips.k8s_node_fips}"
   bastion_fips                                 = "${module.ips.bastion_fips}"
   supplementary_master_groups                  = "${var.supplementary_master_groups}"
+  kube_service_addresses                       = "${var.kube_service_addresses}"
+  kube_pods_subnet                             = "${var.kube_pods_subnet}"
 
   network_id = "${module.network.router_id}"
 }

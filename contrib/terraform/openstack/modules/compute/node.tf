@@ -1,4 +1,22 @@
 
+resource "openstack_networking_port_v2" "k8s_node_port" {
+  count          = "${var.number_of_k8s_nodes}"
+  name           = "${var.cluster_name}-k8s-node-${count.index+1}-port"
+  network_id     = "${var.network_id}"
+  admin_state_up = true
+  device_owner   = "compute:nova"
+
+  allowed_address_pairs {
+    ip_address = "${var.kube_service_addresses}"
+  }
+
+  allowed_address_pairs {
+    ip_address = "${var.kube_pods_subnet}"
+  }
+
+}
+
+
 resource "openstack_compute_instance_v2" "k8s_node" {
   name       = "${var.cluster_name}-k8s-node-${count.index+1}"
   count      = "${var.number_of_k8s_nodes}"
@@ -7,7 +25,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   key_pair   = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {
-    name = "${var.network_name}"
+    port = "${element(openstack_networking_port_v2.k8s_node_port.*.id, count.index)}"
   }
 
   security_groups = [
@@ -37,7 +55,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   key_pair   = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {
-    name = "${var.network_name}"
+    port = "${element(openstack_networking_port_v2.k8s_node_port.*.id, count.index)}"
   }
 
   security_groups = [

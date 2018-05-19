@@ -59,3 +59,7 @@ variable "bastion_fips" {
 variable "supplementary_master_groups" {
   default = ""
 }
+
+variable "kube_service_addresses" {}
+
+variable "kube_pods_subnet" {}

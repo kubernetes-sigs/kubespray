@@ -34,12 +34,13 @@ To deploy the cluster you can use :
 
 ### Vagrant
 
+   For Vagrant we need to install python dependencies for provisioning tasks
    Check if Python and pip are installed: 
 ```sh
 python -v && pip -v
 ```
     
-   If this returns the version of the software you're good to go if not download and install Python from here https://www.python.org/downloads/source/
+   If this returns the version of the software you're good to go. If not, download and install Python from here https://www.python.org/downloads/source/
    Install the necessary requirements
     
 ```sh

@@ -83,12 +83,14 @@
   when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat", "Suse"] or is_atomic) and (dockerproject_repo_info.repos|length > 0)
 
 - name: Configure docker repository on RedHat/CentOS
+  become: yes
   template:
     src: "rh_docker.repo.j2"
     dest: "{{ yum_repo_dir }}/docker.repo"
   when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
 
 - name: Copy yum.conf for editing
+  become: yes
   copy:
     src: "{{ yum_conf }}"
     dest: "{{ docker_yum_conf }}"
@@ -96,6 +98,7 @@
   when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
 
 - name: Edit copy of yum.conf to set obsoletes=0
+  become: yes
   lineinfile:
     path: "{{ docker_yum_conf }}"
     state: present
@@ -104,6 +107,7 @@
   when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
 
 - name: ensure docker packages are installed
+  become: yes
   action: "{{ docker_package_info.pkg_mgr }}"
   args:
     pkg: "{{item.name}}"
@@ -119,6 +123,7 @@
   when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or is_atomic) and (docker_package_info.pkgs|length > 0)
 
 - name: ensure service is started if docker packages are already present
+  become: yes
   service:
     name: docker
     state: started
@@ -128,6 +133,7 @@
   meta: flush_handlers
 
 - name: set fact for docker_version
+  become: yes
   command: "docker version -f '{{ '{{' }}.Client.Version{{ '}}' }}'"
   register: installed_docker_version
   changed_when: false
@@ -144,6 +150,7 @@
   import_tasks: systemd.yml
 
 - name: ensure docker service is started and enabled
+  become: yes
   service:
     name: "{{ item }}"
     enabled: yes

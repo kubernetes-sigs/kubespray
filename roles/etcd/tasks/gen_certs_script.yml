@@ -1,5 +1,6 @@
 ---
 - name: Gen_certs | create etcd cert dir
+  become: yes
   file:
     path: "{{ etcd_cert_dir }}"
     group: "{{ etcd_cert_group }}"
@@ -9,6 +10,7 @@
     recurse: yes
 
 - name: "Gen_certs | create etcd script dir (on {{groups['etcd'][0]}})"
+  become: yes
   file:
     path: "{{ etcd_script_dir }}"
     state: directory
@@ -19,6 +21,7 @@
   delegate_to: "{{groups['etcd'][0]}}"
 
 - name: "Gen_certs | create etcd cert dir (on {{groups['etcd'][0]}})"
+  become: yes
   file:
     path: "{{ etcd_cert_dir }}"
     group: "{{ etcd_cert_group }}"
@@ -31,6 +34,7 @@
   delegate_to: "{{groups['etcd'][0]}}"
 
 - name: Gen_certs | write openssl config
+  become: yes
   template:
     src: "openssl.conf.j2"
     dest: "{{ etcd_config_dir }}/openssl.conf"
@@ -41,6 +45,7 @@
     - inventory_hostname == groups['etcd'][0]
 
 - name: Gen_certs | copy certs generation script
+  become: yes
   copy:
     src: "make-ssl-etcd.sh"
     dest: "{{ etcd_script_dir }}/make-ssl-etcd.sh"
@@ -52,6 +57,7 @@
     - inventory_hostname == groups['etcd'][0]
 
 - name: Gen_certs | run cert generation script
+  become: yes
   command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
   environment:
     - MASTERS: "{% for m in groups['etcd'] %}
@@ -129,6 +135,7 @@
         inventory_hostname != groups['etcd'][0]
 
 - name: Gen_certs | Write master certs to tempfile
+  become: yes
   copy:
     content: "{{etcd_master_cert_data.stdout}}"
     dest: "{{cert_tempfile.stdout}}"
@@ -138,6 +145,7 @@
         inventory_hostname != groups['etcd'][0]
 
 - name: Gen_certs | Unpack certs on masters
+  become: yes
   shell: "base64 -d < {{ cert_tempfile.stdout }} | tar xz -C {{ etcd_cert_dir }}"
   no_log: true
   changed_when: false
@@ -147,6 +155,7 @@
   notify: set secret_changed
 
 - name: Gen_certs | Cleanup tempfile
+  become: yes
   file:
     path: "{{cert_tempfile.stdout}}"
     state: absent
@@ -162,6 +171,7 @@
         inventory_hostname not in groups['etcd']
 
 - name: Gen_certs | check certificate permissions
+  become: yes
   file:
     path: "{{ etcd_cert_dir }}"
     group: "{{ etcd_cert_group }}"

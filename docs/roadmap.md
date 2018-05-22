@@ -9,7 +9,7 @@ Kubespray's roadmap
 ### Self deployment (pull-mode) [#320](https://github.com/kubespray/kubespray/issues/320)
 - the playbook would install and configure docker/rkt and the etcd cluster
 - the following data would be inserted into etcd: certs,tokens,users,inventory,group_vars.
-- a "kubespray" container would be deployed (kubespray-cli, ansible-playbook, kpm)
+- a "kubespray" container would be deployed (kubespray-cli, ansible-playbook)
 - to be discussed, a way to provide the inventory
 - **self deployment** of the node from inside a container [#321](https://github.com/kubespray/kubespray/issues/321)
 

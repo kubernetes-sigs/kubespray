@@ -123,7 +123,6 @@ The following tags are defined in playbooks:
 |                hyperkube | Manipulations with K8s hyperkube image
 |          k8s-pre-upgrade | Upgrading K8s cluster
 |              k8s-secrets | Configuring K8s certs/keys
-|                      kpm | Installing K8s apps definitions with KPM
 |           kube-apiserver | Configuring static pod kube-apiserver
 |  kube-controller-manager | Configuring static pod kube-controller-manager
 |                  kubectl | Installing kubectl and bash completion

@@ -5,11 +5,11 @@ Deploy a Production Ready Kubernetes Cluster
 
 If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 
--   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere or Baremetal**
--   **High available** cluster
--   **Composable** (Choice of the network plugin for instance)
--   Support most popular **Linux distributions**
--   **Continuous integration tests**
+- Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere or Baremetal**
+- **High available** cluster
+- **Composable** (Choice of the network plugin for instance)
+- Support most popular **Linux distributions**
+- **Continuous integration tests**
 
 Quick Start
 -----------
@@ -17,6 +17,8 @@ Quick Start
 To deploy the cluster you can use :
 
 ### Ansible
+    # Install dependencies from ``requirements.txt``
+    sudo pip install -r requirements.txt
 
     # Copy ``inventory/sample`` as ``inventory/mycluster``
     cp -rfp inventory/sample inventory/mycluster
@@ -34,8 +36,19 @@ To deploy the cluster you can use :
 
 ### Vagrant
 
-    # Simply running `vagrant up` (for tests purposes)
-    vagrant up
+   For Vagrant we need to install python dependencies for provisioning tasks.\
+   Check if Python and pip are installed: 
+```sh
+python -v && pip -v
+```
+    
+   If this returns the version of the software, you're good to go. If not, download and install Python from here https://www.python.org/downloads/source/
+   Install the necessary requirements
+    
+```sh
+sudo pip install -r requirements.txt
+vagrant up
+```
 
 Documents
 ---------
@@ -78,8 +91,8 @@ Note: Upstart/SysV init based OS types are not supported.
 Versions of supported components
 --------------------------------
 
--   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.9.5
--   [etcd](https://github.com/coreos/etcd/releases) v3.2.4
+-   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.10.2
+-   [etcd](https://github.com/coreos/etcd/releases) v3.2.16
 -   [flanneld](https://github.com/coreos/flannel/releases) v0.10.0
 -   [calico](https://docs.projectcalico.org/v2.6/releases/) v2.6.8
 -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)

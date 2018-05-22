@@ -61,6 +61,20 @@
   ignore_errors: "{{ ignore_assert_errors }}"
   when: inventory_hostname in groups['kube-node']
 
+# This assertion will fail on the safe side: One can indeed schedule more pods
+# on a node than the CIDR-range has space for when additional pods use the host
+# network namespace. It is impossible to ascertain the number of such pods at
+# provisioning time, so to establish a guarantee, we factor these out.
+# NOTICE: the check blatantly ignores the inet6-case
+- name: Guarantee that enough network address space is available for all pods
+  assert:
+    that: "{{ kubelet_max_pods <= ((32 - kube_network_node_prefix) ** 2) - 2 }}"
+    msg: "Do not schedule more pods on a node than inet addresses are available."
+  ignore_errors: "{{ ignore_assert_errors }}"
+  when:
+    - inventory_hostname in groups['kube-node']
+    - kube_network_node_prefix is defined
+
 - name: Stop if ip var does not match local ips
   assert:
     that: ip in ansible_all_ipv4_addresses

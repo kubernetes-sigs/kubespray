@@ -39,3 +39,17 @@
 - name: Helm | Set up bash completion
   shell: "umask 022 && {{ bin_dir }}/helm completion bash >/etc/bash_completion.d/helm.sh"
   when: ((helm_container is defined and helm_container.changed) or (helm_task_result is defined and helm_task_result.changed)) and not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+
+- name: Helm | Install charts
+  command: >
+    {{ bin_dir }}/helm upgrade --install
+    {% if item.namespace is defined %} --namespace={{ item.namespace }}{% endif %}
+    {% if item.repo is defined %} --repo={{ item.repo }}{% endif %}
+    {% if item.version is defined %} --version={{ item.version }}{% endif %}
+    {{ item.release }}
+    {{ item.chart }}
+    -f -
+  args:
+    stdin: "{{ item['values'] | default(omit)  }}"
+  with_items: "{{ helm_charts }}"
+  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]

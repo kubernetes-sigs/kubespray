@@ -165,7 +165,7 @@ Tools and projects on top of Kubespray
 CI Tests
 --------
 
-![Gitlab Logo](https://s27.postimg.org/wmtaig1wz/gitlabci.png)
+![Gitlab Logo](https://about.gitlab.com/images/press/logo/wm.svg)
 
 [![Build graphs](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/badges/master/build.svg)](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/pipelines)
 

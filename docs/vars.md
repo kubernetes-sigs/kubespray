@@ -140,6 +140,7 @@ The possible vars are:
 * *controller_mgr_custom_flags*
 * *scheduler_custom_flags*
 * *kubelet_custom_flags*
+* *dashboard_custom_flags*
 
 #### User accounts
 

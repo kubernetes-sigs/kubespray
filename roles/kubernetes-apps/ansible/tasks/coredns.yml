@@ -1,0 +1,39 @@
+---
+- name: Kubernetes Apps | Lay Down CoreDNS Template
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - { name: coredns, file: coredns-config.yml, type: configmap }
+    - { name: coredns, file: coredns-sa.yml, type: sa }
+    - { name: coredns, file: coredns-deployment.yml, type: deployment }
+    - { name: coredns, file: coredns-svc.yml, type: svc }
+    - { name: coredns, file: coredns-clusterrole.yml, type: clusterrole }
+    - { name: coredns, file: coredns-clusterrolebinding.yml, type: clusterrolebinding }
+  register: coredns_manifests
+  vars:
+    clusterIP: "{{ skydns_server }}"
+  when:
+    - dns_mode in ['coredns', 'coredns_dual']
+    - inventory_hostname == groups['kube-master'][0]
+    - rbac_enabled or item.type not in rbac_resources
+  tags:
+    - coredns
+
+- name: Kubernetes Apps | Lay Down Secondary CoreDNS Template
+  template:
+    src: "{{ item.src }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - { name: coredns, src: coredns-deployment.yml, file: coredns-deployment-secondary.yml, type: deployment }
+    - { name: coredns, src: coredns-svc.yml, file: coredns-svc-secondary.yml, type: svc }
+  register: coredns_secondary_manifests
+  vars:
+    clusterIP: "{{ skydns_server_secondary }}"
+    coredns_ordinal_suffix: "-secondary"
+  when:
+    - dns_mode == 'coredns_dual'
+    - inventory_hostname == groups['kube-master'][0]
+    - rbac_enabled or item.type not in rbac_resources
+  tags:
+    - coredns

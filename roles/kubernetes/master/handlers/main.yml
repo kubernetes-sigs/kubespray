@@ -41,12 +41,24 @@
 
 - name: Master | Remove apiserver container
   shell: "docker ps -af name=k8s_kube-apiserver* -q | xargs --no-run-if-empty docker rm -f"
+  register: remove_apiserver_container
+  retries: 4
+  until: remove_apiserver_container.rc == 0
+  delay: 5
 
 - name: Master | Remove scheduler container
   shell: "docker ps -af name=k8s_kube-scheduler* -q | xargs --no-run-if-empty docker rm -f"
+  register: remove_scheduler_container
+  retries: 4
+  until: remove_scheduler_container.rc == 0
+  delay: 5
 
 - name: Master | Remove controller manager container
   shell: "docker ps -af name=k8s_kube-controller-manager* -q | xargs --no-run-if-empty docker rm -f"
+  register: remove_cm_container
+  retries: 4
+  until: remove_cm_container.rc == 0
+  delay: 5
 
 - name: Master | wait for kube-scheduler
   uri:
@@ -66,11 +78,14 @@
 
 - name: Master | wait for the apiserver to be running
   uri:
-    url: "{{ kube_apiserver_insecure_endpoint }}/healthz"
+    url: "{{ kube_apiserver_endpoint }}/healthz"
+    validate_certs: no
+    client_cert: "{{ kube_apiserver_client_cert }}"
+    client_key: "{{ kube_apiserver_client_key }}"
   register: result
   until: result.status == 200
-  retries: 20
-  delay: 6
+  retries: 30
+  delay: 10
 
 - name: Master | set secret_changed
   command: /bin/true

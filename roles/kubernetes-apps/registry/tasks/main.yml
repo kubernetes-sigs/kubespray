@@ -1,0 +1,58 @@
+---
+
+- name: Registry | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/registry"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Registry | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/registry/{{ item.file }}"
+  with_items:
+    - { name: registry-ns, file: registry-ns.yml, type: ns }
+    - { name: registry-svc, file: registry-svc.yml, type: svc }
+    - { name: registry-rs, file: registry-rs.yml, type: rs }
+    - { name: registry-proxy-ds, file: registry-proxy-ds.yml, type: ds }
+  register: registry_manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Registry | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ registry_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/registry/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ registry_manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Registry | Create PVC manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/registry/{{ item.file }}"
+  with_items:
+    - { name: registry-pvc, file: registry-pvc.yml, type: pvc }
+  register: registry_manifests
+  when:
+    - registry_storage_class != none
+    - registry_disk_size != none
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Registry | Apply PVC manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ registry_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/registry/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ registry_manifests.results }}"
+  when:
+    - registry_storage_class != none
+    - registry_disk_size != none
+    - inventory_hostname == groups['kube-master'][0]

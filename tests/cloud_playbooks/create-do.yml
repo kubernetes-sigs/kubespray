@@ -1,0 +1,97 @@
+---
+- hosts: localhost
+  become: false
+  gather_facts: no
+  vars:
+    state: "present"
+    ssh_key_id: "6536865"
+    cloud_machine_type: 2gb
+    regions:
+      - nyc1
+      - sfo1
+      - nyc2
+      - ams2
+      - sgp1
+      - lon1
+      - nyc3
+      - ams3
+      - fra1
+      - tor1
+      - sfo2
+      - blr1
+    cloud_images:
+      - coreos-beta
+      - fedora-24-x64
+      - centos-5-x64
+      - centos-5-x32
+      - fedora-25-x64
+      - debian-7-x64
+      - debian-7-x32
+      - debian-8-x64
+      - debian-8-x32
+      - centos-6-x32
+      - centos-6-x64
+      - coreos-stable
+      - ubuntu-16-10-x32
+      - ubuntu-16-10-x64
+      - freebsd-11-0-x64-zfs
+      - freebsd-10-3-x64-zfs
+      - coreos-alpha
+      - ubuntu-12-04-x32
+      - ubuntu-12-04-x64
+      - ubuntu-16-04-x64
+      - ubuntu-16-04-x32
+      - ubuntu-14-04-x64
+      - ubuntu-14-04-x32
+      - centos-7-x64
+      - freebsd-11-0-x64
+      - freebsd-10-3-x64
+      - centos-7-3-1611-x64
+    mode: default
+
+  tasks:
+    - name: replace_test_id
+      set_fact:
+        test_name: "{{test_id |regex_replace('\\.', '-')}}"
+
+    - name: show vars
+      debug: msg="{{cloud_region}}, {{cloud_image}}"
+
+    - set_fact:
+        instance_names: >-
+          {%- if mode in ['separate', 'ha'] -%}
+          ["k8s-{{test_name}}-1", "k8s-{{test_name}}-2", "k8s-{{test_name}}-3"]
+          {%- else -%}
+          ["k8s-{{test_name}}-1", "k8s-{{test_name}}-2"]
+          {%- endif -%}
+
+    - name: Manage DO instances | {{state}}
+      digital_ocean:
+        unique_name: yes
+        api_token: "{{ lookup('env','DO_API_TOKEN') }}"
+        command: "droplet"
+        image_id: "{{ cloud_image }}"
+        name: "{{ item }}"
+        private_networking: no
+        region_id: "{{cloud_region}}"
+        size_id: "{{cloud_machine_type}}"
+        ssh_key_ids: "{{ssh_key_id}}"
+        state: "{{state}}"
+        wait: yes
+      register: droplets
+      with_items: "{{instance_names}}"
+
+    - debug:
+        msg: "{{droplets}}, {{inventory_path}}"
+      when: "{{ state == 'present' }}"
+
+    - name: Template the inventory
+      template:
+        src: ../templates/inventory-do.j2
+        dest: "{{ inventory_path }}"
+      when: "{{ state == 'present' }}"
+
+    - name: Wait for SSH to come up
+      wait_for: host={{item.droplet.ip_address}} port=22 delay=10 timeout=180 state=started
+      with_items: "{{droplets.results}}"
+      when: "{{ state == 'present' }}"

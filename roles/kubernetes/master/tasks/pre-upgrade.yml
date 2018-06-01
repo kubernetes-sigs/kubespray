@@ -3,6 +3,8 @@
   command: "{{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses }} ls /registry/minions"
   environment:
     ETCDCTL_API: 2
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem"
   register: old_data_exists
   delegate_to: "{{groups['etcd'][0]}}"
   changed_when: false
@@ -28,4 +30,7 @@
   with_items:
     - ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   when: kube_apiserver_manifest_replaced.changed
-  run_once: true
+  register: remove_master_container
+  retries: 4
+  until: remove_master_container.rc == 0
+  delay: 5

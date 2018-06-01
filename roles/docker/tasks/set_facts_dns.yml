@@ -3,10 +3,14 @@
 - name: set dns server for docker
   set_fact:
     docker_dns_servers: |-
-      {%- if dns_mode == 'kubedns' -%}
+      {%- if dns_mode in ['kubedns', 'coredns'] -%}
         {{ [ skydns_server ] }}
+      {%- elif dns_mode == 'coredns_dual' -%}
+        {{ [ skydns_server ] + [ skydns_server_secondary ] }}
       {%- elif dns_mode == 'dnsmasq_kubedns' -%}
         {{ [ dnsmasq_dns_server ] }}
+      {%- elif dns_mode == 'manual' -%}
+        {{ [ manual_dns_server ] }}
       {%- endif -%}
 
 - name: set base docker dns facts
@@ -22,7 +26,7 @@
 - name: add upstream dns servers (only when dnsmasq is not used)
   set_fact:
     docker_dns_servers: "{{ docker_dns_servers + upstream_dns_servers|default([]) }}"
-  when: dns_mode == 'kubedns'
+  when: dns_mode in ['kubedns', 'coredns', 'coreos_dual']
 
 - name: add global searchdomains
   set_fact:
@@ -47,7 +51,7 @@
 
 - name: add system search domains to docker options
   set_fact:
-    docker_dns_search_domains: "{{ docker_dns_search_domains | union(system_search_domains.stdout.split(' ')|default([])) | unique }}"
+    docker_dns_search_domains: "{{ docker_dns_search_domains | union(system_search_domains.stdout.split()|default([])) | unique }}"
   when: system_search_domains.stdout != ""
 
 - name: check number of nameservers

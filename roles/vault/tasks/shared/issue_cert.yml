@@ -6,6 +6,7 @@
 #   issue_cert_alt_name:    Requested Subject Alternative Names, in a list.
 #   issue_cert_common_name: Common Name included in the cert
 #   issue_cert_copy_ca:     Copy issuing CA cert needed
+#   issue_cert_ca_filename: Filename for copied issuing CA cert (default ca.pem)
 #   issue_cert_dir_mode:    Mode of the placed cert directory
 #   issue_cert_file_group:  Group of the placed cert file and directory
 #   issue_cert_file_mode:   Mode of the placed cert file
@@ -38,52 +39,58 @@
   delegate_to: "{{ groups.vault|first }}"
   run_once: true
 
-- name: gen_certs_vault | Log into Vault and obtain an token
-  uri:
-    url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}/v1/auth/userpass/login/{{ user_vault_creds.username }}"
-    headers:
-      Accept: application/json
-      Content-Type: application/json
-    method: POST
-    body_format: json
-    body:
-      password: "{{ user_vault_creds.password }}"
-  register: vault_login_result
-  delegate_to: "{{ groups.vault|first }}"
+- name: gen_certs_vault | Ensure vault cert dir exists
+  file:
+    path: "{{ vault_cert_dir }}"
+    state: directory
+    recurse: yes
+    owner: "vault"
+    group: "vault"
+    mode: 0755
+
+- name: gen_certs_vault | install hvac
+  pip:
+    name: "hvac"
+    state: "present"
+
+- name: gen_certs_vault | Pull vault CA
+  get_url:
+    url: "{{ issue_cert_url }}/v1/vault/ca/pem"
+    dest: "{{ vault_cert_dir }}/ca.pem"
+    validate_certs: no
+  when: '"https" in issue_cert_url'
+
+- name: gen_certs_vault | Log into Vault and obtain a scoped token
+  hashivault_token_create:
+    url: "{{ issue_cert_url }}"
+    token: "{{ vault_root_token | default(hostvars[groups.vault|first]['vault_root_token']) }}"
+    ca_cert: "{{ vault_cert_dir }}/ca.pem"
+    policies: "{{ user_vault_creds.username }}"
+    display_name: "{{ user_vault_creds.username }}"
+  register: vault_client_token_request
   run_once: true
 
-- name: gen_certs_vault | Set fact for vault_client_token
+- name: gen_certs_vault | Pull token from request
   set_fact:
-    vault_client_token: "{{ vault_login_result.get('json', {}).get('auth', {}).get('client_token') }}"
+    vault_client_token: "{{ vault_client_token_request['token']['auth']['client_token'] }}"
   run_once: true
-
-- name: gen_certs_vault | Set fact for Vault API token
-  set_fact:
-    issue_cert_headers:
-      Accept: application/json
-      Content-Type: application/json
-      X-Vault-Token: "{{ vault_client_token }}"
-  run_once: true
-  when: vault_client_token != ""
 
 - name: "issue_cert | Generate {{ issue_cert_path }} for {{ issue_cert_role }} role"
-  uri:
-    url: "{{ issue_cert_url }}/v1/{{ issue_cert_mount_path|d('pki') }}/issue/{{ issue_cert_role }}"
-    headers: "{{ issue_cert_headers }}"
-    method: POST
-    body_format: json
-    body:
+  hashivault_write:
+    url: "{{ issue_cert_url }}"
+    token: "{{ vault_client_token }}"
+    ca_cert: "{% if 'https' in issue_cert_url %}{{ vault_cert_dir }}/ca.pem{% endif %}"
+    secret: "{{ issue_cert_mount_path|d('/pki') }}/issue/{{ issue_cert_role }}"
+    data:
       alt_names: "{{ issue_cert_alt_names | d([]) | join(',') }}"
       common_name: "{{ issue_cert_common_name | d(issue_cert_path.rsplit('/', 1)[1].rsplit('.', 1)[0]) }}"
       format: "{{ issue_cert_format | d('pem') }}"
       ip_sans: "{{ issue_cert_ip_sans | default([]) | join(',') }}"
   register: issue_cert_result
-  delegate_to: "{{ issue_cert_hosts|first }}"
-  run_once: true
 
 - name: "issue_cert | Copy {{ issue_cert_path }} cert to all hosts"
   copy:
-    content: "{{ issue_cert_result['json']['data']['certificate'] }}\n"
+    content: "{{ issue_cert_result['data']['data']['certificate'] }}\n"
     dest: "{{ issue_cert_path }}"
     group: "{{ issue_cert_file_group | d('root' )}}"
     mode: "{{ issue_cert_file_mode | d('0644') }}"
@@ -91,7 +98,7 @@
 
 - name: "issue_cert | Copy key for {{ issue_cert_path }} to all hosts"
   copy:
-    content: "{{ issue_cert_result['json']['data']['private_key'] }}"
+    content: "{{ issue_cert_result['data']['data']['private_key'] }}"
     dest: "{{ issue_cert_path.rsplit('.', 1)|first }}-key.{{ issue_cert_path.rsplit('.', 1)|last }}"
     group: "{{ issue_cert_file_group | d('root' )}}"
     mode: "{{ issue_cert_file_mode | d('0640') }}"
@@ -99,8 +106,8 @@
 
 - name: issue_cert | Copy issuing CA cert
   copy:
-    content: "{{ issue_cert_result['json']['data']['issuing_ca'] }}\n"
-    dest: "{{ issue_cert_path | dirname }}/ca.pem"
+    content: "{{ issue_cert_result['data']['data']['issuing_ca'] }}\n"
+    dest: "{{ issue_cert_path | dirname }}/{{ issue_cert_ca_filename | default('ca.pem') }}"
     group: "{{ issue_cert_file_group | d('root' )}}"
     mode: "{{ issue_cert_file_mode | d('0644') }}"
     owner: "{{ issue_cert_file_owner | d('root') }}"
@@ -108,7 +115,7 @@
 
 - name: issue_cert | Copy certificate serial to all hosts
   copy:
-    content: "{{ issue_cert_result['json']['data']['serial_number'] }}"
+    content: "{{ issue_cert_result['data']['data']['serial_number'] }}"
     dest: "{{ issue_cert_path.rsplit('.', 1)|first }}.serial"
     group: "{{ issue_cert_file_group | d('root' )}}"
     mode: "{{ issue_cert_file_mode | d('0640') }}"

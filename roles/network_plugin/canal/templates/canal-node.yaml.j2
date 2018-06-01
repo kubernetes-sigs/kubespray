@@ -3,7 +3,7 @@ kind: DaemonSet
 apiVersion: extensions/v1beta1
 metadata:
   name: canal-node
-  namespace: {{ system_namespace }}
+  namespace: kube-system
   labels:
     k8s-app: canal-node
 spec:
@@ -148,13 +148,20 @@ spec:
                   name: canal-config
                   key: etcd_endpoints
             # Disable Calico BGP.  Calico is simply enforcing policy.
-            - name: CALICO_NETWORKING
-              value: "false"
+            - name: CALICO_NETWORKING_BACKEND
+              value: "none"
             # Cluster type to identify the deployment type
             - name: CLUSTER_TYPE
               value: "kubespray,canal"
             # Disable file logging so `kubectl logs` works.
             - name: CALICO_DISABLE_FILE_LOGGING
+              value: "true"
+            # Set noderef for node controller.
+            - name: CALICO_K8S_NODE_REF
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: FELIX_HEALTHENABLED
               value: "true"
             # Etcd SSL vars
             - name: ETCD_CA_CERT_FILE
@@ -178,6 +185,18 @@ spec:
                   fieldPath: spec.nodeName
           securityContext:
             privileged: true
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 9099
+            periodSeconds: 10
+            initialDelaySeconds: 10
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 9099
+            periodSeconds: 10
           volumeMounts:
             - mountPath: /lib/modules
               name: lib-modules

@@ -1,8 +1,7 @@
-
 resource "openstack_networking_router_v2" "k8s" {
-  name             = "${var.cluster_name}-router"
-  admin_state_up   = "true"
-  external_gateway = "${var.external_net}"
+  name                = "${var.cluster_name}-router"
+  admin_state_up      = "true"
+  external_network_id = "${var.external_net}"
 }
 
 resource "openstack_networking_network_v2" "k8s" {

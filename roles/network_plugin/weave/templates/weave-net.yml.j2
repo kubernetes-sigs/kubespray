@@ -8,13 +8,14 @@ items:
       name: weave-net
       labels:
         name: weave-net
-      namespace: {{ system_namespace }}
-  - apiVersion: rbac.authorization.k8s.io/v1
+      namespace: kube-system
+  - apiVersion: rbac.authorization.k8s.io/v1beta1
     kind: ClusterRole
     metadata:
       name: weave-net
       labels:
         name: weave-net
+      namespace: kube-system
     rules:
       - apiGroups:
           - ''
@@ -27,21 +28,60 @@ items:
           - list
           - watch
       - apiGroups:
-          - extensions
+          - networking.k8s.io
         resources:
           - networkpolicies
         verbs:
           - get
           - list
           - watch
-  - apiVersion: rbac.authorization.k8s.io/v1
+  - apiVersion: rbac.authorization.k8s.io/v1beta1
     kind: ClusterRoleBinding
     metadata:
       name: weave-net
       labels:
         name: weave-net
+      namespace: kube-system
     roleRef:
       kind: ClusterRole
+      name: weave-net
+      apiGroup: rbac.authorization.k8s.io
+    subjects:
+      - kind: ServiceAccount
+        name: weave-net
+        namespace: kube-system
+  - apiVersion: rbac.authorization.k8s.io/v1beta1
+    kind: Role
+    metadata:
+      name: weave-net
+      labels:
+        name: weave-net
+      namespace: kube-system
+    rules:
+      - apiGroups:
+          - ''
+        resourceNames:
+          - weave-net
+        resources:
+          - configmaps
+        verbs:
+          - get
+          - update
+      - apiGroups:
+          - ''
+        resources:
+          - configmaps
+        verbs:
+          - create
+  - apiVersion: rbac.authorization.k8s.io/v1beta1
+    kind: RoleBinding
+    metadata:
+      name: weave-net
+      labels:
+        name: weave-net
+      namespace: kube-system
+    roleRef:
+      kind: Role
       name: weave-net
       apiGroup: rbac.authorization.k8s.io
     subjects:
@@ -54,9 +94,10 @@ items:
       name: weave-net
       labels:
         name: weave-net
-        version: {{ weave_version }}
-      namespace: {{ system_namespace }}
+        version: v{{ weave_version }}
+      namespace: kube-system
     spec:
+      minReadySeconds: 5
       template:
         metadata:
           labels:
@@ -78,6 +119,8 @@ items:
                     fieldRef:
                       apiVersion: v1
                       fieldPath: spec.nodeName
+                - name: WEAVE_MTU
+                  value: "{{ weave_mtu }}"
                 - name: IPALLOC_RANGE
                   value: {{ kube_pods_subnet }}
 {% if weave_mode_seed == true %}
@@ -89,7 +132,7 @@ items:
                 - name: WEAVE_PASSWORD
                   value: {{ weave_password }}
               image: {{ weave_kube_image_repo }}:{{ weave_kube_image_tag }}
-              imagePullPolicy: Always
+              imagePullPolicy: {{ k8s_image_pull_policy }}
               livenessProbe:
                 httpGet:
                   host: 127.0.0.1
@@ -98,7 +141,11 @@ items:
                 initialDelaySeconds: 30
               resources:
                 requests:
-                  cpu: 10m
+                  cpu: {{ weave_cpu_requests }}
+                  memory: {{ weave_memory_requests }}
+                limits:
+                  cpu: {{ weave_cpu_limits }}
+                  memory: {{ weave_memory_limits }}
               securityContext:
                 privileged: true
               volumeMounts:
@@ -116,19 +163,28 @@ items:
                   mountPath: /lib/modules
                 - name: xtables-lock
                   mountPath: /run/xtables.lock
-                  readOnly: false
             - name: weave-npc
+              args: []
+              env:
+                - name: HOSTNAME
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: spec.nodeName
               image: {{ weave_npc_image_repo }}:{{ weave_npc_image_tag }}
-              imagePullPolicy: Always
+              imagePullPolicy: {{ k8s_image_pull_policy }}
               resources:
                 requests:
                   cpu: {{ weave_cpu_requests }}
                   memory: {{ weave_memory_requests }}
                 limits:
-                  cpu: {{ weave_cpu_limit }}
-                  memory: {{ weave_memory_limit }}
+                  cpu: {{ weave_cpu_limits }}
+                  memory: {{ weave_memory_limits }}
               securityContext:
                 privileged: true
+              volumeMounts:
+                - name: xtables-lock
+                  mountPath: /run/xtables.lock
           hostNetwork: true
           hostPID: true
           restartPolicy: Always
@@ -164,4 +220,3 @@ items:
         rollingUpdate:
           maxUnavailable: {{ serial | default('20%') }}
         type: RollingUpdate
-

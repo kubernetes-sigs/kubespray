@@ -1,7 +1,13 @@
 ---
-- include: verify-settings.yml
+- import_tasks: verify-settings.yml
   tags:
     - asserts
+
+# This is run before bin_dir is pinned because these tasks are run on localhost
+- import_tasks: pre_upgrade.yml
+  run_once: true
+  tags:
+    - upgrade
 
 - name: Force binaries directory for Container Linux by CoreOS
   set_fact:
@@ -19,7 +25,7 @@
   tags:
     - bootstrap-os
 
-- include: set_facts.yml
+- import_tasks: set_facts.yml
   tags:
     - facts
 
@@ -60,7 +66,6 @@
     - "{{ kube_config_dir }}/ssl"
     - "{{ kube_manifest_dir }}"
     - "{{ kube_script_dir }}"
-    - "{{ local_volume_base_dir }}"
 
 - name: check cloud_provider value
   fail:
@@ -68,14 +73,6 @@
   when:
     - cloud_provider is defined
     - cloud_provider not in ['generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere', 'external']
-  tags:
-    - cloud-provider
-    - facts
-
-- include: "{{ cloud_provider }}-credential-check.yml"
-  when:
-    - cloud_provider is defined
-    - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
   tags:
     - cloud-provider
     - facts
@@ -89,17 +86,32 @@
     - "/etc/cni/net.d"
     - "/opt/cni/bin"
   when:
-    - kube_network_plugin in ["calico", "weave", "canal", "flannel", "contiv"]
+    - kube_network_plugin in ["calico", "weave", "canal", "flannel", "contiv", "cilium"]
     - inventory_hostname in groups['k8s-cluster']
   tags:
     - network
+    - cilium
     - calico
     - weave
     - canal
     - contiv
     - bootstrap-os
 
-- include: resolvconf.yml
+- name: Create local volume provisioner directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: kube
+  with_items:
+    - "{{ local_volume_provisioner_base_dir }}"
+    - "{{ local_volume_provisioner_mount_dir }}"
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - local_volume_provisioner_enabled
+  tags:
+    - persistent_volumes
+
+- import_tasks: resolvconf.yml
   when:
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
@@ -146,11 +158,18 @@
     - not is_atomic
   tags: bootstrap-os
 
+- name: Update package management cache (zypper) - SUSE
+  shell: zypper -n --gpg-auto-import-keys ref
+  register: make_cache_output
+  until: make_cache_output|succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - ansible_pkg_mgr == 'zypper'
+  tags: bootstrap-os
 
-- name: Install latest version of python-apt for Debian distribs
+- name: Update package management cache (APT)
   apt:
-    name: python-apt
-    state: latest
     update_cache: yes
     cache_valid_time: 3600
   when: ansible_os_family == "Debian"
@@ -172,18 +191,13 @@
     - bootstrap-os
 
 - name: Install epel-release on RedHat/CentOS
-  shell: rpm -qa | grep epel-release || rpm -ivh {{ epel_rpm_download_url }}
-  register: epel_task_result
-  until: epel_task_result|succeeded
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: False
+  yum:
+    name: epel-release
+    state: present
   when:
     - ansible_distribution in ["CentOS","RedHat"]
     - not is_atomic
-    - epel_rpm_download_url != ''
     - epel_enabled|bool
-  check_mode: no
   tags:
     - bootstrap-os
 
@@ -231,12 +245,6 @@
   tags:
     - bootstrap-os
 
-- name: set default sysctl file path
-  set_fact:
-    sysctl_file_path: "/etc/sysctl.d/99-sysctl.conf"
-  tags:
-    - bootstrap-os
-
 - name: Stat sysctl file configuration
   stat:
     path: "{{sysctl_file_path}}"
@@ -263,25 +271,12 @@
   tags:
     - bootstrap-os
 
-- name: Write cloud-config
-  template:
-    src: "{{ cloud_provider }}-cloud-config.j2"
-    dest: "{{ kube_config_dir }}/cloud_config"
-    group: "{{ kube_cert_group }}"
-    mode: 0640
-  when:
-    - inventory_hostname in groups['k8s-cluster']
-    - cloud_provider is defined
-    - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
-  tags:
-    - cloud-provider
-
-- include: etchosts.yml
+- import_tasks: etchosts.yml
   tags:
     - bootstrap-os
     - etchosts
 
-- include: dhclient-hooks.yml
+- import_tasks: dhclient-hooks.yml
   when:
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
@@ -290,7 +285,7 @@
     - bootstrap-os
     - resolvconf
 
-- include: dhclient-hooks-undo.yml
+- import_tasks: dhclient-hooks-undo.yml
   when:
     - dns_mode != 'none'
     - resolvconf_mode != 'host_resolvconf'
@@ -306,7 +301,7 @@
   tags:
     - bootstrap-os
 
-- include: growpart-azure-centos-7.yml
+- import_tasks: growpart-azure-centos-7.yml
   when:
     - azure_check.stat.exists
     - ansible_distribution in ["CentOS","RedHat"]

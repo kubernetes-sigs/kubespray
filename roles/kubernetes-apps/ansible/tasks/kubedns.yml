@@ -1,0 +1,41 @@
+---
+
+- name: Kubernetes Apps | Lay Down KubeDNS Template
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - { name: kube-dns, file: kubedns-sa.yml, type: sa }
+    - { name: kube-dns, file: kubedns-deploy.yml, type: deployment }
+    - { name: kube-dns, file: kubedns-svc.yml, type: svc }
+    - { name: kubedns-autoscaler, file: kubedns-autoscaler-sa.yml, type: sa }
+    - { name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrole.yml, type: clusterrole }
+    - { name: kubedns-autoscaler, file: kubedns-autoscaler-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: kubedns-autoscaler, file: kubedns-autoscaler.yml, type: deployment }
+  register: kubedns_manifests
+  when:
+    - dns_mode in ['kubedns','dnsmasq_kubedns']
+    - inventory_hostname == groups['kube-master'][0]
+    - rbac_enabled or item.type not in rbac_resources
+  tags:
+    - dnsmasq
+
+# see https://github.com/kubernetes/kubernetes/issues/45084, only needed for "old" kube-dns
+- name: Kubernetes Apps | Patch system:kube-dns ClusterRole
+  command: >
+    {{ bin_dir }}/kubectl patch clusterrole system:kube-dns
+    --patch='{
+               "rules": [
+                 {
+                   "apiGroups" : [""],
+                   "resources" : ["endpoints", "services"],
+                   "verbs": ["list", "watch", "get"]
+                 }
+               ]
+             }'
+  when:
+    - dns_mode in ['kubedns', 'dnsmasq_kubedns']
+    - inventory_hostname == groups['kube-master'][0]
+    - rbac_enabled and kubedns_version|version_compare("1.11.0", "<", strict=True)
+  tags:
+    - dnsmasq

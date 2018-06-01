@@ -81,26 +81,26 @@
 
 - name: Calico | wait for etcd
   uri:
-    url: https://localhost:2379/health
+    url: "{{ etcd_access_addresses.split(',') | first }}/health"
     validate_certs: no
+    client_cert: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem"
+    client_key: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem"
   register: result
   until: result.status == 200 or result.status == 401
   retries: 10
   delay: 5
-  delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
 
 - name: Calico | Check if calico network pool has already been configured
   command: |-
     curl \
       --cacert {{ etcd_cert_dir }}/ca.pem \
-      --cert {{ etcd_cert_dir}}/admin-{{ groups['etcd'][0] }}.pem \
-      --key {{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem \
-      https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
+      --cert {{ etcd_cert_dir}}/node-{{ inventory_hostname }}.pem \
+      --key {{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem \
+      {{ etcd_access_addresses.split(',') | first }}/v2/keys/calico/v1/ipam/v4/pool
   register: calico_conf
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
   changed_when: false
 
@@ -123,25 +123,16 @@
   command: |-
     curl \
       --cacert {{ etcd_cert_dir }}/ca.pem \
-      --cert {{ etcd_cert_dir}}/admin-{{ groups['etcd'][0] }}.pem \
-      --key {{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem \
-      https://localhost:2379/v2/keys/calico/v1/ipam/v4/pool
+      --cert {{ etcd_cert_dir}}/node-{{ inventory_hostname }}.pem \
+      --key {{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem \
+      {{ etcd_access_addresses.split(',') | first }}/v2/keys/calico/v1/ipam/v4/pool
   register: calico_pools_raw
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  delegate_to: "{{groups['etcd'][0]}}"
   run_once: true
 
 - set_fact:
     calico_pools: "{{ calico_pools_raw.stdout | from_json }}"
-  run_once: true
-
-- name: Calico | Check if calico pool is properly configured
-  fail:
-    msg: 'Only one network pool must be configured and it must be the subnet {{ kube_pods_subnet }}.
-    Please erase calico configuration and run the playbook again ("etcdctl rm --recursive /calico/v1/ipam/v4/pool")'
-  when: ( calico_pools['node']['nodes'] | length > 1 ) or
-        ( not calico_pools['node']['nodes'][0]['key'] | search(".*{{ kube_pods_subnet | ipaddr('network') }}.*") )
   run_once: true
 
 - name: Calico | Set global as_num

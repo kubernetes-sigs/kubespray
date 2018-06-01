@@ -1,32 +1,38 @@
 ---
-- name: "bootstrap/gen_ca | Ensure cert_dir {{ gen_ca_cert_dir }} exists"
+- name: "bootstrap/gen_ca | Ensure cert_dir {{ gen_ca_cert_dir }} exists on necessary hosts"
   file:
     mode: 0755
     path: "{{ gen_ca_cert_dir }}"
     state: directory
+  delegate_to: "{{ item }}"
+  with_items: "{{ (groups[gen_ca_copy_group|default('vault')]) | union(groups['vault']) }}"
 
 - name: "bootstrap/gen_ca | Generate {{ gen_ca_mount_path }} root CA"
-  uri:
-    url: "{{ vault_leader_url }}/v1/{{ gen_ca_mount_path }}/root/generate/exported"
-    headers: "{{ gen_ca_vault_headers }}"
-    method: POST
-    body_format: json
-    body: "{{ gen_ca_vault_options }}"
-    status_code: 200,204
-  register: vault_ca_gen
-  delegate_to: "{{ groups.vault|first }}"
+  hashivault_write:
+    url: "{{ vault_leader_url }}"
+    token: "{{ vault_root_token }}"
+    ca_cert: "{{ vault_cert_dir }}/ca.pem"
+    secret: "{{ gen_ca_mount_path }}/root/generate/exported"
+    data: "{{ gen_ca_vault_options }}"
   run_once: true
+  no_log: true
+  register: vault_ca_gen
 
 - name: "bootstrap/gen_ca | Copy {{ gen_ca_mount_path }} root CA cert locally"
   copy:
-    content: "{{ hostvars[groups.vault|first]['vault_ca_gen']['json']['data']['certificate'] }}"
+    content: "{{ vault_ca_gen['data']['data']['certificate'] }}"
     dest: "{{ gen_ca_cert_dir }}/ca.pem"
     mode: 0644
-  when: vault_ca_gen.status == 200
+  when: '"data" in vault_ca_gen.keys()'
+  delegate_to: "{{ item }}"
+  with_items: "{{ (groups[gen_ca_copy_group|default('vault')]) | union(groups['vault']) }}"
 
-- name: "bootstrap/gen_ca | Copy {{ gen_ca_mount_path }} root CA key locally"
+
+- name: "bootstrap/gen_ca | Copy {{ gen_ca_mount_path }} root CA key to necessary hosts"
   copy:
-    content: "{{ hostvars[groups.vault|first]['vault_ca_gen']['json']['data']['private_key'] }}"
+    content: "{{ vault_ca_gen['data']['data']['private_key']}}"
     dest: "{{ gen_ca_cert_dir }}/ca-key.pem"
     mode: 0640
-  when: vault_ca_gen.status == 200
+  when: '"data" in vault_ca_gen.keys()'
+  delegate_to: "{{ item }}"
+  with_items: "{{ (groups[gen_ca_copy_group|default('vault')]) | union(groups['vault']) }}"

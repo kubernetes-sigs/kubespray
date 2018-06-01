@@ -1,0 +1,45 @@
+---
+
+- name: Local Volume Provisioner | Ensure base dir is created on all hosts
+  file:
+    path: "{{ local_volume_provisioner_base_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0700
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['k8s-cluster'] }}"
+  failed_when: false
+
+- name: Local Volume Provisioner | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/local_volume_provisioner"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Local Volume Provisioner | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/local_volume_provisioner/{{ item.file }}"
+  with_items:
+    - { name: local-volume-provisioner-ns, file: local-volume-provisioner-ns.yml, type: ns }
+    - { name: local-volume-provisioner-sa, file: local-volume-provisioner-sa.yml, type: sa }
+    - { name: local-volume-provisioner-clusterrolebinding, file: local-volume-provisioner-clusterrolebinding.yml, type, clusterrolebinding }
+    - { name: local-volume-provisioner-cm, file: local-volume-provisioner-cm.yml, type, cm }
+    - { name: local-volume-provisioner-ds, file: local-volume-provisioner-ds.yml, type, ds }
+    - { name: local-volume-provisioner-sc, file: local-volume-provisioner-sc.yml, type, sc }
+  register: local_volume_provisioner_manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: Local Volume Provisioner | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ local_volume_provisioner_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/local_volume_provisioner/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ local_volume_provisioner_manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]

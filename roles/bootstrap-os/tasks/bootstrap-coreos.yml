@@ -7,49 +7,58 @@
   tags:
     - facts
 
+- name: Force binaries directory for Container Linux by CoreOS
+  set_fact:
+    bin_dir: "/opt/bin"
+  tags:
+    - facts
+
 - name: Bootstrap | Run bootstrap.sh
   script: bootstrap.sh
   when: need_bootstrap.rc != 0
 
 - set_fact:
-    ansible_python_interpreter: "/opt/bin/python"
+    ansible_python_interpreter: "{{ bin_dir }}/python"
   tags:
     - facts
 
 - name: Bootstrap | Check if we need to install pip
-  shell: "{{ansible_python_interpreter}} -m pip --version"
+  shell: "pip --version"
   register: need_pip
   failed_when: false
   changed_when: false
   check_mode: no
-  when: need_bootstrap.rc != 0
   tags:
     - facts
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ bin_dir }}"
 
 - name: Bootstrap | Copy get-pip.py
   copy:
     src: get-pip.py
     dest: ~/get-pip.py
-  when: need_pip != 0
+  when: need_pip.rc != 0
 
 - name: Bootstrap | Install pip
   shell: "{{ansible_python_interpreter}} ~/get-pip.py"
-  when: need_pip != 0
+  when: need_pip.rc != 0
 
 - name: Bootstrap | Remove get-pip.py
   file:
     path: ~/get-pip.py
     state: absent
-  when: need_pip != 0
+  when: need_pip.rc != 0
 
 - name: Bootstrap | Install pip launcher
   copy:
     src: runner
-    dest: /opt/bin/pip
+    dest: "{{ bin_dir }}/pip"
     mode: 0755
-  when: need_pip != 0
+  when: need_pip.rc != 0
 
 - name: Install required python modules
   pip:
     name: "{{ item }}"
   with_items: "{{pip_python_coreos_modules}}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ bin_dir }}"

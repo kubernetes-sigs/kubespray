@@ -65,7 +65,7 @@ if [ -e "$SSLDIR/ca-key.pem" ]; then
     cp $SSLDIR/{ca.pem,ca-key.pem} .
 else
     openssl genrsa -out ca-key.pem 2048 > /dev/null 2>&1
-    openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN=etcd-ca" > /dev/null 2>&1
+    openssl req -x509 -new -nodes -key ca-key.pem -days 36500 -out ca.pem -subj "/CN=etcd-ca" > /dev/null 2>&1
 fi
 
 # ETCD member
@@ -75,12 +75,12 @@ if [ -n "$MASTERS" ]; then
         # Member key
         openssl genrsa -out member-${host}-key.pem 2048 > /dev/null 2>&1
         openssl req -new -key member-${host}-key.pem -out member-${host}.csr -subj "/CN=etcd-member-${cn}" -config ${CONFIG} > /dev/null 2>&1
-        openssl x509 -req -in member-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out member-${host}.pem -days 3650 -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
+        openssl x509 -req -in member-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out member-${host}.pem -days 36500 -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
 
         # Admin key
         openssl genrsa -out admin-${host}-key.pem 2048 > /dev/null 2>&1
         openssl req -new -key admin-${host}-key.pem -out admin-${host}.csr -subj "/CN=etcd-admin-${cn}" > /dev/null 2>&1
-        openssl x509 -req -in admin-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out admin-${host}.pem -days 3650 -extensions ssl_client  -extfile ${CONFIG} > /dev/null 2>&1
+        openssl x509 -req -in admin-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out admin-${host}.pem -days 36500 -extensions ssl_client  -extfile ${CONFIG} > /dev/null 2>&1
     done
 fi
 
@@ -90,7 +90,7 @@ if [ -n "$HOSTS" ]; then
         cn="${host%%.*}"
         openssl genrsa -out node-${host}-key.pem 2048 > /dev/null 2>&1
         openssl req -new -key node-${host}-key.pem -out node-${host}.csr -subj "/CN=etcd-node-${cn}" > /dev/null 2>&1
-        openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 3650 -extensions ssl_client  -extfile ${CONFIG} > /dev/null 2>&1
+        openssl x509 -req -in node-${host}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out node-${host}.pem -days 36500 -extensions ssl_client  -extfile ${CONFIG} > /dev/null 2>&1
     done
 fi
 

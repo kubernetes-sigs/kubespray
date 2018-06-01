@@ -15,13 +15,13 @@
       {% for d in [ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([]) -%}
       {{dns_domain}}.{{d}}./{{d}}.{{d}}./com.{{d}}./
       {%- endfor %}
-    default_resolver: >-
+    cloud_resolver: >-
       {%- if cloud_provider is defined and cloud_provider == 'gce' -%}
-        169.254.169.254
+        ['169.254.169.254']
       {%- elif cloud_provider is defined and cloud_provider == 'aws' -%}
-        169.254.169.253
+        ['169.254.169.253']
       {%- else -%}
-        8.8.8.8
+        []
       {%- endif -%}
 
 - name: check if kubelet is configured
@@ -93,8 +93,12 @@
 - name: pick dnsmasq cluster IP or default resolver
   set_fact:
     dnsmasq_server: |-
-      {%- if dns_mode == 'kubedns' and not dns_early|bool -%}
+      {%- if dns_mode in ['kubedns', 'coredns'] and not dns_early|bool -%}
         {{ [ skydns_server ] + upstream_dns_servers|default([]) }}
+      {%- elif dns_mode == 'coredns_dual' and not dns_early|bool -%}
+        {{ [ skydns_server ] + [ skydns_server_secondary ] + upstream_dns_servers|default([]) }}
+      {%- elif dns_mode == 'manual' and not dns_early|bool -%}
+        {{ [ manual_dns_server ] + upstream_dns_servers|default([]) }}
       {%- elif dns_early|bool -%}
         {{ upstream_dns_servers|default([]) }}
       {%- else -%}
@@ -104,6 +108,6 @@
 - name: generate nameservers to resolvconf
   set_fact:
     nameserverentries:
-      nameserver {{( dnsmasq_server + nameservers|default([default_resolver])) | join(',nameserver ')}}
+      nameserver {{( dnsmasq_server + nameservers|d([]) + cloud_resolver|d([])) | join(',nameserver ')}}
     supersede_nameserver:
-      supersede domain-name-servers {{( dnsmasq_server + nameservers|default([default_resolver])) | join(', ') }};
+      supersede domain-name-servers {{( dnsmasq_server + nameservers|d([]) + cloud_resolver|d([])) | join(', ') }};

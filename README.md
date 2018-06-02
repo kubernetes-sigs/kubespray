@@ -165,8 +165,6 @@ Tools and projects on top of Kubespray
 CI Tests
 --------
 
-![Gitlab Logo](https://about.gitlab.com/images/press/logo/wm.svg)
-
 [![Build graphs](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/badges/master/build.svg)](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/pipelines)
 
 CI/end-to-end tests sponsored by Google (GCE)

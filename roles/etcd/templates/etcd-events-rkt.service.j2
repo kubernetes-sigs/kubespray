@@ -1,0 +1,31 @@
+[Unit]
+Description=etcd events rkt wrapper
+Documentation=https://github.com/coreos/etcd
+Wants=network.target
+
+[Service]
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=0
+LimitNOFILE=40000
+
+ExecStart=/usr/bin/rkt run \
+--uuid-file-save=/var/run/etcd-events.uuid \
+--volume hosts,kind=host,source=/etc/hosts,readOnly=true \
+--mount volume=hosts,target=/etc/hosts \
+--volume=etc-ssl-certs,kind=host,source=/etc/ssl/certs,readOnly=true \
+--mount=volume=etc-ssl-certs,target=/etc/ssl/certs \
+--volume=etcd-cert-dir,kind=host,source={{ etcd_cert_dir }},readOnly=true \
+--mount=volume=etcd-cert-dir,target={{ etcd_cert_dir }} \
+--volume=etcd-data-dir,kind=host,source={{ etcd_events_data_dir }},readOnly=false \
+--mount=volume=etcd-data-dir,target={{ etcd_events_data_dir }} \
+--set-env-file=/etc/etcd-events.env \
+--stage1-from-dir=stage1-fly.aci \
+{{ etcd_image_repo }}:{{ etcd_image_tag }} \
+--name={{ etcd_member_name | default("etcd-events") }}
+
+ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/run/etcd-events.uuid
+ExecStop=-/usr/bin/rkt stop --uuid-file=/var/run/etcd-events.uuid
+
+[Install]
+WantedBy=multi-user.target

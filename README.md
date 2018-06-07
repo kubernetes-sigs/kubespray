@@ -86,19 +86,23 @@ Supported Linux Distributions
 
 Note: Upstart/SysV init based OS types are not supported.
 
-Versions of supported components
---------------------------------
+Supported Components
+--------------------
 
--   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.10.4
--   [etcd](https://github.com/coreos/etcd/releases) v3.2.18
--   [flanneld](https://github.com/coreos/flannel/releases) v0.10.0
--   [calico](https://docs.projectcalico.org/v2.6/releases/) v2.6.8
--   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
--   [cilium](https://github.com/cilium/cilium) v1.0.0-rc8
--   [contiv](https://github.com/contiv/install/releases) v1.1.7
--   [weave](http://weave.works/) v2.3.0
--   [docker](https://www.docker.com/) v17.03 (see note)
--   [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 (see Note 2)
+-   Core
+    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.10.4
+    -   [etcd](https://github.com/coreos/etcd) v3.2.18
+    -   [docker](https://www.docker.com/) v17.03 (see note)
+    -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
+-   Network Plugin
+    -   [calico](https://github.com/projectcalico/calico) v2.6.8
+    -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
+    -   [cilium](https://github.com/cilium/cilium) v1.0.0-rc8
+    -   [contiv](https://github.com/contiv/install) v1.1.7
+    -   [flanneld](https://github.com/coreos/flannel) v0.10.0
+    -   [weave](https://github.com/weaveworks/weave) v2.3.0
+-   Application
+    -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.15.0
 
 Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 

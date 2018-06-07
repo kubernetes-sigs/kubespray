@@ -1,10 +1,5 @@
 ---
-- name: Calico | Disable calico-node service if it exists
-  service:
-    name: calico-node
-    state: stopped
-    enabled: yes
-  failed_when: false
+- include_tasks: check.yml
 
 - name: Calico | Get kubelet hostname
   shell: >-
@@ -190,5 +185,8 @@
     - {name: calico, file: calico-crb.yml, type: clusterrolebinding}
   register: calico_node_manifests
   when:
-    - inventory_hostname in groups['kube-master']
-    - rbac_enabled or item.type not in rbac_resources
+    - calico_upgrade_needed
+  run_once: yes
+  delegate_to: "{{ groups['kube-master'][0] }}"
+
+- include_tasks: install.yml

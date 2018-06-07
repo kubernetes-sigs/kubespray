@@ -78,9 +78,18 @@
     - { role: kubernetes/master, tags: master }
     - { role: kubernetes/client, tags: client }
     - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
-    - { role: network_plugin, tags: network }
     - { role: upgrade/post-upgrade, tags: post-upgrade }
   environment: "{{proxy_env}}"
+
+#Upgrade calico on all masters and nodes
+- hosts: kube-master:kube-node
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  serial: "{{ serial | default('20%') }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: network_plugin, tags: network }
+    - { role: kubernetes-apps/network_plugin, tags: network }
+    - { role: kubernetes-apps/policy_controller, tags: policy-controller }
 
 #Finally handle worker upgrades, based on given batch size
 - hosts: kube-node:!kube-master
@@ -90,7 +99,6 @@
     - { role: kubespray-defaults}
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
     - { role: kubernetes/node, tags: node }
-    - { role: network_plugin, tags: network }
     - { role: upgrade/post-upgrade, tags: post-upgrade }
     - { role: kubernetes/kubeadm, tags: kubeadm, when: "kubeadm_enabled" }
     - { role: kubespray-defaults}
@@ -101,14 +109,6 @@
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes-apps/rotate_tokens, tags: rotate_tokens, when: "secret_changed|default(false)" }
-
-- hosts: kube-master
-  any_errors_fatal: true
-  roles:
-    - { role: kubespray-defaults}
-    - { role: kubernetes-apps/network_plugin, tags: network }
-    - { role: kubernetes-apps/policy_controller, tags: policy-controller }
-    - { role: kubernetes/client, tags: client }
 
 - hosts: calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"

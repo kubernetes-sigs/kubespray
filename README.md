@@ -5,11 +5,11 @@ Deploy a Production Ready Kubernetes Cluster
 
 If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 
-- Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere or Baremetal**
-- **High available** cluster
-- **Composable** (Choice of the network plugin for instance)
-- Support most popular **Linux distributions**
-- **Continuous integration tests**
+-   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere or Baremetal**
+-   **High available** cluster
+-   **Composable** (Choice of the network plugin for instance)
+-   Support most popular **Linux distributions**
+-   **Continuous integration tests**
 
 Quick Start
 -----------
@@ -17,6 +17,7 @@ Quick Start
 To deploy the cluster you can use :
 
 ### Ansible
+
     # Install dependencies from ``requirements.txt``
     sudo pip install -r requirements.txt
 
@@ -36,19 +37,16 @@ To deploy the cluster you can use :
 
 ### Vagrant
 
-   For Vagrant we need to install python dependencies for provisioning tasks.\
-   Check if Python and pip are installed: 
-```sh
-python -v && pip -v
-```
-    
-   If this returns the version of the software, you're good to go. If not, download and install Python from here https://www.python.org/downloads/source/
-   Install the necessary requirements
-    
-```sh
-sudo pip install -r requirements.txt
-vagrant up
-```
+For Vagrant we need to install python dependencies for provisioning tasks.
+Check if Python and pip are installed:
+
+    python -v && pip -v
+
+If this returns the version of the software, you're good to go. If not, download and install Python from here <https://www.python.org/downloads/source/>
+Install the necessary requirements
+
+    sudo pip install -r requirements.txt
+    vagrant up
 
 Documents
 ---------
@@ -91,8 +89,8 @@ Note: Upstart/SysV init based OS types are not supported.
 Versions of supported components
 --------------------------------
 
--   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.10.2
--   [etcd](https://github.com/coreos/etcd/releases) v3.2.16
+-   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.10.4
+-   [etcd](https://github.com/coreos/etcd/releases) v3.2.18
 -   [flanneld](https://github.com/coreos/flannel/releases) v0.10.0
 -   [calico](https://docs.projectcalico.org/v2.6/releases/) v2.6.8
 -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
@@ -135,7 +133,7 @@ You can choose between 6 network plugins. (default: `calico`, except Vagrant use
 
 -   [canal](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
 
--   [cilium](http://docs.cilium.io/en/latest/):  layer 3/4 networking (as well as layer 7 to protect and secure application protocols), supports dynamic insertion of BPF bytecode into the Linux kernel to implement security services, networking and visibility logic.
+-   [cilium](http://docs.cilium.io/en/latest/): layer 3/4 networking (as well as layer 7 to protect and secure application protocols), supports dynamic insertion of BPF bytecode into the Linux kernel to implement security services, networking and visibility logic.
 
 -   [contiv](docs/contiv.md): supports vlan, vxlan, bgp and Cisco SDN networking. This plugin is able to
     apply firewall policies, segregate containers in multiple network and bridging pods onto physical networks.

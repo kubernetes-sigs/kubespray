@@ -1,56 +1,117 @@
-Azure
-===============
+# Azure
 
-To deploy Kubernetes on [Azure](https://azure.microsoft.com) uncomment the `cloud_provider` option in `group_vars/all.yml` and set it to `'azure'`.
+To deploy Kubernetes on [Azure](https://azure.microsoft.com) uncomment the
+`cloud_provider` option in `group_vars/all.yml` and set it to `'azure'`.
 
-All your instances are required to run in a resource group and a routing table has to be attached to the subnet your instances are in.
+All your instances are required to run in a resource group and a routing table
+has to be attached to the subnet your instances are in.
 
-Not all features are supported yet though, for a list of the current status have a look [here](https://github.com/colemickens/azure-kubernetes-status)
+Not all features are supported yet though, for a list of the current status have
+a look [here](https://github.com/colemickens/azure-kubernetes-status).
 
 ### Parameters
+Before creating the instances you must first set the `azure_` variables in the
+`group_vars/all.yml` file.
 
-Before creating the instances you must first set the `azure_` variables in the `group_vars/all.yml` file.
+All of the values can be retrieved using the azure cli tool which can be
+downloaded here: https://docs.microsoft.com/en-gb/azure/xplat-cli-install
 
-All of the values can be retrieved using the azure cli tool which can be downloaded here: https://docs.microsoft.com/en-gb/azure/xplat-cli-install
-After installation you have to run `azure login` to get access to your account.
+After installation you have to run `az login` to get access to your account.
 
 
 #### azure\_tenant\_id + azure\_subscription\_id
-run `azure account show` to retrieve your subscription id and tenant id:
-`azure_tenant_id` -> Tenant ID field
-`azure_subscription_id` -> ID field
+Get your tenant and subscription IDs:
 
+```bash
+> az account show
+{
+  "id": "<SUBSCRIPTION_ID>",
+  "tenantId": "<TENANT_ID>",
+  ...
+}
+```
 
 #### azure\_location
-The region your instances are located, can be something like `westeurope` or `westcentralus`. A full list of region names can be retrieved via `azure location list`
+The region your instances are located, can be something like `westeurope` or
+`westcentralus`. A full list of region names can be retrieved via:
 
+```bash
+> az account list-locations
+```
 
 #### azure\_resource\_group
-The name of the resource group your instances are in, can be retrieved via `azure group list`
+The name of the resource group your instances are in can be retrieved via:
+
+```bash
+> az group list
+```
 
 #### azure\_vnet\_name
-The name of the virtual network your instances are in, can be retrieved via `azure network vnet list`
+The name of the virtual network your instances are in can be retrieved via 
+
+```bash
+> az network vnet list
+```
 
 #### azure\_subnet\_name
-The name of the subnet your instances are in, can be retrieved via `azure network vnet subnet list RESOURCE_GROUP VNET_NAME`
+The name of the subnet your instances are in can be retrieved via:
+
+```bash
+> az network vnet subnet list --resource-group <RESOURCE_GROUP> --vnet-name <VNET_NAME>
+```
 
 #### azure\_security\_group\_name
-The name of the network security group your instances are in, can be retrieved via `azure network nsg list`
+The name of the network security group your instances are in can be retrieved via:
+
+```bash
+> az network nsg list
+```
 
 #### azure\_aad\_client\_id + azure\_aad\_client\_secret
-These will have to be generated first:
-- Create an Azure AD Application with:
-`azure ad app create --name kubernetes --identifier-uris http://kubernetes --home-page http://example.com --password CLIENT_SECRET` 
-The name, identifier-uri, home-page and the password can be choosen
-Note the AppId in the output.
-- Create Service principal for the application with:
-`azure ad sp create --applicationId AppId`
-This is the AppId from the last command
-- Create the role assignment with:
-`azure role assignment create --spn http://kubernetes -o "Owner" -c /subscriptions/SUBSCRIPTION_ID`
+You can generate your own client secret, but to get your client ID (also called
+appId), you'll need to create your Azure AD application as follows:
 
-azure\_aad\_client\_id must be set to the AppId, azure\_aad\_client\_secret is your choosen secret.
+```bash
+# Choose your own values for ${YOUR_APP_NAME}, ${YOUR_APP_IDENTIFIER_URI},
+# ${YOUR_APP_HOMEPAGE} and ${YOUR_APP_PASSWORD}, where
+# ${YOUR_APP_IDENTIFIER_URI} could be something like "http://kubernetes"
+> az ad app create \
+      --display-name ${YOUR_APP_NAME} \
+      --identifier-uris ${YOUR_APP_IDENTIFIER_URI} \
+      --homepage ${YOUR_APP_HOMEPAGE} \
+      --password ${YOUR_APP_PASSWORD}
+{
+    ...
+    "appId": "<APP_ID>",
+    ...
+}
+```
+
+#### Role Setup
+Finally, you will need to create a Service Principal for the newly created
+application, and then assign the `Reader` role to that SP.
+
+```bash
+# 1. Take note of the "appId" parameter above, and create a Service Principal
+#    for the application:
+> az ad sp create --id ${APP_ID}
+{
+    ...
+    "objectId": "<SP_OBJECT_ID>",
+    ...
+}
+
+# 2. Create a role assignment:
+> az role assignment create \
+    --assignee-object-id ${SP_OBJECT_ID} \
+    --role Reader \
+    --scope "/subscriptions/${SUBSCRIPTION_ID}"
+{
+    ...
+}
+```
 
 ## Provisioning Azure with Resource Group Templates
+You'll find Resource Group Templates and scripts to provision the required
+infrastructure to Azure in [*contrib/azurerm*](../contrib/azurerm/README.md)
 
-You'll find Resource Group Templates and scripts to provision the required infrastructure to Azure in [*contrib/azurerm*](../contrib/azurerm/README.md)

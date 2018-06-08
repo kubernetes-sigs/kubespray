@@ -1,6 +1,20 @@
 ---
+# This approach of deploying kube-apiserver as a service has only been tested
+# using Azure and Ubuntu 16.04 so far, but solves the issue where
+# kube-apiserver refuses to start up.
 - import_tasks: azure-kube-apiserver.yml
-  when: cloud_provider is defined and cloud_provider == 'azure'
+  when: cloud_provider is defined and cloud_provider == 'azure' and 
+        bootstrap_os is defined and bootstrap_os == 'ubuntu'
+
+- name: Write kube-apiserver manifest
+  template:
+    src: manifests/kube-apiserver.manifest.j2
+    dest: "{{ kube_manifest_dir }}/kube-apiserver.manifest"
+  notify: Master | Restart apiserver
+  tags:
+    - kube-apiserver
+  when: (cloud_provider is undefined or (cloud_provider is defined and cloud_provider != 'azure')) and 
+        (boostrap_os is undefined or (bootstrap_os is defined and bootstrap_os != 'ubuntu'))
   
 - meta: flush_handlers
 

@@ -170,6 +170,8 @@ By default the felix agent(calico-node) will abort if the Kernel RPF setting is 
 calico_node_ignorelooserpf: true
 ```
 
+##### Calico on OpenStack
+
 Note that in OpenStack you must allow `ipip` traffic in your security groups,
 otherwise you will experience timeouts.
 To do this you must add a rule which allows it, for example:

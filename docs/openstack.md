@@ -44,3 +44,8 @@ and `kube_pods_subnet` (default `10.233.64.0/18`.)
     neutron port-update e5ae2045-a1e1-4e99-9aac-4353889449a7 --allowed_address_pairs list=true type=dict ip_address=10.233.0.0/18 ip_address=10.233.64.0/18
 
 Now you can finally run the playbook.
+
+One more thing you need to is to enable IP protocol v4 (`ipip`) traffic in your security group.
+See more info the [Calico documentation page][1].
+
+[1]: https://github.com/kubernetes-incubator/kubespray/blob/master/docs/calico.md#cloud-providers-configuration

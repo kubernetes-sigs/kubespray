@@ -97,6 +97,12 @@ variable "network_name" {
   default     = "internal"
 }
 
+variable "subnet_cidr" {
+  description = "Subnet CIDR block."
+  type = "string"
+  default = "10.0.0.0/24"
+}
+
 variable "dns_nameservers" {
   description = "An array of DNS name server names used by hosts in this subnet."
   type        = "list"

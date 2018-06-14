@@ -41,5 +41,6 @@ number_of_k8s_nodes_no_floating_ip = 4
 # networking
 network_name = "<network>"
 external_net = "<UUID>"
+subnet_cidr = "<cidr>"
 floatingip_pool = "<pool>"
 

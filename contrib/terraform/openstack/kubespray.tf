@@ -3,6 +3,7 @@ module "network" {
 
   external_net    = "${var.external_net}"
   network_name    = "${var.network_name}"
+  subnet_cidr     = "${var.subnet_cidr}"
   cluster_name    = "${var.cluster_name}"
   dns_nameservers = "${var.dns_nameservers}"
 }

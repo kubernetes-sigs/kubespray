@@ -40,7 +40,7 @@ To deploy the cluster you can use :
 For Vagrant we need to install python dependencies for provisioning tasks.
 Check if Python and pip are installed:
 
-    python -v && pip -v
+    python -V && pip -V
 
 If this returns the version of the software, you're good to go. If not, download and install Python from here <https://www.python.org/downloads/source/>
 Install the necessary requirements
@@ -103,6 +103,7 @@ Supported Components
     -   [weave](https://github.com/weaveworks/weave) v2.3.0
 -   Application
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.15.0
+    -   [cert-manager](https://github.com/jetstack/cert-manager/releases) v0.3.0
 
 Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 

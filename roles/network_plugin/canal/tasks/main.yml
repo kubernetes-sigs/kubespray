@@ -25,10 +25,26 @@
     - {s: "node-{{ inventory_hostname }}-key.pem", d: "key.pem"}
 
 - name: Canal | Set Flannel etcd configuration
+  when: flannel_backend is not defined
   command: |-
     {{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses }} \
     set /{{ cluster_name }}/network/config \
     '{ "Network": "{{ kube_pods_subnet }}", "SubnetLen": {{ kube_network_node_prefix }}, "Backend": { "Type": "{{ flannel_backend_type }}" } }'
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  delegate_to: "{{groups['etcd'][0]}}"
+  changed_when: false
+  run_once: true
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem"
+
+- name: Canal | Set Flannel etcd configuration
+  when: flannel_backend is defined
+  command: |-
+    {{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses }} \
+    set /{{ cluster_name }}/network/config \
+    '{ "Network": "{{ kube_pods_subnet }}", "SubnetLen": {{ kube_network_node_prefix }}, "Backend": {{ flannel_backend | to_json }} }'
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   delegate_to: "{{groups['etcd'][0]}}"

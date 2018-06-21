@@ -60,6 +60,16 @@ resource "openstack_compute_secgroup_v2" "k8s" {
   }
 }
 
+resource "openstack_compute_servergroup_v2" "k8s_master" {
+  name = "k8s-master-srvgrp"
+  policies = ["anti-affinity"]
+}
+
+resource "openstack_compute_servergroup_v2" "k8s_node" {
+  name = "k8s-node-srvgrp"
+  policies = ["anti-affinity"]
+}
+
 resource "openstack_compute_instance_v2" "bastion" {
   name       = "${var.cluster_name}-bastion-${count.index+1}"
   count      = "${var.number_of_bastions}"
@@ -105,6 +115,10 @@ resource "openstack_compute_instance_v2" "k8s_master" {
     "default",
   ]
 
+  scheduler_hints {
+    group = "${openstack_compute_servergroup_v2.k8s_master.id}"
+  }
+
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
@@ -132,6 +146,10 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
     "${openstack_compute_secgroup_v2.bastion.name}",
     "${openstack_compute_secgroup_v2.k8s.name}",
   ]
+
+  scheduler_hints {
+    group = "${openstack_compute_servergroup_v2.k8s_master.id}"
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
@@ -182,6 +200,10 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
     "default",
   ]
 
+  scheduler_hints {
+    group = "${openstack_compute_servergroup_v2.k8s_master.id}"
+  }
+
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
@@ -204,6 +226,10 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   security_groups = ["${openstack_compute_secgroup_v2.k8s_master.name}",
     "${openstack_compute_secgroup_v2.k8s.name}",
   ]
+
+  scheduler_hints {
+    group = "${openstack_compute_servergroup_v2.k8s_master.id}"
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
@@ -228,6 +254,10 @@ resource "openstack_compute_instance_v2" "k8s_node" {
     "${openstack_compute_secgroup_v2.bastion.name}",
     "default",
   ]
+
+  scheduler_hints {
+    group = "${openstack_compute_servergroup_v2.k8s_node.id}"
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
@@ -255,6 +285,10 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   security_groups = ["${openstack_compute_secgroup_v2.k8s.name}",
     "default",
   ]
+
+  scheduler_hints {
+    group = "${openstack_compute_servergroup_v2.k8s_node.id}"
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"

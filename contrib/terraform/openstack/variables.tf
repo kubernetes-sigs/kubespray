@@ -116,3 +116,9 @@ variable "supplementary_master_groups" {
   description = "supplementary kubespray ansible groups for masters, such kube-node"
   default = ""
 }
+
+variable "availability_zones" {
+  description = "An array of availability zones we want to deploy in"
+  type        = "list"
+  default     = ["nova"]
+}

@@ -49,6 +49,7 @@ module "compute" {
   k8s_node_fips                                = "${module.ips.k8s_node_fips}"
   bastion_fips                                 = "${module.ips.bastion_fips}"
   supplementary_master_groups                  = "${var.supplementary_master_groups}"
+  availability_zones                           = "${var.availability_zones}"
 
   network_id = "${module.network.router_id}"
 }

@@ -95,4 +95,9 @@ if [ -n "$HOSTS" ]; then
 fi
 
 # Install certs
+if [ -e "$SSLDIR/ca-key.pem" ]; then
+    # No pass existing CA
+    rm -f ca.pem ca-key.pem
+fi
+
 mv *.pem ${SSLDIR}/

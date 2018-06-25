@@ -1,0 +1,36 @@
+---
+- name: "Test heketi storage."
+  tags: ["test"]
+  command: "kubectl get secrets,endpoints,services,jobs --output=json"
+  changed_when: false
+  register: "heketi_storage_state"
+- name: "Create heketi storage."
+  tags: ["test"]
+  command: "kubectl create -f {{ artifacts_dir }}/heketi-storage.json"
+  vars:
+    secret_query: "items[?metadata.name=='heketi-storage-secret' && kind=='Secret']"
+    endpoints_query: "items[?metadata.name=='heketi-storage-endpoints' && kind=='Endpoints']"
+    service_query: "items[?metadata.name=='heketi-storage-endpoints' && kind=='Service']"
+    job_query: "items[?metadata.name=='heketi-storage-copy-job' && kind=='Job']"
+  when:
+    - "heketi_storage_state.stdout|from_json|json_query(secret_query)|length == 0"
+    - "heketi_storage_state.stdout|from_json|json_query(endpoints_query)|length == 0"
+    - "heketi_storage_state.stdout|from_json|json_query(service_query)|length == 0"
+    - "heketi_storage_state.stdout|from_json|json_query(job_query)|length == 0"
+- name: "Get state of heketi storage service, endpoint, secret and job."
+  tags: ["test"]
+  command: "kubectl get secrets,endpoints,services,jobs --output=json"
+  changed_when: false
+  register: "heketi_storage_state"
+  vars:
+    secret_query: "items[?metadata.name=='heketi-storage-secret' && kind=='Secret']"
+    endpoints_query: "items[?metadata.name=='heketi-storage-endpoints' && kind=='Endpoints']"
+    service_query: "items[?metadata.name=='heketi-storage-endpoints' && kind=='Service']"
+    job_query: "items[?metadata.name=='heketi-storage-copy-job' && kind=='Job' && status.conditions[?type=='Complete']]|[0].status.conditions|[0].status"
+  until:
+    - "heketi_storage_state.stdout|from_json|json_query(secret_query)|length == 1"
+    - "heketi_storage_state.stdout|from_json|json_query(endpoints_query)|length == 1"
+    - "heketi_storage_state.stdout|from_json|json_query(service_query)|length > 0"
+    - "heketi_storage_state.stdout|from_json|json_query(job_query) == 'True'"
+  retries: 10
+  delay: 10

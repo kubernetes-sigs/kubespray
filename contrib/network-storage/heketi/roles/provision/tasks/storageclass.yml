@@ -1,0 +1,20 @@
+---
+- name: "Test storage class."
+  command: "kubectl get storageclass gluster --ignore-not-found=true --output=json"
+  register: "storageclass"
+  changed_when: false
+- name: "Test heketi service."
+  command: "kubectl get service heketi --ignore-not-found=true --output=json"
+  register: "heketi_service"
+  changed_when: false
+- name: "Ensure heketi service is available."
+  assert: { that: "heketi_service.stdout != \"\""  }
+- name: "Render storage class configuration."
+  vars:
+    endpoint_address: "{{ (heketi_service.stdout|from_json).spec.clusterIP }}"
+  template:
+    src: "storageclass.yml.j2"
+    dest: "{{ artifacts_dir }}/storageclass.yml"
+- name: "Setup storage class."
+  when: "storageclass.stdout == \"\""
+  command: "kubectl create -f {{ artifacts_dir }}/storageclass.yml"

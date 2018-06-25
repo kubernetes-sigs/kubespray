@@ -1,0 +1,51 @@
+---
+- name: "Test REST endpoint."
+  uri: { url: "http://localhost:48080/hello", method: "GET", return_content: true }
+  register: "rest_hello_check"
+  ignore_errors: true
+
+# Bootstrap heketi
+- name: "Bootstrap heketi and start REST endpoint."
+  when: "rest_hello_check.content != \"Hello from Heketi\""
+  include_tasks: "{{ item }}"
+  with_items: [ "setup/boot.yml", "setup/rest.yml" ]
+- name: "Bootstrap heketi."
+  when: "rest_hello_check.content == \"Hello from Heketi\""
+  include_tasks: "setup/boot.yml"
+
+# Prepare heketi topology
+- name: "Test heketi topology."
+  changed_when: false
+  register: "heketi_topology"
+  command: "heketi-cli -s http://localhost:48080 topology info --json"
+- name: "Load heketi topology."
+  when: "heketi_topology.stdout|from_json|json_query(\"clusters[*].nodes[*]\")|flatten|length == 0"
+  include_tasks: "setup/topology.yml"
+
+# Provision heketi database volume
+- name: "Prepare heketi volumes."
+  include_tasks: "setup/volumes.yml"
+
+# Prepare heketi storage
+- name: "Test heketi storage."
+  command: "kubectl get secrets,endpoints,services,jobs --output=json"
+  changed_when: false
+  register: "heketi_storage_state"
+- name: "Create heketi storage."
+  include_tasks: "setup/storage.yml"
+  vars:
+    secret_query: "items[?metadata.name=='heketi-storage-secret' && kind=='Secret']"
+    endpoints_query: "items[?metadata.name=='heketi-storage-endpoints' && kind=='Endpoints']"
+    service_query: "items[?metadata.name=='heketi-storage-endpoints' && kind=='Service']"
+    job_query: "items[?metadata.name=='heketi-storage-copy-job' && kind=='Job']"
+  when:
+    - "heketi_storage_state.stdout|from_json|json_query(secret_query)|length == 0"
+    - "heketi_storage_state.stdout|from_json|json_query(endpoints_query)|length == 0"
+    - "heketi_storage_state.stdout|from_json|json_query(service_query)|length == 0"
+    - "heketi_storage_state.stdout|from_json|json_query(job_query)|length == 0"
+
+# Finalize setup
+- name: "Tear down bootstrap."
+  include_tasks: "setup/tear-down-bootstrap.yml"
+- name: "Setup final heketi instance."
+  include_tasks: "setup/heketi.yml"

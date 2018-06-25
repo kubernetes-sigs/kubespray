@@ -1,0 +1,54 @@
+---
+- register: "daemonset_state"
+  command: "kubectl get daemonset glusterfs -o=name --ignore-not-found=true"
+  changed_when: false
+- name: "Deploy the GlusterFS DaemonSet"
+  when: "daemonset_state.stdout == \"\""
+  command: "kubectl create -f {{ role_path }}/glusterfs-daemonset.json"
+- register: "daemonset_state"
+  command: "kubectl get daemonset glusterfs -o=name --ignore-not-found=true"
+  changed_when: false
+- assert: { that: "daemonset_state.stdout != \"\"", message: "Daemonset glusterfs is not present." }
+
+- name: "Label Gluster nodes"
+  with_items: "{{ groups['heketi-node'] }}"
+  loop_control:
+    loop_var: "node"
+  include_tasks: "kubernetes/label.yml"
+
+- register: "service_account_state"
+  command: "kubectl get serviceaccount heketi-service-account -o=name --ignore-not-found=true"
+  changed_when: false
+- name: "Deploy the Heketi service account"
+  when: "service_account_state.stdout == \"\""
+  command: "kubectl create -f {{ role_path }}/heketi-service-account.json"
+- register: "service_account_state"
+  command: "kubectl get serviceaccount heketi-service-account -o=name --ignore-not-found=true"
+  changed_when: false
+- assert: { that: "service_account_state.stdout != \"\"", message: "Heketi service account is not present." }
+
+- register: "clusterrolebinding_state"
+  command: "kubectl get clusterrolebinding heketi-gluster-admin -o=name --ignore-not-found=true"
+  changed_when: false
+- name: "Deploy cluster role binding."
+  when: "clusterrolebinding_state.stdout == \"\""
+  command: "kubectl create clusterrolebinding heketi-gluster-admin --clusterrole=edit --serviceaccount=default:heketi-service-account"
+- register: "clusterrolebinding_state"
+  command: "kubectl get clusterrolebinding heketi-gluster-admin -o=name --ignore-not-found=true"
+  changed_when: false
+- assert: { that: "clusterrolebinding_state.stdout != \"\"", message: "Cluster role binding is not present." }
+
+- register: "secret_state"
+  command: "kubectl get secret heketi-config-secret -o=name --ignore-not-found=true"
+  changed_when: false
+- name: "Render Heketi secret configuration."
+  template:
+    src: "heketi.json.j2"
+    dest: "{{ artifacts_dir }}/heketi.json"
+- name: "Deploy Heketi config secret"
+  when: "secret_state.stdout == \"\""
+  command: "kubectl create secret generic heketi-config-secret --from-file={{ artifacts_dir }}/heketi.json"
+- register: "secret_state"
+  command: "kubectl get secret heketi-config-secret -o=name --ignore-not-found=true"
+  changed_when: false
+- assert: { that: "secret_state.stdout != \"\"", message: "Heketi config secret is not present." }

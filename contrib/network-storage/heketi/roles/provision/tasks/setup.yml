@@ -1,17 +1,19 @@
 ---
-- name: "Test REST endpoint."
-  uri: { url: "http://localhost:48080/hello", method: "GET", return_content: true }
-  register: "rest_hello_check"
-  ignore_errors: true
-
 # Bootstrap heketi
-- name: "Bootstrap heketi and start REST endpoint."
-  when: "rest_hello_check.content != \"Hello from Heketi\""
-  include_tasks: "{{ item }}"
-  with_items: [ "setup/boot.yml", "setup/rest.yml" ]
+- name: "Get state of heketi service, deployment and pods."
+  register: "initial_heketi_state"
+  changed_when: false
+  command: "kubectl get services,deployments,pods --selector=deploy-heketi --output=json"
 - name: "Bootstrap heketi."
-  when: "rest_hello_check.content == \"Hello from Heketi\""
+  when:
+    - "(initial_heketi_state.stdout|from_json|json_query(\"items[?kind=='Service']\"))|length == 0"
+    - "(initial_heketi_state.stdout|from_json|json_query(\"items[?kind=='Deployment']\"))|length == 0"
+    - "(initial_heketi_state.stdout|from_json|json_query(\"items[?kind=='Pod']\"))|length == 0"
   include_tasks: "setup/boot.yml"
+- name: "Test rest endpoint port."
+  wait_for: { host: "localhost", port: "48080", state: "absent" }
+- name: "Start REST endpoint."
+  include_tasks: "setup/rest.yml"
 
 # Prepare heketi topology
 - name: "Test heketi topology."

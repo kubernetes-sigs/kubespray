@@ -1,26 +1,22 @@
 ---
 # Enable local REST-Interface
 - name: "Get heketi initial pod state."
-  tags: ["test"]
   register: "initial_heketi_pod"
   command: "kubectl get pods --selector=deploy-heketi=pod,glusterfs=heketi-pod,name=deploy-heketi --output=json"
   changed_when: false
 - name: "Ensure heketi bootstrap pod is up."
-  tags: ["test"]
   assert:
     that: "(initial_heketi_pod.stdout|from_json|json_query('items[*]'))|length == 1"
 - name: "Temporarily enable local port forwarding to heketi REST interface"
-  tags: ["test"]
   vars:
     initial_heketi_pod_name: "{{ initial_heketi_pod.stdout|from_json|json_query(\"items[*].metadata.name|[0]\") }}"
   command: "kubectl port-forward {{ initial_heketi_pod_name }} 48080:8080"
-  async: 180
+  async: 600
   poll: 0
   ignore_errors: "yes"
   register: "heketi_port_forwarding"
   changed_when: false
 - name: "Ensure port forwarding is enabled."
-  tags: ["test"]
   retries: 10
   delay: 5
   assert:
@@ -30,7 +26,6 @@
       - "heketi_port_forwarding.failed == false"
     msg: "Port forwarding does not work."
 - name: "Test REST endpoint."
-  tags: ["test"]
   uri: { url: "http://localhost:48080/hello", method: "GET", return_content: true }
   register: "rest_hello_check"
   until: "rest_hello_check.content == \"Hello from Heketi\""

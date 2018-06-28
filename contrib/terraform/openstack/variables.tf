@@ -116,3 +116,8 @@ variable "supplementary_master_groups" {
   description = "supplementary kubespray ansible groups for masters, such kube-node"
   default = ""
 }
+
+variable "supplementary_node_groups" {
+  description = "supplementary kubespray ansible groups for worker nodes, such as kube-ingress"
+  default = ""
+}

@@ -231,7 +231,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
-    kubespray_groups = "kube-node,k8s-cluster"
+    kubespray_groups = "kube-node,k8s-cluster,${var.supplementary_node_groups}"
     depends_on       = "${var.network_id}"
   }
 
@@ -258,7 +258,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
-    kubespray_groups = "kube-node,k8s-cluster,no-floating"
+    kubespray_groups = "kube-node,k8s-cluster,no-floating,${var.supplementary_node_groups}"
     depends_on       = "${var.network_id}"
   }
 

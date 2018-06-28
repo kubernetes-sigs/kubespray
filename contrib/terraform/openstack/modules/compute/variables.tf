@@ -59,3 +59,7 @@ variable "bastion_fips" {
 variable "supplementary_master_groups" {
   default = ""
 }
+
+variable "supplementary_node_groups" {
+  default = ""
+}

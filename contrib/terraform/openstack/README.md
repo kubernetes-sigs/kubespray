@@ -219,6 +219,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tf`.
 |`number_of_gfs_nodes_no_floating_ip` | Number of gluster servers to provision. |
 | `gfs_volume_size_in_gb` | Size of the non-ephemeral volumes to be attached to store the GlusterFS bricks |
 |`supplementary_master_groups` | To add ansible groups to the masters, such as `kube-node` for tainting them as nodes, empty by default. |
+|`supplementary_node_groups` | To add ansible groups to the nodes, such as `kube-ingress` for running ingress controller pods, empty by default. |
 
 #### Terraform state files
 

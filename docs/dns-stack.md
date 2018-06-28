@@ -52,13 +52,13 @@ You can modify how Kubespray sets up DNS for your cluster with the variables ``d
 ## dns_mode
 ``dns_mode`` configures how Kubespray will setup cluster DNS. There are four modes available:
 
-#### dnsmasq_kubedns (default)
+#### dnsmasq_kubedns
 This installs an additional dnsmasq DaemonSet which gives more flexibility and lifts some
 limitations (e.g. number of nameservers). Kubelet is instructed to use dnsmasq instead of kubedns/skydns.
 It is configured to forward all DNS queries belonging to cluster services to kubedns/skydns. All
 other queries are forwardet to the nameservers found in ``upstream_dns_servers`` or ``default_resolver``
 
-#### kubedns
+#### kubedns (default)
 This does not install the dnsmasq DaemonSet and instructs kubelet to directly use kubedns/skydns for
 all queries.
 

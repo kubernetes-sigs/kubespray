@@ -1,6 +1,6 @@
 ![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-incubator/kubespray/master/docs/img/kubernetes-logo.png)
 
-Deploy a Production Ready Kubernetes Cluster
+Deploy a Production Ready Kubernetes Cluster!!!
 ============================================
 
 If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
@@ -169,3 +169,4 @@ CI Tests
 
 CI/end-to-end tests sponsored by Google (GCE)
 See the [test matrix](docs/test_cases.md) for details.
+kubernauts v0.3

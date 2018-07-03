@@ -102,8 +102,9 @@ Supported Components
     -   [flanneld](https://github.com/coreos/flannel) v0.10.0
     -   [weave](https://github.com/weaveworks/weave) v2.3.0
 -   Application
+    -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) 06fddbe2
+    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.3.0
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.15.0
-    -   [cert-manager](https://github.com/jetstack/cert-manager/releases) v0.3.0
 
 Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 

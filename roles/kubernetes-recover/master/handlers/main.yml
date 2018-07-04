@@ -1,0 +1,103 @@
+---
+- name: Master | restart kubelet
+  command: /bin/true
+  notify:
+    - Master | reload systemd
+    - Master | reload kubelet
+    - Master | wait for master static pods
+
+- name: Master | wait for master static pods
+  command: /bin/true
+  notify:
+    - Master | wait for the apiserver to be running
+    - Master | wait for kube-scheduler
+    - Master | wait for kube-controller-manager
+
+- name: Master | Restart apiserver
+  command: /bin/true
+  notify:
+    - Master | Remove apiserver container
+    - Master | wait for the apiserver to be running
+
+- name: Master | Restart kube-scheduler
+  command: /bin/true
+  notify:
+    - Master | Remove scheduler container
+    - Master | wait for kube-scheduler
+
+- name: Master | Restart kube-controller-manager
+  command: /bin/true
+  notify:
+    - Master | Remove controller manager container
+    - Master | wait for kube-controller-manager
+
+- name: Master | reload systemd
+  command: systemctl daemon-reload
+
+- name: Master | reload kubelet
+  service:
+    name: kubelet
+    state: restarted
+
+- name: Master | Remove apiserver container
+  shell: "docker ps -af name=k8s_kube-apiserver* -q | xargs --no-run-if-empty docker rm -f"
+  register: remove_apiserver_container
+  retries: 4
+  until: remove_apiserver_container.rc == 0
+  delay: 5
+
+- name: Master | Remove scheduler container
+  shell: "docker ps -af name=k8s_kube-scheduler* -q | xargs --no-run-if-empty docker rm -f"
+  register: remove_scheduler_container
+  retries: 4
+  until: remove_scheduler_container.rc == 0
+  delay: 5
+
+- name: Master | Remove controller manager container
+  shell: "docker ps -af name=k8s_kube-controller-manager* -q | xargs --no-run-if-empty docker rm -f"
+  register: remove_cm_container
+  retries: 4
+  until: remove_cm_container.rc == 0
+  delay: 5
+
+- name: Master | wait for kube-scheduler
+  uri:
+    url: http://localhost:10251/healthz
+  register: scheduler_result
+  until: scheduler_result.status == 200
+  retries: 60
+  delay: 5
+
+- name: Master | wait for kube-controller-manager
+  uri:
+    url: http://localhost:10252/healthz
+  register: controller_manager_result
+  until: controller_manager_result.status == 200
+  retries: 15
+  delay: 5
+
+- name: Master | wait for the apiserver to be running
+  uri:
+    url: "{{ kube_apiserver_endpoint }}/healthz"
+    validate_certs: no
+    client_cert: "{{ kube_apiserver_client_cert }}"
+    client_key: "{{ kube_apiserver_client_key }}"
+  register: result
+  until: result.status == 200
+  retries: 30
+  delay: 10
+
+- name: Master | set secret_changed
+  command: /bin/true
+  notify:
+    - Master | set secret_changed to true
+    - Master | clear kubeconfig for root user
+
+- name: Master | set secret_changed to true
+  set_fact:
+    secret_changed: true
+
+- name: Master | clear kubeconfig for root user
+  file:
+    path: /root/.kube/config
+    state: absent

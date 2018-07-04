@@ -1,0 +1,37 @@
+---
+
+- name: sync_etcd_master_certs | Create list of master certs needing creation
+  set_fact:
+    etcd_master_cert_list: >-
+        {{ etcd_master_cert_list|default([]) +  [
+        "admin-" + inventory_hostname + ".pem",
+        "member-" + inventory_hostname + ".pem"
+        ] }}
+
+- include_tasks: ../../vault/tasks/shared/sync_file.yml
+  vars:
+    sync_file: "{{ item }}"
+    sync_file_dir: "{{ etcd_cert_dir }}"
+    sync_file_hosts: [ "{{ inventory_hostname }}" ]
+    sync_file_is_cert: true
+  with_items: "{{ etcd_master_cert_list|d([]) }}"
+
+- name: sync_etcd_certs | Set facts for etcd sync_file results
+  set_fact:
+    etcd_master_certs_needed: "{{ etcd_master_certs_needed|default([]) + [item.path] }}"
+  with_items: "{{ sync_file_results|d([]) }}"
+  when: item.no_srcs|bool
+
+- name: sync_etcd_certs | Unset sync_file_results after etcd certs sync
+  set_fact:
+    sync_file_results: []
+
+- include_tasks: ../../vault/tasks/shared/sync_file.yml
+  vars:
+    sync_file: ca.pem
+    sync_file_dir: "{{ etcd_cert_dir }}"
+    sync_file_hosts: [ "{{ inventory_hostname }}" ]
+
+- name: sync_etcd_certs | Unset sync_file_results after ca.pem sync
+  set_fact:
+    sync_file_results: []

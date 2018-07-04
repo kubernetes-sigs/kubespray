@@ -1,0 +1,138 @@
+---
+- name: "Check_certs | check if all certs have already been generated on first master"
+  find:
+    paths: "{{ etcd_cert_dir }}"
+    patterns: "ca-key.pem,ca.pem,admin-node*-key.pem,admin-node*.pem,member-node*-key.pem,member-node*.pem,node*-key.pem,node*.pem"
+    get_checksum: true
+  delegate_to: "{{groups['etcd'][0]}}"
+  register: etcdcert_master
+  run_once: true
+
+- name: "Check_certs | Set default value for 'sync_certs', 'gen_certs' and 'etcd_secret_changed' to false"
+  set_fact:
+    sync_certs: false
+    sync_certs_master: false
+    gen_certs: false
+    etcd_secret_changed: false
+
+- name: "Check certs | check if a cert already exists on node"
+  stat:
+    path: "{{ etcd_cert_dir }}/{{ item }}"
+  register: etcdcert_node
+  with_items:
+    - ca.pem
+    - node-{{ inventory_hostname }}-key.pem
+    - node-{{ inventory_hostname }}.pem
+
+- name: "Check certs | check if ca, member and admin certs already exist on etcd master"
+  stat:
+    path: "{{ etcd_cert_dir }}/{{ item }}"
+  register: etcdcert_node_master
+  with_items:
+    - member-{{ inventory_hostname }}-key.pem
+    - member-{{ inventory_hostname }}.pem
+    - admin-{{ inventory_hostname }}-key.pem
+    - admin-{{ inventory_hostname }}.pem
+    - ca-key.pem
+    - ca.pem
+  when: inventory_hostname in groups['etcd']
+
+- name: "Check_certs | Set 'gen_certs' to true"
+  set_fact:
+    gen_certs: true
+  when: not item in etcdcert_master.files|map(attribute='path') | list
+  run_once: true
+  with_items: >-
+       ['{{ etcd_cert_dir }}/ca.pem',
+       '{{ etcd_cert_dir }}/ca-key.pem',
+       {% set all_etcd_hosts = groups['etcd']|union(groups['k8s-cluster'])|union(groups['calico-rr']|default([]))|unique|sort %}
+       {% for host in all_etcd_hosts %}
+       '{{ etcd_cert_dir }}/node-{{ host }}-key.pem',
+       '{{ etcd_cert_dir }}/node-{{ host }}.pem'
+       {% if not loop.last %}{{','}}{% endif %}
+       {% endfor %},
+       {% set all_etcd_hosts = groups['etcd'] %}
+       {% for host in all_etcd_hosts %}
+       '{{ etcd_cert_dir }}/member-{{ host }}-key.pem',
+       '{{ etcd_cert_dir }}/member-{{ host }}.pem',
+       '{{ etcd_cert_dir }}/admin-{{ host }}-key.pem',
+       '{{ etcd_cert_dir }}/admin-{{ host }}.pem'
+       {% if not loop.last %}{{','}}{% endif %}
+       {% endfor %}]
+
+- name: "Check_certs | Set 'gen_node_certs' to true"
+  set_fact:
+    gen_node_certs: |-
+      {
+      {% set all_etcd_hosts = groups['etcd']|union(groups['k8s-cluster'])|union(groups['calico-rr']|default([]))|unique|sort -%}
+      {% set existing_certs = etcdcert_master.files|map(attribute='path')|list|sort %}
+      {% for host in all_etcd_hosts -%}
+        {% set host_cert = "%s/node-%s-key.pem"|format(etcd_cert_dir, host) %}
+        {% set host_cert2 = "%s/node-%s.pem"|format(etcd_cert_dir, host) %}
+        {% if host_cert in existing_certs and host_cert2 in existing_certs -%}
+        "{{ host }}": False,
+        {% else -%}
+        "{{ host }}": True,
+        {% endif -%}
+      {% endfor %}
+      }
+  run_once: true
+
+- name: "Check_certs | Set 'gen_master_certs' to true for master check"
+  set_fact:
+    gen_master_certs: |-
+      {
+      {% set all_etcd_hosts = groups['etcd'] -%}
+      {% set existing_certs = etcdcert_master.files|map(attribute='path')|list|sort %}
+      {% for host in all_etcd_hosts -%}
+        {% set host_cert = "%s/member-%s-key.pem"|format(etcd_cert_dir, host) %}
+        {% set host_cert_2 = "%s/member-%s.pem"|format(etcd_cert_dir, host) %}
+        {% set host_cert_3 = "%s/admin-%s-key.pem"|format(etcd_cert_dir, host) %}
+        {% set host_cert_4 = "%s/admin-%s.pem"|format(etcd_cert_dir, host) %}
+        {% if host_cert in existing_certs and host_cert_2 in existing_certs and host_cert_3 in existing_certs and host_cert_4 in existing_certs -%}
+        "{{ host }}": False,
+        {% else -%}
+        "{{ host }}": True,
+        {% endif -%}
+      {% endfor %}
+      }
+  run_once: true
+
+- name: "Check_certs | Set 'sync_certs' to true for etcd node"
+  set_fact:
+    sync_certs: true
+  when: |-
+      {%- set certs = {'sync': False} -%}
+      {% if gen_node_certs[inventory_hostname] or
+        (not etcdcert_node.results[0].stat.exists|default(False)) or
+          (not etcdcert_node.results[1].stat.exists|default(False)) or
+            (not etcdcert_node.results[2].stat.exists|default(False)) or
+              (etcdcert_node.results[0].stat.checksum|default('') != etcdcert_master.files|selectattr("path", "equalto", etcdcert_node.results[0].stat.path)|map(attribute="checksum")|first|default('')) or
+                (etcdcert_node.results[1].stat.checksum|default('') != etcdcert_master.files|selectattr("path", "equalto", etcdcert_node.results[1].stat.path)|map(attribute="checksum")|first|default('')) or
+                  (etcdcert_node.results[2].stat.checksum|default('') != etcdcert_master.files|selectattr("path", "equalto", etcdcert_node.results[2].stat.path)|map(attribute="checksum")|first|default('')) -%}
+                    {%- set _ = certs.update({'sync': True}) -%}
+      {% endif %}
+      {{ certs.sync }}
+
+- name: "Check_certs | Set 'sync_certs_master' to true  for etcd master"
+  set_fact:
+    sync_certs_master: true
+  when: |-
+      ({%- set certs = {'sync': False} -%}
+      {% if inventory_hostname in groups['etcd'] and (gen_master_certs[inventory_hostname] or
+        (not etcdcert_node_master.results[0].stat.exists|default(False)) or
+          (not etcdcert_node_master.results[1].stat.exists|default(False)) or
+            (not etcdcert_node_master.results[2].stat.exists|default(False)) or
+              (not etcdcert_node_master.results[3].stat.exists|default(False)) or
+                (not etcdcert_node_master.results[4].stat.exists|default(False)) or
+                  (not etcdcert_node_master.results[5].stat.exists|default(False)) or
+                    (etcdcert_node_master.results[0].stat.checksum|default('') != etcdcert_master.files|selectattr("path", "equalto", etcdcert_node_master.results[0].stat.path)|map(attribute="checksum")|first|default('')) or
+                      (etcdcert_node_master.results[1].stat.checksum|default('') != etcdcert_master.files|selectattr("path", "equalto", etcdcert_node_master.results[1].stat.path)|map(attribute="checksum")|first|default('')) or
+                        (etcdcert_node_master.results[2].stat.checksum|default('') != etcdcert_master.files|selectattr("path", "equalto", etcdcert_node_master.results[2].stat.path)|map(attribute="checksum")|first|default('')) or
+                          (etcdcert_node_master.results[3].stat.checksum|default('') != etcdcert_master.files|selectattr("path", "equalto", etcdcert_node_master.results[3].stat.path)|map(attribute="checksum")|first|default('')) or
+                            (etcdcert_node_master.results[4].stat.checksum|default('') != etcdcert_master.files|selectattr("path", "equalto", etcdcert_node_master.results[4].stat.path)|map(attribute="checksum")|first|default('')) or
+                              (etcdcert_node_master.results[5].stat.checksum|default('') != etcdcert_master.files|selectattr("path", "equalto", etcdcert_node_master.results[5].stat.path)|map(attribute="checksum")|first|default(''))) -%}
+                                {%- set _ = certs.update({'sync': True}) -%}
+      {% endif %}
+      {{ certs.sync }})
+

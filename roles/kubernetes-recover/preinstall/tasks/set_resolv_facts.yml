@@ -1,0 +1,113 @@
+---
+- name: check resolvconf
+  shell: which resolvconf
+  register: resolvconf
+  failed_when: false
+  changed_when: false
+  check_mode: no
+
+- set_fact:
+    resolvconf: >-
+      {%- if resolvconf.rc == 0 -%}true{%- else -%}false{%- endif -%}
+
+- set_fact:
+    bogus_domains: |-
+      {% for d in [ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([]) -%}
+      {{dns_domain}}.{{d}}./{{d}}.{{d}}./com.{{d}}./
+      {%- endfor %}
+    cloud_resolver: >-
+      {%- if cloud_provider is defined and cloud_provider == 'gce' -%}
+        ['169.254.169.254']
+      {%- elif cloud_provider is defined and cloud_provider == 'aws' -%}
+        ['169.254.169.253']
+      {%- else -%}
+        []
+      {%- endif -%}
+
+- name: check if kubelet is configured
+  stat:
+    path: "{{ kube_config_dir }}/kubelet.env"
+  register: kubelet_configured
+  changed_when: false
+
+- name: check if early DNS configuration stage
+  set_fact:
+    dns_early: >-
+      {%- if kubelet_configured.stat.exists -%}false{%- else -%}true{%- endif -%}
+
+- name: target resolv.conf files
+  set_fact:
+    resolvconffile: /etc/resolv.conf
+    base: >-
+      {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/base{%- endif -%}
+    head: >-
+      {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/head{%- endif -%}
+  when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+
+- name: target temporary resolvconf cloud init file (Container Linux by CoreOS)
+  set_fact:
+    resolvconffile: /tmp/resolveconf_cloud_init_conf
+  when: ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+
+- name: check if /etc/dhclient.conf exists
+  stat:
+    path: /etc/dhclient.conf
+  register: dhclient_stat
+
+- name: target dhclient conf file for /etc/dhclient.conf
+  set_fact:
+    dhclientconffile: /etc/dhclient.conf
+  when: dhclient_stat.stat.exists
+
+- name: check if /etc/dhcp/dhclient.conf exists
+  stat:
+    path: /etc/dhcp/dhclient.conf
+  register: dhcp_dhclient_stat
+
+- name: target dhclient conf file for /etc/dhcp/dhclient.conf
+  set_fact:
+    dhclientconffile: /etc/dhcp/dhclient.conf
+  when: dhcp_dhclient_stat.stat.exists
+
+- name: target dhclient hook file for Red Hat family
+  set_fact:
+    dhclienthookfile: /etc/dhcp/dhclient.d/zdnsupdate.sh
+  when: ansible_os_family == "RedHat"
+
+- name: target dhclient hook file for Debian family
+  set_fact:
+    dhclienthookfile: /etc/dhcp/dhclient-exit-hooks.d/zdnsupdate
+  when: ansible_os_family == "Debian"
+
+- name: generate search domains to resolvconf
+  set_fact:
+    searchentries:
+      search {{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join(' ') }}
+    domainentry:
+      domain {{ dns_domain }}
+    supersede_search:
+      supersede domain-search "{{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join('", "') }}";
+    supersede_domain:
+      supersede domain-name "{{ dns_domain }}";
+
+- name: pick dnsmasq cluster IP or default resolver
+  set_fact:
+    dnsmasq_server: |-
+      {%- if dns_mode in ['kubedns', 'coredns'] and not dns_early|bool -%}
+        {{ [ skydns_server ] + upstream_dns_servers|default([]) }}
+      {%- elif dns_mode == 'coredns_dual' and not dns_early|bool -%}
+        {{ [ skydns_server ] + [ skydns_server_secondary ] + upstream_dns_servers|default([]) }}
+      {%- elif dns_mode == 'manual' and not dns_early|bool -%}
+        {{ [ manual_dns_server ] + upstream_dns_servers|default([]) }}
+      {%- elif dns_early|bool -%}
+        {{ upstream_dns_servers|default([]) }}
+      {%- else -%}
+        {{ [ dnsmasq_dns_server ] }}
+      {%- endif -%}
+
+- name: generate nameservers to resolvconf
+  set_fact:
+    nameserverentries:
+      nameserver {{( dnsmasq_server + nameservers|d([]) + cloud_resolver|d([])) | join(',nameserver ')}}
+    supersede_nameserver:
+      supersede domain-name-servers {{( dnsmasq_server + nameservers|d([]) + cloud_resolver|d([])) | join(', ') }};

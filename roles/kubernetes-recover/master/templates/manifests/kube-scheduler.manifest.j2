@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kube-scheduler
+  namespace: kube-system
+  labels:
+    k8s-app: kube-scheduler
+  annotations:
+    kubespray.scheduler-cert/serial: "{{ scheduler_cert_serial }}"
+spec:
+  hostNetwork: true
+{% if kube_version | version_compare('v1.6', '>=') %}
+  dnsPolicy: ClusterFirst
+{% endif %}
+  containers:
+  - name: kube-scheduler
+    image: {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}
+    imagePullPolicy: {{ k8s_image_pull_policy }}
+    resources:
+      limits:
+        cpu: {{ kube_scheduler_cpu_limit }}
+        memory: {{ kube_scheduler_memory_limit }}
+      requests:
+        cpu: {{ kube_scheduler_cpu_requests }}
+        memory: {{ kube_scheduler_memory_requests }}
+    command:
+    - /hyperkube
+    - scheduler
+    - --leader-elect=true
+    - --kubeconfig={{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml
+{% if volume_cross_zone_attachment %}
+    - --use-legacy-policy-config
+    - --policy-config-file={{ kube_config_dir }}/kube-scheduler-policy.yaml
+{% endif %}
+    - --profiling=false
+    - --v={{ kube_log_level }}
+{% if kube_feature_gates %}
+    - --feature-gates={{ kube_feature_gates|join(',') }}
+{% endif %}
+{% if scheduler_custom_flags is string %}
+    - {{ scheduler_custom_flags }}
+{% else %}
+{%   for flag in scheduler_custom_flags %}
+    - {{ flag }}
+{%   endfor %}
+{% endif %}
+    livenessProbe:
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10251
+      initialDelaySeconds: 30
+      timeoutSeconds: 10
+    volumeMounts:
+    - mountPath: /etc/ssl
+      name: ssl-certs-host
+      readOnly: true
+{% for dir in ssl_ca_dirs %}
+    - mountPath: {{ dir }}
+      name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+      readOnly: true
+{% endfor %}
+    - mountPath: "{{ kube_config_dir }}/ssl"
+      name: etc-kube-ssl
+      readOnly: true
+    - mountPath: "{{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml"
+      name: kubeconfig
+      readOnly: true
+{% if volume_cross_zone_attachment %}
+    - mountPath: "{{ kube_config_dir }}/kube-scheduler-policy.yaml"
+      name: kube-scheduler-policy
+      readOnly: true
+{% endif %}
+  volumes:
+  - name: ssl-certs-host
+    hostPath:
+      path: /etc/ssl
+{% for dir in ssl_ca_dirs %}
+  - name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+    hostPath:
+      path: {{ dir }}
+{% endfor %}
+  - name: etc-kube-ssl
+    hostPath:
+      path: "{{ kube_config_dir }}/ssl"
+  - name: kubeconfig
+    hostPath:
+      path: "{{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml"
+{% if volume_cross_zone_attachment %}
+  - name: kube-scheduler-policy
+    hostPath:
+      path: "{{ kube_config_dir }}/kube-scheduler-policy.yaml"
+{% endif %}

@@ -1,0 +1,172 @@
+---
+- name: kubeadm | Check if old apiserver cert exists on host
+  stat:
+    path: "{{ kube_cert_dir }}/apiserver.pem"
+  register: old_apiserver_cert
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+
+- name: kubeadm | Check service account key
+  stat:
+    path: "{{ kube_cert_dir }}/sa.key"
+  register: sa_key_before
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+
+- name: kubeadm | Check if kubeadm has already run
+  stat:
+    path: "{{ kube_cert_dir }}/ca.key"
+  register: kubeadm_ca
+
+- name: kubeadm | Delete old admin.conf
+  file:
+    path: "{{ kube_config_dir }}/admin.conf"
+    state: absent
+  when: not kubeadm_ca.stat.exists
+
+- name: kubeadm | Delete old static pods
+  file:
+    path: "{{ kube_config_dir }}/manifests/{{item}}.manifest"
+    state: absent
+  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler", "kube-proxy"]
+  when: old_apiserver_cert.stat.exists
+
+- name: kubeadm | Forcefully delete old static pods
+  shell: "docker ps -f name=k8s_{{item}} -q | xargs --no-run-if-empty docker rm -f"
+  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
+  when: old_apiserver_cert.stat.exists
+
+- name: kubeadm | aggregate all SANs
+  set_fact:
+    apiserver_sans: >-
+      kubernetes
+      kubernetes.default
+      kubernetes.default.svc
+      kubernetes.default.svc.{{ dns_domain }}
+      {{ kube_apiserver_ip }}
+      localhost
+      127.0.0.1
+      {{ ' '.join(groups['kube-master']) }}
+      {%- if loadbalancer_apiserver is defined %}
+      {{ apiserver_loadbalancer_domain_name }}
+      {%- endif %}
+      {%- for host in groups['kube-master'] -%}
+      {%- if hostvars[host]['access_ip'] is defined %}{{ hostvars[host]['access_ip'] }}{% endif %}
+      {{ hostvars[host]['ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}
+      {%- endfor %}
+      {%- if supplementary_addresses_in_ssl_keys is defined %}
+      {%- for addr in supplementary_addresses_in_ssl_keys %}
+      {{ addr }}
+      {%- endfor %}
+      {%- endif %}
+  tags: facts
+
+- name: kubeadm | Copy etcd cert dir under k8s cert dir
+  command: "cp -TR {{ etcd_cert_dir }} {{ kube_config_dir }}/ssl/etcd"
+  changed_when: false
+
+- name: kubeadm | Create kubeadm config
+  template:
+    src: kubeadm-config.yaml.j2
+    dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kubeadm_config
+
+- name: kubeadm | Initialize first master
+  command: timeout -k 240s 240s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
+  register: kubeadm_init
+  # Retry is because upload config sometimes fails
+  retries: 3
+  when: inventory_hostname == groups['kube-master']|first and not kubeadm_ca.stat.exists
+  failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
+  notify: Master | restart kubelet
+
+- name: kubeadm | Upgrade first master
+  command: >-
+    timeout -k 240s 240s
+    {{ bin_dir }}/kubeadm
+    upgrade apply -y {{ kube_version }}
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    --ignore-preflight-errors=all
+    --allow-experimental-upgrades
+    --allow-release-candidate-upgrades
+  register: kubeadm_upgrade
+  # Retry is because upload config sometimes fails
+  retries: 3
+  when: inventory_hostname == groups['kube-master']|first and (kubeadm_config.changed and kubeadm_ca.stat.exists)
+  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
+  notify: Master | restart kubelet
+
+# FIXME(mattymo): remove when https://github.com/kubernetes/kubeadm/issues/433 is fixed
+- name: kubeadm | Enable kube-proxy
+  command: "{{ bin_dir }}/kubeadm alpha phase addon kube-proxy --config={{ kube_config_dir }}/kubeadm-config.yaml"
+  when: inventory_hostname == groups['kube-master']|first
+  changed_when: false
+
+- name: slurp kubeadm certs
+  slurp:
+    src: "{{ item }}"
+  with_items:
+    - "{{ kube_cert_dir }}/apiserver.crt"
+    - "{{ kube_cert_dir }}/apiserver.key"
+    - "{{ kube_cert_dir }}/apiserver-kubelet-client.crt"
+    - "{{ kube_cert_dir }}/apiserver-kubelet-client.key"
+    - "{{ kube_cert_dir }}/ca.crt"
+    - "{{ kube_cert_dir }}/ca.key"
+    - "{{ kube_cert_dir }}/front-proxy-ca.crt"
+    - "{{ kube_cert_dir }}/front-proxy-ca.key"
+    - "{{ kube_cert_dir }}/front-proxy-client.crt"
+    - "{{ kube_cert_dir }}/front-proxy-client.key"
+    - "{{ kube_cert_dir }}/sa.key"
+    - "{{ kube_cert_dir }}/sa.pub"
+  register: kubeadm_certs
+  delegate_to: "{{ groups['kube-master']|first }}"
+  run_once: true
+
+- name: kubeadm | write out kubeadm certs
+  copy:
+    dest: "{{ item.item }}"
+    content: "{{ item.content | b64decode }}"
+    owner: root
+    group: root
+    mode: 0600
+  no_log: true
+  register: copy_kubeadm_certs
+  with_items: "{{ kubeadm_certs.results }}"
+  when: inventory_hostname != groups['kube-master']|first
+
+- name: kubeadm | Init other uninitialized masters
+  command: timeout -k 240s 240s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
+  register: kubeadm_init
+  when: inventory_hostname != groups['kube-master']|first and not kubeadm_ca.stat.exists
+  failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
+  notify: Master | restart kubelet
+
+- name: kubeadm | Upgrade other masters
+  command: >-
+    timeout -k 240s 240s
+    {{ bin_dir }}/kubeadm
+    upgrade apply -y {{ kube_version }}
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    --ignore-preflight-errors=all
+    --allow-experimental-upgrades
+    --allow-release-candidate-upgrades
+  register: kubeadm_upgrade
+  when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed and kubeadm_ca.stat.exists)
+  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
+  notify: Master | restart kubelet
+
+- name: kubeadm | Check service account key again
+  stat:
+    path: "{{ kube_cert_dir }}/sa.key"
+  register: sa_key_after
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+
+- name: kubeadm | Set secret_changed if service account key was updated
+  command: /bin/true
+  notify: Master | set secret_changed
+  when: sa_key_before.stat.checksum|default("") != sa_key_after.stat.checksum
+
+- name: kubeadm | cleanup old certs if necessary
+  import_tasks: kubeadm-cleanup-old-certs.yml
+  when: old_apiserver_cert.stat.exists

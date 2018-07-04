@@ -1,0 +1,112 @@
+[Unit]
+Description=Kubernetes Kubelet Server
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+Wants=network.target
+
+[Service]
+User=root
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=0
+LimitNOFILE=40000
+
+ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/run/kubelet.uuid
+ExecStartPre=-/bin/mkdir -p /var/lib/kubelet
+ExecStartPre=-/bin/mkdir -p {{ kubelet_flexvolumes_plugins_dir }}
+
+EnvironmentFile={{kube_config_dir}}/kubelet.env
+# stage1-fly mounts /proc /sys /dev so no need to duplicate the mounts
+ExecStart=/usr/bin/rkt run \
+{% if kubelet_load_modules == true %}
+        --volume modprobe,kind=host,source=/usr/sbin/modprobe \
+        --volume lib-modules,kind=host,source=/lib/modules \
+{% endif %}
+        --volume os-release,kind=host,source=/etc/os-release,readOnly=true \
+        --volume hosts,kind=host,source=/etc/hosts,readOnly=true \
+        --volume dns,kind=host,source=/etc/resolv.conf \
+        --volume etc-kubernetes,kind=host,source={{ kube_config_dir }},readOnly=false \
+        --volume etc-ssl-certs,kind=host,source=/etc/ssl/certs,readOnly=true \
+        --volume etcd-ssl,kind=host,source={{ etcd_config_dir }},readOnly=true \
+        --volume run,kind=host,source=/run,readOnly=false \
+        {% for dir in ssl_ca_dirs -%}
+        --volume {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }},kind=host,source={{ dir }},readOnly=true \
+        {% endfor -%}
+        --volume var-lib-docker,kind=host,source={{ docker_daemon_graph }},readOnly=false \
+        --volume var-lib-kubelet,kind=host,source=/var/lib/kubelet,readOnly=false,recursive=true \
+        --volume var-log,kind=host,source=/var/log \
+{% if kube_network_plugin in ["calico", "weave", "canal", "flannel", "contiv", "cilium"] %}
+        --volume etc-cni,kind=host,source=/etc/cni,readOnly=true \
+        --volume opt-cni,kind=host,source=/opt/cni,readOnly=true \
+        --volume var-lib-cni,kind=host,source=/var/lib/cni,readOnly=false \
+{# we can run into issues with double mounting /var/lib/kubelet #}
+{# surely there's a better way to do this #}
+{% if '/var/lib/kubelet' not in kubelet_flexvolumes_plugins_dir %}
+        --volume flexvolumes,kind=host,source={{ kubelet_flexvolumes_plugins_dir }},readOnly=false \
+{% endif -%}
+{% if local_volume_provisioner_enabled %}
+        --volume local-volume-provisioner-base-dir,kind=host,source={{ local_volume_provisioner_base_dir }},readOnly=false \
+{# Not pretty, but needed to avoid double mount #}
+{% if local_volume_provisioner_base_dir not in local_volume_provisioner_mount_dir and local_volume_provisioner_mount_dir not in local_volume_provisioner_base_dir %}
+        --volume local-volume-provisioner-mount-dir,kind=host,source={{ local_volume_provisioner_mount_dir }},readOnly=false \
+{% endif %}
+{% endif %}
+{% if kubelet_load_modules == true %}
+        --mount volume=modprobe,target=/usr/sbin/modprobe \
+        --mount volume=lib-modules,target=/lib/modules \
+{% endif %}
+        --mount volume=etc-cni,target=/etc/cni \
+        --mount volume=opt-cni,target=/opt/cni \
+        --mount volume=var-lib-cni,target=/var/lib/cni \
+{% endif %}
+        --mount volume=os-release,target=/etc/os-release \
+        --mount volume=dns,target=/etc/resolv.conf \
+        --mount volume=etc-kubernetes,target={{ kube_config_dir }} \
+        --mount volume=etc-ssl-certs,target=/etc/ssl/certs \
+        --mount volume=etcd-ssl,target={{ etcd_config_dir }} \
+        --mount volume=run,target=/run \
+        {% for dir in ssl_ca_dirs -%}
+        --mount volume={{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }},target={{ dir }} \
+        {% endfor -%}
+        --mount volume=var-lib-docker,target=/var/lib/docker \
+        --mount volume=var-lib-kubelet,target=/var/lib/kubelet \
+        --mount volume=var-log,target=/var/log \
+        --mount volume=hosts,target=/etc/hosts \
+{# we can run into issues with double mounting /var/lib/kubelet #}
+{# surely there's a better way to do this #}
+{% if '/var/lib/kubelet' not in kubelet_flexvolumes_plugins_dir %}
+        --mount volume=flexvolumes,target={{ kubelet_flexvolumes_plugins_dir }} \
+{% endif -%}
+{% if local_volume_provisioner_enabled %}
+        --mount volume=local-volume-provisioner-base-dir,target={{ local_volume_provisioner_base_dir }} \
+{# Not pretty, but needed to avoid double mount #}
+{% if local_volume_provisioner_base_dir not in local_volume_provisioner_mount_dir and local_volume_provisioner_mount_dir not in local_volume_provisioner_base_dir %}
+        --mount volume=local-volume-provisioner-mount-dir,target={{ local_volume_provisioner_mount_dir }} \
+{% endif %}
+{% endif %}
+        --stage1-from-dir=stage1-fly.aci \
+{% if kube_hyperkube_image_repo == "docker" %}
+        --insecure-options=image \
+        docker://{{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} \
+{% else %}
+        {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} \
+{% endif %}
+        --uuid-file-save=/var/run/kubelet.uuid \
+        --debug --exec=/kubelet -- \
+                $KUBE_LOGTOSTDERR \
+                $KUBE_LOG_LEVEL \
+                $KUBELET_API_SERVER \
+                $KUBELET_ADDRESS \
+                $KUBELET_PORT \
+                $KUBELET_HOSTNAME \
+                $KUBE_ALLOW_PRIV \
+                $KUBELET_ARGS \
+                $DOCKER_SOCKET \
+                $KUBELET_REGISTER_NODE \
+                $KUBELET_NETWORK_PLUGIN \
+                $KUBELET_VOLUME_PLUGIN \
+                $KUBELET_CLOUDPROVIDER
+
+ExecStop=-/usr/bin/rkt stop --uuid-file=/var/run/kubelet.uuid
+
+[Install]
+WantedBy=multi-user.target

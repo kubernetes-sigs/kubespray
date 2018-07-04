@@ -1,0 +1,64 @@
+---
+- include_tasks: sync_etcd_master_certs.yml
+  when: inventory_hostname in groups.etcd
+  tags:
+    - etcd-secrets
+
+- include_tasks: sync_etcd_node_certs.yml
+  when: inventory_hostname in etcd_node_cert_hosts
+  tags:
+    - etcd-secrets
+
+# Issue master certs to Etcd nodes
+- include_tasks: ../../vault/tasks/shared/issue_cert.yml
+  vars:
+    issue_cert_common_name: "etcd:master:{{ item.rsplit('/', 1)[1].rsplit('.', 1)[0] }}"
+    issue_cert_alt_names: "{{ groups['etcd'] + ['localhost'] + (etcd_cert_alt_names)|default() }}"
+    issue_cert_copy_ca: "{{ item == etcd_master_certs_needed|first }}"
+    issue_cert_file_group: "{{ etcd_cert_group }}"
+    issue_cert_file_owner: kube
+    issue_cert_hosts: "{{ groups.etcd }}"
+    issue_cert_ip_sans: >-
+        [
+        {%- for host in groups.etcd  -%}
+        "{{ hostvars[host]['ansible_default_ipv4']['address'] }}",
+        {%- if hostvars[host]['ip'] is defined -%}
+        "{{ hostvars[host]['ip'] }}",
+        {%- endif -%}
+        {%- endfor -%}
+        "127.0.0.1","::1"
+        ]
+    issue_cert_path: "{{ item }}"
+    issue_cert_role: etcd
+    issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
+    issue_cert_mount_path: "{{ etcd_vault_mount_path }}"
+  with_items: "{{ etcd_master_certs_needed|d([]) }}"
+  when: inventory_hostname in groups.etcd
+  notify: set etcd_secret_changed
+
+# Issue node certs to everyone else
+- include_tasks: ../../vault/tasks/shared/issue_cert.yml
+  vars:
+    issue_cert_common_name: "etcd:node:{{ item.rsplit('/', 1)[1].rsplit('.', 1)[0] }}"
+    issue_cert_alt_names: "{{ etcd_node_cert_hosts }}"
+    issue_cert_copy_ca: "{{ item == etcd_node_certs_needed|first }}"
+    issue_cert_file_group: "{{ etcd_cert_group }}"
+    issue_cert_file_owner: kube
+    issue_cert_hosts: "{{ etcd_node_cert_hosts }}"
+    issue_cert_ip_sans: >-
+        [
+        {%- for host in etcd_node_cert_hosts -%}
+        "{{ hostvars[host]['ansible_default_ipv4']['address'] }}",
+        {%- if hostvars[host]['ip'] is defined -%}
+        "{{ hostvars[host]['ip'] }}",
+        {%- endif -%}
+        {%- endfor -%}
+        "127.0.0.1","::1"
+        ]
+    issue_cert_path: "{{ item }}"
+    issue_cert_role: etcd
+    issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
+    issue_cert_mount_path: "{{ etcd_vault_mount_path }}"
+  with_items: "{{ etcd_node_certs_needed|d([]) }}"
+  when: inventory_hostname in etcd_node_cert_hosts
+  notify: set etcd_secret_changed

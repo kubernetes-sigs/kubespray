@@ -1,0 +1,30 @@
+---
+- name: Gen_certs | target ca-certificates path
+  set_fact:
+    ca_cert_path: |-
+      {% if ansible_os_family == "Debian" -%}
+      /usr/local/share/ca-certificates/kube-ca.crt
+      {%- elif ansible_os_family == "RedHat" -%}
+      /etc/pki/ca-trust/source/anchors/kube-ca.crt
+      {%- elif ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] -%}
+      /etc/ssl/certs/kube-ca.pem
+      {%- elif ansible_os_family == "Suse" -%}
+      /etc/pki/trust/anchors/kube-ca.pem
+      {%- endif %}
+  tags:
+    - facts
+
+- name: Gen_certs | add CA to trusted CA dir
+  copy:
+    src: "{{ kube_cert_dir }}/ca.pem"
+    dest: "{{ ca_cert_path }}"
+    remote_src: true
+  register: kube_ca_cert
+
+- name: Gen_certs | update ca-certificates (Debian/Ubuntu/SUSE/Container Linux by CoreOS)
+  command: update-ca-certificates
+  when: kube_ca_cert.changed and ansible_os_family in ["Debian", "CoreOS", "Container Linux by CoreOS", "Suse"]
+
+- name: Gen_certs | update ca-certificates (RedHat)
+  command: update-ca-trust extract
+  when: kube_ca_cert.changed and ansible_os_family == "RedHat"

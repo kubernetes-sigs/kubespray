@@ -1,0 +1,42 @@
+{% set counter = {'dns': 2,'ip': 1,} %}{% macro increment(dct, key, inc=1)%}{% if dct.update({key: dct[key] + inc}) %} {% endif %}{% endmacro %}[req]
+req_extensions = v3_req
+distinguished_name = req_distinguished_name
+
+[req_distinguished_name]
+
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+
+[ ssl_client ]
+extendedKeyUsage = clientAuth, serverAuth
+basicConstraints = CA:FALSE
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+subjectAltName = @alt_names
+
+[ v3_ca ]
+basicConstraints = CA:TRUE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+authorityKeyIdentifier=keyid:always,issuer
+
+[alt_names]
+DNS.1 = localhost
+{% for host in groups['etcd'] %}
+DNS.{{ counter["dns"] }} = {{ host }}{{ increment(counter, 'dns') }}
+{% endfor %}
+{% if apiserver_loadbalancer_domain_name is defined %}
+DNS.{{ counter["dns"] }} = {{ apiserver_loadbalancer_domain_name }}{{ increment(counter, 'dns') }}
+{% endif %}
+{% for etcd_alt_name in etcd_cert_alt_names %}
+DNS.{{ counter["dns"] }} = {{ etcd_alt_name }}{{ increment(counter, 'dns') }}
+{% endfor %}
+{% for host in groups['etcd'] %}
+{% if hostvars[host]['access_ip'] is defined  %}
+IP.{{ counter["ip"] }} = {{ hostvars[host]['access_ip'] }}{{ increment(counter, 'ip') }}
+{% endif %}
+IP.{{ counter["ip"] }} = {{ hostvars[host]['ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}{{ increment(counter, 'ip') }}
+{% endfor %}
+IP.{{ counter["ip"] }} = 127.0.0.1

@@ -1,0 +1,105 @@
+---
+- name: Configure | Check if etcd cluster is healthy
+  shell: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses_old }} cluster-health | grep -q 'cluster is healthy'"
+  register: etcd_cluster_is_healthy_rm
+  ignore_errors: true
+  changed_when: false
+  check_mode: no
+  when: is_etcd_master and etcd_cluster_setup
+  tags:
+    - facts
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+
+- name: Configure | Check if etcd-events cluster is healthy
+  shell: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_events_access_addresses_old }} cluster-health | grep -q 'cluster is healthy'"
+  register: etcd_events_cluster_is_healthy_rm
+  ignore_errors: true
+  changed_when: false
+  check_mode: no
+  when: is_etcd_master and etcd_events_cluster_setup
+  tags:
+    - facts
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+
+
+- name: Configure | Check if member is in etcd cluster
+  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses_old }} member list | grep {{ hostvars[groups['etcd-remove'][0]].ip }}"
+  register: etcd_member_in_cluster_rm
+  failed_when: false
+  changed_when: false
+  check_mode: no
+  when: is_etcd_master and etcd_cluster_setup and etcd_cluster_is_healthy_rm.rc == 0
+  tags:
+    - facts
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+
+- name: Configure | Check if member is in etcd-events cluster
+  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_events_access_addresses_old }} member list | grep {{ hostvars[groups['etcd-remove'][0]].ip }}"
+  register: etcd_events_member_in_cluster_rm
+  failed_when: false
+  changed_when: false
+  check_mode: no
+  when: is_etcd_master and etcd_events_cluster_setup and etcd_events_cluster_is_healthy_rm.rc == 0
+  #with_items: "{{ groups['etcd-remove'] }}"
+  tags:
+    - facts
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+
+- name: Configure | Get etcd id being removed
+  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses_old }} member list | grep {{ hostvars[groups['etcd-remove'][0]]['ip'] }} | awk 'BEGIN{FS=\":\"}{printf substr($1,0,16)}'"
+  register: etcd_remove_id
+  ignore_errors: true
+  changed_when: false
+  check_mode: no
+  when: is_etcd_master and etcd_cluster_setup and etcd_cluster_is_healthy_rm.rc == 0 and etcd_member_in_cluster_rm.rc == 0
+  tags:
+    - facts
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+
+- name: Configure | Get etcd-events id being removed
+  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_events_access_addresses_old }} member list | grep {{ hostvars[groups['etcd-remove'][0]]['ip'] }} | awk 'BEGIN{FS=\":\"}{printf substr($1,0,16)}'"
+  register: etcd_events_remove_id
+  ignore_errors: true
+  changed_when: false
+  check_mode: no
+  when: is_etcd_master and etcd_events_cluster_setup and etcd_events_cluster_is_healthy_rm.rc == 0 and etcd_member_in_cluster_rm.rc == 0
+  tags:
+    - facts
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+  
+- name: Configure | Remove member from etcd cluster
+  shell: "{{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses_old }} member remove {{ etcd_remove_id.stdout }}"
+  ignore_errors: true
+  changed_when: false
+  check_mode: no
+  when: is_etcd_master and etcd_cluster_setup and etcd_cluster_is_healthy_rm.rc == 0 and etcd_member_in_cluster_rm.rc == 0 and etcd_remove_id.stdout != ""
+  tags:
+    - facts
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+
+- name: Configure | Remove member from etcd-events cluster
+  shell: "{{ bin_dir }}/etcdctl --peers={{ etcd_events_access_addresses_old }} member remove {{ etcd_events_remove_id.stdout }}"
+  ignore_errors: true
+  changed_when: false
+  check_mode: no
+  when: is_etcd_master and etcd_events_cluster_setup and etcd_events_cluster_is_healthy_rm.rc == 0 and etcd_events_member_in_cluster_rm.rc == 0 and etcd_events_remove_id.stdout != "" 
+  tags:
+    - facts
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+

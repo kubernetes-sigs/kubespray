@@ -1,0 +1,40 @@
+#!/bin/bash
+{{ docker_bin_dir }}/docker run \
+  --net=host \
+  --pid=host \
+  --privileged \
+  --name=kubelet \
+  --restart=on-failure:5 \
+  --memory={{ kube_memory_reserved|regex_replace('Mi', 'M') }} \
+  --cpu-shares={{ kube_cpu_reserved|regex_replace('m', '')  }} \
+  -v /dev:/dev:rw \
+  -v /etc/cni:/etc/cni:ro \
+  -v /opt/cni:/opt/cni:ro \
+  -v /etc/ssl:/etc/ssl:ro \
+  -v /etc/resolv.conf:/etc/resolv.conf \
+  {% for dir in ssl_ca_dirs -%}
+  -v {{ dir }}:{{ dir }}:ro \
+  {% endfor -%}
+  {% if kubelet_load_modules -%}
+  -v /lib/modules:/lib/modules:ro \
+  {% endif -%}
+  -v /sys:/sys:ro \
+  -v {{ docker_daemon_graph }}:{{ docker_daemon_graph }}:rw \
+  -v /var/log:/var/log:rw \
+  -v /var/lib/kubelet:/var/lib/kubelet:shared \
+  -v /var/lib/cni:/var/lib/cni:shared \
+  -v /var/run:/var/run:rw \
+  {# we can run into issues with double mounting /var/lib/kubelet #}
+  {# surely there's a better way to do this #}
+  {% if '/var/lib/kubelet' not in kubelet_flexvolumes_plugins_dir %}
+  -v {{ kubelet_flexvolumes_plugins_dir }}:{{ kubelet_flexvolumes_plugins_dir }}:rw \
+  {% endif -%}
+  {% if local_volume_provisioner_enabled -%}
+  -v {{ local_volume_provisioner_base_dir }}:{{ local_volume_provisioner_base_dir }}:rw \
+  -v {{ local_volume_provisioner_mount_dir }}:{{ local_volume_provisioner_mount_dir }}:rw \
+  {% endif %}
+  -v {{kube_config_dir}}:{{kube_config_dir}}:ro \
+  -v /etc/os-release:/etc/os-release:ro \
+  {{ hyperkube_image_repo }}:{{ hyperkube_image_tag}} \
+  ./hyperkube kubelet \
+  "$@"

@@ -1,0 +1,33 @@
+---
+
+- name: sync_etcd_node_certs | Create list of node certs needing creation
+  set_fact:
+    etcd_node_cert_list: "{{ etcd_node_cert_list|default([]) +  ['node-' + inventory_hostname + '.pem'] }}"
+
+- include_tasks: ../../vault/tasks/shared/sync_file.yml
+  vars:
+    sync_file: "{{ item }}"
+    sync_file_dir: "{{ etcd_cert_dir }}"
+    sync_file_hosts: [ "{{ inventory_hostname }}" ]
+    sync_file_is_cert: true
+  with_items: "{{ etcd_node_cert_list|d([]) }}"
+
+- name: sync_etcd_node_certs | Set facts for etcd sync_file results
+  set_fact:
+    etcd_node_certs_needed: "{{ etcd_node_certs_needed|default([]) + [item.path] }}"
+  with_items: "{{ sync_file_results|d([]) }}"
+  when: item.no_srcs|bool
+
+- name: sync_etcd_node_certs | Unset sync_file_results after etcd node certs
+  set_fact:
+    sync_file_results: []
+
+- include_tasks: ../../vault/tasks/shared/sync_file.yml
+  vars:
+    sync_file: ca.pem
+    sync_file_dir: "{{ etcd_cert_dir }}"
+    sync_file_hosts: "{{ groups['etcd'] }}"
+
+- name: sync_etcd_node_certs | Unset sync_file_results after ca.pem
+  set_fact:
+    sync_file_results: []

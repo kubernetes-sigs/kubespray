@@ -1,0 +1,25 @@
+---
+
+# These tasks will undo changes done by kubespray in the past if needed (e.g. when upgrading from kubespray 2.0.x
+# or when changing resolvconf_mode)
+
+- name: Remove kubespray specific config from dhclient config
+  blockinfile:
+    dest: "{{dhclientconffile}}"
+    state: absent
+    backup: yes
+    follow: yes
+    marker: "# Ansible entries {mark}"
+  when: dhclientconffile is defined
+  notify: Preinstall | restart network
+
+- name: Remove kubespray specific dhclient hook
+  file:
+    path: "{{ dhclienthookfile }}"
+    state: absent
+  when: dhclienthookfile is defined
+  notify: Preinstall | restart network
+
+# We need to make sure the network is restarted early enough so that docker can later pick up the correct system
+# nameservers and search domains
+- meta: flush_handlers

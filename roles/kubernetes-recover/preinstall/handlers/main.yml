@@ -1,0 +1,65 @@
+---
+- name: Preinstall | restart network
+  command: /bin/true
+  notify:
+    - Preinstall | reload network
+    - Preinstall | reload kubelet
+    - Preinstall | kube-controller configured
+    - Preinstall | kube-apiserver configured
+    - Preinstall | restart kube-controller-manager
+    - Preinstall | restart kube-apiserver
+  when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+
+  # FIXME(bogdando) https://github.com/projectcalico/felix/issues/1185
+- name: Preinstall | reload network
+  service:
+    name: >-
+      {% if ansible_os_family == "RedHat" -%}
+      network
+      {%- elif ansible_os_family == "Debian" -%}
+      networking
+      {%- endif %}
+    state: restarted
+  when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] and kube_network_plugin not in ['canal', 'calico']
+
+- name: Preinstall | update resolvconf for Container Linux by CoreOS
+  command: /bin/true
+  notify:
+    - Preinstall | apply resolvconf cloud-init
+    - Preinstall | reload kubelet
+  when: ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+
+- name: Preinstall | apply resolvconf cloud-init
+  command: /usr/bin/coreos-cloudinit --from-file {{ resolveconf_cloud_init_conf }}
+  when: ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+
+- name: Preinstall | reload kubelet
+  service:
+    name: kubelet
+    state: restarted
+  notify:
+    - Preinstall | kube-controller configured
+    - Preinstall | kube-apiserver configured
+    - Preinstall | restart kube-controller-manager
+    - Preinstall | restart kube-apiserver
+  when: not dns_early|bool
+
+# FIXME(mattymo): Also restart for kubeadm mode
+- name: Preinstall | kube-apiserver configured
+  stat: path="{{ kube_manifest_dir }}/kube-apiserver.manifest"
+  register: kube_apiserver_set
+  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
+
+# FIXME(mattymo): Also restart for kubeadm mode
+- name: Preinstall | kube-controller configured
+  stat: path="{{ kube_manifest_dir }}/kube-controller-manager.manifest"
+  register: kube_controller_set
+  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
+
+- name: Preinstall | restart kube-controller-manager
+  shell: "docker ps -f name=k8s_POD_kube-controller-manager* -q | xargs --no-run-if-empty docker rm -f"
+  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf' and kube_controller_set.stat.exists
+
+- name: Preinstall | restart kube-apiserver
+  shell: "docker ps -f name=k8s_POD_kube-apiserver* -q | xargs --no-run-if-empty docker rm -f"
+  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'

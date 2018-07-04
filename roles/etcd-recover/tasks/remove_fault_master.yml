@@ -1,0 +1,26 @@
+- name: Clean | get fault k8s master minion info from etcd
+  shell: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }} get /registry/minions/{{ item }} --prefix --keys-only"
+  register: result
+  ignore_errors: true
+  changed_when: false
+  check_mode: no
+  with_items: "{{ groups['master-remove'] }}"
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_API: 3
+
+- name: Clean | delete fault k8s master minion info from etcd, other info can be deleted by k8s
+  shell: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }} del /registry/minions/{{ item }}"
+  when: result.stdout != ""
+  ignore_errors: true
+  changed_when: false
+  check_mode: no
+  with_items: "{{ groups['master-remove'] }}"
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_API: 3
+
+- name: debug
+  debug: msg="{{ result.stdout }}"

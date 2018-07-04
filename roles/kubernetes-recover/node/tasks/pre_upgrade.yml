@@ -1,0 +1,29 @@
+---
+- name: "Pre-upgrade | check if kubelet container exists"
+  shell: docker ps -af name=kubelet | grep kubelet
+  failed_when: false
+  changed_when: false
+  register: kubelet_container_check
+
+- name: "Pre-upgrade | copy /var/lib/cni from kubelet"
+  command: docker cp kubelet:/var/lib/cni /var/lib/cni
+  args:
+    creates: "/var/lib/cni"
+  failed_when: false
+  when: kubelet_container_check.rc == 0
+
+- name: "Pre-upgrade | ensure kubelet container service is stopped if using host deployment"
+  service:
+    name: kubelet
+    state: stopped
+  when: kubelet_deployment_type == 'host' and kubelet_container_check.rc == 0
+
+- name: "Pre-upgrade | ensure kubelet container is removed if using host deployment"
+  command: docker rm -fv kubelet
+  failed_when: false
+  changed_when: false
+  register: remove_kubelet_container
+  retries: 4
+  until: remove_kubelet_container.rc == 0
+  delay: 5
+  when: kubelet_deployment_type == 'host' and kubelet_container_check.rc == 0

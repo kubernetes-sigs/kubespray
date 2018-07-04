@@ -1,0 +1,81 @@
+---
+- import_tasks: pre-upgrade.yml
+  tags:
+    - k8s-pre-upgrade
+
+# upstream bug: https://github.com/kubernetes/kubeadm/issues/441
+- name: Disable kube_basic_auth until kubeadm/441 is fixed
+  set_fact:
+    kube_basic_auth: false
+  when: kubeadm_enabled|bool|default(false)
+
+- import_tasks: users-file.yml
+  when: kube_basic_auth|default(true)
+
+- import_tasks: encrypt-at-rest.yml
+  when: kube_encrypt_secret_data
+
+- name: Compare host kubectl with hyperkube container
+  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/cmp /hyperkube /systembindir/kubectl"
+  register: kubectl_task_compare_result
+  until: kubectl_task_compare_result.rc in [0,1,2]
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+  failed_when: "kubectl_task_compare_result.rc not in [0,1,2]"
+  tags:
+    - hyperkube
+    - kubectl
+    - upgrade
+
+- name: Copy kubectl from hyperkube container
+  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp /hyperkube /systembindir/kubectl"
+  when: kubectl_task_compare_result.rc != 0
+  register: kubectl_task_result
+  until: kubectl_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+  tags:
+    - hyperkube
+    - kubectl
+    - upgrade
+
+- name: Install kubectl bash completion
+  shell: "{{ bin_dir }}/kubectl completion bash >/etc/bash_completion.d/kubectl.sh"
+  when: kubectl_task_compare_result.rc != 0 and ansible_os_family in ["Debian","RedHat"]
+  tags:
+    - kubectl
+
+- name: Set kubectl bash completion file
+  file:
+    path: /etc/bash_completion.d/kubectl.sh
+    owner: root
+    group: root
+    mode: 0755
+  when: ansible_os_family in ["Debian","RedHat"]
+  tags:
+    - kubectl
+    - upgrade
+
+- name: Include kubeadm setup if enabled
+  import_tasks: kubeadm-setup.yml
+  when: kubeadm_enabled|bool|default(false)
+
+- name: Include static pod setup if not using kubeadm
+  import_tasks: static-pod-setup.yml
+  when: not kubeadm_enabled|bool|default(false)
+
+- name: Master | label new master
+  shell: kubectl label node {{ groups['master-add'][0] }} node-role.kubernetes.io/master=true --overwrite
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+
+- name: Master | Remove fault master
+  shell: kubectl delete node {{ item }}
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+  #ignore_errors: true
+  failed_when: false
+  with_items: "{{ groups['master-remove'] }}"
+

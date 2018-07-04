@@ -22,7 +22,7 @@ To deploy the cluster you can use :
     sudo pip install -r requirements.txt
 
     # Copy ``inventory/sample`` as ``inventory/mycluster``
-    cp -rfp inventory/sample inventory/mycluster
+    cp -rfp inventory/sample/* inventory/mycluster
 
     # Update Ansible inventory file with inventory builder
     declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
@@ -47,6 +47,21 @@ Install the necessary requirements
 
     sudo pip install -r requirements.txt
     vagrant up
+
+### recover master cluster
+    # Install dependencies from ``requirements.txt``, if there are not dependencies in the machine that will being running recover-master-cluster ansible.
+    sudo pip install -r requirements.txt
+
+    # Copy ``inventory/sample`` as ``inventory/mycluster``, if there are not mycluster/hosts.ini, mycluster/hosts-recover-master.ini or mycluster/group_vars in the machine that will being running recover-master-cluster ansible.
+    cp -rfp inventory/sample/* inventory/mycluster
+
+    # Review and change context under ``inventory/mycluster/group_vars`` and ``inventory/mycluster/hosts-recover-master.ini``
+    cat inventory/mycluster/group_vars/all.yml
+    cat inventory/mycluster/group_vars/k8s-cluster.yml
+    cat inventory/mycluster/hosts-recover-master.ini
+
+    # Recover master with Ansible Playbook manully.
+    ansible-playbook -i inventory/mycluster/hosts-recover-master.ini recover-master.yml
 
 Documents
 ---------

@@ -1,0 +1,54 @@
+---
+- name: Backup etcd data
+  command: /bin/true
+  notify:
+    - Refresh Time Fact
+    - Set Backup Directory
+    - Create Backup Directory
+    - Stat etcd v2 data directory
+    - Backup etcd v2 data
+    - Backup etcd v3 data
+  when: etcd_cluster_is_healthy.rc == 0
+
+- name: Refresh Time Fact
+  setup: filter=ansible_date_time
+
+- name: Set Backup Directory
+  set_fact:
+    etcd_backup_directory: "{{ etcd_backup_prefix }}/etcd-{{ ansible_date_time.date }}_{{ ansible_date_time.time }}"
+
+- name: Create Backup Directory
+  file:
+    path: "{{ etcd_backup_directory }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Stat etcd v2 data directory
+  stat:
+    path: "{{ etcd_data_dir }}/member"
+  register: etcd_data_dir_member
+
+- name: Backup etcd v2 data
+  when: etcd_data_dir_member.stat.exists
+  command: >-
+    {{ bin_dir }}/etcdctl backup
+      --data-dir {{ etcd_data_dir }}
+      --backup-dir {{ etcd_backup_directory }}
+  environment:
+    ETCDCTL_API: 2
+  retries: 3
+  delay: "{{ retry_stagger | random + 3 }}"
+
+- name: Backup etcd v3 data
+  command: >-
+    {{ bin_dir }}/etcdctl
+      --endpoints={{ etcd_access_addresses }}
+      snapshot save {{ etcd_backup_directory }}/snapshot.db
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+  retries: 3
+  delay: "{{ retry_stagger | random + 3 }}"

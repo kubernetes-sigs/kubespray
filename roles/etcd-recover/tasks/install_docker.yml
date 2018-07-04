@@ -1,0 +1,30 @@
+---
+- name: Install | Copy etcdctl binary from docker container
+  command: sh -c "{{ docker_bin_dir }}/docker rm -f etcdctl-binarycopy;
+           {{ docker_bin_dir }}/docker create --name etcdctl-binarycopy {{ etcd_image_repo }}:{{ etcd_image_tag }} &&
+           {{ docker_bin_dir }}/docker cp etcdctl-binarycopy:/usr/local/bin/etcdctl {{ bin_dir }}/etcdctl &&
+           {{ docker_bin_dir }}/docker rm -f etcdctl-binarycopy"
+  register: etcd_task_result
+  until: etcd_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+  when: etcd_cluster_setup
+
+- name: Install etcd launch script
+  template:
+    src: etcd.j2
+    dest: "{{ bin_dir }}/etcd"
+    owner: 'root'
+    mode: 0750
+    backup: yes
+  when: etcd_cluster_setup
+
+- name: Install etcd-events launch script
+  template:
+    src: etcd-events.j2
+    dest: "{{ bin_dir }}/etcd-events"
+    owner: 'root'
+    mode: 0750
+    backup: yes
+  when: etcd_events_cluster_setup

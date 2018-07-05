@@ -6,9 +6,17 @@
   when: "daemonset_state.stdout == \"\""
   command: "kubectl create -f {{ role_path }}/glusterfs-daemonset.json"
 - register: "daemonset_state"
-  command: "kubectl get daemonset glusterfs -o=name --ignore-not-found=true"
+  command: "kubectl get daemonset glusterfs --output=json --ignore-not-found=true"
+- name: "Wait for daemonset to become available."
+  register: "daemonset_state"
+  command: "kubectl get daemonset glusterfs --output=json --ignore-not-found=true"
   changed_when: false
-- assert: { that: "daemonset_state.stdout != \"\"", message: "Daemonset glusterfs is not present." }
+  vars:
+    ready: "{{ daemonset_state.stdout|from_json|json_query(\"status.numberReady\") }}"
+    desired: "{{ daemonset_state.stdout|from_json|json_query(\"status.desiredNumberScheduled\") }}"
+  until: "ready == desired"
+  retries: 60
+  delay: 5
 
 - name: "Label Gluster nodes"
   with_items: "{{ groups['heketi-node'] }}"

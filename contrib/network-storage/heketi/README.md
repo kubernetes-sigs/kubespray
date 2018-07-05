@@ -9,3 +9,8 @@ Copy the inventory.yml.sample over to inventory/sample/k8s_heketi_inventory.yml 
 ```
 ansible-playbook --ask-become -i inventory/sample/k8s_heketi_inventory.yml contrib/network-storage/heketi/heketi.yml
 ```
+
+## Tear down
+```
+ansible-playbook --ask-become -i inventory/sample/k8s_heketi_inventory.yml contrib/network-storage/heketi/heketi-tear-down.yml
+```

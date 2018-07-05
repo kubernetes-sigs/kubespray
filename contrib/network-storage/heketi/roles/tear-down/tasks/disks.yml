@@ -1,0 +1,51 @@
+---
+- name: "Install lvm utils (RedHat)"
+  delegate_to: "{{ node }}"
+  become: true
+  yum:
+      name: "lvm2"
+      state: "present"
+  when: "ansible_os_family == 'RedHat'"
+
+- name: "Install lvm utils (Debian)"
+  delegate_to: "{{ node }}"
+  become: true
+  apt:
+      name: "lvm2"
+      state: "present"
+  when: "ansible_os_family == 'Debian'"
+- name: "Get volume group information."
+  delegate_to: "{{ node }}"
+  become: true
+  shell: "pvs {{ disk }} --option vg_name | tail -n+2"
+  vars: { disk: "{{ hostvars[node]['disk_volume_device_1'] }}" }
+  register: "volume_groups"
+  ignore_errors: true
+  changed_when: false
+- name: "Remove volume groups."
+  delegate_to: "{{ node }}"
+  become: true
+  command: "vgremove {{ volume_group }} --yes"
+  with_items: "{{ volume_groups.stdout_lines }}"
+  loop_control: { loop_var: "volume_group" }
+- name: "Remove physical volume from cluster disks."
+  delegate_to: "{{ node }}"
+  become: true
+  command: "pvremove {{ disk }} --yes"
+  vars: { disk: "{{ hostvars[node]['disk_volume_device_1'] }}" }
+  ignore_errors: true
+- name: "Remove lvm utils (RedHat)"
+  delegate_to: "{{ node }}"
+  become: true
+  yum:
+      name: "lvm2"
+      state: "absent"
+  when: "ansible_os_family == 'RedHat'"
+
+- name: "Remove lvm utils (Debian)"
+  delegate_to: "{{ node }}"
+  become: true
+  apt:
+      name: "lvm2"
+      state: "absent"
+  when: "ansible_os_family == 'Debian'"

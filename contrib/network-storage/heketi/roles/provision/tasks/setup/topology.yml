@@ -13,8 +13,6 @@
 - name: "Get heketi topology."
   register: "heketi_topology"
   command: "heketi-cli -s http://localhost:48080 topology info --json"
-- set_fact: { heketi_volumes: "{{ heketi_topology.stdout|from_json|json_query(\"clusters[*].volumes[?name=='heketidbstorage']\") }}" }
-- name: "Ensure heketi nodes are configured."
-  assert:
-    that: "heketi_topology.stdout|from_json|json_query(\"clusters[*].nodes[*]\")|flatten|length > 0"
-    msg: "Heketi topology missing."
+  until: "heketi_topology.stdout|from_json|json_query(\"clusters[*].nodes[*].devices[?state=='online'].id\")|flatten|length == groups['heketi-node']|length"
+  retries: 60
+  delay: 5

@@ -92,6 +92,12 @@ These commands are useful only for upgrading fully-deployed, healthy, existing
 hosts. This will definitely not work for undeployed or partially deployed
 hosts.
 
+Upgrade docker:
+
+```
+ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=docker
+```
+
 Upgrade etcd:
 
 ```

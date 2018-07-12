@@ -38,9 +38,9 @@ See more details in the [ansible guide](ansible.md).
 Adding nodes
 ------------
 
-You may want to add **worker** nodes to your existing cluster. This can be done by re-running the `cluster.yml` playbook, or you can target the bare minimum needed to get kubelet installed on the worker and talking to your masters. This is especially helpful when doing something like autoscaling your clusters.
+You may want to add worker, master or etcd nodes to your existing cluster. This can be done by re-running the `cluster.yml` playbook, or you can target the bare minimum needed to get kubelet installed on the worker and talking to your masters. This is especially helpful when doing something like autoscaling your clusters.
 
--   Add the new worker node to your inventory under kube-node (or utilize a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html)).
+-   Add the new worker node to your inventory in the appropriate group (or utilize a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html)).
 -   Run the ansible-playbook command, substituting `scale.yml` for `cluster.yml`:
 
         ansible-playbook -i inventory/mycluster/hosts.ini scale.yml -b -v \

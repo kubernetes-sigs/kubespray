@@ -90,7 +90,7 @@ Supported Components
 --------------------
 
 -   Core
-    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.10.4
+    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.11.1
     -   [etcd](https://github.com/coreos/etcd) v3.2.18
     -   [docker](https://www.docker.com/) v17.03 (see note)
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
@@ -105,6 +105,7 @@ Supported Components
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v1.1.0-k8s1.10
     -   [cert-manager](https://github.com/jetstack/cert-manager) v0.3.2
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.16.2
+    -   [coredns](https://github.com/coredns/coredns) v1.1.3
 
 Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 

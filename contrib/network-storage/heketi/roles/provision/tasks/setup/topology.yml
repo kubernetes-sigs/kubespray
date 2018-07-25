@@ -1,18 +1,21 @@
 ---
 - name: "Get heketi topology."
   register: "heketi_topology"
-  command: "heketi-cli -s http://localhost:48080 topology info --json"
+  command: "kubectl exec {{ initial_heketi_pod_name }} -- heketi-cli topology info --json"
 - name: "Render heketi topology template."
+  become: true
   vars: { nodes: "{{ groups['heketi-node'] }}" }
   template:
     src: "topology.json.j2"
-    dest: "{{ artifacts_dir }}/topology.json"
+    dest: "{{ kube_config_dir }}/topology.json"
+- name: "Copy topology configuration into container."
+  command: "kubectl cp {{ kube_config_dir }}/topology.json {{ initial_heketi_pod_name }}:/tmp/topology.json"
 - name: "Load heketi topology."
   when: "heketi_topology.stdout|from_json|json_query(\"clusters[*].nodes[*]\")|flatten|length == 0"
-  command: "heketi-cli -s http://localhost:48080 topology load --json={{ artifacts_dir }}/topology.json"
+  command: "kubectl exec {{ initial_heketi_pod_name }} -- heketi-cli topology load --json=/tmp/topology.json"
 - name: "Get heketi topology."
   register: "heketi_topology"
-  command: "heketi-cli -s http://localhost:48080 topology info --json"
+  command: "kubectl exec {{ initial_heketi_pod_name }} -- heketi-cli topology info --json"
   until: "heketi_topology.stdout|from_json|json_query(\"clusters[*].nodes[*].devices[?state=='online'].id\")|flatten|length == groups['heketi-node']|length"
   retries: 60
   delay: 5

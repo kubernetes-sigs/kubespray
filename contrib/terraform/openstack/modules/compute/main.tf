@@ -59,6 +59,17 @@ resource "openstack_compute_secgroup_v2" "k8s" {
     self        = true
   }
 }
+resource "openstack_compute_secgroup_v2" "worker" {
+  name        = "${var.cluster_name}-k8s-worker"
+  description = "${var.cluster_name} - Kubernetes worker nodes"
+
+  rule {
+    ip_protocol = "tcp"
+    from_port   = "30000"
+    to_port     = "32767"
+    cidr        = "0.0.0.0/0"
+  }
+}
 
 resource "openstack_compute_instance_v2" "bastion" {
   name       = "${var.cluster_name}-bastion-${count.index+1}"
@@ -226,6 +237,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
 
   security_groups = ["${openstack_compute_secgroup_v2.k8s.name}",
     "${openstack_compute_secgroup_v2.bastion.name}",
+    "${openstack_compute_secgroup_v2.worker.name}",
     "default",
   ]
 
@@ -253,6 +265,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   }
 
   security_groups = ["${openstack_compute_secgroup_v2.k8s.name}",
+    "${openstack_compute_secgroup_v2.worker.name}",
     "default",
   ]
 

@@ -1,0 +1,1 @@
+../kubespray-aws-inventory.py

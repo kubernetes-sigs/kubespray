@@ -2,6 +2,12 @@ variable "cluster_name" {
   default = "example"
 }
 
+variable "az_list" {
+  description = "List of Availability Zones available in your OpenStack cluster"
+  type = "list"
+  default = ["nova"]
+}
+
 variable "number_of_bastions" {
   default = 1
 }

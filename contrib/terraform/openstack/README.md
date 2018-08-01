@@ -32,7 +32,11 @@ floating IP addresses or not.
 - Kubernetes worker nodes
 
 Note that the Ansible script will report an invalid configuration if you wind up
-with an even number of etcd instances since that is not a valid configuration.
+with an even number of etcd instances since that is not a valid configuration. This
+restriction includes standalone etcd nodes that are deployed in a cluster along with
+master nodes with etcd replicas. As an example, if you have three master nodes with 
+etcd replicas and three standalone etcd nodes, the script will fail since there are 
+now six total etcd replicas.
 
 ### GlusterFS
 The Terraform configuration supports provisioning of an optional GlusterFS

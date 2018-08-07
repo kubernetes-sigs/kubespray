@@ -706,6 +706,10 @@ def query_list(hosts):
 
     for name, attrs, hostgroups in hosts:
         for group in set(hostgroups):
+            # Ansible 2.6.2 stopped supporting empty group names: https://github.com/ansible/ansible/pull/42584/commits/d4cd474b42ed23d8f8aabb2a7f84699673852eaf
+            # Empty group name defaults to "all" in Ansible < 2.6.2 so we alter empty group names to "all"
+            if not group: group = "all"
+
             groups[group].setdefault('hosts', [])
             groups[group]['hosts'].append(name)
 

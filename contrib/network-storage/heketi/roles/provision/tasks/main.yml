@@ -1,34 +1,27 @@
 ---
-- name: "Render configuration."
-  become: true
-  template: { src: "{{ item.file }}.j2", dest: "{{ kube_config_dir }}/{{ item.file }}" }
-  with_items:
-      - { file: "glusterfs-daemonset.json" }
-      - { file: "heketi-bootstrap.json" }
-      - { file: "heketi-deployment.json" }
-      - { file: "heketi-service-account.json" }
-- name: "Prepare kubernetes."
-  include_tasks: "kubernetes.yml"
+- name: "Kubernetes Apps | GlusterFS"
+  include_tasks: "glusterfs.yml"
 
-- name: "Test heketi setup."
+- name: "Kubernetes Apps | Heketi Secrets"
+  include_tasks: "secret.yml"
+
+- name: "Kubernetes Apps | Test Heketi"
   register: "heketi_service_state"
-  command: "{{ bin_dir }}/kubectl get service heketi -o=name --ignore-not-found=true"
+  command: "kubectl get service heketi-storage-endpoints -o=name --ignore-not-found=true"
   changed_when: false
 
-- name: "Setup heketi."
+- name: "Kubernetes Apps | Bootstrap Heketi"
   when: "heketi_service_state.stdout == \"\""
-  include_tasks: "setup.yml"
+  include_tasks: "bootstrap.yml"
 
-- name: "Test storage class."
-  changed_when: false
-  command: "{{ bin_dir }}/kubectl get storageclass gluster --ignore-not-found=true --output=json"
-  register: "storageclass"
-- name: "Setup storage class."
-  when: "storageclass.stdout == \"\""
+- name: "Kubernetes Apps | Heketi"
+  include_tasks: "heketi.yml"
+
+- name: "Kubernetes Apps | Heketi Topology"
+  include_tasks: "topology.yml"
+
+- name: "Kubernetes Apps | Heketi Storage"
+  include_tasks: "storage.yml"
+
+- name: "Kubernetes Apps | Storage Class"
   include_tasks: "storageclass.yml"
-- name: "Test storage class."
-  changed_when: false
-  command: "{{ bin_dir }}/kubectl get storageclass gluster --ignore-not-found=true --output=json"
-  register: "storageclass"
-- name: "Ensure storage class is up."
-  assert: { that: "storageclass.stdout != \"\"" }

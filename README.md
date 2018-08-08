@@ -86,6 +86,7 @@ Supported Linux Distributions
 
 Note: Upstart/SysV init based OS types are not supported.
 
+<<<<<<< HEAD
 Supported Components
 --------------------
 
@@ -95,7 +96,7 @@ Supported Components
     -   [docker](https://www.docker.com/) v17.03 (see note)
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
 -   Network Plugin
-    -   [calico](https://github.com/projectcalico/calico) v2.6.8
+    -   [calico](https://github.com/projectcalico/calico) v3.1.1
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
     -   [cilium](https://github.com/cilium/cilium) v1.0.0-rc8
     -   [contiv](https://github.com/contiv/install) v1.1.7
@@ -105,6 +106,21 @@ Supported Components
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v1.1.0-k8s1.10
     -   [cert-manager](https://github.com/jetstack/cert-manager) v0.4.0
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.17.1
+=======
+Versions of supported components
+--------------------------------
+
+-   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.10.2
+-   [etcd](https://github.com/coreos/etcd/releases) v3.2.16
+-   [flanneld](https://github.com/coreos/flannel/releases) v0.10.0
+-   [calico](https://docs.projectcalico.org/v3.1/releases/) v3.1.1
+-   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
+-   [cilium](https://github.com/cilium/cilium) v1.0.0-rc8
+-   [contiv](https://github.com/contiv/install/releases) v1.1.7
+-   [weave](http://weave.works/) v2.3.0
+-   [docker](https://www.docker.com/) v17.03 (see note)
+-   [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 (see Note 2)
+>>>>>>> 4dd7098bc24959716733bc7bcb3f120fa8dc275d
 
 Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 

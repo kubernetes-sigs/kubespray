@@ -4,7 +4,10 @@
   changed_when: false
   register: "heketi_storage_state"
 - name: "Create heketi storage."
-  command: "{{ bin_dir }}/kubectl create -f {{ kube_config_dir }}/heketi-storage.json"
+  kube:
+    name: "GlusterFS"
+    filename: "{{ kube_config_dir }}/heketi-storage.json"
+    state: "present"
   vars:
     secret_query: "items[?metadata.name=='heketi-storage-secret' && kind=='Secret']"
     endpoints_query: "items[?metadata.name=='heketi-storage-endpoints' && kind=='Endpoints']"
@@ -16,17 +19,17 @@
     - "heketi_storage_state.stdout|from_json|json_query(service_query)|length == 0"
     - "heketi_storage_state.stdout|from_json|json_query(job_query)|length == 0"
   register: "heketi_storage_result"
-- command: "{{ bin_dir }}/kubectl get secrets,endpoints,services,jobs --output=json"
-  register: "heketi_storage_state"
+
 - name: "Get state of heketi storage service, endpoint, secret and job."
   command: "{{ bin_dir }}/kubectl get secrets,endpoints,services,jobs --output=json"
   changed_when: false
   register: "heketi_storage_state"
   vars:
+    heketi_storage_state: { stdout: "{}" }
     secret_query: "items[?metadata.name=='heketi-storage-secret' && kind=='Secret']"
     endpoints_query: "items[?metadata.name=='heketi-storage-endpoints' && kind=='Endpoints']"
     service_query: "items[?metadata.name=='heketi-storage-endpoints' && kind=='Service']"
-    job_query: "items[?metadata.name=='heketi-storage-copy-job' && kind=='Job' && status.conditions[?type=='Complete'].status=='True']"
+    job_query: "items[?metadata.name=='heketi-storage-copy-job' && kind=='Job' && status.succeeded==1]"
   until:
     - "heketi_storage_state.stdout|from_json|json_query(secret_query)|length == 1"
     - "heketi_storage_state.stdout|from_json|json_query(endpoints_query)|length == 1"
@@ -34,5 +37,3 @@
     - "heketi_storage_state.stdout|from_json|json_query(job_query)|length == 1"
   retries: 60
   delay: 5
-# looks like there is some race condition that leads to "Database file did not appear, exiting.", can't figure out where
-- command: "sleep 10"

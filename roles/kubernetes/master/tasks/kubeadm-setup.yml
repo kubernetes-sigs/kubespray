@@ -65,9 +65,23 @@
   command: "cp -TR {{ etcd_cert_dir }} {{ kube_config_dir }}/ssl/etcd"
   changed_when: false
 
+- name: gets the kubeadm version
+  command: "{{ bin_dir }}/kubeadm version -o short"
+  register: kubeadm_output
+
+- name: sets kubeadm api version to v1alpha1
+  set_fact:
+    kubeadmConfig_api_version: v1alpha1
+  when: kubeadm_output.stdout < "v1.11.0"
+
+- name: defaults kubeadm api version to v1alpha2
+  set_fact:
+    kubeadmConfig_api_version: v1alpha2
+  when: kubeadm_output.stdout >= "v1.11.0"
+
 - name: kubeadm | Create kubeadm config
   template:
-    src: kubeadm-config.yaml.j2
+    src: "kubeadm-config.{{ kubeadmConfig_api_version }}.yaml.j2"
     dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
   register: kubeadm_config
 

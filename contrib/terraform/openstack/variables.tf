@@ -2,6 +2,12 @@ variable "cluster_name" {
   default = "example"
 }
 
+variable "az_list" {
+  description = "List of Availability Zones available in your OpenStack cluster"
+  type = "list"
+  default = ["nova"]
+}
+
 variable "number_of_bastions" {
   default = 1
 }
@@ -95,6 +101,12 @@ variable "flavor_gfs_node" {
 variable "network_name" {
   description = "name of the internal network to use"
   default     = "internal"
+}
+
+variable "subnet_cidr" {
+  description = "Subnet CIDR block."
+  type = "string"
+  default = "10.0.0.0/24"
 }
 
 variable "dns_nameservers" {

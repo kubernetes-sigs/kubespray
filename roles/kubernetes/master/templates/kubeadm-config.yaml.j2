@@ -34,12 +34,21 @@ apiServerExtraArgs:
   bind-address: {{ kube_apiserver_bind_address }}
   insecure-bind-address: {{ kube_apiserver_insecure_bind_address }}
   insecure-port: "{{ kube_apiserver_insecure_port }}"
+{% if kube_version | version_compare('v1.10', '<') %}
   admission-control: {{ kube_apiserver_admission_control | join(',') }}
+{% else %}
+{% if kube_apiserver_enable_admission_plugins|length > 0 %}
+  enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }} 
+{% endif %}
+{% if kube_apiserver_disable_admission_plugins|length > 0 %}
+  disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }} 
+{% endif %}
+{% endif %}
   apiserver-count: "{{ kube_apiserver_count }}"
 {% if kube_version | version_compare('v1.9', '>=') %}
   endpoint-reconciler-type: lease
 {% endif %}
-{% if etcd_events_cluster_setup  %}
+{% if etcd_events_cluster_enabled %}
   etcd-servers-overrides: "/events#{{ etcd_events_access_addresses }}"
 {% endif %}
   service-node-port-range: {{ kube_apiserver_node_port_range }}
@@ -75,6 +84,12 @@ controllerManagerExtraArgs:
   node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
   node-monitor-period: {{ kube_controller_node_monitor_period }}
   pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
+{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
+controllerManagerExtraVolumes:
+- name: openstackcacert
+  hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
+  mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
+{% endif %}
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}

@@ -6,9 +6,9 @@ Deploy a Production Ready Kubernetes Cluster
 If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 
 -   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere or Baremetal**
--   **High available** cluster
+-   **Highly available** cluster
 -   **Composable** (Choice of the network plugin for instance)
--   Support most popular **Linux distributions**
+-   Supports most popular **Linux distributions**
 -   **Continuous integration tests**
 
 Quick Start
@@ -40,7 +40,7 @@ To deploy the cluster you can use :
 For Vagrant we need to install python dependencies for provisioning tasks.
 Check if Python and pip are installed:
 
-    python -v && pip -v
+    python -V && pip -V
 
 If this returns the version of the software, you're good to go. If not, download and install Python from here <https://www.python.org/downloads/source/>
 Install the necessary requirements
@@ -97,13 +97,14 @@ Supported Components
 -   Network Plugin
     -   [calico](https://github.com/projectcalico/calico) v2.6.8
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-    -   [cilium](https://github.com/cilium/cilium) v1.0.0-rc8
+    -   [cilium](https://github.com/cilium/cilium) v1.1.2
     -   [contiv](https://github.com/contiv/install) v1.1.7
     -   [flanneld](https://github.com/coreos/flannel) v0.10.0
-    -   [weave](https://github.com/weaveworks/weave) v2.3.0
+    -   [weave](https://github.com/weaveworks/weave) v2.4.0
 -   Application
-    -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.15.0
-    -   [cert-manager](https://github.com/jetstack/cert-manager/releases) v0.3.0
+    -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v1.1.0-k8s1.10
+    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.4.0
+    -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.17.1
 
 Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 

@@ -50,6 +50,7 @@ Install the necessary requirements
 
 Documents
 ---------
+test
 
 -   [Requirements](#requirements)
 -   [Kubespray vs ...](docs/comparisons.md)

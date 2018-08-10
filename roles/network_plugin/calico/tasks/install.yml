@@ -1,0 +1,189 @@
+---
+
+- name: Calico | Write Calico cni config
+  template:
+    src: "cni-calico.conflist.j2"
+    dest: "/etc/cni/net.d/10-calico.conflist"
+    owner: kube
+
+- name: Calico | Create calico certs directory
+  file:
+    dest: "{{ calico_cert_dir }}"
+    state: directory
+    mode: 0750
+    owner: root
+    group: root
+
+- name: Calico | Link etcd certificates for calico-node
+  file:
+    src: "{{ etcd_cert_dir }}/{{ item.s }}"
+    dest: "{{ calico_cert_dir }}/{{ item.d }}"
+    state: hard
+    force: yes
+  with_items:
+    - {s: "ca.pem", d: "ca_cert.crt"}
+    - {s: "node-{{ inventory_hostname }}.pem", d: "cert.crt"}
+    - {s: "node-{{ inventory_hostname }}-key.pem", d: "key.pem"}
+
+- name: Calico | Install calicoctl container script
+  template:
+    src: calicoctl-container.j2
+    dest: "{{ bin_dir }}/calicoctl"
+    mode: 0755
+    owner: root
+    group: root
+  changed_when: false
+
+- name: Calico | Copy cni plugins from hyperkube
+  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp -r /opt/cni/bin/. /cnibindir/"
+  register: cni_task_result
+  until: cni_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+  tags:
+    - hyperkube
+    - upgrade
+
+- name: Calico | Copy cni plugins from calico/cni container
+  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }} sh -c 'cp /opt/cni/bin/* /cnibindir/'"
+  register: cni_task_result
+  until: cni_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+  when:
+    - "overwrite_hyperkube_cni|bool"
+  tags:
+    - hyperkube
+    - upgrade
+
+- name: Calico | Set cni directory permissions
+  file:
+    path: /opt/cni/bin
+    state: directory
+    owner: kube
+    recurse: true
+    mode: 0755
+
+- name: Calico | wait for etcd
+  uri:
+    url: "{{ etcd_access_addresses.split(',') | first }}/health"
+    validate_certs: no
+    client_cert: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem"
+    client_key: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem"
+  register: result
+  until: result.status == 200 or result.status == 401
+  retries: 10
+  delay: 5
+  run_once: true
+
+- name: Calico | Check if calico network pool has already been configured
+  shell: >
+    {{ bin_dir }}/calicoctl get ippool | grep -w "{{ kube_pods_subnet }}" | wc -l
+  register: calico_conf
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+
+- name: Calico | Configure calico network pool
+  shell: >
+    echo "
+      { "kind": "IPPool",
+        "apiVersion": "projectcalico.org/v3",
+        "metadata": {
+          "name": "{{ calico_pool_name }}",
+        },
+        "spec": {
+          "cidr": "{{ kube_pods_subnet }}",
+          "ipipMode": "{{ ipip_mode|capitalize }}",
+          "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl create -f -
+  run_once: true
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  when:
+    - 'calico_conf.stdout == "0"'
+
+- name: "Determine nodeToNodeMesh needed state"
+  set_fact:
+    nodeToNodeMeshEnabled: "false"
+  when:
+    - peer_with_router|default(false) or peer_with_calico_rr|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+  run_once: yes
+
+
+- name: Calico | Set global as_num
+  shell: >
+    echo '
+    { "kind": "BGPConfiguration",
+    "apiVersion": "projectcalico.org/v3",
+    "metadata": {
+        "name": "default",
+    },
+    "spec": {
+        "logSeverityScreen": "Info",
+        "nodeToNodeMeshEnabled": {{ nodeToNodeMeshEnabled|default('true') }} ,
+        "asNumber": {{ global_as_num }} }} ' | {{ bin_dir }}/calicoctl --skip-exists create -f -
+  run_once: true
+  delegate_to: "{{ groups['kube-master'][0] }}"
+
+- name: Calico | Configure peering with router(s)
+  shell: >
+   echo '{
+   "apiVersion": "projectcalico.org/v3",
+   "kind": "bgpPeer",
+   "metadata": {
+      "name": "{{ inventory_hostname }}-bgp"
+   },
+   "spec": {
+      "asNumber": "{{ item.as }}",
+      "node": "{{ inventory_hostname }}",
+      "scope": "node",
+      "peerIP": "{{ item.router_id }}"
+   }}' | {{ bin_dir }}/calicoctl create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - "{{ peers|default([]) }}"
+  when:
+    - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+
+- name: Calico | Configure peering with route reflectors
+  shell: >
+   echo '{
+   "apiVersion": "projectcalico.org/v3",
+   "kind": "bgpPeer",
+   "metadata": {
+      "name": "{{ inventory_hostname }}"
+   },
+   "spec": {
+      "asNumber": "{{ local_as | default(global_as_num)}}",
+      "scope": "node",
+      "node": "{{ inventory_hostname }}",
+      "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(hostvars[item]["ansible_default_ipv4"]["address"]) }}"
+   }}' | {{ bin_dir }}/calicoctl create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - "{{ groups['calico-rr'] | default([]) }}"
+  when:
+    - (peer_with_calico_rr|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+    - hostvars[item]['cluster_id'] == cluster_id)
+
+- name: Calico | Create calico manifests
+  template:
+    src: "{{item.file}}.j2"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items:
+    - {name: calico-config, file: calico-config.yml, type: cm}
+    - {name: calico-node, file: calico-node.yml, type: ds}
+    - {name: calico, file: calico-node-sa.yml, type: sa}
+    - {name: calico, file: calico-cr.yml, type: clusterrole}
+    - {name: calico, file: calico-crb.yml, type: clusterrolebinding}
+  register: calico_node_manifests
+  when:
+    - inventory_hostname in groups['kube-master']
+    - rbac_enabled or item.type not in rbac_resources

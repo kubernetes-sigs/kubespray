@@ -27,9 +27,23 @@
   register: temp_token
   delegate_to: "{{ groups['kube-master'][0] }}"
 
+- name: gets the kubeadm version
+  command: "{{ bin_dir }}/kubeadm version -o short"
+  register: kubeadm_output
+
+- name: sets kubeadm api version to v1alpha1
+  set_fact:
+    kubeadmConfig_api_version: v1alpha1
+  when: kubeadm_output.stdout < "v1.11.0"
+
+- name: defaults kubeadm api version to v1alpha2
+  set_fact:
+    kubeadmConfig_api_version: v1alpha2
+  when: kubeadm_output.stdout >= "v1.11.0"
+
 - name: Create kubeadm client config
   template:
-    src: kubeadm-client.conf.j2
+    src: "kubeadm-client.conf.{{ kubeadmConfig_api_version }}.j2"
     dest: "{{ kube_config_dir }}/kubeadm-client.conf"
     backup: yes
   when: not is_kube_master

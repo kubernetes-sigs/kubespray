@@ -63,3 +63,7 @@ variable "bastion_fips" {
 variable "supplementary_master_groups" {
   default = ""
 }
+
+variable "availability_zones" {
+  type = "list"
+}

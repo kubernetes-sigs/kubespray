@@ -44,3 +44,5 @@ external_net = "<UUID>"
 subnet_cidr = "<cidr>"
 floatingip_pool = "<pool>"
 
+# availability zones
+availability_zones = ["nova"]

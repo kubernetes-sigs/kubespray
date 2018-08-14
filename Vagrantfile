@@ -44,6 +44,8 @@ $kube_node_instances_with_disks = false
 $kube_node_instances_with_disks_size = "20G"
 $kube_node_instances_with_disks_number = 2
 
+$playbook = "cluster.yml"
+
 $local_release_dir = "/vagrant/temp"
 
 host_vars = {}
@@ -157,7 +159,7 @@ Vagrant.configure("2") do |config|
       # when all the machines are up and ready.
       if i == $num_instances
         config.vm.provision "ansible" do |ansible|
-          ansible.playbook = "cluster.yml"
+          ansible.playbook = $playbook
           if File.exist?(File.join(File.dirname($inventory), "hosts"))
             ansible.inventory_path = $inventory
           end

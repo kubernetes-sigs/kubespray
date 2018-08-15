@@ -82,6 +82,12 @@ controllerManagerExtraArgs:
   node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
   node-monitor-period: {{ kube_controller_node_monitor_period }}
   pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
+{% if kubeadm_config_controlplane=="selfhosting" %}
+apiServerExtraVolumes:
+- name: etcd
+  hostPath: "{{ kube_config_dir }}/ssl/etcd"
+  mountPath: "{{ kube_config_dir }}/ssl/etcd"
+{% endif %}
 {% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
 controllerManagerExtraVolumes:
 - name: openstackcacert
@@ -113,3 +119,15 @@ nodeRegistration:
   taints:
   - effect: NoSchedule
     key: node-role.kubernetes.io/master
+{% if kubeadm_config_controlplane=="selfhosting" or kubeadm_config_pki_location=="secrets" %}
+featureGates:
+{% if groups["kube-master"]|count > 1 %}
+  HighAvailability: true
+{% endif %}
+{% if kubeadm_config_controlplane=="selfhosting" %}
+  SelfHosting: true
+{% endif %}
+{% if kubeadm_config_pki_location=="secrets" %}
+  StoreCertsInSecrets: true
+{% endif %}
+{% endif %}

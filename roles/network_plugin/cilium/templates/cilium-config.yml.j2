@@ -1,29 +1,49 @@
-kind: ConfigMap
+---
 apiVersion: v1
+kind: ConfigMap
 metadata:
   name: cilium-config
   namespace: kube-system
 data:
   # This etcd-config contains the etcd endpoints of your cluster. If you use
-  # TLS please make sure you uncomment the ca-file line and add the respective
-  # certificate has a k8s secret, see explanation bellow in the comment labeled
-  # "ETCD-CERT"
+  # TLS please make sure you follow the tutorial in https://cilium.link/etcd-config
   etcd-config: |-
     ---
-    endpoints: 
+    endpoints:
 {% for ip_addr in etcd_access_addresses.split(',') %}
-    - {{ ip_addr }}
+      - {{ ip_addr }}
 {% endfor %}
-    #
-    # In case you want to use TLS in etcd, uncomment the following line
-    # and add the certificate as explained in the comment labeled "ETCD-CERT"
+
+    # In case you want to use TLS in etcd, uncomment the 'ca-file' line
+    # and create a kubernetes secret by following the tutorial in
+    # https://cilium.link/etcd-config
     ca-file: "{{ cilium_cert_dir }}/ca_cert.crt"
-    #
+
     # In case you want client to server authentication, uncomment the following
-    # lines and add the certificate and key in cilium-etcd-secrets bellow
+    # lines and create a kubernetes secret by following the tutorial in
+    # https://cilium.link/etcd-config
     key-file: "{{ cilium_cert_dir }}/key.pem"
     cert-file: "{{ cilium_cert_dir }}/cert.crt"
 
   # If you want to run cilium in debug mode change this value to true
   debug: "{{ cilium_debug }}"
   disable-ipv4: "{{ cilium_disable_ipv4 }}"
+  # If you want to clean cilium state; change this value to true
+  clean-cilium-state: "false"
+  legacy-host-allows-world: "false"
+
+  # If you want cilium monitor to aggregate tracing for packets, set this level
+  # to "low", "medium", or "maximum". The higher the level, the less packets
+  # that will be seen in monitor output.
+  monitor-aggregation-level: "none"
+
+  # Regular expression matching compatible Istio sidecar istio-proxy
+  # container image names
+  sidecar-istio-proxy-image: "cilium/istio_proxy"
+
+  # Encapsulation mode for communication between nodes
+  # Possible values:
+  #   - disabled
+  #   - vxlan (default)
+  #   - geneve
+  tunnel: "vxlan"

@@ -46,17 +46,19 @@ to limit the quota of persistent volumes.
 
 ### Simple directories
 
-``` bash
-for vol in vol6 vol7 vol8; do
-mkdir /mnt/disks/$vol
-done
-```
-
-This is also acceptable in a development environment, but there is no capacity
+In a development environment using `mount --bind` works also, but there is no capacity
 management.
+
+### Block volumeMode PVs
+
+Create a symbolic link under discovery directory to the block device on the node. To use
+raw block devices in pods BlockVolume feature gate must be enabled.
 
 Usage notes
 -----------
+
+Beta PV.NodeAffinity field is used by default. If running against an older K8s
+version, the useAlphaAPI flag must be set in the configMap.
 
 The volume provisioner cannot calculate volume sizes correctly, so you should
 delete the daemonset pod on the relevant host after creating volumes. The pod

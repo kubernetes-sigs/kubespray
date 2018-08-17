@@ -17,10 +17,10 @@ This project will create:
 - Export the variables for your AWS credentials or edit `credentials.tfvars`:
 
 ```
-export AWS_ACCESS_KEY_ID="www"
-export AWS_SECRET_ACCESS_KEY ="xxx"
-export AWS_SSH_KEY_NAME="yyy"
-export AWS_DEFAULT_REGION="zzz"
+export TF_VAR_AWS_ACCESS_KEY_ID="www"
+export TF_VAR_AWS_SECRET_ACCESS_KEY ="xxx"
+export TF_VAR_AWS_SSH_KEY_NAME="yyy"
+export TF_VAR_AWS_DEFAULT_REGION="zzz"
 ```
 - Rename `contrib/terraform/aws/terraform.tfvars.example` to `terraform.tfvars`
 

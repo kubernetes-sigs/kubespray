@@ -1,0 +1,2 @@
+#!/bin/bash
+rkt gc

@@ -1,16 +1,23 @@
-apiVersion: kubeadm.k8s.io/v1alpha1
+apiVersion: kubeadm.k8s.io/v1alpha2
 kind: MasterConfiguration
 api:
   advertiseAddress: {{ ip | default(ansible_default_ipv4.address) }}
   bindPort: {{ kube_apiserver_port }}
 etcd:
-  endpoints:
+  external:
+      endpoints:
 {% for endpoint in etcd_access_addresses.split(',') %}
-  - {{ endpoint }}
+      - {{ endpoint }}
 {% endfor %}
-  caFile: {{ kube_config_dir }}/ssl/etcd/ca.pem
-  certFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}.pem
-  keyFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}-key.pem
+      caFile: {{ kube_config_dir }}/ssl/etcd/ca.pem
+      certFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}.pem
+      keyFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}-key.pem
+{% if kubernetes_audit %}
+auditPolicy:
+  logDir: {{ audit_log_path }}
+  logMaxAge: {{ audit_log_maxage }}
+  path: {{ audit_policy_file }}
+{% endif %}
 networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: {{ kube_service_addresses }}
@@ -19,27 +26,33 @@ kubernetesVersion: {{ kube_version }}
 {% if cloud_provider is defined and cloud_provider != "gce" %}
 cloudProvider: {{ cloud_provider }}
 {% endif %}
-{% if kube_proxy_mode == 'ipvs' and kube_version | version_compare('v1.10', '<') %}
 kubeProxy:
   config:
-    featureGates: SupportIPVSProxyMode=true
-    mode: ipvs
-{% endif %}
+    mode: {{ kube_proxy_mode }}
+    hostnameOverride: {{ inventory_hostname }}
 authorizationModes:
 {% for mode in authorization_modes %}
 - {{ mode }}
 {% endfor %}
-selfHosted: false
 apiServerExtraArgs:
   bind-address: {{ kube_apiserver_bind_address }}
   insecure-bind-address: {{ kube_apiserver_insecure_bind_address }}
   insecure-port: "{{ kube_apiserver_insecure_port }}"
+{% if kube_version | version_compare('v1.10', '<') %}
   admission-control: {{ kube_apiserver_admission_control | join(',') }}
+{% else %}
+{% if kube_apiserver_enable_admission_plugins|length > 0 %}
+  enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }} 
+{% endif %}
+{% if kube_apiserver_disable_admission_plugins|length > 0 %}
+  disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }} 
+{% endif %}
+{% endif %}
   apiserver-count: "{{ kube_apiserver_count }}"
 {% if kube_version | version_compare('v1.9', '>=') %}
   endpoint-reconciler-type: lease
 {% endif %}
-{% if etcd_events_cluster_setup  %}
+{% if etcd_events_cluster_enabled %}
   etcd-servers-overrides: "/events#{{ etcd_events_access_addresses }}"
 {% endif %}
   service-node-port-range: {{ kube_apiserver_node_port_range }}
@@ -75,6 +88,18 @@ controllerManagerExtraArgs:
   node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
   node-monitor-period: {{ kube_controller_node_monitor_period }}
   pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
+{% if kubernetes_audit %}
+apiServerExtraVolumes:
+- name: {{ audit_policy_name }}
+  hostPath: {{ audit_policy_hostpath }}
+  mountPath: {{ audit_policy_mountpath }}
+{% endif %}
+{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
+controllerManagerExtraVolumes:
+- name: openstackcacert
+  hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
+  mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
+{% endif %}
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -93,6 +118,14 @@ apiServerCertSANs:
 {% endfor %}
 certificatesDir: {{ kube_config_dir }}/ssl
 unifiedControlPlaneImage: "{{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}"
+nodeRegistration:
 {% if kube_override_hostname|default('') %}
-nodeName: {{ kube_override_hostname }}
+  name: {{ kube_override_hostname }}
+{% endif %}
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+{% if kubernetes_audit %}
+featureGates:
+  Auditing: true
 {% endif %}

@@ -181,7 +181,7 @@ data "template_file" "inventory" {
 
 resource "null_resource" "inventories" {
   provisioner "local-exec" {
-      command = "echo '${data.template_file.inventory.rendered}' > ../../../inventory/hosts"
+      command = "echo '${data.template_file.inventory.rendered}' > ${var.inventory_file}"
   }
 
   triggers {

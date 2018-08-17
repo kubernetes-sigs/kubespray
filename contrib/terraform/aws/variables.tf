@@ -103,3 +103,7 @@ variable "default_tags" {
   description = "Default tags for all resources"
   type = "map"
 }
+
+variable "inventory_file" {
+  description = "Where to store the generated inventory file"
+}

@@ -17,13 +17,13 @@
 
 - name: Stop if unknown network plugin
   assert:
-    that: network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud']
-  when: network_plugin is defined
+    that: kube_network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud', 'cilium', 'contiv']
+  when: kube_network_plugin is defined
   ignore_errors: "{{ ignore_assert_errors }}"
 
 - name: Stop if incompatible network plugin and cloudprovider
   assert:
-    that: network_plugin != 'calico'
+    that: kube_network_plugin != 'calico'
     msg: "Azure and Calico are not compatible. See https://github.com/projectcalico/calicoctl/issues/949 for details."
   when: cloud_provider is defined and cloud_provider == 'azure'
   ignore_errors: "{{ ignore_assert_errors }}"
@@ -68,7 +68,7 @@
 # NOTICE: the check blatantly ignores the inet6-case
 - name: Guarantee that enough network address space is available for all pods
   assert:
-    that: "{{ kubelet_max_pods <= ((32 - kube_network_node_prefix) ** 2) - 2 }}"
+    that: "{{ kubelet_max_pods <= (2 ** (32 - kube_network_node_prefix)) - 2 }}"
     msg: "Do not schedule more pods on a node than inet addresses are available."
   ignore_errors: "{{ ignore_assert_errors }}"
   when:
@@ -84,12 +84,6 @@
 - name: Stop if access_ip is not pingable
   command: ping -c1 {{ access_ip }}
   when: access_ip is defined
-  ignore_errors: "{{ ignore_assert_errors }}"
-
-- name: Stop if swap enabled
-  assert:
-    that: ansible_swaptotal_mb == 0
-  when: kubelet_fail_swap_on|default(true)
   ignore_errors: "{{ ignore_assert_errors }}"
 
 - name: Stop if RBAC is not enabled when dashboard is enabled

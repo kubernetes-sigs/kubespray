@@ -110,18 +110,18 @@ metadata:
   name: kube-registry-v0
   namespace: kube-system
   labels:
-    k8s-app: kube-registry-upstream
+    k8s-app: registry
     version: v0
     kubernetes.io/cluster-service: "true"
 spec:
   replicas: 1
   selector:
-    k8s-app: kube-registry-upstream
+    k8s-app: registry
     version: v0
   template:
     metadata:
       labels:
-        k8s-app: kube-registry-upstream
+        k8s-app: registry
         version: v0
         kubernetes.io/cluster-service: "true"
     spec:
@@ -164,12 +164,12 @@ metadata:
   name: kube-registry
   namespace: kube-system
   labels:
-    k8s-app: kube-registry-upstream
+    k8s-app: registry
     kubernetes.io/cluster-service: "true"
     kubernetes.io/name: "KubeRegistry"
 spec:
   selector:
-    k8s-app: kube-registry-upstream
+    k8s-app: registry
   ports:
   - name: registry
     port: 5000
@@ -257,7 +257,7 @@ You can use `kubectl` to set up a port-forward from your local node to a
 running Pod:
 
 ``` console
-$ POD=$(kubectl get pods --namespace kube-system -l k8s-app=kube-registry-upstream \
+$ POD=$(kubectl get pods --namespace kube-system -l k8s-app=registry \
             -o template --template '{{range .items}}{{.metadata.name}} {{.status.phase}}{{"\n"}}{{end}}' \
             | grep Running | head -1 | cut -f1 -d' ')
 

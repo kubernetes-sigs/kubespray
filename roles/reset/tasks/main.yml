@@ -167,33 +167,12 @@
     - files
     - dns
 
-- name: reset | check cni network device
-  stat:
-    path: /sys/class/net/cni0
-  register: cni
-  when: kube_network_plugin == 'flannel'
+- name: reset | include file with reset tasks specific to the network_plugin if exists
+  include_tasks: "{{ (role_path + '/../network_plugin/' + kube_network_plugin + '/tasks/reset.yml') | realpath  }}"
+  when:
+    - kube_network_plugin in ['flannel', 'cilium']
   tags:
-    - flannel
-
-- name: reset | remove the network device created by the flannel
-  command: ip link del cni0
-  when: kube_network_plugin == 'flannel' and cni.stat.exists
-  tags:
-    - flannel
-
-- name: reset | check flannel network device
-  stat:
-    path: /sys/class/net/flannel.1
-  register: flannel
-  when: kube_network_plugin == 'flannel'
-  tags:
-    - flannel
-
-- name: reset | remove the network device created by the flannel
-  command: ip link del flannel.1
-  when: kube_network_plugin == 'flannel' and flannel.stat.exists
-  tags:
-    - flannel
+    - network
 
 - name: reset | Restart network
   service:

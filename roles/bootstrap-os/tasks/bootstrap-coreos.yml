@@ -1,28 +1,33 @@
 ---
-- name: Bootstrap | Check if bootstrap is needed
+- name: Bootstrap | CoreOS | Check if bootstrap is needed
   raw: stat /opt/bin/.bootstrapped
   register: need_bootstrap
   failed_when: false
   changed_when: false
   tags:
     - facts
+  when: bootstrap_os == "coreos"
 
-- name: Force binaries directory for Container Linux by CoreOS
+- name:  Bootstrap | CoreOS | Force binaries directory for Container Linux by CoreOS
   set_fact:
     bin_dir: "/opt/bin"
   tags:
     - facts
+  when: bootstrap_os == "coreos"
 
-- name: Bootstrap | Run bootstrap.sh
+- name:  Bootstrap | CoreOS | Run bootstrap.sh
   script: bootstrap.sh
-  when: need_bootstrap.rc != 0
+  when: 
+    - bootstrap_os == "coreos"
+    - need_bootstrap.rc != 0
 
 - set_fact:
     ansible_python_interpreter: "{{ bin_dir }}/python"
   tags:
     - facts
+  when: bootstrap_os == "coreos"
 
-- name: Bootstrap | Check if we need to install pip
+- name:  Bootstrap | CoreOS | Check if we need to install pip
   shell: "pip --version"
   register: need_pip
   failed_when: false
@@ -32,33 +37,44 @@
     - facts
   environment:
     PATH: "{{ ansible_env.PATH }}:{{ bin_dir }}"
+  when: bootstrap_os == "coreos"  
 
-- name: Bootstrap | Copy get-pip.py
+- name:  Bootstrap | CoreOS | Copy get-pip.py
   copy:
     src: get-pip.py
     dest: ~/get-pip.py
-  when: need_pip.rc != 0
+  when: 
+    - bootstrap_os == "coreos"
+    - need_pip.rc != 0
 
-- name: Bootstrap | Install pip
+- name:  Bootstrap | CoreOS | Install pip
   shell: "{{ansible_python_interpreter}} ~/get-pip.py"
-  when: need_pip.rc != 0
+  when: 
+    - bootstrap_os == "coreos"
+    - need_pip.rc != 0
 
-- name: Bootstrap | Remove get-pip.py
+- name:  Bootstrap | CoreOS | Remove get-pip.py
   file:
     path: ~/get-pip.py
     state: absent
-  when: need_pip.rc != 0
+  when: 
+    - bootstrap_os == "coreos"
+    - need_pip.rc != 0
 
-- name: Bootstrap | Install pip launcher
+- name:  Bootstrap | CoreOS | Install pip launcher
   copy:
     src: runner
     dest: "{{ bin_dir }}/pip"
     mode: 0755
-  when: need_pip.rc != 0
+  when: 
+    - bootstrap_os == "coreos"
+    - need_pip.rc != 0
 
-- name: Install required python modules
+- name:  Bootstrap | CoreOS | Install required python modules
   pip:
     name: "{{ item }}"
   with_items: "{{pip_python_coreos_modules}}"
   environment:
     PATH: "{{ ansible_env.PATH }}:{{ bin_dir }}"
+  when: bootstrap_os == "coreos"  
+

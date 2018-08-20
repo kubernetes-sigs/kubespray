@@ -102,7 +102,7 @@ Supported Components
     -   [flanneld](https://github.com/coreos/flannel) v0.10.0
     -   [weave](https://github.com/weaveworks/weave) v2.4.0
 -   Application
-    -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.0.0-k8s1.11
+    -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.0.1-k8s1.11
     -   [cert-manager](https://github.com/jetstack/cert-manager) v0.4.1
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.18.0
 

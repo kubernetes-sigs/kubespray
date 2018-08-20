@@ -12,12 +12,6 @@ etcd:
       caFile: {{ kube_config_dir }}/ssl/etcd/ca.pem
       certFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}.pem
       keyFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}-key.pem
-{% if kubernetes_audit %}
-auditPolicy:
-  logDir: {{ audit_log_hostpath }}
-  logMaxAge: {{ audit_log_maxage }}
-  path: {{ audit_policy_file }}
-{% endif %}
 networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: {{ kube_service_addresses }}
@@ -81,6 +75,13 @@ apiServerExtraArgs:
   runtime-config: {{ kube_api_runtime_config | join(',') }}
 {% endif %}
   allow-privileged: "true"
+{% if kubernetes_audit %}
+  audit-log-path: {{ audit_log_path }}
+  audit-log-maxage: {{ audit_log_maxage }}
+  audit-log-maxbackup: {{ audit_log_maxbackups }}
+  audit-log-maxsize: {{ audit_log_maxsize }}
+  audit-policy-file: {{ audit_policy_file }}
+{% endif %}
 {% for key in kube_kubeadm_apiserver_extra_args %}
   {{ key }}: "{{ kube_kubeadm_apiserver_extra_args[key] }}"
 {% endfor %}
@@ -93,6 +94,18 @@ controllerManagerExtraVolumes:
 - name: openstackcacert
   hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
   mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
+{% endif %}
+{% if kubernetes_audit %}
+apiServerExtraVolumes:
+- name: {{ audit_policy_name }}
+  hostPath: {{ audit_policy_hostpath }}
+  mountPath: {{ audit_policy_mountpath }}
+{% if audit_log_path != "-" %}
+- name: {{ audit_log_name }}
+  hostPath: {{ audit_log_hostpath }}
+  mountPath: {{ audit_log_mountpath }}
+  Writable: true
+{% endif %}
 {% endif %}
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}

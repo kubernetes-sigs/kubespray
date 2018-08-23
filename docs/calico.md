@@ -1,6 +1,13 @@
 Calico
 ===========
 
+---
+ **N.B. Version 2.6.5 upgrade to 3.1.1 is upgrading etcd store to etcdv3**
+ If you create automated backups of etcdv2 please switch for creating etcdv3 backups, as kubernetes and calico now uses etcdv3
+ After migration you can check `/tmp/calico_upgrade/` directory for converted items to etcdv3.
+ **PLEASE TEST upgrade before upgrading production cluster.**
+ ---
+
 Check if the calico-node container is running
 
 ```
@@ -86,7 +93,7 @@ To do so you can deploy BGP route reflectors and peer `calico-node` with them as
 recommended here:
 
 * https://hub.docker.com/r/calico/routereflector/
-* http://docs.projectcalico.org/v2.0/reference/private-cloud/l3-interconnect-fabric
+* https://docs.projectcalico.org/v3.1/reference/private-cloud/l3-interconnect-fabric
 
 You need to edit your inventory and add:
 

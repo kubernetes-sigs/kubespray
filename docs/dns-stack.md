@@ -74,7 +74,7 @@ all queries. It will also deploy a secondary CoreDNS stack
 This does not install dnsmasq or kubedns, but allows you to specify
 `manual_dns_server`, which will be configured on nodes for handling Pod DNS.
 Use this method if you plan to install your own DNS server in the cluster after
-initial deployment.
+initial deployment. If you have two manual DNS servers, separate them with a comma (no space).
 
 #### none
 This does not install any of dnsmasq and kubedns/skydns. This basically disables cluster DNS completely and

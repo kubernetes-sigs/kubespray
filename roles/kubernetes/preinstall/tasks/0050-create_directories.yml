@@ -1,0 +1,58 @@
+- name: Create kubernetes directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: kube
+  when: inventory_hostname in groups['k8s-cluster']
+  become: true
+  tags:
+    - kubelet
+    - k8s-secrets
+    - kube-controller-manager
+    - kube-apiserver
+    - bootstrap-os
+    - apps
+    - network
+    - master
+    - node
+  with_items:
+    - "{{bin_dir}}"
+    - "{{ kube_config_dir }}"
+    - "{{ kube_config_dir }}/ssl"
+    - "{{ kube_manifest_dir }}"
+    - "{{ kube_script_dir }}"
+
+- name: Create cni directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: kube
+  with_items:
+    - "/etc/cni/net.d"
+    - "/opt/cni/bin"
+    - "/var/lib/calico"
+  when:
+    - kube_network_plugin in ["calico", "weave", "canal", "flannel", "contiv", "cilium"]
+    - inventory_hostname in groups['k8s-cluster']
+  tags:
+    - network
+    - cilium
+    - calico
+    - weave
+    - canal
+    - contiv
+    - bootstrap-os
+
+- name: Create local volume provisioner directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: kube
+  with_items:
+    - "{{ local_volume_provisioner_base_dir }}"
+    - "{{ local_volume_provisioner_mount_dir }}"
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - local_volume_provisioner_enabled
+  tags:
+    - persistent_volumes

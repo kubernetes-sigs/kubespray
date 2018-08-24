@@ -94,9 +94,9 @@
     - facts
 
 - name: Gen_certs | Gather etcd master certs
-  command: "tar cfz - -C {{ etcd_cert_dir }} -T /dev/stdin"
+  shell: "tar cfz - -C {{ etcd_cert_dir }} -T /dev/stdin <<< {{ my_master_certs|join(' ') }} {{ all_node_certs|join(' ') }} | base64 --wrap=0"
   args:
-    input: "{{ my_master_certs|join(' ') }} {{ all_node_certs|join(' ') }}"
+    executable: /bin/bash
   register: etcd_master_cert_data
   no_log: true
   check_mode: no
@@ -106,9 +106,9 @@
   notify: set etcd_secret_changed
 
 - name: Gen_certs | Gather etcd node certs
-  command: "tar cfz - -C {{ etcd_cert_dir }} -T /dev/stdin"
+  shell: "tar cfz - -C {{ etcd_cert_dir }} -T /dev/stdin <<< {{ my_node_certs|join(' ') }} | base64 --wrap=0"
   args:
-    stdin: "{{ my_node_certs|join(' ') }}"
+    executable: /bin/bash
   register: etcd_node_cert_data
   no_log: true
   check_mode: no
@@ -118,10 +118,27 @@
         sync_certs|default(false) and inventory_hostname not in groups['etcd']
   notify: set etcd_secret_changed
 
+# NOTE(mattymo): Use temporary file to copy master certs because we have a ~200k
+# char limit when using shell command
+
+# FIXME(mattymo): Use tempfile module in ansible 2.3
+- name: Gen_certs | Prepare tempfile for unpacking certs
+  command: mktemp /tmp/certsXXXXX.tar.gz
+  register: cert_tempfile
+  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
+        inventory_hostname != groups['etcd'][0]
+
+- name: Gen_certs | Write master certs to tempfile
+  copy:
+    content: "{{etcd_master_cert_data.stdout}}"
+    dest: "{{cert_tempfile.stdout}}"
+    owner: root
+    mode: "0600"
+  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
+        inventory_hostname != groups['etcd'][0]
+
 - name: Gen_certs | Unpack certs on masters
-  command: "tar xz -C {{ etcd_cert_dir }}"
-  args:
-    stdin: "{{ etcd_master_cert_data.stdout }}"
+  shell: "base64 -d < {{ cert_tempfile.stdout }} | tar xz -C {{ etcd_cert_dir }}"
   no_log: true
   changed_when: false
   check_mode: no
@@ -129,11 +146,17 @@
         inventory_hostname != groups['etcd'][0]
   notify: set secret_changed
 
+- name: Gen_certs | Cleanup tempfile
+  file:
+    path: "{{cert_tempfile.stdout}}"
+    state: absent
+  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
+        inventory_hostname != groups['etcd'][0]
+
 - name: Gen_certs | Copy certs on nodes
-  command: "tar xz -C {{ etcd_cert_dir }}"
+  shell: "base64 -d <<< '{{etcd_node_cert_data.stdout|quote}}' | tar xz -C {{ etcd_cert_dir }}"
   args:
-    stdin: "{{ etcd_node_cert_data.stdout }}"
-  no_log: true
+    executable: /bin/bash
   changed_when: false
   when: sync_certs|default(false) and
         inventory_hostname not in groups['etcd']

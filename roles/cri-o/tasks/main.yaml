@@ -1,21 +1,34 @@
 ---
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_architecture }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+      paths:
+        - ../vars
+      skip: true
+  tags:
+    - facts
+
 - name: Add OpenShift Origin repository
   yum_repository:
     name: origin
     description: OpenShift Origin Repo
     baseurl: "{{ crio_rhel_repo_base_url }}"
     gpgcheck: no
-  when:
-    - ansible_os_family == 'RedHat'
+  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
 
-- name: Install cri-o
+- name: Install cri-o packages
   package:
     name: "{{ item }}"
     state: present
-  with_items:
-    - cri-o
-    - cri-tools
-    - oci-systemd-hook
+  with_items: "{{ crio_packages }}"
 
 - name: Install cri-o config
   template:
@@ -23,8 +36,11 @@
     dest: /etc/crio/crio.conf
 
 - name: Copy mounts.conf
-  shell: |
-    cp -T /usr/share/containers/mounts.conf /etc/containers/mounts.conf
+  copy:
+    src: mounts.conf
+    dest: /etc/containers/mounts.conf
+  when:
+    - ansible_os_family == 'RedHat'
 
 - name: Create directory for oci hooks
   file:
@@ -35,6 +51,6 @@
 
 - name: Install cri-o service
   service:
-    name: crio
+    name: "{{ crio_service }}"
     enabled: yes
     state: restarted

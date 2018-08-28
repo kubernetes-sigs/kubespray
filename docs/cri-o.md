@@ -26,7 +26,6 @@ skip_downloads: false
 ```
 etcd_deployment_type: host
 kubelet_deployment_type: host
-manage_docker: false
-manage_crio: true
+container_manager: crio
 ```
 

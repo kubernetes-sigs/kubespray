@@ -79,7 +79,7 @@ Supported Linux Distributions
 
 -   **Container Linux by CoreOS**
 -   **Debian** Jessie, Stretch, Wheezy
--   **Ubuntu** 16.04
+-   **Ubuntu** 16.04, 18.04
 -   **CentOS/RHEL** 7
 -   **Fedora/CentOS** Atomic
 -   **openSUSE** Leap 42.3/Tumbleweed

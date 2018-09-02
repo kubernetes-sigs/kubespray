@@ -104,6 +104,7 @@ Supported Components
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.0.1-k8s1.11
     -   [cert-manager](https://github.com/jetstack/cert-manager) v0.4.1
+    -   [coredns](https://github.com/coredns/coredns) v1.2.2
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.18.0
 
 Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).

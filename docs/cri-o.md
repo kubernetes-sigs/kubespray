@@ -15,7 +15,7 @@ Use cri-o instead of docker, set following variable:
 #### all.yml
 
 ```
-kubeadm_enable: true
+kubeadm_enabled: true
 ...
 download_container: false
 skip_downloads: false

@@ -43,7 +43,26 @@
     {% if tiller_max_history is defined %} --history-max={{ tiller_max_history }}{% endif %}
     {% if tiller_enable_tls %} --tiller-tls --tiller-tls-verify --tiller-tls-cert={{ tiller_tls_cert }} --tiller-tls-key={{ tiller_tls_key }} --tls-ca-cert={{ tiller_tls_ca_cert }} {% endif %}
     {% if tiller_secure_release_info %} --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' {% endif %}
-  when: inventory_hostname == groups['kube-master'][0] and ((helm_container is defined and helm_container.changed) or (helm_task_result is defined and helm_task_result.changed))
+  when: inventory_hostname == groups['kube-master'][0]
+  register: install_helm
+  changed_when: false
+  environment: "{{proxy_env}}"
+
+#FIXME: https://github.com/helm/helm/issues/4063
+- name: Helm | Force apply tiller overrides if necessary
+  shell: >
+    {{ bin_dir }}/helm init --upgrade --tiller-image={{ tiller_image_repo }}:{{ tiller_image_tag }} --tiller-namespace={{ tiller_namespace }}
+    {% if helm_skip_refresh %} --skip-refresh{% endif %}
+    {% if helm_stable_repo_url is defined %} --stable-repo-url {{ helm_stable_repo_url }}{% endif %}
+    {% if rbac_enabled %} --service-account=tiller{% endif %}
+    {% if tiller_node_selectors is defined %} --node-selectors {{ tiller_node_selectors }}{% endif %}
+    {% if tiller_override is defined %} --override {{ tiller_override }}{% endif %}
+    {% if tiller_max_history is defined %} --history-max={{ tiller_max_history }}{% endif %}
+    {% if tiller_enable_tls %} --tiller-tls --tiller-tls-verify --tiller-tls-cert={{ tiller_tls_cert }} --tiller-tls-key={{ tiller_tls_key }} --tls-ca-cert={{ tiller_tls_ca_cert }} {% endif %}
+    {% if tiller_secure_release_info %} --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' {% endif %}
+    | kubectl apply -f -
+  changed_when: false
+  when: tiller_override is defined and inventory_hostname == groups['kube-master'][0]
   environment: "{{proxy_env}}"
 
 - name: Helm | Init helm on other master node

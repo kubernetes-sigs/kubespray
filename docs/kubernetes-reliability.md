@@ -33,7 +33,7 @@ Kubelet will try to make `nodeStatusUpdateRetry` post attempts. Currently
 [kubelet.go](https://github.com/kubernetes/kubernetes/blob/release-1.5/pkg/kubelet/kubelet.go#L102).
 
 Kubelet will try to update the status in
-[tryUpdateNodeStatus](https://github.com/kubernetes/kubernetes/blob/release-1.5/pkg/kubelet/kubelet_node_status.go#L345)
+[tryUpdateNodeStatus](https://github.com/kubernetes/kubernetes/blob/release-1.5/pkg/kubelet/kubelet_node_status.go#L312)
 function. Kubelet uses `http.Client()` Golang method, but has no specified
 timeout. Thus there may be some glitches when API Server is overloaded while
 TCP connection is established.

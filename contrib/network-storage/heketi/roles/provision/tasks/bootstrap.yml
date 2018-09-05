@@ -32,13 +32,16 @@
 - name: "Prepare heketi volumes."
   include_tasks: "bootstrap/volumes.yml"
 
+# Remove bootstrap heketi
+- name: "Tear down bootstrap."
+  include_tasks: "bootstrap/tear-down.yml"
+
 # Prepare heketi storage
 - name: "Test heketi storage."
   command: "{{ bin_dir }}/kubectl get secrets,endpoints,services,jobs --output=json"
   changed_when: false
   register: "heketi_storage_state"
-- command: "{{ bin_dir }}/kubectl get secrets,endpoints,services,jobs --output=json"
-  register: "job"
+# ensure endpoints actually exist before trying to move database data to it
 - name: "Create heketi storage."
   include_tasks: "bootstrap/storage.yml"
   vars:
@@ -51,7 +54,3 @@
     - "heketi_storage_state.stdout|from_json|json_query(endpoints_query)|length == 0"
     - "heketi_storage_state.stdout|from_json|json_query(service_query)|length == 0"
     - "heketi_storage_state.stdout|from_json|json_query(job_query)|length == 0"
-
-# Remove bootstrap heketi
-- name: "Tear down bootstrap."
-  include_tasks: "bootstrap/tear-down.yml"

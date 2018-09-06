@@ -147,8 +147,27 @@
   with_items:
     - "{{ peers|default([]) }}"
   when:
+    - calico_version_on_server.stdout|version_compare('v3.0.0', '>') or calico_upgrade_enabled
     - peer_with_router|default(false)
     - inventory_hostname in groups['k8s-cluster']
+
+- name: Calico | Configure peering with router(s) (legacy)
+  shell: >
+   echo '{
+   "kind": "bgpPeer",
+   "spec": {"asNumber": "{{ item.as }}"},
+   "apiVersion": "v1",
+   "metadata": {"node": "{{ inventory_hostname }}", "scope": "node", "peerIP": "{{ item.router_id }}"}
+   }'
+   | {{ bin_dir }}/calicoctl create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items: "{{ peers|default([]) }}"
+  when:
+   - calico_version_on_server.stdout|version_compare('v3.0.0', '<')
+   - not calico_upgrade_enabled
+   - peer_with_router|default(false)
+   - inventory_hostname in groups['k8s-cluster']
 
 - name: Calico | Configure peering with route reflectors
   shell: >
@@ -169,9 +188,31 @@
   with_items:
     - "{{ groups['calico-rr'] | default([]) }}"
   when:
-    - (peer_with_calico_rr|default(false)
+    - calico_version_on_server.stdout|version_compare('v3.0.0', '>') or calico_upgrade_enabled
+    - peer_with_calico_rr|default(false)
     - inventory_hostname in groups['k8s-cluster']
-    - hostvars[item]['cluster_id'] == cluster_id)
+    - hostvars[item]['cluster_id'] == cluster_id
+
+- name: Calico | Configure peering with route reflectors (legacy)
+  shell: >
+   echo '{
+   "kind": "bgpPeer",
+   "spec": {"asNumber": "{{ local_as | default(global_as_num)}}"},
+   "apiVersion": "v1",
+   "metadata": {"node": "{{ inventory_hostname }}",
+     "scope": "node",
+     "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(hostvars[item]["ansible_default_ipv4"]["address"]) }}"}
+   }'
+   | {{ bin_dir }}/calicoctl create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items: "{{ groups['calico-rr'] | default([]) }}"
+  when:
+   - calico_version_on_server.stdout|version_compare('v3.0.0', '<')
+   - not calico_upgrade_enabled
+   - peer_with_calico_rr|default(false)
+   - hostvars[item]['cluster_id'] == cluster_id
+
 
 - name: Calico | Create calico manifests
   template:

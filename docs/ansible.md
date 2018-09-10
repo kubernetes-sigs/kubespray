@@ -158,7 +158,7 @@ And this play only removes the K8s cluster DNS resolver IP from hosts' /etc/reso
 ```
 ansible-playbook -i inventory/sample/hosts.ini -e dnsmasq_dns_server='' cluster.yml --tags resolvconf
 ```
-And this prepares all container images localy (at the ansible runner node) without installing
+And this prepares all container images locally (at the ansible runner node) without installing
 or upgrading related stuff or trying to upload container to K8s cluster nodes:
 ```
 ansible-playbook -i inventory/sample/hosts.ini cluster.yml \

@@ -10,6 +10,9 @@ skip_downloads: false
 download_run_once: False
 download_compress: 1
 
+# if this is set to true will download container
+download_container: True
+
 # if this is set to true, uses the localhost for download_run_once mode
 # (requires docker and sudo to access docker). You may want this option for
 # local caching of docker images or for Container Linux by CoreOS cluster nodes.
@@ -24,38 +27,49 @@ download_always_pull: False
 download_delegate: "{% if download_localhost %}localhost{% else %}{{groups['kube-master'][0]}}{% endif %}"
 
 # Arch of Docker images and needed packages
-image_arch: amd64
+image_arch: "{{host_architecture | default('amd64')}}"
 
 # Versions
-kube_version: v1.11.2
+kube_version: v1.11.3
 kubeadm_version: "{{ kube_version }}"
 etcd_version: v3.2.18
 # TODO(mattymo): Move calico versions to roles/network_plugins/calico/defaults
 # after migration to container download
-calico_version: "v2.6.8"
-calico_ctl_version: "v1.6.3"
-calico_cni_version: "v1.11.4"
-calico_policy_version: "v1.0.3"
-calico_rr_version: "v0.4.2"
+calico_version: "v3.1.3"
+calico_ctl_version: "v3.1.3"
+calico_cni_version: "v3.1.3"
+calico_policy_version: "v3.1.3"
+calico_rr_version: "v0.6.1"
 flannel_version: "v0.10.0"
 flannel_cni_version: "v0.3.0"
 vault_version: 0.10.1
 weave_version: "2.4.0"
-pod_infra_version: 3.0
+pod_infra_version: 3.1
 contiv_version: 1.1.7
-cilium_version: "v1.1.2"
+cilium_version: "v1.2.0"
 
 # Download URLs
 kubeadm_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm"
 vault_download_url: "https://releases.hashicorp.com/vault/{{ vault_version }}/vault_{{ vault_version }}_linux_{{ image_arch }}.zip"
+etcd_download_url: "https://github.com/coreos/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+hyperkube_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kube_version }}/bin/linux/amd64/hyperkube"
 
 # Checksums
-kubeadm_checksum: 6b17720a65b8ff46efe92a5544f149c39a221910d89939838d75581d4e6924c0
+etcd_checksum: b729db0732448064271ea6fdcb901773c4fe917763ca07776f22d0e5e0bd4097
+hyperkube_checksum: dac8da16dd6688e52b5dc510f5dd0a20b54350d52fb27ceba2f018ba2c8be692
+kubeadm_checksum: 422a7a32ed9a7b1eaa2a4f9d121674dfbe80eb41e206092c13017d097f75aaec
 vault_binary_checksum: 3c4d70ba71619a43229e65c67830e30e050eab7a81ac6b28325ff707e5914188
 
 # Containers
+# In some cases, we need a way to set --registry-mirror or --insecure-registry for docker,
+# it helps a lot for local private development or bare metal environment.
+# So you need define --registry-mirror or --insecure-registry, and modify the following url address.
+# example:
+# You need to deploy kubernetes cluster on local private development.
+# Also provide the address of your own private registry.
+# And use --insecure-registry options for docker
 etcd_image_repo: "quay.io/coreos/etcd"
-etcd_image_tag: "{{ etcd_version }}"
+etcd_image_tag: "{{ etcd_version }}{%- if image_arch != 'amd64' -%}-{{ image_arch }}{%- endif -%}"
 flannel_image_repo: "quay.io/coreos/flannel"
 flannel_image_tag: "{{ flannel_version }}"
 flannel_cni_image_repo: "quay.io/coreos/flannel-cni"
@@ -101,9 +115,12 @@ dnsmasq_image_tag: "{{ dnsmasq_version }}"
 kubedns_version: 1.14.10
 kubedns_image_repo: "gcr.io/google_containers/k8s-dns-kube-dns-{{ image_arch }}"
 kubedns_image_tag: "{{ kubedns_version }}"
-coredns_version: 1.2.0
-coredns_image_repo: "docker.io/coredns/coredns"
-coredns_image_tag: "{{ coredns_version }}"
+
+coredns_version: "{%- if image_arch != 'amd64' -%}1.1.3{%- else -%}1.2.2{%- endif -%}"
+coredns_image_repo: "gcr.io/google-containers/coredns"
+coredns_image_tag: "{{ coredns_version }}{%- if image_arch != 'amd64' -%}__{{ image_arch}}_linux{%- endif -%}"
+
+
 dnsmasq_nanny_image_repo: "gcr.io/google_containers/k8s-dns-dnsmasq-nanny-{{ image_arch }}"
 dnsmasq_nanny_image_tag: "{{ kubedns_version }}"
 dnsmasq_sidecar_image_repo: "gcr.io/google_containers/k8s-dns-sidecar-{{ image_arch }}"
@@ -139,9 +156,9 @@ registry_proxy_image_tag: "0.4"
 local_volume_provisioner_image_repo: "quay.io/external_storage/local-volume-provisioner"
 local_volume_provisioner_image_tag: "v2.1.0"
 cephfs_provisioner_image_repo: "quay.io/external_storage/cephfs-provisioner"
-cephfs_provisioner_image_tag: "v2.0.1-k8s1.11"
+cephfs_provisioner_image_tag: "v2.1.0-k8s1.11"
 ingress_nginx_controller_image_repo: "quay.io/kubernetes-ingress-controller/nginx-ingress-controller"
-ingress_nginx_controller_image_tag: "0.18.0"
+ingress_nginx_controller_image_tag: "0.19.0"
 ingress_nginx_default_backend_image_repo: "gcr.io/google_containers/defaultbackend"
 ingress_nginx_default_backend_image_tag: "1.4"
 cert_manager_version: "v0.4.1"
@@ -173,6 +190,19 @@ downloads:
     sha256: "{{ etcd_digest_checksum|default(None) }}"
     groups:
       - etcd
+  etcd_file:
+    enabled: true
+    file: true
+    version: "{{ etcd_version }}"
+    dest: "etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    sha256: "{{ etcd_checksum }}"
+    source_url: "{{ etcd_download_url }}"
+    url: "{{ etcd_download_url }}"
+    unarchive: true
+    owner: "root"
+    mode: "0755"
+    groups:
+      - etcd
   kubeadm:
     enabled: "{{ kubeadm_enabled }}"
     file: true
@@ -192,6 +222,19 @@ downloads:
     repo: "{{ hyperkube_image_repo }}"
     tag: "{{ hyperkube_image_tag }}"
     sha256: "{{ hyperkube_digest_checksum|default(None) }}"
+    groups:
+      - k8s-cluster
+  hyperkube_file:
+    enabled: true
+    file: true
+    version: "{{ kube_version }}"
+    dest: "hyperkube"
+    sha256: "{{ hyperkube_checksum }}"
+    source_url: "{{ hyperkube_download_url }}"
+    url: "{{ hyperkube_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
     groups:
       - k8s-cluster
   cilium:

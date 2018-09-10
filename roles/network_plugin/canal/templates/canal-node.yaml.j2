@@ -19,9 +19,7 @@ spec:
         k8s-app: canal-node
     spec:
       hostNetwork: true
-{% if rbac_enabled %}
       serviceAccountName: canal
-{% endif %}
       tolerations:
         - effect: NoSchedule
           operator: Exists
@@ -30,6 +28,9 @@ spec:
         - name: lib-modules
           hostPath:
             path: /lib/modules
+        - name: var-lib-calico
+          hostPath:
+            path: /var/lib/calico
         - name: var-run-calico
           hostPath:
             path: /var/run/calico
@@ -50,6 +51,10 @@ spec:
         - name: "canal-certs"
           hostPath:
             path: "{{ canal_cert_dir }}"
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
       containers:
         # Runs the flannel daemon to enable vxlan networking between
         # container hosts.
@@ -127,6 +132,9 @@ spec:
             - name: "canal-certs"
               mountPath: "{{ canal_cert_dir }}"
               readOnly: true
+            - name: xtables-lock
+              mountPath: /run/xtables.lock
+              readOnly: false
         # Runs calico/node container on each Kubernetes node.  This
         # container programs network policy and local routes on each
         # host.
@@ -203,6 +211,9 @@ spec:
               readOnly: true
             - mountPath: /var/run/calico
               name: var-run-calico
+              readOnly: false
+            - mountPath: /var/lib/calico
+              name: var-lib-calico
               readOnly: false
             - name: "canal-certs"
               mountPath: "{{ canal_cert_dir }}"

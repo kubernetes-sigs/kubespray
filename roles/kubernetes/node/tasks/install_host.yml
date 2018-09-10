@@ -1,23 +1,17 @@
 ---
-- name: install | Compare host kubelet with hyperkube container
-  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/cmp /hyperkube /systembindir/kubelet"
-  register: kubelet_task_compare_result
-  until: kubelet_task_compare_result.rc in [0,1,2]
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
+
+- name: install | Copy kubelet binary from download dir
+  command: rsync -piu "{{ local_release_dir }}/hyperkube" "{{ bin_dir }}/kubelet"
   changed_when: false
-  failed_when: "kubelet_task_compare_result.rc not in [0,1,2]"
   tags:
     - hyperkube
     - upgrade
 
-- name: install | Copy kubelet from hyperkube container
-  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp -f /hyperkube /systembindir/kubelet"
-  when: kubelet_task_compare_result.rc != 0
-  register: kubelet_task_result
-  until: kubelet_task_result.rc == 0
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
+- name: install | Set kubelet binary permissions
+  file:
+    path: "{{ bin_dir }}/kubelet"
+    mode: "0755"
+    state: file
   tags:
     - hyperkube
     - upgrade

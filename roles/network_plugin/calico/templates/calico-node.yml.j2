@@ -22,9 +22,7 @@ spec:
         kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
     spec:
       hostNetwork: true
-{% if rbac_enabled %}
       serviceAccountName: calico-node
-{% endif %}
       tolerations:
         - effect: NoSchedule
           operator: Exists
@@ -79,12 +77,6 @@ spec:
             # Set Felix logging to "info"
             - name: FELIX_LOGSEVERITYSCREEN
               value: "info"
-            # Disable autocreation of pools
-            - name: CALICO_NO_DEFAULT_POOLS
-              value: "true"
-            # Enable libnetwork
-            - name: CALICO_LIBNETWORK_ENABLED
-              value: "true"
             # Set MTU for tunnel device used if ipip is enabled
 {% if calico_mtu is defined %}
             - name: FELIX_IPINIPMTU
@@ -144,6 +136,7 @@ spec:
               memory: {{ calico_node_memory_requests }}
           livenessProbe:
             httpGet:
+              host: 127.0.0.1
               path: /liveness
               port: 9099
             periodSeconds: 10
@@ -151,6 +144,7 @@ spec:
             failureThreshold: 6
           readinessProbe:
             httpGet:
+              host: 127.0.0.1
               path: /readiness
               port: 9099
             periodSeconds: 10
@@ -160,6 +154,8 @@ spec:
               readOnly: true
             - mountPath: /var/run/calico
               name: var-run-calico
+            - mountPath: /var/lib/calico
+              name: var-lib-calico
               readOnly: false
             - mountPath: /calico-secrets
               name: etcd-certs
@@ -171,6 +167,9 @@ spec:
         - name: var-run-calico
           hostPath:
             path: /var/run/calico
+        - name: var-lib-calico
+          hostPath:
+            path: /var/lib/calico
         # Used to install CNI.
         - name: cni-bin-dir
           hostPath:
@@ -186,4 +185,3 @@ spec:
     rollingUpdate:
       maxUnavailable: {{ serial | default('20%') }}
     type: RollingUpdate
-

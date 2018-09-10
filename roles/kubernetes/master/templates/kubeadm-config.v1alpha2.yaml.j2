@@ -2,10 +2,10 @@ apiVersion: kubeadm.k8s.io/v1alpha2
 kind: MasterConfiguration
 api:
 {% if groups['kube-master'] | length > 1 and kubeadm_config_api_fqdn is defined %}
- controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}:{{ kube_apiserver_port }}
+  controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
 {% else %}
- advertiseAddress: {{ ip | default(ansible_default_ipv4.address) }}
- bindPort: {{ kube_apiserver_port }}
+  advertiseAddress: {{ ip | default(ansible_default_ipv4.address) }}
+  bindPort: {{ kube_apiserver_port }}
 {% endif %}
 etcd:
   external:
@@ -37,16 +37,20 @@ authorizationModes:
 {% endfor %}
 apiServerExtraArgs:
   bind-address: {{ kube_apiserver_bind_address }}
+{% if kube_apiserver_insecure_port|string != "0" %}
   insecure-bind-address: {{ kube_apiserver_insecure_bind_address }}
+{% endif %}
+{% if kube_apiserver_insecure_port|string != "0" or kube_version | version_compare('v1.10', '<') %}
   insecure-port: "{{ kube_apiserver_insecure_port }}"
+{% endif %}
 {% if kube_version | version_compare('v1.10', '<') %}
   admission-control: {{ kube_apiserver_admission_control | join(',') }}
 {% else %}
 {% if kube_apiserver_enable_admission_plugins|length > 0 %}
-  enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }} 
+  enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }}
 {% endif %}
 {% if kube_apiserver_disable_admission_plugins|length > 0 %}
-  disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }} 
+  disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }}
 {% endif %}
 {% endif %}
   apiserver-count: "{{ kube_apiserver_count }}"
@@ -83,7 +87,7 @@ apiServerExtraArgs:
 {% endif %}
   allow-privileged: "true"
 {% if kubernetes_audit %}
-  audit-log-path: {{ audit_log_path }}
+  audit-log-path: "{{ audit_log_path }}"
   audit-log-maxage: "{{ audit_log_maxage }}"
   audit-log-maxbackup: "{{ audit_log_maxbackups }}"
   audit-log-maxsize: "{{ audit_log_maxsize }}"
@@ -92,10 +96,16 @@ apiServerExtraArgs:
 {% for key in kube_kubeadm_apiserver_extra_args %}
   {{ key }}: "{{ kube_kubeadm_apiserver_extra_args[key] }}"
 {% endfor %}
+{% if kube_feature_gates %}
+  feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
 controllerManagerExtraArgs:
   node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
   node-monitor-period: {{ kube_controller_node_monitor_period }}
   pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
+{% if kube_feature_gates %}
+  feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
 {% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
 controllerManagerExtraVolumes:
 - name: openstackcacert
@@ -114,14 +124,14 @@ apiServerExtraVolumes:
   writable: true
 {% endif %}
 {% endif %}
-{% if kube_feature_gates %}
-  feature-gates: {{ kube_feature_gates|join(',') }}
-{% endif %}
 {% for key in kube_kubeadm_controller_extra_args %}
   {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
 {% endfor %}
-{% if kube_kubeadm_scheduler_extra_args|length > 0 %}
 schedulerExtraArgs:
+{% if kube_feature_gates %}
+  feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
+{% if kube_kubeadm_scheduler_extra_args|length > 0 %}
 {% for key in kube_kubeadm_scheduler_extra_args %}
   {{ key }}: "{{ kube_kubeadm_scheduler_extra_args[key] }}"
 {% endfor %}

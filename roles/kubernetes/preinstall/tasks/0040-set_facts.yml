@@ -1,4 +1,37 @@
 ---
+- set_fact:
+    architecture_groups:
+      x86_64: amd64
+      aarch64: arm64
+
+- name: ansible_architecture_rename
+  set_fact:
+    host_architecture: >-
+      {%- if ansible_architecture in architecture_groups -%}
+      {{architecture_groups[ansible_architecture]}}
+      {%- else -%}
+       {{ansible_architecture}}
+      {% endif %}
+
+- name: Force binaries directory for Container Linux by CoreOS
+  set_fact:
+    bin_dir: "/opt/bin"
+  when: ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+  tags:
+    - facts
+
+- name: check if atomic host
+  stat:
+    path: /run/ostree-booted
+  register: ostree
+
+- set_fact:
+    is_atomic: "{{ ostree.stat.exists }}"
+
+- set_fact:
+    kube_cert_group: "kube"
+  when: is_atomic
+
 - name: check resolvconf
   shell: which resolvconf
   register: resolvconf
@@ -111,3 +144,17 @@
       nameserver {{( dnsmasq_server + nameservers|d([]) + cloud_resolver|d([])) | join(',nameserver ')}}
     supersede_nameserver:
       supersede domain-name-servers {{( dnsmasq_server + nameservers|d([]) + cloud_resolver|d([])) | join(', ') }};
+
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+      paths:
+        - ../vars
+      skip: true

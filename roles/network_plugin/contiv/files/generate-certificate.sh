@@ -17,7 +17,7 @@ rm -f $KEY_PATH
 rm -f $CERT_PATH
 
 openssl genrsa -out $KEY_PATH 2048 >/dev/null 2>&1
-openssl req -new -x509 -sha256 -days 3650 \
+openssl req -new -x509 -sha256 -days 36500 \
 	-key $KEY_PATH \
 	-out $CERT_PATH \
 	-subj "/C=US/ST=CA/L=San Jose/O=CPSG/OU=IT Department/CN=auth-local.cisco.com"

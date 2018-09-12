@@ -1,9 +1,9 @@
 def run(username, credentialsId, ami, network_plugin, aws_access, aws_secret) {
-      def inventory_path = pwd() + "/inventory/sample/hosts.ini"
+      def inventory_path = pwd() + "/inventory/sample/${env.CI_JOB_NAME}-${env.BUILD_NUMBER}.ini"
       dir('tests') {
           wrap([$class: 'AnsiColorBuildWrapper', colorMapName: "xterm"]) {
               try {
-                  create_vm("${env.JOB_NAME}-${env.BUILD_NUMBER}", inventory_path, ami, username, network_plugin, aws_access, aws_secret)
+                  create_vm("${env.CI_JOB_NAME}-${env.BUILD_NUMBER}", inventory_path, ami, username, network_plugin, aws_access, aws_secret)
                   install_cluster(inventory_path, credentialsId, network_plugin)
 
                   test_apiserver(inventory_path, credentialsId)

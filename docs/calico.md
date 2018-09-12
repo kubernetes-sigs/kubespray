@@ -1,6 +1,13 @@
 Calico
 ===========
 
+---
+ **N.B. Version 2.6.5 upgrade to 3.1.1 is upgrading etcd store to etcdv3**
+ If you create automated backups of etcdv2 please switch for creating etcdv3 backups, as kubernetes and calico now uses etcdv3
+ After migration you can check `/tmp/calico_upgrade/` directory for converted items to etcdv3.
+ **PLEASE TEST upgrade before upgrading production cluster.**
+ ---
+
 Check if the calico-node container is running
 
 ```
@@ -86,7 +93,7 @@ To do so you can deploy BGP route reflectors and peer `calico-node` with them as
 recommended here:
 
 * https://hub.docker.com/r/calico/routereflector/
-* http://docs.projectcalico.org/v2.0/reference/private-cloud/l3-interconnect-fabric
+* https://docs.projectcalico.org/v3.1/reference/private-cloud/l3-interconnect-fabric
 
 You need to edit your inventory and add:
 
@@ -168,4 +175,13 @@ By default the felix agent(calico-node) will abort if the Kernel RPF setting is 
 
 ```
 calico_node_ignorelooserpf: true
+```
+
+Note that in OpenStack you must allow `ipip` traffic in your security groups,
+otherwise you will experience timeouts.
+To do this you must add a rule which allows it, for example:
+
+```
+neutron  security-group-rule-create  --protocol 4  --direction egress  k8s-a0tp4t
+neutron  security-group-rule-create  --protocol 4  --direction igress  k8s-a0tp4t
 ```

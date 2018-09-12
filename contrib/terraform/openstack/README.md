@@ -32,7 +32,11 @@ floating IP addresses or not.
 - Kubernetes worker nodes
 
 Note that the Ansible script will report an invalid configuration if you wind up
-with an even number of etcd instances since that is not a valid configuration.
+with an even number of etcd instances since that is not a valid configuration. This
+restriction includes standalone etcd nodes that are deployed in a cluster along with
+master nodes with etcd replicas. As an example, if you have three master nodes with 
+etcd replicas and three standalone etcd nodes, the script will fail since there are 
+now six total etcd replicas.
 
 ### GlusterFS
 The Terraform configuration supports provisioning of an optional GlusterFS
@@ -135,7 +139,7 @@ the one you want to use with the environment variable `OS_CLOUD`:
 export OS_CLOUD=mycloud
 ```
 
-##### Openrc method (deprecated)
+##### Openrc method
 
 When using classic environment variables, Terraform uses default `OS_*`
 environment variables.  A script suitable for your environment may be available
@@ -218,6 +222,8 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tf`.
 |`number_of_bastions` | Number of bastion hosts to create. Scripts assume this is really just zero or one |
 |`number_of_gfs_nodes_no_floating_ip` | Number of gluster servers to provision. |
 | `gfs_volume_size_in_gb` | Size of the non-ephemeral volumes to be attached to store the GlusterFS bricks |
+|`supplementary_master_groups` | To add ansible groups to the masters, such as `kube-node` for tainting them as nodes, empty by default. |
+|`supplementary_node_groups` | To add ansible groups to the nodes, such as `kube-ingress` for running ingress controller pods, empty by default. |
 
 #### Terraform state files
 
@@ -299,11 +305,15 @@ If you have deployed and destroyed a previous iteration of your cluster, you wil
 
 #### Bastion host
 
-If you are not using a bastion host, but not all of your nodes have floating IPs, create a file `inventory/$CLUSTER/group_vars/no-floating.yml` with the following content.  Use one of your nodes with a floating IP (this should have been output at the end of the Terraform step) and the appropriate user for that OS, or if you have another jump host, use that.
+Bastion access will be determined by:
 
-```
-ansible_ssh_common_args: '-o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p -q USER@MASTER_IP"'
-```
+ - Your choice on the amount of bastion hosts (set by `number_of_bastions` terraform variable).
+ - The existence of nodes/masters with floating IPs (set by `number_of_k8s_masters`, `number_of_k8s_nodes`, `number_of_k8s_masters_no_etcd` terraform variables).
+
+If you have a bastion host, your ssh traffic will be directly routed through it. This is regardless of whether you have masters/nodes with a floating IP assigned.
+If you don't have a bastion host, but at least one of your masters/nodes have a floating IP, then ssh traffic will be tunneled by one of these machines.
+
+So, either a bastion host, or at least master/node with a floating IP are required.
 
 #### Test access
 

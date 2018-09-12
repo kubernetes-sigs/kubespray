@@ -3,7 +3,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: kube-dns
-  namespace: "{{system_namespace}}"
+  namespace: kube-system
   labels:
     k8s-app: kube-dns
     kubernetes.io/cluster-service: "true"
@@ -27,11 +27,31 @@ spec:
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ''
     spec:
+      # When having win nodes in cluster without this patch, this pod cloud try to be created in windows
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       tolerations:
       - key: "CriticalAddonsOnly"
         operator: "Exists"
-      - effect: NoSchedule
-        operator: Exists
+      - effect: "NoSchedule"
+        operator: "Equal"
+        key: "node-role.kubernetes.io/master"
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: "kubernetes.io/hostname"
+            labelSelector:
+              matchLabels:
+                k8s-app: kube-dns
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: In
+                values:
+                - "true"
       volumes:
       - name: kube-dns-config
         configMap:
@@ -110,6 +130,7 @@ spec:
         - --
         - -k
         - --cache-size=1000
+        - --dns-loop-detect
         - --log-facility=-
         - --server=/{{ dns_domain }}/127.0.0.1#10053
         - --server=/in-addr.arpa/127.0.0.1#10053
@@ -154,6 +175,4 @@ spec:
             memory: 20Mi
             cpu: 10m
       dnsPolicy: Default  # Don't use cluster DNS.
-{% if rbac_enabled %}
       serviceAccountName: kube-dns
-{% endif %}

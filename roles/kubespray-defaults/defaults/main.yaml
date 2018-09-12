@@ -5,19 +5,26 @@ bootstrap_os: none
 
 # Use proxycommand if bastion host is in group all
 # This change obseletes editing ansible.cfg file depending on bastion existance
-ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ ansible_user }}@{{hostvars['bastion']['ansible_host']}} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
+ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ hostvars['bastion']['ansible_user'] }}@{{ hostvars['bastion']['ansible_host'] }} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
 
 kube_api_anonymous_auth: false
 
 # Default value, but will be set to true automatically if detected
 is_atomic: false
 
+# optional disable the swap
+disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.9.3
+kube_version: v1.11.3
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: iptables
+
+# Kube-proxy nodeport address.
+# cidr to bind nodeport services. Flag --nodeport-addresses on kube-proxy manifest
+kube_proxy_nodeport_addresses: false
+# kube_proxy_nodeport_addresses_cidr: 10.0.1.0/24
 
 # Set to true to allow pre-checks to fail and continue deployment
 ignore_assert_errors: false
@@ -49,6 +56,7 @@ resolvconf_mode: docker_dns
 deploy_netchecker: false
 # Ip address of the kubernetes skydns service
 skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('address') }}"
+skydns_server_secondary: "{{ kube_service_addresses|ipaddr('net')|ipaddr(4)|ipaddr('address') }}"
 dnsmasq_dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
 dns_domain: "{{ cluster_name }}"
 
@@ -60,7 +68,6 @@ dns_domain: "{{ cluster_name }}"
 kube_config_dir: /etc/kubernetes
 kube_script_dir: "{{ bin_dir }}/kubernetes-scripts"
 kube_manifest_dir: "{{ kube_config_dir }}/manifests"
-system_namespace: kube-system
 
 # This is where all the cert scripts and certs will be located
 kube_cert_dir: "{{ kube_config_dir }}/ssl"
@@ -92,6 +99,9 @@ kube_network_plugin: calico
 
 # Determines if calico-rr group exists
 peer_with_calico_rr: "{{ 'calico-rr' in groups and groups['calico-rr']|length > 0 }}"
+
+# Set to false to disable calico-upgrade
+calico_upgrade_enabled: true
 
 # Kubernetes internal network for services, unused block of space.
 kube_service_addresses: 10.233.0.0/18
@@ -127,20 +137,69 @@ kube_apiserver_insecure_bind_address: 127.0.0.1
 kube_apiserver_insecure_port: 8080
 
 # Aggregator
-kube_api_aggregator_routing: true
+kube_api_aggregator_routing: false
+
+# Container for runtime
+container_manager: docker
+
+## Uncomment this if you want to force overlay/overlay2 as docker storage driver
+## Please note that overlay2 is only supported on newer kernels
+# docker_storage_options: -s overlay2
+
+## Enable docker_container_storage_setup, it will configure devicemapper driver on Centos7 or RedHat7.
+docker_container_storage_setup: false
+
+## It must be define a disk path for docker_container_storage_setup_devs.
+## Otherwise docker-storage-setup will be executed incorrectly.
+# docker_container_storage_setup_devs: /dev/vdb
+
+## Uncomment this if you have more than 3 nameservers, then we'll only use the first 3.
+docker_dns_servers_strict: false
 
 # Path used to store Docker data
 docker_daemon_graph: "/var/lib/docker"
+
+## Used to set docker daemon iptables options to true
+docker_iptables_enabled: "false"
 
 # Docker log options
 # Rotate container stderr/stdout logs at 50m and keep last 5
 docker_log_opts: "--log-opt max-size=50m --log-opt max-file=5"
 
+## An obvious use case is allowing insecure-registry access to self hosted registries.
+## Can be ipddress and domain_name.
+## example define 172.19.16.11 or mirror.registry.io
+# docker_insecure_registries:
+#   - mirror.registry.io
+#   - 172.19.16.11
+
+## Add other registry,example China registry mirror.
+# docker_registry_mirrors:
+#   - https://registry.docker-cn.com
+#   - https://mirror.aliyuncs.com
+
+## If non-empty will override default system MounFlags value.
+## This option takes a mount propagation flag: shared, slave
+## or private, which control whether mounts in the file system
+## namespace set up for docker will receive or propagate mounts
+## and unmounts. Leave empty for system default
+# docker_mount_flags:
+
 ## A string of extra options to pass to the docker daemon.
 ## This string should be exactly as you wish it to appear.
-## An obvious use case is allowing insecure-registry access
-## to self hosted registries like so:
-docker_options: "--insecure-registry={{ kube_service_addresses }} --graph={{ docker_daemon_graph }} {{ docker_log_opts }}"
+docker_options: >-
+  {%- if docker_insecure_registries is defined -%}
+  {{ docker_insecure_registries | map('regex_replace', '^(.*)$', '--insecure-registry=\1' ) | list | join(' ') }}
+  {%- endif %}
+  {% if docker_registry_mirrors is defined -%}
+  {{ docker_registry_mirrors | map('regex_replace', '^(.*)$', '--registry-mirror=\1' ) | list | join(' ') }}
+  {%- endif %}
+  --graph={{ docker_daemon_graph }} {{ docker_log_opts }}
+  {%- if ansible_architecture == "aarch64" and ansible_os_family == "RedHat" %}
+  --add-runtime docker-runc=/usr/libexec/docker/docker-runc-current
+  --default-runtime=docker-runc --exec-opt native.cgroupdriver=systemd
+  --userland-proxy-path=/usr/libexec/docker/docker-proxy-current --signature-verification=false
+  {%- endif -%}
 
 # Settings for containerized control plane (etcd/kubelet/secrets)
 etcd_deployment_type: docker
@@ -152,10 +211,13 @@ helm_deployment_type: host
 # Enable kubeadm deployment (experimental)
 kubeadm_enabled: false
 
-# Make a copy of kubeconfig on the host that runs Ansible in GITDIR/artifacts
+# Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
 kubeconfig_localhost: false
-# Download kubectl onto the host that runs Ansible in GITDIR/artifacts
+# Download kubectl onto the host that runs Ansible in {{ bin_dir }}
 kubectl_localhost: false
+
+# Define credentials_dir here so it can be overriden
+credentials_dir: "{{ inventory_dir }}/credentials"
 
 # K8s image pull policy (imagePullPolicy)
 k8s_image_pull_policy: IfNotPresent
@@ -167,13 +229,13 @@ dashboard_enabled: true
 # Addons which can be enabled
 efk_enabled: false
 helm_enabled: false
-istio_enabled: false
 registry_enabled: false
-enable_network_policy: false
+enable_network_policy: true
 local_volume_provisioner_enabled: "{{ local_volumes_enabled | default('false') }}"
 persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
 ingress_nginx_enabled: false
+cert_manager_enabled: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -198,7 +260,7 @@ authorization_modes: ['Node', 'RBAC']
 rbac_enabled: "{{ 'RBAC' in authorization_modes or kubeadm_enabled }}"
 
 # When enabled, API bearer tokens (including service account tokens) can be used to authenticate to the kubelet’s HTTPS endpoint
-kubelet_authentication_token_webhook: false
+kubelet_authentication_token_webhook: true
 
 # When enabled, access to the kubelet API requires authorization by delegation to the API server
 kubelet_authorization_mode_webhook: false
@@ -206,7 +268,6 @@ kubelet_authorization_mode_webhook: false
 ## List of key=value pairs that describe feature gates for
 ## the k8s cluster.
 kube_feature_gates:
-  - "Initializers={{ istio_enabled | string }}"
   - "PersistentLocalVolumes={{ local_volume_provisioner_enabled | string }}"
   - "VolumeScheduling={{ local_volume_provisioner_enabled | string }}"
   - "MountPropagation={{ local_volume_provisioner_enabled | string }}"
@@ -217,6 +278,10 @@ vault_cert_dir: "{{ vault_base_dir }}/ssl"
 vault_config_dir: "{{ vault_base_dir }}/config"
 vault_roles_dir: "{{ vault_base_dir }}/roles"
 vault_secrets_dir: "{{ vault_base_dir }}/secrets"
+
+# Local volume provisioner dirs
+local_volume_provisioner_base_dir: /mnt/disks
+local_volume_provisioner_mount_dir: /mnt/disks
 
 ## Running on top of openstack vms with cinder enabled may lead to unschedulable pods due to NoVolumeZoneConflict restriction in kube-scheduler.
 ## See https://github.com/kubernetes-incubator/kubespray/issues/2141
@@ -240,6 +305,7 @@ weave_peers: uninitialized
 
 ## Set no_proxy to all assigned cluster IPs and hostnames
 no_proxy: >-
+  {%- if http_proxy is defined or https_proxy is defined %}
   {%- if loadbalancer_apiserver is defined -%}
   {{ apiserver_loadbalancer_domain_name| default('') }},
   {{ loadbalancer_apiserver.address | default('') }},
@@ -253,11 +319,24 @@ no_proxy: >-
   {{ item }},{{ item }}.{{ dns_domain }},
   {%- endfor -%}
   127.0.0.1,localhost
+  {%- endif %}
 
 proxy_env:
   http_proxy: "{{ http_proxy| default ('') }}"
   https_proxy: "{{ https_proxy| default ('') }}"
-  no_proxy: "{{ no_proxy }}"
+  no_proxy: "{{ no_proxy| default ('') }}"
+
+ssl_ca_dirs: >-
+  [
+  {% if ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] -%}
+  '/usr/share/ca-certificates',
+  {% elif ansible_os_family == 'RedHat' -%}
+  '/etc/pki/tls',
+  '/etc/pki/ca-trust',
+  {% elif ansible_os_family == 'Debian' -%}
+  '/usr/share/ca-certificates',
+  {% endif -%}
+  ]
 
 # Vars for pointing to kubernetes api endpoints
 is_kube_master: "{{ inventory_hostname in groups['kube-master'] }}"
@@ -296,16 +375,17 @@ kube_apiserver_client_key: |-
   {%- endif %}
 
 # Set to true to deploy etcd-events cluster
-etcd_events_cluster_setup: false
+etcd_events_cluster_enabled: false
 
 # Vars for pointing to etcd endpoints
 is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"
 etcd_address: "{{ ip | default(ansible_default_ipv4['address']) }}"
 etcd_access_address: "{{ access_ip | default(etcd_address) }}"
+etcd_events_access_address: "{{ access_ip | default(etcd_address) }}"
 etcd_peer_url: "https://{{ etcd_access_address }}:2380"
 etcd_client_url: "https://{{ etcd_access_address }}:2379"
-etcd_events_peer_url: "https://{{ etcd_access_address }}:2382"
-etcd_events_client_url: "https://{{ etcd_access_address }}:2381"
+etcd_events_peer_url: "https://{{ etcd_events_access_address }}:2382"
+etcd_events_client_url: "https://{{ etcd_events_access_address }}:2381"
 etcd_access_addresses: |-
   {% for item in groups['etcd'] -%}
     https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2379{% if not loop.last %},{% endif %}
@@ -314,15 +394,21 @@ etcd_events_access_addresses: |-
   {% for item in groups['etcd'] -%}
     https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2381{% if not loop.last %},{% endif %}
   {%- endfor %}
+# user should set etcd_member_name in inventory/mycluster/hosts.ini
 etcd_member_name: |-
   {% for host in groups['etcd'] %}
-  {%   if inventory_hostname == host %}{{"etcd"+loop.index|string }}{% endif %}
+  {%   if inventory_hostname == host %}{{ hostvars[host].etcd_member_name | default("etcd" + loop.index|string) }}{% endif %}
   {% endfor %}
 etcd_peer_addresses: |-
   {% for item in groups['etcd'] -%}
-    {{ "etcd"+loop.index|string }}=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2380{% if not loop.last %},{% endif %}
+    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2380{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_events_peer_addresses: |-
   {% for item in groups['etcd'] -%}
-    {{ "etcd"+loop.index|string }}-events=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2382{% if not loop.last %},{% endif %}
+    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}-events=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2382{% if not loop.last %},{% endif %}
   {%- endfor %}
+
+podsecuritypolicy_enabled: false
+etcd_heartbeat_interval: "250"
+etcd_election_timeout: "5000"
+etcd_snapshot_count: "10000"

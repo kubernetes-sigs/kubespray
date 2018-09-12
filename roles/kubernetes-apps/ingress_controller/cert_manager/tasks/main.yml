@@ -1,0 +1,58 @@
+---
+
+- name: Cert Manager | Remove legacy addon dir and manifests
+  file:
+    path: "{{ kube_config_dir }}/addons/cert_manager"
+    state: absent
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+  tags:
+    - upgrade
+
+- name: Cert Manager | Remove legacy namespace
+  shell: |
+    {{ bin_dir }}/kubectl delete namespace {{ cert_manager_namespace }}
+  ignore_errors: yes
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+  tags:
+    - upgrade
+
+- name: Cert Manager | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/cert_manager"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Cert Manager | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/cert_manager/{{ item.file }}"
+  with_items:
+    - { name: 00-namespace, file: 00-namespace.yml, type: ns }
+    - { name: sa-cert-manager, file: sa-cert-manager.yml, type: sa }
+    - { name: crd-certificate, file: crd-certificate.yml, type: crd }
+    - { name: crd-clusterissuer, file: crd-clusterissuer.yml, type: crd }
+    - { name: crd-issuer, file: crd-issuer.yml, type: crd }
+    - { name: clusterrole-cert-manager, file: clusterrole-cert-manager.yml, type: clusterrole }
+    - { name: clusterrolebinding-cert-manager, file: clusterrolebinding-cert-manager.yml, type: clusterrolebinding }
+    - { name: deploy-cert-manager, file: deploy-cert-manager.yml, type: deploy }
+  register: cert_manager_manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Cert Manager | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ cert_manager_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/cert_manager/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ cert_manager_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]

@@ -1,14 +1,15 @@
-![Kubernetes Logo](https://s28.postimg.org/lf3q4ocpp/k8s.png)
+![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-incubator/kubespray/master/docs/img/kubernetes-logo.png)
 
 Deploy a Production Ready Kubernetes Cluster
 ============================================
 
 If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
+You can get your invite [here](http://slack.k8s.io/)
 
--   Can be deployed on **AWS, GCE, Azure, OpenStack or Baremetal**
--   **High available** cluster
+-   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere, Oracle Cloud Infrastructure (Experimental), or Baremetal**
+-   **Highly available** cluster
 -   **Composable** (Choice of the network plugin for instance)
--   Support most popular **Linux distributions**
+-   Supports most popular **Linux distributions**
 -   **Continuous integration tests**
 
 Quick Start
@@ -18,8 +19,11 @@ To deploy the cluster you can use :
 
 ### Ansible
 
+    # Install dependencies from ``requirements.txt``
+    sudo pip install -r requirements.txt
+
     # Copy ``inventory/sample`` as ``inventory/mycluster``
-    cp -rfp inventory/sample inventory/mycluster
+    cp -rfp inventory/sample/* inventory/mycluster
 
     # Update Ansible inventory file with inventory builder
     declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
@@ -32,9 +36,27 @@ To deploy the cluster you can use :
     # Deploy Kubespray with Ansible Playbook
     ansible-playbook -i inventory/mycluster/hosts.ini cluster.yml
 
+Note: When Ansible is already installed via system packages on the control machine, other python packages installed via `sudo pip install -r requirements.txt` will go to a different directory tree (e.g. `/usr/local/lib/python2.7/dist-packages` on Ubuntu) from Ansible's (e.g. `/usr/lib/python2.7/dist-packages/ansible` still on Ubuntu).
+As a consequence, `ansible-playbook` command will fail with:
+```
+ERROR! no action detected in task. This often indicates a misspelled module name, or incorrect module path.
+```
+probably pointing on a task depending on a module present in requirements.txt (i.e. "unseal vault").
+
+One way of solving this would be to uninstall the Ansible package and then, to install it via pip but it is not always possible.
+A workaround consists of setting `ANSIBLE_LIBRARY` and `ANSIBLE_MODULE_UTILS` environment variables respectively to the `ansible/modules` and `ansible/module_utils` subdirectories of pip packages installation location, which can be found in the Location field of the output of `pip show [package]` before executing `ansible-playbook`.
+
 ### Vagrant
 
-    # Simply running `vagrant up` (for tests purposes)
+For Vagrant we need to install python dependencies for provisioning tasks.
+Check if Python and pip are installed:
+
+    python -V && pip -V
+
+If this returns the version of the software, you're good to go. If not, download and install Python from here <https://www.python.org/downloads/source/>
+Install the necessary requirements
+
+    sudo pip install -r requirements.txt
     vagrant up
 
 Documents
@@ -52,6 +74,7 @@ Documents
 -   [Vagrant install](docs/vagrant.md)
 -   [CoreOS bootstrap](docs/coreos.md)
 -   [Debian Jessie setup](docs/debian.md)
+-   [openSUSE setup](docs/opensuse.md)
 -   [Downloaded artifacts](docs/downloads.md)
 -   [Cloud providers](docs/cloud.md)
 -   [OpenStack](docs/openstack.md)
@@ -66,28 +89,36 @@ Supported Linux Distributions
 -----------------------------
 
 -   **Container Linux by CoreOS**
--   **Debian** Jessie
--   **Ubuntu** 16.04
+-   **Debian** Jessie, Stretch, Wheezy
+-   **Ubuntu** 16.04, 18.04
 -   **CentOS/RHEL** 7
 -   **Fedora/CentOS** Atomic
+-   **openSUSE** Leap 42.3/Tumbleweed
 
 Note: Upstart/SysV init based OS types are not supported.
 
-Versions of supported components
---------------------------------
+Supported Components
+--------------------
 
--   [kubernetes](https://github.com/kubernetes/kubernetes/releases) v1.9.3
--   [etcd](https://github.com/coreos/etcd/releases) v3.2.4
--   [flanneld](https://github.com/coreos/flannel/releases) v0.9.1
--   [calico](https://docs.projectcalico.org/v2.5/releases/) v2.5.0
--   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
--   [cilium](https://github.com/cilium/cilium) v1.0.0-rc4
--   [contiv](https://github.com/contiv/install/releases) v1.0.3
--   [weave](http://weave.works/) v2.0.1
--   [docker](https://www.docker.com/) v17.03 (see note)
--   [rkt](https://coreos.com/rkt/docs/latest/) v1.21.0 (see Note 2)
+-   Core
+    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.11.3
+    -   [etcd](https://github.com/coreos/etcd) v3.2.18
+    -   [docker](https://www.docker.com/) v17.03 (see note)
+    -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
+-   Network Plugin
+    -   [calico](https://github.com/projectcalico/calico) v3.1.3
+    -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
+    -   [cilium](https://github.com/cilium/cilium) v1.2.0
+    -   [contiv](https://github.com/contiv/install) v1.1.7
+    -   [flanneld](https://github.com/coreos/flannel) v0.10.0
+    -   [weave](https://github.com/weaveworks/weave) v2.4.0
+-   Application
+    -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
+    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.4.1
+    -   [coredns](https://github.com/coredns/coredns) v1.2.2
+    -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.19.0
 
-Note: kubernetes doesn't support newer docker versions. Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+Note: kubernetes doesn't support newer docker versions ("Version 17.03 is recommended... Versions 17.06+ might work, but have not yet been tested and verified by the Kubernetes node team" cf. [Bootstrapping Clusters with kubeadm](https://kubernetes.io/docs/setup/independent/install-kubeadm/#installing-docker)). Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin). 
 
 Note 2: rkt support as docker alternative is limited to control plane (etcd and
 kubelet). Docker is still used for Kubernetes cluster workloads and network
@@ -105,6 +136,9 @@ Requirements
 -   **Your ssh key must be copied** to all the servers part of your inventory.
 -   The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
     in order to avoid any issue during deployment you should disable your firewall.
+-   If kubespray is ran from non-root user account, correct privilege escalation method
+    should be configured in the target servers. Then the `ansible_become` flag
+    or command parameters `--become or -b` should be specified.
 
 Network Plugins
 ---------------
@@ -117,7 +151,7 @@ You can choose between 6 network plugins. (default: `calico`, except Vagrant use
 
 -   [canal](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
 
--   [cilium](http://docs.cilium.io/en/latest/):  layer 3/4 networking (as well as layer 7 to protect and secure application protocols), supports dynamic insertion of BPF bytecode into the Linux kernel to implement security services, networking and visibility logic.
+-   [cilium](http://docs.cilium.io/en/latest/): layer 3/4 networking (as well as layer 7 to protect and secure application protocols), supports dynamic insertion of BPF bytecode into the Linux kernel to implement security services, networking and visibility logic.
 
 -   [contiv](docs/contiv.md): supports vlan, vxlan, bgp and Cisco SDN networking. This plugin is able to
     apply firewall policies, segregate containers in multiple network and bridging pods onto physical networks.
@@ -146,8 +180,6 @@ Tools and projects on top of Kubespray
 
 CI Tests
 --------
-
-![Gitlab Logo](https://s27.postimg.org/wmtaig1wz/gitlabci.png)
 
 [![Build graphs](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/badges/master/build.svg)](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/pipelines)
 

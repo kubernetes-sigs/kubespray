@@ -3,7 +3,7 @@ kind: DaemonSet
 apiVersion: extensions/v1beta1
 metadata:
   name: canal-node
-  namespace: {{ system_namespace }}
+  namespace: kube-system
   labels:
     k8s-app: canal-node
 spec:
@@ -19,9 +19,7 @@ spec:
         k8s-app: canal-node
     spec:
       hostNetwork: true
-{% if rbac_enabled %}
       serviceAccountName: canal
-{% endif %}
       tolerations:
         - effect: NoSchedule
           operator: Exists
@@ -30,6 +28,9 @@ spec:
         - name: lib-modules
           hostPath:
             path: /lib/modules
+        - name: var-lib-calico
+          hostPath:
+            path: /var/lib/calico
         - name: var-run-calico
           hostPath:
             path: /var/run/calico
@@ -50,6 +51,10 @@ spec:
         - name: "canal-certs"
           hostPath:
             path: "{{ canal_cert_dir }}"
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
       containers:
         # Runs the flannel daemon to enable vxlan networking between
         # container hosts.
@@ -127,6 +132,9 @@ spec:
             - name: "canal-certs"
               mountPath: "{{ canal_cert_dir }}"
               readOnly: true
+            - name: xtables-lock
+              mountPath: /run/xtables.lock
+              readOnly: false
         # Runs calico/node container on each Kubernetes node.  This
         # container programs network policy and local routes on each
         # host.
@@ -148,13 +156,20 @@ spec:
                   name: canal-config
                   key: etcd_endpoints
             # Disable Calico BGP.  Calico is simply enforcing policy.
-            - name: CALICO_NETWORKING
-              value: "false"
+            - name: CALICO_NETWORKING_BACKEND
+              value: "none"
             # Cluster type to identify the deployment type
             - name: CLUSTER_TYPE
               value: "kubespray,canal"
             # Disable file logging so `kubectl logs` works.
             - name: CALICO_DISABLE_FILE_LOGGING
+              value: "true"
+            # Set noderef for node controller.
+            - name: CALICO_K8S_NODE_REF
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: FELIX_HEALTHENABLED
               value: "true"
             # Etcd SSL vars
             - name: ETCD_CA_CERT_FILE
@@ -178,12 +193,27 @@ spec:
                   fieldPath: spec.nodeName
           securityContext:
             privileged: true
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 9099
+            periodSeconds: 10
+            initialDelaySeconds: 10
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 9099
+            periodSeconds: 10
           volumeMounts:
             - mountPath: /lib/modules
               name: lib-modules
               readOnly: true
             - mountPath: /var/run/calico
               name: var-run-calico
+              readOnly: false
+            - mountPath: /var/lib/calico
+              name: var-lib-calico
               readOnly: false
             - name: "canal-certs"
               mountPath: "{{ canal_cert_dir }}"

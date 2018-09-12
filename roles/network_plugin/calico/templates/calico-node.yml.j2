@@ -6,7 +6,7 @@ kind: DaemonSet
 apiVersion: extensions/v1beta1
 metadata:
   name: calico-node
-  namespace: {{ system_namespace }}
+  namespace: kube-system
   labels:
     k8s-app: calico-node
 spec:
@@ -22,12 +22,13 @@ spec:
         kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
     spec:
       hostNetwork: true
-{% if rbac_enabled %}
       serviceAccountName: calico-node
-{% endif %}
       tolerations:
         - effect: NoSchedule
           operator: Exists
+      # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
+      # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
+      terminationGracePeriodSeconds: 0
       containers:
         # Runs calico/node container on each Kubernetes node.  This
         # container programs network policy and routes on each
@@ -53,6 +54,11 @@ spec:
                 configMapKeyRef:
                   name: calico-config
                   key: cluster_type
+            # Set noderef for node controller.
+            - name: CALICO_K8S_NODE_REF
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             # Disable file logging so `kubectl logs` works.
             - name: CALICO_DISABLE_FILE_LOGGING
               value: "true"
@@ -71,12 +77,6 @@ spec:
             # Set Felix logging to "info"
             - name: FELIX_LOGSEVERITYSCREEN
               value: "info"
-            # Disable autocreation of pools
-            - name: CALICO_NO_DEFAULT_POOLS
-              value: "true"
-            # Enable libnetwork
-            - name: CALICO_LIBNETWORK_ENABLED
-              value: "true"
             # Set MTU for tunnel device used if ipip is enabled
 {% if calico_mtu is defined %}
             - name: FELIX_IPINIPMTU
@@ -108,10 +108,15 @@ spec:
                 configMapKeyRef:
                   name: calico-config
                   key: etcd_cert
+{% if calico_ip_auto_method is defined %}
+            - name: IP_AUTODETECTION_METHOD
+              value: "{{ calico_ip_auto_method }}"
+{% else %}
             - name: IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
+{% endif %}
             - name: NODENAME
               valueFrom:
                 fieldRef:
@@ -131,6 +136,7 @@ spec:
               memory: {{ calico_node_memory_requests }}
           livenessProbe:
             httpGet:
+              host: 127.0.0.1
               path: /liveness
               port: 9099
             periodSeconds: 10
@@ -138,6 +144,7 @@ spec:
             failureThreshold: 6
           readinessProbe:
             httpGet:
+              host: 127.0.0.1
               path: /readiness
               port: 9099
             periodSeconds: 10
@@ -147,6 +154,8 @@ spec:
               readOnly: true
             - mountPath: /var/run/calico
               name: var-run-calico
+            - mountPath: /var/lib/calico
+              name: var-lib-calico
               readOnly: false
             - mountPath: /calico-secrets
               name: etcd-certs
@@ -158,6 +167,9 @@ spec:
         - name: var-run-calico
           hostPath:
             path: /var/run/calico
+        - name: var-lib-calico
+          hostPath:
+            path: /var/lib/calico
         # Used to install CNI.
         - name: cni-bin-dir
           hostPath:
@@ -173,4 +185,3 @@ spec:
     rollingUpdate:
       maxUnavailable: {{ serial | default('20%') }}
     type: RollingUpdate
-

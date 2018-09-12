@@ -1,15 +1,17 @@
 ---
-# https://raw.githubusercontent.com/kubernetes/kubernetes/v1.5.2/cluster/addons/fluentd-elasticsearch/es-controller.yaml
-apiVersion: extensions/v1beta1
-kind: Deployment
+# https://raw.githubusercontent.com/kubernetes/kubernetes/v1.10.2/cluster/addons/fluentd-elasticsearch/es-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
 metadata:
-  name: elasticsearch-logging-v1
-  namespace: "{{ system_namespace }}"
+  name: elasticsearch-logging
+  namespace: kube-system
   labels:
     k8s-app: elasticsearch-logging
     version: "{{ elasticsearch_image_tag }}"
     kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
 spec:
+  serviceName: elasticsearch-logging
   replicas: 2
   selector:
     matchLabels:
@@ -30,12 +32,12 @@ spec:
           limits:
             cpu: {{ elasticsearch_cpu_limit }}
 {% if elasticsearch_mem_limit is defined and elasticsearch_mem_limit != "0M" %}
-            mem: {{ elasticsearch_mem_limit }}
+            memory: "{{ elasticsearch_mem_limit }}"
 {% endif %}
           requests:
             cpu: {{ elasticsearch_cpu_requests }}
 {% if elasticsearch_mem_requests is defined and elasticsearch_mem_requests != "0M" %}
-            mem: {{ elasticsearch_mem_requests }}
+            memory: "{{ elasticsearch_mem_requests }}"
 {% endif %}
         ports:
         - containerPort: 9200
@@ -50,7 +52,11 @@ spec:
       volumes:
       - name: es-persistent-storage
         emptyDir: {}
-{% if rbac_enabled %}
       serviceAccountName: efk 
-{% endif %}
+      initContainers:
+      - image: alpine:3.6
+        command: ["/sbin/sysctl", "-w", "vm.max_map_count=262144"]
+        name: elasticsearch-logging-init
+        securityContext:
+          privileged: true
 

@@ -123,7 +123,6 @@ The following tags are defined in playbooks:
 |                hyperkube | Manipulations with K8s hyperkube image
 |          k8s-pre-upgrade | Upgrading K8s cluster
 |              k8s-secrets | Configuring K8s certs/keys
-|                      kpm | Installing K8s apps definitions with KPM
 |           kube-apiserver | Configuring static pod kube-apiserver
 |  kube-controller-manager | Configuring static pod kube-controller-manager
 |                  kubectl | Installing kubectl and bash completion
@@ -159,7 +158,7 @@ And this play only removes the K8s cluster DNS resolver IP from hosts' /etc/reso
 ```
 ansible-playbook -i inventory/sample/hosts.ini -e dnsmasq_dns_server='' cluster.yml --tags resolvconf
 ```
-And this prepares all container images localy (at the ansible runner node) without installing
+And this prepares all container images locally (at the ansible runner node) without installing
 or upgrading related stuff or trying to upload container to K8s cluster nodes:
 ```
 ansible-playbook -i inventory/sample/hosts.ini cluster.yml \

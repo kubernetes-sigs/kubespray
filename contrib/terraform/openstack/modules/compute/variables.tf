@@ -1,5 +1,9 @@
 variable "cluster_name" {}
 
+variable "az_list" {
+  type = "list"
+}
+
 variable "number_of_k8s_masters" {}
 
 variable "number_of_k8s_masters_no_etcd" {}
@@ -54,4 +58,12 @@ variable "k8s_node_fips" {
 
 variable "bastion_fips" {
   type = "list"
+}
+
+variable "supplementary_master_groups" {
+  default = ""
+}
+
+variable "supplementary_node_groups" {
+  default = ""
 }

@@ -11,12 +11,32 @@ achieve the same goal.
 Etcd
 ----
 
-The `etcd_access_endpoint` fact provides an access pattern for clients. And the
-`etcd_multiaccess` (defaults to `True`) group var controls that behavior.
-It makes deployed components to access the etcd cluster members
-directly: `http://ip1:2379, http://ip2:2379,...`. This mode assumes the clients
-do a loadbalancing and handle HA for connections.
+In order to use an external loadbalancing (L4/TCP or L7 w/ SSL Passthrough VIP), the following variables need to be overriden in group_vars
+* `etcd_access_addresses`
+* `etcd_client_url`
+* `etcd_cert_alt_names`
+* `etcd_cert_alt_ips`
 
+### Example of a VIP w/ FQDN
+```yaml
+etcd_access_addresses: https://etcd.example.com:2379
+etcd_client_url: https://etcd.example.com:2379
+etcd_cert_alt_names:
+  - "etcd.kube-system.svc.{{ dns_domain }}"
+  - "etcd.kube-system.svc"
+  - "etcd.kube-system"
+  - "etcd"
+  - "etcd.example.com" # This one needs to be added to the default etcd_cert_alt_names
+```
+
+### Example of a VIP w/o FQDN (IP only)
+
+```yaml
+etcd_access_addresses: https://2.3.7.9:2379
+etcd_client_url: https://2.3.7.9:2379
+etcd_cert_alt_ips:
+  - "2.3.7.9"
+```
 
 Kube-apiserver
 --------------

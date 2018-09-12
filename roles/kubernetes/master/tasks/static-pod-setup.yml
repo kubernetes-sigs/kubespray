@@ -1,4 +1,21 @@
 ---
+- name: Create audit-policy directory
+  file:
+    path: "{{ audit_policy_file | dirname }}"
+    state: directory
+  tags:
+    - kube-apiserver
+  when: kubernetes_audit|default(false)
+
+- name: Write api audit policy yaml
+  template:
+    src: apiserver-audit-policy.yaml.j2
+    dest: "{{ audit_policy_file }}"
+  notify: Master | Restart apiserver
+  tags:
+    - kube-apiserver
+  when: kubernetes_audit|default(false)
+
 - name: Write kube-apiserver manifest
   template:
     src: manifests/kube-apiserver.manifest.j2
@@ -13,6 +30,7 @@
   template:
     src: kube-scheduler-policy.yaml.j2
     dest: "{{ kube_config_dir }}/kube-scheduler-policy.yaml"
+  notify: Master | Restart kube-scheduler
   tags:
     - kube-scheduler
 

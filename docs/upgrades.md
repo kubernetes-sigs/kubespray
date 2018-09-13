@@ -18,6 +18,11 @@ versions. Here are all version vars for each component:
 * flannel_version
 * kubedns_version
 
+Please remember that some components upgrade depends on minimum installed version.
+In example **calico version 2.6.5 upgrade to 3.1.1 is upgrading etcd store to etcdv3**.
+The kubespray stack upgrade would failed when calico version is below 2.6.5. Please check
+components' documentation and always upgrade test environment first.
+
 #### Unsafe upgrade example
 
 If you wanted to upgrade just kube_version from v1.4.3 to v1.4.6, you could
@@ -86,7 +91,7 @@ for impact to user deployed pods.
 
 A deployer may want to upgrade specific components in order to minimize risk
 or save time. This strategy is not covered by CI as of this writing, so it is
-not guaranteed to work. 
+not guaranteed to work.
 
 These commands are useful only for upgrading fully-deployed, healthy, existing
 hosts. This will definitely not work for undeployed or partially deployed

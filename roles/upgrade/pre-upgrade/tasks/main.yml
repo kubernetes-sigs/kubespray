@@ -32,6 +32,24 @@
   delegate_to: "{{ groups['kube-master'][0] }}"
   when: needs_cordoning
 
+- name: Check kubectl version
+  command: kubectl version --client --short
+  register: kubectl_version
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: yes
+  when:
+    - drain_nodes
+    - needs_cordoning
+    - 'drain_pod_selector != ""'
+
+- name: Ensure minimum version for drain label selector if necessary
+  assert:
+    that: "kubectl_version.stdout.split(' ')[-1] | version_compare('v1.10.0', '>=')"
+  when:
+    - drain_nodes
+    - needs_cordoning
+    - 'drain_pod_selector != ""'
+
 - name: Drain node
   command: >-
     {{ bin_dir }}/kubectl drain
@@ -40,7 +58,7 @@
     --grace-period {{ drain_grace_period }}
     --timeout {{ drain_timeout }}
     --delete-local-data {{ inventory_hostname }}
-    {% if drain_label_selector != "" %}--selector '{{ drain_label_selector }}'{% endif %}
+    {% if drain_pod_selector != "" %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
   delegate_to: "{{ groups['kube-master'][0] }}"
   when:
     - drain_nodes

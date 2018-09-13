@@ -14,7 +14,9 @@
     - {name: tiller, file: tiller-sa.yml, type: sa}
     - {name: tiller, file: tiller-clusterrolebinding.yml, type: clusterrolebinding}
   register: manifests
-  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
+  when:
+    - dns_mode != 'none'
+    - inventory_hostname == groups['kube-master'][0]
 
 - name: Helm | Apply Helm Manifests (RBAC)
   kube:
@@ -25,7 +27,9 @@
     filename: "{{kube_config_dir}}/{{item.item.file}}"
     state: "latest"
   with_items: "{{ manifests.results }}"
-  when: dns_mode != 'none' and inventory_hostname == groups['kube-master'][0]
+  when:
+    - dns_mode != 'none'
+    - inventory_hostname == groups['kube-master'][0]
 
 # Generate necessary certs for securing Helm and Tiller connection with TLS
 - name: Helm | Set up TLS
@@ -34,15 +38,20 @@
 
 - name: Helm | Install/upgrade helm
   command: >
-    {{ bin_dir }}/helm init --upgrade --tiller-image={{ tiller_image_repo }}:{{ tiller_image_tag }} --tiller-namespace={{ tiller_namespace }}
+    {{ bin_dir }}/helm init --tiller-namespace={{ tiller_namespace }}
     {% if helm_skip_refresh %} --skip-refresh{% endif %}
     {% if helm_stable_repo_url is defined %} --stable-repo-url {{ helm_stable_repo_url }}{% endif %}
+    {% if inventory_hostname == groups['kube-master'][0] %}
+    --upgrade --tiller-image={{ tiller_image_repo }}:{{ tiller_image_tag }}
     {% if rbac_enabled %} --service-account=tiller{% endif %}
     {% if tiller_node_selectors is defined %} --node-selectors {{ tiller_node_selectors }}{% endif %}
     {% if tiller_override is defined %} --override {{ tiller_override }}{% endif %}
     {% if tiller_max_history is defined %} --history-max={{ tiller_max_history }}{% endif %}
     {% if tiller_enable_tls %} --tiller-tls --tiller-tls-verify --tiller-tls-cert={{ tiller_tls_cert }} --tiller-tls-key={{ tiller_tls_key }} --tls-ca-cert={{ tiller_tls_ca_cert }} {% endif %}
     {% if tiller_secure_release_info %} --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' {% endif %}
+    {% else %}
+    --client-only
+    {% endif %}
   register: install_helm
   changed_when: false
   environment: "{{proxy_env}}"
@@ -61,9 +70,13 @@
     {% if tiller_secure_release_info %} --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' {% endif %}
     | kubectl apply -f -
   changed_when: false
-  when: tiller_override is defined
+  when:
+    - tiller_override is defined
+    - inventory_hostname == groups['kube-master'][0]
   environment: "{{proxy_env}}"
 
 - name: Helm | Set up bash completion
   shell: "umask 022 && {{ bin_dir }}/helm completion bash >/etc/bash_completion.d/helm.sh"
-  when: ((helm_container is defined and helm_container.changed) or (helm_task_result is defined and helm_task_result.changed)) and not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+  when:
+    - ((helm_container is defined and helm_container.changed) or (helm_task_result is defined and helm_task_result.changed))
+    - not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]

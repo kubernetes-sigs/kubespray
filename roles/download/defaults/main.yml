@@ -33,6 +33,7 @@ image_arch: "{{host_architecture | default('amd64')}}"
 kube_version: v1.11.3
 kubeadm_version: "{{ kube_version }}"
 etcd_version: v3.2.18
+
 # TODO(mattymo): Move calico versions to roles/network_plugins/calico/defaults
 # after migration to container download
 calico_version: "v3.1.3"
@@ -40,8 +41,10 @@ calico_ctl_version: "v3.1.3"
 calico_cni_version: "v3.1.3"
 calico_policy_version: "v3.1.3"
 calico_rr_version: "v0.6.1"
+
 flannel_version: "v0.10.0"
 flannel_cni_version: "v0.3.0"
+
 vault_version: 0.10.1
 weave_version: "2.4.0"
 pod_infra_version: 3.1
@@ -55,9 +58,9 @@ etcd_download_url: "https://github.com/coreos/etcd/releases/download/{{ etcd_ver
 hyperkube_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kube_version }}/bin/linux/amd64/hyperkube"
 
 # Checksums
-etcd_checksum: b729db0732448064271ea6fdcb901773c4fe917763ca07776f22d0e5e0bd4097
-hyperkube_checksum: dac8da16dd6688e52b5dc510f5dd0a20b54350d52fb27ceba2f018ba2c8be692
-kubeadm_checksum: 422a7a32ed9a7b1eaa2a4f9d121674dfbe80eb41e206092c13017d097f75aaec
+etcd_binary_checksum: b729db0732448064271ea6fdcb901773c4fe917763ca07776f22d0e5e0bd4097
+hyperkube_binary_checksum: dac8da16dd6688e52b5dc510f5dd0a20b54350d52fb27ceba2f018ba2c8be692
+kubeadm_binary_checksum: 422a7a32ed9a7b1eaa2a4f9d121674dfbe80eb41e206092c13017d097f75aaec
 vault_binary_checksum: 3c4d70ba71619a43229e65c67830e30e050eab7a81ac6b28325ff707e5914188
 
 # Containers
@@ -174,6 +177,7 @@ downloads:
     sha256: "{{ netcheck_server_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   netcheck_agent:
     enabled: "{{ deploy_netchecker }}"
     container: true
@@ -182,20 +186,16 @@ downloads:
     sha256: "{{ netcheck_agent_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   etcd:
+    container: "{{ etcd_deployment_type != 'host' }}"
+    file: "{{ etcd_deployment_type == 'host' }}"
     enabled: true
-    container: true
-    repo: "{{ etcd_image_repo }}"
-    tag: "{{ etcd_image_tag }}"
-    sha256: "{{ etcd_digest_checksum|default(None) }}"
-    groups:
-      - etcd
-  etcd_file:
-    enabled: true
-    file: true
     version: "{{ etcd_version }}"
     dest: "etcd-{{ etcd_version }}-linux-amd64.tar.gz"
-    sha256: "{{ etcd_checksum }}"
+    repo: "{{ etcd_image_repo }}"
+    tag: "{{ etcd_image_tag }}"
+    sha256: "{{ etcd_binary_checksum if etcd_deployment_type == 'host' else etcd_digest_checksum|d(None) }}"
     source_url: "{{ etcd_download_url }}"
     url: "{{ etcd_download_url }}"
     unarchive: true
@@ -203,12 +203,13 @@ downloads:
     mode: "0755"
     groups:
       - etcd
+
   kubeadm:
     enabled: "{{ kubeadm_enabled }}"
     file: true
     version: "{{ kubeadm_version }}"
     dest: "kubeadm"
-    sha256: "{{ kubeadm_checksum }}"
+    sha256: "{{ kubeadm_binary_checksum }}"
     source_url: "{{ kubeadm_download_url }}"
     url: "{{ kubeadm_download_url }}"
     unarchive: false
@@ -216,6 +217,7 @@ downloads:
     mode: "0755"
     groups:
       - k8s-cluster
+
   hyperkube:
     enabled: true
     container: true
@@ -224,12 +226,13 @@ downloads:
     sha256: "{{ hyperkube_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   hyperkube_file:
     enabled: true
     file: true
     version: "{{ kube_version }}"
     dest: "hyperkube"
-    sha256: "{{ hyperkube_checksum }}"
+    sha256: "{{ hyperkube_binary_checksum }}"
     source_url: "{{ hyperkube_download_url }}"
     url: "{{ hyperkube_download_url }}"
     unarchive: false
@@ -237,6 +240,7 @@ downloads:
     mode: "0755"
     groups:
       - k8s-cluster
+
   cilium:
     enabled: "{{ kube_network_plugin == 'cilium' }}"
     container: true
@@ -245,6 +249,7 @@ downloads:
     sha256: "{{ cilium_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   flannel:
     enabled: "{{ kube_network_plugin == 'flannel' or kube_network_plugin == 'canal' }}"
     container: true
@@ -253,6 +258,7 @@ downloads:
     sha256: "{{ flannel_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   flannel_cni:
     enabled: "{{ kube_network_plugin == 'flannel' }}"
     container: true
@@ -261,6 +267,7 @@ downloads:
     sha256: "{{ flannel_cni_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   calicoctl:
     enabled: "{{ kube_network_plugin == 'calico' or kube_network_plugin == 'canal' }}"
     container: true
@@ -269,6 +276,7 @@ downloads:
     sha256: "{{ calicoctl_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   calico_node:
     enabled: "{{ kube_network_plugin == 'calico' or kube_network_plugin == 'canal' }}"
     container: true
@@ -277,6 +285,7 @@ downloads:
     sha256: "{{ calico_node_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   calico_cni:
     enabled: "{{ kube_network_plugin == 'calico' or kube_network_plugin == 'canal' }}"
     container: true
@@ -285,6 +294,7 @@ downloads:
     sha256: "{{ calico_cni_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   calico_policy:
     enabled: "{{ enable_network_policy or kube_network_plugin == 'canal' }}"
     container: true
@@ -293,6 +303,7 @@ downloads:
     sha256: "{{ calico_policy_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   calico_rr:
     enabled: "{{ peer_with_calico_rr is defined and peer_with_calico_rr and kube_network_plugin == 'calico' }}"
     container: true
@@ -301,6 +312,7 @@ downloads:
     sha256: "{{ calico_rr_digest_checksum|default(None) }}"
     groups:
       - calico-rr
+
   weave_kube:
     enabled: "{{ kube_network_plugin == 'weave' }}"
     container: true
@@ -309,6 +321,7 @@ downloads:
     sha256: "{{ weave_kube_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   weave_npc:
     enabled: "{{ kube_network_plugin == 'weave' }}"
     container: true
@@ -317,6 +330,7 @@ downloads:
     sha256: "{{ weave_npc_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   contiv:
     enabled: "{{ kube_network_plugin == 'contiv' }}"
     container: true
@@ -325,6 +339,7 @@ downloads:
     sha256: "{{ contiv_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   contiv_auth_proxy:
     enabled: "{{ kube_network_plugin == 'contiv' }}"
     container: true
@@ -333,6 +348,7 @@ downloads:
     sha256: "{{ contiv_auth_proxy_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   contiv_etcd_init:
     enabled: "{{ kube_network_plugin == 'contiv' }}"
     container: true
@@ -341,6 +357,7 @@ downloads:
     sha256: "{{ contiv_etcd_init_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   pod_infra:
     enabled: true
     container: true
@@ -349,6 +366,7 @@ downloads:
     sha256: "{{ pod_infra_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   install_socat:
     enabled: "{{ ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] }}"
     container: true
@@ -357,6 +375,7 @@ downloads:
     sha256: "{{ install_socat_digest_checksum|default(None) }}"
     groups:
       - k8s-cluster
+
   nginx:
     enabled: "{{ loadbalancer_apiserver_localhost }}"
     container: true
@@ -365,6 +384,7 @@ downloads:
     sha256: "{{ nginx_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   dnsmasq:
     enabled: "{{ dns_mode == 'dnsmasq_kubedns' }}"
     container: true
@@ -373,6 +393,7 @@ downloads:
     sha256: "{{ dnsmasq_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   kubedns:
     enabled: "{{ dns_mode in ['kubedns', 'dnsmasq_kubedns'] }}"
     container: true
@@ -381,6 +402,7 @@ downloads:
     sha256: "{{ kubedns_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   coredns:
     enabled: "{{ dns_mode in ['coredns', 'coredns_dual'] }}"
     container: true
@@ -389,6 +411,7 @@ downloads:
     sha256: "{{ coredns_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   dnsmasq_nanny:
     enabled: "{{ dns_mode in ['kubedns', 'dnsmasq_kubedns'] }}"
     container: true
@@ -397,6 +420,7 @@ downloads:
     sha256: "{{ dnsmasq_nanny_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   dnsmasq_sidecar:
     enabled: "{{ dns_mode in ['kubedns', 'dnsmasq_kubedns'] }}"
     container: true
@@ -405,6 +429,7 @@ downloads:
     sha256: "{{ dnsmasq_sidecar_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   kubednsautoscaler:
     enabled: "{{ dns_mode in ['kubedns', 'dnsmasq_kubedns'] }}"
     container: true
@@ -413,12 +438,14 @@ downloads:
     sha256: "{{ kubednsautoscaler_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   testbox:
     enabled: false
     container: true
     repo: "{{ test_image_repo }}"
     tag: "{{ test_image_tag }}"
     sha256: "{{ testbox_digest_checksum|default(None) }}"
+
   elasticsearch:
     enabled: "{{ efk_enabled }}"
     container: true
@@ -427,6 +454,7 @@ downloads:
     sha256: "{{ elasticsearch_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   fluentd:
     enabled: "{{ efk_enabled }}"
     container: true
@@ -435,6 +463,7 @@ downloads:
     sha256: "{{ fluentd_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   kibana:
     enabled: "{{ efk_enabled }}"
     container: true
@@ -443,6 +472,7 @@ downloads:
     sha256: "{{ kibana_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   helm:
     enabled: "{{ helm_enabled }}"
     container: true
@@ -451,6 +481,7 @@ downloads:
     sha256: "{{ helm_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   tiller:
     enabled: "{{ helm_enabled }}"
     container: true
@@ -459,6 +490,7 @@ downloads:
     sha256: "{{ tiller_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   vault:
     enabled: "{{ cert_management == 'vault' }}"
     container: "{{ vault_deployment_type != 'host' }}"
@@ -475,6 +507,7 @@ downloads:
     version: "{{ vault_version }}"
     groups:
       - vault
+
   registry:
     enabled: "{{ registry_enabled }}"
     container: true
@@ -483,6 +516,7 @@ downloads:
     sha256: "{{ registry_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   registry_proxy:
     enabled: "{{ registry_enabled }}"
     container: true
@@ -491,6 +525,7 @@ downloads:
     sha256: "{{ registry_proxy_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   local_volume_provisioner:
     enabled: "{{ local_volume_provisioner_enabled }}"
     container: true
@@ -499,6 +534,7 @@ downloads:
     sha256: "{{ local_volume_provisioner_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   cephfs_provisioner:
     enabled: "{{ cephfs_provisioner_enabled }}"
     container: true
@@ -507,6 +543,7 @@ downloads:
     sha256: "{{ cephfs_provisioner_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   ingress_nginx_controller:
     enabled: "{{ ingress_nginx_enabled }}"
     container: true
@@ -515,6 +552,7 @@ downloads:
     sha256: "{{ ingress_nginx_controller_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   ingress_nginx_default_backend:
     enabled: "{{ ingress_nginx_enabled }}"
     container: true
@@ -523,6 +561,7 @@ downloads:
     sha256: "{{ ingress_nginx_default_backend_digest_checksum|default(None) }}"
     groups:
       - kube-node
+
   cert_manager_controller:
     enabled: "{{ cert_manager_enabled }}"
     container: true

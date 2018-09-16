@@ -69,6 +69,7 @@ aws_zone|string|Force set the AWS zone. Recommended to leave blank.
 aws_vpc|string|The AWS VPC flag enables the possibility to run the master components on a different aws account, on a different cloud provider or on-premise. If the flag is set also the KubernetesClusterTag must be provided
 aws_subnet_id|string|SubnetID enables using a specific subnet to use for ELB's
 aws_route_table_id|string|RouteTableID enables using a specific RouteTable
+aws_role_arn|string|RoleARN is the IAM role to assume when interaction with AWS APIs
 aws_kubernetes_cluster_tag|string|KubernetesClusterTag is the legacy cluster id we'll use to identify our cluster resources
 aws_kubernetes_cluster_id|string|KubernetesClusterID is the cluster id we'll use to identify our cluster resources
 aws_disable_security_group_ingress|bool|The aws provider creates an inbound rule per load balancer on the node security group. However, this can run into the AWS security group rule limit of 50 if many LoadBalancers are created. This flag disables the automatic ingress creation. It requires that the user has setup a rule that allows inbound traffic on kubelet ports from the local VPC subnet (so load balancers can access it). E.g. 10.82.0.0/16 30000-32000.

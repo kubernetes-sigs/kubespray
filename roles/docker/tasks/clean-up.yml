@@ -1,0 +1,82 @@
+---
+
+- name: Check for services
+  service_facts:
+
+- name: Get the list of packages installed
+  package_facts:
+
+- name: check if its docker upgrade | Debian
+  set_fact:
+    is_docker_upgrade: True
+  when:
+    - ansible_os_family == 'Debian'
+    - ansible_facts.packages[item] is defined
+    - (ansible_facts.packages[item][0].name + '-' + ansible_facts.packages[item][0].version) != docker_versioned_pkg[docker_version | string]
+  with_items:
+    - docker-engine
+    - docker-ce
+
+- name: check if its docker upgrade | Redhat
+  set_fact:
+    is_docker_upgrade: True
+  when: >
+    ansible_os_family == 'RedHat' and
+    ansible_facts.packages[item] is defined and
+    (ansible_facts.packages[item][0].name + '-' + ansible_facts.packages[item][0].version + '-' + ansible_facts.packages[item][0].release) not in 
+    [docker_versioned_pkg[docker_version | string],docker_selinux_versioned_pkg[docker_selinux_version | string]]
+  with_items:
+    - docker-engine
+    - docker-engine-selinux
+    - docker-ce
+    - docker-ce-selinux
+
+- block:
+    - name: Drain the nodes
+      import_role:
+        name: kargo/roles/upgrade/pre-upgrade
+      ignore_errors: yes
+      when: inventory_hostname in groups['k8s-cluster']
+
+    - name: Stop kubelet on the nodes
+      service:
+        name: kubelet
+        state: stopped
+      when:
+        - inventory_hostname in groups['k8s-cluster']
+        - ansible_facts.services['kubelet.service'] is defined and ansible_facts.services['kubelet.service']['state'] == "running"
+
+    - name: Stop etcd on the nodes
+      service:
+        name: etcd
+        state: stopped
+      when:
+        - inventory_hostname in groups['etcd']
+        - ansible_facts.services['etcd.service'] is defined and ansible_facts.services['etcd.service']['state'] == "running"
+
+    - name: Clean up and shut down docker
+      script: clean-up.sh
+      args:
+        executable: /bin/bash
+      environment:
+        DOCKER_DAEMON_GRAPH: "{{ docker_daemon_graph }}"
+  always:
+    - name: Start kubelet on the nodes
+      command: /bin/true
+      notify: start kubelet
+      when:
+        - inventory_hostname in groups['k8s-cluster']
+        - ansible_facts.services['kubelet.service'] is defined and ansible_facts.services['kubelet.service']['state'] == "running"
+
+    - name: Start etcd on the nodes
+      command: /bin/true
+      notify: start etcd
+      when:
+        - inventory_hostname in groups['etcd']
+        - ansible_facts.services['etcd.service'] is defined and ansible_facts.services['etcd.service']['state'] == "running"
+
+    - name: Uncordon the nodes
+      command: /bin/true
+      notify: uncordon node
+      when: inventory_hostname in groups['k8s-cluster']
+  when: is_docker_upgrade is defined and is_docker_upgrade|bool

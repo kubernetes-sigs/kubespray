@@ -20,11 +20,12 @@
 - name: check if its docker upgrade | Redhat
   set_fact:
     is_docker_upgrade: True
-  when: >
-    ansible_os_family == 'RedHat' and
-    ansible_facts.packages[item] is defined and
-    (ansible_facts.packages[item][0].name + '-' + ansible_facts.packages[item][0].version + '-' + ansible_facts.packages[item][0].release) not in
-    [docker_versioned_pkg[docker_version | string],docker_selinux_versioned_pkg[docker_selinux_version | string]]
+  when: 
+    - ansible_os_family == 'RedHat'
+    - ansible_facts.packages[item] is defined
+    - ->
+      (ansible_facts.packages[item][0].name + '-' + ansible_facts.packages[item][0].version + '-' + ansible_facts.packages[item][0].release) not in
+      [docker_versioned_pkg[docker_version | string],docker_selinux_versioned_pkg[docker_selinux_version | string]]
   with_items:
     - docker-engine
     - docker-engine-selinux
@@ -34,7 +35,7 @@
 - block:
     - name: Drain the nodes
       import_role:
-        name: kargo/roles/upgrade/pre-upgrade
+        name: upgrade/pre-upgrade
       ignore_errors: yes
       when: inventory_hostname in groups['k8s-cluster']
 
@@ -79,4 +80,6 @@
       command: /bin/true
       notify: uncordon node
       when: inventory_hostname in groups['k8s-cluster']
-  when: is_docker_upgrade is defined and is_docker_upgrade|bool
+  when: 
+    - is_docker_upgrade is defined
+    - is_docker_upgrade|bool

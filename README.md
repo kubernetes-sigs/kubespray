@@ -114,7 +114,7 @@ Supported Components
     -   [weave](https://github.com/weaveworks/weave) v2.4.0
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
-    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.4.1
+    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.0
     -   [coredns](https://github.com/coredns/coredns) v1.2.2
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.19.0
 

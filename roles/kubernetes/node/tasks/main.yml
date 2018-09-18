@@ -146,7 +146,7 @@
   template:
     src: manifests/kube-proxy.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-proxy.manifest"
-  when: not kubeadm_enabled
+  when: (not kubeadm_enabled) or (kube_proxy_mode != 'none')
   tags:
     - kube-proxy
 
@@ -154,7 +154,15 @@
   file:
     path: "{{ kube_manifest_dir }}/kube-proxy.manifest"
     state: absent
-  when: kubeadm_enabled
+  when: kubeadm_enabled or (kube_proxy_mode == 'none')
+  tags:
+    - kube-proxy
+
+- name: Cleanup kube-proxy from node
+  command: "{{ docker_bin_dir }}/docker run --rm --privileged -v /lib/modules:/lib/modules --net=host {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} kube-proxy --cleanup"
+  when: kube_proxy_mode == 'none'
+  # `kube-proxy --cleanup`, being Ok as per shown WARNING, still returns 255 from above run (?)
+  ignore_errors: true
   tags:
     - kube-proxy
 

@@ -18,11 +18,6 @@ versions. Here are all version vars for each component:
 * flannel_version
 * kubedns_version
 
-Please remember that some components upgrade depends on minimum installed version.
-In example **calico version 2.6.5 upgrade to 3.1.1 is upgrading etcd store to etcdv3**.
-The kubespray stack upgrade would failed when calico version is below 2.6.5. Please check
-components' documentation and always upgrade test environment first.
-
 #### Unsafe upgrade example
 
 If you wanted to upgrade just kube_version from v1.4.3 to v1.4.6, you could
@@ -40,7 +35,7 @@ ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.
 
 #### Graceful upgrade
 
-Kubespray also supports cordon, drain and uncordoning of nodes when performing 
+Kubespray also supports cordon, drain and uncordoning of nodes when performing
 a cluster upgrade. There is a separate playbook used for this purpose. It is
 important to note that upgrade-cluster.yml can only be used for upgrading an
 existing cluster. That means there must be at least 1 kube-master already

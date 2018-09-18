@@ -164,6 +164,15 @@ To re-define default action please set the following variable in your inventory:
 calico_endpoint_to_host_action: "ACCEPT"
 ```
 
+##### Optional : Define address on which Felix will respond to health requests
+
+Since Calico 3.2.0, HealthCheck default behavior changed from listening on all interfaces to just listening on localhost.
+
+To re-define health host please set the following variable in your inventory:
+```
+calico_healthhost: "0.0.0.0"
+```
+
 Cloud providers configuration
 =============================
 

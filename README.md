@@ -111,10 +111,10 @@ Supported Components
     -   [cilium](https://github.com/cilium/cilium) v1.2.0
     -   [contiv](https://github.com/contiv/install) v1.1.7
     -   [flanneld](https://github.com/coreos/flannel) v0.10.0
-    -   [weave](https://github.com/weaveworks/weave) v2.4.0
+    -   [weave](https://github.com/weaveworks/weave) v2.4.1
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
-    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.4.1
+    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.0
     -   [coredns](https://github.com/coredns/coredns) v1.2.2
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.19.0
 

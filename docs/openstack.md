@@ -39,7 +39,7 @@ Then you can use the instance ids to find the connected [neutron](https://wiki.o
 Given the port ids on the left, you can set the two `allowed_address`(es) in OpenStack. Note that you have to allow both `kube_service_addresses` (default `10.233.0.0/18`) and `kube_pods_subnet` (default `10.233.64.0/18`.)
 
     # allow kube_service_addresses and kube_pods_subnet network
-    openstack port set 5662a4e0-e646-47f0-bf88-d80fbd2d99ef --allowed_address ip_address=10.233.0.0/18,ip_address=10.233.64.0/18
-    openstack port set e5ae2045-a1e1-4e99-9aac-4353889449a7 --allowed_address ip_address=10.233.0.0/18,ip_address=10.233.64.0/18
+    openstack port set 5662a4e0-e646-47f0-bf88-d80fbd2d99ef --allowed-address ip-address=10.233.0.0/18 --allowed-address ip-address=10.233.64.0/18
+    openstack port set e5ae2045-a1e1-4e99-9aac-4353889449a7 --allowed-address ip-address=10.233.0.0/18 --allowed-address ip-address=10.233.64.0/18
 
 Now you can finally run the playbook.

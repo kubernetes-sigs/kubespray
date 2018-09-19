@@ -49,6 +49,25 @@
 - name: Calico-rr | Configure route reflector
   command: |-
     {{ bin_dir }}/etcdctl \
+    --endpoints={{ etcd_access_addresses }} \
+    --cert={{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}.pem \
+    --key={{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem \
+    put /calico/bgp/v1/rr_v4/{{ rr_ip }} \
+    '{
+       "ip": "{{ rr_ip }}",
+       "cluster_id": "{{ cluster_id }}"
+     }'
+  environment:
+    ETCDCTL_API: 3
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  delegate_to: "{{groups['etcd'][0]}}"
+  when:
+    - calico_version | version_compare("v3.0.0", ">=")
+
+- name: Calico-rr | Configure route reflector (legacy)
+  command: |-
+    {{ bin_dir }}/etcdctl \
     --peers={{ etcd_access_addresses }} \
     --cert-file {{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}.pem \
     --key-file {{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem \
@@ -60,6 +79,8 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   delegate_to: "{{groups['etcd'][0]}}"
+  when:
+    - calico_version | version_compare("v3.0.0", "<")
 
 - meta: flush_handlers
 

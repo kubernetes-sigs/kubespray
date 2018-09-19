@@ -130,3 +130,5 @@ You can see a list of nodes by running the following commands:
     ./kubectl.sh get nodes
 
 If desired, copy admin.conf to ~/.kube/config.
+
+See also [headless kubelet example with cri-o](./standalone-kubelet-crio.md)

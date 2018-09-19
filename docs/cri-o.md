@@ -29,3 +29,4 @@ kubelet_deployment_type: host
 container_manager: crio
 ```
 
+See also [headless kubelet example with cri-o](./standalone-kubelet-crio.md)

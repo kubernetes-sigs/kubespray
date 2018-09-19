@@ -89,6 +89,12 @@
     - use_docker_engine is defined and use_docker_engine
     - not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat", "Suse"] or is_atomic) and (dockerproject_repo_info.repos|length > 0)
 
+- name: Configure docker repository on Fedora
+  template:
+    src: "fedora_docker.repo.j2"
+    dest: "{{ yum_repo_dir }}/docker.repo"
+  when: ansible_distribution == "Fedora" and not is_atomic
+
 - name: Configure docker repository on RedHat/CentOS
   template:
     src: "rh_docker.repo.j2"
@@ -118,7 +124,7 @@
     force: "{{item.force|default(omit)}}"
     conf_file: "{{item.yum_conf|default(omit)}}"
     state: present
-    update_cache: yes
+    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
   register: docker_task_result
   until: docker_task_result|succeeded
   retries: 4
@@ -130,13 +136,17 @@
 
 - name: get available packages on Ubuntu
   command: apt-cache policy docker-ce
-  when: docker_task_result|failed
+  when:
+    - docker_task_result|failed
+    - ansible_distribution == 'Ubuntu'
   register: available_packages
 
 - name: show available packages on ubuntu
   fail:
     msg: "{{available_packages}}"
-  when: docker_task_result|failed
+  when:
+    - docker_task_result|failed
+    - ansible_distribution == 'Ubuntu'
 
 # This is required to ensure any apt upgrade will not break kubernetes
 - name: Set docker pin priority to apt_preferences on Debian family

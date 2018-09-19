@@ -35,7 +35,7 @@ ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.
 
 #### Graceful upgrade
 
-Kubespray also supports cordon, drain and uncordoning of nodes when performing 
+Kubespray also supports cordon, drain and uncordoning of nodes when performing
 a cluster upgrade. There is a separate playbook used for this purpose. It is
 important to note that upgrade-cluster.yml can only be used for upgrading an
 existing cluster. That means there must be at least 1 kube-master already
@@ -86,7 +86,7 @@ for impact to user deployed pods.
 
 A deployer may want to upgrade specific components in order to minimize risk
 or save time. This strategy is not covered by CI as of this writing, so it is
-not guaranteed to work. 
+not guaranteed to work.
 
 These commands are useful only for upgrading fully-deployed, healthy, existing
 hosts. This will definitely not work for undeployed or partially deployed

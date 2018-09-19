@@ -127,3 +127,21 @@
   tags:
     - cloud-provider
     - facts
+
+- name: "Get current version of calico cluster version"
+  shell: "{{ bin_dir }}/calicoctl version  | grep 'Cluster Version' | awk '{ print $3}'"
+  register: calico_version_on_server
+  run_once: yes
+  delegate_to: "{{ groups['kube-master'][0] }}"
+
+
+- name: "Check that calico version is enought for upgrade"
+  assert:
+    that:
+      - calico_version_on_server.stdout|version_compare('v2.6.5', '>=')
+    msg: "Your version of calico is not fresh enough for upgrade. Minimum version v2.6.5"
+  when:
+    - 'calico_version_on_server.stdout is defined'
+    - 'calico_version_on_server.stdout != ""'
+    - inventory_hostname == groups['kube-master'][0]
+  run_once: yes

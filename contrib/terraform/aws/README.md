@@ -22,8 +22,6 @@ export TF_VAR_AWS_SECRET_ACCESS_KEY ="xxx"
 export TF_VAR_AWS_SSH_KEY_NAME="yyy"
 export TF_VAR_AWS_DEFAULT_REGION="zzz"
 ```
-- Rename `contrib/terraform/aws/terraform.tfvars.example` to `terraform.tfvars`
-
 - Update `contrib/terraform/aws/terraform.tfvars` with your data. By default, the Terraform scripts use CoreOS as base image. If you want to change this behaviour, see note "Using other distrib than CoreOs" below.
 - Create an AWS EC2 SSH Key
 - Run with `terraform apply --var-file="credentials.tfvars"` or `terraform apply` depending if you exported your AWS credentials

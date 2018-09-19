@@ -139,7 +139,7 @@ node_labels:
   By default, the `audit_policy_file` contains [default rules](https://github.com/kubernetes-incubator/kubespray/blob/master/roles/kubernetes/master/templates/apiserver-audit-policy.yaml.j2) that can be overriden with the `audit_policy_custom_rules` variable.
 
 ##### Custom flags for Kube Components
-For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments. This can be done by providing a list of flags. Example:
+For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments. This can be done by providing a list of flags. The `kubelet_node_custom_flags` apply kubelet settings only to nodes and not masters. Example:
 ```
 kubelet_custom_flags:
   - "--eviction-hard=memory.available<100Mi"
@@ -151,6 +151,7 @@ The possible vars are:
 * *controller_mgr_custom_flags*
 * *scheduler_custom_flags*
 * *kubelet_custom_flags*
+* *kubelet_node_custom_flags*
 
 #### User accounts
 

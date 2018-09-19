@@ -92,6 +92,7 @@ Supported Linux Distributions
 -   **Debian** Jessie, Stretch, Wheezy
 -   **Ubuntu** 16.04, 18.04
 -   **CentOS/RHEL** 7
+-   **Fedora** 28
 -   **Fedora/CentOS** Atomic
 -   **openSUSE** Leap 42.3/Tumbleweed
 

@@ -1,0 +1,68 @@
+---
+- name: "Fluent Bit | Create logging namespace"
+  command: "{{bin_dir}}/kubectl create namespace logging"
+  run_once: true
+  register: fluent_bit_create_ns
+  failed_when: fluent_bit_create_ns.rc not in [0,1]
+
+- name: "Fluent Bit | Write service account"
+  template:
+    src: fluent-bit-service-account.yaml.j2
+    dest: "{{ kube_config_dir }}/fluent-bit-service-account.yaml"
+  register: fluent_bit_sa
+
+- name: "Fluent Bit | Create service account"
+  command: "{{bin_dir}}/kubectl apply -f {{ kube_config_dir }}/fluent-bit-service-account.yaml"
+  run_once: true
+  when: fluent_bit_sa.changed
+
+- name: "Fluent Bit | Write fluent-bit role"
+  template:
+    src: fluent-bit-role.yaml.j2
+    dest: "{{ kube_config_dir }}/fluent-bit-role.yaml"
+  register: fluent_bit_role
+  when: rbac_enabled
+
+- name: "Fluent Bit | Create fluent-bit role"
+  command: "{{bin_dir}}/kubectl apply -f {{ kube_config_dir }}/fluent-bit-role.yaml"
+  run_once: true
+  when:
+    - rbac_enabled
+    - fluent_bit_role.changed
+
+- name: "Fluent Bit | Write fluent-bit role binding"
+  template:
+    src: fluent-bit-role-binding.yaml.j2
+    dest: "{{ kube_config_dir }}/fluent-bit-role-binding.yaml"
+  register: fluent_bit_role_binding
+  when: rbac_enabled
+
+- name: "Fluent Bit | Create fluent-bit role binding"
+  command: "{{bin_dir}}/kubectl apply -f {{ kube_config_dir }}/fluent-bit-role-binding.yaml"
+  run_once: true
+  when:
+    - rbac_enabled
+    - fluent_bit_role_binding.changed
+
+- name: "Fluent Bit | Write configmap"
+  template:
+    src: fluent-bit-configmap.yaml.j2
+    dest: "{{ kube_config_dir }}/fluent-bit-configmap.yaml"
+  register: fluent_bit_configmap
+
+- name: "Fluent Bit | Create configmap"
+  command: "{{bin_dir}}/kubectl apply -f {{ kube_config_dir }}/fluent-bit-configmap.yaml"
+  run_once: true
+  when: fluent_bit_configmap.changed
+
+- name: "Fluent Bit | Write configmap"
+  template:
+    src: fluent-bit-ds.yaml.j2
+    dest: "{{ kube_config_dir }}/fluent-bit-ds.yaml"
+  register: fluent_bit_ds
+
+- name: "Fluent Bit | Create daemonset"
+  command: "{{bin_dir}}/kubectl apply -f {{ kube_config_dir }}/fluent-bit-ds.yaml"
+  run_once: true
+  when: fluent_bit_ds.changed
+

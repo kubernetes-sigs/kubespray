@@ -60,8 +60,17 @@ apiServerExtraArgs:
 {% endif %}
   service-node-port-range: {{ kube_apiserver_node_port_range }}
   kubelet-preferred-address-types: "{{ kubelet_preferred_address_types }}"
+  profiling: "{{ kube_profiling }}"
+  repair-malformed-updates: "false"
+  enable-aggregator-routing: "{{ kube_api_aggregator_routing }}"
+{% if kube_api_anonymous_auth is defined and kube_version | version_compare('v1.5', '>=')  %}
+  anonymous-auth: "{{ kube_api_anonymous_auth }}"
+{% endif %}
 {% if kube_basic_auth|default(true) %}
   basic-auth-file: {{ kube_users_dir }}/known_users.csv
+{% endif %}
+{% if kube_token_auth|default(true) %}
+  token-auth-file: {{ kube_token_dir }}/known_tokens.csv
 {% endif %}
 {% if kube_oidc_auth|default(false) and kube_oidc_url is defined and kube_oidc_client_id is defined %}
   oidc-issuer-url: {{ kube_oidc_url }}
@@ -101,9 +110,13 @@ controllerManagerExtraArgs:
   node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
   node-monitor-period: {{ kube_controller_node_monitor_period }}
   pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
+  profiling: "{{ kube_profiling }}"
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
+{% for key in kube_kubeadm_controller_extra_args %}
+  {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
+{% endfor %}
 {% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
 controllerManagerExtraVolumes:
 - name: openstackcacert
@@ -122,10 +135,8 @@ apiServerExtraVolumes:
   writable: true
 {% endif %}
 {% endif %}
-{% for key in kube_kubeadm_controller_extra_args %}
-  {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
-{% endfor %}
 schedulerExtraArgs:
+  profiling: "{{ kube_profiling }}"
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}

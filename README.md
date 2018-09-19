@@ -117,6 +117,7 @@ Supported Components
     -   [contiv](https://github.com/contiv/install) v1.1.7
     -   [flanneld](https://github.com/coreos/flannel) v0.10.0
     -   [weave](https://github.com/weaveworks/weave) v2.4.1
+    -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.0
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
     -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.0
@@ -163,6 +164,11 @@ You can choose between 6 network plugins. (default: `calico`, except Vagrant use
 
 -   [weave](docs/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster.
     (Please refer to `weave` [troubleshooting documentation](http://docs.weave.works/weave/latest_release/troubleshooting.html)).
+
+-   [kube-router](doc/kube-router.md): Kube-router is a L3 CNI for Kubernetes networking aiming to provide operational
+    simplicity and high performance: it uses IPVS to provide Kube Services Proxy (if setup to replace kube-proxy),
+    iptables for network policies, and BGP for ods L3 networking (with optionally BGP peering with out-of-cluster BGP peers).
+    It can also optionally advertise routes to Kubernetes cluster Pods CIDRs, ClusterIPs, ExternalIPs and LoadBalancerIPs.
 
 The choice is defined with the variable `kube_network_plugin`. There is also an
 option to leverage built-in cloud provider networking instead.

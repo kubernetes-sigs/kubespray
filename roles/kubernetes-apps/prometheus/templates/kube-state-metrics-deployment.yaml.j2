@@ -1,0 +1,97 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  labels:
+    app: kube-state-metrics
+  name: kube-state-metrics
+  namespace: {{ prometheus_namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-state-metrics
+  template:
+    metadata:
+      labels:
+        app: kube-state-metrics
+    spec:
+      containers:
+      - args:
+        - --secure-listen-address=:8443
+        - --upstream=http://127.0.0.1:8081/
+        image: {{ kuberbacproxy_image_repo }}:{{ kuberbacproxy_image_tag }}
+        name: kube-rbac-proxy-main
+        ports:
+        - containerPort: 8443
+          name: https-main
+        resources:
+          limits:
+            cpu: 20m
+            memory: 40Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
+      - args:
+        - --secure-listen-address=:9443
+        - --upstream=http://127.0.0.1:8082/
+        image: {{ kuberbacproxy_image_repo }}:{{ kuberbacproxy_image_tag }}
+        name: kube-rbac-proxy-self
+        ports:
+        - containerPort: 9443
+          name: https-self
+        resources:
+          limits:
+            cpu: 20m
+            memory: 40Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
+      - args:
+        - --host=127.0.0.1
+        - --port=8081
+        - --telemetry-host=127.0.0.1
+        - --telemetry-port=8082
+        image: {{ kubestatemetrics_image_repo }}:{{ kubestatemetrics_image_tag }}
+        name: kube-state-metrics
+        resources:
+          limits:
+            cpu: 100m
+            memory: 150Mi
+          requests:
+            cpu: 100m
+            memory: 150Mi
+      - command:
+        - /pod_nanny
+        - --container=kube-state-metrics
+        - --cpu=100m
+        - --extra-cpu=2m
+        - --memory=150Mi
+        - --extra-memory=30Mi
+        - --threshold=5
+        - --deployment=kube-state-metrics
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        image: {{ addonresizer_image_repo }}:{{ addonresizer_image_tag }}
+        name: addon-resizer
+        resources:
+          limits:
+            cpu: 10m
+            memory: 30Mi
+          requests:
+            cpu: 10m
+            memory: 30Mi
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      serviceAccountName: kube-state-metrics

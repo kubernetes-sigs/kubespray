@@ -1,0 +1,96 @@
+---
+# tasks file for prometheus_grafana
+- name: Prometheus Grafana | Remove legacy addon dir and manifests
+  file:
+    path: "{{ kube_config_dir }}/addons/prometheus"
+    state: absent
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+  tags:
+    - upgrade
+
+- name: Prometheus Grafana | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/prometheus"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Prometheus Grafana | Templates list
+  set_fact:
+    prometheus_templates:
+      - { name: 00namespace-namespace, file: 00namespace-namespace.yaml, type: ns }
+      - { name: 0prometheus-operator-0alertmanagerCustomResourceDefinition, file: 0prometheus-operator-0alertmanagerCustomResourceDefinition.yaml, type: crd }
+      - { name: 0prometheus-operator-0prometheusCustomResourceDefinition, file: 0prometheus-operator-0prometheusCustomResourceDefinition.yaml, type: crd }
+      - { name: 0prometheus-operator-0prometheusruleCustomResourceDefinition, file: 0prometheus-operator-0prometheusruleCustomResourceDefinition.yaml, type: crd }
+      - { name: 0prometheus-operator-0servicemonitorCustomResourceDefinition, file: 0prometheus-operator-0servicemonitorCustomResourceDefinition.yaml, type: crd }
+      - { name: 0prometheus-operator-clusterRoleBinding, file: 0prometheus-operator-clusterRoleBinding.yaml, type: clusterrolebindings }
+      - { name: 0prometheus-operator-clusterRole, file: 0prometheus-operator-clusterRole.yaml, type: clusterroles }
+      - { name: 0prometheus-operator-deployment, file: 0prometheus-operator-deployment.yaml, type: deploy }
+      - { name: 0prometheus-operator-serviceAccount, file: 0prometheus-operator-serviceAccount.yaml, type: sa }
+      - { name: 0prometheus-operator-serviceMonitor, file: 0prometheus-operator-serviceMonitor.yaml, type: servicemonitors }
+      - { name: 0prometheus-operator-service, file: 0prometheus-operator-service.yaml, type: svc }
+      - { name: alertmanager-alertmanager, file: alertmanager-alertmanager.yaml, type: alertmanagers }
+      - { name: alertmanager-secret, file: alertmanager-secret.yaml, type: secrets }
+      - { name: alertmanager-serviceAccount, file: alertmanager-serviceAccount.yaml, type: sa }
+      - { name: alertmanager-serviceMonitor, file: alertmanager-serviceMonitor.yaml, type: servicemonitors }
+      - { name: alertmanager-service, file: alertmanager-service.yaml, type: svc }
+      - { name: grafana-dashboardDatasources, file: grafana-dashboardDatasources.yaml, type: secrets }
+      - { name: grafana-dashboardDefinitions, file: grafana-dashboardDefinitions.yaml, type: cm }
+      - { name: grafana-dashboardSources, file: grafana-dashboardSources.yaml, type: cm }
+      - { name: grafana-deployment, file: grafana-deployment.yaml, type: deploy }
+      - { name: grafana-serviceAccount, file: grafana-serviceAccount.yaml, type: sa }
+      - { name: grafana-service, file: grafana-service.yaml, type: svc }
+      - { name: kube-state-metrics-clusterRoleBinding, file: kube-state-metrics-clusterRoleBinding.yaml, type: clusterrolebindings }
+      - { name: kube-state-metrics-clusterRole, file: kube-state-metrics-clusterRole.yaml, type: clusterroles }
+      - { name: kube-state-metrics-deployment, file: kube-state-metrics-deployment.yaml, type: deploy }
+      - { name: kube-state-metrics-roleBinding, file: kube-state-metrics-roleBinding.yaml, type: rolebindings }
+      - { name: kube-state-metrics-role, file: kube-state-metrics-role.yaml, type: roles }
+      - { name: kube-state-metrics-serviceAccount, file: kube-state-metrics-serviceAccount.yaml, type: sa }
+      - { name: kube-state-metrics-serviceMonitor, file: kube-state-metrics-serviceMonitor.yaml, type: servicemonitors }
+      - { name: kube-state-metrics-service, file: kube-state-metrics-service.yaml, type: svc }
+      - { name: node-exporter-clusterRoleBinding, file: node-exporter-clusterRoleBinding.yaml, type: clusterrolebindings }
+      - { name: node-exporter-clusterRole, file: node-exporter-clusterRole.yaml, type: clusterroles }
+      - { name: node-exporter-daemonset, file: node-exporter-daemonset.yaml, type: ds }
+      - { name: node-exporter-serviceAccount, file: node-exporter-serviceAccount.yaml, type: sa }
+      - { name: node-exporter-serviceMonitor, file: node-exporter-serviceMonitor.yaml, type: servicemonitors }
+      - { name: node-exporter-service, file: node-exporter-service.yaml, type: svc }
+      - { name: prometheus-clusterRoleBinding, file: prometheus-clusterRoleBinding.yaml, type: clusterrolebindings }
+      - { name: prometheus-clusterRole, file: prometheus-clusterRole.yaml, type: clusterroles }
+      - { name: prometheus-prometheus, file: prometheus-prometheus.yaml, type: prometheus }
+      - { name: prometheus-roleBindingConfig, file: prometheus-roleBindingConfig.yaml, type: rolebindings }
+      - { name: prometheus-roleBindingSpecificNamespaces, file: prometheus-roleBindingSpecificNamespaces.yaml, type: rolebindings }
+      - { name: prometheus-roleConfig, file: prometheus-roleConfig.yaml, type: roles }
+      - { name: prometheus-roleSpecificNamespaces, file: prometheus-roleSpecificNamespaces.yaml, type: roles }
+      - { name: prometheus-rules, file: prometheus-rules.yaml, type: prometheusrules }
+      - { name: prometheus-serviceAccount, file: prometheus-serviceAccount.yaml, type: sa }
+      - { name: prometheus-serviceMonitorApiserver, file: prometheus-serviceMonitorApiserver.yaml, type: servicemonitors }
+      - { name: prometheus-serviceMonitorCoreDNS, file: prometheus-serviceMonitorCoreDNS.yaml, type: servicemonitors }
+      - { name: prometheus-serviceMonitorKubeControllerManager, file: prometheus-serviceMonitorKubeControllerManager.yaml, type: servicemonitors }
+      - { name: prometheus-serviceMonitorKubelet, file: prometheus-serviceMonitorKubelet.yaml, type: servicemonitors }
+      - { name: prometheus-serviceMonitorKubeScheduler, file: prometheus-serviceMonitorKubeScheduler.yaml, type: servicemonitors }
+      - { name: prometheus-serviceMonitor, file: prometheus-serviceMonitor.yaml, type: servicemonitors }
+      - { name: prometheus-service, file: prometheus-service.yaml, type: servicemonitors }
+
+- name: Prometheus Grafana | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/prometheus/{{ item.file }}"
+  with_items: "{{ prometheus_templates }}"
+  register: prometheus_manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Prometheus Grafana | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/prometheus/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ prometheus_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]

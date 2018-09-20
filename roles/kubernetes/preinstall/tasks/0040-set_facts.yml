@@ -159,11 +159,17 @@
         - ../vars
       skip: true
 
-- name: override kube_proxy_mode to none if kube-router set to replace it via kube_router_run_service_proxy
+- name: force kube_proxy removal if proxy services are replaced by other means
   set_fact:
-    kube_proxy_mode: 'none'
+    kube_proxy_remove: (kube_network_plugin == 'kube-router') and kube_router_run_service_proxy
+  tags:
+    - facts
+
+- name: override kube_proxy_mode to ipvs if kube_proxy_remove is set, as ipvs won't require kube-proxy cleanup when kube-proxy daemonset gets deleted
+  set_fact:
+    kube_proxy_mode: 'ipvs'
   when:
-    - kube_network_plugin == 'kube-router'
-    - kube_router_run_service_proxy
+    - kubeadm_enabled
+    - kube_proxy_remove
   tags:
     - facts

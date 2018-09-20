@@ -56,7 +56,27 @@ You need to `kubectl exec -it ...` into a kube-router container to use these, se
 
 ## Kube-router configuration
 
+
 You can change the default configuration by overriding `kube_router_...` variables
 (as found at `roles/network_plugin/kube-router/defaults/main.yml`),
 these are named to follow `kube-router` command-line options as per
 <https://www.kube-router.io/docs/user-guide/#try-kube-router-with-cluster-installers>.
+
+## Caveats
+
+If you want to set `kube-router` to replace `kube-proxy`
+(`--run-service-proxy=true`) while using `kubeadm_enabled`,
+then 'kube-proxy` DaemonSet will be removed *after* kubeadm finishes
+running, as it's not possible to skip kube-proxy install in kubeadm flags
+and/or config, see https://github.com/kubernetes/kubeadm/issues/776.
+
+Given above, if `--run-service-proxy=true` is needed don't use kubeadm_enabled
+i.e. in your `k8s-cluster.yml` set:
+
+```
+kubeadm_enabled: false
+
+# Default kube_router_run_service_proxy: false
+kube_router_run_service_proxy: true
+
+```

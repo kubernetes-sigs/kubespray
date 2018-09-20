@@ -31,12 +31,6 @@ $ cat > repos.yml << EOF
   gather_facts: yes
   tasks:
     - yum_repository:
-        name: paas7-openshift-origin311-candidate
-        description: 'OpenShift Origin Repo'
-        baseurl: https://cbs.centos.org/repos/paas7-openshift-origin311-candidate/x86_64/os/
-        enabled: yes
-        gpgcheck: no
-    - yum_repository:
         name: virt7-container-common-candidate
         description: 'virt7-container-common-candidate'
         baseurl: https://cbs.centos.org/repos/virt7-container-common-candidate/x86_64/os/
@@ -74,7 +68,7 @@ $ cat > kubelet-standalone.yml << EOF
   vars:
     kube_version: v1.10.1           # see as it comes from installed rpm
     kubelet_headless: true
-    kube_network_plugin: noop       # WIP (no network for pods yet!)
+    kube_network_plugin: noop       # no networking plugins wanted
     kube_feature_gates:
       - "MountPropagation=true"     # mandatory for shared container mounts
       - "CRIContainerLogRotation=true" # let's see how/if it works
@@ -105,11 +99,9 @@ $ cat > kubelet-standalone.yml << EOF
   pre_tasks:
     - package: name=kubernetes-node state=present
   roles:
-    - role: roles/kubespray-defaults
-    - role: roles/kubernetes/preinstall
-      tags: kubelet
-    - role: roles/kubernetes/node
-      tags: kubelet
+    - roles/kubespray-defaults
+    - roles/kubernetes/preinstall
+    - roles/kubernetes/node
 EOF
 
 $ ansible-playbook --flush-cache \
@@ -126,12 +118,14 @@ $ curl http://127.0.0.1
 version: 0.1.0
 hostname: localhost.localdomain
 key: 1537370096
-$ crictl pods
-$ crictl ps
-$ crictl stats
-$ crictl info # note: the networking is not ready yet for this guide :-(
+$ sudo crictl pods # note the created pod ID
+$ sudo crictl inspectp <pod_id> # check if the pod's network uses the host IP(s) and has the same interfaces
+$ sudo crictl ps
+$ sudo crictl info
 ```
 Note, there is no kubectl CLI available for the standalone kubelet.
+You should also ingore CNI config related errors reported by kubelet and crio services
+as we do not need CNI plugins for this example.
 
 * Reset the deployment to try it from the scratch:
 ```

@@ -64,19 +64,28 @@ these are named to follow `kube-router` command-line options as per
 
 ## Caveats
 
+### kubeadm_enabled: true
+
 If you want to set `kube-router` to replace `kube-proxy`
 (`--run-service-proxy=true`) while using `kubeadm_enabled`,
 then 'kube-proxy` DaemonSet will be removed *after* kubeadm finishes
 running, as it's not possible to skip kube-proxy install in kubeadm flags
 and/or config, see https://github.com/kubernetes/kubeadm/issues/776.
 
-Given above, if `--run-service-proxy=true` is needed don't use kubeadm_enabled
-i.e. in your `k8s-cluster.yml` set:
+Given above, if `--run-service-proxy=true` is needed it would be
+better to void `kubeadm_enabled` i.e. set:
 
 ```
 kubeadm_enabled: false
-
-# Default kube_router_run_service_proxy: false
 kube_router_run_service_proxy: true
 
+```
+
+If for some reason you do want/need to set `kubeadm_enabled`, removing
+it afterwards behave better if kube-proxy is set to ipvs mode, i.e. set:
+
+```
+kubeadm_enabled: true
+kube_router_run_service_proxy: true
+kube_proxy_mode: ipvs
 ```

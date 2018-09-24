@@ -20,13 +20,13 @@ variables:
   GCE_PREEMPTIBLE: "false"
   ANSIBLE_KEEP_REMOTE_FILES: "1"
   ANSIBLE_CONFIG: ./tests/ansible.cfg
-  ANSIBLE_INVENTORY: ./inventory/sample/${CI_JOB_NAME}-${BUILD_NUMBER}.ini
+  ANSIBLE_INVENTORY: ./inventory/sample/${CI_JOB_NAME}.ini
   IDEMPOT_CHECK: "false"
   RESET_CHECK: "false"
   UPGRADE_TEST: "false"
   KUBEADM_ENABLED: "false"
   LOG_LEVEL: "-vv"
-
+  KUBERNETES_SERVICE_ACCOUNT_OVERWRITE: gitlab-runner
 # asia-east1-a
 # asia-northeast1-a
 # europe-west1-b
@@ -42,7 +42,7 @@ before_script:
   tags:
     - kubernetes
     - docker
-  image: quay.io/kubespray/kubespray:latest
+  image: quay.io/kubespray/kubespray:v2.7
 
 .docker_service: &docker_service
   services:
@@ -58,12 +58,23 @@ before_script:
   CLOUD_MACHINE_TYPE: "g1-small"
   CI_PLATFORM: "gce"
   PRIVATE_KEY: $GCE_PRIVATE_KEY
+  SSH_KEY_PATH: gce.private
+
+.packet_variables: &packet_variables
+  SSH_USER: root
+  CLOUD_MACHINE_TYPE: "g1-small"
+  CI_PLATFORM: "packet"
+  PRIVATE_KEY: $PACKET_PRIVATE_KEY
+  KUBESPRAY_PRIVATE_KEY: $PACKET_PRIVATE_KEY
+  SSH_KEY_PATH: packet.private
+  KVM_HOST_IP: localhost
+  ANSIBLE_INVENTORY: ./inventory/sample/${CI_JOB_NAME}.yml
 
 .do_variables: &do_variables
   PRIVATE_KEY: $DO_PRIVATE_KEY
   CI_PLATFORM: "do"
   SSH_USER: root
-
+  SSH_KEY_PATH: do.private
 
 .testcases: &testcases
   <<: *job
@@ -89,7 +100,6 @@ before_script:
     - echo ${PWD}
     - echo "${STARTUP_SCRIPT}"
     - cd tests && make create-${CI_PLATFORM} -s ; cd -
-
     # Check out latest tag if testing upgrade
     # Uncomment when gitlab kubespray repo has tags
     #- test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
@@ -105,7 +115,7 @@ before_script:
       ansible-playbook
       -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
+      --private-key=${HOME}/.ssh/${SSH_KEY_PATH}
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -124,7 +134,7 @@ before_script:
       ansible-playbook
       -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
+      --private-key=${HOME}/.ssh/${SSH_KEY_PATH}
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -153,7 +163,7 @@ before_script:
       ansible-playbook
       -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
+      --private-key=${HOME}/.ssh/${SSH_KEY_PATH}
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -170,7 +180,7 @@ before_script:
       ansible-playbook
       -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
+      --private-key=${HOME}/.ssh/${SSH_KEY_PATH}
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -185,7 +195,7 @@ before_script:
       ansible-playbook
       -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
+      --private-key=${HOME}/.ssh/${SSH_KEY_PATH}
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -229,6 +239,13 @@ before_script:
   <<: *testcases
   variables:
     <<: *gce_variables
+
+.packet: &packet
+  <<: *testcases
+  variables:
+    <<: *packet_variables
+  tags:
+    - packet
 
 .do: &do
   variables:
@@ -330,6 +347,16 @@ gce_coreos-calico-aio:
   variables:
     <<: *coreos_calico_aio_variables
     <<: *gce_variables
+  when: on_success
+  except: ['triggers']
+  only: [/^pr-.*$/]
+
+packet_ubuntu-calico-aio:
+  stage: unit-tests
+  <<: *job
+  <<: *packet
+  variables:
+    <<: *packet_variables
   when: on_success
   except: ['triggers']
   only: [/^pr-.*$/]

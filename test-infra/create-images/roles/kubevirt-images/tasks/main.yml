@@ -1,0 +1,51 @@
+---
+# STEP 1: Download and create qcow2 images
+- name: create image directory
+  file:
+    state: directory
+    path: "{{images_dir}}"
+
+- name: download images
+  get_url:
+    url: "{{item.value.url}}"
+    dest: "{{images_dir}}/{{item.value.filename}}"
+    checksum: "{{item.value.checksum}}"
+  with_dict: "{{images}}"
+  when:
+    - skip_download is not defined or skip_download|bool != true
+
+- name: convert images
+  command: qemu-img convert -O qcow2 {{images_dir}}/{{item.value.filename}} {{images_dir}}/{{item.value.filename}}.qcow2
+  with_dict: "{{images}}"
+  when:
+    - skip_download is not defined or skip_download|bool != true
+    - item.value.converted|bool != true
+  register: converted
+
+- name: resize images
+  command: qemu-img resize {{images_dir}}/{{item.value.filename}}.qcow2 +8G
+  when:
+    - converted is changed
+
+# STEP 2: Include the images inside a container
+- name: copy Dockerfile
+  template:
+    src: Dockerfile
+    dest: "{{images_dir}}/Dockerfile"
+
+- name: create docker image
+  command: docker build -t {{registry}}/vm-{{item.key}} --build-arg cloud_image="{{item.value.filename}}.qcow2" {{images_dir}}
+  with_dict: "{{images}}"
+  tags:
+    - docker
+
+- name: docker login
+  command: docker login -u="{{docker_user}}" -p="{{docker_password}}" "{{docker_host}}"
+  tags:
+    - docker
+
+- name: docker push image
+  command: docker push {{registry}}/vm-{{item.key}}:latest
+  with_dict: "{{images}}"
+  tags:
+    - docker

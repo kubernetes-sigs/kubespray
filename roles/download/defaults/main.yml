@@ -23,6 +23,11 @@ download_localhost: False
 # Always pull images if set to True. Otherwise check by the repo's tag/digest.
 download_always_pull: False
 
+# Some problems may occur when downloading files over https proxy due to ansible bug
+# https://github.com/ansible/ansible/issues/32750. Set this variable to False to disable
+# SSL validation of get_url module. Note that kubespray will still be performing checksum validation.
+download_validate_certs: True
+
 # Use the first kube-master if download_localhost is not set
 download_delegate: "{% if download_localhost %}localhost{% else %}{{groups['kube-master'][0]}}{% endif %}"
 
@@ -46,9 +51,9 @@ flannel_version: "v0.10.0"
 flannel_cni_version: "v0.3.0"
 
 vault_version: 0.10.1
-weave_version: "2.4.0"
+weave_version: "2.4.1"
 pod_infra_version: 3.1
-contiv_version: 1.1.7
+contiv_version: 1.2.1
 cilium_version: "v1.2.0"
 
 # Download URLs
@@ -58,10 +63,39 @@ etcd_download_url: "https://github.com/coreos/etcd/releases/download/{{ etcd_ver
 hyperkube_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kube_version }}/bin/linux/amd64/hyperkube"
 
 # Checksums
+hyperkube_checksums:
+  v1.11.3: dac8da16dd6688e52b5dc510f5dd0a20b54350d52fb27ceba2f018ba2c8be692
+  v1.11.2: d727f8cae3fc26b1add9b4ff0d4d9b99605544ff7fb3baeecdca394362adbfb8
+  v1.11.1: 019ce1ecf4c6a70c06a7f4ef107443351458b4d9e6b9ce4a436bfbfbef93feea
+  v1.11.0: 7e191c164dc2c942abd37e4b50846e0be31ca959afffeff6b034beacbc2a106a
+  v1.10.8: f8a68514a6c858089f44ec93b2ffb2d764ea67d3b02b19112348f73ffcfe4386
+  v1.10.7: 13e25eb39467014fd169f38b7cd6bec8ff55525b8001c7abba85957e6470b6cc
+  v1.10.6: 0daa34fa58470e5f20def10d3dd544922c28c558719d3338ad8c524154c91257
+  v1.10.5: 1a53456f9d33a7c07adb1636f20f1d0b92b8e7647063a70d0ce134a238e680fe
+  v1.10.4: 16e36693c15494036d930139a749ec1bc492b7fefa2c3adc1abbe8f38178ae7c
+  v1.10.3: e807753dc309635902a56069ee06fc390944ef034b72c53b2e1e51d0c9ead8a3
+  v1.10.2: 3843fb594a18c4a64d77736bab72000ec4b8c4ddf178e20ec3249f709e9ed9c1
+  v1.10.1: 6e0642ad6bae68dc81b8d1c9efa18e265e17e23da1895862823cafac08c0344c
+  v1.10.0: b5575b2fb4266754c1675b8cd5d9b6cac70f3fee7a05c4e80da3a9e83e58c57e
+kubeadm_checksums:
+  v1.11.3: 422a7a32ed9a7b1eaa2a4f9d121674dfbe80eb41e206092c13017d097f75aaec
+  v1.11.2: 6b17720a65b8ff46efe92a5544f149c39a221910d89939838d75581d4e6924c0
+  v1.11.1: 425ec24b95f7217ee06d1588aba22f206a5829f8c6a5352c2862368552361fe6
+  v1.11.0: 0000478fc59a24ec1727de744188d13c4d702a644954132efa9d9954371b3553
+  v1.10.8: 42660875dd94c93267bd2f567c67d692b362bd143d7502967a62c5474b2b25b8
+  v1.10.7: cdeb07fd3705e973800c4aa0b8a510d5dba1de8e1039428cfebdaf3d93e332b6
+  v1.10.6: e1d49a6b33b384f681468add2e9ee08552069ae0d6b0ad59e1c943ddbaeac3fa
+  v1.10.5: f231d4bcc9f2ed15597272e5359e380cc760c0b57a1f7cb97ce2bbab5df774e0
+  v1.10.4: 7e1169bbbeed973ab402941672dec957638dea5952a1e8bc89a37d5e709cc4b4
+  v1.10.3: b2a6f0764b89a4a13a3da4471af943ce98efeb29e2913c9e7880fe27f4f43a5f
+  v1.10.2: 394d7d340214c91d669186cf4f2110d8eb840ca965399b4d8b22d0545a60e377
+  v1.10.1: 012e48fb92b1c22543b12ab2db7d780777972043287404c98cca4d2c6ec964ec
+  v1.10.0: ebbac985834289037b544523c3e2f39bb44bea938aca9d9e88ef7e880fb8472f
+
 etcd_binary_checksum: b729db0732448064271ea6fdcb901773c4fe917763ca07776f22d0e5e0bd4097
-hyperkube_binary_checksum: dac8da16dd6688e52b5dc510f5dd0a20b54350d52fb27ceba2f018ba2c8be692
-kubeadm_binary_checksum: 422a7a32ed9a7b1eaa2a4f9d121674dfbe80eb41e206092c13017d097f75aaec
 vault_binary_checksum: 3c4d70ba71619a43229e65c67830e30e050eab7a81ac6b28325ff707e5914188
+hyperkube_binary_checksum: "{{ hyperkube_checksums[kube_version] }}"
+kubeadm_binary_checksum: "{{ kubeadm_checksums[kubeadm_version] }}"
 
 # Containers
 # In some cases, we need a way to set --registry-mirror or --insecure-registry for docker,
@@ -98,16 +132,20 @@ netcheck_agent_img_repo: "mirantis/k8s-netchecker-agent"
 netcheck_agent_tag: "{{ netcheck_version }}"
 netcheck_server_img_repo: "mirantis/k8s-netchecker-server"
 netcheck_server_tag: "{{ netcheck_version }}"
-weave_kube_image_repo: "weaveworks/weave-kube"
+weave_kube_image_repo: "docker.io/weaveworks/weave-kube"
 weave_kube_image_tag: "{{ weave_version }}"
-weave_npc_image_repo: "weaveworks/weave-npc"
+weave_npc_image_repo: "docker.io/weaveworks/weave-npc"
 weave_npc_image_tag: "{{ weave_version }}"
 contiv_image_repo: "contiv/netplugin"
 contiv_image_tag: "{{ contiv_version }}"
+contiv_init_image_repo: "contiv/netplugin-init"
+contiv_init_image_tag: "latest"
 contiv_auth_proxy_image_repo: "contiv/auth_proxy"
 contiv_auth_proxy_image_tag: "{{ contiv_version }}"
 contiv_etcd_init_image_repo: "ferest/etcd-initer"
 contiv_etcd_init_image_tag: latest
+contiv_ovs_image_repo: "contiv/ovs"
+contiv_ovs_image_tag: "latest"
 cilium_image_repo: "docker.io/cilium/cilium"
 cilium_image_tag: "{{ cilium_version }}"
 nginx_image_repo: nginx
@@ -136,15 +174,6 @@ kubednsautoscaler_image_repo: "gcr.io/google_containers/cluster-proportional-aut
 kubednsautoscaler_image_tag: "{{ kubednsautoscaler_version }}"
 test_image_repo: busybox
 test_image_tag: latest
-elasticsearch_version: "v5.6.4"
-elasticsearch_image_repo: "k8s.gcr.io/elasticsearch"
-elasticsearch_image_tag: "{{ elasticsearch_version }}"
-fluentd_version: "v2.0.4"
-fluentd_image_repo: "k8s.gcr.io/fluentd-elasticsearch"
-fluentd_image_tag: "{{ fluentd_version }}"
-kibana_version: "5.6.4"
-kibana_image_repo: "docker.elastic.co/kibana/kibana"
-kibana_image_tag: "{{ kibana_version }}"
 helm_version: "v2.9.1"
 helm_image_repo: "lachlanevenson/k8s-helm"
 helm_image_tag: "{{ helm_version }}"
@@ -164,7 +193,7 @@ ingress_nginx_controller_image_repo: "quay.io/kubernetes-ingress-controller/ngin
 ingress_nginx_controller_image_tag: "0.19.0"
 ingress_nginx_default_backend_image_repo: "gcr.io/google_containers/defaultbackend"
 ingress_nginx_default_backend_image_tag: "1.4"
-cert_manager_version: "v0.4.1"
+cert_manager_version: "v0.5.0"
 cert_manager_controller_image_repo: "quay.io/jetstack/cert-manager-controller"
 cert_manager_controller_image_tag: "{{ cert_manager_version }}"
 
@@ -445,33 +474,6 @@ downloads:
     repo: "{{ test_image_repo }}"
     tag: "{{ test_image_tag }}"
     sha256: "{{ testbox_digest_checksum|default(None) }}"
-
-  elasticsearch:
-    enabled: "{{ efk_enabled }}"
-    container: true
-    repo: "{{ elasticsearch_image_repo }}"
-    tag: "{{ elasticsearch_image_tag }}"
-    sha256: "{{ elasticsearch_digest_checksum|default(None) }}"
-    groups:
-      - kube-node
-
-  fluentd:
-    enabled: "{{ efk_enabled }}"
-    container: true
-    repo: "{{ fluentd_image_repo }}"
-    tag: "{{ fluentd_image_tag }}"
-    sha256: "{{ fluentd_digest_checksum|default(None) }}"
-    groups:
-      - kube-node
-
-  kibana:
-    enabled: "{{ efk_enabled }}"
-    container: true
-    repo: "{{ kibana_image_repo }}"
-    tag: "{{ kibana_image_tag }}"
-    sha256: "{{ kibana_digest_checksum|default(None) }}"
-    groups:
-      - kube-node
 
   helm:
     enabled: "{{ helm_enabled }}"

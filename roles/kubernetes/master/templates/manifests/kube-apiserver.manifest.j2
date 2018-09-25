@@ -14,6 +14,9 @@ spec:
 {% if kube_version | version_compare('v1.6', '>=')  %}
   dnsPolicy: ClusterFirst
 {% endif %}
+{% if kube_version|version_compare('v1.11.1', '>=') %}
+  priorityClassName: system-node-critical
+{% endif %}
   containers:
   - name: kube-apiserver
     image: {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}
@@ -33,7 +36,7 @@ spec:
     - --audit-log-maxage={{ audit_log_maxage }}
     - --audit-log-maxbackup={{ audit_log_maxbackups }}
     - --audit-log-maxsize={{ audit_log_maxsize }}
-    - --audit-policy-file={{ audit_policy_file }} 
+    - --audit-policy-file={{ audit_policy_file }}
 {% endif %}
     - --advertise-address={{ ip | default(ansible_default_ipv4.address) }}
     - --etcd-servers={{ etcd_access_addresses }}
@@ -58,21 +61,22 @@ spec:
     - --admission-control={{ kube_apiserver_admission_control | join(',') }}
 {% else %}
 {% if kube_apiserver_enable_admission_plugins|length > 0 %}
-    - --enable-admission-plugins={{ kube_apiserver_enable_admission_plugins | join(',') }} 
+    - --enable-admission-plugins={{ kube_apiserver_enable_admission_plugins | join(',') }}
 {% endif %}
 {% if kube_apiserver_disable_admission_plugins|length > 0 %}
-    - --disable-admission-plugins={{ kube_apiserver_disable_admission_plugins | join(',') }} 
+    - --disable-admission-plugins={{ kube_apiserver_disable_admission_plugins | join(',') }}
 {% endif %}
 {% endif %}
     - --service-cluster-ip-range={{ kube_service_addresses }}
     - --service-node-port-range={{ kube_apiserver_node_port_range }}
     - --client-ca-file={{ kube_cert_dir }}/ca.pem
-    - --profiling=false
+    - --profiling={{ kube_profiling }}
     - --repair-malformed-updates=false
     - --kubelet-client-certificate={{ kube_cert_dir }}/node-{{ inventory_hostname }}.pem
     - --kubelet-client-key={{ kube_cert_dir }}/node-{{ inventory_hostname }}-key.pem
     - --service-account-lookup=true
     - --kubelet-preferred-address-types={{ kubelet_preferred_address_types }}
+    - --request-timeout={{ kube_apiserver_request_timeout }}
 {% if kube_basic_auth|default(true) %}
     - --basic-auth-file={{ kube_users_dir }}/known_users.csv
 {% endif %}
@@ -116,11 +120,9 @@ spec:
 {% endif %}
     - --v={{ kube_log_level }}
     - --allow-privileged=true
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"] %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
     - --cloud-provider={{ cloud_provider }}
     - --cloud-config={{ kube_config_dir }}/cloud_config
-{% elif cloud_provider is defined and cloud_provider == "aws" %}
-    - --cloud-provider={{ cloud_provider }}
 {% endif %}
 {% if kube_api_anonymous_auth is defined and kube_version | version_compare('v1.5', '>=')  %}
     - --anonymous-auth={{ kube_api_anonymous_auth }}

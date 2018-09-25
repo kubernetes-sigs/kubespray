@@ -21,7 +21,7 @@ The **calicoctl** command allows to check the status of the network workloads.
 calicoctl node status
 ```
 
-or for versions prior *v1.0.0*:
+or for versions prior to *v1.0.0*:
 
 ```
 calicoctl status
@@ -33,7 +33,7 @@ calicoctl status
 calicoctl get ippool -o wide
 ```
 
-or for versions prior *v1.0.0*:
+or for versions prior to *v1.0.0*:
 
 ```
 calicoctl pool show
@@ -73,7 +73,7 @@ In some cases you may want to route the pods subnet and so NAT is not needed on 
 For instance if you have a cluster spread on different locations and you want your pods to talk each other no matter where they are located.
 The following variables need to be set:
 `peer_with_router` to enable the peering with the datacenter's border router (default value: false).
-you'll need to edit the inventory and add a and a hostvar `local_as` by node.
+you'll need to edit the inventory and add a hostvar `local_as` by node.
 
 ```
 node1 ansible_ssh_host=95.54.0.12 local_as=xxxxxx
@@ -156,12 +156,21 @@ The inventory above will deploy the following topology assuming that calico's
 
 ##### Optional : Define default endpoint to host action
 
-By default Calico blocks traffic from endpoints to the host itself by using an iptables DROP action. When using it in kubernetes the action has to be changed to RETURN (default in kubespray) or ACCEPT (see https://github.com/projectcalico/felix/issues/660 and https://github.com/projectcalico/calicoctl/issues/1389). Otherwise all network packets from pods (with hostNetwork=False) to services endpoints (with hostNetwork=True) withing the same node are dropped.
+By default Calico blocks traffic from endpoints to the host itself by using an iptables DROP action. When using it in kubernetes the action has to be changed to RETURN (default in kubespray) or ACCEPT (see https://github.com/projectcalico/felix/issues/660 and https://github.com/projectcalico/calicoctl/issues/1389). Otherwise all network packets from pods (with hostNetwork=False) to services endpoints (with hostNetwork=True) within the same node are dropped.
 
 
 To re-define default action please set the following variable in your inventory:
 ```
 calico_endpoint_to_host_action: "ACCEPT"
+```
+
+##### Optional : Define address on which Felix will respond to health requests
+
+Since Calico 3.2.0, HealthCheck default behavior changed from listening on all interfaces to just listening on localhost.
+
+To re-define health host please set the following variable in your inventory:
+```
+calico_healthhost: "0.0.0.0"
 ```
 
 Cloud providers configuration

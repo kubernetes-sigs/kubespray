@@ -5,7 +5,7 @@ The following components require a highly available endpoints:
 * etcd cluster,
 * kube-apiserver service instances.
 
-The latter relies on a 3rd side reverse proxies, like Nginx or HAProxy, to
+The latter relies on a 3rd side reverse proxy, like Nginx or HAProxy, to
 achieve the same goal.
 
 Etcd
@@ -103,7 +103,7 @@ loadbalancer_apiserver:
   so you will need to use a different port for the vip from that the API is
   listening on, or set the `kube_apiserver_bind_address` so that the API only
   listens on a specific interface (to avoid conflict with haproxy binding the
-  port on the VIP adddress)
+  port on the VIP address)
 
 This domain name, or default "lb-apiserver.kubernetes.local", will be inserted
 into the `/etc/hosts` file of all servers in the `k8s-cluster` group and wired

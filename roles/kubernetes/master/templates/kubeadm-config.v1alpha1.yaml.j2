@@ -111,6 +111,9 @@ apiServerExtraArgs:
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
+{% if kube_network_plugin is defined and kube_network_plugin == 'cloud' %}
+  configure-cloud-routes: "true"
+{% endif %}
 controllerManagerExtraArgs:
   node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
   node-monitor-period: {{ kube_controller_node_monitor_period }}
@@ -123,11 +126,18 @@ controllerManagerExtraArgs:
 {% for key in kube_kubeadm_controller_extra_args %}
   {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
 {% endfor %}
-{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined and openstack_cacert != "" %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"] %}
 controllerManagerExtraVolumes:
+{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined and openstack_cacert != "" %}
 - name: openstackcacert
   hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
   mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
+{% endif %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"] %}
+  - name: cloud-config
+    hostPath: {{ kube_config_dir }}/cloud_config
+    mountPath: {{ kube_config_dir }}/cloud_config
+{% endif %}
 {% endif %}
 schedulerExtraArgs:
   profiling: "{{ kube_profiling }}"
@@ -141,6 +151,11 @@ schedulerExtraArgs:
 {% endif %}
 {% if kube_basic_auth|default(true) or kube_token_auth|default(true) %}
 apiServerExtraVolumes:
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"] %}
+- name: cloud-config
+  hostPath: {{ kube_config_dir }}/cloud_config
+  mountPath: {{ kube_config_dir }}/cloud_config
+{% endif %}
 {% if kube_basic_auth|default(true) %}
 - name: basic-auth-config
   hostPath: {{ kube_users_dir }}
@@ -151,6 +166,12 @@ apiServerExtraVolumes:
   hostPath: {{ kube_token_dir }}
   mountPath: {{ kube_token_dir }}
 {% endif %}
+{% endif %}
+{% if (cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"]) or volume_cross_zone_attachment %}
+schedulerExtraVolumes:
+- name: cloud-config
+  hostPath: {{ kube_config_dir }}/cloud_config
+  mountPath: {{ kube_config_dir }}/cloud_config
 {% endif %}
 apiServerCertSANs:
 {% for san in  apiserver_sans.split(' ') | unique %}

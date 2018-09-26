@@ -1,36 +1,71 @@
 ---
 
-- name: Check for services
-  service_facts:
-
-- name: Get the list of packages installed
-  package_facts:
-
-- name: check if its docker upgrade | Debian
+- name: Get the list of docker packages installed | Debian
+  shell: "dpkg-query -W -f='${Package}|${Status}|${Version}' {{ item }} 2>/dev/null"
+  register: deb_pkgs
+  failed_when: deb_pkgs.rc == 2
+  changed_when: False
+  with_items:
+    - docker-engine
+    - docker-ce
+  when: ansible_os_family == 'Debian'
+  
+- name: Check if its docker upgrade | Debian
   set_fact:
     is_docker_upgrade: True
   when:
     - ansible_os_family == 'Debian'
-    - ansible_facts.packages[item] is defined
-    - (ansible_facts.packages[item][0].name + '-' + ansible_facts.packages[item][0].version) != docker_versioned_pkg[docker_version | string]
-  with_items:
-    - docker-engine
-    - docker-ce
-
-- name: check if its docker upgrade | Redhat
+    - item.stdout != ""
+    - (item.stdout.split('|')[0] ~ '-' ~ item.stdout.split('|')[2]) != docker_versioned_pkg[docker_version | string]
+  with_items: "{{ deb_pkgs.results }}"    
+    
+- name: Get the list of packages installed | Redhat
+  yum:
+    list: installed
+  register: yum_packages
+  changed_when: False
+  when: ansible_os_family == 'RedHat'
+  
+- name: Check if its docker upgrade | Redhat
   set_fact:
     is_docker_upgrade: True
+  vars:
+    query_version: "results[?name==\'{{ item }}\'].version"
+    query_release: "results[?name==\'{{ item }}\'].release"
+    query_name: "results[?name==\'{{ item }}\']"
   when:
     - ansible_os_family == 'RedHat'
-    - ansible_facts.packages[item] is defined
-    - ->
-      (ansible_facts.packages[item][0].name + '-' + ansible_facts.packages[item][0].version + '-' + ansible_facts.packages[item][0].release) not in
-      [docker_versioned_pkg[docker_version | string],docker_selinux_versioned_pkg[docker_selinux_version | string]]
+    - yum_packages is defined
+    - yum_packages | json_query(query_name) is defined
+    - yum_packages | json_query(query_name) | length > 0
+    - >
+      '-'.join((item, (yum_packages | json_query(query_version) | join('-')), (yum_packages | json_query(query_release) | join('-'))))
+      not in [docker_versioned_pkg[docker_version | string],docker_selinux_versioned_pkg[docker_selinux_version | string]]
   with_items:
     - docker-engine
     - docker-engine-selinux
     - docker-ce
     - docker-ce-selinux
+    
+- name: Check the status of kubelet
+  shell: systemctl is-active kubelet
+  register: kubelet_status
+  ignore_errors: yes
+  changed_when: False
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - is_docker_upgrade is defined
+    - is_docker_upgrade|bool 
+  
+- name: Check the status of etcd
+  shell: systemctl is-active etcd
+  register: etcd_status
+  ignore_errors: yes
+  changed_when: False
+  when:
+    - inventory_hostname in groups['etcd']
+    - is_docker_upgrade is defined
+    - is_docker_upgrade|bool
 
 - block:
     - name: Drain the nodes
@@ -45,7 +80,8 @@
         state: stopped
       when:
         - inventory_hostname in groups['k8s-cluster']
-        - ansible_facts.services['kubelet.service'] is defined and ansible_facts.services['kubelet.service']['state'] == "running"
+        - kubelet_status is defined
+        - kubelet_status.stdout == "active"
 
     - name: Stop etcd on the nodes
       service:
@@ -53,7 +89,8 @@
         state: stopped
       when:
         - inventory_hostname in groups['etcd']
-        - ansible_facts.services['etcd.service'] is defined and ansible_facts.services['etcd.service']['state'] == "running"
+        - etcd_status is defined
+        - etcd_status.stdout == "active"
 
     - name: Clean up and shut down docker
       script: clean-up.sh
@@ -67,14 +104,16 @@
       notify: start kubelet
       when:
         - inventory_hostname in groups['k8s-cluster']
-        - ansible_facts.services['kubelet.service'] is defined and ansible_facts.services['kubelet.service']['state'] == "running"
+        - kubelet_status is defined
+        - kubelet_status.stdout == "active"
 
     - name: Start etcd on the nodes
       command: /bin/true
       notify: start etcd
       when:
         - inventory_hostname in groups['etcd']
-        - ansible_facts.services['etcd.service'] is defined and ansible_facts.services['etcd.service']['state'] == "running"
+        - etcd_status is defined
+        - etcd_status.stdout == "active"
 
     - name: Uncordon the nodes
       command: /bin/true

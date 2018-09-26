@@ -14,6 +14,9 @@ spec:
 {% if kube_version | version_compare('v1.6', '>=')  %}
   dnsPolicy: ClusterFirst
 {% endif %}
+{% if kube_version|version_compare('v1.11.1', '>=') %}
+  priorityClassName: system-node-critical
+{% endif %}
   containers:
   - name: kube-apiserver
     image: {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}
@@ -73,6 +76,7 @@ spec:
     - --kubelet-client-key={{ kube_cert_dir }}/node-{{ inventory_hostname }}-key.pem
     - --service-account-lookup=true
     - --kubelet-preferred-address-types={{ kubelet_preferred_address_types }}
+    - --request-timeout={{ kube_apiserver_request_timeout }}
 {% if kube_basic_auth|default(true) %}
     - --basic-auth-file={{ kube_users_dir }}/known_users.csv
 {% endif %}
@@ -116,11 +120,9 @@ spec:
 {% endif %}
     - --v={{ kube_log_level }}
     - --allow-privileged=true
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere"] %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
     - --cloud-provider={{ cloud_provider }}
     - --cloud-config={{ kube_config_dir }}/cloud_config
-{% elif cloud_provider is defined and cloud_provider == "aws" %}
-    - --cloud-provider={{ cloud_provider }}
 {% endif %}
 {% if kube_api_anonymous_auth is defined and kube_version | version_compare('v1.5', '>=')  %}
     - --anonymous-auth={{ kube_api_anonymous_auth }}

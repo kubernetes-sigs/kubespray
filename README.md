@@ -92,6 +92,7 @@ Supported Linux Distributions
 -   **Debian** Jessie, Stretch, Wheezy
 -   **Ubuntu** 16.04, 18.04
 -   **CentOS/RHEL** 7
+-   **Fedora** 28
 -   **Fedora/CentOS** Atomic
 -   **openSUSE** Leap 42.3/Tumbleweed
 
@@ -105,6 +106,7 @@ Supported Components
     -   [etcd](https://github.com/coreos/etcd) v3.2.18
     -   [docker](https://www.docker.com/) v17.03 (see note)
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
+    -   [cri-o](http://cri-o.io/) v1.11.5 (see [CRI-O Note](docs/cri-o.md))
 -   Network Plugin
     -   [calico](https://github.com/projectcalico/calico) v3.1.3
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)

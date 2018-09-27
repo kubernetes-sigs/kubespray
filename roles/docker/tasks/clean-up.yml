@@ -29,18 +29,15 @@
 - name: Check if its docker upgrade | Redhat
   set_fact:
     is_docker_upgrade: True
-  vars:
-    query_version: "results[?name=='{{ item }}'].version"
-    query_release: "results[?name=='{{ item }}'].release"
-    query_name: "results[?name=='{{ item }}']"
   when:
     - ansible_os_family == 'RedHat'
-    - yum_packages is defined
-    - yum_packages | json_query(query_name) is defined
-    - yum_packages | json_query(query_name) | length > 0
+    - yum_packages.results | selectattr("name", "equalto", item) | map(attribute="name") | first | default('') != ""
+    - yum_packages.results | selectattr("name", "equalto", item) | map(attribute="version") | first | default('') != ""
+    - yum_packages.results | selectattr("name", "equalto", item) | map(attribute="release") | first | default('') != ""
     - >
-      '-'.join((item, (yum_packages | json_query(query_version) | join('-')), (yum_packages | json_query(query_release) | join('-'))))
-      not in [docker_versioned_pkg[docker_version | string],docker_selinux_versioned_pkg[docker_selinux_version | string]]
+      '-'.join((item, (yum_packages.results | selectattr("name", "equalto", item) | map(attribute="version") | first), 
+      (yum_packages.results | selectattr("name", "equalto", item) | map(attribute="release") | first))) not in
+       [docker_versioned_pkg[docker_version | string],docker_selinux_versioned_pkg[docker_selinux_version | string]]
   with_items:
     - docker-engine
     - docker-engine-selinux

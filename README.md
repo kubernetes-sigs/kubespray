@@ -30,8 +30,8 @@ To deploy the cluster you can use :
     CONFIG_FILE=inventory/mycluster/hosts.ini python3 contrib/inventory_builder/inventory.py ${IPS[@]}
 
     # Review and change parameters under ``inventory/mycluster/group_vars``
-    cat inventory/mycluster/group_vars/all.yml
-    cat inventory/mycluster/group_vars/k8s-cluster.yml
+    cat inventory/mycluster/group_vars/all/all.yml
+    cat inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml
 
     # Deploy Kubespray with Ansible Playbook
     ansible-playbook -i inventory/mycluster/hosts.ini cluster.yml

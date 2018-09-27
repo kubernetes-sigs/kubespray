@@ -1,0 +1,61 @@
+---
+
+- include: config-check.yml
+  tags: digitalocean
+
+- name: "Digital Ocean Cloud Controller Manager | Create Digital Ocean Secret"
+  template:
+    src: digital-ocean-secret.yml.j2
+    dest: /tmp/digital-ocean-secret.yml
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: digitalocean
+
+- name: "Digital Ocean Cloud Controller Manager | Apply Digital Ocean Secret"
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "/tmp/digital-ocean-secret.yml"
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: digitalocean
+
+- name: "Digital Ocean Cloud Controller Manager | Cleanup"
+  file:
+    path: /tmp/digital-ocean-secret.yml
+    state: absent
+
+- name: "Digital Ocean Cloud Controller Manager | Download Manifest"
+  get_url:
+    url: "https://raw.githubusercontent.com/digitalocean/digitalocean-cloud-controller-manager/master/releases/{{digitalocean_ccm_version}}.yml"
+    dest: "/tmp/digitalocean-cloud-controller-manager.yml"
+    force: yes
+  register: result
+  until: "'OK' in result.msg"
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: digitalocean
+
+- name: "Digital Ocean Cloud Controller Manager | Apply Controller Manifest"
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "/tmp/digitalocean-cloud-controller-manager.yml"
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: digitalocean
+
+- name: "Digital Ocean Cloud Storage Interface | Download Manifest"
+  get_url:
+    url: "https://raw.githubusercontent.com/digitalocean/csi-digitalocean/master/deploy/kubernetes/releases/csi-digitalocean-{{digitalocean_csi_version}}.yaml"
+    dest: "/tmp/digitalocean-cloud-storage-interface.yml"
+    force: yes
+  register: result
+  until: "'OK' in result.msg"
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: digitalocean
+
+- name: "Digital Ocean Cloud Storage Interface | Apply CSI Manifest"
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "/tmp/digitalocean-cloud-storage-interface.yml"
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: digitalocean

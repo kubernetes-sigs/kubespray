@@ -5,7 +5,7 @@ Deploy a Production Ready Kubernetes Cluster
 
 If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 
--   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere, Oracle Cloud Infrastructure (Experimental), or Baremetal**
+-   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere, Oracle Cloud Infrastructure (Experimental), DigitalOcean (Experimental), or Baremetal**
 -   **Highly available** cluster
 -   **Composable** (Choice of the network plugin for instance)
 -   Supports most popular **Linux distributions**
@@ -70,6 +70,7 @@ Documents
 -   [AWS](docs/aws.md)
 -   [Azure](docs/azure.md)
 -   [vSphere](docs/vsphere.md)
+-   [DigitalOcean](docs/digitalocean.md)
 -   [Large deployments](docs/large-deployments.md)
 -   [Upgrades basics](docs/upgrades.md)
 -   [Roadmap](docs/roadmap.md)

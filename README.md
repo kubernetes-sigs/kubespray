@@ -102,7 +102,7 @@ Supported Components
 --------------------
 
 -   Core
-    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.11.3
+    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.12.0
     -   [etcd](https://github.com/coreos/etcd) v3.2.18
     -   [docker](https://www.docker.com/) v17.03 (see note)
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)

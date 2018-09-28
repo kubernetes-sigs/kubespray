@@ -247,23 +247,6 @@ cephfs_provisioner_enabled: false
 ingress_nginx_enabled: false
 cert_manager_enabled: false
 
-## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
-# openstack_blockstorage_version: "v1/v2/auto (default)"
-openstack_blockstorage_ignore_volume_az: "{{ volume_cross_zone_attachment | default('false') }}"
-## When OpenStack is used, if LBaaSv2 is available you can enable it with the following 2 variables.
-openstack_lbaas_enabled: false
-# openstack_lbaas_subnet_id: "Neutron subnet ID (not network ID) to create LBaaS VIP"
-## To enable automatic floating ip provisioning, specify a subnet.
-# openstack_lbaas_floating_network_id: "Neutron network ID (not subnet ID) to get floating IP from, disabled by default"
-## Override default LBaaS behavior
-# openstack_lbaas_use_octavia: False
-# openstack_lbaas_method: "ROUND_ROBIN"
-# openstack_lbaas_provider: "haproxy"
-openstack_lbaas_create_monitor: "yes"
-openstack_lbaas_monitor_delay: "1m"
-openstack_lbaas_monitor_timeout: "30s"
-openstack_lbaas_monitor_max_retries: "3"
-
 ## List of authorization modes that must be configured for
 ## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
 ## 'RBAC' modes are tested. Order is important.
@@ -283,36 +266,9 @@ kube_feature_gates:
   - "VolumeScheduling={{ local_volume_provisioner_enabled | string }}"
   - "MountPropagation={{ local_volume_provisioner_enabled | string }}"
 
-# Vault data dirs.
-vault_base_dir: /etc/vault
-vault_cert_dir: "{{ vault_base_dir }}/ssl"
-vault_config_dir: "{{ vault_base_dir }}/config"
-vault_roles_dir: "{{ vault_base_dir }}/roles"
-vault_secrets_dir: "{{ vault_base_dir }}/secrets"
-
 # Local volume provisioner dirs
 local_volume_provisioner_base_dir: /mnt/disks
 local_volume_provisioner_mount_dir: /mnt/disks
-
-# weave's network password for encryption
-# if null then no network encryption
-# you can use --extra-vars to pass the password in command line
-weave_password: EnterPasswordHere
-
-# Weave uses consensus mode by default
-# Enabling seed mode allow to dynamically add or remove hosts
-# https://www.weave.works/docs/net/latest/ipam/
-weave_mode_seed: false
-
-# This two variable are automatically changed by the weave's role in group_vars/k8s-cluster.yml.
-# Do not manually change these values
-weave_seed: uninitialized
-weave_peers: uninitialized
-
-# Contiv L3 BGP Mode
-contiv_peer_with_uplink_leaf: false
-contiv_global_as: "65002"
-contiv_global_neighbor_as: "500"
 
 ## Set no_proxy to all assigned cluster IPs and hostnames
 no_proxy: >-
@@ -388,41 +344,5 @@ kube_apiserver_client_key: |-
   {{ kube_cert_dir }}/apiserver-key.pem
   {%- endif %}
 
-# Set to true to deploy etcd-events cluster
-etcd_events_cluster_enabled: false
-
-# Vars for pointing to etcd endpoints
-is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"
-etcd_address: "{{ ip | default(ansible_default_ipv4['address']) }}"
-etcd_access_address: "{{ access_ip | default(etcd_address) }}"
-etcd_events_access_address: "{{ access_ip | default(etcd_address) }}"
-etcd_peer_url: "https://{{ etcd_access_address }}:2380"
-etcd_client_url: "https://{{ etcd_access_address }}:2379"
-etcd_events_peer_url: "https://{{ etcd_events_access_address }}:2382"
-etcd_events_client_url: "https://{{ etcd_events_access_address }}:2381"
-etcd_access_addresses: |-
-  {% for item in groups['etcd'] -%}
-    https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2379{% if not loop.last %},{% endif %}
-  {%- endfor %}
-etcd_events_access_addresses: |-
-  {% for item in groups['etcd'] -%}
-    https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2381{% if not loop.last %},{% endif %}
-  {%- endfor %}
-# user should set etcd_member_name in inventory/mycluster/hosts.ini
-etcd_member_name: |-
-  {% for host in groups['etcd'] %}
-  {%   if inventory_hostname == host %}{{ hostvars[host].etcd_member_name | default("etcd" + loop.index|string) }}{% endif %}
-  {% endfor %}
-etcd_peer_addresses: |-
-  {% for item in groups['etcd'] -%}
-    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2380{% if not loop.last %},{% endif %}
-  {%- endfor %}
-etcd_events_peer_addresses: |-
-  {% for item in groups['etcd'] -%}
-    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}-events=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2382{% if not loop.last %},{% endif %}
-  {%- endfor %}
 
 podsecuritypolicy_enabled: false
-etcd_heartbeat_interval: "250"
-etcd_election_timeout: "5000"
-etcd_snapshot_count: "10000"

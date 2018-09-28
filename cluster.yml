@@ -5,7 +5,8 @@
     - { role: kubespray-defaults}
     - { role: bastion-ssh-config, tags: ["localhost", "bastion"]}
 
-- hosts: k8s-cluster:etcd:calico-rr
+# 1. Install required packages to run ansible on hosts
+- hosts: all
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   gather_facts: false
   vars:
@@ -16,6 +17,7 @@
     - { role: kubespray-defaults}
     - { role: bootstrap-os, tags: bootstrap-os}
 
+# 2. ?
 - hosts: k8s-cluster:etcd:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   vars:
@@ -28,52 +30,103 @@
       delegate_facts: True
       with_items: "{{ groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]) }}"
 
+
+# Install required packages / container engined on k8s-nodes
 - hosts: k8s-cluster:etcd:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes/preinstall, tags: preinstall }
-    - { role: docker, tags: docker, when: container_manager == 'docker' }
-    - { role: cri-o, tags: crio, when: container_manager == 'crio' }
-    - role: rkt
-      tags: rkt
-      when: "'rkt' in [etcd_deployment_type, kubelet_deployment_type, vault_deployment_type]"
-    - { role: download, tags: download, when: "not skip_downloads" }
-  environment: "{{proxy_env}}"
+  tasks:
+    - include_role:
+        name: docker
+      tags:
+        - docker
+      when:
+        - container_manager == 'docker'
 
+    - include_role:
+        name: cri-o
+      tags:
+        - crio
+      when:
+        - container_manager == 'crio'
+
+    - include_role:
+        name: rkt
+      tags:
+        - rkt
+      when:
+        - "'rkt' in ['etcd_deployment_type', 'kubelet_deployment_type', 'vault_deployment_type']"
+
+    - include_role:
+        name: download
+      tags:
+        - download
+      when:
+        - not skip_downloads
+
+  environment: "{{proxy_env|d({})}}"
+
+# Bootstrap Vault if selected
 - hosts: etcd:k8s-cluster:vault:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults, when: "cert_management == 'vault'" }
-    - { role: vault, tags: vault, vault_bootstrap: true, when: "cert_management == 'vault'" }
-  environment: "{{proxy_env}}"
+  tasks:
+    - include_role:
+        name: kubespray-defaults
+      when:
+        - "cert_management == 'vault'"
+      tags:
+        - vault
+    - include_role:
+        name: vault
+      tags:
+        - vault
+      vars:
+        vault_bootstrap: true
+      when:
+        - cert_management == 'vault'
+  environment: "{{proxy_env|d({})}}"
 
+# Install etcd
 - hosts: etcd
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: etcd, tags: etcd, etcd_cluster_setup: true, etcd_events_cluster_setup: "{{ etcd_events_cluster_enabled }}" }
 
+# Copy etcd certs to all nodes
 - hosts: k8s-cluster:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: etcd, tags: etcd, etcd_cluster_setup: false, etcd_events_cluster_setup: false }
 
+# Deploy Vault
 - hosts: etcd:k8s-cluster:vault:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults}
-    - { role: vault, tags: vault, when: "cert_management == 'vault'"}
-  environment: "{{proxy_env}}"
+  tasks:
+    - include_role:
+        name: kubespray-defaults
+      tags:
+        - vault
+    - include_role:
+        name: vault
+      tags:
+        - vault
+      when:
+        - cert_management == 'vault'
+  environment: "{{proxy_env|d({})}}"
 
+# Install kubernetes nodes
 - hosts: k8s-cluster
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes/node, tags: node }
-  environment: "{{proxy_env}}"
+  environment: "{{proxy_env|d({})}}"
 
+# install kubernetes master
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
@@ -115,9 +168,14 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
-    - { role: dnsmasq, when: "dns_mode == 'dnsmasq_kubedns'", tags: dnsmasq }
-    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }
-  environment: "{{proxy_env}}"
+  tasks:
+    - include_role:
+        name: dnsmasq
+      when:
+        - dns_mode == 'dnsmasq_kubedns'
+      tags:
+        - dnsmasq
+  environment: "{{proxy_env|d({})}}"
 
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"

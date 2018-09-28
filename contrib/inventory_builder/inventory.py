@@ -68,6 +68,8 @@ HOST_PREFIX = os.environ.get("HOST_PREFIX", "node")
 class KubesprayInventory(object):
 
     def __init__(self, changed_hosts=None, config_file=None):
+
+        self.host_prefix = HOST_PREFIX
         self.config = configparser.ConfigParser(allow_no_value=True,
                                                 delimiters=('\t', ' '))
         self.config_file = config_file
@@ -170,7 +172,7 @@ class KubesprayInventory(object):
                     self.debug("Skipping existing host {0}.".format(host))
                     continue
 
-                next_host = "{0}{1}".format(HOST_PREFIX, next_host_id)
+                next_host = "{0}{1}".format(self.host_prefix, next_host_id)
                 next_host_id += 1
                 all_hosts[next_host] = "ansible_host={0} ip={1}".format(
                     host, host)

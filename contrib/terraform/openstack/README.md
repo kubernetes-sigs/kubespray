@@ -245,17 +245,16 @@ Before Terraform can operate on your cluster you need to install the required
 plugins. This is accomplished as follows:
 
 ```ShellSession
-$ cd inventory/$CLUSTER
-$ terraform init ../../contrib/terraform/openstack
+$ terraform init contrib/terraform/openstack
 ```
 
 This should finish fairly quickly telling you Terraform has successfully initialized and loaded necessary modules.
 
 ### Provisioning cluster
 You can apply the Terraform configuration to your cluster with the following command
-issued from your cluster's inventory directory (`inventory/$CLUSTER`):
+issued from your kubespray root directory:
 ```ShellSession
-$ terraform apply -var-file=cluster.tf ../../contrib/terraform/openstack
+$ terraform apply -var-file=inventory/$CLUSTER/cluster.tf contrib/terraform/openstack
 ```
 
 if you chose to create a bastion host, this script will create
@@ -266,10 +265,10 @@ or move that file. If you want to use this, just leave it there, as ansible will
 pick it up automatically.
 
 ### Destroying cluster
-You can destroy your new cluster with the following command issued from the cluster's inventory directory:
+You can destroy your new cluster with the following command issued from the kubespray directory:
 
 ```ShellSession
-$ terraform destroy -var-file=cluster.tf ../../contrib/terraform/openstack
+$ terraform destroy -var-file=inventory/$CLUSTER/cluster.tf contrib/terraform/openstack
 ```
 
 If you've started the Ansible run, it may also be a good idea to do some manual cleanup:

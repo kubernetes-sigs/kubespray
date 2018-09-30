@@ -260,7 +260,7 @@ $ terraform apply -var-file=cluster.tf ../../contrib/terraform/openstack
 
 if you chose to create a bastion host, this script will create
 `contrib/terraform/openstack/k8s-cluster.yml` with an ssh command for Ansible to
-be able to access your machines tunneling  through the bastion's IP address. If
+be able to access your machines tunneling through the bastion's IP address. If
 you want to manually handle the ssh tunneling to these machines, please delete
 or move that file. If you want to use this, just leave it there, as ansible will
 pick it up automatically.

@@ -133,7 +133,7 @@ Requirements
 -   **Ansible v2.4 (or newer) and python-netaddr is installed on the machine
     that will run Ansible commands**
 -   **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
--   The target servers must have **access to the Internet** in order to pull docker images.
+-   The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/downloads.md#offline-environment))
 -   The target servers are configured to allow **IPv4 forwarding**.
 -   **Your ssh key must be copied** to all the servers part of your inventory.
 -   The **firewalls are not managed**, you'll need to implement your own rules the way you used to.

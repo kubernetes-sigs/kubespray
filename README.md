@@ -30,8 +30,8 @@ To deploy the cluster you can use :
     CONFIG_FILE=inventory/mycluster/hosts.ini python3 contrib/inventory_builder/inventory.py ${IPS[@]}
 
     # Review and change parameters under ``inventory/mycluster/group_vars``
-    cat inventory/mycluster/group_vars/all.yml
-    cat inventory/mycluster/group_vars/k8s-cluster.yml
+    cat inventory/mycluster/group_vars/all/all.yml
+    cat inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml
 
     # Deploy Kubespray with Ansible Playbook
     ansible-playbook -i inventory/mycluster/hosts.ini cluster.yml
@@ -106,7 +106,7 @@ Supported Components
     -   [etcd](https://github.com/coreos/etcd) v3.2.18
     -   [docker](https://www.docker.com/) v17.03 (see note)
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
-    -   [cri-o](http://cri-o.io/) v1.11.5 (see [CRI-O Note](docs/cri-o.md))
+    -   [cri-o](http://cri-o.io/) v1.11.5 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
 -   Network Plugin
     -   [calico](https://github.com/projectcalico/calico) v3.1.3
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)

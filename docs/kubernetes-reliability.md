@@ -15,7 +15,7 @@ By default the normal behavior looks like:
 2. Kubernetes controller manager checks the statuses of Kubelets every
    `–-node-monitor-period`. The default value is **5s**.
 
-3. In case the status is updated  within `--node-monitor-grace-period` of time,
+3. In case the status is updated within `--node-monitor-grace-period` of time,
    Kubernetes controller manager considers healthy status of Kubelet. The
    default value is **40s**.
 

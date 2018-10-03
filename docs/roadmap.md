@@ -24,7 +24,7 @@ Kubespray's roadmap
 
 ### Tests
 - [ ] Run kubernetes e2e tests
-- [ ] Test idempotency on on single OS but for all network plugins/container engines
+- [ ] Test idempotency on single OS but for all network plugins/container engines
 - [ ] single test on AWS per day
 - [ ] test scale up cluster:  +1 etcd, +1 master, +1 node
 - [ ] Reorganize CI test vars into group var files

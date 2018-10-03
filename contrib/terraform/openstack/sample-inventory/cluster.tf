@@ -43,4 +43,4 @@ network_name = "<network>"
 external_net = "<UUID>"
 subnet_cidr = "<cidr>"
 floatingip_pool = "<pool>"
-
+bastion_allowed_remote_ips = ["0.0.0.0/0"]

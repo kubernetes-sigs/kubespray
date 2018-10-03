@@ -1,0 +1,44 @@
+- hosts:
+    - kube-node
+  gather_facts: true
+  tasks:
+    - name: Load impi msghandler
+      lineinfile:
+        create: yes
+        path: /etc/modules-load.d/impi.conf
+        line: 'ipmi_msghandler'
+
+    - name: Add blacklist to nouveau
+      lineinfile:
+        create: yes
+        path: /etc/modprobe.d/blacklist-nouveau.conf
+        line: 'blacklist nouveau'
+
+    - name: Disable modeset
+      lineinfile:
+        path: /etc/modprobe.d/blacklist-nouveau.conf
+        line: 'options nouveau modeset=0'
+
+    - name: Update initramfs
+      shell: update-initramfs -u
+      become: true
+      when: ansible_distribution == "Ubuntu"
+
+    - name: reboot system
+      shell: sleep 2 && shutdown -r now "Ansible package updates triggered"
+      async: 1
+      poll: 0
+      ignore_errors: true
+      register: reboot_required
+
+    - name: waiting for server to come back
+      local_action: wait_for host={{ ansible_host }} state=started delay=10 timeout=320 port=22
+      become: false
+      when: reboot_required.changed
+
+    - name: verify a reboot was actually initiated
+      shell: echo rebooted
+      become: false
+      when: reboot_required.changed
+
+

@@ -13,15 +13,12 @@ class SearchEC2Tags(object):
       self.search_tags()
     if self.args.host:
       data = {}
-      print json.dumps(data, indent=2)
+      print(json.dumps(data, indent=2))
 
   def parse_args(self):
 
     ##Check if VPC_VISIBILITY is set, if not default to private
-    if "VPC_VISIBILITY" in os.environ:
-      self.vpc_visibility = os.environ['VPC_VISIBILITY']
-    else:
-      self.vpc_visibility = "private"
+    self.vpc_visibility = os.environ.get('VPC_VISIBILITY', "private")
 
     ##Support --list and --host flags. We largely ignore the host one.
     parser = argparse.ArgumentParser()
@@ -30,8 +27,7 @@ class SearchEC2Tags(object):
     self.args = parser.parse_args()
 
   def search_tags(self):
-    hosts = {}
-    hosts['_meta'] = { 'hostvars': {} }
+    hosts = {'_meta': {'hostvars': {}}}
 
     ##Search ec2 three times to find nodes of each group type. Relies on kubespray-role key/value.
     for group in ["kube-master", "kube-node", "etcd"]:
@@ -56,6 +52,6 @@ class SearchEC2Tags(object):
           }
 
     hosts['k8s-cluster'] = {'children':['kube-master', 'kube-node']}
-    print json.dumps(hosts, sort_keys=True, indent=2)
+    print(json.dumps(hosts, sort_keys=True, indent=2))
 
 SearchEC2Tags()

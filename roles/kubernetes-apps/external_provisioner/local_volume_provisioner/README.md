@@ -3,7 +3,7 @@ Local Storage Provisioner
 
 The local storage provisioner is NOT a dynamic storage provisioner as you would
 expect from a cloud provider. Instead, it simply creates PersistentVolumes for
-all manually created volumes located in the directory `local_volume_provisioner_base_dir`.
+all manually created volumes located in the directories specified in the `local_volume_provisioner_storage_classes.host_dir` entries.
 The default path is /mnt/disks and the rest of this doc will use that path as
 an example.
 

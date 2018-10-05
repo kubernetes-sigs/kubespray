@@ -47,11 +47,13 @@ ExecStart=/usr/bin/rkt run \
         --volume flexvolumes,kind=host,source={{ kubelet_flexvolumes_plugins_dir }},readOnly=false \
 {% endif -%}
 {% if local_volume_provisioner_enabled %}
-        --volume local-volume-provisioner-base-dir,kind=host,source={{ local_volume_provisioner_base_dir }},readOnly=false \
+{% for class in local_volume_provisioner_storage_classes %}
+        --volume local-volume-provisioner-base-dir,kind=host,source={{ class.host_dir }},readOnly=false \
 {# Not pretty, but needed to avoid double mount #}
-{% if local_volume_provisioner_base_dir not in local_volume_provisioner_mount_dir and local_volume_provisioner_mount_dir not in local_volume_provisioner_base_dir %}
-        --volume local-volume-provisioner-mount-dir,kind=host,source={{ local_volume_provisioner_mount_dir }},readOnly=false \
+{% if class.host_dir not in class.mount_dir and class.mount_dir not in class.host_dir %}
+        --volume local-volume-provisioner-mount-dir,kind=host,source={{ class.mount_dir }},readOnly=false \
 {% endif %}
+{% endfor %}
 {% endif %}
 {% if kubelet_load_modules == true %}
         --mount volume=lib-modules,target=/lib/modules \
@@ -81,11 +83,13 @@ ExecStart=/usr/bin/rkt run \
         --mount volume=flexvolumes,target={{ kubelet_flexvolumes_plugins_dir }} \
 {% endif -%}
 {% if local_volume_provisioner_enabled %}
-        --mount volume=local-volume-provisioner-base-dir,target={{ local_volume_provisioner_base_dir }} \
+{% for class in local_volume_provisioner_storage_classes %}
+        --mount volume=local-volume-provisioner-base-dir,target={{ class.host_dir }} \
 {# Not pretty, but needed to avoid double mount #}
-{% if local_volume_provisioner_base_dir not in local_volume_provisioner_mount_dir and local_volume_provisioner_mount_dir not in local_volume_provisioner_base_dir %}
-        --mount volume=local-volume-provisioner-mount-dir,target={{ local_volume_provisioner_mount_dir }} \
+{% if class.host_dir not in class.mount_dir and class.mount_dir not in class.host_dir %}
+        --mount volume=local-volume-provisioner-mount-dir,target={{ class.mount_dir }} \
 {% endif %}
+{% endfor %}
 {% endif %}
         --stage1-from-dir=stage1-fly.aci \
 {% if kube_hyperkube_image_repo == "docker" %}

@@ -1,0 +1,46 @@
+- name: Create dind node containers from "containers" inventory section
+  docker_container:
+    image: "ubuntu:16.04"
+    name: "{{ item }}"
+    state: started
+    command: /sbin/init
+    #recreate: yes
+    privileged: true
+    tmpfs:
+      - /sys/module/nf_conntrack/parameters
+    volumes:
+      - /boot:/boot
+      - /lib/modules:/lib/modules
+      - "{{ item }}:/dind/docker"
+  register: containers
+  with_items: "{{groups.containers}}"
+  tags:
+    - addresses
+
+- name: Gather list of containers IPs
+  set_fact:
+    addresses: "{{ containers.results | map(attribute='ansible_facts') | map(attribute='docker_container') | map(attribute='NetworkSettings') | map(attribute='IPAddress') | list }}"
+  tags:
+    - addresses
+
+- name: Create inventory_builder helper already set with the list of node containers' IPs
+  template:
+    src: inventory_builder.sh.j2
+    dest: /tmp/kubespray.dind.inventory_builder.sh
+    mode: 0755
+  tags:
+    - addresses
+
+- name: Remove gettys from node containers
+  raw: systemctl disable getty@tty*.service ; systemctl stop getty@tty*.service
+  delegate_to: "{{ item._ansible_item_label }}"
+  with_items: "{{ containers.results }}"
+  changed_when: false
+
+- name: Install needed packages into node containers via raw
+  raw: test -x /usr/bin/python \&\& exit 0; apt-get -qy update ; apt-get -qy install sudo python iproute2
+  delegate_to: "{{ item._ansible_item_label }}"
+  with_items: "{{ containers.results }}"
+  register: result
+  changed_when: result.stdout.find("Setting") >= 0
+

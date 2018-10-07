@@ -1,0 +1,59 @@
+- name: Null-ify some linux tools to ease DIND
+  file:
+    src: "/bin/true"
+    dest: "{{item}}"
+    state: link
+    force: yes
+  with_items:
+    # DIND box may have swap enable, don't bother
+    - /sbin/swapoff
+    # /etc/hosts handling would fail on trying to copy file attributes on edit,
+    # void it by successfully returning nil output
+    - /usr/bin/lsattr
+
+- name: Void installing dpkg docs and man pages
+  copy:
+    content: |
+      # Delete locales
+      path-exclude=/usr/share/locale/*
+      # Delete man pages
+      path-exclude=/usr/share/man/*
+      # Delete docs
+      path-exclude=/usr/share/doc/*
+      path-include=/usr/share/doc/*/copyright
+    dest:  /etc/dpkg/dpkg.cfg.d/01_nodoc
+
+- name: Install system packages to better match a full-fledge node
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - rsyslog
+    - openssh-server
+    - sudo
+
+- name: Start needed services
+  service:
+    name: "{{ item }}"
+    state: started
+  with_items:
+    - rsyslog
+    - ssh
+
+- name: Create ubuntu user
+  user:
+    name: ubuntu
+    uid: 1000
+    groups: sudo
+    append: yes
+
+- name: Add sudo to ubuntu user
+  copy:
+    content: "ubuntu ALL=(ALL) NOPASSWD:ALL"
+    dest: /etc/sudoers.d/ubuntu
+
+- name: Add my pubkey to ubuntu user authorized keys
+  authorized_key:
+    user: ubuntu
+    state: present
+    key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"

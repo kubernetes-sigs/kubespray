@@ -21,6 +21,8 @@ The playbook also creates a `/tmp/kubespray.dind.inventory_builder.sh`
 helper (wraps up running `contrib/inventory_builder/inventory.py` with
 node containers IPs and prefix).
 
+## Deploying
+
 See below for a complete successful run:
 
 1. Create the node containers
@@ -82,4 +84,58 @@ mkdir -p ${INVENTORY_DIR}
 rm -f ${INVENTORY_DIR}/hosts.ini
 CONFIG_FILE=${INVENTORY_DIR}/hosts.ini /tmp/kubespray.dind.inventory_builder.sh
 ansible-playbook --become -e ansible_ssh_user=ubuntu -i ${INVENTORY_DIR}/hosts.ini cluster.yml --extra-vars @./custom.yaml
+~~~
+
+## Resulting deployment
+
+To get an idea on how a completed deployment looks,
+from the host where you ran kubespray playbooks:
+
+~~~
+$ docker ps
+CONTAINER ID        IMAGE                                 COMMAND                  CREATED             STATUS              PORTS                       NAMES
+51c13142150b        ubuntu:16.04                          "/sbin/init"             14 minutes ago      Up 14 minutes                                   kube-node5
+7104c6416eec        ubuntu:16.04                          "/sbin/init"             14 minutes ago      Up 14 minutes                                   kube-node4
+cce6a9c62bd0        ubuntu:16.04                          "/sbin/init"             14 minutes ago      Up 14 minutes                                   kube-node3
+985b517d5884        ubuntu:16.04                          "/sbin/init"             14 minutes ago      Up 14 minutes                                   kube-node2
+bdb7c4c32d56        ubuntu:16.04                          "/sbin/init"             14 minutes ago      Up 14 minutes                                   kube-node1
+
+$ docker exec kube-node1 kubectl get pod --all-namespaces
+NAMESPACE     NAME                                    READY     STATUS    RESTARTS   AGE
+default       netchecker-agent-g6fdq                  1/1       Running   0          19m
+default       netchecker-agent-hostnet-9bljv          1/1       Running   0          19m
+default       netchecker-agent-hostnet-f9r9v          1/1       Running   0          19m
+default       netchecker-agent-hostnet-jxdsb          1/1       Running   0          19m
+default       netchecker-agent-hostnet-nf7gn          1/1       Running   0          19m
+default       netchecker-agent-hostnet-wgfhk          1/1       Running   0          19m
+default       netchecker-agent-lln49                  1/1       Running   0          19m
+default       netchecker-agent-mk26w                  1/1       Running   0          19m
+default       netchecker-agent-qbfq6                  1/1       Running   0          19m
+default       netchecker-agent-r2hxt                  1/1       Running   0          19m
+default       netchecker-server-5fbd4d84f6-wfctn      1/1       Running   0          19m
+kube-system   coredns-78ddd56897-9m6c5                1/1       Running   0          20m
+kube-system   coredns-78ddd56897-m7qmz                1/1       Running   0          20m
+kube-system   kube-apiserver-kube-node1               1/1       Running   0          25m
+kube-system   kube-apiserver-kube-node2               1/1       Running   0          24m
+kube-system   kube-controller-manager-kube-node1      1/1       Running   0          25m
+kube-system   kube-controller-manager-kube-node2      1/1       Running   0          24m
+kube-system   kube-proxy-4425t                        1/1       Running   0          21m
+kube-system   kube-proxy-925sj                        1/1       Running   0          19m
+kube-system   kube-proxy-q6mw4                        1/1       Running   0          21m
+kube-system   kube-proxy-qnsv6                        1/1       Running   0          20m
+kube-system   kube-proxy-tnxvj                        1/1       Running   0          19m
+kube-system   kube-scheduler-kube-node1               1/1       Running   147        25m
+kube-system   kube-scheduler-kube-node2               1/1       Running   121        24m
+kube-system   kubernetes-dashboard-789d954c6f-mm4md   1/1       Running   0          19m
+kube-system   nginx-proxy-kube-node3                  1/1       Running   2          24m
+kube-system   nginx-proxy-kube-node4                  1/1       Running   2          23m
+kube-system   nginx-proxy-kube-node5                  1/1       Running   2          23m
+kube-system   weave-net-4fwb6                         2/2       Running   0          22m
+kube-system   weave-net-7gtn2                         2/2       Running   0          22m
+kube-system   weave-net-blpfg                         2/2       Running   0          22m
+kube-system   weave-net-dt2z8                         2/2       Running   0          22m
+kube-system   weave-net-hjxm2                         2/2       Running   0          22m
+
+$ docker exec kube-node1 curl -s http://localhost:31081/api/v1/connectivity_check
+{"Message":"All 10 pods successfully reported back to the server","Absent":null,"Outdated":null}
 ~~~

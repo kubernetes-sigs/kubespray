@@ -125,7 +125,7 @@ if [ -n "$MASTERS" ]; then
     gen_key_and_cert_front_proxy "front-proxy-client" "/CN=front-proxy-client"
 
     for host in $MASTERS; do
-        cn="${host%%.*}"
+        cn="${host}"
         # admin
         gen_key_and_cert "admin-${host}" "/CN=kube-admin-${cn}/O=system:masters"
     done
@@ -134,7 +134,7 @@ fi
 # Nodes
 if [ -n "$HOSTS" ]; then
     for host in $HOSTS; do
-        cn="${host%%.*}"
+        cn="${host}"
         gen_key_and_cert "node-${host}" "/CN=system:node:${cn,,}/O=system:nodes"
     done
 fi

@@ -1,10 +1,20 @@
+- name: set_fact distro_setup
+  set_fact:
+    distro_setup: "{{ distro_settings[node_distro] }}"
+
+- name: set_fact other distro settings
+  set_fact:
+    distro_image: "{{ distro_setup['image'] }}"
+    distro_init: "{{ distro_setup['init'] }}"
+    distro_pid1_exe: "{{ distro_setup['pid1_exe'] }}"
+
 - name: Create dind node containers from "containers" inventory section
   docker_container:
-    image: "ubuntu:16.04"
+    image: "{{ distro_image }}"
     name: "{{ item }}"
     state: started
     hostname: "{{ item }}"
-    command: /sbin/init
+    command: "{{ distro_init }}"
     #recreate: yes
     privileged: true
     tmpfs:
@@ -32,16 +42,21 @@
   tags:
     - addresses
 
-- name: Remove gettys from node containers
-  raw: systemctl disable getty@tty*.service ; systemctl stop getty@tty*.service
-  delegate_to: "{{ item._ansible_item_label }}"
-  with_items: "{{ containers.results }}"
-  changed_when: false
-
-- name: Install needed packages into node containers via raw
-  raw: test -x /usr/bin/python \&\& exit 0; apt-get -qy update ; apt-get -qy install sudo python iproute2
+- name: Install needed packages into node containers via raw, need to wait for possible systemd packages to finish installing
+  raw: |
+    test -x /usr/bin/python && echo SKIPPED && exit 0
+    until [ "$(readlink /proc/1/exe)" = "{{ distro_pid1_exe }}" ] ; do sleep 1; done
+    apt-get -qy update && apt-get -qy install sudo python iproute2
   delegate_to: "{{ item._ansible_item_label }}"
   with_items: "{{ containers.results }}"
   register: result
-  changed_when: result.stdout.find("Setting") >= 0
+  changed_when: result.stdout.find("SKIPPED") < 0
 
+- name: Remove gettys from node containers
+  raw: |
+    until test -S /var/run/dbus/system_bus_socket; do sleep 1; done
+    systemctl disable "getty@tty*.service"
+    systemctl stop "getty@tty*.service"
+  delegate_to: "{{ item._ansible_item_label }}"
+  with_items: "{{ containers.results }}"
+  changed_when: false

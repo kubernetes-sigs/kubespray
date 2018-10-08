@@ -16,7 +16,7 @@ is_atomic: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.11.3
+kube_version: v1.12.1
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: iptables
@@ -276,12 +276,23 @@ kubelet_authentication_token_webhook: true
 # When enabled, access to the kubelet API requires authorization by delegation to the API server
 kubelet_authorization_mode_webhook: false
 
-## List of key=value pairs that describe feature gates for
-## the k8s cluster.
-kube_feature_gates:
+## v1.11 feature
+feature_gate_v1_11:
   - "PersistentLocalVolumes={{ local_volume_provisioner_enabled | string }}"
   - "VolumeScheduling={{ local_volume_provisioner_enabled | string }}"
   - "MountPropagation={{ local_volume_provisioner_enabled | string }}"
+
+## v1.12 feature
+feature_gate_v1_12: []
+
+## List of key=value pairs that describe feature gates for
+## the k8s cluster.
+kube_feature_gates: |-
+  {%- if kube_version | version_compare('v1.12.0', '<') -%}
+  {{ feature_gate_v1_11 }}
+  {%- else -%}
+  {{ feature_gate_v1_12 }}
+  {%- endif %}
 
 # Vault data dirs.
 vault_base_dir: /etc/vault
@@ -290,9 +301,11 @@ vault_config_dir: "{{ vault_base_dir }}/config"
 vault_roles_dir: "{{ vault_base_dir }}/roles"
 vault_secrets_dir: "{{ vault_base_dir }}/secrets"
 
-# Local volume provisioner dirs
-local_volume_provisioner_base_dir: /mnt/disks
-local_volume_provisioner_mount_dir: /mnt/disks
+# Local volume provisioner storage classes
+local_volume_provisioner_storage_classes:
+  - name: "{{ local_volume_provisioner_storage_class | default('local-storage') }}"
+    host_dir: "{{ local_volume_provisioner_base_dir | default ('/mnt/disks') }}"
+    mount_dir: "{{ local_volume_provisioner_mount_dir | default('/mnt/disks') }}"
 
 # weave's network password for encryption
 # if null then no network encryption

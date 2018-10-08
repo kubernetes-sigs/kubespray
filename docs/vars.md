@@ -53,7 +53,7 @@ Kubernetes needs some parameters in order to get deployed. These are the
 following default cluster paramters:
 
 * *cluster_name* - Name of cluster (default is cluster.local)
-* *domain_name* - Name of cluster DNS domain (default is cluster.local)
+* *dns_domain* - Name of cluster DNS domain (default is cluster.local)
 * *kube_network_plugin* - Plugin to use for container networking
 * *kube_service_addresses* - Subnet for cluster IPs (default is
   10.233.0.0/18). Must not overlap with kube_pods_subnet

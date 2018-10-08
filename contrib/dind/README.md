@@ -30,7 +30,7 @@ See below for a complete successful run:
 ~~~~
 # From the kubespray root dir
 cd contrib/dind
-pip -r requirements.txt
+pip install -r requirements.txt
 ansible-playbook -i hosts dind-cluster.yaml
 
 # Back to kubespray root

@@ -1,0 +1,19 @@
+---
+- name: Check if package manager is supported
+  assert:
+    that: ansible_pkg_mgr in ['apt','dnf','yum']
+    msg: "Package manager {{ ansible_pkg_mgr }} is not supported"
+- { import_tasks: "apt.yml", when: ansible_pkg_mgr == 'apt' }
+- { import_tasks: "dnf.yml", when: ansible_pkg_mgr == 'dnf' }
+- { import_tasks: "yum.yml", when: ansible_pkg_mgr == 'yum' }
+- import_tasks: 0010-swapoff.yml
+  when: disable_swap
+- name: Wait until node is marked Ready
+  command: >-
+     {{ bin_dir }}/kubectl get node {{ inventory_hostname }}
+     -o jsonpath='{ range .status.conditions[?(@.type == "Ready")].status }{ @ }{ end }'
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  register: result
+  until: result.stdout | bool
+  retries: 300
+  delay: 2

@@ -34,9 +34,9 @@ To deploy the cluster you can use :
     cat inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml
 
     # Deploy Kubespray with Ansible Playbook - run the playbook as root
-    # The options `-b` is required, for write SSL keys in /etc/ installing packages
-    # and interacting with various systemd daemons. Without -b the playbook
-    # will fail to run!
+    # The option `-b` is required, as for example writing SSL keys in /etc/,
+    # installing packages and interacting with various systemd daemons.
+    # Without -b the playbook will fail to run!
     ansible-playbook -i inventory/mycluster/hosts.ini --become --become-user=root cluster.yml
 
 Note: When Ansible is already installed via system packages on the control machine, other python packages installed via `sudo pip install -r requirements.txt` will go to a different directory tree (e.g. `/usr/local/lib/python2.7/dist-packages` on Ubuntu) from Ansible's (e.g. `/usr/lib/python2.7/dist-packages/ansible` still on Ubuntu).

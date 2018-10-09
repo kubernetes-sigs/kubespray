@@ -13,15 +13,25 @@ COREOS_URL_TEMPLATE = "https://storage.googleapis.com/%s.release.core-os.net/amd
 DISK_UUID = Time.now.utc.to_i
 
 SUPPORTED_OS = {
-  "coreos-stable" => {box: "coreos-stable",      user: "core", box_url: COREOS_URL_TEMPLATE % ["stable"]},
-  "coreos-alpha"  => {box: "coreos-alpha",       user: "core", box_url: COREOS_URL_TEMPLATE % ["alpha"]},
-  "coreos-beta"   => {box: "coreos-beta",        user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]},
-  "ubuntu1604"    => {box: "generic/ubuntu1604", user: "vagrant"},
-  "ubuntu1804"    => {box: "generic/ubuntu1804", user: "vagrant"},
-  "centos"        => {box: "centos/7",           user: "vagrant"},
-  "fedora"        => {box: "fedora/28-cloud-base", user: "vagrant"},
-  "opensuse"      => {box: "opensuse/openSUSE-42.3-x86_64", use: "vagrant"},
-  "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", use: "vagrant"},
+  "coreos" => {
+    "stable"     => {box: "coreos-stable",                       bootstrap_os: "coreos",   user: "core", box_url: COREOS_URL_TEMPLATE % ["stable"]},
+    "alpha"      => {box: "coreos-alpha",                        bootstrap_os: "coreos",   user: "core", box_url: COREOS_URL_TEMPLATE % ["alpha"] },
+    "beta"       => {box: "coreos-beta",                         bootstrap_os: "coreos",   user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]  }
+  },
+  "ubuntu" => {
+    "1804"       => {box: "generic/ubuntu1804",                  bootstrap_os: "ubuntu",   user: "vagrant"},
+    "1604"       => {box: "generic/ubuntu1604",                  bootstrap_os: "ubuntu",   user: "vagrant"}
+  },
+  "centos" => {
+    "7"          => {box: "centos/7",                            bootstrap_os: "centos",   user: "vagrant"}
+  },
+  "fedora" => {
+    "28"         => {box: "fedora/28-cloud-base",                bootstrap_os: "fedora",   user: "vagrant"}
+  },
+  "opensuse" => {
+    "42.3"       => {box: "opensuse/openSUSE-42.3-x86_64",       bootstrap_os: "opensuse", user: "vagrant"},
+    "tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", bootstrap_os: "opensuse", user: "vagrant"}
+  }
 }
 
 # Defaults for config options defined in CONFIG
@@ -33,7 +43,8 @@ $vm_cpus = 1
 $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
-$os = "ubuntu1804"
+$os = "ubuntu"
+$os_version = ""
 $network_plugin = "flannel"
 # The first three nodes are etcd servers
 $etcd_instances = $num_instances
@@ -56,7 +67,12 @@ if File.exist?(CONFIG)
   require CONFIG
 end
 
-$box = SUPPORTED_OS[$os][:box]
+# if os_version is not set, use the first entry of SUPPORTED_OS
+if $os_version.length == 0
+  $os_version = SUPPORTED_OS[$os].keys[0]
+end
+
+$box = SUPPORTED_OS[$os][$os_version][:box]
 # if $inventory is not set, try to use example
 $inventory = File.join(File.dirname(__FILE__), "inventory", "sample") if ! $inventory
 
@@ -82,10 +98,10 @@ Vagrant.configure("2") do |config|
   # always use Vagrants insecure key
   config.ssh.insert_key = false
   config.vm.box = $box
-  if SUPPORTED_OS[$os].has_key? :box_url
-    config.vm.box_url = SUPPORTED_OS[$os][:box_url]
+  if SUPPORTED_OS[$os][$os_version].has_key? :box_url
+    config.vm.box_url = SUPPORTED_OS[$os][$os_version][:box_url]
   end
-  config.ssh.username = SUPPORTED_OS[$os][:user]
+  config.ssh.username = SUPPORTED_OS[$os][$os_version][:user]
   # plugin conflict
   if Vagrant.has_plugin?("vagrant-vbguest") then
     config.vbguest.auto_update = false
@@ -138,6 +154,7 @@ Vagrant.configure("2") do |config|
       ip = "#{$subnet}.#{i+100}"
       host_vars[vm_name] = {
         "ip": ip,
+        "bootstrap_os": SUPPORTED_OS[$os][$os_version][:bootstrap_os],
         "local_release_dir" => $local_release_dir,
         "download_run_once": "False",
         "kube_network_plugin": $network_plugin

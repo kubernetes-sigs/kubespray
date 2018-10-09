@@ -2,9 +2,10 @@
   set_fact:
     distro_setup: "{{ distro_settings[node_distro] }}"
 
-- name: set_fact distro_user
+- name: set_fact other distro settings
   set_fact:
     distro_user: "{{ distro_setup['user'] }}"
+    distro_ssh_service: "{{ distro_setup['ssh_service'] }}"
 
 - name: Null-ify some linux tools to ease DIND
   file:
@@ -18,6 +19,19 @@
     # /etc/hosts handling would fail on trying to copy file attributes on edit,
     # void it by successfully returning nil output
     - /usr/bin/lsattr
+    # disable selinux-isms, sp needed if running on non-Selinux host
+    - /usr/sbin/semodule
+
+- name: remove some linux tools to ease DIND
+  file:
+    dest: "{{item}}"
+    state: absent
+    force: yes
+  with_items:
+    # no udevadm in container
+    - /usr/bin/udevadm
+    - /usr/sbin/udevadm
+
 
 - name: Void installing dpkg docs and man pages on Debian based distros
   copy:
@@ -47,16 +61,16 @@
     state: started
   with_items:
     - rsyslog
-    - ssh
+    - "{{ distro_ssh_service }}"
 
 - name: Create distro user "{{distro_user}}"
   user:
     name: "{{ distro_user }}"
     uid: 1000
-    groups: sudo
+    #groups: sudo
     append: yes
 
-- name: Add "{{ distro_user }}" to sudo group
+- name: Allow password-less sudo to "{{ distro_user }}"
   copy:
     content: "{{ distro_user }} ALL=(ALL) NOPASSWD:ALL"
     dest: "/etc/sudoers.d/{{ distro_user }}"

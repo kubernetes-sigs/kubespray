@@ -135,8 +135,8 @@ fi
 if [ -n "$HOSTS" ]; then
     for host in $HOSTS; do
         cn="${host%%.*}"
-        gen_key_and_cert "node-${host}" "/CN=system:node:${cn,,}/O=system:nodes"
-    done
+        gen_key_and_cert "node-${host}" "/CN=system:node:${cn}/O=system:nodes"
+    done   
 fi
 
 # system:node-proxier

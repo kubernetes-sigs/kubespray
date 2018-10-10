@@ -2,11 +2,15 @@
 # Q&D test'em all: creates full DIND kubespray deploys
 # for each distro, verifying it via netchecker.
 
-DISTROS="${*:-debian ubuntu centos fedora}"
-
+pass_or_fail() {
+    local msg="$*"
+    local date="$(date -Isec)"
+    [ $? -eq 0 ] && echo "PASS: [$date] $msg" || echo "FAIL: [$date] $msg"
+}
 test_distro() {
     local distro=${1:?}
     ansible-playbook -i hosts dind-cluster.yaml --extra-vars node_distro=$distro
+    pass_or_fail "dind-nodes: $distro"
     (cd ../..
         INVENTORY_DIR=inventory/local-dind
         mkdir -p ${INVENTORY_DIR}
@@ -15,20 +19,25 @@ test_distro() {
         ansible-playbook --become -e ansible_ssh_user=$distro -i \
             ${INVENTORY_DIR}/hosts.ini cluster.yml \
             --extra-vars @contrib/dind/kubespray-dind.yaml --extra-vars bootstrap_os=$distro
-        [ $? -eq 0 ] && echo PASS: kubespray: $distro || echo FAIL: kubespray: $distro
+        pass_or_fail "kubespray: $distro"
     )
     docker exec kube-node1 kubectl get pod --all-namespaces
-    [ $? -eq 0 ] && echo PASS: kube-api: $distro || echo FAIL: kube-api: $distro
+    pass_or_fail "kube-api: $distro"
     let n=60
     while ((n--)); do
         docker exec kube-node1 curl -s http://localhost:31081/api/v1/connectivity_check | grep successfully && break
         sleep 2
     done
-    [ $n -ge 0 ] && echo PASS: netcheck: $distro || echo FAIL: netcheck: $distro
+    [ $n -ge 0 ]
+    pass_or_fail "netcheck: $distro"
 }
 
+# Get all DISTROS from distro.yaml if $* unset (shame no yaml parsing, but nuff anyway)
+DISTROS="${*:-$(egrep -o '^  \w+' group_vars/all/distro.yaml|paste -s)}"
+NODES="$(egrep ^kube-node hosts|paste -s)"
+echo "DISTROS=${DISTROS}"
 for distro in ${DISTROS}; do
-    docker rm -f kube-node{1..5}
+    docker rm -f ${NODES}
     time test_distro ${distro} |& tee test-${distro}.out
     # sleeping for the sake of the human to verify if they want
     sleep 2m

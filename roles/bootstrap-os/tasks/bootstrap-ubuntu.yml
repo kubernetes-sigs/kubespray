@@ -1,25 +1,30 @@
 ---
 #  raw: cat /etc/issue.net | grep '{{ bootstrap_versions }}'
 
+- name: List ubuntu_packages
+  set_fact:
+    ubuntu_packages:
+      - python
+      - python-apt
+      - python-pip
+      - dbus
+
 - name: Bootstrap | Check if bootstrap is needed
-  raw: which "{{ item }}"
+  raw: dpkg -l | cut -d' ' -f3 |grep -e ^{{item}}$
   register: need_bootstrap
   failed_when: false
   changed_when: false
-  with_items:
-    - python
-    - python-apt
-    - pip
-    - dbus-daemon
+  with_items: "{{ubuntu_packages}}"
+
   tags:
     - facts
 
 - name: Bootstrap | Install python 2.x and pip
   raw:
     apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y python-minimal python-pip dbus
+    DEBIAN_FRONTEND=noninteractive apt-get install -y {{ubuntu_packages | join(" ")}}
   when:
-    "{{ need_bootstrap.results | map(attribute='rc') | sort | last | bool }}"
+    - need_bootstrap.results | map(attribute='rc') | sort | last | bool
 
 - set_fact:
     ansible_python_interpreter: "/usr/bin/python"

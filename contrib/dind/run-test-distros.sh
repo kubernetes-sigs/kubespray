@@ -43,4 +43,4 @@ for distro in ${DISTROS}; do
     # sleeping for the sake of the human to verify if they want
     sleep 2m
 done
-egrep '^(PASS|FAIL):' test-*.out | sort -k2
+egrep '^(PASS:|FAIL:|real)' $(ls -tr test-*out)

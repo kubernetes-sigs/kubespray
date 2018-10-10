@@ -1,9 +1,11 @@
 Local Storage Provisioner
 =========================
 
-The local storage provisioner is NOT a dynamic storage provisioner as you would
+The [local storage provisioner](https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume)
+is NOT a dynamic storage provisioner as you would
 expect from a cloud provider. Instead, it simply creates PersistentVolumes for
-all manually created volumes specified in the `local_volume_provisioner_storage_classes` list.
+all mounts under the host_dir of the specified storage class.
+These storage classes are specified in the `local_volume_provisioner_storage_classes` list.
 An example this list:
 
 ```yaml

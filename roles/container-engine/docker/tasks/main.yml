@@ -1,4 +1,12 @@
 ---
+- name: check if atomic host
+  stat:
+    path: /run/ostree-booted
+  register: ostree
+
+- set_fact:
+    is_atomic: "{{ ostree.stat.exists }}"
+
 - name: gather os specific variables
   include_vars: "{{ item }}"
   with_first_found:
@@ -52,7 +60,7 @@
   register: keyserver_task_result
   until: keyserver_task_result|succeeded
   retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
+  delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ docker_repo_key_info.repo_keys }}"
   when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat", "Suse"] or is_atomic)
 
@@ -73,7 +81,7 @@
   register: keyserver_task_result
   until: keyserver_task_result|succeeded
   retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
+  delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ dockerproject_repo_key_info.repo_keys }}"
   when:
     - not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat", "Suse"] or is_atomic)
@@ -128,7 +136,7 @@
   register: docker_task_result
   until: docker_task_result|succeeded
   retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
+  delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ docker_package_info.pkgs }}"
   notify: restart docker
   when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or is_atomic) and (docker_package_info.pkgs|length > 0)

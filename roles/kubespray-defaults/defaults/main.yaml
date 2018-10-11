@@ -1,8 +1,4 @@
 ---
-## Required for bootstrap-os/preinstall/download roles and setting facts
-# Valid bootstrap options (required): ubuntu, coreos, centos, none
-bootstrap_os: none
-
 # Use proxycommand if bastion host is in group all
 # This change obseletes editing ansible.cfg file depending on bastion existance
 ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ hostvars['bastion']['ansible_user'] }}@{{ hostvars['bastion']['ansible_host'] }} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
@@ -59,6 +55,14 @@ skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('addres
 skydns_server_secondary: "{{ kube_service_addresses|ipaddr('net')|ipaddr(4)|ipaddr('address') }}"
 dnsmasq_dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
 dns_domain: "{{ cluster_name }}"
+kube_dns_servers:
+  kubedns: ["{{skydns_server}}"]
+  coredns: ["{{skydns_server}}"]
+  coredns_dual: "{{[skydns_server] + [ skydns_server_secondary ]}}"
+  manual: ["{{manual_dns_server}}"]
+  dnsmasq_kubedns: ["{{dnsmasq_dns_server}}"]
+
+dns_servers: "{{kube_dns_servers[dns_mode]}}"
 
 # Kubernetes configuration dirs and system namespace.
 # Those are where all the additional config stuff goes

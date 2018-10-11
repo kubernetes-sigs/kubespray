@@ -341,11 +341,6 @@ If it fails try to connect manually via SSH.  It could be something as simple as
 ### Configure cluster variables
 
 Edit `inventory/$CLUSTER/group_vars/all.yml`:
-- Set variable **bootstrap_os** appropriately for your desired image:
-```
-# Valid bootstrap options (required): ubuntu, coreos, centos, none
-bootstrap_os: coreos
-```
 - **bin_dir**:
 ```
 # Directory where the binaries will be installed

@@ -8,7 +8,7 @@ Kubespray can be deployed with vSphere as Cloud provider. This feature supports
 
 ## Prerequisites
 
-You need at first to configure you vSphere environement by following the [official documentation](https://kubernetes.io/docs/getting-started-guides/vsphere/#vsphere-cloud-provider).
+You need at first to configure you vSphere environment by following the [official documentation](https://kubernetes.io/docs/getting-started-guides/vsphere/#vsphere-cloud-provider).
 
 After this step you should have:
 - UUID activated for each VM where Kubernetes will be deployed
@@ -16,7 +16,7 @@ After this step you should have:
 
 ## Kubespray configuration
 
-Fist you must define the cloud provider in `inventory/sample/group_vars/all.yml` and set it to `vsphere`.
+First you must define the cloud provider in `inventory/sample/group_vars/all.yml` and set it to `vsphere`.
 ```yml
 cloud_provider: vsphere
 ```
@@ -61,4 +61,4 @@ cd kubespray
 ansible-playbook -i inventory/sample/hosts.ini -b -v cluster.yml
 ```
 
-You'll find some usefull examples [here](https://github.com/kubernetes/kubernetes/tree/master/examples/volumes/vsphere) to test your configuration.
+You'll find some useful examples [here](https://github.com/kubernetes/kubernetes/tree/master/examples/volumes/vsphere) to test your configuration.

@@ -16,7 +16,7 @@ After this step you should have:
 
 ## Kubespray configuration
 
-Fist you must define the cloud provider in `inventory/sample/group_vars/all.yml` and set it to `vsphere`.
+First you must define the cloud provider in `inventory/sample/group_vars/all.yml` and set it to `vsphere`.
 ```yml
 cloud_provider: vsphere
 ```

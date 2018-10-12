@@ -89,8 +89,9 @@
         '{{ etcd_cert_dir }}/node-{{ node }}-key.pem',
         {% endfor %}]"
   delegate_to: "{{groups['etcd'][0]}}"
-  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]
+  when:
+    - inventory_hostname in groups['etcd'] and sync_certs|default(false)
+    - inventory_hostname != groups['etcd'][0]
   notify: set etcd_secret_changed
 
 - name: Gen_certs | Write etcd master certs
@@ -101,8 +102,10 @@
     owner: kube
     mode: 0640
   with_items: "{{ etcd_master_certs.results }}"
-  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]
+  when: 
+    - inventory_hostname in groups['etcd']
+    - sync_certs|default(false)
+    - inventory_hostname != groups['etcd'][0]
 
 - set_fact:
     my_etcd_node_certs: ['ca.pem',
@@ -124,6 +127,7 @@
   shell: "tar cfz - -C {{ etcd_cert_dir }} -T /dev/stdin <<< {{ my_etcd_node_certs|join(' ') }} | base64 --wrap=0"
   args:
     executable: /bin/bash
+    warn: false
   no_log: true
   register: etcd_node_certs
   check_mode: no

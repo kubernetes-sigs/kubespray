@@ -1,5 +1,12 @@
 ---
 
+- name: reset | include file with pre-reset tasks specific to the network_plugin if exists
+  include_tasks: "{{ (role_path + '/../network_plugin/' + kube_network_plugin + '/tasks/pre-reset.yml') | realpath  }}"
+  when:
+    - kube_network_plugin in ['contiv']
+  tags:
+    - network
+
 - name: reset | stop services
   service:
     name: "{{ item }}"
@@ -60,10 +67,21 @@
   tags:
     - docker
 
+- name: reset | remove all cri-o containers
+  shell: "crictl ps -aq | xargs -r crictl rm"
+  register: remove_all_crio_containers
+  retries: 4
+  until: remove_all_crio_containers.rc == 0
+  delay: 5
+  tags:
+    - crio
+  when: container_manager == 'crio'
+
 - name: reset | gather mounted kubelet dirs
   shell: mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
   check_mode: no
   register: mounted_dirs
+  warn: false
   tags:
     - mounts
 
@@ -102,7 +120,7 @@
     - /etc/ssl/etcd
     - /var/log/calico
     - /etc/cni
-    - /etc/nginx
+    - "{{ nginx_config_dir }}"
     - /etc/dnsmasq.d
     - /etc/dnsmasq.conf
     - /etc/dnsmasq.d-available
@@ -139,7 +157,13 @@
     - "{{ bin_dir }}/calico-upgrade"
     - "{{ bin_dir }}/weave"
     - /var/lib/rkt
+    - /var/lib/cni
     - /etc/vault
+    - /etc/contiv
+    - /var/contiv
+    - /run/contiv
+    - /etc/openvswitch
+    - /run/openvswitch
   ignore_errors: yes
   tags:
     - files
@@ -171,7 +195,7 @@
 - name: reset | include file with reset tasks specific to the network_plugin if exists
   include_tasks: "{{ (role_path + '/../network_plugin/' + kube_network_plugin + '/tasks/reset.yml') | realpath  }}"
   when:
-    - kube_network_plugin in ['flannel', 'cilium']
+    - kube_network_plugin in ['flannel', 'cilium', 'contiv']
   tags:
     - network
 
@@ -180,11 +204,15 @@
     name: >-
       {% if ansible_os_family == "RedHat" -%}
       network
+      {%- elif ansible_distribution == "Ubuntu" and ansible_distribution_release == "bionic" -%}
+      systemd-networkd
       {%- elif ansible_os_family == "Debian" -%}
       networking
       {%- endif %}
     state: restarted
-  when: ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"] and reset_restart_network
+  when:
+    - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+    - reset_restart_network
   tags:
     - services
     - network

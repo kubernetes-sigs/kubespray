@@ -13,13 +13,15 @@ COREOS_URL_TEMPLATE = "https://storage.googleapis.com/%s.release.core-os.net/amd
 DISK_UUID = Time.now.utc.to_i
 
 SUPPORTED_OS = {
-  "coreos-stable" => {box: "coreos-stable",      bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["stable"]},
-  "coreos-alpha"  => {box: "coreos-alpha",       bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["alpha"]},
-  "coreos-beta"   => {box: "coreos-beta",        bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]},
-  "ubuntu"        => {box: "bento/ubuntu-16.04", bootstrap_os: "ubuntu", user: "vagrant"},
-  "centos"        => {box: "centos/7",           bootstrap_os: "centos", user: "vagrant"},
-  "opensuse"      => {box: "opensuse/openSUSE-42.3-x86_64", bootstrap_os: "opensuse", use: "vagrant"},
-  "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", bootstrap_os: "opensuse", use: "vagrant"},
+  "coreos-stable" => {box: "coreos-stable",      user: "core", box_url: COREOS_URL_TEMPLATE % ["stable"]},
+  "coreos-alpha"  => {box: "coreos-alpha",       user: "core", box_url: COREOS_URL_TEMPLATE % ["alpha"]},
+  "coreos-beta"   => {box: "coreos-beta",        user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]},
+  "ubuntu1604"    => {box: "generic/ubuntu1604", user: "vagrant"},
+  "ubuntu1804"    => {box: "generic/ubuntu1804", user: "vagrant"},
+  "centos"        => {box: "centos/7",           user: "vagrant"},
+  "fedora"        => {box: "fedora/28-cloud-base", user: "vagrant"},
+  "opensuse"      => {box: "opensuse/openSUSE-42.3-x86_64", use: "vagrant"},
+  "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", use: "vagrant"},
 }
 
 # Defaults for config options defined in CONFIG
@@ -31,7 +33,7 @@ $vm_cpus = 1
 $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
-$os = "ubuntu"
+$os = "ubuntu1804"
 $network_plugin = "flannel"
 # The first three nodes are etcd servers
 $etcd_instances = $num_instances
@@ -127,12 +129,15 @@ Vagrant.configure("2") do |config|
 
      config.vm.provider :libvirt do |lv|
        lv.memory = $vm_memory
+       # Fix kernel panic on fedora 28
+       if $os == "fedora"
+        lv.cpu_mode = "host-passthrough"
+       end
      end
 
       ip = "#{$subnet}.#{i+100}"
       host_vars[vm_name] = {
         "ip": ip,
-        "bootstrap_os": SUPPORTED_OS[$os][:bootstrap_os],
         "local_release_dir" => $local_release_dir,
         "download_run_once": "False",
         "kube_network_plugin": $network_plugin

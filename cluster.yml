@@ -1,5 +1,5 @@
 ---
-- hosts: localhost
+- hosts: bastion[0]
   gather_facts: False
   roles:
     - { role: kubespray-defaults}
@@ -33,10 +33,7 @@
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes/preinstall, tags: preinstall }
-    - { role: docker, tags: docker, when: manage_docker|default(true) }
-    - role: rkt
-      tags: rkt
-      when: "'rkt' in [etcd_deployment_type, kubelet_deployment_type, vault_deployment_type]"
+    - { role: "container-engine", tags: "container-engine" }
     - { role: download, tags: download, when: "not skip_downloads" }
   environment: "{{proxy_env}}"
 
@@ -93,6 +90,7 @@
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes-apps/rotate_tokens, tags: rotate_tokens, when: "secret_changed|default(false)" }
+    - { role: win_nodes/kubernetes_patch, tags: win_nodes, when: "kubeadm_enabled" }
 
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -117,7 +115,7 @@
     - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }
   environment: "{{proxy_env}}"
 
-- hosts: kube-master[0]
+- hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}

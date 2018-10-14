@@ -32,6 +32,13 @@
   tags:
     - kubelet
 
+- name: Make sure dynamic kubelet configuration directory is writeable
+  file:
+    path: "{{ dynamic_kubelet_configuration_dir }}"
+    mode: 0600
+    state: directory
+  when: dynamic_kubelet_configuration
+
 - name: Write kubelet config file (kubeadm)
   template:
     src: kubelet.kubeadm.env.j2
@@ -70,6 +77,8 @@
 
 - name: Verify if br_netfilter module exists
   shell: "modinfo br_netfilter"
+  environment:
+    PATH: "{{ ansible_env.PATH}}:/sbin"  # Make sure we can workaround RH's conservative path management
   register: modinfo_br_netfilter
   failed_when: modinfo_br_netfilter.rc not in [0, 1]
   changed_when: false
@@ -157,6 +166,21 @@
     - cloud-provider
     - facts
 
+- name: Write cacert file
+  copy:
+    src: "{{ openstack_cacert }}"
+    dest: "{{ kube_config_dir }}/openstack-cacert.pem"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - cloud_provider is defined
+    - cloud_provider == 'openstack'
+    - openstack_cacert is defined
+    - openstack_cacert != ""
+  tags:
+    - cloud-provider
+
 - name: Write cloud-config
   template:
     src: "{{ cloud_provider }}-cloud-config.j2"
@@ -165,7 +189,7 @@
     mode: 0640
   when:
     - cloud_provider is defined
-    - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
+    - cloud_provider in [ 'openstack', 'azure', 'vsphere', 'aws' ]
   notify: restart kubelet
   tags:
     - cloud-provider

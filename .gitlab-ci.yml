@@ -42,7 +42,7 @@ before_script:
   tags:
     - kubernetes
     - docker
-  image: quay.io/kubespray/kubespray:latest
+  image: quay.io/kubespray/kubespray:v2.7
 
 .docker_service: &docker_service
   services:
@@ -93,7 +93,7 @@ before_script:
     # Check out latest tag if testing upgrade
     # Uncomment when gitlab kubespray repo has tags
     #- test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
-    - test "${UPGRADE_TEST}" != "false" && git checkout 8b3ce6e418ccf48171eb5b3888ee1af84f8d71ba
+    - test "${UPGRADE_TEST}" != "false" && git checkout 53d87e53c5899d4ea2904ab7e3883708dd6363d3
     # Checkout the CI vars file so it is available
     - test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
     # Workaround https://github.com/kubernetes-incubator/kubespray/issues/2021
@@ -323,12 +323,13 @@ before_script:
 
 # Builds for PRs only (premoderated by unit-tests step) and triggers (auto)
 ### PR JOBS PART1
-gce_coreos-calico-aio:
+
+gce_ubuntu18-flannel-aio:
   stage: deploy-part1
   <<: *job
   <<: *gce
   variables:
-    <<: *coreos_calico_aio_variables
+    <<: *ubuntu18_flannel_aio_variables
     <<: *gce_variables
   when: on_success
   except: ['triggers']
@@ -336,12 +337,12 @@ gce_coreos-calico-aio:
 
 ### PR JOBS PART2
 
-gce_ubuntu18-flannel-aio:
+gce_coreos-calico-aio:
   stage: deploy-part2
   <<: *job
   <<: *gce
   variables:
-    <<: *ubuntu18_flannel_aio_variables
+    <<: *coreos_calico_aio_variables
     <<: *gce_variables
   when: on_success
   except: ['triggers']
@@ -358,6 +359,19 @@ gce_centos7-flannel-addons:
   except: ['triggers']
   only: [/^pr-.*$/]
 
+gce_centos-weave-kubeadm-sep:
+  stage: deploy-part2
+  <<: *job
+  <<: *gce
+  variables:
+    <<: *gce_variables
+    <<: *centos_weave_kubeadm_variables
+  when: on_success
+  except: ['triggers']
+  only: [/^pr-.*$/]
+
+### MANUAL JOBS
+
 gce_ubuntu-weave-sep:
   stage: deploy-part2
   <<: *job
@@ -365,11 +379,10 @@ gce_ubuntu-weave-sep:
   variables:
     <<: *gce_variables
     <<: *ubuntu_weave_sep_variables
-  when: on_success
+  when: manual
   except: ['triggers']
   only: [/^pr-.*$/]
 
-### MANUAL JOBS
 gce_coreos-calico-sep-triggers:
   stage: deploy-part2
   <<: *job
@@ -453,17 +466,6 @@ gce_ubuntu-canal-kubeadm-triggers:
     <<: *ubuntu_canal_kubeadm_variables
   when: on_success
   only: ['triggers']
-
-gce_centos-weave-kubeadm:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos_weave_kubeadm_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
 
 gce_centos-weave-kubeadm-triggers:
   stage: deploy-part2

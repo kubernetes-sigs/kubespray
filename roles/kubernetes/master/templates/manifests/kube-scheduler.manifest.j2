@@ -12,6 +12,9 @@ spec:
 {% if kube_version | version_compare('v1.6', '>=') %}
   dnsPolicy: ClusterFirst
 {% endif %}
+{% if kube_version|version_compare('v1.11.1', '>=') %}
+  priorityClassName: system-node-critical
+{% endif %}
   containers:
   - name: kube-scheduler
     image: {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }}
@@ -28,11 +31,7 @@ spec:
     - scheduler
     - --leader-elect=true
     - --kubeconfig={{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml
-{% if volume_cross_zone_attachment %}
-    - --use-legacy-policy-config
-    - --policy-config-file={{ kube_config_dir }}/kube-scheduler-policy.yaml
-{% endif %}
-    - --profiling=false
+    - --profiling={{ kube_profiling }}
     - --v={{ kube_log_level }}
 {% if kube_feature_gates %}
     - --feature-gates={{ kube_feature_gates|join(',') }}
@@ -66,11 +65,6 @@ spec:
     - mountPath: "{{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml"
       name: kubeconfig
       readOnly: true
-{% if volume_cross_zone_attachment %}
-    - mountPath: "{{ kube_config_dir }}/kube-scheduler-policy.yaml"
-      name: kube-scheduler-policy
-      readOnly: true
-{% endif %}
   volumes:
   - name: ssl-certs-host
     hostPath:
@@ -86,8 +80,3 @@ spec:
   - name: kubeconfig
     hostPath:
       path: "{{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml"
-{% if volume_cross_zone_attachment %}
-  - name: kube-scheduler-policy
-    hostPath:
-      path: "{{ kube_config_dir }}/kube-scheduler-policy.yaml"
-{% endif %}

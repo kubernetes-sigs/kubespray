@@ -1,10 +1,11 @@
 apiVersion: kubeadm.k8s.io/v1alpha2
 kind: MasterConfiguration
 api:
+{% if groups['kube-master'] | length > 1 and kubeadm_config_api_fqdn is defined %}
+  controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
+{% else %}
   advertiseAddress: {{ ip | default(ansible_default_ipv4.address) }}
   bindPort: {{ kube_apiserver_port }}
-{% if groups['kube-master'] | length > 1 and kubeadm_config_api_fqdn is defined %}
-  controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}
 {% endif %}
 etcd:
   external:
@@ -36,16 +37,18 @@ authorizationModes:
 {% endfor %}
 apiServerExtraArgs:
   bind-address: {{ kube_apiserver_bind_address }}
+{% if kube_apiserver_insecure_port|string != "0" %}
   insecure-bind-address: {{ kube_apiserver_insecure_bind_address }}
+{% endif %}
   insecure-port: "{{ kube_apiserver_insecure_port }}"
 {% if kube_version | version_compare('v1.10', '<') %}
   admission-control: {{ kube_apiserver_admission_control | join(',') }}
 {% else %}
 {% if kube_apiserver_enable_admission_plugins|length > 0 %}
-  enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }} 
+  enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }}
 {% endif %}
 {% if kube_apiserver_disable_admission_plugins|length > 0 %}
-  disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }} 
+  disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }}
 {% endif %}
 {% endif %}
   apiserver-count: "{{ kube_apiserver_count }}"
@@ -57,8 +60,18 @@ apiServerExtraArgs:
 {% endif %}
   service-node-port-range: {{ kube_apiserver_node_port_range }}
   kubelet-preferred-address-types: "{{ kubelet_preferred_address_types }}"
+  profiling: "{{ kube_profiling }}"
+  request-timeout: "{{ kube_apiserver_request_timeout }}"
+  repair-malformed-updates: "false"
+  enable-aggregator-routing: "{{ kube_api_aggregator_routing }}"
+{% if kube_api_anonymous_auth is defined and kube_version | version_compare('v1.5', '>=')  %}
+  anonymous-auth: "{{ kube_api_anonymous_auth }}"
+{% endif %}
 {% if kube_basic_auth|default(true) %}
   basic-auth-file: {{ kube_users_dir }}/known_users.csv
+{% endif %}
+{% if kube_token_auth|default(true) %}
+  token-auth-file: {{ kube_token_dir }}/known_tokens.csv
 {% endif %}
 {% if kube_oidc_auth|default(false) and kube_oidc_url is defined and kube_oidc_client_id is defined %}
   oidc-issuer-url: {{ kube_oidc_url }}
@@ -82,7 +95,7 @@ apiServerExtraArgs:
 {% endif %}
   allow-privileged: "true"
 {% if kubernetes_audit %}
-  audit-log-path: {{ audit_log_path }}
+  audit-log-path: "{{ audit_log_path }}"
   audit-log-maxage: "{{ audit_log_maxage }}"
   audit-log-maxbackup: "{{ audit_log_maxbackups }}"
   audit-log-maxsize: "{{ audit_log_maxsize }}"
@@ -91,18 +104,40 @@ apiServerExtraArgs:
 {% for key in kube_kubeadm_apiserver_extra_args %}
   {{ key }}: "{{ kube_kubeadm_apiserver_extra_args[key] }}"
 {% endfor %}
+{% if kube_feature_gates %}
+  feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
 controllerManagerExtraArgs:
   node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
   node-monitor-period: {{ kube_controller_node_monitor_period }}
   pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
-{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
+  profiling: "{{ kube_profiling }}"
+  terminated-pod-gc-threshold: "{{ kube_controller_terminated_pod_gc_threshold }}"
+{% if kube_feature_gates %}
+  feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
+{% for key in kube_kubeadm_controller_extra_args %}
+  {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
+{% endfor %}
+{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined and openstack_cacert != "" %}
 controllerManagerExtraVolumes:
 - name: openstackcacert
   hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
   mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
 {% endif %}
-{% if kubernetes_audit %}
+{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) %}
 apiServerExtraVolumes:
+{% if kube_basic_auth|default(true) %}
+- name: basic-auth-config
+  hostPath: {{ kube_users_dir }}
+  mountPath: {{ kube_users_dir }}
+{% endif %}
+{% if kube_token_auth|default(true) %}
+- name: token-auth-config
+  hostPath: {{ kube_token_dir }}
+  mountPath: {{ kube_token_dir }}
+{% endif %}
+{% if kubernetes_audit %}
 - name: {{ audit_policy_name }}
   hostPath: {{ audit_policy_hostpath }}
   mountPath: {{ audit_policy_mountpath }}
@@ -113,20 +148,19 @@ apiServerExtraVolumes:
   writable: true
 {% endif %}
 {% endif %}
+{% endif %}
+schedulerExtraArgs:
+  profiling: "{{ kube_profiling }}"
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
-{% for key in kube_kubeadm_controller_extra_args %}
-  {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
-{% endfor %}
 {% if kube_kubeadm_scheduler_extra_args|length > 0 %}
-schedulerExtraArgs:
 {% for key in kube_kubeadm_scheduler_extra_args %}
   {{ key }}: "{{ kube_kubeadm_scheduler_extra_args[key] }}"
 {% endfor %}
 {% endif %}
 apiServerCertSANs:
-{% for san in  apiserver_sans.split(' ') | unique %}
+{% for san in apiserver_sans.split(' ') | unique %}
   - {{ san }}
 {% endfor %}
 certificatesDir: {{ kube_config_dir }}/ssl
@@ -138,3 +172,10 @@ nodeRegistration:
   taints:
   - effect: NoSchedule
     key: node-role.kubernetes.io/master
+{% if container_manager == 'crio' %}
+  criSocket: /var/run/crio/crio.sock
+{% endif %}
+{% if dynamic_kubelet_configuration %}
+featureGates:
+  DynamicKubeletConfig: true
+{% endif %}

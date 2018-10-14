@@ -42,13 +42,13 @@ items:
           - patch
           - update
       - apiGroups:
-        - policy
+          - policy
         resourceNames:
-        - privileged
+          - privileged
         resources:
-        - podsecuritypolicies
+          - podsecuritypolicies
         verbs:
-        - use
+          - use
   - apiVersion: rbac.authorization.k8s.io/v1beta1
     kind: ClusterRoleBinding
     metadata:
@@ -114,7 +114,13 @@ items:
         metadata:
           labels:
             name: weave-net
+          annotations:
+            # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
+            scheduler.alpha.kubernetes.io/critical-pod: ''
         spec:
+{% if kube_version|version_compare('v1.11.1', '>=') %}
+          priorityClassName: system-node-critical
+{% endif %}
           containers:
             - name: weave
               command:
@@ -221,8 +227,10 @@ items:
             seLinuxOptions: {}
           serviceAccountName: weave-net
           tolerations:
-            - effect: NoSchedule
-              operator: Exists
+            - operator: Exists
+            # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
+            - key: CriticalAddonsOnly
+              operator: "Exists"
           volumes:
             - name: weavedb
               hostPath:

@@ -27,13 +27,14 @@ spec:
         # gets priority scheduling.
         # https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
         scheduler.alpha.kubernetes.io/critical-pod: ''
-        scheduler.alpha.kubernetes.io/tolerations: >-
-          [{"key":"dedicated","operator":"Equal","value":"master","effect":"NoSchedule"}]
 {% if cilium_enable_prometheus %}
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
 {% endif %}
     spec:
+{% if kube_version|version_compare('v1.11.1', '>=') %}
+      priorityClassName: system-node-critical
+{% endif %}
       serviceAccountName: cilium
       initContainers:
         - name: clean-cilium-state
@@ -159,9 +160,15 @@ spec:
               mountPath: /host/opt/cni/bin
             - name: etc-cni-netd
               mountPath: /host/etc/cni/net.d
+{% if container_manager == 'crio' %}
+            - name: crio-socket
+              mountPath: /var/run/crio.sock
+              readOnly: true
+{% else %}
             - name: docker-socket
               mountPath: /var/run/docker.sock
               readOnly: true
+{% endif %}
             - name: etcd-config-path
               mountPath: /var/lib/etcd-config
               readOnly: true
@@ -183,10 +190,17 @@ spec:
         - name: bpf-maps
           hostPath:
             path: /sys/fs/bpf
+{% if container_manager == 'crio' %}
+        # To read crio events from the node
+        - name: crio-socket
+          hostPath:
+            path: /var/run/crio/crio.sock
+{% else %}
         # To read docker events from the node
         - name: docker-socket
           hostPath:
             path: /var/run/docker.sock
+{% endif %}
         # To install cilium cni plugin in the host
         - name: cni-path
           hostPath:
@@ -209,11 +223,7 @@ spec:
 
       restartPolicy: Always
       tolerations:
-        - effect: NoSchedule
-          key: node-role.kubernetes.io/master
-        - effect: NoSchedule
-          key: node.cloudprovider.kubernetes.io/uninitialized
-          value: "true"
-        # Mark cilium's pod as critical for rescheduling
+        - operator: Exists
+        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
         - key: CriticalAddonsOnly
           operator: "Exists"

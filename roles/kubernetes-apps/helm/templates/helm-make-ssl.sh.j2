@@ -1,0 +1,76 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+
+usage()
+{
+    cat << EOF
+Create self signed certificates
+
+Usage : $(basename $0) -f <config> [-d <ssldir>]
+      -h | --help         : Show this message
+      -e | --helm-home      : Helm home directory
+      -d | --ssldir       : Directory where the certificates will be installed
+EOF
+}
+
+# Options parsing
+while (($#)); do
+    case "$1" in
+        -h | --help)   usage;   exit 0;;
+        -e | --helm-home) HELM_HOME="${2}"; shift 2;;
+        -d | --ssldir) SSLDIR="${2}"; shift 2;;
+        *)
+            usage
+            echo "ERROR : Unknown option"
+            exit 3
+        ;;
+    esac
+done
+
+if [ -z ${SSLDIR} ]; then
+    SSLDIR="/etc/kubernetes/helm/ssl"
+fi
+
+tmpdir=$(mktemp -d /tmp/helm_cacert.XXXXXX)
+trap 'rm -rf "${tmpdir}"' EXIT
+cd "${tmpdir}"
+
+mkdir -p "${SSLDIR}"
+
+# Root CA
+if [ -e "$SSLDIR/ca-key.pem" ]; then
+    # Reuse existing CA
+    cp $SSLDIR/{ca.pem,ca-key.pem} .
+else
+    openssl genrsa -out ca-key.pem 4096 > /dev/null 2>&1
+    openssl req -x509 -new -nodes -key ca-key.pem -days {{certificates_duration}} -out ca.pem -subj "/CN=tiller-ca" > /dev/null 2>&1
+fi
+
+gen_key_and_cert() {
+    local name=$1
+    local subject=$2
+    openssl genrsa -out ${name}-key.pem 4096 > /dev/null 2>&1
+    openssl req -new -key ${name}-key.pem -sha256 -out ${name}.csr -subj "${subject}" > /dev/null 2>&1
+    openssl x509 -req -in ${name}.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${name}.pem -days {{certificates_duration}} > /dev/null 2>&1
+}
+
+#Generate cert and key for Tiller if they don't exist
+if ! [ -e "$SSLDIR/tiller.pem" ]; then
+    gen_key_and_cert "tiller" "/CN=tiller-server"
+fi
+
+#Generate cert and key for Helm client if they dont exist
+if ! [ -e "$SSLDIR/helm.pem" ]; then
+    gen_key_and_cert "helm" "/CN=helm-client"
+fi
+
+# Secure certs to first master
+mv *.pem ${SSLDIR}/
+
+# Install Helm client certs to first master
+# Copy using Helm default names for convenience
+cp ${SSLDIR}/ca.pem ${HELM_HOME}/ca.pem
+cp ${SSLDIR}/helm.pem ${HELM_HOME}/cert.pem
+cp ${SSLDIR}/helm-key.pem ${HELM_HOME}/key.pem

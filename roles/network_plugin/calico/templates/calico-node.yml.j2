@@ -18,14 +18,20 @@ spec:
       labels:
         k8s-app: calico-node
       annotations:
+        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
         scheduler.alpha.kubernetes.io/critical-pod: ''
         kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
     spec:
+{% if kube_version|version_compare('v1.11.1', '>=') %}
+      priorityClassName: system-node-critical
+{% endif %}
       hostNetwork: true
       serviceAccountName: calico-node
       tolerations:
-        - effect: NoSchedule
-          operator: Exists
+        - operator: Exists
+        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
+        - key: CriticalAddonsOnly
+          operator: "Exists"
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 0
@@ -65,12 +71,14 @@ spec:
             # Set Felix endpoint to host default action to ACCEPT.
             - name: FELIX_DEFAULTENDPOINTTOHOSTACTION
               value: "{{ calico_endpoint_to_host_action|default('RETURN') }}"
+            - name: FELIX_HEALTHHOST
+              value: "{{ calico_healthhost }}"
 # should be set in etcd before deployment
 #            # Configure the IP Pool from which Pod IPs will be chosen.
 #            - name: CALICO_IPV4POOL_CIDR
 #              value: "192.168.0.0/16"
-#            - name: CALICO_IPV4POOL_IPIP
-#              value: "always"
+            - name: CALICO_IPV4POOL_IPIP
+              value: "{{ calico_ipv4pool_ipip }}"
             # Disable IPv6 on Kubernetes.
             - name: FELIX_IPV6SUPPORT
               value: "false"
@@ -136,6 +144,7 @@ spec:
               memory: {{ calico_node_memory_requests }}
           livenessProbe:
             httpGet:
+              host: 127.0.0.1
               path: /liveness
               port: 9099
             periodSeconds: 10
@@ -143,6 +152,7 @@ spec:
             failureThreshold: 6
           readinessProbe:
             httpGet:
+              host: 127.0.0.1
               path: /readiness
               port: 9099
             periodSeconds: 10

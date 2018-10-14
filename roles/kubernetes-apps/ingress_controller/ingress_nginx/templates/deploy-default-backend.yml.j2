@@ -5,20 +5,23 @@ metadata:
   name: default-backend
   namespace: {{ ingress_nginx_namespace }}
   labels:
-    k8s-app: default-backend
-    version: v{{ ingress_nginx_default_backend_image_tag }}
+    app.kubernetes.io/name: default-backend
+    app.kubernetes.io/part-of: ingress-nginx
 spec:
   replicas: 1
   selector:
     matchLabels:
-      k8s-app: default-backend
-      version: v{{ ingress_nginx_default_backend_image_tag }}
+      app.kubernetes.io/name: default-backend
+      app.kubernetes.io/part-of: ingress-nginx
   template:
     metadata:
       labels:
-        k8s-app: default-backend
-        version: v{{ ingress_nginx_default_backend_image_tag }}
+        app.kubernetes.io/name: default-backend
+        app.kubernetes.io/part-of: ingress-nginx
     spec:
+{% if kube_version|version_compare('v1.11.1', '>=') %}
+      priorityClassName: {% if ingress_nginx_namespace == 'kube-system' %}system-cluster-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
+{% endif %}
       terminationGracePeriodSeconds: 60
       containers:
         - name: default-backend
@@ -42,3 +45,6 @@ spec:
             requests:
               cpu: 10m
               memory: 20Mi
+      # When having win nodes in cluster without this patch, this pod cloud try to be created in windows
+      nodeSelector:
+        beta.kubernetes.io/os: linux

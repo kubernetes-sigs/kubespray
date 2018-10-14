@@ -27,6 +27,12 @@ spec:
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ''
     spec:
+{% if kube_version|version_compare('v1.11.1', '>=') %}
+      priorityClassName: system-cluster-critical
+{% endif %}
+      # When having win nodes in cluster without this patch, this pod cloud try to be created in windows
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       tolerations:
       - key: "CriticalAddonsOnly"
         operator: "Exists"
@@ -91,6 +97,9 @@ spec:
         - --dns-port=10053
         - --config-dir=/kube-dns-config
         - --v={{ kube_log_level }}
+{% if resolvconf_mode == 'host_resolvconf' and upstream_dns_servers is defined and upstream_dns_servers|length > 0 %}
+        - --nameservers={{ upstream_dns_servers|join(',') }}
+{% endif %}
         env:
         - name: PROMETHEUS_PORT
           value: "10055"

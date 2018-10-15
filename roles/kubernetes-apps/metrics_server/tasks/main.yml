@@ -1,0 +1,52 @@
+---
+
+- name: Metrics Server | Delete addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/metrics_server"
+    state: absent
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+  tags:
+    - upgrade
+
+- name: Metrics Server | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/metrics_server"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Metrics Server | Templates list
+  set_fact:
+    metrics_server_templates:
+      - { name: aggregated-metrics-reader, file: aggregated-metrics-reader.yaml, type: clusterrole }
+      - { name: auth-delegator, file: auth-delegator.yaml, type: clusterrolebinding }
+      - { name: auth-reader, file: auth-reader.yaml, type: rolebinding }
+      - { name: metrics-server-deployment, file: metrics-server-deployment.yaml, type: deploy }
+      - { name: metrics-server-service, file: metrics-server-service.yaml, type: service }
+      - { name: metrics-apiservice, file: metrics-apiservice.yaml, type: service }
+      - { name: resource-reader, file: resource-reader.yaml, type: clusterrole }
+
+- name: Metrics Server | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/metrics_server/{{ item.file }}"
+  with_items: "{{ metrics_server_templates }}"
+  register: metrics_server_manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Metrics Server | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ metrics_server_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/metrics_server/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ metrics_server_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]

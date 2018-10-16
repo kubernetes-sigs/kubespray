@@ -205,7 +205,7 @@
     - local_as is defined
     - groups['calico-rr'] | default([]) | length == 0
 
-- name: Calico | Configure peering with router(s)
+- name: Calico | Configure peering with router(s) at node scope
   shell: >
    echo '{
    "apiVersion": "projectcalico.org/v3",
@@ -221,13 +221,13 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
-    - "{{ peers|default([]) }}"
+    - "{{ peers|rejectattr('scope','equalto', 'global')|default([]) }}"
   when:
     - calico_version | version_compare('v3.0.0', '>=')
     - peer_with_router|default(false)
     - inventory_hostname in groups['k8s-cluster']
 
-- name: Calico | Configure peering with router(s) (legacy)
+- name: Calico | Configure peering with router(s) at node scope (legacy)
   shell: >
    echo '{
    "kind": "bgpPeer",
@@ -238,7 +238,47 @@
    | {{ bin_dir }}/calicoctl create --skip-exists -f -
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  with_items: "{{ peers|default([]) }}"
+  with_items: "{{ peers|rejectattr('scope','equalto', 'global')|default([]) }}"
+  when:
+    - calico_version | version_compare('v3.0.0', '<')
+    - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+
+- name: Calico | Configure peering with router(s) at global scope
+  shell: >
+   echo '{
+   "apiVersion": "projectcalico.org/v3",
+   "kind": "BGPPeer",
+   "metadata": {
+      "name": "global-{{ item.router_id }}"
+   },
+   "spec": {
+      "asNumber": "{{ item.as }}",
+      "peerIP": "{{ item.router_id }}"
+   }}' | {{ bin_dir }}/calicoctl create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - "{{ peers|selectattr('scope','equalto', 'global')|default([]) }}"
+  run_once: true
+  when:
+    - calico_version | version_compare('v3.0.0', '>=')
+    - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+
+- name: Calico | Configure peering with router(s) at global scope (legacy)
+  shell: >
+   echo '{
+   "kind": "bgpPeer",
+   "spec": {"asNumber": "{{ item.as }}"},
+   "apiVersion": "v1",
+   "metadata": {"scope": "global", "peerIP": "{{ item.router_id }}"}
+   }'
+   | {{ bin_dir }}/calicoctl create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items: "{{ peers|selectattr('scope','equalto', 'global')|default([]) }}"
+  run_once: true
   when:
     - calico_version | version_compare('v3.0.0', '<')
     - peer_with_router|default(false)

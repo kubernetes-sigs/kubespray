@@ -134,7 +134,7 @@ plugins can be deployed for a given single cluster.
 Requirements
 ------------
 
--   **Ansible v2.4 (or newer) and python-netaddr is installed on the machine
+-   **Ansible v2.5 (or newer) and python-netaddr is installed on the machine
     that will run Ansible commands**
 -   **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
 -   The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/downloads.md#offline-environment))

@@ -8,15 +8,15 @@ After that make sure to source in your OpenStack credentials like you would do w
 The next step is to make sure the hostnames in your `inventory` file are identical to your instance names in OpenStack.
 Otherwise [cinder](https://wiki.openstack.org/wiki/Cinder) won't work as expected.
 
-Unless you are using calico you can now run the playbook.
+Unless you are using calico or kube-router you can now run the playbook.
 
-**Additional step needed when using calico:**
+**Additional step needed when using calico or kube-router:**
 
-Calico does not encapsulate all packages with the hosts' ip addresses. Instead the packages will be routed with the PODs ip addresses directly.
+Being L3 CNI, calico and kube-router do not encapsulate all packages with the hosts' ip addresses. Instead the packets will be routed with the PODs ip addresses directly.
 
-OpenStack will filter and drop all packages from ips it does not know to prevent spoofing.
+OpenStack will filter and drop all packets from ips it does not know to prevent spoofing.
 
-In order to make calico work on OpenStack you will need to tell OpenStack to allow calico's packages by allowing the network it uses.
+In order to make L3 CNIs work on OpenStack you will need to tell OpenStack to allow pods packets by allowing the network they use.
 
 First you will need the ids of your OpenStack instances that will run kubernetes:
 
@@ -36,10 +36,14 @@ Then you can use the instance ids to find the connected [neutron](https://wiki.o
     | 5662a4e0-e646-47f0-bf88-d80fbd2d99ef | e1f48aad-df96-4bce-bf61-62ae12bf3f95 |
     | e5ae2045-a1e1-4e99-9aac-4353889449a7 | 725cd548-6ea3-426b-baaa-e7306d3c8052 |
 
-Given the port ids on the left, you can set the two `allowed_address`(es) in OpenStack. Note that you have to allow both `kube_service_addresses` (default `10.233.0.0/18`) and `kube_pods_subnet` (default `10.233.64.0/18`.)
+Given the port ids on the left, you can set the two `allowed-address`(es) in OpenStack. Note that you have to allow both `kube_service_addresses` (default `10.233.0.0/18`) and `kube_pods_subnet` (default `10.233.64.0/18`.)
 
     # allow kube_service_addresses and kube_pods_subnet network
     openstack port set 5662a4e0-e646-47f0-bf88-d80fbd2d99ef --allowed-address ip-address=10.233.0.0/18 --allowed-address ip-address=10.233.64.0/18
     openstack port set e5ae2045-a1e1-4e99-9aac-4353889449a7 --allowed-address ip-address=10.233.0.0/18 --allowed-address ip-address=10.233.64.0/18
+
+If all the VMs in the tenant correspond to kubespray deployment, you can "sweep run" above with:
+
+    openstack port list --device-owner=compute:nova -c ID -f value | xargs -tI@ openstack port set @ --allowed-address ip-address=10.233.0.0/18 --allowed-address ip-address=10.233.64.0/18
 
 Now you can finally run the playbook.

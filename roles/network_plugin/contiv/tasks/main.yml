@@ -97,13 +97,22 @@
   delegate_to: "{{ groups['kube-master'][0] }}"
   run_once: true
 
-- name: Contiv | Generate contiv-api-proxy certificates
-  script: /var/contiv/generate-certificate.sh
-  args:
-    creates: /var/contiv/auth_proxy_key.pem
+- name: Contiv | Check for cert key existence
+  stat:
+    path: /var/contiv/auth_proxy_key.pem
+  register: contiv_certificate_key_state
   when:
     - contiv_enable_api_proxy
     - contiv_generate_certificate
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+
+- name: Contiv | Generate contiv-api-proxy certificates
+  command: /var/contiv/generate-certificate.sh
+  when:
+    - contiv_enable_api_proxy
+    - contiv_generate_certificate
+    - (not contiv_certificate_key_state.stat.exists)
   delegate_to: "{{ groups['kube-master'][0] }}"
   run_once: true
 

@@ -52,15 +52,18 @@ NETCHECKER_HOST=localhost
 : ${OUTPUT_DIR:=./out}
 mkdir -p ${OUTPUT_DIR}
 
-# We expect the SPEC file(s) to have below two arrays as e.g.
+# The SPEC file(s) must have two arrays as e.g.
 # DISTROS=(debian centos)
 # EXTRAS=(
 #     'kube_network_plugin=calico'
 #     'kube_network_plugin=flannel'
 #     'kube_network_plugin=weave'
 # )
-# that we'll test in a "combinatory" way (e.g. above will be 6 tests),
-# creating a sequenced <spec_filename>-nn.out with each output
+# that will be tested in a "combinatory" way (e.g. from above there'll be
+# be 6 test runs), creating a sequenced <spec_filename>-nn.out with each output.
+#
+# Each $EXTRAS element will be whitespace split, and passed as --extra-vars
+# to main kubespray ansible-playbook run.
 
 SPECS=${*:?Missing SPEC files, e.g. test-most_distros-some_CNIs.env}
 for spec in ${SPECS}; do

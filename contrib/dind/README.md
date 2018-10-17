@@ -150,3 +150,27 @@ kube-system   weave-net-xr46t                         2/2     Running   0       
 $ docker exec kube-node1 curl -s http://localhost:31081/api/v1/connectivity_check
 {"Message":"All 10 pods successfully reported back to the server","Absent":null,"Outdated":null}
 ~~~
+
+## Using ./run-test-distros.sh
+
+You can use `./run-test-distros.sh` to run a set of tests via DIND,
+and excerpt from this script, to get an idea:
+
+~~~
+# The SPEC file(s) must have two arrays as e.g.
+# DISTROS=(debian centos)
+# EXTRAS=(
+#     'kube_network_plugin=calico'
+#     'kube_network_plugin=flannel'
+#     'kube_network_plugin=weave'
+# )
+# that will be tested in a "combinatory" way (e.g. from above there'll be
+# be 6 test runs), creating a sequenced <spec_filename>-nn.out with each output.
+#
+# Each $EXTRAS element will be whitespace split, and passed as --extra-vars
+# to main kubespray ansible-playbook run.
+~~~
+
+See e.g. `test-some_distros-most_CNIs.env` and
+`test-some_distros-kube_router_combo.env` in particular for a richer
+set of CNI specific `--extra-vars` combo.

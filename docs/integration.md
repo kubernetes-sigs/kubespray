@@ -32,10 +32,9 @@
 ```git checkout -b work```  
     ***Never*** use master branch of your repository for your commits.
 
-7. Modify path to library and roles in your ansible.cfg file (role naming should be uniq, you may have to rename your existent roles if they have same names as kubespray project):
+7. Modify path to roles in your ansible.cfg file (role naming should be uniq, you may have to rename your existent roles if they have same names as kubespray project):
    ```
    ...
-   library       = 3d/kubespray/library/
    roles_path    = 3d/kubespray/roles/
    ...
    ```

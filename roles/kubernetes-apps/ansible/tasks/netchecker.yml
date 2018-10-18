@@ -9,13 +9,9 @@
     - upgrade
 
 - name: Kubernetes Apps | Apply netchecker-server manifest to update annotations
-  kube:
-    name: "netchecker-server"
-    namespace: "{{ netcheck_namespace }}"
-    filename: "{{ netchecker_server_manifest.stat.path }}"
-    kubectl: "{{bin_dir}}/kubectl"
-    resource: "deploy"
-    state: latest
+  k8s:
+    src: "{{ netchecker_server_manifest.stat.path }}"
+    state: present
   when: inventory_hostname == groups['kube-master'][0] and netchecker_server_manifest.stat.exists
   tags:
     - upgrade
@@ -51,21 +47,16 @@
     - inventory_hostname == groups['kube-master'][0]
 
 - name: Kubernetes Apps | Purge old Netchecker server
-  kube:
+  k8s:
     name: "netchecker-server"
     namespace: "{{ netcheck_namespace }}"
-    kubectl: "{{bin_dir}}/kubectl"
-    resource: "po"
+    kind: "Pod"
     state: absent
   when: inventory_hostname == groups['kube-master'][0]
 
 - name: Kubernetes Apps | Start Netchecker Resources
-  kube:
-    name: "{{item.item.name}}"
-    namespace: "{{netcheck_namespace}}"
-    kubectl: "{{bin_dir}}/kubectl"
-    resource: "{{item.item.type}}"
-    filename: "{{kube_config_dir}}/{{item.item.file}}"
-    state: "latest"
+  k8s:
+    src: "{{kube_config_dir}}/{{item.item.file}}"
+    state: present
   with_items: "{{ manifests.results }}"
   when: inventory_hostname == groups['kube-master'][0] and not item is skipped

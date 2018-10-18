@@ -16,6 +16,7 @@ most modern installs of OpenStack that support the basic services.
 - [ElastX](https://elastx.se/)
 - [EnterCloudSuite](https://www.entercloudsuite.com/)
 - [FugaCloud](https://fuga.cloud/)
+- [T-Systems / Open Telekom Cloud](https://cloud.telekom.de/)
 - [Ultimum](https://ultimum.io/)
 - [VexxHost](https://vexxhost.com/)
 - [Zetta](https://www.zetta.io/)
@@ -23,7 +24,6 @@ most modern installs of OpenStack that support the basic services.
 ### Known incompatible public clouds
 - OVH: No router support
 - Rackspace: No router support
-- T-Systems / Open Telekom Cloud: requires `wait_until_associated`
 
 ## Approach
 The terraform configuration inspects variables found in

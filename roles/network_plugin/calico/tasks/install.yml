@@ -75,12 +75,22 @@
 
 - name: Calico | Check if calico network pool has already been configured
   shell: >
-    {{ bin_dir }}/calicoctl get ippool | grep -w "{{ kube_pods_subnet }}" | wc -l
+    {{ bin_dir }}/calicoctl get ippool | grep -w "{{ calico_pool_cidr | default(kube_pods_subnet) }}" | wc -l
   register: calico_conf
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   delegate_to: "{{ groups['kube-master'][0] }}"
   run_once: true
+
+- name: Calico | Ensure that calico_pool_cidr is within kube_pods_subnet when defined
+  assert:
+    that: "[calico_pool_cidr] | ipaddr(kube_pods_subnet) | length == 1"
+    msg: "{{ calico_pool_cidr }} is not within or equal to {{ kube_pods_subnet }}"
+  delegate_to: localhost
+  run_once: true
+  when:
+    - 'calico_conf.stdout == "0"'
+    - calico_pool_cidr is defined
 
 - name: Calico | Configure calico network pool
   shell: >
@@ -91,7 +101,7 @@
           "name": "{{ calico_pool_name }}",
         },
         "spec": {
-          "cidr": "{{ kube_pods_subnet }}",
+          "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
           "ipipMode": "{{ ipip_mode }}",
           "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl create -f -
   run_once: true
@@ -107,7 +117,7 @@
         "spec": {"disabled": false, "ipip": {"enabled": {{ ipip }}, "mode": "{{ ipip_mode|lower }}"},
                  "nat-outgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }}},
         "apiVersion": "v1",
-        "metadata": {"cidr": "{{ kube_pods_subnet }}"}
+        "metadata": {"cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}"}
       }' | {{ bin_dir }}/calicoctl apply -f -
   environment:
     NO_DEFAULT_POOLS: true

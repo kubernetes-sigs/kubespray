@@ -117,14 +117,14 @@ Supported Components
     -   [contiv](https://github.com/contiv/install) v1.1.7
     -   [flanneld](https://github.com/coreos/flannel) v0.10.0
     -   [weave](https://github.com/weaveworks/weave) v2.4.1
-    -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.0
+    -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.1
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
     -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.0
     -   [coredns](https://github.com/coredns/coredns) v1.2.2
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.19.0
 
-Note: kubernetes doesn't support newer docker versions ("Version 17.03 is recommended... Versions 17.06+ might work, but have not yet been tested and verified by the Kubernetes node team" cf. [Bootstrapping Clusters with kubeadm](https://kubernetes.io/docs/setup/independent/install-kubeadm/#installing-docker)). Among other things kubelet currently breaks on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin). 
+Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.12.md) was updated to 1.11.1, 1.12.1, 1.13.1, 17.03, 17.06, 17.09, 18.06. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 
 Note 2: rkt support as docker alternative is limited to control plane (etcd and
 kubelet). Docker is still used for Kubernetes cluster workloads and network
@@ -165,7 +165,7 @@ You can choose between 6 network plugins. (default: `calico`, except Vagrant use
 -   [weave](docs/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster.
     (Please refer to `weave` [troubleshooting documentation](http://docs.weave.works/weave/latest_release/troubleshooting.html)).
 
--   [kube-router](doc/kube-router.md): Kube-router is a L3 CNI for Kubernetes networking aiming to provide operational
+-   [kube-router](docs/kube-router.md): Kube-router is a L3 CNI for Kubernetes networking aiming to provide operational
     simplicity and high performance: it uses IPVS to provide Kube Services Proxy (if setup to replace kube-proxy),
     iptables for network policies, and BGP for ods L3 networking (with optionally BGP peering with out-of-cluster BGP peers).
     It can also optionally advertise routes to Kubernetes cluster Pods CIDRs, ClusterIPs, ExternalIPs and LoadBalancerIPs.

@@ -103,6 +103,11 @@ variable "network_name" {
   default     = "internal"
 }
 
+variable "use_neutron" {
+  description = "Use neutron"
+  default     = 1
+}
+
 variable "subnet_cidr" {
   description = "Subnet CIDR block."
   type = "string"

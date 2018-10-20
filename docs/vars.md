@@ -50,7 +50,7 @@ Some variables of note include:
 #### Cluster variables
 
 Kubernetes needs some parameters in order to get deployed. These are the
-following default cluster paramters:
+following default cluster parameters:
 
 * *cluster_name* - Name of cluster (default is cluster.local)
 * *dns_domain* - Name of cluster DNS domain (default is cluster.local)

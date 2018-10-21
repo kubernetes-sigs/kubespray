@@ -89,3 +89,20 @@ kubeadm_enabled: true
 kube_router_run_service_proxy: true
 kube_proxy_mode: ipvs
 ```
+
+## Advanced BGP Capabilities
+https://github.com/cloudnativelabs/kube-router#advanced-bgp-capabilities
+
+If you have other networking devices or SDN systems that talk BGP, kube-router will fit in perfectly.
+From a simple full node-to-node mesh to per-node peering configurations, most routing needs can be attained.
+The configuration is Kubernetes native (annotations) just like the rest of kube-router.
+
+For more details please refer to the https://github.com/cloudnativelabs/kube-router/blob/master/docs/bgp.md.
+
+Next options will set up annotations for kube-router, using `kubectl annotate` command.
+
+```
+kube_router_annotations_master: []
+kube_router_annotations_node: []
+kube_router_annotations_all: []
+```

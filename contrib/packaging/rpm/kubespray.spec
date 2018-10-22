@@ -20,7 +20,7 @@ BuildRequires:  python2-setuptools
 BuildRequires:  python-d2to1
 BuildRequires:  python2-pbr
 
-Requires: ansible >= 2.4.0
+Requires: ansible >= 2.5.0
 Requires: python-jinja2 >= 2.10
 Requires: python-netaddr
 Requires: python-pbr

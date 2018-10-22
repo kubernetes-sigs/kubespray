@@ -8,6 +8,23 @@ Openstack.
 This will install a Kubernetes cluster on an Openstack Cloud. It should work on
 most modern installs of OpenStack that support the basic services.
 
+### Known compatible public clouds
+- [Auro](https://auro.io/)
+- [BetaCloud](https://www.betacloud.io/)
+- [CityCloud](https://www.citycloud.com/)
+- [DreamHost](https://www.dreamhost.com/cloud/computing/)
+- [ElastX](https://elastx.se/)
+- [EnterCloudSuite](https://www.entercloudsuite.com/)
+- [FugaCloud](https://fuga.cloud/)
+- [Ultimum](https://ultimum.io/)
+- [VexxHost](https://vexxhost.com/)
+- [Zetta](https://www.zetta.io/)
+
+### Known incompatible public clouds
+- OVH: No router support
+- Rackspace: No router support
+- T-Systems / Open Telekom Cloud: requires `wait_until_associated`
+
 ## Approach
 The terraform configuration inspects variables found in
 [variables.tf](variables.tf) to create resources in your OpenStack cluster.
@@ -421,7 +438,7 @@ kubectl version
 
 If you are using floating ip addresses then you may get this error:
 ```
-Unable to connect to the server: x509: certificate is valid for 10.0.0.6, 10.0.0.6, 10.233.0.1, 127.0.0.1, not 132.249.238.25
+Unable to connect to the server: x509: certificate is valid for 10.0.0.6, 10.233.0.1, 127.0.0.1, not 132.249.238.25
 ```
 
 You can tell kubectl to ignore this condition by adding the

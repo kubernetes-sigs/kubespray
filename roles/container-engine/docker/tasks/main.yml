@@ -45,7 +45,7 @@
           docker requires a minimum kernel version of
           {{ docker_kernel_min_version }} on
           {{ ansible_distribution }}-{{ ansible_distribution_version }}
-  when: (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]) and (ansible_kernel|version_compare(docker_kernel_min_version, "<"))
+  when: (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]) and (ansible_kernel is version(docker_kernel_min_version, "<"))
   tags:
     - facts
 
@@ -58,7 +58,7 @@
     url: "{{docker_repo_key_info.url}}"
     state: present
   register: keyserver_task_result
-  until: keyserver_task_result|succeeded
+  until: keyserver_task_result is succeeded
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ docker_repo_key_info.repo_keys }}"
@@ -79,7 +79,7 @@
     url: "{{dockerproject_repo_key_info.url}}"
     state: present
   register: keyserver_task_result
-  until: keyserver_task_result|succeeded
+  until: keyserver_task_result is succeeded
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ dockerproject_repo_key_info.repo_keys }}"
@@ -134,7 +134,7 @@
     state: present
     update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
   register: docker_task_result
-  until: docker_task_result|succeeded
+  until: docker_task_result is succeeded
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ docker_package_info.pkgs }}"
@@ -145,7 +145,7 @@
 - name: get available packages on Ubuntu
   command: apt-cache policy docker-ce
   when:
-    - docker_task_result|failed
+    - docker_task_result is failed
     - ansible_distribution == 'Ubuntu'
   register: available_packages
 
@@ -153,7 +153,7 @@
   fail:
     msg: "{{available_packages}}"
   when:
-    - docker_task_result|failed
+    - docker_task_result is failed
     - ansible_distribution == 'Ubuntu'
 
 # This is required to ensure any apt upgrade will not break kubernetes
@@ -185,7 +185,7 @@
   when: >
         dns_mode != 'none' and
         resolvconf_mode == 'docker_dns' and
-        installed_docker_version.stdout|version_compare('1.12', '<')
+        installed_docker_version.stdout is version('1.12', '<')
 
 - name: Set docker systemd config
   import_tasks: systemd.yml

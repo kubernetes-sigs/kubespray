@@ -79,9 +79,10 @@
 
 - name: reset | gather mounted kubelet dirs
   shell: mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
+  args:
+    warn: false
   check_mode: no
   register: mounted_dirs
-  warn: false
   tags:
     - mounts
 
@@ -105,6 +106,11 @@
   when: flush_iptables|bool
   tags:
     - iptables
+
+- name: Clear IPVS virtual server table
+  shell: "ipvsadm -C"
+  when:
+    - kube_proxy_mode == 'ipvs'
 
 - name: reset | delete some files and directories
   file:
@@ -164,6 +170,7 @@
     - /run/contiv
     - /etc/openvswitch
     - /run/openvswitch
+    - /var/lib/kube-router
   ignore_errors: yes
   tags:
     - files
@@ -195,7 +202,7 @@
 - name: reset | include file with reset tasks specific to the network_plugin if exists
   include_tasks: "{{ (role_path + '/../network_plugin/' + kube_network_plugin + '/tasks/reset.yml') | realpath  }}"
   when:
-    - kube_network_plugin in ['flannel', 'cilium', 'contiv']
+    - kube_network_plugin in ['flannel', 'cilium', 'contiv', 'kube-router']
   tags:
     - network
 

@@ -3,11 +3,12 @@
   blockinfile:
     dest: /etc/hosts
     block: |-
-      {% for item in (groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]))|unique -%}{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}{% if (item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }} {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }}{% endif %} {{ item }} {{ item }}.{{ dns_domain }}
+      {% for item in (groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]))|unique -%}{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}{% if (item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }} {{ hostvars[item]['ansible_hostname'] }}{% endif %} {{ item }} {{ item }}.{{ dns_domain }}
       {% endfor %}
     state: present
     create: yes
     backup: yes
+    unsafe_writes: yes
     marker: "# Ansible inventory hosts {mark}"
   when: populate_inventory_to_hosts_file
 
@@ -18,6 +19,7 @@
     line: "{{ loadbalancer_apiserver.address }} {{ apiserver_loadbalancer_domain_name }}"
     state: present
     backup: yes
+    unsafe_writes: yes
   when:
     - loadbalancer_apiserver is defined
     - loadbalancer_apiserver.address is defined
@@ -35,7 +37,7 @@
   with_items: "{{ (etc_hosts_content['content'] | b64decode).split('\n') }}"
   when:
     - etc_hosts_content.content is defined
-    - (item|match('^::1 .*') or item|match('^127.0.0.1 .*'))
+    - (item is match('^::1 .*') or item is match('^127.0.0.1 .*'))
 
 - name: Hosts | Update target hosts file entries dict with required entries
   set_fact:
@@ -51,4 +53,5 @@
     regexp: "^{{ item.key }}.*$"
     state: present
     backup: yes
+    unsafe_writes: yes
   with_dict: "{{ etc_hosts_localhosts_dict_target }}"

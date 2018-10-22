@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import boto3
 import os
 import argparse
@@ -13,7 +14,7 @@ class SearchEC2Tags(object):
       self.search_tags()
     if self.args.host:
       data = {}
-      print json.dumps(data, indent=2)
+      print(json.dumps(data, indent=2))
 
   def parse_args(self):
 
@@ -56,6 +57,6 @@ class SearchEC2Tags(object):
           }
 
     hosts['k8s-cluster'] = {'children':['kube-master', 'kube-node']}
-    print json.dumps(hosts, sort_keys=True, indent=2)
+    print(json.dumps(hosts, sort_keys=True, indent=2))
 
 SearchEC2Tags()

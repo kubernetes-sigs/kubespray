@@ -79,6 +79,13 @@ you'll need to edit the inventory and add a hostvar `local_as` by node.
 node1 ansible_ssh_host=95.54.0.12 local_as=xxxxxx
 ```
 
+##### Optional : Defining BGP peers
+
+Peers can be defined using the `peers` variable (see docs/calico_peer_example examples).
+In order to define global peers, the `peers` variable can be defined in group_vars with the "scope" attribute of each global peer set to "global".
+In order to define peers on a per node basis, the `peers` variable must be defined in hostvars.
+NB: Ansible's `hash_behaviour` is by default set to "replace", thus defining both global and per node peers would end up with having only per node peers. If having both global and per node peers defined was meant to happen, global peers would have to be defined in hostvars for each host (as well as per node peers)
+
 ##### Optional : Define global AS number
 
 Optional parameter `global_as_num` defines Calico global AS number (`/calico/bgp/v1/global/as_num` etcd key).

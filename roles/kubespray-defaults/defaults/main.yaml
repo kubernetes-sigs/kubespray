@@ -25,6 +25,9 @@ kube_proxy_nodeport_addresses: false
 # Set to true to allow pre-checks to fail and continue deployment
 ignore_assert_errors: false
 
+# nginx-proxy configure
+nginx_config_dir: "/etc/nginx"
+
 # Directory where the binaries will be installed
 bin_dir: /usr/local/bin
 docker_bin_dir: /usr/bin
@@ -293,7 +296,7 @@ feature_gate_v1_12: []
 ## List of key=value pairs that describe feature gates for
 ## the k8s cluster.
 kube_feature_gates: |-
-  {%- if kube_version | version_compare('v1.12.0', '<') -%}
+  {%- if kube_version is version('v1.12.0', '<') -%}
   {{ feature_gate_v1_11 }}
   {%- else -%}
   {{ feature_gate_v1_12 }}
@@ -422,10 +425,14 @@ etcd_access_addresses: |-
   {% for item in groups['etcd'] -%}
     https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2379{% if not loop.last %},{% endif %}
   {%- endfor %}
-etcd_events_access_addresses: |-
+etcd_events_access_addresses_list: |-
+  [
   {% for item in groups['etcd'] -%}
-    https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2381{% if not loop.last %},{% endif %}
+    'https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2381'{% if not loop.last %},{% endif %}
   {%- endfor %}
+  ]
+etcd_events_access_addresses: "{{etcd_events_access_addresses_list | join(',')}}"
+etcd_events_access_addresses_semicolon: "{{etcd_events_access_addresses_list | join(';')}}"
 # user should set etcd_member_name in inventory/mycluster/hosts.ini
 etcd_member_name: |-
   {% for host in groups['etcd'] %}

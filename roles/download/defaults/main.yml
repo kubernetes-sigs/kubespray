@@ -39,6 +39,9 @@ kube_version: v1.12.1
 kubeadm_version: "{{ kube_version }}"
 etcd_version: v3.2.24
 
+# kubernetes image repo define
+kube_image_repo: "gcr.io/google-containers"
+
 # TODO(mattymo): Move calico versions to roles/network_plugins/calico/defaults
 # after migration to container download
 calico_version: "v3.1.3"
@@ -55,6 +58,7 @@ weave_version: "2.4.1"
 pod_infra_version: 3.1
 contiv_version: 1.2.1
 cilium_version: "v1.2.0"
+kube_router_version: "v0.2.1"
 
 # Download URLs
 kubeadm_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm"
@@ -125,7 +129,7 @@ calico_policy_image_repo: "quay.io/calico/kube-controllers"
 calico_policy_image_tag: "{{ calico_policy_version }}"
 calico_rr_image_repo: "quay.io/calico/routereflector"
 calico_rr_image_tag: "{{ calico_rr_version }}"
-hyperkube_image_repo: "gcr.io/google-containers/hyperkube-{{ image_arch }}"
+hyperkube_image_repo: "{{ kube_image_repo }}/hyperkube-{{ image_arch }}"
 hyperkube_image_tag: "{{ kube_version }}"
 pod_infra_image_repo: "gcr.io/google_containers/pause-{{ image_arch }}"
 pod_infra_image_tag: "{{ pod_infra_version }}"
@@ -152,6 +156,8 @@ contiv_ovs_image_repo: "contiv/ovs"
 contiv_ovs_image_tag: "latest"
 cilium_image_repo: "docker.io/cilium/cilium"
 cilium_image_tag: "{{ cilium_version }}"
+kube_router_image_repo: "cloudnativelabs/kube-router"
+kube_router_image_tag: "{{ kube_router_version }}"
 nginx_image_repo: nginx
 nginx_image_tag: 1.13
 dnsmasq_version: 2.78
@@ -178,6 +184,8 @@ kubednsautoscaler_image_repo: "gcr.io/google_containers/cluster-proportional-aut
 kubednsautoscaler_image_tag: "{{ kubednsautoscaler_version }}"
 test_image_repo: busybox
 test_image_tag: latest
+busybox_image_repo: busybox
+busybox_image_tag: 1.29.2
 helm_version: "v2.9.1"
 helm_image_repo: "lachlanevenson/k8s-helm"
 helm_image_tag: "{{ helm_version }}"
@@ -225,11 +233,10 @@ downloads:
     file: "{{ etcd_deployment_type == 'host' }}"
     enabled: true
     version: "{{ etcd_version }}"
-    dest: "etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    dest: "{{local_release_dir}}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
     repo: "{{ etcd_image_repo }}"
     tag: "{{ etcd_image_tag }}"
     sha256: "{{ etcd_binary_checksum if etcd_deployment_type == 'host' else etcd_digest_checksum|d(None) }}"
-    source_url: "{{ etcd_download_url }}"
     url: "{{ etcd_download_url }}"
     unarchive: true
     owner: "root"
@@ -241,9 +248,8 @@ downloads:
     enabled: "{{ kubeadm_enabled }}"
     file: true
     version: "{{ kubeadm_version }}"
-    dest: "kubeadm"
+    dest: "{{local_release_dir}}/kubeadm"
     sha256: "{{ kubeadm_binary_checksum }}"
-    source_url: "{{ kubeadm_download_url }}"
     url: "{{ kubeadm_download_url }}"
     unarchive: false
     owner: "root"
@@ -252,7 +258,7 @@ downloads:
       - k8s-cluster
 
   hyperkube:
-    enabled: true
+    enabled: "{{ kubeadm_enabled == false }}"
     container: true
     repo: "{{ hyperkube_image_repo }}"
     tag: "{{ hyperkube_image_tag }}"
@@ -264,9 +270,8 @@ downloads:
     enabled: true
     file: true
     version: "{{ kube_version }}"
-    dest: "hyperkube"
+    dest: "{{local_release_dir}}/hyperkube"
     sha256: "{{ hyperkube_binary_checksum }}"
-    source_url: "{{ hyperkube_download_url }}"
     url: "{{ hyperkube_download_url }}"
     unarchive: false
     owner: "root"
@@ -391,6 +396,15 @@ downloads:
     groups:
       - k8s-cluster
 
+  kube_router:
+    enabled: "{{ kube_network_plugin == 'kube-router' }}"
+    container: true
+    repo: "{{ kube_router_image_repo }}"
+    tag: "{{ kube_router_image_tag }}"
+    sha256: "{{ kube_router_digest_checksum|default(None) }}"
+    groups:
+      - k8s-cluster
+
   pod_infra:
     enabled: true
     container: true
@@ -472,6 +486,15 @@ downloads:
     groups:
       - kube-node
 
+  busybox:
+    enabled: "{{ kube_network_plugin in ['kube-router'] }}"
+    container: true
+    repo: "{{ busybox_image_repo }}"
+    tag: "{{ busybox_image_tag }}"
+    sha256: "{{ busybox_digest_checksum|default(None) }}"
+    groups:
+      - k8s-cluster
+
   testbox:
     enabled: false
     container: true
@@ -501,12 +524,11 @@ downloads:
     enabled: "{{ cert_management == 'vault' }}"
     container: "{{ vault_deployment_type != 'host' }}"
     file: "{{ vault_deployment_type == 'host' }}"
-    dest: "vault/vault_{{ vault_version }}_linux_{{ image_arch }}.zip"
+    dest: "{{local_release_dir}}/vault/vault_{{ vault_version }}_linux_{{ image_arch }}.zip"
     mode: "0755"
     owner: "vault"
     repo: "{{ vault_image_repo }}"
     sha256: "{{ vault_binary_checksum if vault_deployment_type == 'host' else vault_digest_checksum|d(none) }}"
-    source_url: "{{ vault_download_url }}"
     tag: "{{ vault_image_tag }}"
     unarchive: true
     url: "{{ vault_download_url }}"

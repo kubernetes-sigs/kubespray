@@ -16,13 +16,13 @@ most modern installs of OpenStack that support the basic services.
 - [ElastX](https://elastx.se/)
 - [EnterCloudSuite](https://www.entercloudsuite.com/)
 - [FugaCloud](https://fuga.cloud/)
+- [OVH](https://www.ovh.com/)
+- [Rackspace](https://www.rackspace.com/)
 - [Ultimum](https://ultimum.io/)
 - [VexxHost](https://vexxhost.com/)
 - [Zetta](https://www.zetta.io/)
 
 ### Known incompatible public clouds
-- OVH: No router support
-- Rackspace: No router support
 - T-Systems / Open Telekom Cloud: requires `wait_until_associated`
 
 ## Approach

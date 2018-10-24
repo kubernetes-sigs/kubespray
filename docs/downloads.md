@@ -47,6 +47,7 @@ In case your servers don't have access to internet (for example when deploying o
 
 * At least `foo_image_repo` and `foo_download_url` as described before (i.e. in case of use of proxies to registries and binaries repositories, checksums and versions do not necessarily need to be changed).
   NB: Regarding `foo_image_repo`, when using insecure registries/proxies, you will certainly have to append them to the `docker_insecure_registries` variable in group_vars/all/docker.yml
+* `pyrepo_index` (and optionally `pyrepo_cert`)
 * Depending on the `container_manager`
   * When `container_manager=docker`, `docker_foo_repo_base_url`, `docker_foo_repo_gpgkey`, `dockerproject_bar_repo_base_url` and `dockerproject_bar_repo_gpgkey` (where `foo` is the distribution and `bar` is system package manager)
   * When `container_manager=crio`, `crio_rhel_repo_base_url` 

@@ -6,6 +6,7 @@ module "network" {
   subnet_cidr     = "${var.subnet_cidr}"
   cluster_name    = "${var.cluster_name}"
   dns_nameservers = "${var.dns_nameservers}"
+  use_neutron     = "${var.use_neutron}"
 }
 
 module "ips" {

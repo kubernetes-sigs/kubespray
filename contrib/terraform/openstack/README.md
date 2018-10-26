@@ -436,14 +436,6 @@ $ kubectl config use-context default-system
 kubectl version
 ```
 
-If you are using floating ip addresses then you may get this error:
-```
-Unable to connect to the server: x509: certificate is valid for 10.0.0.6, 10.233.0.1, 127.0.0.1, not 132.249.238.25
-```
-
-You can tell kubectl to ignore this condition by adding the
-`--insecure-skip-tls-verify` option.
-
 ## GlusterFS
 GlusterFS is not deployed by the standard`cluster.yml` playbook, see the
 [GlusterFS playbook documentation](../../network-storage/glusterfs/README.md)

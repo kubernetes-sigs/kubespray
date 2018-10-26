@@ -72,11 +72,11 @@ Mandatory variables that are common for at least one role (or a node group) can 
 `inventory/sample/group_vars/k8s-cluster.yml`.
 There are also role vars for docker, rkt, kubernetes preinstall and master roles.
 According to the [ansible docs](http://docs.ansible.com/ansible/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),
-those cannot be overriden from the group vars. In order to override, one should use
+those cannot be overridden from the group vars. In order to override, one should use
 the `-e ` runtime flags (most simple way) or other layers described in the docs.
 
 Kubespray uses only a few layers to override things (or expect them to
-be overriden for roles):
+be overridden for roles):
 
 Layer | Comment
 ------|--------

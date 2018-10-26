@@ -11,7 +11,7 @@ achieve the same goal.
 Etcd
 ----
 
-In order to use an external loadbalancing (L4/TCP or L7 w/ SSL Passthrough VIP), the following variables need to be overriden in group_vars
+In order to use an external loadbalancing (L4/TCP or L7 w/ SSL Passthrough VIP), the following variables need to be overridden in group_vars
 * `etcd_access_addresses`
 * `etcd_client_url`
 * `etcd_cert_alt_names`

@@ -66,6 +66,9 @@ apiServerExtraArgs:
 {% if kube_basic_auth|default(true) %}
   basic-auth-file: {{ kube_users_dir }}/known_users.csv
 {% endif %}
+{% if kube_token_auth|default(true) %}
+  token-auth-file: {{ kube_token_dir }}/known_tokens.csv
+{% endif %}
 {% if kube_oidc_auth|default(false) and kube_oidc_url is defined and kube_oidc_client_id is defined %}
   oidc-issuer-url: {{ kube_oidc_url }}
   oidc-client-id: {{ kube_oidc_client_id }}
@@ -113,8 +116,19 @@ controllerManagerExtraVolumes:
   hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
   mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
 {% endif %}
-{% if kubernetes_audit %}
+{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) %}
 apiServerExtraVolumes:
+{% if kube_basic_auth|default(true) %}
+- name: basic-auth-config
+  hostPath: {{ kube_users_dir }}
+  mountPath: {{ kube_users_dir }}
+{% endif %}
+{% if kube_token_auth|default(true) %}
+- name: token-auth-config
+  hostPath: {{ kube_token_dir }}
+  mountPath: {{ kube_token_dir }}
+{% endif %}
+{% if kubernetes_audit %}
 - name: {{ audit_policy_name }}
   hostPath: {{ audit_policy_hostpath }}
   mountPath: {{ audit_policy_mountpath }}
@@ -123,6 +137,7 @@ apiServerExtraVolumes:
   hostPath: {{ audit_log_hostpath }}
   mountPath: {{ audit_log_mountpath }}
   writable: true
+{% endif %}
 {% endif %}
 {% endif %}
 {% for key in kube_kubeadm_controller_extra_args %}

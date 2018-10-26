@@ -19,6 +19,12 @@ To deploy the cluster you can use :
 
 ### Ansible
 
+#### Ansible version
+
+Ansible v2.7.0 is failing and/or produce unexpected results due to [ansible/ansible/issues/46600](https://github.com/ansible/ansible/issues/46600)
+
+#### Usage
+
     # Install dependencies from ``requirements.txt``
     sudo pip install -r requirements.txt
 

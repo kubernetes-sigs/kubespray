@@ -17,6 +17,7 @@
 - name: Bootstrap | Run bootstrap.sh
   script: bootstrap.sh
   when: need_bootstrap.rc != 0
+  environment: "{{ proxy_env }}"
 
 - set_fact:
     ansible_python_interpreter: "{{ bin_dir }}/python"
@@ -39,10 +40,12 @@
     src: get-pip.py
     dest: ~/get-pip.py
   when: need_pip.rc != 0
+  environment: "{{ proxy_env }}"
 
 - name: Bootstrap | Install pip
   shell: "{{ansible_python_interpreter}} ~/get-pip.py"
   when: need_pip.rc != 0
+  environment: "{{ proxy_env }}"
 
 - name: Bootstrap | Remove get-pip.py
   file:
@@ -64,8 +67,21 @@
   with_items: "{{pip_python_coreos_modules}}"
   environment:
     PATH: "{{ ansible_env.PATH }}:{{ bin_dir }}"
+  environment: "{{ proxy_env }}"
 
 - name: Bootstrap | Disable auto-upgrade
   shell: "systemctl stop locksmithd.service && systemctl mask --now locksmithd.service"
   when:
     - not coreos_auto_upgrade
+
+- name: Create update-engine service systemd drop-in directory
+  file:
+    path: /etc/systemd/system/update-engine.service.d
+    state: directory
+ - name: Configure proxy for ContainerLinux update-engine
+  template:
+    src: update-engine-proxy.conf.j2
+    dest: "/etc/systemd/system/update-engine.service.d/10-proxy.conf"
+  notify:
+    - reload systemd
+    - reload update-engine

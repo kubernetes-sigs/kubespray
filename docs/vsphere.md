@@ -8,7 +8,7 @@ Kubespray can be deployed with vSphere as Cloud provider. This feature supports
 
 ## Prerequisites
 
-You need at first to configure you vSphere environment by following the [official documentation](https://kubernetes.io/docs/getting-started-guides/vsphere/#vsphere-cloud-provider).
+You need at first to configure your vSphere environment by following the [official documentation](https://kubernetes.io/docs/getting-started-guides/vsphere/#vsphere-cloud-provider).
 
 After this step you should have:
 - UUID activated for each VM where Kubernetes will be deployed
@@ -21,7 +21,7 @@ First you must define the cloud provider in `inventory/sample/group_vars/all.yml
 cloud_provider: vsphere
 ```
 
-Then, in the same file, you need to declare your vCenter credential following the description bellow.
+Then, in the same file, you need to declare your vCenter credential following the description below.
 
 | Variable                     | Required | Type    | Choices                    | Default | Comment                                                                                                                                                                                       |
 |------------------------------|----------|---------|----------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

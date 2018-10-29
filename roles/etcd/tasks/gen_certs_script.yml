@@ -89,22 +89,10 @@
         '{{ etcd_cert_dir }}/node-{{ node }}-key.pem',
         {% endfor %}]"
   delegate_to: "{{groups['etcd'][0]}}"
-  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]
-  notify: set etcd_secret_changed
-
-- name: Gen_certs | Gather etcd node certs
-  slurp:
-    src: "{{ item }}"
-  register: etcd_node_certs
-  with_items:
-    - "{{ etcd_cert_dir }}/ca.pem"
-    - "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem"
-    - "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem"
-  delegate_to: "{{groups['etcd'][0]}}"
-  when: (('calico-rr' in groups and inventory_hostname in groups['calico-rr']) or
-        inventory_hostname in groups['k8s-cluster']) and
-        sync_certs|default(false) and inventory_hostname not in groups['etcd']
+  when:
+    - inventory_hostname in groups['etcd']
+    - sync_certs|default(false)
+    - inventory_hostname != groups['etcd'][0]
   notify: set etcd_secret_changed
 
 - name: Gen_certs | Write etcd master certs
@@ -115,17 +103,57 @@
     owner: kube
     mode: 0640
   with_items: "{{ etcd_master_certs.results }}"
-  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]
+  when:
+    - inventory_hostname in groups['etcd']
+    - sync_certs|default(false)
+    - inventory_hostname != groups['etcd'][0]
 
-- name: Gen_certs | Write etcd node certs
-  copy:
-    dest: "{{ item.item }}"
-    content: "{{ item.content | b64decode }}"
-    group: "{{ etcd_cert_group }}"
-    owner: kube
-    mode: 0640
-  with_items: "{{ etcd_node_certs.results }}"
+- set_fact:
+    my_etcd_node_certs: ['ca.pem',
+                         'node-{{ inventory_hostname }}.pem',
+                         'node-{{ inventory_hostname }}-key.pem']
+  tags:
+    - facts
+
+- name: "Check_certs | Set 'sync_certs' to true on nodes"
+  set_fact:
+    sync_certs: true
+  when: (('calico-rr' in groups and inventory_hostname in groups['calico-rr']) or
+        inventory_hostname in groups['k8s-cluster']) and
+        inventory_hostname not in groups['etcd']
+  with_items:
+    - "{{ my_etcd_node_certs }}"
+
+- name: Gen_certs | Gather node certs
+  shell: "tar cfz - -C {{ etcd_cert_dir }} -T /dev/stdin <<< {{ my_etcd_node_certs|join(' ') }} | base64 --wrap=0"
+  args:
+    executable: /bin/bash
+    warn: false
+  no_log: true
+  register: etcd_node_certs
+  check_mode: no
+  delegate_to: "{{groups['etcd'][0]}}"
   when: (('calico-rr' in groups and inventory_hostname in groups['calico-rr']) or
         inventory_hostname in groups['k8s-cluster']) and
         sync_certs|default(false) and inventory_hostname not in groups['etcd']
+
+- name: Gen_certs | Copy certs on nodes
+  shell: "base64 -d <<< '{{etcd_node_certs.stdout|quote}}' | tar xz -C {{ etcd_cert_dir }}"
+  args:
+    executable: /bin/bash
+  no_log: true
+  changed_when: false
+  check_mode: no
+  when: (('calico-rr' in groups and inventory_hostname in groups['calico-rr']) or
+        inventory_hostname in groups['k8s-cluster']) and
+        sync_certs|default(false) and inventory_hostname not in groups['etcd']
+  notify: set etcd_secret_changed
+
+- name: Gen_certs | check certificate permissions
+  file:
+    path: "{{ etcd_cert_dir }}"
+    group: "{{ etcd_cert_group }}"
+    state: directory
+    owner: kube
+    mode: 0640
+    recurse: yes

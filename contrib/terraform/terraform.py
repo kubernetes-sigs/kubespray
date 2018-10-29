@@ -686,6 +686,7 @@ def iter_host_ips(hosts, ips):
             ip = ips[host_id]
             host[1].update({
                 'access_ip_v4': ip,
+                'access_ip': ip,
                 'public_ipv4': ip,
                 'ansible_ssh_host': ip,
             })

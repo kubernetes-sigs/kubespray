@@ -1,0 +1,82 @@
+---
+
+- name: Etcd general fact
+  set_fact:
+    etcd_members: >-
+      {%- set _d = {} -%}
+      {%- for host in groups['etcd'] -%}
+      {%- set etcd_address = hostvars[host].ip | default(hostvars[host]['ansible_default_ipv4']['address']) -%}
+      {%- set etcd_access_address = hostvars[host].access_ip | default(etcd_address) -%}
+      {%- set _member = {
+        host: {
+          "etcd_member_index": loop.index|string,
+          "etcd_name": hostvars[host]['etcd_member_name']|default(['etcd', etcd_cluster_name, loop.index|string] | join('-')),
+          "etcd_address": etcd_address,
+          "etcd_access_address": etcd_access_address,
+          "etcd_peer_url": "https://" + etcd_access_address + ":" + etcd_ports['peer']|string,
+          "etcd_client_url": "https://" + etcd_access_address +":" + etcd_ports['client']|string
+        }} -%}
+      {%- set _tmp = _d.update(_member) -%}
+      {%- endfor -%}
+      {{ _d }}
+  tags:
+    - facts
+
+- name: Configure etcd-member variable
+  set_fact:
+    "{{item.key}}": "{{item.value}}"
+  loop: "{{etcd_members[inventory_hostname] | default({}) | dict2items}}"
+  tags:
+    - facts
+  when:
+    - inventory_hostname in groups['etcd']
+
+- name: Configure etcd data directories
+  set_fact:
+    etcd_data_dir: "{{etcd_home}}/{{etcd_name}}"
+    etcd_backup_dir: "{{etcd_home}}/backups/{{etcd_name}}"
+    etcd_backup_prefix: "{{etcd_home}}/backups/{{etcd_name}}/{{etcd_name}}"
+  tags:
+    - facts
+  when:
+    - inventory_hostname in groups['etcd']
+
+- name: Set etcd_access_lists
+  set_fact:
+    etcd_access_addresses_list: |-
+      [
+      {% for host,item in etcd_members.items()  -%}
+        "{{item.etcd_client_url}}"{% if not loop.last %},{% endif %}
+      {%- endfor %}
+      ]
+
+    etcd_peer_addresses_list: |-
+      [
+      {% for host,item in etcd_members.items()  -%}
+        "{{item.etcd_name}}={{item.etcd_peer_url}}"{% if not loop.last %},{% endif %}
+      {%- endfor %}
+      ]
+  tags:
+    - facts
+
+- name: General Etcd facts
+  set_fact:
+    etcd_access_addresses: "{{etcd_access_addresses_list | join(',')}}"
+    etcd_access_addresses_semicolon: "{{etcd_access_addresses_list | join(';')}}"
+    etcd_peer_addresses: "{{etcd_peer_addresses_list | join(',')}}"
+    etcd_peer_addresses_semicolon: "{{etcd_peer_addresses_list | join(';')}}"
+    etcd_cert_paths:
+      server:
+        cert: "{{ etcd_cert_dir }}/{{ inventory_hostname }}/{{inventory_hostname}}-server.pem"
+        key: "{{ etcd_cert_dir }}/{{ inventory_hostname }}/{{inventory_hostname}}-server-key.pem"
+        ca: "{{ etcd_cert_dir }}/{{ inventory_hostname }}/client-ca.pem"
+      client:
+        cert: "{{ etcd_cert_dir }}/{{ inventory_hostname }}/{{inventory_hostname}}-client.pem"
+        key: "{{ etcd_cert_dir }}/{{ inventory_hostname }}/{{inventory_hostname}}-client-key.pem"
+        ca: "{{ etcd_cert_dir }}/{{ inventory_hostname }}/client-ca.pem"
+      peer:
+        cert: "{{ etcd_cert_dir }}/{{ inventory_hostname }}/{{inventory_hostname}}-peer.pem"
+        key: "{{ etcd_cert_dir }}/{{ inventory_hostname }}/{{inventory_hostname}}-peer-key.pem"
+        ca: "{{ etcd_cert_dir }}/{{ inventory_hostname }}/peer-ca.pem"
+  tags:
+    - facts

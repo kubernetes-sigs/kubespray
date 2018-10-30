@@ -1,0 +1,73 @@
+---
+- name: Refresh Time Fact
+  setup: filter=ansible_date_time
+
+- name: Set Backup Directory
+  set_fact:
+    etcd_backup_file: "{{ etcd_backup_prefix }}-{{ ansible_date_time.date }}_{{ ansible_date_time.time }}-snapshot.db"
+
+- name: Create Backup Directory
+  file:
+    path: "{{ etcd_backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0600
+
+- name: ETCD | Check if etcd cluster is healthy
+  command: >-
+    {{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }}
+    --cert={{etcd_cert_paths.client.cert}}
+    --cacert={{etcd_cert_paths.client.ca}}
+    --key={{etcd_cert_paths.client.key}}
+    endpoint health
+  register: etcd_cluster_is_healthy
+  changed_when: false
+  retries: 4
+  delay: "{{ retry_stagger | default(5)}}"
+  until: etcd_cluster_is_healthy.rc == 0
+  ignore_errors: true
+  environment:
+    ETCDCTL_API: "3"
+  when:
+    - not etcd_backup_offline | d(false) | bool
+
+- name:
+  fail:
+    msg: >-
+      Can't create a live backup, the cluster is not healthy.
+      It's possible to try with `etcd_backup_offline=true` to create a backup from the 'member/snap/db' file
+  when: etcd_cluster_is_healthy is failed
+
+- name: Backup etcd v3 data
+  command: >-
+    {{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }}
+    --cert={{etcd_cert_paths.client.cert}}
+    --cacert={{etcd_cert_paths.client.ca}}
+    --key={{etcd_cert_paths.client.key}}
+    snapshot save "{{ etcd_backup_file }}"
+  register: etcd_snapshot
+  environment:
+    ETCDCTL_API: "3"
+  when:
+    - not etcd_backup_offline | d(false) | bool
+
+- name: backup from 'member/snap/db' file
+  copy:
+    remote_src: true
+    dest: "{{ etcd_backup_file }}"
+    src: "{{etcd_data_dir}}/member/snap/db"
+  when:
+    - etcd_backup_offline | d(false) | bool
+
+
+- name: Copy latest snapshot
+  copy:
+    remote_src: true
+    src:  "{{ etcd_backup_file }}"
+    dest: "{{ etcd_backup_prefix }}-snapshot.db"
+
+- include_tasks: "upload_object_storage.yaml"
+  when:
+    - etcd_upload_backup is defined
+    - etcd_upload_backup.storage in ['gcs', 's3', 'aws']

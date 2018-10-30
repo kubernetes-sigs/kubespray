@@ -1,0 +1,30 @@
+---
+dependencies:
+  - name: etcd
+    tags:
+      - always
+
+  - name: adduser
+    vars:
+      user: "{{ etcd_user }}"
+    when:
+      - not (ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'])
+
+  - name: etcd/facts
+    tags:
+      - always
+
+  - name: etcd/backups
+    when:
+      - etcd_backup | d(true)
+      - etcd_action | d('none') in ['upgrade']
+      - inventory_hostname == groups['etcd'][0]
+    delegate_to: "{{hostvars[groups['etcd'][0]].ansible_ssh_host}}"
+    tags:
+      - etcd-backups
+
+  - name: etcd/certs
+    tags:
+      - etcd-certs
+
+# @TODO(ant31) not in is_atomic

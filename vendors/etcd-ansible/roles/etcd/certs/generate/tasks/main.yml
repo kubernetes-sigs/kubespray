@@ -1,0 +1,88 @@
+---
+
+- name: Rotate all certs
+  file:
+    path: "{{ etcd_cert_dir }}"
+    state: absent
+  when:
+    - etcd_rotate_certs |default(false) |bool
+  tags:
+    - etcd-ca
+    - etcd-certs
+
+- name: Gen_certs | create etcd {{inventory_hostname}} certs dir
+  file:
+    path: "{{ etcd_cert_dir }}/{{item}}"
+    group: "{{ etcd_cert_group }}"
+    state: directory
+    owner: "{{etcd_cert_user}}"
+    mode: 0700
+  loop: "{{etcd_hosts|default(groups['etcd-all']) | unique + ['archives']}}"
+
+
+- import_role:
+    name: etcd/certs/ca
+  delegate_to: "{{hostvars[groups['etcd-cert-managers'][0]].ansible_ssh_host}}"
+  delegate_facts: true
+  run_once: true
+  tags:
+    - etcd-ca
+    - etcd-certs
+
+- name: Copy server and client etcd-ca
+  copy:
+    remote_src: true
+    src: "{{ etcd_cert_dir }}/{{item.1}}-ca.pem"
+    dest: "{{ etcd_cert_dir }}/{{item.0}}"
+  loop: "{{etcd_hosts|default(groups['etcd-all'] | unique)|product(['peer', 'client']) | list}}"
+  when:
+    - (item.1 == "peer" and item.0 in groups['etcd']) or (item.1 == "client" and item.0 in groups['etcd-clients'])
+  ignore_errors: True
+  register: copyca
+
+- name: fail the play if the previous command did not succeed
+  fail:
+    msg: "Are the CA files generated? run the role etcd/certs/ca, see playbooks/etcd.yaml "
+  when: copyca is failed
+
+- name: configure the certs to generate (client, server or peer)
+  set_fact:
+    _etcd_cert_hosts: >-
+         [{% for item in etcd_hosts|default(groups['etcd-all'] | unique)|product(['peer', 'client', 'server']) | list %}
+         {% if (item.1 in ["peer", "server"] and item.0 in groups['etcd']) or  (item.1 == "client" and item.0 in groups['etcd-clients'])%}
+         {% if loop.last %}
+           {{item}}
+         {% else %}
+          {{item}},
+         {% endif %}
+         {% endif %}
+         {% endfor %}
+         ]
+
+- include_tasks: 0020_etcd-certs.yaml
+  loop: "{{_etcd_cert_hosts}}"
+  loop_control:
+    loop_var: host_item
+  vars:
+    cert:
+      host: "{{host_item.0}}"
+      profile: "{{host_item.1}}"
+    etcd_cakey: "{{etcd_ca_profiles[cert.profile]}}-ca-key.pem"
+    etcd_capem: "{{etcd_ca_profiles[cert.profile]}}-ca.pem"
+
+- name: Prepare certs tarball
+  archive:
+    dest: "{{etcd_cert_dir}}/archives/client-{{host}}.tar.bz2"
+    format: bz2
+    path:
+      - "{{ etcd_cert_dir }}/{{host}}"
+  loop: "{{etcd_hosts|default(groups['etcd-all'] | unique)}}"
+  loop_control:
+    loop_var: host
+  register: etcd_cert_tarballs
+
+- name: fetch peers certs
+  slurp:
+    src: "{{item.dest}}"
+  loop: "{{etcd_cert_tarballs.results}}"
+  register: etcd_cert_tarballs_b64

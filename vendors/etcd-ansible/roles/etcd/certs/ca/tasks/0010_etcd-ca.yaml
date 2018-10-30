@@ -1,0 +1,36 @@
+---
+- name: generate-ca config for *{{cert.name}}*
+  template:
+    src: "{{item}}.json"
+    dest: "{{etcd_cert_dir}}/{{cert.name}}-{{item}}.json"
+  loop:
+    - "ca-config"
+    - "ca-csr"
+  vars:
+    ca_name: "{{cert.name}}"
+  register: caconf
+
+- name: "Check certs | check if a CA and CAKey exists for *{{cert.name}}*"
+  stat:
+    path: "{{ etcd_cert_dir }}/{{ item }}"
+  register: cacerts
+  loop:
+    - "{{cert.name}}-ca.pem"
+    - "{{cert.name}}-ca-key.pem"
+
+- name: Generate CA and CAKEY for *{{cert.name}}*
+  command: '{{bin_dir}}/cfssl gencert -initca "{{ etcd_cert_dir }}/{{cert.name}}-ca-csr.json"'
+  register: ca
+  args:
+    chdir: "{{ etcd_cert_dir }}"
+  when:
+    - caconf is changed or not (cacerts.results[0].stat.exists and cacerts.results[1].stat.exists)
+
+- name: JSON Generate CA and CAKEY for *{{cert.name}}*
+  command: '{{bin_dir}}/cfssljson -bare {{cert.name}}-ca -'
+  register: cagen
+  args:
+    chdir: "{{ etcd_cert_dir }}/"
+    stdin: "{{ca.stdout | from_json |to_json}}"
+  when:
+    - caconf is changed or not (cacerts.results[0].stat.exists and cacerts.results[1].stat.exists)

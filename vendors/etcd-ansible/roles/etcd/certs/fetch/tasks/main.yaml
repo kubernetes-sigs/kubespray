@@ -1,0 +1,94 @@
+---
+# - name: Check if cert tarball exists
+#   stat:
+#     path: "{{etcd_cert_dir}}/{{inventory_hostname}}.tar.bz2"
+#   register: cert_exists
+#   delegate_to: "{{hostvars[groups['etcd-cert-managers'][0]].ansible_ssh_host}}"
+
+# - name: assert cert taball
+#   include_role:
+#     name: etcd/certs
+
+  # assert:
+  #   msg: "No tarball configured
+  # slurp:
+  #   src: "{{item.dest}}"
+  # loop: "{{etcd_cert_tarballs.results}}"
+  # register: etcd_cert_tarballs_b64
+
+# - name: fetch peers certs
+#   slurp:
+#     src: "{{etcd_cert_dir}}/{{host}}.tar.bz2"
+#   loop: ["{{inventory_hostname}}"]
+#   loop_control:
+#     loop_var: host
+#   register: etcd_cert_tarballs_b64
+#   delegate_to: "{{hostvars[groups['etcd-cert-managers'][0]].ansible_ssh_host}}"
+
+- name: create cert_directory server
+  file:
+    path: "{{etcd_cert_dir}}"
+    group: "{{ etcd_cert_group }}"
+    state: directory
+    owner: "{{etcd_cert_user}}"
+    mode: 0700
+  tags:
+    - etcd-certs
+
+
+- name: install server_certs
+  shell: echo "{{item.content}}" | base64 -d > {{etcd_cert_dir}}/{{item.item.host}}.tar.bz2
+  changed_when: false
+  loop: "{{etcd_cert_tarballs_b64.results}}"
+  when:
+    - _etcd_generate_cert
+  tags:
+    - etcd-certs
+
+- name: unpack certs
+  unarchive:
+    remote_src: true
+    src: "{{etcd_cert_dir}}/{{item.item.host}}.tar.bz2"
+    dest: "{{etcd_cert_dir}}"
+    group: "{{ etcd_cert_group }}"
+    owner: "{{etcd_cert_user}}"
+    mode: 0700
+  loop: "{{etcd_cert_tarballs_b64.results}}"
+  when:
+    - _etcd_generate_cert
+  tags:
+    - etcd-certs
+
+- name: "Gen_certs | Get etcd certificate serials"
+  command: "openssl x509 -in {{ etcd_cert_dir }}/{{inventory_hostname}}/{{ inventory_hostname }}-client.pem -noout -serial"
+  register: "etcd_client_serial_result"
+  changed_when: false
+  tags:
+    - facts
+    - etcd-certs
+
+- name: "Gen_certs | Get etcd certificate serials"
+  command: "openssl x509 -in {{ etcd_cert_dir }}/{{inventory_hostname}}/{{ inventory_hostname }}-peer.pem -noout -serial"
+  register: "etcd_peer_serial_result"
+  changed_when: false
+  when:
+    - inventory_hostname in groups['etcd']
+  tags:
+    - facts
+    - etcd-certs
+
+- name: Set etcd_client_cert_serial
+  set_fact:
+    etcd_client_cert_serial: "{{ etcd_client_serial_result.stdout.split('=')[1] }}"
+  tags:
+    - facts
+    - etcd-certs
+
+- name: Set etcd_peer_cert_serial
+  set_fact:
+    etcd_peer_cert_serial: "{{ etcd_peer_serial_result.stdout.split('=')[1] }}"
+  when:
+    - inventory_hostname in groups['etcd']
+  tags:
+    - facts
+    - etcd-certs

@@ -1,0 +1,52 @@
+- name: file_download | Downloading...
+  debug:
+    msg:
+      - "URL: {{ download.file.url }}"
+      - "Dest: {{ download.dest }}"
+      - "Archive: {{download.file.archive_dest | default('')}} "
+
+- name: file_download | Create dest directory
+  file:
+    path: "{{download.dest}}"
+    state: directory
+    recurse: yes
+
+- name: file_download | Download item
+  get_url:
+    url: "{{download.file.url}}"
+    dest: "{{download.file.archive_dest|d(download.dest)}}"
+    sha256sum: "{{download.file.sha256 | default(omit)}}"
+    owner: "{{ download.file.owner|default(omit) }}"
+    mode: "{{ download.file.mode|default(omit) }}"
+    validate_certs: "{{ download.file.validate_certs | d(omit) }}"
+  register: get_url_result
+
+- name: file_download | Extract archives
+  unarchive:
+    src: "{{download.file.archive_dest}}"
+    dest: "{{download.dest}}"
+    remote_src: true
+  when:
+    - download.file.unarchive|default(False)
+
+- name: file_download | Extract archives
+  file:
+    path: "{{download.file.archive_dest}}"
+    state: absent
+  when:
+    - download.file.unarchive|default(False)
+    - not download.file.keep_archive|default(False)
+
+- name: synchronize repo
+  synchronize:
+    src: "{{download.synchronize.src}}"
+    dest: "{{download.synchronize.dest}}"
+  when:
+    - download.synchronize is defined
+
+- name: Delete sync
+  file:
+    path: "{{download.synchronize.src}}"
+    state: absent
+  when:
+    - download.synchronize is defined

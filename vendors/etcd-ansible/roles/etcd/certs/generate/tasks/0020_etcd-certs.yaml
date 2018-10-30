@@ -1,0 +1,55 @@
+---
+
+- name: generate-certs config for *{{cert.profile}}/{{cert.host}}*
+  template:
+    src: "etcd-{{cert.profile}}.json"
+    dest: "{{etcd_cert_dir}}/{{cert.host}}/{{cert.host}}-{{cert.profile}}.json"
+  vars:
+    cert_name: "{{cert.host}}"
+    host: "{{cert.host}}"
+  register: certconf
+
+- name: "Check certs | check if a cert exists for *{{cert.profile}}/{{cert.host}}*"
+  stat:
+    path: "{{ etcd_cert_dir }}/{{cert.host}}/{{item}}"
+  register: certs
+  when:
+    - certconf is not changed
+  loop:
+    - "{{cert.host}}-{{cert.profile}}.csr"
+    - "{{cert.host}}-{{cert.profile}}.pem"
+    - "{{cert.host}}-{{cert.profile}}-key.pem"
+
+- name: Verify cert validity
+  command: |
+    openssl verify
+    -CAfile "{{etcd_cert_dir}}/{{etcd_capem}}"
+    "{{etcd_cert_dir}}//{{cert.host}}/{{cert.host}}-{{cert.profile}}.pem"
+  when:
+    - certconf is not changed
+    - certs.results | map(attribute='stat.exists')|unique|join(' ')|bool
+  register: certvalid
+  failed_when: false
+  changed_when: false
+
+- name: Generate Json cfssl for *{{cert.profile}}/{{cert.host}}*
+  command: >-
+    {{bin_dir}}/cfssl gencert
+    -ca={{ etcd_cert_dir }}/{{etcd_capem}}
+    -ca-key={{ etcd_cert_dir }}/{{etcd_cakey}}
+    -profile={{cert.profile}}
+    {{etcd_cert_dir}}/{{cert.host}}/{{cert.host}}-{{cert.profile}}.json
+  register: certjson
+  args:
+    chdir: "{{ etcd_cert_dir }}/{{cert.host}}"
+  when:
+    - certvalid is failed or certvalid is skipped
+
+- name: Generate Certificate for *{{cert.profile}}/{{cert.host}}*
+  command: '{{bin_dir}}/cfssljson -bare {{cert.host}}-{{cert.profile}}'
+  register: certgen
+  args:
+    chdir: "{{ etcd_cert_dir }}/{{cert.host}}"
+    stdin: "{{certjson.stdout | from_json |to_json}}"
+  when:
+    - certjson is changed

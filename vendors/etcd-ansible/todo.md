@@ -1,0 +1,4 @@
+- [ ] snapshot/backups
+- [ ] upload backups
+- [ ] restore a backups
+- [ ] scale up

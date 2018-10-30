@@ -1,0 +1,34 @@
+- name: delete existing cluster {{etcd_cluster_name}}
+  pause:
+    prompt: "You're about to delete the cluster {{etcd_cluster_name}} and all it's content, are you sure? (yes/no) "
+  when:
+    - etcd_delete_cluster | default(false) | bool
+  register: uinput
+
+- name: check input
+  fail:
+    msg: "User canceled action: '{{uinput.user_input}}'"
+  when:
+    - uinput.user_input != 'yes'
+  run_once: true
+
+- name: stop the cluster {{etcd_cluster_name}}
+  service:
+    name: "{{etcd_name}}"
+    state: stopped
+    enabled: false
+  failed_when: false
+  when:
+    - etcd_delete_cluster | default(false) | bool
+
+
+- name: delete data_dir and configurations {{etcd_cluster_name}}
+  file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ etcd_data_dir }}"
+    - "{{etcd_config_dir}}/{{etcd_name}}-conf.yaml"
+    - "{{etcd_config_dir}}/{{etcd_name}}-conf.yaml"
+  when:
+    - etcd_delete_cluster | default(false) | bool

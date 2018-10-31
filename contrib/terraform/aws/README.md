@@ -111,9 +111,9 @@ the `AWS CLI` with the following command:
 aws iam delete-instance-profile --region <region_name> --instance-profile-name <profile_name>
 ```
 
-***Ansible Inventory doesnt get created:***
+***Ansible Inventory doesn't get created:***
 
-It could happen that Terraform doesnt create an Ansible Inventory file automatically. If this is the case copy the output after `inventory=` and create a file named `hosts`in the directory `inventory` and paste the inventory into the file.
+It could happen that Terraform doesn't create an Ansible Inventory file automatically. If this is the case copy the output after `inventory=` and create a file named `hosts`in the directory `inventory` and paste the inventory into the file.
 
 **Architecture**
 

@@ -144,3 +144,15 @@ variable "bastion_allowed_remote_ips" {
   type = "list"
   default = ["0.0.0.0/0"]
 }
+
+variable "worker_allowed_ports" {
+  type = "list"
+  default = [
+    {
+      "protocol" = "tcp"
+      "port_range_min" = 30000
+      "port_range_max" = 32767
+      "remote_ip_prefix" = "0.0.0.0/0"
+    }
+  ]
+}

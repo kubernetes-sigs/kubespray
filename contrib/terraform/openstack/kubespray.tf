@@ -54,6 +54,7 @@ module "compute" {
   bastion_allowed_remote_ips                   = "${var.bastion_allowed_remote_ips}"
   supplementary_master_groups                  = "${var.supplementary_master_groups}"
   supplementary_node_groups                    = "${var.supplementary_node_groups}"
+  worker_allowed_ports                         = "${var.worker_allowed_ports}"
 
   network_id = "${module.network.router_id}"
 }

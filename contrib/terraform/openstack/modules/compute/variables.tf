@@ -73,3 +73,7 @@ variable "supplementary_master_groups" {
 variable "supplementary_node_groups" {
   default = ""
 }
+
+variable "worker_allowed_ports" {
+  type = "list"
+}

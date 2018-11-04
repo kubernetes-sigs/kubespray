@@ -124,8 +124,8 @@ Supported Components
     -   [flanneld](https://github.com/coreos/flannel) v0.10.0
     -   [weave](https://github.com/weaveworks/weave) v2.4.1
     -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.1
--   Application
     -   [multus](https://github.com/intel/multus-cni) v3.1
+-   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
     -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.0
     -   [coredns](https://github.com/coredns/coredns) v1.2.5

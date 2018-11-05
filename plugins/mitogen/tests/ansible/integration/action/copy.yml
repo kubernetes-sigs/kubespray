@@ -1,0 +1,83 @@
+# Verify copy module for small and large files, and inline content.
+
+- name: integration/action/synchronize.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+    - copy:
+        dest: /tmp/copy-tiny-file
+        content:
+          this is a tiny file.
+      connection: local
+
+    - copy:
+        dest: /tmp/copy-large-file
+        # Must be larger than Connection.SMALL_SIZE_LIMIT.
+        content: "{% for x in range(200000) %}x{% endfor %}"
+      connection: local
+
+    # end of making files
+
+    - file:
+        state: absent
+        path: "{{item}}"
+      with_items:
+      - /tmp/copy-tiny-file.out
+      - /tmp/copy-large-file.out
+      - /tmp/copy-tiny-inline-file.out
+      - /tmp/copy-large-inline-file.out
+
+    # end of cleaning out files
+
+    - copy:
+        dest: /tmp/copy-large-file.out
+        src: /tmp/copy-large-file
+
+    - copy:
+        dest: /tmp/copy-tiny-file.out
+        src: /tmp/copy-tiny-file
+
+    - copy:
+        dest: /tmp/copy-tiny-inline-file.out
+        content: "tiny inline content"
+
+    - copy:
+        dest: /tmp/copy-large-inline-file.out
+        content: |
+          {% for x in range(200000) %}y{% endfor %}
+
+    # stat results
+
+    - stat:
+        path: "{{item}}"
+      with_items:
+      - /tmp/copy-tiny-file.out
+      - /tmp/copy-large-file.out
+      - /tmp/copy-tiny-inline-file.out
+      - /tmp/copy-large-inline-file.out
+      register: stat
+
+    - assert:
+        that:
+        - stat.results[0].stat.checksum == "f29faa9a6f19a700a941bf2aa5b281643c4ec8a0"
+        - stat.results[1].stat.checksum == "62951f943c41cdd326e5ce2b53a779e7916a820d"
+        - stat.results[2].stat.checksum == "b26dd6444595e2bdb342aa0a91721b57478b5029"
+        - stat.results[3].stat.checksum == "d675f47e467eae19e49032a2cc39118e12a6ee72"
+
+    - file:
+        state: absent
+        path: "{{item}}"
+      with_items:
+      - /tmp/copy-tiny-file
+      - /tmp/copy-tiny-file.out
+      - /tmp/copy-no-mode
+      - /tmp/copy-no-mode.out
+      - /tmp/copy-with-mode
+      - /tmp/copy-with-mode.out
+      - /tmp/copy-large-file
+      - /tmp/copy-large-file.out
+      - /tmp/copy-tiny-inline-file.out
+      - /tmp/copy-large-inline-file
+      - /tmp/copy-large-inline-file.out
+
+    # end of cleaning out files (again)

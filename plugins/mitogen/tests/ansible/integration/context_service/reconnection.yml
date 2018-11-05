@@ -1,0 +1,30 @@
+# Test ContextService ability to handle disconnections, including handling
+# cleanup of dependent (via=) contexts.
+
+- name: integration/context_service/reconnection.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+
+    - become: true
+      custom_python_detect_environment:
+      register: old_become_env
+
+    - become: true
+      # This must be >1 for vanilla Ansible.
+      shell: |
+        bash -c "( sleep 3; pkill -f sshd:; ) & disown"
+
+    - connection: local
+      shell: sleep 3
+
+    - wait_for_connection:
+
+    - become: true
+      custom_python_detect_environment:
+      register: new_become_env
+
+    # Verify the PIDs really changed (i.e. disconnection happened)
+    - assert:
+        that:
+          - old_become_env.pid != new_become_env.pid

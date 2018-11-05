@@ -1,0 +1,117 @@
+
+- hosts: all
+  strategy: linear
+  gather_facts: false
+  tasks:
+    - raw: >
+        if ! python -c ''; then
+          if type -p yum; then
+            yum -y install python;
+          else
+            apt-get -y update && apt-get -y install python;
+          fi;
+        fi
+
+- hosts: all
+  strategy: mitogen_free
+  # Can't gather facts before here.
+  gather_facts: true
+  vars:
+    distro: "{{ansible_distribution}}"
+    ver: "{{ansible_distribution_major_version}}"
+
+    packages:
+      common:
+        - git
+        - openssh-server
+        - rsync
+        - strace
+        - sudo
+      Debian:
+        "9":
+          - libjson-perl
+          - python-virtualenv
+      CentOS:
+        "6":
+          - perl-JSON
+        "7":
+          - perl-JSON
+          - python-virtualenv
+
+  tasks:
+    - when: ansible_virtualization_type != "docker"
+      meta: end_play
+
+    - apt:
+        name: "{{packages.common + packages[distro][ver]}}"
+        state: installed
+        update_cache: true
+      when: distro == "Debian"
+
+    - yum:
+        name: "{{packages.common + packages[distro][ver]}}"
+        state: installed
+        update_cache: true
+      when: distro == "CentOS"
+
+    - command: apt-get clean
+      when: distro == "Debian"
+
+    - command: yum clean all
+      when: distro == "CentOS"
+
+    - shell: rm -rf {{item}}/*
+      with_items:
+      - /var/cache/apt
+      - /var/lib/apt/lists
+      when: distro == "Debian"
+
+    - user:
+        name: root
+        password: "{{ 'rootpassword' | password_hash('sha256') }}"
+        shell: /bin/bash
+
+    - file:
+        path: /var/run/sshd
+        state: directory
+
+    - command: ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key
+      args:
+        creates: /etc/ssh/ssh_host_rsa_key
+
+    - group:
+        name: "{{sudo_group[distro]}}"
+
+    - copy:
+        dest: /etc/sentinel
+        content: |
+          i-am-mitogen-test-docker-image
+
+    - copy:
+        dest: /etc/ssh/banner.txt
+        src: ../data/docker/ssh_login_banner.txt
+
+    - copy:
+        dest: /etc/sudoers.d/001-mitogen
+        src: ../data/docker/001-mitogen.sudo
+
+    - lineinfile:
+        path: /etc/ssh/sshd_config
+        line: Banner /etc/ssh/banner.txt
+
+    - lineinfile:
+        path: /etc/ssh/sshd_config
+        line: PermitRootLogin yes
+        regexp: '.*PermitRootLogin.*'
+
+    - lineinfile:
+        path: /etc/pam.d/sshd
+        regexp: '.*session.*required.*pam_loginuid.so'
+        line: session optional pam_loginuid.so
+
+    - copy:
+        mode: 'u+rwx,go=rx'
+        dest: /usr/local/bin/pywrap
+        content: |
+         #!/bin/bash
+         exec strace -ff -o /tmp/pywrap$$.trace python2.7 "$@"'

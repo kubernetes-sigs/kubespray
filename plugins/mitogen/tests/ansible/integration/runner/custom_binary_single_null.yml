@@ -1,0 +1,26 @@
+- name: integration/runner/custom_binary_single_null.yml
+  hosts: test-targets
+  tasks:
+    - custom_binary_single_null:
+        foo: true
+      with_sequence: start=1 end={{end|default(1)}}
+      ignore_errors: true
+      register: out
+
+- hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+    - assert:
+        that:
+          - "out.failed"
+          - "out.results[0].failed"
+          - "out.results[0].msg == 'MODULE FAILURE'"
+          - "out.results[0].module_stdout.startswith('/bin/sh: ')"
+          - |
+            out.results[0].module_stdout.endswith('/custom_binary_single_null: cannot execute binary file\r\n') or
+            out.results[0].module_stdout.endswith('/custom_binary_single_null: Exec format error\r\n')
+
+
+# Can't test this: Mitogen returns 126, 2.5.x returns 126, 2.4.x discarded the
+# return value and always returned 0.
+# out.results[0].rc == 126

@@ -1,0 +1,50 @@
+# Verify behaviour of a single asynchronous task, and presence of all output
+# fields.
+
+- name: integration/async/runner_one_job.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+
+  # Verify output of a single async job.
+
+  - name: start 2 second op
+    shell: |
+      sleep 1;
+      echo alldone
+    async: 1000
+    poll: 0
+    register: job1
+
+  - assert:
+      that: |
+        job1.ansible_job_id and
+        (job1.changed == True) and
+        (job1.started == 1) and
+        (job1.changed == True) and
+        (job1.finished == 0)
+
+  - name: busy-poll up to 100000 times
+    async_status:
+      jid: "{{job1.ansible_job_id}}"
+    register: result1
+    until: result1.finished
+    retries: 100000
+    delay: 0
+
+  - assert:
+      that:
+      - result1.ansible_job_id == job1.ansible_job_id
+      - result1.attempts <= 100000
+      - result1.changed == True
+      - result1.cmd == "sleep 1;\n echo alldone"
+      - result1.delta|length == 14
+      - result1.start|length == 26
+      - result1.failed == False
+      - result1.finished == 1
+      - result1.rc == 0
+      - result1.start|length == 26
+      - result1.stderr == ""
+      - result1.stderr_lines == []
+      - result1.stdout == "alldone"
+      - result1.stdout_lines == ["alldone"]

@@ -1,0 +1,104 @@
+# related to issue 301. Essentially ensure remote_expand_user does not support
+# $HOME expansion.
+
+- name: integration/action/remote_expand_user.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+    - name: "Find out root's homedir."
+      # Runs first because it blats regular Ansible facts with junk, so
+      # non-become run fixes that up.
+      setup: gather_subset=min
+      become: true
+      register: root_facts
+
+    - name: "Find regular homedir"
+      setup: gather_subset=min
+      register: user_facts
+
+    # ------------------------
+
+    - name: "Expand ~/foo"
+      action_passthrough:
+        method: _remote_expand_user
+        kwargs:
+          path: '~/foo'
+          sudoable: false
+      register: out
+    - assert:
+        that: out.result == '{{user_facts.ansible_facts.ansible_user_dir}}/foo'
+
+    - name: "Expand ~/foo with become active. ~ is become_user's home."
+      action_passthrough:
+        method: _remote_expand_user
+        kwargs:
+          path: '~/foo'
+          sudoable: false
+      register: out
+      become: true
+    - assert:
+        that: out.result == '{{user_facts.ansible_facts.ansible_user_dir}}/foo'
+
+    - name: "Expand ~user/foo"
+      action_passthrough:
+        method: _remote_expand_user
+        kwargs:
+          path: '~{{ansible_user_id}}/foo'
+          sudoable: false
+      register: out
+    - assert:
+        that: out.result == '{{user_facts.ansible_facts.ansible_user_dir}}/foo'
+
+    - name: "Expanding $HOME/foo has no effect."
+      action_passthrough:
+        method: _remote_expand_user
+        kwargs:
+          path: '$HOME/foo'
+          sudoable: false
+      register: out
+    - assert:
+        that: out.result == '$HOME/foo'
+
+    # ------------------------
+
+    - name: "sudoable; Expand ~/foo"
+      action_passthrough:
+        method: _remote_expand_user
+        kwargs:
+          path: '~/foo'
+          sudoable: true
+      register: out
+    - assert:
+        that: out.result == '{{user_facts.ansible_facts.ansible_user_dir}}/foo'
+
+    - name: "sudoable; Expand ~/foo with become active. ~ is become_user's home."
+      action_passthrough:
+        method: _remote_expand_user
+        kwargs:
+          path: '~/foo'
+          sudoable: true
+      register: out
+      become: true
+
+    - assert:
+        that: out.result == '{{root_facts.ansible_facts.ansible_user_dir}}/foo'
+
+    - name: "sudoable; Expand ~user/foo"
+      action_passthrough:
+        method: _remote_expand_user
+        kwargs:
+          path: '~{{ansible_user_id}}/foo'
+          sudoable: true
+      register: out
+    - assert:
+        that: out.result == '{{user_facts.ansible_facts.ansible_user_dir}}/foo'
+
+    - name: "sudoable; Expanding $HOME/foo has no effect."
+      action_passthrough:
+        method: _remote_expand_user
+        kwargs:
+          path: '$HOME/foo'
+          sudoable: true
+      register: out
+    - assert:
+        that: out.result == '$HOME/foo'

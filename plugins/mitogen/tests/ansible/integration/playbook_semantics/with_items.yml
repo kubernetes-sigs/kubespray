@@ -1,0 +1,30 @@
+# Verify with_items that modifies the execution environment still executes in
+# the correct context.
+
+- name: integration/playbook_semantics/with_items.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+
+    - name: Spin up a few interpreters
+      shell: whoami
+      become: true
+      vars:
+        ansible_become_user: "mitogen__user{{item}}"
+      with_sequence: start=1 end=3
+      register: first_run
+
+    - name: Reuse them
+      shell: whoami
+      become: true
+      vars:
+        ansible_become_user: "mitogen__user{{item}}"
+      with_sequence: start=1 end=3
+      register: second_run
+
+    - name: Verify first and second run matches expected username.
+      assert:
+        that:
+        - first_run.results[item|int].stdout == ("mitogen__user%d" % (item|int + 1))
+        - first_run.results[item|int].stdout == second_run.results[item|int].stdout
+      with_sequence: start=0 end=2

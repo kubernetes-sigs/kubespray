@@ -1,0 +1,32 @@
+- name: integration/runner/custom_binary_producing_junk.yml
+  hosts: test-targets
+  gather_facts: true
+  tasks:
+    - block:
+      - custom_binary_producing_junk_Darwin:
+          foo: true
+        with_sequence: start=1 end={{end|default(1)}}
+        ignore_errors: true
+        register: out_darwin
+      - set_fact: out={{out_darwin}}
+      when: ansible_system == "Darwin"
+
+    - block:
+      - custom_binary_producing_junk_Linux:
+          foo: true
+        with_sequence: start=1 end={{end|default(1)}}
+        ignore_errors: true
+        register: out_linux
+      - set_fact: out={{out_linux}}
+      when: ansible_system == "Linux"
+
+
+- hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+    - assert:
+        that: |
+          out.failed and
+          out.results[0].failed and
+          out.results[0].msg == 'MODULE FAILURE' and
+          out.results[0].rc == 0

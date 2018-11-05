@@ -1,0 +1,135 @@
+
+# These tests don't run on vanilla because ssh-askpass wants to run for
+# whatever reason.
+
+- name: integration/ssh/variables.yml
+  hosts: test-targets
+  connection: local
+  vars:
+    # ControlMaster has the effect of caching the previous auth to the same
+    # account, so disable it. Can't disable with ControlMaster no since that
+    # already appears on command line, so override ControlPath with junk.
+    ansible_ssh_common_args: |
+      -o "ControlPath /tmp/mitogen-ansible-test-{{18446744073709551615|random}}"
+
+  tasks:
+    - name: ansible_ssh_user
+      # Remaining tests just use "ansible_user".
+      shell: >
+        ANSIBLE_STRATEGY=mitogen_linear
+        ANSIBLE_SSH_ARGS=""
+        ansible -m shell -a whoami -i "{{inventory_file}}" test-targets
+        -e ansible_ssh_user=mitogen__has_sudo
+        -e ansible_ssh_pass=has_sudo_password
+      args:
+        chdir: ../..
+      register: out
+      when: is_mitogen
+
+    - shell: >
+        ANSIBLE_STRATEGY=mitogen_linear
+        ANSIBLE_SSH_ARGS=""
+        ansible -m shell -a whoami -i "{{inventory_file}}" test-targets
+        -e ansible_ssh_user=mitogen__has_sudo
+        -e ansible_ssh_pass=wrong_password
+      args:
+        chdir: ../..
+      register: out
+      ignore_errors: true
+      when: is_mitogen
+
+    - assert:
+        that: out.rc == 4  # unreachable
+      when: is_mitogen
+
+
+    - name: ansible_ssh_pass
+      shell: >
+        ANSIBLE_STRATEGY=mitogen_linear
+        ANSIBLE_SSH_ARGS=""
+        ansible -m shell -a whoami -i "{{inventory_file}}" test-targets
+        -e ansible_user=mitogen__has_sudo
+        -e ansible_ssh_pass=has_sudo_password
+      args:
+        chdir: ../..
+      register: out
+      when: is_mitogen
+
+    - shell: >
+        ANSIBLE_STRATEGY=mitogen_linear
+        ANSIBLE_SSH_ARGS=""
+        ansible -m shell -a whoami -i "{{inventory_file}}" test-targets
+        -e ansible_user=mitogen__has_sudo
+        -e ansible_ssh_pass=wrong_password
+      args:
+        chdir: ../..
+      register: out
+      ignore_errors: true
+      when: is_mitogen
+
+    - assert:
+        that: out.rc == 4  # unreachable
+      when: is_mitogen
+
+
+    - name: ansible_password
+      shell: >
+        ANSIBLE_STRATEGY=mitogen_linear
+        ANSIBLE_SSH_ARGS=""
+        ansible -m shell -a whoami -i "{{inventory_file}}" test-targets
+        -e ansible_user=mitogen__has_sudo
+        -e ansible_password=has_sudo_password
+      args:
+        chdir: ../..
+      register: out
+      when: is_mitogen
+
+    - shell: >
+        ANSIBLE_STRATEGY=mitogen_linear
+        ANSIBLE_SSH_ARGS=""
+        ansible -m shell -a whoami -i "{{inventory_file}}" test-targets
+        -e ansible_user=mitogen__has_sudo
+        -e ansible_password=wrong_password
+      args:
+        chdir: ../..
+      register: out
+      ignore_errors: true
+      when: is_mitogen
+
+    - assert:
+        that: out.rc == 4  # unreachable
+      when: is_mitogen
+
+
+    - name: ansible_ssh_private_key_file
+      shell: chmod 0600 ../data/docker/mitogen__has_sudo_pubkey.key
+      args:
+        chdir: ../..
+
+    - name: ansible_ssh_private_key_file
+      shell: >
+        ANSIBLE_STRATEGY=mitogen_linear
+        ANSIBLE_SSH_ARGS=""
+        ansible -m shell -a whoami -i "{{inventory_file}}" test-targets
+        -e ansible_user=mitogen__has_sudo_pubkey
+        -e ansible_ssh_private_key_file=../data/docker/mitogen__has_sudo_pubkey.key
+      args:
+        chdir: ../..
+      register: out
+      when: is_mitogen
+
+    - shell: >
+        ANSIBLE_STRATEGY=mitogen_linear
+        ANSIBLE_SSH_ARGS=""
+        ansible -m shell -a whoami -i "{{inventory_file}}" test-targets
+        -e ansible_user=mitogen__has_sudo
+        -e ansible_ssh_private_key_file=/dev/null
+      args:
+        chdir: ../..
+      register: out
+      ignore_errors: true
+      when: is_mitogen
+
+    - assert:
+        that: out.rc == 4  # unreachable
+      when: is_mitogen

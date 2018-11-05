@@ -1,0 +1,80 @@
+# issue #338: ensure /etc/environment is reloaded if it changes.
+# Actually this test uses ~/.pam_environment, which is using the same logic,
+# but less likely to brick a development workstation
+
+- name: integration/runner/etc_environment.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  gather_facts: true
+  tasks:
+    # ~/.pam_environment
+
+    - file:
+        path: ~/.pam_environment
+        state: absent
+
+    - shell: echo $MAGIC_PAM_ENV
+      register: echo
+
+    - assert:
+        that: echo.stdout == ""
+
+    - copy:
+        dest: ~/.pam_environment
+        content: |
+          MAGIC_PAM_ENV=321
+
+    - shell: echo $MAGIC_PAM_ENV
+      register: echo
+
+    - assert:
+        that: echo.stdout == "321"
+
+    - file:
+        path: ~/.pam_environment
+        state: absent
+
+    - shell: echo $MAGIC_PAM_ENV
+      register: echo
+
+    - assert:
+        that: echo.stdout == ""
+
+
+    # /etc/environment
+    - meta: end_play
+      when: ansible_virtualization_type != "docker"
+
+    - file:
+        path: /etc/environment
+        state: absent
+      become: true
+
+    - shell: echo $MAGIC_ETC_ENV
+      register: echo
+
+    - assert:
+        that: echo.stdout == ""
+
+    - copy:
+        dest: /etc/environment
+        content: |
+          MAGIC_ETC_ENV=555
+      become: true
+
+    - shell: echo $MAGIC_ETC_ENV
+      register: echo
+
+    - assert:
+        that: echo.stdout == "555"
+
+    - file:
+        path: /etc/environment
+        state: absent
+      become: true
+
+    - shell: echo $MAGIC_ETC_ENV
+      register: echo
+
+    - assert:
+        that: echo.stdout == ""

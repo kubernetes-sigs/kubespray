@@ -1,0 +1,27 @@
+- name: regression/issue_152__virtualenv_python_fails.yml
+  any_errors_fatal: true
+  hosts: test-targets
+  tasks:
+    - custom_python_detect_environment:
+      register: lout
+
+    # Can't use pip module because it can't create virtualenvs, must call it
+    # directly.
+    - shell: virtualenv /tmp/issue_152_virtualenv
+      when: lout.python_version != '2.6'
+
+    - custom_python_detect_environment:
+      vars:
+        ansible_python_interpreter: /tmp/issue_152_virtualenv/bin/python
+      register: out
+      when: lout.python_version != '2.6'
+
+    - assert:
+        that:
+          - out.sys_executable == "/tmp/issue_152_virtualenv/bin/python"
+      when: lout.python_version != '2.6'
+
+    - file:
+        path: /tmp/issue_152_virtualenv
+        state: absent
+      when: lout.python_version != '2.6'

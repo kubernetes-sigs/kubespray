@@ -1,0 +1,37 @@
+#/usr/bin/env bash
+
+echo '----- ulimits -----'
+ulimit -a
+echo '-------------------'
+echo
+
+set -o errexit
+set -o pipefail
+
+UNIT2="$(which unit2)"
+
+coverage erase
+
+# First run overwites coverage output.
+[ "$SKIP_MITOGEN" ] || {
+    coverage run "${UNIT2}" discover \
+                            --start-directory "tests" \
+                            --pattern '*_test.py' \
+                            "$@"
+}
+
+# Second run appends. This is since 'discover' treats subdirs as packages and
+# the 'ansible' subdir shadows the real Ansible package when it contains
+# __init__.py, so hack around it by just running again with 'ansible' as the
+# start directory. Alternative seems to be renaming tests/ansible/ and making a
+# mess of Git history.
+[ "$SKIP_ANSIBLE" ] || {
+    export PYTHONPATH=`pwd`/tests:$PYTHONPATH
+    coverage run -a "${UNIT2}" discover \
+                            --start-directory "tests/ansible" \
+                            --pattern '*_test.py' \
+                            "$@"
+}
+
+coverage html
+echo coverage report is at "file://$(pwd)/htmlcov/index.html"

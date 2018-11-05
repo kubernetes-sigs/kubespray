@@ -1,0 +1,31 @@
+# issue #152 (b): local connections were not receiving
+# ansible_python_interpreter treatment, breaking virtualenvs. Verify this is
+# fixed by writing out a wrapper script that sets an environment variable we
+# can test for.
+
+- name: regression/issue_152__local_action_wrong_interpreter.yml
+  hosts: test-targets
+  connection: local
+  any_errors_fatal: true
+  tasks:
+
+    - copy:
+        dest: /tmp/issue_152_interpreter.sh
+        mode: u+x
+        content: |
+          #!/bin/bash
+          export CUSTOM_INTERPRETER=1
+          exec python2.7 "$@"
+
+    - custom_python_detect_environment:
+      vars:
+        ansible_python_interpreter: /tmp/issue_152_interpreter.sh
+      register: out
+
+    - assert:
+        that:
+          - out.env.CUSTOM_INTERPRETER == "1"
+
+    - file:
+        path: /tmp/issue_152_interpreter.sh
+        state: absent

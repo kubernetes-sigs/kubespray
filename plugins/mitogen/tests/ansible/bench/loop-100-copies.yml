@@ -1,0 +1,25 @@
+
+- hosts: all
+  any_errors_fatal: true
+  tasks:
+
+  - name: Create file tree
+    connection: local
+    shell: >
+      mkdir -p /tmp/filetree.in;
+      for i in `seq -f /tmp/filetree.in/%g 1 100`; do echo $RANDOM > $i; done;
+
+  - name: Delete remote file tree
+    file: path=/tmp/filetree.out state=absent
+    when: 0
+
+  - file:
+      state: directory
+      path: /tmp/filetree.out
+
+  - name: Trigger nasty process pileup
+    copy:
+      src: "{{item.src}}"
+      dest: "/tmp/filetree.out/{{item.path}}"
+    with_filetree: /tmp/filetree.in
+    when: item.state == 'file'

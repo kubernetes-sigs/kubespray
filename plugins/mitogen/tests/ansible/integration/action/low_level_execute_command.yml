@@ -1,0 +1,32 @@
+# Verify the behaviour of _low_level_execute_command().
+
+- name: integration/action__low_level_execute_command.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+
+    # "echo -en" to test we actually hit bash shell too.
+    - name: Run raw module without sudo
+      raw: 'echo -en $((1 + 1))'
+      register: raw
+
+    - name: Verify raw module output.
+      assert:
+        that:
+          - 'raw.rc == 0'
+          - 'raw.stdout_lines == ["2"]'
+          - 'raw.stdout == "2"'
+
+    - name: Run raw module with sudo
+      become: true
+      raw: 'whoami'
+      register: raw
+
+    # Can't test stdout because TTY inserts \r in Ansible version.
+    - name: Verify raw module output.
+      assert:
+        that:
+        - raw.rc == 0
+        # WHY DOES VANILLA ANSIBLE INSERT NEWLINES HERE!?!?!?!?!?!ONE
+        - raw.stdout in ("\r\nroot\r\n", "root\r\n")
+        - raw.stdout_lines in (["", "root"], ["root"])

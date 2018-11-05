@@ -1,0 +1,68 @@
+
+- name: bench/file_transfer.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+
+  - name: Make 32MiB file
+    connection: local
+    shell: openssl rand 33554432 > /tmp/bigfile.in
+
+  - name: Make 320MiB file
+    connection: local
+    shell: >
+      cat
+      /tmp/bigfile.in
+      /tmp/bigfile.in
+      /tmp/bigfile.in
+      /tmp/bigfile.in
+      /tmp/bigfile.in
+      /tmp/bigfile.in
+      /tmp/bigfile.in
+      /tmp/bigfile.in
+      /tmp/bigfile.in
+      /tmp/bigfile.in
+      > /tmp/bigbigfile.in
+
+  - name: Delete SSH file is present.
+    file:
+      path: "{{item}}"
+      state: absent
+    become: true
+    with_items:
+    - /tmp/bigfile.out
+    - /tmp/bigbigfile.out
+
+  - name: Copy 32MiB file via SSH
+    copy:
+      src: /tmp/bigfile.in
+      dest: /tmp/bigfile.out
+
+  - name: Copy 320MiB file via SSH
+    copy:
+      src: /tmp/bigbigfile.in
+      dest: /tmp/bigbigfile.out
+
+  - name: Delete localhost sudo file if present.
+    file:
+      path: "{{item}}"
+      state: absent
+    connection: local
+    become: true
+    with_items:
+    - /tmp/bigfile.out
+    - /tmp/bigbigfile.out
+
+  - name: Copy 32MiB file via localhost sudo
+    connection: local
+    become: true
+    copy:
+      src: /tmp/bigfile.in
+      dest: /tmp/bigfile.out
+
+  - name: Copy 320MiB file via localhost sudo
+    connection: local
+    become: true
+    copy:
+      src: /tmp/bigbigfile.in
+      dest: /tmp/bigbigfile.out

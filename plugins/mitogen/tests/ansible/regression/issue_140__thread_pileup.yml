@@ -1,0 +1,30 @@
+# issue #140: with_filetree use caused unbounded (>500) thread growth in target
+# interpreter. No easy hook to check thread count, but doing a 1000 item
+# with_items should crash for other reasons (RAM, file descriptor count, ..)
+
+- name: regression/issue_140__thread_pileup.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+
+  - name: Create file tree
+    connection: local
+    shell: >
+      mkdir /tmp/filetree.in;
+      seq -f /tmp/filetree.in/%g 1 1000 | xargs touch;
+    args:
+      creates: /tmp/filetree.in
+
+  - name: Delete remote file tree
+    file: path=/tmp/filetree.out state=absent
+
+  - file:
+      state: directory
+      path: /tmp/filetree.out
+
+  - name: Trigger nasty process pileup
+    copy:
+      src: "{{item.src}}"
+      dest: "/tmp/filetree.out/{{item.path}}"
+    with_filetree: /tmp/filetree.in
+    when: item.state == 'file'

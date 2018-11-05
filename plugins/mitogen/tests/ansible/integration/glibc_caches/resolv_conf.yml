@@ -1,0 +1,37 @@
+
+# This cannot run against localhost, it damages /etc
+
+- name: integration/glibc_caches/resolv_conf.yml
+  gather_facts: true
+  become: true
+  hosts: test-targets
+  vars:
+    ansible_become_pass: has_sudo_pubkey_password
+  tasks:
+
+    - mitogen_test_gethostbyname:
+        name: www.google.com
+      register: out
+      when: ansible_virtualization_type == "docker"
+
+    - shell: cp /etc/resolv.conf /tmp/resolv.conf
+      when: ansible_virtualization_type == "docker"
+
+    - shell: echo > /etc/resolv.conf
+      when: ansible_virtualization_type == "docker"
+
+    - mitogen_test_gethostbyname:
+        name: www.google.com
+      register: out
+      ignore_errors: true
+      when: ansible_virtualization_type == "docker"
+
+    - shell: cat /tmp/resolv.conf > /etc/resolv.conf
+      when: ansible_virtualization_type == "docker"
+
+    - assert:
+        that:
+        - out.failed
+        - '"Name or service not known" in out.msg or
+           "Temporary failure in name resolution" in out.msg'
+      when: ansible_virtualization_type == "docker"

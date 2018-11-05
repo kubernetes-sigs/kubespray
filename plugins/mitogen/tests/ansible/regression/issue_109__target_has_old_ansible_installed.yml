@@ -1,0 +1,29 @@
+# issue #109: ensure that any 'ansible' module or package on the remote machine
+# does not conflict with operation.
+
+- name: regression/issue_109__target_has_old_ansible_installed.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  gather_facts: true
+  tasks:
+
+    # Copy the naughty 'ansible' into place.
+    - copy:
+        dest: "{{ansible_user_dir}}/ansible.py"
+        src: ansible.py
+
+    # Restart the connection.
+    - mitogen_shutdown_all:
+
+    - custom_python_detect_environment:
+      register: env
+
+    # Verify interpreter config would actually trigger the bug.
+    - assert:
+        that:
+          - env.cwd == ansible_user_dir
+          - (not env.mitogen_loaded) or (env.python_path.count("") == 1)
+
+    # Run some new-style modules that 'from ansible.module_utils...'
+    - stat:
+        path: /

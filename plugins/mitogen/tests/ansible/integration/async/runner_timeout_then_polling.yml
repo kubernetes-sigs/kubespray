@@ -1,0 +1,34 @@
+# Verify 'async: <timeout>' functions as desired.
+
+- name: integration/async/runner_timeout_then_polling.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+
+  # Verify async-with-timeout-then-poll behaviour.
+  # This is semi-broken in upstream Ansible, it does not bother to update the
+  # job file on failure. So only test on Mitogen.
+
+  - name: sleep for 7 seconds, but timeout after 1 second.
+    shell: sleep 10
+    async: 1
+    poll: 0
+    register: job
+    when: is_mitogen
+
+  - name: busy-poll up to 500 times
+    async_status:
+      jid: "{{job.ansible_job_id}}"
+    register: result
+    until: result.finished
+    retries: 500
+    delay: 0
+    when: is_mitogen
+    ignore_errors: true
+
+  - assert:
+      that:
+        - result.failed == 1
+        - result.finished == 1
+        - result.msg == "Job reached maximum time limit of 1 seconds."
+    when: is_mitogen

@@ -1,0 +1,58 @@
+# Verify basic operation of the synchronize module.
+
+- name: integration/action/synchronize.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  vars:
+    ansible_user: mitogen__has_sudo_pubkey
+    ansible_ssh_private_key_file: /tmp/synchronize-action-key
+  tasks:
+    # must copy git file to set proper file mode.
+    - copy:
+        dest: /tmp/synchronize-action-key
+        src: ../../../data/docker/mitogen__has_sudo_pubkey.key
+        mode: u=rw,go=
+      connection: local
+
+    - file:
+        path: /tmp/sync-test
+        state: absent
+      connection: local
+
+    - file:
+        path: /tmp/sync-test
+        state: directory
+      connection: local
+
+    - copy:
+        dest: /tmp/sync-test/item
+        content: "item!"
+      connection: local
+
+    - file:
+        path: /tmp/sync-test.out
+        state: absent
+      become: true
+
+    - synchronize:
+        private_key: /tmp/synchronize-action-key
+        dest: /tmp/sync-test.out
+        src: /tmp/sync-test/
+
+    - slurp:
+        src: /tmp/sync-test.out/item
+      register: out
+
+    - set_fact: outout="{{out.content|b64decode}}"
+
+    - assert:
+        that: outout == "item!"
+
+    - file:
+        path: "{{item}}"
+        state: absent
+      become: true
+      with_items:
+      - /tmp/synchronize-action-key
+      - /tmp/sync-test
+      - /tmp/sync-test.out

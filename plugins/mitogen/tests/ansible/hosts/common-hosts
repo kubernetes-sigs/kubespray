@@ -1,0 +1,43 @@
+# vim: syntax=dosini
+
+
+# This must be defined explicitly, otherwise _create_implicit_localhost()
+# generates its own copy, which includes an ansible_python_interpreter that
+# varies according to host machine.
+localhost
+
+[connection-delegation-test]
+cd-bastion
+cd-rack11 mitogen_via=ssh-user@cd-bastion
+cd-rack11a mitogen_via=root@cd-rack11
+cd-rack11a-docker mitogen_via=docker-admin@cd-rack11a ansible_connection=docker
+
+[connection-delegation-cycle]
+# Create cycle with Docker container.
+cdc-bastion mitogen_via=cdc-rack11a-docker
+cdc-rack11 mitogen_via=ssh-user@cdc-bastion
+cdc-rack11a mitogen_via=root@cdc-rack11
+cdc-rack11a-docker mitogen_via=docker-admin@cdc-rack11a ansible_connection=docker
+
+[conn-delegation]
+cd-user1 ansible_user=mitogen__user1 ansible_connection=mitogen_sudo mitogen_via=target
+
+
+# Connection delegation scenarios. It's impossible to connection to them, but
+# you can inspect the would-be config via "mitogen_get_stack" action.
+[cd-no-connect]
+# Normal inventory host, no aliasing.
+cd-normal ansible_connection=mitogen_doas ansible_user=normal-user
+# Inventory host that is really a different host.
+cd-alias ansible_connection=ssh ansible_user=alias-user ansible_host=alias-host
+
+# Via one normal host.
+cd-normal-normal mitogen_via=cd-normal
+# Via one aliased host.
+cd-normal-alias mitogen_via=cd-alias
+
+# newuser@host via host with explicit username.
+cd-newuser-normal-normal mitogen_via=cd-normal ansible_user=newuser-normal-normal-user
+
+# doas:newuser via host.
+cd-newuser-doas-normal mitogen_via=cd-normal ansible_connection=mitogen_doas ansible_user=newuser-doas-normal-user

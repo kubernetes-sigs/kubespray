@@ -1,0 +1,43 @@
+
+- name: integration/async/result_binary_producing_junk.yml
+  gather_facts: true
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+
+  - block:
+    - custom_binary_producing_junk_Darwin:
+      async: 100
+      poll: 0
+      register: job_darwin
+    - set_fact: job={{job_darwin}}
+    when: ansible_system == "Darwin"
+
+  - block:
+    - custom_binary_producing_junk_Linux:
+      async: 100
+      poll: 0
+      register: job_linux
+    - set_fact: job={{job_linux}}
+    when: ansible_system == "Linux"
+
+  - shell: sleep 1
+
+  - slurp:
+      src: "{{ansible_user_dir}}/.ansible_async/{{job.ansible_job_id}}"
+    register: result
+
+  #- debug: msg={{async_out}}
+    #vars:
+      #async_out: "{{result.content|b64decode|from_json}}"
+
+  - assert:
+      that:
+        - async_out.ansible_job_id == job.ansible_job_id
+        - async_out.data == "Hello, world.\n"
+        - async_out.failed == 1
+        - async_out.msg.startswith("Traceback")
+        - '"ValueError: No start of json char found\n" in async_out.msg'
+        - 'async_out.stderr == "binary_producing_junk: oh noes\n"'
+    vars:
+      async_out: "{{result.content|b64decode|from_json}}"

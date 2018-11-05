@@ -1,0 +1,59 @@
+
+- name: integration/async/runner_two_simultaneous_jobs.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+
+  # Start 2 duplicate jobs, verify they run concurrently.
+
+  - file:
+      path: /tmp/flurp
+      state: absent
+
+  - name: create semaphore file and sleep for 5 seconds.
+    shell: |
+      exec 2>/dev/null;
+      bash -c '
+        echo im_alive $$ > /tmp/flurp;
+        sleep 60;
+      ';
+      rm -f /tmp/flurp;
+      echo alldone
+    async: 30
+    poll: 0
+    register: job1
+
+  # This guy prints the first field from the semaphore file and kills the PID
+  # from the second field, cancelling the slow sleep above, so the busy-poll
+  # below compltes quickly.
+  - name: verify semaphore file exists while this job exists.
+    shell: |
+      while [ ! -f /tmp/flurp ]; do sleep 0.1; done;
+      read im_alive pid < /tmp/flurp
+      echo $im_alive
+      kill $pid &>/dev/null
+    async: 30
+    poll: 0
+    register: job2
+
+  - name: (job1) poll
+    async_status:
+      jid: "{{job1.ansible_job_id}}"
+    register: result1
+    until: result1.finished
+    retries: 5
+    delay: 1
+
+  - name: (job2) poll
+    async_status:
+      jid: "{{job2.ansible_job_id}}"
+    register: result2
+    until: result2.finished
+    retries: 5
+    delay: 1
+
+  - assert:
+      that:
+        - result1.rc == 0
+        - result2.rc == 0
+        - result2.stdout == 'im_alive'

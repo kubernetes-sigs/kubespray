@@ -1,0 +1,41 @@
+# Verify a maximum number of contexts are possible on one machine.
+
+- name: integration/context_service/lru_one_target.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  vars:
+    max_interps: "{{lookup('env', 'MITOGEN_MAX_INTERPRETERS')}}"
+    ubound: "{{max_interps|int + 1}}"
+
+  tasks:
+
+    - name: Reset all connections
+      mitogen_shutdown_all:
+      when: is_mitogen
+
+    - name: Spin up a bunch of interpreters
+      custom_python_detect_environment:
+      become: true
+      vars:
+        ansible_become_user: "mitogen__user{{item}}"
+      with_sequence: start=1 end={{ubound}}
+      register: first_run
+
+    - name: Reuse them
+      custom_python_detect_environment:
+      become: true
+      vars:
+        ansible_become_user: "mitogen__user{{item}}"
+      with_sequence: start=1 end={{ubound}}
+      register: second_run
+
+    - assert:
+        that:
+        - first_run.results[item|int].pid == second_run.results[item|int].pid
+      with_items: start=0 end={{max_interps}}
+      when: is_mitogen
+
+    - assert:
+        that:
+        - first_run.results[-1].pid != second_run.results[-1].pid
+      when: is_mitogen

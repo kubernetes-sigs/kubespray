@@ -1,0 +1,152 @@
+#
+# Add users expected by tests. Assumes passwordless sudo to root.
+#
+# WARNING: this creates non-privilged accounts with pre-set passwords!
+#
+
+- hosts: all
+  gather_facts: true
+  strategy: mitogen_free
+  become: true
+  vars:
+    distro: "{{ansible_distribution}}"
+    ver: "{{ansible_distribution_major_version}}"
+
+    special_users:
+      - has_sudo
+      - has_sudo_nopw
+      - has_sudo_pubkey
+      - pw_required
+      - readonly_homedir
+      - require_tty
+      - require_tty_pw_required
+      - slow_user
+      - webapp
+      - sudo1
+      - sudo2
+      - sudo3
+      - sudo4
+
+    user_groups:
+      has_sudo: ['mitogen__group', '{{sudo_group[distro]}}']
+      has_sudo_pubkey: ['mitogen__group', '{{sudo_group[distro]}}']
+      has_sudo_nopw: ['mitogen__group', 'mitogen__sudo_nopw']
+      sudo1: ['mitogen__group', 'mitogen__sudo_nopw']
+      sudo2: ['mitogen__group', '{{sudo_group[distro]}}']
+      sudo3: ['mitogen__group', '{{sudo_group[distro]}}']
+      sudo4: ['mitogen__group', '{{sudo_group[distro]}}']
+
+    normal_users: "{{
+      lookup('sequence', 'start=1 end=5 format=user%d', wantlist=True)
+    }}"
+
+    all_users: "{{
+      special_users +
+      normal_users
+    }}"
+  tasks:
+    - name: Disable non-localhost SSH for Mitogen users
+      when: false
+      blockinfile:
+        path: /etc/ssh/sshd_config
+        block: |
+          Match User mitogen__* Address !127.0.0.1
+            DenyUsers *
+
+    - name: Create Mitogen test groups
+      group:
+        name: "mitogen__{{item}}"
+      with_items:
+      - group
+      - sudo_nopw
+
+    - name: Create user accounts
+      block:
+      - user:
+          name: "mitogen__{{item}}"
+          shell: /bin/bash
+          groups: "{{user_groups[item]|default(['mitogen__group'])}}"
+          password: "{{ (item + '_password') | password_hash('sha256') }}"
+        loop: "{{all_users}}"
+        when: ansible_system != 'Darwin'
+      - user:
+          name: "mitogen__{{item}}"
+          shell: /bin/bash
+          groups: "{{user_groups[item]|default(['mitogen__group'])}}"
+          password: "{{item}}_password"
+        loop: "{{all_users}}"
+        when: ansible_system == 'Darwin'
+
+    - name: Hide users from login window.
+      loop: "{{all_users}}"
+      when: ansible_system == 'Darwin'
+      osx_defaults:
+        array_add: true
+        domain: /Library/Preferences/com.apple.loginwindow
+        type: array
+        key: HiddenUsersList
+        value: ['mitogen_{{item}}']
+
+    - name: Readonly homedir for one account
+      shell: "chown -R root: ~mitogen__readonly_homedir"
+
+    - name: Slow bash profile for one account
+      copy:
+        dest: ~mitogen__slow_user/.{{item}}
+        src: ../data/docker/mitogen__slow_user.profile
+      with_items:
+      - bashrc
+      - profile
+
+    - name: Install pubkey for mitogen__has_sudo_pubkey
+      block:
+        - file:
+            path: ~mitogen__has_sudo_pubkey/.ssh
+            state: directory
+            mode: go=
+            owner: mitogen__has_sudo_pubkey
+        - copy:
+            dest: ~mitogen__has_sudo_pubkey/.ssh/authorized_keys
+            src: ../data/docker/mitogen__has_sudo_pubkey.key.pub
+            mode: go=
+            owner: mitogen__has_sudo_pubkey
+
+    - name: Install slow profile for one account
+      block:
+        - copy:
+            dest: ~mitogen__slow_user/.profile
+            src: ../data/docker/mitogen__slow_user.profile
+        - copy:
+            dest: ~mitogen__slow_user/.bashrc
+            src: ../data/docker/mitogen__slow_user.profile
+
+    - name: Require a TTY for two accounts
+      lineinfile:
+        path: /etc/sudoers
+        line: "{{item}}"
+      with_items:
+        - Defaults>mitogen__pw_required targetpw
+        - Defaults>mitogen__require_tty requiretty
+        - Defaults>mitogen__require_tty_pw_required requiretty,targetpw
+
+    - name: Require password for two accounts
+      lineinfile:
+        path: /etc/sudoers
+        line: "{{lookup('pipe', 'whoami')}} ALL = ({{item}}) ALL"
+      with_items:
+        - mitogen__pw_required
+        - mitogen__require_tty_pw_required
+
+    - name: Allow passwordless sudo for require_tty/readonly_homedir
+      lineinfile:
+        path: /etc/sudoers
+        line: "{{lookup('pipe', 'whoami')}} ALL = ({{item}}) NOPASSWD:ALL"
+      with_items:
+        - mitogen__require_tty
+        - mitogen__readonly_homedir
+
+    - name: Allow passwordless for many accounts
+      lineinfile:
+        path: /etc/sudoers
+        line: "{{lookup('pipe', 'whoami')}} ALL = (mitogen__{{item}}) NOPASSWD:ALL"
+      loop: "{{normal_users}}"

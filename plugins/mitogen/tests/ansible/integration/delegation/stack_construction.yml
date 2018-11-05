@@ -1,0 +1,371 @@
+# https://github.com/dw/mitogen/issues/251
+
+# ansible_mitogen.connection internally reinterprets Ansible state into a
+# 'connection stack' -- this is just a list of dictionaries specifying a
+# sequence of proxied Router connection methods and their kwargs used to
+# establish the connection. That list is passed to ContextService, which loops
+# over the stack specifying via=(None or previous entry) for each connection
+# method.
+
+# mitogen_get_stack is a magic action that returns the stack, so we can test
+# all kinds of scenarios without actually needing a real environmnt.
+
+# Updating this file? Install 'pprintpp' and hack lib/callbacks/nice_stdout.py
+# to use it instead of the built-in function, then simply s/'/'/ to get the
+# cutpasteable formatted dicts below. WARNING: remove the trailing comma from
+# the result list element, it seems to cause assert to silently succeed!
+
+
+- name: integration/delegation/stack_construction.yml
+  hosts: cd-normal
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    # used later for local_action test.
+    - local_action: custom_python_detect_environment
+      register: local_env
+
+
+- hosts: cd-normal
+  any_errors_fatal: true
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    - mitogen_get_stack:
+      register: out
+    - assert:
+        that: |
+          out.result == [
+            {
+              "kwargs": {
+                "connect_timeout": 10,
+                "doas_path": None,
+                "password": None,
+                "python_path": ["/usr/bin/python"],
+                "username": "normal-user",
+              },
+              "method": "doas",
+            }
+          ]
+
+
+- hosts: cd-normal
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    - mitogen_get_stack:
+      delegate_to: cd-alias
+      register: out
+    - assert:
+        that: |
+          out.result == [
+              {
+                  'kwargs': {
+                      'check_host_keys': 'ignore',
+                      'connect_timeout': 10,
+                      'hostname': 'alias-host',
+                      'identities_only': False,
+                      'identity_file': None,
+                      'password': None,
+                      'port': None,
+                      'python_path': None,
+                      'ssh_args': [
+                          '-o',
+                          'ForwardAgent=yes',
+                          '-o',
+                          'ControlMaster=auto',
+                          '-o',
+                          'ControlPersist=60s',
+                      ],
+                      'ssh_debug_level': None,
+                      'ssh_path': 'ssh',
+                      'username': 'alias-user',
+                  },
+                  'method': 'ssh',
+              },
+          ]
+
+
+- hosts: cd-alias
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    - mitogen_get_stack:
+      register: out
+    - assert:
+        that: |
+          out.result == [
+              {
+                  'kwargs': {
+                      'check_host_keys': 'ignore',
+                      'connect_timeout': 10,
+                      'hostname': 'alias-host',
+                      'identities_only': False,
+                      'identity_file': None,
+                      'password': None,
+                      'port': None,
+                      'python_path': ['/usr/bin/python'],
+                      'ssh_args': [
+                          '-o',
+                          'ForwardAgent=yes',
+                          '-o',
+                          'ControlMaster=auto',
+                          '-o',
+                          'ControlPersist=60s',
+                      ],
+                      'ssh_debug_level': None,
+                      'ssh_path': 'ssh',
+                      'username': 'alias-user',
+                  },
+                  'method': 'ssh',
+              },
+          ]
+
+
+- hosts: cd-normal-normal
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    - mitogen_get_stack:
+      register: out
+    - assert:
+        that: |
+          out.result == [
+              {
+                  'kwargs': {
+                      'connect_timeout': 10,
+                      'doas_path': None,
+                      'password': None,
+                      'python_path': None,
+                      'username': 'normal-user',
+                  },
+                  'method': 'doas',
+              },
+              {
+                  'kwargs': {
+                      'check_host_keys': 'ignore',
+                      'connect_timeout': 10,
+                      'hostname': 'cd-normal-normal',
+                      'identities_only': False,
+                      'identity_file': None,
+                      'password': None,
+                      'port': None,
+                      'python_path': ['/usr/bin/python'],
+                      'ssh_args': [
+                          '-o',
+                          'ForwardAgent=yes',
+                          '-o',
+                          'ControlMaster=auto',
+                          '-o',
+                          'ControlPersist=60s',
+                      ],
+                      'ssh_debug_level': None,
+                      'ssh_path': 'ssh',
+                      'username': None,
+                  },
+                  'method': 'ssh',
+              },
+          ]
+
+
+- hosts: cd-normal-alias
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    - mitogen_get_stack:
+      register: out
+    - assert:
+        that: |
+          out.result == [
+              {
+                  'kwargs': {
+                      'check_host_keys': 'ignore',
+                      'connect_timeout': 10,
+                      'hostname': 'alias-host',
+                      'identities_only': False,
+                      'identity_file': None,
+                      'password': None,
+                      'port': None,
+                      'python_path': None,
+                      'ssh_args': [
+                          '-o',
+                          'ForwardAgent=yes',
+                          '-o',
+                          'ControlMaster=auto',
+                          '-o',
+                          'ControlPersist=60s',
+                      ],
+                      'ssh_debug_level': None,
+                      'ssh_path': 'ssh',
+                      'username': 'alias-user',
+                  },
+                  'method': 'ssh',
+              },
+              {
+                  'kwargs': {
+                      'check_host_keys': 'ignore',
+                      'connect_timeout': 10,
+                      'hostname': 'cd-normal-alias',
+                      'identities_only': False,
+                      'identity_file': None,
+                      'password': None,
+                      'port': None,
+                      'python_path': ['/usr/bin/python'],
+                      'ssh_args': [
+                          '-o',
+                          'ForwardAgent=yes',
+                          '-o',
+                          'ControlMaster=auto',
+                          '-o',
+                          'ControlPersist=60s',
+                      ],
+                      'ssh_debug_level': None,
+                      'ssh_path': 'ssh',
+                      'username': None,
+                  },
+                  'method': 'ssh',
+              },
+          ]
+
+
+- hosts: cd-newuser-normal-normal
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    - mitogen_get_stack:
+      register: out
+    - assert:
+        that: |
+          out.result == [
+              {
+                  'kwargs': {
+                      'connect_timeout': 10,
+                      'doas_path': None,
+                      'password': None,
+                      'python_path': None,
+                      'username': 'normal-user',
+                  },
+                  'method': 'doas',
+              },
+              {
+                  'kwargs': {
+                      'check_host_keys': 'ignore',
+                      'connect_timeout': 10,
+                      'hostname': 'cd-newuser-normal-normal',
+                      'identities_only': False,
+                      'identity_file': None,
+                      'password': None,
+                      'port': None,
+                      'python_path': ['/usr/bin/python'],
+                      'ssh_args': [
+                          '-o',
+                          'ForwardAgent=yes',
+                          '-o',
+                          'ControlMaster=auto',
+                          '-o',
+                          'ControlPersist=60s',
+                      ],
+                      'ssh_debug_level': None,
+                      'ssh_path': 'ssh',
+                      'username': 'newuser-normal-normal-user',
+                  },
+                  'method': 'ssh',
+              },
+          ]
+
+
+- hosts: cd-newuser-normal-normal
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    - mitogen_get_stack:
+      delegate_to: cd-alias
+      register: out
+    - assert:
+        that: |
+          out.result == [
+              {
+                  'kwargs': {
+                      'check_host_keys': 'ignore',
+                      'connect_timeout': 10,
+                      'hostname': 'alias-host',
+                      'identities_only': False,
+                      'identity_file': None,
+                      'password': None,
+                      'port': None,
+                      'python_path': None,
+                      'ssh_args': [
+                          '-o',
+                          'ForwardAgent=yes',
+                          '-o',
+                          'ControlMaster=auto',
+                          '-o',
+                          'ControlPersist=60s',
+                      ],
+                      'ssh_debug_level': None,
+                      'ssh_path': 'ssh',
+                      'username': 'alias-user',
+                  },
+                  'method': 'ssh',
+              },
+          ]
+
+
+- hosts: cd-newuser-normal-normal
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    - local_action: mitogen_get_stack
+      register: out
+    - assert:
+        that: |
+          out.result == [
+              {
+                  'kwargs': {
+                      'python_path': None
+                  },
+                  'method': 'local',
+              },
+          ]
+
+
+- hosts: cd-newuser-doas-normal
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    - mitogen_get_stack:
+      register: out
+    - assert:
+        that: |
+          out.result == [
+              {
+                  'kwargs': {
+                      'connect_timeout': 10,
+                      'doas_path': None,
+                      'password': None,
+                      'python_path': None,
+                      'username': 'normal-user',
+                  },
+                  'method': 'doas',
+              },
+              {
+                  'kwargs': {
+                      'connect_timeout': 10,
+                      'doas_path': None,
+                      'password': None,
+                      'python_path': ['/usr/bin/python'],
+                      'username': 'newuser-doas-normal-user',
+                  },
+                  'method': 'doas',
+              },
+          ]

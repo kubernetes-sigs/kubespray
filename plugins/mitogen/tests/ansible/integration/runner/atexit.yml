@@ -1,0 +1,31 @@
+# issue #397: newer Ansibles rely on atexit to cleanup their temporary
+# directories. Ensure atexit handlers run during runner completion.
+
+- name: integration/runner/atexit.yml
+  hosts: test-targets
+  gather_facts: false
+  any_errors_fatal: false
+  tasks:
+
+    #
+    # Verify a run with a healthy atexit handler. Broken handlers cause an
+    # exception to be raised.
+    #
+
+    - custom_python_run_script:
+        script: |
+          import atexit
+          atexit.register(lambda:
+            open('/tmp/atexit-was-triggered', 'w').write('yep'))
+
+    - slurp:
+        path: /tmp/atexit-was-triggered
+      register: out
+
+    - assert:
+        that:
+        - out.content|b64decode == "yep"
+
+    - file:
+        path: /tmp/atexit-was-triggered
+        state: absent

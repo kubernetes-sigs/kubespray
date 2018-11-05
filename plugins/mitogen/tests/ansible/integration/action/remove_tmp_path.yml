@@ -1,0 +1,40 @@
+#
+# Ensure _remove_tmp_path cleans up the temporary path.
+#
+#
+- name: integration/action/remove_tmp_path.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    #
+    # Use the copy module to cause a temporary directory to be created, and
+    # return a result with a 'src' attribute pointing into that directory.
+    #
+
+    - copy:
+        dest: /tmp/remove_tmp_path_test
+        content: "{{ 123123 | random }}"
+      register: out
+
+    - stat:
+        path: "{{out.src}}"
+      register: out2
+
+    - assert:
+        that:
+        - not out2.stat.exists
+
+    - stat:
+        path: "{{out.src|dirname}}"
+      register: out2
+
+    - assert:
+        that:
+        - not out2.stat.exists
+
+    - file:
+        path: /tmp/remove_tmp_path_test
+        state: absent

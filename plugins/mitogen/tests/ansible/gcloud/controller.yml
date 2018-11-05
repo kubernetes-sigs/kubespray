@@ -1,0 +1,118 @@
+
+- hosts: controller
+  vars:
+    git_username: '{{ lookup("pipe", "git config --global user.name") }}'
+    git_email: '{{ lookup("pipe", "git config --global user.email") }}'
+
+  tasks:
+    - lineinfile:
+        line: "{{item}}"
+        path: /etc/sysctl.conf
+      register: sysctl_conf
+      become: true
+      with_items:
+        - "net.ipv4.ip_forward=1"
+        - "kernel.perf_event_paranoid=-1"
+
+    - copy:
+        src: ~/.ssh/id_gitlab
+        dest: ~/.ssh/id_gitlab
+        mode: 0600
+
+    - template:
+        dest: ~/.ssh/config
+        src: ssh_config.j2
+
+    - lineinfile:
+        line: "net.ipv4.ip_forward=1"
+        path: /etc/sysctl.conf
+      register: sysctl_conf
+      become: true
+
+    - shell: /sbin/sysctl -p
+      when: sysctl_conf.changed
+      become: true
+
+    - shell: |
+        iptables -t nat -F;
+        iptables -t nat -X;
+        iptables -t nat -A POSTROUTING -j MASQUERADE;
+      become: true
+
+    - apt: name={{item}} state=installed
+      become: true
+      with_items:
+      - python-pip
+      - python-virtualenv
+      - strace
+      - libldap2-dev
+      - libsasl2-dev
+      - build-essential
+      - git
+      - rsync
+
+    - shell: "rsync -a ~/.ssh {{inventory_hostname}}:"
+      connection: local
+
+    - shell: |
+        git config --global user.email "{{git_username}}"
+        git config --global user.name "{{git_email}}"
+      name: set_git_config
+
+    - git:
+        dest: ~/mitogen
+        repo: https://github.com/dw/mitogen.git
+        version: dmw
+
+    - git:
+        dest: ~/ansible
+        repo: https://github.com/dw/ansible.git
+        version: dmw
+
+    - pip:
+        virtualenv: ~/venv
+        requirements: ~/mitogen/dev_requirements.txt
+
+    - pip:
+        virtualenv: ~/venv
+        editable: true
+        name: ~/mitogen
+
+    - pip:
+        virtualenv: ~/venv
+        editable: true
+        name: ~/ansible
+
+    - pip:
+        virtualenv: ~/venv
+        name: debops
+
+    - lineinfile:
+        line: "source $HOME/venv/bin/activate"
+        path: ~/.profile
+
+    - name: debops-init
+      shell: ~/venv/bin/debops-init ~/prj
+      args:
+        creates: ~/prj
+
+    - name: grpvars
+      copy:
+        dest: "{{ansible_user_dir}}/prj/ansible/inventory/group_vars/all/dhparam.yml"
+        content: |
+          ---
+          dhparam__bits: [ '256' ]
+
+    - blockinfile:
+        path: ~/prj/.debops.cfg
+        insertafter: '\[ansible defaults\]'
+        block: |
+          strategy_plugins = {{ansible_user_dir}}/mitogen/ansible_mitogen/plugins/strategy
+          forks = 50
+          host_key_checking = False
+
+    - file:
+        path: ~/prj/ansible/inventory/gcloud.py
+        state: link
+        src: ~/mitogen/tests/ansible/lib/inventory/gcloud.py
+

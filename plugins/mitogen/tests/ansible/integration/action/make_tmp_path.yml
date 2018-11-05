@@ -1,0 +1,156 @@
+#
+# Ensure _make_tmp_path returns the same result across invocations for a single
+# user account, and that the path returned cleans itself up on connection
+# termination.
+#
+# Related bugs prior to the new-style handling:
+#   https://github.com/dw/mitogen/issues/239
+#   https://github.com/dw/mitogen/issues/301
+
+- name: integration/action/make_tmp_path.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+    - meta: end_play
+      when: not is_mitogen
+
+    #
+    # non-root
+    #
+
+    - name: "Find regular temp path"
+      action_passthrough:
+        method: _make_tmp_path
+      register: tmp_path
+
+    - name: "Find regular temp path (new task)"
+      action_passthrough:
+        method: _make_tmp_path
+      register: tmp_path2
+
+    - name: "Find good temp path"
+      set_fact:
+        good_temp_path: "{{tmp_path.result|dirname}}"
+
+    - name: "Find good temp path (new task)"
+      set_fact:
+        good_temp_path2: "{{tmp_path2.result|dirname}}"
+
+    - name: "Verify common base path for both tasks"
+      assert:
+        that:
+        - good_temp_path == good_temp_path2
+
+    - name: "Verify different subdir for both tasks"
+      assert:
+        that:
+        - tmp_path.result != tmp_path2.result
+
+    #
+    # Verify subdirectory removal.
+    #
+
+    - name: Stat temp path
+      stat:
+        path: "{{tmp_path.result}}"
+      register: stat1
+
+    - name: Stat temp path (new task)
+      stat:
+        path: "{{tmp_path2.result}}"
+      register: stat2
+
+    - name: "Verify neither subdir exists any more"
+      assert:
+        that:
+        - not stat1.stat.exists
+        - not stat2.stat.exists
+
+    #
+    # Verify good directory persistence.
+    #
+
+    - name: Stat good temp path (new task)
+      stat:
+        path: "{{good_temp_path}}"
+      register: stat
+
+    - name: "Verify good temp path is persistent"
+      assert:
+        that:
+        - stat.stat.exists
+
+    #
+    # Write some junk into the temp path.
+    #
+
+    - name: "Write junk to temp path and verify it disappears"
+      custom_python_run_script:
+        script: |
+          from ansible.module_utils.basic import get_module_path
+          path = get_module_path() + '/foo.txt'
+          result['path'] = path
+          open(path, 'w').write("bar")
+      register: out
+
+    - name: "Verify junk disappeared."
+      stat:
+        path: "{{out.path}}"
+      register: out
+
+    - assert:
+        that:
+        - not out.stat.exists
+
+    #
+    # root
+    #
+
+    - name: "Find root temp path"
+      become: true
+      action_passthrough:
+        method: _make_tmp_path
+      register: tmp_path_root
+
+    - name: "Verify root temp path differs from regular path"
+      assert:
+        that:
+        - tmp_path2.result != tmp_path_root.result
+
+    #
+    # readonly homedir
+    #
+
+    - name: "Try writing to temp directory for the readonly_homedir user"
+      become: true
+      become_user: mitogen__readonly_homedir
+      custom_python_run_script:
+        script: |
+          from ansible.module_utils.basic import get_module_path
+          path = get_module_path() + '/foo.txt'
+          result['path'] = path
+          open(path, 'w').write("bar")
+      register: tmp_path
+
+    #
+    # modules get the same base dir
+    #
+
+    - name: "Verify modules get the same tmpdir as the action plugin"
+      custom_python_detect_environment:
+      register: out
+
+    # v2.6 related: https://github.com/ansible/ansible/pull/39833
+    - name: "Verify modules get the same tmpdir as the action plugin (<2.5)"
+      when: ansible_version.full < '2.5'
+      assert:
+        that:
+        - out.module_path.startswith(good_temp_path2)
+        - out.module_tmpdir == None
+
+    - name: "Verify modules get the same tmpdir as the action plugin (>2.5)"
+      when: ansible_version.full > '2.5'
+      assert:
+        that:
+        - out.module_path.startswith(good_temp_path2)
+        - out.module_tmpdir.startswith(good_temp_path2)

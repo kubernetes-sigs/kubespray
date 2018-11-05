@@ -1,0 +1,54 @@
+# Verify async jobs run in a new process.
+
+- name: integration/async/runner_new_process.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+
+  - name: get process ID.
+    custom_python_detect_environment:
+    register: sync_proc1
+
+  - name: get process ID again.
+    custom_python_detect_environment:
+    register: sync_proc2
+
+  - assert:
+      that:
+      - sync_proc1.pid == sync_proc2.pid
+    when: is_mitogen
+
+  - name: get async process ID.
+    custom_python_detect_environment:
+    register: async_proc1
+    async: 1000
+    poll: 0
+
+  - name: busy-poll up to 100000 times
+    async_status:
+      jid: "{{async_proc1.ansible_job_id}}"
+    register: async_result1
+    until: async_result1.finished
+    retries: 100000
+    delay: 0
+
+  - name: get async process ID again.
+    custom_python_detect_environment:
+    register: async_proc2
+    async: 1000
+    poll: 0
+
+  - name: busy-poll up to 100000 times
+    async_status:
+      jid: "{{async_proc2.ansible_job_id}}"
+    register: async_result2
+    until: async_result2.finished
+    retries: 100000
+    delay: 0
+
+  - assert:
+      that:
+      - sync_proc1.pid == sync_proc2.pid
+      - async_result1.pid != sync_proc1.pid
+      - async_result1.pid != async_result2.pid
+    when: is_mitogen

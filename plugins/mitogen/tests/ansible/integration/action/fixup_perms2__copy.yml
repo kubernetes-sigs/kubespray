@@ -1,0 +1,117 @@
+# Verify action plugins still set file modes correctly even though
+# fixup_perms2() avoids setting execute bit despite being asked to.
+
+- name: integration/action/fixup_perms2__copy.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+    - name: Get default remote file mode
+      shell: python -c 'import os; print("%04o" % (int("0666", 8) & ~os.umask(0)))'
+      register: py_umask
+
+    - name: Set default file mode
+      set_fact:
+        mode: "{{py_umask.stdout}}"
+
+    #
+    # copy module (no mode).
+    #
+
+    - name: "Copy files (no mode)"
+      copy:
+        content: ""
+        dest: /tmp/copy-no-mode
+
+    - stat: path=/tmp/copy-no-mode
+      register: out
+    - assert:
+        that:
+        -  out.stat.mode == mode
+
+    #
+    # copy module (explicit mode).
+    #
+
+    - name: "Copy files from content: arg"
+      copy:
+        content: ""
+        mode: 0400
+        dest: /tmp/copy-with-mode
+
+    - stat: path=/tmp/copy-with-mode
+      register: out
+    - assert:
+        that:
+        -  out.stat.mode == "0400"
+
+    #
+    # copy module (existing disk files, no mode).
+    #
+
+    - file:
+        path: /tmp/weird-mode.out
+        state: absent
+
+    - name: Create local test file.
+      connection: local
+      copy:
+        content: "weird mode"
+        dest: "/tmp/weird-mode"
+        mode: "1462"
+
+    - copy:
+        src: "/tmp/weird-mode"
+        dest: "/tmp/weird-mode.out"
+
+    - stat:
+        path: "/tmp/weird-mode.out"
+      register: out
+    - assert:
+        that:
+        - out.stat.mode == mode
+
+    #
+    # copy module (existing disk files, preserve mode).
+    #
+
+    - copy:
+        src: "/tmp/weird-mode"
+        dest: "/tmp/weird-mode"
+        mode: preserve
+
+    - stat:
+        path: "/tmp/weird-mode"
+      register: out
+    - assert:
+        that:
+        - out.stat.mode == "1462"
+
+    #
+    # copy module (existing disk files, explicit mode).
+    #
+
+    - copy:
+        src: "/tmp/weird-mode"
+        dest: "/tmp/weird-mode"
+        mode: "1461"
+
+    - stat:
+        path: "/tmp/weird-mode"
+      register: out
+
+    - assert:
+        that:
+        - out.stat.mode == "1461"
+
+    - file:
+        state: absent
+        path: "{{item}}"
+      with_items:
+      - /tmp/weird-mode
+      - /tmp/weird-mode.out
+      - /tmp/copy-no-mode
+      - /tmp/copy-no-mode.out
+      - /tmp/copy-with-mode
+      - /tmp/copy-with-mode.out
+
+    # end of cleaning out files

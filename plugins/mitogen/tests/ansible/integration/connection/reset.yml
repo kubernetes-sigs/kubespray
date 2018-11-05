@@ -1,0 +1,38 @@
+# issue #369: Connection.reset() should cause destruction of the remote
+# interpreter and any children.
+
+---
+
+- name: integration/connection/reset.yml
+  hosts: test-targets
+  tasks:
+  - when: is_mitogen
+    block:
+    - custom_python_detect_environment:
+      register: out
+
+    - custom_python_detect_environment:
+      become: true
+      register: out_become
+
+    - meta: reset_connection
+
+    - custom_python_detect_environment:
+      register: out2
+
+    - custom_python_detect_environment:
+      register: out_become2
+
+    - assert:
+        that:
+        # Interpreter PID has changed.
+        - out.pid != out2.pid
+
+        # SSH PID has changed.
+        - out.ppid != out2.ppid
+
+        # Interpreter PID has changed.
+        - out_become.pid != out_become2.pid
+
+        # sudo PID has changed.
+        - out_become.ppid != out_become2.ppid

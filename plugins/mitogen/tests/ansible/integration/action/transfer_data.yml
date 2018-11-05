@@ -1,0 +1,46 @@
+
+- name: integration/action/transfer_data.yml
+  hosts: test-targets
+  any_errors_fatal: true
+  tasks:
+
+    - file:
+        path: /tmp/transfer-data
+        state: absent
+
+    # Ensure it JSON-encodes dicts.
+    - action_passthrough:
+        method: _transfer_data
+        kwargs:
+          remote_path: /tmp/transfer-data
+          data: {
+            "I am JSON": true
+          }
+
+    - slurp:
+        src: /tmp/transfer-data
+      register: out
+
+    - assert:
+        that: |
+          out.content|b64decode == '{"I am JSON": true}'
+
+
+    # Ensure it handles strings.
+    - action_passthrough:
+        method: _transfer_data
+        kwargs:
+          remote_path: /tmp/transfer-data
+          data: "I am text."
+
+    - slurp:
+        src: /tmp/transfer-data
+      register: out
+
+    - assert:
+        that:
+          out.content|b64decode == 'I am text.'
+
+    - file:
+        path: /tmp/transfer-data
+        state: absent

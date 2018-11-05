@@ -1,0 +1,44 @@
+# issue 370: Connection should reset to 'disconnected' state when disconnect
+# detected
+#
+# Previously the 'Mitogen was disconnected' error would fail the first task,
+# but the Connection instance would still think it still had a valid
+# connection.
+#
+# See also disconnect_during_module.yml
+
+---
+
+- name: integration/connection/disconnect_resets_connection.yml
+  hosts: test-targets
+  gather_facts: no
+  any_errors_fatal: true
+  tasks:
+  - mitogen_action_script:
+      script: |
+        import sys
+        from ansible.errors import AnsibleConnectionFailure
+
+        assert not self._connection.connected, \
+          "Connection was not initially disconnected."
+
+        self._low_level_execute_command('echo')
+        assert self._connection.connected, \
+          "Connection was not connected after good command."
+
+        try:
+          self._low_level_execute_command('kill -9 $PPID')
+          assert 0, 'AnsibleConnectionFailure was not raised'
+        except AnsibleConnectionFailure:
+          e = sys.exc_info()[1]
+          assert str(e).startswith('Mitogen was disconnected')
+
+        assert not self._connection.connected, \
+          "Connection did not reset."
+
+        try:
+          self._low_level_execute_command('kill -9 $PPID')
+          assert 0, 'AnsibleConnectionFailure was not raised'
+        except AnsibleConnectionFailure:
+          e = sys.exc_info()[1]
+          assert str(e).startswith('Mitogen was disconnected')

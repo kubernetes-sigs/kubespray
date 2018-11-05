@@ -1,0 +1,27 @@
+# Ensure 'ssh' connections time out correctly.
+
+- name: integration/ssh/timeouts.yml
+  hosts: test-targets
+  tasks:
+    - connection: local
+      command: |
+        ansible -vvv
+        -i "{{inventory_file}}"
+        test-targets
+        -m custom_python_detect_environment
+        -e ansible_user=mitogen__slow_user -e ansible_password=slow_user_password
+      args:
+        chdir: ../..
+      register: out
+      ignore_errors: true
+      when: is_mitogen
+
+    - assert:
+        that:
+        - |
+          '"changed": false' in out.stdout
+        - |
+          '"unreachable": true' in out.stdout
+        - |
+          '"msg": "Connection timed out."' in out.stdout
+      when: is_mitogen

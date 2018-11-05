@@ -27,7 +27,7 @@
 
 - name: create cert_directory server
   file:
-    path: "{{etcd_cert_dir}}"
+    path: "{{etcd_cert_dir}}/{{inventory_hostname}}"
     group: "{{ etcd_cert_group }}"
     state: directory
     owner: "{{etcd_cert_user}}"
@@ -35,6 +35,32 @@
   tags:
     - etcd-certs
 
+- name: set fact
+  set_fact:
+    _etcd_generate_cert: >-
+        {% if (inventory_hostname not in groups['etcd']
+        or (inventory_hostname in groups['etcd'] and etcd_action|default('none') in ['create'])
+        or etcd_sync_certs | default(false) | bool
+        or etcd_rotate_certs | default(false) | bool)
+        and not etcd_skip_certs|default(false) | bool %}
+        true
+        {% else %}
+        false
+        {% endif %}
+
+- name: include cert generate role
+  include_role:
+    name: etcd3/certs/generate
+    public: yes
+    apply:
+      tags:
+        - etcd-certs
+  vars:
+    etcd_hosts: ["{{inventory_hostname}}"]
+  when:
+    - _etcd_generate_cert
+  tags:
+    - etcd-certs
 
 - name: install server_certs
   shell: echo "{{item.content}}" | base64 -d > {{etcd_cert_dir}}/{{item.item.host}}.tar.bz2
@@ -66,6 +92,8 @@
   tags:
     - facts
     - etcd-certs
+  when:
+    - inventory_hostname in groups['etcd-clients']
 
 - name: "Gen_certs | Get etcd certificate serials"
   command: "openssl x509 -in {{ etcd_cert_dir }}/{{inventory_hostname}}/{{ inventory_hostname }}-peer.pem -noout -serial"
@@ -80,6 +108,8 @@
 - name: Set etcd_client_cert_serial
   set_fact:
     etcd_client_cert_serial: "{{ etcd_client_serial_result.stdout.split('=')[1] }}"
+  when:
+    - inventory_hostname in groups['etcd-clients']
   tags:
     - facts
     - etcd-certs

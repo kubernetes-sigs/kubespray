@@ -6,6 +6,7 @@
     state: absent
   when:
     - etcd_rotate_certs |default(false) |bool
+  delegate_to: "{{hostvars[groups['etcd-cert-managers'][0]].ansible_ssh_host}}"
   tags:
     - etcd-ca
     - etcd-certs
@@ -18,7 +19,7 @@
     owner: "{{etcd_cert_user}}"
     mode: 0700
   loop: "{{etcd_hosts|default(groups['etcd-all']) | unique + ['archives']}}"
-
+  delegate_to: "{{hostvars[groups['etcd-cert-managers'][0]].ansible_ssh_host}}"
 
 - import_role:
     name: etcd3/certs/ca
@@ -38,6 +39,7 @@
   when:
     - (item.1 == "peer" and item.0 in groups['etcd']) or (item.1 == "client" and item.0 in groups['etcd-clients'])
   ignore_errors: True
+  delegate_to: "{{hostvars[groups['etcd-cert-managers'][0]].ansible_ssh_host}}"
   register: copyca
 
 - name: fail the play if the previous command did not succeed
@@ -58,6 +60,8 @@
          {% endif %}
          {% endfor %}
          ]
+  delegate_to: "{{hostvars[groups['etcd-cert-managers'][0]].ansible_ssh_host}}"
+  delegate_facts: false
 
 - include_tasks: 0020_etcd-certs.yaml
   loop: "{{_etcd_cert_hosts}}"
@@ -69,6 +73,7 @@
       profile: "{{host_item.1}}"
     etcd_cakey: "{{etcd_ca_profiles[cert.profile]}}-ca-key.pem"
     etcd_capem: "{{etcd_ca_profiles[cert.profile]}}-ca.pem"
+  delegate_to: "{{hostvars[groups['etcd-cert-managers'][0]].ansible_ssh_host}}"
 
 - name: Prepare certs tarball
   archive:
@@ -80,9 +85,13 @@
   loop_control:
     loop_var: host
   register: etcd_cert_tarballs
+  delegate_to: "{{hostvars[groups['etcd-cert-managers'][0]].ansible_ssh_host}}"
+  delegate_facts: true
 
 - name: fetch peers certs
   slurp:
     src: "{{item.dest}}"
   loop: "{{etcd_cert_tarballs.results}}"
   register: etcd_cert_tarballs_b64
+  delegate_to: "{{hostvars[groups['etcd-cert-managers'][0]].ansible_ssh_host}}"
+  delegate_facts: false

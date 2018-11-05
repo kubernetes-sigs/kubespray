@@ -5,10 +5,22 @@
     downloads: "{{etcd_downloads}}"
     download_container: false
 
+- name: Checksum etcd binary
+  stat:
+    path: "{{ bin_dir }}/etcd"
+  register: etcdbin
+
+- name:
+  file:
+    path: "{{ bin_dir }}/etcd"
+    state: absent
+  when:
+    - etcdbin.stat.isdir
+
 - name: install | Copy etcd and etcdctl binary from download dir
   copy:
-    src: "{{ bin_dir }}/etcd/etcd-{{ etcd_version }}-linux-amd64/{{item}}"
-    dest: "{{ bin_dir }}/etcd/{{item}}"
+    src: "{{ bin_dir }}/etcd-archive/etcd-{{ etcd_version }}-linux-amd64/{{item}}"
+    dest: "{{ bin_dir }}/"
     mode: 0755
     remote_src: yes
   with_items:
@@ -17,15 +29,18 @@
 
 - name: Checksum etcd binary
   stat:
-    path: "{{ bin_dir }}/etcd/etcd"
+    path: "{{ bin_dir }}/etcd"
     checksum_algorithm: sha256
     get_checksum: yes
   register: etcdbin
 
+- debug: msg="{{etcdbin.stat}}"
 - name: set cluster_state
   set_fact:
     cluster_state: '{% if etcd_action == "upgrade" %}existing{% else %}new{% endif %}'
     etcd_binary_sha256: "{{etcdbin.stat.checksum}}"
+  tags:
+    - debug
 
 - name: check if datadir exists
   stat:

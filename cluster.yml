@@ -13,73 +13,20 @@
   vars:
     ansible_connection: local
 
-- hosts: bastion[0]
-  gather_facts: False
-  roles:
-    - { role: kubespray-defaults}
-    - { role: bastion-ssh-config, tags: ["localhost", "bastion"]}
-
-- hosts: k8s-cluster:etcd:calico-rr
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  gather_facts: false
+- import_playbook: playbooks/bastion.yaml
+- import_playbook: playbooks/initialize-hosts.yaml
+- import_playbook: playbooks/etcd.yaml
   vars:
-    # Need to disable pipelining for bootstrap-os as some systems have requiretty in sudoers set, which makes pipelining
-    # fail. bootstrap-os fixes this on these systems, so in later plays it can be enabled.
-    ansible_ssh_pipelining: false
-  roles:
-    - { role: kubespray-defaults}
-    - { role: bootstrap-os, tags: bootstrap-os}
-
-- hosts: k8s-cluster:etcd:calico-rr
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  vars:
-    ansible_ssh_pipelining: true
-  gather_facts: true
-  pre_tasks:
-    - name: gather facts from all instances
-      setup:
-      delegate_to: "{{item}}"
-      delegate_facts: True
-      with_items: "{{ groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]) }}"
-
-- hosts: k8s-cluster:etcd:calico-rr
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults}
-    - { role: kubernetes/preinstall, tags: preinstall }
-    - { role: "container-engine", tags: "container-engine" }
-    - { role: download, tags: download, when: "not skip_downloads" }
-  environment: "{{proxy_env}}"
-
-- hosts: etcd:k8s-cluster:vault:calico-rr
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults, when: "cert_management == 'vault'" }
-    - { role: vault, tags: vault, vault_bootstrap: true, when: "cert_management == 'vault'" }
-  environment: "{{proxy_env}}"
-
-- hosts: etcd
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults}
-    - { role: etcd, tags: etcd, etcd_cluster_setup: true, etcd_events_cluster_setup: "{{ etcd_events_cluster_enabled }}" }
-
-- hosts: k8s-cluster:calico-rr
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults}
-    - { role: etcd, tags: etcd, etcd_cluster_setup: false, etcd_events_cluster_setup: false }
-
-- hosts: etcd:k8s-cluster:vault:calico-rr
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults}
-    - { role: vault, tags: vault, when: "cert_management == 'vault'"}
-  environment: "{{proxy_env}}"
+    etcd_force_create: true
+    etcd_action: 'create'
 
 - hosts: k8s-cluster
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
+    - { role: kubespray-defaults}
+    - { role: kubernetes/preinstall, tags: preinstall }
+    - { role: etcd3/facts }
+    - { role: download, tags: download, when: "not skip_downloads" }
     - { role: kubespray-defaults}
     - { role: kubernetes/node, tags: node }
   environment: "{{proxy_env}}"
@@ -88,6 +35,7 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
+    - { role: etcd3/facts }
     - { role: kubernetes/master, tags: master }
     - { role: kubernetes/client, tags: client }
     - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
@@ -114,20 +62,6 @@
     - { role: kubernetes-apps/policy_controller, tags: policy-controller }
     - { role: kubernetes-apps/ingress_controller, tags: ingress-controller }
     - { role: kubernetes-apps/external_provisioner, tags: external-provisioner }
-
-- hosts: calico-rr
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults}
-    - { role: network_plugin/calico/rr, tags: network }
-
-- hosts: k8s-cluster
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults}
-    - { role: dnsmasq, when: "dns_mode == 'dnsmasq_kubedns'", tags: dnsmasq }
-    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }
-  environment: "{{proxy_env}}"
 
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"

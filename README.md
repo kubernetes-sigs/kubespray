@@ -19,11 +19,17 @@ To deploy the cluster you can use :
 
 ### Ansible
 
+#### Ansible version
+
+Ansible v2.7.0 is failing and/or produce unexpected results due to [ansible/ansible/issues/46600](https://github.com/ansible/ansible/issues/46600)
+
+#### Usage
+
     # Install dependencies from ``requirements.txt``
     sudo pip install -r requirements.txt
 
     # Copy ``inventory/sample`` as ``inventory/mycluster``
-    cp -rfp inventory/sample/* inventory/mycluster
+    cp -rfp inventory/sample inventory/mycluster
 
     # Update Ansible inventory file with inventory builder
     declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
@@ -105,7 +111,7 @@ Supported Components
 --------------------
 
 -   Core
-    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.12.1
+    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.12.2
     -   [etcd](https://github.com/coreos/etcd) v3.2.18
     -   [docker](https://www.docker.com/) v18.06 (see note)
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
@@ -113,16 +119,17 @@ Supported Components
 -   Network Plugin
     -   [calico](https://github.com/projectcalico/calico) v3.1.3
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-    -   [cilium](https://github.com/cilium/cilium) v1.2.0
+    -   [cilium](https://github.com/cilium/cilium) v1.3.0
     -   [contiv](https://github.com/contiv/install) v1.1.7
     -   [flanneld](https://github.com/coreos/flannel) v0.10.0
     -   [weave](https://github.com/weaveworks/weave) v2.4.1
     -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.1
+    -   [multus](https://github.com/intel/multus-cni) v3.1
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
     -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.0
-    -   [coredns](https://github.com/coredns/coredns) v1.2.2
-    -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.19.0
+    -   [coredns](https://github.com/coredns/coredns) v1.2.5
+    -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.20.0
 
 Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.12.md) was updated to 1.11.1, 1.12.1, 1.13.1, 17.03, 17.06, 17.09, 18.06. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 
@@ -169,6 +176,8 @@ You can choose between 6 network plugins. (default: `calico`, except Vagrant use
     simplicity and high performance: it uses IPVS to provide Kube Services Proxy (if setup to replace kube-proxy),
     iptables for network policies, and BGP for ods L3 networking (with optionally BGP peering with out-of-cluster BGP peers).
     It can also optionally advertise routes to Kubernetes cluster Pods CIDRs, ClusterIPs, ExternalIPs and LoadBalancerIPs.
+
+-   [multus](docs/multus.md): Multus is a meta CNI plugin that provides multiple network interface support to pods. For each interface Multus delegates CNI calls to secondary CNI plugins such as Calico, macvlan, etc.
 
 The choice is defined with the variable `kube_network_plugin`. There is also an
 option to leverage built-in cloud provider networking instead.

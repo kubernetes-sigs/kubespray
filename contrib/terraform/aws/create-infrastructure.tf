@@ -57,7 +57,7 @@ resource "aws_instance" "bastion-server" {
     instance_type = "${var.aws_bastion_size}"
     count = "${length(var.aws_cidr_subnets_public)}"
     associate_public_ip_address = true
-    availability_zone  = "${element(slice(data.aws_availability_zones.available.names,0,2),count.index)}"
+    availability_zone  = "${element(slice(data.aws_availability_zones.available.names,0,length(var.aws_cidr_subnets_private)),count.index)}"
     subnet_id = "${element(module.aws-vpc.aws_subnet_ids_public,count.index)}"
 
 
@@ -85,7 +85,7 @@ resource "aws_instance" "k8s-master" {
     count = "${var.aws_kube_master_num}"
 
 
-    availability_zone  = "${element(slice(data.aws_availability_zones.available.names,0,2),count.index)}"
+    availability_zone  = "${element(slice(data.aws_availability_zones.available.names,0,length(var.aws_cidr_subnets_private)),count.index)}"
     subnet_id = "${element(module.aws-vpc.aws_subnet_ids_private,count.index)}"
 
 

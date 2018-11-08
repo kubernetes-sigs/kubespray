@@ -1,0 +1,346 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: apic-user-pass
+  namespace: kube-system
+data:
+  username: YWRtaW4=
+  password: bm9pcjAxMjM=
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aci-containers-config
+  namespace: kube-system
+  labels:
+    k8s-app: aci-containers
+data:
+  encap-type: "vxlan"
+  uplink-iface: "eth2"
+  infra-vlan: "4093"
+  apic-hosts: "10.30.120.140"
+  controller-config: |-
+    {
+        "log-level": "debug",
+        "aci-tenant": "common",
+        "default-endpoint-group": {
+            "policy-space": "common",
+            "name": "inb-mgmt-app|kube-system-pods"
+        },
+        "service-ip-pool": [
+            {"start": "10.4.1.1", "end": "10.4.255.254"}
+        ],
+        "static-service-ip-pool": [
+            {"start": "10.4.0.1", "end": "10.4.0.255"}
+        ],
+        "pod-ip-pool": [
+            {"start": "10.1.0.2", "end": "10.1.255.254"}
+        ],
+        "node-service-ip-pool": [
+            {"start": "10.6.1.1", "end": "10.6.1.254"}
+        ]
+    }
+  host-agent-config: |-
+    {
+        "log-level": "debug",
+        "aci-vrf": "kubernetes-vrf",
+        "aci-vrf-tenant": "common",
+        "service-iface": "eth2",
+        "service-iface-vlan": 4003,
+        "cni-netconfig": [
+            {
+                "subnet": "10.1.0.0/16",
+                "gateway": "10.1.0.1",
+                "routes": [
+                    { "dst": "0.0.0.0/0", "gw": "10.1.0.1" }
+                ]
+            }
+        ]
+    }
+  opflex-agent-config: |-
+    {
+        "opflex": {
+            "domain": "comp/prov-OpenStack/ctrlr-[ostack]-ostack/sw-InsiemeLSOid"
+        }
+    }
+  aim-config: |-
+    [DEFAULT]
+    debug = True
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: aci-containers-host
+  namespace: kube-system
+  labels:
+    k8s-app: aci-containers
+spec:
+  template:
+    metadata:
+      labels:
+        name: aci-containers-host
+    spec:
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      imagePullSecrets:
+        - name: noiro-docker-registry-secret
+      containers:
+        - name: aci-containers-host
+          image: 10.30.120.20/noiro/aci-containers-host
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: cni-bin
+              mountPath: /mnt/cni-bin
+            - name: cni-conf
+              mountPath: /mnt/cni-conf
+            - name: hostvar
+              mountPath: /usr/local/var
+            - name: hostrun
+              mountPath: /run
+            - name: kubeconfig
+              mountPath: /usr/local/etc/kubeconfig
+            - name: host-config-volume
+              mountPath: /usr/local/etc/aci-containers/
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: 8090
+        - name: opflex-agent
+          image: 10.30.120.20/noiro/opflex
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: ACI_ENCAP_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: aci-containers-config
+                  key: encap-type
+            - name: ACI_UPLINK_IFACE
+              valueFrom:
+                configMapKeyRef:
+                  name: aci-containers-config
+                  key: uplink-iface
+            - name: ACI_INFRA_VLAN
+              valueFrom:
+                configMapKeyRef:
+                  name: aci-containers-config
+                  key: infra-vlan
+          volumeMounts:
+            - name: hostvar
+              mountPath: /usr/local/var
+            - name: hostrun
+              mountPath: /run
+            - name: opflex-config-volume
+              mountPath: /usr/local/etc/opflex-agent-ovs/conf.d
+        - name: mcast-daemon
+          image: 10.30.120.20/noiro/opflex
+          command: ["/bin/sh"]
+          args: ["/usr/local/bin/launch-mcastdaemon.sh"]
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: hostvar
+              mountPath: /usr/local/var
+            - name: hostrun
+              mountPath: /run
+      restartPolicy: Always
+      volumes:
+        - name: cni-bin
+          hostPath:
+            path: /opt
+        - name: cni-conf
+          hostPath:
+            path: /etc
+        - name: hostvar
+          hostPath:
+            path: /var
+        - name: hostrun
+          hostPath:
+            path: /run
+        - name: kubeconfig
+          hostPath:
+            path: /etc/kubernetes/kubelet.conf
+        - name: host-config-volume
+          configMap:
+            name: aci-containers-config
+            items:
+              - key: host-agent-config
+                path: host-agent.conf
+        - name: opflex-config-volume
+          configMap:
+            name: aci-containers-config
+            items:
+              - key: opflex-agent-config
+                path: local.conf
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: aci-containers-openvswitch
+  namespace: kube-system
+  labels:
+    k8s-app: aci-containers
+spec:
+  template:
+    metadata:
+      labels:
+        name: aci-containers-openvswitch
+    spec:
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      imagePullSecrets:
+        - name: noiro-docker-registry-secret
+      containers:
+        - name: aci-containers-openvswitch
+          image: 10.30.120.20/noiro/openvswitch
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: ACI_ENCAP_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: aci-containers-config
+                  key: encap-type
+            - name: ACI_UPLINK_IFACE
+              valueFrom:
+                configMapKeyRef:
+                  name: aci-containers-config
+                  key: uplink-iface
+            - name: ACI_INFRA_VLAN
+              valueFrom:
+                configMapKeyRef:
+                  name: aci-containers-config
+                  key: infra-vlan
+            - name: OVS_RUNDIR
+              value: /usr/local/var/run/openvswitch
+            - name: OVS_DBDIR
+              value: /usr/local/var/lib/aci-containers/ovsdb
+          volumeMounts:
+            - name: hostvar
+              mountPath: /usr/local/var
+            - name: hostrun
+              mountPath: /run
+            - name: hostetc
+              mountPath: /usr/local/etc
+            - name: hostmodules
+              mountPath: /lib/modules
+          livenessProbe:
+            exec:
+              command:
+                - /usr/share/openvswitch/scripts/ovs-ctl
+                - status
+      restartPolicy: Always
+      volumes:
+        - name: hostetc
+          hostPath:
+            path: /etc
+        - name: hostvar
+          hostPath:
+            path: /var
+        - name: hostrun
+          hostPath:
+            path: /run
+        - name: hostmodules
+          hostPath:
+            path: /lib/modules
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: aci-containers-controller
+  namespace: kube-system
+  labels:
+    k8s-app: aci-containers
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ''
+    scheduler.alpha.kubernetes.io/tolerations: |
+      [{"key": "dedicated", "value": "master", "effect": "NoSchedule" },
+       {"key":"CriticalAddonsOnly", "operator":"Exists"}]
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      name: aci-containers-controller
+      namespace: kube-system
+      labels:
+        k8s-app: aci-containers
+    spec:
+      hostNetwork: true
+      imagePullSecrets:
+        - name: noiro-docker-registry-secret
+      containers:
+        - name: aci-containers-controller
+          image: 10.30.120.20/noiro/aci-containers-controller
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: controller-config-volume
+              mountPath: /usr/local/etc/aci-containers/
+            - name: kubeconfig
+              mountPath: /usr/local/etc/kubeconfig
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: 8091
+        - name: aci-integration-module
+          image: 10.30.120.20/noiro/aci-integration-module
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: APIC_HOSTS
+              valueFrom:
+                configMapKeyRef:
+                  name: aci-containers-config
+                  key: apic-hosts
+            - name: APIC_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: apic-user-pass
+                  key: username
+            - name: APIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: apic-user-pass
+                  key: password
+          volumeMounts:
+            - name: aim-config-volume
+              mountPath: /usr/local/etc/aim-local
+            - name: kubeconfig
+              mountPath: /usr/local/etc/kubeconfig
+            - name: kubessl
+              mountPath: /etc/kubernetes/ssl
+      volumes:
+        - name: controller-config-volume
+          configMap:
+            name: aci-containers-config
+            items:
+              - key: controller-config
+                path: controller.conf
+        - name: aim-config-volume
+          configMap:
+            name: aci-containers-config
+            items:
+              - key: aim-config
+                path: aim-local.conf
+        - name: kubeconfig
+          hostPath:
+            path: /etc/kubernetes/node-kubeconfig.yaml
+        - name: kubessl
+          hostPath:
+            path: /etc/kubernetes/ssl

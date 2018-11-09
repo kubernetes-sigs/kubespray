@@ -13,7 +13,7 @@ most modern installs of OpenStack that support the basic services.
 - [BetaCloud](https://www.betacloud.io/)
 - [CityCloud](https://www.citycloud.com/)
 - [DreamHost](https://www.dreamhost.com/cloud/computing/)
-- [ElastX](https://elastx.se/)
+- [ELASTX](https://elastx.se/)
 - [EnterCloudSuite](https://www.entercloudsuite.com/)
 - [FugaCloud](https://fuga.cloud/)
 - [OVH](https://www.ovh.com/)

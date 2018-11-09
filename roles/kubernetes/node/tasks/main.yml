@@ -22,6 +22,28 @@
   tags:
     - nginx
 
+- name: check that kube_resolv_conf exists
+  stat:
+    path: "{{ kube_resolv_conf }}"
+  register: kube_resolv_conf_path
+  tags:
+    - kubelet
+
+- name: check that etc_resolv_conf exists
+  stat:
+    path: "/etc/resolv.conf"
+  register: etc_resolv_conf_path
+  when: kube_resolv_conf_path.stat.exists == False
+  tags:
+    - kubelet
+
+- name: set kube_resolv_conf to default
+  set_fact:
+    kube_resolv_conf: "/etc/resolv.conf"
+  when: kube_resolv_conf_path.stat.exists == False and etc_resolv_conf_path.stat.exists == True
+  tags:
+    - kubelet
+
 - name: Write kubelet config file (non-kubeadm)
   template:
     src: kubelet.standard.env.j2

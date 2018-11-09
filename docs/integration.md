@@ -1,4 +1,4 @@
-# Kubespray (kargo) in own ansible playbooks repo
+# Kubespray (kubespray) in own ansible playbooks repo
 
 1. Fork [kubespray repo](https://github.com/kubernetes-incubator/kubespray) to your personal/organisation account on github.
    Note:
@@ -67,9 +67,9 @@ You could rename *all.yml* config to something else, i.e. *kubespray.yml* and cr
      ```
      * Last entry here needed to apply kubespray.yml config file, renamed from all.yml of kubespray project.
 
-10. Now you can include kargo tasks in you existent playbooks by including cluster.yml file:
+10. Now you can include kubespray tasks in you existent playbooks by including cluster.yml file:
      ```
-     - name: Include kargo tasks
+     - name: Include kubespray tasks
        include: 3d/kubespray/cluster.yml
      ```
      Or your could copy separate tasks from cluster.yml into your ansible repository.

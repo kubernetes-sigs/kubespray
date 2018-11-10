@@ -1,3 +1,6 @@
+# /!\ The vault role have been retired from the main playbook.
+# This role probably requires a LOT of changes in order to work again
+
 Hashicorp Vault Role
 ====================
 
@@ -8,7 +11,7 @@ The Vault role is a two-step process:
 
 1. Bootstrap
 
-You cannot start your certificate management service securely with SSL (and 
+You cannot start your certificate management service securely with SSL (and
 the datastore behind it) without having the certificates in-hand already. This
 presents an unfortunate chicken and egg scenario, with one requiring the other.
 To solve for this, the Bootstrap step was added.
@@ -80,7 +83,7 @@ Additional Notes:
 
 - ``groups.vault|first`` is considered the source of truth for Vault variables
 - ``vault_leader_url`` is used as pointer for the current running Vault
-- Each service should have its own role and credentials. Currently those 
+- Each service should have its own role and credentials. Currently those
   credentials are saved to ``/etc/vault/roles/<role>/``. The service will
   need to read in those credentials, if they want to interact with Vault.
 

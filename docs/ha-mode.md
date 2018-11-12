@@ -10,33 +10,7 @@ achieve the same goal.
 
 Etcd
 ----
-
-In order to use an external loadbalancing (L4/TCP or L7 w/ SSL Passthrough VIP), the following variables need to be overridden in group_vars
-* `etcd_access_addresses`
-* `etcd_client_url`
-* `etcd_cert_alt_names`
-* `etcd_cert_alt_ips`
-
-### Example of a VIP w/ FQDN
-```yaml
-etcd_access_addresses: https://etcd.example.com:2379
-etcd_client_url: https://etcd.example.com:2379
-etcd_cert_alt_names:
-  - "etcd.kube-system.svc.{{ dns_domain }}"
-  - "etcd.kube-system.svc"
-  - "etcd.kube-system"
-  - "etcd"
-  - "etcd.example.com" # This one needs to be added to the default etcd_cert_alt_names
-```
-
-### Example of a VIP w/o FQDN (IP only)
-
-```yaml
-etcd_access_addresses: https://2.3.7.9:2379
-etcd_client_url: https://2.3.7.9:2379
-etcd_cert_alt_ips:
-  - "2.3.7.9"
-```
+All etcd clients, kube-api-masters, are configured with the list of all etcd peers. If the etcd clusters has multiple instances, it's configured in HA already.
 
 Kube-apiserver
 --------------
@@ -157,3 +131,33 @@ contacted via the local bind IP, which is `https://bip:sp`.
 Kubespray, the masters' APIs are accessed via the insecure endpoint, which
 consists of the local `kube_apiserver_insecure_bind_address` and
 `kube_apiserver_insecure_port`.
+
+Optional configurations
+------------------------
+### ETCD with a LB
+In order to use an external loadbalancing (L4/TCP or L7 w/ SSL Passthrough VIP), the following variables need to be overridden in group_vars
+* `etcd_access_addresses`
+* `etcd_client_url`
+* `etcd_cert_alt_names`
+* `etcd_cert_alt_ips`
+
+#### Example of a VIP w/ FQDN
+```yaml
+etcd_access_addresses: https://etcd.example.com:2379
+etcd_client_url: https://etcd.example.com:2379
+etcd_cert_alt_names:
+  - "etcd.kube-system.svc.{{ dns_domain }}"
+  - "etcd.kube-system.svc"
+  - "etcd.kube-system"
+  - "etcd"
+  - "etcd.example.com" # This one needs to be added to the default etcd_cert_alt_names
+```
+
+#### Example of a VIP w/o FQDN (IP only)
+
+```yaml
+etcd_access_addresses: https://2.3.7.9:2379
+etcd_client_url: https://2.3.7.9:2379
+etcd_cert_alt_ips:
+  - "2.3.7.9"
+```

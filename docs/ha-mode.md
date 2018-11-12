@@ -10,7 +10,7 @@ achieve the same goal.
 
 Etcd
 ----
-All etcd clients, kube-api-masters, are configured with the list of all etcd peers. If the etcd clusters has multiple instances, it's configured in HA already.
+The etcd clients (kube-api-masters) are configured with the list of all etcd peers. If the etcd-cluster has multiple instances, it's configured in HA already.
 
 Kube-apiserver
 --------------

@@ -16,17 +16,17 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: kubedns-autoscaler
+  name: dns-autoscaler
   namespace: kube-system
   labels:
-    k8s-app: kubedns-autoscaler
+    k8s-app: dns-autoscaler
     kubernetes.io/cluster-service: "true"
     addonmanager.kubernetes.io/mode: Reconcile
 spec:
   template:
     metadata:
       labels:
-        k8s-app: kubedns-autoscaler
+        k8s-app: dns-autoscaler
     spec:
 {% if kube_version is version('v1.11.1', '>=') %}
       priorityClassName: system-cluster-critical
@@ -43,7 +43,7 @@ spec:
           - topologyKey: "kubernetes.io/hostname"
             labelSelector:
               matchLabels:
-                k8s-app: kubedns-autoscaler
+                k8s-app: dns-autoscaler
         nodeAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
@@ -63,10 +63,14 @@ spec:
         command:
         - /cluster-proportional-autoscaler
         - --namespace=kube-system
-        - --configmap=kubedns-autoscaler
-        # Should keep target in sync with cluster/addons/dns/kubedns-controller.yaml.base
-        - --target=Deployment/kube-dns
         - --default-params={"linear":{"nodesPerReplica":{{ kubedns_nodes_per_replica }},"min":{{ kubedns_min_replicas }}}}
         - --logtostderr=true
         - --v=2
+        - --configmap=dns-autoscaler
+{% if dns_mode in ['coredns', 'coredns_dual'] %}
+        - --target=Deployment/coredns{{ coredns_ordinal_suffix | default('') }}
+{% endif %}
+{% if dns_mode in ['kubedns', 'dnsmasq_kubedns'] %}
+        - --target=Deployment/kube-dns
+{% endif %}
       serviceAccountName: cluster-proportional-autoscaler

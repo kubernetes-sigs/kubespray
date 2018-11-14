@@ -45,15 +45,22 @@ class SearchEC2Tags(object):
 
       instances = ec2.instances.filter(Filters=[{'Name': 'tag:'+tag_key, 'Values': tag_value}, {'Name': 'instance-state-name', 'Values': ['running']}])
       for instance in instances:
+        node_labels_tag = list(filter(lambda t: t['Key'] == 'kubespray-node-labels', instance.tags))
+        node_labels = ''
+        if node_labels_tag:
+          node_labels = dict([ label.strip().split('=') for label in node_labels_tag[0]['Value'].split(',') ])
+
         if self.vpc_visibility == "public":
           hosts[group].append(instance.public_dns_name)
           hosts['_meta']['hostvars'][instance.public_dns_name] = {
-             'ansible_ssh_host': instance.public_ip_address
+             'ansible_ssh_host': instance.public_ip_address,
+             'node_labels': node_labels
           }
         else:
           hosts[group].append(instance.private_dns_name)
           hosts['_meta']['hostvars'][instance.private_dns_name] = {
-             'ansible_ssh_host': instance.private_ip_address
+             'ansible_ssh_host': instance.private_ip_address,
+             'node_labels': node_labels
           }
 
     hosts['k8s-cluster'] = {'children':['kube-master', 'kube-node']}

@@ -112,7 +112,7 @@ Supported Components
 
 -   Core
     -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.12.2
-    -   [etcd](https://github.com/coreos/etcd) v3.2.18
+    -   [etcd](https://github.com/coreos/etcd) v3.2.24
     -   [docker](https://www.docker.com/) v18.06 (see note)
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
     -   [cri-o](http://cri-o.io/) v1.11.5 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
@@ -120,15 +120,15 @@ Supported Components
     -   [calico](https://github.com/projectcalico/calico) v3.1.3
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
     -   [cilium](https://github.com/cilium/cilium) v1.3.0
-    -   [contiv](https://github.com/contiv/install) v1.1.7
+    -   [contiv](https://github.com/contiv/install) v1.2.1
     -   [flanneld](https://github.com/coreos/flannel) v0.10.0
     -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.1
-    -   [multus](https://github.com/intel/multus-cni) v3.1
+    -   [multus](https://github.com/intel/multus-cni) v3.1.autoconf
     -   [weave](https://github.com/weaveworks/weave) v2.5.0
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
     -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.0
-    -   [coredns](https://github.com/coredns/coredns) v1.2.5
+    -   [coredns](https://github.com/coredns/coredns) v1.2.6
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.20.0
 
 Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.12.md) was updated to 1.11.1, 1.12.1, 1.13.1, 17.03, 17.06, 17.09, 18.06. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).

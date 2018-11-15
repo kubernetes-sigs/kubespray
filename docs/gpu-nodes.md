@@ -10,7 +10,9 @@ Currently Ubuntu 16.04, Ubuntu 18.04 and Centos 7 are supported.
 
 Before you can succesfully install gpu scheduling in Kubernetes you need to make sure
 that the nouveau driver is disabled. There is a playbook `extra_playbooks/disable_nouveau.yml`
-which will disable nouveau and reboot your servers to make it permanent.
+which will disable nouveau and reboot (when requested) your servers to make it permanent.
+Do to this run `ansible-playbook -i <inventory> disable_nouveau.yaml (-e reboot_hosts=false/true)` if you don't
+specify the var `reboot_hosts`, you will be asked.
 
 Ofcourse you also need a set of Nvidia GPU cards. If you have multiple GPU models you should group.
 them by node. For more information on GPU scheduling in kubernetes follow this [link](https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/)

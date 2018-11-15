@@ -1,5 +1,6 @@
+---
 - hosts:
-    - kube-node
+    - kube-gpu-001
   gather_facts: true
   tasks:
     - name: Load impi msghandler
@@ -7,38 +8,57 @@
         create: yes
         path: /etc/modules-load.d/impi.conf
         line: 'ipmi_msghandler'
+      register: impi
 
     - name: Add blacklist to nouveau
       lineinfile:
         create: yes
         path: /etc/modprobe.d/blacklist-nouveau.conf
         line: 'blacklist nouveau'
+      register: blacklist
 
     - name: Disable modeset
       lineinfile:
         path: /etc/modprobe.d/blacklist-nouveau.conf
         line: 'options nouveau modeset=0'
+      register: modeset
 
     - name: Update initramfs
       shell: update-initramfs -u
       become: true
-      when: ansible_distribution == "Ubuntu"
+      when: >
+        ansible_distribution == "Ubuntu"
+        and (impi.changed or blacklist.changed or modeset.changed)
+
+    - name: Unload nouveau module
+      modprobe:
+        name: nouveau
+        state: absent
+      register: module_unload
+
+    - name: Reboot hosts ?
+      pause:
+         prompt: "Do you want to reboot the hosts:  y or n"
+      register: reboot_requested
+      when: >
+        reboot_hosts is undefined
 
     - name: reboot system
-      shell: sleep 2 && shutdown -r now "Ansible package updates triggered"
+      shell: sleep 2 && shutdown -r now "Reboot to succesfully disable nouvau driver"
       async: 1
       poll: 0
       ignore_errors: true
-      register: reboot_required
+      register: reboot_state
+      when: >
+        (reboot_requested.user_input is defined and reboot_requested.user_input == "y")
+        or reboot_hosts|d('false')|bool == true
 
     - name: waiting for server to come back
       local_action: wait_for host={{ ansible_host }} state=started delay=10 timeout=320 port=22
       become: false
-      when: reboot_required.changed
+      when: reboot_state.changed
 
     - name: verify a reboot was actually initiated
       shell: echo rebooted
       become: false
-      when: reboot_required.changed
-
-
+      when: reboot_state.changed

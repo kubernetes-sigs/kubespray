@@ -139,6 +139,9 @@
 # FIXME(mattymo): remove when https://github.com/kubernetes/kubeadm/issues/433 is fixed
 - name: kubeadm | Enable kube-proxy
   command: "{{ bin_dir }}/kubeadm alpha phase addon kube-proxy --config={{ kube_config_dir }}/kubeadm-config.{{ kubeadmConfig_api_version }}.yaml"
+  register: kubeadm_kube_proxy_enable
+  retries: 10
+  until: kubeadm_kube_proxy_enable is succeeded
   when: inventory_hostname == groups['kube-master']|first
   changed_when: false
 
@@ -177,6 +180,8 @@
 - name: kubeadm | Init other uninitialized masters
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.{{ kubeadmConfig_api_version }}.yaml --ignore-preflight-errors=all
   register: kubeadm_init
+  retries: 10
+  until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
   when: inventory_hostname != groups['kube-master']|first and not kubeadm_already_run.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   notify: Master | restart kubelet

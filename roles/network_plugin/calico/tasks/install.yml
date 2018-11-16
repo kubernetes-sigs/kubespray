@@ -1,10 +1,8 @@
+# Calico CNI binaries and conflist are now deployed using
+# the install-cni container in calico-node daemonset.
+# Any changes to calico-config ConfigMap will likely require
+# a restart of the calico-node pods.
 ---
-- name: Calico | Write Calico cni config
-  template:
-    src: "cni-calico.conflist.j2"
-    dest: "/etc/cni/net.d/10-calico.conflist"
-    owner: kube
-
 - name: Calico | Create calico certs directory
   file:
     dest: "{{ calico_cert_dir }}"
@@ -32,38 +30,6 @@
     owner: root
     group: root
   changed_when: false
-
-- name: Calico | Copy cni plugins from hyperkube
-  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp -r /opt/cni/bin/. /cnibindir/"
-  register: cni_task_result
-  until: cni_task_result.rc == 0
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: false
-  tags:
-    - hyperkube
-    - upgrade
-
-- name: Calico | Copy cni plugins from calico/cni container
-  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }} sh -c 'cp /opt/cni/bin/* /cnibindir/'"
-  register: cni_task_result
-  until: cni_task_result.rc == 0
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: false
-  when:
-    - "overwrite_hyperkube_cni|bool"
-  tags:
-    - hyperkube
-    - upgrade
-
-- name: Calico | Set cni directory permissions
-  file:
-    path: /opt/cni/bin
-    state: directory
-    owner: kube
-    recurse: true
-    mode: 0755
 
 - name: Calico | wait for etcd
   uri:

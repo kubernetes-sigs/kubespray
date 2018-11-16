@@ -11,7 +11,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: RollingUpdate
+    type: Recreate
   selector:
     matchLabels:
       kubernetes.io/cluster-service: "true"
@@ -27,8 +27,10 @@ spec:
       hostNetwork: true
       serviceAccountName: calico-kube-controllers
       tolerations:
-        - effect: NoSchedule
+        - key: CriticalAddonsOnly
           operator: Exists
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
 {% if kube_version is version('v1.11.1', '>=') %}
       priorityClassName: system-cluster-critical
 {% endif %}
@@ -52,11 +54,18 @@ spec:
               value: "{{ calico_cert_dir }}/cert.crt"
             - name: ETCD_KEY_FILE
               value: "{{ calico_cert_dir }}/key.pem"
+            - name: ENABLED_CONTROLLERS
+              value: "{{ calico_enabled_controllers }}"
           volumeMounts:
-          - mountPath: {{ calico_cert_dir }}
-            name: etcd-certs
-            readOnly: true
+            - name: etcd-certs
+              mountPath: {{ calico_cert_dir }}
+              readOnly: true
+          readinessProbe:
+            exec:
+              command:
+              - /usr/bin/check-status
+              - -r
       volumes:
-      - hostPath:
+      - name: etcd-certs
+        hostPath:
           path: {{ calico_cert_dir }}
-        name: etcd-certs

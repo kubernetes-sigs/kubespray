@@ -13,6 +13,10 @@ spec:
   selector:
     matchLabels:
       k8s-app: calico-node
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ serial | default('20%') }}
   template:
     metadata:
       labels:
@@ -155,10 +159,11 @@ spec:
             initialDelaySeconds: 10
             failureThreshold: 6
           readinessProbe:
-            httpGet:
-              host: 127.0.0.1
-              path: /readiness
-              port: 9099
+            exec:
+              command:
+                - /bin/calico-node
+                - -bird-ready
+                - -felix-ready
             periodSeconds: 10
           volumeMounts:
             - mountPath: /lib/modules
@@ -169,6 +174,40 @@ spec:
             - mountPath: /var/lib/calico
               name: var-lib-calico
               readOnly: false
+            - mountPath: /calico-secrets
+              name: etcd-certs
+        # This container installs the Calico CNI binaries
+        # and CNI network config file on each node.
+        - name: install-cni
+          image: quay.io/calico/cni:v3.3.0
+          command: ["/install-cni.sh"]
+          env:
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "10-calico.conflist"
+            # The location of the Calico etcd cluster.
+            - name: ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_endpoints
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: cni_network_config
+            # CNI MTU Config variable
+            - name: CNI_MTU
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: veth_mtu
+          volumeMounts:
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
             - mountPath: /calico-secrets
               name: etcd-certs
       volumes:
@@ -193,7 +232,3 @@ spec:
         - name: etcd-certs
           hostPath:
             path: "{{ calico_cert_dir }}"
-  updateStrategy:
-    rollingUpdate:
-      maxUnavailable: {{ serial | default('20%') }}
-    type: RollingUpdate

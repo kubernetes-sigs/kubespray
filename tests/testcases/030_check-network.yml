@@ -48,6 +48,42 @@
 
   - debug: msg="{{get_pods.stdout.split('\n')}}"
 
+  - name: TEMPORARY | Check cni-plugin logs
+    shell: "/bin/journalctl -u kubelet -n 50 --no-pager"
+    register: kubelet_cni_log
+    no_log: true
+
+  - debug:
+      var: kubelet_cni_log.stdout_lines|d
+    when: kubelet_cni_log.stdout_lines is defined
+
+  - name: TEMPORARY | Check calico-kube-controller logs
+    shell: "{{bin_dir}}/kubectl logs -l k8s-app=calico-kube-controllers -n kube-system --tail=50"
+    register: calico_kube_controller_log
+    no_log: true
+
+  - debug:
+      var: calico_kube_controller_log.stdout_lines|d
+    when: calico_kube_controller_log.stdout_lines is defined
+
+  - name: TEMPORARY | Check calico-node logs
+    shell: "{{bin_dir}}/kubectl logs -l k8s-app=calico-node -c calico-node -n kube-system --tail=50"
+    register: calico_node_log
+    no_log: true
+
+  - debug:
+      var: calico_node_log.stdout_lines|d
+    when: calico_node_log.stdout_lines is defined
+
+  - name: TEMPORARY | Check install-cni logs
+    shell: "{{bin_dir}}/kubectl logs -l k8s-app=calico-node -c install-cni -n kube-system --tail=50"
+    register: calico_install_cni_log
+    no_log: true
+
+  - debug:
+      var: calico_install_cni_log|d
+    when: calico_install_cni_log.stdout_lines is defined
+
   - set_fact:
       kube_pods_subnet: 10.233.64.0/18
       pod_names: "{{ (pods.stdout | from_json)['items'] | map(attribute = 'metadata.name') | list }}"

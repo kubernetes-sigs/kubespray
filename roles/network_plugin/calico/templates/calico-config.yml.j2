@@ -1,3 +1,4 @@
+# Example: https://docs.projectcalico.org/v3.3/getting-started/kubernetes/installation/hosted/calico.yaml
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -15,6 +16,45 @@ data:
   cluster_type: "kubespray,bgp"
   calico_backend: "bird"
 {% endif %}
+
 {% if inventory_hostname in groups['k8s-cluster'] and peer_with_router|default(false) %}
   as: "{{ local_as|default(global_as_num) }}"
 {% endif -%}
+
+  # Configure MTU for tunl0 and cali* interfaces here
+  veth_mtu: "{{ calico_mtu if calico_mtu is defined and calico_mtu is number else 1440 }}"
+
+  # The CNI network configuration to install on each node. This underscored
+  # values in this config will be automatically populated by Calico
+  cni_network_config: |-
+    {   
+      "name": "k8s-pod-network",
+      "cniVersion": "0.3.1",
+      "plugins": [
+        {
+          "type": "calico",
+          "log_level": "info",
+          "etcd_endpoints": "__ETCD_ENDPOINTS__",
+          "etcd_key_file": "__ETCD_KEY_FILE__",
+          "etcd_cert_file": "__ETCD_CERT_FILE__",
+          "etcd_ca_cert_file": "__ETCD_CA_CERT_FILE__",
+          "mtu": __CNI_MTU__,
+          "ipam": {
+              "type": "calico-ipam",
+              "assign_ipv4": "true",
+              "ipv4_pools": ["{{ kube_pods_subnet }}"]
+          },
+          "policy": {
+              "type": "k8s"
+          },
+          "kubernetes": {
+              "kubeconfig": "__KUBECONFIG_FILEPATH__"
+          }
+        },
+        {
+          "type": "portmap",
+          "snat": true,
+          "capabilities": {"portMappings": true}
+        }
+      ]   
+    }

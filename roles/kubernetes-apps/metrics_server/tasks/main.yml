@@ -1,0 +1,57 @@
+---
+# If all masters have node role, there are no tainted master and toleration should not be specified.
+- name: Check all masters are node or not
+  set_fact:
+    masters_are_not_tainted: "{{ groups['kube-node'] | intersect(groups['kube-master']) == groups['kube-master'] }}"
+
+- name: Metrics Server | Delete addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/metrics_server"
+    state: absent
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+  tags:
+    - upgrade
+
+- name: Metrics Server | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/metrics_server"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Metrics Server | Templates list
+  set_fact:
+    metrics_server_templates:
+      - { name: auth-delegator, file: auth-delegator.yaml, type: clusterrolebinding }
+      - { name: auth-reader, file: auth-reader.yaml, type: rolebinding }
+      - { name: metrics-server-cm, file: metrics-server-cm.yaml, type: cm }
+      - { name: metrics-server-sa, file: metrics-server-sa.yaml, type: sa }
+      - { name: metrics-server-deployment, file: metrics-server-deployment.yaml, type: deploy }
+      - { name: metrics-server-service, file: metrics-server-service.yaml, type: service }
+      - { name: metrics-apiservice, file: metrics-apiservice.yaml, type: service }
+      - { name: resource-reader-clusterrolebinding, file: resource-reader-clusterrolebinding.yaml, type: clusterrolebinding }
+      - { name: resource-reader, file: resource-reader.yaml, type: clusterrole }
+
+- name: Metrics Server | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/metrics_server/{{ item.file }}"
+  with_items: "{{ metrics_server_templates }}"
+  register: metrics_server_manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Metrics Server | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/metrics_server/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ metrics_server_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]

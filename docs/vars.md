@@ -41,11 +41,11 @@ Some variables of note include:
 * *loadbalancer_apiserver* - If defined, all hosts will connect to this
   address instead of localhost for kube-masters and kube-master[0] for
   kube-nodes. See more details in the
-  [HA guide](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/ha-mode.md).
+  [HA guide](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/ha-mode.md).
 * *loadbalancer_apiserver_localhost* - makes all hosts to connect to
   the apiserver internally load balanced endpoint. Mutual exclusive to the
   `loadbalancer_apiserver`. See more details in the
-  [HA guide](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/ha-mode.md).
+  [HA guide](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/ha-mode.md).
 
 #### Cluster variables
 
@@ -97,7 +97,7 @@ variables to match your requirements.
 * *skip_dnsmasq* - Don't set up dnsmasq (use only KubeDNS)
 
 For more information, see [DNS
-Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-stack.md).
+Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.md).
 
 #### Other service variables
 
@@ -143,7 +143,7 @@ node_taints:
   * `audit_log_maxsize`: 100
   * `audit_policy_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-policy.yaml"
 
-  By default, the `audit_policy_file` contains [default rules](https://github.com/kubernetes-incubator/kubespray/blob/master/roles/kubernetes/master/templates/apiserver-audit-policy.yaml.j2) that can be overridden with the `audit_policy_custom_rules` variable.
+  By default, the `audit_policy_file` contains [default rules](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubernetes/master/templates/apiserver-audit-policy.yaml.j2) that can be overridden with the `audit_policy_custom_rules` variable.
 
 ##### Custom flags for Kube Components
 For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments. This can be done by providing a list of flags. The `kubelet_node_custom_flags` apply kubelet settings only to nodes and not masters. Example:

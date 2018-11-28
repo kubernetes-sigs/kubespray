@@ -1,4 +1,4 @@
-![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-incubator/kubespray/master/docs/img/kubernetes-logo.png)
+![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-sigs/kubespray/master/docs/img/kubernetes-logo.png)
 
 Deploy a Production Ready Kubernetes Cluster
 ============================================
@@ -144,7 +144,7 @@ Requirements
 -   **Ansible v2.5 (or newer) and python-netaddr is installed on the machine
     that will run Ansible commands**
 -   **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
--   The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/downloads.md#offline-environment))
+-   The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/downloads.md#offline-environment))
 -   The target servers are configured to allow **IPv4 forwarding**.
 -   **Your ssh key must be copied** to all the servers part of your inventory.
 -   The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
@@ -196,7 +196,7 @@ Tools and projects on top of Kubespray
 
 -   [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/master/doc/integrations/ansible.rst)
 -   [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
--   [Terraform Contrib](https://github.com/kubernetes-incubator/kubespray/tree/master/contrib/terraform)
+-   [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
 
 CI Tests
 --------

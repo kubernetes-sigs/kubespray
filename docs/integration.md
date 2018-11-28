@@ -1,6 +1,6 @@
 # Kubespray (kubespray) in own ansible playbooks repo
 
-1. Fork [kubespray repo](https://github.com/kubernetes-incubator/kubespray) to your personal/organisation account on github.
+1. Fork [kubespray repo](https://github.com/kubernetes-sigs/kubespray) to your personal/organisation account on github.
    Note:
      * All forked public repos at github will be also public, so **never commit sensitive data to your public forks**.
    * List of all forked repos could be retrieved from github page of original project.
@@ -18,7 +18,7 @@
 ```git config --global status.submoduleSummary true```
 
 4. Add *original* kubespray repo as upstream:
-```git remote add upstream https://github.com/kubernetes-incubator/kubespray.git```
+```git remote add upstream https://github.com/kubernetes-sigs/kubespray.git```
 
 5. Sync your master branch with upstream:
    ```

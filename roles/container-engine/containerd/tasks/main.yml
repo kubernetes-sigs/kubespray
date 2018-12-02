@@ -1,0 +1,54 @@
+---
+- name: containerd | Install required packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - libseccomp2
+    - ethtool
+  when: ansible_distribution in ["Debian","Ubuntu"]
+
+- name: containerd | Install required packages (RPM)
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - libseccomp2
+    - ethtool
+  when: ansible_distribution in ["CentOS","RedHat"]
+
+- name: containerd | Download files
+  include_role:
+    name: download
+  vars:
+    download_container: false
+    skip_kubeadm_images: true
+
+- name: containerd | Copy containerd configuration files from download dir
+  copy:
+    src: "{{ local_release_dir }}/{{ item }}"
+    dest: "/{{ item }}"
+    remote_src: yes
+  with_items:
+    - etc/crictl.yaml
+    - etc/systemd/system/containerd.service
+
+- name: containerd | Copy containerd binaries from download dir
+  copy:
+    src: "{{ local_release_dir }}/{{ item }}"
+    dest: "/{{ item }}"
+    mode: 0755
+    remote_src: yes
+  with_items:
+    - usr/local/bin/crictl
+    - usr/local/bin/containerd
+    - usr/local/bin/containerd-shim
+    - usr/local/bin/ctr
+    - usr/local/bin/containerd-shim-runc-v1
+    - usr/local/sbin/runc
+
+- name: containerd | Start containerd
+  systemd:
+    name: containerd
+    state: started
+    enabled: true

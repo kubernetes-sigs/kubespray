@@ -38,6 +38,8 @@ image_arch: "{{host_architecture | default('amd64')}}"
 kube_version: v1.14.0
 kubeadm_version: "{{ kube_version }}"
 etcd_version: v3.2.26
+containerd_version: 1.2.6
+crictl_version: v1.13.0
 
 # kubernetes image repo define
 kube_image_repo: "gcr.io/google-containers"
@@ -68,6 +70,7 @@ hyperkube_download_url: "https://storage.googleapis.com/kubernetes-release/relea
 etcd_download_url: "https://github.com/coreos/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
 cni_download_url: "https://github.com/containernetworking/plugins/releases/download/{{ cni_version }}/cni-plugins-{{ image_arch }}-{{ cni_version }}.tgz"
 calicoctl_download_url: "https://github.com/projectcalico/calicoctl/releases/download/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
+containerd_download_url: "https://storage.googleapis.com/cri-containerd-release/cri-containerd-cni-{{ containerd_version }}.linux-amd64.tar.gz"
 
 # Checksums
 hyperkube_checksums:
@@ -148,12 +151,18 @@ calicoctl_binary_checksums:
     v3.6.1: 60fbaeb257061647bdf12b5ede7a0d4298a5ee216f6472e5a92bb14ef5c2a5d3
     v3.5.4: a4481178665658658a73e4ceca9a1dff5cccded4179615c91d1c3e49fd96f237
     v3.4.4: ff35d9e8b5c00e9fe47d05e8f5123ec98fd641370f8cd93f4fbb3d913da77ab6
+containerd_checksums:
+  1.2.0: 23b710057876ed5a619af2c190ca95200647e066764d37f7b4729b13c5168a31
+  1.2.1: 93f9061ef1fbc781b88ff4afb8591a059b39c8bbe8f47fd49fe889a4e769b1cf
+  1.2.6: 5dcd265e6ee305cb34ba6dcc6bac53515757206b7adf69aa5b393402c9061f63
 
 etcd_binary_checksum: "{{ etcd_binary_checksums[image_arch] }}"
 cni_binary_checksum: "{{ cni_binary_checksums[image_arch] }}"
 hyperkube_binary_checksum: "{{ hyperkube_checksums[image_arch][kube_version] }}"
 kubeadm_binary_checksum: "{{ kubeadm_checksums[image_arch][kubeadm_version] }}"
 calicoctl_binary_checksum: "{{ calicoctl_binary_checksums[image_arch][calico_ctl_version] }}"
+containerd_checksum: "{{ containerd_checksums[containerd_version] }}"
+containerd_binary_checksum: "{{ containerd_checksums[containerd_version] }}"
 
 # Containers
 # In some cases, we need a way to set --registry-mirror or --insecure-registry for docker,
@@ -208,7 +217,7 @@ kube_router_image_repo: "cloudnativelabs/kube-router"
 kube_router_image_tag: "{{ kube_router_version }}"
 multus_image_repo: "docker.io/nfvpe/multus"
 multus_image_tag: "{{ multus_version }}"
-nginx_image_repo: nginx
+nginx_image_repo: "nginx"
 nginx_image_tag: 1.15
 
 haproxy_image_repo: haproxy
@@ -680,6 +689,19 @@ downloads:
     sha256: "{{ dashboard_digest_checksum|default(None) }}"
     groups:
       - kube-master
+
+  containerd:
+    enabled: "{{ container_manager == 'containerd' }}"
+    file: true
+    version: "{{ containerd_version }}"
+    dest: "{{local_release_dir}}/cri-containerd-cni-{{ containerd_version }}.linux-amd64.tar.gz"
+    sha256: "{{ containerd_binary_checksum }}"
+    url: "{{ containerd_download_url }}"
+    unarchive: true
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s-cluster
 
 download_defaults:
   container: false

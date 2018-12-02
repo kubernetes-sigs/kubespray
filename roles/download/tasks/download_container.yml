@@ -23,6 +23,7 @@
     - download.enabled
     - download.container
     - pull_required|default(download_always_pull)
+    - container_manager != "containerd"
   delegate_to: "{{ download_delegate }}"
   delegate_facts: yes
   run_once: yes
@@ -39,3 +40,18 @@
     - download.container
     - pull_required|default(download_always_pull)
     - group_names | intersect(download.groups) | length
+    - container_manager != "containerd"
+
+- name: container_download | Download containers if pull is required or told to always pull (all nodes) (containerd)
+  command: "/usr/local/bin/crictl pull {{ pull_args }}"
+  register: pull_task_result
+  until: pull_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - not download_run_once
+    - download.enabled
+    - download.container
+    - pull_required|default(download_always_pull)
+    - group_names | intersect(download.groups) | length
+    - container_manager == "containerd"

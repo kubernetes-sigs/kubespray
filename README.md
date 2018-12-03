@@ -17,6 +17,9 @@ Quick Start
 
 To deploy the cluster you can use :
 
+### Current release
+2.8
+
 ### Ansible
 
 #### Ansible version

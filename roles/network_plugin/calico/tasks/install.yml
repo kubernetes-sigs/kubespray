@@ -33,16 +33,20 @@
     group: root
   changed_when: false
 
-- name: Calico | Copy cni plugins from hyperkube
-  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp -r /opt/cni/bin/. /cnibindir/"
-  register: cni_task_result
-  until: cni_task_result.rc == 0
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: false
-  tags:
-    - hyperkube
-    - upgrade
+- name: Calico | Set cni directory permissions
+  file:
+    path: /opt/cni/bin
+    state: directory
+    owner: kube
+    recurse: true
+    mode: 0755
+
+- name: Calico | Copy cni plugins
+  unarchive:
+    src: "{{ local_release_dir }}/cni-plugins-{{ image_arch }}-{{ cni_version }}.tgz"
+    dest: "/opt/cni/bin"
+    mode: 0755
+    remote_src: yes
 
 - name: Calico | Copy cni plugins from calico/cni container
   command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }} sh -c 'cp /opt/cni/bin/* /cnibindir/'"
@@ -56,14 +60,6 @@
   tags:
     - hyperkube
     - upgrade
-
-- name: Calico | Set cni directory permissions
-  file:
-    path: /opt/cni/bin
-    state: directory
-    owner: kube
-    recurse: true
-    mode: 0755
 
 - name: Calico | wait for etcd
   uri:

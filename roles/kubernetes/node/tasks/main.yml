@@ -22,16 +22,6 @@
   tags:
     - nginx
 
-- name: Write kubelet config file (non-kubeadm)
-  template:
-    src: kubelet.standard.env.j2
-    dest: "{{ kube_config_dir }}/kubelet.env"
-    backup: yes
-  when: not kubeadm_enabled
-  notify: restart kubelet
-  tags:
-    - kubelet
-
 - name: Make sure dynamic kubelet configuration directory is writeable
   file:
     path: "{{ dynamic_kubelet_configuration_dir }}"
@@ -44,24 +34,10 @@
     src: kubelet.kubeadm.env.j2
     dest: "{{ kube_config_dir }}/kubelet.env"
     backup: yes
-  when: kubeadm_enabled
   notify: restart kubelet
   tags:
     - kubelet
     - kubeadm
-
-- name: write the kubecfg (auth) file for kubelet
-  template:
-    src: "{{ item }}-kubeconfig.yaml.j2"
-    dest: "{{ kube_config_dir }}/{{ item }}-kubeconfig.yaml"
-    backup: yes
-  with_items:
-    - node
-    - kube-proxy
-  when: not kubeadm_enabled
-  notify: restart kubelet
-  tags:
-    - kubelet
 
 - name: Ensure nodePort range is reserved
   sysctl:
@@ -147,7 +123,7 @@
     src: manifests/kube-proxy.manifest.j2
     dest: "{{ kube_manifest_dir }}/kube-proxy.manifest"
   when:
-    - not (kubeadm_enabled or kube_proxy_remove)
+    - not kube_proxy_remove
   tags:
     - kube-proxy
 
@@ -156,7 +132,7 @@
     path: "{{ kube_manifest_dir }}/kube-proxy.manifest"
     state: absent
   when:
-    - kubeadm_enabled or kube_proxy_remove
+    - kube_proxy_remove
   tags:
     - kube-proxy
 

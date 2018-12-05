@@ -1,4 +1,21 @@
 ---
+- name: kubeadm | Check if old apiserver cert exists on host
+  stat:
+    path: "{{ kube_cert_dir }}/apiserver.pem"
+  register: old_apiserver_cert
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+
+- name: kubeadm | Migrate old certs if necessary
+  import_tasks: kubeadm-migrate-certs.yml
+  when: old_apiserver_cert.stat.exists
+
+- name: kubeadm | Check service account key
+  stat:
+    path: "{{ kube_cert_dir }}/sa.key"
+  register: sa_key_before
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
 
 - name: kubeadm | Check if kubeadm has already run
   stat:
@@ -11,6 +28,20 @@
     state: absent
   when:
     - not kubeadm_already_run.stat.exists
+
+- name: kubeadm | Delete old static pods
+  file:
+    path: "{{ kube_config_dir }}/manifests/{{item}}.manifest"
+    state: absent
+  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler", "kube-proxy"]
+  when:
+    - old_apiserver_cert.stat.exists
+
+- name: kubeadm | Forcefully delete old static pods
+  shell: "docker ps -f name=k8s_{{item}} -q | xargs --no-run-if-empty docker rm -f"
+  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
+  when:
+    - old_apiserver_cert.stat.exists
 
 - name: kubeadm | aggregate all SANs
   set_fact:
@@ -177,6 +208,11 @@
   when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed and kubeadm_already_run.stat.exists)
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   notify: Master | restart kubelet
+
+- name: kubeadm | cleanup old certs if necessary
+  import_tasks: kubeadm-cleanup-old-certs.yml
+  when:
+    - old_apiserver_cert.stat.exists
 
 - name: kubeadm | Remove taint for master with node role
   command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf taint node {{ inventory_hostname }} node-role.kubernetes.io/master:NoSchedule-"

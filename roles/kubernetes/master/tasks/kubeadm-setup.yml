@@ -209,6 +209,18 @@
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   notify: Master | restart kubelet
 
+- name: kubeadm | Check service account key again
+  stat:
+    path: "{{ kube_cert_dir }}/sa.key"
+  register: sa_key_after
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+
+- name: kubeadm | Set secret_changed if service account key was updated
+  command: /bin/true
+  notify: Master | set secret_changed
+  when: sa_key_before.stat.checksum|default("") != sa_key_after.stat.checksum
+
 - name: kubeadm | cleanup old certs if necessary
   import_tasks: kubeadm-cleanup-old-certs.yml
   when:

@@ -103,7 +103,14 @@
 - name: sets kubeadm api version to v1alpha3
   set_fact:
     kubeadmConfig_api_version: v1alpha3
-  when: kubeadm_output.stdout is version('v1.12.0', '>=')
+  when:
+    - kubeadm_output.stdout is version('v1.12.0', '>=')
+    - kubeadm_output.stdout is version('v1.13.0', '<')
+
+- name: sets kubeadm api version to v1beta1
+  set_fact:
+    kubeadmConfig_api_version: v1beta1
+  when: kubeadm_output.stdout is version('v1.13.0', '>=')
 
 # Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
 - name: set kubeadm_config_api_fqdn define
@@ -143,15 +150,6 @@
   when: inventory_hostname == groups['kube-master']|first and (kubeadm_config.changed and kubeadm_already_run.stat.exists)
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   notify: Master | restart kubelet
-
-# FIXME(mattymo): remove when https://github.com/kubernetes/kubeadm/issues/433 is fixed
-- name: kubeadm | Enable kube-proxy
-  command: "{{ bin_dir }}/kubeadm alpha phase addon kube-proxy --config={{ kube_config_dir }}/kubeadm-config.{{ kubeadmConfig_api_version }}.yaml"
-  register: kubeadm_kube_proxy_enable
-  retries: 10
-  until: kubeadm_kube_proxy_enable is succeeded
-  when: inventory_hostname == groups['kube-master']|first
-  changed_when: false
 
 - name: slurp kubeadm certs
   slurp:

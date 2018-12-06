@@ -1,6 +1,6 @@
-apiVersion: kubeadm.k8s.io/v1alpha3
+apiVersion: kubeadm.k8s.io/v1beta1
 kind: InitConfiguration
-apiEndpoint:
+localAPIEndpoint:
   advertiseAddress: {{ ip | default(ansible_default_ipv4.address) }}
   bindPort: {{ kube_apiserver_port }}
 nodeRegistration:
@@ -9,8 +9,9 @@ nodeRegistration:
 {% endif %}
 {% if inventory_hostname in groups['kube-master'] and inventory_hostname not in groups['kube-node'] %}
   taints:
-  - effect: NoSchedule
-    key: node-role.kubernetes.io/master
+  - key: "kubeadmNode"
+    value: "master"
+    effect: "NoSchedule"
 {% endif %}
 {% if container_manager == 'crio' %}
   criSocket: /var/run/crio/crio.sock
@@ -20,7 +21,7 @@ nodeRegistration:
   criSocket: /var/run/dockershim.sock
 {% endif %}
 ---
-apiVersion: kubeadm.k8s.io/v1alpha3
+apiVersion: kubeadm.k8s.io/v1beta1
 kind: ClusterConfiguration
 clusterName: {{ cluster_name }}
 etcd:
@@ -43,172 +44,177 @@ controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}:{{ loadbalancer_apiserver.po
 {% else %}
 controlPlaneEndpoint: {{ ip | default(ansible_default_ipv4.address) }}:{{ kube_apiserver_port }}
 {% endif %}
-apiServerCertSANs:
-{% for san in  apiserver_sans.split(' ') | unique %}
-  - {{ san }}
-{% endfor %}
 certificatesDir: {{ kube_cert_dir }}
 imageRepository: {{ kube_image_repo }}
-unifiedControlPlaneImage: ""
-apiServerExtraArgs:
-  authorization-mode: {{ authorization_modes | join(',') }}
-  bind-address: {{ kube_apiserver_bind_address }}
+UseHyperKubeImage: false
+apiServer:
+  extraArgs:
+    authorization-mode: {{ authorization_modes | join(',') }}
+    bind-address: {{ kube_apiserver_bind_address }}
 {% if kube_apiserver_insecure_port|string != "0" %}
-  insecure-bind-address: {{ kube_apiserver_insecure_bind_address }}
+    insecure-bind-address: {{ kube_apiserver_insecure_bind_address }}
 {% endif %}
-  insecure-port: "{{ kube_apiserver_insecure_port }}"
+    insecure-port: "{{ kube_apiserver_insecure_port }}"
 {% if kube_version is version('v1.10', '<') %}
-  admission-control: {{ kube_apiserver_admission_control | join(',') }}
+    admission-control: {{ kube_apiserver_admission_control | join(',') }}
 {% else %}
 {% if kube_apiserver_enable_admission_plugins|length > 0 %}
-  enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }}
+    enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }}
 {% endif %}
 {% if kube_apiserver_disable_admission_plugins|length > 0 %}
-  disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }}
+    disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }}
 {% endif %}
 {% endif %}
-  apiserver-count: "{{ kube_apiserver_count }}"
+    apiserver-count: "{{ kube_apiserver_count }}"
 {% if kube_version is version('v1.9', '>=') %}
-  endpoint-reconciler-type: lease
+    endpoint-reconciler-type: lease
 {% endif %}
-  storage-backend: etcd3
+    storage-backend: etcd3
 {% if etcd_events_cluster_enabled %}
-  etcd-servers-overrides: "/events#{{ etcd_events_access_addresses }}"
+    etcd-servers-overrides: "/events#{{ etcd_events_access_addresses }}"
 {% endif %}
-  service-node-port-range: {{ kube_apiserver_node_port_range }}
-  kubelet-preferred-address-types: "{{ kubelet_preferred_address_types }}"
+    service-node-port-range: {{ kube_apiserver_node_port_range }}
+    kubelet-preferred-address-types: "{{ kubelet_preferred_address_types }}"
 {% if kube_basic_auth|default(true) %}
-  basic-auth-file: {{ kube_users_dir }}/known_users.csv
+    basic-auth-file: {{ kube_users_dir }}/known_users.csv
 {% endif %}
 {% if kube_token_auth|default(true) %}
-  token-auth-file: {{ kube_token_dir }}/known_tokens.csv
+    token-auth-file: {{ kube_token_dir }}/known_tokens.csv
 {% endif %}
 {% if kube_oidc_auth|default(false) and kube_oidc_url is defined and kube_oidc_client_id is defined %}
-  oidc-issuer-url: {{ kube_oidc_url }}
-  oidc-client-id: {{ kube_oidc_client_id }}
+    oidc-issuer-url: {{ kube_oidc_url }}
+    oidc-client-id: {{ kube_oidc_client_id }}
 {%   if kube_oidc_ca_file is defined %}
-  oidc-ca-file: {{ kube_oidc_ca_file }}
+    oidc-ca-file: {{ kube_oidc_ca_file }}
 {%   endif %}
 {%   if kube_oidc_username_claim is defined %}
-  oidc-username-claim: {{ kube_oidc_username_claim }}
+    oidc-username-claim: {{ kube_oidc_username_claim }}
 {%   endif %}
 {%   if kube_oidc_groups_claim is defined %}
-  oidc-groups-claim: {{ kube_oidc_groups_claim }}
+    oidc-groups-claim: {{ kube_oidc_groups_claim }}
 {%   endif %}
 {% endif %}
 {% if kube_encrypt_secret_data %}
-  experimental-encryption-provider-config: {{ kube_config_dir }}/ssl/secrets_encryption.yaml
+    encryption-provider-config: {{ kube_config_dir }}/ssl/secrets_encryption.yaml
 {% endif %}
-  storage-backend: {{ kube_apiserver_storage_backend }}
+    storage-backend: {{ kube_apiserver_storage_backend }}
 {% if kube_api_runtime_config is defined %}
-  runtime-config: {{ kube_api_runtime_config | join(',') }}
+    runtime-config: {{ kube_api_runtime_config | join(',') }}
 {% endif %}
-  allow-privileged: "true"
+    allow-privileged: "true"
 {% if kubernetes_audit %}
-  audit-log-path: "{{ audit_log_path }}"
-  audit-log-maxage: "{{ audit_log_maxage }}"
-  audit-log-maxbackup: "{{ audit_log_maxbackups }}"
-  audit-log-maxsize: "{{ audit_log_maxsize }}"
-  audit-policy-file: {{ audit_policy_file }}
+    audit-log-path: "{{ audit_log_path }}"
+    audit-log-maxage: "{{ audit_log_maxage }}"
+    audit-log-maxbackup: "{{ audit_log_maxbackups }}"
+    audit-log-maxsize: "{{ audit_log_maxsize }}"
+    audit-policy-file: {{ audit_policy_file }}
 {% endif %}
 {% for key in kube_kubeadm_apiserver_extra_args %}
-  {{ key }}: "{{ kube_kubeadm_apiserver_extra_args[key] }}"
+    {{ key }}: "{{ kube_kubeadm_apiserver_extra_args[key] }}"
 {% endfor %}
 {% if kube_feature_gates %}
-  feature-gates: {{ kube_feature_gates|join(',') }}
+    feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
-  cloud-provider: {{cloud_provider}}
-  cloud-config: {{ kube_config_dir }}/cloud_config
+    cloud-provider: {{cloud_provider}}
+    cloud-config: {{ kube_config_dir }}/cloud_config
 {% elif cloud_provider is defined and cloud_provider in ["external"] %}
-  cloud-config: {{ kube_config_dir }}/cloud_config
-{% endif %}
-controllerManagerExtraArgs:
-  node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
-  node-monitor-period: {{ kube_controller_node_monitor_period }}
-  pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
-{% if kube_feature_gates %}
-  feature-gates: {{ kube_feature_gates|join(',') }}
-{% endif %}
-{% for key in kube_kubeadm_controller_extra_args %}
-  {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
-{% endfor %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
-  cloud-provider: {{cloud_provider}}
-  cloud-config: {{ kube_config_dir }}/cloud_config
-{% elif cloud_provider is defined and cloud_provider in ["external"] %}
-  cloud-config: {{ kube_config_dir }}/cloud_config
-{% endif %}
-schedulerExtraArgs:
-{% if kube_feature_gates %}
-  feature-gates: {{ kube_feature_gates|join(',') }}
-{% endif %}
-{% if kube_kubeadm_scheduler_extra_args|length > 0 %}
-{% for key in kube_kubeadm_scheduler_extra_args %}
-  {{ key }}: "{{ kube_kubeadm_scheduler_extra_args[key] }}"
-{% endfor %}
+    cloud-config: {{ kube_config_dir }}/cloud_config
 {% endif %}
 {% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) or ( cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] ) or apiserver_extra_volumes %}
-apiServerExtraVolumes:
+  extraVolumes:
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}
-- name: cloud-config
-  hostPath: {{ kube_config_dir }}/cloud_config
-  mountPath: {{ kube_config_dir }}/cloud_config
+  - name: cloud-config
+    hostPath: {{ kube_config_dir }}/cloud_config
+    mountPath: {{ kube_config_dir }}/cloud_config
 {% endif %}
 {% if kube_basic_auth|default(true) %}
-- name: basic-auth-config
-  hostPath: {{ kube_users_dir }}
-  mountPath: {{ kube_users_dir }}
+  - name: basic-auth-config
+    hostPath: {{ kube_users_dir }}
+    mountPath: {{ kube_users_dir }}
 {% endif %}
 {% if kube_token_auth|default(true) %}
-- name: token-auth-config
-  hostPath: {{ kube_token_dir }}
-  mountPath: {{ kube_token_dir }}
+  - name: token-auth-config
+    hostPath: {{ kube_token_dir }}
+    mountPath: {{ kube_token_dir }}
 {% endif %}
 {% if kubernetes_audit %}
-- name: {{ audit_policy_name }}
-  hostPath: {{ audit_policy_hostpath }}
-  mountPath: {{ audit_policy_mountpath }}
+  - name: {{ audit_policy_name }}
+    hostPath: {{ audit_policy_hostpath }}
+    mountPath: {{ audit_policy_mountpath }}
 {% if audit_log_path != "-" %}
-- name: {{ audit_log_name }}
-  hostPath: {{ audit_log_hostpath }}
-  mountPath: {{ audit_log_mountpath }}
-  writable: true
+  - name: {{ audit_log_name }}
+    hostPath: {{ audit_log_hostpath }}
+    mountPath: {{ audit_log_mountpath }}
+    writable: true
 {% endif %}
 {% endif %}
 {% for volume in apiserver_extra_volumes %}
-- name: {{ volume.name }}
-  hostPath: {{ volume.hostPath }}
-  mountPath: {{ volume.mountPath }}
-  writable: {{ volume.writable | default(false)}}
+  - name: {{ volume.name }}
+    hostPath: {{ volume.hostPath }}
+    mountPath: {{ volume.mountPath }}
+    writable: {{ volume.writable | default(false)}}
 {% endfor %}
+{% endif %}
+  certSANs:
+{% for san in  apiserver_sans.split(' ') | unique %}
+  - {{ san }}
+{% endfor %}
+  timeoutForControlPlane: 5m0s
+controllerManager:
+  extraArgs:
+    node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
+    node-monitor-period: {{ kube_controller_node_monitor_period }}
+    pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
+{% if kube_feature_gates %}
+    feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
+{% for key in kube_kubeadm_controller_extra_args %}
+    {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
+{% endfor %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
+    cloud-provider: {{cloud_provider}}
+    cloud-config: {{ kube_config_dir }}/cloud_config
+{% elif cloud_provider is defined and cloud_provider in ["external"] %}
+    cloud-config: {{ kube_config_dir }}/cloud_config
 {% endif %}
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] or controller_manager_extra_volumes %}
-controllerManagerExtraVolumes:
+  extraVolumes:
 {% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
-- name: openstackcacert
-  hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
-  mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
+  - name: openstackcacert
+    hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
+    mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
 {% endif %}
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}
-- name: cloud-config
-  hostPath: {{ kube_config_dir }}/cloud_config
-  mountPath: {{ kube_config_dir }}/cloud_config
+  - name: cloud-config
+    hostPath: {{ kube_config_dir }}/cloud_config
+    mountPath: {{ kube_config_dir }}/cloud_config
 {% endif %}
 {% for volume in controller_manager_extra_volumes %}
-- name: {{ volume.name }}
-  hostPath: {{ volume.hostPath }}
-  mountPath: {{ volume.mountPath }}
-  writable: {{ volume.writable | default(false)}}
+  - name: {{ volume.name }}
+    hostPath: {{ volume.hostPath }}
+    mountPath: {{ volume.mountPath }}
+    writable: {{ volume.writable | default(false)}}
 {% endfor %}
 {% endif %}
+scheduler:
+  extraArgs:
+{% if kube_feature_gates %}
+    feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
+{% if kube_kubeadm_scheduler_extra_args|length > 0 %}
+{% for key in kube_kubeadm_scheduler_extra_args %}
+    {{ key }}: "{{ kube_kubeadm_scheduler_extra_args[key] }}"
+{% endfor %}
+{% endif %}
+  extraVolumes:
 {% if scheduler_extra_volumes %}
-schedulerExtraVolumes:
+  extraVolumes:
 {% for volume in scheduler_extra_volumes %}
-- name: {{ volume.name }}
-  hostPath: {{ volume.hostPath }}
-  mountPath: {{ volume.mountPath }}
-  writable: {{ volume.writable | default(false)}}
+  - name: {{ volume.name }}
+    hostPath: {{ volume.hostPath }}
+    mountPath: {{ volume.mountPath }}
+    writable: {{ volume.writable | default(false)}}
 {% endfor %}
 {% endif %}
 ---

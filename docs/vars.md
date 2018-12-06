@@ -20,9 +20,6 @@ Some variables of note include:
   string)
 * *etcd_version* - Specify version of ETCD to use
 * *ipip* - Enables Calico ipip encapsulation by default
-* *hyperkube_image_repo* - Specify the Docker repository where Hyperkube
-  resides
-* *hyperkube_image_tag* - Specify the Docker tag where Hyperkube resides
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)
 * *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
 * *kube_version* - Specify a given Kubernetes hyperkube version

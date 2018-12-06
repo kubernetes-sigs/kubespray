@@ -15,8 +15,6 @@ Use cri-o instead of docker, set following variable:
 #### all.yml
 
 ```
-kubeadm_enabled: true
-...
 download_container: false
 skip_downloads: false
 ```
@@ -28,4 +26,3 @@ etcd_deployment_type: host
 kubelet_deployment_type: host
 container_manager: crio
 ```
-

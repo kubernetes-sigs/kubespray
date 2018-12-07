@@ -75,7 +75,7 @@
   delay: 5
   tags:
     - crio
-  when: container_manager == 'crio'
+  when: container_manager == 'crio' and deploy_container_engine|default(true)
 
 - name: reset | gather mounted kubelet dirs
   shell: mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
@@ -111,6 +111,17 @@
   shell: "ipvsadm -C"
   when:
     - kube_proxy_mode == 'ipvs'
+
+- name: reset | check kube-ipvs0 network device
+  stat:
+    path: /sys/class/net/kube-ipvs0
+  register: kube_ipvs0
+
+- name: reset | Remove kube-ipvs0
+  command: "ip link del kube-ipvs0"
+  when:
+    - kube_proxy_mode == 'ipvs'
+    - kube_ipvs0.stat.exists
 
 - name: reset | delete some files and directories
   file:
@@ -200,7 +211,7 @@
 - name: reset | include file with reset tasks specific to the network_plugin if exists
   include_tasks: "{{ (role_path + '/../network_plugin/' + kube_network_plugin + '/tasks/reset.yml') | realpath  }}"
   when:
-    - kube_network_plugin in ['flannel', 'cilium', 'contiv', 'kube-router']
+    - kube_network_plugin in ['flannel', 'cilium', 'contiv', 'kube-router', 'calico']
   tags:
     - network
 

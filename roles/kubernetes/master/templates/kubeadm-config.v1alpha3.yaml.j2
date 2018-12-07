@@ -36,12 +36,20 @@ networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: {{ kube_service_addresses }}
   podSubnet: {{ kube_pods_subnet }}
+  podNetworkCidr: "{{ kube_network_node_prefix }}"
 kubernetesVersion: {{ kube_version }}
 {% if groups['kube-master'] | length > 1 and kubeadm_config_api_fqdn is defined %}
 controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
 {% else %}
 controlPlaneEndpoint: {{ ip | default(ansible_default_ipv4.address) }}:{{ kube_apiserver_port }}
 {% endif %}
+apiServerCertSANs:
+{% for san in  apiserver_sans.split(' ') | unique %}
+  - {{ san }}
+{% endfor %}
+certificatesDir: {{ kube_cert_dir }}
+imageRepository: {{ kube_image_repo }}
+unifiedControlPlaneImage: ""
 apiServerExtraArgs:
   authorization-mode: {{ authorization_modes | join(',') }}
   bind-address: {{ kube_apiserver_bind_address }}
@@ -108,6 +116,12 @@ apiServerExtraArgs:
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
+  cloud-provider: {{cloud_provider}}
+  cloud-config: {{ kube_config_dir }}/cloud_config
+{% elif cloud_provider is defined and cloud_provider in ["external"] %}
+  cloud-config: {{ kube_config_dir }}/cloud_config
+{% endif %}
 controllerManagerExtraArgs:
   node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
   node-monitor-period: {{ kube_controller_node_monitor_period }}
@@ -115,14 +129,31 @@ controllerManagerExtraArgs:
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
-{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
-controllerManagerExtraVolumes:
-- name: openstackcacert
-  hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
-  mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
+{% for key in kube_kubeadm_controller_extra_args %}
+  {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
+{% endfor %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
+  cloud-provider: {{cloud_provider}}
+  cloud-config: {{ kube_config_dir }}/cloud_config
+{% elif cloud_provider is defined and cloud_provider in ["external"] %}
+  cloud-config: {{ kube_config_dir }}/cloud_config
 {% endif %}
-{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) %}
+schedulerExtraArgs:
+{% if kube_feature_gates %}
+  feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
+{% if kube_kubeadm_scheduler_extra_args|length > 0 %}
+{% for key in kube_kubeadm_scheduler_extra_args %}
+  {{ key }}: "{{ kube_kubeadm_scheduler_extra_args[key] }}"
+{% endfor %}
+{% endif %}
+{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) or ( cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] ) or apiserver_extra_volumes %}
 apiServerExtraVolumes:
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}
+- name: cloud-config
+  hostPath: {{ kube_config_dir }}/cloud_config
+  mountPath: {{ kube_config_dir }}/cloud_config
+{% endif %}
 {% if kube_basic_auth|default(true) %}
 - name: basic-auth-config
   hostPath: {{ kube_users_dir }}
@@ -144,26 +175,41 @@ apiServerExtraVolumes:
   writable: true
 {% endif %}
 {% endif %}
-{% endif %}
-{% for key in kube_kubeadm_controller_extra_args %}
-  {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
-{% endfor %}
-schedulerExtraArgs:
-{% if kube_feature_gates %}
-  feature-gates: {{ kube_feature_gates|join(',') }}
-{% endif %}
-{% if kube_kubeadm_scheduler_extra_args|length > 0 %}
-{% for key in kube_kubeadm_scheduler_extra_args %}
-  {{ key }}: "{{ kube_kubeadm_scheduler_extra_args[key] }}"
+{% for volume in apiserver_extra_volumes %}
+- name: {{ volume.name }}
+  hostPath: {{ volume.hostPath }}
+  mountPath: {{ volume.mountPath }}
+  writable: {{ volume.writable | default(false)}}
 {% endfor %}
 {% endif %}
-apiServerCertSANs:
-{% for san in  apiserver_sans.split(' ') | unique %}
-  - {{ san }}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] or controller_manager_extra_volumes %}
+controllerManagerExtraVolumes:
+{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
+- name: openstackcacert
+  hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
+  mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
+{% endif %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}
+- name: cloud-config
+  hostPath: {{ kube_config_dir }}/cloud_config
+  mountPath: {{ kube_config_dir }}/cloud_config
+{% endif %}
+{% for volume in controller_manager_extra_volumes %}
+- name: {{ volume.name }}
+  hostPath: {{ volume.hostPath }}
+  mountPath: {{ volume.mountPath }}
+  writable: {{ volume.writable | default(false)}}
 {% endfor %}
-certificatesDir: {{ kube_config_dir }}/ssl
-imageRepository: {{ kube_image_repo }}
-unifiedControlPlaneImage: ""
+{% endif %}
+{% if scheduler_extra_volumes %}
+schedulerExtraVolumes:
+{% for volume in scheduler_extra_volumes %}
+- name: {{ volume.name }}
+  hostPath: {{ volume.hostPath }}
+  mountPath: {{ volume.mountPath }}
+  writable: {{ volume.writable | default(false)}}
+{% endfor %}
+{% endif %}
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration

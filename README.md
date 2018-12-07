@@ -198,7 +198,6 @@ Tools and projects on top of Kubespray
 --------------------------------------
 
 -   [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/master/doc/integrations/ansible.rst)
--   [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
 -   [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
 
 CI Tests

@@ -161,7 +161,8 @@ Vagrant.configure("2") do |config|
       node.vm.network :private_network, ip: ip
 
       # Disable swap for each vm
-      node.vm.provision "shell", inline: "swapoff -a && sed -i '/swap/s/^/#/' /etc/fstab"
+      node.vm.provision "shell", inline: "swapoff -a"
+      node.vm.provision "shell", inline: "sed -i '/swap/s/^/#/' /etc/fstab"
 
       host_vars[vm_name] = {
         "ip": ip,

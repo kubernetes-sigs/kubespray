@@ -16,25 +16,27 @@ spec:
        labels:
           k8s-app: nodelocaldns
     spec:
-      priorityClassName: system-node-critical
+      priorityClassName: system-cluster-critical
       serviceAccountName: nodelocaldns
       hostNetwork: true
       dnsPolicy: Default  # Don't use cluster DNS.
       tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
       - key: "CriticalAddonsOnly"
         operator: "Exists"
       containers:
       - name: node-cache
-        image: k8s.gcr.io/k8s-dns-node-cache:1.15.0
+        image: "{{ nodelocaldns_image_repo }}:{{ nodelocaldns_image_tag }}"
         resources:
           limits:
-            memory: 30Mi
+            memory: {{ nodelocaldns_memory_limit }}
           requests:
-            cpu: 25m
-            memory: 5Mi
+            cpu: {{ nodelocaldns_cpu_requests }}
+            memory: {{ nodelocaldnsdns_memory_requests }}
         args: [ "-localip", "{{ local_dns_ip }}", "-conf", "/etc/coredns/Corefile" ]
         securityContext:
-                privileged: true
+          privileged: true
         ports:
         - containerPort: 53
           name: dns

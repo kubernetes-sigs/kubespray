@@ -8,9 +8,15 @@
     - { name: nodelocaldns, file: nodelocaldns-sa.yml, type: sa }
     - { name: nodelocaldns, file: nodelocaldns-deamonset.yml, type: daemonset }
   register: nodelocaldns_manifests
-  vars:
-    clusterIP: "{{ skydns_server }}"
-    secondaryclusterIP: "{{ skydns_server_secondary }}"
+  vars: >-
+    {% if dns_mode in ['kubedns', 'coredns', 'coredns_dual'] %}
+      clusterIP: "{{ skydns_server }}"
+    {% elif dns_mode == 'dnsmasq_kubedns' %}
+      clusterIP: "{{ dnsmasq_dns_server }}"
+    {% elif dns_mode == 'manual' %}
+      clusterIP: "{{ manual_dns_server }}"
+    {% endif %}
+      secondaryclusterIP: "{{ skydns_server_secondary }}"
   when:
     - enable_nodelocaldns == True
     - inventory_hostname == groups['kube-master'] | first

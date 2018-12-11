@@ -58,11 +58,11 @@ limitations (e.g. number of nameservers). Kubelet is instructed to use dnsmasq i
 It is configured to forward all DNS queries belonging to cluster services to kubedns/skydns. All
 other queries are forwardet to the nameservers found in ``upstream_dns_servers`` or ``default_resolver``
 
-#### kubedns (default)
+#### kubedns
 This does not install the dnsmasq DaemonSet and instructs kubelet to directly use kubedns/skydns for
 all queries.
 
-#### coredns
+#### coredns (default)
 This does not install the dnsmasq DaemonSet and instructs kubelet to directly use CoreDNS for
 all queries.
 

@@ -100,10 +100,25 @@
     - ip_vs_rr
     - ip_vs_wrr
     - ip_vs_sh
-    - nf_conntrack_ipv4
   when: kube_proxy_mode == 'ipvs'
   tags:
     - kube-proxy
+
+- name: Modprobe nf_conntrack_ipv4 for kernels < 4.19
+  modprobe:
+    name: nf_conntrack_ipv4
+    state: present
+  register: enable_nf_conntrack
+  ignore_errors: yes
+  when: kube_proxy_mode == 'ipvs'
+
+- name: Modprobe nf_conntrack for kernels >= 4.19
+  modprobe:
+    name: nf_conntrack
+    state: present
+  when: 
+    - enable_nf_conntrack is failed
+    - kube_proxy_mode == 'ipvs'
 
 - name: Persist ip_vs modules
   copy:
@@ -113,7 +128,11 @@
       ip_vs_rr
       ip_vs_wrr
       ip_vs_sh
+      {% if enable_nf_conntrack is failed -%}
+      nf_conntrack
+      {%-   else -%}
       nf_conntrack_ipv4
+      {%-   endif -%}
   when: kube_proxy_mode == 'ipvs'
   tags:
     - kube-proxy

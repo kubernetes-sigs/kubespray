@@ -51,6 +51,11 @@ This is the AppId from the last command
 
 azure\_aad\_client\_id must be set to the AppId, azure\_aad\_client\_secret is your choosen secret.
 
+#### azure\_lb\_sku 
+This is set to standard by default but can be set to basic if you want to still use the old loadbalancer that is currently being phased out.
+
+Further reading: [Overview](https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-standard-overview)
+
 ## Provisioning Azure with Resource Group Templates
 
 You'll find Resource Group Templates and scripts to provision the required infrastructure to Azure in [*contrib/azurerm*](../contrib/azurerm/README.md)

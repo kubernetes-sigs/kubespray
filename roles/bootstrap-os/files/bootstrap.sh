@@ -11,22 +11,22 @@ if [[ -e $BINDIR/.bootstrapped ]]; then
   exit 0
 fi
 
-PYPY_VERSION=5.1.0
+PYPY_VERSION=v6.0.0
 
-wget -O - https://bitbucket.org/pypy/pypy/downloads/pypy-$PYPY_VERSION-linux64.tar.bz2 |tar -xjf -
-mv -n pypy-$PYPY_VERSION-linux64 pypy
+wget -O - https://bitbucket.org/pypy/pypy/downloads/pypy3-$PYPY_VERSION-linux64.tar.bz2 | tar -xjf -
+mv -n pypy3-$PYPY_VERSION-linux64 pypy3
 
 ## library fixup
-mkdir -p pypy/lib
+mkdir -p pypy3/lib
 if [ -f /lib64/libncurses.so.5.9 ]; then
-  ln -snf /lib64/libncurses.so.5.9 $BINDIR/pypy/lib/libtinfo.so.5
+  ln -snf /lib64/libncurses.so.5.9 $BINDIR/pypy3/lib/libtinfo.so.5
 elif [ -f /lib64/libncurses.so.6.1 ]; then
-  ln -snf /lib64/libncurses.so.6.1 $BINDIR/pypy/lib/libtinfo.so.5
+  ln -snf /lib64/libncurses.so.6.1 $BINDIR/pypy3/lib/libtinfo.so.5
 fi
 
 cat > $BINDIR/python <<EOF
 #!/bin/bash
-LD_LIBRARY_PATH=$BINDIR/pypy/lib:$LD_LIBRARY_PATH exec $BINDIR/pypy/bin/pypy "\$@"
+LD_LIBRARY_PATH=$BINDIR/pypy3/lib:$LD_LIBRARY_PATH exec $BINDIR/pypy3/bin/pypy3 "\$@"
 EOF
 
 chmod +x $BINDIR/python

@@ -1,0 +1,60 @@
+---
+# https://raw.githubusercontent.com/kubernetes/kubernetes/v1.5.2/cluster/addons/fluentd-elasticsearch/es-controller.yaml
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: "fluentd-es-v{{ fluentd_version }}"
+  namespace: "kube-system"
+  labels:
+    k8s-app: fluentd-es
+    kubernetes.io/cluster-service: "true"
+    version: "v{{ fluentd_version }}"
+spec:
+  template:
+    metadata:
+      labels:
+        k8s-app: fluentd-es
+        kubernetes.io/cluster-service: "true"
+        version: "v{{ fluentd_version }}"
+    spec:
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+      - name: fluentd-es
+        image: "{{ fluentd_image_repo }}:{{ fluentd_image_tag }}"
+        command:
+          - '/bin/sh'
+          - '-c'
+          - '/usr/sbin/td-agent -c {{ fluentd_config_dir }}/{{ fluentd_config_file}} 2>&1 >> /var/log/fluentd.log'
+        resources:
+          limits:
+{% if fluentd_cpu_limit is defined and fluentd_cpu_limit != "0m" %}
+            cpu: {{ fluentd_cpu_limit }}
+{% endif %}
+            memory: {{ fluentd_mem_limit }}
+          requests:
+            cpu:  {{ fluentd_cpu_requests }}
+            memory: {{ fluentd_mem_requests }}
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+        - name: dockercontainers
+          mountPath: "{{ docker_daemon_graph }}/containers"
+          readOnly: true
+        - name: config
+          mountPath: "{{ fluentd_config_dir }}"
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: dockercontainers
+        hostPath:
+          path: {{ docker_daemon_graph }}/containers
+      - name: config
+        configMap: 
+          name: fluentd-config
+{% if rbac_enabled %}
+      serviceAccountName: efk 
+{% endif %}

@@ -1,0 +1,40 @@
+---
+- name: "ElasticSearch | Write efk manifests (RBAC)"
+  template:
+    src: "{{ item }}"
+    dest: "{{ kube_config_dir }}/{{ item }}"
+  with_items:
+    - "efk-sa.yml"
+    - "efk-clusterrolebinding.yml"
+  run_once: true
+  when: rbac_enabled
+
+- name: "ElasticSearch | Create Serviceaccount and Clusterrolebinding (RBAC)"
+  command: "{{ bin_dir }}/kubectl apply -f {{ kube_config_dir }}/{{ item }} -n kube-system"
+  with_items:
+    - "efk-sa.yml"
+    - "efk-clusterrolebinding.yml"
+  run_once: true
+  when: rbac_enabled
+
+- name: "ElasticSearch | Write ES deployment"
+  template:
+    src: elasticsearch-deployment.yml.j2
+    dest: "{{ kube_config_dir }}/elasticsearch-deployment.yaml"
+  register: es_deployment_manifest
+
+- name: "ElasticSearch | Create ES deployment"
+  command: "{{ bin_dir }}/kubectl apply -f {{ kube_config_dir }}/elasticsearch-deployment.yaml -n kube-system"
+  run_once: true
+  when: es_deployment_manifest.changed
+
+- name: "ElasticSearch | Write ES service "
+  template:
+    src: elasticsearch-service.yml.j2
+    dest: "{{ kube_config_dir }}/elasticsearch-service.yaml"
+  register: es_service_manifest
+
+- name: "ElasticSearch | Create ES service"
+  command: "{{ bin_dir }}/kubectl apply -f {{ kube_config_dir }}/elasticsearch-service.yaml -n kube-system"
+  run_once: true
+  when: es_service_manifest.changed

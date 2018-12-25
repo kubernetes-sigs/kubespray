@@ -1,0 +1,42 @@
+# ## Configure 'ip' variable to bind kubernetes services on a
+# ## different ip than the default iface
+# ## We should set etcd_member_name for etcd cluster. The node that is not a etcd member do not need to set the value, or can set the empty string value.
+[all]
+{% for server in servers %}
+{% if server.has_etcd %}
+k8s-node{{ loop.index }} ansible_host={{ server.mgmt_ip }} ansible_user={{ server.user}} ansible_ssh_pass={{ server.password }} ansible_sudo_pass={{ server.password }} ip={{ server.rdma_ip }} etcd_member_name=etcd{{ loop.index }}
+{% else %}
+k8s-node{{ loop.index }} ansible_host={{ server.mgmt_ip }} ansible_user={{ server.user}} ansible_ssh_pass={{ server.password }} ansible_sudo_pass={{ server.password }} ip={{ server.rdma_ip }}
+{% endif %}
+{% endfor %}
+
+# ## configure a bastion host if your nodes are not directly reachable
+# bastion ansible_host=x.x.x.x ansible_user=some_user
+
+[kube-master]
+{% for server in servers %}
+{% if server.is_master %}
+k8s-node{{ loop.index }}
+{% endif %}
+{% endfor %}
+
+[etcd]
+{% for server in servers %}
+{% if server.has_etcd %}
+k8s-node{{ loop.index }}
+{% endif %}
+{% endfor %}
+
+[kube-node]
+{% for server in servers %}
+k8s-node{{ loop.index }}
+{% endfor %}
+
+[k8s-cluster:children]
+kube-master
+kube-node
+
+[k8s-clients]
+{% for client in clients %}
+k8s-client{{ loop.index }} ansible_host={{ client.mgmt_ip }} ansible_user={{ client.user}} ansible_ssh_pass={{ client.password }} ansible_sudo_pass={{ client.password }}
+{% endfor %}

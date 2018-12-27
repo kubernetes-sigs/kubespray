@@ -17,7 +17,8 @@ Some variables of note include:
 * *calico_version* - Specify version of Calico to use
 * *calico_cni_version* - Specify version of Calico CNI plugin to use
 * *docker_version* - Specify version of Docker to used (should be quoted
-  string)
+  string). Must match one of the keys defined for *docker_versioned_pkg*
+  in `roles/container-engine/docker/vars/*.yml`.
 * *etcd_version* - Specify version of ETCD to use
 * *ipip* - Enables Calico ipip encapsulation by default
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)

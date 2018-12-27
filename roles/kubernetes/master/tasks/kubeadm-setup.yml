@@ -68,6 +68,8 @@
 - name: kubeadm | Copy etcd cert dir under k8s cert dir
   command: "cp -TR {{ etcd_cert_dir }} {{ kube_config_dir }}/ssl/etcd"
   changed_when: false
+  tags:
+    - igz-first-install
 
 - name: Create audit-policy directory
   file:
@@ -113,6 +115,8 @@
     src: "kubeadm-config.{{ kubeadmConfig_api_version }}.yaml.j2"
     dest: "{{ kube_config_dir }}/kubeadm-config.{{ kubeadmConfig_api_version }}.yaml"
   register: kubeadm_config
+  tags:
+    - igz-first-install
 
 - name: kubeadm | Initialize first master
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.{{ kubeadmConfig_api_version }}.yaml --ignore-preflight-errors=all
@@ -140,6 +144,8 @@
   when: inventory_hostname == groups['kube-master']|first and (kubeadm_config.changed and kubeadm_already_run.stat.exists)
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   notify: Master | restart kubelet
+  tags:
+    - igz-first-install
 
 # FIXME(mattymo): remove when https://github.com/kubernetes/kubeadm/issues/433 is fixed
 - name: kubeadm | Enable kube-proxy
@@ -205,6 +211,8 @@
   when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed and kubeadm_already_run.stat.exists)
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   notify: Master | restart kubelet
+  tags:
+    - igz-first-install
 
 - name: kubeadm | Check service account key again
   stat:

@@ -25,6 +25,11 @@ You can enable the use of a Bastion Host by changing **use_bastion** in group_va
 templates will then include an additional bastion VM which can then be used to connect to the masters and nodes. The option
 also removes all public IPs from all other VMs. 
 
+
+## GPU nodes
+
+You can enable GPU nodes by setting the value **number_of_k8s_gpu_nodes** in the group_vars/all to **1 or greater**. You should also put the nodes in a list in **nvidia_gpu_nodes** inside of /inventory/local/group_vars/k8s-cluster/k8s-cluster.yml located in the main kubespray directory.
+
 ## Generating and applying
 
 To generate and apply the templates, call:

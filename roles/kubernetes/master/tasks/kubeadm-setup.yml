@@ -96,14 +96,15 @@
   import_tasks: kubeadm-version.yml
 
 - name: kubeadm | The number of current cluster master nodes
-  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get node | wc -l"
+  shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get node | grep 'master'| wc -l"
   delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
   register: current_masters
-  when: inventory_hostname == groups['kube-master']|first and kubeadm_already_run.stat.exists
+  when: kubeadm_already_run.stat.exists and inventory_hostname == groups['kube-master']|first
 
 - name: kubeadm | Certificate anagement with kubeadm
   import_tasks: kubeadm-certificate.yml
-  when: groups['kube-master']|length > current_masters.results
+  when: kubeadm_already_run.stat.exists and groups['kube-master']|length > current_masters.stdout|int
 
 - name: kubeadm | Initialize first master
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
@@ -146,6 +147,10 @@
   with_items: "{{ kubeadm_certs.results }}"
   when: inventory_hostname != groups['kube-master']|first
 
+- name: kubeadm | Certificate anagement with kubeadm
+  import_tasks: kubeadm-kubeconfig.yml
+  when: kubeadm_already_run.stat.exists and groups['kube-master']|length > current_masters.stdout|int
+
 - name: kubeadm | Init other uninitialized masters
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
   register: kubeadm_init
@@ -159,9 +164,9 @@
   import_tasks: kubeadm-upgrade.yml
   when: upgrade_cluster_setup
 
-- name: kubeadm | Check service account key again
+- name: kubeadm | Check apiserver key again
   stat:
-    path: "{{ kube_cert_dir }}/sa.key"
+    path: "{{ kube_cert_dir }}/apiserver.key"
   register: sa_key_after
   delegate_to: "{{groups['kube-master']|first}}"
   run_once: true

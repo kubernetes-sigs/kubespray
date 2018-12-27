@@ -13,7 +13,7 @@
 - name: kubeadm | Check apiserver key
   stat:
     path: "{{ kube_cert_dir }}/apiserver.key"
-  register: sa_key_before
+  register: apiserver_key_before
   delegate_to: "{{groups['kube-master']|first}}"
   run_once: true
 
@@ -102,7 +102,7 @@
   register: current_masters
   when: kubeadm_already_run.stat.exists and inventory_hostname == groups['kube-master']|first
 
-- name: kubeadm | Certificate anagement with kubeadm
+- name: kubeadm | Certificate management with kubeadm
   import_tasks: kubeadm-certificate.yml
   when: kubeadm_already_run.stat.exists and groups['kube-master']|length > current_masters.stdout|int
 
@@ -147,7 +147,7 @@
   with_items: "{{ kubeadm_certs.results }}"
   when: inventory_hostname != groups['kube-master']|first
 
-- name: kubeadm | Certificate anagement with kubeadm
+- name: kubeadm | Kubeconfig management with kubeadm
   import_tasks: kubeadm-kubeconfig.yml
   when: kubeadm_already_run.stat.exists and groups['kube-master']|length > current_masters.stdout|int
 
@@ -167,14 +167,14 @@
 - name: kubeadm | Check apiserver key again
   stat:
     path: "{{ kube_cert_dir }}/apiserver.key"
-  register: sa_key_after
+  register: apiserver_key_after
   delegate_to: "{{groups['kube-master']|first}}"
   run_once: true
 
 - name: kubeadm | Set secret_changed if service account key was updated
   command: /bin/true
   notify: Master | set secret_changed
-  when: sa_key_before.stat.checksum|default("") != sa_key_after.stat.checksum
+  when: apiserver_key_before.stat.checksum|default("") != apiserver_key_after.stat.checksum
 
 - name: kubeadm | cleanup old certs if necessary
   import_tasks: kubeadm-cleanup-old-certs.yml

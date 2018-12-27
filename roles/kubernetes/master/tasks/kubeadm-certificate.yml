@@ -1,0 +1,45 @@
+---
+- name: Backup old certs and keys
+  copy:
+    src: "{{ kube_cert_dir }}/{{ item.src }}"
+    dest: "{{ kube_cert_dir }}/{{ item.dest }}"
+    remote_src: yes
+  with_items:
+    - {src: apiserver.crt, dest: apiserver.crt.old}
+    - {src: apiserve.key, dest: apiserver.key.old}
+    - {src: apiserver-kubelet-client.crt, dest: apiserver-kubelet-client.crt.old}
+    - {src: apiserver-kubelet-client.key, dest: apiserver-kubelet-client.key.old}
+    - {src: front-proxy-client.crt, dest: front-proxy-client.crt.old}
+  when: inventory_hostname == groups['kube-master']|first
+
+- name: Generate new certs and keys
+  command: "{{ bin_dir }}/kubeadm init phase certs {{ items }} --config={{ kube_config_dir }}/kubeadm-config.yaml"
+  with_items:
+    - apiserver
+    - apiserver-kubelet-client
+    - front-proxy-client
+  when: inventory_hostname == groups['kube-master']|first and kube_version is version('v1.13.0', '>=')
+
+- name: Generate new certs and keys
+  command: "{{ bin_dir }}/kubeadm alpha phase certs {{ items }} --config={{ kube_config_dir }}/kubeadm-config.yaml"
+  with_items:
+    - apiserver
+    - apiserver-kubelet-client
+    - front-proxy-client
+  when: inventory_hostname == groups['kube-master']|first and kube_version is version('v1.13.0', '<')
+
+- name: Backup old configuration files
+  copy:
+    src: "{{ kube_config_dir }}/{{ item.src }}"
+    dest: "{{ kube_config_dir }}/{{ item.dest }}"
+    remote_src: yes
+  with_items:
+    - {src: admin.conf, dest: admin.conf.old}
+    - {src: kubelet.conf, dest: kubelet.conf.old}
+    - {src: controller-manager.conf, dest: controller-manager.conf.old}
+    - {src: scheduler.conf, dest: scheduler.conf.old}
+  when: inventory_hostname == groups['kube-master']|first
+
+- name: Generate new configuration files
+  command: "{{ bin_dir }}/kubeadm alpha phase kubeconfig all --config={{ kube_config_dir }}/kubeadm-config.yaml"
+  when: inventory_hostname == groups['kube-master']|first

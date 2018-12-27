@@ -10,9 +10,9 @@
   import_tasks: kubeadm-migrate-certs.yml
   when: old_apiserver_cert.stat.exists
 
-- name: kubeadm | Check service account key
+- name: kubeadm | Check apiserver key
   stat:
-    path: "{{ kube_cert_dir }}/sa.key"
+    path: "{{ kube_cert_dir }}/apiserver.key"
   register: sa_key_before
   delegate_to: "{{groups['kube-master']|first}}"
   run_once: true
@@ -94,6 +94,16 @@
 
 - name: kubeadm | set kubeadm version
   import_tasks: kubeadm-version.yml
+
+- name: kubeadm | The number of current cluster master nodes
+  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get node | wc -l"
+  delegate_to: "{{groups['kube-master']|first}}"
+  register: current_masters
+  when: inventory_hostname == groups['kube-master']|first and kubeadm_already_run.stat.exists
+
+- name: kubeadm | Certificate anagement with kubeadm
+  import_tasks: kubeadm-certificate.yml
+  when: groups['kube-master']|length > current_masters.results
 
 - name: kubeadm | Initialize first master
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all

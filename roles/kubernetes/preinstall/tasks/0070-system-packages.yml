@@ -80,6 +80,11 @@
   tags:
     - bootstrap-os
 
+- name: Update common_required_pkgs with ipvsadm when kube_proxy_mode is ipvs
+  set_fact:
+    common_required_pkgs: "{{ common_required_pkgs|default([]) + ['ipvsadm'] }}"
+  when: kube_proxy_mode == 'ipvs'
+
 - name: Install packages requirements
   action:
     module: "{{ ansible_pkg_mgr }}"
@@ -90,6 +95,14 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{required_pkgs | default([]) | union(common_required_pkgs|default([]))}}"
-  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or is_atomic)
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "ClearLinux"] or is_atomic)
   tags:
     - bootstrap-os
+
+- name: Install ipvsadm for ClearLinux
+  swupd:
+    name: ipvsadm
+    state: present
+  when:
+    - ansible_os_family in ["ClearLinux"]
+    - kube_proxy_mode == 'ipvs'

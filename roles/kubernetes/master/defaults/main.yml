@@ -1,4 +1,7 @@
 ---
+# disable upgrade cluster
+upgrade_cluster_setup: false
+
 # An experimental dev/test only dynamic volumes provisioner,
 # for PetSets. Works for kube>=v1.3 only.
 kube_hostpath_dynamic_provisioner: "false"
@@ -13,10 +16,6 @@ kube_apiserver_bind_address: 0.0.0.0
 # A port range to reserve for services with NodePort visibility.
 # Inclusive at both ends of the range.
 kube_apiserver_node_port_range: "30000-32767"
-
-# ETCD cert dir for connecting apiserver to etcd
-etcd_config_dir: /etc/ssl/etcd
-etcd_cert_dir: "{{ etcd_config_dir }}/ssl"
 
 # ETCD backend for k8s data
 kube_apiserver_storage_backend: etcd3
@@ -101,6 +100,7 @@ kube_api_runtime_config:
 kube_basic_auth: false
 kube_token_auth: false
 kube_oidc_auth: false
+kube_webhook_token_auth: false
 
 ## Variables for OpenID Connect Configuration https://kubernetes.io/docs/admin/authentication/
 ## To use OpenID you have to deploy additional an OpenID Provider (e.g Dex, Keycloak, ...)
@@ -113,6 +113,9 @@ kube_oidc_auth: false
 # kube_oidc_username_prefix: oidc:
 # kube_oidc_groups_claim: groups
 # kube_oidc_groups_prefix: oidc:
+
+## Variables for webhook token auth https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication
+# kube_webhook_token_auth_url: https://...
 
 ## Variables for custom flags
 apiserver_custom_flags: []
@@ -129,6 +132,17 @@ kube_kubeadm_apiserver_extra_args: {}
 kube_kubeadm_controller_extra_args: {}
 kube_kubeadm_scheduler_extra_args: {}
 
+## Extra control plane host volume mounts
+## Example:
+# apiserver_extra_volumes:
+#  - name: name
+#    hostPath: /host/path
+#    mountPath: /mount/path
+#    writable: false
+apiserver_extra_volumes: {}
+controller_manager_extra_volumes: {}
+scheduler_extra_volumes: {}
+
 ## Encrypting Secret Data at Rest
 kube_encrypt_secret_data: false
 kube_encrypt_token: "{{ lookup('password', credentials_dir + '/kube_encrypt_token.creds length=32 chars=ascii_letters,digits') }}"
@@ -137,3 +151,10 @@ kube_encryption_algorithm: "aescbc"
 
 # You may want to use ca.pem depending on your situation
 kube_front_proxy_ca: "front-proxy-ca.pem"
+
+# If non-empty, will use this string as identification instead of the actual hostname
+kube_override_hostname: >-
+  {%- if cloud_provider is defined and cloud_provider in [ 'aws' ] -%}
+  {%- else -%}
+  {{ inventory_hostname }}
+  {%- endif -%}

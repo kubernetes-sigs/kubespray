@@ -62,30 +62,19 @@ You can change the default configuration by overriding `kube_router_...` variabl
 these are named to follow `kube-router` command-line options as per
 <https://www.kube-router.io/docs/user-guide/#try-kube-router-with-cluster-installers>.
 
-## Caveats
+## Advanced BGP Capabilities
+https://github.com/cloudnativelabs/kube-router#advanced-bgp-capabilities
 
-### kubeadm_enabled: true
+If you have other networking devices or SDN systems that talk BGP, kube-router will fit in perfectly.
+From a simple full node-to-node mesh to per-node peering configurations, most routing needs can be attained.
+The configuration is Kubernetes native (annotations) just like the rest of kube-router.
 
-If you want to set `kube-router` to replace `kube-proxy`
-(`--run-service-proxy=true`) while using `kubeadm_enabled`,
-then 'kube-proxy` DaemonSet will be removed *after* kubeadm finishes
-running, as it's not possible to skip kube-proxy install in kubeadm flags
-and/or config, see https://github.com/kubernetes/kubeadm/issues/776.
+For more details please refer to the https://github.com/cloudnativelabs/kube-router/blob/master/docs/bgp.md.
 
-Given above, if `--run-service-proxy=true` is needed it would be
-better to void `kubeadm_enabled` i.e. set:
+Next options will set up annotations for kube-router, using `kubectl annotate` command.
 
 ```
-kubeadm_enabled: false
-kube_router_run_service_proxy: true
-
-```
-
-If for some reason you do want/need to set `kubeadm_enabled`, removing
-it afterwards behave better if kube-proxy is set to ipvs mode, i.e. set:
-
-```
-kubeadm_enabled: true
-kube_router_run_service_proxy: true
-kube_proxy_mode: ipvs
+kube_router_annotations_master: []
+kube_router_annotations_node: []
+kube_router_annotations_all: []
 ```

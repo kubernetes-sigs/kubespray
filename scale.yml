@@ -1,4 +1,18 @@
 ---
+- hosts: localhost
+  gather_facts: False
+  tasks:
+    - name: "Check ansible version !=2.7.0"
+      assert:
+        msg: "Ansible V2.7.0 can't be used until: https://github.com/ansible/ansible/issues/46600 is fixed"
+        that:
+          - ansible_version.string is version("2.7.0", "!=")
+          - ansible_version.string is version("2.5.0", ">=")
+      tags:
+        - check
+  vars:
+    ansible_connection: local
+
 - hosts: bastion[0]
   gather_facts: False
   roles:
@@ -22,7 +36,7 @@
     ansible_ssh_pipelining: true
   gather_facts: true
 
-##We need to genereate the etcd certificates beforhand
+##We need to generate the etcd certificates beforhand
 - hosts: etcd
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
@@ -35,11 +49,10 @@
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes/preinstall, tags: preinstall }
-    - { role: container-engine, tags: "container-engine"}
+    - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
     - { role: download, tags: download, when: "not skip_downloads" }
     - { role: etcd, tags: etcd, etcd_cluster_setup: false }
-    - { role: vault, tags: vault, when: "cert_management == 'vault'"}
     - { role: kubernetes/node, tags: node }
-    - { role: kubernetes/kubeadm, tags: kubeadm, when: "kubeadm_enabled" }
+    - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: network_plugin, tags: network }
   environment: "{{proxy_env}}"

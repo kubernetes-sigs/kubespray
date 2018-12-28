@@ -7,7 +7,7 @@ called DIND (Docker-IN-Docker).
 
 The playbook has two roles:
 - dind-host: creates the "nodes" as containers in localhost, with
-  appropiate settings for DIND (privileged, volume mapping for dind
+  appropriate settings for DIND (privileged, volume mapping for dind
   storage, etc).
 - dind-cluster: customizes each node container to have required
   system packages installed, and some utils (swapoff, lsattr)

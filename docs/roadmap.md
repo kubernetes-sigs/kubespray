@@ -65,6 +65,6 @@ Include optionals deployments to init the cluster:
 - Organize and update documentation (split in categories)
 - Refactor downloads so it all runs in the beginning of deployment
 - Make bootstrapping OS more consistent
-- **consul** -> if officialy supported by k8s
+- **consul** -> if officially supported by k8s
 - flex volumes options (e.g. **torrus** support) [#312](https://github.com/kubespray/kubespray/issues/312)
 - Clusters federation option (aka **ubernetes**) [#329](https://github.com/kubespray/kubespray/issues/329)

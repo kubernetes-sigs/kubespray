@@ -8,6 +8,23 @@ Openstack.
 This will install a Kubernetes cluster on an Openstack Cloud. It should work on
 most modern installs of OpenStack that support the basic services.
 
+### Known compatible public clouds
+- [Auro](https://auro.io/)
+- [BetaCloud](https://www.betacloud.io/)
+- [CityCloud](https://www.citycloud.com/)
+- [DreamHost](https://www.dreamhost.com/cloud/computing/)
+- [ELASTX](https://elastx.se/)
+- [EnterCloudSuite](https://www.entercloudsuite.com/)
+- [FugaCloud](https://fuga.cloud/)
+- [OVH](https://www.ovh.com/)
+- [Rackspace](https://www.rackspace.com/)
+- [Ultimum](https://ultimum.io/)
+- [VexxHost](https://vexxhost.com/)
+- [Zetta](https://www.zetta.io/)
+
+### Known incompatible public clouds
+- T-Systems / Open Telekom Cloud: requires `wait_until_associated`
+
 ## Approach
 The terraform configuration inspects variables found in
 [variables.tf](variables.tf) to create resources in your OpenStack cluster.
@@ -225,6 +242,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tf`.
 |`supplementary_master_groups` | To add ansible groups to the masters, such as `kube-node` for tainting them as nodes, empty by default. |
 |`supplementary_node_groups` | To add ansible groups to the nodes, such as `kube-ingress` for running ingress controller pods, empty by default. |
 |`bastion_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, `["0.0.0.0/0"]` by default |
+|`worker_allowed_ports` | List of ports to open on worker nodes, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "0.0.0.0/0"}]` by default |
 
 #### Terraform state files
 
@@ -418,14 +436,6 @@ $ kubectl config use-context default-system
 ```
 kubectl version
 ```
-
-If you are using floating ip addresses then you may get this error:
-```
-Unable to connect to the server: x509: certificate is valid for 10.0.0.6, 10.233.0.1, 127.0.0.1, not 132.249.238.25
-```
-
-You can tell kubectl to ignore this condition by adding the
-`--insecure-skip-tls-verify` option.
 
 ## GlusterFS
 GlusterFS is not deployed by the standard`cluster.yml` playbook, see the

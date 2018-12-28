@@ -45,17 +45,28 @@ class SearchEC2Tags(object):
 
       instances = ec2.instances.filter(Filters=[{'Name': 'tag:'+tag_key, 'Values': tag_value}, {'Name': 'instance-state-name', 'Values': ['running']}])
       for instance in instances:
+
+        ##Suppose default vpc_visibility is private
+        dns_name = instance.private_dns_name
+        ansible_host = {
+          'ansible_ssh_host': instance.private_ip_address
+        }
+
+        ##Override when vpc_visibility actually is public
         if self.vpc_visibility == "public":
-          hosts[group].append(instance.public_dns_name)
-          hosts['_meta']['hostvars'][instance.public_dns_name] = {
-             'ansible_ssh_host': instance.public_ip_address
-          }
-        else:
-          hosts[group].append(instance.private_dns_name)
-          hosts['_meta']['hostvars'][instance.private_dns_name] = {
-             'ansible_ssh_host': instance.private_ip_address
+          dns_name = instance.public_dns_name
+          ansible_host = {
+            'ansible_ssh_host': instance.public_ip_address
           }
 
+        ##Set when instance actually has node_labels
+        node_labels_tag = list(filter(lambda t: t['Key'] == 'kubespray-node-labels', instance.tags))
+        if node_labels_tag:
+          ansible_host['node_labels'] = dict([ label.strip().split('=') for label in node_labels_tag[0]['Value'].split(',') ])
+
+        hosts[group].append(dns_name)
+        hosts['_meta']['hostvars'][dns_name] = ansible_host
+        
     hosts['k8s-cluster'] = {'children':['kube-master', 'kube-node']}
     print(json.dumps(hosts, sort_keys=True, indent=2))
 

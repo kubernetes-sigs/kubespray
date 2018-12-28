@@ -10,10 +10,10 @@
   import_tasks: kubeadm-migrate-certs.yml
   when: old_apiserver_cert.stat.exists
 
-- name: kubeadm | Check service account key
+- name: kubeadm | Check apiserver key
   stat:
-    path: "{{ kube_cert_dir }}/sa.key"
-  register: sa_key_before
+    path: "{{ kube_cert_dir }}/apiserver.key"
+  register: apiserver_key_before
   delegate_to: "{{groups['kube-master']|first}}"
   run_once: true
 
@@ -95,6 +95,12 @@
 - name: kubeadm | set kubeadm version
   import_tasks: kubeadm-version.yml
 
+- name: kubeadm | Certificate management with kubeadm
+  import_tasks: kubeadm-certificate.yml
+  when:
+    - not upgrade_cluster_setup
+    - kubeadm_already_run.stat.exists
+
 - name: kubeadm | Initialize first master
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
   register: kubeadm_init
@@ -136,6 +142,12 @@
   with_items: "{{ kubeadm_certs.results }}"
   when: inventory_hostname != groups['kube-master']|first
 
+- name: kubeadm | Kubeconfig management with kubeadm
+  import_tasks: kubeadm-kubeconfig.yml
+  when:
+    - not upgrade_cluster_setup
+    - kubeadm_already_run.stat.exists
+
 - name: kubeadm | Init other uninitialized masters
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
   register: kubeadm_init
@@ -149,17 +161,17 @@
   import_tasks: kubeadm-upgrade.yml
   when: upgrade_cluster_setup
 
-- name: kubeadm | Check service account key again
+- name: kubeadm | Check apiserver key again
   stat:
-    path: "{{ kube_cert_dir }}/sa.key"
-  register: sa_key_after
+    path: "{{ kube_cert_dir }}/apiserver.key"
+  register: apiserver_key_after
   delegate_to: "{{groups['kube-master']|first}}"
   run_once: true
 
 - name: kubeadm | Set secret_changed if service account key was updated
   command: /bin/true
   notify: Master | set secret_changed
-  when: sa_key_before.stat.checksum|default("") != sa_key_after.stat.checksum
+  when: apiserver_key_before.stat.checksum|default("") != apiserver_key_after.stat.checksum
 
 - name: kubeadm | cleanup old certs if necessary
   import_tasks: kubeadm-cleanup-old-certs.yml

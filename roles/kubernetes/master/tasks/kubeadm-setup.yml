@@ -95,22 +95,11 @@
 - name: kubeadm | set kubeadm version
   import_tasks: kubeadm-version.yml
 
-- name: kubeadm | The number of current cluster master nodes
-  shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get node | grep 'master'| wc -l"
-  delegate_to: "{{groups['kube-master']|first}}"
-  run_once: true
-  register: current_masters
-  when:
-    - not upgrade_cluster_setup
-    - kubeadm_already_run.stat.exists
-    - inventory_hostname == groups['kube-master']|first
-
 - name: kubeadm | Certificate management with kubeadm
   import_tasks: kubeadm-certificate.yml
   when:
     - not upgrade_cluster_setup
     - kubeadm_already_run.stat.exists
-    - groups['kube-master']|length > current_masters.stdout|int
 
 - name: kubeadm | Initialize first master
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
@@ -158,7 +147,6 @@
   when:
     - not upgrade_cluster_setup
     - kubeadm_already_run.stat.exists
-    - groups['kube-master']|length > current_masters.stdout|int
 
 - name: kubeadm | Init other uninitialized masters
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all

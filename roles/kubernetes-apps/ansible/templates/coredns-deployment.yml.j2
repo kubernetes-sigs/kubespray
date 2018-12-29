@@ -2,13 +2,14 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: coredns{{ coredns_ordinal_suffix | default('') }}
+  name: "coredns{{ coredns_ordinal_suffix | default('') }}"
   namespace: kube-system
   labels:
-    k8s-app: coredns{{ coredns_ordinal_suffix | default('') }}
+    k8s-app: "coredns{{ coredns_ordinal_suffix | default('') }}"
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
     kubernetes.io/name: "coredns{{ coredns_ordinal_suffix | default('') }}"
 spec:
-  replicas: {{ coredns_replicas }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -22,11 +23,13 @@ spec:
       labels:
         k8s-app: coredns{{ coredns_ordinal_suffix | default('') }}
       annotations:
-        scheduler.alpha.kubernetes.io/critical-pod: ''
+        seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
     spec:
 {% if kube_version is version('v1.11.1', '>=') %}
       priorityClassName: system-cluster-critical
 {% endif %}
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       serviceAccountName: coredns
       tolerations:
         - key: node-role.kubernetes.io/master
@@ -48,7 +51,7 @@ spec:
               - key: node-role.kubernetes.io/master
                 operator: In
                 values:
-                - "true"
+                - ""
       containers:
       - name: coredns
         image: "{{ coredns_image_repo }}:{{ coredns_image_tag }}"

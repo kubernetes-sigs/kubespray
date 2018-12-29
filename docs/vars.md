@@ -17,12 +17,10 @@ Some variables of note include:
 * *calico_version* - Specify version of Calico to use
 * *calico_cni_version* - Specify version of Calico CNI plugin to use
 * *docker_version* - Specify version of Docker to used (should be quoted
-  string)
+  string). Must match one of the keys defined for *docker_versioned_pkg*
+  in `roles/container-engine/docker/vars/*.yml`.
 * *etcd_version* - Specify version of ETCD to use
 * *ipip* - Enables Calico ipip encapsulation by default
-* *hyperkube_image_repo* - Specify the Docker repository where Hyperkube
-  resides
-* *hyperkube_image_tag* - Specify the Docker tag where Hyperkube resides
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)
 * *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
 * *kube_version* - Specify a given Kubernetes hyperkube version
@@ -41,11 +39,11 @@ Some variables of note include:
 * *loadbalancer_apiserver* - If defined, all hosts will connect to this
   address instead of localhost for kube-masters and kube-master[0] for
   kube-nodes. See more details in the
-  [HA guide](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/ha-mode.md).
+  [HA guide](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/ha-mode.md).
 * *loadbalancer_apiserver_localhost* - makes all hosts to connect to
   the apiserver internally load balanced endpoint. Mutual exclusive to the
   `loadbalancer_apiserver`. See more details in the
-  [HA guide](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/ha-mode.md).
+  [HA guide](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/ha-mode.md).
 
 #### Cluster variables
 
@@ -97,7 +95,7 @@ variables to match your requirements.
 * *skip_dnsmasq* - Don't set up dnsmasq (use only KubeDNS)
 
 For more information, see [DNS
-Stack](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/dns-stack.md).
+Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.md).
 
 #### Other service variables
 
@@ -126,6 +124,13 @@ node_labels:
   label1_name: label1_value
   label2_name: label2_value
 ```
+* *node_taints* - Taints applied to nodes via kubelet --register-with-taints parameter.
+  For example, taints can be set in the inventory as variables or more widely in group_vars.
+  *node_taints* has to be defined as a list of strings in format `key=value:effect`, e.g.:
+```
+node_taints:
+  - "node.example.com/external=true:NoSchedule"
+```
 * *podsecuritypolicy_enabled* - When set to `true`, enables the PodSecurityPolicy admission controller and defines two policies `privileged` (applying to all resources in `kube-system` namespace and kubelet) and `restricted` (applying all other namespaces).
   Addons deployed in kube-system namespaces are handled.
 * *kubernetes_audit* - When set to `true`, enables Auditing.
@@ -136,7 +141,7 @@ node_labels:
   * `audit_log_maxsize`: 100
   * `audit_policy_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-policy.yaml"
 
-  By default, the `audit_policy_file` contains [default rules](https://github.com/kubernetes-incubator/kubespray/blob/master/roles/kubernetes/master/templates/apiserver-audit-policy.yaml.j2) that can be overridden with the `audit_policy_custom_rules` variable.
+  By default, the `audit_policy_file` contains [default rules](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubernetes/master/templates/apiserver-audit-policy.yaml.j2) that can be overridden with the `audit_policy_custom_rules` variable.
 
 ##### Custom flags for Kube Components
 For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments. This can be done by providing a list of flags. The `kubelet_node_custom_flags` apply kubelet settings only to nodes and not masters. Example:

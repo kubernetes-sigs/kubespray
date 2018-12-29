@@ -3,7 +3,7 @@
 # This change obseletes editing ansible.cfg file depending on bastion existance
 ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ hostvars['bastion']['ansible_user'] }}@{{ hostvars['bastion']['ansible_host'] }} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
 
-kube_api_anonymous_auth: false
+kube_api_anonymous_auth: true
 
 # Default value, but will be set to true automatically if detected
 is_atomic: false
@@ -12,10 +12,10 @@ is_atomic: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.12.2
+kube_version: v1.13.1
 
 ## Kube Proxy mode One of ['iptables','ipvs']
-kube_proxy_mode: iptables
+kube_proxy_mode: ipvs
 
 # Kube-proxy nodeport address.
 # cidr to bind nodeport services. Flag --nodeport-addresses on kube-proxy manifest
@@ -44,7 +44,10 @@ cluster_name: cluster.local
 # Subdomains of DNS domain to be resolved via /etc/resolv.conf for hostnet pods
 ndots: 2
 # Can be dnsmasq_kubedns, kubedns, manual or none
-dns_mode: kubedns
+dns_mode: coredns
+
+# Enable nodelocal dns cache
+enable_nodelocaldns: False
 
 # Should be set to a cluster IP if using a custom cluster DNS
 # manual_dns_server: 10.x.x.x
@@ -142,7 +145,7 @@ kube_apiserver_bind_address: 0.0.0.0
 kube_apiserver_port: 6443
 # http
 kube_apiserver_insecure_bind_address: 127.0.0.1
-kube_apiserver_insecure_port: 8080
+kube_apiserver_insecure_port: 0
 
 # dynamic kubelet configuration
 dynamic_kubelet_configuration: false
@@ -207,13 +210,17 @@ docker_log_opts: "--log-opt max-size=50m --log-opt max-file=5"
 ## A string of extra options to pass to the docker daemon.
 ## This string should be exactly as you wish it to appear.
 docker_options: >-
-  {%- if docker_insecure_registries is defined -%}
+  {%- if docker_insecure_registries is defined %}
   {{ docker_insecure_registries | map('regex_replace', '^(.*)$', '--insecure-registry=\1' ) | list | join(' ') }}
   {%- endif %}
-  {% if docker_registry_mirrors is defined -%}
+  {% if docker_registry_mirrors is defined %}
   {{ docker_registry_mirrors | map('regex_replace', '^(.*)$', '--registry-mirror=\1' ) | list | join(' ') }}
   {%- endif %}
+  {%- if docker_version != "latest" and docker_version is version('17.05', '<') %}
   --graph={{ docker_daemon_graph }} {{ docker_log_opts }}
+  {%- else %}
+  --data-root={{ docker_daemon_graph }} {{ docker_log_opts }}
+  {%- endif %}
   {%- if ansible_architecture == "aarch64" and ansible_os_family == "RedHat" %}
   --add-runtime docker-runc=/usr/libexec/docker/docker-runc-current
   --default-runtime=docker-runc --exec-opt native.cgroupdriver=systemd
@@ -222,13 +229,9 @@ docker_options: >-
 
 # Settings for containerized control plane (etcd/kubelet/secrets)
 etcd_deployment_type: docker
-kubelet_deployment_type: docker
 cert_management: script
 
 helm_deployment_type: host
-
-# Enable kubeadm deployment (experimental)
-kubeadm_enabled: false
 
 # Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
 kubeconfig_localhost: false
@@ -248,6 +251,7 @@ dashboard_enabled: true
 # Addons which can be enabled
 helm_enabled: false
 registry_enabled: false
+metrics_server_enabled: false
 enable_network_policy: true
 local_volume_provisioner_enabled: "{{ local_volumes_enabled | default('false') }}"
 persistent_volumes_enabled: false
@@ -277,7 +281,7 @@ openstack_cacert: "{{ lookup('env','OS_CACERT') }}"
 ## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
 ## 'RBAC' modes are tested. Order is important.
 authorization_modes: ['Node', 'RBAC']
-rbac_enabled: "{{ 'RBAC' in authorization_modes or kubeadm_enabled }}"
+rbac_enabled: "{{ 'RBAC' in authorization_modes }}"
 
 # When enabled, API bearer tokens (including service account tokens) can be used to authenticate to the kubelet’s HTTPS endpoint
 kubelet_authentication_token_webhook: true
@@ -390,18 +394,8 @@ kube_apiserver_endpoint: |-
   {%- endif %}
 kube_apiserver_insecure_endpoint: >-
   http://{{ kube_apiserver_insecure_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_insecure_port }}
-kube_apiserver_client_cert: |-
-  {% if kubeadm_enabled -%}
-  {{ kube_cert_dir }}/ca.crt
-  {%- else -%}
-  {{ kube_cert_dir }}/apiserver.pem
-  {%- endif %}
-kube_apiserver_client_key: |-
-  {% if kubeadm_enabled -%}
-  {{ kube_cert_dir }}/ca.key
-  {%- else -%}
-  {{ kube_cert_dir }}/apiserver-key.pem
-  {%- endif %}
+kube_apiserver_client_cert: "{{ kube_cert_dir }}/ca.crt"
+kube_apiserver_client_key: "{{ kube_cert_dir }}/ca.key"
 
 # Set to true to deploy etcd-events cluster
 etcd_events_cluster_enabled: false
@@ -458,3 +452,6 @@ pip_extra_args: |-
   {%- endif -%}
   {%- endif -%}
   {{ pip_extra_args_list|join(' ') }}
+
+etcd_config_dir: /etc/ssl/etcd
+etcd_cert_dir: "{{ etcd_config_dir }}/ssl"

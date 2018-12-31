@@ -14,3 +14,5 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
     && apt update -y && apt-get install docker-ce -y
 COPY . .
 RUN /usr/bin/python -m pip install pip -U && /usr/bin/python -m pip install -r tests/requirements.txt && python -m pip install -r requirements.txt
+
+ENTRYPOINT ["/kubespray/run.sh"]

@@ -92,21 +92,6 @@
     - kubeadm_discovery_address != kube_apiserver_endpoint
   notify: restart kubelet
 
-- name: Update server field in kube-proxy kubeconfig
-  shell: >-
-    {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get configmap kube-proxy -n kube-system -o yaml
-    | sed 's#server:.*#server:\ {{ kube_apiserver_endpoint }}#g'
-    | {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
-  delegate_to: "{{groups['kube-master']|first}}"
-  run_once: true
-  when:
-    - kubeadm_config_api_fqdn is not defined
-    - is_kube_master
-    - kubeadm_discovery_address != kube_apiserver_endpoint
-    - not kube_proxy_remove
-  tags:
-    - kube-proxy
-
 # FIXME(mattymo): Reconcile kubelet kubeconfig filename for both deploy modes
 - name: Symlink kubelet kubeconfig for calico/canal
   file:
@@ -115,18 +100,6 @@
     state: link
     force: yes
   when: kube_network_plugin in ['calico','canal']
-
-- name: Restart all kube-proxy pods to ensure that they load the new configmap
-  shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy"
-  delegate_to: "{{groups['kube-master']|first}}"
-  run_once: true
-  when:
-    - kubeadm_config_api_fqdn is not defined
-    - is_kube_master
-    - kubeadm_discovery_address != kube_apiserver_endpoint
-    - not kube_proxy_remove
-  tags:
-    - kube-proxy
 
 # FIXME(jjo): need to post-remove kube-proxy until https://github.com/kubernetes/kubeadm/issues/776
 # is fixed

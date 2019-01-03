@@ -1,16 +1,22 @@
-INVENTORY=$(PWD)/../inventory/sample/${CI_JOB_NAME}-${BUILD_NUMBER}.ini
+INVENTORY=$(PWD)/../inventory/sample/${CI_JOB_NAME}.ini
+INVENTORY_YML=$(PWD)/../inventory/sample/${CI_JOB_NAME}.yml
 
-$(HOME)/.ssh/id_rsa:
+$(HOME)/.ssh:
 	mkdir -p $(HOME)/.ssh
-	echo $(PRIVATE_KEY) | base64 -d > $(HOME)/.ssh/id_rsa
-	chmod 400 $(HOME)/.ssh/id_rsa
 
-init-gce: $(HOME)/.ssh/id_rsa
+init-gce: $(HOME)/.ssh
 	# echo $(GCE_PEM_FILE) | base64 -d > $(HOME)/.ssh/gce
+	echo $(PRIVATE_KEY) | base64 -d > $(HOME)/.ssh/gce.private
+	chmod 400 $(HOME)/.ssh/gce.private
 	echo "$(GCE_CREDENTIALS_B64)" | base64 -d > $(HOME)/.ssh/gce.json
 
-init-do: $(HOME)/.ssh/id_rsa
-	echo $(DO_PRIVATE_KEY) | base64 -d > $(HOME)/.ssh/id_rsa
+init-do: $(HOME)/.ssh
+	echo $(DO_PRIVATE_KEY) | base64 -d > $(HOME)/.ssh/do.private
+	chmod 400 $(HOME)/.ssh/do.private
+
+init-packet: $(HOME)/.ssh
+	echo $(PACKET_VM_PRIVATE_KEY) | base64 -d > $(HOME)/.ssh/packet.private
+	chmod 400 $(HOME)/.ssh/packet.private
 
 create-gce: init-gce
 	ansible-playbook cloud_playbooks/create-gce.yml -i local_inventory/hosts.cfg -c local \
@@ -22,7 +28,6 @@ create-gce: init-gce
 	-e inventory_path=$(INVENTORY) \
 	-e test_id=$(TEST_ID) \
 	-e preemptible=$(GCE_PREEMPTIBLE)
-
 
 delete-gce:
 	ansible-playbook -i $(INVENTORY) cloud_playbooks/delete-gce.yml -c local \
@@ -41,6 +46,21 @@ create-do: init-do
 	-e inventory_path=$(INVENTORY) \
 	-e test_id=${TEST_ID}
 
+create-packet: init-packet
+	ansible-playbook cloud_playbooks/create-packet.yml -i local_inventory/hosts.cfg \
+	-e action=start -c local \
+	-vvv \
+	-e @"files/${CI_JOB_NAME}.yml" \
+	-e inventory_path=$(INVENTORY_YML) \
+	-e test_id=${TEST_ID}
+
+delete-packet: init-packet
+	ansible-playbook cloud_playbooks/create-packet.yml -i local_inventory/hosts.cfg \
+	-e action=start -c local \
+	-vvv \
+	-e @"files/${CI_JOB_NAME}.yml" \
+	-e inventory_path=$(INVENTORY_YML) \
+	-e test_id=${TEST_ID}
 
 delete-do:
 	ansible-playbook -i $(INVENTORY) cloud_playbooks/create-do.yml -c local \

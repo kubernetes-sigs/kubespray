@@ -41,7 +41,7 @@ before_script:
   tags:
     - kubernetes
     - docker
-  image: quay.io/kubespray/kubespray:v2.8
+  image: quay.io/kubespray/kubespray:v2.8.1
 
 .docker_service: &docker_service
   services:
@@ -50,6 +50,15 @@ before_script:
 .create_cluster: &create_cluster
   <<: *job
   <<: *docker_service
+
+.packet_variables: &packet_variables
+  SSH_USER: root
+  CI_PLATFORM: "packet"
+  PRIVATE_KEY: $PACKET_PRIVATE_KEY
+  KUBESPRAY_PRIVATE_KEY: $PACKET_PRIVATE_KEY
+  SSH_KEY_PATH: packet.private
+  KVM_HOST_IP: localhost
+  ANSIBLE_INVENTORY: ./inventory/sample/${CI_JOB_NAME}.yml
 
 .gce_variables: &gce_variables
   GCE_USER: travis
@@ -62,6 +71,7 @@ before_script:
   PRIVATE_KEY: $DO_PRIVATE_KEY
   CI_PLATFORM: "do"
   SSH_USER: root
+  SSH_KEY_PATH: do.private
 
 
 .testcases: &testcases
@@ -104,7 +114,7 @@ before_script:
       ansible-playbook
       -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
+      --private-key=${HOME}/.ssh/${SSH_KEY_PATH}
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -123,7 +133,7 @@ before_script:
       ansible-playbook
       -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
+      --private-key=${HOME}/.ssh/${SSH_KEY_PATH}
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -150,7 +160,7 @@ before_script:
       ansible-playbook
       -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
+      --private-key=${HOME}/.ssh/${SSH_KEY_PATH}
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -167,7 +177,7 @@ before_script:
       ansible-playbook
       -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
+      --private-key=${HOME}/.ssh/${SSH_KEY_PATH}
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -182,7 +192,7 @@ before_script:
       ansible-playbook
       -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
+      --private-key=${HOME}/.ssh/${SSH_KEY_PATH}
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -199,7 +209,7 @@ before_script:
       ansible-playbook
       -i ${ANSIBLE_INVENTORY}
       -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
+      --private-key=${HOME}/.ssh/${SSH_KEY_PATH}
       -u $SSH_USER
       ${SSH_ARGS}
       ${LOG_LEVEL}
@@ -221,6 +231,13 @@ before_script:
 
   after_script:
     - cd tests && make delete-${CI_PLATFORM} -s ; cd -
+
+.packet: &packet
+  <<: *testcases
+  variables:
+    <<: *packet_variables
+  tags:
+    - packet
 
 .gce: &gce
   <<: *testcases
@@ -325,6 +342,16 @@ before_script:
 # stage: deploy-part2
   MOVED_TO_GROUP_VARS: "true"
 
+
+packet_ubuntu-calico-aio:
+  stage: unit-tests
+  <<: *job
+  <<: *packet
+  variables:
+    <<: *packet_variables
+  when: on_success
+  except: ['triggers']
+  only: [/^pr-.*$/]
 
 # Builds for PRs only (premoderated by unit-tests step) and triggers (auto)
 ### PR JOBS PART1

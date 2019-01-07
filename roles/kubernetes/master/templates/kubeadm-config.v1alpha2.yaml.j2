@@ -1,7 +1,7 @@
 apiVersion: kubeadm.k8s.io/v1alpha2
 kind: MasterConfiguration
 api:
-{% if groups['kube-master'] | length > 1 and kubeadm_config_api_fqdn is defined %}
+{% if kubeadm_config_api_fqdn is defined %}
   controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}
   bindPort: {{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
 {% else %}
@@ -26,7 +26,7 @@ kubeProxy:
   config:
     mode: {{ kube_proxy_mode }}
 {% if kube_proxy_nodeport_addresses %}
-    nodePortAddresses: [{{ kube_proxy_nodeport_addresses_cidr }}]
+    nodePortAddresses: {{ kube_proxy_nodeport_addresses }}
 {% endif %}
     resourceContainer: ""
 authorizationModes:
@@ -53,7 +53,6 @@ apiServerExtraArgs:
 {% if kube_version is version('v1.9', '>=') %}
   endpoint-reconciler-type: lease
 {% endif %}
-  storage-backend: etcd3
 {% if etcd_events_cluster_enabled %}
   etcd-servers-overrides: "/events#{{ etcd_events_access_addresses }}"
 {% endif %}
@@ -84,6 +83,9 @@ apiServerExtraArgs:
 {%   if kube_oidc_groups_claim is defined %}
   oidc-groups-claim: {{ kube_oidc_groups_claim }}
 {%   endif %}
+{% endif %}
+{% if kube_webhook_token_auth|default(false) %}
+  authentication-token-webhook-config-file: {{ kube_config_dir }}/webhook-token-auth-config.yaml
 {% endif %}
 {% if kube_encrypt_secret_data %}
   experimental-encryption-provider-config: {{ kube_cert_dir }}/secrets_encryption.yaml
@@ -147,7 +149,7 @@ controllerManagerExtraVolumes:
   mountPath: {{ kube_config_dir }}/cloud_config
 {% endif %}
 {% endif %}
-{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) %}
+{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) or kube_webhook_token_auth|default(false) %}
 apiServerExtraVolumes:
 {% if kube_basic_auth|default(true) %}
 - name: basic-auth-config
@@ -158,6 +160,11 @@ apiServerExtraVolumes:
 - name: token-auth-config
   hostPath: {{ kube_token_dir }}
   mountPath: {{ kube_token_dir }}
+{% endif %}
+{% if kube_webhook_token_auth|default(false) %}
+- name: webhook-token-auth-config
+  hostPath: {{ kube_config_dir }}/webhook-token-auth-config.yaml
+  mountPath: {{ kube_config_dir }}/webhook-token-auth-config.yaml
 {% endif %}
 {% if kubernetes_audit %}
 - name: {{ audit_policy_name }}
@@ -190,7 +197,7 @@ schedulerExtraArgs:
 {% endfor %}
 {% endif %}
 apiServerCertSANs:
-{% for san in apiserver_sans.split(' ') | unique %}
+{% for san in apiserver_sans.split() | unique %}
   - {{ san }}
 {% endfor %}
 certificatesDir: {{ kube_cert_dir }}

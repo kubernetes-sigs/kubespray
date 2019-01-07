@@ -161,16 +161,6 @@ The inventory above will deploy the following topology assuming that calico's
 
 ![Image](figures/kubespray-calico-rr.png?raw=true)
 
-##### Optional : Define default endpoint to host action
-
-By default Calico blocks traffic from endpoints to the host itself by using an iptables DROP action. When using it in kubernetes the action has to be changed to RETURN (default in kubespray) or ACCEPT (see https://github.com/projectcalico/felix/issues/660 and https://github.com/projectcalico/calicoctl/issues/1389). Otherwise all network packets from pods (with hostNetwork=False) to services endpoints (with hostNetwork=True) within the same node are dropped.
-
-
-To re-define default action please set the following variable in your inventory:
-```
-calico_endpoint_to_host_action: "ACCEPT"
-```
-
 ##### Optional : Define address on which Felix will respond to health requests
 
 Since Calico 3.2.0, HealthCheck default behavior changed from listening on all interfaces to just listening on localhost.

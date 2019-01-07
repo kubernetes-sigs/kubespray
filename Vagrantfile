@@ -69,8 +69,9 @@ $inventory = File.absolute_path($inventory, File.dirname(__FILE__))
 if ! File.exist?(File.join(File.dirname($inventory), "hosts.ini"))
   $vagrant_ansible = File.join(File.dirname(__FILE__), ".vagrant", "provisioners", "ansible")
   FileUtils.mkdir_p($vagrant_ansible) if ! File.exist?($vagrant_ansible)
-  if ! File.exist?(File.join($vagrant_ansible,"inventory"))
-    FileUtils.ln_s($inventory, File.join($vagrant_ansible,"inventory"))
+  $vagrant_ansible_inventory = File.join($vagrant_ansible,"inventory")
+  if ! File.exist?($vagrant_ansible_inventory) and ! File.symlink?($vagrant_ansible_inventory)
+    FileUtils.ln_s($inventory, $vagrant_ansible_inventory)
   end
 end
 

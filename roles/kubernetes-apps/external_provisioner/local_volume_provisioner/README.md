@@ -5,26 +5,26 @@ The [local storage provisioner](https://github.com/kubernetes-incubator/external
 is NOT a dynamic storage provisioner as you would
 expect from a cloud provider. Instead, it simply creates PersistentVolumes for
 all mounts under the host_dir of the specified storage class.
-These storage classes are specified in the `local_volume_provisioner_storage_classes` list.
-An example this list:
+These storage classes are specified in the `local_volume_provisioner_storage_classes` nested dictionary.
+Example:
 
 ```yaml
 local_volume_provisioner_storage_classes:
-  - local-storage:
-      host_dir: /mnt/disks
-      mount_dir: /mnt/disks
-  - fast-disks:
-      host_dir: /mnt/fast-disks
-      mount_dir: /mnt/fast-disks
-      block_cleaner_command:
-         - "/scripts/shred.sh"
-         - "2"
-      volume_mode: Filesystem
-      fs_type: ext4
+  local-storage:
+    host_dir: /mnt/disks
+    mount_dir: /mnt/disks
+  fast-disks:
+    host_dir: /mnt/fast-disks
+    mount_dir: /mnt/fast-disks
+    block_cleaner_command:
+       - "/scripts/shred.sh"
+       - "2"
+    volume_mode: Filesystem
+    fs_type: ext4
 ```
 
-For each dictionary in `local_volume_provisioner_storage_classes` a storageClass with the
-same name is created. The keys of this dictionary are converted to camelCase and added
+For each key in `local_volume_provisioner_storage_classes` a storageClass with the
+same name is created. The subkeys of each storage class are converted to camelCase and added
 as attributes to the storageClass.
 The result of the above example is:
 
@@ -32,16 +32,16 @@ The result of the above example is:
 data:
   storageClassMap: |
     local-storage:
-       hostDir: /mnt/disks
-       mountDir: /mnt/disks
+      hostDir: /mnt/disks
+      mountDir: /mnt/disks
     fast-disks:
-       hostDir: /mnt/fast-disks
-       mountDir:  /mnt/fast-disks
-       blockCleanerCommand:
-         - "/scripts/shred.sh"
-         - "2"
-       volumeMode: Filesystem
-       fsType: ext4
+      hostDir: /mnt/fast-disks
+      mountDir:  /mnt/fast-disks
+      blockCleanerCommand:
+        - "/scripts/shred.sh"
+        - "2"
+      volumeMode: Filesystem
+      fsType: ext4
 ```
 
 The default StorageClass is local-storage on /mnt/disks,

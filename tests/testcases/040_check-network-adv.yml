@@ -54,12 +54,18 @@
       failed_when: false
       no_log: true
 
-    - debug: var=agents.content|from_json
-      failed_when: not agents is success and not agents.content=='{}'
+    - debug:
+        var: agents.content
       run_once: true
+      failed_when:
+        - not agents is success
+        - not agents.content == '{}'
 
     - name: Check netchecker status
-      uri: url=http://{{ ansible_default_ipv4.address }}:{{netchecker_port}}/api/v1/connectivity_check status_code=200 return_content=yes
+      uri:
+        url: http://{{ ansible_default_ipv4.address }}:{{netchecker_port}}/api/v1/connectivity_check
+        status_code: 200
+        return_content: yes
       delegate_to: "{{groups['kube-master'][0]}}"
       run_once: true
       register: result
@@ -70,11 +76,15 @@
       when:
         - agents.content != '{}'
 
-    - debug: var=result.content|from_json
-      failed_when: not result is success
+    - debug:
+        var: result.content
       run_once: true
-      when: not agents.content == '{}'
       delegate_to: "{{groups['kube-master'][0]}}"
+      when:
+        - agents.content != '{}'
+      failed_when:
+        - not result is success
+        - result.content.find('Error occured while checking the agents') != -1
 
     - debug: msg="Cannot get reports from agents, consider as PASSING"
       run_once: true

@@ -10,9 +10,11 @@ authentication:
     enabled: {{ kubelet_authentication_token_webhook }}
   x509:
     clientCAFile: {{ kube_cert_dir }}/ca.crt
-{% if kubelet_authorization_mode_webhook %}
 authorization:
+{% if kubelet_authorization_mode_webhook %}
   mode: Webhook
+{% else %}
+  mode: AlwaysAllow
 {% endif %}
 {% if kubelet_enforce_node_allocatable is defined and kubelet_enforce_node_allocatable != "\"\"" %}
 {% set kubelet_enforce_node_allocatable_list = kubelet_enforce_node_allocatable.split() %}
@@ -44,3 +46,14 @@ clusterDNS:
 {% for dns_address in kubelet_cluster_dns %}
 - {{ dns_address }}
 {% endfor %}
+{# Node reserved CPU/memory #}
+kubeReserved:
+{% if is_kube_master|bool %}
+  cpu: {{ kube_master_cpu_reserved }}
+  memory: {{ kube_master_memory_reserved|regex_replace('Mi', 'M') }}
+{% else %}
+  cpu: {{ kube_cpu_reserved }}
+  memory: {{ kube_memory_reserved|regex_replace('Mi', 'M') }}
+{% endif %}
+resolverConfig:
+  {{ kube_resolv_conf }}

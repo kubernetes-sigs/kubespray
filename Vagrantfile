@@ -176,6 +176,7 @@ Vagrant.configure("2") do |config|
       if i == $num_instances
         node.vm.provision "ansible" do |ansible|
           ansible.playbook = $playbook
+          ansible.compatibility_mode = "2.0"
           if File.exist?(File.join( $inventory, "hosts.ini"))
             ansible.inventory_path = $inventory
           end

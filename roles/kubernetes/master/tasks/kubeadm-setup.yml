@@ -10,10 +10,10 @@
   import_tasks: kubeadm-migrate-certs.yml
   when: old_apiserver_cert.stat.exists
 
-- name: kubeadm | Check service account key
+- name: kubeadm | Check apiserver key
   stat:
-    path: "{{ kube_cert_dir }}/sa.key"
-  register: sa_key_before
+    path: "{{ kube_cert_dir }}/apiserver.key"
+  register: apiserver_key_before
   delegate_to: "{{groups['kube-master']|first}}"
   run_once: true
 
@@ -64,7 +64,7 @@
       {{ hostvars[host]['ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}
       {%- endfor %}
       {%- if supplementary_addresses_in_ssl_keys is defined -%}
-      {% for addr in supplementary_addresses_in_ssl_keys -%}
+      {% for addr in supplementary_addresses_in_ssl_keys %}
       {{ addr }}
       {%- endfor %}
       {%- endif %}
@@ -86,45 +86,20 @@
     dest: "{{ audit_policy_file }}"
   when: kubernetes_audit|default(false)
 
-- name: gets the kubeadm version
-  command: "{{ bin_dir }}/kubeadm version -o short"
-  register: kubeadm_output
-
-- name: sets kubeadm api version to v1alpha1
-  set_fact:
-    kubeadmConfig_api_version: v1alpha1
-  when: kubeadm_output.stdout is version('v1.11.0', '<')
-
-- name: sets kubeadm api version to v1alpha2
-  set_fact:
-    kubeadmConfig_api_version: v1alpha2
-  when:
-    - kubeadm_output.stdout is version('v1.11.0', '>=')
-    - kubeadm_output.stdout is version('v1.12.0', '<')
-
-- name: sets kubeadm api version to v1alpha3
-  set_fact:
-    kubeadmConfig_api_version: v1alpha3
-  when:
-    - kubeadm_output.stdout is version('v1.12.0', '>=')
-    - kubeadm_output.stdout is version('v1.13.0', '<')
-
-- name: sets kubeadm api version to v1beta1
-  set_fact:
-    kubeadmConfig_api_version: v1beta1
-  when: kubeadm_output.stdout is version('v1.13.0', '>=')
-
 # Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
 - name: set kubeadm_config_api_fqdn define
   set_fact:
     kubeadm_config_api_fqdn: "{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}"
   when: loadbalancer_apiserver is defined
 
-- name: kubeadm | Create kubeadm config
-  template:
-    src: "kubeadm-config.{{ kubeadmConfig_api_version }}.yaml.j2"
-    dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
-  register: kubeadm_config
+- name: kubeadm | set kubeadm version
+  import_tasks: kubeadm-version.yml
+
+- name: kubeadm | Certificate management with kubeadm
+  import_tasks: kubeadm-certificate.yml
+  when:
+    - not upgrade_cluster_setup
+    - kubeadm_already_run.stat.exists
 
 - name: kubeadm | Initialize first master
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
@@ -133,24 +108,6 @@
   retries: 3
   when: inventory_hostname == groups['kube-master']|first and not kubeadm_already_run.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
-  notify: Master | restart kubelet
-
-- name: kubeadm | Upgrade first master
-  command: >-
-    timeout -k 600s 600s
-    {{ bin_dir }}/kubeadm
-    upgrade apply -y {{ kube_version }}
-    --config={{ kube_config_dir }}/kubeadm-config.yaml
-    --ignore-preflight-errors=all
-    --allow-experimental-upgrades
-    --allow-release-candidate-upgrades
-    --etcd-upgrade=false
-    --force
-  register: kubeadm_upgrade
-  # Retry is because upload config sometimes fails
-  retries: 3
-  when: inventory_hostname == groups['kube-master']|first and (kubeadm_config.changed and kubeadm_already_run.stat.exists)
-  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   notify: Master | restart kubelet
 
 - name: slurp kubeadm certs
@@ -185,6 +142,12 @@
   with_items: "{{ kubeadm_certs.results }}"
   when: inventory_hostname != groups['kube-master']|first
 
+- name: kubeadm | Kubeconfig management with kubeadm
+  import_tasks: kubeadm-kubeconfig.yml
+  when:
+    - not upgrade_cluster_setup
+    - kubeadm_already_run.stat.exists
+
 - name: kubeadm | Init other uninitialized masters
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
   register: kubeadm_init
@@ -194,32 +157,21 @@
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   notify: Master | restart kubelet
 
-- name: kubeadm | Upgrade other masters
-  command: >-
-    timeout -k 600s 600s
-    {{ bin_dir }}/kubeadm
-    upgrade apply -y {{ kube_version }}
-    --config={{ kube_config_dir }}/kubeadm-config.yaml
-    --ignore-preflight-errors=all
-    --allow-experimental-upgrades
-    --allow-release-candidate-upgrades
-    --etcd-upgrade=false
-  register: kubeadm_upgrade
-  when: inventory_hostname != groups['kube-master']|first and (kubeadm_config.changed and kubeadm_already_run.stat.exists)
-  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
-  notify: Master | restart kubelet
+- name: kubeadm | upgrage kubernetes cluster
+  import_tasks: kubeadm-upgrade.yml
+  when: upgrade_cluster_setup
 
-- name: kubeadm | Check service account key again
+- name: kubeadm | Check apiserver key again
   stat:
-    path: "{{ kube_cert_dir }}/sa.key"
-  register: sa_key_after
+    path: "{{ kube_cert_dir }}/apiserver.key"
+  register: apiserver_key_after
   delegate_to: "{{groups['kube-master']|first}}"
   run_once: true
 
 - name: kubeadm | Set secret_changed if service account key was updated
   command: /bin/true
   notify: Master | set secret_changed
-  when: sa_key_before.stat.checksum|default("") != sa_key_after.stat.checksum
+  when: apiserver_key_before.stat.checksum|default("") != apiserver_key_after.stat.checksum
 
 - name: kubeadm | cleanup old certs if necessary
   import_tasks: kubeadm-cleanup-old-certs.yml

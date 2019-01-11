@@ -84,11 +84,6 @@ leaves you with a non functional cluster.
 ``resolvconf_mode`` configures how Kubespray will setup DNS for ``hostNetwork: true`` PODs and non-k8s containers.
 There are three modes available:
 
-## Nodelocal DNS cache
-Setting ``enable_nodelocaldns`` to ``true`` will make pods reach out to the dns (core-dns) caching agent running on the same node, thereby avoiding iptables DNAT rules and connection tracking. The local caching agent will query kube-dns / core-dns (depending on what main DNS plugin is configured in your cluster) for cache misses of cluster hostnames(cluster.local suffix by default).
-
-More information on the rationale behind this implementation can be found [here](https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/0030-nodelocal-dns-cache.md).
-
 #### docker_dns (default)
 This sets up the docker daemon with additional --dns/--dns-search/--dns-opt flags.
 
@@ -134,6 +129,11 @@ including resolvconf's base/head/cloud-init config files and those that come fro
 Does nothing regarding ``/etc/resolv.conf``. This leaves you with a cluster that works as expected in most cases.
 The only exception is that ``hostNetwork: true`` PODs and non-k8s managed containers will not be able to resolve
 cluster service names.
+
+## Nodelocal DNS cache
+Setting ``enable_nodelocaldns`` to ``true`` will make pods reach out to the dns (core-dns) caching agent running on the same node, thereby avoiding iptables DNAT rules and connection tracking. The local caching agent will query kube-dns / core-dns (depending on what main DNS plugin is configured in your cluster) for cache misses of cluster hostnames(cluster.local suffix by default).
+
+More information on the rationale behind this implementation can be found [here](https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/0030-nodelocal-dns-cache.md).
 
 
 Limitations

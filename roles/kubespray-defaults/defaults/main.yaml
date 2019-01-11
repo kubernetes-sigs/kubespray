@@ -12,15 +12,21 @@ is_atomic: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.13.0
+kube_version: v1.13.1
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
 
-# Kube-proxy nodeport address.
-# cidr to bind nodeport services. Flag --nodeport-addresses on kube-proxy manifest
-kube_proxy_nodeport_addresses: false
-# kube_proxy_nodeport_addresses_cidr: 10.0.1.0/24
+# A string slice of values which specify the addresses to use for NodePorts.
+# Values may be valid IP blocks (e.g. 1.2.3.0/24, 1.2.3.4/32).
+# The default empty string slice ([]) means to use all local addresses.
+# kube_proxy_nodeport_addresses_cidr is retained for legacy config
+kube_proxy_nodeport_addresses: >-
+  {%- if kube_proxy_nodeport_addresses_cidr is defined -%}
+  [{{ kube_proxy_nodeport_addresses_cidr }}]
+  {%- else -%}
+  []
+  {%- endif -%}
 
 # Set to true to allow pre-checks to fail and continue deployment
 ignore_assert_errors: false
@@ -216,7 +222,7 @@ docker_options: >-
   {% if docker_registry_mirrors is defined %}
   {{ docker_registry_mirrors | map('regex_replace', '^(.*)$', '--registry-mirror=\1' ) | list | join(' ') }}
   {%- endif %}
-  {%- if docker_version is version('17.05', '<') %}
+  {%- if docker_version != "latest" and docker_version is version('17.05', '<') %}
   --graph={{ docker_daemon_graph }} {{ docker_log_opts }}
   {%- else %}
   --data-root={{ docker_daemon_graph }} {{ docker_log_opts }}
@@ -308,10 +314,15 @@ kube_feature_gates: |-
   {%- endif %}
 
 # Local volume provisioner storage classes
-local_volume_provisioner_storage_classes:
-  - name: "{{ local_volume_provisioner_storage_class | default('local-storage') }}"
-    host_dir: "{{ local_volume_provisioner_base_dir | default ('/mnt/disks') }}"
-    mount_dir: "{{ local_volume_provisioner_mount_dir | default('/mnt/disks') }}"
+# Levarages Ansibles string to Python datatype casting. Otherwise the dict_key isn't substituted
+# see https://github.com/ansible/ansible/issues/17324
+local_volume_provisioner_storage_classes: |
+  {
+    "{{ local_volume_provisioner_storage_class | default('local-storage') }}": {
+     "host_dir": "{{ local_volume_provisioner_base_dir | default ('/mnt/disks') }}",
+      "mount_dir": "{{ local_volume_provisioner_mount_dir | default('/mnt/disks') }}"
+    }
+  }
 
 # weave's network password for encryption
 # if null then no network encryption
@@ -381,16 +392,14 @@ loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
 apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
 kube_apiserver_endpoint: |-
-  {% if not is_kube_master and loadbalancer_apiserver_localhost -%}
+  {% if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
+       https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+  {%- elif not is_kube_master and loadbalancer_apiserver_localhost -%}
        https://localhost:{{ nginx_kube_apiserver_port|default(kube_apiserver_port) }}
   {%- elif is_kube_master -%}
        https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_port }}
   {%- else -%}
-  {%-   if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
-       https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
-  {%-   else -%}
        https://{{ first_kube_master }}:{{ kube_apiserver_port }}
-  {%-  endif -%}
   {%- endif %}
 kube_apiserver_insecure_endpoint: >-
   http://{{ kube_apiserver_insecure_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_insecure_port }}

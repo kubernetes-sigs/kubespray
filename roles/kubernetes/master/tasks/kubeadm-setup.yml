@@ -148,12 +148,48 @@
     - not upgrade_cluster_setup
     - kubeadm_already_run.stat.exists
 
+- name: Create kubeadm token for joining nodes with 24h expiration (default)
+  command: "{{ bin_dir }}/kubeadm token create"
+  run_once: true
+  register: temp_token
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  when: loadbalancer_apiserver is defined
+
+- name: Create kubeadm ControlPlane config
+  template:
+    src: "kubeadm-controlplane.{{ kubeadmConfig_api_version }}.yaml.j2"
+    dest: "{{ kube_config_dir }}/kubeadm-controlplane.yaml"
+    backup: yes
+  when:
+    - loadbalancer_apiserver is defined
+    - inventory_hostname != groups['kube-master']|first
+    - not kubeadm_already_run.stat.exists
+  vars:
+    kubeadm_token: "{{ temp_token.stdout }}"
+
+- name: Joining control plane node to the cluster.
+  command: >-
+    {{ bin_dir }}/kubeadm join
+    --config {{ kube_config_dir}}/kubeadm-controlplane.yaml
+    --ignore-preflight-errors=all
+    --experimental-control-plane
+  register: kubeadm_join_control_plane
+  when:
+    - loadbalancer_apiserver is defined
+    - inventory_hostname != groups['kube-master']|first
+    - not kubeadm_already_run.stat.exists
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+
 - name: kubeadm | Init other uninitialized masters
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all
   register: kubeadm_init
   retries: 10
   until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
-  when: inventory_hostname != groups['kube-master']|first and not kubeadm_already_run.stat.exists
+  when:
+    - loadbalancer_apiserver is not defined
+    - inventory_hostname != groups['kube-master']|first
+    - not kubeadm_already_run.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   notify: Master | restart kubelet
 

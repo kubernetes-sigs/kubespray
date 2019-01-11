@@ -56,21 +56,11 @@ Add worker nodes to the list under kube-node if you want to delete them (or util
     ansible-playbook -i inventory/mycluster/hosts.ini remove-node.yml -b -v \
         --private-key=~/.ssh/private_key
 
-
-We support two ways to select the nodes:
-
-- Use `--extra-vars "node=<nodename>,<nodename2>"` to select the node you want to delete.
+Use `--extra-vars "node=<nodename>,<nodename2>"` to select the node you want to delete.
 ```
 ansible-playbook -i inventory/mycluster/hosts.ini remove-node.yml -b -v \
   --private-key=~/.ssh/private_key \
   --extra-vars "node=nodename,nodename2"
-```
-or
-- Use `--limit nodename,nodename2` to select the node
-```
-ansible-playbook -i inventory/mycluster/hosts.ini remove-node.yml -b -v \
-  --private-key=~/.ssh/private_key \
-  --limit nodename,nodename2"
 ```
 
 Connecting to Kubernetes

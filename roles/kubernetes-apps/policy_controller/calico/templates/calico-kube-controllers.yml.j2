@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta2
+apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: calico-kube-controllers
@@ -6,10 +6,13 @@ metadata:
   labels:
     k8s-app: calico-kube-controllers
     kubernetes.io/cluster-service: "true"
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ''
 spec:
+  # The Controllers can only have s single active instance.
   replicas: 1
   strategy:
-    type: RollingUpdate
+    type: Recreate
   selector:
     matchLabels:
       kubernetes.io/cluster-service: "true"
@@ -22,11 +25,16 @@ spec:
         kubernetes.io/cluster-service: "true"
         k8s-app: calico-kube-controllers
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       hostNetwork: true
       serviceAccountName: calico-kube-controllers
       tolerations:
-        - effect: NoSchedule
+        # Mark the pod as critical add-on for rescheduling.
+        - key: CriticalAddonsOnly
           operator: Exists
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
 {% if kube_version is version('v1.11.1', '>=') %}
       priorityClassName: system-cluster-critical
 {% endif %}
@@ -50,10 +58,18 @@ spec:
               value: "{{ calico_cert_dir }}/cert.crt"
             - name: ETCD_KEY_FILE
               value: "{{ calico_cert_dir }}/key.pem"
+            # Choose which controller to run.
+            - name: ENABLE_CONTROLLERS
+              value: policy,namespace,serviceaccount,workloadendpoint,node
           volumeMounts:
           - mountPath: {{ calico_cert_dir }}
             name: etcd-certs
             readOnly: true
+          readinessProbe:
+            exec:
+              command:
+              - /usr/bin/check-status
+              - -r
       volumes:
       - hostPath:
           path: {{ calico_cert_dir }}

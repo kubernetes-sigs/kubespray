@@ -120,6 +120,8 @@ Vagrant.configure("2") do |config|
         vb.cpus = $vm_cpus
         vb.gui = $vm_gui
         vb.linked_clone = true
+        vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+        vb.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
       end
 
       node.vm.provider :libvirt do |lv|

@@ -6,5 +6,5 @@ This playbook aims to automate [this](https://metallb.universe.tf/tutorial/layer
 
 ## Install
 ```
-ansible-playbook --ask-become -i inventory/sample/k8s_heketi_inventory.yml contrib/metallb/metallb.yml
+ansible-playbook --ask-become -i inventory/sample/hosts.ini contrib/metallb/metallb.yml
 ```

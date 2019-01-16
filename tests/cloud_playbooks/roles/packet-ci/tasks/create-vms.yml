@@ -13,34 +13,7 @@
     path: "/tmp/{{ test_name }}"
     state: directory
 
-- name: Template vm files for CI job
-  template:
-    src: "vm.yml.j2"
-    dest: "/tmp/{{ test_name }}/instance-{{ vm_id }}.yml"
-  vars:
-    vm_name: "instance-{{ vm_id }}"
-  loop: "{{ range(0, vm_count|int, 1) | list }}"
-  loop_control:
-    index_var: vm_id
-
-- name: Start vms for CI job
-  k8s:
-    state: present
-    src: "/tmp/{{ test_name }}/instance-{{ vm_id }}.yml"
-  loop: "{{ range(0, vm_count|int, 1) | list }}"
-  loop_control:
-    index_var: vm_id
-
-- name: Wait for vms to have ipaddress assigned
-  shell: "kubectl get vmis -n {{ test_name }} instance-{{ vm_id }} -o json | jq '.status.interfaces[].ipAddress' | tr -d '\"'"
-  register: vm_ips
-  loop: "{{ range(0, vm_count|int, 1) | list }}"
-  loop_control:
-    index_var: vm_id
-  retries: 10
-  delay: 15
-  until:
-    - vm_ips.stdout | ipaddr
+- import_tasks: spawn-vms.yml
 
 - name: Wait for SSH to become available on vms
   wait_for:
@@ -49,6 +22,32 @@
     delay: 30
     timeout: 240
     state: started
+  register: vm_ssh_able
+  ignore_errors: true
+  with_items:
+    - "{{ vm_ips.results }}"
+
+- name: "Remove machine that failed to start and retry"
+  shell: "kubectl delete vm -n {{ test_name }}"
+  with_items:
+    - vm_ssh_able
+  when:
+    - item.msg.find('timeout') != -1
+    - vm_ssh_able is failed
+
+- import_tasks: spawn-vms.yml
+  when:
+    - vm_ssh_able is failed
+
+- name: Wait for SSH to become available on vms that failed
+  wait_for:
+    host: "{{ item.stdout }}"
+    port: 22
+    delay: 30
+    timeout: 240
+    state: started
+  when:
+    - vm_ssh_able is failed
   with_items:
     - "{{ vm_ips.results }}"
 

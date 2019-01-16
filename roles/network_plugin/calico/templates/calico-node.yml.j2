@@ -76,6 +76,12 @@ spec:
               value: "{{ calico_endpoint_to_host_action|default('RETURN') }}"
             - name: FELIX_HEALTHHOST
               value: "{{ calico_healthhost }}"
+            # Prior to v3.2.1 iptables didn't acquire the lock, so Calico's own implementation of the lock should be used,
+            # this is not required in later versions https://github.com/projectcalico/calico/issues/2179
+{% if calico_version is version('v3.2.1', '<') %}
+            - name: FELIX_IPTABLESLOCKTIMEOUTSECS
+              value: "10"
+{% endif %}
 # should be set in etcd before deployment
 #            # Configure the IP Pool from which Pod IPs will be chosen.
 #            - name: CALICO_IPV4POOL_CIDR
@@ -170,6 +176,9 @@ spec:
               readOnly: false
             - mountPath: /calico-secrets
               name: etcd-certs
+            - name: xtables-lock
+              mountPath: /run/xtables.lock
+              readOnly: false
       volumes:
         # Used by calico/node.
         - name: lib-modules
@@ -192,6 +201,11 @@ spec:
         - name: etcd-certs
           hostPath:
             path: "{{ calico_cert_dir }}"
+        # Mount the global iptables lock file, used by calico/node
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
   updateStrategy:
     rollingUpdate:
       maxUnavailable: {{ serial | default('20%') }}

@@ -1,11 +1,17 @@
 ---
 - name: Set external kube-apiserver endpoint
   set_fact:
-    external_apiserver_endpoint: >-
+    external_apiserver_address: >-
       {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      {{ apiserver_loadbalancer_domain_name }}
       {%- else -%}
-      https://{{ kube_apiserver_access_address }}:{{ kube_apiserver_port }}
+      {{ kube_apiserver_access_address }}
+      {%- endif -%}
+    external_apiserver_port: >-
+      {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
+      {{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      {%- else -%}
+      {{ kube_apiserver_port }}
       {%- endif -%}
   tags:
     - facts
@@ -24,12 +30,28 @@
     mode: "0600"
     backup: yes
 
-- name: Copy admin kubeconfig to ansible host
-  fetch:
-    src: "{{ kube_config_dir }}/admin.conf"
+- name: Generate admin kubeconfig with external api endpoint
+  shell: >-
+    {{ bin_dir }}/kubeadm alpha
+    {% if kubeadm_version is version('v1.13.0', '<') %}
+    phase
+    {% endif %}
+    kubeconfig user
+    --client-name kubernetes-admin
+    --org system:masters
+    --cert-dir {{ kube_config_dir }}/ssl
+    --apiserver-advertise-address {{ external_apiserver_address }}
+    --apiserver-bind-port {{ external_apiserver_port }}
+  run_once: yes
+  register: admin_kubeconfig
+
+- name: Write admin kubeconfig on ansible host
+  copy:
+    content: "{{ admin_kubeconfig.stdout }}"
     dest: "{{ artifacts_dir }}/admin.conf"
-    flat: yes
-    validate_checksum: no
+    mode: 0640
+  delegate_to: localhost
+  become: no
   run_once: yes
   when: kubeconfig_localhost|default(false)
 

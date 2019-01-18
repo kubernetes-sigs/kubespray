@@ -18,7 +18,7 @@ Quick Start
 To deploy the cluster you can use :
 
 ### Current release
-2.8
+2.8.2
 
 ### Ansible
 
@@ -114,7 +114,7 @@ Supported Components
 --------------------
 
 -   Core
-    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.12.4
+    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.12.5
     -   [etcd](https://github.com/coreos/etcd) v3.2.24
     -   [docker](https://www.docker.com/) v18.06 (see note)
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)

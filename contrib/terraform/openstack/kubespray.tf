@@ -1,12 +1,23 @@
+locals {
+  effective_bastion_network_name = "${var.bastion_network_name == "" ? var.network_name : var.bastion_network_name}"
+}
+
+data "openstack_networking_network_v2" "bastion_network" {
+  name = "${local.effective_bastion_network_name}"
+}
+
 module "network" {
   source = "modules/network"
 
-  external_net    = "${var.external_net}"
-  network_name    = "${var.network_name}"
-  subnet_cidr     = "${var.subnet_cidr}"
-  cluster_name    = "${var.cluster_name}"
-  dns_nameservers = "${var.dns_nameservers}"
-  use_neutron     = "${var.use_neutron}"
+  external_net                = "${var.external_net}"
+  network_name                = "${var.network_name}"
+  subnet_cidr                 = "${var.subnet_cidr}"
+  cluster_name                = "${var.cluster_name}"
+  dns_nameservers             = "${var.dns_nameservers}"
+  use_neutron                 = "${var.use_neutron}"
+  bastion_network_name        = "${local.effective_bastion_network_name}"
+  network_router_extra_routes = "${var.network_router_extra_routes}"
+  bastion_subnet_extra_routes = "${var.bastion_subnet_extra_routes}"
 }
 
 module "ips" {
@@ -34,6 +45,7 @@ module "compute" {
   number_of_k8s_masters_no_floating_ip_no_etcd = "${var.number_of_k8s_masters_no_floating_ip_no_etcd}"
   number_of_k8s_nodes                          = "${var.number_of_k8s_nodes}"
   number_of_bastions                           = "${var.number_of_bastions}"
+  number_of_bastions_no_floating_ip            = "${var.number_of_bastions_no_floating_ip}"
   number_of_k8s_nodes_no_floating_ip           = "${var.number_of_k8s_nodes_no_floating_ip}"
   number_of_gfs_nodes_no_floating_ip           = "${var.number_of_gfs_nodes_no_floating_ip}"
   gfs_volume_size_in_gb                        = "${var.gfs_volume_size_in_gb}"
@@ -55,6 +67,8 @@ module "compute" {
   supplementary_master_groups                  = "${var.supplementary_master_groups}"
   supplementary_node_groups                    = "${var.supplementary_node_groups}"
   worker_allowed_ports                         = "${var.worker_allowed_ports}"
+  bastion_network_name                         = "${local.effective_bastion_network_name}"
+  bastion_network_id                           = "${data.openstack_networking_network_v2.bastion_network.id}"
 
   network_id = "${module.network.router_id}"
 }

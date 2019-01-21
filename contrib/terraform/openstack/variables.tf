@@ -12,6 +12,10 @@ variable "number_of_bastions" {
   default = 1
 }
 
+variable "number_of_bastions_no_floating_ip" {
+  default = 0
+}
+
 variable "number_of_k8s_masters" {
   default = 2
 }
@@ -155,4 +159,23 @@ variable "worker_allowed_ports" {
       "remote_ip_prefix" = "0.0.0.0/0"
     }
   ]
+}
+
+variable "bastion_network_name" {
+  description = "network name where bastion is expected to be created"
+  default = ""
+}
+
+variable "bastion_subnet_extra_routes" {
+  description = "A map of routes to register near the bastion subnet (key=route, value=nexthop)"
+  type = "map"
+  default = {
+  }
+}
+
+variable "network_router_extra_routes" {
+  description = "A map of routes to register near the kube neutron router (key=route, value=nexthop)"
+  type = "map"
+  default = {
+  }
 }

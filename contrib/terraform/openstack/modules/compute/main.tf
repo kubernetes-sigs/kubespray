@@ -70,7 +70,7 @@ resource "openstack_compute_instance_v2" "bastion" {
   key_pair   = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {
-    name = "${var.network_name}"
+    name = "${var.bastion_network_name}"
   }
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}",
@@ -81,11 +81,39 @@ resource "openstack_compute_instance_v2" "bastion" {
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "bastion"
-    depends_on       = "${var.network_id}"
+    depends_on       = "${var.bastion_network_id}"
   }
 
   provisioner "local-exec" {
     command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.bastion_fips[0]}/ > contrib/terraform/group_vars/no-floating.yml"
+  }
+
+}
+
+resource "openstack_compute_instance_v2" "bastion_no_floating_ip" {
+  name       = "${var.cluster_name}-bastion-nf-${count.index+1}"
+  count      = "${var.number_of_bastions_no_floating_ip}"
+  image_name = "${var.image}"
+  flavor_id  = "${var.flavor_bastion}"
+  key_pair   = "${openstack_compute_keypair_v2.k8s.name}"
+
+  network {
+    name = "${var.bastion_network_name}"
+  }
+
+  security_groups = ["${openstack_networking_secgroup_v2.k8s.name}",
+    "${openstack_networking_secgroup_v2.bastion.name}",
+    "default",
+  ]
+
+  metadata = {
+    ssh_user         = "${var.ssh_user}"
+    kubespray_groups = "bastion"
+    depends_on       = "${var.bastion_network_id}"
+  }
+
+  provisioner "local-exec" {
+    command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${self.access_ip_v4}/ > contrib/terraform/group_vars/no-floating.yml"
   }
 
 }

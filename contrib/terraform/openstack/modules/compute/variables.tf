@@ -20,6 +20,8 @@ variable "number_of_k8s_nodes_no_floating_ip" {}
 
 variable "number_of_bastions" {}
 
+variable "number_of_bastions_no_floating_ip" {}
+
 variable "number_of_gfs_nodes_no_floating_ip" {}
 
 variable "gfs_volume_size_in_gb" {}
@@ -76,4 +78,10 @@ variable "supplementary_node_groups" {
 
 variable "worker_allowed_ports" {
   type = "list"
+}
+
+variable "bastion_network_name" {}
+
+variable "bastion_network_id" {
+  default = ""
 }

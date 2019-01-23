@@ -1,5 +1,5 @@
 #Global Vars
-aws_cluster_name = "devtest"
+aws_cluster_name = "k8smeetup"
 
 #VPC Vars
 aws_vpc_cidr_block = "10.250.192.0/18"
@@ -28,8 +28,8 @@ k8s_secure_api_port = 6443
 kube_insecure_apiserver_address = "0.0.0.0"
 
 default_tags = {
-#  Env = "devtest"
-#  Product = "kubernetes"
+  Env = "k8smeetup"
+  Product = "kubernetes"
 }
 
 inventory_file = "../../../inventory/hosts"

@@ -15,6 +15,9 @@ spec:
     metadata:
        labels:
           k8s-app: nodelocaldns
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9253'
     spec:
 {% if kube_version is version('v1.11.1', '>=') %}
       priorityClassName: system-cluster-critical
@@ -75,4 +78,10 @@ spec:
           hostPath:
             path: /run/xtables.lock
             type: FileOrCreate
-      terminationGracePeriodSeconds: 30
+      # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
+      # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
+      terminationGracePeriodSeconds: 0
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: {{ serial | default('20%') }}
+    type: RollingUpdate

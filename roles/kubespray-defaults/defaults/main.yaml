@@ -3,7 +3,7 @@
 # This change obseletes editing ansible.cfg file depending on bastion existance
 ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ hostvars['bastion']['ansible_user'] }}@{{ hostvars['bastion']['ansible_host'] }} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
 
-kube_api_anonymous_auth: false
+kube_api_anonymous_auth: true
 
 # Default value, but will be set to true automatically if detected
 is_atomic: false
@@ -12,15 +12,21 @@ is_atomic: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.12.3
+kube_version: v1.13.2
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
 
-# Kube-proxy nodeport address.
-# cidr to bind nodeport services. Flag --nodeport-addresses on kube-proxy manifest
-kube_proxy_nodeport_addresses: false
-# kube_proxy_nodeport_addresses_cidr: 10.0.1.0/24
+# A string slice of values which specify the addresses to use for NodePorts.
+# Values may be valid IP blocks (e.g. 1.2.3.0/24, 1.2.3.4/32).
+# The default empty string slice ([]) means to use all local addresses.
+# kube_proxy_nodeport_addresses_cidr is retained for legacy config
+kube_proxy_nodeport_addresses: >-
+  {%- if kube_proxy_nodeport_addresses_cidr is defined -%}
+  [{{ kube_proxy_nodeport_addresses_cidr }}]
+  {%- else -%}
+  []
+  {%- endif -%}
 
 # Set to true to allow pre-checks to fail and continue deployment
 ignore_assert_errors: false
@@ -38,6 +44,9 @@ local_release_dir: "/tmp/releases"
 # Random shifts for retrying failed ops like pushing/downloading
 retry_stagger: 5
 
+# Install epel repo on Centos/RHEL
+epel_enabled: false
+
 # DNS configuration.
 # Kubernetes cluster name, also will be used as DNS domain
 cluster_name: cluster.local
@@ -45,6 +54,9 @@ cluster_name: cluster.local
 ndots: 2
 # Can be dnsmasq_kubedns, kubedns, manual or none
 dns_mode: coredns
+
+# Enable nodelocal dns cache
+enable_nodelocaldns: False
 
 # Should be set to a cluster IP if using a custom cluster DNS
 # manual_dns_server: 10.x.x.x
@@ -213,7 +225,7 @@ docker_options: >-
   {% if docker_registry_mirrors is defined %}
   {{ docker_registry_mirrors | map('regex_replace', '^(.*)$', '--registry-mirror=\1' ) | list | join(' ') }}
   {%- endif %}
-  {%- if docker_version is version('17.05', '<') %}
+  {%- if docker_version != "latest" and docker_version is version('17.05', '<') %}
   --graph={{ docker_daemon_graph }} {{ docker_log_opts }}
   {%- else %}
   --data-root={{ docker_daemon_graph }} {{ docker_log_opts }}
@@ -226,13 +238,9 @@ docker_options: >-
 
 # Settings for containerized control plane (etcd/kubelet/secrets)
 etcd_deployment_type: docker
-kubelet_deployment_type: docker
 cert_management: script
 
 helm_deployment_type: host
-
-# Enable kubeadm deployment
-kubeadm_enabled: true
 
 # Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
 kubeconfig_localhost: false
@@ -282,7 +290,7 @@ openstack_cacert: "{{ lookup('env','OS_CACERT') }}"
 ## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
 ## 'RBAC' modes are tested. Order is important.
 authorization_modes: ['Node', 'RBAC']
-rbac_enabled: "{{ 'RBAC' in authorization_modes or kubeadm_enabled }}"
+rbac_enabled: "{{ 'RBAC' in authorization_modes }}"
 
 # When enabled, API bearer tokens (including service account tokens) can be used to authenticate to the kubelet’s HTTPS endpoint
 kubelet_authentication_token_webhook: true
@@ -309,10 +317,15 @@ kube_feature_gates: |-
   {%- endif %}
 
 # Local volume provisioner storage classes
-local_volume_provisioner_storage_classes:
-  - name: "{{ local_volume_provisioner_storage_class | default('local-storage') }}"
-    host_dir: "{{ local_volume_provisioner_base_dir | default ('/mnt/disks') }}"
-    mount_dir: "{{ local_volume_provisioner_mount_dir | default('/mnt/disks') }}"
+# Levarages Ansibles string to Python datatype casting. Otherwise the dict_key isn't substituted
+# see https://github.com/ansible/ansible/issues/17324
+local_volume_provisioner_storage_classes: |
+  {
+    "{{ local_volume_provisioner_storage_class | default('local-storage') }}": {
+     "host_dir": "{{ local_volume_provisioner_base_dir | default ('/mnt/disks') }}",
+      "mount_dir": "{{ local_volume_provisioner_mount_dir | default('/mnt/disks') }}"
+    }
+  }
 
 # weave's network password for encryption
 # if null then no network encryption
@@ -382,31 +395,19 @@ loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
 apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
 kube_apiserver_endpoint: |-
-  {% if not is_kube_master and loadbalancer_apiserver_localhost -%}
+  {% if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
+       https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+  {%- elif not is_kube_master and loadbalancer_apiserver_localhost -%}
        https://localhost:{{ nginx_kube_apiserver_port|default(kube_apiserver_port) }}
   {%- elif is_kube_master -%}
        https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_port }}
   {%- else -%}
-  {%-   if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
-       https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
-  {%-   else -%}
        https://{{ first_kube_master }}:{{ kube_apiserver_port }}
-  {%-  endif -%}
   {%- endif %}
 kube_apiserver_insecure_endpoint: >-
   http://{{ kube_apiserver_insecure_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_insecure_port }}
-kube_apiserver_client_cert: |-
-  {% if kubeadm_enabled -%}
-  {{ kube_cert_dir }}/ca.crt
-  {%- else -%}
-  {{ kube_cert_dir }}/apiserver.pem
-  {%- endif %}
-kube_apiserver_client_key: |-
-  {% if kubeadm_enabled -%}
-  {{ kube_cert_dir }}/ca.key
-  {%- else -%}
-  {{ kube_cert_dir }}/apiserver-key.pem
-  {%- endif %}
+kube_apiserver_client_cert: "{{ kube_cert_dir }}/ca.crt"
+kube_apiserver_client_key: "{{ kube_cert_dir }}/ca.key"
 
 # Set to true to deploy etcd-events cluster
 etcd_events_cluster_enabled: false
@@ -463,3 +464,6 @@ pip_extra_args: |-
   {%- endif -%}
   {%- endif -%}
   {{ pip_extra_args_list|join(' ') }}
+
+etcd_config_dir: /etc/ssl/etcd
+etcd_cert_dir: "{{ etcd_config_dir }}/ssl"

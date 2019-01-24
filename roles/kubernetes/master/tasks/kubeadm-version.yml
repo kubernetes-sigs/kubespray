@@ -1,0 +1,33 @@
+---
+- name: gets the kubeadm version
+  command: "{{ bin_dir }}/kubeadm version -o short"
+  register: kubeadm_output
+
+- name: sets kubeadm api version to v1alpha1
+  set_fact:
+    kubeadmConfig_api_version: v1alpha1
+  when: kubeadm_output.stdout is version('v1.11.0', '<')
+
+- name: sets kubeadm api version to v1alpha2
+  set_fact:
+    kubeadmConfig_api_version: v1alpha2
+  when:
+    - kubeadm_output.stdout is version('v1.11.0', '>=')
+    - kubeadm_output.stdout is version('v1.12.0', '<')
+
+- name: sets kubeadm api version to v1alpha3
+  set_fact:
+    kubeadmConfig_api_version: v1alpha3
+  when:
+    - kubeadm_output.stdout is version('v1.12.0', '>=')
+    - kubeadm_output.stdout is version('v1.13.0', '<')
+
+- name: sets kubeadm api version to v1beta1
+  set_fact:
+    kubeadmConfig_api_version: v1beta1
+  when: kubeadm_output.stdout is version('v1.13.0', '>=')
+
+- name: kubeadm | Create kubeadm config
+  template:
+    src: "kubeadm-config.{{ kubeadmConfig_api_version }}.yaml.j2"
+    dest: "{{ kube_config_dir }}/kubeadm-config.yaml"

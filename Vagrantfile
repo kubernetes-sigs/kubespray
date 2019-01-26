@@ -165,6 +165,7 @@ Vagrant.configure("2") do |config|
 
       host_vars[vm_name] = {
         "ip": ip,
+        "flannel_interface": "eth1",
         "kube_network_plugin": $network_plugin,
         "kube_network_plugin_multus": $multi_networking,
         "docker_keepcache": "1",

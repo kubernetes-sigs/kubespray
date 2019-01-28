@@ -175,35 +175,6 @@ example-k8s-master-1 | SUCCESS => {
 
 If it fails try to connect manually via SSH.  It could be something as simple as a stale host key.
 
-### Configure cluster variables
-
-Edit `inventory/$CLUSTER/group_vars/all.yml`:
-- **bin_dir**:
-```
-# Directory where the binaries will be installed
-# Default:
-# bin_dir: /usr/local/bin
-# For Container Linux by CoreOS:
-bin_dir: /opt/bin
-```
-Edit `inventory/$CLUSTER/group_vars/k8s-cluster.yml`:
-- Set variable **kube_network_plugin** to your desired networking plugin.
-  - **flannel** works out-of-the-box
-  - **calico** works out-of-the-box
-```
-# Choose network plugin (calico, weave or flannel)
-# Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
-kube_network_plugin: flannel
-```
-- Set variable **resolvconf_mode**
-```
-# Can be docker_dns, host_resolvconf or none
-# Default:
-# resolvconf_mode: docker_dns
-# For Container Linux by CoreOS:
-resolvconf_mode: host_resolvconf
-```
-
 ### Deploy Kubernetes
 
 ```

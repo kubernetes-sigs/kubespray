@@ -98,6 +98,17 @@ While the defaults in variables.tf will successfully deploy a cluster, it is rec
 * cluster_name = the name of the inventory directory created above as $CLUSTER
 * packet_project_id = the Packet Project ID associated with the Packet API token above
 
+#### Enable localhost access
+Kubespray will pull down a Kubernetes configuration file to access this cluster by enabling the 
+`kubeconfig_localhost: true` in the Kubespray configuration.
+
+Edit `inventory/$CLUSTER/group_vars/k8s-cluster/k8s-cluster.yml` and comment back in the following line and change from `false` to `true`:
+`\# kubeconfig_localhost: false`
+becomes:
+`kubeconfig_localhost: true`
+
+Once the Kubespray playbooks are run, a Kubernetes configuration file will be written to the local host at `inventory/$CLUSTER/artifacts/admin.conf`
+
 #### Terraform state files
 
 In the cluster's inventory folder, the following files might be created (either by Terraform
@@ -196,34 +207,23 @@ This will take some time as there are many tasks to run.
 ## Kubernetes
 
 ### Set up kubectl
-1. [Install kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your workstation
-2. List Kubernetes certificates & keys:
-```
-ssh root@[master-ip] sudo ls /etc/kubernetes/ssl/
-```
-3. Get `admin`'s certificates and keys:
-```
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-kube-master-1-key.pem > admin-key.pem
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-kube-master-1.pem > admin.pem
-ssh root@[master-ip] sudo cat /etc/kubernetes/ssl/ca.pem > ca.pem
-```
-5. Configure kubectl:
-```ShellSession
-$ kubectl config set-cluster default-cluster --server=https://[master-ip]:6443 \
-    --certificate-authority=ca.pem
 
-$ kubectl config set-credentials default-admin \
-    --certificate-authority=ca.pem \
-    --client-key=admin-key.pem \
-    --client-certificate=admin.pem
+* [Install kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) on the localhost.
 
-$ kubectl config set-context default-system --cluster=default-cluster --user=default-admin
-$ kubectl config use-context default-system
-```
-7. Check it:
+* Verify that Kubectl runs correctly
 ```
 kubectl version
-kubectl get nodes
+```
+
+* Verify that the Kubernetes configuration file has been copied over
+```
+cat inventory/alpha/$CLUSTER/admin.conf
+```
+
+* Verify that all the nodes are running correctly.
+```
+kubectl version
+kubectl --kubeconfig=inventory/$CLUSTER/artifacts/admin.conf  get nodes
 ```
 
 ## What's next

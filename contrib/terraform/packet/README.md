@@ -34,7 +34,17 @@ now six total etcd replicas.
 - [Install Terraform](https://www.terraform.io/intro/getting-started/install.html)
 - Install dependencies: `sudo pip install -r requirements.txt`
 - Account with Packet Host
-- you have an SSH key pair
+- An SSH key pair
+
+## SSH Key Setup
+
+An SSH keypair is required so Ansible can access the newly provisioned nodes (bare metal Packet hosts). By default, the public SSH key defined in cluster.tf will be installed in authorized_key on the newly provisioned nodes (~/.ssh/id_rsa.pub). Terraform will upload this public key and then it will be distributed out to all the nodes. If you have already set this public key in Packet (i.e. via the portal), then set the public keyfile name in cluster.tf to blank to prevent the duplicate key from being uploaded which will cause an error.
+
+If you don't already have a keypair generated (~/.ssh/id_rsa and ~/.ssh/id_rsa.pub), then a new keypair can be generated with the command:
+
+```ShellSession
+ssh-keygen -f ~/.ssh/id_rsa
+```
 
 ## Terraform
 Terraform will be used to provision all of the Packet resources with base software as appropriate.

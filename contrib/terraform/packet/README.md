@@ -81,6 +81,11 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tf`.
 The `cluster_name` is used to set a tag on each server deployed as part of this cluster.
 This helps when identifying which hosts are associated with each cluster.
 
+While the defaults in variables.tf will successfully deploy a cluster, it is recommended to set the following values:
+
+* cluster_name = the name of the inventory directory created above as $CLUSTER
+* packet_project_id = the Packet Project ID associated with the Packet API token above
+
 #### Terraform state files
 
 In the cluster's inventory folder, the following files might be created (either by Terraform

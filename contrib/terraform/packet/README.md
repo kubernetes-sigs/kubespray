@@ -33,7 +33,7 @@ now six total etcd replicas.
 
 - [Install Terraform](https://www.terraform.io/intro/getting-started/install.html)
 - Install dependencies: `sudo pip install -r requirements.txt`
-- you already have a Packet API key
+- Account with Packet Host
 - you have an SSH key pair
 
 ## Terraform
@@ -61,6 +61,8 @@ If someone gets this key, they can startup/shutdown hosts in your project!
 
 For more information on how to generate an API key or find your project ID, please see:
 https://support.packet.com/kb/articles/api-integrations
+
+The Packet Project ID associated with the key will be set later in cluster.tf.
 
 For more information about the API, please see:
 https://www.packet.com/developers/api/

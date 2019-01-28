@@ -213,6 +213,7 @@ $ kubectl config use-context default-system
 7. Check it:
 ```
 kubectl version
+kubectl get nodes
 ```
 
 ## What's next

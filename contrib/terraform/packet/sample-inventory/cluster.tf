@@ -4,7 +4,9 @@ cluster_name = "mycluster"
 # Your Packet project ID. See https://support.packet.com/kb/articles/api-integrations
 packet_project_id = "Example-API-Token"
 
-# SSH key to use for access to nodes, "" to skip
+# The public SSH key to be uploaded into authorized_keys in bare metal Packet nodes provisioned
+# leave this value blank if the public key is already setup in the Packet project
+# Terraform will complain if the public key is setup in Packet
 public_key_path = "~/.ssh/id_rsa.pub"
 
 # standalone etcds

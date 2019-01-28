@@ -67,6 +67,15 @@ To re-define you need to edit the inventory and add a group variable `calico_net
 calico_network_backend: none
 ```
 
+##### Optional : Define the default pool CIDR
+
+By default, `kube_pods_subnet` is used as the IP range CIDR for the default IP Pool.
+In some cases you may want to add several pools and not have them considered by Kubernetes as external (which means that they must be within or equal to the range defined in `kube_pods_subnet`), it starts with the default IP Pool of which IP range CIDR can by defined in group_vars (k8s-cluster/k8s-net-calico.yml):
+
+```
+calico_pool_cidr: 10.233.64.0/20
+```
+
 ##### Optional : BGP Peering with border routers
 
 In some cases you may want to route the pods subnet and so NAT is not needed on the nodes.
@@ -85,6 +94,12 @@ Peers can be defined using the `peers` variable (see docs/calico_peer_example ex
 In order to define global peers, the `peers` variable can be defined in group_vars with the "scope" attribute of each global peer set to "global".
 In order to define peers on a per node basis, the `peers` variable must be defined in hostvars.
 NB: Ansible's `hash_behaviour` is by default set to "replace", thus defining both global and per node peers would end up with having only per node peers. If having both global and per node peers defined was meant to happen, global peers would have to be defined in hostvars for each host (as well as per node peers)
+
+Since calico 3.4, Calico supports advertising Kubernetes service cluster IPs over BGP, just as it advertises pod IPs.
+This can be enabled by setting the following variable as follow in group_vars (k8s-cluster/k8s-net-calico.yml)
+```
+calico_advertise_cluster_ips: true
+```
 
 ##### Optional : Define global AS number
 

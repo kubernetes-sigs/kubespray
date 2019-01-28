@@ -9,7 +9,6 @@ metadata:
   annotations:
     scheduler.alpha.kubernetes.io/critical-pod: ''
 spec:
-  # The Controllers can only have s single active instance.
   replicas: 1
   strategy:
     type: Recreate
@@ -30,7 +29,6 @@ spec:
       hostNetwork: true
       serviceAccountName: calico-kube-controllers
       tolerations:
-        # Mark the pod as critical add-on for rescheduling.
         - key: CriticalAddonsOnly
           operator: Exists
         - key: node-role.kubernetes.io/master
@@ -58,15 +56,17 @@ spec:
               value: "{{ calico_cert_dir }}/cert.crt"
             - name: ETCD_KEY_FILE
               value: "{{ calico_cert_dir }}/key.pem"
+{% if calico_version is version('v3.3.0', '>=') %}
+          readinessProbe:
+            exec:
+              command:
+              - /usr/bin/check-status
+              - -r
+{% endif %}
           volumeMounts:
           - mountPath: {{ calico_cert_dir }}
             name: etcd-certs
             readOnly: true
-          readinessProbe:
-            exec:
-              command:
-                - /usr/bin/check-status
-                - -r
       volumes:
       - hostPath:
           path: {{ calico_cert_dir }}

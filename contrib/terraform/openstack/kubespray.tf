@@ -2,10 +2,6 @@ locals {
   effective_bastion_network_name = "${var.bastion_network_name == "" ? var.network_name : var.bastion_network_name}"
 }
 
-data "openstack_networking_network_v2" "bastion_network" {
-  name = "${local.effective_bastion_network_name}"
-}
-
 module "network" {
   source = "modules/network"
 
@@ -68,7 +64,7 @@ module "compute" {
   supplementary_node_groups                    = "${var.supplementary_node_groups}"
   worker_allowed_ports                         = "${var.worker_allowed_ports}"
   bastion_network_name                         = "${local.effective_bastion_network_name}"
-  bastion_network_id                           = "${data.openstack_networking_network_v2.bastion_network.id}"
+  bastion_network_id                           = "${module.network.bastion_network_id}"
 
   network_id = "${module.network.router_id}"
 }

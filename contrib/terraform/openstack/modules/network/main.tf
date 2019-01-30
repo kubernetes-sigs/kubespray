@@ -27,14 +27,18 @@ resource "openstack_networking_router_interface_v2" "k8s" {
 }
 
 data "openstack_networking_network_v2" "bastion_network" {
-  name = "${var.bastion_network_name}"
+  count      = "${var.use_neutron}"
+  name       = "${(var.bastion_network_name != var.network_name) ? var.bastion_network_name : openstack_networking_network_v2.k8s.name}"
+  depends_on = ["openstack_networking_subnet_v2.k8s"]
 }
 
 data "openstack_networking_subnet_v2" "bastion_ntwk_subnets" {
-  network_id = "${data.openstack_networking_network_v2.bastion_network.id}"
+  count      = "${var.use_neutron}"
+  network_id = "${element(data.openstack_networking_network_v2.bastion_network.*.id, 0)}"
 }
 
 data "openstack_networking_subnet_v2" "k8s_ntwk_subnets" {
+  count      = "${var.use_neutron}"
   network_id = "${openstack_networking_network_v2.k8s.id}"
   depends_on = ["openstack_networking_subnet_v2.k8s"]
 }
@@ -54,7 +58,7 @@ resource "openstack_networking_router_route_v2" "k8s_router_extra_routes" {
 }
 
 resource "openstack_networking_subnet_route_v2" "bastion_subnet_extra_routes" {
-  count            = "${length(keys(var.bastion_subnet_extra_routes))}"
+  count            = "${(!var.use_neutron) ? 0 : length(keys(var.bastion_subnet_extra_routes))}"
   subnet_id        = "${element(data.openstack_networking_subnet_v2.bastion_ntwk_subnets.*.id, 0)}"
   destination_cidr = "${element(keys(var.bastion_subnet_extra_routes), count.index)}"
   next_hop         = "${lookup(var.bastion_subnet_extra_routes, element(keys(var.bastion_subnet_extra_routes), count.index))}"

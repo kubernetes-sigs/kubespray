@@ -9,12 +9,19 @@ packet_project_id = "Example-API-Token"
 # Terraform will complain if the public key is setup in Packet
 public_key_path = "~/.ssh/id_rsa.pub"
 
+# cluster location
+facility = "dfw2"
+
 # standalone etcds
 number_of_etcd = 0
+plan_etcd = "c2.medium.x86"
 
 # masters
 number_of_k8s_masters = 1
 number_of_k8s_masters_no_etcd = 0
+plan_k8s_masters = "c2.medium.x86"
+plan_k8s_masters_no_etcd = "c2.medium.x86"
 
 # nodes
 number_of_k8s_nodes = 2
+plan_k8s_nodes = "c2.medium.x86"

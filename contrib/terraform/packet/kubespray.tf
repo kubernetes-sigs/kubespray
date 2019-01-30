@@ -13,7 +13,7 @@ resource "packet_device" "k8s_master" {
 
   count            = "${var.number_of_k8s_masters}"
   hostname         = "${var.cluster_name}-k8s-master-${count.index+1}"
-  plan             = "${var.plan}"
+  plan             = "${var.plan_k8s_masters}"
   facility         = "${var.facility}"
   operating_system = "${var.operating_system}"
   billing_cycle    = "${var.billing_cycle}"
@@ -27,7 +27,7 @@ resource "packet_device" "k8s_master_no_etcd" {
 
   count            = "${var.number_of_k8s_masters_no_etcd}"
   hostname         = "${var.cluster_name}-k8s-master-${count.index+1}"
-  plan             = "${var.plan}"
+  plan             = "${var.plan_k8s_masters_no_etcd}"
   facility         = "${var.facility}"
   operating_system = "${var.operating_system}"
   billing_cycle    = "${var.billing_cycle}"
@@ -40,7 +40,7 @@ resource "packet_device" "k8s_etcd" {
 
   count            = "${var.number_of_etcd}"
   hostname         = "${var.cluster_name}-etcd-${count.index+1}"
-  plan             = "${var.plan}"
+  plan             = "${var.plan_etcd}"
   facility         = "${var.facility}"
   operating_system = "${var.operating_system}"
   billing_cycle    = "${var.billing_cycle}"
@@ -53,7 +53,7 @@ resource "packet_device" "k8s_node" {
 
   count            = "${var.number_of_k8s_nodes}"
   hostname         = "${var.cluster_name}-k8s-node-${count.index+1}"
-  plan             = "${var.plan}"
+  plan             = "${var.plan_k8s_nodes}"
   facility         = "${var.facility}"
   operating_system = "${var.operating_system}"
   billing_cycle    = "${var.billing_cycle}"

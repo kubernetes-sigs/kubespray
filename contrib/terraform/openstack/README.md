@@ -109,6 +109,7 @@ Create an inventory directory for your cluster by copying the existing sample an
 $ cp -LRp contrib/terraform/openstack/sample-inventory inventory/$CLUSTER
 $ cd inventory/$CLUSTER
 $ ln -s ../../contrib/terraform/openstack/hosts
+$ ln -s ../../contrib
 ```
 
 This will be the base for subsequent Terraform commands.

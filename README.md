@@ -117,7 +117,7 @@ Supported Components
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
     -   [cri-o](http://cri-o.io/) v1.11.5 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
 -   Network Plugin
-    -   [calico](https://github.com/projectcalico/calico) v3.1.3
+    -   [calico](https://github.com/projectcalico/calico) v3.4.0
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
     -   [cilium](https://github.com/cilium/cilium) v1.3.0
     -   [contiv](https://github.com/contiv/install) v1.2.1

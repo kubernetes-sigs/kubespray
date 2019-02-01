@@ -111,13 +111,13 @@ Supported Components
 --------------------
 
 -   Core
-    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.12.3
+    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.13.2
     -   [etcd](https://github.com/coreos/etcd) v3.2.24
     -   [docker](https://www.docker.com/) v18.06 (see note)
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
     -   [cri-o](http://cri-o.io/) v1.11.5 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
 -   Network Plugin
-    -   [calico](https://github.com/projectcalico/calico) v3.1.3
+    -   [calico](https://github.com/projectcalico/calico) v3.4.0
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
     -   [cilium](https://github.com/cilium/cilium) v1.3.0
     -   [contiv](https://github.com/contiv/install) v1.2.1
@@ -131,7 +131,7 @@ Supported Components
     -   [coredns](https://github.com/coredns/coredns) v1.2.6
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.21.0
 
-Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.12.md) was updated to 1.11.1, 1.12.1, 1.13.1, 17.03, 17.06, 17.09, 18.06. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.13.md) was updated to 1.11.1, 1.12.1, 1.13.1, 17.03, 17.06, 17.09, 18.06. kubeadm now properly recognizes Docker 18.09.0 and newer, but still treats 18.06 as the default supported version. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 
 Note 2: rkt support as docker alternative is limited to control plane (etcd and
 kubelet). Docker is still used for Kubernetes cluster workloads and network
@@ -141,7 +141,7 @@ plugins can be deployed for a given single cluster.
 Requirements
 ------------
 
--   **Ansible v2.5 (or newer) and python-netaddr is installed on the machine
+-   **Ansible v2.6 (or newer) and python-netaddr is installed on the machine
     that will run Ansible commands**
 -   **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
 -   The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/downloads.md#offline-environment))
@@ -195,7 +195,6 @@ Tools and projects on top of Kubespray
 --------------------------------------
 
 -   [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/master/doc/integrations/ansible.rst)
--   [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
 -   [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
 
 CI Tests

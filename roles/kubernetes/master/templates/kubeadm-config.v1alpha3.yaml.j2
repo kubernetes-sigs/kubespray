@@ -29,22 +29,21 @@ etcd:
 {% for endpoint in etcd_access_addresses.split(',') %}
       - {{ endpoint }}
 {% endfor %}
-      caFile: {{ kube_config_dir }}/ssl/etcd/ca.pem
-      certFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}.pem
-      keyFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}-key.pem
+      caFile: {{ etcd_cert_dir }}/ca.pem
+      certFile: {{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem
+      keyFile: {{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem
 networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: {{ kube_service_addresses }}
   podSubnet: {{ kube_pods_subnet }}
-  podNetworkCidr: "{{ kube_network_node_prefix }}"
 kubernetesVersion: {{ kube_version }}
-{% if groups['kube-master'] | length > 1 and kubeadm_config_api_fqdn is defined %}
+{% if kubeadm_config_api_fqdn is defined %}
 controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
 {% else %}
 controlPlaneEndpoint: {{ ip | default(ansible_default_ipv4.address) }}:{{ kube_apiserver_port }}
 {% endif %}
 apiServerCertSANs:
-{% for san in  apiserver_sans.split(' ') | unique %}
+{% for san in apiserver_sans.split() | unique %}
   - {{ san }}
 {% endfor %}
 certificatesDir: {{ kube_cert_dir }}
@@ -94,9 +93,18 @@ apiServerExtraArgs:
 {%   if kube_oidc_groups_claim is defined %}
   oidc-groups-claim: {{ kube_oidc_groups_claim }}
 {%   endif %}
+{%   if kube_oidc_username_prefix is defined %}
+  oidc-username-prefix: {{ kube_oidc_username_prefix }}
+{%   endif %}
+{%   if kube_oidc_groups_prefix is defined %}
+  oidc-groups-prefix: {{ kube_oidc_groups_prefix }}
+{%   endif %}
+{% endif %}
+{% if kube_webhook_token_auth|default(false) %}
+  authentication-token-webhook-config-file: {{ kube_config_dir }}/webhook-token-auth-config.yaml
 {% endif %}
 {% if kube_encrypt_secret_data %}
-  experimental-encryption-provider-config: {{ kube_config_dir }}/ssl/secrets_encryption.yaml
+  experimental-encryption-provider-config: {{ kube_cert_dir }}/secrets_encryption.yaml
 {% endif %}
   storage-backend: {{ kube_apiserver_storage_backend }}
 {% if kube_api_runtime_config is defined %}
@@ -126,6 +134,12 @@ controllerManagerExtraArgs:
   node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
   node-monitor-period: {{ kube_controller_node_monitor_period }}
   pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
+  node-cidr-mask-size: "{{ kube_network_node_prefix }}"
+{% if kube_version is version('v1.14', '<') %}
+  address: {{ kube_controller_manager_bind_address }}
+{% else %}
+  bind-address: {{ kube_controller_manager_bind_address }}
+{% endif %}
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -139,6 +153,11 @@ controllerManagerExtraArgs:
   cloud-config: {{ kube_config_dir }}/cloud_config
 {% endif %}
 schedulerExtraArgs:
+{% if kube_version is version('v1.14', '<') %}
+  address: {{ kube_scheduler_bind_address }}
+{% else %}
+  bind-address: {{ kube_scheduler_bind_address }}
+{% endif %}
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -147,7 +166,7 @@ schedulerExtraArgs:
   {{ key }}: "{{ kube_kubeadm_scheduler_extra_args[key] }}"
 {% endfor %}
 {% endif %}
-{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) or ( cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] ) or apiserver_extra_volumes %}
+{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) or kube_webhook_token_auth|default(false) or ( cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] ) or apiserver_extra_volumes %}
 apiServerExtraVolumes:
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}
 - name: cloud-config
@@ -163,6 +182,11 @@ apiServerExtraVolumes:
 - name: token-auth-config
   hostPath: {{ kube_token_dir }}
   mountPath: {{ kube_token_dir }}
+{% endif %}
+{% if kube_webhook_token_auth|default(false) %}
+- name: webhook-token-auth-config
+  hostPath: {{ kube_config_dir }}/webhook-token-auth-config.yaml
+  mountPath: {{ kube_config_dir }}/webhook-token-auth-config.yaml
 {% endif %}
 {% if kubernetes_audit %}
 - name: {{ audit_policy_name }}
@@ -213,39 +237,37 @@ schedulerExtraVolumes:
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
-bindAddress: 0.0.0.0
+bindAddress: {{ kube_proxy_bind_address }}
 clientConnection:
- acceptContentTypes: ""
- burst: 10
- contentType: application/vnd.kubernetes.protobuf
- kubeconfig: /var/lib/kube-proxy/kubeconfig.conf
- qps: 5
-clusterCIDR: ""
-configSyncPeriod: 15m0s
+ acceptContentTypes: {{ kube_proxy_client_accept_content_types }}
+ burst: {{ kube_proxy_client_burst }}
+ contentType: {{ kube_proxy_client_content_type }}
+ kubeconfig: {{ kube_proxy_client_kubeconfig }}
+ qps: {{ kube_proxy_client_kubeconfig }}
+clusterCIDR: {{ kube_pods_subnet }}
+configSyncPeriod: {{ kube_proxy_config_sync_period }}
 conntrack:
- max: null
- maxPerCore: 32768
- min: 131072
- tcpCloseWaitTimeout: 1h0m0s
- tcpEstablishedTimeout: 24h0m0s
-enableProfiling: false
-healthzBindAddress: 0.0.0.0:10256
+ max: {{ kube_proxy_conntrack_max }}
+ maxPerCore: {{ kube_proxy_conntrack_max_per_core }}
+ min: {{ kube_proxy_conntrack_min }}
+ tcpCloseWaitTimeout: {{ kube_proxy_conntrack_tcp_close_wait_timeout }}
+ tcpEstablishedTimeout: {{ kube_proxy_conntrack_tcp_established_timeout }}
+enableProfiling: {{ kube_proxy_enable_profiling }}
+healthzBindAddress: {{ kube_proxy_healthz_bind_address }}
 iptables:
- masqueradeAll: false
- masqueradeBit: 14
- minSyncPeriod: 0s
- syncPeriod: 30s
+ masqueradeAll: {{ kube_proxy_masquerade_all }}
+ masqueradeBit: {{ kube_proxy_masquerade_bit }}
+ minSyncPeriod: {{ kube_proxy_min_sync_period }}
+ syncPeriod: {{ kube_proxy_sync_period }}
 ipvs:
- excludeCIDRs: null
- minSyncPeriod: 0s
- scheduler: ""
- syncPeriod: 30s
-metricsBindAddress: 127.0.0.1:10249
+ excludeCIDRs: {{ kube_proxy_exclude_cidrs }}
+ minSyncPeriod: {{ kube_proxy_min_sync_period }}
+ scheduler: {{ kube_proxy_scheduler }}
+ syncPeriod: {{ kube_proxy_sync_period }}
+metricsBindAddress: {{ kube_proxy_metrics_bind_address }}
 mode: {{ kube_proxy_mode }}
-{% if kube_proxy_nodeport_addresses %}
-nodePortAddresses: [{{ kube_proxy_nodeport_addresses_cidr }}]
-{% endif %}
-oomScoreAdj: -999
-portRange: ""
-resourceContainer: ""
-udpIdleTimeout: 250ms
+nodePortAddresses: {{ kube_proxy_nodeport_addresses }}
+oomScoreAdj: {{ kube_proxy_oom_score_adj }}
+portRange: {{ kube_proxy_port_range }}
+resourceContainer: {{ kube_proxy_resource_container }}
+udpIdleTimeout: {{ kube_proxy_udp_idle_timeout }}

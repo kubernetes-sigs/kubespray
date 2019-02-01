@@ -124,14 +124,14 @@ Vagrant.configure("2") do |config|
       if ($kube_node_instances_with_disks)
         node.vm.provider :virtualbox do |vb|
           $disks_size_mb = Integer($kube_node_instances_with_disks_size.chop()) * 1024
-          $storage_controller_type = "sas"
-          $storage_controller_name = "SAS Controller"
+          $storage_controller_type = "sata"
+          $storage_controller_name = "SATA Controller"
+
+          vb.customize ["storagectl", :id, "--name", $storage_controller_name, "--add", $storage_controller_type, '--portcount', $kube_node_instances_with_disks_number]
+
           (1..$kube_node_instances_with_disks_number).each do |d|
             $a_disk_path = File.join(__dir__, "/.vagrant/machines/#{vm_name}/virtualbox/", "data-disk-#{d}.vdi")
             unless File.exist?($a_disk_path)
-              if (d == 1) # create the controller only once in the first loop execution
-                vb.customize ["storagectl", :id, "--name", $storage_controller_name, "--add", $storage_controller_type, '--portcount', $kube_node_instances_with_disks_number]
-              end
               vb.customize ['createhd', '--filename', $a_disk_path, '--format', 'VDI', '--size', $disks_size_mb]
               vb.customize ['storageattach', :id, '--storagectl', $storage_controller_name, '--port', d-1, '--device', 0, '--type', 'hdd', '--medium', $a_disk_path]
             end

@@ -36,8 +36,9 @@ ssh-keygen -f ~/.ssh/id_rsa
 Terraform is required to deploy the bare metal infrastructure. The steps below are for installing on CentOS 7.
 [More terraform installation options are available.](https://learn.hashicorp.com/terraform/getting-started/install.html)
 
+Grab the latest version of Terraform and install it.
 ```bash
-curl -O https://releases.hashicorp.com/terraform/0.11.11/terraform_0.11.11_linux_amd64.zip
+echo "https://releases.hashicorp.com/terraform/$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | jq -r -M '.current_version')/terraform_$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | jq -r -M '.current_version')_darwin_amd64.zip"
 sudo yum install unzip
 sudo unzip terraform_0.11.11_linux_amd64.zip -d /usr/local/bin/
 ```

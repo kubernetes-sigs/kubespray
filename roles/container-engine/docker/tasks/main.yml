@@ -208,10 +208,51 @@
 - name: flush handlers so we can wait for docker to come up
   meta: flush_handlers
 
-- name: set fact for docker_version
+- name: get docker version
   command: "docker version -f '{{ '{{' }}.Client.Version{{ '}}' }}'"
-  register: installed_docker_version
+  register: result
+  failed_when: false
   changed_when: false
+  async: 30
+  poll: 5
+
+- name: set fact for installed_docker_version
+  when: '"rc" in result and result.rc == 0'
+  set_fact:
+    installed_docker_version: result.stdout
+
+- name: attempt to fix broken docker
+  when: '"rc" not in result or result.rc != 0'
+  block:
+
+    - name: Write recovery docker options systemd drop-in
+      copy:
+        content: |
+          [Service]
+          Environment="DOCKER_OPTS=  -H unix:///var/run/docker.sock"
+        dest: "/etc/systemd/system/docker.service.d/docker-options.conf"
+      notify: restart docker
+
+    - name: reload systemd config
+      command: systemctl daemon-reload
+
+    - name: restart docker
+      service:
+        name: docker
+        state: restarted
+
+    - name: get docker version (retry)
+      when: '"rc" not in installed_docker_version or installed_docker_version.rc != 0'
+      command: "docker version -f '{{ '{{' }}.Client.Version{{ '}}' }}'"
+      register: result
+      changed_when: false
+      async: 30
+      poll: 5
+
+    - name: set fact for installed_docker_version
+      when: '"rc" in result and result.rc == 0'
+      set_fact:
+        installed_docker_version: result.stdout
 
 - name: check minimum docker version for docker_dns mode. You need at least docker version >= 1.12 for resolvconf_mode=docker_dns
   fail:
@@ -219,7 +260,7 @@
   when: >
         dns_mode != 'none' and
         resolvconf_mode == 'docker_dns' and
-        installed_docker_version.stdout is version('1.12', '<')
+        installed_docker_version is version('1.12', '<')
 
 - name: Set docker systemd config
   import_tasks: systemd.yml

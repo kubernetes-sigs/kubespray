@@ -49,6 +49,7 @@ module "compute" {
   network_name                                 = "${var.network_name}"
   flavor_bastion                               = "${var.flavor_bastion}"
   k8s_master_fips                              = "${module.ips.k8s_master_fips}"
+  k8s_master_no_etcd_fips                      = "${module.ips.k8s_master_no_etcd_fips}"
   k8s_node_fips                                = "${module.ips.k8s_node_fips}"
   bastion_fips                                 = "${module.ips.bastion_fips}"
   bastion_allowed_remote_ips                   = "${var.bastion_allowed_remote_ips}"

@@ -56,11 +56,11 @@
       {{ ' '.join(groups['kube-master']) }}
       {%- if loadbalancer_apiserver is defined %}
       {{ apiserver_loadbalancer_domain_name }}
-      {%- endif %}
+      {% endif %}
       {% for host in groups['kube-master'] -%}
-      {%- if hostvars[host]['access_ip'] is defined -%}
+      {%- if hostvars[host]['access_ip'] is defined %}
       {{ hostvars[host]['access_ip'] }}
-      {%- endif %}
+      {% endif %}
       {{ hostvars[host]['ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}
       {%- endfor %}
       {%- if supplementary_addresses_in_ssl_keys is defined -%}
@@ -108,6 +108,8 @@
   retries: 3
   when: inventory_hostname == groups['kube-master']|first and not kubeadm_already_run.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Master | restart kubelet
 
 - name: slurp kubeadm certs
@@ -155,6 +157,8 @@
   until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
   when: inventory_hostname != groups['kube-master']|first and not kubeadm_already_run.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Master | restart kubelet
 
 - name: kubeadm | upgrage kubernetes cluster

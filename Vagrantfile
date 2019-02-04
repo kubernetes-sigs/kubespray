@@ -165,6 +165,7 @@ Vagrant.configure("2") do |config|
 
       host_vars[vm_name] = {
         "ip": ip,
+        "flannel_interface": "eth1",
         "kube_network_plugin": $network_plugin,
         "kube_network_plugin_multus": $multi_networking,
         "docker_keepcache": "1",
@@ -176,8 +177,9 @@ Vagrant.configure("2") do |config|
       if i == $num_instances
         node.vm.provision "ansible" do |ansible|
           ansible.playbook = $playbook
-          if File.exist?(File.join( $inventory, "hosts.ini"))
-            ansible.inventory_path = $inventory
+          $ansible_inventory_path = File.join( $inventory, "hosts.ini")
+          if File.exist?($ansible_inventory_path)
+            ansible.inventory_path = $ansible_inventory_path
           end
           ansible.become = true
           ansible.limit = "all"

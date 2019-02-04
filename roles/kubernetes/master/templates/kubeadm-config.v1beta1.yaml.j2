@@ -44,7 +44,7 @@ controlPlaneEndpoint: {{ ip | default(ansible_default_ipv4.address) }}:{{ kube_a
 {% endif %}
 certificatesDir: {{ kube_cert_dir }}
 imageRepository: {{ kube_image_repo }}
-UseHyperKubeImage: false
+useHyperKubeImage: false
 apiServer:
   extraArgs:
     authorization-mode: {{ authorization_modes | join(',') }}
@@ -89,6 +89,12 @@ apiServer:
 {%   endif %}
 {%   if kube_oidc_groups_claim is defined %}
     oidc-groups-claim: {{ kube_oidc_groups_claim }}
+{%   endif %}
+{%   if kube_oidc_username_prefix is defined %}
+  oidc-username-prefix: {{ kube_oidc_username_prefix }}
+{%   endif %}
+{%   if kube_oidc_groups_prefix is defined %}
+  oidc-groups-prefix: {{ kube_oidc_groups_prefix }}
 {%   endif %}
 {% endif %}
 {% if kube_webhook_token_auth|default(false) %}
@@ -151,14 +157,14 @@ apiServer:
   - name: {{ audit_log_name }}
     hostPath: {{ audit_log_hostpath }}
     mountPath: {{ audit_log_mountpath }}
-    writable: true
+    readOnly: false
 {% endif %}
 {% endif %}
 {% for volume in apiserver_extra_volumes %}
   - name: {{ volume.name }}
     hostPath: {{ volume.hostPath }}
     mountPath: {{ volume.mountPath }}
-    writable: {{ volume.writable | default(false)}}
+    readOnly: {{ volume.readOnly | d(not (volume.writable | d(false))) }}
 {% endfor %}
 {% endif %}
   certSANs:
@@ -172,7 +178,11 @@ controllerManager:
     node-monitor-period: {{ kube_controller_node_monitor_period }}
     pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
     node-cidr-mask-size: "{{ kube_network_node_prefix }}"
+{% if kube_version is version('v1.14', '<') %}
     address: {{ kube_controller_manager_bind_address }}
+{% else %}
+    bind-address: {{ kube_controller_manager_bind_address }}
+{% endif %}
 {% if kube_feature_gates %}
     feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -201,12 +211,16 @@ controllerManager:
   - name: {{ volume.name }}
     hostPath: {{ volume.hostPath }}
     mountPath: {{ volume.mountPath }}
-    writable: {{ volume.writable | default(false)}}
+    readOnly: {{ volume.readOnly | d(not (volume.writable | d(false))) }}
 {% endfor %}
 {% endif %}
 scheduler:
   extraArgs:
-    address: {{ kube_controller_manager_bind_address }}
+{% if kube_version is version('v1.14', '<') %}
+    address: {{ kube_scheduler_bind_address }}
+{% else %}
+    bind-address: {{ kube_scheduler_bind_address }}
+{% endif %}
 {% if kube_feature_gates %}
     feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -222,7 +236,7 @@ scheduler:
   - name: {{ volume.name }}
     hostPath: {{ volume.hostPath }}
     mountPath: {{ volume.mountPath }}
-    writable: {{ volume.writable | default(false)}}
+    readOnly: {{ volume.readOnly | d(not (volume.writable | d(false))) }}
 {% endfor %}
 {% endif %}
 ---

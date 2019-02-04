@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: calico-kube-controllers
@@ -9,7 +9,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: RollingUpdate
+    type: Recreate
   selector:
     matchLabels:
       kubernetes.io/cluster-service: "true"
@@ -22,11 +22,15 @@ spec:
         kubernetes.io/cluster-service: "true"
         k8s-app: calico-kube-controllers
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       hostNetwork: true
       serviceAccountName: calico-kube-controllers
       tolerations:
-        - effect: NoSchedule
+        - key: CriticalAddonsOnly
           operator: Exists
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
 {% if kube_version is version('v1.11.1', '>=') %}
       priorityClassName: system-cluster-critical
 {% endif %}
@@ -50,6 +54,13 @@ spec:
               value: "{{ calico_cert_dir }}/cert.crt"
             - name: ETCD_KEY_FILE
               value: "{{ calico_cert_dir }}/key.pem"
+{% if calico_version is version('v3.3.0', '>=') %}
+          readinessProbe:
+            exec:
+              command:
+              - /usr/bin/check-status
+              - -r
+{% endif %}
           volumeMounts:
           - mountPath: {{ calico_cert_dir }}
             name: etcd-certs

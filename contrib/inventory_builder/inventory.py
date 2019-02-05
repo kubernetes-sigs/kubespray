@@ -181,10 +181,10 @@ class KubesprayInventory(object):
         return all_hosts
 
     def range2ips(self, hosts):
+        from ipaddress import ip_address
         reworked_hosts = []
 
         def ips(start_address, end_address):
-            from ipaddress import ip_address
             start = int(ip_address(start_address).packed.hex(), 16)
             end = int(ip_address(end_address).packed.hex(), 16)
             return [ip_address(ip).exploded for ip in range(start, end+1)]
@@ -192,7 +192,11 @@ class KubesprayInventory(object):
         for host in hosts:
             if '-' in host:
                 start, end = host.strip().split('-')
-                reworked_hosts.extend(ips(start, end))
+                try:
+                    reworked_hosts.extend(ips(start, end))
+                except ValueError:
+                    raise Exception("%s isn't valid range of ip addresses",
+                                    host)
             else:
                 reworked_hosts.append(host)
         return reworked_hosts

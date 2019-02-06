@@ -195,8 +195,7 @@ class KubesprayInventory(object):
                 try:
                     reworked_hosts.extend(ips(start, end))
                 except ValueError:
-                    raise Exception("%s isn't valid range of ip addresses",
-                                    host)
+                    raise Exception("Range of ip_addresses isn't valid")
             else:
                 reworked_hosts.append(host)
         return reworked_hosts

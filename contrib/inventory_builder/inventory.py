@@ -81,6 +81,7 @@ class KubesprayInventory(object):
         self.ensure_required_groups(ROLES)
 
         if changed_hosts:
+            changed_hosts = self.range2ips(changed_hosts)
             self.hosts = self.build_hostnames(changed_hosts)
             self.purge_invalid_hosts(self.hosts.keys(), PROTECTED_NAMES)
             self.set_all(self.hosts)
@@ -178,6 +179,26 @@ class KubesprayInventory(object):
                 raise Exception("Adding hosts by hostname is not supported.")
 
         return all_hosts
+
+    def range2ips(self, hosts):
+        from ipaddress import ip_address
+        reworked_hosts = []
+
+        def ips(start_address, end_address):
+            start = int(ip_address(start_address).packed.hex(), 16)
+            end = int(ip_address(end_address).packed.hex(), 16)
+            return [ip_address(ip).exploded for ip in range(start, end+1)]
+
+        for host in hosts:
+            if '-' in host:
+                start, end = host.strip().split('-')
+                try:
+                    reworked_hosts.extend(ips(start, end))
+                except ValueError:
+                    raise Exception("Range of ip_addresses isn't valid")
+            else:
+                reworked_hosts.append(host)
+        return reworked_hosts
 
     def exists_hostname(self, existing_hosts, hostname):
         return hostname in existing_hosts.keys()

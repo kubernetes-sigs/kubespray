@@ -238,3 +238,14 @@ class TestInventory(unittest.TestCase):
         self.inv.set_kube_node(hosts.keys())
         for h in range(5):
             self.assertFalse(hosts.keys()[h] in self.inv.config['kube-node'])
+
+    def test_range2ips_range(self):
+        changed_hosts = ['10.90.0.2', '10.90.0.4-10.90.0.6', '10.90.0.8']
+        expected = ['10.90.0.2', '10.90.0.4', '10.90.0.5', '10.90.0.6', '10.90.0.8']
+        result = self.inv.range2ips(changed_hosts)
+        self.assertEqual(expected, result)
+
+    def test_range2ips_incorrect_range(self):
+        host_range = ['10.90.0.4-a.9b.c.e']
+        self.assertRaisesRegexp(Exception, "Range of ip_addresses isn't valid",
+                                self.inv.range2ips, host_range)

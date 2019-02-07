@@ -1,11 +1,6 @@
 Kubespray's roadmap
 =================
 
-### Kubeadm
-- Switch to kubeadm deployment as the default method after some bugs are fixed:
-  * Support for basic auth
-  * cloudprovider cloud-config mount [#484](https://github.com/kubernetes/kubeadm/issues/484)
-
 ### Self deployment (pull-mode) [#320](https://github.com/kubespray/kubespray/issues/320)
 - the playbook would install and configure docker/rkt and the etcd cluster
 - the following data would be inserted into etcd: certs,tokens,users,inventory,group_vars.
@@ -14,7 +9,12 @@ Kubespray's roadmap
 - **self deployment** of the node from inside a container [#321](https://github.com/kubespray/kubespray/issues/321)
 
 ### Provisioning and cloud providers
-- [ ] Terraform to provision instances on **GCE, AWS, Openstack, Digital Ocean, Azure**
+- [ ] Terraform to provision instances on:
+  - [ ] GCE
+  - [x] AWS (contrib/terraform/aws)
+  - [x] Openstack (contrib/terraform/openstack)
+  - [ ] Digital Ocean
+  - [ ] Azure
 - [ ] On AWS autoscaling, multi AZ
 - [ ] On Azure autoscaling, create loadbalancer [#297](https://github.com/kubespray/kubespray/issues/297)
 - [ ] On GCE be able to create a loadbalancer automatically (IAM ?) [#280](https://github.com/kubespray/kubespray/issues/280)
@@ -34,12 +34,12 @@ Kubespray's roadmap
 
 ### Networking
 - [ ] Opencontrail
-- [ ] Consolidate network_plugins and kubernetes-apps/network_plugins
+- [ ] Consolidate roles/network_plugin and roles/kubernetes-apps/network_plugin
 
 ### Kubespray API
 - Perform all actions through an **API**
-- Store inventories / configurations of mulltiple clusters
-- make sure that state of cluster is completely saved in no more than one config file beyond hosts inventory
+- Store inventories / configurations of multiple clusters
+- Make sure that state of cluster is completely saved in no more than one config file beyond hosts inventory
 
 ### Addons (helm or native ansible)
 Include optionals deployments to init the cluster:
@@ -61,10 +61,9 @@ Include optionals deployments to init the cluster:
  - Deis Workflow
 
 ### Others
-- remove nodes (adding is already supported)
 - Organize and update documentation (split in categories)
 - Refactor downloads so it all runs in the beginning of deployment
 - Make bootstrapping OS more consistent
 - **consul** -> if officially supported by k8s
-- flex volumes options (e.g. **torrus** support) [#312](https://github.com/kubespray/kubespray/issues/312)
+- Flex volumes options (e.g. **torrus** support) [#312](https://github.com/kubespray/kubespray/issues/312)
 - Clusters federation option (aka **ubernetes**) [#329](https://github.com/kubespray/kubespray/issues/329)

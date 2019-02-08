@@ -1,0 +1,36 @@
+---
+- name: Check for etcdctl binary
+  raw: "test -e {{ bin_dir }}/etcdctl"
+  register: test_etcdctl
+
+- name: Set has_etcdctl fact
+  set_fact:
+    has_etcdctl: "{{ test_etcdctl.rc == 0 | bool }}"
+
+- name: Check if etcd cluster is healthy
+  shell: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }} cluster-health | grep -q 'cluster is healthy'"
+  register: etcd_cluster_health
+  ignore_errors: true
+  changed_when: false
+  check_mode: no
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CA_FILE: "{{ etcd_cert_dir }}/ca.pem"
+  when: has_etcdctl
+
+- name: Set etcd_cluster_is_healthy fact
+  set_fact:
+    etcd_cluster_is_healthy: "{{ etcd_cluster_health.rc == 0 | bool }}"
+
+- name: Abort if etcd cluster is healthy and old_etcd_members is undefined
+  assert:
+    that: "{{ old_etcd_members is defined }}"
+    msg: "'old_etcd_members' must be defined when the etcd cluster has quorum."
+  when: etcd_cluster_is_healthy
+
+- name: Warn for untested recovery
+  debug:
+    msg: Control plane recovery of split control planes is UNTESTED! Abort or continue at your own risk.
+  delay: 30
+  when: not control_plane_is_converged

@@ -1,0 +1,19 @@
+---
+# TODO: Figure out why kubeadm does not fix this
+- name: Set etcd-servers fact
+  set_fact:
+    etcd_servers: >-
+      {% for host in groups['etcd'] -%}
+        {% if not loop.last -%}
+        https://{{ hostvars[host].access_ip | default(hostvars[host].ip | default(hostvars[host].ansible_default_ipv4['address'])) }}:2379,
+        {%- endif -%}
+        {%- if loop.last -%}
+        https://{{ hostvars[host].access_ip | default(hostvars[host].ip | default(hostvars[host].ansible_default_ipv4['address'])) }}:2379
+        {%- endif -%}
+      {%- endfor -%}
+
+- name: Update apiserver etcd-servers list
+  replace:
+    path: /etc/kubernetes/manifests/kube-apiserver.yaml
+    regexp: "(etcd-servers=).*"
+    replace: "\\1{{ etcd_servers }}"

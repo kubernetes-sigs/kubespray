@@ -6,9 +6,10 @@
   vars:
     docker_bin_dir: /usr/bin
     bin_dir: /usr/local/bin
-    system_namespace: kube-system
     ansible_ssh_pipelining: true
     etcd_cert_dir: /etc/ssl/etcd/ssl
+    kube_network_plugin: calico
+    archive_dirname: collect-info
     commands:
       - name: timedate_info
         cmd: timedatectl status
@@ -25,54 +26,65 @@
       - name: systemctl_failed_info
         cmd: systemctl --state=failed --no-pager
       - name: k8s_info
-        cmd: kubectl get all --all-namespaces -o wide
+        cmd: "{{ bin_dir }}/kubectl get all --all-namespaces -o wide"
       - name: errors_info
         cmd: journalctl -p err --no-pager
       - name: etcd_info
-        cmd: etcdctl --peers={{ etcd_access_addresses | default("http://127.0.0.1:2379") }} cluster-health
+        cmd: "{{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses | default('http://127.0.0.1:2379') }} cluster-health"
       - name: calico_info
         cmd: "{{bin_dir}}/calicoctl node status"
+        when: '{{ kube_network_plugin == "calico" }}'
       - name: calico_workload_info
         cmd: "{{bin_dir}}/calicoctl get workloadEndpoint -o wide"
+        when: '{{ kube_network_plugin == "calico" }}'
       - name: calico_pool_info
         cmd: "{{bin_dir}}/calicoctl get ippool -o wide"
+        when: '{{ kube_network_plugin == "calico" }}'
       - name: weave_info
         cmd: weave report
+        when: '{{ kube_network_plugin == "weave" }}'
       - name: weave_logs
         cmd: "{{ docker_bin_dir }}/docker logs weave"
+        when: '{{ kube_network_plugin == "weave" }}'
       - name: kube_describe_all
-        cmd: kubectl describe all --all-namespaces
+        cmd: "{{ bin_dir }}/kubectl describe all --all-namespaces"
       - name: kube_describe_nodes
-        cmd: kubectl describe nodes
+        cmd: "{{ bin_dir }}/kubectl describe nodes"
       - name: kubelet_logs
         cmd: journalctl -u kubelet --no-pager
-      - name: kubedns_logs
-        cmd: "for i in `kubectl get pods --all-namespaces -l k8s-app=kubedns -o jsonpath={.items..metadata.name}`;
-          do kubectl logs ${i} --namespace {{system_namespace}} kubedns; done"
+      - name: coredns_logs
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l k8s-app=coredns -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
       - name: apiserver_logs
-        cmd: "for i in `kubectl get pods --all-namespaces -l k8s-app=kube-apiserver -o jsonpath={.items..metadata.name}`;
-          do kubectl logs ${i} --namespace {{system_namespace}}; done"
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l component=kube-apiserver -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
       - name: controller_logs
-        cmd: "for i in `kubectl get pods --all-namespaces -l k8s-app=kube-controller -o jsonpath={.items..metadata.name}`;
-          do kubectl logs ${i} --namespace {{system_namespace}}; done"
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l component=kube-controller-manager -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
       - name: scheduler_logs
-        cmd: "for i in `kubectl get pods --all-namespaces -l k8s-app=kube-scheduler -o jsonpath={.items..metadata.name}`;
-          do kubectl logs ${i} --namespace {{system_namespace}}; done"
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l component=kube-scheduler -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
       - name: proxy_logs
-        cmd: "for i in `kubectl get pods --all-namespaces -l k8s-app=kube-proxy -o jsonpath={.items..metadata.name}`;
-          do kubectl logs ${i} --namespace {{system_namespace}}; done"
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l k8s-app=kube-proxy -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
       - name: nginx_logs
-        cmd: "for i in `kubectl get pods --all-namespaces -l k8s-app=kube-nginx -o jsonpath={.items..metadata.name}`;
-          do kubectl logs ${i} --namespace {{system_namespace}}; done"
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l k8s-app=kube-nginx -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
       - name: flannel_logs
-        cmd: "for i in `kubectl get pods --all-namespaces -l app=flannel -o jsonpath={.items..metadata.name}`;
-          do kubectl logs ${i} --namespace {{system_namespace}} flannel-container; done"
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l app=flannel -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system flannel-container; done"
+        when: '{{ kube_network_plugin == "flannel" }}'
       - name: canal_logs
-        cmd: "for i in `kubectl get pods --all-namespaces -l k8s-app=canal-node -o jsonpath={.items..metadata.name}`;
-          do kubectl logs ${i} --namespace {{system_namespace}} flannel; done"
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l k8s-app=canal-node -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system flannel; done"
+        when: '{{ kube_network_plugin == "canal" }}'
       - name: calico_policy_logs
-        cmd: "for i in `kubectl get pods --all-namespaces -l k8s-app=calico-policy -o jsonpath={.items..metadata.name}`;
-          do kubectl logs ${i} --namespace {{system_namespace}} calico-policy-controller; done"
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l k8s-app=calico-kube-controllers -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system ; done"
+        when: '{{ kube_network_plugin in ["canal", "calico"] }}'
+      - name: helm_show_releases_history
+        cmd: "for i in `{{ bin_dir }}/helm list -q`; do {{ bin_dir }}/helm history ${i} --col-width=0; done"
+        when: "{{ helm_enabled|default(true) }}"
 
     logs:
       - /var/log/syslog
@@ -81,10 +93,8 @@
       - /var/log/dpkg.log
       - /var/log/apt/history.log
       - /var/log/yum.log
-      - /var/log/calico/bird/current
-      - /var/log/calico/bird6/current
-      - /var/log/calico/felix/current
-      - /var/log/calico/confd/current
+      - /var/log/messages
+      - /var/log/dmesg
 
   environment:
     ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem"
@@ -102,20 +112,23 @@
       shell: "{{ item.cmd }} 2>&1 | tee {{ item.name }}"
       failed_when: false
       with_items: "{{commands}}"
+      when: item.when | default(True)
       no_log: True
 
     - name: Fetch results
-      fetch: src={{ item.name }} dest=/tmp/collect-info/commands
+      fetch: src={{ item.name }} dest=/tmp/{{ archive_dirname }}/commands
       with_items: "{{commands}}"
+      when: item.when | default(True)
       failed_when: false
 
     - name: Fetch logs
-      fetch: src={{ item }} dest=/tmp/collect-info/logs
+      fetch: src={{ item }} dest=/tmp/{{ archive_dirname }}/logs
       with_items: "{{logs}}"
+      failed_when: false
 
     - name: Pack results and logs
       archive:
-        path: "/tmp/collect-info"
+        path: "/tmp/{{ archive_dirname }}"
         dest: "{{ dir|default('.') }}/logs.tar.gz"
         remove: true
       delegate_to: localhost
@@ -125,4 +138,3 @@
     - name: Clean up collected command outputs
       file: path={{ item.name }} state=absent
       with_items: "{{commands}}"
-

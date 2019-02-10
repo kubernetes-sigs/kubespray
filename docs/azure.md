@@ -41,7 +41,7 @@ The name of the network security group your instances are in, can be retrieved v
 These will have to be generated first:
 - Create an Azure AD Application with:
 `azure ad app create --name kubernetes --identifier-uris http://kubernetes --home-page http://example.com --password CLIENT_SECRET` 
-The name, identifier-uri, home-page and the password can be choosen
+The name, identifier-uri, home-page and the password can be chosen
 Note the AppId in the output.
 - Create Service principal for the application with:
 `azure ad sp create --applicationId AppId`
@@ -49,7 +49,7 @@ This is the AppId from the last command
 - Create the role assignment with:
 `azure role assignment create --spn http://kubernetes -o "Owner" -c /subscriptions/SUBSCRIPTION_ID`
 
-azure\_aad\_client\_id must be set to the AppId, azure\_aad\_client\_secret is your choosen secret.
+azure\_aad\_client\_id must be set to the AppId, azure\_aad\_client\_secret is your chosen secret.
 
 ## Provisioning Azure with Resource Group Templates
 

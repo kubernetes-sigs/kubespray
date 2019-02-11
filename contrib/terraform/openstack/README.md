@@ -359,7 +359,7 @@ If it fails try to connect manually via SSH.  It could be something as simple as
 
 ### Configure cluster variables
 
-Edit `inventory/$CLUSTER/group_vars/all.yml`:
+Edit `inventory/$CLUSTER/group_vars/all/all.yml`:
 - **bin_dir**:
 ```
 # Directory where the binaries will be installed
@@ -372,7 +372,7 @@ bin_dir: /opt/bin
 ```
 cloud_provider: openstack
 ```
-Edit `inventory/$CLUSTER/group_vars/k8s-cluster.yml`:
+Edit `inventory/$CLUSTER/group_vars/k8s-cluster/k8s-cluster.yml`:
 - Set variable **kube_network_plugin** to your desired networking plugin.
   - **flannel** works out-of-the-box
   - **calico** requires [configuring OpenStack Neutron ports](/docs/openstack.md) to allow service and pod subnets

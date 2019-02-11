@@ -51,8 +51,8 @@ floating IP addresses or not.
 Note that the Ansible script will report an invalid configuration if you wind up
 with an even number of etcd instances since that is not a valid configuration. This
 restriction includes standalone etcd nodes that are deployed in a cluster along with
-master nodes with etcd replicas. As an example, if you have three master nodes with 
-etcd replicas and three standalone etcd nodes, the script will fail since there are 
+master nodes with etcd replicas. As an example, if you have three master nodes with
+etcd replicas and three standalone etcd nodes, the script will fail since there are
 now six total etcd replicas.
 
 ### GlusterFS
@@ -117,8 +117,8 @@ This will be the base for subsequent Terraform commands.
 #### OpenStack access and credentials
 
 No provider variables are hardcoded inside `variables.tf` because Terraform
-supports various authentication methods for OpenStack: the older script and 
-environment method (using `openrc`) as well as a newer declarative method, and 
+supports various authentication methods for OpenStack: the older script and
+environment method (using `openrc`) as well as a newer declarative method, and
 different OpenStack environments may support Identity API version 2 or 3.
 
 These are examples and may vary depending on your OpenStack cloud provider,
@@ -416,8 +416,8 @@ ssh [os-user]@[master-ip] sudo ls /etc/kubernetes/ssl/
 ```
 4. Get `admin`'s certificates and keys:
 ```
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-[cluster_name]-k8s-master-1-key.pem > admin-key.pem
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-[cluster_name]-k8s-master-1.pem > admin.pem
+ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-kube-master-1-key.pem > admin-key.pem
+ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-kube-master-1.pem > admin.pem
 ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/ca.pem > ca.pem
 ```
 5. Configure kubectl:

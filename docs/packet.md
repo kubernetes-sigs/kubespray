@@ -48,7 +48,7 @@ sudo unzip terraform_0.11.11_linux_amd64.zip -d /usr/local/bin/
 Pull over Kubespray and setup any required libraries.
 
 ```bash
-https://github.com/kubernetes-sigs/kubespray
+git clone https://github.com/kubernetes-sigs/kubespray
 cd kubespray
 sudo pip install -r requirements.txt
 ```

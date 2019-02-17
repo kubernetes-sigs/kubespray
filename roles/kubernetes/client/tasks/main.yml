@@ -1,5 +1,5 @@
 ---
-- name: Set external kube-apiserver endpoint
+- name: Set external kube-apiserver endpoint non-kubeadm
   set_fact:
     external_apiserver_endpoint: >-
       {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
@@ -7,6 +7,25 @@
       {%- else -%}
       https://{{ kube_apiserver_access_address }}:{{ kube_apiserver_port }}
       {%- endif -%}
+  when: not kubeadm_enabled|bool|d(false)
+  tags:
+    - facts
+
+- name: Set external kube-apiserver endpoint kubeadm
+  set_fact:
+    external_apiserver_address: >-
+      {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
+      {{ apiserver_loadbalancer_domain_name }}
+      {%- else -%}
+      {{ kube_apiserver_access_address }}
+      {%- endif -%}
+    external_apiserver_port: >-
+      {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
+      {{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      {%- else -%}
+      {{ kube_apiserver_port }}
+      {%- endif -%}
+  when: kubeadm_enabled|bool|d(false)
   tags:
     - facts
 
@@ -50,7 +69,38 @@
     flat: yes
     validate_checksum: no
   run_once: yes
-  when: kubeconfig_localhost|default(false)
+  when:
+    - not kubeadm_enabled|bool|d(false)
+    - kubeconfig_localhost|default(false)
+
+- name: Generate admin kubeconfig with external api endpoint
+  shell: >-
+    {{ bin_dir }}/kubeadm alpha
+    {% if kubeadm_version is version('v1.13.0', '<') %}
+    phase
+    {% endif %}
+    kubeconfig user
+    --client-name kubernetes-admin
+    --org system:masters
+    --cert-dir {{ kube_config_dir }}/ssl
+    --apiserver-advertise-address {{ external_apiserver_address }}
+    --apiserver-bind-port {{ external_apiserver_port }}
+  run_once: yes
+  register: admin_kubeconfig
+  when:
+    - kubeadm_enabled|bool|d(false)
+
+- name: Write admin kubeconfig on ansible host
+  copy:
+    content: "{{ admin_kubeconfig.stdout }}"
+    dest: "{{ artifacts_dir }}/admin.conf"
+    mode: 0640
+  delegate_to: localhost
+  become: no
+  run_once: yes
+  when:
+    - kubeadm_enabled|bool|d(false)
+    - kubeconfig_localhost|default(false)
 
 - name: Copy kubectl binary to ansible host
   fetch:

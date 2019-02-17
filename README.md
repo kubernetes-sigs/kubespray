@@ -12,6 +12,11 @@ You can get your invite [here](http://slack.k8s.io/)
 -   Supports most popular **Linux distributions**
 -   **Continuous integration tests**
 
+This fork keep ability to install, upgrade and scale k8s via traditional non-kubeadm way
+----------------------------------------------------------------------------------------
+
+All improvements are transferred from the main repository and ported to the traditional installation.
+
 Quick Start
 -----------
 

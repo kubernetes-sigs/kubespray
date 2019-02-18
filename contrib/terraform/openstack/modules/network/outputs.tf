@@ -4,7 +4,6 @@ output "router_id" {
 
 output "router_internal_port_id" {
   value = "${element(concat(openstack_networking_router_interface_v2.k8s.*.id, list("")), 0)}"
-
 }
 
 output "subnet_id" {

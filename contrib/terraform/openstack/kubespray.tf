@@ -2,15 +2,20 @@ provider "openstack" {
   version = "~> 1.17"
 }
 
+# query external network details
+data "openstack_networking_network_v2" "extnet" {
+  name = "${var.external_network_name}"
+}
+
 module "network" {
   source = "modules/network"
 
-  external_net    = "${var.external_net}"
-  network_name    = "${var.network_name}"
-  subnet_cidr     = "${var.subnet_cidr}"
-  cluster_name    = "${var.cluster_name}"
-  dns_nameservers = "${var.dns_nameservers}"
-  use_neutron     = "${var.use_neutron}"
+  network_name        = "${var.network_name}"
+  external_network_id = "${data.openstack_networking_network_v2.extnet.id}"
+  subnet_cidr         = "${var.subnet_cidr}"
+  cluster_name        = "${var.cluster_name}"
+  dns_nameservers     = "${var.dns_nameservers}"
+  use_neutron         = "${var.use_neutron}"
 }
 
 module "ips" {
@@ -21,7 +26,7 @@ module "ips" {
   number_of_k8s_nodes           = "${var.number_of_k8s_nodes}"
   floatingip_pool               = "${var.floatingip_pool}"
   number_of_bastions            = "${var.number_of_bastions}"
-  external_net                  = "${var.external_net}"
+  external_network_id           = "${data.openstack_networking_network_v2.extnet.id}"
   network_name                  = "${var.network_name}"
   router_id                     = "${module.network.router_id}"
 }
@@ -71,7 +76,7 @@ output "private_subnet_id" {
 }
 
 output "floating_network_id" {
-  value = "${var.external_net}"
+  value = "${data.openstack_networking_network_v2.extnet.id}"
 }
 
 output "router_id" {

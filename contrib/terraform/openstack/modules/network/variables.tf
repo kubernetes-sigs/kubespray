@@ -1,4 +1,4 @@
-variable "external_net" {}
+variable "external_network_id" {}
 
 variable "network_name" {}
 

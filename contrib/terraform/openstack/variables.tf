@@ -103,6 +103,10 @@ variable "network_name" {
   default     = "internal"
 }
 
+variable "external_network_name" {
+  description = "name of the external network to use"
+}
+
 variable "use_neutron" {
   description = "Use neutron"
   default     = 1
@@ -123,10 +127,6 @@ variable "dns_nameservers" {
 variable "floatingip_pool" {
   description = "name of the floating ip pool to use"
   default     = "external"
-}
-
-variable "external_net" {
-  description = "uuid of the external/public network"
 }
 
 variable "supplementary_master_groups" {

@@ -8,7 +8,7 @@ variable "floatingip_pool" {}
 
 variable "number_of_bastions" {}
 
-variable "external_net" {}
+variable "external_network_id" {}
 
 variable "network_name" {}
 

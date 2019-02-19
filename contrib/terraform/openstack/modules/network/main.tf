@@ -2,7 +2,7 @@ resource "openstack_networking_router_v2" "k8s" {
   name                = "${var.cluster_name}-router"
   count               = "${var.use_neutron}"
   admin_state_up      = "true"
-  external_network_id = "${var.external_net}"
+  external_network_id = "${var.external_network_id}"
 }
 
 resource "openstack_networking_network_v2" "k8s" {

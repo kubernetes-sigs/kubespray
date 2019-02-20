@@ -229,7 +229,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tf`.
 |`dns_nameservers`| An array of DNS name server names to be used by hosts in the internal subnet. |
 |`floatingip_pool` | Name of the pool from which floating IPs will be allocated |
 |`external_net` | UUID of the external network that will be routed to |
-|`flavor_k8s_master`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through`nova flavor-list` |
+|`flavor_k8s_master`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through `openstack flavor list` |
 |`image`,`image_gfs` | Name of the image to use in provisioning the compute resources. Should already be loaded into glance. |
 |`ssh_user`,`ssh_user_gfs` | The username to ssh into the image with. This usually depends on the image you have selected |
 |`public_key_path` | Path on your local workstation to the public key file you wish to use in creating the key pairs |

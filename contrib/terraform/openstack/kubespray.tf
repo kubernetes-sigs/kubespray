@@ -4,7 +4,8 @@ provider "openstack" {
 
 # query external network details
 data "openstack_networking_network_v2" "extnet" {
-  name = "${var.external_network_name}"
+  network_id = "${var.external_network_id != "" ? var.external_network_id : ""}"
+  name       = "${var.external_network_name}"
 }
 
 module "network" {

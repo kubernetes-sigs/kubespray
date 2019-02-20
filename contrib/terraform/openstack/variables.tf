@@ -103,8 +103,22 @@ variable "network_name" {
   default     = "internal"
 }
 
+variable "external_network_id" {
+  description = <<EOF
+ID of the external network to use. If no ID is provided,
+the UUID would be resolved from the external_network_name variable.
+EOF
+
+  default = ""
+}
+
 variable "external_network_name" {
-  description = "name of the external network to use"
+  description = <<EOF
+Name of the external network to use. If this variable is empty, then
+external_network_id MUST be set.
+EOF
+
+  default = ""
 }
 
 variable "use_neutron" {

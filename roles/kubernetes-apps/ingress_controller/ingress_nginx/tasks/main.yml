@@ -59,6 +59,30 @@
   when:
     - inventory_hostname == groups['kube-master'][0]
 
+- name: Set ingress nginx node role
+  set_fact:
+    ingress_nginx_node_role:
+      key: "{{ item.key }}"
+      value: "{{ item.value }}"
+  with_dict: "{{ ingress_nginx_nodeselector }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Set ingress nginx node list
+  set_fact:
+    ingress_nginx_node_list:
+      - "{{ groups['kube-node'][item|int] }}"
+  with_sequence: start=0 end={{ (ingress_nginx_node_count-1)|int }}
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: NGINX Ingress Controller | Set node label
+  shell: |
+    {{ bin_dir }}/kubectl label --overwrite node {{ item }} {{ ingress_nginx_node_role.key }}={{ ingress_nginx_node_role.value }}
+  loop: "{{ ingress_nginx_node_list }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
 - name: NGINX Ingress Controller | Apply manifests
   kube:
     name: "{{ item.item.name }}"

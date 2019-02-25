@@ -36,11 +36,13 @@ data:
         "Type": "{{ flannel_backend_type }}"
       }
     }
+
+{% for arch in flannel_arches %}
 ---
 apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
-  name: kube-flannel
+  name: kube-flannel-ds-{{ arch }}
   namespace: "kube-system"
   labels:
     tier: node
@@ -58,9 +60,10 @@ spec:
       serviceAccountName: flannel
       nodeSelector:
         beta.kubernetes.io/os: linux
+        beta.kubernetes.io/arch: {{ arch }}
       containers:
       - name: kube-flannel
-        image: {{ flannel_image_repo }}:{{ flannel_image_tag }}
+        image: {{ flannel_image_repo }}:{{ flannel_image_tag }}-{{ arch }}
         imagePullPolicy: {{ k8s_image_pull_policy }}
         resources:
           limits:
@@ -93,7 +96,7 @@ spec:
         - name: flannel-cfg
           mountPath: /etc/kube-flannel/
       - name: install-cni
-        image: {{ flannel_cni_image_repo }}:{{ flannel_cni_image_tag }}
+        image: {{ flannel_cni_image_repo }}:{{ flannel_cni_image_tag }}-{{ arch }}
         command: ["/install-cni.sh"]
         env:
         # The CNI network config to install on each node.
@@ -132,3 +135,4 @@ spec:
     rollingUpdate:
       maxUnavailable: {{ serial | default('20%') }}
     type: RollingUpdate
+{% endfor %}

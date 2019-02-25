@@ -61,6 +61,20 @@ spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
         beta.kubernetes.io/arch: {{ arch }}
+      initContainers:
+      - name: install-cni
+        image: {{ flannel_image_repo }}:{{ flannel_image_tag }}-{{ arch }}
+        command:
+        - cp
+        args:
+        - -f
+        - /etc/kube-flannel/cni-conf.json
+        - /etc/cni/net.d/10-flannel.conflist
+        volumeMounts:
+        - name: cni
+          mountPath: /etc/cni/net.d
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
       containers:
       - name: kube-flannel
         image: {{ flannel_image_repo }}:{{ flannel_image_tag }}-{{ arch }}
@@ -95,23 +109,6 @@ spec:
           mountPath: /etc/cni/net.d
         - name: flannel-cfg
           mountPath: /etc/kube-flannel/
-      - name: install-cni
-        image: {{ flannel_cni_image_repo }}:{{ flannel_cni_image_tag }}-{{ arch }}
-        command: ["/install-cni.sh"]
-        env:
-        # The CNI network config to install on each node.
-        - name: CNI_NETWORK_CONFIG
-          valueFrom:
-            configMapKeyRef:
-              name: kube-flannel-cfg
-              key: cni-conf.json
-        - name: CNI_CONF_NAME
-          value: "10-flannel.conflist"
-        volumeMounts:
-        - name: cni
-          mountPath: /host/etc/cni/net.d
-        - name: host-cni-bin
-          mountPath: /host/opt/cni/bin/
       hostNetwork: true
       tolerations:
         - operator: Exists

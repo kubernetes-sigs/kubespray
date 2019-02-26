@@ -161,6 +161,14 @@ Requirements
     should be configured in the target servers. Then the `ansible_become` flag
     or command parameters `--become or -b` should be specified.
 
+Hardware:        
+These limits are safe guarded by Kubespray. Actual requirements for your workload can differ. For a sizing guide go to the [Building Large Clusters](https://kubernetes.io/docs/setup/cluster-large/#size-of-master-and-master-components) guide. 
+
+-   Master 
+    - Memory: 1500 MB
+-   Node
+    - Memory: 1024 MB
+
 Network Plugins
 ---------------
 

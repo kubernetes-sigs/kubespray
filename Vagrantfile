@@ -52,6 +52,8 @@ $kube_node_instances_with_disks_size = "20G"
 $kube_node_instances_with_disks_number = 2
 $override_disk_size = false
 $disk_size = "20GB"
+$local_path_provisioner_enabled = false
+$local_path_provisioner_claim_root = "/opt/local-path-provisioner/"
 
 $playbook = "cluster.yml"
 
@@ -180,7 +182,9 @@ Vagrant.configure("2") do |config|
         "kube_network_plugin_multus": $multi_networking,
         "docker_keepcache": "1",
         "download_run_once": "True",
-        "download_localhost": "False"
+        "download_localhost": "False",
+        "local_path_provisioner_enabled": "#{$local_path_provisioner_enabled}",
+        "local_path_provisioner_claim_root": "#{$local_path_provisioner_claim_root}"
       }
 
       # Only execute the Ansible provisioner once, when all the machines are up and ready.

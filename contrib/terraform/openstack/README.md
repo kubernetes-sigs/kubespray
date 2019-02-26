@@ -10,7 +10,7 @@ most modern installs of OpenStack that support the basic services.
 
 ### Known compatible public clouds
 - [Auro](https://auro.io/)
-- [BetaCloud](https://www.betacloud.io/)
+- [Betacloud](https://www.betacloud.io/)
 - [CityCloud](https://www.citycloud.com/)
 - [DreamHost](https://www.dreamhost.com/cloud/computing/)
 - [ELASTX](https://elastx.se/)

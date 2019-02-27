@@ -34,7 +34,9 @@ class TestInventory(unittest.TestCase):
         self.inv = inventory.KubesprayInventory()
 
     def test_get_ip_from_opts(self):
-        optstring = {'ansible_host': '10.90.3.2', 'ip': '10.90.3.2', 'access_ip': '10.90.3.2' }
+        optstring = {'ansible_host': '10.90.3.2',
+                     'ip': '10.90.3.2',
+                     'access_ip': '10.90.3.2'}
         expected = "10.90.3.2"
         result = self.inv.get_ip_from_opts(optstring)
         self.assertEqual(expected, result)
@@ -67,14 +69,18 @@ class TestInventory(unittest.TestCase):
     def test_build_hostnames_add_one(self):
         changed_hosts = ['10.90.0.2']
         expected = OrderedDict([('node1',
-                               {'ansible_host': '10.90.0.2', 'ip': '10.90.0.2', 'access_ip': '10.90.0.2' })])
+                                 {'ansible_host': '10.90.0.2',
+                                  'ip': '10.90.0.2',
+                                  'access_ip': '10.90.0.2'})])
         result = self.inv.build_hostnames(changed_hosts)
         self.assertEqual(expected, result)
 
     def test_build_hostnames_add_duplicate(self):
         changed_hosts = ['10.90.0.2']
         expected = OrderedDict([('node1',
-                               {'ansible_host': '10.90.0.2', 'ip': '10.90.0.2', 'access_ip': '10.90.0.2' })])
+                                 {'ansible_host': '10.90.0.2',
+                                  'ip': '10.90.0.2',
+                                  'access_ip': '10.90.0.2'})])
         self.inv.yaml_config['all']['hosts'] = expected
         result = self.inv.build_hostnames(changed_hosts)
         self.assertEqual(expected, result)
@@ -82,8 +88,12 @@ class TestInventory(unittest.TestCase):
     def test_build_hostnames_add_two(self):
         changed_hosts = ['10.90.0.2', '10.90.0.3']
         expected = OrderedDict([
-            ('node1', {'ansible_host': '10.90.0.2', 'ip': '10.90.0.2', 'access_ip': '10.90.0.2' }),
-            ('node2', {'ansible_host': '10.90.0.3', 'ip': '10.90.0.3', 'access_ip': '10.90.0.3' })])
+            ('node1', {'ansible_host': '10.90.0.2',
+                       'ip': '10.90.0.2',
+                       'access_ip': '10.90.0.2'}),
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'})])
         self.inv.yaml_config['all']['hosts'] = OrderedDict()
         result = self.inv.build_hostnames(changed_hosts)
         self.assertEqual(expected, result)
@@ -91,11 +101,17 @@ class TestInventory(unittest.TestCase):
     def test_build_hostnames_delete_first(self):
         changed_hosts = ['-10.90.0.2']
         existing_hosts = OrderedDict([
-            ('node1', {'ansible_host': '10.90.0.2', 'ip': '10.90.0.2', 'access_ip': '10.90.0.2' }),
-            ('node2', {'ansible_host': '10.90.0.3', 'ip': '10.90.0.3', 'access_ip': '10.90.0.3' })])
+            ('node1', {'ansible_host': '10.90.0.2',
+                       'ip': '10.90.0.2',
+                       'access_ip': '10.90.0.2'}),
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'})])
         self.inv.yaml_config['all']['hosts'] = existing_hosts
         expected = OrderedDict([
-            ('node2', {'ansible_host': '10.90.0.3', 'ip': '10.90.0.3', 'access_ip': '10.90.0.3' })])
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'})])
         result = self.inv.build_hostnames(changed_hosts)
         self.assertEqual(expected, result)
 
@@ -103,8 +119,12 @@ class TestInventory(unittest.TestCase):
         hostname = 'node1'
         expected = True
         existing_hosts = OrderedDict([
-            ('node1', {'ansible_host': '10.90.0.2', 'ip': '10.90.0.2', 'access_ip': '10.90.0.2' }),
-            ('node2', {'ansible_host': '10.90.0.3', 'ip': '10.90.0.3', 'access_ip': '10.90.0.3' })])
+            ('node1', {'ansible_host': '10.90.0.2',
+                       'ip': '10.90.0.2',
+                       'access_ip': '10.90.0.2'}),
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'})])
         result = self.inv.exists_hostname(existing_hosts, hostname)
         self.assertEqual(expected, result)
 
@@ -112,8 +132,12 @@ class TestInventory(unittest.TestCase):
         hostname = 'node99'
         expected = False
         existing_hosts = OrderedDict([
-            ('node1', {'ansible_host': '10.90.0.2', 'ip': '10.90.0.2', 'access_ip': '10.90.0.2' }),
-            ('node2', {'ansible_host': '10.90.0.3', 'ip': '10.90.0.3', 'access_ip': '10.90.0.3' })])
+            ('node1', {'ansible_host': '10.90.0.2',
+                       'ip': '10.90.0.2',
+                       'access_ip': '10.90.0.2'}),
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'})])
         result = self.inv.exists_hostname(existing_hosts, hostname)
         self.assertEqual(expected, result)
 
@@ -121,8 +145,12 @@ class TestInventory(unittest.TestCase):
         ip = '10.90.0.2'
         expected = True
         existing_hosts = OrderedDict([
-            ('node1', {'ansible_host': '10.90.0.2', 'ip': '10.90.0.2', 'access_ip': '10.90.0.2' }),
-            ('node2', {'ansible_host': '10.90.0.3', 'ip': '10.90.0.3', 'access_ip': '10.90.0.3' })])
+            ('node1', {'ansible_host': '10.90.0.2',
+                       'ip': '10.90.0.2',
+                       'access_ip': '10.90.0.2'}),
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'})])
         result = self.inv.exists_ip(existing_hosts, ip)
         self.assertEqual(expected, result)
 
@@ -130,26 +158,40 @@ class TestInventory(unittest.TestCase):
         ip = '10.90.0.200'
         expected = False
         existing_hosts = OrderedDict([
-            ('node1', {'ansible_host': '10.90.0.2', 'ip': '10.90.0.2', 'access_ip': '10.90.0.2' }),
-            ('node2', {'ansible_host': '10.90.0.3', 'ip': '10.90.0.3', 'access_ip': '10.90.0.3' })])
+            ('node1', {'ansible_host': '10.90.0.2',
+                       'ip': '10.90.0.2',
+                       'access_ip': '10.90.0.2'}),
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'})])
         result = self.inv.exists_ip(existing_hosts, ip)
         self.assertEqual(expected, result)
 
     def test_delete_host_by_ip_positive(self):
         ip = '10.90.0.2'
         expected = OrderedDict([
-            ('node2', {'ansible_host': '10.90.0.3', 'ip': '10.90.0.3', 'access_ip': '10.90.0.3' })])
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'})])
         existing_hosts = OrderedDict([
-            ('node1', {'ansible_host': '10.90.0.2', 'ip': '10.90.0.2', 'access_ip': '10.90.0.2' }),
-            ('node2', {'ansible_host': '10.90.0.3', 'ip': '10.90.0.3', 'access_ip': '10.90.0.3' })])
+            ('node1', {'ansible_host': '10.90.0.2',
+                       'ip': '10.90.0.2',
+                       'access_ip': '10.90.0.2'}),
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'})])
         self.inv.delete_host_by_ip(existing_hosts, ip)
         self.assertEqual(expected, existing_hosts)
 
     def test_delete_host_by_ip_negative(self):
         ip = '10.90.0.200'
         existing_hosts = OrderedDict([
-            ('node1', {'ansible_host': '10.90.0.2', 'ip': '10.90.0.2', 'access_ip': '10.90.0.2' }),
-            ('node2', {'ansible_host': '10.90.0.3', 'ip': '10.90.0.3', 'access_ip': '10.90.0.3' })])
+            ('node1', {'ansible_host': '10.90.0.2',
+                       'ip': '10.90.0.2',
+                       'access_ip': '10.90.0.2'}),
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'})])
         self.assertRaisesRegexp(ValueError, "Unable to find host",
                                 self.inv.delete_host_by_ip, existing_hosts, ip)
 
@@ -157,12 +199,17 @@ class TestInventory(unittest.TestCase):
         proper_hostnames = ['node1', 'node2']
         bad_host = 'doesnotbelong2'
         existing_hosts = OrderedDict([
-            ('node1', {'ansible_host': '10.90.0.2', 'ip': '10.90.0.2', 'access_ip': '10.90.0.2' }),
-            ('node2', {'ansible_host': '10.90.0.3', 'ip': '10.90.0.3', 'access_ip': '10.90.0.3' }),
+            ('node1', {'ansible_host': '10.90.0.2',
+                       'ip': '10.90.0.2',
+                       'access_ip': '10.90.0.2'}),
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'}),
             ('doesnotbelong2', {'whateveropts=ilike'})])
         self.inv.yaml_config['all']['hosts'] = existing_hosts
         self.inv.purge_invalid_hosts(proper_hostnames)
-        self.assertTrue(bad_host not in self.inv.yaml_config['all']['hosts'].keys())
+        self.assertTrue(
+            bad_host not in self.inv.yaml_config['all']['hosts'].keys())
 
     def test_add_host_to_group(self):
         group = 'etcd'
@@ -170,24 +217,27 @@ class TestInventory(unittest.TestCase):
         opts = {'ip': '10.90.0.2'}
 
         self.inv.add_host_to_group(group, host, opts)
-        self.assertEqual(self.inv.yaml_config['all']['children'][group]['hosts'].get(host), None)
+        self.assertEqual(
+            self.inv.yaml_config['all']['children'][group]['hosts'].get(host),
+            None)
 
     def test_set_kube_master(self):
         group = 'kube-master'
         host = 'node1'
 
         self.inv.set_kube_master([host])
-        self.assertTrue(host in self.inv.yaml_config['all']['children'][group]['hosts'])
+        self.assertTrue(
+            host in self.inv.yaml_config['all']['children'][group]['hosts'])
 
     def test_set_all(self):
-        group = 'all'
         hosts = OrderedDict([
             ('node1', 'opt1'),
             ('node2', 'opt2')])
 
         self.inv.set_all(hosts)
         for host, opt in hosts.items():
-            self.assertEqual(self.inv.yaml_config['all']['hosts'].get(host), opt)
+            self.assertEqual(
+                self.inv.yaml_config['all']['hosts'].get(host), opt)
 
     def test_set_k8s_cluster(self):
         group = 'k8s-cluster'
@@ -195,21 +245,25 @@ class TestInventory(unittest.TestCase):
 
         self.inv.set_k8s_cluster()
         for host in expected_hosts:
-            self.assertTrue(host in self.inv.yaml_config['all']['children'][group]['children'])
+            self.assertTrue(
+                host in
+                self.inv.yaml_config['all']['children'][group]['children'])
 
     def test_set_kube_node(self):
         group = 'kube-node'
         host = 'node1'
 
         self.inv.set_kube_node([host])
-        self.assertTrue(host in self.inv.yaml_config['all']['children'][group]['hosts'])
+        self.assertTrue(
+            host in self.inv.yaml_config['all']['children'][group]['hosts'])
 
     def test_set_etcd(self):
         group = 'etcd'
         host = 'node1'
 
         self.inv.set_etcd([host])
-        self.assertTrue(host in self.inv.yaml_config['all']['children'][group]['hosts'])
+        self.assertTrue(
+            host in self.inv.yaml_config['all']['children'][group]['hosts'])
 
     def test_scale_scenario_one(self):
         num_nodes = 50
@@ -223,7 +277,9 @@ class TestInventory(unittest.TestCase):
         self.inv.set_kube_master(list(hosts.keys())[0:2])
         self.inv.set_kube_node(hosts.keys())
         for h in range(3):
-            self.assertFalse(list(hosts.keys())[h] in self.inv.yaml_config['all']['children']['kube-node']['hosts'])
+            self.assertFalse(
+                list(hosts.keys())[h] in
+                self.inv.yaml_config['all']['children']['kube-node']['hosts'])
 
     def test_scale_scenario_two(self):
         num_nodes = 500
@@ -237,11 +293,17 @@ class TestInventory(unittest.TestCase):
         self.inv.set_kube_master(list(hosts.keys())[3:5])
         self.inv.set_kube_node(hosts.keys())
         for h in range(5):
-            self.assertFalse(list(hosts.keys())[h] in self.inv.yaml_config['all']['children']['kube-node']['hosts'])
+            self.assertFalse(
+                list(hosts.keys())[h] in
+                self.inv.yaml_config['all']['children']['kube-node']['hosts'])
 
     def test_range2ips_range(self):
         changed_hosts = ['10.90.0.2', '10.90.0.4-10.90.0.6', '10.90.0.8']
-        expected = ['10.90.0.2', '10.90.0.4', '10.90.0.5', '10.90.0.6', '10.90.0.8']
+        expected = ['10.90.0.2',
+                    '10.90.0.4',
+                    '10.90.0.5',
+                    '10.90.0.6',
+                    '10.90.0.8']
         result = self.inv.range2ips(changed_hosts)
         self.assertEqual(expected, result)
 

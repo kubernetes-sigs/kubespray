@@ -69,8 +69,11 @@ class KubesprayInventory(object):
         self.config_file = config_file
         self.yaml_config = {}
         if self.config_file:
-            self.hosts_file = open(config_file, 'r')
-            self.yaml_config = yaml.load(self.hosts_file)
+            try:
+                self.hosts_file = open(config_file, 'r')
+                self.yaml_config = yaml.load(self.hosts_file)
+            except FileNotFoundError:
+                pass
 
         if changed_hosts and changed_hosts[0] in AVAILABLE_COMMANDS:
             self.parse_command(changed_hosts[0], changed_hosts[1:])
@@ -122,11 +125,15 @@ class KubesprayInventory(object):
             if group == 'all':
                 self.debug("Adding group {0}".format(group))
                 if group not in self.yaml_config:
-                    self.yaml_config = { 'all': {'hosts': {}, 'vars': {'ansible_user': 'centos'}, 'children': {}}}
+                    self.yaml_config = {'all':
+                                        {'hosts': {},
+                                         'vars':
+                                         {'ansible_user': 'centos'},
+                                         'children': {}}}
             else:
                 self.debug("Adding group {0}".format(group))
                 if group not in self.yaml_config['all']['children']:
-                    self.yaml_config['all']['children'][group] = {'hosts': None }
+                    self.yaml_config['all']['children'][group] = {'hosts': None}
 
     def get_host_id(self, host):
         '''Returns integer host ID (without padding) from a given hostname.'''
@@ -171,7 +178,9 @@ class KubesprayInventory(object):
 
                 next_host = "{0}{1}".format(HOST_PREFIX, next_host_id)
                 next_host_id += 1
-                all_hosts[next_host] = {'ansible_host': host, 'ip': host, 'access_ip': host }
+                all_hosts[next_host] = {'ansible_host': host,
+                                        'ip': host,
+                                        'access_ip': host}
             elif host[0].isalpha():
                 raise Exception("Adding hosts by hostname is not supported.")
 
@@ -219,9 +228,8 @@ class KubesprayInventory(object):
                 all_hosts = self.yaml_config['all']['children'][role]['hosts'].copy()
                 for host in all_hosts.keys():
                     if host not in hostnames and host not in protected_names:
-                        self.debug("Host {0} removed from role {1}".format(host,
-                                role))
-                        self.yaml_config['all']['children'][role]['hosts'].pop(host, None)
+                        self.debug("Host {0} removed from role {1}".format(host, role))
+                        del self.yaml_config['all']['children'][role]['hosts'][host]
         # purge from all
         if self.yaml_config['all']['hosts']:
             all_hosts = self.yaml_config['all']['hosts'].copy()
@@ -233,12 +241,12 @@ class KubesprayInventory(object):
     def add_host_to_group(self, group, host, opts=""):
         self.debug("adding host {0} to group {1}".format(host, group))
         if group == 'all':
-            if self.yaml_config['all']['hosts'] == None:
-                self.yaml_config['all']['hosts'] = { host : None}
+            if self.yaml_config['all']['hosts'] is None:
+                self.yaml_config['all']['hosts'] = {host: None}
             self.yaml_config['all']['hosts'][host] = opts
         elif group != 'k8s-cluster:children':
-            if self.yaml_config['all']['children'][group]['hosts'] == None:
-                self.yaml_config['all']['children'][group]['hosts'] = { host : None}
+            if self.yaml_config['all']['children'][group]['hosts'] is None:
+                self.yaml_config['all']['children'][group]['hosts'] = {host: None}
             else:
                 self.yaml_config['all']['children'][group]['hosts'][host] = None
 
@@ -251,8 +259,9 @@ class KubesprayInventory(object):
             self.add_host_to_group('all', host, opts)
 
     def set_k8s_cluster(self):
-        self.yaml_config['all']['children']['k8s-cluster'] = {'children' : { 'kube-master': None, 'kube-node': None }}
-
+        self.yaml_config['all']['children']['k8s-cluster'] = {'children':
+                                                              {'kube-master': None,
+                                                               'kube-node': None}}
 
     def set_calico_rr(self, hosts):
         for host in hosts:
@@ -300,15 +309,16 @@ class KubesprayInventory(object):
                 with open(filename, 'r') as f:
                     data = json.load(f)
             except ValueError:
-                raise Exception("Cannot read %s as JSON, or CSV",
-                                    filename)
+                raise Exception("Cannot read %s as JSON, or CSV", filename)
 
             self.ensure_required_groups(ROLES)
             self.set_k8s_cluster()
             for group, hosts in data.items():
                 self.ensure_required_groups([group])
                 for host, opts in hosts.items():
-                    optstring = {'ansible_host': opts['ip'], 'ip': opts['ip'], 'access_ip': opts['ip'] }
+                    optstring = {'ansible_host': opts['ip'],
+                                 'ip': opts['ip'],
+                                 'access_ip': opts['ip']}
                     self.add_host_to_group('all', host, optstring)
                     self.add_host_to_group(group, host)
             self.write_config(self.config_file)
@@ -341,7 +351,7 @@ Delete a host by id: inventory.py -node1
 
 Configurable env vars:
 DEBUG                   Enable debug printing. Default: True
-CONFIG_FILE             File to write config to Default: ./inventory/sample/hosts.ini
+CONFIG_FILE             File to write config to Default: ./inventory/sample/hosts.yaml
 HOST_PREFIX             Host prefix for generated hosts. Default: node
 SCALE_THRESHOLD         Separate ETCD role if # of nodes >= 50
 MASSIVE_SCALE_THRESHOLD Separate K8s master and ETCD if # of nodes >= 200

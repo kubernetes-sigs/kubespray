@@ -362,6 +362,14 @@ contiv_peer_with_uplink_leaf: false
 contiv_global_as: "65002"
 contiv_global_neighbor_as: "500"
 
+# Set 127.0.0.1 as fallback IP if we do not have host facts for host
+fallback_ips_base: |
+  ---
+  {% for item in groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([])|unique %}
+  {{item}}: "{{ hostvars[item].get('ansible_default_ipv4', {'address': '127.0.0.1'})['address'] }}"
+  {% endfor %}
+fallback_ips: "{{ fallback_ips_base | from_yaml }}"
+
 ## Set no_proxy to all assigned cluster IPs and hostnames
 no_proxy: >-
   {%- if http_proxy is defined or https_proxy is defined %}
@@ -370,8 +378,8 @@ no_proxy: >-
   {{ loadbalancer_apiserver.address | default('') }},
   {%- endif -%}
   {%- for item in (groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]))|unique -%}
-  {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }},
-  {%-   if (item != hostvars[item]['ansible_hostname']) -%}
+  {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }},
+  {%-   if item != hostvars[item].get('ansible_hostname', "") -%}
   {{ hostvars[item]['ansible_hostname'] }},
   {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }},
   {%-   endif -%}
@@ -403,9 +411,9 @@ ssl_ca_dirs: >-
 # Vars for pointing to kubernetes api endpoints
 is_kube_master: "{{ inventory_hostname in groups['kube-master'] }}"
 kube_apiserver_count: "{{ groups['kube-master'] | length }}"
-kube_apiserver_address: "{{ ip | default(ansible_default_ipv4['address']) }}"
+kube_apiserver_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
 kube_apiserver_access_address: "{{ access_ip | default(kube_apiserver_address) }}"
-first_kube_master: "{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(hostvars[groups['kube-master'][0]]['ansible_default_ipv4']['address'])) }}"
+first_kube_master: "{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(fallback_ips[groups['kube-master'][0]])) }}"
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
 apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
@@ -439,7 +447,7 @@ etcd_events_cluster_enabled: false
 
 # Vars for pointing to etcd endpoints
 is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"
-etcd_address: "{{ ip | default(ansible_default_ipv4['address']) }}"
+etcd_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
 etcd_access_address: "{{ access_ip | default(etcd_address) }}"
 etcd_events_access_address: "{{ access_ip | default(etcd_address) }}"
 etcd_peer_url: "https://{{ etcd_access_address }}:2380"
@@ -448,12 +456,12 @@ etcd_events_peer_url: "https://{{ etcd_events_access_address }}:2382"
 etcd_events_client_url: "https://{{ etcd_events_access_address }}:2381"
 etcd_access_addresses: |-
   {% for item in groups['etcd'] -%}
-    https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2379{% if not loop.last %},{% endif %}
+    https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2379{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_events_access_addresses_list: |-
   [
   {% for item in groups['etcd'] -%}
-    'https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}:2381'{% if not loop.last %},{% endif %}
+    'https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2381'{% if not loop.last %},{% endif %}
   {%- endfor %}
   ]
 etcd_events_access_addresses: "{{etcd_events_access_addresses_list | join(',')}}"
@@ -465,11 +473,11 @@ etcd_member_name: |-
   {% endfor %}
 etcd_peer_addresses: |-
   {% for item in groups['etcd'] -%}
-    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2380{% if not loop.last %},{% endif %}
+    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(fallback_ips[item])) }}:2380{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_events_peer_addresses: |-
   {% for item in groups['etcd'] -%}
-    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}-events=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(hostvars[item].ansible_default_ipv4['address'])) }}:2382{% if not loop.last %},{% endif %}
+    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}-events=https://{{ hostvars[item].access_ip | default(hostvars[item].ip | default(fallback_ips[item])) }}:2382{% if not loop.last %},{% endif %}
   {%- endfor %}
 
 podsecuritypolicy_enabled: false

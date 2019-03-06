@@ -93,7 +93,7 @@
     - 'calico_conf.stdout == "0"'
     - calico_pool_cidr is defined
 
-- name: Calico | Configure calico network pool
+- name: Calico | Configure calico network pool (v3.0.0 <= version < v3.3.0)
   shell: >
     echo "
       { "kind": "IPPool",
@@ -110,6 +110,26 @@
   when:
     - 'calico_conf.stdout == "0"'
     - calico_version is version("v3.0.0", ">=")
+    - calico_version is version("v3.3.0", "<")
+
+- name: Calico | Configure calico network pool (version >= v3.3.0)
+  shell: >
+    echo "
+      { "kind": "IPPool",
+        "apiVersion": "projectcalico.org/v3",
+        "metadata": {
+          "name": "{{ calico_pool_name }}",
+        },
+        "spec": {
+          "blockSize": "{{ kube_network_node_prefix }}",
+          "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
+          "ipipMode": "{{ ipip_mode }}",
+          "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl create -f -
+  run_once: true
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  when:
+    - 'calico_conf.stdout == "0"'
+    - calico_version is version("v3.3.0", ">=")
 
 - name: Calico | Configure calico network pool (legacy)
   shell: >

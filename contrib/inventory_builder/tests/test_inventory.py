@@ -311,3 +311,35 @@ class TestInventory(unittest.TestCase):
         host_range = ['10.90.0.4-a.9b.c.e']
         self.assertRaisesRegexp(Exception, "Range of ip_addresses isn't valid",
                                 self.inv.range2ips, host_range)
+
+    def test_build_hostnames_different_ips_add_one(self):
+        changed_hosts = ['10.90.0.2,192.168.0.2']
+        expected = OrderedDict([('node1',
+                                 {'ansible_host': '192.168.0.2',
+                                  'ip': '10.90.0.2',
+                                  'access_ip': '192.168.0.2'})])
+        result = self.inv.build_hostnames(changed_hosts)
+        self.assertEqual(expected, result)
+
+    def test_build_hostnames_different_ips_add_duplicate(self):
+        changed_hosts = ['10.90.0.2,192.168.0.2']
+        expected = OrderedDict([('node1',
+                                 {'ansible_host': '192.168.0.2',
+                                  'ip': '10.90.0.2',
+                                  'access_ip': '192.168.0.2'})])
+        self.inv.yaml_config['all']['hosts'] = expected
+        result = self.inv.build_hostnames(changed_hosts)
+        self.assertEqual(expected, result)
+
+    def test_build_hostnames_different_ips_add_two(self):
+        changed_hosts = ['10.90.0.2,192.168.0.2', '10.90.0.3,192.168.0.3']
+        expected = OrderedDict([
+            ('node1', {'ansible_host': '192.168.0.2',
+                       'ip': '10.90.0.2',
+                       'access_ip': '192.168.0.2'}),
+            ('node2', {'ansible_host': '192.168.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '192.168.0.3'})])
+        self.inv.yaml_config['all']['hosts'] = OrderedDict()
+        result = self.inv.build_hostnames(changed_hosts)
+        self.assertEqual(expected, result)

@@ -74,27 +74,27 @@ variable "ssh_user_gfs" {
 }
 
 variable "flavor_bastion" {
-  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
+  description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
 
 variable "flavor_k8s_master" {
-  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
+  description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
 
 variable "flavor_k8s_node" {
-  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
+  description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
 
 variable "flavor_etcd" {
-  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
+  description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
 
 variable "flavor_gfs_node" {
-  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
+  description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
 

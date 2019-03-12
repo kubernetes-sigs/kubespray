@@ -127,8 +127,7 @@ class KubesprayInventory(object):
             if group == 'all':
                 self.debug("Adding group {0}".format(group))
                 if group not in self.yaml_config:
-                    all_dict = OrderedDict([('hosts', {}),
-                                            ('vars', {'ansible_user': 'centos'}),
+                    all_dict = OrderedDict([('hosts', OrderedDict({})),
                                             ('children', OrderedDict({}))])
                     self.yaml_config = {'all': all_dict }
             else:

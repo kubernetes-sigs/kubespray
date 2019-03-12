@@ -46,6 +46,7 @@ AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'load']
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
                    '0': False, 'no': False, 'false': False, 'off': False}
 yaml = YAML()
+yaml.Representer.add_representer(OrderedDict, yaml.Representer.represent_dict)
 
 
 def get_var_as_bool(name, default):

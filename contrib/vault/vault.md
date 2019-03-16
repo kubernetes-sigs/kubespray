@@ -76,8 +76,8 @@ generated elsewhere, you'll need to copy the certificate and key to the hosts in
   * ``/etc/ssl/etcd/ssl/ca.pem``
   * ``/etc/ssl/etcd/ssl/ca-key.pem``
 * kubernetes:
-  * ``/etc/kubernetes/ssl/ca.pem``
-  * ``/etc/kubernetes/ssl/ca-key.pem``
+  * ``/etc/kubernetes/pki/ca.pem``
+  * ``/etc/kubernetes/pki/ca-key.pem``
 
 Additional Notes:
 

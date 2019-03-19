@@ -146,7 +146,7 @@ controllerManagerExtraVolumes:
   mountPath: {{ kube_config_dir }}/cloud_config
 {% endif %}
 {% endif %}
-{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) %}
+{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) or apiserver_extra_volumes or (cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"]) %}
 apiServerExtraVolumes:
 {% if kube_basic_auth|default(true) %}
 - name: basic-auth-config
@@ -168,6 +168,17 @@ apiServerExtraVolumes:
   mountPath: {{ audit_log_mountpath }}
   writable: true
 {% endif %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}
+- name: cloud-config
+  hostPath: {{ kube_config_dir }}/cloud_config
+  mountPath: {{ kube_config_dir }}/cloud_config
+{% endif %}
+{% for volume in apiserver_extra_volumes %}
+- name: {{ volume.name }}
+  hostPath: {{ volume.hostPath }}
+  mountPath: {{ volume.mountPath }}
+  writable: {{ volume.writable | default(false)}}
+{% endfor %}
 {% endif %}
 {% endif %}
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}

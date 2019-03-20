@@ -412,13 +412,13 @@ sudo route add -net [internal-subnet]/24 gw [router-ip]
 ```
 3. List Kubernetes certificates & keys:
 ```
-ssh [os-user]@[master-ip] sudo ls /etc/kubernetes/pki/
+ssh [os-user]@[master-ip] sudo ls /etc/kubernetes/ssl/
 ```
 4. Get `admin`'s certificates and keys:
 ```
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/pki/admin-kube-master-k8s-master-1-key.pem > admin-key.pem
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/pki/admin-kube-master-k8s-master-1.pem > admin.pem
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/pki/ca.pem > ca.pem
+ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-kube-master-1-key.pem > admin-key.pem
+ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-kube-master-1.pem > admin.pem
+ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/ca.pem > ca.pem
 ```
 5. Configure kubectl:
 ```ShellSession

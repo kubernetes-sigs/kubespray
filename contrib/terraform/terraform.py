@@ -218,6 +218,47 @@ def triton_machine(resource, module_name):
     return name, attrs, groups
 
 
+@parses('packet_device')
+def packet_device(resource, tfvars=None):
+    raw_attrs = resource['primary']['attributes']
+    name = raw_attrs['hostname']
+    groups = []
+
+    attrs = {
+        'id': raw_attrs['id'],
+        'facility': raw_attrs['facility'],
+        'hostname': raw_attrs['hostname'],
+        'operating_system': raw_attrs['operating_system'],
+        'locked': parse_bool(raw_attrs['locked']),
+        'tags': parse_list(raw_attrs, 'tags'),
+        'plan': raw_attrs['plan'],
+        'project_id': raw_attrs['project_id'],
+        'state': raw_attrs['state'],
+        # ansible
+        'ansible_ssh_host': raw_attrs['network.0.address'],
+        'ansible_ssh_user': 'root',  # it's always "root" on Packet
+        # generic
+        'ipv4_address': raw_attrs['network.0.address'],
+        'public_ipv4': raw_attrs['network.0.address'],
+        'ipv6_address': raw_attrs['network.1.address'],
+        'public_ipv6': raw_attrs['network.1.address'],
+        'private_ipv4': raw_attrs['network.2.address'],
+        'provider': 'packet',
+    }
+
+    # add groups based on attrs
+    groups.append('packet_facility=' + attrs['facility'])
+    groups.append('packet_operating_system=' + attrs['operating_system'])
+    groups.append('packet_locked=%s' % attrs['locked'])
+    groups.append('packet_state=' + attrs['state'])
+    groups.append('packet_plan=' + attrs['plan'])
+
+    # groups specific to kubespray
+    groups = groups + attrs['tags']
+
+    return name, attrs, groups
+
+
 @parses('digitalocean_droplet')
 @calculate_mantl_vars
 def digitalocean_host(resource, tfvars=None):

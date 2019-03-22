@@ -1,5 +1,5 @@
 ---
-- name: check if atomic host
+- name: Check if atomic host
   stat:
     path: /run/ostree-booted
   register: ostree
@@ -19,24 +19,25 @@
     regexp: "^enabled=.*"
     line: "enabled=0"
     state: present
+  become: true
   when: fastestmirror.stat.exists
 
 - name: Add proxy to /etc/yum.conf if http_proxy is defined
   lineinfile:
     path: "/etc/yum.conf"
-    line: "proxy={{http_proxy}}"
+    line: "proxy={{ http_proxy }}"
     create: yes
     state: present
+  become: true
   when: http_proxy is defined
 
 - name: Install libselinux-python and yum-utils for bootstrap
   yum:
-    name: "{{ packages }}"
-    state: present
-  vars:
-    packages:
+    name:
       - libselinux-python
       - yum-utils
+    state: present
+  become: true
   when:
     - not is_atomic
 
@@ -51,15 +52,39 @@
   yum:
     name: epel-release
     state: present
+  become: true
   when:
     - epel_enabled
     - not is_atomic
     - package_python_pip.results | length != 0
 
+- name: check python-httplib2 package
+  yum:
+    list: "python-httplib2"
+  register: package_python_httplib2
+  when:
+    - not is_atomic
+
+- name: Configure extras repository if python-httplib2 not avaiable in current repos
+  yum_repository:
+    name: extras
+    description: "CentOS-7 - Extras"
+    state: present
+    baseurl: "{{ extras_rh_repo_base_url }}"
+    file: "extras"
+    gpgcheck: yes
+    gpgkey: "{{extras_rh_repo_gpgkey}}"
+    keepcache: "{{ extras_rh_rpm_keepcache | default('1') }}"
+    proxy: " {{ http_proxy | default('_none_') }}"
+  when:
+    - not is_atomic
+    - package_python_httplib2.results | length == 0
+
 - name: Install pip for bootstrap
   yum:
     name: python-pip
     state: present
+  become: true
   when:
     - not is_atomic
     - package_python_pip.results | length != 0

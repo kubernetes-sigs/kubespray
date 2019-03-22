@@ -7,33 +7,6 @@
     recurse: yes
   tags: [init, cni]
 
-- name: Apply kube-proxy hostnameOverride
-  block:
-    - name: Copy kube-proxy daemonset hostnameOverride patch
-      copy:
-        src: hostnameOverride-patch.json
-        dest: "{{ kubernetes_user_manifests_path }}/hostnameOverride-patch.json"
-
-    - name: Check current command for kube-proxy daemonset
-      shell: "{{bin_dir}}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get ds kube-proxy --namespace=kube-system -o jsonpath='{.spec.template.spec.containers[0].command}'"
-      register: current_kube_proxy_command
-
-    - name: Apply hostnameOverride patch for kube-proxy daemonset
-      shell: "{{bin_dir}}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf patch ds kube-proxy --namespace=kube-system --type=json -p \"$(cat hostnameOverride-patch.json)\""
-      args:
-        chdir: "{{ kubernetes_user_manifests_path }}"
-      register: patch_kube_proxy_command
-      when: not current_kube_proxy_command.stdout is search("--hostname-override=${NODE_NAME}")
-
-    - debug: msg={{ patch_kube_proxy_command.stdout_lines }}
-      when: patch_kube_proxy_command is not skipped
-
-    - debug: msg={{ patch_kube_proxy_command.stderr_lines }}
-      when: patch_kube_proxy_command is not skipped
-  tags: init
-  when:
-    - not kube_proxy_remove
-
 - name: Apply kube-proxy nodeselector
   block:
     - name: Copy kube-proxy daemonset nodeselector patch

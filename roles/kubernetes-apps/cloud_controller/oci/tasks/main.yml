@@ -3,51 +3,35 @@
 - include: credentials-check.yml
   tags: oci
 
-- name: "OCI Cloud Controller | Generate Configuration"
+- name: "OCI Cloud Controller | Generate Cloud Provider Configuration"
   template:
     src: controller-manager-config.yml.j2
-    dest: /tmp/controller-manager-config.yml
-  register: controller_manager_config
+    dest: "{{ kube_config_dir }}/controller-manager-config.yml"
   when: inventory_hostname == groups['kube-master'][0]
   tags: oci
+
+- name: "OCI Cloud Controller | Slurp Configuration"
+  slurp:
+    src: "{{ kube_config_dir }}/controller-manager-config.yml"
+  register: controller_manager_config
 
 - name: "OCI Cloud Controller | Encode Configuration"
   set_fact:
-    controller_manager_config_base64: "{{ lookup('file', '/tmp/controller-manager-config.yml') | b64encode }}"
+    controller_manager_config_base64: "{{ controller_manager_config.content }}"
   when: inventory_hostname == groups['kube-master'][0]
   tags: oci
 
-- name: "OCI Cloud Controller | Apply Configuration To Secret"
+- name: "OCI Cloud Controller | Generate Manifests"
   template:
-    src: cloud-provider.yml.j2
-    dest: /tmp/cloud-provider.yml
+    src: oci-cloud-provider.yml.j2
+    dest: "{{ kube_config_dir }}/oci-cloud-provider.yml"
   when: inventory_hostname == groups['kube-master'][0]
   tags: oci
 
-- name: "OCI Cloud Controller | Apply Configuration"
+- name: "OCI Cloud Controller | Apply Manifests"
   kube:
     kubectl: "{{ bin_dir }}/kubectl"
-    filename: "/tmp/cloud-provider.yml"
-    state: latest
-  when: inventory_hostname == groups['kube-master'][0]
-  tags: oci
-
-- name: "OCI Cloud Controller | Download Controller Manifest"
-  get_url:
-    url: "https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/{{oci_cloud_controller_version}}/manifests/oci-cloud-controller-manager.yaml"
-    dest: "/tmp/oci-cloud-controller-manager.yml"
-    force: yes
-  register: result
-  until: "'OK' in result.msg"
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  when: inventory_hostname == groups['kube-master'][0]
-  tags: oci
-
-- name: "OCI Cloud Controller | Apply Controller Manifest"
-  kube:
-    kubectl: "{{ bin_dir }}/kubectl"
-    filename: "/tmp/oci-cloud-controller-manager.yml"
+    filename: "{{ kube_config_dir }}/oci-cloud-provider.yml"
     state: latest
   when: inventory_hostname == groups['kube-master'][0]
   tags: oci

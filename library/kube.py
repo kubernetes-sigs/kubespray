@@ -71,6 +71,13 @@ options:
         latest handles creating or updating based on existence,
         reloaded handles updating resource(s) definition using definition file,
         stopped handles stopping resource(s) based on other options.
+  recursive:
+    required: false
+    default: false
+    description:
+      - Process the directory used in -f, --filename recursively.
+        Useful when you want to manage related manifests organized
+        within the same directory.
 requirements:
   - kubectl
 author: "Kenny Jones (@kenjones-cisco)"
@@ -120,12 +127,14 @@ class KubeManager(object):
         if module.params.get('namespace'):
             self.base_cmd.append('--namespace=' + module.params.get('namespace'))
 
+
         self.all = module.params.get('all')
         self.force = module.params.get('force')
         self.name = module.params.get('name')
         self.filename = [f.strip() for f in module.params.get('filename') or []]
         self.resource = module.params.get('resource')
         self.label = module.params.get('label')
+        self.recursive = module.params.get('recursive')
 
     def _execute(self, cmd):
         args = self.base_cmd + cmd
@@ -155,6 +164,9 @@ class KubeManager(object):
         if force:
             cmd.append('--force')
 
+        if self.recursive:
+            cmd.append('--recursive={}'.format(self.recursive))
+
         if not self.filename:
             self.module.fail_json(msg='filename required to create')
 
@@ -168,6 +180,9 @@ class KubeManager(object):
 
         if force:
             cmd.append('--force')
+
+        if self.recursive:
+            cmd.append('--recursive={}'.format(self.recursive))
 
         if not self.filename:
             self.module.fail_json(msg='filename required to reload')
@@ -185,6 +200,8 @@ class KubeManager(object):
 
         if self.filename:
             cmd.append('--filename=' + ','.join(self.filename))
+            if self.recursive:
+                cmd.append('--recursive={}'.format(self.recursive))
         else:
             if not self.resource:
                 self.module.fail_json(msg='resource required to delete without filename')
@@ -203,6 +220,9 @@ class KubeManager(object):
             if self.force:
                 cmd.append('--ignore-not-found')
 
+            if self.recursive:
+                cmd.append('--recursive={}'.format(self.recursive))
+
         return self._execute(cmd)
 
     def exists(self):
@@ -210,6 +230,8 @@ class KubeManager(object):
 
         if self.filename:
             cmd.append('--filename=' + ','.join(self.filename))
+            if self.recursive:
+                cmd.append('--recursive={}'.format(self.recursive))
         else:
             if not self.resource:
                 self.module.fail_json(msg='resource required without filename')
@@ -242,6 +264,8 @@ class KubeManager(object):
 
         if self.filename:
             cmd.append('--filename=' + ','.join(self.filename))
+            if self.recursive:
+                cmd.append('--recursive={}'.format(self.recursive))
         else:
             if not self.resource:
                 self.module.fail_json(msg='resource required to stop without filename')
@@ -278,6 +302,7 @@ def main():
             all=dict(default=False, type='bool'),
             log_level=dict(default=0, type='int'),
             state=dict(default='present', choices=['present', 'absent', 'latest', 'reloaded', 'stopped']),
+            recursive=dict(default=False, type='bool'),
             ),
             mutually_exclusive=[['filename', 'list']]
         )

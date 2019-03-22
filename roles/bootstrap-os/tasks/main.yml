@@ -3,6 +3,8 @@
   raw: cat /etc/os-release
   register: os_release
   changed_when: false
+  # This command should always run, even in check mode
+  check_mode: false
   environment: {}
 
 - include_tasks: bootstrap-ubuntu.yml
@@ -26,8 +28,6 @@
 - include_tasks: bootstrap-clearlinux.yml
   when: '"Clear Linux OS" in os_release.stdout'
 
-- import_tasks: setup-pipelining.yml
-
 - name: Create remote_tmp for it is used by another module
   file:
     path: "{{ lookup('config', 'DEFAULT_REMOTE_TMP', on_missing='skip', wantlist=True) | first | default('~/.ansible/tmp') }}"
@@ -41,13 +41,13 @@
 
 - name: Assign inventory name to unconfigured hostnames (non-CoreOS and Tumbleweed)
   hostname:
-    name: "{{inventory_hostname}}"
+    name: "{{ inventory_hostname }}"
   when:
     - override_system_hostname
     - ansible_os_family not in ['Suse', 'CoreOS', 'Container Linux by CoreOS', 'ClearLinux']
 
 - name: Assign inventory name to unconfigured hostnames (CoreOS and Tumbleweed only)
-  command: "hostnamectl set-hostname  {{inventory_hostname}}"
+  command: "hostnamectl set-hostname {{ inventory_hostname }}"
   register: hostname_changed
   when:
     - override_system_hostname

@@ -65,14 +65,39 @@
     kubeadm_token: "{{ temp_token.stdout }}"
 
 - name: Join to cluster if needed
-  command: >-
-    {{ bin_dir }}/kubeadm join
-    --config {{ kube_config_dir}}/kubeadm-client.conf
-    --ignore-preflight-errors=all
-  register: kubeadm_join
-  when: not is_kube_master and (not kubelet_conf.stat.exists)
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+  when: not is_kube_master and (not kubelet_conf.stat.exists)
+  block:
+
+    - name: Join to cluster
+      command: >-
+        {{ bin_dir }}/kubeadm join
+        --config {{ kube_config_dir}}/kubeadm-client.conf
+        --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+      register: kubeadm_join
+      async: 60
+      poll: 15
+
+  rescue:
+
+    - name: Join to cluster with ignores
+      command: >-
+        {{ bin_dir }}/kubeadm join
+        --config {{ kube_config_dir}}/kubeadm-client.conf
+        --ignore-preflight-errors=all
+      register: kubeadm_join
+      async: 60
+      poll: 15
+
+  always:
+
+    - name: Display kubeadm join stderr if any
+      when: kubeadm_join is failed
+      debug:
+        message: |
+          Joined with warnings
+          {{ kubeadm_join.stderr_lines }}
 
 - name: Wait for kubelet bootstrap to create config
   wait_for:
@@ -92,6 +117,33 @@
     - kubeadm_discovery_address != kube_apiserver_endpoint
   notify: restart kubelet
 
+- name: Update server field in kube-proxy kubeconfig
+  shell: >-
+    {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get configmap kube-proxy -n kube-system -o yaml
+    | sed 's#server:.*#server:\ {{ kube_apiserver_endpoint }}#g'
+    | {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+  when:
+    - kubeadm_config_api_fqdn is not defined
+    - is_kube_master
+    - kubeadm_discovery_address != kube_apiserver_endpoint
+    - not kube_proxy_remove
+  tags:
+    - kube-proxy
+
+- name: Restart all kube-proxy pods to ensure that they load the new configmap
+  shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
+  delegate_to: "{{groups['kube-master']|first}}"
+  run_once: true
+  when:
+    - kubeadm_config_api_fqdn is not defined
+    - is_kube_master
+    - kubeadm_discovery_address != kube_apiserver_endpoint
+    - not kube_proxy_remove
+  tags:
+    - kube-proxy
+
 # FIXME(mattymo): Reconcile kubelet kubeconfig filename for both deploy modes
 - name: Symlink kubelet kubeconfig for calico/canal
   file:
@@ -99,7 +151,9 @@
     dest: "{{ kube_config_dir }}/node-kubeconfig.yaml"
     state: link
     force: yes
-  when: kube_network_plugin in ['calico','canal']
+  when:
+    - kube_network_plugin in ['calico','canal']
+    - calico_version is version('v3.3.0', '<')
 
 # FIXME(jjo): need to post-remove kube-proxy until https://github.com/kubernetes/kubeadm/issues/776
 # is fixed

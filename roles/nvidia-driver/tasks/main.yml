@@ -1,0 +1,46 @@
+# - name: Get the distribution name (id)
+#   shell: . /etc/os-release; echo $ID
+#   register: distribution_id
+
+- name: Get the distribution minor version
+  shell: . /etc/os-release; echo $VERSION_ID | awk -F '.' '{print $2}'
+  register: distribution_minor
+
+- name: check if nvidia gpu exist in lspci
+  shell: "lspci | grep ' VGA '"
+  register: nvidia_device_lspci
+  ignore_errors: true
+
+
+- name: check if nvidia gpu exist in lshw
+  shell: "lshw -C display"
+  register: nvidia_device_lshw
+  ignore_errors: true
+
+
+- name: import task for Debian derivatives
+  #import_tasks: Ubuntu.yml
+  include: Ubuntu.yml
+  when: >
+    (ansible_distribution == "Ubuntu") and
+    (((nvidia_device_lspci is defined) and (nvidia_device_lspci.stdout.find('NVIDIA') != -1)) or
+    ((nvidia_device_lshw is defined) and (nvidia_device_lshw.stdout.find('NVIDIA') != -1)))
+
+# - name: import run file for debian support
+#   include_role:
+#       name: nvidia-driver-runfile
+#       tasks_from: nvidia-driver-runfile
+#   when: ansible_distribution == "Debian"
+
+- name: import task for Debian derivatives
+  #import_tasks: RedHat.yml
+  include: RedHat.yml
+  when: >
+    (ansible_distribution == "RedHat" or ansible_distribution == "CentOS") and
+    (((nvidia_device_lspci is defined) and (nvidia_device_lspci.stdout.find('NVIDIA') != -1)) or
+    ((nvidia_device_lshw is defined) and (nvidia_device_lshw.stdout.find('NVIDIA') != -1)))
+
+
+# - name: Enable persistence mode
+#   shell: nvidia-smi -pm 1
+#   ignore_errors: true

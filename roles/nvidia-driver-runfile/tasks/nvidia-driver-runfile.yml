@@ -1,0 +1,42 @@
+---
+  - name: wget nvidia driver {{ nvidia_driver }}
+    get_url: url={{ nvidia_url }} dest=/opt mode=700
+
+  - name: shutdown graphical interface, switch to runlevel 3
+    command: systemctl isolate multi-user.target
+
+  - name: unload previous nvidia drivers
+    shell: rmmod nvidia_uvm nvidia_drm nvidia_modeset nvidia || true
+
+  - name: unload the nouveau kernel module
+    modprobe:
+      name: nouveau
+      state: absent
+
+  - name: unload the nvidia kernel module
+    modprobe:
+      name: nvidia
+      state: absent
+    ignore_errors: yes
+
+  # Option not to install the kernel module
+  - name: install nvidia driver no kernel module
+    command: ./{{ nvidia_driver }} -a -s --disable-nouveau --install-libglvnd --no-kernel-module chdir=/opt
+    when: not kmod_install
+
+  # Option to install the kernel module
+  - name: install nvidia driver with kernel module
+    command: ./{{ nvidia_driver }} -a -s --disable-nouveau --install-libglvnd chdir=/opt
+    when: kmod_install
+
+  - name: copy nv-dev-create.sh
+    copy: src=nv-dev-create.sh dest=/usr/local/bin/nv-dev-create.sh mode=700
+    when: kmod_install
+
+  - name: run nv-dev-create.sh
+    command: /usr/local/bin/nv-dev-create.sh
+    when: kmod_install
+
+  - name: run nvidia-smi --persistence-mode=1
+    command: nvidia-smi --persistence-mode=1
+    when: kmod_install

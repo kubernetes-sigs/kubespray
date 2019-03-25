@@ -1,0 +1,89 @@
+---
+- name: check if nvidia driver exist
+  stat:
+    path: /usr/bin/nvidia-smi
+  register: nvidia_stat
+
+- block:
+
+  #- name: ensure nvidia-docker2 release key is registered (apt)
+  #  apt_key:
+  #    url: https://nvidia.github.io/nvidia-docker/gpgkey
+  #    state: present
+  #  when: ansible_os_family == 'Debian'
+
+  - name: ensure nvidia-docker2 release key is registered (apt)
+    shell: curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+    when: (ansible_os_family == 'Debian') and (airgap != true)
+
+  - name: Get the distribution name (id)
+    shell: . /etc/os-release; echo $ID
+    register: distribution_id
+
+  - name: Get the distribution minor version
+    shell: . /etc/os-release; echo $VERSION_ID | awk -F '.' '{print $2}'
+    register: distribution_minor
+
+  - name: Get the distribution minor version
+    shell: . /etc/os-release; echo $VERSION_ID
+    register: distribution_major
+
+  - name: add the nvidia-docker2 repo (Ubuntu)
+    shell: curl -s -L https://nvidia.github.io/nvidia-docker/{{ distribution_id.stdout }}{{ ansible_distribution_version }}/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+    when: (ansible_os_family == 'Debian') and (airgap != true)
+
+  - name: add the nvidia-docker2 repo (Debian)
+    shell: curl -s -L https://nvidia.github.io/nvidia-docker/{{ distribution_id.stdout }}{{ distribution_major.stdout }}/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+    when: (ansible_os_family == 'Debian') and (airgap != true)
+
+  - name: add the nvidia-docker2 repo (centos/rhel)
+    shell: curl -s -L https://nvidia.github.io/nvidia-docker/{{ distribution_id.stdout }}{{ distribution_major.stdout }}/nvidia-docker.repo | sudo tee /etc/yum.repos.d/nvidia-docker.repo
+    when: (ansible_os_family == 'RedHat' and (distribution_minor.stdout|int <= 5)) and (airgap != true)
+
+  ## Hack until nvidia-docker repo will support RHEL 7.6+
+  - name: add the nvidia-docker2 repo (centos/rhel)
+    shell: curl -s -L https://nvidia.github.io/nvidia-docker/{{ distribution_id.stdout }}7.5/nvidia-docker.repo | sudo tee /etc/yum.repos.d/nvidia-docker.repo
+    when: (ansible_os_family == 'RedHat' and (distribution_minor.stdout|int >= 6)) and (airgap != true)
+
+#  - name: "Install nvidia-docker2 (apt)"
+#    apt:
+#      name:
+#      state: present
+#      update_cache: yes
+#    when: ansible_os_family == 'Debian'
+#    with_items: "{{debian_nvidia_docker2}}"
+
+  - name: "Install nvidia-docker2 (apt)"
+    apt:
+      pkg: nvidia-docker2
+      state: present
+      install_recommends: no
+      update_cache: yes
+      autoremove: yes
+    when: ansible_os_family == 'Debian'
+
+  - name: "Install nvidia-docker2 (yum)"
+    yum:
+      name:
+      state: present
+      update_cache: yes
+    when: ansible_os_family == 'RedHat'
+    with_items: "{{rhel_nvidia_docker2}}"
+
+  - name: "Install nvidia-docker2 (yum) by shell"
+    shell: yum install "{{item}}" -y
+    when: ansible_os_family == 'RedHat'
+    with_items: "{{rhel_nvidia_docker2}}"
+
+#  - name: copy nvidia-docker daemon.json
+#    copy:
+#      src: files/daemon.json
+#      dest: /etc/docker/daemon.json
+#      owner: root
+#      group: root
+#      mode: 0644
+
+#  - name: restart dockerd
+#    command: pkill -SIGHUP dockerd
+
+  when: nvidia_stat.stat.exists == true

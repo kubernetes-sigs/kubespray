@@ -1,0 +1,49 @@
+---
+- name: check if nvidia docker installed
+  become: yes
+  stat:
+    path: /etc/nvidia-container-runtime/config.toml
+  changed_when: false
+  register: nvidia_docker_installed
+
+#- name: "Remove immutable flag"
+#  file: 
+#    path: /etc/docker/daemon.json
+#    state: file
+#    attributes: "e"
+
+- name: configure docker daemon.json
+  template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    mode: 0600
+    owner: root
+    group: root
+  notify: reload systemd docker
+  when: nvidia_docker_installed.stat.exists == true
+
+- name: configure docker daemon.json
+  template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    mode: 0600
+    owner: root
+    group: root
+  notify: reload systemd docker
+  vars:
+    docker_default_runtime: runc
+  when: nvidia_docker_installed.stat.exists == false
+
+- name: Docker kill HUP
+  shell: pkill -HUP dockerd
+  when: nvidia_docker_installed.stat.exists == false
+
+- name: "Add immutable flag"
+  file: 
+    path: /etc/docker/daemon.json
+    state: file
+    attributes: "i"
+
+- name: get docker default runtime
+  shell: 'docker info | grep "Default Runtime" | cut -d ":" -f 2 | xargs'
+  register: docker_default_runtime

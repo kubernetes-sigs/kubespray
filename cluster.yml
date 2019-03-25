@@ -20,6 +20,22 @@
     - { role: kubespray-defaults}
     - { role: bastion-ssh-config, tags: ["localhost", "bastion"]}
 
+- hosts: all
+  gather_facts: false
+  vars:
+    airgap: false
+    repository_address: "http://{{ ansible_default_ipv4.address }}:8080/"
+    master_ip: "{{ ansible_default_ipv4.address }}"
+  pre_tasks:
+    - block:
+       - name: 'clear all original repositories'
+         raw: if [ -f /etc/apt/sources.list ]; then mv /etc/apt/sources.list /etc/apt/sources.list.original; fi
+       - name: 'install local repository'
+         raw: echo "deb [arch=amd64 trusted=yes allow-insecure=yes] {{repository_address}} bionic main" > /etc/apt/sources.list
+      when: airgap == true
+    - name: 'install python and pip'
+      raw: apt-get update && apt-get install -y --no-install-recommends python python-pip
+
 - hosts: k8s-cluster:etcd:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   gather_facts: false
@@ -74,6 +90,10 @@
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes/node, tags: node }
+    - { role: nvidia-prerequisite, become: yes, tags: ["nvidia-driver"] }
+    - { role: nvidia-driver, become: yes, tags: ["nvidia-driver"] }
+    - { role: nvidia-docker, become: yes, tags: ["nvidia-docker"] }
+    #- { role: docker-settings, become: yes , tags: ["docker-settings"] }
   environment: "{{proxy_env}}"
 
 - hosts: kube-master

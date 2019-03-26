@@ -3,8 +3,8 @@
 #arguments
 function showhelp {
    echo "$@ -r <repository_address> -m <master_ip>"
-   echo "Online example: ./packages.sh --repository-address='http://192.168.20.221:8080' --master-ip='192.168.20.221'"
-   echo "Airgap example: ./packages.sh --airgap --repository-address='http://192.168.20.221:8080' --master-ip='192.168.20.221'"
+   echo "Online example: ./run.sh --repository-address 'http://192.168.20.221:8080' --master-ip '192.168.20.221'"
+   echo "Airgap example: ./run.sh --airgap --repository-address 'http://192.168.20.221:8080' --master-ip '192.168.20.221'"
 }
 
 ## Defaults
@@ -26,6 +26,7 @@ while [[ $# -gt 0 ]]; do
         ;;
         -a|--airgap)
         shift
+        #extra_vars='--extra-vars="@vars/airgap_download.yml"'
         airgap="true"
         ;;
         -m|--master-ip)
@@ -56,11 +57,12 @@ apt-get install -y --no-install-recommends python ansible sshpass python-pip
 #rm -rf ./packages/ansible_pip/
 
 ## ansible
-sudo ansible-playbook -i inventory/sample/hosts.ini \
+sudo ansible-playbook -vvvv -i inventory/sample/hosts.ini \
   --become --become-user=root \
   -e airgap=$airgap \
   -e master_ip=$master_ip \
   -e repository_address=$repository_address \
-  cluster.yml
+  cluster.yml \
+  #$extra_vars
 
 echo 'Done!'

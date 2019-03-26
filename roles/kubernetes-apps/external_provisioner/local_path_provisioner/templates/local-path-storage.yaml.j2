@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ local_path_provisioner_namespace }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: local-path-provisioner-service-account
+  namespace: {{ local_path_provisioner_namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: local-path-provisioner-role
+  namespace: {{ local_path_provisioner_namespace }}
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "persistentvolumeclaims"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["endpoints", "persistentvolumes", "pods"]
+  verbs: ["*"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: local-path-provisioner-bind
+  namespace: {{ local_path_provisioner_namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: local-path-provisioner-role
+subjects:
+- kind: ServiceAccount
+  name: local-path-provisioner-service-account
+  namespace: {{ local_path_provisioner_namespace }}
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: local-path-provisioner
+  namespace: {{ local_path_provisioner_namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: local-path-provisioner
+  template:
+    metadata:
+      labels:
+        app: local-path-provisioner
+    spec:
+      serviceAccountName: local-path-provisioner-service-account
+      containers:
+      - name: local-path-provisioner
+        image: {{ local_path_provisioner_image_repo }}:{{ local_path_provisioner_image_tag }}
+        imagePullPolicy: Always
+        command:
+        - local-path-provisioner
+        - start
+        - --config
+        - /etc/config/config.json
+{% if local_path_provisioner_debug|default(false) %}
+        - --debug
+{% endif %}
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config/
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+      volumes:
+        - name: config-volume
+          configMap:
+            name: local-path-config
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ local_path_provisioner_storage_class }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: {{ local_path_provisioner_is_default_storageclass }}
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: {{ local_path_provisioner_reclaim_policy }}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: local-path-config
+  namespace: {{ local_path_provisioner_namespace }}
+data:
+  config.json: |-
+        {
+                "nodePathMap":[
+                {
+                        "node":"DEFAULT_PATH_FOR_NON_LISTED_NODES",
+                        "paths":["{{ local_path_provisioner_claim_root }}"]
+                }
+                ]
+        }
+

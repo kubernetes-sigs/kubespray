@@ -1,10 +1,4 @@
 ---
-- name: Stop if ansible version is too low
-  assert:
-    that:
-      - ansible_version.full is version('2.3.0', '>=')
-  run_once: yes
-
 - name: Stop if either kube-master, kube-node or etcd is empty
   assert:
     that: groups.get('{{ item }}')
@@ -142,8 +136,11 @@
 - name: "Get current version of calico cluster version"
   shell: "{{ bin_dir }}/calicoctl version  | grep 'Cluster Version:' | awk '{ print $3}'"
   register: calico_version_on_server
+  async: 10
+  poll: 3
   run_once: yes
   delegate_to: "{{ groups['kube-master'][0] }}"
+  changed_when: false
   when:
     - kube_network_plugin == 'calico'
 
@@ -162,15 +159,15 @@
 - name: "Check that kube_service_addresses is a network range"
   assert:
     that:
-      - kube_service_addresses | ipaddr
-    msg: "kube_service_addresses is not a valid network range"
+      - kube_service_addresses | ipaddr('net')
+    msg: "kube_service_addresses = '{{ kube_service_addresses }}' is not a valid network range"
   run_once: yes
 
 - name: "Check that kube_pods_subnet is a network range"
   assert:
     that:
-      - kube_pods_subnet | ipaddr
-    msg: "kube_pods_subnet is not a valid network range"
+      - kube_pods_subnet | ipaddr('net')
+    msg: "kube_pods_subnet = '{{ kube_pods_subnet }}' is not a valid network range"
   run_once: yes
 
 - name: "Check that kube_pods_subnet does not collide with kube_service_addresses"

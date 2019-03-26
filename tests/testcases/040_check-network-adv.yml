@@ -37,7 +37,7 @@
       run_once: true
       delegate_to: "{{groups['kube-master'][0]}}"
       register: nca_pod
-      until: nca_pod.stdout_lines|length >= groups['k8s-cluster']|intersect(play_hosts)|length * 2
+      until: nca_pod.stdout_lines|length >= groups['k8s-cluster']|intersect(ansible_play_hosts)|length * 2
       retries: 3
       delay: 10
       failed_when: false
@@ -64,13 +64,17 @@
       delay: "{{ agent_report_interval }}"
       until: agents.content|length > 0 and
         agents.content[0] == '{' and
-        agents.content|from_json|length >= groups['k8s-cluster']|intersect(play_hosts)|length * 2
+        agents.content|from_json|length >= groups['k8s-cluster']|intersect(ansible_play_hosts)|length * 2
       failed_when: false
       no_log: true
 
     - debug: var=agents.content|from_json
       failed_when: not agents is success and not agents.content=='{}'
       run_once: true
+      when:
+        - agents.content is defined
+        - agents.content != ''
+        - agents.content[0] == '{'
 
     - name: Check netchecker status
       uri: url=http://{{ ansible_default_ipv4.address }}:{{netchecker_port}}/api/v1/connectivity_check status_code=200 return_content=yes
@@ -116,6 +120,7 @@
       run_once: true
       when:
         - not agents.content == '{}'
+        - result.content != ''
         - result.content[0] == '{'
 
     - debug: var=result
@@ -123,7 +128,6 @@
       run_once: true
       when:
         - not agents.content == '{}'
-        - result.content[0] != '{'
 
     - debug: msg="Cannot get reports from agents, consider as PASSING"
       run_once: true

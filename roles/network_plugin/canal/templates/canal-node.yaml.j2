@@ -57,7 +57,49 @@ spec:
           hostPath:
             path: /run/xtables.lock
             type: FileOrCreate
+{% if calico_version is version('v3.4.0', '>=') %}
+      initContainers:
+        # This container installs the Calico CNI binaries
+        # and CNI network config file on each node.
+        - name: install-cni
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          command: ["/install-cni.sh"]
+          env:
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "10-canal.conflist"
+            # CNI binaries are already on the host
+            - name: UPDATE_CNI_BINARIES
+              value: "false"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG_FILE
+              value: "/host/etc/cni/net.d/canal.conflist.template"
+            # Prevents the container from sleeping forever.
+            - name: SLEEP
+              value: "false"
+          volumeMounts:
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+{% endif %}
       containers:
+{% if calico_version is version('v3.3.0', '>=') and calico_version is version('v3.4.0', '<') %}
+        - name: install-cni
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          command: ["/install-cni.sh"]
+          env:
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "10-canal.conflist"
+            # CNI binaries are already on the host
+            - name: UPDATE_CNI_BINARIES
+              value: "false"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG_FILE
+              value: "/host/etc/cni/net.d/canal.conflist.template"
+          volumeMounts:
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+{% endif %}
         # Runs the flannel daemon to enable vxlan networking between
         # container hosts.
         - name: flannel
@@ -209,9 +251,17 @@ spec:
             initialDelaySeconds: 10
             failureThreshold: 6
           readinessProbe:
+{% if calico_version is version('v3.3.0', '<')%}
             httpGet:
               path: /readiness
               port: 9099
+{% else %}
+            exec:
+              command:
+              - /bin/calico-node
+              - -bird-ready
+              - -felix-ready
+{% endif %}
             periodSeconds: 10
           volumeMounts:
             - mountPath: /lib/modules

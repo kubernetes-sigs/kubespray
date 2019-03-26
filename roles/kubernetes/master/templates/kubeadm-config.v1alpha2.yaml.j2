@@ -83,6 +83,12 @@ apiServerExtraArgs:
 {%   if kube_oidc_groups_claim is defined %}
   oidc-groups-claim: {{ kube_oidc_groups_claim }}
 {%   endif %}
+{%   if kube_oidc_username_prefix is defined %}
+  oidc-username-prefix: {{ kube_oidc_username_prefix }}
+{%   endif %}
+{%   if kube_oidc_groups_prefix is defined %}
+  oidc-groups-prefix: {{ kube_oidc_groups_prefix }}
+{%   endif %}
 {% endif %}
 {% if kube_webhook_token_auth|default(false) %}
   authentication-token-webhook-config-file: {{ kube_config_dir }}/webhook-token-auth-config.yaml
@@ -149,7 +155,7 @@ controllerManagerExtraVolumes:
   mountPath: {{ kube_config_dir }}/cloud_config
 {% endif %}
 {% endif %}
-{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) or kube_webhook_token_auth|default(false) %}
+{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) or kube_webhook_token_auth|default(false) or ssl_ca_dirs|length %}
 apiServerExtraVolumes:
 {% if kube_basic_auth|default(true) %}
 - name: basic-auth-config
@@ -176,6 +182,14 @@ apiServerExtraVolumes:
   mountPath: {{ audit_log_mountpath }}
   writable: true
 {% endif %}
+{% endif %}
+{% if ssl_ca_dirs|length %}
+{% for dir in ssl_ca_dirs %}
+- name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+  hostPath: {{ dir }}
+  mountPath: {{ dir }}
+  writable: false
+{% endfor %}
 {% endif %}
 {% endif %}
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}

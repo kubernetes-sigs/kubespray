@@ -31,14 +31,62 @@ spec:
       hostNetwork: true
       serviceAccountName: calico-node
       tolerations:
-        - operator: Exists
+        - effect: NoExecute
+          operator: Exists
+        - effect: NoSchedule
+          operator: Exists
         # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
         - key: CriticalAddonsOnly
           operator: "Exists"
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 0
+{% if calico_version is version('v3.4.0', '>=') %}
+      initContainers:
+        # This container installs the Calico CNI binaries
+        # and CNI network config file on each node.
+        - name: install-cni
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          command: ["/install-cni.sh"]
+          env:
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "10-calico.conflist"
+            # CNI binaries are already on the host
+            - name: UPDATE_CNI_BINARIES
+              value: "false"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG_FILE
+              value: "/host/etc/cni/net.d/calico.conflist.template"
+            # Prevents the container from sleeping forever.
+            - name: SLEEP
+              value: "false"
+          volumeMounts:
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+{% endif %}
       containers:
+{% if calico_version is version('v3.3.0', '>=') and calico_version is version('v3.4.0', '<') %}
+        - name: install-cni
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          command: ["/install-cni.sh"]
+          env:
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "10-calico.conflist"
+            # CNI binaries are already on the host
+            - name: UPDATE_CNI_BINARIES
+              value: "false"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG_FILE
+              value: "/host/etc/cni/net.d/calico.conflist.template"
+            # Prevents the container from sleeping forever.
+            - name: SLEEP
+              value: "false"
+          volumeMounts:
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+{% endif %}
         # Runs calico/node container on each Kubernetes node.  This
         # container programs network policy and routes on each
         # host.
@@ -76,6 +124,10 @@ spec:
               value: "{{ calico_endpoint_to_host_action|default('RETURN') }}"
             - name: FELIX_HEALTHHOST
               value: "{{ calico_healthhost }}"
+{% if kube_proxy_mode == 'ipvs' and kube_apiserver_node_port_range is defined %}
+            - name: FELIX_KUBENODEPORTRANGES
+              value: "{{ kube_apiserver_node_port_range.split('-')[0] }}:{{ kube_apiserver_node_port_range.split('-')[1] }}"
+{% endif %}
             # Prior to v3.2.1 iptables didn't acquire the lock, so Calico's own implementation of the lock should be used,
             # this is not required in later versions https://github.com/projectcalico/calico/issues/2179
 {% if calico_version is version('v3.2.1', '<') %}
@@ -107,6 +159,10 @@ spec:
               value: "{{ calico_felix_prometheusgometricsenabled }}"
             - name: FELIX_PROMETHEUSPROCESSMETRICSENABLED
               value: "{{ calico_felix_prometheusprocessmetricsenabled }}"
+{% if calico_version is version('v3.4.0', '>=') and calico_advertise_cluster_ips|default(false) %}
+            - name: CALICO_ADVERTISE_CLUSTER_IPS
+              value: "{{ kube_service_addresses }}"
+{% endif %}
             # Location of the CA certificate for etcd.
             - name: ETCD_CA_CERT_FILE
               valueFrom:
@@ -162,10 +218,18 @@ spec:
             initialDelaySeconds: 10
             failureThreshold: 6
           readinessProbe:
+{% if calico_version is version('v3.3.0', '<') %}
             httpGet:
               host: 127.0.0.1
               path: /readiness
               port: 9099
+{% else %}
+            exec:
+              command:
+              - /bin/calico-node
+              - -bird-ready
+              - -felix-ready
+{% endif %}
             periodSeconds: 10
           volumeMounts:
             - mountPath: /lib/modules
@@ -193,9 +257,6 @@ spec:
           hostPath:
             path: /var/lib/calico
         # Used to install CNI.
-        - name: cni-bin-dir
-          hostPath:
-            path: /opt/cni/bin
         - name: cni-net-dir
           hostPath:
             path: /etc/cni/net.d

@@ -90,6 +90,12 @@ apiServer:
 {%   if kube_oidc_groups_claim is defined %}
     oidc-groups-claim: {{ kube_oidc_groups_claim }}
 {%   endif %}
+{%   if kube_oidc_username_prefix is defined %}
+    oidc-username-prefix: {{ kube_oidc_username_prefix }}
+{%   endif %}
+{%   if kube_oidc_groups_prefix is defined %}
+    oidc-groups-prefix: {{ kube_oidc_groups_prefix }}
+{%   endif %}
 {% endif %}
 {% if kube_webhook_token_auth|default(false) %}
     authentication-token-webhook-config-file: {{ kube_config_dir }}/webhook-token-auth-config.yaml
@@ -121,7 +127,7 @@ apiServer:
 {% elif cloud_provider is defined and cloud_provider in ["external"] %}
     cloud-config: {{ kube_config_dir }}/cloud_config
 {% endif %}
-{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) or kube_webhook_token_auth|default(false) or ( cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] ) or apiserver_extra_volumes %}
+{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) or kube_webhook_token_auth|default(false) or ( cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] ) or apiserver_extra_volumes or ssl_ca_dirs|length %}
   extraVolumes:
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}
   - name: cloud-config
@@ -160,6 +166,14 @@ apiServer:
     mountPath: {{ volume.mountPath }}
     readOnly: {{ volume.readOnly | d(not (volume.writable | d(false))) }}
 {% endfor %}
+{% if ssl_ca_dirs|length %}
+{% for dir in ssl_ca_dirs %}
+  - name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+    hostPath: {{ dir }}
+    mountPath: {{ dir }}
+    readOnly: true
+{% endfor %}
+{% endif %}
 {% endif %}
   certSANs:
 {% for san in apiserver_sans.split() | unique %}
@@ -172,7 +186,11 @@ controllerManager:
     node-monitor-period: {{ kube_controller_node_monitor_period }}
     pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
     node-cidr-mask-size: "{{ kube_network_node_prefix }}"
+{% if kube_version is version('v1.14', '<') %}
+    address: {{ kube_controller_manager_bind_address }}
+{% else %}
     bind-address: {{ kube_controller_manager_bind_address }}
+{% endif %}
 {% if kube_feature_gates %}
     feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -206,7 +224,11 @@ controllerManager:
 {% endif %}
 scheduler:
   extraArgs:
+{% if kube_version is version('v1.14', '<') %}
+    address: {{ kube_scheduler_bind_address }}
+{% else %}
     bind-address: {{ kube_scheduler_bind_address }}
+{% endif %}
 {% if kube_feature_gates %}
     feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -245,6 +267,7 @@ conntrack:
  tcpEstablishedTimeout: {{ kube_proxy_conntrack_tcp_established_timeout }}
 enableProfiling: {{ kube_proxy_enable_profiling }}
 healthzBindAddress: {{ kube_proxy_healthz_bind_address }}
+hostnameOverride: {{ kube_override_hostname }}
 iptables:
  masqueradeAll: {{ kube_proxy_masquerade_all }}
  masqueradeBit: {{ kube_proxy_masquerade_bit }}

@@ -17,6 +17,8 @@
 #
 # Advanced usage:
 # Add another host after initial creation: inventory.py 10.10.1.5
+# Add range of hosts: inventory.py 10.10.1.3-10.10.1.5
+# Add hosts with different ip and access ip: inventory.py 10.0.0.1,192.168.10.1 10.0.0.2,192.168.10.2 10.0.0.3,192.168.10.3
 # Delete a host: inventory.py -10.10.1.3
 # Delete a host by id: inventory.py -node1
 #
@@ -44,6 +46,7 @@ AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'load']
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
                    '0': False, 'no': False, 'false': False, 'off': False}
 yaml = YAML()
+yaml.Representer.add_representer(OrderedDict, yaml.Representer.represent_dict)
 
 
 def get_var_as_bool(name, default):
@@ -125,15 +128,13 @@ class KubesprayInventory(object):
             if group == 'all':
                 self.debug("Adding group {0}".format(group))
                 if group not in self.yaml_config:
-                    self.yaml_config = {'all':
-                                        {'hosts': {},
-                                         'vars':
-                                         {'ansible_user': 'centos'},
-                                         'children': {}}}
+                    all_dict = OrderedDict([('hosts', OrderedDict({})),
+                                            ('children', OrderedDict({}))])
+                    self.yaml_config = {'all': all_dict }
             else:
                 self.debug("Adding group {0}".format(group))
                 if group not in self.yaml_config['all']['children']:
-                    self.yaml_config['all']['children'][group] = {'hosts': None}
+                    self.yaml_config['all']['children'][group] = {'hosts': {}}
 
     def get_host_id(self, host):
         '''Returns integer host ID (without padding) from a given hostname.'''
@@ -169,18 +170,23 @@ class KubesprayInventory(object):
                     self.debug("Marked {0} for deletion.".format(realhost))
                     self.delete_host_by_ip(all_hosts, realhost)
             elif host[0].isdigit():
+                if ',' in host:
+                    ip, access_ip = host.split(',')
+                else:
+                    ip = host
+                    access_ip = host
                 if self.exists_hostname(all_hosts, host):
                     self.debug("Skipping existing host {0}.".format(host))
                     continue
-                elif self.exists_ip(all_hosts, host):
-                    self.debug("Skipping existing host {0}.".format(host))
+                elif self.exists_ip(all_hosts, ip):
+                    self.debug("Skipping existing host {0}.".format(ip))
                     continue
 
                 next_host = "{0}{1}".format(HOST_PREFIX, next_host_id)
                 next_host_id += 1
-                all_hosts[next_host] = {'ansible_host': host,
-                                        'ip': host,
-                                        'access_ip': host}
+                all_hosts[next_host] = {'ansible_host': access_ip,
+                                        'ip': ip,
+                                        'access_ip': access_ip}
             elif host[0].isalpha():
                 raise Exception("Adding hosts by hostname is not supported.")
 
@@ -235,7 +241,7 @@ class KubesprayInventory(object):
             all_hosts = self.yaml_config['all']['hosts'].copy()
             for host in all_hosts.keys():
                 if host not in hostnames and host not in protected_names:
-                    self.debug("Host {0} removed from role all")
+                    self.debug("Host {0} removed from role all".format(host))
                     del self.yaml_config['all']['hosts'][host]
 
     def add_host_to_group(self, group, host, opts=""):
@@ -346,6 +352,8 @@ print_ips - Write a space-delimited list of IPs from "all" group
 
 Advanced usage:
 Add another host after initial creation: inventory.py 10.10.1.5
+Add range of hosts: inventory.py 10.10.1.3-10.10.1.5
+Add hosts with different ip and access ip: inventory.py 10.0.0.1,192.168.10.1 10.0.0.2,192.168.10.2 10.0.0.3,192.168.10.3
 Delete a host: inventory.py -10.10.1.3
 Delete a host by id: inventory.py -node1
 

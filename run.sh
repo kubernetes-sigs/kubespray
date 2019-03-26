@@ -37,26 +37,23 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-## ubuntu
+# add aptly repo to sources.list
+grep -i "$repository_address" /etc/apt/sources.list > /dev/null 2>&1
+if [ $? != 0 ]; then
+  mkdir -p /etc/apt-orig
+  rsync -a --ignore-existing /etc/apt/ /etc/apt-orig/
+  rm -rf /etc/apt/sources.list.d/*
+  echo "deb [arch=amd64 trusted=yes] $repository_address bionic main" > /etc/apt/sources.list
+fi
 
-#backup orig apt
-mkdir -p /etc/apt-orig
-rsync -a --ignore-existing /etc/apt/ /etc/apt-orig/
-rm -rf /etc/apt/sources.list.d/*
+# install ansible and pip
+dpkg-query -l python ansible python-pip > /dev/null 2>&1
+if [ $? != 0 ]; then
+  apt-get update
+  apt-get install -y --no-install-recommends python ansible python-pip
+fi
 
-#add aptly repo to sources.list
-echo "deb [arch=amd64 trusted=yes allow-insecure=yes] $repository_address bionic main" > /etc/apt/sources.list
-
-#install ansible and pip
-apt-get update
-apt-get install -y --no-install-recommends python ansible sshpass python-pip
-#mkdir -p ./packages/ansible_pip
-#tar -C ./packages/ansible_pip -xzf ./packages/ansible_pip.tar.gz
-#dpkg --install --refuse-downgrade --skip-same-version ./packages/ansible_pip/*.deb
-#dpkg --install --refuse-downgrade --skip-same-version ./packages/sshpass_1.06-1_amd64.deb
-#rm -rf ./packages/ansible_pip/
-
-## ansible
+# run ansible playbook
 sudo ansible-playbook -vvvv -i inventory/sample/hosts.ini \
   --become --become-user=root \
   -e airgap=$airgap \

@@ -197,8 +197,14 @@ class KubesprayInventory(object):
         reworked_hosts = []
 
         def ips(start_address, end_address):
-            start = int(ip_address(start_address).packed.hex(), 16)
-            end = int(ip_address(end_address).packed.hex(), 16)
+            try:
+                # Python 3.x
+                start = int(ip_address(start_address))
+                end   = int(ip_address(end_address))
+            except:
+                # Python 2.7
+                start = int(ip_address(unicode(start_address)))
+                end   = int(ip_address(unicode(end_address)))
             return [ip_address(ip).exploded for ip in range(start, end+1)]
 
         for host in hosts:

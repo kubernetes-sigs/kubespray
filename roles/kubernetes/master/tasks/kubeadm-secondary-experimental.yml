@@ -1,0 +1,39 @@
+---
+- name: Set kubeadm_discovery_address
+  set_fact:
+    kubeadm_discovery_address: >-
+      {%- if "127.0.0.1" in kube_apiserver_endpoint or "localhost" in kube_apiserver_endpoint -%}
+      {{ first_kube_master }}:{{ kube_apiserver_port }}
+      {%- else -%}
+      {{ kube_apiserver_endpoint }}
+      {%- endif %}
+  tags:
+    - facts
+
+- name: Create kubeadm ControlPlane config
+  template:
+    src: "kubeadm-controlplane.{{ kubeadmConfig_api_version }}.yaml.j2"
+    dest: "{{ kube_config_dir }}/kubeadm-controlplane.yaml"
+    backup: yes
+  when:
+    - inventory_hostname != groups['kube-master']|first
+    - not kubeadm_already_run.stat.exists
+
+- name: Joining control plane node to the cluster.
+  command: >-
+    {{ bin_dir }}/kubeadm join
+    --config {{ kube_config_dir}}/kubeadm-controlplane.yaml
+    --ignore-preflight-errors=all
+    {% if kubeadm_certificate_key is defined %}
+    --certificate-key={{ kubeadm_certificate_key }}
+    {% endif %}
+  register: kubeadm_join_control_plane
+  when:
+    - inventory_hostname != groups['kube-master']|first
+    - not kubeadm_already_run.stat.exists
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+
+- name: Set secret_changed to false to avoid extra token rotation
+  set_fact:
+    secret_changed: false

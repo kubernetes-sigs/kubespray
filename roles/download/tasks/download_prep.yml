@@ -1,0 +1,42 @@
+---
+# Use the same format for Containerd images as for Docker images
+# ctr doesn't have inspect command
+
+- name: Set image info command for containerd
+  set_fact:
+    image_info_command: "{{ containerd_bin_dir }}/ctr images ls | tail -n +2 | awk -F '[ :]+' '{print $1\":\"$2\",\"$1\":\"$4\"@\"$5}' | tr '\n' ','"
+  when: container_manager == 'containerd'
+
+- name: Register docker images info
+  shell: "{{ image_info_command }}"
+  no_log: true
+  register: docker_images
+  failed_when: false
+  changed_when: false
+  check_mode: no
+  when: download_container
+
+- name: container_download | Create dest directory for saved/loaded container images
+  file:
+    path: "{{ local_release_dir }}/containers"
+    state: directory
+    recurse: yes
+    mode: 0755
+    owner: "{{ ansible_ssh_user|default(ansible_user_id) }}"
+  when: download_container
+
+- name: container_download | create local directory for saved/loaded container images
+  file:
+    path: "{{ local_release_dir }}/containers"
+    state: directory
+    recurse: yes
+  delegate_to: localhost
+  delegate_facts: false
+  become: false
+  run_once: true
+  when:
+    - download_run_once
+    - download_delegate == 'localhost'
+    - download_container
+  tags:
+    - localhost

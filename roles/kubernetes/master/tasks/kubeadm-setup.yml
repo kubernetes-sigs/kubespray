@@ -114,7 +114,7 @@
 - name: set kubeadm certificate key
   set_fact:
     kubeadm_certificate_key: "{{ item | regex_search('--certificate-key ([^ ]+)','\\1') | first }}"
-  with_items: "{{ (kubeadm_init_output|default({'stdout_lines': []}))['stdout_lines'] }}"
+  with_items: "{{ (kubeadm_init|default({'stdout_lines': []}))['stdout_lines'] }}"
   run_once: yes
   when:
     - kubeadm_version is version('v1.14.0', '>=')
@@ -126,7 +126,9 @@
   command: "{{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create"
   run_once: true
   register: temp_token
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  retries: 5
+  delay: 5
+  until: temp_token is succeeded
   when: kubeadm_token is not defined
   tags:
     - kubeadm_token

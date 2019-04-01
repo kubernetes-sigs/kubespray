@@ -1,0 +1,27 @@
+[Unit]
+Description=calico-rr
+After=containerd.service
+Requires=containerd.service
+
+[Service]
+EnvironmentFile=/etc/calico/calico-rr.env
+ExecStartPre=-{{ containerd_bin_dir }}/ctr t delete -f calico-rr
+ExecStart={{ containerd_bin_dir }}/ctr run --net-host --privileged \
+ --env IP=${IP} \
+ --env IP6=${IP6} \
+ --env ETCD_ENDPOINTS=${ETCD_ENDPOINTS} \
+ --env ETCD_CA_CERT_FILE=${ETCD_CA_CERT_FILE} \
+ --env ETCD_CERT_FILE=${ETCD_CERT_FILE} \
+ --env ETCD_KEY_FILE=${ETCD_KEY_FILE} \
+ --mount type=bind,src=/var/log/calico-rr,dst=/var/log/calico,options=rbind:rw \
+ --mount type=bind,src={{ calico_cert_dir }},dst={{ calico_cert_dir }},options=rbind:ro \
+ {{ calico_rr_image_repo }}:{{ calico_rr_image_tag }} \
+ calico-rr
+
+Restart=always
+RestartSec=10s
+
+ExecStop=-{{ containerd_bin_dir }}/ctr c rm calico-rr
+
+[Install]
+WantedBy=multi-user.target

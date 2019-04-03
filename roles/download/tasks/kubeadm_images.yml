@@ -1,8 +1,18 @@
 ---
+- name: kubeadm | Create kube config dir
+  file:
+    path: "{{ kube_config_dir }}"
+    state: directory
+  delegate_to: "{{ download_delegate }}"
+  run_once: true
+  when: download_run_once
+
 - name: kubeadm | Create kubeadm config
   template:
     src: "kubeadm-images.yaml.j2"
     dest: "{{ kube_config_dir }}/kubeadm-images.yaml"
+  delegate_to: "{{ download_delegate if download_run_once or omit }}"
+  run_once: "{{ download_run_once }}"
 
 - name: kubeadm | Copy kubeadm binary from download dir
   synchronize:
@@ -13,12 +23,54 @@
     owner: no
     group: no
   delegate_to: "{{ inventory_hostname }}"
+  when: not download_run_once
+
+- name: kubeadm | Copy kubeadm binary from download dir (download_delegate)
+  copy:
+    src: "{{ local_release_dir }}/kubeadm-{{ kubeadm_version }}-{{ image_arch }}"
+    dest: "{{ bin_dir }}/kubeadm"
+  delegate_to: "{{ download_delegate }}"
+  when: download_run_once
 
 - name: kubeadm | Set kubeadm binary permissions
   file:
     path: "{{ bin_dir }}/kubeadm"
     mode: "0755"
     state: file
+  delegate_to: "{{ download_delegate if download_run_once or omit }}"
+  run_once: "{{ download_run_once }}"
 
 - name: container_download | download images for kubeadm config images
   command: "{{ bin_dir }}/kubeadm config images pull --config={{ kube_config_dir }}/kubeadm-images.yaml"
+  delegate_to: "{{ download_delegate if download_run_once or omit }}"
+  run_once: "{{ download_run_once }}"
+
+- name: container_download | fetch list of kubeadm config images
+  command: "{{ bin_dir }}/kubeadm config images list --config={{ kube_config_dir }}/kubeadm-images.yaml"
+  delegate_to: "{{ download_delegate }}"
+  register: result
+  run_once: true
+  when: download_run_once
+  changed_when: false
+
+- vars:
+    kubeadm_images_list: "{{ result.stdout_lines }}"
+  set_fact:
+    kubeadm_image:
+      key: "kubeadm_{{ (item | regex_replace('^(?:.*\\/)*','')).split(':')[0] }}"
+      value:
+        enabled: true
+        container: true
+        repo: "{{ item.split(':')[0] }}"
+        tag: "{{ item.split(':')[1] }}"
+        groups:
+          - k8s-cluster
+  loop: "{{ kubeadm_images_list | flatten(levels=1) }}"
+  run_once: true
+  when: download_run_once
+  register: result_images
+
+- set_fact:
+    kubeadm_images: "{{ result_images.results | map(attribute='ansible_facts.kubeadm_image') | list | items2dict }}"
+  run_once: true
+  when: download_run_once

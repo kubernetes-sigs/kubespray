@@ -739,3 +739,72 @@ tox-inventory-builder:
     - cd contrib/inventory_builder && tox
   when: manual
   except: ['triggers', 'master']
+
+
+# Tests for contrib/terraform/
+.terraform_install: &terraform_install
+  <<: *job
+  before_script:
+    # Set Ansible config
+    - cp ansible.cfg ~/.ansible.cfg
+    # Install Terraform
+    - apt-get install -y unzip
+    - curl https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip > /tmp/terraform.zip
+    - unzip /tmp/terraform.zip && mv ./terraform /usr/local/bin/ && terraform --version
+    # Prepare inventory
+    - cp -LRp contrib/terraform/$PROVIDER/sample-inventory inventory/$CLUSTER
+    - cd inventory/$CLUSTER
+    - ln -s ../../contrib/terraform/$PROVIDER/hosts
+    - terraform init ../../contrib/terraform/$PROVIDER
+    # Copy SSH keypair
+    - mkdir -p ~/.ssh
+    - echo "$PACKET_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
+    - chmod 400 ~/.ssh/id_rsa
+    - echo "$PACKET_PUBLIC_KEY" | base64 -d > ~/.ssh/id_rsa.pub
+    - export TF_VAR_public_key_path=""
+  only: ['master', /^pr-.*$/]
+
+.terraform_validate: &terraform_validate
+  <<: *terraform_install
+  stage: unit-tests
+  script:
+    - terraform validate -var-file=cluster.tf ../../contrib/terraform/$PROVIDER
+
+.terraform_apply: &terraform_apply
+  <<: *terraform_install
+  stage: deploy-part2
+  when: manual
+  script:
+    - terraform apply -auto-approve ../../contrib/terraform/$PROVIDER
+    - ansible-playbook -i hosts ../../cluster.yml
+  after_script:
+    # Cleanup regardless of exit code
+    - cd inventory/$CLUSTER
+    - terraform destroy -auto-approve ../../contrib/terraform/$PROVIDER
+
+tf-validate-openstack:
+  <<: *terraform_validate
+  variables:
+    TF_VERSION: 0.11.11
+    PROVIDER: openstack
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-validate-packet:
+  <<: *terraform_validate
+  variables:
+    TF_VERSION: 0.11.11
+    PROVIDER: packet
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-apply-packet:
+  <<: *terraform_apply
+  variables:
+    TF_VERSION: 0.11.11
+    PROVIDER: packet
+    CLUSTER: $CI_COMMIT_REF_NAME
+    TF_VAR_cluster_name: $CI_COMMIT_REF_NAME
+    TF_VAR_number_of_k8s_masters: "1"
+    TF_VAR_number_of_k8s_nodes: "1"
+    TF_VAR_plan_k8s_masters: t1.small.x86
+    TF_VAR_plan_k8s_nodes: t1.small.x86
+    TF_VAR_facility: "ewr1"

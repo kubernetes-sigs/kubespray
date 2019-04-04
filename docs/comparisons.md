@@ -22,6 +22,6 @@ world, plus some initial K8s clustering (with networking plugins included) and
 control plane bootstrapping. 
 
 Kubespray supports `kubeadm` for cluster creation since v2.3 
-(and deprecated non-kubeadm deployment starting from v2.8)
+(and also support non-kubeadm deployment in centosadmin/kubespray fork)
 in order to consume life cycle management domain knowledge from it
 and offload generic OS configuration things from it, which hopefully benefits both sides.

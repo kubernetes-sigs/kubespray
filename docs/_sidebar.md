@@ -25,7 +25,6 @@
   * [Atomic](docs/atomic.md)
   * [Debian](docs/debian.md)
   * [Coreos](docs/coreos.md)
-  * [OpenSUSE](docs/opensuse.md)
 * Advanced
   * [Proxy](/docs/proxy.md)
   * [Downloads](docs/downloads.md)

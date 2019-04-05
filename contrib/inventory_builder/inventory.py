@@ -18,7 +18,8 @@
 # Advanced usage:
 # Add another host after initial creation: inventory.py 10.10.1.5
 # Add range of hosts: inventory.py 10.10.1.3-10.10.1.5
-# Add hosts with different ip and access ip: inventory.py 10.0.0.1,192.168.10.1 10.0.0.2,192.168.10.2 10.0.0.3,192.168.10.3
+# Add hosts with different ip and access ip:
+# inventory.py 10.0.0.1,192.168.10.1 10.0.0.2,192.168.10.2 10.0.0.3,192.168.1.3
 # Delete a host: inventory.py -10.10.1.3
 # Delete a host by id: inventory.py -node1
 #
@@ -33,6 +34,7 @@
 #        ip: X.X.X.X
 
 from collections import OrderedDict
+from ipaddress import ip_address
 from ruamel.yaml import YAML
 
 import os
@@ -54,6 +56,7 @@ def get_var_as_bool(name, default):
     return _boolean_states.get(value.lower(), default)
 
 # Configurable as shell vars start
+
 
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory/sample/hosts.yaml")
 # Reconfigures cluster distribution at scale
@@ -130,7 +133,7 @@ class KubesprayInventory(object):
                 if group not in self.yaml_config:
                     all_dict = OrderedDict([('hosts', OrderedDict({})),
                                             ('children', OrderedDict({}))])
-                    self.yaml_config = {'all': all_dict }
+                    self.yaml_config = {'all': all_dict}
             else:
                 self.debug("Adding group {0}".format(group))
                 if group not in self.yaml_config['all']['children']:
@@ -140,7 +143,7 @@ class KubesprayInventory(object):
         '''Returns integer host ID (without padding) from a given hostname.'''
         try:
             short_hostname = host.split('.')[0]
-            return int(re.findall("\d+$", short_hostname)[-1])
+            return int(re.findall("\\d+$", short_hostname)[-1])
         except IndexError:
             raise ValueError("Host name must end in an integer")
 
@@ -193,7 +196,6 @@ class KubesprayInventory(object):
         return all_hosts
 
     def range2ips(self, hosts):
-        from ipaddress import ip_address
         reworked_hosts = []
 
         def ips(start_address, end_address):
@@ -205,7 +207,7 @@ class KubesprayInventory(object):
                 # Python 2.7
                 start = int(ip_address(unicode(start_address)))
                 end   = int(ip_address(unicode(end_address)))
-            return [ip_address(ip).exploded for ip in range(start, end+1)]
+            return [ip_address(ip).exploded for ip in range(start, end + 1)]
 
         for host in hosts:
             if '-' in host and not host.startswith('-'):
@@ -236,12 +238,13 @@ class KubesprayInventory(object):
 
     def purge_invalid_hosts(self, hostnames, protected_names=[]):
         for role in self.yaml_config['all']['children']:
-            if role != 'k8s-cluster' and self.yaml_config['all']['children'][role]['hosts']:
-                all_hosts = self.yaml_config['all']['children'][role]['hosts'].copy()
+            if role != 'k8s-cluster' and self.yaml_config['all']['children'][role]['hosts']:  # noqa
+                all_hosts = self.yaml_config['all']['children'][role]['hosts'].copy()  # noqa
                 for host in all_hosts.keys():
                     if host not in hostnames and host not in protected_names:
-                        self.debug("Host {0} removed from role {1}".format(host, role))
-                        del self.yaml_config['all']['children'][role]['hosts'][host]
+                        self.debug(
+                            "Host {0} removed from role {1}".format(host, role))  # noqa
+                        del self.yaml_config['all']['children'][role]['hosts'][host]  # noqa
         # purge from all
         if self.yaml_config['all']['hosts']:
             all_hosts = self.yaml_config['all']['hosts'].copy()
@@ -258,9 +261,10 @@ class KubesprayInventory(object):
             self.yaml_config['all']['hosts'][host] = opts
         elif group != 'k8s-cluster:children':
             if self.yaml_config['all']['children'][group]['hosts'] is None:
-                self.yaml_config['all']['children'][group]['hosts'] = {host: None}
+                self.yaml_config['all']['children'][group]['hosts'] = {
+                    host: None}
             else:
-                self.yaml_config['all']['children'][group]['hosts'][host] = None
+                self.yaml_config['all']['children'][group]['hosts'][host] = None  # noqa
 
     def set_kube_master(self, hosts):
         for host in hosts:
@@ -271,32 +275,31 @@ class KubesprayInventory(object):
             self.add_host_to_group('all', host, opts)
 
     def set_k8s_cluster(self):
-        self.yaml_config['all']['children']['k8s-cluster'] = {'children':
-                                                              {'kube-master': None,
-                                                               'kube-node': None}}
+        k8s_cluster = {'children': {'kube-master': None, 'kube-node': None}}
+        self.yaml_config['all']['children']['k8s-cluster'] = k8s_cluster
 
     def set_calico_rr(self, hosts):
         for host in hosts:
             if host in self.yaml_config['all']['children']['kube-master']:
-                    self.debug("Not adding {0} to calico-rr group because it "
-                               "conflicts with kube-master group".format(host))
-                    continue
+                self.debug("Not adding {0} to calico-rr group because it "
+                           "conflicts with kube-master group".format(host))
+                continue
             if host in self.yaml_config['all']['children']['kube-node']:
-                    self.debug("Not adding {0} to calico-rr group because it "
-                               "conflicts with kube-node group".format(host))
-                    continue
+                self.debug("Not adding {0} to calico-rr group because it "
+                           "conflicts with kube-node group".format(host))
+                continue
             self.add_host_to_group('calico-rr', host)
 
     def set_kube_node(self, hosts):
         for host in hosts:
             if len(self.yaml_config['all']['hosts']) >= SCALE_THRESHOLD:
-                if host in self.yaml_config['all']['children']['etcd']['hosts']:
+                if host in self.yaml_config['all']['children']['etcd']['hosts']:  # noqa
                     self.debug("Not adding {0} to kube-node group because of "
                                "scale deployment and host is in etcd "
                                "group.".format(host))
                     continue
-            if len(self.yaml_config['all']['hosts']) >= MASSIVE_SCALE_THRESHOLD:
-                if host in self.yaml_config['all']['children']['kube-master']['hosts']:
+            if len(self.yaml_config['all']['hosts']) >= MASSIVE_SCALE_THRESHOLD:  # noqa
+                if host in self.yaml_config['all']['children']['kube-master']['hosts']:  # noqa
                     self.debug("Not adding {0} to kube-node group because of "
                                "scale deployment and host is in kube-master "
                                "group.".format(host))
@@ -369,7 +372,7 @@ CONFIG_FILE             File to write config to Default: ./inventory/sample/host
 HOST_PREFIX             Host prefix for generated hosts. Default: node
 SCALE_THRESHOLD         Separate ETCD role if # of nodes >= 50
 MASSIVE_SCALE_THRESHOLD Separate K8s master and ETCD if # of nodes >= 200
-'''
+'''  # noqa
         print(help_text)
 
     def print_config(self):
@@ -386,6 +389,7 @@ def main(argv=None):
     if not argv:
         argv = sys.argv[1:]
     KubesprayInventory(argv, CONFIG_FILE)
+
 
 if __name__ == "__main__":
     sys.exit(main())

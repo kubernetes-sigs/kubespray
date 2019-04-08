@@ -1,7 +1,7 @@
-Packet Host
+Packet
 ===============
 
-Kubespray provides support for bare metal deployments using the [Packet Host bare metal cloud](http://www.packet.com).
+Kubespray provides support for bare metal deployments using the [Packet bare metal cloud](http://www.packet.com).
 Deploying upon bare metal allows Kubernetes to run at locations where an existing public or private cloud might not exist such
 as cell tower, edge collocated installations. The deployment mechanism used by Kubespray for Packet is similar to that used for
 AWS and OpenStack clouds (notably using Terraform to deploy the infrastructure). Terraform uses the Packet provider plugin
@@ -10,7 +10,7 @@ dynamically from the Terraform state file.
 
 ## Local Host Configuration
 
-To perform this installation, you will need a localhost to run Terraform/Ansible (laptop, VM, etc) and an account with Packet Host.
+To perform this installation, you will need a localhost to run Terraform/Ansible (laptop, VM, etc) and an account with Packet.
 In this example, we're using an m1.large CentOS 7 OpenStack VM as the localhost to kickoff the Kubernetes installation.
 You'll need Ansible, Git, and PIP.
 

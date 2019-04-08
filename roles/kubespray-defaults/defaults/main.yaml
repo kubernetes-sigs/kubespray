@@ -12,7 +12,7 @@ is_atomic: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.13.4
+kube_version: v1.13.5
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
@@ -55,7 +55,7 @@ epel_enabled: false
 cluster_name: cluster.local
 # Subdomains of DNS domain to be resolved via /etc/resolv.conf for hostnet pods
 ndots: 2
-# Can be dnsmasq_kubedns, kubedns, manual or none
+# Can be coredns, coredns_dual, manual, or none
 dns_mode: coredns
 
 # Enable nodelocal dns cache
@@ -63,25 +63,24 @@ enable_nodelocaldns: False
 nodelocaldns_ip: 169.254.25.10
 
 # Should be set to a cluster IP if using a custom cluster DNS
-# manual_dns_server: 10.x.x.x
+manual_dns_server: ""
 
 # Can be docker_dns, host_resolvconf or none
 resolvconf_mode: docker_dns
 # Deploy netchecker app to verify DNS resolve as an HTTP service
 deploy_netchecker: false
-# Ip address of the kubernetes skydns service
+# Ip address of the kubernetes DNS service (called skydns for historical reasons)
 skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('address') }}"
 skydns_server_secondary: "{{ kube_service_addresses|ipaddr('net')|ipaddr(4)|ipaddr('address') }}"
-dnsmasq_dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
 dns_domain: "{{ cluster_name }}"
+
 kube_dns_servers:
-  kubedns: ["{{skydns_server}}"]
   coredns: ["{{skydns_server}}"]
   coredns_dual: "{{[skydns_server] + [ skydns_server_secondary ]}}"
   manual: ["{{manual_dns_server}}"]
-  dnsmasq_kubedns: ["{{dnsmasq_dns_server}}"]
 
 dns_servers: "{{kube_dns_servers[dns_mode]}}"
+
 
 # Kubernetes configuration dirs and system namespace.
 # Those are where all the additional config stuff goes
@@ -278,6 +277,7 @@ persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
 ingress_nginx_enabled: false
 cert_manager_enabled: false
+expand_persistent_volumes: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -308,6 +308,10 @@ kubelet_authentication_token_webhook: true
 
 # When enabled, access to the kubelet API requires authorization by delegation to the API server
 kubelet_authorization_mode_webhook: false
+
+# kubelet uses certificates for authenticating to the Kubernetes API
+# Automatically generate a new key and request a new certificate from the Kubernetes API as the current certificate approaches expiration
+kubelet_rotate_certificates: true
 
 ## v1.11 feature
 feature_gate_v1_11:

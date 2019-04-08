@@ -65,8 +65,8 @@
     - { role: kubespray-defaults}
     - { role: etcd, tags: etcd, etcd_cluster_setup: false }
 
-#Handle upgrades to master components first to maintain backwards compat.
-- hosts: kube-master
+- name: Handle upgrades to master components first to maintain backwards compat.
+  hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: 1
   roles:
@@ -79,8 +79,8 @@
     - { role: upgrade/post-upgrade, tags: post-upgrade }
   environment: "{{proxy_env}}"
 
-#Upgrade calico on all masters and nodes
-- hosts: kube-master:kube-node
+- name: Upgrade calico on all masters and nodes
+  hosts: kube-master:kube-node
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: "{{ serial | default('20%') }}"
   roles:
@@ -89,8 +89,8 @@
     - { role: kubernetes-apps/network_plugin, tags: network }
     - { role: kubernetes-apps/policy_controller, tags: policy-controller }
 
-#Finally handle worker upgrades, based on given batch size
-- hosts: kube-node:!kube-master
+- name: Finally handle worker upgrades, based on given batch size
+  hosts: kube-node:!kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: "{{ serial | default('20%') }}"
   roles:
@@ -114,15 +114,9 @@
     - { role: kubespray-defaults}
     - { role: network_plugin/calico/rr, tags: network }
 
-- hosts: k8s-cluster
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults}
-    - { role: dnsmasq, when: "dns_mode == 'dnsmasq_kubedns'", tags: dnsmasq }
-    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }
-
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes-apps, tags: apps }
+    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }

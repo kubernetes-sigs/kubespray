@@ -113,7 +113,7 @@ Supported Components
 
 -   Core
     -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.13.5
-    -   [etcd](https://github.com/coreos/etcd) v3.2.24
+    -   [etcd](https://github.com/coreos/etcd) v3.2.26
     -   [docker](https://www.docker.com/) v18.06 (see note)
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
     -   [cri-o](http://cri-o.io/) v1.11.5 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)

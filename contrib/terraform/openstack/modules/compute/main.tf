@@ -9,12 +9,13 @@ resource "openstack_networking_secgroup_v2" "k8s_master" {
 }
 
 resource "openstack_networking_secgroup_rule_v2" "k8s_master" {
+  count             = "${length(var.master_allowed_remote_ips)}"
   direction         = "ingress"
   ethertype         = "IPv4"
   protocol          = "tcp"
   port_range_min    = "6443"
   port_range_max    = "6443"
-  remote_ip_prefix  = "0.0.0.0/0"
+  remote_ip_prefix  = "${var.master_allowed_remote_ips[count.index]}"
   security_group_id = "${openstack_networking_secgroup_v2.k8s_master.id}"
 }
 

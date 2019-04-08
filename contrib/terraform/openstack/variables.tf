@@ -145,6 +145,12 @@ variable "bastion_allowed_remote_ips" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "master_allowed_remote_ips" {
+  description = "An array of CIDRs allowed to access API of masters"
+  type        = "list"
+  default     = ["0.0.0.0/0"]
+}
+
 variable "worker_allowed_ports" {
   type = "list"
 

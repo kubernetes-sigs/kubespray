@@ -23,7 +23,7 @@ SUPPORTED_OS = {
   "centos"              => {box: "centos/7",           user: "vagrant"},
   "centos-bento"        => {box: "bento/centos-7.5",   user: "vagrant"},
   "fedora"              => {box: "fedora/28-cloud-base",                user: "vagrant"},
-  "opensuse"            => {box: "opensuse/openSUSE-42.3-x86_64",       user: "vagrant"},
+  "opensuse"            => {box: "opensuse/openSUSE-15.0-x86_64",       user: "vagrant"},
   "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", user: "vagrant"},
 }
 

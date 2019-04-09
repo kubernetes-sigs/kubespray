@@ -198,7 +198,7 @@ Vagrant.configure("2") do |config|
           ansible.become = true
           ansible.limit = "all"
           ansible.host_key_checking = false
-          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "--ask-become-pass"]
+          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
           ansible.host_vars = host_vars
           #ansible.tags = ['download']
           ansible.groups = {

@@ -341,3 +341,19 @@
   when:
     - inventory_hostname in groups['kube-master']
     - rbac_enabled or item.type not in rbac_resources
+
+- name: Calico | Get default FelixConfiguration
+  command: "{{ bin_dir}}/calicoctl get FelixConfiguration default -o json | {{ bin_dir}}/calicoctl apply -f -"
+  register: felix_configuration
+  when:
+    - calico_mtu is defined
+    - inventory_hostname == groups['kube-master'][0]
+    - ipip
+
+- name: Calico | Set MTU default FelixConfiguration
+  command: "{{ bin_dir}}/calicoctl apply -f -"
+    stdin: "{{ felix_configuration.stdout | from_json | combine({'spec': {'ipipMTU': calico_mtu}}, recursive=True) | to_nice_json }}"
+  when:
+    - calico_mtu is defined
+    - inventory_hostname == groups['kube-master'][0]
+    - ipip

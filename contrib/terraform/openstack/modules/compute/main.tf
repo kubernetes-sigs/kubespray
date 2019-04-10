@@ -285,16 +285,16 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
 }
 
 resource "openstack_compute_floatingip_associate_v2" "bastion" {
-  count       = "${var.number_of_bastions}"
-  floating_ip = "${var.bastion_fips[count.index]}"
-  instance_id = "${element(openstack_compute_instance_v2.bastion.*.id, count.index)}"
+  count                 = "${var.number_of_bastions}"
+  floating_ip           = "${var.bastion_fips[count.index]}"
+  instance_id           = "${element(openstack_compute_instance_v2.bastion.*.id, count.index)}"
   wait_until_associated = "${var.wait_for_floatingip}"
 }
 
 resource "openstack_compute_floatingip_associate_v2" "k8s_master" {
-  count       = "${var.number_of_k8s_masters}"
-  instance_id = "${element(openstack_compute_instance_v2.k8s_master.*.id, count.index)}"
-  floating_ip = "${var.k8s_master_fips[count.index]}"
+  count                 = "${var.number_of_k8s_masters}"
+  instance_id           = "${element(openstack_compute_instance_v2.k8s_master.*.id, count.index)}"
+  floating_ip           = "${var.k8s_master_fips[count.index]}"
   wait_until_associated = "${var.wait_for_floatingip}"
 }
 
@@ -305,9 +305,9 @@ resource "openstack_compute_floatingip_associate_v2" "k8s_master_no_etcd" {
 }
 
 resource "openstack_compute_floatingip_associate_v2" "k8s_node" {
-  count       = "${var.number_of_k8s_nodes}"
-  floating_ip = "${var.k8s_node_fips[count.index]}"
-  instance_id = "${element(openstack_compute_instance_v2.k8s_node.*.id, count.index)}"
+  count                 = "${var.number_of_k8s_nodes}"
+  floating_ip           = "${var.k8s_node_fips[count.index]}"
+  instance_id           = "${element(openstack_compute_instance_v2.k8s_node.*.id, count.index)}"
   wait_until_associated = "${var.wait_for_floatingip}"
 }
 

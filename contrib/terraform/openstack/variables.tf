@@ -125,7 +125,7 @@ variable "floatingip_pool" {
   default     = "external"
 }
 
-variable "wait_for_floatingip"{
+variable "wait_for_floatingip" {
   description = "Terraform will poll the instance until the floating IP has been associated."
   default     = "false"
 }

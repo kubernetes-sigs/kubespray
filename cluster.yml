@@ -1,13 +1,13 @@
 ---
 - hosts: localhost
   gather_facts: false
+  become: no
   tasks:
-    - name: "Check ansible version !=2.7.0"
+    - name: "Check ansible version >=2.7.6"
       assert:
-        msg: "Ansible V2.7.0 can't be used until: https://github.com/ansible/ansible/issues/46600 is fixed"
+        msg: "Ansible must be v2.7.6 or higher"
         that:
-          - ansible_version.string is version("2.7.0", "!=")
-          - ansible_version.string is version("2.6.0", ">=")
+          - ansible_version.string is version("2.7.6", ">=")
       tags:
         - check
   vars:
@@ -34,13 +34,14 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   vars:
     ansible_ssh_pipelining: true
-  gather_facts: true
+  gather_facts: false
   pre_tasks:
     - name: gather facts from all instances
       setup:
       delegate_to: "{{item}}"
-      delegate_facts: True
+      delegate_facts: true
       with_items: "{{ groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]) }}"
+      run_once: true
 
 - hosts: k8s-cluster:etcd:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -107,16 +108,10 @@
     - { role: kubespray-defaults}
     - { role: network_plugin/calico/rr, tags: network }
 
-- hosts: k8s-cluster
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults}
-    - { role: dnsmasq, when: "dns_mode == 'dnsmasq_kubedns'", tags: dnsmasq }
-    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_late: true }
-  environment: "{{proxy_env}}"
-
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes-apps, tags: apps }
+    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_late: true }
+  environment: "{{proxy_env}}"

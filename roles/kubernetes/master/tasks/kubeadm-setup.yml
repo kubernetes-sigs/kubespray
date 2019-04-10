@@ -45,29 +45,21 @@
 
 - name: kubeadm | aggregate all SANs
   set_fact:
-    apiserver_sans: >-
-      kubernetes
-      kubernetes.default
-      kubernetes.default.svc
-      kubernetes.default.svc.{{ dns_domain }}
-      {{ kube_apiserver_ip }}
-      localhost
-      127.0.0.1
-      {{ ' '.join(groups['kube-master']) }}
-      {%- if loadbalancer_apiserver is defined %}
-      {{ apiserver_loadbalancer_domain_name }}
-      {% endif %}
-      {% for host in groups['kube-master'] -%}
-      {%- if hostvars[host]['access_ip'] is defined %}
-      {{ hostvars[host]['access_ip'] }}
-      {% endif %}
-      {{ hostvars[host]['ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}
-      {%- endfor %}
-      {%- if supplementary_addresses_in_ssl_keys is defined -%}
-      {% for addr in supplementary_addresses_in_ssl_keys %}
-      {{ addr }}
-      {%- endfor %}
-      {%- endif %}
+    apiserver_sans: "{{ (sans_base + groups['kube-master'] + sans_lb + sans_supp + sans_access_ip + sans_ip + sans_address) | unique }}"
+  vars:
+    sans_base:
+      - "kubernetes"
+      - "kubernetes.default"
+      - "kubernetes.default.svc"
+      - "kubernetes.default.svc.{{ dns_domain }}"
+      - "{{ kube_apiserver_ip }}"
+      - "localhost"
+      - "127.0.0.1"
+    sans_lb: "{{ [apiserver_loadbalancer_domain_name] if apiserver_loadbalancer_domain_name is defined else [] }}"
+    sans_supp: "{{ supplementary_addresses_in_ssl_keys if supplementary_addresses_in_ssl_keys is defined else [] }}"
+    sans_access_ip: "{{ groups['kube-master'] | map('extract', hostvars, 'access_ip') | list | select('defined') | list }}"
+    sans_ip: "{{ groups['kube-master'] | map('extract', hostvars, 'ip') | list | select('defined') | list }}"
+    sans_address: "{{ groups['kube-master'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | list | select('defined') | list }}"
   tags: facts
 
 - name: kubeadm | Copy etcd cert dir under k8s cert dir
@@ -106,6 +98,7 @@
   register: kubeadm_init
   # Retry is because upload config sometimes fails
   retries: 3
+  until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
   when: inventory_hostname == groups['kube-master']|first and not kubeadm_already_run.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   environment:

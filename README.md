@@ -3,10 +3,10 @@
 Deploy a Production Ready Kubernetes Cluster
 ============================================
 
-If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
+If you have questions, check the [documentation](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 You can get your invite [here](http://slack.k8s.io/)
 
--   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere, Oracle Cloud Infrastructure (Experimental), or Baremetal**
+-   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere, Packet (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
 -   **Highly available** cluster
 -   **Composable** (Choice of the network plugin for instance)
 -   Supports most popular **Linux distributions**
@@ -18,10 +18,6 @@ Quick Start
 To deploy the cluster you can use :
 
 ### Ansible
-
-#### Ansible version
-
-Ansible v2.7.0 is failing and/or produce unexpected results due to [ansible/ansible/issues/46600](https://github.com/ansible/ansible/issues/46600)
 
 #### Usage
 
@@ -90,6 +86,7 @@ Documents
 -   [AWS](docs/aws.md)
 -   [Azure](docs/azure.md)
 -   [vSphere](docs/vsphere.md)
+-   [Packet Host](docs/packet.md)
 -   [Large deployments](docs/large-deployments.md)
 -   [Upgrades basics](docs/upgrades.md)
 -   [Roadmap](docs/roadmap.md)
@@ -111,8 +108,8 @@ Supported Components
 --------------------
 
 -   Core
-    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.13.3
-    -   [etcd](https://github.com/coreos/etcd) v3.2.24
+    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.13.5
+    -   [etcd](https://github.com/coreos/etcd) v3.2.26
     -   [docker](https://www.docker.com/) v18.06 (see note)
     -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
     -   [cri-o](http://cri-o.io/) v1.11.5 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
@@ -122,13 +119,13 @@ Supported Components
     -   [cilium](https://github.com/cilium/cilium) v1.3.0
     -   [contiv](https://github.com/contiv/install) v1.2.1
     -   [flanneld](https://github.com/coreos/flannel) v0.11.0
-    -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.1
+    -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.5
     -   [multus](https://github.com/intel/multus-cni) v3.1.autoconf
-    -   [weave](https://github.com/weaveworks/weave) v2.5.0
+    -   [weave](https://github.com/weaveworks/weave) v2.5.1
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
     -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.2
-    -   [coredns](https://github.com/coredns/coredns) v1.2.6
+    -   [coredns](https://github.com/coredns/coredns) v1.4.0
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.21.0
 
 Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.13.md) was updated to 1.11.1, 1.12.1, 1.13.1, 17.03, 17.06, 17.09, 18.06. kubeadm now properly recognizes Docker 18.09.0 and newer, but still treats 18.06 as the default supported version. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
@@ -141,7 +138,7 @@ plugins can be deployed for a given single cluster.
 Requirements
 ------------
 
--   **Ansible v2.6 (or newer) and python-netaddr is installed on the machine
+-   **Ansible v2.7.6 (or newer) and python-netaddr is installed on the machine
     that will run Ansible commands**
 -   **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
 -   The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/downloads.md#offline-environment))
@@ -152,6 +149,14 @@ Requirements
 -   If kubespray is ran from non-root user account, correct privilege escalation method
     should be configured in the target servers. Then the `ansible_become` flag
     or command parameters `--become or -b` should be specified.
+
+Hardware:        
+These limits are safe guarded by Kubespray. Actual requirements for your workload can differ. For a sizing guide go to the [Building Large Clusters](https://kubernetes.io/docs/setup/cluster-large/#size-of-master-and-master-components) guide.
+
+-   Master
+    - Memory: 1500 MB
+-   Node
+    - Memory: 1024 MB
 
 Network Plugins
 ---------------

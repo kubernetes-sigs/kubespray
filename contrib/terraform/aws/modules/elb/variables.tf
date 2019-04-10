@@ -1,33 +1,30 @@
 variable "aws_cluster_name" {
-    description = "Name of Cluster"
+  description = "Name of Cluster"
 }
 
 variable "aws_vpc_id" {
-    description = "AWS VPC ID"
+  description = "AWS VPC ID"
 }
 
 variable "aws_elb_api_port" {
-    description = "Port for AWS ELB"
+  description = "Port for AWS ELB"
 }
 
 variable "k8s_secure_api_port" {
-    description = "Secure Port of K8S API Server"
+  description = "Secure Port of K8S API Server"
 }
-
-
 
 variable "aws_avail_zones" {
-    description = "Availability Zones Used"
-    type = "list"
+  description = "Availability Zones Used"
+  type        = "list"
 }
 
-
 variable "aws_subnet_ids_public" {
-    description = "IDs of Public Subnets"
-    type = "list"
+  description = "IDs of Public Subnets"
+  type        = "list"
 }
 
 variable "default_tags" {
-    description = "Tags for all resources"
-    type = "map"
+  description = "Tags for all resources"
+  type        = "map"
 }

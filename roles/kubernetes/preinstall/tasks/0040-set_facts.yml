@@ -123,10 +123,10 @@
     supersede_domain:
       supersede domain-name "{{ dns_domain }}";
 
-- name: pick dnsmasq cluster IP or default resolver
+- name: pick coredns cluster IP or default resolver
   set_fact:
-    dnsmasq_server: |-
-      {%- if dns_mode in ['kubedns', 'coredns'] and not dns_early|bool -%}
+    coredns_server: |-
+      {%- if dns_mode == 'coredns' and not dns_early|bool -%}
         {{ [ skydns_server ] + upstream_dns_servers|default([]) }}
       {%- elif dns_mode == 'coredns_dual' and not dns_early|bool -%}
         {{ [ skydns_server ] + [ skydns_server_secondary ] + upstream_dns_servers|default([]) }}
@@ -134,16 +134,14 @@
         {{ ( manual_dns_server.split(',') | list) + upstream_dns_servers|default([]) }}
       {%- elif dns_early|bool -%}
         {{ upstream_dns_servers|default([]) }}
-      {%- else -%}
-        {{ [ dnsmasq_dns_server ] }}
       {%- endif -%}
 
 - name: generate nameservers to resolvconf
   set_fact:
     nameserverentries:
-      nameserver {{( dnsmasq_server + nameservers|d([]) + cloud_resolver|d([])) | join(',nameserver ')}}
+      nameserver {{( coredns_server + nameservers|d([]) + cloud_resolver|d([])) | join(',nameserver ')}}
     supersede_nameserver:
-      supersede domain-name-servers {{( dnsmasq_server + nameservers|d([]) + cloud_resolver|d([])) | join(', ') }};
+      supersede domain-name-servers {{( coredns_server + nameservers|d([]) + cloud_resolver|d([])) | join(', ') }};
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -158,13 +156,6 @@
       paths:
         - ../vars
       skip: true
-
-- name: force kube_proxy removal if proxy services are replaced by other means
-  set_fact:
-    kube_proxy_remove: "{{ (kube_network_plugin == 'kube-router') and (kube_router_run_service_proxy is defined and kube_router_run_service_proxy)| bool }}"
-  tags:
-    - facts
-    - kube-proxy
 
 - name: override kube_proxy_mode to ipvs if kube_proxy_remove is set, as ipvs won't require kube-proxy cleanup when kube-proxy daemonset gets deleted
   set_fact:

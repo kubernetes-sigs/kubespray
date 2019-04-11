@@ -26,6 +26,12 @@
   run_once: true
   register: temp_token
   delegate_to: "{{ groups['kube-master'][0] }}"
+  when: kubeadm_token is not defined
+
+- name: Set kubeadm_token to generated token
+  set_fact:
+    kubeadm_token: "{{ temp_token.stdout }}"
+  when: kubeadm_token is not defined
 
 - name: gets the kubeadm version
   command: "{{ bin_dir }}/kubeadm version -o short"
@@ -61,8 +67,6 @@
     dest: "{{ kube_config_dir }}/kubeadm-client.conf"
     backup: yes
   when: not is_kube_master
-  vars:
-    kubeadm_token: "{{ temp_token.stdout }}"
 
 - name: Join to cluster if needed
   environment:
@@ -122,11 +126,10 @@
     {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get configmap kube-proxy -n kube-system -o yaml
     | sed 's#server:.*#server:\ {{ kube_apiserver_endpoint }}#g'
     | {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
-  delegate_to: "{{groups['kube-master']|first}}"
   run_once: true
   when:
+    - inventory_hostname == groups['kube-master']|first
     - kubeadm_config_api_fqdn is not defined
-    - is_kube_master
     - kubeadm_discovery_address != kube_apiserver_endpoint
     - not kube_proxy_remove
   tags:
@@ -134,11 +137,10 @@
 
 - name: Restart all kube-proxy pods to ensure that they load the new configmap
   shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
-  delegate_to: "{{groups['kube-master']|first}}"
   run_once: true
   when:
+    - inventory_hostname == groups['kube-master']|first
     - kubeadm_config_api_fqdn is not defined
-    - is_kube_master
     - kubeadm_discovery_address != kube_apiserver_endpoint
     - not kube_proxy_remove
   tags:
@@ -159,11 +161,10 @@
 # is fixed
 - name: Delete kube-proxy daemonset if kube_proxy_remove set, e.g. kube_network_plugin providing proxy services
   shell: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf delete daemonset -n kube-system kube-proxy"
-  delegate_to: "{{groups['kube-master']|first}}"
   run_once: true
   when:
+    - inventory_hostname == groups['kube-master']|first
     - kube_proxy_remove
-    - is_kube_master
     - kubeadm_discovery_address != kube_apiserver_endpoint
   tags:
     - kube-proxy

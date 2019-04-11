@@ -14,7 +14,12 @@
   # Retry is because upload config sometimes fails
   retries: 3
   when: inventory_hostname == groups['kube-master']|first
-  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
+  failed_when: >-
+    kubeadm_upgrade.rc != 0 and
+    "field is immutable" not in kubeadm_upgrade.stderr and
+    "WARNING: failed to determine to backup kube-apiserver cert and key:
+    couldn't load the certificate file /etc/kubernetes/pki/apiserver.crt: open /etc/kubernetes/pki/apiserver.crt:
+    no such file or directory" not in kubeadm_upgrade.stderr
   notify: Master | restart kubelet
 
 - name: kubeadm | Upgrade other masters
@@ -29,5 +34,14 @@
     --etcd-upgrade=false
   register: kubeadm_upgrade
   when: inventory_hostname != groups['kube-master']|first
-  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
+  failed_when: >-
+    kubeadm_upgrade.rc != 0 and
+    "field is immutable" not in kubeadm_upgrade.stderr and
+    "WARNING: failed to determine to backup kube-apiserver cert and key:
+    couldn't load the certificate file /etc/kubernetes/pki/apiserver.crt: open /etc/kubernetes/pki/apiserver.crt:
+    no such file or directory" not in kubeadm_upgrade.stderr
   notify: Master | restart kubelet
+  
+- name: kubeadm | move kubeadm config back ups to a separate folder after successful upgrade
+  import_tasks: kubeadm-cleanup-config-backups.yml
+  ignore_errors: yes

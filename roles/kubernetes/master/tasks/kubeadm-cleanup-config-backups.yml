@@ -1,0 +1,20 @@
+---
+
+- name: kubeadm | Check if any backup files are present in {{ kube_config_dir }}
+  find:
+    paths: "{{ kube_config_dir }}"
+    patterns: "kubeadm-config\\.{{ kubeadmConfig_api_version }}\\.yaml.+"
+    use_regex: yes
+  register: kubeadm_backup_files
+  
+- name: kubeadm | Create back up dir for kubeadm configs 
+  file:
+    path: "{{ kube_config_dir }}/tmp/kubeadm-config-backup"
+    state: directory
+    recurse: yes
+  when: kubeadm_backup_files.files | length > 0
+  
+- name: kubeadm | Move kubeadm config backups to {{ kube_config_dir }}/tmp/kubeadm-config-backup
+  shell: "mv {{ item.path }} {{ kube_config_dir }}/tmp/kubeadm-config-backup"
+  with_items: "{{ kubeadm_backup_files.files }}"
+  when: kubeadm_backup_files.files | length > 0

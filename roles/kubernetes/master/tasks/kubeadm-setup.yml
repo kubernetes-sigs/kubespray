@@ -115,20 +115,20 @@
   set_fact:
     kubeadm_certificate_key: "{{ item | regex_search('--certificate-key ([^ ]+)','\\1') | first }}"
   with_items: "{{ (kubeadm_init|default({'stdout_lines': []}))['stdout_lines'] }}"
-  run_once: yes
+  delegate_to: "{{groups['kube-master']|first}}"
   when:
     - kubeadm_version is version('v1.14.0', '>=')
     - kubeadm_certificate_key is not defined
-    - kubeadm_init is defined
+    - kubeadm_init.stdout_lines is defined
     - item | trim | match('.*--certificate-key .*')
 
 - name: Create kubeadm token for joining nodes with 24h expiration (default)
   command: "{{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create"
-  run_once: true
   register: temp_token
   retries: 5
   delay: 5
   until: temp_token is succeeded
+  delegate_to: "{{groups['kube-master']|first}}"
   when: kubeadm_token is not defined
   tags:
     - kubeadm_token
@@ -136,7 +136,7 @@
 - name: Set kubeadm_token
   set_fact:
     kubeadm_token: "{{ temp_token.stdout }}"
-  when: kubeadm_token is not defined
+  when: temp_token.stdout is defined
   tags:
     - kubeadm_token
 
@@ -144,7 +144,6 @@
   shell: >-
     {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token delete {{ kubeadm_token }} || :;
     {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create {{ kubeadm_token }}
-  run_once: true
   when:
     - inventory_hostname == groups['kube-master']|first
     - kubeadm_token is defined

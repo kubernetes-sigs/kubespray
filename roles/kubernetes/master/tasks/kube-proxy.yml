@@ -1,0 +1,30 @@
+---
+- name: Lay down kube-proxy manifests
+  action: "{{ item.module }}"
+  args:
+    src: "{{ item.file }}{% if item.module == 'template' %}.j2{% endif %}"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  run_once: yes
+  register: kube_proxy_manifests
+  with_items:
+    - { name: kube-proxy, module: template, file: kube-proxy-ds.yaml, type: daemonset }
+    - { name: kube-proxy, module: template, file: kube-proxy-cm.yaml, type: configmap }
+
+- name: Start kube-proxy
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "kube-system"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "{{ kube_proxy_remove | ternary('absent', 'latest') }}"
+  run_once: yes
+  with_items: "{{ kube_proxy_manifests.results }}"
+  environment:
+    KUBECONFIG: "{{ kube_config_dir }}/admin.conf"
+
+- name: Restart all kube-proxy pods to ensure that they load the new configmap
+  shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
+  when:
+    - not kube_proxy_manifests.results[0].changed
+    - kube_proxy_manifests.results[1].changed

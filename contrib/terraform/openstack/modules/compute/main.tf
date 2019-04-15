@@ -47,6 +47,17 @@ resource "openstack_networking_secgroup_rule_v2" "k8s" {
   security_group_id = "${openstack_networking_secgroup_v2.k8s.id}"
 }
 
+resource "openstack_networking_secgroup_rule_v2" "k8s_allowed_remote_ips" {
+  count             = "${length(var.k8s_allowed_remote_ips)}"
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  port_range_min    = "22"
+  port_range_max    = "22"
+  remote_ip_prefix  = "${var.k8s_allowed_remote_ips[count.index]}"
+  security_group_id = "${openstack_networking_secgroup_v2.k8s.id}"
+}
+
 resource "openstack_networking_secgroup_v2" "worker" {
   name        = "${var.cluster_name}-k8s-worker"
   description = "${var.cluster_name} - Kubernetes worker nodes"
@@ -102,20 +113,17 @@ resource "openstack_compute_instance_v2" "k8s_master" {
     name = "${var.network_name}"
   }
 
-  # The join() hack is described here: https://github.com/hashicorp/terraform/issues/11566
-  # As a workaround for creating "dynamic" lists (when, for example, no bastion host is created)
-
-  security_groups = ["${compact(list(
-    openstack_networking_secgroup_v2.k8s_master.name,
-    join(" ", openstack_networking_secgroup_v2.bastion.*.id),
-    openstack_networking_secgroup_v2.k8s.name,
+  security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
+    "${openstack_networking_secgroup_v2.k8s.name}",
     "default",
-   ))}"]
+  ]
+
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
     depends_on       = "${var.network_id}"
   }
+
   provisioner "local-exec" {
     command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > contrib/terraform/group_vars/no-floating.yml"
   }
@@ -133,11 +141,10 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
     name = "${var.network_name}"
   }
 
-  security_groups = ["${compact(list(
-    openstack_networking_secgroup_v2.k8s_master.name,
-    join(" ", openstack_networking_secgroup_v2.bastion.*.id),
-    openstack_networking_secgroup_v2.k8s.name,
-   ))}"]
+  security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
+    "${openstack_networking_secgroup_v2.k8s.name}",
+    "default",
+  ]
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
@@ -230,12 +237,10 @@ resource "openstack_compute_instance_v2" "k8s_node" {
     name = "${var.network_name}"
   }
 
-  security_groups = ["${compact(list(
-    openstack_networking_secgroup_v2.k8s_master.name,
-    join(" ", openstack_networking_secgroup_v2.bastion.*.id),
-    openstack_networking_secgroup_v2.k8s.name,
+  security_groups = ["${openstack_networking_secgroup_v2.k8s.name}",
+    "${openstack_networking_secgroup_v2.worker.name}",
     "default",
-   ))}"]
+  ]
 
   metadata = {
     ssh_user         = "${var.ssh_user}"

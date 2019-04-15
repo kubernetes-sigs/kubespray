@@ -1,4 +1,11 @@
 ---
+- name: Calico | Copy calicoctl binary from download dir
+  copy:
+    src: "{{ local_release_dir }}/calicoctl"
+    dest: "{{ bin_dir }}/calicoctl"
+    mode: 0755
+    remote_src: yes
+
 - name: Calico | Write Calico cni config
   template:
     src: "cni-calico.conflist.j2"
@@ -24,14 +31,13 @@
     - {s: "node-{{ inventory_hostname }}.pem", d: "cert.crt"}
     - {s: "node-{{ inventory_hostname }}-key.pem", d: "key.pem"}
 
-- name: Calico | Install calicoctl container script
+- name: Calico | Install calicoctl wrapper script
   template:
-    src: calicoctl-container.j2
-    dest: "{{ bin_dir }}/calicoctl"
+    src: calicoctl.sh.j2
+    dest: "{{ bin_dir }}/calicoctl.sh"
     mode: 0755
     owner: root
     group: root
-  changed_when: false
 
 - name: Calico | wait for etcd
   uri:
@@ -47,7 +53,7 @@
 
 - name: Calico | Check if calico network pool has already been configured
   shell: >
-    {{ bin_dir }}/calicoctl get ippool | grep -w "{{ calico_pool_cidr | default(kube_pods_subnet) }}" | wc -l
+    {{ bin_dir }}/calicoctl.sh get ippool | grep -w "{{ calico_pool_cidr | default(kube_pods_subnet) }}" | wc -l
   register: calico_conf
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
@@ -76,7 +82,7 @@
         "spec": {
           "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
           "ipipMode": "{{ ipip_mode }}",
-          "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl create -f -
+          "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl.sh create -f -
   run_once: true
   delegate_to: "{{ groups['kube-master'][0] }}"
   when:
@@ -96,7 +102,7 @@
           "blockSize": "{{ kube_network_node_prefix }}",
           "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
           "ipipMode": "{{ ipip_mode }}",
-          "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl create -f -
+          "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl.sh create -f -
   run_once: true
   delegate_to: "{{ groups['kube-master'][0] }}"
   when:
@@ -111,7 +117,7 @@
                  "nat-outgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }}},
         "apiVersion": "v1",
         "metadata": {"cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}"}
-      }' | {{ bin_dir }}/calicoctl apply -f -
+      }' | {{ bin_dir }}/calicoctl.sh apply -f -
   environment:
     NO_DEFAULT_POOLS: true
   run_once: true
@@ -139,20 +145,20 @@
     "spec": {
         "logSeverityScreen": "Info",
         "nodeToNodeMeshEnabled": {{ nodeToNodeMeshEnabled|default('true') }} ,
-        "asNumber": {{ global_as_num }} }} ' | {{ bin_dir }}/calicoctl create --skip-exists -f -
+        "asNumber": {{ global_as_num }} }} ' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
   run_once: true
   delegate_to: "{{ groups['kube-master'][0] }}"
   when:
     - calico_version is version('v3.0.0', '>=')
 
 - name: Calico | Set global as_num (legacy)
-  command: "{{ bin_dir}}/calicoctl config set asNumber {{ global_as_num }}"
+  command: "{{ bin_dir}}/calicoctl.sh config set asNumber {{ global_as_num }}"
   run_once: true
   when:
     - calico_version is version('v3.0.0', '<')
 
 - name: Calico | Disable node mesh (legacy)
-  command: "{{ bin_dir }}/calicoctl config set nodeToNodeMesh off"
+  command: "{{ bin_dir }}/calicoctl.sh config set nodeToNodeMesh off"
   run_once: yes
   when:
     - calico_version is version('v3.0.0', '<')
@@ -171,7 +177,7 @@
         "asNumber": "{{ local_as }}"
       },
       "orchRefs":[{"nodeName":"{{ inventory_hostname }}","orchestrator":"k8s"}]
-   }}' | {{ bin_dir }}/calicoctl create --skip-exists -f -
+   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   when:
@@ -194,7 +200,7 @@
         "asNumber": "{{ local_as }}"
       },
       "orchRefs":[{"nodeName":"{{ inventory_hostname }}","orchestrator":"k8s"}]
-   }}' | {{ bin_dir }}/calicoctl create --skip-exists -f -
+   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   when:
@@ -216,7 +222,7 @@
       "asNumber": "{{ item.as }}",
       "node": "{{ inventory_hostname }}",
       "peerIP": "{{ item.router_id }}"
-   }}' | {{ bin_dir }}/calicoctl create --skip-exists -f -
+   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
@@ -234,7 +240,7 @@
    "apiVersion": "v1",
    "metadata": {"node": "{{ inventory_hostname }}", "scope": "node", "peerIP": "{{ item.router_id }}"}
    }'
-   | {{ bin_dir }}/calicoctl create --skip-exists -f -
+   | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{ peers|selectattr('scope','undefined')|list|default([]) | union(peers|selectattr('scope','defined')|selectattr('scope','equalto', 'node')|list|default([])) }}"
@@ -254,7 +260,7 @@
    "spec": {
       "asNumber": "{{ item.as }}",
       "peerIP": "{{ item.router_id }}"
-   }}' | {{ bin_dir }}/calicoctl create --skip-exists -f -
+   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
@@ -273,7 +279,7 @@
    "apiVersion": "v1",
    "metadata": {"scope": "global", "peerIP": "{{ item.router_id }}"}
    }'
-   | {{ bin_dir }}/calicoctl create --skip-exists -f -
+   | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|default([]) }}"
@@ -295,7 +301,7 @@
       "asNumber": "{{ local_as | default(global_as_num)}}",
       "node": "{{ inventory_hostname }}",
       "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(fallback_ips[item]) }}"
-   }}' | {{ bin_dir }}/calicoctl create --skip-exists -f -
+   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
@@ -316,7 +322,7 @@
      "scope": "node",
      "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(fallback_ips[item]) }}"}
    }'
-   | {{ bin_dir }}/calicoctl create --skip-exists -f -
+   | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{ groups['calico-rr'] | default([]) }}"

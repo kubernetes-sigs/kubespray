@@ -5,6 +5,7 @@ stages:
   - deploy-part1
   - deploy-part2
   - deploy-special
+  - deploy-gce
 
 variables:
   FAILFASTCI_NAMESPACE: 'kargo-ci'
@@ -27,42 +28,12 @@ variables:
   UPGRADE_TEST: "false"
   LOG_LEVEL: "-vv"
 
-# asia-east1-a
-# asia-northeast1-a
-# europe-west1-b
-# us-central1-a
-# us-east1-b
-# us-west1-a
-
-before_script:
-  - /usr/bin/python -m pip install -r tests/requirements.txt
-  - mkdir -p /.ssh
-
-.job: &job
-  tags:
-    - kubernetes
-    - docker
-  image: quay.io/kubespray/kubespray:v2.9.0
-
-.docker_service: &docker_service
-  services:
-    - docker:dind
-
-.create_cluster: &create_cluster
-  <<: *job
-  <<: *docker_service
+.test-upgrade: &test-upgrade
+  UPGRADE_TEST: "graceful"
 
 .testcases: &testcases
-  <<: *job
-  <<: *docker_service
-  cache:
-    key: "$CI_BUILD_REF_NAME"
-    paths:
-      - downloads/
-      - $HOME/.cache
   before_script:
     - docker info
-    - /usr/bin/python -m pip install -r requirements.txt
     - /usr/bin/python -m pip install -r tests/requirements.txt
     - mkdir -p /.ssh
     - mkdir -p $HOME/.ssh
@@ -81,8 +52,6 @@ before_script:
     - test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
     # Checkout the CI vars file so it is available
     - test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
-    # Workaround https://github.com/kubernetes-sigs/kubespray/issues/2021
-    - 'sh -c "echo ignore_assert_errors: true | tee -a tests/files/${CI_JOB_NAME}.yml"'
 
 
     # Create cluster
@@ -211,7 +180,7 @@ before_script:
 # For failfast, at least 1 job must be defined in .gitlab-ci.yml
 # Premoderated with manual actions
 ci-authorized:
-  extends: .job
+  extends: .packet-job
   stage: moderator
   before_script:
     - apt-get -y install jq
@@ -224,3 +193,4 @@ include:
   - .gitlab-ci/gce.yml
   - .gitlab-ci/digital-ocean.yml
   - .gitlab-ci/terraform.yml
+  - .gitlab-ci/packet.yml

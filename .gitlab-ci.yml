@@ -27,42 +27,18 @@ variables:
   UPGRADE_TEST: "false"
   LOG_LEVEL: "-vv"
 
-# asia-east1-a
-# asia-northeast1-a
-# europe-west1-b
-# us-central1-a
-# us-east1-b
-# us-west1-a
-
 before_script:
   - /usr/bin/python -m pip install -r tests/requirements.txt
   - mkdir -p /.ssh
 
 .job: &job
   tags:
-    - kubernetes
-    - docker
+    - packet
   image: quay.io/kubespray/kubespray:v2.9.0
-
-.docker_service: &docker_service
-  services:
-    - docker:dind
-
-.create_cluster: &create_cluster
-  <<: *job
-  <<: *docker_service
 
 .testcases: &testcases
   <<: *job
-  <<: *docker_service
-  cache:
-    key: "$CI_BUILD_REF_NAME"
-    paths:
-      - downloads/
-      - $HOME/.cache
   before_script:
-    - docker info
-    - /usr/bin/python -m pip install -r requirements.txt
     - /usr/bin/python -m pip install -r tests/requirements.txt
     - mkdir -p /.ssh
     - mkdir -p $HOME/.ssh
@@ -81,9 +57,6 @@ before_script:
     - test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
     # Checkout the CI vars file so it is available
     - test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
-    # Workaround https://github.com/kubernetes-sigs/kubespray/issues/2021
-    - 'sh -c "echo ignore_assert_errors: true | tee -a tests/files/${CI_JOB_NAME}.yml"'
-
 
     # Create cluster
     - >
@@ -133,76 +106,76 @@ before_script:
     ## Idempotency checks 1/5 (repeat deployment)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      -e ansible_python_interpreter=${PYPATH}
-      -e local_release_dir=${PWD}/downloads
-      --limit "all:!fake_hosts"
-      cluster.yml;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        -e ansible_python_interpreter=${PYPATH}
+        -e local_release_dir=${PWD}/downloads
+        --limit "all:!fake_hosts"
+        cluster.yml;
       fi
 
     ## Idempotency checks 2/5 (Advanced DNS checks)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      --limit "all:!fake_hosts"
-      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        --limit "all:!fake_hosts"
+        tests/testcases/040_check-network-adv.yml;
       fi
 
     ## Idempotency checks 3/5 (reset deployment)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      -e ansible_python_interpreter=${PYPATH}
-      -e reset_confirmation=yes
-      --limit "all:!fake_hosts"
-      reset.yml;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        -e ansible_python_interpreter=${PYPATH}
+        -e reset_confirmation=yes
+        --limit "all:!fake_hosts"
+        reset.yml;
       fi
 
     ## Idempotency checks 4/5 (redeploy after reset)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      -e ansible_python_interpreter=${PYPATH}
-      -e local_release_dir=${PWD}/downloads
-      --limit "all:!fake_hosts"
-      cluster.yml;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        -e ansible_python_interpreter=${PYPATH}
+        -e local_release_dir=${PWD}/downloads
+        --limit "all:!fake_hosts"
+        cluster.yml;
       fi
 
     ## Idempotency checks 5/5 (Advanced DNS checks)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH}
-      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
-      --limit "all:!fake_hosts"
-      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+        ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH}
+        -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
+        --limit "all:!fake_hosts"
+        tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
       fi
 
   after_script:
@@ -213,8 +186,6 @@ before_script:
 ci-authorized:
   extends: .job
   stage: moderator
-  before_script:
-    - apt-get -y install jq
   script:
     - /bin/sh scripts/premoderator.sh
   except: ['triggers', 'master']
@@ -224,3 +195,4 @@ include:
   - .gitlab-ci/gce.yml
   - .gitlab-ci/digital-ocean.yml
   - .gitlab-ci/terraform.yml
+  - .gitlab-ci/packet.yml

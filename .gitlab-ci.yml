@@ -39,10 +39,6 @@ before_script:
 .testcases: &testcases
   <<: *job
   before_script:
-    # - docker info
-    # - /usr/bin/python -m pip install -r requirements.txt
-    # - /usr/bin/python -m pip install -r tests/requirements.txt
-    # - mkdir -p /.ssh
     - mkdir -p $HOME/.ssh
     - ansible-playbook --version
     - export PYPATH=$([[ ! "$CI_JOB_NAME" =~ "coreos" ]] && echo /usr/bin/python || echo /opt/bin/python)
@@ -59,9 +55,6 @@ before_script:
     - test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
     # Checkout the CI vars file so it is available
     - test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
-    # Workaround https://github.com/kubernetes-sigs/kubespray/issues/2021
-    # - 'sh -c "echo ignore_assert_errors: true | tee -a tests/files/${CI_JOB_NAME}.yml"'
-
 
     # Create cluster
     - >
@@ -111,76 +104,76 @@ before_script:
     ## Idempotency checks 1/5 (repeat deployment)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      -e ansible_python_interpreter=${PYPATH}
-      -e local_release_dir=${PWD}/downloads
-      --limit "all:!fake_hosts"
-      cluster.yml;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        -e ansible_python_interpreter=${PYPATH}
+        -e local_release_dir=${PWD}/downloads
+        --limit "all:!fake_hosts"
+        cluster.yml;
       fi
 
     ## Idempotency checks 2/5 (Advanced DNS checks)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      --limit "all:!fake_hosts"
-      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        --limit "all:!fake_hosts"
+        tests/testcases/040_check-network-adv.yml;
       fi
 
     ## Idempotency checks 3/5 (reset deployment)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      -e ansible_python_interpreter=${PYPATH}
-      -e reset_confirmation=yes
-      --limit "all:!fake_hosts"
-      reset.yml;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        -e ansible_python_interpreter=${PYPATH}
+        -e reset_confirmation=yes
+        --limit "all:!fake_hosts"
+        reset.yml;
       fi
 
     ## Idempotency checks 4/5 (redeploy after reset)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      -e ansible_python_interpreter=${PYPATH}
-      -e local_release_dir=${PWD}/downloads
-      --limit "all:!fake_hosts"
-      cluster.yml;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        -e ansible_python_interpreter=${PYPATH}
+        -e local_release_dir=${PWD}/downloads
+        --limit "all:!fake_hosts"
+        cluster.yml;
       fi
 
     ## Idempotency checks 5/5 (Advanced DNS checks)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH}
-      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
-      --limit "all:!fake_hosts"
-      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+        ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH}
+        -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
+        --limit "all:!fake_hosts"
+        tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
       fi
 
   after_script:

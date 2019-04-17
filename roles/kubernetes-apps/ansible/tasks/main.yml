@@ -38,20 +38,13 @@
 
 - name: Kubernetes Apps | Start Resources
   kube:
-    name: "{{ item.item.name }}"
     namespace: "kube-system"
     kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    filename: "{{ (coredns_manifests.results|default([]) + coredns_secondary_manifests.results|default([]) + nodelocaldns_manifests.results|default([])) | selectattr('skipped', 'undefined') | map(attribute='item') | map(attribute='file') | map('regex_replace', '^(.*)$', kube_config_dir+'/\\1') | list }}"
     state: "latest"
-  with_items:
-    - "{{ coredns_manifests.results | default({}) }}"
-    - "{{ coredns_secondary_manifests.results | default({}) }}"
-    - "{{ nodelocaldns_manifests.results | default({}) }}"
   when:
     - dns_mode != 'none'
     - inventory_hostname == groups['kube-master'][0]
-    - not item is skipped
   register: resource_result
   until: resource_result is succeeded
   retries: 4
@@ -59,8 +52,6 @@
   tags:
     - coredns
     - nodelocaldns
-  loop_control:
-    label: "{{ item.item.file }}"
 
 - name: Kubernetes Apps | Netchecker
   import_tasks: tasks/netchecker.yml

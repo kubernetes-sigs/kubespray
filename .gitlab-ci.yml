@@ -27,42 +27,19 @@ variables:
   UPGRADE_TEST: "false"
   LOG_LEVEL: "-vv"
 
-# asia-east1-a
-# asia-northeast1-a
-# europe-west1-b
-# us-central1-a
-# us-east1-b
-# us-west1-a
-
 before_script:
   - /usr/bin/python -m pip install -r tests/requirements.txt
   - mkdir -p /.ssh
 
 .job: &job
   tags:
-    - kubernetes
-    - docker
+    - packet
   image: quay.io/kubespray/kubespray:v2.9.0
 
-.docker_service: &docker_service
-  services:
-    - docker:dind
-
-.create_cluster: &create_cluster
-  <<: *job
-  <<: *docker_service
-
 .testcases: &testcases
-  <<: *job
-  <<: *docker_service
-  cache:
-    key: "$CI_BUILD_REF_NAME"
-    paths:
-      - downloads/
-      - $HOME/.cache
   before_script:
-    - docker info
-    - /usr/bin/python -m pip install -r requirements.txt
+    #- docker info
+    #- /usr/bin/python -m pip install -r requirements.txt
     - /usr/bin/python -m pip install -r tests/requirements.txt
     - mkdir -p /.ssh
     - mkdir -p $HOME/.ssh
@@ -82,7 +59,7 @@ before_script:
     # Checkout the CI vars file so it is available
     - test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
     # Workaround https://github.com/kubernetes-sigs/kubespray/issues/2021
-    - 'sh -c "echo ignore_assert_errors: true | tee -a tests/files/${CI_JOB_NAME}.yml"'
+    #- 'sh -c "echo ignore_assert_errors: true | tee -a tests/files/${CI_JOB_NAME}.yml"'
 
 
     # Create cluster
@@ -213,8 +190,6 @@ before_script:
 ci-authorized:
   extends: .job
   stage: moderator
-  before_script:
-    - apt-get -y install jq
   script:
     - /bin/sh scripts/premoderator.sh
   except: ['triggers', 'master']
@@ -222,6 +197,6 @@ ci-authorized:
 include:
   - .gitlab-ci/lint.yml
   - .gitlab-ci/gce.yml
-  - .gitlab-ci/digital-ocean.yml
+# - .gitlab-ci/digital-ocean.yml
   - .gitlab-ci/terraform.yml
   - .gitlab-ci/packet.yml

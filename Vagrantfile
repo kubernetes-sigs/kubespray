@@ -23,7 +23,7 @@ SUPPORTED_OS = {
   "centos"              => {box: "centos/7",           user: "vagrant"},
   "centos-bento"        => {box: "bento/centos-7.5",   user: "vagrant"},
   "fedora"              => {box: "fedora/28-cloud-base",                user: "vagrant"},
-  "opensuse"            => {box: "opensuse/openSUSE-42.3-x86_64",       user: "vagrant"},
+  "opensuse"            => {box: "opensuse/openSUSE-15.0-x86_64",       user: "vagrant"},
   "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", user: "vagrant"},
 }
 
@@ -181,7 +181,7 @@ Vagrant.configure("2") do |config|
         "kube_network_plugin": $network_plugin,
         "kube_network_plugin_multus": $multi_networking,
         "docker_keepcache": "1",
-        "download_run_once": "True",
+        "download_run_once": "False",
         "download_localhost": "False",
         "local_path_provisioner_enabled": "#{$local_path_provisioner_enabled}",
         "local_path_provisioner_claim_root": "#{$local_path_provisioner_claim_root}"
@@ -198,7 +198,7 @@ Vagrant.configure("2") do |config|
           ansible.become = true
           ansible.limit = "all"
           ansible.host_key_checking = false
-          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "--ask-become-pass"]
+          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
           ansible.host_vars = host_vars
           #ansible.tags = ['download']
           ansible.groups = {

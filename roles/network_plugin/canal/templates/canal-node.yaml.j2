@@ -68,9 +68,9 @@ spec:
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
               value: "10-canal.conflist"
-            # CNI binaries are already on the host
+            # Install CNI binaries
             - name: UPDATE_CNI_BINARIES
-              value: "false"
+              value: "true"
             # The CNI network config to install on each node.
             - name: CNI_NETWORK_CONFIG_FILE
               value: "/host/etc/cni/net.d/canal.conflist.template"
@@ -80,6 +80,8 @@ spec:
           volumeMounts:
             - mountPath: /host/etc/cni/net.d
               name: cni-net-dir
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
 {% endif %}
       containers:
 {% if calico_version is version('v3.3.0', '>=') and calico_version is version('v3.4.0', '<') %}
@@ -90,15 +92,17 @@ spec:
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
               value: "10-canal.conflist"
-            # CNI binaries are already on the host
+            # Install CNI binaries
             - name: UPDATE_CNI_BINARIES
-              value: "false"
+              value: "true"
             # The CNI network config to install on each node.
             - name: CNI_NETWORK_CONFIG_FILE
               value: "/host/etc/cni/net.d/canal.conflist.template"
           volumeMounts:
             - mountPath: /host/etc/cni/net.d
               name: cni-net-dir
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
 {% endif %}
         # Runs the flannel daemon to enable vxlan networking between
         # container hosts.
@@ -245,6 +249,7 @@ spec:
             privileged: true
           livenessProbe:
             httpGet:
+              host: 127.0.0.1
               path: /liveness
               port: 9099
             periodSeconds: 10
@@ -253,13 +258,13 @@ spec:
           readinessProbe:
 {% if calico_version is version('v3.3.0', '<')%}
             httpGet:
+              host: 127.0.0.1
               path: /readiness
               port: 9099
 {% else %}
             exec:
               command:
               - /bin/calico-node
-              - -bird-ready
               - -felix-ready
 {% endif %}
             periodSeconds: 10

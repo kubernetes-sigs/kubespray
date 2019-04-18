@@ -2,13 +2,13 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: "coredns{{ coredns_ordinal_suffix | default('') }}"
+  name: "coredns{{ coredns_ordinal_suffix }}"
   namespace: kube-system
   labels:
-    k8s-app: "coredns{{ coredns_ordinal_suffix | default('') }}"
+    k8s-app: "kube-dns{{ coredns_ordinal_suffix }}"
     kubernetes.io/cluster-service: "true"
     addonmanager.kubernetes.io/mode: Reconcile
-    kubernetes.io/name: "coredns{{ coredns_ordinal_suffix | default('') }}"
+    kubernetes.io/name: "coredns{{ coredns_ordinal_suffix }}"
 spec:
   strategy:
     type: RollingUpdate
@@ -17,17 +17,15 @@ spec:
       maxSurge: 10%
   selector:
     matchLabels:
-      k8s-app: coredns{{ coredns_ordinal_suffix | default('') }}
+      k8s-app: kube-dns{{ coredns_ordinal_suffix }}
   template:
     metadata:
       labels:
-        k8s-app: coredns{{ coredns_ordinal_suffix | default('') }}
+        k8s-app: kube-dns{{ coredns_ordinal_suffix }}
       annotations:
         seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
     spec:
-{% if kube_version is version('v1.11.1', '>=') %}
       priorityClassName: system-cluster-critical
-{% endif %}
       nodeSelector:
         beta.kubernetes.io/os: linux
       serviceAccountName: coredns
@@ -42,7 +40,7 @@ spec:
           - topologyKey: "kubernetes.io/hostname"
             labelSelector:
               matchLabels:
-                k8s-app: coredns{{ coredns_ordinal_suffix | default('') }}
+                k8s-app: kube-dns{{ coredns_ordinal_suffix }}
         nodeAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
@@ -89,6 +87,15 @@ spec:
             - all
           readOnlyRootFilesystem: true
         livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+        readinessProbe:
           httpGet:
             path: /health
             port: 8080

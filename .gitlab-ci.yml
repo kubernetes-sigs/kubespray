@@ -1,14 +1,16 @@
+---
 stages:
   - unit-tests
   - moderator
   - deploy-part1
   - deploy-part2
+  - deploy-gce
   - deploy-special
 
 variables:
   FAILFASTCI_NAMESPACE: 'kargo-ci'
   GITLAB_REPOSITORY: 'kargo-ci/kubernetes-sigs-kubespray'
-#  DOCKER_HOST: tcp://localhost:2375
+  # DOCKER_HOST: tcp://localhost:2375
   ANSIBLE_FORCE_COLOR: "true"
   MAGIC: "ci check this"
   TEST_ID: "$CI_PIPELINE_ID-$CI_BUILD_ID"
@@ -26,55 +28,18 @@ variables:
   UPGRADE_TEST: "false"
   LOG_LEVEL: "-vv"
 
-# asia-east1-a
-# asia-northeast1-a
-# europe-west1-b
-# us-central1-a
-# us-east1-b
-# us-west1-a
-
 before_script:
-    - /usr/bin/python -m pip install -r tests/requirements.txt
-    - mkdir -p /.ssh
+  - /usr/bin/python -m pip install -r tests/requirements.txt
+  - mkdir -p /.ssh
 
 .job: &job
   tags:
-    - kubernetes
-    - docker
-  image: quay.io/kubespray/kubespray:v2.8
-
-.docker_service: &docker_service
-  services:
-     - docker:dind
-
-.create_cluster: &create_cluster
-  <<: *job
-  <<: *docker_service
-
-.gce_variables: &gce_variables
-  GCE_USER: travis
-  SSH_USER: $GCE_USER
-  CLOUD_MACHINE_TYPE: "g1-small"
-  CI_PLATFORM: "gce"
-  PRIVATE_KEY: $GCE_PRIVATE_KEY
-
-.do_variables: &do_variables
-  PRIVATE_KEY: $DO_PRIVATE_KEY
-  CI_PLATFORM: "do"
-  SSH_USER: root
-
+    - packet
+  image: quay.io/kubespray/kubespray:v2.9.0
 
 .testcases: &testcases
   <<: *job
-  <<: *docker_service
-  cache:
-    key: "$CI_BUILD_REF_NAME"
-    paths:
-      - downloads/
-      - $HOME/.cache
   before_script:
-    - docker info
-    - /usr/bin/python -m pip install -r requirements.txt
     - /usr/bin/python -m pip install -r tests/requirements.txt
     - mkdir -p /.ssh
     - mkdir -p $HOME/.ssh
@@ -93,9 +58,6 @@ before_script:
     - test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
     # Checkout the CI vars file so it is available
     - test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
-    # Workaround https://github.com/kubernetes-sigs/kubespray/issues/2021
-    - 'sh -c "echo ignore_assert_errors: true | tee -a tests/files/${CI_JOB_NAME}.yml"'
-
 
     # Create cluster
     - >
@@ -145,596 +107,93 @@ before_script:
     ## Idempotency checks 1/5 (repeat deployment)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      -e ansible_python_interpreter=${PYPATH}
-      -e local_release_dir=${PWD}/downloads
-      --limit "all:!fake_hosts"
-      cluster.yml;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        -e ansible_python_interpreter=${PYPATH}
+        -e local_release_dir=${PWD}/downloads
+        --limit "all:!fake_hosts"
+        cluster.yml;
       fi
 
     ## Idempotency checks 2/5 (Advanced DNS checks)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      --limit "all:!fake_hosts"
-      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        --limit "all:!fake_hosts"
+        tests/testcases/040_check-network-adv.yml;
       fi
 
     ## Idempotency checks 3/5 (reset deployment)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      -e ansible_python_interpreter=${PYPATH}
-      -e reset_confirmation=yes
-      --limit "all:!fake_hosts"
-      reset.yml;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        -e ansible_python_interpreter=${PYPATH}
+        -e reset_confirmation=yes
+        --limit "all:!fake_hosts"
+        reset.yml;
       fi
 
     ## Idempotency checks 4/5 (redeploy after reset)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook
-      -i ${ANSIBLE_INVENTORY}
-      -b --become-user=root
-      --private-key=${HOME}/.ssh/id_rsa
-      -u $SSH_USER
-      ${SSH_ARGS}
-      ${LOG_LEVEL}
-      -e @${CI_TEST_VARS}
-      -e ansible_python_interpreter=${PYPATH}
-      -e local_release_dir=${PWD}/downloads
-      --limit "all:!fake_hosts"
-      cluster.yml;
+        ansible-playbook
+        -i ${ANSIBLE_INVENTORY}
+        -b --become-user=root
+        --private-key=${HOME}/.ssh/id_rsa
+        -u $SSH_USER
+        ${SSH_ARGS}
+        ${LOG_LEVEL}
+        -e @${CI_TEST_VARS}
+        -e ansible_python_interpreter=${PYPATH}
+        -e local_release_dir=${PWD}/downloads
+        --limit "all:!fake_hosts"
+        cluster.yml;
       fi
 
     ## Idempotency checks 5/5 (Advanced DNS checks)
     - >
       if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-      ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH}
-      -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
-      --limit "all:!fake_hosts"
-      tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
+        ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH}
+        -u $SSH_USER -e ansible_ssh_user=$SSH_USER $SSH_ARGS -b --become-user=root
+        --limit "all:!fake_hosts"
+        tests/testcases/040_check-network-adv.yml $LOG_LEVEL;
       fi
 
   after_script:
     - cd tests && make delete-${CI_PLATFORM} -s ; cd -
 
-.gce: &gce
-  <<: *testcases
-  variables:
-    <<: *gce_variables
-
-.do: &do
-  variables:
-    <<: *do_variables
-  <<: *testcases
-
-# Test matrix. Leave the comments for markup scripts.
-.coreos_calico_aio_variables: &coreos_calico_aio_variables
-# stage: deploy-part1
-  MOVED_TO_GROUP_VARS: "true"
-
-.ubuntu18_flannel_aio_variables: &ubuntu18_flannel_aio_variables
-# stage: deploy-part1
-  MOVED_TO_GROUP_VARS: "true"
-
-.centos_weave_kubeadm_variables: &centos_weave_kubeadm_variables
-# stage: deploy-part1
-  UPGRADE_TEST: "graceful"
-
-.ubuntu_canal_kubeadm_variables: &ubuntu_canal_kubeadm_variables
-# stage: deploy-part1
-  MOVED_TO_GROUP_VARS: "true"
-
-.ubuntu_canal_ha_variables: &ubuntu_canal_ha_variables
-# stage: deploy-special
-  MOVED_TO_GROUP_VARS: "true"
-
-.ubuntu_contiv_sep_variables: &ubuntu_contiv_sep_variables
-# stage: deploy-special
-  MOVED_TO_GROUP_VARS: "true"
-
-.coreos_cilium_variables: &coreos_cilium_variables
-# stage: deploy-special
-  MOVED_TO_GROUP_VARS: "true"
-
-.ubuntu_cilium_sep_variables: &ubuntu_cilium_sep_variables
-# stage: deploy-special
-  MOVED_TO_GROUP_VARS: "true"
-
-.rhel7_weave_variables: &rhel7_weave_variables
-# stage: deploy-part1
-  MOVED_TO_GROUP_VARS: "true"
-
-.centos7_flannel_addons_variables: &centos7_flannel_addons_variables
-# stage: deploy-part2
-  MOVED_TO_GROUP_VARS: "true"
-
-.debian9_calico_variables: &debian9_calico_variables
-# stage: deploy-part2
-  MOVED_TO_GROUP_VARS: "true"
-
-.coreos_canal_variables: &coreos_canal_variables
-# stage: deploy-part2
-  MOVED_TO_GROUP_VARS: "true"
-
-.rhel7_canal_sep_variables: &rhel7_canal_sep_variables
-# stage: deploy-special
-  MOVED_TO_GROUP_VARS: "true"
-
-.ubuntu_weave_sep_variables: &ubuntu_weave_sep_variables
-# stage: deploy-special
-  MOVED_TO_GROUP_VARS: "true"
-
-.centos7_calico_ha_variables: &centos7_calico_ha_variables
-# stage: deploy-special
-  MOVED_TO_GROUP_VARS: "true"
-
-.centos7_kube_router_variables: &centos7_kube_router_variables
-# stage: deploy-special
-  MOVED_TO_GROUP_VARS: "true"
-
-.centos7_multus_calico_variables: &centos7_multus_calico_variables
-# stage: deploy-part2
-  UPGRADE_TEST: "graceful"
-
-.coreos_alpha_weave_ha_variables: &coreos_alpha_weave_ha_variables
-# stage: deploy-special
-  MOVED_TO_GROUP_VARS: "true"
-
-.coreos_kube_router_variables: &coreos_kube_router_variables
-# stage: deploy-special
-  MOVED_TO_GROUP_VARS: "true"
-
-.ubuntu_rkt_sep_variables: &ubuntu_rkt_sep_variables
-# stage: deploy-part1
-  MOVED_TO_GROUP_VARS: "true"
-
-.ubuntu_flannel_variables: &ubuntu_flannel_variables
-# stage: deploy-part2
-  MOVED_TO_GROUP_VARS: "true"
-
-.ubuntu_kube_router_variables: &ubuntu_kube_router_variables
-# stage: deploy-special
-  MOVED_TO_GROUP_VARS: "true"
-
-.opensuse_canal_variables: &opensuse_canal_variables
-# stage: deploy-part2
-  MOVED_TO_GROUP_VARS: "true"
-
-
-# Builds for PRs only (premoderated by unit-tests step) and triggers (auto)
-### PR JOBS PART1
-
-gce_ubuntu18-flannel-aio:
-  stage: deploy-part1
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *ubuntu18_flannel_aio_variables
-    <<: *gce_variables
-  when: on_success
-  except: ['triggers']
-  only: [/^pr-.*$/]
-
-### PR JOBS PART2
-
-gce_coreos-calico-aio:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *coreos_calico_aio_variables
-    <<: *gce_variables
-  when: on_success
-  except: ['triggers']
-  only: [/^pr-.*$/]
-
-gce_centos7-flannel-addons:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_flannel_addons_variables
-  when: on_success
-  except: ['triggers']
-  only: [/^pr-.*$/]
-
-### MANUAL JOBS
-
-gce_centos-weave-kubeadm-sep:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos_weave_kubeadm_variables
-  when: on_success
-  only: ['triggers']
-
-gce_ubuntu-weave-sep:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_weave_sep_variables
-  when: manual
-  only: ['triggers']
-
-gce_coreos-calico-sep-triggers:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *coreos_calico_aio_variables
-  when: on_success
-  only: ['triggers']
-
-gce_ubuntu-canal-ha-triggers:
-  stage: deploy-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_canal_ha_variables
-  when: on_success
-  only: ['triggers']
-
-gce_centos7-flannel-addons-triggers:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_flannel_addons_variables
-  when: on_success
-  only: ['triggers']
-
-gce_ubuntu-weave-sep-triggers:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_weave_sep_variables
-  when: on_success
-  only: ['triggers']
-
-# More builds for PRs/merges (manual) and triggers (auto)
-do_ubuntu-canal-ha:
-  stage: deploy-part2
-  <<: *job
-  <<: *do
-  variables:
-    <<: *do_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_ubuntu-canal-ha:
-  stage: deploy-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_canal_ha_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_ubuntu-canal-kubeadm:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_canal_kubeadm_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_ubuntu-canal-kubeadm-triggers:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_canal_kubeadm_variables
-  when: on_success
-  only: ['triggers']
-
-gce_ubuntu-flannel-ha:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_flannel_variables
-  when: manual
-  except: ['triggers']
-
-gce_centos-weave-kubeadm-triggers:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos_weave_kubeadm_variables
-  when: on_success
-  only: ['triggers']
-
-gce_ubuntu-contiv-sep:
-  stage: deploy-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_contiv_sep_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_coreos-cilium:
-  stage: deploy-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *coreos_cilium_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_ubuntu-cilium-sep:
-  stage: deploy-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_cilium_sep_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_rhel7-weave:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *rhel7_weave_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_rhel7-weave-triggers:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *rhel7_weave_variables
-  when: on_success
-  only: ['triggers']
-
-gce_debian9-calico-upgrade:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *debian9_calico_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_debian9-calico-triggers:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *debian9_calico_variables
-  when: on_success
-  only: ['triggers']
-
-gce_coreos-canal:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *coreos_canal_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_coreos-canal-triggers:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *coreos_canal_variables
-  when: on_success
-  only: ['triggers']
-
-gce_rhel7-canal-sep:
-  stage: deploy-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *rhel7_canal_sep_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_rhel7-canal-sep-triggers:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *rhel7_canal_sep_variables
-  when: on_success
-  only: ['triggers']
-
-gce_centos7-calico-ha:
-  stage: deploy-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_calico_ha_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_centos7-calico-ha-triggers:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_calico_ha_variables
-  when: on_success
-  only: ['triggers']
-
-gce_centos7-kube-router:
-  stage: deploy-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_kube_router_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_centos7-multus-calico:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *centos7_multus_calico_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_opensuse-canal:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *opensuse_canal_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-# no triggers yet https://github.com/kubernetes-incubator/kargo/issues/613
-gce_coreos-alpha-weave-ha:
-  stage: deploy-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *coreos_alpha_weave_ha_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_coreos-kube-router:
-  stage: deploy-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *coreos_kube_router_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_ubuntu-rkt-sep:
-  stage: deploy-part2
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_rkt_sep_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
-gce_ubuntu-kube-router-sep:
-  stage: deploy-special
-  <<: *job
-  <<: *gce
-  variables:
-    <<: *gce_variables
-    <<: *ubuntu_kube_router_variables
-  when: manual
-  except: ['triggers']
-  only: ['master', /^pr-.*$/]
-
+# For failfast, at least 1 job must be defined in .gitlab-ci.yml
 # Premoderated with manual actions
 ci-authorized:
-  <<: *job
+  extends: .job
   stage: moderator
-  before_script:
-    - apt-get -y install jq
   script:
     - /bin/sh scripts/premoderator.sh
   except: ['triggers', 'master']
 
-syntax-check:
-  <<: *job
-  stage: unit-tests
-  script:
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root cluster.yml -vvv  --syntax-check
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root upgrade-cluster.yml -vvv  --syntax-check
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root reset.yml -vvv  --syntax-check
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root extra_playbooks/upgrade-only-k8s.yml -vvv  --syntax-check
-  except: ['triggers', 'master']
-
-yamllint:
-  <<: *job
-  stage: unit-tests
-  script:
-    - yamllint roles
-  except: ['triggers', 'master']
-
-tox-inventory-builder:
-  stage: unit-tests
-  <<: *job
-  script:
-    - pip install tox
-    - cd contrib/inventory_builder && tox
-  when: manual
-  except: ['triggers', 'master']
+include:
+  - .gitlab-ci/lint.yml
+  - .gitlab-ci/gce.yml
+  - .gitlab-ci/digital-ocean.yml
+  - .gitlab-ci/terraform.yml
+  - .gitlab-ci/packet.yml

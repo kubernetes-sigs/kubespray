@@ -12,7 +12,7 @@ is_atomic: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.13.4
+kube_version: v1.13.5
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
@@ -37,6 +37,9 @@ ignore_assert_errors: false
 # nginx-proxy configure
 nginx_config_dir: "/etc/nginx"
 
+# haproxy configure
+haproxy_config_dir: "/etc/haproxy"
+
 # Directory where the binaries will be installed
 bin_dir: /usr/local/bin
 docker_bin_dir: /usr/bin
@@ -55,33 +58,32 @@ epel_enabled: false
 cluster_name: cluster.local
 # Subdomains of DNS domain to be resolved via /etc/resolv.conf for hostnet pods
 ndots: 2
-# Can be dnsmasq_kubedns, kubedns, manual or none
+# Can be coredns, coredns_dual, manual, or none
 dns_mode: coredns
 
 # Enable nodelocal dns cache
-enable_nodelocaldns: False
+enable_nodelocaldns: true
 nodelocaldns_ip: 169.254.25.10
 
 # Should be set to a cluster IP if using a custom cluster DNS
-# manual_dns_server: 10.x.x.x
+manual_dns_server: ""
 
 # Can be docker_dns, host_resolvconf or none
 resolvconf_mode: docker_dns
 # Deploy netchecker app to verify DNS resolve as an HTTP service
 deploy_netchecker: false
-# Ip address of the kubernetes skydns service
+# Ip address of the kubernetes DNS service (called skydns for historical reasons)
 skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('address') }}"
 skydns_server_secondary: "{{ kube_service_addresses|ipaddr('net')|ipaddr(4)|ipaddr('address') }}"
-dnsmasq_dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
 dns_domain: "{{ cluster_name }}"
+
 kube_dns_servers:
-  kubedns: ["{{skydns_server}}"]
   coredns: ["{{skydns_server}}"]
   coredns_dual: "{{[skydns_server] + [ skydns_server_secondary ]}}"
   manual: ["{{manual_dns_server}}"]
-  dnsmasq_kubedns: ["{{dnsmasq_dns_server}}"]
 
 dns_servers: "{{kube_dns_servers[dns_mode]}}"
+
 
 # Kubernetes configuration dirs and system namespace.
 # Those are where all the additional config stuff goes
@@ -237,9 +239,9 @@ docker_options: >-
   {{ docker_registry_mirrors | map('regex_replace', '^(.*)$', '--registry-mirror=\1' ) | list | join(' ') }}
   {%- endif %}
   {%- if docker_version != "latest" and docker_version is version('17.05', '<') %}
-  --graph={{ docker_daemon_graph }} {{ docker_log_opts }}
+  --graph={{ docker_daemon_graph }} {% if ansible_os_family not in ["openSUSE Leap", "openSUSE Tumbleweed", "Suse"] %}{{ docker_log_opts }}{% endif %}
   {%- else %}
-  --data-root={{ docker_daemon_graph }} {{ docker_log_opts }}
+  --data-root={{ docker_daemon_graph }} {% if ansible_os_family not in ["openSUSE Leap", "openSUSE Tumbleweed", "Suse"] %}{{ docker_log_opts }}{% endif %}
   {%- endif %}
   {%- if ansible_architecture == "aarch64" and ansible_os_family == "RedHat" %}
   --add-runtime docker-runc=/usr/libexec/docker/docker-runc-current
@@ -276,8 +278,10 @@ enable_network_policy: true
 local_volume_provisioner_enabled: "{{ local_volumes_enabled | default('false') }}"
 persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
+rbd_provisioner_enabled: false
 ingress_nginx_enabled: false
 cert_manager_enabled: false
+expand_persistent_volumes: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -308,6 +312,10 @@ kubelet_authentication_token_webhook: true
 
 # When enabled, access to the kubelet API requires authorization by delegation to the API server
 kubelet_authorization_mode_webhook: false
+
+# kubelet uses certificates for authenticating to the Kubernetes API
+# Automatically generate a new key and request a new certificate from the Kubernetes API as the current certificate approaches expiration
+kubelet_rotate_certificates: true
 
 ## v1.11 feature
 feature_gate_v1_11:
@@ -411,13 +419,14 @@ kube_apiserver_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
 kube_apiserver_access_address: "{{ access_ip | default(kube_apiserver_address) }}"
 first_kube_master: "{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(fallback_ips[groups['kube-master'][0]])) }}"
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
+loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
 apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
 kube_apiserver_endpoint: |-
   {% if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
        https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
   {%- elif not is_kube_master and loadbalancer_apiserver_localhost -%}
-       https://localhost:{{ nginx_kube_apiserver_port|default(kube_apiserver_port) }}
+       https://localhost:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }}
   {%- elif is_kube_master -%}
        https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_port }}
   {%- else -%}

@@ -206,7 +206,7 @@ Tools and projects on top of Kubespray
 CI Tests
 --------
 
-[![Build graphs](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/badges/master/build.svg)](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/pipelines)
+[![Build graphs](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/badges/master/build.svg)](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/pipelines)
 
 CI/end-to-end tests sponsored by Google (GCE)
 See the [test matrix](docs/test_cases.md) for details.

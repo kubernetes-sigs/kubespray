@@ -30,8 +30,10 @@ spec:
         beta.kubernetes.io/os: linux
       serviceAccountName: coredns
       tolerations:
-        - key: node-role.kubernetes.io/master
-          effect: NoSchedule
+        - effect: NoSchedule
+          operator: "Exists"
+        - effect: NoExecute
+          operator: "Exists"
         - key: "CriticalAddonsOnly"
           operator: "Exists"
       affinity:
@@ -50,6 +52,9 @@ spec:
                 operator: In
                 values:
                 - ""
+      # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
+      # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
+      terminationGracePeriodSeconds: 0
       containers:
       - name: coredns
         image: "{{ coredns_image_repo }}:{{ coredns_image_tag }}"
@@ -87,15 +92,6 @@ spec:
             - all
           readOnlyRootFilesystem: true
         livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 60
-          timeoutSeconds: 5
-          successThreshold: 1
-          failureThreshold: 5
-        readinessProbe:
           httpGet:
             path: /health
             port: 8080

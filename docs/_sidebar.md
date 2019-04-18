@@ -20,6 +20,7 @@
   * [AWS](docs/aws.md)
   * [Azure](docs/azure.md)
   * [OpenStack](/docs/openstack.md)
+  * [Packet](/docs/packet.md)
   * [vSphere](/docs/vsphere.md)
 * Operating Systems
   * [Atomic](docs/atomic.md)

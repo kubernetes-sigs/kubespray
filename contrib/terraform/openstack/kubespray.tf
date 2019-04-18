@@ -52,6 +52,8 @@ module "compute" {
   k8s_node_fips                                = "${module.ips.k8s_node_fips}"
   bastion_fips                                 = "${module.ips.bastion_fips}"
   bastion_allowed_remote_ips                   = "${var.bastion_allowed_remote_ips}"
+  k8s_allowed_remote_ips                       = "${var.k8s_allowed_remote_ips}"
+  k8s_allowed_egress_ips                       = "${var.k8s_allowed_egress_ips}"
   supplementary_master_groups                  = "${var.supplementary_master_groups}"
   supplementary_node_groups                    = "${var.supplementary_node_groups}"
   worker_allowed_ports                         = "${var.worker_allowed_ports}"

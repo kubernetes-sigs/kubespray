@@ -124,6 +124,7 @@ Supported Components
     -   [weave](https://github.com/weaveworks/weave) v2.5.1
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
+    -   [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
     -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.2
     -   [coredns](https://github.com/coredns/coredns) v1.5.0
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.21.0
@@ -138,7 +139,7 @@ plugins can be deployed for a given single cluster.
 Requirements
 ------------
 
--   **Ansible v2.7.6 (or newer) and python-netaddr is installed on the machine
+-   **Ansible v2.7.8 (or newer) and python-netaddr is installed on the machine
     that will run Ansible commands**
 -   **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
 -   The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/downloads.md#offline-environment))

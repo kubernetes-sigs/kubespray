@@ -12,7 +12,7 @@ is_atomic: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.13.5
+kube_version: v1.14.0
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
@@ -96,6 +96,9 @@ kube_manifest_dir: "{{ kube_config_dir }}/manifests"
 
 # This is where all the cert scripts and certs will be located
 kube_cert_dir: "{{ kube_config_dir }}/ssl"
+
+# compatibility directory for kubeadm
+kube_cert_compat_dir: "/etc/kubernetes/pki"
 
 # This is where all of the bearer tokens will be stored
 kube_token_dir: "{{ kube_config_dir }}/tokens"
@@ -335,6 +338,9 @@ kube_feature_gates: |-
   {{ feature_gate_v1_12 }}
   {%- endif %}
 
+# Enable kubeadm experimental control plane
+kubeadm_control_plane: false
+
 # Local volume provisioner storage classes
 # Levarages Ansibles string to Python datatype casting. Otherwise the dict_key isn't substituted
 # see https://github.com/ansible/ansible/issues/17324
@@ -383,7 +389,7 @@ no_proxy: >-
   {%- endif -%}
   {%- for item in (groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]))|unique -%}
   {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }},
-  {%-   if item != hostvars[item].get('ansible_hostname', "") -%}
+  {%-   if item != hostvars[item].get('ansible_hostname', '') -%}
   {{ hostvars[item]['ansible_hostname'] }},
   {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }},
   {%-   endif -%}

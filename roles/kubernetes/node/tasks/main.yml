@@ -18,9 +18,20 @@
     - kubelet
 
 - import_tasks: nginx-proxy.yml
-  when: is_kube_master == false and loadbalancer_apiserver_localhost
+  when:
+    - not is_kube_master
+    - loadbalancer_apiserver_localhost
+    - loadbalancer_apiserver_type == 'nginx'
   tags:
     - nginx
+
+- import_tasks: haproxy.yml
+  when:
+    - not is_kube_master
+    - loadbalancer_apiserver_localhost
+    - loadbalancer_apiserver_type == 'haproxy'
+  tags:
+    - haproxy
 
 - name: Make sure dynamic kubelet configuration directory is writeable
   file:
@@ -116,6 +127,8 @@
   register: enable_nf_conntrack
   ignore_errors: yes
   when: kube_proxy_mode == 'ipvs'
+  tags:
+    - kube-proxy
 
 - name: Modprobe nf_conntrack for kernels >= 4.19
   modprobe:
@@ -124,6 +137,8 @@
   when:
     - enable_nf_conntrack is failed
     - kube_proxy_mode == 'ipvs'
+  tags:
+    - kube-proxy
 
 - name: Persist ip_vs modules
   copy:

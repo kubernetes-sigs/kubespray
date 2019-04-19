@@ -37,6 +37,9 @@ ignore_assert_errors: false
 # nginx-proxy configure
 nginx_config_dir: "/etc/nginx"
 
+# haproxy configure
+haproxy_config_dir: "/etc/haproxy"
+
 # Directory where the binaries will be installed
 bin_dir: /usr/local/bin
 docker_bin_dir: /usr/bin
@@ -59,7 +62,7 @@ ndots: 2
 dns_mode: coredns
 
 # Enable nodelocal dns cache
-enable_nodelocaldns: False
+enable_nodelocaldns: true
 nodelocaldns_ip: 169.254.25.10
 
 # Should be set to a cluster IP if using a custom cluster DNS
@@ -236,9 +239,9 @@ docker_options: >-
   {{ docker_registry_mirrors | map('regex_replace', '^(.*)$', '--registry-mirror=\1' ) | list | join(' ') }}
   {%- endif %}
   {%- if docker_version != "latest" and docker_version is version('17.05', '<') %}
-  --graph={{ docker_daemon_graph }} {{ docker_log_opts }}
+  --graph={{ docker_daemon_graph }} {% if ansible_os_family not in ["openSUSE Leap", "openSUSE Tumbleweed", "Suse"] %}{{ docker_log_opts }}{% endif %}
   {%- else %}
-  --data-root={{ docker_daemon_graph }} {{ docker_log_opts }}
+  --data-root={{ docker_daemon_graph }} {% if ansible_os_family not in ["openSUSE Leap", "openSUSE Tumbleweed", "Suse"] %}{{ docker_log_opts }}{% endif %}
   {%- endif %}
   {%- if ansible_architecture == "aarch64" and ansible_os_family == "RedHat" %}
   --add-runtime docker-runc=/usr/libexec/docker/docker-runc-current
@@ -275,6 +278,7 @@ enable_network_policy: true
 local_volume_provisioner_enabled: "{{ local_volumes_enabled | default('false') }}"
 persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
+rbd_provisioner_enabled: false
 ingress_nginx_enabled: false
 cert_manager_enabled: false
 expand_persistent_volumes: false
@@ -415,13 +419,14 @@ kube_apiserver_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
 kube_apiserver_access_address: "{{ access_ip | default(kube_apiserver_address) }}"
 first_kube_master: "{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(fallback_ips[groups['kube-master'][0]])) }}"
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
+loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
 apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
 kube_apiserver_endpoint: |-
   {% if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
        https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
   {%- elif not is_kube_master and loadbalancer_apiserver_localhost -%}
-       https://localhost:{{ nginx_kube_apiserver_port|default(kube_apiserver_port) }}
+       https://localhost:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }}
   {%- elif is_kube_master -%}
        https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_port }}
   {%- else -%}

@@ -45,7 +45,7 @@ kube_image_repo: "gcr.io/google-containers"
 # TODO(mattymo): Move calico versions to roles/network_plugins/calico/defaults
 # after migration to container download
 calico_version: "v3.4.0"
-calico_ctl_version: "v3.4.0"
+calico_ctl_version: "v3.4.4"
 calico_cni_version: "v3.4.0"
 calico_policy_version: "v3.4.0"
 calico_rr_version: "v0.6.1"
@@ -59,7 +59,7 @@ weave_version: 2.5.1
 pod_infra_version: 3.1
 contiv_version: 1.2.1
 cilium_version: "v1.3.0"
-kube_router_version: "v0.2.1"
+kube_router_version: "v0.2.5"
 multus_version: "v3.1.autoconf"
 
 # Download URLs
@@ -67,6 +67,7 @@ kubeadm_download_url: "https://storage.googleapis.com/kubernetes-release/release
 hyperkube_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kube_version }}/bin/linux/{{ image_arch }}/hyperkube"
 etcd_download_url: "https://github.com/coreos/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
 cni_download_url: "https://github.com/containernetworking/plugins/releases/download/{{ cni_version }}/cni-plugins-{{ image_arch }}-{{ cni_version }}.tgz"
+calicoctl_download_url: "https://github.com/projectcalico/calicoctl/releases/download/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
 
 # Checksums
 hyperkube_checksums:
@@ -138,11 +139,19 @@ etcd_binary_checksums:
 cni_binary_checksums:
   arm64: 016bbc989877e35e3cd49fafe11415fb2717e52c74fde6b1650411154cb91b81
   amd64: f04339a21b8edf76d415e7f17b620e63b8f37a76b2f706671587ab6464411f2d
+calicoctl_binary_checksums:
+  amd64:
+    v3.5.4: 197194b838cc2a9a7455c2ebd5505a5e24f8f3d994eb75c17f5dd568944100b8
+    v3.4.4: 93bd084e053cf1bf3b7fef369677bd6767c30fe7135e2c7e044e31693422ef61
+  arm64:
+    v3.5.4: a4481178665658658a73e4ceca9a1dff5cccded4179615c91d1c3e49fd96f237
+    v3.4.4: ff35d9e8b5c00e9fe47d05e8f5123ec98fd641370f8cd93f4fbb3d913da77ab6
 
 etcd_binary_checksum: "{{ etcd_binary_checksums[image_arch] }}"
 cni_binary_checksum: "{{ cni_binary_checksums[image_arch] }}"
 hyperkube_binary_checksum: "{{ hyperkube_checksums[image_arch][kube_version] }}"
 kubeadm_binary_checksum: "{{ kubeadm_checksums[image_arch][kubeadm_version] }}"
+calicoctl_binary_checksum: "{{ calicoctl_binary_checksums[image_arch][calico_ctl_version] }}"
 
 # Containers
 # In some cases, we need a way to set --registry-mirror or --insecure-registry for docker,
@@ -158,8 +167,6 @@ flannel_image_repo: "quay.io/coreos/flannel"
 flannel_image_tag: "{{ flannel_version }}"
 flannel_cni_image_repo: "quay.io/coreos/flannel-cni"
 flannel_cni_image_tag: "{{ flannel_cni_version }}"
-calicoctl_image_repo: "docker.io/calico/ctl"
-calicoctl_image_tag: "{{ calico_ctl_version }}"
 calico_node_image_repo: "docker.io/calico/node"
 calico_node_image_tag: "{{ calico_version }}"
 calico_cni_image_repo: "docker.io/calico/cni"
@@ -202,7 +209,10 @@ multus_image_tag: "{{ multus_version }}"
 nginx_image_repo: nginx
 nginx_image_tag: 1.15
 
-coredns_version: "1.4.0"
+haproxy_image_repo: haproxy
+haproxy_image_tag: 1.9
+
+coredns_version: "1.5.0"
 coredns_image_repo: "coredns/coredns"
 coredns_image_tag: "{{ coredns_version }}"
 
@@ -234,6 +244,8 @@ local_volume_provisioner_image_repo: "quay.io/external_storage/local-volume-prov
 local_volume_provisioner_image_tag: "v2.1.0"
 cephfs_provisioner_image_repo: "quay.io/external_storage/cephfs-provisioner"
 cephfs_provisioner_image_tag: "v2.1.0-k8s1.11"
+rbd_provisioner_image_repo: "quay.io/external_storage/rbd-provisioner"
+rbd_provisioner_image_tag: "v2.1.1-k8s1.11"
 local_path_provisioner_image_repo: "rancher/local-path-provisioner"
 local_path_provisioner_image_tag: "v0.0.2"
 ingress_nginx_controller_image_repo: "quay.io/kubernetes-ingress-controller/nginx-ingress-controller"
@@ -369,10 +381,14 @@ downloads:
 
   calicoctl:
     enabled: "{{ kube_network_plugin == 'calico' or kube_network_plugin == 'canal' }}"
-    container: true
-    repo: "{{ calicoctl_image_repo }}"
-    tag: "{{ calicoctl_image_tag }}"
-    sha256: "{{ calicoctl_digest_checksum|default(None) }}"
+    file: true
+    version: "{{ calico_ctl_version }}"
+    dest: "{{local_release_dir}}/calicoctl"
+    sha256: "{{ calicoctl_binary_checksum }}"
+    url: "{{ calicoctl_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
     groups:
       - k8s-cluster
 
@@ -485,11 +501,20 @@ downloads:
       - k8s-cluster
 
   nginx:
-    enabled: "{{ loadbalancer_apiserver_localhost }}"
+    enabled: "{{ loadbalancer_apiserver_localhost and loadbalancer_apiserver_type == 'nginx' }}"
     container: true
     repo: "{{ nginx_image_repo }}"
     tag: "{{ nginx_image_tag }}"
     sha256: "{{ nginx_digest_checksum|default(None) }}"
+    groups:
+      - kube-node
+
+  haproxy:
+    enabled: "{{ loadbalancer_apiserver_localhost and loadbalancer_apiserver_type == 'haproxy' }}"
+    container: true
+    repo: "{{ haproxy_image_repo }}"
+    tag: "{{ haproxy_image_tag }}"
+    sha256: "{{ haproxy_digest_checksum|default(None) }}"
     groups:
       - kube-node
 
@@ -503,7 +528,7 @@ downloads:
       - kube-node
 
   nodelocaldns:
-    enabled: "{{ enable_nodelocaldns == True }}"
+    enabled: "{{ enable_nodelocaldns }}"
     container: true
     repo: "{{ nodelocaldns_image_repo }}"
     tag: "{{ nodelocaldns_image_tag }}"
@@ -606,6 +631,15 @@ downloads:
     repo: "{{ cephfs_provisioner_image_repo }}"
     tag: "{{ cephfs_provisioner_image_tag }}"
     sha256: "{{ cephfs_provisioner_digest_checksum|default(None) }}"
+    groups:
+      - kube-node
+
+  rbd_provisioner:
+    enabled: "{{ rbd_provisioner_enabled }}"
+    container: true
+    repo: "{{ rbd_provisioner_image_repo }}"
+    tag: "{{ rbd_provisioner_image_tag }}"
+    sha256: "{{ rbd_provisioner_digest_checksum|default(None) }}"
     groups:
       - kube-node
 

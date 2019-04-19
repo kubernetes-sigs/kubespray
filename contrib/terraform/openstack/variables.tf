@@ -151,6 +151,18 @@ variable "master_allowed_remote_ips" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "k8s_allowed_remote_ips" {
+  description = "An array of CIDRs allowed to SSH to hosts"
+  type        = "list"
+  default     = []
+}
+
+variable "k8s_allowed_egress_ips" {
+  description = "An array of CIDRs allowed for egress traffic"
+  type        = "list"
+  default     = ["0.0.0.0/0"]
+}
+
 variable "worker_allowed_ports" {
   type = "list"
 

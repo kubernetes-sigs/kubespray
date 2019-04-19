@@ -7,10 +7,12 @@ nodeRegistration:
 {% if kube_override_hostname|default('') %}
   name: {{ kube_override_hostname }}
 {% endif %}
-{% if inventory_hostname in groups['kube-master'] and inventory_hostname not in groups['kube-node'] %}
+{% if inventory_hostname not in groups['kube-node'] %}
   taints:
   - effect: NoSchedule
     key: node-role.kubernetes.io/master
+{% else %}
+  taints: {}
 {% endif %}
 {% if container_manager == 'crio' %}
   criSocket: /var/run/crio/crio.sock
@@ -29,9 +31,9 @@ etcd:
 {% for endpoint in etcd_access_addresses.split(',') %}
       - {{ endpoint }}
 {% endfor %}
-      caFile: {{ etcd_cert_dir }}/ca.pem
-      certFile: {{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem
-      keyFile: {{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem
+      caFile: {{ etcd_cert_dir }}/{{ kube_etcd_cacert_file }}
+      certFile: {{ etcd_cert_dir }}/{{ kube_etcd_cert_file }}
+      keyFile: {{ etcd_cert_dir }}/{{ kube_etcd_key_file }}
 networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: {{ kube_service_addresses }}

@@ -12,16 +12,17 @@
       bin_dir: "/usr/local/bin"
     when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
 
-
-  - name: Wait for pods to be ready
-    shell: "{{bin_dir}}/kubectl get pods -n test"
-    register: pods
+  - name: Check that all pods are running and ready
+    shell: "{{bin_dir}}/kubectl get pods --namespace test --no-headers -o yaml"
+    register: run_pods_log
     until:
-    - '"ContainerCreating" not in pods.stdout'
-    - '"Pending" not in pods.stdout'
-    - '"Terminating" not in pods.stdout'
-    retries: 60
-    delay: 2
+    # Check that all pods are running
+    - '(run_pods_log.stdout | from_yaml)["items"] | map(attribute = "status.phase") | unique | list == ["Running"]'
+    # Check that all pods are ready
+    - '(run_pods_log.stdout | from_yaml)["items"] | map(attribute = "status.containerStatuses") | map("map", attribute = "ready") | map("min") | min'
+    retries: 18
+    delay: 10
+    failed_when: false
     no_log: true
 
   - name: Get pod names

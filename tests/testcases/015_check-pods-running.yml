@@ -1,0 +1,40 @@
+---
+- hosts: kube-master[0]
+  tasks:
+
+  - name: Force binaries directory for Container Linux by CoreOS
+    set_fact:
+      bin_dir: "/opt/bin"
+    when: ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+
+  - set_fact:
+      bin_dir: "/usr/local/bin"
+    when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+
+  - name: Check kubectl output
+    shell: "{{bin_dir}}/kubectl get pods --all-namespaces -owide"
+    register: get_pods
+    no_log: true
+
+  - debug: msg="{{get_pods.stdout.split('\n')}}"
+
+  - name: Check that all pods are running and ready
+    shell: "{{bin_dir}}/kubectl get pods --all-namespaces --no-headers -o yaml"
+    register: run_pods_log
+    until:
+    # Check that all pods are running
+    - '(run_pods_log.stdout | from_yaml)["items"] | map(attribute = "status.phase") | unique | list == ["Running"]'
+    # Check that all pods are ready
+    - '(run_pods_log.stdout | from_yaml)["items"] | map(attribute = "status.containerStatuses") | map("map", attribute = "ready") | map("min") | min'
+    retries: 18
+    delay: 10
+    failed_when: false
+    no_log: true
+
+  - name: Check kubectl output
+    shell: "{{bin_dir}}/kubectl get pods --all-namespaces -owide"
+    register: get_pods
+    no_log: true
+
+  - debug: msg="{{get_pods.stdout.split('\n')}}"
+    failed_when: not run_pods_log is success

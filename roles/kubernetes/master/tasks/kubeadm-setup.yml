@@ -111,15 +111,17 @@
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Master | restart kubelet
 
+- name: kubeadm | Apply kube-proxy RBAC workaround when skipping kube-proxy phase
+  include: kube-proxy-rbac.yml
+
 - name: set kubeadm certificate key
   set_fact:
     kubeadm_certificate_key: "{{ item | regex_search('--certificate-key ([^ ]+)','\\1') | first }}"
-  with_items: "{{ (hostvars[groups['kube-master'][0]]['kubeadm_init']|default({'stdout_lines': []}))['stdout_lines'] }}"
+  with_items: "{{ hostvars[groups['kube-master'][0]]['kubeadm_init'].stdout_lines | default([]) }}"
   when:
     - kubeadm_version is version('v1.14.0', '>=')
     - kubeadm_certificate_key is not defined
     - item | trim | match('.*--certificate-key .*')
-    - hostvars[groups['kube-master'][0]]['kubeadm_init']['stdout_lines'] is defined
 
 - name: Create hardcoded kubeadm token for joining nodes with 24h expiration (if defined)
   shell: >-

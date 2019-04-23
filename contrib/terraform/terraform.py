@@ -157,7 +157,7 @@ def packet_device(resource, tfvars=None):
 
     attrs = {
         'id': raw_attrs['id'],
-        'facility': raw_attrs['facility'],
+        'facilities': parse_list(raw_attrs, 'facilities']),
         'hostname': raw_attrs['hostname'],
         'operating_system': raw_attrs['operating_system'],
         'locked': parse_bool(raw_attrs['locked']),
@@ -178,7 +178,7 @@ def packet_device(resource, tfvars=None):
     }
 
     # add groups based on attrs
-    groups.append('packet_facility=' + attrs['facility'])
+    groups.append('packet_facilities=' + attrs['facilities'])
     groups.append('packet_operating_system=' + attrs['operating_system'])
     groups.append('packet_locked=%s' % attrs['locked'])
     groups.append('packet_state=' + attrs['state'])

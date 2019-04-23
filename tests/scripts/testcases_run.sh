@@ -32,10 +32,7 @@ ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH}
 ## Test that all pods are Running
 ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER -b --become-user=root --limit "all:!fake_hosts" tests/testcases/015_check-pods-running.yml $LOG_LEVEL
 
-## Test pod creation
-ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER -b --become-user=root --limit "all:!fake_hosts" tests/testcases/020_check-create-pod.yml $LOG_LEVEL
-
-## Ping the between 2 pod
+## Test pod creation and ping between them
 ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH} -u $SSH_USER -e ansible_ssh_user=$SSH_USER -b --become-user=root --limit "all:!fake_hosts" tests/testcases/030_check-network.yml $LOG_LEVEL
 
 ## Advanced DNS checks

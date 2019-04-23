@@ -1,5 +1,7 @@
 # Configure the Packet Provider
-provider "packet" {}
+provider "packet" {
+  version = "~> 2.0"
+}
 
 resource "packet_ssh_key" "k8s" {
   count      = "${var.public_key_path != "" ? 1 : 0}"

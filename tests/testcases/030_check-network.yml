@@ -1,8 +1,10 @@
 ---
 - hosts: kube-master[0]
+  vars:
+    test_image_repo: busybox
+    test_image_tag: latest
 
   tasks:
-
   - name: Force binaries directory for Container Linux by CoreOS
     set_fact:
       bin_dir: "/opt/bin"
@@ -11,6 +13,12 @@
   - set_fact:
       bin_dir: "/usr/local/bin"
     when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+
+  - name: Create test namespace
+    shell: "{{bin_dir}}/kubectl create namespace test"
+
+  - name: Run a replica controller composed of 2 pods in test ns
+    shell: "{{bin_dir}}/kubectl run test --image={{test_image_repo}}:{{test_image_tag}} --namespace test --replicas=2 --command -- tail -f /dev/null"
 
   - name: Check that all pods are running and ready
     shell: "{{bin_dir}}/kubectl get pods --namespace test --no-headers -o yaml"
@@ -29,6 +37,9 @@
     shell: "{{bin_dir}}/kubectl get pods -n test -o json"
     register: pods
     no_log: true
+
+  - debug: msg="{{pods.stdout.split('\n')}}"
+    failed_when: not run_pods_log is success
 
   - name: Get hostnet pods
     command: "{{bin_dir}}/kubectl get pods -n test -o
@@ -79,3 +90,6 @@
     with_nested:
     - "{{pod_names}}"
     - "{{pod_ips}}"
+
+  - name: Delete test namespace
+    shell: "{{bin_dir}}/kubectl delete namespace test"

@@ -41,16 +41,21 @@
 
 - name: Kubernetes Apps | Add policies, roles, bindings for PodSecurityPolicy
   kube:
+    name: "{{item.item.name}}"
     kubectl: "{{bin_dir}}/kubectl"
-    filename: "{{ psp_manifests.results | selectattr('skipped', 'undefined') | map(attribute='item') | map(attribute='file') | map('regex_replace', '^(.*)$', kube_config_dir+'/\\1') | list }}"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
     state: "latest"
   register: result
   until: result is succeeded
   retries: 10
   delay: 6
+  with_items: "{{ psp_manifests.results }}"
   when:
-    - podsecuritypolicy_enabled
     - inventory_hostname == groups['kube-master'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
 
 - name: Kubernetes Apps | Add ClusterRoleBinding to admit nodes
   template:

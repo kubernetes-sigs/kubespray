@@ -74,7 +74,8 @@ pod_infra_version: 3.1
 contiv_version: 1.2.1
 cilium_version: "v1.3.0"
 kube_router_version: "v0.2.5"
-multus_version: "v3.2.1"
+crictl_version: "{{ kube_version | regex_replace('^v(?P<major>\\d+).(?P<minor>\\d+).(?P<patch>\\d+)$', 'v\\g<major>.\\g<minor>.0') }}"
+multus_version: "v3.1.autoconf"
 
 crictl_version: "v1.14.0"
 
@@ -84,7 +85,18 @@ hyperkube_download_url: "https://storage.googleapis.com/kubernetes-release/relea
 etcd_download_url: "https://github.com/coreos/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
 cni_download_url: "https://github.com/containernetworking/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
 calicoctl_download_url: "https://github.com/projectcalico/calicoctl/releases/download/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
-crictl_download_url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-linux-{{ image_arch }}.tar.gz"
+crictl_download_url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+
+crictl_checksums:
+  arm:
+    v1.14.0: 9910cecfd6558239ba015323066c7233d8371af359b9ddd0b2a35d5223bcf945
+    v1.13.0: 2e478ebed85f9d70d49fd8f1d1089c8fba6e37d3461aeef91813f1ab0f0df586
+  arm64:
+    v1.14.0: f76b3d00a272c8d210e9a45f77d07d3770bee310d99c4fd9a72d6f55278882e5
+    v1.13.0: 68949c0cb5a37e7604c145d189cf1e109c08c93d9c710ba663db026b9c6f2746
+  amd64:
+    v1.14.0: 483c90a9fe679590df4332ba807991c49232e8cd326c307c575ecef7fe22327b
+    v1.13.0: 9bdbea7a2b382494aff2ff014da328a042c5aba9096a7772e57fdf487e5a1d51
 
 # Checksums
 hyperkube_checksums:
@@ -207,7 +219,7 @@ cni_binary_checksum: "{{ cni_binary_checksums[image_arch] }}"
 hyperkube_binary_checksum: "{{ hyperkube_checksums[image_arch][kube_version] }}"
 kubeadm_binary_checksum: "{{ kubeadm_checksums[image_arch][kubeadm_version] }}"
 calicoctl_binary_checksum: "{{ calicoctl_binary_checksums[image_arch][calico_ctl_version] }}"
-crictl_binary_checksum: "{{ crictl_binary_checksums[image_arch][crictl_version] }}"
+crictl_binary_checksum: "{{ crictl_checksums[image_arch][crictl_version] }}"
 
 # Containers
 # In some cases, we need a way to set --registry-mirror or --insecure-registry for docker,
@@ -322,6 +334,20 @@ image_pull_command: "{{ docker_bin_dir }}/docker pull"
 image_info_command: "{{ docker_bin_dir }}/docker images -q | xargs {{ docker_bin_dir }}/docker inspect -f \"{{ '{{' }} if .RepoTags {{ '}}' }}{{ '{{' }} (index .RepoTags 0) {{ '}}' }}{{ '{{' }} end {{ '}}' }}{{ '{{' }} if .RepoDigests {{ '}}' }},{{ '{{' }} (index .RepoDigests 0) {{ '}}' }}{{ '{{' }} end {{ '}}' }}\" | tr '\n' ','"
 
 downloads:
+  crictl:
+    container: false
+    file: true
+    enabled: true
+    version: "{{ crictl_version }}"
+    dest: "{{local_release_dir}}/crictl-{{ crictl_version }}-linux-{{ image_arch }}.tar.gz"
+    sha256: "{{ crictl_binary_checksum }}"
+    url: "{{ crictl_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - kube-node
+
   netcheck_server:
     enabled: "{{ deploy_netchecker }}"
     container: true

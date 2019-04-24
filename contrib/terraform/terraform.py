@@ -157,7 +157,7 @@ def packet_device(resource, tfvars=None):
 
     attrs = {
         'id': raw_attrs['id'],
-        'facilities': parse_list(raw_attrs, 'facilities']),
+        'facilities': parse_list(raw_attrs, 'facilities'),
         'hostname': raw_attrs['hostname'],
         'operating_system': raw_attrs['operating_system'],
         'locked': parse_bool(raw_attrs['locked']),

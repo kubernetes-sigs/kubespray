@@ -31,4 +31,4 @@ ansible-playbook --syntax-check scale.yml
 ansible-playbook --syntax-check extra_playbooks/upgrade-only-k8s.yml
 
 # Ansible-lint checks
-grep -Rl '^- hosts: \|^  hosts: \|^- name: ' --include \*.yml --include \*.yaml . | xargs ansible-lint -v
+grep -Rl '^- hosts: \|^  hosts: \|^- name: ' --include \*.yml --include \*.yaml . | parallel -j15 ansible-lint -v

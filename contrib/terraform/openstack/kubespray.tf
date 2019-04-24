@@ -1,3 +1,7 @@
+provider "openstack" {
+  version = "~> 1.17"
+}
+
 module "network" {
   source = "modules/network"
 

@@ -185,6 +185,7 @@ Vagrant.configure("2") do |config|
         "download_localhost": "False",
         "local_path_provisioner_enabled": "#{$local_path_provisioner_enabled}",
         "local_path_provisioner_claim_root": "#{$local_path_provisioner_claim_root}"
+        "ansible_ssh_user": SUPPORTED_OS[$os][:user]
       }
 
       # Only execute the Ansible provisioner once, when all the machines are up and ready.

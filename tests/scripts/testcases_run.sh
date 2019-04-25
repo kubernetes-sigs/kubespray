@@ -10,7 +10,7 @@ echo ${PWD}
 cd tests && make create-${CI_PLATFORM} -s ; cd -
 
 # Check out latest tag if testing upgrade
-test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
+test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY_VERSION"
 # Checkout the CI vars file so it is available
 test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
 

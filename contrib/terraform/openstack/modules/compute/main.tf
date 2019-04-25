@@ -296,6 +296,12 @@ resource "openstack_compute_floatingip_associate_v2" "k8s_master" {
   floating_ip = "${var.k8s_master_fips[count.index]}"
 }
 
+resource "openstack_compute_floatingip_associate_v2" "k8s_master_no_etcd" {
+  count       = "${var.number_of_k8s_masters_no_etcd}"
+  instance_id = "${element(openstack_compute_instance_v2.k8s_master_no_etcd.*.id, count.index)}"
+  floating_ip = "${var.k8s_master_no_etcd_fips[count.index]}"
+}
+
 resource "openstack_compute_floatingip_associate_v2" "k8s_node" {
   count       = "${var.number_of_k8s_nodes}"
   floating_ip = "${var.k8s_node_fips[count.index]}"

@@ -61,6 +61,13 @@ spec:
             # Prevents the container from sleeping forever.
             - name: SLEEP
               value: "false"
+{% if calico_datastore == "kdd" %}
+            # Set the hostname based on the k8s node name.
+            - name: KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+{% endif %}
           volumeMounts:
             - mountPath: /host/etc/cni/net.d
               name: cni-net-dir
@@ -98,11 +105,51 @@ spec:
           image: {{ calico_node_image_repo }}:{{ calico_node_image_tag }}
           env:
             # The location of the Calico etcd cluster.
+{% if calico_datastore == "etcd" %}
             - name: ETCD_ENDPOINTS
               valueFrom:
                 configMapKeyRef:
                   name: calico-config
                   key: etcd_endpoints
+            # Location of the CA certificate for etcd.
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_ca
+            # Location of the client key for etcd.
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_key
+            # Location of the client certificate for etcd.
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_cert
+{% elif calico_datastore == "kdd" %}
+            # Use Kubernetes API as the backing datastore.
+            - name: DATASTORE_TYPE
+              value: "kubernetes"
+  {% if typha_enabled == "true" %}
+            # Typha support: controlled by the ConfigMap.
+            - name: FELIX_TYPHAK8SSERVICENAME
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: typha_service_name
+  {% endif %}
+            # Wait for the datastore.
+            - name: WAIT_FOR_DATASTORE
+              value: "true"
+            # Set based on the k8s node name.
+            - name: NODENAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+{% endif %}
             # Choose the backend to use.
             - name: CALICO_NETWORKING_BACKEND
               valueFrom:
@@ -167,24 +214,6 @@ spec:
             - name: CALICO_ADVERTISE_CLUSTER_IPS
               value: "{{ kube_service_addresses }}"
 {% endif %}
-            # Location of the CA certificate for etcd.
-            - name: ETCD_CA_CERT_FILE
-              valueFrom:
-                configMapKeyRef:
-                  name: calico-config
-                  key: etcd_ca
-            # Location of the client key for etcd.
-            - name: ETCD_KEY_FILE
-              valueFrom:
-                configMapKeyRef:
-                  name: calico-config
-                  key: etcd_key
-            # Location of the client certificate for etcd.
-            - name: ETCD_CERT_FILE
-              valueFrom:
-                configMapKeyRef:
-                  name: calico-config
-                  key: etcd_cert
 {% if calico_ip_auto_method is defined %}
             - name: IP_AUTODETECTION_METHOD
               value: "{{ calico_ip_auto_method }}"
@@ -243,8 +272,10 @@ spec:
             - mountPath: /var/lib/calico
               name: var-lib-calico
               readOnly: false
+{% if calico_datastore == "etcd" %}
             - mountPath: /calico-secrets
               name: etcd-certs
+{% endif %}
             - name: xtables-lock
               mountPath: /run/xtables.lock
               readOnly: false
@@ -266,10 +297,12 @@ spec:
         - name: cni-bin-dir
           hostPath:
             path: /opt/cni/bin
+{% if calico_datastore == "etcd" %}
         # Mount in the etcd TLS secrets.
         - name: etcd-certs
           hostPath:
             path: "{{ calico_cert_dir }}"
+{% endif %}
         # Mount the global iptables lock file, used by calico/node
         - name: xtables-lock
           hostPath:

@@ -10,7 +10,7 @@ packet_project_id = "Example-API-Token"
 public_key_path = "~/.ssh/id_rsa.pub"
 
 # cluster location
-facilities = ["ewr1"]
+facility = "ewr1"
 
 # standalone etcds
 number_of_etcd = 0

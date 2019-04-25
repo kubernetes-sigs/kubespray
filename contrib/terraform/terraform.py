@@ -178,7 +178,6 @@ def packet_device(resource, tfvars=None):
     }
 
     # add groups based on attrs
-    groups.append('packet_facilities=' + attrs['facilities'])
     groups.append('packet_operating_system=' + attrs['operating_system'])
     groups.append('packet_locked=%s' % attrs['locked'])
     groups.append('packet_state=' + attrs['state'])

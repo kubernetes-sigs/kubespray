@@ -1,12 +1,25 @@
 ---
+- name: file_download | create local download destination directory
+  file:
+    path: "{{download.dest|dirname}}"
+    state: directory
+    recurse: yes
+    mode: 0755
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when:
+    - download_delegate != "localhost"
+    - download_run_once
+    - download.enabled
+    - download.file
+
 - name: file_download | copy file to ansible host
   synchronize:
     src: "{{ download.dest }}"
     dest: "{{ download.dest }}"
     use_ssh_args: "{{ has_bastion | default(false) }}"
     mode: pull
-  delegate_to: localhost
-  delegate_facts: no
   run_once: true
   become: false
   when:
@@ -23,8 +36,6 @@
     dest: "{{ download.dest }}"
     use_ssh_args: "{{ has_bastion | default(false) }}"
     mode: push
-  delegate_to: localhost
-  delegate_facts: no
   become: true
   register: get_task
   until: get_task is succeeded

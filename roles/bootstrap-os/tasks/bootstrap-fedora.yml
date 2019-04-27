@@ -25,6 +25,26 @@
   tags:
     - facts
 
+- name: Check if a proxy is set in /etc/dnf/dnf.conf
+  raw: grep -qs 'proxy=' /etc/dnf/dnf.conf
+  register: need_http_proxy
+  failed_when: false
+  changed_when: false
+  # This command should always run, even in check mode
+  check_mode: false
+  environment: {}
+  when:
+    - http_proxy is defined
+
+- name: Add http_proxy to /etc/dnf/dnf.conf if http_proxy is defined
+  raw: echo 'proxy={{ http_proxy }}' >> /etc/dnf/dnf.conf
+  become: true
+  environment: {}
+  when:
+    - http_proxy is defined
+    - need_http_proxy.rc != 0
+    - not is_atomic
+
 # Fedora's policy as of Fedora 30 is to still install python2 as /usr/bin/python
 # See https://fedoraproject.org/wiki/FinalizingFedoraSwitchtoPython3 for the current status
 - name: Install python on fedora

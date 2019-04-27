@@ -1,86 +1,40 @@
----
+- name: Download and unarchive containerd
+  unarchive:
+    src: "{{ containerd_download_url }}"
+    dest: /usr/local
+    remote_src: yes
 
-- name: gather os specific variables
-  include_vars: "{{ item }}"
-  with_first_found:
-    - files:
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_distribution|lower }}.yml"
-        - "{{ ansible_os_family|lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_os_family|lower }}.yml"
-        - defaults.yml
-      paths:
-        - ../vars
-      skip: true
-  tags:
-    - facts
+- name: Download and unarchive crictl
+  unarchive:
+    src: "{{ crictl_download_url }}"
+    dest: /usr/local/bin
+    remote_src: yes
 
-- name: ensure containerd repository public key is installed
-  action: "{{ containerd_repo_key_info.pkg_key }}"
-  args:
-    id: "{{ item }}"
-    url: "{{ containerd_repo_key_info.url }}"
-    state: present
-  register: keyserver_task_result
-  until: keyserver_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
-  with_items: "{{ containerd_repo_key_info.repo_keys }}"
-  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat", "Suse", "ClearLinux"] or is_atomic)
-
-- name: ensure containerd repository is enabled
-  action: "{{ containerd_repo_info.pkg_repo }}"
-  args:
-    repo: "{{ item }}"
-    state: present
-  with_items: "{{ containerd_repo_info.repos }}"
-  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat", "Suse", "ClearLinux"] or is_atomic) and (containerd_repo_info.repos|length > 0)
-
-- name: ensure containerd packages are installed
-  action: "{{ containerd_package_info.pkg_mgr }}"
-  args:
-    pkg: "{{ item.name }}"
-    force: "{{ item.force|default(omit) }}"
-    conf_file: "{{ item.yum_conf|default(omit) }}"
-    state: present
-    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
-  register: containerd_task_result
-  until: containerd_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
-  with_items: "{{ containerd_package_info.pkgs }}"
-  notify: restart containerd
-  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "ClearLinux"] or is_atomic) and (containerd_package_info.pkgs|length > 0)
-  ignore_errors: true
-
-# This is required to ensure any apt upgrade will not break kubernetes
-- name: Set containerd pin priority to apt_preferences on Debian family
+- name: Install crictl config
   template:
-    src: "apt_preferences.d/debian_containerd.j2"
-    dest: "/etc/apt/preferences.d/containerd"
-    owner: "root"
+    src: crictl.yaml.j2
+    dest: /etc/crictl.yaml
+    owner: bin
     mode: 0644
-  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "ClearLinux", "RedHat", "Suse"] or is_atomic)
 
-- name: Copy containerd config file
-  template:
-    src: containerd_config.toml.j2
-    dest: "/etc/containerd/config.toml"
-    owner: "root"
-    mode: 0644
-  notify: restart containerd
+- name: Install crictl completion
+  shell: /usr/local/bin/crictl completion >/etc/bash_completion.d/crictl
+  ignore_errors: True
 
-- name: flush handlers so we can wait for containerd to come up
-  meta: flush_handlers
+- name: Download containerd.service
+  get_url:
+    url: "{{ containerd_service_src }}"
+    dest: "{{ containerd_service_dir }}"
 
-- name: ensure containerd service is started and enabled
-  service:
-    name: "{{ item }}"
-    enabled: yes
+- name: Enable containerd
+  systemd:
+    name: containerd.service
     state: started
-  with_items:
-    - containerd
+    enabled: yes
+    daemon-reload: yes
+
+- name: Install runc
+  get_url:
+    url: "{{ runc_download_url }}"
+    dest: /usr/local/bin/runc
+    mode: 0755

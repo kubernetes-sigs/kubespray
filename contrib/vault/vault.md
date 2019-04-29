@@ -93,6 +93,6 @@ Potential Work
 - Change the Vault role to not run certain tasks when ``root_token`` and
   ``unseal_keys`` are not present. Alternatively, allow user input for these
   values when missing.
-- Add the ability to start temp Vault with Host, Rkt, or Docker
+- Add the ability to start temp Vault with Host or Docker
 - Add a dynamic way to change out the backend role creation during Bootstrap,
   so other services can be used (such as Consul)

@@ -102,7 +102,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.
 * *kubelet_deployment_type* - Controls which platform to deploy kubelet on.
-  Available options are ``host``, ``rkt``, and ``docker``. ``docker`` mode
+  Available options are ``host`` and ``docker``. ``docker`` mode
   is unlikely to work on newer releases. Starting with Kubernetes v1.7
   series, this now defaults to ``host``. Before v1.7, the default was Docker.
   This is because of cgroup [issues](https://github.com/kubernetes/kubernetes/issues/43704).
@@ -113,7 +113,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *kubelet_cgroup_driver* - Allows manual override of the
   cgroup-driver option for Kubelet. By default autodetection is used
   to match Docker configuration.
-* *kubelet_rotate_certificates* - Auto rotate the kubelet client certificates by requesting new certificates 
+* *kubelet_rotate_certificates* - Auto rotate the kubelet client certificates by requesting new certificates
   from the kube-apiserver when the certificate expiration approaches.
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.

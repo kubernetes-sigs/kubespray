@@ -1,0 +1,133 @@
+---
+# Tests for contrib/terraform/
+.terraform_install:
+  extends: .job
+  before_script:
+    - ./tests/scripts/rebase.sh
+    # Set Ansible config
+    - cp ansible.cfg ~/.ansible.cfg
+    # Install Terraform
+    - apt-get install -y unzip
+    - curl https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip > /tmp/terraform.zip
+    - unzip /tmp/terraform.zip && mv ./terraform /usr/local/bin/ && terraform --version
+    # Prepare inventory
+    - cp -LRp contrib/terraform/$PROVIDER/sample-inventory inventory/$CLUSTER
+    - cd inventory/$CLUSTER
+    - ln -s ../../contrib/terraform/$PROVIDER/hosts
+    - terraform init ../../contrib/terraform/$PROVIDER
+    # Copy SSH keypair
+    - mkdir -p ~/.ssh
+    - echo "$PACKET_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
+    - chmod 400 ~/.ssh/id_rsa
+    - echo "$PACKET_PUBLIC_KEY" | base64 -d > ~/.ssh/id_rsa.pub
+  only: ['master', /^pr-.*$/]
+
+.terraform_validate:
+  extends: .terraform_install
+  stage: unit-tests
+  script:
+    - terraform validate -var-file=cluster.tf ../../contrib/terraform/$PROVIDER
+    - terraform fmt -check -diff ../../contrib/terraform/$PROVIDER
+
+.terraform_apply:
+  extends: .terraform_install
+  stage: deploy-part2
+  when: manual
+  variables:
+    ANSIBLE_INVENTORY_UNPARSED_FAILED: "true"
+  script:
+    - terraform apply -auto-approve ../../contrib/terraform/$PROVIDER
+    - ansible-playbook -i hosts ../../cluster.yml --become
+  after_script:
+    # Cleanup regardless of exit code
+    - cd inventory/$CLUSTER
+    - terraform destroy -auto-approve ../../contrib/terraform/$PROVIDER
+
+tf-validate-openstack:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: 0.11.11
+    PROVIDER: openstack
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-validate-packet:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: 0.11.11
+    PROVIDER: packet
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-validate-aws:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: 0.11.11
+    PROVIDER: aws
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-packet-ubuntu16-default:
+  extends: .terraform_apply
+  variables:
+    TF_VERSION: 0.11.11
+    PROVIDER: packet
+    CLUSTER: $CI_COMMIT_REF_NAME
+    TF_VAR_cluster_name: $CI_COMMIT_REF_SLUG
+    TF_VAR_number_of_k8s_masters: "1"
+    TF_VAR_number_of_k8s_nodes: "1"
+    TF_VAR_plan_k8s_masters: t1.small.x86
+    TF_VAR_plan_k8s_nodes: t1.small.x86
+    TF_VAR_facility: ewr1
+    TF_VAR_public_key_path: ""
+    TF_VAR_operating_system: ubuntu_16_04
+
+tf-packet-ubuntu18-default:
+  extends: .terraform_apply
+  variables:
+    TF_VERSION: 0.11.11
+    PROVIDER: packet
+    CLUSTER: $CI_COMMIT_REF_NAME
+    TF_VAR_cluster_name: $CI_COMMIT_REF_SLUG
+    TF_VAR_number_of_k8s_masters: "1"
+    TF_VAR_number_of_k8s_nodes: "1"
+    TF_VAR_plan_k8s_masters: t1.small.x86
+    TF_VAR_plan_k8s_nodes: t1.small.x86
+    TF_VAR_facility: ams1
+    TF_VAR_public_key_path: ""
+    TF_VAR_operating_system: ubuntu_18_04
+
+.ovh_variables: &ovh_variables
+  OS_AUTH_URL: https://auth.cloud.ovh.net/v3
+  OS_PROJECT_ID: 8d3cd5d737d74227ace462dee0b903fe
+  OS_PROJECT_NAME: "9361447987648822"
+  OS_USER_DOMAIN_NAME: Default
+  OS_PROJECT_DOMAIN_ID: default
+  OS_USERNAME: 8XuhBMfkKVrk
+  OS_REGION_NAME: UK1
+  OS_INTERFACE: public
+  OS_IDENTITY_API_VERSION: "3"
+
+tf-apply-ovh:
+  extends: .terraform_apply
+  variables:
+    <<: *ovh_variables
+    TF_VERSION: 0.11.11
+    PROVIDER: openstack
+    CLUSTER: $CI_COMMIT_REF_NAME
+    ANSIBLE_TIMEOUT: "60"
+    TF_VAR_cluster_name: $CI_COMMIT_REF_SLUG
+    TF_VAR_number_of_k8s_masters: "0"
+    TF_VAR_number_of_k8s_masters_no_floating_ip: "1"
+    TF_VAR_number_of_k8s_masters_no_floating_ip_no_etcd: "0"
+    TF_VAR_number_of_etcd: "0"
+    TF_VAR_number_of_k8s_nodes: "0"
+    TF_VAR_number_of_k8s_nodes_no_floating_ip: "1"
+    TF_VAR_number_of_gfs_nodes_no_floating_ip: "0"
+    TF_VAR_number_of_bastions: "0"
+    TF_VAR_number_of_k8s_masters_no_etcd: "0"
+    TF_VAR_use_neutron: "0"
+    TF_VAR_floatingip_pool: "Ext-Net"
+    TF_VAR_external_net: "6011fbc9-4cbf-46a4-8452-6890a340b60b"
+    TF_VAR_network_name: "Ext-Net"
+    TF_VAR_flavor_k8s_master: "defa64c3-bd46-43b4-858a-d93bbae0a229"    # s1-8
+    TF_VAR_flavor_k8s_node: "defa64c3-bd46-43b4-858a-d93bbae0a229"      # s1-8
+    TF_VAR_image: "Ubuntu 18.04"
+    TF_VAR_k8s_allowed_remote_ips: '["0.0.0.0/0"]'

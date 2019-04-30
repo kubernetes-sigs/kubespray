@@ -40,18 +40,35 @@
   run_once: yes
   when: kubeconfig_localhost|default(false)
 
+# NOTE(mattymo): Please forgive this workaround
 - name: Generate admin kubeconfig with external api endpoint
   shell: >-
-    {{ bin_dir }}/kubeadm alpha
-    {% if kubeadm_version is version('v1.13.0', '<') %}
-    phase
+    {% if kubeadm_version is version('v1.14.0', '>=') %}
+    mkdir -p {{ kube_config_dir }}/external_kubeconfig &&
     {% endif %}
+    {{ bin_dir }}/kubeadm
+    {% if kubeadm_version is version('v1.14.0', '>=') %}
+    init phase
+    {% elif kubeadm_version is version('v1.13.0', '>=') %}
+    alpha
+    {% else %}
+    alpha phase
+    {% endif %}
+    {% if kubeadm_version is version('v1.14.0', '>=') %}
+    kubeconfig admin
+    --kubeconfig-dir {{ kube_config_dir }}/external_kubeconfig
+    {% else %}
     kubeconfig user
     --client-name kubernetes-admin
     --org system:masters
+    {% endif %}
     --cert-dir {{ kube_config_dir }}/ssl
     --apiserver-advertise-address {{ external_apiserver_address }}
     --apiserver-bind-port {{ external_apiserver_port }}
+    {% if kubeadm_version is version('v1.14.0', '>=') %}
+    && cat {{ kube_config_dir }}/external_kubeconfig/admin.conf &&
+    rm -rf {{ kube_config_dir }}/external_kubeconfig
+    {% endif %}
   environment: "{{ proxy_env }}"
   run_once: yes
   register: admin_kubeconfig

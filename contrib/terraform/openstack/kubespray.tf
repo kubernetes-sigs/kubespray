@@ -1,3 +1,7 @@
+provider "openstack" {
+  version = "~> 1.17"
+}
+
 module "network" {
   source = "modules/network"
 
@@ -49,10 +53,13 @@ module "compute" {
   network_name                                 = "${var.network_name}"
   flavor_bastion                               = "${var.flavor_bastion}"
   k8s_master_fips                              = "${module.ips.k8s_master_fips}"
+  k8s_master_no_etcd_fips                      = "${module.ips.k8s_master_no_etcd_fips}"
   k8s_node_fips                                = "${module.ips.k8s_node_fips}"
   bastion_fips                                 = "${module.ips.bastion_fips}"
   bastion_allowed_remote_ips                   = "${var.bastion_allowed_remote_ips}"
+  master_allowed_remote_ips                    = "${var.master_allowed_remote_ips}"
   k8s_allowed_remote_ips                       = "${var.k8s_allowed_remote_ips}"
+  k8s_allowed_egress_ips                       = "${var.k8s_allowed_egress_ips}"
   supplementary_master_groups                  = "${var.supplementary_master_groups}"
   supplementary_node_groups                    = "${var.supplementary_node_groups}"
   worker_allowed_ports                         = "${var.worker_allowed_ports}"
@@ -73,7 +80,7 @@ output "router_id" {
 }
 
 output "k8s_master_fips" {
-  value = "${module.ips.k8s_master_fips}"
+  value = "${concat(module.ips.k8s_master_fips, module.ips.k8s_master_no_etcd_fips)}"
 }
 
 output "k8s_node_fips" {

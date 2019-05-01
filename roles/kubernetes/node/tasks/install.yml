@@ -1,14 +1,7 @@
 ---
-- name: Set kubelet deployment to host if kubeadm is enabled
-  set_fact:
-    kubelet_deployment_type: host
-  when: kubeadm_enabled
-  tags:
-    - kubeadm
-
 - name: install | Copy kubeadm binary from download dir
   synchronize:
-    src: "{{ local_release_dir }}/kubeadm"
+    src: "{{ local_release_dir }}/kubeadm-{{ kubeadm_version }}-{{ image_arch }}"
     dest: "{{ bin_dir }}/kubeadm"
     compress: no
     perms: yes
@@ -32,7 +25,56 @@
     - kubeadm_enabled
     - not inventory_hostname in groups['kube-master']
 
-- include_tasks: "install_{{ kubelet_deployment_type }}.yml"
+- name: install | Copy kubelet binary from download dir
+  synchronize:
+    src: "{{ local_release_dir }}/hyperkube-{{ kube_version }}-{{ image_arch }}"
+    dest: "{{ bin_dir }}/kubelet"
+    compress: no
+    perms: yes
+    owner: no
+    group: no
+  delegate_to: "{{ inventory_hostname }}"
+  tags:
+    - hyperkube
+    - upgrade
+  notify: restart kubelet
+
+- name: install | Set kubelet binary permissions
+  file:
+    path: "{{ bin_dir }}/kubelet"
+    mode: "0755"
+    state: file
+  tags:
+    - hyperkube
+    - upgrade
+
+- name: install | Copy hyperkube binary from download dir
+  synchronize:
+    src: "{{ local_release_dir }}/hyperkube-{{ kube_version }}-{{ image_arch }}"
+    dest: "{{ bin_dir }}/hyperkube"
+    compress: no
+    perms: yes
+    owner: no
+    group: no
+  delegate_to: "{{ inventory_hostname }}"
+  tags:
+    - hyperkube
+    - upgrade
+
+- name: install | Set hyperkube binary permissions
+  file:
+    path: "{{ bin_dir }}/hyperkube"
+    mode: "0755"
+    state: file
+  tags:
+    - hyperkube
+    - upgrade
+
+- name: install | Copy socat wrapper for Container Linux
+  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/opt/bin {{ install_socat_image_repo }}:{{ install_socat_image_tag }}"
+  args:
+    creates: "{{ bin_dir }}/socat"
+  when: ansible_os_family in ['CoreOS', 'Container Linux by CoreOS']
 
 - name: install | Write kubelet systemd init file
   template:

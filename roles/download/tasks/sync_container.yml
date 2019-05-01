@@ -1,9 +1,6 @@
 ---
 - name: container_download | Make download decision if pull is required by tag or sha256
   include: set_docker_image_facts.yml
-  delegate_to: "{{ download_delegate if download_run_once or omit }}"
-  delegate_facts: no
-  run_once: "{{ download_run_once }}"
   when:
     - download.enabled
     - download.container
@@ -54,6 +51,7 @@
     - download.enabled
     - download.container
     - download_run_once
+    - any_pull_required | default(download_always_pull)
   tags:
     - facts
 
@@ -62,11 +60,12 @@
   delegate_to: "{{ download_delegate }}"
   delegate_facts: no
   register: saved
-  run_once: true
+  failed_when: saved.stderr != ""
   when:
     - download.enabled
     - download.container
     - download_run_once
+    - any_pull_required | default(download_always_pull)
     - (ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"] or download_delegate == "localhost")
     - (container_changed or not img.stat.exists)
 
@@ -82,6 +81,7 @@
     - download.enabled
     - download.container
     - download_run_once
+    - any_pull_required | default(download_always_pull)
     - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
     - inventory_hostname == download_delegate
     - download_delegate != "localhost"
@@ -94,9 +94,6 @@
     use_ssh_args: "{{ has_bastion | default(false) }}"
     mode: pull
     private_key: "{{ ansible_ssh_private_key_file }}"
-  delegate_to: localhost
-  delegate_facts: no
-  run_once: true
   become: false
   when:
     - download.enabled
@@ -113,8 +110,6 @@
     dest: "{{ fname }}"
     use_ssh_args: "{{ has_bastion | default(false) }}"
     mode: push
-  delegate_to: localhost
-  delegate_facts: no
   become: true
   register: get_task
   until: get_task is succeeded
@@ -124,6 +119,7 @@
     - download.enabled
     - download.container
     - download_run_once
+    - pull_required|default(download_always_pull)
     - (ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"] and
       inventory_hostname != download_delegate or
       download_delegate == "localhost")
@@ -137,6 +133,7 @@
     - download.enabled
     - download.container
     - download_run_once
+    - pull_required|default(download_always_pull)
     - (ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"] and
       inventory_hostname != download_delegate or download_delegate == "localhost")
   tags:

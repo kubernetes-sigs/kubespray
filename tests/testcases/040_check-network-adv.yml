@@ -24,8 +24,8 @@
       when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
 
     - name: Wait for netchecker server
-      shell: "{{ bin_dir }}/kubectl get pods -o wide --namespace {{netcheck_namespace}} | grep ^netchecker-server"
-      delegate_to: "{{groups['kube-master'][0]}}"
+      shell: "{{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep ^netchecker-server"
+      delegate_to: "{{ groups['kube-master'][0] }}"
       run_once: true
       register: ncs_pod
       until: ncs_pod.stdout.find('Running') != -1
@@ -33,18 +33,18 @@
       delay: 10
 
     - name: Wait for netchecker agents
-      shell: "{{ bin_dir }}/kubectl get pods -o wide --namespace {{netcheck_namespace}} | grep '^netchecker-agent-.*Running'"
+      shell: "{{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep '^netchecker-agent-.*Running'"
       run_once: true
-      delegate_to: "{{groups['kube-master'][0]}}"
+      delegate_to: "{{ groups['kube-master'][0] }}"
       register: nca_pod
       until: nca_pod.stdout_lines|length >= groups['k8s-cluster']|intersect(ansible_play_hosts)|length * 2
       retries: 3
       delay: 10
       failed_when: false
 
-    - command: "{{ bin_dir }}/kubectl -n {{netcheck_namespace}} describe pod -l app={{ item }}"
+    - command: "{{ bin_dir }}/kubectl -n {{ netcheck_namespace }} describe pod -l app={{ item }}"
       run_once: true
-      delegate_to: "{{groups['kube-master'][0]}}"
+      delegate_to: "{{ groups['kube-master'][0] }}"
       no_log: false
       with_items:
         - netchecker-agent
@@ -56,9 +56,9 @@
       run_once: true
 
     - name: Get netchecker agents
-      uri: url=http://{{ ansible_default_ipv4.address }}:{{netchecker_port}}/api/v1/agents/ return_content=yes
+      uri: url=http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/agents/ return_content=yes
       run_once: true
-      delegate_to: "{{groups['kube-master'][0]}}"
+      delegate_to: "{{ groups['kube-master'][0] }}"
       register: agents
       retries: 18
       delay: "{{ agent_report_interval }}"
@@ -77,8 +77,8 @@
         - agents.content[0] == '{'
 
     - name: Check netchecker status
-      uri: url=http://{{ ansible_default_ipv4.address }}:{{netchecker_port}}/api/v1/connectivity_check status_code=200 return_content=yes
-      delegate_to: "{{groups['kube-master'][0]}}"
+      uri: url=http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/connectivity_check status_code=200 return_content=yes
+      delegate_to: "{{ groups['kube-master'][0] }}"
       run_once: true
       register: result
       retries: 3
@@ -97,13 +97,13 @@
     - command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app=kube-proxy"
       run_once: true
       when: not result is success
-      delegate_to: "{{groups['kube-master'][0]}}"
+      delegate_to: "{{ groups['kube-master'][0] }}"
       no_log: false
 
-    - command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app={{item}} --all-containers"
+    - command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app={{ item }} --all-containers"
       run_once: true
       when: not result is success
-      delegate_to: "{{groups['kube-master'][0]}}"
+      delegate_to: "{{ groups['kube-master'][0] }}"
       no_log: false
       with_items:
         - kube-router

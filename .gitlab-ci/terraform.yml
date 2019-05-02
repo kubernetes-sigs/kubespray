@@ -4,12 +4,10 @@
   extends: .job
   before_script:
     - ./tests/scripts/rebase.sh
+    - ./tests/scripts/testcases_prepare.sh
+    - ./tests/scripts/terraform_install.sh
     # Set Ansible config
     - cp ansible.cfg ~/.ansible.cfg
-    # Install Terraform
-    - apt-get install -y unzip
-    - curl https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip > /tmp/terraform.zip
-    - unzip /tmp/terraform.zip && mv ./terraform /usr/local/bin/ && terraform --version
     # Prepare inventory
     - cp -LRp contrib/terraform/$PROVIDER/sample-inventory inventory/$CLUSTER
     - cd inventory/$CLUSTER
@@ -35,13 +33,14 @@
   when: manual
   variables:
     ANSIBLE_INVENTORY_UNPARSED_FAILED: "true"
+    ANSIBLE_INVENTORY: hosts
+    CI_PLATFORM: tf
   script:
-    - terraform apply -auto-approve ../../contrib/terraform/$PROVIDER
-    - ansible-playbook -i hosts ../../cluster.yml --become
+    - cd ../../tests && make create-${CI_PLATFORM} -s ; cd -
+    - ansible-playbook ../../cluster.yml --become
   after_script:
     # Cleanup regardless of exit code
-    - cd inventory/$CLUSTER
-    - terraform destroy -auto-approve ../../contrib/terraform/$PROVIDER
+    - ./tests/scripts/testcases_cleanup.sh
 
 tf-validate-openstack:
   extends: .terraform_validate

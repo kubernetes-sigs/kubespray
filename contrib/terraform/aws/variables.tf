@@ -104,6 +104,10 @@ variable "default_tags" {
   type        = "map"
 }
 
+variable "ansible_user" {
+  description = "User ansible is run under"
+}
+
 variable "inventory_file" {
   description = "Where to store the generated inventory file"
 }

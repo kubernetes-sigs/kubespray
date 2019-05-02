@@ -5,7 +5,7 @@ ${connection_strings_etcd}
 ${public_ip_address_bastion}
 
 [bastion]
-${public_ip_address_bastion}
+${public_ip_address_bastion} ansible_user=${ansible_user}
 
 [kube-master]
 ${list_master}

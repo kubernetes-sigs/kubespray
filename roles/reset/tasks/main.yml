@@ -57,6 +57,7 @@
   retries: 4
   until: remove_all_containers.rc == 0
   delay: 5
+  when: container_manager == "docker"
   tags:
     - docker
 
@@ -64,14 +65,14 @@
   service:
     name: docker
     state: restarted
-  when: docker_dropins_removed.changed
+  when: docker_dropins_removed.changed and container_manager == "docker"
   tags:
     - docker
 
 - name: reset | stop all cri containers
-  shell: "crictl ps -aq | xargs -r crictl stop"
+  shell: "crictl ps -aq | xargs -r crictl -t 60s stop"
   register: remove_all_cri_containers
-  retries: 4
+  retries: 5
   until: remove_all_cri_containers.rc == 0
   delay: 5
   tags:
@@ -80,9 +81,9 @@
   when: container_manager in ["crio", "containerd"]
 
 - name: reset | remove all cri containers
-  shell: "crictl ps -aq | xargs -r crictl rm"
+  shell: "crictl ps -aq | xargs -r crictl -t 60s rm"
   register: remove_all_cri_containers
-  retries: 4
+  retries: 5
   until: remove_all_cri_containers.rc == 0
   delay: 5
   tags:
@@ -91,22 +92,22 @@
   when: container_manager in ["crio", "containerd"] and deploy_container_engine|default(true)
 
 - name: reset | stop all cri pods
-  shell: "crictl pods -q | xargs -r crictl stopp"
+  shell: "crictl pods -q | xargs -r crictl -t 60s stopp"
   register: remove_all_cri_containers
   retries: 5
   until: remove_all_cri_containers.rc == 0
-  delay: 30
+  delay: 5
   tags:
     - crio
     - containerd
   when: container_manager in ["crio", "containerd"]
 
 - name: reset | remove all cri pods
-  shell: "crictl pods -q | xargs -r crictl rmp"
+  shell: "crictl pods -q | xargs -r crictl -t 60s rmp"
   register: remove_all_cri_containers
   retries: 5
   until: remove_all_cri_containers.rc == 0
-  delay: 30
+  delay: 5
   tags:
     - crio
     - containerd

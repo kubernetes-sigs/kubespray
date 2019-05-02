@@ -2,19 +2,22 @@
 - name: Set external kube-apiserver endpoint
   set_fact:
     external_apiserver_address: >-
-      {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined -%}
+      {%- if loadbalancer_apiserver is defined and apiserver_loadbalancer_domain_name is defined -%}
+      {{ apiserver_loadbalancer_domain_name }}
+      {%- elif loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined -%}
       {{ loadbalancer_apiserver.address }}
       {%- else -%}
       {{ kube_apiserver_access_address }}
       {%- endif -%}
     external_apiserver_port: >-
       {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined and loadbalancer_apiserver.port is defined -%}
-      {{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      {{ loadbalancer_apiserver.port }}
       {%- else -%}
       {{ kube_apiserver_port }}
       {%- endif -%}
   tags:
     - facts
+  when: kubeadm_version is version('v1.14.0', '<')
 
 - name: Create kube config dir
   file:
@@ -57,14 +60,15 @@
     {% if kubeadm_version is version('v1.14.0', '>=') %}
     kubeconfig admin
     --kubeconfig-dir {{ kube_config_dir }}/external_kubeconfig
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
     {% else %}
     kubeconfig user
     --client-name kubernetes-admin
     --org system:masters
-    {% endif %}
     --cert-dir {{ kube_cert_dir }}
     --apiserver-advertise-address {{ external_apiserver_address }}
     --apiserver-bind-port {{ external_apiserver_port }}
+    {% endif %}
     {% if kubeadm_version is version('v1.14.0', '>=') %}
     >/dev/null && cat {{ kube_config_dir }}/external_kubeconfig/admin.conf &&
     rm -rf {{ kube_config_dir }}/external_kubeconfig

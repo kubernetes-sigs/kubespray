@@ -32,5 +32,5 @@ default_tags = {
 #  Product = "kubernetes"
 }
 
-ansible_user   = "ubuntu"
+ansible_user   = "core"
 inventory_file = "../../../inventory/hosts"

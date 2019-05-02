@@ -1,24 +1,3 @@
-Travis CI test matrix
-=====================
-
-GCE instances
--------------
-
-Here is the test matrix for the CI gates:
-
-|           Network plugin|                  OS type|               GCE region|             Nodes layout|
-|-------------------------|-------------------------|-------------------------|-------------------------|
-|                    canal|       debian-8-kubespray|             asia-east1-a|                 ha-scale|
-|                   calico|       debian-8-kubespray|           europe-west1-c|                  default|
-|                  flannel|                 centos-7|        asia-northeast1-c|                  default|
-|                   calico|                 centos-7|            us-central1-b|                       ha|
-|                    weave|                   rhel-7|               us-east1-c|                  default|
-|                    canal|            coreos-stable|               us-west1-b|                 ha-scale|
-|                    canal|                   rhel-7|        asia-northeast1-b|                 separate|
-|                    weave|       ubuntu-1604-xenial|           europe-west1-d|                 separate|
-|                   calico|            coreos-stable|            us-central1-f|                 separate|
-
-
 Node Layouts
 ------------
 
@@ -40,15 +19,6 @@ to prevent regressions and profile certain long-running tasks. These nodes are
 never actually deployed, but certificates are generated for them.
 
 Note, the canal network plugin deploys flannel as well plus calico policy controller.
-
-Hint: the command
-```
-bash scripts/gen_matrix.sh
-```
-will (hopefully) generate the CI test cases from the current ``.travis.yml``.
-
-Gitlab CI test matrix
-=====================
 
 GCE instances
 -------------

@@ -3,16 +3,27 @@
   stat:
     path: "{{ kube_cert_dir }}/apiserver.pem"
   register: old_apiserver_cert
-  delegate_to: "{{groups['kube-master']|first}}"
+  delegate_to: "{{ groups['kube-master'] | first }}"
   run_once: true
 
 - name: kubeadm | Migrate old certs if necessary
   import_tasks: kubeadm-migrate-certs.yml
   when: old_apiserver_cert.stat.exists
 
+- name: Install OIDC certificate
+  copy:
+    content: "{{ kube_oidc_ca_cert | b64decode }}"
+    dest: "{{ kube_oidc_ca_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - kube_oidc_auth
+    - kube_oidc_ca_cert is defined
+
 - name: kubeadm | Check serviceaccount key
   stat:
-    path: "{{ kube_cert_dir }}/apiserver.key"
+    path: "{{ kube_cert_dir }}/sa.key"
   register: sa_key_before
   run_once: true
 
@@ -30,14 +41,14 @@
 
 - name: kubeadm | Delete old static pods
   file:
-    path: "{{ kube_config_dir }}/manifests/{{item}}.manifest"
+    path: "{{ kube_config_dir }}/manifests/{{ item }}.manifest"
     state: absent
   with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler", "kube-proxy"]
   when:
     - old_apiserver_cert.stat.exists
 
 - name: kubeadm | Forcefully delete old static pods
-  shell: "docker ps -f name=k8s_{{item}} -q | xargs --no-run-if-empty docker rm -f"
+  shell: "docker ps -f name=k8s_{{ item }} -q | xargs --no-run-if-empty docker rm -f"
   with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   when:
     - old_apiserver_cert.stat.exists
@@ -114,21 +125,29 @@
 - name: set kubeadm certificate key
   set_fact:
     kubeadm_certificate_key: "{{ item | regex_search('--certificate-key ([^ ]+)','\\1') | first }}"
-  with_items: "{{ (kubeadm_init|default({'stdout_lines': []}))['stdout_lines'] }}"
-  run_once: yes
+  with_items: "{{ hostvars[groups['kube-master'][0]]['kubeadm_init'].stdout_lines | default([]) }}"
   when:
     - kubeadm_version is version('v1.14.0', '>=')
     - kubeadm_certificate_key is not defined
-    - kubeadm_init is defined
     - item | trim | match('.*--certificate-key .*')
+
+- name: Create hardcoded kubeadm token for joining nodes with 24h expiration (if defined)
+  shell: >-
+    {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token delete {{ kubeadm_token }} || :;
+    {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create {{ kubeadm_token }}
+  when:
+    - inventory_hostname == groups['kube-master']|first
+    - kubeadm_token is defined
+  tags:
+    - kubeadm_token
 
 - name: Create kubeadm token for joining nodes with 24h expiration (default)
   command: "{{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create"
-  run_once: true
   register: temp_token
   retries: 5
   delay: 5
   until: temp_token is succeeded
+  delegate_to: "{{ groups['kube-master'] | first }}"
   when: kubeadm_token is not defined
   tags:
     - kubeadm_token
@@ -136,18 +155,7 @@
 - name: Set kubeadm_token
   set_fact:
     kubeadm_token: "{{ temp_token.stdout }}"
-  when: kubeadm_token is not defined
-  tags:
-    - kubeadm_token
-
-- name: Create hardcoded kubeadm token for joining nodes with 24h expiration (if defined)
-  shell: >-
-    {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token delete {{ kubeadm_token }} || :;
-    {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create {{ kubeadm_token }}
-  run_once: true
-  when:
-    - inventory_hostname == groups['kube-master']|first
-    - kubeadm_token is defined
+  when: temp_token.stdout is defined
   tags:
     - kubeadm_token
 
@@ -181,7 +189,7 @@
 
 # FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
 - name: kubeadm | Remove taint for master with node role
-  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf taint node {{ inventory_hostname }} node.kubernetes.io/master:NoSchedule-"
-  delegate_to: "{{groups['kube-master']|first}}"
+  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf taint node {{ inventory_hostname }} node-role.kubernetes.io/master:NoSchedule-"
+  delegate_to: "{{ groups['kube-master'] | first }}"
   when: inventory_hostname in groups['kube-node']
   failed_when: false

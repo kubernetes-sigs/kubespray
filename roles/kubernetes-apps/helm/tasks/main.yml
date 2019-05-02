@@ -7,8 +7,8 @@
 
 - name: Helm | Lay Down Helm Manifests (RBAC)
   template:
-    src: "{{item.file}}.j2"
-    dest: "{{kube_config_dir}}/{{item.file}}"
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
   with_items:
     - {name: tiller, file: tiller-namespace.yml, type: namespace}
     - {name: tiller, file: tiller-sa.yml, type: sa}
@@ -20,11 +20,11 @@
 
 - name: Helm | Apply Helm Manifests (RBAC)
   kube:
-    name: "{{item.item.name}}"
+    name: "{{ item.item.name }}"
     namespace: "{{ tiller_namespace }}"
-    kubectl: "{{bin_dir}}/kubectl"
-    resource: "{{item.item.type}}"
-    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
     state: "latest"
   with_items: "{{ manifests.results }}"
   when:
@@ -46,7 +46,7 @@
     {% if rbac_enabled %} --service-account=tiller{% endif %}
     {% if tiller_node_selectors is defined %} --node-selectors {{ tiller_node_selectors }}{% endif %}
     {% if kube_version is version('v1.11.1', '>=') %} --override spec.template.spec.priorityClassName={% if tiller_namespace == 'kube-system' %}system-cluster-critical{% else %}k8s-cluster-critical{% endif %}{% endif %}
-    {% if tiller_override is defined and tiller_override != "" %} --override {{ tiller_override }}{% endif %}
+    {% if tiller_override is defined and tiller_override %} --override {{ tiller_override }}{% endif %}
     {% if tiller_max_history is defined %} --history-max={{ tiller_max_history }}{% endif %}
     {% if tiller_enable_tls %} --tiller-tls --tiller-tls-verify --tiller-tls-cert={{ tiller_tls_cert }} --tiller-tls-key={{ tiller_tls_key }} --tls-ca-cert={{ tiller_tls_ca_cert }} {% endif %}
     {% if tiller_secure_release_info %} --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' {% endif %}
@@ -56,7 +56,7 @@
     {% endif %}
   register: install_helm
   changed_when: false
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"
 
 # FIXME: https://github.com/helm/helm/issues/4063
 - name: Helm | Force apply tiller overrides if necessary
@@ -67,18 +67,26 @@
     {% if rbac_enabled %} --service-account=tiller{% endif %}
     {% if tiller_node_selectors is defined %} --node-selectors {{ tiller_node_selectors }}{% endif %}
     {% if kube_version is version('v1.11.1', '>=') %} --override spec.template.spec.priorityClassName={% if tiller_namespace == 'kube-system' %}system-cluster-critical{% else %}k8s-cluster-critical{% endif %}{% endif %}
-    {% if tiller_override is defined and tiller_override != "" %} --override {{ tiller_override }}{% endif %}
+    {% if tiller_override is defined and tiller_override %} --override {{ tiller_override }}{% endif %}
     {% if tiller_max_history is defined %} --history-max={{ tiller_max_history }}{% endif %}
     {% if tiller_enable_tls %} --tiller-tls --tiller-tls-verify --tiller-tls-cert={{ tiller_tls_cert }} --tiller-tls-key={{ tiller_tls_key }} --tls-ca-cert={{ tiller_tls_ca_cert }} {% endif %}
     {% if tiller_secure_release_info %} --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' {% endif %}
     {% if tiller_wait %} --wait{% endif %}
     --output yaml
-    | {{bin_dir}}/kubectl apply -f -
+    | {{ bin_dir }}/kubectl apply -f -
   changed_when: false
   when:
-    - (tiller_override is defined and tiller_override != "") or (kube_version is version('v1.11.1', '>='))
+    - (tiller_override is defined and tiller_override) or (kube_version is version('v1.11.1', '>='))
     - inventory_hostname == groups['kube-master'][0]
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"
+
+- name: Make sure bash_completion.d folder exists
+  file:
+    name: "/etc/bash_completion.d/"
+    state: directory
+  when:
+    - ((helm_container is defined and helm_container.changed) or (helm_task_result is defined and helm_task_result.changed))
+    - ansible_os_family in ["ClearLinux"]
 
 - name: Helm | Set up bash completion
   shell: "umask 022 && {{ bin_dir }}/helm completion bash >/etc/bash_completion.d/helm.sh"

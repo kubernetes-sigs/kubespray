@@ -115,7 +115,7 @@ Supported Components
 -   Network Plugin
     -   [calico](https://github.com/projectcalico/calico) v3.4.0
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-    -   [cilium](https://github.com/cilium/cilium) v1.3.0
+    -   [cilium](https://github.com/cilium/cilium) v1.5.0
     -   [contiv](https://github.com/contiv/install) v1.2.1
     -   [flanneld](https://github.com/coreos/flannel) v0.11.0
     -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.5

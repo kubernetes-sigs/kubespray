@@ -114,9 +114,11 @@ The only exception is that ``hostNetwork: true`` PODs and non-k8s managed contai
 cluster service names.
 
 ## Nodelocal DNS cache
-Setting ``enable_nodelocaldns`` to ``true`` will make pods reach out to the dns (core-dns) caching agent running on the same node, thereby avoiding iptables DNAT rules and connection tracking. The local caching agent will query kube-dns / core-dns (depending on what main DNS plugin is configured in your cluster) for cache misses of cluster hostnames(cluster.local suffix by default).
+Setting ``enable_nodelocaldns`` to ``true`` will make pods reach out to the dns (core-dns) caching agent running on the same node, thereby avoiding iptables DNAT rules and connection tracking. The local caching agent will query core-dns (depending on what main DNS plugin is configured in your cluster) for cache misses of cluster hostnames(cluster.local suffix by default).
 
 More information on the rationale behind this implementation can be found [here](https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/0030-nodelocal-dns-cache.md).
+
+**As per the 2.10 release, Nodelocal DNS cache is enabled by default.**
 
 
 Limitations
@@ -129,9 +131,7 @@ Limitations
 
 * There is
   [no way to specify a custom value](https://github.com/kubernetes/kubernetes/issues/33554)
-  for the SkyDNS ``ndots`` param via an
-  [option for KubeDNS](https://github.com/kubernetes/kubernetes/blob/master/cmd/kube-dns/app/options/options.go)
-  add-on, while SkyDNS supports it though.
+  for the SkyDNS ``ndots`` param.
 
 * the ``searchdomains`` have a limitation of a 6 names and 256 chars
   length. Due to default ``svc, default.svc`` subdomains, the actual

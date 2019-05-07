@@ -118,6 +118,8 @@ Setting ``enable_nodelocaldns`` to ``true`` will make pods reach out to the dns 
 
 More information on the rationale behind this implementation can be found [here](https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/0030-nodelocal-dns-cache.md).
 
+**As per the 2.10 release, Nodelocal DNS cache is enabled by default.**
+
 
 Limitations
 -----------

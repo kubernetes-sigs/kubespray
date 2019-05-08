@@ -17,7 +17,7 @@
   tags:
     - kubelet
 
-- import_tasks: nginx-proxy.yml
+- import_tasks: loadbalancer/nginx-proxy.yml
   when:
     - not is_kube_master
     - loadbalancer_apiserver_localhost
@@ -25,63 +25,13 @@
   tags:
     - nginx
 
-- import_tasks: haproxy.yml
+- import_tasks: loadbalancer/haproxy.yml
   when:
     - not is_kube_master
     - loadbalancer_apiserver_localhost
     - loadbalancer_apiserver_type == 'haproxy'
   tags:
     - haproxy
-
-- name: Make sure dynamic kubelet configuration directory is writeable
-  file:
-    path: "{{ dynamic_kubelet_configuration_dir }}"
-    mode: 0600
-    state: directory
-  when: dynamic_kubelet_configuration
-
-- name: gets the kubeadm version
-  command: "{{ bin_dir }}/kubeadm version -o short"
-  register: kubeadm_output
-
-- name: sets kubeadm api version to v1beta1
-  set_fact:
-    kubeadmConfig_api_version: v1beta1
-  when: kubeadm_output.stdout is version('v1.13.0', '>=')
-  tags:
-    - kubelet
-    - kubeadm
-
-- name: Write kubelet environment config file (kubeadm)
-  template:
-    src: "kubelet.kubeadm.env.{{ kubeadmConfig_api_version }}.j2"
-    dest: "{{ kube_config_dir }}/kubelet.env"
-    backup: yes
-  notify: restart kubelet
-  when: kubeadm_output.stdout is version('v1.13.0', '>=')
-  tags:
-    - kubelet
-    - kubeadm
-
-- name: Write kubelet environment config file (kubeadm)
-  template:
-    src: "kubelet.kubeadm.env.j2"
-    dest: "{{ kube_config_dir }}/kubelet.env"
-    backup: yes
-  notify: restart kubelet
-  when: kubeadm_output.stdout is version('v1.13.0', '<')
-  tags:
-    - kubelet
-    - kubeadm
-
-- name: Write kubelet config file
-  template:
-    src: "kubelet-config.{{ kubeadmConfig_api_version }}.yaml.j2"
-    dest: "{{ kube_config_dir }}/kubelet-config.yaml"
-  when: kubeadm_output.stdout is version('v1.13.0', '>=')
-  tags:
-    - kubelet
-    - kubeadm
 
 - name: Ensure nodePort range is reserved
   sysctl:
@@ -132,7 +82,7 @@
     name: "{{ item }}"
     state: present
     sysctl_file: "{{ sysctl_file_path }}"
-    value: 1
+    value: "1"
     reload: yes
   when: sysctl_bridge_nf_call_iptables.rc == 0
   with_items:
@@ -208,7 +158,7 @@
   tags:
     - kube-proxy
 
-- include_tasks: "{{ cloud_provider }}-credential-check.yml"
+- include_tasks: "cloud-credentials/{{ cloud_provider }}-credential-check.yml"
   when:
     - cloud_provider is defined
     - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
@@ -233,7 +183,7 @@
 
 - name: Write cloud-config
   template:
-    src: "{{ cloud_provider }}-cloud-config.j2"
+    src: "cloud-configs/{{ cloud_provider }}-cloud-config.j2"
     dest: "{{ kube_config_dir }}/cloud_config"
     group: "{{ kube_cert_group }}"
     mode: 0640
@@ -244,13 +194,7 @@
   tags:
     - cloud-provider
 
-# reload-systemd
-- meta: flush_handlers
-
-- name: Enable kubelet
-  service:
-    name: kubelet
-    enabled: yes
-    state: started
+- import_tasks: kubelet.yml
   tags:
     - kubelet
+    - kubeadm

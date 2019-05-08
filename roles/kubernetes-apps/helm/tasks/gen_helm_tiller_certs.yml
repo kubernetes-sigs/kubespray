@@ -1,15 +1,15 @@
 ---
-- name: "Gen_helm_tiller_certs | Create helm config directory (on {{groups['kube-master'][0]}})"
+- name: "Gen_helm_tiller_certs | Create helm config directory (on {{ groups['kube-master'][0] }})"
   run_once: yes
-  delegate_to: "{{groups['kube-master'][0]}}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   file:
     path: "{{ helm_config_dir }}"
     state: directory
     owner: kube
 
-- name: "Gen_helm_tiller_certs | Create helm script directory (on {{groups['kube-master'][0]}})"
+- name: "Gen_helm_tiller_certs | Create helm script directory (on {{ groups['kube-master'][0] }})"
   run_once: yes
-  delegate_to: "{{groups['kube-master'][0]}}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   file:
     path: "{{ helm_script_dir }}"
     state: directory
@@ -17,24 +17,24 @@
 
 - name: Gen_helm_tiller_certs | Copy certs generation script
   run_once: yes
-  delegate_to: "{{groups['kube-master'][0]}}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   template:
     src: "helm-make-ssl.sh.j2"
     dest: "{{ helm_script_dir }}/helm-make-ssl.sh"
     mode: 0700
 
-- name: "Check_helm_certs | check if helm client certs have already been generated on first master (on {{groups['kube-master'][0]}})"
+- name: "Check_helm_certs | check if helm client certs have already been generated on first master (on {{ groups['kube-master'][0] }})"
   find:
     paths: "{{ helm_home_dir }}"
     patterns: "*.pem"
     get_checksum: true
-  delegate_to: "{{groups['kube-master'][0]}}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   register: helmcert_master
   run_once: true
 
 - name: Gen_helm_tiller_certs | run cert generation script
   run_once: yes
-  delegate_to: "{{groups['kube-master'][0]}}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   command: "{{ helm_script_dir }}/helm-make-ssl.sh -e {{ helm_home_dir }} -d {{ helm_tiller_cert_dir }}"
 
 - set_fact:
@@ -57,13 +57,14 @@
     - "{{ helm_client_certs }}"
 
 - name: Gen_helm_tiller_certs | Gather helm client certs
+  # noqa 303 - tar is called intentionally here, but maybe this should be done with the slurp module
   shell: "tar cfz - -C {{ helm_home_dir }} -T /dev/stdin <<< {{ helm_client_certs|join(' ') }} | base64 --wrap=0"
   args:
     executable: /bin/bash
   no_log: true
   register: helm_client_cert_data
   check_mode: no
-  delegate_to: "{{groups['kube-master'][0]}}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   when: sync_helm_certs|default(false) and inventory_hostname != groups['kube-master'][0]
 
 - name: Gen_helm_tiller_certs | Use tempfile for unpacking certs on masters
@@ -77,8 +78,8 @@
 
 - name: Gen_helm_tiller_certs | Write helm client certs to tempfile
   copy:
-    content: "{{helm_client_cert_data.stdout}}"
-    dest: "{{helm_cert_tempfile.path}}"
+    content: "{{ helm_client_cert_data.stdout }}"
+    dest: "{{ helm_cert_tempfile.path }}"
     owner: root
     mode: "0600"
   when: sync_helm_certs|default(false) and inventory_hostname != groups['kube-master'][0]
@@ -92,7 +93,7 @@
 
 - name: Gen_helm_tiller_certs | Cleanup tempfile on masters
   file:
-    path: "{{helm_cert_tempfile.path}}"
+    path: "{{ helm_cert_tempfile.path }}"
     state: absent
   when: sync_helm_certs|default(false) and inventory_hostname != groups['kube-master'][0]
 

@@ -12,14 +12,14 @@ Kubespray supports several download/upload modes. The default is:
 
 There is also a "pull once, push many" mode as well:
 
-* Override the ``download_run_once: True`` to download container images only once
+* Override the ``download_run_once: True`` to download container images and binaries only once
   then push to cluster nodes in batches. The default delegate node
-  for pushing images is the first `kube-master`.
+  for pushing is the first `kube-master`.
 * If your ansible runner node (aka the admin node) have password-less sudo and
   docker enabled, you may want to define the ``download_localhost: True``, which
-  makes that node a delegate for pushing images while running the deployment with
-  ansible. This maybe the case if cluster nodes cannot access each over via ssh
-  or you want to use local docker images as a cache for multiple clusters.
+  makes that node a delegate for pushing while running the deployment with
+  ansible. This may be the case if cluster nodes cannot access each other via ssh
+  or you want to use local docker images and binaries as a cache for multiple clusters.
 
 Container images and binary files are described by the vars like ``foo_version``,
 ``foo_download_url``, ``foo_checksum`` for binaries and ``foo_image_repo``,

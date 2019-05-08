@@ -38,7 +38,7 @@
   pre_tasks:
     - name: gather facts from all instances
       setup:
-      delegate_to: "{{item}}"
+      delegate_to: "{{ item }}"
       delegate_facts: True
       with_items: "{{ groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]) }}"
 
@@ -50,7 +50,7 @@
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
     - { role: download, tags: download, when: "not skip_downloads" }
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"
 
 - hosts: etcd
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -76,7 +76,7 @@
     - { role: kubernetes/client, tags: client }
     - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
     - { role: upgrade/post-upgrade, tags: post-upgrade }
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"
 
 - name: Upgrade calico on all masters and nodes
   hosts: kube-master:kube-node
@@ -98,7 +98,7 @@
     - { role: kubernetes/node, tags: node }
     - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: upgrade/post-upgrade, tags: post-upgrade }
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"
 
 - hosts: kube-master[0]
   any_errors_fatal: true
@@ -112,10 +112,17 @@
   roles:
     - { role: kubespray-defaults}
     - { role: network_plugin/calico/rr, tags: network }
+  environment: "{{ proxy_env }}"
 
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes-apps, tags: apps }
+  environment: "{{ proxy_env }}"
+
+- hosts: k8s-cluster
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kubespray-defaults}
     - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }

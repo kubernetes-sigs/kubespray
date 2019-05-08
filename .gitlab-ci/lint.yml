@@ -3,7 +3,16 @@ yamllint:
   extends: .job
   stage: unit-tests
   script:
-    - yamllint .
+    - yamllint --strict .
+  except: ['triggers', 'master']
+
+vagrant-validate:
+  extends: .job
+  stage: unit-tests
+  script:
+    - curl -sL https://releases.hashicorp.com/vagrant/2.2.4/vagrant_2.2.4_x86_64.deb -o /tmp/vagrant_2.2.4_x86_64.deb
+    - dpkg -i /tmp/vagrant_2.2.4_x86_64.deb
+    - vagrant validate --ignore-provider
   except: ['triggers', 'master']
 
 ansible-lint:
@@ -11,17 +20,23 @@ ansible-lint:
   stage: unit-tests
   # lint every yml/yaml file that looks like it contains Ansible plays
   script: |-
-    grep -Rl '^- hosts: \|^  hosts: \|^- name: ' --include \*.yml --include \*.yaml . | xargs ansible-lint -v
+    grep -Rl '^- hosts: \|^  hosts: ' --include \*.yml --include \*.yaml . | xargs -P 4 -n 25 ansible-lint -v
   except: ['triggers', 'master']
 
 syntax-check:
   extends: .job
   stage: unit-tests
+  variables:
+    ANSIBLE_INVENTORY: inventory/local-tests.cfg
+    ANSIBLE_REMOTE_USER: root
+    ANSIBLE_BECOME: "true"
+    ANSIBLE_BECOME_USER: root
+    ANSIBLE_VERBOSITY: "3"
   script:
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root cluster.yml -vvv  --syntax-check
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root upgrade-cluster.yml -vvv  --syntax-check
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root reset.yml -vvv  --syntax-check
-    - ansible-playbook -i inventory/local-tests.cfg -u root -e ansible_ssh_user=root  -b --become-user=root extra_playbooks/upgrade-only-k8s.yml -vvv  --syntax-check
+    - ansible-playbook --syntax-check cluster.yml
+    - ansible-playbook --syntax-check upgrade-cluster.yml
+    - ansible-playbook --syntax-check reset.yml
+    - ansible-playbook --syntax-check extra_playbooks/upgrade-only-k8s.yml
   except: ['triggers', 'master']
 
 tox-inventory-builder:

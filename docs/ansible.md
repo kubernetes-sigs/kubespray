@@ -35,12 +35,12 @@ Below is a complete inventory example:
 ```
 ## Configure 'ip' variable to bind kubernetes services on a
 ## different ip than the default iface
-node1 ansible_ssh_host=95.54.0.12 ip=10.3.0.1
-node2 ansible_ssh_host=95.54.0.13 ip=10.3.0.2
-node3 ansible_ssh_host=95.54.0.14 ip=10.3.0.3
-node4 ansible_ssh_host=95.54.0.15 ip=10.3.0.4
-node5 ansible_ssh_host=95.54.0.16 ip=10.3.0.5
-node6 ansible_ssh_host=95.54.0.17 ip=10.3.0.6
+node1 ansible_host=95.54.0.12 ip=10.3.0.1
+node2 ansible_host=95.54.0.13 ip=10.3.0.2
+node3 ansible_host=95.54.0.14 ip=10.3.0.3
+node4 ansible_host=95.54.0.15 ip=10.3.0.4
+node5 ansible_host=95.54.0.16 ip=10.3.0.5
+node6 ansible_host=95.54.0.17 ip=10.3.0.6
 
 [kube-master]
 node1
@@ -70,7 +70,7 @@ The group variables to control main deployment options are located in the direct
 Optional variables are located in the `inventory/sample/group_vars/all.yml`.
 Mandatory variables that are common for at least one role (or a node group) can be found in the
 `inventory/sample/group_vars/k8s-cluster.yml`.
-There are also role vars for docker, rkt, kubernetes preinstall and master roles.
+There are also role vars for docker, kubernetes preinstall and master roles.
 According to the [ansible docs](http://docs.ansible.com/ansible/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),
 those cannot be overridden from the group vars. In order to override, one should use
 the `-e ` runtime flags (most simple way) or other layers described in the docs.
@@ -175,7 +175,8 @@ simply add a line to your inventory, where you have to replace x.x.x.x with the 
 bastion host.
 
 ```
-bastion ansible_ssh_host=x.x.x.x
+[bastion]
+bastion ansible_host=x.x.x.x
 ```
 
 For more information about Ansible and bastion hosts, read

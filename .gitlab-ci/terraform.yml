@@ -3,12 +3,11 @@
 .terraform_install:
   extends: .job
   before_script:
+    - ./tests/scripts/rebase.sh
+    - ./tests/scripts/testcases_prepare.sh
+    - ./tests/scripts/terraform_install.sh
     # Set Ansible config
     - cp ansible.cfg ~/.ansible.cfg
-    # Install Terraform
-    - apt-get install -y unzip
-    - curl https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip > /tmp/terraform.zip
-    - unzip /tmp/terraform.zip && mv ./terraform /usr/local/bin/ && terraform --version
     # Prepare inventory
     - cp -LRp contrib/terraform/$PROVIDER/sample-inventory inventory/$CLUSTER
     - cd inventory/$CLUSTER
@@ -19,11 +18,11 @@
     - echo "$PACKET_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
     - chmod 400 ~/.ssh/id_rsa
     - echo "$PACKET_PUBLIC_KEY" | base64 -d > ~/.ssh/id_rsa.pub
-  only: ['master', /^pr-.*$/]
 
 .terraform_validate:
   extends: .terraform_install
   stage: unit-tests
+  only: ['master', /^pr-.*$/]
   script:
     - terraform validate -var-file=cluster.tf ../../contrib/terraform/$PROVIDER
     - terraform fmt -check -diff ../../contrib/terraform/$PROVIDER
@@ -32,13 +31,17 @@
   extends: .terraform_install
   stage: deploy-part2
   when: manual
+  only: [/^pr-.*$/]
+  variables:
+    ANSIBLE_INVENTORY_UNPARSED_FAILED: "true"
+    ANSIBLE_INVENTORY: hosts
+    CI_PLATFORM: tf
   script:
-    - terraform apply -auto-approve ../../contrib/terraform/$PROVIDER
-    - ansible-playbook -i hosts ../../cluster.yml --become
+    - cd ../../tests && make create-${CI_PLATFORM} -s ; cd -
+    - ansible-playbook ../../cluster.yml --become
   after_script:
     # Cleanup regardless of exit code
-    - cd inventory/$CLUSTER
-    - terraform destroy -auto-approve ../../contrib/terraform/$PROVIDER
+    - ./tests/scripts/testcases_cleanup.sh
 
 tf-validate-openstack:
   extends: .terraform_validate
@@ -72,7 +75,7 @@ tf-packet-ubuntu16-default:
     TF_VAR_number_of_k8s_nodes: "1"
     TF_VAR_plan_k8s_masters: t1.small.x86
     TF_VAR_plan_k8s_nodes: t1.small.x86
-    TF_VAR_facility: "ewr1"
+    TF_VAR_facility: ewr1
     TF_VAR_public_key_path: ""
     TF_VAR_operating_system: ubuntu_16_04
 
@@ -87,7 +90,7 @@ tf-packet-ubuntu18-default:
     TF_VAR_number_of_k8s_nodes: "1"
     TF_VAR_plan_k8s_masters: t1.small.x86
     TF_VAR_plan_k8s_nodes: t1.small.x86
-    TF_VAR_facility: "ams1"
+    TF_VAR_facility: ams1
     TF_VAR_public_key_path: ""
     TF_VAR_operating_system: ubuntu_18_04
 

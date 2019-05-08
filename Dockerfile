@@ -5,7 +5,7 @@ WORKDIR /kubespray
 RUN apt update -y && \
     apt install -y \
     libssl-dev python-dev sshpass apt-transport-https jq \
-    ca-certificates curl gnupg2 software-properties-common python-pip
+    ca-certificates curl gnupg2 software-properties-common python-pip rsync
 RUN  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
      add-apt-repository \
      "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
@@ -14,5 +14,5 @@ RUN  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && 
      && apt update -y && apt-get install docker-ce -y
 COPY . .
 RUN /usr/bin/python -m pip install pip -U && /usr/bin/python -m pip install -r tests/requirements.txt && python -m pip install -r requirements.txt
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.13.5/bin/linux/amd64/kubectl \
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.14.1/bin/linux/amd64/kubectl \
     && chmod a+x kubectl && cp kubectl /usr/local/bin/kubectl

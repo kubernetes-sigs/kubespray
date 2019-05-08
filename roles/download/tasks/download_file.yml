@@ -7,7 +7,7 @@
 
 - name: file_download | Create dest directory
   file:
-    path: "{{download.dest|dirname}}"
+    path: "{{ download.dest | dirname }}"
     state: directory
     recurse: yes
   when:
@@ -15,11 +15,37 @@
     - download.file
     - group_names | intersect(download.groups) | length
 
-- name: file_download | Download item
+# As in 'download_container.yml':
+#   In Ansible 2.4 omitting download delegate is broken. Move back
+#   to one task in the future.
+- name: file_download | Download item (delegate)
   get_url:
-    url: "{{download.url}}"
-    dest: "{{download.dest}}"
-    sha256sum: "{{download.sha256 | default(omit)}}"
+    url: "{{ download.url }}"
+    dest: "{{ download.dest }}"
+    sha256sum: "{{ download.sha256|default(omit) }}"
+    owner: "{{ download.owner|default(omit) }}"
+    mode: "{{ download.mode|default(omit) }}"
+    validate_certs: "{{ download_validate_certs }}"
+    url_username: "{{ download.username|default(omit) }}"
+    url_password: "{{ download.password|default(omit) }}"
+    force_basic_auth: "{{ download.force_basic_auth|default(omit) }}"
+  register: get_url_result
+  until: "'OK' in get_url_result.msg or 'file already exists' in get_url_result.msg"
+  retries: 4
+  delay: "{{ retry_stagger | default(5) }}"
+  delegate_to: "{{ download_delegate }}"
+  when:
+    - download_run_once
+    - download.enabled
+    - download.file
+    - group_names | intersect(download.groups) | length
+  run_once: yes
+
+- name: file_download | Download item (all)
+  get_url:
+    url: "{{ download.url }}"
+    dest: "{{ download.dest }}"
+    sha256sum: "{{ download.sha256|default(omit) }}"
     owner: "{{ download.owner|default(omit) }}"
     mode: "{{ download.mode|default(omit) }}"
     validate_certs: "{{ download_validate_certs }}"
@@ -31,14 +57,15 @@
   retries: 4
   delay: "{{ retry_stagger | default(5) }}"
   when:
+    - not download_run_once
     - download.enabled
     - download.file
     - group_names | intersect(download.groups) | length
 
 - name: file_download | Extract archives
   unarchive:
-    src: "{{download.dest}}"
-    dest: "{{download.dest|dirname}}"
+    src: "{{ download.dest }}"
+    dest: "{{ download.dest |dirname }}"
     owner: "{{ download.owner|default(omit) }}"
     mode: "{{ download.mode|default(omit) }}"
     copy: no

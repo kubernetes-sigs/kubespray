@@ -10,12 +10,13 @@ resource "openstack_networking_secgroup_v2" "k8s_master" {
 }
 
 resource "openstack_networking_secgroup_rule_v2" "k8s_master" {
+  count             = "${length(var.master_allowed_remote_ips)}"
   direction         = "ingress"
   ethertype         = "IPv4"
   protocol          = "tcp"
   port_range_min    = "6443"
   port_range_max    = "6443"
-  remote_ip_prefix  = "0.0.0.0/0"
+  remote_ip_prefix  = "${var.master_allowed_remote_ips[count.index]}"
   security_group_id = "${openstack_networking_secgroup_v2.k8s_master.id}"
 }
 
@@ -293,6 +294,12 @@ resource "openstack_compute_floatingip_associate_v2" "k8s_master" {
   count       = "${var.number_of_k8s_masters}"
   instance_id = "${element(openstack_compute_instance_v2.k8s_master.*.id, count.index)}"
   floating_ip = "${var.k8s_master_fips[count.index]}"
+}
+
+resource "openstack_compute_floatingip_associate_v2" "k8s_master_no_etcd" {
+  count       = "${var.number_of_k8s_masters_no_etcd}"
+  instance_id = "${element(openstack_compute_instance_v2.k8s_master_no_etcd.*.id, count.index)}"
+  floating_ip = "${var.k8s_master_no_etcd_fips[count.index]}"
 }
 
 resource "openstack_compute_floatingip_associate_v2" "k8s_node" {

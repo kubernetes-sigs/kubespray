@@ -11,6 +11,8 @@
     src: "cni-calico.conflist.j2"
     dest: "/etc/cni/net.d/{% if calico_version is version('v3.3.0', '>=') %}calico.conflist.template{% else %}10-calico.conflist{% endif %}"
     owner: kube
+  register: calico_conflist
+  notify: reset_calico_cni
 
 - name: Calico | Create calico certs directory
   file:
@@ -27,9 +29,9 @@
     state: hard
     force: yes
   with_items:
-    - {s: "ca.pem", d: "ca_cert.crt"}
-    - {s: "node-{{ inventory_hostname }}.pem", d: "cert.crt"}
-    - {s: "node-{{ inventory_hostname }}-key.pem", d: "key.pem"}
+    - {s: "{{ kube_etcd_cacert_file }}", d: "ca_cert.crt"}
+    - {s: "{{ kube_etcd_cert_file }}", d: "cert.crt"}
+    - {s: "{{ kube_etcd_key_file }}", d: "key.pem"}
 
 - name: Calico | Install calicoctl wrapper script
   template:
@@ -153,7 +155,7 @@
     - calico_version is version('v3.0.0', '>=')
 
 - name: Calico | Set global as_num (legacy)
-  command: "{{ bin_dir}}/calicoctl.sh config set asNumber {{ global_as_num }}"
+  command: "{{ bin_dir }}/calicoctl.sh config set asNumber {{ global_as_num }}"
   run_once: true
   when:
     - calico_version is version('v3.0.0', '<')
@@ -299,7 +301,7 @@
       "name": "{{ inventory_hostname }}-{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(fallback_ips[item]) }}"
    },
    "spec": {
-      "asNumber": "{{ local_as | default(global_as_num)}}",
+      "asNumber": "{{ local_as | default(global_as_num) }}",
       "node": "{{ inventory_hostname }}",
       "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(fallback_ips[item]) }}"
    }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
@@ -317,7 +319,7 @@
   shell: >
    echo '{
    "kind": "bgpPeer",
-   "spec": {"asNumber": "{{ local_as | default(global_as_num)}}"},
+   "spec": {"asNumber": "{{ local_as | default(global_as_num) }}"},
    "apiVersion": "v1",
    "metadata": {"node": "{{ inventory_hostname }}",
      "scope": "node",
@@ -336,8 +338,8 @@
 
 - name: Calico | Create calico manifests
   template:
-    src: "{{item.file}}.j2"
-    dest: "{{kube_config_dir}}/{{item.file}}"
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
   with_items:
     - {name: calico-config, file: calico-config.yml, type: cm}
     - {name: calico-node, file: calico-node.yml, type: ds}
@@ -348,3 +350,25 @@
   when:
     - inventory_hostname in groups['kube-master']
     - rbac_enabled or item.type not in rbac_resources
+
+- name: Calico | Create calico manifests for kdd
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: calico, file: kdd-crds.yml, type: kdd}
+  register: calico_node_kdd_manifest
+  when:
+    - inventory_hostname in groups['kube-master']
+    - calico_datastore == "kdd"
+
+- name: Calico | Create calico manifests for typha
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: calico, file: calico-typha.yml, type: typha}
+  register: calico_node_typha_manifest
+  when:
+    - inventory_hostname in groups['kube-master']
+    - typha_enabled and calico_datastore == "kdd"

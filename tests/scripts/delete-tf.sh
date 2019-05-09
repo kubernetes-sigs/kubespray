@@ -1,5 +1,5 @@
 #!/bin/bash
 set -euxo pipefail
 
-cd "../inventory/$CLUSTER"
-terraform destroy -auto-approve "../../contrib/terraform/$PROVIDER"
+cd ..
+terraform destroy -auto-approve "contrib/terraform/$PROVIDER"

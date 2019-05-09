@@ -82,6 +82,8 @@ variable "k8s_allowed_egress_ips" {
   type = "list"
 }
 
+variable "wait_for_floatingip" {}
+
 variable "supplementary_master_groups" {
   default = ""
 }

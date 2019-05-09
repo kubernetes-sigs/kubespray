@@ -9,10 +9,9 @@
     # Set Ansible config
     - cp ansible.cfg ~/.ansible.cfg
     # Prepare inventory
-    - cp -LRp contrib/terraform/$PROVIDER/sample-inventory inventory/$CLUSTER
-    - cd inventory/$CLUSTER
-    - ln -s ../../contrib/terraform/$PROVIDER/hosts
-    - terraform init ../../contrib/terraform/$PROVIDER
+    - cp contrib/terraform/$PROVIDER/sample-inventory/cluster.tf .
+    - ln -s contrib/terraform/$PROVIDER/hosts
+    - terraform init contrib/terraform/$PROVIDER
     # Copy SSH keypair
     - mkdir -p ~/.ssh
     - echo "$PACKET_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
@@ -24,8 +23,8 @@
   stage: unit-tests
   only: ['master', /^pr-.*$/]
   script:
-    - terraform validate -var-file=cluster.tf ../../contrib/terraform/$PROVIDER
-    - terraform fmt -check -diff ../../contrib/terraform/$PROVIDER
+    - terraform validate -var-file=cluster.tf contrib/terraform/$PROVIDER
+    - terraform fmt -check -diff contrib/terraform/$PROVIDER
 
 .terraform_apply:
   extends: .terraform_install
@@ -37,8 +36,9 @@
     ANSIBLE_INVENTORY: hosts
     CI_PLATFORM: tf
   script:
-    - cd ../../tests && make create-${CI_PLATFORM} -s ; cd -
-    - ansible-playbook ../../cluster.yml --become
+    - cd tests && make create-${CI_PLATFORM} -s ; cd -
+    - ansible-playbook cluster.yml --become
+    # - tests/scripts/testcases_prepare.sh
   after_script:
     # Cleanup regardless of exit code
     - ./tests/scripts/testcases_cleanup.sh

@@ -29,7 +29,7 @@
   loop_control:
     index_var: vm_id
 
-- name: Wait for vms to have ipaddress assigned
+- name: Wait for vms to be scheduled
   shell: "kubectl get vmis -n {{ test_name }} instance-{{ vm_id }} -o json | jq '.status.interfaces[].ipAddress' | tr -d '\"'"
   register: vm_ips
   loop: "{{ range(0, vm_count|int, 1) | list }}"
@@ -37,8 +37,18 @@
     index_var: vm_id
   retries: 20
   delay: 15
+  failed_when: false
   until:
     - vm_ips.stdout | ipaddr
+
+- name: Get VMI events
+  shell: "kubectl -n {{ test_name }} get events --field-selector involvedObject.kind=VirtualMachineInstance"
+  register: vm_events
+  when: not (vm_ips.stdout | ipaddr)
+
+- debug: msg="{{ vm_events.stdout.split('\n') }}"
+  when: vm_events is defined
+  failed_when: true
 
 - name: "Create inventory for CI test in file /tmp/{{ test_name }}/inventory"
   template:

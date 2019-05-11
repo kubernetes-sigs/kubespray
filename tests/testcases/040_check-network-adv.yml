@@ -19,7 +19,8 @@
         bin_dir: "/opt/bin"
       when: ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
 
-    - set_fact:
+    - name: Force binaries directory on other hosts
+      set_fact:
         bin_dir: "/usr/local/bin"
       when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
 
@@ -42,7 +43,8 @@
       delay: 10
       failed_when: false
 
-    - command: "{{ bin_dir }}/kubectl -n {{ netcheck_namespace }} describe pod -l app={{ item }}"
+    - name: Get netchecker pods
+      command: "{{ bin_dir }}/kubectl -n {{ netcheck_namespace }} describe pod -l app={{ item }}"
       run_once: true
       delegate_to: "{{ groups['kube-master'][0] }}"
       no_log: false
@@ -51,12 +53,15 @@
         - netchecker-agent-hostnet
       when: not nca_pod is success
 
-    - debug: var=nca_pod.stdout_lines
+    - debug:
+        var: nca_pod.stdout_lines
       failed_when: not nca_pod is success
       run_once: true
 
     - name: Get netchecker agents
-      uri: url=http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/agents/ return_content=yes
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/agents/"
+        return_content: yes
       run_once: true
       delegate_to: "{{ groups['kube-master'][0] }}"
       register: agents
@@ -68,7 +73,8 @@
       failed_when: false
       no_log: true
 
-    - debug: var=agents.content|from_json
+    - debug:
+        var: agents.content | from_json
       failed_when: not agents is success and not agents.content=='{}'
       run_once: true
       when:
@@ -77,7 +83,10 @@
         - agents.content[0] == '{'
 
     - name: Check netchecker status
-      uri: url=http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/connectivity_check status_code=200 return_content=yes
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/connectivity_check"
+        status_code: 200
+        return_content: yes
       delegate_to: "{{ groups['kube-master'][0] }}"
       run_once: true
       register: result
@@ -90,17 +99,20 @@
       when:
         - agents.content != '{}'
 
-    - debug: var=ncs_pod
+    - debug:
+        var: ncs_pod
       run_once: true
       when: not result is success
 
-    - command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app=kube-proxy"
+    - name: Get kube-proxy logs
+      command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app=kube-proxy"
       run_once: true
       when: not result is success
       delegate_to: "{{ groups['kube-master'][0] }}"
       no_log: false
 
-    - command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app={{ item }} --all-containers"
+    - name: Get logs from other apps
+      command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app={{ item }} --all-containers"
       run_once: true
       when: not result is success
       delegate_to: "{{ groups['kube-master'][0] }}"
@@ -115,7 +127,8 @@
         - calico-node
         - cilium
 
-    - debug: var=result.content|from_json
+    - debug:
+        var: result.content | from_json
       failed_when: not result is success
       run_once: true
       when:
@@ -123,13 +136,15 @@
         - result.content
         - result.content[0] == '{'
 
-    - debug: var=result
+    - debug:
+        var: result
       failed_when: not result is success
       run_once: true
       when:
         - not agents.content == '{}'
 
-    - debug: msg="Cannot get reports from agents, consider as PASSING"
+    - debug:
+        msg: "Cannot get reports from agents, consider as PASSING"
       run_once: true
       when:
         - agents.content == '{}'

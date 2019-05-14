@@ -34,6 +34,15 @@ Variables are listed with their default values, if applicable.
 * `coreos_locksmithd_disable: false`
   Whether `locksmithd` (responsible for rolling restarts) should be disabled or be left alone.
 
+* `coreos_pypy_filename: "pypy3.5-{{ coreos_pypy_version }}-linux_x86_64-portable"`
+  Name of the binary file inside the tar.bz2 downloaded.
+
+* `coreos_pypy_download_url: "https://bitbucket.org/squeaky/portable-pypy/downloads/{{ coreos_pypy_filename }}.tar.bz2"`
+  URL for the portable pypy tar.bz2 archive, specially useful for offline installations.
+
+* `coreos_pypy_version: "7.0.0"`
+  Version of the portable pypy3.5 package to download if using the default settings for the `coreos_pypy_*` variables.
+
 #### CentOS/RHEL
 
 * `centos_fastestmirror_enabled: false`

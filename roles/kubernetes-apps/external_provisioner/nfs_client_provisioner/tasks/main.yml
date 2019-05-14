@@ -1,0 +1,37 @@
+---
+- name: NFS Client Provisioner | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/nfs_client_provisioner"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: NFS Client Provisioner | Templates list
+  set_fact:
+    nfs_client_provisioner_templates:
+      - { name: 00-namespace, file: 00-namespace.yml, type: ns }
+      - { name: class, file: class.yml, type: sc }
+      - { name: deployment, file: deployment.yml, type: deployment }
+      - { name: rbac, file: rbac.yml, type: sa }
+
+- name: NFS Client Provisioner | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/nfs_client_provisioner/{{ item.file }}"
+  with_items: "{{ nfs_client_provisioner_templates }}"
+  register: nfs_client_provisioner_manifests
+  when: inventory_hostname == groups['kube-master'][0]
+
+- name: NFS Client Provisioner | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ nfs_client_provisioner_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/nfs_client_provisioner/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ nfs_client_provisioner_manifests.results }}"
+  when: inventory_hostname == groups['kube-master'][0]

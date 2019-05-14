@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: coredns-external-tcp
+  namespace: kube-system
+  labels:
+    k8s-app: coredns-external-tcp
+    kubernetes.io/cluster-service: "true"
+    kubernetes.io/name: "coredns-external-tcp"
+    addonmanager.kubernetes.io/mode: Reconcile
+  annotations:
+    prometheus.io/path: /metrics
+    prometheus.io/port: "9153"
+    prometheus.io/scrape: "true"
+{% if coredns_external.exposed_via_metallb %}
+    metallb.universe.tf/allow-shared-ip: mykey
+{% endif %}
+{% if coredns_external.metallb_address_pool is defined %}
+    metallb.universe.tf/address-pool: {{ coredns_external.metallb_address_pool }}
+{% endif %}
+
+spec:
+  selector:
+    k8s-app: coredns-external
+  type: LoadBalancer
+{% if coredns_external.external_ip is defined %}
+  loadBalancerIP: {{ coredns_external.external_ip }}
+{% endif %}
+  ports:
+    - name: dns
+      port: 53
+      protocol: TCP
+    - name: metrics
+      port: 9153
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coredns-external-udp
+  namespace: kube-system
+  labels:
+    k8s-app: coredns-external-udp
+    kubernetes.io/cluster-service: "true"
+    kubernetes.io/name: "coredns-external-udp"
+    addonmanager.kubernetes.io/mode: Reconcile
+  annotations:
+{% if coredns_external.exposed_via_metallb %}
+    metallb.universe.tf/allow-shared-ip: mykey
+{% endif %}
+{% if coredns_external.metallb_address_pool is defined %}
+    metallb.universe.tf/address-pool: {{ coredns_external.metallb_address_pool }}
+{% endif %}
+
+spec:
+  selector:
+    k8s-app: coredns-external
+  type: LoadBalancer
+{% if coredns_external.external_ip is defined %}
+  loadBalancerIP: {{ coredns_external.external_ip }}
+{% endif %}
+  ports:
+    - name: dns
+      port: 53
+      protocol: UDP

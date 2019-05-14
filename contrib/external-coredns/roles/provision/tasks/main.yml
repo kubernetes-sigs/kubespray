@@ -1,0 +1,19 @@
+---
+- name: "Kubernetes Apps | Lay Down CoreDNS External"
+  become: true
+  template: { src: "{{ item }}.j2", dest: "{{ kube_config_dir }}/{{ item }}" }
+  with_items: ["coredns-autoscaler-external.yml", "coredns-config-external.yml", "coredns-deployment-external.yml", "coredns-svc-external.yml"]
+  register: "rendering"
+  when:
+    - "inventory_hostname == groups['kube-master'][0]"
+
+- name: "Kubernetes Apps | Install and configure CoreDNS External"
+  kube:
+    name: "CoreDNS External"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item }}"
+    state: "{{ item.changed | ternary('latest','present') }}"
+  become: true
+  with_items: "{{ rendering.results }}"
+  when:
+    - "inventory_hostname == groups['kube-master'][0]"

@@ -12,7 +12,7 @@ if [[ -e $BINDIR/.bootstrapped ]]; then
 fi
 
 wget -O - $PYPY_URL | tar -xjf -
-mv -n $PYPY_FILE pypy3
+mv -n $PYPY_FOLDER pypy3
 
 ln -s ./pypy3/bin/pypy3 python
 $BINDIR/python --version

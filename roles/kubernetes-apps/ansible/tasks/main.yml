@@ -7,8 +7,8 @@
     client_key: "{{ kube_apiserver_client_key }}"
   register: result
   until: result.status == 200
-  retries: 10
-  delay: 2
+  retries: 20
+  delay: 1
   when: inventory_hostname == groups['kube-master'][0]
 
 - name: Kubernetes Apps | Cleanup DNS
@@ -17,6 +17,8 @@
     - inventory_hostname == groups['kube-master'][0]
   tags:
     - upgrade
+    - coredns
+    - nodelocaldns
 
 - name: Kubernetes Apps | CoreDNS
   import_tasks: "tasks/coredns.yml"
@@ -26,13 +28,13 @@
   tags:
     - coredns
 
-- name: Kubernetes Apps | KubeDNS
-  import_tasks: "tasks/kubedns.yml"
+- name: Kubernetes Apps | nodelocalDNS
+  import_tasks: "tasks/nodelocaldns.yml"
   when:
-    - dns_mode in ['kubedns', 'dnsmasq_kubedns']
-    - inventory_hostname == groups['kube-master'][0]
+    - enable_nodelocaldns
+    - inventory_hostname == groups['kube-master'] | first
   tags:
-    - dnsmasq
+    - nodelocaldns
 
 - name: Kubernetes Apps | Start Resources
   kube:
@@ -43,19 +45,22 @@
     filename: "{{ kube_config_dir }}/{{ item.item.file }}"
     state: "latest"
   with_items:
-    - "{{ kubedns_manifests.results | default({}) }}"
     - "{{ coredns_manifests.results | default({}) }}"
     - "{{ coredns_secondary_manifests.results | default({}) }}"
+    - "{{ nodelocaldns_manifests.results | default({}) }}"
   when:
     - dns_mode != 'none'
     - inventory_hostname == groups['kube-master'][0]
-    - not item|skipped
+    - not item is skipped
   register: resource_result
-  until: resource_result|succeeded
+  until: resource_result is succeeded
   retries: 4
   delay: 5
   tags:
-    - dnsmasq
+    - coredns
+    - nodelocaldns
+  loop_control:
+    label: "{{ item.item.file }}"
 
 - name: Kubernetes Apps | Netchecker
   import_tasks: tasks/netchecker.yml

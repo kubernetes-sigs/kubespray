@@ -52,9 +52,12 @@ spec:
         tier: node
         k8s-app: flannel
     spec:
-{% if rbac_enabled %}
-      serviceAccountName: flannel
+{% if kube_version is version('v1.11.1', '>=') %}
+      priorityClassName: system-node-critical
 {% endif %}
+      serviceAccountName: flannel
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - name: kube-flannel
         image: {{ flannel_image_repo }}:{{ flannel_image_tag }}
@@ -78,6 +81,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         volumeMounts:
         - name: run
           mountPath: /run
@@ -104,9 +111,10 @@ spec:
           mountPath: /host/opt/cni/bin/
       hostNetwork: true
       tolerations:
-      - key: node-role.kubernetes.io/master
-        operator: Exists
-        effect: NoSchedule
+        - operator: Exists
+        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
+        - key: CriticalAddonsOnly
+          operator: "Exists"
       volumes:
         - name: run
           hostPath:

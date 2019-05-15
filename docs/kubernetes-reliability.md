@@ -15,7 +15,7 @@ By default the normal behavior looks like:
 2. Kubernetes controller manager checks the statuses of Kubelets every
    `–-node-monitor-period`. The default value is **5s**.
 
-3. In case the status is updated  within `--node-monitor-grace-period` of time,
+3. In case the status is updated within `--node-monitor-grace-period` of time,
    Kubernetes controller manager considers healthy status of Kubelet. The
    default value is **40s**.
 
@@ -33,7 +33,7 @@ Kubelet will try to make `nodeStatusUpdateRetry` post attempts. Currently
 [kubelet.go](https://github.com/kubernetes/kubernetes/blob/release-1.5/pkg/kubelet/kubelet.go#L102).
 
 Kubelet will try to update the status in
-[tryUpdateNodeStatus](https://github.com/kubernetes/kubernetes/blob/release-1.5/pkg/kubelet/kubelet_node_status.go#L345)
+[tryUpdateNodeStatus](https://github.com/kubernetes/kubernetes/blob/release-1.5/pkg/kubelet/kubelet_node_status.go#L312)
 function. Kubelet uses `http.Client()` Golang method, but has no specified
 timeout. Thus there may be some glitches when API Server is overloaded while
 TCP connection is established.
@@ -69,7 +69,7 @@ minute which may require large etcd containers or even dedicated nodes for etcd.
 
 > If we calculate the number of tries, the division will give 5, but in reality
 > it will be from 3 to 5 with `nodeStatusUpdateRetry` attempts of each try. The
-> total number of attemtps will vary from 15 to 25 due to latency of all
+> total number of attempts will vary from 15 to 25 due to latency of all
 > components.
 
 ## Medium Update and Average Reaction
@@ -92,7 +92,7 @@ etcd updates per minute.
 Let's set `-–node-status-update-frequency` to **1m**.
 `--node-monitor-grace-period` will set to **5m** and `--pod-eviction-timeout`
 to **1m**. In this scenario, every kubelet will try to update the status every
-minute. There will be 5 * 5 = 25 attempts before unhealty status. After 5m,
+minute. There will be 5 * 5 = 25 attempts before unhealthy status. After 5m,
 Kubernetes controller manager will set unhealthy status. This means that pods
 will be evicted after 1m after being marked unhealthy. (6m in total).
 

@@ -1,15 +1,15 @@
 ---
 - set_fact:
     pull_by_digest: >-
-      {%- if download.sha256 is defined and download.sha256 != '' -%}true{%- else -%}false{%- endif -%}
+      {%- if download.sha256 is defined and download.sha256 -%}true{%- else -%}false{%- endif -%}
 
 - set_fact:
     pull_args: >-
-      {%- if pull_by_digest %}{{download.repo}}@sha256:{{download.sha256}}{%- else -%}{{download.repo}}:{{download.tag}}{%- endif -%}
+      {%- if pull_by_digest %}{{ download.repo }}@sha256:{{ download.sha256 }}{%- else -%}{{ download.repo }}:{{ download.tag }}{%- endif -%}
 
 - name: Register docker images info
-  raw: >-
-    {{ docker_bin_dir }}/docker images -q | xargs {{ docker_bin_dir }}/docker inspect -f "{{ '{{' }} (index .RepoTags 0) {{ '}}' }},{{ '{{' }} (index .RepoDigests 0) {{ '}}' }}" | tr '\n' ','
+  shell: >-
+    {{ docker_bin_dir }}/docker images -q | xargs -r {{ docker_bin_dir }}/docker inspect -f "{{ '{{' }} if .RepoTags {{ '}}' }}{{ '{{' }} (index .RepoTags) {{ '}}' }}{{ '{{' }} end {{ '}}' }}{{ '{{' }} if .RepoDigests {{ '}}' }},{{ '{{' }} (index .RepoDigests) {{ '}}' }}{{ '{{' }} end {{ '}}' }}" | sed -e 's/^ *\[//g' -e 's/\] *$//g' -e 's/ /\n/g' | tr '\n' ','
   no_log: true
   register: docker_images
   failed_when: false
@@ -22,9 +22,21 @@
       {%- if pull_args in docker_images.stdout.split(',') %}false{%- else -%}true{%- endif -%}
   when: not download_always_pull
 
+- name: Does any host require container pull?
+  vars:
+    hosts_pull_required: "{{ hostvars.values() | map(attribute='pull_required') | select('defined') | list }}"
+  set_fact:
+    any_pull_required: "{{ True in hosts_pull_required }}"
+  run_once: true
+  changed_when: false
+  when: not download_always_pull
+
 - name: Check the local digest sha256 corresponds to the given image tag
   assert:
-    that: "{{download.repo}}:{{download.tag}} in docker_images.stdout.split(',')"
-  when: not download_always_pull and not pull_required and pull_by_digest
+    that: "{{ download.repo }}:{{ download.tag }} in docker_images.stdout.split(',')"
+  when:
+    - not download_always_pull
+    - not pull_required
+    - pull_by_digest
   tags:
     - asserts

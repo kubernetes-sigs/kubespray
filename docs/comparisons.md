@@ -19,7 +19,9 @@ on. Had it belonged to the new [operators world](https://coreos.com/blog/introdu
 it may have been named a "Kubernetes cluster operator". Kubespray however,
 does generic configuration management tasks from the "OS operators" ansible
 world, plus some initial K8s clustering (with networking plugins included) and
-control plane bootstrapping. Kubespray [strives](https://github.com/kubernetes-incubator/kubespray/issues/553)
-to adopt kubeadm as a tool in order to consume life cycle management domain
-knowledge from it and offload generic OS configuration things from it, which
-hopefully benefits both sides.
+control plane bootstrapping. 
+
+Kubespray supports `kubeadm` for cluster creation since v2.3 
+(and deprecated non-kubeadm deployment starting from v2.8)
+in order to consume life cycle management domain knowledge from it
+and offload generic OS configuration things from it, which hopefully benefits both sides.

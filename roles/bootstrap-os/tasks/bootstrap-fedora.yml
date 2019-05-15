@@ -1,0 +1,66 @@
+---
+# Some Fedora based distros ship without Python installed
+
+- name: Check if this is an atomic host
+  raw: stat /run/ostree-booted
+  register: ostree
+  environment: {}
+  failed_when: false
+  changed_when: false
+  tags:
+    - facts
+
+- name: Store the fact if this is an atomic host
+  set_fact:
+    is_atomic: "{{ ostree.rc == 0 }}"
+  tags:
+    - facts
+
+- name: Check if bootstrap is needed
+  raw: which python
+  register: need_bootstrap
+  failed_when: false
+  changed_when: false
+  environment: {}
+  tags:
+    - facts
+
+- name: Check if a proxy is set in /etc/dnf/dnf.conf
+  raw: grep -qs 'proxy=' /etc/dnf/dnf.conf
+  register: need_http_proxy
+  failed_when: false
+  changed_when: false
+  # This command should always run, even in check mode
+  check_mode: false
+  environment: {}
+  when:
+    - http_proxy is defined
+
+- name: Add http_proxy to /etc/dnf/dnf.conf if http_proxy is defined
+  raw: echo 'proxy={{ http_proxy }}' >> /etc/dnf/dnf.conf
+  become: true
+  environment: {}
+  when:
+    - http_proxy is defined
+    - need_http_proxy.rc != 0
+    - not is_atomic
+
+# Fedora's policy as of Fedora 30 is to still install python2 as /usr/bin/python
+# See https://fedoraproject.org/wiki/FinalizingFedoraSwitchtoPython3 for the current status
+- name: Install python on fedora
+  raw: "dnf install --assumeyes --quiet python2"
+  become: true
+  environment: {}
+  when:
+    - need_bootstrap.rc != 0
+    - not is_atomic
+
+# libselinux-python is required on SELinux enabled hosts
+# See https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#managed-node-requirements
+- name: Install libselinux-python
+  package:
+    name: libselinux-python
+    state: present
+  become: true
+  when:
+    - not is_atomic

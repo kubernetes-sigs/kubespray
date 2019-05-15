@@ -2,24 +2,16 @@
 - name: Set cert dir
   set_fact:
     calico_cert_dir: "{{ canal_cert_dir }}"
-  when: kube_network_plugin == 'canal'
+  when:
+    - kube_network_plugin == 'canal'
   tags:
     - facts
     - canal
 
-- name: Delete the old calico-policy-controller if it exist
-  kube:
-    name: calico-policy-controller
-    kubectl: "{{bin_dir}}/kubectl"
-    resource: rs
-    namespace: "kube-system"
-    state: absent
-  run_once: true
-
 - name: Create calico-kube-controllers manifests
   template:
-    src: "{{item.file}}.j2"
-    dest: "{{kube_config_dir}}/{{item.file}}"
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
   with_items:
     - {name: calico-kube-controllers, file: calico-kube-controllers.yml, type: deployment}
     - {name: calico-kube-controllers, file: calico-kube-sa.yml, type: sa}
@@ -27,15 +19,21 @@
     - {name: calico-kube-controllers, file: calico-kube-crb.yml, type: clusterrolebinding}
   register: calico_kube_manifests
   when:
+    - inventory_hostname == groups['kube-master'][0]
     - rbac_enabled or item.type not in rbac_resources
 
 - name: Start of Calico kube controllers
   kube:
-    name: "{{item.item.name}}"
+    name: "{{ item.item.name }}"
     namespace: "kube-system"
-    kubectl: "{{bin_dir}}/kubectl"
-    resource: "{{item.item.type}}"
-    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
     state: "latest"
-  with_items: "{{ calico_kube_manifests.results }}"
-  when: inventory_hostname == groups['kube-master'][0] and not item|skipped
+  with_items:
+    - "{{ calico_kube_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"

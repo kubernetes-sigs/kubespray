@@ -1,0 +1,25 @@
+---
+- name: "Test storage class."
+  command: "{{ bin_dir }}/kubectl get storageclass gluster --ignore-not-found=true --output=json"
+  register: "storageclass"
+  changed_when: false
+- name: "Test heketi service."
+  command: "{{ bin_dir }}/kubectl get service heketi --ignore-not-found=true --output=json"
+  register: "heketi_service"
+  changed_when: false
+- name: "Ensure heketi service is available."
+  assert: { that: "heketi_service.stdout != \"\"" }
+- name: "Render storage class configuration."
+  become: true
+  vars:
+    endpoint_address: "{{ (heketi_service.stdout|from_json).spec.clusterIP }}"
+  template:
+    src: "storageclass.yml.j2"
+    dest: "{{ kube_config_dir }}/storageclass.yml"
+  register: "rendering"
+- name: "Kubernetes Apps | Install and configure Storace Class"
+  kube:
+    name: "GlusterFS"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/storageclass.yml"
+    state: "{{ rendering.changed | ternary('latest', 'present') }}"

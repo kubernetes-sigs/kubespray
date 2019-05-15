@@ -1,0 +1,26 @@
+---
+- name: "Download calico-upgrade tool (force version)"
+  get_url:
+    url: "{{ calico_upgrade_url }}"
+    dest: "{{ bin_dir }}/calico-upgrade"
+    mode: 0755
+    owner: root
+    group: root
+    force: yes
+  environment: "{{ proxy_env }}"
+- name: "Create etcdv2 and etcdv3 calicoApiConfig"
+  template:
+    src: "{{ item }}-store.yml.j2"
+    dest: "/etc/calico/{{ item }}.yml"
+  with_items:
+    - "etcdv2"
+    - "etcdv3"
+
+- name: "Tests data migration (dry-run)"
+  shell: "{{ bin_dir }}/calico-upgrade dry-run --output-dir=/tmp --apiconfigv1 /etc/calico/etcdv2.yml --apiconfigv3 /etc/calico/etcdv3.yml"
+  register: calico_upgrade_test_data
+  failed_when: '"Successfully" not in calico_upgrade_test_data.stdout'
+
+- name: "If test migration is success continue with calico data real migration"
+  shell: "{{ bin_dir }}/calico-upgrade start --no-prompts --apiconfigv1 /etc/calico/etcdv2.yml --apiconfigv3 /etc/calico/etcdv3.yml --output-dir=/tmp/calico_upgrade"
+  register: calico_upgrade_migration_data

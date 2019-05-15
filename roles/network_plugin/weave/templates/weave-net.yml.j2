@@ -15,7 +15,6 @@ items:
       name: weave-net
       labels:
         name: weave-net
-      namespace: kube-system
     rules:
       - apiGroups:
           - ''
@@ -35,13 +34,27 @@ items:
           - get
           - list
           - watch
+      - apiGroups:
+          - ''
+        resources:
+          - nodes/status
+        verbs:
+          - patch
+          - update
+      - apiGroups:
+          - policy
+        resourceNames:
+          - privileged
+        resources:
+          - podsecuritypolicies
+        verbs:
+          - use
   - apiVersion: rbac.authorization.k8s.io/v1beta1
     kind: ClusterRoleBinding
     metadata:
       name: weave-net
       labels:
         name: weave-net
-      namespace: kube-system
     roleRef:
       kind: ClusterRole
       name: weave-net
@@ -94,7 +107,6 @@ items:
       name: weave-net
       labels:
         name: weave-net
-        version: v{{ weave_version }}
       namespace: kube-system
     spec:
       minReadySeconds: 5
@@ -103,49 +115,72 @@ items:
           labels:
             name: weave-net
         spec:
+{% if kube_version is version('v1.11.1', '>=') %}
+          priorityClassName: system-node-critical
+{% endif %}
           containers:
             - name: weave
               command:
-{% if weave_mode_seed == true %}
-                - /bin/sh
-                - -c
-                - export EXTRA_ARGS=--name=$(cat /sys/class/net/{{ ansible_default_ipv4['interface'] }}/address) && /home/weave/launch.sh
-{% else %}
                 - /home/weave/launch.sh
-{% endif %}
               env:
                 - name: HOSTNAME
                   valueFrom:
                     fieldRef:
                       apiVersion: v1
                       fieldPath: spec.nodeName
-                - name: WEAVE_MTU
-                  value: "{{ weave_mtu }}"
-                - name: IPALLOC_RANGE
-                  value: {{ kube_pods_subnet }}
-{% if weave_mode_seed == true %}
-                - name: KUBE_PEERS
-                  value: {{ peers }}
-                - name: IPALLOC_INIT
-                  value: seed={{ seed }}
-{% endif %}
                 - name: WEAVE_PASSWORD
-                  value: {{ weave_password }}
+                  valueFrom:
+                    secretKeyRef:
+                      name: weave-net
+                      key: WEAVE_PASSWORD
+                - name: CHECKPOINT_DISABLE
+                  value: "{{ weave_checkpoint_disable | bool | int }}"
+                - name: CONN_LIMIT
+                  value: "{{ weave_conn_limit | int }}"
+                - name: HAIRPIN_MODE
+                  value: "{{ weave_hairpin_mode | bool | lower }}"
+                - name: IPALLOC_RANGE
+                  value: "{{ weave_ipalloc_range }}"
+                - name: EXPECT_NPC
+                  value: "{{ weave_expect_npc | bool | int }}"
+{% if weave_kube_peers %}
+                - name: KUBE_PEERS
+                  value: "{{ weave_kube_peers }}"
+{% endif %}
+{% if weave_ipalloc_init %}
+                - name: IPALLOC_INIT
+                  value: "{{ weave_ipalloc_init }}"
+{% endif %}
+{% if weave_expose_ip %}
+                - name: WEAVE_EXPOSE_IP
+                  value: "{{ weave_expose_ip }}"
+{% endif %}
+{% if weave_metrics_addr %}
+                - name: WEAVE_METRICS_ADDR
+                  value: "{{ weave_metrics_addr }}"
+{% endif %}
+{% if weave_status_addr %}
+                - name: WEAVE_STATUS_ADDR
+                  value: "{{ weave_status_addr }}"
+{% endif %}
+                - name: WEAVE_MTU
+                  value: "{{ weave_mtu | int }}"
+                - name: NO_MASQ_LOCAL
+                  value: "{{ weave_no_masq_local | bool | int }}"
+{% if weave_extra_args %}
+                - name: EXTRA_ARGS
+                  value: "{{ weave_extra_args }}"
+{% endif %}
               image: {{ weave_kube_image_repo }}:{{ weave_kube_image_tag }}
               imagePullPolicy: {{ k8s_image_pull_policy }}
-              livenessProbe:
+              readinessProbe:
                 httpGet:
                   host: 127.0.0.1
                   path: /status
                   port: 6784
-                initialDelaySeconds: 30
               resources:
                 requests:
-                  cpu: {{ weave_cpu_requests }}
-                  memory: {{ weave_memory_requests }}
-                limits:
-                  cpu: {{ weave_cpu_limits }}
-                  memory: {{ weave_memory_limits }}
+                  cpu: 10m
               securityContext:
                 privileged: true
               volumeMounts:
@@ -164,7 +199,6 @@ items:
                 - name: xtables-lock
                   mountPath: /run/xtables.lock
             - name: weave-npc
-              args: []
               env:
                 - name: HOSTNAME
                   valueFrom:
@@ -175,11 +209,7 @@ items:
               imagePullPolicy: {{ k8s_image_pull_policy }}
               resources:
                 requests:
-                  cpu: {{ weave_cpu_requests }}
-                  memory: {{ weave_memory_requests }}
-                limits:
-                  cpu: {{ weave_cpu_limits }}
-                  memory: {{ weave_memory_limits }}
+                  cpu: 10m
               securityContext:
                 privileged: true
               volumeMounts:
@@ -194,6 +224,9 @@ items:
           tolerations:
             - effect: NoSchedule
               operator: Exists
+            # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
+            - key: CriticalAddonsOnly
+              operator: "Exists"
           volumes:
             - name: weavedb
               hostPath:
@@ -216,7 +249,15 @@ items:
             - name: xtables-lock
               hostPath:
                 path: /run/xtables.lock
+                type: FileOrCreate
       updateStrategy:
         rollingUpdate:
           maxUnavailable: {{ serial | default('20%') }}
         type: RollingUpdate
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: weave-net
+      namespace: kube-system
+    data:
+      WEAVE_PASSWORD: "{{ weave_password | default("") | b64encode }}"

@@ -1,0 +1,134 @@
+---
+- import_tasks: sync_kube_master_certs.yml
+  when: inventory_hostname in groups['kube-master']
+
+- import_tasks: sync_kube_node_certs.yml
+  when: inventory_hostname in groups['k8s-cluster']
+
+# Issue admin certs to kube-master hosts
+- include_tasks: ../../../vault/tasks/shared/issue_cert.yml
+  vars:
+    issue_cert_common_name: "admin"
+    issue_cert_copy_ca: "{{ item == kube_admin_certs_needed|first }}"
+    issue_cert_file_group: "{{ kube_cert_group }}"
+    issue_cert_file_owner: kube
+    issue_cert_hosts: "{{ groups['kube-master'] }}"
+    issue_cert_path: "{{ item }}"
+    issue_cert_role: kube-master
+    issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
+    issue_cert_mount_path: "{{ kube_vault_mount_path }}"
+  with_items: "{{ kube_admin_certs_needed|d([]) }}"
+  when: inventory_hostname in groups['kube-master']
+
+- name: gen_certs_vault | Set fact about certificate alt names
+  set_fact:
+    kube_cert_alt_names: >-
+      {{
+      groups['kube-master'] +
+      ['kubernetes.default.svc.'+cluster_name, 'kubernetes.default.svc', 'kubernetes.default', 'kubernetes'] +
+      ['localhost']
+      }}
+  run_once: true
+
+- name: gen_certs_vault | Add external load balancer domain name to certificate alt names
+  set_fact:
+    kube_cert_alt_names: "{{ kube_cert_alt_names + [apiserver_loadbalancer_domain_name] }}"
+  when: loadbalancer_apiserver is defined
+  run_once: true
+
+# Issue master components certs to kube-master hosts
+- include_tasks: ../../../vault/tasks/shared/issue_cert.yml
+  vars:
+    issue_cert_common_name: "kubernetes"
+    issue_cert_alt_names: "{{ kube_cert_alt_names }}"
+    issue_cert_file_group: "{{ kube_cert_group }}"
+    issue_cert_file_owner: kube
+    issue_cert_hosts: "{{ groups['kube-master'] }}"
+    issue_cert_run_once: true
+    issue_cert_ip_sans: >-
+        [
+        {%- for host in groups['kube-master']  -%}
+        "{{ hostvars[host]['ansible_default_ipv4']['address'] }}",
+        {%- if hostvars[host]['ip'] is defined -%}
+        "{{ hostvars[host]['ip'] }}",
+        {%- endif -%}
+        {%- endfor -%}
+        {%- if supplementary_addresses_in_ssl_keys is defined -%}
+        {%- for ip_item in supplementary_addresses_in_ssl_keys -%}
+        "{{ ip_item }}",
+        {%- endfor -%}
+        {%- endif -%}
+        "127.0.0.1","::1","{{ kube_apiserver_ip }}"
+        ]
+    issue_cert_path: "{{ item }}"
+    issue_cert_role: kube-master
+    issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
+    issue_cert_mount_path: "{{ kube_vault_mount_path }}"
+  with_items: "{{ kube_master_components_certs_needed|d([]) }}"
+  when: inventory_hostname in groups['kube-master']
+  notify: set secret_changed
+
+# Issue node certs to k8s-cluster nodes
+- include_tasks: ../../../vault/tasks/shared/issue_cert.yml
+  vars:
+    # Need to strip out the 'node-' prefix from the cert name so it can be used
+    # with the node authorization plugin ( CN matches kubelet node name )
+    issue_cert_common_name: "system:node:{{ item.rsplit('/', 1)[1].rsplit('.', 1)[0] | regex_replace('^node-', '') }}"
+    issue_cert_copy_ca: "{{ item == kube_node_certs_needed|first }}"
+    issue_cert_file_group: "{{ kube_cert_group }}"
+    issue_cert_file_owner: kube
+    issue_cert_hosts: "{{ groups['k8s-cluster'] }}"
+    issue_cert_path: "{{ item }}"
+    issue_cert_role: kube-node
+    issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
+    issue_cert_mount_path: "{{ kube_vault_mount_path }}"
+  with_items: "{{ kube_node_certs_needed|d([]) }}"
+  when: inventory_hostname in groups['k8s-cluster']
+
+# Issue proxy certs to k8s-cluster nodes
+- include_tasks: ../../../vault/tasks/shared/issue_cert.yml
+  vars:
+    issue_cert_common_name: "system:kube-proxy"
+    issue_cert_copy_ca: "{{ item == kube_proxy_certs_needed|first }}"
+    issue_cert_file_group: "{{ kube_cert_group }}"
+    issue_cert_file_owner: kube
+    issue_cert_hosts: "{{ groups['k8s-cluster'] }}"
+    issue_cert_path: "{{ item }}"
+    issue_cert_role: kube-proxy
+    issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
+    issue_cert_mount_path: "{{ kube_vault_mount_path }}"
+  with_items: "{{ kube_proxy_certs_needed|d([]) }}"
+  when: inventory_hostname in groups['k8s-cluster']
+
+# Issue front proxy cert to kube-master hosts
+- include_tasks: ../../../vault/tasks/shared/issue_cert.yml
+  vars:
+    issue_cert_common_name: "front-proxy-client"
+    issue_cert_copy_ca: "{{ item == kube_front_proxy_clients_certs_needed|first }}"
+    issue_cert_ca_filename: front-proxy-ca.pem
+    issue_cert_alt_names: "{{ kube_cert_alt_names }}"
+    issue_cert_file_group: "{{ kube_cert_group }}"
+    issue_cert_file_owner: kube
+    issue_cert_hosts: "{{ groups['kube-master'] }}"
+    issue_cert_ip_sans: >-
+        [
+        {%- for host in groups['kube-master']  -%}
+        "{{ hostvars[host]['ansible_default_ipv4']['address'] }}",
+        {%- if hostvars[host]['ip'] is defined -%}
+        "{{ hostvars[host]['ip'] }}",
+        {%- endif -%}
+        {%- endfor -%}
+        {%- if supplementary_addresses_in_ssl_keys is defined -%}
+        {%- for ip_item in supplementary_addresses_in_ssl_keys -%}
+        "{{ ip_item }}",
+        {%- endfor -%}
+        {%- endif -%}
+        "127.0.0.1","::1","{{ kube_apiserver_ip }}"
+        ]
+    issue_cert_path: "{{ item }}"
+    issue_cert_role: front-proxy-client
+    issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
+    issue_cert_mount_path: "{{ kube_vault_mount_path }}"
+  with_items: "{{ kube_front_proxy_clients_certs_needed|d([]) }}"
+  when: inventory_hostname in groups['kube-master']
+  notify: set secret_changed

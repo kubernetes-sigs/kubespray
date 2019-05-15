@@ -1,0 +1,70 @@
+---
+## Uncomment this if you want to force overlay/overlay2 as docker storage driver
+## Please note that overlay2 is only supported on newer kernels
+# docker_storage_options: -s overlay2
+
+## Enable docker_container_storage_setup, it will configure devicemapper driver on Centos7 or RedHat7.
+docker_container_storage_setup: false
+
+## It must be define a disk path for docker_container_storage_setup_devs.
+## Otherwise docker-storage-setup will be executed incorrectly.
+# docker_container_storage_setup_devs: /dev/vdb
+
+## Uncomment this if you have more than 3 nameservers, then we'll only use the first 3.
+docker_dns_servers_strict: false
+
+# Path used to store Docker data
+docker_daemon_graph: "/var/lib/docker"
+
+## Used to set docker daemon iptables options to true
+docker_iptables_enabled: "false"
+
+# Docker log options
+# Rotate container stderr/stdout logs at 50m and keep last 5
+docker_log_opts: "--log-opt max-size=50m --log-opt max-file=5"
+
+# define docker bin_dir
+docker_bin_dir: "/usr/bin"
+
+# keep docker packages after installation; speeds up repeated ansible provisioning runs when '1'
+# kubespray deletes the docker package on each run, so caching the package makes sense
+docker_rpm_keepcache: 0
+
+## An obvious use case is allowing insecure-registry access to self hosted registries.
+## Can be ipaddress and domain_name.
+## example define 172.19.16.11 or mirror.registry.io
+# docker_insecure_registries:
+#   - mirror.registry.io
+#   - 172.19.16.11
+
+## Add other registry,example China registry mirror.
+# docker_registry_mirrors:
+#   - https://registry.docker-cn.com
+#   - https://mirror.aliyuncs.com
+
+## If non-empty will override default system MounFlags value.
+## This option takes a mount propagation flag: shared, slave
+## or private, which control whether mounts in the file system
+## namespace set up for docker will receive or propagate mounts
+## and unmounts. Leave empty for system default
+# docker_mount_flags:
+
+## A string of extra options to pass to the docker daemon.
+## This string should be exactly as you wish it to appear.
+docker_options: >-
+  {%- if docker_insecure_registries is defined %}
+  {{ docker_insecure_registries | map('regex_replace', '^(.*)$', '--insecure-registry=\1' ) | list | join(' ') }}
+  {%- endif %}
+  {% if docker_registry_mirrors is defined %}
+  {{ docker_registry_mirrors | map('regex_replace', '^(.*)$', '--registry-mirror=\1' ) | list | join(' ') }}
+  {%- endif %}
+  {%- if docker_version != "latest" and docker_version is version('17.05', '<') %}
+  --graph={{ docker_daemon_graph }} {% if ansible_os_family not in ["openSUSE Leap", "openSUSE Tumbleweed", "Suse"] %}{{ docker_log_opts }}{% endif %}
+  {%- else %}
+  --data-root={{ docker_daemon_graph }} {% if ansible_os_family not in ["openSUSE Leap", "openSUSE Tumbleweed", "Suse"] %}{{ docker_log_opts }}{% endif %}
+  {%- endif %}
+  {%- if ansible_architecture == "aarch64" and ansible_os_family == "RedHat" %}
+  --add-runtime docker-runc=/usr/libexec/docker/docker-runc-current
+  --default-runtime=docker-runc --exec-opt native.cgroupdriver=systemd
+  --userland-proxy-path=/usr/libexec/docker/docker-proxy-current --signature-verification=false
+  {%- endif -%}

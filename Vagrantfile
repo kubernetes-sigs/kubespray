@@ -1,6 +1,8 @@
 # -*- mode: ruby -*-
 # # vi: set ft=ruby :
 
+# For help on using kubespray with vagrant, check out docs/vagrant.md
+
 require 'fileutils'
 
 Vagrant.require_version ">= 2.0.0"
@@ -13,13 +15,16 @@ COREOS_URL_TEMPLATE = "https://storage.googleapis.com/%s.release.core-os.net/amd
 DISK_UUID = Time.now.utc.to_i
 
 SUPPORTED_OS = {
-  "coreos-stable" => {box: "coreos-stable",      bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["stable"]},
-  "coreos-alpha"  => {box: "coreos-alpha",       bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["alpha"]},
-  "coreos-beta"   => {box: "coreos-beta",        bootstrap_os: "coreos", user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]},
-  "ubuntu"        => {box: "bento/ubuntu-16.04", bootstrap_os: "ubuntu", user: "vagrant"},
-  "centos"        => {box: "centos/7",           bootstrap_os: "centos", user: "vagrant"},
-  "opensuse"      => {box: "opensuse/openSUSE-42.3-x86_64", bootstrap_os: "opensuse", use: "vagrant"},
-  "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", bootstrap_os: "opensuse", use: "vagrant"},
+  "coreos-stable"       => {box: "coreos-stable",      user: "core", box_url: COREOS_URL_TEMPLATE % ["stable"]},
+  "coreos-alpha"        => {box: "coreos-alpha",       user: "core", box_url: COREOS_URL_TEMPLATE % ["alpha"]},
+  "coreos-beta"         => {box: "coreos-beta",        user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]},
+  "ubuntu1604"          => {box: "generic/ubuntu1604", user: "vagrant"},
+  "ubuntu1804"          => {box: "generic/ubuntu1804", user: "vagrant"},
+  "centos"              => {box: "centos/7",           user: "vagrant"},
+  "centos-bento"        => {box: "bento/centos-7.5",   user: "vagrant"},
+  "fedora"              => {box: "fedora/28-cloud-base",                user: "vagrant"},
+  "opensuse"            => {box: "opensuse/openSUSE-15.0-x86_64",       user: "vagrant"},
+  "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", user: "vagrant"},
 }
 
 # Defaults for config options defined in CONFIG
@@ -31,8 +36,10 @@ $vm_cpus = 1
 $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
-$os = "ubuntu"
+$os = "ubuntu1804"
 $network_plugin = "flannel"
+# Setting multi_networking to true will install Multus: https://github.com/intel/multus-cni
+$multi_networking = false
 # The first three nodes are etcd servers
 $etcd_instances = $num_instances
 # The first two nodes are kube masters
@@ -43,8 +50,12 @@ $kube_node_instances = $num_instances
 $kube_node_instances_with_disks = false
 $kube_node_instances_with_disks_size = "20G"
 $kube_node_instances_with_disks_number = 2
+$override_disk_size = false
+$disk_size = "20GB"
+$local_path_provisioner_enabled = false
+$local_path_provisioner_claim_root = "/opt/local-path-provisioner/"
 
-$local_release_dir = "/vagrant/temp"
+$playbook = "cluster.yml"
 
 host_vars = {}
 
@@ -54,13 +65,13 @@ end
 
 $box = SUPPORTED_OS[$os][:box]
 # if $inventory is not set, try to use example
-$inventory = File.join(File.dirname(__FILE__), "inventory", "sample") if ! $inventory
+$inventory = "inventory/sample" if ! $inventory
+$inventory = File.absolute_path($inventory, File.dirname(__FILE__))
 
-# if $inventory has a hosts file use it, otherwise copy over vars etc
-# to where vagrant expects dynamic inventory to be.
-if ! File.exist?(File.join(File.dirname($inventory), "hosts"))
-  $vagrant_ansible = File.join(File.dirname(__FILE__), ".vagrant",
-                       "provisioners", "ansible")
+# if $inventory has a hosts.ini file use it, otherwise copy over
+# vars etc to where vagrant expects dynamic inventory to be
+if ! File.exist?(File.join(File.dirname($inventory), "hosts.ini"))
+  $vagrant_ansible = File.join(File.dirname(__FILE__), ".vagrant", "provisioners", "ansible")
   FileUtils.mkdir_p($vagrant_ansible) if ! File.exist?($vagrant_ansible)
   if ! File.exist?(File.join($vagrant_ansible,"inventory"))
     FileUtils.ln_s($inventory, File.join($vagrant_ansible,"inventory"))
@@ -75,76 +86,68 @@ if Vagrant.has_plugin?("vagrant-proxyconf")
 end
 
 Vagrant.configure("2") do |config|
-  # always use Vagrants insecure key
-  config.ssh.insert_key = false
+
   config.vm.box = $box
   if SUPPORTED_OS[$os].has_key? :box_url
     config.vm.box_url = SUPPORTED_OS[$os][:box_url]
   end
   config.ssh.username = SUPPORTED_OS[$os][:user]
+
   # plugin conflict
   if Vagrant.has_plugin?("vagrant-vbguest") then
     config.vbguest.auto_update = false
   end
+
+  # always use Vagrants insecure key
+  config.ssh.insert_key = false
+
+  if ($override_disk_size)
+    unless Vagrant.has_plugin?("vagrant-disksize")
+      system "vagrant plugin install vagrant-disksize"
+    end
+    config.disksize.size = $disk_size
+  end
+
   (1..$num_instances).each do |i|
-    config.vm.define vm_name = "%s-%02d" % [$instance_name_prefix, i] do |config|
-      config.vm.hostname = vm_name
+    config.vm.define vm_name = "%s-%01d" % [$instance_name_prefix, i] do |node|
+
+      node.vm.hostname = vm_name
 
       if Vagrant.has_plugin?("vagrant-proxyconf")
-        config.proxy.http     = ENV['HTTP_PROXY'] || ENV['http_proxy'] || ""
-        config.proxy.https    = ENV['HTTPS_PROXY'] || ENV['https_proxy'] ||  ""
-        config.proxy.no_proxy = $no_proxy
-      end
-
-      if $expose_docker_tcp
-        config.vm.network "forwarded_port", guest: 2375, host: ($expose_docker_tcp + i - 1), auto_correct: true
-      end
-
-      $forwarded_ports.each do |guest, host|
-        config.vm.network "forwarded_port", guest: guest, host: host, auto_correct: true
+        node.proxy.http     = ENV['HTTP_PROXY'] || ENV['http_proxy'] || ""
+        node.proxy.https    = ENV['HTTPS_PROXY'] || ENV['https_proxy'] ||  ""
+        node.proxy.no_proxy = $no_proxy
       end
 
       ["vmware_fusion", "vmware_workstation"].each do |vmware|
-        config.vm.provider vmware do |v|
+        node.vm.provider vmware do |v|
           v.vmx['memsize'] = $vm_memory
           v.vmx['numvcpus'] = $vm_cpus
         end
       end
 
-      config.vm.synced_folder ".", "/vagrant", type: "rsync", rsync__args: ['--verbose', '--archive', '--delete', '-z']
-
-      $shared_folders.each do |src, dst|
-        config.vm.synced_folder src, dst, type: "rsync", rsync__args: ['--verbose', '--archive', '--delete', '-z']
-      end
-
-      config.vm.provider :virtualbox do |vb|
-        vb.gui = $vm_gui
+      node.vm.provider :virtualbox do |vb|
         vb.memory = $vm_memory
         vb.cpus = $vm_cpus
+        vb.gui = $vm_gui
+        vb.linked_clone = true
+        vb.customize ["modifyvm", :id, "--vram", "8"] # ubuntu defaults to 256 MB which is a waste of precious RAM
       end
 
-     config.vm.provider :libvirt do |lv|
-       lv.memory = $vm_memory
-     end
-
-      ip = "#{$subnet}.#{i+100}"
-      host_vars[vm_name] = {
-        "ip": ip,
-        "bootstrap_os": SUPPORTED_OS[$os][:bootstrap_os],
-        "local_release_dir" => $local_release_dir,
-        "download_run_once": "False",
-        "kube_network_plugin": $network_plugin
-      }
-
-      config.vm.network :private_network, ip: ip
-
-      # Disable swap for each vm
-      config.vm.provision "shell", inline: "swapoff -a"
+      node.vm.provider :libvirt do |lv|
+        lv.memory = $vm_memory
+        lv.cpus = $vm_cpus
+        lv.default_prefix = 'kubespray'
+        # Fix kernel panic on fedora 28
+        if $os == "fedora"
+          lv.cpu_mode = "host-passthrough"
+        end
+      end
 
       if $kube_node_instances_with_disks
         # Libvirt
         driverletters = ('a'..'z').to_a
-        config.vm.provider :libvirt do |lv|
+        node.vm.provider :libvirt do |lv|
           # always make /dev/sd{a/b/c} so that CI can ensure that
           # virtualbox and libvirt will have the same devices to use for OSDs
           (1..$kube_node_instances_with_disks_number).each do |d|
@@ -153,24 +156,56 @@ Vagrant.configure("2") do |config|
         end
       end
 
-      # Only execute once the Ansible provisioner,
-      # when all the machines are up and ready.
+      if $expose_docker_tcp
+        node.vm.network "forwarded_port", guest: 2375, host: ($expose_docker_tcp + i - 1), auto_correct: true
+      end
+
+      $forwarded_ports.each do |guest, host|
+        node.vm.network "forwarded_port", guest: guest, host: host, auto_correct: true
+      end
+
+      node.vm.synced_folder ".", "/vagrant", disabled: false, type: "rsync", rsync__args: ['--verbose', '--archive', '--delete', '-z'] , rsync__exclude: ['.git','venv']
+      $shared_folders.each do |src, dst|
+        node.vm.synced_folder src, dst, type: "rsync", rsync__args: ['--verbose', '--archive', '--delete', '-z']
+      end
+
+      ip = "#{$subnet}.#{i+100}"
+      node.vm.network :private_network, ip: ip
+
+      # Disable swap for each vm
+      node.vm.provision "shell", inline: "swapoff -a"
+
+      host_vars[vm_name] = {
+        "ip": ip,
+        "flannel_interface": "eth1",
+        "kube_network_plugin": $network_plugin,
+        "kube_network_plugin_multus": $multi_networking,
+        "docker_keepcache": "1",
+        "download_run_once": "False",
+        "download_localhost": "False",
+        "local_path_provisioner_enabled": "#{$local_path_provisioner_enabled}",
+        "local_path_provisioner_claim_root": "#{$local_path_provisioner_claim_root}",
+        "ansible_ssh_user": SUPPORTED_OS[$os][:user]
+      }
+
+      # Only execute the Ansible provisioner once, when all the machines are up and ready.
       if i == $num_instances
-        config.vm.provision "ansible" do |ansible|
-          ansible.playbook = "cluster.yml"
-          if File.exist?(File.join(File.dirname($inventory), "hosts"))
-            ansible.inventory_path = $inventory
+        node.vm.provision "ansible" do |ansible|
+          ansible.playbook = $playbook
+          $ansible_inventory_path = File.join( $inventory, "hosts.ini")
+          if File.exist?($ansible_inventory_path)
+            ansible.inventory_path = $ansible_inventory_path
           end
           ansible.become = true
           ansible.limit = "all"
           ansible.host_key_checking = false
-          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache"]
+          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
           ansible.host_vars = host_vars
           #ansible.tags = ['download']
           ansible.groups = {
-            "etcd" => ["#{$instance_name_prefix}-0[1:#{$etcd_instances}]"],
-            "kube-master" => ["#{$instance_name_prefix}-0[1:#{$kube_master_instances}]"],
-            "kube-node" => ["#{$instance_name_prefix}-0[1:#{$kube_node_instances}]"],
+            "etcd" => ["#{$instance_name_prefix}-[1:#{$etcd_instances}]"],
+            "kube-master" => ["#{$instance_name_prefix}-[1:#{$kube_master_instances}]"],
+            "kube-node" => ["#{$instance_name_prefix}-[1:#{$kube_node_instances}]"],
             "k8s-cluster:children" => ["kube-master", "kube-node"],
           }
         end

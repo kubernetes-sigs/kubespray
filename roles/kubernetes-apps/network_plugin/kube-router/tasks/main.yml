@@ -1,0 +1,22 @@
+---
+
+- name: kube-router | Start Resources
+  kube:
+    name: "kube-router"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/kube-router.yml"
+    resource: "ds"
+    namespace: "kube-system"
+    state: "latest"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: kube-router | Wait for kube-router pods to be ready
+  command: "{{ bin_dir }}/kubectl -n kube-system get pods -l k8s-app=kube-router -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==false)].metadata.name}'"   # noqa 601
+  register: pods_not_ready
+  until: pods_not_ready.stdout.find("kube-router")==-1
+  retries: 30
+  delay: 10
+  ignore_errors: yes
+  when:
+    - inventory_hostname == groups['kube-master'][0]

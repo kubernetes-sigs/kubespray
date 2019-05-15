@@ -11,9 +11,12 @@ spec:
         app: netchecker-server
       namespace: {{ netcheck_namespace }}
     spec:
+{% if kube_version is version('v1.11.1', '>=') %}
+      priorityClassName: {% if netcheck_namespace == 'kube-system' %}system-cluster-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
+{% endif %}
       containers:
         - name: netchecker-server
-          image: "{{ server_img }}"
+          image: "{{ netcheck_server_image_repo }}:{{ netcheck_server_image_tag }}"
           env:
           imagePullPolicy: {{ k8s_image_pull_policy }}
           resources:
@@ -23,6 +26,9 @@ spec:
             requests:
               cpu: {{ netchecker_server_cpu_requests }}
               memory: {{ netchecker_server_memory_requests }}
+          securityContext:
+            runAsUser: {{ netchecker_server_user | default('0') }}
+            runAsGroup: {{ netchecker_server_group | default('0') }}
           ports:
             - containerPort: 8081
           args:
@@ -33,6 +39,4 @@ spec:
       tolerations:
         - effect: NoSchedule
           operator: Exists
-{% if rbac_enabled %}
       serviceAccountName: netchecker-server
-{% endif %}

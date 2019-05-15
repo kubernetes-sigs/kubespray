@@ -1,0 +1,56 @@
+---
+- name: Create docker service systemd directory if it doesn't exist
+  file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+
+- name: Write docker proxy drop-in
+  template:
+    src: http-proxy.conf.j2
+    dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+  notify: restart docker
+  when: http_proxy is defined or https_proxy is defined
+
+- name: get systemd version
+  # noqa 303 - systemctl is called intentionally here
+  shell: systemctl --version | head -n 1 | cut -d " " -f 2
+  register: systemd_version
+  when: not is_atomic
+  changed_when: false
+
+- name: Write docker.service systemd file
+  template:
+    src: docker.service.j2
+    dest: /etc/systemd/system/docker.service
+  register: docker_service_file
+  notify: restart docker
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or is_atomic)
+
+- name: Write docker options systemd drop-in
+  template:
+    src: docker-options.conf.j2
+    dest: "/etc/systemd/system/docker.service.d/docker-options.conf"
+  notify: restart docker
+
+- name: Write docker dns systemd drop-in
+  template:
+    src: docker-dns.conf.j2
+    dest: "/etc/systemd/system/docker.service.d/docker-dns.conf"
+  notify: restart docker
+  when: dns_mode != 'none' and resolvconf_mode == 'docker_dns'
+
+- name: Copy docker orphan clean up script to the node
+  copy:
+    src: cleanup-docker-orphans.sh
+    dest: "{{ bin_dir }}/cleanup-docker-orphans.sh"
+    mode: 0755
+  when: docker_orphan_clean_up | bool
+
+- name: Write docker orphan clean up systemd drop-in
+  template:
+    src: docker-orphan-cleanup.conf.j2
+    dest: "/etc/systemd/system/docker.service.d/docker-orphan-cleanup.conf"
+  notify: restart docker
+  when: docker_orphan_clean_up | bool
+
+- meta: flush_handlers

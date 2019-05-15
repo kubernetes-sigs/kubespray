@@ -52,20 +52,20 @@
   tasks:
     - name: replace_test_id
       set_fact:
-        test_name: "{{test_id |regex_replace('\\.', '-')}}"
+        test_name: "{{ test_id |regex_replace('\\.', '-') }}"
 
     - name: show vars
-      debug: msg="{{cloud_region}}, {{cloud_image}}"
+      debug: msg="{{ cloud_region }}, {{ cloud_image }}"
 
     - set_fact:
         instance_names: >-
           {%- if mode in ['separate', 'ha'] -%}
-          ["k8s-{{test_name}}-1", "k8s-{{test_name}}-2", "k8s-{{test_name}}-3"]
+          ["k8s-{{ test_name }}-1", "k8s-{{ test_name }}-2", "k8s-{{ test_name }}-3"]
           {%- else -%}
-          ["k8s-{{test_name}}-1", "k8s-{{test_name}}-2"]
+          ["k8s-{{ test_name }}-1", "k8s-{{ test_name }}-2"]
           {%- endif -%}
 
-    - name: Manage DO instances | {{state}}
+    - name: Manage DO instances | {{ state }}
       digital_ocean:
         unique_name: yes
         api_token: "{{ lookup('env','DO_API_TOKEN') }}"
@@ -73,25 +73,20 @@
         image_id: "{{ cloud_image }}"
         name: "{{ item }}"
         private_networking: no
-        region_id: "{{cloud_region}}"
-        size_id: "{{cloud_machine_type}}"
-        ssh_key_ids: "{{ssh_key_id}}"
-        state: "{{state}}"
+        region_id: "{{ cloud_region }}"
+        size_id: "{{ cloud_machine_type }}"
+        ssh_key_ids: "{{ ssh_key_id }}"
+        state: "{{ state }}"
         wait: yes
       register: droplets
-      with_items: "{{instance_names}}"
+      with_items: "{{ instance_names }}"
 
     - debug:
-        msg: "{{droplets}}, {{inventory_path}}"
-      when: "{{ state == 'present' }}"
+        msg: "{{ droplets }}, {{ inventory_path }}"
+      when: state == 'present'
 
     - name: Template the inventory
       template:
         src: ../templates/inventory-do.j2
         dest: "{{ inventory_path }}"
-      when: "{{ state == 'present' }}"
-
-    - name: Wait for SSH to come up
-      wait_for: host={{item.droplet.ip_address}} port=22 delay=10 timeout=180 state=started
-      with_items: "{{droplets.results}}"
-      when: "{{ state == 'present' }}"
+      when: state == 'present'

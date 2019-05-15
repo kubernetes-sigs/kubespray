@@ -1,0 +1,248 @@
+---
+- name: check if atomic host
+  stat:
+    path: /run/ostree-booted
+  register: ostree
+
+- set_fact:
+    is_atomic: "{{ ostree.stat.exists }}"
+
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+      paths:
+        - ../vars
+      skip: true
+  tags:
+    - facts
+
+# https://yum.dockerproject.org/repo/main/opensuse/ contains packages for an EOL
+# openSUSE version so we can't use it. The only alternative is to use the docker
+# packages from the distribution repositories.
+- name: Warn about Docker version on SUSE
+  debug:
+    msg: "SUSE distributions always install Docker from the distro repos"
+  when: ansible_pkg_mgr == 'zypper'
+
+- include_tasks: set_facts_dns.yml
+  when: dns_mode != 'none' and resolvconf_mode == 'docker_dns'
+  tags:
+    - facts
+
+- name: check for minimum kernel version
+  fail:
+    msg: >
+          docker requires a minimum kernel version of
+          {{ docker_kernel_min_version }} on
+          {{ ansible_distribution }}-{{ ansible_distribution_version }}
+  when: (not ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "ClearLinux"]) and (ansible_kernel is version(docker_kernel_min_version, "<"))
+  tags:
+    - facts
+
+- import_tasks: pre-upgrade.yml
+
+- name: ensure docker-ce repository public key is installed
+  action: "{{ docker_repo_key_info.pkg_key }}"
+  args:
+    id: "{{ item }}"
+    url: "{{ docker_repo_key_info.url }}"
+    state: present
+  register: keyserver_task_result
+  until: keyserver_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | d(3) }}"
+  with_items: "{{ docker_repo_key_info.repo_keys }}"
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat", "Suse", "ClearLinux"] or is_atomic)
+
+- name: ensure docker-ce repository is enabled
+  action: "{{ docker_repo_info.pkg_repo }}"
+  args:
+    repo: "{{ item }}"
+    state: present
+  with_items: "{{ docker_repo_info.repos }}"
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat", "Suse", "ClearLinux"] or is_atomic) and (docker_repo_info.repos|length > 0)
+
+- name: ensure docker-engine repository public key is installed
+  action: "{{ dockerproject_repo_key_info.pkg_key }}"
+  args:
+    id: "{{ item }}"
+    url: "{{ dockerproject_repo_key_info.url }}"
+    state: present
+  register: keyserver_task_result
+  until: keyserver_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | d(3) }}"
+  with_items: "{{ dockerproject_repo_key_info.repo_keys }}"
+  when:
+    - not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat", "Suse", "ClearLinux"] or is_atomic)
+    - use_docker_engine is defined and use_docker_engine
+
+- name: ensure docker-engine repository is enabled
+  action: "{{ dockerproject_repo_info.pkg_repo }}"
+  args:
+    repo: "{{ item }}"
+    state: present
+  with_items: "{{ dockerproject_repo_info.repos }}"
+  when:
+    - use_docker_engine is defined and use_docker_engine
+    - not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat", "Suse", "ClearLinux"] or is_atomic) and (dockerproject_repo_info.repos|length > 0)
+
+- name: Configure docker repository on Fedora
+  template:
+    src: "fedora_docker.repo.j2"
+    dest: "{{ yum_repo_dir }}/docker.repo"
+  when: ansible_distribution == "Fedora" and not is_atomic
+
+- name: Configure docker repository on RedHat/CentOS
+  template:
+    src: "rh_docker.repo.j2"
+    dest: "{{ yum_repo_dir }}/docker.repo"
+  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+
+- name: check if container-selinux is available
+  yum:
+    list: "container-selinux"
+  register: yum_result
+  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+
+- name: Configure extras repository on RedHat/CentOS if container-selinux is not available in current repos
+  yum_repository:
+    name: extras
+    description: "CentOS-7 - Extras"
+    state: present
+    baseurl: "{{ extras_rh_repo_base_url }}"
+    file: "extras"
+    gpgcheck: yes
+    gpgkey: "{{ extras_rh_repo_gpgkey }}"
+    keepcache: "{{ docker_rpm_keepcache | default('1') }}"
+    proxy: " {{ http_proxy | default('_none_') }}"
+  when:
+    - ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+    - yum_result.results | length == 0
+
+- name: Copy yum.conf for editing
+  copy:
+    src: "{{ yum_conf }}"
+    dest: "{{ docker_yum_conf }}"
+    remote_src: yes
+  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+
+- name: Edit copy of yum.conf to set obsoletes=0
+  lineinfile:
+    path: "{{ docker_yum_conf }}"
+    state: present
+    regexp: '^obsoletes='
+    line: 'obsoletes=0'
+  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+
+- name: ensure docker packages are installed
+  action: "{{ docker_package_info.pkg_mgr }}"
+  args:
+    pkg: "{{ item.name }}"
+    force: "{{ item.force|default(omit) }}"
+    conf_file: "{{ item.yum_conf|default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
+  register: docker_task_result
+  until: docker_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | d(3) }}"
+  with_items: "{{ docker_package_info.pkgs }}"
+  notify: restart docker
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "ClearLinux"] or is_atomic) and (docker_package_info.pkgs|length > 0)
+  ignore_errors: true
+
+- name: Ensure docker packages are installed
+  action: "{{ docker_package_info.pkg_mgr }}"
+  args:
+    name: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+  with_items: "{{ docker_package_info.pkgs }}"
+  register: docker_task_result
+  until: docker_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | d(3) }}"
+  notify: restart docker
+  ignore_errors: true
+  when: ansible_os_family in ["ClearLinux"]
+
+- name: get available packages on Ubuntu
+  command: apt-cache policy docker-ce
+  when:
+    - docker_task_result is failed
+    - ansible_distribution == 'Ubuntu'
+  register: available_packages
+
+- name: show available packages on ubuntu
+  fail:
+    msg: "{{ available_packages }}"
+  when:
+    - docker_task_result is failed
+    - ansible_distribution == 'Ubuntu'
+
+# This is required to ensure any apt upgrade will not break kubernetes
+- name: Set docker pin priority to apt_preferences on Debian family
+  template:
+    src: "apt_preferences.d/debian_docker.j2"
+    dest: "/etc/apt/preferences.d/docker"
+    owner: "root"
+    mode: 0644
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "ClearLinux", "RedHat", "Suse"] or is_atomic)
+
+- name: ensure docker started, remove our config if docker start failed and try again
+  block:
+    - name: ensure service is started if docker packages are already present
+      service:
+        name: docker
+        state: started
+      when: docker_task_result is not changed
+  rescue:
+    - debug:
+        msg: "Docker start failed. Try to remove our config"
+    - name: remove kubespray generated config
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/systemd/system/docker.service.d/http-proxy.conf
+        - /etc/systemd/system/docker.service.d/docker-options.conf
+        - /etc/systemd/system/docker.service.d/docker-dns.conf
+        - /etc/systemd/system/docker.service.d/docker-orphan-cleanup.conf
+      notify: restart docker
+
+- name: flush handlers so we can wait for docker to come up
+  meta: flush_handlers
+
+- name: set fact for docker_version
+  command: "docker version -f '{{ '{{' }}.Client.Version{{ '}}' }}'"
+  register: installed_docker_version
+  changed_when: false
+
+- name: check minimum docker version for docker_dns mode. You need at least docker version >= 1.12 for resolvconf_mode=docker_dns
+  fail:
+    msg: "You need at least docker version >= 1.12 for resolvconf_mode=docker_dns"
+  when: >
+        dns_mode != 'none' and
+        resolvconf_mode == 'docker_dns' and
+        installed_docker_version.stdout is version('1.12', '<')
+
+- name: Set docker systemd config
+  import_tasks: systemd.yml
+
+- name: ensure docker service is started and enabled
+  service:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  with_items:
+    - docker

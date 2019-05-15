@@ -9,7 +9,7 @@ Weave uses [**consensus**](https://www.weave.works/docs/net/latest/ipam/##consen
 
 Weave encryption is supported for all communication
 
-* To use Weave encryption, specify a strong password (if no password, no encrytion)
+* To use Weave encryption, specify a strong password (if no password, no encryption)
 
 ```
 # In file ./inventory/sample/group_vars/k8s-cluster.yml

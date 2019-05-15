@@ -1,0 +1,44 @@
+---
+- name: "Check vars defined correctly"
+  assert:
+    that:
+      - "calico_pool_name is defined"
+      - "calico_pool_name is match('^[a-zA-Z0-9-_\\\\.]{2,63}$')"
+      - "ipip_mode is defined"
+      - "ipip_mode in ['Always', 'CrossSubnet', 'Never']"
+    msg: "Check variable definitions seems something is wrong"
+  run_once: yes
+
+- name: "Get current version of calico cluster version"
+  shell: "{{ bin_dir }}/calicoctl version  | grep 'Cluster Version:' | awk '{ print $3}'"
+  register: calico_version_on_server
+  run_once: yes
+  changed_when: false
+  environment:
+    ETCD_ENDPOINTS: "{{ etcd_access_addresses }}"
+    ETCD_CA_CERT_FILE: "{{ calico_cert_dir }}/ca_cert.crt"
+    ETCD_CERT_FILE: "{{ calico_cert_dir }}/cert.crt"
+    ETCD_KEY_FILE: "{{ calico_cert_dir }}/key.pem"
+
+
+- name: "Determine if calico upgrade is needed"
+  block:
+    - name: "Check that calico version is enough for upgrade"
+      assert:
+        that:
+          - calico_version_on_server.stdout is version('v2.6.5', '>=')
+        msg: "Your version of calico is not fresh enough for upgrade"
+      when: calico_upgrade_enabled
+
+    - name: "Set upgrade flag when version needs to be updated"
+      set_fact:
+        calico_upgrade_needed: True
+      when:
+        - calico_version_on_server.stdout is version('v2.6.5', '>=')
+        - calico_version_on_server.stdout is version('v3.0.0', '<')
+
+  when:
+    - calico_version_on_server.stdout is defined
+    - calico_version_on_server.stdout
+    - inventory_hostname == groups['kube-master'][0]
+  run_once: yes

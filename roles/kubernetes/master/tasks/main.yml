@@ -3,47 +3,56 @@
   tags:
     - k8s-pre-upgrade
 
-# upstream bug: https://github.com/kubernetes/kubeadm/issues/441
-- name: Disable kube_basic_auth until kubeadm/441 is fixed
-  set_fact:
-    kube_basic_auth: false
-  when: kubeadm_enabled|bool|default(false)
-
 - import_tasks: users-file.yml
-  when: kube_basic_auth|default(true)
+  when:
+    - kube_basic_auth|default(true)
+
+- name: Create webhook token auth config
+  template:
+    src: webhook-token-auth-config.yaml.j2
+    dest: "{{ kube_config_dir }}/webhook-token-auth-config.yaml"
+  when: kube_webhook_token_auth|default(false)
 
 - import_tasks: encrypt-at-rest.yml
-  when: kube_encrypt_secret_data
+  when:
+    - kube_encrypt_secret_data
 
-- name: Compare host kubectl with hyperkube container
-  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /usr/bin/cmp /hyperkube /systembindir/kubectl"
-  register: kubectl_task_compare_result
-  until: kubectl_task_compare_result.rc in [0,1,2]
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
+- name: Install | Copy kubectl binary from download dir
+  synchronize:
+    src: "{{ local_release_dir }}/hyperkube-{{ kube_version }}-{{ image_arch }}"
+    dest: "{{ bin_dir }}/kubectl"
+    compress: no
+    perms: yes
+    owner: no
+    group: no
   changed_when: false
-  failed_when: "kubectl_task_compare_result.rc not in [0,1,2]"
+  delegate_to: "{{ inventory_hostname }}"
   tags:
     - hyperkube
     - kubectl
     - upgrade
 
-- name: Copy kubectl from hyperkube container
-  command: "{{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp /hyperkube /systembindir/kubectl"
-  when: kubectl_task_compare_result.rc != 0
-  register: kubectl_task_result
-  until: kubectl_task_result.rc == 0
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: false
+- name: install | Set kubectl binary permissions
+  file:
+    path: "{{ bin_dir }}/kubectl"
+    mode: "0755"
+    state: file
   tags:
     - hyperkube
     - kubectl
     - upgrade
+
+- name: Make sure bash_completion.d folder exists
+  file:
+    name: "/etc/bash_completion.d/"
+    state: directory
+  when: ansible_os_family in ["ClearLinux"]
+  tags:
+    - kubectl
 
 - name: Install kubectl bash completion
   shell: "{{ bin_dir }}/kubectl completion bash >/etc/bash_completion.d/kubectl.sh"
-  when: kubectl_task_compare_result.rc != 0 and ansible_os_family in ["Debian","RedHat"]
+  when: ansible_os_family in ["Debian","RedHat"]
   tags:
     - kubectl
 
@@ -58,10 +67,11 @@
     - kubectl
     - upgrade
 
-- name: Include kubeadm setup if enabled
-  import_tasks: kubeadm-setup.yml
-  when: kubeadm_enabled|bool|default(false)
+- name: Disable SecurityContextDeny admission-controller and enable PodSecurityPolicy
+  set_fact:
+    kube_apiserver_admission_control: "{{ kube_apiserver_admission_control | default([]) | difference(['SecurityContextDeny']) | union(['PodSecurityPolicy']) | unique }}"
+    kube_apiserver_enable_admission_plugins: "{{ kube_apiserver_enable_admission_plugins | difference(['SecurityContextDeny']) | union(['PodSecurityPolicy']) | unique }}"
+  when: podsecuritypolicy_enabled
 
-- name: Include static pod setup if not using kubeadm
-  import_tasks: static-pod-setup.yml
-  when: not kubeadm_enabled|bool|default(false)
+- name: Include kubeadm setup
+  import_tasks: kubeadm-setup.yml

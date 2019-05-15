@@ -1,0 +1,69 @@
+---
+- name: Update package management cache (zypper) - SUSE
+  shell: zypper -n --gpg-auto-import-keys ref
+  register: make_cache_output
+  until: make_cache_output is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - ansible_pkg_mgr == 'zypper'
+  tags: bootstrap-os
+
+- name: Update package management cache (APT)
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  tags:
+    - bootstrap-os
+
+- name: Install python-dnf for latest RedHat versions
+  command: dnf install -y python-dnf yum
+  register: dnf_task_result
+  until: dnf_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - ansible_distribution == "Fedora"
+    - ansible_distribution_major_version|int > 21
+    - not is_atomic
+  changed_when: False
+  tags:
+    - bootstrap-os
+
+- name: Install epel-release on RedHat/CentOS
+  yum:
+    name: epel-release
+    state: present
+  when:
+    - ansible_distribution in ["CentOS","RedHat"]
+    - not is_atomic
+    - epel_enabled|bool
+  tags:
+    - bootstrap-os
+
+- name: Update common_required_pkgs with ipvsadm when kube_proxy_mode is ipvs
+  set_fact:
+    common_required_pkgs: "{{ common_required_pkgs|default([]) + ['ipvsadm'] }}"
+  when: kube_proxy_mode == 'ipvs'
+
+- name: Install packages requirements
+  action:
+    module: "{{ ansible_pkg_mgr }}"
+    name: "{{ required_pkgs | default([]) | union(common_required_pkgs|default([])) }}"
+    state: latest
+  register: pkgs_task_result
+  until: pkgs_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "ClearLinux"] or is_atomic)
+  tags:
+    - bootstrap-os
+
+- name: Install ipvsadm for ClearLinux
+  swupd:
+    name: ipvsadm
+    state: present
+  when:
+    - ansible_os_family in ["ClearLinux"]
+    - kube_proxy_mode == 'ipvs'

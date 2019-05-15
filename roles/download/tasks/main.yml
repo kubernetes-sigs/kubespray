@@ -3,23 +3,36 @@
   when:
     - not skip_downloads|default(false)
 
-- name: "Download items"
-  include_tasks: "download_{% if download.container %}container{% else %}file{% endif %}.yml"
-  vars:
-    download: "{{ download_defaults | combine(item.value) }}"
-  with_dict: "{{ downloads }}"
+- include_tasks: kubeadm_images.yml
   when:
+    - kube_version is version('v1.11.0', '>=')
     - not skip_downloads|default(false)
-    - item.value.enabled
+    - inventory_hostname in groups['kube-master']
 
-- name: "Sync container"
-  include_tasks: sync_container.yml
+- set_fact:
+    kubeadm_images: {}
+  when:
+    - kubeadm_images is not defined
+
+- name: "Download items"
+  include_tasks: "{{ include_file }}"
   vars:
     download: "{{ download_defaults | combine(item.value) }}"
-  with_dict: "{{ downloads }}"
+    include_file: "download_{% if download.container %}container{% else %}file{% endif %}.yml"
+  with_dict: "{{ downloads | combine(kubeadm_images) }}"
   when:
     - not skip_downloads|default(false)
     - item.value.enabled
-    - item.value.container
+    - (not (item.value.container|default(False))) or (item.value.container and download_container)
+
+- name: "Sync items"
+  include_tasks: "{{ include_file }}"
+  vars:
+    download: "{{ download_defaults | combine(item.value) }}"
+    include_file: "sync_{% if download.container %}container{% else %}file{% endif %}.yml"
+  with_dict: "{{ downloads | combine(kubeadm_images) }}"
+  when:
+    - not skip_downloads|default(false)
+    - item.value.enabled
     - download_run_once
     - group_names | intersect(download.groups) | length

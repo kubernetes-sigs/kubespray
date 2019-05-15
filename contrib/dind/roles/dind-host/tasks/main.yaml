@@ -1,0 +1,88 @@
+---
+- name: set_fact distro_setup
+  set_fact:
+    distro_setup: "{{ distro_settings[node_distro] }}"
+
+- name: set_fact other distro settings
+  set_fact:
+    distro_image: "{{ distro_setup['image'] }}"
+    distro_init: "{{ distro_setup['init'] }}"
+    distro_pid1_exe: "{{ distro_setup['pid1_exe'] }}"
+    distro_raw_setup: "{{ distro_setup['raw_setup'] }}"
+    distro_raw_setup_done: "{{ distro_setup['raw_setup_done'] }}"
+    distro_agetty_svc: "{{ distro_setup['agetty_svc'] }}"
+
+- name: Create dind node containers from "containers" inventory section
+  docker_container:
+    image: "{{ distro_image }}"
+    name: "{{ item }}"
+    state: started
+    hostname: "{{ item }}"
+    command: "{{ distro_init }}"
+    # recreate: yes
+    privileged: true
+    tmpfs:
+      - /sys/module/nf_conntrack/parameters
+    volumes:
+      - /boot:/boot
+      - /lib/modules:/lib/modules
+      - "{{ item }}:/dind/docker"
+  register: containers
+  with_items: "{{ groups.containers }}"
+  tags:
+    - addresses
+
+- name: Gather list of containers IPs
+  set_fact:
+    addresses: "{{ containers.results | map(attribute='ansible_facts') | map(attribute='docker_container') | map(attribute='NetworkSettings') | map(attribute='IPAddress') | list }}"
+  tags:
+    - addresses
+
+- name: Create inventory_builder helper already set with the list of node containers' IPs
+  template:
+    src: inventory_builder.sh.j2
+    dest: /tmp/kubespray.dind.inventory_builder.sh
+    mode: 0755
+  tags:
+    - addresses
+
+- name: Install needed packages into node containers via raw, need to wait for possible systemd packages to finish installing
+  raw: |
+    # agetty processes churn a lot of cpu time failing on inexistent ttys, early STOP them, to rip them in below task
+    pkill -STOP agetty || true
+    {{ distro_raw_setup_done }}  && echo SKIPPED && exit 0
+    until [ "$(readlink /proc/1/exe)" = "{{ distro_pid1_exe }}" ] ; do sleep 1; done
+    {{ distro_raw_setup }}
+  delegate_to: "{{ item._ansible_item_label|default(item.item) }}"
+  with_items: "{{ containers.results }}"
+  register: result
+  changed_when: result.stdout.find("SKIPPED") < 0
+
+- name: Remove gettys from node containers
+  raw: |
+    until test -S /var/run/dbus/system_bus_socket; do sleep 1; done
+    systemctl disable {{ distro_agetty_svc }}
+    systemctl stop {{ distro_agetty_svc }}
+  delegate_to: "{{ item._ansible_item_label|default(item.item) }}"
+  with_items: "{{ containers.results }}"
+  changed_when: false
+
+# Running systemd-machine-id-setup doesn't create a unique id for each node container on Debian,
+# handle manually
+- name: Re-create unique machine-id (as we may just get what comes in the docker image), needed by some CNIs for mac address seeding (notably weave)
+  raw: |
+    echo {{ item | hash('sha1') }} > /etc/machine-id.new
+    mv -b /etc/machine-id.new /etc/machine-id
+    cmp /etc/machine-id /etc/machine-id~ || true
+    systemctl daemon-reload
+  delegate_to: "{{ item._ansible_item_label|default(item.item) }}"
+  with_items: "{{ containers.results }}"
+
+- name: Early hack image install to adapt for DIND
+  # noqa 302 - this task uses the raw module intentionally
+  raw: |
+    rm -fv /usr/bin/udevadm /usr/sbin/udevadm
+  delegate_to: "{{ item._ansible_item_label|default(item.item) }}"
+  with_items: "{{ containers.results }}"
+  register: result
+  changed_when: result.stdout.find("removed") >= 0

@@ -1,27 +1,26 @@
 ---
-- import_tasks: seed.yml
-  when: weave_mode_seed
 
-- name: template weavenet conflist
-  template:
-    src: 00-weave.conflist.j2
-    dest: /etc/cni/net.d/00-weave.conflist
+- name: Weave | Set cni directory permissions
+  file:
+    path: /opt/cni/bin
+    state: directory
     owner: kube
+    recurse: true
+    mode: 0755
 
-- name: Weave | Copy cni plugins from hyperkube
-  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/cp -r /opt/cni/bin/. /cnibindir/"
-  register: cni_task_result
-  until: cni_task_result.rc == 0
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: false
-  tags:
-    - hyperkube
-    - upgrade
+- name: Weave | Copy cni plugins
+  unarchive:
+    src: "{{ local_release_dir }}/cni-plugins-{{ image_arch }}-{{ cni_version }}.tgz"
+    dest: "/opt/cni/bin"
+    mode: 0755
+    remote_src: yes
 
-- name: Weave | Create weave-net manifest
+- name: Weave | Create manifest
   template:
     src: weave-net.yml.j2
     dest: "{{ kube_config_dir }}/weave-net.yml"
-    mode: 0640
-  register: weave_manifest
+
+- name: Weave | Fix nodePort for Weave
+  template:
+    src: 10-weave.conflist.j2
+    dest: /etc/cni/net.d/10-weave.conflist

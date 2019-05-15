@@ -1,7 +1,10 @@
 ---
-- name: Bootstrap | Check if bootstrap is needed
+# CoreOS ships without Python installed
+
+- name: Check if bootstrap is needed
   raw: stat /opt/bin/.bootstrapped
   register: need_bootstrap
+  environment: {}
   failed_when: false
   changed_when: false
   tags:
@@ -13,52 +16,25 @@
   tags:
     - facts
 
-- name: Bootstrap | Run bootstrap.sh
+- name: Run bootstrap.sh
   script: bootstrap.sh
-  when: need_bootstrap.rc != 0
+  become: true
+  environment:
+    http_proxy: "{{ http_proxy | default('') }}"
+    https_proxy: "{{ https_proxy | default('') }}"
+  when:
+    - need_bootstrap.rc != 0
 
-- set_fact:
+- name: Set the ansible_python_interpreter fact
+  set_fact:
     ansible_python_interpreter: "{{ bin_dir }}/python"
   tags:
     - facts
 
-- name: Bootstrap | Check if we need to install pip
-  shell: "pip --version"
-  register: need_pip
-  failed_when: false
-  changed_when: false
-  check_mode: no
-  tags:
-    - facts
-  environment:
-    PATH: "{{ ansible_env.PATH }}:{{ bin_dir }}"
-
-- name: Bootstrap | Copy get-pip.py
-  copy:
-    src: get-pip.py
-    dest: ~/get-pip.py
-  when: need_pip.rc != 0
-
-- name: Bootstrap | Install pip
-  shell: "{{ansible_python_interpreter}} ~/get-pip.py"
-  when: need_pip.rc != 0
-
-- name: Bootstrap | Remove get-pip.py
-  file:
-    path: ~/get-pip.py
-    state: absent
-  when: need_pip.rc != 0
-
-- name: Bootstrap | Install pip launcher
-  copy:
-    src: runner
-    dest: "{{ bin_dir }}/pip"
-    mode: 0755
-  when: need_pip.rc != 0
-
-- name: Install required python modules
-  pip:
-    name: "{{ item }}"
-  with_items: "{{pip_python_coreos_modules}}"
-  environment:
-    PATH: "{{ ansible_env.PATH }}:{{ bin_dir }}"
+- name: Disable auto-upgrade
+  systemd:
+    name: locksmithd.service
+    masked: true
+    state: stopped
+  when:
+    - coreos_locksmithd_disable

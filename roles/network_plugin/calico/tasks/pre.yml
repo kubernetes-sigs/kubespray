@@ -1,0 +1,16 @@
+---
+- name: Calico | Disable calico-node service if it exists
+  service:
+    name: calico-node
+    state: stopped
+    enabled: no
+  failed_when: false
+
+- name: Calico | Get kubelet hostname
+  shell: >-
+    {{ bin_dir }}/kubectl get node -o custom-columns='NAME:.metadata.name,INTERNAL-IP:.status.addresses[?(@.type=="InternalIP")].address'
+    | egrep "{{ ansible_all_ipv4_addresses | join('$|') }}$" | cut -d" " -f1
+  register: calico_kubelet_name
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  when:
+    - "cloud_provider is defined"

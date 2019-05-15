@@ -1,15 +1,15 @@
 ---
-
 - name: Local Volume Provisioner | Ensure base dir is created on all hosts
   file:
-    path: "{{ local_volume_provisioner_base_dir }}"
+    path: "{{ local_volume_provisioner_storage_classes[item.1].host_dir }}"
     state: directory
     owner: root
     group: root
     mode: 0700
-  delegate_to: "{{ item }}"
-  with_items: "{{ groups['k8s-cluster'] }}"
-  failed_when: false
+  delegate_to: "{{ item[0] }}"
+  with_nested:
+    - "{{ groups['k8s-cluster'] }}"
+    - "{{ local_volume_provisioner_storage_classes.keys() | list }}"
 
 - name: Local Volume Provisioner | Create addon dir
   file:
@@ -19,17 +19,32 @@
     group: root
     mode: 0755
 
+- name: Local Volume Provisioner | Templates list
+  set_fact:
+    local_volume_provisioner_templates:
+      - { name: local-volume-provisioner-ns, file: local-volume-provisioner-ns.yml, type: ns }
+      - { name: local-volume-provisioner-sa, file: local-volume-provisioner-sa.yml, type: sa }
+      - { name: local-volume-provisioner-clusterrolebinding, file: local-volume-provisioner-clusterrolebinding.yml, type: clusterrolebinding }
+      - { name: local-volume-provisioner-cm, file: local-volume-provisioner-cm.yml, type: cm }
+      - { name: local-volume-provisioner-ds, file: local-volume-provisioner-ds.yml, type: ds }
+      - { name: local-volume-provisioner-sc, file: local-volume-provisioner-sc.yml, type: sc }
+    local_volume_provisioner_templates_for_psp_not_system_ns:
+      - { name: local-volume-provisioner-psp, file: local-volume-provisioner-psp.yml, type: psp }
+      - { name: local-volume-provisioner-psp-role, file: local-volume-provisioner-psp-role.yml, type: role }
+      - { name: local-volume-provisioner-psp-rb, file: local-volume-provisioner-psp-rb.yml, type: rolebinding }
+
+- name: Local Volume Provisioner | Insert extra templates to Local Volume Provisioner templates list for PodSecurityPolicy
+  set_fact:
+    local_volume_provisioner_templates: "{{ local_volume_provisioner_templates[:2] + local_volume_provisioner_templates_for_psp_not_system_ns + local_volume_provisioner_templates[2:] }}"
+  when:
+    - podsecuritypolicy_enabled
+    - local_volume_provisioner_namespace != "kube-system"
+
 - name: Local Volume Provisioner | Create manifests
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/addons/local_volume_provisioner/{{ item.file }}"
-  with_items:
-    - { name: local-volume-provisioner-ns, file: local-volume-provisioner-ns.yml, type: ns }
-    - { name: local-volume-provisioner-sa, file: local-volume-provisioner-sa.yml, type: sa }
-    - { name: local-volume-provisioner-clusterrolebinding, file: local-volume-provisioner-clusterrolebinding.yml, type, clusterrolebinding }
-    - { name: local-volume-provisioner-cm, file: local-volume-provisioner-cm.yml, type, cm }
-    - { name: local-volume-provisioner-ds, file: local-volume-provisioner-ds.yml, type, ds }
-    - { name: local-volume-provisioner-sc, file: local-volume-provisioner-sc.yml, type, sc }
+  with_items: "{{ local_volume_provisioner_templates }}"
   register: local_volume_provisioner_manifests
   when: inventory_hostname == groups['kube-master'][0]
 
@@ -43,3 +58,5 @@
     state: "latest"
   with_items: "{{ local_volume_provisioner_manifests.results }}"
   when: inventory_hostname == groups['kube-master'][0]
+  loop_control:
+    label: "{{ item.item.file }}"

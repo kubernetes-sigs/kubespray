@@ -1,0 +1,71 @@
+---
+- name: set_fact distro_setup
+  set_fact:
+    distro_setup: "{{ distro_settings[node_distro] }}"
+
+- name: set_fact other distro settings
+  set_fact:
+    distro_user: "{{ distro_setup['user'] }}"
+    distro_ssh_service: "{{ distro_setup['ssh_service'] }}"
+    distro_extra_packages: "{{ distro_setup['extra_packages'] }}"
+
+- name: Null-ify some linux tools to ease DIND
+  file:
+    src: "/bin/true"
+    dest: "{{ item }}"
+    state: link
+    force: yes
+  with_items:
+    # DIND box may have swap enable, don't bother
+    - /sbin/swapoff
+    # /etc/hosts handling would fail on trying to copy file attributes on edit,
+    # void it by successfully returning nil output
+    - /usr/bin/lsattr
+    # disable selinux-isms, sp needed if running on non-Selinux host
+    - /usr/sbin/semodule
+
+- name: Void installing dpkg docs and man pages on Debian based distros
+  copy:
+    content: |
+      # Delete locales
+      path-exclude=/usr/share/locale/*
+      # Delete man pages
+      path-exclude=/usr/share/man/*
+      # Delete docs
+      path-exclude=/usr/share/doc/*
+      path-include=/usr/share/doc/*/copyright
+    dest: /etc/dpkg/dpkg.cfg.d/01_nodoc
+  when:
+    - ansible_os_family == 'Debian'
+
+- name: Install system packages to better match a full-fledge node
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ distro_extra_packages }} + [ 'rsyslog', 'openssh-server' ]"
+
+- name: Start needed services
+  service:
+    name: "{{ item }}"
+    state: started
+  with_items:
+    - rsyslog
+    - "{{ distro_ssh_service }}"
+
+- name: Create distro user "{{ distro_user }}"
+  user:
+    name: "{{ distro_user }}"
+    uid: 1000
+    # groups: sudo
+    append: yes
+
+- name: Allow password-less sudo to "{{ distro_user }}"
+  copy:
+    content: "{{ distro_user }} ALL=(ALL) NOPASSWD:ALL"
+    dest: "/etc/sudoers.d/{{ distro_user }}"
+
+- name: Add my pubkey to "{{ distro_user }}" user authorized keys
+  authorized_key:
+    user: "{{ distro_user }}"
+    state: present
+    key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"

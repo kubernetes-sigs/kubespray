@@ -1,0 +1,46 @@
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: cert-manager
+  namespace: {{ cert_manager_namespace }}
+  labels:
+    app: cert-manager
+    chart: cert-manager-v0.5.2
+    release: cert-manager
+    heritage: Tiller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cert-manager
+      release: cert-manager
+  template:
+    metadata:
+      labels:
+        app: cert-manager
+        release: cert-manager
+      annotations:
+    spec:
+{% if kube_version is version('v1.11.1', '>=') %}
+      priorityClassName: {% if cert_manager_namespace == 'kube-system' %}system-cluster-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
+{% endif %}
+      serviceAccountName: cert-manager
+      containers:
+        - name: cert-manager
+          image: {{ cert_manager_controller_image_repo }}:{{ cert_manager_controller_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - --cluster-resource-namespace=$(POD_NAMESPACE)
+            - --leader-election-namespace=$(POD_NAMESPACE)
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+          securityContext:
+            runAsUser: {{ cert_manager_user }}

@@ -14,39 +14,39 @@
 
     - name: replace_test_id
       set_fact:
-        test_name: "{{test_id |regex_replace('\\.', '-')}}"
+        test_name: "{{ test_id |regex_replace('\\.', '-') }}"
 
     - set_fact:
         instance_names: >-
           {%- if mode in ['separate', 'separate-scale', 'ha', 'ha-scale'] -%}
-          k8s-{{test_name}}-1,k8s-{{test_name}}-2,k8s-{{test_name}}-3
+          k8s-{{ test_name }}-1,k8s-{{ test_name }}-2,k8s-{{ test_name }}-3
           {%- elif mode == 'aio' -%}
-          k8s-{{test_name}}-1
+          k8s-{{ test_name }}-1
           {%- else -%}
-          k8s-{{test_name}}-1,k8s-{{test_name}}-2
+          k8s-{{ test_name }}-1,k8s-{{ test_name }}-2
           {%- endif -%}
 
     - name: Create gce instances
       gce:
-        instance_names: "{{instance_names}}"
+        instance_names: "{{ instance_names }}"
         machine_type: "{{ cloud_machine_type }}"
         image: "{{ cloud_image | default(omit) }}"
         image_family: "{{ cloud_image_family | default(omit) }}"
         preemptible: "{{ preemptible }}"
         service_account_email: "{{ gce_service_account_email }}"
-        pem_file: "{{ gce_pem_file | default(omit)}}"
-        credentials_file: "{{gce_credentials_file | default(omit)}}"
+        pem_file: "{{ gce_pem_file | default(omit) }}"
+        credentials_file: "{{ gce_credentials_file | default(omit) }}"
         project_id: "{{ gce_project_id }}"
-        zone: "{{cloud_region}}"
-        metadata: '{"test_id": "{{test_id}}", "network": "{{kube_network_plugin}}", "startup-script": "{{startup_script|default("")}}"}'
-        tags: "build-{{test_name}},{{kube_network_plugin}}"
+        zone: "{{ cloud_region }}"
+        metadata: '{"test_id": "{{ test_id }}", "network": "{{ kube_network_plugin }}", "startup-script": "{{ startup_script|default("") }}"}'
+        tags: "build-{{ test_name }},{{ kube_network_plugin }}"
         ip_forward: yes
         service_account_permissions: ['compute-rw']
       register: gce
 
     - name: Add instances to host group
-      add_host: hostname={{item.public_ip}} groupname="waitfor_hosts"
-      with_items: '{{gce.instance_data}}'
+      add_host: hostname={{ item.public_ip }} groupname="waitfor_hosts"
+      with_items: '{{ gce.instance_data }}'
 
     - name: Template the inventory
       template:
@@ -71,10 +71,3 @@
         state: absent
         recurse: yes
       when: delete_group_vars
-
-- name: Wait for instances
-  hosts: "waitfor_hosts"
-  gather_facts: false
-  tasks:
-    - name: Wait for SSH to come up.
-      local_action: wait_for host={{inventory_hostname}} port=22 delay=60 timeout=240 state=started

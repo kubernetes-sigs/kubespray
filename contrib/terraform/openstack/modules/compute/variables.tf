@@ -1,5 +1,9 @@
 variable "cluster_name" {}
 
+variable "az_list" {
+  type = "list"
+}
+
 variable "number_of_k8s_masters" {}
 
 variable "number_of_k8s_masters_no_etcd" {}
@@ -42,9 +46,15 @@ variable "network_name" {}
 
 variable "flavor_bastion" {}
 
-variable "network_id" {}
+variable "network_id" {
+  default = ""
+}
 
 variable "k8s_master_fips" {
+  type = "list"
+}
+
+variable "k8s_master_no_etcd_fips" {
   type = "list"
 }
 
@@ -56,6 +66,32 @@ variable "bastion_fips" {
   type = "list"
 }
 
+variable "bastion_allowed_remote_ips" {
+  type = "list"
+}
+
+variable "master_allowed_remote_ips" {
+  type = "list"
+}
+
+variable "k8s_allowed_remote_ips" {
+  type = "list"
+}
+
+variable "k8s_allowed_egress_ips" {
+  type = "list"
+}
+
+variable "wait_for_floatingip" {}
+
 variable "supplementary_master_groups" {
   default = ""
+}
+
+variable "supplementary_node_groups" {
+  default = ""
+}
+
+variable "worker_allowed_ports" {
+  type = "list"
 }

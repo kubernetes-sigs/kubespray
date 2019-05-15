@@ -1,4 +1,4 @@
-# This manifest deploys the Contiv API Server on Kubernetes.
+---
 kind: DaemonSet
 apiVersion: extensions/v1beta1
 metadata:
@@ -15,38 +15,50 @@ spec:
       namespace: kube-system
       labels:
         k8s-app: contiv-netmaster
-      annotations:
-        scheduler.alpha.kubernetes.io/critical-pod: ''
     spec:
+{% if kube_version is version('v1.11.1', '>=') %}
+      priorityClassName: system-node-critical
+{% endif %}
       # The netmaster must run in the host network namespace so that
       # it isn't governed by policy that would prevent it from working.
       hostNetwork: true
       hostPID: true
       nodeSelector:
-        node-role.kubernetes.io/master: "true"
+        node-role.kubernetes.io/master: ""
       tolerations:
-      - key: node-role.kubernetes.io/master
-        effect: NoSchedule
-{% if rbac_enabled %}
+        - operator: Exists
+        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
+        - key: CriticalAddonsOnly
+          operator: "Exists"
       serviceAccountName: contiv-netmaster
-{% endif %}
       containers:
         - name: contiv-netmaster
           image: {{ contiv_image_repo }}:{{ contiv_image_tag }}
-          args:
-            - -m
-            - -pkubernetes
           env:
-            - name: CONTIV_ETCD
+            - name: CONTIV_ROLE
+              value: netmaster
+            - name: CONTIV_NETMASTER_MODE
+              value: kubernetes
+            - name: CONTIV_NETMASTER_ETCD_ENDPOINTS
               valueFrom:
                 configMapKeyRef:
                   name: contiv-config
-                  key: cluster_store
-            - name: CONTIV_CONFIG
+                  key: contiv_etcd
+            - name: CONTIV_NETMASTER_FORWARD_MODE
               valueFrom:
                 configMapKeyRef:
                   name: contiv-config
-                  key: config
+                  key: contiv_fwdmode
+            - name: CONTIV_NETMASTER_NET_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: contiv-config
+                  key: contiv_netmode
+            - name: CONTIV_NETMASTER_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: contiv-config
+                  key: contiv_netmaster_loglevel
           securityContext:
             privileged: true
           volumeMounts:

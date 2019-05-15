@@ -1,0 +1,167 @@
+---
+- set_fact:
+    architecture_groups:
+      x86_64: amd64
+      aarch64: arm64
+
+- name: ansible_architecture_rename
+  set_fact:
+    host_architecture: >-
+      {%- if ansible_architecture in architecture_groups -%}
+      {{ architecture_groups[ansible_architecture] }}
+      {%- else -%}
+       {{ ansible_architecture }}
+      {% endif %}
+
+- name: Force binaries directory for Container Linux by CoreOS
+  set_fact:
+    bin_dir: "/opt/bin"
+  when: ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+  tags:
+    - facts
+
+- name: check if atomic host
+  stat:
+    path: /run/ostree-booted
+  register: ostree
+
+- set_fact:
+    is_atomic: "{{ ostree.stat.exists }}"
+
+- set_fact:
+    kube_cert_group: "kube"
+  when: is_atomic
+
+- name: check resolvconf
+  shell: which resolvconf
+  register: resolvconf
+  failed_when: false
+  changed_when: false
+  check_mode: no
+
+- set_fact:
+    resolvconf: >-
+      {%- if resolvconf.rc == 0 -%}true{%- else -%}false{%- endif -%}
+
+- set_fact:
+    bogus_domains: |-
+      {% for d in [ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([]) -%}
+      {{ dns_domain }}.{{ d }}./{{ d }}.{{ d }}./com.{{ d }}./
+      {%- endfor %}
+    cloud_resolver: >-
+      {%- if cloud_provider is defined and cloud_provider == 'gce' -%}
+        ['169.254.169.254']
+      {%- elif cloud_provider is defined and cloud_provider == 'aws' -%}
+        ['169.254.169.253']
+      {%- else -%}
+        []
+      {%- endif -%}
+
+- name: check if kubelet is configured
+  stat:
+    path: "{{ kube_config_dir }}/kubelet.env"
+  register: kubelet_configured
+  changed_when: false
+
+- name: check if early DNS configuration stage
+  set_fact:
+    dns_early: >-
+      {%- if kubelet_configured.stat.exists -%}false{%- else -%}true{%- endif -%}
+
+- name: target resolv.conf files
+  set_fact:
+    resolvconffile: /etc/resolv.conf
+    base: >-
+      {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/base{%- endif -%}
+    head: >-
+      {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/head{%- endif -%}
+  when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+
+- name: target temporary resolvconf cloud init file (Container Linux by CoreOS)
+  set_fact:
+    resolvconffile: /tmp/resolveconf_cloud_init_conf
+  when: ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+
+- name: check if /etc/dhclient.conf exists
+  stat:
+    path: /etc/dhclient.conf
+  register: dhclient_stat
+
+- name: target dhclient conf file for /etc/dhclient.conf
+  set_fact:
+    dhclientconffile: /etc/dhclient.conf
+  when: dhclient_stat.stat.exists
+
+- name: check if /etc/dhcp/dhclient.conf exists
+  stat:
+    path: /etc/dhcp/dhclient.conf
+  register: dhcp_dhclient_stat
+
+- name: target dhclient conf file for /etc/dhcp/dhclient.conf
+  set_fact:
+    dhclientconffile: /etc/dhcp/dhclient.conf
+  when: dhcp_dhclient_stat.stat.exists
+
+- name: target dhclient hook file for Red Hat family
+  set_fact:
+    dhclienthookfile: /etc/dhcp/dhclient.d/zdnsupdate.sh
+  when: ansible_os_family == "RedHat"
+
+- name: target dhclient hook file for Debian family
+  set_fact:
+    dhclienthookfile: /etc/dhcp/dhclient-exit-hooks.d/zdnsupdate
+  when: ansible_os_family == "Debian"
+
+- name: generate search domains to resolvconf
+  set_fact:
+    searchentries:
+      search {{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join(' ') }}
+    domainentry:
+      domain {{ dns_domain }}
+    supersede_search:
+      supersede domain-search "{{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join('", "') }}";
+    supersede_domain:
+      supersede domain-name "{{ dns_domain }}";
+
+- name: pick coredns cluster IP or default resolver
+  set_fact:
+    coredns_server: |-
+      {%- if dns_mode == 'coredns' and not dns_early|bool -%}
+        {{ [ skydns_server ] + upstream_dns_servers|default([]) }}
+      {%- elif dns_mode == 'coredns_dual' and not dns_early|bool -%}
+        {{ [ skydns_server ] + [ skydns_server_secondary ] + upstream_dns_servers|default([]) }}
+      {%- elif dns_mode == 'manual' and not dns_early|bool -%}
+        {{ ( manual_dns_server.split(',') | list) + upstream_dns_servers|default([]) }}
+      {%- elif dns_early|bool -%}
+        {{ upstream_dns_servers|default([]) }}
+      {%- endif -%}
+
+- name: generate nameservers to resolvconf
+  set_fact:
+    nameserverentries:
+      nameserver {{ ( coredns_server + nameservers|d([]) + cloud_resolver|d([])) | join(',nameserver ') }}
+    supersede_nameserver:
+      supersede domain-name-servers {{ ( coredns_server + nameservers|d([]) + cloud_resolver|d([])) | join(', ') }};
+
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+      paths:
+        - ../vars
+      skip: true
+
+- name: override kube_proxy_mode to ipvs if kube_proxy_remove is set, as ipvs won't require kube-proxy cleanup when kube-proxy daemonset gets deleted
+  set_fact:
+    kube_proxy_mode: 'ipvs'
+  when:
+    - kube_proxy_remove
+  tags:
+    - facts
+    - kube-proxy

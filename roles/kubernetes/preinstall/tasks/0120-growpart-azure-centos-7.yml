@@ -1,0 +1,31 @@
+---
+
+# Running growpart seems to be only required on Azure, as other Cloud Providers do this at boot time
+
+- name: install growpart
+  package:
+    name: cloud-utils-growpart
+    state: present
+
+- name: check if growpart needs to be run
+  command: growpart -N /dev/sda 1
+  failed_when: False
+  changed_when: "'NOCHANGE:' not in growpart_needed.stdout"
+  register: growpart_needed
+  environment:
+    LC_ALL: C
+
+- name: check fs type
+  command: file -Ls /dev/sda1
+  changed_when: False
+  register: fs_type
+
+- name: run growpart
+  command: growpart /dev/sda 1
+  when: growpart_needed.changed
+  environment:
+    LC_ALL: C
+
+- name: run xfs_growfs
+  command: xfs_growfs /dev/sda1
+  when: growpart_needed.changed and 'XFS' in fs_type.stdout

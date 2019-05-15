@@ -17,44 +17,21 @@
   tags:
     - kubelet
 
-- import_tasks: nginx-proxy.yml
-  when: is_kube_master == false and loadbalancer_apiserver_localhost
+- import_tasks: loadbalancer/nginx-proxy.yml
+  when:
+    - not is_kube_master
+    - loadbalancer_apiserver_localhost
+    - loadbalancer_apiserver_type == 'nginx'
   tags:
     - nginx
 
-- name: Write kubelet config file (non-kubeadm)
-  template:
-    src: kubelet.standard.env.j2
-    dest: "{{ kube_config_dir }}/kubelet.env"
-    backup: yes
-  when: not kubeadm_enabled
-  notify: restart kubelet
+- import_tasks: loadbalancer/haproxy.yml
+  when:
+    - not is_kube_master
+    - loadbalancer_apiserver_localhost
+    - loadbalancer_apiserver_type == 'haproxy'
   tags:
-    - kubelet
-
-- name: Write kubelet config file (kubeadm)
-  template:
-    src: kubelet.kubeadm.env.j2
-    dest: "{{ kube_config_dir }}/kubelet.env"
-    backup: yes
-  when: kubeadm_enabled
-  notify: restart kubelet
-  tags:
-    - kubelet
-    - kubeadm
-
-- name: write the kubecfg (auth) file for kubelet
-  template:
-    src: "{{ item }}-kubeconfig.yaml.j2"
-    dest: "{{ kube_config_dir }}/{{ item }}-kubeconfig.yaml"
-    backup: yes
-  with_items:
-    - node
-    - kube-proxy
-  when: not kubeadm_enabled
-  notify: restart kubelet
-  tags:
-    - kubelet
+    - haproxy
 
 - name: Ensure nodePort range is reserved
   sysctl:
@@ -70,9 +47,16 @@
 
 - name: Verify if br_netfilter module exists
   shell: "modinfo br_netfilter"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin"  # Make sure we can workaround RH's conservative path management
   register: modinfo_br_netfilter
   failed_when: modinfo_br_netfilter.rc not in [0, 1]
   changed_when: false
+
+- name: Verify br_netfilter module path exists
+  file:
+    path: /etc/modules-load.d
+    state: directory
 
 - name: Enable br_netfilter module
   modprobe:
@@ -98,7 +82,7 @@
     name: "{{ item }}"
     state: present
     sysctl_file: "{{ sysctl_file_path }}"
-    value: 1
+    value: "1"
     reload: yes
   when: sysctl_bridge_nf_call_iptables.rc == 0
   with_items:
@@ -110,13 +94,32 @@
   modprobe:
     name: "{{ item }}"
     state: present
-  when: kube_proxy_mode == 'ipvs'
   with_items:
     - ip_vs
     - ip_vs_rr
     - ip_vs_wrr
     - ip_vs_sh
-    - nf_conntrack_ipv4
+  when: kube_proxy_mode == 'ipvs'
+  tags:
+    - kube-proxy
+
+- name: Modprobe nf_conntrack_ipv4 for kernels < 4.19
+  modprobe:
+    name: nf_conntrack_ipv4
+    state: present
+  register: enable_nf_conntrack
+  ignore_errors: yes
+  when: kube_proxy_mode == 'ipvs'
+  tags:
+    - kube-proxy
+
+- name: Modprobe nf_conntrack for kernels >= 4.19
+  modprobe:
+    name: nf_conntrack
+    state: present
+  when:
+    - enable_nf_conntrack is failed
+    - kube_proxy_mode == 'ipvs'
   tags:
     - kube-proxy
 
@@ -128,28 +131,34 @@
       ip_vs_rr
       ip_vs_wrr
       ip_vs_sh
+      {% if enable_nf_conntrack is failed -%}
+      nf_conntrack
+      {%-   else -%}
       nf_conntrack_ipv4
+      {%-   endif -%}
   when: kube_proxy_mode == 'ipvs'
   tags:
     - kube-proxy
 
-- name: Write proxy manifest
-  template:
-    src: manifests/kube-proxy.manifest.j2
-    dest: "{{ kube_manifest_dir }}/kube-proxy.manifest"
-  when: not kubeadm_enabled
-  tags:
-    - kube-proxy
-
-- name: Purge proxy manifest for kubeadm
+- name: Purge proxy manifest for kubeadm or if proxy services being provided by other means, e.g. network_plugin
   file:
     path: "{{ kube_manifest_dir }}/kube-proxy.manifest"
     state: absent
-  when: kubeadm_enabled
+  when:
+    - kube_proxy_remove
   tags:
     - kube-proxy
 
-- include_tasks: "{{ cloud_provider }}-credential-check.yml"
+- name: Cleanup kube-proxy leftovers from node
+  command: "{{ bin_dir }}/hyperkube kube-proxy --cleanup"
+  when:
+    - kube_proxy_remove
+  # `kube-proxy --cleanup`, being Ok as per shown WARNING, still returns 255 from above run (?)
+  ignore_errors: true
+  tags:
+    - kube-proxy
+
+- include_tasks: "cloud-credentials/{{ cloud_provider }}-credential-check.yml"
   when:
     - cloud_provider is defined
     - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
@@ -157,26 +166,35 @@
     - cloud-provider
     - facts
 
+- name: Write cacert file
+  copy:
+    src: "{{ openstack_cacert }}"
+    dest: "{{ kube_config_dir }}/openstack-cacert.pem"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - cloud_provider is defined
+    - cloud_provider == 'openstack'
+    - openstack_cacert is defined
+    - openstack_cacert
+  tags:
+    - cloud-provider
+
 - name: Write cloud-config
   template:
-    src: "{{ cloud_provider }}-cloud-config.j2"
+    src: "cloud-configs/{{ cloud_provider }}-cloud-config.j2"
     dest: "{{ kube_config_dir }}/cloud_config"
     group: "{{ kube_cert_group }}"
     mode: 0640
   when:
     - cloud_provider is defined
-    - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
+    - cloud_provider in [ 'openstack', 'azure', 'vsphere', 'aws' ]
   notify: restart kubelet
   tags:
     - cloud-provider
 
-# reload-systemd
-- meta: flush_handlers
-
-- name: Enable kubelet
-  service:
-    name: kubelet
-    enabled: yes
-    state: started
+- import_tasks: kubelet.yml
   tags:
     - kubelet
+    - kubeadm

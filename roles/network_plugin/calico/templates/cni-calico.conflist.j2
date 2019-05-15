@@ -3,32 +3,41 @@
   "cniVersion":"0.3.1",
   "plugins":[
     {
-    {% if cloud_provider is defined %}
+{% if cloud_provider is defined %}
       "nodename": "{{ calico_kubelet_name.stdout }}",
     {% else %}
-      "nodename": "{{ inventory_hostname }}",
+      "nodename": "{{ calico_baremetal_nodename }}",
     {% endif %}
       "type": "calico",
-      "etcd_endpoints": "{{ etcd_access_addresses }}",
-      "etcd_cert_file": "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem",
-      "etcd_key_file": "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem",
-      "etcd_ca_cert_file": "{{ etcd_cert_dir }}/ca.pem",
       "log_level": "info",
+{% if calico_datastore == "etcd" %}
+      "etcd_endpoints": "{{ etcd_access_addresses }}",
+      "etcd_cert_file": "{{ calico_cert_dir }}/cert.crt",
+      "etcd_key_file": "{{ calico_cert_dir }}/key.pem",
+      "etcd_ca_cert_file": "{{ calico_cert_dir }}/ca_cert.crt",
       "ipam": {
         "type": "calico-ipam",
         "assign_ipv4": "true",
-        "ipv4_pools": ["{{ kube_pods_subnet }}"]
+        "ipv4_pools": ["{{ calico_pool_cidr | default(kube_pods_subnet) }}"]
       },
-    {% if enable_network_policy %}
+{% elif calico_datastore == "kdd" %}
+      "datastore_type": "kubernetes",
+      "nodename": "__KUBERNETES_NODE_NAME__",
+      "ipam": {
+        "type": "host-local",
+        "subnet": "usePodCidr"
+      },
+{% endif %}
+{% if enable_network_policy %}
       "policy": {
         "type": "k8s"
       },
-    {%- endif %}
-    {% if calico_mtu is defined and calico_mtu is number %}
+{%- endif %}
+{% if calico_mtu is defined and calico_mtu is number %}
       "mtu": {{ calico_mtu }},
-    {%- endif %}
+{%- endif %}
       "kubernetes": {
-        "kubeconfig": "{{ kube_config_dir }}/node-kubeconfig.yaml"
+        "kubeconfig": "{% if calico_version is version('v3.3.0', '>=') %}__KUBECONFIG_FILEPATH__{% else %}{{ kube_config_dir }}/node-kubeconfig.yaml{% endif %}"
       }
     },
     {

@@ -8,16 +8,17 @@
     mode: 0700
     recurse: yes
 
-- name: "Gen_certs | create etcd script dir (on {{groups['etcd'][0]}})"
+- name: "Gen_certs | create etcd script dir (on {{ groups['etcd'][0] }})"
   file:
     path: "{{ etcd_script_dir }}"
     state: directory
     owner: root
     mode: 0700
   run_once: yes
-  delegate_to: "{{groups['etcd'][0]}}"
+  when: inventory_hostname == groups['etcd'][0]
+  delegate_to: "{{ groups['etcd'][0] }}"
 
-- name: "Gen_certs | create etcd cert dir (on {{groups['etcd'][0]}})"
+- name: "Gen_certs | create etcd cert dir (on {{ groups['etcd'][0] }})"
   file:
     path: "{{ etcd_cert_dir }}"
     group: "{{ etcd_cert_group }}"
@@ -26,25 +27,29 @@
     recurse: yes
     mode: 0700
   run_once: yes
-  delegate_to: "{{groups['etcd'][0]}}"
+  when: inventory_hostname == groups['etcd'][0]
+  delegate_to: "{{ groups['etcd'][0] }}"
 
 - name: Gen_certs | write openssl config
   template:
     src: "openssl.conf.j2"
     dest: "{{ etcd_config_dir }}/openssl.conf"
   run_once: yes
-  delegate_to: "{{groups['etcd'][0]}}"
-  when: gen_certs|default(false)
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when:
+    - gen_certs|default(false)
+    - inventory_hostname == groups['etcd'][0]
 
 - name: Gen_certs | copy certs generation script
-  copy:
-    src: "make-ssl-etcd.sh"
+  template:
+    src: "make-ssl-etcd.sh.j2"
     dest: "{{ etcd_script_dir }}/make-ssl-etcd.sh"
     mode: 0700
   run_once: yes
-  delegate_to: "{{groups['etcd'][0]}}"
-  when: gen_certs|default(false)
-
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when:
+    - gen_certs|default(false)
+    - inventory_hostname == groups['etcd'][0]
 
 - name: Gen_certs | run cert generation script
   command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
@@ -60,99 +65,90 @@
                 {% endif %}
               {% endfor %}"
   run_once: yes
-  delegate_to: "{{groups['etcd'][0]}}"
-  when: gen_certs|default(false)
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when:
+    - gen_certs|default(false)
   notify: set etcd_secret_changed
 
+- name: Gen_certs | Gather etcd master certs
+  slurp:
+    src: "{{ item }}"
+  register: etcd_master_certs
+  with_items:
+    - "{{ etcd_cert_dir }}/ca.pem"
+    - "{{ etcd_cert_dir }}/ca-key.pem"
+    - "[{% for node in groups['etcd'] %}
+        '{{ etcd_cert_dir }}/admin-{{ node }}.pem',
+        '{{ etcd_cert_dir }}/admin-{{ node }}-key.pem',
+        '{{ etcd_cert_dir }}/member-{{ node }}.pem',
+        '{{ etcd_cert_dir }}/member-{{ node }}-key.pem',
+        {% endfor %}]"
+    - "[{% for node in (groups['k8s-cluster'] + groups['calico-rr']|default([]))|unique %}
+        '{{ etcd_cert_dir }}/node-{{ node }}.pem',
+        '{{ etcd_cert_dir }}/node-{{ node }}-key.pem',
+        {% endfor %}]"
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when:
+    - inventory_hostname in groups['etcd']
+    - sync_certs|default(false)
+    - inventory_hostname != groups['etcd'][0]
+  notify: set etcd_secret_changed
+
+- name: Gen_certs | Write etcd master certs
+  copy:
+    dest: "{{ item.item }}"
+    content: "{{ item.content | b64decode }}"
+    group: "{{ etcd_cert_group }}"
+    owner: kube
+    mode: 0640
+  with_items: "{{ etcd_master_certs.results }}"
+  when:
+    - inventory_hostname in groups['etcd']
+    - sync_certs|default(false)
+    - inventory_hostname != groups['etcd'][0]
+  loop_control:
+    label: "{{ item.item }}"
+
 - set_fact:
-    all_master_certs: "['ca-key.pem',
-                      {% for node in groups['etcd'] %}
-                      'admin-{{ node }}.pem',
-                      'admin-{{ node }}-key.pem',
-                      'member-{{ node }}.pem',
-                      'member-{{ node }}-key.pem',
-                      {% endfor %}]"
-    my_master_certs: ['ca-key.pem',
-                      'admin-{{ inventory_hostname }}.pem',
-                      'admin-{{ inventory_hostname }}-key.pem',
-                      'member-{{ inventory_hostname }}.pem',
-                      'member-{{ inventory_hostname }}-key.pem']
-    all_node_certs: "['ca.pem',
-                    {% for node in (groups['k8s-cluster'] + groups['calico-rr']|default([]))|unique %}
-                    'node-{{ node }}.pem',
-                    'node-{{ node }}-key.pem',
-                    {% endfor %}]"
-    my_node_certs: ['ca.pem', 'node-{{ inventory_hostname }}.pem', 'node-{{ inventory_hostname }}-key.pem']
+    my_etcd_node_certs: ['ca.pem',
+                         'node-{{ inventory_hostname }}.pem',
+                         'node-{{ inventory_hostname }}-key.pem']
   tags:
     - facts
 
-- name: Gen_certs | Gather etcd master certs
-  shell: "tar cfz - -C {{ etcd_cert_dir }} -T /dev/stdin <<< {{ my_master_certs|join(' ') }} {{ all_node_certs|join(' ') }} | base64 --wrap=0"
-  args:
-    executable: /bin/bash
-  register: etcd_master_cert_data
-  no_log: true
-  check_mode: no
-  delegate_to: "{{groups['etcd'][0]}}"
-  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]
-  notify: set etcd_secret_changed
+- name: "Check_certs | Set 'sync_certs' to true on nodes"
+  set_fact:
+    sync_certs: true
+  when: (('calico-rr' in groups and inventory_hostname in groups['calico-rr']) or
+        inventory_hostname in groups['k8s-cluster']) and
+        inventory_hostname not in groups['etcd']
+  with_items:
+    - "{{ my_etcd_node_certs }}"
 
-- name: Gen_certs | Gather etcd node certs
-  shell: "tar cfz - -C {{ etcd_cert_dir }} -T /dev/stdin <<< {{ my_node_certs|join(' ') }} | base64 --wrap=0"
+- name: Gen_certs | Gather node certs
+  shell: "tar cfz - -C {{ etcd_cert_dir }} -T /dev/stdin <<< {{ my_etcd_node_certs|join(' ') }} | base64 --wrap=0"
   args:
     executable: /bin/bash
-  register: etcd_node_cert_data
+    warn: false
   no_log: true
+  register: etcd_node_certs
   check_mode: no
-  delegate_to: "{{groups['etcd'][0]}}"
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when: (('calico-rr' in groups and inventory_hostname in groups['calico-rr']) or
+        inventory_hostname in groups['k8s-cluster']) and
+        sync_certs|default(false) and inventory_hostname not in groups['etcd']
+
+- name: Gen_certs | Copy certs on nodes
+  shell: "base64 -d <<< '{{ etcd_node_certs.stdout|quote }}' | tar xz -C {{ etcd_cert_dir }}"
+  args:
+    executable: /bin/bash
+  no_log: true
+  changed_when: false
+  check_mode: no
   when: (('calico-rr' in groups and inventory_hostname in groups['calico-rr']) or
         inventory_hostname in groups['k8s-cluster']) and
         sync_certs|default(false) and inventory_hostname not in groups['etcd']
   notify: set etcd_secret_changed
-
-# NOTE(mattymo): Use temporary file to copy master certs because we have a ~200k
-# char limit when using shell command
-
-# FIXME(mattymo): Use tempfile module in ansible 2.3
-- name: Gen_certs | Prepare tempfile for unpacking certs
-  command: mktemp /tmp/certsXXXXX.tar.gz
-  register: cert_tempfile
-  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]
-
-- name: Gen_certs | Write master certs to tempfile
-  copy:
-    content: "{{etcd_master_cert_data.stdout}}"
-    dest: "{{cert_tempfile.stdout}}"
-    owner: root
-    mode: "0600"
-  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]
-
-- name: Gen_certs | Unpack certs on masters
-  shell: "base64 -d < {{ cert_tempfile.stdout }} | tar xz -C {{ etcd_cert_dir }}"
-  no_log: true
-  changed_when: false
-  check_mode: no
-  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]
-  notify: set secret_changed
-
-- name: Gen_certs | Cleanup tempfile
-  file:
-    path: "{{cert_tempfile.stdout}}"
-    state: absent
-  when: inventory_hostname in groups['etcd'] and sync_certs|default(false) and
-        inventory_hostname != groups['etcd'][0]
-
-- name: Gen_certs | Copy certs on nodes
-  shell: "base64 -d <<< '{{etcd_node_cert_data.stdout|quote}}' | tar xz -C {{ etcd_cert_dir }}"
-  args:
-    executable: /bin/bash
-  changed_when: false
-  when: sync_certs|default(false) and
-        inventory_hostname not in groups['etcd']
 
 - name: Gen_certs | check certificate permissions
   file:
@@ -160,5 +156,5 @@
     group: "{{ etcd_cert_group }}"
     state: directory
     owner: kube
-    mode: "u=rwX,g-rwx,o-rwx"
+    mode: 0640
     recurse: yes

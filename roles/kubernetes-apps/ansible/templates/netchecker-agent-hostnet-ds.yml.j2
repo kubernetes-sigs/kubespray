@@ -13,15 +13,20 @@ spec:
         app: netchecker-agent-hostnet
     spec:
       hostNetwork: True
-{% if kube_version | version_compare('v1.6', '>=') %}
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+{% if kube_version is version('v1.6', '>=') %}
       dnsPolicy: ClusterFirstWithHostNet
+{% endif %}
+{% if kube_version is version('v1.11.1', '>=') %}
+      priorityClassName: {% if netcheck_namespace == 'kube-system' %}system-node-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
 {% endif %}
       tolerations:
         - effect: NoSchedule
           operator: Exists
       containers:
         - name: netchecker-agent
-          image: "{{ agent_img }}"
+          image: "{{ netcheck_agent_image_repo }}:{{ netcheck_agent_image_tag }}"
           env:
             - name: MY_POD_NAME
               valueFrom:
@@ -44,6 +49,10 @@ spec:
             requests:
               cpu: {{ netchecker_agent_cpu_requests }}
               memory: {{ netchecker_agent_memory_requests }}
+          securityContext:
+            runAsUser: {{ netchecker_agent_user | default('0') }}
+            runAsGroup: {{ netchecker_agent_group | default('0') }}
+      serviceAccountName: netchecker-agent
   updateStrategy:
     rollingUpdate:
       maxUnavailable: 100%

@@ -1,0 +1,72 @@
+---
+- import_tasks: ../shared/check_etcd.yml
+  vars:
+    vault_etcd_needed: no
+  when: inventory_hostname in groups.vault
+
+- import_tasks: ../shared/check_vault.yml
+  when: inventory_hostname in groups.vault
+
+- import_tasks: sync_secrets.yml
+  when: inventory_hostname in groups.vault
+
+- import_tasks: ../shared/find_leader.yml
+  when: inventory_hostname in groups.vault and vault_cluster_is_initialized
+
+- import_tasks: sync_vault_certs.yml
+  when: inventory_hostname in groups.vault
+
+- import_tasks: sync_etcd_certs.yml
+  when: inventory_hostname in groups.etcd
+
+- import_tasks: start_vault_temp.yml
+  when: inventory_hostname == groups.vault|first and not vault_cluster_is_initialized
+
+- name: vault | Set fact about vault leader url
+  set_fact:
+    vault_leader_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
+  when: not vault_cluster_is_initialized
+
+- import_tasks: create_mounts.yml
+  when: inventory_hostname == groups.vault|first and not vault_cluster_is_initialized
+
+- include_tasks: ../shared/auth_backend.yml
+  vars:
+    auth_backend_description: A Username/Password Auth Backend primarily used for services needing to issue certificates
+    auth_backend_path: userpass
+    auth_backend_type: userpass
+  when: inventory_hostname == groups.vault|first and not vault_cluster_is_initialized
+
+- include_tasks: create_roles.yml
+  with_items:
+    - "{{ vault_pki_mounts.vault }}"
+    - "{{ vault_pki_mounts.etcd }}"
+  loop_control:
+    loop_var: mount
+  when: inventory_hostname == groups.vault|first and not vault_cluster_is_initialized
+
+- include_tasks: ../shared/gen_ca.yml
+  vars:
+    gen_ca_cert_dir: "{{ vault_pki_mounts.vault.cert_dir }}"
+    gen_ca_mount_path: "/{{ vault_pki_mounts.vault.name }}"
+    gen_ca_vault_headers: "{{ vault_headers }}"
+    gen_ca_vault_options: "{{ vault_ca_options.vault }}"
+    gen_ca_copy_group: "kube-master"
+  when: >-
+        inventory_hostname in groups.vault
+        and not vault_cluster_is_initialized
+        and vault_ca_cert_needed
+
+- include_tasks: ../shared/gen_ca.yml
+  vars:
+    gen_ca_cert_dir: "{{ vault_pki_mounts.etcd.cert_dir }}"
+    gen_ca_mount_path: "/{{ vault_pki_mounts.etcd.name }}"
+    gen_ca_vault_headers: "{{ vault_headers }}"
+    gen_ca_vault_options: "{{ vault_ca_options.etcd }}"
+    gen_ca_copy_group: "etcd"
+  when: inventory_hostname in groups.etcd and not vault_cluster_is_initialized and vault_etcd_ca_cert_needed
+
+- import_tasks: gen_vault_certs.yml
+  when: inventory_hostname in groups.vault and not vault_cluster_is_initialized and vault_api_cert_needed
+
+- import_tasks: ca_trust.yml

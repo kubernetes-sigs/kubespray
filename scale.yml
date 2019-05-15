@@ -1,41 +1,56 @@
 ---
 - hosts: localhost
   gather_facts: False
+  become: no
+  tasks:
+    - name: "Check ansible version >=2.7.8"
+      assert:
+        msg: "Ansible must be v2.7.8 or higher"
+        that:
+          - ansible_version.string is version("2.7.8", ">=")
+      tags:
+        - check
+  vars:
+    ansible_connection: local
+
+- hosts: bastion[0]
+  gather_facts: False
   roles:
     - { role: kubespray-defaults}
     - { role: bastion-ssh-config, tags: ["localhost", "bastion"]}
 
-##Bootstrap any new workers
-- hosts: kube-node
+- name: Bootstrap any new workers
+  hosts: kube-node
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   gather_facts: false
-  vars:
-    ansible_ssh_pipelining: false
   roles:
     - { role: kubespray-defaults}
     - { role: bootstrap-os, tags: bootstrap-os}
 
-##We still have to gather facts about our masters and etcd nodes
-- hosts: k8s-cluster:etcd:calico-rr
+- name: Gather facts about our masters and etcd nodes
+  hosts: k8s-cluster:etcd:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   vars:
     ansible_ssh_pipelining: true
   gather_facts: true
 
-##Target only workers to get kubelet installed and checking in on any new nodes
-- hosts: kube-node
+- name: Generate the etcd certificates beforehand
+  hosts: etcd
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: etcd, tags: etcd, etcd_cluster_setup: false }
+
+- name: Target only workers to get kubelet installed and checking in on any new nodes
+  hosts: kube-node
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes/preinstall, tags: preinstall }
-    - { role: docker, tags: docker, when: manage_docker|default(true) }
-    - role: rkt
-      tags: rkt
-      when: "'rkt' in [etcd_deployment_type, kubelet_deployment_type, vault_deployment_type]"
-    - { role: download, tags: download, skip_downloads: false }
+    - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
+    - { role: download, tags: download, when: "not skip_downloads" }
     - { role: etcd, tags: etcd, etcd_cluster_setup: false }
-    - { role: vault, tags: vault, when: "cert_management == 'vault'"}
     - { role: kubernetes/node, tags: node }
-    - { role: kubernetes/kubeadm, tags: kubeadm, when: "kubeadm_enabled" }
+    - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: network_plugin, tags: network }
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"

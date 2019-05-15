@@ -1,24 +1,26 @@
 ---
 - name: Register docker images info
-  raw: >-
+  shell: >-
     {{ docker_bin_dir }}/docker images -q | xargs {{ docker_bin_dir }}/docker inspect -f "{{ '{{' }} (index .RepoTags 0) {{ '}}' }},{{ '{{' }} (index .RepoDigests 0) {{ '}}' }}" | tr '\n' ','
   no_log: true
   register: docker_images
   failed_when: false
   changed_when: false
   check_mode: no
+  when: download_container
 
 - name: container_download | Create dest directory for saved/loaded container images
   file:
-    path: "{{local_release_dir}}/containers"
+    path: "{{ local_release_dir }}/containers"
     state: directory
     recurse: yes
     mode: 0755
-    owner: "{{ansible_ssh_user|default(ansible_user_id)}}"
+    owner: "{{ ansible_ssh_user|default(ansible_user_id) }}"
+  when: download_container
 
 - name: container_download | create local directory for saved/loaded container images
   file:
-    path: "{{local_release_dir}}/containers"
+    path: "{{ local_release_dir }}/containers"
     state: directory
     recurse: yes
   delegate_to: localhost
@@ -28,5 +30,6 @@
   when:
     - download_run_once
     - download_delegate == 'localhost'
+    - download_container
   tags:
     - localhost

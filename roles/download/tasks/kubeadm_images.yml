@@ -1,0 +1,72 @@
+---
+- name: kubeadm | Download kubeadm
+  include_tasks: "download_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.kubeadm) }}"
+  when:
+    - not skip_downloads|default(false)
+    - downloads.kubeadm.enabled
+
+- name: kubeadm | Sync kubeadm
+  include_tasks: "sync_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.kubeadm) }}"
+  when:
+    - not skip_downloads|default(false)
+    - downloads.kubeadm.enabled
+    - download_run_once
+    - group_names | intersect(download.groups) | length
+
+- name: kubeadm | Create kubeadm config
+  template:
+    src: "kubeadm-images.yaml.j2"
+    dest: "{{ kube_config_dir }}/kubeadm-images.yaml"
+
+- name: kubeadm | Copy kubeadm binary from download dir
+  synchronize:
+    src: "{{ local_release_dir }}/kubeadm-{{ kubeadm_version }}-{{ image_arch }}"
+    dest: "{{ bin_dir }}/kubeadm"
+    compress: no
+    perms: yes
+    owner: no
+    group: no
+  delegate_to: "{{ inventory_hostname }}"
+
+- name: kubeadm | Set kubeadm binary permissions
+  file:
+    path: "{{ bin_dir }}/kubeadm"
+    mode: "0755"
+    state: file
+
+- name: container_download | download images for kubeadm config images
+  command: "{{ bin_dir }}/kubeadm config images pull --config={{ kube_config_dir }}/kubeadm-images.yaml"
+  when: not download_run_once
+
+- name: container_download | fetch list of kubeadm config images
+  command: "{{ bin_dir }}/kubeadm config images list --config={{ kube_config_dir }}/kubeadm-images.yaml"
+  register: result
+  run_once: true
+  when: download_run_once
+  changed_when: false
+
+- vars:
+    kubeadm_images_list: "{{ result.stdout_lines }}"
+  set_fact:
+    kubeadm_image:
+      key: "kubeadm_{{ (item | regex_replace('^(?:.*\\/)*','')).split(':')[0] }}"
+      value:
+        enabled: true
+        container: true
+        repo: "{{ item.split(':')[0] }}"
+        tag: "{{ item.split(':')[1] }}"
+        groups:
+          - k8s-cluster
+  loop: "{{ kubeadm_images_list | flatten(levels=1) }}"
+  run_once: true
+  when: download_run_once
+  register: result_images
+
+- set_fact:
+    kubeadm_images: "{{ result_images.results | map(attribute='ansible_facts.kubeadm_image') | list | items2dict }}"
+  run_once: true
+  when: download_run_once

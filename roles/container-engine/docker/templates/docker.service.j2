@@ -1,0 +1,45 @@
+[Unit]
+Description=Docker Application Container Engine
+Documentation=http://docs.docker.com
+{% if ansible_os_family == "RedHat" %}
+After=network.target {{ ' docker-storage-setup.service' if docker_container_storage_setup else '' }}{{ ' containerd.service' if installed_docker_version.stdout is version('18.09.1', '>=') else '' }}
+{{ 'Wants=docker-storage-setup.service' if docker_container_storage_setup else '' }}
+{% elif ansible_os_family == "Debian" %}
+After=network.target docker.socket{{ ' containerd.service' if installed_docker_version.stdout is version('18.09.1', '>=') else '' }}
+Wants=docker.socket
+{% elif ansible_os_family == "Suse" %}
+After=network.target{{ ' containerd.service' if installed_docker_version.stdout is version('18.09.1', '>=') else '' }}
+{% endif %}
+
+[Service]
+Type=notify
+{% if docker_storage_options is defined %}
+Environment="DOCKER_STORAGE_OPTIONS={{ docker_storage_options }}"
+{% endif %}
+Environment=GOTRACEBACK=crash
+ExecReload=/bin/kill -s HUP $MAINPID
+Delegate=yes
+KillMode=process
+ExecStart={{ docker_bin_dir }}/docker{% if installed_docker_version.stdout is version('17.03', '<') %} daemon{% else %}d{% endif %} \
+{% if ansible_os_family == "Suse" %}
+          --add-runtime oci=/usr/sbin/docker-runc \
+{% endif %}
+          $DOCKER_OPTS \
+          $DOCKER_STORAGE_OPTIONS \
+          $DOCKER_NETWORK_OPTIONS \
+          $DOCKER_DNS_OPTIONS \
+          $INSECURE_REGISTRY
+{% if not is_atomic and systemd_version.stdout|int >= 226 %}
+TasksMax=infinity
+{% endif %}
+LimitNOFILE=1048576
+LimitNPROC=1048576
+LimitCORE=infinity
+TimeoutStartSec=1min
+# restart the docker process if it exits prematurely
+Restart=on-failure
+StartLimitBurst=3
+StartLimitInterval=60s
+
+[Install]
+WantedBy=multi-user.target

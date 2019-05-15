@@ -1,0 +1,38 @@
+---
+- name: kubeadm | Upgrade first master
+  command: >-
+    timeout -k 600s 600s
+    {{ bin_dir }}/kubeadm
+    upgrade apply -y {{ kube_version }}
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    --ignore-preflight-errors=all
+    --allow-experimental-upgrades
+    --allow-release-candidate-upgrades
+    --etcd-upgrade=false
+    --force
+  register: kubeadm_upgrade
+  # Retry is because upload config sometimes fails
+  retries: 3
+  when: inventory_hostname == groups['kube-master']|first
+  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
+  notify: Master | restart kubelet
+
+# FIXME: https://github.com/kubernetes/kubeadm/issues/1498 remove stdout_lines
+# check after issue is fixed
+- name: kubeadm | Upgrade other masters
+  command: >-
+    timeout -k 600s 600s
+    {{ bin_dir }}/kubeadm
+    upgrade apply -y {{ kube_version }}
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    --ignore-preflight-errors=all
+    --allow-experimental-upgrades
+    --allow-release-candidate-upgrades
+    --etcd-upgrade=false
+  register: kubeadm_upgrade
+  when: inventory_hostname != groups['kube-master']|first
+  failed_when:
+    - kubeadm_upgrade.rc != 0
+    - '"field is immutable" not in kubeadm_upgrade.stderr'
+    - kubeadm_upgrade.stdout_lines | length > 1
+  notify: Master | restart kubelet

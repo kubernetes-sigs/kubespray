@@ -17,21 +17,18 @@ This project will create:
 - Export the variables for your AWS credentials or edit `credentials.tfvars`:
 
 ```
-export AWS_ACCESS_KEY_ID="www"
-export AWS_SECRET_ACCESS_KEY ="xxx"
-export AWS_SSH_KEY_NAME="yyy"
-export AWS_DEFAULT_REGION="zzz"
+export TF_VAR_AWS_ACCESS_KEY_ID="www"
+export TF_VAR_AWS_SECRET_ACCESS_KEY ="xxx"
+export TF_VAR_AWS_SSH_KEY_NAME="yyy"
+export TF_VAR_AWS_DEFAULT_REGION="zzz"
 ```
-- Rename `contrib/terraform/aws/terraform.tfvars.example` to `terraform.tfvars`
-
 - Update `contrib/terraform/aws/terraform.tfvars` with your data. By default, the Terraform scripts use CoreOS as base image. If you want to change this behaviour, see note "Using other distrib than CoreOs" below.
-- Allocate a new AWS Elastic IP. Use this for your `loadbalancer_apiserver_address` value (below)
 - Create an AWS EC2 SSH Key
 - Run with `terraform apply --var-file="credentials.tfvars"` or `terraform apply` depending if you exported your AWS credentials
 
 Example:
 ```commandline
-terraform apply -var-file=credentials.tfvars -var 'loadbalancer_apiserver_address=34.212.228.77'
+terraform apply -var-file=credentials.tfvars
 ```
 
 - Terraform automatically creates an Ansible Inventory file called `hosts` with the created infrastructure in the directory `inventory`
@@ -46,7 +43,7 @@ ssh -F ./ssh-bastion.conf user@$ip
 
 Example (this one assumes you are using CoreOS)
 ```commandline
-ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_user=core -e bootstrap_os=coreos -b --become-user=root --flush-cache
+ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_user=core -b --become-user=root --flush-cache
 ```
 ***Using other distrib than CoreOs***
 If you want to use another distribution than CoreOS, you can modify the search filters of the 'data "aws_ami" "distro"' in variables.tf.
@@ -114,9 +111,9 @@ the `AWS CLI` with the following command:
 aws iam delete-instance-profile --region <region_name> --instance-profile-name <profile_name>
 ```
 
-***Ansible Inventory doesnt get created:***
+***Ansible Inventory doesn't get created:***
 
-It could happen that Terraform doesnt create an Ansible Inventory file automatically. If this is the case copy the output after `inventory=` and create a file named `hosts`in the directory `inventory` and paste the inventory into the file.
+It could happen that Terraform doesn't create an Ansible Inventory file automatically. If this is the case copy the output after `inventory=` and create a file named `hosts`in the directory `inventory` and paste the inventory into the file.
 
 **Architecture**
 

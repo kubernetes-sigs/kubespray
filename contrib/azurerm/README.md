@@ -9,8 +9,8 @@ Resource Group. It will not install Kubernetes itself, this has to be done in a 
 
 ## Requirements
 
-- [Install azure-cli](https://docs.microsoft.com/en-us/azure/xplat-cli-install)
-- [Login with azure-cli](https://docs.microsoft.com/en-us/azure/xplat-cli-connect)
+- [Install azure-cli](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
+- [Login with azure-cli](https://docs.microsoft.com/en-us/cli/azure/authenticate-azure-cli?view=azure-cli-latest)
 - Dedicated Resource Group created in the Azure Portal or through azure-cli
 
 ## Configuration through group_vars/all

@@ -1,0 +1,374 @@
+---
+- name: Calico | Copy calicoctl binary from download dir
+  copy:
+    src: "{{ local_release_dir }}/calicoctl"
+    dest: "{{ bin_dir }}/calicoctl"
+    mode: 0755
+    remote_src: yes
+
+- name: Calico | Write Calico cni config
+  template:
+    src: "cni-calico.conflist.j2"
+    dest: "/etc/cni/net.d/{% if calico_version is version('v3.3.0', '>=') %}calico.conflist.template{% else %}10-calico.conflist{% endif %}"
+    owner: kube
+  register: calico_conflist
+  notify: reset_calico_cni
+
+- name: Calico | Create calico certs directory
+  file:
+    dest: "{{ calico_cert_dir }}"
+    state: directory
+    mode: 0750
+    owner: root
+    group: root
+
+- name: Calico | Link etcd certificates for calico-node
+  file:
+    src: "{{ etcd_cert_dir }}/{{ item.s }}"
+    dest: "{{ calico_cert_dir }}/{{ item.d }}"
+    state: hard
+    force: yes
+  with_items:
+    - {s: "{{ kube_etcd_cacert_file }}", d: "ca_cert.crt"}
+    - {s: "{{ kube_etcd_cert_file }}", d: "cert.crt"}
+    - {s: "{{ kube_etcd_key_file }}", d: "key.pem"}
+
+- name: Calico | Install calicoctl wrapper script
+  template:
+    src: calicoctl.sh.j2
+    dest: "{{ bin_dir }}/calicoctl.sh"
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Calico | wait for etcd
+  uri:
+    url: "{{ etcd_access_addresses.split(',') | first }}/health"
+    validate_certs: no
+    client_cert: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem"
+    client_key: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem"
+  register: result
+  until: result.status == 200 or result.status == 401
+  retries: 10
+  delay: 5
+  run_once: true
+
+- name: Calico | Check if calico network pool has already been configured
+  shell: >
+    {{ bin_dir }}/calicoctl.sh get ippool | grep -w "{{ calico_pool_cidr | default(kube_pods_subnet) }}" | wc -l
+  register: calico_conf
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+  changed_when: false
+
+- name: Calico | Ensure that calico_pool_cidr is within kube_pods_subnet when defined
+  assert:
+    that: "[calico_pool_cidr] | ipaddr(kube_pods_subnet) | length == 1"
+    msg: "{{ calico_pool_cidr }} is not within or equal to {{ kube_pods_subnet }}"
+  delegate_to: localhost
+  run_once: true
+  when:
+    - 'calico_conf.stdout == "0"'
+    - calico_pool_cidr is defined
+
+- name: Calico | Configure calico network pool (v3.0.0 <= version < v3.3.0)
+  shell: >
+    echo "
+      { "kind": "IPPool",
+        "apiVersion": "projectcalico.org/v3",
+        "metadata": {
+          "name": "{{ calico_pool_name }}",
+        },
+        "spec": {
+          "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
+          "ipipMode": "{{ ipip_mode }}",
+          "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl.sh create -f -
+  run_once: true
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  when:
+    - 'calico_conf.stdout == "0"'
+    - calico_version is version("v3.0.0", ">=")
+    - calico_version is version("v3.3.0", "<")
+
+- name: Calico | Configure calico network pool (version >= v3.3.0)
+  shell: >
+    echo "
+      { "kind": "IPPool",
+        "apiVersion": "projectcalico.org/v3",
+        "metadata": {
+          "name": "{{ calico_pool_name }}",
+        },
+        "spec": {
+          "blockSize": "{{ kube_network_node_prefix }}",
+          "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
+          "ipipMode": "{{ ipip_mode }}",
+          "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl.sh create -f -
+  run_once: true
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  when:
+    - 'calico_conf.stdout == "0"'
+    - calico_version is version("v3.3.0", ">=")
+
+- name: Calico | Configure calico network pool (legacy)
+  shell: >
+    echo '
+      { "kind": "ipPool",
+        "spec": {"disabled": false, "ipip": {"enabled": {{ ipip }}, "mode": "{{ ipip_mode|lower }}"},
+                 "nat-outgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }}},
+        "apiVersion": "v1",
+        "metadata": {"cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}"}
+      }' | {{ bin_dir }}/calicoctl.sh apply -f -
+  environment:
+    NO_DEFAULT_POOLS: true
+  run_once: true
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  when:
+    - 'calico_conf.stdout == "0"'
+    - calico_version is version("v3.0.0", "<")
+
+- name: "Determine nodeToNodeMesh needed state"
+  set_fact:
+    nodeToNodeMeshEnabled: "false"
+  when:
+    - peer_with_router|default(false) or peer_with_calico_rr|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+  run_once: yes
+
+- name: Calico | Set global as_num
+  shell: >
+    echo '
+    { "kind": "BGPConfiguration",
+    "apiVersion": "projectcalico.org/v3",
+    "metadata": {
+        "name": "default",
+    },
+    "spec": {
+        "logSeverityScreen": "Info",
+        "nodeToNodeMeshEnabled": {{ nodeToNodeMeshEnabled|default('true') }} ,
+        "asNumber": {{ global_as_num }} }} ' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+  run_once: true
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  changed_when: false
+  when:
+    - calico_version is version('v3.0.0', '>=')
+
+- name: Calico | Set global as_num (legacy)
+  command: "{{ bin_dir }}/calicoctl.sh config set asNumber {{ global_as_num }}"
+  run_once: true
+  when:
+    - calico_version is version('v3.0.0', '<')
+
+- name: Calico | Disable node mesh (legacy)
+  command: "{{ bin_dir }}/calicoctl.sh config set nodeToNodeMesh off"
+  run_once: yes
+  when:
+    - calico_version is version('v3.0.0', '<')
+    - nodeToMeshEnabled|default(True)
+
+- name: Calico | Configure node asNumber for per node peering
+  shell: >
+   echo '{
+   "apiVersion": "projectcalico.org/v3",
+   "kind": "Node",
+   "metadata": {
+      "name": "{{ inventory_hostname }}"
+   },
+   "spec": {
+      "bgp": {
+        "asNumber": "{{ local_as }}"
+      },
+      "orchRefs":[{"nodeName":"{{ inventory_hostname }}","orchestrator":"k8s"}]
+   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - calico_version is version('v3.0.0', '>=')
+    - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+    - local_as is defined
+    - groups['calico-rr'] | default([]) | length == 0
+
+- name: Calico | Configure node asNumber for per node peering (legacy)
+  shell: >
+   echo '{
+   "apiVersion": "v1",
+   "kind": "node",
+   "metadata": {
+      "name": "{{ inventory_hostname }}"
+   },
+   "spec": {
+      "bgp": {
+        "asNumber": "{{ local_as }}"
+      },
+      "orchRefs":[{"nodeName":"{{ inventory_hostname }}","orchestrator":"k8s"}]
+   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - calico_version is version('v3.0.0', '<')
+    - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+    - local_as is defined
+    - groups['calico-rr'] | default([]) | length == 0
+
+- name: Calico | Configure peering with router(s) at node scope
+  shell: >
+   echo '{
+   "apiVersion": "projectcalico.org/v3",
+   "kind": "BGPPeer",
+   "metadata": {
+      "name": "{{ inventory_hostname }}-{{ item.router_id }}"
+   },
+   "spec": {
+      "asNumber": "{{ item.as }}",
+      "node": "{{ inventory_hostname }}",
+      "peerIP": "{{ item.router_id }}"
+   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - "{{ peers|selectattr('scope','undefined')|list|default([]) | union(peers|selectattr('scope','defined')|selectattr('scope','equalto', 'node')|list|default([])) }}"
+  when:
+    - calico_version is version('v3.0.0', '>=')
+    - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+
+- name: Calico | Configure peering with router(s) at node scope (legacy)
+  shell: >
+   echo '{
+   "kind": "bgpPeer",
+   "spec": {"asNumber": "{{ item.as }}"},
+   "apiVersion": "v1",
+   "metadata": {"node": "{{ inventory_hostname }}", "scope": "node", "peerIP": "{{ item.router_id }}"}
+   }'
+   | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items: "{{ peers|selectattr('scope','undefined')|list|default([]) | union(peers|selectattr('scope','defined')|selectattr('scope','equalto', 'node')|list|default([])) }}"
+  when:
+    - calico_version | version_compare('v3.0.0', '<')
+    - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+
+- name: Calico | Configure peering with router(s) at global scope
+  shell: >
+   echo '{
+   "apiVersion": "projectcalico.org/v3",
+   "kind": "BGPPeer",
+   "metadata": {
+      "name": "global-{{ item.router_id }}"
+   },
+   "spec": {
+      "asNumber": "{{ item.as }}",
+      "peerIP": "{{ item.router_id }}"
+   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|list|default([]) }}"
+  run_once: true
+  when:
+    - calico_version | version_compare('v3.0.0', '>=')
+    - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+
+- name: Calico | Configure peering with router(s) at global scope (legacy)
+  shell: >
+   echo '{
+   "kind": "bgpPeer",
+   "spec": {"asNumber": "{{ item.as }}"},
+   "apiVersion": "v1",
+   "metadata": {"scope": "global", "peerIP": "{{ item.router_id }}"}
+   }'
+   | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items: "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|default([]) }}"
+  run_once: true
+  when:
+    - calico_version is version('v3.0.0', '<')
+    - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+
+- name: Calico | Configure peering with route reflectors
+  shell: >
+   echo '{
+   "apiVersion": "projectcalico.org/v3",
+   "kind": "BGPPeer",
+   "metadata": {
+      "name": "{{ inventory_hostname }}-{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(fallback_ips[item]) }}"
+   },
+   "spec": {
+      "asNumber": "{{ local_as | default(global_as_num) }}",
+      "node": "{{ inventory_hostname }}",
+      "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(fallback_ips[item]) }}"
+   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - "{{ groups['calico-rr'] | default([]) }}"
+  when:
+    - calico_version is version('v3.0.0', '>=')
+    - peer_with_calico_rr|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+    - hostvars[item]['cluster_id'] == cluster_id
+
+- name: Calico | Configure peering with route reflectors (legacy)
+  shell: >
+   echo '{
+   "kind": "bgpPeer",
+   "spec": {"asNumber": "{{ local_as | default(global_as_num) }}"},
+   "apiVersion": "v1",
+   "metadata": {"node": "{{ inventory_hostname }}",
+     "scope": "node",
+     "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(fallback_ips[item]) }}"}
+   }'
+   | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items: "{{ groups['calico-rr'] | default([]) }}"
+  when:
+    - calico_version is version('v3.0.0', '<')
+    - not calico_upgrade_enabled
+    - peer_with_calico_rr|default(false)
+    - hostvars[item]['cluster_id'] == cluster_id
+
+
+- name: Calico | Create calico manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: calico-config, file: calico-config.yml, type: cm}
+    - {name: calico-node, file: calico-node.yml, type: ds}
+    - {name: calico, file: calico-node-sa.yml, type: sa}
+    - {name: calico, file: calico-cr.yml, type: clusterrole}
+    - {name: calico, file: calico-crb.yml, type: clusterrolebinding}
+  register: calico_node_manifests
+  when:
+    - inventory_hostname in groups['kube-master']
+    - rbac_enabled or item.type not in rbac_resources
+
+- name: Calico | Create calico manifests for kdd
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: calico, file: kdd-crds.yml, type: kdd}
+  register: calico_node_kdd_manifest
+  when:
+    - inventory_hostname in groups['kube-master']
+    - calico_datastore == "kdd"
+
+- name: Calico | Create calico manifests for typha
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: calico, file: calico-typha.yml, type: typha}
+  register: calico_node_typha_manifest
+  when:
+    - inventory_hostname in groups['kube-master']
+    - typha_enabled and calico_datastore == "kdd"

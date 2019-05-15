@@ -1,0 +1,42 @@
+---
+- name: bootstrap/start_vault_temp | Ensure vault-temp isn't already running
+  shell: if docker rm -f {{ vault_temp_container_name }} 2>&1 1>/dev/null;then echo true;else echo false;fi
+  register: vault_temp_stop_check
+  changed_when: "'true' in vault_temp_stop_check.stdout"
+
+- name: bootstrap/start_vault_temp | Start single node Vault with file backend
+  command: >
+           docker run -d --cap-add=IPC_LOCK --name {{ vault_temp_container_name }}
+           -p {{ vault_port }}:{{ vault_port }}
+           -e 'VAULT_LOCAL_CONFIG={{ vault_temp_config|to_json }}'
+           -v /etc/vault:/etc/vault
+           {{ vault_image_repo }}:{{ vault_version }} server
+
+- name: bootstrap/start_vault_temp | Start again single node Vault with file backend
+  command: docker start {{ vault_temp_container_name }}
+
+- name: bootstrap/start_vault_temp | Initialize vault-temp
+  hashivault_init:
+    url: "http://localhost:{{ vault_port }}/"
+    secret_shares: 1
+    secret_threshold: 1
+  until: "vault_temp_init is succeeded"
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  register: vault_temp_init
+
+# NOTE: vault_headers and vault_url are used by subsequent issue calls
+- name: bootstrap/start_vault_temp | Set needed vault facts
+  set_fact:
+    vault_leader_url: "http://{{ inventory_hostname }}:{{ vault_port }}"
+    vault_temp_unseal_keys: "{{ vault_temp_init.keys_base64 }}"
+    vault_root_token: "{{ vault_temp_init.root_token }}"
+    vault_headers: "{{ vault_client_headers|combine({'X-Vault-Token': vault_temp_init.root_token}) }}"
+
+- name: bootstrap/start_vault_temp | Unseal vault-temp
+  hashivault_unseal:
+    url: "http://localhost:{{ vault_port }}/"
+    token: "{{ vault_root_token }}"
+    keys: "{{ item }}"
+  with_items: "{{ vault_temp_unseal_keys|default([]) }}"
+  no_log: true

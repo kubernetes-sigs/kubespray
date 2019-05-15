@@ -4,22 +4,35 @@ metadata:
   name: nginx-proxy
   namespace: kube-system
   labels:
+    addonmanager.kubernetes.io/mode: Reconcile
     k8s-app: kube-nginx
 spec:
   hostNetwork: true
+  nodeSelector:
+    beta.kubernetes.io/os: linux
+{% if kube_version is version('v1.11.1', '>=') %}
+  priorityClassName: system-node-critical
+{% endif %}
   containers:
   - name: nginx-proxy
     image: {{ nginx_image_repo }}:{{ nginx_image_tag }}
     imagePullPolicy: {{ k8s_image_pull_policy }}
     resources:
-      limits:
-        cpu: {{ nginx_cpu_limit }}
-        memory: {{ nginx_memory_limit }}
       requests:
-        cpu: {{ nginx_cpu_requests }}
-        memory: {{ nginx_memory_requests }}
+        cpu: {{ loadbalancer_apiserver_cpu_requests }}
+        memory: {{ loadbalancer_apiserver_memory_requests }}
     securityContext:
       privileged: true
+    {% if loadbalancer_apiserver_healthcheck_port is defined -%}
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: {{ loadbalancer_apiserver_healthcheck_port }}
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: {{ loadbalancer_apiserver_healthcheck_port }}
+    {% endif -%}
     volumeMounts:
     - mountPath: /etc/nginx
       name: etc-nginx
@@ -27,4 +40,4 @@ spec:
   volumes:
   - name: etc-nginx
     hostPath:
-      path: /etc/nginx
+      path: {{ nginx_config_dir }}

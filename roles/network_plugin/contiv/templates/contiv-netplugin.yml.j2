@@ -1,3 +1,4 @@
+---
 # This manifest installs contiv-netplugin container, as well
 # as the Contiv CNI plugins and network config on
 # each master and worker node in a Kubernetes cluster.
@@ -18,84 +19,111 @@ spec:
     metadata:
       labels:
         k8s-app: contiv-netplugin
-      annotations:
-        scheduler.alpha.kubernetes.io/critical-pod: ''
     spec:
+{% if kube_version is version('v1.11.1', '>=') %}
+      priorityClassName: system-node-critical
+{% endif %}
       hostNetwork: true
       hostPID: true
       tolerations:
-      - key: node-role.kubernetes.io/master
-        effect: NoSchedule
-{% if rbac_enabled %}
+        - operator: Exists
+        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
+        - key: CriticalAddonsOnly
+          operator: "Exists"
       serviceAccountName: contiv-netplugin
-{% endif %}
+      initContainers:
+        - name: contiv-netplugin-init
+          image: {{ contiv_init_image_repo }}:{{ contiv_init_image_tag }}
+          env:
+            - name: CONTIV_ROLE
+              value: netplugin
+            - name: CONTIV_MODE
+              value: kubernetes
+            - name: CONTIV_K8S_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: contiv-config
+                  key: contiv_k8s_config
+            - name: CONTIV_CNI_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: contiv-config
+                  key: contiv_cni_config
+          volumeMounts:
+            - mountPath: /var/contiv
+              name: var-contiv
+              readOnly: false
+            - mountPath: /etc/cni/net.d/
+              name: etc-cni-dir
+              readOnly: false
+        - name: contiv-cni
+          image: {{ contiv_image_repo }}:{{ contiv_version }}
+          command: ["cp", "/contiv/bin/contivk8s", "/opt/cni/bin/contivk8s"]
+          volumeMounts:
+            - mountPath: /opt/cni/bin
+              name: cni-bin-dir
+              readOnly: false
       containers:
         # Runs netplugin container on each Kubernetes node. This
         # container programs network policy and routes on each
         # host.
         - name: contiv-netplugin
           image: {{ contiv_image_repo }}:{{ contiv_image_tag }}
-          args:
-            - -pkubernetes
-            - -x
           env:
             - name: VLAN_IF
               value: {{ contiv_vlan_interface }}
-            - name: VTEP_IP
+            - name: CONTIV_NETPLUGIN_VLAN_UPLINKS
+              value: {{ contiv_vlan_interface }}
+            - name: CONTIV_NETPLUGIN_VXLAN_PORT
+              value: "{{ contiv_vxlan_port }}"
+            - name: CONTIV_ROLE
+              value: netplugin
+            - name: CONTIV_NETPLUGIN_MODE
+              value: kubernetes
+            - name: CONTIV_NETPLUGIN_VTEP_IP
               valueFrom:
                  fieldRef:
                     fieldPath: status.podIP
-            - name: CONTIV_ETCD
+            - name: CONTIV_NETPLUGIN_ETCD_ENDPOINTS
               valueFrom:
                 configMapKeyRef:
                   name: contiv-config
-                  key: cluster_store
-            - name: CONTIV_CNI_CONFIG
+                  key: contiv_etcd
+            - name: CONTIV_NETPLUGIN_FORWARD_MODE
               valueFrom:
                 configMapKeyRef:
                   name: contiv-config
-                  key: cni_config
-            - name: CONTIV_CONFIG
+                  key: contiv_fwdmode
+            - name: CONTIV_NETPLUGIN_NET_MODE
               valueFrom:
                 configMapKeyRef:
                   name: contiv-config
-                  key: config
+                  key: contiv_netmode
+            - name: CONTIV_NETPLUGIN_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: contiv-config
+                  key: contiv_netplugin_loglevel
+          resources:
+            requests:
+              cpu: 250m
           securityContext:
             privileged: true
           volumeMounts:
-            - mountPath: /etc/openvswitch
-              name: etc-openvswitch
-              readOnly: false
-            - mountPath: /lib/modules
-              name: lib-modules
-              readOnly: false
             - mountPath: /var/run
               name: var-run
               readOnly: false
             - mountPath: /var/contiv
               name: var-contiv
               readOnly: false
-            - mountPath: /opt/cni/bin
-              name: cni-bin-dir
-              readOnly: false
-            - mountPath: /etc/cni/net.d/
-              name: etc-cni-dir
-              readOnly: false
       volumes:
         # Used by contiv-netplugin
-        - name: etc-openvswitch
-          hostPath:
-            path: /etc/openvswitch
-        - name: lib-modules
-          hostPath:
-            path: /lib/modules
         - name: var-run
           hostPath:
             path: /var/run
         - name: var-contiv
           hostPath:
             path: /var/contiv
-        # Used to install CNI.
         - name: cni-bin-dir
           hostPath:
             path: /opt/cni/bin

@@ -11,6 +11,52 @@
   delay: 6
   when: inventory_hostname == groups['kube-master'][0]
 
+- name: Kubernetes Apps | Check AppArmor status
+  command: which apparmor_parser
+  register: apparmor_status
+  when:
+    - podsecuritypolicy_enabled
+    - inventory_hostname == groups['kube-master'][0]
+  failed_when: false
+
+- name: Kubernetes Apps | Set apparmor_enabled
+  set_fact:
+    apparmor_enabled: "{{ apparmor_status.rc == 0 }}"
+  when:
+    - podsecuritypolicy_enabled
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Kubernetes Apps | Render templates for PodSecurityPolicy
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  register: psp_manifests
+  with_items:
+    - {file: psp.yml, type: psp, name: psp}
+    - {file: psp-cr.yml, type: clusterrole, name: psp-cr}
+    - {file: psp-crb.yml, type: rolebinding, name: psp-crb}
+  when:
+    - podsecuritypolicy_enabled
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Kubernetes Apps | Add policies, roles, bindings for PodSecurityPolicy
+  kube:
+    name: "{{ item.item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  register: result
+  until: result is succeeded
+  retries: 10
+  delay: 6
+  with_items: "{{ psp_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+
 - name: Kubernetes Apps | Add ClusterRoleBinding to admit nodes
   template:
     src: "node-crb.yml.j2"
@@ -23,10 +69,14 @@
 - name: Apply workaround to allow all nodes with cert O=system:nodes to register
   kube:
     name: "kubespray:system:node"
-    kubectl: "{{bin_dir}}/kubectl"
+    kubectl: "{{ bin_dir }}/kubectl"
     resource: "clusterrolebinding"
     filename: "{{ kube_config_dir }}/node-crb.yml"
     state: latest
+  register: result
+  until: result is succeeded
+  retries: 10
+  delay: 6
   when:
     - rbac_enabled
     - node_crb_manifest.changed
@@ -46,7 +96,7 @@
 - name: Apply webhook ClusterRole
   kube:
     name: "system:node-webhook"
-    kubectl: "{{bin_dir}}/kubectl"
+    kubectl: "{{ bin_dir }}/kubectl"
     resource: "clusterrole"
     filename: "{{ kube_config_dir }}/node-webhook-cr.yml"
     state: latest
@@ -71,7 +121,7 @@
 - name: Grant system:nodes the webhook ClusterRole
   kube:
     name: "system:node-webhook"
-    kubectl: "{{bin_dir}}/kubectl"
+    kubectl: "{{ bin_dir }}/kubectl"
     resource: "clusterrolebinding"
     filename: "{{ kube_config_dir }}/node-webhook-crb.yml"
     state: latest
@@ -90,8 +140,8 @@
     - rbac_enabled
     - cloud_provider is defined
     - cloud_provider == 'vsphere'
-    - kube_version | version_compare('v1.9.0', '>=')
-    - kube_version | version_compare('v1.9.3', '<=')
+    - kube_version is version('v1.9.0', '>=')
+    - kube_version is version('v1.9.3', '<=')
     - inventory_hostname == groups['kube-master'][0]
   tags: vsphere
 
@@ -106,15 +156,15 @@
     - cloud_provider == 'vsphere'
     - vsphere_cloud_provider.rc is defined
     - vsphere_cloud_provider.rc != 0
-    - kube_version | version_compare('v1.9.0', '>=')
-    - kube_version | version_compare('v1.9.3', '<=')
+    - kube_version is version('v1.9.0', '>=')
+    - kube_version is version('v1.9.3', '<=')
     - inventory_hostname == groups['kube-master'][0]
   tags: vsphere
 
 - name: Apply vsphere-cloud-provider ClusterRole
   kube:
     name: "system:vsphere-cloud-provider"
-    kubectl: "{{bin_dir}}/kubectl"
+    kubectl: "{{ bin_dir }}/kubectl"
     resource: "clusterrolebinding"
     filename: "{{ kube_config_dir }}/vsphere-rbac.yml"
     state: latest
@@ -124,7 +174,30 @@
     - cloud_provider == 'vsphere'
     - vsphere_cloud_provider.rc is defined
     - vsphere_cloud_provider.rc != 0
-    - kube_version | version_compare('v1.9.0', '>=')
-    - kube_version | version_compare('v1.9.3', '<=')
+    - kube_version is version('v1.9.0', '>=')
+    - kube_version is version('v1.9.3', '<=')
     - inventory_hostname == groups['kube-master'][0]
   tags: vsphere
+
+- include_tasks: oci.yml
+  tags: oci
+  when:
+    - cloud_provider is defined
+    - cloud_provider == 'oci'
+
+- name: PriorityClass | Copy k8s-cluster-critical-pc.yml file
+  copy: src=k8s-cluster-critical-pc.yml dest={{ kube_config_dir }}/k8s-cluster-critical-pc.yml
+  when:
+    - kube_version is version('v1.11.1', '>=')
+    - inventory_hostname == groups['kube-master']|last
+
+- name: PriorityClass | Create k8s-cluster-critical
+  kube:
+    name: k8s-cluster-critical
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "PriorityClass"
+    filename: "{{ kube_config_dir }}/k8s-cluster-critical-pc.yml"
+    state: latest
+  when:
+    - kube_version is version('v1.11.1', '>=')
+    - inventory_hostname == groups['kube-master']|last

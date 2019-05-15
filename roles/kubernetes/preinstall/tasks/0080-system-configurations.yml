@@ -1,0 +1,59 @@
+---
+# Todo : selinux configuration
+- name: Confirm selinux deployed
+  stat:
+    path: /etc/selinux/config
+  when: ansible_os_family == "RedHat"
+  register: slc
+
+- name: Set selinux policy
+  selinux:
+    policy: targeted
+    state: "{{ preinstall_selinux_state }}"
+  when:
+    - ansible_os_family == "RedHat"
+    - slc.stat.exists
+  changed_when: False
+  tags:
+    - bootstrap-os
+
+- name: Disable IPv6 DNS lookup
+  lineinfile:
+    dest: /etc/gai.conf
+    line: "precedence ::ffff:0:0/96  100"
+    state: present
+    backup: yes
+  when:
+    - disable_ipv6_dns
+    - not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+  tags:
+    - bootstrap-os
+
+- name: Stat sysctl file configuration
+  stat:
+    path: "{{ sysctl_file_path }}"
+  register: sysctl_file_stat
+  tags:
+    - bootstrap-os
+
+- name: Change sysctl file path to link source if linked
+  set_fact:
+    sysctl_file_path: "{{ sysctl_file_stat.stat.lnk_source }}"
+  when:
+    - sysctl_file_stat.stat.islnk is defined
+    - sysctl_file_stat.stat.islnk
+  tags:
+    - bootstrap-os
+
+- name: Make sure sysctl file path folder exists
+  file:
+    name: "{{ sysctl_file_path | dirname }}"
+    state: directory
+
+- name: Enable ip forwarding
+  sysctl:
+    sysctl_file: "{{ sysctl_file_path }}"
+    name: net.ipv4.ip_forward
+    value: 1
+    state: present
+    reload: yes

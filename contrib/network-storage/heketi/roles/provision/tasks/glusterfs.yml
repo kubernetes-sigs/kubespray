@@ -1,0 +1,38 @@
+---
+- name: "Kubernetes Apps | Lay Down GlusterFS Daemonset"
+  template: { src: "glusterfs-daemonset.json.j2", dest: "{{ kube_config_dir }}/glusterfs-daemonset.json" }
+  become: true
+  register: "rendering"
+- name: "Kubernetes Apps | Install and configure GlusterFS daemonset"
+  kube:
+    name: "GlusterFS"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/glusterfs-daemonset.json"
+    state: "{{ rendering.changed | ternary('latest', 'present') }}"
+- name: "Kubernetes Apps | Label GlusterFS nodes"
+  include_tasks: "glusterfs/label.yml"
+  with_items: "{{ groups['heketi-node'] }}"
+  loop_control:
+    loop_var: "node"
+- name: "Kubernetes Apps | Wait for daemonset to become available."
+  register: "daemonset_state"
+  command: "{{ bin_dir }}/kubectl get daemonset glusterfs --output=json --ignore-not-found=true"
+  changed_when: false
+  vars:
+    daemonset_state: { stdout: "{}" }
+    ready: "{{ daemonset_state.stdout|from_json|json_query(\"status.numberReady\") }}"
+    desired: "{{ daemonset_state.stdout|from_json|json_query(\"status.desiredNumberScheduled\") }}"
+  until: "ready | int >= 3"
+  retries: 60
+  delay: 5
+
+- name: "Kubernetes Apps | Lay Down Heketi Service Account"
+  template: { src: "heketi-service-account.json.j2", dest: "{{ kube_config_dir }}/heketi-service-account.json" }
+  become: true
+  register: "rendering"
+- name: "Kubernetes Apps | Install and configure Heketi Service Account"
+  kube:
+    name: "GlusterFS"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/heketi-service-account.json"
+    state: "{{ rendering.changed | ternary('latest', 'present') }}"

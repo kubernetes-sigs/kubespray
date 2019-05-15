@@ -18,7 +18,13 @@ spec:
         k8s-app: local-volume-provisioner
         version: {{ local_volume_provisioner_image_tag }}
     spec:
+{% if kube_version is version('v1.11.1', '>=') %}
+      priorityClassName: {% if local_volume_provisioner_namespace == 'kube-system' %}system-node-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
+{% endif %}
       serviceAccountName: local-volume-provisioner
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
       containers:
         - name: provisioner
           image: {{ local_volume_provisioner_image_repo }}:{{ local_volume_provisioner_image_tag }}
@@ -30,16 +36,25 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
+          - name: MY_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
           volumeMounts:
             - name: local-volume-provisioner
               mountPath: /etc/provisioner/config
               readOnly: true
-            - name: local-volume-provisioner-hostpath-mnt-disks
-              mountPath: {{ local_volume_provisioner_mount_dir }}
+{% for class_name, class_config in local_volume_provisioner_storage_classes.items() %}
+            - name: local-volume-provisioner-hostpath-{{ class_name }}
+              mountPath: {{ class_config.mount_dir }}
+              mountPropagation: "HostToContainer"
+{% endfor %}
       volumes:
         - name: local-volume-provisioner
           configMap:
             name: local-volume-provisioner
-        - name: local-volume-provisioner-hostpath-mnt-disks
+{% for class_name, class_config in local_volume_provisioner_storage_classes.items() %}
+        - name: local-volume-provisioner-hostpath-{{ class_name }}
           hostPath:
-            path: {{ local_volume_provisioner_base_dir }}
+            path: {{ class_config.host_dir }}
+{% endfor %}

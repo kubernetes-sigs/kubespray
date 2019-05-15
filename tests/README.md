@@ -2,7 +2,7 @@
 
 ## Amazon Web Service
 
-              | Calico        | Flannel       | Weave         |
+|              | Calico        | Flannel       | Weave         |
 ------------- | ------------- | ------------- | ------------- |
 Debian Jessie | [![Build Status](https://ci.kubespray.io/job/kubespray-aws-calico-jessie/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-calico-jessie)  | [![Build Status](https://ci.kubespray.io/job/kubespray-aws-flannel-jessie/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-flannel-jessie/) | [![Build Status](https://ci.kubespray.io/job/kubespray-aws-weave-jessie/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-weave-jessie/) |
 Ubuntu Trusty |[![Build Status](https://ci.kubespray.io/job/kubespray-aws-calico-trusty/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-calico-trusty/)|[![Build Status](https://ci.kubespray.io/job/kubespray-aws-flannel-trusty/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-flannel-trusty/)|[![Build Status](https://ci.kubespray.io/job/kubespray-aws-weave-trusty/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-weave-trusty)|

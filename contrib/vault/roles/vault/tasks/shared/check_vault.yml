@@ -1,0 +1,51 @@
+---
+# Stop temporary Vault if it's running (can linger if playbook fails out)
+- name: stop vault-temp container
+  shell: docker stop {{ vault_temp_container_name }}
+  failed_when: false
+  register: vault_temp_stop
+  changed_when: vault_temp_stop is succeeded
+
+# Check if vault is reachable on the localhost
+- name: check_vault | Attempt to pull local https Vault health
+  command: /bin/true
+  notify:
+    - wait for vault up nowait
+    - set facts about local Vault health
+
+- meta: flush_handlers
+
+- name: check_vault | Set facts about local Vault health
+  set_fact:
+    vault_is_running: "{{ vault_health_check.get('status', '-1') in vault_successful_http_codes }}"
+
+- name: check_vault | Set facts about local Vault health
+  set_fact:
+    vault_is_initialized: "{{ vault_health_check.get('json', {}).get('initialized', false) }}"
+    vault_is_sealed: "{{ vault_health_check.get('json', {}).get('sealed', true) }}"
+    # vault_in_standby: "{{ vault_health_check.get('json', {}).get('standby', true) }}"
+    # vault_run_version: "{{ vault_local_service_health.get('json', {}).get('version', '') }}"
+
+- name: check_vault | Check is vault is initialized in etcd if vault is not running
+  command: |-
+    curl \
+      --cacert {{ etcd_cert_dir }}/ca.pem \
+      --cert {{ etcd_cert_dir}}/node-{{ inventory_hostname }}.pem \
+      --key {{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem \
+      -X POST -d '{"key": "{{ "/vault/core/seal-config" | b64encode }}"}' \
+      {{ etcd_access_addresses.split(',') | first }}/v3alpha/kv/range
+  register: vault_etcd_exists
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  run_once: true
+  when: not vault_is_running and vault_etcd_available
+  changed_when: false
+
+- name: check_vault | Set fact about the Vault cluster's initialization state
+  set_fact:
+    vault_cluster_is_initialized: >-
+      {{ vault_is_initialized or
+         hostvars[item]['vault_is_initialized'] or
+         ('value' in vault_etcd_exists.stdout|default('')) }}
+  with_items: "{{ groups.vault }}"
+  run_once: true

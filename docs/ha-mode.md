@@ -5,18 +5,12 @@ The following components require a highly available endpoints:
 * etcd cluster,
 * kube-apiserver service instances.
 
-The latter relies on a 3rd side reverse proxies, like Nginx or HAProxy, to
+The latter relies on a 3rd side reverse proxy, like Nginx or HAProxy, to
 achieve the same goal.
 
 Etcd
 ----
-
-The `etcd_access_endpoint` fact provides an access pattern for clients. And the
-`etcd_multiaccess` (defaults to `True`) group var controls that behavior.
-It makes deployed components to access the etcd cluster members
-directly: `http://ip1:2379, http://ip2:2379,...`. This mode assumes the clients
-do a loadbalancing and handle HA for connections.
-
+The etcd clients (kube-api-masters) are configured with the list of all etcd peers. If the etcd-cluster has multiple instances, it's configured in HA already.
 
 Kube-apiserver
 --------------
@@ -30,7 +24,7 @@ where an external LB or virtual IP management is inconvenient.  This option is
 configured by the variable `loadbalancer_apiserver_localhost` (defaults to
 `True`. Or `False`, if there is an external `loadbalancer_apiserver` defined).
 You may also define the port the local internal loadbalancer uses by changing,
-`nginx_kube_apiserver_port`.  This defaults to the value of
+`loadbalancer_apiserver_port`.  This defaults to the value of
 `kube_apiserver_port`. It is also important to note that Kubespray will only
 configure kubelet and kube-proxy on non-master nodes to use the local internal
 loadbalancer.
@@ -83,7 +77,7 @@ loadbalancer_apiserver:
   so you will need to use a different port for the vip from that the API is
   listening on, or set the `kube_apiserver_bind_address` so that the API only
   listens on a specific interface (to avoid conflict with haproxy binding the
-  port on the VIP adddress)
+  port on the VIP address)
 
 This domain name, or default "lb-apiserver.kubernetes.local", will be inserted
 into the `/etc/hosts` file of all servers in the `k8s-cluster` group and wired
@@ -100,12 +94,12 @@ for it.
   be covered by Kubespray for that case. Make sure your external LB provides it.
   Alternatively you may specify an externally load balanced VIPs in the
   `supplementary_addresses_in_ssl_keys` list. Then, kubespray will add them into
-  the generated cluster certifactes as well.
+  the generated cluster certificates as well.
 
 Aside of that specific case, the `loadbalancer_apiserver` considered mutually
 exclusive to `loadbalancer_apiserver_localhost`.
 
-Access API endpoints are evaluated automagically, as the following:
+Access API endpoints are evaluated automatically, as the following:
 
 | Endpoint type                | kube-master    | non-master          | external            |
 |------------------------------|----------------|---------------------|---------------------|
@@ -120,7 +114,7 @@ Where:
 * `ext` - Externally load balanced VIP:port and FQDN, not managed by Kubespray;
 * `lc` - localhost;
 * `bip` - a custom bind IP or localhost for the default bind IP '0.0.0.0';
-* `nsp` - nginx secure port, `nginx_kube_apiserver_port`, defers to `sp`;
+* `nsp` - nginx secure port, `loadbalancer_apiserver_port`, defers to `sp`;
 * `sp` - secure port, `kube_apiserver_port`;
 * `lp` - LB port, `loadbalancer_apiserver.port`, defers to the secure port;
 * `ip` - the node IP, defers to the ansible IP;
@@ -137,3 +131,33 @@ contacted via the local bind IP, which is `https://bip:sp`.
 Kubespray, the masters' APIs are accessed via the insecure endpoint, which
 consists of the local `kube_apiserver_insecure_bind_address` and
 `kube_apiserver_insecure_port`.
+
+Optional configurations
+------------------------
+### ETCD with a LB
+In order to use an external loadbalancing (L4/TCP or L7 w/ SSL Passthrough VIP), the following variables need to be overridden in group_vars
+* `etcd_access_addresses`
+* `etcd_client_url`
+* `etcd_cert_alt_names`
+* `etcd_cert_alt_ips`
+
+#### Example of a VIP w/ FQDN
+```yaml
+etcd_access_addresses: https://etcd.example.com:2379
+etcd_client_url: https://etcd.example.com:2379
+etcd_cert_alt_names:
+  - "etcd.kube-system.svc.{{ dns_domain }}"
+  - "etcd.kube-system.svc"
+  - "etcd.kube-system"
+  - "etcd"
+  - "etcd.example.com" # This one needs to be added to the default etcd_cert_alt_names
+```
+
+#### Example of a VIP w/o FQDN (IP only)
+
+```yaml
+etcd_access_addresses: https://2.3.7.9:2379
+etcd_client_url: https://2.3.7.9:2379
+etcd_cert_alt_ips:
+  - "2.3.7.9"
+```

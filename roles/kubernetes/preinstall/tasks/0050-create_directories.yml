@@ -1,0 +1,69 @@
+---
+- name: Create kubernetes directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: kube
+  when: inventory_hostname in groups['k8s-cluster']
+  become: true
+  tags:
+    - kubelet
+    - k8s-secrets
+    - kube-controller-manager
+    - kube-apiserver
+    - bootstrap-os
+    - apps
+    - network
+    - master
+    - node
+  with_items:
+    - "{{ bin_dir }}"
+    - "{{ kube_config_dir }}"
+    - "{{ kube_cert_dir }}"
+    - "{{ kube_manifest_dir }}"
+    - "{{ kube_script_dir }}"
+
+- name: Create kubernetes kubeadm compat cert dir (kubernetes/kubeadm issue 1498)
+  file:
+    src: "{{ kube_cert_dir }}"
+    dest: "{{ kube_cert_compat_dir }}"
+    state: link
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - kube_cert_dir != kube_cert_compat_dir
+
+- name: Create cni directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: kube
+  with_items:
+    - "/etc/cni/net.d"
+    - "/opt/cni/bin"
+    - "/var/lib/calico"
+  when:
+    - kube_network_plugin in ["calico", "weave", "canal", "flannel", "contiv", "cilium", "kube-router"]
+    - inventory_hostname in groups['k8s-cluster']
+  tags:
+    - network
+    - cilium
+    - calico
+    - weave
+    - canal
+    - contiv
+    - kube-router
+    - bootstrap-os
+
+- name: Create local volume provisioner directories
+  file:
+    path: "{{ local_volume_provisioner_storage_classes[item].host_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0700
+  with_items: "{{ local_volume_provisioner_storage_classes.keys() | list }}"
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - local_volume_provisioner_enabled
+  tags:
+    - persistent_volumes

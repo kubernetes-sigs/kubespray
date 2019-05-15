@@ -1,0 +1,21 @@
+---
+
+- name: find_leader | Find the current http Vault leader
+  uri:
+    url: "{{ vault_config.listener.tcp.tls_disable|d()|ternary('http', 'https') }}://localhost:{{ vault_port }}/v1/sys/health"
+    headers: "{{ hostvars[groups.vault|first]['vault_headers'] }}"
+    method: HEAD
+    status_code: 200,429,501,503
+  register: vault_leader_check
+  until: "vault_leader_check is succeeded"
+  retries: 10
+
+- name: find_leader | Set fact for current http leader
+  set_fact:
+    vault_leader_url: "{{ vault_config.listener.tcp.tls_disable|d()|ternary('http', 'https') }}://{{ inventory_hostname }}:{{ vault_port }}"
+  with_items: "{{ groups.vault }}"
+  when: "hostvars[item]['vault_leader_check'].get('status') in [200,501,503]"
+  # run_once: true
+
+- name: find_leader| show vault_leader_url
+  debug: var=vault_leader_url verbosity=2

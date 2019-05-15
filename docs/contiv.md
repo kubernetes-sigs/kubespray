@@ -54,16 +54,18 @@ The default configuration uses VXLAN to create an overlay. Two networks are crea
 
 You can change the default network configuration by overriding the `contiv_networks` variable.
 
-The default forward mode is set to routing:
+The default forward mode is set to routing and the default network mode is vxlan:
 
 ```yaml
 contiv_fwd_mode: routing
+contiv_net_mode: vxlan
 ```
 
 The following is an example of how you can use VLAN instead of VXLAN:
 
 ```yaml
 contiv_fwd_mode: bridge
+contiv_net_mode: vlan
 contiv_vlan_interface: eth0
 contiv_networks:
   - name: default-net

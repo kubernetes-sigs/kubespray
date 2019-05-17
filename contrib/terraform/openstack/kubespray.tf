@@ -63,6 +63,7 @@ module "compute" {
   supplementary_master_groups                  = "${var.supplementary_master_groups}"
   supplementary_node_groups                    = "${var.supplementary_node_groups}"
   worker_allowed_ports                         = "${var.worker_allowed_ports}"
+  wait_for_floatingip                          = "${var.wait_for_floatingip}"
 
   network_id = "${module.network.router_id}"
 }

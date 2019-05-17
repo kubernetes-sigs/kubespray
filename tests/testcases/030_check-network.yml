@@ -10,7 +10,8 @@
       bin_dir: "/opt/bin"
     when: ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
 
-  - set_fact:
+  - name: Force binaries directory for other hosts
+    set_fact:
       bin_dir: "/usr/local/bin"
     when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
 
@@ -38,7 +39,8 @@
     register: pods
     no_log: true
 
-  - debug: msg="{{ pods.stdout.split('\n') }}"
+  - debug:
+      msg: "{{ pods.stdout.split('\n') }}"
     failed_when: not run_pods_log is success
 
   - name: Get hostnet pods
@@ -58,9 +60,11 @@
     register: get_pods
     no_log: true
 
-  - debug: msg="{{ get_pods.stdout.split('\n') }}"
+  - debug:
+      msg: "{{ get_pods.stdout.split('\n') }}"
 
-  - set_fact:
+  - name: Set networking facts
+    set_fact:
       kube_pods_subnet: 10.233.64.0/18
       pod_names: "{{ (pods.stdout | from_json)['items'] | map(attribute = 'metadata.name') | list }}"
       pod_ips: "{{ (pods.stdout | from_json)['items'] | selectattr('status.podIP', 'defined') | map(attribute = 'status.podIP') | list }}"
@@ -74,22 +78,25 @@
   - name: Check pods IP are in correct network
     assert:
       that: item | ipaddr(kube_pods_subnet)
-    when: not item in pods_hostnet and item in pods_running
+    when:
+    - not item in pods_hostnet
+    - item in pods_running
     with_items: "{{ pod_ips }}"
 
   - name: Ping between pods is working
     shell: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- ping -c 4 {{ item[1] }}"
-    when: not item[0] in pods_hostnet and not item[1] in pods_hostnet
+    when:
+    - not item[0] in pods_hostnet
+    - not item[1] in pods_hostnet
     with_nested:
     - "{{ pod_names }}"
     - "{{ pod_ips }}"
 
   - name: Ping between hostnet pods is working
     shell: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- ping -c 4 {{ item[1] }}"
-    when: item[0] in pods_hostnet and item[1] in pods_hostnet
+    when:
+    - item[0] in pods_hostnet
+    - item[1] in pods_hostnet
     with_nested:
     - "{{ pod_names }}"
     - "{{ pod_ips }}"
-
-  - name: Delete test namespace
-    shell: "{{ bin_dir }}/kubectl delete namespace test"

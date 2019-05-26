@@ -20,10 +20,6 @@ ndots value to be used in ``/etc/resolv.conf``
 
 It is important to note that multiple search domains combined with high ``ndots``
 values lead to poor performance of DNS stack, so please choose it wisely.
-The dnsmasq DaemonSet can accept lower ``ndots`` values and return NXDOMAIN
-replies for [bogus internal FQDNS](https://github.com/kubernetes/kubernetes/issues/19634#issuecomment-253948954)
-before it even hits the kubedns app. This enables dnsmasq to serve as a
-protective, but still recursive resolver in front of kubedns.
 
 #### searchdomains
 Custom search domains to be added in addition to the cluster search domains (``default.svc.{{ dns_domain }}, svc.{{ dns_domain }}``).
@@ -41,8 +37,7 @@ is not set, a default resolver is chosen (depending on cloud provider or 8.8.8.8
 
 #### upstream_dns_servers
 DNS servers to be added *after* the cluster DNS. Used by all ``resolvconf_mode`` modes. These serve as backup
-DNS servers in early cluster deployment when no cluster DNS is available yet. These are also added as upstream
-DNS servers used by ``dnsmasq`` (when deployed with ``dns_mode: dnsmasq_kubedns``).
+DNS servers in early cluster deployment when no cluster DNS is available yet.
 
 DNS modes supported by Kubespray
 ============================
@@ -52,32 +47,20 @@ You can modify how Kubespray sets up DNS for your cluster with the variables ``d
 ## dns_mode
 ``dns_mode`` configures how Kubespray will setup cluster DNS. There are four modes available:
 
-#### dnsmasq_kubedns
-This installs an additional dnsmasq DaemonSet which gives more flexibility and lifts some
-limitations (e.g. number of nameservers). Kubelet is instructed to use dnsmasq instead of kubedns/skydns.
-It is configured to forward all DNS queries belonging to cluster services to kubedns/skydns. All
-other queries are forwardet to the nameservers found in ``upstream_dns_servers`` or ``default_resolver``
-
-#### kubedns (default)
-This does not install the dnsmasq DaemonSet and instructs kubelet to directly use kubedns/skydns for
-all queries.
-
-#### coredns
-This does not install the dnsmasq DaemonSet and instructs kubelet to directly use CoreDNS for
-all queries.
+#### coredns (default)
+This installs CoreDNS as the default cluster DNS for all queries.
 
 #### coredns_dual
-This does not install the dnsmasq DaemonSet and instructs kubelet to directly use CoreDNS for
-all queries. It will also deploy a secondary CoreDNS stack
+This installs CoreDNS as the default cluster DNS for all queries, plus a secondary CoreDNS stack.
 
 #### manual
-This does not install dnsmasq or kubedns, but allows you to specify
+This does not install coredns, but allows you to specify
 `manual_dns_server`, which will be configured on nodes for handling Pod DNS.
 Use this method if you plan to install your own DNS server in the cluster after
 initial deployment.
 
 #### none
-This does not install any of dnsmasq and kubedns/skydns. This basically disables cluster DNS completely and
+This does not install any of DNS solution at all. This basically disables cluster DNS completely and
 leaves you with a non functional cluster.
 
 ## resolvconf_mode
@@ -103,7 +86,7 @@ The following dns options are added to the docker daemon
 * attempts:2
 
 For normal PODs, k8s will ignore these options and setup its own DNS settings for the PODs, taking
-the --cluster_dns (either dnsmasq or kubedns, depending on dns_mode) kubelet option into account.
+the --cluster_dns (either coredns or coredns_dual, depending on dns_mode) kubelet option into account.
 For ``hostNetwork: true`` PODs however, k8s will let docker setup DNS settings. Docker containers which
 are not started/managed by k8s will also use these docker options.
 
@@ -115,7 +98,7 @@ servers, which in turn will forward queries to the system nameserver if required
 
 #### host_resolvconf
 This activates the classic Kubespray behaviour that modifies the hosts ``/etc/resolv.conf`` file and dhclient
-configuration to point to the cluster dns server (either dnsmasq or kubedns, depending on dns_mode).
+configuration to point to the cluster dns server (either coredns or coredns_dual, depending on dns_mode).
 
 As cluster DNS is not available on early deployment stage, this mode is split into 2 stages. In the first
 stage (``dns_early: true``), ``/etc/resolv.conf`` is configured to use the DNS servers found in ``upstream_dns_servers``
@@ -130,6 +113,13 @@ Does nothing regarding ``/etc/resolv.conf``. This leaves you with a cluster that
 The only exception is that ``hostNetwork: true`` PODs and non-k8s managed containers will not be able to resolve
 cluster service names.
 
+## Nodelocal DNS cache
+Setting ``enable_nodelocaldns`` to ``true`` will make pods reach out to the dns (core-dns) caching agent running on the same node, thereby avoiding iptables DNAT rules and connection tracking. The local caching agent will query core-dns (depending on what main DNS plugin is configured in your cluster) for cache misses of cluster hostnames(cluster.local suffix by default).
+
+More information on the rationale behind this implementation can be found [here](https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/0030-nodelocal-dns-cache.md).
+
+**As per the 2.10 release, Nodelocal DNS cache is enabled by default.**
+
 
 Limitations
 -----------
@@ -141,9 +131,7 @@ Limitations
 
 * There is
   [no way to specify a custom value](https://github.com/kubernetes/kubernetes/issues/33554)
-  for the SkyDNS ``ndots`` param via an
-  [option for KubeDNS](https://github.com/kubernetes/kubernetes/blob/master/cmd/kube-dns/app/options/options.go)
-  add-on, while SkyDNS supports it though.
+  for the SkyDNS ``ndots`` param.
 
 * the ``searchdomains`` have a limitation of a 6 names and 256 chars
   length. Due to default ``svc, default.svc`` subdomains, the actual

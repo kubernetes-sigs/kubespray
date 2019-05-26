@@ -2,14 +2,13 @@
 Description=Docker Application Container Engine
 Documentation=http://docs.docker.com
 {% if ansible_os_family == "RedHat" %}
-After=network.target docker-storage-setup.service
-Wants=docker-storage-setup.service
+After=network.target {{ ' docker-storage-setup.service' if docker_container_storage_setup else '' }}{{ ' containerd.service' if installed_docker_version.stdout is version('18.09.1', '>=') else '' }}
+{{ 'Wants=docker-storage-setup.service' if docker_container_storage_setup else '' }}
 {% elif ansible_os_family == "Debian" %}
-After=network.target docker.socket
+After=network.target docker.socket{{ ' containerd.service' if installed_docker_version.stdout is version('18.09.1', '>=') else '' }}
 Wants=docker.socket
 {% elif ansible_os_family == "Suse" %}
-After=network.target containerd.socket containerd.service
-Requires=containerd.socket containerd.service
+After=network.target{{ ' containerd.service' if installed_docker_version.stdout is version('18.09.1', '>=') else '' }}
 {% endif %}
 
 [Service]
@@ -23,7 +22,7 @@ Delegate=yes
 KillMode=process
 ExecStart={{ docker_bin_dir }}/docker{% if installed_docker_version.stdout is version('17.03', '<') %} daemon{% else %}d{% endif %} \
 {% if ansible_os_family == "Suse" %}
-          --containerd /run/containerd/containerd.sock --add-runtime oci=/usr/bin/docker-runc \
+          --add-runtime oci=/usr/sbin/docker-runc \
 {% endif %}
           $DOCKER_OPTS \
           $DOCKER_STORAGE_OPTIONS \

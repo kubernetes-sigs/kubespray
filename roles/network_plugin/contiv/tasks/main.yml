@@ -22,7 +22,7 @@
   set_fact:
     kube_apiserver_endpoint_for_contiv: |-
       {% if not is_kube_master and loadbalancer_apiserver_localhost -%}
-      https://localhost:{{ nginx_kube_apiserver_port|default(kube_apiserver_port) }}
+      https://localhost:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }}
       {%- elif loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
       https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}
       {%-   if loadbalancer_apiserver.port|string != "443" -%}
@@ -56,7 +56,8 @@
       - {name: contiv-netplugin, file: contiv-netplugin.yml, type: daemonset}
   when: inventory_hostname in groups['kube-master']
 
-- set_fact:
+- name: Contiv | Add another manifest if contiv_enable_api_proxy is true
+  set_fact:
     contiv_manifests: |-
       {% set _ = contiv_manifests.append({"name": "contiv-api-proxy", "file": "contiv-api-proxy.yml", "type": "daemonset"}) %}
       {{ contiv_manifests }}
@@ -143,14 +144,20 @@
     - contiv_enable_api_proxy
     - contiv_generate_certificate
 
-- name: Contiv | Copy cni plugins from hyperkube
-  command: "{{ docker_bin_dir }}/docker run --rm -v /opt/cni/bin:/cnibindir {{ hyperkube_image_repo }}:{{ hyperkube_image_tag }} /bin/bash -c '/bin/cp -fa /opt/cni/bin/* /cnibindir/'"
-  register: cni_task_result
-  until: cni_task_result.rc == 0
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: false
-  tags: [hyperkube, upgrade]
+- name: Contiv | Set cni directory permissions
+  file:
+    path: /opt/cni/bin
+    state: directory
+    owner: kube
+    recurse: true
+    mode: 0755
+
+- name: Contiv | Copy cni plugins
+  unarchive:
+    src: "{{ local_release_dir }}/cni-plugins-{{ image_arch }}-{{ cni_version }}.tgz"
+    dest: "/opt/cni/bin"
+    mode: 0755
+    remote_src: yes
 
 - name: Contiv | Copy netctl binary from docker container
   command: sh -c "{{ docker_bin_dir }}/docker rm -f netctl-binarycopy;

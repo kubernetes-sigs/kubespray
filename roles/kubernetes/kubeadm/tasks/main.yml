@@ -16,16 +16,22 @@
   register: kubelet_conf
 
 - name: Calculate kubeadm CA cert hash
-  shell: openssl x509 -pubkey -in {{ kube_config_dir }}/ssl/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+  shell: openssl x509 -pubkey -in {{ kube_cert_dir }}/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
   register: kubeadm_ca_hash
   delegate_to: "{{ groups['kube-master'][0] }}"
   run_once: true
 
 - name: Create kubeadm token for joining nodes with 24h expiration (default)
   command: "{{ bin_dir }}/kubeadm token create"
-  run_once: true
   register: temp_token
   delegate_to: "{{ groups['kube-master'][0] }}"
+  when: kubeadm_token is not defined
+
+- name: Set kubeadm_token to generated token
+  set_fact:
+    kubeadm_token: "{{ temp_token.stdout }}"
+  when: kubeadm_token is not defined
+
 
 - name: gets the kubeadm version
   command: "{{ bin_dir }}/kubeadm version -o short"
@@ -46,26 +52,56 @@
 - name: sets kubeadm api version to v1alpha3
   set_fact:
     kubeadmConfig_api_version: v1alpha3
-  when: kubeadm_output.stdout is version('v1.12.0', '>=')
+  when:
+    - kubeadm_output.stdout is version('v1.12.0', '>=')
+    - kubeadm_output.stdout is version('v1.13.0', '<')
+
+- name: sets kubeadm api version to v1beta1
+  set_fact:
+    kubeadmConfig_api_version: v1beta1
+  when: kubeadm_output.stdout is version('v1.13.0', '>=')
 
 - name: Create kubeadm client config
   template:
     src: "kubeadm-client.conf.{{ kubeadmConfig_api_version }}.j2"
-    dest: "{{ kube_config_dir }}/kubeadm-client.{{ kubeadmConfig_api_version }}.conf"
+    dest: "{{ kube_config_dir }}/kubeadm-client.conf"
     backup: yes
   when: not is_kube_master
-  vars:
-    kubeadm_token: "{{ temp_token.stdout }}"
 
 - name: Join to cluster if needed
-  command: >-
-    {{ bin_dir }}/kubeadm join
-    --config {{ kube_config_dir}}/kubeadm-client.{{ kubeadmConfig_api_version }}.conf
-    --ignore-preflight-errors=all
-  register: kubeadm_join
-  when: not is_kube_master and (not kubelet_conf.stat.exists)
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+  when: not is_kube_master and (not kubelet_conf.stat.exists)
+  block:
+
+    - name: Join to cluster
+      command: >-
+        {{ bin_dir }}/kubeadm join
+        --config {{ kube_config_dir }}/kubeadm-client.conf
+        --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+      register: kubeadm_join
+      async: 120
+      poll: 15
+
+  rescue:
+
+    - name: Join to cluster with ignores
+      command: >-
+        {{ bin_dir }}/kubeadm join
+        --config {{ kube_config_dir }}/kubeadm-client.conf
+        --ignore-preflight-errors=all
+      register: kubeadm_join
+      async: 60
+      poll: 15
+
+  always:
+
+    - name: Display kubeadm join stderr if any
+      when: kubeadm_join is failed
+      debug:
+        msg: |
+          Joined with warnings
+          {{ kubeadm_join.stderr_lines }}
 
 - name: Wait for kubelet bootstrap to create config
   wait_for:
@@ -87,14 +123,24 @@
 
 - name: Update server field in kube-proxy kubeconfig
   shell: >-
-    {{ bin_dir }}/kubectl get configmap kube-proxy -n kube-system -o yaml
+    {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get configmap kube-proxy -n kube-system -o yaml
     | sed 's#server:.*#server:\ {{ kube_apiserver_endpoint }}#g'
-    | {{ bin_dir }}/kubectl replace -f -
-  delegate_to: "{{groups['kube-master']|first}}"
+    | {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
   run_once: true
   when:
+    - inventory_hostname == groups['kube-master']|first
     - kubeadm_config_api_fqdn is not defined
-    - is_kube_master
+    - kubeadm_discovery_address != kube_apiserver_endpoint
+    - not kube_proxy_remove
+  tags:
+    - kube-proxy
+
+- name: Restart all kube-proxy pods to ensure that they load the new configmap
+  shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
+  run_once: true
+  when:
+    - inventory_hostname == groups['kube-master']|first
+    - kubeadm_config_api_fqdn is not defined
     - kubeadm_discovery_address != kube_apiserver_endpoint
     - not kube_proxy_remove
   tags:
@@ -107,29 +153,18 @@
     dest: "{{ kube_config_dir }}/node-kubeconfig.yaml"
     state: link
     force: yes
-  when: kube_network_plugin in ['calico','canal']
-
-- name: Restart all kube-proxy pods to ensure that they load the new configmap
-  shell: "{{ bin_dir }}/kubectl delete pod -n kube-system -l k8s-app=kube-proxy"
-  delegate_to: "{{groups['kube-master']|first}}"
-  run_once: true
   when:
-    - kubeadm_config_api_fqdn is not defined
-    - is_kube_master
-    - kubeadm_discovery_address != kube_apiserver_endpoint
-    - not kube_proxy_remove
-  tags:
-    - kube-proxy
+    - kube_network_plugin in ['calico','canal']
+    - calico_version is version('v3.3.0', '<')
 
 # FIXME(jjo): need to post-remove kube-proxy until https://github.com/kubernetes/kubeadm/issues/776
 # is fixed
 - name: Delete kube-proxy daemonset if kube_proxy_remove set, e.g. kube_network_plugin providing proxy services
-  shell: "{{ bin_dir }}/kubectl delete daemonset -n kube-system kube-proxy"
-  delegate_to: "{{groups['kube-master']|first}}"
+  shell: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf delete daemonset -n kube-system kube-proxy"
   run_once: true
   when:
+    - inventory_hostname == groups['kube-master']|first
     - kube_proxy_remove
-    - is_kube_master
     - kubeadm_discovery_address != kube_apiserver_endpoint
   tags:
     - kube-proxy

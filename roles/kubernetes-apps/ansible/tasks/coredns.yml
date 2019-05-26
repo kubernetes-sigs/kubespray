@@ -1,15 +1,20 @@
 ---
 - name: Kubernetes Apps | Lay Down CoreDNS Template
-  template:
-    src: "{{ item.file }}.j2"
+  action: "{{ item.module }}"
+  args:
+    src: "{{ item.file }}{% if item.module == 'template' %}.j2{% endif %}"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
   with_items:
-    - { name: coredns, file: coredns-config.yml, type: configmap }
-    - { name: coredns, file: coredns-sa.yml, type: sa }
-    - { name: coredns, file: coredns-deployment.yml, type: deployment }
-    - { name: coredns, file: coredns-svc.yml, type: svc }
-    - { name: coredns, file: coredns-clusterrole.yml, type: clusterrole }
-    - { name: coredns, file: coredns-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: coredns, module: template, file: coredns-config.yml, type: configmap }
+    - { name: coredns, module: copy, file: coredns-sa.yml, type: sa }
+    - { name: coredns, module: template, file: coredns-deployment.yml, type: deployment }
+    - { name: coredns, module: template, file: coredns-svc.yml, type: svc }
+    - { name: coredns, module: copy, file: coredns-clusterrole.yml, type: clusterrole }
+    - { name: coredns, module: copy, file: coredns-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: dns-autoscaler, module: copy, file: dns-autoscaler-sa.yml, type: sa }
+    - { name: dns-autoscaler, module: copy, file: dns-autoscaler-clusterrole.yml, type: clusterrole }
+    - { name: dns-autoscaler, module: copy, file: dns-autoscaler-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: dns-autoscaler, module: template, file: dns-autoscaler.yml, type: deployment }
   register: coredns_manifests
   vars:
     clusterIP: "{{ skydns_server }}"
@@ -26,6 +31,7 @@
   with_items:
     - { name: coredns, src: coredns-deployment.yml, file: coredns-deployment-secondary.yml, type: deployment }
     - { name: coredns, src: coredns-svc.yml, file: coredns-svc-secondary.yml, type: svc }
+    - { name: dns-autoscaler, src: dns-autoscaler.yml, file: coredns-autoscaler-secondary.yml, type: deployment }
   register: coredns_secondary_manifests
   vars:
     clusterIP: "{{ skydns_server_secondary }}"

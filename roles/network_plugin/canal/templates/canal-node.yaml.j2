@@ -12,9 +12,6 @@ spec:
       k8s-app: canal-node
   template:
     metadata:
-      annotations:
-        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
-        scheduler.alpha.kubernetes.io/critical-pod: ''
       labels:
         k8s-app: canal-node
     spec:
@@ -60,7 +57,53 @@ spec:
           hostPath:
             path: /run/xtables.lock
             type: FileOrCreate
+{% if calico_version is version('v3.4.0', '>=') %}
+      initContainers:
+        # This container installs the Calico CNI binaries
+        # and CNI network config file on each node.
+        - name: install-cni
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          command: ["/install-cni.sh"]
+          env:
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "10-canal.conflist"
+            # Install CNI binaries
+            - name: UPDATE_CNI_BINARIES
+              value: "true"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG_FILE
+              value: "/host/etc/cni/net.d/canal.conflist.template"
+            # Prevents the container from sleeping forever.
+            - name: SLEEP
+              value: "false"
+          volumeMounts:
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+{% endif %}
       containers:
+{% if calico_version is version('v3.3.0', '>=') and calico_version is version('v3.4.0', '<') %}
+        - name: install-cni
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          command: ["/install-cni.sh"]
+          env:
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "10-canal.conflist"
+            # Install CNI binaries
+            - name: UPDATE_CNI_BINARIES
+              value: "true"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG_FILE
+              value: "/host/etc/cni/net.d/canal.conflist.template"
+          volumeMounts:
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+{% endif %}
         # Runs the flannel daemon to enable vxlan networking between
         # container hosts.
         - name: flannel
@@ -176,6 +219,12 @@ spec:
                   fieldPath: spec.nodeName
             - name: FELIX_HEALTHENABLED
               value: "true"
+            # Prior to v3.2.1 iptables didn't acquire the lock, so Calico's own implementation of the lock should be used,
+            # this is not required in later versions https://github.com/projectcalico/calico/issues/2179
+{% if calico_version is version('v3.2.1', '<') %}
+            - name: FELIX_IPTABLESLOCKTIMEOUTSECS
+              value: "10"
+{% endif %}
             # Etcd SSL vars
             - name: ETCD_CA_CERT_FILE
               valueFrom:
@@ -200,15 +249,24 @@ spec:
             privileged: true
           livenessProbe:
             httpGet:
+              host: 127.0.0.1
               path: /liveness
               port: 9099
             periodSeconds: 10
-            initialDelaySeconds: 10
+            initialDelaySeconds: 5
             failureThreshold: 6
           readinessProbe:
+{% if calico_version is version('v3.3.0', '<')%}
             httpGet:
+              host: 127.0.0.1
               path: /readiness
               port: 9099
+{% else %}
+            exec:
+              command:
+              - /bin/calico-node
+              - -felix-ready
+{% endif %}
             periodSeconds: 10
           volumeMounts:
             - mountPath: /lib/modules
@@ -223,6 +281,9 @@ spec:
             - name: "canal-certs"
               mountPath: "{{ canal_cert_dir }}"
               readOnly: true
+            - name: xtables-lock
+              mountPath: /run/xtables.lock
+              readOnly: false
   updateStrategy:
     rollingUpdate:
       maxUnavailable: {{ serial | default('20%') }}

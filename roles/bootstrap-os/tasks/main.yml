@@ -3,74 +3,69 @@
   raw: cat /etc/os-release
   register: os_release
   changed_when: false
+  # This command should always run, even in check mode
+  check_mode: false
   environment: {}
 
-- name: Set bootstrap_os
-  set_fact:
-    os_family: >-
-      {%- if 'Ubuntu' in os_release.stdout -%}
-      ubuntu
-      {%- elif 'Debian' in os_release.stdout -%}
-      debian
-      {%- elif 'CoreOS' in os_release.stdout -%}
-      coreos
-      {%- elif 'Fedora' in os_release.stdout -%}
-      fedora
-      {%- elif 'CentOS' in os_release.stdout -%}
-      centos
-      {%- elif 'OpenSUSE' in os_release.stdout -%}
-      opensuse
-      {%- endif -%}
+- include_tasks: bootstrap-centos.yml
+  when: '"CentOS" in os_release.stdout or "Red Hat Enterprise Linux" in os_release.stdout'
 
-- include_tasks: bootstrap-ubuntu.yml
-  when: os_family == "ubuntu"
-
-- include_tasks: bootstrap-debian.yml
-  when: os_family == "debian"
+- include_tasks: bootstrap-clearlinux.yml
+  when: '"Clear Linux OS" in os_release.stdout'
 
 - include_tasks: bootstrap-coreos.yml
-  when: os_family == "coreos"
+  when: '"CoreOS" in os_release.stdout'
+
+- include_tasks: bootstrap-debian.yml
+  when: '"Debian" in os_release.stdout or "Ubuntu" in os_release.stdout'
 
 - include_tasks: bootstrap-fedora.yml
-  when: os_family == "fedora"
-
-- include_tasks: bootstrap-centos.yml
-  when: os_family == "centos"
+  when: '"Fedora" in os_release.stdout'
 
 - include_tasks: bootstrap-opensuse.yml
-  when: os_family == "opensuse"
-
-- import_tasks: setup-pipelining.yml
+  when: '"openSUSE" in os_release.stdout'
 
 - name: Create remote_tmp for it is used by another module
   file:
-    path: "{{ lookup('config', 'DEFAULT_REMOTE_TMP', on_missing='skip', wantlist=True) | first | default('~/.ansible/tmp') }}"
+    path: "{{ ansible_remote_tmp | default('~/.ansible/tmp') }}"
     state: directory
     mode: 0700
 
-- name: Gather nodes hostnames
+# Workaround for https://github.com/ansible/ansible/issues/42726
+# (1/3)
+- name: Gather host facts to get ansible_os_family
   setup:
     gather_subset: '!all'
     filter: ansible_*
 
-- name: Assign inventory name to unconfigured hostnames (non-CoreOS and Tumbleweed)
+- name: Assign inventory name to unconfigured hostnames (non-CoreOS, Suse and ClearLinux)
   hostname:
-    name: "{{inventory_hostname}}"
+    name: "{{ inventory_hostname }}"
   when:
     - override_system_hostname
-    - ansible_distribution not in ['openSUSE Tumbleweed']
-    - ansible_os_family not in ['CoreOS', 'Container Linux by CoreOS']
+    - ansible_os_family not in ['Suse', 'Container Linux by CoreOS', 'ClearLinux']
 
-- name: Assign inventory name to unconfigured hostnames (CoreOS and Tumbleweed only)
-  command: "hostnamectl set-hostname  {{inventory_hostname}}"
+# (2/3)
+- name: Assign inventory name to unconfigured hostnames (CoreOS, Suse and ClearLinux only)
+  command: "hostnamectl set-hostname {{ inventory_hostname }}"
   register: hostname_changed
+  changed_when: false
   when:
-    - ansible_distribution in ['openSUSE Tumbleweed'] or ansible_os_family in ['CoreOS', 'Container Linux by CoreOS']
     - override_system_hostname
+    - ansible_os_family in ['Suse', 'Container Linux by CoreOS', 'ClearLinux']
 
-- name: Update hostname fact (CoreOS and Tumbleweed only)
+# (3/3)
+- name: Update hostname fact (CoreOS, Suse and ClearLinux only)
   setup:
     gather_subset: '!all'
     filter: ansible_hostname
   when:
-    - hostname_changed.changed
+    - override_system_hostname
+    - ansible_os_family in ['Suse', 'Container Linux by CoreOS', 'ClearLinux']
+
+- name: "Install ceph-commmon package"
+  package:
+    name:
+      - ceph-common
+    state: present
+  when: rbd_provisioner_enabled|default(false)

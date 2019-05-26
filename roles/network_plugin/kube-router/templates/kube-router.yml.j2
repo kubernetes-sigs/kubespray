@@ -60,8 +60,6 @@ spec:
       labels:
         k8s-app: kube-router
         tier: node
-      annotations:
-        scheduler.alpha.kubernetes.io/critical-pod: ''
     spec:
 {% if kube_version is version('v1.11.1', '>=') %}
       priorityClassName: system-cluster-critical
@@ -86,13 +84,13 @@ spec:
         - --advertise-loadbalancer-ip
 {% endif %}
 {% if kube_router_peer_router_asns %}
-        - --peer-router-asns {{ kube_router_peer_router_asns }}
+        - --peer-router-asns={{ kube_router_peer_router_asns }}
 {% endif %}
 {% if kube_router_peer_router_ips %}
-        - --peer-router-ips {{ kube_router_peer_router_ips }}
+        - --peer-router-ips={{ kube_router_peer_router_ips }}
 {% endif %}
 {% if kube_router_peer_router_ports %}
-        - --peer-router-ports {{ kube_router_peer_router_ports }}
+        - --peer-router-ports={{ kube_router_peer_router_ports }}
 {% endif %}
 {% for arg in kube_router_extra_args %}
         - "{{ arg }}"
@@ -106,7 +104,7 @@ spec:
           httpGet:
             path: /healthz
             port: 20244
-          initialDelaySeconds: 10
+          initialDelaySeconds: 5
           periodSeconds: 3
         resources:
           requests:
@@ -115,6 +113,11 @@ spec:
         securityContext:
           privileged: true
         volumeMounts:
+{% if kube_router_enable_dsr %}
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+          readOnly: true
+{% endif %}
         - name: lib-modules
           mountPath: /lib/modules
           readOnly: true
@@ -149,12 +152,22 @@ spec:
         - name: kubeconfig
           mountPath: /var/lib/kube-router
       hostNetwork: true
+{% if kube_router_enable_dsr %}
+      hostIPC: true
+      hostPID: true
+{% endif %}
       tolerations:
       - operator: Exists
       # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
       - key: CriticalAddonsOnly
         operator: "Exists"
       volumes:
+{% if kube_router_enable_dsr %}
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+{% endif %}
       - name: lib-modules
         hostPath:
           path: /lib/modules

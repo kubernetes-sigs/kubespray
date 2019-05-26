@@ -47,7 +47,8 @@
     - docker
 
 - name: reset | systemctl daemon-reload
-  command: systemctl daemon-reload
+  systemd:
+    daemon_reload: true
   when: services_removed.changed or docker_dropins_removed.changed
 
 - name: reset | remove all containers
@@ -67,8 +68,8 @@
   tags:
     - docker
 
-- name: reset | remove all cri-o containers
-  shell: "crictl ps -aq | xargs -r crictl rm"
+- name: reset | stop all cri-o containers
+  shell: "crictl ps -aq | xargs -r crictl stop"
   register: remove_all_crio_containers
   retries: 4
   until: remove_all_crio_containers.rc == 0
@@ -77,6 +78,36 @@
     - crio
   when: container_manager == 'crio'
 
+
+- name: reset | remove all cri-o containers
+  shell: "crictl ps -aq | xargs -r crictl rm"
+  register: remove_all_crio_containers
+  retries: 4
+  until: remove_all_crio_containers.rc == 0
+  delay: 5
+  tags:
+    - crio
+  when: container_manager == 'crio' and deploy_container_engine|default(true)
+
+- name: reset | stop all cri-o pods
+  shell: "crictl pods -q | xargs -r crictl stopp"
+  register: remove_all_crio_containers
+  retries: 4
+  until: remove_all_crio_containers.rc == 0
+  delay: 5
+  tags:
+    - crio
+  when: container_manager == 'crio'
+
+- name: reset | remove all cri-o pods
+  shell: "crictl pods -q | xargs -r crictl rmp"
+  register: remove_all_crio_containers
+  retries: 4
+  until: remove_all_crio_containers.rc == 0
+  delay: 5
+  tags:
+    - crio
+  when: container_manager == 'crio'
 - name: reset | gather mounted kubelet dirs
   shell: mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
   args:
@@ -87,7 +118,7 @@
     - mounts
 
 - name: reset | unmount kubelet dirs
-  command: umount -f {{item}}
+  command: umount -f {{ item }}
   with_items: '{{ mounted_dirs.stdout_lines }}'
   register: umount_dir
   retries: 4
@@ -110,14 +141,36 @@
 - name: Clear IPVS virtual server table
   shell: "ipvsadm -C"
   when:
+    - kube_proxy_mode == 'ipvs' and inventory_hostname in groups['k8s-cluster']
+
+- name: reset | check kube-ipvs0 network device
+  stat:
+    path: /sys/class/net/kube-ipvs0
+  register: kube_ipvs0
+
+- name: reset | Remove kube-ipvs0
+  command: "ip link del kube-ipvs0"
+  when:
     - kube_proxy_mode == 'ipvs'
+    - kube_ipvs0.stat.exists
+
+- name: reset | check nodelocaldns network device
+  stat:
+    path: /sys/class/net/nodelocaldns
+  register: nodelocaldns_device
+
+- name: reset | Remove nodelocaldns
+  command: "ip link del nodelocaldns"
+  when:
+    - enable_nodelocaldns|default(false)|bool
+    - nodelocaldns_device.stat.exists
 
 - name: reset | delete some files and directories
   file:
     path: "{{ item }}"
     state: absent
   with_items:
-    - "{{kube_config_dir}}"
+    - "{{ kube_config_dir }}"
     - /var/lib/kubelet
     - /root/.kube
     - /root/.helm
@@ -162,7 +215,6 @@
     - "{{ bin_dir }}/calicoctl"
     - "{{ bin_dir }}/calico-upgrade"
     - "{{ bin_dir }}/weave"
-    - /var/lib/rkt
     - /var/lib/cni
     - /etc/vault
     - /etc/contiv
@@ -200,7 +252,7 @@
 - name: reset | include file with reset tasks specific to the network_plugin if exists
   include_tasks: "{{ (role_path + '/../network_plugin/' + kube_network_plugin + '/tasks/reset.yml') | realpath  }}"
   when:
-    - kube_network_plugin in ['flannel', 'cilium', 'contiv', 'kube-router']
+    - kube_network_plugin in ['flannel', 'cilium', 'contiv', 'kube-router', 'calico']
   tags:
     - network
 

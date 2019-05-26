@@ -10,20 +10,19 @@ most modern installs of OpenStack that support the basic services.
 
 ### Known compatible public clouds
 - [Auro](https://auro.io/)
-- [BetaCloud](https://www.betacloud.io/)
+- [Betacloud](https://www.betacloud.io/)
 - [CityCloud](https://www.citycloud.com/)
 - [DreamHost](https://www.dreamhost.com/cloud/computing/)
 - [ELASTX](https://elastx.se/)
 - [EnterCloudSuite](https://www.entercloudsuite.com/)
 - [FugaCloud](https://fuga.cloud/)
+- [Open Telekom Cloud](https://cloud.telekom.de/) : requires to set the variable `wait_for_floatingip = "true"` in your cluster.tf
 - [OVH](https://www.ovh.com/)
 - [Rackspace](https://www.rackspace.com/)
 - [Ultimum](https://ultimum.io/)
 - [VexxHost](https://vexxhost.com/)
 - [Zetta](https://www.zetta.io/)
 
-### Known incompatible public clouds
-- T-Systems / Open Telekom Cloud: requires `wait_until_associated`
 
 ## Approach
 The terraform configuration inspects variables found in
@@ -51,8 +50,8 @@ floating IP addresses or not.
 Note that the Ansible script will report an invalid configuration if you wind up
 with an even number of etcd instances since that is not a valid configuration. This
 restriction includes standalone etcd nodes that are deployed in a cluster along with
-master nodes with etcd replicas. As an example, if you have three master nodes with 
-etcd replicas and three standalone etcd nodes, the script will fail since there are 
+master nodes with etcd replicas. As an example, if you have three master nodes with
+etcd replicas and three standalone etcd nodes, the script will fail since there are
 now six total etcd replicas.
 
 ### GlusterFS
@@ -109,6 +108,7 @@ Create an inventory directory for your cluster by copying the existing sample an
 $ cp -LRp contrib/terraform/openstack/sample-inventory inventory/$CLUSTER
 $ cd inventory/$CLUSTER
 $ ln -s ../../contrib/terraform/openstack/hosts
+$ ln -s ../../contrib
 ```
 
 This will be the base for subsequent Terraform commands.
@@ -116,8 +116,8 @@ This will be the base for subsequent Terraform commands.
 #### OpenStack access and credentials
 
 No provider variables are hardcoded inside `variables.tf` because Terraform
-supports various authentication methods for OpenStack: the older script and 
-environment method (using `openrc`) as well as a newer declarative method, and 
+supports various authentication methods for OpenStack: the older script and
+environment method (using `openrc`) as well as a newer declarative method, and
 different OpenStack environments may support Identity API version 2 or 3.
 
 These are examples and may vary depending on your OpenStack cloud provider,
@@ -228,7 +228,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tf`.
 |`dns_nameservers`| An array of DNS name server names to be used by hosts in the internal subnet. |
 |`floatingip_pool` | Name of the pool from which floating IPs will be allocated |
 |`external_net` | UUID of the external network that will be routed to |
-|`flavor_k8s_master`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through`nova flavor-list` |
+|`flavor_k8s_master`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through `openstack flavor list` |
 |`image`,`image_gfs` | Name of the image to use in provisioning the compute resources. Should already be loaded into glance. |
 |`ssh_user`,`ssh_user_gfs` | The username to ssh into the image with. This usually depends on the image you have selected |
 |`public_key_path` | Path on your local workstation to the public key file you wish to use in creating the key pairs |
@@ -242,7 +242,10 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tf`.
 |`supplementary_master_groups` | To add ansible groups to the masters, such as `kube-node` for tainting them as nodes, empty by default. |
 |`supplementary_node_groups` | To add ansible groups to the nodes, such as `kube-ingress` for running ingress controller pods, empty by default. |
 |`bastion_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, `["0.0.0.0/0"]` by default |
+|`master_allowed_remote_ips` | List of CIDR blocks allowed to initiate an API connection, `["0.0.0.0/0"]` by default |
+|`k8s_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, empty by default |
 |`worker_allowed_ports` | List of ports to open on worker nodes, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "0.0.0.0/0"}]` by default |
+|`wait_for_floatingip` | Let Terraform poll the instance until the floating IP has been associated, `false` by default. |
 
 #### Terraform state files
 
@@ -358,7 +361,7 @@ If it fails try to connect manually via SSH.  It could be something as simple as
 
 ### Configure cluster variables
 
-Edit `inventory/$CLUSTER/group_vars/all.yml`:
+Edit `inventory/$CLUSTER/group_vars/all/all.yml`:
 - **bin_dir**:
 ```
 # Directory where the binaries will be installed
@@ -371,7 +374,7 @@ bin_dir: /opt/bin
 ```
 cloud_provider: openstack
 ```
-Edit `inventory/$CLUSTER/group_vars/k8s-cluster.yml`:
+Edit `inventory/$CLUSTER/group_vars/k8s-cluster/k8s-cluster.yml`:
 - Set variable **kube_network_plugin** to your desired networking plugin.
   - **flannel** works out-of-the-box
   - **calico** requires [configuring OpenStack Neutron ports](/docs/openstack.md) to allow service and pod subnets
@@ -415,8 +418,8 @@ ssh [os-user]@[master-ip] sudo ls /etc/kubernetes/ssl/
 ```
 4. Get `admin`'s certificates and keys:
 ```
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-[cluster_name]-k8s-master-1-key.pem > admin-key.pem
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-[cluster_name]-k8s-master-1.pem > admin.pem
+ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-kube-master-1-key.pem > admin-key.pem
+ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-kube-master-1.pem > admin.pem
 ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/ca.pem > ca.pem
 ```
 5. Configure kubectl:

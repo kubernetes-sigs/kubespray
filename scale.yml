@@ -1,12 +1,13 @@
 ---
 - hosts: localhost
+  gather_facts: False
+  become: no
   tasks:
-    - name: "Check ansible version !=2.7.0"
+    - name: "Check ansible version >=2.7.8"
       assert:
-        msg: "Ansible V2.7.0 can't be used until: https://github.com/ansible/ansible/issues/46600 is fixed"
+        msg: "Ansible must be v2.7.8 or higher"
         that:
-          - ansible_version.string is version("2.7.0", "!=")
-          - ansible_version.string is version("2.5.0", ">=")
+          - ansible_version.string is version("2.7.8", ">=")
       tags:
         - check
   vars:
@@ -18,41 +19,38 @@
     - { role: kubespray-defaults}
     - { role: bastion-ssh-config, tags: ["localhost", "bastion"]}
 
-##Bootstrap any new workers
-- hosts: kube-node
+- name: Bootstrap any new workers
+  hosts: kube-node
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   gather_facts: false
-  vars:
-    ansible_ssh_pipelining: false
   roles:
     - { role: kubespray-defaults}
     - { role: bootstrap-os, tags: bootstrap-os}
 
-##We still have to gather facts about our masters and etcd nodes
-- hosts: k8s-cluster:etcd:calico-rr
+- name: Gather facts about our masters and etcd nodes
+  hosts: k8s-cluster:etcd:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   vars:
     ansible_ssh_pipelining: true
   gather_facts: true
 
-##We need to genereate the etcd certificates beforhand
-- hosts: etcd
+- name: Generate the etcd certificates beforehand
+  hosts: etcd
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-  - { role: kubespray-defaults}
-  - { role: etcd, tags: etcd, etcd_cluster_setup: false }
+    - { role: kubespray-defaults}
+    - { role: etcd, tags: etcd, etcd_cluster_setup: false }
 
-##Target only workers to get kubelet installed and checking in on any new nodes
-- hosts: kube-node
+- name: Target only workers to get kubelet installed and checking in on any new nodes
+  hosts: kube-node
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes/preinstall, tags: preinstall }
-    - { role: container-engine, tags: "container-engine"}
+    - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
     - { role: download, tags: download, when: "not skip_downloads" }
     - { role: etcd, tags: etcd, etcd_cluster_setup: false }
-    - { role: vault, tags: vault, when: "cert_management == 'vault'"}
     - { role: kubernetes/node, tags: node }
-    - { role: kubernetes/kubeadm, tags: kubeadm, when: "kubeadm_enabled" }
+    - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: network_plugin, tags: network }
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"

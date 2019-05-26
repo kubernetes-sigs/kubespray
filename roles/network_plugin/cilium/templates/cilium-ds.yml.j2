@@ -21,12 +21,6 @@ spec:
       labels:
         k8s-app: cilium
         kubernetes.io/cluster-service: "true"
-      annotations:
-        # This annotation plus the CriticalAddonsOnly toleration makes
-        # cilium to be a critical pod in the cluster, which ensures cilium
-        # gets priority scheduling.
-        # https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
-        scheduler.alpha.kubernetes.io/critical-pod: ''
 {% if cilium_enable_prometheus %}
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
@@ -38,7 +32,7 @@ spec:
       serviceAccountName: cilium
       initContainers:
         - name: clean-cilium-state
-          image: docker.io/library/busybox:1.28.4
+          image: {{ cilium_init_image_repo }}:{{ cilium_init_image_tag }}
           imagePullPolicy: IfNotPresent
           command: ['sh', '-c', 'if [ "${CLEAN_CILIUM_STATE}" = "true" ]; then rm -rf /var/run/cilium/state; rm -rf /sys/fs/bpf/tc/globals/cilium_*; fi']
           volumeMounts:
@@ -138,10 +132,7 @@ spec:
               command:
                 - cilium
                 - status
-            # The initial delay for the liveness probe is intentionally large to
-            # avoid an endless kill & restart cycle if in the event that the initial
-            # bootstrapping takes longer than expected.
-            initialDelaySeconds: 120
+            initialDelaySeconds: 15
             failureThreshold: 10
             periodSeconds: 10
           readinessProbe:

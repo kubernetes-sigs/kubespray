@@ -1,13 +1,13 @@
 ---
 - hosts: localhost
   gather_facts: false
+  become: no
   tasks:
-    - name: "Check ansible version !=2.7.0"
+    - name: "Check ansible version >=2.7.8"
       assert:
-        msg: "Ansible V2.7.0 can't be used until: https://github.com/ansible/ansible/issues/46600 is fixed"
+        msg: "Ansible must be v2.7.8 or higher"
         that:
-          - ansible_version.string is version("2.7.0", "!=")
-          - ansible_version.string is version("2.5.0", ">=")
+          - ansible_version.string is version("2.7.8", ">=")
       tags:
         - check
   vars:
@@ -38,7 +38,7 @@
   pre_tasks:
     - name: gather facts from all instances
       setup:
-      delegate_to: "{{item}}"
+      delegate_to: "{{ item }}"
       delegate_facts: True
       with_items: "{{ groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]) }}"
 
@@ -48,16 +48,9 @@
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes/preinstall, tags: preinstall }
-    - { role: container-engine, tags: "container-engine"}
+    - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
     - { role: download, tags: download, when: "not skip_downloads" }
-  environment: "{{proxy_env}}"
-
-- hosts: etcd:k8s-cluster:vault
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults, when: "cert_management == 'vault'" }
-    - { role: vault, tags: vault, vault_bootstrap: true, when: "cert_management == 'vault'" }
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"
 
 - hosts: etcd
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -71,29 +64,22 @@
     - { role: kubespray-defaults}
     - { role: etcd, tags: etcd, etcd_cluster_setup: false }
 
-- hosts: etcd:k8s-cluster:vault
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults, when: "cert_management == 'vault'"}
-    - { role: vault, tags: vault, when: "cert_management == 'vault'"}
-  environment: "{{proxy_env}}"
-
-#Handle upgrades to master components first to maintain backwards compat.
-- hosts: kube-master
+- name: Handle upgrades to master components first to maintain backwards compat.
+  hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: 1
   roles:
     - { role: kubespray-defaults}
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
     - { role: kubernetes/node, tags: node }
-    - { role: kubernetes/master, tags: master }
+    - { role: kubernetes/master, tags: master, upgrade_cluster_setup: true }
     - { role: kubernetes/client, tags: client }
     - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
     - { role: upgrade/post-upgrade, tags: post-upgrade }
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"
 
-#Upgrade calico on all masters and nodes
-- hosts: kube-master:kube-node
+- name: Upgrade calico on all masters and nodes
+  hosts: kube-master:kube-node
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: "{{ serial | default('20%') }}"
   roles:
@@ -102,39 +88,41 @@
     - { role: kubernetes-apps/network_plugin, tags: network }
     - { role: kubernetes-apps/policy_controller, tags: policy-controller }
 
-#Finally handle worker upgrades, based on given batch size
-- hosts: kube-node:!kube-master
+- name: Finally handle worker upgrades, based on given batch size
+  hosts: kube-node:!kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: "{{ serial | default('20%') }}"
   roles:
     - { role: kubespray-defaults}
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
     - { role: kubernetes/node, tags: node }
-    - { role: kubernetes/kubeadm, tags: kubeadm, when: "kubeadm_enabled" }
+    - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: upgrade/post-upgrade, tags: post-upgrade }
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"
 
 - hosts: kube-master[0]
   any_errors_fatal: true
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes-apps/rotate_tokens, tags: rotate_tokens, when: "secret_changed|default(false)" }
+    - { role: win_nodes/kubernetes_patch, tags: ["master", "win_nodes"]}
 
 - hosts: calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: network_plugin/calico/rr, tags: network }
-
-- hosts: k8s-cluster
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults}
-    - { role: dnsmasq, when: "dns_mode == 'dnsmasq_kubedns'", tags: dnsmasq }
-    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }
+  environment: "{{ proxy_env }}"
 
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes-apps, tags: apps }
+  environment: "{{ proxy_env }}"
+
+- hosts: k8s-cluster
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }

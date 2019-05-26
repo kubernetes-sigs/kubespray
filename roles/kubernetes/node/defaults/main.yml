@@ -1,28 +1,15 @@
 ---
-# Valid options: docker (default), rkt, or host
-kubelet_deployment_type: host
-
 # change to 0.0.0.0 to enable insecure access from anywhere (not recommended)
 kube_apiserver_insecure_bind_address: 127.0.0.1
 
 # advertised host IP for kubelet. This affects network plugin config. Take caution
-kubelet_address: "{{ ip | default(ansible_default_ipv4['address']) }}"
+kubelet_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
 
 # bind address for kubelet. Set to 0.0.0.0 to listen on all interfaces
 kubelet_bind_address: "{{ ip | default('0.0.0.0') }}"
 
 # resolv.conf to base dns config
 kube_resolv_conf: "/etc/resolv.conf"
-
-# bind address for kube-proxy health check
-kube_proxy_healthz_bind_address: "127.0.0.1"
-
-# Can be ipvs, iptables
-kube_proxy_mode: iptables
-
-# If using the pure iptables proxy, SNAT everything. Note that it breaks any
-# policy engine.
-kube_proxy_masquerade_all: false
 
 # These options reflect limitations of running kubelet in a container.
 # Modify at your own risk
@@ -43,6 +30,9 @@ kubelet_disable_shared_pid: true
 ### fail with swap on (default true)
 kubelet_fail_swap_on: true
 
+# Optionally remove kube_proxy installed by kubeadm
+kube_proxy_remove: false
+
 # Reserve this space for kube resources
 kube_memory_reserved: 256M
 kube_cpu_reserved: 100m
@@ -52,27 +42,15 @@ kube_master_cpu_reserved: 200m
 
 kubelet_status_update_frequency: 10s
 
-# Limits for kube components and nginx load balancer app
-kube_proxy_memory_limit: 2000M
-kube_proxy_cpu_limit: 500m
-kube_proxy_memory_requests: 64M
-kube_proxy_cpu_requests: 150m
-nginx_memory_limit: 512M
-nginx_cpu_limit: 300m
-nginx_memory_requests: 32M
-nginx_cpu_requests: 25m
+# Requests for load balancer app
+loadbalancer_apiserver_memory_requests: 32M
+loadbalancer_apiserver_cpu_requests: 25m
 
 # kube_api_runtime_config:
 #   - extensions/v1beta1/daemonsets=true
 #   - extensions/v1beta1/deployments=true
 
-nginx_image_repo: nginx
-nginx_image_tag: 1.13
-nginx_config_dir: "/etc/nginx"
-
-etcd_config_dir: /etc/ssl/etcd
-
-kubelet_flexvolumes_plugins_dir: /var/lib/kubelet/volume-plugins
+kubelet_flexvolumes_plugins_dir: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
 
 # A port range to reserve for services with NodePort visibility.
 # Inclusive at both ends of the range.
@@ -89,12 +67,6 @@ kubelet_custom_flags: []
 
 ## Support custom flags to be passed to kubelet only on nodes, not masters
 kubelet_node_custom_flags: []
-
-# This setting is used for rkt based kubelet for deploying hyperkube
-# from a docker based registry ( controls --insecure and docker:// )
-## Empty vaule for quay.io containers
-## docker for docker registry containers
-kube_hyperkube_image_repo: ""
 
 # If non-empty, will use this string as identification instead of the actual hostname
 kube_override_hostname: >-
@@ -154,3 +126,11 @@ vsphere_public_network: "{{ lookup('env', 'VSPHERE_PUBLIC_NETWORK')|default('') 
 # azure_security_group_name:
 # azure_vnet_name:
 # azure_route_table_name:
+# Sku of Load Balancer and Public IP. Candidate values are: basic and standard.
+azure_loadbalancer_sku: basic
+# excludes master nodes from standard load balancer.
+azure_exclude_master_from_standard_lb: true
+# disables the outbound SNAT for public load balancer rules
+azure_disable_outbound_snat: false
+# use instance metadata service where possible
+azure_use_instance_metadata: true

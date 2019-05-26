@@ -17,11 +17,20 @@
     - master
     - node
   with_items:
-    - "{{bin_dir}}"
+    - "{{ bin_dir }}"
     - "{{ kube_config_dir }}"
-    - "{{ kube_config_dir }}/ssl"
+    - "{{ kube_cert_dir }}"
     - "{{ kube_manifest_dir }}"
     - "{{ kube_script_dir }}"
+
+- name: Create kubernetes kubeadm compat cert dir (kubernetes/kubeadm issue 1498)
+  file:
+    src: "{{ kube_cert_dir }}"
+    dest: "{{ kube_cert_compat_dir }}"
+    state: link
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - kube_cert_dir != kube_cert_compat_dir
 
 - name: Create cni directories
   file:
@@ -47,12 +56,12 @@
 
 - name: Create local volume provisioner directories
   file:
-    path: "{{ item.host_dir }}"
+    path: "{{ local_volume_provisioner_storage_classes[item].host_dir }}"
     state: directory
     owner: root
     group: root
     mode: 0700
-  with_items: "{{ local_volume_provisioner_storage_classes }}"
+  with_items: "{{ local_volume_provisioner_storage_classes.keys() | list }}"
   when:
     - inventory_hostname in groups['k8s-cluster']
     - local_volume_provisioner_enabled

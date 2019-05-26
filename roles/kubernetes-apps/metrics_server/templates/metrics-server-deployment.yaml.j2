@@ -1,0 +1,136 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: metrics-server
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+    version: {{ metrics_server_version }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: metrics-server
+      version: {{ metrics_server_version }}
+  template:
+    metadata:
+      name: metrics-server
+      labels:
+        app.kubernetes.io/name: metrics-server
+        version: {{ metrics_server_version }}
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
+    spec:
+{% if kube_version is version('v1.11.1', '>=') %}
+      priorityClassName: system-cluster-critical
+{% endif %}
+      serviceAccountName: metrics-server
+      containers:
+      - name: metrics-server
+        image: {{ metrics_server_image_repo }}:{{ metrics_server_image_tag }}
+        command:
+        - /metrics-server
+        - --logtostderr
+        - --cert-dir=/tmp
+        - --secure-port=8443
+{% if metrics_server_kubelet_preferred_address_types %}
+        - --kubelet-preferred-address-types={{ metrics_server_kubelet_preferred_address_types }}
+{% endif %}
+{% if metrics_server_kubelet_insecure_tls %}
+        - --kubelet-insecure-tls
+{% endif %}
+        - --metric-resolution={{ metrics_server_metric_resolution }}
+        ports:
+        - containerPort: 8443
+          name: https
+          protocol: TCP
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: https
+            scheme: HTTPS
+          successThreshold: 1
+          initialDelaySeconds: 20
+          failureThreshold: 3
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: https
+            scheme: HTTPS
+          successThreshold: 1
+          initialDelaySeconds: 20
+          failureThreshold: 3
+          timeoutSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["all"]
+          readOnlyRootFilesystem: true
+          runAsGroup: 10001
+          runAsNonRoot: true
+          runAsUser: 10001
+      - name: metrics-server-nanny
+        image: {{ addon_resizer_image_repo }}:{{ addon_resizer_image_tag }}
+        resources:
+          limits:
+            cpu: {{ addon_resizer_limits_cpu }}
+            memory: {{ addon_resizer_limits_memory }}
+          requests:
+            cpu: {{ addon_resizer_requests_cpu }}
+            memory: {{ addon_resizer_requests_memory }}
+        env:
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        volumeMounts:
+        - name: metrics-server-config-volume
+          mountPath: /etc/config
+        command:
+          - /pod_nanny
+          - --config-dir=/etc/config
+          - --cpu={{ metrics_server_cpu }}
+          - --extra-cpu=0.5m
+          - --memory={{ metrics_server_memory }}
+          - --extra-memory={{ metrics_server_memory_per_node }}
+          - --threshold=5
+          - --deployment=metrics-server
+          - --container=metrics-server
+          - --poll-period=300000
+          - --estimator=exponential
+          # Specifies the smallest cluster (defined in number of nodes)
+          # resources will be scaled to.
+          - --minClusterSize={{ metrics_server_min_cluster_size }}
+      volumes:
+        - name: metrics-server-config-volume
+          configMap:
+            name: metrics-server-config
+        - name: tmp
+          emptyDir: {}
+{% if not masters_are_not_tainted %}
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+{% endif %}
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: In
+                values:
+                - ""

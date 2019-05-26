@@ -1,10 +1,11 @@
 apiVersion: kubeadm.k8s.io/v1alpha2
 kind: MasterConfiguration
 api:
-{% if groups['kube-master'] | length > 1 and kubeadm_config_api_fqdn is defined %}
-  controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
+{% if kubeadm_config_api_fqdn is defined %}
+  controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}
+  bindPort: {{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
 {% else %}
-  advertiseAddress: {{ ip | default(ansible_default_ipv4.address) }}
+  advertiseAddress: {{ ip | default(fallback_ips[inventory_hostname]) }}
   bindPort: {{ kube_apiserver_port }}
 {% endif %}
 etcd:
@@ -13,24 +14,21 @@ etcd:
 {% for endpoint in etcd_access_addresses.split(',') %}
       - {{ endpoint }}
 {% endfor %}
-      caFile: {{ kube_config_dir }}/ssl/etcd/ca.pem
-      certFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}.pem
-      keyFile: {{ kube_config_dir }}/ssl/etcd/node-{{ inventory_hostname }}-key.pem
+      caFile: {{ etcd_cert_dir }}/{{ kube_etcd_cacert_file }}
+      certFile: {{ etcd_cert_dir }}/{{ kube_etcd_cert_file }}
+      keyFile: {{ etcd_cert_dir }}/{{ kube_etcd_key_file }}
 networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: {{ kube_service_addresses }}
   podSubnet: {{ kube_pods_subnet }}
 kubernetesVersion: {{ kube_version }}
-{% if cloud_provider is defined and cloud_provider != "gce" %}
-cloudProvider: {{ cloud_provider }}
-{% endif %}
 kubeProxy:
   config:
     mode: {{ kube_proxy_mode }}
-    hostnameOverride: {{ inventory_hostname }}
 {% if kube_proxy_nodeport_addresses %}
-    nodePortAddresses: [{{ kube_proxy_nodeport_addresses_cidr }}]
+    nodePortAddresses: {{ kube_proxy_nodeport_addresses }}
 {% endif %}
+    resourceContainer: ""
 authorizationModes:
 {% for mode in authorization_modes %}
 - {{ mode }}
@@ -56,7 +54,7 @@ apiServerExtraArgs:
   endpoint-reconciler-type: lease
 {% endif %}
 {% if etcd_events_cluster_enabled %}
-  etcd-servers-overrides: "/events#{{ etcd_events_access_addresses }}"
+  etcd-servers-overrides: "/events#{{ etcd_events_access_addresses_semicolon }}"
 {% endif %}
   service-node-port-range: {{ kube_apiserver_node_port_range }}
   kubelet-preferred-address-types: "{{ kubelet_preferred_address_types }}"
@@ -85,9 +83,18 @@ apiServerExtraArgs:
 {%   if kube_oidc_groups_claim is defined %}
   oidc-groups-claim: {{ kube_oidc_groups_claim }}
 {%   endif %}
+{%   if kube_oidc_username_prefix is defined %}
+  oidc-username-prefix: "{{ kube_oidc_username_prefix }}"
+{%   endif %}
+{%   if kube_oidc_groups_prefix is defined %}
+  oidc-groups-prefix: "{{ kube_oidc_groups_prefix }}"
+{%   endif %}
+{% endif %}
+{% if kube_webhook_token_auth|default(false) %}
+  authentication-token-webhook-config-file: {{ kube_config_dir }}/webhook-token-auth-config.yaml
 {% endif %}
 {% if kube_encrypt_secret_data %}
-  experimental-encryption-provider-config: {{ kube_config_dir }}/ssl/secrets_encryption.yaml
+  experimental-encryption-provider-config: {{ kube_cert_dir }}/secrets_encryption.yaml
 {% endif %}
   storage-backend: {{ kube_apiserver_storage_backend }}
 {% if kube_api_runtime_config is defined %}
@@ -107,10 +114,20 @@ apiServerExtraArgs:
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
+  cloud-provider: {{cloud_provider}}
+  cloud-config: {{ kube_config_dir }}/cloud_config
+{% elif cloud_provider is defined and cloud_provider in ["external"] %}
+  cloud-config: {{ kube_config_dir }}/cloud_config
+{% endif %}
+{% if kube_network_plugin is defined and kube_network_plugin == 'cloud' %}
+  configure-cloud-routes: "true"
+{% endif %}
 controllerManagerExtraArgs:
   node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
   node-monitor-period: {{ kube_controller_node_monitor_period }}
   pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
+  node-cidr-mask-size: "{{ kube_network_node_prefix }}"
   profiling: "{{ kube_profiling }}"
   terminated-pod-gc-threshold: "{{ kube_controller_terminated_pod_gc_threshold }}"
 {% if kube_feature_gates %}
@@ -119,13 +136,26 @@ controllerManagerExtraArgs:
 {% for key in kube_kubeadm_controller_extra_args %}
   {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
 {% endfor %}
-{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined and openstack_cacert != "" %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
+  cloud-provider: {{cloud_provider}}
+  cloud-config: {{ kube_config_dir }}/cloud_config
+{% elif cloud_provider is defined and cloud_provider in ["external"] %}
+  cloud-config: {{ kube_config_dir }}/cloud_config
+{% endif %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}
 controllerManagerExtraVolumes:
+{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined and openstack_cacert != "" %}
 - name: openstackcacert
   hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
   mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
 {% endif %}
-{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}
+- name: cloud-config
+  hostPath: {{ kube_config_dir }}/cloud_config
+  mountPath: {{ kube_config_dir }}/cloud_config
+{% endif %}
+{% endif %}
+{% if kubernetes_audit or kube_basic_auth|default(true) or kube_token_auth|default(true) or kube_webhook_token_auth|default(false) or ssl_ca_dirs|length %}
 apiServerExtraVolumes:
 {% if kube_basic_auth|default(true) %}
 - name: basic-auth-config
@@ -136,6 +166,11 @@ apiServerExtraVolumes:
 - name: token-auth-config
   hostPath: {{ kube_token_dir }}
   mountPath: {{ kube_token_dir }}
+{% endif %}
+{% if kube_webhook_token_auth|default(false) %}
+- name: webhook-token-auth-config
+  hostPath: {{ kube_config_dir }}/webhook-token-auth-config.yaml
+  mountPath: {{ kube_config_dir }}/webhook-token-auth-config.yaml
 {% endif %}
 {% if kubernetes_audit %}
 - name: {{ audit_policy_name }}
@@ -148,11 +183,27 @@ apiServerExtraVolumes:
   writable: true
 {% endif %}
 {% endif %}
+{% if ssl_ca_dirs|length %}
+{% for dir in ssl_ca_dirs %}
+- name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+  hostPath: {{ dir }}
+  mountPath: {{ dir }}
+  writable: false
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "external"] %}
+- name: cloud-config
+  hostPath: {{ kube_config_dir }}/cloud_config
+  mountPath: {{ kube_config_dir }}/cloud_config
 {% endif %}
 schedulerExtraArgs:
   profiling: "{{ kube_profiling }}"
 {% if kube_feature_gates %}
   feature-gates: {{ kube_feature_gates|join(',') }}
+{% endif %}
+{% if volume_cross_zone_attachment %}
+  policy-config-file: {{ kube_config_dir }}/kube-scheduler-policy.yaml
 {% endif %}
 {% if kube_kubeadm_scheduler_extra_args|length > 0 %}
 {% for key in kube_kubeadm_scheduler_extra_args %}
@@ -160,21 +211,27 @@ schedulerExtraArgs:
 {% endfor %}
 {% endif %}
 apiServerCertSANs:
-{% for san in apiserver_sans.split(' ') | unique %}
+{% for san in apiserver_sans %}
   - {{ san }}
 {% endfor %}
-certificatesDir: {{ kube_config_dir }}/ssl
+certificatesDir: {{ kube_cert_dir }}
 imageRepository: {{ kube_image_repo }}
 unifiedControlPlaneImage: ""
 nodeRegistration:
 {% if kube_override_hostname|default('') %}
   name: {{ kube_override_hostname }}
 {% endif %}
+{% if inventory_hostname not in groups['kube-node'] %}
   taints:
   - effect: NoSchedule
     key: node-role.kubernetes.io/master
+{% else %}
+  taints: {}
+{% endif %}
 {% if container_manager == 'crio' %}
   criSocket: /var/run/crio/crio.sock
+{% else %}
+  criSocket: /var/run/dockershim.sock
 {% endif %}
 {% if dynamic_kubelet_configuration %}
 featureGates:

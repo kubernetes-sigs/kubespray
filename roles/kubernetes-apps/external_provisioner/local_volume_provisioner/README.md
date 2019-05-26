@@ -1,11 +1,51 @@
 Local Storage Provisioner
 =========================
 
-The local storage provisioner is NOT a dynamic storage provisioner as you would
+The [local storage provisioner](https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume)
+is NOT a dynamic storage provisioner as you would
 expect from a cloud provider. Instead, it simply creates PersistentVolumes for
-all manually created volumes located in the directories specified in the `local_volume_provisioner_storage_classes.host_dir` entries.
-The default path is /mnt/disks and the rest of this doc will use that path as
-an example.
+all mounts under the host_dir of the specified storage class.
+These storage classes are specified in the `local_volume_provisioner_storage_classes` nested dictionary.
+Example:
+
+```yaml
+local_volume_provisioner_storage_classes:
+  local-storage:
+    host_dir: /mnt/disks
+    mount_dir: /mnt/disks
+  fast-disks:
+    host_dir: /mnt/fast-disks
+    mount_dir: /mnt/fast-disks
+    block_cleaner_command:
+       - "/scripts/shred.sh"
+       - "2"
+    volume_mode: Filesystem
+    fs_type: ext4
+```
+
+For each key in `local_volume_provisioner_storage_classes` a storageClass with the
+same name is created. The subkeys of each storage class are converted to camelCase and added
+as attributes to the storageClass.
+The result of the above example is:
+
+```yaml
+data:
+  storageClassMap: |
+    local-storage:
+      hostDir: /mnt/disks
+      mountDir: /mnt/disks
+    fast-disks:
+      hostDir: /mnt/fast-disks
+      mountDir:  /mnt/fast-disks
+      blockCleanerCommand:
+        - "/scripts/shred.sh"
+        - "2"
+      volumeMode: Filesystem
+      fsType: ext4
+```
+
+The default StorageClass is local-storage on /mnt/disks,
+the rest of this doc will use that path as an example.
 
 Examples to create local storage volumes
 ----------------------------------------

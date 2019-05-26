@@ -1,0 +1,53 @@
+---
+
+- name: Create image directory
+  file:
+    state: directory
+    path: "{{ images_dir }}"
+
+- name: Download images files
+  get_url:
+    url: "{{ item.value.url }}"
+    dest: "{{ images_dir }}/{{ item.value.filename }}"
+    checksum: "{{ item.value.checksum }}"
+  with_dict:
+    - "{{ images }}"
+
+- name: Convert images which is not in qcow2 format
+  command: qemu-img convert -O qcow2 {{ images_dir }}/{{ item.value.filename }} {{ images_dir }}/{{ item.key }}.qcow2
+  with_dict:
+    - "{{ images }}"
+  when:
+    - not (item.value.converted|bool)
+  register: converted
+
+- name: Make sure all images are ending with qcow2
+  command: cp {{ images_dir }}/{{ item.value.filename }} {{ images_dir }}/{{ item.key }}.qcow2
+  with_dict:
+    - "{{ images }}"
+  when:
+    - item.value.converted|bool
+
+- name: Resize images
+  command: qemu-img resize {{ images_dir }}/{{ item.key }}.qcow2 +8G
+  with_dict:
+    - "{{ images }}"
+
+# STEP 2: Include the images inside a container
+- name: Template default Dockerfile
+  template:
+    src: Dockerfile
+    dest: "{{ images_dir }}/Dockerfile"
+
+- name: Create docker images for each OS
+  command: docker build -t {{ registry }}/vm-{{ item.key }} --build-arg cloud_image="{{ item.key }}.qcow2" {{ images_dir }}
+  with_dict:
+    - "{{ images }}"
+
+- name: docker login
+  command: docker login -u="{{ docker_user }}" -p="{{ docker_password }}" "{{ docker_host }}"
+
+- name: docker push image
+  command: docker push {{ registry }}/vm-{{ item.key }}:latest
+  with_dict:
+    - "{{ images }}"

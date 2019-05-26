@@ -1,0 +1,61 @@
+---
+- name: Gen_tokens | copy tokens generation script
+  copy:
+    src: "kube-gen-token.sh"
+    dest: "{{ kube_script_dir }}/kube-gen-token.sh"
+    mode: 0700
+  run_once: yes
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  when: gen_tokens|default(false)
+
+- name: Gen_tokens | generate tokens for master components
+  command: "{{ kube_script_dir }}/kube-gen-token.sh {{ item[0] }}-{{ item[1] }}"
+  environment:
+    TOKEN_DIR: "{{ kube_token_dir }}"
+  with_nested:
+    - [ "system:kubectl" ]
+    - "{{ groups['kube-master'] }}"
+  register: gentoken_master
+  changed_when: "'Added' in gentoken_master.stdout"
+  run_once: yes
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  when: gen_tokens|default(false)
+
+- name: Gen_tokens | generate tokens for node components
+  command: "{{ kube_script_dir }}/kube-gen-token.sh {{ item[0] }}-{{ item[1] }}"
+  environment:
+    TOKEN_DIR: "{{ kube_token_dir }}"
+  with_nested:
+    - [ 'system:kubelet' ]
+    - "{{ groups['kube-node'] }}"
+  register: gentoken_node
+  changed_when: "'Added' in gentoken_node.stdout"
+  run_once: yes
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  when: gen_tokens|default(false)
+
+- name: Gen_tokens | Get list of tokens from first master
+  shell: "(find {{ kube_token_dir }} -maxdepth 1 -type f)"
+  register: tokens_list
+  check_mode: no
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+  when: sync_tokens|default(false)
+
+- name: Gen_tokens | Gather tokens
+  shell: "tar cfz - {{ tokens_list.stdout_lines | join(' ') }} | base64 --wrap=0"
+  args:
+    warn: false
+  register: tokens_data
+  check_mode: no
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+  when: sync_tokens|default(false)
+
+- name: Gen_tokens | Copy tokens on masters
+  shell: "echo '{{ tokens_data.stdout|quote }}' | base64 -d | tar xz -C /"
+  when:
+    - inventory_hostname in groups['kube-master']
+    - sync_tokens|default(false)
+    - inventory_hostname != groups['kube-master'][0]
+    - tokens_data.stdout

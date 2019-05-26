@@ -1,42 +1,4 @@
 ---
-- name: Update package management cache (YUM)
-  yum:
-    update_cache: yes
-    name: '*'
-  register: yum_task_result
-  until: yum_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  when:
-    - ansible_pkg_mgr == 'yum'
-    - ansible_distribution != 'RedHat'
-    - not is_atomic
-
-- name: Expire management cache (YUM) for Updation - Redhat
-  shell: yum clean expire-cache
-  register: expire_cache_output
-  until: expire_cache_output is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  when:
-    - ansible_pkg_mgr == 'yum'
-    - ansible_distribution == 'RedHat'
-    - not is_atomic
-  tags: bootstrap-os
-
-- name: Update package management cache (YUM) - Redhat
-  shell: yum makecache
-  register: make_cache_output
-  until: make_cache_output is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  when:
-    - ansible_pkg_mgr == 'yum'
-    - ansible_distribution == 'RedHat'
-    - expire_cache_output.rc == 0
-    - not is_atomic
-  tags: bootstrap-os
-
 - name: Update package management cache (zypper) - SUSE
   shell: zypper -n --gpg-auto-import-keys ref
   register: make_cache_output
@@ -88,13 +50,20 @@
 - name: Install packages requirements
   action:
     module: "{{ ansible_pkg_mgr }}"
-    name: "{{ item }}"
+    name: "{{ required_pkgs | default([]) | union(common_required_pkgs|default([])) }}"
     state: latest
   register: pkgs_task_result
   until: pkgs_task_result is succeeded
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  with_items: "{{required_pkgs | default([]) | union(common_required_pkgs|default([]))}}"
-  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] or is_atomic)
+  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "ClearLinux"] or is_atomic)
   tags:
     - bootstrap-os
+
+- name: Install ipvsadm for ClearLinux
+  swupd:
+    name: ipvsadm
+    state: present
+  when:
+    - ansible_os_family in ["ClearLinux"]
+    - kube_proxy_mode == 'ipvs'

@@ -4,14 +4,22 @@
     - k8s-pre-upgrade
 
 - import_tasks: users-file.yml
-  when: kube_basic_auth|default(true)
+  when:
+    - kube_basic_auth|default(true)
+
+- name: Create webhook token auth config
+  template:
+    src: webhook-token-auth-config.yaml.j2
+    dest: "{{ kube_config_dir }}/webhook-token-auth-config.yaml"
+  when: kube_webhook_token_auth|default(false)
 
 - import_tasks: encrypt-at-rest.yml
-  when: kube_encrypt_secret_data
+  when:
+    - kube_encrypt_secret_data
 
-- name: install | Copy kubectl binary from download dir
+- name: Install | Copy kubectl binary from download dir
   synchronize:
-    src: "{{ local_release_dir }}/hyperkube"
+    src: "{{ local_release_dir }}/hyperkube-{{ kube_version }}-{{ image_arch }}"
     dest: "{{ bin_dir }}/kubectl"
     compress: no
     perms: yes
@@ -33,6 +41,14 @@
     - hyperkube
     - kubectl
     - upgrade
+
+- name: Make sure bash_completion.d folder exists
+  file:
+    name: "/etc/bash_completion.d/"
+    state: directory
+  when: ansible_os_family in ["ClearLinux"]
+  tags:
+    - kubectl
 
 - name: Install kubectl bash completion
   shell: "{{ bin_dir }}/kubectl completion bash >/etc/bash_completion.d/kubectl.sh"
@@ -57,10 +73,5 @@
     kube_apiserver_enable_admission_plugins: "{{ kube_apiserver_enable_admission_plugins | difference(['SecurityContextDeny']) | union(['PodSecurityPolicy']) | unique }}"
   when: podsecuritypolicy_enabled
 
-- name: Include kubeadm setup if enabled
+- name: Include kubeadm setup
   import_tasks: kubeadm-setup.yml
-  when: kubeadm_enabled|bool|default(false)
-
-- name: Include static pod setup if not using kubeadm
-  import_tasks: static-pod-setup.yml
-  when: not kubeadm_enabled|bool|default(false)

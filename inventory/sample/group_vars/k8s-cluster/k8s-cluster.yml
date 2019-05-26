@@ -1,3 +1,4 @@
+---
 # Kubernetes configuration dirs and system namespace.
 # Those are where all the additional config stuff goes
 # the kubernetes normally puts in /srv/kubernetes.
@@ -19,7 +20,7 @@ kube_users_dir: "{{ kube_config_dir }}/users"
 kube_api_anonymous_auth: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.12.2
+kube_version: v1.14.1
 
 # kubernetes image repo define
 kube_image_repo: "gcr.io/google-containers"
@@ -51,9 +52,9 @@ kube_users:
       - system:masters
 
 ## It is possible to activate / deactivate selected authentication methods (basic auth, static token auth)
-#kube_oidc_auth: false
-#kube_basic_auth: false
-#kube_token_auth: false
+# kube_oidc_auth: false
+# kube_basic_auth: false
+# kube_token_auth: false
 
 
 ## Variables for OpenID Connect Configuration https://kubernetes.io/docs/admin/authentication/
@@ -69,9 +70,12 @@ kube_users:
 # kube_oidc_groups_prefix: oidc:
 
 
-# Choose network plugin (cilium, calico, contiv, weave or flannel)
+# Choose network plugin (cilium, calico, contiv, weave or flannel. Use cni for generic cni plugin)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
 kube_network_plugin: calico
+
+# Setting multi_networking to true will install Multus: https://github.com/intel/multus-cni
+kube_network_plugin_multus: false
 
 # Kubernetes internal network for services, unused block of space.
 kube_service_addresses: 10.233.0.0/18
@@ -88,19 +92,32 @@ kube_network_node_prefix: 24
 
 # The port the API Server will be listening on.
 kube_apiserver_ip: "{{ kube_service_addresses|ipaddr('net')|ipaddr(1)|ipaddr('address') }}"
-kube_apiserver_port: 6443 # (https)
-kube_apiserver_insecure_port: 8080 # (http)
+kube_apiserver_port: 6443  # (https)
+# kube_apiserver_insecure_port: 8080  # (http)
 # Set to 0 to disable insecure port - Requires RBAC in authorization_modes and kube_api_anonymous_auth: true
-#kube_apiserver_insecure_port: 0 # (disabled)
+kube_apiserver_insecure_port: 0  # (disabled)
 
 # Kube-proxy proxyMode configuration.
 # Can be ipvs, iptables
-kube_proxy_mode: iptables
+kube_proxy_mode: ipvs
 
-# Kube-proxy nodeport address.
-# cidr to bind nodeport services. Flag --nodeport-addresses on kube-proxy manifest
-kube_proxy_nodeport_addresses: false
-# kube_proxy_nodeport_addresses_cidr: 10.0.1.0/24
+# A string slice of values which specify the addresses to use for NodePorts.
+# Values may be valid IP blocks (e.g. 1.2.3.0/24, 1.2.3.4/32).
+# The default empty string slice ([]) means to use all local addresses.
+# kube_proxy_nodeport_addresses_cidr is retained for legacy config
+kube_proxy_nodeport_addresses: >-
+  {%- if kube_proxy_nodeport_addresses_cidr is defined -%}
+  [{{ kube_proxy_nodeport_addresses_cidr }}]
+  {%- else -%}
+  []
+  {%- endif -%}
+
+# If non-empty, will use this string as identification instead of the actual hostname
+# kube_override_hostname: >-
+#   {%- if cloud_provider is defined and cloud_provider in [ 'aws' ] -%}
+#   {%- else -%}
+#   {{ inventory_hostname }}
+#   {%- endif -%}
 
 ## Encrypting Secret Data at Rest (experimental)
 kube_encrypt_secret_data: false
@@ -110,10 +127,13 @@ kube_encrypt_secret_data: false
 cluster_name: cluster.local
 # Subdomains of DNS domain to be resolved via /etc/resolv.conf for hostnet pods
 ndots: 2
-# Can be dnsmasq_kubedns, kubedns, coredns, coredns_dual, manual or none
-dns_mode: kubedns
+# Can be coredns, coredns_dual, manual or none
+dns_mode: coredns
 # Set manual server if using a custom cluster DNS server
-#manual_dns_server: 10.x.x.x
+# manual_dns_server: 10.x.x.x
+# Enable nodelocal dns cache
+enable_nodelocaldns: true
+nodelocaldns_ip: 169.254.25.10
 
 # Can be docker_dns, host_resolvconf or none
 resolvconf_mode: docker_dns
@@ -122,7 +142,6 @@ deploy_netchecker: false
 # Ip address of the kubernetes skydns service
 skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('address') }}"
 skydns_server_secondary: "{{ kube_service_addresses|ipaddr('net')|ipaddr(4)|ipaddr('address') }}"
-dnsmasq_dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(2)|ipaddr('address') }}"
 dns_domain: "{{ cluster_name }}"
 
 ## Container runtime
@@ -132,8 +151,11 @@ container_manager: docker
 ## Settings for containerized control plane (etcd/kubelet/secrets)
 etcd_deployment_type: docker
 kubelet_deployment_type: host
-vault_deployment_type: docker
 helm_deployment_type: host
+
+# Enable kubeadm experimental control plane
+kubeadm_control_plane: false
+kubeadm_certificate_key: "{{ lookup('password', credentials_dir + '/kubeadm_certificate_key.creds length=64 chars=hexdigits') | lower }}"
 
 # K8s image pull policy (imagePullPolicy)
 k8s_image_pull_policy: IfNotPresent
@@ -145,7 +167,7 @@ kubernetes_audit: false
 dynamic_kubelet_configuration: false
 
 # define kubelet config dir for dynamic kubelet
-#kubelet_config_dir:
+# kubelet_config_dir:
 default_kubelet_config_dir: "{{ kube_config_dir }}/dynamic_kubelet_dir"
 dynamic_kubelet_configuration_dir: "{{ kubelet_config_dir | default(default_kubelet_config_dir) }}"
 
@@ -157,10 +179,6 @@ podsecuritypolicy_enabled: false
 # Download kubectl onto the host that runs Ansible in {{ bin_dir }}
 # kubectl_localhost: false
 
-# dnsmasq
-# dnsmasq_upstream_dns_servers:
-#  - /resolvethiszone.with/10.0.4.250
-#  - 8.8.8.8
 
 #  Enable creation of QoS cgroup hierarchy, if true top level QoS and pod cgroups are created. (default true)
 # kubelet_cgroups_per_qos: true
@@ -174,7 +192,7 @@ podsecuritypolicy_enabled: false
 # supplementary_addresses_in_ssl_keys: [10.0.0.1, 10.0.0.2, 10.0.0.3]
 
 ## Running on top of openstack vms with cinder enabled may lead to unschedulable pods due to NoVolumeZoneConflict restriction in kube-scheduler.
-## See https://github.com/kubernetes-incubator/kubespray/issues/2141
+## See https://github.com/kubernetes-sigs/kubespray/issues/2141
 ## Set this variable to true to get rid of this issue
 volume_cross_zone_attachment: false
 # Add Persistent Volumes Storage Class for corresponding cloud provider ( OpenStack is only supported now )
@@ -192,3 +210,8 @@ persistent_volumes_enabled: false
 # nvidia_driver_version: "384.111"
 ## flavor can be tesla or gtx
 # nvidia_gpu_flavor: gtx
+## NVIDIA driver installer images. Change them if you have trouble accessing gcr.io.
+# nvidia_driver_install_centos_container: atzedevries/nvidia-centos-driver-installer:2
+# nvidia_driver_install_ubuntu_container: gcr.io/google-containers/ubuntu-nvidia-driver-installer@sha256:7df76a0f0a17294e86f691c81de6bbb7c04a1b4b3d4ea4e7e2cccdc42e1f6d63
+## NVIDIA GPU device plugin image.
+# nvidia_gpu_device_plugin_container: "k8s.gcr.io/nvidia-gpu-device-plugin@sha256:0842734032018be107fa2490c98156992911e3e1f2a21e059ff0105b07dd8e9e"

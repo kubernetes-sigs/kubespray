@@ -13,7 +13,13 @@
   shell: "{{ bin_dir }}/calicoctl version  | grep 'Cluster Version:' | awk '{ print $3}'"
   register: calico_version_on_server
   run_once: yes
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  changed_when: false
+  environment:
+    ETCD_ENDPOINTS: "{{ etcd_access_addresses }}"
+    ETCD_CA_CERT_FILE: "{{ calico_cert_dir }}/ca_cert.crt"
+    ETCD_CERT_FILE: "{{ calico_cert_dir }}/cert.crt"
+    ETCD_KEY_FILE: "{{ calico_cert_dir }}/key.pem"
+
 
 - name: "Determine if calico upgrade is needed"
   block:
@@ -32,7 +38,7 @@
         - calico_version_on_server.stdout is version('v3.0.0', '<')
 
   when:
-    - 'calico_version_on_server.stdout is defined'
-    - 'calico_version_on_server.stdout != ""'
+    - calico_version_on_server.stdout is defined
+    - calico_version_on_server.stdout
     - inventory_hostname == groups['kube-master'][0]
   run_once: yes

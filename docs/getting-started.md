@@ -6,10 +6,10 @@ Building your own inventory
 
 Ansible inventory can be stored in 3 formats: YAML, JSON, or INI-like. There is
 an example inventory located
-[here](https://github.com/kubernetes-incubator/kubespray/blob/master/inventory/sample/hosts.ini).
+[here](https://github.com/kubernetes-sigs/kubespray/blob/master/inventory/sample/inventory.ini).
 
 You can use an
-[inventory generator](https://github.com/kubernetes-incubator/kubespray/blob/master/contrib/inventory_builder/inventory.py)
+[inventory generator](https://github.com/kubernetes-sigs/kubespray/blob/master/contrib/inventory_builder/inventory.py)
 to create or modify an Ansible inventory. Currently, it is limited in
 functionality and is only used for configuring a basic Kubespray cluster inventory, but it does
 support creating inventory file for large clusters as well. It now supports
@@ -20,7 +20,9 @@ Example inventory generator usage:
 
     cp -r inventory/sample inventory/mycluster
     declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
-    CONFIG_FILE=inventory/mycluster/hosts.ini python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+    CONFIG_FILE=inventory/mycluster/hosts.yml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+
+Then use `inventory/mycluster/hosts.yml` as inventory file.
 
 Starting custom deployment
 --------------------------
@@ -30,7 +32,7 @@ and start the deployment:
 
 **IMPORTANT**: Edit my\_inventory/groups\_vars/\*.yaml to override data vars:
 
-    ansible-playbook -i inventory/mycluster/hosts.ini cluster.yml -b -v \
+    ansible-playbook -i inventory/mycluster/hosts.yml cluster.yml -b -v \
       --private-key=~/.ssh/private_key
 
 See more details in the [ansible guide](ansible.md).
@@ -41,9 +43,9 @@ Adding nodes
 You may want to add worker, master or etcd nodes to your existing cluster. This can be done by re-running the `cluster.yml` playbook, or you can target the bare minimum needed to get kubelet installed on the worker and talking to your masters. This is especially helpful when doing something like autoscaling your clusters.
 
 -   Add the new worker node to your inventory in the appropriate group (or utilize a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html)).
--   Run the ansible-playbook command, substituting `scale.yml` for `cluster.yml`:
+-   Run the ansible-playbook command, substituting `cluster.yml` for `scale.yml`:
 
-        ansible-playbook -i inventory/mycluster/hosts.ini scale.yml -b -v \
+        ansible-playbook -i inventory/mycluster/hosts.yml scale.yml -b -v \
           --private-key=~/.ssh/private_key
 
 Remove nodes
@@ -53,24 +55,14 @@ You may want to remove **worker** nodes to your existing cluster. This can be do
 
 Add worker nodes to the list under kube-node if you want to delete them (or utilize a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html)).
 
-    ansible-playbook -i inventory/mycluster/hosts.ini remove-node.yml -b -v \
+    ansible-playbook -i inventory/mycluster/hosts.yml remove-node.yml -b -v \
         --private-key=~/.ssh/private_key
 
-
-We support two ways to select the nodes:
-
-- Use `--extra-vars "node=<nodename>,<nodename2>"` to select the node you want to delete.
+Use `--extra-vars "node=<nodename>,<nodename2>"` to select the node you want to delete.
 ```
-ansible-playbook -i inventory/mycluster/hosts.ini remove-node.yml -b -v \
+ansible-playbook -i inventory/mycluster/hosts.yml remove-node.yml -b -v \
   --private-key=~/.ssh/private_key \
   --extra-vars "node=nodename,nodename2"
-```
-or
-- Use `--limit nodename,nodename2` to select the node
-```
-ansible-playbook -i inventory/mycluster/hosts.ini remove-node.yml -b -v \
-  --private-key=~/.ssh/private_key \
-  --limit nodename,nodename2"
 ```
 
 Connecting to Kubernetes

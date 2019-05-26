@@ -19,8 +19,11 @@ spec:
         k8s-app: calico-node
       annotations:
         # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
-        scheduler.alpha.kubernetes.io/critical-pod: ''
         kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
+{% if calico_felix_prometheusmetricsenabled %}
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: "{{ calico_felix_prometheusmetricsport }}"
+{% endif %}
     spec:
 {% if kube_version is version('v1.11.1', '>=') %}
       priorityClassName: system-node-critical
@@ -28,14 +31,73 @@ spec:
       hostNetwork: true
       serviceAccountName: calico-node
       tolerations:
-        - operator: Exists
+        - effect: NoExecute
+          operator: Exists
+        - effect: NoSchedule
+          operator: Exists
         # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
         - key: CriticalAddonsOnly
           operator: "Exists"
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 0
+{% if calico_version is version('v3.4.0', '>=') %}
+      initContainers:
+        # This container installs the Calico CNI binaries
+        # and CNI network config file on each node.
+        - name: install-cni
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          command: ["/install-cni.sh"]
+          env:
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "10-calico.conflist"
+            # Install CNI binaries
+            - name: UPDATE_CNI_BINARIES
+              value: "true"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG_FILE
+              value: "/host/etc/cni/net.d/calico.conflist.template"
+            # Prevents the container from sleeping forever.
+            - name: SLEEP
+              value: "false"
+{% if calico_datastore == "kdd" %}
+            # Set the hostname based on the k8s node name.
+            - name: KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+{% endif %}
+          volumeMounts:
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+{% endif %}
       containers:
+{% if calico_version is version('v3.3.0', '>=') and calico_version is version('v3.4.0', '<') %}
+        - name: install-cni
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          command: ["/install-cni.sh"]
+          env:
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "10-calico.conflist"
+            # Install CNI binaries
+            - name: UPDATE_CNI_BINARIES
+              value: "true"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG_FILE
+              value: "/host/etc/cni/net.d/calico.conflist.template"
+            # Prevents the container from sleeping forever.
+            - name: SLEEP
+              value: "false"
+          volumeMounts:
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+{% endif %}
         # Runs calico/node container on each Kubernetes node.  This
         # container programs network policy and routes on each
         # host.
@@ -43,11 +105,51 @@ spec:
           image: {{ calico_node_image_repo }}:{{ calico_node_image_tag }}
           env:
             # The location of the Calico etcd cluster.
+{% if calico_datastore == "etcd" %}
             - name: ETCD_ENDPOINTS
               valueFrom:
                 configMapKeyRef:
                   name: calico-config
                   key: etcd_endpoints
+            # Location of the CA certificate for etcd.
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_ca
+            # Location of the client key for etcd.
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_key
+            # Location of the client certificate for etcd.
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_cert
+{% elif calico_datastore == "kdd" %}
+            # Use Kubernetes API as the backing datastore.
+            - name: DATASTORE_TYPE
+              value: "kubernetes"
+  {% if typha_enabled == "true" %}
+            # Typha support: controlled by the ConfigMap.
+            - name: FELIX_TYPHAK8SSERVICENAME
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: typha_service_name
+  {% endif %}
+            # Wait for the datastore.
+            - name: WAIT_FOR_DATASTORE
+              value: "true"
+            # Set based on the k8s node name.
+            - name: NODENAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+{% endif %}
             # Choose the backend to use.
             - name: CALICO_NETWORKING_BACKEND
               valueFrom:
@@ -73,6 +175,16 @@ spec:
               value: "{{ calico_endpoint_to_host_action|default('RETURN') }}"
             - name: FELIX_HEALTHHOST
               value: "{{ calico_healthhost }}"
+{% if kube_proxy_mode == 'ipvs' and kube_apiserver_node_port_range is defined %}
+            - name: FELIX_KUBENODEPORTRANGES
+              value: "{{ kube_apiserver_node_port_range.split('-')[0] }}:{{ kube_apiserver_node_port_range.split('-')[1] }}"
+{% endif %}
+            # Prior to v3.2.1 iptables didn't acquire the lock, so Calico's own implementation of the lock should be used,
+            # this is not required in later versions https://github.com/projectcalico/calico/issues/2179
+{% if calico_version is version('v3.2.1', '<') %}
+            - name: FELIX_IPTABLESLOCKTIMEOUTSECS
+              value: "10"
+{% endif %}
 # should be set in etcd before deployment
 #            # Configure the IP Pool from which Pod IPs will be chosen.
 #            - name: CALICO_IPV4POOL_CIDR
@@ -84,7 +196,7 @@ spec:
               value: "false"
             # Set Felix logging to "info"
             - name: FELIX_LOGSEVERITYSCREEN
-              value: "info"
+              value: "{{ calico_loglevel }}"
             # Set MTU for tunnel device used if ipip is enabled
 {% if calico_mtu is defined %}
             - name: FELIX_IPINIPMTU
@@ -98,27 +210,15 @@ spec:
               value: "{{ calico_felix_prometheusgometricsenabled }}"
             - name: FELIX_PROMETHEUSPROCESSMETRICSENABLED
               value: "{{ calico_felix_prometheusprocessmetricsenabled }}"
-            # Location of the CA certificate for etcd.
-            - name: ETCD_CA_CERT_FILE
-              valueFrom:
-                configMapKeyRef:
-                  name: calico-config
-                  key: etcd_ca
-            # Location of the client key for etcd.
-            - name: ETCD_KEY_FILE
-              valueFrom:
-                configMapKeyRef:
-                  name: calico-config
-                  key: etcd_key
-            # Location of the client certificate for etcd.
-            - name: ETCD_CERT_FILE
-              valueFrom:
-                configMapKeyRef:
-                  name: calico-config
-                  key: etcd_cert
+{% if calico_version is version('v3.4.0', '>=') and calico_advertise_cluster_ips|default(false) %}
+            - name: CALICO_ADVERTISE_CLUSTER_IPS
+              value: "{{ kube_service_addresses }}"
+{% endif %}
 {% if calico_ip_auto_method is defined %}
             - name: IP_AUTODETECTION_METHOD
               value: "{{ calico_ip_auto_method }}"
+            - name: IP
+              value: "autodetect"
 {% else %}
             - name: IP
               valueFrom:
@@ -147,15 +247,22 @@ spec:
               host: 127.0.0.1
               path: /liveness
               port: 9099
-            periodSeconds: 10
-            initialDelaySeconds: 10
+            initialDelaySeconds: 5
             failureThreshold: 6
           readinessProbe:
+            failureThreshold: 6
+{% if calico_version is version('v3.3.0', '<') %}
             httpGet:
               host: 127.0.0.1
               path: /readiness
               port: 9099
-            periodSeconds: 10
+{% else %}
+            exec:
+              command:
+              - /bin/calico-node
+              - -bird-ready
+              - -felix-ready
+{% endif %}
           volumeMounts:
             - mountPath: /lib/modules
               name: lib-modules
@@ -165,8 +272,13 @@ spec:
             - mountPath: /var/lib/calico
               name: var-lib-calico
               readOnly: false
+{% if calico_datastore == "etcd" %}
             - mountPath: /calico-secrets
               name: etcd-certs
+{% endif %}
+            - name: xtables-lock
+              mountPath: /run/xtables.lock
+              readOnly: false
       volumes:
         # Used by calico/node.
         - name: lib-modules
@@ -179,16 +291,23 @@ spec:
           hostPath:
             path: /var/lib/calico
         # Used to install CNI.
-        - name: cni-bin-dir
-          hostPath:
-            path: /opt/cni/bin
         - name: cni-net-dir
           hostPath:
             path: /etc/cni/net.d
+        - name: cni-bin-dir
+          hostPath:
+            path: /opt/cni/bin
+{% if calico_datastore == "etcd" %}
         # Mount in the etcd TLS secrets.
         - name: etcd-certs
           hostPath:
             path: "{{ calico_cert_dir }}"
+{% endif %}
+        # Mount the global iptables lock file, used by calico/node
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
   updateStrategy:
     rollingUpdate:
       maxUnavailable: {{ serial | default('20%') }}

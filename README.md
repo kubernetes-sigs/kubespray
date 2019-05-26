@@ -1,12 +1,12 @@
-![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-incubator/kubespray/master/docs/img/kubernetes-logo.png)
+![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-sigs/kubespray/master/docs/img/kubernetes-logo.png)
 
 Deploy a Production Ready Kubernetes Cluster
 ============================================
 
-If you have questions, join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
+If you have questions, check the [documentation](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 You can get your invite [here](http://slack.k8s.io/)
 
--   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere, Oracle Cloud Infrastructure (Experimental), or Baremetal**
+-   Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere, Packet (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
 -   **Highly available** cluster
 -   **Composable** (Choice of the network plugin for instance)
 -   Supports most popular **Linux distributions**
@@ -19,10 +19,6 @@ To deploy the cluster you can use :
 
 ### Ansible
 
-#### Ansible version
-
-Ansible v2.7.0 is failing and/or produce unexpected results due to [ansible/ansible/issues/46600](https://github.com/ansible/ansible/issues/46600)
-
 #### Usage
 
     # Install dependencies from ``requirements.txt``
@@ -33,7 +29,7 @@ Ansible v2.7.0 is failing and/or produce unexpected results due to [ansible/ansi
 
     # Update Ansible inventory file with inventory builder
     declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
-    CONFIG_FILE=inventory/mycluster/hosts.ini python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+    CONFIG_FILE=inventory/mycluster/hosts.yml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
 
     # Review and change parameters under ``inventory/mycluster/group_vars``
     cat inventory/mycluster/group_vars/all/all.yml
@@ -43,7 +39,7 @@ Ansible v2.7.0 is failing and/or produce unexpected results due to [ansible/ansi
     # The option `-b` is required, as for example writing SSL keys in /etc/,
     # installing packages and interacting with various systemd daemons.
     # Without -b the playbook will fail to run!
-    ansible-playbook -i inventory/mycluster/hosts.ini --become --become-user=root cluster.yml
+    ansible-playbook -i inventory/mycluster/hosts.yml --become --become-user=root cluster.yml
 
 Note: When Ansible is already installed via system packages on the control machine, other python packages installed via `sudo pip install -r requirements.txt` will go to a different directory tree (e.g. `/usr/local/lib/python2.7/dist-packages` on Ubuntu) from Ansible's (e.g. `/usr/lib/python2.7/dist-packages/ansible` still on Ubuntu).
 As a consequence, `ansible-playbook` command will fail with:
@@ -90,6 +86,7 @@ Documents
 -   [AWS](docs/aws.md)
 -   [Azure](docs/azure.md)
 -   [vSphere](docs/vsphere.md)
+-   [Packet Host](docs/packet.md)
 -   [Large deployments](docs/large-deployments.md)
 -   [Upgrades basics](docs/upgrades.md)
 -   [Roadmap](docs/roadmap.md)
@@ -111,40 +108,35 @@ Supported Components
 --------------------
 
 -   Core
-    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.12.2
-    -   [etcd](https://github.com/coreos/etcd) v3.2.18
+    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.14.1
+    -   [etcd](https://github.com/coreos/etcd) v3.2.26
     -   [docker](https://www.docker.com/) v18.06 (see note)
-    -   [rkt](https://github.com/rkt/rkt) v1.21.0 (see Note 2)
     -   [cri-o](http://cri-o.io/) v1.11.5 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
 -   Network Plugin
-    -   [calico](https://github.com/projectcalico/calico) v3.1.3
+    -   [calico](https://github.com/projectcalico/calico) v3.4.0
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
     -   [cilium](https://github.com/cilium/cilium) v1.3.0
-    -   [contiv](https://github.com/contiv/install) v1.1.7
-    -   [flanneld](https://github.com/coreos/flannel) v0.10.0
-    -   [weave](https://github.com/weaveworks/weave) v2.4.1
-    -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.1
-    -   [multus](https://github.com/intel/multus-cni) v3.1
+    -   [contiv](https://github.com/contiv/install) v1.2.1
+    -   [flanneld](https://github.com/coreos/flannel) v0.11.0
+    -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.5
+    -   [multus](https://github.com/intel/multus-cni) v3.1.autoconf
+    -   [weave](https://github.com/weaveworks/weave) v2.5.1
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
-    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.0
-    -   [coredns](https://github.com/coredns/coredns) v1.2.5
-    -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.20.0
+    -   [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
+    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.2
+    -   [coredns](https://github.com/coredns/coredns) v1.5.0
+    -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.21.0
 
-Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.12.md) was updated to 1.11.1, 1.12.1, 1.13.1, 17.03, 17.06, 17.09, 18.06. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
-
-Note 2: rkt support as docker alternative is limited to control plane (etcd and
-kubelet). Docker is still used for Kubernetes cluster workloads and network
-plugins' related OS services. Also note, only one of the supported network
-plugins can be deployed for a given single cluster.
+Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.13.md) was updated to 1.11.1, 1.12.1, 1.13.1, 17.03, 17.06, 17.09, 18.06. kubeadm now properly recognizes Docker 18.09.0 and newer, but still treats 18.06 as the default supported version. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 
 Requirements
 ------------
 
--   **Ansible v2.5 (or newer) and python-netaddr is installed on the machine
+-   **Ansible v2.7.8 (or newer) and python-netaddr is installed on the machine
     that will run Ansible commands**
 -   **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
--   The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-incubator/kubespray/blob/master/docs/downloads.md#offline-environment))
+-   The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/downloads.md#offline-environment))
 -   The target servers are configured to allow **IPv4 forwarding**.
 -   **Your ssh key must be copied** to all the servers part of your inventory.
 -   The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
@@ -152,6 +144,14 @@ Requirements
 -   If kubespray is ran from non-root user account, correct privilege escalation method
     should be configured in the target servers. Then the `ansible_become` flag
     or command parameters `--become or -b` should be specified.
+
+Hardware:        
+These limits are safe guarded by Kubespray. Actual requirements for your workload can differ. For a sizing guide go to the [Building Large Clusters](https://kubernetes.io/docs/setup/cluster-large/#size-of-master-and-master-components) guide.
+
+-   Master
+    - Memory: 1500 MB
+-   Node
+    - Memory: 1024 MB
 
 Network Plugins
 ---------------
@@ -195,13 +195,12 @@ Tools and projects on top of Kubespray
 --------------------------------------
 
 -   [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/master/doc/integrations/ansible.rst)
--   [Fuel-ccp-installer](https://github.com/openstack/fuel-ccp-installer)
--   [Terraform Contrib](https://github.com/kubernetes-incubator/kubespray/tree/master/contrib/terraform)
+-   [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
 
 CI Tests
 --------
 
-[![Build graphs](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/badges/master/build.svg)](https://gitlab.com/kubespray-ci/kubernetes-incubator__kubespray/pipelines)
+[![Build graphs](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/badges/master/build.svg)](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/pipelines)
 
 CI/end-to-end tests sponsored by Google (GCE)
 See the [test matrix](docs/test_cases.md) for details.

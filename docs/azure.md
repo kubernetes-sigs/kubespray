@@ -51,6 +51,25 @@ This is the AppId from the last command
 
 azure\_aad\_client\_id must be set to the AppId, azure\_aad\_client\_secret is your choosen secret.
 
+#### azure\_loadbalancer\_sku
+Sku of Load Balancer and Public IP. Candidate values are: basic and standard.
+
+#### azure\_exclude\_master\_from\_standard\_lb
+azure\_exclude\_master\_from\_standard\_lb excludes master nodes from `standard` load balancer.
+
+#### azure\_disable\_outbound\_snat
+azure\_disable\_outbound\_snat disables the outbound SNAT for public load balancer rules. It should only be set when azure\_exclude\_master\_from\_standard\_lb is `standard`.
+ 
+#### azure\_primary\_availability\_set\_name
+(Optional) The name of the availability set that should be used as the load balancer backend .If this is set, the Azure 
+cloudprovider will only add nodes from that availability set to the load balancer backend pool. If this is not set, and 
+multiple agent pools (availability sets) are used, then the cloudprovider will try to add all nodes to a single backend 
+pool which is forbidden. In other words, if you use multiple agent pools (availability sets), you MUST set this field.
+
+#### azure\_use\_instance\_metadata
+Use instance metadata service where possible
+
+
 ## Provisioning Azure with Resource Group Templates
 
 You'll find Resource Group Templates and scripts to provision the required infrastructure to Azure in [*contrib/azurerm*](../contrib/azurerm/README.md)

@@ -10,6 +10,7 @@ Customize Vagrant
 
 You can override the default settings in the `Vagrantfile` either by directly modifying the `Vagrantfile` or through an override file. In the same directory as the `Vagrantfile`, create a folder called `vagrant` and create `config.rb` file in it. You're able to override the variables defined in `Vagrantfile` by providing the value in the `vagrant/config.rb` file.
 
+
 Use alternative OS for Vagrant
 ==============================
 

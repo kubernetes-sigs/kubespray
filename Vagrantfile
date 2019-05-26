@@ -21,7 +21,7 @@ SUPPORTED_OS = {
   "ubuntu1604"          => {box: "generic/ubuntu1604", user: "vagrant"},
   "ubuntu1804"          => {box: "generic/ubuntu1804", user: "vagrant"},
   "centos"              => {box: "centos/7",           user: "vagrant"},
-  "centos-bento"        => {box: "bento/centos-7.5",   user: "vagrant"},
+  "centos-bento"        => {box: "bento/centos-7.6",   user: "vagrant"},
   "fedora"              => {box: "fedora/28-cloud-base",                user: "vagrant"},
   "opensuse"            => {box: "opensuse/openSUSE-15.0-x86_64",       user: "vagrant"},
   "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", user: "vagrant"},
@@ -181,8 +181,12 @@ Vagrant.configure("2") do |config|
         "kube_network_plugin": $network_plugin,
         "kube_network_plugin_multus": $multi_networking,
         "docker_keepcache": "1",
-        "download_run_once": "False",
+        "download_run_once": "True",
         "download_localhost": "False",
+        "download_force_cache": "True",
+        # These two settings will put kubectl and admin.config in $inventory/artifacts
+        "kubeconfig_localhost": "True",
+        "kubectl_localhost": "True",
         "local_path_provisioner_enabled": "#{$local_path_provisioner_enabled}",
         "local_path_provisioner_claim_root": "#{$local_path_provisioner_claim_root}",
         "ansible_ssh_user": SUPPORTED_OS[$os][:user]

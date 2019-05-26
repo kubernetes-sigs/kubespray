@@ -1,0 +1,45 @@
+---
+- name: prep_download | Set a few facts (1)
+  set_fact:
+    download_run_once: "{{ true if download_localhost else download_run_once }}"
+
+- name: prep_download | Set a few facts (2)
+  set_fact:
+    download_force_cache: "{{ true if download_run_once else download_force_cache }}"
+
+- name: prep_download | Get local user group info
+  command: "groups"
+  delegate_to: localhost
+  register: current_user_groups
+  run_once: true
+  changed_when: false
+  become: false
+  when:
+    - download_localhost
+
+- name: prep_download | Check that local user is in docker group, if download_localhost is set
+  assert:
+    that: "'docker' in current_user_groups.stdout.split(' ')"
+  when:
+    - download_localhost
+  tags:
+    - asserts
+
+- name: prep_download | Create staging directory on remote node
+  file:
+    path: "{{ local_release_dir }}/images"
+    state: directory
+    recurse: yes
+    mode: 0755
+    owner: "{{ ansible_ssh_user | default(ansible_user_id) }}"
+
+- name: prep_download | Create local cache for files and images
+  delegate_to: localhost
+  delegate_facts: yes
+  run_once: true
+  file:
+    path: "{{ download_cache_dir }}/images"
+    state: directory
+    recurse: yes
+    mode: 0755
+  become: false

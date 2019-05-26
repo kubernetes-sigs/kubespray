@@ -15,11 +15,16 @@ There is also a "pull once, push many" mode as well:
 * Override the ``download_run_once: True`` to download container images and binaries only once
   then push to cluster nodes in batches. The default delegate node
   for pushing is the first `kube-master`.
-* If your ansible runner node (aka the admin node) have password-less sudo and
-  docker enabled, you may want to define the ``download_localhost: True``, which
-  makes that node a delegate for pushing while running the deployment with
-  ansible. This may be the case if cluster nodes cannot access each other via ssh
-  or you want to use local docker images and binaries as a cache for multiple clusters.
+* Files are cached in the directory defined bij download_cache_dir.
+* Setting download_localhost will automaticaly set download_run_once.
+* Setting download_run_one will automaticaly set download_force_cache.
+* If the user running ansible on the runner node (aka the admin node) is in the local
+  docker group, you may want to define the ``download_localhost: True``, which makes
+  that node a delegate for pushing while running the deployment with ansible. Images
+  and files will then be downloaded on the runnenr instead of on one of the
+  kubernetes nodes.
+
+Images and files get cached localy when using download_run_once. When that variable is not true, caching is normally not done. Setting the download_force_cache flag makes kubespray copy back files and images, to be re-used on a next run.
 
 Container images and binary files are described by the vars like ``foo_version``,
 ``foo_download_url``, ``foo_checksum`` for binaries and ``foo_image_repo``,
@@ -50,5 +55,5 @@ In case your servers don't have access to internet (for example when deploying o
 * `pyrepo_index` (and optionally `pyrepo_cert`)
 * Depending on the `container_manager`
   * When `container_manager=docker`, `docker_foo_repo_base_url`, `docker_foo_repo_gpgkey`, `dockerproject_bar_repo_base_url` and `dockerproject_bar_repo_gpgkey` (where `foo` is the distribution and `bar` is system package manager)
-  * When `container_manager=crio`, `crio_rhel_repo_base_url` 
+  * When `container_manager=crio`, `crio_rhel_repo_base_url`
 * When using Helm, `helm_stable_repo_url`

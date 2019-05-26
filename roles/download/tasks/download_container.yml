@@ -1,6 +1,6 @@
 ---
 - name: container_download | Make download decision if pull is required by tag or sha256
-  import_tasks: set_docker_image_facts.yml
+  include_tasks: set_docker_image_facts.yml
   delegate_to: "{{ download_delegate if download_run_once or omit }}"
   delegate_facts: yes
   run_once: "{{ download_run_once }}"
@@ -10,26 +10,32 @@
   tags:
     - facts
 
-- debug:
-    msg:
-      - "pull_args: {{ pull_args }}"
-
+# FIXME(mattymo): In Ansible 2.4 omitting download delegate is broken. Move back
+#                 to one task in the future.
 - name: container_download | Download containers if pull is required or told to always pull (delegate)
   command: "{{ docker_bin_dir }}/docker pull {{ pull_args }}"
-  become: true
   register: pull_task_result
   until: pull_task_result is succeeded
-  delegate_to: "{{ download_delegate | default(inventory_hostname) }}"
-  delegate_facts: yes
-  run_once: "{{ download_run_once }}"
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   when:
+    - download_run_once
     - download.enabled
     - download.container
     - pull_required|default(download_always_pull)
-    - download_run_once or (group_names | intersect(download.groups) | length)
-  tags:
-    - upload
-    - upgrade
+  delegate_to: "{{ download_delegate }}"
+  delegate_facts: yes
+  run_once: yes
 
+- name: container_download | Download containers if pull is required or told to always pull (all nodes)
+  command: "{{ docker_bin_dir }}/docker pull {{ pull_args }}"
+  register: pull_task_result
+  until: pull_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - not download_run_once
+    - download.enabled
+    - download.container
+    - pull_required|default(download_always_pull)
+    - group_names | intersect(download.groups) | length

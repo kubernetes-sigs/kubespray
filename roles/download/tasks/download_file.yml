@@ -4,94 +4,25 @@
     msg:
       - "URL: {{ download.url }}"
       - "Dest: {{ download.dest }}"
-  run_once: true
 
-- set_fact:
-    cache_dir: "{{ local_release_dir }}/{{ download.dest | regex_replace('^\\/', '') }}"
-  tags:
-    - facts
-
-- name: file_download | Create local cache directory
+- name: file_download | Create dest directory
   file:
-    path: "{{ cache_dir | dirname }}"
-    state: directory
-    recurse: yes
-  delegate_to: localhost
-  delegate_facts: false
-  run_once: true
-  become: false
-  when:
-    - download.enabled
-    - download.file
-  tags:
-    - localhost
-    - upload
-    - upgrade
-
-- name: file_download | Create dest directory on node
-  file:
-    path: "{{ download.dest | dirname }}"
-    owner: "{{ ansible_ssh_user | default(ansible_user_id) }}"
-    mode: 0755
+    path: "{{download.dest|dirname}}"
     state: directory
     recurse: yes
   when:
     - download.enabled
     - download.file
     - group_names | intersect(download.groups) | length
-  tags:
-    - upload
-    - upgrade
 
-- name: file_download | Check if file is available in cache
-  stat:
-    path: "{{ cache_dir }}"
-  register: cached_file
-  run_once: true
-  changed_when: false
-  delegate_to: localhost
-  delegate_facts: no
-  when:
-    - download.enabled
-    - download.file
-  tags:
-    - upload
-    - upgrade
-    - facts
-
-- name: file_download | Copy file from cache to nodes, if it is available
-  synchronize:
-    src: "{{ cache_dir }}"
-    dest: "{{ download.dest }}"
-    use_ssh_args: "{{ has_bastion | default(false) }}"
-    mode: push
-  run_once: "{{ download_run_once }}"
-  become: true
-  register: get_task
-  until: get_task is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  when:
-    - download.enabled
-    - download.file
-    - cached_file.stat.exists
-    - not (download_run_once and download_delegate == 'localhost')
-    - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
-  tags:
-    - upload
-    - upgrade
-
-# This must always be called, to check if the checksum matches. On no-match the file is re-downloaded.
 - name: file_download | Download item
   get_url:
     url: "{{download.url}}"
-    dest: "{{ cache_dir if (download_run_once and download_delegate == 'localhost') else download.dest }}"
-    checksum: "{{ 'sha256:'+download.sha256 if download.sha256 or omit}}"
+    dest: "{{download.dest}}"
+    sha256sum: "{{download.sha256 | default(omit)}}"
     owner: "{{ download.owner|default(omit) }}"
     mode: "{{ download.mode|default(omit) }}"
     validate_certs: "{{ download_validate_certs }}"
-  delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
-  run_once: "{{ download_run_once }}"
   register: get_url_result
   until: "'OK' in get_url_result.msg or 'file already exists' in get_url_result.msg"
   retries: 4
@@ -99,27 +30,17 @@
   when:
     - download.enabled
     - download.file
-    - download_run_once or (group_names | intersect(download.groups) | length)
-  tags:
-    - upload
-    - upgrade
+    - group_names | intersect(download.groups) | length
 
-- name: file_download | copy file to ansible host file cache
-  synchronize:
-    src: "{{ download.dest }}"
-    dest: "{{ cache_dir }}"
-    use_ssh_args: "{{has_bastion | default(false) }}"
-    mode: pull
-  run_once: true
-  become: true
+- name: file_download | Extract archives
+  unarchive:
+    src: "{{download.dest}}"
+    dest: "{{download.dest|dirname}}"
+    owner: "{{ download.owner|default(omit) }}"
+    mode: "{{ download.mode|default(omit) }}"
+    copy: no
   when:
     - download.enabled
     - download.file
-    - get_url_result.changed or not cached_file.stat.exists
-    - not (download_run_once and download_delegate == 'localhost')
-    - download_delegate == inventory_hostname
-    - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
-  tags:
-    - upload
-    - upgrade
-
+    - download.unarchive|default(False)
+    - group_names | intersect(download.groups) | length

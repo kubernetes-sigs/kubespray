@@ -1,22 +1,9 @@
 ---
-- name: "download | Prep for file / container downloads"
-  include_tasks: prep_container_download.yml
+- include_tasks: download_prep.yml
   when:
     - not skip_downloads|default(false)
-    - download_container
 
-- name: "download | Upload locally cached container images"
-  include_tasks: sync_container_cache.yml
-  vars:
-    download: "{{ download_defaults | combine(item.value) }}"
-  with_dict: "{{ downloads }}"
-  when:
-    - not skip_downloads|default(false)
-    - download_container
-    - item.value.enabled
-    - item.value.container|default(False)
-
-- name: "download | Download files / containers"
+- name: "Download items"
   include_tasks: "download_{% if download.container %}container{% else %}file{% endif %}.yml"
   vars:
     download: "{{ download_defaults | combine(item.value) }}"
@@ -26,24 +13,14 @@
     - item.value.enabled
     - (not (item.value.container|default(False))) or (item.value.container and download_container)
 
-- name: "download | Sync files / containers"
-  include_tasks: "sync_{% if download.container %}container{% else %}file{% endif %}.yml"
+- name: "Sync container"
+  include_tasks: sync_container.yml
   vars:
     download: "{{ download_defaults | combine(item.value) }}"
   with_dict: "{{ downloads }}"
   when:
     - not skip_downloads|default(false)
     - item.value.enabled
+    - item.value.container | default(false)
     - download_run_once
-    - group_names | intersect(download.groups) | length
-
-- name: "download | Extract file archives"
-  include_tasks: "extract_file.yml"
-  vars:
-    download: "{{ download_defaults | combine(item.value) }}"
-  with_dict: "{{ downloads }}"
-  when:
-    - not skip_downloads|default(false)
-    - item.value.enabled
-    - download.file
     - group_names | intersect(download.groups) | length

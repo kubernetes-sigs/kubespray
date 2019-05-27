@@ -45,6 +45,9 @@ ansible-playbook -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_host
 ## Advanced DNS checks
 ansible-playbook -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_hosts" tests/testcases/040_check-network-adv.yml $LOG_LEVEL
 
+## Kubernetes conformance tests
+ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH} -e @${CI_TEST_VARS} --limit "all:!fake_hosts" tests/testcases/100_check-k8s-conformance.yml $LOG_LEVEL
+
 ## Idempotency checks 1/5 (repeat deployment)
 if [ "${IDEMPOT_CHECK}" = "true" ]; then
   ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e ansible_python_interpreter=${PYPATH} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml

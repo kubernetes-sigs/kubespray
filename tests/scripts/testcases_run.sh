@@ -15,6 +15,11 @@ export ANSIBLE_BECOME_USER=root
 cd tests && make create-${CI_PLATFORM} -s ; cd -
 ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml
 
+# CoreOS needs auto update disabled
+if [[ "$CI_JOB_NAME" =~ "coreos" ]]; then
+  ansible all -m raw -a 'systemctl disable locksmithd'
+  ansible all -m raw -a 'systemctl stop locksmithd'
+fi
 
 # Check out latest tag if testing upgrade
 test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY_VERSION"
@@ -22,14 +27,14 @@ test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY
 test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
 
 # Create cluster
-ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e ansible_ssh_user=${SSH_USER} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
+ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
 
 # Repeat deployment if testing upgrade
 if [ "${UPGRADE_TEST}" != "false" ]; then
   test "${UPGRADE_TEST}" == "basic" && PLAYBOOK="cluster.yml"
   test "${UPGRADE_TEST}" == "graceful" && PLAYBOOK="upgrade-cluster.yml"
   git checkout "${CI_BUILD_REF}"
-  ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e ansible_ssh_user=${SSH_USER} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" $PLAYBOOK
+  ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" $PLAYBOOK
 fi
 
 # Tests Cases

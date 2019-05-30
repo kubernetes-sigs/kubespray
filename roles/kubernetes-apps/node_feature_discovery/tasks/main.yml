@@ -1,0 +1,49 @@
+---
+- name: node-feature-discovery | Delete addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/node_feature_discovery"
+    state: absent
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+  tags:
+    - upgrade
+
+- name: node-feature-discovery | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/node_feature_discovery"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: node-feature-discovery | Templates list
+  set_fact:
+    node_feature_discovery_templates:
+      - { name: nfd-master-sa, file: nfd-master-sa.yaml, type: sa }
+      - { name: nfd-master-clusterrole, file: nfd-master-clusterrole.yaml, type: clusterrole }
+      - { name: nfd-master-clusterrolebinding, file: nfd-master-clusterrolebinding.yaml, type: clusterrolebinding }
+      - { name: nfd-master-ds, file: nfd-master-ds.yaml, type: ds }
+      - { name: nfd-master-service, file: nfd-master-service.yaml, type: service }
+      - { name: nfd-worker-ds, file: nfd-worker-ds.yaml, type: ds }
+
+- name: node-feature-discovery | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/node_feature_discovery/{{ item.file }}"
+  with_items: "{{ node_feature_discovery_templates }}"
+  register: node_feature_discovery_manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: node_feature_discovery | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/node_feature_discovery/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ node_feature_discovery_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]

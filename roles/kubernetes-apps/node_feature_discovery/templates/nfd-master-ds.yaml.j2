@@ -1,0 +1,55 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: nfd-master
+  name: nfd-master
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: nfd-master
+  template:
+    metadata:
+      labels:
+        app: nfd-master
+    spec:
+      serviceAccount: nfd-master
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
+      tolerations:
+        - key: "node-role.kubernetes.io/master"
+          operator: "Equal"
+          value: ""
+          effect: "NoSchedule"
+      containers:
+        - env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          image: "{{ nfd_image_repo }}:{{ nfd_image_tag }}"
+          name: nfd-master
+          command:
+            - "nfd-master"
+{% if nfd_use_custom_certs %}
+          args:
+            - "--ca-file=/etc/kubernetes/node-feature-discovery/trust/ca.crt"
+            - "--key-file=/etc/kubernetes/node-feature-discovery/certs/tls.key"
+            - "--cert-file=/etc/kubernetes/node-feature-discovery/certs/tls.crt"
+          volumeMounts:
+            - name: nfd-ca-cert
+              mountPath: "/etc/kubernetes/node-feature-discovery/trust"
+              readOnly: true
+            - name: nfd-master-cert
+              mountPath: "/etc/kubernetes/node-feature-discovery/certs"
+              readOnly: true
+      volumes:
+        - name: nfd-ca-cert
+          configMap:
+            name: nfd-ca-cert
+        - name: nfd-master-cert
+          secret:
+            secretName: nfd-master-cert
+{% endif %}

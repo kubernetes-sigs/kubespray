@@ -14,8 +14,6 @@
   with_items:
     - kubelet
     - vault
-    - etcd
-    - etcd-events
   failed_when: false
   tags:
     - services
@@ -26,8 +24,6 @@
     state: absent
   with_items:
     - kubelet
-    - etcd
-    - etcd-events
     - vault
     - calico-node
   register: services_removed
@@ -112,6 +108,30 @@
     - crio
     - containerd
   when: container_manager in ["crio", "containerd"]
+
+- name: reset | stop etcd services
+  service:
+    name: "{{ item }}"
+    state: stopped
+  with_items:
+    - etcd
+    - etcd-events
+  failed_when: false
+  tags:
+    - services
+
+- name: reset | remove etcd services
+  file:
+    path: "/etc/systemd/system/{{ item }}.service"
+    state: absent
+  with_items:
+    - etcd
+    - etcd-events
+  register: services_removed
+  tags:
+    - services
+
+
 
 - name: reset | gather mounted kubelet dirs
   shell: mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac

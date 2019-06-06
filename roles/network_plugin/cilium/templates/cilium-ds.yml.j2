@@ -151,17 +151,13 @@ spec:
               mountPath: /host/opt/cni/bin
             - name: etc-cni-netd
               mountPath: /host/etc/cni/net.d
-{% if container_manager == 'crio' %}
-            - name: crio-socket
-              mountPath: /var/run/crio.sock
-              readOnly: true
-{% elif container_manager == 'containerd' %}
-            - name: containerd-socket
-              mountPath: /var/run/crio.sock
-              readOnly: true
-{% else %}
+{% if container_manager == 'docker' %}
             - name: docker-socket
               mountPath: /var/run/docker.sock
+              readOnly: true
+{% else %}
+            - name: "{{ container_manager }}-socket"
+              mountPath: {{ cri_socket }}
               readOnly: true
 {% endif %}
             - name: etcd-config-path
@@ -186,21 +182,16 @@ spec:
         - name: bpf-maps
           hostPath:
             path: /sys/fs/bpf
-{% if container_manager == 'crio' %}
-        # To read crio events from the node
-        - name: crio-socket
-          hostPath:
-            path: /var/run/crio/crio.sock
-{% elif container_manager == 'containerd' %}
-        # To read containerd events from the node
-        - name: containerd-socket
-          hostPath:
-            path: /var/run/containerd/containerd.sock
-{% else %}
+{% if container_manager == 'docker' %}
         # To read docker events from the node
         - name: docker-socket
           hostPath:
             path: /var/run/docker.sock
+{% else %}
+        # To read crio events from the node
+        - name: {{ container_manager }}-socket
+          hostPath:
+            path: {{ cri_socket }}
 {% endif %}
         # To install cilium cni plugin in the host
         - name: cni-path

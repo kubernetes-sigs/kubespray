@@ -325,6 +325,30 @@ $ ssh-add ~/.ssh/id_rsa
 
 If you have deployed and destroyed a previous iteration of your cluster, you will need to clear out any stale keys from your SSH "known hosts" file ( `~/.ssh/known_hosts`).
 
+#### Metadata variables
+
+The [python script](../terraform.py) that reads the
+generated`.tfstate` file to generate a dynamic inventory recognizes
+some variables within a "metadata" block, defined in a "resource"
+block (example):
+
+```
+resource "openstack_compute_instance_v2" "example" {
+    ...
+    metadata {
+        ssh_user = "ubuntu"
+        prefer_ipv6 = true
+	python_bin = "/usr/bin/python3"
+    }
+    ...
+}
+```
+
+As the example shows, these let you define the SSH username for
+Ansible, a Python binary which is needed by Ansible if
+`/usr/bin/python` doesn't exist, and whether the IPv6 address of the
+instance should be preferred over IPv4.
+
 #### Bastion host
 
 Bastion access will be determined by:

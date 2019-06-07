@@ -181,7 +181,7 @@ You can choose between 6 network plugins. (default: `calico`, except Vagrant use
     apply firewall policies, segregate containers in multiple network and bridging pods onto physical networks.
 
 -   [weave](docs/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster.
-    (Please refer to `weave` [troubleshooting documentation](http://docs.weave.works/weave/latest_release/troubleshooting.html)).
+    (Please refer to `weave` [troubleshooting documentation](https://www.weave.works/docs/net/latest/troubleshooting/)).
 
 -   [kube-router](docs/kube-router.md): Kube-router is a L3 CNI for Kubernetes networking aiming to provide operational
     simplicity and high performance: it uses IPVS to provide Kube Services Proxy (if setup to replace kube-proxy),

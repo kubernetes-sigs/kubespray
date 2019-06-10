@@ -239,10 +239,16 @@ def openstack_host(resource, module_name):
         attrs['private_ipv4'] = raw_attrs['network.0.fixed_ip_v4']
 
     try:
-        attrs.update({
-            'ansible_ssh_host': raw_attrs['access_ip_v4'],
-            'publicly_routable': True,
-        })
+        if 'metadata.prefer_ipv6' in raw_attrs and raw_attrs['metadata.prefer_ipv6'] == "1":
+            attrs.update({
+                'ansible_ssh_host': re.sub("[\[\]]", "", raw_attrs['access_ip_v6']),
+                'publicly_routable': True,
+            })
+        else:
+            attrs.update({
+                'ansible_ssh_host': raw_attrs['access_ip_v4'],
+                'publicly_routable': True,
+            })
     except (KeyError, ValueError):
         attrs.update({'ansible_ssh_host': '', 'publicly_routable': False})
 

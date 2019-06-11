@@ -21,9 +21,10 @@
   failed_when: false
   changed_when: false
 
-- set_fact:
+- name: Set if node needs cordoning
+  set_fact:
     needs_cordoning: >-
-      {% if kubectl_node_ready.stdout == "True" and kubectl_node_schedulable.stdout == "" -%}
+      {% if kubectl_node_ready.stdout == "True" and not kubectl_node_schedulable.stdout -%}
       true
       {%- else -%}
       false
@@ -43,7 +44,7 @@
   when:
     - drain_nodes
     - needs_cordoning
-    - 'drain_pod_selector != ""'
+    - drain_pod_selector
 
 - name: Ensure minimum version for drain label selector if necessary
   assert:
@@ -51,7 +52,7 @@
   when:
     - drain_nodes
     - needs_cordoning
-    - 'drain_pod_selector != ""'
+    - drain_pod_selector
 
 - name: Drain node
   command: >-
@@ -61,7 +62,7 @@
     --grace-period {{ drain_grace_period }}
     --timeout {{ drain_timeout }}
     --delete-local-data {{ inventory_hostname }}
-    {% if drain_pod_selector != "" %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
+    {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
   delegate_to: "{{ groups['kube-master'][0] }}"
   when:
     - drain_nodes

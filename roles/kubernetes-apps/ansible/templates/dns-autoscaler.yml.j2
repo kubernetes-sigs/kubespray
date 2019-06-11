@@ -16,39 +16,45 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: dns-autoscaler{{ coredns_ordinal_suffix | default('') }}
+  name: dns-autoscaler{{ coredns_ordinal_suffix }}
   namespace: kube-system
   labels:
-    k8s-app: dns-autoscaler{{ coredns_ordinal_suffix | default('') }}
+    k8s-app: dns-autoscaler{{ coredns_ordinal_suffix }}
     kubernetes.io/cluster-service: "true"
     addonmanager.kubernetes.io/mode: Reconcile
 spec:
   selector:
     matchLabels:
-      k8s-app: dns-autoscaler{{ coredns_ordinal_suffix | default('') }}
+      k8s-app: dns-autoscaler{{ coredns_ordinal_suffix }}
   template:
     metadata:
       labels:
-        k8s-app: dns-autoscaler{{ coredns_ordinal_suffix | default('') }}
+        k8s-app: dns-autoscaler{{ coredns_ordinal_suffix }}
       annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
         seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
     spec:
 {% if kube_version is version('v1.11.1', '>=') %}
       priorityClassName: system-cluster-critical
 {% endif %}
+      securityContext:
+        supplementalGroups: [ 65534 ]
+        fsGroup: 65534
       nodeSelector:
         beta.kubernetes.io/os: linux
       tolerations:
         - effect: NoSchedule
           operator: Equal
           key: node-role.kubernetes.io/master
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
           - topologyKey: "kubernetes.io/hostname"
             labelSelector:
               matchLabels:
-                k8s-app: dns-autoscaler{{ coredns_ordinal_suffix | default('') }}
+                k8s-app: dns-autoscaler{{ coredns_ordinal_suffix }}
         nodeAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
@@ -71,14 +77,6 @@ spec:
         - --default-params={"linear":{"preventSinglePointFailure":{{ dns_prevent_single_point_failure }},"coresPerReplica":{{ dns_cores_per_replica }},"nodesPerReplica":{{ dns_nodes_per_replica }},"min":{{ dns_min_replicas }}}}
         - --logtostderr=true
         - --v=2
-        - --configmap=dns-autoscaler{{ coredns_ordinal_suffix | default('') }}
-{% if dns_mode in ['coredns', 'coredns_dual'] %}
-        - --target=Deployment/coredns{{ coredns_ordinal_suffix | default('') }}
-{% endif %}
-{% if dns_mode in ['kubedns', 'dnsmasq_kubedns'] %}
-        - --target=Deployment/kube-dns
-{% endif %}
-      tolerations:
-      - key: "CriticalAddonsOnly"
-        operator: "Exists"
+        - --configmap=dns-autoscaler{{ coredns_ordinal_suffix }}
+        - --target=Deployment/coredns{{ coredns_ordinal_suffix }}
       serviceAccountName: dns-autoscaler

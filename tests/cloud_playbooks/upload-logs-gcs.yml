@@ -15,8 +15,9 @@
       set_fact:
         test_name: "kargo-ci-{{ out.stdout_lines[0] }}"
 
-    - set_fact:
-        file_name: "{{ostype}}-{{kube_network_plugin}}-{{commit}}-logs.tar.gz"
+    - name: Set file_name for logs
+      set_fact:
+        file_name: "{{ ostype }}-{{ kube_network_plugin }}-{{ commit }}-logs.tar.gz"
 
     - name: Create a bucket
       gc_storage:
@@ -30,31 +31,31 @@
     - name: Create a lifecycle template for the bucket
       template:
         src: gcs_life.json.j2
-        dest: "{{dir}}/gcs_life.json"
+        dest: "{{ dir }}/gcs_life.json"
 
     - name: Create a boto config to access GCS
       template:
         src: boto.j2
-        dest: "{{dir}}/.boto"
+        dest: "{{ dir }}/.boto"
       no_log: True
 
     - name: Download gsutil cp installer
       get_url:
         url: https://dl.google.com/dl/cloudsdk/channels/rapid/install_google_cloud_sdk.bash
-        dest: "{{dir}}/gcp-installer.sh"
+        dest: "{{ dir }}/gcp-installer.sh"
 
     - name: Get gsutil tool
-      script: "{{dir}}/gcp-installer.sh"
+      script: "{{ dir }}/gcp-installer.sh"
       environment:
         CLOUDSDK_CORE_DISABLE_PROMPTS: 1
-        CLOUDSDK_INSTALL_DIR: "{{dir}}"
+        CLOUDSDK_INSTALL_DIR: "{{ dir }}"
       no_log: True
       failed_when: false
 
     - name: Apply the lifecycle rules
-      command: "{{dir}}/google-cloud-sdk/bin/gsutil lifecycle set {{dir}}/gcs_life.json gs://{{test_name}}"
+      command: "{{ dir }}/google-cloud-sdk/bin/gsutil lifecycle set {{ dir }}/gcs_life.json gs://{{ test_name }}"
       environment:
-        BOTO_CONFIG: "{{dir}}/.boto"
+        BOTO_CONFIG: "{{ dir }}/.boto"
       no_log: True
 
     - name: Upload collected diagnostic info
@@ -63,13 +64,13 @@
         mode: put
         permission: public-read
         object: "{{ file_name }}"
-        src: "{{dir}}/logs.tar.gz"
+        src: "{{ dir }}/logs.tar.gz"
         headers: '{"Content-Encoding": "x-gzip"}'
         gs_access_key: "{{ gs_key }}"
         gs_secret_key: "{{ gs_skey }}"
-        expiration: "{{expire_days * 36000|int}}"
+        expiration: "{{ expire_days * 36000|int }}"
       failed_when: false
       no_log: True
 
     - debug:
-        msg: "A public url https://storage.googleapis.com/{{test_name}}/{{file_name}}"
+        msg: "A public url https://storage.googleapis.com/{{ test_name }}/{{ file_name }}"

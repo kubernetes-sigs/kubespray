@@ -4,8 +4,8 @@ variable "cluster_name" {
 
 variable "az_list" {
   description = "List of Availability Zones available in your OpenStack cluster"
-  type = "list"
-  default = ["nova"]
+  type        = "list"
+  default     = ["nova"]
 }
 
 variable "number_of_bastions" {
@@ -74,27 +74,27 @@ variable "ssh_user_gfs" {
 }
 
 variable "flavor_bastion" {
-  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
+  description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
 
 variable "flavor_k8s_master" {
-  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
+  description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
 
 variable "flavor_k8s_node" {
-  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
+  description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
 
 variable "flavor_etcd" {
-  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
+  description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
 
 variable "flavor_gfs_node" {
-  description = "Use 'nova flavor-list' command to see what your OpenStack instance uses for IDs"
+  description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
 
@@ -110,8 +110,8 @@ variable "use_neutron" {
 
 variable "subnet_cidr" {
   description = "Subnet CIDR block."
-  type = "string"
-  default = "10.0.0.0/24"
+  type        = "string"
+  default     = "10.0.0.0/24"
 }
 
 variable "dns_nameservers" {
@@ -125,34 +125,58 @@ variable "floatingip_pool" {
   default     = "external"
 }
 
+variable "wait_for_floatingip" {
+  description = "Terraform will poll the instance until the floating IP has been associated."
+  default     = "false"
+}
+
 variable "external_net" {
   description = "uuid of the external/public network"
 }
 
 variable "supplementary_master_groups" {
   description = "supplementary kubespray ansible groups for masters, such kube-node"
-  default = ""
+  default     = ""
 }
 
 variable "supplementary_node_groups" {
   description = "supplementary kubespray ansible groups for worker nodes, such as kube-ingress"
-  default = ""
+  default     = ""
 }
 
 variable "bastion_allowed_remote_ips" {
   description = "An array of CIDRs allowed to SSH to hosts"
-  type = "list"
-  default = ["0.0.0.0/0"]
+  type        = "list"
+  default     = ["0.0.0.0/0"]
+}
+
+variable "master_allowed_remote_ips" {
+  description = "An array of CIDRs allowed to access API of masters"
+  type        = "list"
+  default     = ["0.0.0.0/0"]
+}
+
+variable "k8s_allowed_remote_ips" {
+  description = "An array of CIDRs allowed to SSH to hosts"
+  type        = "list"
+  default     = []
+}
+
+variable "k8s_allowed_egress_ips" {
+  description = "An array of CIDRs allowed for egress traffic"
+  type        = "list"
+  default     = ["0.0.0.0/0"]
 }
 
 variable "worker_allowed_ports" {
   type = "list"
+
   default = [
     {
-      "protocol" = "tcp"
-      "port_range_min" = 30000
-      "port_range_max" = 32767
+      "protocol"         = "tcp"
+      "port_range_min"   = 30000
+      "port_range_max"   = 32767
       "remote_ip_prefix" = "0.0.0.0/0"
-    }
+    },
   ]
 }

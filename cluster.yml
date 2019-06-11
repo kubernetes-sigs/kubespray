@@ -1,13 +1,13 @@
 ---
 - hosts: localhost
   gather_facts: false
+  become: no
   tasks:
-    - name: "Check ansible version !=2.7.0"
+    - name: "Check ansible version >=2.7.8"
       assert:
-        msg: "Ansible V2.7.0 can't be used until: https://github.com/ansible/ansible/issues/46600 is fixed"
+        msg: "Ansible must be v2.7.8 or higher"
         that:
-          - ansible_version.string is version("2.7.0", "!=")
-          - ansible_version.string is version("2.6.0", ">=")
+          - ansible_version.string is version("2.7.8", ">=")
       tags:
         - check
   vars:
@@ -22,10 +22,6 @@
 - hosts: k8s-cluster:etcd:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   gather_facts: false
-  vars:
-    # Need to disable pipelining for bootstrap-os as some systems have requiretty in sudoers set, which makes pipelining
-    # fail. bootstrap-os fixes this on these systems, so in later plays it can be enabled.
-    ansible_ssh_pipelining: false
   roles:
     - { role: kubespray-defaults}
     - { role: bootstrap-os, tags: bootstrap-os}
@@ -34,13 +30,14 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   vars:
     ansible_ssh_pipelining: true
-  gather_facts: true
+  gather_facts: false
   pre_tasks:
     - name: gather facts from all instances
       setup:
-      delegate_to: "{{item}}"
-      delegate_facts: True
+      delegate_to: "{{ item }}"
+      delegate_facts: true
       with_items: "{{ groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]) }}"
+      run_once: true
 
 - hosts: k8s-cluster:etcd:calico-rr
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -49,7 +46,7 @@
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: "container-engine", tags: "container-engine", when: deploy_container_engine|default(true) }
     - { role: download, tags: download, when: "not skip_downloads" }
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"
 
 - hosts: etcd
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -68,7 +65,7 @@
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes/node, tags: node }
-  environment: "{{proxy_env}}"
+  environment: "{{ proxy_env }}"
 
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -107,16 +104,15 @@
     - { role: kubespray-defaults}
     - { role: network_plugin/calico/rr, tags: network }
 
-- hosts: k8s-cluster
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  roles:
-    - { role: kubespray-defaults}
-    - { role: dnsmasq, when: "dns_mode == 'dnsmasq_kubedns'", tags: dnsmasq }
-    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_late: true }
-  environment: "{{proxy_env}}"
-
 - hosts: kube-master
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults}
     - { role: kubernetes-apps, tags: apps }
+  environment: "{{ proxy_env }}"
+
+- hosts: k8s-cluster
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_late: true }

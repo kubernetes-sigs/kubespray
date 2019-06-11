@@ -1,10 +1,13 @@
 ---
-- name: check if atomic host
+# CentOS ships with python installed
+
+- name: Check if this is an atomic host
   stat:
     path: /run/ostree-booted
   register: ostree
 
-- set_fact:
+- name: Store the fact if this is an atomic host
+  set_fact:
     is_atomic: "{{ ostree.stat.exists }}"
 
 - name: Check presence of fastestmirror.conf
@@ -12,54 +15,34 @@
     path: /etc/yum/pluginconf.d/fastestmirror.conf
   register: fastestmirror
 
-# fastestmirror plugin actually slows down Ansible deployments
-- name: Disable fastestmirror plugin
+# the fastestmirror plugin can actually slow down Ansible deployments
+- name: Disable fastestmirror plugin if requested
   lineinfile:
     dest: /etc/yum/pluginconf.d/fastestmirror.conf
     regexp: "^enabled=.*"
     line: "enabled=0"
     state: present
-  when: fastestmirror.stat.exists
+  become: true
+  when:
+    - fastestmirror.stat.exists
+    - not centos_fastestmirror_enabled
 
 - name: Add proxy to /etc/yum.conf if http_proxy is defined
   lineinfile:
     path: "/etc/yum.conf"
-    line: "proxy={{http_proxy}}"
-    create: yes
+    line: "proxy={{ http_proxy }}"
+    create: true
     state: present
-  when: http_proxy is defined
+  become: true
+  when:
+    - http_proxy is defined
 
-- name: Install libselinux-python and yum-utils for bootstrap
-  yum:
-    name: "{{ packages }}"
+# libselinux-python is required on SELinux enabled hosts
+# See https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#managed-node-requirements
+- name: Install libselinux-python
+  package:
+    name: libselinux-python
     state: present
-  vars:
-    packages:
-      - libselinux-python
-      - yum-utils
+  become: true
   when:
     - not is_atomic
-
-- name: Check python-pip package
-  yum:
-    list=python-pip
-  register: package_python_pip
-  when:
-    - not is_atomic
-
-- name: Install epel-release for bootstrap
-  yum:
-    name: epel-release
-    state: present
-  when:
-    - epel_enabled
-    - not is_atomic
-    - package_python_pip.results | length != 0
-
-- name: Install pip for bootstrap
-  yum:
-    name: python-pip
-    state: present
-  when:
-    - not is_atomic
-    - package_python_pip.results | length != 0

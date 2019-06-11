@@ -1,56 +1,67 @@
 ---
-#  raw: cat /etc/issue.net | grep '{{ bootstrap_versions }}'
+# Some Debian based distros ship without Python installed
 
-- name: Bootstrap | Check if bootstrap is needed
-  raw: which "{{ item }}"
+- name: Check if bootstrap is needed
+  raw: which python
   register: need_bootstrap
   failed_when: false
   changed_when: false
-  with_items:
-    - python
-    - pip
-    - dbus-daemon
+  # This command should always run, even in check mode
+  check_mode: false
   environment: {}
-  tags: facts
+  tags:
+    - facts
 
 - name: Check http::proxy in /etc/apt/apt.conf
-  raw: grep -qsi 'Acquire::http::Proxy' /etc/apt/apt.conf
+  raw: grep -qsi 'Acquire::http::proxy' /etc/apt/apt.conf
   register: need_http_proxy
   failed_when: false
   changed_when: false
-  environment: {}
-  tags: facts
-
-- name: Add http_proxy to /etc/apt/apt.conf if http_proxy is defined
-  raw: echo 'Acquire::http::Proxy "{{http_proxy}}";' >> /etc/apt/apt.conf
+  # This command should always run, even in check mode
+  check_mode: false
   environment: {}
   when:
-    - need_http_proxy.rc != 0
     - http_proxy is defined
 
+- name: Add http_proxy to /etc/apt/apt.conf if http_proxy is defined
+  raw: echo 'Acquire::http::proxy "{{ http_proxy }}";' >> /etc/apt/apt.conf
+  become: true
+  environment: {}
+  when:
+    - http_proxy is defined
+    - need_http_proxy.rc != 0
+
 - name: Check https::proxy in /etc/apt/apt.conf
-  raw: grep -qsi 'Acquire::https::Proxy' /etc/apt/apt.conf
+  raw: grep -qsi 'Acquire::https::proxy' /etc/apt/apt.conf
   register: need_https_proxy
   failed_when: false
   changed_when: false
-  environment: {}
-  tags: facts
-
-- name: Add https_proxy to /etc/apt/apt.conf if https_proxy is defined
-  raw: echo 'Acquire::https::proxy "{{https_proxy}}";' >> /etc/apt/apt.conf
+  # This command should always run, even in check mode
+  check_mode: false
   environment: {}
   when:
-    - need_https_proxy.rc != 0
     - https_proxy is defined
 
-- name: Bootstrap | Install python 2.x, pip, and dbus
-  raw:
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y python-minimal python-pip dbus
+- name: Add https_proxy to /etc/apt/apt.conf if https_proxy is defined
+  raw: echo 'Acquire::https::proxy "{{ https_proxy }}";' >> /etc/apt/apt.conf
+  become: true
   environment: {}
   when:
-    need_bootstrap.results | map(attribute='rc') | sort | last | bool
+    - https_proxy is defined
+    - need_https_proxy.rc != 0
 
-- set_fact:
-    ansible_python_interpreter: "/usr/bin/python"
-  tags: facts
+- name: Install python
+  raw:
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y python-minimal
+  become: true
+  environment: {}
+  when:
+    - need_bootstrap.rc != 0
+
+# Workaround for https://github.com/ansible/ansible/issues/25543
+- name: Install dbus for the hostname module
+  package:
+    name: dbus
+    state: present
+  become: true

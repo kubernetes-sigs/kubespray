@@ -41,11 +41,15 @@
 
 - name: Kubernetes Apps | Add policies, roles, bindings for PodSecurityPolicy
   kube:
-    name: "{{item.item.name}}"
-    kubectl: "{{bin_dir}}/kubectl"
-    resource: "{{item.item.type}}"
-    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    name: "{{ item.item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
     state: "latest"
+  register: result
+  until: result is succeeded
+  retries: 10
+  delay: 6
   with_items: "{{ psp_manifests.results }}"
   when:
     - inventory_hostname == groups['kube-master'][0]
@@ -65,10 +69,14 @@
 - name: Apply workaround to allow all nodes with cert O=system:nodes to register
   kube:
     name: "kubespray:system:node"
-    kubectl: "{{bin_dir}}/kubectl"
+    kubectl: "{{ bin_dir }}/kubectl"
     resource: "clusterrolebinding"
     filename: "{{ kube_config_dir }}/node-crb.yml"
     state: latest
+  register: result
+  until: result is succeeded
+  retries: 10
+  delay: 6
   when:
     - rbac_enabled
     - node_crb_manifest.changed
@@ -88,7 +96,7 @@
 - name: Apply webhook ClusterRole
   kube:
     name: "system:node-webhook"
-    kubectl: "{{bin_dir}}/kubectl"
+    kubectl: "{{ bin_dir }}/kubectl"
     resource: "clusterrole"
     filename: "{{ kube_config_dir }}/node-webhook-cr.yml"
     state: latest
@@ -113,7 +121,7 @@
 - name: Grant system:nodes the webhook ClusterRole
   kube:
     name: "system:node-webhook"
-    kubectl: "{{bin_dir}}/kubectl"
+    kubectl: "{{ bin_dir }}/kubectl"
     resource: "clusterrolebinding"
     filename: "{{ kube_config_dir }}/node-webhook-crb.yml"
     state: latest
@@ -156,7 +164,7 @@
 - name: Apply vsphere-cloud-provider ClusterRole
   kube:
     name: "system:vsphere-cloud-provider"
-    kubectl: "{{bin_dir}}/kubectl"
+    kubectl: "{{ bin_dir }}/kubectl"
     resource: "clusterrolebinding"
     filename: "{{ kube_config_dir }}/vsphere-rbac.yml"
     state: latest
@@ -186,7 +194,7 @@
 - name: PriorityClass | Create k8s-cluster-critical
   kube:
     name: k8s-cluster-critical
-    kubectl: "{{bin_dir}}/kubectl"
+    kubectl: "{{ bin_dir }}/kubectl"
     resource: "PriorityClass"
     filename: "{{ kube_config_dir }}/k8s-cluster-critical-pc.yml"
     state: latest

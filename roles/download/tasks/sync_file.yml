@@ -1,0 +1,45 @@
+---
+- block:
+  - name: sync_file | Starting file sync of file
+    debug:
+      msg: "Starting file sync of file: {{ download.dest }}"
+
+  - name: download_file | Set pathname of cached file
+    set_fact:
+      file_path_cached: "{{ download_cache_dir }}/{{ download.dest | regex_replace('^\\/', '') }}"
+    tags:
+    - facts
+
+  - name: sync_file | Create dest directory on node
+    file:
+      path: "{{ download.dest | dirname }}"
+      owner: "{{ download.owner | default(omit) }}"
+      mode: 0755
+      state: directory
+      recurse: yes
+
+  - name: sync_file | Upload file images to node
+    synchronize:
+      src: "{{ file_path_cached }}"
+      dest: "{{ download.dest }}"
+      use_ssh_args: "{{ has_bastion | default(false) }}"
+      mode: push
+    become: true
+    register: get_task
+    until: get_task is succeeded
+    retries: 4
+    delay: "{{ retry_stagger | random + 3 }}"
+    when:
+    - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+
+  - name: sync_file | Set mode and owner
+    file:
+      path: "{{ download.dest }}"
+      mode: "{{ download.mode | default(omit) }}"
+      owner: "{{ download.owner | default(omit) }}"
+
+  - name: sync_file | Extract file archives
+    include_tasks: "extract_file.yml"
+
+  tags:
+  - upload

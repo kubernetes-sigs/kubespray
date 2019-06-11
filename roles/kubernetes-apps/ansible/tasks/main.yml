@@ -7,8 +7,8 @@
     client_key: "{{ kube_apiserver_client_key }}"
   register: result
   until: result.status == 200
-  retries: 10
-  delay: 2
+  retries: 20
+  delay: 1
   when: inventory_hostname == groups['kube-master'][0]
 
 - name: Kubernetes Apps | Cleanup DNS
@@ -17,9 +17,7 @@
     - inventory_hostname == groups['kube-master'][0]
   tags:
     - upgrade
-    - dnsmasq
     - coredns
-    - kubedns
     - nodelocaldns
 
 - name: Kubernetes Apps | CoreDNS
@@ -33,18 +31,10 @@
 - name: Kubernetes Apps | nodelocalDNS
   import_tasks: "tasks/nodelocaldns.yml"
   when:
-    - enable_nodelocaldns == True
+    - enable_nodelocaldns
     - inventory_hostname == groups['kube-master'] | first
   tags:
     - nodelocaldns
-
-- name: Kubernetes Apps | KubeDNS
-  import_tasks: "tasks/kubedns.yml"
-  when:
-    - dns_mode in ['kubedns', 'dnsmasq_kubedns']
-    - inventory_hostname == groups['kube-master'][0]
-  tags:
-    - dnsmasq
 
 - name: Kubernetes Apps | Start Resources
   kube:
@@ -55,7 +45,6 @@
     filename: "{{ kube_config_dir }}/{{ item.item.file }}"
     state: "latest"
   with_items:
-    - "{{ kubedns_manifests.results | default({}) }}"
     - "{{ coredns_manifests.results | default({}) }}"
     - "{{ coredns_secondary_manifests.results | default({}) }}"
     - "{{ nodelocaldns_manifests.results | default({}) }}"
@@ -68,9 +57,7 @@
   retries: 4
   delay: 5
   tags:
-    - dnsmasq
     - coredns
-    - kubedns
     - nodelocaldns
   loop_control:
     label: "{{ item.item.file }}"

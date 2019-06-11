@@ -1,16 +1,18 @@
 ---
-- set_fact:
+- name: set architecture_groups
+  set_fact:
     architecture_groups:
       x86_64: amd64
       aarch64: arm64
+      armv7l: arm
 
 - name: ansible_architecture_rename
   set_fact:
     host_architecture: >-
       {%- if ansible_architecture in architecture_groups -%}
-      {{architecture_groups[ansible_architecture]}}
+      {{ architecture_groups[ansible_architecture] }}
       {%- else -%}
-       {{ansible_architecture}}
+       {{ ansible_architecture }}
       {% endif %}
 
 - name: Force binaries directory for Container Linux by CoreOS
@@ -25,10 +27,12 @@
     path: /run/ostree-booted
   register: ostree
 
-- set_fact:
+- name: set is_atomic
+  set_fact:
     is_atomic: "{{ ostree.stat.exists }}"
 
-- set_fact:
+- name: set kube_cert_group on atomic hosts
+  set_fact:
     kube_cert_group: "kube"
   when: is_atomic
 
@@ -39,14 +43,13 @@
   changed_when: false
   check_mode: no
 
-- set_fact:
+- name: set dns facts
+  set_fact:
     resolvconf: >-
       {%- if resolvconf.rc == 0 -%}true{%- else -%}false{%- endif -%}
-
-- set_fact:
     bogus_domains: |-
       {% for d in [ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([]) -%}
-      {{dns_domain}}.{{d}}./{{d}}.{{d}}./com.{{d}}./
+      {{ dns_domain }}.{{ d }}./{{ d }}.{{ d }}./com.{{ d }}./
       {%- endfor %}
     cloud_resolver: >-
       {%- if cloud_provider is defined and cloud_provider == 'gce' -%}
@@ -123,10 +126,10 @@
     supersede_domain:
       supersede domain-name "{{ dns_domain }}";
 
-- name: pick dnsmasq cluster IP or default resolver
+- name: pick coredns cluster IP or default resolver
   set_fact:
-    dnsmasq_server: |-
-      {%- if dns_mode in ['kubedns', 'coredns'] and not dns_early|bool -%}
+    coredns_server: |-
+      {%- if dns_mode == 'coredns' and not dns_early|bool -%}
         {{ [ skydns_server ] + upstream_dns_servers|default([]) }}
       {%- elif dns_mode == 'coredns_dual' and not dns_early|bool -%}
         {{ [ skydns_server ] + [ skydns_server_secondary ] + upstream_dns_servers|default([]) }}
@@ -134,16 +137,14 @@
         {{ ( manual_dns_server.split(',') | list) + upstream_dns_servers|default([]) }}
       {%- elif dns_early|bool -%}
         {{ upstream_dns_servers|default([]) }}
-      {%- else -%}
-        {{ [ dnsmasq_dns_server ] }}
       {%- endif -%}
 
 - name: generate nameservers to resolvconf
   set_fact:
     nameserverentries:
-      nameserver {{( dnsmasq_server + nameservers|d([]) + cloud_resolver|d([])) | join(',nameserver ')}}
+      nameserver {{ ( coredns_server + nameservers|d([]) + cloud_resolver|d([])) | unique | join(',nameserver ') }}
     supersede_nameserver:
-      supersede domain-name-servers {{( dnsmasq_server + nameservers|d([]) + cloud_resolver|d([])) | join(', ') }};
+      supersede domain-name-servers {{ ( coredns_server + nameservers|d([]) + cloud_resolver|d([])) | unique | join(', ') }};
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -158,13 +159,6 @@
       paths:
         - ../vars
       skip: true
-
-- name: force kube_proxy removal if proxy services are replaced by other means
-  set_fact:
-    kube_proxy_remove: "{{ (kube_network_plugin == 'kube-router') and (kube_router_run_service_proxy is defined and kube_router_run_service_proxy)| bool }}"
-  tags:
-    - facts
-    - kube-proxy
 
 - name: override kube_proxy_mode to ipvs if kube_proxy_remove is set, as ipvs won't require kube-proxy cleanup when kube-proxy daemonset gets deleted
   set_fact:

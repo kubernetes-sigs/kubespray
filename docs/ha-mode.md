@@ -24,7 +24,7 @@ where an external LB or virtual IP management is inconvenient.  This option is
 configured by the variable `loadbalancer_apiserver_localhost` (defaults to
 `True`. Or `False`, if there is an external `loadbalancer_apiserver` defined).
 You may also define the port the local internal loadbalancer uses by changing,
-`nginx_kube_apiserver_port`.  This defaults to the value of
+`loadbalancer_apiserver_port`.  This defaults to the value of
 `kube_apiserver_port`. It is also important to note that Kubespray will only
 configure kubelet and kube-proxy on non-master nodes to use the local internal
 loadbalancer.
@@ -114,7 +114,7 @@ Where:
 * `ext` - Externally load balanced VIP:port and FQDN, not managed by Kubespray;
 * `lc` - localhost;
 * `bip` - a custom bind IP or localhost for the default bind IP '0.0.0.0';
-* `nsp` - nginx secure port, `nginx_kube_apiserver_port`, defers to `sp`;
+* `nsp` - nginx secure port, `loadbalancer_apiserver_port`, defers to `sp`;
 * `sp` - secure port, `kube_apiserver_port`;
 * `lp` - LB port, `loadbalancer_apiserver.port`, defers to the secure port;
 * `ip` - the node IP, defers to the ansible IP;

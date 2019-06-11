@@ -54,6 +54,10 @@ variable "k8s_master_fips" {
   type = "list"
 }
 
+variable "k8s_master_no_etcd_fips" {
+  type = "list"
+}
+
 variable "k8s_node_fips" {
   type = "list"
 }
@@ -65,6 +69,20 @@ variable "bastion_fips" {
 variable "bastion_allowed_remote_ips" {
   type = "list"
 }
+
+variable "master_allowed_remote_ips" {
+  type = "list"
+}
+
+variable "k8s_allowed_remote_ips" {
+  type = "list"
+}
+
+variable "k8s_allowed_egress_ips" {
+  type = "list"
+}
+
+variable "wait_for_floatingip" {}
 
 variable "supplementary_master_groups" {
   default = ""

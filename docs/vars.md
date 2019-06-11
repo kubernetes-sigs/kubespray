@@ -59,8 +59,6 @@ following default cluster parameters:
   overlap with kube_service_addresses.
 * *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remainin
   bits in kube_pods_subnet dictates how many kube-nodes can be in cluster.
-* *dns_setup* - Enables dnsmasq
-* *dnsmasq_dns_server* - Cluster IP for dnsmasq (default is 10.233.0.2)
 * *skydns_server* - Cluster IP for DNS (default is 10.233.0.3)
 * *skydns_server_secondary* - Secondary Cluster IP for CoreDNS used with coredns_dual deployment (default is 10.233.0.4)
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
@@ -84,15 +82,14 @@ and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.
 
 #### DNS variables
 
-By default, dnsmasq gets set up with 8.8.8.8 as an upstream DNS server and all
+By default, hosts are set up with 8.8.8.8 as an upstream DNS server and all
 other settings from your existing /etc/resolv.conf are lost. Set the following
 variables to match your requirements.
 
 * *upstream_dns_servers* - Array of upstream DNS servers configured on host in
   addition to Kubespray deployed DNS
-* *nameservers* - Array of DNS servers configured for use in dnsmasq
+* *nameservers* - Array of DNS servers configured for use by hosts
 * *searchdomains* - Array of up to 4 search domains
-* *skip_dnsmasq* - Don't set up dnsmasq (use only KubeDNS)
 
 For more information, see [DNS
 Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.md).
@@ -105,7 +102,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.
 * *kubelet_deployment_type* - Controls which platform to deploy kubelet on.
-  Available options are ``host``, ``rkt``, and ``docker``. ``docker`` mode
+  Available options are ``host`` and ``docker``. ``docker`` mode
   is unlikely to work on newer releases. Starting with Kubernetes v1.7
   series, this now defaults to ``host``. Before v1.7, the default was Docker.
   This is because of cgroup [issues](https://github.com/kubernetes/kubernetes/issues/43704).
@@ -116,13 +113,17 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *kubelet_cgroup_driver* - Allows manual override of the
   cgroup-driver option for Kubelet. By default autodetection is used
   to match Docker configuration.
+* *kubelet_rotate_certificates* - Auto rotate the kubelet client certificates by requesting new certificates
+  from the kube-apiserver when the certificate expiration approaches.
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
-  *node_labels* must be defined as a dict:
+  *node_labels* can be defined either as a dict or a comma-separaded labels string:
 ```
 node_labels:
   label1_name: label1_value
   label2_name: label2_value
+
+node_labels: "label1_name=label1_value,label2_name=label2_value"
 ```
 * *node_taints* - Taints applied to nodes via kubelet --register-with-taints parameter.
   For example, taints can be set in the inventory as variables or more widely in group_vars.

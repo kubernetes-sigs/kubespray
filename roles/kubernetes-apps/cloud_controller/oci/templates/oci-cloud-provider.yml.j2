@@ -1,0 +1,70 @@
+apiVersion: v1
+data:
+  cloud-provider.yaml: {{ controller_manager_config_base64 }}
+kind: Secret
+metadata:
+  name: oci-cloud-controller-manager
+  namespace: kube-system
+type: Opaque
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: oci-cloud-controller-manager
+  namespace: kube-system
+  labels:
+    k8s-app: oci-cloud-controller-manager
+spec:
+  selector:
+    matchLabels:
+      component: oci-cloud-controller-manager
+      tier: control-plane
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        component: oci-cloud-controller-manager
+        tier: control-plane
+    spec:
+{% if oci_cloud_controller_pull_secret is defined %}
+      imagePullSecrets:
+      - name: {{oci_cloud_controller_pull_secret}}
+{% endif %}
+      serviceAccountName: cloud-controller-manager
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
+      tolerations:
+      - key: node.cloudprovider.kubernetes.io/uninitialized
+        value: "true"
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      volumes:
+        - name: cfg
+          secret:
+            secretName: oci-cloud-controller-manager
+        - name: kubernetes
+          hostPath:
+            path: /etc/kubernetes
+      containers:
+        - name: oci-cloud-controller-manager
+          image: {{oci_cloud_controller_pull_source}}:{{oci_cloud_controller_version}}
+          command: ["/usr/local/bin/oci-cloud-controller-manager"]
+          args:
+            - --cloud-config=/etc/oci/cloud-provider.yaml
+            - --cloud-provider=oci
+            - --leader-elect-resource-lock=configmaps
+            - -v=2
+          volumeMounts:
+            - name: cfg
+              mountPath: /etc/oci
+              readOnly: true
+            - name: kubernetes
+              mountPath: /etc/kubernetes
+              readOnly: true
+

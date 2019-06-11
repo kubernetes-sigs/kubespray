@@ -1,10 +1,4 @@
 ---
-- name: Stop if ansible version is too low
-  assert:
-    that:
-      - ansible_version.full is version('2.3.0', '>=')
-  run_once: yes
-
 - name: Stop if either kube-master, kube-node or etcd is empty
   assert:
     that: groups.get('{{ item }}')
@@ -13,6 +7,7 @@
     - kube-node
     - etcd
   run_once: true
+  ignore_errors: "{{ ignore_assert_errors }}"
 
 - name: Stop if non systemd OS type
   assert:
@@ -21,12 +16,12 @@
 
 - name: Stop if unknown OS
   assert:
-    that: ansible_os_family in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'CoreOS', 'Container Linux by CoreOS', 'openSUSE Leap', 'openSUSE Tumbleweed', 'ClearLinux']
+    that: ansible_os_family in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'CoreOS', 'Container Linux by CoreOS', 'Suse', 'ClearLinux']
   ignore_errors: "{{ ignore_assert_errors }}"
 
 - name: Stop if unknown network plugin
   assert:
-    that: kube_network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud', 'cilium', 'contiv', 'kube-router']
+    that: kube_network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'contiv', 'kube-router']
   when: kube_network_plugin is defined
   ignore_errors: "{{ ignore_assert_errors }}"
 
@@ -37,11 +32,17 @@
   when: cloud_provider is defined and cloud_provider == 'azure'
   ignore_errors: "{{ ignore_assert_errors }}"
 
+- name: Stop if unsupported version of Kubernetes
+  assert:
+    that: kube_version is version(kube_version_min_required, '>=')
+    msg: "The current release of Kubespray only support newer vesion of Kubernetes than {{ kube_version_min_required }} - You are trying to apply {{ kube_version }}"
+  ignore_errors: "{{ ignore_assert_errors }}"
+
 # simplify this items-list when   https://github.com/ansible/ansible/issues/15753  is resolved
 - name: "Stop if known booleans are set as strings (Use JSON format on CLI: -e \"{'key': true }\")"
   assert:
     that: item.value|type_debug == 'bool'
-    msg: "{{item.value}} isn't a bool"
+    msg: "{{ item.value }} isn't a bool"
   run_once: yes
   with_items:
     - { name: download_run_once, value: "{{ download_run_once }}" }
@@ -55,16 +56,17 @@
   assert:
     that: groups.etcd|length is not divisibleby 2
   ignore_errors: "{{ ignore_assert_errors }}"
+  when: inventory_hostname in groups['etcd']
 
 - name: Stop if memory is too small for masters
   assert:
-    that: ansible_memtotal_mb >= 1500
+    that: ansible_memtotal_mb >= minimal_master_memory_mb
   ignore_errors: "{{ ignore_assert_errors }}"
   when: inventory_hostname in groups['kube-master']
 
 - name: Stop if memory is too small for nodes
   assert:
-    that: ansible_memtotal_mb >= 1024
+    that: ansible_memtotal_mb >= minimal_node_memory_mb
   ignore_errors: "{{ ignore_assert_errors }}"
   when: inventory_hostname in groups['kube-node']
 
@@ -136,12 +138,11 @@
     - facts
 
 - name: "Get current version of calico cluster version"
-  shell: "{{ bin_dir }}/calicoctl version  | grep 'Cluster Version:' | awk '{ print $3}'"
+  shell: "{{ bin_dir }}/calicoctl.sh version  | grep 'Cluster Version:' | awk '{ print $3}'"
   register: calico_version_on_server
-  async: 10
-  poll: 3
   run_once: yes
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  changed_when: false
+  failed_when: false
   when:
     - kube_network_plugin == 'calico'
 
@@ -153,22 +154,22 @@
   when:
     - kube_network_plugin == 'calico'
     - 'calico_version_on_server.stdout is defined'
-    - 'calico_version_on_server.stdout != ""'
+    - calico_version_on_server.stdout
     - inventory_hostname == groups['kube-master'][0]
   run_once: yes
 
 - name: "Check that kube_service_addresses is a network range"
   assert:
     that:
-      - kube_service_addresses | ipaddr
-    msg: "kube_service_addresses is not a valid network range"
+      - kube_service_addresses | ipaddr('net')
+    msg: "kube_service_addresses = '{{ kube_service_addresses }}' is not a valid network range"
   run_once: yes
 
 - name: "Check that kube_pods_subnet is a network range"
   assert:
     that:
-      - kube_pods_subnet | ipaddr
-    msg: "kube_pods_subnet is not a valid network range"
+      - kube_pods_subnet | ipaddr('net')
+    msg: "kube_pods_subnet = '{{ kube_pods_subnet }}' is not a valid network range"
   run_once: yes
 
 - name: "Check that kube_pods_subnet does not collide with kube_service_addresses"
@@ -180,8 +181,8 @@
 
 - name: Stop if unknown dns mode
   assert:
-    that: dns_mode in ['dnsmasq_kubedns', 'kubedns', 'coredns', 'coredns_dual', 'manual', 'none']
-    msg: "dns_mode can only be 'dnsmasq_kubedns', 'kubedns', 'coredns', 'coredns_dual', 'manual' or 'none'"
+    that: dns_mode in ['coredns', 'coredns_dual', 'manual', 'none']
+    msg: "dns_mode can only be 'coredns', 'coredns_dual', 'manual' or 'none'"
   when: dns_mode is defined
   run_once: true
 

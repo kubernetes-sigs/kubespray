@@ -1,0 +1,28 @@
+---
+- name: Wait for apiserver
+  shell: "{{ bin_dir }}/kubectl get nodes"
+  environment:
+    - KUBECONFIG: "{{ ansible_env.HOME | default('/root') }}/.kube/config"
+  register: apiserver_is_ready
+  until: apiserver_is_ready.rc == 0
+  retries: 6
+  delay: 10
+  changed_when: false
+
+- name: Delete old kube-master nodes from cluster
+  shell: "{{ bin_dir }}/kubectl delete node {{ item }}"
+  environment:
+    - KUBECONFIG: "{{ ansible_env.HOME | default('/root') }}/.kube/config"
+  with_items: "{{ old_kube_masters.split(',') }}"
+  register: delete_old_kube_masters
+  failed_when: false
+  when: old_kube_masters is defined
+
+- name: Fail if unable to delete old kube-master nodes from cluster
+  fail:
+    msg: "Unable to delete old kube-master node: {{ item.item }}"
+  loop: "{{ delete_old_kube_masters.results }}"
+  changed_when: false
+  when:
+    - old_kube_masters is defined
+    - "item.rc != 0 and not 'NotFound' in item.stderr"

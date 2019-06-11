@@ -4,7 +4,8 @@
     path: /run/ostree-booted
   register: ostree
 
-- set_fact:
+- name: set is_atomic
+  set_fact:
     is_atomic: "{{ ostree.stat.exists }}"
 
 - name: gather os specific variables
@@ -54,8 +55,8 @@
 - name: ensure docker-ce repository public key is installed
   action: "{{ docker_repo_key_info.pkg_key }}"
   args:
-    id: "{{item}}"
-    url: "{{docker_repo_key_info.url}}"
+    id: "{{ item }}"
+    url: "{{ docker_repo_key_info.url }}"
     state: present
   register: keyserver_task_result
   until: keyserver_task_result is succeeded
@@ -67,7 +68,7 @@
 - name: ensure docker-ce repository is enabled
   action: "{{ docker_repo_info.pkg_repo }}"
   args:
-    repo: "{{item}}"
+    repo: "{{ item }}"
     state: present
   with_items: "{{ docker_repo_info.repos }}"
   when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "RedHat", "Suse", "ClearLinux"] or is_atomic) and (docker_repo_info.repos|length > 0)
@@ -75,8 +76,8 @@
 - name: ensure docker-engine repository public key is installed
   action: "{{ dockerproject_repo_key_info.pkg_key }}"
   args:
-    id: "{{item}}"
-    url: "{{dockerproject_repo_key_info.url}}"
+    id: "{{ item }}"
+    url: "{{ dockerproject_repo_key_info.url }}"
     state: present
   register: keyserver_task_result
   until: keyserver_task_result is succeeded
@@ -90,7 +91,7 @@
 - name: ensure docker-engine repository is enabled
   action: "{{ dockerproject_repo_info.pkg_repo }}"
   args:
-    repo: "{{item}}"
+    repo: "{{ item }}"
     state: present
   with_items: "{{ dockerproject_repo_info.repos }}"
   when:
@@ -115,7 +116,7 @@
   register: yum_result
   when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
 
-- name: Configure extras repository on RedHat/CentOS if container-selinux not avaiable in current repos
+- name: Configure extras repository on RedHat/CentOS if container-selinux is not available in current repos
   yum_repository:
     name: extras
     description: "CentOS-7 - Extras"
@@ -123,9 +124,9 @@
     baseurl: "{{ extras_rh_repo_base_url }}"
     file: "extras"
     gpgcheck: yes
-    gpgkey: "{{extras_rh_repo_gpgkey}}"
+    gpgkey: "{{ extras_rh_repo_gpgkey }}"
     keepcache: "{{ docker_rpm_keepcache | default('1') }}"
-    proxy: " {{ http_proxy | default(omit) }}"
+    proxy: " {{ http_proxy | default('_none_') }}"
   when:
     - ansible_distribution in ["CentOS","RedHat"] and not is_atomic
     - yum_result.results | length == 0
@@ -148,10 +149,10 @@
 - name: ensure docker packages are installed
   action: "{{ docker_package_info.pkg_mgr }}"
   args:
-    pkg: "{{item.name}}"
-    force: "{{item.force|default(omit)}}"
-    conf_file: "{{item.yum_conf|default(omit)}}"
-    state: present
+    pkg: "{{ item.name }}"
+    force: "{{ item.force|default(omit) }}"
+    conf_file: "{{ item.yum_conf|default(omit) }}"
+    state: "{{ item.state | default('present') }}"
     update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
   register: docker_task_result
   until: docker_task_result is succeeded
@@ -166,7 +167,7 @@
   action: "{{ docker_package_info.pkg_mgr }}"
   args:
     name: "{{ item.name }}"
-    state: present
+    state: "{{ item.state | default('present') }}"
   with_items: "{{ docker_package_info.pkgs }}"
   register: docker_task_result
   until: docker_task_result is succeeded
@@ -185,25 +186,38 @@
 
 - name: show available packages on ubuntu
   fail:
-    msg: "{{available_packages}}"
+    msg: "{{ available_packages }}"
   when:
     - docker_task_result is failed
     - ansible_distribution == 'Ubuntu'
 
 # This is required to ensure any apt upgrade will not break kubernetes
-- name: Set docker pin priority to apt_preferences on Debian family
-  template:
-    src: "apt_preferences.d/debian_docker.j2"
-    dest: "/etc/apt/preferences.d/docker"
-    owner: "root"
-    mode: 0644
-  when: not (ansible_os_family in ["CoreOS", "Container Linux by CoreOS", "ClearLinux", "RedHat", "Suse"] or is_atomic)
+- name: Tell Debian hosts not to change the docker version with apt upgrade
+  dpkg_selections:
+    name: docker-ce
+    selection: hold
+  when: ansible_os_family in ["Debian"]
 
-- name: ensure service is started if docker packages are already present
-  service:
-    name: docker
-    state: started
-  when: docker_task_result is not changed
+- name: ensure docker started, remove our config if docker start failed and try again
+  block:
+    - name: ensure service is started if docker packages are already present
+      service:
+        name: docker
+        state: started
+      when: docker_task_result is not changed
+  rescue:
+    - debug:
+        msg: "Docker start failed. Try to remove our config"
+    - name: remove kubespray generated config
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/systemd/system/docker.service.d/http-proxy.conf
+        - /etc/systemd/system/docker.service.d/docker-options.conf
+        - /etc/systemd/system/docker.service.d/docker-dns.conf
+        - /etc/systemd/system/docker.service.d/docker-orphan-cleanup.conf
+      notify: restart docker
 
 - name: flush handlers so we can wait for docker to come up
   meta: flush_handlers

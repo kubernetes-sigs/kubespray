@@ -1,7 +1,37 @@
 ---
-- name: Install required packages (SUSE)
-  package:
-    name: "{{ item }}"
+# OpenSUSE ships with Python installed
+
+- name: Set the http_proxy in /etc/sysconfig/proxy
+  lineinfile:
+    path: /etc/sysconfig/proxy
+    regexp: '^HTTP_PROXY='
+    line: 'HTTP_PROXY="{{ http_proxy }}"'
+  become: true
+  when:
+    - http_proxy is defined
+
+- name: Set the https_proxy in /etc/sysconfig/proxy
+  lineinfile:
+    path: /etc/sysconfig/proxy
+    regexp: '^HTTPS_PROXY='
+    line: 'HTTPS_PROXY="{{ https_proxy }}"'
+  become: true
+  when:
+    - https_proxy is defined
+
+- name: Enable proxies
+  lineinfile:
+    path: /etc/sysconfig/proxy
+    regexp: '^PROXY_ENABLED='
+    line: 'PROXY_ENABLED="yes"'
+  become: true
+  when:
+    - http_proxy is defined or https_proxy is defined
+
+# Without this package, the get_url module fails when trying to handle https
+- name: Install python-cryptography
+  zypper:
+    name: python-cryptography
     state: present
-  with_items:
-    - python-cryptography
+    update_cache: true
+  become: true

@@ -1,4 +1,12 @@
 ---
+- name: download | Prepare working directories and variables
+  import_tasks: prep_download.yml
+  when:
+    - not skip_downloads|default(false)
+  tags:
+    - download
+    - upload
+
 - name: Use cri-o for cri connection
   set_fact:
     cri_socket: /var/run/crio/crio.sock
@@ -14,16 +22,6 @@
     cri_socket: /var/run/dockershim.sock
   when: container_manager == 'docker'
 
-- include_tasks: download_prep.yml
-  when:
-    - not skip_downloads|default(false)
-  tags:
-    - download
-    - upload
-
-- name: download | Get kubeadm binary and list of required images
-  import_tasks: prep_kubeadm_images.yml
-
 - name: crictl | Download crictl
   include_tasks: "download_file.yml"
   vars:
@@ -35,7 +33,8 @@
   when:
     - container_manager in ['containerd', 'crio']
 
-- include_tasks: kubeadm_images.yml
+- name: download | Get kubeadm binary and list of required images
+  import_tasks: prep_kubeadm_images.yml
   when:
     - kube_version is version('v1.11.0', '>=')
     - not skip_downloads|default(false)

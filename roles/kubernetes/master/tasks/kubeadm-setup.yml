@@ -124,7 +124,9 @@
   # Retry is because upload config sometimes fails
   retries: 3
   until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
-  when: inventory_hostname == groups['kube-master']|first and not kubeadm_already_run.stat.exists
+  when:
+    - inventory_hostname == groups['kube-master']|first
+    - not kubeadm_already_run.stat.exists or kubeadm_config.changed
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
@@ -175,10 +177,6 @@
 - name: kubeadm | Initialize other masters (experimental control plane)
   include: kubeadm-secondary-legacy.yml
   when: not kubeadm_control_plane
-
-- name: kubeadm | upgrade kubernetes cluster
-  import_tasks: kubeadm-upgrade.yml
-  when: upgrade_cluster_setup
 
 - name: kubeadm | Check serviceaccount key again
   stat:

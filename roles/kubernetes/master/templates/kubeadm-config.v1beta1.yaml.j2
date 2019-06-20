@@ -24,6 +24,7 @@ apiVersion: kubeadm.k8s.io/v1beta1
 kind: ClusterConfiguration
 clusterName: {{ cluster_name }}
 etcd:
+{% if not etcd_kubeadm_enabled %}
   external:
       endpoints:
 {% for endpoint in etcd_access_addresses.split(',') %}
@@ -32,6 +33,46 @@ etcd:
       caFile: {{ etcd_cert_dir }}/{{ kube_etcd_cacert_file }}
       certFile: {{ etcd_cert_dir }}/{{ kube_etcd_cert_file }}
       keyFile: {{ etcd_cert_dir }}/{{ kube_etcd_key_file }}
+{% elif etcd_kubeadm_enabled %}
+  local:
+    imageRepository: "{{ etcd_image_repo | regex_replace("/etcd$","") }}"
+    imageTag: "{{ etcd_image_tag }}"
+    dataDir: "/var/lib/etcd"
+    extraArgs:
+      metrics: {{ etcd_metrics }}
+      election-timeout: "{{ etcd_election_timeout }}"
+      heartbeat-interval: "{{ etcd_heartbeat_interval }}"
+      auto-compaction-retention: "{{ etcd_compaction_retention }}"
+{% if etcd_snapshot_count is defined %}
+      snapshot-count: "{{ etcd_snapshot_count }}"
+{% endif %}
+{% if etcd_quota_backend_bytes is defined %}
+      quota-backend-bytes: "{{ etcd_quota_backend_bytes }}"
+{% endif %}
+{% if etcd_log_package_levels is defined %}
+      log-package_levels: "{{ etcd_log_package_levels }}"
+{% endif %}
+{% for key, value in etcd_extra_vars.items() %}
+      {{ key }}: "{{ value }}"
+{% endfor %}
+{% if host_architecture != "amd64" -%}
+      etcd-unsupported-arch: {{host_architecture}}
+{% endif %}
+    serverCertSANs:
+{% for san in etcd_cert_alt_names %}
+      - {{ san }}
+{% endfor %}
+{% for san in etcd_cert_alt_ips %}
+      - {{ san }}
+{% endfor %}
+    peerCertSANs:
+{% for san in etcd_cert_alt_names %}
+      - {{ san }}
+{% endfor %}
+{% for san in etcd_cert_alt_ips %}
+      - {{ san }}
+{% endfor %}
+{% endif %}
 networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: {{ kube_service_addresses }}

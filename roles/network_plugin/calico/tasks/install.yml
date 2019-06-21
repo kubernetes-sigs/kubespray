@@ -35,7 +35,7 @@
 
 - name: Calico | Install calicoctl wrapper script
   template:
-    src: calicoctl.sh.j2
+    src: "calicoctl.{{ calico_datastore }}.sh.j2"
     dest: "{{ bin_dir }}/calicoctl.sh"
     mode: 0755
     owner: root
@@ -72,6 +72,32 @@
   when:
     - 'calico_conf.stdout == "0"'
     - calico_pool_cidr is defined
+
+- name: Calico | Create calico manifests for kdd
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: calico, file: kdd-crds.yml, type: kdd}
+  register: calico_node_kdd_manifest
+  when:
+    - inventory_hostname in groups['kube-master']
+    - calico_datastore == "kdd"
+
+- name: Start Calico resources
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "kube-system"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ calico_node_kdd_manifest.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0] and not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
 
 - name: Calico | Configure calico network pool (v3.0.0 <= version < v3.3.0)
   shell: >
@@ -350,17 +376,6 @@
   when:
     - inventory_hostname in groups['kube-master']
     - rbac_enabled or item.type not in rbac_resources
-
-- name: Calico | Create calico manifests for kdd
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-  with_items:
-    - {name: calico, file: kdd-crds.yml, type: kdd}
-  register: calico_node_kdd_manifest
-  when:
-    - inventory_hostname in groups['kube-master']
-    - calico_datastore == "kdd"
 
 - name: Calico | Create calico manifests for typha
   template:

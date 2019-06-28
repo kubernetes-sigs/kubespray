@@ -1,0 +1,27 @@
+auto mac0
+iface mac0 inet static
+    address {{ node_pod_cidr|ipaddr('net')|ipaddr(1)|ipaddr('address') }}
+    network {{ node_pod_cidr|ipaddr('network') }}
+    netmask {{ node_pod_cidr|ipaddr('netmask') }}
+    broadcast {{ node_pod_cidr|ipaddr('broadcast') }}
+    pre-up ip link add link {{ macvlan_interface }} mac0 type macvlan mode bridge
+{% for host in groups['kube-node'] %}
+{% if hostvars[host]['access_ip'] is defined  %}
+{% if hostvars[host]['node_pod_cidr'] != node_pod_cidr  %}
+    post-up ip route add {{ hostvars[host]['node_pod_cidr'] }} via {{ hostvars[host]['access_ip'] }}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% if enable_nat_default_gateway %}
+    post-up iptables -t nat -I POSTROUTING -s {{ node_pod_cidr|ipaddr('net') }} -o {{ node_default_gateway_interface }} -j MASQUERADE
+{% endif %}
+{% for host in groups['kube-node'] %}
+{% if hostvars[host]['access_ip'] is defined  %}
+{% if hostvars[host]['node_pod_cidr'] != node_pod_cidr  %}
+    post-down ip route del {{ hostvars[host]['node_pod_cidr'] }} via {{ hostvars[host]['access_ip'] }}
+{% endif %}
+{% endif %}
+{% endfor %}
+    post-down iptables -t nat -D POSTROUTING -s {{ node_pod_cidr|ipaddr('net') }} -o {{ node_default_gateway_interface }} -j MASQUERADE
+    post-down ip link delete mac0
+

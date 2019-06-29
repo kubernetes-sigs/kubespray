@@ -1,0 +1,50 @@
+---
+- name: Fail containerd setup if distribution is not supported
+  fail:
+    msg: "{{ ansible_distribution }} is not supported by containerd."
+  when:
+    - not ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian"]
+
+- name: Install Docker
+  include_role:
+    name: container-engine/docker
+
+- name: Install config.toml
+  template:
+    src: config.toml.j2
+    dest: /etc/containerd/config.toml
+    owner: bin
+    mode: 0644
+
+- name: Stop and disabled Docker
+  systemd:
+    name: docker
+    state: stopped
+    enabled: no
+
+- name: Restart containerd
+  systemd:
+    name: containerd
+    state: restarted
+
+- name: Install crictl config
+  template:
+    src: crictl.yaml.j2
+    dest: /etc/crictl.yaml
+    owner: bin
+    mode: 0644
+
+- name: Install crictl completion
+  shell: /usr/local/bin/crictl completion >/etc/bash_completion.d/crictl
+  ignore_errors: True
+  when: ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian"]
+
+- name: Enable containerd
+  systemd:
+    name: containerd.service
+    state: started
+    enabled: yes
+    daemon-reload: yes
+
+- name: flush handlers so we can wait for containerd to come up
+  meta: flush_handlers

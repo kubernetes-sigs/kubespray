@@ -206,9 +206,10 @@
         "asNumber": "{{ local_as }}"
       },
       "orchRefs":[{"nodeName":"{{ inventory_hostname }}","orchestrator":"k8s"}]
-   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+   }}' | {{ bin_dir }}/calicoctl.sh {{ 'apply -f -' if calico_datastore == "kdd" else 'create --skip-exists -f -' }}
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   when:
     - calico_version is version('v3.0.0', '>=')
     - peer_with_router|default(false)
@@ -256,6 +257,7 @@
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
     - "{{ peers|selectattr('scope','undefined')|list|default([]) | union(peers|selectattr('scope','defined')|selectattr('scope','equalto', 'node')|list|default([])) }}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   when:
     - calico_version is version('v3.0.0', '>=')
     - peer_with_router|default(false)
@@ -295,6 +297,7 @@
   with_items:
     - "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|list|default([]) }}"
   run_once: true
+  delegate_to: "{{ groups['kube-master'][0] }}"
   when:
     - calico_version | version_compare('v3.0.0', '>=')
     - peer_with_router|default(false)
@@ -335,6 +338,7 @@
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
     - "{{ groups['calico-rr'] | default([]) }}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   when:
     - calico_version is version('v3.0.0', '>=')
     - peer_with_calico_rr|default(false)

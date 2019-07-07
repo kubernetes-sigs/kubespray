@@ -44,22 +44,22 @@
 - name: ensure containerd repository public key is installed
   action: "{{ containerd_repo_key_info.pkg_key }}"
   args:
-    id: "{{item}}"
-    url: "{{containerd_repo_key_info.url}}"
+    id: "{{ item }}"
+    url: "{{ containerd_repo_key_info.url }}"
     state: present
   register: keyserver_task_result
   until: keyserver_task_result is succeeded
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ containerd_repo_key_info.repo_keys }}"
-  when: 
+  when:
     - ansible_os_family in ['Ubuntu', 'Debian']
     - not is_atomic
 
 - name: ensure containerd repository is enabled
   action: "{{ containerd_repo_info.pkg_repo }}"
   args:
-    repo: "{{item}}"
+    repo: "{{ item }}"
     state: present
   with_items: "{{ containerd_repo_info.repos }}"
   when:
@@ -67,7 +67,7 @@
     - not is_atomic
     - containerd_repo_info.repos|length > 0
 
-      # This is required to ensure any apt upgrade will not break kubernetes
+# This is required to ensure any apt upgrade will not break kubernetes
 - name: Set containerd pin priority to apt_preferences on Debian family
   template:
     src: "apt_preferences.d/debian_containerd.j2"
@@ -76,14 +76,14 @@
     mode: 0644
   when:
     - ansible_os_family in ['Ubuntu', 'Debian']
-    - not is_atomic     
+    - not is_atomic
 
 - name: ensure containerd packages are installed
   action: "{{ containerd_package_info.pkg_mgr }}"
   args:
-    pkg: "{{item.name}}"
-    force: "{{item.force|default(omit)}}"
-    conf_file: "{{item.yum_conf|default(omit)}}"
+    pkg: "{{ item.name }}"
+    force: "{{ item.force | default(omit) }}"
+    conf_file: "{{ item.yum_conf | default(omit) }}"
     state: present
     update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
   register: containerd_task_result
@@ -92,7 +92,7 @@
   delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ containerd_package_info.pkgs }}"
   notify: restart containerd
-  when: 
+  when:
     - not is_atomic
     - containerd_package_info.pkgs|length > 0
   ignore_errors: true
@@ -113,10 +113,10 @@
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
   notify: restart containerd
-  when: 
+  when:
     - not is_atomic
     - not runc_stat.stat.exists
- 
+
 - name: Install crictl config
   template:
     src: crictl.yaml.j2

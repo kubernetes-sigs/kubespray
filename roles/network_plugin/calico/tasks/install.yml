@@ -35,7 +35,7 @@
 
 - name: Calico | Install calicoctl wrapper script
   template:
-    src: calicoctl.sh.j2
+    src: "calicoctl.{{ calico_datastore }}.sh.j2"
     dest: "{{ bin_dir }}/calicoctl.sh"
     mode: 0755
     owner: root
@@ -72,6 +72,32 @@
   when:
     - 'calico_conf.stdout == "0"'
     - calico_pool_cidr is defined
+
+- name: Calico | Create calico manifests for kdd
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: calico, file: kdd-crds.yml, type: kdd}
+  register: calico_node_kdd_manifest
+  when:
+    - inventory_hostname in groups['kube-master']
+    - calico_datastore == "kdd"
+
+- name: Start Calico resources
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "kube-system"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ calico_node_kdd_manifest.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0] and not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
 
 - name: Calico | Configure calico network pool (v3.0.0 <= version < v3.3.0)
   shell: >
@@ -180,9 +206,10 @@
         "asNumber": "{{ local_as }}"
       },
       "orchRefs":[{"nodeName":"{{ inventory_hostname }}","orchestrator":"k8s"}]
-   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+   }}' | {{ bin_dir }}/calicoctl.sh {{ 'apply -f -' if calico_datastore == "kdd" else 'create --skip-exists -f -' }}
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   when:
     - calico_version is version('v3.0.0', '>=')
     - peer_with_router|default(false)
@@ -230,6 +257,7 @@
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
     - "{{ peers|selectattr('scope','undefined')|list|default([]) | union(peers|selectattr('scope','defined')|selectattr('scope','equalto', 'node')|list|default([])) }}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   when:
     - calico_version is version('v3.0.0', '>=')
     - peer_with_router|default(false)
@@ -269,6 +297,7 @@
   with_items:
     - "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|list|default([]) }}"
   run_once: true
+  delegate_to: "{{ groups['kube-master'][0] }}"
   when:
     - calico_version | version_compare('v3.0.0', '>=')
     - peer_with_router|default(false)
@@ -309,6 +338,7 @@
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
     - "{{ groups['calico-rr'] | default([]) }}"
+  delegate_to: "{{ groups['kube-master'][0] }}"
   when:
     - calico_version is version('v3.0.0', '>=')
     - peer_with_calico_rr|default(false)
@@ -350,17 +380,6 @@
   when:
     - inventory_hostname in groups['kube-master']
     - rbac_enabled or item.type not in rbac_resources
-
-- name: Calico | Create calico manifests for kdd
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-  with_items:
-    - {name: calico, file: kdd-crds.yml, type: kdd}
-  register: calico_node_kdd_manifest
-  when:
-    - inventory_hostname in groups['kube-master']
-    - calico_datastore == "kdd"
 
 - name: Calico | Create calico manifests for typha
   template:

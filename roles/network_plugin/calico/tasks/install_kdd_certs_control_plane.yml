@@ -1,0 +1,73 @@
+- name: Check if certificates already exist
+  stat:
+    path: "{{ calico_cert_dir }}/kubeconfig.yaml"
+  register: calico_kubeconfig
+
+- name: Refresh certificates so they are fresh and not expired
+  command: >-
+    {{ bin_dir }}/kubeadm init phase
+    --config {{ kube_config_dir }}/kubeadm-config.yaml
+    upload-certs --experimental-upload-certs
+    {% if kubeadm_certificate_key is defined %}
+    --certificate-key={{ kubeadm_certificate_key }}
+    {% endif %}
+  register: kubeadm_upload_cert
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  when:
+    - not calico_kubeconfig.stat.exists
+    - kubeadm_etcd_refresh_cert_key
+  run_once: yes
+
+- name: Parse certificate key if not set
+  set_fact:
+    kubeadm_certificate_key: "{{ hostvars[groups['kube-master'][0]]['kubeadm_upload_cert'].stdout_lines[-1] | trim }}"
+  when: 
+    - not calico_kubeconfig.stat.exists
+    - kubeadm_certificate_key is undefined
+
+- name: Pull control plane certs down
+  shell: >-
+    {{ bin_dir }}/kubeadm join phase
+    control-plane-prepare download-certs
+    --certificate-key {{ kubeadm_certificate_key }}
+    --experimental-control-plane
+    --token {{ kubeadm_token }}
+    --discovery-token-unsafe-skip-ca-verification
+    {{ kubeadm_discovery_address }}
+  args:
+    creates: "{{ kube_cert_dir }}/ca.key"
+  when: 
+    - not calico_kubeconfig.stat.exists
+    - inventory_hostname not in groups['kube-master']
+
+- name: Generate kubeconfig for calicoctl
+  shell: >-
+    {{ bin_dir }}/kubeadm alpha kubeconfig user
+    --client-name=calicoctl-node
+    --org=calicoctl-node > {{ calico_cert_dir }}/kubeconfig.yaml
+  when: 
+    - not calico_kubeconfig.stat.exists
+
+- name: Delete unneeded certificates
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ kube_cert_dir }}/apiserver.crt"
+    - "{{ kube_cert_dir }}/apiserver.key"
+    - "{{ kube_cert_dir }}/ca.key"
+    - "{{ kube_cert_dir }}/etcd/ca.key"
+    - "{{ kube_cert_dir }}/etcd/healthcheck-client.crt"
+    - "{{ kube_cert_dir }}/etcd/healthcheck-client.key"
+    - "{{ kube_cert_dir }}/etcd/peer.crt"
+    - "{{ kube_cert_dir }}/etcd/peer.key"
+    - "{{ kube_cert_dir }}/etcd/server.crt"
+    - "{{ kube_cert_dir }}/etcd/server.key"
+    - "{{ kube_cert_dir }}/front-proxy-ca.crt"
+    - "{{ kube_cert_dir }}/front-proxy-ca.key"
+    - "{{ kube_cert_dir }}/front-proxy-client.crt"
+    - "{{ kube_cert_dir }}/front-proxy-client.key"
+    - "{{ kube_cert_dir }}/sa.key"
+    - "{{ kube_cert_dir }}/sa.pub"
+  when: 
+    - inventory_hostname not in groups['kube-master']

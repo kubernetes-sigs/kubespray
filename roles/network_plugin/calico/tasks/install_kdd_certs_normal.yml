@@ -1,0 +1,24 @@
+- name: Check if certificates already exist
+  stat:
+    path: "{{ calico_cert_dir }}/kubeconfig.yaml"
+  register: calico_kubeconfig
+
+- name: Generate kubeconfig for calicoctl
+  shell: >-
+    {{ bin_dir }}/kubeadm alpha kubeconfig user
+    --client-name=calicoctl-node
+    --org=calicoctl-node
+  register: gen_calico_kubeconfig
+  run_once: yes
+  delegate_to: "{{ groups['kube-master][0] }}"
+  when: 
+    - not calico_kubeconfig.stat.exists
+
+- name: Write calico kubeconfig
+  copy:
+    dest: "{{ calico_cert_dir }}/kubeconfig.yaml"
+    content: "{{ gen_calico_kubeconfig.stdout }}"
+    owner: root
+    group: root
+    mode: 0600
+  when: not calico_kubeconfig.stat.exists

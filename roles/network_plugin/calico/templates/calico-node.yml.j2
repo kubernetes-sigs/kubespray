@@ -44,6 +44,29 @@ spec:
       terminationGracePeriodSeconds: 0
 {% if calico_version is version('v3.4.0', '>=') %}
       initContainers:
+{% if calico_datastore == "kdd" and calico_version is version('v3.6.0', '>=') %}
+        # This container performs upgrade from host-local IPAM to calico-ipam.
+        # It can be deleted if this is a fresh installation, or if you have already
+        # upgraded to use calico-ipam.
+        - name: upgrade-ipam
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          command: ["/opt/cni/bin/calico-ipam", "-upgrade"]
+          env:
+            - name: KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CALICO_NETWORKING_BACKEND
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: calico_backend
+          volumeMounts:
+            - mountPath: /var/lib/cni/networks
+              name: host-local-net-dir
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+{% endif %}
         # This container installs the Calico CNI binaries
         # and CNI network config file on each node.
         - name: install-cni
@@ -304,6 +327,14 @@ spec:
           hostPath:
             path: /run/xtables.lock
             type: FileOrCreate
+{% if calico_datastore == "kdd" and calico_version is version('v3.6.0', '>=') %}
+        # Mount in the directory for host-local IPAM allocations. This is
+        # used when upgrading from host-local to calico-ipam, and can be removed
+        # if not using the upgrade-ipam init container.
+        - name: host-local-net-dir
+          hostPath:
+            path: /var/lib/cni/networks
+{% endif %}
   updateStrategy:
     rollingUpdate:
       maxUnavailable: {{ serial | default('20%') }}

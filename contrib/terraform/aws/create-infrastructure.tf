@@ -16,7 +16,7 @@ data "aws_availability_zones" "available" {}
 */
 
 module "aws-vpc" {
-  source = "modules/vpc"
+  source = "./modules/vpc"
 
   aws_cluster_name         = "${var.aws_cluster_name}"
   aws_vpc_cidr_block       = "${var.aws_vpc_cidr_block}"
@@ -27,7 +27,7 @@ module "aws-vpc" {
 }
 
 module "aws-elb" {
-  source = "modules/elb"
+  source = "./modules/elb"
 
   aws_cluster_name      = "${var.aws_cluster_name}"
   aws_vpc_id            = "${module.aws-vpc.aws_vpc_id}"
@@ -39,7 +39,7 @@ module "aws-elb" {
 }
 
 module "aws-iam" {
-  source = "modules/iam"
+  source = "./modules/iam"
 
   aws_cluster_name = "${var.aws_cluster_name}"
 }

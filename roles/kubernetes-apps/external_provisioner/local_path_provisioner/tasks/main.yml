@@ -1,5 +1,4 @@
 ---
-
 - name: Local Path Provisioner | Create addon dir
   file:
     path: "{{ kube_config_dir }}/addons/local_path_provisioner"
@@ -18,7 +17,24 @@
 - name: Local Path Provisioner | Render Template
   set_fact:
     local_path_provisioner_templates:
-      - { name: local-path-storage, file: local-path-storage.yaml, type: sc }
+      - { name: local-path-storage-ns, file: local-path-storage-ns.yml, type: ns }
+      - { name: local-path-storage-sa, file: local-path-storage-sa.yml, type: sa }
+      - { name: local-path-storage-cr, file: local-path-storage-cr.yml, type: cr }
+      - { name: local-path-storage-clusterrolebinding, file: local-path-storage-clusterrolebinding.yml, type: clusterrolebinding }
+      - { name: local-path-storage-cm, file: local-path-storage-cm.yml, type: cm }
+      - { name: local-path-storage-deployment, file: local-path-storage-deployment.yml, type: deployment }
+      - { name: local-path-storage-sc, file: local-path-storage-sc.yml, type: sc }
+    local_path_provisioner_templates_for_psp_not_system_ns:
+      - { name: local-path-storage-psp, file: local-path-storage-psp.yml, type: psp }
+      - { name: local-path-storage-psp-role, file: local-path-storage-psp-cr.yml, type: clusterrole }
+      - { name: local-path-storage-psp-rb, file: local-path-storage-psp-rb.yml, type: rolebinding }
+
+- name: Local Path Provisioner | Insert extra templates to Local Path Provisioner templates list for PodSecurityPolicy
+  set_fact:
+    local_path_provisioner_templates: "{{ local_path_provisioner_templates[:3] + local_path_provisioner_templates_for_psp_not_system_ns + local_path_provisioner_templates[3:] }}"
+  when:
+    - podsecuritypolicy_enabled
+    - local_path_provisioner_namespace != "kube-system"
 
 - name: Local Path Provisioner | Create manifests
   template:

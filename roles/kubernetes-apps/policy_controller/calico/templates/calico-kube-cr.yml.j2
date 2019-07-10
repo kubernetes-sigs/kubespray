@@ -5,6 +5,7 @@ metadata:
   name: calico-kube-controllers
   namespace: kube-system
 rules:
+{% if calico_datastore == "etcd"  %}
   - apiGroups:
     - ""
     - extensions
@@ -24,3 +25,44 @@ rules:
     verbs:
       - watch
       - list
+{% elif calico_datastore == "kdd" %}
+  # Nodes are watched to monitor for deletions.
+  - apiGroups: [""]
+    resources:
+      - nodes
+    verbs:
+      - watch
+      - list
+      - get
+  # Pods are queried to check for existence.
+  - apiGroups: [""]
+    resources:
+      - pods
+    verbs:
+      - get
+  # IPAM resources are manipulated when nodes are deleted.
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - ippools
+    verbs:
+      - list
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - blockaffinities
+      - ipamblocks
+      - ipamhandles
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+  # Needs access to update clusterinformations.
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - clusterinformations
+    verbs:
+      - get
+      - create
+      - update
+{% endif %}

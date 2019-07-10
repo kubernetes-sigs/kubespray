@@ -25,6 +25,7 @@ spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
       hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: calico-kube-controllers
       tolerations:
         - key: CriticalAddonsOnly
@@ -45,7 +46,20 @@ spec:
             requests:
               cpu: {{ calico_policy_controller_cpu_requests }}
               memory: {{ calico_policy_controller_memory_requests }}
+{% if calico_version is version('v3.3.0', '>=') %}
+          readinessProbe:
+            exec:
+              command:
+              - /usr/bin/check-status
+              - -r
+{% endif %}
           env:
+{% if calico_datastore == "kdd" and calico_version is version('v3.6.0', '>=') %}
+            - name: ENABLED_CONTROLLERS
+              value: node
+            - name: DATASTORE_TYPE
+              value: kubernetes
+{% else %}
             - name: ETCD_ENDPOINTS
               value: "{{ etcd_access_addresses }}"
             - name: ETCD_CA_CERT_FILE
@@ -54,13 +68,6 @@ spec:
               value: "{{ calico_cert_dir }}/cert.crt"
             - name: ETCD_KEY_FILE
               value: "{{ calico_cert_dir }}/key.pem"
-{% if calico_version is version('v3.3.0', '>=') %}
-          readinessProbe:
-            exec:
-              command:
-              - /usr/bin/check-status
-              - -r
-{% endif %}
           volumeMounts:
           - mountPath: {{ calico_cert_dir }}
             name: etcd-certs
@@ -69,3 +76,4 @@ spec:
       - hostPath:
           path: {{ calico_cert_dir }}
         name: etcd-certs
+{% endif %}

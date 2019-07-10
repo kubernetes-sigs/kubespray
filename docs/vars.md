@@ -98,6 +98,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
+* *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install. 
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.
@@ -117,11 +118,13 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   from the kube-apiserver when the certificate expiration approaches.
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
-  *node_labels* must be defined as a dict:
+  *node_labels* can be defined either as a dict or a comma-separaded labels string:
 ```
 node_labels:
   label1_name: label1_value
   label2_name: label2_value
+
+node_labels: "label1_name=label1_value,label2_name=label2_value"
 ```
 * *node_taints* - Taints applied to nodes via kubelet --register-with-taints parameter.
   For example, taints can be set in the inventory as variables or more widely in group_vars.

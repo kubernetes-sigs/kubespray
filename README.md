@@ -36,9 +36,9 @@ To deploy the cluster you can use :
     cat inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml
 
     # Deploy Kubespray with Ansible Playbook - run the playbook as root
-    # The option `-b` is required, as for example writing SSL keys in /etc/,
+    # The option `--become` is required, as for example writing SSL keys in /etc/,
     # installing packages and interacting with various systemd daemons.
-    # Without -b the playbook will fail to run!
+    # Without --become the playbook will fail to run!
     ansible-playbook -i inventory/mycluster/hosts.yml --become --become-user=root cluster.yml
 
 Note: When Ansible is already installed via system packages on the control machine, other python packages installed via `sudo pip install -r requirements.txt` will go to a different directory tree (e.g. `/usr/local/lib/python2.7/dist-packages` on Ubuntu) from Ansible's (e.g. `/usr/lib/python2.7/dist-packages/ansible` still on Ubuntu).
@@ -108,18 +108,19 @@ Supported Components
 --------------------
 
 -   Core
-    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.14.1
-    -   [etcd](https://github.com/coreos/etcd) v3.2.26
+    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.15.0
+    -   [etcd](https://github.com/coreos/etcd) v3.3.10
     -   [docker](https://www.docker.com/) v18.06 (see note)
     -   [cri-o](http://cri-o.io/) v1.11.5 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
 -   Network Plugin
+    -   [cni-plugins](https://github.com/containernetworking/plugins) v0.8.1
     -   [calico](https://github.com/projectcalico/calico) v3.4.0
     -   [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
     -   [cilium](https://github.com/cilium/cilium) v1.3.0
     -   [contiv](https://github.com/contiv/install) v1.2.1
     -   [flanneld](https://github.com/coreos/flannel) v0.11.0
     -   [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.5
-    -   [multus](https://github.com/intel/multus-cni) v3.1.autoconf
+    -   [multus](https://github.com/intel/multus-cni) v3.2.1
     -   [weave](https://github.com/weaveworks/weave) v2.5.1
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
@@ -132,7 +133,7 @@ Note: The list of validated [docker versions](https://github.com/kubernetes/kube
 
 Requirements
 ------------
-
+-   **Minimum required version of Kubernetes is v1.13**
 -   **Ansible v2.7.8 (or newer) and python-netaddr is installed on the machine
     that will run Ansible commands**
 -   **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
@@ -145,7 +146,7 @@ Requirements
     should be configured in the target servers. Then the `ansible_become` flag
     or command parameters `--become or -b` should be specified.
 
-Hardware:        
+Hardware:
 These limits are safe guarded by Kubespray. Actual requirements for your workload can differ. For a sizing guide go to the [Building Large Clusters](https://kubernetes.io/docs/setup/cluster-large/#size-of-master-and-master-components) guide.
 
 -   Master
@@ -170,12 +171,14 @@ You can choose between 6 network plugins. (default: `calico`, except Vagrant use
     apply firewall policies, segregate containers in multiple network and bridging pods onto physical networks.
 
 -   [weave](docs/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster.
-    (Please refer to `weave` [troubleshooting documentation](http://docs.weave.works/weave/latest_release/troubleshooting.html)).
+    (Please refer to `weave` [troubleshooting documentation](https://www.weave.works/docs/net/latest/troubleshooting/)).
 
 -   [kube-router](docs/kube-router.md): Kube-router is a L3 CNI for Kubernetes networking aiming to provide operational
     simplicity and high performance: it uses IPVS to provide Kube Services Proxy (if setup to replace kube-proxy),
     iptables for network policies, and BGP for ods L3 networking (with optionally BGP peering with out-of-cluster BGP peers).
     It can also optionally advertise routes to Kubernetes cluster Pods CIDRs, ClusterIPs, ExternalIPs and LoadBalancerIPs.
+
+-   [macvlan](docs/macvlan.md): Macvlan is a Linux network driver. Pods have their own unique Mac and Ip address, connected directly the physical (layer 2) network.
 
 -   [multus](docs/multus.md): Multus is a meta CNI plugin that provides multiple network interface support to pods. For each interface Multus delegates CNI calls to secondary CNI plugins such as Calico, macvlan, etc.
 

@@ -5,7 +5,7 @@
       {%- if "127.0.0.1" in kube_apiserver_endpoint or "localhost" in kube_apiserver_endpoint -%}
       {{ first_kube_master }}:{{ kube_apiserver_port }}
       {%- else -%}
-      {{ kube_apiserver_endpoint }}
+      {{ kube_apiserver_endpoint | replace("https://", "") }}
       {%- endif %}
   tags:
     - facts
@@ -15,9 +15,19 @@
     path: "{{ kube_config_dir }}/kubelet.conf"
   register: kubelet_conf
 
+- name: Check if kubeadm CA cert is accessible
+  stat:
+    path: "{{ kube_cert_dir }}/ca.crt"
+  register: kubeadm_ca_stat
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+
 - name: Calculate kubeadm CA cert hash
   shell: openssl x509 -pubkey -in {{ kube_cert_dir }}/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
   register: kubeadm_ca_hash
+  when:
+    - kubeadm_ca_stat.stat is defined
+    - kubeadm_ca_stat.stat.exists
   delegate_to: "{{ groups['kube-master'][0] }}"
   run_once: true
 
@@ -37,25 +47,6 @@
   command: "{{ bin_dir }}/kubeadm version -o short"
   register: kubeadm_output
 
-- name: sets kubeadm api version to v1alpha1
-  set_fact:
-    kubeadmConfig_api_version: v1alpha1
-  when: kubeadm_output.stdout is version('v1.11.0', '<')
-
-- name: sets kubeadm api version to v1alpha2
-  set_fact:
-    kubeadmConfig_api_version: v1alpha2
-  when:
-    - kubeadm_output.stdout is version('v1.11.0', '>=')
-    - kubeadm_output.stdout is version('v1.12.0', '<')
-
-- name: sets kubeadm api version to v1alpha3
-  set_fact:
-    kubeadmConfig_api_version: v1alpha3
-  when:
-    - kubeadm_output.stdout is version('v1.12.0', '>=')
-    - kubeadm_output.stdout is version('v1.13.0', '<')
-
 - name: sets kubeadm api version to v1beta1
   set_fact:
     kubeadmConfig_api_version: v1beta1
@@ -70,29 +61,27 @@
 
 - name: Join to cluster if needed
   environment:
-    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}:/sbin"  # Make sure we can workaround RH / CentOS conservative path management
   when: not is_kube_master and (not kubelet_conf.stat.exists)
   block:
 
     - name: Join to cluster
       command: >-
+        timeout -k {{ kubeadm_join_timeout }} {{ kubeadm_join_timeout }}
         {{ bin_dir }}/kubeadm join
         --config {{ kube_config_dir }}/kubeadm-client.conf
         --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
       register: kubeadm_join
-      async: 120
-      poll: 15
 
   rescue:
 
     - name: Join to cluster with ignores
       command: >-
+        timeout -k {{ kubeadm_join_timeout }} {{ kubeadm_join_timeout }}
         {{ bin_dir }}/kubeadm join
         --config {{ kube_config_dir }}/kubeadm-client.conf
         --ignore-preflight-errors=all
       register: kubeadm_join
-      async: 60
-      poll: 15
 
   always:
 
@@ -103,12 +92,6 @@
           Joined with warnings
           {{ kubeadm_join.stderr_lines }}
 
-- name: Wait for kubelet bootstrap to create config
-  wait_for:
-    path: "{{ kube_config_dir }}/kubelet.conf"
-    delay: 1
-    timeout: 60
-
 - name: Update server field in kubelet kubeconfig
   lineinfile:
     dest: "{{ kube_config_dir }}/kubelet.conf"
@@ -118,7 +101,7 @@
   when:
     - kubeadm_config_api_fqdn is not defined
     - not is_kube_master
-    - kubeadm_discovery_address != kube_apiserver_endpoint
+    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
   notify: restart kubelet
 
 - name: Update server field in kube-proxy kubeconfig
@@ -130,7 +113,7 @@
   when:
     - inventory_hostname == groups['kube-master']|first
     - kubeadm_config_api_fqdn is not defined
-    - kubeadm_discovery_address != kube_apiserver_endpoint
+    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
     - not kube_proxy_remove
   tags:
     - kube-proxy
@@ -141,7 +124,7 @@
   when:
     - inventory_hostname == groups['kube-master']|first
     - kubeadm_config_api_fqdn is not defined
-    - kubeadm_discovery_address != kube_apiserver_endpoint
+    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
     - not kube_proxy_remove
   tags:
     - kube-proxy
@@ -165,6 +148,15 @@
   when:
     - inventory_hostname == groups['kube-master']|first
     - kube_proxy_remove
-    - kubeadm_discovery_address != kube_apiserver_endpoint
+    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
   tags:
     - kube-proxy
+
+- name: Extract etcd certs from control plane if using etcd kubeadm mode
+  include_tasks: kubeadm_etcd_node.yml
+  when:
+    - etcd_kubeadm_enabled
+    - kubeadm_control_plane
+    - inventory_hostname not in groups['kube-master']
+    - kube_network_plugin in ["calico", "flannel", "canal", "cilium"]
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"

@@ -1,0 +1,78 @@
+---
+- name: prep_download | Set a few facts
+  set_fact:
+    download_force_cache: "{{ true if download_run_once else download_force_cache }}"
+  tags:
+    - facts
+
+- name: prep_download | Create staging directory on remote node
+  file:
+    path: "{{ local_release_dir }}/images"
+    state: directory
+    recurse: yes
+    mode: 0755
+    owner: "{{ ansible_ssh_user | default(ansible_user_id) }}"
+  when:
+    - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+
+- name: prep_download | Create local cache for files and images
+  file:
+    path: "{{ download_cache_dir }}/images"
+    state: directory
+    recurse: yes
+    mode: 0755
+  delegate_to: localhost
+  delegate_facts: no
+  run_once: true
+  become: false
+  tags:
+    - localhost
+
+- name: prep_download | On localhost, check if passwordless root is possible
+  command: "true"
+  delegate_to: localhost
+  run_once: true
+  register: test_become
+  changed_when: false
+  ignore_errors: true
+  become: true
+  when:
+    - download_localhost
+  tags:
+    - localhost
+    - asserts
+
+- name: prep_download | On localhost, check if user has access to docker without using sudo
+  shell: "{{ docker_bin_dir }}/docker images"
+  delegate_to: localhost
+  run_once: true
+  register: test_docker
+  changed_when: false
+  ignore_errors: true
+  become: false
+  when:
+    - download_localhost
+  tags:
+    - localhost
+    - asserts
+
+- name: prep_download | Parse the outputs of the previous commands
+  set_fact:
+    user_in_docker_group: "{{ not test_docker.failed }}"
+    user_can_become_root: "{{ not test_become.failed }}"
+  when:
+    - download_localhost
+  tags:
+    - localhost
+    - asserts
+
+- name: prep_download | Check that local user is in group or can become root
+  assert:
+    that: "user_in_docker_group or user_can_become_root"
+    msg: >-
+      Error: User is not in docker group and cannot become root. When download_localhost is true, at least one of these two conditions must be met.
+  when:
+    - download_localhost
+  tags:
+    - localhost
+    - asserts

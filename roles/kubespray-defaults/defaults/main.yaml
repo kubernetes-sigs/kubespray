@@ -12,7 +12,10 @@ is_atomic: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.14.1
+kube_version: v1.15.0
+
+## The minimum version working
+kube_version_min_required: v1.14.0
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
@@ -43,6 +46,7 @@ haproxy_config_dir: "/etc/haproxy"
 # Directory where the binaries will be installed
 bin_dir: /usr/local/bin
 docker_bin_dir: /usr/bin
+containerd_bin_dir: /usr/bin
 etcd_data_dir: /var/lib/etcd
 # Where the binaries will be downloaded.
 # Note: ensure that you've enough disk space (about 1G)
@@ -64,6 +68,7 @@ dns_mode: coredns
 # Enable nodelocal dns cache
 enable_nodelocaldns: true
 nodelocaldns_ip: 169.254.25.10
+nodelocaldns_health_port: 9254
 
 # Should be set to a cluster IP if using a custom cluster DNS
 manual_dns_server: ""
@@ -252,7 +257,18 @@ docker_options: >-
   --userland-proxy-path=/usr/libexec/docker/docker-proxy-current --signature-verification=false
   {%- endif -%}
 
+## A list of plugins to install using 'docker plugin install --grant-all-permissions'
+## Empty by default so no plugins will be installed.
+docker_plugins: []
+
+# Experimental kubeadm etcd deployment mode. Available only for new deployment
+etcd_kubeadm_enabled: false
+
+# Containerd options
+containerd_use_systemd_cgroup: false
+
 # Settings for containerized control plane (etcd/kubelet/secrets)
+# deployment type for legacy etcd mode
 etcd_deployment_type: docker
 cert_management: script
 
@@ -279,6 +295,7 @@ registry_enabled: false
 metrics_server_enabled: false
 enable_network_policy: true
 local_volume_provisioner_enabled: "{{ local_volumes_enabled | default('false') }}"
+local_volume_provisioner_directory_mode: 0700
 persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
 rbd_provisioner_enabled: false
@@ -332,11 +349,7 @@ feature_gate_v1_12: []
 ## List of key=value pairs that describe feature gates for
 ## the k8s cluster.
 kube_feature_gates: |-
-  {%- if kube_version is version('v1.12.0', '<') -%}
-  {{ feature_gate_v1_11 }}
-  {%- else -%}
   {{ feature_gate_v1_12 }}
-  {%- endif %}
 
 # Enable kubeadm experimental control plane
 kubeadm_control_plane: false
@@ -403,8 +416,11 @@ no_proxy: >-
 
 proxy_env:
   http_proxy: "{{ http_proxy| default ('') }}"
+  HTTP_PROXY: "{{ http_proxy| default ('') }}"
   https_proxy: "{{ https_proxy| default ('') }}"
+  HTTPS_PROXY: "{{ https_proxy| default ('') }}"
   no_proxy: "{{ no_proxy| default ('') }}"
+  NO_PROXY: "{{ no_proxy| default ('') }}"
 
 ssl_ca_dirs: >-
   [

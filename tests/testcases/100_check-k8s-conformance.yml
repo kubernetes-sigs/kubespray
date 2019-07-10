@@ -1,0 +1,37 @@
+---
+- hosts: kube-master[0]
+  vars:
+    sonobuoy_version: 0.15.0
+    sonobuoy_arch: amd64
+    sonobuoy_parallel: 30
+    sonobuoy_path: /usr/local/bin/sonobuoy
+    sonobuoy_skip: 'Alpha|Disruptive|Feature|Flaky|Slow|Serial'
+    sonobuoy_mode: Quick
+
+  tasks:
+  - name: Run sonobuoy
+    when:
+    - sonobuoy_enabled is defined
+    - sonobuoy_enabled
+    block:
+    - name: Download sonobuoy
+      get_url:
+        url: "https://github.com/heptio/sonobuoy/releases/download/v{{ sonobuoy_version }}/sonobuoy_{{ sonobuoy_version }}_linux_{{ sonobuoy_arch }}.tar.gz"
+        dest: /tmp/sonobuoy.tar.gz
+
+    - name: Extract sonobuoy
+      unarchive:
+        src: /tmp/sonobuoy.tar.gz
+        dest: /usr/local/bin/
+        copy: no
+
+    - name: Run sonobuoy
+      command: "{{ sonobuoy_path }} run --mode {{ sonobuoy_mode }} --e2e-parallel {{ sonobuoy_parallel }} --e2e-skip {{ sonobuoy_skip }} --wait"
+      when: sonobuoy_enabled | default(false)
+
+    - name: Run sonobuoy retrieve
+      command: "{{ sonobuoy_path }} retrieve"
+      register: sonobuoy_retrieve
+
+    - name: Run inspect results
+      command: "{{ sonobuoy_path }} e2e {{ sonobuoy_retrieve.stdout }}"

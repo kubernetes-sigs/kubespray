@@ -14,16 +14,13 @@ nodeRegistration:
 {% else %}
   taints: []
 {% endif %}
-{% if container_manager == 'crio' %}
-  criSocket: /var/run/crio/crio.sock
-{% else %}
-  criSocket: /var/run/dockershim.sock
-{% endif %}
+  criSocket: {{ cri_socket }}
 ---
 apiVersion: kubeadm.k8s.io/v1beta1
 kind: ClusterConfiguration
 clusterName: {{ cluster_name }}
 etcd:
+{% if not etcd_kubeadm_enabled %}
   external:
       endpoints:
 {% for endpoint in etcd_access_addresses.split(',') %}
@@ -32,6 +29,52 @@ etcd:
       caFile: {{ etcd_cert_dir }}/{{ kube_etcd_cacert_file }}
       certFile: {{ etcd_cert_dir }}/{{ kube_etcd_cert_file }}
       keyFile: {{ etcd_cert_dir }}/{{ kube_etcd_key_file }}
+{% elif etcd_kubeadm_enabled %}
+  local:
+    imageRepository: "{{ etcd_image_repo | regex_replace("/etcd$","") }}"
+    imageTag: "{{ etcd_image_tag }}"
+    dataDir: "/var/lib/etcd"
+    extraArgs:
+      metrics: {{ etcd_metrics }}
+      election-timeout: "{{ etcd_election_timeout }}"
+      heartbeat-interval: "{{ etcd_heartbeat_interval }}"
+      auto-compaction-retention: "{{ etcd_compaction_retention }}"
+{% if etcd_snapshot_count is defined %}
+      snapshot-count: "{{ etcd_snapshot_count }}"
+{% endif %}
+{% if etcd_quota_backend_bytes is defined %}
+      quota-backend-bytes: "{{ etcd_quota_backend_bytes }}"
+{% endif %}
+{% if etcd_log_package_levels is defined %}
+      log-package_levels: "{{ etcd_log_package_levels }}"
+{% endif %}
+{% for key, value in etcd_extra_vars.items() %}
+      {{ key }}: "{{ value }}"
+{% endfor %}
+{% if host_architecture != "amd64" -%}
+      etcd-unsupported-arch: {{host_architecture}}
+{% endif %}
+    serverCertSANs:
+{% for san in etcd_cert_alt_names %}
+      - {{ san }}
+{% endfor %}
+{% for san in etcd_cert_alt_ips %}
+      - {{ san }}
+{% endfor %}
+    peerCertSANs:
+{% for san in etcd_cert_alt_names %}
+      - {{ san }}
+{% endfor %}
+{% for san in etcd_cert_alt_ips %}
+      - {{ san }}
+{% endfor %}
+{% endif %}
+{% if dns_mode in ['coredns', 'coredns_dual'] %}
+dns:
+  type: CoreDNS
+  imageRepository: {{ coredns_image_repo | regex_replace('/coredns$','') }}
+  imageTag: {{ coredns_image_tag }}
+{% endif %}
 networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: {{ kube_service_addresses }}
@@ -56,15 +99,11 @@ apiServer:
     insecure-bind-address: {{ kube_apiserver_insecure_bind_address }}
 {% endif %}
     insecure-port: "{{ kube_apiserver_insecure_port }}"
-{% if kube_version is version('v1.10', '<') %}
-    admission-control: {{ kube_apiserver_admission_control | join(',') }}
-{% else %}
 {% if kube_apiserver_enable_admission_plugins|length > 0 %}
     enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }}
 {% endif %}
 {% if kube_apiserver_disable_admission_plugins|length > 0 %}
     disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }}
-{% endif %}
 {% endif %}
     apiserver-count: "{{ kube_apiserver_count }}"
 {% if kube_version is version('v1.9', '>=') %}
@@ -75,6 +114,9 @@ apiServer:
 {% endif %}
     service-node-port-range: {{ kube_apiserver_node_port_range }}
     kubelet-preferred-address-types: "{{ kubelet_preferred_address_types }}"
+    profiling: "{{ kube_profiling }}"
+    request-timeout: "{{ kube_apiserver_request_timeout }}"
+    enable-aggregator-routing: "{{ kube_api_aggregator_routing }}"
 {% if kube_basic_auth|default(true) %}
     basic-auth-file: {{ kube_users_dir }}/known_users.csv
 {% endif %}
@@ -189,11 +231,9 @@ controllerManager:
     node-monitor-period: {{ kube_controller_node_monitor_period }}
     pod-eviction-timeout: {{ kube_controller_pod_eviction_timeout }}
     node-cidr-mask-size: "{{ kube_network_node_prefix }}"
-{% if kube_version is version('v1.14', '<') %}
-    address: {{ kube_controller_manager_bind_address }}
-{% else %}
+    profiling: "{{ kube_profiling }}"
+    terminated-pod-gc-threshold: "{{ kube_controller_terminated_pod_gc_threshold }}"
     bind-address: {{ kube_controller_manager_bind_address }}
-{% endif %}
 {% if kube_feature_gates %}
     feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -230,11 +270,7 @@ controllerManager:
 {% endif %}
 scheduler:
   extraArgs:
-{% if kube_version is version('v1.14', '<') %}
-    address: {{ kube_scheduler_bind_address }}
-{% else %}
     bind-address: {{ kube_scheduler_bind_address }}
-{% endif %}
 {% if kube_feature_gates %}
     feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -280,7 +316,7 @@ iptables:
  minSyncPeriod: {{ kube_proxy_min_sync_period }}
  syncPeriod: {{ kube_proxy_sync_period }}
 ipvs:
- excludeCIDRs: {{ kube_proxy_exclude_cidrs }}
+ excludeCIDRs: {{ "[]" if kube_proxy_exclude_cidrs is not defined or kube_proxy_exclude_cidrs == "null" or kube_proxy_exclude_cidrs | length == 0 else (kube_proxy_exclude_cidrs if kube_proxy_exclude_cidrs[0] == '[' else ("[" + kube_proxy_exclude_cidrs + "]" if (kube_proxy_exclude_cidrs[0] | length) == 1 else "[" + kube_proxy_exclude_cidrs | join(",") + "]")) }}
  minSyncPeriod: {{ kube_proxy_min_sync_period }}
  scheduler: {{ kube_proxy_scheduler }}
  syncPeriod: {{ kube_proxy_sync_period }}

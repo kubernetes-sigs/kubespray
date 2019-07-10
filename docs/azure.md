@@ -32,7 +32,7 @@ The name of the resource group your instances are in, can be retrieved via `azur
 The name of the virtual network your instances are in, can be retrieved via `azure network vnet list`
 
 #### azure\_subnet\_name
-The name of the subnet your instances are in, can be retrieved via `azure network vnet subnet list RESOURCE_GROUP VNET_NAME`
+The name of the subnet your instances are in, can be retrieved via `azure network vnet subnet list --resource-group RESOURCE_GROUP --vnet-name VNET_NAME`
 
 #### azure\_security\_group\_name
 The name of the network security group your instances are in, can be retrieved via `azure network nsg list`
@@ -40,14 +40,14 @@ The name of the network security group your instances are in, can be retrieved v
 #### azure\_aad\_client\_id + azure\_aad\_client\_secret
 These will have to be generated first:
 - Create an Azure AD Application with:
-`azure ad app create --name kubernetes --identifier-uris http://kubernetes --home-page http://example.com --password CLIENT_SECRET` 
-The name, identifier-uri, home-page and the password can be choosen
+`azure ad app create --display-name kubernetes --identifier-uris http://kubernetes --homepage http://example.com --password CLIENT_SECRET` 
+display name, identifier-uri, homepage and the password can be choosen
 Note the AppId in the output.
 - Create Service principal for the application with:
-`azure ad sp create --applicationId AppId`
+`azure ad sp create --id AppId`
 This is the AppId from the last command
 - Create the role assignment with:
-`azure role assignment create --spn http://kubernetes -o "Owner" -c /subscriptions/SUBSCRIPTION_ID`
+`azure role assignment create --role "Owner" --assignee http://kubernetes --subscription SUBSCRIPTION_ID`
 
 azure\_aad\_client\_id must be set to the AppId, azure\_aad\_client\_secret is your choosen secret.
 

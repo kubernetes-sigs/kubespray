@@ -62,18 +62,16 @@
   register: calico_conf
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
-  run_once: true
   changed_when: false
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname == groups['kube-master'][0]
 
 - name: Calico | Ensure that calico_pool_cidr is within kube_pods_subnet when defined
   assert:
     that: "[calico_pool_cidr] | ipaddr(kube_pods_subnet) | length == 1"
     msg: "{{ calico_pool_cidr }} is not within or equal to {{ kube_pods_subnet }}"
-  run_once: true
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname == groups['kube-master'][0]
     - 'calico_conf.stdout == "0"'
     - calico_pool_cidr is defined
 
@@ -116,9 +114,8 @@
           "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
           "ipipMode": "{{ ipip_mode }}",
           "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl.sh create -f -
-  run_once: true
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname == groups['kube-master'][0]
     - 'calico_conf.stdout == "0"'
     - calico_version is version("v3.0.0", ">=")
     - calico_version is version("v3.3.0", "<")
@@ -136,9 +133,8 @@
           "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
           "ipipMode": "{{ ipip_mode }}",
           "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl.sh create -f -
-  run_once: true
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname == groups['kube-master'][0]
     - 'calico_conf.stdout == "0"'
     - calico_version is version("v3.3.0", ">=")
 
@@ -153,9 +149,8 @@
       }' | {{ bin_dir }}/calicoctl.sh apply -f -
   environment:
     NO_DEFAULT_POOLS: true
-  run_once: true
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname == groups['kube-master'][0]
     - 'calico_conf.stdout == "0"'
     - calico_version is version("v3.0.0", "<")
 
@@ -179,24 +174,21 @@
         "logSeverityScreen": "Info",
         "nodeToNodeMeshEnabled": {{ nodeToNodeMeshEnabled|default('true') }} ,
         "asNumber": {{ global_as_num }} }} ' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
-  run_once: true
   changed_when: false
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname == groups['kube-master'][0]
     - calico_version is version('v3.0.0', '>=')
 
 - name: Calico | Set global as_num (legacy)
   command: "{{ bin_dir }}/calicoctl.sh config set asNumber {{ global_as_num }}"
-  run_once: true
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname == groups['kube-master'][0]
     - calico_version is version('v3.0.0', '<')
 
 - name: Calico | Disable node mesh (legacy)
   command: "{{ bin_dir }}/calicoctl.sh config set nodeToNodeMesh off"
-  run_once: yes
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname == groups['kube-master'][0]
     - calico_version is version('v3.0.0', '<')
     - nodeToMeshEnabled|default(True)
 
@@ -216,11 +208,10 @@
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
     - "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|list|default([]) }}"
-  run_once: true
   when:
+    - inventory_hostname == groups['kube-master'][0]
     - calico_version | version_compare('v3.0.0', '>=')
     - peer_with_router|default(false)
-    - inventory_hostname in groups['kube-master']
 
 - name: Calico | Configure peering with router(s) at global scope (legacy)
   shell: >
@@ -234,11 +225,10 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|default([]) }}"
-  run_once: true
   when:
+    - inventory_hostname == groups['kube-master'][0]
     - calico_version is version('v3.0.0', '<')
     - peer_with_router|default(false)
-    - inventory_hostname in groups['kube-master']
 
 - name: Calico | Create calico manifests
   template:
@@ -278,9 +268,8 @@
     - "{{ calico_node_manifests.results }}"
     - "{{ calico_node_kdd_manifest.results }}"
     - "{{ calico_node_typha_manifest.results }}"
-  run_once: yes
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname == groups['kube-master'][0]
     - not item is skipped
   loop_control:
     label: "{{ item.item.file }}"

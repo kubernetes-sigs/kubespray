@@ -181,6 +181,45 @@
     - inventory_hostname == groups['kube-master'][0]
     - peer_with_router|default(false)
 
+- name: Calico | Configure peering with route reflectors at global scope
+  shell: >
+   echo -e '
+   ---
+   kind: BGPPeer
+   apiVersion: projectcalico.org/v3
+   metadata:
+     name: peer-to-rrs
+   spec:
+     nodeSelector: "!has(i-am-a-route-reflector)"
+     peerSelector: has(i-am-a-route-reflector) ' |
+   calicoctl.sh apply -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - "{{ groups['calico-rr'] | default([]) }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - peer_with_calico_rr|default(false)
+
+- name: Calico | Configure route reflectors to peer with each other
+  shell: >
+    echo -e '---
+    kind: BGPPeer
+    apiVersion: projectcalico.org/v3
+    metadata:
+      name: rr-mesh
+    spec:
+      nodeSelector: has(i-am-a-route-reflector)
+      peerSelector: has(i-am-a-route-reflector)'
+    calicoctl.sh apply -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - "{{ groups['calico-rr'] | default([]) }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - peer_with_calico_rr|default(false)
+
 - name: Calico | Create calico manifests
   template:
     src: "{{ item.file }}.j2"
@@ -274,25 +313,3 @@
   when:
     - peer_with_router|default(false)
     - inventory_hostname in groups['k8s-cluster']
-
-- name: Calico | Configure peering with route reflectors
-  shell: >
-   echo '{
-   "apiVersion": "projectcalico.org/v3",
-   "kind": "BGPPeer",
-   "metadata": {
-      "name": "{{ inventory_hostname }}-{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(fallback_ips[item]) }}"
-   },
-   "spec": {
-      "asNumber": "{{ local_as | default(global_as_num) }}",
-      "node": "{{ inventory_hostname }}",
-      "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(fallback_ips[item]) }}"
-   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  with_items:
-    - "{{ groups['calico-rr'] | default([]) }}"
-  when:
-    - peer_with_calico_rr|default(false)
-    - inventory_hostname in groups['k8s-cluster']
-    - hostvars[item]['cluster_id'] == cluster_id

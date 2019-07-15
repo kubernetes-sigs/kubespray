@@ -46,6 +46,7 @@ else
 fi
 
 # Patch labels on PR
-curl --request PATCH "https://api.github.com/repos/kubernetes-sigs/kubespray/issues/${issue}?access_token=${GITHUB_TOKEN}" -H "Content-Type: application/json" -d "{\"labels\": ${labels_to_patch}}"
+echo "Going to patch labels with {\"labels\": ${labels_to_patch}}"
+curl ${CURL_ARGS} --request PATCH "https://api.github.com/repos/kubernetes-sigs/kubespray/issues/${issue}?access_token=${GITHUB_TOKEN}" -H "Content-Type: application/json" -d "{\"labels\": ${labels_to_patch}}"
 
 exit $exit_code

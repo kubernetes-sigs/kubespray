@@ -16,6 +16,9 @@ if [ "$issue" = "" ]; then
   exit 2
 fi
 
+echo "Fetching labels from PR $issue"
+labels=$(curl -skL "https://api.github.com/repos/kubernetes-sigs/kubespray/issues/${issue}?access_token=${GITHUB_TOKEN}" | jq '{labels: .labels}' | jq '.labels[].name' | jq -s)
+
 echo "Checking for '$MAGIC' comment in PR $issue"
 
 # Get the user name from the PR comments with the wanted magic incantation casted
@@ -32,11 +35,17 @@ fi
 
 curl ${CURL_ARGS} "https://api.github.com/orgs/kubernetes-sigs/members/${user}"
 
+exit_code=1
 if [ $? -ne 0 ]; then
   echo "User does not have permissions to start CI run"
-  exit 1
+  labels_to_patch=$(echo $labels | jq '. + ["needs-ci-auth"]' | tr -d "\n" | sed 's/"/\\"/g')
 else
+  labels_to_patch=$(echo $labels | jq '. - ["needs-ci-auth"]' | tr -d "\n" | sed 's/"/\\"/g')
+  exit_code=0
   echo "$user has allowed CI to start"
 fi
 
-exit 0
+# Patch labels on PR
+curl --request PATCH "https://api.github.com/repos/kubernetes-sigs/kubespray/issues/${issue}?access_token=${GITHUB_TOKEN}" -H "Content-Type: application/json" -d "{\"labels\": ${labels_to_patch}}"
+
+exit $exit_code

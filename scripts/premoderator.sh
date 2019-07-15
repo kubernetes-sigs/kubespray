@@ -19,7 +19,7 @@ fi
 
 echo "Fetching labels from PR $issue"
 labels=$(curl ${CURL_ARGS} "https://api.github.com/repos/kubernetes-sigs/kubespray/issues/${issue}?access_token=${GITHUB_TOKEN}" | jq '{labels: .labels}' | jq '.labels[].name' | jq -s '')
-labels_to_patch=$(echo -n $labels | jq '. + ["needs-ci-auth"]' | tr -d "\n" | sed 's/"/\\"/g')
+labels_to_patch=$(echo -n $labels | jq '. + ["needs-ci-auth"]' | tr -d "\n")
 
 echo "Checking for '$MAGIC' comment in PR $issue"
 
@@ -39,7 +39,7 @@ else
     echo "User does not have permissions to start CI run"
     exit_code=1
   else
-    labels_to_patch=$(echo -n $labels | jq '. - ["needs-ci-auth"]' | tr -d "\n" | sed 's/"/\\"/g')
+    labels_to_patch=$(echo -n $labels | jq '. - ["needs-ci-auth"]' | tr -d "\n")
     exit_code=0
     echo "$user has allowed CI to start"
   fi
@@ -47,6 +47,6 @@ fi
 
 # Patch labels on PR
 echo "Going to patch labels with - {\\\"labels\\\": ${labels_to_patch}} -"
-curl --request PATCH "https://api.github.com/repos/kubernetes-sigs/kubespray/issues/${issue}?access_token=${GITHUB_TOKEN}" -H "Content-Type: application/json" -d "{\\\"labels\\\": ${labels_to_patch}}"
+curl --request PATCH "https://api.github.com/repos/kubernetes-sigs/kubespray/issues/${issue}?access_token=${GITHUB_TOKEN}" -H "Content-Type: application/json" -d "{\"labels\": ${labels_to_patch}}"
 
 exit $exit_code

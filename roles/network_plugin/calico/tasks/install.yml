@@ -254,6 +254,29 @@
     - local_as is defined
     - groups['calico-rr'] | default([]) | length == 0
 
+- name: Calico | Configure node asNumber for per node peering
+  shell: >
+   echo '{
+   "apiVersion": "projectcalico.org/v3",
+   "kind": "Node",
+   "metadata": {
+      "name": {{ inventory_hostname }}"
+   },
+   "spec": {
+      "bgp": {
+        "asNumber": "{{ local_as }}"
+      },
+      "orchRefs":[{"nodeName":"{{ inventory_hostname }}","orchestrator":"k8s"}]
+   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|list|default([]) }}"
+  when:
+    - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+
+
 - name: Calico | Configure peering with router(s) at node scope
   shell: >
    echo '{

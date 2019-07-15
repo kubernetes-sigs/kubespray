@@ -102,7 +102,7 @@
   loop_control:
     label: "{{ item.item.file }}"
 
-- name: Calico | Configure calico network pool (v3.0.0 <= version < v3.3.0)
+- name: Calico | Configure calico network pool (version < v3.3.0)
   shell: >
     echo "
       { "kind": "IPPool",
@@ -117,7 +117,6 @@
   when:
     - inventory_hostname == groups['kube-master'][0]
     - 'calico_conf.stdout == "0"'
-    - calico_version is version("v3.0.0", ">=")
     - calico_version is version("v3.3.0", "<")
 
 - name: Calico | Configure calico network pool (version >= v3.3.0)
@@ -137,22 +136,6 @@
     - inventory_hostname == groups['kube-master'][0]
     - 'calico_conf.stdout == "0"'
     - calico_version is version("v3.3.0", ">=")
-
-- name: Calico | Configure calico network pool (legacy)
-  shell: >
-    echo '
-      { "kind": "ipPool",
-        "spec": {"disabled": false, "ipip": {"enabled": {{ ipip }}, "mode": "{{ ipip_mode|lower }}"},
-                 "nat-outgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }}},
-        "apiVersion": "v1",
-        "metadata": {"cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}"}
-      }' | {{ bin_dir }}/calicoctl.sh apply -f -
-  environment:
-    NO_DEFAULT_POOLS: true
-  when:
-    - inventory_hostname == groups['kube-master'][0]
-    - 'calico_conf.stdout == "0"'
-    - calico_version is version("v3.0.0", "<")
 
 - name: "Determine nodeToNodeMesh needed state"
   set_fact:
@@ -177,20 +160,6 @@
   changed_when: false
   when:
     - inventory_hostname == groups['kube-master'][0]
-    - calico_version is version('v3.0.0', '>=')
-
-- name: Calico | Set global as_num (legacy)
-  command: "{{ bin_dir }}/calicoctl.sh config set asNumber {{ global_as_num }}"
-  when:
-    - inventory_hostname == groups['kube-master'][0]
-    - calico_version is version('v3.0.0', '<')
-
-- name: Calico | Disable node mesh (legacy)
-  command: "{{ bin_dir }}/calicoctl.sh config set nodeToNodeMesh off"
-  when:
-    - inventory_hostname == groups['kube-master'][0]
-    - calico_version is version('v3.0.0', '<')
-    - nodeToMeshEnabled|default(True)
 
 - name: Calico | Configure peering with router(s) at global scope
   shell: >
@@ -210,24 +179,6 @@
     - "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|list|default([]) }}"
   when:
     - inventory_hostname == groups['kube-master'][0]
-    - calico_version | version_compare('v3.0.0', '>=')
-    - peer_with_router|default(false)
-
-- name: Calico | Configure peering with router(s) at global scope (legacy)
-  shell: >
-   echo '{
-   "kind": "bgpPeer",
-   "spec": {"asNumber": "{{ item.as }}"},
-   "apiVersion": "v1",
-   "metadata": {"scope": "global", "peerIP": "{{ item.router_id }}"}
-   }'
-   | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  with_items: "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|default([]) }}"
-  when:
-    - inventory_hostname == groups['kube-master'][0]
-    - calico_version is version('v3.0.0', '<')
     - peer_with_router|default(false)
 
 - name: Calico | Create calico manifests
@@ -298,30 +249,6 @@
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   when:
-    - calico_version is version('v3.0.0', '>=')
-    - peer_with_router|default(false)
-    - inventory_hostname in groups['k8s-cluster']
-    - local_as is defined
-    - groups['calico-rr'] | default([]) | length == 0
-
-- name: Calico | Configure node asNumber for per node peering (legacy)
-  shell: >
-   echo '{
-   "apiVersion": "v1",
-   "kind": "node",
-   "metadata": {
-      "name": "{{ inventory_hostname }}"
-   },
-   "spec": {
-      "bgp": {
-        "asNumber": "{{ local_as }}"
-      },
-      "orchRefs":[{"nodeName":"{{ inventory_hostname }}","orchestrator":"k8s"}]
-   }}' | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  when:
-    - calico_version is version('v3.0.0', '<')
     - peer_with_router|default(false)
     - inventory_hostname in groups['k8s-cluster']
     - local_as is defined
@@ -345,27 +272,8 @@
   with_items:
     - "{{ peers|selectattr('scope','undefined')|list|default([]) | union(peers|selectattr('scope','defined')|selectattr('scope','equalto', 'node')|list|default([])) }}"
   when:
-    - calico_version is version('v3.0.0', '>=')
     - peer_with_router|default(false)
     - inventory_hostname in groups['k8s-cluster']
-
-- name: Calico | Configure peering with router(s) at node scope (legacy)
-  shell: >
-   echo '{
-   "kind": "bgpPeer",
-   "spec": {"asNumber": "{{ item.as }}"},
-   "apiVersion": "v1",
-   "metadata": {"node": "{{ inventory_hostname }}", "scope": "node", "peerIP": "{{ item.router_id }}"}
-   }'
-   | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  with_items: "{{ peers|selectattr('scope','undefined')|list|default([]) | union(peers|selectattr('scope','defined')|selectattr('scope','equalto', 'node')|list|default([])) }}"
-  when:
-    - calico_version | version_compare('v3.0.0', '<')
-    - peer_with_router|default(false)
-    - inventory_hostname in groups['k8s-cluster']
-
 
 - name: Calico | Configure peering with route reflectors
   shell: >
@@ -385,27 +293,6 @@
   with_items:
     - "{{ groups['calico-rr'] | default([]) }}"
   when:
-    - calico_version is version('v3.0.0', '>=')
     - peer_with_calico_rr|default(false)
     - inventory_hostname in groups['k8s-cluster']
-    - hostvars[item]['cluster_id'] == cluster_id
-
-- name: Calico | Configure peering with route reflectors (legacy)
-  shell: >
-   echo '{
-   "kind": "bgpPeer",
-   "spec": {"asNumber": "{{ local_as | default(global_as_num) }}"},
-   "apiVersion": "v1",
-   "metadata": {"node": "{{ inventory_hostname }}",
-     "scope": "node",
-     "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(fallback_ips[item]) }}"}
-   }'
-   | {{ bin_dir }}/calicoctl.sh create --skip-exists -f -
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  with_items: "{{ groups['calico-rr'] | default([]) }}"
-  when:
-    - calico_version is version('v3.0.0', '<')
-    - not calico_upgrade_enabled
-    - peer_with_calico_rr|default(false)
     - hostvars[item]['cluster_id'] == cluster_id

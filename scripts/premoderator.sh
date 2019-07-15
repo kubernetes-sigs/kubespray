@@ -19,7 +19,7 @@ fi
 
 echo "Fetching labels from PR $issue"
 labels=$(curl ${CURL_ARGS} "https://api.github.com/repos/kubernetes-sigs/kubespray/issues/${issue}?access_token=${GITHUB_TOKEN}" | jq '{labels: .labels}' | jq '.labels[].name' | jq -s '')
-labels_to_patch=$(echo $labels | jq '. + ["needs-ci-auth"]' | tr -d "\n" | sed 's/"/\\"/g')
+labels_to_patch=$(echo -n $labels | jq '. + ["needs-ci-auth"]' | tr -d "\n" | sed 's/"/\\"/g')
 
 echo "Checking for '$MAGIC' comment in PR $issue"
 

@@ -25,12 +25,13 @@
 - name: Flannel | reload systemd
   systemd:
     daemon_reload: true
+  when: is_atomic
 
 - name: Flannel | reload docker.socket
   service:
     name: docker.socket
     state: restarted
-  when: ansible_os_family in ['CoreOS', 'Container Linux by CoreOS']
+  when: is_atomic
 
 - name: Flannel | configure docker live-restore true (atomic)
   replace:
@@ -43,11 +44,7 @@
   service:
     name: docker
     state: restarted
-
-- name: Flannel | pause while Docker restarts
-  pause:
-    seconds: 10
-    prompt: "Waiting for docker restart"
+  when: is_atomic
 
 - name: Flannel | wait for docker
   command: "{{ docker_bin_dir }}/docker images"
@@ -55,6 +52,7 @@
   retries: 10
   delay: 5
   until: docker_ready.rc == 0
+  when: is_atomic
 
 - name: Flannel | reload kubelet
   service:

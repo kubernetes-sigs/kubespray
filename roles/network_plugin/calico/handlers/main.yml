@@ -3,12 +3,18 @@
   command: /bin/true
   notify:
     - delete 10-calico.conflist
-    - delete calico-node containers
+    - docker | delete calico-node containers
+    - containerd | delete calico-node containers
 
 - name: delete 10-calico.conflist
   file:
-    path: /etc/calico/10-calico.conflist
+    path: /etc/cni/net.d/10-calico.conflist
     state: absent
 
-- name: delete calico-node containers
+- name: docker | delete calico-node containers
   shell: "docker ps -af name=k8s_POD_calico-node* -q | xargs --no-run-if-empty docker rm -f"
+  when: container_manager in ["docker"]
+
+- name: containerd | delete calico-node containers
+  shell: 'crictl pods --name calico-node-* -q | xargs -I% --no-run-if-empty bash -c "crictl stopp % && crictl rmp %"'
+  when: container_manager in ["crio", "containerd"]

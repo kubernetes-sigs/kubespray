@@ -61,6 +61,10 @@ following default cluster parameters:
   bits in kube_pods_subnet dictates how many kube-nodes can be in cluster.
 * *skydns_server* - Cluster IP for DNS (default is 10.233.0.3)
 * *skydns_server_secondary* - Secondary Cluster IP for CoreDNS used with coredns_dual deployment (default is 10.233.0.4)
+* *enable_coredns_k8s_external* - If enabled, it configures the [k8s_external plugin](https://coredns.io/plugins/k8s_external/)
+  on the CoreDNS service.
+* *coredns_k8s_external_zone* - Zone that will be used when CoreDNS k8s_external plugin is enabled
+  (default is k8s_external.local)
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)
 * *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in
@@ -98,6 +102,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
+* *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install. 
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.

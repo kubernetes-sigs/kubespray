@@ -69,6 +69,12 @@ etcd:
       - {{ san }}
 {% endfor %}
 {% endif %}
+{% if dns_mode in ['coredns', 'coredns_dual'] %}
+dns:
+  type: CoreDNS
+  imageRepository: {{ coredns_image_repo | regex_replace('/coredns$','') }}
+  imageTag: {{ coredns_image_tag }}
+{% endif %}
 networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: {{ kube_service_addresses }}
@@ -84,7 +90,7 @@ imageRepository: {{ kube_image_repo }}
 useHyperKubeImage: false
 apiServer:
   extraArgs:
-{% if kube_api_anonymous_auth is defined and kube_version is version('v1.5', '>=')  %}
+{% if kube_api_anonymous_auth is defined %}
     anonymous-auth: "{{ kube_api_anonymous_auth }}"
 {% endif %}
     authorization-mode: {{ authorization_modes | join(',') }}
@@ -93,20 +99,14 @@ apiServer:
     insecure-bind-address: {{ kube_apiserver_insecure_bind_address }}
 {% endif %}
     insecure-port: "{{ kube_apiserver_insecure_port }}"
-{% if kube_version is version('v1.10', '<') %}
-    admission-control: {{ kube_apiserver_admission_control | join(',') }}
-{% else %}
 {% if kube_apiserver_enable_admission_plugins|length > 0 %}
     enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }}
 {% endif %}
 {% if kube_apiserver_disable_admission_plugins|length > 0 %}
     disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }}
 {% endif %}
-{% endif %}
     apiserver-count: "{{ kube_apiserver_count }}"
-{% if kube_version is version('v1.9', '>=') %}
     endpoint-reconciler-type: lease
-{% endif %}
 {% if etcd_events_cluster_enabled %}
     etcd-servers-overrides: "/events#{{ etcd_events_access_addresses_semicolon }}"
 {% endif %}
@@ -231,11 +231,7 @@ controllerManager:
     node-cidr-mask-size: "{{ kube_network_node_prefix }}"
     profiling: "{{ kube_profiling }}"
     terminated-pod-gc-threshold: "{{ kube_controller_terminated_pod_gc_threshold }}"
-{% if kube_version is version('v1.14', '<') %}
-    address: {{ kube_controller_manager_bind_address }}
-{% else %}
     bind-address: {{ kube_controller_manager_bind_address }}
-{% endif %}
 {% if kube_feature_gates %}
     feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -272,11 +268,7 @@ controllerManager:
 {% endif %}
 scheduler:
   extraArgs:
-{% if kube_version is version('v1.14', '<') %}
-    address: {{ kube_scheduler_bind_address }}
-{% else %}
     bind-address: {{ kube_scheduler_bind_address }}
-{% endif %}
 {% if kube_feature_gates %}
     feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}

@@ -72,6 +72,19 @@ mount /dev/vdb1 /mnt/disks/ssd1
 Physical disks are recommended for production environments because it offers
 complete isolation in terms of I/O and capacity.
 
+### Mount unpartitioned physical devices
+
+
+``` bash
+for disk in /dev/sdc /dev/sdd /dev/sde; do
+  ln -s $disk /mnt/disks
+done
+```
+
+This saves time of precreatnig filesystems. Note that your storageclass must have
+volume_mode set to "Filesystem" and fs_type defined. If either is not set, the
+disk will be added as a raw block device.
+
 ### File-backed sparsefile method
 
 ``` bash
@@ -92,7 +105,7 @@ management.
 ### Block volumeMode PVs
 
 Create a symbolic link under discovery directory to the block device on the node. To use
-raw block devices in pods BlockVolume feature gate must be enabled.
+raw block devices in pods, volume_type should be set to "Block".
 
 Usage notes
 -----------

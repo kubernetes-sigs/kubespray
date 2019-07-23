@@ -55,7 +55,7 @@
 
 - name: kubeadm | aggregate all SANs
   set_fact:
-    apiserver_sans: "{{ (sans_base + groups['kube-master'] + sans_lb + sans_lb_ip + sans_supp + sans_access_ip + sans_ip + sans_address + sans_override) | unique }}"
+    apiserver_sans: "{{ (sans_base + groups['kube-master'] + sans_lb + sans_lb_ip + sans_supp + sans_access_ip + sans_ip + sans_address + sans_override + sans_hostname + sans_fqdn) | unique }}"
   vars:
     sans_base:
       - "kubernetes"
@@ -72,6 +72,8 @@
     sans_ip: "{{ groups['kube-master'] | map('extract', hostvars, 'ip') | list | select('defined') | list }}"
     sans_address: "{{ groups['kube-master'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | list | select('defined') | list }}"
     sans_override: "{{ [kube_override_hostname] if kube_override_hostname else [] }}"
+    sans_hostname: "{{ groups['kube-master'] | map('extract', hostvars, ['ansible_hostname']) | list | select('defined') | list }}"
+    sans_fqdn: "{{ groups['kube-master'] | map('extract', hostvars, ['ansible_fqdn']) | list | select('defined') | list }}"
   tags: facts
 
 - name: Create audit-policy directory
@@ -103,15 +105,19 @@
 
 - name: kubeadm | Initialize first master
   command: >-
-    timeout -k 600s 600s
+    timeout -k 300s 300s
     {{ bin_dir }}/kubeadm init
     --config={{ kube_config_dir }}/kubeadm-config.yaml
     --ignore-preflight-errors=all
     --skip-phases=addon/coredns
     {% if kubeadm_version is version('v1.14.0', '>=') %}
+    {% if kubeadm_version is version('v1.15.0', '<') %}
     --experimental-upload-certs
     {% if kubeadm_certificate_key is defined %}
     --certificate-key={{ kubeadm_certificate_key }}
+    {% endif %}
+    {% else %}
+    --upload-certs
     {% endif %}
     {% endif %}
   register: kubeadm_init

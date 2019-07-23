@@ -132,53 +132,6 @@
     - inventory_hostname == groups['kube-master'][0]
   tags: node-webhook
 
-- name: Check if vsphere-cloud-provider ClusterRole exists
-  command: "{{ bin_dir }}/kubectl get clusterroles system:vsphere-cloud-provider"
-  register: vsphere_cloud_provider
-  ignore_errors: true
-  when:
-    - rbac_enabled
-    - cloud_provider is defined
-    - cloud_provider == 'vsphere'
-    - kube_version is version('v1.9.0', '>=')
-    - kube_version is version('v1.9.3', '<=')
-    - inventory_hostname == groups['kube-master'][0]
-  tags: vsphere
-
-- name: Write vsphere-cloud-provider ClusterRole manifest
-  template:
-    src: "vsphere-rbac.yml.j2"
-    dest: "{{ kube_config_dir }}/vsphere-rbac.yml"
-  register: vsphere_rbac_manifest
-  when:
-    - rbac_enabled
-    - cloud_provider is defined
-    - cloud_provider == 'vsphere'
-    - vsphere_cloud_provider.rc is defined
-    - vsphere_cloud_provider.rc != 0
-    - kube_version is version('v1.9.0', '>=')
-    - kube_version is version('v1.9.3', '<=')
-    - inventory_hostname == groups['kube-master'][0]
-  tags: vsphere
-
-- name: Apply vsphere-cloud-provider ClusterRole
-  kube:
-    name: "system:vsphere-cloud-provider"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "clusterrolebinding"
-    filename: "{{ kube_config_dir }}/vsphere-rbac.yml"
-    state: latest
-  when:
-    - rbac_enabled
-    - cloud_provider is defined
-    - cloud_provider == 'vsphere'
-    - vsphere_cloud_provider.rc is defined
-    - vsphere_cloud_provider.rc != 0
-    - kube_version is version('v1.9.0', '>=')
-    - kube_version is version('v1.9.3', '<=')
-    - inventory_hostname == groups['kube-master'][0]
-  tags: vsphere
-
 - include_tasks: oci.yml
   tags: oci
   when:
@@ -187,9 +140,7 @@
 
 - name: PriorityClass | Copy k8s-cluster-critical-pc.yml file
   copy: src=k8s-cluster-critical-pc.yml dest={{ kube_config_dir }}/k8s-cluster-critical-pc.yml
-  when:
-    - kube_version is version('v1.11.1', '>=')
-    - inventory_hostname == groups['kube-master']|last
+  when: inventory_hostname == groups['kube-master']|last
 
 - name: PriorityClass | Create k8s-cluster-critical
   kube:
@@ -198,6 +149,4 @@
     resource: "PriorityClass"
     filename: "{{ kube_config_dir }}/k8s-cluster-critical-pc.yml"
     state: latest
-  when:
-    - kube_version is version('v1.11.1', '>=')
-    - inventory_hostname == groups['kube-master']|last
+  when: inventory_hostname == groups['kube-master']|last

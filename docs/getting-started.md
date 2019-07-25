@@ -48,6 +48,8 @@ You may want to add worker, master or etcd nodes to your existing cluster. This 
         ansible-playbook -i inventory/mycluster/hosts.yml scale.yml -b -v \
           --private-key=~/.ssh/private_key
 
+**/!\\** Make sure to ALWAYS have a healthy host at the first place in each ansible inventory host groups to have the playbook succeed. **/!\\**
+
 Remove nodes
 ------------
 

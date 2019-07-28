@@ -34,6 +34,7 @@
     - {name: cilium, file: cilium-crb.yml, type: clusterrolebinding}
     - {name: cilium, file: cilium-cr.yml, type: clusterrole}
     - {name: cilium, file: cilium-ds.yml, type: ds}
+    - {name: cilium, file: cilium-deploy.yml, type: deploy}
     - {name: cilium, file: cilium-sa.yml, type: sa}
   register: cilium_node_manifests
   when:
@@ -48,7 +49,16 @@
     mode: 0755
   register: cni_bin_dir
 
-- name: Cilium | Create network policy directory
-  file:
-    path: "{{ cilium_policy_dir }}"
-    state: directory
+- name: Cilium | Copy CNI plugins
+  unarchive:
+    src: "{{ local_release_dir }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
+    dest: "/opt/cni/bin"
+    mode: 0755
+    remote_src: yes
+  when: cilium_enable_portmap
+
+- name: Cilium | Enable portmap addon
+  template:
+    src: 000-cilium-portmap.conflist.j2
+    dest: /etc/cni/net.d/000-cilium-portmap.conflist
+  when: cilium_enable_portmap

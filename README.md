@@ -158,7 +158,7 @@ These limits are safe guarded by Kubespray. Actual requirements for your workloa
 Network Plugins
 ---------------
 
-You can choose between 6 network plugins. (default: `calico`, except Vagrant uses `flannel`)
+You can choose between 10 network plugins. (default: `calico`, except Vagrant uses `flannel`)
 
 -   [flannel](docs/flannel.md): gre/vxlan (layer 2) networking.
 
@@ -173,6 +173,8 @@ You can choose between 6 network plugins. (default: `calico`, except Vagrant use
 
 -   [weave](docs/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster.
     (Please refer to `weave` [troubleshooting documentation](https://www.weave.works/docs/net/latest/troubleshooting/)).
+
+-   [kube-ovn](docs/kube-ovn.md): Kube-OVN integrates the OVN-based Network Virtualization with Kubernetes. It offers an advanced Container Network Fabric for Enterprises.
 
 -   [kube-router](docs/kube-router.md): Kube-router is a L3 CNI for Kubernetes networking aiming to provide operational
     simplicity and high performance: it uses IPVS to provide Kube Services Proxy (if setup to replace kube-proxy),

@@ -68,6 +68,8 @@ following default cluster parameters:
   on the CoreDNS service.
 * *coredns_k8s_external_zone* - Zone that will be used when CoreDNS k8s_external plugin is enabled
   (default is k8s_external.local)
+* *enable_coredns_k8s_endpoint_pod_names* - If enabled, it configures endpoint_pod_names option for kubernetes plugin.
+  on the CoreDNS service.
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)
 * *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in
@@ -105,7 +107,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
-* *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install. 
+* *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install.
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.

@@ -14,7 +14,13 @@ Check if the calico-node container is running
 docker ps | grep calico
 ```
 
-The **calicoctl** command allows to check the status of the network workloads.
+The **calicoctl** command allows to check the status of the network workloads. Before using it you must setup up the environment variables to point to your etcd instance, it can be done from an etcd done using:
+
+```sh
+eval $(grep 'ETCD' /etc/etcd.env | xargs -I {} echo export \'{}\')
+export ETCD_ENDPOINTS=$ETCD_LISTEN_CLIENT_URLS
+```
+
 * Check the status of Calico nodes
 
 ```

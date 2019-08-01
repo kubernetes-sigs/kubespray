@@ -14,3 +14,5 @@ ansible-playbook --ask-become -i inventory/sample/k8s_heketi_inventory.yml contr
 ```
 ansible-playbook --ask-become -i inventory/sample/k8s_heketi_inventory.yml contrib/network-storage/heketi/heketi-tear-down.yml
 ```
+
+Add `--extra-vars "heketi_remove_lvm=true"` to the command above to remove LVM packages from the system

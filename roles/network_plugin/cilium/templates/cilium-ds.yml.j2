@@ -1,219 +1,251 @@
----
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
+  labels:
+    k8s-app: cilium
+    kubernetes.io/cluster-service: "true"
   name: cilium
   namespace: kube-system
 spec:
-  updateStrategy:
-    type: "RollingUpdate"
-    rollingUpdate:
-      # Specifies the maximum number of Pods that can be unavailable during the update process.
-      # The current default value is 1 or 100% for daemonsets; Adding an explicit value here
-      # to avoid confusion, as the default value is specific to the type (daemonset/deployment).
-      maxUnavailable: "100%"
   selector:
     matchLabels:
       k8s-app: cilium
       kubernetes.io/cluster-service: "true"
   template:
     metadata:
+      annotations:
+{% if cilium_enable_prometheus %}
+        prometheus.io/port: "9090"
+        prometheus.io/scrape: "true"
+{% endif %}
+        # This annotation plus the CriticalAddonsOnly toleration makes
+        # cilium to be a critical pod in the cluster, which ensures cilium
+        # gets priority scheduling.
+        # https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"dedicated","operator":"Equal","value":"master","effect":"NoSchedule"}]'
       labels:
         k8s-app: cilium
         kubernetes.io/cluster-service: "true"
-{% if cilium_enable_prometheus %}
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9090"
-{% endif %}
     spec:
-      priorityClassName: system-node-critical
-      serviceAccountName: cilium
-      initContainers:
-        - name: clean-cilium-state
-          image: {{ cilium_init_image_repo }}:{{ cilium_init_image_tag }}
-          imagePullPolicy: IfNotPresent
-          command: ['sh', '-c', 'if [ "${CLEAN_CILIUM_STATE}" = "true" ]; then rm -rf /var/run/cilium/state; rm -rf /sys/fs/bpf/tc/globals/cilium_*; fi']
-          volumeMounts:
-            - name: bpf-maps
-              mountPath: /sys/fs/bpf
-            - name: cilium-run
-              mountPath: /var/run/cilium
-          env:
-            - name: "CLEAN_CILIUM_STATE"
-              valueFrom:
-                configMapKeyRef:
-                  name: cilium-config
-                  optional: true
-                  key: clean-cilium-state
       containers:
-        - image: {{ cilium_image_repo }}:{{ cilium_image_tag }}
-          imagePullPolicy: Always
-          name: cilium-agent
-          command: ["cilium-agent"]
-          args:
-            - "--debug=$(CILIUM_DEBUG)"
-            - "--kvstore=etcd"
-            - "--kvstore-opt=etcd.config=/var/lib/etcd-config/etcd.config"
-            - "--disable-ipv4=$(DISABLE_IPV4)"
-{% if cilium_enable_prometheus %}
-          ports:
-            - name: prometheus
-              containerPort: 9090
-{% endif %}
-          lifecycle:
-            postStart:
-              exec:
-                command:
-                  - "/cni-install.sh"
-            preStop:
-              exec:
-                command:
-                  - "/cni-uninstall.sh"
-          env:
-            - name: "K8S_NODE_NAME"
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-            - name: "CILIUM_DEBUG"
-              valueFrom:
-                configMapKeyRef:
-                  name: cilium-config
-                  key: debug
-            - name: "DISABLE_IPV4"
-              valueFrom:
-                configMapKeyRef:
-                  name: cilium-config
-                  key: disable-ipv4
-{% if cilium_enable_prometheus %}
-            # Note: this variable is a no-op if not defined, and is used in the
-            # prometheus examples.
-            - name: "CILIUM_PROMETHEUS_SERVE_ADDR"
-              valueFrom:
-                configMapKeyRef:
-                  name: cilium-metrics-config
-                  optional: true
-                  key: prometheus-serve-addr
-{% endif %}
-            - name: "CILIUM_LEGACY_HOST_ALLOWS_WORLD"
-              valueFrom:
-                configMapKeyRef:
-                  name: cilium-config
-                  optional: true
-                  key: legacy-host-allows-world
-            - name: "CILIUM_SIDECAR_ISTIO_PROXY_IMAGE"
-              valueFrom:
-                configMapKeyRef:
-                  name: cilium-config
-                  key: sidecar-istio-proxy-image
-                  optional: true
-            - name: "CILIUM_TUNNEL"
-              valueFrom:
-                configMapKeyRef:
-                  key: tunnel
-                  name: cilium-config
-                  optional: true
-            - name: "CILIUM_MONITOR_AGGREGATION_LEVEL"
-              valueFrom:
-                configMapKeyRef:
-                  key: monitor-aggregation-level
-                  name: cilium-config
-                  optional: true
-          resources:
-            limits:
-              cpu: {{ cilium_cpu_limit }}
-              memory: {{ cilium_memory_limit }}
-            requests:
-              cpu: {{ cilium_cpu_requests }}
-              memory: {{ cilium_memory_requests }}
-          livenessProbe:
+      - args:
+        - --kvstore=etcd
+        - --kvstore-opt=etcd.config=/var/lib/etcd-config/etcd.config
+        - --config-dir=/tmp/cilium/config-map
+        command:
+        - cilium-agent
+        env:
+        - name: K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: CILIUM_K8S_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: CILIUM_CLUSTERMESH_CONFIG
+          value: /var/lib/cilium/clustermesh/
+        image: "{{cilium_image_repo}}:{{cilium_image_tag}}"
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            cpu: {{ cilium_cpu_limit }}
+            memory: {{ cilium_memory_limit }}
+          requests:
+            cpu: {{ cilium_cpu_requests }}
+            memory: {{ cilium_memory_requests }}
+        lifecycle:
+          postStart:
             exec:
               command:
-                - cilium
-                - status
-            initialDelaySeconds: 15
-            failureThreshold: 10
-            periodSeconds: 10
-          readinessProbe:
+              - /cni-install.sh
+          preStop:
             exec:
               command:
-                - cilium
-                - status
-            initialDelaySeconds: 5
-            periodSeconds: 5
-          volumeMounts:
-            - name: bpf-maps
-              mountPath: /sys/fs/bpf
-            - name: cilium-run
-              mountPath: /var/run/cilium
-            - name: cni-path
-              mountPath: /host/opt/cni/bin
-            - name: etc-cni-netd
-              mountPath: /host/etc/cni/net.d
+              - /cni-uninstall.sh
+        livenessProbe:
+          exec:
+            command:
+            - cilium
+            - status
+            - --brief
+          failureThreshold: 10
+          # The initial delay for the liveness probe is intentionally large to
+          # avoid an endless kill & restart cycle if in the event that the initial
+          # bootstrapping takes longer than expected.
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: cilium-agent
+{% if cilium_enable_prometheus %}
+        ports:
+        - containerPort: 9090
+          hostPort: 9090
+          name: prometheus
+          protocol: TCP
+{% endif %}
+        readinessProbe:
+          exec:
+            command:
+            - cilium
+            - status
+            - --brief
+          failureThreshold: 3
+          initialDelaySeconds: 5
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+            - SYS_MODULE
+          privileged: true
+        volumeMounts:
+        - mountPath: /sys/fs/bpf
+          name: bpf-maps
+        - mountPath: /var/run/cilium
+          name: cilium-run
+        - mountPath: /host/opt/cni/bin
+          name: cni-path
+        - mountPath: /host/etc/cni/net.d
+          name: etc-cni-netd
 {% if container_manager == 'docker' %}
-            - name: docker-socket
-              mountPath: /var/run/docker.sock
-              readOnly: true
+        - mountPath: /var/run/docker.sock
+          name: docker-socket
+          readOnly: true
 {% else %}
             - name: "{{ container_manager }}-socket"
               mountPath: {{ cri_socket }}
               readOnly: true
 {% endif %}
-            - name: etcd-config-path
-              mountPath: /var/lib/etcd-config
-              readOnly: true
-            - name: cilium-certs
-              mountPath: {{ cilium_cert_dir }}
-              readOnly: true
-          securityContext:
-            capabilities:
-              add:
-                - "NET_ADMIN"
-            privileged: true
-      hostNetwork: true
+        - mountPath: /var/lib/etcd-config
+          name: etcd-config-path
+          readOnly: true
+        - mountPath: "{{cilium_cert_dir}}"
+          name: etcd-secrets
+          readOnly: true
+        - mountPath: /var/lib/cilium/clustermesh
+          name: clustermesh-secrets
+          readOnly: true
+        - mountPath: /tmp/cilium/config-map
+          name: cilium-config-path
+          readOnly: true
+          # Needed to be able to load kernel modules
+        - mountPath: /lib/modules
+          name: lib-modules
+          readOnly: true
       dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      hostPID: false
+      initContainers:
+      - command:
+        - /init-container.sh
+        env:
+        - name: CLEAN_CILIUM_STATE
+          valueFrom:
+            configMapKeyRef:
+              key: clean-cilium-state
+              name: cilium-config
+              optional: true
+        - name: CLEAN_CILIUM_BPF_STATE
+          valueFrom:
+            configMapKeyRef:
+              key: clean-cilium-bpf-state
+              name: cilium-config
+              optional: true
+        - name: CILIUM_WAIT_BPF_MOUNT
+          valueFrom:
+            configMapKeyRef:
+              key: wait-bpf-mount
+              name: cilium-config
+              optional: true
+        image: "{{cilium_init_image_repo}}:{{cilium_init_image_tag}}"
+        imagePullPolicy: IfNotPresent
+        name: clean-cilium-state
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: true
+        volumeMounts:
+        - mountPath: /sys/fs/bpf
+          name: bpf-maps
+        - mountPath: /var/run/cilium
+          name: cilium-run
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      serviceAccount: cilium
+      serviceAccountName: cilium
+      terminationGracePeriodSeconds: 1
+      tolerations:
+      - operator: Exists
       volumes:
         # To keep state between restarts / upgrades
-        - name: cilium-run
-          hostPath:
-            path: /var/run/cilium
-        # To keep state between restarts / upgrades
-        - name: bpf-maps
-          hostPath:
-            path: /sys/fs/bpf
+      - hostPath:
+          path: /var/run/cilium
+          type: DirectoryOrCreate
+        name: cilium-run
+        # To keep state between restarts / upgrades for bpf maps
+      - hostPath:
+          path: /sys/fs/bpf
+          type: DirectoryOrCreate
+        name: bpf-maps
 {% if container_manager == 'docker' %}
         # To read docker events from the node
-        - name: docker-socket
-          hostPath:
-            path: /var/run/docker.sock
+      - hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+        name: docker-socket
 {% else %}
         # To read crio events from the node
-        - name: {{ container_manager }}-socket
-          hostPath:
-            path: {{ cri_socket }}
+      - hostPath:
+          path: {{ cri_socket }}
+          type: Socket
+        name: {{ container_manager }}-socket
 {% endif %}
         # To install cilium cni plugin in the host
-        - name: cni-path
-          hostPath:
-            path: /opt/cni/bin
+      - hostPath:
+          path: /opt/cni/bin
+          type: DirectoryOrCreate
+        name: cni-path
         # To install cilium cni configuration in the host
-        - name: etc-cni-netd
-          hostPath:
-            path: /etc/cni/net.d
+      - hostPath:
+          path: /etc/cni/net.d
+          type: DirectoryOrCreate
+        name: etc-cni-netd
+        # To be able to load kernel modules
+      - hostPath:
+          path: /lib/modules
+        name: lib-modules
         # To read the etcd config stored in config maps
-        - name: etcd-config-path
-          configMap:
-            name: cilium-config
-            items:
-              - key: etcd-config
-                path: etcd.config
+      - configMap:
+          defaultMode: 420
+          items:
+          - key: etcd-config
+            path: etcd.config
+          name: cilium-config
+        name: etcd-config-path
         # To read the k8s etcd secrets in case the user might want to use TLS
-        - name: cilium-certs
-          hostPath:
-              path: {{ cilium_cert_dir }}
-
-      restartPolicy: Always
-      tolerations:
-        - operator: Exists
-        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
-        - key: CriticalAddonsOnly
-          operator: "Exists"
+      - name: etcd-secrets
+        hostPath:
+          path: "{{cilium_cert_dir}}"
+        # To read the clustermesh configuration
+      - name: clustermesh-secrets
+        secret:
+          defaultMode: 420
+          optional: true
+          secretName: cilium-clustermesh
+        # To read the configuration from the config map
+      - configMap:
+          name: cilium-config
+        name: cilium-config-path
+  updateStrategy:
+    rollingUpdate:
+      # Specifies the maximum number of Pods that can be unavailable during the update process.
+      maxUnavailable: 2
+    type: RollingUpdate

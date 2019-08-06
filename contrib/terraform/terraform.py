@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 #
 # Copyright 2015 Cisco Systems, Inc.
 #
@@ -20,15 +20,15 @@
 Dynamic inventory for Terraform - finds all `.tfstate` files below the working
 directory and generates an inventory based on them.
 """
-from __future__ import unicode_literals, print_function
 import argparse
 from collections import defaultdict
+import random
 from functools import wraps
 import json
 import os
 import re
 
-VERSION = '0.3.0pre'
+VERSION = '0.4.0pre'
 
 
 def tfstates(root=None):
@@ -38,15 +38,58 @@ def tfstates(root=None):
             if os.path.splitext(name)[-1] == '.tfstate':
                 yield os.path.join(dirpath, name)
 
+def convert_to_v3_structure(attributes, prefix=''):
+    """ Convert the attributes from v4 to v3
+    Receives a dict and return a dictionary """
+    result = {}
+    if isinstance(attributes, str):
+        # In the case when we receive a string (e.g. values for security_groups)
+        return {'{}{}'.format(prefix, random.randint(1,10**10)): attributes}
+    for key, value in attributes.items():
+        if isinstance(value, list):
+            if len(value):
+                result['{}{}.#'.format(prefix, key, hash)] = len(value)
+            for i, v in enumerate(value):
+                result.update(convert_to_v3_structure(v, '{}{}.{}.'.format(prefix, key, i)))
+        elif isinstance(value, dict):
+            result['{}{}.%'.format(prefix, key)] = len(value)
+            for k, v in value.items():
+                result['{}{}.{}'.format(prefix, key, k)] = v
+        else:
+            result['{}{}'.format(prefix, key)] = value
+    return result
 
 def iterresources(filenames):
     for filename in filenames:
         with open(filename, 'r') as json_file:
             state = json.load(json_file)
-            for module in state['modules']:
-                name = module['path'][-1]
-                for key, resource in module['resources'].items():
-                    yield name, key, resource
+            tf_version = state['version']
+            if tf_version == 3:
+                for module in state['modules']:
+                    name = module['path'][-1]
+                    for key, resource in module['resources'].items():
+                        yield name, key, resource
+            elif tf_version == 4:
+                # In version 4 the structure changes so we need to iterate
+                # each instance inside the resource branch.
+                for resource in state['resources']:
+                    name = resource['module'].split('.')[-1]
+                    for instance in resource['instances']:
+                        key = "{}.{}".format(resource['type'], resource['name'])
+                        if 'index_key' in instance:
+                           key = "{}.{}".format(key, instance['index_key'])
+                        data = {}
+                        data['type'] = resource['type']
+                        data['provider'] = resource['provider']
+                        data['depends_on'] = instance.get('depends_on', [])
+                        data['primary'] = {'attributes': convert_to_v3_structure(instance['attributes'])}
+                        if 'id' in instance['attributes']:
+                           data['primary']['id'] = instance['attributes']['id']
+                        data['primary']['meta'] = instance['attributes'].get('meta',{})
+                        yield name, key, data
+            else:
+                raise KeyError('tfstate version %d not supported' % tf_version)
+
 
 ## READ RESOURCES
 PARSERS = {}
@@ -109,7 +152,7 @@ def calculate_mantl_vars(func):
 
 
 def _parse_prefix(source, prefix, sep='.'):
-    for compkey, value in source.items():
+    for compkey, value in list(source.items()):
         try:
             curprefix, rest = compkey.split(sep, 1)
         except ValueError:
@@ -127,7 +170,7 @@ def parse_attr_list(source, prefix, sep='.'):
         idx, key = compkey.split(sep, 1)
         attrs[idx][key] = value
 
-    return attrs.values()
+    return list(attrs.values())
 
 
 def parse_dict(source, prefix, sep='.'):
@@ -258,9 +301,9 @@ def openstack_host(resource, module_name):
     if 'metadata.ssh_user' in raw_attrs:
         attrs['ansible_ssh_user'] = raw_attrs['metadata.ssh_user']
 
-    if 'volume.#' in raw_attrs.keys() and int(raw_attrs['volume.#']) > 0:
+    if 'volume.#' in list(raw_attrs.keys()) and int(raw_attrs['volume.#']) > 0:
         device_index = 1
-        for key, value in raw_attrs.items():
+        for key, value in list(raw_attrs.items()):
             match = re.search("^volume.*.device$", key)
             if match:
                 attrs['disk_volume_device_'+str(device_index)] = value
@@ -278,7 +321,7 @@ def openstack_host(resource, module_name):
     groups.append('os_image=' + attrs['image']['name'])
     groups.append('os_flavor=' + attrs['flavor']['name'])
     groups.extend('os_metadata_%s=%s' % item
-                  for item in attrs['metadata'].items())
+                  for item in list(attrs['metadata'].items()))
     groups.append('os_region=' + attrs['region'])
 
     # groups specific to Mantl

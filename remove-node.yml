@@ -1,6 +1,7 @@
 ---
 - hosts: localhost
   become: no
+  gather_facts: no
   tasks:
     - name: "Check ansible version !=2.7.0"
       assert:
@@ -13,12 +14,8 @@
   vars:
     ansible_connection: local
 
-- hosts: all
-  vars:
-    ansible_ssh_pipelining: true
-  gather_facts: true
-
 - hosts: "{{ node | default('etcd:k8s-cluster:calico-rr') }}"
+  gather_facts: no
   vars_prompt:
     name: "delete_nodes_confirmation"
     prompt: "Are you sure you want to delete nodes state? Type 'yes' to delete nodes."
@@ -32,16 +29,20 @@
       when: delete_nodes_confirmation != "yes"
 
 - hosts: kube-master
+  gather_facts: no
   roles:
     - { role: kubespray-defaults }
     - { role: remove-node/pre-remove, tags: pre-remove }
 
 - hosts: "{{ node | default('kube-node') }}"
+  gather_facts: no
   roles:
     - { role: kubespray-defaults }
-    - { role: reset, tags: reset }
+    - { role: reset, tags: reset, when: reset_nodes|default(True) }
 
-- hosts: kube-master
+# Currently cannot remove first master or etcd
+- hosts: "{{ node | default('kube-master[1:]:etcd[:1]') }}"
+  gather_facts: no
   roles:
     - { role: kubespray-defaults }
     - { role: remove-node/post-remove, tags: post-remove }

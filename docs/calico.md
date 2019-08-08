@@ -119,13 +119,13 @@ recommended here:
 
 You need to edit your inventory and add:
 
-* `calico-rr` group with nodes in it. At the moment it's incompatible with
-  `kube-node` due to BGP port conflict with `calico-node` container. So you
-  should not have nodes in both `calico-rr` and `kube-node` groups.
+* `calico-rr` group with nodes in it. `calico-rr` can be combined with
+  `kube-node` and/or `kube-master`. `calico-rr` group also must be a child
+   group of `k8s-cluster` group.
 * `cluster_id` by route reflector node/group (see details
 [here](https://hub.docker.com/r/calico/routereflector/))
 
-Here's an example of Kubespray inventory with route reflectors:
+Here's an example of Kubespray inventory with standalone route reflectors:
 
 ```
 [all]
@@ -154,6 +154,7 @@ node5
 [k8s-cluster:children]
 kube-node
 kube-master
+calico-rr
 
 [calico-rr]
 rr0

@@ -134,7 +134,7 @@ Note: The list of validated [docker versions](https://github.com/kubernetes/kube
 
 Requirements
 ------------
--   **Minimum required version of Kubernetes is v1.13**
+-   **Minimum required version of Kubernetes is v1.14**
 -   **Ansible v2.7.8 (or newer, but [not 2.8.x](https://github.com/kubernetes-sigs/kubespray/issues/4778)) and python-netaddr is installed on the machine
     that will run Ansible commands**
 -   **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**

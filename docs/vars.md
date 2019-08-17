@@ -60,7 +60,7 @@ following default cluster parameters:
   10.233.0.0/18). Must not overlap with kube_pods_subnet
 * *kube_pods_subnet* - Subnet for Pod IPs (default is 10.233.64.0/18). Must not
   overlap with kube_service_addresses.
-* *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remainin
+* *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remaining
   bits in kube_pods_subnet dictates how many kube-nodes can be in cluster.
 * *skydns_server* - Cluster IP for DNS (default is 10.233.0.3)
 * *skydns_server_secondary* - Secondary Cluster IP for CoreDNS used with coredns_dual deployment (default is 10.233.0.4)
@@ -127,7 +127,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   from the kube-apiserver when the certificate expiration approaches.
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
-  *node_labels* can be defined either as a dict or a comma-separaded labels string:
+  *node_labels* can be defined either as a dict or a comma-separated labels string:
 ```
 node_labels:
   label1_name: label1_value

@@ -16,7 +16,7 @@ most modern installs of OpenStack that support the basic services.
 - [ELASTX](https://elastx.se/)
 - [EnterCloudSuite](https://www.entercloudsuite.com/)
 - [FugaCloud](https://fuga.cloud/)
-- [Open Telekom Cloud](https://cloud.telekom.de/) : requires to set the variable `wait_for_floatingip = "true"` in your cluster.tf
+- [Open Telekom Cloud](https://cloud.telekom.de/) : requires to set the variable `wait_for_floatingip = "true"` in your cluster.tfvars
 - [OVH](https://www.ovh.com/)
 - [Rackspace](https://www.rackspace.com/)
 - [Ultimum](https://ultimum.io/)
@@ -69,7 +69,7 @@ binaries available on hyperkube v1.4.3_coreos.0 or higher.
 
 ## Requirements
 
-- [Install Terraform](https://www.terraform.io/intro/getting-started/install.html)
+- [Install Terraform](https://www.terraform.io/intro/getting-started/install.html) 0.12 or later
 - [Install Ansible](http://docs.ansible.com/ansible/latest/intro_installation.html)
 - you already have a suitable OS image in Glance
 - you already have a floating IP pool created
@@ -219,7 +219,7 @@ set OS_PROJECT_DOMAIN_NAME=Default
 The construction of the cluster is driven by values found in
 [variables.tf](variables.tf).
 
-For your cluster, edit `inventory/$CLUSTER/cluster.tf`.
+For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 
 |Variable | Description |
 |---------|-------------|
@@ -276,7 +276,7 @@ This should finish fairly quickly telling you Terraform has successfully initial
 You can apply the Terraform configuration to your cluster with the following command
 issued from your cluster's inventory directory (`inventory/$CLUSTER`):
 ```ShellSession
-$ terraform apply -var-file=cluster.tf ../../contrib/terraform/openstack
+$ terraform apply -var-file=cluster.tfvars ../../contrib/terraform/openstack
 ```
 
 if you chose to create a bastion host, this script will create
@@ -290,7 +290,7 @@ pick it up automatically.
 You can destroy your new cluster with the following command issued from the cluster's inventory directory:
 
 ```ShellSession
-$ terraform destroy -var-file=cluster.tf ../../contrib/terraform/openstack
+$ terraform destroy -var-file=cluster.tfvars ../../contrib/terraform/openstack
 ```
 
 If you've started the Ansible run, it may also be a good idea to do some manual cleanup:

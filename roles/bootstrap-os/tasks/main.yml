@@ -7,6 +7,9 @@
   check_mode: false
   environment: {}
 
+- import_tasks: bootstrap-archlinux.yml
+  when: '"Arch Linux" in os_release.stdout'
+
 - include_tasks: bootstrap-centos.yml
   when: '"CentOS" in os_release.stdout or "Red Hat Enterprise Linux" in os_release.stdout'
 
@@ -41,37 +44,48 @@
     gather_subset: '!all'
     filter: ansible_*
 
-- name: Assign inventory name to unconfigured hostnames (non-CoreOS, Suse and ClearLinux)
+- name: Assign inventory name to unconfigured hostnames (non-CoreOS, Suse, ClearLinux and Archlinux)
   hostname:
     name: "{{ inventory_hostname }}"
   when:
     - override_system_hostname
-    - ansible_os_family not in ['Suse', 'Container Linux by CoreOS', 'ClearLinux']
+    - ansible_os_family not in ['Suse', 'Container Linux by CoreOS', 'ClearLinux', 'Archlinux']
 
 # (2/3)
-- name: Assign inventory name to unconfigured hostnames (CoreOS, Suse and ClearLinux only)
+- name: Assign inventory name to unconfigured hostnames (CoreOS, Suse, ClearLinux and Archlinux only)
   command: "hostnamectl set-hostname {{ inventory_hostname }}"
   register: hostname_changed
   changed_when: false
   when:
     - override_system_hostname
-    - ansible_os_family in ['Suse', 'Container Linux by CoreOS', 'ClearLinux']
+    - ansible_os_family in ['Suse', 'Container Linux by CoreOS', 'ClearLinux', 'Archlinux']
 
 # (3/3)
-- name: Update hostname fact (CoreOS, Suse and ClearLinux only)
+- name: Update hostname fact (CoreOS, Suse, ClearLinux and Archlinux only)
   setup:
     gather_subset: '!all'
     filter: ansible_hostname
   when:
     - override_system_hostname
-    - ansible_os_family in ['Suse', 'Container Linux by CoreOS', 'ClearLinux']
+    - ansible_os_family in ['Suse', 'Container Linux by CoreOS', 'ClearLinux', 'Archlinux']
 
 - name: "Install ceph-commmon package"
   package:
     name:
       - ceph-common
     state: present
-  when: rbd_provisioner_enabled|default(false)
+  when: 
+    - rbd_provisioner_enabled|default(false)
+    - '"Arch Linux" not in os_release.stdout'
+
+- name: "Install ceph-commmon package"
+  package:
+    name:
+      - ceph
+    state: present
+  when: 
+    - rbd_provisioner_enabled|default(false)
+    - '"Arch Linux" in os_release.stdout'
 
 - name: Ensure bash_completion.d folder exists
   file:

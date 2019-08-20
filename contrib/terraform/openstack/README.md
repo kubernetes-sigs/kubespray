@@ -415,6 +415,11 @@ kube_network_plugin: flannel
 # For Container Linux by CoreOS:
 resolvconf_mode: host_resolvconf
 ```
+- Set max amount of attached cinder volume per host (default 256)
+```
+node_volume_attach_limit: 26
+```
+
 
 ### Deploy Kubernetes
 

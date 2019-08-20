@@ -1,0 +1,32 @@
+---
+#  raw: cat /etc/issue.net | grep '{{ bootstrap_versions }}'
+
+- name: Bootstrap | Check if bootstrap is needed
+  raw: which "{{ item }}"
+  register: need_bootstrap
+  failed_when: false
+  changed_when: false
+  with_items:
+    - python2
+    - pip2
+    - ethtool
+    - python2-netaddr
+  environment: {}
+  tags: facts
+
+- name: Bootstrap | Install python 2.x and pip
+  raw:
+    pacman -Sy && \
+    pacman -S --noconfirm python2 python2-pip ethtool python2-netaddr
+  when:
+    need_bootstrap.results | map(attribute='rc') | sort | last | bool
+
+- name: Bootstrap | Set Ansible interpreter
+  set_fact:
+    ansible_python_interpreter: "/usr/bin/python2"
+  tags: facts
+
+- name: Create directory /etc/bash_completion.d
+  file:
+    path: /etc/bash_completion.d
+    state: directory

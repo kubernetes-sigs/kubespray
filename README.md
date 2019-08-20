@@ -102,6 +102,7 @@ Supported Linux Distributions
 -   **Fedora/CentOS** Atomic
 -   **openSUSE** Leap 42.3/Tumbleweed
 -   **Oracle Linux** 7
+-   **Archlinux**
 
 Note: Upstart/SysV init based OS types are not supported.
 

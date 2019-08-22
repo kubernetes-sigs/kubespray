@@ -9,6 +9,13 @@ if [ -z "$1" ]; then
 fi
 
 d=$(date '+%Y.%m.%d_%H:%M')
+K=-k
+T=$(which sshpass 2>/dev/null)
+
+if [ -z "$T" ]; then
+  echo "sshpass not found, disable --ask-password"
+  K=""
+fi
 
 export ANSIBLE_LOG_PATH=./deploy-$d.log
-ansible-playbook -u $1 -k -i inventory/s000/inventory.ini scale.yml -b --diff
+ansible-playbook -u $1 $K -i inventory/s000/inventory.ini scale.yml -b --diff

@@ -206,7 +206,7 @@ Vagrant.configure("2") do |config|
             ansible.inventory_path = $ansible_inventory_path
           end
           ansible.become = true
-          ansible.limit = "all"
+          ansible.limit = "all,localhost"
           ansible.host_key_checking = false
           ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
           ansible.host_vars = host_vars

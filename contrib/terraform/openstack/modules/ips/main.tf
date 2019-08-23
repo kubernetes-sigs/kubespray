@@ -1,5 +1,5 @@
 resource "null_resource" "dummy_dependency" {
-  triggers {
+  triggers = {
     dependency_id = "${var.router_id}"
   }
 }

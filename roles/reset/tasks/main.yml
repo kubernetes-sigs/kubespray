@@ -14,8 +14,6 @@
   with_items:
     - kubelet
     - vault
-    - etcd
-    - etcd-events
   failed_when: false
   tags:
     - services
@@ -26,8 +24,6 @@
     state: absent
   with_items:
     - kubelet
-    - etcd
-    - etcd-events
     - vault
     - calico-node
   register: services_removed
@@ -57,6 +53,7 @@
   retries: 4
   until: remove_all_containers.rc == 0
   delay: 5
+  when: container_manager == "docker"
   tags:
     - docker
 
@@ -64,50 +61,76 @@
   service:
     name: docker
     state: restarted
-  when: docker_dropins_removed.changed
+  when: docker_dropins_removed.changed and container_manager == "docker"
   tags:
     - docker
 
-- name: reset | stop all cri-o containers
-  shell: "crictl ps -aq | xargs -r crictl stop"
-  register: remove_all_crio_containers
-  retries: 4
-  until: remove_all_crio_containers.rc == 0
+- name: reset | stop all cri containers
+  shell: "crictl ps -aq | xargs -r crictl -t 60s stop"
+  register: remove_all_cri_containers
+  retries: 5
+  until: remove_all_cri_containers.rc == 0
   delay: 5
   tags:
     - crio
-  when: container_manager == 'crio'
+    - containerd
+  when: container_manager in ["crio", "containerd"]
 
-
-- name: reset | remove all cri-o containers
-  shell: "crictl ps -aq | xargs -r crictl rm"
-  register: remove_all_crio_containers
-  retries: 4
-  until: remove_all_crio_containers.rc == 0
+- name: reset | remove all cri containers
+  shell: "crictl ps -aq | xargs -r crictl -t 60s rm"
+  register: remove_all_cri_containers
+  retries: 5
+  until: remove_all_cri_containers.rc == 0
   delay: 5
   tags:
     - crio
-  when: container_manager == 'crio' and deploy_container_engine|default(true)
+    - containerd
+  when: container_manager in ["crio", "containerd"] and deploy_container_engine|default(true)
 
-- name: reset | stop all cri-o pods
-  shell: "crictl pods -q | xargs -r crictl stopp"
-  register: remove_all_crio_containers
-  retries: 4
-  until: remove_all_crio_containers.rc == 0
+- name: reset | stop all cri pods
+  shell: "crictl pods -q | xargs -r crictl -t 60s stopp"
+  register: remove_all_cri_containers
+  retries: 5
+  until: remove_all_cri_containers.rc == 0
   delay: 5
   tags:
     - crio
-  when: container_manager == 'crio'
+    - containerd
+  when: container_manager in ["crio", "containerd"]
 
-- name: reset | remove all cri-o pods
-  shell: "crictl pods -q | xargs -r crictl rmp"
-  register: remove_all_crio_containers
-  retries: 4
-  until: remove_all_crio_containers.rc == 0
+- name: reset | remove all cri pods
+  shell: "crictl pods -q | xargs -r crictl -t 60s rmp"
+  register: remove_all_cri_containers
+  retries: 5
+  until: remove_all_cri_containers.rc == 0
   delay: 5
   tags:
     - crio
-  when: container_manager == 'crio'
+    - containerd
+  when: container_manager in ["crio", "containerd"]
+
+- name: reset | stop etcd services
+  service:
+    name: "{{ item }}"
+    state: stopped
+  with_items:
+    - etcd
+    - etcd-events
+  failed_when: false
+  tags:
+    - services
+
+- name: reset | remove etcd services
+  file:
+    path: "/etc/systemd/system/{{ item }}.service"
+    state: absent
+  with_items:
+    - etcd
+    - etcd-events
+  register: services_removed
+  tags:
+    - services
+
 - name: reset | gather mounted kubelet dirs
   shell: mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
   args:
@@ -211,10 +234,14 @@
     - "{{ bin_dir }}/kubernetes-scripts"
     - "{{ bin_dir }}/kubectl"
     - "{{ bin_dir }}/kubeadm"
+    - "{{ bin_dir }}/hyperkube"
     - "{{ bin_dir }}/helm"
     - "{{ bin_dir }}/calicoctl"
+    - "{{ bin_dir }}/calicoctl.sh"
     - "{{ bin_dir }}/calico-upgrade"
     - "{{ bin_dir }}/weave"
+    - "{{ bin_dir }}/crictl"
+    - "{{ bin_dir }}/netctl"
     - /var/lib/cni
     - /etc/vault
     - /etc/contiv
@@ -223,6 +250,9 @@
     - /etc/openvswitch
     - /run/openvswitch
     - /var/lib/kube-router
+    - /var/lib/calico
+    - /etc/cilium
+    - /run/calico
   ignore_errors: yes
   tags:
     - files

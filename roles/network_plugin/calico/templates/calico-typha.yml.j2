@@ -60,7 +60,6 @@ spec:
       # as a host-networked pod.
       serviceAccountName: calico-node
       containers:
-#      - image: calico/typha:v3.4.4
       - image: {{ calico_typha_image_repo }}:{{ calico_typha_image_tag }}
         name: calico-typha
         ports:
@@ -90,20 +89,40 @@ spec:
           #  value: "true"
           #- name: TYPHA_PROMETHEUSMETRICSPORT
           #  value: "9093"
+
+          # Needed for version >=3.7 when the 'host-local' ipam is used
+          # Should never happen given templates/cni-calico.conflist.j2
+          # Configure route aggregation based on pod CIDR.
+          # - name: USE_POD_CIDR
+          #   value: "true"
         livenessProbe:
+{% if calico_version is version('v3.7.0', '<') %}
           exec:
             command:
             - calico-typha
             - check
             - liveness
+{% else %}
+          httpGet:
+            path: /liveness
+            port: 9098
+            host: localhost
+{% endif %}
           periodSeconds: 30
           initialDelaySeconds: 30
         readinessProbe:
+{% if calico_version is version('v3.7.0', '<') %}
           exec:
             command:
             - calico-typha
             - check
             - readiness
+{% else %}
+          httpGet:
+            path: /readiness
+            port: 9098
+            host: localhost
+{% endif %}
           periodSeconds: 10
 
 ---

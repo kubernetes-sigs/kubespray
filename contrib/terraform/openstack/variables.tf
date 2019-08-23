@@ -103,6 +103,12 @@ variable "network_name" {
   default     = "internal"
 }
 
+variable "network_dns_domain" {
+  description = "dns_domain for the internal network"
+  type        = "string"
+  default     = null
+}
+
 variable "use_neutron" {
   description = "Use neutron"
   default     = 1

@@ -10,15 +10,24 @@
   tags:
     - facts
 
-
 - name: Check if kubelet.conf exists
   stat:
     path: "{{ kube_config_dir }}/kubelet.conf"
   register: kubelet_conf
 
+- name: Check if kubeadm CA cert is accessible
+  stat:
+    path: "{{ kube_cert_dir }}/ca.crt"
+  register: kubeadm_ca_stat
+  delegate_to: "{{ groups['kube-master'][0] }}"
+  run_once: true
+
 - name: Calculate kubeadm CA cert hash
   shell: openssl x509 -pubkey -in {{ kube_cert_dir }}/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
   register: kubeadm_ca_hash
+  when:
+    - kubeadm_ca_stat.stat is defined
+    - kubeadm_ca_stat.stat.exists
   delegate_to: "{{ groups['kube-master'][0] }}"
   run_once: true
 
@@ -37,25 +46,6 @@
 - name: gets the kubeadm version
   command: "{{ bin_dir }}/kubeadm version -o short"
   register: kubeadm_output
-
-- name: sets kubeadm api version to v1alpha1
-  set_fact:
-    kubeadmConfig_api_version: v1alpha1
-  when: kubeadm_output.stdout is version('v1.11.0', '<')
-
-- name: sets kubeadm api version to v1alpha2
-  set_fact:
-    kubeadmConfig_api_version: v1alpha2
-  when:
-    - kubeadm_output.stdout is version('v1.11.0', '>=')
-    - kubeadm_output.stdout is version('v1.12.0', '<')
-
-- name: sets kubeadm api version to v1alpha3
-  set_fact:
-    kubeadmConfig_api_version: v1alpha3
-  when:
-    - kubeadm_output.stdout is version('v1.12.0', '>=')
-    - kubeadm_output.stdout is version('v1.13.0', '<')
 
 - name: sets kubeadm api version to v1beta1
   set_fact:
@@ -77,23 +67,21 @@
 
     - name: Join to cluster
       command: >-
+        timeout -k {{ kubeadm_join_timeout }} {{ kubeadm_join_timeout }}
         {{ bin_dir }}/kubeadm join
         --config {{ kube_config_dir }}/kubeadm-client.conf
         --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
       register: kubeadm_join
-      async: 120
-      poll: 15
 
   rescue:
 
     - name: Join to cluster with ignores
       command: >-
+        timeout -k {{ kubeadm_join_timeout }} {{ kubeadm_join_timeout }}
         {{ bin_dir }}/kubeadm join
         --config {{ kube_config_dir }}/kubeadm-client.conf
         --ignore-preflight-errors=all
       register: kubeadm_join
-      async: 180
-      poll: 15
 
   always:
 
@@ -103,12 +91,6 @@
         msg: |
           Joined with warnings
           {{ kubeadm_join.stderr_lines }}
-
-- name: Wait for kubelet bootstrap to create config
-  wait_for:
-    path: "{{ kube_config_dir }}/kubelet.conf"
-    delay: 1
-    timeout: 60
 
 - name: Update server field in kubelet kubeconfig
   lineinfile:

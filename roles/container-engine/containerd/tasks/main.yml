@@ -1,0 +1,95 @@
+---
+- name: Fail containerd setup if distribution is not supported
+  fail:
+    msg: "{{ ansible_distribution }} is not supported by containerd."
+  when:
+    - not ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian"]
+
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+      paths:
+        - ../vars
+      skip: true
+  tags:
+    - facts
+
+- include_tasks: containerd_repo.yml
+
+- name: ensure containerd config directory
+  file:
+    dest: "{{ containerd_cfg_dir }}"
+    state: directory
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Copy containerd config file
+  template:
+    src: config.toml.j2
+    dest: "{{ containerd_cfg_dir }}/config.toml"
+    owner: "root"
+    mode: 0644
+  notify: restart containerd
+
+# This is required to ensure any apt upgrade will not break kubernetes
+- name: Set containerd pin priority to apt_preferences on Debian family
+  template:
+    src: "apt_preferences.d/debian_containerd.j2"
+    dest: "/etc/apt/preferences.d/containerd"
+    owner: "root"
+    mode: 0644
+  when:
+    - ansible_os_family in ['Ubuntu', 'Debian']
+    - not is_atomic
+
+- name: ensure containerd packages are installed
+  action: "{{ containerd_package_info.pkg_mgr }}"
+  args:
+    pkg: "{{ item.name }}"
+    force: "{{ item.force | default(omit) }}"
+    conf_file: "{{ item.yum_conf | default(omit) }}"
+    state: present
+    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
+  register: containerd_task_result
+  until: containerd_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | d(3) }}"
+  with_items: "{{ containerd_package_info.pkgs }}"
+  notify: restart containerd
+  when:
+    - not is_atomic
+    - containerd_package_info.pkgs|length > 0
+  ignore_errors: true
+
+- name: Check if runc is installed
+  stat:
+    path: "{{ runc_binary }}"
+  register: runc_stat
+
+- name: Install runc package if necessary
+  action: "{{ containerd_package_info.pkg_mgr }}"
+  args:
+    pkg: runc
+    state: present
+    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
+  register: runc_task_result
+  until: runc_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | d(3) }}"
+  notify: restart containerd
+  when:
+    - not is_atomic
+    - not runc_stat.stat.exists
+
+- include_tasks: crictl.yml

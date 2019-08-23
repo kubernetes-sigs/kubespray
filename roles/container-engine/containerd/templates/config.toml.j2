@@ -1,0 +1,40 @@
+# Kubernetes doesn't use containerd restart manager.
+disabled_plugins = ["restart"]
+
+[debug]
+  level = "{{ containerd_config.debug.level | default("") }}"
+
+{% if 'grpc' in containerd_config %}
+[grpc]
+{% for param, value in containerd_config.grpc.items() %}
+  {{ param }} = {{ value }}
+{% endfor %}
+{% endif %}
+
+[plugins.linux]
+  shim = "/usr/bin/containerd-shim"
+  runtime = "{{ runc_binary }}"
+
+[plugins.cri]
+  stream_server_address = "127.0.0.1"
+  max_container_log_line_size = {{ containerd_config.max_container_log_line_size }}
+  sandbox_image = "{{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}"
+
+[plugins.cri.cni]
+  bin_dir = "/opt/cni/bin"
+  conf_dir = "/etc/cni/net.d"
+  conf_template = ""
+
+[plugins.cri.containerd.untrusted_workload_runtime]
+  runtime_type = ""
+  runtime_engine = ""
+  runtime_root = ""
+
+{% if 'registries' in containerd_config %}
+[plugins.cri.registry]
+[plugins.cri.registry.mirrors]
+{% for registry, addr in containerd_config.registries.items() %}
+[plugins.cri.registry.mirrors."{{ registry }}"]
+  endpoint = ["{{ addr }}"]
+{% endfor %}
+{% endif %}

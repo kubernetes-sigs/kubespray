@@ -9,15 +9,20 @@ discovery:
     apiServerEndpoint: {{ kubeadm_discovery_address }}
 {% endif %}
     token: {{ kubeadm_token }}
+{% if kubeadm_ca_hash.stdout is defined %}
     caCertHashes:
     - sha256:{{ kubeadm_ca_hash.stdout }}
+{% else %}
+    unsafeSkipCAVerification: true
+{% endif %}
   timeout: {{ discovery_timeout }}
   tlsBootstrapToken: {{ kubeadm_token }}
 caCertPath: {{ kube_cert_dir }}/ca.crt
 nodeRegistration:
   name: {{ kube_override_hostname }}
-{% if container_manager == 'crio' %}
-  criSocket: /var/run/crio/crio.sock
-{% else %}
-  criSocket: /var/run/dockershim.sock
+  criSocket: {{ cri_socket }}
+{% if 'calico-rr' in group_names and 'kube-node' not in group_names %}
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/calico-rr
 {% endif %}

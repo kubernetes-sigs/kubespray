@@ -42,8 +42,11 @@ class SearchEC2Tags(object):
       region = os.environ['REGION']
 
       ec2 = boto3.resource('ec2', region)
-
-      instances = ec2.instances.filter(Filters=[{'Name': 'tag:'+tag_key, 'Values': tag_value}, {'Name': 'instance-state-name', 'Values': ['running']}])
+      filters = [{'Name': 'tag:'+tag_key, 'Values': tag_value}, {'Name': 'instance-state-name', 'Values': ['running']}]
+      cluster_name = os.getenv('CLUSTER_NAME')
+      if cluster_name:
+        filters.append({'Name': 'tag-key', 'Values': ['kubernetes.io/cluster/'+cluster_name]})
+      instances = ec2.instances.filter(Filters=filters)
       for instance in instances:
 
         ##Suppose default vpc_visibility is private

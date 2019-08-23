@@ -21,7 +21,7 @@
     mode: 0750
     owner: root
     group: root
-  when: calico_datastore == "etcd"
+  when: calico_datastore == "etcd" and etcd_secure_client | bool
 
 - name: Calico | Link etcd certificates for calico-node
   file:
@@ -33,7 +33,7 @@
     - {s: "{{ kube_etcd_cacert_file }}", d: "ca_cert.crt"}
     - {s: "{{ kube_etcd_cert_file }}", d: "cert.crt"}
     - {s: "{{ kube_etcd_key_file }}", d: "key.pem"}
-  when: calico_datastore == "etcd"
+  when: calico_datastore == "etcd" and etcd_secure_client | bool
 
 - name: Calico | Install calicoctl wrapper script
   template:
@@ -54,7 +54,17 @@
   retries: 10
   delay: 5
   run_once: true
-  when: calico_datastore == "etcd"
+  when: calico_datastore == "etcd" and etcd_secure_client | bool
+
+- name: Calico | wait for etcd
+  uri:
+    url: "{{ etcd_access_addresses.split(',') | first }}/health"
+  register: result
+  until: result.status == 200 or result.status == 401
+  retries: 10
+  delay: 5
+  run_once: true
+  when: calico_datastore == "etcd" and not etcd_secure_client | bool
 
 - name: Calico | Check if calico network pool has already been configured
   shell: >

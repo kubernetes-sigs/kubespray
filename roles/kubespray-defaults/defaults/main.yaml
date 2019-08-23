@@ -453,23 +453,26 @@ kube_apiserver_client_key: "{{ kube_cert_dir }}/ca.key"
 # Set to true to deploy etcd-events cluster
 etcd_events_cluster_enabled: false
 
+# Force clients like etcdctl to use TLS certs (different than peer security)
+etcd_secure_client: true
+
 # Vars for pointing to etcd endpoints
 is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"
 etcd_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
 etcd_access_address: "{{ access_ip | default(etcd_address) }}"
 etcd_events_access_address: "{{ access_ip | default(etcd_address) }}"
 etcd_peer_url: "https://{{ etcd_access_address }}:2380"
-etcd_client_url: "https://{{ etcd_access_address }}:2379"
+etcd_client_url: "http{% if etcd_secure_client | bool %}s{% endif %}://{{ etcd_access_address }}:2379"
 etcd_events_peer_url: "https://{{ etcd_events_access_address }}:2382"
-etcd_events_client_url: "https://{{ etcd_events_access_address }}:2381"
+etcd_events_client_url: "http{% if etcd_secure_client | bool %}s{% endif %}://{{ etcd_events_access_address }}:2381"
 etcd_access_addresses: |-
   {% for item in groups['etcd'] -%}
-    https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2379{% if not loop.last %},{% endif %}
+    http{% if etcd_secure_client | bool %}s{% endif %}://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2379{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_events_access_addresses_list: |-
   [
   {% for item in groups['etcd'] -%}
-    'https://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2381'{% if not loop.last %},{% endif %}
+    'http{% if etcd_secure_client | bool %}s{% endif %}://{{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2381'{% if not loop.last %},{% endif %}
   {%- endfor %}
   ]
 etcd_events_access_addresses: "{{etcd_events_access_addresses_list | join(',')}}"

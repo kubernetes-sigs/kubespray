@@ -3,7 +3,7 @@
   fail:
     msg: "{{ ansible_distribution }} is not supported by containerd."
   when:
-    - not ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian"]
+    - not ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian","Container Linux by CoreOS"]
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -25,6 +25,8 @@
     - facts
 
 - include_tasks: containerd_repo.yml
+  when:
+    - not ansible_distribution in ["Container Linux by CoreOS"]
 
 - name: ensure containerd config directory
   file:
@@ -42,10 +44,17 @@
     mode: 0644
   notify: restart containerd
 
+- name: Write containerd systemd drop-in
+  template:
+    src: containerd.service.j2
+    dest: "/etc/systemd/system/containerd.service"
+  when:
+    - ansible_distribution in ["Container Linux by CoreOS"]
+
 # This is required to ensure any apt upgrade will not break kubernetes
 - name: Set containerd pin priority to apt_preferences on Debian family
   template:
-    src: "apt_preferences.d/debian_containerd.j2"
+    src: apt_preferences.d/debian_containerd.j2
     dest: "/etc/apt/preferences.d/containerd"
     owner: "root"
     mode: 0644
@@ -69,6 +78,7 @@
   notify: restart containerd
   when:
     - not is_atomic
+    - not ansible_distribution in ["Container Linux by CoreOS"]
     - containerd_package_info.pkgs|length > 0
   ignore_errors: true
 
@@ -90,6 +100,14 @@
   notify: restart containerd
   when:
     - not is_atomic
+    - not ansible_distribution in ["Container Linux by CoreOS"]
     - not runc_stat.stat.exists
 
-- include_tasks: crictl.yml
+- name: Containerd | Make sure containerd is started
+  systemd:
+    name: containerd
+    state: started
+    enabled: yes
+    daemon-reload: yes
+  when:
+    - ansible_distribution in ["Container Linux by CoreOS"]

@@ -4,3 +4,38 @@
     msg: "Check roles/kubespray-defaults/defaults/main.yml"
   tags:
     - always
+
+- name: download cache | Set path to download cache
+  set_fact:
+    local_release_dir: "{{ download_cache_dir }}/{{ local_release_dir }}"
+  when:
+    - download_cache_dir is defined
+    - download_cache_dir | length > 0
+    - not local_release_dir | search(download_cache_dir)
+
+- name: download cache | Create local cache directory
+  file:
+    path: "{{ local_release_dir | dirname }}"
+    state: directory
+    recurse: yes
+  delegate_to: localhost
+  delegate_facts: false
+  run_once: true
+  become: false
+  tags:
+    - localhost
+
+- name: Use cri-o for cri connection
+  set_fact:
+    cri_socket: /var/run/crio/crio.sock
+  when: container_manager == 'crio'
+
+- name: Use containerd for cri connetion
+  set_fact:
+    cri_socket: /var/run/containerd/containerd.sock
+  when: container_manager == 'containerd'
+
+- name: Use docker for cri connetion
+  set_fact:
+    cri_socket: /var/run/dockershim.sock
+  when: container_manager == 'docker'

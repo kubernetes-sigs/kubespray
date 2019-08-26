@@ -1,0 +1,34 @@
+---
+
+- import_tasks: download.yml
+  when:
+    - (download_run_once and inventory_hostname == download_delegate) or (group_names | intersect('k8s-cluster') | length)
+
+- name: crictl | Install crictl config
+  template:
+    src: crictl.yaml.j2
+    dest: /etc/crictl.yaml
+    owner: bin
+    mode: 0644
+
+- name: crictl | Copy crictl binary from download dir
+  synchronize:
+    src: "{{ local_release_dir }}/crictl"
+    dest: "{{ bin_dir }}/crictl"
+    compress: no
+    perms: yes
+    owner: no
+    group: no
+  delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
+  become: "{{ not download_localhost }}"
+
+- name: crictl | Make sure bash completion directory exists
+  file:
+    path: "/etc/bash_completion.d"
+    owner: "root"
+    mode: 0755
+    state: directory
+    recurse: yes
+
+- name: crictl | Install crictl bash completion
+  shell: "{{ bin_dir }}/crictl completion > /etc/bash_completion.d/crictl"

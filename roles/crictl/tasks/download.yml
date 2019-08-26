@@ -1,0 +1,35 @@
+---
+
+- name: crictl | Create dest directory on node
+  file:
+    path: "{{local_release_dir}}"
+    owner: "root"
+    mode: 0755
+    state: directory
+    recurse: yes
+
+- name: crictl | Download crictl
+  get_url:
+    url: "{{ crictl_download_url }}"
+    dest: "{{local_release_dir}}/crictl-{{ crictl_version }}-linux-{{ image_arch }}.tar.gz"
+    owner: "{{ omit if download_localhost else 'root' }}"
+    mode: "0755"
+    checksum: "sha256:{{ crictl_binary_checksum }}"
+  delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
+  run_once: "{{ download_run_once }}"
+  become: "{{ not download_localhost }}"
+  register: get_url_result
+  until: "'OK' in get_url_result.msg or 'file already exists' in get_url_result.msg"
+  retries: 4
+  delay: "{{ retry_stagger | default(5) }}"
+
+- name: crictl | Unpacking archive
+  unarchive:
+    src: "{{local_release_dir}}/crictl-{{ crictl_version }}-linux-{{ image_arch }}.tar.gz"
+    dest: "{{local_release_dir}}"
+    owner: "{{ omit if download_localhost else 'root' }}"
+    mode: "0755"
+    copy: no
+  delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
+  run_once: "{{ download_run_once }}"
+  become: "{{ not download_localhost }}"

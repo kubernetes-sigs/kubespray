@@ -1,31 +1,9 @@
 ---
 - name: download | Prepare working directories and variables
   import_tasks: prep_download.yml
-  when:
-    - not skip_downloads|default(false)
   tags:
     - download
     - upload
-
-- name: Use cri-o for cri connection
-  set_fact:
-    cri_socket: /var/run/crio/crio.sock
-  when: container_manager == 'crio'
-
-- name: Use containerd for cri connetion
-  set_fact:
-    cri_socket: /var/run/containerd/containerd.sock
-  when: container_manager == 'containerd'
-
-- name: Use docker for cri connetion
-  set_fact:
-    cri_socket: /var/run/dockershim.sock
-  when: container_manager == 'docker'
-
-- include_tasks: ../../container-engine/containerd/tasks/crictl.yml
-  when:
-    - not skip_downloads|default(false)
-    - container_manager in ['containerd', 'crio']
 
 - name: download | Get kubeadm binary and list of required images
   include_tasks: prep_kubeadm_images.yml
@@ -36,14 +14,13 @@
     - download
     - upload
 
-- name: download | Download files / images
+- name: download | Download containers
   include_tasks: "{{ include_file }}"
   with_dict: "{{ downloads | combine(kubeadm_images) }}"
   vars:
     download: "{{ download_defaults | combine(item.value) }}"
     include_file: "download_{% if download.container %}container{% else %}file{% endif %}.yml"
   when:
-    - not skip_downloads | default(false)
     - download.enabled
     - item.value.enabled
     - (not (item.value.container | default(false))) or (item.value.container and download_container)
@@ -56,7 +33,6 @@
     download: "{{ download_defaults | combine(item.value) }}"
     include_file: "sync_{% if download.container %}container{% else %}file{% endif %}.yml"
   when:
-    - not skip_downloads | default(false)
     - download.enabled
     - item.value.enabled
     - download_run_once

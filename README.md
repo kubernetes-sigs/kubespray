@@ -112,7 +112,7 @@ Supported Components
     -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.15.3
     -   [etcd](https://github.com/coreos/etcd) v3.3.10
     -   [docker](https://www.docker.com/) v18.06 (see note)
-    -   [cri-o](http://cri-o.io/) v1.14.0 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
+    -   [cri-o](http://cri-o.io/) v1.14.0 (experimental: see [CRI-O Note](docs/cri-o.md). Only on CentOS and Ubuntu)
 -   Network Plugin
     -   [cni-plugins](https://github.com/containernetworking/plugins) v0.8.1
     -   [calico](https://github.com/projectcalico/calico) v3.7.3

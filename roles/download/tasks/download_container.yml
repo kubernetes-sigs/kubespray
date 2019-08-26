@@ -4,6 +4,7 @@
   when:
     - download.enabled
     - download.container
+    - not skip_downloads | default(false)
   tags:
     - facts
 
@@ -11,6 +12,8 @@
     - name: download_container | Set a few facts
       import_tasks: set_container_facts.yml
       run_once: "{{ download_run_once }}"
+      when:
+        - not skip_downloads | default(false)
       tags:
         - facts
 
@@ -24,6 +27,7 @@
       become: false
       when:
         - download_force_cache
+        - not skip_downloads | default(false)
 
     - name: download_container | Set fact indicating if image is in cache
       set_fact:
@@ -32,6 +36,7 @@
         - facts
       when:
         - download_force_cache
+        - not skip_downloads | default(false)
 
     - name: download_container | Upload image to node if it is cached
       synchronize:
@@ -51,6 +56,7 @@
         - image_is_cached
         - not download_localhost
         - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+        - not skip_downloads | default(false)
 
     - name: download_container | Load image into docker
       shell: "{{ docker_bin_dir }}/docker load < {{ image_path_cached if download_localhost else image_path_final }}"
@@ -63,15 +69,14 @@
         - download_force_cache
         - image_is_cached
         - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+        - not skip_downloads | default(false)
 
     - name: download_container | Prepare container download
       include_tasks: check_pull_required.yml
       run_once: "{{ download_run_once }}"
       when:
         - not download_always_pull
-
-    - debug:
-        msg: "XXX Pull required is: {{ pull_required }}"
+        - not skip_downloads | default(false)
 
     # NOTE: Pre-loading docker images will not prevent 'docker pull' from re-downloading the layers in that image
     # if a pull is forced. This is a known issue with docker. See https://github.com/moby/moby/issues/23684
@@ -87,6 +92,7 @@
       become: "{{ user_can_become_root | default(false) or not download_localhost }}"
       when:
         - pull_required | default(download_always_pull)
+        - not skip_downloads | default(false)
 
     # NOTE: image_changed is only valid if a pull is was needed or forced.
     - name: download_container | Check if image changed
@@ -95,6 +101,7 @@
       run_once: true
       when:
         - download_force_cache
+        - not skip_downloads | default(false)
       tags:
         - facts
 
@@ -110,6 +117,7 @@
         - download_force_cache
         - not image_is_cached or (image_changed | default(true))
         - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+        - not skip_downloads | default(false)
 
     - name: download_container | Copy image to ansible host cache
       synchronize:
@@ -124,6 +132,7 @@
         - download_delegate == inventory_hostname
         - not image_is_cached or (image_changed | default(true))
         - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+        - not skip_downloads | default(false)
 
     - name: download_container | Remove container image from cache
       file:
@@ -132,6 +141,7 @@
       when:
         - not download_keep_remote_cache
         - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+        - not skip_downloads | default(false)
 
   tags:
     - download

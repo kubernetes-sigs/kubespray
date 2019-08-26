@@ -37,8 +37,8 @@ $vm_cpus = 1
 $shared_folders = {}
 $forwarded_ports = {}
 $subnet = "172.17.8"
-$os = "ubuntu1804"
-$network_plugin = "flannel"
+$os = "centos"
+$network_plugin = "calico"
 # Setting multi_networking to true will install Multus: https://github.com/intel/multus-cni
 $multi_networking = false
 # The first three nodes are etcd servers
@@ -178,22 +178,19 @@ Vagrant.configure("2") do |config|
 
       host_vars[vm_name] = {
         "ip": ip,
-        "flannel_interface": "eth1",
         "kube_network_plugin": $network_plugin,
-        "kube_network_plugin_multus": $multi_networking,
-        "download_run_once": "True",
-        "download_localhost": "False",
+        #"download_run_once": "True",
+        #"download_localhost": "True",
         "download_cache_dir": ENV['HOME'] + "/kubespray_cache",
-        # Make kubespray cache even when download_run_once is false
-        "download_force_cache": "True",
-        # Keeping the cache on the nodes can improve provisioning speed while debugging kubespray
-        "download_keep_remote_cache": "False",
-        "docker_keepcache": "1",
-        # These two settings will put kubectl and admin.config in $inventory/artifacts
-        "kubeconfig_localhost": "True",
-        "kubectl_localhost": "True",
-        "local_path_provisioner_enabled": "#{$local_path_provisioner_enabled}",
-        "local_path_provisioner_claim_root": "#{$local_path_provisioner_claim_root}",
+        #"download_force_cache": "True",
+        #"download_keep_remote_cache": "False",
+        #"docker_keepcache": "1",
+        #"skip_downloads": "True",
+        "etcd_deployment_type": "host",
+        #"kubeconfig_localhost": "True",
+        #"kubectl_localhost": "True",
+        "coreos_locksmithd_disable": "True",
+        "container_manager": "crio",
         "ansible_ssh_user": SUPPORTED_OS[$os][:user]
       }
 

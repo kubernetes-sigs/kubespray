@@ -128,6 +128,15 @@ resource "openstack_compute_instance_v2" "bastion" {
   flavor_id  = "${data.openstack_compute_flavor_v2.bastion_flavor[0].id}"
   key_pair   = "${openstack_compute_keypair_v2.k8s.name}"
 
+  block_device {
+    uuid                  = "${data.openstack_images_image_v2.image.id}"
+    source_type           = "image"
+    volume_size           = "${data.openstack_compute_flavor_v2.bastion_flavor[0].disk}"
+    boot_index            = 0
+    destination_type      = "local"
+    delete_on_termination = true
+  }
+
   network {
     name = "${var.network_name}"
   }
@@ -154,6 +163,15 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   image_id          = "${data.openstack_images_image_v2.image.id}"
   flavor_id         = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
+
+  block_device {
+    uuid                  = "${data.openstack_images_image_v2.image.id}"
+    source_type           = "image"
+    volume_size           = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
+    boot_index            = 0
+    destination_type      = "local"
+    delete_on_termination = true
+  }
 
   network {
     name = "${var.network_name}"
@@ -182,6 +200,15 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   flavor_id         = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
 
+  block_device {
+    uuid                  = "${data.openstack_images_image_v2.image.id}"
+    source_type           = "image"
+    volume_size           = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
+    boot_index            = 0
+    destination_type      = "local"
+    delete_on_termination = true
+  }
+
   network {
     name = "${var.network_name}"
   }
@@ -209,6 +236,15 @@ resource "openstack_compute_instance_v2" "etcd" {
   flavor_id         = "${data.openstack_compute_flavor_v2.etcd_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
 
+  block_device {
+    uuid                  = "${data.openstack_images_image_v2.image.id}"
+    source_type           = "image"
+    volume_size           = "${data.openstack_compute_flavor_v2.etcd_flavor[0].disk}"
+    boot_index            = 0
+    destination_type      = "local"
+    delete_on_termination = true
+  }
+
   network {
     name = "${var.network_name}"
   }
@@ -229,6 +265,15 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   image_id          = "${data.openstack_images_image_v2.image.id}"
   flavor_id         = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
+
+  block_device {
+    uuid                  = "${data.openstack_images_image_v2.image.id}"
+    source_type           = "image"
+    volume_size           = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
+    boot_index            = 0
+    destination_type      = "local"
+    delete_on_termination = true
+  }
 
   network {
     name = "${var.network_name}"
@@ -253,6 +298,15 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   flavor_id         = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
 
+  block_device {
+    uuid                  = "${data.openstack_images_image_v2.image.id}"
+    source_type           = "image"
+    volume_size           = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
+    boot_index            = 0
+    destination_type      = "local"
+    delete_on_termination = true
+  }
+
   network {
     name = "${var.network_name}"
   }
@@ -275,6 +329,15 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   image_id          = "${data.openstack_images_image_v2.image.id}"
   flavor_id         = "${data.openstack_compute_flavor_v2.k8s_node_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
+
+  block_device {
+    uuid                  = "${data.openstack_images_image_v2.image.id}"
+    source_type           = "image"
+    volume_size           = "${data.openstack_compute_flavor_v2.k8s_node_flavor[0].disk}"
+    boot_index            = 0
+    destination_type      = "local"
+    delete_on_termination = true
+  }
 
   network {
     name = "${var.network_name}"
@@ -302,6 +365,15 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   image_id          = "${data.openstack_images_image_v2.image.id}"
   flavor_id         = "${data.openstack_compute_flavor_v2.k8s_node_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
+
+  block_device {
+    uuid                  = "${data.openstack_images_image_v2.image.id}"
+    source_type           = "image"
+    volume_size           = "${data.openstack_compute_flavor_v2.k8s_node_flavor[0].disk}"
+    boot_index            = 0
+    destination_type      = "local"
+    delete_on_termination = true
+  }
 
   network {
     name = "${var.network_name}"
@@ -359,6 +431,15 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
   image_id          = "${data.openstack_images_image_v2.image_gfs[0].id}"
   flavor_id         = "${data.openstack_compute_flavor_v2.gfs_node_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
+
+  block_device {
+    uuid                  = "${data.openstack_images_image_v2.image_gfs[count.index].id}"
+    source_type           = "image"
+    volume_size           = "${data.openstack_compute_flavor_v2.gfs_node_flavor[0].disk}"
+    boot_index            = 0
+    destination_type      = "local"
+    delete_on_termination = true
+  }
 
   network {
     name = "${var.network_name}"

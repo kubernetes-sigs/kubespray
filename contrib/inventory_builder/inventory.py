@@ -39,12 +39,14 @@ from ruamel.yaml import YAML
 
 import os
 import re
+import socket
 import sys
 
 ROLES = ['all', 'kube-master', 'kube-node', 'etcd', 'k8s-cluster',
          'calico-rr']
 PROTECTED_NAMES = ROLES
-AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'print_hostnames', 'load']
+AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'print_hostnames',
+                      'load']
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
                    '0': False, 'no': False, 'false': False, 'off': False}
 yaml = YAML()
@@ -66,13 +68,25 @@ MASSIVE_SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 200))
 
 DEBUG = get_var_as_bool("DEBUG", True)
 HOST_PREFIX = os.environ.get("HOST_PREFIX", "node")
-
+CUSTOM_HOSTNAMES = get_var_as_bool("CUSTOM_HOSTNAMES", False)
 # Configurable as shell vars end
+
+
+def is_valid_ip(possible_ip):
+    try:
+        socket.inet_aton(possible_ip)
+        return True
+    except socket.error:
+        try:
+            socket.inet_pton(socket.AF_INET6, possible_ip)
+            return True
+        except socket.error:
+            return False
 
 
 class KubesprayInventory(object):
 
-    def __init__(self, changed_hosts=None, config_file=None):
+    def __init__(self, changed_hosts=None, hostnames=None, config_file=None):
         self.config_file = config_file
         self.yaml_config = {}
         if self.config_file:
@@ -81,16 +95,17 @@ class KubesprayInventory(object):
                 self.yaml_config = yaml.load(self.hosts_file)
             except FileNotFoundError:
                 pass
-
         if changed_hosts and changed_hosts[0] in AVAILABLE_COMMANDS:
             self.parse_command(changed_hosts[0], changed_hosts[1:])
             sys.exit(0)
 
         self.ensure_required_groups(ROLES)
+        if hostnames and len(changed_hosts) != len(hostnames):
+            raise ValueError("Please provide hostname for all ips")
 
         if changed_hosts:
             changed_hosts = self.range2ips(changed_hosts)
-            self.hosts = self.build_hostnames(changed_hosts)
+            self.hosts = self.build_hostnames(changed_hosts, hostnames)
             self.purge_invalid_hosts(self.hosts.keys(), PROTECTED_NAMES)
             self.set_all(self.hosts)
             self.set_k8s_cluster()
@@ -150,7 +165,7 @@ class KubesprayInventory(object):
         except IndexError:
             raise ValueError("Host name must end in an integer")
 
-    def build_hostnames(self, changed_hosts):
+    def build_hostnames(self, changed_hosts, hostnames=False):
         existing_hosts = OrderedDict()
         highest_host_id = 0
         try:
@@ -166,7 +181,7 @@ class KubesprayInventory(object):
         next_host_id = highest_host_id + 1
 
         all_hosts = existing_hosts.copy()
-        for host in changed_hosts:
+        for idx, host in enumerate(changed_hosts):
             if host[0] == "-":
                 realhost = host[1:]
                 if self.exists_hostname(all_hosts, realhost):
@@ -187,8 +202,10 @@ class KubesprayInventory(object):
                 elif self.exists_ip(all_hosts, ip):
                     self.debug("Skipping existing host {0}.".format(ip))
                     continue
-
-                next_host = "{0}{1}".format(HOST_PREFIX, next_host_id)
+                if not hostnames:
+                    next_host = "{0}{1}".format(HOST_PREFIX, next_host_id)
+                else:
+                    next_host = hostnames[idx]
                 next_host_id += 1
                 all_hosts[next_host] = {'ansible_host': access_ip,
                                         'ip': ip,
@@ -206,7 +223,7 @@ class KubesprayInventory(object):
                 # Python 3.x
                 start = int(ip_address(start_address))
                 end = int(ip_address(end_address))
-            except:
+            except Exception:
                 # Python 2.7
                 start = int(ip_address(unicode(start_address)))
                 end = int(ip_address(unicode(end_address)))
@@ -397,7 +414,17 @@ MASSIVE_SCALE_THRESHOLD Separate K8s master and ETCD if # of nodes >= 200
 def main(argv=None):
     if not argv:
         argv = sys.argv[1:]
-    KubesprayInventory(argv, CONFIG_FILE)
+    if not CUSTOM_HOSTNAMES:
+        KubesprayInventory(argv, False, CONFIG_FILE)
+    else:
+        ips = []
+        hostnames = []
+        for arg in argv:
+            if is_valid_ip(arg):
+                ips.append(arg)
+            else:
+                hostnames.append(arg)
+        KubesprayInventory(ips, hostnames, CONFIG_FILE)
 
 
 if __name__ == "__main__":

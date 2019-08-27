@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import inventory
 import mock
 import unittest
 
@@ -22,8 +23,6 @@ path = "./contrib/inventory_builder/"
 if path not in sys.path:
     sys.path.append(path)
 
-import inventory
-
 
 class TestInventory(unittest.TestCase):
     @mock.patch('inventory.sys')
@@ -32,6 +31,17 @@ class TestInventory(unittest.TestCase):
         super(TestInventory, self).setUp()
         self.data = ['10.90.3.2', '10.90.3.3', '10.90.3.4']
         self.inv = inventory.KubesprayInventory()
+
+    def test_is_valid_ip_is_valid(self):
+        ips = ['1.1.1.1', '1.1.1.2', '2001:0db8:85a3:0000:0000:8a2e:0370:7334']
+        for ip in ips:
+            self.assertTrue(inventory.is_valid_ip(ip))
+
+    def test_is_invalid_ip_is_invalid(self):
+        ips = ['not', '1.1.1.', '2001:0db8:85a3:0000:0000:8a2e:0370:']
+        for ip in ips:
+            print(ip)
+            self.assertFalse(inventory.is_valid_ip(ip))
 
     def test_get_ip_from_opts(self):
         optstring = {'ansible_host': '10.90.3.2',
@@ -115,6 +125,55 @@ class TestInventory(unittest.TestCase):
         result = self.inv.build_hostnames(changed_hosts)
         self.assertEqual(expected, result)
 
+    def test_build_hostname_uses_custom_hostnames(self):
+        changed_hosts = ['1.1.1.1', '1.1.1.2']
+        hostnames = ['a', 'b']
+        expected = OrderedDict([
+            ('a', {'ansible_host': '1.1.1.1',
+                   'ip': '1.1.1.1',
+                   'access_ip': '1.1.1.1'}),
+            ('b', {'ansible_host': '1.1.1.2',
+                   'ip': '1.1.1.2',
+                   'access_ip': '1.1.1.2'})])
+        result = self.inv.build_hostnames(changed_hosts, hostnames)
+        self.assertEqual(expected, result)
+
+    def test_build_hostnames_custom_hostname_skips_duplicates(self):
+        changed_hosts = ['1.1.1.1', '1.1.1.1']
+        hostnames = ['a', 'b']
+        expected = OrderedDict([
+            ('a', {'ansible_host': '1.1.1.1',
+                   'ip': '1.1.1.1',
+                   'access_ip': '1.1.1.1'}),
+        ])
+        result = self.inv.build_hostnames(changed_hosts, hostnames)
+        self.assertEqual(expected, result)
+
+    def test_existing_hosts_with_custom_hostname_can_be_extended(self):
+        changed_hosts = ['1.1.1.1', '1.1.1.2', '1.1.1.3']
+        hostnames = ['a', 'b', 'c']
+
+        existing_hosts = OrderedDict([
+            ('a', {'ansible_host': '1.1.1.1',
+                   'ip': '1.1.1.1',
+                   'access_ip': '1.1.1.1'}),
+            ('b', {'ansible_host': '1.1.1.2',
+                   'ip': '1.1.1.2',
+                   'access_ip': '1.1.1.2'})])
+        self.inv.yaml_config['all']['hosts'] = existing_hosts
+        expected = OrderedDict([
+            ('a', {'ansible_host': '1.1.1.1',
+                   'ip': '1.1.1.1',
+                   'access_ip': '1.1.1.1'}),
+            ('b', {'ansible_host': '1.1.1.2',
+                   'ip': '1.1.1.2',
+                   'access_ip': '1.1.1.2'}),
+            ('c', {'ansible_host': '1.1.1.3',
+                   'ip': '1.1.1.3',
+                   'access_ip': '1.1.1.3'})])
+        result = self.inv.build_hostnames(changed_hosts, hostnames)
+        self.assertEqual(expected, result)
+
     def test_exists_hostname_positive(self):
         hostname = 'node1'
         expected = True
@@ -135,6 +194,19 @@ class TestInventory(unittest.TestCase):
             ('node1', {'ansible_host': '10.90.0.2',
                        'ip': '10.90.0.2',
                        'access_ip': '10.90.0.2'}),
+            ('node2', {'ansible_host': '10.90.0.3',
+                       'ip': '10.90.0.3',
+                       'access_ip': '10.90.0.3'})])
+        result = self.inv.exists_hostname(existing_hosts, hostname)
+        self.assertEqual(expected, result)
+
+    def test_exists_custom_hostname_positive(self):
+        hostname = 'a'
+        expected = True
+        existing_hosts = OrderedDict([
+            ('a', {'ansible_host': '10.90.0.2',
+                   'ip': '10.90.0.2',
+                   'access_ip': '10.90.0.2'}),
             ('node2', {'ansible_host': '10.90.0.3',
                        'ip': '10.90.0.3',
                        'access_ip': '10.90.0.3'})])
@@ -195,6 +267,22 @@ class TestInventory(unittest.TestCase):
         self.assertRaisesRegexp(ValueError, "Unable to find host",
                                 self.inv.delete_host_by_ip, existing_hosts, ip)
 
+    def test_delete_custom_host_by_ip_positive(self):
+        ip = '10.90.0.2'
+        expected = OrderedDict([
+            ('b', {'ansible_host': '10.90.0.3',
+                   'ip': '10.90.0.3',
+                   'access_ip': '10.90.0.3'})])
+        existing_hosts = OrderedDict([
+            ('a', {'ansible_host': '10.90.0.2',
+                   'ip': '10.90.0.2',
+                   'access_ip': '10.90.0.2'}),
+            ('b', {'ansible_host': '10.90.0.3',
+                   'ip': '10.90.0.3',
+                   'access_ip': '10.90.0.3'})])
+        self.inv.delete_host_by_ip(existing_hosts, ip)
+        self.assertEqual(expected, existing_hosts)
+
     def test_purge_invalid_hosts(self):
         proper_hostnames = ['node1', 'node2']
         bad_host = 'doesnotbelong2'
@@ -205,6 +293,28 @@ class TestInventory(unittest.TestCase):
             ('node2', {'ansible_host': '10.90.0.3',
                        'ip': '10.90.0.3',
                        'access_ip': '10.90.0.3'}),
+            ('doesnotbelong2', {'whateveropts=ilike'})])
+        self.inv.yaml_config['all']['hosts'] = existing_hosts
+        self.inv.purge_invalid_hosts(proper_hostnames)
+        self.assertTrue(
+            bad_host not in self.inv.yaml_config['all']['hosts'].keys())
+
+    def test_purge_invalid_hosts_keeps_custom_hostnames(self):
+        proper_hostnames = ['test1a', 'test2a', 'test1b', 'test2b']
+        bad_host = 'doesnotbelong2'
+        existing_hosts = OrderedDict([
+            ('test1a', {'ansible_host': '10.90.0.2',
+                        'ip': '10.90.0.2',
+                        'access_ip': '10.90.0.2'}),
+            ('test2a', {'ansible_host': '10.90.0.3',
+                        'ip': '10.90.0.3',
+                        'access_ip': '10.90.0.3'}),
+            ('test1b', {'ansible_host': '10.90.0.4',
+                        'ip': '10.90.0.4',
+                        'access_ip': '10.90.0.4'}),
+            ('test2b', {'ansible_host': '10.90.0.5',
+                        'ip': '10.90.0.5',
+                        'access_ip': '10.90.0.5'}),
             ('doesnotbelong2', {'whateveropts=ilike'})])
         self.inv.yaml_config['all']['hosts'] = existing_hosts
         self.inv.purge_invalid_hosts(proper_hostnames)
@@ -269,7 +379,7 @@ class TestInventory(unittest.TestCase):
         num_nodes = 50
         hosts = OrderedDict()
 
-        for hostid in range(1, num_nodes+1):
+        for hostid in range(1, num_nodes + 1):
             hosts["node" + str(hostid)] = ""
 
         self.inv.set_all(hosts)
@@ -285,7 +395,7 @@ class TestInventory(unittest.TestCase):
         num_nodes = 500
         hosts = OrderedDict()
 
-        for hostid in range(1, num_nodes+1):
+        for hostid in range(1, num_nodes + 1):
             hosts["node" + str(hostid)] = ""
 
         self.inv.set_all(hosts)

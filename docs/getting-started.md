@@ -24,6 +24,15 @@ Example inventory generator usage:
 
 Then use `inventory/mycluster/hosts.yml` as inventory file.
 
+Inventory generator supports using custom hostnames.
+Example:
+
+    cp -r inventory/sample inventory/mycluster
+    declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
+    declare -a HOSTNAMES=(kubemaster01 kubemaster02 worker01)
+    CUSTOM_HOSTNAMES=True CONFIG_FILE=inventory/mycluster/hosts.yml python3 contrib/inventory_builder/inventory.py ${IPS[@]} ${HOSTNAMES[@]}
+
+
 Starting custom deployment
 --------------------------
 

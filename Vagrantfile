@@ -181,15 +181,7 @@ Vagrant.configure("2") do |config|
         "flannel_interface": "eth1",
         "kube_network_plugin": $network_plugin,
         "kube_network_plugin_multus": $multi_networking,
-        "download_run_once": "True",
-        "download_localhost": "False",
         "download_cache_dir": ENV['HOME'] + "/kubespray_cache",
-        # Make kubespray cache even when download_run_once is false
-        "download_force_cache": "True",
-        # Keeping the cache on the nodes can improve provisioning speed while debugging kubespray
-        "download_keep_remote_cache": "False",
-        "docker_keepcache": "1",
-        # These two settings will put kubectl and admin.config in $inventory/artifacts
         "kubeconfig_localhost": "True",
         "kubectl_localhost": "True",
         "local_path_provisioner_enabled": "#{$local_path_provisioner_enabled}",

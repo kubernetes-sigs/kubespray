@@ -36,15 +36,35 @@ variable "ssh_user_gfs" {}
 
 variable "flavor_k8s_master" {}
 
+variable "flavor_k8s_master_block_destination_type" {}
+
+variable "flavor_k8s_master_block_volume_size_in_gb" {}
+
 variable "flavor_k8s_node" {}
+
+variable "flavor_k8s_node_block_destination_type" {}
+
+variable "flavor_k8s_node_block_volume_size_in_gb" {}
 
 variable "flavor_etcd" {}
 
+variable "flavor_etcd_block_destination_type" {}
+
+variable "flavor_etcd_block_volume_size_in_gb" {}
+
 variable "flavor_gfs_node" {}
+
+variable "flavor_gfs_node_block_destination_type" {}
+
+variable "flavor_gfs_node_block_volume_size_in_gb" {}
 
 variable "network_name" {}
 
 variable "flavor_bastion" {}
+
+variable "flavor_bastion_block_destination_type" {}
+
+variable "flavor_bastion_block_volume_size_in_gb" {}
 
 variable "network_id" {
   default = ""

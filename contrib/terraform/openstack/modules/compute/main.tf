@@ -131,9 +131,9 @@ resource "openstack_compute_instance_v2" "bastion" {
   block_device {
     uuid                  = "${data.openstack_images_image_v2.image.id}"
     source_type           = "image"
-    volume_size           = "${data.openstack_compute_flavor_v2.bastion_flavor[0].disk}"
+    volume_size           = "${var.flavor_bastion_block_volume_size_in_gb != "" ? var.flavor_bastion_block_volume_size_in_gb : data.openstack_compute_flavor_v2.bastion_flavor[0].disk}"
     boot_index            = 0
-    destination_type      = "local"
+    destination_type      = "${var.flavor_bastion_block_destination_type}"
     delete_on_termination = true
   }
 
@@ -167,9 +167,9 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   block_device {
     uuid                  = "${data.openstack_images_image_v2.image.id}"
     source_type           = "image"
-    volume_size           = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
+    volume_size           = "${var.flavor_k8s_master_block_volume_size_in_gb != "" ? var.flavor_k8s_master_block_volume_size_in_gb : data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
     boot_index            = 0
-    destination_type      = "local"
+    destination_type      = "${var.flavor_k8s_master_block_destination_type}"
     delete_on_termination = true
   }
 
@@ -203,9 +203,9 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   block_device {
     uuid                  = "${data.openstack_images_image_v2.image.id}"
     source_type           = "image"
-    volume_size           = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
+    volume_size           = "${var.flavor_k8s_master_block_volume_size_in_gb != "" ? var.flavor_k8s_master_block_volume_size_in_gb : data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
     boot_index            = 0
-    destination_type      = "local"
+    destination_type      = "${var.flavor_k8s_master_block_destination_type}"
     delete_on_termination = true
   }
 
@@ -239,9 +239,9 @@ resource "openstack_compute_instance_v2" "etcd" {
   block_device {
     uuid                  = "${data.openstack_images_image_v2.image.id}"
     source_type           = "image"
-    volume_size           = "${data.openstack_compute_flavor_v2.etcd_flavor[0].disk}"
+    volume_size           = "${var.flavor_etcd_block_volume_size_in_gb != "" ? var.flavor_etcd_block_volume_size_in_gb : data.openstack_compute_flavor_v2.etcd_flavor[0].disk}"
     boot_index            = 0
-    destination_type      = "local"
+    destination_type      = "${var.flavor_etcd_block_destination_type}"
     delete_on_termination = true
   }
 
@@ -269,9 +269,9 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   block_device {
     uuid                  = "${data.openstack_images_image_v2.image.id}"
     source_type           = "image"
-    volume_size           = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
+    volume_size           = "${var.flavor_k8s_master_block_volume_size_in_gb != "" ? var.flavor_k8s_master_block_volume_size_in_gb : data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
     boot_index            = 0
-    destination_type      = "local"
+    destination_type      = "${var.flavor_k8s_master_block_destination_type}"
     delete_on_termination = true
   }
 
@@ -301,9 +301,9 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   block_device {
     uuid                  = "${data.openstack_images_image_v2.image.id}"
     source_type           = "image"
-    volume_size           = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
+    volume_size           = "${var.flavor_k8s_master_block_volume_size_in_gb != "" ? var.flavor_k8s_master_block_volume_size_in_gb : data.openstack_compute_flavor_v2.k8s_master_flavor[0].disk}"
     boot_index            = 0
-    destination_type      = "local"
+    destination_type      = "${var.flavor_k8s_master_block_destination_type}"
     delete_on_termination = true
   }
 
@@ -333,9 +333,9 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   block_device {
     uuid                  = "${data.openstack_images_image_v2.image.id}"
     source_type           = "image"
-    volume_size           = "${data.openstack_compute_flavor_v2.k8s_node_flavor[0].disk}"
+    volume_size           = "${var.flavor_k8s_node_block_volume_size_in_gb != "" ? var.flavor_k8s_node_block_volume_size_in_gb : data.openstack_compute_flavor_v2.k8s_node_flavor[0].disk}"
     boot_index            = 0
-    destination_type      = "local"
+    destination_type      = "${var.flavor_k8s_node_block_destination_type}"
     delete_on_termination = true
   }
 
@@ -369,9 +369,9 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   block_device {
     uuid                  = "${data.openstack_images_image_v2.image.id}"
     source_type           = "image"
-    volume_size           = "${data.openstack_compute_flavor_v2.k8s_node_flavor[0].disk}"
+    volume_size           = "${var.flavor_k8s_node_block_volume_size_in_gb != "" ? var.flavor_k8s_node_block_volume_size_in_gb : data.openstack_compute_flavor_v2.k8s_node_flavor[0].disk}"
     boot_index            = 0
-    destination_type      = "local"
+    destination_type      = "${var.flavor_k8s_node_block_destination_type}"
     delete_on_termination = true
   }
 
@@ -435,9 +435,9 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
   block_device {
     uuid                  = "${data.openstack_images_image_v2.image_gfs[count.index].id}"
     source_type           = "image"
-    volume_size           = "${data.openstack_compute_flavor_v2.gfs_node_flavor[0].disk}"
+    volume_size           = "${var.flavor_gfs_node_block_volume_size_in_gb != "" ? var.flavor_gfs_node_block_volume_size_in_gb : data.openstack_compute_flavor_v2.gfs_node_flavor[0].disk}"
     boot_index            = 0
-    destination_type      = "local"
+    destination_type      = "${var.flavor_gfs_node_block_destination_type}"
     delete_on_termination = true
   }
 

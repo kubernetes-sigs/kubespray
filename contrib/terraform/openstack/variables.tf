@@ -78,9 +78,29 @@ variable "flavor_bastion" {
   default     = 3
 }
 
+variable "flavor_bastion_block_destination_type" {
+  description = "Specify either 'local' or 'volume'"
+  default     = "local"
+}
+
+variable "flavor_bastion_block_volume_size_in_gb" {
+  description = "bastion instance volume size (GB)"
+  default     = ""
+}
+
 variable "flavor_k8s_master" {
   description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
+}
+
+variable "flavor_k8s_master_block_destination_type" {
+  description = "Specify either 'local' or 'volume'"
+  default     = "local"
+}
+
+variable "flavor_k8s_master_block_volume_size_in_gb" {
+  description = "k8s_master instance volume size (GB)"
+  default     = ""
 }
 
 variable "flavor_k8s_node" {
@@ -88,14 +108,44 @@ variable "flavor_k8s_node" {
   default     = 3
 }
 
+variable "flavor_k8s_node_block_destination_type" {
+  description = "Specify either 'local' or 'volume'"
+  default     = "local"
+}
+
+variable "flavor_k8s_node_block_volume_size_in_gb" {
+  description = "k8s_node instance volume size (GB)"
+  default     = ""
+}
+
 variable "flavor_etcd" {
   description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
 
+variable "flavor_etcd_block_destination_type" {
+  description = "Specify either 'local' or 'volume'"
+  default     = "local"
+}
+
+variable "flavor_etcd_block_volume_size_in_gb" {
+  description = "etcd instance volume size (GB)"
+  default     = ""
+}
+
 variable "flavor_gfs_node" {
   description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
+}
+
+variable "flavor_gfs_node_block_destination_type" {
+  description = "Specify either 'local' or 'volume'"
+  default     = "local"
+}
+
+variable "flavor_gfs_node_block_volume_size_in_gb" {
+  description = "gfs instance volume size (GB)"
+  default     = ""
 }
 
 variable "network_name" {

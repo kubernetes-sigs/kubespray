@@ -318,7 +318,10 @@ def openstack_host(resource, module_name):
     })
 
     # add groups based on attrs
-    groups.append('os_image=' + attrs['image']['name'])
+    # (image name and id are not set when booting from volume)
+    if attrs['image']['name']:
+        groups.append('os_image=' + attrs['image']['name'])
+
     groups.append('os_flavor=' + attrs['flavor']['name'])
     groups.extend('os_metadata_%s=%s' % item
                   for item in list(attrs['metadata'].items()))

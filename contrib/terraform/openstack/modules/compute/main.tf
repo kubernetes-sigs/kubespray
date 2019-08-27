@@ -7,6 +7,31 @@ data "openstack_images_image_v2" "image_gfs" {
   name       = "${var.image_gfs}"
 }
 
+data "openstack_compute_flavor_v2" "bastion_flavor" {
+  count      = var.number_of_bastions
+  flavor_id  = "${var.flavor_bastion}"
+}
+
+data "openstack_compute_flavor_v2" "k8s_master_flavor" {
+  count      = var.number_of_k8s_masters + var.number_of_k8s_masters_no_etcd + var.number_of_k8s_masters_no_floating_ip + var.number_of_k8s_masters_no_floating_ip_no_etcd > 0 ? 1 : 0
+  flavor_id  = "${var.flavor_k8s_master}"
+}
+
+data "openstack_compute_flavor_v2" "k8s_node_flavor" {
+  count      = var.number_of_k8s_nodes + var.number_of_k8s_nodes_no_floating_ip > 0 ? 1 : 0
+  flavor_id  = "${var.flavor_k8s_node}"
+}
+
+data "openstack_compute_flavor_v2" "etcd_flavor" {
+  count      = var.number_of_etcd
+  flavor_id  = "${var.flavor_etcd}"
+}
+
+data "openstack_compute_flavor_v2" "gfs_node_flavor" {
+  count      = var.number_of_gfs_nodes_no_floating_ip
+  flavor_id  = "${var.flavor_gfs_node}"
+}
+
 resource "openstack_compute_keypair_v2" "k8s" {
   name       = "kubernetes-${var.cluster_name}"
   public_key = "${chomp(file(var.public_key_path))}"
@@ -100,7 +125,7 @@ resource "openstack_compute_instance_v2" "bastion" {
   name       = "${var.cluster_name}-bastion-${count.index+1}"
   count      = "${var.number_of_bastions}"
   image_id   = "${data.openstack_images_image_v2.image.id}"
-  flavor_id  = "${var.flavor_bastion}"
+  flavor_id  = "${data.openstack_compute_flavor_v2.bastion_flavor[0].id}"
   key_pair   = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {
@@ -127,7 +152,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   count             = "${var.number_of_k8s_masters}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_id          = "${data.openstack_images_image_v2.image.id}"
-  flavor_id         = "${var.flavor_k8s_master}"
+  flavor_id         = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {
@@ -154,7 +179,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   count             = "${var.number_of_k8s_masters_no_etcd}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_id          = "${data.openstack_images_image_v2.image.id}"
-  flavor_id         = "${var.flavor_k8s_master}"
+  flavor_id         = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {
@@ -181,7 +206,7 @@ resource "openstack_compute_instance_v2" "etcd" {
   count             = "${var.number_of_etcd}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_id          = "${data.openstack_images_image_v2.image.id}"
-  flavor_id         = "${var.flavor_etcd}"
+  flavor_id         = "${data.openstack_compute_flavor_v2.etcd_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {
@@ -202,7 +227,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   count             = "${var.number_of_k8s_masters_no_floating_ip}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_id          = "${data.openstack_images_image_v2.image.id}"
-  flavor_id         = "${var.flavor_k8s_master}"
+  flavor_id         = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {
@@ -225,7 +250,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   count             = "${var.number_of_k8s_masters_no_floating_ip_no_etcd}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_id          = "${data.openstack_images_image_v2.image.id}"
-  flavor_id         = "${var.flavor_k8s_master}"
+  flavor_id         = "${data.openstack_compute_flavor_v2.k8s_master_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {
@@ -248,7 +273,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   count             = "${var.number_of_k8s_nodes}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_id          = "${data.openstack_images_image_v2.image.id}"
-  flavor_id         = "${var.flavor_k8s_node}"
+  flavor_id         = "${data.openstack_compute_flavor_v2.k8s_node_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {
@@ -275,7 +300,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   count             = "${var.number_of_k8s_nodes_no_floating_ip}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_id          = "${data.openstack_images_image_v2.image.id}"
-  flavor_id         = "${var.flavor_k8s_node}"
+  flavor_id         = "${data.openstack_compute_flavor_v2.k8s_node_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {
@@ -332,7 +357,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
   count             = "${var.number_of_gfs_nodes_no_floating_ip}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_id          = "${data.openstack_images_image_v2.image_gfs[0].id}"
-  flavor_id         = "${var.flavor_gfs_node}"
+  flavor_id         = "${data.openstack_compute_flavor_v2.gfs_node_flavor[0].id}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
 
   network {

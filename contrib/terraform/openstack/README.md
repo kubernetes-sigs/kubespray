@@ -230,6 +230,8 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`floatingip_pool` | Name of the pool from which floating IPs will be allocated |
 |`external_net` | UUID of the external network that will be routed to |
 |`flavor_k8s_master`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through `openstack flavor list` |
+|`flavor_k8s_master_block_destination_type`,`flavor_k8s_node_block_destination_type`,`flavor_etcd_block_destination_type`, `flavor_bastion_block_destination_type`,`flavor_gfs_node_block_destination_type` | The image block destination type. Set to either "volume" or "local" (default) |
+|`flavor_k8s_master_block_volume_size_in_gb`,`flavor_k8s_node_block_volume_size_in_gb`,`flavor_etcd_block_volume_size_in_gb`, `flavor_bastion_block_volume_size_in_gb`,`flavor_gfs_node_block_volume_size_in_gb` | If the associated flavor_*_block_destination_type variable is set to "volume", specify the size of the instance volume in GB. If unspecified then the default instance volume size is that of the flavor. |
 |`image`,`image_gfs` | Name of the image to use in provisioning the compute resources. Should already be loaded into glance. |
 |`ssh_user`,`ssh_user_gfs` | The username to ssh into the image with. This usually depends on the image you have selected |
 |`public_key_path` | Path on your local workstation to the public key file you wish to use in creating the key pairs |

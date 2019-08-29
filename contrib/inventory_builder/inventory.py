@@ -44,7 +44,7 @@ import sys
 ROLES = ['all', 'kube-master', 'kube-node', 'etcd', 'k8s-cluster',
          'calico-rr']
 PROTECTED_NAMES = ROLES
-AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'load']
+AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'print_hostnames', 'load']
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
                    '0': False, 'no': False, 'false': False, 'off': False}
 yaml = YAML()
@@ -348,6 +348,8 @@ class KubesprayInventory(object):
             self.print_config()
         elif command == 'print_ips':
             self.print_ips()
+        elif command == 'print_hostnames':
+            self.print_hostnames()
         elif command == 'load':
             self.load_file(args)
         else:
@@ -361,6 +363,7 @@ Available commands:
 help - Display this message
 print_cfg - Write inventory file to stdout
 print_ips - Write a space-delimited list of IPs from "all" group
+print_hostnames - Write a space-delimited list of Hostnames from "all" group
 
 Advanced usage:
 Add another host after initial creation: inventory.py 10.10.1.5
@@ -380,6 +383,9 @@ MASSIVE_SCALE_THRESHOLD Separate K8s master and ETCD if # of nodes >= 200
 
     def print_config(self):
         yaml.dump(self.yaml_config, sys.stdout)
+
+    def print_hostnames(self):
+        print(' '.join(self.yaml_config['all']['hosts'].keys()))
 
     def print_ips(self):
         ips = []

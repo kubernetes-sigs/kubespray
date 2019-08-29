@@ -44,6 +44,26 @@ variable "number_of_gfs_nodes_no_floating_ip" {
   default = 0
 }
 
+variable "bastion_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "etcd_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "master_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "node_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "gfs_root_volume_size_in_gb" {
+  default = 0
+}
+
 variable "gfs_volume_size_in_gb" {
   default = 75
 }

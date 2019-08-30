@@ -45,8 +45,10 @@ import sys
 ROLES = ['all', 'kube-master', 'kube-node', 'etcd', 'k8s-cluster',
          'calico-rr']
 PROTECTED_NAMES = ROLES
+
 AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'print_hostnames',
                       'load']
+
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
                    '0': False, 'no': False, 'false': False, 'off': False}
 yaml = YAML()

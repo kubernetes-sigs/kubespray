@@ -75,12 +75,12 @@ variable "public_key_path" {
 
 variable "image" {
   description = "the image to use"
-  default     = "ubuntu-14.04"
+  default     = ""
 }
 
 variable "image_gfs" {
   description = "Glance image to use for GlusterFS"
-  default     = "ubuntu-16.04"
+  default     = ""
 }
 
 variable "ssh_user" {

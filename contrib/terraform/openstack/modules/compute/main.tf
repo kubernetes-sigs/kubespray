@@ -3,7 +3,7 @@ data "openstack_images_image_v2" "vm_image" {
 }
 
 data "openstack_images_image_v2" "gfs_image" {
-  name = "${var.image_gfs}"
+  name = "${var.image_gfs == "" ? var.image : var.image_gfs}"
 }
 
 resource "openstack_compute_keypair_v2" "k8s" {

@@ -142,8 +142,7 @@ resource "openstack_compute_instance_v2" "bastion_custom_volume_size" {
   }
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}",
-    "${openstack_networking_secgroup_v2.bastion.name}",
-    "default",
+    "${element(openstack_networking_secgroup_v2.bastion.*.name, count.index)}",
   ]
 
   metadata = {
@@ -153,7 +152,7 @@ resource "openstack_compute_instance_v2" "bastion_custom_volume_size" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.bastion_fips[0]}/ > contrib/terraform/group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.bastion_fips[0]}/ > group_vars/no-floating.yml"
   }
 }
 
@@ -180,7 +179,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > contrib/terraform/group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
   }
 }
 
@@ -206,9 +205,7 @@ resource "openstack_compute_instance_v2" "k8s_master_custom_volume_size" {
   }
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
-    "${openstack_networking_secgroup_v2.bastion.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
-    "default",
   ]
 
   metadata = {
@@ -271,7 +268,6 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd_custom_volume_size"
   }
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
-    "${openstack_networking_secgroup_v2.bastion.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
 
@@ -282,7 +278,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd_custom_volume_size"
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > contrib/terraform/group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
   }
 }
 
@@ -351,7 +347,6 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
-    "default",
   ]
 
   metadata = {
@@ -497,9 +492,7 @@ resource "openstack_compute_instance_v2" "k8s_node_custom_volume_size" {
   }
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}",
-    "${openstack_networking_secgroup_v2.bastion.name}",
     "${openstack_networking_secgroup_v2.worker.name}",
-    "default",
   ]
 
   metadata = {
@@ -509,7 +502,7 @@ resource "openstack_compute_instance_v2" "k8s_node_custom_volume_size" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_node_fips), 0)}/ > contrib/terraform/group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_node_fips), 0)}/ > group_vars/no-floating.yml"
   }
 }
 
@@ -527,7 +520,6 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}",
     "${openstack_networking_secgroup_v2.worker.name}",
-    "default",
   ]
 
   metadata = {
@@ -577,9 +569,10 @@ resource "openstack_compute_floatingip_associate_v2" "bastion" {
 }
 
 resource "openstack_compute_floatingip_associate_v2" "bastion_custom_volume_size" {
-  count       = "${var.bastion_root_volume_size_in_gb > 0 ? var.number_of_bastions : 0}"
-  floating_ip = "${var.bastion_fips[count.index]}"
-  instance_id = "${element(openstack_compute_instance_v2.bastion_custom_volume_size.*.id, count.index)}"
+  count                 = "${var.bastion_root_volume_size_in_gb > 0 ? var.number_of_bastions : 0}"
+  floating_ip           = "${var.bastion_fips[count.index]}"
+  instance_id           = "${element(openstack_compute_instance_v2.bastion_custom_volume_size.*.id, count.index)}"
+  wait_until_associated = "${var.wait_for_floatingip}"
 }
 
 resource "openstack_compute_floatingip_associate_v2" "k8s_master" {
@@ -590,9 +583,10 @@ resource "openstack_compute_floatingip_associate_v2" "k8s_master" {
 }
 
 resource "openstack_compute_floatingip_associate_v2" "k8s_master_custom_volume_size" {
-  count       = "${var.master_root_volume_size_in_gb > 0 ? var.number_of_k8s_masters : 0}"
-  instance_id = "${element(openstack_compute_instance_v2.k8s_master_custom_volume_size.*.id, count.index)}"
-  floating_ip = "${var.k8s_master_fips[count.index]}"
+  count                 = "${var.master_root_volume_size_in_gb > 0 ? var.number_of_k8s_masters : 0}"
+  instance_id           = "${element(openstack_compute_instance_v2.k8s_master_custom_volume_size.*.id, count.index)}"
+  floating_ip           = "${var.k8s_master_fips[count.index]}"
+  wait_until_associated = "${var.wait_for_floatingip}"
 }
 
 resource "openstack_compute_floatingip_associate_v2" "k8s_master_no_etcd" {
@@ -615,9 +609,10 @@ resource "openstack_compute_floatingip_associate_v2" "k8s_node" {
 }
 
 resource "openstack_compute_floatingip_associate_v2" "k8s_node_custom_volume_size" {
-  count       = "${var.node_root_volume_size_in_gb > 0 ? var.number_of_k8s_nodes : 0}"
-  floating_ip = "${var.k8s_node_fips[count.index]}"
-  instance_id = "${element(openstack_compute_instance_v2.k8s_node_custom_volume_size.*.id, count.index)}"
+  count                 = "${var.node_root_volume_size_in_gb > 0 ? var.number_of_k8s_nodes : 0}"
+  floating_ip           = "${var.k8s_node_fips[count.index]}"
+  instance_id           = "${element(openstack_compute_instance_v2.k8s_node_custom_volume_size.*.id, count.index)}"
+  wait_until_associated = "${var.wait_for_floatingip}"
 }
 
 resource "openstack_blockstorage_volume_v2" "glusterfs_volume" {
@@ -676,9 +671,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip_custom_v
     name = "${var.network_name}"
   }
 
-  security_groups = ["${openstack_networking_secgroup_v2.k8s.name}",
-    "default",
-  ]
+  security_groups = ["${openstack_networking_secgroup_v2.k8s.name}"]
 
   metadata = {
     ssh_user         = "${var.ssh_user_gfs}"

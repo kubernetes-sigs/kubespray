@@ -51,19 +51,26 @@ You may want to add worker, master or etcd nodes to your existing cluster. This 
 Remove nodes
 ------------
 
-You may want to remove **worker** nodes to your existing cluster. This can be done by re-running the `remove-node.yml` playbook. First, all nodes will be drained, then stop some kubernetes services and delete some certificates, and finally execute the kubectl command to delete these nodes. This can be combined with the add node function, This is generally helpful when doing something like autoscaling your clusters. Of course if a node is not working, you can remove the node and install it again.
+You may want to remove **master**, **worker**, or **etcd** nodes from your
+existing cluster. This can be done by re-running the `remove-node.yml`
+playbook. First, all specified nodes will be drained, then stop some
+kubernetes services and delete some certificates,
+and finally execute the kubectl command to delete these nodes.
+This can be combined with the add node function. This is generally helpful
+when doing something like autoscaling your clusters. Of course, if a node
+is not working, you can remove the node and install it again.
 
-Add worker nodes to the list under kube-node if you want to delete them (or utilize a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html)).
-
-    ansible-playbook -i inventory/mycluster/hosts.yml remove-node.yml -b -v \
-        --private-key=~/.ssh/private_key
-
-Use `--extra-vars "node=<nodename>,<nodename2>"` to select the node you want to delete.
+Use `--extra-vars "node=<nodename>,<nodename2>"` to select the node(s) you want to delete.
 ```
 ansible-playbook -i inventory/mycluster/hosts.yml remove-node.yml -b -v \
   --private-key=~/.ssh/private_key \
   --extra-vars "node=nodename,nodename2"
 ```
+
+If a node is completely unreachable by ssh, add `--extra-vars reset_nodes=no`
+to skip the node reset step. If one node is unavailable, but others you wish
+to remove are able to connect via SSH, you could set reset_nodes=no as a host
+var in inventory.
 
 Connecting to Kubernetes
 ------------------------

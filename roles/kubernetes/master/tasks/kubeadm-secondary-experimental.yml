@@ -10,22 +10,6 @@
   tags:
     - facts
 
-- name: Create kubeadm ControlPlane config
-  template:
-    src: "kubeadm-controlplane.{{ kubeadmConfig_api_version }}.yaml.j2"
-    dest: "{{ kube_config_dir }}/kubeadm-controlplane.yaml"
-    backup: yes
-  when:
-    - inventory_hostname != groups['kube-master']|first
-    - not kubeadm_already_run.stat.exists
-
-- name: Wait for k8s apiserver
-  wait_for:
-    host: "{{ kubeadm_discovery_address.split(':')[0] }}"
-    port: "{{ kubeadm_discovery_address.split(':')[1] }}"
-    timeout: 180
-
-
 - name: Upload certificates so they are fresh and not expired
   command: >-
     {{ bin_dir }}/kubeadm init phase
@@ -46,7 +30,26 @@
 - name: Parse certificate key if not set
   set_fact:
     kubeadm_certificate_key: "{{ hostvars[groups['kube-master'][0]]['kubeadm_upload_cert'].stdout_lines[-1] | trim }}"
-  when: kubeadm_certificate_key is undefined
+  run_once: yes
+  when:
+    - hostvars[groups['kube-master'][0]]['kubeadm_upload_cert'] is defined
+    - hostvars[groups['kube-master'][0]]['kubeadm_upload_cert'] is not skipped
+
+- name: Create kubeadm ControlPlane config
+  template:
+    src: "kubeadm-controlplane.{{ kubeadmConfig_api_version }}.yaml.j2"
+    dest: "{{ kube_config_dir }}/kubeadm-controlplane.yaml"
+    backup: yes
+  when:
+    - inventory_hostname != groups['kube-master']|first
+    - not kubeadm_already_run.stat.exists
+
+- name: Wait for k8s apiserver
+  wait_for:
+    host: "{{ kubeadm_discovery_address.split(':')[0] }}"
+    port: "{{ kubeadm_discovery_address.split(':')[1] }}"
+    timeout: 180
+
 
 - name: check already run
   debug:

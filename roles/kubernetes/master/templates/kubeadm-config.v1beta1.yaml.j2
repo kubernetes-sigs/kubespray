@@ -1,5 +1,11 @@
 apiVersion: kubeadm.k8s.io/v1beta1
 kind: InitConfiguration
+{% if kubeadm_token is defined %}
+bootstrapTokens:
+- token: "{{ kubeadm_token }}"
+  description: "kubespray kubeadm bootstrap token"
+  ttl: "24h"
+{% endif %}
 localAPIEndpoint:
   advertiseAddress: {{ ip | default(fallback_ips[inventory_hostname]) }}
   bindPort: {{ kube_apiserver_port }}
@@ -69,12 +75,10 @@ etcd:
       - {{ san }}
 {% endfor %}
 {% endif %}
-{% if dns_mode in ['coredns', 'coredns_dual'] %}
 dns:
   type: CoreDNS
   imageRepository: {{ coredns_image_repo | regex_replace('/coredns$','') }}
   imageTag: {{ coredns_image_tag }}
-{% endif %}
 networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: {{ kube_service_addresses }}
@@ -90,7 +94,7 @@ imageRepository: {{ kube_image_repo }}
 useHyperKubeImage: false
 apiServer:
   extraArgs:
-{% if kube_api_anonymous_auth is defined and kube_version is version('v1.5', '>=')  %}
+{% if kube_api_anonymous_auth is defined %}
     anonymous-auth: "{{ kube_api_anonymous_auth }}"
 {% endif %}
     authorization-mode: {{ authorization_modes | join(',') }}
@@ -106,9 +110,7 @@ apiServer:
     disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }}
 {% endif %}
     apiserver-count: "{{ kube_apiserver_count }}"
-{% if kube_version is version('v1.9', '>=') %}
     endpoint-reconciler-type: lease
-{% endif %}
 {% if etcd_events_cluster_enabled %}
     etcd-servers-overrides: "/events#{{ etcd_events_access_addresses_semicolon }}"
 {% endif %}
@@ -320,10 +322,12 @@ ipvs:
  minSyncPeriod: {{ kube_proxy_min_sync_period }}
  scheduler: {{ kube_proxy_scheduler }}
  syncPeriod: {{ kube_proxy_sync_period }}
+{% if kube_version is version('v1.14.2', '>=') %}
+ strictARP: {{ kube_proxy_strict_arp }}
+{% endif %}
 metricsBindAddress: {{ kube_proxy_metrics_bind_address }}
 mode: {{ kube_proxy_mode }}
 nodePortAddresses: {{ kube_proxy_nodeport_addresses }}
 oomScoreAdj: {{ kube_proxy_oom_score_adj }}
 portRange: {{ kube_proxy_port_range }}
-resourceContainer: {{ kube_proxy_resource_container }}
 udpIdleTimeout: {{ kube_proxy_udp_idle_timeout }}

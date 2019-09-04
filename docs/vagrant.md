@@ -3,9 +3,9 @@ Introduction
 
 Assuming you have Vagrant 2.0+ installed with virtualbox, libvirt/qemu or vmware, but is untested) you should be able to launch a 3 node Kubernetes cluster by simply running `vagrant up`. This will spin up 3 VMs and install kubernetes on them.  Once they are completed you can connect to any of them by running `vagrant ssh k8s-[1..3]`.
 
-To give an estimate of the expected duration of a provisioning run: On a dual core i5-6300u laptop with an SSD, provisioning takes around 13 to 15 minutes, once the container images and other files are cached. Note that libvirt/qemu is recommended over virtualbox as it is quite a bit faster, especcially during boot-up time.
+To give an estimate of the expected duration of a provisioning run: On a dual core i5-6300u laptop with an SSD, provisioning takes around 13 to 15 minutes, once the container images and other files are cached. Note that libvirt/qemu is recommended over virtualbox as it is quite a bit faster, especially during boot-up time.
 
-For proper performance a mimimum of 12GB RAM is recommended. It is possible to run a 3 node cluster on a laptop with 8GB of RAM using the default Vagrantfile, provided you have 8GB zram swap configured and not much more than a browser and a mail client running. If you decide to run on such a machine, then also make sure that any tnpfs devices, that are mounted, are mostly empty and disable any swapfiles mounted on HDD/SSD or you will be in for some serious swap-madness. Things can get a bit sluggish during provisioning, but when that's done, the system will actually be able to perform quite well.
+For proper performance a minimum of 12GB RAM is recommended. It is possible to run a 3 node cluster on a laptop with 8GB of RAM using the default Vagrantfile, provided you have 8GB zram swap configured and not much more than a browser and a mail client running. If you decide to run on such a machine, then also make sure that any tmpfs devices, that are mounted, are mostly empty and disable any swapfiles mounted on HDD/SSD or you will be in for some serious swap-madness. Things can get a bit sluggish during provisioning, but when that's done, the system will actually be able to perform quite well.
 
 Customize Vagrant
 =================
@@ -26,7 +26,7 @@ The supported operating systems for vagrant are defined in the `SUPPORTED_OS` co
 File and image caching
 ======================
 
-Kubespray can take quit a while to start on a laptop. To improve provisioning speed, the variable 'download_run_once' is set. This will make kubespray download all files and containers just once and then redistributes them to the other nodes and as a bonus, also cache all downloads locally and re-use them on the next provisioning run. For more information on download settings see [download documentation](docs/downloads.md).
+Kubespray can take quite a while to start on a laptop. To improve provisioning speed, the variable 'download_run_once' is set. This will make kubespray download all files and containers just once and then redistributes them to the other nodes and as a bonus, also cache all downloads locally and re-use them on the next provisioning run. For more information on download settings see [download documentation](docs/downloads.md).
 
 Example use of Vagrant
 ======================

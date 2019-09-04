@@ -40,6 +40,12 @@
   run_once: yes
   when: kubeconfig_localhost|default(false)
 
+- name: Wait for k8s apiserver
+  wait_for:
+    host: "{{ kube_apiserver_access_address }}"
+    port: "{{ kube_apiserver_port }}"
+    timeout: 180
+
 # NOTE(mattymo): Please forgive this workaround
 - name: Generate admin kubeconfig with external api endpoint
   shell: >-
@@ -84,11 +90,9 @@
   when: kubeconfig_localhost|default(false)
 
 - name: Copy kubectl binary to ansible host
-  fetch:
+  synchronize:
     src: "{{ bin_dir }}/kubectl"
     dest: "{{ artifacts_dir }}/kubectl"
-    flat: yes
-    validate_checksum: no
   become: no
   run_once: yes
   when: kubectl_localhost|default(false)
@@ -97,7 +101,7 @@
   copy:
     content: |
       #!/bin/bash
-      kubectl --kubeconfig=${BASH_SOURCE%/*}/admin.conf $@
+      ./kubectl --kubeconfig=${BASH_SOURCE%/*}/admin.conf $@
     dest: "{{ artifacts_dir }}/kubectl.sh"
     mode: 0755
   become: no

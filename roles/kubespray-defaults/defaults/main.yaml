@@ -12,7 +12,7 @@ is_atomic: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.15.0
+kube_version: v1.15.3
 
 ## The minimum version working
 kube_version_min_required: v1.14.0
@@ -89,6 +89,10 @@ kube_dns_servers:
 
 dns_servers: "{{kube_dns_servers[dns_mode]}}"
 
+enable_coredns_k8s_external: false
+coredns_k8s_external_zone: k8s_external.local
+
+enable_coredns_k8s_endpoint_pod_names: false
 
 # Kubernetes configuration dirs and system namespace.
 # Those are where all the additional config stuff goes
@@ -218,17 +222,18 @@ docker_iptables_enabled: "false"
 # Rotate container stderr/stdout logs at 50m and keep last 5
 docker_log_opts: "--log-opt max-size=50m --log-opt max-file=5"
 
-## An obvious use case is allowing insecure-registry access to self hosted registries.
-## Can be ipaddress and domain_name.
-## example define 172.19.16.11 or mirror.registry.io
+## A list of insecure docker registries (IP address or domain name), for example
+## to allow insecure-registry access to self-hosted registries. Empty by default.
 # docker_insecure_registries:
 #   - mirror.registry.io
 #   - 172.19.16.11
+docker_insecure_registries: []
 
-## Add other registry,example China registry mirror.
+## A list of additional registry mirrors, for example China registry mirror. Empty by default.
 # docker_registry_mirrors:
 #   - https://registry.docker-cn.com
 #   - https://mirror.aliyuncs.com
+docker_registry_mirrors: []
 
 ## If non-empty will override default system MounFlags value.
 ## This option takes a mount propagation flag: shared, slave
@@ -238,24 +243,7 @@ docker_log_opts: "--log-opt max-size=50m --log-opt max-file=5"
 # docker_mount_flags:
 
 ## A string of extra options to pass to the docker daemon.
-## This string should be exactly as you wish it to appear.
-docker_options: >-
-  {%- if docker_insecure_registries is defined %}
-  {{ docker_insecure_registries | map('regex_replace', '^(.*)$', '--insecure-registry=\1' ) | list | join(' ') }}
-  {%- endif %}
-  {% if docker_registry_mirrors is defined %}
-  {{ docker_registry_mirrors | map('regex_replace', '^(.*)$', '--registry-mirror=\1' ) | list | join(' ') }}
-  {%- endif %}
-  {%- if docker_version != "latest" and docker_version is version('17.05', '<') %}
-  --graph={{ docker_daemon_graph }} {% if ansible_os_family not in ["openSUSE Leap", "openSUSE Tumbleweed", "Suse"] %}{{ docker_log_opts }}{% endif %}
-  {%- else %}
-  --data-root={{ docker_daemon_graph }} {% if ansible_os_family not in ["openSUSE Leap", "openSUSE Tumbleweed", "Suse"] %}{{ docker_log_opts }}{% endif %}
-  {%- endif %}
-  {%- if ansible_architecture == "aarch64" and ansible_os_family == "RedHat" %}
-  --add-runtime docker-runc=/usr/libexec/docker/docker-runc-current
-  --default-runtime=docker-runc --exec-opt native.cgroupdriver=systemd
-  --userland-proxy-path=/usr/libexec/docker/docker-proxy-current --signature-verification=false
-  {%- endif -%}
+# docker_options: ""
 
 ## A list of plugins to install using 'docker plugin install --grant-all-permissions'
 ## Empty by default so no plugins will be installed.
@@ -360,8 +348,11 @@ kubeadm_control_plane: false
 local_volume_provisioner_storage_classes: |
   {
     "{{ local_volume_provisioner_storage_class | default('local-storage') }}": {
-     "host_dir": "{{ local_volume_provisioner_base_dir | default ('/mnt/disks') }}",
-      "mount_dir": "{{ local_volume_provisioner_mount_dir | default('/mnt/disks') }}"
+      "host_dir": "{{ local_volume_provisioner_base_dir | default ('/mnt/disks') }}",
+      "mount_dir": "{{ local_volume_provisioner_mount_dir | default('/mnt/disks') }}",
+      "volume_mode": "Filesystem",
+      "fs_type": "ext4"
+
     }
   }
 

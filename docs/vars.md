@@ -57,10 +57,16 @@ following default cluster parameters:
   10.233.0.0/18). Must not overlap with kube_pods_subnet
 * *kube_pods_subnet* - Subnet for Pod IPs (default is 10.233.64.0/18). Must not
   overlap with kube_service_addresses.
-* *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remainin
+* *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remaining
   bits in kube_pods_subnet dictates how many kube-nodes can be in cluster.
 * *skydns_server* - Cluster IP for DNS (default is 10.233.0.3)
 * *skydns_server_secondary* - Secondary Cluster IP for CoreDNS used with coredns_dual deployment (default is 10.233.0.4)
+* *enable_coredns_k8s_external* - If enabled, it configures the [k8s_external plugin](https://coredns.io/plugins/k8s_external/)
+  on the CoreDNS service.
+* *coredns_k8s_external_zone* - Zone that will be used when CoreDNS k8s_external plugin is enabled
+  (default is k8s_external.local)
+* *enable_coredns_k8s_endpoint_pod_names* - If enabled, it configures endpoint_pod_names option for kubernetes plugin.
+  on the CoreDNS service.
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)
 * *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in
@@ -98,7 +104,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
-* *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install. 
+* *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install.
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.
@@ -118,7 +124,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   from the kube-apiserver when the certificate expiration approaches.
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
-  *node_labels* can be defined either as a dict or a comma-separaded labels string:
+  *node_labels* can be defined either as a dict or a comma-separated labels string:
 ```
 node_labels:
   label1_name: label1_value
@@ -154,11 +160,14 @@ kubelet_custom_flags:
   - "--eviction-soft=memory.available<300Mi"
 ```
 The possible vars are:
-* *apiserver_custom_flags*
-* *controller_mgr_custom_flags*
-* *scheduler_custom_flags*
 * *kubelet_custom_flags*
 * *kubelet_node_custom_flags*
+
+Extra flags for the API server, controller, and scheduler components can be specified using these variables, 
+in the form of dicts of key-value pairs of configuration parameters that will be inserted into the kubeadm YAML config file:
+* *kube_kubeadm_apiserver_extra_args*
+* *kube_kubeadm_controller_extra_args*
+* *kube_kubeadm_scheduler_extra_args*
 
 #### User accounts
 

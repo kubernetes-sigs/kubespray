@@ -16,12 +16,12 @@
 
 - name: Stop if unknown OS
   assert:
-    that: ansible_os_family in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'CoreOS', 'Container Linux by CoreOS', 'Suse', 'ClearLinux']
+    that: ansible_os_family in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'CoreOS', 'Container Linux by CoreOS', 'Suse', 'ClearLinux', 'OracleLinux']
   ignore_errors: "{{ ignore_assert_errors }}"
 
 - name: Stop if unknown network plugin
   assert:
-    that: kube_network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'contiv', 'kube-router', 'macvlan']
+    that: kube_network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'contiv', 'kube-ovn', 'kube-router', 'macvlan']
   when: kube_network_plugin is defined
   ignore_errors: "{{ ignore_assert_errors }}"
 
@@ -137,6 +137,14 @@
     - cloud-provider
     - facts
 
+- name: Ensure minimum calico version
+  assert:
+    that: calico_version is version('v3.0.0', '>=')
+    msg: "calico_version is too low. Minimum version v3.0.0"
+  run_once: yes
+  when:
+    - kube_network_plugin == 'calico'
+
 - name: "Get current version of calico cluster version"
   shell: "{{ bin_dir }}/calicoctl.sh version  | grep 'Cluster Version:' | awk '{ print $3}'"
   register: calico_version_on_server
@@ -157,6 +165,26 @@
     - calico_version_on_server.stdout
     - inventory_hostname == groups['kube-master'][0]
   run_once: yes
+
+- name: "Check that cluster_id is set if calico_rr enabled"
+  assert:
+    that:
+      - cluster_id is defined
+    msg: "A unique cluster_id is required if using calico_rr"
+  when:
+    - kube_network_plugin == 'calico'
+    - peer_with_calico_rr
+    - inventory_hostname == groups['kube-master'][0]
+  run_once: yes
+
+- name: "Check that calico_rr nodes are in k8s-cluster group"
+  assert:
+    that:
+      - '"k8s-cluster" in group_names'
+    msg: "calico-rr must be a child group of k8s-cluster group"
+  when:
+    - kube_network_plugin == 'calico'
+    - '"calico-rr" in group_names'
 
 - name: "Check that kube_service_addresses is a network range"
   assert:

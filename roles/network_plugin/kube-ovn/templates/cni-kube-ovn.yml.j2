@@ -1,0 +1,176 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: kube-ovn-controller
+  namespace: kube-ovn
+  annotations:
+    kubernetes.io/description: |
+      kube-ovn controller
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kube-ovn-controller
+  strategy:
+    rollingUpdate:
+      maxSurge: 0%
+      maxUnavailable: 100%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: kube-ovn-controller
+        component: network
+        type: infra
+    spec:
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: kube-ovn-controller
+              topologyKey: kubernetes.io/hostname
+      serviceAccountName: ovn
+      hostNetwork: true
+      containers:
+        - name: kube-ovn-controller
+          image: {{ kube_ovn_controller_image_repo }}:{{ kube_ovn_controller_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          command:
+          - /kube-ovn/start-controller.sh
+          args:
+          - --default-cidr={{ kube_pods_subnet }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: KUBE_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          readinessProbe:
+            exec:
+              command:
+                - nc
+                - -z
+                - -w3
+                - 127.0.0.1
+                - "10660"
+            periodSeconds: 3
+          livenessProbe:
+            exec:
+              command:
+                - nc
+                - -z
+                - -w3
+                - 127.0.0.1
+                - "10660"
+            initialDelaySeconds: 30
+            periodSeconds: 7
+            failureThreshold: 5
+      nodeSelector:
+        beta.kubernetes.io/os: "linux"
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: kube-ovn-cni
+  namespace: kube-ovn
+  annotations:
+    kubernetes.io/description: |
+      This daemon set launches the kube-ovn cni daemon.
+spec:
+  selector:
+    matchLabels:
+      app: kube-ovn-cni
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: kube-ovn-cni
+        component: network
+        type: infra
+    spec:
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      serviceAccountName: ovn
+      hostNetwork: true
+      hostPID: true
+      initContainers:
+      - name: install-cni
+        image: {{ kube_ovn_cni_image_repo }}:{{ kube_ovn_cni_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        command: ["/kube-ovn/install-cni.sh"]
+        volumeMounts:
+          - mountPath: /etc/cni/net.d
+            name: cni-conf
+          - mountPath: /opt/cni/bin
+            name: cni-bin
+      containers:
+      - name: cni-server
+        image: {{ kube_ovn_cni_image_repo }}:{{ kube_ovn_cni_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        command:
+          - sh
+          - /kube-ovn/start-cniserver.sh
+        args:
+          - --enable-mirror={{ traffic_mirror }}
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: KUBE_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+        volumeMounts:
+          - mountPath: /run/openvswitch
+            name: host-run-ovs
+        readinessProbe:
+          exec:
+            command:
+              - nc
+              - -z
+              - -w3
+              - 127.0.0.1
+              - "10665"
+          periodSeconds: 3
+        livenessProbe:
+          exec:
+            command:
+              - nc
+              - -z
+              - -w3
+              - 127.0.0.1
+              - "10665"
+          initialDelaySeconds: 30
+          periodSeconds: 7
+          failureThreshold: 5
+      nodeSelector:
+        beta.kubernetes.io/os: "linux"
+      volumes:
+        - name: host-run-ovs
+          hostPath:
+            path: /run/openvswitch
+        - name: cni-conf
+          hostPath:
+            path: /etc/cni/net.d
+        - name: cni-bin
+          hostPath:
+            path: /opt/cni/bin

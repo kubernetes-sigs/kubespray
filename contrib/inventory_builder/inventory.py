@@ -44,7 +44,7 @@ import sys
 ROLES = ['all', 'kube-master', 'kube-node', 'etcd', 'k8s-cluster',
          'calico-rr']
 PROTECTED_NAMES = ROLES
-AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'load']
+AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'print_hostnames', 'load']
 _boolean_states = {'1': True, 'yes': True, 'true': True, 'on': True,
                    '0': False, 'no': False, 'false': False, 'off': False}
 yaml = YAML()
@@ -59,6 +59,7 @@ def get_var_as_bool(name, default):
 
 
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory/sample/hosts.yaml")
+KUBE_MASTERS = int(os.environ.get("KUBE_MASTERS_MASTERS", 2))
 # Reconfigures cluster distribution at scale
 SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 50))
 MASSIVE_SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 200))
@@ -96,9 +97,10 @@ class KubesprayInventory(object):
             etcd_hosts_count = 3 if len(self.hosts.keys()) >= 3 else 1
             self.set_etcd(list(self.hosts.keys())[:etcd_hosts_count])
             if len(self.hosts) >= SCALE_THRESHOLD:
-                self.set_kube_master(list(self.hosts.keys())[etcd_hosts_count:5])
+                self.set_kube_master(list(self.hosts.keys())[
+                    etcd_hosts_count:(etcd_hosts_count + KUBE_MASTERS)])
             else:
-                self.set_kube_master(list(self.hosts.keys())[:2])
+                self.set_kube_master(list(self.hosts.keys())[:KUBE_MASTERS])
             self.set_kube_node(self.hosts.keys())
             if len(self.hosts) >= SCALE_THRESHOLD:
                 self.set_calico_rr(list(self.hosts.keys())[:etcd_hosts_count])
@@ -203,11 +205,11 @@ class KubesprayInventory(object):
             try:
                 # Python 3.x
                 start = int(ip_address(start_address))
-                end   = int(ip_address(end_address))
+                end = int(ip_address(end_address))
             except:
                 # Python 2.7
                 start = int(ip_address(unicode(start_address)))
-                end   = int(ip_address(unicode(end_address)))
+                end = int(ip_address(unicode(end_address)))
             return [ip_address(ip).exploded for ip in range(start, end + 1)]
 
         for host in hosts:
@@ -346,6 +348,8 @@ class KubesprayInventory(object):
             self.print_config()
         elif command == 'print_ips':
             self.print_ips()
+        elif command == 'print_hostnames':
+            self.print_hostnames()
         elif command == 'load':
             self.load_file(args)
         else:
@@ -359,6 +363,7 @@ Available commands:
 help - Display this message
 print_cfg - Write inventory file to stdout
 print_ips - Write a space-delimited list of IPs from "all" group
+print_hostnames - Write a space-delimited list of Hostnames from "all" group
 
 Advanced usage:
 Add another host after initial creation: inventory.py 10.10.1.5
@@ -378,6 +383,9 @@ MASSIVE_SCALE_THRESHOLD Separate K8s master and ETCD if # of nodes >= 200
 
     def print_config(self):
         yaml.dump(self.yaml_config, sys.stdout)
+
+    def print_hostnames(self):
+        print(' '.join(self.yaml_config['all']['hosts'].keys()))
 
     def print_ips(self):
         ips = []

@@ -36,8 +36,9 @@
   include_tasks: "gen_helm_tiller_certs.yml"
   when: tiller_enable_tls
 
+# FIXME: https://github.com/helm/helm/issues/6374
 - name: Helm | Install/upgrade helm
-  command: >
+  shell: >
     {{ bin_dir }}/helm init --tiller-namespace={{ tiller_namespace }}
     {% if helm_skip_refresh %} --skip-refresh{% endif %}
     {% if helm_stable_repo_url is defined %} --stable-repo-url {{ helm_stable_repo_url }}{% endif %}
@@ -51,6 +52,10 @@
     {% if tiller_enable_tls %} --tiller-tls --tiller-tls-verify --tiller-tls-cert={{ tiller_tls_cert }} --tiller-tls-key={{ tiller_tls_key }} --tls-ca-cert={{ tiller_tls_ca_cert }} {% endif %}
     {% if tiller_secure_release_info %} --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' {% endif %}
     {% if tiller_wait %} --wait{% endif %}
+    --output yaml
+    | sed 's@apiVersion: extensions/v1beta1@apiVersion: apps/v1@'
+    | {{ bin_dir }}/kubectl patch --local -oyaml -f - -p '{"spec":{"selector": {"app":"helm","name":"tiller"} } }'
+    | {{ bin_dir }}/kubectl apply -f -
     {% else %}
     --client-only
     {% endif %}
@@ -73,6 +78,8 @@
     {% if tiller_secure_release_info %} --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' {% endif %}
     {% if tiller_wait %} --wait{% endif %}
     --output yaml
+    | sed 's@apiVersion: extensions/v1beta1@apiVersion: apps/v1@'
+    | {{ bin_dir }}/kubectl patch --local -oyaml -f - -p '{"spec":{"selector": {"app":"helm","name":"tiller"} } }'
     | {{ bin_dir }}/kubectl apply -f -
   changed_when: false
   when:

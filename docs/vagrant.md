@@ -78,7 +78,7 @@ export PATH=$PATH:$INV/artifacts
 ```
 If a vagrant run failed and you've made some changes to fix the issue causing the fail, here is how you would re-run ansible:
 ```
-ansible-playbook -vvv -i .vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory cluster.yml
+ansible-playbook -vvv -b -i .vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory cluster.yml
 ```
 If all went well, you check if it's all working as expected:
 ```

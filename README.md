@@ -21,7 +21,7 @@ To deploy the cluster you can use :
 
 ```ShellSession
 # Install dependencies from ``requirements.txt``
-sudo pip install -r requirements.txt
+sudo pip3 install -r requirements.txt
 
 # Copy ``inventory/sample`` as ``inventory/mycluster``
 cp -rfp inventory/sample inventory/mycluster

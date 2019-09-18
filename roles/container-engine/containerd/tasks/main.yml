@@ -3,7 +3,7 @@
   fail:
     msg: "{{ ansible_distribution }} is not supported by containerd."
   when:
-    - not ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian"]
+    - not ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian", "CoreOS", "Coreos", "coreos"]
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -70,6 +70,7 @@
   when:
     - not is_atomic
     - containerd_package_info.pkgs|length > 0
+    - ansible_os_family not in ['CoreOS', 'Coreos', 'coreos']
   ignore_errors: true
 
 - name: Check if runc is installed
@@ -91,5 +92,52 @@
   when:
     - not is_atomic
     - not runc_stat.stat.exists
+    - ansible_os_family not in ['CoreOS', 'Coreos', 'coreos']
 
 - include_tasks: crictl.yml
+
+- name: Containerd | Copy containerd binaries
+  unarchive:
+    src: "{{local_release_dir}}/containerd-linux-amd64-{{ containerd_version }}.tar.gz"
+    dest: "{{ bin_dir}}"
+    mode: 0755
+    remote_src: yes
+    extra_opts: [--strip-components=1]
+  when:
+    - not is_atomic
+    - not runc_stat.stat.exists
+    - ansible_os_family in ['CoreOS', 'Coreos', 'coreos']
+
+- name: Containerd | Copy runc binary
+  copy:
+    src: "{{local_release_dir}}/runc-linux-amd64-{{ runc_version }}"
+    dest: "{{ runc_binary }}"
+    mode: 0755
+    remote_src: yes
+  when:
+    - not is_atomic
+    - not runc_stat.stat.exists
+    - ansible_os_family in ['CoreOS', 'Coreos', 'coreos']
+
+- name: Containerd | Install containerd systemd unit file
+  template:
+    src: containerd.service.j2
+    dest: /etc/systemd/system/containerd.service
+
+- name: Containerd | Start containerd service
+  service:
+    name: containerd
+    state: restarted
+    enabled: yes
+
+- name: Containerd | Stop and disable docker
+  service:
+    name: docker
+    state: stopped
+    enabled: false
+  failed_when: false
+
+- name: Containerd | Remove docker service file
+  file:
+    path: /run/systemd/system/docker.service
+    state: absent

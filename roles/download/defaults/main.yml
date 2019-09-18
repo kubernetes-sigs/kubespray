@@ -79,6 +79,8 @@ kube_router_version: "v0.2.5"
 multus_version: "v3.2.1"
 
 crictl_version: "v1.15.0"
+containerd_version: 1.2.6
+runc_version: 1.0.0-rc8
 
 # Download URLs
 kubeadm_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm"
@@ -87,6 +89,8 @@ etcd_download_url: "https://github.com/coreos/etcd/releases/download/{{ etcd_ver
 cni_download_url: "https://github.com/containernetworking/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
 calicoctl_download_url: "https://github.com/projectcalico/calicoctl/releases/download/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
 crictl_download_url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+containerd_download_url: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}.linux-amd64.tar.gz"
+runc_download_url: "https://github.com/opencontainers/runc/releases/download/v{{ runc_version }}/runc.amd64"
 
 crictl_checksums:
   arm:
@@ -101,6 +105,11 @@ crictl_checksums:
     v1.15.0: c3b71be1f363e16078b51334967348aab4f72f46ef64a61fe7754e029779d45a
     v1.14.0: 483c90a9fe679590df4332ba807991c49232e8cd326c307c575ecef7fe22327b
     v1.13.0: 9bdbea7a2b382494aff2ff014da328a042c5aba9096a7772e57fdf487e5a1d51
+
+containerd_archive_checksum: 3c23bc34c7c0cb2e45fe469f5fcfdb3829aab8e51a425b1efb702f00f215c4c6
+runc_archive_checksums:
+  1.0.0-rc8: 0a9ac20ee52b6084ad161d516cc4e6248c5fd0cdf1fd4a7ac27f5243675632f9
+  1.0.0-rc7: 633e1781f5d6f88fb338b4a59a6b6e969972e970677976570cc2c56c58e5a4cd
 
 # Checksums
 hyperkube_checksums:
@@ -205,6 +214,7 @@ hyperkube_binary_checksum: "{{ hyperkube_checksums[image_arch][kube_version] }}"
 kubeadm_binary_checksum: "{{ kubeadm_checksums[image_arch][kubeadm_version] }}"
 calicoctl_binary_checksum: "{{ calicoctl_binary_checksums[image_arch][calico_ctl_version] }}"
 crictl_binary_checksum: "{{ crictl_checksums[image_arch][crictl_version] }}"
+runc_archive_checksum: "{{ runc_archive_checksums[runc_version] }}"
 
 # Containers
 # In some cases, we need a way to set --registry-mirror or --insecure-registry for docker,
@@ -629,7 +639,7 @@ downloads:
       - k8s-cluster
 
   install_socat:
-    enabled: "{{ ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] }}"
+    enabled: "{{ ansible_os_family in ['CoreOS','Coreos','coreos', 'Container Linux by CoreOS'] }}"
     container: true
     repo: "{{ install_socat_image_repo }}"
     tag: "{{ install_socat_image_tag }}"
@@ -815,6 +825,32 @@ downloads:
     sha256: "{{ dashboard_digest_checksum|default(None) }}"
     groups:
       - kube-master
+
+  containerd:
+    enabled: "{{ container_manager == 'containerd' }}"
+    file: true
+    version: "{{ containerd_version }}"
+    dest: "{{local_release_dir}}/containerd-linux-amd64-{{ containerd_version }}.tar.gz"
+    sha256: "{{ containerd_archive_checksum }}"
+    url: "{{ containerd_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s-cluster
+
+  runc:
+    enabled: "{{ container_manager == 'containerd' }}"
+    file: true
+    version: "{{ runc_version }}"
+    dest: "{{local_release_dir}}/runc-linux-amd64-{{ runc_version }}"
+    sha256: "{{ runc_archive_checksum }}"
+    url: "{{ runc_download_url }}"
+    owner: "root"
+    mode: "0755"
+    unarchive: false
+    groups:
+      - k8s-cluster
 
 download_defaults:
   container: false

@@ -26,6 +26,7 @@ SUPPORTED_OS = {
   "opensuse"            => {box: "opensuse/openSUSE-15.0-x86_64",       user: "vagrant"},
   "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", user: "vagrant"},
   "oraclelinux"         => {box: "generic/oracle7", user: "vagrant"},
+  "amazonlinux-2"       => {box: "bento/amazonlinux-2", user: "vagrant"}
 }
 
 # Defaults for config options defined in CONFIG

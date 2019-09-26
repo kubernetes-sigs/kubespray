@@ -47,7 +47,7 @@ git checkout origin/master
 ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.6.0
 ```
 
-After a successul upgrade, the Server Version should be updated:
+After a successful upgrade, the Server Version should be updated:
 
 ```
 $ kubectl version

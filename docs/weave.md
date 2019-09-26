@@ -72,7 +72,7 @@ This mode is best to use on static size cluster
 
 This mode is best to use on dynamic size cluster
 
-The seed mode also allows multi-clouds and hybrid on-premise/cloud clusters deployement.
+The seed mode also allows multi-clouds and hybrid on-premise/cloud clusters deployment.
 
 * Switch from consensus mode to seed mode
 

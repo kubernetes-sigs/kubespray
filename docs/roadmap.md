@@ -19,7 +19,7 @@ Kubespray's roadmap
 - [ ] On AWS autoscaling, multi AZ
 - [ ] On Azure autoscaling, create loadbalancer [#297](https://github.com/kubespray/kubespray/issues/297)
 - [ ] On GCE be able to create a loadbalancer automatically (IAM ?) [#280](https://github.com/kubespray/kubespray/issues/280)
-- [x] **TLS boostrap** support for kubelet (covered by kubeadm, but not in standard deployment) [#234](https://github.com/kubespray/kubespray/issues/234)
+- [x] **TLS bootstrap** support for kubelet (covered by kubeadm, but not in standard deployment) [#234](https://github.com/kubespray/kubespray/issues/234)
   (related issues: https://github.com/kubernetes/kubernetes/pull/20439 <br>
    https://github.com/kubernetes/kubernetes/issues/18112)
 

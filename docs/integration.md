@@ -40,7 +40,7 @@
    ...
    ```
 
-8. Copy and modify configs from kubespray `group_vars` folder to corresponging `group_vars` folder in your existent project.
+8. Copy and modify configs from kubespray `group_vars` folder to corresponding `group_vars` folder in your existent project.
 You could rename *all.yml* config to something else, i.e. *kubespray.yml* and create corresponding group in your inventory file, which will include all hosts groups related to kubernetes setup.
 
 9. Modify your ansible inventory file by adding mapping of your existent groups (if any) to kubespray naming.

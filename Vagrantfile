@@ -3,223 +3,242 @@
 
 # For help on using kubespray with vagrant, check out docs/vagrant.md
 
-require 'fileutils'
+#
+# Settings
+#
+OS = "debian" # Which operating system to use
+OS_VERSION = "10" # Which operating system version to use
+PLAYBOOK = "cluster.yml" # Which playbook to run
 
-Vagrant.require_version ">= 2.0.0"
+NODE_CPU_COUNT = 2 # How many cpus each node has
+NODE_MEMORY_AMOUNT = 2048 # How much memory each node has
+NODE_ROOTFS_SIZE = 50 # Default root partition size
+NODE_EXTRA_DISK_COUNT = 2 # Attach to each node extra disks
+NODE_EXTRA_DISK_SIZE = 50 # Size in GB of each extra disk
 
-CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
+SUBNET = "192.168.100" # Allocate nodes from this subnet
 
-COREOS_URL_TEMPLATE = "https://storage.googleapis.com/%s.release.core-os.net/amd64-usr/current/coreos_production_vagrant.json"
+NODE_MASTER_COUNT = 3 # How many masters to create
+NODE_WORKER_COUNT = 2 # How many workers to create
+NODE_ETCD_COUNT = 0 # How many etcd nodes to create, if 0 the nodes will be colocated with the masters
 
-# Uniq disk UUID for libvirt
-DISK_UUID = Time.now.utc.to_i
-
-SUPPORTED_OS = {
-  "coreos-stable"       => {box: "coreos-stable",      user: "core", box_url: COREOS_URL_TEMPLATE % ["stable"]},
-  "coreos-alpha"        => {box: "coreos-alpha",       user: "core", box_url: COREOS_URL_TEMPLATE % ["alpha"]},
-  "coreos-beta"         => {box: "coreos-beta",        user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]},
-  "ubuntu1604"          => {box: "generic/ubuntu1604", user: "vagrant"},
-  "ubuntu1804"          => {box: "generic/ubuntu1804", user: "vagrant"},
-  "centos"              => {box: "centos/7",           user: "vagrant"},
-  "centos-bento"        => {box: "bento/centos-7.6",   user: "vagrant"},
-  "fedora"              => {box: "fedora/28-cloud-base",                user: "vagrant"},
-  "opensuse"            => {box: "opensuse/openSUSE-15.0-x86_64",       user: "vagrant"},
-  "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", user: "vagrant"},
-  "oraclelinux"         => {box: "generic/oracle7", user: "vagrant"},
+EXTRA_VARS = {
+  "download_run_once" => true, # Increase provisioning speed
+  "kube_network_plugin" => "calico"
 }
 
-# Defaults for config options defined in CONFIG
-$num_instances = 3
-$instance_name_prefix = "k8s"
-$vm_gui = false
-$vm_memory = 2048
-$vm_cpus = 1
-$shared_folders = {}
-$forwarded_ports = {}
-$subnet = "172.17.8"
-$os = "ubuntu1804"
-$network_plugin = "flannel"
-# Setting multi_networking to true will install Multus: https://github.com/intel/multus-cni
-$multi_networking = false
-# The first three nodes are etcd servers
-$etcd_instances = $num_instances
-# The first two nodes are kube masters
-$kube_master_instances = $num_instances == 1 ? $num_instances : ($num_instances - 1)
-# All nodes are kube nodes
-$kube_node_instances = $num_instances
-# The following only works when using the libvirt provider
-$kube_node_instances_with_disks = false
-$kube_node_instances_with_disks_size = "20G"
-$kube_node_instances_with_disks_number = 2
-$override_disk_size = false
-$disk_size = "20GB"
-$local_path_provisioner_enabled = false
-$local_path_provisioner_claim_root = "/opt/local-path-provisioner/"
+FORWARD_PORTS = [
+  # { guest: 2375, host: 2375, host_ip: "127.0.0.1", protocol: "tcp" }
+]
 
-$playbook = "cluster.yml"
+SYNCED_FOLDERS = [
+  # { from: "/tmp/cache", to: "/var/cache" }
+]
 
+#
+# Kubespray data
+#
+COREOS_URL_TEMPLATE = "https://storage.googleapis.com/%s.release.core-os.net/amd64-usr/current/coreos_production_vagrant.json"
+SUPPORTED_OS = {
+  "coreos" => {
+    "alpha" =>  { box: "coreos-alpha", user: "core", box_url: COREOS_URL_TEMPLATE % ["alpha"] },
+    "beta" =>   { box: "coreos-beta", user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"] },
+    "stable" => { box: "coreos-stable", user: "core", box_url: COREOS_URL_TEMPLATE % ["stable"] }
+  },
+  "centos" => {
+    "7" => { box: "centos/7" }
+  },
+  "debian" => {
+    "9" =>  { box: "debian/stretch64" },
+    "10" => { box: "debian/buster64" }
+  },
+  "fedora" => {
+    "30" => { box: "fedora/30-cloud-base" },
+    "31" => { box: "fedora/31-beta-cloud-base" }
+  },
+  "opensuse" => {
+    "tumbleweed" => { box: "opensuse/openSUSE-Tumbleweed-Vagrant.x86_64" }
+  },
+  "oracle" => {
+    "7" => { box: "generic/oracle7" }
+  },
+  "ubuntu" => {
+    "16.04" => { box: "generic/ubuntu1604" },
+    "18.04" => { box: "generic/ubuntu1804" }
+  }
+}
+
+#
+# Calculated data
+#
 host_vars = {}
+COLOCATED_ETCD = NODE_ETCD_COUNT == 0
+TOTAL_NODE_COUNT = NODE_MASTER_COUNT + NODE_WORKER_COUNT + NODE_ETCD_COUNT
 
-if File.exist?(CONFIG)
-  require CONFIG
-end
-
-$box = SUPPORTED_OS[$os][:box]
-# if $inventory is not set, try to use example
-$inventory = "inventory/sample" if ! $inventory
-$inventory = File.absolute_path($inventory, File.dirname(__FILE__))
-
-# if $inventory has a hosts.ini file use it, otherwise copy over
-# vars etc to where vagrant expects dynamic inventory to be
-if ! File.exist?(File.join(File.dirname($inventory), "hosts.ini"))
-  $vagrant_ansible = File.join(File.dirname(__FILE__), ".vagrant", "provisioners", "ansible")
-  FileUtils.mkdir_p($vagrant_ansible) if ! File.exist?($vagrant_ansible)
-  if ! File.exist?(File.join($vagrant_ansible,"inventory"))
-    FileUtils.ln_s($inventory, File.join($vagrant_ansible,"inventory"))
+#
+# Functions
+#
+def node_role_from_index(index)
+  # Return the node role for a given index
+  # Example 3 masters, 2 worker, 3 etcd
+  # 1,2,3 => master, 4,5 => worker, 6,7,8 => etcd
+  if index <= NODE_MASTER_COUNT
+    return "master"
+  elsif index > NODE_MASTER_COUNT and index <= (NODE_MASTER_COUNT + NODE_WORKER_COUNT)
+    return "worker"
+  else
+    return "etcd"
   end
 end
+def node_index_in_role(global_index)
+  # Return the sub-index associated with that node
+  case node_role_from_index(global_index)
+  when "master"
+    # Masters inherit the global index as-is
+    return global_index
+  when "worker"
+    # Worker nodes' indexes are after the master ones
+    return global_index - NODE_MASTER_COUNT
+  when "etcd"
+    # etcd nodes' indexes are after the masters and the workers
+    return global_index - NODE_MASTER_COUNT - NODE_WORKER_COUNT
+  end
+end
+def node_hostname_for_role(role, index)
+  # Return the hostname of the node with the given role and index
+  return "k8s-%s-%d" % [ role, index ]
+end
+def node_hostname(index)
+  # Return the hostname of the node with a given index
+  return node_hostname_for_role(node_role_from_index(index), node_index_in_role(index))
+end
+def get_ansible_groups()
+  # Return the Ansible host-group mappings
 
-if Vagrant.has_plugin?("vagrant-proxyconf")
-    $no_proxy = ENV['NO_PROXY'] || ENV['no_proxy'] || "127.0.0.1,localhost"
-    (1..$num_instances).each do |i|
-        $no_proxy += ",#{$subnet}.#{i+100}"
-    end
+  masterList = (1..NODE_MASTER_COUNT).map{|i| node_hostname_for_role("master", i) }
+  workerList = (1..NODE_WORKER_COUNT).map{|i| node_hostname_for_role("worker", i) }
+
+  if COLOCATED_ETCD
+    # Every master is also an etcd node
+    etcdList = masterList
+  else
+    # Generate a separate etcd node list
+    etcdList = (1..NODE_ETCD_COUNT).map{|i| node_hostname_for_role("etcd", i) }
+  end
+
+  return {
+    "kube-master" => masterList,
+    "kube-node" => masterList | workerList,
+    "etcd" => etcdList,
+    "k8s-cluster:children" => [ "kube-master", "kube-node" ]
+  }
+end
+def is_etcd_node(index)
+  # Check if the node with the given index will host an etcd instance
+
+  if node_role_from_index(index) == "etcd"
+    # The node is an etcd node
+    return true
+  end
+
+  if COLOCATED_ETCD and node_role_from_index(index) == "master"
+    # The node is a master node in colocated configuration
+    return true
+  end
+
+  return false
 end
 
+#
+# Vagrant script
+#
+Vagrant.require_version ">= 2.0.0"
 Vagrant.configure("2") do |config|
 
-  config.vm.box = $box
-  if SUPPORTED_OS[$os].has_key? :box_url
-    config.vm.box_url = SUPPORTED_OS[$os][:box_url]
+  # Set box name
+  config.vm.box = SUPPORTED_OS[OS][OS_VERSION][:box]
+  if SUPPORTED_OS[OS][OS_VERSION].has_key?("box_url")
+    config.vm.box_url = SUPPORTED_OS[OS][OS_VERSION][:box_url]
   end
-  config.ssh.username = SUPPORTED_OS[$os][:user]
-
-  # plugin conflict
-  if Vagrant.has_plugin?("vagrant-vbguest") then
-    config.vbguest.auto_update = false
-  end
-
-  # always use Vagrants insecure key
-  config.ssh.insert_key = false
-
-  if ($override_disk_size)
-    unless Vagrant.has_plugin?("vagrant-disksize")
-      system "vagrant plugin install vagrant-disksize"
-    end
-    config.disksize.size = $disk_size
+  # Set box user
+  if SUPPORTED_OS[OS][OS_VERSION].has_key?("user")
+    config.ssh.username = SUPPORTED_OS[OS][OS_VERSION][:user]
   end
 
-  (1..$num_instances).each do |i|
-    config.vm.define vm_name = "%s-%01d" % [$instance_name_prefix, i] do |node|
+  # Disable default synced folder
+  config.vm.synced_folder ".", "/vagrant", disabled: true
 
-      node.vm.hostname = vm_name
+  # Provider settings
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.cpus = NODE_CPU_COUNT
+    libvirt.memory = NODE_MEMORY_AMOUNT
+    libvirt.machine_virtual_size = NODE_ROOTFS_SIZE
+  end
 
-      if Vagrant.has_plugin?("vagrant-proxyconf")
-        node.proxy.http     = ENV['HTTP_PROXY'] || ENV['http_proxy'] || ""
-        node.proxy.https    = ENV['HTTPS_PROXY'] || ENV['https_proxy'] ||  ""
-        node.proxy.no_proxy = $no_proxy
-      end
+  # Define the VMs
+  (1..TOTAL_NODE_COUNT).each do |i|
+    config.vm.define node_name = node_hostname(i) do |node|
 
-      ["vmware_fusion", "vmware_workstation"].each do |vmware|
-        node.vm.provider vmware do |v|
-          v.vmx['memsize'] = $vm_memory
-          v.vmx['numvcpus'] = $vm_cpus
+      # Ensure that the hostname is correct
+      node.vm.hostname = node_name
+
+      # Extra disks
+      node.vm.provider :libvirt do |libvirt|
+        (1..NODE_EXTRA_DISK_COUNT).each() do |extra_disk_index|
+          libvirt.storage :file,
+            :path => "#{node_name}disk#{extra_disk_index}.qcow2",
+            :size => "#{NODE_EXTRA_DISK_SIZE}G",
+            :type => "qcow2"
         end
       end
 
-      node.vm.provider :virtualbox do |vb|
-        vb.memory = $vm_memory
-        vb.cpus = $vm_cpus
-        vb.gui = $vm_gui
-        vb.linked_clone = true
-        vb.customize ["modifyvm", :id, "--vram", "8"] # ubuntu defaults to 256 MB which is a waste of precious RAM
+      # Forward ports
+      FORWARD_PORTS.each() do |forwarded_port|
+        node.vm.network :forwarded_port,
+          guest: forwarded_port[:guest],
+          host: forwarded_port[:host] + i - 1,
+          host_ip: forwarded_port[:host_ip] || "127.0.0.1",
+          protocol: forwarded_port[:protocol] || "tcp"
+        puts "Forwarding %d => %d on %s" % [ (forwarded_port[:host] + i - 1), forwarded_port[:guest], node_name ]
       end
 
-      node.vm.provider :libvirt do |lv|
-        lv.memory = $vm_memory
-        lv.cpus = $vm_cpus
-        lv.default_prefix = 'kubespray'
-        # Fix kernel panic on fedora 28
-        if $os == "fedora"
-          lv.cpu_mode = "host-passthrough"
+      # Synced folders
+      SYNCED_FOLDERS.each() do |synced_folder|
+        if i == 1
+          puts "Syncing folder %s => %s" % [ synced_folder[:from], synced_folder[:to] ]
         end
+        node.vm.synced_folder synced_folder[:from], synced_folder[:to]
       end
 
-      if $kube_node_instances_with_disks
-        # Libvirt
-        driverletters = ('a'..'z').to_a
-        node.vm.provider :libvirt do |lv|
-          # always make /dev/sd{a/b/c} so that CI can ensure that
-          # virtualbox and libvirt will have the same devices to use for OSDs
-          (1..$kube_node_instances_with_disks_number).each do |d|
-            lv.storage :file, :device => "hd#{driverletters[d]}", :path => "disk-#{i}-#{d}-#{DISK_UUID}.disk", :size => $kube_node_instances_with_disks_size, :bus => "ide"
-          end
-        end
-      end
+      # Expose the node on a local ip
+      nodeIp = "#{SUBNET}.#{10 + i}"
+      node.vm.network :private_network, ip: nodeIp
 
-      if $expose_docker_tcp
-        node.vm.network "forwarded_port", guest: 2375, host: ($expose_docker_tcp + i - 1), auto_correct: true
-      end
-
-      $forwarded_ports.each do |guest, host|
-        node.vm.network "forwarded_port", guest: guest, host: host, auto_correct: true
-      end
-
-      node.vm.synced_folder ".", "/vagrant", disabled: false, type: "rsync", rsync__args: ['--verbose', '--archive', '--delete', '-z'] , rsync__exclude: ['.git','venv']
-      $shared_folders.each do |src, dst|
-        node.vm.synced_folder src, dst, type: "rsync", rsync__args: ['--verbose', '--archive', '--delete', '-z']
-      end
-
-      ip = "#{$subnet}.#{i+100}"
-      node.vm.network :private_network, ip: ip
-
-      # Disable swap for each vm
-      node.vm.provision "shell", inline: "swapoff -a"
-
-      host_vars[vm_name] = {
-        "ip": ip,
-        "flannel_interface": "eth1",
-        "kube_network_plugin": $network_plugin,
-        "kube_network_plugin_multus": $multi_networking,
-        "download_run_once": "True",
-        "download_localhost": "False",
-        "download_cache_dir": ENV['HOME'] + "/kubespray_cache",
-        # Make kubespray cache even when download_run_once is false
-        "download_force_cache": "True",
-        # Keeping the cache on the nodes can improve provisioning speed while debugging kubespray
-        "download_keep_remote_cache": "False",
-        "docker_keepcache": "1",
-        # These two settings will put kubectl and admin.config in $inventory/artifacts
-        "kubeconfig_localhost": "True",
-        "kubectl_localhost": "True",
-        "local_path_provisioner_enabled": "#{$local_path_provisioner_enabled}",
-        "local_path_provisioner_claim_root": "#{$local_path_provisioner_claim_root}",
-        "ansible_ssh_user": SUPPORTED_OS[$os][:user]
+      # Set ansible variables
+      host_vars[node_name] = {
+        "ip" => nodeIp
       }
 
-      # Only execute the Ansible provisioner once, when all the machines are up and ready.
-      if i == $num_instances
+      # Set etcd member name
+      if is_etcd_node(i)
+        host_vars[node_name].merge!({ "etcd_member_name" => node_name })
+      end
+
+      # Provision the nodes
+      if i == TOTAL_NODE_COUNT
         node.vm.provision "ansible" do |ansible|
-          ansible.playbook = $playbook
-          $ansible_inventory_path = File.join( $inventory, "hosts.ini")
-          if File.exist?($ansible_inventory_path)
-            ansible.inventory_path = $ansible_inventory_path
-          end
+          # Set the playbook
+          ansible.playbook = PLAYBOOK
           ansible.become = true
           ansible.limit = "all,localhost"
-          ansible.host_key_checking = false
-          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
+          ansible.raw_arguments = ["--flush-cache", "--forks=#{TOTAL_NODE_COUNT}"]
+          ansible.groups = get_ansible_groups()
+          ansible.extra_vars = EXTRA_VARS
           ansible.host_vars = host_vars
-          #ansible.tags = ['download']
-          ansible.groups = {
-            "etcd" => ["#{$instance_name_prefix}-[1:#{$etcd_instances}]"],
-            "kube-master" => ["#{$instance_name_prefix}-[1:#{$kube_master_instances}]"],
-            "kube-node" => ["#{$instance_name_prefix}-[1:#{$kube_node_instances}]"],
-            "k8s-cluster:children" => ["kube-master", "kube-node"],
-          }
         end
       end
 
     end
   end
+
 end

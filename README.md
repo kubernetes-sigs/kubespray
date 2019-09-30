@@ -211,7 +211,7 @@ Community docs and resources
 Tools and projects on top of Kubespray
 --------------------------------------
 
--   [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/master/doc/integrations/ansible.rst)
+-   [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/v4/doc/integrations/ansible.rst)
 -   [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
 
 CI Tests

@@ -36,12 +36,21 @@
   include_tasks: "gen_helm_tiller_certs.yml"
   when: tiller_enable_tls
 
-- name: Helm | Install/upgrade helm
+- name: Helm | Install client on all masters
   command: >
     {{ bin_dir }}/helm init --tiller-namespace={{ tiller_namespace }}
     {% if helm_skip_refresh %} --skip-refresh{% endif %}
     {% if helm_stable_repo_url is defined %} --stable-repo-url {{ helm_stable_repo_url }}{% endif %}
-    {% if inventory_hostname == groups['kube-master'][0] %}
+    --client-only
+  environment: "{{ proxy_env }}"
+  changed_when: false
+
+# FIXME: https://github.com/helm/helm/issues/6374
+- name: Helm | Install/upgrade helm
+  shell: >
+    {{ bin_dir }}/helm init --tiller-namespace={{ tiller_namespace }}
+    {% if helm_skip_refresh %} --skip-refresh{% endif %}
+    {% if helm_stable_repo_url is defined %} --stable-repo-url {{ helm_stable_repo_url }}{% endif %}
     --upgrade --tiller-image={{ tiller_image_repo }}:{{ tiller_image_tag }}
     {% if rbac_enabled %} --service-account=tiller{% endif %}
     {% if tiller_node_selectors is defined %} --node-selectors {{ tiller_node_selectors }}{% endif %}
@@ -50,11 +59,14 @@
     {% if tiller_max_history is defined %} --history-max={{ tiller_max_history }}{% endif %}
     {% if tiller_enable_tls %} --tiller-tls --tiller-tls-verify --tiller-tls-cert={{ tiller_tls_cert }} --tiller-tls-key={{ tiller_tls_key }} --tls-ca-cert={{ tiller_tls_ca_cert }} {% endif %}
     {% if tiller_secure_release_info %} --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' {% endif %}
+    --override spec.selector.matchLabels.'name'='tiller',spec.selector.matchLabels.'app'='helm'
     {% if tiller_wait %} --wait{% endif %}
-    {% else %}
-    --client-only
-    {% endif %}
+    --output yaml
+    | sed 's@apiVersion: extensions/v1beta1@apiVersion: apps/v1@'
+    | {{ bin_dir }}/kubectl apply -f -
   register: install_helm
+  when:
+    - inventory_hostname == groups['kube-master'][0]
   changed_when: false
   environment: "{{ proxy_env }}"
 
@@ -71,8 +83,10 @@
     {% if tiller_max_history is defined %} --history-max={{ tiller_max_history }}{% endif %}
     {% if tiller_enable_tls %} --tiller-tls --tiller-tls-verify --tiller-tls-cert={{ tiller_tls_cert }} --tiller-tls-key={{ tiller_tls_key }} --tls-ca-cert={{ tiller_tls_ca_cert }} {% endif %}
     {% if tiller_secure_release_info %} --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' {% endif %}
+    --override spec.selector.matchLabels.'name'='tiller',spec.selector.matchLabels.'app'='helm'
     {% if tiller_wait %} --wait{% endif %}
     --output yaml
+    | sed 's@apiVersion: extensions/v1beta1@apiVersion: apps/v1@'
     | {{ bin_dir }}/kubectl apply -f -
   changed_when: false
   when:

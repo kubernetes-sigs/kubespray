@@ -1,6 +1,6 @@
 ---
 # Use proxycommand if bastion host is in group all
-# This change obseletes editing ansible.cfg file depending on bastion existance
+# This change obseletes editing ansible.cfg file depending on bastion existence
 ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ hostvars['bastion']['ansible_user'] }}@{{ hostvars['bastion']['ansible_host'] }} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
 
 kube_api_anonymous_auth: true
@@ -12,10 +12,13 @@ is_atomic: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.15.3
+kube_version: v1.16.0
 
 ## The minimum version working
-kube_version_min_required: v1.14.0
+kube_version_min_required: v1.15.0
+
+# use HyperKube image to control plane containers
+kubeadm_use_hyperkube_image: False
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
@@ -197,6 +200,16 @@ kube_profiling: false
 
 # Container for runtime
 container_manager: docker
+
+# CRI socket path
+cri_socket: >-
+  {%- if container_manager == 'crio' -%}
+  /var/run/crio/crio.sock
+  {%- elif container_manager == 'containerd' -%}
+  /var/run/containerd/containerd.sock
+  {%- else -%}
+  /var/run/dockershim.sock
+  {%- endif -%}
 
 ## Uncomment this if you want to force overlay/overlay2 as docker storage driver
 ## Please note that overlay2 is only supported on newer kernels

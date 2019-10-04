@@ -109,7 +109,7 @@ Supported Components
 --------------------
 
 -   Core
-    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.15.3
+    -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.16.0
     -   [etcd](https://github.com/coreos/etcd) v3.3.10
     -   [docker](https://www.docker.com/) v18.06 (see note)
     -   [cri-o](http://cri-o.io/) v1.14.0 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
@@ -200,7 +200,7 @@ Community docs and resources
 Tools and projects on top of Kubespray
 --------------------------------------
 
--   [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/master/doc/integrations/ansible.rst)
+-   [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/v4/doc/integrations/ansible.rst)
 -   [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
 
 CI Tests

@@ -42,7 +42,6 @@
     kubeadm_token: "{{ temp_token.stdout }}"
   when: kubeadm_token is not defined
 
-
 - name: gets the kubeadm version
   command: "{{ bin_dir }}/kubeadm version -o short"
   register: kubeadm_output
@@ -104,10 +103,12 @@
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
   notify: restart kubelet
 
+# FIXME(mattymo): Need to point to localhost, otherwise masters will all point
+#                 incorrectly to first master, creating SPoF.
 - name: Update server field in kube-proxy kubeconfig
   shell: >-
     {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get configmap kube-proxy -n kube-system -o yaml
-    | sed 's#server:.*#server:\ {{ kube_apiserver_endpoint }}#g'
+    | sed 's#server:.*#server: https://127.0.0.1:{{ kube_apiserver_port }}#g'
     | {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
   run_once: true
   when:

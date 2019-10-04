@@ -36,13 +36,21 @@
   include_tasks: "gen_helm_tiller_certs.yml"
   when: tiller_enable_tls
 
+- name: Helm | Install client on all masters
+  command: >
+    {{ bin_dir }}/helm init --tiller-namespace={{ tiller_namespace }}
+    {% if helm_skip_refresh %} --skip-refresh{% endif %}
+    {% if helm_stable_repo_url is defined %} --stable-repo-url {{ helm_stable_repo_url }}{% endif %}
+    --client-only
+  environment: "{{ proxy_env }}"
+  changed_when: false
+
 # FIXME: https://github.com/helm/helm/issues/6374
 - name: Helm | Install/upgrade helm
   shell: >
     {{ bin_dir }}/helm init --tiller-namespace={{ tiller_namespace }}
     {% if helm_skip_refresh %} --skip-refresh{% endif %}
     {% if helm_stable_repo_url is defined %} --stable-repo-url {{ helm_stable_repo_url }}{% endif %}
-    {% if inventory_hostname == groups['kube-master'][0] %}
     --upgrade --tiller-image={{ tiller_image_repo }}:{{ tiller_image_tag }}
     {% if rbac_enabled %} --service-account=tiller{% endif %}
     {% if tiller_node_selectors is defined %} --node-selectors {{ tiller_node_selectors }}{% endif %}
@@ -56,10 +64,9 @@
     --output yaml
     | sed 's@apiVersion: extensions/v1beta1@apiVersion: apps/v1@'
     | {{ bin_dir }}/kubectl apply -f -
-    {% else %}
-    --client-only
-    {% endif %}
   register: install_helm
+  when:
+    - inventory_hostname == groups['kube-master'][0]
   changed_when: false
   environment: "{{ proxy_env }}"
 

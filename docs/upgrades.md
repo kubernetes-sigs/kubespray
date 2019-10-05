@@ -24,13 +24,15 @@ If you wanted to upgrade just kube_version from v1.4.3 to v1.4.6, you could
 deploy the following way:
 
 ```
-ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.3
+ansible-playbook cluster.yml -i inventory/mycluster/hosts.yml -e kube_version=v1.4.3
 ```
+
+> Following the install documentation, when install cluster, the `mycluster` folder is created by executing `cp -rfp inventory/sample inventory/mycluster`. 
 
 And then repeat with v1.4.6 as kube_version:
 
 ```
-ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.6
+ansible-playbook cluster.yml -i inventory/mycluster/hosts.yml -e kube_version=v1.4.6
 ```
 
 #### Graceful upgrade
@@ -44,7 +46,7 @@ deployed.
 ```
 git fetch origin
 git checkout origin/master
-ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.6.0
+ansible-playbook upgrade-cluster.yml -b -i inventory/mycluster/hosts.yml -e kube_version=v1.6.0
 ```
 
 After a successful upgrade, the Server Version should be updated:
@@ -95,47 +97,47 @@ hosts.
 Upgrade docker:
 
 ```
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=docker
+ansible-playbook -b -i inventory/mycluster/hosts.yml cluster.yml --tags=docker
 ```
 
 Upgrade etcd:
 
 ```
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=etcd
+ansible-playbook -b -i inventory/mycluster/hosts.yml cluster.yml --tags=etcd
 ```
 
 Upgrade vault:
 
 ```
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=vault
+ansible-playbook -b -i inventory/mycluster/hosts.yml cluster.yml --tags=vault
 ```
 
 Upgrade kubelet:
 
 ```
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=node --skip-tags=k8s-gen-certs,k8s-gen-tokens
+ansible-playbook -b -i inventory/mycluster/hosts.yml cluster.yml --tags=node --skip-tags=k8s-gen-certs,k8s-gen-tokens
 ```
 
 Upgrade Kubernetes master components:
 
 ```
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=master
+ansible-playbook -b -i inventory/mycluster/hosts.yml cluster.yml --tags=master
 ```
 
 Upgrade network plugins:
 
 ```
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=network
+ansible-playbook -b -i inventory/mycluster/hosts.yml cluster.yml --tags=network
 ```
 
 Upgrade all add-ons:
 
 ```
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=apps
+ansible-playbook -b -i inventory/mycluster/hosts.yml cluster.yml --tags=apps
 ```
 
 Upgrade just helm (assuming `helm_enabled` is true):
 
 ```
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=helm
+ansible-playbook -b -i inventory/mycluster/hosts.yml cluster.yml --tags=helm
 ```

@@ -206,3 +206,7 @@ variable "worker_allowed_ports" {
     },
   ]
 }
+
+variable "use_access_ip" {
+  default = 1
+}

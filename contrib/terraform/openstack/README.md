@@ -426,7 +426,10 @@ resolvconf_mode: host_resolvconf
 ```
 node_volume_attach_limit: 26
 ```
-
+- Disable access_ip, this will make all innternal cluster traffic to be sent over local network when a floating IP is attached (default this value is set to 1)
+```
+use_access_ip: 0
+```
 
 ### Deploy Kubernetes
 

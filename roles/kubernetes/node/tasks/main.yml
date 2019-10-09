@@ -184,14 +184,24 @@
     - cloud-provider
     - facts
 
+- name: Test if openstack_cacert is a base64 string
+  set_fact:
+    openstack_cacert_is_base64: "{% if openstack_cacert | b64decode %}true{% else %}false{% endif %}"
+  when:
+    - cloud_provider is defined
+    - cloud_provider == 'openstack'
+    - openstack_cacert is defined
+    - openstack_cacert | length > 0
+
+
 - name: Write cacert file
   copy:
-    src: "{{ openstack_cacert }}"
+    src: "{{ openstack_cacert if not openstack_cacert_is_base64 else omit }}"
+    content: "{{ openstack_cacert | b64decode if openstack_cacert_is_base64 else omit }}"
     dest: "{{ kube_config_dir }}/openstack-cacert.pem"
     group: "{{ kube_cert_group }}"
     mode: 0640
   when:
-    - inventory_hostname in groups['k8s-cluster']
     - cloud_provider is defined
     - cloud_provider == 'openstack'
     - openstack_cacert is defined

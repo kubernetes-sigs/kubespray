@@ -8,14 +8,14 @@ For a large scaled deployments, consider the following configuration changes:
 
 * Override containers' `foo_image_repo` vars to point to intranet registry.
 
-* Override the ``download_run_once: true`` and/or ``download_localhost: true``.
+* Override the ``download_delegate`` and/or ``download_cache``.
   See download modes for details.
 
 * Adjust the `retry_stagger` global var as appropriate. It should provide sane
   load on a delegate (the first K8s master node) then retrying failed
   push or download operations.
 
-* Tune parameters for DNS related applications 
+* Tune parameters for DNS related applications
   Those are ``dns_replicas``, ``dns_cpu_limit``,
   ``dns_cpu_requests``, ``dns_memory_limit``, ``dns_memory_requests``.
   Please note that limits must always be greater than or equal to requests.

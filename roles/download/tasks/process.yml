@@ -3,16 +3,80 @@
   include_tasks: set_download_facts.yml
   tags: facts
 
-- name: process | Download files / images
-  include_tasks: "{{ include_file }}"
-  vars:
-    include_file: "download_{% if download.container %}container{% else %}file{% endif %}.yml"
-  when:
-    - (download_run_once and inventory_hostname == download_delegate) or (group_names | intersect(download.groups) | length)
+- name: process | Processing download
+  debug:
+    msg: >-
+      {%- if download.container -%}
+        Downloading container: {{ download_facts.pull_name }}
+      {%- elif download.file -%}
+        Downloading file: {{ download.url }} (Version: {{ download.version }})
+      {%- endif -%}
 
-- name: process | Sync files / images from ansible host to nodes
-  include_tasks: sync.yml
+# Downloads file/image when not available in cache or node cache.
+# If no download delegate is set, downloads directly to nodes.
+- name: process | Download file / image
+  include_tasks: download.yml
   when:
-    - download_run_once
-    - group_names | intersect(download.groups) | length
-    - not (inventory_hostname == download_delegate)
+  - not (download_node_cache and download_facts.is_node_cached | default(false))
+  - not (download_cache and download_facts.is_cached | default(false))
+  - download_facts.download_required
+  tags:
+  - download
+
+- name: process | Upload file / image to node cache from download delegate
+  vars:
+    upload_from: "{{ download_delegate }}"
+    upload_from_path: "{{ download_facts.download_path }}"
+  include_tasks: upload.yml
+  when:
+  - download_delegate | length > 0
+  - not (download_node_cache and download_facts.is_node_cached | default(false))
+  - not (download_cache and download_facts.is_cached | default(false))
+  - download_facts.download_required
+  tags:
+  - upload
+
+- name: process | Upload file / image to node cache from cache
+  vars:
+    upload_from: "{{ download_cache_host }}"
+    upload_from_path: "{{ download_facts.cache_path }}"
+  include_tasks: upload.yml
+  when:
+  - download_cache and download_facts.is_cached
+  - not (download_node_cache and download_facts.is_node_cached | default(false))
+  - download_facts.download_required
+  tags:
+  - upload
+
+- name: process | Install file / image on node
+  include_tasks: install.yml
+  when:
+  - download_facts.download_required
+  # Only need to install when downloaded through download_delegate
+  # or file was uploaded to or existing in node cache
+  - download_delegate | length > 0 or (download_node_cache and download_facts.is_node_cached | default(false)) or (download_cache and download_facts.is_cached | default(false))
+
+- name: process | Unpacking file archive
+  unarchive:
+    src: "{{ download.dest }}"
+    dest: "{{ download.dest | dirname }}"
+    owner: "{{ download.owner | default(omit) }}"
+    mode: "{{ download.mode | default(omit) }}"
+    copy: no
+  when:
+  - download.file
+  - download.unarchive | default(false)
+
+- name: process | Cache file / image
+  include_tasks: cache.yml
+  when:
+  - download_cache and (not download_facts.is_cached or download_changed | default(false))
+
+# This is done here rather than in main.yml clean up step so we do not have to iterate over downloads again
+- name: process | Remove image from download delegate
+  shell: "{{ image_remove_command }} {{ download_facts.pull_name }}"
+  delegate_to: "{{ download_delegate }}"
+  when:
+  - download_delegate | length > 0
+  - download_changed | default(false)
+  - download.container

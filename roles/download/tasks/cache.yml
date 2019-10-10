@@ -1,0 +1,52 @@
+---
+- name: cache | Create node cache directory
+  file:
+    path: "{{ download_facts.node_cache_path | dirname }}"
+    state: directory
+    recurse: yes
+  become: false
+  run_once: true
+
+- name: cache | Save and compress image
+  shell: "{{ docker_bin_dir }}/docker save {{ download_facts.pull_name }} | gzip -{{ download_compress }} > {{ download_facts.node_cache_path }}"
+  register: container_save_status
+  failed_when: container_save_status.stderr
+  become: "{{ user_can_become_root | default(false) }}"
+  run_once: true
+  when:
+  - download.container
+  - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+
+- name: cache | Create symbolic link from node cache to file destination
+  file:
+    src: "{{ download.dest }}"
+    path: "{{ download_facts.node_cache_path }}"
+    state: link
+    force: yes
+  become: false
+  run_once: true
+  when:
+  - download.file
+
+- name: cache | Create cache directory
+  file:
+    path: "{{ download_facts.cache_path | dirname }}"
+    state: directory
+    recurse: yes
+    mode: 0755
+  become: false
+  delegate_to: "{{ download_cache_host }}"
+  run_once: true
+
+- name: cache | Copy file to cache
+  synchronize:
+    src: "{{ download_facts.node_cache_path }}"
+    dest: "{{ download_facts.cache_path }}"
+    mode: pull
+    use_ssh_args: "{{ has_bastion | default(false) }}"
+    copy_links: "{{ download.file }}"
+  become: false
+  delegate_to: "{{ download_cache_host }}"
+  run_once: true
+  when:
+  - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]

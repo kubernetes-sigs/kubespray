@@ -1,0 +1,28 @@
+---
+- name: install | Create destination directory
+  file:
+    path: "{{ download.dest | dirname }}"
+    state: directory
+    recurse: yes
+    mode: 0755
+    owner: "{{ ansible_ssh_user | default(ansible_user_id) }}"
+  when:
+  - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+  - download.file
+
+- name: install | Copy file to destination
+  copy:
+    src: "{{ download_facts.node_cache_path }}"
+    dest: "{{ download.dest }}"
+    owner: "{{ download.owner | default(omit) }}"
+    mode: "{{ download.mode | default(omit) }}"
+    remote_src: yes
+  when:
+  - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+  - download.file
+
+- name: install | Load container image into docker (Container)
+  shell: "{{ docker_bin_dir }}/docker load < {{ download_facts.node_cache_path }}"
+  when:
+  - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+  - download.container

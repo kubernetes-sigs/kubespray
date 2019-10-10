@@ -27,34 +27,81 @@
     download_facts: "{{ pull_name | combine(download_facts) }}"
   when: download.container
 
-- name: set_container_facts | Define file name of image
+- name: set_container_facts | Set download and cache paths
   vars:
-    file_name: { 'file_name': "{{ download_facts.pull_name | regex_replace('/|\0|:', '_') }}.tar" }
-  set_fact:
-    download_facts: "{{ file_name | combine(download_facts) }}"
-  when: download.container
-
-- name: set_downloads_facts | Set cache path
-  vars:
+    file_name: >-
+      {%- if download.file -%}
+        {{ download.dest | basename }}
+      {%- elif download.container -%}
+        {{ download_facts.pull_name | regex_replace('/|\0|:', '_') }}
+      {%- endif -%}
+    download_path: |
+      {%- if download.file -%}
+        {%- if not download_delegate -%}
+          { 'download_path': "{{ download.dest }}" }
+        {%- else -%}
+          { 'download_path': "{{ download_dir }}/{{ file_name }}" }
+        {%- endif -%}
+      {%- elif download.container -%}
+        { 'download_path': "{{ download_dir }}/images/{{ file_name }}" }
+      {%- endif -%}
     cache_path: |
       {%- if download.file -%}
-        { 'cache_path': "{{ download_cache_dir }}/{{ download.dest | basename }}" }
+        { 'cache_path': "{{ download_cache_dir }}/{{ file_name }}" }
       {%- elif download.container -%}
-        { 'cache_path': "{{ download_cache_dir }}/images/{{ download_facts.file_name }}" }
+        { 'cache_path': "{{ download_cache_dir }}/images/{{ file_name }}" }
       {%- endif -%}
-  set_fact:
-    download_facts: "{{ cache_path | combine(download_facts) }}"
-
-- name: set_downloads_facts | Set dest
-  vars:
-    dest: |
+    node_cache_path: |
       {%- if download.file -%}
-        { 'dest': "{{ download.dest }}" }
+        { 'node_cache_path': "{{ download_node_cache_dir }}/{{ file_name }}" }
       {%- elif download.container -%}
-        { 'dest': "{{ local_release_dir }}/images/{{ download_facts.file_name }}" }
+        { 'node_cache_path': "{{ download_node_cache_dir }}/images/{{ file_name }}" }
       {%- endif -%}
   set_fact:
-    download_facts: "{{ dest | combine(download_facts) }}"
+    download_facts: "{{ cache_path | combine(node_cache_path) | combine(download_path) | combine(download_facts) }}"
+
+- name: set_download_facts | Check file integrity at destination
+  stat:
+    path: "{{ download.dest }}"
+    checksum_algorithm: sha256
+    get_attributes: false
+    get_checksum: yes
+    get_mime: false
+  register: file_stat
+
+- name: set_downloads_facts | Set if download is required
+  vars:
+    download_required: |
+      {%- if download.container -%}
+        {%- if not download_always_pull and download_facts.pull_name in docker_images.stdout.split(',') -%}
+          { 'download_required': false }
+        {%- else -%}
+          { 'download_required': true }
+        {%- endif -%}
+      {%- elif download.file -%}
+        {%- if file_stat.stat.exists and download.sha256 == file_stat.stat.checksum -%}
+          { 'download_required': false }
+        {%- else -%}
+          { 'download_required': true }
+        {%- endif -%}
+      {%- endif -%}
+  set_fact:
+    download_facts: "{{ download_required | combine(download_facts) }}"
+
+- name: set_downloads_facts | Check if download is available in node cache
+  stat:
+    path: "{{ download_facts.node_cache_path }}"
+  register: node_cache_download
+  changed_when: false
+  become: false
+  when: download_node_cache
+
+- name: set_download_facts | Set is_node_cached
+  vars:
+    is_node_cached: "{ 'is_node_cached': {{ node_cache_download.stat.exists | default(false) }} }"
+  set_fact:
+    download_facts: "{{ is_node_cached | combine(download_facts) }}"
+  when: download_node_cache
 
 - name: set_downloads_facts | Check if download is available in cache
   stat:
@@ -62,27 +109,14 @@
   register: cache_download
   run_once: true
   changed_when: false
-  delegate_to: localhost
+  delegate_to: "{{ download_cache_host }}"
   delegate_facts: no
   become: false
+  when: download_cache
 
 - name: set_downloads_facts | Set is_cached if download is cached
   vars:
     is_cached: "{ 'is_cached': {{ cache_download.stat.exists | default(false) }} }"
   set_fact:
     download_facts: "{{ is_cached | combine(download_facts) }}"
-
-- name: set_downloads_facts | Set if pull is required per container
-  vars:
-    pull_required: |
-      {%- if download_facts.pull_name in docker_images.stdout.split(',') -%}
-        { 'pull_required': false }
-      {%- else -%}
-        { 'pull_required': true }
-      {%- endif -%}
-  set_fact:
-    download_facts: "{{ pull_required | combine(download_facts) }}"
-  when:
-    - not download_always_pull
-    - group_names | intersect(download.groups) | length
-    - download.container
+  when: download_cache

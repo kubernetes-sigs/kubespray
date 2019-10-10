@@ -111,7 +111,7 @@ The following tags are defined in playbooks:
 |                    canal | Network plugin Canal
 |           cloud-provider | Cloud-provider related tasks
 |                   docker | Configuring docker for hosts
-|                 download | Fetching container images to a delegate host
+|                 download | Downloading files and container images
 |                     etcd | Configuring etcd cluster
 |         etcd-pre-upgrade | Upgrading etcd cluster
 |             etcd-secrets | Configuring etcd certs/keys
@@ -161,7 +161,7 @@ And this prepares all container images locally (at the ansible runner node) with
 or upgrading related stuff or trying to upload container to K8s cluster nodes:
 ```
 ansible-playbook -i inventory/sample/hosts.ini cluster.yml \
-    -e download_run_once=true -e download_localhost=true \
+    -e download_delegate=localhost \
     --tags download --skip-tags upload,upgrade
 ```
 

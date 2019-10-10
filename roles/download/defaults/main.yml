@@ -1,15 +1,26 @@
 ---
 local_release_dir: /tmp/releases
+
+# `download_force_cache` is deprecated!
+download_force_cache: false
+# Enable/Disable caching
+download_cache: "{{ download_force_cache }}"
+# Host which hosts the cache
+download_cache_host: localhost
+# Directory on cache host where cache is stored
 download_cache_dir: /tmp/kubespray_cache
 
-# do not delete remote cache files after using them
-# NOTE: Setting this parameter to TRUE is only really useful when developing kubespray
+# `download_keep_remote_cache` is deprecated!
 download_keep_remote_cache: false
+# If true the node local cache of downloads is kept on each cluster node.
+# Otherwise it is deleted after download role completes.
+# This is only useful with `download_delegate`.
+download_node_cache: "{{ download_keep_remote_cache }}"
 
-# Only useful when download_run_once is false: Localy cached files and images are
-# uploaded to kubernetes nodes. Also, images downloaded on those nodes are copied
-# back to the ansible runner's cache, if they are not yet preset.
-download_force_cache: false
+# Download cache directory on cluster nodes where
+# downloads are uploaded to from cache or download delegate to cluster nodes.
+# Immediately removed after downloads are completed if download_node_cache is false.
+download_node_cache_dir: "{{ download_cache_dir }}"
 
 # Used to only evaluate vars from download role
 skip_downloads: false
@@ -18,21 +29,12 @@ skip_downloads: false
 skip_kubeadm_images: false
 kubeadm_images: {}
 
-# if this is set to true will only download files once. Doesn't work
-# on Container Linux by CoreOS unless the download_localhost is true and localhost
-# is running another OS type. Default compress level is 1 (fastest).
-download_run_once: False
+# Controls compression when uploading files from cache or download delegate.
+# Default compress level is 1 (fastest).
 download_compress: 1
 
 # if this is set to true will download container
 download_container: True
-
-# if this is set to true, uses the localhost for download_run_once mode
-# (requires docker and sudo to access docker). You may want this option for
-# local caching of docker images or for Container Linux by CoreOS cluster nodes.
-# Otherwise, uses the first node in the kube-master group to store images
-# in the download_run_once mode.
-download_localhost: False
 
 # Always pull images if set to True. Otherwise check by the repo's tag/digest.
 download_always_pull: False
@@ -42,8 +44,17 @@ download_always_pull: False
 # SSL validation of get_url module. Note that kubespray will still be performing checksum validation.
 download_validate_certs: True
 
-# Use the first kube-master if download_localhost is not set
-download_delegate: "{% if download_localhost %}localhost{% else %}{{ groups['kube-master'][0] }}{% endif %}"
+# Delegate downloads to the specified host
+# `download_localhost` and `download_run_once` are deprecated!
+download_delegate: >-
+  {%- if download_localhost | default(false) -%}
+  localhost
+  {%- elif download_run_once | default(false) -%}
+  {{groups['kube-master'][0]}}
+  {%- endif -%}
+
+# When downloads are delegated (see download_delegate) download into specified directory
+download_dir: "{{ download_cache_dir }}"
 
 # Arch of Docker images and needed packages
 image_arch: "{{host_architecture | default('amd64')}}"
@@ -303,6 +314,7 @@ dashboard_image_repo: "{{ gcr_image_repo }}/google_containers/kubernetes-dashboa
 dashboard_image_tag: "v1.10.1"
 
 image_pull_command: "{{ docker_bin_dir }}/docker pull"
+image_remove_command: "{{ docker_bin_dir }}/docker rmi"
 image_info_command: "{{ docker_bin_dir }}/docker images -q | xargs -r {{ docker_bin_dir }}/docker inspect -f \"{{ '{{' }} if .RepoTags {{ '}}' }}{{ '{{' }} (index .RepoTags) {{ '}}' }}{{ '{{' }} end {{ '}}' }}{{ '{{' }} if .RepoDigests {{ '}}' }},{{ '{{' }} (index .RepoDigests) {{ '}}' }}{{ '{{' }} end {{ '}}' }}\" | sed -e 's/^ *\\[//g' -e 's/\\] *$//g' -e 's/ /\\n/g' | tr '\\n' ','"
 
 downloads:

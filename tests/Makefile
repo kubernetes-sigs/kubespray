@@ -16,6 +16,18 @@ init-packet:
 	echo $(PACKET_VM_SSH_PRIVATE_KEY) | base64 -d > $(HOME)/.ssh/id_rsa
 	chmod 400 $(HOME)/.ssh/id_rsa
 
+create-vagrant:
+	ansible-playbook cloud_playbooks/create-vagrant.yml -i local_inventory/hosts.cfg -c local \
+	$(LOG_LEVEL) \
+    -e @"files/${CI_JOB_NAME}.yml" \
+	-e inventory_path=$(INVENTORY)
+
+delete-vagrant:
+	ansible-playbook cloud_playbooks/delete-vagrant.yml -i local_inventory/hosts.cfg -c local \
+	$(LOG_LEVEL) \
+    -e @"files/${CI_JOB_NAME}.yml" \
+	-e inventory_path=$(INVENTORY)
+
 create-tf:
 	./scripts/create-tf.sh
 

@@ -1,0 +1,27 @@
+---
+- hosts: localhost
+  become: false
+  gather_facts: no
+  vars:
+    ci_job_name: "{{ lookup('env', 'CI_JOB_NAME') }}"
+    delete_group_vars: no
+  tasks:
+    - name: include vars for test {{ ci_job_name }}
+      include_vars: "../files/{{ ci_job_name }}.yml"
+
+    - name: Create VMs instances
+      shell: |
+        vagrant destroy -f
+        vagrant up
+      environment:
+        BOX: "{{ vagrant_box }}"
+        BOX_URL: "{{ vagrant_box_url }}"
+        USER: "{{ vagrant_user }}"
+      args:
+        chdir: ../files/vagrant/
+
+    - name: Template the inventory
+      template:
+        src: ../templates/inventory-vagrant.j2
+        dest: "{{ inventory_path }}"
+      

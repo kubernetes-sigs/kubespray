@@ -12,7 +12,7 @@ export ANSIBLE_REMOTE_USER=$SSH_USER
 export ANSIBLE_BECOME=true
 export ANSIBLE_BECOME_USER=root
 
-cd tests && make create-${CI_PLATFORM} -s ; cd -
+cd tests && make create-${CI_PLATFORM} -s ; cd ..
 ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml
 
 # CoreOS needs auto update disabled
@@ -21,13 +21,21 @@ if [[ "$CI_JOB_NAME" =~ "coreos" ]]; then
   ansible all -m raw -a 'systemctl stop locksmithd'
 fi
 
+
+if [ "$CI_PLATFORM" == "vagrant" ]
+then
+    LOCAL_RELEASE_DIR="/tmp/downloads"
+else
+    LOCAL_RELEASE_DIR="${PWD}/downloads"
+fi
+
 # Check out latest tag if testing upgrade
 test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY_VERSION"
 # Checkout the CI vars file so it is available
 test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
 
 # Create cluster
-ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
+ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=$LOCAL_RELEASE_DIR --limit "all:!fake_hosts" cluster.yml
 
 # Repeat deployment if testing upgrade
 if [ "${UPGRADE_TEST}" != "false" ]; then

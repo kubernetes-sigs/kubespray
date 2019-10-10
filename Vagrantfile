@@ -181,9 +181,9 @@ Vagrant.configure("2") do |config|
         "flannel_interface": "eth1",
         "kube_network_plugin": $network_plugin,
         "kube_network_plugin_multus": $multi_networking,
-        "download_delegate": "{{ groups['kube-master'][0] }}",
+        "download_delegate": "localhost",
         "download_cache_dir": ENV['HOME'] + "/kubespray_cache",
-        "download__cache": "True",
+        "download_cache": "True",
         # Keeping the cache on the nodes can improve provisioning speed while debugging kubespray
         "download_node_cache": "False",
         "docker_keepcache": "1",
@@ -209,7 +209,8 @@ Vagrant.configure("2") do |config|
           ansible.host_key_checking = false
           ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
           ansible.host_vars = host_vars
-          #ansible.tags = ['download']
+          ansible.verbose = "vv"
+          ansible.tags = ['download']
           ansible.groups = {
             "etcd" => ["#{$instance_name_prefix}-[1:#{$etcd_instances}]"],
             "kube-master" => ["#{$instance_name_prefix}-[1:#{$kube_master_instances}]"],

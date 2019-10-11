@@ -1,0 +1,111 @@
+# -*- mode: ruby -*-
+# # vi: set ft=ruby :
+
+# For help on using kubespray with vagrant, check out docs/vagrant.md
+
+require 'fileutils'
+
+Vagrant.require_version ">= 2.0.0"
+
+CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
+
+# Uniq disk UUID for libvirt
+DISK_UUID = Time.now.utc.to_i
+
+
+# Defaults for config options defined in CONFIG
+$box = ENV["BOX"]
+$box_url = ENV["BOX_URL"]
+$user = ENV["USER"]
+$num_instances = 3
+$instance_name_prefix = "k8s-test"
+$vm_gui = false
+$vm_memory = 2048
+$vm_cpus = 1
+$subnet = "172.17.8"
+# The following only works when using the libvirt provider
+$override_disk_size = false
+$disk_size = "20GB"
+
+
+if File.exist?(CONFIG)
+  require CONFIG
+end
+
+if Vagrant.has_plugin?("vagrant-proxyconf")
+    $no_proxy = ENV['NO_PROXY'] || ENV['no_proxy'] || "127.0.0.1,localhost"
+    (1..$num_instances).each do |i|
+        $no_proxy += ",#{$subnet}.#{i+100}"
+    end
+end
+
+Vagrant.configure("2") do |config|
+
+  config.vm.box = $box
+  if $box_url != ""
+    config.vm.box_url = $box_url
+  end
+
+  config.ssh.username = "vagrant"
+
+  # plugin conflict
+  if Vagrant.has_plugin?("vagrant-vbguest") then
+    config.vbguest.auto_update = false
+  end
+
+  config.ssh.insert_key = false
+
+  config.vm.provision "file", source: "~/.vagrant.d/insecure_private_key", destination: "~/root-ssh/id_rsa"
+
+  if ($override_disk_size)
+    unless Vagrant.has_plugin?("vagrant-disksize")
+      system "vagrant plugin install vagrant-disksize"
+    end
+    config.disksize.size = $disk_size
+  end
+
+  (1..$num_instances).each do |i|
+    config.vm.define vm_name = "%s-%01d" % [$instance_name_prefix, i] do |node|
+
+      node.vm.hostname = vm_name
+
+      if Vagrant.has_plugin?("vagrant-proxyconf")
+        node.proxy.http     = ENV['HTTP_PROXY'] || ENV['http_proxy'] || ""
+        node.proxy.https    = ENV['HTTPS_PROXY'] || ENV['https_proxy'] ||  ""
+        node.proxy.no_proxy = $no_proxy
+      end
+
+      ["vmware_fusion", "vmware_workstation"].each do |vmware|
+        node.vm.provider vmware do |v|
+          v.vmx['memsize'] = $vm_memory
+          v.vmx['numvcpus'] = $vm_cpus
+        end
+      end
+
+      node.vm.provider :virtualbox do |vb|
+        vb.memory = $vm_memory
+        vb.cpus = $vm_cpus
+        vb.gui = $vm_gui
+        vb.linked_clone = true
+        vb.customize ["modifyvm", :id, "--vram", "8"] # ubuntu defaults to 256 MB which is a waste of precious RAM
+      end
+
+      node.vm.provider :libvirt do |lv|
+        lv.memory = $vm_memory
+        lv.cpus = $vm_cpus
+        lv.default_prefix = 'kubespray'
+        # Fix kernel panic on fedora 28
+        if $os == "fedora"
+          lv.cpu_mode = "host-passthrough"
+        end
+      end
+
+      # Disable swap for each vm
+      node.vm.provision "shell", inline: "swapoff -a"
+
+      ip = "#{$subnet}.#{i+100}"
+      node.vm.network :private_network, ip: ip
+
+    end
+  end
+end

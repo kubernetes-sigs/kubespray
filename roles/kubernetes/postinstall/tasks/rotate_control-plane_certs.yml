@@ -1,0 +1,29 @@
+
+- file:
+    path: /etc/kubernetes/pki/etcd
+    state: directory
+
+- name: Ensure presence of links to the etcd cert to make working "kubeadm alpha certs check-expiration" command
+  file:
+    path: "{{ item }}"
+    src: "{{ postinstall_links_src }}"
+    state: link
+  loop: "{{ postinstall_links_paths }}"
+
+- name: "Create systemd service for cert rotation {{ postinstall_rotate_service_name }}.service"
+  copy:
+    src: renew-certs-kubeadm.service
+    dest: "/etc/systemd/system/{{ postinstall_rotate_service_name }}.service"
+  notify: update systemd
+
+- name: "Create systemd timer for cert rotation {{ postinstall_rotate_service_name }}.timer"
+  copy:
+    src: renew-certs-kubeadm.timer
+    dest: "/etc/systemd/system/{{ postinstall_rotate_service_name }}.timer"
+  notify: update systemd
+
+- name: "Start the timer {{ postinstall_rotate_service_name }}.timer"
+  systemd:
+    name: "{{ postinstall_rotate_service_name }}.timer"
+    state: started
+    enabled: true

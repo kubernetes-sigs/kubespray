@@ -40,7 +40,7 @@ Grab the latest version of Terraform and install it.
 ```bash
 echo "https://releases.hashicorp.com/terraform/$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | jq -r -M '.current_version')/terraform_$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | jq -r -M '.current_version')_darwin_amd64.zip"
 sudo yum install unzip
-sudo unzip terraform_0.11.11_linux_amd64.zip -d /usr/local/bin/
+sudo unzip terraform_0.12.12_linux_amd64.zip -d /usr/local/bin/
 ```
 
 ## Download Kubespray
@@ -67,7 +67,7 @@ Details about the cluster, such as the name, as well as the authentication token
 for Packet need to be defined. To find these values see [Packet API Integration](https://support.packet.com/kb/articles/api-integrations)
 
 ```bash
-vi cluster.tf
+vi cluster.tfvars
 ```
 * cluster_name = alpha
 * packet_project_id = ABCDEFGHIJKLMNOPQRSTUVWXYZ123456
@@ -84,7 +84,7 @@ terraform init ../../contrib/terraform/packet/
 Run Terraform to deploy the hardware.
 
 ```bash
-terraform apply -var-file=cluster.tf ../../contrib/terraform/packet
+terraform apply -var-file=cluster.tfvars ../../contrib/terraform/packet
 ```
 
 ## Run Kubespray Playbooks

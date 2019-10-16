@@ -137,7 +137,7 @@ Supported Components
 -   Application
     -   [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
     -   [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
-    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.5.2
+    -   [cert-manager](https://github.com/jetstack/cert-manager) v0.11.0
     -   [coredns](https://github.com/coredns/coredns) v1.6.0
     -   [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.25.1
 

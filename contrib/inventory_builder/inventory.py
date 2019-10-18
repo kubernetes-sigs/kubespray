@@ -95,7 +95,7 @@ class KubesprayInventory(object):
             try:
                 self.hosts_file = open(config_file, 'r')
                 self.yaml_config = yaml.load(self.hosts_file)
-            except FileNotFoundError:
+            except IOError:
                 pass
         if changed_hosts and changed_hosts[0] in AVAILABLE_COMMANDS:
             self.parse_command(changed_hosts[0], changed_hosts[1:])

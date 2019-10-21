@@ -125,7 +125,7 @@ You can apply the Terraform configuration to your cluster with the following com
 $ terraform apply -var-file=cluster.tfvars
 ```
 
-### Destroying cluster
+### Destroying cluster 
 You can destroy your new cluster with the following command issued from the cluster's clustertffiles directory:
 
 ```ShellSession

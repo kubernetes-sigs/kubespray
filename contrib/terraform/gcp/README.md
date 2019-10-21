@@ -159,6 +159,6 @@ cat /root/.kube/config
 ```
 kubectl get nodes
 ```
-## What's next
+## What's next 
 
 Try out your new Kubernetes cluster with the [Hello Kubernetes service](https://kubernetes.io/docs/tasks/access-application-cluster/service-access-application-cluster/).

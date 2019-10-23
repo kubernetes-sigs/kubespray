@@ -331,3 +331,22 @@ nodePortAddresses: {{ kube_proxy_nodeport_addresses }}
 oomScoreAdj: {{ kube_proxy_oom_score_adj }}
 portRange: {{ kube_proxy_port_range }}
 udpIdleTimeout: {{ kube_proxy_udp_idle_timeout }}
+{# DNS settings for kubelet #}
+{% if enable_nodelocaldns %}
+{% set kubelet_cluster_dns = [nodelocaldns_ip] %}
+{% elif dns_mode in ['coredns'] %}
+{% set kubelet_cluster_dns = [skydns_server] %}
+{% elif dns_mode == 'coredns_dual' %}
+{% set kubelet_cluster_dns = [skydns_server,skydns_server_secondary] %}
+{% elif dns_mode == 'manual' %}
+{% set kubelet_cluster_dns = [manual_dns_server] %}
+{% else %}
+{% set kubelet_cluster_dns = [] %}
+{% endif %}
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+clusterDNS:
+{% for dns_address in kubelet_cluster_dns %}
+- {{ dns_address }}
+{% endfor %}

@@ -213,6 +213,7 @@ def packet_device(resource, tfvars=None):
         'state': raw_attrs['state'],
         # ansible
         'ansible_ssh_host': raw_attrs['network.0.address'],
+        'ansible_ssh_user': 'root',  # Use root by default in packet
         # generic
         'ipv4_address': raw_attrs['network.0.address'],
         'public_ipv4': raw_attrs['network.0.address'],
@@ -221,6 +222,10 @@ def packet_device(resource, tfvars=None):
         'private_ipv4': raw_attrs['network.2.address'],
         'provider': 'packet',
     }
+
+    if raw_attrs['operating_system'] == 'coreos_stable':
+        # For CoreOS set the ssh_user to core
+        attrs.update({'ansible_ssh_user': 'core'})
 
     # add groups based on attrs
     groups.append('packet_operating_system=' + attrs['operating_system'])

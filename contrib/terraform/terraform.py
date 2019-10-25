@@ -213,7 +213,6 @@ def packet_device(resource, tfvars=None):
         'state': raw_attrs['state'],
         # ansible
         'ansible_ssh_host': raw_attrs['network.0.address'],
-        'ansible_ssh_user': 'root',  # it's always "root" on Packet
         # generic
         'ipv4_address': raw_attrs['network.0.address'],
         'public_ipv4': raw_attrs['network.0.address'],

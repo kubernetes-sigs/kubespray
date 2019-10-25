@@ -73,7 +73,7 @@ def iterresources(filenames):
                 # In version 4 the structure changes so we need to iterate
                 # each instance inside the resource branch.
                 for resource in state['resources']:
-                    name = resource['module'].split('.')[-1]
+                    name = resource['provider'].split('.')[-1]
                     for instance in resource['instances']:
                         key = "{}.{}".format(resource['type'], resource['name'])
                         if 'index_key' in instance:
@@ -182,6 +182,9 @@ def parse_list(source, prefix, sep='.'):
 
 
 def parse_bool(string_form):
+    if type(string_form) is bool:
+        return string_form
+
     token = string_form.lower()[0]
 
     if token == 't':
@@ -342,7 +345,7 @@ def iter_host_ips(hosts, ips):
         use_access_ip = host[1]['metadata']['use_access_ip']
         if host_id in ips:
             ip = ips[host_id]
-            
+
             host[1].update({
                 'access_ip_v4': ip,
                 'access_ip': ip,

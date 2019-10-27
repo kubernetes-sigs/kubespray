@@ -25,7 +25,7 @@ values lead to poor performance of DNS stack, so please choose it wisely.
 Custom search domains to be added in addition to the cluster search domains (``default.svc.{{ dns_domain }}, svc.{{ dns_domain }}``).
 
 Most Linux systems limit the total number of search domains to 6 and the total length of all search domains
-to 256 characters. Depending on the length of ``dns_domain``, you're limitted to less then the total limit.
+to 256 characters. Depending on the length of ``dns_domain``, you're limited to less then the total limit.
 
 Please note that ``resolvconf_mode: docker_dns`` will automatically add your systems search domains as
 additional search domains. Please take this into the accounts for the limits.

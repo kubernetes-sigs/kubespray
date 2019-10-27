@@ -22,6 +22,16 @@ variable "number_of_bastions" {}
 
 variable "number_of_gfs_nodes_no_floating_ip" {}
 
+variable "bastion_root_volume_size_in_gb" {}
+
+variable "etcd_root_volume_size_in_gb" {}
+
+variable "master_root_volume_size_in_gb" {}
+
+variable "node_root_volume_size_in_gb" {}
+
+variable "gfs_root_volume_size_in_gb" {}
+
 variable "gfs_volume_size_in_gb" {}
 
 variable "public_key_path" {}
@@ -95,3 +105,5 @@ variable "supplementary_node_groups" {
 variable "worker_allowed_ports" {
   type = "list"
 }
+
+variable "use_access_ip" {}

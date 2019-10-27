@@ -44,6 +44,26 @@ variable "number_of_gfs_nodes_no_floating_ip" {
   default = 0
 }
 
+variable "bastion_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "etcd_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "master_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "node_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "gfs_root_volume_size_in_gb" {
+  default = 0
+}
+
 variable "gfs_volume_size_in_gb" {
   default = 75
 }
@@ -55,12 +75,12 @@ variable "public_key_path" {
 
 variable "image" {
   description = "the image to use"
-  default     = "ubuntu-14.04"
+  default     = ""
 }
 
 variable "image_gfs" {
   description = "Glance image to use for GlusterFS"
-  default     = "ubuntu-16.04"
+  default     = ""
 }
 
 variable "ssh_user" {
@@ -185,4 +205,8 @@ variable "worker_allowed_ports" {
       "remote_ip_prefix" = "0.0.0.0/0"
     },
   ]
+}
+
+variable "use_access_ip" {
+  default = 1
 }

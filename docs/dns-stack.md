@@ -25,7 +25,7 @@ values lead to poor performance of DNS stack, so please choose it wisely.
 Custom search domains to be added in addition to the cluster search domains (``default.svc.{{ dns_domain }}, svc.{{ dns_domain }}``).
 
 Most Linux systems limit the total number of search domains to 6 and the total length of all search domains
-to 256 characters. Depending on the length of ``dns_domain``, you're limited to less then the total limit.
+to 256 characters. Depending on the length of ``dns_domain``, you're limited to less than the total limit.
 
 Please note that ``resolvconf_mode: docker_dns`` will automatically add your systems search domains as
 additional search domains. Please take this into the accounts for the limits.
@@ -97,7 +97,7 @@ used as a backup nameserver. After cluster DNS is running, all queries will be a
 servers, which in turn will forward queries to the system nameserver if required.
 
 #### host_resolvconf
-This activates the classic Kubespray behaviour that modifies the hosts ``/etc/resolv.conf`` file and dhclient
+This activates the classic Kubespray behavior that modifies the hosts ``/etc/resolv.conf`` file and dhclient
 configuration to point to the cluster dns server (either coredns or coredns_dual, depending on dns_mode).
 
 As cluster DNS is not available on early deployment stage, this mode is split into 2 stages. In the first

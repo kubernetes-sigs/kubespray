@@ -114,6 +114,7 @@ resource "openstack_compute_instance_v2" "bastion" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "bastion"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -149,6 +150,7 @@ resource "openstack_compute_instance_v2" "bastion_custom_volume_size" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "bastion"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -176,6 +178,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -212,8 +215,9 @@ resource "openstack_compute_instance_v2" "k8s_master_custom_volume_size" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
-
+  
   provisioner "local-exec" {
     command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
   }
@@ -239,6 +243,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -275,6 +280,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd_custom_volume_size"
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -300,6 +306,7 @@ resource "openstack_compute_instance_v2" "etcd" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -330,6 +337,7 @@ resource "openstack_compute_instance_v2" "etcd_custom_volume_size" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -353,6 +361,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -385,6 +394,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_custom_volum
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -408,6 +418,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -440,6 +451,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd_cust
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -463,6 +475,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-node,k8s-cluster,${var.supplementary_node_groups}"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -499,6 +512,7 @@ resource "openstack_compute_instance_v2" "k8s_node_custom_volume_size" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-node,k8s-cluster,${var.supplementary_node_groups}"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -526,6 +540,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-node,k8s-cluster,no-floating,${var.supplementary_node_groups}"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -558,6 +573,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip_custom_volume_
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-node,k8s-cluster,no-floating,${var.supplementary_node_groups}"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -647,6 +663,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
     ssh_user         = "${var.ssh_user_gfs}"
     kubespray_groups = "gfs-cluster,network-storage,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -677,6 +694,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip_custom_v
     ssh_user         = "${var.ssh_user_gfs}"
     kubespray_groups = "gfs-cluster,network-storage,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 

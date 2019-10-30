@@ -59,7 +59,7 @@ tmpdir=$(mktemp -d /tmp/calico_typha_certs.XXXXXX)
 trap 'rm -rf "${tmpdir}"' EXIT
 cd "${tmpdir}"
 
-mkdir -p "${SSLDIR} ${CADIR}"
+mkdir -p ${SSLDIR} ${CADIR}
 
 # Root CA
 if [ -e "$CADIR/ca.key" ]; then

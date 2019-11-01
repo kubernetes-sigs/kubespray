@@ -1,0 +1,60 @@
+---
+- include_tasks: cinder-credential-check.yml
+  tags: cinder-csi-driver
+
+- name: Cinder CSI Driver | Write cacert file
+  copy:
+    src: "{{ cinder_cacert }}"
+    dest: "{{ kube_config_dir }}/cinder-cacert.pem"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - cinder_cacert is defined
+    - cinder_cacert | length > 0
+  tags: cinder-csi-driver
+
+- name: Cinder CSI Driver | Write Cinder cloud-config
+  template:
+    src: "cinder-csi-cloud-config.j2"
+    dest: "{{ kube_config_dir }}/cinder_cloud_config"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: cinder-csi-driver
+
+- name: Cinder CSI Driver | Get base64 cloud-config
+  slurp:
+    src: "{{ kube_config_dir }}/cinder_cloud_config"
+  register: cloud_config_secret
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: cinder-csi-driver
+
+- name: Cinder CSI Driver | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: cinder-csi-driver, file: cinder-csi-driver.yml}
+    - {name: cinder-csi-cloud-config-secret, file: cinder-csi-cloud-config-secret.yml}
+    - {name: cinder-csi-controllerplugin, file: cinder-csi-controllerplugin-rbac.yml}
+    - {name: cinder-csi-controllerplugin, file: cinder-csi-controllerplugin.yml}
+    - {name: cinder-csi-nodeplugin, file: cinder-csi-nodeplugin-rbac.yml}
+    - {name: cinder-csi-nodeplugin, file: cinder-csi-nodeplugin.yml}
+  register: cinder_csi_manifests
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: cinder-csi-driver
+
+- name: Cinder CSI Driver | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ cinder_csi_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+  tags: cinder-csi-driver

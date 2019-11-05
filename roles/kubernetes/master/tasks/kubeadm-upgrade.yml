@@ -37,3 +37,20 @@
     - '"field is immutable" not in kubeadm_upgrade.stderr'
     - kubeadm_upgrade.stdout_lines | length > 1
   notify: Master | restart kubelet
+
+# FIXME: https://github.com/kubernetes/kubeadm/issues/1318
+- name: kubeadm | scale down coredns replicas to 0 if not using coredns dns_mode
+  command: >-
+    {{ bin_dir }}/kubectl
+    --kubeconfig /etc/kubernetes/admin.conf
+    -n kube-system
+    scale deployment/coredns --replicas 0
+  register: scale_down_coredns
+  retries: 6
+  delay: 5
+  until: scale_down_coredns is succeeded
+  when:
+    - inventory_hostname == groups['kube-master']|first
+    - kubeadm_scale_down_coredns_enabled
+    - dns_mode not in ['coredns', 'coredns_dual']
+  changed_when: false

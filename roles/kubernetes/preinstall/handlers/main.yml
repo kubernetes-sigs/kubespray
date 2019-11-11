@@ -1,28 +1,15 @@
 ---
-- name: Preinstall | restart network
+- name: Preinstall | propagate resolvconf to k8s components
   command: /bin/true
   notify:
-    - Preinstall | reload network
     - Preinstall | reload kubelet
     - Preinstall | kube-controller configured
     - Preinstall | kube-apiserver configured
-    - Preinstall | restart kube-controller-manager
-    - Preinstall | restart kube-apiserver
+    - Preinstall | restart kube-controller-manager docker
+    - Preinstall | restart kube-controller-manager crio/containerd
+    - Preinstall | restart kube-apiserver docker
+    - Preinstall | restart kube-apiserver crio/containerd
   when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
-
-  # FIXME(bogdando) https://github.com/projectcalico/felix/issues/1185
-- name: Preinstall | reload network
-  service:
-    name: >-
-      {% if ansible_os_family == "RedHat" -%}
-      network
-      {%- elif ansible_distribution == "Ubuntu" and ansible_distribution_release == "bionic" -%}
-      systemd-networkd
-      {%- elif ansible_os_family == "Debian" -%}
-      networking
-      {%- endif %}
-    state: restarted
-  when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] and kube_network_plugin not in ['canal', 'calico']
 
 - name: Preinstall | update resolvconf for Container Linux by CoreOS
   command: /bin/true
@@ -42,8 +29,10 @@
   notify:
     - Preinstall | kube-controller configured
     - Preinstall | kube-apiserver configured
-    - Preinstall | restart kube-controller-manager
-    - Preinstall | restart kube-apiserver
+    - Preinstall | restart kube-controller-manager docker
+    - Preinstall | restart kube-controller-manager crio/containerd
+    - Preinstall | restart kube-apiserver docker
+    - Preinstall | restart kube-apiserver crio/containerd
   when: not dns_early|bool
 
 # FIXME(mattymo): Also restart for kubeadm mode
@@ -58,10 +47,41 @@
   register: kube_controller_set
   when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
 
-- name: Preinstall | restart kube-controller-manager
+- name: Preinstall | restart kube-controller-manager docker
   shell: "docker ps -f name=k8s_POD_kube-controller-manager* -q | xargs --no-run-if-empty docker rm -f"
-  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf' and kube_controller_set.stat.exists
+  when:
+    - container_manager == "docker"
+    - inventory_hostname in groups['kube-master']
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - kube_controller_set.stat.exists
 
-- name: Preinstall | restart kube-apiserver
+- name: Preinstall | restart kube-controller-manager crio/containerd
+  shell: crictl pods --name kube-controller-manager* -q | xargs -I% --no-run-if-empty bash -c 'crictl stopp % && crictl rmp %'
+  when:
+    - container_manager in ['crio', 'containerd']
+    - inventory_hostname in groups['kube-master']
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - kube_controller_set.stat.exists
+
+- name: Preinstall | restart kube-apiserver docker
   shell: "docker ps -f name=k8s_POD_kube-apiserver* -q | xargs --no-run-if-empty docker rm -f"
-  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
+  when:
+    - container_manager == "docker"
+    - inventory_hostname in groups['kube-master']
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+
+- name: Preinstall | restart kube-apiserver crio/containerd
+  shell: crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c 'crictl stopp % && crictl rmp %'
+  when:
+    - container_manager in ['crio', 'containerd']
+    - inventory_hostname in groups['kube-master']
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+
+- name: Preinstall | Restart systemd-resolved
+  service:
+    name: systemd-resolved
+    state: restarted

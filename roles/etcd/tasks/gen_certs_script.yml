@@ -8,17 +8,17 @@
     mode: 0700
     recurse: yes
 
-- name: "Gen_certs | create etcd script dir (on {{ groups['etcd'][0] }})"
+- name: Gen_certs | create etcd script dir
   file:
     path: "{{ etcd_script_dir }}"
     state: directory
     owner: root
     mode: 0700
   run_once: yes
-  when: inventory_hostname == groups['etcd'][0]
-  delegate_to: "{{ groups['etcd'][0] }}"
+  delegate_to: "{{item}}"
+  with_items: "{{groups['etcd']}}"
 
-- name: "Gen_certs | create etcd cert dir (on {{ groups['etcd'][0] }})"
+- name: Gen_certs | create etcd cert dir
   file:
     path: "{{ etcd_cert_dir }}"
     group: "{{ etcd_cert_group }}"
@@ -27,18 +27,18 @@
     recurse: yes
     mode: 0700
   run_once: yes
-  when: inventory_hostname == groups['etcd'][0]
-  delegate_to: "{{ groups['etcd'][0] }}"
+  delegate_to: "{{item}}"
+  with_items: "{{groups['etcd']}}"
 
 - name: Gen_certs | write openssl config
   template:
     src: "openssl.conf.j2"
     dest: "{{ etcd_config_dir }}/openssl.conf"
   run_once: yes
-  delegate_to: "{{ groups['etcd'][0] }}"
+  delegate_to: "{{item}}"
+  with_items: "{{groups['etcd']}}"
   when:
     - gen_certs|default(false)
-    - inventory_hostname == groups['etcd'][0]
 
 - name: Gen_certs | copy certs generation script
   template:
@@ -46,10 +46,10 @@
     dest: "{{ etcd_script_dir }}/make-ssl-etcd.sh"
     mode: 0700
   run_once: yes
-  delegate_to: "{{ groups['etcd'][0] }}"
+  delegate_to: "{{item}}"
+  with_items: "{{groups['etcd']}}"
   when:
     - gen_certs|default(false)
-    - inventory_hostname == groups['etcd'][0]
 
 - name: Gen_certs | run cert generation script
   command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"

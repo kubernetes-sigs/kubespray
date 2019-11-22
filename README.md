@@ -110,7 +110,7 @@ Supported Components
 
 -   Core
     -   [kubernetes](https://github.com/kubernetes/kubernetes) v1.16.2
-    -   [etcd](https://github.com/coreos/etcd) v3.3.10
+    -   [etcd](https://github.com/coreos/etcd) v3.4.3
     -   [docker](https://www.docker.com/) v18.06 (see note)
     -   [cri-o](http://cri-o.io/) v1.14.0 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
 -   Network Plugin

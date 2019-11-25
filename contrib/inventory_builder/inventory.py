@@ -78,7 +78,7 @@ class KubesprayInventory(object):
         if self.config_file:
             try:
                 self.hosts_file = open(config_file, 'r')
-                self.yaml_config = yaml.load(self.hosts_file)
+                self.yaml_config = yaml.load_all(self.hosts_file)
             except FileNotFoundError:
                 pass
 

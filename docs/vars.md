@@ -1,7 +1,6 @@
-Configurable Parameters in Kubespray
-================================
+# Configurable Parameters in Kubespray
 
-#### Generic Ansible variables
+## Generic Ansible variables
 
 You can view facts gathered by Ansible automatically
 [here](http://docs.ansible.com/ansible/playbooks_variables.html#information-discovered-from-systems-facts).
@@ -12,7 +11,7 @@ Some variables of note include:
 * *ansible_default_ipv4.address*: IP address Ansible automatically chooses.
   Generated based on the output from the command ``ip -4 route get 8.8.8.8``
 
-#### Common vars that are used in Kubespray
+## Common vars that are used in Kubespray
 
 * *calico_version* - Specify version of Calico to use
 * *calico_cni_version* - Specify version of Calico CNI plugin to use
@@ -28,7 +27,7 @@ Some variables of note include:
 * *nameservers* - Array of nameservers to use for DNS lookup
 * *preinstall_selinux_state* - Set selinux state, permitted values are permissive and disabled.
 
-#### Addressing variables
+## Addressing variables
 
 * *ip* - IP to use for binding services (host var)
 * *access_ip* - IP for other hosts to use to connect to. Often required when
@@ -45,7 +44,7 @@ Some variables of note include:
   `loadbalancer_apiserver`. See more details in the
   [HA guide](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/ha-mode.md).
 
-#### Cluster variables
+## Cluster variables
 
 Kubernetes needs some parameters in order to get deployed. These are the
 following default cluster parameters:
@@ -86,7 +85,7 @@ Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``
 and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.
 
-#### DNS variables
+## DNS variables
 
 By default, hosts are set up with 8.8.8.8 as an upstream DNS server and all
 other settings from your existing /etc/resolv.conf are lost. Set the following
@@ -100,7 +99,7 @@ variables to match your requirements.
 For more information, see [DNS
 Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.md).
 
-#### Other service variables
+## Other service variables
 
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
@@ -125,20 +124,24 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
   *node_labels* can be defined either as a dict or a comma-separated labels string:
-```
+
+```yml
 node_labels:
   label1_name: label1_value
   label2_name: label2_value
 
 node_labels: "label1_name=label1_value,label2_name=label2_value"
 ```
+
 * *node_taints* - Taints applied to nodes via kubelet --register-with-taints parameter.
   For example, taints can be set in the inventory as variables or more widely in group_vars.
   *node_taints* has to be defined as a list of strings in format `key=value:effect`, e.g.:
-```
+
+```yml
 node_taints:
   - "node.example.com/external=true:NoSchedule"
 ```
+
 * *podsecuritypolicy_enabled* - When set to `true`, enables the PodSecurityPolicy admission controller and defines two policies `privileged` (applying to all resources in `kube-system` namespace and kubelet) and `restricted` (applying all other namespaces).
   Addons deployed in kube-system namespaces are handled.
 * *kubernetes_audit* - When set to `true`, enables Auditing.
@@ -151,25 +154,30 @@ node_taints:
 
   By default, the `audit_policy_file` contains [default rules](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubernetes/master/templates/apiserver-audit-policy.yaml.j2) that can be overridden with the `audit_policy_custom_rules` variable.
 
-##### Custom flags for Kube Components
+### Custom flags for Kube Components
+
 For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments. This can be done by providing a list of flags. The `kubelet_node_custom_flags` apply kubelet settings only to nodes and not masters. Example:
-```
+
+```yml
 kubelet_custom_flags:
   - "--eviction-hard=memory.available<100Mi"
   - "--eviction-soft-grace-period=memory.available=30s"
   - "--eviction-soft=memory.available<300Mi"
 ```
+
 The possible vars are:
+
 * *kubelet_custom_flags*
 * *kubelet_node_custom_flags*
 
-Extra flags for the API server, controller, and scheduler components can be specified using these variables, 
+Extra flags for the API server, controller, and scheduler components can be specified using these variables,
 in the form of dicts of key-value pairs of configuration parameters that will be inserted into the kubeadm YAML config file:
+
 * *kube_kubeadm_apiserver_extra_args*
 * *kube_kubeadm_controller_extra_args*
 * *kube_kubeadm_scheduler_extra_args*
 
-#### User accounts
+## User accounts
 
 By default, a user with admin rights is created, named `kube`.
 The password can be viewed after deployment by looking at the file

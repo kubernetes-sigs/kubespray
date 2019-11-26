@@ -1,7 +1,4 @@
-Upgrading Kubernetes in Kubespray
-=============================
-
-#### Description
+# Upgrading Kubernetes in Kubespray
 
 Kubespray handles upgrades the same way it handles initial deployment. That is to
 say that each component is laid down in a fixed order.
@@ -22,22 +19,22 @@ versions. Here are all version vars for each component:
 
 See [Multiple Upgrades](#multiple-upgrades) for how to upgrade from older releases to the latest release
 
-#### Unsafe upgrade example
+## Unsafe upgrade example
 
 If you wanted to upgrade just kube_version from v1.4.3 to v1.4.6, you could
 deploy the following way:
 
-```
+```ShellSession
 ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.3
 ```
 
 And then repeat with v1.4.6 as kube_version:
 
-```
+```ShellSession
 ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.6
 ```
 
-#### Graceful upgrade
+## Graceful upgrade
 
 Kubespray also supports cordon, drain and uncordoning of nodes when performing
 a cluster upgrade. There is a separate playbook used for this purpose. It is
@@ -45,19 +42,19 @@ important to note that upgrade-cluster.yml can only be used for upgrading an
 existing cluster. That means there must be at least 1 kube-master already
 deployed.
 
-```
+```ShellSession
 ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.6.0
 ```
 
 After a successful upgrade, the Server Version should be updated:
 
-```
+```ShellSession
 $ kubectl version
 Client Version: version.Info{Major:"1", Minor:"6", GitVersion:"v1.6.0", GitCommit:"fff5156092b56e6bd60fff75aad4dc9de6b6ef37", GitTreeState:"clean", BuildDate:"2017-03-28T19:15:41Z", GoVersion:"go1.8", Compiler:"gc", Platform:"darwin/amd64"}
 Server Version: version.Info{Major:"1", Minor:"6", GitVersion:"v1.6.0+coreos.0", GitCommit:"8031716957d697332f9234ddf85febb07ac6c3e3", GitTreeState:"clean", BuildDate:"2017-03-29T04:33:09Z", GoVersion:"go1.7.5", Compiler:"gc", Platform:"linux/amd64"}
 ```
 
-#### Multiple upgrades
+## Multiple upgrades
 
 :warning: [Do not skip releases when upgrading--upgrade by one tag at a time.](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515) :warning:
 
@@ -71,7 +68,7 @@ Assuming you don't explicitly define a kubernetes version in your k8s-cluster.ym
 
 The below example shows taking a cluster that was set up for v2.6.0 up to v2.10.0
 
-```
+```ShellSession
 $ kubectl get node
 NAME      STATUS    ROLES         AGE       VERSION
 apollo    Ready     master,node   1h        v1.10.4
@@ -96,7 +93,7 @@ HEAD is now at 05dabb7e Fix Bionic networking restart error #3430 (#3431)
 
 # NOTE: May need to sudo pip3 install -r requirements.txt when upgrading.
 
-$ ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
+ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
 
 ...
 
@@ -117,7 +114,7 @@ Some deprecations between versions that mean you can't just upgrade straight fro
 
 In this case, I set "kubeadm_enabled" to false, knowing that it is deprecated and removed by 2.9.0, to delay converting the cluster to kubeadm as long as I could.
 
-```
+```ShellSession
 $ ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
 ...
     "msg": "DEPRECATION: non-kubeadm deployment is deprecated from v2.9. Will be removed in next release."
@@ -233,8 +230,8 @@ If you do not keep your inventory copy up to date, **your upgrade will fail** an
 
 It is at this point the cluster was upgraded from non-kubeadm to kubeadm as per the deprecation warning.
 
-```
-$ ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
+```ShellSession
+ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
 
 ...
 
@@ -259,7 +256,7 @@ $ git checkout v2.10.0
 Previous HEAD position was a4e65c7c Upgrade to Ansible >2.7.0 (#4471)
 HEAD is now at dcd9c950 Add etcd role dependency on kube user to avoid etcd role failure when running scale.yml with a fresh node. (#3240) (#4479)
 
-$ ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
+ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
 
 ...
 
@@ -272,8 +269,7 @@ caprica   Ready    master,node   7h40m   v1.14.1
 
 ```
 
-
-#### Upgrade order
+## Upgrade order
 
 As mentioned above, components are upgraded in the order in which they were
 installed in the Ansible playbook. The order of component installation is as
@@ -286,7 +282,7 @@ follows:
 * kube-apiserver, kube-scheduler, and kube-controller-manager
 * Add-ons (such as KubeDNS)
 
-#### Upgrade considerations
+## Upgrade considerations
 
 Kubespray supports rotating certificates used for etcd and Kubernetes
 components, but some manual steps may be required. If you have a pod that
@@ -312,48 +308,48 @@ hosts.
 
 Upgrade docker:
 
-```
+```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=docker
 ```
 
 Upgrade etcd:
 
-```
+```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=etcd
 ```
 
 Upgrade vault:
 
-```
+```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=vault
 ```
 
 Upgrade kubelet:
 
-```
+```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=node --skip-tags=k8s-gen-certs,k8s-gen-tokens
 ```
 
 Upgrade Kubernetes master components:
 
-```
+```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=master
 ```
 
 Upgrade network plugins:
 
-```
+```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=network
 ```
 
 Upgrade all add-ons:
 
-```
+```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=apps
 ```
 
 Upgrade just helm (assuming `helm_enabled` is true):
 
-```
+```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=helm
 ```

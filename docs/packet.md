@@ -1,5 +1,4 @@
-Packet
-===============
+# Packet
 
 Kubespray provides support for bare metal deployments using the [Packet bare metal cloud](http://www.packet.com).
 Deploying upon bare metal allows Kubernetes to run at locations where an existing public or private cloud might not exist such
@@ -37,6 +36,7 @@ Terraform is required to deploy the bare metal infrastructure. The steps below a
 [More terraform installation options are available.](https://learn.hashicorp.com/terraform/getting-started/install.html)
 
 Grab the latest version of Terraform and install it.
+
 ```bash
 echo "https://releases.hashicorp.com/terraform/$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | jq -r -M '.current_version')/terraform_$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | jq -r -M '.current_version')_darwin_amd64.zip"
 sudo yum install unzip
@@ -55,7 +55,7 @@ sudo pip install -r requirements.txt
 
 ## Cluster Definition
 
-In this example, a new cluster called "alpha" will be created. 
+In this example, a new cluster called "alpha" will be created.
 
 ```bash
 cp -LRp contrib/terraform/packet/sample-inventory inventory/alpha
@@ -69,6 +69,7 @@ for Packet need to be defined. To find these values see [Packet API Integration]
 ```bash
 vi cluster.tf
 ```
+
 * cluster_name = alpha
 * packet_project_id = ABCDEFGHIJKLMNOPQRSTUVWXYZ123456
 * public_key_path = 12345678-90AB-CDEF-GHIJ-KLMNOPQRSTUV
@@ -94,4 +95,3 @@ With the bare metal infrastructure deployed, Kubespray can now install Kubernete
 ```bash
 ansible-playbook --become -i inventory/alpha/hosts cluster.yml
 ```
-

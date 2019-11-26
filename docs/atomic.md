@@ -18,6 +18,6 @@ Note: Flannel is the only plugin that has currently been tested with atomic
     ```
 
 * For users of vagrant-libvirt download centos/atomic-host qcow2 format from https://wiki.centos.org/SpecialInterestGroup/Atomic/Download/
-* For users of vagrant-libvirt download fedora/atomic-host qcow2 format from https://getfedora.org/en/atomic/download/
+* For users of vagrant-libvirt download fedora/atomic-host qcow2 format from https://dl.fedoraproject.org/pub/alt/atomic/stable/
 
 Then you can proceed to [cluster deployment](#run-deployment)

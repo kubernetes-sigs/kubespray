@@ -149,12 +149,33 @@
   tags:
     - kube-proxy
 
-- name: Cleanup kube-proxy leftovers from node
-  command: "{{ bin_dir }}/hyperkube kube-proxy --cleanup"
+- name: Set command for kube-proxy cleanup
+  set_fact:
+    kube_proxy_cleanup_command: >-
+      {%- if container_manager in ['docker', 'crio'] %}
+      {{ docker_bin_dir }}/docker run --rm --privileged -v /lib/modules:{{ kube_proxy_image_repo }}:{{ kube_version }} --cleanup
+      {%- elif container_manager == "containerd" %}
+      ctr run --rm --mount type=bind,src=/lib/modules,dst=/lib/modules,options=rbind:rw {{ kube_proxy_image_repo }}:{{ kube_version }} kube-proxy --cleanup
+      {%- endif %}
   when:
     - kube_proxy_remove
+  tags:
+    - kube-proxy
+
+- name: Ensure kube-proxy container is pulled for containerd
+  command: "{{ bin_dir }}/crictl pull {{ kube_proxy_image_repo }}:{{ kube_version }}"
+  when:
+    - kube_proxy_remove
+    - container_manager == "containerd"
+  tags:
+    - kube-proxy
+
+- name: Cleanup kube-proxy leftovers from node
+  command: "{{ kube_proxy_cleanup_command }}"
   # `kube-proxy --cleanup`, being Ok as per shown WARNING, still returns 255 from above run (?)
   ignore_errors: true
+  when:
+    - kube_proxy_remove
   tags:
     - kube-proxy
 

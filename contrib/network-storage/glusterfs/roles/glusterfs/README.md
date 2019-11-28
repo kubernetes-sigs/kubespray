@@ -21,7 +21,7 @@ You can specify a `default_release` for apt on Debian/Ubuntu by overriding this 
     glusterfs_ppa_use: yes
     glusterfs_ppa_version: "3.5"
 
-For Ubuntu, specify whether to use the official Gluster PPA, and which version of the PPA to use. See Gluster's [Getting Started Guide](http://www.gluster.org/community/documentation/index.php/Getting_started_install) for more info.
+For Ubuntu, specify whether to use the official Gluster PPA, and which version of the PPA to use. See Gluster's [Getting Started Guide](https://docs.gluster.org/en/latest/Quick-Start-Guide/Quickstart/) for more info.
 
 ## Dependencies
 

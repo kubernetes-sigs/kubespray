@@ -46,27 +46,7 @@ spec:
     - kube-proxy
 {% endif%}
     - --v={{ kube_log_level }}
-    - --kubeconfig={{kube_config_dir}}/kube-proxy-kubeconfig.yaml
-    - --bind-address={{ ip | default(ansible_default_ipv4.address) }}
-    - --cluster-cidr={{ kube_pods_subnet }}
-    - --proxy-mode={{ kube_proxy_mode }}
-    - --oom-score-adj=-998
-    - --healthz-bind-address={{ kube_proxy_healthz_bind_address }}
-    - --resource-container=""
-{% if kube_proxy_nodeport_addresses %}
-    - --nodeport-addresses={{ kube_proxy_nodeport_addresses|join(',') }}
-{% endif %}
-{% if kube_proxy_masquerade_all and kube_proxy_mode == "iptables" %}
-    - --masquerade-all
-{% elif kube_proxy_mode == 'ipvs' %}
-    - --masquerade-all
-{% if kube_version is version('v1.10', '<') %}
-    - --feature-gates=SupportIPVSProxyMode=true
-{% endif %}
-    - --ipvs-min-sync-period=5s
-    - --ipvs-sync-period=5s
-    - --ipvs-scheduler=rr
-{% endif %}
+    - --config=/var/lib/kube-proxy/kube-proxy-config.yaml
     securityContext:
       privileged: true
     volumeMounts:
@@ -76,6 +56,8 @@ spec:
     - mountPath: "{{ kube_config_dir }}/ssl"
       name: etc-kube-ssl
       readOnly: true
+    - mountPath: /var/lib/kube-proxy
+      name: kube-proxy
     - mountPath: "{{ kube_config_dir }}/kube-proxy-kubeconfig.yaml"
       name: kubeconfig
       readOnly: true
@@ -99,6 +81,9 @@ spec:
   - name: etc-kube-ssl
     hostPath:
       path: "{{ kube_config_dir }}/ssl"
+  - name: kube-proxy
+    hostPath:
+      path: "{{ kube_config_dir }}/kube-proxy-config.yaml"
   - name: kubeconfig
     hostPath:
       path: "{{ kube_config_dir }}/kube-proxy-kubeconfig.yaml"

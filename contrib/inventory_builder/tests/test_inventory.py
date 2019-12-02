@@ -22,7 +22,7 @@ path = "./contrib/inventory_builder/"
 if path not in sys.path:
     sys.path.append(path)
 
-import inventory
+import inventory  # noqa
 
 
 class TestInventory(unittest.TestCase):

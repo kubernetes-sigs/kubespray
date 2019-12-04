@@ -1,8 +1,6 @@
-Getting started
-===============
+# Getting started
 
-Building your own inventory
----------------------------
+## Building your own inventory
 
 Ansible inventory can be stored in 3 formats: YAML, JSON, or INI-like. There is
 an example inventory located
@@ -18,38 +16,41 @@ certain threshold. Run `python3 contrib/inventory_builder/inventory.py help` hel
 
 Example inventory generator usage:
 
-    cp -r inventory/sample inventory/mycluster
-    declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
-    CONFIG_FILE=inventory/mycluster/hosts.yml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+```ShellSession
+cp -r inventory/sample inventory/mycluster
+declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
+CONFIG_FILE=inventory/mycluster/hosts.yml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+```
 
 Then use `inventory/mycluster/hosts.yml` as inventory file.
 
-Starting custom deployment
---------------------------
+## Starting custom deployment
 
 Once you have an inventory, you may want to customize deployment data vars
 and start the deployment:
 
 **IMPORTANT**: Edit my\_inventory/groups\_vars/\*.yaml to override data vars:
 
-    ansible-playbook -i inventory/mycluster/hosts.yml cluster.yml -b -v \
-      --private-key=~/.ssh/private_key
+```ShellSession
+ansible-playbook -i inventory/mycluster/hosts.yml cluster.yml -b -v \
+  --private-key=~/.ssh/private_key
+```
 
 See more details in the [ansible guide](ansible.md).
 
-Adding nodes
-------------
+### Adding nodes
 
 You may want to add worker, master or etcd nodes to your existing cluster. This can be done by re-running the `cluster.yml` playbook, or you can target the bare minimum needed to get kubelet installed on the worker and talking to your masters. This is especially helpful when doing something like autoscaling your clusters.
 
--   Add the new worker node to your inventory in the appropriate group (or utilize a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html)).
--   Run the ansible-playbook command, substituting `cluster.yml` for `scale.yml`:
+- Add the new worker node to your inventory in the appropriate group (or utilize a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html)).
+- Run the ansible-playbook command, substituting `cluster.yml` for `scale.yml`:
 
-        ansible-playbook -i inventory/mycluster/hosts.yml scale.yml -b -v \
-          --private-key=~/.ssh/private_key
+```ShellSession
+ansible-playbook -i inventory/mycluster/hosts.yml scale.yml -b -v \
+  --private-key=~/.ssh/private_key
+```
 
-Remove nodes
-------------
+### Remove nodes
 
 You may want to remove **master**, **worker**, or **etcd** nodes from your
 existing cluster. This can be done by re-running the `remove-node.yml`
@@ -61,10 +62,11 @@ when doing something like autoscaling your clusters. Of course, if a node
 is not working, you can remove the node and install it again.
 
 Use `--extra-vars "node=<nodename>,<nodename2>"` to select the node(s) you want to delete.
-```
+
+```ShellSession
 ansible-playbook -i inventory/mycluster/hosts.yml remove-node.yml -b -v \
-  --private-key=~/.ssh/private_key \
-  --extra-vars "node=nodename,nodename2"
+--private-key=~/.ssh/private_key \
+--extra-vars "node=nodename,nodename2"
 ```
 
 If a node is completely unreachable by ssh, add `--extra-vars reset_nodes=no`
@@ -72,8 +74,7 @@ to skip the node reset step. If one node is unavailable, but others you wish
 to remove are able to connect via SSH, you could set reset_nodes=no as a host
 var in inventory.
 
-Connecting to Kubernetes
-------------------------
+## Connecting to Kubernetes
 
 By default, Kubespray configures kube-master hosts with insecure access to
 kube-apiserver via port 8080. A kubeconfig file is not necessary in this case,
@@ -95,15 +96,14 @@ file yourself.
 For more information on kubeconfig and accessing a Kubernetes cluster, refer to
 the Kubernetes [documentation](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/).
 
-Accessing Kubernetes Dashboard
-------------------------------
+## Accessing Kubernetes Dashboard
 
 As of kubernetes-dashboard v1.7.x:
 
--   New login options that use apiserver auth proxying of token/basic/kubeconfig by default
--   Requires RBAC in authorization\_modes
--   Only serves over https
--   No longer available at <https://first_master:6443/ui> until apiserver is updated with the https proxy URL
+- New login options that use apiserver auth proxying of token/basic/kubeconfig by default
+- Requires RBAC in authorization\_modes
+- Only serves over https
+- No longer available at <https://first_master:6443/ui> until apiserver is updated with the https proxy URL
 
 If the variable `dashboard_enabled` is set (default is true), then you can access the Kubernetes Dashboard at the following URL, You will be prompted for credentials:
 <https://first_master:6443/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/login>
@@ -113,19 +113,20 @@ Or you can run 'kubectl proxy' from your local machine to access dashboard in yo
 
 It is recommended to access dashboard from behind a gateway (like Ingress Controller) that enforces an authentication token. Details and other access options here: <https://github.com/kubernetes/dashboard/wiki/Accessing-Dashboard---1.7.X-and-above>
 
-Accessing Kubernetes API
-------------------------
+## Accessing Kubernetes API
 
 The main client of Kubernetes is `kubectl`. It is installed on each kube-master
 host and can optionally be configured on your ansible host by setting
 `kubectl_localhost: true` and `kubeconfig_localhost: true` in the configuration:
 
--   If `kubectl_localhost` enabled, `kubectl` will download onto `/usr/local/bin/` and setup with bash completion. A helper script `inventory/mycluster/artifacts/kubectl.sh` also created for setup with below `admin.conf`.
--   If `kubeconfig_localhost` enabled `admin.conf` will appear in the `inventory/mycluster/artifacts/` directory after deployment.
+- If `kubectl_localhost` enabled, `kubectl` will download onto `/usr/local/bin/` and setup with bash completion. A helper script `inventory/mycluster/artifacts/kubectl.sh` also created for setup with below `admin.conf`.
+- If `kubeconfig_localhost` enabled `admin.conf` will appear in the `inventory/mycluster/artifacts/` directory after deployment.
 
 You can see a list of nodes by running the following commands:
 
-    cd inventory/mycluster/artifacts
-    ./kubectl.sh get nodes
+```ShellSession
+cd inventory/mycluster/artifacts
+./kubectl.sh get nodes
+```
 
 If desired, copy admin.conf to ~/.kube/config.

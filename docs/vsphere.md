@@ -1,6 +1,7 @@
 # vSphere cloud provider
 
 Kubespray can be deployed with vSphere as Cloud provider. This feature supports
+
 - Volumes
 - Persistent Volumes
 - Storage Classes and provisioning of volumes.
@@ -11,15 +12,16 @@ Kubespray can be deployed with vSphere as Cloud provider. This feature supports
 You need at first to configure your vSphere environment by following the [official documentation](https://kubernetes.io/docs/getting-started-guides/vsphere/#vsphere-cloud-provider).
 
 After this step you should have:
+
 - UUID activated for each VM where Kubernetes will be deployed
 - A vSphere account with required privileges
 
 If you intend to leverage the [zone and region node labeling](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#failure-domain-beta-kubernetes-io-region), create a tag category for both the zone and region in vCenter.  The tags can then be applied at the host, cluster, datacenter, or folder level, and the cloud provider will walk the hierarchy to extract and apply the labels to the Kubernetes nodes.
 
-
 ## Kubespray configuration
 
 First you must define the cloud provider in `inventory/sample/group_vars/all.yml` and set it to `vsphere`.
+
 ```yml
 cloud_provider: vsphere
 ```
@@ -61,7 +63,8 @@ vsphere_resource_pool: "K8s-Pool"
 ## Deployment
 
 Once the configuration is set, you can execute the playbook again to apply the new configuration
-```
+
+```ShellSession
 cd kubespray
 ansible-playbook -i inventory/sample/hosts.ini -b -v cluster.yml
 ```

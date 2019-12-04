@@ -1,8 +1,6 @@
-Node Layouts
-------------
+# Node Layouts
 
 There are four node layout types: `default`, `separate`, `ha`, and `scale`.
-
 
 `default` is a non-HA two nodes setup with one separate `kube-node`
 and the `etcd` group merged with the `kube-master`.
@@ -20,8 +18,7 @@ never actually deployed, but certificates are generated for them.
 
 Note, the canal network plugin deploys flannel as well plus calico policy controller.
 
-GCE instances
--------------
+## GCE instances
 
 |               Stage|      Network plugin|             OS type|          GCE region|        Nodes layout
 |--------------------|--------------------|--------------------|--------------------|--------------------|

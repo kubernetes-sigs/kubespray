@@ -1,5 +1,4 @@
-Kube-router
-===========
+# Kube-router
 
 Kube-router is a L3 CNI provider, as such it will setup IPv4 routing between
 nodes to provide Pods' networks reachability.
@@ -12,7 +11,7 @@ Kube-router runs its pods as a `DaemonSet` in the `kube-system` namespace:
 
 * Check the status of kube-router pods
 
-```
+```ShellSession
 # From the CLI
 kubectl get pod --namespace=kube-system -l k8s-app=kube-router -owide
 
@@ -29,7 +28,7 @@ kube-router-x2xs7   1/1       Running   0          2d        192.168.186.10   my
 
 * Peek at kube-router container logs:
 
-```
+```ShellSession
 # From the CLI
 kubectl logs --namespace=kube-system -l k8s-app=kube-router | grep Peer.Up
 
@@ -55,7 +54,6 @@ You need to `kubectl exec -it ...` into a kube-router container to use these, se
 <https://www.kube-router.io/docs/pod-toolbox/> for details.
 
 ## Kube-router configuration
-
 
 You can change the default configuration by overriding `kube_router_...` variables
 (as found at `roles/network_plugin/kube-router/defaults/main.yml`),
@@ -91,17 +89,18 @@ kube_proxy_mode: ipvs
 ```
 
 ## Advanced BGP Capabilities
-https://github.com/cloudnativelabs/kube-router#advanced-bgp-capabilities
+
+<https://github.com/cloudnativelabs/kube-router#advanced-bgp-capabilities>
 
 If you have other networking devices or SDN systems that talk BGP, kube-router will fit in perfectly.
 From a simple full node-to-node mesh to per-node peering configurations, most routing needs can be attained.
 The configuration is Kubernetes native (annotations) just like the rest of kube-router.
 
-For more details please refer to the https://github.com/cloudnativelabs/kube-router/blob/master/docs/bgp.md.
+For more details please refer to the <https://github.com/cloudnativelabs/kube-router/blob/master/docs/bgp.md.>
 
 Next options will set up annotations for kube-router, using `kubectl annotate` command.
 
-```
+```yml
 kube_router_annotations_master: []
 kube_router_annotations_node: []
 kube_router_annotations_all: []

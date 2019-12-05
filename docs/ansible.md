@@ -1,9 +1,7 @@
-Ansible variables
-===============
+# Ansible variables
 
+## Inventory
 
-Inventory
--------------
 The inventory is composed of 3 groups:
 
 * **kube-node** : list of kubernetes nodes where the pods will run.
@@ -14,7 +12,7 @@ Note: do not modify the children of _k8s-cluster_, like putting
 the _etcd_ group into the _k8s-cluster_, unless you are certain
 to do that and you have it fully contained in the latter:
 
-```
+```ShellSession
 k8s-cluster ⊂ etcd => kube-node ∩ etcd = etcd
 ```
 
@@ -32,7 +30,7 @@ There are also two special groups:
 
 Below is a complete inventory example:
 
-```
+```ini
 ## Configure 'ip' variable to bind kubernetes services on a
 ## different ip than the default iface
 node1 ansible_host=95.54.0.12 ip=10.3.0.1
@@ -63,8 +61,7 @@ kube-node
 kube-master
 ```
 
-Group vars and overriding variables precedence
-----------------------------------------------
+## Group vars and overriding variables precedence
 
 The group variables to control main deployment options are located in the directory ``inventory/sample/group_vars``.
 Optional variables are located in the `inventory/sample/group_vars/all.yml`.
@@ -73,7 +70,7 @@ Mandatory variables that are common for at least one role (or a node group) can 
 There are also role vars for docker, kubernetes preinstall and master roles.
 According to the [ansible docs](http://docs.ansible.com/ansible/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),
 those cannot be overridden from the group vars. In order to override, one should use
-the `-e ` runtime flags (most simple way) or other layers described in the docs.
+the `-e` runtime flags (most simple way) or other layers described in the docs.
 
 Kubespray uses only a few layers to override things (or expect them to
 be overridden for roles):
@@ -97,8 +94,8 @@ block vars (only for tasks in block) | Kubespray overrides for internal roles' l
 task vars (only for the task) | Unused for roles, but only for helper scripts
 **extra vars** (always win precedence) | override with ``ansible-playbook -e @foo.yml``
 
-Ansible tags
-------------
+## Ansible tags
+
 The following tags are defined in playbooks:
 
 |                 Tag name | Used for
@@ -145,21 +142,25 @@ Note: Use the ``bash scripts/gen_tags.sh`` command to generate a list of all
 tags found in the codebase. New tags will be listed with the empty "Used for"
 field.
 
-Example commands
-----------------
+## Example commands
+
 Example command to filter and apply only DNS configuration tasks and skip
 everything else related to host OS configuration and downloading images of containers:
 
-```
+```ShellSession
 ansible-playbook -i inventory/sample/hosts.ini cluster.yml --tags preinstall,facts --skip-tags=download,bootstrap-os
 ```
+
 And this play only removes the K8s cluster DNS resolver IP from hosts' /etc/resolv.conf files:
-```
+
+```ShellSession
 ansible-playbook -i inventory/sample/hosts.ini -e dns_mode='none' cluster.yml --tags resolvconf
 ```
+
 And this prepares all container images locally (at the ansible runner node) without installing
 or upgrading related stuff or trying to upload container to K8s cluster nodes:
-```
+
+```ShellSession
 ansible-playbook -i inventory/sample/hosts.ini cluster.yml \
     -e download_run_once=true -e download_localhost=true \
     --tags download --skip-tags upload,upgrade
@@ -167,14 +168,14 @@ ansible-playbook -i inventory/sample/hosts.ini cluster.yml \
 
 Note: use `--tags` and `--skip-tags` wise and only if you're 100% sure what you're doing.
 
-Bastion host
---------------
+## Bastion host
+
 If you prefer to not make your nodes publicly accessible (nodes with private IPs only),
 you can use a so called *bastion* host to connect to your nodes. To specify and use a bastion,
 simply add a line to your inventory, where you have to replace x.x.x.x with the public IP of the
 bastion host.
 
-```
+```ShellSession
 [bastion]
 bastion ansible_host=x.x.x.x
 ```

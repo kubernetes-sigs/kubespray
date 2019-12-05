@@ -1,5 +1,4 @@
-Contiv
-======
+# Contiv
 
 Here is the [Contiv documentation](http://contiv.github.io/documents/).
 
@@ -9,7 +8,6 @@ There are two ways to manage Contiv:
 
 * a web UI managed by the api proxy service
 * a CLI named `netctl`
-
 
 ### Interfaces
 
@@ -27,7 +25,6 @@ contiv_generate_certificate: true
 
 The default credentials to log in are: admin/admin.
 
-
 #### The Command Line Interface
 
 The second way to modify the Contiv configuration is to use the CLI. To do this, you have to connect to the server and export an environment variable to tell netctl how to connect to the cluster:
@@ -43,7 +40,6 @@ contiv_netmaster_port: 9999
 ```
 
 The CLI doesn't use the authentication process needed by the web interface.
-
 
 ### Network configuration
 

@@ -224,8 +224,8 @@ class KubesprayInventory(object):
                 end = int(ip_address(end_address))
             except Exception:
                 # Python 2.7
-                start = int(ip_address(unicode(start_address)))
-                end = int(ip_address(unicode(end_address)))
+                start = int(ip_address(str(start_address)))
+                end = int(ip_address(str(end_address)))
             return [ip_address(ip).exploded for ip in range(start, end + 1)]
 
         for host in hosts:

@@ -3,7 +3,7 @@
 - name: Include OS-specific variables.
   include_vars: "{{ ansible_os_family }}.yml"
 
-# Instal xfs package
+# Install xfs package
 - name: install xfs Debian
   apt: name=xfsprogs state=present
   when: ansible_os_family == "Debian"
@@ -36,7 +36,7 @@
     - "{{ gluster_brick_dir }}"
     - "{{ gluster_mount_dir }}"
 
-- name: Configure Gluster volume.
+- name: Configure Gluster volume with replicas
   gluster_volume:
     state: present
     name: "{{ gluster_brick_name }}"
@@ -46,6 +46,18 @@
     host: "{{ inventory_hostname }}"
     force: yes
   run_once: true
+  when: groups['gfs-cluster']|length > 1
+
+- name: Configure Gluster volume without replicas
+  gluster_volume:
+    state: present
+    name: "{{ gluster_brick_name }}"
+    brick: "{{ gluster_brick_dir }}"
+    cluster: "{% for item in groups['gfs-cluster'] -%}{{ hostvars[item]['ip']|default(hostvars[item].ansible_default_ipv4['address']) }}{% if not loop.last %},{% endif %}{%- endfor %}"
+    host: "{{ inventory_hostname }}"
+    force: yes
+  run_once: true
+  when: groups['gfs-cluster']|length <= 1
 
 - name: Mount glusterfs to retrieve disk size
   mount:

@@ -224,6 +224,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |Variable | Description |
 |---------|-------------|
 |`cluster_name` | All OpenStack resources will use the Terraform variable`cluster_name` (default`example`) in their name to make it easier to track. For example the first compute resource will be named`example-kubernetes-1`. |
+|`az_list` | List of Availability Zones available in your OpenStack cluster. |
 |`network_name` | The name to be given to the internal network that will be generated |
 |`network_dns_domain` | (Optional) The dns_domain for the internal network that will be generated |
 |`dns_nameservers`| An array of DNS name server names to be used by hosts in the internal subnet. |
@@ -247,6 +248,11 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`k8s_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, empty by default |
 |`worker_allowed_ports` | List of ports to open on worker nodes, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "0.0.0.0/0"}]` by default |
 |`wait_for_floatingip` | Let Terraform poll the instance until the floating IP has been associated, `false` by default. |
+|`node_root_volume_size_in_gb` | Size of the root volume for nodes, 0 to use ephemeral storage |
+|`master_root_volume_size_in_gb` | Size of the root volume for masters, 0 to use ephemeral storage |
+|`gfs_root_volume_size_in_gb` | Size of the root volume for gluster, 0 to use ephemeral storage |
+|`etcd_root_volume_size_in_gb` | Size of the root volume for etcd nodes, 0 to use ephemeral storage |
+|`bastion_root_volume_size_in_gb` | Size of the root volume for bastions, 0 to use ephemeral storage |
 
 #### Terraform state files
 
@@ -420,7 +426,10 @@ resolvconf_mode: host_resolvconf
 ```
 node_volume_attach_limit: 26
 ```
-
+- Disable access_ip, this will make all innternal cluster traffic to be sent over local network when a floating IP is attached (default this value is set to 1)
+```
+use_access_ip: 0
+```
 
 ### Deploy Kubernetes
 

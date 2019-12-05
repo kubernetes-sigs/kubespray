@@ -41,6 +41,11 @@ module "compute" {
   number_of_bastions                           = "${var.number_of_bastions}"
   number_of_k8s_nodes_no_floating_ip           = "${var.number_of_k8s_nodes_no_floating_ip}"
   number_of_gfs_nodes_no_floating_ip           = "${var.number_of_gfs_nodes_no_floating_ip}"
+  bastion_root_volume_size_in_gb               = "${var.bastion_root_volume_size_in_gb}"
+  etcd_root_volume_size_in_gb                  = "${var.etcd_root_volume_size_in_gb}"
+  master_root_volume_size_in_gb                = "${var.master_root_volume_size_in_gb}"
+  node_root_volume_size_in_gb                  = "${var.node_root_volume_size_in_gb}"
+  gfs_root_volume_size_in_gb                   = "${var.gfs_root_volume_size_in_gb}"
   gfs_volume_size_in_gb                        = "${var.gfs_volume_size_in_gb}"
   public_key_path                              = "${var.public_key_path}"
   image                                        = "${var.image}"
@@ -65,6 +70,7 @@ module "compute" {
   supplementary_node_groups                    = "${var.supplementary_node_groups}"
   worker_allowed_ports                         = "${var.worker_allowed_ports}"
   wait_for_floatingip                          = "${var.wait_for_floatingip}"
+  use_access_ip                                = "${var.use_access_ip}"
 
   network_id = "${module.network.router_id}"
 }

@@ -1,6 +1,9 @@
 # your Kubernetes cluster name here
 cluster_name = "i-didnt-read-the-docs"
 
+# list of availability zones available in your OpenStack cluster
+#az_list = ["nova"]
+
 # SSH key to use for access to nodes
 public_key_path = "~/.ssh/id_rsa.pub"
 

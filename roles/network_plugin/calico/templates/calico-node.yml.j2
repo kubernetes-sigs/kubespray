@@ -3,7 +3,7 @@
 # as the Calico CNI plugins and network config on
 # each master and worker node in a Kubernetes cluster.
 kind: DaemonSet
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 metadata:
   name: calico-node
   namespace: kube-system
@@ -27,7 +27,6 @@ spec:
     spec:
       priorityClassName: system-node-critical
       hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: calico-node
       tolerations:
         - effect: NoExecute
@@ -155,14 +154,24 @@ spec:
             # Use Kubernetes API as the backing datastore.
             - name: DATASTORE_TYPE
               value: "kubernetes"
-  {% if typha_enabled == "true" %}
+{% if typha_enabled %}
             # Typha support: controlled by the ConfigMap.
             - name: FELIX_TYPHAK8SSERVICENAME
               valueFrom:
                 configMapKeyRef:
                   name: calico-config
                   key: typha_service_name
-  {% endif %}
+{% if typha_secure %}
+            - name: FELIX_TYPHACN
+              value: typha-server
+            - name: FELIX_TYPHACAFILE
+              value: /etc/typha-ca/ca.crt
+            - name: FELIX_TYPHACERTFILE
+              value: /etc/typha-client/typha-client.crt
+            - name: FELIX_TYPHAKEYFILE
+              value: /etc/typha-client/typha-client.key
+{% endif %}
+{% endif %}
             # Wait for the datastore.
             - name: WAIT_FOR_DATASTORE
               value: "true"
@@ -296,6 +305,16 @@ spec:
             - name: xtables-lock
               mountPath: /run/xtables.lock
               readOnly: false
+{% if typha_secure %}
+            - name: typha-client
+              mountPath: /etc/typha-client
+              readOnly: true
+            - name: typha-cacert
+              subPath: ca.crt
+              mountPath: /etc/typha-ca/ca.crt
+              readOnly: true
+{% endif %}
+
       volumes:
         # Used by calico/node.
         - name: lib-modules
@@ -332,6 +351,19 @@ spec:
         - name: host-local-net-dir
           hostPath:
             path: /var/lib/cni/networks
+{% endif %}
+{% if typha_enabled and typha_secure %}
+        - name: typha-client
+          secret:
+            secretName: typha-client
+            items:
+               - key: tls.crt
+                 path: typha-client.crt
+               - key: tls.key
+                 path: typha-client.key
+        - name: typha-cacert
+          hostPath:
+            path: "/etc/kubernetes/ssl/"
 {% endif %}
   updateStrategy:
     rollingUpdate:

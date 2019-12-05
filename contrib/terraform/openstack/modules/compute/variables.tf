@@ -107,3 +107,7 @@ variable "worker_allowed_ports" {
 }
 
 variable "use_access_ip" {}
+
+variable "use_server_groups" {
+  type = bool
+}

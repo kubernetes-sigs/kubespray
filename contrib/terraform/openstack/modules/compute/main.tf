@@ -237,9 +237,9 @@ resource "openstack_compute_instance_v2" "k8s_master_custom_volume_size" {
   ]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_master[0]}"
+    for_each = "${openstack_compute_servergroup_v2.k8s_master_custom_volume_size[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+      group = "${openstack_compute_servergroup_v2.k8s_master_custom_volume_size[0].id}"
     }
   }
 
@@ -272,9 +272,9 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   ]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_master[0]}"
+    for_each = "${openstack_compute_servergroup_v2.k8s_master_no_etcd[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+      group = "${openstack_compute_servergroup_v2.k8s_master_no_etcd[0].id}"
     }
   }
 
@@ -310,17 +310,17 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd_custom_volume_size"
   network {
     name = "${var.network_name}"
   }
-  
-  dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_master[0]}"
-    content {
-      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
-    }
-  }
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
+  
+  dynamic "scheduler_hints" {
+    for_each = "${openstack_compute_servergroup_v2.k8s_master_no_etcd_custom_volume_size[0]}"
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_master_no_etcd_custom_volume_size[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
@@ -349,9 +349,9 @@ resource "openstack_compute_instance_v2" "etcd" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}"]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_etcd[0]}"
+    for_each = "${openstack_compute_servergroup_v2.etcd[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_etcd[0].id}"
+      group = "${openstack_compute_servergroup_v2.etcd[0].id}"
     }
   }
 
@@ -387,9 +387,9 @@ resource "openstack_compute_instance_v2" "etcd_custom_volume_size" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}"]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_etcd[0]}"
+    for_each = "${openstack_compute_servergroup_v2.etcd_custom_volume_size[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_etcd[0].id}"
+      group = "${openstack_compute_servergroup_v2.etcd_custom_volume_size[0].id}"
     }
   }
 
@@ -418,9 +418,9 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   ]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_master[0]}"
+    for_each = "${openstack_compute_servergroup_v2.k8s_master_no_floating_ip[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+      group = "${openstack_compute_servergroup_v2.k8s_master_no_floating_ip[0].id}"
     }
   }
 
@@ -458,9 +458,9 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_custom_volum
   ]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_master[0]}"
+    for_each = "${openstack_compute_servergroup_v2.k8s_master_no_floating_ip_custom_volume_size[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+      group = "${openstack_compute_servergroup_v2.k8s_master_no_floating_ip_custom_volume_size[0].id}"
     }
   }
 
@@ -489,9 +489,9 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   ]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_master[0]}"
+    for_each = "${openstack_compute_servergroup_v2.k8s_master_no_floating_ip_no_etcd[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+      group = "${openstack_compute_servergroup_v2.k8s_master_no_floating_ip_no_etcd[0].id}"
     }
   }
 
@@ -529,9 +529,9 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd_cust
   ]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_master[0]}"
+    for_each = "${openstack_compute_servergroup_v2.k8s_master_no_floating_ip_no_etcd_custom_volume_size[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+      group = "${openstack_compute_servergroup_v2.k8s_master_no_floating_ip_no_etcd_custom_volume_size[0].id}"
     }
   }
 
@@ -604,9 +604,9 @@ resource "openstack_compute_instance_v2" "k8s_node_custom_volume_size" {
   ]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_node[0]}"
+    for_each = "${openstack_compute_servergroup_v2.k8s_node_custom_volume_size[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_node[0].id}"
+      group = "${openstack_compute_servergroup_v2.k8s_node_custom_volume_size[0].id}"
     }
   }
 
@@ -639,9 +639,9 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   ]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_node[0]}"
+    for_each = "${openstack_compute_servergroup_v2.k8s_node_no_floating_ip[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_node[0].id}"
+      group = "${openstack_compute_servergroup_v2.k8s_node_no_floating_ip[0].id}"
     }
   }
 
@@ -679,9 +679,9 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip_custom_volume_
   ]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_node[0]}"
+    for_each = "${openstack_compute_servergroup_v2.k8s_node_no_floating_ip_custom_volume_size[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_node[0].id}"
+      group = "${openstack_compute_servergroup_v2.k8s_node_no_floating_ip_custom_volume_size[0].id}"
     }
   }
 
@@ -776,9 +776,9 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}"]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_node[0]}"
+    for_each = "${openstack_compute_servergroup_v2.glusterfs_node_no_floating_ip[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_node[0].id}"
+      group = "${openstack_compute_servergroup_v2.glusterfs_node_no_floating_ip[0].id}"
     }
   }
 
@@ -814,9 +814,9 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip_custom_v
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}"]
   
   dynamic "scheduler_hints" {
-    for_each = "${openstack_compute_servergroup_v2.k8s_node[0]}"
+    for_each = "${openstack_compute_servergroup_v2.glusterfs_node_no_floating_ip_custom_volume_size[0]}"
     content {
-      group = "${openstack_compute_servergroup_v2.k8s_node[0].id}"
+      group = "${openstack_compute_servergroup_v2.glusterfs_node_no_floating_ip_custom_volume_size[0].id}"
     }
   }
 

@@ -418,7 +418,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   ]
   
   dynamic "scheduler_hints" {
-    for_each = tonumber(var.use_server_groups) ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
     content {
       group = "${openstack_compute_servergroup_v2.k8s_master[*].id}"
     }
@@ -639,7 +639,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   ]
   
   dynamic "scheduler_hints" {
-    for_each = tonumber(var.use_server_groups) ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
     content {
       group = "${openstack_compute_servergroup_v2.k8s_node[*].id}"
     }

@@ -163,11 +163,20 @@ kubelet_custom_flags:
   - "--eviction-soft=memory.available<300Mi"
 ```
 The possible vars are:
+* *kubelet_custom_flags*
+* *kubelet_node_custom_flags*
+
+Classic install mode:
 * *apiserver_custom_flags*
 * *controller_mgr_custom_flags*
 * *scheduler_custom_flags*
-* *kubelet_custom_flags*
-* *kubelet_node_custom_flags*
+
+Kubeadm install mode:
+Extra flags for the API server, controller, and scheduler components can be specified using these variables, 
+in the form of dicts of key-value pairs of configuration parameters that will be inserted into the kubeadm YAML config file:
+* *kube_kubeadm_apiserver_extra_args*
+* *kube_kubeadm_controller_extra_args*
+* *kube_kubeadm_scheduler_extra_args*
 
 #### User accounts
 

@@ -3,16 +3,19 @@
 The Kubespray Project is released on an as-needed basis. The process is as follows:
 
 1. An issue is proposing a new release with a changelog since the last release
-2. At least one of the [OWNERS](OWNERS) must LGTM this release
-3. An OWNER runs `git tag -s $VERSION` and inserts the changelog and pushes the tag with `git push $VERSION`
-4. The release issue is closed
-5. An announcement email is sent to `kubernetes-dev@googlegroups.com` with the subject `[ANNOUNCE] Kubespray $VERSION is released`
+2. At least one of the [approvers](OWNERS_ALIASES) must approve this release
+3. An approver creates [new release in GitHub](https://github.com/kubernetes-sigs/kubespray/releases/new) using a version and tag name like `vX.Y.Z` and attaching the release notes
+4. An approver creates a release branch in the form `release-vX.Y`
+5. The corresponding version of [quay.io/kubespray/kubespray:vX.Y.Z](https://quay.io/repository/kubespray/kubespray) docker image is built and tagged
+6. The `KUBESPRAY_VERSION` variable is updated in `.gitlab-ci.yml`
+7. The release issue is closed
+8. An announcement email is sent to `kubernetes-dev@googlegroups.com` with the subject `[ANNOUNCE] Kubespray $VERSION is released`
 
 ## Major/minor releases, merge freezes and milestones
 
-* Kubespray does not maintain stable branches for releases. Releases are tags, not
-  branches, and there are no backports. Therefore, there is no need for merge
-  freezes as well.
+* Kubespray maintains one branch for major releases (vX.Y). Minor releases are available only as tags.
+
+* Security patches and bugs might be backported.
 
 * Fixes for major releases (vX.x.0) and minor releases (vX.Y.x) are delivered
   via maintenance releases (vX.Y.Z) and assigned to the corresponding open

@@ -71,6 +71,7 @@ module "compute" {
   worker_allowed_ports                         = "${var.worker_allowed_ports}"
   wait_for_floatingip                          = "${var.wait_for_floatingip}"
   use_access_ip                                = "${var.use_access_ip}"
+  use_server_groups                            = "${var.use_server_groups}"
 
   network_id = "${module.network.router_id}"
 }

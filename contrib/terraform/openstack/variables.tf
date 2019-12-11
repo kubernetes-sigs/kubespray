@@ -8,7 +8,7 @@ variable "az_list" {
   default     = ["nova"]
 }
 
-variable "az_list" {
+variable "az_list_node" {
   description = "List of Availability Zones to use for nodes in your OpenStack cluster"
   type        = list(string)
   default     = ["nova"]

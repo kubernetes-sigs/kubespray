@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 0.8.7"
+  required_version = ">= 0.12.0"
 }
 
 provider "aws" {
@@ -57,7 +57,7 @@ resource "aws_instance" "bastion-server" {
   availability_zone           = "${element(slice(data.aws_availability_zones.available.names, 0, 2), count.index)}"
   subnet_id                   = "${element(module.aws-vpc.aws_subnet_ids_public, count.index)}"
 
-  vpc_security_group_ids = ["${module.aws-vpc.aws_security_group}"]
+  vpc_security_group_ids = "${module.aws-vpc.aws_security_group}"
 
   key_name = "${var.AWS_SSH_KEY_NAME}"
 
@@ -82,7 +82,7 @@ resource "aws_instance" "k8s-master" {
   availability_zone = "${element(slice(data.aws_availability_zones.available.names, 0, 2), count.index)}"
   subnet_id         = "${element(module.aws-vpc.aws_subnet_ids_private, count.index)}"
 
-  vpc_security_group_ids = ["${module.aws-vpc.aws_security_group}"]
+  vpc_security_group_ids = "${module.aws-vpc.aws_security_group}"
 
   iam_instance_profile = "${module.aws-iam.kube-master-profile}"
   key_name             = "${var.AWS_SSH_KEY_NAME}"
@@ -109,7 +109,7 @@ resource "aws_instance" "k8s-etcd" {
   availability_zone = "${element(slice(data.aws_availability_zones.available.names, 0, 2), count.index)}"
   subnet_id         = "${element(module.aws-vpc.aws_subnet_ids_private, count.index)}"
 
-  vpc_security_group_ids = ["${module.aws-vpc.aws_security_group}"]
+  vpc_security_group_ids = "${module.aws-vpc.aws_security_group}"
 
   key_name = "${var.AWS_SSH_KEY_NAME}"
 
@@ -129,7 +129,7 @@ resource "aws_instance" "k8s-worker" {
   availability_zone = "${element(slice(data.aws_availability_zones.available.names, 0, 2), count.index)}"
   subnet_id         = "${element(module.aws-vpc.aws_subnet_ids_private, count.index)}"
 
-  vpc_security_group_ids = ["${module.aws-vpc.aws_security_group}"]
+  vpc_security_group_ids = "${module.aws-vpc.aws_security_group}"
 
   iam_instance_profile = "${module.aws-iam.kube-worker-profile}"
   key_name             = "${var.AWS_SSH_KEY_NAME}"

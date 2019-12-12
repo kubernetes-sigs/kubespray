@@ -177,6 +177,10 @@ in the form of dicts of key-value pairs of configuration parameters that will be
 * *kube_kubeadm_controller_extra_args*
 * *kube_kubeadm_scheduler_extra_args*
 
+## App variables
+
+* *helm_version* - Defaults to v2.x, set to a v3 version (e.g. `v3.0.1` ) to install Helm 3.x (no more Tiller!). When changing this to 3 in an existing cluster, Tiller will be left alone and has to be removed manually.
+
 ## User accounts
 
 By default, a user with admin rights is created, named `kube`.

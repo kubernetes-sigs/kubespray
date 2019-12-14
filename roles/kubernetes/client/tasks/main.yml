@@ -1,21 +1,4 @@
 ---
-- name: Set external kube-apiserver endpoint
-  set_fact:
-    external_apiserver_address: >-
-      {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined -%}
-      {{ loadbalancer_apiserver.address }}
-      {%- else -%}
-      {{ kube_apiserver_access_address }}
-      {%- endif -%}
-    external_apiserver_port: >-
-      {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined and loadbalancer_apiserver.port is defined -%}
-      {{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
-      {%- else -%}
-      {{ kube_apiserver_port }}
-      {%- endif -%}
-  tags:
-    - facts
-
 - name: Create kube config dir for current/ansible become user
   file:
     path: "{{ ansible_env.HOME | default('/root') }}/.kube"
@@ -38,7 +21,7 @@
   delegate_to: localhost
   become: no
   run_once: yes
-  when: kubeconfig_localhost|default(false)
+  when: kubeconfig_localhost
 
 - name: Wait for k8s apiserver
   wait_for:
@@ -46,42 +29,25 @@
     port: "{{ kube_apiserver_port }}"
     timeout: 180
 
-# NOTE(mattymo): Please forgive this workaround
-- name: Generate admin kubeconfig with external api endpoint
-  shell: >-
-    mkdir -p {{ kube_config_dir }}/external_kubeconfig &&
-    {{ bin_dir }}/kubeadm
-    init phase
-    kubeconfig admin
-    --kubeconfig-dir {{ kube_config_dir }}/external_kubeconfig
-    --cert-dir {{ kube_cert_dir }}
-    --apiserver-advertise-address {{ external_apiserver_address }}
-    --apiserver-bind-port {{ external_apiserver_port }}
-    >/dev/null && cat {{ kube_config_dir }}/external_kubeconfig/admin.conf &&
-    rm -rf {{ kube_config_dir }}/external_kubeconfig
-  environment: "{{ proxy_env }}"
-  run_once: yes
-  register: admin_kubeconfig
-
-- name: Write admin kubeconfig on ansible host
-  copy:
-    content: "{{ admin_kubeconfig.stdout }}"
+- name: Copy admin.conf to ansible host
+  fetch:
+    src: "{{ kube_config_dir }}/admin.conf"
     dest: "{{ artifacts_dir }}/admin.conf"
-    mode: 0640
-  delegate_to: localhost
-  become: no
+    flat: yes
+    validate_checksum: yes
+  become: yes
   run_once: yes
-  when: kubeconfig_localhost|default(false)
+  when: kubeconfig_localhost
 
 - name: Copy kubectl binary to ansible host
   fetch:
     src: "{{ bin_dir }}/kubectl"
     dest: "{{ artifacts_dir }}/kubectl"
     flat: yes
-    validate_checksum: no
+    validate_checksum: yes
   become: no
   run_once: yes
-  when: kubectl_localhost|default(false)
+  when: kubectl_localhost
 
 - name: create helper script kubectl.sh on ansible host
   copy:
@@ -93,4 +59,4 @@
   become: no
   run_once: yes
   delegate_to: localhost
-  when: kubectl_localhost|default(false) and kubeconfig_localhost|default(false)
+  when: kubectl_localhost and kubeconfig_localhost

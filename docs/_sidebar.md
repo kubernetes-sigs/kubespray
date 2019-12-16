@@ -36,4 +36,5 @@
 * Developers
   * [Test cases](docs/test_cases.md)
   * [Vagrant](docs/vagrant.md)
+  * [CI Matrix](docs/ci.md)
 * [Roadmap](docs/roadmap.md)

@@ -10,6 +10,7 @@ data:
   cni-conf.json: |
     {
       "name":"kubernetes",
+      "cniVersion": "0.2.0",
       "type":"bridge",
       "bridge":"kube-bridge",
       "isDefaultGateway":true,
@@ -64,6 +65,12 @@ spec:
       labels:
         k8s-app: kube-router
         tier: node
+      annotations:
+{% if kube_router_enable_metrics %}
+        prometheus.io/path: {{ kube_router_metrics_path }}
+        prometheus.io/port: "{{ kube_router_metrics_port }}"
+        prometheus.io/scrape: "true"
+{% endif %}
     spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: kube-router
@@ -93,6 +100,10 @@ spec:
 {% endif %}
 {% if kube_router_peer_router_ports %}
         - --peer-router-ports={{ kube_router_peer_router_ports }}
+{% endif %}
+{% if kube_router_enable_metrics %}
+        - --metrics-path={{ kube_router_metrics_path }}
+        - --metrics-port={{ kube_router_metrics_port }}
 {% endif %}
 {% for arg in kube_router_extra_args %}
         - "{{ arg }}"
@@ -128,6 +139,13 @@ spec:
         - name: kubeconfig
           mountPath: /var/lib/kube-router
           readOnly: true
+{% if kube_router_enable_metrics %}
+        ports:
+        - containerPort: {{ kube_router_metrics_port }}
+          hostPort: {{ kube_router_metrics_port }}
+          name: metrics
+          protocol: TCP
+{% endif %}
       initContainers:
       - name: install-cni
         image: {{ busybox_image_repo }}:{{ busybox_image_tag }}

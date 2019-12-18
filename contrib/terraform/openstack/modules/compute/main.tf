@@ -95,6 +95,24 @@ resource "openstack_networking_secgroup_rule_v2" "worker" {
   security_group_id = "${openstack_networking_secgroup_v2.worker.id}"
 }
 
+resource "openstack_compute_servergroup_v2" "k8s_master" {
+  count = "%{ if var.use_server_groups }1%{else}0%{endif}"
+  name = "k8s-master-srvgrp"
+  policies = ["anti-affinity"]
+}
+
+resource "openstack_compute_servergroup_v2" "k8s_node" {
+  count = "%{ if var.use_server_groups }1%{else}0%{endif}"
+  name = "k8s-node-srvgrp"
+  policies = ["anti-affinity"]
+}
+
+resource "openstack_compute_servergroup_v2" "k8s_etcd" {
+  count = "%{ if var.use_server_groups }1%{else}0%{endif}"
+  name = "k8s-etcd-srvgrp"
+  policies = ["anti-affinity"]
+}
+
 resource "openstack_compute_instance_v2" "bastion" {
   name       = "${var.cluster_name}-bastion-${count.index+1}"
   count      = "${var.bastion_root_volume_size_in_gb == 0 ? var.number_of_bastions : 0}"
@@ -114,6 +132,7 @@ resource "openstack_compute_instance_v2" "bastion" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "bastion"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -149,6 +168,7 @@ resource "openstack_compute_instance_v2" "bastion_custom_volume_size" {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "bastion"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -172,10 +192,18 @@ resource "openstack_compute_instance_v2" "k8s_master" {
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
 
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+    }
+  }
+
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -207,13 +235,21 @@ resource "openstack_compute_instance_v2" "k8s_master_custom_volume_size" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
-
+  
   provisioner "local-exec" {
     command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
   }
@@ -234,11 +270,19 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -271,10 +315,18 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd_custom_volume_size"
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
 
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+    }
+  }
+
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -296,10 +348,18 @@ resource "openstack_compute_instance_v2" "etcd" {
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}"]
 
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_etcd[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_etcd[0].id}"
+    }
+  }
+
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -325,11 +385,19 @@ resource "openstack_compute_instance_v2" "etcd_custom_volume_size" {
   }
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}"]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_etcd[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_etcd[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -348,11 +416,19 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -380,11 +456,19 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_custom_volum
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -403,11 +487,19 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -435,11 +527,19 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd_cust
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_master[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -459,10 +559,18 @@ resource "openstack_compute_instance_v2" "k8s_node" {
     "${openstack_networking_secgroup_v2.worker.name}",
   ]
 
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_node[0].id}"
+    }
+  }
+
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-node,k8s-cluster,${var.supplementary_node_groups}"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -494,11 +602,19 @@ resource "openstack_compute_instance_v2" "k8s_node_custom_volume_size" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}",
     "${openstack_networking_secgroup_v2.worker.name}",
   ]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_node[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-node,k8s-cluster,${var.supplementary_node_groups}"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 
   provisioner "local-exec" {
@@ -521,11 +637,19 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}",
     "${openstack_networking_secgroup_v2.worker.name}",
   ]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_node[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-node,k8s-cluster,no-floating,${var.supplementary_node_groups}"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -553,11 +677,19 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip_custom_volume_
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}",
     "${openstack_networking_secgroup_v2.worker.name}",
   ]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_node[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user}"
     kubespray_groups = "kube-node,k8s-cluster,no-floating,${var.supplementary_node_groups}"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -642,11 +774,19 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
   }
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}"]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_node[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user_gfs}"
     kubespray_groups = "gfs-cluster,network-storage,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 
@@ -672,11 +812,19 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip_custom_v
   }
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}"]
+  
+  dynamic "scheduler_hints" {
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    content {
+      group = "${openstack_compute_servergroup_v2.k8s_node[0].id}"
+    }
+  }
 
   metadata = {
     ssh_user         = "${var.ssh_user_gfs}"
     kubespray_groups = "gfs-cluster,network-storage,no-floating"
     depends_on       = "${var.network_id}"
+    use_access_ip    = "${var.use_access_ip}"
   }
 }
 

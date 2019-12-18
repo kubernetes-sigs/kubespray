@@ -1,5 +1,4 @@
-Downloading binaries and containers
-===================================
+# Downloading binaries and containers
 
 Kubespray supports several download/upload modes. The default is:
 
@@ -30,11 +29,13 @@ Container images may be defined by its repo and tag, for example:
 
 Note, the SHA256 digest and the image tag must be both specified and correspond
 to each other. The given example above is represented by the following vars:
+
 ```yaml
 dnsmasq_digest_checksum: 7c883354f6ea9876d176fe1d30132515478b2859d6fc0cbf9223ffdc09168193
 dnsmasq_image_repo: andyshinn/dnsmasq
 dnsmasq_image_tag: '2.72'
 ```
+
 The full list of available vars may be found in the download's ansible role defaults. Those also allow to specify custom urls and local repositories for binaries and container
 images as well. See also the DNS stack docs for the related intranet configuration,
 so the hosts can resolve those urls and repos.

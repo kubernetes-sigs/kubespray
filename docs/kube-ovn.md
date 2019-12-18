@@ -1,5 +1,5 @@
-Kube-OVN
-===========
+# Kube-OVN
+
 Kube-OVN integrates the OVN-based Network Virtualization with Kubernetes. It offers an advanced Container Network Fabric for Enterprises.
 
 For more information please check [Kube-OVN documentation](https://github.com/alauda/kube-ovn)
@@ -7,7 +7,8 @@ For more information please check [Kube-OVN documentation](https://github.com/al
 ## How to use it
 
 Enable kube-ovn in `group_vars/k8s-cluster/k8s-cluster.yml`
-```
+
+```yml
 ...
 kube_network_plugin: kube-ovn
 ...
@@ -19,7 +20,7 @@ Kube-OVN run ovn and controller in `kube-ovn` namespace
 
 * Check the status of kube-ovn pods
 
-```
+```ShellSession
 # From the CLI
 kubectl get pod -n kube-ovn
 
@@ -37,7 +38,7 @@ ovs-ovn-r5frh                          1/1     Running   0          4d16h
 
 * Check the default and node subnet
 
-```
+```ShellSession
 # From the CLI
 kubectl get subnet
 

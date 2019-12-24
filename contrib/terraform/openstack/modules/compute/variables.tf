@@ -105,3 +105,9 @@ variable "supplementary_node_groups" {
 variable "worker_allowed_ports" {
   type = "list"
 }
+
+variable "use_access_ip" {}
+
+variable "use_server_groups" {
+  type = bool
+}

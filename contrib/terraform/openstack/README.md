@@ -253,6 +253,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`gfs_root_volume_size_in_gb` | Size of the root volume for gluster, 0 to use ephemeral storage |
 |`etcd_root_volume_size_in_gb` | Size of the root volume for etcd nodes, 0 to use ephemeral storage |
 |`bastion_root_volume_size_in_gb` | Size of the root volume for bastions, 0 to use ephemeral storage |
+|`use_server_group` | Create and use openstack nova servergroups, default: false |
 
 #### Terraform state files
 
@@ -426,7 +427,10 @@ resolvconf_mode: host_resolvconf
 ```
 node_volume_attach_limit: 26
 ```
-
+- Disable access_ip, this will make all innternal cluster traffic to be sent over local network when a floating IP is attached (default this value is set to 1)
+```
+use_access_ip: 0
+```
 
 ### Deploy Kubernetes
 

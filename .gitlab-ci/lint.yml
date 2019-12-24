@@ -2,6 +2,8 @@
 yamllint:
   extends: .job
   stage: unit-tests
+  variables:
+    LANG: C.UTF-8
   script:
     - yamllint --strict .
   except: ['triggers', 'master']
@@ -42,8 +44,20 @@ syntax-check:
 tox-inventory-builder:
   stage: unit-tests
   extends: .job
+  before_script:
+    - ./tests/scripts/rebase.sh
+    - apt-get update && apt-get install -y python3-pip
+    - update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+    - python -m pip install -r tests/requirements.txt
   script:
-    - pip install tox
+    - pip3 install tox
     - cd contrib/inventory_builder && tox
-  when: manual
   except: ['triggers', 'master']
+
+markdownlint:
+  stage: unit-tests
+  image: node
+  before_script:
+    - npm install -g markdownlint-cli
+  script:
+    - markdownlint README.md docs --ignore docs/_sidebar.md

@@ -16,12 +16,14 @@
 
 - name: Stop if unknown OS
   assert:
-    that: ansible_os_family in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'CoreOS', 'Container Linux by CoreOS', 'Suse', 'ClearLinux', 'OracleLinux']
+    that: ansible_os_family in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'CoreOS', 'Coreos', 'Container Linux by CoreOS', 'Suse', 'ClearLinux', 'OracleLinux']
+    msg: "{{ ansible_os_family }} is not a known OS"
   ignore_errors: "{{ ignore_assert_errors }}"
 
 - name: Stop if unknown network plugin
   assert:
     that: kube_network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'contiv', 'kube-ovn', 'kube-router', 'macvlan']
+    msg: "{{ kube_network_plugin }} is not supported"
   when: kube_network_plugin is defined
   ignore_errors: "{{ ignore_assert_errors }}"
 
@@ -81,7 +83,7 @@
     msg: "Do not schedule more pods on a node than inet addresses are available."
   ignore_errors: "{{ ignore_assert_errors }}"
   when:
-    - inventory_hostname in groups['kube-node']
+    - inventory_hostname in groups['k8s-cluster']
     - kube_network_node_prefix is defined
 
 - name: Stop if ip var does not match local ips
@@ -234,12 +236,6 @@
     msg: "resolvconf_mode can only be 'docker_dns', 'host_resolvconf' or 'none'"
   when: resolvconf_mode is defined
   run_once: true
-
-- name: Stop if k8s version is too low for kubeadm etcd mode
-  assert:
-    that: kube_version is version('v1.14.0', '>=')
-    msg: "kubeadm etcd mode requires k8s version >= v1.14.0"
-  when: etcd_kubeadm_enabled
 
 - name: Stop if kubeadm etcd mode is enabled but experimental control plane is not
   assert:

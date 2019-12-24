@@ -1,5 +1,4 @@
-Multus
-===========
+# Multus
 
 Multus is a meta CNI plugin that provides multiple network interface support to
 pods. For each interface, Multus delegates CNI calls to secondary CNI plugins
@@ -10,17 +9,19 @@ See [multus documentation](https://github.com/intel/multus-cni).
 ## Multus installation
 
 Since Multus itself does not implement networking, it requires a master plugin, which is specified through the variable `kube_network_plugin`. To enable Multus an additional variable `kube_network_plugin_multus` must be set to `true`. For example,
-```
+
+```yml
 kube_network_plugin: calico
 kube_network_plugin_multus: true
 ```
+
 will install Multus and Calico and configure Multus to use Calico as the primary network plugin.
 
 ## Using Multus
 
 Once Multus is installed, you can create CNI configurations (as a CRD objects) for additional networks, in this case a macvlan CNI configuration is defined. You may replace the config field with any valid CNI configuration where the CNI binary is available on the nodes.
 
-```
+```ShellSession
 cat <<EOF | kubectl create -f -
 apiVersion: "k8s.cni.cncf.io/v1"
 kind: NetworkAttachmentDefinition
@@ -48,7 +49,7 @@ EOF
 
 You may then create a pod with and additional interface that connects to this network using annotations. The annotation correlates to the name in the NetworkAttachmentDefinition above.
 
-```
+```ShellSession
 cat <<EOF | kubectl create -f -
 apiVersion: v1
 kind: Pod
@@ -66,8 +67,8 @@ EOF
 
 You may now inspect the pod and see that there is an additional interface configured:
 
-```
-$ kubectl exec -it samplepod -- ip a
+```ShellSession
+kubectl exec -it samplepod -- ip a
 ```
 
-For more details on how to use Multus, please visit https://github.com/intel/multus-cni
+For more details on how to use Multus, please visit <https://github.com/intel/multus-cni>

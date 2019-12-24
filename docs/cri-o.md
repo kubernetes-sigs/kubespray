@@ -1,5 +1,4 @@
-CRI-O
-===============
+# CRI-O
 
 [CRI-O] is a lightweight container runtime for Kubernetes.
 Kubespray supports basic functionality for using CRI-O as the default container runtime in a cluster.
@@ -10,14 +9,14 @@ Kubespray supports basic functionality for using CRI-O as the default container 
 
 _To use CRI-O instead of Docker, set the following variables:_
 
-#### all.yml
+## all.yml
 
 ```yaml
 download_container: false
 skip_downloads: false
 ```
 
-#### k8s-cluster.yml
+## k8s-cluster.yml
 
 ```yaml
 etcd_deployment_type: host

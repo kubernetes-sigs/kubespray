@@ -38,14 +38,14 @@ curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/co
 curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/tcp-services-configmap.yaml \
     | kubectl apply -f -
 
-curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/udp-services-configmap.yaml \
+curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/udp-services-configmap.yaml \
     | kubectl apply -f -
 ```
 
 ### Install without RBAC roles
 
 ``` console
-curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/without-rbac.yaml \
+curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/without-rbac.yaml \
     | kubectl apply -f -
 ```
 
@@ -54,10 +54,10 @@ curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/wi
 Please check the [RBAC](rbac.md) document.
 
 ``` console
-curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/rbac.yaml \
+curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/rbac.yaml \
     | kubectl apply -f -
 
-curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/with-rbac.yaml \
+curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/with-rbac.yaml \
     | kubectl apply -f -
 ```
 

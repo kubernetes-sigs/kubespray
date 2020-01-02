@@ -43,7 +43,7 @@ resource "openstack_networking_secgroup_rule_v2" "bastion" {
   port_range_min    = "22"
   port_range_max    = "22"
   remote_ip_prefix  = "${var.bastion_allowed_remote_ips[count.index]}"
-  security_group_id = "${openstack_networking_secgroup_v2.bastion[count.index].id}"
+  security_group_id = "${openstack_networking_secgroup_v2.bastion[0].id}"
 }
 
 resource "openstack_networking_secgroup_v2" "k8s" {

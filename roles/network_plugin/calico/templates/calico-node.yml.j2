@@ -205,6 +205,10 @@ spec:
             - name: FELIX_KUBENODEPORTRANGES
               value: "{{ kube_apiserver_node_port_range.split('-')[0] }}:{{ kube_apiserver_node_port_range.split('-')[1] }}"
 {% endif %}
+{% if calico_version is version('v3.8.1', '>=') %}
+            - name: FELIX_IPTABLESBACKEND
+              value: "{{ calico_iptables_backend }}"
+{% endif %}
             # Prior to v3.2.1 iptables didn't acquire the lock, so Calico's own implementation of the lock should be used,
             # this is not required in later versions https://github.com/projectcalico/calico/issues/2179
 {% if calico_version is version('v3.2.1', '<') %}
@@ -269,10 +273,18 @@ spec:
               cpu: {{ calico_node_cpu_requests }}
               memory: {{ calico_node_memory_requests }}
           livenessProbe:
+{% if calico_version is version('v3.8.0', '<') %}
             httpGet:
               host: 127.0.0.1
               path: /liveness
               port: 9099
+{% else %}
+            exec:
+              command:
+              - /bin/calico-node
+              - -felix-live
+              - -bird-live
+{% endif %}
             initialDelaySeconds: 5
             failureThreshold: 6
           readinessProbe:

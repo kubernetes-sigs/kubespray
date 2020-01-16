@@ -1,0 +1,127 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: ebs-csi-controller
+  namespace: kube-system
+spec:
+  replicas: {{ aws_ebs_csi_controller_replicas }}
+  selector:
+    matchLabels:
+      app: ebs-csi-controller
+      app.kubernetes.io/name: aws-ebs-csi-driver
+  template:
+    metadata:
+      labels:
+        app: ebs-csi-controller
+        app.kubernetes.io/name: aws-ebs-csi-driver
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      serviceAccount: ebs-csi-controller-sa
+      priorityClassName: system-cluster-critical
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+      containers:
+        - name: ebs-plugin
+          image: amazon/aws-ebs-csi-driver:{{ aws_ebs_csi_driver_image_tag }}
+          args:
+            - --endpoint=$(CSI_ENDPOINT)
+            - --logtostderr
+            - --v=5
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-secret
+                  key: key_id
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-secret
+                  key: access_key
+                  optional: true
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          ports:
+            - name: healthz
+              containerPort: 9808
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 5
+        - name: csi-provisioner
+          image: quay.io/k8scsi/csi-provisioner:v1.3.0
+          args:
+            - --csi-address=$(ADDRESS)
+            - --v=5
+{% if enableVolumeScheduling %}
+            - --feature-gates=Topology=true
+{% endif %}
+            - --enable-leader-election
+            - --leader-election-type=leases
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-attacher
+          image: quay.io/k8scsi/csi-attacher:v1.2.0
+          args:
+            - --csi-address=$(ADDRESS)
+            - --v=5
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+{% if enableVolumeSnapshot %}
+        - name: csi-snapshotter
+          image: quay.io/k8scsi/csi-snapshotter:v1.1.0
+          args:
+            - --csi-address=$(ADDRESS)
+            - --connection-timeout=15s
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+{% endif %}
+{% if enableVolumeResizing %}
+        - name: csi-resizer
+          image: quay.io/k8scsi/csi-resizer:v0.2.0
+          imagePullPolicy: Always
+          args:
+            - --csi-address=$(ADDRESS)
+            - --v=5
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+{% endif %}
+        - name: liveness-probe
+          image: quay.io/k8scsi/livenessprobe:v1.1.0
+          args:
+            - --csi-address=/csi/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+

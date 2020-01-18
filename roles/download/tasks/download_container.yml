@@ -50,11 +50,11 @@
         - download_force_cache
         - image_is_cached
         - not download_localhost
-        - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+        - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
     - name: download_container | Load image into docker
       shell: "{{ docker_bin_dir }}/docker load < {{ image_path_cached if download_localhost else image_path_final }}"
-      delegate_to: "{{ download_delegate if download_run_once or inventory_hostname }}"
+      delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
       run_once: "{{ download_run_once }}"
       register: container_load_status
       failed_when: container_load_status | failed
@@ -62,7 +62,7 @@
       when:
         - download_force_cache
         - image_is_cached
-        - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+        - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
     - name: download_container | Prepare container download
       include_tasks: check_pull_required.yml
@@ -77,7 +77,7 @@
     # if a pull is forced. This is a known issue with docker. See https://github.com/moby/moby/issues/23684
     - name: download_container | Download image if required
       command: "{{ image_pull_command }} {{ image_reponame }}"
-      delegate_to: "{{ download_delegate if download_run_once or inventory_hostname }}"
+      delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
       delegate_facts: yes
       run_once: "{{ download_run_once }}"
       register: pull_task_result
@@ -100,7 +100,7 @@
 
     - name: download_container | Save and compress image
       shell: "{{ docker_bin_dir }}/docker save {{ image_reponame }} | gzip -{{ download_compress }} > {{ image_path_cached if download_localhost else image_path_final }}"
-      delegate_to: "{{ download_delegate if download_run_once or inventory_hostname }}"
+      delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
       delegate_facts: no
       register: container_save_status
       failed_when: container_save_status.stderr
@@ -109,7 +109,7 @@
       when:
         - download_force_cache
         - not image_is_cached or (image_changed | default(true))
-        - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+        - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
     - name: download_container | Copy image to ansible host cache
       synchronize:
@@ -123,7 +123,7 @@
         - not download_localhost
         - download_delegate == inventory_hostname
         - not image_is_cached or (image_changed | default(true))
-        - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+        - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
     - name: download_container | Remove container image from cache
       file:
@@ -131,7 +131,7 @@
         path: "{{ image_path_final }}"
       when:
         - not download_keep_remote_cache
-        - ansible_os_family not in ["CoreOS", "Container Linux by CoreOS"]
+        - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
   tags:
     - download

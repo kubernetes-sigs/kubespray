@@ -1,5 +1,4 @@
-Weave
-=======
+# Weave
 
 Weave 2.0.1 is supported by kubespray
 
@@ -11,7 +10,7 @@ Weave encryption is supported for all communication
 
 * To use Weave encryption, specify a strong password (if no password, no encryption)
 
-```
+```ShellSession
 # In file ./inventory/sample/group_vars/k8s-cluster.yml
 weave_password: EnterPasswordHere
 ```
@@ -22,18 +21,19 @@ Weave is deployed by kubespray using a daemonSet
 
 * Check the status of Weave containers
 
-```
+```ShellSession
 # From client
 kubectl -n kube-system get pods | grep weave
 # output
 weave-net-50wd2                       2/2       Running   0          2m
 weave-net-js9rb                       2/2       Running   0          2m
 ```
+
 There must be as many pods as nodes (here kubernetes have 2 nodes so there are 2 weave pods).
 
 * Check status of weave (connection,encryption ...) for each node
 
-```
+```ShellSession
 # On nodes
 curl http://127.0.0.1:6784/status
 # output on node1
@@ -57,14 +57,14 @@ Version: 2.0.1 (up to date; next check at 2017/08/01 13:51:34)
 
 * Check parameters of weave for each node
 
-```
+```ShellSession
 # On nodes
 ps -aux | grep weaver
 # output on node1 (here its use seed mode)
 root      8559  0.2  3.0 365280 62700 ?        Sl   08:25   0:00 /home/weave/weaver --name=fa:16:3e:b3:d6:b2 --port=6783 --datapath=datapath --host-root=/host --http-addr=127.0.0.1:6784 --status-addr=0.0.0.0:6782 --docker-api= --no-dns --db-prefix=/weavedb/weave-net --ipalloc-range=10.233.64.0/18 --nickname=node1 --ipalloc-init seed=fa:16:3e:b3:d6:b2,fa:16:3e:f0:50:53 --conn-limit=30 --expect-npc 192.168.208.28 192.168.208.19
 ```
 
-### Consensus mode (default mode)
+## Consensus mode (default mode)
 
 This mode is best to use on static size cluster
 
@@ -72,18 +72,18 @@ This mode is best to use on static size cluster
 
 This mode is best to use on dynamic size cluster
 
-The seed mode also allows multi-clouds and hybrid on-premise/cloud clusters deployement.
+The seed mode also allows multi-clouds and hybrid on-premise/cloud clusters deployment.
 
 * Switch from consensus mode to seed mode
 
-```
+```ShellSession
 # In file ./inventory/sample/group_vars/k8s-cluster.yml
 weave_mode_seed: true
 ```
 
 These two variables are only used when `weave_mode_seed` is set to `true` (**/!\ do not manually change these values**)
 
-```
+```ShellSession
 # In file ./inventory/sample/group_vars/k8s-cluster.yml
 weave_seed: uninitialized
 weave_peers: uninitialized

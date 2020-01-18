@@ -42,7 +42,7 @@ etcd:
   local:
     imageRepository: "{{ etcd_image_repo | regex_replace("/etcd$","") }}"
     imageTag: "{{ etcd_image_tag }}"
-    dataDir: "/var/lib/etcd"
+    dataDir: "{{ etcd_data_dir }}"
     extraArgs:
       metrics: {{ etcd_metrics }}
       election-timeout: "{{ etcd_election_timeout }}"
@@ -94,7 +94,6 @@ controlPlaneEndpoint: {{ ip | default(fallback_ips[inventory_hostname]) }}:{{ ku
 {% endif %}
 certificatesDir: {{ kube_cert_dir }}
 imageRepository: {{ kube_image_repo }}
-useHyperKubeImage: {{ kubeadm_use_hyperkube_image }}
 apiServer:
   extraArgs:
 {% if kube_api_anonymous_auth is defined %}
@@ -129,16 +128,16 @@ apiServer:
     token-auth-file: {{ kube_token_dir }}/known_tokens.csv
 {% endif %}
 {% if kube_oidc_auth|default(false) and kube_oidc_url is defined and kube_oidc_client_id is defined %}
-    oidc-issuer-url: {{ kube_oidc_url }}
-    oidc-client-id: {{ kube_oidc_client_id }}
+    oidc-issuer-url: "{{ kube_oidc_url }}"
+    oidc-client-id: "{{ kube_oidc_client_id }}"
 {%   if kube_oidc_ca_file is defined %}
-    oidc-ca-file: {{ kube_oidc_ca_file }}
+    oidc-ca-file: "{{ kube_oidc_ca_file }}"
 {%   endif %}
 {%   if kube_oidc_username_claim is defined %}
-    oidc-username-claim: {{ kube_oidc_username_claim }}
+    oidc-username-claim: "{{ kube_oidc_username_claim }}"
 {%   endif %}
 {%   if kube_oidc_groups_claim is defined %}
-    oidc-groups-claim: {{ kube_oidc_groups_claim }}
+    oidc-groups-claim: "{{ kube_oidc_groups_claim }}"
 {%   endif %}
 {%   if kube_oidc_username_prefix is defined %}
     oidc-username-prefix: "{{ kube_oidc_username_prefix }}"
@@ -324,12 +323,29 @@ ipvs:
  minSyncPeriod: {{ kube_proxy_min_sync_period }}
  scheduler: {{ kube_proxy_scheduler }}
  syncPeriod: {{ kube_proxy_sync_period }}
-{% if kube_version is version('v1.14.2', '>=') %}
  strictARP: {{ kube_proxy_strict_arp }}
-{% endif %}
 metricsBindAddress: {{ kube_proxy_metrics_bind_address }}
 mode: {{ kube_proxy_mode }}
 nodePortAddresses: {{ kube_proxy_nodeport_addresses }}
 oomScoreAdj: {{ kube_proxy_oom_score_adj }}
 portRange: {{ kube_proxy_port_range }}
 udpIdleTimeout: {{ kube_proxy_udp_idle_timeout }}
+{# DNS settings for kubelet #}
+{% if enable_nodelocaldns %}
+{% set kubelet_cluster_dns = [nodelocaldns_ip] %}
+{% elif dns_mode in ['coredns'] %}
+{% set kubelet_cluster_dns = [skydns_server] %}
+{% elif dns_mode == 'coredns_dual' %}
+{% set kubelet_cluster_dns = [skydns_server,skydns_server_secondary] %}
+{% elif dns_mode == 'manual' %}
+{% set kubelet_cluster_dns = [manual_dns_server] %}
+{% else %}
+{% set kubelet_cluster_dns = [] %}
+{% endif %}
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+clusterDNS:
+{% for dns_address in kubelet_cluster_dns %}
+- {{ dns_address }}
+{% endfor %}

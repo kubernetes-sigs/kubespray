@@ -110,16 +110,7 @@
     --config={{ kube_config_dir }}/kubeadm-config.yaml
     --ignore-preflight-errors=all
     --skip-phases=addon/coredns
-    {% if kubeadm_version is version('v1.14.0', '>=') %}
-    {% if kubeadm_version is version('v1.15.0', '<') %}
-    --experimental-upload-certs
-    {% if kubeadm_certificate_key is defined and kubeadm_version is version('v1.15.0', '<') %}
-    --certificate-key={{ kubeadm_certificate_key }}
-    {% endif %}
-    {% else %}
     --upload-certs
-    {% endif %}
-    {% endif %}
   register: kubeadm_init
   # Retry is because upload config sometimes fails
   retries: 3
@@ -135,9 +126,8 @@
     kubeadm_certificate_key: "{{ item | regex_search('--certificate-key ([^ ]+)','\\1') | first }}"
   with_items: "{{ hostvars[groups['kube-master'][0]]['kubeadm_init'].stdout_lines | default([]) }}"
   when:
-    - kubeadm_version is version('v1.14.0', '>=')
     - kubeadm_certificate_key is not defined
-    - item | trim | match('.*--certificate-key .*')
+    - (item | trim) is match('.*--certificate-key.*')
 
 - name: Create hardcoded kubeadm token for joining nodes with 24h expiration (if defined)
   shell: >-
@@ -169,16 +159,18 @@
     - kubeadm_token
 
 - name: kubeadm | Initialize other masters (experimental control plane)
-  include: kubeadm-secondary-experimental.yml
+  include_tasks: kubeadm-secondary-experimental.yml
   when: kubeadm_control_plane
 
-- name: kubeadm | Initialize other masters (experimental control plane)
-  include: kubeadm-secondary-legacy.yml
+- name: kubeadm | Initialize other masters (legacy not control plane)
+  include_tasks: kubeadm-secondary-legacy.yml
   when: not kubeadm_control_plane
 
 - name: kubeadm | upgrade kubernetes cluster
-  import_tasks: kubeadm-upgrade.yml
-  when: upgrade_cluster_setup
+  include_tasks: kubeadm-upgrade.yml
+  when:
+    - upgrade_cluster_setup
+    - kubeadm_already_run.stat.exists
 
 - name: kubeadm | Check serviceaccount key again
   stat:

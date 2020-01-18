@@ -37,28 +37,27 @@ spec:
   # production, we recommend running at least 3 replicas to reduce the impact of rolling upgrade.
   replicas: {{ typha_replicas }}
   revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      k8s-app: calico-typha
   template:
     metadata:
       labels:
         k8s-app: calico-typha
       annotations:
-        # This, along with the CriticalAddonsOnly toleration below, marks the pod as a critical
-        # add-on, ensuring it gets priority scheduling and that its resources are reserved
-        # if it ever gets evicted.
-        scheduler.alpha.kubernetes.io/critical-pod: ''
         cluster-autoscaler.kubernetes.io/safe-to-evict: 'true'
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
       hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
       tolerations:
-        # Mark the pod as a critical add-on for rescheduling.
-        - key: CriticalAddonsOnly
+        - key: node-role.kubernetes.io/master
           operator: Exists
+          effect: NoSchedule
       # Since Calico can't network a pod until Typha is up, we need to run Typha itself
       # as a host-networked pod.
       serviceAccountName: calico-node
+      priorityClassName: system-cluster-critical
       containers:
       - image: {{ calico_typha_image_repo }}:{{ calico_typha_image_tag }}
         name: calico-typha
@@ -83,6 +82,24 @@ spec:
             value: "kubernetes"
           - name: TYPHA_HEALTHENABLED
             value: "true"
+{% if typha_secure %}
+          - name: TYPHA_CAFILE
+            value: /etc/ca/ca.crt
+          - name: TYPHA_CLIENTCN
+            value: typha-client
+          - name: TYPHA_SERVERCERTFILE
+            value: /etc/typha/server_certificate.pem
+          - name: TYPHA_SERVERKEYFILE
+            value: /etc/typha/server_key.pem
+        volumeMounts:
+          - mountPath: /etc/typha
+            name: typha-server
+            readOnly: true
+          - mountPath: /etc/ca/ca.crt
+            subPath: ca.crt
+            name: cacert
+            readOnly: true
+{% endif %}
           # Uncomment these lines to enable prometheus metrics.  Since Typha is host-networked,
           # this opens a port on the host, which may need to be secured.
           #- name: TYPHA_PROMETHEUSMETRICSENABLED
@@ -124,6 +141,20 @@ spec:
             host: localhost
 {% endif %}
           periodSeconds: 10
+{% if typha_secure %}
+      volumes:
+         - name: typha-server
+           secret:
+             secretName: typha-server
+             items:
+                - key: tls.crt
+                  path: server_certificate.pem
+                - key: tls.key
+                  path: server_key.pem
+         - name: cacert
+           hostPath:
+             path: "{{ kube_cert_dir }}"
+{% endif %}
 
 ---
 

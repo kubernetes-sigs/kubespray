@@ -10,7 +10,7 @@ This project will create:
 * AWS ELB in the Public Subnet for accessing the Kubernetes API from the internet
 
 **Requirements**
-- Terraform 0.8.7 or newer
+- Terraform 0.12.0 or newer
 
 **How to Use:**
 

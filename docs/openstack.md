@@ -5,6 +5,9 @@ To deploy kubespray on [OpenStack](https://www.openstack.org/) uncomment the `cl
 
 After that make sure to source in your OpenStack credentials like you would do when using `nova-client` or `neutron-client` by using `source path/to/your/openstack-rc` or `. path/to/your/openstack-rc`.
 
+For those who prefer to pass the OpenStack CA certificate as a string, one can
+base64 encode the cacert file and store it in the variable `openstack_cacert`.
+
 The next step is to make sure the hostnames in your `inventory` file are identical to your instance names in OpenStack.
 Otherwise [cinder](https://wiki.openstack.org/wiki/Cinder) won't work as expected.
 

@@ -7,6 +7,7 @@
   * [Integration](docs/integration.md)
   * [Upgrades](/docs/upgrades.md)
   * [HA Mode](docs/ha-mode.md)
+  * [Adding/replacing a node](docs/nodes.md)
   * [Large deployments](docs/large-deployments.md)
 * CNI
   * [Calico](docs/calico.md)

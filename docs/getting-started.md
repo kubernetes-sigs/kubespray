@@ -50,6 +50,36 @@ ansible-playbook -i inventory/mycluster/hosts.yml scale.yml -b -v \
   --private-key=~/.ssh/private_key
 ```
 
+#### Adding master nodes
+
+1) Until [this issue](https://github.com/kubernetes-sigs/kubespray/issues/5573) is fixed, must recreate apiserver certs manually to include the new master node in the cert SAN field.
+
+    Edit /etc/kubernetes/kubeadm-config.yaml, include new host in certSANs list.
+
+    Use kubeadm to recreate the certs.
+    ```shell script
+    cd /etc/kubernetes/ssl
+    mv apiserver.crt apiserver.crt.old
+    mv apiserver.key apiserver.key.old
+    cd /etc/kubernetes
+    kubeadm init phase certs apiserver --config kubeadm-config.yaml
+    ```
+    Check the certificate, new host needs to be there:
+    ```shell script
+    openssl x509 -text -noout -in /etc/kubernetes/ssl/apiserver.crt
+    ```
+2) Run cluster.yml
+
+   Add the new host to the inventory and run cluster.yml.
+
+3) Restart kube-system/nginx-proxy
+
+   In all hosts, restart nginx-proxy pod. This pod is a local proxy for the apiserver. Kubespray will update its static config, but it needs to be restarted in order to reload.
+   Run in every host:
+   ```shell script
+   docker ps | grep k8s_nginx-proxy_nginx-proxy | awk '{print $1}' | xargs docker restart
+   ```
+
 ### Remove nodes
 
 You may want to remove **master**, **worker**, or **etcd** nodes from your

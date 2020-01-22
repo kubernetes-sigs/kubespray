@@ -73,7 +73,7 @@ def iterresources(filenames):
                 # In version 4 the structure changes so we need to iterate
                 # each instance inside the resource branch.
                 for resource in state['resources']:
-                    name = resource['module'].split('.')[-1]
+                    name = resource['provider'].split('.')[-1]
                     for instance in resource['instances']:
                         key = "{}.{}".format(resource['type'], resource['name'])
                         if 'index_key' in instance:
@@ -182,6 +182,9 @@ def parse_list(source, prefix, sep='.'):
 
 
 def parse_bool(string_form):
+    if type(string_form) is bool:
+        return string_form
+
     token = string_form.lower()[0]
 
     if token == 't':
@@ -210,7 +213,7 @@ def packet_device(resource, tfvars=None):
         'state': raw_attrs['state'],
         # ansible
         'ansible_ssh_host': raw_attrs['network.0.address'],
-        'ansible_ssh_user': 'root',  # it's always "root" on Packet
+        'ansible_ssh_user': 'root',  # Use root by default in packet
         # generic
         'ipv4_address': raw_attrs['network.0.address'],
         'public_ipv4': raw_attrs['network.0.address'],
@@ -219,6 +222,10 @@ def packet_device(resource, tfvars=None):
         'private_ipv4': raw_attrs['network.2.address'],
         'provider': 'packet',
     }
+
+    if raw_attrs['operating_system'] == 'coreos_stable':
+        # For CoreOS set the ssh_user to core
+        attrs.update({'ansible_ssh_user': 'core'})
 
     # add groups based on attrs
     groups.append('packet_operating_system=' + attrs['operating_system'])
@@ -339,10 +346,10 @@ def iter_host_ips(hosts, ips):
     '''Update hosts that have an entry in the floating IP list'''
     for host in hosts:
         host_id = host[1]['id']
-        use_access_ip = host[1]['metadata']['use_access_ip']
+
         if host_id in ips:
             ip = ips[host_id]
-            
+
             host[1].update({
                 'access_ip_v4': ip,
                 'access_ip': ip,
@@ -350,8 +357,9 @@ def iter_host_ips(hosts, ips):
                 'ansible_ssh_host': ip,
             })
 
-            if use_access_ip == "0":
+        if 'use_access_ip' in host[1]['metadata'] and host[1]['metadata']['use_access_ip'] == "0":
                 host[1].pop('access_ip')
+
         yield host
 
 

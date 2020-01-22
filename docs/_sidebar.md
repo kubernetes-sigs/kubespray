@@ -3,7 +3,6 @@
 * [Getting started](/docs/getting-started.md)
 * [Ansible](docs/ansible.md)
 * [Variables](/docs/vars.md)
-* [Ansible](/docs/ansible.md)
 * Operations
   * [Integration](docs/integration.md)
   * [Upgrades](/docs/upgrades.md)
@@ -37,4 +36,5 @@
 * Developers
   * [Test cases](docs/test_cases.md)
   * [Vagrant](docs/vagrant.md)
+  * [CI Matrix](docs/ci.md)
 * [Roadmap](docs/roadmap.md)

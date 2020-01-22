@@ -1,8 +1,7 @@
 ---
-- name: Preinstall | restart network
+- name: Preinstall | propagate resolvconf to k8s components
   command: /bin/true
   notify:
-    - Preinstall | reload network
     - Preinstall | reload kubelet
     - Preinstall | kube-controller configured
     - Preinstall | kube-apiserver configured
@@ -10,32 +9,18 @@
     - Preinstall | restart kube-controller-manager crio/containerd
     - Preinstall | restart kube-apiserver docker
     - Preinstall | restart kube-apiserver crio/containerd
-  when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
-
-  # FIXME(bogdando) https://github.com/projectcalico/felix/issues/1185
-- name: Preinstall | reload network
-  service:
-    name: >-
-      {% if ansible_os_family == "RedHat" -%}
-      network
-      {%- elif ansible_distribution == "Ubuntu" and ansible_distribution_release == "bionic" -%}
-      systemd-networkd
-      {%- elif ansible_os_family == "Debian" -%}
-      networking
-      {%- endif %}
-    state: restarted
-  when: not ansible_os_family in ["CoreOS", "Container Linux by CoreOS"] and kube_network_plugin not in ['canal', 'calico']
+  when: not ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
 - name: Preinstall | update resolvconf for Container Linux by CoreOS
   command: /bin/true
   notify:
     - Preinstall | apply resolvconf cloud-init
     - Preinstall | reload kubelet
-  when: ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+  when: ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
 - name: Preinstall | apply resolvconf cloud-init
   command: /usr/bin/coreos-cloudinit --from-file {{ resolveconf_cloud_init_conf }}
-  when: ansible_os_family in ["CoreOS", "Container Linux by CoreOS"]
+  when: ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
 - name: Preinstall | reload kubelet
   service:
@@ -95,3 +80,8 @@
     - inventory_hostname in groups['kube-master']
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
+
+- name: Preinstall | Restart systemd-resolved
+  service:
+    name: systemd-resolved
+    state: restarted

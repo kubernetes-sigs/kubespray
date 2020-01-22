@@ -45,20 +45,15 @@ spec:
       labels:
         k8s-app: calico-typha
       annotations:
-        # This, along with the CriticalAddonsOnly toleration below, marks the pod as a critical
-        # add-on, ensuring it gets priority scheduling and that its resources are reserved
-        # if it ever gets evicted.
-        scheduler.alpha.kubernetes.io/critical-pod: ''
         cluster-autoscaler.kubernetes.io/safe-to-evict: 'true'
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
       hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
       tolerations:
-        # Mark the pod as a critical add-on for rescheduling.
-        - key: CriticalAddonsOnly
+        - key: node-role.kubernetes.io/master
           operator: Exists
+          effect: NoSchedule
       # Since Calico can't network a pod until Typha is up, we need to run Typha itself
       # as a host-networked pod.
       serviceAccountName: calico-node
@@ -87,6 +82,8 @@ spec:
             value: "kubernetes"
           - name: TYPHA_HEALTHENABLED
             value: "true"
+          - name: TYPHA_MAXCONNECTIONSLOWERLIMIT
+            value: "{{ typha_max_connections_lower_limit }}"
 {% if typha_secure %}
           - name: TYPHA_CAFILE
             value: /etc/ca/ca.crt

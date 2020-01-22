@@ -1,0 +1,61 @@
+---
+- name: Turn on certificate roteation by kubadm
+  block:
+    - name: "Collect the content of {{ postinstall_control_manager_config_path }} config file to change it"
+      slurp:
+        src: "{{ postinstall_control_manager_config_path }}"
+      register: control_manager_config
+
+    - name: Modify CLI flags of control_manager' container
+      set_fact:
+        control_manager_config: |
+            {% set control_manager_config = control_manager_config.content | b64decode | from_yaml -%}
+            {% set cli_args = control_manager_config['spec']['containers'][0]['command'].copy() -%}
+            {% set fake = control_manager_config['spec']['containers'][0]['command'].clear() %}
+            {% for arg in cli_args -%}
+              {% if not arg.startswith('--experimental-cluster-signing-duration') -%}
+                {% set fake = control_manager_config['spec']['containers'][0]['command'].append(arg) -%}
+              {% endif -%}
+            {% endfor -%}
+            {% set fake = control_manager_config['spec']['containers'][0]['command'].append('--experimental-cluster-signing-duration='+postinstall_signing_duration) -%}
+            {{ control_manager_config }}
+
+    - name: Activate signing requests by kube-config-manager
+      copy:
+        dest: "{{ postinstall_control_manager_config_path }}"
+        content: "{{ control_manager_config | to_nice_yaml }}"
+  when: inventory_hostname in groups['kube-master']
+
+- name: Turn on for MASTER' kubelets
+  block:
+    - name: "Collect the content of {{ postinstall_kubelet_config_path }} config file to prepare to modify"
+      slurp:
+        src: "{{ postinstall_kubelet_config_path }}"
+      register: kubelet_config
+
+    - name: Activate certificates rotation for MASTER' kubelet
+      copy:
+        content: |
+          {% set kubelet_config = kubelet_config.content | b64decode | from_yaml %}
+          {% set fake = kubelet_config.setdefault('rotateServerCertificates',True) %}
+          {{ kubelet_config | to_nice_yaml }}
+        dest: "{{ postinstall_kubelet_config_path }}"
+      notify: restart kubelet
+  when: inventory_hostname in groups['kube-master']
+
+- name: Turn on for CLIENT' kubelets
+  block:
+    - name: "Collect the content of {{ postinstall_kubelet_config_path }} config file to prepare to modify"
+      slurp:
+        src: "{{ postinstall_kubelet_config_path }}"
+      register: kubelet_config
+
+    - name: Activate certificates rotation for CLIENT' kubelet
+      copy:
+        content: |
+          {% set kubelet_config = kubelet_config.content | b64decode | from_yaml %}
+          {% set fake = kubelet_config.setdefault('rotateCertificates',True) %}
+          {{ kubelet_config | to_nice_yaml }}
+        dest: "{{ postinstall_kubelet_config_path }}"
+      notify: restart kubelet
+  when: inventory_hostname in groups['kube-node']

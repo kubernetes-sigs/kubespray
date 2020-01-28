@@ -170,6 +170,11 @@ The possible vars are:
 * *kubelet_custom_flags*
 * *kubelet_node_custom_flags*
 
+As an alternative, these very same parameters can be set as key-value pairs of configuration parameters that will be inserted into the kubelet YAML config file:
+
+* *kubelet_config_extra_args*
+* *kubelet_node_config_extra_args*
+
 Extra flags for the API server, controller, and scheduler components can be specified using these variables,
 in the form of dicts of key-value pairs of configuration parameters that will be inserted into the kubeadm YAML config file:
 

@@ -18,6 +18,8 @@ explain why.
 
 - **Version of Ansible** (`ansible --version`):
 
+- **Version of Python** (`python --version`):
+
 
 **Kubespray version (commit) (`git rev-parse --short HEAD`):**
 

@@ -22,7 +22,7 @@ __Note that you need at least one functional node to be able to recover using th
 * Move any broken etcd nodes into the "broken\_etcd" group, make sure the "etcd\_member\_name" variable is set.
 * Move any broken master nodes into the "broken\_kube-master" group.
 
-Then run the playbook with ```--limit etcd,kube-master```
+Then run the playbook with ```--limit etcd,kube-master``` and increase the number of ETCD retries by setting ```-e etcd_retries=10``` or something even larger. The amount of retries required is difficult to predict.
 
 When finished you should have a fully working control plane again.
 

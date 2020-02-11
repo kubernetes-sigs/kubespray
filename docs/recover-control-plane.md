@@ -17,37 +17,23 @@ Examples of what broken means in this context:
 
 __Note that you need at least one functional node to be able to recover using this method.__
 
-## If etcd quorum is intact
+## Runbook
 
-* Set the etcd member names of the broken node(s) in the variable "old\_etcd\_members", this variable is used to remove the broken nodes from the etcd cluster.
-```old_etcd_members=etcd2,etcd3```
-* If you reuse identities for your etcd nodes add the inventory names for those nodes to the variable "old\_etcds". This will remove any previously generated certificates for those nodes.
-```old_etcds=etcd2.example.com,etcd3.example.com```
-* If you would like to remove the broken node objects from the kubernetes cluster add their inventory names to the variable "old\_kube\_masters"
-```old_kube_masters=master2.example.com,master3.example.com```
+* Move any broken etcd nodes into the "broken\_etcd" group, make sure the "etcd\_member\_name" variable is set.
+* Move any broken master nodes into the "broken\_kube-master" group.
 
-Then run the playbook with ```--limit etcd,kube-master```
+Then run the playbook with ```--limit etcd,kube-master``` and increase the number of ETCD retries by setting ```-e etcd_retries=10``` or something even larger. The amount of retries required is difficult to predict.
 
-When finished you should have a fully working and highly available control plane again.
+When finished you should have a fully working control plane again.
 
-## If etcd quorum is lost
+## Recover from lost quorum
 
-* If you reuse identities for your etcd nodes add the inventory names for those nodes to the variable "old\_etcds". This will remove any previously generated certificates for those nodes.
-```old_etcds=etcd2.example.com,etcd3.example.com```
-* If you would like to remove the broken node objects from the kubernetes cluster add their inventory names to the variable "old\_kube\_masters"
-```old_kube_masters=master2.example.com,master3.example.com```
+The playbook attempts to figure out it the etcd quorum is intact. If quorum is lost it will attempt to take a snapshot from the first node in the "etcd" group and restore from that. If you would like to restore from an alternate snapshot set the path to that snapshot in the "etcd\_snapshot" variable.
 
-Then run the playbook with ```--limit etcd,kube-master```
-
-When finished you should have a fully working and highly available control plane again.
-
-The playbook will attempt to take a snapshot from the first node in the "etcd" group and restore from that. If you would like to restore from an alternate snapshot set the path to that snapshot in the "etcd\_snapshot" variable.
-
-```etcd_snapshot=/tmp/etcd_snapshot```
+```-e etcd_snapshot=/tmp/etcd_snapshot```
 
 ## Caveats
 
-* The playbook has only been tested on control planes where the etcd and kube-master nodes are the same, the playbook will warn if run on a cluster with separate etcd and kube-master nodes.
 * The playbook has only been tested with fairly small etcd databases.
 * If your new control plane nodes have new ip addresses you may have to change settings in various places.
 * There may be disruptions while running the playbook.

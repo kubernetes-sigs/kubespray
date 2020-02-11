@@ -85,13 +85,8 @@ More details on this process are in the [HA guide](ha-mode.md).
 
 Kubespray permits connecting to the cluster remotely on any IP of any
 kube-master host on port 6443 by default. However, this requires
-authentication. One could generate a kubeconfig based on one installed
-kube-master hosts (needs improvement) or connect with a username and password.
-By default, a user with admin rights is created, named `kube`.
-The password can be viewed after deployment by looking at the file
-`{{ credentials_dir }}/kube_user.creds` (`credentials_dir` is set to `{{ inventory_dir }}/credentials` by default). This contains a randomly generated
-password. If you wish to set your own password, just precreate/modify this
-file yourself.
+authentication. One can get a kubeconfig from kube-master hosts
+(see [below](#accessing-kubernetes-api)) or connect with a [username and password](vars.md#user-accounts).
 
 For more information on kubeconfig and accessing a Kubernetes cluster, refer to
 the Kubernetes [documentation](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/).
@@ -121,6 +116,7 @@ host and can optionally be configured on your ansible host by setting
 
 - If `kubectl_localhost` enabled, `kubectl` will download onto `/usr/local/bin/` and setup with bash completion. A helper script `inventory/mycluster/artifacts/kubectl.sh` also created for setup with below `admin.conf`.
 - If `kubeconfig_localhost` enabled `admin.conf` will appear in the `inventory/mycluster/artifacts/` directory after deployment.
+- The location where these files are downloaded to can be configured via the `artifacts_dir` variable.
 
 You can see a list of nodes by running the following commands:
 

@@ -192,7 +192,7 @@ in the form of dicts of key-value pairs of configuration parameters that will be
 
 ## User accounts
 
-By default, a user with admin rights is created, named `kube`.
+The variable `kube_basic_auth` is false by default, but if set to true, a user with admin rights is created, named `kube`.
 The password can be viewed after deployment by looking at the file
 `{{ credentials_dir }}/kube_user.creds` (`credentials_dir` is set to `{{ inventory_dir }}/credentials` by default). This contains a randomly generated
 password. If you wish to set your own password, just precreate/modify this

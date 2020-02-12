@@ -9,6 +9,7 @@
     --allow-experimental-upgrades
     --allow-release-candidate-upgrades
     --etcd-upgrade=false
+    {{ (kubeadm_output.stdout is version('v1.16.0', '>=')) | ternary('--certificate-renewal=true', '') }}
     --force
   register: kubeadm_upgrade
   # Retry is because upload config sometimes fails
@@ -29,6 +30,7 @@
     --allow-experimental-upgrades
     --allow-release-candidate-upgrades
     --etcd-upgrade=false
+    {{ (kubeadm_output.stdout is version('v1.16.0', '>=')) | ternary('--certificate-renewal=true', '') }}
     --force
   register: kubeadm_upgrade
   when: inventory_hostname != groups['kube-master']|first
@@ -37,6 +39,14 @@
     - '"field is immutable" not in kubeadm_upgrade.stderr'
     - kubeadm_upgrade.stdout_lines | length > 1
   notify: Master | restart kubelet
+
+- name: kubeadm | clean kubectl cache to refresh api types
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /root/.kube/cache
+    - /root/.kube/http-cache
 
 # FIXME: https://github.com/kubernetes/kubeadm/issues/1318
 - name: kubeadm | scale down coredns replicas to 0 if not using coredns dns_mode
@@ -49,8 +59,8 @@
   retries: 6
   delay: 5
   until: scale_down_coredns is succeeded
+  run_once: yes
   when:
-    - inventory_hostname == groups['kube-master']|first
     - kubeadm_scale_down_coredns_enabled
     - dns_mode not in ['coredns', 'coredns_dual']
   changed_when: false

@@ -38,7 +38,7 @@ now six total etcd replicas.
 
 ## SSH Key Setup
 
-An SSH keypair is required so Ansible can access the newly provisioned nodes (bare metal Packet hosts). By default, the public SSH key defined in cluster.tf will be installed in authorized_key on the newly provisioned nodes (~/.ssh/id_rsa.pub). Terraform will upload this public key and then it will be distributed out to all the nodes. If you have already set this public key in Packet (i.e. via the portal), then set the public keyfile name in cluster.tf to blank to prevent the duplicate key from being uploaded which will cause an error.
+An SSH keypair is required so Ansible can access the newly provisioned nodes (bare metal Packet hosts). By default, the public SSH key defined in cluster.tfvars will be installed in authorized_key on the newly provisioned nodes (~/.ssh/id_rsa.pub). Terraform will upload this public key and then it will be distributed out to all the nodes. If you have already set this public key in Packet (i.e. via the portal), then set the public keyfile name in cluster.tfvars to blank to prevent the duplicate key from being uploaded which will cause an error.
 
 If you don't already have a keypair generated (~/.ssh/id_rsa and ~/.ssh/id_rsa.pub), then a new keypair can be generated with the command:
 
@@ -72,7 +72,7 @@ If someone gets this key, they can startup/shutdown hosts in your project!
 For more information on how to generate an API key or find your project ID, please see:
 https://support.packet.com/kb/articles/api-integrations
 
-The Packet Project ID associated with the key will be set later in cluster.tf.
+The Packet Project ID associated with the key will be set later in cluster.tfvars.
 
 For more information about the API, please see:
 https://www.packet.com/developers/api/
@@ -88,7 +88,7 @@ Note that to deploy several clusters within the same project you need to use [te
 The construction of the cluster is driven by values found in
 [variables.tf](variables.tf).
 
-For your cluster, edit `inventory/$CLUSTER/cluster.tf`.
+For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 
 The `cluster_name` is used to set a tag on each server deployed as part of this cluster.
 This helps when identifying which hosts are associated with each cluster.
@@ -138,7 +138,7 @@ This should finish fairly quickly telling you Terraform has successfully initial
 You can apply the Terraform configuration to your cluster with the following command
 issued from your cluster's inventory directory (`inventory/$CLUSTER`):
 ```ShellSession
-$ terraform apply -var-file=cluster.tf ../../contrib/terraform/packet
+$ terraform apply -var-file=cluster.tfvars ../../contrib/terraform/packet
 $ export ANSIBLE_HOST_KEY_CHECKING=False
 $ ansible-playbook -i hosts ../../cluster.yml
 ```
@@ -147,7 +147,7 @@ $ ansible-playbook -i hosts ../../cluster.yml
 You can destroy your new cluster with the following command issued from the cluster's inventory directory:
 
 ```ShellSession
-$ terraform destroy -var-file=cluster.tf ../../contrib/terraform/packet
+$ terraform destroy -var-file=cluster.tfvars ../../contrib/terraform/packet
 ```
 
 If you've started the Ansible run, it may also be a good idea to do some manual cleanup:

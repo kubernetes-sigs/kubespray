@@ -3,15 +3,15 @@ output "aws_vpc_id" {
 }
 
 output "aws_subnet_ids_private" {
-  value = ["${aws_subnet.cluster-vpc-subnets-private.*.id}"]
+  value = aws_subnet.cluster-vpc-subnets-private.*.id
 }
 
 output "aws_subnet_ids_public" {
-  value = ["${aws_subnet.cluster-vpc-subnets-public.*.id}"]
+  value = aws_subnet.cluster-vpc-subnets-public.*.id
 }
 
 output "aws_security_group" {
-  value = ["${aws_security_group.kubernetes.*.id}"]
+  value = aws_security_group.kubernetes.*.id
 }
 
 output "default_tags" {

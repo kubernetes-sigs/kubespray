@@ -346,7 +346,7 @@ def iter_host_ips(hosts, ips):
     '''Update hosts that have an entry in the floating IP list'''
     for host in hosts:
         host_id = host[1]['id']
-        use_access_ip = host[1]['metadata']['use_access_ip']
+
         if host_id in ips:
             ip = ips[host_id]
 
@@ -357,8 +357,9 @@ def iter_host_ips(hosts, ips):
                 'ansible_ssh_host': ip,
             })
 
-            if use_access_ip == "0":
+        if 'use_access_ip' in host[1]['metadata'] and host[1]['metadata']['use_access_ip'] == "0":
                 host[1].pop('access_ip')
+
         yield host
 
 

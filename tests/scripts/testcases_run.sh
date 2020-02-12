@@ -19,6 +19,16 @@ ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml
 if [[ "$CI_JOB_NAME" =~ "coreos" ]]; then
   ansible all -m raw -a 'systemctl disable locksmithd'
   ansible all -m raw -a 'systemctl stop locksmithd'
+  mkdir -p /opt/bin && ln -s /usr/bin/python /opt/bin/python
+fi
+
+if [[ "$CI_JOB_NAME" =~ "opensuse" ]]; then
+  # OpenSUSE needs netconfig update to get correct resolv.conf
+  # See https://goinggnu.wordpress.com/2013/10/14/how-to-fix-the-dns-in-opensuse-13-1/
+  ansible all -m raw -a 'netconfig update -f'
+  # Auto import repo keys
+  ansible all -m raw -a 'zypper --gpg-auto-import-keys refresh'
+  PYPATH=/usr/bin/python3
 fi
 
 # Check out latest tag if testing upgrade
@@ -27,14 +37,20 @@ test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY
 test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
 
 # Create cluster
-ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
+ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_hosts" cluster.yml
 
 # Repeat deployment if testing upgrade
 if [ "${UPGRADE_TEST}" != "false" ]; then
   test "${UPGRADE_TEST}" == "basic" && PLAYBOOK="cluster.yml"
   test "${UPGRADE_TEST}" == "graceful" && PLAYBOOK="upgrade-cluster.yml"
   git checkout "${CI_BUILD_REF}"
-  ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" $PLAYBOOK
+  ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_hosts" $PLAYBOOK
+fi
+
+# Test control plane recovery
+if [ "${RECOVER_CONTROL_PLANE_TEST}" != "false" ]; then
+  ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e ansible_python_interpreter=${PYPATH} --limit "${RECOVER_CONTROL_PLANE_TEST_GROUPS}:!fake_hosts" -e reset_confirmation=yes reset.yml
+  ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e ansible_python_interpreter=${PYPATH} -e etcd_retries=10 --limit etcd,kube-master:!fake_hosts recover-control-plane.yml
 fi
 
 # Tests Cases

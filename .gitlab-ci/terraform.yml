@@ -3,16 +3,16 @@
 .terraform_install:
   extends: .job
   before_script:
+    - update-alternatives --install /usr/bin/python python /usr/bin/python3 1
     - ./tests/scripts/rebase.sh
     - ./tests/scripts/testcases_prepare.sh
     - ./tests/scripts/terraform_install.sh
     # Set Ansible config
     - cp ansible.cfg ~/.ansible.cfg
     # Prepare inventory
-    - if [ "$PROVIDER" == "openstack" ]; then VARIABLEFILE="cluster.tfvars"; else VARIABLEFILE="cluster.tf"; fi
+    - cp contrib/terraform/$PROVIDER/sample-inventory/cluster.tfvars .
     - ln -s contrib/terraform/$PROVIDER/hosts
     - terraform init contrib/terraform/$PROVIDER
-    - cp contrib/terraform/$PROVIDER/sample-inventory/$VARIABLEFILE .
     # Copy SSH keypair
     - mkdir -p ~/.ssh
     - echo "$PACKET_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
@@ -24,8 +24,7 @@
   stage: unit-tests
   only: ['master', /^pr-.*$/]
   script:
-    - if [ "$PROVIDER" == "openstack" ]; then VARIABLEFILE="cluster.tfvars"; else VARIABLEFILE="cluster.tf"; fi
-    - terraform validate -var-file=$VARIABLEFILE contrib/terraform/$PROVIDER
+    - terraform validate -var-file=cluster.tfvars contrib/terraform/$PROVIDER
     - terraform fmt -check -diff contrib/terraform/$PROVIDER
 
 .terraform_apply:
@@ -48,7 +47,7 @@
 tf-validate-openstack:
   extends: .terraform_validate
   variables:
-    TF_VERSION: 0.12.6
+    TF_VERSION: 0.12.12
     PROVIDER: openstack
     CLUSTER: $CI_COMMIT_REF_NAME
 
@@ -62,14 +61,14 @@ tf-validate-packet:
 tf-validate-aws:
   extends: .terraform_validate
   variables:
-    TF_VERSION: 0.11.11
+    TF_VERSION: 0.12.12
     PROVIDER: aws
     CLUSTER: $CI_COMMIT_REF_NAME
 
 # tf-packet-ubuntu16-default:
 #   extends: .terraform_apply
 #   variables:
-#     TF_VERSION: 0.11.11
+#     TF_VERSION: 0.12.12
 #     PROVIDER: packet
 #     CLUSTER: $CI_COMMIT_REF_NAME
 #     TF_VAR_number_of_k8s_masters: "1"
@@ -83,7 +82,7 @@ tf-validate-aws:
 # tf-packet-ubuntu18-default:
 #   extends: .terraform_apply
 #   variables:
-#     TF_VERSION: 0.11.11
+#     TF_VERSION: 0.12.12
 #     PROVIDER: packet
 #     CLUSTER: $CI_COMMIT_REF_NAME
 #     TF_VAR_number_of_k8s_masters: "1"
@@ -110,7 +109,7 @@ tf-ovh_ubuntu18-calico:
   when: on_success
   variables:
     <<: *ovh_variables
-    TF_VERSION: 0.12.6
+    TF_VERSION: 0.12.12
     PROVIDER: openstack
     CLUSTER: $CI_COMMIT_REF_NAME
     ANSIBLE_TIMEOUT: "60"
@@ -138,7 +137,7 @@ tf-ovh_coreos-calico:
   when: on_success
   variables:
     <<: *ovh_variables
-    TF_VERSION: 0.12.6
+    TF_VERSION: 0.12.12
     PROVIDER: openstack
     CLUSTER: $CI_COMMIT_REF_NAME
     ANSIBLE_TIMEOUT: "60"

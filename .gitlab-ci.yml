@@ -4,7 +4,6 @@ stages:
   - deploy-part1
   - moderator
   - deploy-part2
-  - deploy-gce
   - deploy-special
 
 variables:
@@ -27,17 +26,20 @@ variables:
   RESET_CHECK: "false"
   UPGRADE_TEST: "false"
   LOG_LEVEL: "-vv"
+  RECOVER_CONTROL_PLANE_TEST: "false"
+  RECOVER_CONTROL_PLANE_TEST_GROUPS: "etcd[2:],kube-master[1:]"
 
 before_script:
   - ./tests/scripts/rebase.sh
-  - /usr/bin/python -m pip install -r tests/requirements.txt
+  - update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+  - python -m pip install -r tests/requirements.txt
   - mkdir -p /.ssh
 
 .job: &job
   tags:
     - packet
   variables:
-    KUBESPRAY_VERSION: v2.10.0
+    KUBESPRAY_VERSION: v2.12.0
   image: quay.io/kubespray/kubespray:$KUBESPRAY_VERSION
 
 .testcases: &testcases
@@ -45,6 +47,7 @@ before_script:
   services:
     - docker:dind
   before_script:
+    - update-alternatives --install /usr/bin/python python /usr/bin/python3 1
     - ./tests/scripts/rebase.sh
     - ./tests/scripts/testcases_prepare.sh
   script:
@@ -66,6 +69,5 @@ ci-authorized:
 include:
   - .gitlab-ci/lint.yml
   - .gitlab-ci/shellcheck.yml
-  - .gitlab-ci/digital-ocean.yml
   - .gitlab-ci/terraform.yml
   - .gitlab-ci/packet.yml

@@ -29,7 +29,7 @@ The Kubespray Project is released on an as-needed basis. The process is as follo
   Older or newer versions are not supported and not tested for the given release.
 
 * There is no unstable releases and no APIs, thus Kubespray doesn't follow
-  [semver](http://semver.org/). Every version describes only a stable release.
+  [semver](https://semver.org/). Every version describes only a stable release.
   Breaking changes, if any introduced by changed defaults or non-contrib ansible roles'
   playbooks, shall be described in the release notes. Other breaking changes, if any in
   the contributed addons or bound versions of Kubernetes and other components, are

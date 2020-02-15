@@ -159,7 +159,33 @@ node_taints:
 
 ### Custom flags for Kube Components
 
-For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments. This can be done by providing a list of flags. The `kubelet_node_custom_flags` apply kubelet settings only to nodes and not masters. Example:
+For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments.
+
+Extra flags for the kubelet can be specified using these variables,
+in the form of dicts of key-value pairs of configuration parameters that will be inserted into the kubelet YAML config file. The `kubelet_node_config_extra_args` apply kubelet settings only to nodes and not masters. Example:
+
+```yml
+kubelet_config_extra_args:
+  EvictionHard:
+    memory.available: "<100Mi"
+  EvictionSoftGracePeriod:
+    memory.available: "30s"
+  EvictionSoft:
+    memory.available: "<300Mi"
+```
+
+The possible vars are:
+
+* *kubelet_config_extra_args*
+* *kubelet_node_config_extra_args*
+
+Previously, the same paramaters could be passed as flags to kubelet binary with the following vars:
+
+* *kubelet_custom_flags*
+* *kubelet_node_custom_flags*
+
+
+The `kubelet_node_custom_flags` apply kubelet settings only to nodes and not masters. Example:
 
 ```yml
 kubelet_custom_flags:
@@ -168,10 +194,7 @@ kubelet_custom_flags:
   - "--eviction-soft=memory.available<300Mi"
 ```
 
-The possible vars are:
-
-* *kubelet_custom_flags*
-* *kubelet_node_custom_flags*
+This alternative is deprecated and will remain until the flags are completely removed from kubelet
 
 Classic install mode:
 * *apiserver_custom_flags*
@@ -179,6 +202,7 @@ Classic install mode:
 * *scheduler_custom_flags*
 
 Kubeadm install mode:
+
 Extra flags for the API server, controller, and scheduler components can be specified using these variables,
 in the form of dicts of key-value pairs of configuration parameters that will be inserted into the kubeadm YAML config file:
 

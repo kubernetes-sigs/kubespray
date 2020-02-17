@@ -25,14 +25,16 @@ If you wanted to upgrade just kube_version from v1.4.3 to v1.4.6, you could
 deploy the following way:
 
 ```ShellSession
-ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.3
+ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.3 -e upgrade_cluster_setup=true
 ```
 
 And then repeat with v1.4.6 as kube_version:
 
 ```ShellSession
-ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.6
+ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.6 -e upgrade_cluster_setup=true
 ```
+
+The var ```-e upgrade_cluster_setup=true``` is needed to be set in order to migrate the deploys of e.g kube-apiserver inside the cluster immediately which is usually only done in the graceful upgrade. (Refer to [#4139](https://github.com/kubernetes-sigs/kubespray/issues/4139) and [#4736](https://github.com/kubernetes-sigs/kubespray/issues/4736))
 
 ## Graceful upgrade
 
@@ -63,7 +65,7 @@ For instance, if you're on v2.6.0, then check out v2.7.0, run the upgrade, check
 Assuming you don't explicitly define a kubernetes version in your k8s-cluster.yml, you simply check out the next tag and run the upgrade-cluster.yml playbook
 
 * If you do define kubernetes version in your inventory (e.g. group_vars/k8s-cluster.yml) then either make sure to update it before running upgrade-cluster, or specify the new version you're upgrading to: `ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml -e kube_version=v1.11.3`
-  
+
   Otherwise, the upgrade will leave your cluster at the same k8s version defined in your inventory vars.
 
 The below example shows taking a cluster that was set up for v2.6.0 up to v2.10.0

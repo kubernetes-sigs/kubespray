@@ -175,7 +175,10 @@ You can choose between 10 network plugins. (default: `calico`, except Vagrant us
 
 - [flannel](docs/flannel.md): gre/vxlan (layer 2) networking.
 
-- [calico](docs/calico.md): bgp (layer 3) networking.
+- [Calico](https://docs.projectcalico.org/latest/introduction/) is a networking and network policy provider. Calico supports a flexible set of networking options
+    designed to give you the most efficient networking across a range of situations, including non-overlay
+    and overlay networks, with or without BGP. Calico uses the same engine to enforce network policy for hosts,
+    pods, and (if using Istio and Envoy) applications at the service mesh layer.
 
 - [canal](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
 

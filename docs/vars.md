@@ -104,6 +104,8 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
 * *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install.
+* *containerd_config* - Controls some parameters in containerd configuration file (usually /etc/containerd/config.toml).
+  [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container-engine/containerd/defaults/main.yml) can be overriden in inventory vars.
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.

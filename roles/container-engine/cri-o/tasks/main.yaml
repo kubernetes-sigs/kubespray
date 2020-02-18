@@ -22,7 +22,7 @@
     description: OpenShift Origin Repo
     baseurl: "{{ crio_rhel_repo_base_url }}"
     gpgcheck: no
-  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_atomic
+  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_atomic and not is_fedora_coreos
 
 - name: Add CRI-O PPA
   apt_repository:
@@ -51,7 +51,24 @@
   package:
     name: "{{ item }}"
     state: present
+  when: not is_fedora_coreos
   with_items: "{{ crio_packages }}"
+
+- name: Check if already installed
+  stat:
+    path: "/bin/crio"
+  register: need_bootstrap_crio
+  when: is_fedora_coreos
+
+- name: Install cri-o packages with osttree
+  raw: "export http_proxy={{ http_proxy | default('') }} && rpm-ostree install {{ crio_packages|join(' ') }}"
+  when: is_fedora_coreos and not need_bootstrap_crio.stat.exists
+  become: true
+
+- name: Reboot immediately for updated ostree
+  reboot:
+  become: true
+  when: is_fedora_coreos and not need_bootstrap_crio.stat.exists
 
 - name: Install cri-o config
   template:

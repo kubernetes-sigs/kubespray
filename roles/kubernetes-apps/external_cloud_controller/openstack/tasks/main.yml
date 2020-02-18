@@ -1,0 +1,58 @@
+---
+- include_tasks: openstack-credential-check.yml
+  tags: external-openstack
+
+- name: External OpenStack Cloud Controller | Write cacert file
+  copy:
+    src: "{{ external_openstack_cacert }}"
+    dest: "{{ kube_config_dir }}/external-openstack-cacert.pem"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  when:
+    - inventory_hostname in groups['k8s-cluster']
+    - external_openstack_cacert is defined
+    - external_openstack_cacert | length > 0
+  tags: external-openstack
+
+- name: External OpenStack Cloud Controller | Write External OpenStack cloud-config
+  template:
+    src: "external-openstack-cloud-config.j2"
+    dest: "{{ kube_config_dir }}/external_openstack_cloud_config"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: external-openstack
+
+- name: External OpenStack Cloud Controller | Get base64 cloud-config
+  slurp:
+    src: "{{ kube_config_dir }}/external_openstack_cloud_config"
+  register: external_openstack_cloud_config_secret
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: external-openstack
+
+- name: External OpenStack Cloud Controller | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: external-openstack-cloud-config-secret, file: external-openstack-cloud-config-secret.yml}
+    - {name: external-openstack-cloud-controller-manager-roles, file: external-openstack-cloud-controller-manager-roles.yml}
+    - {name: external-openstack-cloud-controller-manager-role-bindings, file: external-openstack-cloud-controller-manager-role-bindings.yml}
+    - {name: external-openstack-cloud-controller-manager-ds, file: external-openstack-cloud-controller-manager-ds.yml}
+  register: external_openstack_manifests
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: external-openstack
+
+- name: External OpenStack Cloud Controller | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ external_openstack_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+  tags: external-openstack

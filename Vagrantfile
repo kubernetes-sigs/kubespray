@@ -30,41 +30,41 @@ SUPPORTED_OS = {
   "oraclelinux"         => {box: "generic/oracle7", user: "vagrant"},
 }
 
+if File.exist?(CONFIG)
+  require CONFIG
+end
+
 # Defaults for config options defined in CONFIG
-$num_instances = 3
-$instance_name_prefix = "k8s"
-$vm_gui = false
-$vm_memory = 2048
-$vm_cpus = 1
-$shared_folders = {}
-$forwarded_ports = {}
-$subnet = "172.17.8"
-$os = "ubuntu1804"
-$network_plugin = "flannel"
+$num_instances ||= 3
+$instance_name_prefix ||= "k8s"
+$vm_gui ||= false
+$vm_memory ||= 2048
+$vm_cpus ||= 1
+$shared_folders ||= {}
+$forwarded_ports ||= {}
+$subnet ||= "172.17.8"
+$os ||= "ubuntu1804"
+$network_plugin ||= "flannel"
 # Setting multi_networking to true will install Multus: https://github.com/intel/multus-cni
-$multi_networking = false
+$multi_networking ||= false
 # The first three nodes are etcd servers
-$etcd_instances = $num_instances
+$etcd_instances ||= $num_instances
 # The first two nodes are kube masters
-$kube_master_instances = $num_instances == 1 ? $num_instances : ($num_instances - 1)
+$kube_master_instances ||= $num_instances == 1 ? $num_instances : ($num_instances - 1)
 # All nodes are kube nodes
-$kube_node_instances = $num_instances
+$kube_node_instances ||= $num_instances
 # The following only works when using the libvirt provider
-$kube_node_instances_with_disks = false
-$kube_node_instances_with_disks_size = "20G"
-$kube_node_instances_with_disks_number = 2
-$override_disk_size = false
-$disk_size = "20GB"
-$local_path_provisioner_enabled = false
-$local_path_provisioner_claim_root = "/opt/local-path-provisioner/"
+$kube_node_instances_with_disks ||= false
+$kube_node_instances_with_disks_size ||= "20G"
+$kube_node_instances_with_disks_number ||= 2
+$override_disk_size ||= false
+$disk_size ||= "20GB"
+$local_path_provisioner_enabled ||= false
+$local_path_provisioner_claim_root ||= "/opt/local-path-provisioner/"
 
 $playbook = "cluster.yml"
 
 host_vars = {}
-
-if File.exist?(CONFIG)
-  require CONFIG
-end
 
 $box = SUPPORTED_OS[$os][:box]
 # if $inventory is not set, try to use example

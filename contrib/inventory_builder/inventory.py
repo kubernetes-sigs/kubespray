@@ -62,10 +62,10 @@ def get_var_as_bool(name, default):
 
 
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory/sample/hosts.yaml")
-KUBE_MASTERS = int(os.environ.get("KUBE_MASTERS_MASTERS", 2))
+KUBE_MASTERS = int(os.environ.get("KUBE_MASTERS_MASTERS", 3))
 # Reconfigures cluster distribution at scale
 SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 50))
-MASSIVE_SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 200))
+MASSIVE_SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 3))
 
 DEBUG = get_var_as_bool("DEBUG", True)
 HOST_PREFIX = os.environ.get("HOST_PREFIX", "node")
@@ -195,7 +195,8 @@ class KubesprayInventory(object):
                 next_host_id += 1
                 all_hosts[next_host] = {'ansible_host': access_ip,
                                         'ip': ip,
-                                        'access_ip': access_ip}
+                                        'access_ip': access_ip,
+                                       'ansible_user': 'root'}
             elif host[0].isalpha():
                 if ',' in host:
                     try:
@@ -211,7 +212,8 @@ class KubesprayInventory(object):
                     continue
                 all_hosts[hostname] = {'ansible_host': access_ip,
                                        'ip': ip,
-                                       'access_ip': access_ip}
+                                       'access_ip': access_ip,
+                                       'ansible_user': 'root'}
         return all_hosts
 
     def range2ips(self, hosts):

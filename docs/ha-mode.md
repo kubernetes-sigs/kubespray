@@ -50,18 +50,18 @@ connections only to the localhost.
 Given a frontend `VIP` address and `IP1, IP2` addresses of backends, here is
 an example configuration for a HAProxy service acting as an external LB:
 
+
 ```raw
 listen kubernetes-apiserver-https
   bind <VIP>:8383
-  option ssl-hello-chk
   mode tcp
+  option log-health-checks
   timeout client 3h
   timeout server 3h
-  server master1 <IP1>:6443
-  server master2 <IP2>:6443
+  server master1 <IP1>:6443 check check-ssl
+  server master2 <IP2>:6443 check check-ssl
   balance roundrobin
 ```
-
   Note: That's an example config managed elsewhere outside of Kubespray.
 
 And the corresponding example global vars for such a "cluster-aware"

@@ -58,8 +58,8 @@ listen kubernetes-apiserver-https
   option log-health-checks
   timeout client 3h
   timeout server 3h
-  server master1 <IP1>:6443 check check-ssl
-  server master2 <IP2>:6443 check check-ssl
+  server master1 <IP1>:6443 check check-ssl verify none inter 10000
+  server master2 <IP2>:6443 check check-ssl verify none inter 10000
   balance roundrobin
 ```
   Note: That's an example config managed elsewhere outside of Kubespray.

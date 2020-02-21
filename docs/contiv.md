@@ -1,6 +1,6 @@
 # Contiv
 
-Here is the [Contiv documentation](http://contiv.github.io/documents/).
+Here is the [Contiv documentation](https://contiv.github.io/documents/).
 
 ## Administrate Contiv
 

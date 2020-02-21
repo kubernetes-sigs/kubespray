@@ -112,7 +112,7 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.16.3
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.16.6
   - [etcd](https://github.com/coreos/etcd) v3.3.10
   - [docker](https://www.docker.com/) v18.06 (see note)
   - [cri-o](http://cri-o.io/) v1.14.0 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
@@ -131,7 +131,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v0.11.0
   - [coredns](https://github.com/coredns/coredns) v1.6.0
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.26.1
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.28.0
 
 Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.16.md) was updated to 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09. kubeadm now properly recognizes Docker 18.09.0 and newer, but still treats 18.06 as the default supported version. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 
@@ -163,7 +163,10 @@ You can choose between 10 network plugins. (default: `calico`, except Vagrant us
 
 - [flannel](docs/flannel.md): gre/vxlan (layer 2) networking.
 
-- [calico](docs/calico.md): bgp (layer 3) networking.
+- [Calico](https://docs.projectcalico.org/latest/introduction/) is a networking and network policy provider. Calico supports a flexible set of networking options
+    designed to give you the most efficient networking across a range of situations, including non-overlay
+    and overlay networks, with or without BGP. Calico uses the same engine to enforce network policy for hosts,
+    pods, and (if using Istio and Envoy) applications at the service mesh layer.
 
 - [canal](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
 

@@ -3,7 +3,7 @@
 ## Generic Ansible variables
 
 You can view facts gathered by Ansible automatically
-[here](http://docs.ansible.com/ansible/playbooks_variables.html#information-discovered-from-systems-facts).
+[here](https://docs.ansible.com/ansible/playbooks_variables.html#information-discovered-from-systems-facts).
 
 Some variables of note include:
 
@@ -57,7 +57,10 @@ following default cluster parameters:
 * *kube_pods_subnet* - Subnet for Pod IPs (default is 10.233.64.0/18). Must not
   overlap with kube_service_addresses.
 * *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remaining
-  bits in kube_pods_subnet dictates how many kube-nodes can be in cluster.
+  bits in kube_pods_subnet dictates how many kube-nodes can be in cluster. Setting this > 25 will
+  raise an assertion in playbooks if the `kubelet_max_pods` var also isn't adjusted accordingly
+  (assertion not applicable to calico which doesn't use this as a hard limit, see
+  [Calico IP block sizes](https://docs.projectcalico.org/reference/resources/ippool#block-sizes).
 * *skydns_server* - Cluster IP for DNS (default is 10.233.0.3)
 * *skydns_server_secondary* - Secondary Cluster IP for CoreDNS used with coredns_dual deployment (default is 10.233.0.4)
 * *enable_coredns_k8s_external* - If enabled, it configures the [k8s_external plugin](https://coredns.io/plugins/k8s_external/)
@@ -104,6 +107,8 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
 * *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install.
+* *containerd_config* - Controls some parameters in containerd configuration file (usually /etc/containerd/config.toml).
+  [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container-engine/containerd/defaults/main.yml) can be overriden in inventory vars.
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.
@@ -156,7 +161,32 @@ node_taints:
 
 ### Custom flags for Kube Components
 
-For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments. This can be done by providing a list of flags. The `kubelet_node_custom_flags` apply kubelet settings only to nodes and not masters. Example:
+For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments.
+
+Extra flags for the kubelet can be specified using these variables,
+in the form of dicts of key-value pairs of configuration parameters that will be inserted into the kubelet YAML config file. The `kubelet_node_config_extra_args` apply kubelet settings only to nodes and not masters. Example:
+
+```yml
+kubelet_config_extra_args:
+  EvictionHard:
+    memory.available: "<100Mi"
+  EvictionSoftGracePeriod:
+    memory.available: "30s"
+  EvictionSoft:
+    memory.available: "<300Mi"
+```
+
+The possible vars are:
+
+* *kubelet_config_extra_args*
+* *kubelet_node_config_extra_args*
+
+Previously, the same paramaters could be passed as flags to kubelet binary with the following vars:
+
+* *kubelet_custom_flags*
+* *kubelet_node_custom_flags*
+
+The `kubelet_node_custom_flags` apply kubelet settings only to nodes and not masters. Example:
 
 ```yml
 kubelet_custom_flags:
@@ -165,10 +195,7 @@ kubelet_custom_flags:
   - "--eviction-soft=memory.available<300Mi"
 ```
 
-The possible vars are:
-
-* *kubelet_custom_flags*
-* *kubelet_node_custom_flags*
+This alternative is deprecated and will remain until the flags are completely removed from kubelet
 
 Extra flags for the API server, controller, and scheduler components can be specified using these variables,
 in the form of dicts of key-value pairs of configuration parameters that will be inserted into the kubeadm YAML config file:
@@ -179,11 +206,12 @@ in the form of dicts of key-value pairs of configuration parameters that will be
 
 ## App variables
 
-* *helm_version* - Defaults to v2.x, set to a v3 version (e.g. `v3.0.1` ) to install Helm 3.x (no more Tiller!). When changing this to 3 in an existing cluster, Tiller will be left alone and has to be removed manually.
+* *helm_version* - Defaults to v3.x, set to a v2 version (e.g. `v2.16.1` ) to install Helm 2.x (will install Tiller!).
+Picking v3 for an existing cluster running Tiller will leave it alone. In that case you will have to remove Tiller manually afterwards.
 
 ## User accounts
 
-By default, a user with admin rights is created, named `kube`.
+The variable `kube_basic_auth` is false by default, but if set to true, a user with admin rights is created, named `kube`.
 The password can be viewed after deployment by looking at the file
 `{{ credentials_dir }}/kube_user.creds` (`credentials_dir` is set to `{{ inventory_dir }}/credentials` by default). This contains a randomly generated
 password. If you wish to set your own password, just precreate/modify this

@@ -118,7 +118,7 @@ delete the daemonset pod on the relevant host after creating volumes. The pod
 will be recreated and read the size correctly.
 
 Make sure to make any mounts persist via /etc/fstab or with systemd mounts (for
-CoreOS/Container Linux). Pods with persistent volume claims will not be
+CoreOS/Container Linux and Flatcar). Pods with persistent volume claims will not be
 able to start if the mounts become unavailable.
 
 Further reading

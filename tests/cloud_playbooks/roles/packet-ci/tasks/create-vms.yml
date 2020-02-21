@@ -30,15 +30,19 @@
     index_var: vm_id
 
 - name: Wait for vms to have ipaddress assigned
-  shell: "kubectl get vmis -n {{ test_name }} instance-{{ vm_id }} -o json | jq '.status.interfaces[].ipAddress' | tr -d '\"'"
-  register: vm_ips
+  shell: "kubectl get vmis -n {{ test_name }} instance-{{ vm_id }} -o json"
+  register: vmis
   loop: "{{ range(0, vm_count|int, 1) | list }}"
   loop_control:
     index_var: vm_id
   retries: 20
   delay: 15
   until:
-    - vm_ips.stdout | ipaddr
+    - vm_ips | regex_search('ipAddress')
+
+- name: debug vmis
+  debug:
+    msg: "{{ vmis }}"
 
 - name: "Create inventory for CI test in file /tmp/{{ test_name }}/inventory"
   template:

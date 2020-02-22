@@ -53,12 +53,12 @@ an example configuration for a HAProxy service acting as an external LB:
 ```raw
 listen kubernetes-apiserver-https
   bind <VIP>:8383
-  option ssl-hello-chk
   mode tcp
+  option log-health-checks
   timeout client 3h
   timeout server 3h
-  server master1 <IP1>:6443
-  server master2 <IP2>:6443
+  server master1 <IP1>:6443 check check-ssl verify none inter 10000
+  server master2 <IP2>:6443 check check-ssl verify none inter 10000
   balance roundrobin
 ```
 

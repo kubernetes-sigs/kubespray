@@ -8,7 +8,7 @@ This should be the easiest.
 
 ### 1) Add new node to the inventory
 
-### 2) Run `upgrade-cluster.yml`
+### 2) Run `scale.yml`
 
 You can use `--limit=node1` to limit Kubespray to avoid disturbing other nodes in the cluster.
 

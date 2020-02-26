@@ -16,12 +16,11 @@
 
     - name: download_container | Prepare container download
       include_tasks: check_pull_required.yml
-#      run_once: "{{ download_run_once }}"
       when:
         - not download_always_pull
 
     - debug:
-        msg: "XXX Pull required is: {{ pull_required }}"
+        msg: "XXX Pull {{ download.repo }} required is: {{ pull_required }}"
 
     - name: download_container | Determine if image is in cache
       stat:
@@ -32,7 +31,7 @@
       changed_when: false
       become: false
       when:
-        - pull_required
+        - pull_required | default(download_always_pull)
         - download_force_cache
 
     - name: download_container | Set fact indicating if image is in cache
@@ -41,7 +40,7 @@
       tags:
         - facts
       when:
-        - pull_required
+        - pull_required | default(download_always_pull)
         - download_force_cache
 
     - name: download_container | Download image if required
@@ -64,7 +63,7 @@
         image_changed: "{{ true if pull_task_result.stdout is defined and not 'up to date' in pull_task_result.stdout else false }}"
       run_once: true
       when:
-        - pull_required
+        - pull_required | default(download_always_pull)
         - download_force_cache
       tags:
         - facts
@@ -79,7 +78,7 @@
       run_once: true
       become: "{{ user_can_become_root | default(false) or not download_localhost }}"
       when:
-        - pull_required
+        - pull_required | default(download_always_pull)
         - download_force_cache
         - not image_is_cached or (image_changed | default(true))
         - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
@@ -91,7 +90,7 @@
         use_ssh_args: "{{ has_bastion | default(false) }}"
         mode: pull
       when:
-        - pull_required
+        - pull_required | default(download_always_pull)
         - download_force_cache
         - not download_localhost
         - download_delegate == inventory_hostname
@@ -111,7 +110,7 @@
       retries: 4
       delay: "{{ retry_stagger | random + 3 }}"
       when:
-        - pull_required
+        - pull_required | default(download_always_pull)
         - download_force_cache
         - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
 
@@ -121,7 +120,7 @@
       register: container_load_status
       failed_when: container_load_status | failed
       when:
-        - pull_required
+        - pull_required | default(download_always_pull)
         - download_force_cache
         - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
 

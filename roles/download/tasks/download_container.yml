@@ -31,7 +31,7 @@
       changed_when: false
       become: false
       when:
-        - pull_required | default(download_always_pull)
+#        - pull_required | default(download_always_pull)
         - download_force_cache
 
     - name: download_container | Set fact indicating if image is in cache
@@ -40,7 +40,7 @@
       tags:
         - facts
       when:
-        - pull_required | default(download_always_pull)
+#        - pull_required | default(download_always_pull)
         - download_force_cache
 
     - name: download_container | Download image if required
@@ -54,8 +54,8 @@
       retries: 4
       become: "{{ user_can_become_root | default(false) or not download_localhost }}"
       when:
-        - pull_required | default(download_always_pull)
-        - ((not download_force_cache) or (download_force_cache and not image_is_cached))
+        - ( download_run_once or (pull_required | default(download_always_pull)))
+        - ( download_force_cache and not image_is_cached )
 
     # NOTE: image_changed is only valid if a pull is was needed or forced.
     - name: download_container | Check if image changed
@@ -63,10 +63,8 @@
         image_changed: "{{ true if pull_task_result.stdout is defined and not 'up to date' in pull_task_result.stdout else false }}"
       run_once: true
       when:
-        - pull_required | default(download_always_pull)
-        - download_force_cache
-      tags:
-        - facts
+        - ( download_run_once or (pull_required | default(download_always_pull)))
+        - ( download_force_cache and not image_is_cached )
 
 ### docker save
     - name: download_container | Save and compress image
@@ -78,8 +76,7 @@
       run_once: true
       become: "{{ user_can_become_root | default(false) or not download_localhost }}"
       when:
-        - pull_required | default(download_always_pull)
-        - download_force_cache
+        - ( download_run_once or (pull_required | default(download_always_pull)))
         - not image_is_cached or (image_changed | default(true))
         - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
 
@@ -90,11 +87,11 @@
         use_ssh_args: "{{ has_bastion | default(false) }}"
         mode: pull
       when:
-        - pull_required | default(download_always_pull)
+        - ( download_run_once or (pull_required | default(download_always_pull)))
         - download_force_cache
+        - not image_is_cached or (image_changed | default(true))
         - not download_localhost
         - download_delegate == inventory_hostname
-        - not image_is_cached or (image_changed | default(true))
         - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
 
     - name: download_container | Upload image to node if it is cached

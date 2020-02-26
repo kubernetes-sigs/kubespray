@@ -198,7 +198,7 @@ class KubesprayInventory(object):
                     all_hosts[next_host] = {'ansible_host': access_ip,
                                             'ip': ip,
                                             'access_ip': access_ip,
-                                           'ansible_user': ANSIBLE_USER}
+                                            'ansible_user': ANSIBLE_USER}
                 else:
                     all_hosts[next_host] = {'ansible_host': access_ip,
                                             'ip': ip,
@@ -218,14 +218,14 @@ class KubesprayInventory(object):
                     self.debug("Skipping existing host {0}.".format(ip))
                     continue
                 if ANSIBLE_USER:
-                    all_hosts[next_host] = {'ansible_host': access_ip,
-                                            'ip': ip,
-                                            'access_ip': access_ip,
+                    all_hosts[hostname] = {'ansible_host': access_ip,
+                                           'ip': ip,
+                                           'access_ip': access_ip,
                                            'ansible_user': ANSIBLE_USER}
                 else:
-                    all_hosts[next_host] = {'ansible_host': access_ip,
-                                            'ip': ip,
-                                            'access_ip': access_ip}
+                    all_hosts[hostname] = {'ansible_host': access_ip,
+                                           'ip': ip,
+                                           'access_ip': access_ip}
         return all_hosts
 
     def range2ips(self, hosts):

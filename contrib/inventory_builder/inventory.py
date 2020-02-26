@@ -199,7 +199,7 @@ class KubesprayInventory(object):
                                             'ip': ip,
                                             'access_ip': access_ip,
                                            'ansible_user': ANSIBLE_USER}
-                elif:
+                else:
                     all_hosts[next_host] = {'ansible_host': access_ip,
                                             'ip': ip,
                                             'access_ip': access_ip}
@@ -222,7 +222,7 @@ class KubesprayInventory(object):
                                             'ip': ip,
                                             'access_ip': access_ip,
                                            'ansible_user': ANSIBLE_USER}
-                elif:
+                else:
                     all_hosts[next_host] = {'ansible_host': access_ip,
                                             'ip': ip,
                                             'access_ip': access_ip}

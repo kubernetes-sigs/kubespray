@@ -62,10 +62,11 @@ def get_var_as_bool(name, default):
 
 
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory/sample/hosts.yaml")
-KUBE_MASTERS = int(os.environ.get("KUBE_MASTERS_MASTERS", 3))
+ANSIBLE_USER = os.environ.get("ANSIBLE_USER", None)
+KUBE_MASTERS = int(os.environ.get("KUBE_MASTERS_MASTERS", 2))
 # Reconfigures cluster distribution at scale
 SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 50))
-MASSIVE_SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 3))
+MASSIVE_SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 200))
 
 DEBUG = get_var_as_bool("DEBUG", True)
 HOST_PREFIX = os.environ.get("HOST_PREFIX", "node")
@@ -193,10 +194,16 @@ class KubesprayInventory(object):
 
                 next_host = "{0}{1}".format(HOST_PREFIX, next_host_id)
                 next_host_id += 1
-                all_hosts[next_host] = {'ansible_host': access_ip,
-                                        'ip': ip,
-                                        'access_ip': access_ip,
-                                       'ansible_user': 'root'}
+                if ANSIBLE_USER:
+                    all_hosts[next_host] = {'ansible_host': access_ip,
+                                            'ip': ip,
+                                            'access_ip': access_ip,
+                                           'ansible_user': ANSIBLE_USER}
+                elif:
+                    all_hosts[next_host] = {'ansible_host': access_ip,
+                                            'ip': ip,
+                                            'access_ip': access_ip}
+
             elif host[0].isalpha():
                 if ',' in host:
                     try:
@@ -210,10 +217,15 @@ class KubesprayInventory(object):
                 elif self.exists_ip(all_hosts, ip):
                     self.debug("Skipping existing host {0}.".format(ip))
                     continue
-                all_hosts[hostname] = {'ansible_host': access_ip,
-                                       'ip': ip,
-                                       'access_ip': access_ip,
-                                       'ansible_user': 'root'}
+                if ANSIBLE_USER:
+                    all_hosts[next_host] = {'ansible_host': access_ip,
+                                            'ip': ip,
+                                            'access_ip': access_ip,
+                                           'ansible_user': ANSIBLE_USER}
+                elif:
+                    all_hosts[next_host] = {'ansible_host': access_ip,
+                                            'ip': ip,
+                                            'access_ip': access_ip}
         return all_hosts
 
     def range2ips(self, hosts):

@@ -44,14 +44,22 @@
     - { role: kubespray-defaults}
     - { role: bootstrap-os, tags: bootstrap-os}
 
-- hosts: k8s-cluster:etcd:calico-rr
+- name: Prepare nodes for upgrade
+  hosts: k8s-cluster:etcd:calico-rr
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: kubernetes/preinstall, tags: preinstall }
+    - { role: download, tags: download, when: "not skip_downloads" }
+  environment: "{{ proxy_env }}"
+
+- name: Upgrade container engine on non-cluster nodes
+  hosts: etcd:calico-rr:!k8s-cluster
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: "{{ serial | default('20%') }}"
   roles:
     - { role: kubespray-defaults}
-    - { role: kubernetes/preinstall, tags: preinstall }
     - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
-    - { role: download, tags: download, when: "not skip_downloads" }
   environment: "{{ proxy_env }}"
 
 - hosts: etcd
@@ -83,6 +91,7 @@
   roles:
     - { role: kubespray-defaults}
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
+    - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
     - { role: kubernetes/node, tags: node }
     - { role: kubernetes/master, tags: master, upgrade_cluster_setup: true }
     - { role: kubernetes/client, tags: client }
@@ -108,6 +117,7 @@
   roles:
     - { role: kubespray-defaults}
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
+    - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
     - { role: kubernetes/node, tags: node }
     - { role: kubernetes/kubeadm, tags: kubeadm, when: "kubeadm_enabled" }
     - { role: kubernetes/node-label, tags: node-label }

@@ -13,11 +13,13 @@ There is also a "pull once, push many" mode as well:
 
 NOTE: When `download_run_once` is true and `download_localhost` is false, all downloads will be done on the delegate node, including downloads for container images that are not required on that node. As a consequence, the storage required on that node will probably be more than if download_run_once was false, because all images will be loaded into the docker instance on that node, instead of just the images required for that node.
 
+:warning: [`download_run_once: true` support only for `container_manager: docker`](https://github.com/containerd/containerd/issues/4075) :warning:
+
 On caching:
 
 * When `download_run_once` is `True`, all downloaded files will be cached locally in `download_cache_dir`, which defaults to `/tmp/kubespray_cache`. On subsequent provisioning runs, this local cache will be used to provision the nodes, minimizing bandwidth usage and improving provisioning time. Expect about 800MB of disk space to be used on the ansible node for the cache. Disk space required for the image cache on the kubernetes nodes is a much as is needed for the largest image, which is currently slightly less than 150MB.
-* By default, if `download_run_once` is false, kubespray will not retrieve the downloaded images and files from the remote node to the local cache, or use that cache to pre-provision those nodes. To force the use of the cache, set `download_force_cache` to `True`.
-* By default, cached images that are used to pre-provision the remote nodes will be deleted from the remote nodes after use, to save disk space. Setting download_keep_remote_cache will prevent the files from being deleted. This can be useful while developing kubespray, as it can decrease provisioning times. As a consequence, the required storage for images on the remote nodes will increase from 150MB to about 550MB, which is currently the combined size of all required container images.
+* By default, if `download_run_once` is false, kubespray will not retrieve the downloaded images and files from the download delegate node to the local cache, or use that cache to pre-provision those nodes. If you have a full cache with container images and files and you don’t need to download anything, but want to use a cache - set `download_force_cache` to `True`.
+* By default, cached images that are used to pre-provision the remote nodes will be deleted from the remote nodes after use, to save disk space. Setting `download_keep_remote_cache` will prevent the files from being deleted. This can be useful while developing kubespray, as it can decrease provisioning times. As a consequence, the required storage for images on the remote nodes will increase from 150MB to about 550MB, which is currently the combined size of all required container images.
 
 Container images and binary files are described by the vars like ``foo_version``,
 ``foo_download_url``, ``foo_checksum`` for binaries and ``foo_image_repo``,

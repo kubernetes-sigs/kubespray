@@ -1,0 +1,20 @@
+---
+- name: reset_kube_router
+  command: /bin/true
+  notify:
+    - docker | delete kube-router containers
+    - containerd | delete kube-router containers
+
+- name: docker | delete kube-router containers
+  shell: "docker ps -af name=k8s_POD_kube-router* -q | xargs --no-run-if-empty docker rm -f"
+  register: docker_kube_router_remove
+  until: docker_kube_router_remove is succeeded
+  retries: 5
+  when: container_manager in ["docker"]
+
+- name: containerd | delete kube-router containers
+  shell: 'crictl pods --name kube-router* -q | xargs -I% --no-run-if-empty bash -c "crictl stopp % && crictl rmp %"'
+  register: crictl_kube_router_remove
+  until: crictl_kube_router_remove is succeeded
+  retries: 5
+  when: container_manager in ["crio", "containerd"]

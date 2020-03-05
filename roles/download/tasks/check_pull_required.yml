@@ -6,19 +6,17 @@
 # nginx:1.15,gcr.io/google-containers/kube-proxy:v1.14.1,gcr.io/google-containers/kube-proxy@sha256:44af2833c6cbd9a7fc2e9d2f5244a39dfd2e31ad91bf9d4b7d810678db738ee9,gcr.io/google-containers/kube-apiserver:v1.14.1,etc...
 - name: check_pull_required |  Generate a list of information about the images on a node
   shell: "{{ image_info_command }}"
-  delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
   no_log: true
   register: docker_images
   failed_when: false
   changed_when: false
   check_mode: no
-  become: "{{ not download_localhost }}"
   when: not download_always_pull
 
 - name: check_pull_required | Set pull_required if the desired image is not yet loaded
   set_fact:
     pull_required: >-
-      {%- if image_reponame in docker_images.stdout.split(',') %}false{%- else -%}true{%- endif -%}
+      {%- if image_reponame | regex_replace('^docker\.io/(library/)?','') in docker_images.stdout.split(',') %}false{%- else -%}true{%- endif -%}
   when: not download_always_pull
 
 - name: check_pull_required | Check that the local digest sha256 corresponds to the given image tag

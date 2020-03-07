@@ -1,7 +1,7 @@
 ---
 - name: Lookup node IP in kubernetes
   shell: >-
-    {{ bin_dir }}/kubectl get nodes {{ node }}
+    {{ hostvars[groups['etcd']|first]['bin_dir'] }}/kubectl get nodes {{ node }}
     -o jsonpath='{range.status.addresses[?(@.type=="InternalIP")]}{.address}{"\n"}{end}'
   register: remove_node_ip
   when:
@@ -18,13 +18,13 @@
     - inventory_hostname in groups['etcd']
 
 - name: Delete node
-  command: "{{ bin_dir }}/kubectl delete node {{ inventory_hostname }}"
+  command: "{{ hostvars[groups['kube-master']|first]['bin_dir'] }}/kubectl delete node {{ inventory_hostname }}"
   delegate_to: "{{ groups['kube-master']|first }}"
   run_once: true
   ignore_errors: yes
 
 - name: Lookup etcd member id
-  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses }} member list | grep {{ node_ip }} | cut -d: -f1"
+  shell: "{{ hostvars[groups['etcd']|first]['bin_dir'] }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses }} member list | grep {{ node_ip }} | cut -d: -f1"
   register: etcd_member_id
   ignore_errors: true
   changed_when: false
@@ -39,7 +39,7 @@
   when: inventory_hostname in groups['etcd']
 
 - name: Remove etcd member from cluster
-  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses }} member remove {{ etcd_member_id.stdout }}"
+  shell: "{{ hostvars[groups['etcd']|first]['bin_dir'] }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses }} member remove {{ etcd_member_id.stdout }}"
   register: etcd_member_in_cluster
   ignore_errors: true
   changed_when: false

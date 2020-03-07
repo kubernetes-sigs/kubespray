@@ -32,7 +32,7 @@
   run_once: true
 
 - name: Create kubeadm token for joining nodes with 24h expiration (default)
-  command: "{{ bin_dir }}/kubeadm token create"
+  command: "{{ hostvars[groups['kube-master'][0]]['bin_dir'] }}/kubeadm token create"
   register: temp_token
   delegate_to: "{{ groups['kube-master'][0] }}"
   when: kubeadm_token is not defined
@@ -107,9 +107,9 @@
 #                 incorrectly to first master, creating SPoF.
 - name: Update server field in kube-proxy kubeconfig
   shell: >-
-    {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get configmap kube-proxy -n kube-system -o yaml
+    {{ hostvars[groups['kube-master']|first]['bin_dir'] }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get configmap kube-proxy -n kube-system -o yaml
     | sed 's#server:.*#server: https://127.0.0.1:{{ kube_apiserver_port }}#g'
-    | {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
+    | {{ hostvars[groups['kube-master']|first]['bin_dir'] }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
   run_once: true
   delegate_to: "{{ groups['kube-master']|first }}"
   when:
@@ -127,7 +127,7 @@
     mode: "0644"
 
 - name: Restart all kube-proxy pods to ensure that they load the new configmap
-  shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
+  shell: "{{ hostvars[groups['kube-master']|first]['bin_dir'] }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
   run_once: true
   delegate_to: "{{ groups['kube-master']|first }}"
   when:
@@ -151,7 +151,7 @@
 # FIXME(jjo): need to post-remove kube-proxy until https://github.com/kubernetes/kubeadm/issues/776
 # is fixed
 - name: Delete kube-proxy daemonset if kube_proxy_remove set, e.g. kube_network_plugin providing proxy services
-  shell: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf delete daemonset -n kube-system kube-proxy"
+  shell: "{{ hostvars[groups['kube-master']|first]['bin_dir'] }}/kubectl --kubeconfig /etc/kubernetes/admin.conf delete daemonset -n kube-system kube-proxy"
   run_once: true
   delegate_to: "{{ groups['kube-master']|first }}"
   when:

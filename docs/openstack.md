@@ -34,7 +34,6 @@ First you will need the ids of your OpenStack instances that will run kubernetes
 
 Then you can use the instance ids to find the connected [neutron](https://wiki.openstack.org/wiki/Neutron) ports (though they are now configured through using OpenStack):
 
-
   ```bash
   openstack port list -c id -c device_id --project YOUR_PROJECT
   +--------------------------------------+--------------------------------------+
@@ -53,7 +52,6 @@ Given the port ids on the left, you can set the two `allowed-address`(es) in Ope
   ```
 
 If all the VMs in the tenant correspond to kubespray deployment, you can "sweep run" above with:
-
 
   ```bash
   openstack port list --device-owner=compute:nova -c ID -f value | xargs -tI@ openstack port set @ --allowed-address ip-address=10.233.0.0/18 --allowed-address ip-address=10.233.64.0/18
@@ -91,7 +89,7 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
 - Enable 3 feature gates to allow migration of all volumes and storage classes (if you have any feature gates already set just add the 3 listed below):
 
   ```yaml
-  kube_feature_gates:   
+  kube_feature_gates:
   - CSIMigration=true
   - CSIMigrationOpenStack=true
   - ExpandCSIVolumes=true

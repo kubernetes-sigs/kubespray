@@ -91,4 +91,4 @@ kube_feature_gates:
 
 7. Run the cleanup playbook located under extra_playbooks `extra_playbooks/migrate_openstack_provider.yml` (this will clean up all resources used by the old cloud provider)
 
-7. You can remove the feature gates for Volume migration. If you want to enable the possibility to expand CSI volumes you could leave the `ExpandCSIVolumes=true` feature gate
+8. You can remove the feature gates for Volume migration. If you want to enable the possibility to expand CSI volumes you could leave the `ExpandCSIVolumes=true` feature gate

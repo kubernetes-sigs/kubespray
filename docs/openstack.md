@@ -58,25 +58,29 @@ The in-tree cloud provider is deprecated and will be removed in a future version
 The new cloud provider is configured to have Octavia by default in Kubespray.
 
 1. Change cloud provider from `cloud_provider: openstack` to the new external Cloud provider:
-```
+
+```yaml
 cloud_provider: external
 external_cloud_provider: openstack
 ```
 
 2. Enable Cinder CSI:
-```
+
+```yaml
 cinder_csi_enabled: true
 ```
 
 3. Enable topology support (optional), if your openstack provider has custom Zone names you can override the default "nova" zone by setting the variable `cinder_topology_zones`
-```
+
+```yaml
 cinder_topology: true
 ```
 
 4. If you are using Octavia replace the `openstack_lbaas_subnet_id` with the new `external_openstack_lbaas_subnet_id`. (Octavia is the default option meaning you could remove the old `openstack_lbaas_use_octavia` variable.)
 
 5. Enable 3 feature gates to allow migration of all volumes and storage classes (if you have any feature gates already set just add the 3 listed below):
-```
+
+```yaml
 kube_feature_gates:
   - CSIMigration=true
   - CSIMigrationOpenStack=true

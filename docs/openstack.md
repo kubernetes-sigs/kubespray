@@ -76,7 +76,7 @@ cinder_csi_enabled: true
 cinder_topology: true
 ```
 
-4. If you are using OpenStack loadbalancer(s) replace the `openstack_lbaas_subnet_id` with the new `external_openstack_lbaas_subnet_id`. **Note** That the new cloud provider is using Octavia in stead of LBaaS by default!
+4. If you are using OpenStack loadbalancer(s) replace the `openstack_lbaas_subnet_id` with the new `external_openstack_lbaas_subnet_id`. **Note** The new cloud provider is using Octavia instead of Neutron LBaaS by default!
 
 5. Enable 3 feature gates to allow migration of all volumes and storage classes (if you have any feature gates already set just add the 3 listed below):
 

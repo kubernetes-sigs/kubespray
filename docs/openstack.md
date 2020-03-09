@@ -50,3 +50,39 @@ If all the VMs in the tenant correspond to kubespray deployment, you can "sweep 
     openstack port list --device-owner=compute:nova -c ID -f value | xargs -tI@ openstack port set @ --allowed-address ip-address=10.233.0.0/18 --allowed-address ip-address=10.233.64.0/18
 
 Now you can finally run the playbook.
+
+## Upgrade from the in-tree to the external cloud provider.
+
+The in-tree cloud provider is deprecated and will be removed in a future version of Kubernetes. The target release for removing all remaining in-tree cloud providers is set to 1.21
+
+The new cloud provider is configured to have Octavia by default in Kubespray.
+
+1. Change cloud provider from `cloud_provider: openstack` to the new external Cloud provider:
+```
+cloud_provider: external
+external_cloud_provider: openstack
+```
+
+2. Enable Cinder CSI:
+```
+cinder_csi_enabled: true
+```
+
+3. Enable topology support (optional), if your openstack provider has custom Zone names you can override the default "nova" zone by setting the variable `cinder_topology_zones`
+```
+cinder_topology: true
+```
+
+4. If you are using Octavia replace the `openstack_lbaas_subnet_id` with the new `external_openstack_lbaas_subnet_id`. (Octavia is the default option meaning you could remove the old `openstack_lbaas_use_octavia` variable.)
+
+5. Enable 3 feature gates to allow migration of all volumes and storage classes (if you have any feature gates already set just add the 3 listed below):
+```
+kube_feature_gates:
+  - CSIMigration=true
+  - CSIMigrationOpenStack=true
+  - ExpandCSIVolumes=true 
+```
+
+6. Run the `upgrade-cluster.yml` playbook
+
+7. You can remove the feature gates for Volume migration. If you want to enable the possibility to expand CSI volumes you could leave the `ExpandCSIVolumes=true` feature gate

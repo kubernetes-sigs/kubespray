@@ -59,36 +59,33 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
 
 - Change cloud provider from `cloud_provider: openstack` to the new external Cloud provider:
 
-```yaml
-cloud_provider: external
-external_cloud_provider: openstack
-```
+    ```yaml
+    cloud_provider: external
+    external_cloud_provider: openstack
+    ```
 
 - Enable Cinder CSI:
 
-```yaml
-cinder_csi_enabled: true
-```
+    ```yaml
+    cinder_csi_enabled: true
+    ```
 
 - Enable topology support (optional), if your openstack provider has custom Zone names you can override the default "nova" zone by setting the variable `cinder_topology_zones`
 
-```yaml
-cinder_topology: true
-```
+    ```yaml
+    cinder_topology: true
+    ```
 
 - If you are using OpenStack loadbalancer(s) replace the `openstack_lbaas_subnet_id` with the new `external_openstack_lbaas_subnet_id`. **Note** The new cloud provider is using Octavia instead of Neutron LBaaS by default!
-
 - Enable 3 feature gates to allow migration of all volumes and storage classes (if you have any feature gates already set just add the 3 listed below):
 
-```yaml
-kube_feature_gates:
-  - CSIMigration=true
-  - CSIMigrationOpenStack=true
-  - ExpandCSIVolumes=true 
-```
+    ```yaml
+    kube_feature_gates:   
+    - CSIMigration=true
+    - CSIMigrationOpenStack=true
+    - ExpandCSIVolumes=true
+    ```
 
 - Run the `upgrade-cluster.yml` playbook
-
 - Run the cleanup playbook located under extra_playbooks `extra_playbooks/migrate_openstack_provider.yml` (this will clean up all resources used by the old cloud provider)
-
 - You can remove the feature gates for Volume migration. If you want to enable the possibility to expand CSI volumes you could leave the `ExpandCSIVolumes=true` feature gate

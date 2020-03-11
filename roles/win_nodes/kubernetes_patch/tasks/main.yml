@@ -16,15 +16,21 @@
 
     # Due to https://github.com/kubernetes/kubernetes/issues/58212 we cannot rely on exit code for "kubectl patch"
     - name: Check current nodeselector for kube-proxy daemonset
-      shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get ds kube-proxy --namespace=kube-system -o jsonpath='{.spec.template.spec.nodeSelector.beta.kubernetes.io/os}'"
+      command: >-
+        {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf
+        get ds kube-proxy --namespace=kube-system
+        -o jsonpath='{.spec.template.spec.nodeSelector.beta\.kubernetes\.io/os}'
       register: current_kube_proxy_state
       retries: 60
       delay: 5
       until: current_kube_proxy_state is succeeded
-
+      changed_when: false
 
     - name: Apply nodeselector patch for kube-proxy daemonset
-      shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf patch ds kube-proxy --namespace=kube-system --type=strategic -p \"$(cat nodeselector-os-linux-patch.json)\""
+      shell: >-
+        {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf
+        patch ds kube-proxy --namespace=kube-system --type=strategic -p
+        "$(cat nodeselector-os-linux-patch.json)"
       args:
         chdir: "{{ kubernetes_user_manifests_path }}"
       register: patch_kube_proxy_state

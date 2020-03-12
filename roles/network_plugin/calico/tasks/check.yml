@@ -4,10 +4,38 @@
     that:
       - "calico_pool_name is defined"
       - "calico_pool_name is match('^[a-zA-Z0-9-_\\\\.]{2,63}$')"
-      - "ipip_mode is defined"
-      - "ipip_mode in ['Always', 'CrossSubnet', 'Never']"
-    msg: "Check variable definitions seems something is wrong"
-  run_once: yes
+    msg: "calico_pool_name contains invalid characters"
+
+- name: "Check calico network backend defined correctly"
+  assert:
+    that:
+      - "calico_network_backend in ['bird', 'vxlan', 'none']"
+    msg: "calico network backend is not 'bird', 'vxlan' or 'none'"
+  when:
+    - calico_network_backend is defined
+
+- name: "Check ipip and vxlan mode defined correctly"
+  assert:
+    that:
+      - "calico_ipip_mode in ['Always', 'CrossSubnet', 'Never']"
+      - "calico_vxlan_mode in ['Always', 'CrossSubnet', 'Never']"
+    msg: "calico inter host encapsulation mode is not 'Always', 'CrossSubnet' or 'Never'"
+
+- name: "Check ipip and vxlan mode if simultaneously enabled"
+  assert:
+    that:
+      - "calico_vxlan_mode in ['Never']"
+    msg: "IP in IP and VXLAN mode is mutualy exclusive modes"
+  when:
+    - "calico_ipip_mode in ['Always', 'CrossSubnet']"
+
+- name: "Check ipip and vxlan mode if simultaneously enabled"
+  assert:
+    that:
+      - "calico_ipip_mode in ['Never']"
+    msg: "IP in IP and VXLAN mode is mutualy exclusive modes"
+  when:
+    - "calico_vxlan_mode in ['Always', 'CrossSubnet']"
 
 - name: "Get current version of calico cluster version"
   shell: "{{ bin_dir }}/calicoctl.sh version  | grep 'Cluster Version:' | awk '{ print $3}'"

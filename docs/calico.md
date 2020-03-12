@@ -12,55 +12,55 @@ Check if the calico-node container is running
 docker ps | grep calico
 ```
 
-The **calicoctl** command allows to check the status of the network workloads.
+The **calicoctl.sh** is wrap script with configured acces credentials for command calicoctl allows to check the status of the network workloads.
 
 * Check the status of Calico nodes
 
 ```ShellSession
-calicoctl node status
+calicoctl.sh node status
 ```
 
 or for versions prior to *v1.0.0*:
 
 ```ShellSession
-calicoctl status
+calicoctl.sh status
 ```
 
 * Show the configured network subnet for containers
 
 ```ShellSession
-calicoctl get ippool -o wide
+calicoctl.sh get ippool -o wide
 ```
 
 or for versions prior to *v1.0.0*:
 
 ```ShellSession
-calicoctl pool show
+calicoctl.sh pool show
 ```
 
 * Show the workloads (ip addresses of containers and their located)
 
 ```ShellSession
-calicoctl get workloadEndpoint -o wide
+calicoctl.sh get workloadEndpoint -o wide
 ```
 
 and
 
 ```ShellSession
-calicoctl get hostEndpoint -o wide
+calicoctl.sh get hostEndpoint -o wide
 ```
 
 or for versions prior *v1.0.0*:
 
 ```ShellSession
-calicoctl endpoint show --detail
+calicoctl.sh endpoint show --detail
 ```
 
 ## Configuration
 
 ### Optional : Define network backend
 
-In some cases you may want to define Calico network backend. Allowed values are 'bird', 'gobgp' or 'none'. Bird is a default value.
+In some cases you may want to define Calico network backend. Allowed values are `bird`, `vxlan` or `none`. Bird is a default value.
 
 To re-define you need to edit the inventory and add a group variable `calico_network_backend`
 
@@ -199,9 +199,29 @@ To re-define health host please set the following variable in your inventory:
 calico_healthhost: "0.0.0.0"
 ```
 
+## Config encapsulation for cross server traffic
+
+Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.projectcalico.org/v3.11/networking/vxlan-ipip). VXLAN is supported in some environments where IP in IP is not (for example, Azure).
+
+*IP in IP* and *VXLAN* is mutualy exclusive modes.
+
+Configure Ip in Ip mode. Possible values is `Always`, `CrossSubnet`, `Never`.
+
+```yml
+calico_ipip_mode: 'Always'
+```
+
+Configure VXLAN mode. Possible values is `Always`, `CrossSubnet`, `Never`.
+
+```yml
+calico_vxlan_mode: 'Never'
+```
+
+If you use VXLAN mode, BGP networking is not required. You can disable BGP to reduce the moving parts in your cluster by `calico_network_backend: vxlan`
+
 ## Cloud providers configuration
 
-Please refer to the official documentation, for example [GCE configuration](http://docs.projectcalico.org/v1.5/getting-started/docker/installation/gce) requires a security rule for calico ip-ip tunnels. Note, calico is always configured with ``ipip: true`` if the cloud provider was defined.
+Please refer to the official documentation, for example [GCE configuration](http://docs.projectcalico.org/v1.5/getting-started/docker/installation/gce) requires a security rule for calico ip-ip tunnels. Note, calico is always configured with ``calico_ipip_mode: Always`` if the cloud provider was defined.
 
 ### Optional : Ignore kernel's RPF check setting
 

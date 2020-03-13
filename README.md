@@ -137,7 +137,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [contiv](https://github.com/contiv/install) v1.2.1
   - [flanneld](https://github.com/coreos/flannel) v0.11.0
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.5
-  - [multus](https://github.com/intel/multus-cni) v3.2.1
+  - [multus](https://github.com/intel/multus-cni) v3.4
   - [weave](https://github.com/weaveworks/weave) v2.5.2
 - Application
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11

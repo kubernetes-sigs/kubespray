@@ -36,6 +36,10 @@ spec:
         - "--cni-bin-dir={{ multus_cni_bin_dir }}"
         - "--multus-conf-file={{ multus_conf_file }}"
         - "--multus-kubeconfig-file-host={{ multus_kubeconfig_file_host }}"
+        - "--cni-version={{ multus_cni_version }}"
+{% if container_manager == 'crio' %}
+        - "--restart-crio=true"
+{% endif %}
         resources:
           requests:
             cpu: "100m"
@@ -45,12 +49,25 @@ spec:
             memory: "50Mi"
         securityContext:
           privileged: true
+{% if container_manager == 'crio' %}
+          capabilities:
+            add: ["SYS_ADMIN"]
+{% endif %}
         volumeMounts:
+{% if container_manager == 'crio' %}
+        - name: run
+          mountPath: {{ multus_cni_run_dir }}
+{% endif %}
         - name: cni
           mountPath: {{  multus_cni_conf_dir }}
         - name: cnibin
           mountPath: {{ multus_cni_bin_dir }}
       volumes:
+{% if container_manager == 'crio' %}
+      - name: run
+        hostPath:
+          path: {{ multus_cni_run_dir_host }}
+{% endif %}
       - name: cni
         hostPath:
           path: {{ multus_cni_conf_dir_host }}

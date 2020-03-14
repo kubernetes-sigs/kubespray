@@ -133,6 +133,25 @@ More information on the rationale behind this implementation can be found [here]
 
 **As per the 2.10 release, Nodelocal DNS cache is enabled by default.**
 
+### External zones
+
+It's possible to extent the `nodelocaldns`' configuration by adding an array of external zones. For example:
+
+```yaml
+nodelocaldns_external_zones:
+- zones:
+  - example.com
+  - example.io:1053
+  nameservers:
+  - 1.1.1.1
+  - 2.2.2.2
+  cache: 5
+- zones:
+  - https://mycompany.local:4453
+  nameservers:
+  - 192.168.0.53
+```
+
 ## Limitations
 
 * Kubespray has yet ways to configure Kubedns addon to forward requests SkyDns can

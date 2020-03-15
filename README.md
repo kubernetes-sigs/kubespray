@@ -105,6 +105,7 @@ vagrant up
 - [vSphere](docs/vsphere.md)
 - [Packet Host](docs/packet.md)
 - [Large deployments](docs/large-deployments.md)
+- [Adding/replacing a node](docs/nodes.md)
 - [Upgrades basics](docs/upgrades.md)
 - [Roadmap](docs/roadmap.md)
 

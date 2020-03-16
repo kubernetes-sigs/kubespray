@@ -1,0 +1,35 @@
+---
+
+- name: ALB Ingress Controller | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/alb_ingress"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: ALB Ingress Controller | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/alb_ingress/{{ item.file }}"
+  with_items:
+    - { name: alb-ingress-clusterrole, file: alb-ingress-clusterrole.yml, type: clusterrole }
+    - { name: alb-ingress-clusterrolebinding, file: alb-ingress-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: alb-ingress-ns, file: alb-ingress-ns.yml, type: ns }
+    - { name: alb-ingress-sa, file: alb-ingress-sa.yml, type: sa }
+    - { name: alb-ingress-deploy, file: alb-ingress-deploy.yml, type: deploy }
+  register: alb_ingress_manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: ALB Ingress Controller | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ alb_ingress_controller_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/alb_ingress/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ alb_ingress_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]

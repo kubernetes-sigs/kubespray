@@ -1,0 +1,35 @@
+---
+
+- name: Check if bootstrap is needed
+  raw: which python
+  register: need_bootstrap
+  failed_when: false
+  changed_when: false
+  tags:
+    - facts
+
+- name: Install required packages on fedora coreos
+  raw: "export http_proxy={{ http_proxy | default('') }};rpm-ostree install {{ fedora_coreos_packages|join(' ') }}"
+  become: true
+  when: need_bootstrap.rc != 0
+
+# playbook fails because connection lost
+- name: Reboot immediately for updated ostree, please run playbook again if failed first time.
+  raw: "nohup bash -c 'sleep 5s && shutdown -r now'"
+  become: true
+  ignore_errors: yes
+  when: need_bootstrap.rc != 0
+
+- name: Wait for the reboot to complete
+  wait_for_connection:
+    timeout: 240
+    connect_timeout: 20
+    delay: 5
+    sleep: 5
+  when: need_bootstrap.rc != 0
+
+- name: Store the fact if this is an fedora core os host
+  set_fact:
+    is_fedora_coreos: True
+  tags:
+    - facts

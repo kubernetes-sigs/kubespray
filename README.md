@@ -95,6 +95,7 @@ vagrant up
 - [Network plugins](#network-plugins)
 - [Vagrant install](docs/vagrant.md)
 - [CoreOS bootstrap](docs/coreos.md)
+- [Fedora CoreOS bootstrap](docs/fcos.md)
 - [Debian Jessie setup](docs/debian.md)
 - [openSUSE setup](docs/opensuse.md)
 - [Downloaded artifacts](docs/downloads.md)
@@ -117,6 +118,7 @@ vagrant up
 - **CentOS/RHEL** 7
 - **Fedora** 28
 - **Fedora/CentOS** Atomic
+- **Fedora CoreOS** (experimental: see [fcos Note](docs/fcos.md)
 - **openSUSE** Leap 42.3/Tumbleweed
 - **Oracle Linux** 7
 

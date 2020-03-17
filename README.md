@@ -117,7 +117,6 @@ vagrant up
 - **Ubuntu** 16.04, 18.04
 - **CentOS/RHEL** 7
 - **Fedora** 28
-- **Fedora/CentOS** Atomic
 - **Fedora CoreOS** (experimental: see [fcos Note](docs/fcos.md)
 - **openSUSE** Leap 42.3/Tumbleweed
 - **Oracle Linux** 7

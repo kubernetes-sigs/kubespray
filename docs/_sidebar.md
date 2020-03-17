@@ -23,9 +23,9 @@
   * [Packet](/docs/packet.md)
   * [vSphere](/docs/vsphere.md)
 * Operating Systems
-  * [Atomic](docs/atomic.md)
   * [Debian](docs/debian.md)
   * [Coreos](docs/coreos.md)
+  * [Fedora CoreOS](docs/fcos.md)  
   * [OpenSUSE](docs/opensuse.md)
 * Advanced
   * [Proxy](/docs/proxy.md)

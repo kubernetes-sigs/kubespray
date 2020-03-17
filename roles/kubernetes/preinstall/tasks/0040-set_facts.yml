@@ -198,12 +198,17 @@
   when:
     - etcd_kubeadm_enabled
 
-- name: check /usr readonly
+- name: check if the flexvolume root path is readonly
   stat:
-    path: "/usr"
-  register: usr
+    path: "{{ kubelet_flexvolumes_plugins_dir | regex_search('^/[^/]+(/|$)') }}" # matches the first directory in the path
+  register: flexvp_path
+
+- name: notify about the alternative flexvolume path
+  debug:
+    msg: "The requested flexvolumes plugins path is not writeable, using {{ kubelet_flexvolumes_plugins_ro_alt_dir }} instead of {{ kubelet_flexvolumes_plugins_dir }}."
+  when: not flexvp_path.stat.writeable
 
 - name: set alternate flexvolume path
   set_fact:
-    kubelet_flexvolumes_plugins_dir: /var/lib/kubelet/volumeplugins
-  when: not usr.stat.writeable
+    kubelet_flexvolumes_plugins_dir: "{{ kubelet_flexvolumes_plugins_ro_alt_dir }}"
+  when: not flexvp_path.stat.writeable

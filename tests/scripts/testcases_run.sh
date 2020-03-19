@@ -60,6 +60,9 @@ ansible-playbook -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_host
 ## Test that all pods are Running
 ansible-playbook -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_hosts" tests/testcases/015_check-pods-running.yml $LOG_LEVEL
 
+## Test that all nodes are Ready
+ansible-playbook -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_hosts" tests/testcases/020_check-nodes-ready.yml $LOG_LEVEL
+
 ## Test pod creation and ping between them
 ansible-playbook -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_hosts" tests/testcases/030_check-network.yml $LOG_LEVEL
 

@@ -69,6 +69,8 @@ following default cluster parameters:
   (default is k8s_external.local)
 * *enable_coredns_k8s_endpoint_pod_names* - If enabled, it configures endpoint_pod_names option for kubernetes plugin.
   on the CoreDNS service.
+* *coredns_custom_corefile* - If defined, it will be used as the value for Corefile in the coredns configMap
+  on the CoreDNS service.
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)
 * *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in

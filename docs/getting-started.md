@@ -106,7 +106,7 @@ If the variable `dashboard_enabled` is set (default is true), then you can acces
 Or you can run 'kubectl proxy' from your local machine to access dashboard in your browser from:
 <http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/login>
 
-It is recommended to access dashboard from behind a gateway (like Ingress Controller) that enforces an authentication token. Details and other access options here: <https://github.com/kubernetes/dashboard/wiki/Accessing-Dashboard---1.7.X-and-above>
+It is recommended to access dashboard from behind a gateway (like Ingress Controller) that enforces an authentication token. Details and other access options here: <https://github.com/kubernetes/dashboard/blob/master/docs/user/accessing-dashboard/1.7.x-and-above.md>
 
 ## Accessing Kubernetes API
 

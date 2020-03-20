@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description='Cleanup OpenStack VMs')
 parser.add_argument('-v', '--verbose', action='store_true',
                     help='Increase verbosity')
 parser.add_argument('--hours', type=int, default=4,
-                    help='Age (in hours) of VMs to cleanup')
+                    help='Age (in hours) of VMs to cleanup (default: 4h)')
 parser.add_argument('--dry-run', action='store_true',
                     help='Do not delete anything')
 

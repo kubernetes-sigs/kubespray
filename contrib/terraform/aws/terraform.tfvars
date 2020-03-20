@@ -7,19 +7,19 @@ aws_cidr_subnets_private = ["10.250.192.0/20", "10.250.208.0/20"]
 aws_cidr_subnets_public  = ["10.250.224.0/20", "10.250.240.0/20"]
 
 #Bastion Host
-aws_bastion_size = "t2.medium"
+aws_bastion_size = "t2.micro"
 
 
 #Kubernetes Cluster
 
 aws_kube_master_num  = 3
-aws_kube_master_size = "t2.medium"
+aws_kube_master_size = "t3a.small"
 
 aws_etcd_num  = 3
-aws_etcd_size = "t2.medium"
+aws_etcd_size = "t3a.small"
 
 aws_kube_worker_num  = 4
-aws_kube_worker_size = "t2.medium"
+aws_kube_worker_size = "t3a.small"
 
 #Settings AWS ELB
 
@@ -32,4 +32,4 @@ default_tags = {
   #  Product = "kubernetes"
 }
 
-inventory_file = "../../../inventory/hosts"
+inventory_file = "inventory"

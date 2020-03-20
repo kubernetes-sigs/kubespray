@@ -16,15 +16,12 @@ variable "k8s_secure_api_port" {
 
 variable "aws_avail_zones" {
   description = "Availability Zones Used"
-  type        = "list"
 }
 
 variable "aws_subnet_ids_public" {
   description = "IDs of Public Subnets"
-  type        = "list"
 }
 
 variable "default_tags" {
   description = "Tags for all resources"
-  type        = "map"
 }

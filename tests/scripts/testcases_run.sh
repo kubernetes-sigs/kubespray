@@ -34,7 +34,7 @@ fi
 # Check out latest tag if testing upgrade
 test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY_VERSION"
 # Checkout the CI vars file so it is available
-test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
+test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml tests/testcases/*.yml
 
 # Create cluster
 ansible-playbook ${LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_hosts" cluster.yml

@@ -36,7 +36,7 @@ ansible-playbook -i inventory/mycluster/hosts.yml cluster.yml -b -v \
   --private-key=~/.ssh/private_key
 ```
 
-See more details in the [ansible guide](ansible.md).
+See more details in the [ansible guide](docs/ansible.md).
 
 ### Adding nodes
 
@@ -81,7 +81,7 @@ kube-apiserver via port 8080. A kubeconfig file is not necessary in this case,
 because kubectl will use <http://localhost:8080> to connect. The kubeconfig files
 generated will point to localhost (on kube-masters) and kube-node hosts will
 connect either to a localhost nginx proxy or to a loadbalancer if configured.
-More details on this process are in the [HA guide](ha-mode.md).
+More details on this process are in the [HA guide](docs/ha-mode.md).
 
 Kubespray permits connecting to the cluster remotely on any IP of any
 kube-master host on port 6443 by default. However, this requires

@@ -19,7 +19,7 @@ output "aws_elb_api_fqdn" {
 }
 
 output "inventory" {
-  value = data.template_file.inventory.rendered
+  value = local_file.inventory.content
 }
 
 output "default_tags" {

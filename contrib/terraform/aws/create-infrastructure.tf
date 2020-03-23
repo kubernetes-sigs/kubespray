@@ -141,14 +141,41 @@ resource "aws_instance" "k8s-worker" {
   ))
 }
 
+# /*
+# * Create Kubespray Inventory File
+# *
+# */
+# data "template_file" "inventory" {
+#   template = file("${path.module}/templates/inventory.tpl")
+
+#   vars = {
+#     public_ip_address_bastion = join("\n", formatlist("bastion ansible_host=%s", aws_instance.bastion-server.*.public_ip))
+#     connection_strings_master = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-master.*.private_dns, aws_instance.k8s-master.*.private_ip))
+#     connection_strings_node   = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-worker.*.private_dns, aws_instance.k8s-worker.*.private_ip))
+#     connection_strings_etcd   = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-etcd.*.private_dns, aws_instance.k8s-etcd.*.private_ip))
+#     list_master               = join("\n", aws_instance.k8s-master.*.private_dns)
+#     list_node                 = join("\n", aws_instance.k8s-worker.*.private_dns)
+#     list_etcd                 = join("\n", aws_instance.k8s-etcd.*.private_dns)
+#     elb_api_fqdn              = "apiserver_loadbalancer_domain_name=\"${module.aws-elb.aws_elb_api_fqdn}\""
+#   }
+# }
+
+# resource "null_resource" "inventories" {
+#   provisioner "local-exec" {
+#     command = "echo '${data.template_file.inventory.rendered}' > ${var.inventory_file}"
+#   }
+
+#   triggers = {
+#     template = data.template_file.inventory.rendered
+#   }
+# }
+
 /*
 * Create Kubespray Inventory File
 *
 */
-data "template_file" "inventory" {
-  template = file("${path.module}/templates/inventory.tpl")
-
-  vars = {
+resource "local_file" "inventory" {
+  content  = templatefile("${path.module}/templates/inventory.tpl", {
     public_ip_address_bastion = join("\n", formatlist("bastion ansible_host=%s", aws_instance.bastion-server.*.public_ip))
     connection_strings_master = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-master.*.private_dns, aws_instance.k8s-master.*.private_ip))
     connection_strings_node   = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-worker.*.private_dns, aws_instance.k8s-worker.*.private_ip))
@@ -157,15 +184,6 @@ data "template_file" "inventory" {
     list_node                 = join("\n", aws_instance.k8s-worker.*.private_dns)
     list_etcd                 = join("\n", aws_instance.k8s-etcd.*.private_dns)
     elb_api_fqdn              = "apiserver_loadbalancer_domain_name=\"${module.aws-elb.aws_elb_api_fqdn}\""
-  }
-}
-
-resource "null_resource" "inventories" {
-  provisioner "local-exec" {
-    command = "echo '${data.template_file.inventory.rendered}' > ${var.inventory_file}"
-  }
-
-  triggers = {
-    template = data.template_file.inventory.rendered
-  }
+  })
+  filename = var.inventory_file
 }

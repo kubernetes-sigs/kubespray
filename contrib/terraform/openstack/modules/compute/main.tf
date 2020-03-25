@@ -96,25 +96,25 @@ resource "openstack_networking_secgroup_rule_v2" "worker" {
 }
 
 resource "openstack_compute_servergroup_v2" "k8s_master" {
-  count = "%{ if var.use_server_groups }1%{else}0%{endif}"
-  name = "k8s-master-srvgrp"
+  count    = "%{if var.use_server_groups}1%{else}0%{endif}"
+  name     = "k8s-master-srvgrp"
   policies = ["anti-affinity"]
 }
 
 resource "openstack_compute_servergroup_v2" "k8s_node" {
-  count = "%{ if var.use_server_groups }1%{else}0%{endif}"
-  name = "k8s-node-srvgrp"
+  count    = "%{if var.use_server_groups}1%{else}0%{endif}"
+  name     = "k8s-node-srvgrp"
   policies = ["anti-affinity"]
 }
 
 resource "openstack_compute_servergroup_v2" "k8s_etcd" {
-  count = "%{ if var.use_server_groups }1%{else}0%{endif}"
-  name = "k8s-etcd-srvgrp"
+  count    = "%{if var.use_server_groups}1%{else}0%{endif}"
+  name     = "k8s-etcd-srvgrp"
   policies = ["anti-affinity"]
 }
 
 resource "openstack_compute_instance_v2" "bastion" {
-  name       = "${var.cluster_name}-bastion-${count.index+1}"
+  name       = "${var.cluster_name}-bastion-${count.index + 1}"
   count      = "${var.number_of_bastions}"
   image_name = "${var.image}"
   flavor_id  = "${var.flavor_bastion}"
@@ -153,8 +153,8 @@ resource "openstack_compute_instance_v2" "bastion" {
 }
 
 resource "openstack_compute_instance_v2" "k8s_master" {
-  name              = "${var.cluster_name}-k8s-master-${count.index+1}"
-  count             = "${var.number_of_k8s_masters }"
+  name              = "${var.cluster_name}-k8s-master-${count.index + 1}"
+  count             = "${var.number_of_k8s_masters}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_name        = "${var.image}"
   flavor_id         = "${var.flavor_k8s_master}"
@@ -196,13 +196,13 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
   }
 }
 
 resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
-  name              = "${var.cluster_name}-k8s-master-ne-${count.index+1}"
-  count             = "${var.number_of_k8s_masters_no_etcd }"
+  name              = "${var.cluster_name}-k8s-master-ne-${count.index + 1}"
+  count             = "${var.number_of_k8s_masters_no_etcd}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_name        = "${var.image}"
   flavor_id         = "${var.flavor_k8s_master}"
@@ -228,7 +228,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
-  
+
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
     content {
@@ -244,18 +244,18 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
   }
 }
 
 resource "openstack_compute_instance_v2" "etcd" {
-  name              = "${var.cluster_name}-etcd-${count.index+1}"
-  count             = "${var.number_of_etcd }"
+  name              = "${var.cluster_name}-etcd-${count.index + 1}"
+  count             = "${var.number_of_etcd}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_name        = "${var.image}"
   flavor_id         = "${var.flavor_etcd}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
-  
+
   dynamic "block_device" {
     for_each = var.etcd_root_volume_size_in_gb > 0 ? [var.image] : []
     content {
@@ -290,7 +290,7 @@ resource "openstack_compute_instance_v2" "etcd" {
 }
 
 resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
-  name              = "${var.cluster_name}-k8s-master-nf-${count.index+1}"
+  name              = "${var.cluster_name}-k8s-master-nf-${count.index + 1}"
   count             = "${var.number_of_k8s_masters_no_floating_ip}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_name        = "${var.image}"
@@ -316,7 +316,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
-  
+
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
     content {
@@ -333,7 +333,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
 }
 
 resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
-  name              = "${var.cluster_name}-k8s-master-ne-nf-${count.index+1}"
+  name              = "${var.cluster_name}-k8s-master-ne-nf-${count.index + 1}"
   count             = "${var.number_of_k8s_masters_no_floating_ip_no_etcd}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_name        = "${var.image}"
@@ -359,7 +359,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s_master.name}",
     "${openstack_networking_secgroup_v2.k8s.name}",
   ]
-  
+
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
     content {
@@ -376,7 +376,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
 }
 
 resource "openstack_compute_instance_v2" "k8s_node" {
-  name              = "${var.cluster_name}-k8s-node-${count.index+1}"
+  name              = "${var.cluster_name}-k8s-node-${count.index + 1}"
   count             = "${var.number_of_k8s_nodes}"
   availability_zone = "${element(var.az_list_node, count.index)}"
   image_name        = "${var.image}"
@@ -418,12 +418,12 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element( concat(var.bastion_fips, var.k8s_node_fips), 0)}/ > group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_node_fips), 0)}/ > group_vars/no-floating.yml"
   }
 }
 
 resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
-  name              = "${var.cluster_name}-k8s-node-nf-${count.index+1}"
+  name              = "${var.cluster_name}-k8s-node-nf-${count.index + 1}"
   count             = "${var.number_of_k8s_nodes_no_floating_ip}"
   availability_zone = "${element(var.az_list_node, count.index)}"
   image_name        = "${var.image}"
@@ -449,7 +449,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}",
     "${openstack_networking_secgroup_v2.worker.name}",
   ]
-  
+
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
     content {
@@ -466,7 +466,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
 }
 
 resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
-  name              = "${var.cluster_name}-gfs-node-nf-${count.index+1}"
+  name              = "${var.cluster_name}-gfs-node-nf-${count.index + 1}"
   count             = "${var.number_of_gfs_nodes_no_floating_ip}"
   availability_zone = "${element(var.az_list, count.index)}"
   image_name        = "${var.image_gfs}"
@@ -490,7 +490,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
   }
 
   security_groups = ["${openstack_networking_secgroup_v2.k8s.name}"]
-  
+
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
     content {
@@ -535,7 +535,7 @@ resource "openstack_compute_floatingip_associate_v2" "k8s_node" {
 }
 
 resource "openstack_blockstorage_volume_v2" "glusterfs_volume" {
-  name        = "${var.cluster_name}-glusterfs_volume-${count.index+1}"
+  name        = "${var.cluster_name}-glusterfs_volume-${count.index + 1}"
   count       = "${var.gfs_root_volume_size_in_gb == 0 ? var.number_of_gfs_nodes_no_floating_ip : 0}"
   description = "Non-ephemeral volume for GlusterFS"
   size        = "${var.gfs_volume_size_in_gb}"

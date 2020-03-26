@@ -20,6 +20,7 @@ SUPPORTED_OS = {
   "coreos-beta"         => {box: "coreos-beta",        user: "core", box_url: COREOS_URL_TEMPLATE % ["beta"]},
   "ubuntu1604"          => {box: "generic/ubuntu1604", user: "vagrant"},
   "ubuntu1804"          => {box: "generic/ubuntu1804", user: "vagrant"},
+  "ubuntu2004"          => {box: "geerlingguy/ubuntu2004", user: "vagrant"},
   "centos"              => {box: "centos/7",           user: "vagrant"},
   "centos-bento"        => {box: "bento/centos-7.6",   user: "vagrant"},
   "centos8"             => {box: "centos/8",           user: "vagrant"},

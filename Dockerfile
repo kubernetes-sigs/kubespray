@@ -4,7 +4,7 @@ RUN mkdir /kubespray
 WORKDIR /kubespray
 RUN apt update -y && \
     apt install -y \
-    libssl-dev python3-dev sshpass apt-transport-https jq \
+    libssl-dev python3-dev sshpass apt-transport-https jq moreutils \
     ca-certificates curl gnupg2 software-properties-common python3-pip rsync
 RUN  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
      add-apt-repository \

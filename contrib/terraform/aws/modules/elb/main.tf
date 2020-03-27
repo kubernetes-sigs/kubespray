@@ -3,8 +3,8 @@ resource "aws_security_group" "aws-elb" {
   vpc_id = "${var.aws_vpc_id}"
 
   tags = "${merge(var.default_tags, map(
-      "Name", "kubernetes-${var.aws_cluster_name}-securitygroup-elb"
-    ))}"
+    "Name", "kubernetes-${var.aws_cluster_name}-securitygroup-elb"
+  ))}"
 }
 
 resource "aws_security_group_rule" "aws-allow-api-access" {

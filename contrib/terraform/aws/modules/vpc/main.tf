@@ -6,8 +6,8 @@ resource "aws_vpc" "cluster-vpc" {
   enable_dns_hostnames = true
 
   tags = "${merge(var.default_tags, map(
-      "Name", "kubernetes-${var.aws_cluster_name}-vpc"
-    ))}"
+    "Name", "kubernetes-${var.aws_cluster_name}-vpc"
+  ))}"
 }
 
 resource "aws_eip" "cluster-nat-eip" {
@@ -30,9 +30,9 @@ resource "aws_subnet" "cluster-vpc-subnets-public" {
   cidr_block        = "${element(var.aws_cidr_subnets_public, count.index)}"
 
   tags = "${merge(var.default_tags, map(
-      "Name", "kubernetes-${var.aws_cluster_name}-${element(var.aws_avail_zones, count.index)}-public",
-      "kubernetes.io/cluster/${var.aws_cluster_name}", "member"
-    ))}"
+    "Name", "kubernetes-${var.aws_cluster_name}-${element(var.aws_avail_zones, count.index)}-public",
+    "kubernetes.io/cluster/${var.aws_cluster_name}", "member"
+  ))}"
 }
 
 resource "aws_nat_gateway" "cluster-nat-gateway" {
@@ -48,8 +48,8 @@ resource "aws_subnet" "cluster-vpc-subnets-private" {
   cidr_block        = "${element(var.aws_cidr_subnets_private, count.index)}"
 
   tags = "${merge(var.default_tags, map(
-      "Name", "kubernetes-${var.aws_cluster_name}-${element(var.aws_avail_zones, count.index)}-private"
-    ))}"
+    "Name", "kubernetes-${var.aws_cluster_name}-${element(var.aws_avail_zones, count.index)}-private"
+  ))}"
 }
 
 #Routing in VPC
@@ -65,8 +65,8 @@ resource "aws_route_table" "kubernetes-public" {
   }
 
   tags = "${merge(var.default_tags, map(
-      "Name", "kubernetes-${var.aws_cluster_name}-routetable-public"
-    ))}"
+    "Name", "kubernetes-${var.aws_cluster_name}-routetable-public"
+  ))}"
 }
 
 resource "aws_route_table" "kubernetes-private" {
@@ -79,20 +79,20 @@ resource "aws_route_table" "kubernetes-private" {
   }
 
   tags = "${merge(var.default_tags, map(
-      "Name", "kubernetes-${var.aws_cluster_name}-routetable-private-${count.index}"
-    ))}"
+    "Name", "kubernetes-${var.aws_cluster_name}-routetable-private-${count.index}"
+  ))}"
 }
 
 resource "aws_route_table_association" "kubernetes-public" {
   count          = "${length(var.aws_cidr_subnets_public)}"
-  subnet_id      = "${element(aws_subnet.cluster-vpc-subnets-public.*.id,count.index)}"
+  subnet_id      = "${element(aws_subnet.cluster-vpc-subnets-public.*.id, count.index)}"
   route_table_id = "${aws_route_table.kubernetes-public.id}"
 }
 
 resource "aws_route_table_association" "kubernetes-private" {
   count          = "${length(var.aws_cidr_subnets_private)}"
-  subnet_id      = "${element(aws_subnet.cluster-vpc-subnets-private.*.id,count.index)}"
-  route_table_id = "${element(aws_route_table.kubernetes-private.*.id,count.index)}"
+  subnet_id      = "${element(aws_subnet.cluster-vpc-subnets-private.*.id, count.index)}"
+  route_table_id = "${element(aws_route_table.kubernetes-private.*.id, count.index)}"
 }
 
 #Kubernetes Security Groups
@@ -102,8 +102,8 @@ resource "aws_security_group" "kubernetes" {
   vpc_id = "${aws_vpc.cluster-vpc.id}"
 
   tags = "${merge(var.default_tags, map(
-      "Name", "kubernetes-${var.aws_cluster_name}-securitygroup"
-    ))}"
+    "Name", "kubernetes-${var.aws_cluster_name}-securitygroup"
+  ))}"
 }
 
 resource "aws_security_group_rule" "allow-all-ingress" {

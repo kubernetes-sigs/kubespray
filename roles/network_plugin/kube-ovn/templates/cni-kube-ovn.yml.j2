@@ -34,11 +34,12 @@ spec:
                 matchLabels:
                   app: kube-ovn-controller
               topologyKey: kubernetes.io/hostname
+      priorityClassName: system-cluster-critical
       serviceAccountName: ovn
       hostNetwork: true
       containers:
         - name: kube-ovn-controller
-          image: {{ kube_ovn_controller_image_repo }}:{{ kube_ovn_controller_image_tag }}
+          image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
           command:
           - /kube-ovn/start-controller.sh
@@ -60,25 +61,19 @@ spec:
           readinessProbe:
             exec:
               command:
-                - nc
-                - -z
-                - -w3
-                - 127.0.0.1
-                - "10660"
+                - sh
+                - /kube-ovn/kube-ovn-controller-healthcheck.sh
             periodSeconds: 3
           livenessProbe:
             exec:
               command:
-                - nc
-                - -z
-                - -w3
-                - 127.0.0.1
-                - "10660"
+                - sh
+                - /kube-ovn/kube-ovn-controller-healthcheck.sh
             initialDelaySeconds: 30
             periodSeconds: 7
             failureThreshold: 5
       nodeSelector:
-        beta.kubernetes.io/os: "linux"
+        kubernetes.io/os: "linux"
 
 ---
 kind: DaemonSet
@@ -94,7 +89,7 @@ spec:
     matchLabels:
       app: kube-ovn-cni
   updateStrategy:
-    type: RollingUpdate
+    type: OnDelete
   template:
     metadata:
       labels:
@@ -105,14 +100,18 @@ spec:
       tolerations:
       - operator: Exists
         effect: NoSchedule
+      priorityClassName: system-cluster-critical
       serviceAccountName: ovn
       hostNetwork: true
       hostPID: true
       initContainers:
       - name: install-cni
-        image: {{ kube_ovn_cni_image_repo }}:{{ kube_ovn_cni_image_tag }}
+        image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
         imagePullPolicy: {{ k8s_image_pull_policy }}
         command: ["/kube-ovn/install-cni.sh"]
+        securityContext:
+          runAsUser: 0
+          privileged: true
         volumeMounts:
           - mountPath: /etc/cni/net.d
             name: cni-conf
@@ -120,16 +119,18 @@ spec:
             name: cni-bin
       containers:
       - name: cni-server
-        image: {{ kube_ovn_cni_image_repo }}:{{ kube_ovn_cni_image_tag }}
+        image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
         imagePullPolicy: {{ k8s_image_pull_policy }}
         command:
           - sh
           - /kube-ovn/start-cniserver.sh
         args:
           - --enable-mirror={{ traffic_mirror }}
+          - --encap-checksum={{ encap_checksum }}
+          - --service-cluster-ip-range={{ kube_service_addresses }}
         securityContext:
-          runAsUser: 0
-          privileged: true
+          capabilities:
+            add: ["NET_ADMIN", "SYS_ADMIN", "SYS_PTRACE"]
         env:
           - name: POD_IP
             valueFrom:
@@ -142,6 +143,11 @@ spec:
         volumeMounts:
           - mountPath: /run/openvswitch
             name: host-run-ovs
+          - mountPath: /run/ovn
+            name: host-run-ovn
+          - mountPath: /var/run/netns
+            name: host-ns
+            mountPropagation: HostToContainer
         readinessProbe:
           exec:
             command:
@@ -163,14 +169,165 @@ spec:
           periodSeconds: 7
           failureThreshold: 5
       nodeSelector:
-        beta.kubernetes.io/os: "linux"
+        kubernetes.io/os: "linux"
       volumes:
         - name: host-run-ovs
           hostPath:
             path: /run/openvswitch
+        - name: host-run-ovn
+          hostPath:
+            path: /run/ovn
         - name: cni-conf
           hostPath:
             path: /etc/cni/net.d
         - name: cni-bin
           hostPath:
             path: /opt/cni/bin
+        - name: host-ns
+          hostPath:
+            path: /var/run/netns
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: kube-ovn-pinger
+  namespace: kube-ovn
+  annotations:
+    kubernetes.io/description: |
+      This daemon set launches the openvswitch daemon.
+spec:
+  selector:
+    matchLabels:
+      app: kube-ovn-pinger
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: kube-ovn-pinger
+        component: network
+        type: infra
+    spec:
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+      serviceAccountName: ovn
+      hostPID: true
+      containers:
+        - name: pinger
+          image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
+          command: ["/kube-ovn/kube-ovn-pinger", "--external-address=114.114.114.114"]
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          securityContext:
+            runAsUser: 0
+            privileged: false
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - mountPath: /lib/modules
+              name: host-modules
+              readOnly: true
+            - mountPath: /run/openvswitch
+              name: host-run-ovs
+            - mountPath: /var/run/openvswitch
+              name: host-run-ovs
+            - mountPath: /var/run/ovn
+              name: host-run-ovn
+            - mountPath: /sys
+              name: host-sys
+              readOnly: true
+            - mountPath: /etc/openvswitch
+              name: host-config-openvswitch
+            - mountPath: /var/log/openvswitch
+              name: host-log-ovs
+            - mountPath: /var/log/ovn
+              name: host-log-ovn
+          resources:
+            requests:
+              cpu: {{ kube_ovn_pinger_cpu_request }}
+              memory: {{ kube_ovn_pinger_memory_request }}
+            limits:
+              cpu: {{ kube_ovn_pinger_cpu_limit }}
+              memory: {{ kube_ovn_pinger_memory_limit }}
+      nodeSelector:
+        kubernetes.io/os: "linux"
+      volumes:
+        - name: host-modules
+          hostPath:
+            path: /lib/modules
+        - name: host-run-ovs
+          hostPath:
+            path: /run/openvswitch
+        - name: host-run-ovn
+          hostPath:
+            path: /run/ovn
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: host-config-openvswitch
+          hostPath:
+            path: /etc/origin/openvswitch
+        - name: host-log-ovs
+          hostPath:
+            path: /var/log/openvswitch
+        - name: host-log-ovn
+          hostPath:
+            path: /var/log/ovn
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: kube-ovn-pinger
+  namespace: kube-ovn
+  labels:
+    app: kube-ovn-pinger
+spec:
+  selector:
+    app: kube-ovn-pinger
+  ports:
+    - port: 8080
+      name: metrics
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: kube-ovn-controller
+  namespace: kube-ovn
+  labels:
+    app: kube-ovn-controller
+spec:
+  selector:
+    app: kube-ovn-controller
+  ports:
+    - port: 10660
+      name: metrics
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: kube-ovn-cni
+  namespace: kube-ovn
+  labels:
+    app: kube-ovn-cni
+spec:
+  selector:
+    app: kube-ovn-cni
+  ports:
+    - port: 10665
+      name: metrics

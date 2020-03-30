@@ -38,8 +38,6 @@ kind: PersistentVolume
 apiVersion: v1
 metadata:
   name: kube-system-kube-registry-pv
-  labels:
-    kubernetes.io/cluster-service: "true"
 spec:
 {% if pillar.get('cluster_registry_disk_type', '') == 'gce' %}
   capacity:
@@ -81,8 +79,6 @@ apiVersion: v1
 metadata:
   name: kube-registry-pvc
   namespace: kube-system
-  labels:
-    kubernetes.io/cluster-service: "true"
 spec:
   accessModes:
     - ReadWriteOnce
@@ -112,7 +108,6 @@ metadata:
   labels:
     k8s-app: registry
     version: v0
-    kubernetes.io/cluster-service: "true"
 spec:
   replicas: 1
   selector:
@@ -123,7 +118,6 @@ spec:
       labels:
         k8s-app: registry
         version: v0
-        kubernetes.io/cluster-service: "true"
     spec:
       containers:
       - name: registry
@@ -165,7 +159,6 @@ metadata:
   namespace: kube-system
   labels:
     k8s-app: registry
-    kubernetes.io/cluster-service: "true"
     kubernetes.io/name: "KubeRegistry"
 spec:
   selector:
@@ -193,7 +186,6 @@ metadata:
   namespace: kube-system
   labels:
     k8s-app: kube-registry-proxy
-    kubernetes.io/cluster-service: "true"
     version: v0.4
 spec:
   template:
@@ -201,7 +193,6 @@ spec:
       labels:
         k8s-app: kube-registry-proxy
         kubernetes.io/name: "kube-registry-proxy"
-        kubernetes.io/cluster-service: "true"
         version: v0.4
     spec:
       containers:

@@ -14,7 +14,7 @@ In order for the CSI driver to provision disks, you need to create for it a serv
 
 Follow these steps to configure it:
 
-```
+```ShellSession
 # This will open a web page for you to authenticate
 gcloud auth login
 export PROJECT=nameofmyproject

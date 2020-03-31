@@ -27,6 +27,10 @@ The region your instances are located, can be something like `westeurope` or `we
 
 The name of the resource group your instances are in, can be retrieved via `azure group list`
 
+### azure\_vmtype
+
+The type of the vm. Supported values are `standard` or `vmss`. If vm is type of `Virtal Machines` then value is `standard`. If vm is part of `Virtaul Machine Scale Sets` then value is `vmss`
+
 ### azure\_vnet\_name
 
 The name of the virtual network your instances are in, can be retrieved via `azure network vnet list`

@@ -29,7 +29,7 @@ The name of the resource group your instances are in, can be retrieved via `azur
 
 ### azure\_vmtype
 
-The type of the vm. Supported values are `standard` or `vmss`. If vm is type of `Virtal Machines` then value is `standard`. If vm is part of `Virtaul Machine Scale Sets` then value `vmss`
+The type of the vm. Supported values are `standard` or `vmss`. If vm is type of `Virtal Machines` then value is `standard`. If vm is part of `Virtaul Machine Scale Sets` then value is `vmss`
 
 ### azure\_vnet\_name
 

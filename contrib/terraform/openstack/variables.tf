@@ -220,3 +220,8 @@ variable "use_access_ip" {
 variable "use_server_groups" {
   default = false
 }
+
+variable "router_id" {
+  description = "uuid of an externally defined router to use"
+  default     = null
+}

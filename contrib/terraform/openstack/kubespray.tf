@@ -12,6 +12,7 @@ module "network" {
   dns_nameservers    = "${var.dns_nameservers}"
   network_dns_domain = "${var.network_dns_domain}"
   use_neutron        = "${var.use_neutron}"
+  router_id          = "${var.router_id}"
 }
 
 module "ips" {

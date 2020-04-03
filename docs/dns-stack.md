@@ -42,6 +42,36 @@ DNS servers in early cluster deployment when no cluster DNS is available yet.
 
 ## DNS modes supported by Kubespray
 
+### coredns_external_zones
+
+Array of optional external zones to coredns forward queries to. It's  injected into
+`coredns`' config file before default kubernetes zone. Use it as an optimization for well-known zones and/or internal-only
+domains, i.e. VPN for internal networks (default is unset)
+
+Example:
+
+```yaml
+coredns_external_zones:
+- zones:
+  - example.com
+  - example.io:1053
+  nameservers:
+  - 1.1.1.1
+  - 2.2.2.2
+  cache: 5
+- zones:
+  - https://mycompany.local:4453
+  nameservers:
+  - 192.168.0.53
+  cache: 0
+```
+
+or as INI
+
+```ini
+coredns_external_zones=[{"cache": 30,"zones":["example.com","example.io:453"],"nameservers":["1.1.1.1","2.2.2.2"]}]'
+```
+
 You can modify how Kubespray sets up DNS for your cluster with the variables ``dns_mode`` and ``resolvconf_mode``.
 
 ### dns_mode

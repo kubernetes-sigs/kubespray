@@ -114,7 +114,7 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.16.8
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.17.4
   - [etcd](https://github.com/coreos/etcd) v3.3.12
   - [docker](https://www.docker.com/) v18.06 (see note)
   - [containerd](https://containerd.io/) v1.2.13
@@ -133,8 +133,8 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v0.11.0
-  - [coredns](https://github.com/coredns/coredns) v1.6.7
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.28.0
+  - [coredns](https://github.com/coredns/coredns) v1.6.9
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.30.0
 
 Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.16.md) was updated to 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09. kubeadm now properly recognizes Docker 18.09.0 and newer, but still treats 18.06 as the default supported version. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 

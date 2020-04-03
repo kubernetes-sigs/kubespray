@@ -28,23 +28,18 @@ cloud_provider:  "external"
 external_cloud_provider: "vsphere"
 ```
 
-Then, in the same file, you need to declare your vCenter credential following the description below.
+Then, `inventory/sample/group_vars/vsphere.yml`, you need to declare your vCenter credentials and enable the vSphere CSI following the description below.
 
-| Variable                     | Required | Type    | Choices                    | Default | Comment                                                                                                                                                                                       |
-|------------------------------|----------|---------|----------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| external_vsphere_vcenter_ip           | TRUE     | string  |                            |         | IP/URL of the vCenter                                                                                                                                                                         |
-| external_vsphere_vcenter_port         | TRUE     | string |                             |  "443"  | Port of the vCenter API                                                                                                                                                         |
-| external_vsphere_insecure             | TRUE     | string | "true", "false"             |  "true" | set to "true" if the host above uses a self-signed cert                                                                                                                                            |
-| external_vsphere_user                 | TRUE     | string  |                            |         | User name for vCenter with required privileges                                                                                                                                                |
-| external_vsphere_password             | TRUE     | string  |                            |         | Password for vCenter                                                                                                                                                                          |
-| external_vsphere_datacenter           | TRUE     | string  |                            |         | Datacenter name to use                                                                                                                                                                        |
-| external_vsphere_kubernetes_cluster_id           | TRUE     | string  |                            |  "kubernetes-cluster-id"       | Kubernetes cluster ID to use                                                                                                                                                                        |
-| external_vsphere_cloud_controller_image_tag           | TRUE     | string  |                            |  "latest"       | Kubernetes cluster ID to use                                                                                                                                                                        |
-| external_vsphere_syncer_image_tag           | TRUE     | string  |                            |  "v1.0.2"       | Kubernetes cluster ID to use                                                                                                                                                                        |
-| external_vsphere_csi_attacher_image_tag           | TRUE     | string  |                            |  "v1.1.1"       | Kubernetes cluster ID to use                                                                                                                                                                        |
-| external_vsphere_csi_controller           | TRUE     | string  |                            |  "v1.0.2"       | Kubernetes cluster ID to use                                                                                                                                                                        |
-| external_vsphere_csi_liveness_probe_image_tag           | TRUE     | string  |                            |  "v1.1.0"       | Kubernetes cluster ID to use                                                                                                                                                                        |
-| external_vsphere_csi_provisioner_image_tag           | TRUE     | string  |                            |  "v1.2.2"       | Kubernetes cluster ID to use                                                                                                                                                                        |
+| Variable                               | Required | Type    | Choices                    | Default | Comment                                                                   |
+|----------------------------------------|----------|---------|----------------------------|---------|---------------------------------------------------------------------------|
+| external_vsphere_vcenter_ip            | TRUE     | string  |                            |                           | IP/URL of the vCenter                                   |
+| external_vsphere_vcenter_port          | TRUE     | string  |                            | "443"                     | Port of the vCenter API                                 |
+| external_vsphere_insecure              | TRUE     | string  | "true", "false"            | "true"                    | set to "true" if the host above uses a self-signed cert |
+| external_vsphere_user                  | TRUE     | string  |                            |                           | User name for vCenter with required privileges          |
+| external_vsphere_password              | TRUE     | string  |                            |                           | Password for vCenter                                    |
+| external_vsphere_datacenter            | TRUE     | string  |                            |                           | Datacenter name to use                                  |
+| external_vsphere_kubernetes_cluster_id | TRUE     | string  |                            | "kubernetes-cluster-id"   | Kubernetes cluster ID to use                            |
+| vsphere_csi_enabled                    | TRUE     | boolean |                            | false                     | Enable vSphere CSI                                      |
 
 Example configuration:
 
@@ -56,7 +51,10 @@ external_vsphere_user: "administrator@vsphere.local"
 external_vsphere_password: "K8s_admin"
 external_vsphere_datacenter: "DATACENTER_name"
 external_vsphere_kubernetes_cluster_id: "kubernetes-cluster-id"
+vsphere_csi_enabled: true
 ```
+
+For a more fine-grained CSI setup, refer to the [vsphere-csi](vsphere-csi.md) documentation.
 
 ### Deployment
 
@@ -67,9 +65,7 @@ cd kubespray
 ansible-playbook -i inventory/sample/hosts.ini -b -v cluster.yml
 ```
 
-Finally, you will have to create a [storage policy](https://github.com/kubernetes/cloud-provider-vsphere/blob/master/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#create-a-storage-policy) for the external vSphere cloud provider to use the storage.
-
-You'll find some useful examples [here](https://github.com/kubernetes/cloud-provider-vsphere/blob/master/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#create-a-storageclass) to test your configuration.
+You'll find some useful examples [here](https://github.com/kubernetes/cloud-provider-vsphere/blob/master/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#sample-manifests-to-test-csi-driver-functionality) to test your configuration.
 
 ## In-tree vSphere cloud provider ([deprecated](https://cloud-provider-vsphere.sigs.k8s.io/concepts/in_tree_vs_out_of_tree.html))
 
@@ -92,7 +88,7 @@ First you must define the cloud provider in `inventory/sample/group_vars/all.yml
 cloud_provider: vsphere
 ```
 
-Then, in the same file, you need to declare your vCenter credential following the description below.
+Then, in the same file, you need to declare your vCenter credentials following the description below.
 
 | Variable                     | Required | Type    | Choices                    | Default | Comment                                                                                                                                                                                       |
 |------------------------------|----------|---------|----------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

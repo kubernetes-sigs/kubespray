@@ -38,6 +38,16 @@ hosts where that makes sense. You have the option of creating bastion hosts
 inside the private subnet to access the nodes there.  Alternatively, a node with
 a floating IP can be used as a jump host to nodes without.
 
+#### Using an existing router
+It is possible to use an existing router instead of creating one. To use an
+existing router set the router\_id variable to the uuid of the router you wish
+to use.
+
+For example:
+```
+router_id = "00c542e7-6f46-4535-ae95-984c7f0391a3"
+```
+
 ### Kubernetes Nodes
 You can create many different kubernetes topologies by setting the number of
 different classes of hosts. For each class there are options for allocating

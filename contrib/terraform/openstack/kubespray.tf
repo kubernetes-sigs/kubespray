@@ -26,6 +26,7 @@ module "ips" {
   external_net                  = "${var.external_net}"
   network_name                  = "${var.network_name}"
   router_id                     = "${module.network.router_id}"
+  k8s_nodes                     = "${var.k8s_nodes}"
 }
 
 module "compute" {
@@ -43,6 +44,7 @@ module "compute" {
   number_of_bastions                           = "${var.number_of_bastions}"
   number_of_k8s_nodes_no_floating_ip           = "${var.number_of_k8s_nodes_no_floating_ip}"
   number_of_gfs_nodes_no_floating_ip           = "${var.number_of_gfs_nodes_no_floating_ip}"
+  k8s_nodes                                    = "${var.k8s_nodes}"
   bastion_root_volume_size_in_gb               = "${var.bastion_root_volume_size_in_gb}"
   etcd_root_volume_size_in_gb                  = "${var.etcd_root_volume_size_in_gb}"
   master_root_volume_size_in_gb                = "${var.master_root_volume_size_in_gb}"
@@ -63,6 +65,7 @@ module "compute" {
   k8s_master_fips                              = "${module.ips.k8s_master_fips}"
   k8s_master_no_etcd_fips                      = "${module.ips.k8s_master_no_etcd_fips}"
   k8s_node_fips                                = "${module.ips.k8s_node_fips}"
+  k8s_nodes_fips                               = "${module.ips.k8s_nodes_fips}"
   bastion_fips                                 = "${module.ips.bastion_fips}"
   bastion_allowed_remote_ips                   = "${var.bastion_allowed_remote_ips}"
   master_allowed_remote_ips                    = "${var.master_allowed_remote_ips}"
@@ -95,7 +98,7 @@ output "k8s_master_fips" {
 }
 
 output "k8s_node_fips" {
-  value = "${module.ips.k8s_node_fips}"
+  value = "${var.number_of_k8s_nodes > 0 ? module.ips.k8s_node_fips : [for key, value in module.ips.k8s_nodes_fips : value.address]}"
 }
 
 output "bastion_fips" {

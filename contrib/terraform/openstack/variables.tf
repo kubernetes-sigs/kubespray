@@ -225,3 +225,6 @@ variable "router_id" {
   description = "uuid of an externally defined router to use"
   default     = null
 }
+
+variable "k8s_nodes" {}
+

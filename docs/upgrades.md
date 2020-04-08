@@ -25,16 +25,14 @@ If you wanted to upgrade just kube_version from v1.4.3 to v1.4.6, you could
 deploy the following way:
 
 ```ShellSession
-ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.3 -e upgrade_cluster_setup=true
+ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.3
 ```
 
 And then repeat with v1.4.6 as kube_version:
 
 ```ShellSession
-ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.6 -e upgrade_cluster_setup=true
+ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.6
 ```
-
-The var ```-e upgrade_cluster_setup=true``` is needed to be set in order to migrate the deploys of e.g kube-apiserver inside the cluster immediately which is usually only done in the graceful upgrade. (Refer to [#4139](https://github.com/kubernetes-sigs/kubespray/issues/4139) and [#4736](https://github.com/kubernetes-sigs/kubespray/issues/4736))
 
 ## Graceful upgrade
 

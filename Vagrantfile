@@ -26,8 +26,8 @@ SUPPORTED_OS = {
   "centos8"             => {box: "centos/8",           user: "vagrant"},
   "centos8-bento"       => {box: "bento/centos-8",           user: "vagrant"},
   "fedora"              => {box: "fedora/28-cloud-base",                user: "vagrant"},
-  "opensuse"            => {box: "opensuse/openSUSE-15.0-x86_64",       user: "vagrant"},
-  "opensuse-tumbleweed" => {box: "opensuse/openSUSE-Tumbleweed-x86_64", user: "vagrant"},
+  "opensuse"            => {box: "bento/opensuse-leap-15.1",       user: "vagrant"},
+  "opensuse-tumbleweed" => {box: "opensuse/Tumbleweed.x86_64", user: "vagrant"},
   "oraclelinux"         => {box: "generic/oracle7", user: "vagrant"},
 }
 

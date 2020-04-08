@@ -1,12 +1,12 @@
 ---
-- name: check if atomic host
+- name: check if fedora coreos
   stat:
     path: /run/ostree-booted
   register: ostree
 
-- name: set is_atomic
+- name: set is_ostree
   set_fact:
-    is_atomic: "{{ ostree.stat.exists }}"
+    is_ostree: "{{ ostree.stat.exists }}"
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -27,9 +27,6 @@
   tags:
     - facts
 
-# https://yum.dockerproject.org/repo/main/opensuse/ contains packages for an EOL
-# openSUSE version so we can't use it. The only alternative is to use the docker
-# packages from the distribution repositories.
 - name: Warn about Docker version on SUSE
   debug:
     msg: "SUSE distributions always install Docker from the distro repos"
@@ -46,7 +43,7 @@
           docker requires a minimum kernel version of
           {{ docker_kernel_min_version }} on
           {{ ansible_distribution }}-{{ ansible_distribution_version }}
-  when: (not ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "ClearLinux"]) and (ansible_kernel is version(docker_kernel_min_version, "<"))
+  when: (not ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk", "ClearLinux"]) and (ansible_kernel is version(docker_kernel_min_version, "<"))
   tags:
     - facts
 
@@ -63,7 +60,7 @@
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ docker_repo_key_info.repo_keys }}"
-  when: not (ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "RedHat", "Suse", "ClearLinux"] or is_atomic)
+  when: not (ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk", "RedHat", "Suse", "ClearLinux"] or is_ostree)
 
 - name: ensure docker-ce repository is enabled
   action: "{{ docker_repo_info.pkg_repo }}"
@@ -71,7 +68,7 @@
     repo: "{{ item }}"
     state: present
   with_items: "{{ docker_repo_info.repos }}"
-  when: not (ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "RedHat", "Suse", "ClearLinux"] or is_atomic) and (docker_repo_info.repos|length > 0)
+  when: not (ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk", "RedHat", "Suse", "ClearLinux"] or is_ostree) and (docker_repo_info.repos|length > 0)
 
 - name: ensure docker-engine repository public key is installed
   action: "{{ dockerproject_repo_key_info.pkg_key }}"
@@ -85,7 +82,7 @@
   delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ dockerproject_repo_key_info.repo_keys }}"
   when:
-    - not (ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "RedHat", "Suse", "ClearLinux"] or is_atomic)
+    - not (ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk", "RedHat", "Suse", "ClearLinux"] or is_ostree)
     - use_docker_engine is defined and use_docker_engine
 
 - name: ensure docker-engine repository is enabled
@@ -96,25 +93,25 @@
   with_items: "{{ dockerproject_repo_info.repos }}"
   when:
     - use_docker_engine is defined and use_docker_engine
-    - not (ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "RedHat", "Suse", "ClearLinux"] or is_atomic) and (dockerproject_repo_info.repos|length > 0)
+    - not (ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk", "RedHat", "Suse", "ClearLinux"] or is_ostree) and (dockerproject_repo_info.repos|length > 0)
 
 - name: Configure docker repository on Fedora
   template:
     src: "fedora_docker.repo.j2"
     dest: "{{ yum_repo_dir }}/docker.repo"
-  when: ansible_distribution == "Fedora" and not is_atomic
+  when: ansible_distribution == "Fedora" and not is_ostree
 
 - name: Configure docker repository on RedHat/CentOS/Oracle Linux
   template:
     src: "rh_docker.repo.j2"
-    dest: "{{ yum_repo_dir }}/docker.repo"
-  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_atomic
+    dest: "{{ yum_repo_dir }}/docker-ce.repo"
+  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
 
 - name: check if container-selinux is available
   yum:
     list: "container-selinux"
   register: yum_result
-  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+  when: ansible_distribution in ["CentOS","RedHat"] and not is_ostree
 
 - name: Configure extras repository on RedHat/CentOS if container-selinux is not available in current repos
   yum_repository:
@@ -123,12 +120,12 @@
     state: present
     baseurl: "{{ extras_rh_repo_base_url }}"
     file: "extras"
-    gpgcheck: yes
+    gpgcheck: "{{ 'yes' if extras_rh_repo_gpgkey else 'no' }}"
     gpgkey: "{{ extras_rh_repo_gpgkey }}"
     keepcache: "{{ docker_rpm_keepcache | default('1') }}"
     proxy: " {{ http_proxy | default('_none_') }}"
   when:
-    - ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+    - ansible_distribution in ["CentOS","RedHat"] and not is_ostree
     - yum_result.results | length == 0
 
 - name: Copy yum.conf for editing
@@ -136,7 +133,7 @@
     src: "{{ yum_conf }}"
     dest: "{{ docker_yum_conf }}"
     remote_src: yes
-  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_atomic
+  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
 
 - name: Edit copy of yum.conf to set obsoletes=0
   lineinfile:
@@ -144,7 +141,7 @@
     state: present
     regexp: '^obsoletes='
     line: 'obsoletes=0'
-  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_atomic
+  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
 
 - name: ensure docker packages are installed
   action: "{{ docker_package_info.pkg_mgr }}"
@@ -160,7 +157,7 @@
   delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ docker_package_info.pkgs }}"
   notify: restart docker
-  when: not (ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "ClearLinux"] or is_atomic) and (docker_package_info.pkgs|length > 0)
+  when: not (ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk", "ClearLinux"] or is_ostree) and (docker_package_info.pkgs|length > 0)
   ignore_errors: true
 
 - name: Ensure docker packages are installed

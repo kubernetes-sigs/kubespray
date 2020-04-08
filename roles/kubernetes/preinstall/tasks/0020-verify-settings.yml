@@ -7,38 +7,40 @@
     - kube-node
     - etcd
   run_once: true
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when: not ignore_assert_errors
 
 - name: Stop if non systemd OS type
   assert:
     that: ansible_service_mgr == "systemd"
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when: not ignore_assert_errors
 
 - name: Stop if unknown OS
   assert:
-    that: ansible_os_family in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'CoreOS', 'Coreos', 'Container Linux by CoreOS', 'Suse', 'ClearLinux', 'OracleLinux']
+    that: ansible_os_family in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'CoreOS', 'Coreos', 'Container Linux by CoreOS', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'Suse', 'ClearLinux', 'OracleLinux']
     msg: "{{ ansible_os_family }} is not a known OS"
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when: not ignore_assert_errors
 
 - name: Stop if unknown network plugin
   assert:
     that: kube_network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'contiv', 'kube-ovn', 'kube-router', 'macvlan']
     msg: "{{ kube_network_plugin }} is not supported"
-  when: kube_network_plugin is defined
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when:
+    - kube_network_plugin is defined
+    - not ignore_assert_errors
 
 - name: Stop if incompatible network plugin and cloudprovider
   assert:
     that: kube_network_plugin != 'calico'
     msg: "Azure and Calico are not compatible. See https://github.com/projectcalico/calicoctl/issues/949 for details."
-  when: cloud_provider is defined and cloud_provider == 'azure'
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when:
+    - cloud_provider is defined and cloud_provider == 'azure'
+    - not ignore_assert_errors
 
 - name: Stop if unsupported version of Kubernetes
   assert:
     that: kube_version is version(kube_version_min_required, '>=')
     msg: "The current release of Kubespray only support newer version of Kubernetes than {{ kube_version_min_required }} - You are trying to apply {{ kube_version }}"
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when: not ignore_assert_errors
 
 # simplify this items-list when   https://github.com/ansible/ansible/issues/15753  is resolved
 - name: "Stop if known booleans are set as strings (Use JSON format on CLI: -e \"{'key': true }\")"
@@ -52,25 +54,28 @@
     - { name: download_always_pull, value: "{{ download_always_pull }}" }
     - { name: helm_enabled, value: "{{ helm_enabled }}" }
     - { name: openstack_lbaas_enabled, value: "{{ openstack_lbaas_enabled }}" }
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when: not ignore_assert_errors
 
 - name: Stop if even number of etcd hosts
   assert:
     that: groups.etcd|length is not divisibleby 2
-  ignore_errors: "{{ ignore_assert_errors }}"
-  when: inventory_hostname in groups['etcd']
+  when:
+    - not ignore_assert_errors
+    - inventory_hostname in groups['etcd']
 
 - name: Stop if memory is too small for masters
   assert:
     that: ansible_memtotal_mb >= minimal_master_memory_mb
-  ignore_errors: "{{ ignore_assert_errors }}"
-  when: inventory_hostname in groups['kube-master']
+  when:
+    - not ignore_assert_errors
+    - inventory_hostname in groups['kube-master']
 
 - name: Stop if memory is too small for nodes
   assert:
     that: ansible_memtotal_mb >= minimal_node_memory_mb
-  ignore_errors: "{{ ignore_assert_errors }}"
-  when: inventory_hostname in groups['kube-node']
+  when:
+    - not ignore_assert_errors
+    - inventory_hostname in groups['kube-node']
 
 # This assertion will fail on the safe side: One can indeed schedule more pods
 # on a node than the CIDR-range has space for when additional pods use the host
@@ -81,51 +86,58 @@
   assert:
     that: "{{ (kubelet_max_pods | default(110)) | int <= (2 ** (32 - kube_network_node_prefix | int)) - 2 }}"
     msg: "Do not schedule more pods on a node than inet addresses are available."
-  ignore_errors: "{{ ignore_assert_errors }}"
   when:
+    - not ignore_assert_errors
     - inventory_hostname in groups['k8s-cluster']
     - kube_network_node_prefix is defined
+    - kube_network_plugin != 'calico'
 
 - name: Stop if ip var does not match local ips
   assert:
     that: ip in ansible_all_ipv4_addresses
-  ignore_errors: "{{ ignore_assert_errors }}"
-  when: ip is defined
+  when:
+    - not ignore_assert_errors
+    - ip is defined
 
 - name: Stop if access_ip is not pingable
   command: ping -c1 {{ access_ip }}
-  when: access_ip is defined
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when:
+    - access_ip is defined
+    - not ignore_assert_errors
 
 - name: Stop if RBAC is not enabled when dashboard is enabled
   assert:
     that: rbac_enabled
-  when: dashboard_enabled
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when:
+    - dashboard_enabled
+    - not ignore_assert_errors
 
 - name: Stop if RBAC is not enabled when OCI cloud controller is enabled
   assert:
     that: rbac_enabled
-  when: cloud_provider is defined and cloud_provider == "oci"
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when:
+    - cloud_provider is defined and cloud_provider == "oci"
+    - not ignore_assert_errors
 
 - name: Stop if RBAC and anonymous-auth are not enabled when insecure port is disabled
   assert:
     that: rbac_enabled and kube_api_anonymous_auth
-  when: kube_apiserver_insecure_port == 0 and inventory_hostname in groups['kube-master']
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when:
+    - kube_apiserver_insecure_port == 0 and inventory_hostname in groups['kube-master']
+    - not ignore_assert_errors
 
 - name: Stop if kernel version is too low
   assert:
     that: ansible_kernel.split('-')[0] is version('4.8', '>=')
-  when: kube_network_plugin == 'cilium'
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when:
+    - kube_network_plugin == 'cilium'
+    - not ignore_assert_errors
 
 - name: Stop if bad hostname
   assert:
     that: inventory_hostname is match("[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$")
     msg: "Hostname must consist of lower case alphanumeric characters, '.' or '-', and must start and end with an alphanumeric character"
-  ignore_errors: "{{ ignore_assert_errors }}"
+  when: not ignore_assert_errors
 
 - name: check cloud_provider value
   assert:
@@ -133,8 +145,7 @@
     msg: "If set the 'cloud_provider' var must be set either to 'generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere', or external"
   when:
     - cloud_provider is defined
-
-  ignore_errors: "{{ ignore_assert_errors }}"
+    - not ignore_assert_errors
   tags:
     - cloud-provider
     - facts
@@ -248,3 +259,27 @@
     that: kubeadm_control_plane
     msg: "kubeadm etcd mode requires experimental control plane"
   when: etcd_kubeadm_enabled
+
+- name: Stop if etcd deployment type is not host or docker
+  assert:
+    that: etcd_deployment_type in ['host', 'docker']
+    msg: "The etcd deployment type, 'etcd_deployment_type', must be host or docker"
+  run_once: true
+
+- name: Stop if download_localhost is enabled but download_run_once is not
+  assert:
+    that: download_run_once
+    msg: "download_localhost requires enable download_run_once"
+  when: download_localhost
+
+- name: Stop if download_localhost is enabled when container_manager not docker
+  assert:
+    that: container_manager == 'docker'
+    msg: "download_run_once support only for docker. See https://github.com/containerd/containerd/issues/4075 for details"
+  when: download_run_once or download_force_cache
+
+- name: Stop if download_localhost is enabled for CoreOS or Flatcar
+  assert:
+    that: ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
+    msg: "download_run_once not support for CoreOS or Flatcar"
+  when: download_run_once or download_force_cache

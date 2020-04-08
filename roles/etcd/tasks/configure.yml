@@ -2,9 +2,10 @@
 - name: Configure | Check if etcd cluster is healthy
   shell: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }} cluster-health | grep -q 'cluster is healthy'"
   register: etcd_cluster_is_healthy
-  ignore_errors: true
+  failed_when: false
   changed_when: false
   check_mode: no
+  run_once: yes
   when: is_etcd_master and etcd_cluster_setup
   tags:
     - facts
@@ -16,9 +17,10 @@
 - name: Configure | Check if etcd-events cluster is healthy
   shell: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_events_access_addresses }} cluster-health | grep -q 'cluster is healthy'"
   register: etcd_events_cluster_is_healthy
-  ignore_errors: true
+  failed_when: false
   changed_when: false
   check_mode: no
+  run_once: yes
   when: is_etcd_master and etcd_events_cluster_setup
   tags:
     - facts
@@ -49,30 +51,33 @@
     daemon_reload: true
   when: is_etcd_master
 
+# when scaling new etcd will fail to start
 - name: Configure | Ensure etcd is running
   service:
     name: etcd
     state: started
     enabled: yes
+  ignore_errors: "{{ etcd_cluster_is_healthy.rc == 0 }}"
   when: is_etcd_master and etcd_cluster_setup
 
+# when scaling new etcd will fail to start
 - name: Configure | Ensure etcd-events is running
   service:
     name: etcd-events
     state: started
     enabled: yes
+  ignore_errors: "{{ etcd_events_cluster_is_healthy.rc == 0 }}"
   when: is_etcd_master and etcd_events_cluster_setup
 
-- name: Configure | Check if etcd cluster is healthy
-  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_client_url }} cluster-health | grep -q 'cluster is healthy'"
+- name: Configure | Wait for etcd cluster to be healthy
+  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses }} cluster-health | grep -q 'cluster is healthy'"
   register: etcd_cluster_is_healthy
   until: etcd_cluster_is_healthy.rc == 0
-  retries: 4
+  retries: "{{ etcd_retries }}"
   delay: "{{ retry_stagger | random + 3 }}"
   ignore_errors: false
   changed_when: false
   check_mode: no
-  delegate_to: "{{ groups['etcd'][0] }}"
   run_once: yes
   when:
     - is_etcd_master
@@ -84,21 +89,19 @@
     ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
     ETCDCTL_CA_FILE: "{{ etcd_cert_dir }}/ca.pem"
 
-- name: Configure | Check if etcd-events cluster is healthy
-  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_events_client_url }} cluster-health | grep -q 'cluster is healthy'"
+- name: Configure | Wait for etcd-events cluster to be healthy
+  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_events_access_addresses }} cluster-health | grep -q 'cluster is healthy'"
   register: etcd_events_cluster_is_healthy
   until: etcd_events_cluster_is_healthy.rc == 0
-  retries: 4
+  retries: "{{ etcd_retries }}"
   delay: "{{ retry_stagger | random + 3 }}"
   ignore_errors: false
   changed_when: false
   check_mode: no
-  delegate_to: "{{ groups['etcd'][0] }}"
   run_once: yes
   when:
     - is_etcd_master
     - etcd_events_cluster_setup
-    - etcd_cluster_setup
   tags:
     - facts
   environment:
@@ -136,14 +139,10 @@
 
 - name: Configure | Join member(s) to etcd cluster one at a time
   include_tasks: join_etcd_member.yml
-  vars:
-    target_node: "{{ item }}"
   with_items: "{{ groups['etcd'] }}"
   when: inventory_hostname == item and etcd_cluster_setup and etcd_member_in_cluster.rc != 0 and etcd_cluster_is_healthy.rc == 0
 
 - name: Configure | Join member(s) to etcd-events cluster one at a time
   include_tasks: join_etcd-events_member.yml
-  vars:
-    target_node: "{{ item }}"
   with_items: "{{ groups['etcd'] }}"
   when: inventory_hostname == item and etcd_events_cluster_setup and etcd_events_member_in_cluster.rc != 0 and etcd_events_cluster_is_healthy.rc == 0

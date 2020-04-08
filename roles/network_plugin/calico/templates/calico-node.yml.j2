@@ -205,12 +205,12 @@ spec:
             - name: FELIX_KUBENODEPORTRANGES
               value: "{{ kube_apiserver_node_port_range.split('-')[0] }}:{{ kube_apiserver_node_port_range.split('-')[1] }}"
 {% endif %}
-            # Prior to v3.2.1 iptables didn't acquire the lock, so Calico's own implementation of the lock should be used,
-            # this is not required in later versions https://github.com/projectcalico/calico/issues/2179
-{% if calico_version is version('v3.2.1', '<') %}
-            - name: FELIX_IPTABLESLOCKTIMEOUTSECS
-              value: "10"
+{% if calico_version is version('v3.8.1', '>=') %}
+            - name: FELIX_IPTABLESBACKEND
+              value: "{{ calico_iptables_backend }}"
 {% endif %}
+            - name: FELIX_IPTABLESLOCKTIMEOUTSECS
+              value: "{{ calico_iptables_lock_timeout_secs }}"
 # should be set in etcd before deployment
 #            # Configure the IP Pool from which Pod IPs will be chosen.
 #            - name: CALICO_IPV4POOL_CIDR
@@ -228,6 +228,8 @@ spec:
             - name: FELIX_IPINIPMTU
               value: "{{ calico_mtu }}"
 {% endif %}
+            - name: FELIX_CHAININSERTMODE
+              value: "{{ calico_felix_chaininsertmode }}"
             - name: FELIX_PROMETHEUSMETRICSENABLED
               value: "{{ calico_felix_prometheusmetricsenabled }}"
             - name: FELIX_PROMETHEUSMETRICSPORT
@@ -269,10 +271,18 @@ spec:
               cpu: {{ calico_node_cpu_requests }}
               memory: {{ calico_node_memory_requests }}
           livenessProbe:
+{% if calico_version is version('v3.8.0', '<') %}
             httpGet:
               host: 127.0.0.1
               path: /liveness
               port: 9099
+{% else %}
+            exec:
+              command:
+              - /bin/calico-node
+              - -felix-live
+              - -bird-live
+{% endif %}
             initialDelaySeconds: 5
             failureThreshold: 6
           readinessProbe:

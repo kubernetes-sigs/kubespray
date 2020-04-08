@@ -101,7 +101,7 @@
     - kubeadm_config_api_fqdn is not defined
     - not is_kube_master
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
-  notify: restart kubelet
+  notify: Kubeadm | restart kubelet
 
 # FIXME(mattymo): Need to point to localhost, otherwise masters will all point
 #                 incorrectly to first master, creating SPoF.
@@ -111,11 +111,12 @@
     | sed 's#server:.*#server: https://127.0.0.1:{{ kube_apiserver_port }}#g'
     | {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
   run_once: true
+  delegate_to: "{{ groups['kube-master']|first }}"
   when:
-    - inventory_hostname == groups['kube-master']|first
     - kubeadm_config_api_fqdn is not defined
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
     - not kube_proxy_remove
+    - loadbalancer_apiserver_localhost
   tags:
     - kube-proxy
 
@@ -129,8 +130,8 @@
 - name: Restart all kube-proxy pods to ensure that they load the new configmap
   shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
   run_once: true
+  delegate_to: "{{ groups['kube-master']|first }}"
   when:
-    - inventory_hostname == groups['kube-master']|first
     - kubeadm_config_api_fqdn is not defined
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
     - not kube_proxy_remove
@@ -153,8 +154,8 @@
 - name: Delete kube-proxy daemonset if kube_proxy_remove set, e.g. kube_network_plugin providing proxy services
   shell: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf delete daemonset -n kube-system kube-proxy"
   run_once: true
+  delegate_to: "{{ groups['kube-master']|first }}"
   when:
-    - inventory_hostname == groups['kube-master']|first
     - kube_proxy_remove
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
   # When scaling/adding nodes in the existing k8s cluster, kube-proxy wouldn't be created, as `kubeadm init` wouldn't run.

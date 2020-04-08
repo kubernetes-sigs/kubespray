@@ -19,16 +19,36 @@ disabled_plugins = ["restart"]
   stream_server_address = "127.0.0.1"
   max_container_log_line_size = {{ containerd_config.max_container_log_line_size }}
   sandbox_image = "{{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}"
+  systemd_cgroup = {{ containerd_use_systemd_cgroup|lower }}
 
 [plugins.cri.cni]
   bin_dir = "/opt/cni/bin"
   conf_dir = "/etc/cni/net.d"
   conf_template = ""
 
+{% if 'containerd' in containerd_config %}
+[plugins.cri.containerd]
+{% for param, value in containerd_config.containerd.items() %}
+  {{ param }} = {{ value }}
+{% endfor %}
+{% endif %}
+
+[plugins.cri.containerd.default_runtime]
+  runtime_type = "{{ containerd_default_runtime.type }}"
+  runtime_engine = "{{ containerd_default_runtime.engine }}"
+  runtime_root = "{{ containerd_default_runtime.root }}"
+
+{% for runtime in containerd_runtimes %}
+[plugins.cri.containerd.runtimes.{{ runtime.name }}]
+  runtime_type = "{{ runtime.type }}"
+  runtime_engine = "{{ runtime.engine }}"
+  runtime_root = "{{ runtime.root }}"
+{% endfor %}
+
 [plugins.cri.containerd.untrusted_workload_runtime]
-  runtime_type = ""
-  runtime_engine = ""
-  runtime_root = ""
+  runtime_type = "{{ containerd_untrusted_runtime_type }}"
+  runtime_engine = "{{ containerd_untrusted_runtime_engine }}"
+  runtime_root = "{{ containerd_untrusted_runtime_root }}"
 
 {% if 'registries' in containerd_config %}
 [plugins.cri.registry]
@@ -37,4 +57,10 @@ disabled_plugins = ["restart"]
 [plugins.cri.registry.mirrors."{{ registry }}"]
   endpoint = ["{{ addr }}"]
 {% endfor %}
+{% endif %}
+
+{% if 'metrics' in containerd_config %}
+[metrics]
+  address = "{{ containerd_config.metrics.address | default('') }}"
+  grpc_histogram = {{ containerd_config.metrics.grpc_histogram | default(false) | lower }}
 {% endif %}

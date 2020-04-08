@@ -13,32 +13,54 @@
   vars:
     ansible_connection: local
 
+- hosts: all
+  gather_facts: false
+  tasks:
+    - name: "Set up proxy environment"
+      set_fact:
+        proxy_env:
+          http_proxy: "{{ http_proxy | default ('') }}"
+          HTTP_PROXY: "{{ http_proxy | default ('') }}"
+          https_proxy: "{{ https_proxy | default ('') }}"
+          HTTPS_PROXY: "{{ https_proxy | default ('') }}"
+          no_proxy: "{{ no_proxy | default ('') }}"
+          NO_PROXY: "{{ no_proxy | default ('') }}"
+      no_log: true
+
 - hosts: bastion[0]
   gather_facts: False
   roles:
-    - { role: kubespray-defaults}
-    - { role: bastion-ssh-config, tags: ["localhost", "bastion"]}
+    - { role: kubespray-defaults }
+    - { role: bastion-ssh-config, tags: ["localhost", "bastion"] }
 
 - name: Bootstrap any new workers
   hosts: kube-node
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   gather_facts: false
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: bootstrap-os, tags: bootstrap-os}
 
 - name: Generate the etcd certificates beforehand
   hosts: etcd
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: etcd, tags: etcd, etcd_cluster_setup: false }
+
+- name: Download images to ansible host cache via first kube-master node
+  hosts: kube-master[0]
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kubespray-defaults, when: "not skip_downloads and download_run_once and not download_localhost"}
+    - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
+    - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
 
 - name: Target only workers to get kubelet installed and checking in on any new nodes
   hosts: kube-node
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
     - { role: download, tags: download, when: "not skip_downloads" }
@@ -46,5 +68,5 @@
     - { role: kubernetes/node, tags: node }
     - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: network_plugin, tags: network }
-    - { role: kubernetes/node-label }
+    - { role: kubernetes/node-label, tags: node-label }
   environment: "{{ proxy_env }}"

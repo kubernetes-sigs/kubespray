@@ -3,8 +3,14 @@ variable "cluster_name" {
 }
 
 variable "az_list" {
-  description = "List of Availability Zones available in your OpenStack cluster"
-  type        = "list"
+  description = "List of Availability Zones to use for masters in your OpenStack cluster"
+  type        = list(string)
+  default     = ["nova"]
+}
+
+variable "az_list_node" {
+  description = "List of Availability Zones to use for nodes in your OpenStack cluster"
+  type        = list(string)
   default     = ["nova"]
 }
 
@@ -213,4 +219,9 @@ variable "use_access_ip" {
 
 variable "use_server_groups" {
   default = false
+}
+
+variable "router_id" {
+  description = "uuid of an externally defined router to use"
+  default     = null
 }

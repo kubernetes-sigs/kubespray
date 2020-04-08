@@ -4,13 +4,12 @@ stages:
   - deploy-part1
   - moderator
   - deploy-part2
-  - deploy-gce
+  - deploy-part3
   - deploy-special
 
 variables:
   FAILFASTCI_NAMESPACE: 'kargo-ci'
   GITLAB_REPOSITORY: 'kargo-ci/kubernetes-sigs-kubespray'
-  # DOCKER_HOST: tcp://localhost:2375
   ANSIBLE_FORCE_COLOR: "true"
   MAGIC: "ci check this"
   TEST_ID: "$CI_PIPELINE_ID-$CI_BUILD_ID"
@@ -26,7 +25,9 @@ variables:
   IDEMPOT_CHECK: "false"
   RESET_CHECK: "false"
   UPGRADE_TEST: "false"
-  LOG_LEVEL: "-vv"
+  ANSIBLE_LOG_LEVEL: "-vv"
+  RECOVER_CONTROL_PLANE_TEST: "false"
+  RECOVER_CONTROL_PLANE_TEST_GROUPS: "etcd[2:],kube-master[1:]"
 
 before_script:
   - ./tests/scripts/rebase.sh
@@ -38,13 +39,14 @@ before_script:
   tags:
     - packet
   variables:
-    KUBESPRAY_VERSION: v2.11.0
+    KUBESPRAY_VERSION: v2.12.5
   image: quay.io/kubespray/kubespray:$KUBESPRAY_VERSION
+  artifacts:
+    paths:
+      - cluster-dump/
 
 .testcases: &testcases
   <<: *job
-  services:
-    - docker:dind
   before_script:
     - update-alternatives --install /usr/bin/python python /usr/bin/python3 1
     - ./tests/scripts/rebase.sh
@@ -52,7 +54,7 @@ before_script:
   script:
     - ./tests/scripts/testcases_run.sh
   after_script:
-    - ./tests/scripts/testcases_cleanup.sh
+    - chronic ./tests/scripts/testcases_cleanup.sh
 
 # For failfast, at least 1 job must be defined in .gitlab-ci.yml
 # Premoderated with manual actions
@@ -70,3 +72,4 @@ include:
   - .gitlab-ci/shellcheck.yml
   - .gitlab-ci/terraform.yml
   - .gitlab-ci/packet.yml
+  - .gitlab-ci/vagrant.yml

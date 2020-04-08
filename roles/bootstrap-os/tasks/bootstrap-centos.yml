@@ -1,14 +1,28 @@
 ---
+# For Oracle Linux install public repo
+- name: Download Oracle Linux public yum repo
+  get_url:
+    url: https://yum.oracle.com/public-yum-ol7.repo
+    dest: /etc/yum.repos.d/public-yum-ol7.repo
+  when:
+    - use_oracle_public_repo|default(true)
+    - '"Oracle" in os_release.stdout'
+
+- name: Enable Oracle Linux repo
+  ini_file:
+    dest: /etc/yum.repos.d/public-yum-ol7.repo
+    section: "{{ item }}"
+    option: enabled
+    value: "1"
+  with_items:
+    - ol7_latest
+    - ol7_addons
+    - ol7_developer_EPEL
+  when:
+    - use_oracle_public_repo|default(true)
+    - '"Oracle" in os_release.stdout'
+
 # CentOS ships with python installed
-
-- name: Check if this is an atomic host
-  stat:
-    path: /run/ostree-booted
-  register: ostree
-
-- name: Store the fact if this is an atomic host
-  set_fact:
-    is_atomic: "{{ ostree.stat.exists }}"
 
 - name: Check presence of fastestmirror.conf
   stat:
@@ -30,6 +44,7 @@
 - name: Add proxy to /etc/yum.conf if http_proxy is defined
   lineinfile:
     path: "/etc/yum.conf"
+    regexp: "^proxy=.*$"
     line: "proxy={{ http_proxy }}"
     create: true
     state: present
@@ -49,5 +64,3 @@
     name: "{{ ( (ansible_distribution_major_version | int) < 8) | ternary('libselinux-python','python3-libselinux') }}"
     state: present
   become: true
-  when:
-    - not is_atomic

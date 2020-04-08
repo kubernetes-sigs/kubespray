@@ -1,4 +1,14 @@
 ---
+- name: kubeadm | Check api is up
+  uri:
+    url: "https://{{ ip | default(fallback_ips[inventory_hostname]) }}:6443/healthz"
+    validate_certs: false
+  when: inventory_hostname == groups['kube-master']|first
+  register: _result
+  retries: 60
+  delay: 5
+  until: _result.status == 200
+
 - name: kubeadm | Upgrade first master
   command: >-
     timeout -k 600s 600s
@@ -9,6 +19,7 @@
     --allow-experimental-upgrades
     --allow-release-candidate-upgrades
     --etcd-upgrade=false
+    {{ (kubeadm_output.stdout is version('v1.16.0', '>=')) | ternary('--certificate-renewal=true', '') }}
     --force
   register: kubeadm_upgrade
   # Retry is because upload config sometimes fails
@@ -29,6 +40,7 @@
     --allow-experimental-upgrades
     --allow-release-candidate-upgrades
     --etcd-upgrade=false
+    {{ (kubeadm_output.stdout is version('v1.16.0', '>=')) | ternary('--certificate-renewal=true', '') }}
     --force
   register: kubeadm_upgrade
   when: inventory_hostname != groups['kube-master']|first
@@ -37,6 +49,14 @@
     - '"field is immutable" not in kubeadm_upgrade.stderr'
     - kubeadm_upgrade.stdout_lines | length > 1
   notify: Master | restart kubelet
+
+- name: kubeadm | clean kubectl cache to refresh api types
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /root/.kube/cache
+    - /root/.kube/http-cache
 
 # FIXME: https://github.com/kubernetes/kubeadm/issues/1318
 - name: kubeadm | scale down coredns replicas to 0 if not using coredns dns_mode

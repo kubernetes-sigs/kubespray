@@ -19,7 +19,7 @@ spec:
       hostNetwork: true
       containers:
         - name: node-driver-registrar
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.1.0
+          image: {{ csi_node_driver_registrar_image_repo }}:{{ csi_node_driver_registrar_image_tag }}
           args:
             - "--csi-address=$(ADDRESS)"
             - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
@@ -48,7 +48,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: docker.io/k8scloudprovider/cinder-csi-plugin:latest
+          image: {{ cinder_csi_plugin_image_repo }}:{{ cinder_csi_plugin_image_tag }}
           args :
             - /bin/cinder-csi-plugin
             - "--nodeid=$(NODE_ID)"
@@ -79,7 +79,10 @@ spec:
             - name: secret-cinderplugin
               mountPath: /etc/config
               readOnly: true
-{% if cinder_cacert is defined %}
+            - name: ca-certs
+              mountPath: /etc/ssl/certs
+              readOnly: true
+{% if cinder_cacert is defined and cinder_cacert != "" %}
             - name: cinder-cacert
               mountPath: {{ kube_config_dir }}/cinder-cacert.pem
               readOnly: true
@@ -108,7 +111,11 @@ spec:
         - name: secret-cinderplugin
           secret:
             secretName: cloud-config
-{% if cinder_cacert is defined %}
+        - name: ca-certs
+          hostPath:
+            path: /etc/ssl/certs
+            type: DirectoryOrCreate
+{% if cinder_cacert is defined and cinder_cacert != "" %}
         - name: cinder-cacert
           hostPath:
             path: {{ kube_config_dir }}/cinder-cacert.pem

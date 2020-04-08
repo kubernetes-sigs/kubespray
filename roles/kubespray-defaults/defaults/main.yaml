@@ -3,19 +3,22 @@
 # This change obseletes editing ansible.cfg file depending on bastion existence
 ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ hostvars['bastion']['ansible_user'] }}@{{ hostvars['bastion']['ansible_host'] }} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
 
+# selinux state
+preinstall_selinux_state: permissive
+
 kube_api_anonymous_auth: true
 
 # Default value, but will be set to true automatically if detected
-is_atomic: false
+is_fedora_coreos: false
 
 # optional disable the swap
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.16.3
+kube_version: v1.17.4
 
 ## The minimum version working
-kube_version_min_required: v1.15.0
+kube_version_min_required: v1.16.0
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
@@ -201,6 +204,9 @@ kube_profiling: false
 # Container for runtime
 container_manager: docker
 
+# Container on localhost (download images when download_localhost is true)
+container_manager_on_localhost: "{{ container_manager }}"
+
 # CRI socket path
 cri_socket: >-
   {%- if container_manager == 'crio' -%}
@@ -298,16 +304,28 @@ enable_network_policy: true
 local_volume_provisioner_enabled: "{{ local_volumes_enabled | default('false') }}"
 local_volume_provisioner_directory_mode: 0700
 cinder_csi_enabled: false
+aws_ebs_csi_enabled: false
+azure_csi_enabled: false
+gcp_pd_csi_enabled: false
 persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
 rbd_provisioner_enabled: false
 ingress_nginx_enabled: false
+ingress_alb_enabled: false
 cert_manager_enabled: false
 expand_persistent_volumes: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
 openstack_blockstorage_ignore_volume_az: "{{ volume_cross_zone_attachment | default('false') }}"
+# set max volumes per node (cinder-csi), default not set
+# node_volume_attach_limit: 25
+# Cinder CSI topology, when false volumes can be cross-mounted between availability zones
+# cinder_topology: false
+# Set Cinder topology zones (can be multiple zones, default not set)
+# cinder_topology_zones:
+#   - nova
+
 ## When OpenStack is used, if LBaaSv2 is available you can enable it with the following 2 variables.
 openstack_lbaas_enabled: false
 # openstack_lbaas_subnet_id: "Neutron subnet ID (not network ID) to create LBaaS VIP"
@@ -322,6 +340,13 @@ openstack_lbaas_monitor_delay: "1m"
 openstack_lbaas_monitor_timeout: "30s"
 openstack_lbaas_monitor_max_retries: "3"
 openstack_cacert: "{{ lookup('env','OS_CACERT') }}"
+
+# Default values for the external OpenStack Cloud Controller
+external_openstack_lbaas_use_octavia: true
+external_openstack_lbaas_create_monitor: false
+external_openstack_lbaas_monitor_delay: "1m"
+external_openstack_lbaas_monitor_timeout: "30s"
+external_openstack_lbaas_monitor_max_retries: "3"
 
 ## List of authorization modes that must be configured for
 ## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
@@ -339,19 +364,9 @@ kubelet_authorization_mode_webhook: true
 # Automatically generate a new key and request a new certificate from the Kubernetes API as the current certificate approaches expiration
 kubelet_rotate_certificates: true
 
-## v1.11 feature
-feature_gate_v1_11:
-  - "PersistentLocalVolumes={{ local_volume_provisioner_enabled | string }}"
-  - "VolumeScheduling={{ local_volume_provisioner_enabled | string }}"
-  - "MountPropagation={{ local_volume_provisioner_enabled | string }}"
-
-## v1.12 feature
-feature_gate_v1_12: []
-
 ## List of key=value pairs that describe feature gates for
 ## the k8s cluster.
-kube_feature_gates: |-
-  {{ feature_gate_v1_12 }}
+kube_feature_gates: []
 
 # Enable kubeadm experimental control plane
 kubeadm_control_plane: false
@@ -391,10 +406,13 @@ contiv_global_as: "65002"
 contiv_global_neighbor_as: "500"
 
 # Set 127.0.0.1 as fallback IP if we do not have host facts for host
+# ansible_default_ipv4 isn't what you think.
+# Thanks https://medium.com/opsops/ansible-default-ipv4-is-not-what-you-think-edb8ab154b10
 fallback_ips_base: |
   ---
   {% for item in groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([])|unique %}
-  {{ item }}: "{{ hostvars[item].get('ansible_default_ipv4', {'address': '127.0.0.1'})['address'] }}"
+  {% set found = hostvars[item].get('ansible_default_ipv4') %}
+  {{ item }}: "{{ found.get('address', '127.0.0.1') }}"
   {% endfor %}
 fallback_ips: "{{ fallback_ips_base | from_yaml }}"
 
@@ -416,20 +434,12 @@ no_proxy: >-
   {%- if additional_no_proxy is defined -%}
   {{ additional_no_proxy }},
   {%- endif -%}
-  127.0.0.1,localhost
+  127.0.0.1,localhost,{{kube_service_addresses}},{{kube_pods_subnet}}
   {%- endif %}
-
-proxy_env:
-  http_proxy: "{{ http_proxy| default ('') }}"
-  HTTP_PROXY: "{{ http_proxy| default ('') }}"
-  https_proxy: "{{ https_proxy| default ('') }}"
-  HTTPS_PROXY: "{{ https_proxy| default ('') }}"
-  no_proxy: "{{ no_proxy| default ('') }}"
-  NO_PROXY: "{{ no_proxy| default ('') }}"
 
 ssl_ca_dirs: >-
   [
-  {% if ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] -%}
+  {% if ansible_os_family in ['CoreOS', 'Container Linux by CoreOS', 'Flatcar', 'Flatcar Container Linux by Kinvolk'] -%}
   '/usr/share/ca-certificates',
   {% elif ansible_os_family == 'RedHat' -%}
   '/etc/pki/tls',
@@ -450,8 +460,8 @@ loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
 apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
 kube_apiserver_endpoint: |-
-  {% if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
-       https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+  {% if loadbalancer_apiserver is defined -%}
+       https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
   {%- elif not is_kube_master and loadbalancer_apiserver_localhost -%}
        https://localhost:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }}
   {%- elif is_kube_master -%}
@@ -524,3 +534,14 @@ etcd_config_dir: /etc/ssl/etcd
 etcd_cert_dir: "{{ etcd_config_dir }}/ssl"
 
 typha_enabled: false
+
+_host_architecture_groups:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
+host_architecture: >-
+  {%- if ansible_architecture in _host_architecture_groups -%}
+  {{ _host_architecture_groups[ansible_architecture] }}
+  {%- else -%}
+  {{ ansible_architecture }}
+  {%- endif -%}

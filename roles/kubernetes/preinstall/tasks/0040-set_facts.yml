@@ -1,40 +1,27 @@
 ---
-- name: set architecture_groups
-  set_fact:
-    architecture_groups:
-      x86_64: amd64
-      aarch64: arm64
-      armv7l: arm
-
-- name: ansible_architecture_rename
-  set_fact:
-    host_architecture: >-
-      {%- if ansible_architecture in architecture_groups -%}
-      {{ architecture_groups[ansible_architecture] }}
-      {%- else -%}
-       {{ ansible_architecture }}
-      {% endif %}
-
-- name: Force binaries directory for Container Linux by CoreOS
+- name: Force binaries directory for Container Linux by CoreOS and Flatcar
   set_fact:
     bin_dir: "/opt/bin"
-  when: ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
+  when: ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
   tags:
     - facts
 
-- name: check if atomic host
+- name: check if booted with ostree
   stat:
     path: /run/ostree-booted
   register: ostree
 
-- name: set is_atomic
-  set_fact:
-    is_atomic: "{{ ostree.stat.exists }}"
+- name: set is_fedora_coreos
+  lineinfile:
+    path: /etc/os-release
+    line: "VARIANT_ID=coreos"
+    state: present
+  check_mode: yes
+  register: os_variant_coreos
 
-- name: set kube_cert_group on atomic hosts
+- name: set is_fedora_coreos
   set_fact:
-    kube_cert_group: "kube"
-  when: is_atomic
+    is_fedora_coreos: "{{ ostree.stat.exists and os_variant_coreos is not changed }}"
 
 - name: check resolvconf
   shell: which resolvconf
@@ -85,12 +72,12 @@
       {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/base{%- endif -%}
     head: >-
       {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/head{%- endif -%}
-  when: not ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
+  when: not ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: target temporary resolvconf cloud init file (Container Linux by CoreOS)
   set_fact:
     resolvconffile: /tmp/resolveconf_cloud_init_conf
-  when: ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
+  when: ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: check if /etc/dhclient.conf exists
   stat:
@@ -182,7 +169,6 @@
     kube_etcd_cacert_file: "etcd/ca.crt"
     kube_etcd_cert_file: "apiserver-etcd-client.crt"
     kube_etcd_key_file: "apiserver-etcd-client.key"
-    etcd_deployment_type: host
   when:
     - etcd_kubeadm_enabled
 

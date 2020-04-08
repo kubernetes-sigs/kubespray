@@ -12,6 +12,7 @@ module "network" {
   dns_nameservers    = "${var.dns_nameservers}"
   network_dns_domain = "${var.network_dns_domain}"
   use_neutron        = "${var.use_neutron}"
+  router_id          = "${var.router_id}"
 }
 
 module "ips" {
@@ -32,6 +33,7 @@ module "compute" {
 
   cluster_name                                 = "${var.cluster_name}"
   az_list                                      = "${var.az_list}"
+  az_list_node                                 = "${var.az_list_node}"
   number_of_k8s_masters                        = "${var.number_of_k8s_masters}"
   number_of_k8s_masters_no_etcd                = "${var.number_of_k8s_masters_no_etcd}"
   number_of_etcd                               = "${var.number_of_etcd}"

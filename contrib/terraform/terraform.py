@@ -357,7 +357,7 @@ def iter_host_ips(hosts, ips):
                 'ansible_ssh_host': ip,
             })
 
-        if 'use_access_ip' in host[1]['metadata'] and ihost[1]['metadata']['use_access_ip'] == "0":
+        if 'use_access_ip' in host[1]['metadata'] and host[1]['metadata']['use_access_ip'] == "0":
                 host[1].pop('access_ip')
 
         yield host

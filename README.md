@@ -2,7 +2,7 @@
 
 ![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-sigs/kubespray/master/docs/img/kubernetes-logo.png)
 
-If you have questions, check the [documentation](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
+If you have questions, check the documentation at [kubespray.io](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 You can get your invite [here](http://slack.k8s.io/)
 
 - Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere, Packet (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
@@ -103,7 +103,7 @@ vagrant up
 - **Container Linux by CoreOS**
 - **Debian** Buster, Jessie, Stretch, Wheezy
 - **Ubuntu** 16.04, 18.04
-- **CentOS/RHEL** 7
+- **CentOS/RHEL** 7, 8 (experimental: see [centos 8 notes](docs/centos8.md)
 - **Fedora** 28
 - **Fedora CoreOS** (experimental: see [fcos Note](docs/fcos.md)
 - **openSUSE** Leap 42.3/Tumbleweed
@@ -121,13 +121,13 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cri-o](http://cri-o.io/) v1.14.0 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.8.5
-  - [calico](https://github.com/projectcalico/calico) v3.11.1
+  - [calico](https://github.com/projectcalico/calico) v3.13.2
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.5.5
   - [contiv](https://github.com/contiv/install) v1.2.1
   - [flanneld](https://github.com/coreos/flannel) v0.11.0
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v0.4.0
-  - [multus](https://github.com/intel/multus-cni) v3.4
+  - [multus](https://github.com/intel/multus-cni) v3.4.1
   - [weave](https://github.com/weaveworks/weave) v2.5.2
 - Application
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11

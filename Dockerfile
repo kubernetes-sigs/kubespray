@@ -22,3 +22,6 @@ RUN /usr/bin/python3 -m pip install pip -U && /usr/bin/python3 -m pip install -r
 
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.14.4/bin/linux/amd64/kubectl \
     && chmod a+x kubectl && cp kubectl /usr/local/bin/kubectl
+
+# Some tools like yamllint need this
+ENV LANG=C.UTF-8

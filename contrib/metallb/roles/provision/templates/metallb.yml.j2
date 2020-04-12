@@ -50,6 +50,48 @@ rules:
 - apiGroups: [""]
   resources: ["services", "endpoints", "nodes"]
   verbs: ["get", "list", "watch"]
+{% if podsecuritypolicy_enabled %}
+- apiGroups: ["policy"]
+  resourceNames: ["metallb"]
+  resources: ["podsecuritypolicies"]
+  verbs: ["use"]
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: metallb
+  annotations:
+    seccomp.security.alpha.kubernetes.io/defaultProfileName:  'docker/default'
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: 'docker/default'
+{% if apparmor_enabled %}
+    apparmor.security.beta.kubernetes.io/defaultProfileName:  'runtime/default'
+    apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
+{% endif %}
+  labels:
+    app: metallb
+spec:
+  privileged: true
+  allowPrivilegeEscalation: false
+  allowedCapabilities:
+  - net_raw
+  volumes:
+  - secret
+  hostNetwork: true
+  hostPorts:
+  - min: {{ metallb.port }}
+    max: {{ metallb.port }}
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: 'RunAsAny'
+  seLinux:
+    rule: 'RunAsAny'
+  supplementalGroups:
+    rule: 'RunAsAny'
+  fsGroup:
+    rule: 'RunAsAny'
+  readOnlyRootFilesystem: true
+{% endif %}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

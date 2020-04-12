@@ -50,12 +50,24 @@
     - https_proxy is defined
     - need_https_proxy.rc != 0
 
+- name: Check Network Name Resolution configuration
+  raw: grep '^DNSSEC=allow-downgrade' /etc/systemd/resolved.conf
+  register: need_dnssec_allow_downgrade
+  failed_when: false
+  changed_when: false
+  # This command should always run, even in check mode
+  check_mode: false
+  environment: {}
+  when:
+    - '"bionic" in os_release.stdout'
+
 - name: Change Network Name Resolution configuration
   raw: sed -i 's/^DNSSEC=yes/DNSSEC=allow-downgrade/g' /etc/systemd/resolved.conf
   become: true
   environment: {}
   when:
     - '"bionic" in os_release.stdout'
+    - need_dnssec_allow_downgrade.rc
 
 - name: Restart systemd-resolved service
   raw: systemctl restart systemd-resolved
@@ -63,6 +75,7 @@
   environment: {}
   when:
     - '"bionic" in os_release.stdout'
+    - need_dnssec_allow_downgrade.rc
 
 - name: Install python
   raw:

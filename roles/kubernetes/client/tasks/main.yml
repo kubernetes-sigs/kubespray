@@ -63,9 +63,23 @@
   run_once: yes
   register: admin_kubeconfig
 
+- set_fact:
+    admin_kubeconfig: "{{ raw_admin_kubeconfig.stdout | from_yaml }}"
+- set_fact:
+    cluster_infos: "{{ admin_kubeconfig['clusters'][0]['cluster'] }}"
+    user_certs: "{{ admin_kubeconfig['users'][0]['user'] }}"
+    username: "kubernetes-admin-{{ cluster_name }}"
+    context: "kubernetes-admin-{{ cluster_name }}@{{ cluster_name }}"
+- set_fact:
+    final_admin_kubeconfig: "{{ admin_kubeconfig | combine(override_cluster_name, recursive=true) | combine(override_context, recursive=true) | combine(override_user, recursive=true) }}"
+  vars:
+    override_cluster_name: "{{ { 'clusters': [ { 'cluster': cluster_infos, 'name': cluster_name } ] } }}"
+    override_context: "{{ { 'contexts': [ { 'context': { 'user': username, 'cluster': cluster_name }, 'name': context } ], 'current-context': context } }}"
+    override_user: "{{ { 'users': [ { 'name': username, 'user': user_certs  } ] } }}"
+
 - name: Write admin kubeconfig on ansible host
   copy:
-    content: "{{ admin_kubeconfig.stdout }}"
+    content: "{{ final_admin_kubeconfig | to_nice_yaml(indent=2)}}"
     dest: "{{ artifacts_dir }}/admin.conf"
     mode: 0640
   delegate_to: localhost

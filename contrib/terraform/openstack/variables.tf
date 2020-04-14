@@ -226,5 +226,7 @@ variable "router_id" {
   default     = null
 }
 
-variable "k8s_nodes" {}
+variable "k8s_nodes" {
+  default = {}
+}
 

@@ -1,0 +1,28 @@
+---
+- name: Set no_proxy to all assigned cluster IPs and hostnames
+  set_fact:
+    no_proxy_prepare: >-
+      {%- if loadbalancer_apiserver is defined -%}
+      {{ apiserver_loadbalancer_domain_name| default('') }},
+      {{ loadbalancer_apiserver.address | default('') }},
+      {%- endif -%}
+      {%- for item in (groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]))|unique -%}
+      {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }},
+      {%-   if item != hostvars[item].get('ansible_hostname', '') -%}
+      {{ hostvars[item]['ansible_hostname'] }},
+      {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }},
+      {%-   endif -%}
+      {{ item }},{{ item }}.{{ dns_domain }},
+      {%- endfor -%}
+      {%- if additional_no_proxy is defined -%}
+      {{ additional_no_proxy }},
+      {%- endif -%}
+      127.0.0.1,localhost,{{kube_service_addresses}},{{kube_pods_subnet}}
+  delegate_to: localhost
+  delegate_facts: yes
+  become: no
+  run_once: yes
+
+- name: Populates no_proxy to all hosts
+  set_fact:
+    no_proxy: "{{ no_proxy_preare }}"

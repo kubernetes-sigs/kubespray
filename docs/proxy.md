@@ -1,6 +1,6 @@
 # Setting up Environment Proxy
 
-If you set http and https proxy, all nodes and loadbalancer will be excluded from proxy with generating no_proxy variable in `roles/kubespray-defaults/defaults/main.yml`, if you have additional resources for exclude add them to `additional_no_proxy` variable. If you want fully override your `no_proxy` setting, then fill in just `no_proxy` and no nodes or loadbalancer addresses will be added to no_proxy.
+If you set http and https proxy, all nodes and loadbalancer will be excluded from proxy with generating no_proxy variable in `roles/kubespray-defaults/tasks/no_proxy.yml`, if you have additional resources for exclude add them to `additional_no_proxy` variable. If you want fully override your `no_proxy` setting, then fill in just `no_proxy` and no nodes or loadbalancer addresses will be added to no_proxy.
 
 ## Set proxy for http and https
 

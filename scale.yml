@@ -41,8 +41,28 @@
     - { role: kubespray-defaults }
     - { role: bootstrap-os, tags: bootstrap-os}
 
+- name: Gather facts
+  hosts: k8s-cluster:etcd:calico-rr
+  gather_facts: False
+  tasks:
+    - name: Gather minimal facts
+      setup:
+        gather_subset: '!all'
+
+    - name: Gather necessary facts
+      setup:
+        gather_subset: '!all,!min,network,hardware'
+        filter: "{{ item }}"
+      loop:
+        - ansible_distribution_major_version
+        - ansible_default_ipv4
+        - ansible_all_ipv4_addresses
+        - ansible_memtotal_mb
+        - ansible_swaptotal_mb
+
 - name: Generate the etcd certificates beforehand
   hosts: etcd
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults }
@@ -58,6 +78,7 @@
 
 - name: Target only workers to get kubelet installed and checking in on any new nodes
   hosts: kube-node
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
     - { role: kubespray-defaults }

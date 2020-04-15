@@ -3,28 +3,27 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: kube-flannel-cfg
-  namespace: "kube-system"
+  namespace: kube-system
   labels:
     tier: node
     app: flannel
 data:
   cni-conf.json: |
     {
-      "name":"cni0",
-      "cniVersion":"0.3.1",
-      "plugins":[
+      "name": "cbr0",
+      "cniVersion": "0.3.1",
+      "plugins": [
         {
-          "type":"flannel",
-          "delegate":{
-            "forceAddress":true,
+          "type": "flannel",
+          "delegate": {
             "hairpinMode": true,
-            "isDefaultGateway":true
+            "isDefaultGateway": true
           }
         },
         {
-          "type":"portmap",
-          "capabilities":{
-            "portMappings":true
+          "type": "portmap",
+          "capabilities": {
+            "portMappings": true
           }
         }
       ]
@@ -41,25 +40,22 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: kube-flannel
-  namespace: "kube-system"
+  namespace: kube-system
   labels:
     tier: node
-    k8s-app: flannel
+    app: flannel
 spec:
   selector:
     matchLabels:
-      tier: node
-      k8s-app: flannel
+      app: flannel
   template:
     metadata:
       labels:
         tier: node
-        k8s-app: flannel
+        app: flannel
     spec:
       priorityClassName: system-node-critical
       serviceAccountName: flannel
-      nodeSelector:
-        beta.kubernetes.io/os: linux
       containers:
       - name: kube-flannel
         image: {{ flannel_image_repo }}:{{ flannel_image_tag }}
@@ -73,7 +69,9 @@ spec:
             memory: {{ flannel_memory_requests }}
         command: [ "/opt/bin/flanneld", "--ip-masq", "--kube-subnet-mgr"{% if flannel_interface is defined %}, "--iface={{ flannel_interface }}"{% endif %}{% if flannel_interface_regexp is defined %}, "--iface-regex={{ flannel_interface_regexp }}"{% endif %} ]
         securityContext:
-          privileged: true
+          privileged: false
+          capabilities:
+            add: ["NET_ADMIN"]
         env:
         - name: POD_NAME
           valueFrom:
@@ -83,45 +81,47 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
         volumeMounts:
         - name: run
-          mountPath: /run
+          mountPath: /run/flannel
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: beta.kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+                  - key: beta.kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+      initContainers:
+      - name: install-cni
+        image: {{ flannel_cni_image_repo }}:{{ flannel_cni_image_tag }}
+        command:
+        - cp
+        args:
+        - -f
+        - /etc/kube-flannel/cni-conf.json
+        - /etc/cni/net.d/10-flannel.conflist
+        volumeMounts:
         - name: cni
           mountPath: /etc/cni/net.d
         - name: flannel-cfg
           mountPath: /etc/kube-flannel/
-      - name: install-cni
-        image: {{ flannel_cni_image_repo }}:{{ flannel_cni_image_tag }}
-        command: ["/install-cni.sh"]
-        env:
-        # The CNI network config to install on each node.
-        - name: CNI_NETWORK_CONFIG
-          valueFrom:
-            configMapKeyRef:
-              name: kube-flannel-cfg
-              key: cni-conf.json
-        - name: CNI_CONF_NAME
-          value: "10-flannel.conflist"
-        volumeMounts:
-        - name: cni
-          mountPath: /host/etc/cni/net.d
-        - name: host-cni-bin
-          mountPath: /host/opt/cni/bin/
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       tolerations:
-        - operator: Exists
-        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
-        - key: CriticalAddonsOnly
-          operator: "Exists"
+      - operator: Exists
+        effect: NoSchedule
       volumes:
         - name: run
           hostPath:
-            path: /run
+            path: /run/flannel
         - name: cni
           hostPath:
             path: /etc/cni/net.d

@@ -29,6 +29,7 @@ rules:
       - "kubeovn.io"
     resources:
       - subnets
+      - subnets/status
       - ips
     verbs:
       - "*"
@@ -55,6 +56,7 @@ rules:
       - services
       - endpoints
       - statefulsets
+      - daemonsets
     verbs:
       - get
       - list
@@ -97,6 +99,7 @@ spec:
   type: ClusterIP
   selector:
     app: ovn-central
+    ovn-nb-leader: "true"
   sessionAffinity: None
 
 ---
@@ -114,6 +117,7 @@ spec:
   type: ClusterIP
   selector:
     app: ovn-central
+    ovn-sb-leader: "true"
   sessionAffinity: None
 
 ---
@@ -152,17 +156,30 @@ spec:
                 matchLabels:
                   app: ovn-central
               topologyKey: kubernetes.io/hostname
+      priorityClassName: system-cluster-critical
       serviceAccountName: ovn
       hostNetwork: true
       containers:
         - name: ovn-central
-          image: {{ kube_ovn_db_image_repo }}:{{ kube_ovn_db_image_tag }}
+          image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
+          command: ["/kube-ovn/start-db.sh"]
+          securityContext:
+            capabilities:
+              add: ["SYS_NICE"]
           env:
             - name: POD_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           resources:
             requests:
               cpu: {{ kube_ovn_db_cpu_request }}
@@ -171,47 +188,55 @@ spec:
               cpu: {{ kube_ovn_db_cpu_limit }}
               memory: {{ kube_ovn_db_memory_limit }}
           volumeMounts:
-            - mountPath: /run/openvswitch
-              name: host-run-ovs
             - mountPath: /var/run/openvswitch
               name: host-run-ovs
+            - mountPath: /var/run/ovn
+              name: host-run-ovn
             - mountPath: /sys
               name: host-sys
               readOnly: true
             - mountPath: /etc/openvswitch
               name: host-config-openvswitch
             - mountPath: /var/log/openvswitch
-              name: host-log
+              name: host-log-ovs
+            - mountPath: /var/log/ovn
+              name: host-log-ovn
           readinessProbe:
             exec:
               command:
                 - sh
-                - /root/ovn-is-leader.sh
+                - /kube-ovn/ovn-is-leader.sh
             periodSeconds: 3
           livenessProbe:
             exec:
               command:
               - sh
-              - /root/ovn-healthcheck.sh
+              - /kube-ovn/ovn-healthcheck.sh
             initialDelaySeconds: 30
             periodSeconds: 7
             failureThreshold: 5
       nodeSelector:
-        beta.kubernetes.io/os: "linux"
+        kubernetes.io/os: "linux"
         kube-ovn/role: "master"
       volumes:
         - name: host-run-ovs
           hostPath:
             path: /run/openvswitch
+        - name: host-run-ovn
+          hostPath:
+            path: /run/ovn
         - name: host-sys
           hostPath:
             path: /sys
         - name: host-config-openvswitch
           hostPath:
             path: /etc/origin/openvswitch
-        - name: host-log
+        - name: host-log-ovs
           hostPath:
             path: /var/log/openvswitch
+        - name: host-log-ovn
+          hostPath:
+            path: /var/log/ovn
 
 ---
 kind: DaemonSet
@@ -227,7 +252,7 @@ spec:
     matchLabels:
       app: ovs
   updateStrategy:
-    type: RollingUpdate
+    type: OnDelete
   template:
     metadata:
       labels:
@@ -238,13 +263,15 @@ spec:
       tolerations:
       - operator: Exists
         effect: NoSchedule
+      priorityClassName: system-cluster-critical
       serviceAccountName: ovn
       hostNetwork: true
       hostPID: true
       containers:
         - name: openvswitch
-          image: {{ kube_ovn_node_image_repo }}:{{ kube_ovn_node_image_tag }}
+          image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
+          command: ["/kube-ovn/start-ovs.sh"]
           securityContext:
             runAsUser: 0
             privileged: true
@@ -257,28 +284,30 @@ spec:
             - mountPath: /lib/modules
               name: host-modules
               readOnly: true
-            - mountPath: /run/openvswitch
-              name: host-run-ovs
             - mountPath: /var/run/openvswitch
               name: host-run-ovs
+            - mountPath: /var/run/ovn
+              name: host-run-ovn
             - mountPath: /sys
               name: host-sys
               readOnly: true
             - mountPath: /etc/openvswitch
               name: host-config-openvswitch
             - mountPath: /var/log/openvswitch
-              name: host-log
+              name: host-log-ovs
+            - mountPath: /var/log/ovn
+              name: host-log-ovn
           readinessProbe:
             exec:
               command:
               - sh
-              - /root/ovs-healthcheck.sh
+              - /kube-ovn/ovs-healthcheck.sh
             periodSeconds: 5
           livenessProbe:
             exec:
               command:
               - sh
-              - /root/ovs-healthcheck.sh
+              - /kube-ovn/ovs-healthcheck.sh
             initialDelaySeconds: 10
             periodSeconds: 5
             failureThreshold: 5
@@ -290,7 +319,7 @@ spec:
               cpu: {{ kube_ovn_node_cpu_limit }}
               memory: {{ kube_ovn_node_memory_limit }}
       nodeSelector:
-        beta.kubernetes.io/os: "linux"
+        kubernetes.io/os: "linux"
       volumes:
         - name: host-modules
           hostPath:
@@ -298,12 +327,18 @@ spec:
         - name: host-run-ovs
           hostPath:
             path: /run/openvswitch
+        - name: host-run-ovn
+          hostPath:
+            path: /run/ovn
         - name: host-sys
           hostPath:
             path: /sys
         - name: host-config-openvswitch
           hostPath:
             path: /etc/origin/openvswitch
-        - name: host-log
+        - name: host-log-ovs
           hostPath:
             path: /var/log/openvswitch
+        - name: host-log-ovn
+          hostPath:
+            path: /var/log/ovn

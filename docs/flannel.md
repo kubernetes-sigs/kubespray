@@ -1,5 +1,11 @@
 # Flannel
 
+Flannel is a network fabric for containers, designed for Kubernetes
+
+**Warning:** You may encounter this [bug](https://github.com/coreos/flannel/pull/1282) with `VXLAN` backend, while waiting on a newer Flannel version the current workaround (`ethtool --offload flannel.1 rx off tx off`) is showcase in kubespray [networking test](tests/testcases/040_check-network-adv.yml:31).
+
+## Verifying flannel install
+
 * Flannel configuration file should have been created there
 
 ```ShellSession

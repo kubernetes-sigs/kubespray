@@ -27,3 +27,10 @@ resource "openstack_networking_floatingip_v2" "bastion" {
   pool       = "${var.floatingip_pool}"
   depends_on = ["null_resource.dummy_dependency"]
 }
+
+resource "openstack_networking_floatingip_v2" "k8s_nodes" {
+  for_each   = var.number_of_k8s_nodes == 0 ? { for key, value in var.k8s_nodes : key => value if value.floating_ip } : {}
+  pool       = "${var.floatingip_pool}"
+  depends_on = ["null_resource.dummy_dependency"]
+}
+

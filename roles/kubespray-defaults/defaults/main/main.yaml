@@ -413,38 +413,6 @@ contiv_peer_with_uplink_leaf: false
 contiv_global_as: "65002"
 contiv_global_neighbor_as: "500"
 
-# Set 127.0.0.1 as fallback IP if we do not have host facts for host
-# ansible_default_ipv4 isn't what you think.
-# Thanks https://medium.com/opsops/ansible-default-ipv4-is-not-what-you-think-edb8ab154b10
-fallback_ips_base: |
-  ---
-  {% for item in groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([])|unique %}
-  {% set found = hostvars[item].get('ansible_default_ipv4') %}
-  {{ item }}: "{{ found.get('address', '127.0.0.1') }}"
-  {% endfor %}
-fallback_ips: "{{ fallback_ips_base | from_yaml }}"
-
-## Set no_proxy to all assigned cluster IPs and hostnames
-no_proxy: >-
-  {%- if http_proxy is defined or https_proxy is defined %}
-  {%- if loadbalancer_apiserver is defined -%}
-  {{ apiserver_loadbalancer_domain_name| default('') }},
-  {{ loadbalancer_apiserver.address | default('') }},
-  {%- endif -%}
-  {%- for item in (groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]))|unique -%}
-  {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }},
-  {%-   if item != hostvars[item].get('ansible_hostname', '') -%}
-  {{ hostvars[item]['ansible_hostname'] }},
-  {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }},
-  {%-   endif -%}
-  {{ item }},{{ item }}.{{ dns_domain }},
-  {%- endfor -%}
-  {%- if additional_no_proxy is defined -%}
-  {{ additional_no_proxy }},
-  {%- endif -%}
-  127.0.0.1,localhost,{{kube_service_addresses}},{{kube_pods_subnet}}
-  {%- endif %}
-
 ssl_ca_dirs: >-
   [
   {% if ansible_os_family in ['CoreOS', 'Container Linux by CoreOS', 'Flatcar', 'Flatcar Container Linux by Kinvolk'] -%}

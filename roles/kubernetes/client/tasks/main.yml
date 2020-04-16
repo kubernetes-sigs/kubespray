@@ -38,7 +38,7 @@
   delegate_to: localhost
   become: no
   run_once: yes
-  when: kubeconfig_localhost|default(false)
+  when: kubeconfig_localhost
 
 - name: Wait for k8s apiserver
   wait_for:
@@ -61,17 +61,36 @@
     rm -rf {{ kube_config_dir }}/external_kubeconfig
   environment: "{{ proxy_env }}"
   run_once: yes
-  register: admin_kubeconfig
+  register: raw_admin_kubeconfig
+  when: kubeconfig_localhost
+
+- name: Convert kubeconfig to YAML
+  set_fact:
+    admin_kubeconfig: "{{ raw_admin_kubeconfig.stdout | from_yaml }}"
+  when: kubeconfig_localhost
+
+- name: Override username in kubeconfig
+  set_fact:
+    final_admin_kubeconfig: "{{ admin_kubeconfig | combine(override_cluster_name, recursive=true) | combine(override_context, recursive=true) | combine(override_user, recursive=true) }}"
+  vars:
+    cluster_infos: "{{ admin_kubeconfig['clusters'][0]['cluster'] }}"
+    user_certs: "{{ admin_kubeconfig['users'][0]['user'] }}"
+    username: "kubernetes-admin-{{ cluster_name }}"
+    context: "kubernetes-admin-{{ cluster_name }}@{{ cluster_name }}"
+    override_cluster_name: "{{ { 'clusters': [ { 'cluster': cluster_infos, 'name': cluster_name } ] } }}"
+    override_context: "{{ { 'contexts': [ { 'context': { 'user': username, 'cluster': cluster_name }, 'name': context } ], 'current-context': context } }}"
+    override_user: "{{ { 'users': [ { 'name': username, 'user': user_certs  } ] } }}"
+  when: kubeconfig_localhost
 
 - name: Write admin kubeconfig on ansible host
   copy:
-    content: "{{ admin_kubeconfig.stdout }}"
+    content: "{{ final_admin_kubeconfig | to_nice_yaml(indent=2) }}"
     dest: "{{ artifacts_dir }}/admin.conf"
     mode: 0640
   delegate_to: localhost
   become: no
   run_once: yes
-  when: kubeconfig_localhost|default(false)
+  when: kubeconfig_localhost
 
 - name: Copy kubectl binary to ansible host
   fetch:
@@ -81,7 +100,7 @@
     validate_checksum: no
   become: no
   run_once: yes
-  when: kubectl_localhost|default(false)
+  when: kubectl_localhost
 
 - name: create helper script kubectl.sh on ansible host
   copy:
@@ -93,4 +112,4 @@
   become: no
   run_once: yes
   delegate_to: localhost
-  when: kubectl_localhost|default(false) and kubeconfig_localhost|default(false)
+  when: kubectl_localhost and kubeconfig_localhost

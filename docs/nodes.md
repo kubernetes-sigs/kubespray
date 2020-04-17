@@ -12,6 +12,8 @@ This should be the easiest.
 
 You can use `--limit=node1` to limit Kubespray to avoid disturbing other nodes in the cluster.
 
+Before using `--limit` run playbook `facts.yml` without the limit to refresh facts cache for all nodes.
+
 ### 3) Drain the node that will be removed
 
 ```sh

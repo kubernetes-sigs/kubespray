@@ -101,7 +101,7 @@ metadata:
   name: nginx-azuredisk
 spec:
   nodeSelector:
-    beta.kubernetes.io/os: linux
+    kubernetes.io/os: linux
   containers:
     - image: nginx
       name: nginx-azuredisk

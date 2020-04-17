@@ -4,7 +4,7 @@ To deploy Kubernetes on [Azure](https://azure.microsoft.com) uncomment the `clou
 
 All your instances are required to run in a resource group and a routing table has to be attached to the subnet your instances are in.
 
-Not all features are supported yet though, for a list of the current status have a look [here](https://github.com/colemickens/azure-kubernetes-status)
+Not all features are supported yet though, for a list of the current status have a look [here](https://github.com/Azure/AKS)
 
 ## Parameters
 

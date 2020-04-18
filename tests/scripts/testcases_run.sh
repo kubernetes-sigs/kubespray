@@ -2,9 +2,19 @@
 set -euxo pipefail
 
 echo "CI_JOB_NAME is $CI_JOB_NAME"
-pwd
-ls
-echo ${PWD}
+
+if [[ "$CI_JOB_NAME" =~ "upgrade" ]]; then
+  if [ "${UPGRADE_TEST}" == "false" ]; then
+    echo "Job name contains 'upgrade', but UPGRADE_TEST='false'"
+    exit 1
+  fi
+else
+  if [ "${UPGRADE_TEST}" != "false" ]; then
+    echo "UPGRADE_TEST!='false', but job names does not contain 'upgrade'"
+    exit 1
+  fi
+fi
+
 
 export ANSIBLE_REMOTE_USER=$SSH_USER
 export ANSIBLE_BECOME=true

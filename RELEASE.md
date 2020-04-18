@@ -8,7 +8,7 @@ The Kubespray Project is released on an as-needed basis. The process is as follo
 4. Remove hashes for [EOL versions](https://github.com/kubernetes/sig-release/blob/master/releases/patch-releases.md) of kubernetes from `*_checksums` variables.
 5. An approver creates [new release in GitHub](https://github.com/kubernetes-sigs/kubespray/releases/new) using a version and tag name like `vX.Y.Z` and attaching the release notes
 6. An approver creates a release branch in the form `release-X.Y`
-7. The corresponding version of [quay.io/kubespray/kubespray:vX.Y.Z](https://quay.io/repository/kubespray/kubespray) docker image is built and tagged
+7. The corresponding version of [quay.io/kubespray/kubespray:vX.Y.Z](https://quay.io/repository/kubespray/kubespray) and [quay.io/kubespray/vagrant:vX.Y.Z](https://quay.io/repository/kubespray/vagrant) docker images are built and tagged
 8. The `KUBESPRAY_VERSION` variable is updated in `.gitlab-ci.yml`
 9. The release issue is closed
 10. An announcement email is sent to `kubernetes-dev@googlegroups.com` with the subject `[ANNOUNCE] Kubespray $VERSION is released`

@@ -183,3 +183,7 @@ bastion ansible_host=x.x.x.x
 
 For more information about Ansible and bastion hosts, read
 [Running Ansible Through an SSH Bastion Host](https://blog.scottlowe.org/2015/12/24/running-ansible-through-ssh-bastion-host/)
+
+## Mitogen
+
+You can use [mitogen](mitogen.md) to speed up kubespray.

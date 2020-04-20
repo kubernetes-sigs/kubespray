@@ -65,6 +65,7 @@
     state: present
   when: not is_ostree
   with_items: "{{ crio_packages }}"
+  notify: restart crio
 
 - name: Check if already installed
   stat:
@@ -111,6 +112,7 @@
     dest: /etc/containers/mounts.conf
   when:
     - ansible_os_family == 'RedHat'
+  notify: restart crio
 
 - name: Create directory for oci hooks
   file:
@@ -119,19 +121,9 @@
     owner: root
     mode: 0755
 
-- name: Reload systemd daemon
-  systemd:
-    daemon_reload: yes
-
 - name: Write cri-o proxy drop-in
   template:
     src: http-proxy.conf.j2
     dest: /etc/systemd/system/crio.service.d/http-proxy.conf
   notify: restart crio
   when: http_proxy is defined or https_proxy is defined
-
-- name: Install cri-o service
-  service:
-    name: "{{ crio_service }}"
-    enabled: yes
-    state: restarted

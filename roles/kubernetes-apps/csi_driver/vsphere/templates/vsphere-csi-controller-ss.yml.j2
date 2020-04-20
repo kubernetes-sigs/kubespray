@@ -1,0 +1,128 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: vsphere-csi-controller
+  namespace: kube-system
+spec:
+  serviceName: vsphere-csi-controller
+  replicas: {{ vsphere_csi_controller_replicas }}
+  updateStrategy:
+    type: "RollingUpdate"
+  selector:
+    matchLabels:
+      app: vsphere-csi-controller
+  template:
+    metadata:
+      labels:
+        app: vsphere-csi-controller
+        role: vsphere-csi
+    spec:
+      serviceAccountName: vsphere-csi-controller
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
+      tolerations:
+        - operator: "Exists"
+          key: node-role.kubernetes.io/master
+          effect: NoSchedule
+      dnsPolicy: "Default"
+      containers:
+        - name: csi-attacher
+          image: {{ quay_image_repo }}/k8scsi/csi-attacher:{{ vsphere_csi_attacher_image_tag }}
+          args:
+            - "--v=4"
+            - "--timeout=300s"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+        - name: vsphere-csi-controller
+          image: {{ gcr_image_repo }}/cloud-provider-vsphere/csi/release/driver:{{ vsphere_csi_controller }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "rm -rf /var/lib/csi/sockets/pluginproxy/csi.vsphere.vmware.com"]
+          args:
+            - "--v=4"
+          imagePullPolicy: "Always"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+            - name: X_CSI_MODE
+              value: "controller"
+            - name: VSPHERE_CSI_CONFIG
+              value: "/etc/cloud/csi-vsphere.conf"
+          volumeMounts:
+            - mountPath: /etc/cloud
+              name: vsphere-config-volume
+              readOnly: true
+            - mountPath: /var/lib/csi/sockets/pluginproxy/
+              name: socket-dir
+          ports:
+            - name: healthz
+              containerPort: 9808
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 5
+            failureThreshold: 3
+        - name: liveness-probe
+          image: {{ quay_image_repo }}/k8scsi/livenessprobe:{{ vsphere_csi_liveness_probe_image_tag }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - mountPath: /var/lib/csi/sockets/pluginproxy/
+              name: socket-dir
+        - name: vsphere-syncer
+          image: {{ gcr_image_repo }}/cloud-provider-vsphere/csi/release/syncer:{{ vsphere_syncer_image_tag }}
+          args:
+            - "--v=2"
+          imagePullPolicy: "Always"
+          env:
+            - name: FULL_SYNC_INTERVAL_MINUTES
+              value: "30"
+            - name: VSPHERE_CSI_CONFIG
+              value: "/etc/cloud/csi-vsphere.conf"
+          volumeMounts:
+            - mountPath: /etc/cloud
+              name: vsphere-config-volume
+              readOnly: true
+        - name: csi-provisioner
+          image: {{ quay_image_repo }}/k8scsi/csi-provisioner:{{ vsphere_csi_provisioner_image_tag }}
+          args:
+            - "--v=4"
+            - "--timeout=300s"
+            - "--csi-address=$(ADDRESS)"
+            - "--feature-gates=Topology=true"
+            - "--strict-topology"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+      volumes:
+        - name: vsphere-config-volume
+          secret:
+            secretName: vsphere-config-secret
+        - name: socket-dir
+          hostPath:
+            path: /var/lib/csi/sockets/pluginproxy/csi.vsphere.vmware.com
+            type: DirectoryOrCreate
+---
+apiVersion: storage.k8s.io/v1beta1
+kind: CSIDriver
+metadata:
+  name: csi.vsphere.vmware.com
+spec:
+  attachRequired: true
+  podInfoOnMount: false

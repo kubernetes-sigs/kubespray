@@ -1,6 +1,6 @@
 # Azure
 
-To deploy Kubernetes on [Azure](https://azure.microsoft.com) uncomment the `cloud_provider` option in `group_vars/all.yml` and set it to `'azure'`.
+To deploy Kubernetes on [Azure](https://azure.microsoft.com) uncomment the `cloud_provider` option in `group_vars/all/all.yml` and set it to `'azure'`.
 
 All your instances are required to run in a resource group and a routing table has to be attached to the subnet your instances are in.
 
@@ -8,7 +8,7 @@ Not all features are supported yet though, for a list of the current status have
 
 ## Parameters
 
-Before creating the instances you must first set the `azure_` variables in the `group_vars/all.yml` file.
+Before creating the instances you must first set the `azure_` variables in the `group_vars/all/all.yml` file.
 
 All of the values can be retrieved using the azure cli tool which can be downloaded here: <https://docs.microsoft.com/en-gb/azure/xplat-cli-install>
 After installation you have to run `azure login` to get access to your account.

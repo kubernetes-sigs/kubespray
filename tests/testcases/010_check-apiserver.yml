@@ -4,8 +4,17 @@
   tasks:
   - name: Check the API servers are responding
     uri:
-      url: "https://{{ access_ip | default(ansible_default_ipv4.address) }}:{{ kube_apiserver_port | default(6443) }}/api/v1"
-      user: kube
-      password: "{{ lookup('password', credentials_dir | default(inventory_dir + '/credentials') + '/kube_user.creds length=15 chars=ascii_letters,digits') }}"
+      url: "https://{{ access_ip | default(ansible_default_ipv4.address) }}:{{ kube_apiserver_port | default(6443) }}/version"
       validate_certs: no
-      status_code: 200,401,403
+      status_code: 200
+    register: apiserver_response
+
+  - debug:
+      msg: "{{ apiserver_response.json }}"
+
+  - name: Check API servers version
+    assert:
+      that:
+      - apiserver_response.json.gitVersion == kube_version
+      fail_msg: "apiserver version different than expected {{ kube_version }}"
+    when: kube_version is defined

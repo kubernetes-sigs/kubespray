@@ -13,8 +13,9 @@ def test_service(host):
 
 
 def test_run(host):
+    crictl = "/usr/local/bin/crictl"
     path = "unix:///var/run/crio/crio.sock"
     with host.sudo():
-        cmd = host.command("crictl --runtime-endpoint " + path + " version")
+        cmd = host.command(crictl + " --runtime-endpoint " + path + " version")
     assert cmd.rc == 0
     assert "RuntimeName:  cri-o" in cmd.stdout

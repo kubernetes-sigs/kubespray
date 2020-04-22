@@ -1,0 +1,34 @@
+---
+
+- name: Add CRI-O kubic repo key
+  apt_key:
+    url: "https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/x{{ ansible_distribution }}_{{ ansible_distribution_version }}/Release.key"
+    state: present
+  when: ansible_distribution in ["Ubuntu"]
+
+- name: Add CRI-O kubic repo
+  apt_repository:
+    repo: "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/x{{ ansible_distribution }}_{{ ansible_distribution_version }}/ /"
+    state: present
+    filename: devel:kubic:libcontainers:stable
+  when: ansible_distribution in ["Ubuntu"]
+
+- name: Add CRI-O OpenShift Origin repository
+  yum_repository:
+    name: origin
+    description: OpenShift Origin Repo
+    baseurl: "{{ crio_rhel_repo_base_url }}"
+    gpgcheck: no
+  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
+
+- name: Enable modular repos for crio
+  ini_file:
+    path: "/etc/yum.repos.d/{{ item }}.repo"
+    section: "{{ item }}"
+    option: enabled
+    value: 1
+  become: true
+  when: ansible_distribution in ["Fedora"]
+  loop:
+    - "fedora-updates-modular"
+    - "fedora-modular"

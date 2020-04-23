@@ -36,14 +36,25 @@
     gpgkey: "http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ crio_kubic_version }}/CentOS_$releasever/repodata/repomd.xml.key"
   when: ansible_distribution in ["CentOS"]
 
-- name: Enable modular repos for crio
+- name: Enable modular repos for CRI-O
   ini_file:
     path: "/etc/yum.repos.d/{{ item }}.repo"
     section: "{{ item }}"
     option: enabled
     value: 1
   become: true
-  when: ansible_distribution in ["Fedora"]
+  when: is_ostree
   loop:
     - "fedora-updates-modular"
     - "fedora-modular"
+
+- name: Enable CRI-O module
+  command: "dnf -y module enable cri-o:{{ crio_fedora_version }}"
+  args:
+    warn: False
+  register: crio_dnf_result
+  changed_when: "'Enabling' in crio_dnf_result.stdout"
+  become: true
+  when:
+    - ansible_distribution in ["Fedora"]
+    - not is_ostree

@@ -23,7 +23,7 @@ This project will create:
 This will install a Kubernetes cluster on GCP. 
 
 ## Approach
-The terraform configuration inspects variables found in [variables.tf](./clustertffiles/variables.tf) to create resources in GCP.
+The terraform configuration inspects variables found in [variables.tf](variables.tf) to create resources in GCP.
 
 The terraform script will take care of creating Master nodes,etcd nodes,worker nodes/minions, kubespray-ansible-node based on the configuration details. 
 
@@ -53,8 +53,8 @@ with an *even number* of etcd instances since that is not a valid configuration.
 ### Configuration
 
 #### Service Account key json file
-Details from service account key json file should be updated in the [account.json](./clustertffiles/gcp-auth-config-json/account.json) file
-The Project ID associated with the service account key should be set in the [variables.tf](./clustertffiles/variables.tf)
+Details from service account key json file should be updated in the [account.json](./clustertfiles/gcp-auth-config-json/account.json) file
+The Project ID associated with the service account key should be set in the [variables.tf](variables.tf)
 
 Note: To deploy several clusters within the same project you need to use [terraform workspace](https://www.terraform.io/docs/state/workspaces.html#using-workspaces).
 
@@ -66,9 +66,9 @@ SSH keypair is required by Kubespray-Ansible to access the newly provisioned Ins
 
 #### Cluster variables:
 
-The creation of the cluster is driven by values found in [variables.tf](./clustertffiles/variables.tf) or (cluster.tfvars)[./clustertffiles/cluster.tfvars]
+The creation of the cluster is driven by values found in [variables.tf](variables.tf) or [cluster.tfvars](cluster.tfvars)
 
-For your cluster, edit `clustertffiles/cluster.tfvars`.
+For your cluster, edit `cluster.tfvars`.
 
 `env` variable is used to set a tag on each server deployed as part of this cluster.This helps with indentification of hosts associated with each cluster.
 
@@ -106,7 +106,7 @@ Ensure that username set for `user_name` matches the username used for SSH key g
 
 **Where component can be either : master,etcd,minion or ansible**
 
-[variables.tf](./clustertffiles/variables.tf) or (cluster.tfvars)[./clustertffiles/cluster.tfvars] files are updated with default values.
+[variables.tf](variables.tf) or [cluster.tfvars](cluster.tfvars) files are updated with default values.
 
 ### Initialization
 
@@ -114,19 +114,18 @@ Before Terraform can operate on your cluster you need to install the required pl
 This is accomplished as follows:
 
 ```ShellSession
-$ cd clustertffiles
 $ terraform init 
 ```
 
 
 ### Provisioning cluster
-You can apply the Terraform configuration to your cluster with the following command issued from your cluster's clustertffiles directory (`cd clustertffiles`):
+You can apply the Terraform configuration to your cluster with the following comman:
 ```ShellSession
 $ terraform apply -var-file=cluster.tfvars
 ```
 
 ### Destroying cluster
-You can destroy your new cluster with the following command issued from the cluster's clustertffiles directory:
+You can destroy your new cluster with the following command:
 
 ```ShellSession
 $ terraform destroy -var-file=cluster.tfvars

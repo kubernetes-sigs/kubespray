@@ -28,7 +28,7 @@ module "k8s_master_comp" {
   env_name          = "${var.env}"
   gcp_project_id = "${var.gcp_project_id}"
   component         = "master"
-  source            = "${path.cwd}/modules/template"
+  source            = "./modules/template"
   template_name     = "${var.env}-master"
   machine_type      = "${var.kube_master_machine_type}"
   source_image      = "${var.kube_master_source_image}"
@@ -60,7 +60,7 @@ module "k8s_etcd_comp" {
   env_name          = "${var.env}"
   gcp_project_id = "${var.gcp_project_id}"
   component         = "etcd"
-  source            = "${path.cwd}/modules/template"
+  source            = "./modules/template"
   template_name     = "${var.env}-etcd"
   machine_type      = "${var.kube_etcd_machine_type}"
   source_image      = "${var.kube_etcd_source_image}"
@@ -86,7 +86,7 @@ module "k8s_default_comp" {
   env_name          = "${var.env}"
   gcp_project_id = "${var.gcp_project_id}"
   component         = "minion"
-  source            = "${path.cwd}/modules/template"
+  source            = "./modules/template"
   template_name     = "${var.env}-minion"
   machine_type      = "${var.kube_minion_machine_type}"
   source_image      = "${var.kube_minion_source_image}"
@@ -112,7 +112,7 @@ module "k8s_ansible_comp" {
   env_name          = "${var.env}"
   gcp_project_id = "${var.gcp_project_id}"
   component         = "ansible"
-  source            = "${path.cwd}/modules/template"
+  source            = "./modules/template"
   template_name     = "${var.env}-ansible"
   machine_type      = "${var.kube_ansible_machine_type}"
   source_image      = "${var.kube_ansible_source_image}"
@@ -160,7 +160,7 @@ resource "null_resource" "ssh_ansible" {
   }
 
   provisioner "file" {
-    source      = "./kube_configurations/GenerateInventoryFile.py"
+    source      = "${path.cwd}/kube_configurations/GenerateInventoryFile.py"
     destination = "${var.kube_automation_folder}/GenerateInventoryFile.py"
   }
 

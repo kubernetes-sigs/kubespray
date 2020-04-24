@@ -5,7 +5,7 @@
 
 ################## GCP Provider ###############################################
 provider "google" {
-  credentials = file("./gcp-auth-config-json/account.json")
+  credentials = file("./clustertfiles/gcp-auth-config-json/account.json")
   region      = var.region
   project = var.gcp_project_id
   version = "~> 3.16"
@@ -28,7 +28,7 @@ module "k8s_master_comp" {
   env_name          = "${var.env}"
   gcp_project_id = "${var.gcp_project_id}"
   component         = "master"
-  source            = "../modules/template"
+  source            = "./modules/template"
   template_name     = "${var.env}-master"
   machine_type      = "${var.kube_master_machine_type}"
   source_image      = "${var.kube_master_source_image}"
@@ -60,7 +60,7 @@ module "k8s_etcd_comp" {
   env_name          = "${var.env}"
   gcp_project_id = "${var.gcp_project_id}"
   component         = "etcd"
-  source            = "../modules/template"
+  source            = "./modules/template"
   template_name     = "${var.env}-etcd"
   machine_type      = "${var.kube_etcd_machine_type}"
   source_image      = "${var.kube_etcd_source_image}"
@@ -86,7 +86,7 @@ module "k8s_default_comp" {
   env_name          = "${var.env}"
   gcp_project_id = "${var.gcp_project_id}"
   component         = "minion"
-  source            = "../modules/template"
+  source            = "./modules/template"
   template_name     = "${var.env}-minion"
   machine_type      = "${var.kube_minion_machine_type}"
   source_image      = "${var.kube_minion_source_image}"
@@ -112,8 +112,8 @@ module "k8s_ansible_comp" {
   env_name          = "${var.env}"
   gcp_project_id = "${var.gcp_project_id}"
   component         = "ansible"
-  source            = "../modules/template"
-  template_name     = "${var.env}-kubespray"
+  source            = "./modules/template"
+  template_name     = "${var.env}-ansible"
   machine_type      = "${var.kube_ansible_machine_type}"
   source_image      = "${var.kube_ansible_source_image}"
   disk_size_gb      = "${var.kube_ansible_disk_size_gb}"
@@ -141,7 +141,7 @@ resource "null_resource" "ssh_ansible" {
     type        = "ssh"
     user        = var.user_name
     timeout     = "500s"
-    private_key = file("../kube_configurations/ssh-key")
+    private_key = file("./kube_configurations/ssh-key")
   }
   provisioner "remote-exec" {
     inline = [
@@ -150,7 +150,7 @@ resource "null_resource" "ssh_ansible" {
       "sudo pip install netaddr",
       "sudo pip install logging",
       "mkdir -p ${var.kube_automation_folder}",
-      "cd ${var.kube_automation_folder} && git clone ${var.kubespray_repo_url}",
+      "cd ${var.kube_automation_folder} && git clone ${var.kubespray_repo_url} && mv * kubespray",
       "cd ${var.kube_automation_folder}/kubespray && sudo pip install -r requirements.txt"
     ]
   }
@@ -160,16 +160,16 @@ resource "null_resource" "ssh_ansible" {
   }
 
   provisioner "file" {
-    source      = "../kube_configurations/GenerateInventoryFile.py"
+    source      = "./kube_configurations/GenerateInventoryFile.py"
     destination = "${var.kube_automation_folder}/GenerateInventoryFile.py"
   }
 
   provisioner "file" {
-    source      = "./gcp-auth-config-json/account.json"
+    source      = "./clustertfiles/gcp-auth-config-json/account.json"
     destination = "${var.kube_automation_folder}/account.json"
   }
   provisioner "file" {
-    source      = "../kube_configurations/ssh-key"
+    source      = "./kube_configurations/ssh-key"
     destination = "${var.kube_automation_folder}/key"
   }
   provisioner "remote-exec" {

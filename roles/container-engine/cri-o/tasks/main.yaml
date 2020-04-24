@@ -48,6 +48,21 @@
   with_items: "{{ crio_packages }}"
   notify: restart crio
 
+- name: Gather the rpm package facts
+  package_facts:
+    manager: auto
+  when:
+    - ansible_distribution == "CentOS"
+    - ansible_distribution_major_version == "8"
+
+- name: Ensure latest version of libseccom installed
+  command: "yum update -y libseccomp"
+  when:
+    - ansible_distribution == "CentOS"
+    - ansible_distribution_major_version == "8"
+    - ansible_facts.packages['libseccomp'] | map(attribute='version') | map('regex_replace','^(?P<major>\\d+).(?P<minor>\\d+).(?P<patch>\\d+)$', '\\g<major>.\\g<minor>') | list | first == '2.3'
+  notify: restart crio
+
 - name: Check if already installed
   stat:
     path: "/bin/crio"
@@ -95,6 +110,17 @@
     state: directory
     owner: root
     mode: 0755
+
+- name: Remove metacopy mount options for older kernels
+  ini_file:
+    dest: /etc/containers/storage.conf
+    section: storage.options.overlay
+    option: mountopt
+    value: "\"nodev\""
+  when:
+    - ansible_distribution == "CentOS"
+    - ansible_distribution_major_version == "7"
+
 
 - name: Write cri-o proxy drop-in
   template:

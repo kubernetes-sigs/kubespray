@@ -7,7 +7,7 @@ require 'fileutils'
 
 Vagrant.require_version ">= 2.0.0"
 
-CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
+CONFIG = File.join(File.dirname(__FILE__), ENV['KUBESPRAY_VAGRANT_CONFIG'] || 'vagrant/config.rb')
 
 COREOS_URL_TEMPLATE = "https://storage.googleapis.com/%s.release.core-os.net/amd64-usr/current/coreos_production_vagrant.json"
 FLATCAR_URL_TEMPLATE = "https://%s.release.flatcar-linux.net/amd64-usr/current/flatcar_production_vagrant.json"
@@ -45,7 +45,7 @@ end
 $num_instances ||= 3
 $instance_name_prefix ||= "k8s"
 $vm_gui ||= false
-$vm_memory ||= 2048
+$vm_memory ||= 512
 $vm_cpus ||= 1
 $shared_folders ||= {}
 $forwarded_ports ||= {}
@@ -203,6 +203,7 @@ Vagrant.configure("2") do |config|
         "kubectl_localhost": "True",
         "local_path_provisioner_enabled": "#{$local_path_provisioner_enabled}",
         "local_path_provisioner_claim_root": "#{$local_path_provisioner_claim_root}",
+        "http_proxy": "http://192.168.1.24:8888",
         "ansible_ssh_user": SUPPORTED_OS[$os][:user]
       }
 

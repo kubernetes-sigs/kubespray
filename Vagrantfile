@@ -7,7 +7,7 @@ require 'fileutils'
 
 Vagrant.require_version ">= 2.0.0"
 
-CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
+CONFIG = File.join(File.dirname(__FILE__), ENV['KUBESPRAY_VAGRANT_CONFIG'] || 'vagrant/config.rb')
 
 COREOS_URL_TEMPLATE = "https://storage.googleapis.com/%s.release.core-os.net/amd64-usr/current/coreos_production_vagrant.json"
 FLATCAR_URL_TEMPLATE = "https://%s.release.flatcar-linux.net/amd64-usr/current/flatcar_production_vagrant.json"

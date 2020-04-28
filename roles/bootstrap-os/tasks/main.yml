@@ -71,12 +71,28 @@
     - override_system_hostname
     - ansible_os_family in ['Suse', 'Flatcar Container Linux by Kinvolk', 'Container Linux by CoreOS', 'ClearLinux'] or is_fedora_coreos
 
-- name: "Install ceph-commmon package"
+- name: Install ceph-commmon package
   package:
     name:
       - ceph-common
     state: present
-  when: rbd_provisioner_enabled|default(false)
+  when:
+    - rbd_provisioner_enabled|default(false)
+    - is_fedora_coreos is false
+
+- name: Get installed rpm-ostree packages
+  raw: "export http_proxy={{ http_proxy | default('') }};rpm-ostree status | grep LayeredPackages"
+  become: true
+  register: installed_rpm_ostree_packages
+  when: is_fedora_coreos is true
+
+- name: Install ceph-common package if rbd-provisioner is enabled
+  raw: "export http_proxy={{ http_proxy | default('') }};rpm-ostree install ceph-common"
+  become: true
+  when:
+    - rbd_provisioner_enabled|default(false)
+    - is_fedora_coreos is true
+    - installed_rpm_ostree_packages.stdout.find("ceph-common") == -1
 
 - name: Ensure bash_completion.d folder exists
   file:

@@ -37,7 +37,9 @@
 
 from collections import OrderedDict
 from ipaddress import ip_address
-from ruamel_yaml import YAML
+# On fedora and fedora coreos this should be:
+# from ruamel_yaml import YAML
+from ruamel.yaml import YAML
 
 import os
 import re

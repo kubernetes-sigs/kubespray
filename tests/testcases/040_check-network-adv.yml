@@ -35,22 +35,20 @@
 
     - name: Wait for netchecker server
       shell: "{{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep ^netchecker-server"
-      delegate_to: "{{ groups['kube-master'][0] }}"
-      run_once: true
       register: ncs_pod
       until: ncs_pod.stdout.find('Running') != -1
       retries: 3
       delay: 10
+      when: inventory_hostname == groups['kube-master'][0]
 
     - name: Wait for netchecker agents
       shell: "{{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep '^netchecker-agent-.*Running'"
-      run_once: true
-      delegate_to: "{{ groups['kube-master'][0] }}"
       register: nca_pod
       until: nca_pod.stdout_lines|length >= groups['k8s-cluster']|intersect(ansible_play_hosts)|length * 2
       retries: 3
       delay: 10
       failed_when: false
+      when: inventory_hostname == groups['kube-master'][0]
 
     - name: Get netchecker pods
       command: "{{ bin_dir }}/kubectl -n {{ netcheck_namespace }} describe pod -l app={{ item }}"
@@ -115,16 +113,16 @@
 
     - name: Get kube-proxy logs
       command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app=kube-proxy"
-      run_once: true
-      when: not result is success
-      delegate_to: "{{ groups['kube-master'][0] }}"
       no_log: false
+      when:
+        - inventory_hostname == groups['kube-master'][0]
+        - not result is success
 
     - name: Get logs from other apps
       command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app={{ item }} --all-containers"
-      run_once: true
-      when: not result is success
-      delegate_to: "{{ groups['kube-master'][0] }}"
+      when:
+        - inventory_hostname == groups['kube-master'][0]
+        - not result is success
       no_log: false
       with_items:
         - kube-router
@@ -189,6 +187,7 @@
           }'
           EOF
       when:
+        - inventory_hostname == groups['kube-master'][0]
         - kube_network_plugin_multus|default(false)
 
     - name: Annotate pod with macvlan network
@@ -212,6 +211,7 @@
               image: dougbtv/centos-network
           EOF
       when:
+        - inventory_hostname == groups['kube-master'][0]
         - kube_network_plugin_multus|default(false)
 
     - name: Check secondary macvlan interface
@@ -221,4 +221,5 @@
       retries: 90
       changed_when: false
       when:
+        - inventory_hostname == groups['kube-master'][0]
         - kube_network_plugin_multus|default(false)

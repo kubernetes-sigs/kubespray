@@ -52,7 +52,6 @@ resource "google_compute_region_instance_group_manager" "instance_group_manager"
   name = var.template_name
   base_instance_name = var.template_name
   region = var.region
-  #zone               = var.compute_zone
   target_size        = var.target_size
 }
 
@@ -70,10 +69,9 @@ data "google_compute_region_instance_group" "group" {
 
 
 resource "null_resource" "create_inv_file" {
-  #depends_on = [google_compute_region_instance_group.group]
   depends_on = [null_resource.a_wait]
   count = var.target_size
   provisioner "local-exec" {
-    command = " echo ${var.env_name},${var.component},${data.google_compute_region_instance_group.group.instances.*.instance[count.index]} >> ${var.env_name}-inventory.ini"
+    command = " echo ${var.env_name},${var.component},${data.google_compute_region_instance_group.group.instances.*.instance[count.index]} >> ${var.env_name}.csv"
   }
 }

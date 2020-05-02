@@ -11,9 +11,15 @@ variable "region" {
   default     = "us-central1"
 }
 
+
+variable "gcp_service_account" {
+  description =""
+  default=""
+}
+
 variable "env" {
   description = "Environment Details or cluster name- dev,stage,test,prod,etc"
-  default     = "test"
+  default     = ""
 }
 
 variable "kube_automation_folder" {
@@ -40,9 +46,20 @@ variable "kube_master_machine_type" {
   default = "n1-standard-1"
 }
 
+variable "ssh_key" {
+  description = "ssh-key file path"
+  default = ""
+}
+
+variable "generate_inventory_file" {
+  description = "Generate inventory file path"
+  default = ""
+}
+
+
 variable "kube_master_source_image" {
   description = "OS image name"
-  default = "centos-6-v20190729"
+  default = ""
 }
 
 variable "kube_master_disk_size_gb" {

@@ -27,7 +27,7 @@ The terraform configuration inspects variables found in [variables.tf](variables
 
 The terraform script will take care of creating Master nodes,etcd nodes,worker nodes/minions, kubespray-ansible-node based on the configuration details. 
 
-There is a [python script](./kube_configurations/GenerateInventoryFile.py) that generates a dynamic inventory that is consumed by the kubespray cluster.yml.
+There is a [python script](GenerateInventoryFile.py) that generates a dynamic inventory that is consumed by the kubespray cluster.yml.
 
 ### Kubernetes Nodes
 You can create different kubernetes topologies by setting the below mentioned variable to indicate number of hosts.
@@ -53,7 +53,7 @@ with an *even number* of etcd instances since that is not a valid configuration.
 ### Configuration
 
 #### Service Account key json file
-Details from service account key json file should be updated in the [account.json](./clustertfiles/gcp-auth-config-json/account.json) file
+Details from service account key json file should be updated in the [service-account.json](service-account.json) file
 The Project ID associated with the service account key should be set in the [variables.tf](variables.tf)
 
 Note: To deploy several clusters within the same project you need to use [terraform workspace](https://www.terraform.io/docs/state/workspaces.html#using-workspaces).
@@ -61,7 +61,7 @@ Note: To deploy several clusters within the same project you need to use [terraf
 #### SSH Key Setup
 SSH keypair is required by Kubespray-Ansible to access the newly provisioned Instances on GCP.When ssh keys are generated for the user 
 
-* private key to be placed in the file [key](./kube_configurations/ssh-key).
+* private key to be placed in the file [ssh-key](ssh-key).
 * Public key to be added at the project wide level. [Refer link to add-ssh-key at project level](https://cloud.google.com/compute/docs/instances/adding-removing-ssh-keys) 
 
 #### Cluster variables:
@@ -76,6 +76,13 @@ For your cluster, edit `cluster.tfvars`.
 
 `gcp_project` variable is used to set the GCP project_id.
 
+`gcp_service_account` absoulte path of the gcp-service-account json file
+
+`ssh_key` absoulte path of the key file which contains private key
+
+`generate_inventory_file` this file is part of this repo and used to generate the ansible inventory file.
+
+
 `user_name` variable is used to set user name in kubespray inventory host file.
 
 Ensure that username set for `user_name` matches the username used for SSH key generation.
@@ -86,7 +93,7 @@ Ensure that username set for `user_name` matches the username used for SSH key g
 
 `kube_{component}_machine_type` variable is used to set Compute Instance machine type.
 
-`kube_{component}_source_image` variable is used to set OS Image type. This determines the operating system installed on the system.
+`kube_{component}_source_image` variable is used to set OS Image type. This determines the operating system installed on the system. The source image should be hosted in the same project as k8s cluster creation.
 
 `kube_{component}_disk_size_gb` variable is used to set Compute Instance disk size. Specifies the size of the disk in base-2 GB.
 

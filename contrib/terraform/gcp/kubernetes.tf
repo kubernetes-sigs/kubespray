@@ -5,7 +5,7 @@
 
 ################## GCP Provider ###############################################
 provider "google" {
-  credentials = file("${path.cwd}/clustertfiles/gcp-auth-config-json/account.json")
+  credentials = file("${var.gcp_service_account}")
   region      = var.region
   project = var.gcp_project_id
   version = "~> 3.16"
@@ -14,7 +14,7 @@ provider "google" {
 ################### Deleting the terraform existing inventory file #######################
 resource "null_resource" "delete_inv_file" {
   provisioner "local-exec" {
-    command = "rm -f ${var.env}-inventory.ini"
+    command = "rm -f ${var.env}.csv"
   }
 }
 
@@ -141,7 +141,7 @@ resource "null_resource" "ssh_ansible" {
     type        = "ssh"
     user        = var.user_name
     timeout     = "500s"
-    private_key = file("${path.cwd}/kube_configurations/ssh-key")
+    private_key = file("${var.ssh_key}")
   }
   provisioner "remote-exec" {
     inline = [
@@ -155,26 +155,28 @@ resource "null_resource" "ssh_ansible" {
     ]
   }
   provisioner "file" {
-    source      = "${var.env}-inventory.ini"
-    destination = "${var.kube_automation_folder}/${var.env}-inventory.ini"
+    source      = "${var.env}.csv"
+    destination = "${var.kube_automation_folder}/${var.env}.csv"
   }
 
   provisioner "file" {
-    source      = "${path.cwd}/kube_configurations/GenerateInventoryFile.py"
+    source      = var.generate_inventory_file
     destination = "${var.kube_automation_folder}/GenerateInventoryFile.py"
   }
 
   provisioner "file" {
-    source      = "${path.cwd}/clustertfiles/gcp-auth-config-json/account.json"
+    source      = var.gcp_service_account
     destination = "${var.kube_automation_folder}/account.json"
   }
+
+
   provisioner "file" {
-    source      = "${path.cwd}/kube_configurations/ssh-key"
+    source      = var.ssh_key
     destination = "${var.kube_automation_folder}/key"
   }
   provisioner "remote-exec" {
     inline = [
-      "cd ${var.kube_automation_folder} && chmod 400 key && chmod 777 GenerateInventoryFile.py && mv ${var.env}-inventory.ini inventory_hosts.ini",
+      "cd ${var.kube_automation_folder} && chmod 400 key && chmod 777 GenerateInventoryFile.py && mv ${var.env}.csv inventory_hosts.ini",
       "cd ${var.kube_automation_folder} && python GenerateInventoryFile.py ${var.kube_automation_folder} ${var.user_name}",
       "cd ${var.kube_automation_folder}/kubespray && ansible-playbook -i inventory/cluster/inventory_hosts.ini -b -v cluster.yml 2>&1 | tee outfile",
     ]

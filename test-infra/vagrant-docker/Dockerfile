@@ -1,6 +1,6 @@
 # Docker image published at quay.io/kubespray/vagrant
 
-ARG KUBESPRAY_VERSION=v2.12.6
+ARG KUBESPRAY_VERSION
 FROM quay.io/kubespray/kubespray:${KUBESPRAY_VERSION}
 
 ENV VAGRANT_VERSION=2.2.7

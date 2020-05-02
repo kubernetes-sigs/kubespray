@@ -1,7 +1,7 @@
 
 variable "user_name" {
   description = "User Name"
-  default = "app"
+  default = ""
 }
 
 ################################### Variable Section #########################

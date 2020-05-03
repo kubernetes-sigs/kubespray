@@ -182,7 +182,7 @@ The possible vars are:
 * *kubelet_config_extra_args*
 * *kubelet_node_config_extra_args*
 
-Previously, the same paramaters could be passed as flags to kubelet binary with the following vars:
+Previously, the same parameters could be passed as flags to kubelet binary with the following vars:
 
 * *kubelet_custom_flags*
 * *kubelet_node_custom_flags*

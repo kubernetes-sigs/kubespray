@@ -7,8 +7,8 @@
 provider "google" {
   credentials = file("${var.gcp_service_account}")
   region      = var.region
-  project = var.gcp_project_id
-  version = "~> 3.16"
+  project     = var.gcp_project_id
+  version     = "~> 3.16"
 }
 
 ################### Deleting the terraform existing inventory file #######################
@@ -26,7 +26,7 @@ and instances group based on the count provided in the cluster.tfvars or variabl
 
 module "k8s_master_comp" {
   env_name          = "${var.env}"
-  gcp_project_id = "${var.gcp_project_id}"
+  gcp_project_id    = "${var.gcp_project_id}"
   component         = "master"
   source            = "./modules/template"
   template_name     = "${var.env}-master"
@@ -58,7 +58,7 @@ and instances group based on the count provided in the cluster.tfvars or variabl
 
 module "k8s_etcd_comp" {
   env_name          = "${var.env}"
-  gcp_project_id = "${var.gcp_project_id}"
+  gcp_project_id    = "${var.gcp_project_id}"
   component         = "etcd"
   source            = "./modules/template"
   template_name     = "${var.env}-etcd"
@@ -84,7 +84,7 @@ and instances group based on the count provided in the cluster.tfvars or variabl
 
 module "k8s_default_comp" {
   env_name          = "${var.env}"
-  gcp_project_id = "${var.gcp_project_id}"
+  gcp_project_id    = "${var.gcp_project_id}"
   component         = "minion"
   source            = "./modules/template"
   template_name     = "${var.env}-minion"
@@ -110,7 +110,7 @@ This instance will be used to download the kubespray and execute the cluster.yml
 */
 module "k8s_ansible_comp" {
   env_name          = "${var.env}"
-  gcp_project_id = "${var.gcp_project_id}"
+  gcp_project_id    = "${var.gcp_project_id}"
   component         = "ansible"
   source            = "./modules/template"
   template_name     = "${var.env}-ansible"

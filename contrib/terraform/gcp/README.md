@@ -82,7 +82,6 @@ For your cluster, edit `cluster.tfvars`.
 
 `generate_inventory_file` this file is part of this repo and used to generate the ansible inventory file.
 
-
 `user_name` variable is used to set user name in kubespray inventory host file.
 
 Ensure that username set for `user_name` matches the username used for SSH key generation.

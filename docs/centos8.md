@@ -6,4 +6,4 @@ You need to use K8S 1.17+ and to add `calico_iptables_backend: "NFT"` to your co
 
 If you have containers that are using iptables in the host network namespace (`hostNetwork=true`),
 you need to ensure they are using iptables-nft.
-An exemple how k8s do the autodetection can be found [in this PR](https://github.com/kubernetes/kubernetes/pull/82966)
+An example how k8s do the autodetection can be found [in this PR](https://github.com/kubernetes/kubernetes/pull/82966)

@@ -141,7 +141,7 @@ Note: The list of validated [docker versions](https://github.com/kubernetes/kube
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.15**
+- **Minimum required version of Kubernetes is v1.16**
 - **Ansible v2.9+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/downloads.md#offline-environment))
 - The target servers are configured to allow **IPv4 forwarding**.

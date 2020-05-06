@@ -38,7 +38,7 @@ or for versions prior to *v1.0.0*:
 calicoctl.sh pool show
 ```
 
-* Show the workloads (ip addresses of containers and their located)
+* Show the workloads (ip addresses of containers and their location)
 
 ```ShellSession
 calicoctl.sh get workloadEndpoint -o wide

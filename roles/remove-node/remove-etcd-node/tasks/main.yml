@@ -1,0 +1,42 @@
+---
+- name: Set node IP
+  set_fact:
+    node_ip: "{{ ip | default(access_ip | default(remove_node_ip.stdout)) | trim }}"
+  when:
+    - inventory_hostname in groups['etcd']
+
+- name: Lookup etcd member id
+  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses }} member list | grep {{ node_ip }} | cut -d: -f1"
+  register: etcd_member_id
+  ignore_errors: true
+  changed_when: false
+  check_mode: no
+  tags:
+    - facts
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ groups['etcd']|first }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ groups['etcd']|first }}-key.pem"
+    ETCDCTL_CA_FILE: "{{ etcd_cert_dir }}/ca.pem"
+  delegate_to: "{{ groups['etcd']|first }}"
+  when:
+    - inventory_hostname in groups['etcd']
+
+- name: Remove etcd member from cluster
+  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses }} member remove {{ etcd_member_id.stdout }}"
+  register: etcd_member_in_cluster
+  ignore_errors: false
+  retries: 6
+  delay: 5
+  until: etcd_member_in_cluster.rc == 0
+  changed_when: false
+  check_mode: no
+  tags:
+    - facts
+  environment:
+    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ groups['etcd']|first }}.pem"
+    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ groups['etcd']|first }}-key.pem"
+    ETCDCTL_CA_FILE: "{{ etcd_cert_dir }}/ca.pem"
+  delegate_to: "{{ groups['etcd']|first }}"
+  when:
+    - inventory_hostname in groups['etcd']
+    - etcd_member_id.stdout | length > 0

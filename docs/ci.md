@@ -48,7 +48,7 @@ centos8 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 coreos |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian10 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-fedora30 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+fedora30 |  :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora31 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 oracle7 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |

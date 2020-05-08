@@ -33,10 +33,6 @@ resource "google_compute_instance_template" "ansible_template" {
     subnetwork = var.subnetwork
   }
  
-  metadata = {
-    foo = "bar"
-  }
-
   service_account {
     email = var.svca_email
     scopes = var.svca_scopes

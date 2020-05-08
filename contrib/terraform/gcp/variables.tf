@@ -38,7 +38,6 @@ variable "gcp_project_id" {
   default     = ""
 }
 
-# TF-UPGRADE-TODO: Block type was not recognized, so this block and its contents were not automatically upgraded.
 
 ######################## Kube Master Node Details  #############
 variable "kube_master_machine_type" {
@@ -48,18 +47,18 @@ variable "kube_master_machine_type" {
 
 variable "ssh_key" {
   description = "ssh-key file path"
-  default     = ""
+  default     = "shh-key
 }
 
 variable "generate_inventory_file" {
   description = "Generate inventory file path"
-  default     = ""
+  default     = "GenerateInventoryFile.py"
 }
 
 
 variable "kube_master_source_image" {
   description = "OS image name"
-  default     = ""
+  default     = "centos7"
 }
 
 variable "kube_master_disk_size_gb" {
@@ -111,7 +110,7 @@ variable "kube_etcd_machine_type" {
 
 variable "kube_etcd_source_image" {
   description = "OS image name"
-  default     = "centos-6-v20190729"
+  default     = "centos7"
 }
 
 variable "kube_etcd_disk_size_gb" {
@@ -163,7 +162,7 @@ variable "kube_minion_machine_type" {
 
 variable "kube_minion_source_image" {
   description = "OS image name"
-  default     = "centos-6-v20190729"
+  default     = "centos7"
 }
 
 variable "kube_minion_disk_size_gb" {
@@ -213,7 +212,7 @@ variable "kube_ansible_machine_type" {
 
 variable "kube_ansible_source_image" {
   description = "OS image name"
-  default     = "centos-6-v20190729"
+  default     = "centos7"
 }
 
 variable "kube_ansible_disk_size_gb" {

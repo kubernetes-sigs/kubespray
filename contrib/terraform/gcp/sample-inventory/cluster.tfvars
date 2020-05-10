@@ -10,22 +10,21 @@ region = "us-central1"
 ######### GCP project name ############### 
 gcp_project_id = ""
 
-###### GCP Service Account json file folder location ##########
-gcp_service_account = "/builds/kargo-ci/kubernetes-sigs-kubespray/contrib/terraform/gcp/service-account.json"
+###### GCP Service Account json file path ##########
+gcp_service_account = "service-account.json"
 
 
 ######### Kube automation folder where you would like to clone the kubespray project #################
 kube_automation_folder = "/home/app/kube_automation"
 
 ############# ssh-key file path ############
-ssh_key = "/builds/kargo-ci/kubernetes-sigs-kubespray/contrib/terraform/gcp/ssh-key"
+ssh_key = "ssh-key"
 
 ############ GenerateInventoryFile.py file path #################
-generate_inventory_file = "/builds/kargo-ci/kubernetes-sigs-kubespray/contrib/terraform/gcp/GenerateInventoryFile.py"
+generate_inventory_file = "GenerateInventoryFile.py"
 
 ########### Kubespray repo URL hosted  in the github ####
-#kubespray_repo_url = "https://USER_NAME:PASSWORD@github.com/kubernetes-sigs/kubespray.git"
-kubespray_repo_url = ""
+kubespray_repo_url = "https://USER_NAME:PASSWORD@github.com/kubernetes-sigs/kubespray.git"
 
 
 ############ Kube Master Node Details ####################

@@ -47,7 +47,7 @@ variable "kube_master_machine_type" {
 
 variable "ssh_key" {
   description = "ssh-key file path"
-  default     = "shh-key
+  default     = "shh-key"
 }
 
 variable "generate_inventory_file" {

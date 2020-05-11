@@ -103,7 +103,8 @@ You need to make sure there are always an odd number of etcd nodes in the cluste
 
 ### 1) Add the new node running cluster.yml
 
-Update the inventory and run `cluster.yml` passing `--limit=etcd,kube-master -e ignore_assert_errors=yes`.  
+Update the inventory and run `cluster.yml` passing `--limit=etcd,kube-master -e ignore_assert_errors=yes`.
+If the node you want to add as an etcd node is already a worker or master node in your cluster, you have to remove him first using `remove-node.yml`.
 
 Run `upgrade-cluster.yml` also passing `--limit=etcd,kube-master -e ignore_assert_errors=yes`. This is necessary to update all etcd configuration in the cluster.  
 

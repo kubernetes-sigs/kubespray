@@ -62,19 +62,16 @@ This should be the easiest.
 
 ### 2) Run `scale.yml`
 
-You can use `--limit=node1` to limit Kubespray to avoid disturbing other nodes in the cluster.
+You can use `--limit=NODE_NAME` to limit Kubespray to avoid disturbing other nodes in the cluster.
 
 Before using `--limit` run playbook `facts.yml` without the limit to refresh facts cache for all nodes.
 
-### 3) Drain the node that will be removed
-
-```sh
-kubectl drain NODE_NAME
-```
-
-### 4) Run the remove-node.yml playbook
+### 3) Remove an old node with remove-node.yml
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.
+  
+If the node you want to remove is not online, you should add `reset_nodes=false` to your extra-vars: `-e node=NODE_NAME reset_nodes=false`.
+Use this flag even when you remove other types of nodes like a master or etcd nodes.
 
 ### 5) Remove the node from the inventory
 
@@ -98,6 +95,7 @@ docker ps | grep k8s_nginx-proxy_nginx-proxy | awk '{print $1}' | xargs docker r
 ### 4) Remove old master nodes
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.
+If the node you want to remove is not online, you should add `reset_nodes=false` to your extra-vars.
 
 ## Adding an etcd node
 
@@ -113,8 +111,8 @@ At this point, you will have an even number of nodes.
 Everything should still be working, and you should only have problems if the cluster decides to elect a new etcd leader before you remove a node.
 Even so, running applications should continue to be available.
 
-If you add multiple ectd nodes with one run, you might want to append `-e etcd_retries=10 retry_stagger='10'` to increase the amount of retries between each ectd node join try and
-the delay between each try. Otherwise the etcd cluster might still be processing the first join and fail on subsequent nodes. `etcd_retries=10 retry_stagger='10'` might work to join 3 new nodes.
+If you add multiple ectd nodes with one run, you might want to append `-e etcd_retries=10` to increase the amount of retries between each ectd node join.
+Otherwise the etcd cluster might still be processing the first join and fail on subsequent nodes. `etcd_retries=10` might work to join 3 new nodes.
 
 ## Removing an etcd node
 
@@ -141,6 +139,7 @@ You can get into an etcd container by running `docker exec -it $(docker ps --fil
 ### 2) Remove an old etcd node
 
 With the node still in the inventory, run `remove-node.yml` passing `-e node=NODE_NAME` as the name of the node that should be removed.
+If the node you want to remove is not online, you should add `reset_nodes=false` to your extra-vars.
 
 ### 3) Make sure only remaining nodes are in your inventory
 

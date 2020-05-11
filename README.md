@@ -114,18 +114,19 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.17.5
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.18.2
   - [etcd](https://github.com/coreos/etcd) v3.3.12
   - [docker](https://www.docker.com/) v18.06 (see note)
   - [containerd](https://containerd.io/) v1.2.13
   - [cri-o](http://cri-o.io/) v1.17 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.8.5
-  - [calico](https://github.com/projectcalico/calico) v3.13.2
+  - [calico](https://github.com/projectcalico/calico) v3.14.0
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.7.3
   - [contiv](https://github.com/contiv/install) v1.2.1
   - [flanneld](https://github.com/coreos/flannel) v0.12.0
+  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.1.1
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v0.4.0
   - [multus](https://github.com/intel/multus-cni) v3.4.1
   - [weave](https://github.com/weaveworks/weave) v2.6.2
@@ -133,14 +134,14 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v0.11.1
-  - [coredns](https://github.com/coredns/coredns) v1.6.5
+  - [coredns](https://github.com/coredns/coredns) v1.6.7
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.30.0
 
 Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.16.md) was updated to 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09. kubeadm now properly recognizes Docker 18.09.0 and newer, but still treats 18.06 as the default supported version. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.15**
+- **Minimum required version of Kubernetes is v1.16**
 - **Ansible v2.9+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/downloads.md#offline-environment))
 - The target servers are configured to allow **IPv4 forwarding**.

@@ -197,7 +197,7 @@ Vagrant.configure("2") do |config|
         "download_force_cache": "True",
         # Keeping the cache on the nodes can improve provisioning speed while debugging kubespray
         "download_keep_remote_cache": "False",
-        "docker_keepcache": "1",
+        "docker_rpm_keepcache": "1",
         # These two settings will put kubectl and admin.config in $inventory/artifacts
         "kubeconfig_localhost": "True",
         "kubectl_localhost": "True",

@@ -95,6 +95,16 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
   - ExpandCSIVolumes=true
   ```
 
+- If you are in a case of a multi-nic OpenStack VMs (see [kubernetes/cloud-provider-openstack#407](https://github.com/kubernetes/cloud-provider-openstack/issues/407) and [#6083](https://github.com/kubernetes-sigs/kubespray/issues/6083) for explanation), you should override the default OpenStack networking configuration:
+
+  ```yaml
+  external_openstack_network_ipv6_disabled: false
+  external_openstack_network_internal_networks:
+  - ""
+  external_openstack_network_public_networks:
+  - ""
+  ```
+
 - Run the `upgrade-cluster.yml` playbook
 - Run the cleanup playbook located under extra_playbooks `extra_playbooks/migrate_openstack_provider.yml` (this will clean up all resources used by the old cloud provider)
 - You can remove the feature gates for Volume migration. If you want to enable the possibility to expand CSI volumes you could leave the `ExpandCSIVolumes=true` feature gate

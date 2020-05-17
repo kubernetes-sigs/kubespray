@@ -1,11 +1,36 @@
 ---
-- name: Install | Copy etcdctl binary from docker container
-  command: sh -c "{{ docker_bin_dir }}/docker rm -f etcdctl-binarycopy;
-           {{ docker_bin_dir }}/docker create --name etcdctl-binarycopy {{ etcd_image_repo }}:{{ etcd_image_tag }} &&
-           {{ docker_bin_dir }}/docker cp etcdctl-binarycopy:/usr/local/bin/etcdctl {{ bin_dir }}/etcdctl &&
-           {{ docker_bin_dir }}/docker rm -f etcdctl-binarycopy"
-  register: etcdctl_install_result
-  until: etcdctl_install_result.rc == 0
-  retries: "{{ etcd_retries }}"
+- name: Set commands for etcdctl container tasks
+  set_fact:
+    etcdctl_compare_command: >-
+      {%- if container_manager in ['docker', 'crio'] %}
+      {{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir --entrypoint /usr/bin/cmp {{ etcd_image_repo }}:{{ etcd_image_tag }} /usr/local/bin/etcdctl /systembindir/helm
+      {%- elif container_manager == "containerd" %}
+      ctr run --rm --mount type=bind,src={{ bin_dir }},dst=/systembindir,options=rbind:rw {{ etcd_image_repo }}:{{ etcd_image_tag }} etcdctl-compare sh -c 'cmp /usr/local/bin/etcdctl /systembindir/etcdctl'
+      {%- endif %}
+    etcdctl_copy_command: >-
+      {%- if container_manager in ['docker', 'crio'] %}
+      {{ docker_bin_dir }}/docker run --rm -v {{ bin_dir }}:/systembindir --entrypoint /bin/cp {{ etcd_image_repo }}:{{ etcd_image_tag }} -f /usr/local/bin/etcdctl /systembindir/etcdctl
+      {%- elif container_manager == "containerd" %}
+      ctr run --rm --mount type=bind,src={{ bin_dir }},dst=/systembindir,options=rbind:rw {{ etcd_image_repo }}:{{ etcd_image_tag }} etcdctl-copy sh -c '/bin/cp -f /usr/local/bin/etcdctl /systembindir/etcdctl'
+      {%- endif %}
+
+- name: Ensure image is pulled for containerd
+  command: "ctr i pull {{ etcd_image_repo }}:{{ etcd_image_tag }}"
+  when: container_manager == "containerd"
+
+- name: Compare host etcdctl with etcdctl image
+  command: "{{ etcdctl_compare_command }}"
+  register: etcdctl_task_compare_result
+  until: etcdctl_task_compare_result.rc in [0,1,2]
+  retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
+  failed_when: "etcdctl_task_compare_result.rc not in [0,1,2]"
+
+- name: Copy etcdctl from etcdctl container
+  command: "{{ etcdctl_copy_command }}"
+  when: etcdctl_task_compare_result.rc != 0
+  register: etcdctl_task_result
+  until: etcdctl_task_result.rc == 0
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"

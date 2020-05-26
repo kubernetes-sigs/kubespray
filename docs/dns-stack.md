@@ -70,6 +70,13 @@ or as INI
 coredns_external_zones='[{"cache": 30,"zones":["example.com","example.io:453"],"nameservers":["1.1.1.1","2.2.2.2"]}]'
 ```
 
+### coredns-custom ConfigMap
+
+You can create an optional configmap in kube-system namespace after deployment
+named ``coredns-custom``. Inside your configmap should have files with the
+suffix ".override" to override any base settings. For other options, such as
+defining extra zones, define files with the suffix ".server".
+
 ### dns_etchosts (coredns)
 
 Optional hosts file content to coredns use as /etc/hosts file. This will also be used by nodelocaldns, if enabled.

@@ -12,7 +12,7 @@ to create or modify an Ansible inventory. Currently, it is limited in
 functionality and is only used for configuring a basic Kubespray cluster inventory, but it does
 support creating inventory file for large clusters as well. It now supports
 separated ETCD and Kubernetes master roles from node role if the size exceeds a
-certain threshold. Run `python3 contrib/inventory_builder/inventory.py help` help for more information.
+certain threshold. Run `python3 contrib/inventory_builder/inventory.py help` for more information.
 
 Example inventory generator usage:
 

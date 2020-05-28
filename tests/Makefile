@@ -72,3 +72,11 @@ delete-packet:
 	-e @"files/${CI_JOB_NAME}.yml" \
 	-e test_id=$(TEST_ID) \
 	-e inventory_path=$(INVENTORY)
+
+create-vagrant:
+	vagrant up
+	find / -name vagrant_ansible_inventory
+	cp  /builds/kargo-ci/kubernetes-sigs-kubespray/inventory/sample/vagrant_ansible_inventory $(INVENTORY)
+
+delete-vagrant:
+	vagrant destroy -f

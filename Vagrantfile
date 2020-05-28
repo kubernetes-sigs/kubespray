@@ -69,7 +69,7 @@ $disk_size ||= "20GB"
 $local_path_provisioner_enabled ||= false
 $local_path_provisioner_claim_root ||= "/opt/local-path-provisioner/"
 
-$playbook = "cluster.yml"
+$playbook ||= "cluster.yml"
 
 host_vars = {}
 

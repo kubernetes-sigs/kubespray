@@ -128,7 +128,7 @@ Note: Upstart/SysV init based OS types are not supported.
 - Core
   - [kubernetes](https://github.com/kubernetes/kubernetes) v1.18.2
   - [etcd](https://github.com/coreos/etcd) v3.3.12
-  - [docker](https://www.docker.com/) v18.06 (see note)
+  - [docker](https://www.docker.com/) v19.03 (see note)
   - [containerd](https://containerd.io/) v1.2.13
   - [cri-o](http://cri-o.io/) v1.17 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
@@ -149,7 +149,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [coredns](https://github.com/coredns/coredns) v1.6.7
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.30.0
 
-Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.16.md) was updated to 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09. kubeadm now properly recognizes Docker 18.09.0 and newer, but still treats 18.06 as the default supported version. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+Note: The list of validated [docker versions](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#docker) is 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09 and 19.03. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 
 ## Requirements
 

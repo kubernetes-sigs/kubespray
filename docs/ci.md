@@ -16,7 +16,7 @@ fedora31 |  :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: |
 opensuse |  :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 oracle7 |  :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu16 |  :x: | :white_check_mark: | :x: | :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: |
-ubuntu18 |  :white_check_mark: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
+ubuntu18 |  :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :x: | :x: | :white_check_mark: |
 ubuntu20 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 
 ## crio

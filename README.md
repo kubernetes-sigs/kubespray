@@ -135,13 +135,13 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.8.6
   - [calico](https://github.com/projectcalico/calico) v3.14.0
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-  - [cilium](https://github.com/cilium/cilium) v1.7.3
+  - [cilium](https://github.com/cilium/cilium) v1.7.4
   - [contiv](https://github.com/contiv/install) v1.2.1
   - [flanneld](https://github.com/coreos/flannel) v0.12.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.1.1
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v0.4.0
   - [multus](https://github.com/intel/multus-cni) v3.4.1
-  - [weave](https://github.com/weaveworks/weave) v2.6.2
+  - [weave](https://github.com/weaveworks/weave) v2.6.3
 - Application
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11

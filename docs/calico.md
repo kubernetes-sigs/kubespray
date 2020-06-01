@@ -206,6 +206,7 @@ Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.pr
 *IP in IP* and *VXLAN* is mutualy exclusive modes.
 
 Configure Ip in Ip mode. Possible values is `Always`, `CrossSubnet`, `Never`.
+`Never` disables configure cross server traffic.
 
 ```yml
 calico_ipip_mode: 'Always'

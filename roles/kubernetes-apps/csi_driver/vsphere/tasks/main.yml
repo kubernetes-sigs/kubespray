@@ -24,9 +24,19 @@
   when: inventory_hostname == groups['kube-master'][0]
   tags: vsphere-csi-driver
 
-- name: vSphere CSI Driver | Create a CSI secret
-  command: "{{ bin_dir }}/kubectl create secret generic vsphere-config-secret --from-file=csi-vsphere.conf={{ kube_config_dir }}/vsphere-csi-cloud-config -n kube-system"
+- name: vSphere CSI Driver | Generate a CSI secret manifest
+  command: "{{ bin_dir }}/kubectl create secret generic vsphere-config-secret --from-file=csi-vsphere.conf={{ kube_config_dir }}/vsphere-csi-cloud-config -n kube-system --dry-run --save-config -o yaml"
+  register: vsphere_csi_secret_manifest
   when: inventory_hostname == groups['kube-master'][0]
+  no_log: true
+  tags: vsphere-csi-driver
+
+- name: vSphere CSI Driver | Apply a CSI secret manifest
+  command:
+    cmd: "{{ bin_dir }}/kubectl apply -f -"
+    stdin: "{{ vsphere_csi_secret_manifest.stdout }}"
+  when: inventory_hostname == groups['kube-master'][0]
+  no_log: true
   tags: vsphere-csi-driver
 
 - name: vSphere CSI Driver | Apply Manifests

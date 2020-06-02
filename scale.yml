@@ -12,6 +12,8 @@
         delay: 30
         sleep: 30
         timeout: 600
+  environment:
+    DOCKER_API_VERSION: 1.39
 
 - hosts: all
   gather_facts: True
@@ -26,12 +28,16 @@
           no_proxy: "{{ no_proxy | default ('') }}"
           NO_PROXY: "{{ no_proxy | default ('') }}"
       no_log: true
+  environment:
+    DOCKER_API_VERSION: 1.39
 
 - hosts: bastion[0]
   gather_facts: False
   roles:
     - { role: kubespray-defaults }
     - { role: bastion-ssh-config, tags: ["localhost", "bastion"] }
+  environment:
+    DOCKER_API_VERSION: 1.39
 
 - name: Bootstrap any new workers
   hosts: kube-node
@@ -42,6 +48,8 @@
     - { role: kubespray-defaults }
     - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
     - { role: bootstrap-os, tags: bootstrap-os}
+  environment:
+    DOCKER_API_VERSION: 1.39
 
 - name: Gather facts
   import_playbook: facts.yml
@@ -53,6 +61,8 @@
   roles:
     - { role: kubespray-defaults }
     - { role: etcd, tags: etcd, etcd_cluster_setup: false }
+  environment:
+    DOCKER_API_VERSION: 1.39
 
 - name: Download images to ansible host cache via first kube-master node
   hosts: kube-master[0]
@@ -61,6 +71,8 @@
     - { role: kubespray-defaults, when: "not skip_downloads and download_run_once and not download_localhost"}
     - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
     - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
+  environment:
+    DOCKER_API_VERSION: 1.39
 
 - name: Target only workers to get kubelet installed and checking in on any new nodes
   hosts: kube-node
@@ -76,4 +88,6 @@
     - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: network_plugin, tags: network }
     - { role: kubernetes/node-label, tags: node-label }
-  environment: "{{ proxy_env }}"
+  environment:
+    - "{{ proxy_env }}"
+    - DOCKER_API_VERSION: 1.39

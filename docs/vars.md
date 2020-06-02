@@ -169,12 +169,12 @@ in the form of dicts of key-value pairs of configuration parameters that will be
 
 ```yml
 kubelet_config_extra_args:
-  EvictionHard:
-    memory.available: "<100Mi"
-  EvictionSoftGracePeriod:
+  evictionHard:
+    memory.available: "100Mi"
+  evictionSoftGracePeriod:
     memory.available: "30s"
-  EvictionSoft:
-    memory.available: "<300Mi"
+  evictionSoft:
+    memory.available: "300Mi"
 ```
 
 The possible vars are:

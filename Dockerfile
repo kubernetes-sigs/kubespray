@@ -11,9 +11,8 @@ RUN yum update -y && \
     yum install -y gcc python3-pip python3-devel openssl-devel python3-libselinux && \
     pip3 install -r requirements.txt && \
     curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.17.5/bin/linux/amd64/kubectl \
-        && chmod a+x kubectl && cp kubectl /usr/local/bin/kubectl && yum --enablerepo=epel -y install sshpass
-
-RUN yum remove docker docker-client docker-client-latest docker-common docker-latest \
+        && chmod a+x kubectl && cp kubectl /usr/local/bin/kubectl && \
+        yum --enablerepo=epel -y install sshpass && yum remove docker docker-client docker-client-latest docker-common docker-latest \
     docker-latest-logrotate docker-logrotate docker-engine && yum install -y yum-utils && \
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && \
     yum-config-manager --disable docker-ce-nightly && \

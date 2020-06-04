@@ -15,10 +15,13 @@ is_fedora_coreos: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.17.4
+kube_version: v1.18.3
 
 ## The minimum version working
 kube_version_min_required: v1.16.0
+
+# use HyperKube image to control plane containers
+kubeadm_use_hyperkube_image: False
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
@@ -301,10 +304,14 @@ helm_enabled: false
 registry_enabled: false
 metrics_server_enabled: false
 enable_network_policy: true
-local_volume_provisioner_enabled: "{{ local_volumes_enabled | default('false') }}"
+local_path_provisioner_enabled: false
+local_volume_provisioner_enabled: false
 local_volume_provisioner_directory_mode: 0700
 cinder_csi_enabled: false
 aws_ebs_csi_enabled: false
+azure_csi_enabled: false
+gcp_pd_csi_enabled: false
+vsphere_csi_enabled: false
 persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
 rbd_provisioner_enabled: false
@@ -345,6 +352,11 @@ external_openstack_lbaas_create_monitor: false
 external_openstack_lbaas_monitor_delay: "1m"
 external_openstack_lbaas_monitor_timeout: "30s"
 external_openstack_lbaas_monitor_max_retries: "3"
+external_openstack_network_ipv6_disabled: false
+external_openstack_network_internal_networks:
+  - ""
+external_openstack_network_public_networks:
+  - ""
 
 ## List of authorization modes that must be configured for
 ## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
@@ -388,60 +400,10 @@ local_volume_provisioner_storage_classes: |
 # you can use --extra-vars to pass the password in command line
 weave_password: EnterPasswordHere
 
-# Weave uses consensus mode by default
-# Enabling seed mode allow to dynamically add or remove hosts
-# https://www.weave.works/docs/net/latest/ipam/
-weave_mode_seed: false
-
-# This two variable are automatically changed by the weave's role in group_vars/k8s-cluster.yml.
-# Do not manually change these values
-weave_seed: uninitialized
-weave_peers: uninitialized
-
 # Contiv L3 BGP Mode
 contiv_peer_with_uplink_leaf: false
 contiv_global_as: "65002"
 contiv_global_neighbor_as: "500"
-
-# Set 127.0.0.1 as fallback IP if we do not have host facts for host
-# ansible_default_ipv4 isn't what you think.
-# Thanks https://medium.com/opsops/ansible-default-ipv4-is-not-what-you-think-edb8ab154b10
-fallback_ips_base: |
-  ---
-  {% for item in groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([])|unique %}
-  {% set found = hostvars[item].get('ansible_default_ipv4') %}
-  {{ item }}: "{{ found.get('address', '127.0.0.1') }}"
-  {% endfor %}
-fallback_ips: "{{ fallback_ips_base | from_yaml }}"
-
-## Set no_proxy to all assigned cluster IPs and hostnames
-no_proxy: >-
-  {%- if http_proxy is defined or https_proxy is defined %}
-  {%- if loadbalancer_apiserver is defined -%}
-  {{ apiserver_loadbalancer_domain_name| default('') }},
-  {{ loadbalancer_apiserver.address | default('') }},
-  {%- endif -%}
-  {%- for item in (groups['k8s-cluster'] + groups['etcd'] + groups['calico-rr']|default([]))|unique -%}
-  {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }},
-  {%-   if item != hostvars[item].get('ansible_hostname', '') -%}
-  {{ hostvars[item]['ansible_hostname'] }},
-  {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }},
-  {%-   endif -%}
-  {{ item }},{{ item }}.{{ dns_domain }},
-  {%- endfor -%}
-  {%- if additional_no_proxy is defined -%}
-  {{ additional_no_proxy }},
-  {%- endif -%}
-  127.0.0.1,localhost,{{kube_service_addresses}},{{kube_pods_subnet}}
-  {%- endif %}
-
-proxy_env:
-  http_proxy: "{{ http_proxy| default ('') }}"
-  HTTP_PROXY: "{{ http_proxy| default ('') }}"
-  https_proxy: "{{ https_proxy| default ('') }}"
-  HTTPS_PROXY: "{{ https_proxy| default ('') }}"
-  no_proxy: "{{ no_proxy| default ('') }}"
-  NO_PROXY: "{{ no_proxy| default ('') }}"
 
 ssl_ca_dirs: >-
   [

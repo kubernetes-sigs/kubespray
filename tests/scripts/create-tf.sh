@@ -2,4 +2,4 @@
 set -euxo pipefail
 
 cd ..
-terraform apply -auto-approve "contrib/terraform/$PROVIDER"
+terraform apply -auto-approve -parallelism=1 "contrib/terraform/$PROVIDER"

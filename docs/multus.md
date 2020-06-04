@@ -29,7 +29,7 @@ metadata:
   name: macvlan-conf
 spec:
   config: '{
-      "cniVersion": "0.3.0",
+      "cniVersion": "0.4.0",
       "type": "macvlan",
       "master": "eth0",
       "mode": "bridge",

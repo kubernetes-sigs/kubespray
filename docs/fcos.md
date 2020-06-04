@@ -1,6 +1,7 @@
 # Fedora CoreOS
 
-Tested with stable version 31.20200223.3.0
+Tested with stable version 31.20200223.3.0.
+
 Because package installation with `rpm-ostree` requires a reboot, playbook may fail while bootstrap.
 Restart playbook again.
 
@@ -35,11 +36,25 @@ systemd:
         WantedBy=multi-user.target
 ```
 
+## Network
+
+### calico
+
+To use calico create sysctl file with ignition:
+
+```yaml
+files:
+    - path: /etc/sysctl.d/reverse-path-filter.conf
+      contents:
+        inline: |
+          net.ipv4.conf.all.rp_filter=1
+```
+
 ## libvirt setup
 
 ### Prepare
 
-Prepare ignition and serve via http (a.e. python -m SimpleHTTPServer )
+Prepare ignition and serve via http (a.e. python -m http.server )
 
 ```json
 {
@@ -50,10 +65,9 @@ Prepare ignition and serve via http (a.e. python -m SimpleHTTPServer )
   "passwd": {
     "users": [
       {
-        "name": "adi",
-        "passwordHash": "$1$.RGu8J4x$U7uxcOg/eotTEIRxhk62I0",
+        "name": "ansibleUser",
         "sshAuthorizedKeys": [
-          "ssh-rsa ..fillyouruser"
+          "ssh-rsa ..publickey.."
         ],
         "groups": [ "wheel" ]
       }

@@ -103,6 +103,37 @@
     - not upgrade_cluster_setup
     - kubeadm_already_run.stat.exists
 
+- name: kubeadm | Check if apiserver.crt contains all needed SANs
+  command: openssl x509 -noout -in "{{ kube_cert_dir }}/apiserver.crt" -checkip "{{ item }}"
+  with_items: "{{ apiserver_sans }}"
+  register: apiserver_sans_check
+  changed_when: "'does match certificate' not in apiserver_sans_check.stdout"
+  when:
+    - inventory_hostname == groups['kube-master']|first
+    - kubeadm_already_run.stat.exists
+
+- name: kubeadm | regenerate apiserver cert 1/2
+  file:
+    state: absent
+    path: "{{ kube_cert_dir }}/{{ item }}"
+  with_items:
+    - apiserver.crt
+    - apiserver.key
+  when:
+    - inventory_hostname == groups['kube-master']|first
+    - kubeadm_already_run.stat.exists
+    - apiserver_sans_check.changed
+
+- name: kubeadm | regenerate apiserver cert 2/2
+  command: >-
+    {{ bin_dir }}/kubeadm
+    init phase certs apiserver
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+  when:
+    - inventory_hostname == groups['kube-master']|first
+    - kubeadm_already_run.stat.exists
+    - apiserver_sans_check.changed
+
 - name: kubeadm | Initialize first master
   command: >-
     timeout -k 300s 300s

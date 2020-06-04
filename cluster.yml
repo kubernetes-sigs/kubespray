@@ -1,44 +1,53 @@
 ---
-- hosts: localhost
+- name: Check ansible version
+  import_playbook: ansible_version.yml
+
+- hosts: all
   gather_facts: false
-  become: no
   tasks:
-    - name: "Check ansible version >=2.7.8"
-      assert:
-        msg: "Ansible must be v2.7.8 or higher"
-        that:
-          - ansible_version.string is version("2.7.8", ">=")
-      tags:
-        - check
-  vars:
-    ansible_connection: local
+    - name: "Set up proxy environment"
+      set_fact:
+        proxy_env:
+          http_proxy: "{{ http_proxy | default ('') }}"
+          HTTP_PROXY: "{{ http_proxy | default ('') }}"
+          https_proxy: "{{ https_proxy | default ('') }}"
+          HTTPS_PROXY: "{{ https_proxy | default ('') }}"
+          no_proxy: "{{ no_proxy | default ('') }}"
+          NO_PROXY: "{{ no_proxy | default ('') }}"
+      no_log: true
 
 - hosts: bastion[0]
   gather_facts: False
   roles:
-    - { role: kubespray-defaults}
-    - { role: bastion-ssh-config, tags: ["localhost", "bastion"]}
+    - { role: kubespray-defaults }
+    - { role: bastion-ssh-config, tags: ["localhost", "bastion"] }
 
 - hosts: k8s-cluster:etcd
+  strategy: linear
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   gather_facts: false
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: bootstrap-os, tags: bootstrap-os}
 
+- name: Gather facts
+  import_playbook: facts.yml
+
 - hosts: k8s-cluster:etcd
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: "container-engine", tags: "container-engine", when: deploy_container_engine|default(true) }
     - { role: download, tags: download, when: "not skip_downloads" }
   environment: "{{ proxy_env }}"
 
 - hosts: etcd
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - role: etcd
       tags: etcd
       vars:
@@ -47,9 +56,10 @@
       when: not etcd_kubeadm_enabled| default(false)
 
 - hosts: k8s-cluster
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - role: etcd
       tags: etcd
       vars:
@@ -58,45 +68,51 @@
       when: not etcd_kubeadm_enabled| default(false)
 
 - hosts: k8s-cluster
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: kubernetes/node, tags: node }
   environment: "{{ proxy_env }}"
 
 - hosts: kube-master
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: kubernetes/master, tags: master }
     - { role: kubernetes/client, tags: client }
     - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
 
 - hosts: k8s-cluster
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: kubernetes/kubeadm, tags: kubeadm}
     - { role: network_plugin, tags: network }
     - { role: kubernetes/node-label, tags: node-label }
 
 - hosts: calico-rr
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
-    - { role: network_plugin/calico/rr, tags: ['network', 'calico_rr']}
+    - { role: kubespray-defaults }
+    - { role: network_plugin/calico/rr, tags: ['network', 'calico_rr'] }
 
 - hosts: kube-master[0]
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: kubernetes-apps/rotate_tokens, tags: rotate_tokens, when: "secret_changed|default(false)" }
-    - { role: win_nodes/kubernetes_patch, tags: ["master", "win_nodes"]}
+    - { role: win_nodes/kubernetes_patch, tags: ["master", "win_nodes"] }
 
 - hosts: kube-master
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: kubernetes-apps/external_cloud_controller, tags: external-cloud-controller }
     - { role: kubernetes-apps/network_plugin, tags: network }
     - { role: kubernetes-apps/policy_controller, tags: policy-controller }
@@ -104,14 +120,16 @@
     - { role: kubernetes-apps/external_provisioner, tags: external-provisioner }
 
 - hosts: kube-master
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: kubernetes-apps, tags: apps }
   environment: "{{ proxy_env }}"
 
 - hosts: k8s-cluster
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults}
+    - { role: kubespray-defaults }
     - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_late: true }

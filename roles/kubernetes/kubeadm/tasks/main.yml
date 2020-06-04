@@ -46,10 +46,9 @@
   command: "{{ bin_dir }}/kubeadm version -o short"
   register: kubeadm_output
 
-- name: sets kubeadm api version to v1beta1
+- name: sets kubeadm api version to v1beta2
   set_fact:
-    kubeadmConfig_api_version: v1beta1
-  when: kubeadm_output.stdout is version('v1.13.0', '>=')
+    kubeadmConfig_api_version: v1beta2
 
 - name: Create kubeadm client config
   template:
@@ -112,7 +111,9 @@
     | {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
   run_once: true
   delegate_to: "{{ groups['kube-master']|first }}"
+  delegate_facts: false
   when:
+    - inventory_hostname in groups['kube-master']
     - kubeadm_config_api_fqdn is not defined
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
     - not kube_proxy_remove
@@ -131,7 +132,9 @@
   shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
   run_once: true
   delegate_to: "{{ groups['kube-master']|first }}"
+  delegate_facts: false
   when:
+    - inventory_hostname in groups['kube-master']
     - kubeadm_config_api_fqdn is not defined
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
     - not kube_proxy_remove

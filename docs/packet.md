@@ -38,9 +38,9 @@ Terraform is required to deploy the bare metal infrastructure. The steps below a
 Grab the latest version of Terraform and install it.
 
 ```bash
-echo "https://releases.hashicorp.com/terraform/$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | jq -r -M '.current_version')/terraform_$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | jq -r -M '.current_version')_darwin_amd64.zip"
+echo "https://releases.hashicorp.com/terraform/$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | jq -r -M '.current_version')/terraform_$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | jq -r -M '.current_version')_linux_amd64.zip"
 sudo yum install unzip
-sudo unzip terraform_0.12.12_linux_amd64.zip -d /usr/local/bin/
+sudo unzip terraform_0.12.24_linux_amd64.zip -d /usr/local/bin/
 ```
 
 ## Download Kubespray

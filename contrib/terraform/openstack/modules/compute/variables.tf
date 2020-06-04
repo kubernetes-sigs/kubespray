@@ -76,6 +76,10 @@ variable "k8s_node_fips" {
   type = "list"
 }
 
+variable "k8s_nodes_fips" {
+  type = "map"
+}
+
 variable "bastion_fips" {
   type = "list"
 }
@@ -95,6 +99,8 @@ variable "k8s_allowed_remote_ips" {
 variable "k8s_allowed_egress_ips" {
   type = "list"
 }
+
+variable "k8s_nodes" {}
 
 variable "wait_for_floatingip" {}
 

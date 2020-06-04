@@ -74,25 +74,6 @@ This mode is best to use on dynamic size cluster
 
 The seed mode also allows multi-clouds and hybrid on-premise/cloud clusters deployment.
 
-* Switch from consensus mode to seed mode
+* Switch from consensus mode to seed/Observation mode
 
-```ShellSession
-# In file ./inventory/sample/group_vars/k8s-cluster.yml
-weave_mode_seed: true
-```
-
-These two variables are only used when `weave_mode_seed` is set to `true` (**/!\ do not manually change these values**)
-
-```ShellSession
-# In file ./inventory/sample/group_vars/k8s-cluster.yml
-weave_seed: uninitialized
-weave_peers: uninitialized
-```
-
-The first variable, `weave_seed`, contains the initial nodes of the weave network
-
-The second variable, `weave_peers`, saves the IPs of all nodes joined to the weave network
-
-These two variables are used to connect a new node to the weave network. The new node needs to know the firsts nodes (seed) and the list of IPs of all nodes.
-
-To reset these variables and reset the weave network set them to `uninitialized`
+See [weave ipam documentation](https://www.weave.works/docs/net/latest/tasks/ipam/ipam/) and use `weave_extra_args` to enable.

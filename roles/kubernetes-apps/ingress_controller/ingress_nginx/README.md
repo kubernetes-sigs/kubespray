@@ -37,9 +37,6 @@ The following **Mandatory Command** is required for all deployments.
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/mandatory.yaml
 ```
 
-!!! tip
-    If you are using a Kubernetes version previous to 1.14, you need to change `kubernetes.io/os` to `beta.kubernetes.io/os` at line 217 of [mandatory.yaml](https://github.com/kubernetes/ingress-nginx/blob/master/deploy/static/mandatory.yaml#L217), see [Labels details](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/).
-
 ### Provider Specific Steps
 
 There are cloud provider specific yaml files.
@@ -48,9 +45,9 @@ There are cloud provider specific yaml files.
 
 Kubernetes is available in Docker for Mac (from [version 18.06.0-ce](https://docs.docker.com/docker-for-mac/release-notes/#stable-releases-of-2018))
 
-[enable]: https://docs.docker.com/docker-for-mac/#kubernetes
+First you need to [enable kubernetes](https://docs.docker.com/docker-for-mac/#kubernetes).
 
-Create a service
+Then you have to create a service:
 
 ```console
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/cloud-generic.yaml
@@ -63,7 +60,6 @@ For standard usage:
 ```console
 minikube addons enable ingress
 ```
-
 For development:
 
 1. Disable the ingress addon:

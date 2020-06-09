@@ -41,15 +41,3 @@ dnsmasq_image_tag: '2.72'
 The full list of available vars may be found in the download's ansible role defaults. Those also allow to specify custom urls and local repositories for binaries and container
 images as well. See also the DNS stack docs for the related intranet configuration,
 so the hosts can resolve those urls and repos.
-
-## Offline environment
-
-In case your servers don't have access to internet (for example when deploying on premises with security constraints), you'll have, first, to setup the appropriate proxies/caches/mirrors and/or internal repositories and registries and, then, adapt the following variables to fit your environment before deploying:
-
-* At least `foo_image_repo` and `foo_download_url` as described before (i.e. in case of use of proxies to registries and binaries repositories, checksums and versions do not necessarily need to be changed).
-  NOTE: Regarding `foo_image_repo`, when using insecure registries/proxies, you will certainly have to append them to the `docker_insecure_registries` variable in group_vars/all/docker.yml
-* `pyrepo_index` (and optionally `pyrepo_cert`)
-* Depending on the `container_manager`
-  * When `container_manager=docker`, `docker_foo_repo_base_url`, `docker_foo_repo_gpgkey`, `dockerproject_bar_repo_base_url` and `dockerproject_bar_repo_gpgkey` (where `foo` is the distribution and `bar` is system package manager)
-  * When `container_manager=crio`, `crio_rhel_repo_base_url`
-* When using Helm, `helm_stable_repo_url`

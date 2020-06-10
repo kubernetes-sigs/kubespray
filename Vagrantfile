@@ -70,6 +70,7 @@ $override_disk_size ||= false
 $disk_size ||= "20GB"
 $local_path_provisioner_enabled ||= false
 $local_path_provisioner_claim_root ||= "/opt/local-path-provisioner/"
+$libvirt_nested ||= false
 
 $playbook ||= "cluster.yml"
 
@@ -147,6 +148,8 @@ Vagrant.configure("2") do |config|
       end
 
       node.vm.provider :libvirt do |lv|
+        lv.nested = $libvirt_nested
+        lv.cpu_mode = "host-model"
         lv.memory = $vm_memory
         lv.cpus = $vm_cpus
         lv.default_prefix = 'kubespray'

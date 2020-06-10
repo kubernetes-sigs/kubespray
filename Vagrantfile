@@ -54,6 +54,8 @@ $os ||= "ubuntu1804"
 $network_plugin ||= "flannel"
 # Setting multi_networking to true will install Multus: https://github.com/intel/multus-cni
 $multi_networking ||= false
+$download_run_once ||= "True"
+$download_force_cache ||= "True"
 # The first three nodes are etcd servers
 $etcd_instances ||= $num_instances
 # The first two nodes are kube masters
@@ -190,11 +192,11 @@ Vagrant.configure("2") do |config|
         "flannel_interface": "eth1",
         "kube_network_plugin": $network_plugin,
         "kube_network_plugin_multus": $multi_networking,
-        "download_run_once": "True",
+        "download_run_once": $download_run_once,
         "download_localhost": "False",
         "download_cache_dir": ENV['HOME'] + "/kubespray_cache",
         # Make kubespray cache even when download_run_once is false
-        "download_force_cache": "True",
+        "download_force_cache": $download_force_cache,
         # Keeping the cache on the nodes can improve provisioning speed while debugging kubespray
         "download_keep_remote_cache": "False",
         "docker_rpm_keepcache": "1",

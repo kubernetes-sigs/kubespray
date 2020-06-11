@@ -4,10 +4,10 @@
 
 Ansible inventory can be stored in 3 formats: YAML, JSON, or INI-like. There is
 an example inventory located
-[here](https://github.com/kubernetes-sigs/kubespray/blob/controlplane/inventory/sample/inventory.ini).
+[here](https://github.com/kubernetes-sigs/kubespray/blob/master/inventory/sample/inventory.ini).
 
 You can use an
-[inventory generator](https://github.com/kubernetes-sigs/kubespray/blob/controlplane/contrib/inventory_builder/inventory.py)
+[inventory generator](https://github.com/kubernetes-sigs/kubespray/blob/master/contrib/inventory_builder/inventory.py)
 to create or modify an Ansible inventory. Currently, it is limited in
 functionality and is only used for configuring a basic Kubespray cluster inventory, but it does
 support creating inventory file for large clusters as well. It now supports
@@ -106,7 +106,7 @@ Access is described in [dashboard docs](https://github.com/kubernetes/dashboard/
 
 Accessing through Ingress is highly recommended. For proxy access, please note that proxy must listen to [localhost](https://github.com/kubernetes/dashboard/issues/692#issuecomment-220492484) (`proxy  --address="x.x.x.x"` will not work)
 
-For token authentication, guide to create Service Account is provided in [dashboard sample user](https://github.com/kubernetes/dashboard/blob/controlplane/docs/user/access-control/creating-sample-user.md) doc. Still take care of default namespace.
+For token authentication, guide to create Service Account is provided in [dashboard sample user](https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md) doc. Still take care of default namespace.
 
 Access can also by achieved via ssh tunnel on a controlplane :
 

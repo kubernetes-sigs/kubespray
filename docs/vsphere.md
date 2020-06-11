@@ -11,7 +11,7 @@ Kubespray can be deployed with vSphere as Cloud provider. This feature supports:
 
 ### Prerequisites
 
-You need at first to configure your vSphere environment by following the [official documentation](https://github.com/kubernetes/cloud-provider-vsphere/blob/controlplane/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#prerequisites).
+You need at first to configure your vSphere environment by following the [official documentation](https://github.com/kubernetes/cloud-provider-vsphere/blob/master/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#prerequisites).
 
 After this step you should have:
 
@@ -65,7 +65,7 @@ cd kubespray
 ansible-playbook -i inventory/sample/hosts.ini -b -v cluster.yml
 ```
 
-You'll find some useful examples [here](https://github.com/kubernetes/cloud-provider-vsphere/blob/controlplane/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#sample-manifests-to-test-csi-driver-functionality) to test your configuration.
+You'll find some useful examples [here](https://github.com/kubernetes/cloud-provider-vsphere/blob/master/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#sample-manifests-to-test-csi-driver-functionality) to test your configuration.
 
 ## In-tree vSphere cloud provider ([deprecated](https://cloud-provider-vsphere.sigs.k8s.io/concepts/in_tree_vs_out_of_tree.html))
 

@@ -2,7 +2,7 @@
 
 To deploy kubespray on [AWS](https://aws.amazon.com/) uncomment the `cloud_provider` option in `group_vars/all.yml` and set it to `'aws'`. Refer to the [Kubespray Configuration](#kubespray-configuration) for customizing the provider.
 
-Prior to creating your instances, you **must** ensure that you have created IAM roles and policies for both "kubernetes-master" and "kubernetes-node". You can find the IAM policies [here](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/aws_iam/). See the [IAM Documentation](https://aws.amazon.com/documentation/iam/) if guidance is needed on how to set these up. When you bring your instances online, associate them with the respective IAM role. Nodes that are only to be used for Etcd do not need a role.
+Prior to creating your instances, you **must** ensure that you have created IAM roles and policies for both "kubernetes-controlplane" and "kubernetes-node". You can find the IAM policies [here](https://github.com/kubernetes-sigs/kubespray/tree/controlplane/contrib/aws_iam/). See the [IAM Documentation](https://aws.amazon.com/documentation/iam/) if guidance is needed on how to set these up. When you bring your instances online, associate them with the respective IAM role. Nodes that are only to be used for Etcd do not need a role.
 
 You would also need to tag the resources in your VPC accordingly for the aws provider to utilize them. Tag the subnets, route tables and all instances that kubernetes will be run on with key `kubernetes.io/cluster/$cluster_name` (`$cluster_name` must be a unique identifier for the cluster). Tag the subnets that must be targeted by external ELBs with the key `kubernetes.io/role/elb` and internal ELBs with the key `kubernetes.io/role/internal-elb`.
 
@@ -35,11 +35,11 @@ This will produce an inventory that is passed into Ansible that looks like the f
   ],
   "k8s-cluster": {
     "children": [
-      "kube-master",
+      "kube-controlplane",
       "kube-node"
     ]
   },
-  "kube-master": [
+  "kube-controlplane": [
     "ip-172-31-3-xxx.us-east-2.compute.internal"
   ],
   "kube-node": [
@@ -51,7 +51,7 @@ This will produce an inventory that is passed into Ansible that looks like the f
 Guide:
 
 - Create instances in AWS as needed.
-- Either during or after creation, add tags to the instances with a key of `kubespray-role` and a value of `kube-master`, `etcd`, or `kube-node`. You can also share roles like `kube-master, etcd`
+- Either during or after creation, add tags to the instances with a key of `kubespray-role` and a value of `kube-controlplane`, `etcd`, or `kube-node`. You can also share roles like `kube-controlplane, etcd`
 - Copy the `kubespray-aws-inventory.py` script from `kubespray/contrib/aws_inventory` to the `kubespray/inventory` directory.
 - Set the following AWS credentials and info as environment variables in your terminal:
 
@@ -70,7 +70,7 @@ Declare the cloud config variables for the `aws` provider as follows. Setting th
 Variable|Type|Comment
 ---|---|---
 aws_zone|string|Force set the AWS zone. Recommended to leave blank.
-aws_vpc|string|The AWS VPC flag enables the possibility to run the master components on a different aws account, on a different cloud provider or on-premise. If the flag is set also the KubernetesClusterTag must be provided
+aws_vpc|string|The AWS VPC flag enables the possibility to run the controlplane components on a different aws account, on a different cloud provider or on-premise. If the flag is set also the KubernetesClusterTag must be provided
 aws_subnet_id|string|SubnetID enables using a specific subnet to use for ELB's
 aws_route_table_id|string|RouteTableID enables using a specific RouteTable
 aws_role_arn|string|RoleARN is the IAM role to assume when interaction with AWS APIs

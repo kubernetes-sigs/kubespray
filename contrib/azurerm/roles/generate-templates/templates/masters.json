@@ -85,12 +85,12 @@
         ]
       }
     },
-    {% for i in range(number_of_k8s_masters) %}
+    {% for i in range(number_of_k8s_controlplanes) %}
     {% if not use_bastion %}
     {
       "apiVersion": "{{apiVersion}}",
       "type": "Microsoft.Network/publicIPAddresses",
-      "name": "master-{{i}}-pubip",
+      "name": "controlplane-{{i}}-pubip",
       "location": "[resourceGroup().location]",
       "properties": {
         "publicIPAllocationMethod": "Static"
@@ -100,11 +100,11 @@
     {
       "apiVersion": "{{apiVersion}}",
       "type": "Microsoft.Network/networkInterfaces",
-      "name": "master-{{i}}-nic",
+      "name": "controlplane-{{i}}-nic",
       "location": "[resourceGroup().location]",
       "dependsOn": [
         {% if not use_bastion %}
-        "[concat('Microsoft.Network/publicIPAddresses/', 'master-{{i}}-pubip')]",
+        "[concat('Microsoft.Network/publicIPAddresses/', 'controlplane-{{i}}-pubip')]",
         {% endif %}
         "[concat('Microsoft.Network/loadBalancers/', variables('lbName'))]"
       ],
@@ -116,7 +116,7 @@
               "privateIPAllocationMethod": "Dynamic",
               {% if not use_bastion %}
               "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'master-{{i}}-pubip')]"
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'controlplane-{{i}}-pubip')]"
               },
               {% endif %}
               "subnet": {
@@ -138,13 +138,13 @@
     },
     {
       "type": "Microsoft.Compute/virtualMachines",
-      "name": "master-{{i}}",
+      "name": "controlplane-{{i}}",
       "location": "[resourceGroup().location]",
       "dependsOn": [
-        "[concat('Microsoft.Network/networkInterfaces/', 'master-{{i}}-nic')]"
+        "[concat('Microsoft.Network/networkInterfaces/', 'controlplane-{{i}}-nic')]"
       ],
       "tags": {
-        "roles": "kube-master,etcd"
+        "roles": "kube-controlplane,etcd"
       },
       "apiVersion": "{{apiVersion}}",
       "properties": {
@@ -152,10 +152,10 @@
           "id": "[resourceId('Microsoft.Compute/availabilitySets', '{{availabilitySetMasters}}')]"
         },
         "hardwareProfile": {
-          "vmSize": "{{masters_vm_size}}"
+          "vmSize": "{{controlplanes_vm_size}}"
         },
         "osProfile": {
-          "computerName": "master-{{i}}",
+          "computerName": "controlplane-{{i}}",
           "adminUsername": "{{admin_username}}",
           "adminPassword": "{{admin_password}}",
           "linuxConfiguration": {
@@ -177,17 +177,17 @@
           "osDisk": {
             "name": "ma{{nameSuffix}}{{i}}",
             "vhd": {
-              "uri": "[concat('http://','{{storageAccountName}}','.blob.core.windows.net/vhds/master-{{i}}.vhd')]"
+              "uri": "[concat('http://','{{storageAccountName}}','.blob.core.windows.net/vhds/controlplane-{{i}}.vhd')]"
             },
             "caching": "ReadWrite",
             "createOption": "FromImage",
-            "diskSizeGB": "{{masters_os_disk_size}}"
+            "diskSizeGB": "{{controlplanes_os_disk_size}}"
           }
         },
         "networkProfile": {
           "networkInterfaces": [
             {
-              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'master-{{i}}-nic')]"
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'controlplane-{{i}}-nic')]"
             }
           ]
         }

@@ -8,7 +8,7 @@ See [multus documentation](https://github.com/intel/multus-cni).
 
 ## Multus installation
 
-Since Multus itself does not implement networking, it requires a master plugin, which is specified through the variable `kube_network_plugin`. To enable Multus an additional variable `kube_network_plugin_multus` must be set to `true`. For example,
+Since Multus itself does not implement networking, it requires a controlplane plugin, which is specified through the variable `kube_network_plugin`. To enable Multus an additional variable `kube_network_plugin_multus` must be set to `true`. For example,
 
 ```yml
 kube_network_plugin: calico
@@ -31,7 +31,7 @@ spec:
   config: '{
       "cniVersion": "0.4.0",
       "type": "macvlan",
-      "master": "eth0",
+      "controlplane": "eth0",
       "mode": "bridge",
       "ipam": {
         "type": "host-local",

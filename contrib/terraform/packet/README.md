@@ -17,15 +17,15 @@ to actually install Kubernetes with Kubespray.
 ### Kubernetes Nodes
 You can create many different kubernetes topologies by setting the number of
 different classes of hosts.
-- Master nodes with etcd: `number_of_k8s_masters` variable
-- Master nodes without etcd: `number_of_k8s_masters_no_etcd` variable
+- Master nodes with etcd: `number_of_k8s_controlplanes` variable
+- Master nodes without etcd: `number_of_k8s_controlplanes_no_etcd` variable
 - Standalone etcd hosts: `number_of_etcd` variable
 - Kubernetes worker nodes: `number_of_k8s_nodes` variable
 
 Note that the Ansible script will report an invalid configuration if you wind up
 with an *even number* of etcd instances since that is not a valid configuration. This
 restriction includes standalone etcd nodes that are deployed in a cluster along with
-master nodes with etcd replicas. As an example, if you have three master nodes with
+controlplane nodes with etcd replicas. As an example, if you have three controlplane nodes with
 etcd replicas and three standalone etcd nodes, the script will fail since there are
 now six total etcd replicas.
 
@@ -188,7 +188,7 @@ example-etcd-1 | SUCCESS => {
     "changed": false,
     "ping": "pong"
 }
-example-k8s-master-1 | SUCCESS => {
+example-k8s-controlplane-1 | SUCCESS => {
     "changed": false,
     "ping": "pong"
 }

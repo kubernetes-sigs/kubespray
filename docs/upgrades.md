@@ -41,7 +41,7 @@ The var ```-e upgrade_cluster_setup=true``` is needed to be set in order to migr
 Kubespray also supports cordon, drain and uncordoning of nodes when performing
 a cluster upgrade. There is a separate playbook used for this purpose. It is
 important to note that upgrade-cluster.yml can only be used for upgrading an
-existing cluster. That means there must be at least 1 kube-master already
+existing cluster. That means there must be at least 1 kube-controlplane already
 deployed.
 
 ```ShellSession
@@ -73,9 +73,9 @@ The below example shows taking a cluster that was set up for v2.6.0 up to v2.10.
 ```ShellSession
 $ kubectl get node
 NAME      STATUS    ROLES         AGE       VERSION
-apollo    Ready     master,node   1h        v1.10.4
-boomer    Ready     master,node   42m       v1.10.4
-caprica   Ready     master,node   42m       v1.10.4
+apollo    Ready     controlplane,node   1h        v1.10.4
+boomer    Ready     controlplane,node   42m       v1.10.4
+caprica   Ready     controlplane,node   42m       v1.10.4
 
 $ git describe --tags
 v2.6.0
@@ -101,9 +101,9 @@ ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
 
 $ kubectl get node
 NAME      STATUS    ROLES         AGE       VERSION
-apollo    Ready     master,node   1h        v1.11.3
-boomer    Ready     master,node   1h        v1.11.3
-caprica   Ready     master,node   1h        v1.11.3
+apollo    Ready     controlplane,node   1h        v1.11.3
+boomer    Ready     controlplane,node   1h        v1.11.3
+caprica   Ready     controlplane,node   1h        v1.11.3
 
 $ git checkout v2.8.0
 Previous HEAD position was 05dabb7e Fix Bionic networking restart error #3430 (#3431)
@@ -127,9 +127,9 @@ yes
 
 $ kubectl get node
 NAME      STATUS   ROLES         AGE    VERSION
-apollo    Ready    master,node   114m   v1.12.3
-boomer    Ready    master,node   114m   v1.12.3
-caprica   Ready    master,node   114m   v1.12.3
+apollo    Ready    controlplane,node   114m   v1.12.3
+boomer    Ready    controlplane,node   114m   v1.12.3
+caprica   Ready    controlplane,node   114m   v1.12.3
 
 $ git checkout v2.8.1
 Previous HEAD position was 9051aa52 Fix ubuntu-contiv test failed (#3808)
@@ -145,9 +145,9 @@ yes
 
 $ kubectl get node
 NAME      STATUS   ROLES         AGE     VERSION
-apollo    Ready    master,node   2h36m   v1.12.4
-boomer    Ready    master,node   2h36m   v1.12.4
-caprica   Ready    master,node   2h36m   v1.12.4
+apollo    Ready    controlplane,node   2h36m   v1.12.4
+boomer    Ready    controlplane,node   2h36m   v1.12.4
+caprica   Ready    controlplane,node   2h36m   v1.12.4
 
 $ git checkout v2.8.2
 Previous HEAD position was 2ac1c756 More Feature/2.8 backports for 2.8.1 (#3911)
@@ -163,9 +163,9 @@ yes
 
 $ kubectl get node
 NAME      STATUS   ROLES         AGE    VERSION
-apollo    Ready    master,node   3h3m   v1.12.5
-boomer    Ready    master,node   3h3m   v1.12.5
-caprica   Ready    master,node   3h3m   v1.12.5
+apollo    Ready    controlplane,node   3h3m   v1.12.5
+boomer    Ready    controlplane,node   3h3m   v1.12.5
+caprica   Ready    controlplane,node   3h3m   v1.12.5
 
 $ git checkout v2.8.3
 Previous HEAD position was 4167807f Upgrade to 1.12.5 (#4066)
@@ -181,9 +181,9 @@ yes
 
 $ kubectl get node
 NAME      STATUS   ROLES         AGE     VERSION
-apollo    Ready    master,node   5h18m   v1.12.5
-boomer    Ready    master,node   5h18m   v1.12.5
-caprica   Ready    master,node   5h18m   v1.12.5
+apollo    Ready    controlplane,node   5h18m   v1.12.5
+boomer    Ready    controlplane,node   5h18m   v1.12.5
+caprica   Ready    controlplane,node   5h18m   v1.12.5
 
 $ git checkout v2.8.4
 Previous HEAD position was ea41fc5e backport cve-2019-5736 to release-2.8 (#4234)
@@ -199,9 +199,9 @@ yes
 
 $ kubectl get node
 NAME      STATUS   ROLES         AGE     VERSION
-apollo    Ready    master,node   5h37m   v1.12.7
-boomer    Ready    master,node   5h37m   v1.12.7
-caprica   Ready    master,node   5h37m   v1.12.7
+apollo    Ready    controlplane,node   5h37m   v1.12.7
+boomer    Ready    controlplane,node   5h37m   v1.12.7
+caprica   Ready    controlplane,node   5h37m   v1.12.7
 
 $ git checkout v2.8.5
 Previous HEAD position was 3901480b go to k8s 1.12.7 (#4400)
@@ -217,9 +217,9 @@ yes
 
 $ kubectl get node
 NAME      STATUS   ROLES         AGE     VERSION
-apollo    Ready    master,node   5h45m   v1.12.7
-boomer    Ready    master,node   5h45m   v1.12.7
-caprica   Ready    master,node   5h45m   v1.12.7
+apollo    Ready    controlplane,node   5h45m   v1.12.7
+boomer    Ready    controlplane,node   5h45m   v1.12.7
+caprica   Ready    controlplane,node   5h45m   v1.12.7
 
 $ git checkout v2.9.0
 Previous HEAD position was 6f97687d Release 2.8 robust san handling (#4478)
@@ -228,7 +228,7 @@ HEAD is now at a4e65c7c Upgrade to Ansible >2.7.0 (#4471)
 
 :warning: IMPORTANT: Some of the variable formats changed in the k8s-cluster.yml between 2.8.5 and 2.9.0 :warning:
 
-If you do not keep your inventory copy up to date, **your upgrade will fail** and your first master will be left non-functional until fixed and re-run.
+If you do not keep your inventory copy up to date, **your upgrade will fail** and your first controlplane will be left non-functional until fixed and re-run.
 
 It is at this point the cluster was upgraded from non-kubeadm to kubeadm as per the deprecation warning.
 
@@ -239,9 +239,9 @@ ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
 
 $ kubectl get node
 NAME      STATUS   ROLES         AGE     VERSION
-apollo    Ready    master,node   6h54m   v1.13.5
-boomer    Ready    master,node   6h55m   v1.13.5
-caprica   Ready    master,node   6h54m   v1.13.5
+apollo    Ready    controlplane,node   6h54m   v1.13.5
+boomer    Ready    controlplane,node   6h55m   v1.13.5
+caprica   Ready    controlplane,node   6h54m   v1.13.5
 
 # Watch out: 2.10.0 is hiding between 2.1.2 and 2.2.0
 
@@ -264,9 +264,9 @@ ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
 
 $ kubectl get node
 NAME      STATUS   ROLES         AGE     VERSION
-apollo    Ready    master,node   7h40m   v1.14.1
-boomer    Ready    master,node   7h40m   v1.14.1
-caprica   Ready    master,node   7h40m   v1.14.1
+apollo    Ready    controlplane,node   7h40m   v1.14.1
+boomer    Ready    controlplane,node   7h40m   v1.14.1
+caprica   Ready    controlplane,node   7h40m   v1.14.1
 
 
 ```
@@ -332,10 +332,10 @@ Upgrade kubelet:
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=node --skip-tags=k8s-gen-certs,k8s-gen-tokens
 ```
 
-Upgrade Kubernetes master components:
+Upgrade Kubernetes controlplane components:
 
 ```ShellSession
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=master
+ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=controlplane
 ```
 
 Upgrade network plugins:

@@ -3,7 +3,7 @@
 set -e
 
 repository=${1:-https://github.com/projectatomic/container-storage-setup.git}
-version=${2:-master}
+version=${2:-controlplane}
 profile_name=${3:-kubespray}
 dir=`mktemp -d`
 export GIT_DIR=$dir/.git

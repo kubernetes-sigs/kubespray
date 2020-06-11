@@ -16,7 +16,7 @@
     - "{{ kube_cert_dir }}/sa.key"
     - "{{ kube_cert_dir }}/sa.pub"
   register: kubeadm_certs
-  delegate_to: "{{ groups['kube-master']|first }}"
+  delegate_to: "{{ groups['kube-controlplane']|first }}"
 
 - name: kubeadm | write out kubeadm certs
   copy:
@@ -28,15 +28,15 @@
   no_log: true
   register: copy_kubeadm_certs
   with_items: "{{ kubeadm_certs.results }}"
-  when: inventory_hostname != groups['kube-master']|first
+  when: inventory_hostname != groups['kube-controlplane']|first
 
-- name: kubeadm | Init other uninitialized masters
+- name: kubeadm | Init other uninitialized controlplanes
   command: timeout -k 600s 600s {{ bin_dir }}/kubeadm init --config={{ kube_config_dir }}/kubeadm-config.yaml --ignore-preflight-errors=all --skip-phases=addon/coredns
   register: kubeadm_init
   retries: 10
   until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
   when:
-    - inventory_hostname != groups['kube-master']|first
+    - inventory_hostname != groups['kube-controlplane']|first
     - not kubeadm_already_run.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   environment:

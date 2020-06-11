@@ -5,7 +5,7 @@
 The inventory is composed of 3 groups:
 
 * **kube-node** : list of kubernetes nodes where the pods will run.
-* **kube-master** : list of servers where kubernetes master components (apiserver, scheduler, controller) will run.
+* **kube-controlplane** : list of servers where kubernetes controlplane components (apiserver, scheduler, controller) will run.
 * **etcd**: list of servers to compose the etcd server. You should have at least 3 servers for failover purpose.
 
 Note: do not modify the children of _k8s-cluster_, like putting
@@ -18,9 +18,9 @@ k8s-cluster ⊂ etcd => kube-node ∩ etcd = etcd
 
 When _kube-node_ contains _etcd_, you define your etcd cluster to be as well schedulable for Kubernetes workloads.
 If you want it a standalone, make sure those groups do not intersect.
-If you want the server to act both as master and node, the server must be defined
-on both groups _kube-master_ and _kube-node_. If you want a standalone and
-unschedulable master, the server must be defined only in the _kube-master_ and
+If you want the server to act both as controlplane and node, the server must be defined
+on both groups _kube-controlplane_ and _kube-node_. If you want a standalone and
+unschedulable controlplane, the server must be defined only in the _kube-controlplane_ and
 not _kube-node_.
 
 There are also two special groups:
@@ -40,7 +40,7 @@ node4 ansible_host=95.54.0.15 ip=10.3.0.4
 node5 ansible_host=95.54.0.16 ip=10.3.0.5
 node6 ansible_host=95.54.0.17 ip=10.3.0.6
 
-[kube-master]
+[kube-controlplane]
 node1
 node2
 
@@ -58,7 +58,7 @@ node6
 
 [k8s-cluster:children]
 kube-node
-kube-master
+kube-controlplane
 ```
 
 ## Group vars and overriding variables precedence
@@ -67,7 +67,7 @@ The group variables to control main deployment options are located in the direct
 Optional variables are located in the `inventory/sample/group_vars/all.yml`.
 Mandatory variables that are common for at least one role (or a node group) can be found in the
 `inventory/sample/group_vars/k8s-cluster.yml`.
-There are also role vars for docker, kubernetes preinstall and master roles.
+There are also role vars for docker, kubernetes preinstall and controlplane roles.
 According to the [ansible docs](https://docs.ansible.com/ansible/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),
 those cannot be overridden from the group vars. In order to override, one should use
 the `-e` runtime flags (most simple way) or other layers described in the docs.
@@ -126,7 +126,7 @@ The following tags are defined in playbooks:
 |               kube-proxy | Configuring static pod kube-proxy
 |           kube-scheduler | Configuring static pod kube-scheduler
 |                localhost | Special steps for the localhost (ansible runner)
-|                   master | Configuring K8s master node role
+|                   controlplane | Configuring K8s controlplane node role
 |               netchecker | Installing netchecker K8s app
 |                  network | Configuring networking plugins for K8s
 |                    nginx | Configuring LB for kube-apiserver instances

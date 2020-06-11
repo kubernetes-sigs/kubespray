@@ -22,7 +22,7 @@
   when:
     - inventory_hostname in groups['k8s-cluster']|union(groups['calico-rr']|default([]))|unique|sort
   tags:
-    - master
+    - controlplane
     - network
 
 - name: Set etcd_client_cert_serial
@@ -31,39 +31,39 @@
   when:
     - inventory_hostname in groups['k8s-cluster']|union(groups['calico-rr']|default([]))|unique|sort
   tags:
-    - master
+    - controlplane
     - network
 
 - include_tasks: "install_{{ etcd_deployment_type }}.yml"
-  when: is_etcd_master
+  when: is_etcd_controlplane
   tags:
     - upgrade
 
 - include_tasks: configure.yml
-  when: is_etcd_master
+  when: is_etcd_controlplane
 
 - include_tasks: refresh_config.yml
-  when: is_etcd_master
+  when: is_etcd_controlplane
 
 - name: Restart etcd if certs changed
   service:
     name: etcd
     state: restarted
     enabled: yes
-  when: is_etcd_master and etcd_cluster_setup and etcd_secret_changed|default(false)
+  when: is_etcd_controlplane and etcd_cluster_setup and etcd_secret_changed|default(false)
 
 - name: Restart etcd-events if certs changed
   service:
     name: etcd-events
     state: restarted
     enabled: yes
-  when: is_etcd_master and etcd_events_cluster_setup and etcd_secret_changed|default(false)
+  when: is_etcd_controlplane and etcd_events_cluster_setup and etcd_secret_changed|default(false)
 
 # After etcd cluster is assembled, make sure that
 # initial state of the cluster is in `existing`
 # state instead of `new`.
 - include_tasks: refresh_config.yml
-  when: is_etcd_master
+  when: is_etcd_controlplane
 
 - name: Install etcdctl binary from etcd role
   include_tasks: install_host.yml

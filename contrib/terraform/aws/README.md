@@ -5,7 +5,7 @@
 This project will create:
 * VPC with Public and Private Subnets in # Availability Zones
 * Bastion Hosts and NAT Gateways in the Public Subnet
-* A dynamic number of masters, etcd, and worker nodes in the Private Subnet
+* A dynamic number of controlplanes, etcd, and worker nodes in the Private Subnet
  * even distributed over the # of Availability Zones
 * AWS ELB in the Public Subnet for accessing the Kubernetes API from the internet
 

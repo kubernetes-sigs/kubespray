@@ -3,7 +3,7 @@ variable "cluster_name" {
 }
 
 variable "az_list" {
-  description = "List of Availability Zones to use for masters in your OpenStack cluster"
+  description = "List of Availability Zones to use for controlplanes in your OpenStack cluster"
   type        = list(string)
   default     = ["nova"]
 }
@@ -18,11 +18,11 @@ variable "number_of_bastions" {
   default = 1
 }
 
-variable "number_of_k8s_masters" {
+variable "number_of_k8s_controlplanes" {
   default = 2
 }
 
-variable "number_of_k8s_masters_no_etcd" {
+variable "number_of_k8s_controlplanes_no_etcd" {
   default = 2
 }
 
@@ -30,11 +30,11 @@ variable "number_of_etcd" {
   default = 2
 }
 
-variable "number_of_k8s_masters_no_floating_ip" {
+variable "number_of_k8s_controlplanes_no_floating_ip" {
   default = 2
 }
 
-variable "number_of_k8s_masters_no_floating_ip_no_etcd" {
+variable "number_of_k8s_controlplanes_no_floating_ip_no_etcd" {
   default = 2
 }
 
@@ -58,7 +58,7 @@ variable "etcd_root_volume_size_in_gb" {
   default = 0
 }
 
-variable "master_root_volume_size_in_gb" {
+variable "controlplane_root_volume_size_in_gb" {
   default = 0
 }
 
@@ -104,7 +104,7 @@ variable "flavor_bastion" {
   default     = 3
 }
 
-variable "flavor_k8s_master" {
+variable "flavor_k8s_controlplane" {
   description = "Use 'openstack flavor list' command to see what your OpenStack instance uses for IDs"
   default     = 3
 }
@@ -166,8 +166,8 @@ variable "external_net" {
   description = "uuid of the external/public network"
 }
 
-variable "supplementary_master_groups" {
-  description = "supplementary kubespray ansible groups for masters, such kube-node"
+variable "supplementary_controlplane_groups" {
+  description = "supplementary kubespray ansible groups for controlplanes, such kube-node"
   default     = ""
 }
 
@@ -182,8 +182,8 @@ variable "bastion_allowed_remote_ips" {
   default     = ["0.0.0.0/0"]
 }
 
-variable "master_allowed_remote_ips" {
-  description = "An array of CIDRs allowed to access API of masters"
+variable "controlplane_allowed_remote_ips" {
+  description = "An array of CIDRs allowed to access API of controlplanes"
   type        = "list"
   default     = ["0.0.0.0/0"]
 }

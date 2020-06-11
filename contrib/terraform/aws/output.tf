@@ -2,8 +2,8 @@ output "bastion_ip" {
   value = join("\n", aws_instance.bastion-server.*.public_ip)
 }
 
-output "masters" {
-  value = join("\n", aws_instance.k8s-master.*.private_ip)
+output "controlplanes" {
+  value = join("\n", aws_instance.k8s-controlplane.*.private_ip)
 }
 
 output "workers" {

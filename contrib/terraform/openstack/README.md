@@ -60,7 +60,7 @@ floating IP addresses or not.
 Note that the Ansible script will report an invalid configuration if you wind up
 with an even number of etcd instances since that is not a valid configuration. This
 restriction includes standalone etcd nodes that are deployed in a cluster along with
-master nodes with etcd replicas. As an example, if you have three master nodes with
+controlplane nodes with etcd replicas. As an example, if you have three controlplane nodes with
 etcd replicas and three standalone etcd nodes, the script will fail since there are
 now six total etcd replicas.
 
@@ -101,7 +101,7 @@ You can force your existing IPs by modifying the compute variables in
 `kubespray.tf` as follows:
 
 ```
-k8s_master_fips = ["151.101.129.67"]
+k8s_controlplane_fips = ["151.101.129.67"]
 k8s_node_fips = ["151.101.129.68"]
 ```
 
@@ -240,26 +240,26 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`dns_nameservers`| An array of DNS name server names to be used by hosts in the internal subnet. |
 |`floatingip_pool` | Name of the pool from which floating IPs will be allocated |
 |`external_net` | UUID of the external network that will be routed to |
-|`flavor_k8s_master`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through `openstack flavor list` |
+|`flavor_k8s_controlplane`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through `openstack flavor list` |
 |`image`,`image_gfs` | Name of the image to use in provisioning the compute resources. Should already be loaded into glance. |
 |`ssh_user`,`ssh_user_gfs` | The username to ssh into the image with. This usually depends on the image you have selected |
 |`public_key_path` | Path on your local workstation to the public key file you wish to use in creating the key pairs |
-|`number_of_k8s_masters`, `number_of_k8s_masters_no_floating_ip` | Number of nodes that serve as both master and etcd. These can be provisioned with or without floating IP addresses|
-|`number_of_k8s_masters_no_etcd`, `number_of_k8s_masters_no_floating_ip_no_etcd` |  Number of nodes that serve as just master with no etcd. These can be provisioned with or without floating IP addresses |
+|`number_of_k8s_controlplanes`, `number_of_k8s_controlplanes_no_floating_ip` | Number of nodes that serve as both controlplane and etcd. These can be provisioned with or without floating IP addresses|
+|`number_of_k8s_controlplanes_no_etcd`, `number_of_k8s_controlplanes_no_floating_ip_no_etcd` |  Number of nodes that serve as just controlplane with no etcd. These can be provisioned with or without floating IP addresses |
 |`number_of_etcd` | Number of pure etcd nodes |
 |`number_of_k8s_nodes`, `number_of_k8s_nodes_no_floating_ip` | Kubernetes worker nodes. These can be provisioned with or without floating ip addresses. |
 |`number_of_bastions` | Number of bastion hosts to create. Scripts assume this is really just zero or one |
 |`number_of_gfs_nodes_no_floating_ip` | Number of gluster servers to provision. |
 | `gfs_volume_size_in_gb` | Size of the non-ephemeral volumes to be attached to store the GlusterFS bricks |
-|`supplementary_master_groups` | To add ansible groups to the masters, such as `kube-node` for tainting them as nodes, empty by default. |
+|`supplementary_controlplane_groups` | To add ansible groups to the controlplanes, such as `kube-node` for tainting them as nodes, empty by default. |
 |`supplementary_node_groups` | To add ansible groups to the nodes, such as `kube-ingress` for running ingress controller pods, empty by default. |
 |`bastion_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, `["0.0.0.0/0"]` by default |
-|`master_allowed_remote_ips` | List of CIDR blocks allowed to initiate an API connection, `["0.0.0.0/0"]` by default |
+|`controlplane_allowed_remote_ips` | List of CIDR blocks allowed to initiate an API connection, `["0.0.0.0/0"]` by default |
 |`k8s_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, empty by default |
 |`worker_allowed_ports` | List of ports to open on worker nodes, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "0.0.0.0/0"}]` by default |
 |`wait_for_floatingip` | Let Terraform poll the instance until the floating IP has been associated, `false` by default. |
 |`node_root_volume_size_in_gb` | Size of the root volume for nodes, 0 to use ephemeral storage |
-|`master_root_volume_size_in_gb` | Size of the root volume for masters, 0 to use ephemeral storage |
+|`controlplane_root_volume_size_in_gb` | Size of the root volume for controlplanes, 0 to use ephemeral storage |
 |`gfs_root_volume_size_in_gb` | Size of the root volume for gluster, 0 to use ephemeral storage |
 |`etcd_root_volume_size_in_gb` | Size of the root volume for etcd nodes, 0 to use ephemeral storage |
 |`bastion_root_volume_size_in_gb` | Size of the root volume for bastions, 0 to use ephemeral storage |
@@ -473,12 +473,12 @@ instance should be preferred over IPv4.
 Bastion access will be determined by:
 
  - Your choice on the amount of bastion hosts (set by `number_of_bastions` terraform variable).
- - The existence of nodes/masters with floating IPs (set by `number_of_k8s_masters`, `number_of_k8s_nodes`, `number_of_k8s_masters_no_etcd` terraform variables).
+ - The existence of nodes/controlplanes with floating IPs (set by `number_of_k8s_controlplanes`, `number_of_k8s_nodes`, `number_of_k8s_controlplanes_no_etcd` terraform variables).
 
-If you have a bastion host, your ssh traffic will be directly routed through it. This is regardless of whether you have masters/nodes with a floating IP assigned.
-If you don't have a bastion host, but at least one of your masters/nodes have a floating IP, then ssh traffic will be tunneled by one of these machines.
+If you have a bastion host, your ssh traffic will be directly routed through it. This is regardless of whether you have controlplanes/nodes with a floating IP assigned.
+If you don't have a bastion host, but at least one of your controlplanes/nodes have a floating IP, then ssh traffic will be tunneled by one of these machines.
 
-So, either a bastion host, or at least master/node with a floating IP are required.
+So, either a bastion host, or at least controlplane/node with a floating IP are required.
 
 #### Test access
 
@@ -494,7 +494,7 @@ example-etcd-1 | SUCCESS => {
     "changed": false,
     "ping": "pong"
 }
-example-k8s-master-1 | SUCCESS => {
+example-k8s-controlplane-1 | SUCCESS => {
     "changed": false,
     "ping": "pong"
 }
@@ -555,9 +555,9 @@ This will take some time as there are many tasks to run.
 
 ### Set up kubectl
 1. [Install kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your workstation
-2. Add a route to the internal IP of a master node (if needed):
+2. Add a route to the internal IP of a controlplane node (if needed):
 ```
-sudo route add [master-internal-ip] gw [router-ip]
+sudo route add [controlplane-internal-ip] gw [router-ip]
 ```
 or
 ```
@@ -565,17 +565,17 @@ sudo route add -net [internal-subnet]/24 gw [router-ip]
 ```
 3. List Kubernetes certificates & keys:
 ```
-ssh [os-user]@[master-ip] sudo ls /etc/kubernetes/ssl/
+ssh [os-user]@[controlplane-ip] sudo ls /etc/kubernetes/ssl/
 ```
 4. Get `admin`'s certificates and keys:
 ```
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-kube-master-1-key.pem > admin-key.pem
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/admin-kube-master-1.pem > admin.pem
-ssh [os-user]@[master-ip] sudo cat /etc/kubernetes/ssl/ca.pem > ca.pem
+ssh [os-user]@[controlplane-ip] sudo cat /etc/kubernetes/ssl/admin-kube-controlplane-1-key.pem > admin-key.pem
+ssh [os-user]@[controlplane-ip] sudo cat /etc/kubernetes/ssl/admin-kube-controlplane-1.pem > admin.pem
+ssh [os-user]@[controlplane-ip] sudo cat /etc/kubernetes/ssl/ca.pem > ca.pem
 ```
 5. Configure kubectl:
 ```ShellSession
-$ kubectl config set-cluster default-cluster --server=https://[master-internal-ip]:6443 \
+$ kubectl config set-cluster default-cluster --server=https://[controlplane-internal-ip]:6443 \
     --certificate-authority=ca.pem
 
 $ kubectl config set-credentials default-admin \
@@ -616,17 +616,17 @@ to migrate to the `k8s_nodes` style you can do it like so:
 $ terraform state list
 module.compute.data.openstack_images_image_v2.gfs_image
 module.compute.data.openstack_images_image_v2.vm_image
-module.compute.openstack_compute_floatingip_associate_v2.k8s_master[0]
+module.compute.openstack_compute_floatingip_associate_v2.k8s_controlplane[0]
 module.compute.openstack_compute_floatingip_associate_v2.k8s_node[0]
 module.compute.openstack_compute_floatingip_associate_v2.k8s_node[1]
 module.compute.openstack_compute_floatingip_associate_v2.k8s_node[2]
-module.compute.openstack_compute_instance_v2.k8s_master[0]
+module.compute.openstack_compute_instance_v2.k8s_controlplane[0]
 module.compute.openstack_compute_instance_v2.k8s_node[0]
 module.compute.openstack_compute_instance_v2.k8s_node[1]
 module.compute.openstack_compute_instance_v2.k8s_node[2]
 module.compute.openstack_compute_keypair_v2.k8s
 module.compute.openstack_compute_servergroup_v2.k8s_etcd[0]
-module.compute.openstack_compute_servergroup_v2.k8s_master[0]
+module.compute.openstack_compute_servergroup_v2.k8s_controlplane[0]
 module.compute.openstack_compute_servergroup_v2.k8s_node[0]
 module.compute.openstack_networking_secgroup_rule_v2.bastion[0]
 module.compute.openstack_networking_secgroup_rule_v2.egress[0]
@@ -634,7 +634,7 @@ module.compute.openstack_networking_secgroup_rule_v2.k8s
 module.compute.openstack_networking_secgroup_rule_v2.k8s_allowed_remote_ips[0]
 module.compute.openstack_networking_secgroup_rule_v2.k8s_allowed_remote_ips[1]
 module.compute.openstack_networking_secgroup_rule_v2.k8s_allowed_remote_ips[2]
-module.compute.openstack_networking_secgroup_rule_v2.k8s_master[0]
+module.compute.openstack_networking_secgroup_rule_v2.k8s_controlplane[0]
 module.compute.openstack_networking_secgroup_rule_v2.worker[0]
 module.compute.openstack_networking_secgroup_rule_v2.worker[1]
 module.compute.openstack_networking_secgroup_rule_v2.worker[2]
@@ -642,10 +642,10 @@ module.compute.openstack_networking_secgroup_rule_v2.worker[3]
 module.compute.openstack_networking_secgroup_rule_v2.worker[4]
 module.compute.openstack_networking_secgroup_v2.bastion[0]
 module.compute.openstack_networking_secgroup_v2.k8s
-module.compute.openstack_networking_secgroup_v2.k8s_master
+module.compute.openstack_networking_secgroup_v2.k8s_controlplane
 module.compute.openstack_networking_secgroup_v2.worker
 module.ips.null_resource.dummy_dependency
-module.ips.openstack_networking_floatingip_v2.k8s_master[0]
+module.ips.openstack_networking_floatingip_v2.k8s_controlplane[0]
 module.ips.openstack_networking_floatingip_v2.k8s_node[0]
 module.ips.openstack_networking_floatingip_v2.k8s_node[1]
 module.ips.openstack_networking_floatingip_v2.k8s_node[2]

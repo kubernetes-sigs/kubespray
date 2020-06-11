@@ -1,5 +1,5 @@
 [all]
-${connection_strings_master}
+${connection_strings_controlplane}
 ${connection_strings_node}
 ${connection_strings_etcd}
 ${public_ip_address_bastion}
@@ -7,8 +7,8 @@ ${public_ip_address_bastion}
 [bastion]
 ${public_ip_address_bastion}
 
-[kube-master]
-${list_master}
+[kube-controlplane]
+${list_controlplane}
 
 
 [kube-node]
@@ -21,7 +21,7 @@ ${list_etcd}
 
 [k8s-cluster:children]
 kube-node
-kube-master
+kube-controlplane
 
 
 [k8s-cluster:vars]

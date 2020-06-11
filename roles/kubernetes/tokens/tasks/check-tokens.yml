@@ -1,9 +1,9 @@
 ---
-- name: "Check_tokens | check if the tokens have already been generated on first master"
+- name: "Check_tokens | check if the tokens have already been generated on first controlplane"
   stat:
     path: "{{ kube_token_dir }}/known_tokens.csv"
-  delegate_to: "{{ groups['kube-master'][0] }}"
-  register: known_tokens_master
+  delegate_to: "{{ groups['kube-controlplane'][0] }}"
+  register: known_tokens_controlplane
   run_once: true
 
 - name: "Check_tokens | Set default value for 'sync_tokens' and 'gen_tokens' to false"
@@ -14,7 +14,7 @@
 - name: "Check_tokens | Set 'sync_tokens' and 'gen_tokens' to true"
   set_fact:
     gen_tokens: true
-  when: not known_tokens_master.stat.exists and kube_token_auth|default(true)
+  when: not known_tokens_controlplane.stat.exists and kube_token_auth|default(true)
   run_once: true
 
 - name: "Check tokens | check if a cert already exists"
@@ -26,9 +26,9 @@
   set_fact:
     sync_tokens: >-
       {%- set tokens = {'sync': False} -%}
-      {%- for server in groups['kube-master'] | intersect(ansible_play_batch)
+      {%- for server in groups['kube-controlplane'] | intersect(ansible_play_batch)
          if (not hostvars[server].known_tokens.stat.exists) or
-         (hostvars[server].known_tokens.stat.checksum|default('') != known_tokens_master.stat.checksum|default('')) -%}
+         (hostvars[server].known_tokens.stat.checksum|default('') != known_tokens_controlplane.stat.checksum|default('')) -%}
          {%- set _ = tokens.update({'sync': True}) -%}
       {%- endfor -%}
       {{ tokens.sync }}

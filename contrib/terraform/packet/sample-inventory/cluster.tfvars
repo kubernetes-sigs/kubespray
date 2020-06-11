@@ -17,14 +17,14 @@ number_of_etcd = 0
 
 plan_etcd = "t1.small.x86"
 
-# masters
-number_of_k8s_masters = 1
+# controlplanes
+number_of_k8s_controlplanes = 1
 
-number_of_k8s_masters_no_etcd = 0
+number_of_k8s_controlplanes_no_etcd = 0
 
-plan_k8s_masters = "t1.small.x86"
+plan_k8s_controlplanes = "t1.small.x86"
 
-plan_k8s_masters_no_etcd = "t1.small.x86"
+plan_k8s_controlplanes_no_etcd = "t1.small.x86"
 
 # nodes
 number_of_k8s_nodes = 2

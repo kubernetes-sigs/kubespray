@@ -1,7 +1,7 @@
 # K8s DNS stack by Kubespray
 
 For K8s cluster nodes, Kubespray configures a [Kubernetes DNS](https://kubernetes.io/docs/admin/dns/)
-[cluster add-on](https://releases.k8s.io/master/cluster/addons/README.md)
+[cluster add-on](https://releases.k8s.io/controlplane/cluster/addons/README.md)
 to serve as an authoritative DNS server for a given ``dns_domain`` and its
 ``svc, default.svc`` default subdomains (a total of ``ndots: 5`` max levels).
 
@@ -159,7 +159,7 @@ cluster service names.
 
 Setting ``enable_nodelocaldns`` to ``true`` will make pods reach out to the dns (core-dns) caching agent running on the same node, thereby avoiding iptables DNAT rules and connection tracking. The local caching agent will query core-dns (depending on what main DNS plugin is configured in your cluster) for cache misses of cluster hostnames(cluster.local suffix by default).
 
-More information on the rationale behind this implementation can be found [here](https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/0030-nodelocal-dns-cache.md).
+More information on the rationale behind this implementation can be found [here](https://github.com/kubernetes/enhancements/blob/controlplane/keps/sig-network/0030-nodelocal-dns-cache.md).
 
 **As per the 2.10 release, Nodelocal DNS cache is enabled by default.**
 

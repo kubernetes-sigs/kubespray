@@ -13,7 +13,7 @@ There are two ways to manage Contiv:
 
 #### The Web Interface
 
-This UI is hosted on all kubernetes master nodes. The service is available at `https://<one of your master node>:10000`.
+This UI is hosted on all kubernetes controlplane nodes. The service is available at `https://<one of your controlplane node>:10000`.
 
 You can configure the api proxy by overriding the following variables:
 

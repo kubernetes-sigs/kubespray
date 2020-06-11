@@ -13,9 +13,9 @@ aws_bastion_size = "t2.medium"
 
 #Kubernetes Cluster
 
-aws_kube_master_num = 3
+aws_kube_controlplane_num = 3
 
-aws_kube_master_size = "t2.medium"
+aws_kube_controlplane_size = "t2.medium"
 
 aws_etcd_num = 3
 

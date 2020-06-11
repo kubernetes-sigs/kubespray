@@ -3,7 +3,7 @@
   stat:
     path: "{{ kube_cert_dir }}/apiserver.pem"
   register: old_apiserver_cert
-  delegate_to: "{{ groups['kube-master'] | first }}"
+  delegate_to: "{{ groups['kube-controlplane'] | first }}"
   run_once: true
 
 - name: kubeadm | Migrate old certs if necessary
@@ -55,7 +55,7 @@
 
 - name: kubeadm | aggregate all SANs
   set_fact:
-    apiserver_sans: "{{ (sans_base + groups['kube-master'] + sans_lb + sans_lb_ip + sans_supp + sans_access_ip + sans_ip + sans_address + sans_override + sans_hostname + sans_fqdn) | unique }}"
+    apiserver_sans: "{{ (sans_base + groups['kube-controlplane'] + sans_lb + sans_lb_ip + sans_supp + sans_access_ip + sans_ip + sans_address + sans_override + sans_hostname + sans_fqdn) | unique }}"
   vars:
     sans_base:
       - "kubernetes"
@@ -68,12 +68,12 @@
     sans_lb: "{{ [apiserver_loadbalancer_domain_name] if apiserver_loadbalancer_domain_name is defined else [] }}"
     sans_lb_ip: "{{ [loadbalancer_apiserver.address] if loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined else [] }}"
     sans_supp: "{{ supplementary_addresses_in_ssl_keys if supplementary_addresses_in_ssl_keys is defined else [] }}"
-    sans_access_ip: "{{ groups['kube-master'] | map('extract', hostvars, 'access_ip') | list | select('defined') | list }}"
-    sans_ip: "{{ groups['kube-master'] | map('extract', hostvars, 'ip') | list | select('defined') | list }}"
-    sans_address: "{{ groups['kube-master'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | list | select('defined') | list }}"
+    sans_access_ip: "{{ groups['kube-controlplane'] | map('extract', hostvars, 'access_ip') | list | select('defined') | list }}"
+    sans_ip: "{{ groups['kube-controlplane'] | map('extract', hostvars, 'ip') | list | select('defined') | list }}"
+    sans_address: "{{ groups['kube-controlplane'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | list | select('defined') | list }}"
     sans_override: "{{ [kube_override_hostname] if kube_override_hostname else [] }}"
-    sans_hostname: "{{ groups['kube-master'] | map('extract', hostvars, ['ansible_hostname']) | list | select('defined') | list }}"
-    sans_fqdn: "{{ groups['kube-master'] | map('extract', hostvars, ['ansible_fqdn']) | list | select('defined') | list }}"
+    sans_hostname: "{{ groups['kube-controlplane'] | map('extract', hostvars, ['ansible_hostname']) | list | select('defined') | list }}"
+    sans_fqdn: "{{ groups['kube-controlplane'] | map('extract', hostvars, ['ansible_fqdn']) | list | select('defined') | list }}"
   tags: facts
 
 - name: Create audit-policy directory
@@ -109,7 +109,7 @@
   register: apiserver_sans_check
   changed_when: "'does match certificate' not in apiserver_sans_check.stdout"
   when:
-    - inventory_hostname == groups['kube-master']|first
+    - inventory_hostname == groups['kube-controlplane']|first
     - kubeadm_already_run.stat.exists
 
 - name: kubeadm | regenerate apiserver cert 1/2
@@ -120,7 +120,7 @@
     - apiserver.crt
     - apiserver.key
   when:
-    - inventory_hostname == groups['kube-master']|first
+    - inventory_hostname == groups['kube-controlplane']|first
     - kubeadm_already_run.stat.exists
     - apiserver_sans_check.changed
 
@@ -130,11 +130,11 @@
     init phase certs apiserver
     --config={{ kube_config_dir }}/kubeadm-config.yaml
   when:
-    - inventory_hostname == groups['kube-master']|first
+    - inventory_hostname == groups['kube-controlplane']|first
     - kubeadm_already_run.stat.exists
     - apiserver_sans_check.changed
 
-- name: kubeadm | Initialize first master
+- name: kubeadm | Initialize first controlplane
   command: >-
     timeout -k 300s 300s
     {{ bin_dir }}/kubeadm init
@@ -146,7 +146,7 @@
   # Retry is because upload config sometimes fails
   retries: 3
   until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
-  when: inventory_hostname == groups['kube-master']|first and not kubeadm_already_run.stat.exists
+  when: inventory_hostname == groups['kube-controlplane']|first and not kubeadm_already_run.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
@@ -155,7 +155,7 @@
 - name: set kubeadm certificate key
   set_fact:
     kubeadm_certificate_key: "{{ item | regex_search('--certificate-key ([^ ]+)','\\1') | first }}"
-  with_items: "{{ hostvars[groups['kube-master'][0]]['kubeadm_init'].stdout_lines | default([]) }}"
+  with_items: "{{ hostvars[groups['kube-controlplane'][0]]['kubeadm_init'].stdout_lines | default([]) }}"
   when:
     - kubeadm_certificate_key is not defined
     - (item | trim) is match('.*--certificate-key.*')
@@ -165,7 +165,7 @@
     {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token delete {{ kubeadm_token }} || :;
     {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create {{ kubeadm_token }}
   when:
-    - inventory_hostname == groups['kube-master']|first
+    - inventory_hostname == groups['kube-controlplane']|first
     - kubeadm_token is defined
     - kubeadm_refresh_token
   tags:
@@ -177,7 +177,7 @@
   retries: 5
   delay: 5
   until: temp_token is succeeded
-  delegate_to: "{{ groups['kube-master'] | first }}"
+  delegate_to: "{{ groups['kube-controlplane'] | first }}"
   when: kubeadm_token is not defined
   tags:
     - kubeadm_token
@@ -189,11 +189,11 @@
   tags:
     - kubeadm_token
 
-- name: kubeadm | Initialize other masters (experimental control plane)
+- name: kubeadm | Initialize other controlplanes (experimental control plane)
   include_tasks: kubeadm-secondary-experimental.yml
   when: kubeadm_control_plane
 
-- name: kubeadm | Initialize other masters (legacy not control plane)
+- name: kubeadm | Initialize other controlplanes (legacy not control plane)
   include_tasks: kubeadm-secondary-legacy.yml
   when: not kubeadm_control_plane
 
@@ -220,8 +220,8 @@
     - old_apiserver_cert.stat.exists
 
 # FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
-- name: kubeadm | Remove taint for master with node role
-  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf taint node {{ inventory_hostname }} node-role.kubernetes.io/master:NoSchedule-"
-  delegate_to: "{{ groups['kube-master'] | first }}"
+- name: kubeadm | Remove taint for controlplane with node role
+  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf taint node {{ inventory_hostname }} node-role.kubernetes.io/controlplane:NoSchedule-"
+  delegate_to: "{{ groups['kube-controlplane'] | first }}"
   when: inventory_hostname in groups['kube-node']
   failed_when: false

@@ -1,6 +1,6 @@
 # Deploy a Production Ready Kubernetes Cluster
 
-![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-sigs/kubespray/master/docs/img/kubernetes-logo.png)
+![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-sigs/kubespray/controlplane/docs/img/kubernetes-logo.png)
 
 If you have questions, check the documentation at [kubespray.io](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 You can get your invite [here](http://slack.k8s.io/)
@@ -154,7 +154,7 @@ Note: The list of validated [docker versions](https://kubernetes.io/docs/setup/p
     or command parameters `--become or -b` should be specified.
 
 Hardware:
-These limits are safe guarded by Kubespray. Actual requirements for your workload can differ. For a sizing guide go to the [Building Large Clusters](https://kubernetes.io/docs/setup/cluster-large/#size-of-master-and-master-components) guide.
+These limits are safe guarded by Kubespray. Actual requirements for your workload can differ. For a sizing guide go to the [Building Large Clusters](https://kubernetes.io/docs/setup/cluster-large/#size-of-controlplane-and-controlplane-components) guide.
 
 - Master
   - Memory: 1500 MB
@@ -207,11 +207,11 @@ See also [Network checker](docs/netcheck.md).
 ## Tools and projects on top of Kubespray
 
 - [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/v4/doc/integrations/ansible.rst)
-- [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
+- [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/controlplane/contrib/terraform)
 
 ## CI Tests
 
-[![Build graphs](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/badges/master/build.svg)](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/pipelines)
+[![Build graphs](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/badges/controlplane/build.svg)](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/pipelines)
 
 CI/end-to-end tests sponsored by Google (GCE)
 See the [test matrix](docs/test_cases.md) for details.

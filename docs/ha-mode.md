@@ -10,13 +10,13 @@ achieve the same goal.
 
 ## Etcd
 
-The etcd clients (kube-api-masters) are configured with the list of all etcd peers. If the etcd-cluster has multiple instances, it's configured in HA already.
+The etcd clients (kube-api-controlplanes) are configured with the list of all etcd peers. If the etcd-cluster has multiple instances, it's configured in HA already.
 
 ## Kube-apiserver
 
 K8s components require a loadbalancer to access the apiservers via a reverse
 proxy. Kubespray includes support for an nginx-based proxy that resides on each
-non-master Kubernetes node. This is referred to as localhost loadbalancing. It
+non-controlplane Kubernetes node. This is referred to as localhost loadbalancing. It
 is less efficient than a dedicated load balancer because it creates extra
 health checks on the Kubernetes apiserver, but is more practical for scenarios
 where an external LB or virtual IP management is inconvenient.  This option is
@@ -25,21 +25,21 @@ configured by the variable `loadbalancer_apiserver_localhost` (defaults to
 You may also define the port the local internal loadbalancer uses by changing,
 `loadbalancer_apiserver_port`.  This defaults to the value of
 `kube_apiserver_port`. It is also important to note that Kubespray will only
-configure kubelet and kube-proxy on non-master nodes to use the local internal
+configure kubelet and kube-proxy on non-controlplane nodes to use the local internal
 loadbalancer.
 
 If you choose to NOT use the local internal loadbalancer, you will need to
 configure your own loadbalancer to achieve HA. Note that deploying a
 loadbalancer is up to a user and is not covered by ansible roles in Kubespray.
 By default, it only configures a non-HA endpoint, which points to the
-`access_ip` or IP address of the first server node in the `kube-master` group.
+`access_ip` or IP address of the first server node in the `kube-controlplane` group.
 It can also configure clients to use endpoints for a given loadbalancer type.
 The following diagram shows how traffic to the apiserver is directed.
 
 ![Image](figures/loadbalancer_localhost.png?raw=true)
 
-  Note: Kubernetes master nodes still use insecure localhost access because
-  there are bugs in Kubernetes <1.5.0 in using TLS auth on master role
+  Note: Kubernetes controlplane nodes still use insecure localhost access because
+  there are bugs in Kubernetes <1.5.0 in using TLS auth on controlplane role
   services. This makes backends receiving unencrypted traffic and may be a
   security issue when interconnecting different nodes, or maybe not, if those
   belong to the isolated management network without external access.
@@ -57,8 +57,8 @@ listen kubernetes-apiserver-https
   option log-health-checks
   timeout client 3h
   timeout server 3h
-  server master1 <IP1>:6443 check check-ssl verify none inter 10000
-  server master2 <IP2>:6443 check check-ssl verify none inter 10000
+  server controlplane1 <IP1>:6443 check check-ssl verify none inter 10000
+  server controlplane2 <IP2>:6443 check check-ssl verify none inter 10000
   balance roundrobin
 ```
 
@@ -102,7 +102,7 @@ exclusive to `loadbalancer_apiserver_localhost`.
 
 Access API endpoints are evaluated automatically, as the following:
 
-| Endpoint type                | kube-master      | non-master              | external              |
+| Endpoint type                | kube-controlplane      | non-controlplane              | external              |
 |------------------------------|------------------|-------------------------|-----------------------|
 | Local LB (default)           | `https://bip:sp` | `https://lc:nsp`        | `https://m[0].aip:sp` |
 | Local LB + Unmanaged here LB | `https://bip:sp` | `https://lc:nsp`        | `https://ext`         |
@@ -111,7 +111,7 @@ Access API endpoints are evaluated automatically, as the following:
 
 Where:
 
-* `m[0]` - the first node in the `kube-master` group;
+* `m[0]` - the first node in the `kube-controlplane` group;
 * `lb` - LB FQDN, `apiserver_loadbalancer_domain_name`;
 * `ext` - Externally load balanced VIP:port and FQDN, not managed by Kubespray;
 * `lc` - localhost;
@@ -126,11 +126,11 @@ A second and a third column represent internal cluster access modes. The last
 column illustrates an example URI to access the cluster APIs externally.
 Kubespray has nothing to do with it, this is informational only.
 
-As you can see, the masters' internal API endpoints are always
+As you can see, the controlplanes' internal API endpoints are always
 contacted via the local bind IP, which is `https://bip:sp`.
 
 **Note** that for some cases, like healthchecks of applications deployed by
-Kubespray, the masters' APIs are accessed via the insecure endpoint, which
+Kubespray, the controlplanes' APIs are accessed via the insecure endpoint, which
 consists of the local `kube_apiserver_insecure_bind_address` and
 `kube_apiserver_insecure_port`.
 

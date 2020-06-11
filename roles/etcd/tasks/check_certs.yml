@@ -1,11 +1,11 @@
 ---
-- name: "Check_certs | check if all certs have already been generated on first master"
+- name: "Check_certs | check if all certs have already been generated on first controlplane"
   find:
     paths: "{{ etcd_cert_dir }}"
     patterns: "ca.pem,node*.pem"
     get_checksum: true
   delegate_to: "{{ groups['etcd'][0] }}"
-  register: etcdcert_master
+  register: etcdcert_controlplane
   run_once: true
 
 - name: "Check_certs | Set default value for 'sync_certs', 'gen_certs' and 'etcd_secret_changed' to false"
@@ -25,7 +25,7 @@
 - name: "Check_certs | Set 'gen_certs' to true"
   set_fact:
     gen_certs: true
-  when: not item in etcdcert_master.files|map(attribute='path') | list
+  when: not item in etcdcert_controlplane.files|map(attribute='path') | list
   run_once: true
   with_items: "{{ expected_files }}"
   vars:
@@ -39,12 +39,12 @@
          {% if not loop.last %}{{','}}{% endif %}
        {% endfor %}]
 
-- name: "Check_certs | Set 'gen_master_certs' to true"
+- name: "Check_certs | Set 'gen_controlplane_certs' to true"
   set_fact:
-    gen_master_certs: |-
+    gen_controlplane_certs: |-
       {
       {% set all_etcd_hosts = groups['k8s-cluster']|union(groups['etcd'])|union(groups['calico-rr']|default([]))|unique|sort -%}
-      {% set existing_certs = etcdcert_master.files|map(attribute='path')|list|sort %}
+      {% set existing_certs = etcdcert_controlplane.files|map(attribute='path')|list|sort %}
       {% for host in all_etcd_hosts -%}
         {% set host_cert = "%s/member-%s-key.pem"|format(etcd_cert_dir, host) %}
         {% if host_cert in existing_certs -%}
@@ -61,7 +61,7 @@
     gen_node_certs: |-
       {
       {% set all_etcd_hosts = groups['k8s-cluster']|union(groups['etcd'])|union(groups['calico-rr']|default([]))|unique|sort -%}
-      {% set existing_certs = etcdcert_master.files|map(attribute='path')|list|sort %}
+      {% set existing_certs = etcdcert_controlplane.files|map(attribute='path')|list|sort %}
       {% for host in all_etcd_hosts -%}
         {% set host_cert = "%s/node-%s-key.pem"|format(etcd_cert_dir, host) %}
         {% if host_cert in existing_certs -%}
@@ -78,7 +78,7 @@
     sync_certs: true
   when:
     - gen_node_certs[inventory_hostname] or
-      gen_master_certs[inventory_hostname] or
+      gen_controlplane_certs[inventory_hostname] or
       (not etcdcert_node.results[0].stat.exists|default(false)) or
       (not etcdcert_node.results[1].stat.exists|default(false)) or
-      (etcdcert_node.results[1].stat.checksum|default('') != etcdcert_master.files|selectattr("path", "equalto", etcdcert_node.results[1].stat.path)|map(attribute="checksum")|first|default(''))
+      (etcdcert_node.results[1].stat.checksum|default('') != etcdcert_controlplane.files|selectattr("path", "equalto", etcdcert_node.results[1].stat.path)|map(attribute="checksum")|first|default(''))

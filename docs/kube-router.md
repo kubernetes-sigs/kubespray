@@ -23,7 +23,7 @@ kube-router-lb6k2   1/1       Running   0          20h       192.168.186.14   my
 kube-router-rzvrb   1/1       Running   0          20h       192.168.186.17   mykube-k8s-node-nf-4   <none>
 kube-router-v6n56   1/1       Running   0          2d        192.168.186.6    mykube-k8s-node-nf-1   <none>
 kube-router-wwhg8   1/1       Running   0          20h       192.168.186.16   mykube-k8s-node-nf-5   <none>
-kube-router-x2xs7   1/1       Running   0          2d        192.168.186.10   mykube-k8s-master-1    <none>
+kube-router-x2xs7   1/1       Running   0          2d        192.168.186.10   mykube-k8s-controlplane-1    <none>
 ```
 
 * Peek at kube-router container logs:
@@ -68,12 +68,12 @@ If you have other networking devices or SDN systems that talk BGP, kube-router w
 From a simple full node-to-node mesh to per-node peering configurations, most routing needs can be attained.
 The configuration is Kubernetes native (annotations) just like the rest of kube-router.
 
-For more details please refer to the <https://github.com/cloudnativelabs/kube-router/blob/master/docs/bgp.md.>
+For more details please refer to the <https://github.com/cloudnativelabs/kube-router/blob/controlplane/docs/bgp.md.>
 
 Next options will set up annotations for kube-router, using `kubectl annotate` command.
 
 ```yml
-kube_router_annotations_master: []
+kube_router_annotations_controlplane: []
 kube_router_annotations_node: []
 kube_router_annotations_all: []
 ```

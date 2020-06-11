@@ -56,8 +56,8 @@ $network_plugin ||= "flannel"
 $multi_networking ||= false
 # The first three nodes are etcd servers
 $etcd_instances ||= $num_instances
-# The first two nodes are kube masters
-$kube_master_instances ||= $num_instances == 1 ? $num_instances : ($num_instances - 1)
+# The first two nodes are kube controlplanes
+$kube_controlplane_instances ||= $num_instances == 1 ? $num_instances : ($num_instances - 1)
 # All nodes are kube nodes
 $kube_node_instances ||= $num_instances
 # The following only works when using the libvirt provider
@@ -222,9 +222,9 @@ Vagrant.configure("2") do |config|
           #ansible.tags = ['download']
           ansible.groups = {
             "etcd" => ["#{$instance_name_prefix}-[1:#{$etcd_instances}]"],
-            "kube-master" => ["#{$instance_name_prefix}-[1:#{$kube_master_instances}]"],
+            "kube-controlplane" => ["#{$instance_name_prefix}-[1:#{$kube_controlplane_instances}]"],
             "kube-node" => ["#{$instance_name_prefix}-[1:#{$kube_node_instances}]"],
-            "k8s-cluster:children" => ["kube-master", "kube-node"],
+            "k8s-cluster:children" => ["kube-controlplane", "kube-node"],
           }
         end
       end

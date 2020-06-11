@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# curl -# -C - -o shebang-unit https://raw.github.com/arpinum-oss/shebang-unit/master/releases/shebang-unit
+# curl -# -C - -o shebang-unit https://raw.github.com/arpinum-oss/shebang-unit/controlplane/releases/shebang-unit
 # chmod +x shebang-unit
 
 now=$(date +"%Y%m%d%H%M%S")

@@ -12,7 +12,7 @@ For a large scaled deployments, consider the following configuration changes:
   See download modes for details.
 
 * Adjust the `retry_stagger` global var as appropriate. It should provide sane
-  load on a delegate (the first K8s master node) then retrying failed
+  load on a delegate (the first K8s controlplane node) then retrying failed
   push or download operations.
 
 * Tune parameters for DNS related applications
@@ -38,7 +38,7 @@ For a large scaled deployments, consider the following configuration changes:
 
 * Add calico-rr nodes if you are deploying with Calico or Canal. Nodes recover
   from host/network interruption much quicker with calico-rr. Note that
-  calico-rr role must be on a host without kube-master or kube-node role (but
+  calico-rr role must be on a host without kube-controlplane or kube-node role (but
   etcd role is okay).
 
 * Check out the

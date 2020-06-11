@@ -15,5 +15,5 @@ az deployment group create --template-file ./.generated/network.json -g $AZURE_R
 az deployment group create --template-file ./.generated/storage.json -g $AZURE_RESOURCE_GROUP
 az deployment group create --template-file ./.generated/availability-sets.json -g $AZURE_RESOURCE_GROUP
 az deployment group create --template-file ./.generated/bastion.json -g $AZURE_RESOURCE_GROUP
-az deployment group create --template-file ./.generated/masters.json -g $AZURE_RESOURCE_GROUP
+az deployment group create --template-file ./.generated/controlplanes.json -g $AZURE_RESOURCE_GROUP
 az deployment group create --template-file ./.generated/minions.json -g $AZURE_RESOURCE_GROUP

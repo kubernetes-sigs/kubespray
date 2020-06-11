@@ -6,7 +6,7 @@ To enable AWS EBS CSI driver, uncomment the `aws_ebs_csi_enabled` option in `gro
 
 To set the number of replicas for the AWS CSI controller, you can change `aws_ebs_csi_controller_replicas` option in `group_vars/all/aws.yml`.
 
-Make sure to add a role, for your EC2 instances hosting Kubernetes, that allows it to do the actions necessary to request a volume and attach it: [AWS CSI Policy](https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/master/docs/example-iam-policy.json)
+Make sure to add a role, for your EC2 instances hosting Kubernetes, that allows it to do the actions necessary to request a volume and attach it: [AWS CSI Policy](https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/controlplane/docs/example-iam-policy.json)
 
 If you want to deploy the AWS EBS storage class used with the CSI Driver, you should set `persistent_volumes_enabled` in `group_vars/k8s-cluster/k8s-cluster.yml` to `true`.
 

@@ -37,8 +37,8 @@
 - name: Gather facts
   import_playbook: facts.yml
 
-- name: Download images to ansible host cache via first kube-master node
-  hosts: kube-master[0]
+- name: Download images to ansible host cache via first kube-controlplane node
+  hosts: kube-controlplane[0]
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
@@ -91,9 +91,9 @@
         etcd_events_cluster_setup: false
       when: not etcd_kubeadm_enabled | default(false)
 
-- name: Handle upgrades to master components first to maintain backwards compat.
+- name: Handle upgrades to controlplane components first to maintain backwards compat.
   gather_facts: False
-  hosts: kube-master
+  hosts: kube-controlplane
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: 1
   roles:
@@ -101,7 +101,7 @@
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
     - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
     - { role: kubernetes/node, tags: node }
-    - { role: kubernetes/master, tags: master, upgrade_cluster_setup: true }
+    - { role: kubernetes/controlplane, tags: controlplane, upgrade_cluster_setup: true }
     - { role: kubernetes/client, tags: client }
     - { role: kubernetes/node-label, tags: node-label }
     - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
@@ -109,8 +109,8 @@
     - { role: upgrade/post-upgrade, tags: post-upgrade }
   environment: "{{ proxy_env }}"
 
-- name: Upgrade calico and external cloud provider on all masters and nodes
-  hosts: kube-master:kube-node
+- name: Upgrade calico and external cloud provider on all controlplanes and nodes
+  hosts: kube-controlplane:kube-node
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: "{{ serial | default('20%') }}"
@@ -122,7 +122,7 @@
     - { role: kubernetes-apps/policy_controller, tags: policy-controller }
 
 - name: Finally handle worker upgrades, based on given batch size
-  hosts: kube-node:!kube-master
+  hosts: kube-node:!kube-controlplane
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: "{{ serial | default('20%') }}"
@@ -136,13 +136,13 @@
     - { role: upgrade/post-upgrade, tags: post-upgrade }
   environment: "{{ proxy_env }}"
 
-- hosts: kube-master[0]
+- hosts: kube-controlplane[0]
   gather_facts: False
   any_errors_fatal: true
   roles:
     - { role: kubespray-defaults }
     - { role: kubernetes-apps/rotate_tokens, tags: rotate_tokens, when: "secret_changed|default(false)" }
-    - { role: win_nodes/kubernetes_patch, tags: ["master", "win_nodes"] }
+    - { role: win_nodes/kubernetes_patch, tags: ["controlplane", "win_nodes"] }
 
 - hosts: calico-rr
   gather_facts: False
@@ -152,7 +152,7 @@
     - { role: network_plugin/calico/rr, tags: network }
   environment: "{{ proxy_env }}"
 
-- hosts: kube-master
+- hosts: kube-controlplane
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:

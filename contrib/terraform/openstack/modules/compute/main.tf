@@ -11,21 +11,21 @@ resource "openstack_compute_keypair_v2" "k8s" {
   public_key = chomp(file(var.public_key_path))
 }
 
-resource "openstack_networking_secgroup_v2" "k8s_master" {
-  name                 = "${var.cluster_name}-k8s-master"
+resource "openstack_networking_secgroup_v2" "k8s_controlplane" {
+  name                 = "${var.cluster_name}-k8s-controlplane"
   description          = "${var.cluster_name} - Kubernetes Master"
   delete_default_rules = true
 }
 
-resource "openstack_networking_secgroup_rule_v2" "k8s_master" {
-  count             = length(var.master_allowed_remote_ips)
+resource "openstack_networking_secgroup_rule_v2" "k8s_controlplane" {
+  count             = length(var.controlplane_allowed_remote_ips)
   direction         = "ingress"
   ethertype         = "IPv4"
   protocol          = "tcp"
   port_range_min    = "6443"
   port_range_max    = "6443"
-  remote_ip_prefix  = var.master_allowed_remote_ips[count.index]
-  security_group_id = openstack_networking_secgroup_v2.k8s_master.id
+  remote_ip_prefix  = var.controlplane_allowed_remote_ips[count.index]
+  security_group_id = openstack_networking_secgroup_v2.k8s_controlplane.id
 }
 
 resource "openstack_networking_secgroup_v2" "bastion" {
@@ -95,9 +95,9 @@ resource "openstack_networking_secgroup_rule_v2" "worker" {
   security_group_id = openstack_networking_secgroup_v2.worker.id
 }
 
-resource "openstack_compute_servergroup_v2" "k8s_master" {
+resource "openstack_compute_servergroup_v2" "k8s_controlplane" {
   count    = "%{if var.use_server_groups}1%{else}0%{endif}"
-  name     = "k8s-master-srvgrp"
+  name     = "k8s-controlplane-srvgrp"
   policies = ["anti-affinity"]
 }
 
@@ -152,21 +152,21 @@ resource "openstack_compute_instance_v2" "bastion" {
   }
 }
 
-resource "openstack_compute_instance_v2" "k8s_master" {
-  name              = "${var.cluster_name}-k8s-master-${count.index + 1}"
-  count             = var.number_of_k8s_masters
+resource "openstack_compute_instance_v2" "k8s_controlplane" {
+  name              = "${var.cluster_name}-k8s-controlplane-${count.index + 1}"
+  count             = var.number_of_k8s_controlplanes
   availability_zone = element(var.az_list, count.index)
   image_name        = var.image
-  flavor_id         = var.flavor_k8s_master
+  flavor_id         = var.flavor_k8s_controlplane
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
 
   dynamic "block_device" {
-    for_each = var.master_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.controlplane_root_volume_size_in_gb > 0 ? [var.image] : []
     content {
       uuid                  = data.openstack_images_image_v2.vm_image.id
       source_type           = "image"
-      volume_size           = var.master_root_volume_size_in_gb
+      volume_size           = var.controlplane_root_volume_size_in_gb
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -177,44 +177,44 @@ resource "openstack_compute_instance_v2" "k8s_master" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
+  security_groups = [openstack_networking_secgroup_v2.k8s_controlplane.name,
     openstack_networking_secgroup_v2.k8s.name,
   ]
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_controlplane[0]] : []
     content {
-      group = openstack_compute_servergroup_v2.k8s_master[0].id
+      group = openstack_compute_servergroup_v2.k8s_controlplane[0].id
     }
   }
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
+    kubespray_groups = "etcd,kube-controlplane,${var.supplementary_controlplane_groups},k8s-cluster,vault"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_controlplane_fips), 0)}/ > group_vars/no-floating.yml"
   }
 }
 
-resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
-  name              = "${var.cluster_name}-k8s-master-ne-${count.index + 1}"
-  count             = var.number_of_k8s_masters_no_etcd
+resource "openstack_compute_instance_v2" "k8s_controlplane_no_etcd" {
+  name              = "${var.cluster_name}-k8s-controlplane-ne-${count.index + 1}"
+  count             = var.number_of_k8s_controlplanes_no_etcd
   availability_zone = element(var.az_list, count.index)
   image_name        = var.image
-  flavor_id         = var.flavor_k8s_master
+  flavor_id         = var.flavor_k8s_controlplane
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
 
   dynamic "block_device" {
-    for_each = var.master_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.controlplane_root_volume_size_in_gb > 0 ? [var.image] : []
     content {
       uuid                  = data.openstack_images_image_v2.vm_image.id
       source_type           = "image"
-      volume_size           = var.master_root_volume_size_in_gb
+      volume_size           = var.controlplane_root_volume_size_in_gb
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -225,26 +225,26 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
+  security_groups = [openstack_networking_secgroup_v2.k8s_controlplane.name,
     openstack_networking_secgroup_v2.k8s.name,
   ]
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_controlplane[0]] : []
     content {
-      group = openstack_compute_servergroup_v2.k8s_master[0].id
+      group = openstack_compute_servergroup_v2.k8s_controlplane[0].id
     }
   }
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
+    kubespray_groups = "kube-controlplane,${var.supplementary_controlplane_groups},k8s-cluster,vault"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_controlplane_fips), 0)}/ > group_vars/no-floating.yml"
   }
 }
 
@@ -289,20 +289,20 @@ resource "openstack_compute_instance_v2" "etcd" {
   }
 }
 
-resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
-  name              = "${var.cluster_name}-k8s-master-nf-${count.index + 1}"
-  count             = var.number_of_k8s_masters_no_floating_ip
+resource "openstack_compute_instance_v2" "k8s_controlplane_no_floating_ip" {
+  name              = "${var.cluster_name}-k8s-controlplane-nf-${count.index + 1}"
+  count             = var.number_of_k8s_controlplanes_no_floating_ip
   availability_zone = element(var.az_list, count.index)
   image_name        = var.image
-  flavor_id         = var.flavor_k8s_master
+  flavor_id         = var.flavor_k8s_controlplane
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
   dynamic "block_device" {
-    for_each = var.master_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.controlplane_root_volume_size_in_gb > 0 ? [var.image] : []
     content {
       uuid                  = data.openstack_images_image_v2.vm_image.id
       source_type           = "image"
-      volume_size           = var.master_root_volume_size_in_gb
+      volume_size           = var.controlplane_root_volume_size_in_gb
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -313,39 +313,39 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
+  security_groups = [openstack_networking_secgroup_v2.k8s_controlplane.name,
     openstack_networking_secgroup_v2.k8s.name,
   ]
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_controlplane[0]] : []
     content {
-      group = openstack_compute_servergroup_v2.k8s_master[0].id
+      group = openstack_compute_servergroup_v2.k8s_controlplane[0].id
     }
   }
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
+    kubespray_groups = "etcd,kube-controlplane,${var.supplementary_controlplane_groups},k8s-cluster,vault,no-floating"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
 }
 
-resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
-  name              = "${var.cluster_name}-k8s-master-ne-nf-${count.index + 1}"
-  count             = var.number_of_k8s_masters_no_floating_ip_no_etcd
+resource "openstack_compute_instance_v2" "k8s_controlplane_no_floating_ip_no_etcd" {
+  name              = "${var.cluster_name}-k8s-controlplane-ne-nf-${count.index + 1}"
+  count             = var.number_of_k8s_controlplanes_no_floating_ip_no_etcd
   availability_zone = element(var.az_list, count.index)
   image_name        = var.image
-  flavor_id         = var.flavor_k8s_master
+  flavor_id         = var.flavor_k8s_controlplane
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
   dynamic "block_device" {
-    for_each = var.master_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.controlplane_root_volume_size_in_gb > 0 ? [var.image] : []
     content {
       uuid                  = data.openstack_images_image_v2.vm_image.id
       source_type           = "image"
-      volume_size           = var.master_root_volume_size_in_gb
+      volume_size           = var.controlplane_root_volume_size_in_gb
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -356,20 +356,20 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
+  security_groups = [openstack_networking_secgroup_v2.k8s_controlplane.name,
     openstack_networking_secgroup_v2.k8s.name,
   ]
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_controlplane[0]] : []
     content {
-      group = openstack_compute_servergroup_v2.k8s_master[0].id
+      group = openstack_compute_servergroup_v2.k8s_controlplane[0].id
     }
   }
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
+    kubespray_groups = "kube-controlplane,${var.supplementary_controlplane_groups},k8s-cluster,vault,no-floating"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
@@ -561,17 +561,17 @@ resource "openstack_compute_floatingip_associate_v2" "bastion" {
 }
 
 
-resource "openstack_compute_floatingip_associate_v2" "k8s_master" {
-  count                 = var.number_of_k8s_masters
-  instance_id           = element(openstack_compute_instance_v2.k8s_master.*.id, count.index)
-  floating_ip           = var.k8s_master_fips[count.index]
+resource "openstack_compute_floatingip_associate_v2" "k8s_controlplane" {
+  count                 = var.number_of_k8s_controlplanes
+  instance_id           = element(openstack_compute_instance_v2.k8s_controlplane.*.id, count.index)
+  floating_ip           = var.k8s_controlplane_fips[count.index]
   wait_until_associated = var.wait_for_floatingip
 }
 
-resource "openstack_compute_floatingip_associate_v2" "k8s_master_no_etcd" {
-  count       = var.master_root_volume_size_in_gb == 0 ? var.number_of_k8s_masters_no_etcd : 0
-  instance_id = element(openstack_compute_instance_v2.k8s_master_no_etcd.*.id, count.index)
-  floating_ip = var.k8s_master_no_etcd_fips[count.index]
+resource "openstack_compute_floatingip_associate_v2" "k8s_controlplane_no_etcd" {
+  count       = var.controlplane_root_volume_size_in_gb == 0 ? var.number_of_k8s_controlplanes_no_etcd : 0
+  instance_id = element(openstack_compute_instance_v2.k8s_controlplane_no_etcd.*.id, count.index)
+  floating_ip = var.k8s_controlplane_no_etcd_fips[count.index]
 }
 
 resource "openstack_compute_floatingip_associate_v2" "k8s_node" {

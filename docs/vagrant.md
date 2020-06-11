@@ -91,8 +91,8 @@ The output should look like this:
 ```ShellSession
 $ kubectl get nodes
 NAME    STATUS   ROLES    AGE   VERSION
-kub-1   Ready    master   32m   v1.14.1
-kub-2   Ready    master   31m   v1.14.1
+kub-1   Ready    controlplane   32m   v1.14.1
+kub-2   Ready    controlplane   31m   v1.14.1
 kub-3   Ready    <none>   31m   v1.14.1
 ```
 

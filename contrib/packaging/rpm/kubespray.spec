@@ -3,7 +3,7 @@
 %{!?upstream_version: %global upstream_version %{version}%{?milestone}}
 
 Name:           kubespray
-Version:        master
+Version:        controlplane
 Release:        %(git describe | sed -r 's/v(\S+-?)-(\S+)-(\S+)/\1.dev\2+\3/')
 Summary:        Ansible modules for installing Kubernetes
 

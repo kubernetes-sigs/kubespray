@@ -29,7 +29,7 @@ You need to source the vSphere credentials you use to deploy your machines that 
 
 ## Usage example
 
-To test the dynamic provisioning using vSphere CSI driver, make sure to create a [storage policy](https://github.com/kubernetes/cloud-provider-vsphere/blob/master/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#create-a-storage-policy) and [storage class](https://github.com/kubernetes/cloud-provider-vsphere/blob/master/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#create-a-storageclass), then apply the following manifest:
+To test the dynamic provisioning using vSphere CSI driver, make sure to create a [storage policy](https://github.com/kubernetes/cloud-provider-vsphere/blob/controlplane/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#create-a-storage-policy) and [storage class](https://github.com/kubernetes/cloud-provider-vsphere/blob/controlplane/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#create-a-storageclass), then apply the following manifest:
 
 ```yml
 ---

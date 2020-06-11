@@ -8,15 +8,15 @@ variable "az_list_node" {
   type = list(string)
 }
 
-variable "number_of_k8s_masters" {}
+variable "number_of_k8s_controlplanes" {}
 
-variable "number_of_k8s_masters_no_etcd" {}
+variable "number_of_k8s_controlplanes_no_etcd" {}
 
 variable "number_of_etcd" {}
 
-variable "number_of_k8s_masters_no_floating_ip" {}
+variable "number_of_k8s_controlplanes_no_floating_ip" {}
 
-variable "number_of_k8s_masters_no_floating_ip_no_etcd" {}
+variable "number_of_k8s_controlplanes_no_floating_ip_no_etcd" {}
 
 variable "number_of_k8s_nodes" {}
 
@@ -30,7 +30,7 @@ variable "bastion_root_volume_size_in_gb" {}
 
 variable "etcd_root_volume_size_in_gb" {}
 
-variable "master_root_volume_size_in_gb" {}
+variable "controlplane_root_volume_size_in_gb" {}
 
 variable "node_root_volume_size_in_gb" {}
 
@@ -48,7 +48,7 @@ variable "ssh_user" {}
 
 variable "ssh_user_gfs" {}
 
-variable "flavor_k8s_master" {}
+variable "flavor_k8s_controlplane" {}
 
 variable "flavor_k8s_node" {}
 
@@ -64,11 +64,11 @@ variable "network_id" {
   default = ""
 }
 
-variable "k8s_master_fips" {
+variable "k8s_controlplane_fips" {
   type = "list"
 }
 
-variable "k8s_master_no_etcd_fips" {
+variable "k8s_controlplane_no_etcd_fips" {
   type = "list"
 }
 
@@ -88,7 +88,7 @@ variable "bastion_allowed_remote_ips" {
   type = "list"
 }
 
-variable "master_allowed_remote_ips" {
+variable "controlplane_allowed_remote_ips" {
   type = "list"
 }
 
@@ -104,7 +104,7 @@ variable "k8s_nodes" {}
 
 variable "wait_for_floatingip" {}
 
-variable "supplementary_master_groups" {
+variable "supplementary_controlplane_groups" {
   default = ""
 }
 

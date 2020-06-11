@@ -1,5 +1,5 @@
-output "kube-master-profile" {
-  value = aws_iam_instance_profile.kube-master.name
+output "kube-controlplane-profile" {
+  value = aws_iam_instance_profile.kube-controlplane.name
 }
 
 output "kube-worker-profile" {

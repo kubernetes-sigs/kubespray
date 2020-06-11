@@ -1,6 +1,6 @@
-variable "number_of_k8s_masters" {}
+variable "number_of_k8s_controlplanes" {}
 
-variable "number_of_k8s_masters_no_etcd" {}
+variable "number_of_k8s_controlplanes_no_etcd" {}
 
 variable "number_of_k8s_nodes" {}
 

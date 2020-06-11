@@ -4,9 +4,9 @@
 
 The AWS ALB Ingress Controller satisfies Kubernetes [ingress resources](https://kubernetes.io/docs/user-guide/ingress) by provisioning [Application Load Balancers](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html).
 
-This project was originated by [Ticketmaster](https://github.com/ticketmaster) and [CoreOS](https://github.com/coreos) as part of Ticketmaster's move to AWS and CoreOS Tectonic. Learn more about Ticketmaster's Kubernetes initiative from Justin Dean's video at [Tectonic Summit](https://www.youtube.com/watch?v=wqXVKneP0Hg).
+This project was originated by [Ticketcontrolplane](https://github.com/ticketcontrolplane) and [CoreOS](https://github.com/coreos) as part of Ticketcontrolplane's move to AWS and CoreOS Tectonic. Learn more about Ticketcontrolplane's Kubernetes initiative from Justin Dean's video at [Tectonic Summit](https://www.youtube.com/watch?v=wqXVKneP0Hg).
 
-This project was donated to Kubernetes SIG-AWS to allow AWS, CoreOS, Ticketmaster and other SIG-AWS contributors to officially maintain the project. SIG-AWS reached this consensus on June 1, 2018.
+This project was donated to Kubernetes SIG-AWS to allow AWS, CoreOS, Ticketcontrolplane and other SIG-AWS contributors to officially maintain the project. SIG-AWS reached this consensus on June 1, 2018.
 
 ## Documentation
 

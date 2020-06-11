@@ -104,8 +104,8 @@ c581ef662ed2        debian:9.5          "sh -c 'apt-get -qy …"   44 minutes ag
 
 $ docker exec kube-node1 kubectl get node
 NAME         STATUS   ROLES         AGE   VERSION
-kube-node1   Ready    master,node   18m   v1.12.1
-kube-node2   Ready    master,node   17m   v1.12.1
+kube-node1   Ready    controlplane,node   18m   v1.12.1
+kube-node2   Ready    controlplane,node   17m   v1.12.1
 kube-node3   Ready    node          17m   v1.12.1
 kube-node4   Ready    node          17m   v1.12.1
 kube-node5   Ready    node          17m   v1.12.1

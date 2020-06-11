@@ -73,5 +73,5 @@ spec:
 
 ## GCP PD documentation
 
-You can find the official GCP Persistent Disk CSI driver installation documentation here: [GCP PD CSI Driver](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver/blob/master/docs/kubernetes/user-guides/driver-install.md
+You can find the official GCP Persistent Disk CSI driver installation documentation here: [GCP PD CSI Driver](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver/blob/controlplane/docs/kubernetes/user-guides/driver-install.md
 )

@@ -16,12 +16,12 @@
   with_items:
     - "{{ contiv_etcd_conf_dir }}"
     - "{{ contiv_etcd_data_dir }}"
-  when: inventory_hostname in groups['kube-master']
+  when: inventory_hostname in groups['kube-controlplane']
 
 - name: Contiv | Workaround https://github.com/contiv/netplugin/issues/1152
   set_fact:
     kube_apiserver_endpoint_for_contiv: |-
-      {% if not is_kube_master and loadbalancer_apiserver_localhost -%}
+      {% if not is_kube_controlplane and loadbalancer_apiserver_localhost -%}
       https://localhost:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }}
       {%- elif loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
       https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}
@@ -29,9 +29,9 @@
       :{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
       {%-   endif -%}
       {%- else -%}
-      https://{{ first_kube_master }}:{{ kube_apiserver_port }}
+      https://{{ first_kube_controlplane }}:{{ kube_apiserver_port }}
       {%- endif %}
-  when: inventory_hostname in groups['kube-master']
+  when: inventory_hostname in groups['kube-controlplane']
 
 - name: Contiv | Set necessary facts
   set_fact:
@@ -54,7 +54,7 @@
       - {name: contiv-netplugin, file: contiv-netplugin-clusterrole.yml, type: clusterrole}
       - {name: contiv-netplugin, file: contiv-netplugin-serviceaccount.yml, type: serviceaccount}
       - {name: contiv-netplugin, file: contiv-netplugin.yml, type: daemonset}
-  when: inventory_hostname in groups['kube-master']
+  when: inventory_hostname in groups['kube-controlplane']
 
 - name: Contiv | Add another manifest if contiv_enable_api_proxy is true
   set_fact:
@@ -63,7 +63,7 @@
       {{ contiv_manifests }}
   when:
     - contiv_enable_api_proxy
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname in groups['kube-controlplane']
 
 - name: Contiv | Create /var/contiv
   file:
@@ -77,7 +77,7 @@
     mode: 0755
     owner: root
     group: root
-  when: inventory_hostname in groups['kube-master']
+  when: inventory_hostname in groups['kube-controlplane']
 
 - name: Contiv | Install all Kubernetes resources
   template:
@@ -85,7 +85,7 @@
     dest: "{{ contiv_config_dir }}/{{ item.file }}"
   with_items: "{{ contiv_manifests }}"
   register: contiv_manifests_results
-  when: inventory_hostname in groups['kube-master']
+  when: inventory_hostname in groups['kube-controlplane']
 
 - name: Contiv | Copy certs generation script
   template:
@@ -95,7 +95,7 @@
   when:
     - contiv_enable_api_proxy
     - contiv_generate_certificate
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube-controlplane'][0] }}"
   run_once: true
 
 - name: Contiv | Check for cert key existence
@@ -105,7 +105,7 @@
   when:
     - contiv_enable_api_proxy
     - contiv_generate_certificate
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube-controlplane'][0] }}"
   run_once: true
 
 - name: Contiv | Generate contiv-api-proxy certificates
@@ -114,7 +114,7 @@
     - contiv_enable_api_proxy
     - contiv_generate_certificate
     - (not contiv_certificate_key_state.stat.exists)
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube-controlplane'][0] }}"
   run_once: true
 
 - name: Contiv | Fetch the generated certificate
@@ -128,7 +128,7 @@
   when:
     - contiv_enable_api_proxy
     - contiv_generate_certificate
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube-controlplane'][0] }}"
   run_once: true
 
 - name: Contiv | Copy the generated certificate on nodes
@@ -139,8 +139,8 @@
     - auth_proxy_key.pem
     - auth_proxy_cert.pem
   when:
-    - inventory_hostname != groups['kube-master'][0]
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname != groups['kube-controlplane'][0]
+    - inventory_hostname in groups['kube-controlplane']
     - contiv_enable_api_proxy
     - contiv_generate_certificate
 

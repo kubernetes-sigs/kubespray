@@ -11,7 +11,7 @@ Kubespray can be deployed with vSphere as Cloud provider. This feature supports:
 
 ### Prerequisites
 
-You need at first to configure your vSphere environment by following the [official documentation](https://github.com/kubernetes/cloud-provider-vsphere/blob/master/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#prerequisites).
+You need at first to configure your vSphere environment by following the [official documentation](https://github.com/kubernetes/cloud-provider-vsphere/blob/controlplane/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#prerequisites).
 
 After this step you should have:
 
@@ -65,7 +65,7 @@ cd kubespray
 ansible-playbook -i inventory/sample/hosts.ini -b -v cluster.yml
 ```
 
-You'll find some useful examples [here](https://github.com/kubernetes/cloud-provider-vsphere/blob/master/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#sample-manifests-to-test-csi-driver-functionality) to test your configuration.
+You'll find some useful examples [here](https://github.com/kubernetes/cloud-provider-vsphere/blob/controlplane/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md#sample-manifests-to-test-csi-driver-functionality) to test your configuration.
 
 ## In-tree vSphere cloud provider ([deprecated](https://cloud-provider-vsphere.sigs.k8s.io/concepts/in_tree_vs_out_of_tree.html))
 
@@ -101,7 +101,7 @@ Then, in the same file, you need to declare your vCenter credentials following t
 | vsphere_datastore            | TRUE     | string  |                            |         | Datastore name to use                                                                                                                                                                         |
 | vsphere_working_dir          | TRUE     | string  |                            |         | Working directory from the view "VMs and template" in the   vCenter where VM are placed                                                                                                       |
 | vsphere_scsi_controller_type | TRUE     | string  | buslogic, pvscsi, parallel | pvscsi  | SCSI controller name. Commonly "pvscsi".                                                                                                                                                      |
-| vsphere_vm_uuid              | FALSE    | string  |                            |         | VM Instance UUID of virtual machine that host K8s master. Can be retrieved from instanceUuid property in VmConfigInfo, or as vc.uuid in VMX file or in `/sys/class/dmi/id/product_serial` (Optional, only used for Kubernetes <= 1.9.2) |
+| vsphere_vm_uuid              | FALSE    | string  |                            |         | VM Instance UUID of virtual machine that host K8s controlplane. Can be retrieved from instanceUuid property in VmConfigInfo, or as vc.uuid in VMX file or in `/sys/class/dmi/id/product_serial` (Optional, only used for Kubernetes <= 1.9.2) |
 | vsphere_public_network       | FALSE    | string  |                            | Blank   | Name of the   network the VMs are joined to                                                                                                                                                   |
 | vsphere_resource_pool        | FALSE    | string  |                            | Blank   | Name of the Resource pool where the VMs are located (Optional, only used for Kubernetes >= 1.9.2)                                                                                                                                                 |
 | vsphere_zone_category        | FALSE    | string  |                            |         | Name of the tag category used to set the `failure-domain.beta.kubernetes.io/zone` label on nodes (Optional, only used for Kubernetes >= 1.12.0)                                                                                                                                                 |
@@ -131,4 +131,4 @@ cd kubespray
 ansible-playbook -i inventory/sample/hosts.ini -b -v cluster.yml
 ```
 
-You'll find some useful examples [here](https://github.com/kubernetes/examples/tree/master/staging/volumes/vsphere) to test your configuration.
+You'll find some useful examples [here](https://github.com/kubernetes/examples/tree/controlplane/staging/volumes/vsphere) to test your configuration.

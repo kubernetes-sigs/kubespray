@@ -16,7 +16,7 @@
   register: manifests
   when:
     - dns_mode != 'none'
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - helm_version is version('v3.0.0', '<')
 
 - name: Helm | Apply Helm Manifests (RBAC)
@@ -30,7 +30,7 @@
   with_items: "{{ manifests.results }}"
   when:
     - dns_mode != 'none'
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - helm_version is version('v3.0.0', '<')
 
 # Generate necessary certs for securing Helm and Tiller connection with TLS
@@ -40,7 +40,7 @@
     - tiller_enable_tls
     - helm_version is version('v3.0.0', '<')
 
-- name: Helm | Install client on all masters
+- name: Helm | Install client on all controlplanes
   command: >
     {{ bin_dir }}/helm init --tiller-namespace={{ tiller_namespace }}
     {% if helm_skip_refresh %} --skip-refresh{% endif %}
@@ -72,7 +72,7 @@
     | {{ bin_dir }}/kubectl apply -f -
   register: install_helm
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - helm_version is version('v3.0.0', '<')
   changed_when: false
   environment: "{{ proxy_env }}"
@@ -97,11 +97,11 @@
     | {{ bin_dir }}/kubectl apply -f -
   changed_when: false
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - helm_version is version('v3.0.0', '<')
   environment: "{{ proxy_env }}"
 
-- name: Helm | Add/update stable repo on all masters
+- name: Helm | Add/update stable repo on all controlplanes
   command: "{{ bin_dir }}/helm repo add stable {{ helm_stable_repo_url }}"
   environment: "{{ proxy_env }}"
   when:

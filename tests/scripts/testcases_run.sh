@@ -64,7 +64,7 @@ fi
 # Test control plane recovery
 if [ "${RECOVER_CONTROL_PLANE_TEST}" != "false" ]; then
   ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "${RECOVER_CONTROL_PLANE_TEST_GROUPS}:!fake_hosts" -e reset_confirmation=yes reset.yml
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e etcd_retries=10 --limit etcd,kube-master:!fake_hosts recover-control-plane.yml
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e etcd_retries=10 --limit etcd,kube-controlplane:!fake_hosts recover-control-plane.yml
 fi
 
 # Tests Cases

@@ -61,7 +61,7 @@
   include_tasks: typha_certs.yml
   when:
     - typha_secure
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
 
 - name: Calico | Install calicoctl wrapper script
   template:
@@ -93,14 +93,14 @@
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
 
 - name: Calico | Ensure that calico_pool_cidr is within kube_pods_subnet when defined
   assert:
     that: "[calico_pool_cidr] | ipaddr(kube_pods_subnet) | length == 1"
     msg: "{{ calico_pool_cidr }} is not within or equal to {{ kube_pods_subnet }}"
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - 'calico_conf.stdout == "0"'
     - calico_pool_cidr is defined
 
@@ -112,7 +112,7 @@
     - {name: calico, file: kdd-crds.yml, type: kdd}
   register: calico_node_kdd_manifest
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname in groups['kube-controlplane']
     - calico_datastore == "kdd"
 
 - name: Calico | Create Calico Kubernetes datastore resources
@@ -126,7 +126,7 @@
   with_items:
     - "{{ calico_node_kdd_manifest.results }}"
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - not item is skipped
   loop_control:
     label: "{{ item.item.file }}"
@@ -145,7 +145,7 @@
           "vxlanMode": "{{ calico_vxlan_mode }}",
           "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl.sh apply -f -
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - 'calico_conf.stdout == "0"'
     - calico_version is version("v3.3.0", "<")
 
@@ -164,7 +164,7 @@
           "vxlanMode": "{{ calico_vxlan_mode }}",
           "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl.sh apply -f -
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - 'calico_conf.stdout == "0"'
     - calico_version is version("v3.3.0", ">=")
 
@@ -190,7 +190,7 @@
         "asNumber": {{ global_as_num }} }} ' | {{ bin_dir }}/calicoctl.sh apply -f -
   changed_when: false
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
 
 - name: Calico | Configure peering with router(s) at global scope
   shell: >
@@ -211,7 +211,7 @@
   with_items:
     - "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|list|default([]) }}"
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - peer_with_router|default(false)
 
 - name: Calico | Configure peering with route reflectors at global scope
@@ -233,7 +233,7 @@
   with_items:
     - "{{ groups['calico-rr'] | default([]) }}"
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - peer_with_calico_rr|default(false)
 
 - name: Calico | Configure route reflectors to peer with each other
@@ -255,7 +255,7 @@
   with_items:
     - "{{ groups['calico-rr'] | default([]) }}"
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - peer_with_calico_rr|default(false)
 
 - name: Calico | Create calico manifests
@@ -270,7 +270,7 @@
     - {name: calico, file: calico-crb.yml, type: clusterrolebinding}
   register: calico_node_manifests
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname in groups['kube-controlplane']
     - rbac_enabled or item.type not in rbac_resources
 
 - name: Calico | Create calico manifests for typha
@@ -281,7 +281,7 @@
     - {name: calico, file: calico-typha.yml, type: typha}
   register: calico_node_typha_manifest
   when:
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname in groups['kube-controlplane']
     - typha_enabled and calico_datastore == "kdd"
 
 - name: Start Calico resources
@@ -297,7 +297,7 @@
     - "{{ calico_node_kdd_manifest.results }}"
     - "{{ calico_node_typha_manifest.results }}"
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube-controlplane'][0]
     - not item is skipped
   loop_control:
     label: "{{ item.item.file }}"
@@ -306,7 +306,7 @@
   wait_for:
     path: /etc/cni/net.d/calico-kubeconfig
   when:
-    - inventory_hostname not in groups['kube-master']
+    - inventory_hostname not in groups['kube-controlplane']
     - calico_datastore == "kdd"
 
 - name: Calico | Configure node asNumber for per node peering

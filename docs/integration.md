@@ -21,18 +21,18 @@
 4. Add *original* kubespray repo as upstream:
 ```git remote add upstream https://github.com/kubernetes-sigs/kubespray.git```
 
-5. Sync your master branch with upstream:
+5. Sync your controlplane branch with upstream:
 
    ```ShellSession
-      git checkout master
+      git checkout controlplane
       git fetch upstream
-      git merge upstream/master
-      git push origin master
+      git merge upstream/controlplane
+      git push origin controlplane
    ```
 
 6. Create a new branch which you will use in your working environment:
 ```git checkout -b work```
-    ***Never*** use master branch of your repository for your commits.
+    ***Never*** use controlplane branch of your repository for your commits.
 
 7. Modify path to library and roles in your ansible.cfg file (role naming should be uniq, you may have to rename your existent roles if they have same names as kubespray project):
 
@@ -59,12 +59,12 @@ You could rename *all.yml* config to something else, i.e. *kubespray.yml* and cr
      kubernetes
 
      [etcd:children]
-     kubemaster
-     kubemaster-ha
+     kubecontrolplane
+     kubecontrolplane-ha
 
-     [kube-master:children]
-     kubemaster
-     kubemaster-ha
+     [kube-controlplane:children]
+     kubecontrolplane
+     kubecontrolplane-ha
 
      [kubespray:children]
      kubernetes
@@ -97,12 +97,12 @@ If you made useful changes or fixed a bug in existent kubespray repo, use this f
 If kubespray is only one submodule in your repo you could use something like:
 ```git submodule foreach --recursive 'git config user.name "First Last" && git config user.email "your-email-addres@used.for.cncf"'```
 
-4. Sync with upstream master:
+4. Sync with upstream controlplane:
 
    ```ShellSession
     git fetch upstream
-    git merge upstream/master
-    git push origin master
+    git merge upstream/controlplane
+    git push origin controlplane
      ```
 
 5. Create new branch for the specific fixes that you want to contribute:
@@ -122,7 +122,7 @@ Also you could use interactive rebase (```git rebase -i HEAD~10```) to delete co
 Check that you're on correct branch:
 ```git status```
 And pull changes from upstream (if any):
-```git pull --rebase upstream master```
+```git pull --rebase upstream controlplane```
 
 9. Now push your changes to your **fork** repo with ```git push```. If your branch doesn't exists on github, git will propose you to use something like ```git push --set-upstream origin fixes-name-date-index```.
 

@@ -9,30 +9,30 @@ resource "packet_ssh_key" "k8s" {
   public_key = chomp(file(var.public_key_path))
 }
 
-resource "packet_device" "k8s_master" {
+resource "packet_device" "k8s_controlplane" {
   depends_on = [packet_ssh_key.k8s]
 
-  count            = var.number_of_k8s_masters
-  hostname         = "${var.cluster_name}-k8s-master-${count.index + 1}"
-  plan             = var.plan_k8s_masters
+  count            = var.number_of_k8s_controlplanes
+  hostname         = "${var.cluster_name}-k8s-controlplane-${count.index + 1}"
+  plan             = var.plan_k8s_controlplanes
   facilities       = [var.facility]
   operating_system = var.operating_system
   billing_cycle    = var.billing_cycle
   project_id       = var.packet_project_id
-  tags             = ["cluster-${var.cluster_name}", "k8s-cluster", "kube-master", "etcd", "kube-node"]
+  tags             = ["cluster-${var.cluster_name}", "k8s-cluster", "kube-controlplane", "etcd", "kube-node"]
 }
 
-resource "packet_device" "k8s_master_no_etcd" {
+resource "packet_device" "k8s_controlplane_no_etcd" {
   depends_on = [packet_ssh_key.k8s]
 
-  count            = var.number_of_k8s_masters_no_etcd
-  hostname         = "${var.cluster_name}-k8s-master-${count.index + 1}"
-  plan             = var.plan_k8s_masters_no_etcd
+  count            = var.number_of_k8s_controlplanes_no_etcd
+  hostname         = "${var.cluster_name}-k8s-controlplane-${count.index + 1}"
+  plan             = var.plan_k8s_controlplanes_no_etcd
   facilities       = [var.facility]
   operating_system = var.operating_system
   billing_cycle    = var.billing_cycle
   project_id       = var.packet_project_id
-  tags             = ["cluster-${var.cluster_name}", "k8s-cluster", "kube-master"]
+  tags             = ["cluster-${var.cluster_name}", "k8s-cluster", "kube-controlplane"]
 }
 
 resource "packet_device" "k8s_etcd" {

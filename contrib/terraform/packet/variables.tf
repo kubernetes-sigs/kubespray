@@ -23,11 +23,11 @@ variable "facility" {
   default = "dfw2"
 }
 
-variable "plan_k8s_masters" {
+variable "plan_k8s_controlplanes" {
   default = "c2.medium.x86"
 }
 
-variable "plan_k8s_masters_no_etcd" {
+variable "plan_k8s_controlplanes_no_etcd" {
   default = "c2.medium.x86"
 }
 
@@ -39,11 +39,11 @@ variable "plan_k8s_nodes" {
   default = "c2.medium.x86"
 }
 
-variable "number_of_k8s_masters" {
+variable "number_of_k8s_controlplanes" {
   default = 0
 }
 
-variable "number_of_k8s_masters_no_etcd" {
+variable "number_of_k8s_controlplanes_no_etcd" {
   default = 0
 }
 

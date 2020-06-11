@@ -302,7 +302,7 @@ def openstack_host(resource, module_name):
     except (KeyError, ValueError):
         attrs.update({'ansible_ssh_host': '', 'publicly_routable': False})
 
-    # Handling of floating IPs has changed: https://github.com/terraform-providers/terraform-provider-openstack/blob/master/CHANGELOG.md#010-june-21-2017
+    # Handling of floating IPs has changed: https://github.com/terraform-providers/terraform-provider-openstack/blob/controlplane/CHANGELOG.md#010-june-21-2017
 
     # attrs specific to Ansible
     if 'metadata.ssh_user' in raw_attrs:

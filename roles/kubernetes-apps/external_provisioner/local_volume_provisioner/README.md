@@ -1,7 +1,7 @@
 Local Storage Provisioner
 =========================
 
-The [local storage provisioner](https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume)
+The [local storage provisioner](https://github.com/kubernetes-incubator/external-storage/tree/controlplane/local-volume)
 is NOT a dynamic storage provisioner as you would
 expect from a cloud provider. Instead, it simply creates PersistentVolumes for
 all mounts under the host_dir of the specified storage class.
@@ -124,4 +124,4 @@ able to start if the mounts become unavailable.
 Further reading
 ---------------
 
-Refer to the upstream docs here: <https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume>
+Refer to the upstream docs here: <https://github.com/kubernetes-incubator/external-storage/tree/controlplane/local-volume>

@@ -63,11 +63,11 @@ variable "aws_bastion_size" {
 * The number should be divisable by the number of used
 * AWS Availability Zones without an remainder.
 */
-variable "aws_kube_master_num" {
+variable "aws_kube_controlplane_num" {
   description = "Number of Kubernetes Master Nodes"
 }
 
-variable "aws_kube_master_size" {
+variable "aws_kube_controlplane_size" {
   description = "Instance size of Kube Master Nodes"
 }
 

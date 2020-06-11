@@ -63,13 +63,13 @@ azure\_aad\_client\_id must be set to the AppId, azure\_aad\_client\_secret is y
 
 Sku of Load Balancer and Public IP. Candidate values are: basic and standard.
 
-### azure\_exclude\_master\_from\_standard\_lb
+### azure\_exclude\_controlplane\_from\_standard\_lb
 
-azure\_exclude\_master\_from\_standard\_lb excludes master nodes from `standard` load balancer.
+azure\_exclude\_controlplane\_from\_standard\_lb excludes controlplane nodes from `standard` load balancer.
 
 ### azure\_disable\_outbound\_snat
 
-azure\_disable\_outbound\_snat disables the outbound SNAT for public load balancer rules. It should only be set when azure\_exclude\_master\_from\_standard\_lb is `standard`.
+azure\_disable\_outbound\_snat disables the outbound SNAT for public load balancer rules. It should only be set when azure\_exclude\_controlplane\_from\_standard\_lb is `standard`.
 
 ### azure\_primary\_availability\_set\_name
 

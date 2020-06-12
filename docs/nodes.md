@@ -117,39 +117,19 @@ Otherwise the etcd cluster might still be processing the first join and fail on 
 
 ## Removing an etcd node
 
-### 1) Remove old etcd members from the cluster runtime
-
-Acquire a shell prompt into one of the etcd containers and use etcdctl to remove the old member. Use a etcd master that will not be removed for that.  
-
-```sh
-# list all members
-etcdctl member list
-
-# run remove for each member you want pass to remove-node.yml in step 2
-etcdctl member remove MEMBER_ID
-# careful!!! if you remove a wrong member you will be in trouble
-
-# wait until you do not get a 'Failed' output from
-etcdctl member list
-
-# note: these command lines are actually much bigger, if you are not inside an etcd container, since you need to pass all certificates to etcdctl.
-```
-
-You can get into an etcd container by running `docker exec -it $(docker ps --filter "name=etcd" --format "{{.ID}}") sh` on one of the etcd masters.  
-
-### 2) Remove an old etcd node
+### 1) Remove an old etcd node
 
 With the node still in the inventory, run `remove-node.yml` passing `-e node=NODE_NAME` as the name of the node that should be removed.
 If the node you want to remove is not online, you should add `reset_nodes=false` to your extra-vars.
 
-### 3) Make sure only remaining nodes are in your inventory
+### 2) Make sure only remaining nodes are in your inventory
 
 Remove `NODE_NAME` from your inventory file.
 
-### 4) Update kubernetes and network configuration files with the valid list of etcd members
+### 3) Update kubernetes and network configuration files with the valid list of etcd members
 
 Run `cluster.yml` to regenerate the configuration files on all remaining nodes.
 
-### 5) Shutdown the old instance
+### 4) Shutdown the old instance
 
 That's it.

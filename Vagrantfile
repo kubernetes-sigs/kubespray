@@ -35,6 +35,7 @@ SUPPORTED_OS = {
   "opensuse"            => {box: "bento/opensuse-leap-15.1",   user: "vagrant"},
   "opensuse-tumbleweed" => {box: "opensuse/Tumbleweed.x86_64", user: "vagrant"},
   "oraclelinux"         => {box: "generic/oracle7",            user: "vagrant"},
+  "oraclelinux8"        => {box: "generic/oracle8",            user: "vagrant"},
 }
 
 if File.exist?(CONFIG)
@@ -185,6 +186,11 @@ Vagrant.configure("2") do |config|
       # Disable swap for each vm
       node.vm.provision "shell", inline: "swapoff -a"
 
+      # Disable firewalld on oraclelinux vms
+      if ["oraclelinux","oraclelinux8"].include? $os
+        node.vm.provision "shell", inline: "systemctl stop firewalld; systemctl disable firewalld"
+      end
+      
       host_vars[vm_name] = {
         "ip": ip,
         "flannel_interface": "eth1",

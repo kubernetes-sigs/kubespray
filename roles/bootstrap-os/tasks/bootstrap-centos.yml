@@ -1,4 +1,9 @@
 ---
+- name: Gather host facts to get ansible_distribution_version ansible_distribution_major_version
+  setup:
+    gather_subset: '!all'
+    filter: ansible_distribution_*version
+
 # For Oracle Linux install public repo
 - name: Download Oracle Linux public yum repo
   get_url:
@@ -7,6 +12,7 @@
   when:
     - use_oracle_public_repo|default(true)
     - '"Oracle" in os_release.stdout'
+    - (ansible_distribution_version | float) < 7.6
 
 - name: Enable Oracle Linux repo
   ini_file:
@@ -21,6 +27,27 @@
   when:
     - use_oracle_public_repo|default(true)
     - '"Oracle" in os_release.stdout'
+    - (ansible_distribution_version | float) < 7.6
+
+- name: Enable Oracle Linux repo
+  ini_file:
+    dest: "/etc/yum.repos.d/oracle-linux-ol{{ ansible_distribution_major_version }}.repo"
+    section: "{{ item }}"
+    option: enabled
+    value: "1"
+  with_items:
+    - "ol{{ ansible_distribution_major_version }}_addons"
+  when:
+    - '"Oracle" in os_release.stdout'
+    - (ansible_distribution_version | float) >= 7.6
+
+- name: Install EPEL for Oracle Linux repo package
+  package:
+    name: "oracle-epel-release-el{{ ansible_distribution_major_version }}"
+    state: present
+  when:
+    - '"Oracle" in os_release.stdout'
+    - (ansible_distribution_version | float) >= 7.6
 
 # CentOS ships with python installed
 
@@ -50,11 +77,6 @@
     state: "{{ http_proxy | default(False) | ternary('present', 'absent') }}"
     no_extra_spaces: true
   become: true
-
-- name: Gather host facts to get ansible_distribution_major_version
-  setup:
-    gather_subset: '!all'
-    filter: ansible_distribution_major_version
 
 # libselinux-python is required on SELinux enabled hosts
 # See https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#managed-node-requirements

@@ -5,10 +5,14 @@ $libvirt_volume_cache = "unsafe"
 # https://www.vagrantup.com/docs/vagrant-cloud/request-limits.html
 $box_check_update = false
 
-$num_instances = 16
-$vm_memory ||= 1600
+$vm_cpus = 2
+$vm_memory = 1600
+
 $os = "ubuntu1804"
-$network_plugin = "weave"
+
+$num_instances = 32
 $kube_master_instances = 1
 $etcd_instances = 1
+
+$num_forks = 10
 $playbook = "tests/cloud_playbooks/wait-for-ssh.yml"

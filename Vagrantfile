@@ -69,6 +69,9 @@ $override_disk_size ||= false
 $disk_size ||= "20GB"
 $local_path_provisioner_enabled ||= false
 $local_path_provisioner_claim_root ||= "/opt/local-path-provisioner/"
+$num_forks ||= $num_instances
+$box_check_update ||= true
+$libvirt_volume_cache ||= "default"
 
 $playbook ||= "cluster.yml"
 
@@ -123,6 +126,7 @@ Vagrant.configure("2") do |config|
     config.vm.define vm_name = "%s-%01d" % [$instance_name_prefix, i] do |node|
 
       node.vm.hostname = vm_name
+      node.vm.box_check_update = $box_check_update
 
       if Vagrant.has_plugin?("vagrant-proxyconf")
         node.proxy.http     = ENV['HTTP_PROXY'] || ENV['http_proxy'] || ""
@@ -223,7 +227,7 @@ Vagrant.configure("2") do |config|
           ansible.become = true
           ansible.limit = "all,localhost"
           ansible.host_key_checking = false
-          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
+          ansible.raw_arguments = ["--forks=#{$num_forks}", "--flush-cache", "-e ansible_become_pass=vagrant"]
           ansible.host_vars = host_vars
           #ansible.tags = ['download']
           ansible.groups = {

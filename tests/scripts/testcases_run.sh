@@ -49,16 +49,16 @@ fi
 
 # Tests Cases
 ## Test Master API
-ansible-playbook -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_hosts" tests/testcases/010_check-apiserver.yml $LOG_LEVEL
+ansible-playbook -e ansible_python_interpreter=${PYPATH} -e @${CI_TEST_VARS} --limit "all:!fake_hosts" tests/testcases/010_check-apiserver.yml $LOG_LEVEL
 
 ## Test that all pods are Running
-ansible-playbook -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_hosts" tests/testcases/015_check-pods-running.yml $LOG_LEVEL
+ansible-playbook -e ansible_python_interpreter=${PYPATH} -e @${CI_TEST_VARS} --limit "all:!fake_hosts" tests/testcases/015_check-pods-running.yml $LOG_LEVEL
 
 ## Test pod creation and ping between them
-ansible-playbook -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_hosts" tests/testcases/030_check-network.yml $LOG_LEVEL
+ansible-playbook -e ansible_python_interpreter=${PYPATH} -e @${CI_TEST_VARS} --limit "all:!fake_hosts" tests/testcases/030_check-network.yml $LOG_LEVEL
 
 ## Advanced DNS checks
-ansible-playbook -e ansible_python_interpreter=${PYPATH} --limit "all:!fake_hosts" tests/testcases/040_check-network-adv.yml $LOG_LEVEL
+ansible-playbook -e ansible_python_interpreter=${PYPATH} -e @${CI_TEST_VARS} --limit "all:!fake_hosts" tests/testcases/040_check-network-adv.yml $LOG_LEVEL
 
 ## Kubernetes conformance tests
 ansible-playbook -i ${ANSIBLE_INVENTORY} -e ansible_python_interpreter=${PYPATH} -e @${CI_TEST_VARS} --limit "all:!fake_hosts" tests/testcases/100_check-k8s-conformance.yml $LOG_LEVEL

@@ -115,7 +115,7 @@ Branch name should be self explaining to you, adding date and/or index will help
      git cherry-pick <COMMIT_HASH>
      ```
 
-7. If your have several temporary-stage commits - squash them using [```git rebase -i```](http://eli.thegreenplace.net/2014/02/19/squashing-github-pull-requests-into-a-single-commit)
+7. If you have several temporary-stage commits - squash them using [```git rebase -i```](https://eli.thegreenplace.net/2014/02/19/squashing-github-pull-requests-into-a-single-commit)
 Also you could use interactive rebase (```git rebase -i HEAD~10```) to delete commits which you don't want to contribute into original repo.
 
 8. When your changes is in place, you need to check upstream repo one more time because it could be changed during your work.

@@ -1,0 +1,92 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloud-controller-manager
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: openstack-cloud-controller-manager
+  namespace: kube-system
+  labels:
+    k8s-app: openstack-cloud-controller-manager
+spec:
+  selector:
+    matchLabels:
+      k8s-app: openstack-cloud-controller-manager
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        k8s-app: openstack-cloud-controller-manager
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
+      securityContext:
+        runAsUser: 1001
+      tolerations:
+      - key: node.cloudprovider.kubernetes.io/uninitialized
+        value: "true"
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      serviceAccountName: cloud-controller-manager
+      containers:
+        - name: openstack-cloud-controller-manager
+          image: {{ docker_image_repo }}/k8scloudprovider/openstack-cloud-controller-manager:{{ external_openstack_cloud_controller_image_tag }}
+          args:
+            - /bin/openstack-cloud-controller-manager
+            - --v=1
+            - --cloud-config=$(CLOUD_CONFIG)
+            - --cloud-provider=openstack
+            - --use-service-account-credentials=true
+            - --address=127.0.0.1
+          volumeMounts:
+            - mountPath: /etc/kubernetes/pki
+              name: k8s-certs
+              readOnly: true
+            - mountPath: /etc/ssl/certs
+              name: ca-certs
+              readOnly: true
+            - mountPath: /etc/config
+              name: cloud-config-volume
+              readOnly: true
+{% if external_openstack_cacert is defined and external_openstack_cacert != "" %}
+            - mountPath: {{ kube_config_dir }}/external-openstack-cacert.pem
+              name: openstack-cacert
+              readOnly: true
+{% endif %}
+            - mountPath: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+              name: flexvolume-dir
+          resources:
+            requests:
+              cpu: 200m
+          env:
+            - name: CLOUD_CONFIG
+              value: /etc/config/cloud.conf
+      hostNetwork: true
+      volumes:
+      - hostPath:
+          path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+          type: DirectoryOrCreate
+        name: flexvolume-dir
+      - hostPath:
+          path: /etc/kubernetes/pki
+          type: DirectoryOrCreate
+        name: k8s-certs
+      - hostPath:
+          path: /etc/ssl/certs
+          type: DirectoryOrCreate
+        name: ca-certs
+      - name: cloud-config-volume
+        secret:
+          secretName: external-openstack-cloud-config
+{% if external_openstack_cacert is defined and external_openstack_cacert != "" %}
+      - hostPath:
+          path: {{ kube_config_dir }}/external-openstack-cacert.pem
+          type: FileOrCreate
+        name: openstack-cacert
+{% endif %}

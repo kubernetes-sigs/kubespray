@@ -12,7 +12,7 @@ is_atomic: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.16.3
+kube_version: v1.16.6
 
 ## The minimum version working
 kube_version_min_required: v1.15.0
@@ -323,6 +323,13 @@ openstack_lbaas_monitor_timeout: "30s"
 openstack_lbaas_monitor_max_retries: "3"
 openstack_cacert: "{{ lookup('env','OS_CACERT') }}"
 
+# Default values for the external OpenStack Cloud Controller
+external_openstack_lbaas_use_octavia: true
+external_openstack_lbaas_create_monitor: false
+external_openstack_lbaas_monitor_delay: "1m"
+external_openstack_lbaas_monitor_timeout: "30s"
+external_openstack_lbaas_monitor_max_retries: "3"
+
 ## List of authorization modes that must be configured for
 ## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
 ## 'RBAC' modes are tested. Order is important.
@@ -339,19 +346,9 @@ kubelet_authorization_mode_webhook: true
 # Automatically generate a new key and request a new certificate from the Kubernetes API as the current certificate approaches expiration
 kubelet_rotate_certificates: true
 
-## v1.11 feature
-feature_gate_v1_11:
-  - "PersistentLocalVolumes={{ local_volume_provisioner_enabled | string }}"
-  - "VolumeScheduling={{ local_volume_provisioner_enabled | string }}"
-  - "MountPropagation={{ local_volume_provisioner_enabled | string }}"
-
-## v1.12 feature
-feature_gate_v1_12: []
-
 ## List of key=value pairs that describe feature gates for
 ## the k8s cluster.
-kube_feature_gates: |-
-  {{ feature_gate_v1_12 }}
+kube_feature_gates: []
 
 # Enable kubeadm experimental control plane
 kubeadm_control_plane: false
@@ -416,7 +413,7 @@ no_proxy: >-
   {%- if additional_no_proxy is defined -%}
   {{ additional_no_proxy }},
   {%- endif -%}
-  127.0.0.1,localhost
+  127.0.0.1,localhost,{{kube_service_addresses}},{{kube_pods_subnet}}
   {%- endif %}
 
 proxy_env:
@@ -429,7 +426,7 @@ proxy_env:
 
 ssl_ca_dirs: >-
   [
-  {% if ansible_os_family in ['CoreOS', 'Container Linux by CoreOS'] -%}
+  {% if ansible_os_family in ['CoreOS', 'Container Linux by CoreOS', 'Flatcar', 'Flatcar Container Linux by Kinvolk'] -%}
   '/usr/share/ca-certificates',
   {% elif ansible_os_family == 'RedHat' -%}
   '/etc/pki/tls',
@@ -450,8 +447,8 @@ loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
 apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
 kube_apiserver_endpoint: |-
-  {% if loadbalancer_apiserver is defined and loadbalancer_apiserver.port is defined -%}
-       https://{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+  {% if loadbalancer_apiserver is defined -%}
+       https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
   {%- elif not is_kube_master and loadbalancer_apiserver_localhost -%}
        https://localhost:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }}
   {%- elif is_kube_master -%}

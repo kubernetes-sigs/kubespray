@@ -1,7 +1,11 @@
 variable "cluster_name" {}
 
 variable "az_list" {
-  type = "list"
+  type = list(string)
+}
+
+variable "az_list_node" {
+  type = list(string)
 }
 
 variable "number_of_k8s_masters" {}

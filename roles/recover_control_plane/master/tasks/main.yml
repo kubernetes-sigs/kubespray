@@ -8,21 +8,22 @@
   retries: 6
   delay: 10
   changed_when: false
+  when: groups['broken_kube-master']
 
-- name: Delete old kube-master nodes from cluster
+- name: Delete broken kube-master nodes from cluster
   shell: "{{ bin_dir }}/kubectl delete node {{ item }}"
   environment:
     - KUBECONFIG: "{{ ansible_env.HOME | default('/root') }}/.kube/config"
-  with_items: "{{ old_kube_masters.split(',') }}"
-  register: delete_old_kube_masters
+  with_items: "{{ groups['broken_kube-master'] }}"
+  register: delete_broken_kube_masters
   failed_when: false
-  when: old_kube_masters is defined
+  when: groups['broken_kube-master']
 
-- name: Fail if unable to delete old kube-master nodes from cluster
+- name: Fail if unable to delete broken kube-master nodes from cluster
   fail:
-    msg: "Unable to delete old kube-master node: {{ item.item }}"
-  loop: "{{ delete_old_kube_masters.results }}"
+    msg: "Unable to delete broken kube-master node: {{ item.item }}"
+  loop: "{{ delete_broken_kube_masters.results }}"
   changed_when: false
   when:
-    - old_kube_masters is defined
+    - groups['broken_kube-master']
     - "item.rc != 0 and not 'NotFound' in item.stderr"

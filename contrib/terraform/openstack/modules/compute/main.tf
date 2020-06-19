@@ -546,7 +546,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd_cust
 resource "openstack_compute_instance_v2" "k8s_node" {
   name              = "${var.cluster_name}-k8s-node-${count.index+1}"
   count             = "${var.node_root_volume_size_in_gb == 0 ? var.number_of_k8s_nodes : 0}"
-  availability_zone = "${element(var.az_list, count.index)}"
+  availability_zone = "${element(var.az_list_node, count.index)}"
   image_name        = "${var.image}"
   flavor_id         = "${var.flavor_k8s_node}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
@@ -581,7 +581,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
 resource "openstack_compute_instance_v2" "k8s_node_custom_volume_size" {
   name              = "${var.cluster_name}-k8s-node-${count.index+1}"
   count             = "${var.node_root_volume_size_in_gb > 0 ? var.number_of_k8s_nodes : 0}"
-  availability_zone = "${element(var.az_list, count.index)}"
+  availability_zone = "${element(var.az_list_node, count.index)}"
   image_name        = "${var.image}"
   flavor_id         = "${var.flavor_k8s_node}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
@@ -625,7 +625,7 @@ resource "openstack_compute_instance_v2" "k8s_node_custom_volume_size" {
 resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   name              = "${var.cluster_name}-k8s-node-nf-${count.index+1}"
   count             = "${var.node_root_volume_size_in_gb == 0 ? var.number_of_k8s_nodes_no_floating_ip : 0}"
-  availability_zone = "${element(var.az_list, count.index)}"
+  availability_zone = "${element(var.az_list_node, count.index)}"
   image_name        = "${var.image}"
   flavor_id         = "${var.flavor_k8s_node}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"
@@ -656,7 +656,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
 resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip_custom_volume_size" {
   name              = "${var.cluster_name}-k8s-node-nf-${count.index+1}"
   count             = "${var.node_root_volume_size_in_gb > 0 ? var.number_of_k8s_nodes_no_floating_ip : 0}"
-  availability_zone = "${element(var.az_list, count.index)}"
+  availability_zone = "${element(var.az_list_node, count.index)}"
   image_name        = "${var.image}"
   flavor_id         = "${var.flavor_k8s_node}"
   key_pair          = "${openstack_compute_keypair_v2.k8s.name}"

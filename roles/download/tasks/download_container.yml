@@ -1,18 +1,25 @@
 ---
-- name: container_download | Make download decision if pull is required by tag or sha256
-  include_tasks: set_docker_image_facts.yml
-  when:
-    - download.enabled
-    - download.container
-  tags:
-    - facts
-
 - block:
-    - name: download_container | Set a few facts
-      import_tasks: set_container_facts.yml
-      run_once: "{{ download_run_once }}"
+    - name: set default values for flag variables
+      set_fact:
+        image_is_cached: false
+        image_changed: false
+        pull_required: "{{ download_always_pull }}"
       tags:
         - facts
+
+    - name: download_container | Set a few facts
+      import_tasks: set_container_facts.yml
+      tags:
+        - facts
+
+    - name: download_container | Prepare container download
+      include_tasks: check_pull_required.yml
+      when:
+        - not download_always_pull
+
+    - debug:
+        msg: "Pull {{ image_reponame }} required is: {{ pull_required }}"
 
     - name: download_container | Determine if image is in cache
       stat:
@@ -27,11 +34,57 @@
 
     - name: download_container | Set fact indicating if image is in cache
       set_fact:
-        image_is_cached: "{{ cache_image.stat.exists | default(false) }}"
+        image_is_cached: "{{ cache_image.stat.exists }}"
       tags:
         - facts
       when:
         - download_force_cache
+
+    - name: Stop if image not in cache on ansible host when download_force_cache=true
+      assert:
+        that: image_is_cached
+        msg: "Image cache file {{ image_path_cached }} not found for {{ image_reponame }} on localhost"
+      when:
+        - download_force_cache
+        - not download_run_once
+
+    - name: download_container | Download image if required
+      command: "{{ image_pull_command_on_localhost if download_localhost else image_pull_command }} {{ image_reponame }}"
+      delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
+      delegate_facts: yes
+      run_once: "{{ download_run_once }}"
+      register: pull_task_result
+      until: pull_task_result is succeeded
+      delay: "{{ retry_stagger | random + 3 }}"
+      retries: 4
+      become: "{{ user_can_become_root | default(false) or not download_localhost }}"
+      when:
+        - pull_required or download_run_once
+        - not image_is_cached
+
+    - name: download_container | Save and compress image
+      shell: "{{ image_save_command_on_localhost if download_localhost else image_save_command }}"
+      delegate_to: "{{ download_delegate }}"
+      delegate_facts: no
+      register: container_save_status
+      failed_when: container_save_status.stderr
+      run_once: true
+      become: "{{ user_can_become_root | default(false) or not download_localhost }}"
+      when:
+        - not image_is_cached
+        - download_run_once
+
+    - name: download_container | Copy image to ansible host cache
+      synchronize:
+        src: "{{ image_path_final }}"
+        dest: "{{ image_path_cached }}"
+        use_ssh_args: "{{ has_bastion | default(false) }}"
+        mode: pull
+      when:
+        - not image_is_cached
+        - download_run_once
+        - not download_localhost
+        - download_delegate == inventory_hostname
 
     - name: download_container | Upload image to node if it is cached
       synchronize:
@@ -42,88 +95,20 @@
       delegate_facts: no
       register: upload_image
       failed_when: not upload_image
-      run_once: "{{ download_run_once }}"
       until: upload_image is succeeded
       retries: 4
       delay: "{{ retry_stagger | random + 3 }}"
       when:
+        - pull_required
         - download_force_cache
-        - image_is_cached
-        - not download_localhost
-        - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
     - name: download_container | Load image into docker
-      shell: "{{ docker_bin_dir }}/docker load < {{ image_path_cached if download_localhost else image_path_final }}"
-      delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
-      run_once: "{{ download_run_once }}"
+      shell: "{{ image_load_command }}"
       register: container_load_status
-      failed_when: container_load_status | failed
-      become: "{{ user_can_become_root | default(false) or not (download_run_once and download_localhost) }}"
+      failed_when: container_load_status is failed
       when:
+        - pull_required
         - download_force_cache
-        - image_is_cached
-        - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
-
-    - name: download_container | Prepare container download
-      include_tasks: check_pull_required.yml
-      run_once: "{{ download_run_once }}"
-      when:
-        - not download_always_pull
-
-    - debug:
-        msg: "XXX Pull required is: {{ pull_required }}"
-
-    # NOTE: Pre-loading docker images will not prevent 'docker pull' from re-downloading the layers in that image
-    # if a pull is forced. This is a known issue with docker. See https://github.com/moby/moby/issues/23684
-    - name: download_container | Download image if required
-      command: "{{ image_pull_command }} {{ image_reponame }}"
-      delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
-      delegate_facts: yes
-      run_once: "{{ download_run_once }}"
-      register: pull_task_result
-      until: pull_task_result is succeeded
-      delay: "{{ retry_stagger | random + 3 }}"
-      retries: 4
-      become: "{{ user_can_become_root | default(false) or not download_localhost }}"
-      when:
-        - pull_required | default(download_always_pull)
-
-    # NOTE: image_changed is only valid if a pull is was needed or forced.
-    - name: download_container | Check if image changed
-      set_fact:
-        image_changed: "{{ true if pull_task_result.stdout is defined and not 'up to date' in pull_task_result.stdout else false }}"
-      run_once: true
-      when:
-        - download_force_cache
-      tags:
-        - facts
-
-    - name: download_container | Save and compress image
-      shell: "{{ docker_bin_dir }}/docker save {{ image_reponame }} | gzip -{{ download_compress }} > {{ image_path_cached if download_localhost else image_path_final }}"
-      delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
-      delegate_facts: no
-      register: container_save_status
-      failed_when: container_save_status.stderr
-      run_once: true
-      become: "{{ user_can_become_root | default(false) or not download_localhost }}"
-      when:
-        - download_force_cache
-        - not image_is_cached or (image_changed | default(true))
-        - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
-
-    - name: download_container | Copy image to ansible host cache
-      synchronize:
-        src: "{{ image_path_final }}"
-        dest: "{{ image_path_cached }}"
-        use_ssh_args: "{{ has_bastion | default(false) }}"
-        mode: pull
-      delegate_facts: no
-      when:
-        - download_force_cache
-        - not download_localhost
-        - download_delegate == inventory_hostname
-        - not image_is_cached or (image_changed | default(true))
-        - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
     - name: download_container | Remove container image from cache
       file:
@@ -131,7 +116,5 @@
         path: "{{ image_path_final }}"
       when:
         - not download_keep_remote_cache
-        - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
-
   tags:
     - download

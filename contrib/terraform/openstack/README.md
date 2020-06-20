@@ -38,6 +38,16 @@ hosts where that makes sense. You have the option of creating bastion hosts
 inside the private subnet to access the nodes there.  Alternatively, a node with
 a floating IP can be used as a jump host to nodes without.
 
+#### Using an existing router
+It is possible to use an existing router instead of creating one. To use an
+existing router set the router\_id variable to the uuid of the router you wish
+to use.
+
+For example:
+```
+router_id = "00c542e7-6f46-4535-ae95-984c7f0391a3"
+```
+
 ### Kubernetes Nodes
 You can create many different kubernetes topologies by setting the number of
 different classes of hosts. For each class there are options for allocating
@@ -254,6 +264,107 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`etcd_root_volume_size_in_gb` | Size of the root volume for etcd nodes, 0 to use ephemeral storage |
 |`bastion_root_volume_size_in_gb` | Size of the root volume for bastions, 0 to use ephemeral storage |
 |`use_server_group` | Create and use openstack nova servergroups, default: false |
+|`k8s_nodes` | Map containing worker node definition, see explanation below |
+
+##### k8s_nodes
+Allows a custom defintion of worker nodes giving the operator full control over individual node flavor and
+availability zone placement. To enable the use of this mode set the `number_of_k8s_nodes` and
+`number_of_k8s_nodes_no_floating_ip` variables to 0. Then define your desired worker node configuration
+using the `k8s_nodes` variable.
+
+For example:
+```
+k8s_nodes = {
+  "1" = {
+    "az" = "sto1"
+    "flavor" = "83d8b44a-26a0-4f02-a981-079446926445"
+    "floating_ip" = true
+  },
+  "2" = {
+    "az" = "sto2"
+    "flavor" = "83d8b44a-26a0-4f02-a981-079446926445"
+    "floating_ip" = true
+  },
+  "3" = {
+    "az" = "sto3"
+    "flavor" = "83d8b44a-26a0-4f02-a981-079446926445"
+    "floating_ip" = true
+  }
+}
+```
+
+Would result in the same configuration as:
+```
+number_of_k8s_nodes = 3
+flavor_k8s_node = "83d8b44a-26a0-4f02-a981-079446926445"
+az_list = ["sto1", "sto2", "sto3"]
+```
+
+And:
+```
+k8s_nodes = {
+  "ing-1" = {
+    "az" = "sto1"
+    "flavor" = "83d8b44a-26a0-4f02-a981-079446926445"
+    "floating_ip" = true
+  },
+  "ing-2" = {
+    "az" = "sto2"
+    "flavor" = "83d8b44a-26a0-4f02-a981-079446926445"
+    "floating_ip" = true
+  },
+  "ing-3" = {
+    "az" = "sto3"
+    "flavor" = "83d8b44a-26a0-4f02-a981-079446926445"
+    "floating_ip" = true
+  },
+  "big-1" = {
+    "az" = "sto1"
+    "flavor" = "3f73fc93-ec61-4808-88df-2580d94c1a9b"
+    "floating_ip" = false
+  },
+  "big-2" = {
+    "az" = "sto2"
+    "flavor" = "3f73fc93-ec61-4808-88df-2580d94c1a9b"
+    "floating_ip" = false
+  },
+  "big-3" = {
+    "az" = "sto3"
+    "flavor" = "3f73fc93-ec61-4808-88df-2580d94c1a9b"
+    "floating_ip" = false
+  },
+  "small-1" = {
+    "az" = "sto1"
+    "flavor" = "7a6a998f-ac7f-4fb8-a534-2175b254f75e"
+    "floating_ip" = false
+  },
+  "small-2" = {
+    "az" = "sto2"
+    "flavor" = "7a6a998f-ac7f-4fb8-a534-2175b254f75e"
+    "floating_ip" = false
+  },
+  "small-3" = {
+    "az" = "sto3"
+    "flavor" = "7a6a998f-ac7f-4fb8-a534-2175b254f75e"
+    "floating_ip" = false
+  }
+}
+```
+
+Would result in three nodes in each availability zone each with their own separate naming,
+flavor and floating ip configuration.
+
+The "schema":
+```
+k8s_nodes = {
+  "key | node name suffix, must be unique" = {
+    "az" = string
+    "flavor" = string
+    "floating_ip" = bool
+  },
+}
+```
+All values are required.
 
 #### Terraform state files
 
@@ -494,3 +605,81 @@ $ ansible-playbook --become -i inventory/$CLUSTER/hosts ./contrib/network-storag
 ## What's next
 
 Try out your new Kubernetes cluster with the [Hello Kubernetes service](https://kubernetes.io/docs/tasks/access-application-cluster/service-access-application-cluster/).
+
+## Appendix
+
+### Migration from `number_of_k8s_nodes*` to `k8s_nodes`
+If you currently have a cluster defined using the `number_of_k8s_nodes*` variables and wish
+to migrate to the `k8s_nodes` style you can do it like so:
+
+```ShellSession
+$ terraform state list
+module.compute.data.openstack_images_image_v2.gfs_image
+module.compute.data.openstack_images_image_v2.vm_image
+module.compute.openstack_compute_floatingip_associate_v2.k8s_master[0]
+module.compute.openstack_compute_floatingip_associate_v2.k8s_node[0]
+module.compute.openstack_compute_floatingip_associate_v2.k8s_node[1]
+module.compute.openstack_compute_floatingip_associate_v2.k8s_node[2]
+module.compute.openstack_compute_instance_v2.k8s_master[0]
+module.compute.openstack_compute_instance_v2.k8s_node[0]
+module.compute.openstack_compute_instance_v2.k8s_node[1]
+module.compute.openstack_compute_instance_v2.k8s_node[2]
+module.compute.openstack_compute_keypair_v2.k8s
+module.compute.openstack_compute_servergroup_v2.k8s_etcd[0]
+module.compute.openstack_compute_servergroup_v2.k8s_master[0]
+module.compute.openstack_compute_servergroup_v2.k8s_node[0]
+module.compute.openstack_networking_secgroup_rule_v2.bastion[0]
+module.compute.openstack_networking_secgroup_rule_v2.egress[0]
+module.compute.openstack_networking_secgroup_rule_v2.k8s
+module.compute.openstack_networking_secgroup_rule_v2.k8s_allowed_remote_ips[0]
+module.compute.openstack_networking_secgroup_rule_v2.k8s_allowed_remote_ips[1]
+module.compute.openstack_networking_secgroup_rule_v2.k8s_allowed_remote_ips[2]
+module.compute.openstack_networking_secgroup_rule_v2.k8s_master[0]
+module.compute.openstack_networking_secgroup_rule_v2.worker[0]
+module.compute.openstack_networking_secgroup_rule_v2.worker[1]
+module.compute.openstack_networking_secgroup_rule_v2.worker[2]
+module.compute.openstack_networking_secgroup_rule_v2.worker[3]
+module.compute.openstack_networking_secgroup_rule_v2.worker[4]
+module.compute.openstack_networking_secgroup_v2.bastion[0]
+module.compute.openstack_networking_secgroup_v2.k8s
+module.compute.openstack_networking_secgroup_v2.k8s_master
+module.compute.openstack_networking_secgroup_v2.worker
+module.ips.null_resource.dummy_dependency
+module.ips.openstack_networking_floatingip_v2.k8s_master[0]
+module.ips.openstack_networking_floatingip_v2.k8s_node[0]
+module.ips.openstack_networking_floatingip_v2.k8s_node[1]
+module.ips.openstack_networking_floatingip_v2.k8s_node[2]
+module.network.openstack_networking_network_v2.k8s[0]
+module.network.openstack_networking_router_interface_v2.k8s[0]
+module.network.openstack_networking_router_v2.k8s[0]
+module.network.openstack_networking_subnet_v2.k8s[0]
+$ terraform state mv 'module.compute.openstack_compute_floatingip_associate_v2.k8s_node[0]' 'module.compute.openstack_compute_floatingip_associate_v2.k8s_nodes["1"]'
+Move "module.compute.openstack_compute_floatingip_associate_v2.k8s_node[0]" to "module.compute.openstack_compute_floatingip_associate_v2.k8s_nodes[\"1\"]"
+Successfully moved 1 object(s).
+$ terraform state mv 'module.compute.openstack_compute_floatingip_associate_v2.k8s_node[1]' 'module.compute.openstack_compute_floatingip_associate_v2.k8s_nodes["2"]'
+Move "module.compute.openstack_compute_floatingip_associate_v2.k8s_node[1]" to "module.compute.openstack_compute_floatingip_associate_v2.k8s_nodes[\"2\"]"
+Successfully moved 1 object(s).
+$ terraform state mv 'module.compute.openstack_compute_floatingip_associate_v2.k8s_node[2]' 'module.compute.openstack_compute_floatingip_associate_v2.k8s_nodes["3"]'
+Move "module.compute.openstack_compute_floatingip_associate_v2.k8s_node[2]" to "module.compute.openstack_compute_floatingip_associate_v2.k8s_nodes[\"3\"]"
+Successfully moved 1 object(s).
+$ terraform state mv 'module.compute.openstack_compute_instance_v2.k8s_node[0]' 'module.compute.openstack_compute_instance_v2.k8s_node["1"]'
+Move "module.compute.openstack_compute_instance_v2.k8s_node[0]" to "module.compute.openstack_compute_instance_v2.k8s_node[\"1\"]"
+Successfully moved 1 object(s).
+$ terraform state mv 'module.compute.openstack_compute_instance_v2.k8s_node[1]' 'module.compute.openstack_compute_instance_v2.k8s_node["2"]'
+Move "module.compute.openstack_compute_instance_v2.k8s_node[1]" to "module.compute.openstack_compute_instance_v2.k8s_node[\"2\"]"
+Successfully moved 1 object(s).
+$ terraform state mv 'module.compute.openstack_compute_instance_v2.k8s_node[2]' 'module.compute.openstack_compute_instance_v2.k8s_node["3"]'
+Move "module.compute.openstack_compute_instance_v2.k8s_node[2]" to "module.compute.openstack_compute_instance_v2.k8s_node[\"3\"]"
+Successfully moved 1 object(s).
+$ terraform state mv 'module.ips.openstack_networking_floatingip_v2.k8s_node[0]' 'module.ips.openstack_networking_floatingip_v2.k8s_node["1"]'
+Move "module.ips.openstack_networking_floatingip_v2.k8s_node[0]" to "module.ips.openstack_networking_floatingip_v2.k8s_node[\"1\"]"
+Successfully moved 1 object(s).
+$ terraform state mv 'module.ips.openstack_networking_floatingip_v2.k8s_node[1]' 'module.ips.openstack_networking_floatingip_v2.k8s_node["2"]'
+Move "module.ips.openstack_networking_floatingip_v2.k8s_node[1]" to "module.ips.openstack_networking_floatingip_v2.k8s_node[\"2\"]"
+Successfully moved 1 object(s).
+$ terraform state mv 'module.ips.openstack_networking_floatingip_v2.k8s_node[2]' 'module.ips.openstack_networking_floatingip_v2.k8s_node["3"]'
+Move "module.ips.openstack_networking_floatingip_v2.k8s_node[2]" to "module.ips.openstack_networking_floatingip_v2.k8s_node[\"3\"]"
+Successfully moved 1 object(s).
+```
+
+Of course for nodes without floating ips those steps can be omitted.

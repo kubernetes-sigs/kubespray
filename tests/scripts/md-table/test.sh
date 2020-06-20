@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -euxo pipefail
 
 echo "Install requirements..."

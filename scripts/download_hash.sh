@@ -19,7 +19,7 @@ for download in ${DOWNLOADS}; do
     for version in ${VERSIONS}; do
       TARGET="${DOWNLOAD_DIR}/${download}-$version-$arch"
       if [ ! -f ${TARGET} ]; then
-        curl -s -o ${TARGET} "https://storage.googleapis.com/kubernetes-release/release/${version}/bin/linux/${arch}/${download}"
+        curl -L -f -S -s -o ${TARGET} "https://storage.googleapis.com/kubernetes-release/release/${version}/bin/linux/${arch}/${download}"
       fi
       echo -e "    ${version}: $(sha256sum ${TARGET} | awk '{print $1}')"
     done

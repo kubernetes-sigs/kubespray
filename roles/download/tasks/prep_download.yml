@@ -5,42 +5,17 @@
   tags:
     - facts
 
-- name: Set image info command for containerd
+- name: prep_download | Set image info command for containerd and crio
   set_fact:
     image_info_command: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
-  when: container_manager == 'containerd'
+    image_pull_command: "{{ bin_dir }}/crictl pull"
+  when: container_manager in ['crio' ,'containerd']
 
-- name: Register docker images info
-  shell: "{{ image_info_command }}"
-  no_log: true
-  register: docker_images
-  failed_when: false
-  changed_when: false
-  check_mode: no
-  when: download_container
-
-- name: prep_download | Create staging directory on remote node
-  file:
-    path: "{{ local_release_dir }}/images"
-    state: directory
-    recurse: yes
-    mode: 0755
-    owner: "{{ ansible_ssh_user | default(ansible_user_id) }}"
-  when:
-    - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
-
-- name: prep_download | Create local cache for files and images
-  file:
-    path: "{{ download_cache_dir }}/images"
-    state: directory
-    recurse: yes
-    mode: 0755
-  delegate_to: localhost
-  delegate_facts: no
-  run_once: true
-  become: false
-  tags:
-    - localhost
+- name: prep_download | Set image info command for containerd and crio on localhost
+  set_fact:
+    image_info_command_on_localhost: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
+    image_pull_command_on_localhost: "{{ bin_dir }}/crictl pull"
+  when: container_manager_on_localhost in ['crio' ,'containerd']
 
 - name: prep_download | On localhost, check if passwordless root is possible
   command: "true"
@@ -57,7 +32,7 @@
     - asserts
 
 - name: prep_download | On localhost, check if user has access to docker without using sudo
-  shell: "{{ docker_bin_dir }}/docker images"
+  shell: "{{ image_info_command_on_localhost }}"
   delegate_to: localhost
   run_once: true
   register: test_docker
@@ -90,3 +65,37 @@
   tags:
     - localhost
     - asserts
+
+- name: prep_download | Register docker images info
+  shell: "{{ image_info_command }}"
+  no_log: true
+  register: docker_images
+  failed_when: false
+  changed_when: false
+  check_mode: no
+  when: download_container
+
+- name: prep_download | Create staging directory on remote node
+  file:
+    path: "{{ local_release_dir }}/images"
+    state: directory
+    recurse: yes
+    mode: 0755
+    owner: "{{ ansible_ssh_user | default(ansible_user_id) }}"
+  when:
+    - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
+
+- name: prep_download | Create local cache for files and images on control node
+  file:
+    path: "{{ download_cache_dir }}/images"
+    state: directory
+    recurse: yes
+    mode: 0755
+  delegate_to: localhost
+  delegate_facts: no
+  run_once: true
+  become: false
+  when:
+    - download_force_cache
+  tags:
+    - localhost

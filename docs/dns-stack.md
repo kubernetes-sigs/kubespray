@@ -1,7 +1,7 @@
 # K8s DNS stack by Kubespray
 
-For K8s cluster nodes, Kubespray configures a [Kubernetes DNS](http://kubernetes.io/docs/admin/dns/)
-[cluster add-on](http://releases.k8s.io/master/cluster/addons/README.md)
+For K8s cluster nodes, Kubespray configures a [Kubernetes DNS](https://kubernetes.io/docs/admin/dns/)
+[cluster add-on](https://releases.k8s.io/master/cluster/addons/README.md)
 to serve as an authoritative DNS server for a given ``dns_domain`` and its
 ``svc, default.svc`` default subdomains (a total of ``ndots: 5`` max levels).
 
@@ -41,6 +41,36 @@ DNS servers to be added *after* the cluster DNS. Used by all ``resolvconf_mode``
 DNS servers in early cluster deployment when no cluster DNS is available yet.
 
 ## DNS modes supported by Kubespray
+
+### coredns_external_zones
+
+Array of optional external zones to coredns forward queries to. It's  injected into
+`coredns`' config file before default kubernetes zone. Use it as an optimization for well-known zones and/or internal-only
+domains, i.e. VPN for internal networks (default is unset)
+
+Example:
+
+```yaml
+coredns_external_zones:
+- zones:
+  - example.com
+  - example.io:1053
+  nameservers:
+  - 1.1.1.1
+  - 2.2.2.2
+  cache: 5
+- zones:
+  - https://mycompany.local:4453
+  nameservers:
+  - 192.168.0.53
+  cache: 0
+```
+
+or as INI
+
+```ini
+coredns_external_zones=[{"cache": 30,"zones":["example.com","example.io:453"],"nameservers":["1.1.1.1","2.2.2.2"]}]'
+```
 
 You can modify how Kubespray sets up DNS for your cluster with the variables ``dns_mode`` and ``resolvconf_mode``.
 
@@ -132,6 +162,25 @@ Setting ``enable_nodelocaldns`` to ``true`` will make pods reach out to the dns 
 More information on the rationale behind this implementation can be found [here](https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/0030-nodelocal-dns-cache.md).
 
 **As per the 2.10 release, Nodelocal DNS cache is enabled by default.**
+
+### External zones
+
+It's possible to extent the `nodelocaldns`' configuration by adding an array of external zones. For example:
+
+```yaml
+nodelocaldns_external_zones:
+- zones:
+  - example.com
+  - example.io:1053
+  nameservers:
+  - 1.1.1.1
+  - 2.2.2.2
+  cache: 5
+- zones:
+  - https://mycompany.local:4453
+  nameservers:
+  - 192.168.0.53
+```
 
 ## Limitations
 

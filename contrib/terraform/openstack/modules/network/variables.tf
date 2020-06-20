@@ -13,3 +13,5 @@ variable "dns_nameservers" {
 variable "subnet_cidr" {}
 
 variable "use_neutron" {}
+
+variable "router_id" {}

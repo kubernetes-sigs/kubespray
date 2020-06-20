@@ -42,7 +42,7 @@ EOF
 
 resource "aws_iam_role_policy" "kube-master" {
   name = "kubernetes-${var.aws_cluster_name}-master"
-  role = "${aws_iam_role.kube-master.id}"
+  role = aws_iam_role.kube-master.id
 
   policy = <<EOF
 {
@@ -77,7 +77,7 @@ EOF
 
 resource "aws_iam_role_policy" "kube-worker" {
   name = "kubernetes-${var.aws_cluster_name}-node"
-  role = "${aws_iam_role.kube-worker.id}"
+  role = aws_iam_role.kube-worker.id
 
   policy = <<EOF
 {
@@ -132,10 +132,10 @@ EOF
 
 resource "aws_iam_instance_profile" "kube-master" {
   name = "kube_${var.aws_cluster_name}_master_profile"
-  role = "${aws_iam_role.kube-master.name}"
+  role = aws_iam_role.kube-master.name
 }
 
 resource "aws_iam_instance_profile" "kube-worker" {
   name = "kube_${var.aws_cluster_name}_node_profile"
-  role = "${aws_iam_role.kube-worker.name}"
+  role = aws_iam_role.kube-worker.name
 }

@@ -8,19 +8,28 @@ metadata:
       addonmanager.kubernetes.io/mode: EnsureExists
 data:
   Corefile: |
+{% if coredns_external_zones is defined and coredns_external_zones|length > 0 %}
+{%   for block in coredns_external_zones %}
+    {{ block['zones'] | join(' ') }} {
+        log
+        errors
+        forward . {{ block['nameservers'] | join(' ') }}
+        loadbalance
+        cache {{ block['cache'] | default(5) }}
+        reload
+    }
+{%   endfor %}
+{% endif %}
     .:53 {
         errors
-        health
+        health {
+            lameduck 5s
+        }
         ready
         kubernetes {{ dns_domain }} in-addr.arpa ip6.arpa {
           pods insecure
 {% if enable_coredns_k8s_endpoint_pod_names %}
           endpoint_pod_names
-{% endif %}
-{% if resolvconf_mode == 'host_resolvconf' and upstream_dns_servers is defined and upstream_dns_servers|length > 0 %}
-          upstream {{ upstream_dns_servers|join(' ') }}
-{% else %}
-          upstream /etc/resolv.conf
 {% endif %}
           fallthrough in-addr.arpa ip6.arpa
         }

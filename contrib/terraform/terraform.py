@@ -319,9 +319,7 @@ def openstack_host(resource, module_name):
 
     # attrs specific to Mantl
     attrs.update({
-        'consul_dc': _clean_dc(attrs['metadata'].get('dc', module_name)),
-        'role': attrs['metadata'].get('role', 'none'),
-        'ansible_python_interpreter': attrs['metadata'].get('python_bin','python')
+        'role': attrs['metadata'].get('role', 'none')
     })
 
     # add groups based on attrs
@@ -330,10 +328,6 @@ def openstack_host(resource, module_name):
     groups.extend('os_metadata_%s=%s' % item
                   for item in list(attrs['metadata'].items()))
     groups.append('os_region=' + attrs['region'])
-
-    # groups specific to Mantl
-    groups.append('role=' + attrs['metadata'].get('role', 'none'))
-    groups.append('dc=' + attrs['consul_dc'])
 
     # groups specific to kubespray
     for group in attrs['metadata'].get('kubespray_groups', "").split(","):

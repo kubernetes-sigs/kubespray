@@ -29,13 +29,7 @@ spec:
       hostNetwork: true
       serviceAccountName: calico-node
       tolerations:
-        - effect: NoExecute
-          operator: Exists
-        - effect: NoSchedule
-          operator: Exists
-        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
-        - key: CriticalAddonsOnly
-          operator: "Exists"
+      - operator: Exists
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 0
@@ -209,12 +203,8 @@ spec:
             - name: FELIX_IPTABLESBACKEND
               value: "{{ calico_iptables_backend }}"
 {% endif %}
-            # Prior to v3.2.1 iptables didn't acquire the lock, so Calico's own implementation of the lock should be used,
-            # this is not required in later versions https://github.com/projectcalico/calico/issues/2179
-{% if calico_version is version('v3.2.1', '<') %}
             - name: FELIX_IPTABLESLOCKTIMEOUTSECS
-              value: "10"
-{% endif %}
+              value: "{{ calico_iptables_lock_timeout_secs }}"
 # should be set in etcd before deployment
 #            # Configure the IP Pool from which Pod IPs will be chosen.
 #            - name: CALICO_IPV4POOL_CIDR
@@ -227,11 +217,16 @@ spec:
             # Set Felix logging to "info"
             - name: FELIX_LOGSEVERITYSCREEN
               value: "{{ calico_loglevel }}"
+            # Enable or disable usage report
+            - name: FELIX_USAGEREPORTINGENABLED
+              value: "{{ calico_usage_reporting }}"
             # Set MTU for tunnel device used if ipip is enabled
 {% if calico_mtu is defined %}
             - name: FELIX_IPINIPMTU
               value: "{{ calico_mtu }}"
 {% endif %}
+            - name: FELIX_CHAININSERTMODE
+              value: "{{ calico_felix_chaininsertmode }}"
             - name: FELIX_PROMETHEUSMETRICSENABLED
               value: "{{ calico_felix_prometheusmetricsenabled }}"
             - name: FELIX_PROMETHEUSMETRICSPORT
@@ -283,7 +278,9 @@ spec:
               command:
               - /bin/calico-node
               - -felix-live
+{% if calico_network_backend|default("bird") == "bird" %}
               - -bird-live
+{% endif %}
 {% endif %}
             initialDelaySeconds: 5
             failureThreshold: 6
@@ -298,7 +295,9 @@ spec:
             exec:
               command:
               - /bin/calico-node
+{% if calico_network_backend|default("bird") == "bird" %}
               - -bird-ready
+{% endif %}
               - -felix-ready
 {% endif %}
           volumeMounts:

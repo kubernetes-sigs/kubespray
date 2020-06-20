@@ -6,7 +6,6 @@ metadata:
   namespace: kube-system
   labels:
     app.kubernetes.io/name: metrics-server
-    kubernetes.io/cluster-service: "true"
     addonmanager.kubernetes.io/mode: Reconcile
     version: {{ metrics_server_version }}
 spec:
@@ -21,13 +20,14 @@ spec:
         app.kubernetes.io/name: metrics-server
         version: {{ metrics_server_version }}
       annotations:
-        seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
+        seccomp.security.alpha.kubernetes.io/pod: 'runtime/default'
     spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: metrics-server
       containers:
       - name: metrics-server
         image: {{ metrics_server_image_repo }}:{{ metrics_server_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         command:
         - /metrics-server
         - --logtostderr
@@ -75,6 +75,7 @@ spec:
           runAsUser: 10001
       - name: metrics-server-nanny
         image: {{ addon_resizer_image_repo }}:{{ addon_resizer_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         resources:
           limits:
             cpu: {{ addon_resizer_limits_cpu }}
@@ -119,8 +120,6 @@ spec:
       tolerations:
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
-        - key: "CriticalAddonsOnly"
-          operator: "Exists"
 {% endif %}
       affinity:
         nodeAffinity:

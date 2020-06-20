@@ -1,6 +1,19 @@
 ---
 # OpenSUSE ships with Python installed
 
+- name: Check that /etc/sysconfig/proxy file exists
+  stat:
+    path: /etc/sysconfig/proxy
+  register: stat_result
+
+- name: Create the /etc/sysconfig/proxy empty file
+  file:
+    path: /etc/sysconfig/proxy
+    state: touch
+  when:
+    - http_proxy is defined or https_proxy is defined
+    - not stat_result.stat.exists
+
 - name: Set the http_proxy in /etc/sysconfig/proxy
   lineinfile:
     path: /etc/sysconfig/proxy
@@ -27,6 +40,14 @@
   become: true
   when:
     - http_proxy is defined or https_proxy is defined
+
+# Required for zypper module
+- name: Install python-xml
+  shell: zypper refresh && zypper --non-interactive install python-xml
+  changed_when: false
+  become: true
+  tags:
+    - facts
 
 # Without this package, the get_url module fails when trying to handle https
 - name: Install python-cryptography

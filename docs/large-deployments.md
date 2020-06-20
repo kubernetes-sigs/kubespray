@@ -3,7 +3,7 @@ Large deployments of K8s
 
 For a large scaled deployments, consider the following configuration changes:
 
-* Tune [ansible settings](http://docs.ansible.com/ansible/intro_configuration.html)
+* Tune [ansible settings](https://docs.ansible.com/ansible/intro_configuration.html)
   for `forks` and `timeout` vars to fit large numbers of nodes being deployed.
 
 * Override containers' `foo_image_repo` vars to point to intranet registry.

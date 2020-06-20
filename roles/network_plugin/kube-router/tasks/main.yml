@@ -3,23 +3,57 @@
   include: annotate.yml
   tags: annotate
 
-- name: kube-router | Set cni directory permissions
+- name: kube-router | Create config directory
   file:
-    path: /opt/cni/bin
+    path: /var/lib/kube-router
     state: directory
     owner: kube
     recurse: true
     mode: 0755
 
-- name: kube-router | Copy cni plugins
-  unarchive:
-    src: "{{ local_release_dir }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
-    dest: "/opt/cni/bin"
-    mode: 0755
+- name: kube-router | Create kubeconfig
+  template:
+    src: kubeconfig.yml.j2
+    dest: /var/lib/kube-router/kubeconfig
     owner: kube
-    remote_src: yes
+  notify:
+    - reset_kube_router
+
+- name: kube-router | Slurp cni config
+  slurp:
+    src: /etc/cni/net.d/10-kuberouter.conflist
+  register: cni_config_slurp
+  ignore_errors: true
+
+- name: kube-router | Set cni_config variable
+  set_fact:
+    cni_config: "{{ cni_config_slurp.content | b64decode | from_json }}"
+  when:
+    - not cni_config_slurp.failed
+
+- name: kube-router | Set host_subnet variable
+  set_fact:
+    host_subnet: "{{ cni_config | json_query('plugins[?bridge==`kube-bridge`].ipam.subnet') | first }}"
+  when:
+    - cni_config is defined
+    - cni_config | json_query('plugins[?bridge==`kube-bridge`].ipam.subnet') | length > 0
+
+- name: kube-router | Create cni config
+  template:
+    src: cni-conf.json.j2
+    dest: /etc/cni/net.d/10-kuberouter.conflist
+    owner: kube
+  notify:
+    - reset_kube_router
+
+- name: kube-router | Delete old configuration
+  file:
+    path: /etc/cni/net.d/10-kuberouter.conf
+    state: absent
 
 - name: kube-router | Create manifest
   template:
     src: kube-router.yml.j2
     dest: "{{ kube_config_dir }}/kube-router.yml"
+  delegate_to: "{{ groups['kube-master'] | first }}"
+  run_once: true

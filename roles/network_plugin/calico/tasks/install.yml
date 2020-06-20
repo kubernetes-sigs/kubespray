@@ -89,6 +89,7 @@
     {{ bin_dir }}/calicoctl.sh get ippool | grep -w "{{ calico_pool_cidr | default(kube_pods_subnet) }}" | wc -l
   register: calico_conf
   retries: 4
+  until: calico_conf.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
   when:
@@ -140,7 +141,8 @@
         },
         "spec": {
           "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
-          "ipipMode": "{{ ipip_mode }}",
+          "ipipMode": "{{ calico_ipip_mode }}",
+          "vxlanMode": "{{ calico_vxlan_mode }}",
           "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl.sh apply -f -
   when:
     - inventory_hostname == groups['kube-master'][0]
@@ -158,7 +160,8 @@
         "spec": {
           "blockSize": "{{ calico_pool_blocksize | default(kube_network_node_prefix) }}",
           "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
-          "ipipMode": "{{ ipip_mode }}",
+          "ipipMode": "{{ calico_ipip_mode }}",
+          "vxlanMode": "{{ calico_vxlan_mode }}",
           "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }} " | {{ bin_dir }}/calicoctl.sh apply -f -
   when:
     - inventory_hostname == groups['kube-master'][0]
@@ -201,7 +204,9 @@
        "asNumber": "{{ item.as }}",
        "peerIP": "{{ item.router_id }}"
     }}' | {{ bin_dir }}/calicoctl.sh apply -f -
+  register: output
   retries: 4
+  until: output.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
     - "{{ peers|selectattr('scope','defined')|selectattr('scope','equalto', 'global')|list|default([]) }}"
@@ -221,7 +226,9 @@
        "nodeSelector": "!has(i-am-a-route-reflector)",
        "peerSelector": "has(i-am-a-route-reflector)"
     }}' | {{ bin_dir }}/calicoctl.sh apply -f -
+  register: output
   retries: 4
+  until: output.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
     - "{{ groups['calico-rr'] | default([]) }}"
@@ -241,7 +248,9 @@
        "nodeSelector": "has(i-am-a-route-reflector)",
        "peerSelector": "has(i-am-a-route-reflector)"
     }}' | {{ bin_dir }}/calicoctl.sh apply -f -
+  register: output
   retries: 4
+  until: output.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
     - "{{ groups['calico-rr'] | default([]) }}"
@@ -314,7 +323,9 @@
        },
        "orchRefs":[{"nodeName":"{{ inventory_hostname }}","orchestrator":"k8s"}]
     }}' | {{ bin_dir }}/calicoctl.sh apply -f -
+  register: output
   retries: 4
+  until: output.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
   when:
     - peer_with_router|default(false)
@@ -335,7 +346,9 @@
        "node": "{{ inventory_hostname }}",
        "peerIP": "{{ item.router_id }}"
     }}' | {{ bin_dir }}/calicoctl.sh apply -f -
+  register: output
   retries: 4
+  until: output.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
     - "{{ peers|selectattr('scope','undefined')|list|default([]) | union(peers|selectattr('scope','defined')|selectattr('scope','equalto', 'node')|list|default([])) }}"

@@ -1,0 +1,48 @@
+---
+- include_tasks: azure-credential-check.yml
+  tags: azure-csi-driver
+
+- name: Azure CSI Driver | Write Azure CSI cloud-config
+  template:
+    src: "azure-csi-cloud-config.j2"
+    dest: "{{ kube_config_dir }}/azure_csi_cloud_config"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: azure-csi-driver
+
+- name: Azure CSI Driver | Get base64 cloud-config
+  slurp:
+    src: "{{ kube_config_dir }}/azure_csi_cloud_config"
+  register: cloud_config_secret
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: azure-csi-driver
+
+- name: Azure CSI Driver | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: azure-csi-azuredisk-driver, file: azure-csi-azuredisk-driver.yml}
+    - {name: azure-csi-cloud-config-secret, file: azure-csi-cloud-config-secret.yml}
+    - {name: azure-csi-azuredisk-controller, file: azure-csi-azuredisk-controller-rbac.yml}
+    - {name: azure-csi-azuredisk-controller, file: azure-csi-azuredisk-controller.yml}
+    - {name: azure-csi-azuredisk-node, file: azure-csi-azuredisk-node.yml}
+    - {name: azure-csi-node-info-crd.yml.j2, file: azure-csi-node-info-crd.yml}
+  register: azure_csi_manifests
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: azure-csi-driver
+
+- name: Azure CSI Driver | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ azure_csi_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+  tags: azure-csi-driver

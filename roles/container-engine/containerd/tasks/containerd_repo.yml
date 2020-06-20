@@ -12,7 +12,6 @@
   with_items: "{{ containerd_repo_key_info.repo_keys }}"
   when:
     - ansible_os_family in ['Ubuntu', 'Debian']
-    - not is_atomic
 
 - name: ensure containerd repository is enabled
   action: "{{ containerd_repo_info.pkg_repo }}"
@@ -22,7 +21,6 @@
   with_items: "{{ containerd_repo_info.repos }}"
   when:
     - ansible_os_family in ['Ubuntu', 'Debian']
-    - not is_atomic
     - containerd_repo_info.repos|length > 0
 
 # This is required to ensure any apt upgrade will not break kubernetes
@@ -34,25 +32,24 @@
     mode: 0644
   when:
     - ansible_os_family in ['Ubuntu', 'Debian']
-    - not is_atomic
 
 - name: Configure containerd repository on Fedora
   template:
     src: "fedora_containerd.repo.j2"
     dest: "{{ yum_repo_dir }}/containerd.repo"
-  when: ansible_distribution == "Fedora" and not is_atomic
+  when: ansible_distribution == "Fedora"
 
 - name: Configure containerd repository on RedHat/CentOS
   template:
     src: "rh_containerd.repo.j2"
     dest: "{{ yum_repo_dir }}/containerd.repo"
-  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+  when: ansible_distribution in ["CentOS","RedHat"]
 
 - name: check if container-selinux is available
   yum:
     list: "container-selinux"
   register: yum_result
-  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+  when: ansible_distribution in ["CentOS","RedHat"]
 
 - name: Configure extras repository on RedHat/CentOS if container-selinux is not available in current repos
   yum_repository:
@@ -61,12 +58,12 @@
     state: present
     baseurl: "{{ extras_rh_repo_base_url }}"
     file: "extras"
-    gpgcheck: yes
+    gpgcheck: "{{ 'yes' if extras_rh_repo_gpgkey else 'no' }}"
     gpgkey: "{{ extras_rh_repo_gpgkey }}"
     keepcache: "{{ containerd_rpm_keepcache | default('1') }}"
     proxy: " {{ http_proxy | default('_none_') }}"
   when:
-    - ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+    - ansible_distribution in ["CentOS","RedHat"]
     - yum_result.results | length == 0
 
 - name: Copy yum.conf for editing
@@ -74,7 +71,7 @@
     src: "{{ yum_conf }}"
     dest: "{{ containerd_yum_conf }}"
     remote_src: yes
-  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+  when: ansible_distribution in ["CentOS","RedHat"]
 
 - name: Edit copy of yum.conf to set obsoletes=0
   lineinfile:
@@ -82,4 +79,4 @@
     state: present
     regexp: '^obsoletes='
     line: 'obsoletes=0'
-  when: ansible_distribution in ["CentOS","RedHat"] and not is_atomic
+  when: ansible_distribution in ["CentOS","RedHat"]

@@ -1,0 +1,60 @@
+---
+
+- name: CRI-O kubic repo name for debian os family
+  set_fact:
+    crio_kubic_debian_repo_name: "{{ ((ansible_distribution == 'Ubuntu') | ternary('x','')) ~ ansible_distribution ~ '_' ~ ansible_distribution_version }}"
+  when: ansible_os_family == "Debian"
+
+- name: Add CRI-O kubic repo key
+  apt_key:
+    url: "https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/{{ crio_kubic_debian_repo_name }}/Release.key"
+    state: present
+  when: crio_kubic_debian_repo_name is defined
+
+- name: Add CRI-O kubic repo
+  apt_repository:
+    repo: "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ crio_kubic_debian_repo_name }}/ /"
+    state: present
+    filename: devel:kubic:libcontainers:stable
+  when: crio_kubic_debian_repo_name is defined
+
+- name: Add CRI-O kubic repo
+  yum_repository:
+    name: devel_kubic_libcontainers_stable
+    description: Stable Releases of Upstream github.com/containers packages (CentOS_$releasever)
+    baseurl: http://widehat.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/CentOS_$releasever/
+    gpgcheck: yes
+    gpgkey: http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/CentOS_$releasever/repodata/repomd.xml.key
+  when: ansible_distribution in ["CentOS"]
+
+- name: Add CRI-O kubic repo
+  yum_repository:
+    name: "devel_kubic_libcontainers_stable_cri-o_{{ crio_version }}"
+    description: "CRI-O {{ crio_version }} (CentOS_$releasever)"
+    baseurl: "http://widehat.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ crio_version }}/CentOS_$releasever/"
+    gpgcheck: yes
+    gpgkey: "http://widehat.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ crio_version }}/CentOS_$releasever/repodata/repomd.xml.key"
+  when: ansible_distribution in ["CentOS"]
+
+- name: Enable modular repos for CRI-O
+  ini_file:
+    path: "/etc/yum.repos.d/{{ item }}.repo"
+    section: "{{ item }}"
+    option: enabled
+    value: 1
+  become: true
+  when: is_ostree
+  loop:
+    - "fedora-updates-modular"
+    - "fedora-modular"
+
+- name: Enable CRI-O module
+  command: "dnf -y module enable cri-o:{{ crio_version }}"
+  args:
+    warn: False
+  register: crio_dnf_result
+  changed_when: "'Enabling' in crio_dnf_result.stdout"
+  become: true
+  when:
+    - ansible_distribution in ["Fedora"]
+    - not is_ostree

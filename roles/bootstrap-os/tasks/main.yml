@@ -8,25 +8,29 @@
   environment: {}
 
 - include_tasks: bootstrap-centos.yml
-  when: '"CentOS" in os_release.stdout or "Red Hat Enterprise Linux" in os_release.stdout'
+  when: '"CentOS" in os_release.stdout or "Red Hat Enterprise Linux" in os_release.stdout or "Oracle" in os_release.stdout'
 
 - include_tasks: bootstrap-clearlinux.yml
   when: '"Clear Linux OS" in os_release.stdout'
 
+- include_tasks: bootstrap-fedora-coreos.yml
+  when: '"ID=fedora" in os_release.stdout and "VARIANT_ID=coreos" in os_release.stdout'
+
 - include_tasks: bootstrap-coreos.yml
-  when: '"CoreOS" in os_release.stdout'
+  when:
+    - '"CoreOS" in os_release.stdout or "Flatcar" in os_release.stdout'
+    - '"ID=fedora" not in os_release.stdout'
 
 - include_tasks: bootstrap-debian.yml
   when: '"Debian" in os_release.stdout or "Ubuntu" in os_release.stdout'
 
 - include_tasks: bootstrap-fedora.yml
-  when: '"Fedora" in os_release.stdout'
+  when:
+    - '"Fedora" in os_release.stdout'
+    - '"VARIANT_ID=coreos" not in os_release.stdout'
 
 - include_tasks: bootstrap-opensuse.yml
   when: '"openSUSE" in os_release.stdout'
-
-- include_tasks: bootstrap-oracle.yml
-  when: '"Oracle" in os_release.stdout'
 
 - name: Create remote_tmp for it is used by another module
   file:
@@ -41,30 +45,31 @@
     gather_subset: '!all'
     filter: ansible_*
 
-- name: Assign inventory name to unconfigured hostnames (non-CoreOS, Suse and ClearLinux)
+- name: Assign inventory name to unconfigured hostnames (non-CoreOS, non-Flatcar, Suse and ClearLinux)
   hostname:
     name: "{{ inventory_hostname }}"
   when:
     - override_system_hostname
-    - ansible_os_family not in ['Suse', 'Container Linux by CoreOS', 'ClearLinux']
+    - ansible_os_family not in ['Suse', 'Container Linux by CoreOS', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] and not is_fedora_coreos
 
 # (2/3)
-- name: Assign inventory name to unconfigured hostnames (CoreOS, Suse and ClearLinux only)
+- name: Assign inventory name to unconfigured hostnames (CoreOS, non-Flatcar, Suse and ClearLinux only)
   command: "hostnamectl set-hostname {{ inventory_hostname }}"
   register: hostname_changed
+  become: true
   changed_when: false
   when:
     - override_system_hostname
-    - ansible_os_family in ['Suse', 'Container Linux by CoreOS', 'ClearLinux']
+    - ansible_os_family in ['Suse', 'Container Linux by CoreOS', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] or is_fedora_coreos
 
 # (3/3)
-- name: Update hostname fact (CoreOS, Suse and ClearLinux only)
+- name: Update hostname fact (CoreOS, Flatcar, Suse and ClearLinux only)
   setup:
     gather_subset: '!all'
     filter: ansible_hostname
   when:
     - override_system_hostname
-    - ansible_os_family in ['Suse', 'Container Linux by CoreOS', 'ClearLinux']
+    - ansible_os_family in ['Suse', 'Flatcar Container Linux by Kinvolk', 'Container Linux by CoreOS', 'ClearLinux'] or is_fedora_coreos
 
 - name: "Install ceph-commmon package"
   package:

@@ -28,30 +28,54 @@
     delegate_facts: false
     run_once: true
     become: false
+    when:
+    - download_force_cache
+    - download_localhost
     tags:
     - localhost
 
-  - name: download_file | Check if file is available in cache
-    stat:
-      path: "{{ file_path_cached }}"
-    register: cache_file
+  - name: download_file | Create cache directory on download_delegate host
+    file:
+      path: "{{ file_path_cached | dirname }}"
+      state: directory
+      recurse: yes
+    delegate_to: "{{ download_delegate }}"
+    delegate_facts: false
     run_once: true
-    changed_when: false
-    delegate_to: localhost
-    delegate_facts: no
-    become: false
     when:
     - download_force_cache
-    tags:
-    - facts
+    - not download_localhost
 
-  - name: download_file | Set file_is_cached fact based on previous task
-    set_fact:
-      file_is_cached: "{{ cache_file.stat.exists | default(false) }}"
+  # This must always be called, to check if the checksum matches. On no-match the file is re-downloaded.
+  - name: download_file | Download item
+    get_url:
+      url: "{{ download.url }}"
+      dest: "{{ file_path_cached if download_force_cache else download.dest }}"
+      owner: "{{ omit if download_localhost else (download.owner | default(omit)) }}"
+      mode: "{{ omit if download_localhost else (download.mode | default(omit)) }}"
+      checksum: "{{ 'sha256:' + download.sha256 if download.sha256 else omit }}"
+      validate_certs: "{{ download_validate_certs }}"
+      url_username: "{{ download.username | default(omit) }}"
+      url_password: "{{ download.password | default(omit) }}"
+      force_basic_auth: "{{ download.force_basic_auth | default(omit) }}"
+    delegate_to: "{{ download_delegate if download_force_cache else inventory_hostname }}"
+    run_once: "{{ download_force_cache }}"
+    register: get_url_result
+    become: "{{ not download_localhost }}"
+    until: "'OK' in get_url_result.msg or 'file already exists' in get_url_result.msg"
+    retries: 4
+    delay: "{{ retry_stagger | default(5) }}"
+
+  - name: download_file | Copy file back to ansible host file cache
+    synchronize:
+      src: "{{ file_path_cached }}"
+      dest: "{{ file_path_cached }}"
+      use_ssh_args: "{{ has_bastion | default(false) }}"
+      mode: pull
     when:
     - download_force_cache
-    tags:
-    - facts
+    - not download_localhost
+    - download_delegate == inventory_hostname
 
   - name: download_file | Copy file from cache to nodes, if it is available
     synchronize:
@@ -59,64 +83,23 @@
       dest: "{{ download.dest }}"
       use_ssh_args: "{{ has_bastion | default(false) }}"
       mode: push
-    run_once: "{{ download_run_once }}"
     register: get_task
     until: get_task is succeeded
     delay: "{{ retry_stagger | random + 3 }}"
     retries: 4
     when:
     - download_force_cache
-    - file_is_cached
-    - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
   - name: download_file | Set mode and owner
     file:
       path: "{{ download.dest }}"
       mode: "{{ download.mode | default(omit) }}"
       owner: "{{ download.owner | default(omit) }}"
-    run_once: "{{ download_run_once }}"
     when:
     - download_force_cache
-    - file_is_cached
-    - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
-
-  # This must always be called, to check if the checksum matches. On no-match the file is re-downloaded.
-  - name: download_file | Download item
-    get_url:
-      url: "{{ download.url }}"
-      dest: "{{ file_path_cached if download_localhost else download.dest }}"
-      owner: "{{ omit if download_localhost else (download.owner | default(omit)) }}"
-      mode: "{{ omit if download_localhost else (download.mode | default(omit)) }}"
-      checksum: "{{ 'sha256:' + download.sha256 if download.sha256 or omit }}"
-      validate_certs: "{{ download_validate_certs }}"
-      url_username: "{{ download.username | default(omit) }}"
-      url_password: "{{ download.password | default(omit) }}"
-      force_basic_auth: "{{ download.force_basic_auth | default(omit) }}"
-    delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
-    run_once: "{{ download_run_once }}"
-    register: get_url_result
-    become: "{{ not download_localhost }}"
-    until: "'OK' in get_url_result.msg or 'file already exists' in get_url_result.msg"
-    retries: 4
-    delay: "{{ retry_stagger | default(5) }}"
 
   - name: "download_file | Extract file archives"
     include_tasks: "extract_file.yml"
-    when:
-    - not download_localhost
-
-  - name: download_file | Copy file back to ansible host file cache
-    synchronize:
-      src: "{{ download.dest }}"
-      dest: "{{ file_path_cached }}"
-      use_ssh_args: "{{ has_bastion | default(false) }}"
-      mode: pull
-    when:
-    - download_force_cache
-    - not file_is_cached or get_url_result.changed
-    - download_delegate == inventory_hostname
-    - not (download_run_once and download_delegate == 'localhost')
-    - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS"]
 
   tags:
   - download

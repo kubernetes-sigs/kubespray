@@ -20,10 +20,10 @@ kube_users_dir: "{{ kube_config_dir }}/users"
 kube_api_anonymous_auth: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.16.3
+kube_version: v1.18.4
 
 # kubernetes image repo define
-kube_image_repo: "{{ gcr_image_repo }}/google-containers"
+kube_image_repo: "k8s.gcr.io"
 
 # Where the binaries will be downloaded.
 # Note: ensure that you've enough disk space (about 1G)
@@ -139,6 +139,19 @@ dns_mode: coredns
 enable_nodelocaldns: true
 nodelocaldns_ip: 169.254.25.10
 nodelocaldns_health_port: 9254
+# nodelocaldns_external_zones:
+# - zones:
+#   - example.com
+#   - example.io:1053
+#   nameservers:
+#   - 1.1.1.1
+#   - 2.2.2.2
+#   cache: 5
+# - zones:
+#   - https://mycompany.local:4453
+#   nameservers:
+#   - 192.168.0.53
+#   cache: 0
 # Enable k8s_external plugin for CoreDNS
 enable_coredns_k8s_external: false
 coredns_k8s_external_zone: k8s_external.local
@@ -158,8 +171,33 @@ dns_domain: "{{ cluster_name }}"
 ## docker for docker, crio for cri-o and containerd for containerd.
 container_manager: docker
 
-## Settings for containerized control plane (etcd/kubelet/secrets)
-etcd_deployment_type: docker
+## Settings for containerd runtimes (only used when container_manager is set to containerd)
+#
+# Settings for default containerd runtime
+# containerd_default_runtime:
+#   type: io.containerd.runtime.v1.linux
+#   engine: ''
+#   root: ''
+#
+# Settings for additional runtimes for containerd configuration
+# containerd_runtimes:
+#   - name: ""
+#     type: ""
+#     engine: ""
+#     root: ""
+# Example for Kata Containers as additional runtime:
+# containerd_runtimes:
+#   - name: kata
+#     type: io.containerd.kata.v2
+#     engine: ""
+#     root: ""
+#
+# Settings for untrusted containerd runtime
+# containerd_untrusted_runtime_type: ''
+# containerd_untrusted_runtime_engine: ''
+# containerd_untrusted_runtime_root: ''
+
+## Settings for containerized control plane (kubelet/secrets)
 kubelet_deployment_type: host
 helm_deployment_type: host
 
@@ -184,14 +222,16 @@ dynamic_kubelet_configuration_dir: "{{ kubelet_config_dir | default(default_kube
 # pod security policy (RBAC must be enabled either by having 'RBAC' in authorization_modes or kubeadm enabled)
 podsecuritypolicy_enabled: false
 
+# Custom PodSecurityPolicySpec for restricted policy
+# podsecuritypolicy_restricted_spec: {}
+
+# Custom PodSecurityPolicySpec for privileged policy
+# podsecuritypolicy_privileged_spec: {}
+
 # Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
 # kubeconfig_localhost: false
 # Download kubectl onto the host that runs Ansible in {{ bin_dir }}
 # kubectl_localhost: false
-
-
-#  Enable creation of QoS cgroup hierarchy, if true top level QoS and pod cgroups are created. (default true)
-# kubelet_cgroups_per_qos: true
 
 # A comma separated list of levels of node allocatable enforcement to be enforced by kubelet.
 # Acceptable options are 'pods', 'system-reserved', 'kube-reserved' and ''. Default is "".
@@ -217,7 +257,8 @@ podsecuritypolicy_enabled: false
 ## See https://github.com/kubernetes-sigs/kubespray/issues/2141
 ## Set this variable to true to get rid of this issue
 volume_cross_zone_attachment: false
-# Add Persistent Volumes Storage Class for corresponding cloud provider ( OpenStack is only supported now )
+## Add Persistent Volumes Storage Class for corresponding cloud provider (supported: in-tree OpenStack, Cinder CSI,
+## AWS EBS CSI, Azure Disk CSI, GCP Persistent Disk CSI)
 persistent_volumes_enabled: false
 
 ## Container Engine Acceleration
@@ -237,3 +278,31 @@ persistent_volumes_enabled: false
 # nvidia_driver_install_ubuntu_container: gcr.io/google-containers/ubuntu-nvidia-driver-installer@sha256:7df76a0f0a17294e86f691c81de6bbb7c04a1b4b3d4ea4e7e2cccdc42e1f6d63
 ## NVIDIA GPU device plugin image.
 # nvidia_gpu_device_plugin_container: "k8s.gcr.io/nvidia-gpu-device-plugin@sha256:0842734032018be107fa2490c98156992911e3e1f2a21e059ff0105b07dd8e9e"
+
+## Support tls min version, Possible values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13.
+# tls_min_version: ""
+
+## Support tls cipher suites.
+# tls_cipher_suites: {}
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+#   - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+#   - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+#   - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+#   - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
+#   - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+#   - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+#   - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+#   - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+#   - TLS_ECDHE_RSA_WITH_RC4_128_SHA
+#   - TLS_RSA_WITH_3DES_EDE_CBC_SHA
+#   - TLS_RSA_WITH_AES_128_CBC_SHA
+#   - TLS_RSA_WITH_AES_128_CBC_SHA256
+#   - TLS_RSA_WITH_AES_128_GCM_SHA256
+#   - TLS_RSA_WITH_AES_256_CBC_SHA
+#   - TLS_RSA_WITH_AES_256_GCM_SHA384
+#   - TLS_RSA_WITH_RC4_128_SHA

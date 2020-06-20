@@ -2,7 +2,7 @@
 
 ![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-sigs/kubespray/master/docs/img/kubernetes-logo.png)
 
-If you have questions, check the [documentation](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
+If you have questions, check the documentation at [kubespray.io](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 You can get your invite [here](http://slack.k8s.io/)
 
 - Can be deployed on **AWS, GCE, Azure, OpenStack, vSphere, Packet (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
@@ -21,7 +21,7 @@ To deploy the cluster you can use :
 
 ```ShellSession
 # Install dependencies from ``requirements.txt``
-sudo pip install -r requirements.txt
+sudo pip3 install -r requirements.txt
 
 # Copy ``inventory/sample`` as ``inventory/mycluster``
 cp -rfp inventory/sample inventory/mycluster
@@ -83,6 +83,7 @@ vagrant up
 - [Network plugins](#network-plugins)
 - [Vagrant install](docs/vagrant.md)
 - [CoreOS bootstrap](docs/coreos.md)
+- [Fedora CoreOS bootstrap](docs/fcos.md)
 - [Debian Jessie setup](docs/debian.md)
 - [openSUSE setup](docs/opensuse.md)
 - [Downloaded artifacts](docs/downloads.md)
@@ -93,54 +94,57 @@ vagrant up
 - [vSphere](docs/vsphere.md)
 - [Packet Host](docs/packet.md)
 - [Large deployments](docs/large-deployments.md)
+- [Adding/replacing a node](docs/nodes.md)
 - [Upgrades basics](docs/upgrades.md)
+- [Air-Gap installation](docs/offline-environment.md)
 - [Roadmap](docs/roadmap.md)
 
 ## Supported Linux Distributions
 
 - **Container Linux by CoreOS**
 - **Debian** Buster, Jessie, Stretch, Wheezy
-- **Ubuntu** 16.04, 18.04
-- **CentOS/RHEL** 7
-- **Fedora** 28
-- **Fedora/CentOS** Atomic
+- **Ubuntu** 16.04, 18.04, 20.04
+- **CentOS/RHEL** 7, 8 (experimental: see [centos 8 notes](docs/centos8.md))
+- **Fedora** 30, 31
+- **Fedora CoreOS** (experimental: see [fcos Note](docs/fcos.md))
 - **openSUSE** Leap 42.3/Tumbleweed
-- **Oracle Linux** 7
+- **Oracle Linux** 7, 8 (experimental: [centos 8 notes](docs/centos8.md) apply)
 
 Note: Upstart/SysV init based OS types are not supported.
 
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.16.3
-  - [etcd](https://github.com/coreos/etcd) v3.3.10
-  - [docker](https://www.docker.com/) v18.06 (see note)
-  - [cri-o](http://cri-o.io/) v1.14.0 (experimental: see [CRI-O Note](docs/cri-o.md). Only on centos based OS)
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.18.4
+  - [etcd](https://github.com/coreos/etcd) v3.3.12
+  - [docker](https://www.docker.com/) v19.03 (see note)
+  - [containerd](https://containerd.io/) v1.2.13
+  - [cri-o](http://cri-o.io/) v1.17 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
-  - [cni-plugins](https://github.com/containernetworking/plugins) v0.8.1
-  - [calico](https://github.com/projectcalico/calico) v3.11.1
+  - [cni-plugins](https://github.com/containernetworking/plugins) v0.8.6
+  - [calico](https://github.com/projectcalico/calico) v3.14.1
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-  - [cilium](https://github.com/cilium/cilium) v1.5.5
+  - [cilium](https://github.com/cilium/cilium) v1.7.4
   - [contiv](https://github.com/contiv/install) v1.2.1
-  - [flanneld](https://github.com/coreos/flannel) v0.11.0
-  - [kube-router](https://github.com/cloudnativelabs/kube-router) v0.2.5
-  - [multus](https://github.com/intel/multus-cni) v3.2.1
-  - [weave](https://github.com/weaveworks/weave) v2.5.2
+  - [flanneld](https://github.com/coreos/flannel) v0.12.0
+  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.2.0
+  - [kube-router](https://github.com/cloudnativelabs/kube-router) v0.4.0
+  - [multus](https://github.com/intel/multus-cni) v3.4.2
+  - [weave](https://github.com/weaveworks/weave) v2.6.4
 - Application
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
-  - [cert-manager](https://github.com/jetstack/cert-manager) v0.11.0
-  - [coredns](https://github.com/coredns/coredns) v1.6.0
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.26.1
+  - [cert-manager](https://github.com/jetstack/cert-manager) v0.11.1
+  - [coredns](https://github.com/coredns/coredns) v1.6.7
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.32.0
 
-Note: The list of validated [docker versions](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.16.md) was updated to 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09. kubeadm now properly recognizes Docker 18.09.0 and newer, but still treats 18.06 as the default supported version. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+Note: The list of validated [docker versions](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#docker) is 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09 and 19.03. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.15**
-- **Ansible v2.7.8 and python-netaddr is installed on the machine that will run Ansible commands**
-- **Jinja 2.9 (or newer) is required to run the Ansible Playbooks**
-- The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/downloads.md#offline-environment))
+- **Minimum required version of Kubernetes is v1.16**
+- **Ansible v2.9+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
+- The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.
 - **Your ssh key must be copied** to all the servers part of your inventory.
 - The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
@@ -163,7 +167,10 @@ You can choose between 10 network plugins. (default: `calico`, except Vagrant us
 
 - [flannel](docs/flannel.md): gre/vxlan (layer 2) networking.
 
-- [calico](docs/calico.md): bgp (layer 3) networking.
+- [Calico](https://docs.projectcalico.org/latest/introduction/) is a networking and network policy provider. Calico supports a flexible set of networking options
+    designed to give you the most efficient networking across a range of situations, including non-overlay
+    and overlay networks, with or without BGP. Calico uses the same engine to enforce network policy for hosts,
+    pods, and (if using Istio and Envoy) applications at the service mesh layer.
 
 - [canal](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
 
@@ -195,7 +202,7 @@ See also [Network checker](docs/netcheck.md).
 - [kubernetes.io/docs/setup/production-environment/tools/kubespray/](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/)
 - [kubespray, monitoring and logging](https://github.com/gregbkr/kubernetes-kargo-logging-monitoring) by @gregbkr
 - [Deploy Kubernetes w/ Ansible & Terraform](https://rsmitty.github.io/Terraform-Ansible-Kubernetes/) by @rsmitty
-- [Deploy a Kubernetes Cluster with Kubespray (video)](https://www.youtube.com/watch?v=N9q51JgbWu8)
+- [Deploy a Kubernetes Cluster with Kubespray (video)](https://www.youtube.com/watch?v=CJ5G4GpqDy0)
 
 ## Tools and projects on top of Kubespray
 

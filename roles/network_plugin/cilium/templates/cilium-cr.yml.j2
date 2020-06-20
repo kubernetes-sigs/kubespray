@@ -7,13 +7,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  # to get k8s version and status
-  - componentstatuses
-  verbs:
-  - get
-- apiGroups:
-  - ""
-  resources:
   # to automatically delete [core|kube]dns pods so that are starting to being
   # managed by Cilium
   - pods
@@ -22,6 +15,14 @@ rules:
   - list
   - watch
   - delete
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - ""
   resources:
@@ -32,6 +33,11 @@ rules:
   # to perform the translation of a CNP that contains `ToGroup` to its endpoints
   - services
   - endpoints
+  # to check apiserver connectivity
+  - namespaces
+{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
+  - componentstatuses
+{% endif %}
   verbs:
   - get
   - list
@@ -41,8 +47,16 @@ rules:
   resources:
   - ciliumnetworkpolicies
   - ciliumnetworkpolicies/status
+  - ciliumclusterwidenetworkpolicies
+  - ciliumclusterwidenetworkpolicies/status
   - ciliumendpoints
   - ciliumendpoints/status
+{% if cilium_version | regex_replace('v') is version('1.6', '>=') %}
+  - ciliumnodes
+  - ciliumnodes/status
+  - ciliumidentities
+  - ciliumidentities/status
+{% endif %}
   verbs:
   - '*'
 ---
@@ -51,68 +65,93 @@ kind: ClusterRole
 metadata:
   name: cilium
 rules:
-  - apiGroups:
-      - networking.k8s.io
-    resources:
-      - networkpolicies
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-      - namespaces
-      - services
-      - nodes
-      - endpoints
-      - componentstatuses
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - nodes
-    verbs:
-      - get
-      - list
-      - watch
-      - update
-  - apiGroups:
-      - ""
-    resources:
-      - nodes
-      - nodes/status
-    verbs:
-      - patch
-  - apiGroups:
-      - extensions
-    resources:
-      - ingresses
-    verbs:
-      - create
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - apiextensions.k8s.io
-    resources:
-      - customresourcedefinitions
-    verbs:
-      - create
-      - get
-      - list
-      - watch
-      - update
-  - apiGroups:
-      - cilium.io
-    resources:
-      - ciliumnetworkpolicies
-      - ciliumnetworkpolicies/status
-      - ciliumendpoints
-      - ciliumendpoints/status
-    verbs:
-      - '*'
+- apiGroups:
+  - networking.k8s.io
+  resources:
+{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
+  - ingresses
+{% endif %}
+  - networkpolicies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  - services
+  - nodes
+  - endpoints
+{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
+  - componentstatuses
+{% endif %}
+  verbs:
+  - get
+  - list
+  - watch
+{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+{% endif %}
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - nodes/status
+  verbs:
+  - patch
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - cilium.io
+  resources:
+  - ciliumnetworkpolicies
+  - ciliumnetworkpolicies/status
+{% if cilium_version | regex_replace('v') is version('1.7', '>=') %}
+  - ciliumclusterwidenetworkpolicies
+  - ciliumclusterwidenetworkpolicies/status
+{% endif %}
+  - ciliumendpoints
+  - ciliumendpoints/status
+{% if cilium_version | regex_replace('v') is version('1.6', '>=') %}
+  - ciliumnodes
+  - ciliumnodes/status
+  - ciliumidentities
+  - ciliumidentities/status
+{% endif %}
+  verbs:
+  - '*'

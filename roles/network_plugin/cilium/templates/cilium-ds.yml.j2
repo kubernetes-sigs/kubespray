@@ -3,14 +3,12 @@ kind: DaemonSet
 metadata:
   labels:
     k8s-app: cilium
-    kubernetes.io/cluster-service: "true"
   name: cilium
   namespace: kube-system
 spec:
   selector:
     matchLabels:
       k8s-app: cilium
-      kubernetes.io/cluster-service: "true"
   template:
     metadata:
       annotations:
@@ -18,15 +16,9 @@ spec:
         prometheus.io/port: "9090"
         prometheus.io/scrape: "true"
 {% endif %}
-        # This annotation plus the CriticalAddonsOnly toleration makes
-        # cilium to be a critical pod in the cluster, which ensures cilium
-        # gets priority scheduling.
-        # https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
-        scheduler.alpha.kubernetes.io/critical-pod: ""
         scheduler.alpha.kubernetes.io/tolerations: '[{"key":"dedicated","operator":"Equal","value":"master","effect":"NoSchedule"}]'
       labels:
         k8s-app: cilium
-        kubernetes.io/cluster-service: "true"
     spec:
       containers:
       - args:
@@ -49,7 +41,7 @@ spec:
         - name: CILIUM_CLUSTERMESH_CONFIG
           value: /var/lib/cilium/clustermesh/
         image: "{{cilium_image_repo}}:{{cilium_image_tag}}"
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         resources:
           limits:
             cpu: {{ cilium_cpu_limit }}
@@ -165,7 +157,7 @@ spec:
               name: cilium-config
               optional: true
         image: "{{cilium_init_image_repo}}:{{cilium_init_image_tag}}"
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         name: clean-cilium-state
         securityContext:
           capabilities:

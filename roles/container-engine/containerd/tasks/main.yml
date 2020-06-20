@@ -1,9 +1,19 @@
 ---
+- name: check if fedora coreos
+  stat:
+    path: /run/ostree-booted
+  register: ostree
+
+- name: set is_ostree
+  set_fact:
+    is_ostree: "{{ ostree.stat.exists }}"
+
+
 - name: Fail containerd setup if distribution is not supported
   fail:
     msg: "{{ ansible_distribution }} is not supported by containerd."
   when:
-    - not ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian"]
+    - not ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian", "Fedora"]
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -24,7 +34,35 @@
   tags:
     - facts
 
+- name: disable unified_cgroup_hierarchy in Fedora 31+
+  shell:
+    cmd: grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=0"
+  when:
+    - ansible_distribution == "Fedora"
+    - (ansible_distribution_major_version | int) >= 31
+    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
+
+- name: reboot in Fedora 31+
+  reboot:
+  when:
+    - ansible_distribution == "Fedora"
+    - (ansible_distribution_major_version | int) >= 31
+    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
+
 - include_tasks: containerd_repo.yml
+  when: not is_ostree
+
+- name: Create containerd service systemd directory if it doesn't exist
+  file:
+    path: /etc/systemd/system/containerd.service.d
+    state: directory
+
+- name: Write containerd proxy drop-in
+  template:
+    src: http-proxy.conf.j2
+    dest: /etc/systemd/system/containerd.service.d/http-proxy.conf
+  notify: restart containerd
+  when: http_proxy is defined or https_proxy is defined
 
 - name: ensure containerd config directory
   file:
@@ -51,7 +89,7 @@
     mode: 0644
   when:
     - ansible_os_family in ['Ubuntu', 'Debian']
-    - not is_atomic
+    - not is_ostree
 
 - name: ensure containerd packages are installed
   action: "{{ containerd_package_info.pkg_mgr }}"
@@ -68,7 +106,7 @@
   with_items: "{{ containerd_package_info.pkgs }}"
   notify: restart containerd
   when:
-    - not is_atomic
+    - not is_ostree
     - containerd_package_info.pkgs|length > 0
   ignore_errors: true
 
@@ -89,7 +127,7 @@
   delay: "{{ retry_stagger | d(3) }}"
   notify: restart containerd
   when:
-    - not is_atomic
+    - not is_ostree
     - not runc_stat.stat.exists
 
 - include_tasks: crictl.yml

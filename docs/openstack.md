@@ -1,7 +1,10 @@
 OpenStack
-===============
+=========
 
-To deploy kubespray on [OpenStack](https://www.openstack.org/) uncomment the `cloud_provider` option in `group_vars/all.yml` and set it to `'openstack'`.
+The in-tree cloud provider
+--------------------------
+
+To deploy Kubespray on [OpenStack](https://www.openstack.org/) uncomment the `cloud_provider` option in `group_vars/all/all.yml` and set it to `openstack`.
 
 After that make sure to source in your OpenStack credentials like you would do when using `nova-client` or `neutron-client` by using `source path/to/your/openstack-rc` or `. path/to/your/openstack-rc`.
 
@@ -51,7 +54,7 @@ Given the port ids on the left, you can set the two `allowed-address`(es) in Ope
   openstack port set e5ae2045-a1e1-4e99-9aac-4353889449a7 --allowed-address ip-address=10.233.0.0/18 --allowed-address ip-address=10.233.64.0/18
   ```
 
-If all the VMs in the tenant correspond to kubespray deployment, you can "sweep run" above with:
+If all the VMs in the tenant correspond to Kubespray deployment, you can "sweep run" above with:
 
   ```bash
   openstack port list --device-owner=compute:nova -c ID -f value | xargs -tI@ openstack port set @ --allowed-address ip-address=10.233.0.0/18 --allowed-address ip-address=10.233.64.0/18
@@ -59,21 +62,21 @@ If all the VMs in the tenant correspond to kubespray deployment, you can "sweep 
 
 Now you can finally run the playbook.
 
-Upgrade from the in-tree to the external cloud provider
----------------
+The external cloud provider
+---------------------------
 
-The in-tree cloud provider is deprecated and will be removed in a future version of Kubernetes. The target release for removing all remaining in-tree cloud providers is set to 1.21
+The in-tree cloud provider is deprecated and will be removed in a future version of Kubernetes. The target release for removing all remaining in-tree cloud providers is set to 1.21.
 
 The new cloud provider is configured to have Octavia by default in Kubespray.
 
-- Change cloud provider from `cloud_provider: openstack` to the new external Cloud provider:
+- Enable the new external cloud provider in `group_vars/all/all.yml`:
 
   ```yaml
   cloud_provider: external
   external_cloud_provider: openstack
   ```
 
-- Enable Cinder CSI:
+- Enable Cinder CSI in `group_vars/all/openstack.yml`:
 
   ```yaml
   cinder_csi_enabled: true
@@ -105,6 +108,5 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
   - ""
   ```
 
-- Run the `upgrade-cluster.yml` playbook
-- Run the cleanup playbook located under extra_playbooks `extra_playbooks/migrate_openstack_provider.yml` (this will clean up all resources used by the old cloud provider)
-- You can remove the feature gates for Volume migration. If you want to enable the possibility to expand CSI volumes you could leave the `ExpandCSIVolumes=true` feature gate
+- Run `source path/to/your/openstack-rc` to read your OpenStack credentials like `OS_AUTH_URL`, `OS_USERNAME`, `OS_PASSWORD`, etc. Those variables are used for accessing OpenStack from the external cloud provider.
+- Run the `cluster.yml` playbook

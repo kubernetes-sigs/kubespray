@@ -124,7 +124,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.8.6
   - [calico](https://github.com/projectcalico/calico) v3.14.1
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-  - [cilium](https://github.com/cilium/cilium) v1.7.4
+  - [cilium](https://github.com/cilium/cilium) v1.8.0
   - [contiv](https://github.com/contiv/install) v1.2.1
   - [flanneld](https://github.com/coreos/flannel) v0.12.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.2.0

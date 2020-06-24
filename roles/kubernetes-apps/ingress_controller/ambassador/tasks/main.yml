@@ -1,0 +1,72 @@
+---
+
+- name: Ambassador | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/ambassador"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Ambassador | Templates list
+  set_fact:
+    ingress_ambassador_templates:
+      - { name: 00-namespace, file: 00-namespace.yml, type: ns }
+      - { name: crd-ambassador-installation, file: crd-ambassador-installation.yml, type: customresourcedefinition }
+      - { name: sa-ambassador, file: sa-ambassador.yml, type: sa }
+      - { name: clusterrole-ambassador, file: clusterrole-ambassador.yml, type: clusterrole }
+      - { name: clusterrolebinding-ambassador, file: clusterrolebinding-ambassador.yml, type: clusterrolebinding }
+      - { name: role-ambassador, file: role-ambassador.yml, type: role }
+      - { name: rolebinding-ambassador, file: rolebinding-ambassador.yml, type: rolebinding }
+      - { name: deploy-ambassador, file: deploy-ambassador.yml, type: deploy }
+
+- name: Ambassador | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/ambassador/{{ item.file }}"
+  loop: "{{ ingress_ambassador_templates }}"
+  register: ingress_ambassador_manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Ambassador | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ ingress_ambassador_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/ambassador/{{ item.item.file }}"
+    state: "latest"
+  loop: "{{ ingress_ambassador_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+# load the AmbassadorInstallation _after_ the CustomResourceDefinition has been loaded
+
+- name: Ambassador | AmbassadorInstallation template
+  set_fact:
+    ingress_ambassador_cr_templates:
+      - { name: cr-ambassador-installation, file: cr-ambassador-installation.yml, type: cr }
+
+- name: Ambassador | Create installation manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/ambassador/{{ item.file }}"
+  loop: "{{ ingress_ambassador_cr_templates }}"
+  register: ingress_ambassador_cr_manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Ambassador | Apply AmbassadorInstallation
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ ingress_ambassador_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/ambassador/{{ item.item.file }}"
+    state: "latest"
+  loop: "{{ ingress_ambassador_cr_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]

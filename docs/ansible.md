@@ -138,6 +138,7 @@ The following tags are defined in playbooks:
 |                   upload | Distributing images/binaries across hosts
 |                    weave | Network plugin Weave
 |              ingress_alb | AWS ALB Ingress Controller
+|              ambassador  | Ambassador Ingress Controller
 
 Note: Use the ``bash scripts/gen_tags.sh`` command to generate a list of all
 tags found in the codebase. New tags will be listed with the empty "Used for"

@@ -30,14 +30,6 @@ if [[ "$CI_JOB_NAME" =~ "coreos" ]]; then
   mkdir -p /opt/bin && ln -s /usr/bin/python /opt/bin/python
 fi
 
-if [[ "$CI_JOB_NAME" =~ "opensuse" ]]; then
-  # OpenSUSE needs netconfig update to get correct resolv.conf
-  # See https://goinggnu.wordpress.com/2013/10/14/how-to-fix-the-dns-in-opensuse-13-1/
-  ansible all -m raw -a 'netconfig update -f'
-  # Auto import repo keys
-  ansible all -m raw -a 'zypper --gpg-auto-import-keys refresh'
-fi
-
 # Check out latest tag if testing upgrade
 test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY_VERSION"
 # Checkout the CI vars file so it is available

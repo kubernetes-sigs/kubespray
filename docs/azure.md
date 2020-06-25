@@ -13,6 +13,13 @@ Before creating the instances you must first set the `azure_` variables in the `
 All of the values can be retrieved using the azure cli tool which can be downloaded here: <https://docs.microsoft.com/en-gb/azure/xplat-cli-install>
 After installation you have to run `az login` to get access to your account.
 
+### azure_cloud
+
+Azure Stack has different API endpoints, depending on the Azure Stack deployment. These need to be provided to the Azure SDK.
+Possible values are: `AzureChinaCloud`, `AzureGermanCloud`, `AzurePublicCloud` and `AzureUSGovernmentCloud`.
+The full list of existing settings for the AzureChinaCloud, AzureGermanCloud, AzurePublicCloud and AzureUSGovernmentCloud
+is available in the source code [here](https://github.com/kubernetes-sigs/cloud-provider-azure/blob/master/docs/cloud-provider-config.md)
+
 ### azure\_tenant\_id + azure\_subscription\_id
 
 run `az account show` to retrieve your subscription id and tenant id:

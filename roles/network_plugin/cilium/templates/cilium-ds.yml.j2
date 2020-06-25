@@ -59,11 +59,14 @@ spec:
               command:
               - /cni-uninstall.sh
         livenessProbe:
-          exec:
-            command:
-            - cilium
-            - status
-            - --brief
+          httpGet:
+            host: '127.0.0.1'
+            path: /healthz
+            port: 9876
+            scheme: HTTP
+            httpHeaders:
+            - name: "brief"
+              value: "true"
           failureThreshold: 10
           # The initial delay for the liveness probe is intentionally large to
           # avoid an endless kill & restart cycle if in the event that the initial
@@ -81,11 +84,14 @@ spec:
           protocol: TCP
 {% endif %}
         readinessProbe:
-          exec:
-            command:
-            - cilium
-            - status
-            - --brief
+          httpGet:
+            host: '127.0.0.1'
+            path: /healthz
+            port: 9876
+            scheme: HTTP
+            httpHeaders:
+            - name: "brief"
+              value: "true"
           failureThreshold: 3
           initialDelaySeconds: 5
           periodSeconds: 30
@@ -131,6 +137,8 @@ spec:
         - mountPath: /lib/modules
           name: lib-modules
           readOnly: true
+        - mountPath: /run/xtables.lock
+          name: xtables-lock
       dnsPolicy: ClusterFirstWithHostNet
       hostNetwork: true
       hostPID: false
@@ -138,7 +146,7 @@ spec:
       - command:
         - /init-container.sh
         env:
-        - name: CLEAN_CILIUM_STATE
+        - name: CILIUM_ALL_STATE
           valueFrom:
             configMapKeyRef:
               key: clean-cilium-state
@@ -214,6 +222,11 @@ spec:
       - hostPath:
           path: /lib/modules
         name: lib-modules
+        # To access iptables concurrently with other processes (e.g. kube-proxy)
+      - hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
+        name: xtables-lock
         # To read the etcd config stored in config maps
       - configMap:
           defaultMode: 420

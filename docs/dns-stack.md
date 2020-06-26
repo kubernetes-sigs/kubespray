@@ -40,8 +40,6 @@ is not set, a default resolver is chosen (depending on cloud provider or 8.8.8.8
 DNS servers to be added *after* the cluster DNS. Used by all ``resolvconf_mode`` modes. These serve as backup
 DNS servers in early cluster deployment when no cluster DNS is available yet.
 
-## DNS modes supported by Kubespray
-
 ### coredns_external_zones
 
 Array of optional external zones to coredns forward queries to. It's  injected into
@@ -69,8 +67,22 @@ coredns_external_zones:
 or as INI
 
 ```ini
-coredns_external_zones=[{"cache": 30,"zones":["example.com","example.io:453"],"nameservers":["1.1.1.1","2.2.2.2"]}]'
+coredns_external_zones='[{"cache": 30,"zones":["example.com","example.io:453"],"nameservers":["1.1.1.1","2.2.2.2"]}]'
 ```
+
+### dns_etchosts (coredns)
+
+Optional hosts file content to coredns use as /etc/hosts file. This will also be used by nodelocaldns, if enabled.
+
+Example:
+
+```yaml
+dns_etchosts: |
+  192.168.0.100 api.example.com
+  192.168.0.200 ingress.example.com
+```
+
+## DNS modes supported by Kubespray
 
 You can modify how Kubespray sets up DNS for your cluster with the variables ``dns_mode`` and ``resolvconf_mode``.
 
@@ -181,6 +193,10 @@ nodelocaldns_external_zones:
   nameservers:
   - 192.168.0.53
 ```
+
+### dns_etchosts (nodelocaldns)
+
+See [dns_etchosts](#dns_etchosts-coredns) above.
 
 ## Limitations
 

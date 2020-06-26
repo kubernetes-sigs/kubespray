@@ -41,6 +41,7 @@ from ruamel.yaml import YAML
 
 import os
 import re
+import subprocess
 import sys
 
 ROLES = ['all', 'kube-master', 'kube-node', 'etcd', 'k8s-cluster',
@@ -69,6 +70,7 @@ MASSIVE_SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 200))
 
 DEBUG = get_var_as_bool("DEBUG", True)
 HOST_PREFIX = os.environ.get("HOST_PREFIX", "node")
+USE_REAL_HOSTNAME = get_var_as_bool("USE_REAL_HOSTNAME", False)
 
 # Configurable as shell vars end
 
@@ -167,6 +169,7 @@ class KubesprayInventory(object):
 
         # FIXME(mattymo): Fix condition where delete then add reuses highest id
         next_host_id = highest_host_id + 1
+        next_host = ""
 
         all_hosts = existing_hosts.copy()
         for host in changed_hosts:
@@ -191,8 +194,14 @@ class KubesprayInventory(object):
                     self.debug("Skipping existing host {0}.".format(ip))
                     continue
 
-                next_host = "{0}{1}".format(HOST_PREFIX, next_host_id)
-                next_host_id += 1
+                if USE_REAL_HOSTNAME:
+                    cmd = ("ssh -oStrictHostKeyChecking=no "
+                           + access_ip + " 'hostname -s'")
+                    next_host = subprocess.check_output(cmd, shell=True)
+                    next_host = next_host.strip().decode('ascii')
+                else:
+                    next_host = "{0}{1}".format(HOST_PREFIX, next_host_id)
+                    next_host_id += 1
                 all_hosts[next_host] = {'ansible_host': access_ip,
                                         'ip': ip,
                                         'access_ip': access_ip}

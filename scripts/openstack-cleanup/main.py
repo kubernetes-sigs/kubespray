@@ -11,7 +11,7 @@ PAUSE_SECONDS = 5
 
 log = logging.getLogger('openstack-cleanup')
 
-parser = argparse.ArgumentParser(description='Cleanup OpenStack VMs')
+parser = argparse.ArgumentParser(description='Cleanup OpenStack resources')
 
 parser.add_argument('-v', '--verbose', action='store_true',
                     help='Increase verbosity')
@@ -29,16 +29,44 @@ def main():
     if args.dry_run:
         print('Running in dry-run mode')
     else:
-        print('This will delete VMs... (ctrl+c to cancel)')
+        print('This will delete resources... (ctrl+c to cancel)')
         time.sleep(PAUSE_SECONDS)
 
     conn = openstack.connect()
-    for server in conn.compute.servers():
-        created_at = datetime.datetime.strptime(server.created_at, DATE_FORMAT)
-        if created_at < oldest_allowed:
-            print('Will delete server %(name)s' % server)
-            if not args.dry_run:
-                conn.compute.delete_server(server)
+
+    print('Security groups...')
+    map_if_old(conn.network.delete_security_group,
+               conn.network.security_groups())
+
+    print('Servers...')
+    map_if_old(conn.compute.delete_server,
+               conn.compute.servers())
+
+    print('Subnets...')
+    map_if_old(conn.network.delete_subnet,
+               conn.network.subnets())
+
+    print('Networks...')
+    for n in conn.network.networks():
+        if not n.is_router_external:
+            fn_if_old(conn.network.delete_network, n)
+
+
+# runs the given fn to all elements of the that are older than allowed
+def map_if_old(fn, items):
+    for item in items:
+        fn_if_old(fn, item)
+
+
+# run the given fn function only if the passed item is older than allowed
+def fn_if_old(fn, item):
+    created_at = datetime.datetime.strptime(item.created_at, DATE_FORMAT)
+    if item.name == "default":  # skip default security group
+        return
+    if created_at < oldest_allowed:
+        print('Will delete %(name)s (%(id)s)' % item)
+        if not args.dry_run:
+            fn(item)
 
 
 if __name__ == '__main__':

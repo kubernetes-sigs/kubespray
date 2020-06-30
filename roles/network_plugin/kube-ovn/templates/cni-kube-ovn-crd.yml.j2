@@ -1,10 +1,62 @@
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: ips.kubeovn.io
 spec:
   group: kubeovn.io
-  version: v1
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      additionalPrinterColumns:
+      - name: Provider
+        type: string
+        jsonPath: .spec.provider
+      - name: IP
+        type: string
+        jsonPath: .spec.ipAddress
+      - name: Mac
+        type: string
+        jsonPath: .spec.macAddress
+      - name: Node
+        type: string
+        jsonPath: .spec.nodeName
+      - name: Subnet
+        type: string
+        jsonPath: .spec.subnet
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                podName:
+                  type: string
+                namespace:
+                  type: string
+                subnet:
+                  type: string
+                attachSubnets:
+                  type: array
+                  items:
+                    type: string
+                nodeName:
+                  type: string
+                ipAddress:
+                  type: string
+                attachIps:
+                  type: array
+                  items:
+                    type: string
+                macAddress:
+                  type: string
+                attachMacs:
+                  type: array
+                  items:
+                    type: string
+                containerID:
+                  type: string
   scope: Cluster
   names:
     plural: ips
@@ -12,27 +64,111 @@ spec:
     kind: IP
     shortNames:
       - ip
-  additionalPrinterColumns:
-    - name: IP
-      type: string
-      JSONPath: .spec.ipAddress
-    - name: Mac
-      type: string
-      JSONPath: .spec.macAddress
-    - name: Node
-      type: string
-      JSONPath: .spec.nodeName
-    - name: Subnet
-      type: string
-      JSONPath: .spec.subnet
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: subnets.kubeovn.io
 spec:
   group: kubeovn.io
-  version: v1
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+      - name: Protocol
+        type: string
+        jsonPath: .spec.protocol
+      - name: CIDR
+        type: string
+        jsonPath: .spec.cidrBlock
+      - name: Private
+        type: boolean
+        jsonPath: .spec.private
+      - name: NAT
+        type: boolean
+        jsonPath: .spec.natOutgoing
+      - name: Default
+        type: boolean
+        jsonPath: .spec.default
+      - name: GatewayType
+        type: string
+        jsonPath: .spec.gatewayType
+      - name: Used
+        type: number
+        jsonPath: .status.usingIPs
+      - name: Available
+        type: number
+        jsonPath: .status.availableIPs
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            status:
+              type: object
+              properties:
+                availableIPs:
+                  type: number
+                usingIPs:
+                  type: number
+                activateGateway:
+                  type: string
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      reason:
+                        type: string
+                      message:
+                        type: string
+                      lastUpdateTime:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+            spec:
+              type: object
+              properties:
+                default:
+                  type: boolean
+                protocol:
+                  type: string
+                cidrBlock:
+                  type: string
+                namespaces:
+                  type: array
+                  items:
+                    type: string
+                gateway:
+                  type: string
+                provider:
+                  type: string
+                excludeIps:
+                  type: array
+                  items:
+                    type: string
+                gatewayType:
+                  type: string
+                allowSubnets:
+                  type: array
+                  items:
+                    type: string
+                gatewayNode:
+                  type: string
+                natOutgoing:
+                  type: boolean
+                private:
+                  type: boolean
+                vlan:
+                  type: string
+                underlayGateway:
+                  type: boolean
   scope: Cluster
   names:
     plural: subnets
@@ -40,54 +176,42 @@ spec:
     kind: Subnet
     shortNames:
       - subnet
-  subresources:
-    status: {}
-  additionalPrinterColumns:
-    - name: Provider
-      type: string
-      JSONPath: .spec.provider
-    - name: Protocol
-      type: string
-      JSONPath: .spec.protocol
-    - name: CIDR
-      type: string
-      JSONPath: .spec.cidrBlock
-    - name: Private
-      type: boolean
-      JSONPath: .spec.private
-    - name: NAT
-      type: boolean
-      JSONPath: .spec.natOutgoing
-    - name: Default
-      type: boolean
-      JSONPath: .spec.default
-    - name: GatewayType
-      type: string
-      JSONPath: .spec.gatewayType
-    - name: Used
-      type: number
-      JSONPath: .status.usingIPs
-    - name: Available
-      type: number
-      JSONPath: .status.availableIPs
-  validation:
-    openAPIV3Schema:
-      properties:
-        spec:
-          required: ["cidrBlock"]
-          properties:
-            cidrBlock:
-              type: "string"
-            gateway:
-              type: "string"
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: vlans.kubeovn.io
 spec:
   group: kubeovn.io
-  version: v1
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                vlanId:
+                  type: integer
+                providerInterfaceName:
+                  type: string
+                logicalInterfaceName:
+                  type: string
+                subnet:
+                  type: string
+      additionalPrinterColumns:
+      - name: VlanID
+        type: string
+        jsonPath: .spec.vlanId
+      - name: ProviderInterfaceName
+        type: string
+        jsonPath: .spec.providerInterfaceName
+      - name: Subnet
+        type: string
+        jsonPath: .spec.subnet
   scope: Cluster
   names:
     plural: vlans
@@ -95,13 +219,3 @@ spec:
     kind: Vlan
     shortNames:
       - vlan
-  additionalPrinterColumns:
-    - name: VlanID
-      type: string
-      JSONPath: .spec.vlanId
-    - name: ProviderInterfaceName
-      type: string
-      JSONPath: .spec.providerInterfaceName
-    - name: Subnet
-      type: string
-      JSONPath: .spec.subnet

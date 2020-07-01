@@ -108,5 +108,11 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
   - ""
   ```
 
+- You can override the default OpenStack metadata configuration (see [#6338](https://github.com/kubernetes-sigs/kubespray/issues/6338) for explanation):
+  
+  ```yaml
+  external_openstack_metadata_search_order: "configDrive,metadataService"
+  ```
+
 - Run `source path/to/your/openstack-rc` to read your OpenStack credentials like `OS_AUTH_URL`, `OS_USERNAME`, `OS_PASSWORD`, etc. Those variables are used for accessing OpenStack from the external cloud provider.
 - Run the `cluster.yml` playbook

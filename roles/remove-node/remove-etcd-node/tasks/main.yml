@@ -1,4 +1,16 @@
 ---
+- name: Lookup node IP in kubernetes
+  shell: >-
+    {{ bin_dir }}/kubectl get nodes {{ node }}
+    -o jsonpath='{range.status.addresses[?(@.type=="InternalIP")]}{.address}{"\n"}{end}'
+  register: remove_node_ip
+  when:
+    - inventory_hostname in groups['etcd']
+    - ip is not defined
+    - access_ip is not defined
+  delegate_to: "{{ groups['etcd']|first }}"
+  failed_when: false
+
 - name: Set node IP
   set_fact:
     node_ip: "{{ ip | default(access_ip | default(remove_node_ip.stdout)) | trim }}"

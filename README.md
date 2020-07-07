@@ -132,6 +132,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [multus](https://github.com/intel/multus-cni) v3.4.2
   - [weave](https://github.com/weaveworks/weave) v2.6.5
 - Application
+  - [ambassador](https://github.com/datawire/ambassador): v1.5
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v0.11.1
@@ -196,6 +197,12 @@ You can choose between 10 network plugins. (default: `calico`, except Vagrant us
 The choice is defined with the variable `kube_network_plugin`. There is also an
 option to leverage built-in cloud provider networking instead.
 See also [Network checker](docs/netcheck.md).
+
+## Ingress Plugins
+
+- [ambassador](docs/ambassador.md): the Ambassador Ingress Controller and API gateway.
+
+- [nginx](https://kubernetes.github.io/ingress-nginx): the NGINX Ingress Controller.
 
 ## Community docs and resources
 

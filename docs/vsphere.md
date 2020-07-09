@@ -71,7 +71,7 @@ You'll find some useful examples [here](https://github.com/kubernetes/cloud-prov
 
 ### Prerequisites (deprecated)
 
-You need at first to configure your vSphere environment by following the [official documentation](https://kubernetes.io/docs/getting-started-guides/vsphere/#vsphere-cloud-provider).
+You need at first to configure your vSphere environment by following the [documentation](https://github.com/kubernetes/cloud-provider-vsphere/blob/master/docs/book/tutorials/kubernetes-on-vsphere-with-kubeadm.md).
 
 After this step you should have:
 

@@ -1,11 +1,13 @@
 ---
 - name: Join Member | Add member to etcd cluster
-  shell: "{{ bin_dir }}/etcdctl --endpoints={{ etcd_access_addresses }} member add {{ etcd_member_name }} {{ etcd_peer_url }}"
+  shell: "{{ bin_dir }}/etcdctl member add {{ etcd_member_name }} {{ etcd_peer_url }}"
   register: member_add_result
   until: member_add_result.rc == 0
   retries: "{{ etcd_retries }}"
   delay: "{{ retry_stagger | random + 3 }}"
   environment:
+    ETCDCTL_API: 2
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
     ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
     ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
     ETCDCTL_CA_FILE: "{{ etcd_cert_dir }}/ca.pem"
@@ -23,13 +25,15 @@
       {%- endfor -%}
 
 - name: Join Member | Ensure member is in etcd cluster
-  shell: "{{ bin_dir }}/etcdctl --no-sync --endpoints={{ etcd_access_addresses }} member list | grep -q {{ etcd_access_address }}"
+  shell: "{{ bin_dir }}/etcdctl --no-sync member list | grep -q {{ etcd_access_address }}"
   register: etcd_member_in_cluster
   changed_when: false
   check_mode: no
   tags:
     - facts
   environment:
+    ETCDCTL_API: 2
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
     ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
     ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
     ETCDCTL_CA_FILE: "{{ etcd_cert_dir }}/ca.pem"

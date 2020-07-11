@@ -10,7 +10,11 @@ Integration with other PKI/Certificate management solutions, such as HashiCorp V
 
 If you're planning to secure your ingress resources using TLS client certificates, you'll need to create and deploy the Kubernetes `ca-key-pair` secret consisting of the Root CA certificate and key to your K8s cluster.
 
+<<<<<<< HEAD
 If these are already available, simply update `templates\secret-cert-manager.yml.j2` with the base64 encoded values of your TLS Root CA certificate and key prior to enabling and deploying cert-manager.
+=======
+If these are already available, simply update `templates\secret-cert-manager.yml.j2` with the base64 encoded values of your TLS Root CA certificate and key prior to enabling and deploying cert-manager. 
+>>>>>>> a9fc15ec... Upgrade JetStack Cert-Manager to v0.15.2
 
 e.g.
 
@@ -88,7 +92,11 @@ $ sudo apt-get install -y golang-cfssl
 
 #### Create Root Certificate Authority (CA) Configuration File
 
+<<<<<<< HEAD
 The default TLS certificate expiry time period is `8760h` which is 5 years from the date the certificate is created.
+=======
+The default TLS certificate expiry time period is `8760h` which is 5 years from the date the certificate is created. 
+>>>>>>> a9fc15ec... Upgrade JetStack Cert-Manager to v0.15.2
 
 ```shell
 $ cat > ca-config.json <<EOF
@@ -164,7 +172,11 @@ Certificate:
                 Certificate Sign, CRL Sign
             X509v3 Basic Constraints: critical
                 CA:TRUE
+<<<<<<< HEAD
             X509v3 Subject Key Identifier:
+=======
+            X509v3 Subject Key Identifier: 
+>>>>>>> a9fc15ec... Upgrade JetStack Cert-Manager to v0.15.2
                 D4:38:B5:E2:26:49:5E:0D:E3:DC:D9:70:73:3B:C4:19:6A:43:4A:F2
                 ...
 ```

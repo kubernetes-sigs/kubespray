@@ -67,10 +67,27 @@
   when:
     - inventory_hostname == groups['kube-master'][0]
 
+<<<<<<< HEAD
 - name: Cert Manager | Wait for Webhook pods become ready
   command: "{{ bin_dir }}/kubectl wait po --namespace={{ cert_manager_namespace }} --selector app=webhook --for=condition=Ready --timeout=600s"
   register: cert_manager_webhook_pods_ready
   when: inventory_hostname == groups['kube-master'][0]
+=======
+- name: Cert Manager | Wait for all Webhook pods become created
+  command: "kubectl get po --namespace={{ cert_manager_namespace }} --output=jsonpath='{.items[*].metadata.name}'"
+  with_items:
+    - cert-manager-webhook
+  register: cert_manager_webhook_pods_created
+  until: item in cert_manager_webhook_pods_created.stdout
+  when: inventory_hostname == groups['kube-master'][0]
+  retries: 10
+  delay: 30
+
+- name: Cert Manager | Wait for Webhook pods become ready
+  shell: "kubectl wait po --namespace={{ cert_manager_namespace }} --selector app=webhook --for=condition=Ready --timeout=600s"
+  register: cert_manager_webhook_pods_ready
+  when: inventory_hostname == groups['kube-master'][0] and cert_manager_webhook_pods_created is succeeded
+>>>>>>> a9fc15ec... Upgrade JetStack Cert-Manager to v0.15.2
 
 - name: Cert Manager | Create ClusterIssuer manifest
   template:

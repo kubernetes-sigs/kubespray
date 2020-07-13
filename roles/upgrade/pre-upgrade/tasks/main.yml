@@ -3,7 +3,7 @@
 # Node NotReady: type = ready, status = Unknown
 - name: See if node is in ready state
   shell: >-
-    {{ bin_dir }}/kubectl get node {{ inventory_hostname }}
+    {{ bin_dir }}/kubectl get node {{ kube_override_hostname|default(inventory_hostname) }}
     -o jsonpath='{ range .status.conditions[?(@.type == "Ready")].status }{ @ }{ end }'
   register: kubectl_node_ready
   delegate_to: "{{ groups['kube-master'][0] }}"
@@ -14,7 +14,7 @@
 # else unschedulable key doesn't exist
 - name: See if node is schedulable
   shell: >-
-    {{ bin_dir }}/kubectl get node {{ inventory_hostname }}
+    {{ bin_dir }}/kubectl get node {{ kube_override_hostname|default(inventory_hostname) }}
     -o jsonpath='{ .spec.unschedulable }'
   register: kubectl_node_schedulable
   delegate_to: "{{ groups['kube-master'][0] }}"
@@ -31,7 +31,7 @@
       {%- endif %}
 
 - name: Cordon node
-  command: "{{ bin_dir }}/kubectl cordon {{ inventory_hostname }}"
+  command: "{{ bin_dir }}/kubectl cordon {{ kube_override_hostname|default(inventory_hostname) }}"
   delegate_to: "{{ groups['kube-master'][0] }}"
   when: needs_cordoning
 
@@ -61,7 +61,7 @@
     --ignore-daemonsets
     --grace-period {{ drain_grace_period }}
     --timeout {{ drain_timeout }}
-    --delete-local-data {{ inventory_hostname }}
+    --delete-local-data {{ kube_override_hostname|default(inventory_hostname) }}
     {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
   delegate_to: "{{ groups['kube-master'][0] }}"
   when:

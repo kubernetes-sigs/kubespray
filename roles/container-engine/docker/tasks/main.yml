@@ -142,12 +142,18 @@
     - ansible_distribution in ["CentOS","RedHat"] and not is_ostree
     - yum_result.results | length == 0
 
+- name: check if docker yum file exists
+  stat:
+    path: "{{ docker_yum_conf }}"
+  register: docker_yum_conf_exists
+  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
+
 - name: Copy yum.conf for editing
   copy:
     src: "{{ yum_conf }}"
     dest: "{{ docker_yum_conf }}"
     remote_src: yes
-  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
+  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree and not docker_yum_conf_exists.stat.exists
 
 - name: Edit copy of yum.conf to set obsoletes=0
   ini_file:
@@ -156,6 +162,8 @@
     option: obsoletes
     value: "0"
     no_extra_spaces: true
+  register: ini_output
+  changed_when: '"OK" not in ini_output.msg'
   when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
 
 - name: ensure docker packages are installed

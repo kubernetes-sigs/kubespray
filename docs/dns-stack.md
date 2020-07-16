@@ -138,6 +138,7 @@ The following dns options are added to the docker daemon
 * attempts:2
 
 These dns options can be overridden by setting a different list:
+
 ```yaml
 docker_dns_options:
 - ndots:{{ ndots }}

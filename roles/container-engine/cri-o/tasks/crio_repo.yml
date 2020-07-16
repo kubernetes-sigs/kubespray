@@ -10,6 +10,10 @@
     url: "https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/{{ crio_kubic_debian_repo_name }}/Release.key"
     state: present
   when: crio_kubic_debian_repo_name is defined
+  register: apt_key_download
+  until: apt_key_download is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | d(3) }}"
 
 - name: Add CRI-O kubic repo
   apt_repository:
@@ -38,15 +42,17 @@
 
 - name: Enable modular repos for CRI-O
   ini_file:
-    path: "/etc/yum.repos.d/{{ item }}.repo"
-    section: "{{ item }}"
+    path: "/etc/yum.repos.d/{{ item.repo }}.repo"
+    section: "{{ item.section }}"
     option: enabled
     value: 1
   become: true
   when: is_ostree
   loop:
-    - "fedora-updates-modular"
-    - "fedora-modular"
+    - repo: "fedora-updates-modular"
+      section: "updates-modular"
+    - repo: "fedora-modular"
+      section: "fedora-modular"
 
 - name: Enable CRI-O module
   command: "dnf -y module enable cri-o:{{ crio_version }}"

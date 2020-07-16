@@ -19,11 +19,11 @@ import unittest
 from collections import OrderedDict
 import sys
 
+from inventory import slice_odict
+
 path = "./contrib/inventory_builder/"
 if path not in sys.path:
     sys.path.append(path)
-
-import inventory  # noqa
 
 
 class TestInventory(unittest.TestCase):
@@ -214,19 +214,18 @@ class TestInventory(unittest.TestCase):
 
     def test_add_host_to_group(self):
         group = 'etcd'
-        host = 'node1'
-        opts = {'ip': '10.90.0.2'}
+        hosts = {'node1': {'ip': '10.90.0.2'}}
 
-        self.inv.add_host_to_group(group, host, opts)
+        self.inv.add_host_to_group(group, hosts)
         self.assertEqual(
-            self.inv.yaml_config['all']['children'][group]['hosts'].get(host),
+            self.inv.yaml_config['all']['children'][group]['hosts'].get('node1'),
             None)
 
     def test_set_kube_master(self):
         group = 'kube-master'
         host = 'node1'
 
-        self.inv.set_kube_master([host])
+        self.inv.set_kube_master({host: None})
         self.assertTrue(
             host in self.inv.yaml_config['all']['children'][group]['hosts'])
 
@@ -254,7 +253,7 @@ class TestInventory(unittest.TestCase):
         group = 'kube-node'
         host = 'node1'
 
-        self.inv.set_kube_node([host])
+        self.inv.set_kube_node({host: None})
         self.assertTrue(
             host in self.inv.yaml_config['all']['children'][group]['hosts'])
 
@@ -262,7 +261,7 @@ class TestInventory(unittest.TestCase):
         group = 'etcd'
         host = 'node1'
 
-        self.inv.set_etcd([host])
+        self.inv.set_etcd({host: None})
         self.assertTrue(
             host in self.inv.yaml_config['all']['children'][group]['hosts'])
 
@@ -274,9 +273,9 @@ class TestInventory(unittest.TestCase):
             hosts["node" + str(hostid)] = ""
 
         self.inv.set_all(hosts)
-        self.inv.set_etcd(list(hosts.keys())[0:3])
-        self.inv.set_kube_master(list(hosts.keys())[0:2])
-        self.inv.set_kube_node(hosts.keys())
+        self.inv.set_etcd(slice_odict(hosts, 0, 3))
+        self.inv.set_kube_master(slice_odict(hosts, 0, 2))
+        self.inv.set_kube_node(hosts)
         for h in range(3):
             self.assertFalse(
                 list(hosts.keys())[h] in
@@ -290,9 +289,9 @@ class TestInventory(unittest.TestCase):
             hosts["node" + str(hostid)] = ""
 
         self.inv.set_all(hosts)
-        self.inv.set_etcd(list(hosts.keys())[0:3])
-        self.inv.set_kube_master(list(hosts.keys())[3:5])
-        self.inv.set_kube_node(hosts.keys())
+        self.inv.set_etcd(slice_odict(hosts, 0, 3))
+        self.inv.set_kube_master(slice_odict(hosts, 3, 5))
+        self.inv.set_kube_node(hosts)
         for h in range(5):
             self.assertFalse(
                 list(hosts.keys())[h] in

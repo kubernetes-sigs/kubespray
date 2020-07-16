@@ -72,7 +72,9 @@ kube_users:
 
 # Choose network plugin (cilium, calico, contiv, weave or flannel. Use cni for generic cni plugin)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
-kube_network_plugin: calico
+kube_network_plugin: weave
+# Set to 0 to disable Network Policy Controller calico/kube-controllers (default is on)
+enable_network_policy: true
 
 # Setting multi_networking to true will install Multus: https://github.com/intel/multus-cni
 kube_network_plugin_multus: false
@@ -84,6 +86,13 @@ kube_service_addresses: 10.233.0.0/18
 # addresses from this range to individual pods.
 # This network must be unused in your network infrastructure!
 kube_pods_subnet: 10.233.64.0/18
+
+# an infrastructure network. It allows nodes to access the pods IPs.
+contiv_networks:
+  - name: contivh1
+    subnet: "10.233.128.0/18"
+    gateway: "10.233.128.1"
+    nw_type: infra
 
 # internal network node size allocation (optional). This is the size allocated
 # to each node on your network.  With these defaults you should have
@@ -99,7 +108,7 @@ kube_apiserver_insecure_port: 0  # (disabled)
 
 # Kube-proxy proxyMode configuration.
 # Can be ipvs, iptables
-kube_proxy_mode: ipvs
+kube_proxy_mode: iptables
 
 # configure arp_ignore and arp_announce to avoid answering ARP queries from kube-ipvs0 interface
 # must be set to true for MetalLB to work
@@ -137,7 +146,7 @@ dns_mode: coredns
 # manual_dns_server: 10.x.x.x
 # Enable nodelocal dns cache
 enable_nodelocaldns: true
-nodelocaldns_ip: 169.254.25.10
+nodelocaldns_ip: 10.233.0.10
 nodelocaldns_health_port: 9254
 # nodelocaldns_external_zones:
 # - zones:
@@ -161,7 +170,7 @@ enable_coredns_k8s_endpoint_pod_names: false
 # Can be docker_dns, host_resolvconf or none
 resolvconf_mode: docker_dns
 # Deploy netchecker app to verify DNS resolve as an HTTP service
-deploy_netchecker: false
+deploy_netchecker: true
 # Ip address of the kubernetes skydns service
 skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('address') }}"
 skydns_server_secondary: "{{ kube_service_addresses|ipaddr('net')|ipaddr(4)|ipaddr('address') }}"
@@ -204,7 +213,7 @@ kata_containers_enabled: false
 kubelet_deployment_type: host
 helm_deployment_type: host
 
-# Enable kubeadm experimental control plane
+# Enable kubeadm experimental control plane (containerd only)
 kubeadm_control_plane: false
 kubeadm_certificate_key: "{{ lookup('password', credentials_dir + '/kubeadm_certificate_key.creds length=64 chars=hexdigits') | lower }}"
 
@@ -232,7 +241,7 @@ podsecuritypolicy_enabled: false
 # podsecuritypolicy_privileged_spec: {}
 
 # Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
-# kubeconfig_localhost: false
+kubeconfig_localhost: true
 # Download kubectl onto the host that runs Ansible in {{ bin_dir }}
 # kubectl_localhost: false
 

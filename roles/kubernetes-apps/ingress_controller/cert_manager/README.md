@@ -12,7 +12,6 @@ If you're planning to secure your ingress resources using TLS client certificate
 
 <<<<<<< HEAD
 <<<<<<< HEAD
-<<<<<<< HEAD
 If these are already available, simply update `templates\secret-cert-manager.yml.j2` with the base64 encoded values of your TLS Root CA certificate and key prior to enabling and deploying cert-manager.
 =======
 If these are already available, simply update `templates\secret-cert-manager.yml.j2` with the base64 encoded values of your TLS Root CA certificate and key prior to enabling and deploying cert-manager. 
@@ -20,9 +19,6 @@ If these are already available, simply update `templates\secret-cert-manager.yml
 =======
 If these are already available, simply update `templates\secret-cert-manager.yml.j2` with the base64 encoded values of your TLS Root CA certificate and key prior to enabling and deploying cert-manager. 
 >>>>>>> 18217cfc... Upgrade JetStack Cert-Manager to v0.15.2
-=======
-If these are already available, simply update `templates\secret-cert-manager.yml.j2` with the base64 encoded values of your TLS Root CA certificate and key prior to enabling and deploying cert-manager.
->>>>>>> 02b64b26... Upgrade JetStack Cert-Manager to v0.15.2
 
 e.g.
 
@@ -102,7 +98,6 @@ $ sudo apt-get install -y golang-cfssl
 
 <<<<<<< HEAD
 <<<<<<< HEAD
-<<<<<<< HEAD
 The default TLS certificate expiry time period is `8760h` which is 5 years from the date the certificate is created.
 =======
 The default TLS certificate expiry time period is `8760h` which is 5 years from the date the certificate is created. 
@@ -110,9 +105,6 @@ The default TLS certificate expiry time period is `8760h` which is 5 years from 
 =======
 The default TLS certificate expiry time period is `8760h` which is 5 years from the date the certificate is created. 
 >>>>>>> 18217cfc... Upgrade JetStack Cert-Manager to v0.15.2
-=======
-The default TLS certificate expiry time period is `8760h` which is 5 years from the date the certificate is created.
->>>>>>> 02b64b26... Upgrade JetStack Cert-Manager to v0.15.2
 
 ```shell
 $ cat > ca-config.json <<EOF
@@ -190,7 +182,6 @@ Certificate:
                 CA:TRUE
 <<<<<<< HEAD
 <<<<<<< HEAD
-<<<<<<< HEAD
             X509v3 Subject Key Identifier:
 =======
             X509v3 Subject Key Identifier: 
@@ -198,9 +189,6 @@ Certificate:
 =======
             X509v3 Subject Key Identifier: 
 >>>>>>> 18217cfc... Upgrade JetStack Cert-Manager to v0.15.2
-=======
-            X509v3 Subject Key Identifier:
->>>>>>> 02b64b26... Upgrade JetStack Cert-Manager to v0.15.2
                 D4:38:B5:E2:26:49:5E:0D:E3:DC:D9:70:73:3B:C4:19:6A:43:4A:F2
                 ...
 ```

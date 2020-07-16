@@ -8,6 +8,16 @@ This role will:
   * install the necessary packages to use Ansible's package manager modules
   * set the hostname of the host to `{{ inventory_hostname }}` when requested
 
+## OS Matrix support
+
+| Name     | Version               |
+|:---------|:---------------------:|
+| CentOS   | 7, 8                  |
+| Debian   | Stretch, Buster       |
+| Fedora   | 31, 32                |
+| OpenSUSE | 42                    |
+| Ubuntu   | Xenial, Bionic, Focal |
+
 ## Requirements
 
 A host running an operating system that is supported by Kubespray.

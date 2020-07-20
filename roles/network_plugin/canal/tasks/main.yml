@@ -26,10 +26,10 @@
     - {s: "{{ kube_etcd_cert_file }}", d: "cert.crt"}
     - {s: "{{ kube_etcd_key_file }}", d: "key.pem"}
 
+# Flannel need etcd v2 API
 - name: Canal | Set Flannel etcd configuration
   command: |-
-    {{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses }} \
-    set /{{ cluster_name }}/network/config \
+    {{ bin_dir }}/etcdctl set /{{ cluster_name }}/network/config \
     '{ "Network": "{{ kube_pods_subnet }}", "SubnetLen": {{ kube_network_node_prefix }}, "Backend": { "Type": "{{ flannel_backend_type }}" } }'
   register: output
   retries: 4
@@ -39,8 +39,11 @@
   changed_when: false
   run_once: true
   environment:
+    ETCDCTL_API: 2
+    ETCDCTL_CA_FILE: "{{ etcd_cert_dir }}/ca.pem"
     ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}.pem"
     ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
 
 - name: Canal | Create canal node manifests
   template:

@@ -1,11 +1,11 @@
-# Kubernetes on Openstack with Terraform
+# Kubernetes on OpenStack with Terraform
 
 Provision a Kubernetes cluster with [Terraform](https://www.terraform.io) on
-Openstack.
+OpenStack.
 
 ## Status
 
-This will install a Kubernetes cluster on an Openstack Cloud. It should work on
+This will install a Kubernetes cluster on an OpenStack Cloud. It should work on
 most modern installs of OpenStack that support the basic services.
 
 ### Known compatible public clouds

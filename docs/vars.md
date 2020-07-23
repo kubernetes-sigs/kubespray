@@ -128,6 +128,11 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   to match Docker configuration.
 * *kubelet_rotate_certificates* - Auto rotate the kubelet client certificates by requesting new certificates
   from the kube-apiserver when the certificate expiration approaches.
+* *kubelet_rotate_server_certificates* - Auto rotate the kubelet server certificates by requesting new certificates
+  from the kube-apiserver when the certificate expiration approaches.
+  **Note** that server certificates are **not** approved automatically. Approve them manually
+  (`kubectl get csr`, `kubectl certificate approve`) or implement custom approving controller like
+  [kubelet-rubber-stamp](https://github.com/kontena/kubelet-rubber-stamp).
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
   *node_labels* can be defined either as a dict or a comma-separated labels string:

@@ -17,6 +17,8 @@
   * [Kube Router](docs/kube-router.md)
   * [Weave](docs/weave.md)
   * [Multus](docs/multus.md)
+* Ingress
+  * [Ambassador](docs/ambassador.md)
 * [Cloud providers](docs/cloud.md)
   * [AWS](docs/aws.md)
   * [Azure](docs/azure.md)
@@ -26,7 +28,7 @@
 * Operating Systems
   * [Debian](docs/debian.md)
   * [Coreos](docs/coreos.md)
-  * [Fedora CoreOS](docs/fcos.md)  
+  * [Fedora CoreOS](docs/fcos.md)
   * [OpenSUSE](docs/opensuse.md)
 * Advanced
   * [Proxy](/docs/proxy.md)

@@ -27,7 +27,14 @@ kubeadm_use_hyperkube_image: False
 kube_proxy_mode: ipvs
 
 ## Delete kube-proxy daemonset if kube_proxy_remove set, e.g. kube_network_plugin providing proxy services
-kube_proxy_remove: "{{ (kube_network_plugin == 'kube-router') and (kube_router_run_service_proxy is defined and kube_router_run_service_proxy)| bool }}"
+kube_proxy_remove: >-
+  {%- if kube_network_plugin == 'kube-router' -%}
+  {{ (kube_router_run_service_proxy is defined and kube_router_run_service_proxy)| bool }}
+  {%- elif kube_network_plugin == 'cilium' -%}
+  {{ (cilium_kube_proxy_replacement is defined and cilium_kube_proxy_replacement == 'strict')| bool }}
+  {%- else -%}
+  false
+  {%- endif -%}
 
 # A string slice of values which specify the addresses to use for NodePorts.
 # Values may be valid IP blocks (e.g. 1.2.3.0/24, 1.2.3.4/32).

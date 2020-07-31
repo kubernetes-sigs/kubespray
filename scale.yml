@@ -30,7 +30,7 @@
   gather_facts: false
   roles:
     - { role: kubespray-defaults }
-    - { role: bootstrap-os, tags: bootstrap-os}
+    - { role: bootstrap-os, tags: bootstrap-os }
 
 - name: Gather facts
   tags: always
@@ -46,13 +46,14 @@
 
 - name: Download images to ansible host cache via first kube-master node
   hosts: kube-master[0]
+  gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   roles:
-    - { role: kubespray-defaults, when: "not skip_downloads and download_run_once and not download_localhost"}
+    - { role: kubespray-defaults, when: "not skip_downloads and download_run_once and not download_localhost" }
     - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
     - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
 
-- name: Target only workers to get kubelet installed and checking in on any new nodes
+- name: Target only workers to get kubelet installed and checking in on any new nodes(engine)
   hosts: kube-node
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -62,7 +63,23 @@
     - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
     - { role: download, tags: download, when: "not skip_downloads" }
     - { role: etcd, tags: etcd, etcd_cluster_setup: false, when: "not etcd_kubeadm_enabled|default(false)" }
+  environment: "{{ proxy_env }}"
+
+- name: Target only workers to get kubelet installed and checking in on any new nodes(node)
+  hosts: kube-node
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kubespray-defaults }
     - { role: kubernetes/node, tags: node }
+  environment: "{{ proxy_env }}"
+
+- name: Target only workers to get kubelet installed and checking in on any new nodes(network)
+  hosts: kube-node
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kubespray-defaults }
     - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: network_plugin, tags: network }
     - { role: kubernetes/node-label, tags: node-label }

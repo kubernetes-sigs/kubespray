@@ -142,6 +142,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.2.1
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.0.0
   - [multus](https://github.com/intel/multus-cni) v3.6.0
+  - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.0.0
   - [weave](https://github.com/weaveworks/weave) v2.6.5
 - Application
   - [ambassador](https://github.com/datawire/ambassador): v1.5
@@ -191,6 +192,8 @@ You can choose between 10 network plugins. (default: `calico`, except Vagrant us
 
 - [contiv](docs/contiv.md): supports vlan, vxlan, bgp and Cisco SDN networking. This plugin is able to
     apply firewall policies, segregate containers in multiple network and bridging pods onto physical networks.
+
+- [ovn4nfv](docs/ovn4nfv.md): [ovn4nfv-k8s-plugins](https://github.com/opnfv/ovn4nfv-k8s-plugin) is the network controller, OVS agent and CNI server to offer basic SFC and OVN overlay networking.
 
 - [weave](docs/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster.
     (Please refer to `weave` [troubleshooting documentation](https://www.weave.works/docs/net/latest/troubleshooting/)).

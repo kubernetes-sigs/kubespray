@@ -30,8 +30,8 @@ SUPPORTED_OS = {
   "centos-bento"        => {box: "bento/centos-7.6",           user: "vagrant"},
   "centos8"             => {box: "centos/8",                   user: "vagrant"},
   "centos8-bento"       => {box: "bento/centos-8",             user: "vagrant"},
-  "fedora30"            => {box: "fedora/30-cloud-base",       user: "vagrant"},
   "fedora31"            => {box: "fedora/31-cloud-base",       user: "vagrant"},
+  "fedora32"            => {box: "fedora/32-cloud-base",       user: "vagrant"},
   "opensuse"            => {box: "bento/opensuse-leap-15.1",   user: "vagrant"},
   "opensuse-tumbleweed" => {box: "opensuse/Tumbleweed.x86_64", user: "vagrant"},
   "oraclelinux"         => {box: "generic/oracle7",            user: "vagrant"},
@@ -195,7 +195,7 @@ Vagrant.configure("2") do |config|
       if ["oraclelinux","oraclelinux8"].include? $os
         node.vm.provision "shell", inline: "systemctl stop firewalld; systemctl disable firewalld"
       end
-      
+
       host_vars[vm_name] = {
         "ip": ip,
         "flannel_interface": "eth1",

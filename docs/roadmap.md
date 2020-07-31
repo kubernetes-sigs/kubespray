@@ -13,7 +13,7 @@
 - [ ] Terraform to provision instances on:
   - [ ] GCE
   - [x] AWS (contrib/terraform/aws)
-  - [x] Openstack (contrib/terraform/openstack)
+  - [x] OpenStack (contrib/terraform/openstack)
   - [x] Packet
   - [ ] Digital Ocean
   - [ ] Azure

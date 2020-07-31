@@ -1,6 +1,6 @@
 ---
 - name: Get etcd endpoint health
-  shell: "{{ bin_dir }}/etcdctl endpoint health"
+  command: "{{ bin_dir }}/etcdctl endpoint health"
   register: etcd_endpoint_health
   ignore_errors: true
   changed_when: false
@@ -20,9 +20,10 @@
   when:
     - groups['broken_etcd']
 
+# When there is an error, everything is printed in stderr_lines, even "is healthy" messages.
 - name: Set has_quorum fact
   set_fact:
-    has_quorum: "{{ etcd_endpoint_health.stdout_lines | select('match', '.*is healthy.*') | list | length >= etcd_endpoint_health.stderr_lines | select('match', '.*is unhealthy.*') | list | length }}"
+    has_quorum: "{{ etcd_endpoint_health.stderr_lines | select('match', '.*is healthy.*') | list | length >= etcd_endpoint_health.stderr_lines | select('match', '.*is unhealthy.*') | list | length }}"
 
 - include_tasks: recover_lost_quorum.yml
   when:
@@ -57,7 +58,7 @@
     - "item.rc != 0 and not 'No such file or directory' in item.stderr"
 
 - name: Get etcd cluster members
-  shell: "{{ bin_dir }}/etcdctl member list"
+  command: "{{ bin_dir }}/etcdctl member list"
   register: member_list
   changed_when: false
   check_mode: no
@@ -73,7 +74,7 @@
     - has_quorum
 
 - name: Remove broken cluster members
-  shell: "{{ bin_dir }}/etcdctl member remove {{ item[1].replace(' ','').split(',')[0] }}"
+  command: "{{ bin_dir }}/etcdctl member remove {{ item[1].replace(' ','').split(',')[0] }}"
   environment:
     ETCDCTL_API: 3
     ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"

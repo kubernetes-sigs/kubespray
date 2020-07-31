@@ -15,11 +15,12 @@
       bin_dir: "/usr/local/bin"
     when: not ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
 
-  - name: Create test namespace
+  - name: Create test namespace  # noqa 301 305
     shell: "{{ bin_dir }}/kubectl create namespace test"
 
-  - name: Run 2 busybox pods in test ns
+  - name: Run 2 busybox pods in test ns  # noqa 305
     shell: "{{ bin_dir }}/kubectl run {{ item }} --image={{ test_image_repo }}:{{ test_image_tag }} --namespace test --command -- tail -f /dev/null"
+    changed_when: false
     loop:
     - busybox1
     - busybox2
@@ -27,8 +28,9 @@
   - import_role:
       name: cluster-dump
 
-  - name: Check that all pods are running and ready
+  - name: Check that all pods are running and ready  # noqa 305
     shell: "{{ bin_dir }}/kubectl get pods --namespace test --no-headers -o yaml"
+    changed_when: false
     register: run_pods_log
     until:
     # Check that all pods are running
@@ -40,8 +42,9 @@
     failed_when: false
     no_log: true
 
-  - name: Get pod names
+  - name: Get pod names  # noqa 305
     shell: "{{ bin_dir }}/kubectl get pods -n test -o json"
+    changed_when: false
     register: pods
     no_log: true
 
@@ -52,17 +55,20 @@
   - name: Get hostnet pods
     command: "{{ bin_dir }}/kubectl get pods -n test -o
             jsonpath='{range .items[?(.spec.hostNetwork)]}{.metadata.name} {.status.podIP} {.status.containerStatuses} {end}'"
+    changed_when: false
     register: hostnet_pods
     no_log: true
 
   - name: Get running pods
     command: "{{ bin_dir }}/kubectl get pods -n test -o
             jsonpath='{range .items[?(.status.phase==\"Running\")]}{.metadata.name} {.status.podIP} {.status.containerStatuses} {end}'"
+    changed_when: False
     register: running_pods
     no_log: true
 
-  - name: Check kubectl output
+  - name: Check kubectl output  # noqa 305
     shell: "{{ bin_dir }}/kubectl get pods --all-namespaces -owide"
+    changed_when: False
     register: get_pods
     no_log: true
 
@@ -90,7 +96,7 @@
     with_items: "{{ pod_ips }}"
 
   - name: Ping between pods is working
-    shell: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- ping -c 4 {{ item[1] }}"
+    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- ping -c 4 {{ item[1] }}"
     when:
     - not item[0] in pods_hostnet
     - not item[1] in pods_hostnet
@@ -99,7 +105,7 @@
     - "{{ pod_ips }}"
 
   - name: Ping between hostnet pods is working
-    shell: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- ping -c 4 {{ item[1] }}"
+    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- ping -c 4 {{ item[1] }}"
     when:
     - item[0] in pods_hostnet
     - item[1] in pods_hostnet

@@ -235,6 +235,15 @@ Note that in OpenStack you must allow `ipip` traffic in your security groups,
 otherwise you will experience timeouts.
 To do this you must add a rule which allows it, for example:
 
+### Optional : Felix configuration via extraenvs of calico node
+
+Possible environment variable parameters for [configuring Felix](https://docs.projectcalico.org/reference/felix/configuration)
+
+```yml
+calico_node_extra_envs:
+    FELIX_DEVICEROUTESOURCEADDRESS: 172.17.0.1
+```
+
 ```ShellSession
 neutron  security-group-rule-create  --protocol 4  --direction egress  k8s-a0tp4t
 neutron  security-group-rule-create  --protocol 4  --direction igress  k8s-a0tp4t

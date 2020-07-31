@@ -47,7 +47,7 @@
   when:
     - old_apiserver_cert.stat.exists
 
-- name: kubeadm | Forcefully delete old static pods
+- name: kubeadm | Forcefully delete old static pods  # noqa 306
   shell: "docker ps -f name=k8s_{{ item }} -q | xargs --no-run-if-empty docker rm -f"
   with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   when:
@@ -80,13 +80,19 @@
   file:
     path: "{{ audit_policy_file | dirname }}"
     state: directory
-  when: kubernetes_audit|default(false)
+  when: kubernetes_audit|default(false) or kubernetes_audit_webhook|default(false)
 
 - name: Write api audit policy yaml
   template:
     src: apiserver-audit-policy.yaml.j2
     dest: "{{ audit_policy_file }}"
-  when: kubernetes_audit|default(false)
+  when: kubernetes_audit|default(false) or kubernetes_audit_webhook|default(false)
+
+- name: Write api audit webhook config yaml
+  template:
+    src: apiserver-audit-webhook-config.yaml.j2
+    dest: "{{ audit_webhook_config_file }}"
+  when: kubernetes_audit_webhook|default(false)
 
 # Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
 - name: set kubeadm_config_api_fqdn define

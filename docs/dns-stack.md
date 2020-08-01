@@ -137,6 +137,16 @@ The following dns options are added to the docker daemon
 * timeout:2
 * attempts:2
 
+These dns options can be overridden by setting a different list:
+
+```yaml
+docker_dns_options:
+- ndots:{{ ndots }}
+- timeout:2
+- attempts:2
+- rotate
+```
+
 For normal PODs, k8s will ignore these options and setup its own DNS settings for the PODs, taking
 the --cluster_dns (either coredns or coredns_dual, depending on dns_mode) kubelet option into account.
 For ``hostNetwork: true`` PODs however, k8s will let docker setup DNS settings. Docker containers which

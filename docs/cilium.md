@@ -2,7 +2,7 @@
 
 ## Kube-proxy replacement with Cilium
 
-Ciliium can replace kube-proxy by setting `cilium_kube_proxy_replacement`
+Cilium can run without kube-proxy by setting `cilium_kube_proxy_replacement`
 to `strict`.
 
 Without kube-proxy, cilium needs to know the address of the kube-apiserver

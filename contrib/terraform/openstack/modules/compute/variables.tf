@@ -112,6 +112,10 @@ variable "supplementary_node_groups" {
   default = ""
 }
 
+variable "master_allowed_ports" {
+  type = list
+}
+
 variable "worker_allowed_ports" {
   type = list
 }

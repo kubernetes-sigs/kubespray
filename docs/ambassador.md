@@ -1,7 +1,7 @@
 
 # Ambassador
 
-The Ambassador API Gateway provides all the functionality of a traditional ingress controller
+The [Ambassador API Gateway](https://github.com/datawire/ambassador) provides all the functionality of a traditional ingress controller
 (e.g., path-based routing) while exposing many additional capabilities such as authentication,
 URL rewriting, CORS, rate limiting, and automatic metrics collection.
 
@@ -19,7 +19,8 @@ URL rewriting, CORS, rate limiting, and automatic metrics collection.
 
 ### Ambassador Operator
 
-This Ambassador addon deploys the Ambassador Operator, which in turn will install Ambassador in
+This Ambassador addon deploys the Ambassador Operator, which in turn will install
+the [Ambassador API Gateway](https://github.com/datawire/ambassador) in
 a Kubernetes cluster.
 
 The Ambassador Operator is a Kubernetes Operator that controls Ambassador's complete lifecycle
@@ -32,7 +33,7 @@ versions of Ambassador as they become available.
 The following example creates simple http-echo services and an `Ingress` object
 to route to these services.
 
-Note well that the Ambassador API Gateway will automatically load balance `Ingress` resources
+Note well that the [Ambassador API Gateway](https://github.com/datawire/ambassador) will automatically load balance `Ingress` resources
 that include the annotation `kubernetes.io/ingress.class=ambassador`. All the other
 resources will be just ignored.
 

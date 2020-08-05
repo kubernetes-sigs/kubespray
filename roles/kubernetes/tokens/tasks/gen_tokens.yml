@@ -42,18 +42,21 @@
   run_once: true
   when: sync_tokens|default(false)
 
-- name: Gen_tokens | Gather tokens  # noqa 306
-  shell: "tar cfz - {{ tokens_list.stdout_lines | join(' ') }} | base64 --wrap=0"
+- name: Gen_tokens | Gather tokens
+  shell: "set -o pipefail && tar cfz - {{ tokens_list.stdout_lines | join(' ') }} | base64 --wrap=0"
   args:
     warn: false
+    executable: /bin/bash
   register: tokens_data
   check_mode: no
   delegate_to: "{{ groups['kube-master'][0] }}"
   run_once: true
   when: sync_tokens|default(false)
 
-- name: Gen_tokens | Copy tokens on masters  # noqa 306
-  shell: "echo '{{ tokens_data.stdout|quote }}' | base64 -d | tar xz -C /"
+- name: Gen_tokens | Copy tokens on masters
+  shell: "set -o pipefail && echo '{{ tokens_data.stdout|quote }}' | base64 -d | tar xz -C /"
+  args:
+    executable: /bin/bash
   when:
     - inventory_hostname in groups['kube-master']
     - sync_tokens|default(false)

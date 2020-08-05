@@ -7,7 +7,7 @@ variable "network_dns_domain" {}
 variable "cluster_name" {}
 
 variable "dns_nameservers" {
-  type = "list"
+  type = list
 }
 
 variable "subnet_cidr" {}

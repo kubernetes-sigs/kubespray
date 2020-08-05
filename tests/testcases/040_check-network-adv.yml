@@ -1,8 +1,10 @@
 ---
 - hosts: kube-node
   tasks:
-    - name: Test tunl0 routes  # noqa 306
-      shell: "! /sbin/ip ro | grep '/26 via' | grep -v tunl0"
+    - name: Test tunl0 routes
+      shell: "set -o pipefail && ! /sbin/ip ro | grep '/26 via' | grep -v tunl0"
+      args:
+        executable: /bin/bash
       when:
         - (ipip|default(true) or cloud_provider is defined)
         - kube_network_plugin|default('calico') == 'calico'
@@ -33,16 +35,20 @@
     - import_role:
         name: cluster-dump
 
-    - name: Wait for netchecker server  # noqa 306
-      shell: "{{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep ^netchecker-server"
+    - name: Wait for netchecker server
+      shell: "set -o pipefail && {{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep ^netchecker-server"
+      args:
+        executable: /bin/bash
       register: ncs_pod
       until: ncs_pod.stdout.find('Running') != -1
       retries: 3
       delay: 10
       when: inventory_hostname == groups['kube-master'][0]
 
-    - name: Wait for netchecker agents  # noqa 306
-      shell: "{{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep '^netchecker-agent-.*Running'"
+    - name: Wait for netchecker agents
+      shell: "set -o pipefail && {{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep '^netchecker-agent-.*Running'"
+      args:
+        executable: /bin/bash
       register: nca_pod
       until: nca_pod.stdout_lines|length >= groups['k8s-cluster']|intersect(ansible_play_hosts)|length * 2
       retries: 3

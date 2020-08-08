@@ -26,14 +26,19 @@ kubeadm_use_hyperkube_image: False
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
 
-## Delete kube-proxy daemonset if kube_proxy_remove set, e.g. kube_network_plugin providing proxy services
-kube_proxy_remove: >-
-  {%- if kube_network_plugin == 'kube-router' -%}
-  {{ (kube_router_run_service_proxy is defined and kube_router_run_service_proxy)| bool }}
-  {%- elif kube_network_plugin == 'cilium' -%}
-  {{ (cilium_kube_proxy_replacement is defined and cilium_kube_proxy_replacement == 'strict')| bool }}
+## List of kubeadm init phases that should be skipped during control plane setup
+## By default 'addon/coredns' is skipped
+## 'addon/kube-proxy' gets skipped for some network plugins
+kubeadm_init_phases_skip_default: [ "addon/coredns" ]
+kubeadm_init_phases_skip: >-
+  {%- if kube_network_plugin == 'kube-router' and (kube_router_run_service_proxy is defined and kube_router_run_service_proxy) -%}
+  {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
+  {%- elif kube_network_plugin == 'cilium' and (cilium_kube_proxy_replacement is defined and cilium_kube_proxy_replacement == 'strict') -%}
+  {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
+  {%- elif kube_proxy_remove is defined and kube_proxy_remove -%}
+  {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
   {%- else -%}
-  false
+  {{ kubeadm_init_phases_skip_default }}
   {%- endif -%}
 
 # A string slice of values which specify the addresses to use for NodePorts.

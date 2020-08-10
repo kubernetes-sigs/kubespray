@@ -57,9 +57,9 @@
   with_items:
     - "{{ helm_client_certs }}"
 
-- name: Gen_helm_tiller_certs | Gather helm client certs  # noqa 306
+- name: Gen_helm_tiller_certs | Gather helm client certs
   # noqa 303 - tar is called intentionally here, but maybe this should be done with the slurp module
-  shell: "tar cfz - -C {{ helm_home_dir }} {{ helm_client_certs|join(' ') }} | base64 --wrap=0"
+  shell: "set -o pipefail && tar cfz - -C {{ helm_home_dir }} {{ helm_client_certs|join(' ') }} | base64 --wrap=0"
   args:
     executable: /bin/bash
   no_log: true
@@ -85,8 +85,10 @@
     mode: "0600"
   when: sync_helm_certs|default(false) and inventory_hostname != groups['kube-master'][0]
 
-- name: Gen_helm_tiller_certs | Unpack helm certs on masters  # noqa 306
-  shell: "base64 -d < {{ helm_cert_tempfile.path }} | tar xz -C {{ helm_home_dir }}"
+- name: Gen_helm_tiller_certs | Unpack helm certs on
+  shell: "set -o pipefail && base64 -d < {{ helm_cert_tempfile.path }} | tar xz -C {{ helm_home_dir }}"
+  args:
+    executable: /bin/bash
   no_log: true
   changed_when: false
   check_mode: no

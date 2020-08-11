@@ -30,40 +30,46 @@
       false
       {%- endif %}
 
-- name: Cordon node
-  command: "{{ bin_dir }}/kubectl cordon {{ kube_override_hostname|default(inventory_hostname) }}"
-  delegate_to: "{{ groups['kube-master'][0] }}"
-  when: needs_cordoning
+- name: Node draining
+  block:
+    - name: Cordon node
+      command: "{{ bin_dir }}/kubectl cordon {{ kube_override_hostname|default(inventory_hostname) }}"
+      delegate_to: "{{ groups['kube-master'][0] }}"
 
-- name: Check kubectl version
-  command: "{{ bin_dir }}/kubectl version --client --short"
-  register: kubectl_version
-  delegate_to: "{{ groups['kube-master'][0] }}"
-  run_once: yes
-  changed_when: false
-  when:
-    - drain_nodes
-    - needs_cordoning
-    - drain_pod_selector
+    - name: Check kubectl version
+      command: "{{ bin_dir }}/kubectl version --client --short"
+      register: kubectl_version
+      delegate_to: "{{ groups['kube-master'][0] }}"
+      run_once: yes
+      changed_when: false
+      when:
+        - drain_nodes
+        - drain_pod_selector
 
-- name: Ensure minimum version for drain label selector if necessary
-  assert:
-    that: "kubectl_version.stdout.split(' ')[-1] is version('v1.10.0', '>=')"
-  when:
-    - drain_nodes
-    - needs_cordoning
-    - drain_pod_selector
+    - name: Ensure minimum version for drain label selector if necessary
+      assert:
+        that: "kubectl_version.stdout.split(' ')[-1] is version('v1.10.0', '>=')"
+      when:
+        - drain_nodes
+        - drain_pod_selector
 
-- name: Drain node
-  command: >-
-    {{ bin_dir }}/kubectl drain
-    --force
-    --ignore-daemonsets
-    --grace-period {{ drain_grace_period }}
-    --timeout {{ drain_timeout }}
-    --delete-local-data {{ kube_override_hostname|default(inventory_hostname) }}
-    {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
+    - name: Drain node
+      command: >-
+        {{ bin_dir }}/kubectl drain
+        --force
+        --ignore-daemonsets
+        --grace-period {{ drain_grace_period }}
+        --timeout {{ drain_timeout }}
+        --delete-local-data {{ kube_override_hostname|default(inventory_hostname) }}
+        {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
+      when:
+        - drain_nodes
+  rescue:
+    - name: Set node back to schedulable
+      command: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf uncordon {{ inventory_hostname }}"
+    - name: Fail after rescue
+      fail:
+        msg: "Failed to drain node {{ inventory_hostname }}"
   delegate_to: "{{ groups['kube-master'][0] }}"
   when:
-    - drain_nodes
     - needs_cordoning

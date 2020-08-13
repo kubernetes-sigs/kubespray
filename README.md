@@ -130,7 +130,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.3.0
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.0.1
   - [multus](https://github.com/intel/multus-cni) v3.6.0
-  - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.0.0
+  - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.1.0
   - [weave](https://github.com/weaveworks/weave) v2.7.0
 - Application
   - [ambassador](https://github.com/datawire/ambassador): v1.5

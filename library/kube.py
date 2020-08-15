@@ -51,6 +51,11 @@ options:
     default: false
     description:
       - A flag to indicate to force delete, replace, or stop.
+  wait:
+    required: false
+    default: false
+    description:
+      - A flag to indicate to wait for resources to be created before continuing to the next step
   all:
     required: false
     default: false
@@ -306,6 +311,7 @@ def main():
             server=dict(),
             kubectl=dict(),
             force=dict(default=False, type='bool'),
+            wait=dict(default=False, type='bool'),
             all=dict(default=False, type='bool'),
             log_level=dict(default=0, type='int'),
             state=dict(default='present', choices=['present', 'absent', 'latest', 'reloaded', 'stopped']),

@@ -130,6 +130,7 @@ class KubeManager(object):
 
         self.all = module.params.get('all')
         self.force = module.params.get('force')
+        self.wait = module.params.get('wait')
         self.name = module.params.get('name')
         self.filename = [f.strip() for f in module.params.get('filename') or []]
         self.resource = module.params.get('resource')
@@ -164,6 +165,9 @@ class KubeManager(object):
         if force:
             cmd.append('--force')
 
+        if self.wait:
+            cmd.append('--wait')
+
         if self.recursive:
             cmd.append('--recursive={}'.format(self.recursive))
 
@@ -180,6 +184,9 @@ class KubeManager(object):
 
         if force:
             cmd.append('--force')
+
+        if self.wait:
+            cmd.append('--wait')
 
         if self.recursive:
             cmd.append('--recursive={}'.format(self.recursive))

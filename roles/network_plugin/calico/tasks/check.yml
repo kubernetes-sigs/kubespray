@@ -37,30 +37,9 @@
   when:
     - "calico_vxlan_mode in ['Always', 'CrossSubnet']"
 
-- name: "Get current version of calico cluster version"  # noqa 306
-  shell: "{{ bin_dir }}/calicoctl.sh version  | grep 'Cluster Version:' | awk '{ print $3}'"
-  register: calico_version_on_server
-  run_once: yes
-  changed_when: false
-
-- name: "Determine if calico upgrade is needed"
-  block:
-    - name: "Check that calico version is enough for upgrade"
-      assert:
-        that:
-          - calico_version_on_server.stdout is version('v2.6.5', '>=')
-        msg: "Your version of calico is not fresh enough for upgrade"
-      when: calico_upgrade_enabled
-
-    - name: "Set upgrade flag when version needs to be updated"
-      set_fact:
-        calico_upgrade_needed: True
-      when:
-        - calico_version_on_server.stdout is version('v2.6.5', '>=')
-        - calico_version_on_server.stdout is version('v3.0.0', '<')
-
-  when:
-    - calico_version_on_server.stdout is defined
-    - calico_version_on_server.stdout
-    - inventory_hostname == groups['kube-master'][0]
-  run_once: yes
+- name: Warn if version is not expected
+  assert:
+    that:
+      - calico_version == calico_version_default
+    msg: "Warning: Calico version has been altered from default!"
+  failed_when: False

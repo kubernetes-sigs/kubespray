@@ -167,6 +167,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
       uuid                  = data.openstack_images_image_v2.vm_image.id
       source_type           = "image"
       volume_size           = var.master_root_volume_size_in_gb
+      volume_type           = var.master_volume_type
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -215,6 +216,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
       uuid                  = data.openstack_images_image_v2.vm_image.id
       source_type           = "image"
       volume_size           = var.master_root_volume_size_in_gb
+      volume_type           = var.master_volume_type
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -303,6 +305,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
       uuid                  = data.openstack_images_image_v2.vm_image.id
       source_type           = "image"
       volume_size           = var.master_root_volume_size_in_gb
+      volume_type           = var.master_volume_type
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -346,6 +349,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
       uuid                  = data.openstack_images_image_v2.vm_image.id
       source_type           = "image"
       volume_size           = var.master_root_volume_size_in_gb
+      volume_type           = var.master_volume_type
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true

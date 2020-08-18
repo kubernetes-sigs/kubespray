@@ -51,6 +51,7 @@ module "compute" {
   node_root_volume_size_in_gb                  = var.node_root_volume_size_in_gb
   gfs_root_volume_size_in_gb                   = var.gfs_root_volume_size_in_gb
   gfs_volume_size_in_gb                        = var.gfs_volume_size_in_gb
+  master_volume_type                           = var.master_volume_type
   public_key_path                              = var.public_key_path
   image                                        = var.image
   image_gfs                                    = var.image_gfs

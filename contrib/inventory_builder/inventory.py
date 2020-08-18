@@ -238,7 +238,7 @@ class KubesprayInventory(object):
             return [ip_address(ip).exploded for ip in range(start, end + 1)]
 
         for host in hosts:
-            if '-' in host and not host.startswith('-'):
+            if '-' in host and not (host.startswith('-') or host[0].isalpha()):
                 start, end = host.strip().split('-')
                 try:
                     reworked_hosts.extend(ips(start, end))

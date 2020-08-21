@@ -135,3 +135,8 @@ cd inventory/mycluster/artifacts
 ```
 
 If desired, copy admin.conf to ~/.kube/config.
+
+## Setting up your first cluster
+
+[Setting up your first cluster](/docs/setting-up-your-first-cluster.md) is an
+ applied step-by-step guide for setting up your first cluster with Kubespray.

@@ -87,6 +87,7 @@ vagrant up
 - [Requirements](#requirements)
 - [Kubespray vs ...](docs/comparisons.md)
 - [Getting started](docs/getting-started.md)
+- [Setting up your first cluster](docs/setting-up-your-first-cluster.md)
 - [Ansible inventory and tags](docs/ansible.md)
 - [Integration with existing ansible repo](docs/integration.md)
 - [Deployment data variables](docs/vars.md)

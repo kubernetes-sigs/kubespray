@@ -176,7 +176,7 @@ If you have deployed and destroyed a previous iteration of your cluster, you wil
 
 #### Test access
 
-Make sure you can connect to the hosts.  Note that Container Linux by CoreOS will have a state `FAILED` due to Python not being present.  This is okay, because Python will be installed during bootstrapping, so long as the hosts are not `UNREACHABLE`.
+Make sure you can connect to the hosts.  Note that Flatcar Container Linux by Kinvolk will have a state `FAILED` due to Python not being present.  This is okay, because Python will be installed during bootstrapping, so long as the hosts are not `UNREACHABLE`.
 
 ```
 $ ansible -i inventory/$CLUSTER/hosts -m ping all

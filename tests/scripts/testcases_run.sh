@@ -23,7 +23,7 @@ export ANSIBLE_BECOME_USER=root
 cd tests && make create-${CI_PLATFORM} -s ; cd -
 ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml
 
-# CoreOS needs auto update disabled
+# Flatcar Container Linux needs auto update disabled
 if [[ "$CI_JOB_NAME" =~ "coreos" ]]; then
   ansible all -m raw -a 'systemctl disable locksmithd'
   ansible all -m raw -a 'systemctl stop locksmithd'

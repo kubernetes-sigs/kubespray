@@ -204,6 +204,12 @@ variable "k8s_allowed_egress_ips" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "master_allowed_ports" {
+  type = list
+
+  default = []
+}
+
 variable "worker_allowed_ports" {
   type = list
 

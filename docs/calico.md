@@ -248,3 +248,15 @@ calico_node_extra_envs:
 neutron  security-group-rule-create  --protocol 4  --direction egress  k8s-a0tp4t
 neutron  security-group-rule-create  --protocol 4  --direction igress  k8s-a0tp4t
 ```
+
+### Optional : Use Calico CNI host-local IPAM plugin
+
+Calico currently supports two types of CNI IPAM plugins, `host-local` and `calico-ipam` (default).
+
+To allow Calico to determine the subnet to use from the Kubernetes API based on the `Node.podCIDR` field, enable the following setting.
+
+```yml
+calico_ipam_host_local: true
+```
+
+Refer to Project Calico section [Using host-local IPAM](https://docs.projectcalico.org/reference/cni-plugin/configuration#using-host-local-ipam) for further information.

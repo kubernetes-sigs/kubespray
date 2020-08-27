@@ -74,6 +74,7 @@ module "compute" {
   k8s_allowed_egress_ips                       = var.k8s_allowed_egress_ips
   supplementary_master_groups                  = var.supplementary_master_groups
   supplementary_node_groups                    = var.supplementary_node_groups
+  master_allowed_ports                         = var.master_allowed_ports
   worker_allowed_ports                         = var.worker_allowed_ports
   wait_for_floatingip                          = var.wait_for_floatingip
   use_access_ip                                = var.use_access_ip

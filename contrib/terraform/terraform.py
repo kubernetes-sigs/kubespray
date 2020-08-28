@@ -223,8 +223,8 @@ def packet_device(resource, tfvars=None):
         'provider': 'packet',
     }
 
-    if raw_attrs['operating_system'] == 'coreos_stable':
-        # For CoreOS set the ssh_user to core
+    if raw_attrs['operating_system'] == 'flatcar_stable':
+        # For Flatcar set the ssh_user to core
         attrs.update({'ansible_ssh_user': 'core'})
 
     # add groups based on attrs

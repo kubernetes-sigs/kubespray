@@ -95,7 +95,7 @@ vagrant up
 - [HA mode](docs/ha-mode.md)
 - [Network plugins](#network-plugins)
 - [Vagrant install](docs/vagrant.md)
-- [CoreOS bootstrap](docs/coreos.md)
+- [Flatcar Container Linux bootstrap](docs/flatcar.md)
 - [Fedora CoreOS bootstrap](docs/fcos.md)
 - [Debian Jessie setup](docs/debian.md)
 - [openSUSE setup](docs/opensuse.md)
@@ -114,7 +114,7 @@ vagrant up
 
 ## Supported Linux Distributions
 
-- **Container Linux by CoreOS**
+- **Flatcar Container Linux by Kinvolk**
 - **Debian** Buster, Jessie, Stretch, Wheezy
 - **Ubuntu** 16.04, 18.04, 20.04
 - **CentOS/RHEL** 7, 8 (experimental: see [centos 8 notes](docs/centos8.md))

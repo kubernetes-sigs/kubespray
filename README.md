@@ -75,7 +75,6 @@ vagrant up
 - [Requirements](#requirements)
 - [Kubespray vs ...](docs/comparisons.md)
 - [Getting started](docs/getting-started.md)
-- [Setting up your first cluster](docs/setting-up-your-first-cluster.md)
 - [Ansible inventory and tags](docs/ansible.md)
 - [Integration with existing ansible repo](docs/integration.md)
 - [Deployment data variables](docs/vars.md)
@@ -116,7 +115,7 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.18.8
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.18.6
   - [etcd](https://github.com/coreos/etcd) v3.4.3
   - [docker](https://www.docker.com/) v19.03 (see note)
   - [containerd](https://containerd.io/) v1.2.13
@@ -125,14 +124,14 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.8.6
   - [calico](https://github.com/projectcalico/calico) v3.15.1
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-  - [cilium](https://github.com/cilium/cilium) v1.8.2
+  - [cilium](https://github.com/cilium/cilium) v1.8.1
   - [contiv](https://github.com/contiv/install) v1.2.1
   - [flanneld](https://github.com/coreos/flannel) v0.12.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.3.0
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.0.1
   - [multus](https://github.com/intel/multus-cni) v3.6.0
   - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.0.0
-  - [weave](https://github.com/weaveworks/weave) v2.7.0
+  - [weave](https://github.com/weaveworks/weave) v2.6.5
 - Application
   - [ambassador](https://github.com/datawire/ambassador): v1.5
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11

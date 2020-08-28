@@ -41,5 +41,4 @@
   * [Test cases](docs/test_cases.md)
   * [Vagrant](docs/vagrant.md)
   * [CI Matrix](docs/ci.md)
-  * [CI Setup](docs/ci-setup.md)
 * [Roadmap](docs/roadmap.md)

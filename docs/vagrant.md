@@ -17,7 +17,7 @@ By default, Vagrant uses Ubuntu 18.04 box to provision a local cluster. You may 
 Customize `$os` variable in `Vagrantfile` or as override, e.g.,:
 
 ```ShellSession
-echo '$os = "coreos-stable"' >> vagrant/config.rb
+echo '$os = "flatcar-stable"' >> vagrant/config.rb
 ```
 
 The supported operating systems for vagrant are defined in the `SUPPORTED_OS` constant in the `Vagrantfile`.

@@ -29,7 +29,7 @@ Variables are listed with their default values, if applicable.
 
 ### Per distribution variables
 
-#### CoreOS
+#### Flatcar Container Linux
 
 * `coreos_locksmithd_disable: false`
   Whether `locksmithd` (responsible for rolling restarts) should be disabled or be left alone.

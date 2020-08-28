@@ -22,7 +22,7 @@ export TF_VAR_AWS_SECRET_ACCESS_KEY ="xxx"
 export TF_VAR_AWS_SSH_KEY_NAME="yyy"
 export TF_VAR_AWS_DEFAULT_REGION="zzz"
 ```
-- Update `contrib/terraform/aws/terraform.tfvars` with your data. By default, the Terraform scripts use CoreOS as base image. If you want to change this behaviour, see note "Using other distrib than CoreOs" below.
+- Update `contrib/terraform/aws/terraform.tfvars` with your data. By default, the Terraform scripts use Ubuntu 18.04 LTS (Bionic) as base image. If you want to change this behaviour, see note "Using other distrib than Ubuntu" below.
 - Create an AWS EC2 SSH Key
 - Run with `terraform apply --var-file="credentials.tfvars"` or `terraform apply` depending if you exported your AWS credentials
 
@@ -41,12 +41,12 @@ ssh -F ./ssh-bastion.conf user@$ip
 
 - Once the infrastructure is created, you can run the kubespray playbooks and supply inventory/hosts with the `-i` flag.
 
-Example (this one assumes you are using CoreOS)
+Example (this one assumes you are using Ubuntu)
 ```commandline
-ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_user=core -b --become-user=root --flush-cache
+ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_user=ubuntu -b --become-user=root --flush-cache
 ```
-***Using other distrib than CoreOs***
-If you want to use another distribution than CoreOS, you can modify the search filters of the 'data "aws_ami" "distro"' in variables.tf.
+***Using other distrib than Ubuntu***
+If you want to use another distribution than Ubuntu 18.04 (Bionic) LTS, you can modify the search filters of the 'data "aws_ami" "distro"' in variables.tf.
 
 For example, to use:
 - Debian Jessie, replace 'data "aws_ami" "distro"' in variables.tf with

@@ -17,14 +17,20 @@
   set_fact:
     docker_dns_search_domains: "{{ docker_dns_search_domains + searchdomains|default([]) }}"
 
-- name: check system nameservers  # noqa 306
-  shell: grep "^nameserver" /etc/resolv.conf | sed -r 's/^nameserver\s*([^#\s]+)\s*(#.*)?/\1/'
+- name: check system nameservers
+  shell: set -o pipefail && grep "^nameserver" /etc/resolv.conf | sed -r 's/^nameserver\s*([^#\s]+)\s*(#.*)?/\1/'
+  args:
+    executable: /bin/bash
   changed_when: False
   register: system_nameservers
   check_mode: no
 
-- name: check system search domains  # noqa 306
+- name: check system search domains
+  # noqa 306 - if resolf.conf has no search domain, grep will exit 1 which would force us to add failed_when: false
+  # Therefore -o pipefail is not applicable in this specific instance
   shell: grep "^search" /etc/resolv.conf | sed -r 's/^search\s*([^#]+)\s*(#.*)?/\1/'
+  args:
+    executable: /bin/bash
   changed_when: False
   register: system_search_domains
   check_mode: no

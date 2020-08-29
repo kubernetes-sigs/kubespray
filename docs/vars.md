@@ -72,8 +72,6 @@ following default cluster parameters:
   on the CoreDNS service.
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)
-* *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in
-  Kubernetes
 * *kube_feature_gates* - A list of key=value pairs that describe feature gates for
   alpha/experimental Kubernetes features. (defaults is `[]`)
 * *authorization_modes* - A list of [authorization mode](
@@ -119,10 +117,6 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   is unlikely to work on newer releases. Starting with Kubernetes v1.7
   series, this now defaults to ``host``. Before v1.7, the default was Docker.
   This is because of cgroup [issues](https://github.com/kubernetes/kubernetes/issues/43704).
-* *kubelet_load_modules* - For some things, kubelet needs to load kernel modules.  For example,
-  dynamic kernel services are needed for mounting persistent volumes into containers.  These may not be
-  loaded by preinstall kubernetes processes.  For example, ceph and rbd backed volumes.  Set this variable to
-  true to let kubelet load kernel modules.
 * *kubelet_cgroup_driver* - Allows manual override of the
   cgroup-driver option for Kubelet. By default autodetection is used
   to match Docker configuration.

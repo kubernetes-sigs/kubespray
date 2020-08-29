@@ -46,8 +46,10 @@
     daemon_reload: true
   when: services_removed.changed or docker_dropins_removed.changed
 
-- name: reset | remove all containers  # noqa 306
-  shell: "{{ docker_bin_dir }}/docker ps -aq | xargs -r docker rm -fv"
+- name: reset | remove all containers
+  shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -aq | xargs -r docker rm -fv"
+  args:
+    executable: /bin/bash
   register: remove_all_containers
   retries: 4
   until: remove_all_containers.rc == 0
@@ -64,8 +66,10 @@
   tags:
     - docker
 
-- name: reset | stop all cri containers  # noqa 306
-  shell: "crictl ps -aq | xargs -r crictl -t 60s stop"
+- name: reset | stop all cri containers
+  shell: "set -o pipefail && crictl ps -aq | xargs -r crictl -t 60s stop"
+  args:
+    executable: /bin/bash
   register: remove_all_cri_containers
   retries: 5
   until: remove_all_cri_containers.rc == 0
@@ -75,8 +79,10 @@
     - containerd
   when: container_manager in ["crio", "containerd"]
 
-- name: reset | remove all cri containers  # noqa 306
-  shell: "crictl ps -aq | xargs -r crictl -t 60s rm"
+- name: reset | remove all cri containers
+  shell: "set -o pipefail && crictl ps -aq | xargs -r crictl -t 60s rm"
+  args:
+    executable: /bin/bash
   register: remove_all_cri_containers
   retries: 5
   until: remove_all_cri_containers.rc == 0
@@ -86,8 +92,10 @@
     - containerd
   when: container_manager in ["crio", "containerd"] and deploy_container_engine|default(true)
 
-- name: reset | stop all cri pods  # noqa 306
-  shell: "crictl pods -q | xargs -r crictl -t 60s stopp"
+- name: reset | stop all cri pods
+  shell: "set -o pipefail && crictl pods -q | xargs -r crictl -t 60s stopp"
+  args:
+    executable: /bin/bash
   register: remove_all_cri_containers
   retries: 5
   until: remove_all_cri_containers.rc == 0
@@ -97,8 +105,10 @@
     - containerd
   when: container_manager in ["crio", "containerd"]
 
-- name: reset | remove all cri pods  # noqa 306
-  shell: "crictl pods -q | xargs -r crictl -t 60s rmp"
+- name: reset | remove all cri pods
+  shell: "set -o pipefail && crictl pods -q | xargs -r crictl -t 60s rmp"
+  args:
+    executable: /bin/bash
   register: remove_all_cri_containers
   retries: 5
   until: remove_all_cri_containers.rc == 0
@@ -130,9 +140,10 @@
   tags:
     - services
 
-- name: reset | gather mounted kubelet dirs  # noqa 306 301
-  shell: mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
+- name: reset | gather mounted kubelet dirs  # noqa 301
+  shell: set -o pipefail && mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
   args:
+    executable: /bin/bash
     warn: false
   check_mode: no
   register: mounted_dirs
@@ -302,7 +313,7 @@
       {%- endif %}
     state: restarted
   when:
-    - ansible_os_family not in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
+    - ansible_os_family not in ["Flatcar Container Linux by Kinvolk"]
     - reset_restart_network
   tags:
     - services

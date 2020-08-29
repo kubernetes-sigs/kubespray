@@ -83,7 +83,7 @@ vagrant up
 - [HA mode](docs/ha-mode.md)
 - [Network plugins](#network-plugins)
 - [Vagrant install](docs/vagrant.md)
-- [CoreOS bootstrap](docs/coreos.md)
+- [Flatcar Container Linux bootstrap](docs/flatcar.md)
 - [Fedora CoreOS bootstrap](docs/fcos.md)
 - [Debian Jessie setup](docs/debian.md)
 - [openSUSE setup](docs/opensuse.md)
@@ -102,7 +102,7 @@ vagrant up
 
 ## Supported Linux Distributions
 
-- **Container Linux by CoreOS**
+- **Flatcar Container Linux by Kinvolk**
 - **Debian** Buster, Jessie, Stretch, Wheezy
 - **Ubuntu** 16.04, 18.04, 20.04
 - **CentOS/RHEL** 7, 8 (experimental: see [centos 8 notes](docs/centos8.md))
@@ -139,7 +139,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v0.15.2
   - [coredns](https://github.com/coredns/coredns) v1.6.7
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.32.0
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.34.1
 
 Note: The list of validated [docker versions](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#docker) is 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09 and 19.03. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 

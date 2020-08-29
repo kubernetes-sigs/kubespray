@@ -1,0 +1,40 @@
+---
+# Flatcar Container Linux ships without Python installed
+
+- name: Check if bootstrap is needed
+  raw: stat /opt/bin/.bootstrapped
+  register: need_bootstrap
+  environment: {}
+  failed_when: false
+  changed_when: false
+  tags:
+    - facts
+
+- name: Force binaries directory for Flatcar Container Linux by Kinvolk
+  set_fact:
+    bin_dir: "/opt/bin"
+  tags:
+    - facts
+
+- name: Run bootstrap.sh
+  script: bootstrap.sh
+  become: true
+  environment:
+    http_proxy: "{{ http_proxy | default('') }}"
+    https_proxy: "{{ https_proxy | default('') }}"
+  when:
+    - need_bootstrap.rc != 0
+
+- name: Set the ansible_python_interpreter fact
+  set_fact:
+    ansible_python_interpreter: "{{ bin_dir }}/python"
+  tags:
+    - facts
+
+- name: Disable auto-upgrade
+  systemd:
+    name: locksmithd.service
+    masked: true
+    state: stopped
+  when:
+    - coreos_locksmithd_disable

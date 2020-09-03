@@ -15,6 +15,30 @@
       bin_dir: "/usr/local/bin"
     when: not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
 
+  - name: Approve kubelet serving certificates
+    block:
+
+    - name: Get certificate signing requests
+      command: "{{ bin_dir }}/kubectl get csr -o name"
+      register: get_csr
+      changed_when: false
+
+    - name: Check there are csrs
+      assert:
+        that: get_csr.stdout_lines | length > 0
+        fail_msg: kubelet_rotate_server_certificates is {{ kubelet_rotate_server_certificates }} but no csr's found
+
+    - name: Approve certificates
+      command: "{{ bin_dir }}/kubectl certificate approve {{ get_csr.stdout_lines | join(' ') }}"
+      register: certificate_approve
+      when: get_csr.stdout_lines | length > 0
+      changed_when: certificate_approve.stdout
+
+    - debug:
+        msg: "{{ certificate_approve.stdout.split('\n') }}"
+
+    when: kubelet_rotate_server_certificates | default(false)
+
   - name: Create test namespace  # noqa 301 305
     shell: "{{ bin_dir }}/kubectl create namespace test"
 

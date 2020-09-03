@@ -24,11 +24,11 @@ cd tests && make create-${CI_PLATFORM} -s ; cd -
 ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml
 
 # Flatcar Container Linux needs auto update disabled
-if [[ "$CI_JOB_NAME" =~ "coreos" ]]; then
-  ansible all -m raw -a 'systemctl disable locksmithd'
-  ansible all -m raw -a 'systemctl stop locksmithd'
-  mkdir -p /opt/bin && ln -s /usr/bin/python /opt/bin/python
-fi
+#if [[ "$CI_JOB_NAME" =~ "coreos" ]]; then
+#  ansible all -m raw -a 'systemctl disable locksmithd'
+#  ansible all -m raw -a 'systemctl stop locksmithd'
+#  mkdir -p /opt/bin && ln -s /usr/bin/python /opt/bin/python
+#fi
 
 if [[ "$CI_JOB_NAME" =~ "opensuse" ]]; then
   # OpenSUSE needs netconfig update to get correct resolv.conf

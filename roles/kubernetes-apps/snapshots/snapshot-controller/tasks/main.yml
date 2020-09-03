@@ -1,0 +1,25 @@
+---
+- name: Snapshot Controller | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: rbac-snapshot-controller, file: rbac-snapshot-controller.yml}
+    - {name: snapshot-controller, file: snapshot-controller.yml}
+  register: snapshot_controller_manifests
+  when: inventory_hostname == groups['kube-master'][0]
+  tags: snapshot-controller
+
+- name: Snapshot Controller | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ snapshot_controller_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+  tags: snapshot-controller

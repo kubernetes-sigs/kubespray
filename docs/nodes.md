@@ -52,7 +52,7 @@ change your inventory to:
 
 ## 2) Upgrade the cluster
 
-run `upgrade.yml` or `cluster.yml`. Now you are good to go on with the removal.
+run `upgrade-cluster.yml` or `cluster.yml`. Now you are good to go on with the removal.
 
 ## Adding/replacing a worker node
 

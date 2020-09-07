@@ -8,8 +8,23 @@
   tags:
     - facts
 
+- name: Remove podman network cni
+  raw: "podman network rm podman"
+  become: true
+  ignore_errors: yes
+  when: need_bootstrap.rc != 0
+
 - name: Clean up possible pending packages on fedora coreos
   raw: "export http_proxy={{ http_proxy | default('') }};rpm-ostree cleanup -p }}"
+  become: true
+  when: need_bootstrap.rc != 0
+
+  # Because the package "python3-libselinux" has a dependency on libselinux,
+  # which is a base package in Fedora CoreOS and cannot be upgraded.
+  # Temporary disabling update repo allows to install python3-libselinux
+  # see https://github.com/coreos/fedora-coreos-tracker/issues/592
+- name: Temporary disable fedora updates repo because of base packages conflicts
+  raw: "sed -i 's|^enabled=1|enabled=0|g' /etc/yum.repos.d/fedora-updates.repo"
   become: true
   when: need_bootstrap.rc != 0
 
@@ -18,7 +33,13 @@
   become: true
   when: need_bootstrap.rc != 0
 
-# playbook fails because connection lost
+  # see https://github.com/coreos/fedora-coreos-tracker/issues/592
+- name: Enable fedora updates repo
+  raw: "sed -i 's|^enabled=0|enabled=1|g' /etc/yum.repos.d/fedora-updates.repo"
+  become: true
+  when: need_bootstrap.rc != 0
+
+  # playbook fails because connection lost
 - name: Reboot immediately for updated ostree, please run playbook again if failed first time.
   raw: "nohup bash -c 'sleep 5s && shutdown -r now'"
   become: true

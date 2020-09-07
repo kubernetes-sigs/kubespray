@@ -29,6 +29,18 @@ spec:
         io.cilium/app: operator
         name: cilium-operator
     spec:
+      # In HA mode, cilium-operator pods must not be scheduled on the same
+      # node as they will clash with each other.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: io.cilium/app
+                operator: In
+                values:
+                - operator
+            topologyKey: "kubernetes.io/hostname"
       containers:
         - args:
             - --debug=$(CILIUM_DEBUG)
@@ -47,6 +59,11 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: spec.nodeName
+            - name: CILIUM_K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
             - name: CILIUM_DEBUG
               valueFrom:
                 configMapKeyRef:
@@ -131,6 +148,8 @@ spec:
       serviceAccount: cilium-operator
       serviceAccountName: cilium-operator
       hostNetwork: true
+      tolerations:
+        - operator: Exists
       volumes:
         # To read the etcd config stored in config maps
         - configMap:

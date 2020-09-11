@@ -1,4 +1,7 @@
-FROM ubuntu:18.04
+# Use imutable image tags rather than mutable tags (like ubuntu:18.04)
+FROM ubuntu:bionic-20200807
+
+ENV KUBE_VERSION=v1.19.1
 
 RUN mkdir /kubespray
 WORKDIR /kubespray
@@ -14,7 +17,8 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
     && apt update -y && apt-get install docker-ce -y
 COPY . .
 RUN /usr/bin/python3 -m pip install pip -U && /usr/bin/python3 -m pip install -r tests/requirements.txt && python3 -m pip install -r requirements.txt && update-alternatives --install /usr/bin/python python /usr/bin/python3 1
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.17.5/bin/linux/amd64/kubectl \
+
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/amd64/kubectl \
     && chmod a+x kubectl && cp kubectl /usr/local/bin/kubectl
 
 # Some tools like yamllint need this

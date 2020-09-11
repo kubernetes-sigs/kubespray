@@ -69,9 +69,9 @@ ansible-playbook -i inventory/mycluster/hosts.yml remove-node.yml -b -v \
 --extra-vars "node=nodename,nodename2"
 ```
 
-If a node is completely unreachable by ssh, add `--extra-vars reset_nodes=no`
+If a node is completely unreachable by ssh, add `--extra-vars reset_nodes=false`
 to skip the node reset step. If one node is unavailable, but others you wish
-to remove are able to connect via SSH, you could set reset_nodes=no as a host
+to remove are able to connect via SSH, you could set `reset_nodes=false` as a host
 var in inventory.
 
 ## Connecting to Kubernetes

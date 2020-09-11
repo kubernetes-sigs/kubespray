@@ -95,7 +95,7 @@ the Kubernetes [documentation](https://kubernetes.io/docs/tasks/access-applicati
 
 Supported version is kubernetes-dashboard v2.0.x :
 
-- Login options are : token/kubeconfig by default, basic can be enabled with `kube_basic_auth: true` inventory variable - not recommended because this requires ABAC api-server which is not tested by kubespray team
+- Login option : token/kubeconfig by default
 - Deployed by default in "kube-system" namespace, can be overridden with `dashboard_namespace: kubernetes-dashboard` in inventory,
 - Only serves over https
 

@@ -1,3 +1,94 @@
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: networkchainings.k8s.plugin.opnfv.org
+spec:
+  group: k8s.plugin.opnfv.org
+  names:
+    kind: NetworkChaining
+    listKind: NetworkChainingList
+    plural: networkchainings
+    singular: networkchaining
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: NetworkChaining is the Schema for the networkchainings API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: NetworkChainingSpec defines the desired state of NetworkChaining
+          properties:
+            chainType:
+              type: string
+            routingSpec:
+              properties:
+                leftNetwork:
+                  items:
+                    properties:
+                      gatewayIp:
+                        type: string
+                      networkName:
+                        type: string
+                    required:
+                    - gatewayIp
+                    - networkName
+                    type: object
+                  type: array
+                namespace:
+                  type: string
+                networkChain:
+                  type: string
+                rightNetwork:
+                  items:
+                    properties:
+                      gatewayIp:
+                        type: string
+                      networkName:
+                        type: string
+                    required:
+                    - gatewayIp
+                    - networkName
+                    type: object
+                  type: array
+              required:
+              - leftNetwork
+              - namespace
+              - networkChain
+              - rightNetwork
+              type: object
+          required:
+          - chainType
+          - routingSpec
+          type: object
+        status:
+          description: NetworkChainingStatus defines the observed state of NetworkChaining
+          properties:
+            state:
+              type: string
+          required:
+          - state
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
 
 ---
 
@@ -417,7 +508,11 @@ spec:
       serviceAccountName: k8s-nfn-sa
       containers:
         - name: nfn-operator
+{% if ansible_distribution  == "CentOS" %}
+          image: {{ ovn4nfv_k8s_plugin_image_repo }}:{{ ovn4nfv_k8s_plugin_centos_image_tag }}
+{% else %}
           image: {{ ovn4nfv_k8s_plugin_image_repo }}:{{ ovn4nfv_k8s_plugin_image_tag }}
+{% endif %}
           command: ["/usr/local/bin/entrypoint", "operator"]
           imagePullPolicy: {{ k8s_image_pull_policy }}
           envFrom:
@@ -489,7 +584,11 @@ spec:
       serviceAccountName: k8s-nfn-sa
       containers:
       - name: ovn4nfv
+{% if ansible_distribution  == "CentOS" %}                                     
+        image: {{ ovn4nfv_k8s_plugin_image_repo }}:{{ ovn4nfv_k8s_plugin_centos_image_tag }}
+{% else %}                                                                        
         image: {{ ovn4nfv_k8s_plugin_image_repo }}:{{ ovn4nfv_k8s_plugin_image_tag }}
+{% endif %}
         command: ["/usr/local/bin/entrypoint", "cni"]
         imagePullPolicy: {{ k8s_image_pull_policy }}
         resources:
@@ -563,7 +662,11 @@ spec:
       serviceAccountName: k8s-nfn-sa
       containers:
       - name: nfn-agent
+{% if ansible_distribution  == "CentOS" %}                                     
+        image: {{ ovn4nfv_k8s_plugin_image_repo }}:{{ ovn4nfv_k8s_plugin_centos_image_tag }}
+{% else %}                                                                        
         image: {{ ovn4nfv_k8s_plugin_image_repo }}:{{ ovn4nfv_k8s_plugin_image_tag }}
+{% endif %}
         command: ["/usr/local/bin/entrypoint", "agent"]
         imagePullPolicy: {{ k8s_image_pull_policy }}
         resources:
@@ -591,6 +694,12 @@ spec:
           name: host-run-ovs
         - mountPath: /var/run/openvswitch
           name: host-var-run-ovs
+        - mountPath: /var/run
+          name: host-var-run
+        - mountPath: /host/proc 
+          name: host-proc
+        - mountPath: /host/sys
+          name: host-sys
         - mountPath: /var/run/ovn4nfv-k8s-plugin
           name: host-var-cniserver-socket-dir
       volumes:
@@ -606,3 +715,12 @@ spec:
       - name: host-var-cniserver-socket-dir
         hostPath:
           path: /var/run/ovn4nfv-k8s-plugin
+      - name: host-var-run
+        hostPath:
+          path: /var/run
+      - name: host-proc
+        hostPath:
+          path: /proc
+      - name: host-sys
+        hostPath:
+          path: /sys

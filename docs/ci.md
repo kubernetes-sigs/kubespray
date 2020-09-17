@@ -8,7 +8,7 @@ To generate this Matrix run `./tests/scripts/md-table/main.py`
 |---| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 amazon |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :white_check_mark: |
-centos8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: |
+centos8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :white_check_mark: | :x: |
 debian10 |  :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: |
 fedora31 |  :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |

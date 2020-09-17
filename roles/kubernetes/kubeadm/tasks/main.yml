@@ -123,7 +123,7 @@
     - inventory_hostname in groups['kube-master']
     - kubeadm_config_api_fqdn is not defined
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
-    - not kube_proxy_remove
+    - kube_proxy_deployed
     - loadbalancer_apiserver_localhost
   tags:
     - kube-proxy
@@ -144,7 +144,7 @@
     - inventory_hostname in groups['kube-master']
     - kubeadm_config_api_fqdn is not defined
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
-    - not kube_proxy_remove
+    - kube_proxy_deployed
   tags:
     - kube-proxy
 
@@ -158,19 +158,6 @@
   when:
     - kube_network_plugin in ['calico','canal']
     - calico_version is version('v3.3.0', '<')
-
-# FIXME(jjo): need to post-remove kube-proxy until https://github.com/kubernetes/kubeadm/issues/776
-# is fixed
-- name: Delete kube-proxy daemonset if kube_proxy_remove set, e.g. kube_network_plugin providing proxy services
-  command: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf delete daemonset -n kube-system kube-proxy"
-  run_once: true
-  delegate_to: "{{ groups['kube-master']|first }}"
-  when:
-    - kube_proxy_remove
-  # When scaling/adding nodes in the existing k8s cluster, kube-proxy wouldn't be created, as `kubeadm init` wouldn't run.
-  ignore_errors: true
-  tags:
-    - kube-proxy
 
 - name: Extract etcd certs from control plane if using etcd kubeadm mode
   include_tasks: kubeadm_etcd_node.yml

@@ -70,7 +70,7 @@ Before using `--limit` run playbook `facts.yml` without the limit to refresh fac
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.
   
-If the node you want to remove is not online, you should add `reset_nodes=false` to your extra-vars: `-e node=NODE_NAME reset_nodes=false`.
+If the node you want to remove is not online, you should add `reset_nodes=false` to your extra-vars: `-e node=NODE_NAME -e reset_nodes=false`.
 Use this flag even when you remove other types of nodes like a master or etcd nodes.
 
 ### 5) Remove the node from the inventory

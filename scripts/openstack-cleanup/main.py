@@ -34,13 +34,13 @@ def main():
 
     conn = openstack.connect()
 
-    print('Security groups...')
-    map_if_old(conn.network.delete_security_group,
-               conn.network.security_groups())
-
     print('Servers...')
     map_if_old(conn.compute.delete_server,
                conn.compute.servers())
+
+    print('Security groups...')
+    map_if_old(conn.network.delete_security_group,
+               conn.network.security_groups())
 
     print('Subnets...')
     map_if_old(conn.network.delete_subnet,

@@ -82,7 +82,7 @@ If you use the settings like the one above, you'll need to define in your invent
 The easiest way is to use [kubespray container image](quay.io/kubespray/kubespray) as all the required packages are baked in the image.
 Just copy the container image in your private container image registry and you are all set!
 
-### Not recommended: Manual installation
+### Manual installation
 
 Look at the `requirements.txt` file and check if your OS provides all packages out-of-the-box (Using the OS package manager). For those missing, you need to either use a proxy that has Internet access (typically from a DMZ) or setup a PyPi server in your network that will host these packages.
 

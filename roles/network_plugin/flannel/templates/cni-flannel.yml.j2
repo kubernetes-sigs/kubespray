@@ -38,11 +38,16 @@ data:
 {% endif %}
       }
     }
+{% for arch in ['amd64', 'arm64', 'arm', 'ppc64le', 's390x'] %}
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
+{% if arch == 'amd64' %}
   name: kube-flannel
+{% else %}
+  name: kube-flannel-ds-{{ arch }}
+{% endif %}
   namespace: kube-system
   labels:
     tier: node
@@ -61,7 +66,7 @@ spec:
       serviceAccountName: flannel
       containers:
       - name: kube-flannel
-        image: {{ flannel_image_repo }}:{{ flannel_image_tag }}
+        image: {{ flannel_image_repo }}:{{ flannel_image_tag }}-{{ arch }}
         imagePullPolicy: {{ k8s_image_pull_policy }}
         resources:
           limits:
@@ -101,10 +106,10 @@ spec:
                   - key: kubernetes.io/arch
                     operator: In
                     values:
-                      - amd64
+                      - {{ arch }}
       initContainers:
       - name: install-cni
-        image: {{ flannel_image_repo }}:{{ flannel_image_tag }}
+        image: {{ flannel_image_repo }}:{{ flannel_image_tag }}-{{ arch }}
         command:
         - cp
         args:
@@ -137,3 +142,4 @@ spec:
     rollingUpdate:
       maxUnavailable: {{ serial | default('20%') }}
     type: RollingUpdate
+{% endfor %}

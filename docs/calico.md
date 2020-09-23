@@ -58,6 +58,20 @@ calicoctl.sh endpoint show --detail
 
 ## Configuration
 
+### Optional : Define datastore type
+
+The default datastore, Kubernetes API datastore is recommended for on-premises deployments, and supports only Kubernetes workloads; etcd is the best datastore for hybrid deployments.
+
+Allowed values are `kdd` (default) and `etcd`.
+
+Note: using kdd and more than 50 nodes, consider using the `typha` daemon to provide scaling.
+
+To re-define you need to edit the inventory and add a group variable `calico_datastore`
+
+```yml
+calico_datastore: kdd
+```
+
 ### Optional : Define network backend
 
 In some cases you may want to define Calico network backend. Allowed values are `bird`, `vxlan` or `none`. Bird is a default value.

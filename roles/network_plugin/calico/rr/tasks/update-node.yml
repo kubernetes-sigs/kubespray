@@ -1,0 +1,39 @@
+---
+# Workaround to retry a block of tasks, ansible doesn't have a direct way to do it,
+# you can follow the block loop request in: https://github.com/ansible/ansible/issues/46203
+- block:
+  - name: Set the retry count
+    set_fact:
+      retry_count: "{{ 0 if retry_count is undefined else retry_count|int + 1 }}"
+
+  - name: Calico-rr | Fetch current node object
+    command: "{{ bin_dir }}/calicoctl.sh get node {{ inventory_hostname }} -ojson"
+    changed_when: false
+    register: calico_rr_node
+    until: calico_rr_node is succeeded
+    delay: "{{ retry_stagger | random + 3 }}"
+    retries: 10
+
+  - name: Calico-rr | Set route reflector cluster ID
+    set_fact:
+      calico_rr_node_patched: >-
+        {{ calico_rr_node.stdout | from_json | combine({ 'spec': { 'bgp':
+        { 'routeReflectorClusterID': cluster_id }}}, recursive=True) }}
+
+  - name: Calico-rr | Configure route reflector  # noqa 301 305
+    shell: "{{ bin_dir }}/calicoctl.sh replace -f-"
+    args:
+      stdin: "{{ calico_rr_node_patched | to_json }}"
+
+  rescue:
+  - name: Fail if retry limit is reached
+    fail:
+      msg: Ended after 10 retries
+    when: retry_count|int == 10
+
+  - name: Retrying node configuration
+    debug:
+      msg: "Failed to configure route reflector - Retrying..."
+
+  - name: Retry node configuration
+    include_tasks: update-node.yml

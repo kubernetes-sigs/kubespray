@@ -2,24 +2,8 @@
 - name: Calico-rr | Pre-upgrade tasks
   include_tasks: pre.yml
 
-- name: Calico-rr | Fetch current node object
-  command: "{{ bin_dir }}/calicoctl.sh get node {{ inventory_hostname }} -ojson"
-  changed_when: false
-  register: calico_rr_node
-  until: calico_rr_node is succeeded
-  delay: "{{ retry_stagger | random + 3 }}"
-  retries: 10
-
-- name: Calico-rr | Set route reflector cluster ID
-  set_fact:
-    calico_rr_node_patched: >-
-      {{ calico_rr_node.stdout | from_json | combine({ 'spec': { 'bgp':
-      { 'routeReflectorClusterID': cluster_id }}}, recursive=True) }}
-
-- name: Calico-rr | Configure route reflector  # noqa 301 305
-  shell: "{{ bin_dir }}/calicoctl.sh replace -f-"
-  args:
-    stdin: "{{ calico_rr_node_patched | to_json }}"
+- name: Calico-rr | Configuring node tasks
+  include_tasks: update-node.yml
 
 - name: Calico-rr | Set label for route reflector  # noqa 301
   command: >-

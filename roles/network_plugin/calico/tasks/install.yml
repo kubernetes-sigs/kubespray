@@ -32,7 +32,7 @@
 - name: Calico | Write Calico cni config
   template:
     src: "cni-calico.conflist.j2"
-    dest: "/etc/cni/net.d/{% if calico_version is version('v3.3.0', '>=') %}calico.conflist.template{% else %}10-calico.conflist{% endif %}"
+    dest: "/etc/cni/net.d/calico.conflist.template"
     owner: kube
   register: calico_conflist
   notify: reset_calico_cni
@@ -135,26 +135,7 @@
   loop_control:
     label: "{{ item.item.file }}"
 
-- name: Calico | Configure calico network pool (version < v3.3.0)
-  command:
-    cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-    stdin: >
-      { "kind": "IPPool",
-        "apiVersion": "projectcalico.org/v3",
-        "metadata": {
-          "name": "{{ calico_pool_name }}",
-        },
-        "spec": {
-          "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
-          "ipipMode": "{{ calico_ipip_mode }}",
-          "vxlanMode": "{{ calico_vxlan_mode }}",
-          "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }}
-  when:
-    - inventory_hostname == groups['kube-master'][0]
-    - 'calico_conf.stdout == "0"'
-    - calico_version is version("v3.3.0", "<")
-
-- name: Calico | Configure calico network pool (version >= v3.3.0)
+- name: Calico | Configure calico network pool
   command:
     cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
     stdin: >
@@ -172,7 +153,6 @@
   when:
     - inventory_hostname == groups['kube-master'][0]
     - 'calico_conf.stdout == "0"'
-    - calico_version is version("v3.3.0", ">=")
 
 - name: "Determine nodeToNodeMesh needed state"
   set_fact:

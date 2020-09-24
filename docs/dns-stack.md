@@ -82,7 +82,7 @@ dns_etchosts: |
   192.168.0.200 ingress.example.com
 ```
 
-### enable_coredns_reverse_dns_lookups 
+### enable_coredns_reverse_dns_lookups
 
 Whether reverse DNS lookups are enabled in the coredns config. Defaults to `true`.
 

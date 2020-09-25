@@ -82,6 +82,10 @@ dns_etchosts: |
   192.168.0.200 ingress.example.com
 ```
 
+### enable_coredns_reverse_dns_lookups
+
+Whether reverse DNS lookups are enabled in the coredns config. Defaults to `true`.
+
 ## DNS modes supported by Kubespray
 
 You can modify how Kubespray sets up DNS for your cluster with the variables ``dns_mode`` and ``resolvconf_mode``.

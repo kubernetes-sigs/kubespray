@@ -30,16 +30,27 @@ external_cloud_provider: "vsphere"
 
 Then, `inventory/sample/group_vars/vsphere.yml`, you need to declare your vCenter credentials and enable the vSphere CSI following the description below.
 
-| Variable                               | Required | Type    | Choices                    | Default | Comment                                                                   |
-|----------------------------------------|----------|---------|----------------------------|---------|---------------------------------------------------------------------------|
-| external_vsphere_vcenter_ip            | TRUE     | string  |                            |                           | IP/URL of the vCenter                                   |
-| external_vsphere_vcenter_port          | TRUE     | string  |                            | "443"                     | Port of the vCenter API                                 |
-| external_vsphere_insecure              | TRUE     | string  | "true", "false"            | "true"                    | set to "true" if the host above uses a self-signed cert |
-| external_vsphere_user                  | TRUE     | string  |                            |                           | User name for vCenter with required privileges          |
-| external_vsphere_password              | TRUE     | string  |                            |                           | Password for vCenter                                    |
-| external_vsphere_datacenter            | TRUE     | string  |                            |                           | Datacenter name to use                                  |
-| external_vsphere_kubernetes_cluster_id | TRUE     | string  |                            | "kubernetes-cluster-id"   | Kubernetes cluster ID to use                            |
-| vsphere_csi_enabled                    | TRUE     | boolean |                            | false                     | Enable vSphere CSI                                      |
+| Variable                                 | Required | Type    | Choices         | Default                    | Comment                                                                                           |
+|------------------------------------------|----------|---------|-----------------|----------------------------|---------------------------------------------------------------------------------------------------|
+| external_vsphere_vcenter_ip              | TRUE     | string  |                 |                            | IP/URL of the vCenter                                                                             |
+| external_vsphere_vcenter_port            | TRUE     | string  |                 | "443"                      | Port of the vCenter API                                                                           |
+| external_vsphere_insecure                | TRUE     | string  | "true", "false" | "true"                     | set to "true" if the host above uses a self-signed cert                                           |
+| external_vsphere_user                    | TRUE     | string  |                 |                            | User name for vCenter with required privileges                                                    |
+| external_vsphere_password                | TRUE     | string  |                 |                            | Password for vCenter                                                                              |
+| external_vsphere_datacenter              | TRUE     | string  |                 |                            | Datacenter name to use                                                                            |
+| external_vsphere_kubernetes_cluster_id   | TRUE     | string  |                 | "kubernetes-cluster-id"    | Kubernetes cluster ID to use                                                                      |
+| vsphere_csi_enabled                      | TRUE     | boolean |                 | false                      | Enable vSphere CSI                                                                                |
+| external_vsphere_nsxt_enabled            | FALSE    | boolean | "true", "false" | false                      | Will enable NSX-T load balancer (alpha feature)                                                   |
+| external_vsphere_nsxt_insecure           | FALSE    | boolean | "true", "false" |                            | Will disable certificate checks                                                                   |
+| external_vsphere_nsxt_user               | FALSE    | string  |                 |                            | User name for NSX-T (Required if NSX-T load balancer enabled)                                     |
+| external_vsphere_nsxt_password           | FALSE    | string  |                 |                            | Password for NSX-T (Required if NSX-T load balancer enabled)                                      |
+| external_vsphere_nsxt_host               | FALSE    | string  |                 |                            | IP/URL of the NSX-T manager (Required if NSX-T load balancer enabled)                             |
+| external_vsphere_nsxt_pool_name          | FALSE    | string  |                 |                            | Name of the IP Pool to use - if not set a new pool will be created                                |
+| external_vsphere_nsxt_pool_size          | FALSE    | string  |                 |                            | Size of the IP Pool to use(Required if NSX-T load balancer enabled)                               |
+| external_vsphere_nsxt_lb_service_id      | FALSE    | string  |                 |                            | Id of the lb service - mutually exclusive with external_vsphere_nsxt_tier1_gateway_path           |
+| external_vsphere_nsxt_tier1_gateway_path | FALSE    | string  |                 |                            | Path to the tier1 gateway of the lb - mutually exclusive with external_vsphere_nsxt_lb_service_id |
+| external_vsphere_nsxt_tcp_app_profile    | FALSE    | string  |                 | default-tcp-lb-app-profile | (Required if NSX-T load balancer enabled)                                                         |
+| external_vsphere_nsxt_udp_app_profile    | FALSE    | string  |                 | default-udp-lb-app-profile | (Required if NSX-T load balancer enabled)                                                         |
 
 Example configuration:
 

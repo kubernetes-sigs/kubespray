@@ -282,3 +282,16 @@
     that: ansible_os_family not in ["Flatcar Container Linux by Kinvolk"]
     msg: "download_run_once not supported for Flatcar Container Linux"
   when: download_run_once or download_force_cache
+
+- name: Verify synchronized time before install/upgrade
+  shell: "set -o pipefail && timedatectl status | grep synchronized | awk -F ': ' '{ print $2 }' | tr -d ' '"
+  args:
+    executable: /bin/bash
+  register: result
+  changed_when: false
+  failed_when: false
+
+- name: Stop if it does not have synchronized time
+  assert:
+    that: result.stdout in ['yes']
+    msg: "Kubespray stop any further actions for a node if it does not have synchronized time."

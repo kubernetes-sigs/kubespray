@@ -139,7 +139,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v0.16.1
   - [coredns](https://github.com/coredns/coredns) v1.7.0
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.35.0
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.40.1
 
 Note: The list of validated [docker versions](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#docker) is 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09 and 19.03. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 

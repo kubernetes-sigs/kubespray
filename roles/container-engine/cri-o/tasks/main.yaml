@@ -1,5 +1,4 @@
 ---
-
 - name: check if fedora coreos
   stat:
     path: /run/ostree-booted
@@ -8,7 +7,6 @@
 - name: set is_ostree
   set_fact:
     is_ostree: "{{ ostree.stat.exists }}"
-
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -46,7 +44,6 @@
     state: present
   when: not is_ostree
   with_items: "{{ crio_packages }}"
-  notify: restart crio
   register: package_install
   until: package_install is succeeded
   retries: 4
@@ -99,6 +96,7 @@
   template:
     src: crio.conf.j2
     dest: /etc/crio/crio.conf
+  notify: restart crio
 
 - name: Copy mounts.conf
   copy:
@@ -125,10 +123,24 @@
     - ansible_distribution == "CentOS"
     - ansible_distribution_major_version == "7"
 
-
 - name: Write cri-o proxy drop-in
   template:
     src: http-proxy.conf.j2
     dest: /etc/systemd/system/crio.service.d/http-proxy.conf
   notify: restart crio
   when: http_proxy is defined or https_proxy is defined
+
+- name: Ensure crio service is started and enabled
+  service:
+    name: crio
+    daemon_reload: true
+    enabled: true
+    state: started
+
+- name: Verify that crio is running
+  command: "crio-status info"
+  register: get_crio_info
+  until: get_crio_info is succeeded
+  changed_when: false
+  retries: 5
+  delay: "{{ retry_stagger | random + 3 }}"

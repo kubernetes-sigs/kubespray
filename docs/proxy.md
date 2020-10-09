@@ -14,3 +14,10 @@ If you set http and https proxy, all nodes and loadbalancer will be excluded fro
 ## Set additional addresses to default no_proxy (all cluster nodes and loadbalancer)
 
 `additional_no_proxy: "aditional_host,"`
+
+## Exclude workers from no_proxy
+
+Since workers are included in the no_proxy variable, by default, docker engine will be restarted on all nodes (all
+pods will restart) when adding or removing workers.  To override this behaviour by only including master nodes in the
+no_proxy variable, set:
+`no_proxy_exclude_workers: true`

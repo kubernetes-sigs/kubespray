@@ -123,7 +123,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cri-o](http://cri-o.io/) v1.17 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.8.7
-  - [calico](https://github.com/projectcalico/calico) v3.16.1
+  - [calico](https://github.com/projectcalico/calico) v3.16.2
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.8.4
   - [contiv](https://github.com/contiv/install) v1.2.1
@@ -139,7 +139,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v0.16.1
   - [coredns](https://github.com/coredns/coredns) v1.7.0
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.40.1
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.40.2
 
 Note: The list of validated [docker versions](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#docker) is 1.13.1, 17.03, 17.06, 17.09, 18.06, 18.09 and 19.03. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 

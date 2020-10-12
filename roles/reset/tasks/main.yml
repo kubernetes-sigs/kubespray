@@ -92,6 +92,21 @@
     - containerd
   when: container_manager in ["crio", "containerd"] and deploy_container_engine|default(true)
 
+- name: reset | stop and disable crio service
+  service:
+    name: crio
+    state: stopped
+    enabled: false
+  failed_when: false
+  tags: [ crio ]
+  when: container_manager == "crio"
+
+- name: reset | forcefully wipe CRI-O's container and image storage
+  command: "crio wipe -f"
+  failed_when: false
+  tags: [ crio ]
+  when: container_manager == "crio"
+
 - name: reset | stop all cri pods
   shell: "set -o pipefail && crictl pods -q | xargs -r crictl -t 60s stopp"
   args:
@@ -100,10 +115,8 @@
   retries: 5
   until: remove_all_cri_containers.rc == 0
   delay: 5
-  tags:
-    - crio
-    - containerd
-  when: container_manager in ["crio", "containerd"]
+  tags: [ containerd ]
+  when: container_manager == "containerd"
 
 - name: reset | remove all cri pods
   shell: "set -o pipefail && crictl pods -q | xargs -r crictl -t 60s rmp"
@@ -113,10 +126,8 @@
   retries: 5
   until: remove_all_cri_containers.rc == 0
   delay: 5
-  tags:
-    - crio
-    - containerd
-  when: container_manager in ["crio", "containerd"]
+  tags: [ containerd ]
+  when: container_manager == "containerd"
 
 - name: reset | stop etcd services
   service:

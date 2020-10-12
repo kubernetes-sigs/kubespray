@@ -19,7 +19,6 @@ skip_downloads: false
 ## k8s-cluster.yml
 
 ```yaml
-kubelet_deployment_type: host
 container_manager: crio
 ```
 

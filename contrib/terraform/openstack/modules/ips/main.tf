@@ -4,14 +4,16 @@ resource "null_resource" "dummy_dependency" {
   }
 }
 
+# If user specifies pre-existing IPs to use in k8s_master_fips, do not create new ones.
 resource "openstack_networking_floatingip_v2" "k8s_master" {
-  count      = var.number_of_k8s_masters
+  count      = length(var.k8s_master_fips) > 0 ? 0 : var.number_of_k8s_masters
   pool       = var.floatingip_pool
   depends_on = [null_resource.dummy_dependency]
 }
 
+# If user specifies pre-existing IPs to use in k8s_master_fips, do not create new ones.
 resource "openstack_networking_floatingip_v2" "k8s_master_no_etcd" {
-  count      = var.number_of_k8s_masters_no_etcd
+  count      = length(var.k8s_master_fips) > 0 ? 0 : var.number_of_k8s_masters_no_etcd
   pool       = var.floatingip_pool
   depends_on = [null_resource.dummy_dependency]
 }

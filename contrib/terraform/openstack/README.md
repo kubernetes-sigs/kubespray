@@ -239,6 +239,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`network_dns_domain` | (Optional) The dns_domain for the internal network that will be generated |
 |`dns_nameservers`| An array of DNS name server names to be used by hosts in the internal subnet. |
 |`floatingip_pool` | Name of the pool from which floating IPs will be allocated |
+|`k8s_master_fips` | A list of floating IPs that you have already pre-allocated; they will be attached to master nodes instead of creating new random floating IPs. |
 |`external_net` | UUID of the external network that will be routed to |
 |`flavor_k8s_master`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through `openstack flavor list` |
 |`image`,`image_gfs` | Name of the image to use in provisioning the compute resources. Should already be loaded into glance. |

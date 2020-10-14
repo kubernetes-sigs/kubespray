@@ -127,7 +127,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.8.4
   - [contiv](https://github.com/contiv/install) v1.2.1
-  - [flanneld](https://github.com/coreos/flannel) v0.12.0
+  - [flanneld](https://github.com/coreos/flannel) v0.13.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.3.0
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.1.0
   - [multus](https://github.com/intel/multus-cni) v3.6.0

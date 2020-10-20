@@ -85,6 +85,7 @@ kube_router_version: "v1.1.0"
 multus_version: "v3.6"
 ovn4nfv_ovn_image_version: "v1.0.0"
 ovn4nfv_k8s_plugin_image_version: "v1.1.0"
+helm_version: "v3.3.4"
 
 # Get kubernetes major version (i.e. 1.17.4 => 1.17)
 kube_major_version: "{{ kube_version | regex_replace('^v([0-9])+\\.([0-9]+)\\.[0-9]+', 'v\\1.\\2') }}"
@@ -102,6 +103,7 @@ etcd_download_url: "https://github.com/coreos/etcd/releases/download/{{ etcd_ver
 cni_download_url: "https://github.com/containernetworking/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
 calicoctl_download_url: "https://github.com/projectcalico/calicoctl/releases/download/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
 crictl_download_url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+helm_download_url: "https://get.helm.sh/helm-{{ helm_version }}-linux-{{ image_arch }}.tar.gz"
 
 crictl_checksums:
   arm:
@@ -402,6 +404,11 @@ calicoctl_binary_checksums:
     v3.16.2: aa5695940ec8a36393725a5ce7b156f776fed8da38b994c0828d7f3a60e59bc6
     v3.15.2: 49165f9e4ad55402248b578310fcf68a57363f54e66be04ac24be9714899b4d5
 
+helm_archive_checksums:
+  arm: 9da6cc39a796f85b6c4e6d48fd8e4888f1003bfb7a193bb6c427cdd752ad40bb
+  amd64: b664632683c36446deeb85c406871590d879491e3de18978b426769e43a1e82c
+  arm64: bdd00b8ff422171b4be5b649a42e5261394a89d7ea57944005fc34d34d1f8160
+
 etcd_binary_checksum: "{{ etcd_binary_checksums[image_arch] }}"
 cni_binary_checksum: "{{ cni_binary_checksums[image_arch] }}"
 kubelet_binary_checksum: "{{ kubelet_checksums[image_arch][kube_version] }}"
@@ -409,6 +416,7 @@ kubectl_binary_checksum: "{{ kubectl_checksums[image_arch][kube_version] }}"
 kubeadm_binary_checksum: "{{ kubeadm_checksums[image_arch][kubeadm_version] }}"
 calicoctl_binary_checksum: "{{ calicoctl_binary_checksums[image_arch][calico_ctl_version] }}"
 crictl_binary_checksum: "{{ crictl_checksums[image_arch][crictl_version] }}"
+helm_archive_checksum: "{{ helm_archive_checksums[image_arch] }}"
 
 # Containers
 # In some cases, we need a way to set --registry-mirror or --insecure-registry for docker,
@@ -491,11 +499,6 @@ dnsautoscaler_image_repo: "{{ kube_image_repo }}/cpa/cluster-proportional-autosc
 dnsautoscaler_image_tag: "{{ dnsautoscaler_version }}"
 test_image_repo: "{{ kube_image_repo }}/busybox"
 test_image_tag: latest
-helm_version: "v3.2.4"
-helm_image_repo: "{{ docker_image_repo }}/lachlanevenson/k8s-helm"
-helm_image_tag: "{{ helm_version }}"
-tiller_image_repo: "{{ gcr_image_repo }}/kubernetes-helm/tiller"
-tiller_image_tag: "{{ helm_version }}"
 
 registry_image_repo: "{{ docker_image_repo }}/library/registry"
 registry_image_tag: "2.7.1"
@@ -925,21 +928,16 @@ downloads:
 
   helm:
     enabled: "{{ helm_enabled }}"
-    container: true
-    repo: "{{ helm_image_repo }}"
-    tag: "{{ helm_image_tag }}"
-    sha256: "{{ helm_digest_checksum|default(None) }}"
+    file: true
+    version: "{{ helm_version }}"
+    dest: "{{ local_release_dir }}/helm-{{ helm_version }}/helm-{{ helm_version }}-linux-{{ image_arch }}.tar.gz"
+    sha256: "{{ helm_archive_checksum }}"
+    url: "{{ helm_download_url }}"
+    unarchive: true
+    owner: "root"
+    mode: "0755"
     groups:
-    - kube-node
-
-  tiller:
-    enabled: "{{ helm_enabled and helm_version is version('v3.0.0', '<') }}"
-    container: true
-    repo: "{{ tiller_image_repo }}"
-    tag: "{{ tiller_image_tag }}"
-    sha256: "{{ tiller_digest_checksum|default(None) }}"
-    groups:
-    - kube-node
+    - kube-master
 
   registry:
     enabled: "{{ registry_enabled }}"

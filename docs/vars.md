@@ -202,5 +202,4 @@ in the form of dicts of key-value pairs of configuration parameters that will be
 
 ## App variables
 
-* *helm_version* - Defaults to v3.x, set to a v2 version (e.g. `v2.16.1` ) to install Helm 2.x (will install Tiller!).
-Picking v3 for an existing cluster running Tiller will leave it alone. In that case you will have to remove Tiller manually afterwards.
+* *helm_version* - Only supports v3.x. Existing v2 installs (with Tiller) will not be modified and need to be removed manually.

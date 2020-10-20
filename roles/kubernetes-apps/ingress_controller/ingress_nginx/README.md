@@ -180,17 +180,14 @@ kubectl exec -it $POD_NAME -n $POD_NAMESPACE -- /nginx-ingress-controller --vers
 
 ## Using Helm
 
-NGINX Ingress controller can be installed via [Helm](https://helm.sh/) using the chart [stable/nginx-ingress](https://github.com/kubernetes/charts/tree/master/stable/nginx-ingress) from the official charts repository.
+NGINX Ingress controller can be installed via [Helm](https://helm.sh/) using the chart [ingress-nginx/ingress-nginx](https://kubernetes.github.io/ingress-nginx).
+Official documentation is [here](https://kubernetes.github.io/ingress-nginx/deploy/#using-helm)
+
 To install the chart with the release name `my-nginx`:
 
 ```console
-helm install stable/nginx-ingress --name my-nginx
-```
-
-If the kubernetes cluster has RBAC enabled, then run:
-
-```console
-helm install stable/nginx-ingress --name my-nginx --set rbac.create=true
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm install my-nginx ingress-nginx/ingress-nginx
 ```
 
 Detect installed version:

@@ -110,7 +110,11 @@ decryption_keys_path = "/etc/crio/keys/"
 conmon = "{{ crio_conmon }}"
 
 # Cgroup setting for conmon
+{% if crio_cgroup_manager == "cgroupfs" %}
+conmon_cgroup = "pod"
+{% else %}
 conmon_cgroup = "system.slice"
+{% endif %}
 
 # Environment variable list for the conmon process, used for passing necessary
 # environment variables to conmon or the runtime.
@@ -250,7 +254,11 @@ ctr_stop_timeout = 30
 
 # manage_ns_lifecycle determines whether we pin and remove namespaces
 # and manage their lifecycle
+{% if kata_containers_enabled %}
+manage_ns_lifecycle = true
+{% else %}
 manage_ns_lifecycle = false
+{% endif %}
 
 # The directory where the state of the managed namespaces gets tracked.
 # Only used when manage_ns_lifecycle is true.
@@ -280,22 +288,12 @@ pinns_path = ""
 # - runtime_root (optional, string): root directory for storage of containers
 #   state.
 
-
-[crio.runtime.runtimes.runc]
-runtime_path = "{{ crio_runc_path }}"
-runtime_type = "oci"
-runtime_root = "/run/runc"
-
-
-# Kata Containers is an OCI runtime, where containers are run inside lightweight
-# VMs. Kata provides additional isolation towards the host, minimizing the host attack
-# surface and mitigating the consequences of containers breakout.
-
-# Kata Containers with the default configured VMM
-#[crio.runtime.runtimes.kata-runtime]
-
-# Kata Containers with the QEMU VMM
-#[crio.runtime.runtimes.kata-qemu]
+{% for runtime in crio_runtimes %}
+[crio.runtime.runtimes.{{ runtime.name }}]
+runtime_path = "{{ runtime.path }}"
+runtime_type = "{{ runtime.type }}"
+runtime_root = "{{ runtime.root }}"
+{% endfor %}
 
 # Kata Containers with the Firecracker VMM
 #[crio.runtime.runtimes.kata-fc]

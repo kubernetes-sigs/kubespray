@@ -88,8 +88,14 @@ dns:
   imageTag: {{ coredns_image_tag }}
 networking:
   dnsDomain: {{ dns_domain }}
-  serviceSubnet: {{ kube_service_addresses }}
-  podSubnet: {{ kube_pods_subnet }}
+  serviceSubnet: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks }}"
+  podSubnet: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks }}"
+{% if kube_feature_gates %}
+featureGates:
+{%   for kube_feature_gate in kube_feature_gates %}
+  {{ kube_feature_gate.split("=")[0] }}: {{ kube_feature_gate.split("=")[1] }}
+{%   endfor %}
+{% endif %}
 kubernetesVersion: {{ kube_version }}
 {% if kubeadm_config_api_fqdn is defined %}
 controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
@@ -127,6 +133,7 @@ apiServer:
     etcd-servers-overrides: "/events#{{ etcd_events_access_addresses_semicolon }}"
 {% endif %}
     service-node-port-range: {{ kube_apiserver_node_port_range }}
+    service-cluster-ip-range: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks }}"
     kubelet-preferred-address-types: "{{ kubelet_preferred_address_types }}"
     profiling: "{{ kube_profiling }}"
     request-timeout: "{{ kube_apiserver_request_timeout }}"
@@ -262,7 +269,14 @@ controllerManager:
   extraArgs:
     node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
     node-monitor-period: {{ kube_controller_node_monitor_period }}
+    cluster-cidr: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks }}"
+    service-cluster-ip-range: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks }}"
+{% if enable_dual_stack_networks %}
+    node-cidr-mask-size-ipv4: "{{ kube_network_node_prefix }}"
+    node-cidr-mask-size-ipv6: "{{ kube_network_node_prefix_ipv6 }}"
+{% else %}
     node-cidr-mask-size: "{{ kube_network_node_prefix }}"
+{% endif %}
     profiling: "{{ kube_profiling }}"
     terminated-pod-gc-threshold: "{{ kube_controller_terminated_pod_gc_threshold }}"
     bind-address: {{ kube_controller_manager_bind_address }}
@@ -349,7 +363,7 @@ clientConnection:
   contentType: {{ kube_proxy_client_content_type }}
   kubeconfig: {{ kube_proxy_client_kubeconfig }}
   qps: {{ kube_proxy_client_qps }}
-clusterCIDR: {{ kube_pods_subnet }}
+clusterCIDR: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks }}"
 configSyncPeriod: {{ kube_proxy_config_sync_period }}
 conntrack:
   maxPerCore: {{ kube_proxy_conntrack_max_per_core }}
@@ -357,6 +371,12 @@ conntrack:
   tcpCloseWaitTimeout: {{ kube_proxy_conntrack_tcp_close_wait_timeout }}
   tcpEstablishedTimeout: {{ kube_proxy_conntrack_tcp_established_timeout }}
 enableProfiling: {{ kube_proxy_enable_profiling }}
+{% if kube_feature_gates %}
+featureGates:
+{%   for kube_feature_gate in kube_feature_gates %}
+  {{ kube_feature_gate.split("=")[0] }}: {{ kube_feature_gate.split("=")[1] }}
+{%   endfor %}
+{% endif %}
 healthzBindAddress: {{ kube_proxy_healthz_bind_address }}
 hostnameOverride: {{ kube_override_hostname }}
 iptables:
@@ -404,3 +424,9 @@ clusterDNS:
 {% for dns_address in kubelet_cluster_dns %}
 - {{ dns_address }}
 {% endfor %}
+{% if kube_feature_gates %}
+featureGates:
+{%   for kube_feature_gate in kube_feature_gates %}
+  {{ kube_feature_gate.split("=")[0] }}: {{ kube_feature_gate.split("=")[1] }}
+{%   endfor %}
+{% endif %}

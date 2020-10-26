@@ -160,6 +160,7 @@ Note: The list of available docker version is 18.09, 19.03 and 20.10. The recomm
 - **Ansible v2.9.x, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands, Ansible 2.10.x is not supported for now**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.
+- If using IPv6 for pods and services, the target servers are configured to allow **IPv6 forwarding**.
 - The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
     in order to avoid any issue during deployment you should disable your firewall.
 - If kubespray is ran from non-root user account, correct privilege escalation method

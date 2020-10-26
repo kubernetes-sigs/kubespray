@@ -58,13 +58,14 @@ To re-define you need to edit the inventory and add a group variable `calico_net
 calico_network_backend: none
 ```
 
-### Optional : Define the default pool CIDR
+### Optional : Define the default pool CIDRs
 
-By default, `kube_pods_subnet` is used as the IP range CIDR for the default IP Pool.
-In some cases you may want to add several pools and not have them considered by Kubernetes as external (which means that they must be within or equal to the range defined in `kube_pods_subnet`), it starts with the default IP Pool of which IP range CIDR can by defined in group_vars (k8s-cluster/k8s-net-calico.yml):
+By default, `kube_pods_subnet` is used as the IP range CIDR for the default IP Pool, and `kube_pods_subnet_ipv6` for IPv6.
+In some cases you may want to add several pools and not have them considered by Kubernetes as external (which means that they must be within or equal to the range defined in `kube_pods_subnet` and `kube_pods_subnet_ipv6` ), it starts with the default IP Pools of which IP range CIDRs can by defined in group_vars (k8s-cluster/k8s-net-calico.yml):
 
 ```ShellSession
 calico_pool_cidr: 10.233.64.0/20
+calico_pool_cidr_ipv6: fd85:ee78:d8a6:8607::1:0000/112
 ```
 
 ### Optional : BGP Peering with border routers

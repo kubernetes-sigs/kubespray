@@ -62,6 +62,10 @@ following default cluster parameters:
   raise an assertion in playbooks if the `kubelet_max_pods` var also isn't adjusted accordingly
   (assertion not applicable to calico which doesn't use this as a hard limit, see
   [Calico IP block sizes](https://docs.projectcalico.org/reference/resources/ippool#block-sizes).
+* *enable_dual_stack_networks* - Setting this to true will provision both IPv4 and IPv6 networking for pods and services.
+* *kube_service_addresses_ipv6* - Subnet for cluster IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1000/116``). Must not overlap with ``kube_pods_subnet_ipv6``.
+* *kube_pods_subnet_ipv6* - Subnet for Pod IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1:0000/112``). Must not overlap with ``kube_service_addresses_ipv6``.
+* *kube_network_node_prefix_ipv6* - Subnet allocated per-node for pod IPv6 IPs. Remaining bits in ``kube_pods_subnet_ipv6`` dictates how many kube-nodes can be in cluster.
 * *skydns_server* - Cluster IP for DNS (default is 10.233.0.3)
 * *skydns_server_secondary* - Secondary Cluster IP for CoreDNS used with coredns_dual deployment (default is 10.233.0.4)
 * *enable_coredns_k8s_external* - If enabled, it configures the [k8s_external plugin](https://coredns.io/plugins/k8s_external/)
@@ -86,6 +90,10 @@ https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorizati
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``
 and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.
+
+## Enabling Dual Stack (IPV4 + IPV6) networking
+
+If *enable_dual_stack_networks* is set to ``true``, Dual Stack networking will be enabled in the cluster. This will use the default IPv4 and IPv6 subnets specified in the defaults file in the ``kubespray-defaults`` role, unless overridden of course. The default config will give you room for up to 256 nodes with 126 pods per node, and up to 4096 services.
 
 ## DNS variables
 

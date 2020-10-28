@@ -17,6 +17,13 @@ resource "openstack_networking_secgroup_v2" "k8s_master" {
   delete_default_rules = true
 }
 
+resource "openstack_networking_secgroup_v2" "k8s_master_extra" {
+  count                = "%{if var.extra_sec_groups}1%{else}0%{endif}"
+  name                 = "${var.cluster_name}-k8s-master-${var.extra_sec_groups_name}"
+  description          = "${var.cluster_name} - Kubernetes Master nodes - rules not managed by terraform"
+  delete_default_rules = true
+}
+
 resource "openstack_networking_secgroup_rule_v2" "k8s_master" {
   count             = length(var.master_allowed_remote_ips)
   direction         = "ingress"
@@ -92,6 +99,13 @@ resource "openstack_networking_secgroup_rule_v2" "egress" {
 resource "openstack_networking_secgroup_v2" "worker" {
   name                 = "${var.cluster_name}-k8s-worker"
   description          = "${var.cluster_name} - Kubernetes worker nodes"
+  delete_default_rules = true
+}
+
+resource "openstack_networking_secgroup_v2" "worker_extra" {
+  count                = "%{if var.extra_sec_groups}1%{else}0%{endif}"
+  name                 = "${var.cluster_name}-k8s-worker-${var.extra_sec_groups_name}"
+  description          = "${var.cluster_name} - Kubernetes worker nodes - rules not managed by terraform"
   delete_default_rules = true
 }
 
@@ -190,7 +204,8 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   }
 
   security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
-    openstack_networking_secgroup_v2.k8s.name,
+                    openstack_networking_secgroup_v2.k8s.name, 
+                    openstack_networking_secgroup_v2.k8s_master_extra[0].name,
   ]
 
   dynamic "scheduler_hints" {
@@ -239,7 +254,8 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   }
 
   security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
-    openstack_networking_secgroup_v2.k8s.name,
+                    openstack_networking_secgroup_v2.k8s.name, 
+                    openstack_networking_secgroup_v2.k8s_master_extra[0].name,
   ]
 
   dynamic "scheduler_hints" {
@@ -328,7 +344,8 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   }
 
   security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
-    openstack_networking_secgroup_v2.k8s.name,
+                    openstack_networking_secgroup_v2.k8s.name, 
+                    openstack_networking_secgroup_v2.k8s_master_extra[0].name,
   ]
 
   dynamic "scheduler_hints" {
@@ -372,7 +389,8 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   }
 
   security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
-    openstack_networking_secgroup_v2.k8s.name,
+                    openstack_networking_secgroup_v2.k8s.name, 
+                    openstack_networking_secgroup_v2.k8s_master_extra[0].name,
   ]
 
   dynamic "scheduler_hints" {
@@ -415,7 +433,8 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   }
 
   security_groups = [openstack_networking_secgroup_v2.k8s.name,
-    openstack_networking_secgroup_v2.worker.name,
+                    openstack_networking_secgroup_v2.worker.name,
+                    openstack_networking_secgroup_v2.worker_extra[0].name,
   ]
 
   dynamic "scheduler_hints" {
@@ -462,7 +481,8 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   }
 
   security_groups = [openstack_networking_secgroup_v2.k8s.name,
-    openstack_networking_secgroup_v2.worker.name,
+                    openstack_networking_secgroup_v2.worker.name,
+                    openstack_networking_secgroup_v2.worker_extra[0].name,
   ]
 
   dynamic "scheduler_hints" {
@@ -505,7 +525,8 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   }
 
   security_groups = [openstack_networking_secgroup_v2.k8s.name,
-    openstack_networking_secgroup_v2.worker.name,
+                    openstack_networking_secgroup_v2.worker.name,
+                    openstack_networking_secgroup_v2.worker_extra[0].name,
   ]
 
   dynamic "scheduler_hints" {

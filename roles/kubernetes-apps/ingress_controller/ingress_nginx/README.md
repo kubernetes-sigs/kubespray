@@ -31,10 +31,10 @@
       --user $(gcloud config get-value account)
     ```
 
-The following **Mandatory Command** is required for all deployments.
+The following **Mandatory Command** is required for all deployments except for AWS. See below for the AWS version.
 
 ```console
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.34.0/deploy/static/provider/cloud/deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.40.2/deploy/static/provider/cloud/deploy.yaml
 ```
 
 ### Provider Specific Steps
@@ -86,33 +86,27 @@ Please check the [elastic load balancing AWS details page](https://aws.amazon.co
 
 ##### Elastic Load Balancer - ELB
 
-This setup requires to choose in which layer (L4 or L7) we want to configure the ELB:
+This setup requires to choose in which layer (L4 or L7) we want to configure the Load Balancer:
 
-- [Layer 4](https://en.wikipedia.org/wiki/OSI_model#Layer_4:_Transport_Layer): use TCP as the listener protocol for ports 80 and 443.
-- [Layer 7](https://en.wikipedia.org/wiki/OSI_model#Layer_7:_Application_Layer): use HTTP as the listener protocol for port 80 and terminate TLS in the ELB
+- [Layer 4](https://en.wikipedia.org/wiki/OSI_model#Layer_4:_Transport_Layer): Use an Network Load Balancer (NLB) with TCP as the listener protocol for ports 80 and 443.
+- [Layer 7](https://en.wikipedia.org/wiki/OSI_model#Layer_7:_Application_Layer): Use an Elastic Load Balancer (ELB) with HTTP as the listener protocol for port 80 and terminate TLS in the ELB
 
 For L4:
 
-Check that no change is necessary with regards to the ELB idle timeout. In some scenarios, users may want to modify the ELB idle timeout, so please check the [ELB Idle Timeouts section](#elb-idle-timeouts) for additional information. If a change is required, users will need to update the value of `service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout` in `provider/aws/service-l4.yaml`
-
-Then execute:
-
 ```console
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/service-l4.yaml
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/patch-configmap-l4.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/deploy.yaml
 ```
 
 For L7:
 
-Change line of the file `provider/aws/service-l7.yaml` replacing the dummy id with a valid one `"arn:aws:acm:us-west-2:XXXXXXXX:certificate/XXXXXX-XXXXXXX-XXXXXXX-XXXXXXXX"`
+Change the value of `service.beta.kubernetes.io/aws-load-balancer-ssl-cert` in the file `provider/aws/deploy-tls-termination.yaml` replacing the dummy id with a valid one. The dummy value is `"arn:aws:acm:us-west-2:XXXXXXXX:certificate/XXXXXX-XXXXXXX-XXXXXXX-XXXXXXXX"`
 
-Check that no change is necessary with regards to the ELB idle timeout. In some scenarios, users may want to modify the ELB idle timeout, so please check the [ELB Idle Timeouts section](#elb-idle-timeouts) for additional information. If a change is required, users will need to update the value of `service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout` in `provider/aws/service-l7.yaml`
+Check that no change is necessary with regards to the ELB idle timeout. In some scenarios, users may want to modify the ELB idle timeout, so please check the [ELB Idle Timeouts section](#elb-idle-timeouts) for additional information. If a change is required, users will need to update the value of `service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout` in `provider/aws/deploy-tls-termination.yaml`
 
 Then execute:
 
 ```console
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/service-l7.yaml
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/patch-configmap-l7.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/deploy-tls-termination.yaml
 ```
 
 This example creates an ELB with just two listeners, one in port 80 and another in port 443
@@ -120,20 +114,21 @@ This example creates an ELB with just two listeners, one in port 80 and another 
 ![Listeners](https://github.com/kubernetes/ingress-nginx/raw/master/docs/images/elb-l7-listener.png)
 
 ##### ELB Idle Timeouts
-In some scenarios users will need to modify the value of the ELB idle timeout. Users need to ensure the idle timeout is less than the [keepalive_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_timeout) that is configured for NGINX. By default NGINX `keepalive_timeout` is set to `75s`.
 
-The default ELB idle timeout will work for most scenarios, unless the NGINX [keepalive_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_timeout) has been modified, in which case `service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout` will need to be modified to ensure it is less than the `keepalive_timeout` the user has configured.
+In some scenarios users will need to modify the value of the ELB idle timeout. Users need to ensure the idle timeout is less than the [keepalive_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_timeout) that is configured for NGINX. By default NGINX `keepalive_timeout` is set to `75s`.	
 
-_Please Note: An idle timeout of `3600s` is recommended when using WebSockets._
+The default ELB idle timeout will work for most scenarios, unless the NGINX [keepalive_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_timeout) has been modified, in which case `service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout` will need to be modified to ensure it is less than the `keepalive_timeout` the user has configured.	
 
-More information with regards to idle timeouts for your Load Balancer can be found in the [official AWS documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/config-idle-timeout.html).
+_Please Note: An idle timeout of `3600s` is recommended when using WebSockets._	
 
-##### Network Load Balancer (NLB)
+More information with regards to idle timeouts for your Load Balancer can be found in the [official AWS documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/config-idle-timeout.html).	
 
-This type of load balancer is supported since v1.10.0 as an ALPHA feature.
+##### Network Load Balancer (NLB)	
 
-```console
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/service-nlb.yaml
+This type of load balancer is supported since v1.10.0 as an ALPHA feature.	
+
+```console	
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/service-nlb.yaml	
 ```
 
 #### GCE-GKE
@@ -178,7 +173,7 @@ To detect which version of the ingress controller is running, exec into the pod 
 
 ```console
 POD_NAMESPACE=ingress-nginx
-POD_NAME=$(kubectl get pods -n $POD_NAMESPACE -l app.kubernetes.io/name=ingress-nginx -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(kubectl get pods -n $POD_NAMESPACE -l app.kubernetes.io/component=controller -o jsonpath='{.items[0].metadata.name}')
 
 kubectl exec -it $POD_NAME -n $POD_NAMESPACE -- /nginx-ingress-controller --version
 ```

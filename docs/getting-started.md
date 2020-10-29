@@ -127,6 +127,8 @@ host and can optionally be configured on your ansible host by setting
 - If `kubeconfig_localhost` enabled `admin.conf` will appear in the `inventory/mycluster/artifacts/` directory after deployment.
 - The location where these files are downloaded to can be configured via the `artifacts_dir` variable.
 
+NOTE: The controller host name in the admin.conf file might be a private IP. If so, change it to use the controller's public IP or the cluster's load balancer.
+
 You can see a list of nodes by running the following commands:
 
 ```ShellSession

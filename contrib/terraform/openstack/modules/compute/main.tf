@@ -138,6 +138,21 @@ resource "openstack_compute_servergroup_v2" "k8s_etcd" {
   policies = ["anti-affinity"]
 }
 
+locals {
+# master groups
+  master_sec_groups = compact([
+    openstack_networking_secgroup_v2.k8s_master.name,
+    openstack_networking_secgroup_v2.k8s.name,
+    var.extra_sec_groups ?openstack_networking_secgroup_v2.k8s_master_extra[0].name : "",
+  ])
+# worker groups
+  worker_sec_groups = compact([
+    openstack_networking_secgroup_v2.k8s.name,
+    openstack_networking_secgroup_v2.worker.name,
+    var.extra_sec_groups ? openstack_networking_secgroup_v2.k8s_master_extra[0].name : "",
+  ])
+}
+
 resource "openstack_compute_instance_v2" "bastion" {
   name       = "${var.cluster_name}-bastion-${count.index + 1}"
   count      = var.number_of_bastions
@@ -203,10 +218,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
-                    openstack_networking_secgroup_v2.k8s.name, 
-                    openstack_networking_secgroup_v2.k8s_master_extra[0].name,
-  ]
+  security_groups = local.master_sec_groups
 
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
@@ -253,10 +265,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
-                    openstack_networking_secgroup_v2.k8s.name, 
-                    openstack_networking_secgroup_v2.k8s_master_extra[0].name,
-  ]
+  security_groups = local.master_sec_groups
 
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
@@ -343,10 +352,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
-                    openstack_networking_secgroup_v2.k8s.name, 
-                    openstack_networking_secgroup_v2.k8s_master_extra[0].name,
-  ]
+  security_groups = local.master_sec_groups
 
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
@@ -388,10 +394,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s_master.name,
-                    openstack_networking_secgroup_v2.k8s.name, 
-                    openstack_networking_secgroup_v2.k8s_master_extra[0].name,
-  ]
+  security_groups = local.master_sec_groups
 
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
@@ -432,10 +435,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s.name,
-                    openstack_networking_secgroup_v2.worker.name,
-                    openstack_networking_secgroup_v2.worker_extra[0].name,
-  ]
+  security_groups = local.worker_sec_groups
 
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
@@ -480,10 +480,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s.name,
-                    openstack_networking_secgroup_v2.worker.name,
-                    openstack_networking_secgroup_v2.worker_extra[0].name,
-  ]
+  security_groups = local.worker_sec_groups
 
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
@@ -524,10 +521,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s.name,
-                    openstack_networking_secgroup_v2.worker.name,
-                    openstack_networking_secgroup_v2.worker_extra[0].name,
-  ]
+  security_groups = local.worker_sec_groups
 
   dynamic "scheduler_hints" {
     for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []

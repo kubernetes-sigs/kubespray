@@ -251,5 +251,5 @@ variable "extra_sec_groups" {
 }
 
 variable "extra_sec_groups_name" {
-  default     = "custom"
+  default = "custom"
 }

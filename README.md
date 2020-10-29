@@ -123,9 +123,9 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cri-o](http://cri-o.io/) v1.19 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.8.7
-  - [calico](https://github.com/projectcalico/calico) v3.16.2
+  - [calico](https://github.com/projectcalico/calico) v3.16.4
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-  - [cilium](https://github.com/cilium/cilium) v1.8.4
+  - [cilium](https://github.com/cilium/cilium) v1.8.5
   - [contiv](https://github.com/contiv/install) v1.2.1
   - [flanneld](https://github.com/coreos/flannel) v0.13.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.3.0

@@ -348,3 +348,30 @@
   when:
     - peer_with_router|default(false)
     - inventory_hostname in groups['k8s-cluster']
+    - item.nodeSelector is not defined
+
+- name: Calico | Configure peering with router(s) via nodeSelectors
+  command:
+    cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
+    stdin: >
+      {"apiVersion": "projectcalico.org/v3",
+      "kind": "BGPPeer",
+      "metadata": {
+        "name": "{{ item.as }}-{{ item.router_id }}"
+      },
+      "spec": {
+        "asNumber": "{{ item.as }}",
+        "nodeSelector": "{{ item.nodeSelector }}",
+        "peerIP": "{{ item.router_id }}"
+      }}
+  register: output
+  retries: 4
+  until: output.rc == 0
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - "{{ peers|selectattr('scope','undefined')|list|default([]) | union(peers|selectattr('scope','defi\
+ned')|selectattr('scope','equalto', 'node')|list|default([])) }}"
+  when:
+    - peer_with_router|default(false)
+    - item.nodeSelector is defined
+    - item.node is not defined

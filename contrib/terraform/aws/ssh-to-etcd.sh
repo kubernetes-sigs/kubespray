@@ -7,7 +7,7 @@
 #
 
 #
-# This script connects to the first controller node in the inventory file.
+# This script connects to the first etcd node in the inventory file.
 #
 # CONFIGURATION IS NEEDED.
 #

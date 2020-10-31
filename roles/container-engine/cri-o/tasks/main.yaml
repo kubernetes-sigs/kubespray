@@ -44,6 +44,12 @@
     path: "{{ item }}"
     state: directory
 
+- name: Install cri-o config
+  template:
+    src: crio.conf.j2
+    dest: /etc/crio/crio.conf
+  register: config_install
+
 - name: Install cri-o packages
   package:
     name: "{{ item }}"
@@ -98,12 +104,6 @@
     - 100-crio-bridge.conf
     - 200-loopback.conf
 
-- name: Install cri-o config
-  template:
-    src: crio.conf.j2
-    dest: /etc/crio/crio.conf
-  notify: restart crio
-
 - name: Copy mounts.conf
   copy:
     src: mounts.conf
@@ -142,6 +142,16 @@
     daemon_reload: true
     enabled: true
     state: started
+  register: service_start
+
+- name: Trigger service restart only when needed
+  service:  # noqa 503
+    name: crio
+    state: restarted
+  when:
+    - config_install.changed
+    - not package_install.changed
+    - not service_start.changed
 
 - name: Verify that crio is running
   command: "crio-status info"

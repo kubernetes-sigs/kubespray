@@ -1,4 +1,30 @@
-# Deploy a Production Ready Kubernetes Cluster
+# Kubespray for Akash Providers
+
+This project provides an Ansible Kubespray tool to install a Kubernetes cluster with necessary featuers to run an Akash network Provider with standardized components. 
+
+## Node(s) Configuration
+
+How an Akash Provider provisions their compute capacity is specific to each individual Akash network Provider. Bare metal, Colocation racks, ARM stacks, KVM, Cloud providers, etc. The Provier communicates with an Kubernetes API to detect capacity, and manage available resources. How that Kubernetes API is provided does not necessarily matter. K3s, kubeadm, Kops, in this case; Kubespray installs a Kubernetes cluster on the configured Nodes.
+
+### Kubernetes Requirements
+
+* Provider can access and has admin control of Kubernetes API
+* Ingress Controller(Nginx, Ambassador, Cloud Provider, ...)
+* RBAC Enabled
+* Container ServiceAccounts: `automountServiceAccountToken: false`
+* Enable PodSecurityPolicies
+* `metrics-server` running
+* Provider declared: Zero Trust Tennant Networking
+* Provider declared: Zero Trust Tennant Containers with `seccomp` Profiles
+  * Disable `volumes.hostPath`
+  * Disable `hostNetwork` access to tenant containers.
+* [ ] Logs exported to third party service.
+
+## Provider Configuration
+
+Follow the [`Akash Provider`](https://github.com/ovrclk/akash/blob/master/_docs/examples/provider/README.md) documentation. Create a `provider` key(keep it secret, keep it safe), declare configuration, create Provider registered on Akash Network, and install into the Kubernetes cluster!
+
+# Kubespray: Deploy a Production Ready Kubernetes Cluster
 
 ![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-sigs/kubespray/master/docs/img/kubernetes-logo.png)
 
@@ -24,7 +50,7 @@ To deploy the cluster you can use :
 sudo pip3 install -r requirements.txt
 
 # Copy ``inventory/sample`` as ``inventory/mycluster``
-cp -rfp inventory/sample inventory/mycluster
+cp -rfp inventory/akash-provider-sample inventory/mycluster
 
 # Update Ansible inventory file with inventory builder
 declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
@@ -39,7 +65,32 @@ cat inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml
 # installing packages and interacting with various systemd daemons.
 # Without --become the playbook will fail to run!
 ansible-playbook -i inventory/mycluster/hosts.yaml  --become --become-user=root cluster.yml
+
 ```
+
+```
+# Optionally use Make to execute configuration
+
+# Declare necessary variables
+declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
+declare -a ANSIBLE_INVENTORY=inventory/mycluster
+
+# Configure the ansible inventory
+make build-inventory
+
+# Deploy Node Configuration with Ansible Playbook
+# Runs as root; as in example above.
+make ansible-deploy
+```
+
+### Akash Modification 
+
+Every Provider can decided how to configure their Kubernetes cluster, these Akash specific changes attempt to simplify configuration as much as reasonably possible.
+
+Kubespray configures Calico to use Calico's RR service + BGP for IP-IP networking. While this is an option for operation, [VXLAN Overlay networking](https://docs.projectcalico.org/networking/vxlan-ipip) is a nice simplification, and removes the necessity for `calico-rr` to be installed. After running `inventory.py` and `hosts.yaml` is generated, edit the file and remove the `calico-rr` references for cleanliness. See "Network Plugins" below for additional configuration options.
+
+#### Kubespray Usage Continued
+
 
 Note: When Ansible is already installed via system packages on the control machine, other python packages installed via `sudo pip install -r requirements.txt` will go to a different directory tree (e.g. `/usr/local/lib/python2.7/dist-packages` on Ubuntu) from Ansible's (e.g. `/usr/lib/python2.7/dist-packages/ansible` still on Ubuntu).
 As a consequence, `ansible-playbook` command will fail with:

@@ -19,3 +19,5 @@ variable "router_id" {
 variable "k8s_nodes" {}
 
 variable "k8s_master_fips" {}
+
+variable "router_internal_port_id" {}

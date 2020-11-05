@@ -127,3 +127,11 @@ variable "use_access_ip" {}
 variable "use_server_groups" {
   type = bool
 }
+
+variable "extra_sec_groups" {
+  type = bool
+}
+
+variable "extra_sec_groups_name" {
+  type = string
+}

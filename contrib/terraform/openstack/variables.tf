@@ -246,3 +246,10 @@ variable "k8s_nodes" {
   default = {}
 }
 
+variable "extra_sec_groups" {
+  default = false
+}
+
+variable "extra_sec_groups_name" {
+  default = "custom"
+}

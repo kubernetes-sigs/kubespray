@@ -2,6 +2,9 @@ resource "null_resource" "dummy_dependency" {
   triggers = {
     dependency_id = var.router_id
   }
+  depends_on = [
+    var.router_internal_port_id
+  ]
 }
 
 # If user specifies pre-existing IPs to use in k8s_master_fips, do not create new ones.

@@ -242,6 +242,11 @@ variable "router_id" {
   default     = null
 }
 
+variable "router_internal_port_id" {
+  description = "uuid of the port connection our router to our network"
+  default     = null
+}
+
 variable "k8s_nodes" {
   default = {}
 }

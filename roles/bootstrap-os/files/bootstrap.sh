@@ -4,7 +4,7 @@ set -e
 BINDIR="/opt/bin"
 PYPY_VERSION=7.3.2
 PYPI_URL="https://downloads.python.org/pypy/pypy3.6-v${PYPY_VERSION}-linux64.tar.bz2"
-PYPI_HASH=f67cf1664a336a3e939b58b3cabfe47d893356bdc01f2e17bc912aaa6605db12
+PYPI_HASH=d7a91f179076aaa28115ffc0a81e46c6a787785b2bc995c926fe3b02f0e9ad83
 
 mkdir -p $BINDIR
 

@@ -1,6 +1,6 @@
 # Kubespray for Akash Providers
 
-This project provides an Ansible Kubespray tool to install a Kubernetes cluster with necessary featuers to run an Akash network Provider with standardized components. 
+This project provides an Ansible Kubespray example configuration to install a Kubernetes cluster with necessary featuers to run an Akash network Provider. Every Providers infrastructure will differ, this is a baseline to get started and start serving compute through the [Akash Network](https://akash.network)!
 
 ## Node(s) Configuration
 
@@ -37,7 +37,7 @@ You can get your invite [here](http://slack.k8s.io/)
 - Supports most popular **Linux distributions**
 - **Continuous integration tests**
 
-## Quick Start
+## Kubespray Quick Start
 
 To deploy the cluster you can use :
 

@@ -108,32 +108,20 @@
     - 'calico_conf.stdout == "0"'
     - calico_pool_cidr is defined
 
-- name: Calico | Create calico manifests for kdd
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-  with_items:
-    - {name: calico, file: kdd-crds.yml, type: kdd}
-  register: calico_node_kdd_manifest
-  when:
-    - inventory_hostname in groups['kube-master']
-    - calico_datastore == "kdd"
+- block:
+    - name: Calico | Copy CRD files
+      synchronize:
+        src: crds
+        dest: /tmp
+        delete: true
 
-- name: Calico | Create Calico Kubernetes datastore resources
-  kube:
-    name: "{{ item.item.name }}"
-    namespace: "kube-system"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
-    state: "latest"
-  with_items:
-    - "{{ calico_node_kdd_manifest.results }}"
+    - name: Calico | Apply CRDs
+      command: "{{ bin_dir }}/kubectl apply -f /tmp/crds/kdd"
+      changed_when: false
+
   when:
-    - inventory_hostname == groups['kube-master'][0]
-    - not item is skipped
-  loop_control:
-    label: "{{ item.item.file }}"
+    - inventory_hostname in groups['kube-master'][0]
+    - calico_datastore == "kdd"
 
 - name: Calico | Configure calico network pool
   command:
@@ -291,7 +279,6 @@
     state: "latest"
   with_items:
     - "{{ calico_node_manifests.results }}"
-    - "{{ calico_node_kdd_manifest.results }}"
     - "{{ calico_node_typha_manifest.results }}"
   when:
     - inventory_hostname == groups['kube-master'][0]

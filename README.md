@@ -149,7 +149,6 @@ Note: The list of validated [docker versions](https://kubernetes.io/docs/setup/p
 - **Ansible v2.9+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.
-- **Your ssh key must be copied** to all the servers part of your inventory.
 - The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
     in order to avoid any issue during deployment you should disable your firewall.
 - If kubespray is ran from non-root user account, correct privilege escalation method

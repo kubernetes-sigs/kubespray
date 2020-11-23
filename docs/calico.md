@@ -6,7 +6,7 @@ Check if the calico-node container is running
 docker ps | grep calico
 ```
 
-The **calicoctl.sh** is wrap script with configured acces credentials for command calicoctl allows to check the status of the network workloads.
+The **calicoctl.sh** is wrap script with configured access credentials for command calicoctl allows to check the status of the network workloads.
 
 * Check the status of Calico nodes
 

@@ -1,6 +1,6 @@
 # Azure Disk CSI Driver
 
-The Azure Disk CSI driver allows you to provision volumes for pods with a Kubernetes deployment over Azure Cloud. The CSI driver replaces to volume provioning done by the in-tree azure cloud provider which is deprecated.
+The Azure Disk CSI driver allows you to provision volumes for pods with a Kubernetes deployment over Azure Cloud. The CSI driver replaces to volume provisioning done by the in-tree azure cloud provider which is deprecated.
 
 This documentation is an updated version of the in-tree Azure cloud provider documentation (azure.md).
 

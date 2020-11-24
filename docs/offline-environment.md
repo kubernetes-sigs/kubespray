@@ -34,7 +34,7 @@ calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_ctl_versio
 docker_rh_repo_base_url: "{{ yum_repo }}/docker-ce/$releasever/$basearch"
 docker_rh_repo_gpgkey: "{{ yum_repo }}/docker-ce/gpg"
 ## Containerd
-extras_rh_repo_base_url: "{{ yum_repo }}/centos/$releasever/extras/$basearch"
+extras_rh_repo_base_url: "{{ yum_repo }}/centos/{{ ansible_distribution_major_version }}/extras/$basearch"
 extras_rh_repo_gpgkey: "{{ yum_repo }}/containerd/gpg"
 
 # Fedora

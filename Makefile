@@ -1,8 +1,7 @@
-ANSIBLE_INVENTORY ?= inventory/akash-provider-sample
+ANSIBLE_INVENTORY ?= inventory/provider2
 INVENTORY_FILE ?= cluster.yml
-KUBE_SPRAY_DIR ?= ../../../kubernetes-sigs/kubespray/
 # TODO: Configure IP addresses(space-separated) for `build-inventory` target
-#eg: IPS ?= 1.2.3.4
+IPS ?= 1.2.3.4
 
 # Pip3 setup
 # OS Packages to install: python3-pip, python3-venv

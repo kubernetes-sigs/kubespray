@@ -1,0 +1,85 @@
+---
+- name: Gather host facts to get ansible_distribution_version ansible_distribution_major_version
+  setup:
+    gather_subset: '!all'
+    filter: ansible_distribution_*version
+
+- name: Check RHEL subscription-manager status
+  command: /sbin/subscription-manager status
+  register: rh_subscription_status
+  changed_when: "rh_subscription_status != 0"
+  ignore_errors: true
+  become: true
+
+- name: RHEL subscription Organization ID/Activation Key registration
+  redhat_subscription:
+    state: present
+    org_id: "{{ rh_subscription_org_id }}"
+    activationkey: "{{ rh_subscription_activation_key }}"
+    auto_attach: true
+    force_register: true
+    syspurpose:
+      usage: "{{ rh_subscription_usage }}"
+      role: "{{ rh_subscription_role }}"
+      service_level_agreement: "{{ rh_subscription_sla }}"
+      sync: true
+  notify: RHEL auto-attach subscription
+  ignore_errors: true
+  become: true
+  when:
+    - rh_subscription_org_id is defined
+    - rh_subscription_status.changed
+
+- name: RHEL subscription Username/Password registration
+  redhat_subscription:
+    state: present
+    username: "{{ rh_subscription_username }}"
+    password: "{{ rh_subscription_password }}"
+    auto_attach: true
+    force_register: true
+    syspurpose:
+      usage: "{{ rh_subscription_usage }}"
+      role: "{{ rh_subscription_role }}"
+      service_level_agreement: "{{ rh_subscription_sla }}"
+      sync: true
+  notify: RHEL auto-attach subscription
+  ignore_errors: true
+  become: true
+  when:
+    - rh_subscription_username is defined
+    - rh_subscription_status.changed
+
+- name: Check presence of fastestmirror.conf
+  stat:
+    path: /etc/yum/pluginconf.d/fastestmirror.conf
+  register: fastestmirror
+
+# the fastestmirror plugin can actually slow down Ansible deployments
+- name: Disable fastestmirror plugin if requested
+  lineinfile:
+    dest: /etc/yum/pluginconf.d/fastestmirror.conf
+    regexp: "^enabled=.*"
+    line: "enabled=0"
+    state: present
+  become: true
+  when:
+    - fastestmirror.stat.exists
+    - not centos_fastestmirror_enabled
+
+- name: Add proxy to /etc/yum.conf if http_proxy is defined
+  ini_file:
+    path: "/etc/yum.conf"
+    section: main
+    option: proxy
+    value: "{{ http_proxy | default(omit) }}"
+    state: "{{ http_proxy | default(False) | ternary('present', 'absent') }}"
+    no_extra_spaces: true
+  become: true
+
+# libselinux-python is required on SELinux enabled hosts
+# See https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#managed-node-requirements
+- name: Install libselinux python package
+  package:
+    name: "{{ ( (ansible_distribution_major_version | int) < 8) | ternary('libselinux-python','python3-libselinux') }}"
+    state: present
+  become: true

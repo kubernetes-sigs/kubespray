@@ -93,6 +93,15 @@ This can be enabled by setting the following variable as follow in group_vars (k
 calico_advertise_cluster_ips: true
 ```
 
+Since calico 3.10, Calico supports advertising Kubernetes service ExternalIPs over BGP in addition to cluster IPs advertising.
+This can be enabled by setting the following variable in group_vars (k8s-cluster/k8s-net-calico.yml)
+
+```yml
+calico_advertise_service_external_ips:
+- x.x.x.x/24
+- y.y.y.y/32
+```
+
 ### Optional : Define global AS number
 
 Optional parameter `global_as_num` defines Calico global AS number (`/calico/bgp/v1/global/as_num` etcd key).

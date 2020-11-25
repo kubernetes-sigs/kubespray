@@ -154,6 +154,12 @@
     - inventory_hostname == groups['kube-master'][0]
     - 'calico_conf.stdout == "0"'
 
+- name: Populate Service External IPs
+  set_fact:
+    _service_external_ips: "{{ _service_external_ips|default([]) + [ {'cidr': item} ] }}"
+  with_items: "{{ calico_advertise_service_external_ips }}"
+  run_once: yes
+
 - name: "Determine nodeToNodeMesh needed state"
   set_fact:
     nodeToNodeMeshEnabled: "false"
@@ -174,6 +180,7 @@
       "spec": {
           "logSeverityScreen": "Info",
           "nodeToNodeMeshEnabled": {{ nodeToNodeMeshEnabled|default('true') }} ,
+          "serviceExternalIPs": {{ _service_external_ips|default([]) }},
           "asNumber": {{ global_as_num }} }}
   changed_when: false
   when:

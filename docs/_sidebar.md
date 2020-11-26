@@ -12,7 +12,6 @@
   * [Air-Gap Installation](docs/offline-environment.md)
 * CNI
   * [Calico](docs/calico.md)
-  * [Contiv](docs/contiv.md)
   * [Flannel](docs/flannel.md)
   * [Kube Router](docs/kube-router.md)
   * [Weave](docs/weave.md)

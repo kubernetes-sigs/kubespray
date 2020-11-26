@@ -1,3 +1,31 @@
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: kube-ovn
+  annotations:
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: '*'
+spec:
+  privileged: true
+  allowPrivilegeEscalation: true
+  allowedCapabilities:
+    - '*'
+  volumes:
+    - '*'
+  hostNetwork: true
+  hostPorts:
+    - min: 0
+      max: 65535
+  hostIPC: true
+  hostPID: true
+  runAsUser:
+    rule: 'RunAsAny'
+  seLinux:
+    rule: 'RunAsAny'
+  supplementalGroups:
+    rule: 'RunAsAny'
+  fsGroup:
+    rule: 'RunAsAny'
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -27,6 +55,7 @@ rules:
       - subnets/status
       - ips
       - vlans
+      - networks
     verbs:
       - "*"
   - apiGroups:
@@ -81,7 +110,6 @@ subjects:
   - kind: ServiceAccount
     name: ovn
     namespace: kube-system
-
 ---
 kind: Service
 apiVersion: v1
@@ -99,7 +127,6 @@ spec:
     app: ovn-central
     ovn-nb-leader: "true"
   sessionAffinity: None
-
 ---
 kind: Service
 apiVersion: v1
@@ -117,7 +144,6 @@ spec:
     app: ovn-central
     ovn-sb-leader: "true"
   sessionAffinity: None
-
 ---
 kind: Deployment
 apiVersion: apps/v1
@@ -166,6 +192,8 @@ spec:
             capabilities:
               add: ["SYS_NICE"]
           env:
+            - name: ENABLE_SSL
+              value: "false"
             - name: POD_IP
               valueFrom:
                 fieldRef:
@@ -201,12 +229,15 @@ spec:
               name: host-log-ovs
             - mountPath: /var/log/ovn
               name: host-log-ovn
+            - mountPath: /var/run/tls
+              name: kube-ovn-tls
           readinessProbe:
             exec:
               command:
                 - sh
                 - /kube-ovn/ovn-is-leader.sh
             periodSeconds: 3
+            timeoutSeconds: 45
           livenessProbe:
             exec:
               command:
@@ -215,6 +246,7 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 7
             failureThreshold: 5
+            timeoutSeconds: 45
       nodeSelector:
         kubernetes.io/os: "linux"
         kube-ovn/role: "master"
@@ -240,7 +272,10 @@ spec:
         - name: host-log-ovn
           hostPath:
             path: /var/log/ovn
-
+        - name: kube-ovn-tls
+          secret:
+            optional: true
+            secretName: kube-ovn-tls
 ---
 kind: DaemonSet
 apiVersion: apps/v1
@@ -279,12 +314,18 @@ spec:
             runAsUser: 0
             privileged: true
           env:
+            - name: ENABLE_SSL
+              value: "false"
             - name: POD_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
             - name: HW_OFFLOAD
               value: "false"
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           volumeMounts:
             - mountPath: /lib/modules
               name: host-modules
@@ -304,12 +345,15 @@ spec:
               name: host-log-ovs
             - mountPath: /var/log/ovn
               name: host-log-ovn
+            - mountPath: /var/run/tls
+              name: kube-ovn-tls
           readinessProbe:
             exec:
               command:
               - sh
               - /kube-ovn/ovs-healthcheck.sh
             periodSeconds: 5
+            timeoutSeconds: 45
           livenessProbe:
             exec:
               command:
@@ -318,6 +362,7 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 5
             failureThreshold: 5
+            timeoutSeconds: 45
           resources:
             requests:
               cpu: {{ kube_ovn_node_cpu_request }}
@@ -352,3 +397,7 @@ spec:
         - name: host-log-ovn
           hostPath:
             path: /var/log/ovn
+        - name: kube-ovn-tls
+          secret:
+            optional: true
+            secretName: kube-ovn-tls

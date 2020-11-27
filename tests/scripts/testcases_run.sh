@@ -42,6 +42,7 @@ fi
 test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY_VERSION"
 # Checkout the CI vars file so it is available
 test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
+test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" ${CI_TEST_REGISTRY_MIRROR}
 
 # Install mitogen ansible plugin
 if [ "${MITOGEN_ENABLE}" = "true" ]; then

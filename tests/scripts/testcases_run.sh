@@ -51,20 +51,20 @@ if [ "${MITOGEN_ENABLE}" = "true" ]; then
 fi
 
 # Create cluster
-ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
+ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e '{"docker_registry_mirrors":["https://mirror.gcr.io"]}' --limit "all:!fake_hosts" cluster.yml
 
 # Repeat deployment if testing upgrade
 if [ "${UPGRADE_TEST}" != "false" ]; then
   test "${UPGRADE_TEST}" == "basic" && PLAYBOOK="cluster.yml"
   test "${UPGRADE_TEST}" == "graceful" && PLAYBOOK="upgrade-cluster.yml"
   git checkout "${CI_BUILD_REF}"
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" $PLAYBOOK
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e '{"docker_registry_mirrors":["https://mirror.gcr.io"]}' --limit "all:!fake_hosts" $PLAYBOOK
 fi
 
 # Test control plane recovery
 if [ "${RECOVER_CONTROL_PLANE_TEST}" != "false" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "${RECOVER_CONTROL_PLANE_TEST_GROUPS}:!fake_hosts" -e reset_confirmation=yes reset.yml
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e etcd_retries=10 --limit etcd,kube-master:!fake_hosts recover-control-plane.yml
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e '{"docker_registry_mirrors":["https://mirror.gcr.io"]}' --limit "${RECOVER_CONTROL_PLANE_TEST_GROUPS}:!fake_hosts" -e reset_confirmation=yes reset.yml
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e '{"docker_registry_mirrors":["https://mirror.gcr.io"]}' -e etcd_retries=10 --limit etcd,kube-master:!fake_hosts recover-control-plane.yml
 fi
 
 # Tests Cases
@@ -88,7 +88,7 @@ ansible-playbook -i ${ANSIBLE_INVENTORY} -e @${CI_TEST_VARS} --limit "all:!fake_
 
 ## Idempotency checks 1/5 (repeat deployment)
 if [ "${IDEMPOT_CHECK}" = "true" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e '{"docker_registry_mirrors":["https://mirror.gcr.io"]}' --limit "all:!fake_hosts" cluster.yml
 fi
 
 ## Idempotency checks 2/5 (Advanced DNS checks)
@@ -98,12 +98,12 @@ fi
 
 ## Idempotency checks 3/5 (reset deployment)
 if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e reset_confirmation=yes --limit "all:!fake_hosts" reset.yml
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e reset_confirmation=yes -e '{"docker_registry_mirrors":["https://mirror.gcr.io"]}' --limit "all:!fake_hosts" reset.yml
 fi
 
 ## Idempotency checks 4/5 (redeploy after reset)
 if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e '{"docker_registry_mirrors":["https://mirror.gcr.io"]}' --limit "all:!fake_hosts" cluster.yml
 fi
 
 ## Idempotency checks 5/5 (Advanced DNS checks)

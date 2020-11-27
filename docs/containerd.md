@@ -15,7 +15,7 @@ container_manager: containerd
 
 Example: define registry mirror for docker hub
 
-```
+```yaml
 containerd_config:
   grpc:
     max_recv_message_size: 16777216
@@ -28,4 +28,4 @@ containerd_config:
       - "https://registry-1.docker.io"
 ```
 
-[containerd] https://containerd.io
+[containerd]: https://containerd.io/

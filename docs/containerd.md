@@ -8,7 +8,7 @@ _To use the containerd container runtime set the following variables:_
 ## k8s-cluster.yml
 
 ```yaml
-container_manager: crio
+container_manager: containerd
 ```
 
 ## Containerd config

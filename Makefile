@@ -1,4 +1,4 @@
-ANSIBLE_INVENTORY ?= inventory/provider2
+ANSIBLE_INVENTORY ?= inventory/akash-provider-sample
 INVENTORY_FILE ?= cluster.yml
 # TODO: Configure IP addresses(space-separated) for `build-inventory` target
 IPS ?= 1.2.3.4

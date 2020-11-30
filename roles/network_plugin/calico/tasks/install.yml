@@ -168,7 +168,7 @@
     - inventory_hostname in groups['k8s-cluster']
   run_once: yes
 
-- name: Calico | Set global as_num
+- name: Calico | Set BGP Configuration with global as number defined
   command:
     cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
     stdin: >
@@ -185,6 +185,25 @@
   changed_when: false
   when:
     - inventory_hostname == groups['kube-master'][0]
+    - not calico_no_global_as_num|default(false)
+
+- name: Calico | Set BGP Configuration without global as number defined
+  command:
+    cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
+    stdin: >
+      { "kind": "BGPConfiguration",
+        "apiVersion": "projectcalico.org/v3",
+        "metadata": {
+          "name": "default"
+        },
+      "spec": {
+          "logSeverityScreen": "Info",
+          "nodeToNodeMeshEnabled": {{ nodeToNodeMeshEnabled|default('true') }} ,
+          "serviceExternalIPs": {{ _service_external_ips|default([]) }} }}
+  changed_when: false
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - calico_no_global_as_num|default(false)
 
 - name: Calico | Configure peering with router(s) at global scope
   command:
@@ -306,7 +325,7 @@
     - inventory_hostname not in groups['kube-master']
     - calico_datastore == "kdd"
 
-- name: Calico | Configure node asNumber for per node peering
+- name: Calico | Configure node asNumber for per node peering for hard-set values
   command:
     cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
     stdin: >
@@ -330,6 +349,35 @@
     - inventory_hostname in groups['k8s-cluster']
     - local_as is defined
     - groups['calico-rr'] | default([]) | length == 0
+
+- name: Calico | Configure node asNumber for per node peering automatically
+  command:
+    cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
+    stdin: >
+      {"apiVersion": "projectcalico.org/v3",
+      "kind": "Node",
+      "metadata": {
+        "name": "{{ inventory_hostname }}"
+      },
+      "spec": {
+        "bgp": {
+          "asNumber": "{{ item.as }}"
+        },
+        "orchRefs":[{"nodeName":"{{ inventory_hostname }}","orchestrator":"k8s"}]
+      }}
+  register: output
+  retries: 4
+  until: output.rc == 0
+  delay: "{{ retry_stagger | random + 3 }}"
+  with_items:
+    - "{{ peers|selectattr('scope','undefined')|list|default([]) | union(peers|selectattr('scope','defined')|selectattr('scop\
+e','equalto', 'node')|list|default([])) }}"
+  when:
+    - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s-cluster']
+    - groups['calico-rr'] | default([]) | length == 0
+    - local_as is not defined
+    - item.as is defined
 
 - name: Calico | Configure peering with router(s) at node scope
   command:

@@ -138,7 +138,6 @@ Note: Upstart/SysV init based OS types are not supported.
   - [calico](https://github.com/projectcalico/calico) v3.16.5
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.8.5
-  - [contiv](https://github.com/contiv/install) v1.2.1
   - [flanneld](https://github.com/coreos/flannel) v0.13.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.5.2
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.1.0
@@ -190,9 +189,6 @@ You can choose between 10 network plugins. (default: `calico`, except Vagrant us
 - [canal](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
 
 - [cilium](http://docs.cilium.io/en/latest/): layer 3/4 networking (as well as layer 7 to protect and secure application protocols), supports dynamic insertion of BPF bytecode into the Linux kernel to implement security services, networking and visibility logic.
-
-- [contiv](docs/contiv.md): supports vlan, vxlan, bgp and Cisco SDN networking. This plugin is able to
-    apply firewall policies, segregate containers in multiple network and bridging pods onto physical networks.
 
 - [ovn4nfv](docs/ovn4nfv.md): [ovn4nfv-k8s-plugins](https://github.com/opnfv/ovn4nfv-k8s-plugin) is the network controller, OVS agent and CNI server to offer basic SFC and OVN overlay networking.
 

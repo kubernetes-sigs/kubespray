@@ -22,7 +22,7 @@ Some variables of note include:
 * *ipip* - Enables Calico ipip encapsulation by default
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)
 * *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
-* *kube_version* - Specify a given Kubernetes hyperkube version
+* *kube_version* - Specify a given Kubernetes version
 * *searchdomains* - Array of DNS domains to search when looking up hostnames
 * *nameservers* - Array of nameservers to use for DNS lookup
 * *preinstall_selinux_state* - Set selinux state, permitted values are permissive and disabled.

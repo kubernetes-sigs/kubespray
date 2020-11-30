@@ -16,162 +16,153 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cert-manager-cainjector
-  namespace: {{ cert_manager_namespace }}
   labels:
     app: cainjector
-    app.kubernetes.io/name: cainjector
-    app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: cainjector
-    helm.sh/chart: cert-manager-{{ cert_manager_version }}
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/name: cainjector
+  name: cert-manager-cainjector
+  namespace: {{ cert_manager_namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: cainjector
-      app.kubernetes.io/instance: cert-manager
       app.kubernetes.io/component: cainjector
+      app.kubernetes.io/instance: cert-manager
+      app.kubernetes.io/name: cainjector
   template:
     metadata:
       labels:
         app: cainjector
-        app.kubernetes.io/name: cainjector
-        app.kubernetes.io/instance: cert-manager
-        app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: cainjector
-        helm.sh/chart: cert-manager-{{ cert_manager_version }}
+        app.kubernetes.io/instance: cert-manager
+        app.kubernetes.io/name: cainjector
     spec:
-      serviceAccountName: cert-manager-cainjector
       containers:
-        - name: cert-manager
-          image: "{{ cert_manager_cainjector_image_repo }}:{{ cert_manager_cainjector_image_tag }}"
-          imagePullPolicy: {{ k8s_image_pull_policy }}
-          args:
-          - --v=2
-          - --leader-election-namespace=kube-system
-          env:
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          resources:
-            {}
+      - args:
+        - --v=2
+        - --leader-election-namespace=kube-system
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: "{{ cert_manager_cainjector_image_repo }}:{{ cert_manager_cainjector_image_tag }}"
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        name: cert-manager
+        resources: {}
+      serviceAccountName: cert-manager-cainjector
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cert-manager
-  namespace: {{ cert_manager_namespace }}
   labels:
     app: cert-manager
-    app.kubernetes.io/name: cert-manager
-    app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: controller
-    helm.sh/chart: cert-manager-{{ cert_manager_version }}
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/name: cert-manager
+  name: cert-manager
+  namespace: {{ cert_manager_namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: cert-manager
-      app.kubernetes.io/instance: cert-manager
       app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: cert-manager
+      app.kubernetes.io/name: cert-manager
   template:
     metadata:
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "9402"
+        prometheus.io/scrape: "true"
       labels:
         app: cert-manager
-        app.kubernetes.io/name: cert-manager
-        app.kubernetes.io/instance: cert-manager
         app.kubernetes.io/component: controller
-        app.kubernetes.io/managed-by: Helm
-        helm.sh/chart: cert-manager-{{ cert_manager_version }}
-      annotations:
-        prometheus.io/path: "/metrics"
-        prometheus.io/scrape: 'true'
-        prometheus.io/port: '9402'
+        app.kubernetes.io/instance: cert-manager
+        app.kubernetes.io/name: cert-manager
     spec:
-      serviceAccountName: cert-manager
       containers:
-        - name: cert-manager
-          image: "{{ cert_manager_controller_image_repo }}:{{ cert_manager_controller_image_tag }}"
-          imagePullPolicy: {{ k8s_image_pull_policy }}
-          args:
-          - --v=2
-          - --cluster-resource-namespace=$(POD_NAMESPACE)
-          - --leader-election-namespace=kube-system
-          ports:
-          - containerPort: 9402
-            protocol: TCP
-          env:
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          resources:
-            {}
+      - args:
+        - --v=2
+        - --cluster-resource-namespace=$(POD_NAMESPACE)
+        - --leader-election-namespace=kube-system
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: "{{ cert_manager_controller_image_repo }}:{{ cert_manager_controller_image_tag }}"
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        name: cert-manager
+        ports:
+        - containerPort: 9402
+          protocol: TCP
+        resources: {}
+      serviceAccountName: cert-manager
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cert-manager-webhook
-  namespace: {{ cert_manager_namespace }}
   labels:
     app: webhook
-    app.kubernetes.io/name: webhook
-    app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: webhook
-    helm.sh/chart: cert-manager-{{ cert_manager_version }}
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/name: webhook
+  name: cert-manager-webhook
+  namespace: {{ cert_manager_namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: webhook
-      app.kubernetes.io/instance: cert-manager
       app.kubernetes.io/component: webhook
+      app.kubernetes.io/instance: cert-manager
+      app.kubernetes.io/name: webhook
   template:
     metadata:
       labels:
         app: webhook
-        app.kubernetes.io/name: webhook
-        app.kubernetes.io/instance: cert-manager
-        app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: webhook
-        helm.sh/chart: cert-manager-{{ cert_manager_version }}
+        app.kubernetes.io/instance: cert-manager
+        app.kubernetes.io/name: webhook
     spec:
-      serviceAccountName: cert-manager-webhook
       containers:
-        - name: cert-manager
-          image: "{{ cert_manager_webhook_image_repo }}:{{ cert_manager_webhook_image_tag }}"
-          imagePullPolicy: {{ k8s_image_pull_policy }}
-          args:
-          - --v=2
-          - --secure-port=10250
-          - --dynamic-serving-ca-secret-namespace=$(POD_NAMESPACE)
-          - --dynamic-serving-ca-secret-name=cert-manager-webhook-ca
-          - --dynamic-serving-dns-names=cert-manager-webhook,cert-manager-webhook.cert-manager,cert-manager-webhook.cert-manager.svc
-          ports:
-          - name: https
-            containerPort: 10250
-          livenessProbe:
-            httpGet:
-              path: /livez
-              port: 6080
-              scheme: HTTP
-            initialDelaySeconds: 60
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: 6080
-              scheme: HTTP
-            initialDelaySeconds: 5
-            periodSeconds: 5
-          env:
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          resources:
-            {}
+      - args:
+        - --v=2
+        - --secure-port=10250
+        - --dynamic-serving-ca-secret-namespace=$(POD_NAMESPACE)
+        - --dynamic-serving-ca-secret-name=cert-manager-webhook-ca
+        - --dynamic-serving-dns-names=cert-manager-webhook,cert-manager-webhook.{{ cert_manager_namespace }},cert-manager-webhook.{{ cert_manager_namespace }}.svc
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: "{{ cert_manager_webhook_image_repo }}:{{ cert_manager_webhook_image_tag }}"
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /livez
+            port: 6080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: cert-manager
+        ports:
+        - containerPort: 10250
+          name: https
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 6080
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+      serviceAccountName: cert-manager-webhook

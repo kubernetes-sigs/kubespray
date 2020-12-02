@@ -62,9 +62,6 @@ docker_ubuntu_repo_gpgkey: "{{ ubuntu_repo }}/docker-ce/gpg"
 containerd_ubuntu_repo_base_url: "{{ ubuntu_repo }}/containerd"
 containerd_ubuntu_repo_gpgkey: "{{ ubuntu_repo }}/containerd/gpg"
 containerd_ubuntu_repo_repokey: 'YOURREPOKEY'
-
-# If using helm
-helm_stable_repo_url: "{{ helm_registry }}"
 ```
 
 For the OS specific settings, just define the one matching your OS.
@@ -73,7 +70,6 @@ If you use the settings like the one above, you'll need to define in your invent
 * `registry_host`: Container image registry. If you _don't_ use the same repository path for the container images that the ones defined in [Download's role defaults](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/download/defaults/main.yml), you need to override the `*_image_repo` for these container images. If you want to make your life easier, use the same repository path, you won't have to override anything else.
 * `files_repo`: HTTP webserver or reverse proxy that is able to serve the files listed above. Path is not important, you can store them anywhere as long as it's accessible by kubespray. It's recommended to use `*_version` in the path so that you don't need to modify this setting everytime kubespray upgrades one of these components.
 * `yum_repo`/`debian_repo`/`ubuntu_repo`: OS package repository depending of your OS, should point to your internal repository. Adjust the path accordingly.
-* `helm_registry`: Helm Registry to use for `stable` Helm Charts if `helm_enabled: true`
 
 ## Install Kubespray Python Packages
 

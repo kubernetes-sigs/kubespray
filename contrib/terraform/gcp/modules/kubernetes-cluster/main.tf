@@ -226,6 +226,11 @@ resource "google_compute_instance" "master" {
     email  = var.master_sa_email
     scopes = var.master_sa_scopes
   }
+
+  # Since we use google_compute_attached_disk we need to ignore this
+  lifecycle {
+    ignore_changes = ["attached_disk"]
+  }
 }
 
 resource "google_compute_forwarding_rule" "master_lb" {
@@ -317,6 +322,11 @@ resource "google_compute_instance" "worker" {
   service_account {
     email  = var.worker_sa_email
     scopes = var.worker_sa_scopes
+  }
+
+  # Since we use google_compute_attached_disk we need to ignore this
+  lifecycle {
+    ignore_changes = ["attached_disk"]
   }
 }
 

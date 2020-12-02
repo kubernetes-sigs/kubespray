@@ -80,6 +80,30 @@ resource "google_compute_firewall" "nodeport" {
   }
 }
 
+resource "google_compute_firewall" "ingress_http" {
+  name    = "${var.prefix}-http-ingress-firewall"
+  network = google_compute_network.main.name
+
+  priority = 100
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80"]
+  }
+}
+
+resource "google_compute_firewall" "ingress_https" {
+  name    = "${var.prefix}-https-ingress-firewall"
+  network = google_compute_network.main.name
+
+  priority = 100
+
+  allow {
+    protocol = "tcp"
+    ports    = ["443"]
+  }
+}
+
 #################################################
 ##
 ## Local variables

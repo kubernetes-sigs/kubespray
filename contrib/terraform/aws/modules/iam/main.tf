@@ -107,6 +107,41 @@ resource "aws_iam_role_policy" "kube-worker" {
         },
         {
           "Effect": "Allow",
+          "Action": "ec2:CreateVolume",
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "ec2:DeleteVolume",
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "ec2:ModifyVolume",
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "ec2:CreateSnapshot",
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "ec2:DeleteSnapshot",
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "ec2:CreateTags",
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "ec2:DeleteTags",
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
           "Action": ["route53:*"],
           "Resource": ["*"]
         },

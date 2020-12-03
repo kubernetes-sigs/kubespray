@@ -1,7 +1,5 @@
 ANSIBLE_INVENTORY ?= inventory/akash-provider-sample
 INVENTORY_FILE ?= cluster.yml
-# TODO: Configure IP addresses(space-separated) for `build-inventory` target
-IPS ?= 1.2.3.4
 
 # Pip3 setup
 # OS Packages to install: python3-pip, python3-venv
@@ -22,10 +20,6 @@ pip-install-requirements:
 	pip3 install -r requirements.txt
 
 .PHONY: build-inventory
-build-inventory:
-ifndef IPS
-$(error IPS of nodes must be set to build inventory)
-endif
 	CONFIG_FILE="$(ANSIBLE_INVENTORY)/hosts.yaml" python3 contrib/inventory_builder/inventory.py $(IPS)
 
 .PHONY: ansible-deploy

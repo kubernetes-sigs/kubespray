@@ -27,7 +27,8 @@ container_manager: crio
 ```yaml
 etcd_deployment_type: host # optionally and mutually exclusive with etcd_kubeadm_enabled
 ```
-## all/crio.yml 
+
+## all/crio.yml
 
 Enable docker hub registry mirrors
 

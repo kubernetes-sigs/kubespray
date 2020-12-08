@@ -103,23 +103,13 @@
   tags:
     - kube-proxy
 
-- name: Modprobe nf_conntrack_ipv4 for kernels < 4.19
+- name: Modprobe nf_conntrack_ipv4
   modprobe:
     name: nf_conntrack_ipv4
     state: present
-  register: enable_nf_conntrack
+  register: modprobe_nf_conntrack_ipv4
+  ignore_errors: yes
   when:
-    - ansible_kernel.split('.')[0:3] | join('.')  < '4.19'
-    - kube_proxy_mode == 'ipvs'
-  tags:
-    - kube-proxy
-
-- name: Modprobe nf_conntrack for kernels >= 4.19
-  modprobe:
-    name: nf_conntrack
-    state: present
-  when:
-    - ansible_kernel.split('.')[0:3] | join('.')  >= '4.19'
     - kube_proxy_mode == 'ipvs'
   tags:
     - kube-proxy
@@ -132,9 +122,7 @@
       ip_vs_rr
       ip_vs_wrr
       ip_vs_sh
-      {% if enable_nf_conntrack is failed -%}
-      nf_conntrack
-      {%-   else -%}
+      {% if modprobe_nf_conntrack_ipv4 is success -%}
       nf_conntrack_ipv4
       {%-   endif -%}
   when: kube_proxy_mode == 'ipvs'

@@ -75,7 +75,7 @@ If you use the settings like the one above, you'll need to define in your invent
 
 ### Recommended way: Kubespray Container Image
 
-The easiest way is to use [kubespray container image](quay.io/kubespray/kubespray) as all the required packages are baked in the image.
+The easiest way is to use [kubespray container image](https://quay.io/kubespray/kubespray) as all the required packages are baked in the image.
 Just copy the container image in your private container image registry and you are all set!
 
 ### Manual installation

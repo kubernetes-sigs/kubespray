@@ -75,7 +75,7 @@ host_vars = {}
 
 $box = SUPPORTED_OS[$os][:box]
 # if $inventory is not set, try to use example
-$inventory = "inventory/sample" if ! $inventory
+$inventory = "inventory/akash-provider-sample" if ! $inventory
 $inventory = File.absolute_path($inventory, File.dirname(__FILE__))
 
 # if $inventory has a hosts.ini file use it, otherwise copy over
@@ -172,8 +172,10 @@ Vagrant.configure("2") do |config|
         node.vm.network "forwarded_port", guest: 2375, host: ($expose_docker_tcp + i - 1), auto_correct: true
       end
 
-      $forwarded_ports.each do |guest, host|
-        node.vm.network "forwarded_port", guest: guest, host: host, auto_correct: true
+      if i == 1 # Only forward ports to the first host
+        $forwarded_ports.each do |guest, host|
+          node.vm.network "forwarded_port", guest: guest, host: host, auto_correct: true
+        end
       end
 
       node.vm.synced_folder ".", "/vagrant", disabled: false, type: "rsync", rsync__args: ['--verbose', '--archive', '--delete', '-z'] , rsync__exclude: ['.git','venv']

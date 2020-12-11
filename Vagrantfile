@@ -49,6 +49,7 @@ $vm_cpus ||= 2
 $shared_folders ||= {}
 $forwarded_ports ||= {}
 $subnet ||= "172.18.8"
+$subnet_ipv6 ||= "fd3c:b398:0698:0756"
 $os ||= "ubuntu1804"
 $network_plugin ||= "flannel"
 # Setting multi_networking to true will install Multus: https://github.com/intel/multus-cni
@@ -194,7 +195,12 @@ Vagrant.configure("2") do |config|
       end
 
       ip = "#{$subnet}.#{i+100}"
-      node.vm.network :private_network, ip: ip
+      node.vm.network :private_network, ip: ip,
+        :libvirt__guest_ipv6 => 'yes',
+        :libvirt__ipv6_address => "#{$subnet_ipv6}::#{i+100}",
+        :libvirt__ipv6_prefix => "64",
+        :libvirt__forward_mode => "none",
+        :libvirt__dhcp_enabled => false
 
       # Disable swap for each vm
       node.vm.provision "shell", inline: "swapoff -a"

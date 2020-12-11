@@ -205,6 +205,12 @@ Vagrant.configure("2") do |config|
       # Disable swap for each vm
       node.vm.provision "shell", inline: "swapoff -a"
 
+      # ubuntu1804 and ubuntu2004 have IPv6 explicitly disabled. This undoes that.
+      if ["ubuntu1804", "ubuntu2004"].include? $os
+        node.vm.provision "shell", inline: "rm -f /etc/modprobe.d/local.conf"
+        node.vm.provision "shell", inline: "sed -i '/net.ipv6.conf.all.disable_ipv6/d' /etc/sysctl.d/99-sysctl.conf /etc/sysctl.conf"
+      end
+
       # Disable firewalld on oraclelinux/redhat vms
       if ["oraclelinux","oraclelinux8","rhel7","rhel8"].include? $os
         node.vm.provision "shell", inline: "systemctl stop firewalld; systemctl disable firewalld"

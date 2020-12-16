@@ -10,7 +10,7 @@ To install development dependencies you can use `pip install -r tests/requiremen
 
 #### Linting
 
-Kubespray uses `yamllint` and `ansible-lint`. To run them locally use `yamllint .` and `./tests/scripts/ansible-lint.sh`
+Kubespray uses `yamllint` and `ansible-lint`. To run them locally use `yamllint .` and `ansible-lint`
 
 #### Molecule
 

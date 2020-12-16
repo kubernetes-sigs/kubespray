@@ -12,7 +12,7 @@ URL rewriting, CORS, rate limiting, and automatic metrics collection.
 * `ingress_ambassador_namespace` (default `ambassador`): namespace for installing Ambassador.
 * `ingress_ambassador_update_window` (default `0 0 * * SUN`): _crontab_-like expression
   for specifying when the Operator should try to update the Ambassador API Gateway.
-* `ingress_ambassador_version` (defaulkt: `*`): SemVer rule for versions allowed for
+* `ingress_ambassador_version` (default: `*`): SemVer rule for versions allowed for
   installation/updates.
 * `ingress_ambassador_secure_port` (default: 443): HTTPS port to listen at.
 * `ingress_ambassador_insecure_port` (default: 80): HTTP port to listen at.

@@ -1,7 +1,7 @@
 # Use imutable image tags rather than mutable tags (like ubuntu:18.04)
 FROM ubuntu:bionic-20200807
 
-ENV KUBE_VERSION=v1.19.4
+ENV KUBE_VERSION=v1.19.5
 
 RUN mkdir /kubespray
 WORKDIR /kubespray

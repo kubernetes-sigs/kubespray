@@ -1,4 +1,4 @@
-# conrainerd
+# containerd
 
 [containerd] An industry-standard container runtime with an emphasis on simplicity, robustness and portability
 Kubespray supports basic functionality for using containerd as the default container runtime in a cluster.

@@ -66,7 +66,7 @@ CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory/sample/hosts.yaml")
 KUBE_MASTERS = int(os.environ.get("KUBE_MASTERS_MASTERS", 2))
 # Reconfigures cluster distribution at scale
 SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 50))
-MASSIVE_SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 200))
+MASSIVE_SCALE_THRESHOLD = int(os.environ.get("MASSIVE_SCALE_THRESHOLD", 200))
 
 DEBUG = get_var_as_bool("DEBUG", True)
 HOST_PREFIX = os.environ.get("HOST_PREFIX", "node")

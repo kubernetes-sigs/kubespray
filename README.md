@@ -117,7 +117,7 @@ Note: Upstart/SysV init based OS types are not supported.
 
 - Core
   - [kubernetes](https://github.com/kubernetes/kubernetes) v1.19.6
-  - [etcd](https://github.com/coreos/etcd) v3.4.3
+  - [etcd](https://github.com/coreos/etcd) v3.4.13
   - [docker](https://www.docker.com/) v19.03 (see note)
   - [containerd](https://containerd.io/) v1.3.9
   - [cri-o](http://cri-o.io/) v1.19 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)

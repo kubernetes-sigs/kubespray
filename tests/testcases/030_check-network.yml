@@ -43,6 +43,16 @@
     command: "{{ bin_dir }}/kubectl create namespace test"
     changed_when: false
 
+  - name: Wait for API token of test namespace
+    shell: "set -o pipefail && {{ bin_dir }}/kubectl describe serviceaccounts default --namespace test | grep Tokens | awk '{print $2}'"
+    args:
+      executable: /bin/bash
+    changed_when: false
+    register: default_token
+    until: default_token.stdout.find('<none>') == -1
+    retries: 5
+    delay: 5
+
   - name: Run 2 busybox pods in test ns
     command: "{{ bin_dir }}/kubectl run {{ item }} --image={{ test_image_repo }}:{{ test_image_tag }} --namespace test --command -- tail -f /dev/null"
     changed_when: false

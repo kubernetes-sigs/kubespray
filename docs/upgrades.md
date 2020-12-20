@@ -7,6 +7,7 @@ You can also individually control versions of components by explicitly defining 
 versions. Here are all version vars for each component:
 
 * docker_version
+* containerd_version
 * kube_version
 * etcd_version
 * calico_version
@@ -283,6 +284,7 @@ installed in the Ansible playbook. The order of component installation is as
 follows:
 
 * Docker
+* Containerd
 * etcd
 * kubelet and kube-proxy
 * network_plugin (such as Calico or Weave)

@@ -18,6 +18,7 @@ Some variables of note include:
 * *docker_version* - Specify version of Docker to used (should be quoted
   string). Must match one of the keys defined for *docker_versioned_pkg*
   in `roles/container-engine/docker/vars/*.yml`.
+* *containerd_version* - Specify version of Containerd to use
 * *etcd_version* - Specify version of ETCD to use
 * *ipip* - Enables Calico ipip encapsulation by default
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)
@@ -115,7 +116,8 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
 * *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install.
-* *containerd_config* - Controls some parameters in containerd configuration file (usually /etc/containerd/config.toml).
+* *containerd_default_runtime* - Sets the default Containerd runtime used by the Kubernetes CRI plugin.
+* *containerd_runtimes* - Sets the Containerd runtime attributes used by the Kubernetes CRI plugin.
   [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container-engine/containerd/defaults/main.yml) can be overriden in inventory vars.
 * *http_proxy/https_proxy/no_proxy/no_proxy_exclude_workers/additional_no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames

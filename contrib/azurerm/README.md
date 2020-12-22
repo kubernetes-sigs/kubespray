@@ -24,14 +24,14 @@ experience.
 
 You can enable the use of a Bastion Host by changing **use_bastion** in group_vars/all to **true**. The generated
 templates will then include an additional bastion VM which can then be used to connect to the masters and nodes. The option
-also removes all public IPs from all other VMs. 
+also removes all public IPs from all other VMs.
 
 ## Generating and applying
 
 To generate and apply the templates, call:
 
 ```shell
-$ ./apply-rg.sh <resource_group_name>
+./apply-rg.sh <resource_group_name>
 ```
 
 If you change something in the configuration (e.g. number of nodes) later, you can call this again and Azure will
@@ -42,25 +42,23 @@ take care about creating/modifying whatever is needed.
 If you need to delete all resources from a resource group, simply call:
 
 ```shell
-$ ./clear-rg.sh <resource_group_name>
+./clear-rg.sh <resource_group_name>
 ```
 
 **WARNING** this really deletes everything from your resource group, including everything that was later created by you!
-
 
 ## Generating an inventory for kubespray
 
 After you have applied the templates, you can generate an inventory with this call:
 
 ```shell
-$ ./generate-inventory.sh <resource_group_name>
+./generate-inventory.sh <resource_group_name>
 ```
 
 It will create the file ./inventory which can then be used with kubespray, e.g.:
 
 ```shell
-$ cd kubespray-root-dir
-$ sudo pip3 install -r requirements.txt
-$ ansible-playbook -i contrib/azurerm/inventory -u devops --become -e "@inventory/sample/group_vars/all/all.yml" cluster.yml
+cd kubespray-root-dir
+sudo pip3 install -r requirements.txt
+ansible-playbook -i contrib/azurerm/inventory -u devops --become -e "@inventory/sample/group_vars/all/all.yml" cluster.yml
 ```
-

@@ -5,7 +5,7 @@ deployment on VMs.
 
 This playbook does not create Virtual Machines, nor does it run Kubespray itself.
 
-### User creation
+## User creation
 
 If you want to create a user for running Kubespray deployment, you should specify
 both `k8s_deployment_user` and `k8s_deployment_user_pkey_path`.

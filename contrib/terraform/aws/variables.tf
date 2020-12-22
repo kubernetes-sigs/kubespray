@@ -44,12 +44,12 @@ variable "aws_vpc_cidr_block" {
 
 variable "aws_cidr_subnets_private" {
   description = "CIDR Blocks for private subnets in Availability Zones"
-  type        = "list"
+  type        = list(string)
 }
 
 variable "aws_cidr_subnets_public" {
   description = "CIDR Blocks for public subnets in Availability Zones"
-  type        = "list"
+  type        = list(string)
 }
 
 //AWS EC2 Settings
@@ -101,7 +101,7 @@ variable "k8s_secure_api_port" {
 
 variable "default_tags" {
   description = "Default tags for all resources"
-  type        = "map"
+  type        = map(string)
 }
 
 variable "inventory_file" {

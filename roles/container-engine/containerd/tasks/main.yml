@@ -95,9 +95,9 @@
   args:
     pkg: "{{ item.name }}"
     force: "{{ item.force | default(omit) }}"
-    conf_file: "{{ item.yum_conf | default(omit) }}"
     state: present
     update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
+    enablerepo: "{{ item.repo | default(omit) }}"
   register: containerd_task_result
   until: containerd_task_result is succeeded
   retries: 4
@@ -108,26 +108,6 @@
     - not is_ostree
     - containerd_package_info.pkgs|length > 0
   ignore_errors: true
-
-- name: Check if runc is installed
-  stat:
-    path: "{{ runc_binary }}"
-  register: runc_stat
-
-- name: Install runc package if necessary
-  action: "{{ containerd_package_info.pkg_mgr }}"
-  args:
-    pkg: runc
-    state: present
-    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
-  register: runc_task_result
-  until: runc_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
-  notify: restart containerd
-  when:
-    - not is_ostree
-    - not runc_stat.stat.exists
 
 - name: Ensure latest version of libseccomp installed  # noqa 403
   package:

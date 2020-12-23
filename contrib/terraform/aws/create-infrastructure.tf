@@ -63,7 +63,7 @@ resource "aws_instance" "bastion-server" {
 
   tags = merge(var.default_tags, map(
     "Name", "kubernetes-${var.aws_cluster_name}-bastion-${count.index}",
-    "Cluster", "${var.aws_cluster_name}",
+    "Cluster", var.aws_cluster_name,
     "Role", "bastion-${var.aws_cluster_name}-${count.index}"
   ))
 }

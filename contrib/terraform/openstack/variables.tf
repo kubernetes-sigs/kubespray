@@ -152,7 +152,7 @@ variable "subnet_cidr" {
 
 variable "dns_nameservers" {
   description = "An array of DNS name server names used by hosts in this subnet."
-  type        = list
+  type        = list(string)
   default     = []
 }
 
@@ -211,13 +211,13 @@ variable "k8s_allowed_egress_ips" {
 }
 
 variable "master_allowed_ports" {
-  type = list
+  type = list(any)
 
   default = []
 }
 
 variable "worker_allowed_ports" {
-  type = list
+  type = list(any)
 
   default = [
     {

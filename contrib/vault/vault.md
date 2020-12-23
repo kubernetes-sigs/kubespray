@@ -1,8 +1,8 @@
-# /!\ The vault role have been retired from the main playbook.
-# This role probably requires a LOT of changes in order to work again
-
 Hashicorp Vault Role
 ====================
+
+The vault role have been retired from the main playbook.
+This role probably requires a LOT of changes in order to work again
 
 Overview
 --------
@@ -22,7 +22,7 @@ role can generate certs for itself as well. Eventually, this may be improved
 to allow alternate backends (such as Consul), but currently the tasks are
 hardcoded to only create a Vault role for Etcd.
 
-2. Cluster
+1. Cluster
 
 This step is where the long-term Vault cluster is started and configured. Its
 first task, is to stop any temporary instances of Vault, to free the port for
@@ -81,18 +81,18 @@ generated elsewhere, you'll need to copy the certificate and key to the hosts in
 
 Additional Notes:
 
-- ``groups.vault|first`` is considered the source of truth for Vault variables
-- ``vault_leader_url`` is used as pointer for the current running Vault
-- Each service should have its own role and credentials. Currently those
+* ``groups.vault|first`` is considered the source of truth for Vault variables
+* ``vault_leader_url`` is used as pointer for the current running Vault
+* Each service should have its own role and credentials. Currently those
   credentials are saved to ``/etc/vault/roles/<role>/``. The service will
   need to read in those credentials, if they want to interact with Vault.
 
 Potential Work
 --------------
 
-- Change the Vault role to not run certain tasks when ``root_token`` and
+* Change the Vault role to not run certain tasks when ``root_token`` and
   ``unseal_keys`` are not present. Alternatively, allow user input for these
   values when missing.
-- Add the ability to start temp Vault with Host or Docker
-- Add a dynamic way to change out the backend role creation during Bootstrap,
+* Add the ability to start temp Vault with Host or Docker
+* Add a dynamic way to change out the backend role creation during Bootstrap,
   so other services can be used (such as Consul)

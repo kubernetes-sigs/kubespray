@@ -4,7 +4,7 @@ MetalLB hooks into your Kubernetes cluster, and provides a network load-balancer
 In short, it allows you to create Kubernetes services of type "LoadBalancer" in clusters that
 don't run on a cloud provider, and thus cannot simply hook into paid products to provide load-balancers.
 This addon aims to automate [MetalLB in layer 2 mode](https://metallb.universe.tf/concepts/layer2/)
-or [MetalLB in BGP mode][https://metallb.universe.tf/concepts/bgp/].
+or [MetalLB in BGP mode](https://metallb.universe.tf/concepts/bgp/).
 It deploys MetalLB into Kubernetes and sets up a layer 2 or BGP load-balancer.
 
 ## Install

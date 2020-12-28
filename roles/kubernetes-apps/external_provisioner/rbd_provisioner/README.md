@@ -26,7 +26,7 @@ make push
 
 * Start Kubernetes local cluster
 
-See https://kubernetes.io/.
+See [Kubernetes](https://kubernetes.io/).
 
 * Create a Ceph admin secret
 
@@ -76,4 +76,4 @@ kubectl create -f examples/test-pod.yaml
 
 ## Acknowledgements
 
-- This provisioner is extracted from [Kubernetes core](https://github.com/kubernetes/kubernetes) with some modifications for this project.
+* This provisioner is extracted from [Kubernetes core](https://github.com/kubernetes/kubernetes) with some modifications for this project.

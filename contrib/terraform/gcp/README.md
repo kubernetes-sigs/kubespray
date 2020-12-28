@@ -6,7 +6,7 @@ Provision a Kubernetes cluster on GCP using Terraform and Kubespray
 
 The setup looks like following
 
-```
+```text
                            Kubernetes cluster
                         +-----------------------+
 +---------------+       |   +--------------+    |

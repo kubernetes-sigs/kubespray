@@ -17,6 +17,7 @@ Checkout our [Live Docs](https://kubernetes-sigs.github.io/aws-alb-ingress-contr
 To get started with the controller, see our [walkthrough](https://kubernetes-sigs.github.io/aws-alb-ingress-controller/guide/walkthrough/echoserver/).
 
 ## Setup
+
 - See [controller setup](https://kubernetes-sigs.github.io/aws-alb-ingress-controller/guide/controller/setup/) on how to install ALB ingress controller
 - See [external-dns setup](https://kubernetes-sigs.github.io/aws-alb-ingress-controller/guide/external-dns/setup/) for how to setup the external-dns to manage route 53 records.
 

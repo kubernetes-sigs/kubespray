@@ -25,11 +25,12 @@
 
 !!! attention
     If you're using GKE you need to initialize your user as a cluster-admin with the following command:
-    ```console
-    kubectl create clusterrolebinding cluster-admin-binding \
-      --clusterrole cluster-admin \
-      --user $(gcloud config get-value account)
-    ```
+
+```console
+kubectl create clusterrolebinding cluster-admin-binding \
+--clusterrole cluster-admin \
+--user $(gcloud config get-value account)
+```
 
 The following **Mandatory Command** is required for all deployments except for AWS. See below for the AWS version.
 
@@ -60,6 +61,7 @@ For standard usage:
 ```console
 minikube addons enable ingress
 ```
+
 For development:
 
 1. Disable the ingress addon:
@@ -68,8 +70,8 @@ For development:
 minikube addons disable ingress
 ```
 
-2. Execute `make dev-env`
-3. Confirm the `nginx-ingress-controller` deployment exists:
+1. Execute `make dev-env`
+1. Confirm the `nginx-ingress-controller` deployment exists:
 
 ```console
 $ kubectl get pods -n ingress-nginx
@@ -115,20 +117,23 @@ This example creates an ELB with just two listeners, one in port 80 and another 
 
 ##### ELB Idle Timeouts
 
-In some scenarios users will need to modify the value of the ELB idle timeout. Users need to ensure the idle timeout is less than the [keepalive_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_timeout) that is configured for NGINX. By default NGINX `keepalive_timeout` is set to `75s`.	
+In some scenarios users will need to modify the value of the ELB idle timeout.
+Users need to ensure the idle timeout is less than the [keepalive_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_timeout) that is configured for NGINX.
+By default NGINX `keepalive_timeout` is set to `75s`.
 
-The default ELB idle timeout will work for most scenarios, unless the NGINX [keepalive_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_timeout) has been modified, in which case `service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout` will need to be modified to ensure it is less than the `keepalive_timeout` the user has configured.	
+The default ELB idle timeout will work for most scenarios, unless the NGINX [keepalive_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_timeout) has been modified,
+in which case `service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout` will need to be modified to ensure it is less than the `keepalive_timeout` the user has configured.
 
-_Please Note: An idle timeout of `3600s` is recommended when using WebSockets._	
+_Please Note: An idle timeout of `3600s` is recommended when using WebSockets._
 
-More information with regards to idle timeouts for your Load Balancer can be found in the [official AWS documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/config-idle-timeout.html).	
+More information with regards to idle timeouts for your Load Balancer can be found in the [official AWS documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/config-idle-timeout.html).
 
-##### Network Load Balancer (NLB)	
+##### Network Load Balancer (NLB)
 
-This type of load balancer is supported since v1.10.0 as an ALPHA feature.	
+This type of load balancer is supported since v1.10.0 as an ALPHA feature.
 
-```console	
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/service-nlb.yaml	
+```console
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/service-nlb.yaml
 ```
 
 #### GCE-GKE

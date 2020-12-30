@@ -3,15 +3,16 @@
 Bootstrap an Ansible host to be able to run Ansible modules.
 
 This role will:
-  * configure the package manager (if applicable) to be able to fetch packages
-  * install Python
-  * install the necessary packages to use Ansible's package manager modules
-  * set the hostname of the host to `{{ inventory_hostname }}` when requested
+
+* configure the package manager (if applicable) to be able to fetch packages
+* install Python
+* install the necessary packages to use Ansible's package manager modules
+* set the hostname of the host to `{{ inventory_hostname }}` when requested
 
 ## Requirements
 
 A host running an operating system that is supported by Kubespray.
-See https://github.com/kubernetes-sigs/kubespray#supported-linux-distributions for a current list.
+See [Supported Linux Distributions](https://github.com/kubernetes-sigs/kubespray#supported-linux-distributions) for a current list.
 
 SSH access to the host.
 
@@ -21,11 +22,11 @@ Variables are listed with their default values, if applicable.
 
 ### General variables
 
-  * `http_proxy`/`https_proxy`
-    The role will configure the package manager (if applicable) to download packages via a proxy.
+* `http_proxy`/`https_proxy`
+  The role will configure the package manager (if applicable) to download packages via a proxy.
 
-  * `override_system_hostname: true`
-    The role will set the hostname of the machine to the name it has according to Ansible's inventory (the variable `{{ inventory_hostname }}`).
+* `override_system_hostname: true`
+  The role will set the hostname of the machine to the name it has according to Ansible's inventory (the variable `{{ inventory_hostname }}`).
 
 ### Per distribution variables
 

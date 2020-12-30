@@ -87,12 +87,12 @@ For further information, read the official [Cert-Manager Ingress](https://cert-m
 
 ### Create New TLS Root CA Certificate and Key
 
-#### Install Cloudflare PKI/TLS `cfssl` Toolkit.
+#### Install Cloudflare PKI/TLS `cfssl` Toolkit
 
 e.g. For Ubuntu/Debian distibutions, the toolkit is part of the `golang-cfssl` package.
 
 ```shell
-$ sudo apt-get install -y golang-cfssl
+sudo apt-get install -y golang-cfssl
 ```
 
 #### Create Root Certificate Authority (CA) Configuration File

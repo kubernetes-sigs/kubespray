@@ -24,10 +24,10 @@ versions of Ambassador as they become available.
 
 ## Configuration
 
-* `ingress_ambassador_namespace` (default `ambassador`): namespace for installing Ambassador.
-* `ingress_ambassador_update_window` (default `0 0 * * SUN`): _crontab_-like expression
+- `ingress_ambassador_namespace` (default `ambassador`): namespace for installing Ambassador.
+- `ingress_ambassador_update_window` (default `0 0 * * SUN`): _crontab_-like expression
   for specifying when the Operator should try to update the Ambassador API Gateway.
-* `ingress_ambassador_version` (defaulkt: `*`): SemVer rule for versions allowed for
+- `ingress_ambassador_version` (defaulkt: `*`): SemVer rule for versions allowed for
   installation/updates.
 
 ## Ingress annotations

@@ -12,15 +12,20 @@
 
 - name: reset | remove services
   file:
-    path: "/etc/systemd/system/{{ item }}.service"
+    path: "/etc/systemd/system/{{ item }}"
     state: absent
   with_items:
-    - kubelet
-    - vault
-    - calico-node
+    - kubelet.service
+    - vault.service
+    - calico-node.service
+    - containerd.service.d/http-proxy.conf
+    - crio.service.d/http-proxy.conf
+    - vault.service.d/http-proxy.conf
   register: services_removed
   tags:
     - services
+    - containerd
+    - crio
 
 - name: reset | remove docker dropins
   file:
@@ -30,6 +35,7 @@
     - docker-dns.conf
     - docker-options.conf
     - http-proxy.conf
+    - docker-orphan-cleanup.conf
   register: docker_dropins_removed
   tags:
     - docker
@@ -59,21 +65,13 @@
   tags:
     - docker
 
-- name: reset | stop all cri containers
-  shell: "set -o pipefail && {{ bin_dir }}/crictl ps -aq | xargs -r {{ bin_dir }}/crictl -t 60s stop"
-  args:
-    executable: /bin/bash
-  register: remove_all_cri_containers
-  retries: 5
-  until: remove_all_cri_containers.rc == 0
-  delay: 5
-  tags:
-    - crio
-    - containerd
-  when: container_manager in ["crio", "containerd"]
+- name: reset | check if crictl is present
+  stat:
+    path: "{{ bin_dir }}/crictl"
+  register: crictl
 
-- name: reset | remove all cri containers
-  shell: "set -o pipefail && {{ bin_dir }}/crictl ps -aq | xargs -r {{ bin_dir }}/crictl -t 60s rm"
+- name: reset | stop all cri containers
+  shell: "set -o pipefail && {{ bin_dir }}/crictl ps -q | xargs -r {{ bin_dir }}/crictl -t 60s stop"
   args:
     executable: /bin/bash
   register: remove_all_cri_containers
@@ -83,7 +81,24 @@
   tags:
     - crio
     - containerd
-  when: container_manager in ["crio", "containerd"] and deploy_container_engine|default(true)
+  when:
+    - crictl.stat.exists
+    - container_manager in ["crio", "containerd"]
+  ignore_errors: true
+
+- name: reset | force remove all cri containers
+  command: "{{ bin_dir }}/crictl rm -a -f"
+  register: remove_all_cri_containers
+  retries: 5
+  until: remove_all_cri_containers.rc == 0
+  delay: 5
+  tags:
+    - crio
+    - containerd
+  when:
+    - crictl.stat.exists
+    - container_manager in ["crio", "containerd"]
+    - deploy_container_engine|default(true)
 
 - name: reset | stop and disable crio service
   service:
@@ -109,18 +124,21 @@
   until: remove_all_cri_containers.rc == 0
   delay: 5
   tags: [ containerd ]
-  when: container_manager == "containerd"
+  when:
+    - crictl.stat.exists
+    - container_manager == "containerd"
+  ignore_errors: true
 
-- name: reset | remove all cri pods
-  shell: "set -o pipefail && {{ bin_dir }}/crictl pods -q | xargs -r {{ bin_dir }}/crictl -t 60s rmp"
-  args:
-    executable: /bin/bash
+- name: reset | force remove all cri pods
+  command: "{{ bin_dir }}/crictl rmp -a -f"
   register: remove_all_cri_containers
   retries: 5
   until: remove_all_cri_containers.rc == 0
   delay: 5
   tags: [ containerd ]
-  when: container_manager == "containerd"
+  when:
+    - crictl.stat.exists
+    - container_manager == "containerd"
 
 - name: reset | stop etcd services
   service:

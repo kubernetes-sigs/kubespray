@@ -11,11 +11,11 @@ Then we will run step(2) for registering the images to local registry.
 Step(1) can be operated with:
 
 ```shell
-$ ./manage-offline-container-images.sh   create
+manage-offline-container-images.sh   create
 ```
 
 Step(2) can be operated with:
 
 ```shell
-$ ./manage-offline-container-images.sh   register
+manage-offline-container-images.sh   register
 ```

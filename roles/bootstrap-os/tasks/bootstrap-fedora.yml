@@ -10,26 +10,16 @@
   tags:
     - facts
 
-- name: Check if a proxy is set in /etc/dnf/dnf.conf
-  raw: grep -qs 'proxy=' /etc/dnf/dnf.conf
-  register: need_http_proxy
-  failed_when: false
-  changed_when: false
-  # This command should always run, even in check mode
-  check_mode: false
-  environment: {}
-  when:
-    - http_proxy is defined
-    - not skip_http_proxy_on_os_packages
-
-- name: Add http_proxy to /etc/dnf/dnf.conf if http_proxy is defined
-  raw: echo 'proxy={{ http_proxy }}' >> /etc/dnf/dnf.conf
+- name: Add proxy to dnf.conf if http_proxy is defined
+  ini_file:
+    path: "/etc/dnf/dnf.conf"
+    section: main
+    option: proxy
+    value: "{{ http_proxy | default(omit) }}"
+    state: "{{ http_proxy | default(False) | ternary('present', 'absent') }}"
+    no_extra_spaces: true
   become: true
-  environment: {}
-  when:
-    - http_proxy is defined
-    - need_http_proxy.rc != 0
-    - not skip_http_proxy_on_os_packages
+  when: not skip_http_proxy_on_os_packages
 
 - name: Install python3 on fedora
   raw: "dnf install --assumeyes --quiet python3"

@@ -92,18 +92,22 @@
   when: ansible_pkg_mgr == 'apt'
 
 - name: ensure containerd packages are installed
-  action: "{{ containerd_package_info.pkg_mgr }}"
-  args:
-    pkg: "{{ item.name }}"
-    force: "{{ item.force | default(omit) }}"
+  package:
+    name: "{{ containerd_package_info.pkgs }}"
     state: present
-    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
-    enablerepo: "{{ item.repo | default(omit) }}"
+  module_defaults:
+    apt:
+      update_cache: true
+    dnf:
+      enablerepo: "{{ containerd_package_info.enablerepo | default(omit) }}"
+    yum:
+      enablerepo: "{{ containerd_package_info.enablerepo | default(omit) }}"
+    zypper:
+      update_cache: true
   register: containerd_task_result
   until: containerd_task_result is succeeded
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
-  with_items: "{{ containerd_package_info.pkgs }}"
   notify: restart containerd
   when:
     - not is_ostree

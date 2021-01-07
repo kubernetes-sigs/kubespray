@@ -120,33 +120,27 @@
     - docker-ce-cli
 
 - name: ensure docker packages are installed
-  action: "{{ docker_package_info.pkg_mgr }}"
-  args:
-    pkg: "{{ item.name }}"
-    force: "{{ item.force|default(omit) }}"
-    state: "{{ item.state | default('present') }}"
-    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
-    enablerepo: "{{ item.repo | default(omit) }}"
-  register: docker_task_result
-  until: docker_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
-  with_items: "{{ docker_package_info.pkgs }}"
-  notify: restart docker
-  when: not (ansible_os_family in ["Flatcar Container Linux by Kinvolk", "ClearLinux"] or is_ostree) and (docker_package_info.pkgs|length > 0)
-
-- name: Ensure docker packages are installed
-  action: "{{ docker_package_info.pkg_mgr }}"
-  args:
-    name: "{{ item.name }}"
-    state: "{{ item.state | default('present') }}"
-  with_items: "{{ docker_package_info.pkgs }}"
+  package:
+    name: "{{ docker_package_info.pkgs }}"
+    state: "{{ docker_package_info.state | default('present') }}"
+  module_defaults:
+    apt:
+      update_cache: true
+    dnf:
+      enablerepo: "{{ docker_package_info.enablerepo | default(omit) }}"
+    yum:
+      enablerepo: "{{ docker_package_info.enablerepo | default(omit) }}"
+    zypper:
+      update_cache: true
   register: docker_task_result
   until: docker_task_result is succeeded
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
   notify: restart docker
-  when: ansible_os_family in ["ClearLinux"]
+  when:
+    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    - not is_ostree
+    - docker_package_info.pkgs|length > 0
 
 # This is required to ensure any apt upgrade will not break kubernetes
 - name: Tell Debian hosts not to change the docker version with apt upgrade

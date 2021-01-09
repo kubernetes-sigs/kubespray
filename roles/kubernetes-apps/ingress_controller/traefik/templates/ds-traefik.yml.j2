@@ -31,9 +31,21 @@ spec:
         - --entryPoints.websecure.address=:443/tcp
         - --entryPoints.websecure.http.tls=true
         - --log.level=INFO
+        - --metrics.prometheus=true
         - --metrics.prometheus.entrypoint=metrics
         - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
         - --ping=true
+{% if traefik_ingress_tls_chain and traefik_ingress_tls_key  %}
+        - --providers.file
+        - --providers.file.directory=/static
+{% elif traefik_ingress_tls_certbot_email %}
+        - --certificatesresolvers.default.acme.tlschallenge
+        - --certificatesresolvers.default.acme.email={{ traefik_ingress_tls_certbot_email }}
+        - --certificatesresolvers.default.acme.storage=/store/acme.json
+{% if traefik_ingress_tls_certbot_use_staging %}
+        - --certificatesresolvers.default.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+{% endif %}
+{% endif %}
         - --providers.kubernetesingress
         - --providers.kubernetescrd
         - --providers.kubernetescrd.allowcrossnamespace=false
@@ -58,8 +70,12 @@ spec:
           hostPort: {{ traefik_secure_port }}
         - name: dashboard
           containerPort: 8100
+          hostPort: {{ traefik_dashboard_port }}
         - name: metrics
           containerPort: {{ traefik_metrics_port }}
+{% if not traefik_host_network %}
+          hostPort: {{ traefik_metrics_port }}
+{% endif %}
         readinessProbe:
           httpGet:
             path: /metrics
@@ -77,6 +93,19 @@ spec:
             drop:
             - ALL
           privileged: true
+{% if traefik_ingress_tls_chain and traefik_ingress_tls_key %}
+        volumeMounts:
+        - mountPath: /tls-secret
+          name: tls
+        - mountPath: /static
+          name: config
+{% elif traefik_ingress_tls_certbot_email %}
+        volumeMounts:
+        - mountPath: /store
+          name: certbot
+{% else %}
+        volumeMounts: []
+{% endif %}
 {% if traefik_host_network %}
       dnsPolicy: ClusterFirstWithHostNet
       hostNetwork: true
@@ -90,4 +119,19 @@ spec:
 {% if traefik_tolerations %}
       tolerations:
         {{ traefik_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
+{% endif %}
+{% if traefik_ingress_tls_chain and traefik_ingress_tls_key %}
+      volumes:
+      - configMap:
+          name: traefik
+        name: config
+      - name: tls
+        secret:
+          secretName: traefik-default-tls
+{% elif traefik_ingress_tls_certbot_email %}
+      volumes:
+      - emptyDir: {}
+        name: store
+{% else %}
+      volumes: []
 {% endif %}

@@ -11,6 +11,11 @@ _To use the containerd container runtime set the following variables:_
 container_manager: containerd
 ```
 
+## etcd.yaml
+```yaml
+etcd_deployment_type: host
+```
+
 ## Containerd config
 
 Example: define registry mirror for docker hub

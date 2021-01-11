@@ -20,9 +20,6 @@ Some variables of note include:
   in `roles/container-engine/docker/vars/*.yml`.
 * *etcd_version* - Specify version of ETCD to use
 * *ipip* - Enables Calico ipip encapsulation by default
-* *hyperkube_image_repo* - Specify the Docker repository where Hyperkube
-  resides
-* *hyperkube_image_tag* - Specify the Docker tag where Hyperkube resides
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)
 * *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
 * *kube_version* - Specify a given Kubernetes hyperkube version
@@ -117,11 +114,6 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.
-* *kubelet_deployment_type* - Controls which platform to deploy kubelet on.
-  Available options are ``host`` and ``docker``. ``docker`` mode
-  is unlikely to work on newer releases. Starting with Kubernetes v1.7
-  series, this now defaults to ``host``. Before v1.7, the default was Docker.
-  This is because of cgroup [issues](https://github.com/kubernetes/kubernetes/issues/43704).
 * *kubelet_load_modules* - For some things, kubelet needs to load kernel modules.  For example,
   dynamic kernel services are needed for mounting persistent volumes into containers.  These may not be
   loaded by preinstall kubernetes processes.  For example, ceph and rbd backed volumes.  Set this variable to

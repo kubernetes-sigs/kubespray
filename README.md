@@ -157,7 +157,7 @@ Note: The list of validated [docker versions](https://kubernetes.io/docs/setup/p
 ## Requirements
 
 - **Minimum required version of Kubernetes is v1.17**
-- **Ansible v2.9+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
+- **Ansible v2.9.x, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands, Ansible 2.10.x is not supported for now**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.
 - The **firewalls are not managed**, you'll need to implement your own rules the way you used to.

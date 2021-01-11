@@ -11,7 +11,8 @@ _To use the containerd container runtime set the following variables:_
 container_manager: containerd
 ```
 
-## etcd.yaml
+## etcd.yml
+
 ```yaml
 etcd_deployment_type: host
 ```

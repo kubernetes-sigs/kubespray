@@ -49,6 +49,6 @@ as well as traefik custom ingressroutes controller.
 
 ## Traefik Documentations
 
- * https://doc.traefik.io/traefik/v2.3/getting-started/install-traefik/
- * https://doc.traefik.io/traefik/providers/kubernetes-ingress/
- * https://doc.traefik.io/traefik/providers/kubernetes-crd/
+- [Install Traefik](https://doc.traefik.io/traefik/v2.3/getting-started/install-traefik/)
+- [Traefik Kubernetes Ingress](https://doc.traefik.io/traefik/providers/kubernetes-ingress/)
+- [Traefik Kubernetes IngressRoute](https://doc.traefik.io/traefik/providers/kubernetes-crd/)

@@ -27,8 +27,8 @@ spec:
         - --api.dashboard=true
         - --entryPoints.metrics.address=:{{ traefik_metrics_port }}/tcp
         - --entryPoints.traefik.address=:8100/tcp
-        - --entryPoints.web.address=:80/tcp
-        - --entryPoints.websecure.address=:443/tcp
+        - --entryPoints.web.address=:8080/tcp
+        - --entryPoints.websecure.address=:8443/tcp
         - --entryPoints.websecure.http.tls=true
         - --log.level=INFO
         - --metrics.prometheus=true
@@ -63,19 +63,22 @@ spec:
         name: traefik
         ports:
         - name: http
-          containerPort: 80
+          containerPort: 8080
+{% if traefik_host_network %}
           hostPort: {{ traefik_insecure_port }}
+{% endif %}
         - name: https
-          containerPort: 443
+          containerPort: 8443
+{% if traefik_host_network %}
           hostPort: {{ traefik_secure_port }}
+{% endif %}
         - name: dashboard
           containerPort: 8100
+{% if traefik_host_network %}
           hostPort: {{ traefik_dashboard_port }}
+{% endif %}
         - name: metrics
           containerPort: {{ traefik_metrics_port }}
-{% if not traefik_host_network %}
-          hostPort: {{ traefik_metrics_port }}
-{% endif %}
         readinessProbe:
           httpGet:
             path: /metrics
@@ -87,12 +90,7 @@ spec:
           successThreshold: 1
           failureThreshold: 3
         securityContext:
-          capabilities:
-            add:
-            - NET_BIND_SERVICE
-            drop:
-            - ALL
-          privileged: true
+          runAsUser: 1001
 {% if traefik_ingress_tls_chain and traefik_ingress_tls_key %}
         volumeMounts:
         - mountPath: /tls-secret
@@ -105,10 +103,6 @@ spec:
           name: certbot
 {% else %}
         volumeMounts: []
-{% endif %}
-{% if traefik_host_network %}
-      dnsPolicy: ClusterFirstWithHostNet
-      hostNetwork: true
 {% endif %}
 {% if traefik_nodeselector %}
       nodeSelector:

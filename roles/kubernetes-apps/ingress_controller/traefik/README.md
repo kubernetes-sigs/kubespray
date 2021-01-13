@@ -10,7 +10,7 @@
 !!! attention
     The default configuration watches Ingress object from *all the namespaces*.
     To change this behavior use the flag `--providers.kubernetesIngress.namespace` to limit the scope to a particular namespace.
-    See: https://doc.traefik.io/traefik/providers/kubernetes-ingress/#namespaces
+    See: <https://doc.traefik.io/traefik/providers/kubernetes-ingress/#namespaces>
 
 !!! warning
     If multiple Ingresses define different paths for the same host, the ingress controller will merge the definitions.

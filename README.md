@@ -144,7 +144,7 @@ Note: The list of available docker version is 18.09, 19.03 and 20.10. The recomm
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.17**
+- **Minimum required version of Kubernetes is v1.18**
 - **Ansible v2.9.x, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands, Ansible 2.10.x is not supported for now**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.

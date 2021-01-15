@@ -279,7 +279,7 @@ access the API server. This kubeconfig file will thus not work of from
 outside of the VPC network. We will need to change the API server IP address
 to the controller node his external IP address. The external IP address will be
 accepted in the
-TLS negotation as we added the controllers external IP addresses in the SSL
+TLS negotiation as we added the controllers external IP addresses in the SSL
 certificate configuration.
 Open the file and modify the server IP address from the local IP to the
 external IP address of controller-0, as stored in $IP_CONTROLLER_0.

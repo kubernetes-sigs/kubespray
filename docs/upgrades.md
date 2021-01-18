@@ -56,6 +56,11 @@ Client Version: version.Info{Major:"1", Minor:"6", GitVersion:"v1.6.0", GitCommi
 Server Version: version.Info{Major:"1", Minor:"6", GitVersion:"v1.6.0+coreos.0", GitCommit:"8031716957d697332f9234ddf85febb07ac6c3e3", GitTreeState:"clean", BuildDate:"2017-03-29T04:33:09Z", GoVersion:"go1.7.5", Compiler:"gc", Platform:"linux/amd64"}
 ```
 
+If you want to manually control the upgrade procedure, you can use the variables `upgrade_node_confirm` or `upgrade_node_pause_seconds`:
+
+`upgrade_node_confirm: true` - waiting to confirmation to upgrade next node
+`upgrade_node_pause_seconds: 60` - pause 60 seconds before upgrade next node
+
 ## Multiple upgrades
 
 :warning: [Do not skip releases when upgrading--upgrade by one tag at a time.](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515) :warning:

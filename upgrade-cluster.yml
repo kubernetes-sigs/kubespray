@@ -2,21 +2,6 @@
 - name: Check ansible version
   import_playbook: ansible_version.yml
 
-- hosts: all
-  gather_facts: false
-  tags: always
-  tasks:
-    - name: "Set up proxy environment"
-      set_fact:
-        proxy_env:
-          http_proxy: "{{ http_proxy | default ('') }}"
-          HTTP_PROXY: "{{ http_proxy | default ('') }}"
-          https_proxy: "{{ https_proxy | default ('') }}"
-          HTTPS_PROXY: "{{ https_proxy | default ('') }}"
-          no_proxy: "{{ no_proxy | default ('') }}"
-          NO_PROXY: "{{ no_proxy | default ('') }}"
-      no_log: true
-
 - hosts: bastion[0]
   gather_facts: False
   roles:
@@ -47,7 +32,6 @@
     - { role: kubespray-defaults, when: "not skip_downloads and download_run_once and not download_localhost"}
     - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
     - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
-  environment: "{{ proxy_env }}"
 
 - name: Prepare nodes for upgrade
   hosts: k8s-cluster:etcd:calico-rr
@@ -57,7 +41,6 @@
     - { role: kubespray-defaults }
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: download, tags: download, when: "not skip_downloads" }
-  environment: "{{ proxy_env }}"
 
 - name: Upgrade container engine on non-cluster nodes
   hosts: etcd:calico-rr:!k8s-cluster
@@ -67,7 +50,6 @@
   roles:
     - { role: kubespray-defaults }
     - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
-  environment: "{{ proxy_env }}"
 
 - hosts: etcd
   gather_facts: False
@@ -109,7 +91,6 @@
     - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
     - { role: kubernetes-apps, tags: csi-driver }
     - { role: upgrade/post-upgrade, tags: post-upgrade }
-  environment: "{{ proxy_env }}"
 
 - name: Upgrade calico and external cloud provider on all masters, calico-rrs, and nodes
   hosts: kube-master:calico-rr:kube-node
@@ -136,7 +117,6 @@
     - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: kubernetes/node-label, tags: node-label }
     - { role: upgrade/post-upgrade, tags: post-upgrade }
-  environment: "{{ proxy_env }}"
 
 - hosts: kube-master[0]
   gather_facts: False
@@ -152,7 +132,6 @@
   roles:
     - { role: kubespray-defaults }
     - { role: network_plugin/calico/rr, tags: network }
-  environment: "{{ proxy_env }}"
 
 - hosts: kube-master
   gather_facts: False
@@ -160,7 +139,6 @@
   roles:
     - { role: kubespray-defaults }
     - { role: kubernetes-apps, tags: apps }
-  environment: "{{ proxy_env }}"
 
 - hosts: k8s-cluster
   gather_facts: False

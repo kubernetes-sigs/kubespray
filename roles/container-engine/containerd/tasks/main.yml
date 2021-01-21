@@ -81,33 +81,48 @@
 
 # This is required to ensure any apt upgrade will not break kubernetes
 - name: Set containerd pin priority to apt_preferences on Debian family
-  template:
-    src: "apt_preferences.d/debian_containerd.j2"
+  copy:
+    content: |
+      Package: {{ containerd_package }}
+      Pin: version {{ containerd_version }}*
+      Pin-Priority: 1001
     dest: "/etc/apt/preferences.d/containerd"
     owner: "root"
     mode: 0644
-  when:
-    - ansible_os_family in ['Ubuntu', 'Debian']
-    - not is_ostree
+  when: ansible_pkg_mgr == 'apt'
 
 - name: ensure containerd packages are installed
-  action: "{{ containerd_package_info.pkg_mgr }}"
-  args:
-    pkg: "{{ item.name }}"
-    force: "{{ item.force | default(omit) }}"
+  package:
+    name: "{{ containerd_package_info.pkgs }}"
     state: present
-    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
-    enablerepo: "{{ item.repo | default(omit) }}"
+  module_defaults:
+    apt:
+      update_cache: true
+    dnf:
+      enablerepo: "{{ containerd_package_info.enablerepo | default(omit) }}"
+    yum:
+      enablerepo: "{{ containerd_package_info.enablerepo | default(omit) }}"
+    zypper:
+      update_cache: true
   register: containerd_task_result
   until: containerd_task_result is succeeded
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
-  with_items: "{{ containerd_package_info.pkgs }}"
   notify: restart containerd
   when:
     - not is_ostree
     - containerd_package_info.pkgs|length > 0
-  ignore_errors: true
 
 - include_role:
     name: container-engine/crictl
+
+# you can sometimes end up in a state where everything is installed
+# but containerd was not started / enabled
+- name: flush handlers
+  meta: flush_handlers
+
+- name: ensure containerd is started and enabled
+  service:
+    name: containerd
+    enabled: yes
+    state: started

@@ -119,11 +119,34 @@ items:
             name: weave-net
         spec:
           priorityClassName: system-node-critical
+          initContainers:
+            - name: weave-init
+              image: {{ weave_kube_image_repo }}:{{ weave_kube_image_tag }}
+              imagePullPolicy: {{ k8s_image_pull_policy }}
+              command:
+                - /home/weave/init.sh
+              env:
+              securityContext:
+                privileged: true
+              volumeMounts:
+                - name: cni-bin
+                  mountPath: /host/opt
+                - name: cni-bin2
+                  mountPath: /host/home
+                - name: cni-conf
+                  mountPath: /host/etc
+                - name: lib-modules
+                  mountPath: /lib/modules
+                - name: xtables-lock
+                  mountPath: /run/xtables.lock
+                  readOnly: false
           containers:
             - name: weave
               command:
                 - /home/weave/launch.sh
               env:
+                - name: INIT_CONTAINER
+                  value: "true"
                 - name: HOSTNAME
                   valueFrom:
                     fieldRef:
@@ -191,16 +214,9 @@ items:
               volumeMounts:
                 - name: weavedb
                   mountPath: /weavedb
-                - name: cni-bin
-                  mountPath: /host/opt
-                - name: cni-bin2
-                  mountPath: /host/home
-                - name: cni-conf
-                  mountPath: /host/etc
                 - name: dbus
                   mountPath: /host/var/lib/dbus
-                - name: lib-modules
-                  mountPath: /lib/modules
+                  readOnly: true
                 - name: xtables-lock
                   mountPath: /run/xtables.lock
                   readOnly: false
@@ -224,7 +240,7 @@ items:
                   readOnly: false
           hostNetwork: true
           dnsPolicy: ClusterFirstWithHostNet
-          hostPID: true
+          hostPID: false
           restartPolicy: Always
           securityContext:
             seLinuxOptions: {}

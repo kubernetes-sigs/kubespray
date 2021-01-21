@@ -42,6 +42,10 @@ def main():
     map_if_old(conn.network.delete_security_group,
                conn.network.security_groups())
 
+    print('Ports...')
+    map_if_old(conn.network.delete_port,
+               conn.network.ports())
+
     print('Subnets...')
     map_if_old(conn.network.delete_subnet,
                conn.network.subnets())

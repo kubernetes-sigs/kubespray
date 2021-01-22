@@ -6,7 +6,7 @@ Provision a Kubernetes cluster on [Exoscale](https://www.exoscale.com/) using Te
 
 The setup looks like following
 
-```
+```text
                            Kubernetes cluster
                         +-----------------------+
 +---------------+       |   +--------------+    |
@@ -37,7 +37,7 @@ The setup looks like following
 
 ## Quickstart
 
-*Assumes you are at the root of the kubespray repo*
+NOTE: *Assumes you are at the root of the kubespray repo*
 
 Copy the sample inventory for your cluster and copy the default terraform variables.
 
@@ -58,7 +58,7 @@ $EDITOR default.tfvars
 For authentication you can use the credentials file `~/.cloudstack.ini` or `./cloudstack.ini`.
 The file should look like something like this:
 
-```
+```ini
 [cloudstack]
 key = <API key>
 secret = <API secret>

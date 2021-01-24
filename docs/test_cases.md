@@ -11,26 +11,23 @@ and the `etcd` group merged with the `kube-master`.
 `ha` layout consists of two etcd nodes, two masters and a single worker node,
 with role intersection.
 
-`scale` layout can be combined with above layouts. It includes 200 fake hosts
+`scale` layout can be combined with above layouts (`ha-scale`, `separate-scale`). It includes 200 fake hosts
 in the Ansible inventory. This helps test TLS certificate generation at scale
 to prevent regressions and profile certain long-running tasks. These nodes are
 never actually deployed, but certificates are generated for them.
 
 Note, the canal network plugin deploys flannel as well plus calico policy controller.
 
-## GCE instances
+## Test cases
 
-|               Stage|      Network plugin|             OS type|          GCE region|        Nodes layout
-|--------------------|--------------------|--------------------|--------------------|--------------------|
-|               part1|              calico|       coreos-stable|          us-west1-b|            separate|
-|               part1|               canal|  debian-8-kubespray|          us-east1-b|                  ha|
-|               part1|               weave|              rhel-7|      europe-west1-b|             default|
-|               part2|             flannel|            centos-7|          us-west1-a|             default|
-|               part2|              calico|  debian-8-kubespray|       us-central1-b|             default|
-|               part2|               canal|       coreos-stable|          us-east1-b|             default|
-|             special|               canal|              rhel-7|          us-east1-b|            separate|
-|             special|               weave|  ubuntu-1604-xenial|       us-central1-b|             default|
-|             special|              calico|            centos-7|      europe-west1-b|            ha-scale|
-|             special|               weave|        coreos-alpha|          us-west1-a|            ha-scale|
+The [CI Matrix](/docs/ci.md) displays OS, Network Plugin and Container Manager tested.
 
-The "Stage" means a build step of the build pipeline. The steps are ordered as `part1->part2->special`.
+All tests are breakdown into 3 "stages" ("Stage" means a build step of the build pipeline) as follows:
+
+- _unit_tests_: Linting, markdown, vagrant & terraform validation etc...
+- _part1_: Molecule and AIO tests
+- _part2_: Standard tests with different layouts and OS/Runtime/Network
+- _part3_: Upgrade jobs, terraform jobs and recover control plane tests
+- _special_: Other jobs (manuals)
+
+The steps are ordered as `unit_tests->part1->part2->part3->special`.

@@ -1,9 +1,9 @@
 ---
 - name: kubeadm | Check api is up
   uri:
-    url: "https://{{ ip | default(fallback_ips[inventory_hostname]) }}:6443/healthz"
+    url: "https://{{ ip | default(fallback_ips[inventory_hostname]) }}:{{ kube_apiserver_port }}/healthz"
     validate_certs: false
-  when: inventory_hostname == groups['kube-master']|first
+  when: inventory_hostname == groups['kube-master']
   register: _result
   retries: 60
   delay: 5
@@ -17,19 +17,18 @@
     --config={{ kube_config_dir }}/kubeadm-config.yaml
     --ignore-preflight-errors=all
     --allow-experimental-upgrades
-    --allow-release-candidate-upgrades
-    --etcd-upgrade=false
-    {{ (kubeadm_output.stdout is version('v1.16.0', '>=')) | ternary('--certificate-renewal=true', '') }}
+    --etcd-upgrade={{ etcd_kubeadm_enabled | bool | lower }}
     --force
   register: kubeadm_upgrade
   # Retry is because upload config sometimes fails
   retries: 3
+  until: kubeadm_upgrade.rc == 0
   when: inventory_hostname == groups['kube-master']|first
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Master | restart kubelet
 
-# FIXME: https://github.com/kubernetes/kubeadm/issues/1498 remove stdout_lines
-# check after issue is fixed
 - name: kubeadm | Upgrade other masters
   command: >-
     timeout -k 600s 600s
@@ -38,16 +37,15 @@
     --config={{ kube_config_dir }}/kubeadm-config.yaml
     --ignore-preflight-errors=all
     --allow-experimental-upgrades
-    --allow-release-candidate-upgrades
-    --etcd-upgrade=false
-    {{ (kubeadm_output.stdout is version('v1.16.0', '>=')) | ternary('--certificate-renewal=true', '') }}
+    --etcd-upgrade={{ etcd_kubeadm_enabled | bool | lower }}
     --force
   register: kubeadm_upgrade
   when: inventory_hostname != groups['kube-master']|first
   failed_when:
     - kubeadm_upgrade.rc != 0
     - '"field is immutable" not in kubeadm_upgrade.stderr'
-    - kubeadm_upgrade.stdout_lines | length > 1
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Master | restart kubelet
 
 - name: kubeadm | clean kubectl cache to refresh api types

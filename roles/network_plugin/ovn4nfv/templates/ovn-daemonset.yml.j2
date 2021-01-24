@@ -1,0 +1,239 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: ovn-nb-tcp
+  namespace: kube-system
+spec:
+  ports:
+    - name: ovn-nb-tcp
+      protocol: TCP
+      port: 6641
+      targetPort: 6641
+  type: ClusterIP
+  selector:
+    app: ovn-control-plane
+  sessionAffinity: None
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: ovn-sb-tcp
+  namespace: kube-system
+spec:
+  ports:
+    - name: ovn-sb-tcp
+      protocol: TCP
+      port: 6642
+      targetPort: 6642
+  type: ClusterIP
+  selector:
+    app: ovn-control-plane
+  sessionAffinity: None
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: ovn-control-plane
+  namespace: kube-system
+  annotations:
+    kubernetes.io/description: |
+      OVN control plane deployment using tcp: ovn-northd-tcp, ovn-nb-tcp and ovn-sb-tcp.
+spec:
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 0%
+      maxUnavailable: 100%
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: ovn-control-plane
+  template:
+    metadata:
+      labels:
+        app: ovn-control-plane
+    spec:
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: ovn-control-plane
+              topologyKey: kubernetes.io/hostname
+      priorityClassName: system-cluster-critical
+      hostNetwork: true
+      containers:
+        - name: ovn-control-plane
+          image: {{ ovn4nfv_ovn_image_repo }}:{{ ovn4nfv_ovn_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          command: ["ovn4nfv-k8s", "start_ovn_control_plane"]
+          securityContext:
+            capabilities:
+              add: ["SYS_NICE"]
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: {{ ovn_control_plane_cpu_request }}
+              memory: {{ ovn_control_plane_memory_request }}
+          volumeMounts:
+            - mountPath: /var/run/openvswitch
+              name: host-run-ovs
+            - mountPath: /var/run/ovn
+              name: host-run-ovn
+            - mountPath: /sys
+              name: host-sys
+              readOnly: true
+            - mountPath: /etc/openvswitch
+              name: host-config-openvswitch
+            - mountPath: /var/log/openvswitch
+              name: host-log-ovs
+            - mountPath: /var/log/ovn
+              name: host-log-ovn
+          readinessProbe:
+            exec:
+              command: ["ovn4nfv-k8s", "check_ovn_control_plane"]
+            periodSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["ovn4nfv-k8s", "check_ovn_control_plane"]
+            initialDelaySeconds: 30
+            periodSeconds: 7
+            failureThreshold: 5
+      nodeSelector:
+        kubernetes.io/os: "linux"
+        ovn4nfv-k8s-plugin: ovn-control-plane
+      volumes:
+        - name: host-run-ovs
+          hostPath:
+            path: /run/openvswitch
+        - name: host-run-ovn
+          hostPath:
+            path: /run/ovn
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: host-config-openvswitch
+          hostPath:
+            path: /etc/origin/openvswitch
+        - name: host-log-ovs
+          hostPath:
+            path: /var/log/openvswitch
+        - name: host-log-ovn
+          hostPath:
+            path: /var/log/ovn
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: ovn-controller
+  namespace: kube-system
+  annotations:
+    kubernetes.io/description: |
+      OVN controller: Start ovsdb-server & ovs-vswitchd components, and ovn controller
+spec:
+  selector:
+    matchLabels:
+      app: ovn-controller
+  updateStrategy:
+    type: OnDelete
+  template:
+    metadata:
+      labels:
+        app: ovn-controller
+    spec:
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      priorityClassName: system-cluster-critical
+      hostNetwork: true
+      hostPID: true
+      containers:
+        - name: ovn-controller
+          image: {{ ovn4nfv_ovn_image_repo }}:{{ ovn4nfv_ovn_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          command: ["ovn4nfv-k8s", "start_ovn_controller"]
+          securityContext:
+            runAsUser: 0
+            privileged: true
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - mountPath: /lib/modules
+              name: host-modules
+              readOnly: true
+            - mountPath: /var/run/openvswitch
+              name: host-run-ovs
+            - mountPath: /var/run/ovn
+              name: host-run-ovn
+            - mountPath: /sys
+              name: host-sys
+              readOnly: true
+            - mountPath: /etc/openvswitch
+              name: host-config-openvswitch
+            - mountPath: /var/log/openvswitch
+              name: host-log-ovs
+            - mountPath: /var/log/ovn
+              name: host-log-ovn
+          readinessProbe:
+            exec:
+              command: ["ovn4nfv-k8s", "check_ovn_controller"]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["ovn4nfv-k8s", "check_ovn_controller"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: {{ ovn_controller_cpu_request }}
+              memory: {{ ovn_controller_memory_request }}
+            limits:
+              cpu: {{ ovn_controller_cpu_limit }}
+              memory: {{ ovn_controller_memory_limit }}
+      nodeSelector:
+        kubernetes.io/os: "linux"
+      volumes:
+        - name: host-modules
+          hostPath:
+            path: /lib/modules
+        - name: host-run-ovs
+          hostPath:
+            path: /run/openvswitch
+        - name: host-run-ovn
+          hostPath:
+            path: /run/ovn
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: host-config-openvswitch
+          hostPath:
+            path: /etc/origin/openvswitch
+        - name: host-log-ovs
+          hostPath:
+            path: /var/log/openvswitch
+        - name: host-log-ovn
+          hostPath:
+            path: /var/log/ovn

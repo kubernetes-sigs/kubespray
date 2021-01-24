@@ -2,15 +2,8 @@
 # disable upgrade cluster
 upgrade_cluster_setup: false
 
-# Enable kubeadm experimental control plane
-kubeadm_control_plane: false
-
 # Experimental kubeadm etcd deployment mode. Available only for new deployment
 etcd_kubeadm_enabled: false
-
-# An experimental dev/test only dynamic volumes provisioner,
-# for PetSets. Works for kube>=v1.3 only.
-kube_hostpath_dynamic_provisioner: "false"
 
 # change to 0.0.0.0 to enable insecure access from anywhere (not recommended)
 kube_apiserver_insecure_bind_address: 127.0.0.1
@@ -26,9 +19,6 @@ kube_apiserver_node_port_range: "30000-32767"
 # ETCD backend for k8s data
 kube_apiserver_storage_backend: etcd3
 
-# By default, force back to etcd2. Set to true to force etcd3 (experimental!)
-force_etcd3: false
-
 kube_etcd_cacert_file: ca.pem
 kube_etcd_cert_file: node-{{ inventory_hostname }}.pem
 kube_etcd_key_file: node-{{ inventory_hostname }}-key.pem
@@ -37,6 +27,13 @@ kube_etcd_key_file: node-{{ inventory_hostname }}-key.pem
 # CLI/web clients.
 kube_controller_manager_bind_address: 0.0.0.0
 kube_scheduler_bind_address: 0.0.0.0
+
+# Leader election lease durations and timeouts for scheduler and controller-manager
+kube_controller_manager_leader_elect_lease_duration: 15s
+kube_controller_manager_leader_elect_renew_deadline: 10s
+
+kube_scheduler_leader_elect_lease_duration: 15s
+kube_scheduler_leader_elect_renew_deadline: 10s
 
 # discovery_timeout modifies the discovery timeout
 discovery_timeout: 5m0s
@@ -76,24 +73,23 @@ audit_policy_name: audit-policy
 audit_policy_hostpath: "{{ audit_policy_file | dirname }}"
 audit_policy_mountpath: "{{ audit_policy_hostpath }}"
 
-# Limits for kube components
-kube_controller_memory_limit: 512M
-kube_controller_cpu_limit: 250m
-kube_controller_memory_requests: 100M
-kube_controller_cpu_requests: 100m
+# audit webhook support
+kubernetes_audit_webhook: false
+
+# path to audit webhook config file
+audit_webhook_config_file: "{{ kube_config_dir }}/audit-policy/apiserver-audit-webhook-config.yaml"
+audit_webhook_server_url: "https://audit.app"
+audit_webhook_server_extra_args: {}
+audit_webhook_mode: batch
+audit_webhook_batch_max_size: 100
+audit_webhook_batch_max_wait: 1s
+
 kube_controller_node_monitor_grace_period: 40s
 kube_controller_node_monitor_period: 5s
-kube_controller_pod_eviction_timeout: 5m0s
 kube_controller_terminated_pod_gc_threshold: 12500
-kube_scheduler_memory_limit: 512M
-kube_scheduler_cpu_limit: 250m
-kube_scheduler_memory_requests: 170M
-kube_scheduler_cpu_requests: 80m
-kube_apiserver_memory_limit: 2000M
-kube_apiserver_cpu_limit: 800m
-kube_apiserver_memory_requests: 256M
-kube_apiserver_cpu_requests: 100m
 kube_apiserver_request_timeout: "1m0s"
+kube_apiserver_pod_eviction_not_ready_timeout_seconds: "300"
+kube_apiserver_pod_eviction_unreachable_timeout_seconds: "300"
 
 # 1.10+ admission plugins
 kube_apiserver_enable_admission_plugins: []
@@ -105,10 +101,17 @@ kube_apiserver_disable_admission_plugins: []
 kube_api_runtime_config: []
 
 ## Enable/Disable Kube API Server Authentication Methods
-kube_basic_auth: false
 kube_token_auth: false
 kube_oidc_auth: false
 kube_webhook_token_auth: false
+kube_webhook_token_auth_url_skip_tls_verify: false
+## Variables for webhook token auth https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication
+# kube_webhook_token_auth_url: https://...
+kube_webhook_authorization: false
+## Variables for webhook token authz https://kubernetes.io/docs/reference/access-authn-authz/webhook/
+# kube_webhook_authorization_url: https://...
+kube_webhook_authorization_url_skip_tls_verify: false
+
 
 ## Variables for OpenID Connect Configuration https://kubernetes.io/docs/admin/authentication/
 ## To use OpenID you have to deploy additional an OpenID Provider (e.g Dex, Keycloak, ...)
@@ -124,9 +127,6 @@ kube_webhook_token_auth: false
 # kube_oidc_ca_file: {{ kube_cert_dir }}/ca.pem
 # Optionally include a base64-encoded oidc CA cert
 # kube_oidc_ca_cert: c3RhY2thYnVzZS5jb20...
-
-## Variables for webhook token auth https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication
-# kube_webhook_token_auth_url: https://...
 
 # List of the preferred NodeAddressTypes to use for kubelet connections.
 kubelet_preferred_address_types: 'InternalDNS,InternalIP,Hostname,ExternalDNS,ExternalIP'
@@ -155,9 +155,6 @@ kube_encryption_algorithm: "aescbc"
 # Which kubernetes resources to encrypt
 kube_encryption_resources: [secrets]
 
-# You may want to use ca.pem depending on your situation
-kube_front_proxy_ca: "front-proxy-ca.pem"
-
 # If non-empty, will use this string as identification instead of the actual hostname
 kube_override_hostname: >-
   {%- if cloud_provider is defined and cloud_provider in [ 'aws' ] -%}
@@ -166,3 +163,36 @@ kube_override_hostname: >-
   {%- endif -%}
 
 secrets_encryption_query: "resources[*].providers[0].{{kube_encryption_algorithm}}.keys[0].secret"
+
+## Support tls min version, Possible values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13.
+# tls_min_version: ""
+
+## Support tls cipher suites.
+# tls_cipher_suites:
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+#   - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+#   - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+#   - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+#   - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
+#   - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+#   - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+#   - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+#   - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+#   - TLS_ECDHE_RSA_WITH_RC4_128_SHA
+#   - TLS_RSA_WITH_3DES_EDE_CBC_SHA
+#   - TLS_RSA_WITH_AES_128_CBC_SHA
+#   - TLS_RSA_WITH_AES_128_CBC_SHA256
+#   - TLS_RSA_WITH_AES_128_GCM_SHA256
+#   - TLS_RSA_WITH_AES_256_CBC_SHA
+#   - TLS_RSA_WITH_AES_256_GCM_SHA384
+#   - TLS_RSA_WITH_RC4_128_SHA
+
+## Amount of time to retain events. (default 1h0m0s)
+event_ttl_duration: "1h0m0s"
+##  Force regeneration of kubernetes control plane certificates without the need of bumping the cluster version
+force_certificate_regeneration: false

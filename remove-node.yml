@@ -1,17 +1,6 @@
 ---
-- hosts: localhost
-  become: no
-  gather_facts: no
-  tasks:
-    - name: "Check ansible version >=2.7.8"
-      assert:
-        msg: "Ansible must be v2.7.8 or higher"
-        that:
-          - ansible_version.string is version("2.7.8", ">=")
-      tags:
-        - check
-  vars:
-    ansible_connection: local
+- name: Check ansible version
+  import_playbook: ansible_version.yml
 
 - hosts: "{{ node | default('etcd:k8s-cluster:calico-rr') }}"
   gather_facts: no
@@ -27,21 +16,25 @@
         msg: "Delete nodes confirmation failed"
       when: delete_nodes_confirmation != "yes"
 
-- hosts: kube-master
+- hosts: kube-master[0]
   gather_facts: no
   roles:
     - { role: kubespray-defaults }
+    - { role: bootstrap-os, tags: bootstrap-os }
     - { role: remove-node/pre-remove, tags: pre-remove }
 
 - hosts: "{{ node | default('kube-node') }}"
-  gather_facts: yes
+  gather_facts: no
   roles:
-    - { role: kubespray-defaults }
-    - { role: reset, tags: reset, when: reset_nodes|default(True) }
+    - { role: kubespray-defaults, when: reset_nodes|default(True)|bool }
+    - { role: bootstrap-os, tags: bootstrap-os, when: reset_nodes|default(True)|bool }
+    - { role: remove-node/remove-etcd-node }
+    - { role: reset, tags: reset, when: reset_nodes|default(True)|bool }
 
 # Currently cannot remove first master or etcd
-- hosts: "{{ node | default('kube-master[1:]:etcd[:1]') }}"
-  gather_facts: yes
+- hosts: "{{ node | default('kube-master[1:]:etcd[1:]') }}"
+  gather_facts: no
   roles:
-    - { role: kubespray-defaults }
+    - { role: kubespray-defaults, when: reset_nodes|default(True)|bool }
+    - { role: bootstrap-os, tags: bootstrap-os, when: reset_nodes|default(True)|bool }
     - { role: remove-node/post-remove, tags: post-remove }

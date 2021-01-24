@@ -2,10 +2,12 @@
 - hosts: kube-node
   tasks:
     - name: Test tunl0 routes
-      shell: "! /sbin/ip ro | grep '/26 via' | grep -v tunl0"
+      shell: "set -o pipefail && ! /sbin/ip ro | grep '/26 via' | grep -v tunl0"
+      args:
+        executable: /bin/bash
       when:
-        - (ipip|default(false) or cloud_provider is defined)
-        - kube_network_plugin == 'calico'
+        - (ipip|default(true) or cloud_provider is defined)
+        - kube_network_plugin|default('calico') == 'calico'
 
 - hosts: k8s-cluster
   vars:
@@ -17,34 +19,36 @@
     - name: Force binaries directory for Container Linux by CoreOS and Flatcar
       set_fact:
         bin_dir: "/opt/bin"
-      when: ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
+      when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
 
     - name: Force binaries directory on other hosts
       set_fact:
         bin_dir: "/usr/local/bin"
-      when: not ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
+      when: not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
 
     - import_role:
         name: cluster-dump
 
     - name: Wait for netchecker server
-      shell: "{{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep ^netchecker-server"
-      delegate_to: "{{ groups['kube-master'][0] }}"
-      run_once: true
+      shell: "set -o pipefail && {{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep ^netchecker-server"
+      args:
+        executable: /bin/bash
       register: ncs_pod
       until: ncs_pod.stdout.find('Running') != -1
       retries: 3
       delay: 10
+      when: inventory_hostname == groups['kube-master'][0]
 
     - name: Wait for netchecker agents
-      shell: "{{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep '^netchecker-agent-.*Running'"
-      run_once: true
-      delegate_to: "{{ groups['kube-master'][0] }}"
+      shell: "set -o pipefail && {{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep '^netchecker-agent-.*Running'"
+      args:
+        executable: /bin/bash
       register: nca_pod
       until: nca_pod.stdout_lines|length >= groups['k8s-cluster']|intersect(ansible_play_hosts)|length * 2
       retries: 3
       delay: 10
       failed_when: false
+      when: inventory_hostname == groups['kube-master'][0]
 
     - name: Get netchecker pods
       command: "{{ bin_dir }}/kubectl -n {{ netcheck_namespace }} describe pod -l app={{ item }}"
@@ -59,7 +63,7 @@
     - debug:
         var: nca_pod.stdout_lines
       failed_when: not nca_pod is success
-      run_once: true
+      when: inventory_hostname == groups['kube-master'][0]
 
     - name: Get netchecker agents
       uri:
@@ -109,23 +113,20 @@
 
     - name: Get kube-proxy logs
       command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app=kube-proxy"
-      run_once: true
-      when: not result is success
-      delegate_to: "{{ groups['kube-master'][0] }}"
       no_log: false
+      when:
+        - inventory_hostname == groups['kube-master'][0]
+        - not result is success
 
     - name: Get logs from other apps
       command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app={{ item }} --all-containers"
-      run_once: true
-      when: not result is success
-      delegate_to: "{{ groups['kube-master'][0] }}"
+      when:
+        - inventory_hostname == groups['kube-master'][0]
+        - not result is success
       no_log: false
       with_items:
         - kube-router
         - flannel
-        - contiv-ovs
-        - contiv-netplugin
-        - contiv-netmaster
         - canal-node
         - calico-node
         - cilium
@@ -166,7 +167,7 @@
             name: macvlan-conf
           spec:
             config: '{
-              "cniVersion": "0.3.0",
+              "cniVersion": "0.4.0",
               "type": "macvlan",
               "master": "eth0",
               "mode": "bridge",
@@ -183,7 +184,8 @@
           }'
           EOF
       when:
-        - kube_network_plugin_multus|default(false)
+        - inventory_hostname == groups['kube-master'][0]
+        - kube_network_plugin_multus|default(false)|bool
 
     - name: Annotate pod with macvlan network
       # We cannot use only shell: below because Ansible will render the text
@@ -206,13 +208,15 @@
               image: dougbtv/centos-network
           EOF
       when:
-        - kube_network_plugin_multus|default(false)
+        - inventory_hostname == groups['kube-master'][0]
+        - kube_network_plugin_multus|default(false)|bool
 
     - name: Check secondary macvlan interface
-      shell: "{{ bin_dir }}/kubectl exec samplepod -- ip addr show dev net1"
+      command: "{{ bin_dir }}/kubectl exec samplepod -- ip addr show dev net1"
       register: output
       until: output.rc == 0
       retries: 90
       changed_when: false
       when:
-        - kube_network_plugin_multus|default(false)
+        - inventory_hostname == groups['kube-master'][0]
+        - kube_network_plugin_multus|default(false)|bool

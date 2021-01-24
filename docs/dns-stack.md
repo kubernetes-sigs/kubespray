@@ -40,8 +40,6 @@ is not set, a default resolver is chosen (depending on cloud provider or 8.8.8.8
 DNS servers to be added *after* the cluster DNS. Used by all ``resolvconf_mode`` modes. These serve as backup
 DNS servers in early cluster deployment when no cluster DNS is available yet.
 
-## DNS modes supported by Kubespray
-
 ### coredns_external_zones
 
 Array of optional external zones to coredns forward queries to. It's  injected into
@@ -69,8 +67,26 @@ coredns_external_zones:
 or as INI
 
 ```ini
-coredns_external_zones=[{"cache": 30,"zones":["example.com","example.io:453"],"nameservers":["1.1.1.1","2.2.2.2"]}]'
+coredns_external_zones='[{"cache": 30,"zones":["example.com","example.io:453"],"nameservers":["1.1.1.1","2.2.2.2"]}]'
 ```
+
+### dns_etchosts (coredns)
+
+Optional hosts file content to coredns use as /etc/hosts file. This will also be used by nodelocaldns, if enabled.
+
+Example:
+
+```yaml
+dns_etchosts: |
+  192.168.0.100 api.example.com
+  192.168.0.200 ingress.example.com
+```
+
+### enable_coredns_reverse_dns_lookups
+
+Whether reverse DNS lookups are enabled in the coredns config. Defaults to `true`.
+
+## DNS modes supported by Kubespray
 
 You can modify how Kubespray sets up DNS for your cluster with the variables ``dns_mode`` and ``resolvconf_mode``.
 
@@ -124,6 +140,16 @@ The following dns options are added to the docker daemon
 * ndots:{{ ndots }}
 * timeout:2
 * attempts:2
+
+These dns options can be overridden by setting a different list:
+
+```yaml
+docker_dns_options:
+- ndots:{{ ndots }}
+- timeout:2
+- attempts:2
+- rotate
+```
 
 For normal PODs, k8s will ignore these options and setup its own DNS settings for the PODs, taking
 the --cluster_dns (either coredns or coredns_dual, depending on dns_mode) kubelet option into account.
@@ -181,6 +207,10 @@ nodelocaldns_external_zones:
   nameservers:
   - 192.168.0.53
 ```
+
+### dns_etchosts (nodelocaldns)
+
+See [dns_etchosts](#dns_etchosts-coredns) above.
 
 ## Limitations
 

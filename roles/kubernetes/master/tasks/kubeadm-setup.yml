@@ -48,7 +48,9 @@
     - old_apiserver_cert.stat.exists
 
 - name: kubeadm | Forcefully delete old static pods
-  shell: "docker ps -f name=k8s_{{ item }} -q | xargs --no-run-if-empty docker rm -f"
+  shell: "set -o pipefail && docker ps -f name=k8s_{{ item }} -q | xargs --no-run-if-empty docker rm -f"
+  args:
+    executable: /bin/bash
   with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   when:
     - old_apiserver_cert.stat.exists
@@ -80,13 +82,19 @@
   file:
     path: "{{ audit_policy_file | dirname }}"
     state: directory
-  when: kubernetes_audit|default(false)
+  when: kubernetes_audit|default(false) or kubernetes_audit_webhook|default(false)
 
 - name: Write api audit policy yaml
   template:
     src: apiserver-audit-policy.yaml.j2
     dest: "{{ audit_policy_file }}"
-  when: kubernetes_audit|default(false)
+  when: kubernetes_audit|default(false) or kubernetes_audit_webhook|default(false)
+
+- name: Write api audit webhook config yaml
+  template:
+    src: apiserver-audit-webhook-config.yaml.j2
+    dest: "{{ audit_webhook_config_file }}"
+  when: kubernetes_audit_webhook|default(false)
 
 # Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
 - name: set kubeadm_config_api_fqdn define
@@ -104,7 +112,7 @@
     - kubeadm_already_run.stat.exists
 
 - name: kubeadm | Check if apiserver.crt contains all needed SANs
-  command: openssl x509 -noout -in "{{ kube_cert_dir }}/apiserver.crt" -checkip "{{ item }}"
+  command: openssl x509 -noout -in "{{ kube_cert_dir }}/apiserver.crt" -check{{ item|ipaddr|ternary('ip','host') }} "{{ item }}"
   with_items: "{{ apiserver_sans }}"
   register: apiserver_sans_check
   changed_when: "'does match certificate' not in apiserver_sans_check.stdout"
@@ -122,7 +130,7 @@
   when:
     - inventory_hostname == groups['kube-master']|first
     - kubeadm_already_run.stat.exists
-    - apiserver_sans_check.changed
+    - apiserver_sans_check.changed or force_certificate_regeneration
 
 - name: kubeadm | regenerate apiserver cert 2/2
   command: >-
@@ -132,7 +140,7 @@
   when:
     - inventory_hostname == groups['kube-master']|first
     - kubeadm_already_run.stat.exists
-    - apiserver_sans_check.changed
+    - apiserver_sans_check.changed or force_certificate_regeneration
 
 - name: kubeadm | Initialize first master
   command: >-
@@ -140,7 +148,7 @@
     {{ bin_dir }}/kubeadm init
     --config={{ kube_config_dir }}/kubeadm-config.yaml
     --ignore-preflight-errors=all
-    --skip-phases=addon/coredns
+    --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
     --upload-certs
   register: kubeadm_init
   # Retry is because upload config sometimes fails
@@ -164,6 +172,7 @@
   shell: >-
     {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token delete {{ kubeadm_token }} || :;
     {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create {{ kubeadm_token }}
+  changed_when: false
   when:
     - inventory_hostname == groups['kube-master']|first
     - kubeadm_token is defined
@@ -173,6 +182,7 @@
 
 - name: Create kubeadm token for joining nodes with 24h expiration (default)
   command: "{{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create"
+  changed_when: false
   register: temp_token
   retries: 5
   delay: 5
@@ -189,13 +199,8 @@
   tags:
     - kubeadm_token
 
-- name: kubeadm | Initialize other masters (experimental control plane)
-  include_tasks: kubeadm-secondary-experimental.yml
-  when: kubeadm_control_plane
-
-- name: kubeadm | Initialize other masters (legacy not control plane)
-  include_tasks: kubeadm-secondary-legacy.yml
-  when: not kubeadm_control_plane
+- name: kubeadm | Join other masters
+  include_tasks: kubeadm-secondary.yml
 
 - name: kubeadm | upgrade kubernetes cluster
   include_tasks: kubeadm-upgrade.yml
@@ -221,7 +226,7 @@
 
 # FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
 - name: kubeadm | Remove taint for master with node role
-  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf taint node {{ inventory_hostname }} node-role.kubernetes.io/master:NoSchedule-"
+  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf taint node {{ inventory_hostname }} node-role.kubernetes.io/master:NoSchedule- node-role.kubernetes.io/control-plane:NoSchedule-"
   delegate_to: "{{ groups['kube-master'] | first }}"
   when: inventory_hostname in groups['kube-node']
   failed_when: false

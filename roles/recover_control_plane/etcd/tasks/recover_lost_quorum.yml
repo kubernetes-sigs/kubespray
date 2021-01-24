@@ -1,7 +1,11 @@
 ---
 - name: Save etcd snapshot
-  shell: "{{ bin_dir }}/etcdctl --cacert {{ etcd_cert_dir }}/ca.pem --cert {{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem --key {{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem snapshot save /tmp/snapshot.db"
+  command: "{{ bin_dir }}/etcdctl snapshot save /tmp/snapshot.db"
   environment:
+    - ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    - ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    - ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    - ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses.split(',') | first }}"
     - ETCDCTL_API: 3
   when: etcd_snapshot is not defined
 
@@ -21,9 +25,13 @@
     path: "{{ etcd_data_dir }}"
     state: absent
 
-- name: Restore etcd snapshot
-  shell: "{{ bin_dir }}/etcdctl --cacert {{ etcd_cert_dir }}/ca.pem --cert {{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem --key {{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem snapshot restore /tmp/snapshot.db --name {{ etcd_member_name }} --initial-cluster {{ etcd_member_name }}={{ etcd_peer_url }} --initial-cluster-token k8s_etcd --initial-advertise-peer-urls {{ etcd_peer_url }} --data-dir {{ etcd_data_dir }}"
+- name: Restore etcd snapshot  # noqa 301 305
+  shell: "{{ bin_dir }}/etcdctl snapshot restore /tmp/snapshot.db --name {{ etcd_member_name }} --initial-cluster {{ etcd_member_name }}={{ etcd_peer_url }} --initial-cluster-token k8s_etcd --initial-advertise-peer-urls {{ etcd_peer_url }} --data-dir {{ etcd_data_dir }}"
   environment:
+    - ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    - ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    - ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    - ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
     - ETCDCTL_API: 3
 
 - name: Remove etcd snapshot

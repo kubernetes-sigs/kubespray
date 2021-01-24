@@ -38,6 +38,8 @@ variable "gfs_root_volume_size_in_gb" {}
 
 variable "gfs_volume_size_in_gb" {}
 
+variable "master_volume_type" {}
+
 variable "public_key_path" {}
 
 variable "image" {}
@@ -65,36 +67,42 @@ variable "network_id" {
 }
 
 variable "k8s_master_fips" {
-  type = "list"
+  type = list
 }
 
 variable "k8s_master_no_etcd_fips" {
-  type = "list"
+  type = list
 }
 
 variable "k8s_node_fips" {
-  type = "list"
+  type = list
+}
+
+variable "k8s_nodes_fips" {
+  type = map
 }
 
 variable "bastion_fips" {
-  type = "list"
+  type = list
 }
 
 variable "bastion_allowed_remote_ips" {
-  type = "list"
+  type = list
 }
 
 variable "master_allowed_remote_ips" {
-  type = "list"
+  type = list
 }
 
 variable "k8s_allowed_remote_ips" {
-  type = "list"
+  type = list
 }
 
 variable "k8s_allowed_egress_ips" {
-  type = "list"
+  type = list
 }
+
+variable "k8s_nodes" {}
 
 variable "wait_for_floatingip" {}
 
@@ -106,12 +114,24 @@ variable "supplementary_node_groups" {
   default = ""
 }
 
+variable "master_allowed_ports" {
+  type = list
+}
+
 variable "worker_allowed_ports" {
-  type = "list"
+  type = list
 }
 
 variable "use_access_ip" {}
 
 variable "use_server_groups" {
   type = bool
+}
+
+variable "extra_sec_groups" {
+  type = bool
+}
+
+variable "extra_sec_groups_name" {
+  type = string
 }

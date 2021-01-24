@@ -1,4 +1,11 @@
 ---
+- name: prep_kubeadm_images | Check kubeadm version matches kubernetes version
+  fail:
+    msg: "Kubeadm version {{ kubeadm_version }} do not matches kubernetes {{ kube_version }}"
+  when:
+    - not skip_downloads | default(false)
+    - not kubeadm_version == downloads.kubeadm.version
+
 - name: prep_kubeadm_images | Download kubeadm binary
   include_tasks: "download_file.yml"
   vars:
@@ -15,14 +22,11 @@
     - not skip_kubeadm_images|default(false)
 
 - name: prep_kubeadm_images | Copy kubeadm binary from download dir to system path
-  synchronize:
+  copy:
     src: "{{ local_release_dir }}/kubeadm-{{ kubeadm_version }}-{{ image_arch }}"
     dest: "{{ bin_dir }}/kubeadm"
-    compress: no
-    perms: yes
-    owner: no
-    group: no
-  delegate_to: "{{ inventory_hostname }}"
+    mode: 0755
+    remote_src: true
 
 - name: prep_kubeadm_images | Set kubeadm binary permissions
   file:
@@ -31,7 +35,9 @@
     state: file
 
 - name: prep_kubeadm_images | Generate list of required images
-  shell: "{{ bin_dir }}/kubeadm config images list --config={{ kube_config_dir }}/kubeadm-images.yaml | grep -v coredns"
+  shell: "set -o pipefail && {{ bin_dir }}/kubeadm config images list --config={{ kube_config_dir }}/kubeadm-images.yaml | grep -Ev 'coredns|pause'"
+  args:
+    executable: /bin/bash
   register: kubeadm_images_raw
   run_once: true
   changed_when: false

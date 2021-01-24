@@ -1,0 +1,59 @@
+---
+# To get the binary from container to host, use the etcd data directory mounted
+# rw from host into the container.
+
+- name: Check unintentional include of this role
+  assert:
+    that: etcd_kubeadm_enabled
+
+- name: Check if etcdctl exist
+  stat:
+    path: "{{ bin_dir }}/etcdctl"
+  register: stat_etcdctl
+
+- block:
+  - name: Check version
+    command: "{{ bin_dir }}/etcdctl version"
+    register: etcdctl_version
+    check_mode: no
+    changed_when: false
+
+  - name: Remove old binary if version is not OK
+    file:
+      path: "{{ bin_dir }}/etcdctl"
+      state: absent
+    when: etcd_version.lstrip('v') not in etcdctl_version.stdout
+  when: stat_etcdctl.stat.exists
+
+- name: Check if etcdctl still exist after version check
+  stat:
+    path: "{{ bin_dir }}/etcdctl"
+  register: stat_etcdctl
+
+- block:
+  - name: Copy etcdctl script to host
+    shell: "{{ docker_bin_dir }}/docker exec \"$({{ docker_bin_dir }}/docker ps -qf ancestor={{ etcd_image_repo }}:{{ etcd_image_tag }})\" cp /usr/local/bin/etcdctl {{ etcd_data_dir }}"
+    when: container_manager ==  "docker"
+
+  - name: Copy etcdctl script to host
+    shell: "{{ bin_dir }}/crictl exec \"$({{ bin_dir }}/crictl ps -q --image {{ etcd_image_repo }}:{{ etcd_image_tag }})\" cp /usr/local/bin/etcdctl {{ etcd_data_dir }}"
+    when: container_manager in ['crio', 'containerd']
+
+  - name: Copy etcdctl to {{ bin_dir }}
+    copy:
+      src: "{{ etcd_data_dir }}/etcdctl"
+      dest: "{{ bin_dir }}"
+      remote_src: true
+      mode: 0755
+  when: not stat_etcdctl.stat.exists
+
+- name: Remove binary in etcd data dir
+  file:
+    path: "{{ etcd_data_dir }}/etcdctl"
+    state: absent
+
+- name: Create etcdctl wrapper script
+  template:
+    src: etcdctl.sh.j2
+    dest: "{{ bin_dir }}/etcdctl.sh"
+    mode: 0755

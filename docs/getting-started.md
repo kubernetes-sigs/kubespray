@@ -12,7 +12,7 @@ to create or modify an Ansible inventory. Currently, it is limited in
 functionality and is only used for configuring a basic Kubespray cluster inventory, but it does
 support creating inventory file for large clusters as well. It now supports
 separated ETCD and Kubernetes master roles from node role if the size exceeds a
-certain threshold. Run `python3 contrib/inventory_builder/inventory.py help` help for more information.
+certain threshold. Run `python3 contrib/inventory_builder/inventory.py help` for more information.
 
 Example inventory generator usage:
 
@@ -36,7 +36,7 @@ ansible-playbook -i inventory/mycluster/hosts.yml cluster.yml -b -v \
   --private-key=~/.ssh/private_key
 ```
 
-See more details in the [ansible guide](docs/ansible.md).
+See more details in the [ansible guide](/docs/ansible.md).
 
 ### Adding nodes
 
@@ -69,9 +69,9 @@ ansible-playbook -i inventory/mycluster/hosts.yml remove-node.yml -b -v \
 --extra-vars "node=nodename,nodename2"
 ```
 
-If a node is completely unreachable by ssh, add `--extra-vars reset_nodes=no`
+If a node is completely unreachable by ssh, add `--extra-vars reset_nodes=false`
 to skip the node reset step. If one node is unavailable, but others you wish
-to remove are able to connect via SSH, you could set reset_nodes=no as a host
+to remove are able to connect via SSH, you could set `reset_nodes=false` as a host
 var in inventory.
 
 ## Connecting to Kubernetes
@@ -81,32 +81,41 @@ kube-apiserver via port 8080. A kubeconfig file is not necessary in this case,
 because kubectl will use <http://localhost:8080> to connect. The kubeconfig files
 generated will point to localhost (on kube-masters) and kube-node hosts will
 connect either to a localhost nginx proxy or to a loadbalancer if configured.
-More details on this process are in the [HA guide](docs/ha-mode.md).
+More details on this process are in the [HA guide](/docs/ha-mode.md).
 
 Kubespray permits connecting to the cluster remotely on any IP of any
 kube-master host on port 6443 by default. However, this requires
 authentication. One can get a kubeconfig from kube-master hosts
-(see [below](#accessing-kubernetes-api)) or connect with a [username and password](vars.md#user-accounts).
+(see [below](#accessing-kubernetes-api)) or connect with a [username and password](/docs/vars.md#user-accounts).
 
 For more information on kubeconfig and accessing a Kubernetes cluster, refer to
 the Kubernetes [documentation](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/).
 
 ## Accessing Kubernetes Dashboard
 
-As of kubernetes-dashboard v1.7.x:
+Supported version is kubernetes-dashboard v2.0.x :
 
-- New login options that use apiserver auth proxying of token/basic/kubeconfig by default
-- Requires RBAC in authorization\_modes
+- Login option : token/kubeconfig by default
+- Deployed by default in "kube-system" namespace, can be overridden with `dashboard_namespace: kubernetes-dashboard` in inventory,
 - Only serves over https
-- No longer available at <https://first_master:6443/ui> until apiserver is updated with the https proxy URL
 
-If the variable `dashboard_enabled` is set (default is true), then you can access the Kubernetes Dashboard at the following URL, You will be prompted for credentials:
-<https://first_master:6443/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/login>
+Access is described in [dashboard docs](https://github.com/kubernetes/dashboard/tree/master/docs/user/accessing-dashboard). With kubespray's default deployment in kube-system namespace, instead of kubernetes-dashboard :
 
-Or you can run 'kubectl proxy' from your local machine to access dashboard in your browser from:
-<http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/login>
+- Proxy URL is <http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#/login>
+- kubectl commands must be run with "-n kube-system"
 
-It is recommended to access dashboard from behind a gateway (like Ingress Controller) that enforces an authentication token. Details and other access options here: <https://github.com/kubernetes/dashboard/wiki/Accessing-Dashboard---1.7.X-and-above>
+Accessing through Ingress is highly recommended. For proxy access, please note that proxy must listen to [localhost](https://github.com/kubernetes/dashboard/issues/692#issuecomment-220492484) (`proxy  --address="x.x.x.x"` will not work)
+
+For token authentication, guide to create Service Account is provided in [dashboard sample user](https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md) doc. Still take care of default namespace.
+
+Access can also by achieved via ssh tunnel on a master :
+
+```bash
+# localhost:8081 will be sent to master-1's own localhost:8081
+ssh -L8001:localhost:8001 user@master-1
+sudo -i
+kubectl proxy
+```
 
 ## Accessing Kubernetes API
 
@@ -118,6 +127,8 @@ host and can optionally be configured on your ansible host by setting
 - If `kubeconfig_localhost` enabled `admin.conf` will appear in the `inventory/mycluster/artifacts/` directory after deployment.
 - The location where these files are downloaded to can be configured via the `artifacts_dir` variable.
 
+NOTE: The controller host name in the admin.conf file might be a private IP. If so, change it to use the controller's public IP or the cluster's load balancer.
+
 You can see a list of nodes by running the following commands:
 
 ```ShellSession
@@ -126,3 +137,8 @@ cd inventory/mycluster/artifacts
 ```
 
 If desired, copy admin.conf to ~/.kube/config.
+
+## Setting up your first cluster
+
+[Setting up your first cluster](/docs/setting-up-your-first-cluster.md) is an
+ applied step-by-step guide for setting up your first cluster with Kubespray.

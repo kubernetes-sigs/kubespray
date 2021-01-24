@@ -22,17 +22,17 @@ spec:
       labels:
         k8s-app: kube-dns{{ coredns_ordinal_suffix }}
       annotations:
-        seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
+        seccomp.security.alpha.kubernetes.io/pod: 'runtime/default'
     spec:
       priorityClassName: system-cluster-critical
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       serviceAccountName: coredns
       tolerations:
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
-        - key: "CriticalAddonsOnly"
-          operator: "Exists"
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
 {% if dns_extra_tolerations | default(None) %}
         {{ dns_extra_tolerations | list | to_nice_yaml(indent=2) | indent(8) }}
 {% endif %}
@@ -48,7 +48,11 @@ spec:
           - weight: 100
             preference:
               matchExpressions:
+{% if kube_version is version('v1.20.0', '<') %}
               - key: node-role.kubernetes.io/master
+{% else %}
+              - key: node-role.kubernetes.io/control-plane
+{% endif %}
                 operator: In
                 values:
                 - ""
@@ -112,3 +116,7 @@ spec:
             items:
             - key: Corefile
               path: Corefile
+{% if dns_etchosts | default(None) %}
+            - key: hosts
+              path: hosts
+{% endif %}

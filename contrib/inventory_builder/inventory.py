@@ -41,6 +41,7 @@ from ruamel.yaml import YAML
 
 import os
 import re
+import subprocess
 import sys
 
 ROLES = ['all', 'kube-master', 'kube-node', 'etcd', 'k8s-cluster',
@@ -62,13 +63,14 @@ def get_var_as_bool(name, default):
 
 
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory/sample/hosts.yaml")
-KUBE_MASTERS = int(os.environ.get("KUBE_MASTERS_MASTERS", 2))
+KUBE_MASTERS = int(os.environ.get("KUBE_MASTERS", 2))
 # Reconfigures cluster distribution at scale
 SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 50))
-MASSIVE_SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 200))
+MASSIVE_SCALE_THRESHOLD = int(os.environ.get("MASSIVE_SCALE_THRESHOLD", 200))
 
 DEBUG = get_var_as_bool("DEBUG", True)
 HOST_PREFIX = os.environ.get("HOST_PREFIX", "node")
+USE_REAL_HOSTNAME = get_var_as_bool("USE_REAL_HOSTNAME", False)
 
 # Configurable as shell vars end
 
@@ -167,6 +169,7 @@ class KubesprayInventory(object):
 
         # FIXME(mattymo): Fix condition where delete then add reuses highest id
         next_host_id = highest_host_id + 1
+        next_host = ""
 
         all_hosts = existing_hosts.copy()
         for host in changed_hosts:
@@ -191,8 +194,14 @@ class KubesprayInventory(object):
                     self.debug("Skipping existing host {0}.".format(ip))
                     continue
 
-                next_host = "{0}{1}".format(HOST_PREFIX, next_host_id)
-                next_host_id += 1
+                if USE_REAL_HOSTNAME:
+                    cmd = ("ssh -oStrictHostKeyChecking=no "
+                           + access_ip + " 'hostname -s'")
+                    next_host = subprocess.check_output(cmd, shell=True)
+                    next_host = next_host.strip().decode('ascii')
+                else:
+                    next_host = "{0}{1}".format(HOST_PREFIX, next_host_id)
+                    next_host_id += 1
                 all_hosts[next_host] = {'ansible_host': access_ip,
                                         'ip': ip,
                                         'access_ip': access_ip}
@@ -229,7 +238,7 @@ class KubesprayInventory(object):
             return [ip_address(ip).exploded for ip in range(start, end + 1)]
 
         for host in hosts:
-            if '-' in host and not host.startswith('-'):
+            if '-' in host and not (host.startswith('-') or host[0].isalpha()):
                 start, end = host.strip().split('-')
                 try:
                     reworked_hosts.extend(ips(start, end))
@@ -393,6 +402,7 @@ Configurable env vars:
 DEBUG                   Enable debug printing. Default: True
 CONFIG_FILE             File to write config to Default: ./inventory/sample/hosts.yaml
 HOST_PREFIX             Host prefix for generated hosts. Default: node
+KUBE_MASTERS            Set the number of kube-masters. Default: 2
 SCALE_THRESHOLD         Separate ETCD role if # of nodes >= 50
 MASSIVE_SCALE_THRESHOLD Separate K8s master and ETCD if # of nodes >= 200
 '''  # noqa

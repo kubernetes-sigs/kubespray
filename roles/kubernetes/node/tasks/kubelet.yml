@@ -6,34 +6,33 @@
     state: directory
   when: dynamic_kubelet_configuration
 
-- name: gets the kubeadm version
+- name: Get the kubeadm version
   command: "{{ bin_dir }}/kubeadm version -o short"
   register: kubeadm_output
+  changed_when: false
 
-- name: sets kubeadm api version to v1beta1
+- name: Set kubelet api version to v1beta1
   set_fact:
-    kubeadmConfig_api_version: v1beta1
-  when: kubeadm_output.stdout is version('v1.13.0', '>=')
+    kubeletConfig_api_version: v1beta1
   tags:
     - kubelet
     - kubeadm
 
 - name: Write kubelet environment config file (kubeadm)
   template:
-    src: "kubelet.env.{{ kubeadmConfig_api_version }}.j2"
+    src: "kubelet.env.{{ kubeletConfig_api_version }}.j2"
     dest: "{{ kube_config_dir }}/kubelet.env"
     backup: yes
   notify: Node | restart kubelet
-  when: kubeadm_output.stdout is version('v1.13.0', '>=')
   tags:
     - kubelet
     - kubeadm
 
 - name: Write kubelet config file
   template:
-    src: "kubelet-config.{{ kubeadmConfig_api_version }}.yaml.j2"
+    src: "kubelet-config.{{ kubeletConfig_api_version }}.yaml.j2"
     dest: "{{ kube_config_dir }}/kubelet-config.yaml"
-  when: kubeadm_output.stdout is version('v1.13.0', '>=')
+  notify: Kubelet | restart kubelet
   tags:
     - kubelet
     - kubeadm
@@ -58,3 +57,4 @@
     state: started
   tags:
     - kubelet
+  notify: Kubelet | restart kubelet

@@ -46,7 +46,7 @@
     - kube-proxy
 
 - name: Verify if br_netfilter module exists
-  shell: "modinfo br_netfilter"
+  command: "modinfo br_netfilter"
   environment:
     PATH: "{{ ansible_env.PATH }}:/sbin"  # Make sure we can workaround RH's conservative path management
   register: modinfo_br_netfilter
@@ -90,7 +90,7 @@
     - net.bridge.bridge-nf-call-arptables
     - net.bridge.bridge-nf-call-ip6tables
 
-- name: Modprode Kernel Module for IPVS
+- name: Modprobe Kernel Module for IPVS
   modprobe:
     name: "{{ item }}"
     state: present
@@ -103,22 +103,13 @@
   tags:
     - kube-proxy
 
-- name: Modprobe nf_conntrack_ipv4 for kernels < 4.19
+- name: Modprobe nf_conntrack_ipv4
   modprobe:
     name: nf_conntrack_ipv4
     state: present
-  register: enable_nf_conntrack
+  register: modprobe_nf_conntrack_ipv4
   ignore_errors: yes
-  when: kube_proxy_mode == 'ipvs'
-  tags:
-    - kube-proxy
-
-- name: Modprobe nf_conntrack for kernels >= 4.19
-  modprobe:
-    name: nf_conntrack
-    state: present
   when:
-    - enable_nf_conntrack is failed
     - kube_proxy_mode == 'ipvs'
   tags:
     - kube-proxy
@@ -131,51 +122,10 @@
       ip_vs_rr
       ip_vs_wrr
       ip_vs_sh
-      {% if enable_nf_conntrack is failed -%}
-      nf_conntrack
-      {%-   else -%}
+      {% if modprobe_nf_conntrack_ipv4 is success -%}
       nf_conntrack_ipv4
       {%-   endif -%}
   when: kube_proxy_mode == 'ipvs'
-  tags:
-    - kube-proxy
-
-- name: Purge proxy manifest for kubeadm or if proxy services being provided by other means, e.g. network_plugin
-  file:
-    path: "{{ kube_manifest_dir }}/kube-proxy.manifest"
-    state: absent
-  when:
-    - kube_proxy_remove
-  tags:
-    - kube-proxy
-
-- name: Set command for kube-proxy cleanup
-  set_fact:
-    kube_proxy_cleanup_command: >-
-      {%- if container_manager in ['docker', 'crio'] %}
-      {{ docker_bin_dir }}/docker run --rm --privileged -v /lib/modules:/lib/modules {{ kube_proxy_image_repo }}:{{ kube_version }} kube-proxy --cleanup
-      {%- elif container_manager == "containerd" %}
-      ctr run --rm --mount type=bind,src=/lib/modules,dst=/lib/modules,options=rbind:rw {{ kube_proxy_image_repo }}:{{ kube_version }} kube-proxy --cleanup
-      {%- endif %}
-  when:
-    - kube_proxy_remove
-  tags:
-    - kube-proxy
-
-- name: Ensure kube-proxy container is pulled for containerd
-  command: "{{ bin_dir }}/crictl pull {{ kube_proxy_image_repo }}:{{ kube_version }}"
-  when:
-    - kube_proxy_remove
-    - container_manager == "containerd"
-  tags:
-    - kube-proxy
-
-- name: Cleanup kube-proxy leftovers from node
-  command: "{{ kube_proxy_cleanup_command }}"
-  # `kube-proxy --cleanup`, being Ok as per shown WARNING, still returns 255 from above run (?)
-  ignore_errors: true
-  when:
-    - kube_proxy_remove
   tags:
     - kube-proxy
 
@@ -189,7 +139,7 @@
 
 - name: Test if openstack_cacert is a base64 string
   set_fact:
-    openstack_cacert_is_base64: "{% if openstack_cacert | b64decode %}true{% else %}false{% endif %}"
+    openstack_cacert_is_base64: "{% if openstack_cacert is search ('^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$') %}true{% else %}false{% endif %}"
   when:
     - cloud_provider is defined
     - cloud_provider == 'openstack'

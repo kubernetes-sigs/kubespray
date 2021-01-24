@@ -1,29 +1,17 @@
 # Calico
 
-N.B. **Version 2.6.5 upgrade to 3.1.1 is upgrading etcd store to etcdv3**
-
-If you create automated backups of etcdv2 please switch for creating etcdv3 backups, as kubernetes and calico now uses etcdv3
- After migration you can check `/tmp/calico_upgrade/` directory for converted items to etcdv3.
- **PLEASE TEST upgrade before upgrading production cluster.**
-
 Check if the calico-node container is running
 
 ```ShellSession
 docker ps | grep calico
 ```
 
-The **calicoctl.sh** is wrap script with configured acces credentials for command calicoctl allows to check the status of the network workloads.
+The **calicoctl.sh** is wrap script with configured access credentials for command calicoctl allows to check the status of the network workloads.
 
 * Check the status of Calico nodes
 
 ```ShellSession
 calicoctl.sh node status
-```
-
-or for versions prior to *v1.0.0*:
-
-```ShellSession
-calicoctl.sh status
 ```
 
 * Show the configured network subnet for containers
@@ -32,13 +20,7 @@ calicoctl.sh status
 calicoctl.sh get ippool -o wide
 ```
 
-or for versions prior to *v1.0.0*:
-
-```ShellSession
-calicoctl.sh pool show
-```
-
-* Show the workloads (ip addresses of containers and their located)
+* Show the workloads (ip addresses of containers and their location)
 
 ```ShellSession
 calicoctl.sh get workloadEndpoint -o wide
@@ -50,13 +32,21 @@ and
 calicoctl.sh get hostEndpoint -o wide
 ```
 
-or for versions prior *v1.0.0*:
-
-```ShellSession
-calicoctl.sh endpoint show --detail
-```
-
 ## Configuration
+
+### Optional : Define datastore type
+
+The default datastore, Kubernetes API datastore is recommended for on-premises deployments, and supports only Kubernetes workloads; etcd is the best datastore for hybrid deployments.
+
+Allowed values are `kdd` (default) and `etcd`.
+
+Note: using kdd and more than 50 nodes, consider using the `typha` daemon to provide scaling.
+
+To re-define you need to edit the inventory and add a group variable `calico_datastore`
+
+```yml
+calico_datastore: kdd
+```
 
 ### Optional : Define network backend
 
@@ -101,6 +91,15 @@ This can be enabled by setting the following variable as follow in group_vars (k
 
 ```yml
 calico_advertise_cluster_ips: true
+```
+
+Since calico 3.10, Calico supports advertising Kubernetes service ExternalIPs over BGP in addition to cluster IPs advertising.
+This can be enabled by setting the following variable in group_vars (k8s-cluster/k8s-net-calico.yml)
+
+```yml
+calico_advertise_service_external_ips:
+- x.x.x.x/24
+- y.y.y.y/32
 ```
 
 ### Optional : Define global AS number
@@ -235,7 +234,28 @@ Note that in OpenStack you must allow `ipip` traffic in your security groups,
 otherwise you will experience timeouts.
 To do this you must add a rule which allows it, for example:
 
+### Optional : Felix configuration via extraenvs of calico node
+
+Possible environment variable parameters for [configuring Felix](https://docs.projectcalico.org/reference/felix/configuration)
+
+```yml
+calico_node_extra_envs:
+    FELIX_DEVICEROUTESOURCEADDRESS: 172.17.0.1
+```
+
 ```ShellSession
 neutron  security-group-rule-create  --protocol 4  --direction egress  k8s-a0tp4t
 neutron  security-group-rule-create  --protocol 4  --direction igress  k8s-a0tp4t
 ```
+
+### Optional : Use Calico CNI host-local IPAM plugin
+
+Calico currently supports two types of CNI IPAM plugins, `host-local` and `calico-ipam` (default).
+
+To allow Calico to determine the subnet to use from the Kubernetes API based on the `Node.podCIDR` field, enable the following setting.
+
+```yml
+calico_ipam_host_local: true
+```
+
+Refer to Project Calico section [Using host-local IPAM](https://docs.projectcalico.org/reference/cni-plugin/configuration#using-host-local-ipam) for further information.

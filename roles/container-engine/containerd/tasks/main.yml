@@ -13,7 +13,7 @@
   fail:
     msg: "{{ ansible_distribution }} is not supported by containerd."
   when:
-    - not ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian"]
+    - not ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian", "Fedora"]
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -33,6 +33,20 @@
       skip: true
   tags:
     - facts
+
+- name: disable unified_cgroup_hierarchy in Fedora 31+
+  command: grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=0"
+  when:
+    - ansible_distribution == "Fedora"
+    - (ansible_distribution_major_version | int) >= 31
+    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
+
+- name: reboot in Fedora 31+
+  reboot:
+  when:
+    - ansible_distribution == "Fedora"
+    - (ansible_distribution_major_version | int) >= 31
+    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
 
 - include_tasks: containerd_repo.yml
   when: not is_ostree
@@ -67,52 +81,48 @@
 
 # This is required to ensure any apt upgrade will not break kubernetes
 - name: Set containerd pin priority to apt_preferences on Debian family
-  template:
-    src: "apt_preferences.d/debian_containerd.j2"
+  copy:
+    content: |
+      Package: {{ containerd_package }}
+      Pin: version {{ containerd_version }}*
+      Pin-Priority: 1001
     dest: "/etc/apt/preferences.d/containerd"
     owner: "root"
     mode: 0644
-  when:
-    - ansible_os_family in ['Ubuntu', 'Debian']
-    - not is_ostree
+  when: ansible_pkg_mgr == 'apt'
 
 - name: ensure containerd packages are installed
-  action: "{{ containerd_package_info.pkg_mgr }}"
-  args:
-    pkg: "{{ item.name }}"
-    force: "{{ item.force | default(omit) }}"
-    conf_file: "{{ item.yum_conf | default(omit) }}"
+  package:
+    name: "{{ containerd_package_info.pkgs }}"
     state: present
-    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
+  module_defaults:
+    apt:
+      update_cache: true
+    dnf:
+      enablerepo: "{{ containerd_package_info.enablerepo | default(omit) }}"
+    yum:
+      enablerepo: "{{ containerd_package_info.enablerepo | default(omit) }}"
+    zypper:
+      update_cache: true
   register: containerd_task_result
   until: containerd_task_result is succeeded
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
-  with_items: "{{ containerd_package_info.pkgs }}"
   notify: restart containerd
   when:
     - not is_ostree
     - containerd_package_info.pkgs|length > 0
-  ignore_errors: true
 
-- name: Check if runc is installed
-  stat:
-    path: "{{ runc_binary }}"
-  register: runc_stat
+- include_role:
+    name: container-engine/crictl
 
-- name: Install runc package if necessary
-  action: "{{ containerd_package_info.pkg_mgr }}"
-  args:
-    pkg: runc
-    state: present
-    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
-  register: runc_task_result
-  until: runc_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
-  notify: restart containerd
-  when:
-    - not is_ostree
-    - not runc_stat.stat.exists
+# you can sometimes end up in a state where everything is installed
+# but containerd was not started / enabled
+- name: flush handlers
+  meta: flush_handlers
 
-- include_tasks: crictl.yml
+- name: ensure containerd is started and enabled
+  service:
+    name: containerd
+    enabled: yes
+    state: started

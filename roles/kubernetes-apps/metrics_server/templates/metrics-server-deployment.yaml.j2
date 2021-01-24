@@ -20,13 +20,14 @@ spec:
         app.kubernetes.io/name: metrics-server
         version: {{ metrics_server_version }}
       annotations:
-        seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
+        seccomp.security.alpha.kubernetes.io/pod: 'runtime/default'
     spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: metrics-server
       containers:
       - name: metrics-server
         image: {{ metrics_server_image_repo }}:{{ metrics_server_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         command:
         - /metrics-server
         - --logtostderr
@@ -35,10 +36,15 @@ spec:
 {% if metrics_server_kubelet_preferred_address_types %}
         - --kubelet-preferred-address-types={{ metrics_server_kubelet_preferred_address_types }}
 {% endif %}
+        - --kubelet-use-node-status-port
 {% if metrics_server_kubelet_insecure_tls %}
         - --kubelet-insecure-tls
 {% endif %}
         - --metric-resolution={{ metrics_server_metric_resolution }}
+        resources:
+          requests:
+            cpu: 100m
+            memory: 300Mi
         ports:
         - containerPort: 8443
           name: https
@@ -48,21 +54,15 @@ spec:
           mountPath: /tmp
         livenessProbe:
           httpGet:
-            path: /healthz
+            path: /healthz?exclude=readyz
             port: https
             scheme: HTTPS
-          successThreshold: 1
-          initialDelaySeconds: 20
-          failureThreshold: 3
           timeoutSeconds: 10
         readinessProbe:
           httpGet:
-            path: /healthz
+            path: /healthz?exclude=livez
             port: https
             scheme: HTTPS
-          successThreshold: 1
-          initialDelaySeconds: 20
-          failureThreshold: 3
           timeoutSeconds: 10
         securityContext:
           allowPrivilegeEscalation: false
@@ -72,8 +72,16 @@ spec:
           runAsGroup: 10001
           runAsNonRoot: true
           runAsUser: 10001
+        resources:
+          limits:
+            cpu: {{ metrics_server_limits_cpu }}
+            memory: {{ metrics_server_limits_memory }}
+          requests:
+            cpu: {{ metrics_server_requests_cpu }}
+            memory: {{ metrics_server_requests_memory }}
       - name: metrics-server-nanny
         image: {{ addon_resizer_image_repo }}:{{ addon_resizer_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         resources:
           limits:
             cpu: {{ addon_resizer_limits_cpu }}
@@ -118,8 +126,8 @@ spec:
       tolerations:
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
-        - key: "CriticalAddonsOnly"
-          operator: "Exists"
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
 {% endif %}
       affinity:
         nodeAffinity:
@@ -127,7 +135,11 @@ spec:
           - weight: 100
             preference:
               matchExpressions:
+{% if kube_version is version('v1.20.0', '<') %}
               - key: node-role.kubernetes.io/master
+{% else %}
+              - key: node-role.kubernetes.io/control-plane
+{% endif %}
                 operator: In
                 values:
                 - ""

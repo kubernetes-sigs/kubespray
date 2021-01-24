@@ -22,7 +22,7 @@ Some variables of note include:
 * *ipip* - Enables Calico ipip encapsulation by default
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)
 * *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
-* *kube_version* - Specify a given Kubernetes hyperkube version
+* *kube_version* - Specify a given Kubernetes version
 * *searchdomains* - Array of DNS domains to search when looking up hostnames
 * *nameservers* - Array of nameservers to use for DNS lookup
 * *preinstall_selinux_state* - Set selinux state, permitted values are permissive and disabled.
@@ -38,11 +38,11 @@ Some variables of note include:
 * *loadbalancer_apiserver* - If defined, all hosts will connect to this
   address instead of localhost for kube-masters and kube-master[0] for
   kube-nodes. See more details in the
-  [HA guide](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/ha-mode.md).
+  [HA guide](/docs/ha-mode.md).
 * *loadbalancer_apiserver_localhost* - makes all hosts to connect to
   the apiserver internally load balanced endpoint. Mutual exclusive to the
   `loadbalancer_apiserver`. See more details in the
-  [HA guide](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/ha-mode.md).
+  [HA guide](/docs/ha-mode.md).
 
 ## Cluster variables
 
@@ -50,6 +50,7 @@ Kubernetes needs some parameters in order to get deployed. These are the
 following default cluster parameters:
 
 * *cluster_name* - Name of cluster (default is cluster.local)
+* *container_manager* - Container Runtime to install in the nodes (default is docker)
 * *dns_domain* - Name of cluster DNS domain (default is cluster.local)
 * *kube_network_plugin* - Plugin to use for container networking
 * *kube_service_addresses* - Subnet for cluster IPs (default is
@@ -71,8 +72,6 @@ following default cluster parameters:
   on the CoreDNS service.
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)
-* *kube_hostpath_dynamic_provisioner* - Required for use of PetSets type in
-  Kubernetes
 * *kube_feature_gates* - A list of key=value pairs that describe feature gates for
   alpha/experimental Kubernetes features. (defaults is `[]`)
 * *authorization_modes* - A list of [authorization mode](
@@ -98,6 +97,7 @@ variables to match your requirements.
   addition to Kubespray deployed DNS
 * *nameservers* - Array of DNS servers configured for use by hosts
 * *searchdomains* - Array of up to 4 search domains
+* *dns_etchosts* - Content of hosts file for coredns and nodelocaldns
 
 For more information, see [DNS
 Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.md).
@@ -109,23 +109,19 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install.
 * *containerd_config* - Controls some parameters in containerd configuration file (usually /etc/containerd/config.toml).
   [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container-engine/containerd/defaults/main.yml) can be overriden in inventory vars.
-* *http_proxy/https_proxy/no_proxy* - Proxy variables for deploying behind a
+* *http_proxy/https_proxy/no_proxy/no_proxy_exclude_workers/additional_no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.
-* *kubelet_deployment_type* - Controls which platform to deploy kubelet on.
-  Available options are ``host`` and ``docker``. ``docker`` mode
-  is unlikely to work on newer releases. Starting with Kubernetes v1.7
-  series, this now defaults to ``host``. Before v1.7, the default was Docker.
-  This is because of cgroup [issues](https://github.com/kubernetes/kubernetes/issues/43704).
-* *kubelet_load_modules* - For some things, kubelet needs to load kernel modules.  For example,
-  dynamic kernel services are needed for mounting persistent volumes into containers.  These may not be
-  loaded by preinstall kubernetes processes.  For example, ceph and rbd backed volumes.  Set this variable to
-  true to let kubelet load kernel modules.
 * *kubelet_cgroup_driver* - Allows manual override of the
   cgroup-driver option for Kubelet. By default autodetection is used
   to match Docker configuration.
 * *kubelet_rotate_certificates* - Auto rotate the kubelet client certificates by requesting new certificates
   from the kube-apiserver when the certificate expiration approaches.
+* *kubelet_rotate_server_certificates* - Auto rotate the kubelet server certificates by requesting new certificates
+  from the kube-apiserver when the certificate expiration approaches.
+  **Note** that server certificates are **not** approved automatically. Approve them manually
+  (`kubectl get csr`, `kubectl certificate approve`) or implement custom approving controller like
+  [kubelet-rubber-stamp](https://github.com/kontena/kubelet-rubber-stamp).
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
   *node_labels* can be defined either as a dict or a comma-separated labels string:
@@ -168,12 +164,12 @@ in the form of dicts of key-value pairs of configuration parameters that will be
 
 ```yml
 kubelet_config_extra_args:
-  EvictionHard:
-    memory.available: "<100Mi"
-  EvictionSoftGracePeriod:
+  evictionHard:
+    memory.available: "100Mi"
+  evictionSoftGracePeriod:
     memory.available: "30s"
-  EvictionSoft:
-    memory.available: "<300Mi"
+  evictionSoft:
+    memory.available: "300Mi"
 ```
 
 The possible vars are:
@@ -181,7 +177,7 @@ The possible vars are:
 * *kubelet_config_extra_args*
 * *kubelet_node_config_extra_args*
 
-Previously, the same paramaters could be passed as flags to kubelet binary with the following vars:
+Previously, the same parameters could be passed as flags to kubelet binary with the following vars:
 
 * *kubelet_custom_flags*
 * *kubelet_node_custom_flags*
@@ -206,13 +202,4 @@ in the form of dicts of key-value pairs of configuration parameters that will be
 
 ## App variables
 
-* *helm_version* - Defaults to v3.x, set to a v2 version (e.g. `v2.16.1` ) to install Helm 2.x (will install Tiller!).
-Picking v3 for an existing cluster running Tiller will leave it alone. In that case you will have to remove Tiller manually afterwards.
-
-## User accounts
-
-The variable `kube_basic_auth` is false by default, but if set to true, a user with admin rights is created, named `kube`.
-The password can be viewed after deployment by looking at the file
-`{{ credentials_dir }}/kube_user.creds` (`credentials_dir` is set to `{{ inventory_dir }}/credentials` by default). This contains a randomly generated
-password. If you wish to set your own password, just precreate/modify this
-file yourself or change `kube_api_pwd` var.
+* *helm_version* - Only supports v3.x. Existing v2 installs (with Tiller) will not be modified and need to be removed manually.

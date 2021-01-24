@@ -23,33 +23,37 @@
   run_once: true
 
 - name: Calculate kubeadm CA cert hash
-  shell: openssl x509 -pubkey -in {{ kube_cert_dir }}/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+  shell: set -o pipefail && openssl x509 -pubkey -in {{ kube_cert_dir }}/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+  args:
+    executable: /bin/bash
   register: kubeadm_ca_hash
   when:
     - kubeadm_ca_stat.stat is defined
     - kubeadm_ca_stat.stat.exists
   delegate_to: "{{ groups['kube-master'][0] }}"
   run_once: true
+  changed_when: false
 
 - name: Create kubeadm token for joining nodes with 24h expiration (default)
   command: "{{ bin_dir }}/kubeadm token create"
   register: temp_token
   delegate_to: "{{ groups['kube-master'][0] }}"
   when: kubeadm_token is not defined
+  changed_when: false
 
 - name: Set kubeadm_token to generated token
   set_fact:
     kubeadm_token: "{{ temp_token.stdout }}"
   when: kubeadm_token is not defined
 
-- name: gets the kubeadm version
+- name: Get the kubeadm version
   command: "{{ bin_dir }}/kubeadm version -o short"
   register: kubeadm_output
+  changed_when: false
 
-- name: sets kubeadm api version to v1beta1
+- name: Set kubeadm api version to v1beta2
   set_fact:
-    kubeadmConfig_api_version: v1beta1
-  when: kubeadm_output.stdout is version('v1.13.0', '>=')
+    kubeadmConfig_api_version: v1beta2
 
 - name: Create kubeadm client config
   template:
@@ -107,15 +111,18 @@
 #                 incorrectly to first master, creating SPoF.
 - name: Update server field in kube-proxy kubeconfig
   shell: >-
-    {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get configmap kube-proxy -n kube-system -o yaml
+    set -o pipefail && {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get configmap kube-proxy -n kube-system -o yaml
     | sed 's#server:.*#server: https://127.0.0.1:{{ kube_apiserver_port }}#g'
     | {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
+  args:
+    executable: /bin/bash
   run_once: true
   delegate_to: "{{ groups['kube-master']|first }}"
+  delegate_facts: false
   when:
     - kubeadm_config_api_fqdn is not defined
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
-    - not kube_proxy_remove
+    - kube_proxy_deployed
     - loadbalancer_apiserver_localhost
   tags:
     - kube-proxy
@@ -128,38 +135,14 @@
     mode: "0644"
 
 - name: Restart all kube-proxy pods to ensure that they load the new configmap
-  shell: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
+  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
   run_once: true
   delegate_to: "{{ groups['kube-master']|first }}"
+  delegate_facts: false
   when:
     - kubeadm_config_api_fqdn is not defined
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
-    - not kube_proxy_remove
-  tags:
-    - kube-proxy
-
-# FIXME(mattymo): Reconcile kubelet kubeconfig filename for both deploy modes
-- name: Symlink kubelet kubeconfig for calico/canal
-  file:
-    src: "{{ kube_config_dir }}/kubelet.conf"
-    dest: "{{ kube_config_dir }}/node-kubeconfig.yaml"
-    state: link
-    force: yes
-  when:
-    - kube_network_plugin in ['calico','canal']
-    - calico_version is version('v3.3.0', '<')
-
-# FIXME(jjo): need to post-remove kube-proxy until https://github.com/kubernetes/kubeadm/issues/776
-# is fixed
-- name: Delete kube-proxy daemonset if kube_proxy_remove set, e.g. kube_network_plugin providing proxy services
-  shell: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf delete daemonset -n kube-system kube-proxy"
-  run_once: true
-  delegate_to: "{{ groups['kube-master']|first }}"
-  when:
-    - kube_proxy_remove
-    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
-  # When scaling/adding nodes in the existing k8s cluster, kube-proxy wouldn't be created, as `kubeadm init` wouldn't run.
-  ignore_errors: true
+    - kube_proxy_deployed
   tags:
     - kube-proxy
 
@@ -167,7 +150,6 @@
   include_tasks: kubeadm_etcd_node.yml
   when:
     - etcd_kubeadm_enabled
-    - kubeadm_control_plane
     - inventory_hostname not in groups['kube-master']
-    - kube_network_plugin in ["calico", "flannel", "canal", "cilium"]
+    - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
     - kube_network_plugin != "calico" or calico_datastore == "etcd"

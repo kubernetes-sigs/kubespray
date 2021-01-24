@@ -9,18 +9,31 @@
     - Preinstall | restart kube-controller-manager crio/containerd
     - Preinstall | restart kube-apiserver docker
     - Preinstall | restart kube-apiserver crio/containerd
-  when: not ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
+  when: not ansible_os_family in ["Flatcar Container Linux by Kinvolk"] and not is_fedora_coreos
 
-- name: Preinstall | update resolvconf for Container Linux by CoreOS and Flatcar
+- name: Preinstall | update resolvconf for Flatcar Container Linux by Kinvolk
   command: /bin/true
   notify:
     - Preinstall | apply resolvconf cloud-init
     - Preinstall | reload kubelet
-  when: ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
+  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
 
 - name: Preinstall | apply resolvconf cloud-init
   command: /usr/bin/coreos-cloudinit --from-file {{ resolveconf_cloud_init_conf }}
-  when: ansible_os_family in ["CoreOS", "Coreos", "Container Linux by CoreOS", "Flatcar", "Flatcar Container Linux by Kinvolk"]
+  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+
+- name: Preinstall | update resolvconf for Fedora CoreOS
+  command: /bin/true
+  notify:
+    - Preinstall | reload NetworkManager
+    - Preinstall | reload kubelet
+  when: is_fedora_coreos
+
+- name: Preinstall | reload NetworkManager
+  service:
+    name: NetworkManager.service
+    state: restarted
+  when: is_fedora_coreos
 
 - name: Preinstall | reload kubelet
   service:
@@ -48,7 +61,7 @@
   when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
 
 - name: Preinstall | restart kube-controller-manager docker
-  shell: "docker ps -f name=k8s_POD_kube-controller-manager* -q | xargs --no-run-if-empty docker rm -f"
+  shell: "{{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-controller-manager* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
   when:
     - container_manager == "docker"
     - inventory_hostname in groups['kube-master']
@@ -57,7 +70,7 @@
     - kube_controller_set.stat.exists
 
 - name: Preinstall | restart kube-controller-manager crio/containerd
-  shell: crictl pods --name kube-controller-manager* -q | xargs -I% --no-run-if-empty bash -c 'crictl stopp % && crictl rmp %'
+  shell: "{{ bin_dir }}/crictl pods --name kube-controller-manager* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
   when:
     - container_manager in ['crio', 'containerd']
     - inventory_hostname in groups['kube-master']
@@ -66,7 +79,7 @@
     - kube_controller_set.stat.exists
 
 - name: Preinstall | restart kube-apiserver docker
-  shell: "docker ps -f name=k8s_POD_kube-apiserver* -q | xargs --no-run-if-empty docker rm -f"
+  shell: "{{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-apiserver* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
   when:
     - container_manager == "docker"
     - inventory_hostname in groups['kube-master']
@@ -74,7 +87,7 @@
     - resolvconf_mode == 'host_resolvconf'
 
 - name: Preinstall | restart kube-apiserver crio/containerd
-  shell: crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c 'crictl stopp % && crictl rmp %'
+  shell: "{{ bin_dir }}/crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
   when:
     - container_manager in ['crio', 'containerd']
     - inventory_hostname in groups['kube-master']

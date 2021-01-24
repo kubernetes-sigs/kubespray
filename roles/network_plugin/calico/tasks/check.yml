@@ -37,30 +37,26 @@
   when:
     - "calico_vxlan_mode in ['Always', 'CrossSubnet']"
 
-- name: "Get current version of calico cluster version"
-  shell: "{{ bin_dir }}/calicoctl.sh version  | grep 'Cluster Version:' | awk '{ print $3}'"
-  register: calico_version_on_server
-  run_once: yes
-  changed_when: false
+- name: "Get Calico {{ calico_pool_name }} configuration"
+  command: calicoctl.sh get ipPool {{ calico_pool_name }} -o json
+  failed_when: False
+  changed_when: False
+  register: calico
+  run_once: True
+  delegate_to: "{{ groups['kube-master'][0] }}"
 
-- name: "Determine if calico upgrade is needed"
-  block:
-    - name: "Check that calico version is enough for upgrade"
-      assert:
-        that:
-          - calico_version_on_server.stdout is version('v2.6.5', '>=')
-        msg: "Your version of calico is not fresh enough for upgrade"
-      when: calico_upgrade_enabled
+- name: "Set calico_pool_conf"
+  set_fact:
+    calico_pool_conf: '{{ calico.stdout | from_json }}'
+  when: calico.rc == 0 and calico.stdout
 
-    - name: "Set upgrade flag when version needs to be updated"
-      set_fact:
-        calico_upgrade_needed: True
-      when:
-        - calico_version_on_server.stdout is version('v2.6.5', '>=')
-        - calico_version_on_server.stdout is version('v3.0.0', '<')
-
+- name: "Check if inventory match current cluster configuration"
+  assert:
+    that:
+      - calico_pool_conf.spec.blockSize == (calico_pool_blocksize | default(kube_network_node_prefix))
+      - calico_pool_conf.spec.cidr == (calico_pool_cidr | default(kube_pods_subnet))
+      - not calico_pool_conf.spec.ipipMode is defined or calico_pool_conf.spec.ipipMode == calico_ipip_mode
+      - not calico_pool_conf.spec.vxlanMode is defined or calico_pool_conf.spec.vxlanMode == calico_vxlan_mode
+    msg: "Your inventory doesn't match the current cluster configuration"
   when:
-    - calico_version_on_server.stdout is defined
-    - calico_version_on_server.stdout
-    - inventory_hostname == groups['kube-master'][0]
-  run_once: yes
+    - calico_pool_conf is defined

@@ -18,8 +18,9 @@ spec:
       labels:
         k8s-app: calico-node
       annotations:
-        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
+{% if calico_datastore == "etcd" %}
         kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
+{% endif %}
 {% if calico_felix_prometheusmetricsenabled %}
         prometheus.io/scrape: 'true'
         prometheus.io/port: "{{ calico_felix_prometheusmetricsport }}"
@@ -29,19 +30,12 @@ spec:
       hostNetwork: true
       serviceAccountName: calico-node
       tolerations:
-        - effect: NoExecute
-          operator: Exists
-        - effect: NoSchedule
-          operator: Exists
-        # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
-        - key: CriticalAddonsOnly
-          operator: "Exists"
+      - operator: Exists
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 0
-{% if calico_version is version('v3.4.0', '>=') %}
       initContainers:
-{% if calico_datastore == "kdd" and calico_version is version('v3.6.0', '>=') %}
+{% if calico_datastore == "kdd" %}
         # This container performs upgrade from host-local IPAM to calico-ipam.
         # It can be deleted if this is a fresh installation, or if you have already
         # upgraded to use calico-ipam.
@@ -63,12 +57,14 @@ spec:
               name: host-local-net-dir
             - mountPath: /host/opt/cni/bin
               name: cni-bin-dir
+          securityContext:
+            privileged: true
 {% endif %}
         # This container installs the Calico CNI binaries
         # and CNI network config file on each node.
         - name: install-cni
           image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
-          command: ["/install-cni.sh"]
+          command: ["{{ (calico_version is version('v3.16.0', '<'))|ternary('/install-cni.sh','/opt/cni/bin/install') }}"]
           env:
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
@@ -94,31 +90,9 @@ spec:
               name: cni-net-dir
             - mountPath: /host/opt/cni/bin
               name: cni-bin-dir
-{% endif %}
+          securityContext:
+            privileged: true
       containers:
-{% if calico_version is version('v3.3.0', '>=') and calico_version is version('v3.4.0', '<') %}
-        - name: install-cni
-          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
-          command: ["/install-cni.sh"]
-          env:
-            # Name of the CNI config file to create.
-            - name: CNI_CONF_NAME
-              value: "10-calico.conflist"
-            # Install CNI binaries
-            - name: UPDATE_CNI_BINARIES
-              value: "true"
-            # The CNI network config to install on each node.
-            - name: CNI_NETWORK_CONFIG_FILE
-              value: "/host/etc/cni/net.d/calico.conflist.template"
-            # Prevents the container from sleeping forever.
-            - name: SLEEP
-              value: "false"
-          volumeMounts:
-            - mountPath: /host/etc/cni/net.d
-              name: cni-net-dir
-            - mountPath: /host/opt/cni/bin
-              name: cni-bin-dir
-{% endif %}
         # Runs calico/node container on each Kubernetes node.  This
         # container programs network policy and routes on each
         # host.
@@ -176,6 +150,12 @@ spec:
             - name: WAIT_FOR_DATASTORE
               value: "true"
 {% endif %}
+{% if calico_network_backend is defined and calico_network_backend == 'vxlan' %}
+            - name: FELIX_VXLANVNI
+              value: "{{ calico_vxlan_vni }}"
+            - name: FELIX_VXLANPORT
+              value: "{{ calico_vxlan_port }}"
+{% endif %}
             # Choose the backend to use.
             - name: CALICO_NETWORKING_BACKEND
               valueFrom:
@@ -205,16 +185,19 @@ spec:
             - name: FELIX_KUBENODEPORTRANGES
               value: "{{ kube_apiserver_node_port_range.split('-')[0] }}:{{ kube_apiserver_node_port_range.split('-')[1] }}"
 {% endif %}
-{% if calico_version is version('v3.8.1', '>=') %}
             - name: FELIX_IPTABLESBACKEND
               value: "{{ calico_iptables_backend }}"
-{% endif %}
             - name: FELIX_IPTABLESLOCKTIMEOUTSECS
               value: "{{ calico_iptables_lock_timeout_secs }}"
 # should be set in etcd before deployment
 #            # Configure the IP Pool from which Pod IPs will be chosen.
 #            - name: CALICO_IPV4POOL_CIDR
 #              value: "{{ calico_pool_cidr | default(kube_pods_subnet) }}"
+{% if calico_veth_mtu is defined %}
+# Set MTU for the Wireguard tunnel device.
+            - name: FELIX_WIREGUARDMTU
+              value: "{{ calico_veth_mtu }}"
+{% endif %}
             - name: CALICO_IPV4POOL_IPIP
               value: "{{ calico_ipv4pool_ipip }}"
             # Disable IPv6 on Kubernetes.
@@ -223,10 +206,13 @@ spec:
             # Set Felix logging to "info"
             - name: FELIX_LOGSEVERITYSCREEN
               value: "{{ calico_loglevel }}"
+            # Enable or disable usage report
+            - name: FELIX_USAGEREPORTINGENABLED
+              value: "{{ calico_usage_reporting }}"
             # Set MTU for tunnel device used if ipip is enabled
 {% if calico_mtu is defined %}
             - name: FELIX_IPINIPMTU
-              value: "{{ calico_mtu }}"
+              value: "{{ calico_veth_mtu | default(calico_mtu) }}"
 {% endif %}
             - name: FELIX_CHAININSERTMODE
               value: "{{ calico_felix_chaininsertmode }}"
@@ -238,17 +224,23 @@ spec:
               value: "{{ calico_felix_prometheusgometricsenabled }}"
             - name: FELIX_PROMETHEUSPROCESSMETRICSENABLED
               value: "{{ calico_felix_prometheusprocessmetricsenabled }}"
-{% if calico_version is version('v3.4.0', '>=') and calico_advertise_cluster_ips|default(false) %}
-            - name: CALICO_ADVERTISE_CLUSTER_IPS
-              value: "{{ kube_service_addresses }}"
-{% endif %}
 {% if calico_ip_auto_method is defined %}
             - name: IP_AUTODETECTION_METHOD
               value: "{{ calico_ip_auto_method }}"
             - name: IP
               value: "autodetect"
 {% else %}
+            - name: NODEIP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: IP_AUTODETECTION_METHOD
+              value: "can-reach=$(NODEIP)"
             - name: IP
+              value: "autodetect"
+{% endif %}
+{% if calico_use_default_route_src_ipaddr|default(false) %}
+            - name: FELIX_DEVICEROUTESOURCEADDRESS
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
@@ -261,6 +253,12 @@ spec:
               value: "true"
             - name: FELIX_IGNORELOOSERPF
               value: "{{ calico_node_ignorelooserpf }}"
+{% if calico_node_extra_envs is defined %}
+{% for key in calico_node_extra_envs %}
+            - name: {{ key }}
+              value: "{{ calico_node_extra_envs[key] }}"
+{% endfor %}
+{% endif %}
           securityContext:
             privileged: true
           resources:
@@ -271,34 +269,24 @@ spec:
               cpu: {{ calico_node_cpu_requests }}
               memory: {{ calico_node_memory_requests }}
           livenessProbe:
-{% if calico_version is version('v3.8.0', '<') %}
-            httpGet:
-              host: 127.0.0.1
-              path: /liveness
-              port: 9099
-{% else %}
             exec:
               command:
               - /bin/calico-node
               - -felix-live
+{% if calico_network_backend|default("bird") == "bird" %}
               - -bird-live
 {% endif %}
             initialDelaySeconds: 5
             failureThreshold: 6
           readinessProbe:
             failureThreshold: 6
-{% if calico_version is version('v3.3.0', '<') %}
-            httpGet:
-              host: 127.0.0.1
-              path: /readiness
-              port: 9099
-{% else %}
             exec:
               command:
               - /bin/calico-node
+{% if calico_network_backend|default("bird") == "bird" %}
               - -bird-ready
-              - -felix-ready
 {% endif %}
+              - -felix-ready
           volumeMounts:
             - mountPath: /lib/modules
               name: lib-modules
@@ -354,7 +342,7 @@ spec:
           hostPath:
             path: /run/xtables.lock
             type: FileOrCreate
-{% if calico_datastore == "kdd" and calico_version is version('v3.6.0', '>=') %}
+{% if calico_datastore == "kdd" %}
         # Mount in the directory for host-local IPAM allocations. This is
         # used when upgrading from host-local to calico-ipam, and can be removed
         # if not using the upgrade-ipam init container.
@@ -367,10 +355,10 @@ spec:
           secret:
             secretName: typha-client
             items:
-               - key: tls.crt
-                 path: typha-client.crt
-               - key: tls.key
-                 path: typha-client.key
+                - key: tls.crt
+                  path: typha-client.crt
+                - key: tls.key
+                  path: typha-client.key
         - name: typha-cacert
           hostPath:
             path: "/etc/kubernetes/ssl/"

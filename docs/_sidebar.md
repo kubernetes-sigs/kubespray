@@ -9,13 +9,15 @@
   * [HA Mode](docs/ha-mode.md)
   * [Adding/replacing a node](docs/nodes.md)
   * [Large deployments](docs/large-deployments.md)
+  * [Air-Gap Installation](docs/offline-environment.md)
 * CNI
   * [Calico](docs/calico.md)
-  * [Contiv](docs/contiv.md)
   * [Flannel](docs/flannel.md)
   * [Kube Router](docs/kube-router.md)
   * [Weave](docs/weave.md)
   * [Multus](docs/multus.md)
+* Ingress
+  * [Ambassador](docs/ambassador.md)
 * [Cloud providers](docs/cloud.md)
   * [AWS](docs/aws.md)
   * [Azure](docs/azure.md)
@@ -24,13 +26,15 @@
   * [vSphere](/docs/vsphere.md)
 * Operating Systems
   * [Debian](docs/debian.md)
-  * [Coreos](docs/coreos.md)
-  * [Fedora CoreOS](docs/fcos.md)  
+  * [Flatcar Container Linux](docs/flatcar.md)
+  * [Fedora CoreOS](docs/fcos.md)
   * [OpenSUSE](docs/opensuse.md)
+* CRI
+  * [Containerd](docs/containerd.md)
+  * [CRI-O](docs/cri-o.md)
 * Advanced
   * [Proxy](/docs/proxy.md)
   * [Downloads](docs/downloads.md)
-  * [CRI-O](docs/cri-o.md)
   * [Netcheck](docs/netcheck.md)
   * [DNS Stack](docs/dns-stack.md)
   * [Kubernetes reliability](docs/kubernetes-reliability.md)
@@ -38,4 +42,5 @@
   * [Test cases](docs/test_cases.md)
   * [Vagrant](docs/vagrant.md)
   * [CI Matrix](docs/ci.md)
+  * [CI Setup](docs/ci-setup.md)
 * [Roadmap](docs/roadmap.md)

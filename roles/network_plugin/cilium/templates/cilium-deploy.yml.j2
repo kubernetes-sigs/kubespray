@@ -20,10 +20,27 @@ spec:
     type: RollingUpdate
   template:
     metadata:
+{% if cilium_enable_prometheus %}
+      annotations:
+        prometheus.io/port: "6942"
+        prometheus.io/scrape: "true"
+{% endif %}
       labels:
         io.cilium/app: operator
         name: cilium-operator
     spec:
+      # In HA mode, cilium-operator pods must not be scheduled on the same
+      # node as they will clash with each other.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: io.cilium/app
+                operator: In
+                values:
+                - operator
+            topologyKey: "kubernetes.io/hostname"
       containers:
         - args:
             - --debug=$(CILIUM_DEBUG)
@@ -42,6 +59,11 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: spec.nodeName
+            - name: CILIUM_K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
             - name: CILIUM_DEBUG
               valueFrom:
                 configMapKeyRef:
@@ -84,11 +106,29 @@ spec:
                   key: AWS_DEFAULT_REGION
                   name: cilium-aws
                   optional: true
+{% if cilium_kube_proxy_replacement == 'strict' %}
+            - name: KUBERNETES_SERVICE_HOST
+              value: "{{ kube_apiserver_global_endpoint | urlsplit('hostname') }}"
+            - name: KUBERNETES_SERVICE_PORT
+              value: "{{ kube_apiserver_global_endpoint | urlsplit('port') }}"
+{% endif %}
           image: "{{ cilium_operator_image_repo }}:{{ cilium_operator_image_tag }}"
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: {{ k8s_image_pull_policy }}
           name: cilium-operator
+{% if cilium_enable_prometheus %}
+          ports:
+            - containerPort: 6942
+              hostPort: 6942
+              name: prometheus
+              protocol: TCP
+{% endif %}
           livenessProbe:
             httpGet:
+{% if cilium_enable_ipv4 %}
+              host: 127.0.0.1
+{% else %}
+              host: '::1'
+{% endif %}
               path: /healthz
               port: 9234
               scheme: HTTP
@@ -107,6 +147,9 @@ spec:
       restartPolicy: Always
       serviceAccount: cilium-operator
       serviceAccountName: cilium-operator
+      hostNetwork: true
+      tolerations:
+        - operator: Exists
       volumes:
         # To read the etcd config stored in config maps
         - configMap:

@@ -28,7 +28,7 @@ spec:
 {% endif %}
 {% if ingress_nginx_nodeselector %}
       nodeSelector:
-        {{ ingress_nginx_nodeselector | to_nice_yaml }}
+        {{ ingress_nginx_nodeselector | to_nice_yaml | indent(width=8) }}
 {%- endif %}
 {% if ingress_nginx_tolerations %}
       tolerations:
@@ -39,6 +39,11 @@ spec:
         - name: ingress-nginx-controller
           image: {{ ingress_nginx_controller_image_repo }}:{{ ingress_nginx_controller_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /wait-shutdown
           args:
             - /nginx-ingress-controller
             - --configmap=$(POD_NAMESPACE)/ingress-nginx
@@ -62,6 +67,7 @@ spec:
                   - NET_BIND_SERVICE
             # www-data -> 101
             runAsUser: 101
+            allowPrivilegeEscalation: true
           env:
             - name: POD_NAME
               valueFrom:
@@ -71,6 +77,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: LD_PRELOAD
+              value: /usr/local/lib/libmimalloc.so
           ports:
             - name: http
               containerPort: 80
@@ -78,22 +86,29 @@ spec:
             - name: https
               containerPort: 443
               hostPort: {{ ingress_nginx_secure_port }}
+            - name: metrics
+              containerPort: 10254
+{% if not ingress_nginx_host_network %}
+              hostPort: {{ ingress_nginx_metrics_port }}
+{% endif %}
           livenessProbe:
             failureThreshold: 3
             httpGet:
               path: /healthz
               port: 10254
               scheme: HTTP
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
+            periodSeconds: 10
             timeoutSeconds: 5
             successThreshold: 1
-            failureThreshold: 10
-          readinessProbe:
             failureThreshold: 3
+          readinessProbe:
             httpGet:
               path: /healthz
               port: 10254
               scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
             timeoutSeconds: 5
             successThreshold: 1
-            failureThreshold: 10
+            failureThreshold: 3

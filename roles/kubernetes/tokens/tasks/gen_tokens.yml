@@ -35,7 +35,7 @@
   when: gen_tokens|default(false)
 
 - name: Gen_tokens | Get list of tokens from first master
-  shell: "(find {{ kube_token_dir }} -maxdepth 1 -type f)"
+  command: "find {{ kube_token_dir }} -maxdepth 1 -type f"
   register: tokens_list
   check_mode: no
   delegate_to: "{{ groups['kube-master'][0] }}"
@@ -43,9 +43,10 @@
   when: sync_tokens|default(false)
 
 - name: Gen_tokens | Gather tokens
-  shell: "tar cfz - {{ tokens_list.stdout_lines | join(' ') }} | base64 --wrap=0"
+  shell: "set -o pipefail && tar cfz - {{ tokens_list.stdout_lines | join(' ') }} | base64 --wrap=0"
   args:
     warn: false
+    executable: /bin/bash
   register: tokens_data
   check_mode: no
   delegate_to: "{{ groups['kube-master'][0] }}"
@@ -53,7 +54,9 @@
   when: sync_tokens|default(false)
 
 - name: Gen_tokens | Copy tokens on masters
-  shell: "echo '{{ tokens_data.stdout|quote }}' | base64 -d | tar xz -C /"
+  shell: "set -o pipefail && echo '{{ tokens_data.stdout|quote }}' | base64 -d | tar xz -C /"
+  args:
+    executable: /bin/bash
   when:
     - inventory_hostname in groups['kube-master']
     - sync_tokens|default(false)

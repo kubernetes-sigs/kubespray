@@ -2,6 +2,9 @@
 set -e
 
 BINDIR="/opt/bin"
+PYPY_VERSION=7.3.2
+PYPI_URL="https://downloads.python.org/pypy/pypy3.6-v${PYPY_VERSION}-linux64.tar.bz2"
+PYPI_HASH=d7a91f179076aaa28115ffc0a81e46c6a787785b2bc995c926fe3b02f0e9ad83
 
 mkdir -p $BINDIR
 
@@ -11,10 +14,11 @@ if [[ -e $BINDIR/.bootstrapped ]]; then
   exit 0
 fi
 
-PYPY_VERSION=7.2.0
-
-wget -O - https://github.com/squeaky-pl/portable-pypy/releases/download/pypy3.6-7.2.0/pypy3.6-$PYPY_VERSION-linux_x86_64-portable.tar.bz2 | tar -xjf -
-mv -n pypy3.6-$PYPY_VERSION-linux_x86_64-portable pypy3
+TAR_FILE=pyp.tar.bz2
+wget -O "${TAR_FILE}" "${PYPI_URL}"
+echo "${PYPI_HASH} ${TAR_FILE}" | sha256sum -c -
+tar -xjf "${TAR_FILE}" && rm "${TAR_FILE}"
+mv -n "pypy3.6-v${PYPY_VERSION}-linux64" pypy3
 
 ln -s ./pypy3/bin/pypy3 python
 $BINDIR/python --version

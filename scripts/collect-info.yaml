@@ -30,7 +30,7 @@
       - name: errors_info
         cmd: journalctl -p err --no-pager
       - name: etcd_info
-        cmd: "{{ bin_dir }}/etcdctl --peers={{ etcd_access_addresses | default('http://127.0.0.1:2379') }} cluster-health"
+        cmd: "{{ bin_dir }}/etcdctl endpoint --cluster health"
       - name: calico_info
         cmd: "{{ bin_dir }}/calicoctl node status"
         when: '{{ kube_network_plugin == "calico" }}'
@@ -97,8 +97,11 @@
       - /var/log/dmesg
 
   environment:
-    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem"
-    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
 
   tasks:
     - name: set etcd_access_addresses
@@ -110,7 +113,7 @@
       when: "'etcd' in groups"
 
     - name: Storing commands output
-      shell: "{{ item.cmd }} 2>&1 | tee {{ item.name }}"
+      shell: "{{ item.cmd }} &> {{ item.name }}"
       failed_when: false
       with_items: "{{ commands }}"
       when: item.when | default(True)
@@ -133,6 +136,7 @@
         dest: "{{ dir|default('.') }}/logs.tar.gz"
         remove: true
       delegate_to: localhost
+      connection: local
       become: false
       run_once: true
 

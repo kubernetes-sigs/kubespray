@@ -17,14 +17,14 @@ By default, Vagrant uses Ubuntu 18.04 box to provision a local cluster. You may 
 Customize `$os` variable in `Vagrantfile` or as override, e.g.,:
 
 ```ShellSession
-echo '$os = "coreos-stable"' >> vagrant/config.rb
+echo '$os = "flatcar-stable"' >> vagrant/config.rb
 ```
 
 The supported operating systems for vagrant are defined in the `SUPPORTED_OS` constant in the `Vagrantfile`.
 
 ## File and image caching
 
-Kubespray can take quite a while to start on a laptop. To improve provisioning speed, the variable 'download_run_once' is set. This will make kubespray download all files and containers just once and then redistributes them to the other nodes and as a bonus, also cache all downloads locally and re-use them on the next provisioning run. For more information on download settings see [download documentation](downloads.md).
+Kubespray can take quite a while to start on a laptop. To improve provisioning speed, the variable 'download_run_once' is set. This will make kubespray download all files and containers just once and then redistributes them to the other nodes and as a bonus, also cache all downloads locally and re-use them on the next provisioning run. For more information on download settings see [download documentation](/docs/downloads.md).
 
 ## Example use of Vagrant
 

@@ -13,22 +13,28 @@
   with_dict:
     - "{{ images }}"
 
+- name: Unxz compressed images
+  command: unxz --force {{ images_dir }}/{{ item.value.filename }}
+  with_dict:
+    - "{{ images }}"
+  when:
+    - item.value.filename.endswith('.xz')
+
 - name: Convert images which is not in qcow2 format
-  command: qemu-img convert -O qcow2 {{ images_dir }}/{{ item.value.filename }} {{ images_dir }}/{{ item.key }}.qcow2
+  command: qemu-img convert -O qcow2 {{ images_dir }}/{{ item.value.filename.rstrip('.xz') }} {{ images_dir }}/{{ item.key }}.qcow2
   with_dict:
     - "{{ images }}"
   when:
     - not (item.value.converted|bool)
-  register: converted
 
 - name: Make sure all images are ending with qcow2
-  command: cp {{ images_dir }}/{{ item.value.filename }} {{ images_dir }}/{{ item.key }}.qcow2
+  command: cp {{ images_dir }}/{{ item.value.filename.rstrip('.xz') }} {{ images_dir }}/{{ item.key }}.qcow2
   with_dict:
     - "{{ images }}"
   when:
     - item.value.converted|bool
 
-- name: Resize images
+- name: Resize images  # noqa 301
   command: qemu-img resize {{ images_dir }}/{{ item.key }}.qcow2 +8G
   with_dict:
     - "{{ images }}"
@@ -39,15 +45,18 @@
     src: Dockerfile
     dest: "{{ images_dir }}/Dockerfile"
 
-- name: Create docker images for each OS
-  command: docker build -t {{ registry }}/vm-{{ item.key }} --build-arg cloud_image="{{ item.key }}.qcow2" {{ images_dir }}
+- name: Create docker images for each OS  # noqa 301
+  command: docker build -t {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }} --build-arg cloud_image="{{ item.key }}.qcow2" {{ images_dir }}
   with_dict:
     - "{{ images }}"
 
-- name: docker login
+- name: docker login  # noqa 301
   command: docker login -u="{{ docker_user }}" -p="{{ docker_password }}" "{{ docker_host }}"
 
-- name: docker push image
-  command: docker push {{ registry }}/vm-{{ item.key }}:latest
+- name: docker push image  # noqa 301
+  command: docker push {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }}
   with_dict:
     - "{{ images }}"
+
+- name: docker logout  # noqa 301
+  command: docker logout -u="{{ docker_user }}" "{{ docker_host }}"

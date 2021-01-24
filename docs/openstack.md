@@ -1,7 +1,27 @@
-OpenStack
-===============
 
-To deploy kubespray on [OpenStack](https://www.openstack.org/) uncomment the `cloud_provider` option in `group_vars/all.yml` and set it to `'openstack'`.
+# OpenStack
+
+## Known compatible public clouds
+
+Kubespray has been tested on a number of OpenStack Public Clouds including (in alphabetical order):
+
+- [Auro](https://auro.io/)
+- [Betacloud](https://www.betacloud.io/)
+- [CityCloud](https://www.citycloud.com/)
+- [DreamHost](https://www.dreamhost.com/cloud/computing/)
+- [ELASTX](https://elastx.se/)
+- [EnterCloudSuite](https://www.entercloudsuite.com/)
+- [FugaCloud](https://fuga.cloud/)
+- [Open Telekom Cloud](https://cloud.telekom.de/) : requires to set the variable `wait_for_floatingip = "true"` in your cluster.tfvars
+- [OVHcloud](https://www.ovhcloud.com/)
+- [Rackspace](https://www.rackspace.com/)
+- [Ultimum](https://ultimum.io/)
+- [VexxHost](https://vexxhost.com/)
+- [Zetta](https://www.zetta.io/)
+
+## The in-tree cloud provider
+
+To deploy Kubespray on [OpenStack](https://www.openstack.org/) uncomment the `cloud_provider` option in `group_vars/all/all.yml` and set it to `openstack`.
 
 After that make sure to source in your OpenStack credentials like you would do when using `nova-client` or `neutron-client` by using `source path/to/your/openstack-rc` or `. path/to/your/openstack-rc`.
 
@@ -51,7 +71,7 @@ Given the port ids on the left, you can set the two `allowed-address`(es) in Ope
   openstack port set e5ae2045-a1e1-4e99-9aac-4353889449a7 --allowed-address ip-address=10.233.0.0/18 --allowed-address ip-address=10.233.64.0/18
   ```
 
-If all the VMs in the tenant correspond to kubespray deployment, you can "sweep run" above with:
+If all the VMs in the tenant correspond to Kubespray deployment, you can "sweep run" above with:
 
   ```bash
   openstack port list --device-owner=compute:nova -c ID -f value | xargs -tI@ openstack port set @ --allowed-address ip-address=10.233.0.0/18 --allowed-address ip-address=10.233.64.0/18
@@ -59,21 +79,20 @@ If all the VMs in the tenant correspond to kubespray deployment, you can "sweep 
 
 Now you can finally run the playbook.
 
-Upgrade from the in-tree to the external cloud provider
----------------
+## The external cloud provider
 
-The in-tree cloud provider is deprecated and will be removed in a future version of Kubernetes. The target release for removing all remaining in-tree cloud providers is set to 1.21
+The in-tree cloud provider is deprecated and will be removed in a future version of Kubernetes. The target release for removing all remaining in-tree cloud providers is set to 1.21.
 
 The new cloud provider is configured to have Octavia by default in Kubespray.
 
-- Change cloud provider from `cloud_provider: openstack` to the new external Cloud provider:
+- Enable the new external cloud provider in `group_vars/all/all.yml`:
 
   ```yaml
   cloud_provider: external
   external_cloud_provider: openstack
   ```
 
-- Enable Cinder CSI:
+- Enable Cinder CSI in `group_vars/all/openstack.yml`:
 
   ```yaml
   cinder_csi_enabled: true
@@ -95,6 +114,21 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
   - ExpandCSIVolumes=true
   ```
 
-- Run the `upgrade-cluster.yml` playbook
-- Run the cleanup playbook located under extra_playbooks `extra_playbooks/migrate_openstack_provider.yml` (this will clean up all resources used by the old cloud provider)
-- You can remove the feature gates for Volume migration. If you want to enable the possibility to expand CSI volumes you could leave the `ExpandCSIVolumes=true` feature gate
+- If you are in a case of a multi-nic OpenStack VMs (see [kubernetes/cloud-provider-openstack#407](https://github.com/kubernetes/cloud-provider-openstack/issues/407) and [#6083](https://github.com/kubernetes-sigs/kubespray/issues/6083) for explanation), you should override the default OpenStack networking configuration:
+
+  ```yaml
+  external_openstack_network_ipv6_disabled: false
+  external_openstack_network_internal_networks:
+  - ""
+  external_openstack_network_public_networks:
+  - ""
+  ```
+
+- You can override the default OpenStack metadata configuration (see [#6338](https://github.com/kubernetes-sigs/kubespray/issues/6338) for explanation):
+  
+  ```yaml
+  external_openstack_metadata_search_order: "configDrive,metadataService"
+  ```
+
+- Run `source path/to/your/openstack-rc` to read your OpenStack credentials like `OS_AUTH_URL`, `OS_USERNAME`, `OS_PASSWORD`, etc. Those variables are used for accessing OpenStack from the external cloud provider.
+- Run the `cluster.yml` playbook

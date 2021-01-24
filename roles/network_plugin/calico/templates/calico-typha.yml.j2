@@ -48,10 +48,13 @@ spec:
         cluster-autoscaler.kubernetes.io/safe-to-evict: 'true'
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       hostNetwork: true
       tolerations:
         - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
           operator: Exists
           effect: NoSchedule
       # Since Calico can't network a pod until Typha is up, we need to run Typha itself
@@ -115,47 +118,31 @@ spec:
           # - name: USE_POD_CIDR
           #   value: "true"
         livenessProbe:
-{% if calico_version is version('v3.7.0', '<') %}
-          exec:
-            command:
-            - calico-typha
-            - check
-            - liveness
-{% else %}
           httpGet:
             path: /liveness
             port: 9098
             host: localhost
-{% endif %}
           periodSeconds: 30
           initialDelaySeconds: 30
         readinessProbe:
-{% if calico_version is version('v3.7.0', '<') %}
-          exec:
-            command:
-            - calico-typha
-            - check
-            - readiness
-{% else %}
           httpGet:
             path: /readiness
             port: 9098
             host: localhost
-{% endif %}
           periodSeconds: 10
 {% if typha_secure %}
       volumes:
-         - name: typha-server
-           secret:
-             secretName: typha-server
-             items:
-                - key: tls.crt
-                  path: server_certificate.pem
-                - key: tls.key
-                  path: server_key.pem
-         - name: cacert
-           hostPath:
-             path: "{{ kube_cert_dir }}"
+        - name: typha-server
+          secret:
+            secretName: typha-server
+            items:
+              - key: tls.crt
+                path: server_certificate.pem
+              - key: tls.key
+                path: server_key.pem
+        - name: cacert
+          hostPath:
+            path: "{{ kube_cert_dir }}"
 {% endif %}
 
 ---

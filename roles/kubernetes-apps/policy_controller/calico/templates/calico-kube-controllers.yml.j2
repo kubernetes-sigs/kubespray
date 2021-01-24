@@ -20,13 +20,13 @@ spec:
         k8s-app: calico-kube-controllers
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       hostNetwork: true
       serviceAccountName: calico-kube-controllers
       tolerations:
-        - key: CriticalAddonsOnly
-          operator: Exists
         - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
           effect: NoSchedule
       priorityClassName: system-cluster-critical
       containers:
@@ -40,15 +40,13 @@ spec:
             requests:
               cpu: {{ calico_policy_controller_cpu_requests }}
               memory: {{ calico_policy_controller_memory_requests }}
-{% if calico_version is version('v3.3.0', '>=') %}
           readinessProbe:
             exec:
               command:
               - /usr/bin/check-status
               - -r
-{% endif %}
           env:
-{% if calico_datastore == "kdd" and calico_version is version('v3.6.0', '>=') %}
+{% if calico_datastore == "kdd" %}
             - name: ENABLED_CONTROLLERS
               value: node
             - name: DATASTORE_TYPE

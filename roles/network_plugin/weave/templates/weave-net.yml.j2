@@ -9,7 +9,7 @@ items:
       labels:
         name: weave-net
       namespace: kube-system
-  - apiVersion: rbac.authorization.k8s.io/v1beta1
+  - apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRole
     metadata:
       name: weave-net
@@ -49,7 +49,7 @@ items:
           - podsecuritypolicies
         verbs:
           - use
-  - apiVersion: rbac.authorization.k8s.io/v1beta1
+  - apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding
     metadata:
       name: weave-net
@@ -63,7 +63,7 @@ items:
       - kind: ServiceAccount
         name: weave-net
         namespace: kube-system
-  - apiVersion: rbac.authorization.k8s.io/v1beta1
+  - apiVersion: rbac.authorization.k8s.io/v1
     kind: Role
     metadata:
       name: weave-net
@@ -86,7 +86,7 @@ items:
           - configmaps
         verbs:
           - create
-  - apiVersion: rbac.authorization.k8s.io/v1beta1
+  - apiVersion: rbac.authorization.k8s.io/v1
     kind: RoleBinding
     metadata:
       name: weave-net
@@ -119,11 +119,34 @@ items:
             name: weave-net
         spec:
           priorityClassName: system-node-critical
+          initContainers:
+            - name: weave-init
+              image: {{ weave_kube_image_repo }}:{{ weave_kube_image_tag }}
+              imagePullPolicy: {{ k8s_image_pull_policy }}
+              command:
+                - /home/weave/init.sh
+              env:
+              securityContext:
+                privileged: true
+              volumeMounts:
+                - name: cni-bin
+                  mountPath: /host/opt
+                - name: cni-bin2
+                  mountPath: /host/home
+                - name: cni-conf
+                  mountPath: /host/etc
+                - name: lib-modules
+                  mountPath: /lib/modules
+                - name: xtables-lock
+                  mountPath: /run/xtables.lock
+                  readOnly: false
           containers:
             - name: weave
               command:
                 - /home/weave/launch.sh
               env:
+                - name: INIT_CONTAINER
+                  value: "true"
                 - name: HOSTNAME
                   valueFrom:
                     fieldRef:
@@ -164,6 +187,10 @@ items:
                 - name: WEAVE_STATUS_ADDR
                   value: "{{ weave_status_addr }}"
 {% endif %}
+{% if weave_iptables_backend %}
+                - name: IPTABLES_BACKEND
+                  value: "{{ weave_iptables_backend }}"
+{% endif %}
                 - name: WEAVE_MTU
                   value: "{{ weave_mtu | int }}"
                 - name: NO_MASQ_LOCAL
@@ -181,24 +208,18 @@ items:
                   port: 6784
               resources:
                 requests:
-                  cpu: 10m
+                  cpu: 50m
               securityContext:
                 privileged: true
               volumeMounts:
                 - name: weavedb
                   mountPath: /weavedb
-                - name: cni-bin
-                  mountPath: /host/opt
-                - name: cni-bin2
-                  mountPath: /host/home
-                - name: cni-conf
-                  mountPath: /host/etc
                 - name: dbus
                   mountPath: /host/var/lib/dbus
-                - name: lib-modules
-                  mountPath: /lib/modules
+                  readOnly: true
                 - name: xtables-lock
                   mountPath: /run/xtables.lock
+                  readOnly: false
             - name: weave-npc
               env:
                 - name: HOSTNAME
@@ -210,25 +231,22 @@ items:
               imagePullPolicy: {{ k8s_image_pull_policy }}
               resources:
                 requests:
-                  cpu: 10m
+                  cpu: 50m
               securityContext:
                 privileged: true
               volumeMounts:
                 - name: xtables-lock
                   mountPath: /run/xtables.lock
+                  readOnly: false
           hostNetwork: true
           dnsPolicy: ClusterFirstWithHostNet
-          hostPID: true
+          hostPID: false
           restartPolicy: Always
           securityContext:
             seLinuxOptions: {}
           serviceAccountName: weave-net
           tolerations:
-            - effect: NoSchedule
-              operator: Exists
-            # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
-            - key: CriticalAddonsOnly
-              operator: "Exists"
+            - operator: Exists
           volumes:
             - name: weavedb
               hostPath:

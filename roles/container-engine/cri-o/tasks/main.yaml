@@ -1,5 +1,4 @@
 ---
-
 - name: check if fedora coreos
   stat:
     path: /run/ostree-booted
@@ -8,7 +7,6 @@
 - name: set is_ostree
   set_fact:
     is_ostree: "{{ ostree.stat.exists }}"
-
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -27,36 +25,60 @@
   tags:
     - facts
 
-- name: Add OpenShift Origin repository
-  yum_repository:
-    name: origin
-    description: OpenShift Origin Repo
-    baseurl: "{{ crio_rhel_repo_base_url }}"
-    gpgcheck: no
-  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
+- name: disable unified_cgroup_hierarchy in Fedora 31+
+  command: grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=0"
+  when:
+    - ansible_distribution == "Fedora"
+    - (ansible_distribution_major_version | int) >= 31
+    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
 
-- name: Add CRI-O PPA
-  apt_repository:
-    repo: ppa:projectatomic/ppa
-    state: present
-  when: ansible_distribution in ["Ubuntu"]
+- name: reboot in Fedora 31+
+  reboot:
+  when:
+    - ansible_distribution == "Fedora"
+    - (ansible_distribution_major_version | int) >= 31
+    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
 
-- include_tasks: "crictl.yml"
+- name: import crio repo
+  import_tasks: "crio_repo.yml"
+  when: crio_add_repos
 
-- name: Install crictl
-  unarchive:
-    src: "{{ local_release_dir }}/crictl-{{ crictl_version }}-linux-{{ image_arch }}.tar.gz"
-    dest: "/usr/local/bin"
-    mode: 0755
-    remote_src: yes
+- include_role:
+    name: container-engine/crictl
+
+- name: Build a list of crio runtimes with Katacontainers runtimes
+  set_fact:
+    crio_runtimes: "{{ crio_runtimes + kata_runtimes  }}"
+  when:
+    - kata_containers_enabled
+
+- name: Build a list of crio runtimes with crun runtime
+  set_fact:
+    crio_runtimes: "{{ crio_runtimes + [crun_runtime] }}"
+  when:
+    - crun_enabled
 
 - name: Make sure needed folders exist in the system
   with_items:
     - /etc/crio
     - /etc/containers
+    - /etc/systemd/system/crio.service.d
   file:
     path: "{{ item }}"
     state: directory
+
+- name: Install cri-o config
+  template:
+    src: crio.conf.j2
+    dest: /etc/crio/crio.conf
+  register: config_install
+
+- name: Add skopeo pkg to install
+  set_fact:
+    crio_packages: "{{ crio_packages + skopeo_packages }}"
+  when:
+    - not skip_downloads|default(false)
+    - download_run_once
 
 - name: Install cri-o packages
   package:
@@ -64,6 +86,10 @@
     state: present
   when: not is_ostree
   with_items: "{{ crio_packages }}"
+  register: package_install
+  until: package_install is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | d(3) }}"
 
 - name: Check if already installed
   stat:
@@ -72,19 +98,26 @@
   when: is_ostree
 
 - name: Install cri-o packages with osttree
-  raw: "export http_proxy={{ http_proxy | default('') }} && rpm-ostree install {{ crio_packages|join(' ') }}"
-  when: is_ostree and not need_bootstrap_crio.stat.exists
+  command: "rpm-ostree install {{ crio_packages|join(' ') }}"
+  when:
+    - is_ostree
+    - not need_bootstrap_crio.stat.exists
   become: true
 
 - name: Reboot immediately for updated ostree
   reboot:
   become: true
-  when: is_ostree and not need_bootstrap_crio.stat.exists
+  when:
+    - is_ostree
+    - not need_bootstrap_crio.stat.exists
 
-- name: Install cri-o config
-  template:
-    src: crio.conf.j2
-    dest: /etc/crio/crio.conf
+- name: Remove example CNI configs
+  file:
+    path: "/etc/cni/net.d/{{ item }}"
+    state: absent
+  loop:
+    - 100-crio-bridge.conf
+    - 200-loopback.conf
 
 - name: Copy mounts.conf
   copy:
@@ -92,6 +125,7 @@
     dest: /etc/containers/mounts.conf
   when:
     - ansible_os_family == 'RedHat'
+  notify: restart crio
 
 - name: Create directory for oci hooks
   file:
@@ -100,12 +134,58 @@
     owner: root
     mode: 0755
 
-- name: Reload systemd daemon
-  systemd:
-    daemon_reload: yes
+- name: Remove metacopy mount options for older kernels
+  ini_file:
+    dest: /etc/containers/storage.conf
+    section: storage.options.overlay
+    option: mountopt
+    value: "\"nodev\""
+  when:
+    - ansible_distribution == "CentOS"
+    - ansible_distribution_major_version == "7"
 
-- name: Install cri-o service
+- name: Create directory registries configs
+  file:
+    path: /etc/containers/registries.conf.d
+    state: directory
+    owner: root
+    mode: 0755
+
+- name: Write registries mirror configs
+  template:
+    src: registry-mirror.conf.j2
+    dest: "/etc/containers/registries.conf.d/{{ item.prefix }}.conf"
+  loop: "{{ crio_registries_mirrors }}"
+  notify: restart crio
+
+- name: Write cri-o proxy drop-in
+  template:
+    src: http-proxy.conf.j2
+    dest: /etc/systemd/system/crio.service.d/http-proxy.conf
+  notify: restart crio
+  when: http_proxy is defined or https_proxy is defined
+
+- name: Ensure crio service is started and enabled
   service:
-    name: "{{ crio_service }}"
-    enabled: yes
+    name: crio
+    daemon_reload: true
+    enabled: true
+    state: started
+  register: service_start
+
+- name: Trigger service restart only when needed
+  service:  # noqa 503
+    name: crio
     state: restarted
+  when:
+    - config_install.changed
+    - not package_install.changed
+    - not service_start.changed
+
+- name: Verify that crio is running
+  command: "crio-status info"
+  register: get_crio_info
+  until: get_crio_info is succeeded
+  changed_when: false
+  retries: 5
+  delay: "{{ retry_stagger | random + 3 }}"

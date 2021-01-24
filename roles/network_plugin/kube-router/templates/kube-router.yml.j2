@@ -28,17 +28,18 @@ spec:
         prometheus.io/scrape: "true"
 {% endif %}
     spec:
-      priorityClassName: system-cluster-critical
+      priorityClassName: system-node-critical
       serviceAccountName: kube-router
       containers:
       - name: kube-router
         image: {{ kube_router_image_repo }}:{{ kube_router_image_tag }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         args:
         - --run-router={{ kube_router_run_router | bool }}
         - --run-firewall={{ kube_router_run_firewall | bool }}
         - --run-service-proxy={{ kube_router_run_service_proxy | bool }}
         - --kubeconfig=/var/lib/kube-router/kubeconfig
+        - --bgp-graceful-restart=true
 {% if kube_router_advertise_cluster_ip %}
         - --advertise-cluster-ip
 {% endif %}
@@ -75,7 +76,7 @@ spec:
           httpGet:
             path: /healthz
             port: 20244
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
           periodSeconds: 3
         resources:
           requests:
@@ -97,6 +98,9 @@ spec:
         - name: kubeconfig
           mountPath: /var/lib/kube-router
           readOnly: true
+        - name: xtables-lock
+          mountPath: /run/xtables.lock
+          readOnly: false
 {% if kube_router_enable_metrics %}
         ports:
         - containerPort: {{ kube_router_metrics_port }}
@@ -105,16 +109,13 @@ spec:
           protocol: TCP
 {% endif %}
       hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
+      dnsPolicy: {{ kube_router_dns_policy }}
 {% if kube_router_enable_dsr %}
       hostIPC: true
       hostPID: true
 {% endif %}
       tolerations:
       - operator: Exists
-      # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
-      - key: CriticalAddonsOnly
-        operator: "Exists"
       volumes:
 {% if kube_router_enable_dsr %}
       - name: docker-socket
@@ -131,6 +132,10 @@ spec:
       - name: kubeconfig
         hostPath:
           path: /var/lib/kube-router
+      - name: xtables-lock
+        hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
 
 ---
 apiVersion: v1
@@ -141,7 +146,7 @@ metadata:
 
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: kube-router
   namespace: kube-system
@@ -176,7 +181,7 @@ rules:
       - watch
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: kube-router
 roleRef:

@@ -30,12 +30,9 @@ crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-{{ crictl_ver
 calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
 
 # CentOS/Redhat
-## Docker
+## Docker / Containerd
 docker_rh_repo_base_url: "{{ yum_repo }}/docker-ce/$releasever/$basearch"
 docker_rh_repo_gpgkey: "{{ yum_repo }}/docker-ce/gpg"
-## Containerd
-extras_rh_repo_base_url: "{{ yum_repo }}/centos/{{ ansible_distribution_major_version }}/extras/$basearch"
-extras_rh_repo_gpgkey: "{{ yum_repo }}/containerd/gpg"
 
 # Fedora
 ## Docker

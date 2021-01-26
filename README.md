@@ -131,14 +131,14 @@ Note: Upstart/SysV init based OS types are not supported.
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.1.1
   - [multus](https://github.com/intel/multus-cni) v3.6.0
   - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.1.0
-  - [weave](https://github.com/weaveworks/weave) v2.8.0
+  - [weave](https://github.com/weaveworks/weave) v2.8.1
 - Application
   - [ambassador](https://github.com/datawire/ambassador): v1.5
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v0.16.1
   - [coredns](https://github.com/coredns/coredns) v1.7.0
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.41.2
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.43.0
 
 Note: The list of available docker version is 18.09, 19.03 and 20.10. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 

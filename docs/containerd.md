@@ -19,7 +19,7 @@ etcd_deployment_type: host
 
 ## Containerd config
 
-Example: define registry mirror for docker hub
+Example: define registry mirror for docker hub, and an insecure internal registry:
 
 ```yaml
 containerd_config:
@@ -32,6 +32,19 @@ containerd_config:
     "docker.io":
       - "https://mirror.gcr.io"
       - "https://registry-1.docker.io"
+    "registry.internal":
+      endpoint:
+        - registry.internal
+      # ca_file: "ca.pem"
+      # cert_file: "cert.pem"
+      # key_file: "key.pem"
+      insecure_skip_verify: true
+      # username: ""
+      # password: ""
+      # auth: ""
+      # identitytoken: ""
 ```
+
+All available configuration items are documented [here](https://github.com/containerd/containerd/blob/master/docs/cri/registry.md).
 
 [containerd]: https://containerd.io/

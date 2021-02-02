@@ -53,6 +53,18 @@ probably pointing on a task depending on a module present in requirements.txt (i
 One way of solving this would be to uninstall the Ansible package and then, to install it via pip but it is not always possible.
 A workaround consists of setting `ANSIBLE_LIBRARY` and `ANSIBLE_MODULE_UTILS` environment variables respectively to the `ansible/modules` and `ansible/module_utils` subdirectories of pip packages installation location, which can be found in the Location field of the output of `pip show [package]` before executing `ansible-playbook`.
 
+A simple way to ensure you get all the correct version of Ansible is to use the [pre-built docker image from Quay](https://quay.io/repository/kubespray/kubespray?tab=tags).
+You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mounts/) to get the inventory and ssh key into the container, like this:
+
+```ShellSession
+docker pull quay.io/kubespray/kubespray:v2.15.0
+docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
+  --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
+  quay.io/kubespray/kubespray:v2.15.0 bash
+# Inside the container you may now run the kubespray playbooks:
+ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
+```
+
 ### Vagrant
 
 For Vagrant we need to install python dependencies for provisioning tasks.

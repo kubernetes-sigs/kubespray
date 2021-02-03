@@ -57,7 +57,7 @@ resource "exoscale_compute" "master" {
       ceph_partition_size       = each.value.boot_disk.ceph_partition_size
       root_partition_size       = each.value.boot_disk.root_partition_size
       node_type                 = "master"
-      ssh_authorized_key        = trimspace(file(pathexpand(var.ssh_pub_key)))
+      ssh_public_keys           = var.ssh_public_keys
     }
   )
 }
@@ -85,7 +85,7 @@ resource "exoscale_compute" "worker" {
       ceph_partition_size       = each.value.boot_disk.ceph_partition_size
       root_partition_size       = each.value.boot_disk.root_partition_size
       node_type                 = "worker"
-      ssh_authorized_key        = trimspace(file(pathexpand(var.ssh_pub_key)))
+      ssh_public_keys           = var.ssh_public_keys
     }
   )
 }

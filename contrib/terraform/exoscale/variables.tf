@@ -21,9 +21,9 @@ variable machines {
   }))
 }
 
-variable ssh_pub_key {
-  description = "Path to public SSH key file which is injected into the VMs."
-  type        = string
+variable ssh_public_keys {
+  description = "List of public SSH keys which are injected into the VMs."
+  type        = list(string)
 }
 
 variable ssh_whitelist {

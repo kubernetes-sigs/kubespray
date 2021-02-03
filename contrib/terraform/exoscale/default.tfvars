@@ -3,7 +3,11 @@ zone   = "ch-gva-2"
 
 inventory_file = "inventory.ini"
 
-ssh_pub_key = "~/.ssh/id_rsa.pub"
+ssh_public_keys = [
+  # Put your public SSH key here
+  "ssh-rsa I-did-not-read-the-docs",
+  "ssh-rsa I-did-not-read-the-docs 2",
+]
 
 machines = {
   "master-0" : {

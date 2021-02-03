@@ -7,7 +7,7 @@ module "kubernetes" {
 
   machines = var.machines
 
-  ssh_pub_key = var.ssh_pub_key
+  ssh_public_keys = var.ssh_public_keys
 
   ssh_whitelist        = var.ssh_whitelist
   api_server_whitelist = var.api_server_whitelist

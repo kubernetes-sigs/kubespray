@@ -48,7 +48,7 @@ cp contrib/terraform/exoscale/default.tfvars inventory/$CLUSTER/
 cd inventory/$CLUSTER
 ```
 
-Edit `default.tfvars` to match your setup
+Edit `default.tfvars` to match your setup. You MUST, at the very least, change `ssh_public_keys`.
 
 ```bash
 # Ensure $EDITOR points to your favorite editor, e.g., vim, emacs, VS Code, etc.
@@ -122,7 +122,7 @@ terraform destroy -var-file default.tfvars ../../contrib/terraform/exoscale
 
 ### Required
 
-* `ssh_pub_key`: Path to public ssh key to use for all machines
+* `ssh_public_keys`: List of public SSH keys to install on all machines
 * `zone`: The zone where to run the cluster
 * `machines`: Machines to provision. Key of this object will be used as the name of the machine
   * `node_type`: The role of this node *(master|worker)*

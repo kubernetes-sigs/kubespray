@@ -85,9 +85,9 @@ $inventory = File.absolute_path($inventory, File.dirname(__FILE__))
 if ! File.exist?(File.join(File.dirname($inventory), "hosts.ini"))
   $vagrant_ansible = File.join(File.dirname(__FILE__), ".vagrant", "provisioners", "ansible")
   FileUtils.mkdir_p($vagrant_ansible) if ! File.exist?($vagrant_ansible)
-  if ! File.exist?(File.join($vagrant_ansible,"inventory"))
-    FileUtils.ln_s($inventory, File.join($vagrant_ansible,"inventory"))
-  end
+  $vagrant_inventory = File.join($vagrant_ansible,"inventory")
+  FileUtils.rm_f($vagrant_inventory)
+  FileUtils.ln_s($inventory, $vagrant_inventory)
 end
 
 if Vagrant.has_plugin?("vagrant-proxyconf")

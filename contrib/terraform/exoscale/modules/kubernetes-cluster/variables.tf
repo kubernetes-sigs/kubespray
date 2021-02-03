@@ -21,7 +21,9 @@ variable "machines" {
   }))
 }
 
-variable "ssh_pub_key" {}
+variable "ssh_public_keys" {
+  type = list(string)
+}
 
 variable "ssh_whitelist" {
   type = list(string)

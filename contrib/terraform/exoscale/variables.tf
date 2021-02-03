@@ -1,13 +1,13 @@
-variable zone {
+variable "zone" {
   description = "The zone where to run the cluster"
 }
 
-variable prefix {
+variable "prefix" {
   description = "Prefix for resource names"
   default     = "default"
 }
 
-variable machines {
+variable "machines" {
   description = "Cluster machines"
   type = map(object({
     node_type = string
@@ -21,24 +21,24 @@ variable machines {
   }))
 }
 
-variable ssh_pub_key {
-  description = "Path to public SSH key file which is injected into the VMs."
-  type        = string
+variable "ssh_public_keys" {
+  description = "List of public SSH keys which are injected into the VMs."
+  type        = list(string)
 }
 
-variable ssh_whitelist {
+variable "ssh_whitelist" {
   description = "List of IP ranges (CIDR) to whitelist for ssh"
-  type = list(string)
+  type        = list(string)
 }
 
-variable api_server_whitelist {
+variable "api_server_whitelist" {
   description = "List of IP ranges (CIDR) to whitelist for kubernetes api server"
-  type = list(string)
+  type        = list(string)
 }
 
-variable nodeport_whitelist {
+variable "nodeport_whitelist" {
   description = "List of IP ranges (CIDR) to whitelist for kubernetes nodeports"
-  type = list(string)
+  type        = list(string)
 }
 
 variable "inventory_file" {

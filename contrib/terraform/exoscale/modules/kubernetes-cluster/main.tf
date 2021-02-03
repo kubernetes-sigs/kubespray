@@ -45,7 +45,6 @@ resource "exoscale_compute" "master" {
   template_id     = data.exoscale_compute_template.os_image[each.key].id
   size            = each.value.size
   disk_size       = each.value.boot_disk.root_partition_size + each.value.boot_disk.node_local_partition_size + each.value.boot_disk.ceph_partition_size
-  key_pair        = exoscale_ssh_keypair.ssh_key.name
   state           = "Running"
   zone            = var.zone
   security_groups = [exoscale_security_group.master_sg.name]
@@ -58,6 +57,7 @@ resource "exoscale_compute" "master" {
       ceph_partition_size       = each.value.boot_disk.ceph_partition_size
       root_partition_size       = each.value.boot_disk.root_partition_size
       node_type                 = "master"
+      ssh_public_keys           = var.ssh_public_keys
     }
   )
 }
@@ -73,7 +73,6 @@ resource "exoscale_compute" "worker" {
   template_id     = data.exoscale_compute_template.os_image[each.key].id
   size            = each.value.size
   disk_size       = each.value.boot_disk.root_partition_size + each.value.boot_disk.node_local_partition_size + each.value.boot_disk.ceph_partition_size
-  key_pair        = exoscale_ssh_keypair.ssh_key.name
   state           = "Running"
   zone            = var.zone
   security_groups = [exoscale_security_group.worker_sg.name]
@@ -86,6 +85,7 @@ resource "exoscale_compute" "worker" {
       ceph_partition_size       = each.value.boot_disk.ceph_partition_size
       root_partition_size       = each.value.boot_disk.root_partition_size
       node_type                 = "worker"
+      ssh_public_keys           = var.ssh_public_keys
     }
   )
 }
@@ -190,9 +190,4 @@ resource "exoscale_secondary_ipaddress" "control_plane_lb" {
 
   compute_id = each.value.id
   ip_address = exoscale_ipaddress.control_plane_lb.ip_address
-}
-
-resource "exoscale_ssh_keypair" "ssh_key" {
-  name       = "${var.prefix}-ssh-key"
-  public_key = trimspace(file(pathexpand(var.ssh_pub_key)))
 }

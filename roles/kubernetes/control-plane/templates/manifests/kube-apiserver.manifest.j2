@@ -38,29 +38,23 @@ spec:
 {%   if etcd_events_cluster_enabled %}
     - --etcd-servers-overrides=/events#{{ etcd_events_access_addresses_semicolon }}
 {% endif %}
-{%   if kube_version is version('v1.9', '<')  %}
-    - --etcd-quorum-read=true
-{% endif %}
     - --etcd-cafile={{ etcd_cert_dir }}/ca.pem
     - --etcd-certfile={{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem
     - --etcd-keyfile={{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem
+{% if kube_version is version('v1.20', '<') %}
 {% if kube_apiserver_insecure_port|string != "0" %}
     - --insecure-bind-address={{ kube_apiserver_insecure_bind_address }}
 {% endif %}
+    - --insecure-port={{ kube_apiserver_insecure_port }}
+{% endif %}
     - --bind-address={{ kube_apiserver_bind_address }}
     - --apiserver-count={{ kube_apiserver_count }}
-{% if kube_version is version('v1.9', '>=') %}
     - --endpoint-reconciler-type=lease
-{% endif %}
-{% if kube_version is version('v1.10', '<') %}
-    - --admission-control={{ kube_apiserver_admission_control | join(',') }}
-{% else %}
 {% if kube_apiserver_enable_admission_plugins|length > 0 %}
     - --enable-admission-plugins={{ kube_apiserver_enable_admission_plugins | join(',') }}
 {% endif %}
 {% if kube_apiserver_disable_admission_plugins|length > 0 %}
     - --disable-admission-plugins={{ kube_apiserver_disable_admission_plugins | join(',') }}
-{% endif %}
 {% endif %}
     - --service-cluster-ip-range={{ kube_service_addresses }}
     - --service-node-port-range={{ kube_apiserver_node_port_range }}
@@ -76,7 +70,11 @@ spec:
 {% if kube_token_auth|default(true) %}
     - --token-auth-file={{ kube_token_dir }}/known_tokens.csv
 {% endif %}
-    - --service-account-key-file={{ kube_cert_dir }}/service-account-key.pem
+{% if kube_version is version('v1.20', '>=') %}
+    - --service-account-issuer=https://kubernetes.default.svc.{{ dns_domain }}
+    - --service-account-key-file={{ kube_cert_dir }}/service-account-pub.pem
+    - --service-account-signing-key-file={{ kube_cert_dir }}/service-account-key.pem
+{% endif %}
 {% if kube_oidc_auth|default(false) and kube_oidc_url is defined and kube_oidc_client_id is defined %}
     - --oidc-issuer-url={{ kube_oidc_url }}
     - --oidc-client-id={{ kube_oidc_client_id }}
@@ -97,17 +95,11 @@ spec:
 {%   endif %}
 {% endif %}
     - --secure-port={{ kube_apiserver_port }}
-    - --insecure-port={{ kube_apiserver_insecure_port }}
     - --storage-backend={{ kube_apiserver_storage_backend }}
 {% if kube_api_runtime_config is defined %}
 {%   for conf in kube_api_runtime_config %}
     - --runtime-config={{ conf }}
 {%   endfor %}
-{% endif %}
-{% if enable_network_policy %}
-{%   if kube_version is version('v1.8', '<')  %}
-    - --runtime-config=extensions/v1beta1/networkpolicies=true
-{%   endif %}
 {% endif %}
     - --v={{ kube_log_level }}
     - --allow-privileged=true
@@ -115,7 +107,7 @@ spec:
     - --cloud-provider={{ cloud_provider }}
     - --cloud-config={{ kube_config_dir }}/cloud_config
 {% endif %}
-{% if kube_api_anonymous_auth is defined and kube_version is version('v1.5', '>=')  %}
+{% if kube_api_anonymous_auth is defined  %}
     - --anonymous-auth={{ kube_api_anonymous_auth }}
 {% endif %}
 {% if kube_webhook_token_auth|default(false) %}
@@ -128,29 +120,19 @@ spec:
     - --authorization-mode={{ authorization_modes|join(',') }}
 {% endif %}
 {% if kube_encrypt_secret_data %}
-    - --experimental-encryption-provider-config={{ kube_config_dir }}/ssl/secrets_encryption.yaml
+    - --encryption-provider-config={{ kube_config_dir }}/ssl/secrets_encryption.yaml
 {% endif %}
 {% if kube_feature_gates %}
     - --feature-gates={{ kube_feature_gates|join(',') }}
 {% endif %}
-{% if kube_version is version('v1.9', '>=') %}
     - --requestheader-client-ca-file={{ kube_cert_dir }}/{{ kube_front_proxy_ca }}
-{# FIXME(mattymo): Vault certs do not work with front-proxy-client #}
-{% if cert_management == "vault" %}
-    - --requestheader-allowed-names=
-{% else %}
     - --requestheader-allowed-names=front-proxy-client
-{% endif %}
     - --requestheader-extra-headers-prefix=X-Remote-Extra-
     - --requestheader-group-headers=X-Remote-Group
     - --requestheader-username-headers=X-Remote-User
     - --enable-aggregator-routing={{ kube_api_aggregator_routing }}
     - --proxy-client-cert-file={{ kube_cert_dir }}/front-proxy-client.pem
     - --proxy-client-key-file={{ kube_cert_dir }}/front-proxy-client-key.pem
-{% else %}
-    - --proxy-client-cert-file={{ kube_cert_dir }}/apiserver.pem
-    - --proxy-client-key-file={{ kube_cert_dir }}/apiserver-key.pem
-{% endif %}
     - --default-not-ready-toleration-seconds={{ kube_apiserver_pod_eviction_not_ready_timeout_seconds }}
     - --default-unreachable-toleration-seconds={{ kube_apiserver_pod_eviction_unreachable_timeout_seconds }}
 {% if apiserver_custom_flags is string %}

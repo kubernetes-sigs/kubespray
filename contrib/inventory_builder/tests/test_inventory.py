@@ -222,11 +222,11 @@ class TestInventory(unittest.TestCase):
             self.inv.yaml_config['all']['children'][group]['hosts'].get(host),
             None)
 
-    def test_set_kube_master(self):
+    def test_set_kube_control_plane(self):
         group = 'kube-master'
         host = 'node1'
 
-        self.inv.set_kube_master([host])
+        self.inv.set_kube_control_plane([host])
         self.assertIn(
             host, self.inv.yaml_config['all']['children'][group]['hosts'])
 
@@ -275,7 +275,7 @@ class TestInventory(unittest.TestCase):
 
         self.inv.set_all(hosts)
         self.inv.set_etcd(list(hosts.keys())[0:3])
-        self.inv.set_kube_master(list(hosts.keys())[0:2])
+        self.inv.set_kube_control_plane(list(hosts.keys())[0:2])
         self.inv.set_kube_node(hosts.keys())
         for h in range(3):
             self.assertFalse(
@@ -291,7 +291,7 @@ class TestInventory(unittest.TestCase):
 
         self.inv.set_all(hosts)
         self.inv.set_etcd(list(hosts.keys())[0:3])
-        self.inv.set_kube_master(list(hosts.keys())[3:5])
+        self.inv.set_kube_control_plane(list(hosts.keys())[3:5])
         self.inv.set_kube_node(hosts.keys())
         for h in range(5):
             self.assertFalse(

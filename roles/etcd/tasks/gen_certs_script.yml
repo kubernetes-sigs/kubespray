@@ -66,11 +66,10 @@
               {% endfor %}"
   run_once: yes
   delegate_to: "{{ groups['etcd'][0] }}"
-  when:
-    - gen_certs|default(false)
+  when: gen_certs|default(false)
   notify: set etcd_secret_changed
 
-- name: Gen_certs | Gather etcd master certs
+- name: Gen_certs | Gather etcd member and admin certs from first etcd node
   slurp:
     src: "{{ item }}"
   register: etcd_master_certs
@@ -83,10 +82,6 @@
         '{{ etcd_cert_dir }}/member-{{ node }}.pem',
         '{{ etcd_cert_dir }}/member-{{ node }}-key.pem',
         {% endfor %}]"
-    - "[{% for node in (groups['k8s-cluster'] + groups['calico-rr']|default([]))|unique %}
-        '{{ etcd_cert_dir }}/node-{{ node }}.pem',
-        '{{ etcd_cert_dir }}/node-{{ node }}-key.pem',
-        {% endfor %}]"
   delegate_to: "{{ groups['etcd'][0] }}"
   when:
     - inventory_hostname in groups['etcd']
@@ -94,7 +89,7 @@
     - inventory_hostname != groups['etcd'][0]
   notify: set etcd_secret_changed
 
-- name: Gen_certs | Write etcd master certs
+- name: Gen_certs | Write etcd member and admin certs to other etcd nodes
   copy:
     dest: "{{ item.item }}"
     content: "{{ item.content | b64decode }}"
@@ -105,6 +100,35 @@
   when:
     - inventory_hostname in groups['etcd']
     - sync_certs|default(false)
+    - inventory_hostname != groups['etcd'][0]
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Gen_certs | Gather node certs from first etcd node
+  slurp:
+    src: "{{ item }}"
+  register: etcd_master_node_certs
+  with_items:
+    - "[{% for node in (groups['k8s-cluster'] + groups['calico-rr']|default([]))|unique %}
+        '{{ etcd_cert_dir }}/node-{{ node }}.pem',
+        '{{ etcd_cert_dir }}/node-{{ node }}-key.pem',
+        {% endfor %}]"
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when:
+    - inventory_hostname in groups['etcd']
+    - inventory_hostname != groups['etcd'][0]
+  notify: set etcd_secret_changed
+
+- name: Gen_certs | Write node certs to other etcd nodes
+  copy:
+    dest: "{{ item.item }}"
+    content: "{{ item.content | b64decode }}"
+    group: "{{ etcd_cert_group }}"
+    owner: kube
+    mode: 0640
+  with_items: "{{ etcd_master_node_certs.results }}"
+  when:
+    - inventory_hostname in groups['etcd']
     - inventory_hostname != groups['etcd'][0]
   loop_control:
     label: "{{ item.item }}"

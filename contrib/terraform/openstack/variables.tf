@@ -258,3 +258,23 @@ variable "extra_sec_groups" {
 variable "extra_sec_groups_name" {
   default = "custom"
 }
+
+variable "image_uuid" {
+  description = "uuid of image inside openstack to use"
+  default     = ""
+}
+
+variable "image_gfs_uuid" {
+  description = "uuid of image to be used on gluster fs nodes. If empty defaults to image_uuid"
+  default     = ""
+}
+
+variable "image_master" {
+  description = "uuid of image inside openstack to use"
+  default     = ""
+}
+
+variable "image_master_uuid" {
+  description = "uuid of image to be used on master nodes. If empty defaults to image_uuid"
+  default     = ""
+}

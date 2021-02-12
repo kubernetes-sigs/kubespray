@@ -149,7 +149,7 @@ locals {
   worker_sec_groups = compact([
     openstack_networking_secgroup_v2.k8s.name,
     openstack_networking_secgroup_v2.worker.name,
-    var.extra_sec_groups ? openstack_networking_secgroup_v2.k8s_master_extra[0].name : "",
+    var.extra_sec_groups ? openstack_networking_secgroup_v2.worker_extra[0].name : "",
   ])
 }
 

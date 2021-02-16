@@ -1,9 +1,16 @@
 data "openstack_images_image_v2" "vm_image" {
+  count = var.image_uuid == "" ? 1 : 0
   name = var.image
 }
 
 data "openstack_images_image_v2" "gfs_image" {
+  count = var.image_gfs_uuid == "" ? var.image_uuid == "" ? 1 : 0 : 0
   name = var.image_gfs == "" ? var.image : var.image_gfs
+}
+
+data "openstack_images_image_v2" "image_master" {
+  count = var.image_master_uuid == "" ? var.image_uuid == "" ? 1 : 0 : 0
+  name = var.image_master == "" ? var.image : var.image_master
 }
 
 resource "openstack_compute_keypair_v2" "k8s" {
@@ -151,19 +158,26 @@ locals {
     openstack_networking_secgroup_v2.worker.name,
     var.extra_sec_groups ? openstack_networking_secgroup_v2.worker_extra[0].name : "",
   ])
+
+# Image uuid
+  image_to_use_node = var.image_uuid != "" ? var.image_uuid : data.openstack_images_image_v2.vm_image[0].id
+# Image_gfs uuid
+  image_to_use_gfs = var.image_gfs_uuid != "" ? var.image_gfs_uuid : var.image_uuid != "" ? var.image_uuid : data.openstack_images_image_v2.gfs_image[0].id
+# image_master uuidimage_gfs_uuid
+  image_to_use_master = var.image_master_uuid != "" ? var.image_master_uuid : var.image_uuid != "" ? var.image_uuid : data.openstack_images_image_v2.image_master[0].id
 }
 
 resource "openstack_compute_instance_v2" "bastion" {
   name       = "${var.cluster_name}-bastion-${count.index + 1}"
   count      = var.number_of_bastions
-  image_name = var.image
+  image_id   = var.bastion_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id  = var.flavor_bastion
   key_pair   = openstack_compute_keypair_v2.k8s.name
 
   dynamic "block_device" {
-    for_each = var.bastion_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.bastion_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []
     content {
-      uuid                  = data.openstack_images_image_v2.vm_image.id
+      uuid                  = local.image_to_use_node
       source_type           = "image"
       volume_size           = var.bastion_root_volume_size_in_gb
       boot_index            = 0
@@ -196,15 +210,15 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   name              = "${var.cluster_name}-k8s-master-${count.index + 1}"
   count             = var.number_of_k8s_masters
   availability_zone = element(var.az_list, count.index)
-  image_name        = var.image
+  image_id          = var.master_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_k8s_master
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
 
   dynamic "block_device" {
-    for_each = var.master_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.master_root_volume_size_in_gb > 0 ? [local.image_to_use_master] : []
     content {
-      uuid                  = data.openstack_images_image_v2.vm_image.id
+      uuid                  = local.image_to_use_master
       source_type           = "image"
       volume_size           = var.master_root_volume_size_in_gb
       volume_type           = var.master_volume_type
@@ -243,15 +257,15 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   name              = "${var.cluster_name}-k8s-master-ne-${count.index + 1}"
   count             = var.number_of_k8s_masters_no_etcd
   availability_zone = element(var.az_list, count.index)
-  image_name        = var.image
+  image_id          = var.master_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_k8s_master
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
 
   dynamic "block_device" {
-    for_each = var.master_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.master_root_volume_size_in_gb > 0 ? [local.image_to_use_master] : []
     content {
-      uuid                  = data.openstack_images_image_v2.vm_image.id
+      uuid                  = local.image_to_use_master
       source_type           = "image"
       volume_size           = var.master_root_volume_size_in_gb
       volume_type           = var.master_volume_type
@@ -290,14 +304,14 @@ resource "openstack_compute_instance_v2" "etcd" {
   name              = "${var.cluster_name}-etcd-${count.index + 1}"
   count             = var.number_of_etcd
   availability_zone = element(var.az_list, count.index)
-  image_name        = var.image
+  image_id          = var.etcd_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_etcd
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
   dynamic "block_device" {
-    for_each = var.etcd_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.etcd_root_volume_size_in_gb > 0 ? [local.image_to_use_master] : []
     content {
-      uuid                  = data.openstack_images_image_v2.vm_image.id
+      uuid                  = local.image_to_use_master
       source_type           = "image"
       volume_size           = var.etcd_root_volume_size_in_gb
       boot_index            = 0
@@ -331,14 +345,14 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   name              = "${var.cluster_name}-k8s-master-nf-${count.index + 1}"
   count             = var.number_of_k8s_masters_no_floating_ip
   availability_zone = element(var.az_list, count.index)
-  image_name        = var.image
+  image_id          = var.master_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_k8s_master
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
   dynamic "block_device" {
-    for_each = var.master_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.master_root_volume_size_in_gb > 0 ? [local.image_to_use_master] : []
     content {
-      uuid                  = data.openstack_images_image_v2.vm_image.id
+      uuid                  = local.image_to_use_master
       source_type           = "image"
       volume_size           = var.master_root_volume_size_in_gb
       volume_type           = var.master_volume_type
@@ -373,14 +387,14 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   name              = "${var.cluster_name}-k8s-master-ne-nf-${count.index + 1}"
   count             = var.number_of_k8s_masters_no_floating_ip_no_etcd
   availability_zone = element(var.az_list, count.index)
-  image_name        = var.image
+  image_id          = var.master_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_k8s_master
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
   dynamic "block_device" {
-    for_each = var.master_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.master_root_volume_size_in_gb > 0 ? [local.image_to_use_master] : []
     content {
-      uuid                  = data.openstack_images_image_v2.vm_image.id
+      uuid                  = local.image_to_use_master
       source_type           = "image"
       volume_size           = var.master_root_volume_size_in_gb
       volume_type           = var.master_volume_type
@@ -415,14 +429,14 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   name              = "${var.cluster_name}-k8s-node-${count.index + 1}"
   count             = var.number_of_k8s_nodes
   availability_zone = element(var.az_list_node, count.index)
-  image_name        = var.image
+  image_id          = var.node_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id         = var.flavor_k8s_node
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
   dynamic "block_device" {
-    for_each = var.node_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.node_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []
     content {
-      uuid                  = data.openstack_images_image_v2.vm_image.id
+      uuid                  = local.image_to_use_node
       source_type           = "image"
       volume_size           = var.node_root_volume_size_in_gb
       boot_index            = 0
@@ -460,14 +474,14 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   name              = "${var.cluster_name}-k8s-node-nf-${count.index + 1}"
   count             = var.number_of_k8s_nodes_no_floating_ip
   availability_zone = element(var.az_list_node, count.index)
-  image_name        = var.image
+  image_id          = var.node_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id         = var.flavor_k8s_node
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
   dynamic "block_device" {
-    for_each = var.node_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.node_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []
     content {
-      uuid                  = data.openstack_images_image_v2.vm_image.id
+      uuid                  = local.image_to_use_node
       source_type           = "image"
       volume_size           = var.node_root_volume_size_in_gb
       boot_index            = 0
@@ -501,14 +515,14 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   for_each          = var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? var.k8s_nodes : {}
   name              = "${var.cluster_name}-k8s-node-${each.key}"
   availability_zone = each.value.az
-  image_name        = var.image
+  image_id          = var.node_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id         = each.value.flavor
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
   dynamic "block_device" {
-    for_each = var.node_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.node_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []
     content {
-      uuid                  = data.openstack_images_image_v2.vm_image.id
+      uuid                  = local.image_to_use_node
       source_type           = "image"
       volume_size           = var.node_root_volume_size_in_gb
       boot_index            = 0
@@ -546,14 +560,14 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
   name              = "${var.cluster_name}-gfs-node-nf-${count.index + 1}"
   count             = var.number_of_gfs_nodes_no_floating_ip
   availability_zone = element(var.az_list, count.index)
-  image_name        = var.image_gfs
+  image_name        = var.gfs_root_volume_size_in_gb == 0 ? local.image_to_use_gfs : null
   flavor_id         = var.flavor_gfs_node
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
   dynamic "block_device" {
-    for_each = var.gfs_root_volume_size_in_gb > 0 ? [var.image] : []
+    for_each = var.gfs_root_volume_size_in_gb > 0 ? [local.image_to_use_gfs] : []
     content {
-      uuid                  = data.openstack_images_image_v2.vm_image.id
+      uuid                  = local.image_to_use_gfs
       source_type           = "image"
       volume_size           = var.gfs_root_volume_size_in_gb
       boot_index            = 0

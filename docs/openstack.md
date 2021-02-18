@@ -125,10 +125,11 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
   ```
 
 - You can override the default OpenStack metadata configuration (see [#6338](https://github.com/kubernetes-sigs/kubespray/issues/6338) for explanation):
-  
+
   ```yaml
   external_openstack_metadata_search_order: "configDrive,metadataService"
   ```
+
 - Available variables for configuring lbaas:
 
   ```yaml

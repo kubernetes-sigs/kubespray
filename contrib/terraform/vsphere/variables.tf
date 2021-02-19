@@ -4,24 +4,20 @@ variable prefix {
   default = ""
 }
 
+variable "machines" {
+  description = "Cluster machines"
+  type = map(object({
+    node_type = string
+    ip      = string
+  }))
+}
+
 variable inventory_file {
   default = "inventory.ini"
 }
 
 variable "network" {
   default = "VM Network"
-}
-
-variable "ip_prefix" {
-  default = ""
-}
-
-variable "ip_last_octet_start_number_master" {
-  default = ""
-}
-
-variable "ip_last_octet_start_number_worker" {
-  default = ""
 }
 
 variable "gateway" {

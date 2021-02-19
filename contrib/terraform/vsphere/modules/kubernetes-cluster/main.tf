@@ -1,6 +1,11 @@
 resource "vsphere_virtual_machine" "worker" {
-  count               = var.worker_count
-  name                = "${var.prefix}-worker-${count.index}"
+  for_each = {
+    for name, machine in var.machines :
+    name => machine
+    if machine.node_type == "worker"
+  }
+
+  name                = each.key
   resource_pool_id    = var.pool_id
   datastore_id        = var.datastore_id
 
@@ -41,7 +46,7 @@ resource "vsphere_virtual_machine" "worker" {
 
   vapp {
     properties = {
-      "user-data" = base64encode(templatefile("../../contrib/terraform/vsphere/cloud-init.yaml", { ip = "${var.ip_prefix}.${count.index + var.ip_last_octet_start_number_worker}/28",
+      "user-data" = base64encode(templatefile("${path.root}/cloud-init.yaml", { ip = "${each.value.ip}",
                                                                   gw = "${var.gateway}",
                                                                   dns = "${var.dns_primary}",
                                                                   ssh_pub_key = "${file(var.ssh_pub_key)}"}))
@@ -50,8 +55,13 @@ resource "vsphere_virtual_machine" "worker" {
 }
 
 resource "vsphere_virtual_machine" "master" {
-  count               = var.master_count
-  name                = "${var.prefix}-master-${count.index}"
+  for_each = {
+    for name, machine in var.machines :
+    name => machine
+    if machine.node_type == "master"
+  }
+
+  name                = each.key
   resource_pool_id    = var.pool_id
   datastore_id        = var.datastore_id
 
@@ -90,7 +100,7 @@ resource "vsphere_virtual_machine" "master" {
 
   vapp {
     properties = {
-      "user-data" = base64encode(templatefile("${path.root}/cloud-init.yaml", { ip = "${var.ip_prefix}.${count.index + var.ip_last_octet_start_number_master}/28",
+      "user-data" = base64encode(templatefile("${path.root}/cloud-init.yaml", { ip = "${each.value.ip}",
                                                                   gw = "${var.gateway}",
                                                                   dns = "${var.dns_primary}",
                                                                   ssh_pub_key = "${file(var.ssh_pub_key)}"}))

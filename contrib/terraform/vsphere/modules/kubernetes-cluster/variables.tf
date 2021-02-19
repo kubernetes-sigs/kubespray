@@ -1,8 +1,14 @@
 ## Global ##
 variable "prefix" {}
-variable "ip_prefix" {}
-variable "ip_last_octet_start_number_worker" {}
-variable "ip_last_octet_start_number_master" {}
+
+variable "machines" {
+  description = "Cluster machines"
+  type = map(object({
+    node_type = string
+    ip      = string
+  }))
+}
+
 variable "gateway" {}
 variable "dns_primary" {}
 variable "dns_secondary" {}

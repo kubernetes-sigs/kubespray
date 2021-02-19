@@ -45,6 +45,8 @@ module "kubernetes" {
 
   prefix = var.prefix
 
+  machines = var.machines
+
   ## Master ##
   master_count      = var.master_count
   master_cores      = var.master_cores
@@ -59,9 +61,6 @@ module "kubernetes" {
 
   ## Global ##
 
-  ip_prefix                         = var.ip_prefix
-  ip_last_octet_start_number_master = var.ip_last_octet_start_number_master
-  ip_last_octet_start_number_worker = var.ip_last_octet_start_number_worker
   gateway                           = var.gateway
   dns_primary                       = var.dns_primary
   dns_secondary                     = var.dns_secondary
@@ -91,21 +90,17 @@ data "template_file" "inventory" {
   template = file("${path.module}/templates/inventory.tpl")
 
   vars = {
-    connection_strings_master = join("\n", formatlist("%s-node%d ansible_user=ubuntu ansible_host=%s etcd_member_name=etcd%d",
-      "${var.prefix}",
-      range(1, length(module.kubernetes.master_ip) + 1),
-      module.kubernetes.master_ip,
+    connection_strings_master = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s etcd_member_name=etcd%d",
+      keys(module.kubernetes.master_ip),
+      values(module.kubernetes.master_ip),
       range(1, length(module.kubernetes.master_ip) + 1)))
-    connection_strings_worker = join("\n", formatlist("%s-node%d ansible_user=ubuntu ansible_host=%s",
-      "${var.prefix}",
-      range(length(module.kubernetes.master_ip) + 1, length(module.kubernetes.master_ip) + length(module.kubernetes.worker_ip) + 1),
-      module.kubernetes.worker_ip))
-    list_master       = join("\n", formatlist("%s-node%d",
-      "${var.prefix}",
-      range(1, length(module.kubernetes.master_ip) + 1)))
-    list_worker       = join("\n", formatlist("%s-node%d",
-      "${var.prefix}",
-      range(length(module.kubernetes.master_ip) + 1, length(module.kubernetes.master_ip) + length(module.kubernetes.worker_ip) + 1)))
+    connection_strings_worker = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s",
+      keys(module.kubernetes.worker_ip),
+      values(module.kubernetes.worker_ip)))
+    list_master       = join("\n", formatlist("%s",
+      keys(module.kubernetes.master_ip)))
+    list_worker       = join("\n", formatlist("%s",
+      keys(module.kubernetes.worker_ip)))
   }
 }
 

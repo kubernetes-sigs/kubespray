@@ -26,13 +26,11 @@ variable "ssh_pub_key" {}
 variable "hardware_version" {}
 
 ## Master ##
-variable "master_count" {}
 variable "master_cores" {}
 variable "master_memory" {}
 variable "master_disk_size" {}
 
 ## Worker ##
-variable "worker_count" {}
 variable "worker_cores" {}
 variable "worker_memory" {}
 variable "worker_disk_size" {}

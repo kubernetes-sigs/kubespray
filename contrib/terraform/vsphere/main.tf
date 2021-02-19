@@ -48,13 +48,11 @@ module "kubernetes" {
   machines = var.machines
 
   ## Master ##
-  master_count      = var.master_count
   master_cores      = var.master_cores
   master_memory     = var.master_memory
   master_disk_size  = var.master_disk_size
 
   ## Worker ##
-  worker_count      = var.worker_count
   worker_cores      = var.worker_cores
   worker_memory     = var.worker_memory
   worker_disk_size  = var.worker_disk_size

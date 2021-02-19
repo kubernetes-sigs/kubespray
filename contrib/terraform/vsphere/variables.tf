@@ -69,9 +69,7 @@ variable "ssh_pub_key" {
 }
 
 ## Master ##
-variable "master_count" {
-  default = "1"
-}
+
 variable "master_cores" {
   default = 4
 }
@@ -86,9 +84,6 @@ variable "master_disk_size" {
 
 ## Worker ##
 
-variable "worker_count" {
-  default = "1"
-}
 variable "worker_cores" {
   default = 16
 }

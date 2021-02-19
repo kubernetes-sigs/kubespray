@@ -41,7 +41,7 @@ resource "vsphere_virtual_machine" "worker" {
 
   vapp {
     properties = {
-      "user-data" = base64encode(templatefile("/home/jakub/workspace/ck8s/compliantkubernetes-kubespray/kubespray/contrib/terraform/vsphere/cloud-init.yaml", { ip = "${var.ip_prefix}.${count.index + var.ip_last_octet_start_number_worker}/28",
+      "user-data" = base64encode(templatefile("../../contrib/terraform/vsphere/cloud-init.yaml", { ip = "${var.ip_prefix}.${count.index + var.ip_last_octet_start_number_worker}/28",
                                                                   gw = "${var.gateway}",
                                                                   dns = "${var.dns_primary}",
                                                                   ssh_pub_key = "${file(var.ssh_pub_key)}"}))
@@ -90,7 +90,7 @@ resource "vsphere_virtual_machine" "master" {
 
   vapp {
     properties = {
-      "user-data" = base64encode(templatefile("/home/jakub/workspace/ck8s/compliantkubernetes-kubespray/kubespray/contrib/terraform/vsphere/cloud-init.yaml", { ip = "${var.ip_prefix}.${count.index + var.ip_last_octet_start_number_master}/28",
+      "user-data" = base64encode(templatefile("${path.root}/cloud-init.yaml", { ip = "${var.ip_prefix}.${count.index + var.ip_last_octet_start_number_master}/28",
                                                                   gw = "${var.gateway}",
                                                                   dns = "${var.dns_primary}",
                                                                   ssh_pub_key = "${file(var.ssh_pub_key)}"}))

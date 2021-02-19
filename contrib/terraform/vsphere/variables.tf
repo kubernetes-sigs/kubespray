@@ -4,6 +4,10 @@ variable prefix {
   default = ""
 }
 
+variable inventory_file {
+  default = "inventory.ini"
+}
+
 variable "network" {
   default = "VM Network"
 }

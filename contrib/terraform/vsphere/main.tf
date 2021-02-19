@@ -82,3 +82,39 @@ module "kubernetes" {
 
   ssh_pub_key   = var.ssh_pub_key
 }
+
+#
+# Generate ansible inventory
+#
+
+data "template_file" "inventory" {
+  template = file("${path.module}/templates/inventory.tpl")
+
+  vars = {
+    connection_strings_master = join("\n", formatlist("%s-node%d ansible_user=ubuntu ansible_host=%s etcd_member_name=etcd%d",
+      "${var.prefix}",
+      range(1, length(module.kubernetes.master_ip) + 1),
+      module.kubernetes.master_ip,
+      range(1, length(module.kubernetes.master_ip) + 1)))
+    connection_strings_worker = join("\n", formatlist("%s-node%d ansible_user=ubuntu ansible_host=%s",
+      "${var.prefix}",
+      range(length(module.kubernetes.master_ip) + 1, length(module.kubernetes.master_ip) + length(module.kubernetes.worker_ip) + 1),
+      module.kubernetes.worker_ip))
+    list_master       = join("\n", formatlist("%s-node%d",
+      "${var.prefix}",
+      range(1, length(module.kubernetes.master_ip) + 1)))
+    list_worker       = join("\n", formatlist("%s-node%d",
+      "${var.prefix}",
+      range(length(module.kubernetes.master_ip) + 1, length(module.kubernetes.master_ip) + length(module.kubernetes.worker_ip) + 1)))
+  }
+}
+
+resource "null_resource" "inventories" {
+  provisioner "local-exec" {
+    command = "echo '${data.template_file.inventory.rendered}' > ${var.inventory_file}"
+  }
+
+  triggers = {
+    template = data.template_file.inventory.rendered
+  }
+}

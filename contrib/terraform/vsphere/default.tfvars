@@ -5,27 +5,30 @@ inventory_file = "inventory.ini"
 machines = {
   "master-0" : {
     "node_type" : "master",
-    "ip" : "0.0.0.0/24"
+    "ip" : "i-did-not-read-the-docs" # e.g. 192.168.0.2/24
   },
   "worker-0" : {
     "node_type" : "worker",
-    "ip" : "0.0.0.0/24"
+    "ip" : "i-did-not-read-the-docs" # e.g. 192.168.0.2/24
   },
   "worker-1" : {
     "node_type" : "worker",
-    "ip" : "0.0.0.0/24"
+    "ip" : "i-did-not-read-the-docs" # e.g. 192.168.0.2/24
   }
 }
-gateway = "0.0.0.0"
-dns_primary = "8.8.4.4"
-dns_secondary = "8.8.8.8"
 
-ssh_pub_key = "~/.ssh/id_rsa.pub"
+gateway = "i-did-not-read-the-docs" # e.g. 192.168.0.2
 
-vsphere_datacenter = ""
-vsphere_compute_cluster = "Cluster"
-vsphere_datastore = "ssd-000000"
-vsphere_server = "vsphere.server.com"
-vsphere_hostname = "0.0.0.0"
+ssh_public_keys = [
+  # Put your public SSH key here
+  "ssh-rsa I-did-not-read-the-docs",
+  "ssh-rsa I-did-not-read-the-docs 2",
+]
 
-template_name = "ubuntu-bionic-18.04-cloudimg"
+vsphere_datacenter      = "i-did-not-read-the-docs"
+vsphere_compute_cluster = "i-did-not-read-the-docs" # e.g. Cluster
+vsphere_datastore       = "i-did-not-read-the-docs" # e.g. ssd-000000
+vsphere_server          = "i-did-not-read-the-docs" # e.g. vsphere.server.com
+vsphere_hostname        = "i-did-not-read-the-docs" # e.g. 192.168.0.2
+
+template_name = "i-did-not-read-the-docs" # e.g. ubuntu-bionic-18.04-cloudimg

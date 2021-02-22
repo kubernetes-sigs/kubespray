@@ -22,7 +22,9 @@ variable "disk_thin_provisioned" {}
 variable "template_id" {}
 variable "firmware" {}
 variable "folder" {}
-variable "ssh_pub_key" {}
+variable "ssh_public_keys" {
+  type = list(string)
+}
 variable "hardware_version" {}
 
 ## Master ##

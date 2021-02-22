@@ -62,13 +62,13 @@ export VSPHERE_USER=username
 export VSPHERE_PASSWORD=password
 ```
 
-Run terraform to create the infrastructure.
+Run Terraform to create the infrastructure.
 
 ```bash
 terraform init ../../contrib/terraform/vsphere
 terraform apply \
     -var-file default.tfvars \
-    -state=tfstate-$CLUSTER.tfstate  \
+    -state=tfstate-$CLUSTER.tfstate \
     ../../contrib/terraform/vsphere
 ```
 
@@ -96,9 +96,7 @@ ansible-playbook -i inventory.ini ../../cluster.yml -b -v
   * `node_type`: The role of this node *(master|worker)*
   * `ip`: The IP address with the netmask (CIDR notation)
 * `gateway`: The IP address of the network gateway
-* `dns_primary`: The IP address of primary DNS server
-* `dns_secondary`:The IP address of secondary DNS server
-* `ssh_public_key`: List of public SSH keys to install on all machines
+* `ssh_public_keys`: List of public SSH keys to install on all machines
 * `vsphere_datacenter`: The identifier of vSphere data center
 * `vsphere_compute_cluster`: The identifier of vSphere compute cluster
 * `vsphere_datastore`: The identifier of vSphere data store
@@ -109,5 +107,7 @@ ansible-playbook -i inventory.ini ../../cluster.yml -b -v
 ### Optional
 
 * `prefix`: Prefix to use for all resources, required to be unique for all clusters in the same project *(Defaults to `default`)*
+* `dns_primary`: The IP address of primary DNS server *(Defaults to `8.8.4.4`)*
+* `dns_secondary`:The IP address of secondary DNS server *(Defaults to `8.8.8.8`)*
 
 An example variables file can be found `default.tfvars`

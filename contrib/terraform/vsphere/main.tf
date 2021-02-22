@@ -41,30 +41,30 @@ resource "vsphere_resource_pool" "pool" {
 }
 
 module "kubernetes" {
-  source        = "./modules/kubernetes-cluster"
+  source = "./modules/kubernetes-cluster"
 
   prefix = var.prefix
 
   machines = var.machines
 
   ## Master ##
-  master_cores      = var.master_cores
-  master_memory     = var.master_memory
-  master_disk_size  = var.master_disk_size
+  master_cores     = var.master_cores
+  master_memory    = var.master_memory
+  master_disk_size = var.master_disk_size
 
   ## Worker ##
-  worker_cores      = var.worker_cores
-  worker_memory     = var.worker_memory
-  worker_disk_size  = var.worker_disk_size
+  worker_cores     = var.worker_cores
+  worker_memory    = var.worker_memory
+  worker_disk_size = var.worker_disk_size
 
   ## Global ##
 
-  gateway                           = var.gateway
-  dns_primary                       = var.dns_primary
-  dns_secondary                     = var.dns_secondary
+  gateway       = var.gateway
+  dns_primary   = var.dns_primary
+  dns_secondary = var.dns_secondary
 
-  pool_id       = vsphere_resource_pool.pool.id
-  datastore_id  = data.vsphere_datastore.datastore.id
+  pool_id      = vsphere_resource_pool.pool.id
+  datastore_id = data.vsphere_datastore.datastore.id
 
   folder                = ""
   guest_id              = data.vsphere_virtual_machine.template.guest_id
@@ -75,9 +75,9 @@ module "kubernetes" {
   hardware_version      = var.hardware_version
   disk_thin_provisioned = data.vsphere_virtual_machine.template.disks.0.thin_provisioned
 
-  template_id   = data.vsphere_virtual_machine.template.id
+  template_id = data.vsphere_virtual_machine.template.id
 
-  ssh_pub_key   = var.ssh_pub_key
+  ssh_public_keys = var.ssh_public_keys
 }
 
 #
@@ -91,14 +91,14 @@ data "template_file" "inventory" {
     connection_strings_master = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s etcd_member_name=etcd%d",
       keys(module.kubernetes.master_ip),
       values(module.kubernetes.master_ip),
-      range(1, length(module.kubernetes.master_ip) + 1)))
+    range(1, length(module.kubernetes.master_ip) + 1)))
     connection_strings_worker = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s",
       keys(module.kubernetes.worker_ip),
-      values(module.kubernetes.worker_ip)))
-    list_master       = join("\n", formatlist("%s",
-      keys(module.kubernetes.master_ip)))
-    list_worker       = join("\n", formatlist("%s",
-      keys(module.kubernetes.worker_ip)))
+    values(module.kubernetes.worker_ip)))
+    list_master = join("\n", formatlist("%s",
+    keys(module.kubernetes.master_ip)))
+    list_worker = join("\n", formatlist("%s",
+    keys(module.kubernetes.worker_ip)))
   }
 }
 

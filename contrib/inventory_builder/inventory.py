@@ -63,7 +63,9 @@ def get_var_as_bool(name, default):
 
 
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory/sample/hosts.yaml")
-KUBE_MASTERS = int(os.environ.get("KUBE_MASTERS", 2))
+# Remove the reference of KUBE_MASTERS after some deprecation cycles.
+KUBE_CONTROL_HOSTS = int(os.environ.get("KUBE_CONTROL_HOSTS",
+                         os.environ.get("KUBE_MASTERS", 2)))
 # Reconfigures cluster distribution at scale
 SCALE_THRESHOLD = int(os.environ.get("SCALE_THRESHOLD", 50))
 MASSIVE_SCALE_THRESHOLD = int(os.environ.get("MASSIVE_SCALE_THRESHOLD", 200))
@@ -102,10 +104,11 @@ class KubesprayInventory(object):
             etcd_hosts_count = 3 if len(self.hosts.keys()) >= 3 else 1
             self.set_etcd(list(self.hosts.keys())[:etcd_hosts_count])
             if len(self.hosts) >= SCALE_THRESHOLD:
-                self.set_kube_master(list(self.hosts.keys())[
-                    etcd_hosts_count:(etcd_hosts_count + KUBE_MASTERS)])
+                self.set_kube_control_plane(list(self.hosts.keys())[
+                    etcd_hosts_count:(etcd_hosts_count + KUBE_CONTROL_HOSTS)])
             else:
-                self.set_kube_master(list(self.hosts.keys())[:KUBE_MASTERS])
+                self.set_kube_control_plane(
+                  list(self.hosts.keys())[:KUBE_CONTROL_HOSTS])
             self.set_kube_node(self.hosts.keys())
             if len(self.hosts) >= SCALE_THRESHOLD:
                 self.set_calico_rr(list(self.hosts.keys())[:etcd_hosts_count])
@@ -294,7 +297,7 @@ class KubesprayInventory(object):
             else:
                 self.yaml_config['all']['children'][group]['hosts'][host] = None  # noqa
 
-    def set_kube_master(self, hosts):
+    def set_kube_control_plane(self, hosts):
         for host in hosts:
             self.add_host_to_group('kube-master', host)
 
@@ -402,9 +405,9 @@ Configurable env vars:
 DEBUG                   Enable debug printing. Default: True
 CONFIG_FILE             File to write config to Default: ./inventory/sample/hosts.yaml
 HOST_PREFIX             Host prefix for generated hosts. Default: node
-KUBE_MASTERS            Set the number of kube-masters. Default: 2
+KUBE_CONTROL_HOSTS      Set the number of kube-control-planes. Default: 2
 SCALE_THRESHOLD         Separate ETCD role if # of nodes >= 50
-MASSIVE_SCALE_THRESHOLD Separate K8s master and ETCD if # of nodes >= 200
+MASSIVE_SCALE_THRESHOLD Separate K8s control-plane and ETCD if # of nodes >= 200
 '''  # noqa
         print(help_text)
 

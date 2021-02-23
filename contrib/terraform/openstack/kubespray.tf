@@ -63,7 +63,6 @@ module "compute" {
   flavor_k8s_node                              = var.flavor_k8s_node
   flavor_etcd                                  = var.flavor_etcd
   flavor_gfs_node                              = var.flavor_gfs_node
-  network_name                                 = var.network_name
   flavor_bastion                               = var.flavor_bastion
   k8s_master_fips                              = module.ips.k8s_master_fips
   k8s_master_no_etcd_fips                      = module.ips.k8s_master_no_etcd_fips
@@ -83,8 +82,7 @@ module "compute" {
   use_server_groups                            = var.use_server_groups
   extra_sec_groups                             = var.extra_sec_groups
   extra_sec_groups_name                        = var.extra_sec_groups_name
-
-  network_id = module.network.router_id
+  network_id                                   = module.network.network_id
 }
 
 output "private_subnet_id" {

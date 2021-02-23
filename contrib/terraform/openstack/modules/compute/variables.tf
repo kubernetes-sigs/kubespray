@@ -58,13 +58,9 @@ variable "flavor_etcd" {}
 
 variable "flavor_gfs_node" {}
 
-variable "network_name" {}
-
 variable "flavor_bastion" {}
 
-variable "network_id" {
-  default = ""
-}
+variable "network_id" {}
 
 variable "k8s_master_fips" {
   type = list

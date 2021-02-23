@@ -189,7 +189,7 @@ resource "openstack_compute_instance_v2" "bastion" {
   }
 
   network {
-    name = var.network_name
+    uuid = var.network_id
   }
 
   security_groups = [openstack_networking_secgroup_v2.k8s.name,
@@ -231,7 +231,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   }
 
   network {
-    name = var.network_name
+    uuid = var.network_id
   }
 
   security_groups = local.master_sec_groups
@@ -278,7 +278,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   }
 
   network {
-    name = var.network_name
+    uuid = var.network_id
   }
 
   security_groups = local.master_sec_groups
@@ -323,7 +323,7 @@ resource "openstack_compute_instance_v2" "etcd" {
   }
 
   network {
-    name = var.network_name
+    uuid = var.network_id
   }
 
   security_groups = [openstack_networking_secgroup_v2.k8s.name]
@@ -365,7 +365,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   }
 
   network {
-    name = var.network_name
+    uuid = var.network_id
   }
 
   security_groups = local.master_sec_groups
@@ -407,7 +407,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   }
 
   network {
-    name = var.network_name
+    uuid = var.network_id
   }
 
   security_groups = local.master_sec_groups
@@ -448,7 +448,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   }
 
   network {
-    name = var.network_name
+    uuid = var.network_id
   }
 
   security_groups = local.worker_sec_groups
@@ -493,7 +493,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   }
 
   network {
-    name = var.network_name
+    uuid = var.network_id
   }
 
   security_groups = local.worker_sec_groups
@@ -532,9 +532,8 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
       delete_on_termination = true
     }
   }
-
   network {
-    name = var.network_name
+    uuid = var.network_id
   }
 
   security_groups = local.worker_sec_groups
@@ -579,7 +578,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
   }
 
   network {
-    name = var.network_name
+    uuid = var.network_id
   }
 
   security_groups = [openstack_networking_secgroup_v2.k8s.name]

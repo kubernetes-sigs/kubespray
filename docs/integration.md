@@ -62,7 +62,7 @@ You could rename *all.yml* config to something else, i.e. *kubespray.yml* and cr
      kubemaster
      kubemaster-ha
 
-     [kube-master:children]
+     [kube_control_plane:children]
      kubemaster
      kubemaster-ha
 

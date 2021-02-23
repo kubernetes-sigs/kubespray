@@ -2,6 +2,15 @@
 - name: Check ansible version
   import_playbook: ansible_version.yml
 
+- name: Add kube-master nodes to kube_control_plane
+  # This is for old inventory which contains kube-master instead of kube_control_plane
+  hosts: kube-master
+  gather_facts: false
+  tasks:
+    - name: add nodes to kube_control_plane group
+      group_by:
+        key: 'kube_control_plane'
+
 - hosts: bastion[0]
   gather_facts: False
   environment: "{{ proxy_disable_env }}"
@@ -26,8 +35,8 @@
   tags: always
   import_playbook: facts.yml
 
-- name: Download images to ansible host cache via first kube-master node
-  hosts: kube-master[0]
+- name: Download images to ansible host cache via first kube_control_plane node
+  hosts: kube_control_plane[0]
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -84,7 +93,7 @@
 
 - name: Handle upgrades to master components first to maintain backwards compat.
   gather_facts: False
-  hosts: kube-master
+  hosts: kube_control_plane
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   serial: 1
@@ -101,7 +110,7 @@
     - { role: upgrade/post-upgrade, tags: post-upgrade }
 
 - name: Upgrade calico and external cloud provider on all masters, calico-rrs, and nodes
-  hosts: kube-master:calico-rr:kube-node
+  hosts: kube_control_plane:calico-rr:kube-node
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: "{{ serial | default('20%') }}"
@@ -114,7 +123,7 @@
     - { role: kubernetes-apps/policy_controller, tags: policy-controller }
 
 - name: Finally handle worker upgrades, based on given batch size
-  hosts: kube-node:calico-rr:!kube-master
+  hosts: kube-node:calico-rr:!kube_control_plane
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -128,7 +137,7 @@
     - { role: kubernetes/node-label, tags: node-label }
     - { role: upgrade/post-upgrade, tags: post-upgrade }
 
-- hosts: kube-master[0]
+- hosts: kube_control_plane[0]
   gather_facts: False
   any_errors_fatal: true
   environment: "{{ proxy_disable_env }}"
@@ -144,7 +153,7 @@
     - { role: kubespray-defaults }
     - { role: network_plugin/calico/rr, tags: network }
 
-- hosts: kube-master
+- hosts: kube_control_plane
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"

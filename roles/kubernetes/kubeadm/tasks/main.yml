@@ -25,7 +25,7 @@
     get_checksum: no
     get_mime: no
   register: kubeadm_ca_stat
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
 
 - name: Calculate kubeadm CA cert hash
@@ -36,14 +36,14 @@
   when:
     - kubeadm_ca_stat.stat is defined
     - kubeadm_ca_stat.stat.exists
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
   changed_when: false
 
 - name: Create kubeadm token for joining nodes with 24h expiration (default)
   command: "{{ bin_dir }}/kubeadm token create"
   register: temp_token
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
   when: kubeadm_token is not defined
   changed_when: false
 
@@ -118,7 +118,7 @@
   args:
     executable: /bin/bash
   run_once: true
-  delegate_to: "{{ groups['kube-master']|first }}"
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
   delegate_facts: false
   when:
     - kubeadm_config_api_fqdn is not defined
@@ -138,7 +138,7 @@
 - name: Restart all kube-proxy pods to ensure that they load the new configmap
   command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
   run_once: true
-  delegate_to: "{{ groups['kube-master']|first }}"
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
   delegate_facts: false
   when:
     - kubeadm_config_api_fqdn is not defined
@@ -151,6 +151,6 @@
   include_tasks: kubeadm_etcd_node.yml
   when:
     - etcd_kubeadm_enabled
-    - inventory_hostname not in groups['kube-master']
+    - inventory_hostname not in groups['kube_control_plane']
     - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
     - kube_network_plugin != "calico" or calico_datastore == "etcd"

@@ -29,6 +29,10 @@ The setup looks like following.
 +-----------------------+
 ```
 
+## Warning
+
+This setup assumes that the DHCP is disabled in the vSphere cluster and IP addresses have to be provided in the configuration file.
+
 ## Requirements
 
 * Terraform 0.13.0 or newer

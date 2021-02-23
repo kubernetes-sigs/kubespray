@@ -1,6 +1,6 @@
 ## Global ##
 
-variable prefix {
+variable "prefix" {
   default = ""
 }
 
@@ -12,7 +12,7 @@ variable "machines" {
   }))
 }
 
-variable inventory_file {
+variable "inventory_file" {
   default = "inventory.ini"
 }
 
@@ -35,6 +35,10 @@ variable "vsphere_datacenter" {}
 variable "vsphere_compute_cluster" {}
 
 variable "vsphere_datastore" {}
+
+variable "vsphere_user" {}
+
+variable "vsphere_password" {}
 
 variable "vsphere_server" {}
 

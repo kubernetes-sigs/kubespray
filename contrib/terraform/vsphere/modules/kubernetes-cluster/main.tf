@@ -46,10 +46,10 @@ resource "vsphere_virtual_machine" "worker" {
 
   vapp {
     properties = {
-      "user-data" = base64encode(templatefile("${path.module}/templates/cloud-init.tmpl", { ip = "${each.value.ip}",
-                                                                  gw = "${var.gateway}",
-                                                                  dns = "${var.dns_primary}",
-                                                                  ssh_public_keys = "${var.ssh_public_keys}"}))
+      "user-data" = base64encode(templatefile("${path.module}/templates/cloud-init.tmpl", { ip = each.value.ip,
+                                                                  gw = var.gateway,
+                                                                  dns = var.dns_primary,
+                                                                  ssh_public_keys = var.ssh_public_keys}))
     }
   }
 }
@@ -100,10 +100,10 @@ resource "vsphere_virtual_machine" "master" {
 
   vapp {
     properties = {
-      "user-data" = base64encode(templatefile("${path.module}/templates/cloud-init.tmpl", { ip = "${each.value.ip}",
-                                                                  gw = "${var.gateway}",
-                                                                  dns = "${var.dns_primary}",
-                                                                  ssh_public_keys = "${var.ssh_public_keys}"}))
+      "user-data" = base64encode(templatefile("${path.module}/templates/cloud-init.tmpl", { ip = each.value.ip,
+                                                                  gw = var.gateway,
+                                                                  dns = var.dns_primary,
+                                                                  ssh_public_keys = var.ssh_public_keys}))
     }
   }
 }

@@ -62,8 +62,8 @@ $EDITOR default.tfvars
 For authentication in your vSphere cluster you can use the environment variables.
 
 ```bash
-export VSPHERE_USER=username
-export VSPHERE_PASSWORD=password
+export TF_VAR_vsphere_user=username
+export TF_VAR_vsphere_password=password
 ```
 
 Run Terraform to create the infrastructure.

@@ -1,8 +1,8 @@
 terraform {
   required_providers {
-    exoscale = {
-      source  = "exoscale/exoscale"
-      version = ">= 0.21"
+    vsphere = {
+      source  = "hashicorp/vsphere"
+      version = ">= 1.24.3"
     }
     null = {
       source = "hashicorp/null"

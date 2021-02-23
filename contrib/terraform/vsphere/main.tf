@@ -1,5 +1,8 @@
 provider "vsphere" {
   # Username and password set through env vars VSPHERE_USER and VSPHERE_PASSWORD
+  user     = var.vsphere_user
+  password = var.vsphere_password
+
   vsphere_server = var.vsphere_server
 
   # If you have a self-signed cert

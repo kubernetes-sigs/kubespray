@@ -156,7 +156,8 @@
   until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
   when: inventory_hostname == groups['kube-master']|first and not kubeadm_already_run.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
-  environment: '{{ proxy_disable_env | combine({"PATH": "{{ bin_dir }}:{{ ansible_env.PATH }}"}) }}'
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Master | restart kubelet
 
 - name: set kubeadm certificate key
@@ -171,7 +172,6 @@
   shell: >-
     {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token delete {{ kubeadm_token }} || :;
     {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create {{ kubeadm_token }}
-  environment: "{{ proxy_disable_env }}"
   changed_when: false
   when:
     - inventory_hostname == groups['kube-master']|first
@@ -182,7 +182,6 @@
 
 - name: Create kubeadm token for joining nodes with 24h expiration (default)
   command: "{{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create"
-  environment: "{{ proxy_disable_env }}"
   changed_when: false
   register: temp_token
   retries: 5

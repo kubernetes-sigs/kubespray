@@ -12,7 +12,7 @@ ssh_public_keys = [
 machines = {
   "master-0" : {
     "node_type" : "master",
-    "size" : "Small",
+    "size" : "Medium",
     "boot_disk" : {
       "image_name" : "Linux Ubuntu 20.04 LTS 64-bit",
       "root_partition_size" : 50,

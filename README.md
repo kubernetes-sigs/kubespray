@@ -120,7 +120,7 @@ vagrant up
 - **CentOS/RHEL** 7, 8 (experimental: see [centos 8 notes](docs/centos8.md))
 - **Fedora** 32, 33
 - **Fedora CoreOS** (experimental: see [fcos Note](docs/fcos.md))
-- **openSUSE** Leap 42.3/Tumbleweed
+- **openSUSE** Leap 15.x/Tumbleweed
 - **Oracle Linux** 7, 8 (experimental: [centos 8 notes](docs/centos8.md) apply)
 
 Note: Upstart/SysV init based OS types are not supported.

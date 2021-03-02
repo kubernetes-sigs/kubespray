@@ -1,7 +1,6 @@
 
 # See: https://developers.upcloud.com/1.3/5-zones/
 zone   = "fi-hel1"
-
 username = "ubuntu"
 
 inventory_file = "inventory.ini"

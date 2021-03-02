@@ -48,7 +48,7 @@ Edit  `contrib/terraform/upcloud/cluster-settings.tfvars`  to match your require
 
 ```bash
 terraform apply --var-file \
- contrib/terraform/upcloud/default.tfvars  \
+ contrib/terraform/upcloud/cluster-settings.tfvars  \
     -state=tfstate-test.tfstate    \
      contrib/terraform/upcloud/
 ```

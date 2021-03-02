@@ -37,22 +37,21 @@ The setup looks like following
 
 NOTE: Assumes you are at the root of the kubespray repo.
 
-For authentication in your vSphere cluster you can use the environment variables.
+For authentication in your  cluster you can use the environment variables.
 ```bash
 export UPCLOUD_USERNAME=username
 export UPCLOUD_PASSWORD=password
 ```
 To allow API access to your UpCloud account, you need to allow API connections by visiting [Account-page](https://hub.upcloud.com/account) in your UpCloud Hub.
 
-Edit  `contrib/terraform/upcloud/default.tfvars`  to match your requirement.
+Edit  `contrib/terraform/upcloud/cluster-settings.tfvars`  to match your requirement.
 
 ```bash
-terraform apply --var-file contrib/terraform/upcloud/default.tfvars     -state=tfstate-test.tfstate     contrib/terraform/upcloud/
+terraform apply --var-file \
+ contrib/terraform/upcloud/default.tfvars  \
+    -state=tfstate-test.tfstate    \
+     contrib/terraform/upcloud/
 ```
 
 
-You should now have a inventory file named `inventory.ini` that you can use with kubespray, e.g.
-
-```bash
-ansible-playbook -i contrib/terraform/gcs/inventory.ini cluster.yml -b -v
-```
+You should now have a inventory file named `inventory.ini` that you can use with kubespray.

@@ -29,7 +29,7 @@ resource "upcloud_server" "master" {
    user = var.username
    keys = [
 
-     "${join(", ", [for s in var.ssh_public_keys : format("%q, ", s)])}"
+     "${join(", ", [for s in var.ssh_public_keys : format("%q ", s)])}"
    ]
    create_password = false
 
@@ -65,7 +65,7 @@ resource "upcloud_server" "worker" {
  login {
    user = var.username
    keys = [
-   "${join(", ", [for s in var.ssh_public_keys : format("%q, ", s)])}"
+   "${join(", ", [for s in var.ssh_public_keys : format("%q ", s)])}"
 
    ]
    create_password = false

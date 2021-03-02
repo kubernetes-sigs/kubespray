@@ -8,7 +8,6 @@ provider "upcloud" {
 # export UPCLOUD_PASSWORD="Password of your UpCloud API user"
 }
 
-
 module "kubernetes" {
   source = "./modules/kubernetes-cluster"
 
@@ -22,8 +21,6 @@ module "kubernetes" {
 
   ssh_public_keys = var.ssh_public_keys
 }
-
-
 
 #
 # Generate ansible inventory

@@ -1,3 +1,4 @@
+
 output "master_ip" {
   value = module.kubernetes.master_ip
 }

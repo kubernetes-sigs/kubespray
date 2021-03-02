@@ -11,7 +11,6 @@ variable "template_name"{}
 
 variable "username"{}
 
-
 variable "machines" {
   description = "Cluster machines"
   type = map(object({

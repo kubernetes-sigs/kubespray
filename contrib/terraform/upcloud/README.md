@@ -53,5 +53,4 @@ terraform apply --var-file \
      contrib/terraform/upcloud/
 ```
 
-
 You should now have a inventory file named `inventory.ini` that you can use with kubespray.

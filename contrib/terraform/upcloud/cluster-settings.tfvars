@@ -6,7 +6,6 @@ username = "ubuntu"
 
 inventory_file = "inventory.ini"
 
-
 #  A valid domain name, e.g. host.example.com. The maximum length is 128 characters.
 hostname = "example.com"
 
@@ -18,7 +17,7 @@ ssh_public_keys = [
   "ssh-rsa public key 1",
   "ssh-rsa public key 2",
 ]
-  
+
 #check list of available plan https://developers.upcloud.com/1.3/7-plans/
 machines = {
   "master-0" : {

@@ -1,3 +1,4 @@
+
 output "master_ip" {
   value = {
     for instance in upcloud_server.master :

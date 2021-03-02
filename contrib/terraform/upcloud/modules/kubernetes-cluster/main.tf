@@ -60,7 +60,6 @@ resource "upcloud_server" "worker" {
    type = "public"
  }
 
-
  # Include at least one public SSH key
  login {
    user = var.username
@@ -69,7 +68,5 @@ resource "upcloud_server" "worker" {
 
    ]
    create_password = false
-
  }
-
 }

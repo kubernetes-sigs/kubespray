@@ -1,3 +1,4 @@
+
 variable "zone" {
   description = "The zone where to run the cluster"
 }

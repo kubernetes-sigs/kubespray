@@ -1,18 +1,4 @@
 ---
-- name: kubeadm | Check if old apiserver cert exists on host
-  stat:
-    path: "{{ kube_cert_dir }}/apiserver.pem"
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
-  register: old_apiserver_cert
-  delegate_to: "{{ groups['kube-master'] | first }}"
-  run_once: true
-
-- name: kubeadm | Migrate old certs if necessary
-  import_tasks: kubeadm-migrate-certs.yml
-  when: old_apiserver_cert.stat.exists
-
 - name: Install OIDC certificate
   copy:
     content: "{{ kube_oidc_ca_cert | b64decode }}"
@@ -47,22 +33,6 @@
     state: absent
   when:
     - not kubeadm_already_run.stat.exists
-
-- name: kubeadm | Delete old static pods
-  file:
-    path: "{{ kube_config_dir }}/manifests/{{ item }}.manifest"
-    state: absent
-  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler", "kube-proxy"]
-  when:
-    - old_apiserver_cert.stat.exists
-
-- name: kubeadm | Forcefully delete old static pods
-  shell: "set -o pipefail && docker ps -f name=k8s_{{ item }} -q | xargs --no-run-if-empty docker rm -f"
-  args:
-    executable: /bin/bash
-  with_items: ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
-  when:
-    - old_apiserver_cert.stat.exists
 
 - name: kubeadm | aggregate all SANs
   set_fact:
@@ -230,11 +200,6 @@
   command: /bin/true
   notify: Master | set secret_changed
   when: sa_key_before.stat.checksum|default("") != sa_key_after.stat.checksum
-
-- name: kubeadm | cleanup old certs if necessary
-  import_tasks: kubeadm-cleanup-old-certs.yml
-  when:
-    - old_apiserver_cert.stat.exists
 
 # FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
 - name: kubeadm | Remove taint for master with node role

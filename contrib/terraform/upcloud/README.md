@@ -38,10 +38,12 @@ The setup looks like following
 NOTE: Assumes you are at the root of the kubespray repo.
 
 For authentication in your  cluster you can use the environment variables.
+
 ```bash
 export UPCLOUD_USERNAME=username
 export UPCLOUD_PASSWORD=password
 ```
+
 To allow API access to your UpCloud account, you need to allow API connections by visiting [Account-page](https://hub.upcloud.com/account) in your UpCloud Hub.
 
 Copy the cluster configuration file.
@@ -72,6 +74,7 @@ It is a good idea to check that you have basic SSH connectivity to the nodes. Yo
 ```bash
 ansible -i inventory.ini -m ping all
 ```
+
 You can setup Kubernetes with kubespray using the generated inventory:
 
 ```bash
@@ -79,6 +82,7 @@ ansible-playbook -i inventory.ini ../../cluster.yml -b -v
 ```
 
 ## Teardown
+
 You can teardown your infrastructure using the following Terraform command:
 
 ```bash
@@ -88,6 +92,7 @@ terraform destroy --var-file cluster-settings.tfvars \
 ```
 
 ## Variables
+
 * `hostname`: A valid domain name, e.g. example.com. The maximum length is 128 characters.
 * `template_name`: The name or UUID  of a base image
 * `username`: a user to access the nodes

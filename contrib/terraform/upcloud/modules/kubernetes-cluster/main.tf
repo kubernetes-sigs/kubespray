@@ -27,10 +27,7 @@ resource "upcloud_server" "master" {
  # Include at least one public SSH key
  login {
    user = var.username
-   keys = [
-
-     "${join(", ", [for s in var.ssh_public_keys : format("%q ", s)])}"
-   ]
+   keys = var.ssh_public_keys
    create_password = false
 
  }
@@ -63,10 +60,7 @@ resource "upcloud_server" "worker" {
  # Include at least one public SSH key
  login {
    user = var.username
-   keys = [
-   "${join(", ", [for s in var.ssh_public_keys : format("%q ", s)])}"
-
-   ]
+   keys = var.ssh_public_keys
    create_password = false
  }
 }

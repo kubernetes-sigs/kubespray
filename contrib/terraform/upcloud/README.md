@@ -54,3 +54,28 @@ terraform apply --var-file \
 ```
 
 You should now have a inventory file named `inventory.ini` that you can use with kubespray.
+e.g.
+
+```bash
+ansible-playbook -i inventory.ini cluster.yml -b -v
+```
+
+## Teardown
+You can teardown your infrastructure using the following terraform command:
+
+```bash
+terraform destroy --var-file \
+ contrib/terraform/upcloud/cluster-settings.tfvars  \
+     contrib/terraform/upcloud/
+```
+## Variables
+* `hostname`: A valid domain name, e.g. example.com. The maximum length is 128 characters.
+* `template_name`: The name or UUID  of a base image
+* `username`: a user to access the nodes
+* `ssh_public_keys`: List of public SSH keys to install on all machines
+* `zone`: The zone where to run the cluster
+* `machines`: Machines to provision. Key of this object will be used as the name of the machine
+  * `node_type`: The role of this node *(master|worker)*
+  * `cpu`: number of cpu cores
+  * `mem`: memory size in MB
+  * `disk_size`: The size of the storage in GB

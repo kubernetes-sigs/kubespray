@@ -3,19 +3,19 @@ terraform {
   required_version = ">= 0.12.0"
 }
 provider "upcloud" {
-# Your UpCloud credentials are read from the environment variables:
-# export UPCLOUD_USERNAME="Username of your UpCloud API user"
-# export UPCLOUD_PASSWORD="Password of your UpCloud API user"
+  # Your UpCloud credentials are read from the environment variables:
+  # export UPCLOUD_USERNAME="Username of your UpCloud API user"
+  # export UPCLOUD_PASSWORD="Password of your UpCloud API user"
 }
 
 module "kubernetes" {
   source = "./modules/kubernetes-cluster"
 
-  zone = var.zone
+  zone     = var.zone
   hostname = var.hostname
 
   template_name = var.template_name
-  username = var.username
+  username      = var.username
 
   machines = var.machines
 

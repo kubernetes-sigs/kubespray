@@ -11,11 +11,11 @@ provider "upcloud" {
 module "kubernetes" {
   source = "./modules/kubernetes-cluster"
 
-  zone = var.zone
+  zone     = var.zone
   hostname = var.hostname
 
   template_name = var.template_name
-  username = var.username
+  username      = var.username
 
   machines = var.machines
 

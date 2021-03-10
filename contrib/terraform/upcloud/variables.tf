@@ -3,21 +3,21 @@ variable "zone" {
   description = "The zone where to run the cluster"
 }
 
-variable "hostname"{
- default ="example.com"
+variable "hostname" {
+  default = "example.com"
 }
 
-variable "template_name"{}
+variable "template_name" {}
 
-variable "username"{}
+variable "username" {}
 
 variable "machines" {
   description = "Cluster machines"
   type = map(object({
     node_type = string
-    cpu      = string
-    mem      = string
-    disk_size =  number
+    cpu       = string
+    mem       = string
+    disk_size = number
   }))
 }
 

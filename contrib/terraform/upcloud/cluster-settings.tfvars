@@ -1,6 +1,6 @@
 
 # See: https://developers.upcloud.com/1.3/5-zones/
-zone   = "fi-hel1"
+zone     = "fi-hel1"
 username = "ubuntu"
 
 inventory_file = "inventory.ini"
@@ -27,7 +27,7 @@ machines = {
     "mem" : "4096"
     # The size of the storage in GB
     "disk_size" : 250
-    },
+  },
   "worker-0" : {
     "node_type" : "worker",
     #number of cpu cores
@@ -38,21 +38,21 @@ machines = {
     "disk_size" : 250
   },
   "worker-1" : {
-  "node_type" : "worker",
-  #number of cpu cores
-  "cpu" : "2",
-  #memory size in MB
-  "mem" : "4096"
-  # The size of the storage in GB
-  "disk_size" : 250
+    "node_type" : "worker",
+    #number of cpu cores
+    "cpu" : "2",
+    #memory size in MB
+    "mem" : "4096"
+    # The size of the storage in GB
+    "disk_size" : 250
   },
   "worker-2" : {
-  "node_type" : "worker",
-  #number of cpu cores
-  "cpu" : "2",
-  #memory size in MB
-  "mem" : "4096"
-  # The size of the storage in GB
-  "disk_size" : 250
+    "node_type" : "worker",
+    #number of cpu cores
+    "cpu" : "2",
+    #memory size in MB
+    "mem" : "4096"
+    # The size of the storage in GB
+    "disk_size" : 250
   }
 }

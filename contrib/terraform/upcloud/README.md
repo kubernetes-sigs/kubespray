@@ -31,7 +31,7 @@ The setup looks like following
 
 ## Requirements
 
-* Terraform 0.12.0 or newer
+* Terraform 0.13.0 or newer
 
 ## Quickstart
 
@@ -40,8 +40,8 @@ NOTE: Assumes you are at the root of the kubespray repo.
 For authentication in your  cluster you can use the environment variables.
 
 ```bash
-export UPCLOUD_USERNAME=username
-export UPCLOUD_PASSWORD=password
+export TF_VAR_UPCLOUD_USERNAME=username
+export TF_VAR_UPCLOUD_PASSWORD=password
 ```
 
 To allow API access to your UpCloud account, you need to allow API connections by visiting [Account-page](https://hub.upcloud.com/account) in your UpCloud Hub.
@@ -52,6 +52,7 @@ Copy the cluster configuration file.
 CLUSTER=my-upcloud-cluster
 cp -r inventory/sample inventory/$CLUSTER
 cp contrib/terraform/upcloud/cluster-settings.tfvars inventory/$CLUSTER/
+export ANSIBLE_CONFIG=ansible.cfg
 cd inventory/$CLUSTER
 ```
 

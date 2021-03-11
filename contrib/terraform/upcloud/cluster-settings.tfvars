@@ -20,7 +20,7 @@ ssh_public_keys = [
 #check list of available plan https://developers.upcloud.com/1.3/7-plans/
 machines = {
   "master-0" : {
-    "node_type" : "worker",
+    "node_type" : "master",
     #number of cpu cores
     "cpu" : "2",
     #memory size in MB

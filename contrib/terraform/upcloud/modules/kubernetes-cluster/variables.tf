@@ -1,6 +1,5 @@
 variable "zone" {
   type = string
-
 }
 
 variable "hostname"{

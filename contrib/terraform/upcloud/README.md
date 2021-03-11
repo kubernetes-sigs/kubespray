@@ -68,7 +68,7 @@ terraform apply --var-file cluster-settings.tfvars \
 ```
 
 You should now have a inventory file named `inventory.ini` that you can use with kubespray.
-You can use the inventory file  with kubespray to set up a cluster.
+You can use the inventory file with kubespray to set up a cluster.
 
 It is a good idea to check that you have basic SSH connectivity to the nodes. You can do that by:
 

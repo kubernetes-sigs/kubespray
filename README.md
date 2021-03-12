@@ -128,18 +128,18 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.20.2
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.20.4
   - [etcd](https://github.com/coreos/etcd) v3.4.13
   - [docker](https://www.docker.com/) v19.03 (see note)
   - [containerd](https://containerd.io/) v1.3.9
   - [cri-o](http://cri-o.io/) v1.19 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.0
-  - [calico](https://github.com/projectcalico/calico) v3.16.6
+  - [calico](https://github.com/projectcalico/calico) v3.16.8
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-  - [cilium](https://github.com/cilium/cilium) v1.8.6
+  - [cilium](https://github.com/cilium/cilium) v1.8.7
   - [flanneld](https://github.com/coreos/flannel) v0.13.0
-  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.5.2
+  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.6.0
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.1.1
   - [multus](https://github.com/intel/multus-cni) v3.6.0
   - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.1.0

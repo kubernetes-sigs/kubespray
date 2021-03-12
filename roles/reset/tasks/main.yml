@@ -132,16 +132,21 @@
     - container_manager == "containerd"
   ignore_errors: true
 
-- name: reset | force remove all cri pods
-  command: "{{ bin_dir }}/crictl rmp -a -f"
-  register: remove_all_cri_containers
-  retries: 5
-  until: remove_all_cri_containers.rc == 0
-  delay: 5
-  tags: [ containerd ]
-  when:
-    - crictl.stat.exists
-    - container_manager == "containerd"
+- block:
+    - name: reset | force remove all cri pods
+      command: "{{ bin_dir }}/crictl rmp -a -f"
+      register: remove_all_cri_containers
+      retries: 5
+      until: remove_all_cri_containers.rc == 0
+      delay: 5
+      tags: [ containerd ]
+      when:
+        - crictl.stat.exists
+        - container_manager == "containerd"
+
+  rescue:
+    - name: reset | force remove all cri pods (rescue)
+      shell: "ip netns list | cut -d' ' -f 1 | xargs -n1 ip netns delete && {{ bin_dir }}/crictl rmp -a -f"
 
 - name: reset | stop etcd services
   service:
@@ -252,6 +257,8 @@
     - /etc/dnsmasq.d-available
     - /etc/etcd.env
     - /etc/calico
+    - /etc/NetworkManager/conf.d/calico.conf
+    - /etc/NetworkManager/conf.d/k8s.conf
     - /etc/weave.env
     - /opt/cni
     - /etc/dhcp/dhclient.d/zdnsupdate.sh
@@ -286,7 +293,6 @@
     - "{{ bin_dir }}/crictl"
     - "{{ bin_dir }}/netctl"
     - /var/lib/cni
-    - /etc/vault
     - /etc/openvswitch
     - /run/openvswitch
     - /var/lib/kube-router

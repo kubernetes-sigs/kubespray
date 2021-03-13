@@ -30,7 +30,6 @@ crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-{{ crictl_ver
 calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
 # If using Calico with kdd
 calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_version }}.tar.gz"
-kustomize_download_url: "{{ files_repo }}/kubernetes/kustomize/{{ kustomize_version }}/kustomize_{{ kustomize_version }}_linux_{{ image_arch }}.tar.gz"
 
 # CentOS/Redhat
 ## Docker / Containerd

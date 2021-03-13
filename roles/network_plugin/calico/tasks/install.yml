@@ -110,9 +110,75 @@
     - calico_pool_cidr_ipv6 is defined
     - enable_dual_stack_networks
 
-- name: Calico | Create calico manifests for kdd
+- name: Calico | Copy kustomize binary from download dir
+  copy:
+    src: "{{ local_release_dir }}/kustomize"
+    dest: "{{ bin_dir }}/kubectl"
+    mode: 0755
+    remote_src: true
+  when:
+    - inventory_hostname in groups['kube-master']
+    - calico_datastore == 'kdd'
+    - kube_version is version('v1.21', '<')
+
+- name: Calico | Get the list of CRDs manifests
+  find:
+    paths: "{{ local_release_dir }}/calico-{{ calico_version }}-kdd-crds"
+    patterns: "^crd\\.projectcalico\\.org_.*?\\.ya?ml$"
+    use_regex: yes
+  register: calico_kdd_crds_manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - calico_datastore == 'kdd'
+
+- name: Calico | Set manifests list to put kustomization.yml
+  set_fact:
+    calico_kdd_crds_manifests_list: "{{ calico_kdd_crds_manifests|map(attribute='path')|map('basename')|list }}"
+  delegate_to: "{{ host }}"
+  delegate_facts: true
+  loop: "{{ groups['kube-master'] }}"
+  loop_control:
+    loop_var: host
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - calico_datastore == 'kdd'
+
+- name: Calico | Render kustomization.yml
   template:
-    src: "{{ item.file }}.j2"
+    src: "kustomization.yml.j2"
+    dest: "{{ local_release_dir }}/calico-{{ calico_version }}-kdd-crds/kustomization.yml"
+  when:
+    - inventory_hostname in groups['kube-master']
+    - calico_datastore == "kdd"
+
+- name: Calico | Run kustomize
+  command: >-
+    {% if kube_version is version('v1.21', '<') %}
+    {{ bin_dir }}/kustomize build
+    {% else %}
+    {{ bin_dir }}/kubectl kustomize
+    {% endif %}
+    {{ local_release_dir }}/calico-{{ calico_version }}-kdd-crds
+  register: kdd_crds_whole_manifest
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - calico_datastore == "kdd"
+
+- name: Calico | Set kdd_crds_content
+  set_fact:
+    kdd_crds_content: "{{ kdd_crds_whole_manifest.stdout }}"
+  delegate_to: "{{ host }}"
+  delegate_facts: true
+  loop: "{{ groups['kube-master'] }}"
+  loop_control:
+    loop_var: host
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+    - calico_datastore == 'kdd'
+
+- name: Calico | Create calico manifests for kdd
+  copy:
+    content: "{{ kdd_crds_content }}"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
   with_items:
     - {name: calico, file: kdd-crds.yml, type: kdd}

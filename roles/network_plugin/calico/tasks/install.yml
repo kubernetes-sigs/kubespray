@@ -110,33 +110,16 @@
     - calico_pool_cidr_ipv6 is defined
     - enable_dual_stack_networks
 
-- name: Calico | Get the list of CRDs manifests
-  find:
-    paths: "{{ local_release_dir }}/calico-{{ calico_version }}-kdd-crds"
-    patterns: "^crd\\.projectcalico\\.org_.*?\\.ya?ml$"
-    use_regex: yes
-  register: calico_kdd_crds_manifests
+- name: Calico | Remove unwanted annotations and creationTimestamp keys from metadata in Calico manifests
+  # noqa 303 - sed avoids using nested loop
+  shell: >-
+    sed -E -i
+    -e '/^\s{2,4}creationTimestamp: null$/d'
+    -e '/^\s{2,4}annotations:/{:1;/\(devel\)$/!{N;b 1}; /.*/d}'
+    {{ local_release_dir }}/calico-{{ calico_version }}-kdd-crds/*.yaml
   when:
     - inventory_hostname in groups['kube-master']
     - calico_datastore == 'kdd'
-  no_log: true
-
-- name: Calico | Replace unwanted annotations and creationTimestamp keys from metadata in Calico manifests
-  lineinfile:
-    path: "{{ item.0.path }}"
-    state: absent
-    regexp: "{{ item.1 }}"
-  loop: "{{ calico_kdd_crds_manifests.files|product(lines_to_remove)|list }}"
-  loop_control:
-    label: "{{ item.0.path|basename }}"
-  vars:
-    lines_to_remove:
-      - "^\\s{2,4}annotations:$"
-      - "^\\s{2,4}controller-gen\\.kubebuilder\\.io/version: \\(devel\\)$"
-      - "^\\s{2,4}creationTimestamp: null$"
-  when:
-    - inventory_hostname in groups['kube-master']
-    - calico_datastore == "kdd"
 
 - name: Calico | Create calico manifests for kdd
   assemble:

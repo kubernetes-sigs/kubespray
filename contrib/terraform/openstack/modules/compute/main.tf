@@ -1,10 +1,12 @@
 data "openstack_images_image_v2" "vm_image" {
   count = var.image_uuid == "" ? 1 : 0
+  most_recent = true
   name = var.image
 }
 
 data "openstack_images_image_v2" "gfs_image" {
   count = var.image_gfs_uuid == "" ? var.image_uuid == "" ? 1 : 0 : 0
+  most_recent = true
   name = var.image_gfs == "" ? var.image : var.image_gfs
 }
 

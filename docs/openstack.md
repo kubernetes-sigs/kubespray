@@ -118,10 +118,8 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
 
   ```yaml
   external_openstack_network_ipv6_disabled: false
-  external_openstack_network_internal_networks:
-  - ""
-  external_openstack_network_public_networks:
-  - ""
+  external_openstack_network_internal_networks: []
+  external_openstack_network_public_networks: []
   ```
 
 - You can override the default OpenStack metadata configuration (see [#6338](https://github.com/kubernetes-sigs/kubespray/issues/6338) for explanation):

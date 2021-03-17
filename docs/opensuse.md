@@ -1,4 +1,4 @@
-# openSUSE Leap 15.0 and Tumbleweed
+# openSUSE Leap 15.2 and Tumbleweed
 
 openSUSE Leap installation Notes:
 

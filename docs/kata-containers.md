@@ -35,7 +35,7 @@ Pod Overhead is mandatory if you run Pods with Kata Containers that use [resourc
 
 **Set cgroup driver**:
 
-To enable Pod Overhead feature you have to configure Kubelet with the appropiate cgroup driver, using the following configuration:
+To enable Pod Overhead feature you have to configure Kubelet with the appropriate cgroup driver, using the following configuration:
 
 ```yaml
 kubelet_cgroup_driver: cgroupfs

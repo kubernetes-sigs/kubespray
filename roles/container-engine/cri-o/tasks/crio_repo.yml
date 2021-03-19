@@ -29,6 +29,47 @@
     filename: devel-kubic-libcontainers-stable-cri-o
   when: crio_kubic_debian_repo_name is defined
 
+- name: Check that amzn2-extras.repo exists
+  stat:
+    path: /etc/yum.repos.d/amzn2-extras.repo
+  register: amzn2_extras_file_stat
+  when: ansible_distribution in ["Amazon"]
+
+- name: Find docker repo in amzn2-extras.repo file
+  lineinfile:
+    dest: /etc/yum.repos.d/amzn2-extras.repo
+    line: "[amzn2extra-docker]"
+  check_mode: yes
+  register: amzn2_extras_docker_repo
+  when:
+    - ansible_distribution in ["Amazon"]
+    - amzn2_extras_file_stat.stat.exists
+
+- name: Remove docker repository
+  ini_file:
+    dest: /etc/yum.repos.d/amzn2-extras.repo
+    section: amzn2extra-docker
+    option: enabled
+    value: "0"
+    backup: yes
+  when:
+    - ansible_distribution in ["Amazon"]
+    - amzn2_extras_file_stat.stat.exists
+    - not amzn2_extras_docker_repo.changed
+
+- name: Add container-selinux yum repo
+  yum_repository:
+    name: copr:copr.fedorainfracloud.org:lsm5:container-selinux
+    file: _copr_lsm5-container-selinux.repo
+    description: Copr repo for container-selinux owned by lsm5
+    baseurl: https://download.copr.fedorainfracloud.org/results/lsm5/container-selinux/epel-7-$basearch/
+    gpgcheck: yes
+    gpgkey: https://download.copr.fedorainfracloud.org/results/lsm5/container-selinux/pubkey.gpg
+    skip_if_unavailable: yes
+    enabled: yes
+    repo_gpgcheck: no
+  when: ansible_distribution in ["Amazon"]
+
 - name: Add CRI-O kubic yum repo
   yum_repository:
     name: devel_kubic_libcontainers_stable
@@ -47,6 +88,25 @@
     gpgcheck: yes
     gpgkey: "http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ crio_version }}/CentOS_$releasever/repodata/repomd.xml.key"
   when: ansible_distribution in ["CentOS"]
+
+- name: Add CRI-O kubic yum repo
+  yum_repository:
+    name: devel_kubic_libcontainers_stable
+    description: Stable Releases of Upstream github.com/containers packages
+    baseurl: http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/CentOS_7/
+    gpgcheck: yes
+    gpgkey: http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/CentOS_7/repodata/repomd.xml.key
+    keepcache: false
+  when: ansible_distribution in ["Amazon"]
+
+- name: Add CRI-O kubic yum repo
+  yum_repository:
+    name: "devel_kubic_libcontainers_stable_cri-o_{{ crio_version }}"
+    description: "CRI-O {{ crio_version }}"
+    baseurl: "http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ crio_version }}/CentOS_7/"
+    gpgcheck: yes
+    gpgkey: "http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ crio_version }}/CentOS_7/repodata/repomd.xml.key"
+  when: ansible_distribution in ["Amazon"]
 
 - name: Enable modular repos for CRI-O
   ini_file:

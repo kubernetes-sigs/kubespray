@@ -28,6 +28,8 @@ cni_download_url: "{{ files_repo }}/kubernetes/cni/cni-plugins-linux-{{ image_ar
 crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
 # If using Calico
 calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
+# If using Calico with kdd
+calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_version }}.tar.gz"
 
 # CentOS/Redhat
 ## Docker / Containerd

@@ -311,12 +311,6 @@ Upgrade etcd:
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=etcd
 ```
 
-Upgrade vault:
-
-```ShellSession
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=vault
-```
-
 Upgrade kubelet:
 
 ```ShellSession

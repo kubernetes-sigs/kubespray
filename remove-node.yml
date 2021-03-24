@@ -2,6 +2,15 @@
 - name: Check ansible version
   import_playbook: ansible_version.yml
 
+- name: Add kube-master nodes to kube_control_plane
+  # This is for old inventory which contains kube-master instead of kube_control_plane
+  hosts: kube-master
+  gather_facts: false
+  tasks:
+    - name: add nodes to kube_control_plane group
+      group_by:
+        key: 'kube_control_plane'
+
 - hosts: "{{ node | default('etcd:k8s-cluster:calico-rr') }}"
   gather_facts: no
   environment: "{{ proxy_disable_env }}"
@@ -17,7 +26,7 @@
         msg: "Delete nodes confirmation failed"
       when: delete_nodes_confirmation != "yes"
 
-- hosts: kube-master[0]
+- hosts: kube_control_plane[0]
   gather_facts: no
   environment: "{{ proxy_disable_env }}"
   roles:
@@ -35,7 +44,7 @@
     - { role: reset, tags: reset, when: reset_nodes|default(True)|bool }
 
 # Currently cannot remove first master or etcd
-- hosts: "{{ node | default('kube-master[1:]:etcd[1:]') }}"
+- hosts: "{{ node | default('kube_control_plane[1:]:etcd[1:]') }}"
   gather_facts: no
   environment: "{{ proxy_disable_env }}"
   roles:

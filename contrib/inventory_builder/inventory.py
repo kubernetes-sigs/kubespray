@@ -44,7 +44,7 @@ import re
 import subprocess
 import sys
 
-ROLES = ['all', 'kube-master', 'kube-node', 'etcd', 'k8s-cluster',
+ROLES = ['all', 'kube_control_plane', 'kube-node', 'etcd', 'k8s-cluster',
          'calico-rr']
 PROTECTED_NAMES = ROLES
 AVAILABLE_COMMANDS = ['help', 'print_cfg', 'print_ips', 'print_hostnames',
@@ -299,21 +299,23 @@ class KubesprayInventory(object):
 
     def set_kube_control_plane(self, hosts):
         for host in hosts:
-            self.add_host_to_group('kube-master', host)
+            self.add_host_to_group('kube_control_plane', host)
 
     def set_all(self, hosts):
         for host, opts in hosts.items():
             self.add_host_to_group('all', host, opts)
 
     def set_k8s_cluster(self):
-        k8s_cluster = {'children': {'kube-master': None, 'kube-node': None}}
+        k8s_cluster = {'children': {'kube_control_plane': None,
+                                    'kube-node': None}}
         self.yaml_config['all']['children']['k8s-cluster'] = k8s_cluster
 
     def set_calico_rr(self, hosts):
         for host in hosts:
-            if host in self.yaml_config['all']['children']['kube-master']:
+            if host in self.yaml_config['all']['children']['kube_control_plane']: # noqa
                 self.debug("Not adding {0} to calico-rr group because it "
-                           "conflicts with kube-master group".format(host))
+                           "conflicts with kube_control_plane "
+                           "group".format(host))
                 continue
             if host in self.yaml_config['all']['children']['kube-node']:
                 self.debug("Not adding {0} to calico-rr group because it "
@@ -330,10 +332,10 @@ class KubesprayInventory(object):
                                "group.".format(host))
                     continue
             if len(self.yaml_config['all']['hosts']) >= MASSIVE_SCALE_THRESHOLD:  # noqa
-                if host in self.yaml_config['all']['children']['kube-master']['hosts']:  # noqa
+                if host in self.yaml_config['all']['children']['kube_control_plane']['hosts']:  # noqa
                     self.debug("Not adding {0} to kube-node group because of "
-                               "scale deployment and host is in kube-master "
-                               "group.".format(host))
+                               "scale deployment and host is in "
+                               "kube_control_plane group.".format(host))
                     continue
             self.add_host_to_group('kube-node', host)
 

@@ -36,7 +36,7 @@ Some variables of note include:
 * *ansible_default_ipv4.address* - Not Kubespray-specific, but it is used if ip
   and access_ip are undefined
 * *loadbalancer_apiserver* - If defined, all hosts will connect to this
-  address instead of localhost for kube-masters and kube-master[0] for
+  address instead of localhost for kube_control_planes and kube_control_plane[0] for
   kube-nodes. See more details in the
   [HA guide](/docs/ha-mode.md).
 * *loadbalancer_apiserver_localhost* - makes all hosts to connect to

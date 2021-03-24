@@ -39,7 +39,7 @@ For a large scaled deployments, consider the following configuration changes:
 
 * Add calico-rr nodes if you are deploying with Calico or Canal. Nodes recover
   from host/network interruption much quicker with calico-rr. Note that
-  calico-rr role must be on a host without kube-master or kube-node role (but
+  calico-rr role must be on a host without kube_control_plane or kube-node role (but
   etcd role is okay).
 
 * Check out the

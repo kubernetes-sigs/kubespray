@@ -22,7 +22,7 @@
   register: apparmor_status
   when:
     - podsecuritypolicy_enabled
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   failed_when: false
 
 - name: Kubernetes Apps | Set apparmor_enabled
@@ -30,7 +30,7 @@
     apparmor_enabled: "{{ apparmor_status.rc == 0 }}"
   when:
     - podsecuritypolicy_enabled
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: "Kubernetes Apps | Lay Down MetalLB"
   become: true
@@ -38,7 +38,7 @@
   with_items: ["metallb.yml", "metallb-config.yml"]
   register: "rendering"
   when:
-    - "inventory_hostname == groups['kube-master'][0]"
+    - "inventory_hostname == groups['kube_control_plane'][0]"
 
 - name: "Kubernetes Apps | Install and configure MetalLB"
   kube:
@@ -49,7 +49,7 @@
   become: true
   with_items: "{{ rendering.results }}"
   when:
-    - "inventory_hostname == groups['kube-master'][0]"
+    - "inventory_hostname == groups['kube_control_plane'][0]"
 
 - name: Kubernetes Apps | Check existing secret of MetalLB
   command: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf -n metallb-system get secret memberlist"
@@ -57,18 +57,18 @@
   become: true
   ignore_errors: yes
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Kubernetes Apps | Create random bytes for MetalLB
   command: "openssl rand -base64 32"
   register: metallb_rand
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
     - metallb_secret.rc != 0
 
 - name: Kubernetes Apps | Install secret of MetalLB if not existing
   command: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf -n metallb-system create secret generic memberlist --from-literal=secretkey={{ metallb_rand.stdout }}"
   become: true
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
     - metallb_secret.rc != 0

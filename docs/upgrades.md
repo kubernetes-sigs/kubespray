@@ -41,7 +41,7 @@ The var ```-e upgrade_cluster_setup=true``` is needed to be set in order to migr
 Kubespray also supports cordon, drain and uncordoning of nodes when performing
 a cluster upgrade. There is a separate playbook used for this purpose. It is
 important to note that upgrade-cluster.yml can only be used for upgrading an
-existing cluster. That means there must be at least 1 kube-master already
+existing cluster. That means there must be at least 1 kube_control_plane already
 deployed.
 
 ```ShellSession

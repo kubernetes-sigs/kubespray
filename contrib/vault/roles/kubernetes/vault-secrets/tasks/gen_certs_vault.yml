@@ -1,30 +1,30 @@
 ---
 - import_tasks: sync_kube_master_certs.yml
-  when: inventory_hostname in groups['kube-master']
+  when: inventory_hostname in groups['kube_control_plane']
 
 - import_tasks: sync_kube_node_certs.yml
   when: inventory_hostname in groups['k8s-cluster']
 
-# Issue admin certs to kube-master hosts
+# Issue admin certs to kube_control_plane hosts
 - include_tasks: ../../../vault/tasks/shared/issue_cert.yml
   vars:
     issue_cert_common_name: "admin"
     issue_cert_copy_ca: "{{ item == kube_admin_certs_needed|first }}"
     issue_cert_file_group: "{{ kube_cert_group }}"
     issue_cert_file_owner: kube
-    issue_cert_hosts: "{{ groups['kube-master'] }}"
+    issue_cert_hosts: "{{ groups['kube_control_plane'] }}"
     issue_cert_path: "{{ item }}"
-    issue_cert_role: kube-master
+    issue_cert_role: kube_control_plane
     issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
     issue_cert_mount_path: "{{ kube_vault_mount_path }}"
   with_items: "{{ kube_admin_certs_needed|d([]) }}"
-  when: inventory_hostname in groups['kube-master']
+  when: inventory_hostname in groups['kube_control_plane']
 
 - name: gen_certs_vault | Set fact about certificate alt names
   set_fact:
     kube_cert_alt_names: >-
       {{
-      groups['kube-master'] +
+      groups['kube_control_plane'] +
       ['kubernetes.default.svc.'+cluster_name, 'kubernetes.default.svc', 'kubernetes.default', 'kubernetes'] +
       ['localhost']
       }}
@@ -36,18 +36,18 @@
   when: loadbalancer_apiserver is defined
   run_once: true
 
-# Issue master components certs to kube-master hosts
+# Issue master components certs to kube_control_plane hosts
 - include_tasks: ../../../vault/tasks/shared/issue_cert.yml
   vars:
     issue_cert_common_name: "kubernetes"
     issue_cert_alt_names: "{{ kube_cert_alt_names }}"
     issue_cert_file_group: "{{ kube_cert_group }}"
     issue_cert_file_owner: kube
-    issue_cert_hosts: "{{ groups['kube-master'] }}"
+    issue_cert_hosts: "{{ groups['kube_control_plane'] }}"
     issue_cert_run_once: true
     issue_cert_ip_sans: >-
         [
-        {%- for host in groups['kube-master']  -%}
+        {%- for host in groups['kube_control_plane']  -%}
         "{{ hostvars[host]['ansible_default_ipv4']['address'] }}",
         {%- if hostvars[host]['ip'] is defined -%}
         "{{ hostvars[host]['ip'] }}",
@@ -61,11 +61,11 @@
         "127.0.0.1","::1","{{ kube_apiserver_ip }}"
         ]
     issue_cert_path: "{{ item }}"
-    issue_cert_role: kube-master
+    issue_cert_role: kube_control_plane
     issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
     issue_cert_mount_path: "{{ kube_vault_mount_path }}"
   with_items: "{{ kube_master_components_certs_needed|d([]) }}"
-  when: inventory_hostname in groups['kube-master']
+  when: inventory_hostname in groups['kube_control_plane']
   notify: set secret_changed
 
 # Issue node certs to k8s-cluster nodes
@@ -100,7 +100,7 @@
   with_items: "{{ kube_proxy_certs_needed|d([]) }}"
   when: inventory_hostname in groups['k8s-cluster']
 
-# Issue front proxy cert to kube-master hosts
+# Issue front proxy cert to kube_control_plane hosts
 - include_tasks: ../../../vault/tasks/shared/issue_cert.yml
   vars:
     issue_cert_common_name: "front-proxy-client"
@@ -109,10 +109,10 @@
     issue_cert_alt_names: "{{ kube_cert_alt_names }}"
     issue_cert_file_group: "{{ kube_cert_group }}"
     issue_cert_file_owner: kube
-    issue_cert_hosts: "{{ groups['kube-master'] }}"
+    issue_cert_hosts: "{{ groups['kube_control_plane'] }}"
     issue_cert_ip_sans: >-
         [
-        {%- for host in groups['kube-master']  -%}
+        {%- for host in groups['kube_control_plane']  -%}
         "{{ hostvars[host]['ansible_default_ipv4']['address'] }}",
         {%- if hostvars[host]['ip'] is defined -%}
         "{{ hostvars[host]['ip'] }}",
@@ -130,5 +130,5 @@
     issue_cert_url: "{{ hostvars[groups.vault|first]['vault_leader_url'] }}"
     issue_cert_mount_path: "{{ kube_vault_mount_path }}"
   with_items: "{{ kube_front_proxy_clients_certs_needed|d([]) }}"
-  when: inventory_hostname in groups['kube-master']
+  when: inventory_hostname in groups['kube_control_plane']
   notify: set secret_changed

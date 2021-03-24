@@ -253,9 +253,9 @@ Vagrant.configure("2") do |config|
           #ansible.tags = ['download']
           ansible.groups = {
             "etcd" => ["#{$instance_name_prefix}-[1:#{$etcd_instances}]"],
-            "kube-master" => ["#{$instance_name_prefix}-[1:#{$kube_master_instances}]"],
+            "kube_control_plane" => ["#{$instance_name_prefix}-[1:#{$kube_master_instances}]"],
             "kube-node" => ["#{$instance_name_prefix}-[1:#{$kube_node_instances}]"],
-            "k8s-cluster:children" => ["kube-master", "kube-node"],
+            "k8s-cluster:children" => ["kube_control_plane", "kube-node"],
           }
         end
       end

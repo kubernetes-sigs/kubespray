@@ -3,23 +3,11 @@
   set_fact:
     nodes_to_drain: []
 
-- name: remove-node | Identify nodes to drain, ignore non-cluster nodes
-  shell: |
-    set -o pipefail
-    {{ bin_dir }}/kubectl get nodes -o json \
-                  | jq .items[].metadata.name \
-                  | jq "select(. | test(\"^{{ hostvars[item]['kube_override_hostname']|default(item) }}$\"))"
-  loop: "{{ node.split(',') | default(groups['kube-node']) }}"
+- name: remove-node | List nodes
+  command: kubectl get nodes -o go-template={% raw %}'{{ range .items }}{{ .metadata.name }}{{ "\n" }}{{ end }}'{% endraw %}
   register: nodes
   delegate_to: "{{ groups['kube_control_plane']|first }}"
   changed_when: false
-  run_once: true
-
-- name: remove-node | Generate list of nodes to drain
-  set_fact:
-    nodes_to_drain: "{{  nodes_to_drain }} + [ '{{ item.stdout  | regex_replace('\"', '') }}' ]"
-  loop: "{{ nodes.results }}"
-  when: item.stdout | length != 0
   run_once: true
 
 - name: remove-node | Drain node except daemonsets resource  # noqa 301
@@ -30,7 +18,9 @@
       --grace-period {{ drain_grace_period }}
       --timeout {{ drain_timeout }}
       --delete-local-data {{ hostvars[item]['kube_override_hostname']|default(item) }}
-  loop: "{{ nodes_to_drain }}"
+  loop: "{{ node.split(',') | default(groups['kube-node']) }}"
+  # ignore servers that are not nodes
+  when: hostvars[item]['kube_override_hostname']|default(item) in nodes.stdout_lines
   register: result
   failed_when: result.rc != 0 and not allow_ungraceful_removal
   delegate_to: "{{ groups['kube_control_plane']|first }}"

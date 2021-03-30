@@ -17,6 +17,7 @@ You need to source the vSphere credentials you use to deploy your machines that 
 | external_vsphere_password                   | TRUE     | string  |                            |                           | Password for vCenter                                           |
 | external_vsphere_datacenter                 | TRUE     | string  |                            |                           | Datacenter name to use                                         |
 | external_vsphere_kubernetes_cluster_id      | TRUE     | string  |                            | "kubernetes-cluster-id"   | Kubernetes cluster ID to use                                   |
+| external_vsphere_version          | TRUE     | string  |                            | "6.7u3"                  | Vmware Vsphere version where located all VMs                                   |
 | vsphere_cloud_controller_image_tag          | TRUE     | string  |                            | "latest"                  | Kubernetes cluster ID to use                                   |
 | vsphere_syncer_image_tag                    | TRUE     | string  |                            | "v1.0.2"                  | Syncer image tag to use                                        |
 | vsphere_csi_attacher_image_tag              | TRUE     | string  |                            | "v1.1.1"                  | CSI attacher image tag to use                                  |
@@ -26,6 +27,7 @@ You need to source the vSphere credentials you use to deploy your machines that 
 | vsphere_csi_provisioner_image_tag           | TRUE     | string  |                            | "v1.2.2"                  | CSI provisioner image tag to use                               |
 | vsphere_csi_node_driver_registrar_image_tag | TRUE     | string  |                            | "v1.1.0"                  | CSI node driver registrat image tag to use                     |
 | vsphere_csi_driver_image_tag                | TRUE     | string  |                            | "v1.0.2"                  | CSI driver image tag to use                                    |
+vsphere_csi_resizer_tag                | TRUE     | string  |                            |  "v1.0.0"                  | CSI resizer image tag to use
 
 ## Usage example
 

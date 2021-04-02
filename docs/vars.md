@@ -171,7 +171,7 @@ node_taints:
   * `audit_webhook_server_extra_args`: {}
   * `audit_webhook_mode`: batch
   * `audit_webhook_batch_max_size`: 100
-  * `audit_webhook_batch_max_wait`
+  * `audit_webhook_batch_max_wait`: 1s
 
 ### Custom flags for Kube Components
 

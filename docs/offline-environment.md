@@ -110,5 +110,3 @@ If you use [Kubespray Container Image](#recommended-way:-kubespray-container-ima
 ```bash
 docker run --rm -it -v path_to_inventory/my_airgap_cluster:inventory/my_airgap_cluster myprivateregisry.com/kubespray/kubespray:v2.14.0 ansible-playbook -i inventory/my_airgap_cluster/hosts.yaml -b cluster.yml
 ```
-
-## Please Note: Offline installation doesn't support CRI-O container runtime at the moment (see [this issue](https://github.com/kubernetes-sigs/kubespray/issues/6233))

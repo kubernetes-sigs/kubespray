@@ -167,7 +167,7 @@ node_taints:
 * *kubernetes_audit_webhook* - When set to `true`, enables the webhook audit backend.
   The webhook parameters can be tuned via the following variables (which default values are shown below):
   * `audit_webhook_config_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-webhook-config.yaml"
-  * `audit_webhook_server_url`: "https://audit.app"
+  * `audit_webhook_server_url`: `"https://audit.app"`
   * `audit_webhook_server_extra_args`: {}
   * `audit_webhook_mode`: batch
   * `audit_webhook_batch_max_size`: 100

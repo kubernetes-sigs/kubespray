@@ -24,9 +24,14 @@ spec:
         memory: {{ kube_scheduler_memory_requests }}
     command:
     - kube-scheduler
+    - --authentication-kubeconfig={{ kube_config_dir }}/scheduler.conf
+    - --authorization-kubeconfig={{ kube_config_dir }}/scheduler.conf
     - --leader-elect=true
     - --leader-elect-lease-duration={{ kube_scheduler_leader_elect_lease_duration }}
     - --leader-elect-renew-deadline={{ kube_scheduler_leader_elect_renew_deadline }}
+{% if kube_version is version('v1.19.0', '>=') %}
+    - --config={{ kube_config_dir }}/kubescheduler-config.yaml
+{% endif %}
     - --kubeconfig={{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml
     - --profiling={{ kube_profiling }}
     - --v={{ kube_log_level }}
@@ -62,6 +67,11 @@ spec:
     - mountPath: "{{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml"
       name: kubeconfig
       readOnly: true
+{% if kube_version is version('v.1.19.0', '>=') %}
+    - mountPath: "{{ kube_config_dir }}/kubescheduler-config.yaml"
+      name: kubescheduler-config
+      readOnly: true
+{% endif %}
   volumes:
   - name: ssl-certs-host
     hostPath:
@@ -77,3 +87,8 @@ spec:
   - name: kubeconfig
     hostPath:
       path: "{{ kube_config_dir }}/kube-scheduler-kubeconfig.yaml"
+{% if kube_version is version('v.1.19.0', '>=') %}
+  - name: kubescheduler-config
+    hostPath:
+      path: "{{ kube_config_dir }}/kubescheduler-config.yaml"
+{% endif %}

@@ -223,7 +223,7 @@ class TestInventory(unittest.TestCase):
             None)
 
     def test_set_kube_control_plane(self):
-        group = 'kube-master'
+        group = 'kube_control_plane'
         host = 'node1'
 
         self.inv.set_kube_control_plane([host])
@@ -242,7 +242,7 @@ class TestInventory(unittest.TestCase):
 
     def test_set_k8s_cluster(self):
         group = 'k8s-cluster'
-        expected_hosts = ['kube-node', 'kube-master']
+        expected_hosts = ['kube-node', 'kube_control_plane']
 
         self.inv.set_k8s_cluster()
         for host in expected_hosts:

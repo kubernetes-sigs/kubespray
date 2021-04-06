@@ -5,7 +5,7 @@
 The inventory is composed of 3 groups:
 
 * **kube-node** : list of kubernetes nodes where the pods will run.
-* **kube-master** : list of servers where kubernetes master components (apiserver, scheduler, controller) will run.
+* **kube_control_plane** : list of servers where kubernetes control plane components (apiserver, scheduler, controller) will run.
 * **etcd**: list of servers to compose the etcd server. You should have at least 3 servers for failover purpose.
 
 Note: do not modify the children of _k8s-cluster_, like putting
@@ -18,9 +18,9 @@ k8s-cluster ⊂ etcd => kube-node ∩ etcd = etcd
 
 When _kube-node_ contains _etcd_, you define your etcd cluster to be as well schedulable for Kubernetes workloads.
 If you want it a standalone, make sure those groups do not intersect.
-If you want the server to act both as master and node, the server must be defined
-on both groups _kube-master_ and _kube-node_. If you want a standalone and
-unschedulable master, the server must be defined only in the _kube-master_ and
+If you want the server to act both as control-plane and node, the server must be defined
+on both groups _kube_control_plane_ and _kube-node_. If you want a standalone and
+unschedulable master, the server must be defined only in the _kube_control_plane_ and
 not _kube-node_.
 
 There are also two special groups:
@@ -40,7 +40,7 @@ node4 ansible_host=95.54.0.15 ip=10.3.0.4
 node5 ansible_host=95.54.0.16 ip=10.3.0.5
 node6 ansible_host=95.54.0.17 ip=10.3.0.6
 
-[kube-master]
+[kube_control_plane]
 node1
 node2
 
@@ -58,7 +58,7 @@ node6
 
 [k8s-cluster:children]
 kube-node
-kube-master
+kube_control_plane
 ```
 
 ## Group vars and overriding variables precedence

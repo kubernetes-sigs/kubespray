@@ -50,13 +50,13 @@ for name in "${WORKER_NAMES[@]}"; do
 done
 
 echo ""
-echo "[kube-master]"
+echo "[kube_control_plane]"
 for name in "${MASTER_NAMES[@]}"; do
   echo "${name}"
 done
 
 echo ""
-echo "[kube-master:vars]"
+echo "[kube_control_plane:vars]"
 echo "supplementary_addresses_in_ssl_keys = [ '${API_LB}' ]" # Add LB address to API server certificate
 echo ""
 echo "[etcd]"
@@ -72,5 +72,5 @@ done
 
 echo ""
 echo "[k8s-cluster:children]"
-echo "kube-master"
+echo "kube_control_plane"
 echo "kube-node"

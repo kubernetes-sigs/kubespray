@@ -122,7 +122,7 @@ recommended here:
 You need to edit your inventory and add:
 
 * `calico-rr` group with nodes in it. `calico-rr` can be combined with
-  `kube-node` and/or `kube-master`. `calico-rr` group also must be a child
+  `kube-node` and/or `kube_control_plane`. `calico-rr` group also must be a child
    group of `k8s-cluster` group.
 * `cluster_id` by route reflector node/group (see details
 [here](https://hub.docker.com/r/calico/routereflector/))
@@ -138,7 +138,7 @@ node3 ansible_ssh_host=10.210.1.13 ip=10.210.1.13
 node4 ansible_ssh_host=10.210.1.14 ip=10.210.1.14
 node5 ansible_ssh_host=10.210.1.15 ip=10.210.1.15
 
-[kube-master]
+[kube_control_plane]
 node2
 node3
 
@@ -155,7 +155,7 @@ node5
 
 [k8s-cluster:children]
 kube-node
-kube-master
+kube_control_plane
 calico-rr
 
 [calico-rr]

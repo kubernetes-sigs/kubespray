@@ -18,15 +18,15 @@
     --upload-certs
   register: kubeadm_upload_cert
   when:
-    - inventory_hostname == groups['kube-master']|first
+    - inventory_hostname == groups['kube_control_plane']|first
 
 - name: Parse certificate key if not set
   set_fact:
-    kubeadm_certificate_key: "{{ hostvars[groups['kube-master'][0]]['kubeadm_upload_cert'].stdout_lines[-1] | trim }}"
+    kubeadm_certificate_key: "{{ hostvars[groups['kube_control_plane'][0]]['kubeadm_upload_cert'].stdout_lines[-1] | trim }}"
   run_once: yes
   when:
-    - hostvars[groups['kube-master'][0]]['kubeadm_upload_cert'] is defined
-    - hostvars[groups['kube-master'][0]]['kubeadm_upload_cert'] is not skipped
+    - hostvars[groups['kube_control_plane'][0]]['kubeadm_upload_cert'] is defined
+    - hostvars[groups['kube_control_plane'][0]]['kubeadm_upload_cert'] is not skipped
 
 - name: Create kubeadm ControlPlane config
   template:
@@ -35,7 +35,7 @@
     mode: 0640
     backup: yes
   when:
-    - inventory_hostname != groups['kube-master']|first
+    - inventory_hostname != groups['kube_control_plane']|first
     - not kubeadm_already_run.stat.exists
 
 - name: Wait for k8s apiserver
@@ -64,5 +64,5 @@
   throttle: 1
   until: kubeadm_join_control_plane is succeeded
   when:
-    - inventory_hostname != groups['kube-master']|first
+    - inventory_hostname != groups['kube_control_plane']|first
     - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists

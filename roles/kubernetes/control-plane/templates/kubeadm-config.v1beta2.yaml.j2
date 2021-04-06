@@ -327,8 +327,12 @@ controllerManager:
 scheduler:
   extraArgs:
     bind-address: {{ kube_scheduler_bind_address }}
+{% if kube_version is version('v1.19.0', '>=') %}
+    config: {{ kube_config_dir }}/kubescheduler-config.yaml
+{% else %}
     leader-elect-lease-duration: {{ kube_scheduler_leader_elect_lease_duration }}
     leader-elect-renew-deadline: {{ kube_scheduler_leader_elect_renew_deadline }}
+{% endif %}
 {% if kube_feature_gates %}
     feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -344,8 +348,14 @@ scheduler:
     tls-cipher-suites: {% for tls in tls_cipher_suites %}{{ tls }}{{ "," if not loop.last else "" }}{% endfor %}
 
 {% endif %}
-{% if scheduler_extra_volumes %}
+{% if scheduler_extra_volumes or kube_version is version('v1.19.0', '>=') %}
   extraVolumes:
+{% if kube_version is version('v.1.19.0', '>=') %}
+  - name: kubescheduler-config
+    hostPath: {{ kube_config_dir }}/kubescheduler-config.yaml
+    mountPath: {{ kube_config_dir }}/kubescheduler-config.yaml
+    readOnly: true
+{% endif %}
 {% for volume in scheduler_extra_volumes %}
   - name: {{ volume.name }}
     hostPath: {{ volume.hostPath }}

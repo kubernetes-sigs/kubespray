@@ -1,10 +1,30 @@
 #!/bin/bash
 
+KUBEADM_BIN="{{ bin_dir }}/kubeadm {{ 'alpha' if kube_version is version('v1.20.0', '<') else '' }}"
+
 echo "## Expiration before renewal ##"
-{{ bin_dir }}/kubeadm {{ 'alpha ' if kube_version is version('v1.20.0', '<') else '' }}certs check-expiration
+$KUBEADM_BIN certs check-expiration
 
 echo "## Renewing certificates managed by kubeadm ##"
-{{ bin_dir }}/kubeadm {{ 'alpha ' if kube_version is version('v1.20.0', '<') else '' }}certs renew all
+
+if [ -f "{{ kube_cert_dir }}/etcd/ca.key" ]; then
+  [ -f "{{ kube_cert_dir }}/etcd/server.key" ] && $KUBEADM_BIN certs renew etcd-server
+  [ -f "{{ kube_cert_dir }}/etcd/peer.key" ] && $KUBEADM_BIN certs renew etcd-peer
+  [ -f "{{ kube_cert_dir }}/etcd/healthcheck-client.key" ] && $KUBEADM_BIN certs renew etcd-healthcheck-client
+  [ -f "{{ kube_cert_dir }}/apiserver-etcd-client.key" ] && $KUBEADM_BIN certs renew apiserver-etcd-client
+fi
+
+if [ -f "{{ kube_cert_dir }}/front-proxy-ca.key" ]; then
+  [ -f "{{ kube_cert_dir }}/front-proxy-client.key" ] && $KUBEADM_BIN certs renew front-proxy-client
+fi
+
+if [ -f "{{ kube_cert_dir }}/ca.key" ]; then
+  [ -f "{{ kube_cert_dir }}/apiserver.key" ] && $KUBEADM_BIN certs renew apiserver
+  [ -f "{{ kube_cert_dir }}/apiserver-kubelet-client.key" ] && $KUBEADM_BIN certs renew apiserver-kubelet-client
+  [ -f "{{ kube_config_dir }}/controller-manager.conf" ] && $KUBEADM_BIN certs renew controller-manager.conf
+  [ -f "{{ kube_config_dir }}/scheduler.conf" ] && $KUBEADM_BIN certs renew scheduler.conf
+  [ -f "{{ kube_config_dir }}/admin.conf" ] && $KUBEADM_BIN certs renew admin.conf
+fi
 
 echo "## Restarting control plane pods managed by kubeadm ##"
 {% if container_manager == "docker" %}
@@ -20,4 +40,4 @@ echo "## Waiting for apiserver to be up again ##"
 until printf "" 2>>/dev/null >>/dev/tcp/127.0.0.1/6443; do sleep 1; done
 
 echo "## Expiration after renewal ##"
-{{ bin_dir }}/kubeadm {{ 'alpha ' if kube_version is version('v1.20.0', '<') else '' }}certs check-expiration
+$KUBEADM_BIN certs check-expiration

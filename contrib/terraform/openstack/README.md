@@ -282,7 +282,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 
 ##### k8s_nodes
 
-Allows a custom defintion of worker nodes giving the operator full control over individual node flavor and
+Allows a custom definition of worker nodes giving the operator full control over individual node flavor and
 availability zone placement. To enable the use of this mode set the `number_of_k8s_nodes` and
 `number_of_k8s_nodes_no_floating_ip` variables to 0. Then define your desired worker node configuration
 using the `k8s_nodes` variable.

@@ -81,12 +81,22 @@
     mode: 0640
 
 - name: kubeadm | Check if apiserver.crt contains all needed SANs
-  command: openssl x509 -noout -in "{{ kube_cert_dir }}/apiserver.crt" -check{{ item|ipaddr|ternary('ip','host') }} "{{ item }}"
-  with_items: "{{ apiserver_sans }}"
+  shell: |
+    set -o pipefail
+    for IP in {{ apiserver_ips | join(' ') }}; do
+      openssl x509 -noout -in "{{ kube_cert_dir }}/apiserver.crt" -checkip $IP | grep -q 'does match certificate' || echo 'NEED-RENEW'
+    done
+    for HOST in {{ apiserver_hosts | join(' ') }}; do
+      openssl x509 -noout -in "{{ kube_cert_dir }}/apiserver.crt" -checkhost $HOST | grep -q 'does match certificate' || echo 'NEED-RENEW'
+    done
+  vars:
+    apiserver_ips: "{{ apiserver_sans|map('ipaddr')|reject('equalto', False)|list }}"
+    apiserver_hosts: "{{ apiserver_sans|difference(apiserver_ips) }}"
+  args:
+    executable: /bin/bash
   register: apiserver_sans_check
-  changed_when: "'does match certificate' not in apiserver_sans_check.stdout"
+  changed_when: "'NEED-RENEW' in apiserver_sans_check.stdout"
   when:
-    - inventory_hostname == groups['kube_control_plane']|first
     - kubeadm_already_run.stat.exists
 
 - name: kubeadm | regenerate apiserver cert 1/2
@@ -97,7 +107,6 @@
     - apiserver.crt
     - apiserver.key
   when:
-    - inventory_hostname == groups['kube_control_plane']|first
     - kubeadm_already_run.stat.exists
     - apiserver_sans_check.changed
 
@@ -107,7 +116,6 @@
     init phase certs apiserver
     --config={{ kube_config_dir }}/kubeadm-config.yaml
   when:
-    - inventory_hostname == groups['kube_control_plane']|first
     - kubeadm_already_run.stat.exists
     - apiserver_sans_check.changed
 

@@ -81,6 +81,8 @@ following default cluster parameters:
   Kubernetes
 * *kube_feature_gates* - A list of key=value pairs that describe feature gates for
   alpha/experimental Kubernetes features. (defaults is `[]`)
+* *kubeadm_feature_gates* - A list of key=value pairs that describe feature gates for
+  alpha/experimental Kubeadm features. (defaults is `[]`)
 * *authorization_modes* - A list of [authorization mode](
 https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
   that the cluster should be configured for. Defaults to `['Node', 'RBAC']`

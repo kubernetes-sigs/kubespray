@@ -589,7 +589,7 @@ Delete the dev namespace, the nginx deployment and service:
 ```ShellSession
 kubectl delete namespace dev
 kubectl delete deployment nginx
-kubectl delete svc/ngninx
+kubectl delete svc/nginx
 ```
 
 ### Kubernetes state

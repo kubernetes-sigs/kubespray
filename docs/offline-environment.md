@@ -10,7 +10,7 @@ In case your servers don't have access to internet (for example when deploying o
 
 ## Configure Inventory
 
-Once all artifacts are accessible from your internal network, **adjust** the following variables in [your inventory](/inventory/sample/group_vars/k8s-cluster/offline.yml) to match your environment:
+Once all artifacts are accessible from your internal network, **adjust** the following variables in [your inventory](/inventory/sample/group_vars/all/offline.yml) to match your environment:
 
 ```yaml
 # Registry overrides

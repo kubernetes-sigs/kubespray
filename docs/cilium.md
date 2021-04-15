@@ -18,7 +18,7 @@ Use following variables:
 
 ### Example
 
-```
+```yml
 cilium_config_extra_vars:
   enable-endpoint-routes: true
 ```

@@ -11,3 +11,14 @@ Hence, in this configuration in Kubespray, Cilium will always contact
 the external loadbalancer (even from a node in the control plane)
 and if there is no external load balancer It will ignore any local load
 balancer deployed by Kubespray and **only contacts the first master**.
+
+## Add variable to config
+
+Use following variables:
+
+### Example
+
+```
+cilium_config_extra_vars:
+  enable-endpoint-routes: true
+```

@@ -26,16 +26,25 @@ write_files:
         ethernets:
           eth1:
             dhcp4: true
-runcmd:
-  - netplan apply
-  - /sbin/sysctl net.ipv4.conf.all.forwarding=1
 %{ if node_type == "worker" }
   # TODO: When a VM is seen as healthy and is added to the EIP loadbalancer
   #       pool it no longer can send traffic back to itself via the EIP IP
   #       address.
   #       Remove this if it ever gets solved.
-  - iptables -t nat -A PREROUTING -d ${eip_ip_address} -j DNAT --to 127.0.0.1
+  - path: /etc/netplan/20-eip-fix.yaml
+    content: |
+      network:
+        version: 2
+        ethernets:
+          "lo:0":
+            match:
+              name: lo
+            dhcp4: false
+            addresses:
+            - ${eip_ip_address}/32
 %{ endif }
+runcmd:
+  - netplan apply
 %{ if node_local_partition_size > 0 }
   - mkdir -p /mnt/disks/node-local-storage
   - chown nobody:nogroup /mnt/disks/node-local-storage

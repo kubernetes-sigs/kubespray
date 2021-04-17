@@ -43,3 +43,17 @@ To validate that Hubble UI is properly configured, set up a port forwarding for 
 kubectl port-forward -n kube-system svc/hubble-ui 12000:80
 ```
 and then open http://localhost:12000/.
+
+## Hubble metrics
+
+```yml
+cilium_enable_hubble_metrics: true
+cilium_hubble_metrics:
+  - dns
+  - drop
+  - tcp
+  - flow
+  - icmp
+  - http
+```  
+More: https://docs.cilium.io/en/v1.9/operations/metrics/#hubble-exported-metrics

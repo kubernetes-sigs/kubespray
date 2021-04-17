@@ -11,3 +11,30 @@ Hence, in this configuration in Kubespray, Cilium will always contact
 the external loadbalancer (even from a node in the control plane)
 and if there is no external load balancer It will ignore any local load
 balancer deployed by Kubespray and **only contacts the first master**.
+
+## Choose Cilium version
+
+```yml
+cilium_version: v1.8.8 ## or 1.9.5
+```
+
+## Add variable to config
+
+Use following variables:
+
+Example:
+
+```yml
+cilium_config_extra_vars:
+  enable-endpoint-routes: true
+```
+
+## Install Cilium Hubble
+
+k8s-net-cilium.yml:
+
+```yml
+cilium_enable_hubble: true ## enable support hubble in cilium
+cilium_hubble_install: true ## install hubble-relay, hubble-ui
+cilium_hubble_tls_generate: true ## install hubble-certgen and generate certificates
+```

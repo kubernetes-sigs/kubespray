@@ -38,11 +38,14 @@ cilium_enable_hubble: true ## enable support hubble in cilium
 cilium_hubble_install: true ## install hubble-relay, hubble-ui
 cilium_hubble_tls_generate: true ## install hubble-certgen and generate certificates
 ```
+
 To validate that Hubble UI is properly configured, set up a port forwarding for hubble-ui service:
+
 ```shell script
 kubectl port-forward -n kube-system svc/hubble-ui 12000:80
 ```
-and then open http://localhost:12000/.
+
+and then open [http://localhost:12000/](http://localhost:12000/).
 
 ## Hubble metrics
 
@@ -56,4 +59,5 @@ cilium_hubble_metrics:
   - icmp
   - http
 ```  
-More: https://docs.cilium.io/en/v1.9/operations/metrics/#hubble-exported-metrics
+
+[More](https://docs.cilium.io/en/v1.9/operations/metrics/#hubble-exported-metrics)

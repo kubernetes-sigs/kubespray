@@ -2,6 +2,15 @@
 - name: Check ansible version
   import_playbook: ansible_version.yml
 
+- name: Add kube-master nodes to kube_control_plane
+  # This is for old inventory which contains kube-master instead of kube_control_plane
+  hosts: kube-master
+  gather_facts: false
+  tasks:
+    - name: add nodes to kube_control_plane group
+      group_by:
+        key: 'kube_control_plane'
+
 - hosts: bastion[0]
   gather_facts: False
   environment: "{{ proxy_disable_env }}"
@@ -32,8 +41,8 @@
     - { role: kubespray-defaults }
     - { role: etcd, tags: etcd, etcd_cluster_setup: false }
 
-- name: Download images to ansible host cache via first kube-master node
-  hosts: kube-master[0]
+- name: Download images to ansible host cache via first kube_control_plane node
+  hosts: kube_control_plane[0]
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -64,13 +73,13 @@
     - { role: kubernetes/node, tags: node }
 
 - name: Upload control plane certs and retrieve encryption key
-  hosts: kube-master | first
+  hosts: kube_control_plane | first
   environment: "{{ proxy_disable_env }}"
   gather_facts: False
   tags: kubeadm
+  roles:
+    - { role: kubespray-defaults }
   tasks:
-    - name: include needed vars
-      include_vars: roles/kubespray-defaults/defaults/main.yaml
     - name: Upload control plane certificates
       command: >-
         {{ bin_dir }}/kubeadm init phase

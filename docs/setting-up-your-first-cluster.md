@@ -353,7 +353,7 @@ each other:
 ```ShellSession
 kubectl run myshell1 -it --rm --image busybox -- sh
 hostname -i
-# launch myshell2 in seperate terminal (see next code block) and ping the hostname of myshell2
+# launch myshell2 in separate terminal (see next code block) and ping the hostname of myshell2
 ping <hostname myshell2>
 ```
 
@@ -589,7 +589,7 @@ Delete the dev namespace, the nginx deployment and service:
 ```ShellSession
 kubectl delete namespace dev
 kubectl delete deployment nginx
-kubectl delete svc/ngninx
+kubectl delete svc/nginx
 ```
 
 ### Kubernetes state

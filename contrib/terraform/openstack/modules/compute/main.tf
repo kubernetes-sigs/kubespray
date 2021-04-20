@@ -1,10 +1,12 @@
 data "openstack_images_image_v2" "vm_image" {
   count = var.image_uuid == "" ? 1 : 0
+  most_recent = true
   name = var.image
 }
 
 data "openstack_images_image_v2" "gfs_image" {
   count = var.image_gfs_uuid == "" ? var.image_uuid == "" ? 1 : 0 : 0
+  most_recent = true
   name = var.image_gfs == "" ? var.image : var.image_gfs
 }
 
@@ -243,7 +245,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
+    kubespray_groups = "etcd,kube_control_plane,${var.supplementary_master_groups},k8s-cluster"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
@@ -290,7 +292,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault"
+    kubespray_groups = "kube_control_plane,${var.supplementary_master_groups},k8s-cluster"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
@@ -335,7 +337,7 @@ resource "openstack_compute_instance_v2" "etcd" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "etcd,vault,no-floating"
+    kubespray_groups = "etcd,no-floating"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
@@ -377,7 +379,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "etcd,kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
+    kubespray_groups = "etcd,kube_control_plane,${var.supplementary_master_groups},k8s-cluster,no-floating"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
@@ -419,7 +421,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "kube-master,${var.supplementary_master_groups},k8s-cluster,vault,no-floating"
+    kubespray_groups = "kube_control_plane,${var.supplementary_master_groups},k8s-cluster,no-floating"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }

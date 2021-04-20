@@ -9,7 +9,7 @@
     mode: 0640
   with_items:
     - vsphere-csi-cloud-config
-  when: inventory_hostname == groups['kube-master'][0]
+  when: inventory_hostname == groups['kube_control_plane'][0]
   tags: vsphere-csi-driver
 
 - name: vSphere CSI Driver | Generate Manifests
@@ -21,13 +21,13 @@
     - vsphere-csi-controller-ss.yml
     - vsphere-csi-node.yml
   register: vsphere_csi_manifests
-  when: inventory_hostname == groups['kube-master'][0]
+  when: inventory_hostname == groups['kube_control_plane'][0]
   tags: vsphere-csi-driver
 
 - name: vSphere CSI Driver | Generate a CSI secret manifest
   command: "{{ bin_dir }}/kubectl create secret generic vsphere-config-secret --from-file=csi-vsphere.conf={{ kube_config_dir }}/vsphere-csi-cloud-config -n kube-system --dry-run --save-config -o yaml"
   register: vsphere_csi_secret_manifest
-  when: inventory_hostname == groups['kube-master'][0]
+  when: inventory_hostname == groups['kube_control_plane'][0]
   no_log: true
   tags: vsphere-csi-driver
 
@@ -35,7 +35,7 @@
   command:
     cmd: "{{ bin_dir }}/kubectl apply -f -"
     stdin: "{{ vsphere_csi_secret_manifest.stdout }}"
-  when: inventory_hostname == groups['kube-master'][0]
+  when: inventory_hostname == groups['kube_control_plane'][0]
   no_log: true
   tags: vsphere-csi-driver
 
@@ -47,7 +47,7 @@
   with_items:
     - "{{ vsphere_csi_manifests.results }}"
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
     - not item is skipped
   loop_control:
     label: "{{ item.item }}"

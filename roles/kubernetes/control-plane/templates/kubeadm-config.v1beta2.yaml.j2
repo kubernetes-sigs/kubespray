@@ -16,7 +16,7 @@ nodeRegistration:
 {% if kube_override_hostname|default('') %}
   name: {{ kube_override_hostname }}
 {% endif %}
-{% if inventory_hostname in groups['kube-master'] and inventory_hostname not in groups['kube-node'] %}
+{% if inventory_hostname in groups['kube_control_plane'] and inventory_hostname not in groups['kube-node'] %}
   taints:
   - effect: NoSchedule
     key: node-role.kubernetes.io/master
@@ -64,7 +64,7 @@ etcd:
 {% for key, value in etcd_extra_vars.items() %}
       {{ key }}: "{{ value }}"
 {% endfor %}
-{% if host_architecture != "amd64" -%}
+{% if host_architecture != "amd64" %}
       etcd-unsupported-arch: {{host_architecture}}
 {% endif %}
     serverCertSANs:
@@ -90,9 +90,9 @@ networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks else '' }}"
   podSubnet: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks else '' }}"
-{% if kube_feature_gates %}
+{% if kubeadm_feature_gates %}
 featureGates:
-{%   for feature in kube_feature_gates %}
+{%   for feature in kubeadm_feature_gates %}
   {{ feature|replace("=", ": ") }}
 {%   endfor %}
 {% endif %}
@@ -186,8 +186,10 @@ apiServer:
 {% if kubernetes_audit_webhook %}
     audit-webhook-config-file: {{ audit_webhook_config_file }}
     audit-webhook-mode: {{ audit_webhook_mode }}
+{% if audit_webhook_mode == "batch" %}
     audit-webhook-batch-max-size: "{{ audit_webhook_batch_max_size }}"
     audit-webhook-batch-max-wait: "{{ audit_webhook_batch_max_wait }}"
+{% endif %}
 {% endif %}
 {% for key in kube_kubeadm_apiserver_extra_args %}
     {{ key }}: "{{ kube_kubeadm_apiserver_extra_args[key] }}"
@@ -327,8 +329,12 @@ controllerManager:
 scheduler:
   extraArgs:
     bind-address: {{ kube_scheduler_bind_address }}
+{% if kube_version is version('v1.19.0', '>=') %}
+    config: {{ kube_config_dir }}/kubescheduler-config.yaml
+{% else %}
     leader-elect-lease-duration: {{ kube_scheduler_leader_elect_lease_duration }}
     leader-elect-renew-deadline: {{ kube_scheduler_leader_elect_renew_deadline }}
+{% endif %}
 {% if kube_feature_gates %}
     feature-gates: {{ kube_feature_gates|join(',') }}
 {% endif %}
@@ -344,8 +350,14 @@ scheduler:
     tls-cipher-suites: {% for tls in tls_cipher_suites %}{{ tls }}{{ "," if not loop.last else "" }}{% endfor %}
 
 {% endif %}
-{% if scheduler_extra_volumes %}
+{% if scheduler_extra_volumes or kube_version is version('v1.19.0', '>=') %}
   extraVolumes:
+{% if kube_version is version('v.1.19.0', '>=') %}
+  - name: kubescheduler-config
+    hostPath: {{ kube_config_dir }}/kubescheduler-config.yaml
+    mountPath: {{ kube_config_dir }}/kubescheduler-config.yaml
+    readOnly: true
+{% endif %}
 {% for volume in scheduler_extra_volumes %}
   - name: {{ volume.name }}
     hostPath: {{ volume.hostPath }}

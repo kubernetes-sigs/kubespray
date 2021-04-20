@@ -1,7 +1,7 @@
 ---
 # Use proxycommand if bastion host is in group all
 # This change obseletes editing ansible.cfg file depending on bastion existence
-ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p {{ hostvars['bastion']['ansible_user'] }}@{{ hostvars['bastion']['ansible_host'] }} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
+ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p -p {{ hostvars['bastion']['ansible_port'] | default(22) }} {{ hostvars['bastion']['ansible_user'] }}@{{ hostvars['bastion']['ansible_host'] }} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
 
 # selinux state
 preinstall_selinux_state: permissive
@@ -15,7 +15,7 @@ is_fedora_coreos: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.20.4
+kube_version: v1.20.6
 
 ## The minimum version working
 kube_version_min_required: v1.18.0
@@ -265,7 +265,8 @@ docker_container_storage_setup: false
 ## Otherwise docker-storage-setup will be executed incorrectly.
 # docker_container_storage_setup_devs: /dev/vdb
 
-## Uncomment this if you have more than 3 nameservers, then we'll only use the first 3.
+## Only set this if you have more than 3 nameservers:
+## If true Kubespray will only use the first 3, otherwise it will fail
 docker_dns_servers_strict: false
 
 # Path used to store Docker data
@@ -309,7 +310,13 @@ docker_plugins: []
 etcd_kubeadm_enabled: false
 
 # Containerd options
-containerd_use_systemd_cgroup: false
+containerd_version: >-
+  {%- if ansible_os_family == "Debian" and ansible_distribution_release == "stretch" -%}
+  1.4.3
+  {%- else -%}
+  1.4.4
+  {%- endif -%}
+containerd_use_systemd_cgroup: true
 
 # Settings for containerized control plane (etcd/kubelet/secrets)
 # deployment type for legacy etcd mode
@@ -387,10 +394,8 @@ external_openstack_lbaas_monitor_timeout: "30s"
 external_openstack_lbaas_monitor_max_retries: "3"
 external_openstack_network_ipv6_disabled: false
 external_openstack_lbaas_use_octavia: false
-external_openstack_network_internal_networks:
-- ""
-external_openstack_network_public_networks:
-- ""
+external_openstack_network_internal_networks: []
+external_openstack_network_public_networks: []
 
 ## List of authorization modes that must be configured for
 ## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
@@ -416,6 +421,7 @@ kubelet_protect_kernel_defaults: true
 ## List of key=value pairs that describe feature gates for
 ## the k8s cluster.
 kube_feature_gates: []
+kubeadm_feature_gates: []
 
 # Local volume provisioner storage classes
 # Levarages Ansibles string to Python datatype casting. Otherwise the dict_key isn't substituted
@@ -449,11 +455,11 @@ ssl_ca_dirs: |-
   ]
 
 # Vars for pointing to kubernetes api endpoints
-is_kube_master: "{{ inventory_hostname in groups['kube-master'] }}"
-kube_apiserver_count: "{{ groups['kube-master'] | length }}"
+is_kube_master: "{{ inventory_hostname in groups['kube_control_plane'] }}"
+kube_apiserver_count: "{{ groups['kube_control_plane'] | length }}"
 kube_apiserver_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
 kube_apiserver_access_address: "{{ access_ip | default(kube_apiserver_address) }}"
-first_kube_master: "{{ hostvars[groups['kube-master'][0]]['access_ip'] | default(hostvars[groups['kube-master'][0]]['ip'] | default(fallback_ips[groups['kube-master'][0]])) }}"
+first_kube_master: "{{ hostvars[groups['kube_control_plane'][0]]['access_ip'] | default(hostvars[groups['kube_control_plane'][0]]['ip'] | default(fallback_ips[groups['kube_control_plane'][0]])) }}"
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
@@ -485,7 +491,7 @@ kube_apiserver_client_key: "{{ kube_cert_dir }}/ca.key"
 etcd_events_cluster_enabled: false
 
 # etcd group can be empty when kubeadm manages etcd
-etcd_hosts: "{{ groups['etcd'] | default(groups['kube-master']) }}"
+etcd_hosts: "{{ groups['etcd'] | default(groups['kube_control_plane']) }}"
 
 # Vars for pointing to etcd endpoints
 is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"

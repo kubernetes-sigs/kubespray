@@ -7,7 +7,7 @@ ${public_ip_address_bastion}
 [bastion]
 ${public_ip_address_bastion}
 
-[kube-master]
+[kube_control_plane]
 ${list_master}
 
 
@@ -21,7 +21,7 @@ ${list_etcd}
 
 [k8s-cluster:children]
 kube-node
-kube-master
+kube_control_plane
 
 
 [k8s-cluster:vars]

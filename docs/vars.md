@@ -18,6 +18,7 @@ Some variables of note include:
 * *docker_version* - Specify version of Docker to used (should be quoted
   string). Must match one of the keys defined for *docker_versioned_pkg*
   in `roles/container-engine/docker/vars/*.yml`.
+* *containerd_version* - Specify version of Containerd to use
 * *etcd_version* - Specify version of ETCD to use
 * *ipip* - Enables Calico ipip encapsulation by default
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)
@@ -36,7 +37,7 @@ Some variables of note include:
 * *ansible_default_ipv4.address* - Not Kubespray-specific, but it is used if ip
   and access_ip are undefined
 * *loadbalancer_apiserver* - If defined, all hosts will connect to this
-  address instead of localhost for kube-masters and kube-master[0] for
+  address instead of localhost for kube_control_planes and kube_control_plane[0] for
   kube-nodes. See more details in the
   [HA guide](/docs/ha-mode.md).
 * *loadbalancer_apiserver_localhost* - makes all hosts to connect to
@@ -78,6 +79,8 @@ following default cluster parameters:
   OpenStack (default is unset)
 * *kube_feature_gates* - A list of key=value pairs that describe feature gates for
   alpha/experimental Kubernetes features. (defaults is `[]`)
+* *kubeadm_feature_gates* - A list of key=value pairs that describe feature gates for
+  alpha/experimental Kubeadm features. (defaults is `[]`)
 * *authorization_modes* - A list of [authorization mode](
 https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
   that the cluster should be configured for. Defaults to `['Node', 'RBAC']`
@@ -115,7 +118,8 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
 * *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install.
-* *containerd_config* - Controls some parameters in containerd configuration file (usually /etc/containerd/config.toml).
+* *containerd_default_runtime* - Sets the default Containerd runtime used by the Kubernetes CRI plugin.
+* *containerd_runtimes* - Sets the Containerd runtime attributes used by the Kubernetes CRI plugin.
   [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container-engine/containerd/defaults/main.yml) can be overriden in inventory vars.
 * *http_proxy/https_proxy/no_proxy/no_proxy_exclude_workers/additional_no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
@@ -162,6 +166,14 @@ node_taints:
   * `audit_policy_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-policy.yaml"
 
   By default, the `audit_policy_file` contains [default rules](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubernetes/control-plane/templates/apiserver-audit-policy.yaml.j2) that can be overridden with the `audit_policy_custom_rules` variable.
+* *kubernetes_audit_webhook* - When set to `true`, enables the webhook audit backend.
+  The webhook parameters can be tuned via the following variables (which default values are shown below):
+  * `audit_webhook_config_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-webhook-config.yaml"
+  * `audit_webhook_server_url`: `"https://audit.app"`
+  * `audit_webhook_server_extra_args`: {}
+  * `audit_webhook_mode`: batch
+  * `audit_webhook_batch_max_size`: 100
+  * `audit_webhook_batch_max_wait`: 1s
 
 ### Custom flags for Kube Components
 

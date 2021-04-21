@@ -13,8 +13,8 @@
 # under the License.
 
 import inventory
-import mock
 import unittest
+from unittest import mock
 
 from collections import OrderedDict
 import sys

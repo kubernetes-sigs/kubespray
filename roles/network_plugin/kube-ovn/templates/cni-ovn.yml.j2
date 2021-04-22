@@ -155,6 +155,39 @@ spec:
     ovn-sb-leader: "true"
   sessionAffinity: None
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: ovn-northd
+  namespace: kube-system
+spec:
+  ports:
+    - name: ovn-northd
+      protocol: TCP
+      port: 6643
+      targetPort: 6643
+  type: ClusterIP
+  selector:
+    app: ovn-central
+    ovn-northd-leader: "true"
+  sessionAffinity: None
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: kube-ovn-monitor
+  namespace:  kube-system
+  labels:
+    app: kube-ovn-monitor
+spec:
+  ports:
+    - name: metrics
+      port: 10661
+  type: ClusterIP
+  selector:
+    app: ovn-central
+  sessionAffinity: None
+---
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -182,7 +215,6 @@ spec:
     spec:
       tolerations:
       - operator: Exists
-        effect: NoSchedule
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -193,6 +225,7 @@ spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: ovn
       hostNetwork: true
+      shareProcessNamespace: true
       containers:
         - name: ovn-central
           image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
@@ -203,7 +236,7 @@ spec:
               add: ["SYS_NICE"]
           env:
             - name: ENABLE_SSL
-              value: "false"
+              value: "{{ enable_ssl | lower }}"
             - name: POD_IP
               valueFrom:
                 fieldRef:
@@ -255,6 +288,63 @@ spec:
               - /kube-ovn/ovn-healthcheck.sh
             initialDelaySeconds: 30
             periodSeconds: 7
+            failureThreshold: 5
+            timeoutSeconds: 45
+        - name: ovn-monitor
+          image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          command: ["/kube-ovn/start-ovn-monitor.sh"]
+          env:
+            - name: ENABLE_SSL
+              value: "{{ enable_ssl | lower }}"
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: {{ kube_ovn_monitor_cpu_request }}
+              memory: {{ kube_ovn_monitor_memory_request }}
+          volumeMounts:
+            - mountPath: /var/run/openvswitch
+              name: host-run-ovs
+            - mountPath: /var/run/ovn
+              name: host-run-ovn
+            - mountPath: /sys
+              name: host-sys
+              readOnly: true
+            - mountPath: /etc/openvswitch
+              name: host-config-openvswitch
+            - mountPath: /etc/ovn
+              name: host-config-ovn
+            - mountPath: /var/log/openvswitch
+              name: host-log-ovs
+            - mountPath: /var/log/ovn
+              name: host-log-ovn
+            - mountPath: /var/run/tls
+              name: kube-ovn-tls
+          readinessProbe:
+            exec:
+              command:
+              - cat
+              - /var/run/ovn/ovnnb_db.pid
+            periodSeconds: 3
+            timeoutSeconds: 45
+          livenessProbe:
+            exec:
+              command:
+              - cat
+              - /var/run/ovn/ovn-nbctl.pid
+            initialDelaySeconds: 30
+            periodSeconds: 10
             failureThreshold: 5
             timeoutSeconds: 45
       nodeSelector:
@@ -310,7 +400,6 @@ spec:
     spec:
       tolerations:
       - operator: Exists
-        effect: NoSchedule
       priorityClassName: system-cluster-critical
       serviceAccountName: ovn
       hostNetwork: true
@@ -325,7 +414,7 @@ spec:
             privileged: true
           env:
             - name: ENABLE_SSL
-              value: "false"
+              value: "{{ enable_ssl | lower }}"
             - name: POD_IP
               valueFrom:
                 fieldRef:

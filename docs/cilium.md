@@ -15,7 +15,7 @@ balancer deployed by Kubespray and **only contacts the first master**.
 ## Choose Cilium version
 
 ```yml
-cilium_version: v1.8.8 ## or v1.9.5
+cilium_version: v1.8.9 ## or v1.9.6
 ```
 
 ## Add variable to config

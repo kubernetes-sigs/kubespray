@@ -134,7 +134,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [containerd](https://containerd.io/) v1.4.4
   - [cri-o](http://cri-o.io/) v1.19 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
-  - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.0
+  - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.1
   - [calico](https://github.com/projectcalico/calico) v3.17.3
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.8.8
@@ -156,7 +156,7 @@ Note: The list of available docker version is 18.09, 19.03 and 20.10. The recomm
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.18**
+- **Minimum required version of Kubernetes is v1.19**
 - **Ansible v2.9.x, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands, Ansible 2.10.x is not supported for now**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.

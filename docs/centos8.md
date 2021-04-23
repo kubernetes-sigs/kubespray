@@ -1,6 +1,6 @@
-# CentOS 8
+# CentOS 8 / AlmaLinux 8
 
-CentOS 8 ships only with iptables-nft (ie without iptables-legacy)
+CentOS 8 / AlmaLinux 8 ships only with iptables-nft (ie without iptables-legacy)
 The only tested configuration for now is using Calico CNI
 You need to use K8S 1.17+ and to add `calico_iptables_backend: "NFT"` or `calico_iptables_backend: "Auto"` to your configuration
 

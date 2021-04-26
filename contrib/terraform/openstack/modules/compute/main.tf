@@ -204,7 +204,7 @@ resource "openstack_compute_instance_v2" "bastion" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.bastion_fips[0]}/ > group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.bastion_fips[0]}/ > group_vars/no_floating.yml"
   }
 }
 
@@ -245,13 +245,13 @@ resource "openstack_compute_instance_v2" "k8s_master" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "etcd,kube_control_plane,${var.supplementary_master_groups},k8s-cluster"
+    kubespray_groups = "etcd,kube_control_plane,${var.supplementary_master_groups},k8s_cluster"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no_floating.yml"
   }
 }
 
@@ -292,13 +292,13 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "kube_control_plane,${var.supplementary_master_groups},k8s-cluster"
+    kubespray_groups = "kube_control_plane,${var.supplementary_master_groups},k8s_cluster"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > group_vars/no_floating.yml"
   }
 }
 
@@ -337,7 +337,7 @@ resource "openstack_compute_instance_v2" "etcd" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "etcd,no-floating"
+    kubespray_groups = "etcd,no_floating"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
@@ -379,7 +379,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "etcd,kube_control_plane,${var.supplementary_master_groups},k8s-cluster,no-floating"
+    kubespray_groups = "etcd,kube_control_plane,${var.supplementary_master_groups},k8s_cluster,no_floating"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
@@ -421,7 +421,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "kube_control_plane,${var.supplementary_master_groups},k8s-cluster,no-floating"
+    kubespray_groups = "kube_control_plane,${var.supplementary_master_groups},k8s_cluster,no_floating"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
@@ -462,13 +462,13 @@ resource "openstack_compute_instance_v2" "k8s_node" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "kube-node,k8s-cluster,${var.supplementary_node_groups}"
+    kubespray_groups = "kube_node,k8s_cluster,${var.supplementary_node_groups}"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_node_fips), 0)}/ > group_vars/no-floating.yml"
+    command = "sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_node_fips), 0)}/ > group_vars/no_floating.yml"
   }
 }
 
@@ -507,7 +507,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "kube-node,k8s-cluster,no-floating,${var.supplementary_node_groups}"
+    kubespray_groups = "kube_node,k8s_cluster,no_floating,${var.supplementary_node_groups}"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
@@ -548,13 +548,13 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "kube-node,k8s-cluster,%{if each.value.floating_ip == false}no-floating,%{endif}${var.supplementary_node_groups}"
+    kubespray_groups = "kube_node,k8s_cluster,%{if each.value.floating_ip == false}no_floating,%{endif}${var.supplementary_node_groups}"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }
 
   provisioner "local-exec" {
-    command = "%{if each.value.floating_ip}sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_nodes_fips : value.address]), 0)}/ > group_vars/no-floating.yml%{else}true%{endif}"
+    command = "%{if each.value.floating_ip}sed s/USER/${var.ssh_user}/ ../../contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_nodes_fips : value.address]), 0)}/ > group_vars/no_floating.yml%{else}true%{endif}"
   }
 }
 
@@ -593,7 +593,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
 
   metadata = {
     ssh_user         = var.ssh_user_gfs
-    kubespray_groups = "gfs-cluster,network-storage,no-floating"
+    kubespray_groups = "gfs-cluster,network-storage,no_floating"
     depends_on       = var.network_id
     use_access_ip    = var.use_access_ip
   }

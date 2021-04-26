@@ -81,7 +81,7 @@ loadbalancer_apiserver:
   port on the VIP address)
 
 This domain name, or default "lb-apiserver.kubernetes.local", will be inserted
-into the `/etc/hosts` file of all servers in the `k8s-cluster` group and wired
+into the `/etc/hosts` file of all servers in the `k8s_cluster` group and wired
 into the generated self-signed TLS/SSL certificates as well. Note that
 the HAProxy service should as well be HA and requires a VIP management, which
 is out of scope of this doc.

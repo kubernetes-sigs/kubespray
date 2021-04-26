@@ -17,7 +17,7 @@ Modify the order of your master list by pushing your first entry to any other po
         node-1:
         node-2:
         node-3:
-    kube-node:
+    kube_node:
       hosts:
         node-1:
         node-2:
@@ -38,7 +38,7 @@ change your inventory to:
         node-2:
         node-3:
         node-1:
-    kube-node:
+    kube_node:
       hosts:
         node-2:
         node-3:

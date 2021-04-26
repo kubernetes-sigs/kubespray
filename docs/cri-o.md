@@ -16,7 +16,7 @@ skip_downloads: false
 etcd_kubeadm_enabled: true
 ```
 
-## k8s-cluster/k8s-cluster.yml
+## k8s_cluster/k8s_cluster.yml
 
 ```yaml
 container_manager: crio
@@ -52,7 +52,7 @@ This parameter controls not just the number of processes but also the amount of 
 (since a thread is technically a process with shared memory). See [cri-o#1921]
 
 In order to increase the default `pids_limit` for cri-o based deployments you need to set the `crio_pids_limit`
-for your `k8s-cluster` ansible group or per node depending on the use case.
+for your `k8s_cluster` ansible group or per node depending on the use case.
 
 ```yaml
 crio_pids_limit: 4096

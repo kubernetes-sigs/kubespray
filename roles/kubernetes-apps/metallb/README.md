@@ -11,7 +11,7 @@ It deploys MetalLB into Kubernetes and sets up a layer 2 or BGP load-balancer.
 
 In the default, MetalLB is not deployed into your Kubernetes cluster.
 You can override the defaults by copying the contents of roles/kubernetes-apps/metallb/defaults/main.yml
-to somewhere in inventory/mycluster/group_vars such as inventory/mycluster/groups_vars/k8s-cluster/addons.yml
+to somewhere in inventory/mycluster/group_vars such as inventory/mycluster/groups_vars/k8s_cluster/addons.yml
 and updating metallb_enabled option to `true`.
 In addition you need to update metallb_ip_range option on the addons.yml at least for suiting your network
 environment, because MetalLB allocates external IP addresses from this metallb_ip_range option.

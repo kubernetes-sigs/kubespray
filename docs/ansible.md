@@ -68,7 +68,7 @@ Optional variables are located in the `inventory/sample/group_vars/all.yml`.
 Mandatory variables that are common for at least one role (or a node group) can be found in the
 `inventory/sample/group_vars/k8s-cluster.yml`.
 There are also role vars for docker, kubernetes preinstall and master roles.
-According to the [ansible docs](https://docs.ansible.com/ansible/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),
+According to the [ansible docs](https://docs.ansible.com/ansible/latest/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),
 those cannot be overridden from the group vars. In order to override, one should use
 the `-e` runtime flags (most simple way) or other layers described in the docs.
 

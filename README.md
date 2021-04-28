@@ -132,7 +132,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [etcd](https://github.com/coreos/etcd) v3.4.13
   - [docker](https://www.docker.com/) v19.03 (see note)
   - [containerd](https://containerd.io/) v1.4.4
-  - [cri-o](http://cri-o.io/) v1.19 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [cri-o](http://cri-o.io/) v1.20 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.1
   - [calico](https://github.com/projectcalico/calico) v3.17.3
@@ -152,7 +152,10 @@ Note: Upstart/SysV init based OS types are not supported.
   - [coredns](https://github.com/coredns/coredns) v1.7.0
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.43.0
 
-Note: The list of available docker version is 18.09, 19.03 and 20.10. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+## Container Runtime Notes
+
+- The list of available docker version is 18.09, 19.03 and 20.10. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+- The cri-o version should be aligned with the respective kubernetes version (i.e. kube_version=1.20.x, crio_version=1.20)
 
 ## Requirements
 

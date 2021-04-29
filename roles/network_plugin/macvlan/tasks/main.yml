@@ -3,7 +3,7 @@
   command: "{{ bin_dir }}/kubectl get nodes {{ kube_override_hostname | default(inventory_hostname) }} -o jsonpath='{.spec.podCIDR}'"
   changed_when: false
   register: node_pod_cidr_cmd
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
 - name: Macvlan | set node_pod_cidr
   set_fact:
@@ -35,7 +35,7 @@
     mode: "0755"
   with_fileglob:
     - files/*
-  when: ansible_os_family in ["CentOS","RedHat"]
+  when: ansible_os_family == "RedHat"
 
 - name: Macvlan | Install post-up script on centos
   copy:
@@ -44,7 +44,7 @@
     owner: root
     group: root
     mode: "0755"
-  when: ansible_os_family in ["CentOS","RedHat"] and enable_nat_default_gateway
+  when: ansible_os_family == "RedHat" and enable_nat_default_gateway
 
 - name: Macvlan | Install network gateway interface on centos
   template:
@@ -55,7 +55,7 @@
     - {src: centos-routes-macvlan.cfg, dst: route-mac0 }
     - {src: centos-postup-macvlan.cfg, dst: post-up-mac0 }
   notify: Macvlan | restart network
-  when: ansible_os_family in ["CentOS","RedHat"]
+  when: ansible_os_family == "RedHat"
 
 - name: Macvlan | Install service nat via gateway on Flatcar Container Linux
   template:

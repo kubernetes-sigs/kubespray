@@ -32,7 +32,7 @@ CONFIG_FILE=inventory/mycluster/hosts.yaml python3 contrib/inventory_builder/inv
 
 # Review and change parameters under ``inventory/mycluster/group_vars``
 cat inventory/mycluster/group_vars/all/all.yml
-cat inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml
+cat inventory/mycluster/group_vars/k8s_cluster/k8s_cluster.yml
 
 # Deploy Kubespray with Ansible Playbook - run the playbook as root
 # The option `--become` is required, as for example writing SSL keys in /etc/,
@@ -48,10 +48,22 @@ As a consequence, `ansible-playbook` command will fail with:
 ERROR! no action detected in task. This often indicates a misspelled module name, or incorrect module path.
 ```
 
-probably pointing on a task depending on a module present in requirements.txt (i.e. "unseal vault").
+probably pointing on a task depending on a module present in requirements.txt.
 
 One way of solving this would be to uninstall the Ansible package and then, to install it via pip but it is not always possible.
 A workaround consists of setting `ANSIBLE_LIBRARY` and `ANSIBLE_MODULE_UTILS` environment variables respectively to the `ansible/modules` and `ansible/module_utils` subdirectories of pip packages installation location, which can be found in the Location field of the output of `pip show [package]` before executing `ansible-playbook`.
+
+A simple way to ensure you get all the correct version of Ansible is to use the [pre-built docker image from Quay](https://quay.io/repository/kubespray/kubespray?tab=tags).
+You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mounts/) to get the inventory and ssh key into the container, like this:
+
+```ShellSession
+docker pull quay.io/kubespray/kubespray:v2.15.1
+docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
+  --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
+  quay.io/kubespray/kubespray:v2.15.1 bash
+# Inside the container you may now run the kubespray playbooks:
+ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
+```
 
 ### Vagrant
 
@@ -108,7 +120,7 @@ vagrant up
 - **CentOS/RHEL** 7, 8 (experimental: see [centos 8 notes](docs/centos8.md))
 - **Fedora** 32, 33
 - **Fedora CoreOS** (experimental: see [fcos Note](docs/fcos.md))
-- **openSUSE** Leap 42.3/Tumbleweed
+- **openSUSE** Leap 15.x/Tumbleweed
 - **Oracle Linux** 7, 8 (experimental: [centos 8 notes](docs/centos8.md) apply)
 
 Note: Upstart/SysV init based OS types are not supported.
@@ -116,38 +128,42 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.20.2
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.20.6
   - [etcd](https://github.com/coreos/etcd) v3.4.13
   - [docker](https://www.docker.com/) v19.03 (see note)
-  - [containerd](https://containerd.io/) v1.3.9
-  - [cri-o](http://cri-o.io/) v1.19 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [containerd](https://containerd.io/) v1.4.4
+  - [cri-o](http://cri-o.io/) v1.20 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
-  - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.0
-  - [calico](https://github.com/projectcalico/calico) v3.16.6
+  - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.1
+  - [calico](https://github.com/projectcalico/calico) v3.17.3
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-  - [cilium](https://github.com/cilium/cilium) v1.8.6
+  - [cilium](https://github.com/cilium/cilium) v1.8.8
   - [flanneld](https://github.com/coreos/flannel) v0.13.0
-  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.5.2
-  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.1.1
-  - [multus](https://github.com/intel/multus-cni) v3.6.0
+  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.6.2
+  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.2.2
+  - [multus](https://github.com/intel/multus-cni) v3.7.0
   - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.1.0
-  - [weave](https://github.com/weaveworks/weave) v2.8.0
+  - [weave](https://github.com/weaveworks/weave) v2.8.1
 - Application
   - [ambassador](https://github.com/datawire/ambassador): v1.5
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v0.16.1
   - [coredns](https://github.com/coredns/coredns) v1.7.0
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.41.2
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.43.0
 
-Note: The list of available docker version is 18.09, 19.03 and 20.10. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+## Container Runtime Notes
+
+- The list of available docker version is 18.09, 19.03 and 20.10. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+- The cri-o version should be aligned with the respective kubernetes version (i.e. kube_version=1.20.x, crio_version=1.20)
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.18**
+- **Minimum required version of Kubernetes is v1.19**
 - **Ansible v2.9.x, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands, Ansible 2.10.x is not supported for now**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.
+- If using IPv6 for pods and services, the target servers are configured to allow **IPv6 forwarding**.
 - The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
     in order to avoid any issue during deployment you should disable your firewall.
 - If kubespray is ran from non-root user account, correct privilege escalation method

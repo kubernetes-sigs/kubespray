@@ -8,7 +8,7 @@ Kubespray supports several download/upload modes. The default is:
 
 There is also a "pull once, push many" mode as well:
 
-* Setting ``download_run_once: True`` will make kubespray download container images and binaries only once and then push them to the cluster nodes. The default download delegate node is the first `kube-master`.
+* Setting ``download_run_once: True`` will make kubespray download container images and binaries only once and then push them to the cluster nodes. The default download delegate node is the first `kube_control_plane`.
 * Set ``download_localhost: True`` to make localhost the download delegate. This can be useful if cluster nodes cannot access external addresses. To use this requires that docker is installed and running on the ansible master and that the current user is either in the docker group or can do passwordless sudo, to be able to access docker.
 
 NOTE: When `download_run_once` is true and `download_localhost` is false, all downloads will be done on the delegate node, including downloads for container images that are not required on that node. As a consequence, the storage required on that node will probably be more than if download_run_once was false, because all images will be loaded into the docker instance on that node, instead of just the images required for that node.

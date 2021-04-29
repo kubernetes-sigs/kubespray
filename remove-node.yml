@@ -2,8 +2,12 @@
 - name: Check ansible version
   import_playbook: ansible_version.yml
 
-- hosts: "{{ node | default('etcd:k8s-cluster:calico-rr') }}"
+- name: Ensure compatibility with old groups
+  import_playbook: legacy_groups.yml
+
+- hosts: "{{ node | default('etcd:k8s_cluster:calico_rr') }}"
   gather_facts: no
+  environment: "{{ proxy_disable_env }}"
   vars_prompt:
     name: "delete_nodes_confirmation"
     prompt: "Are you sure you want to delete nodes state? Type 'yes' to delete nodes."
@@ -16,15 +20,17 @@
         msg: "Delete nodes confirmation failed"
       when: delete_nodes_confirmation != "yes"
 
-- hosts: kube-master[0]
+- hosts: kube_control_plane[0]
   gather_facts: no
+  environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults }
     - { role: bootstrap-os, tags: bootstrap-os }
     - { role: remove-node/pre-remove, tags: pre-remove }
 
-- hosts: "{{ node | default('kube-node') }}"
+- hosts: "{{ node | default('kube_node') }}"
   gather_facts: no
+  environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults, when: reset_nodes|default(True)|bool }
     - { role: bootstrap-os, tags: bootstrap-os, when: reset_nodes|default(True)|bool }
@@ -32,8 +38,9 @@
     - { role: reset, tags: reset, when: reset_nodes|default(True)|bool }
 
 # Currently cannot remove first master or etcd
-- hosts: "{{ node | default('kube-master[1:]:etcd[1:]') }}"
+- hosts: "{{ node | default('kube_control_plane[1:]:etcd[1:]') }}"
   gather_facts: no
+  environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults, when: reset_nodes|default(True)|bool }
     - { role: bootstrap-os, tags: bootstrap-os, when: reset_nodes|default(True)|bool }

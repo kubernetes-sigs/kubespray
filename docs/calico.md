@@ -58,13 +58,14 @@ To re-define you need to edit the inventory and add a group variable `calico_net
 calico_network_backend: none
 ```
 
-### Optional : Define the default pool CIDR
+### Optional : Define the default pool CIDRs
 
-By default, `kube_pods_subnet` is used as the IP range CIDR for the default IP Pool.
-In some cases you may want to add several pools and not have them considered by Kubernetes as external (which means that they must be within or equal to the range defined in `kube_pods_subnet`), it starts with the default IP Pool of which IP range CIDR can by defined in group_vars (k8s-cluster/k8s-net-calico.yml):
+By default, `kube_pods_subnet` is used as the IP range CIDR for the default IP Pool, and `kube_pods_subnet_ipv6` for IPv6.
+In some cases you may want to add several pools and not have them considered by Kubernetes as external (which means that they must be within or equal to the range defined in `kube_pods_subnet` and `kube_pods_subnet_ipv6` ), it starts with the default IP Pools of which IP range CIDRs can by defined in group_vars (k8s_cluster/k8s-net-calico.yml):
 
 ```ShellSession
 calico_pool_cidr: 10.233.64.0/20
+calico_pool_cidr_ipv6: fd85:ee78:d8a6:8607::1:0000/112
 ```
 
 ### Optional : BGP Peering with border routers
@@ -87,14 +88,14 @@ In order to define peers on a per node basis, the `peers` variable must be defin
 NB: Ansible's `hash_behaviour` is by default set to "replace", thus defining both global and per node peers would end up with having only per node peers. If having both global and per node peers defined was meant to happen, global peers would have to be defined in hostvars for each host (as well as per node peers)
 
 Since calico 3.4, Calico supports advertising Kubernetes service cluster IPs over BGP, just as it advertises pod IPs.
-This can be enabled by setting the following variable as follow in group_vars (k8s-cluster/k8s-net-calico.yml)
+This can be enabled by setting the following variable as follow in group_vars (k8s_cluster/k8s-net-calico.yml)
 
 ```yml
 calico_advertise_cluster_ips: true
 ```
 
 Since calico 3.10, Calico supports advertising Kubernetes service ExternalIPs over BGP in addition to cluster IPs advertising.
-This can be enabled by setting the following variable in group_vars (k8s-cluster/k8s-net-calico.yml)
+This can be enabled by setting the following variable in group_vars (k8s_cluster/k8s-net-calico.yml)
 
 ```yml
 calico_advertise_service_external_ips:
@@ -120,9 +121,9 @@ recommended here:
 
 You need to edit your inventory and add:
 
-* `calico-rr` group with nodes in it. `calico-rr` can be combined with
-  `kube-node` and/or `kube-master`. `calico-rr` group also must be a child
-   group of `k8s-cluster` group.
+* `calico_rr` group with nodes in it. `calico_rr` can be combined with
+  `kube_node` and/or `kube_control_plane`. `calico_rr` group also must be a child
+   group of `k8s_cluster` group.
 * `cluster_id` by route reflector node/group (see details
 [here](https://hub.docker.com/r/calico/routereflector/))
 
@@ -137,7 +138,7 @@ node3 ansible_ssh_host=10.210.1.13 ip=10.210.1.13
 node4 ansible_ssh_host=10.210.1.14 ip=10.210.1.14
 node5 ansible_ssh_host=10.210.1.15 ip=10.210.1.15
 
-[kube-master]
+[kube_control_plane]
 node2
 node3
 
@@ -146,18 +147,18 @@ node2
 node3
 node4
 
-[kube-node]
+[kube_node]
 node2
 node3
 node4
 node5
 
-[k8s-cluster:children]
-kube-node
-kube-master
-calico-rr
+[k8s_cluster:children]
+kube_node
+kube_control_plane
+calico_rr
 
-[calico-rr]
+[calico_rr]
 rr0
 rr1
 

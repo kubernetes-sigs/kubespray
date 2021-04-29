@@ -84,7 +84,7 @@ resource "aws_instance" "k8s-master" {
 
   vpc_security_group_ids = module.aws-vpc.aws_security_group
 
-  iam_instance_profile = module.aws-iam.kube-master-profile
+  iam_instance_profile = module.aws-iam.kube_control_plane-profile
   key_name             = var.AWS_SSH_KEY_NAME
 
   tags = merge(var.default_tags, map(

@@ -2,6 +2,9 @@
 - name: check if fedora coreos
   stat:
     path: /run/ostree-booted
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: ostree
 
 - name: set is_ostree
@@ -94,6 +97,9 @@
 - name: Check if already installed
   stat:
     path: "/bin/crio"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: need_bootstrap_crio
   when: is_ostree
 
@@ -134,15 +140,13 @@
     owner: root
     mode: 0755
 
-- name: Remove metacopy mount options for older kernels
+# metacopy=on is available since 4.19 and was backported to RHEL 4.18 kernel
+- name: Set metacopy mount options correctly
   ini_file:
     dest: /etc/containers/storage.conf
     section: storage.options.overlay
     option: mountopt
-    value: "\"nodev\""
-  when:
-    - ansible_distribution == "CentOS"
-    - ansible_distribution_major_version == "7"
+    value: '{{ ''"nodev"'' if ansible_kernel is version_compare(("4.18" if ansible_os_family == "RedHat" else "4.19"), "<") else ''"nodev,metacopy=on"'' }}'
 
 - name: Create directory registries configs
   file:

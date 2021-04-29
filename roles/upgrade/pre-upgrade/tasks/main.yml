@@ -21,7 +21,7 @@
     {{ bin_dir }}/kubectl get node {{ kube_override_hostname|default(inventory_hostname) }}
     -o jsonpath='{ range .status.conditions[?(@.type == "Ready")].status }{ @ }{ end }'
   register: kubectl_node_ready
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
   failed_when: false
   changed_when: false
 
@@ -32,7 +32,7 @@
     {{ bin_dir }}/kubectl get node {{ kube_override_hostname|default(inventory_hostname) }}
     -o jsonpath='{ .spec.unschedulable }'
   register: kubectl_node_schedulable
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
   failed_when: false
   changed_when: false
 
@@ -49,12 +49,12 @@
   block:
     - name: Cordon node
       command: "{{ bin_dir }}/kubectl cordon {{ kube_override_hostname|default(inventory_hostname) }}"
-      delegate_to: "{{ groups['kube-master'][0] }}"
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
     - name: Check kubectl version
       command: "{{ bin_dir }}/kubectl version --client --short"
       register: kubectl_version
-      delegate_to: "{{ groups['kube-master'][0] }}"
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
       run_once: yes
       changed_when: false
       when:
@@ -77,14 +77,19 @@
         --timeout {{ drain_timeout }}
         --delete-local-data {{ kube_override_hostname|default(inventory_hostname) }}
         {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
-      when:
-        - drain_nodes
+      when: drain_nodes
+      register: result
+      until: result.rc == 0
+      retries: "{{ drain_retries }}"
+      delay: "{{ drain_retry_delay_seconds }}"
   rescue:
     - name: Set node back to schedulable
       command: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf uncordon {{ inventory_hostname }}"
+      when: upgrade_node_uncordon_after_drain_failure
     - name: Fail after rescue
       fail:
         msg: "Failed to drain node {{ inventory_hostname }}"
-  delegate_to: "{{ groups['kube-master'][0] }}"
+      when: upgrade_node_fail_if_drain_fails
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
   when:
     - needs_cordoning

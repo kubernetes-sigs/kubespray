@@ -52,7 +52,11 @@ module "compute" {
   master_volume_type                           = var.master_volume_type
   public_key_path                              = var.public_key_path
   image                                        = var.image
+  image_uuid                                   = var.image_uuid
   image_gfs                                    = var.image_gfs
+  image_master                                 = var.image_master
+  image_master_uuid                            = var.image_master_uuid
+  image_gfs_uuid                               = var.image_gfs_uuid
   ssh_user                                     = var.ssh_user
   ssh_user_gfs                                 = var.ssh_user_gfs
   flavor_k8s_master                            = var.flavor_k8s_master

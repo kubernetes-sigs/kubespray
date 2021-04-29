@@ -1,0 +1,74 @@
+---
+- name: kubeadm | Check api is up
+  uri:
+    url: "https://{{ ip | default(fallback_ips[inventory_hostname]) }}:{{ kube_apiserver_port }}/healthz"
+    validate_certs: false
+  when: inventory_hostname in groups['kube_control_plane']
+  register: _result
+  retries: 60
+  delay: 5
+  until: _result.status == 200
+
+- name: kubeadm | Upgrade first master
+  command: >-
+    timeout -k 600s 600s
+    {{ bin_dir }}/kubeadm
+    upgrade apply -y {{ kube_version }}
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    --ignore-preflight-errors=all
+    --allow-experimental-upgrades
+    --etcd-upgrade={{ etcd_kubeadm_enabled | bool | lower }}
+    --force
+  register: kubeadm_upgrade
+  # Retry is because upload config sometimes fails
+  retries: 3
+  until: kubeadm_upgrade.rc == 0
+  when: inventory_hostname == groups['kube_control_plane']|first
+  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+  notify: Master | restart kubelet
+
+- name: kubeadm | Upgrade other masters
+  command: >-
+    timeout -k 600s 600s
+    {{ bin_dir }}/kubeadm
+    upgrade apply -y {{ kube_version }}
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    --ignore-preflight-errors=all
+    --allow-experimental-upgrades
+    --etcd-upgrade={{ etcd_kubeadm_enabled | bool | lower }}
+    --force
+  register: kubeadm_upgrade
+  when: inventory_hostname != groups['kube_control_plane']|first
+  failed_when:
+    - kubeadm_upgrade.rc != 0
+    - '"field is immutable" not in kubeadm_upgrade.stderr'
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+  notify: Master | restart kubelet
+
+- name: kubeadm | clean kubectl cache to refresh api types
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /root/.kube/cache
+    - /root/.kube/http-cache
+
+# FIXME: https://github.com/kubernetes/kubeadm/issues/1318
+- name: kubeadm | scale down coredns replicas to 0 if not using coredns dns_mode
+  command: >-
+    {{ bin_dir }}/kubectl
+    --kubeconfig /etc/kubernetes/admin.conf
+    -n kube-system
+    scale deployment/coredns --replicas 0
+  register: scale_down_coredns
+  retries: 6
+  delay: 5
+  until: scale_down_coredns is succeeded
+  run_once: yes
+  when:
+    - kubeadm_scale_down_coredns_enabled
+    - dns_mode not in ['coredns', 'coredns_dual']
+  changed_when: false

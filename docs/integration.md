@@ -52,17 +52,17 @@ You could rename *all.yml* config to something else, i.e. *kubespray.yml* and cr
    ```ini
      ...
      #Kargo groups:
-     [kube-node:children]
+     [kube_node:children]
      kubenode
 
-     [k8s-cluster:children]
+     [k8s_cluster:children]
      kubernetes
 
      [etcd:children]
      kubemaster
      kubemaster-ha
 
-     [kube-master:children]
+     [kube_control_plane:children]
      kubemaster
      kubemaster-ha
 

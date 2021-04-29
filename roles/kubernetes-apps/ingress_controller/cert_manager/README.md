@@ -33,7 +33,7 @@ LS0tLS1CRUdJTiBSU0Eg...
 
 For further information, read the official [Cert-Manager CA Configuration](https://cert-manager.io/docs/configuration/ca/) doc.
 
-Once the base64 encoded values have been added to `templates\secret-cert-manager.yml.j2`, cert-manager can now be enabled by editing your K8s cluster addons inventory e.g. `inventory\sample\group_vars\k8s-cluster\addons.yml` and setting `cert_manager_enabled` to true.
+Once the base64 encoded values have been added to `templates\secret-cert-manager.yml.j2`, cert-manager can now be enabled by editing your K8s cluster addons inventory e.g. `inventory\sample\group_vars\k8s_cluster\addons.yml` and setting `cert_manager_enabled` to true.
 
 ```ini
 # Cert manager deployment
@@ -46,7 +46,7 @@ If you don't have a TLS Root CA certificate and key available, you can create th
 
 A common use-case for cert-manager is requesting TLS signed certificates to secure your ingress resources. This can be done by simply adding annotations to your Ingress resources and cert-manager will facilitate creating the Certificate resource for you. A small sub-component of cert-manager, ingress-shim, is responsible for this.
 
-To enable the Nginx Ingress controller as part of your Kubespray deployment, simply edit your K8s cluster addons inventory e.g. `inventory\sample\group_vars\k8s-cluster\addons.yml` and set `ingress_nginx_enabled` to true.
+To enable the Nginx Ingress controller as part of your Kubespray deployment, simply edit your K8s cluster addons inventory e.g. `inventory\sample\group_vars\k8s_cluster\addons.yml` and set `ingress_nginx_enabled` to true.
 
 ```ini
 # Nginx ingress controller deployment

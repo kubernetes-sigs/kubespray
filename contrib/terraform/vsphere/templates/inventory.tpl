@@ -9,9 +9,9 @@ ${list_master}
 [etcd]
 ${list_master}
 
-[kube-node]
+[kube_node]
 ${list_worker}
 
-[k8s-cluster:children]
+[k8s_cluster:children]
 kube_control_plane
-kube-node
+kube_node

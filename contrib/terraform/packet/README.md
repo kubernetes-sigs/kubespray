@@ -108,7 +108,7 @@ While the defaults in variables.tf will successfully deploy a cluster, it is rec
 Kubespray will pull down a Kubernetes configuration file to access this cluster by enabling the
 `kubeconfig_localhost: true` in the Kubespray configuration.
 
-Edit `inventory/$CLUSTER/group_vars/k8s-cluster/k8s-cluster.yml` and comment back in the following line and change from `false` to `true`:
+Edit `inventory/$CLUSTER/group_vars/k8s_cluster/k8s_cluster.yml` and comment back in the following line and change from `false` to `true`:
 `\# kubeconfig_localhost: false`
 becomes:
 `kubeconfig_localhost: true`

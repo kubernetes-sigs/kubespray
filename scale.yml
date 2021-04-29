@@ -2,14 +2,8 @@
 - name: Check ansible version
   import_playbook: ansible_version.yml
 
-- name: Add kube-master nodes to kube_control_plane
-  # This is for old inventory which contains kube-master instead of kube_control_plane
-  hosts: kube-master
-  gather_facts: false
-  tasks:
-    - name: add nodes to kube_control_plane group
-      group_by:
-        key: 'kube_control_plane'
+- name: Ensure compatibility with old groups
+  import_playbook: legacy_groups.yml
 
 - hosts: bastion[0]
   gather_facts: False
@@ -19,7 +13,7 @@
     - { role: bastion-ssh-config, tags: ["localhost", "bastion"] }
 
 - name: Bootstrap any new workers
-  hosts: kube-node
+  hosts: kube_node
   strategy: linear
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   gather_facts: false
@@ -52,7 +46,7 @@
     - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
 
 - name: Target only workers to get kubelet installed and checking in on any new nodes(engine)
-  hosts: kube-node
+  hosts: kube_node
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -64,7 +58,7 @@
     - { role: etcd, tags: etcd, etcd_cluster_setup: false, when: "not etcd_kubeadm_enabled|default(false)" }
 
 - name: Target only workers to get kubelet installed and checking in on any new nodes(node)
-  hosts: kube-node
+  hosts: kube_node
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -95,7 +89,7 @@
       when: kubeadm_certificate_key is not defined
 
 - name: Target only workers to get kubelet installed and checking in on any new nodes(network)
-  hosts: kube-node
+  hosts: kube_node
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"

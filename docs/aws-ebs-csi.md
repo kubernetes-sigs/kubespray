@@ -8,7 +8,7 @@ To set the number of replicas for the AWS CSI controller, you can change `aws_eb
 
 Make sure to add a role, for your EC2 instances hosting Kubernetes, that allows it to do the actions necessary to request a volume and attach it: [AWS CSI Policy](https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/master/docs/example-iam-policy.json)
 
-If you want to deploy the AWS EBS storage class used with the CSI Driver, you should set `persistent_volumes_enabled` in `group_vars/k8s-cluster/k8s-cluster.yml` to `true`.
+If you want to deploy the AWS EBS storage class used with the CSI Driver, you should set `persistent_volumes_enabled` in `group_vars/k8s_cluster/k8s_cluster.yml` to `true`.
 
 You can now run the kubespray playbook (cluster.yml) to deploy Kubernetes over AWS EC2 with EBS CSI Driver enabled.
 

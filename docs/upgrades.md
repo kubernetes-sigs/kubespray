@@ -68,9 +68,9 @@ If you want to manually control the upgrade procedure, you can use the variables
 
 For instance, if you're on v2.6.0, then check out v2.7.0, run the upgrade, check out the next tag, and run the next upgrade, etc.
 
-Assuming you don't explicitly define a kubernetes version in your k8s-cluster.yml, you simply check out the next tag and run the upgrade-cluster.yml playbook
+Assuming you don't explicitly define a kubernetes version in your k8s_cluster.yml, you simply check out the next tag and run the upgrade-cluster.yml playbook
 
-* If you do define kubernetes version in your inventory (e.g. group_vars/k8s-cluster.yml) then either make sure to update it before running upgrade-cluster, or specify the new version you're upgrading to: `ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml -e kube_version=v1.11.3`
+* If you do define kubernetes version in your inventory (e.g. group_vars/k8s_cluster.yml) then either make sure to update it before running upgrade-cluster, or specify the new version you're upgrading to: `ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml -e kube_version=v1.11.3`
 
   Otherwise, the upgrade will leave your cluster at the same k8s version defined in your inventory vars.
 
@@ -232,7 +232,7 @@ Previous HEAD position was 6f97687d Release 2.8 robust san handling (#4478)
 HEAD is now at a4e65c7c Upgrade to Ansible >2.7.0 (#4471)
 ```
 
-:warning: IMPORTANT: Some of the variable formats changed in the k8s-cluster.yml between 2.8.5 and 2.9.0 :warning:
+:warning: IMPORTANT: Some of the variable formats changed in the k8s_cluster.yml between 2.8.5 and 2.9.0 :warning:
 
 If you do not keep your inventory copy up to date, **your upgrade will fail** and your first master will be left non-functional until fixed and re-run.
 

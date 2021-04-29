@@ -79,7 +79,7 @@ var in inventory.
 By default, Kubespray configures kube_control_plane hosts with insecure access to
 kube-apiserver via port 8080. A kubeconfig file is not necessary in this case,
 because kubectl will use <http://localhost:8080> to connect. The kubeconfig files
-generated will point to localhost (on kube_control_planes) and kube-node hosts will
+generated will point to localhost (on kube_control_planes) and kube_node hosts will
 connect either to a localhost nginx proxy or to a loadbalancer if configured.
 More details on this process are in the [HA guide](/docs/ha-mode.md).
 

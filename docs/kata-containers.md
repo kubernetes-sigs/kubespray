@@ -10,7 +10,7 @@ _Qemu_ is the only hypervisor supported by Kubespray.
 
 To use Kata Containers, set the following variables:
 
-**k8s-cluster.yml**:
+**k8s_cluster.yml**:
 
 ```yaml
 container_manager: containerd

@@ -11,9 +11,9 @@ supplementary_addresses_in_ssl_keys = [ "${api_lb_ip_address}" ]
 [etcd]
 ${list_master}
 
-[kube-node]
+[kube_node]
 ${list_worker}
 
-[k8s-cluster:children]
+[k8s_cluster:children]
 kube_control_plane
-kube-node
+kube_node

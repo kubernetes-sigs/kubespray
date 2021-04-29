@@ -225,7 +225,7 @@ worker-0, worker-1 and worker-2 are worker nodes. Also update the `ip` to the re
 remove the `access_ip`.
 
 The main configuration for the cluster is stored in
-`inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml`. In this file we
+`inventory/mycluster/group_vars/k8s_cluster/k8s_cluster.yml`. In this file we
  will update the `supplementary_addresses_in_ssl_keys` with a list of the IP
  addresses of the controller nodes. In that way we can access the
   kubernetes API server as an administrator from outside the VPC network. You
@@ -234,7 +234,7 @@ The main configuration for the cluster is stored in
 
 Kubespray also offers to easily enable popular kubernetes add-ons. You can
 modify the
-list of add-ons in `inventory/mycluster/group_vars/k8s-cluster/addons.yml`.
+list of add-ons in `inventory/mycluster/group_vars/k8s_cluster/addons.yml`.
 Let's enable the metrics server as this is a crucial monitoring element for
 the kubernetes cluster, just change the 'false' to 'true' for
 `metrics_server_enabled`.

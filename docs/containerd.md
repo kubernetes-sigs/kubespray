@@ -5,7 +5,7 @@ Kubespray supports basic functionality for using containerd as the default conta
 
 _To use the containerd container runtime set the following variables:_
 
-## k8s-cluster.yml
+## k8s_cluster.yml
 
 ```yaml
 container_manager: containerd

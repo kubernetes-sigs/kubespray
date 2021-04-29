@@ -65,12 +65,12 @@ for name in "${MASTER_NAMES[@]}"; do
 done
 
 echo ""
-echo "[kube-node]"
+echo "[kube_node]"
 for name in "${WORKER_NAMES[@]}"; do
   echo "${name}"
 done
 
 echo ""
-echo "[k8s-cluster:children]"
+echo "[k8s_cluster:children]"
 echo "kube_control_plane"
-echo "kube-node"
+echo "kube_node"

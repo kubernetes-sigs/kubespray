@@ -2,14 +2,8 @@
 - name: Check ansible version
   import_playbook: ansible_version.yml
 
-- name: Add kube-master nodes to kube_control_plane
-  # This is for old inventory which contains kube-master instead of kube_control_plane
-  hosts: kube-master
-  gather_facts: false
-  tasks:
-    - name: add nodes to kube_control_plane group
-      group_by:
-        key: 'kube_control_plane'
+- name: Ensure compatibility with old groups
+  import_playbook: legacy_groups.yml
 
 - hosts: bastion[0]
   gather_facts: False
@@ -18,7 +12,7 @@
     - { role: kubespray-defaults }
     - { role: bastion-ssh-config, tags: ["localhost", "bastion"] }
 
-- hosts: k8s-cluster:etcd:calico-rr
+- hosts: k8s_cluster:etcd:calico_rr
   strategy: linear
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   gather_facts: false
@@ -46,7 +40,7 @@
     - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
 
 - name: Prepare nodes for upgrade
-  hosts: k8s-cluster:etcd:calico-rr
+  hosts: k8s_cluster:etcd:calico_rr
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -56,7 +50,7 @@
     - { role: download, tags: download, when: "not skip_downloads" }
 
 - name: Upgrade container engine on non-cluster nodes
-  hosts: etcd:calico-rr:!k8s-cluster
+  hosts: etcd:calico_rr:!k8s_cluster
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -78,7 +72,7 @@
         etcd_events_cluster_setup: false
       when: not etcd_kubeadm_enabled | default(false)
 
-- hosts: k8s-cluster
+- hosts: k8s_cluster
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -110,7 +104,7 @@
     - { role: upgrade/post-upgrade, tags: post-upgrade }
 
 - name: Upgrade calico and external cloud provider on all masters, calico-rrs, and nodes
-  hosts: kube_control_plane:calico-rr:kube-node
+  hosts: kube_control_plane:calico_rr:kube_node
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   serial: "{{ serial | default('20%') }}"
@@ -123,7 +117,7 @@
     - { role: kubernetes-apps/policy_controller, tags: policy-controller }
 
 - name: Finally handle worker upgrades, based on given batch size
-  hosts: kube-node:calico-rr:!kube_control_plane
+  hosts: kube_node:calico_rr:!kube_control_plane
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -145,7 +139,7 @@
     - { role: kubespray-defaults }
     - { role: win_nodes/kubernetes_patch, tags: ["master", "win_nodes"] }
 
-- hosts: calico-rr
+- hosts: calico_rr
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -161,7 +155,7 @@
     - { role: kubespray-defaults }
     - { role: kubernetes-apps, tags: apps }
 
-- hosts: k8s-cluster
+- hosts: k8s_cluster
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"

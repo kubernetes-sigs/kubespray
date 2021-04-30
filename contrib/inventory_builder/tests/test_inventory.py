@@ -241,8 +241,8 @@ class TestInventory(unittest.TestCase):
                 self.inv.yaml_config['all']['hosts'].get(host), opt)
 
     def test_set_k8s_cluster(self):
-        group = 'k8s-cluster'
-        expected_hosts = ['kube-node', 'kube_control_plane']
+        group = 'k8s_cluster'
+        expected_hosts = ['kube_node', 'kube_control_plane']
 
         self.inv.set_k8s_cluster()
         for host in expected_hosts:
@@ -251,7 +251,7 @@ class TestInventory(unittest.TestCase):
                 self.inv.yaml_config['all']['children'][group]['children'])
 
     def test_set_kube_node(self):
-        group = 'kube-node'
+        group = 'kube_node'
         host = 'node1'
 
         self.inv.set_kube_node([host])
@@ -280,7 +280,7 @@ class TestInventory(unittest.TestCase):
         for h in range(3):
             self.assertFalse(
                 list(hosts.keys())[h] in
-                self.inv.yaml_config['all']['children']['kube-node']['hosts'])
+                self.inv.yaml_config['all']['children']['kube_node']['hosts'])
 
     def test_scale_scenario_two(self):
         num_nodes = 500
@@ -296,7 +296,7 @@ class TestInventory(unittest.TestCase):
         for h in range(5):
             self.assertFalse(
                 list(hosts.keys())[h] in
-                self.inv.yaml_config['all']['children']['kube-node']['hosts'])
+                self.inv.yaml_config['all']['children']['kube_node']['hosts'])
 
     def test_range2ips_range(self):
         changed_hosts = ['10.90.0.2', '10.90.0.4-10.90.0.6', '10.90.0.8']

@@ -3,7 +3,7 @@
 ## Generic Ansible variables
 
 You can view facts gathered by Ansible automatically
-[here](https://docs.ansible.com/ansible/playbooks_variables.html#information-discovered-from-systems-facts).
+[here](https://docs.ansible.com/ansible/latest/playbooks_variables.html#information-discovered-from-systems-facts).
 
 Some variables of note include:
 
@@ -38,7 +38,7 @@ Some variables of note include:
   and access_ip are undefined
 * *loadbalancer_apiserver* - If defined, all hosts will connect to this
   address instead of localhost for kube_control_planes and kube_control_plane[0] for
-  kube-nodes. See more details in the
+  kube_nodes. See more details in the
   [HA guide](/docs/ha-mode.md).
 * *loadbalancer_apiserver_localhost* - makes all hosts to connect to
   the apiserver internally load balanced endpoint. Mutual exclusive to the
@@ -59,14 +59,14 @@ following default cluster parameters:
 * *kube_pods_subnet* - Subnet for Pod IPs (default is 10.233.64.0/18). Must not
   overlap with kube_service_addresses.
 * *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remaining
-  bits in kube_pods_subnet dictates how many kube-nodes can be in cluster. Setting this > 25 will
+  bits in kube_pods_subnet dictates how many kube_nodes can be in cluster. Setting this > 25 will
   raise an assertion in playbooks if the `kubelet_max_pods` var also isn't adjusted accordingly
   (assertion not applicable to calico which doesn't use this as a hard limit, see
   [Calico IP block sizes](https://docs.projectcalico.org/reference/resources/ippool#block-sizes).
 * *enable_dual_stack_networks* - Setting this to true will provision both IPv4 and IPv6 networking for pods and services.
 * *kube_service_addresses_ipv6* - Subnet for cluster IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1000/116``). Must not overlap with ``kube_pods_subnet_ipv6``.
 * *kube_pods_subnet_ipv6* - Subnet for Pod IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1:0000/112``). Must not overlap with ``kube_service_addresses_ipv6``.
-* *kube_network_node_prefix_ipv6* - Subnet allocated per-node for pod IPv6 IPs. Remaining bits in ``kube_pods_subnet_ipv6`` dictates how many kube-nodes can be in cluster.
+* *kube_network_node_prefix_ipv6* - Subnet allocated per-node for pod IPv6 IPs. Remaining bits in ``kube_pods_subnet_ipv6`` dictates how many kube_nodes can be in cluster.
 * *skydns_server* - Cluster IP for DNS (default is 10.233.0.3)
 * *skydns_server_secondary* - Secondary Cluster IP for CoreDNS used with coredns_dual deployment (default is 10.233.0.4)
 * *enable_coredns_k8s_external* - If enabled, it configures the [k8s_external plugin](https://coredns.io/plugins/k8s_external/)

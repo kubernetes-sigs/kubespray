@@ -32,7 +32,7 @@ CONFIG_FILE=inventory/mycluster/hosts.yaml python3 contrib/inventory_builder/inv
 
 # Review and change parameters under ``inventory/mycluster/group_vars``
 cat inventory/mycluster/group_vars/all/all.yml
-cat inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml
+cat inventory/mycluster/group_vars/k8s_cluster/k8s_cluster.yml
 
 # Deploy Kubespray with Ansible Playbook - run the playbook as root
 # The option `--become` is required, as for example writing SSL keys in /etc/,
@@ -132,10 +132,10 @@ Note: Upstart/SysV init based OS types are not supported.
   - [etcd](https://github.com/coreos/etcd) v3.4.13
   - [docker](https://www.docker.com/) v19.03 (see note)
   - [containerd](https://containerd.io/) v1.4.4
-  - [cri-o](http://cri-o.io/) v1.19 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [cri-o](http://cri-o.io/) v1.20 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
-  - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.0
-  - [calico](https://github.com/projectcalico/calico) v3.17.3
+  - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.1
+  - [calico](https://github.com/projectcalico/calico) v3.17.4
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.8.8
   - [flanneld](https://github.com/coreos/flannel) v0.13.0
@@ -152,11 +152,14 @@ Note: Upstart/SysV init based OS types are not supported.
   - [coredns](https://github.com/coredns/coredns) v1.7.0
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.43.0
 
-Note: The list of available docker version is 18.09, 19.03 and 20.10. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+## Container Runtime Notes
+
+- The list of available docker version is 18.09, 19.03 and 20.10. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+- The cri-o version should be aligned with the respective kubernetes version (i.e. kube_version=1.20.x, crio_version=1.20)
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.18**
+- **Minimum required version of Kubernetes is v1.19**
 - **Ansible v2.9.x, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands, Ansible 2.10.x is not supported for now**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.

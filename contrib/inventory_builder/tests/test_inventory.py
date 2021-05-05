@@ -509,7 +509,10 @@ class TestInventory(unittest.TestCase):
         result = self.inv.build_hostnames(changed_hosts, True)
         self.assertEqual(expected, result)
 
-    def test_build_hostnames_add_two_different_ips_into_three_existing_one_duplicate(self):
+    # Add two IP addresses into a config that has
+    # three already defined IP addresses. One of the IP addresses
+    # is a duplicate.
+    def test_build_hostnames_add_two_duplicate_one_overlap(self):
         changed_hosts = ['10.90.0.4,192.168.0.4', '10.90.0.5,192.168.0.5']
         expected = OrderedDict([
             ('node2', {'ansible_host': '192.168.0.2',
@@ -539,7 +542,9 @@ class TestInventory(unittest.TestCase):
         result = self.inv.build_hostnames(changed_hosts, True)
         self.assertEqual(expected, result)
 
-    def test_build_hostnames_add_two_different_ips_into_three_existing_two_duplicate(self):
+    # Add two duplicate IP addresses into a config that has
+    # three already defined IP addresses
+    def test_build_hostnames_add_two_duplicate_two_overlap(self):
         changed_hosts = ['10.90.0.3,192.168.0.3', '10.90.0.4,192.168.0.4']
         expected = OrderedDict([
             ('node2', {'ansible_host': '192.168.0.2',

@@ -93,7 +93,7 @@ class KubesprayInventory(object):
                 sys.exit(0)
 
         # If the user wants to remove a node, we need to load the config anyway
-        if changed_hosts[0][0] == "-":
+        if changed_hosts and changed_hosts[0][0] == "-":
             loadPreviousConfig = True
 
         if self.config_file and loadPreviousConfig:  # Load previous YAML file
@@ -181,7 +181,8 @@ class KubesprayInventory(object):
             try:
                 for host in self.yaml_config['all']['hosts']:
                     # Read configuration of an existing host
-                    existing_hosts[host] = self.yaml_config['all']['hosts'][host]
+                    hostConfig = self.yaml_config['all']['hosts'][host]
+                    existing_hosts[host] = hostConfig
                     # If the existing host seems
                     # to have been created automatically, detect its ID
                     if host.startswith(HOST_PREFIX):

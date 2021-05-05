@@ -92,6 +92,10 @@ class KubesprayInventory(object):
                 self.parse_command(changed_hosts[0], changed_hosts[1:])
                 sys.exit(0)
 
+        # If the user wants to remove a node, we need to load the config anyway
+        if changed_hosts[0][0] == "-":
+            loadPreviousConfig = True
+
         if self.config_file and loadPreviousConfig:  # Load previous YAML file
             try:
                 self.hosts_file = open(config_file, 'r')

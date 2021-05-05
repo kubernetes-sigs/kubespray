@@ -83,14 +83,6 @@ class KubesprayInventory(object):
         self.config_file = config_file
         self.yaml_config = {}
         loadPreviousConfig = False
-        if self.config_file:  # Load previous YAML file
-            try:
-                self.hosts_file = open(config_file, 'r')
-                self.yaml_config = yaml.load(self.hosts_file)
-            except OSError as e:
-                # I am assuming we are catching "cannot open file" exceptions
-                print(e)
-                sys.exit(1)
         # See whether there are any commands to process
         if changed_hosts and changed_hosts[0] in AVAILABLE_COMMANDS:
             if changed_hosts[0] == "add":
@@ -99,6 +91,15 @@ class KubesprayInventory(object):
             else:
                 self.parse_command(changed_hosts[0], changed_hosts[1:])
                 sys.exit(0)
+
+        if self.config_file and loadPreviousConfig:  # Load previous YAML file
+            try:
+                self.hosts_file = open(config_file, 'r')
+                self.yaml_config = yaml.load(self.hosts_file)
+            except OSError as e:
+                # I am assuming we are catching "cannot open file" exceptions
+                print(e)
+                sys.exit(1)
 
         self.ensure_required_groups(ROLES)
 

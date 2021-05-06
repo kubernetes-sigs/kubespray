@@ -62,9 +62,9 @@ resource "aws_instance" "bastion-server" {
   key_name = var.AWS_SSH_KEY_NAME
 
   tags = merge(var.default_tags, tomap({
-    Name = "kubernetes-${var.aws_cluster_name}-bastion-${count.index}"
+    Name    = "kubernetes-${var.aws_cluster_name}-bastion-${count.index}"
     Cluster = var.aws_cluster_name
-    Role = "bastion-${var.aws_cluster_name}-${count.index}"
+    Role    = "bastion-${var.aws_cluster_name}-${count.index}"
   }))
 }
 
@@ -88,9 +88,9 @@ resource "aws_instance" "k8s-master" {
   key_name             = var.AWS_SSH_KEY_NAME
 
   tags = merge(var.default_tags, tomap({
-    Name = "kubernetes-${var.aws_cluster_name}-master${count.index}"
+    Name                                            = "kubernetes-${var.aws_cluster_name}-master${count.index}"
     "kubernetes.io/cluster/${var.aws_cluster_name}" = "member"
-    Role = "master"
+    Role                                            = "master"
   }))
 }
 
@@ -114,9 +114,9 @@ resource "aws_instance" "k8s-etcd" {
   key_name = var.AWS_SSH_KEY_NAME
 
   tags = merge(var.default_tags, tomap({
-    Name = "kubernetes-${var.aws_cluster_name}-etcd${count.index}"
+    Name                                            = "kubernetes-${var.aws_cluster_name}-etcd${count.index}"
     "kubernetes.io/cluster/${var.aws_cluster_name}" = "member"
-    Role = "etcd"
+    Role                                            = "etcd"
   }))
 }
 
@@ -135,9 +135,9 @@ resource "aws_instance" "k8s-worker" {
   key_name             = var.AWS_SSH_KEY_NAME
 
   tags = merge(var.default_tags, tomap({
-    Name = "kubernetes-${var.aws_cluster_name}-worker${count.index}"
+    Name                                            = "kubernetes-${var.aws_cluster_name}-worker${count.index}"
     "kubernetes.io/cluster/${var.aws_cluster_name}" = "member"
-    Role = "worker"
+    Role                                            = "worker"
   }))
 }
 

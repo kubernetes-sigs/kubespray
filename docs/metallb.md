@@ -2,6 +2,7 @@
 
 MetalLB hooks into your Kubernetes cluster, and provides a network load-balancer implementation.
 It allows you to create Kubernetes services of type "LoadBalancer" in clusters that don't run on a cloud provider, and thus cannot simply hook into 3rd party products to provide load-balancers.
+The default operationg mode of MetalLB is in ["Layer2"](https://metallb.universe.tf/concepts/layer2/) but it can also operate in ["BGP"](https://metallb.universe.tf/concepts/bgp/) mode.
 
 ## Install
 
@@ -14,7 +15,6 @@ metallb_ip_range:
   - 10.5.0.0/16
 ```
 
-The default operationg mode of MetalLB is in ["Layer2"](https://metallb.universe.tf/concepts/layer2/) but it can also operate in ["BGP"](https://metallb.universe.tf/concepts/bgp/) mode.
 By default only the MetalLB BGP speaker is allowed to run on control plane nodes. If you have a single node cluster or a cluster where control plane are also worker nodes you may need to enable tolerations for the MetalLB controller:
 
 ```yaml

@@ -122,6 +122,8 @@ vagrant up
 - **Fedora CoreOS** (experimental: see [fcos Note](docs/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
 - **Oracle Linux** 7, 8 (experimental: [centos 8 notes](docs/centos8.md) apply)
+- **Alma Linux** 8 (experimental: [centos 8 notes](docs/centos8.md) apply)
+- **Amazon Linux 2** (experimental: see [amazon linux notes](docs/amazonlinux.md)
 
 Note: Upstart/SysV init based OS types are not supported.
 

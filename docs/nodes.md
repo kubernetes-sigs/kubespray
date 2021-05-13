@@ -83,7 +83,7 @@ That's it.
 
 Append the new host to the inventory and run `cluster.yml`. You can NOT use `scale.yml` for that.
 
-### 3) Restart kube-system/nginx-proxy
+### 2) Restart kube-system/nginx-proxy
 
 In all hosts, restart nginx-proxy pod. This pod is a local proxy for the apiserver. Kubespray will update its static config, but it needs to be restarted in order to reload.
 
@@ -92,7 +92,7 @@ In all hosts, restart nginx-proxy pod. This pod is a local proxy for the apiserv
 docker ps | grep k8s_nginx-proxy_nginx-proxy | awk '{print $1}' | xargs docker restart
 ```
 
-### 4) Remove old master nodes
+### 3) Remove old master nodes
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.
 If the node you want to remove is not online, you should add `reset_nodes=false` to your extra-vars.
@@ -106,7 +106,7 @@ You need to make sure there are always an odd number of etcd nodes in the cluste
 Update the inventory and run `cluster.yml` passing `--limit=etcd,kube_control_plane -e ignore_assert_errors=yes`.
 If the node you want to add as an etcd node is already a worker or master node in your cluster, you have to remove him first using `remove-node.yml`.
 
-Run `upgrade-cluster.yml` also passing `--limit=etcd,kube_control_plane -e ignore_assert_errors=yes`. This is necessary to update all etcd configuration in the cluster.  
+Run `upgrade-cluster.yml` also passing `--limit=etcd,kube_control_plane -e ignore_assert_errors=yes`. This is necessary to update all etcd configuration in the cluster.
 
 At this point, you will have an even number of nodes.
 Everything should still be working, and you should only have problems if the cluster decides to elect a new etcd leader before you remove a node.
@@ -114,6 +114,10 @@ Even so, running applications should continue to be available.
 
 If you add multiple ectd nodes with one run, you might want to append `-e etcd_retries=10` to increase the amount of retries between each ectd node join.
 Otherwise the etcd cluster might still be processing the first join and fail on subsequent nodes. `etcd_retries=10` might work to join 3 new nodes.
+
+### 2) Add the new node to apiserver config
+
+In every master node, edit `/etc/kubernetes/manifests/kube-apiserver.yaml`. Make sure the new etcd nodes are present in the apiserver command line parameter `--etcd-servers=...`.
 
 ## Removing an etcd node
 
@@ -130,6 +134,10 @@ Remove `NODE_NAME` from your inventory file.
 
 Run `cluster.yml` to regenerate the configuration files on all remaining nodes.
 
-### 4) Shutdown the old instance
+### 4) Remove the old etcd node from apiserver config
+
+In every master node, edit `/etc/kubernetes/manifests/kube-apiserver.yaml`. Make sure only active etcd nodes are still present in the apiserver command line parameter `--etcd-servers=...`.
+
+### 5) Shutdown the old instance
 
 That's it.

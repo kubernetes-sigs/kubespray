@@ -117,12 +117,12 @@ vagrant up
 - **Flatcar Container Linux by Kinvolk**
 - **Debian** Buster, Jessie, Stretch, Wheezy
 - **Ubuntu** 16.04, 18.04, 20.04
-- **CentOS/RHEL** 7, 8 (experimental: see [centos 8 notes](docs/centos8.md))
+- **CentOS/RHEL** 7, [8](docs/centos8.md)
 - **Fedora** 32, 33
 - **Fedora CoreOS** (experimental: see [fcos Note](docs/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
-- **Oracle Linux** 7, 8 (experimental: [centos 8 notes](docs/centos8.md) apply)
-- **Alma Linux** 8 (experimental: [centos 8 notes](docs/centos8.md) apply)
+- **Oracle Linux** 7, [8](docs/centos8.md)
+- **Alma Linux** [8](docs/centos8.md)
 - **Amazon Linux 2** (experimental: see [amazon linux notes](docs/amazonlinux.md)
 
 Note: Upstart/SysV init based OS types are not supported.

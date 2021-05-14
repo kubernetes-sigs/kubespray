@@ -131,6 +131,27 @@
     - inventory_hostname in groups['kube_control_plane']
     - calico_datastore == "kdd"
 
+- name: Calico | Configure calico FelixConfiguration
+  command:
+    cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
+    stdin: "{{ stdin is string | ternary(stdin, stdin|to_json) }}"
+  vars:
+    stdin: >
+      { "kind": "FelixConfiguration",
+        "apiVersion": "projectcalico.org/v3",
+        "metadata": {
+          "name": "default",
+        },
+        "spec": {
+          "ipipEnabled": {{ calico_ipip_mode != 'Never' | bool }},
+          "reportingInterval": "{{ calico_felix_reporting_interval }}",
+          "bpfLogLevel": "{{ calico_bpf_log_level }}",
+          "bpfEnabled": {{ calico_bpf_enabled | bool }},
+          "bpfExternalServiceMode": "{{ calico_bpf_service_mode }}",
+          "logSeverityScreen": "{{ calico_felix_log_severity_screen }}" }}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
 - name: Calico | Configure calico network pool
   command:
     cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
@@ -302,6 +323,7 @@
     - {name: calico, file: calico-node-sa.yml, type: sa}
     - {name: calico, file: calico-cr.yml, type: clusterrole}
     - {name: calico, file: calico-crb.yml, type: clusterrolebinding}
+    - {name: kubernetes-services-endpoint, file: kubernetes-services-endpoint.yml, type: cm }
   register: calico_node_manifests
   when:
     - inventory_hostname in groups['kube_control_plane']

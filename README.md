@@ -5,7 +5,7 @@
 If you have questions, check the documentation at [kubespray.io](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 You can get your invite [here](http://slack.k8s.io/)
 
-- Can be deployed on **[AWS](docs/aws.md), GCE, [Azure](docs/azure.md), [OpenStack](docs/openstack.md), [vSphere](docs/vsphere.md), [Equinx Metal](docs/equinix-metal.md) (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
+- Can be deployed on **[AWS](docs/aws.md), GCE, [Azure](docs/azure.md), [OpenStack](docs/openstack.md), [vSphere](docs/vsphere.md), [Equinix Metal](docs/equinix-metal.md) (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
 - **Highly available** cluster
 - **Composable** (Choice of the network plugin for instance)
 - Supports most popular **Linux distributions**

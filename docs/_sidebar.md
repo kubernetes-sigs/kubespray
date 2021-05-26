@@ -22,7 +22,7 @@
   * [AWS](docs/aws.md)
   * [Azure](docs/azure.md)
   * [OpenStack](/docs/openstack.md)
-  * [Packet](/docs/packet.md)
+  * [Equinix Metal](/docs/equinix-metal.md)
   * [vSphere](/docs/vsphere.md)
 * Operating Systems
   * [Debian](docs/debian.md)

@@ -73,7 +73,7 @@ With the old node still in the inventory, run `remove-node.yml`. You need to pas
 If the node you want to remove is not online, you should add `reset_nodes=false` to your extra-vars: `-e node=NODE_NAME -e reset_nodes=false`.
 Use this flag even when you remove other types of nodes like a master or etcd nodes.
 
-### 5) Remove the node from the inventory
+### 4) Remove the node from the inventory
 
 That's it.
 
@@ -83,7 +83,7 @@ That's it.
 
 Append the new host to the inventory and run `cluster.yml`. You can NOT use `scale.yml` for that.
 
-### 3) Restart kube-system/nginx-proxy
+### 2) Restart kube-system/nginx-proxy
 
 In all hosts, restart nginx-proxy pod. This pod is a local proxy for the apiserver. Kubespray will update its static config, but it needs to be restarted in order to reload.
 
@@ -92,7 +92,7 @@ In all hosts, restart nginx-proxy pod. This pod is a local proxy for the apiserv
 docker ps | grep k8s_nginx-proxy_nginx-proxy | awk '{print $1}' | xargs docker restart
 ```
 
-### 4) Remove old master nodes
+### 3) Remove old master nodes
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.
 If the node you want to remove is not online, you should add `reset_nodes=false` to your extra-vars.

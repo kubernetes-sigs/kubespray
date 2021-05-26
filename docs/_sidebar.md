@@ -14,10 +14,13 @@
   * [Calico](docs/calico.md)
   * [Flannel](docs/flannel.md)
   * [Kube Router](docs/kube-router.md)
+  * [Kube OVN](docs/kube-ovn.md)
   * [Weave](docs/weave.md)
   * [Multus](docs/multus.md)
+  * [OVN4NFV](docs/ovn4nfv.md)
 * Ingress
   * [Ambassador](docs/ambassador.md)
+  * [MetalLB](docs/metallb.md)
 * [Cloud providers](docs/cloud.md)
   * [AWS](docs/aws.md)
   * [Azure](docs/azure.md)
@@ -29,9 +32,13 @@
   * [Flatcar Container Linux](docs/flatcar.md)
   * [Fedora CoreOS](docs/fcos.md)
   * [OpenSUSE](docs/opensuse.md)
+  * [RedHat Enterprise Linux](docs/rhel.md)
+  * [CentOS/OracleLinux/AlmaLinux](docs/centos8.md)
+  * [Amaxon Linux 2](docs/amazonlinux.md)
 * CRI
   * [Containerd](docs/containerd.md)
   * [CRI-O](docs/cri-o.md)
+  * [Kata Containers](docs/kata-containers.md)
 * Advanced
   * [Proxy](/docs/proxy.md)
   * [Downloads](docs/downloads.md)

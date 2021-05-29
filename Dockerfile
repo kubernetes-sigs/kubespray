@@ -1,8 +1,8 @@
 # Use imutable image tags rather than mutable tags (like ubuntu:18.04)
 FROM ubuntu:bionic-20200807
 
-RUN apt update -y \
-    && apt install -y \
+RUN apt update -yqq \
+    && apt install -yqq \
     libssl-dev python3-dev sshpass apt-transport-https jq moreutils \
     ca-certificates curl gnupg2 software-properties-common python3-pip rsync \
     && rm -rf /var/lib/apt/lists/*
@@ -11,7 +11,7 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
     "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
     $(lsb_release -cs) \
     stable" \
-    && apt update -y && apt-get install -y docker-ce \
+    && apt update -yqq && apt-get install -yqq docker-ce \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /kubespray

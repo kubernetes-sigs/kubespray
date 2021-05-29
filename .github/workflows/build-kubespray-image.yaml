@@ -1,0 +1,47 @@
+---
+name: Build kubespray images
+
+on:
+  push:
+    branches: [master, release-.*]
+  release:
+    branches: [master, release-.*]
+
+env:
+  IMAGE_REPO: "kubespray"
+  IMAGE_NAME: "kubespray"
+  IMAGE_REGISTRY: "hub.k8s.li"
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Define image tags by current git repo tag and branch
+        shell: bash
+        run: |
+          git describe --tags --always | sed 's/^/IMAGE_TAG=/' >> $GITHUB_ENV
+          git branch --show-current | sed 's/master/latest/;s/release-//;s/^/IMAGE_TAG_BY_BRANCH=/' >> $GITHUB_ENV
+
+      - name: Build image
+        shell: bash
+        run: |
+          docker build -t ${IMAGE_REGISTRY}/${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG} -f Dockerfile .
+
+      - name: Login to image registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Push images to registry
+        shell: bash
+        run: |
+          docker tag ${IMAGE_REGISTRY}/${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_REGISTRY}/${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG_BY_BRANCH}
+          docker push ${IMAGE_REGISTRY}/${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG}
+          docker push ${IMAGE_REGISTRY}/${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG_BY_BRANCH}

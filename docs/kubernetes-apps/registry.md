@@ -1,12 +1,10 @@
-Private Docker Registry in Kubernetes
-=====================================
+# Private Docker Registry in Kubernetes
 
 Kubernetes offers an optional private Docker registry addon, which you can turn
 on when you bring up a cluster or install later. This gives you a place to
 store truly private Docker images for your cluster.
 
-How it works
-------------
+## How it works
 
 The private registry runs as a `Pod` in your cluster. It does not currently
 support SSL or authentication, which triggers Docker's "insecure registry"
@@ -14,8 +12,7 @@ logic. To work around this, we run a proxy on each node in the cluster,
 exposing a port onto the node (via a hostPort), which Docker accepts as
 "secure", since it is accessed by `localhost`.
 
-Turning it on
--------------
+## Turning it on
 
 Some cluster installs (e.g. GCE) support this as a cluster-birth flag. The
 `ENABLE_CLUSTER_REGISTRY` variable in `cluster/gce/config-default.sh` governs
@@ -24,7 +21,7 @@ whether the registry is run or not. To set this flag, you can specify
 does not include this flag, the following steps should work. Note that some of
 this is cloud-provider specific, so you may have to customize it a bit.
 
-- Make some storage
+### Make some storage
 
 The primary job of the registry is to store data. To do that we have to decide
 where to store it. For cloud environments that have networked storage, we can
@@ -58,15 +55,14 @@ If, for example, you wanted to use NFS you would just need to change the
 Note that in any case, the storage (in the case the GCE PersistentDisk) must be
 created independently - this is not something Kubernetes manages for you (yet).
 
-- I don't want or don't have persistent storage
+### I don't want or don't have persistent storage
 
 If you are running in a place that doesn't have networked storage, or if you
 just want to kick the tires on this without committing to it, you can easily
 adapt the `ReplicationController` specification below to use a simple
 `emptyDir` volume instead of a `persistentVolumeClaim`.
 
-Claim the storage
------------------
+## Claim the storage
 
 Now that the Kubernetes cluster knows that some storage exists, you can put a
 claim on that storage. As with the `PersistentVolume` above, you can start
@@ -93,8 +89,7 @@ you created before will be bound to this claim (unless you have other
 `PersistentVolumes` in which case those might get bound instead). This claim
 gives you the right to use this storage until you release the claim.
 
-Run the registry
-----------------
+## Run the registry
 
 Now we can run a Docker registry:
 
@@ -145,8 +140,7 @@ spec:
 ```
 <!-- END MUNGE: EXAMPLE registry-rc.yaml -->
 
-Expose the registry in the cluster
-----------------------------------
+## Expose the registry in the cluster
 
 Now that we have a registry `Pod` running, we can expose it as a Service:
 
@@ -170,8 +164,7 @@ spec:
 ```
 <!-- END MUNGE: EXAMPLE registry-svc.yaml -->
 
-Expose the registry on each node
---------------------------------
+## Expose the registry on each node
 
 Now that we have a running `Service`, we need to expose it onto each Kubernetes
 `Node` so that Docker will see it as `localhost`. We can load a `Pod` on every
@@ -229,8 +222,7 @@ $ curl localhost:5000
 404 page not found
 ```
 
-Using the registry
-------------------
+## Using the registry
 
 To use an image hosted by this registry, simply say this in your `Pod`'s
 `spec.containers[].image` field:
@@ -258,15 +250,3 @@ $ kubectl port-forward --namespace kube-system $POD 5000:5000 &
 Now you can build and push images on your local computer as
 `localhost:5000/yourname/container` and those images will be available inside
 your kubernetes cluster with the same name.
-
-More Extensions
----------------
-
-- [Use GCS as storage backend](gcs/README.md)
-- [Enable TLS/SSL](tls/README.md)
-- [Enable Authentication](auth/README.md)
-
-Future improvements
--------------------
-
-- Allow port-forwarding to a Service rather than a pod (\#15180)

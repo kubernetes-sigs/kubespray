@@ -11,7 +11,7 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
     "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
     $(lsb_release -cs) \
     stable" \
-    && apt update -y && apt-get install --no-install-recommends -y docker-ce \
+    && apt update -y && apt-get install -y docker-ce \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /kubespray

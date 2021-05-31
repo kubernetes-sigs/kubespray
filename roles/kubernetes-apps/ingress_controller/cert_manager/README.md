@@ -89,7 +89,7 @@ For further information, read the official [Cert-Manager Ingress](https://cert-m
 
 #### Install Cloudflare PKI/TLS `cfssl` Toolkit
 
-e.g. For Ubuntu/Debian distibutions, the toolkit is part of the `golang-cfssl` package.
+e.g. For Ubuntu/Debian distributions, the toolkit is part of the `golang-cfssl` package.
 
 ```shell
 sudo apt-get install -y golang-cfssl

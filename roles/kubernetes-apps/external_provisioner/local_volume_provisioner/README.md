@@ -80,7 +80,7 @@ for disk in /dev/sdc /dev/sdd /dev/sde; do
 done
 ```
 
-This saves time of precreatnig filesystems. Note that your storageclass must have
+This saves time of precreating filesystems. Note that your storageclass must have
 volume_mode set to "Filesystem" and fs_type defined. If either is not set, the
 disk will be added as a raw block device.
 

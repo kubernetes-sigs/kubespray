@@ -104,6 +104,12 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
   cinder_topology: true
   ```
 
+- Enabling `cinder_csi_ignore_volume_az: true`, ignores volumeAZ and schedules on any of the available node AZ.
+
+  ```yaml
+  cinder_csi_ignore_volume_az: true
+  ```
+
 - If you are using OpenStack loadbalancer(s) replace the `openstack_lbaas_subnet_id` with the new `external_openstack_lbaas_subnet_id`. **Note** The new cloud provider is using Octavia instead of Neutron LBaaS by default!
 - Enable 3 feature gates to allow migration of all volumes and storage classes (if you have any feature gates already set just add the 3 listed below):
 

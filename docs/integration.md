@@ -95,7 +95,7 @@ If you made useful changes or fixed a bug in existent kubespray repo, use this f
 
 3. Setup desired user.name and user.email for submodule.
 If kubespray is only one submodule in your repo you could use something like:
-```git submodule foreach --recursive 'git config user.name "First Last" && git config user.email "your-email-addres@used.for.cncf"'```
+```git submodule foreach --recursive 'git config user.name "First Last" && git config user.email "your-email-address@used.for.cncf"'```
 
 4. Sync with upstream master:
 

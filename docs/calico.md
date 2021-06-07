@@ -260,3 +260,73 @@ calico_ipam_host_local: true
 ```
 
 Refer to Project Calico section [Using host-local IPAM](https://docs.projectcalico.org/reference/cni-plugin/configuration#using-host-local-ipam) for further information.
+
+## eBPF Support
+
+Calico supports eBPF for its data plane see [an introduction to the Calico eBPF Dataplane](https://www.projectcalico.org/introducing-the-calico-ebpf-dataplane/) for further information.
+
+Note that it is advisable to always use the latest version of Calico when using the eBPF dataplane.
+
+### Enabling eBPF support
+
+To enable the eBPF dataplane support ensure you add the following to your inventory. Note that the `kube-proxy` is incompatible with running Calico in eBPF mode and the kube-proxy should be removed from the system.
+
+```yaml
+calico_bpf_enabled: true
+kube_proxy_remove: true
+```
+
+### Cleaning up after kube-proxy
+
+Calico node cannot clean up after kube-proxy has run in ipvs mode. If you are converting an existing cluster to eBPF you will need to ensure the `kube-proxy` DaemonSet is deleted and that ipvs rules are cleaned.
+
+To check that kube-proxy was running in ipvs mode:
+
+```ShellSession
+# ipvsadm -l
+```
+
+To clean up any ipvs leftovers:
+
+```ShellSession
+# ipvsadm -C
+```
+
+### Calico access to the kube-api
+
+Calico node, typha and kube-controllers need to be able to talk to the kubernetes API. Please reference the [Enabling eBPF Calico Docs](https://docs.projectcalico.org/maintenance/ebpf/enabling-bpf) for guidelines on how to do this.
+
+Kubespray sets up the `kubernetes-services-endpoint` configmap based on the contents of the `loadbalancer_apiserver` inventory variable documented in [HA Mode](./ha-mode.md).
+
+If no external loadbalancer is used, Calico eBPF can also use the localhost loadbalancer option. In this case Calico Automatic Host Endpoints need to be enabled to allow services like `coredns` and `metrics-server` to communicate with the kubernetes host endpoint. See [this blog post](https://www.projectcalico.org/securing-kubernetes-nodes-with-calico-automatic-host-endpoints/) on enabling automatic host endpoints.
+
+```yaml
+loadbalancer_apiserver_localhost: true
+use_localhost_as_kubeapi_loadbalancer: true
+```
+
+### Tunneled versus Direct Server Return
+
+By default Calico usese Tunneled service mode but it can use direct server return (DSR) in order to optimize the return path for a service.
+
+To configure DSR:
+
+```yaml
+calico_bpf_service_mode: "DSR"
+```
+
+### eBPF Logging and Troubleshooting
+
+In order to enable Calico eBPF mode logging:
+
+```yaml
+calico_bpf_log_level: "Debug"
+```
+
+To view the logs you need to use the `tc` command to read the kernel trace buffer:
+
+```ShellSession
+tc exec bpf debug
+```
+
+Please see [Calico eBPF troubleshooting guide](https://docs.projectcalico.org/maintenance/troubleshoot/troubleshoot-ebpf#ebpf-program-debug-logs).

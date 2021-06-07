@@ -47,6 +47,25 @@
     - kube_network_plugin == 'calico'
     - not ignore_assert_errors
 
+- name: Stop if supported Calico versions
+  assert:
+    that:
+      - "calico_version in calico_crds_archive_checksums.keys()"
+    msg: "Calico version not supported {{ calico_version }} not in {{ calico_crds_archive_checksums.keys() }}"
+  when:
+    - kube_network_plugin == 'calico'
+    - not ignore_assert_errors
+
+- name: Stop if kube-proxy is enabled when using eBPF dataplane
+  assert:
+    that:
+      - kube_proxy_remove
+    msg: "kube-proxy needs to be disabled when using Calico with eBPF dataplane"
+  when:
+    - calico_bpf_enabled | default(false)
+    - kube_network_plugin == 'calico'
+    - not ignore_assert_errors
+
 - name: Stop if unsupported version of Kubernetes
   assert:
     that: kube_version is version(kube_version_min_required, '>=')

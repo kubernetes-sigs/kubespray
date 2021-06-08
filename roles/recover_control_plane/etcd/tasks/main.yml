@@ -12,24 +12,24 @@
     ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
     ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] is defined
 
 - name: Set healthy fact
   set_fact:
     healthy: "{{ etcd_endpoint_health.stderr is match('Error: unhealthy cluster') }}"
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] is defined
 
 # When there is an error, everything is printed in stderr_lines, even "is healthy" messages.
 - name: Set has_quorum fact
   set_fact:
     has_quorum: "{{ etcd_endpoint_health.stderr_lines | select('match', '.*is healthy.*') | list | length >= etcd_endpoint_health.stderr_lines | select('match', '.*is unhealthy.*') | list | length }}"
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] is defined
 
 - include_tasks: recover_lost_quorum.yml
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] is defined
     - not has_quorum
 
 - name: Remove etcd data dir
@@ -40,7 +40,7 @@
   with_items: "{{ groups['broken_etcd'] }}"
   ignore_errors: true
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] is defined
     - has_quorum
 
 - name: Delete old certificates
@@ -57,7 +57,7 @@
   loop: "{{ delete_old_cerificates.results }}"
   changed_when: false
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] is defined
     - "item.rc != 0 and not 'No such file or directory' in item.stderr"
 
 - name: Get etcd cluster members
@@ -72,7 +72,7 @@
     ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
     ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] is defined
     - not healthy
     - has_quorum
 
@@ -88,7 +88,7 @@
     - "{{ groups['broken_etcd'] }}"
     - "{{ member_list.stdout_lines }}"
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] is defined
     - not healthy
     - has_quorum
     - hostvars[item[0]]['etcd_member_name'] == item[1].replace(' ','').split(',')[2]

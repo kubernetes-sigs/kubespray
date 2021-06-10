@@ -54,7 +54,7 @@ external_vsphere_kubernetes_cluster_id: "kubernetes-cluster-id"
 vsphere_csi_enabled: true
 ```
 
-For a more fine-grained CSI setup, refer to the [vsphere-csi](vsphere-csi.md) documentation.
+For a more fine-grained CSI setup, refer to the [vsphere-csi](/docs/vsphere-csi.md) documentation.
 
 ### Deployment
 

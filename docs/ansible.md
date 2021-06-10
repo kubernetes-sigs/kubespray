@@ -252,7 +252,7 @@ For more information about Ansible and bastion hosts, read
 
 ## Mitogen
 
-You can use [mitogen](mitogen.md) to speed up kubespray.
+You can use [mitogen](/docs/mitogen.md) to speed up kubespray.
 
 ## Beyond ansible 2.9
 

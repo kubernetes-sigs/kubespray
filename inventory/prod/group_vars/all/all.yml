@@ -1,6 +1,6 @@
 ---
 # min supported kube_version
-kube_version_min_required: v1.15.0
+# kube_version_min_required: v1.18.0
 
 ## Directory where etcd data stored
 etcd_data_dir: /var/lib/etcd
@@ -27,10 +27,15 @@ bin_dir: /usr/local/bin
 # valid options are "nginx" or "haproxy"
 loadbalancer_apiserver_type: nginx # valid values "nginx" or "haproxy"
 
+## If the cilium is going to be used in strict mode, we can use the
+## localhost connection and not use the external LB. If this parameter is
+## not specified, the first node to connect to kubeapi will be used.
+# use_localhost_as_kubeapi_loadbalancer: true
+
 ## Local loadbalancer should use this port
 ## And must be set port 6443
 loadbalancer_apiserver_port: 6443
-## If nginx_kube_apiserver_healthcheck_port variable defined, enables proxy liveness check.
+## If loadbalancer_apiserver_healthcheck_port variable defined, enables proxy liveness check for nginx.
 loadbalancer_apiserver_healthcheck_port: 8081
 
 ### OTHER OPTIONAL VARIABLES
@@ -45,13 +50,11 @@ loadbalancer_apiserver_healthcheck_port: 8081
 ## If set the possible values are either 'gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci', or 'external'
 ## When openstack is used make sure to source in the openstack credentials
 ## like you would do when using openstack-client before starting the playbook.
-## Note: The 'external' cloud provider is not supported.
-## TODO(riverzhang): https://kubernetes.io/docs/tasks/administer-cluster/running-cloud-controller/#running-cloud-controller-manager
 # cloud_provider:
 
 ## When cloud_provider is set to 'external', you can set the cloud controller to deploy
-## Supported cloud controllers are: 'openstack'
-## When openstack is used make sure to source in the openstack credentials
+## Supported cloud controllers are: 'openstack' and 'vsphere'
+## When openstack or vsphere are used make sure to source in the required fields
 # external_cloud_provider:
 
 ## kubeadm deployment mode
@@ -75,11 +78,21 @@ skip_non_kubeadm_warning: true
 ## If you need exclude all cluster nodes from proxy and other resources, add other resources here.
 # additional_no_proxy: ""
 
+## If you need to disable proxying of os package repositories but are still behind an http_proxy set
+## skip_http_proxy_on_os_packages to true
+## This will cause kubespray not to set proxy environment in /etc/yum.conf for centos and in /etc/apt/apt.conf for debian/ubuntu
+## Special information for debian/ubuntu - you have to set the no_proxy variable, then apt package will install from your source of wish
+# skip_http_proxy_on_os_packages: false
+
+## Since workers are included in the no_proxy variable by default, docker engine will be restarted on all nodes (all
+## pods will restart) when adding or removing workers.  To override this behaviour by only including master nodes in the
+## no_proxy variable, set below to true:
+no_proxy_exclude_workers: false
+
 ## Certificate Management
 ## This setting determines whether certs are generated via scripts.
 ## Chose 'none' if you provide your own certificates.
 ## Option is  "script", "none"
-## note: vault is removed
 # cert_management: script
 
 ## Set to true to allow pre-checks to fail and continue deployment
@@ -95,6 +108,16 @@ skip_non_kubeadm_warning: true
 # Set false if you want to deploy container engine manually.
 # deploy_container_engine: true
 
-## Set Pypi repo and cert accordingly
-# pyrepo_index: https://pypi.example.com/simple
-# pyrepo_cert: /etc/ssl/certs/ca-certificates.crt
+## Red Hat Enterprise Linux subscription registration
+## Add either RHEL subscription Username/Password or Organization ID/Activation Key combination
+## Update RHEL subscription purpose usage, role and SLA if necessary
+# rh_subscription_username: ""
+# rh_subscription_password: ""
+# rh_subscription_org_id: ""
+# rh_subscription_activation_key: ""
+# rh_subscription_usage: "Development"
+# rh_subscription_role: "Red Hat Enterprise Server"
+# rh_subscription_sla: "Self-Support"
+
+## Check if access_ip responds to ping. Set false if your firewall blocks ICMP.
+# ping_access_ip: true

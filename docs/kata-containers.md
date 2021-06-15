@@ -10,7 +10,7 @@ _Qemu_ is the only hypervisor supported by Kubespray.
 
 To use Kata Containers, set the following variables:
 
-**k8s-cluster.yml**:
+**k8s_cluster.yml**:
 
 ```yaml
 container_manager: containerd
@@ -35,7 +35,7 @@ Pod Overhead is mandatory if you run Pods with Kata Containers that use [resourc
 
 **Set cgroup driver**:
 
-To enable Pod Overhead feature you have to configure Kubelet with the appropiate cgroup driver, using the following configuration:
+To enable Pod Overhead feature you have to configure Kubelet with the appropriate cgroup driver, using the following configuration:
 
 ```yaml
 kubelet_cgroup_driver: cgroupfs

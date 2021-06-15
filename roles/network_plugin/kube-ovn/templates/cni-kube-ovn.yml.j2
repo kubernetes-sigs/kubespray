@@ -26,7 +26,6 @@ spec:
     spec:
       tolerations:
       - operator: Exists
-        effect: NoSchedule
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -47,7 +46,7 @@ spec:
           - --default-cidr={{ kube_pods_subnet }}
           env:
             - name: ENABLE_SSL
-              value: "false"
+              value: "{{ enable_ssl | lower }}"
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -66,19 +65,26 @@ spec:
           readinessProbe:
             exec:
               command:
-                - sh
+                - bash
                 - /kube-ovn/kube-ovn-controller-healthcheck.sh
             periodSeconds: 3
             timeoutSeconds: 45
           livenessProbe:
             exec:
               command:
-                - sh
+                - bash
                 - /kube-ovn/kube-ovn-controller-healthcheck.sh
             initialDelaySeconds: 300
             periodSeconds: 7
             failureThreshold: 5
             timeoutSeconds: 45
+          resources:
+            requests:
+              cpu: {{ kube_ovn_controller_cpu_request }}
+              memory: {{ kube_ovn_controller_memory_request }}
+            limits:
+              cpu: {{ kube_ovn_controller_cpu_limit }}
+              memory: {{ kube_ovn_controller_memory_limit }}
       nodeSelector:
         kubernetes.io/os: "linux"
       volumes:
@@ -128,18 +134,18 @@ spec:
         image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
         imagePullPolicy: {{ k8s_image_pull_policy }}
         command:
-          - sh
+          - bash
           - /kube-ovn/start-cniserver.sh
         args:
-          - --enable-mirror={{ traffic_mirror }}
-          - --encap-checksum={{ encap_checksum }}
+          - --enable-mirror={{ traffic_mirror | lower }}
+          - --encap-checksum={{ encap_checksum | lower }}
           - --service-cluster-ip-range={{ kube_service_addresses }}
         securityContext:
           runAsUser: 0
           privileged: true
         env:
           - name: ENABLE_SSL
-            value: "false"
+            value: "{{ enable_ssl | lower }}"
           - name: POD_IP
             valueFrom:
               fieldRef:
@@ -149,6 +155,8 @@ spec:
               fieldRef:
                 fieldPath: spec.nodeName
         volumeMounts:
+          - mountPath: /etc/openvswitch
+            name: systemid
           - mountPath: /etc/cni/net.d
             name: cni-conf
           - mountPath: /run/openvswitch
@@ -181,6 +189,9 @@ spec:
       nodeSelector:
         kubernetes.io/os: "linux"
       volumes:
+        - name: systemid
+          hostPath:
+            path: /etc/origin/openvswitch
         - name: host-run-ovs
           hostPath:
             path: /run/openvswitch
@@ -233,7 +244,7 @@ spec:
             privileged: false
           env:
             - name: ENABLE_SSL
-              value: "false"
+              value: "{{ enable_ssl | lower }}"
             - name: POD_IP
               valueFrom:
                 fieldRef:

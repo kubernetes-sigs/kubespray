@@ -20,7 +20,7 @@ spec:
         k8s-app: calico-kube-controllers
     spec:
       nodeSelector:
-        kubernetes.io/os: linux
+        {{ calico_policy_controller_deployment_nodeselector }}
       hostNetwork: true
       serviceAccountName: calico-kube-controllers
       tolerations:
@@ -40,11 +40,22 @@ spec:
             requests:
               cpu: {{ calico_policy_controller_cpu_requests }}
               memory: {{ calico_policy_controller_memory_requests }}
+{% if calico_version is version('v3.19.0', '>=') %}
+          livenessProbe:
+            exec:
+              command:
+              - /usr/bin/check-status
+              - -l
+            periodSeconds: 10
+            initialDelaySeconds: 10
+            failureThreshold: 6
+{% endif %}
           readinessProbe:
             exec:
               command:
               - /usr/bin/check-status
               - -r
+            periodSeconds: 10
           env:
 {% if calico_datastore == "kdd" %}
             - name: ENABLED_CONTROLLERS

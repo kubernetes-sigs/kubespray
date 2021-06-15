@@ -5,7 +5,7 @@
     path: "{{ kube_config_dir }}/addons/cert_manager"
     state: absent
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags:
     - upgrade
 
@@ -14,7 +14,7 @@
     {{ bin_dir }}/kubectl delete namespace {{ cert_manager_namespace }}
   ignore_errors: yes
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags:
     - upgrade
 
@@ -26,7 +26,7 @@
     group: root
     mode: 0755
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Cert Manager | Templates list
   set_fact:
@@ -54,7 +54,7 @@
   with_items: "{{ cert_manager_templates }}"
   register: cert_manager_manifests
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Cert Manager | Apply manifests
   kube:
@@ -65,12 +65,12 @@
     state: "latest"
   with_items: "{{ cert_manager_manifests.results }}"
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Cert Manager | Wait for Webhook pods become ready
   command: "{{ bin_dir }}/kubectl wait po --namespace={{ cert_manager_namespace }} --selector app=webhook --for=condition=Ready --timeout=600s"
   register: cert_manager_webhook_pods_ready
-  when: inventory_hostname == groups['kube-master'][0]
+  when: inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Cert Manager | Create ClusterIssuer manifest
   template:
@@ -78,7 +78,7 @@
     dest: "{{ kube_config_dir }}/addons/cert_manager/clusterissuer-cert-manager.yml"
   register: cert_manager_clusterissuer_manifest
   when:
-    - inventory_hostname == groups['kube-master'][0] and cert_manager_webhook_pods_ready is succeeded
+    - inventory_hostname == groups['kube_control_plane'][0] and cert_manager_webhook_pods_ready is succeeded
 
 - name: Cert Manager | Apply ClusterIssuer manifest
   kube:
@@ -86,4 +86,4 @@
     kubectl: "{{ bin_dir }}/kubectl"
     filename: "{{ kube_config_dir }}/addons/cert_manager/clusterissuer-cert-manager.yml"
     state: "latest"
-  when: inventory_hostname == groups['kube-master'][0] and cert_manager_clusterissuer_manifest is succeeded
+  when: inventory_hostname == groups['kube_control_plane'][0] and cert_manager_clusterissuer_manifest is succeeded

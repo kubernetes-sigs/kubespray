@@ -13,7 +13,7 @@ If you set http and https proxy, all nodes and loadbalancer will be excluded fro
 
 ## Set additional addresses to default no_proxy (all cluster nodes and loadbalancer)
 
-`additional_no_proxy: "aditional_host1,aditional_host2"`
+`additional_no_proxy: "additional_host1,additional_host2"`
 
 ## Exclude workers from no_proxy
 

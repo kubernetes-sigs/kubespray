@@ -1,0 +1,195 @@
+---
+# disable upgrade cluster
+upgrade_cluster_setup: false
+
+# Experimental kubeadm etcd deployment mode. Available only for new deployment
+etcd_kubeadm_enabled: false
+
+# change to 0.0.0.0 to enable insecure access from anywhere (not recommended)
+kube_apiserver_insecure_bind_address: 127.0.0.1
+
+# By default the external API listens on all interfaces, this can be changed to
+# listen on a specific address/interface.
+kube_apiserver_bind_address: 0.0.0.0
+
+# A port range to reserve for services with NodePort visibility.
+# Inclusive at both ends of the range.
+kube_apiserver_node_port_range: "30000-32767"
+
+# ETCD backend for k8s data
+kube_apiserver_storage_backend: etcd3
+
+kube_etcd_cacert_file: ca.pem
+kube_etcd_cert_file: node-{{ inventory_hostname }}.pem
+kube_etcd_key_file: node-{{ inventory_hostname }}-key.pem
+
+# Associated interfaces must be reachable by the rest of the cluster, and by
+# CLI/web clients.
+kube_controller_manager_bind_address: 0.0.0.0
+
+# Leader election lease durations and timeouts for controller-manager
+kube_controller_manager_leader_elect_lease_duration: 15s
+kube_controller_manager_leader_elect_renew_deadline: 10s
+
+# discovery_timeout modifies the discovery timeout
+discovery_timeout: 5m0s
+
+# Instruct first master to refresh kubeadm token
+kubeadm_refresh_token: true
+
+# Scale down coredns replicas to 0 if not using coredns dns_mode
+kubeadm_scale_down_coredns_enabled: true
+
+# audit support
+kubernetes_audit: false
+# path to audit log file
+audit_log_path: /var/log/audit/kube-apiserver-audit.log
+# num days
+audit_log_maxage: 30
+# the num of audit logs to retain
+audit_log_maxbackups: 1
+# the max size in MB to retain
+audit_log_maxsize: 100
+# policy file
+audit_policy_file: "{{ kube_config_dir }}/audit-policy/apiserver-audit-policy.yaml"
+# custom audit policy rules (to replace the default ones)
+# audit_policy_custom_rules: |
+#   - level: None
+#     users: []
+#     verbs: []
+#     resources: []
+
+# audit log hostpath
+audit_log_name: audit-logs
+audit_log_hostpath: /var/log/kubernetes/audit
+audit_log_mountpath: "{{ audit_log_path | dirname }}"
+
+# audit policy hostpath
+audit_policy_name: audit-policy
+audit_policy_hostpath: "{{ audit_policy_file | dirname }}"
+audit_policy_mountpath: "{{ audit_policy_hostpath }}"
+
+# audit webhook support
+kubernetes_audit_webhook: false
+
+# path to audit webhook config file
+audit_webhook_config_file: "{{ kube_config_dir }}/audit-policy/apiserver-audit-webhook-config.yaml"
+audit_webhook_server_url: "https://audit.app"
+audit_webhook_server_extra_args: {}
+audit_webhook_mode: batch
+audit_webhook_batch_max_size: 100
+audit_webhook_batch_max_wait: 1s
+
+kube_controller_node_monitor_grace_period: 40s
+kube_controller_node_monitor_period: 5s
+kube_controller_terminated_pod_gc_threshold: 12500
+kube_apiserver_request_timeout: "1m0s"
+kube_apiserver_pod_eviction_not_ready_timeout_seconds: "300"
+kube_apiserver_pod_eviction_unreachable_timeout_seconds: "300"
+
+# 1.10+ admission plugins
+kube_apiserver_enable_admission_plugins: []
+
+# 1.10+ list of disabled admission plugins
+kube_apiserver_disable_admission_plugins: []
+
+# extra runtime config
+kube_api_runtime_config: []
+
+## Enable/Disable Kube API Server Authentication Methods
+kube_token_auth: false
+kube_oidc_auth: false
+kube_webhook_token_auth: false
+kube_webhook_token_auth_url_skip_tls_verify: false
+## Variables for webhook token auth https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication
+# kube_webhook_token_auth_url: https://...
+kube_webhook_authorization: false
+## Variables for webhook token authz https://kubernetes.io/docs/reference/access-authn-authz/webhook/
+# kube_webhook_authorization_url: https://...
+kube_webhook_authorization_url_skip_tls_verify: false
+
+
+## Variables for OpenID Connect Configuration https://kubernetes.io/docs/admin/authentication/
+## To use OpenID you have to deploy additional an OpenID Provider (e.g Dex, Keycloak, ...)
+
+# kube_oidc_url: https:// ...
+# kube_oidc_client_id: kubernetes
+## Optional settings for OIDC
+# kube_oidc_username_claim: sub
+# kube_oidc_username_prefix: 'oidc:'
+# kube_oidc_groups_claim: groups
+# kube_oidc_groups_prefix: 'oidc:'
+# Copy oidc CA file to the following path if needed
+# kube_oidc_ca_file: {{ kube_cert_dir }}/ca.pem
+# Optionally include a base64-encoded oidc CA cert
+# kube_oidc_ca_cert: c3RhY2thYnVzZS5jb20...
+
+# List of the preferred NodeAddressTypes to use for kubelet connections.
+kubelet_preferred_address_types: 'InternalDNS,InternalIP,Hostname,ExternalDNS,ExternalIP'
+
+## Extra args for k8s components passing by kubeadm
+kube_kubeadm_apiserver_extra_args: {}
+kube_kubeadm_controller_extra_args: {}
+
+## Extra control plane host volume mounts
+## Example:
+# apiserver_extra_volumes:
+#  - name: name
+#    hostPath: /host/path
+#    mountPath: /mount/path
+#    readOnly: true
+apiserver_extra_volumes: {}
+controller_manager_extra_volumes: {}
+
+## Encrypting Secret Data at Rest
+kube_encrypt_secret_data: false
+kube_encrypt_token: "{{ lookup('password', credentials_dir + '/kube_encrypt_token.creds length=32 chars=ascii_letters,digits') }}"
+# Must be either: aescbc, secretbox or aesgcm
+kube_encryption_algorithm: "aescbc"
+# Which kubernetes resources to encrypt
+kube_encryption_resources: [secrets]
+
+# If non-empty, will use this string as identification instead of the actual hostname
+kube_override_hostname: >-
+  {%- if cloud_provider is defined and cloud_provider in [ 'aws' ] -%}
+  {%- else -%}
+  {{ inventory_hostname }}
+  {%- endif -%}
+
+secrets_encryption_query: "resources[*].providers[0].{{kube_encryption_algorithm}}.keys[0].secret"
+
+## Support tls min version, Possible values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13.
+# tls_min_version: ""
+
+## Support tls cipher suites.
+# tls_cipher_suites:
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+#   - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+#   - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+#   - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+#   - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
+#   - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+#   - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+#   - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+#   - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+#   - TLS_ECDHE_RSA_WITH_RC4_128_SHA
+#   - TLS_RSA_WITH_3DES_EDE_CBC_SHA
+#   - TLS_RSA_WITH_AES_128_CBC_SHA
+#   - TLS_RSA_WITH_AES_128_CBC_SHA256
+#   - TLS_RSA_WITH_AES_128_GCM_SHA256
+#   - TLS_RSA_WITH_AES_256_CBC_SHA
+#   - TLS_RSA_WITH_AES_256_GCM_SHA384
+#   - TLS_RSA_WITH_RC4_128_SHA
+
+## Amount of time to retain events. (default 1h0m0s)
+event_ttl_duration: "1h0m0s"
+
+## Automatically renew K8S control plane certificates on first Monday of each month
+auto_renew_certificates: false
+# First Monday of each month
+auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:{{ groups['kube_control_plane'].index(inventory_hostname) }}0:00"

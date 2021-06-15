@@ -263,8 +263,8 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`number_of_bastions` | Number of bastion hosts to create. Scripts assume this is really just zero or one |
 |`number_of_gfs_nodes_no_floating_ip` | Number of gluster servers to provision. |
 | `gfs_volume_size_in_gb` | Size of the non-ephemeral volumes to be attached to store the GlusterFS bricks |
-|`supplementary_master_groups` | To add ansible groups to the masters, such as `kube-node` for tainting them as nodes, empty by default. |
-|`supplementary_node_groups` | To add ansible groups to the nodes, such as `kube-ingress` for running ingress controller pods, empty by default. |
+|`supplementary_master_groups` | To add ansible groups to the masters, such as `kube_node` for tainting them as nodes, empty by default. |
+|`supplementary_node_groups` | To add ansible groups to the nodes, such as `kube_ingress` for running ingress controller pods, empty by default. |
 |`bastion_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, `["0.0.0.0/0"]` by default |
 |`master_allowed_remote_ips` | List of CIDR blocks allowed to initiate an API connection, `["0.0.0.0/0"]` by default |
 |`k8s_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, empty by default |
@@ -282,7 +282,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 
 ##### k8s_nodes
 
-Allows a custom defintion of worker nodes giving the operator full control over individual node flavor and
+Allows a custom definition of worker nodes giving the operator full control over individual node flavor and
 availability zone placement. To enable the use of this mode set the `number_of_k8s_nodes` and
 `number_of_k8s_nodes_no_floating_ip` variables to 0. Then define your desired worker node configuration
 using the `k8s_nodes` variable.
@@ -421,7 +421,7 @@ terraform apply -var-file=cluster.tfvars ../../contrib/terraform/openstack
 ```
 
 if you chose to create a bastion host, this script will create
-`contrib/terraform/openstack/k8s-cluster.yml` with an ssh command for Ansible to
+`contrib/terraform/openstack/k8s_cluster.yml` with an ssh command for Ansible to
 be able to access your machines tunneling through the bastion's IP address. If
 you want to manually handle the ssh tunneling to these machines, please delete
 or move that file. If you want to use this, just leave it there, as ansible will
@@ -546,7 +546,7 @@ bin_dir: /opt/bin
 cloud_provider: openstack
 ```
 
-Edit `inventory/$CLUSTER/group_vars/k8s-cluster/k8s-cluster.yml`:
+Edit `inventory/$CLUSTER/group_vars/k8s_cluster/k8s_cluster.yml`:
 
 - Set variable **kube_network_plugin** to your desired networking plugin.
   - **flannel** works out-of-the-box

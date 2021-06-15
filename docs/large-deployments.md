@@ -3,7 +3,7 @@ Large deployments of K8s
 
 For a large scaled deployments, consider the following configuration changes:
 
-* Tune [ansible settings](https://docs.ansible.com/ansible/intro_configuration.html)
+* Tune [ansible settings](https://docs.ansible.com/ansible/latest/intro_configuration.html)
   for `forks` and `timeout` vars to fit large numbers of nodes being deployed.
 
 * Override containers' `foo_image_repo` vars to point to intranet registry.
@@ -37,9 +37,9 @@ For a large scaled deployments, consider the following configuration changes:
 * Tune network prefix sizes. Those are ``kube_network_node_prefix``,
   ``kube_service_addresses`` and ``kube_pods_subnet``.
 
-* Add calico-rr nodes if you are deploying with Calico or Canal. Nodes recover
-  from host/network interruption much quicker with calico-rr. Note that
-  calico-rr role must be on a host without kube-master or kube-node role (but
+* Add calico_rr nodes if you are deploying with Calico or Canal. Nodes recover
+  from host/network interruption much quicker with calico_rr. Note that
+  calico_rr role must be on a host without kube_control_plane or kube_node role (but
   etcd role is okay).
 
 * Check out the

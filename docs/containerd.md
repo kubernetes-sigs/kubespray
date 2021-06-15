@@ -5,7 +5,7 @@ Kubespray supports basic functionality for using containerd as the default conta
 
 _To use the containerd container runtime set the following variables:_
 
-## k8s-cluster.yml
+## k8s_cluster.yml
 
 ```yaml
 container_manager: containerd
@@ -22,16 +22,10 @@ etcd_deployment_type: host
 Example: define registry mirror for docker hub
 
 ```yaml
-containerd_config:
-  grpc:
-    max_recv_message_size: 16777216
-    max_send_message_size: 16777216
-  debug:
-    level: ""
-  registries:
-    "docker.io":
-      - "https://mirror.gcr.io"
-      - "https://registry-1.docker.io"
+containerd_registries:
+  "docker.io":
+    - "https://mirror.gcr.io"
+    - "https://registry-1.docker.io"
 ```
 
 [containerd]: https://containerd.io/

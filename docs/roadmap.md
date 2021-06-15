@@ -14,7 +14,7 @@
   - [ ] GCE
   - [x] AWS (contrib/terraform/aws)
   - [x] OpenStack (contrib/terraform/openstack)
-  - [x] Packet
+  - [x] Equinix Metal
   - [ ] Digital Ocean
   - [ ] Azure
 - [ ] On AWS autoscaling, multi AZ

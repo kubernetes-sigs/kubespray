@@ -52,17 +52,17 @@ You could rename *all.yml* config to something else, i.e. *kubespray.yml* and cr
    ```ini
      ...
      #Kargo groups:
-     [kube-node:children]
+     [kube_node:children]
      kubenode
 
-     [k8s-cluster:children]
+     [k8s_cluster:children]
      kubernetes
 
      [etcd:children]
      kubemaster
      kubemaster-ha
 
-     [kube-master:children]
+     [kube_control_plane:children]
      kubemaster
      kubemaster-ha
 
@@ -95,7 +95,7 @@ If you made useful changes or fixed a bug in existent kubespray repo, use this f
 
 3. Setup desired user.name and user.email for submodule.
 If kubespray is only one submodule in your repo you could use something like:
-```git submodule foreach --recursive 'git config user.name "First Last" && git config user.email "your-email-addres@used.for.cncf"'```
+```git submodule foreach --recursive 'git config user.name "First Last" && git config user.email "your-email-address@used.for.cncf"'```
 
 4. Sync with upstream master:
 

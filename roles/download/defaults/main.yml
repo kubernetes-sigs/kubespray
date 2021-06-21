@@ -53,6 +53,7 @@ kubeadm_version: "{{ kube_version }}"
 etcd_version: v3.4.13
 crun_version: 0.19
 kata_containers_version: 2.1.0
+gvisor_version: 20210518.0
 
 # gcr and kubernetes image repo define
 gcr_image_repo: "gcr.io"
@@ -108,6 +109,8 @@ crictl_download_url: "https://github.com/kubernetes-sigs/cri-tools/releases/down
 helm_download_url: "https://get.helm.sh/helm-{{ helm_version }}-linux-{{ image_arch }}.tar.gz"
 crun_download_url: "https://github.com/containers/crun/releases/download/{{ crun_version }}/crun-{{ crun_version }}-linux-{{ image_arch }}"
 kata_containers_download_url: "https://github.com/kata-containers/kata-containers/releases/download/{{ kata_containers_version }}/kata-static-{{ kata_containers_version }}-{{ ansible_architecture }}.tar.xz"
+# gVisor only supports amd64 and uses x86_64 to in the download link
+gvisor_download_url: "https://storage.googleapis.com/gvisor/releases/release/{{ gvisor_version }}/{{ ansible_architecture }}"
 nerdctl_download_url: "https://github.com/containerd/nerdctl/releases/download/v{{ nerdctl_version }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
 krew_download_url: "https://github.com/kubernetes-sigs/krew/releases/download/{{ krew_version }}/krew.tar.gz"
 
@@ -401,6 +404,22 @@ kata_containers_binary_checksums:
     2.0.4: 0
     2.1.0: 0
 
+gvisor_runsc_binary_checksums:
+  arm:
+    20210518.0: 0
+  arm64:
+    20210518.0: 0
+  amd64:
+    20210518.0: 907811e10576d31b6f63d2f91f1c3be2b2df94e222fb48eb509fce48cd6ae9e0
+
+gvisor_containerd_shim_binary_checksums:
+  arm:
+    20210518.0: 0
+  arm64:
+    20210518.0: 0
+  amd64:
+    20210518.0: d6deda79562cadf4fc98ccf1d6d9fd1d2dff3890b184c7b546167bd6eff241ec
+
 nerdctl_archive_checksums:
   arm:
     0.8.1: 27bdad3f9e2667620f70617c48d595c5c4e24a10fbcd00d31202cd8d571c9233
@@ -420,6 +439,8 @@ crictl_binary_checksum: "{{ crictl_checksums[image_arch][crictl_version] }}"
 helm_archive_checksum: "{{ helm_archive_checksums[image_arch][helm_version] }}"
 crun_binary_checksum: "{{ crun_checksums[image_arch][crun_version] }}"
 kata_containers_binary_checksum: "{{ kata_containers_binary_checksums[image_arch][kata_containers_version] }}"
+gvisor_runsc_binary_checksum: "{{ gvisor_runsc_binary_checksums[image_arch][gvisor_version] }}"
+gvisor_containerd_shim_binary_checksum: "{{ gvisor_containerd_shim_binary_checksums[image_arch][gvisor_version] }}"
 nerdctl_archive_checksum: "{{ nerdctl_archive_checksums[image_arch][nerdctl_version] }}"
 krew_archive_checksum: "{{ krew_archive_checksums[krew_version] }}"
 
@@ -712,6 +733,32 @@ downloads:
     unarchive: false
     owner: "root"
     mode: "0755"
+    groups:
+    - k8s_cluster
+
+  gvisor_runsc:
+    enabled: "{{ gvisor_enabled }}"
+    file: true
+    version: "{{ gvisor_version }}"
+    dest: "{{ local_release_dir }}/gvisor-runsc"
+    sha256: "{{ gvisor_runsc_binary_checksum }}"
+    url: "{{ gvisor_download_url }}/runsc"
+    unarchive: false
+    owner: "root"
+    mode: 755
+    groups:
+    - k8s_cluster
+
+  gvisor_containerd_shim:
+    enabled: "{{ gvisor_enabled }}"
+    file: true
+    version: "{{ gvisor_version }}"
+    dest: "{{ local_release_dir }}/gvisor-containerd-shim-runsc-v1"
+    sha256: "{{ gvisor_containerd_shim_binary_checksum }}"
+    url: "{{ gvisor_download_url }}/containerd-shim-runsc-v1"
+    unarchive: false
+    owner: "root"
+    mode: 755
     groups:
     - k8s_cluster
 

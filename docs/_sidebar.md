@@ -41,6 +41,7 @@
   * [Containerd](docs/containerd.md)
   * [CRI-O](docs/cri-o.md)
   * [Kata Containers](docs/kata-containers.md)
+  * [gVisor](docs/gvisor.md)
 * Advanced
   * [Proxy](/docs/proxy.md)
   * [Downloads](docs/downloads.md)

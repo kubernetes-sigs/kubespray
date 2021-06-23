@@ -7,6 +7,7 @@ export LANG=C.UTF-8
 for d in $(find roles -name molecule -type d)
 do
     cd $(dirname $d)
+    echo "Testing under $d .."
     molecule test --all
     cd -
 done

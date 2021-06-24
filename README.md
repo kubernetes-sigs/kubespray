@@ -221,7 +221,7 @@ See also [Network checker](docs/netcheck.md).
 
 - [nginx](https://kubernetes.github.io/ingress-nginx): the NGINX Ingress Controller.
 
-- [metallb](docs/metallb.md): the MetalLB bare-metal service LoadBalancer provider.
+- [metallb](docs/ingress_controller/metallb.md): the MetalLB bare-metal service LoadBalancer provider.
 
 ## Community docs and resources
 

@@ -330,3 +330,23 @@ tc exec bpf debug
 ```
 
 Please see [Calico eBPF troubleshooting guide](https://docs.projectcalico.org/maintenance/troubleshoot/troubleshoot-ebpf#ebpf-program-debug-logs).
+
+## Wireguard Encryption
+
+Calico supports using Wireguard for encryption. Please see the docs on [encryptiong cluster pod traffic](https://docs.projectcalico.org/security/encrypt-cluster-pod-traffic).
+
+To enable wireguard support:
+
+```yaml
+calico_wireguard_enabled: true
+```
+
+The following OSes will require enabling the EPEL repo in order to bring in wireguard tools:
+
+* CentOS 7 & 8
+* AlmaLinux 8
+* Amazon Linux 2
+
+```yaml
+epel_enabled: true
+```

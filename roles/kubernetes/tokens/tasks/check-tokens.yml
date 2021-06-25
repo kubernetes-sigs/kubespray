@@ -9,15 +9,17 @@
   register: known_tokens_master
   run_once: true
 
-- name: "Check_tokens | Set default value for 'sync_tokens' and 'gen_tokens' to false"
+- name: "Check_tokens | Declare 'sync_tokens' and 'gen_tokens' with default false"
   set_fact:
     sync_tokens: false
     gen_tokens: false
+  run_once: true    
 
-- name: "Check_tokens | Set 'sync_tokens' and 'gen_tokens' to true"
+- name: "Check_tokens | Set 'gen_tokens' and 'sync_tokens' to true if tokens are not exist on first master"
   set_fact:
     gen_tokens: true
-  when: not known_tokens_master.stat.exists and kube_token_auth|default(true)
+    sync_tokens: true
+  when: not known_tokens_master.stat.exists
   run_once: true
 
 - name: "Check tokens | check if a cert already exists"
@@ -27,15 +29,16 @@
     get_checksum: yes
     get_mime: no
   register: known_tokens
+  when:
+    - inventory_hostname in groups['kube_control_plane']
+    - inventory_hostname != groups['kube_control_plane']|first
+    - not gen_tokens  
 
 - name: "Check_tokens | Set 'sync_tokens' to true"
   set_fact:
-    sync_tokens: >-
-      {%- set tokens = {'sync': False} -%}
-      {%- for server in groups['kube_control_plane'] | intersect(ansible_play_batch)
-        if (not hostvars[server].known_tokens.stat.exists) or
-        (hostvars[server].known_tokens.stat.checksum|default('') != known_tokens_master.stat.checksum|default('')) -%}
-        {%- set _ = tokens.update({'sync': True}) -%}
-      {%- endfor -%}
-      {{ tokens.sync }}
-  run_once: true
+    sync_tokens: true
+  when:
+    - inventory_hostname in groups['kube_control_plane']
+    - inventory_hostname != groups['kube_control_plane']|first
+    - not gen_tokens
+    - not known_tokens.stat.exists or known_tokens.stat.checksum |default('')!=known_tokens_master.stat.checksum|default('')   

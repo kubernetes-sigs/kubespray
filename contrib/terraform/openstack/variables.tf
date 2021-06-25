@@ -278,3 +278,9 @@ variable "image_master_uuid" {
   description = "uuid of image to be used on master nodes. If empty defaults to image_uuid"
   default     = ""
 }
+
+variable "group_vars_path" {
+  description = "path to the inventory group vars directory"
+  type        = string
+  default     = "./group_vars"
+}

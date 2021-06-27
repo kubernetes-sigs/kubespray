@@ -3,8 +3,14 @@ variable "cluster_name" {
 }
 
 variable "az_list" {
-  description = "List of Availability Zones available in your OpenStack cluster"
-  type        = "list"
+  description = "List of Availability Zones to use for masters in your OpenStack cluster"
+  type        = list(string)
+  default     = ["nova"]
+}
+
+variable "az_list_node" {
+  description = "List of Availability Zones to use for nodes in your OpenStack cluster"
+  type        = list(string)
   default     = ["nova"]
 }
 
@@ -44,8 +50,32 @@ variable "number_of_gfs_nodes_no_floating_ip" {
   default = 0
 }
 
+variable "bastion_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "etcd_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "master_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "node_root_volume_size_in_gb" {
+  default = 0
+}
+
+variable "gfs_root_volume_size_in_gb" {
+  default = 0
+}
+
 variable "gfs_volume_size_in_gb" {
   default = 75
+}
+
+variable "master_volume_type" {
+  default = "Default"
 }
 
 variable "public_key_path" {
@@ -55,12 +85,12 @@ variable "public_key_path" {
 
 variable "image" {
   description = "the image to use"
-  default     = "ubuntu-14.04"
+  default     = ""
 }
 
 variable "image_gfs" {
   description = "Glance image to use for GlusterFS"
-  default     = "ubuntu-16.04"
+  default     = ""
 }
 
 variable "ssh_user" {
@@ -103,6 +133,12 @@ variable "network_name" {
   default     = "internal"
 }
 
+variable "network_dns_domain" {
+  description = "dns_domain for the internal network"
+  type        = string
+  default     = null
+}
+
 variable "use_neutron" {
   description = "Use neutron"
   default     = 1
@@ -110,13 +146,19 @@ variable "use_neutron" {
 
 variable "subnet_cidr" {
   description = "Subnet CIDR block."
-  type        = "string"
+  type        = string
   default     = "10.0.0.0/24"
 }
 
 variable "dns_nameservers" {
   description = "An array of DNS name server names used by hosts in this subnet."
-  type        = "list"
+  type        = list(string)
+  default     = []
+}
+
+variable "k8s_master_fips" {
+  description = "specific pre-existing floating IPs to use for master nodes"
+  type        = list(string)
   default     = []
 }
 
@@ -135,41 +177,47 @@ variable "external_net" {
 }
 
 variable "supplementary_master_groups" {
-  description = "supplementary kubespray ansible groups for masters, such kube-node"
+  description = "supplementary kubespray ansible groups for masters, such kube_node"
   default     = ""
 }
 
 variable "supplementary_node_groups" {
-  description = "supplementary kubespray ansible groups for worker nodes, such as kube-ingress"
+  description = "supplementary kubespray ansible groups for worker nodes, such as kube_ingress"
   default     = ""
 }
 
 variable "bastion_allowed_remote_ips" {
   description = "An array of CIDRs allowed to SSH to hosts"
-  type        = "list"
+  type        = list(string)
   default     = ["0.0.0.0/0"]
 }
 
 variable "master_allowed_remote_ips" {
   description = "An array of CIDRs allowed to access API of masters"
-  type        = "list"
+  type        = list(string)
   default     = ["0.0.0.0/0"]
 }
 
 variable "k8s_allowed_remote_ips" {
   description = "An array of CIDRs allowed to SSH to hosts"
-  type        = "list"
+  type        = list(string)
   default     = []
 }
 
 variable "k8s_allowed_egress_ips" {
   description = "An array of CIDRs allowed for egress traffic"
-  type        = "list"
+  type        = list(string)
   default     = ["0.0.0.0/0"]
 }
 
+variable "master_allowed_ports" {
+  type = list(any)
+
+  default = []
+}
+
 variable "worker_allowed_ports" {
-  type = "list"
+  type = list(any)
 
   default = [
     {
@@ -179,4 +227,60 @@ variable "worker_allowed_ports" {
       "remote_ip_prefix" = "0.0.0.0/0"
     },
   ]
+}
+
+variable "use_access_ip" {
+  default = 1
+}
+
+variable "use_server_groups" {
+  default = false
+}
+
+variable "router_id" {
+  description = "uuid of an externally defined router to use"
+  default     = null
+}
+
+variable "router_internal_port_id" {
+  description = "uuid of the port connection our router to our network"
+  default     = null
+}
+
+variable "k8s_nodes" {
+  default = {}
+}
+
+variable "extra_sec_groups" {
+  default = false
+}
+
+variable "extra_sec_groups_name" {
+  default = "custom"
+}
+
+variable "image_uuid" {
+  description = "uuid of image inside openstack to use"
+  default     = ""
+}
+
+variable "image_gfs_uuid" {
+  description = "uuid of image to be used on gluster fs nodes. If empty defaults to image_uuid"
+  default     = ""
+}
+
+variable "image_master" {
+  description = "uuid of image inside openstack to use"
+  default     = ""
+}
+
+variable "image_master_uuid" {
+  description = "uuid of image to be used on master nodes. If empty defaults to image_uuid"
+  default     = ""
+}
+
+variable "group_vars_path" {
+  description = "path to the inventory group vars directory"
+  type        = string
+  default     = "./group_vars"
 }

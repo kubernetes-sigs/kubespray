@@ -1,0 +1,59 @@
+---
+- include_tasks: vsphere-credentials-check.yml
+  tags: vsphere-csi-driver
+
+- name: vSphere CSI Driver | Choose how to deploy CSI driver based on controller version
+  set_fact:
+    controller_spec: "{% if vsphere_csi_controller is version('v2.0.0', '<') %}vsphere-csi-controller-ss.yml{% else %}vsphere-csi-controller-deployment.yml{% endif %}"
+  tags: vsphere-csi-driver
+
+- name: vSphere CSI Driver | Generate CSI cloud-config
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item }}"
+    mode: 0640
+  with_items:
+    - vsphere-csi-cloud-config
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags: vsphere-csi-driver
+
+- name: vSphere CSI Driver | Generate Manifests
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item }}"
+  with_items:
+    - vsphere-csi-controller-rbac.yml
+    - "{{ controller_spec }}"
+    - vsphere-csi-node.yml
+  register: vsphere_csi_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags: vsphere-csi-driver
+
+- name: vSphere CSI Driver | Generate a CSI secret manifest
+  command: "{{ bin_dir }}/kubectl create secret generic vsphere-config-secret --from-file=csi-vsphere.conf={{ kube_config_dir }}/vsphere-csi-cloud-config -n kube-system --dry-run --save-config -o yaml"
+  register: vsphere_csi_secret_manifest
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  no_log: true
+  tags: vsphere-csi-driver
+
+- name: vSphere CSI Driver | Apply a CSI secret manifest
+  command:
+    cmd: "{{ bin_dir }}/kubectl apply -f -"
+    stdin: "{{ vsphere_csi_secret_manifest.stdout }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  no_log: true
+  tags: vsphere-csi-driver
+
+- name: vSphere CSI Driver | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item }}"
+    state: "latest"
+  with_items:
+    - "{{ vsphere_csi_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item }}"
+  tags: vsphere-csi-driver

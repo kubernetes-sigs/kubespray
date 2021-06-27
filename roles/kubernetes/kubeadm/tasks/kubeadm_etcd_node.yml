@@ -1,0 +1,61 @@
+---
+- name: Parse certificate key if not set
+  set_fact:
+    kubeadm_certificate_key: "{{ hostvars[groups['kube_control_plane'][0]]['kubeadm_certificate_key'] }}"
+  when: kubeadm_certificate_key is undefined
+
+- name: Pull control plane certs down
+  shell: >-
+    {{ bin_dir }}/kubeadm join phase
+    control-plane-prepare download-certs
+    --certificate-key {{ kubeadm_certificate_key }}
+    --control-plane
+    --token {{ kubeadm_token }}
+    --discovery-token-unsafe-skip-ca-verification
+    {{ kubeadm_discovery_address }}
+    &&
+    {{ bin_dir }}/kubeadm join phase
+    control-plane-prepare certs
+    --control-plane
+    --token {{ kubeadm_token }}
+    --discovery-token-unsafe-skip-ca-verification
+    {{ kubeadm_discovery_address }}
+  args:
+    creates: "{{ kube_cert_dir }}/apiserver-etcd-client.key"
+
+- name: Delete unneeded certificates
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ kube_cert_dir }}/apiserver.crt"
+    - "{{ kube_cert_dir }}/apiserver.key"
+    - "{{ kube_cert_dir }}/ca.key"
+    - "{{ kube_cert_dir }}/etcd/ca.key"
+    - "{{ kube_cert_dir }}/etcd/healthcheck-client.crt"
+    - "{{ kube_cert_dir }}/etcd/healthcheck-client.key"
+    - "{{ kube_cert_dir }}/etcd/peer.crt"
+    - "{{ kube_cert_dir }}/etcd/peer.key"
+    - "{{ kube_cert_dir }}/etcd/server.crt"
+    - "{{ kube_cert_dir }}/etcd/server.key"
+    - "{{ kube_cert_dir }}/front-proxy-ca.crt"
+    - "{{ kube_cert_dir }}/front-proxy-ca.key"
+    - "{{ kube_cert_dir }}/front-proxy-client.crt"
+    - "{{ kube_cert_dir }}/front-proxy-client.key"
+    - "{{ kube_cert_dir }}/sa.key"
+    - "{{ kube_cert_dir }}/sa.pub"
+
+- name: Calculate etcd cert serial
+  command: "openssl x509 -in {{ kube_cert_dir }}/apiserver-etcd-client.crt -noout -serial"
+  register: "etcd_client_cert_serial_result"
+  changed_when: false
+  when:
+    - inventory_hostname in groups['k8s_cluster']|union(groups['calico_rr']|default([]))|unique|sort
+  tags:
+    - network
+
+- name: Set etcd_client_cert_serial
+  set_fact:
+    etcd_client_cert_serial: "{{ etcd_client_cert_serial_result.stdout.split('=')[1] }}"
+  tags:
+    - network

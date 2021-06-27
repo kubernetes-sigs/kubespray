@@ -1,6 +1,6 @@
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: calico-node
   namespace: kube-system
@@ -10,6 +10,7 @@ rules:
       - pods
       - nodes
       - namespaces
+      - configmaps
     verbs:
       - get
   - apiGroups: [""]
@@ -27,6 +28,7 @@ rules:
     resources:
       - nodes/status
     verbs:
+      # Needed for clearing NodeNetworkUnavailable flag.
       - patch
 {% if calico_datastore == "etcd" %}
   - apiGroups:
@@ -71,11 +73,14 @@ rules:
       - globalbgpconfigs
       - bgpconfigurations
       - ippools
+      - ipamblocks
       - globalnetworkpolicies
       - globalnetworksets
       - networkpolicies
+      - networksets
       - clusterinformations
       - hostendpoints
+      - blockaffinities
     verbs:
       - get
       - list
@@ -97,7 +102,7 @@ rules:
       - get
       - list
       - watch
-  # These permissions are only requried for upgrade from v2.6, and can
+  # These permissions are only required for upgrade from v2.6, and can
   # be removed after upgrade or on fresh installations.
   - apiGroups: ["crd.projectcalico.org"]
     resources:
@@ -106,4 +111,34 @@ rules:
     verbs:
       - create
       - update
+  # These permissions are required for Calico CNI to perform IPAM allocations.
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - blockaffinities
+      - ipamblocks
+      - ipamhandles
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - ipamconfigs
+    verbs:
+      - get
+  # Block affinities must also be watchable by confd for route aggregation.
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - blockaffinities
+    verbs:
+      - watch
+  # The Calico IPAM migration needs to get daemonsets. These permissions can be
+  # removed if not upgrading from an installation using host-local IPAM.
+  - apiGroups: ["apps"]
+    resources:
+      - daemonsets
+    verbs:
+      - get
 {% endif %}

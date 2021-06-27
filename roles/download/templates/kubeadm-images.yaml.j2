@@ -1,45 +1,25 @@
-{% if kube_version is version('v1.12.0', '>=') %}
-{% if kube_version is version('v1.12.0', '>=') and kube_version is version('v1.13.0', '<') %}
-apiVersion: kubeadm.k8s.io/v1alpha3
-{% else %}
-apiVersion: kubeadm.k8s.io/v1beta1
-{% endif %}
+apiVersion: kubeadm.k8s.io/v1beta2
 kind: InitConfiguration
 nodeRegistration:
-{% if container_manager == 'crio' %}
-  criSocket: /var/run/crio/crio.sock
-{% else %}
-  criSocket: /var/run/dockershim.sock
-{% endif %}
+  criSocket: {{ cri_socket }}
 ---
-{% endif %}
-{% if kube_version is version('v1.11.0', '<') %}
-apiVersion: kubeadm.k8s.io/v1alpha1
-{% elif kube_version is version('v1.11.0', '>=') and kube_version is version('v1.12.0', '<') %}
-apiVersion: kubeadm.k8s.io/v1alpha2
-{% elif kube_version is version('v1.12.0', '>=') and kube_version is version('v1.13.0', '<') %}
-apiVersion: kubeadm.k8s.io/v1alpha3
-{% else %}
-apiVersion: kubeadm.k8s.io/v1beta1
-{% endif %}
-{% if kube_version is version('v1.12.0', '<') %}
-kind: MasterConfiguration
-{% else %}
+apiVersion: kubeadm.k8s.io/v1beta2
 kind: ClusterConfiguration
-{% endif %}
 imageRepository: {{ kube_image_repo }}
 kubernetesVersion: {{ kube_version }}
 etcd:
+{% if etcd_kubeadm_enabled %}
+  local:
+    imageRepository: "{{ etcd_image_repo | regex_replace("/etcd$","") }}"
+    imageTag: "{{ etcd_image_tag }}"
+{% else %}
   external:
       endpoints:
 {% for endpoint in etcd_access_addresses.split(',') %}
       - {{ endpoint }}
 {% endfor %}
-{% if kube_version is version('v1.12.0', '<') %}
-nodeRegistration:
-{% if container_manager == 'crio' %}
-  criSocket: /var/run/crio/crio.sock
-{% else %}
-  criSocket: /var/run/dockershim.sock
 {% endif %}
-{% endif %}
+dns:
+  type: CoreDNS
+  imageRepository: {{ coredns_image_repo | regex_replace('/coredns.*$','') }}
+  imageTag: {{ coredns_image_tag }}

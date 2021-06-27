@@ -1,19 +1,18 @@
-HA endpoints for K8s
-====================
+# HA endpoints for K8s
 
 The following components require a highly available endpoints:
+
 * etcd cluster,
 * kube-apiserver service instances.
 
 The latter relies on a 3rd side reverse proxy, like Nginx or HAProxy, to
 achieve the same goal.
 
-Etcd
-----
+## Etcd
+
 The etcd clients (kube-api-masters) are configured with the list of all etcd peers. If the etcd-cluster has multiple instances, it's configured in HA already.
 
-Kube-apiserver
---------------
+## Kube-apiserver
 
 K8s components require a loadbalancer to access the apiservers via a reverse
 proxy. Kubespray includes support for an nginx-based proxy that resides on each
@@ -33,7 +32,7 @@ If you choose to NOT use the local internal loadbalancer, you will need to
 configure your own loadbalancer to achieve HA. Note that deploying a
 loadbalancer is up to a user and is not covered by ansible roles in Kubespray.
 By default, it only configures a non-HA endpoint, which points to the
-`access_ip` or IP address of the first server node in the `kube-master` group.
+`access_ip` or IP address of the first server node in the `kube_control_plane` group.
 It can also configure clients to use endpoints for a given loadbalancer type.
 The following diagram shows how traffic to the apiserver is directed.
 
@@ -50,15 +49,16 @@ provides access for external clients, while the internal LB accepts client
 connections only to the localhost.
 Given a frontend `VIP` address and `IP1, IP2` addresses of backends, here is
 an example configuration for a HAProxy service acting as an external LB:
-```
+
+```raw
 listen kubernetes-apiserver-https
   bind <VIP>:8383
-  option ssl-hello-chk
   mode tcp
+  option log-health-checks
   timeout client 3h
   timeout server 3h
-  server master1 <IP1>:6443
-  server master2 <IP2>:6443
+  server master1 <IP1>:6443 check check-ssl verify none inter 10000
+  server master2 <IP2>:6443 check check-ssl verify none inter 10000
   balance roundrobin
 ```
 
@@ -66,7 +66,8 @@ listen kubernetes-apiserver-https
 
 And the corresponding example global vars for such a "cluster-aware"
 external LB with the cluster API access modes configured in Kubespray:
-```
+
+```yml
 apiserver_loadbalancer_domain_name: "my-apiserver-lb.example.com"
 loadbalancer_apiserver:
   address: <VIP>
@@ -80,7 +81,7 @@ loadbalancer_apiserver:
   port on the VIP address)
 
 This domain name, or default "lb-apiserver.kubernetes.local", will be inserted
-into the `/etc/hosts` file of all servers in the `k8s-cluster` group and wired
+into the `/etc/hosts` file of all servers in the `k8s_cluster` group and wired
 into the generated self-signed TLS/SSL certificates as well. Note that
 the HAProxy service should as well be HA and requires a VIP management, which
 is out of scope of this doc.
@@ -101,15 +102,16 @@ exclusive to `loadbalancer_apiserver_localhost`.
 
 Access API endpoints are evaluated automatically, as the following:
 
-| Endpoint type                | kube-master    | non-master          | external            |
-|------------------------------|----------------|---------------------|---------------------|
-| Local LB (default)           | https://bip:sp | https://lc:nsp      | https://m[0].aip:sp |
-| Local LB + Unmanaged here LB | https://bip:sp | https://lc:nsp      | https://ext         |
-| External LB, no internal     | https://bip:sp | https://lb:lp       | https://lb:lp       |
-| No ext/int LB                | https://bip:sp | https://m[0].aip:sp | https://m[0].aip:sp |
+| Endpoint type                | kube_control_plane | non-master              | external              |
+|------------------------------|--------------------|-------------------------|-----------------------|
+| Local LB (default)           | `https://bip:sp`   | `https://lc:nsp`        | `https://m[0].aip:sp` |
+| Local LB + Unmanaged here LB | `https://bip:sp`   | `https://lc:nsp`        | `https://ext`         |
+| External LB, no internal     | `https://bip:sp`   | `<https://lb:lp>`       | `https://lb:lp`       |
+| No ext/int LB                | `https://bip:sp`   | `<https://m[0].aip:sp>` | `https://m[0].aip:sp` |
 
 Where:
-* `m[0]` - the first node in the `kube-master` group;
+
+* `m[0]` - the first node in the `kube_control_plane` group;
 * `lb` - LB FQDN, `apiserver_loadbalancer_domain_name`;
 * `ext` - Externally load balanced VIP:port and FQDN, not managed by Kubespray;
 * `lc` - localhost;
@@ -132,16 +134,19 @@ Kubespray, the masters' APIs are accessed via the insecure endpoint, which
 consists of the local `kube_apiserver_insecure_bind_address` and
 `kube_apiserver_insecure_port`.
 
-Optional configurations
-------------------------
+## Optional configurations
+
 ### ETCD with a LB
+
 In order to use an external loadbalancing (L4/TCP or L7 w/ SSL Passthrough VIP), the following variables need to be overridden in group_vars
+
 * `etcd_access_addresses`
 * `etcd_client_url`
 * `etcd_cert_alt_names`
 * `etcd_cert_alt_ips`
 
 #### Example of a VIP w/ FQDN
+
 ```yaml
 etcd_access_addresses: https://etcd.example.com:2379
 etcd_client_url: https://etcd.example.com:2379

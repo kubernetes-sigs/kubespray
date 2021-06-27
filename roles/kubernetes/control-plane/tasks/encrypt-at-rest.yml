@@ -1,0 +1,42 @@
+---
+- name: Check if secret for encrypting data at rest already exist
+  stat:
+    path: "{{ kube_cert_dir }}/secrets_encryption.yaml"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: secrets_encryption_file
+
+- name: Slurp secrets_encryption file if it exists
+  slurp:
+    src: "{{ kube_cert_dir }}/secrets_encryption.yaml"
+  register: secret_file_encoded
+  when: secrets_encryption_file.stat.exists
+
+- name: Base 64 Decode slurped secrets_encryption.yaml file
+  set_fact:
+    secret_file_decoded: "{{ secret_file_encoded['content'] | b64decode | from_yaml }}"
+  when: secrets_encryption_file.stat.exists
+
+- name: Extract secret value from secrets_encryption.yaml
+  set_fact:
+    kube_encrypt_token_extracted: "{{ secret_file_decoded | json_query(secrets_encryption_query) | first | b64decode }}"
+  when: secrets_encryption_file.stat.exists
+
+- name: Set kube_encrypt_token across master nodes
+  set_fact:
+    kube_encrypt_token: "{{ kube_encrypt_token_extracted }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  with_inventory_hostnames: kube_control_plane
+  when: kube_encrypt_token_extracted is defined
+
+- name: Write secrets for encrypting secret data at rest
+  template:
+    src: secrets_encryption.yaml.j2
+    dest: "{{ kube_cert_dir }}/secrets_encryption.yaml"
+    owner: root
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  tags:
+    - kube-apiserver

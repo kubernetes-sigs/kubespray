@@ -1,4 +1,4 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
@@ -6,23 +6,25 @@ metadata:
   name: netchecker-agent
   namespace: {{ netcheck_namespace }}
 spec:
+  selector:
+    matchLabels:
+      app: netchecker-agent
   template:
     metadata:
       name: netchecker-agent
       labels:
         app: netchecker-agent
     spec:
-{% if kube_version is version('v1.11.1', '>=') %}
       priorityClassName: {% if netcheck_namespace == 'kube-system' %}system-node-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
-{% endif %}
       tolerations:
         - effect: NoSchedule
           operator: Exists
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
         - name: netchecker-agent
           image: "{{ netcheck_agent_image_repo }}:{{ netcheck_agent_image_tag }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
           env:
             - name: MY_POD_NAME
               valueFrom:
@@ -37,7 +39,6 @@ spec:
             - "-alsologtostderr=true"
             - "-serverendpoint=netchecker-service:8081"
             - "-reportinterval={{ agent_report_interval }}"
-          imagePullPolicy: {{ k8s_image_pull_policy }}
           resources:
             limits:
               cpu: {{ netchecker_agent_cpu_limit }}

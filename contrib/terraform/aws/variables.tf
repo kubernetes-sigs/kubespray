@@ -25,7 +25,7 @@ data "aws_ami" "distro" {
 
   filter {
     name   = "name"
-    values = ["CoreOS-stable-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"]
   }
 
   filter {
@@ -33,7 +33,7 @@ data "aws_ami" "distro" {
     values = ["hvm"]
   }
 
-  owners = ["595879546273"] #CoreOS
+  owners = ["099720109477"] # Canonical
 }
 
 //AWS VPC Variables
@@ -44,12 +44,12 @@ variable "aws_vpc_cidr_block" {
 
 variable "aws_cidr_subnets_private" {
   description = "CIDR Blocks for private subnets in Availability Zones"
-  type        = "list"
+  type        = list(string)
 }
 
 variable "aws_cidr_subnets_public" {
   description = "CIDR Blocks for public subnets in Availability Zones"
-  type        = "list"
+  type        = list(string)
 }
 
 //AWS EC2 Settings
@@ -101,7 +101,7 @@ variable "k8s_secure_api_port" {
 
 variable "default_tags" {
   description = "Default tags for all resources"
-  type        = "map"
+  type        = map(string)
 }
 
 variable "inventory_file" {

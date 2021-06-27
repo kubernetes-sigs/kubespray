@@ -1,0 +1,52 @@
+version = 2
+root = "{{ containerd_storage_dir }}"
+state = "{{ containerd_state_dir }}"
+oom_score = {{ containerd_oom_score }}
+
+[grpc]
+  max_recv_message_size = {{ containerd_grpc_max_recv_message_size | default(16777216) }}
+  max_send_message_size = {{ containerd_grpc_max_send_message_size | default(16777216) }}
+
+[debug]
+  level = "{{ containerd_debug_level | default('info') }}"
+
+[metrics]
+  address = "{{ containerd_metrics_address | default('') }}"
+  grpc_histogram = {{ containerd_metrics_grpc_histogram | default(false) | lower }}
+
+[plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+    sandbox_image = "{{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}"
+    max_container_log_line_size = {{ containerd_max_container_log_line_size }}
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+      default_runtime_name = "{{ containerd_default_runtime | default('runc') }}"
+      snapshotter = "{{ containerd_snapshotter | default('overlayfs') }}"
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+{% for runtime in containerd_runtimes %}
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.{{ runtime.name }}]
+          runtime_type = "{{ runtime.type }}"
+          runtime_engine = "{{ runtime.engine }}"
+          runtime_root = "{{ runtime.root }}"
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.{{ runtime.name }}.options]
+{% for key, value in runtime.options.items() %}
+            {{ key }} = {{ value }}
+{% endfor %}
+{% endfor %}
+{% if kata_containers_enabled %}
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.kata-qemu]
+          runtime_type = "io.containerd.kata-qemu.v2"
+{% endif %}
+{% if gvisor_enabled %}
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
+          runtime_type = "io.containerd.runsc.v1"
+{% endif %}
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+{% for registry, addr in containerd_registries.items() %}
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ registry }}"]
+          endpoint = ["{{ ([ addr ] | flatten ) | join('","') }}"]
+{% endfor %}
+
+{% if containerd_extra_args is defined %}
+{{ containerd_extra_args }}
+{% endif %}

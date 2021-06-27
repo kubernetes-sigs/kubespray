@@ -1,26 +1,25 @@
 ---
-- name: Kubernetes Apps | Lay Down CoreDNS Template
-  action: "{{ item.module }}"
-  args:
-    src: "{{ item.file }}{% if item.module == 'template' %}.j2{% endif %}"
+- name: Kubernetes Apps | Lay Down CoreDNS templates
+  template:
+    src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
-  with_items:
-    - { name: coredns, module: template, file: coredns-config.yml, type: configmap }
-    - { name: coredns, module: copy, file: coredns-sa.yml, type: sa }
-    - { name: coredns, module: template, file: coredns-deployment.yml, type: deployment }
-    - { name: coredns, module: template, file: coredns-svc.yml, type: svc }
-    - { name: coredns, module: copy, file: coredns-clusterrole.yml, type: clusterrole }
-    - { name: coredns, module: copy, file: coredns-clusterrolebinding.yml, type: clusterrolebinding }
-    - { name: dns-autoscaler, module: copy, file: dns-autoscaler-sa.yml, type: sa }
-    - { name: dns-autoscaler, module: copy, file: dns-autoscaler-clusterrole.yml, type: clusterrole }
-    - { name: dns-autoscaler, module: copy, file: dns-autoscaler-clusterrolebinding.yml, type: clusterrolebinding }
-    - { name: dns-autoscaler, module: template, file: dns-autoscaler.yml, type: deployment }
+  loop:
+    - { name: coredns, file: coredns-clusterrole.yml, type: clusterrole }
+    - { name: coredns, file: coredns-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: coredns, file: coredns-config.yml, type: configmap }
+    - { name: coredns, file: coredns-deployment.yml, type: deployment }
+    - { name: coredns, file: coredns-sa.yml, type: sa }
+    - { name: coredns, file: coredns-svc.yml, type: svc }
+    - { name: dns-autoscaler, file: dns-autoscaler.yml, type: deployment }
+    - { name: dns-autoscaler, file: dns-autoscaler-clusterrole.yml, type: clusterrole }
+    - { name: dns-autoscaler, file: dns-autoscaler-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: dns-autoscaler, file: dns-autoscaler-sa.yml, type: sa }
   register: coredns_manifests
   vars:
     clusterIP: "{{ skydns_server }}"
   when:
     - dns_mode in ['coredns', 'coredns_dual']
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags:
     - coredns
 
@@ -38,6 +37,6 @@
     coredns_ordinal_suffix: "-secondary"
   when:
     - dns_mode == 'coredns_dual'
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags:
     - coredns

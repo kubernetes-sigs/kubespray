@@ -2,6 +2,9 @@
 yamllint:
   extends: .job
   stage: unit-tests
+  tags: [light]
+  variables:
+    LANG: C.UTF-8
   script:
     - yamllint --strict .
   except: ['triggers', 'master']
@@ -9,15 +12,17 @@ yamllint:
 vagrant-validate:
   extends: .job
   stage: unit-tests
+  tags: [light]
+  variables:
+    VAGRANT_VERSION: 2.2.15
   script:
-    - curl -sL https://releases.hashicorp.com/vagrant/2.2.4/vagrant_2.2.4_x86_64.deb -o /tmp/vagrant_2.2.4_x86_64.deb
-    - dpkg -i /tmp/vagrant_2.2.4_x86_64.deb
-    - vagrant validate --ignore-provider
+    - ./tests/scripts/vagrant-validate.sh
   except: ['triggers', 'master']
 
 ansible-lint:
   extends: .job
   stage: unit-tests
+  tags: [light]
   # lint every yml/yaml file that looks like it contains Ansible plays
   script: |-
     grep -Rl '^- hosts: \|^  hosts: ' --include \*.yml --include \*.yaml . | xargs -P 4 -n 25 ansible-lint -v
@@ -26,6 +31,7 @@ ansible-lint:
 syntax-check:
   extends: .job
   stage: unit-tests
+  tags: [light]
   variables:
     ANSIBLE_INVENTORY: inventory/local-tests.cfg
     ANSIBLE_REMOTE_USER: root
@@ -41,9 +47,30 @@ syntax-check:
 
 tox-inventory-builder:
   stage: unit-tests
+  tags: [light]
   extends: .job
+  before_script:
+    - ./tests/scripts/rebase.sh
+    - apt-get update && apt-get install -y python3-pip
+    - update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+    - python -m pip install -r tests/requirements.txt
   script:
-    - pip install tox
+    - pip3 install tox
     - cd contrib/inventory_builder && tox
-  when: manual
   except: ['triggers', 'master']
+
+markdownlint:
+  stage: unit-tests
+  tags: [light]
+  image: node
+  before_script:
+    - npm install -g markdownlint-cli@0.22.0
+  script:
+    - markdownlint $(find . -name '*.md' | grep -vF './.git') --ignore docs/_sidebar.md --ignore contrib/dind/README.md
+
+ci-matrix:
+  stage: unit-tests
+  tags: [light]
+  image: python:3
+  script:
+    - tests/scripts/md-table/test.sh

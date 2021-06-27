@@ -51,6 +51,11 @@ options:
     default: false
     description:
       - A flag to indicate to force delete, replace, or stop.
+  wait:
+    required: false
+    default: false
+    description:
+      - A flag to indicate to wait for resources to be created before continuing to the next step
   all:
     required: false
     default: false
@@ -130,6 +135,7 @@ class KubeManager(object):
 
         self.all = module.params.get('all')
         self.force = module.params.get('force')
+        self.wait = module.params.get('wait')
         self.name = module.params.get('name')
         self.filename = [f.strip() for f in module.params.get('filename') or []]
         self.resource = module.params.get('resource')
@@ -164,6 +170,9 @@ class KubeManager(object):
         if force:
             cmd.append('--force')
 
+        if self.wait:
+            cmd.append('--wait')
+
         if self.recursive:
             cmd.append('--recursive={}'.format(self.recursive))
 
@@ -180,6 +189,9 @@ class KubeManager(object):
 
         if force:
             cmd.append('--force')
+
+        if self.wait:
+            cmd.append('--wait')
 
         if self.recursive:
             cmd.append('--recursive={}'.format(self.recursive))
@@ -299,6 +311,7 @@ def main():
             server=dict(),
             kubectl=dict(),
             force=dict(default=False, type='bool'),
+            wait=dict(default=False, type='bool'),
             all=dict(default=False, type='bool'),
             log_level=dict(default=0, type='int'),
             state=dict(default='present', choices=['present', 'absent', 'latest', 'reloaded', 'stopped']),

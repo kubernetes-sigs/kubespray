@@ -1,37 +1,33 @@
 ---
-- hosts: localhost
-  gather_facts: False
-  tasks:
-    - name: "Check ansible version !=2.7.0"
-      assert:
-        msg: "Ansible V2.7.0 can't be used until: https://github.com/ansible/ansible/issues/46600 is fixed"
-        that:
-          - ansible_version.string is version("2.7.0", "!=")
-          - ansible_version.string is version("2.6.0", ">=")
-      tags:
-        - check
-  vars:
-    ansible_connection: local
+- name: Check ansible version
+  import_playbook: ansible_version.yml
+
+- name: Ensure compatibility with old groups
+  import_playbook: legacy_groups.yml
 
 - hosts: bastion[0]
   gather_facts: False
+  environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults}
     - { role: bastion-ssh-config, tags: ["localhost", "bastion"]}
 
 - hosts: "{{ groups['etcd'] | first }}"
+  environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults}
-    - { role: recover_control_plane/pre-recover }
     - { role: recover_control_plane/etcd }
 
-- hosts: "{{ groups['kube-master'] | first }}"
+- hosts: "{{ groups['kube_control_plane'] | first }}"
+  environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: recover_control_plane/master }
+    - { role: kubespray-defaults}
+    - { role: recover_control_plane/control-plane }
 
 - include: cluster.yml
 
-- hosts: "{{ groups['kube-master'] }}"
+- hosts: "{{ groups['kube_control_plane'] }}"
+  environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults}
     - { role: recover_control_plane/post-recover }

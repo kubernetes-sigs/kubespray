@@ -9,8 +9,6 @@ Ubuntu Trusty |[![Build Status](https://ci.kubespray.io/job/kubespray-aws-calico
 RHEL 7.2      |[![Build Status](https://ci.kubespray.io/job/kubespray-aws-calico-rhel72/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-calico-rhel72/)|[![Build Status](https://ci.kubespray.io/job/kubespray-aws-flannel-rhel72/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-flannel-rhel72/)|[![Build Status](https://ci.kubespray.io/job/kubespray-aws-weave-rhel72/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-weave-rhel72/)|
 CentOS 7      |[![Build Status](https://ci.kubespray.io/job/kubespray-aws-calico-centos7/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-calico-centos7/)|[![Build Status](https://ci.kubespray.io/job/kubespray-aws-flannel-centos7/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-flannel-centos7/)|[![Build Status](https://ci.kubespray.io/job/kubespray-aws-weave-centos7/badge/icon)](https://ci.kubespray.io/job/kubespray-aws-weave-centos7/)|
 
-
-
 ## Test environment variables
 
 ### Common

@@ -1,0 +1,200 @@
+##### Node Service Account, Roles, RoleBindings
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-gce-pd-node-sa
+  namespace: kube-system
+
+---
+##### Controller Service Account, Roles, Rolebindings
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-gce-pd-controller-sa
+  namespace: kube-system
+
+---
+# xref: https://github.com/kubernetes-csi/external-provisioner/blob/master/deploy/kubernetes/rbac.yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-gce-pd-provisioner-role
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-gce-pd-controller-provisioner-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-gce-pd-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-gce-pd-provisioner-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# xref: https://github.com/kubernetes-csi/external-attacher/blob/master/deploy/kubernetes/rbac.yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-gce-pd-attacher-role
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments/status"]
+    verbs: ["patch"]
+---
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-gce-pd-controller-attacher-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-gce-pd-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-gce-pd-attacher-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: csi-gce-pd-controller
+value: 900000000
+globalDefault: false
+description: "This priority class should be used for the GCE PD CSI driver controller deployment only."
+
+---
+
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: csi-gce-pd-node
+value: 900001000
+globalDefault: false
+description: "This priority class should be used for the GCE PD CSI driver node deployment only."
+
+---
+
+# Resizer must be able to work with PVCs, PVs, SCs.
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-gce-pd-resizer-role
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-gce-pd-resizer-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-gce-pd-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-gce-pd-resizer-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: csi-gce-pd-node-psp
+spec:
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  runAsUser:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+  privileged: true
+  volumes:
+  - '*'
+  hostNetwork: true
+  allowedHostPaths:
+  - pathPrefix: "/var/lib/kubelet/plugins_registry/"
+  - pathPrefix: "/var/lib/kubelet"
+  - pathPrefix: "/var/lib/kubelet/plugins/pd.csi.storage.gke.io/"
+  - pathPrefix: "/dev"
+  - pathPrefix: "/etc/udev"
+  - pathPrefix: "/lib/udev"
+  - pathPrefix: "/run/udev"
+  - pathPrefix: "/sys"
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-gce-pd-node-deploy
+rules:
+  - apiGroups: ['policy']
+    resources: ['podsecuritypolicies']
+    verbs:     ['use']
+    resourceNames:
+    - csi-gce-pd-node-psp
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: csi-gce-pd-node
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: csi-gce-pd-node-deploy
+subjects:
+- kind: ServiceAccount
+  name: csi-gce-pd-node-sa
+  namespace: kube-system

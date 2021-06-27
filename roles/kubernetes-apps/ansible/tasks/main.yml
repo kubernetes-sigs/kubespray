@@ -9,30 +9,30 @@
   until: result.status == 200
   retries: 20
   delay: 1
-  when: inventory_hostname == groups['kube-master'][0]
+  when: inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Kubernetes Apps | Cleanup DNS
-  import_tasks: tasks/cleanup_dns.yml
+  import_tasks: cleanup_dns.yml
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags:
     - upgrade
     - coredns
     - nodelocaldns
 
 - name: Kubernetes Apps | CoreDNS
-  import_tasks: "tasks/coredns.yml"
+  import_tasks: "coredns.yml"
   when:
     - dns_mode in ['coredns', 'coredns_dual']
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags:
     - coredns
 
 - name: Kubernetes Apps | nodelocalDNS
-  import_tasks: "tasks/nodelocaldns.yml"
+  import_tasks: "nodelocaldns.yml"
   when:
     - enable_nodelocaldns
-    - inventory_hostname == groups['kube-master'] | first
+    - inventory_hostname == groups['kube_control_plane'] | first
   tags:
     - nodelocaldns
 
@@ -50,7 +50,7 @@
     - "{{ nodelocaldns_manifests.results | default({}) }}"
   when:
     - dns_mode != 'none'
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
     - not item is skipped
   register: resource_result
   until: resource_result is succeeded
@@ -63,13 +63,13 @@
     label: "{{ item.item.file }}"
 
 - name: Kubernetes Apps | Netchecker
-  import_tasks: tasks/netchecker.yml
+  import_tasks: netchecker.yml
   when: deploy_netchecker
   tags:
     - netchecker
 
 - name: Kubernetes Apps | Dashboard
-  import_tasks: tasks/dashboard.yml
+  import_tasks: dashboard.yml
   when: dashboard_enabled
   tags:
     - dashboard

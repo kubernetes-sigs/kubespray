@@ -1,0 +1,127 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: ebs-csi-controller
+  namespace: kube-system
+spec:
+  replicas: {{ aws_ebs_csi_controller_replicas }}
+  selector:
+    matchLabels:
+      app: ebs-csi-controller
+      app.kubernetes.io/name: aws-ebs-csi-driver
+  template:
+    metadata:
+      labels:
+        app: ebs-csi-controller
+        app.kubernetes.io/name: aws-ebs-csi-driver
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      serviceAccount: ebs-csi-controller-sa
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: ebs-plugin
+          image: {{ aws_ebs_csi_plugin_image_repo }}:{{ aws_ebs_csi_plugin_image_tag }}
+          args:
+            - --endpoint=$(CSI_ENDPOINT)
+{% if aws_ebs_csi_extra_volume_tags is defined %}
+            - --extra-volume-tags={{ aws_ebs_csi_extra_volume_tags }}
+{% endif %}
+            - --logtostderr
+            - --v=5
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-secret
+                  key: key_id
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-secret
+                  key: access_key
+                  optional: true
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          ports:
+            - name: healthz
+              containerPort: 9808
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 5
+        - name: csi-provisioner
+          image: {{ csi_provisioner_image_repo }}:{{ csi_provisioner_image_tag }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --v=5
+{% if aws_ebs_csi_enable_volume_scheduling %}
+            - --feature-gates=Topology=true
+{% endif %}
+            - --enable-leader-election
+            - --leader-election-type=leases
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-attacher
+          image: {{ csi_attacher_image_repo }}:{{ csi_attacher_image_tag }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --v=5
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+{% if aws_ebs_csi_enable_volume_snapshot %}
+        - name: csi-snapshotter
+          image: {{ csi_snapshotter_image_repo }}:{{ csi_snapshotter_image_tag }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --timeout=15s
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+{% endif %}
+{% if aws_ebs_csi_enable_volume_resizing %}
+        - name: csi-resizer
+          image: {{ csi_resizer_image_repo }}:{{ csi_resizer_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --v=5
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+{% endif %}
+        - name: liveness-probe
+          image: {{ csi_livenessprobe_image_repo }}:{{ csi_livenessprobe_image_tag }}
+          args:
+            - --csi-address=/csi/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+

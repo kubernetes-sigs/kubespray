@@ -1,0 +1,27 @@
+---
+- name: CSI CRD | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: volumesnapshotclasses, file: volumesnapshotclasses.yml}
+    - {name: volumesnapshotcontents, file: volumesnapshotcontents.yml}
+    - {name: volumesnapshots, file: volumesnapshots.yml}
+  register: csi_crd_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags: csi-driver
+
+- name: CSI CRD | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "{{ csi_crd_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+  tags: csi-driver

@@ -7,11 +7,11 @@ ${public_ip_address_bastion}
 [bastion]
 ${public_ip_address_bastion}
 
-[kube-master]
+[kube_control_plane]
 ${list_master}
 
 
-[kube-node]
+[kube_node]
 ${list_node}
 
 
@@ -19,10 +19,10 @@ ${list_node}
 ${list_etcd}
 
 
-[k8s-cluster:children]
-kube-node
-kube-master
+[k8s_cluster:children]
+kube_node
+kube_control_plane
 
 
-[k8s-cluster:vars]
+[k8s_cluster:vars]
 ${elb_api_fqdn}

@@ -1,0 +1,157 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: vsphere-csi-node
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: vsphere-csi-node
+  updateStrategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: vsphere-csi-node
+        role: vsphere-csi
+    spec:
+      dnsPolicy: "Default"
+      containers:
+      - name: node-driver-registrar
+        image: {{ quay_image_repo }}/k8scsi/csi-node-driver-registrar:{{ vsphere_csi_node_driver_registrar_image_tag }}
+{% if external_vsphere_version < "7.0u1" %}
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "rm -rf /registration/csi.vsphere.vmware.com-reg.sock /csi/csi.sock"]
+{% endif %}
+        args:
+        - "--v=5"
+        - "--csi-address=$(ADDRESS)"
+        - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+{% if external_vsphere_version >= "7.0u1" %}
+        - "--health-port=9809"
+{% endif %}
+        env:
+        - name: ADDRESS
+          value: /csi/csi.sock
+        - name: DRIVER_REG_SOCK_PATH
+          value: /var/lib/kubelet/plugins/csi.vsphere.vmware.com/csi.sock
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: plugin-dir
+          mountPath: /csi
+        - name: registration-dir
+          mountPath: /registration
+{% if external_vsphere_version >= "7.0u1" %}
+        ports:
+        - containerPort: 9809
+          name: healthz
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: healthz
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+{% endif %}
+      - name: vsphere-csi-node
+        image: {{ gcr_image_repo }}/cloud-provider-vsphere/csi/release/driver:{{ vsphere_csi_driver_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+{% if external_vsphere_version >= "7.0u1" %}
+        args:
+          - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
+          - "--fss-namespace=$(CSI_NAMESPACE)"
+{% endif %}
+        imagePullPolicy: "Always"
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CSI_ENDPOINT
+          value: unix:///csi/csi.sock
+        - name: X_CSI_MODE
+          value: "node"
+        - name: X_CSI_SPEC_REQ_VALIDATION
+          value: "false"
+        # needed only for topology aware setups
+        #- name: VSPHERE_CSI_CONFIG
+        #  value: "/etc/cloud/csi-vsphere.conf" # here csi-vsphere.conf is the name of the file used for creating secret using "--from-file" flag
+        - name: X_CSI_DEBUG
+          value: "true"
+        - name: LOGGER_LEVEL
+          value: "PRODUCTION" # Options: DEVELOPMENT, PRODUCTION
+{% if external_vsphere_version >= "7.0u1" %}
+        - name: CSI_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+{% endif %}
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["SYS_ADMIN"]
+          allowPrivilegeEscalation: true
+        volumeMounts:
+        # needed only for topology aware setups
+        #- name: vsphere-config-volume
+        #  mountPath: /etc/cloud
+        #  readOnly: true
+        - name: plugin-dir
+          mountPath: /csi
+        - name: pods-mount-dir
+          mountPath: /var/lib/kubelet
+          # needed so that any mounts setup inside this container are
+          # propagated back to the host machine.
+          mountPropagation: "Bidirectional"
+        - name: device-dir
+          mountPath: /dev
+        ports:
+          - containerPort: 9808
+            name: healthz
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: healthz
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 5
+          failureThreshold: 3
+      - name: liveness-probe
+        image: {{ quay_image_repo }}/k8scsi/livenessprobe:{{ vsphere_csi_liveness_probe_image_tag }}
+        args:
+{% if external_vsphere_version >= "7.0u1" %}
+          - "--v=4"
+{% endif %}
+          - "--csi-address=/csi/csi.sock"
+        volumeMounts:
+        - name: plugin-dir
+          mountPath: /csi
+      volumes:
+      # needed only for topology aware setups
+      #- name: vsphere-config-volume
+      #  secret:
+      #    secretName: vsphere-config-secret
+      - name: registration-dir
+        hostPath:
+          path: /var/lib/kubelet/plugins_registry
+          type: Directory
+      - name: plugin-dir
+        hostPath:
+          path: /var/lib/kubelet/plugins/csi.vsphere.vmware.com
+          type: DirectoryOrCreate
+      - name: pods-mount-dir
+        hostPath:
+          path: /var/lib/kubelet
+          type: Directory
+      - name: device-dir
+        hostPath:
+          path: /dev
+      tolerations:
+        - effect: NoExecute
+          operator: Exists
+        - effect: NoSchedule
+          operator: Exists

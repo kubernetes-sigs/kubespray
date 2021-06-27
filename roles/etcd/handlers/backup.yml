@@ -8,6 +8,7 @@
     - Stat etcd v2 data directory
     - Backup etcd v2 data
     - Backup etcd v3 data
+    - Remove old etcd backups
   when: etcd_cluster_is_healthy.rc == 0
 
 - name: Refresh Time Fact
@@ -28,6 +29,9 @@
 - name: Stat etcd v2 data directory
   stat:
     path: "{{ etcd_data_dir }}/member"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: etcd_data_dir_member
 
 - name: Backup etcd v2 data
@@ -46,10 +50,10 @@
 - name: Backup etcd v3 data
   command: >-
     {{ bin_dir }}/etcdctl
-      --endpoints={{ etcd_access_addresses }}
       snapshot save {{ etcd_backup_directory }}/snapshot.db
   environment:
     ETCDCTL_API: 3
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses.split(',') | first }}"
     ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
     ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
     ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
@@ -57,3 +61,9 @@
   register: etcd_backup_v3_command
   until: etcd_backup_v3_command.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
+
+- name: Remove old etcd backups
+  shell:
+    chdir: "{{ etcd_backup_prefix }}"
+    cmd: "find . -name 'etcd-*' -type d | sort -n | head -n -{{ etcd_backup_retention_count }} | xargs rm -rf"
+  when: etcd_backup_retention_count >= 0

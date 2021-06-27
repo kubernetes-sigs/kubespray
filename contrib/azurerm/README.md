@@ -15,22 +15,23 @@ Resource Group. It will not install Kubernetes itself, this has to be done in a 
 
 ## Configuration through group_vars/all
 
-You have to modify at least one variable in group_vars/all, which is the **cluster_name** variable. It must be globally
-unique due to some restrictions in Azure. Most other variables should be self explanatory if you have some basic Kubernetes
+You have to modify at least two variables in group_vars/all. The one is the **cluster_name** variable, it must be globally
+unique due to some restrictions in Azure. The other one is the **ssh_public_keys** variable, it must be your ssh public
+key to access your azure virtual machines. Most other variables should be self explanatory if you have some basic Kubernetes
 experience.
 
 ## Bastion host
 
 You can enable the use of a Bastion Host by changing **use_bastion** in group_vars/all to **true**. The generated
 templates will then include an additional bastion VM which can then be used to connect to the masters and nodes. The option
-also removes all public IPs from all other VMs. 
+also removes all public IPs from all other VMs.
 
 ## Generating and applying
 
 To generate and apply the templates, call:
 
 ```shell
-$ ./apply-rg.sh <resource_group_name>
+./apply-rg.sh <resource_group_name>
 ```
 
 If you change something in the configuration (e.g. number of nodes) later, you can call this again and Azure will
@@ -41,24 +42,23 @@ take care about creating/modifying whatever is needed.
 If you need to delete all resources from a resource group, simply call:
 
 ```shell
-$ ./clear-rg.sh <resource_group_name>
+./clear-rg.sh <resource_group_name>
 ```
 
 **WARNING** this really deletes everything from your resource group, including everything that was later created by you!
-
 
 ## Generating an inventory for kubespray
 
 After you have applied the templates, you can generate an inventory with this call:
 
 ```shell
-$ ./generate-inventory.sh <resource_group_name>
+./generate-inventory.sh <resource_group_name>
 ```
 
 It will create the file ./inventory which can then be used with kubespray, e.g.:
 
 ```shell
-$ cd kubespray-root-dir
-$ ansible-playbook -i contrib/azurerm/inventory -u devops --become -e "@inventory/sample/group_vars/all.yml" cluster.yml
+cd kubespray-root-dir
+sudo pip3 install -r requirements.txt
+ansible-playbook -i contrib/azurerm/inventory -u devops --become -e "@inventory/sample/group_vars/all/all.yml" cluster.yml
 ```
-

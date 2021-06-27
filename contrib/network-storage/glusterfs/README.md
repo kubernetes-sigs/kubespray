@@ -8,19 +8,19 @@ In the same directory of this ReadMe file you should find a file named `inventor
 
 Change that file to reflect your local setup (adding more machines or removing them and setting the adequate ip numbers), and save it to `inventory/sample/k8s_gfs_inventory`. Make sure that the settings on `inventory/sample/group_vars/all.yml` make sense with your deployment. Then execute change to the kubespray root folder, and execute (supposing that the machines are all using ubuntu):
 
-```
+```shell
 ansible-playbook -b --become-user=root -i inventory/sample/k8s_gfs_inventory --user=ubuntu ./cluster.yml
 ```
 
 This will provision your Kubernetes cluster. Then, to provision and configure the GlusterFS cluster, from the same directory execute:
 
-```
+```shell
 ansible-playbook -b --become-user=root -i inventory/sample/k8s_gfs_inventory --user=ubuntu ./contrib/network-storage/glusterfs/glusterfs.yml
 ```
 
 If your machines are not using Ubuntu, you need to change the `--user=ubuntu` to the correct user. Alternatively, if your Kubernetes machines are using one OS and your GlusterFS a different one, you can instead specify the `ansible_ssh_user=<correct-user>` variable in the inventory file that you just created, for each machine/VM:
 
-```
+```shell
 k8s-master-1 ansible_ssh_host=192.168.0.147 ip=192.168.0.147 ansible_ssh_user=core
 k8s-master-node-1 ansible_ssh_host=192.168.0.148 ip=192.168.0.148 ansible_ssh_user=core
 k8s-master-node-2 ansible_ssh_host=192.168.0.146 ip=192.168.0.146 ansible_ssh_user=core
@@ -30,7 +30,7 @@ k8s-master-node-2 ansible_ssh_host=192.168.0.146 ip=192.168.0.146 ansible_ssh_us
 
 First step is to fill in a `my-kubespray-gluster-cluster.tfvars` file with the specification desired for your cluster. An example with all required variables would look like:
 
-```
+```ini
 cluster_name = "cluster1"
 number_of_k8s_masters = "1"
 number_of_k8s_masters_no_floating_ip = "2"
@@ -39,7 +39,7 @@ number_of_k8s_nodes = "0"
 public_key_path = "~/.ssh/my-desired-key.pub"
 image = "Ubuntu 16.04"
 ssh_user = "ubuntu"
-flavor_k8s_node = "node-flavor-id-in-your-openstack" 
+flavor_k8s_node = "node-flavor-id-in-your-openstack"
 flavor_k8s_master = "master-flavor-id-in-your-openstack"
 network_name = "k8s-network"
 floatingip_pool = "net_external"
@@ -54,7 +54,7 @@ ssh_user_gfs = "ubuntu"
 
 As explained in the general terraform/openstack guide, you need to source your OpenStack credentials file, add your ssh-key to the ssh-agent and setup environment variables for terraform:
 
-```
+```shell
 $ source ~/.stackrc
 $ eval $(ssh-agent -s)
 $ ssh-add ~/.ssh/my-desired-key
@@ -67,7 +67,7 @@ $ echo Setting up Terraform creds && \
 
 Then, standing on the kubespray directory (root base of the Git checkout), issue the following terraform command to create the VMs for the cluster:
 
-```
+```shell
 terraform apply -state=contrib/terraform/openstack/terraform.tfstate -var-file=my-kubespray-gluster-cluster.tfvars contrib/terraform/openstack
 ```
 
@@ -75,18 +75,18 @@ This will create both your Kubernetes and Gluster VMs. Make sure that the ansibl
 
 Then, provision your Kubernetes (kubespray) cluster with the following ansible call:
 
-```
+```shell
 ansible-playbook -b --become-user=root -i contrib/terraform/openstack/hosts ./cluster.yml
 ```
 
 Finally, provision the glusterfs nodes and add the Persistent Volume setup for GlusterFS in Kubernetes through the following ansible call:
 
-```
+```shell
 ansible-playbook -b --become-user=root -i contrib/terraform/openstack/hosts ./contrib/network-storage/glusterfs/glusterfs.yml
 ```
 
 If you need to destroy the cluster, you can run:
 
-```
+```shell
 terraform destroy -state=contrib/terraform/openstack/terraform.tfstate -var-file=my-kubespray-gluster-cluster.tfvars contrib/terraform/openstack
 ```

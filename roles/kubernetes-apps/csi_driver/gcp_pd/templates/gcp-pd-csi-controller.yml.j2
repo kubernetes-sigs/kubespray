@@ -1,0 +1,74 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: csi-gce-pd-controller
+  namespace: kube-system
+spec:
+  serviceName: "csi-gce-pd"
+  replicas: {{ gcp_pd_csi_controller_replicas }}
+  selector:
+    matchLabels:
+      app: gcp-compute-persistent-disk-csi-driver
+  template:
+    metadata:
+      labels:
+        app: gcp-compute-persistent-disk-csi-driver
+    spec:
+      # Host network must be used for interaction with Workload Identity in GKE
+      # since it replaces GCE Metadata Server with GKE Metadata Server. Remove
+      # this requirement when issue is resolved and before any exposure of
+      # metrics ports
+      hostNetwork: true
+      serviceAccountName: csi-gce-pd-controller-sa
+      priorityClassName: csi-gce-pd-controller
+      containers:
+        - name: csi-provisioner
+          image: {{ gcp_pd_csi_image_repo }}/csi-provisioner:{{ gcp_pd_csi_provisioner_image_tag }}
+          args:
+            - "--v=5"
+            - "--csi-address=/csi/csi.sock"
+            - "--feature-gates=Topology=true"
+          # - "--run-controller-service=false" # disable the controller service of the CSI driver
+          # - "--run-node-service=false"       # disable the node service of the CSI driver
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+        - name: csi-attacher
+          image: {{ gcp_pd_csi_image_repo }}/csi-attacher:{{ gcp_pd_csi_attacher_image_tag }}
+          args:
+            - "--v=5"
+            - "--csi-address=/csi/csi.sock"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+        - name: csi-resizer
+          image: {{ gcp_pd_csi_image_repo }}/csi-resizer:{{ gcp_pd_csi_resizer_image_tag }}
+          args:
+            - "--v=5"
+            - "--csi-address=/csi/csi.sock"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+        - name: gce-pd-driver
+          # Don't change base image without changing pdImagePlaceholder in
+          # test/k8s-integration/main.go
+          image: {{ gcp_pd_csi_image_repo }}/gcp-compute-persistent-disk-csi-driver:{{ gcp_pd_csi_driver_image_tag }}
+          args:
+            - "--v=5"
+            - "--endpoint=unix:/csi/csi.sock"
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/etc/cloud-sa/cloud-sa.json"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: cloud-sa-volume
+              readOnly: true
+              mountPath: "/etc/cloud-sa"
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+        - name: cloud-sa-volume
+          secret:
+            secretName: cloud-sa
+  volumeClaimTemplates: []

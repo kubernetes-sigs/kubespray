@@ -1,47 +1,4 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: kube-router-cfg
-  namespace: kube-system
-  labels:
-    tier: node
-    k8s-app: kube-router
-data:
-  cni-conf.json: |
-    {
-      "name":"kubernetes",
-      "type":"bridge",
-      "bridge":"kube-bridge",
-      "isDefaultGateway":true,
-{% if kube_router_support_hairpin_mode %}
-      "hairpinMode":true,
-{% endif %}
-      "ipam": {
-        "type":"host-local"
-      }
-    }
-  kubeconfig: |
-    apiVersion: v1
-    kind: Config
-    clusterCIDR: {{ kube_pods_subnet }}
-    clusters:
-    - name: cluster
-      cluster:
-        certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        server: {{ kube_apiserver_endpoint }}
-    users:
-    - name: kube-router
-      user:
-        tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-    contexts:
-    - context:
-        cluster: cluster
-        user: kube-router
-      name: kube-router-context
-    current-context: kube-router-context
-
----
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
@@ -55,25 +12,34 @@ spec:
     rollingUpdate:
       maxUnavailable: 1
     type: RollingUpdate
+  selector:
+    matchLabels:
+      k8s-app: kube-router
+      tier: node
   template:
     metadata:
       labels:
         k8s-app: kube-router
         tier: node
-    spec:
-{% if kube_version is version('v1.11.1', '>=') %}
-      priorityClassName: system-cluster-critical
+      annotations:
+{% if kube_router_enable_metrics %}
+        prometheus.io/path: {{ kube_router_metrics_path }}
+        prometheus.io/port: "{{ kube_router_metrics_port }}"
+        prometheus.io/scrape: "true"
 {% endif %}
+    spec:
+      priorityClassName: system-node-critical
       serviceAccountName: kube-router
       containers:
       - name: kube-router
         image: {{ kube_router_image_repo }}:{{ kube_router_image_tag }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         args:
         - --run-router={{ kube_router_run_router | bool }}
         - --run-firewall={{ kube_router_run_firewall | bool }}
         - --run-service-proxy={{ kube_router_run_service_proxy | bool }}
         - --kubeconfig=/var/lib/kube-router/kubeconfig
+        - --bgp-graceful-restart=true
 {% if kube_router_advertise_cluster_ip %}
         - --advertise-cluster-ip
 {% endif %}
@@ -92,6 +58,10 @@ spec:
 {% if kube_router_peer_router_ports %}
         - --peer-router-ports={{ kube_router_peer_router_ports }}
 {% endif %}
+{% if kube_router_enable_metrics %}
+        - --metrics-path={{ kube_router_metrics_path }}
+        - --metrics-port={{ kube_router_metrics_port }}
+{% endif %}
 {% for arg in kube_router_extra_args %}
         - "{{ arg }}"
 {% endfor %}
@@ -100,11 +70,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: KUBE_ROUTER_CNI_CONF_FILE
+          value: /etc/cni/net.d/10-kuberouter.conflist
         livenessProbe:
           httpGet:
             path: /healthz
             port: 20244
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
           periodSeconds: 3
         resources:
           requests:
@@ -126,41 +98,24 @@ spec:
         - name: kubeconfig
           mountPath: /var/lib/kube-router
           readOnly: true
-      initContainers:
-      - name: install-cni
-        image: {{ busybox_image_repo }}:{{ busybox_image_tag }}
-        imagePullPolicy: IfNotPresent
-        command:
-        - /bin/sh
-        - -c
-        - set -e -x;
-          if [ ! -f /etc/cni/net.d/10-kuberouter.conf ]; then
-            TMP=/etc/cni/net.d/.tmp-kuberouter-cfg;
-            cp /etc/kube-router/cni-conf.json ${TMP};
-            mv ${TMP} /etc/cni/net.d/10-kuberouter.conf;
-          fi;
-          if [ ! -f /var/lib/kube-router/kubeconfig ]; then
-            TMP=/var/lib/kube-router/.tmp-kubeconfig;
-            cp /etc/kube-router/kubeconfig ${TMP};
-            mv ${TMP} /var/lib/kube-router/kubeconfig;
-          fi
-        volumeMounts:
-        - mountPath: /etc/cni/net.d
-          name: cni-conf-dir
-        - mountPath: /etc/kube-router
-          name: kube-router-cfg
-        - name: kubeconfig
-          mountPath: /var/lib/kube-router
+        - name: xtables-lock
+          mountPath: /run/xtables.lock
+          readOnly: false
+{% if kube_router_enable_metrics %}
+        ports:
+        - containerPort: {{ kube_router_metrics_port }}
+          hostPort: {{ kube_router_metrics_port }}
+          name: metrics
+          protocol: TCP
+{% endif %}
       hostNetwork: true
+      dnsPolicy: {{ kube_router_dns_policy }}
 {% if kube_router_enable_dsr %}
       hostIPC: true
       hostPID: true
 {% endif %}
       tolerations:
       - operator: Exists
-      # Mark pod as critical for rescheduling (Will have no effect starting with kubernetes 1.12)
-      - key: CriticalAddonsOnly
-        operator: "Exists"
       volumes:
 {% if kube_router_enable_dsr %}
       - name: docker-socket
@@ -174,12 +129,13 @@ spec:
       - name: cni-conf-dir
         hostPath:
           path: /etc/cni/net.d
-      - name: kube-router-cfg
-        configMap:
-          name: kube-router-cfg
       - name: kubeconfig
         hostPath:
           path: /var/lib/kube-router
+      - name: xtables-lock
+        hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
 
 ---
 apiVersion: v1
@@ -190,7 +146,7 @@ metadata:
 
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: kube-router
   namespace: kube-system
@@ -225,7 +181,7 @@ rules:
       - watch
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: kube-router
 roleRef:

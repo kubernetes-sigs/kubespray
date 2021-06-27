@@ -1,7 +1,11 @@
 variable "cluster_name" {}
 
 variable "az_list" {
-  type = "list"
+  type = list(string)
+}
+
+variable "az_list_node" {
+  type = list(string)
 }
 
 variable "number_of_k8s_masters" {}
@@ -22,7 +26,19 @@ variable "number_of_bastions" {}
 
 variable "number_of_gfs_nodes_no_floating_ip" {}
 
+variable "bastion_root_volume_size_in_gb" {}
+
+variable "etcd_root_volume_size_in_gb" {}
+
+variable "master_root_volume_size_in_gb" {}
+
+variable "node_root_volume_size_in_gb" {}
+
+variable "gfs_root_volume_size_in_gb" {}
+
 variable "gfs_volume_size_in_gb" {}
+
+variable "master_volume_type" {}
 
 variable "public_key_path" {}
 
@@ -51,36 +67,42 @@ variable "network_id" {
 }
 
 variable "k8s_master_fips" {
-  type = "list"
+  type = list
 }
 
 variable "k8s_master_no_etcd_fips" {
-  type = "list"
+  type = list
 }
 
 variable "k8s_node_fips" {
-  type = "list"
+  type = list
+}
+
+variable "k8s_nodes_fips" {
+  type = map
 }
 
 variable "bastion_fips" {
-  type = "list"
+  type = list
 }
 
 variable "bastion_allowed_remote_ips" {
-  type = "list"
+  type = list
 }
 
 variable "master_allowed_remote_ips" {
-  type = "list"
+  type = list
 }
 
 variable "k8s_allowed_remote_ips" {
-  type = "list"
+  type = list
 }
 
 variable "k8s_allowed_egress_ips" {
-  type = "list"
+  type = list
 }
+
+variable "k8s_nodes" {}
 
 variable "wait_for_floatingip" {}
 
@@ -92,6 +114,44 @@ variable "supplementary_node_groups" {
   default = ""
 }
 
+variable "master_allowed_ports" {
+  type = list
+}
+
 variable "worker_allowed_ports" {
-  type = "list"
+  type = list
+}
+
+variable "use_access_ip" {}
+
+variable "use_server_groups" {
+  type = bool
+}
+
+variable "extra_sec_groups" {
+  type = bool
+}
+
+variable "extra_sec_groups_name" {
+  type = string
+}
+
+variable "image_uuid" {
+  type = string
+}
+
+variable "image_gfs_uuid" {
+  type = string
+}
+
+variable "image_master" {
+  type = string
+}
+
+variable "image_master_uuid" {
+  type = string
+}
+
+variable "group_vars_path" {
+  type = string
 }

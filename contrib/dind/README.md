@@ -6,6 +6,7 @@ to serve as Kubernetes "nodes", which in turn will run
 called DIND (Docker-IN-Docker).
 
 The playbook has two roles:
+
 - dind-host: creates the "nodes" as containers in localhost, with
   appropriate settings for DIND (privileged, volume mapping for dind
   storage, etc).
@@ -27,7 +28,7 @@ See below for a complete successful run:
 
 1. Create the node containers
 
-~~~~
+```shell
 # From the kubespray root dir
 cd contrib/dind
 pip install -r requirements.txt
@@ -36,15 +37,15 @@ ansible-playbook -i hosts dind-cluster.yaml
 
 # Back to kubespray root
 cd ../..
-~~~~
+```
 
 NOTE: if the playbook run fails with something like below error
 message, you may need to specifically set `ansible_python_interpreter`,
 see `./hosts` file for an example expanded localhost entry.
 
-~~~
+```shell
 failed: [localhost] (item=kube-node1) => {"changed": false, "item": "kube-node1", "msg": "Failed to import docker or docker-py - No module named requests.exceptions. Try `pip install docker` or `pip install docker-py` (Python 2.6)"}
-~~~
+```
 
 2. Customize kubespray-dind.yaml
 
@@ -52,33 +53,33 @@ Note that there's coupling between above created node containers
 and `kubespray-dind.yaml` settings, in particular regarding selected `node_distro`
 (as set in `group_vars/all/all.yaml`), and docker settings.
 
-~~~
+```shell
 $EDITOR contrib/dind/kubespray-dind.yaml
-~~~
+```
 
 3. Prepare the inventory and run the playbook
 
-~~~
+```shell
 INVENTORY_DIR=inventory/local-dind
 mkdir -p ${INVENTORY_DIR}
 rm -f ${INVENTORY_DIR}/hosts.ini
 CONFIG_FILE=${INVENTORY_DIR}/hosts.ini /tmp/kubespray.dind.inventory_builder.sh
 
 ansible-playbook --become -e ansible_ssh_user=debian -i ${INVENTORY_DIR}/hosts.ini cluster.yml --extra-vars @contrib/dind/kubespray-dind.yaml
-~~~
+```
 
 NOTE: You could also test other distros without editing files by
 passing `--extra-vars` as per below commandline,
 replacing `DISTRO` by either `debian`, `ubuntu`, `centos`, `fedora`:
 
-~~~
+```shell
 cd contrib/dind
 ansible-playbook -i hosts dind-cluster.yaml --extra-vars node_distro=DISTRO
 
 cd ../..
 CONFIG_FILE=inventory/local-dind/hosts.ini /tmp/kubespray.dind.inventory_builder.sh
 ansible-playbook --become -e ansible_ssh_user=DISTRO -i inventory/local-dind/hosts.ini cluster.yml --extra-vars @contrib/dind/kubespray-dind.yaml --extra-vars bootstrap_os=DISTRO
-~~~
+```
 
 ## Resulting deployment
 
@@ -89,7 +90,7 @@ from the host where you ran kubespray playbooks.
 
 Running from an Ubuntu Xenial host:
 
-~~~
+```shell
 $ uname -a
 Linux ip-xx-xx-xx-xx 4.4.0-1069-aws #79-Ubuntu SMP Mon Sep 24
 15:01:41 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux
@@ -149,14 +150,14 @@ kube-system   weave-net-xr46t                         2/2     Running   0       
 
 $ docker exec kube-node1 curl -s http://localhost:31081/api/v1/connectivity_check
 {"Message":"All 10 pods successfully reported back to the server","Absent":null,"Outdated":null}
-~~~
+```
 
 ## Using ./run-test-distros.sh
 
 You can use `./run-test-distros.sh` to run a set of tests via DIND,
 and excerpt from this script, to get an idea:
 
-~~~
+```shell
 # The SPEC file(s) must have two arrays as e.g.
 # DISTROS=(debian centos)
 # EXTRAS=(
@@ -169,7 +170,7 @@ and excerpt from this script, to get an idea:
 #
 # Each $EXTRAS element will be whitespace split, and passed as --extra-vars
 # to main kubespray ansible-playbook run.
-~~~
+```
 
 See e.g. `test-some_distros-most_CNIs.env` and
 `test-some_distros-kube_router_combo.env` in particular for a richer

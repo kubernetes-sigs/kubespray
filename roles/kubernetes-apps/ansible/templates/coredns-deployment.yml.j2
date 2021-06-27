@@ -1,12 +1,11 @@
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: "coredns{{ coredns_ordinal_suffix }}"
   namespace: kube-system
   labels:
     k8s-app: "kube-dns{{ coredns_ordinal_suffix }}"
-    kubernetes.io/cluster-service: "true"
     addonmanager.kubernetes.io/mode: Reconcile
     kubernetes.io/name: "coredns{{ coredns_ordinal_suffix }}"
 spec:
@@ -23,17 +22,21 @@ spec:
       labels:
         k8s-app: kube-dns{{ coredns_ordinal_suffix }}
       annotations:
-        seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
+        seccomp.security.alpha.kubernetes.io/pod: 'runtime/default'
+        createdby: 'kubespray'
     spec:
-      priorityClassName: system-cluster-critical
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        {{ coredns_deployment_nodeselector }}
+      priorityClassName: system-cluster-critical
       serviceAccountName: coredns
       tolerations:
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
-        - key: "CriticalAddonsOnly"
-          operator: "Exists"
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+{% if dns_extra_tolerations | default(None) %}
+        {{ dns_extra_tolerations | list | to_nice_yaml(indent=2) | indent(8) }}
+{% endif %}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -46,7 +49,11 @@ spec:
           - weight: 100
             preference:
               matchExpressions:
+{% if kube_version is version('v1.20.0', '<') %}
               - key: node-role.kubernetes.io/master
+{% else %}
+              - key: node-role.kubernetes.io/control-plane
+{% endif %}
                 operator: In
                 values:
                 - ""
@@ -96,8 +103,8 @@ spec:
           failureThreshold: 10
         readinessProbe:
           httpGet:
-            path: /health
-            port: 8080
+            path: /ready
+            port: 8181
             scheme: HTTP
           timeoutSeconds: 5
           successThreshold: 1
@@ -110,3 +117,7 @@ spec:
             items:
             - key: Corefile
               path: Corefile
+{% if dns_etchosts | default(None) %}
+            - key: hosts
+              path: hosts
+{% endif %}

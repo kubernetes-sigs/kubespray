@@ -101,19 +101,23 @@ If the node you want to remove is not online, you should add `reset_nodes=false`
 ## Replacing a first master node
 ### 1) Change master order in inventory
 from
-```
+
+```ini
 [kube_control_plane]
  master1
  master2
  master3
 ```
+
 to
-```
+
+```ini
 [kube_control_plane]
  master2
  master3
  master1
 ```
+
 ### 2) Remove old first master from cluster
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=master1` to the playbook to limit the execution to the node being removed.

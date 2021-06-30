@@ -95,7 +95,41 @@ docker ps | grep k8s_nginx-proxy_nginx-proxy | awk '{print $1}' | xargs docker r
 ### 3) Remove old control plane nodes
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.
-If the node you want to remove is not online, you should add `reset_nodes=false` to your extra-vars.
+If the node you want to remove is not online, you should add `reset_nodes=false` and `allow_ungraceful_removal=true` to your extra-vars.
+
+
+## Replacing a first master node
+### 1) Change master order in inventory
+from
+```
+[kube_control_plane]
+ master1
+ master2
+ master3
+```
+to
+```
+[kube_control_plane]
+ master2
+ master3
+ master1
+```
+### 2) Remove old first master from cluster
+
+With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=master1` to the playbook to limit the execution to the node being removed.
+If the node you want to remove is not online, you should add `reset_nodes=false` and `allow_ungraceful_removal=true` to your extra-vars.
+
+### 3) Edit cluster-info configmap in kube-system namespace
+
+`kubectl  edit cm -n kube-public cluster-info`
+
+Change ip of old master with ip of live master (`server` field). Also, update `certificate-authority-data` field if you changed certs
+
+### 4) Add new master
+
+Update inventory (if needed)
+
+Run `cluster.yml` with `--limit=kube_control_plane`
 
 ## Adding an etcd node
 

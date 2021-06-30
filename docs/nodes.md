@@ -97,9 +97,10 @@ docker ps | grep k8s_nginx-proxy_nginx-proxy | awk '{print $1}' | xargs docker r
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.
 If the node you want to remove is not online, you should add `reset_nodes=false` and `allow_ungraceful_removal=true` to your extra-vars.
 
-
 ## Replacing a first master node
+
 ### 1) Change master order in inventory
+
 from
 
 ```ini

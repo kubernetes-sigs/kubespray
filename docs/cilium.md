@@ -77,6 +77,7 @@ enable_ip_masq_agent: "true"
 ```
 
 this will add optional volumeMounts to Cilium DaemonSet for it. Cilium will add he following CIDR as non masquerading destinations:
+
 ```yml
 10.0.0.0/8
 172.16.0.0/12

@@ -36,7 +36,7 @@
   * [OpenSUSE](docs/opensuse.md)
   * [RedHat Enterprise Linux](docs/rhel.md)
   * [CentOS/OracleLinux/AlmaLinux](docs/centos8.md)
-  * [Amaxon Linux 2](docs/amazonlinux.md)
+  * [Amazon Linux 2](docs/amazonlinux.md)
 * CRI
   * [Containerd](docs/containerd.md)
   * [CRI-O](docs/cri-o.md)

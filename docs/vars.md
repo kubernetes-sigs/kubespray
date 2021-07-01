@@ -180,7 +180,7 @@ node_taints:
 For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments.
 
 Extra flags for the kubelet can be specified using these variables,
-in the form of dicts of key-value pairs of configuration parameters that will be inserted into the kubelet YAML config file. The `kubelet_node_config_extra_args` apply kubelet settings only to nodes and not masters. Example:
+in the form of dicts of key-value pairs of configuration parameters that will be inserted into the kubelet YAML config file. The `kubelet_node_config_extra_args` apply kubelet settings only to nodes and not control planes. Example:
 
 ```yml
 kubelet_config_extra_args:
@@ -202,7 +202,7 @@ Previously, the same parameters could be passed as flags to kubelet binary with 
 * *kubelet_custom_flags*
 * *kubelet_node_custom_flags*
 
-The `kubelet_node_custom_flags` apply kubelet settings only to nodes and not masters. Example:
+The `kubelet_node_custom_flags` apply kubelet settings only to nodes and not control planes. Example:
 
 ```yml
 kubelet_custom_flags:

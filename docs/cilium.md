@@ -63,17 +63,19 @@ cilium_hubble_metrics:
 [More](https://docs.cilium.io/en/v1.9/operations/metrics/#hubble-exported-metrics)
 
 ## ip-masq-agent with Cilium
-If you are using masquerade: "true" and enable-bpf-masquerade: "true" together 
+
+If you are using masquerade: "true" and enable-bpf-masquerade: "true" together
 with tunnel: "vxlan" or "geneve"
-By default, any packet from a pod destined to an IP address outside of 
-POD cidr range is masqueraded. To allow more fine-grained 
+By default, any packet from a pod destined to an IP address outside of
+POD cidr range is masqueraded. To allow more fine-grained
 control, Cilium implements ip-masq-agent in eBPF which can be enabled
-setting "enable_ip_masq_agent" to true, this will add the necessary 
+setting "enable_ip_masq_agent" to true, this will add the necessary
 ConfigMap mounts to Cilium DS as optional and you will have to enable it with:
 
 ```yml
 enable_ip_masq_agent: "true"
 ```
+
 this will add optional volumeMounts to Cilium DaemonSet for it. Cilium will add he following CIDR as non masquerading destinations:
 ```yml
 10.0.0.0/8
@@ -88,7 +90,9 @@ this will add optional volumeMounts to Cilium DaemonSet for it. Cilium will add 
 203.0.113.0/24
 240.0.0.0/4
 ```
+
 If you want to control this CIDR destinations you can do so by creating additional ConfigMap in kube-system namespace named `ip-mask-agent`:
+
 ```yml
 apiVersion: v1
 kind: ConfigMap
@@ -104,4 +108,5 @@ data:
     masqLinkLocalIPv6: false
     resyncInterval: 60s
 ```
+
 more information about ip-masq-agent can be found in the  [official docs](https://docs.cilium.io/en/stable/concepts/networking/masquerading/)

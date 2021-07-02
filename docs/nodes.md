@@ -2,9 +2,9 @@
 
 Modified from [comments in #3471](https://github.com/kubernetes-sigs/kubespray/issues/3471#issuecomment-530036084)
 
-## Limitation: Removal of first kube_control_plane and etcd
+## Limitation: Removal of first kube_control_plane and etcd-master
 
-Currently you can't remove the first node in your kube_control_plane and etcd list. If you still want to remove this node you have to:
+Currently you can't remove the first node in your kube_control_plane and etcd-master list. If you still want to remove this node you have to:
 
 ### 1) Change order of current control planes
 

@@ -1,22 +1,28 @@
+variable "prefix" {
+  type = string
+}
+
 variable "zone" {
   type = string
 }
 
-variable "hostname"{
- default ="example.com"
-}
+variable "template_name" {}
 
-variable "template_name"{}
+variable "username" {}
 
-variable "username"{}
+variable "private_network_cidr" {}
 
 variable "machines" {
   description = "Cluster machines"
   type = map(object({
-    node_type = string
-    cpu      = string
-    mem      = string
-    disk_size =  number
+    node_type       = string
+    cpu             = string
+    mem             = string
+    disk_size       =  number
+    additional_disks = map(object({
+      size = number
+      tier = string
+    }))
   }))
 }
 

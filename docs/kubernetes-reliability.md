@@ -21,7 +21,7 @@ By default the normal behavior looks like:
 
 > Kubernetes controller manager and Kubelet work asynchronously. It means that
 > the delay may include any network latency, API Server latency, etcd latency,
-> latency caused by load on one's master nodes and so on. So if
+> latency caused by load on one's control plane nodes and so on. So if
 > `--node-status-update-frequency` is set to 5s in reality it may appear in
 > etcd in 6-7 seconds or even longer when etcd cannot commit data to quorum
 > nodes.

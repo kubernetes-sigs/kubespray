@@ -20,7 +20,7 @@ When _kube_node_ contains _etcd_, you define your etcd cluster to be as well sch
 If you want it a standalone, make sure those groups do not intersect.
 If you want the server to act both as control-plane and node, the server must be defined
 on both groups _kube_control_plane_ and _kube_node_. If you want a standalone and
-unschedulable master, the server must be defined only in the _kube_control_plane_ and
+unschedulable control plane, the server must be defined only in the _kube_control_plane_ and
 not _kube_node_.
 
 There are also two special groups:
@@ -67,7 +67,7 @@ The group variables to control main deployment options are located in the direct
 Optional variables are located in the `inventory/sample/group_vars/all.yml`.
 Mandatory variables that are common for at least one role (or a node group) can be found in the
 `inventory/sample/group_vars/k8s_cluster.yml`.
-There are also role vars for docker, kubernetes preinstall and master roles.
+There are also role vars for docker, kubernetes preinstall and control plane roles.
 According to the [ansible docs](https://docs.ansible.com/ansible/latest/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),
 those cannot be overridden from the group vars. In order to override, one should use
 the `-e` runtime flags (most simple way) or other layers described in the docs.

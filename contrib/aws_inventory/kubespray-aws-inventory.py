@@ -69,7 +69,7 @@ class SearchEC2Tags(object):
 
         hosts[group].append(dns_name)
         hosts['_meta']['hostvars'][dns_name] = ansible_host
-        
+
     hosts['k8s_cluster'] = {'children':['kube_control_plane', 'kube_node']}
     print(json.dumps(hosts, sort_keys=True, indent=2))
 

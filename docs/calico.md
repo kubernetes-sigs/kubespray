@@ -219,6 +219,19 @@ calico_vxlan_mode: 'Never'
 
 If you use VXLAN mode, BGP networking is not required. You can disable BGP to reduce the moving parts in your cluster by `calico_network_backend: vxlan`
 
+## Configuring interface MTU
+
+This is an advanced topic and should usually not be modified unless you know exactly what you are doing. Calico is smart enough to deal with the defaults and calculate the proper MTU. If you do need to set up a custom MTU you can change `calico_veth_mtu` as follows:
+
+* If Wireguard is enabled, subtract 60 from your network MTU (i.e. 1500-60=1440)
+* If using VXLAN or BPF mode is enabled, subtract 50 from your network MTU (i.e. 1500-50=1450)
+* If using IPIP, subtract 20 from your network MTU (i.e. 1500-20=1480)
+* if not using any encapsulation, set to your network MTU (i.e. 1500 or 9000)
+
+```yaml
+calico_veth_mtu: 1440
+```
+
 ## Cloud providers configuration
 
 Please refer to the official documentation, for example [GCE configuration](http://docs.projectcalico.org/v1.5/getting-started/docker/installation/gce) requires a security rule for calico ip-ip tunnels. Note, calico is always configured with ``calico_ipip_mode: Always`` if the cloud provider was defined.

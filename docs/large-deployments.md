@@ -12,7 +12,7 @@ For a large scaled deployments, consider the following configuration changes:
   See download modes for details.
 
 * Adjust the `retry_stagger` global var as appropriate. It should provide sane
-  load on a delegate (the first K8s master node) then retrying failed
+  load on a delegate (the first K8s control plane node) then retrying failed
   push or download operations.
 
 * Tune parameters for DNS related applications

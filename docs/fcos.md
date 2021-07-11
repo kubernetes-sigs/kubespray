@@ -8,6 +8,8 @@ Restart playbook again.
 ## Containers
 
 Tested with
+
+- containerd
 - crio
 
 ## Network

@@ -142,7 +142,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cilium](https://github.com/cilium/cilium) v1.8.9
   - [flanneld](https://github.com/flannel-io/flannel) v0.14.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.7.1
-  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.2.2
+  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.3.0
   - [multus](https://github.com/intel/multus-cni) v3.7.0
   - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.1.0
   - [weave](https://github.com/weaveworks/weave) v2.8.1

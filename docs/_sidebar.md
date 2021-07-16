@@ -21,7 +21,7 @@
 * Ingress
   * [ALB Ingress](docs/ingress_controller/alb_ingress_controller.md)
   * [Ambassador](docs/ingress_controller/ambassador.md)
-  * [MetalLB](docs/ingress_controller/metallb.md)
+  * [MetalLB](docs/metallb.md)
   * [Nginx Ingress](docs/ingress_controller/ingress_nginx.md)
 * [Cloud providers](docs/cloud.md)
   * [AWS](docs/aws.md)

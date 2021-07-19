@@ -109,6 +109,18 @@ function register_container_images() {
 		org_image=$(echo ${line} | awk '{print $2}')
 		new_image="${LOCALHOST_NAME}:5000/${org_image}"
 		image_id=$(tar -tf ${IMAGE_DIR}/${file_name} | grep "\.json" | grep -v manifest.json | sed s/"\.json"//)
+		if [ -z "${file_name}" ]; then
+			echo "Failed to get file_name for line ${line}"
+			exit 1
+		fi
+		if [ -z "${org_image}" ]; then
+			echo "Failed to get org_image for line ${line}"
+			exit 1
+		fi
+		if [ -z "${image_id}" ]; then
+			echo "Failed to get image_id for file ${file_name}"
+			exit 1
+		fi
 		sudo docker load -i ${IMAGE_DIR}/${file_name}
 		sudo docker tag  ${image_id} ${new_image}
 		sudo docker push ${new_image}

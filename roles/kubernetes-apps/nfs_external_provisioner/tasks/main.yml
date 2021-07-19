@@ -1,0 +1,26 @@
+---
+# tasks file for nfs_external_provisioner
+- name: NFS External Provisioner | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - { name: nfs-namespace, file: nfs-namespace.yml }
+    - { name: nfs-rbac, file: nfs-rbac.yml }
+    - { name: nfs-deployment, file: nfs-deployment.yml }
+    - { name: nfs-storageclass, file: nfs-storageclass.yml }
+  register: nfs_provisioner_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: NFS External Provisioner | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "{{ nfs_provisioner_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+  loop_control:
+    label: "{{ item.item.file }}"

@@ -11,12 +11,11 @@
   set_fact:
     is_ostree: "{{ ostree.stat.exists }}"
 
-
 - name: Fail containerd setup if distribution is not supported
   fail:
     msg: "{{ ansible_distribution }} is not supported by containerd."
   when:
-    - not ansible_distribution in ["CentOS", "OracleLinux", "RedHat", "Ubuntu", "Debian", "Fedora", "AlmaLinux", "Amazon"]
+    - not ansible_distribution in ["CentOS", "OracleLinux", "RedHat", "Ubuntu", "Debian", "Fedora", "AlmaLinux", "Amazon", "Flatcar Container Linux by Kinvolk"]
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -54,7 +53,7 @@
     - not is_ostree
 
 - include_tasks: containerd_repo.yml
-  when: not is_ostree
+  when: not (is_ostree or (ansible_distribution == "Flatcar Container Linux by Kinvolk"))
 
 - name: Create containerd service systemd directory if it doesn't exist
   file:
@@ -117,7 +116,7 @@
   delay: "{{ retry_stagger | d(3) }}"
   notify: restart containerd
   when:
-    - not is_ostree
+    - not (is_ostree or (ansible_distribution == "Flatcar Container Linux by Kinvolk"))
     - containerd_package_info.pkgs|length > 0
 
 - include_role:  # noqa unnamed-task

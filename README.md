@@ -57,10 +57,10 @@ A simple way to ensure you get all the correct version of Ansible is to use the 
 You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mounts/) to get the inventory and ssh key into the container, like this:
 
 ```ShellSession
-docker pull quay.io/kubespray/kubespray:v2.15.1
+docker pull quay.io/kubespray/kubespray:v2.16.0
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.15.1 bash
+  quay.io/kubespray/kubespray:v2.16.0 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
@@ -119,7 +119,7 @@ vagrant up
 - **Ubuntu** 16.04, 18.04, 20.04
 - **CentOS/RHEL** 7, [8](docs/centos8.md)
 - **Fedora** 33, 34
-- **Fedora CoreOS** (experimental: see [fcos Note](docs/fcos.md))
+- **Fedora CoreOS** (see [fcos Note](docs/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
 - **Oracle Linux** 7, [8](docs/centos8.md)
 - **Alma Linux** [8](docs/centos8.md)
@@ -130,7 +130,7 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.21.1
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.21.3
   - [etcd](https://github.com/coreos/etcd) v3.4.13
   - [docker](https://www.docker.com/) v20.10 (see note)
   - [containerd](https://containerd.io/) v1.4.6
@@ -140,10 +140,10 @@ Note: Upstart/SysV init based OS types are not supported.
   - [calico](https://github.com/projectcalico/calico) v3.17.4
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.8.9
-  - [flanneld](https://github.com/coreos/flannel) v0.13.0
-  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.7.0
-  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.2.2
-  - [multus](https://github.com/intel/multus-cni) v3.7.0
+  - [flanneld](https://github.com/flannel-io/flannel) v0.14.0
+  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.7.1
+  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.3.0
+  - [multus](https://github.com/intel/multus-cni) v3.7.2
   - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.1.0
   - [weave](https://github.com/weaveworks/weave) v2.8.1
 - Application

@@ -73,7 +73,7 @@ setting "enable_ip_masq_agent" to true, this will add the necessary
 ConfigMap mounts to Cilium DS as optional and you will have to enable it with:
 
 ```yml
-enable_ip_masq_agent: "true"
+enable_ip_masq_agent: true
 ```
 
 this will add optional volumeMounts to Cilium DaemonSet for it. Cilium will add he following CIDR as non masquerading destinations:

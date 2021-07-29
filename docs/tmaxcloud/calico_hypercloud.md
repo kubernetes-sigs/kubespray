@@ -1,6 +1,6 @@
 # Calico
 
-kubespray로 Calico 설치를 위해 inventory/hypercloud/group_vars/all/all.yml에서 설정해야하는 값은 다음 하나의 값이다.
+kubespray로 Calico 설치를 위해 inventory/tmaxcloud/group_vars/k8s_cluster/k8s-net-calico.yml에서 설정해야하는 값은 다음 하나의 값이다.
 
 ```yml
 calico_ip_auto_method: "cidr=HOST-POD-NETWORK-SUBNET/CIDR"

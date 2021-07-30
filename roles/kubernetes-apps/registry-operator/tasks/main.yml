@@ -1,0 +1,118 @@
+---
+- name: Registry Operator | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/registry-operator"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Registry Operator | Check root CA certificate exist
+  include_tasks: "certs.yml"
+
+- name: Registry Operator | Get ingress IP
+  include_tasks: "ingress-ip.yml"
+
+- name: Registry Operator | Check token service certificate exist
+  include_tasks: "token-certs.yml"
+
+- name: Registry Operator | Templates list
+  set_fact:
+    registry_operator_templates:
+      - { name: registry-ca-secret, file: registry-ca-secret.yml, type: secret }
+
+- name: Registry Operator | Create manifests
+  vars:
+    - registry_ca_cert_content: "{{ lookup('file', 'rootca.crt') }}"
+    - registry_ca_key_content: "{{ lookup('file', 'rootca.key') }}"
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/registry-operator/{{ item.file }}"
+  with_items: "{{ registry_operator_templates }}"
+  register: registry_operator_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Registry Operator | Templates list
+  set_fact:
+    registry_operator_templates:
+      - { name: operator-ns, file: operator-ns.yml, type: ns }
+      - { name: token-credential-secret, file: token-credential-secret.yml, type: secret }
+      - { name: registry-config-cm, file: registry-config-cm.yml, type: cm }
+      - { name: operator-cm, file: operator-cm.yml, type: cm }
+      - { name: operator-svc, file: operator-svc.yml, type: svc }
+      - { name: operator-deployment, file: operator-deployment.yml, type: deployment }
+      - { name: job-operator-deployment, file: job-operator-deployment.yml, type: deployment }
+      - { name: token-svc, file: token-svc.yml, type: svc }
+      - { name: token-deployment, file: token-deployment.yml, type: deployment }
+      - { name: token-db-svc, file: token-db-svc.yml, type: svc }
+      - { name: token-db-deployment, file: token-db-deployment.yml, type: deployment }
+
+- name: Registry Operator | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/registry-operator/{{ item.file }}"
+  with_items: "{{ registry_operator_templates }}"
+  register: registry_operator_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+#- name: Registry Operator | Apply manifests
+#  kube:
+#    name: "{{ item.item.name }}"
+#    namespace: "{{ registry_operator_namespace }}"
+#    kubectl: "{{ bin_dir }}/kubectl"
+#    resource: "{{ item.item.type }}"
+#    filename: "{{ kube_config_dir }}/addons/registry-operator/{{ item.item.file }}"
+#    state: "latest"
+#  with_items: "{{ registry_operator_manifests.results }}"
+#  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Registry Operator | Create PVC manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/registry-operator/{{ item.file }}"
+  with_items:
+#    - { name: operator-pvc, file: operator-pvc.yml, type: pvc }
+    - { name: token-pvc, file: token-pvc.yml, type: pvc }
+    - { name: token-db-pvc, file: token-db-pvc.yml, type: pvc }
+  register: registry_operator_manifests
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+#- name: Registry Operator | Apply PVC manifests
+#  kube:
+#    name: "{{ item.item.name }}"
+#    namespace: "{{ registry_operator_namespace }}"
+#    kubectl: "{{ bin_dir }}/kubectl"
+#    resource: "{{ item.item.type }}"
+#    filename: "{{ kube_config_dir }}/addons/registry-operator/{{ item.item.file }}"
+#    state: "latest"
+#  with_items: "{{ registry_operator_manifests.results }}"
+#  when:
+#    - registry_operator_storage_class != none and registry_operator_storage_class
+#    - registry_operator_disk_size != none and registry_operator_disk_size
+#    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Registry Operator | Create Ingress manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/registry-operator/{{ item.file }}"
+  with_items:
+    - { name: token-ingress, file: token-ingress.yml, type: ingress }
+  register: registry_operator_manifests
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+#- name: Registry Operator | Apply Ingress manifests
+#  kube:
+#    name: "{{ item.item.name }}"
+#    namespace: "{{ registry_operator_namespace }}"
+#    kubectl: "{{ bin_dir }}/kubectl"
+#    resource: "{{ item.item.type }}"
+#    filename: "{{ kube_config_dir }}/addons/registry-operator/{{ item.item.file }}"
+#    state: "latest"
+#  with_items: "{{ registry_operator_manifests.results }}"
+#  when:
+#    - registry_operator_storage_class != none and registry_operator_storage_class
+#    - registry_operator_disk_size != none and registry_operator_disk_size
+#    - inventory_hostname == groups['kube_control_plane'][0]

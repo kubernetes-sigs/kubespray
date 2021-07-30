@@ -1,0 +1,76 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registry-operator
+  namespace: {{ registry_operator_namespace }}
+  labels:
+    control-plane: registry-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: registry-operator
+  template:
+    metadata:
+      labels:
+        control-plane: registry-operator
+    spec:
+      containers:
+      - command:
+        - /manager
+        args:
+        - --enable-leader-election
+        image: {{ registry_operator_image_repo }}:{{ registry_operator_image_tag }}
+        name: manager
+        imagePullPolicy: Always
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: OPERATOR_NAME
+            value: "registry-operator"
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: TZ
+            value: Asia/Seoul
+          - name: KEYCLOAK_USERNAME
+            valueFrom:
+                secretKeyRef:
+                  name: token-credential-secret
+                  key: username
+          - name: KEYCLOAK_PASSWORD
+            valueFrom:
+                secretKeyRef:
+                  name: token-credential-secret
+                  key: password
+          - name: ROOTCA_PATH
+            value: /etc/ssl/certs/ca.crt
+        resources:
+          limits:
+            cpu: "200m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/registry-operator
+        - name: registry-ca-secret
+          mountPath: /etc/ssl/certs/ca.crt
+          subPath: ca.crt
+        - name: manager-config
+          mountPath: /registry-operator/config
+      volumes:
+      - name: log
+        hostPath:
+          path: /var/log/registry-operator/logs/registry-operator
+      - name: registry-ca-secret
+        secret:
+          secretName: registry-ca
+      - name: manager-config
+        configMap:
+          name: manager-config

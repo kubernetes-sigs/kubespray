@@ -1,0 +1,69 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registry-job-operator
+  namespace: {{ registry_operator_namespace }}
+  labels:
+    control-plane: registry-job-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: registry-job-operator
+  template:
+    metadata:
+      labels:
+        control-plane: registry-job-operator
+    spec:
+      containers:
+      - name: manager
+        image: {{ registry_job_operator_image_repo }}:{{ registry_job_operator_image_tag }}
+        imagePullPolicy: Always
+        command:
+        - /manager
+        args:
+        - --enable-leader-election
+        env:
+          - name: OPERATOR_NAME
+            value: "registry-job-operator"
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: TZ
+            value: Asia/Seoul
+          - name: KEYCLOAK_USERNAME
+            valueFrom:
+                secretKeyRef:
+                  name: keycloak-secret
+                  key: username
+          - name: KEYCLOAK_PASSWORD
+            valueFrom:
+                secretKeyRef:
+                  name: keycloak-secret
+                  key: password
+        resources:
+          limits:
+            cpu: "200m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/registryjob-operator
+        - name: registry-ca-secret
+          mountPath: /etc/ssl/certs/ca.crt
+          subPath: ca.crt
+      volumes:
+      - name: log
+        hostPath:
+          path: /var/log/registry-operator/logs/registry-job-operator
+      - name: registry-ca-secret
+        secret:
+          secretName: registry-ca

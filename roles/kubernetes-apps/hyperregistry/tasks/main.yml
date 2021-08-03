@@ -1,0 +1,38 @@
+---
+- name: HyperRegistry | Get ingress IP
+  include_tasks: "ingress_ip.yml"
+
+- name: HyperRegistry | Add helm repo
+  vars:
+    helm_chart_url: "https://tmax-cloud.github.io/HyperRegistry-Chart/"
+  kubernetes.core.helm_repository:
+    name: hyperregistry
+    repo_url: "{{ helm_chart_url }}"
+  delegate_to: localhost
+  connection: local
+  become: no
+
+- name: HyperRegistry | Create values.yml
+  template: { src: "{{ item }}.j2", dest: "hyperregistry-{{ item }}" }
+  with_items: ["values.yml"]
+  delegate_to: localhost
+  connection: local
+  become: no
+
+- name: HyperRegistry | Install HyperRegistry Chart
+  kubernetes.core.helm:
+    name: hyperregistry
+    namespace: hyperregistry
+    chart_ref: hyperregistry/HyperRegistry
+    values_files: hyperregistry-values.yml
+  delegate_to: localhost
+  connection: local
+  become: no
+
+- name: HyperRegistry | Gather information about HyperRegistry
+  kubernetes.core.helm_info:
+    name: hyperregistry
+    release_namespace: hyperregistry
+  delegate_to: localhost
+  connection: local
+  become: no

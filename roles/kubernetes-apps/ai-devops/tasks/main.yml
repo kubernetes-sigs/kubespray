@@ -1,0 +1,100 @@
+---
+- name: ai_devops | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/ai_devops"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0] 
+
+- name: ai_devops | Create crd dir
+  file:
+    path: "{{ kube_config_dir }}/addons/ai_devops/crd"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]         
+
+
+- name: ai_devops | Create Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/ai_devops/{{ item.file }}"
+  with_items:
+    - { name: cluster-local-gateway, file: 1.cluster-local-gateway.yml }      
+    - { name: kubeflow-istio-resources, file: 2.kubeflow-istio-resources.yml }
+    - { name: add-anonymous-filter, file: 3.add-anonymous-user-filter.yml }
+    - { name: application, file: 4.application.yml }
+    - { name: kubeflow-apps, file: 5.kubeflow-apps.yml }
+    - { name: katib, file: 6.katib.yml }
+    - { name: argo, file: 7.argo.yml }
+    - { name: minio, file: 8.minio.yml }
+    - { name: notebook, file: 9.notebook.yml }
+    - { name: pytorchjob, file: 10.pytorchjob.yml }
+    - { name: tfjob, file: 11.tfjob.yml }
+    - { name: knative, file: 12.knative.yml }
+    - { name: kfserving, file: 13.kfserving.yml }
+    - { name: structural_schema_ko_en, file: structural_schema_ko_en.sh }
+    - { name: experiment_key, file: experiment_key.yml }
+    - { name: inferenceservice_key, file: inferenceservice_key.yml }
+    - { name: notebooks_key, file: notebooks_key.yml }
+    - { name: pytorchjob_key, file: pytorchjob_key.yml }
+    - { name: tfjob_key, file: tfjob_key.yml }
+    - { name: trainedmodel_key, file: trainedmodel_key.yml }    
+  register: ai_devops_manifests
+  when: 
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: ai_devops | Apply manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/ai_devops/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "1.cluster-local-gateway.yml"
+    - "2.kubeflow-istio-resources.yml"
+    - "3.add-anonymous-user-filter.yml"
+    - "4.application.yml"
+    - "5.kubeflow-apps.yml"
+    - "6.katib.yml"
+    - "7.argo.yml"
+    - "8.minio.yml"
+    - "9.notebook.yml"
+    - "10.pytorchjob.yml"
+    - "11.tfjob.yml"
+    - "12.knative.yml"
+    - "13.kfserving.yml"    
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: ai_devops | apply structural_schema for i8n
+  ansible.builtin.shell: | 
+    sudo cp ../structural_schema_ko_en.sh ./
+    sudo cp ../inferenceservice_key.yml ./
+    sudo cp ../notebooks_key.yml ./
+    sudo cp ../pytorchjob_key.yml ./
+    sudo cp ../tfjob_key.yml ./
+    sudo cp ../trainedmodel_key.yml ./
+    sudo cp ../experiment_key.yml ./
+    sudo chmod +755 structural_schema_ko_en.sh 
+    sudo ./structural_schema_ko_en.sh -ip={{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}    
+  args:
+    chdir: "{{ kube_config_dir }}/addons/ai_devops/crd"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]   
+
+
+
+
+
+
+
+
+

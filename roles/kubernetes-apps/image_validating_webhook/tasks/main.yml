@@ -1,0 +1,37 @@
+---
+- name: Image Validating Webhook | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/image_validating_webhook"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Image Validating Webhook | Create Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/image_validation_webhook/{{ item.file }}"
+  with_items:
+    - { name: tmax.io_signerpolicies, file: tmax.io_signerpolicies.yaml }
+    - { name: validating-webhook, file: validating-webhook.yaml }
+    - { name: webhook-role, file: webhook-role.yaml }
+    - { name: webhook-account, file: webhook-account.yaml }
+    - { name: webhook-deployment, file: webhook-deployment.yaml }
+    - { name: webhook-role-binding, file: webhook-role-binding.yaml }
+    - { name: webhook-service, file: webhook-service.yaml }
+    - { name: whitelist-configmap, file: whitelist-configmap.yaml }
+  register: image_validation_webhook_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Image Validating Webhook | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/image_validation_webhook/{{ item.item.file }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "{{ image_validation_webhook_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+  loop_control:
+    label: "{{ item.item.file }}"

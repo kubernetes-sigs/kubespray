@@ -1,0 +1,36 @@
+---
+- name: CI/CD Operator | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/cicd"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  remote_user: root
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: CI/CD Operator | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/cicd/{{ item.file }}"
+  with_items:
+    - { name: tekton-pipelines, file: tekton-pipelines.yml }
+    - { name: tekton-triggers, file: tekton-triggers.yml }
+    - { name: cicd-operator, file: cicd-operator.yml }
+  register: cicd_manifests
+  remote_user: root
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: CI/CD Operator | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/cicd/{{ item.item.file }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "{{ cicd_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+  loop_control:
+    label: "{{ item.item.file }}"

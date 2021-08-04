@@ -1,0 +1,50 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: token-service-db
+  namespace: {{ registry_operator_namespace }}
+  labels:
+    app: token-service-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: token-service-db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: token-service-db
+    spec:
+      containers:
+        - image: postgres:10-alpine
+          name: postgresql
+          env:
+            - name: POSTGRES_USER
+              value: {{ token_db_admin_username }}
+            - name: POSTGRES_DB
+              value: keycloak
+            - name: POSTGRES_PASSWORD
+              value: {{ token_db_admin_password }}
+            - name: TZ
+              value: Asia/Seoul
+          resources:
+            limits:
+              cpu: "200m"
+              memory: "1Gi"
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+          ports:
+            - name: postgresql
+              containerPort: {{ token_db_port }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: token-service-db-pvc

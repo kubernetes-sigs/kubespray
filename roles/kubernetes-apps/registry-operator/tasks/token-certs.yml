@@ -1,0 +1,46 @@
+---
+- name: Registry Operator | Stat token service Key
+  stat:
+    path: "registry-operator-token-service.key"
+  register: tokenPrivateKey
+  delegate_to: localhost
+  connection: local
+  become: no
+
+- name: Registry Operator | Stat token service Certificate
+  stat:
+    path: "registry-operator-token-service.crt"
+  register: tokenCACert
+  delegate_to: localhost
+  connection: local
+  become: no
+
+- name: Registry Operator | Generate a Token service private key
+  community.crypto.openssl_privatekey:
+    path: "token-service.key"
+  delegate_to: localhost
+  connection: local
+  become: no
+  when: not tokenPrivateKey.stat.exists
+
+- name: Registry Operator | Generate a Token service certificate request
+  community.crypto.openssl_csr:
+    path: "token-service.csr"
+    privatekey_content: "{{ lookup('file', 'token-service.key') }}"
+    common_name: "token-service"
+    subject_alt_name: "DNS:auth.hyperregistry.{{ registry_operator_ingress_ip }}.nip.io"
+  delegate_to: localhost
+  connection: local
+  become: no
+  when: not tokenCACert.stat.exists
+
+- name: Generate a Token service certificate
+  community.crypto.x509_certificate:
+    path: "token-service.crt"
+    privatekey_path: "token-service.key"
+    csr_path: "token-service.csr"
+    provider: selfsigned
+  delegate_to: localhost
+  connection: local
+  become: no
+  when: not tokenCACert.stat.exists

@@ -1,0 +1,69 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: token-service
+  namespace: {{ registry_operator_namespace }}
+  labels:
+    app: token-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: token-service
+  template:
+    metadata:
+      labels:
+        app: token-service
+    spec:
+      containers:
+        - name: token-service
+          image: jboss/keycloak:14.0.0
+          args: [ "-c standalone-ha.xml", "-Dkeycloak.profile.feature.docker=enabled -b 0.0.0.0" ]
+          env:
+            - name: KEYCLOAK_USER
+              value: {{ token_admin_username }}
+            - name: KEYCLOAK_PASSWORD
+              value: {{ token_admin_password }}
+            - name: DB_VENDOR
+              value: "postgres"
+            - name: DB_ADDR
+              value: token-service-db
+            - name: DB_PORT
+              value: {{ token_db_port }}
+            - name: DB_USER
+              value: {{ token_db_admin_username }}
+            - name: DB_PASSWORD
+              value: {{ token_db_admin_password }}
+            - name: TZ
+              value: Asia/Seoul
+            - name: PROXY_ADDRESS_FORWARDING
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: https
+              containerPort: 8443
+          readinessProbe:
+            httpGet:
+              path: /auth/realms/master
+              port: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+          volumeMounts:
+            - name: log
+              mountPath: /opt/jboss/keycloak/standalone/log/token-service
+            - name: ssl
+              mountPath: /etc/x509/https
+      volumes:
+        - name: log
+          persistentVolumeClaim:
+            claimName: token-service-log-pvc
+        - name: ssl
+          secret:
+            secretName: token-service

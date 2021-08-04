@@ -21,7 +21,7 @@ By default the normal behavior looks like:
 
 > Kubernetes controller manager and Kubelet work asynchronously. It means that
 > the delay may include any network latency, API Server latency, etcd latency,
-> latency caused by load on one's master nodes and so on. So if
+> latency caused by load on one's control plane nodes and so on. So if
 > `--node-status-update-frequency` is set to 5s in reality it may appear in
 > etcd in 6-7 seconds or even longer when etcd cannot commit data to quorum
 > nodes.
@@ -56,7 +56,7 @@ services so pods from failed node won't be accessible anymore.
 
 ## Fast Update and Fast Reaction
 
-If `-–node-status-update-frequency` is set to **4s** (10s is default).
+If `--node-status-update-frequency` is set to **4s** (10s is default).
 `--node-monitor-period` to **2s** (5s is default).
 `--node-monitor-grace-period` to **20s** (40s is default).
 `--default-not-ready-toleration-seconds` and ``--default-unreachable-toleration-seconds`` are set to **30**
@@ -78,7 +78,7 @@ minute which may require large etcd containers or even dedicated nodes for etcd.
 
 ## Medium Update and Average Reaction
 
-Let's set `-–node-status-update-frequency` to **20s**
+Let's set `--node-status-update-frequency` to **20s**
 `--node-monitor-grace-period` to **2m** and `--default-not-ready-toleration-seconds` and
 ``--default-unreachable-toleration-seconds`` to **60**.
 In that case, Kubelet will try to update status every 20s. So, it will be 6 * 5
@@ -94,7 +94,7 @@ etcd updates per minute.
 
 ## Low Update and Slow reaction
 
-Let's set `-–node-status-update-frequency` to **1m**.
+Let's set `--node-status-update-frequency` to **1m**.
 `--node-monitor-grace-period` will set to **5m** and `--default-not-ready-toleration-seconds` and
 ``--default-unreachable-toleration-seconds`` to **60**. In this scenario, every kubelet will try to update the status
 every minute. There will be 5 * 5 = 25 attempts before unhealthy status. After 5m,

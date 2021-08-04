@@ -16,6 +16,16 @@ URL rewriting, CORS, rate limiting, and automatic metrics collection.
   installation/updates.
 * `ingress_ambassador_secure_port` (default: 443): HTTPS port to listen at.
 * `ingress_ambassador_insecure_port` (default: 80): HTTP port to listen at.
+* `ingress_ambassador_multi_namespaces` (default `false`): By default, Ambassador will only
+  watch the `ingress_ambassador_namespace` namespace for `AmbassadorInstallation` CRD resources.
+  When set to `true`, this value will tell the Ambassador Operator to watch **all** namespaces
+  for CRDs. If you want to run multiple Ambassador ingress instances, set this to `true`.
+
+### Ingress annotations
+
+The Ambassador API Gateway will automatically load balance `Ingress` resources
+that include the annotation `kubernetes.io/ingress.class=ambassador`. All the other
+resources will be just ignored.
 
 ### Ambassador Operator
 

@@ -9,8 +9,8 @@ Summary:        Ansible modules for installing Kubernetes
 
 Group:          System Environment/Libraries
 License:        ASL 2.0
-Url:            https://github.com/kubernetes-incubator/kubespray
-Source0:        https://github.com/kubernetes-incubator/kubespray/archive/%{upstream_version}.tar.gz#/%{name}-%{release}.tar.gz
+Url:            https://github.com/kubernetes-sigs/kubespray
+Source0:        https://github.com/kubernetes-sigs/kubespray/archive/%{upstream_version}.tar.gz#/%{name}-%{release}.tar.gz
 
 BuildArch:      noarch
 BuildRequires:  git

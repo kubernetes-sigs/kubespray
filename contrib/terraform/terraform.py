@@ -323,11 +323,11 @@ def openstack_host(resource, module_name):
     })
 
     # add groups based on attrs
-    groups.append('os_image=' + attrs['image']['id'])
-    groups.append('os_flavor=' + attrs['flavor']['name'])
+    groups.append('os_image=' + str(attrs['image']['id']))
+    groups.append('os_flavor=' + str(attrs['flavor']['name']))
     groups.extend('os_metadata_%s=%s' % item
                   for item in list(attrs['metadata'].items()))
-    groups.append('os_region=' + attrs['region'])
+    groups.append('os_region=' + str(attrs['region']))
 
     # groups specific to kubespray
     for group in attrs['metadata'].get('kubespray_groups', "").split(","):

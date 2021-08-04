@@ -11,7 +11,7 @@ output "workers" {
 }
 
 output "etcd" {
-  value = join("\n", aws_instance.k8s-etcd.*.private_ip)
+  value = join("\n", ((var.aws_etcd_num > 0) ? (aws_instance.k8s-etcd.*.private_ip) : (aws_instance.k8s-master.*.private_ip)))
 }
 
 output "aws_elb_api_fqdn" {

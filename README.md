@@ -5,7 +5,7 @@
 If you have questions, check the documentation at [kubespray.io](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 You can get your invite [here](http://slack.k8s.io/)
 
-- Can be deployed on **[AWS](docs/aws.md), GCE, [Azure](docs/azure.md), [OpenStack](docs/openstack.md), [vSphere](docs/vsphere.md), [Packet](docs/packet.md) (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
+- Can be deployed on **[AWS](docs/aws.md), GCE, [Azure](docs/azure.md), [OpenStack](docs/openstack.md), [vSphere](docs/vsphere.md), [Equinix Metal](docs/equinix-metal.md) (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
 - **Highly available** cluster
 - **Composable** (Choice of the network plugin for instance)
 - Supports most popular **Linux distributions**
@@ -32,7 +32,7 @@ CONFIG_FILE=inventory/mycluster/hosts.yaml python3 contrib/inventory_builder/inv
 
 # Review and change parameters under ``inventory/mycluster/group_vars``
 cat inventory/mycluster/group_vars/all/all.yml
-cat inventory/mycluster/group_vars/k8s_cluster/k8s_cluster.yml
+cat inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
 
 # Deploy Kubespray with Ansible Playbook - run the playbook as root
 # The option `--become` is required, as for example writing SSL keys in /etc/,
@@ -57,10 +57,10 @@ A simple way to ensure you get all the correct version of Ansible is to use the 
 You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mounts/) to get the inventory and ssh key into the container, like this:
 
 ```ShellSession
-docker pull quay.io/kubespray/kubespray:v2.15.1
+docker pull quay.io/kubespray/kubespray:v2.16.0
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.15.1 bash
+  quay.io/kubespray/kubespray:v2.16.0 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
@@ -105,7 +105,7 @@ vagrant up
 - [AWS](docs/aws.md)
 - [Azure](docs/azure.md)
 - [vSphere](docs/vsphere.md)
-- [Packet Host](docs/packet.md)
+- [Equinix Metal](docs/equinix-metal.md)
 - [Large deployments](docs/large-deployments.md)
 - [Adding/replacing a node](docs/nodes.md)
 - [Upgrades basics](docs/upgrades.md)
@@ -118,32 +118,32 @@ vagrant up
 - **Debian** Buster, Jessie, Stretch, Wheezy
 - **Ubuntu** 16.04, 18.04, 20.04
 - **CentOS/RHEL** 7, [8](docs/centos8.md)
-- **Fedora** 32, 33
-- **Fedora CoreOS** (experimental: see [fcos Note](docs/fcos.md))
+- **Fedora** 33, 34
+- **Fedora CoreOS** (see [fcos Note](docs/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
 - **Oracle Linux** 7, [8](docs/centos8.md)
 - **Alma Linux** [8](docs/centos8.md)
-- **Amazon Linux 2** (experimental: see [amazon linux notes](docs/amazonlinux.md)
+- **Amazon Linux 2** (experimental: see [amazon linux notes](docs/amazonlinux.md))
 
 Note: Upstart/SysV init based OS types are not supported.
 
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.20.7
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.21.3
   - [etcd](https://github.com/coreos/etcd) v3.4.13
-  - [docker](https://www.docker.com/) v19.03 (see note)
-  - [containerd](https://containerd.io/) v1.4.4
-  - [cri-o](http://cri-o.io/) v1.20 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [docker](https://www.docker.com/) v20.10 (see note)
+  - [containerd](https://containerd.io/) v1.4.6
+  - [cri-o](http://cri-o.io/) v1.21 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.1
   - [calico](https://github.com/projectcalico/calico) v3.17.4
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.8.9
-  - [flanneld](https://github.com/coreos/flannel) v0.13.0
-  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.6.2
-  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.2.2
-  - [multus](https://github.com/intel/multus-cni) v3.7.0
+  - [flanneld](https://github.com/flannel-io/flannel) v0.14.0
+  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.7.1
+  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.3.0
+  - [multus](https://github.com/intel/multus-cni) v3.7.2
   - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.1.0
   - [weave](https://github.com/weaveworks/weave) v2.8.1
 - Application
@@ -151,12 +151,12 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v0.16.1
-  - [coredns](https://github.com/coredns/coredns) v1.7.0
+  - [coredns](https://github.com/coredns/coredns) v1.8.0
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.43.0
 
 ## Container Runtime Notes
 
-- The list of available docker version is 18.09, 19.03 and 20.10. The recommended docker version is 19.03. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
+- The list of available docker version is 18.09, 19.03 and 20.10. The recommended docker version is 20.10. The kubelet might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. yum versionlock plugin or apt pin).
 - The cri-o version should be aligned with the respective kubernetes version (i.e. kube_version=1.20.x, crio_version=1.20)
 
 ## Requirements
@@ -239,6 +239,6 @@ See also [Network checker](docs/netcheck.md).
 
 [![Build graphs](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/badges/master/pipeline.svg)](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/pipelines)
 
-CI/end-to-end tests sponsored by: [CNCF](https://cncf.io), [Packet](https://www.packet.com/), [OVHcloud](https://www.ovhcloud.com/), [ELASTX](https://elastx.se/).
+CI/end-to-end tests sponsored by: [CNCF](https://cncf.io), [Equinix Metal](https://metal.equinix.com/), [OVHcloud](https://www.ovhcloud.com/), [ELASTX](https://elastx.se/).
 
 See the [test matrix](docs/test_cases.md) for details.

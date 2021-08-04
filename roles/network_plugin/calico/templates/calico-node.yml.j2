@@ -26,6 +26,8 @@ spec:
         prometheus.io/port: "{{ calico_felix_prometheusmetricsport }}"
 {% endif %}
     spec:
+      nodeSelector:
+        {{ calico_ds_nodeselector }}
       priorityClassName: system-node-critical
       hostNetwork: true
       serviceAccountName: calico-node
@@ -42,6 +44,11 @@ spec:
         - name: upgrade-ipam
           image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
           command: ["/opt/cni/bin/calico-ipam", "-upgrade"]
+          envFrom:
+            - configMapRef:
+                # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+                name: kubernetes-services-endpoint
+                optional: true
           env:
             - name: KUBERNETES_NODE_NAME
               valueFrom:
@@ -92,12 +99,26 @@ spec:
               name: cni-bin-dir
           securityContext:
             privileged: true
+        # Adds a Flex Volume Driver that creates a per-pod Unix Domain Socket to allow Dikastes
+        # to communicate with Felix over the Policy Sync API.
+        - name: flexvol-driver
+          image: {{ calico_flexvol_image_repo }}:{{ calico_flexvol_image_tag }}
+          volumeMounts:
+            - name: flexvol-driver-host
+              mountPath: /host/driver
+          securityContext:
+            privileged: true
       containers:
         # Runs calico/node container on each Kubernetes node.  This
         # container programs network policy and routes on each
         # host.
         - name: calico-node
           image: {{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+          envFrom:
+            - configMapRef:
+                # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+                name: kubernetes-services-endpoint
+                optional: true
           env:
             # The location of the Calico etcd cluster.
 {% if calico_datastore == "etcd" %}
@@ -229,8 +250,6 @@ spec:
 {% if calico_ip_auto_method is defined %}
             - name: IP_AUTODETECTION_METHOD
               value: "{{ calico_ip_auto_method }}"
-            - name: IP
-              value: "autodetect"
 {% else %}
             - name: NODEIP
               valueFrom:
@@ -238,9 +257,9 @@ spec:
                   fieldPath: status.hostIP
             - name: IP_AUTODETECTION_METHOD
               value: "can-reach=$(NODEIP)"
+{% endif %}
             - name: IP
               value: "autodetect"
-{% endif %}
 {% if enable_dual_stack_networks %}
             - name: IP6
               value: autodetect
@@ -284,10 +303,10 @@ spec:
 {% if calico_network_backend|default("bird") == "bird" %}
               - -bird-live
 {% endif %}
-            initialDelaySeconds: 5
+            periodSeconds: 10
+            initialDelaySeconds: 10
             failureThreshold: 6
           readinessProbe:
-            failureThreshold: 6
             exec:
               command:
               - /bin/calico-node
@@ -295,18 +314,22 @@ spec:
               - -bird-ready
 {% endif %}
               - -felix-ready
+            periodSeconds: 10
+            failureThreshold: 6
           volumeMounts:
             - mountPath: /lib/modules
               name: lib-modules
               readOnly: true
             - mountPath: /var/run/calico
               name: var-run-calico
+              readOnly: false
             - mountPath: /var/lib/calico
               name: var-lib-calico
               readOnly: false
 {% if calico_datastore == "etcd" %}
             - mountPath: /calico-secrets
               name: etcd-certs
+              readOnly: true
 {% endif %}
             - name: xtables-lock
               mountPath: /run/xtables.lock
@@ -322,7 +345,20 @@ spec:
               mountPath: /etc/typha-ca/ca.crt
               readOnly: true
 {% endif %}
-
+            - name: policysync
+              mountPath: /var/run/nodeagent
+{% if calico_bpf_enabled %}
+            # For eBPF mode, we need to be able to mount the BPF filesystem at /sys/fs/bpf so we mount in the
+            # parent directory.
+            - name: sysfs
+              mountPath: /sys/fs/
+              # Bidirectional means that, if we mount the BPF filesystem at /sys/fs/bpf it will propagate to the host.
+              # If the host is known to mount that filesystem already then Bidirectional can be omitted.
+              mountPropagation: Bidirectional
+{% endif %}
+            - name: cni-log-dir
+              mountPath: /var/log/calico/cni
+              readOnly: true
       volumes:
         # Used by calico/node.
         - name: lib-modules
@@ -373,6 +409,26 @@ spec:
           hostPath:
             path: "/etc/kubernetes/ssl/"
 {% endif %}
+{% if calico_bpf_enabled %}
+        - name: sysfs
+          hostPath:
+            path: /sys/fs/
+            type: DirectoryOrCreate
+{% endif %}
+        # Used to access CNI logs.
+        - name: cni-log-dir
+          hostPath:
+            path: /var/log/calico/cni
+        # Used to create per-pod Unix Domain Sockets
+        - name: policysync
+          hostPath:
+            type: DirectoryOrCreate
+            path: /var/run/nodeagent
+        # Used to install Flex Volume Driver
+        - name: flexvol-driver-host
+          hostPath:
+            type: DirectoryOrCreate
+            path: "{{ kubelet_flexvolumes_plugins_dir | default('/usr/libexec/kubernetes/kubelet-plugins/volume/exec') }}/nodeagent~uds"
   updateStrategy:
     rollingUpdate:
       maxUnavailable: {{ serial | default('20%') }}

@@ -34,6 +34,7 @@
     - ansible_distribution == "Fedora"
     - (ansible_distribution_major_version | int) >= 31
     - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
+    - not is_ostree
 
 - name: reboot in Fedora 31+
   reboot:
@@ -41,12 +42,13 @@
     - ansible_distribution == "Fedora"
     - (ansible_distribution_major_version | int) >= 31
     - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
+    - not is_ostree
 
 - name: import crio repo
   import_tasks: "crio_repo.yml"
   when: crio_add_repos
 
-- include_role:
+- include_role:  # noqa unnamed-task
     name: container-engine/crictl
 
 - name: Build a list of crio runtimes with Katacontainers runtimes
@@ -69,11 +71,13 @@
   file:
     path: "{{ item }}"
     state: directory
+    mode: 0755
 
 - name: Install cri-o config
   template:
     src: crio.conf.j2
     dest: /etc/crio/crio.conf
+    mode: 0644
   register: config_install
 
 - name: Add skopeo pkg to install
@@ -82,6 +86,13 @@
   when:
     - not skip_downloads|default(false)
     - download_run_once
+
+- name: Add libseccomp2 package from Debian Backports to install
+  set_fact:
+    crio_packages: "{{ crio_debian_buster_backports_packages + crio_packages }}"
+  when:
+    - ansible_distribution == "Debian"
+    - ansible_distribution_version == "10"
 
 - name: Install cri-o packages
   package:
@@ -129,6 +140,7 @@
   copy:
     src: mounts.conf
     dest: /etc/containers/mounts.conf
+    mode: 0644
   when:
     - ansible_os_family == 'RedHat'
   notify: restart crio
@@ -147,6 +159,7 @@
     section: storage.options.overlay
     option: mountopt
     value: '{{ ''"nodev"'' if ansible_kernel is version_compare(("4.18" if ansible_os_family == "RedHat" else "4.19"), "<") else ''"nodev,metacopy=on"'' }}'
+    mode: 0644
 
 - name: Create directory registries configs
   file:
@@ -159,6 +172,7 @@
   template:
     src: registry-mirror.conf.j2
     dest: "/etc/containers/registries.conf.d/{{ item.prefix }}.conf"
+    mode: 0644
   loop: "{{ crio_registries_mirrors }}"
   notify: restart crio
 
@@ -166,6 +180,7 @@
   template:
     src: http-proxy.conf.j2
     dest: /etc/systemd/system/crio.service.d/http-proxy.conf
+    mode: 0644
   notify: restart crio
   when: http_proxy is defined or https_proxy is defined
 

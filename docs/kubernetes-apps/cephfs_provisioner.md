@@ -1,12 +1,10 @@
-CephFS Volume Provisioner for Kubernetes 1.5+
-=============================================
+# CephFS Volume Provisioner for Kubernetes 1.5+
 
 [![Docker Repository on Quay](https://quay.io/repository/external_storage/cephfs-provisioner/status "Docker Repository on Quay")](https://quay.io/repository/external_storage/cephfs-provisioner)
 
 Using Ceph volume client
 
-Development
------------
+## Development
 
 Compile the provisioner
 
@@ -20,8 +18,7 @@ Make the container image and push to the registry
 make push
 ```
 
-Test instruction
-----------------
+## Test instruction
 
 - Start Kubernetes local cluster
 
@@ -65,14 +62,12 @@ kubectl create -f example/claim.yaml
 kubectl create -f example/test-pod.yaml
 ```
 
-Known limitations
------------------
+## Known limitations
 
 - Kernel CephFS doesn't work with SELinux, setting SELinux label in Pod's securityContext will not work.
 - Kernel CephFS doesn't support quota or capacity, capacity requested by PVC is not enforced or validated.
 - Currently each Ceph user created by the provisioner has `allow r` MDS cap to permit CephFS mount.
 
-Acknowledgement
----------------
+## Acknowledgement
 
 Inspired by CephFS Manila provisioner and conversation with John Spray

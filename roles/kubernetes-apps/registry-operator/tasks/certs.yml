@@ -1,0 +1,49 @@
+---
+- name: Registry Operator | Stat Root CA Key
+  stat:
+    path: "rootca.key"
+  register: rootCAPrivateKey
+  delegate_to: localhost
+  connection: local
+  become: no
+
+- name: Registry Operator | Stat Root CA Certificate
+  stat:
+    path: "rootca.crt"
+  register: rootCACert
+  delegate_to: localhost
+  connection: local
+  become: no
+
+- name: Registry Operator | Generate a self signed private key
+  community.crypto.openssl_privatekey:
+    path: "rootca.key"
+  delegate_to: localhost
+  connection: local
+  become: no
+  when: not rootCAPrivateKey.stat.exists
+
+- name: Registry Operator | Generate a self signed certificate signing request
+  community.crypto.openssl_csr:
+    path: "rootca.csr"
+    privatekey_content: "{{ lookup('file', 'rootca.key') }}"
+    basic_constraints:
+      - "CA:TRUE"
+    key_usage:
+      - "keyCertSign"
+      - "cRLSign"
+  delegate_to: localhost
+  connection: local
+  become: no
+  when: not rootCACert.stat.exists
+
+- name: Registry Operator | Generate a self signed certificate
+  community.crypto.x509_certificate:
+    path: "rootca.crt"
+    privatekey_path: "rootca.key"
+    csr_path: "rootca.csr"
+    provider: selfsigned
+  delegate_to: localhost
+  connection: local
+  become: no
+  when: not rootCACert.stat.exists

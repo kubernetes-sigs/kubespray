@@ -19,13 +19,8 @@ You need to source the vSphere credentials you use to deploy your machines that 
 | external_vsphere_vcenter_ip                 | TRUE     | string  |                            |                           | IP/URL of the vCenter                                                                                               |
 | external_vsphere_vcenter_port               | TRUE     | string  |                            | "443"                     | Port of the vCenter API                                                                                             |
 | external_vsphere_insecure                   | TRUE     | string  | "true", "false"            | "true"                    | set to "true" if the host above uses a self-signed cert                                                             |
-<<<<<<< HEAD
-| external_vsphere_user                       | TRUE     | string  |                            |                           | User name for vCenter with required privileges |
-| external_vsphere_password                   | TRUE     | string  |                            |                           | Password for vCenter                       |
-=======
 | external_vsphere_user                       | TRUE     | string  |                            |                           | User name for vCenter with required privileges (Can also be specified with the `VSPHERE_USER` environment variable) |
 | external_vsphere_password                   | TRUE     | string  |                            |                           | Password for vCenter (Can also be specified with the `VSPHERE_PASSWORD` environment variable)                       |
->>>>>>> 86b45fce6a2d273eb637527ffb08a08a6ebcb683
 | external_vsphere_datacenter                 | TRUE     | string  |                            |                           | Datacenter name to use                                                                                              |
 | external_vsphere_kubernetes_cluster_id      | TRUE     | string  |                            | "kubernetes-cluster-id"   | Kubernetes cluster ID to use                                                                                        |
 | external_vsphere_version                    | TRUE     | string  |                            | "6.7u3"                   | Vmware Vsphere version where located all VMs                                                                        |

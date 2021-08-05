@@ -1,0 +1,49 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: helm-operator
+  name: helm-operator
+  namespace: {{ helm_operator_namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: helm-operator
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        name: helm-operator
+      annotations:
+        prometheus.io/scrape: "true"
+    spec:
+      serviceAccountName: helm-operator
+      containers:
+      - name: helm-operator
+        image: {{ helm_operator_registry }}/fluxcd/helm-operator:{{ helm_operator_version }}
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 3030
+        livenessProbe:
+          httpGet:
+            port: 3030
+            path: /healthz
+          initialDelaySeconds: 1
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            port: 3030
+            path: /healthz
+          initialDelaySeconds: 1
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        args:
+        - --tiller-namespace=kube-system
+        - --enabled-helm-versions=v3

@@ -3,9 +3,6 @@
 kubespray로 console_provisioner 설치를 위해 inventory/tmaxcloud/group_vars/k8s_cluster/addons.yml 에서 설정한다.
 
 ```yml
-nfs_namespace: nfs provisioner pod을 배포 할 namespace의 이름
-nfs_server: nfs server의 ip 주소
-nfs_path: nfs server에서 외부로 공유 할 디렉토리
 
 console_ver: console의 이미지 버전 
 realm: hyperauth에 설정된 realm  

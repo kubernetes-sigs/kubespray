@@ -1,4 +1,4 @@
-# Matallb 설정
+# Metallb 설정
 kubespray로 metallb 설치를 위해 설정해줘야 할 변수 값을 몇개 있습니다.
 
 - Enable ARP 모드:  

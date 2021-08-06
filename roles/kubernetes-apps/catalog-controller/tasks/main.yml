@@ -1,0 +1,157 @@
+# tasks file for install catalog controller
+- name: Catalog-controller | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/catalog-controller"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Catalog-controller | Create ssl dir
+  file:
+    path: "{{ kube_config_dir }}/addons/catalog-controller/ssl"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Catalog-controller | Generate CRDs
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/catalog-controller/{{ item.file }}"
+  with_items:
+    - { name: clusterservicebrokers, file: clusterservicebrokers.yaml }
+    - { name: clusterserviceclass, file: clusterserviceclass.yaml }
+    - { name: clusterserviceplan, file: clusterserviceplan.yaml }
+    - { name: servicebinding, file: servicebinding.yaml }
+    - { name: servicebroker, file: servicebroker.yaml }
+    - { name: serviceclass, file: serviceclass.yaml }
+    - { name: serviceinstance, file: serviceinstance.yaml }
+    - { name: serviceplan, file: serviceplan.yaml }
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Catalog-controller | Apply CRDs
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/catalog-controller/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "clusterservicebrokers.yaml"
+    - "clusterserviceclass.yaml"
+    - "clusterserviceplan.yaml"
+    - "servicebinding.yaml"
+    - "servicebroker.yaml"
+    - "serviceclass.yaml"
+    - "serviceinstance.yaml"
+    - "serviceplan.yaml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: Catalog-controller | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/catalog-controller/{{ item.file }}"
+  with_items:
+    - { name: namespace, file: catalog-namespace.yaml }
+    - { name: serviceaccounts, file: serviceaccounts.yaml }
+    - { name: rbac, file: rbac.yaml  }
+    - { name: controller-manager-deployment, file: controller-manager-deployment.yaml }
+    - { name: controller-manager-service, file: controller-manager-service.yaml }
+    - { name: v3, file: v3.ext }
+  when:    
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: Catalog-controller | Create namespace
+  kube: 
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/catalog-controller/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "catalog-namespace.yaml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: Catalog-controller | Apply controller deploy
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/catalog-controller/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "serviceaccounts.yaml"
+    - "rbac.yaml"
+    - "controller-manager-deployment.yaml"
+    - "controller-manager-service.yaml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Catalog-controller | SSL Settings for Catalog Webhook
+  ansible.builtin.shell: |
+    sudo openssl genrsa -out rootca.key 2048
+    sudo openssl req -x509 -new -nodes -key rootca.key -sha256 -days 3650 -subj /C=KO/ST=None/L=None/O=None/CN=catalog-catalog-webhook -out rootca.crt
+    sudo openssl req -new -newkey rsa:2048 -sha256 -nodes -keyout server.key -subj /C=KO/ST=None/L=None/O=None/CN=catalog-catalog-webhook -out server.csr
+    sudo openssl x509 -req -in server.csr -CA rootca.crt -CAkey rootca.key -CAcreateserial -out server.crt -days 3650 -sha256 -extfile ../v3.ext
+    sudo openssl base64 -in rootca.crt -out key0
+    sudo openssl base64 -in server.crt -out cert
+    sudo openssl base64 -in server.key -out key
+  args:
+    chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl" 
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: Register key0 variable
+  ansible.builtin.shell: awk 'NF {sub(/\r/, ""); printf "%s",$0;}' key0
+  args:
+    chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl"
+  register: key0
+
+
+- name: Register cert variable
+  ansible.builtin.shell: awk 'NF {sub(/\r/, ""); printf "%s",$0;}' cert
+  args:
+    chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl" 
+  register: cert
+
+
+- name: Register key variable
+  ansible.builtin.shell: awk 'NF {sub(/\r/, ""); printf "%s",$0;}' key
+  args:
+    chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl" 
+  register: key
+
+
+- name: Catalog-webhook | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/catalog-controller/{{ item.file }}"
+  with_items:
+    - { name: webhook-register, file: webhook-register.yaml }
+    - { name: webhook-deployment, file: webhook-deployment.yaml }
+    - { name: webhook-service, file: webhook-service.yaml }
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: Catalog-webhook | Apply webhook manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/catalog-controller/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "webhook-register.yaml"
+    - "webhook-deployment.yaml"
+    - "webhook-service.yaml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]

@@ -1,0 +1,43 @@
+- name: Helm Operator  | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/helm_operator"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0] 
+
+- name: Helm Operator | Copy Manifests
+  copy:
+    src: "{{ item }}"
+    dest: "{{ kube_config_dir }}/addons/helm_operator/{{ item }}"
+  with_items:
+    - crd.yml
+  when: 
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Helm Operator | Template Manifests
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ kube_config_dir }}/addons/helm_operator/{{ item }}"
+  with_items:
+    - namespace.yml
+    - rbac.yml
+    - deployment.yml
+  when: 
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Helm Operator | Apply manifests
+  kube:
+    kubectl: "kubectl"
+    filename: "{{ kube_config_dir }}/addons/helm_operator/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - crd.yml
+    - namespace.yml
+    - rbac.yml
+    - deployment.yml
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]

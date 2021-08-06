@@ -1,0 +1,94 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: catalog-catalog-controller-manager
+  namespace: catalog
+  labels:
+    app: catalog-catalog
+    chart: "catalog-0.3.0"
+    release: "catalog"
+    heritage: "Tiller"
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  minReadySeconds: 1
+  selector:
+    matchLabels:
+      app: catalog-catalog-controller-manager
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "false"
+      labels:
+        app: catalog-catalog-controller-manager
+        chart: "catalog-0.3.0"
+        release: "catalog"
+        heritage: "Tiller"
+    spec:
+      serviceAccountName: service-catalog-controller-manager
+      volumes:
+        - name: run
+          emptyDir: {}
+      containers:
+      - name: controller-manager
+        image: {{ catalogController_imageRegistry }}/kubernetes-service-catalog/service-catalog:v{{ catalogController_catalogVersion }}
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: 30m
+            memory: 20Mi
+          limits:
+            cpu: 50m
+            memory: 30Mi
+        env:
+        - name: K8S_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        args:
+        - controller-manager
+        - --secure-port
+        - "8444"
+        - "--cluster-id-configmap-namespace=catalog"
+        - "--leader-elect=false"
+        - "--profiling=false"
+        - -v
+        - "10"
+        - --resync-interval
+        - 5m
+        - --broker-relist-interval
+        - 24h
+        - --operation-polling-maximum-backoff-duration
+        - 20m
+        - --osb-api-request-timeout
+        - 60s
+        - --feature-gates
+        - OriginatingIdentity=true
+        - --feature-gates
+        - ServicePlanDefaults=false
+        volumeMounts:
+        - mountPath: /var/run
+          name: run
+        ports:
+        - containerPort: 8444
+        readinessProbe:
+          httpGet:
+            port: 8444
+            path: /healthz/ready
+            scheme: HTTPS
+          failureThreshold: 1
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            port: 8444
+            path: /healthz
+            scheme: HTTPS
+          failureThreshold: 3
+          initialDelaySeconds: 40
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5

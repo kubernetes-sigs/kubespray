@@ -4,7 +4,6 @@ import openstack
 import logging
 import datetime
 import time
-from pprint import pprint
 
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 PAUSE_SECONDS = 5

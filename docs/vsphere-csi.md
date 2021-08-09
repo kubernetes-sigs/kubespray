@@ -34,6 +34,9 @@ You need to source the vSphere credentials you use to deploy your machines that 
 | vsphere_csi_node_driver_registrar_image_tag | TRUE     | string  |                            | "v1.1.0"                  | CSI node driver registrat image tag to use                                                                          |
 | vsphere_csi_driver_image_tag                | TRUE     | string  |                            | "v1.0.2"                  | CSI driver image tag to use                                                                                         |
 | vsphere_csi_resizer_tag                     | TRUE     | string  |                            | "v1.1.0"                  | CSI resizer image tag to use
+| vsphere_csi_aggressive_node_drain           | FALSE    | boolean |                            | false                     | Enable aggressive node drain strategy                                                                               |
+| vsphere_csi_aggressive_node_unreachable_timeout            | FALSE     | int  | 300   |                           | Timeout till node will be drained when it in an unreachable state                                                           |
+| vsphere_csi_aggressive_node_not_ready_timeout              | FALSE     | int  | 300   |                           | Timeout till node will be drained when it in not-ready state                                                                |
 
 ## Usage example
 

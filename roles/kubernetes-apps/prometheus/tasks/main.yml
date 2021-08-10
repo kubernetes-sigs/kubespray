@@ -1,0 +1,227 @@
+---
+- name: prometheus | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/prometheus"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0] 
+
+- name: prometheus | Create manifests dir
+  file:
+    path: "{{ kube_config_dir }}/addons/prometheus/manifests"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]         
+
+- name: prometheus | Create crd dir
+  file:
+    path: "{{ kube_config_dir }}/addons/prometheus/setup"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+
+- name: prometheus | Create setup
+  template:
+    src: "setup/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/prometheus/setup/{{ item.file }}"
+  with_items:
+    - { name: namespace-namepsace, file: 0namespace-namespace.yaml }      
+    - { name: alertmanager-crd, file: 0alertmanagerCustomResourceDefinition.yaml }
+    - { name: podmonitor-crd, file: prometheus-operator-0podmonitorCustomResourceDefinition.yaml}
+    - { name: probe-crd, file: prometheus-operator-0probeCustomResourceDefinition.yaml}
+    - { name: prometheus-crd, file: prometheus-operator-0prometheusCustomResourceDefinition.yaml }
+    - { name: prometheusrule-crd, file: prometheus-operator-0prometheusruleCustomResourceDefinition.yaml}
+    - { name: servicemonitor-crd, file: prometheus-operator-0servicemonitorCustomResourceDefinition.yaml}
+    - { name: thanosruler-crd, file: prometheus-operator-0thanosrulerCustomResourceDefinition.yaml}
+    - { name: prometheus-operator-clusterRole, file: prometheus-operator-clusterRole.yaml}
+    - { name: prometheus-operator-clusterRoleBinding, file: prometheus-operator-clusterRoleBinding.yaml}
+    - { name: prometheus-operator-deployment, file: prometheus-operator-deployment.yaml}
+    - { name: prometheus-operator-service, file: prometheus-operator-service.yaml}
+    - { name: prometheus-operator-serviceAccount, file: prometheus-operator-serviceAccount.yaml }
+  register: prometheus_setup
+  when: 
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: prometheus | Create manifests
+  template:
+    src: "setup/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/prometheus/manifests/{{ item.file }}"
+  with_items:
+    - { name: alertmanager-alertmanager, file: alertmanager-alertmanager.yaml }
+    - { name: alertmanager-secret, file: alertmanager-secret.yaml}
+    - { name: alertmanager-service, file: alertmanager-service.yaml}
+    - { name: alertmanager-serviceAccount, file: alertmanager-serviceAccount.yaml}
+    - { name: alertmanager-serviceMonitor, file: alertmanager-serviceMonitor.yaml }
+    - { name: etcd-service, file: etcd-service.yaml}
+    - { name: etcd-serviceMonitor, file: etcd-serviceMonitor.yaml}
+    - { name: kube-controller-manager-prometheus-discovery, file: kube-controller-manager-prometheus-discovery.yaml}
+    - { name: kube-scheduler-prometheus-discovery, file: kube-scheduler-prometheus-discovery.yaml}
+    - { name: kube-state-metrics-clusterRole, file: kube-state-metrics-clusterRole.yaml}
+    - { name: kube-state-metrics-clusterRoleBinding, file: kube-state-metrics-clusterRoleBinding.yaml}
+    - { name: kube-state-metrics-deployment, file: kube-state-metrics-deployment.yaml}
+    - { name: kube-state-metrics-role, file: kube-state-metrics-role.yaml}
+    - { name: kube-state-metrics-roleBinding, file: kube-state-metrics-roleBinding.yaml}
+    - { name: kube-state-metrics-service, file: kube-state-metrics-service.yaml}
+    - { name: kube-state-metrics-serviceAccount, file: kube-state-metrics-serviceAccount.yaml}
+    - { name: kube-state-metrics-serviceMonitor, file: kube-state-metrics-serviceMonitor.yaml}
+    - { name: node-exporter-clusterRole, file: node-exporter-clusterRole.yaml}
+    - { name: node-exporter-clusterRoleBinding, file: node-exporter-clusterRoleBinding.yaml}
+    - { name: node-exporter-daemonset.yaml, file: node-exporter-daemonset.yaml}
+    - { name: node-exporter-service, file: node-exporter-service.yaml}
+    - { name: node-exporter-serviceAccount, file: node-exporter-serviceAccount.yaml}
+    - { name: node-exporter-service, file: node-exporter-service.yaml}
+    - { name: node-exporter-serviceMonitor, file: node-exporter-serviceMonitor.yaml}
+    - { name: prometheus-adapter-apiService, file: prometheus-adapter-apiService.yaml}
+    - { name: prometheus-adapter-clusterRole, file: prometheus-adapter-clusterRole.yaml}
+    - { name: prometheus-adapter-clusterRoleAggregatedMetricsReader, file: prometheus-adapter-clusterRoleAggregatedMetricsReader.yaml}
+    - { name: prometheus-adapter-clusterRoleBinding, file: prometheus-adapter-clusterRoleBinding.yaml}
+    - { name: prometheus-adapter-clusterRoleBindingDelegator, file: prometheus-adapter-clusterRoleBindingDelegator.yaml}
+    - { name: prometheus-adapter-clusterRoleServerResources, file: prometheus-adapter-clusterRoleServerResources.yaml}
+    - { name: prometheus-adapter-configMap, file: prometheus-adapter-configMap.yaml}
+    - { name: prometheus-adapter-deployment, file: prometheus-adapter-deployment.yaml}
+    - { name: prometheus-adapter-roleBindingAuthReader, file: prometheus-adapter-roleBindingAuthReader.yaml}
+    - { name: prometheus-adapter-service, file: prometheus-adapter-service.yaml}
+    - { name: prometheus-adapter-serviceAccount, file: prometheus-adapter-serviceAccount.yaml}
+    - { name: prometheus-clusterRole, file: prometheus-clusterRole.yaml}
+    - { name: prometheus-clusterRoleBinding, file: prometheus-clusterRoleBinding}
+    - { name: prometheus-operator-serviceMonitor, file: prometheus-operator-serviceMonitor.yaml}
+    - { name: prometheus-prometheus, file: prometheus-prometheus.yaml}
+    - { name: prometheus-roleBindingConfig, file: prometheus-roleBindingConfig.yaml}
+    - { name: prometheus-roleBindingSpecificNamespaces, file: prometheus-roleBindingSpecificNamespaces.yaml}
+    - { name: prometheus-roleConfig, file: prometheus-roleConfig.yaml}
+    - { name: prometheus-roleSpecificNamespaces, file: prometheus-roleSpecificNamespaces.yaml}
+    - { name: prometheus-service, file: prometheus-service.yaml}
+    - { name: prometheus-serviceAccount, file: prometheus-serviceAccount.yaml}
+    - { name: prometheus-serviceMonitorCoreDNS, file: prometheus-serviceMonitorCoreDNS.yaml}
+    - { name: prometheus-serviceMonitorKubeControllerManager, file: prometheus-serviceMonitorKubeControllerManager.yaml}
+    - { name: prometheus-serviceMonitorKubeScheduler, file: prometheus-serviceMonitorKubeScheduler.yaml}
+    - { name: prometheus-serviceMonitorKubelet, file: prometheus-serviceMonitorKubelet.yaml}
+    - { name: prometheusrule-rules, file: prometheusrule-rules.yaml}
+  register: prometheus_manifests
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+
+- name: prometheus | Apply setup
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/prometheus/setup/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "0namespace-namespace.yaml"
+    - "0alertmanagerCustomResourceDefinition.yaml"
+    - "prometheus-operator-0podmonitorCustomResourceDefinition.yaml"
+    - "prometheus-operator-0probeCustomResourceDefinition.yaml"
+    - "prometheus-operator-0prometheusCustomResourceDefinition.yaml"
+    - "prometheus-operator-0prometheusruleCustomResourceDefinition.yaml"
+    - "prometheus-operator-0servicemonitorCustomResourceDefinition.yaml"
+    - "prometheus-operator-0thanosrulerCustomResourceDefinition.yaml"
+    - "prometheus-operator-clusterRole.yaml"
+    - "prometheus-operator-clusterRoleBinding.yaml"
+    - "prometheus-operator-deployment.yaml"
+    - "prometheus-operator-service.yaml"
+    - "prometheus-operator-serviceAccount.yaml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: prometheus | Apply manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/prometheus/manifests/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "alertmanager-alertmanager.yaml"
+    - "alertmanager-secret.yaml"
+    - "alertmanager-service.yaml"
+    - "alertmanager-serviceAccount.yaml"
+    - "alertmanager-serviceMonitor.yaml"
+    - "etcd-service.yaml"
+    - "etcd-serviceMonitor.yaml"
+    - "kube-controller-manager-prometheus-discovery.yaml"
+    - "kube-scheduler-prometheus-discovery.yaml"
+    - "kube-state-metrics-clusterRole.yaml"
+    - "kube-state-metrics-clusterRoleBinding.yaml"
+    - "kube-state-metrics-deployment.yaml"
+    - "kube-state-metrics-role.yaml"
+    - "kube-state-metrics-roleBinding.yaml"
+    - "kube-state-metrics-service.yaml"
+    - "kube-state-metrics-serviceAccount.yaml"
+    - "kube-state-metrics-serviceMonitor.yaml"
+    - "node-exporter-clusterRole.yaml"
+    - "node-exporter-clusterRoleBinding.yaml"
+    - "node-exporter-daemonset.yaml"
+    - "node-exporter-service.yaml"
+    - "node-exporter-serviceAccount.yaml"
+    - "node-exporter-service.yaml"
+    - "node-exporter-serviceMonitor.yaml"
+    - "prometheus-adapter-apiService.yaml"
+    - "prometheus-adapter-clusterRole.yaml"
+    - "prometheus-adapter-clusterRoleAggregatedMetricsReader.yaml"
+    - "prometheus-adapter-clusterRoleBinding.yaml"
+    - "prometheus-adapter-clusterRoleBindingDelegator.yaml"
+    - "prometheus-adapter-clusterRoleServerResources.yaml"
+    - "prometheus-adapter-configMap.yaml"
+    - "prometheus-adapter-deployment.yaml"
+    - "prometheus-adapter-roleBindingAuthReader.yaml"
+    - "prometheus-adapter-service.yaml"
+    - "prometheus-adapter-serviceAccount.yaml"
+    - "prometheus-clusterRole.yaml"
+    - "prometheus-clusterRoleBinding"
+    - "prometheus-operator-serviceMonitor.yaml"
+    - "prometheus-prometheus.yaml"
+    - "prometheus-roleBindingConfig.yaml"
+    - "prometheus-roleBindingSpecificNamespaces.yaml"
+    - "prometheus-roleConfig.yaml"
+    - "prometheus-roleSpecificNamespaces.yaml"
+    - "prometheus-service.yaml"
+    - "prometheus-serviceAccount.yaml"
+    - "prometheus-serviceMonitorCoreDNS.yaml"
+    - "prometheus-serviceMonitorKubeControllerManager.yaml"
+    - "prometheus-serviceMonitorKubeScheduler.yaml"
+    - "prometheus-serviceMonitorKubelet.yaml"
+    - "prometheusrule-rules.yaml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: prometheus | apply structural_schema for i8n
+  ansible.builtin.shell: | 
+    sudo cp /etc/kubernetes/manifests/etcd.yaml .
+    sudo yq e '.metadata.labels.k8s-app = "etcd"' -i etcd.yaml
+    sudo yq eval '(.spec.containers[0].command[] | select(. == "--listen-metrics-urls*")) = "--listen-metrics-urls=http://{{ master_ip }}:2381,http://127.0.0.1:2381"' -i etcd.yaml
+    sudo sed -i 's/{MAIN_MASTER_IP}/'${MAIN_MASTER_IP}'/g' etcd.yaml
+    sudo mv -f ./etcd.yaml /etc/kubernetes/manifests/etcd.yaml
+
+    sudo cp /etc/kubernetes/manifests/kube-scheduler.yaml .
+    sudo yq e '.metadata.labels.k8s-app = "kube-scheduler"' -i kube-scheduler.yaml
+    sudo yq eval 'del(.spec.containers[0].command[] | select(. == "--port*") )' -i kube-scheduler.yaml
+    sudo mv -f ./kube-scheduler.yaml /etc/kubernetes/manifests/kube-scheduler.yaml
+
+    sudo cp /etc/kubernetes/manifests/kube-controller-manager.yaml .
+    sudo yq e '.metadata.labels.k8s-app = "kube-controller-manager"' -i kube-controller-manager.yaml
+    sudo yq eval 'del(.spec.containers[0].command[] | select(. == "--port*") )' -i kube-controller-manager.yaml
+    sudo mv -f ./kube-controller-manager.yaml /etc/kubernetes/manifests/kube-controller-manager.yaml
+  when:
+    - inventory_hostname == groups['kube_control_plane']
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,330 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hypercloud5-system
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: hypercloud5-system-quota
+  namespace: hypercloud5-system
+spec:
+  hard:
+    limits.cpu: "5"
+    limits.memory: "10Gi"
+    requests.storage: "50Gi"
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hypercloud5-admin
+  namespace: hypercloud5-system
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hypercloud5-admin
+subjects:
+- kind: ServiceAccount
+  name: hypercloud5-admin 
+  namespace: hypercloud5-system
+roleRef:
+  kind: ClusterRole  #this must be Role or ClusterRole
+  name: cluster-admin  # this must match the name of the Role or ClusterRole you wish to bind to
+  apiGroup: rbac.authorization.k8s.io
+  
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: docker-pull-secret
+  namespace: hypercloud5-system
+
+---
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  # name must match the spec fields below, and be in the form: <plural>.<group>
+  name: alerts.tmax.io
+spec:
+  # group name to use for REST API: /apis/<group>/<version>
+  group: tmax.io
+  # list of versions supported by this CustomResourceDefinition
+  versions:
+    - name: v1
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                name:
+                  type: string
+                kind:
+                  type: string
+                resource:
+                  type: string
+                message:
+                  type: string
+  # either Namespaced or Cluster
+  scope: Namespaced
+  names:
+    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
+    plural: alerts
+    # singular name to be used as an alias on the CLI and for display
+    singular: alert
+    # kind is normally the CamelCased singular type. Your resource manifests use this.
+    kind: Alert
+    # shortNames allow shorter string to match your resource on the CLI
+    shortNames:
+    - at
+    
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: version-config
+  namespace: hypercloud5-system
+data:
+  version.config: |
+    modules:
+    - name: Kubernetes
+      namespace:
+      selector:
+        matchLabels:
+          statusLabel:
+          - component=kube-apiserver
+          versionLabel:
+          - component=kube-apiserver
+      readinessProbe:
+
+      versionProbe:
+
+    - name: HyperCloud API Server
+      namespace: hypercloud5-system
+      selector:
+        matchLabels:
+          statusLabel:
+          - hypercloud5=api-server
+          versionLabel:
+          - hypercloud5=api-server
+      readinessProbe:
+
+      versionProbe:          
+    
+    - name: HyperCloud Single Operator
+      namespace: hypercloud5-system
+      selector:
+        matchLabels:
+          statusLabel:
+          - hypercloud=single-operator
+          versionLabel:
+          - hypercloud=single-operator
+      readinessProbe:
+
+      versionProbe:
+        container: manager
+
+    - name: HyperCloud Multi Operator
+      namespace: hypercloud5-system
+      selector:
+        matchLabels:
+          statusLabel:
+          - hypercloud=multi-operator
+          versionLabel:
+          - hypercloud=multi-operator
+      readinessProbe:
+
+      versionProbe:
+        container: manager
+      
+    - name: HyperCloud Console
+      namespace: console-system
+      selector:
+        matchLabels:
+          statusLabel:
+          - app=console
+          versionLabel:
+          - app=console
+      readinessProbe:
+
+      versionProbe:
+       container: console
+
+    - name: HyperCloud Console Operator
+      namespace: console-system
+      selector:
+        matchLabels:
+          statusLabel:
+          - app=console
+          versionLabel:
+          - app=console
+      readinessProbe:
+
+      versionProbe:
+        container: manager
+
+    - name: HyperAuth
+      namespace:
+      selector:
+        matchLabels:
+          statusLabel:
+          versionLabel:
+      readinessProbe:
+        httpGet:
+          path: https://hyperauth.{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}.nip.io:{{ ingress_nginx_https_port }}/auth/realms/tmax
+      
+    - name: Calico
+      namespace: kube-system
+      selector:
+        matchLabels:
+          statusLabel:
+          - k8s-app=calico-node
+          versionLabel:
+          - k8s-app=calico-node
+      readinessProbe:
+
+      versionProbe:
+
+    - name: MetalLB
+      namespace: metallb-system
+      selector:
+        matchLabels:
+          statusLabel:
+          - app=metallb
+          versionLabel:
+          - app=metallb
+      readinessProbe:
+
+      versionProbe:
+
+    - name: Nginx Ingress Controller
+      namespace: ingress-nginx-system
+      selector:
+        matchLabels:
+          statusLabel:
+          - app.kubernetes.io/component=controller
+          versionLabel:
+          - app.kubernetes.io/component=controller
+      readinessProbe:
+
+      versionProbe:
+
+    - name: Prometheus
+      namespace: monitoring
+      selector:
+        matchLabels:
+          statusLabel:
+          - app=prometheus
+          versionLabel:
+          - app=prometheus
+      readinessProbe:
+        httpGet:
+          path: /-/ready
+          port: 9090
+          scheme: HTTP
+      versionProbe:
+        container: prometheus
+
+    - name: Tekton
+      namespace: tekton-pipelines
+      selector:
+        matchLabels:
+          statusLabel:
+          - app=tekton-pipelines-controller
+          versionLabel:
+          - app=tekton-pipelines-controller
+      readinessProbe:
+
+      versionProbe:
+
+    - name: Catalog-Controller
+      namespace: catalog
+      selector:
+        matchLabels:
+          statusLabel:
+          - app=catalog-catalog-controller-manager
+          versionLabel:
+          - app=catalog-catalog-controller-manager
+      readinessProbe:
+        httpGet:
+          path: /healthz/ready
+          port: 8444
+          scheme: HTTPS
+      versionProbe:
+
+    - name: ClusterTemplateServiceBroker
+      namespace: cluster-tsb-ns
+      selector:
+        matchLabels:
+          statusLabel:
+          - app=cluster-template-service-broker
+          versionLabel:
+          - app=cluster-template-service-broker
+      readinessProbe:
+
+      versionProbe:
+
+    - name: CAPI
+      namespace: capi-system
+      selector:
+        matchLabels:
+          statusLabel:
+          - cluster.x-k8s.io/provider=cluster-api
+          versionLabel:
+          - cluster.x-k8s.io/provider=cluster-api
+      readinessProbe:
+
+      versionProbe:
+        container: manager
+
+    - name: KubeFed
+      namespace: kube-federation-system
+      selector:
+        matchLabels:
+          statusLabel:
+          - kubefed-control-plane=controller-manager
+          versionLabel:
+          - kubefed-control-plane=controller-manager
+      readinessProbe:
+
+      versionProbe:
+
+    - name: Grafana
+      namespace: monitoring
+      selector:
+        matchLabels:
+          statusLabel:
+          - app=grafana
+          versionLabel:
+          - app=grafana
+      readinessProbe:
+        httpGet:
+          path: /api/health
+          port: 3000
+      versionProbe:
+
+    - name: Kibana
+      namespace: kube-logging
+      selector:
+        matchLabels:
+          statusLabel:
+          - app=kibana
+          versionLabel:
+          - app=kibana
+      readinessProbe:
+
+      versionProbe:
+

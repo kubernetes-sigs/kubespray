@@ -33,7 +33,7 @@ prometheus_pvc: "prometheus pvc size"
 
 kube_state_metrics_image_repo: "image repo for kube state metrics container"
 kube_state_metrics_image_tag: "image tag for kube state metrics container"
-master_ip: {}
+master_ip: "address of master node"
 
 ```
 
@@ -77,7 +77,7 @@ prometheus_pvc: "10Gi"
 
 kube_state_metrics_image_repo: "quay.io/coreos/kube-state-metrics"
 kube_state_metrics_image_tag: "v1.8.0"
-master_ip: {}
+master_ip: "192.168.9.216"
 
 ```
 

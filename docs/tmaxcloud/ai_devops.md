@@ -1,9 +1,32 @@
-# ai_devops
+### ai_devops prerequisites
+
+ai_devops를 설치하기 위해서는 먼저 다음과 같은 모듈들이 설치되어야한다.
+
+1. Storage class
+    * 아래 명령어를 통해 storage class가 설치되어 있는지 확인한다.
+        ```bash
+        $ kubectl get storageclass
+        ```
+    * 만약 storage class가 없다면 storage class를 설치해준다.
+    * Storage class는 있지만 default로 설정된 것이 없다면 아래 명령어를 실행한다.(storage class로 rook-ceph이 설치되어 있을 경우에만 해당)
+        ```bash
+        $ kubectl patch storageclass csi-cephfs-sc -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+        ```
+    * csi-cephfs-sc는 rook-ceph를 설치했을 때 생성되는 storage class이며 다른 storage class를 default로 사용해도 무관하다.
+2. Istio
+    * v1.5.1       
+3. Cert-manager
+    * ai-devops에서 사용하는 certificate와 cluster-issuer와 같은 CR 관리를 위해 필요하다.             
+4. (Optional) GPU plug-in
+    * Kubernetes cluster 내 node에 GPU가 탑재되어 있으며 AI DevOps 기능을 사용할 때 GPU가 요구될 경우에 필요하다.
+        
+
+### ai_devops parameters
 
 kubespray를 통해 ai_devops를 설치하기 위하여는 다음 변수들을 설정해주어야 한다.
 
 
-## ai_devops 모듈 설치 namespace
+# ai_devops 모듈 설치 namespace
 
 ai_devops의 모듈들이 설치되는 namespace
 

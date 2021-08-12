@@ -15,9 +15,12 @@ ai_devops를 설치하기 위해서는 먼저 다음과 같은 모듈들이 설�
     * csi-cephfs-sc는 rook-ceph를 설치했을 때 생성되는 storage class이며 다른 storage class를 default로 사용해도 무관하다.
 2. Istio
     * v1.5.1       
+    * kubeflow-istio-resource들을 배포하기 위해 필요하다.
 3. Cert-manager
-    * ai-devops에서 사용하는 certificate와 cluster-issuer와 같은 CR 관리를 위해 필요하다.             
-4. (Optional) GPU plug-in
+    * ai-devops에서 사용하는 certificate와 cluster-issuer와 같은 CR 관리를 위해 필요하다.            
+4. Hypercloud Console    
+    * notebook과 관련하여 ConsoleYAMlSample을 적용하기 위해 필요하다.
+5. (Optional) GPU plug-in
     * Kubernetes cluster 내 node에 GPU가 탑재되어 있으며 AI DevOps 기능을 사용할 때 GPU가 요구될 경우에 필요하다.
         
 

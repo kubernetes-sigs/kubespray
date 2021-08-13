@@ -1,142 +1,112 @@
 ---
-- name: Check ansible version
-  import_playbook: ansible_version.yml
+dependencies:
+  - role: kubernetes-apps/ansible
+    when:
+      - inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Ensure compatibility with old groups
-  import_playbook: legacy_groups.yml
+  - role: kubernetes-apps/helm
+    when:
+      - helm_enabled
+    tags:
+      - helm
 
-- hosts: bastion[0]
-  gather_facts: False
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: bastion-ssh-config, tags: ["localhost", "bastion"] }
+  - role: kubernetes-apps/krew
+    when:
+      - krew_enabled
+    tags:
+      - krew
 
-- hosts: k8s_cluster
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  gather_facts: false
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: offline-pretask, when: is_this_offline }
+  - role: kubernetes-apps/registry
+    when:
+      - registry_enabled
+      - inventory_hostname == groups['kube_control_plane'][0]
+    tags:
+      - registry
 
-- hosts: k8s_cluster:etcd
-  strategy: linear
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  gather_facts: false
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: bootstrap-os, tags: bootstrap-os}
+  - role: kubernetes-apps/metrics_server
+    when:
+      - metrics_server_enabled
+      - inventory_hostname == groups['kube_control_plane'][0]
+    tags:
+      - metrics_server
 
-- name: Gather facts
-  tags: always
-  import_playbook: facts.yml
+  - role: kubernetes-apps/csi_driver/csi_crd
+    when:
+      - cinder_csi_enabled
+      - inventory_hostname == groups['kube_control_plane'][0]
+    tags:
+      - csi-driver
 
-- hosts: k8s_cluster:etcd
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: kubernetes/preinstall, tags: preinstall }
-    - { role: "container-engine", tags: "container-engine", when: deploy_container_engine|default(true) }
-    - { role: download, tags: download, when: "not skip_downloads" }
+  - role: kubernetes-apps/csi_driver/cinder
+    when:
+      - cinder_csi_enabled
+    tags:
+      - cinder-csi-driver
+      - csi-driver
 
-- hosts: etcd
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - role: etcd
-      tags: etcd
-      vars:
-        etcd_cluster_setup: true
-        etcd_events_cluster_setup: "{{ etcd_events_cluster_enabled }}"
-      when: not etcd_kubeadm_enabled| default(false)
+  - role: kubernetes-apps/csi_driver/aws_ebs
+    when:
+      - aws_ebs_csi_enabled
+    tags:
+      - aws-ebs-csi-driver
+      - csi-driver
 
-- hosts: k8s_cluster
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - role: etcd
-      tags: etcd
-      vars:
-        etcd_cluster_setup: false
-        etcd_events_cluster_setup: false
-      when: not etcd_kubeadm_enabled| default(false)
+  - role: kubernetes-apps/csi_driver/azuredisk
+    when:
+      - azure_csi_enabled
+    tags:
+      - azure-csi-driver
+      - csi-driver
 
-- hosts: k8s_cluster
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: kubernetes/node, tags: node }
+  - role: kubernetes-apps/csi_driver/gcp_pd
+    when:
+      - gcp_pd_csi_enabled
+    tags:
+      - gcp-pd-csi-driver
+      - csi-driver
 
-- hosts: kube_control_plane
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: kubernetes/control-plane, tags: master }
-    - { role: kubernetes/client, tags: client }
-    - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
+  - role: kubernetes-apps/csi_driver/vsphere
+    when:
+      - vsphere_csi_enabled
+    tags:
+      - vsphere-csi-driver
+      - csi-driver
 
-- hosts: k8s_cluster
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: kubernetes/kubeadm, tags: kubeadm}
-    - { role: network_plugin, tags: network }
-    - { role: kubernetes/node-label, tags: node-label }
+  - role: kubernetes-apps/persistent_volumes
+    when:
+      - persistent_volumes_enabled
+      - inventory_hostname == groups['kube_control_plane'][0]
+    tags:
+      - persistent_volumes
 
-- hosts: calico_rr
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: network_plugin/calico/rr, tags: ['network', 'calico_rr'] }
+  - role: kubernetes-apps/snapshots
+    when: inventory_hostname == groups['kube_control_plane'][0]
+    tags:
+      - snapshots
+      - csi-driver
 
-- hosts: kube_control_plane[0]
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: win_nodes/kubernetes_patch, tags: ["master", "win_nodes"] }
+  - role: kubernetes-apps/container_runtimes
+    when:
+      - inventory_hostname == groups['kube_control_plane'][0]
+    tags:
+      - container-runtimes
 
-- hosts: kube_control_plane
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: kubernetes-apps/external_cloud_controller, tags: external-cloud-controller }
-    - { role: kubernetes-apps/network_plugin, tags: network }
-    - { role: kubernetes-apps/policy_controller, tags: policy-controller }
-    - { role: kubernetes-apps/ingress_controller, tags: ingress-controller }
-    - { role: kubernetes-apps/external_provisioner, tags: external-provisioner }    
+  - role: kubernetes-apps/container_engine_accelerator
+    when: nvidia_accelerator_enabled
+    tags:
+      - container_engine_accelerator
 
-- hosts: kube_control_plane
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: kubernetes-apps, tags: apps }
+  - role: kubernetes-apps/cloud_controller/oci
+    when:
+      - cloud_provider is defined
+      - cloud_provider == "oci"
+      - inventory_hostname == groups['kube_control_plane'][0]
+    tags:
+      - oci
 
-- hosts: k8s_cluster
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_late: true }
+  - role: kubernetes-apps/metallb
+    when:
+      - metallb_enabled
+      - inventory_hostname == groups['kube_control_plane'][0]
+    tags:
+      - metallb

@@ -1,0 +1,75 @@
+---
+- name: HyperRegistry | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/hyperregistry"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: HyperRegistry | Get ingress IP
+  include_tasks: "ingress_ip.yml"
+  when: hyperregistry_ingress_nginx_ip | length == 0
+
+- name: HyperRegistry | Templates list
+  set_fact:
+    hyperregistry_templates:
+      - { name: 00-namespace, file: 00-namespace.yml, type: ns }
+
+- name: HyperRegistry | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/hyperregistry/{{ item.file }}"
+  with_items: "{{ hyperregistry_templates }}"
+  register: hyperregistry_manifests
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: HyperRegistry | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ hyperregistry_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/hyperregistry/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ hyperregistry_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: HyperRegistry | Add helm repo
+  vars:
+    helm_chart_url: "https://tmax-cloud.github.io/HyperRegistry-Chart/"
+  kubernetes.core.helm_repository:
+    name: hyperregistry
+    repo_url: "{{ helm_chart_url }}"
+  delegate_to: localhost
+  connection: local
+  become: no
+
+- name: HyperRegistry | Create values.yml
+  template: { src: "{{ item }}.j2", dest: "{{ item }}" }
+  with_items: ["values.yml"]
+  delegate_to: localhost
+  connection: local
+  become: no
+
+- name: HyperRegistry | Install HyperRegistry Chart
+  kubernetes.core.helm:
+    name: hyperregistry
+    namespace: "{{ hyperregistry_namespace }}"
+    chart_ref: hyperregistry/HyperRegistry
+    values_files: values.yml
+  delegate_to: localhost
+  connection: local
+  become: no
+
+- name: HyperRegistry | Gather information about HyperRegistry
+  kubernetes.core.helm_info:
+    name: hyperregistry
+    release_namespace: "{{ hyperregistry_namespace }}"
+  delegate_to: localhost
+  connection: local
+  become: no

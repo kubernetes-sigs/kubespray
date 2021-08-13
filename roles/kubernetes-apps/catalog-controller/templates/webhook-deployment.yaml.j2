@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-catalog-webhook
+  namespace: "catalog"
+  labels:
+    app: catalog-catalog-webhook
+    chart: "catalog-0.3.0"
+    release: "catalog"
+    heritage: "Tiller"
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  minReadySeconds: 1
+  selector:
+    matchLabels:
+      app: catalog-catalog-webhook
+  template:
+    metadata:
+      labels:
+        app: catalog-catalog-webhook
+        chart: "catalog-0.3.0"
+        release: "catalog"
+        releaseRevision: "1"
+        heritage: "Tiller"
+    spec:
+      serviceAccountName: "service-catalog-webhook"
+      imagePullSecrets: []
+      containers:
+      - name: svr
+        image: {{ catalogController_imageRegistry }}/kubernetes-service-catalog/service-catalog:v{{ catalogController_catalogVersion }}
+        imagePullPolicy: Always
+        resources:
+         requests:
+           cpu: 30m
+           memory: 20Mi
+         limits:
+           cpu: 50m
+           memory: 30Mi
+        args:
+        - webhook
+        - --secure-port
+        - "8443"
+        - --healthz-server-bind-port
+        - "8081"
+        - -v
+        - "10"
+        - --feature-gates
+        - OriginatingIdentity=true
+        - --feature-gates
+        - ServicePlanDefaults=false
+        ports:
+        - containerPort: 8443
+        volumeMounts:
+        - name: service-catalog-webhook-cert
+          mountPath: /var/run/service-catalog-webhook
+          readOnly: true
+        readinessProbe:
+          httpGet:
+            port: 8081
+            path: /healthz/ready
+            scheme: HTTP
+          failureThreshold: 1
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            port: 8081
+            path: /healthz
+            scheme: HTTP
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+      volumes:
+      - name: service-catalog-webhook-cert
+        secret:
+          secretName: catalog-catalog-webhook-cert
+          items:
+          - key: tls.crt
+            path: tls.crt
+          - key: tls.key
+            path: tls.key

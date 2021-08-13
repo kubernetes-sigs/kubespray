@@ -1,0 +1,225 @@
+### Controller-Manager ###
+
+# controller-manager role defines what access the service-catalog
+# controller-manager needs to manage the resources of the
+# service-catalog
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: "servicecatalog.k8s.io:controller-manager"
+rules:
+    - apiGroups: [""]
+      resources: ["events"]
+      verbs:     ["create","patch","update"]
+    # TODO: do not grant global access, limit to particular secrets referenced from servicebindings
+    - apiGroups: [""]
+      resources: ["secrets"]
+      verbs:     ["get","create","update","delete", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs:     ["get","list","update", "patch", "watch", "delete", "initialize"]
+    - apiGroups: [""]
+      resources: ["namespaces"]
+      verbs:     ["get","list","watch"]
+    - apiGroups: ["apiextensions.k8s.io"]
+      resources: ["customresourcedefinitions"]
+      verbs:     ["list"]
+    # access to our service-catalog types
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["clusterserviceclasses"]
+      verbs:     ["get","list","watch","create","patch","update","delete"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["clusterserviceplans"]
+      verbs:     ["get","list","watch","create","patch","update","delete"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["clusterservicebrokers"]
+      verbs:     ["get","list","watch", "update"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["serviceinstances"]
+      verbs:     ["get","list","watch", "update"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["servicebindings"]
+      verbs:     ["get","list","watch", "update", "delete"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["clusterservicebrokers/status","clusterserviceclasses/status","clusterserviceplans/status","serviceinstances/status","servicebindings/status"]
+      verbs:     ["update"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["serviceclasses"]
+      verbs:     ["get","list","watch","create","patch","update","delete"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["serviceplans"]
+      verbs:     ["get","list","watch","create","patch","update","delete"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["servicebrokers"]
+      verbs:     ["get","list","watch", "update"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["servicebrokers/status","serviceclasses/status","serviceplans/status"]
+      verbs:     ["update"]
+
+---
+
+# give the controller-manager service account access to whats defined in its role.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+    name: "servicecatalog.k8s.io:controller-manager"
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: "servicecatalog.k8s.io:controller-manager"
+subjects:
+    - apiGroup: ""
+      kind: ServiceAccount
+      name: "service-catalog-controller-manager"
+      namespace: "catalog"
+
+---
+
+# This gives create/update access to configmaps
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+    name: "servicecatalog.k8s.io:cluster-info-configmap"
+    namespace: "catalog"
+rules:
+    - apiGroups:     [""]
+      resources:     ["configmaps"]
+      resourceNames: ["cluster-info"]
+      verbs:         ["get","create","list","watch","update"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+    name: service-catalog-controller-manager-cluster-info
+    namespace: "catalog"
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: "servicecatalog.k8s.io:cluster-info-configmap"
+subjects:
+    - apiGroup: ""
+      kind: ServiceAccount
+      name: "service-catalog-controller-manager"
+      namespace: "catalog"
+
+---
+
+# This gives create/update access to configmaps in deployment namespace for leader election
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+    name: "servicecatalog.k8s.io:leader-locking-controller-manager"
+    namespace: "catalog"
+rules:
+    - apiGroups: [""]
+      resources: ["configmaps"]
+      verbs:     ["create"]
+    - apiGroups:     [""]
+      resources:     ["configmaps"]
+      resourceNames: ["service-catalog-controller-manager"]
+      verbs:         ["get","update"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+    name: service-catalog-controller-manager-leader-election
+    namespace: "catalog"
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: "servicecatalog.k8s.io:leader-locking-controller-manager"
+subjects:
+    - apiGroup: ""
+      kind: ServiceAccount
+      name: "service-catalog-controller-manager"
+      namespace: "catalog"
+
+---
+
+# This allows anyone to get the Service Catalog readiness probe
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: "servicecatalog.k8s.io:service-catalog-readiness"
+rules:
+    - nonResourceURLs:
+          - /healthz/ready
+      verbs:
+          - get
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+    name: "servicecatalog.k8s.io:service-catalog-readiness"
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: "servicecatalog.k8s.io:service-catalog-readiness"
+subjects:
+    - apiGroup: rbac.authorization.k8s.io
+      kind: Group
+      name: system:unauthenticated
+    - apiGroup: rbac.authorization.k8s.io
+      kind: Group
+      name: system:authenticated
+
+---
+
+### Webhook ###
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: "servicecatalog.k8s.io:webhook"
+rules:
+    # access to our service-catalog types
+    - apiGroups: ["apiextensions.k8s.io"]
+      resources: ["customresourcedefinitions"]
+      verbs:     ["list"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["clusterserviceclasses"]
+      verbs:     ["get","list","watch"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["clusterserviceplans"]
+      verbs:     ["get","list","watch"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["clusterservicebrokers"]
+      verbs:     ["get","list","watch"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["serviceinstances","servicebindings"]
+      verbs:     ["get","list","watch"]
+    - apiGroups: ["authorization.k8s.io"]
+      resources: ["subjectaccessreviews"]
+      verbs:     ["get","list","create"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["serviceclasses"]
+      verbs:     ["get","list","watch"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["serviceplans"]
+      verbs:     ["get","list","watch"]
+    - apiGroups: ["servicecatalog.k8s.io"]
+      resources: ["servicebrokers"]
+      verbs:     ["get","list","watch"]
+
+---
+
+# give the webhook service account access to whats defined in its role.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+    name: "servicecatalog.k8s.io:webhook"
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: "servicecatalog.k8s.io:webhook"
+subjects:
+    - apiGroup: ""
+      kind: ServiceAccount
+      name: "service-catalog-webhook"
+      namespace: "catalog"

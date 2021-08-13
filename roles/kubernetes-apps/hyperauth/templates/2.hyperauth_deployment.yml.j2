@@ -1,0 +1,103 @@
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyperauth
+  namespace: hyperauth
+  labels:
+    app: hyperauth
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hyperauth
+  template:
+    metadata:
+      labels:
+        app: hyperauth
+    spec:
+      serviceAccount: hyperauth-admin
+      volumes:
+      - name: ssl
+        secret:
+          secretName: hyperauth-https-secret
+      - name: kafka
+        secret:
+          secretName: hyperauth-kafka-jks
+      - name: log
+        persistentVolumeClaim:
+          claimName: hyperauth-log-pvc          
+      containers:
+      - name: hyperauth
+{% if not is_this_offline %}
+        image: tmaxcloudck/hyperauth:{{ hyperauth_version }}
+{% else %}
+        image: {{ registry_host }}/tmaxcloudck/hyperauth:{{ hyperauth_version }}
+{% endif %}
+        args: ["-c standalone-ha.xml", "-Dkeycloak.profile.feature.docker=enabled -b 0.0.0.0"]                
+        env:
+        - name: KEYCLOAK_USER
+          value: "admin"
+        - name: KEYCLOAK_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: HYPERAUTH_PASSWORD
+        - name: CERTS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: CERTS_PASSWORD
+        - name: PROXY_ADDRESS_FORWARDING
+          value: "true"
+        - name: DB_VENDOR     # postgres / tibero
+          value: "postgres"     
+        - name: DB_PORT       # postgres : 31226, tibero : 32571
+          value: "5432"     
+        - name: DB_ADDR
+          value: {{ db_addr.stdout }}
+        - name: DB_USER
+          value: "keycloak"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: DB_PASSWORD 
+        - name: KEYCLOAK_WELCOME_THEME
+          value: tmax
+        - name: TZ
+          value: Asia/Seoul
+        - name: NAMESPACE
+          value: hyperauth
+        - name: JGROUPS_DISCOVERY_PROTOCOL
+          value: "kubernetes.KUBE_PING"
+        - name: JGROUPS_DISCOVERY_PROPERTIES
+          value: "namespace=hyperauth"
+        - name: CACHE_OWNERS_COUNT
+          value: "2"
+        - name: CACHE_OWNERS_AUTH_SESSIONS_COUNT
+          value: "2"  
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: https
+          containerPort: 8443
+        volumeMounts:
+        - name: ssl
+          mountPath: /etc/x509/https
+        - name: kafka
+          mountPath: /etc/x509/kafka  
+        - name: log
+          mountPath: /opt/jboss/keycloak/standalone/log/hyperauth
+        readinessProbe:
+          httpGet:
+            path: /auth/realms/master
+            port: 8080
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "1"
+            memory: "1Gi"

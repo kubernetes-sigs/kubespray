@@ -1,0 +1,756 @@
+expose:
+  # Set the way how to expose the service. Set the type as "ingress",
+  # "clusterIP", "nodePort" or "loadBalancer" and fill the information
+  # in the corresponding section
+  type: ingress
+  tls:
+    # Enable the tls or not.
+    # Delete the "ssl-redirect" annotations in "expose.ingress.annotations" when TLS is disabled and "expose.type" is "ingress"
+    # Note: if the "expose.type" is "ingress" and the tls
+    # is disabled, the port must be included in the command when pull/push
+    # images. Refer to https://github.com/goharbor/harbor/issues/5291
+    # for the detail.
+    enabled: true
+    # The source of the tls certificate. Set it as "auto", "secret"
+    # or "none" and fill the information in the corresponding section
+    # 1) auto: generate the tls certificate automatically
+    # 2) secret: read the tls certificate from the specified secret.
+    # The tls certificate can be generated manually or by cert manager
+    # 3) none: configure no tls certificate for the ingress. If the default
+    # tls certificate is configured in the ingress controller, choose this option
+    certSource: auto
+    auto:
+      # The common name used to generate the certificate, it's necessary
+      # when the type isn't "ingress"
+      commonName: ""
+    secret:
+      # The name of secret which contains keys named:
+      # "tls.crt" - the certificate
+      # "tls.key" - the private key
+      secretName: ""
+      # The name of secret which contains keys named:
+      # "tls.crt" - the certificate
+      # "tls.key" - the private key
+      # Only needed when the "expose.type" is "ingress".
+      notarySecretName: ""
+  ingress:
+    hosts:
+      core: core.hyperregistry.{{ hyperregistry_ingress_nginx_ip }}.nip.io
+      notary: notary.hyperregistry.{{ hyperregistry_ingress_nginx_ip }}.nip.io
+    # set to the type of ingress controller if it has specific requirements.
+    # leave as `default` for most ingress controllers.
+    # set to `gce` if using the GCE ingress controller
+    # set to `ncp` if using the NCP (NSX-T Container Plugin) ingress controller
+    controller: default
+    annotations:
+      # note different ingress controllers may require a different ssl-redirect annotation
+      # for Envoy, use ingress.kubernetes.io/force-ssl-redirect: "true" and remove the nginx lines below
+      ingress.kubernetes.io/ssl-redirect: "true"
+      ingress.kubernetes.io/proxy-body-size: "0"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      kubernetes.io/ingress.class: {{ hyperregistry_ingress_nginx_class }}
+  clusterIP:
+    # The name of ClusterIP service
+    name: harbor
+    ports:
+      # The service port Harbor listens on when serving with HTTP
+      httpPort: 80
+      # The service port Harbor listens on when serving with HTTPS
+      httpsPort: 443
+      # The service port Notary listens on. Only needed when notary.enabled
+      # is set to true
+      notaryPort: 4443
+  nodePort:
+    # The name of NodePort service
+    name: harbor
+    ports:
+      http:
+        # The service port Harbor listens on when serving with HTTP
+        port: 80
+        # The node port Harbor listens on when serving with HTTP
+        nodePort: 30002
+      https:
+        # The service port Harbor listens on when serving with HTTPS
+        port: 443
+        # The node port Harbor listens on when serving with HTTPS
+        nodePort: 30003
+      # Only needed when notary.enabled is set to true
+      notary:
+        # The service port Notary listens on
+        port: 4443
+        # The node port Notary listens on
+        nodePort: 30004
+  loadBalancer:
+    # The name of LoadBalancer service
+    name: harbor
+    # Set the IP if the LoadBalancer supports assigning IP
+    IP: ""
+    ports:
+      # The service port Harbor listens on when serving with HTTP
+      httpPort: 80
+      # The service port Harbor listens on when serving with HTTPS
+      httpsPort: 443
+      # The service port Notary listens on. Only needed when notary.enabled
+      # is set to true
+      notaryPort: 4443
+    annotations: {}
+    sourceRanges: []
+
+# The external URL for Harbor core service. It is used to
+# 1) populate the docker/helm commands showed on portal
+# 2) populate the token service URL returned to docker/notary client
+#
+# Format: protocol://domain[:port]. Usually:
+# 1) if "expose.type" is "ingress", the "domain" should be
+# the value of "expose.ingress.hosts.core"
+# 2) if "expose.type" is "clusterIP", the "domain" should be
+# the value of "expose.clusterIP.name"
+# 3) if "expose.type" is "nodePort", the "domain" should be
+# the IP address of k8s node
+#
+# If Harbor is deployed behind the proxy, set it as the URL of proxy
+externalURL: https://core.hyperregistry.{{ hyperregistry_ingress_nginx_ip }}.nip.io
+
+# The internal TLS used for harbor components secure communicating. In order to enable https
+# in each components tls cert files need to provided in advance.
+internalTLS:
+  # If internal TLS enabled
+  enabled: false
+  # There are three ways to provide tls
+  # 1) "auto" will generate cert automatically
+  # 2) "manual" need provide cert file manually in following value
+  # 3) "secret" internal certificates from secret
+  certSource: "auto"
+  # The content of trust ca, only available when `certSource` is "manual"
+  trustCa: ""
+  # core related cert configuration
+  core:
+    # secret name for core's tls certs
+    secretName: ""
+    # Content of core's TLS cert file, only available when `certSource` is "manual"
+    crt: ""
+    # Content of core's TLS key file, only available when `certSource` is "manual"
+    key: ""
+  # jobservice related cert configuration
+  jobservice:
+    # secret name for jobservice's tls certs
+    secretName: ""
+    # Content of jobservice's TLS key file, only available when `certSource` is "manual"
+    crt: ""
+    # Content of jobservice's TLS key file, only available when `certSource` is "manual"
+    key: ""
+  # registry related cert configuration
+  registry:
+    # secret name for registry's tls certs
+    secretName: ""
+    # Content of registry's TLS key file, only available when `certSource` is "manual"
+    crt: ""
+    # Content of registry's TLS key file, only available when `certSource` is "manual"
+    key: ""
+  # portal related cert configuration
+  portal:
+    # secret name for portal's tls certs
+    secretName: ""
+    # Content of portal's TLS key file, only available when `certSource` is "manual"
+    crt: ""
+    # Content of portal's TLS key file, only available when `certSource` is "manual"
+    key: ""
+  # chartmuseum related cert configuration
+  chartmuseum:
+    # secret name for chartmuseum's tls certs
+    secretName: ""
+    # Content of chartmuseum's TLS key file, only available when `certSource` is "manual"
+    crt: ""
+    # Content of chartmuseum's TLS key file, only available when `certSource` is "manual"
+    key: ""
+  # trivy related cert configuration
+  trivy:
+    # secret name for trivy's tls certs
+    secretName: ""
+    # Content of trivy's TLS key file, only available when `certSource` is "manual"
+    crt: ""
+    # Content of trivy's TLS key file, only available when `certSource` is "manual"
+    key: ""
+
+# The persistence is enabled by default and a default StorageClass
+# is needed in the k8s cluster to provision volumes dynamicly.
+# Specify another StorageClass in the "storageClass" or set "existingClaim"
+# if you have already existing persistent volumes to use
+#
+# For storing images and charts, you can also use "azure", "gcs", "s3",
+# "swift" or "oss". Set it in the "imageChartStorage" section
+persistence:
+  enabled: true
+  # Setting it to "keep" to avoid removing PVCs during a helm delete
+  # operation. Leaving it empty will delete PVCs after the chart deleted
+  # (this does not apply for PVCs that are created for internal database
+  # and redis components, i.e. they are never deleted automatically)
+  resourcePolicy: "keep"
+  persistentVolumeClaim:
+    registry:
+      # Use the existing PVC which must be created manually before bound,
+      # and specify the "subPath" if the PVC is shared with other components
+      existingClaim: ""
+      # Specify the "storageClass" used to provision the volume. Or the default
+      # StorageClass will be used(the default).
+      # Set it to "-" to disable dynamic provisioning
+      storageClass: {{ hyperregistry_registry_storage_class }}
+      subPath: ""
+      accessMode: ReadWriteOnce
+      size: {{ hyperregistry_registry_disk_size }}
+    chartmuseum:
+      existingClaim: ""
+      storageClass: {{ hyperregistry_chartmuseum_storage_class }}
+      subPath: ""
+      accessMode: ReadWriteOnce
+      size: {{ hyperregistry_chartmuseum_disk_size }}
+    jobservice:
+      existingClaim: ""
+      storageClass: {{ hyperregistry_jobservice_storage_class }}
+      subPath: ""
+      accessMode: ReadWriteOnce
+      size: {{ hyperregistry_jobservice_disk_size }}
+    # If external database is used, the following settings for database will
+    # be ignored
+    database:
+      existingClaim: ""
+      storageClass: {{ hyperregistry_database_storage_class }}
+      subPath: ""
+      accessMode: ReadWriteOnce
+      size: {{ hyperregistry_database_disk_size }}
+    # If external Redis is used, the following settings for Redis will
+    # be ignored
+    redis:
+      existingClaim: ""
+      storageClass: {{ hyperregistry_redis_storage_class }}
+      subPath: ""
+      accessMode: ReadWriteOnce
+      size: {{ hyperregistry_redis_disk_size }}
+    trivy:
+      existingClaim: ""
+      storageClass: {{ hyperregistry_trivy_storage_class }}
+      subPath: ""
+      accessMode: ReadWriteOnce
+      size: {{ hyperregistry_trivy_disk_size }}
+  # Define which storage backend is used for registry and chartmuseum to store
+  # images and charts. Refer to
+  # https://github.com/docker/distribution/blob/master/docs/configuration.md#storage
+  # for the detail.
+  imageChartStorage:
+    # Specify whether to disable `redirect` for images and chart storage, for
+    # backends which not supported it (such as using minio for `s3` storage type), please disable
+    # it. To disable redirects, simply set `disableredirect` to `true` instead.
+    # Refer to
+    # https://github.com/docker/distribution/blob/master/docs/configuration.md#redirect
+    # for the detail.
+    disableredirect: false
+    # Specify the "caBundleSecretName" if the storage service uses a self-signed certificate.
+    # The secret must contain keys named "ca.crt" which will be injected into the trust store
+    # of registry's and chartmuseum's containers.
+    # caBundleSecretName:
+
+    # Specify the type of storage: "filesystem", "azure", "gcs", "s3", "swift",
+    # "oss" and fill the information needed in the corresponding section. The type
+    # must be "filesystem" if you want to use persistent volumes for registry
+    # and chartmuseum
+    type: filesystem
+    filesystem:
+      rootdirectory: /storage
+      #maxthreads: 100
+    azure:
+      accountname: accountname
+      accountkey: base64encodedaccountkey
+      container: containername
+      #realm: core.windows.net
+    gcs:
+      bucket: bucketname
+      # The base64 encoded json file which contains the key
+      encodedkey: base64-encoded-json-key-file
+      #rootdirectory: /gcs/object/name/prefix
+      #chunksize: "5242880"
+    s3:
+      region: us-west-1
+      bucket: bucketname
+      #accesskey: awsaccesskey
+      #secretkey: awssecretkey
+      #regionendpoint: http://myobjects.local
+      #encrypt: false
+      #keyid: mykeyid
+      #secure: true
+      #skipverify: false
+      #v4auth: true
+      #chunksize: "5242880"
+      #rootdirectory: /s3/object/name/prefix
+      #storageclass: STANDARD
+      #multipartcopychunksize: "33554432"
+      #multipartcopymaxconcurrency: 100
+      #multipartcopythresholdsize: "33554432"
+    swift:
+      authurl: https://storage.myprovider.com/v3/auth
+      username: username
+      password: password
+      container: containername
+      #region: fr
+      #tenant: tenantname
+      #tenantid: tenantid
+      #domain: domainname
+      #domainid: domainid
+      #trustid: trustid
+      #insecureskipverify: false
+      #chunksize: 5M
+      #prefix:
+      #secretkey: secretkey
+      #accesskey: accesskey
+      #authversion: 3
+      #endpointtype: public
+      #tempurlcontainerkey: false
+      #tempurlmethods:
+    oss:
+      accesskeyid: accesskeyid
+      accesskeysecret: accesskeysecret
+      region: regionname
+      bucket: bucketname
+      #endpoint: endpoint
+      #internal: false
+      #encrypt: false
+      #secure: true
+      #chunksize: 10M
+      #rootdirectory: rootdirectory
+
+imagePullPolicy: IfNotPresent
+
+# Use this set to assign a list of default pullSecrets
+imagePullSecrets:
+#  - name: docker-registry-secret
+#  - name: internal-registry-secret
+
+# The update strategy for deployments with persistent volumes(jobservice, registry
+# and chartmuseum): "RollingUpdate" or "Recreate"
+# Set it as "Recreate" when "RWM" for volumes isn't supported
+updateStrategy:
+  type: RollingUpdate
+
+# debug, info, warning, error or fatal
+logLevel: info
+
+# The initial password of Harbor admin. Change it from portal after launching Harbor
+harborAdminPassword: {{ hyperregistry_admin_password }}
+
+# The name of the secret which contains key named "ca.crt". Setting this enables the
+# download link on portal to download the certificate of CA when the certificate isn't
+# generated automatically
+caSecretName: ""
+
+# The secret key used for encryption. Must be a string of 16 chars.
+secretKey: "not-a-secure-key"
+
+# The proxy settings for updating trivy vulnerabilities from the Internet and replicating
+# artifacts from/to the registries that cannot be reached directly
+proxy:
+  httpProxy:
+  httpsProxy:
+  noProxy: 127.0.0.1,localhost,.local,.internal
+  components:
+    - core
+    - jobservice
+    - trivy
+
+# The custom ca bundle secret, the secret must contain key named "ca.crt"
+# which will be injected into the trust store for chartmuseum, core, jobservice, registry, trivy components
+# caBundleSecretName: ""
+
+## UAA Authentication Options
+# If you're using UAA for authentication behind a self-signed
+# certificate you will need to provide the CA Cert.
+# Set uaaSecretName below to provide a pre-created secret that
+# contains a base64 encoded CA Certificate named `ca.crt`.
+# uaaSecretName:
+
+# If expose the service via "ingress", the Nginx will not be used
+nginx:
+  image:
+    repository: {{ hyperregistry_nginx_photon_image_repo }}
+    tag: v2.2.2
+  # set the service account to be used, default if left empty
+  serviceAccountName: ""
+  replicas: {{ hyperregistry_nginx_replicas }}
+  # resources:
+  #  requests:
+  #    memory: 256Mi
+  #    cpu: 100m
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  ## Additional deployment annotations
+  podAnnotations: {}
+
+portal:
+  image:
+    repository: {{ hyperregistry_portal_image_repo }}
+    tag: v2.2.2
+  # set the service account to be used, default if left empty
+  serviceAccountName: ""
+  replicas: {{ hyperregistry_portal_replicas }}
+  # resources:
+  #  requests:
+  #    memory: 256Mi
+  #    cpu: 100m
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  ## Additional deployment annotations
+  podAnnotations: {}
+
+core:
+  image:
+    repository: {{ hyperregistry_core_image_repo }}
+    tag: v2.2.2
+  # set the service account to be used, default if left empty
+  serviceAccountName: ""
+  replicas: {{ hyperregistry_core_replicas }}
+  ## Startup probe values
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+  # resources:
+  #  requests:
+  #    memory: 256Mi
+  #    cpu: 100m
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  ## Additional deployment annotations
+  podAnnotations: {}
+  # Secret is used when core server communicates with other components.
+  # If a secret key is not specified, Helm will generate one.
+  # Must be a string of 16 chars.
+  secret: ""
+  # Fill the name of a kubernetes secret if you want to use your own
+  # TLS certificate and private key for token encryption/decryption.
+  # The secret must contain keys named:
+  # "tls.crt" - the certificate
+  # "tls.key" - the private key
+  # The default key pair will be used if it isn't set
+  secretName: ""
+  # The XSRF key. Will be generated automatically if it isn't specified
+  xsrfKey: ""
+
+jobservice:
+  image:
+    repository: {{ hyperregistry_jobservice_image_repo }}
+    tag: v2.2.2
+  replicas:  {{ hyperregistry_jobservice_replicas }}
+  # set the service account to be used, default if left empty
+  serviceAccountName: ""
+  maxJobWorkers: 10
+  # The logger for jobs: "file", "database" or "stdout"
+  jobLoggers:
+    - file
+    # - database
+    # - stdout
+
+  # resources:
+  #   requests:
+  #     memory: 256Mi
+  #     cpu: 100m
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  ## Additional deployment annotations
+  podAnnotations: {}
+  # Secret is used when job service communicates with other components.
+  # If a secret key is not specified, Helm will generate one.
+  # Must be a string of 16 chars.
+  secret: ""
+
+registry:
+  # set the service account to be used, default if left empty
+  serviceAccountName: ""
+  registry:
+    image:
+      repository: {{ hyperregistry_registry_image_repo }}
+      tag: v2.2.2
+    # resources:
+    #  requests:
+    #    memory: 256Mi
+    #    cpu: 100m
+  controller:
+    image:
+      repository: {{ hyperregistry_registryctl_image_repo }}
+      tag: v2.2.2
+
+    # resources:
+    #  requests:
+    #    memory: 256Mi
+    #    cpu: 100m
+  replicas: {{ hyperregistry_registry_replicas }}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  ## Additional deployment annotations
+  podAnnotations: {}
+  # Secret is used to secure the upload state from client
+  # and registry storage backend.
+  # See: https://github.com/docker/distribution/blob/master/docs/configuration.md#http
+  # If a secret key is not specified, Helm will generate one.
+  # Must be a string of 16 chars.
+  secret: ""
+  # If true, the registry returns relative URLs in Location headers. The client is responsible for resolving the correct URL.
+  relativeurls: false
+  credentials:
+    username: "harbor_registry_user"
+    password: "harbor_registry_password"
+    # If you update the username or password of registry, make sure use cli tool htpasswd to generate the bcrypt hash
+    # e.g. "htpasswd -nbBC10 $username $password"
+    htpasswd: "harbor_registry_user:$2y$10$9L4Tc0DJbFFMB6RdSCunrOpTHdwhid4ktBJmLD00bYgqkkGOvll3m"
+
+  middleware:
+    enabled: false
+    type: cloudFront
+    cloudFront:
+      baseurl: example.cloudfront.net
+      keypairid: KEYPAIRID
+      duration: 3000s
+      ipfilteredby: none
+      # The secret key that should be present is CLOUDFRONT_KEY_DATA, which should be the encoded private key
+      # that allows access to CloudFront
+      privateKeySecret: "my-secret"
+
+  notifications:
+    enabled: true
+    endpoints:
+      - name: kraken
+        disabled: false
+        url: http://proxy.kraken.domain/registry/notification
+        timeout: 3000ms
+        threshold: 5
+        backoff: 1s
+
+chartmuseum:
+  enabled: true
+  # set the service account to be used, default if left empty
+  serviceAccountName: ""
+  # Harbor defaults ChartMuseum to returning relative urls, if you want using absolute url you should enable it by change the following value to 'true'
+  absoluteUrl: false
+  image:
+    repository: {{ hyperregistry_chartmuseum_image_repo }}
+    tag: v2.2.2
+  replicas: {{ hyperregistry_chartmuseum_replicas }}
+  # resources:
+  #  requests:
+  #    memory: 256Mi
+  #    cpu: 100m
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  ## Additional deployment annotations
+  podAnnotations: {}
+
+trivy:
+  # enabled the flag to enable Trivy scanner
+  enabled: true
+  image:
+    # repository the repository for Trivy adapter image
+    repository: {{ hyperregistry_trivy_image_repo }}
+    # tag the tag for Trivy adapter image
+    tag: v2.2.2
+  # set the service account to be used, default if left empty
+  serviceAccountName: ""
+  # replicas the number of Pod replicas
+  replicas: {{ hyperregistry_trivy_replicas }}
+  # debugMode the flag to enable Trivy debug mode with more verbose scanning log
+  debugMode: false
+  # vulnType a comma-separated list of vulnerability types. Possible values are `os` and `library`.
+  vulnType: "os,library"
+  # severity a comma-separated list of severities to be checked
+  severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+  # ignoreUnfixed the flag to display only fixed vulnerabilities
+  ignoreUnfixed: false
+  # insecure the flag to skip verifying registry certificate
+  insecure: false
+  # gitHubToken the GitHub access token to download Trivy DB
+  #
+  # Trivy DB contains vulnerability information from NVD, Red Hat, and many other upstream vulnerability databases.
+  # It is downloaded by Trivy from the GitHub release page https://github.com/aquasecurity/trivy-db/releases and cached
+  # in the local file system (`/home/scanner/.cache/trivy/db/trivy.db`). In addition, the database contains the update
+  # timestamp so Trivy can detect whether it should download a newer version from the Internet or use the cached one.
+  # Currently, the database is updated every 12 hours and published as a new release to GitHub.
+  #
+  # Anonymous downloads from GitHub are subject to the limit of 60 requests per hour. Normally such rate limit is enough
+  # for production operations. If, for any reason, it's not enough, you could increase the rate limit to 5000
+  # requests per hour by specifying the GitHub access token. For more details on GitHub rate limiting please consult
+  # https://developer.github.com/v3/#rate-limiting
+  #
+  # You can create a GitHub token by following the instructions in
+  # https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line
+  gitHubToken: ""
+  # skipUpdate the flag to disable Trivy DB downloads from GitHub
+  #
+  # You might want to set the value of this flag to `true` in test or CI/CD environments to avoid GitHub rate limiting issues.
+  # If the value is set to `true` you have to manually download the `trivy.db` file and mount it in the
+  # `/home/scanner/.cache/trivy/db/trivy.db` path.
+  skipUpdate: false
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  ## Additional deployment annotations
+  podAnnotations: {}
+
+notary:
+  enabled: true
+  server:
+    # set the service account to be used, default if left empty
+    serviceAccountName: ""
+    image:
+      repository: {{ hyperregistry_notary_server_image_repo }}
+      tag: v2.2.2
+    replicas: {{ hyperregistry_notary_replicas }}
+    # resources:
+    #  requests:
+    #    memory: 256Mi
+    #    cpu: 100m
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    ## Additional deployment annotations
+    podAnnotations: {}
+  signer:
+    # set the service account to be used, default if left empty
+    serviceAccountName: ""
+    image:
+      repository: {{ hyperregistry_notary_signer_image_repo }}
+      tag: v2.2.2
+    replicas: 1
+    # resources:
+    #  requests:
+    #    memory: 256Mi
+    #    cpu: 100m
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    ## Additional deployment annotations
+    podAnnotations: {}
+  # Fill the name of a kubernetes secret if you want to use your own
+  # TLS certificate authority, certificate and private key for notary
+  # communications.
+  # The secret must contain keys named ca.crt, tls.crt and tls.key that
+  # contain the CA, certificate and private key.
+  # They will be generated if not set.
+  secretName: ""
+
+database:
+  # if external database is used, set "type" to "external"
+  # and fill the connection informations in "external" section
+  type: internal
+  internal:
+    # set the service account to be used, default if left empty
+    serviceAccountName: ""
+    image:
+      repository: {{ hyperregistry_db_image_repo }}
+      tag: v2.2.2
+    # The initial superuser password for internal database
+    password: "changeit"
+    # resources:
+    #  requests:
+    #    memory: 256Mi
+    #    cpu: 100m
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  external:
+    host: "192.168.0.1"
+    port: "5432"
+    username: "user"
+    password: "password"
+    coreDatabase: "registry"
+    notaryServerDatabase: "notary_server"
+    notarySignerDatabase: "notary_signer"
+    # "disable" - No SSL
+    # "require" - Always SSL (skip verification)
+    # "verify-ca" - Always SSL (verify that the certificate presented by the
+    # server was signed by a trusted CA)
+    # "verify-full" - Always SSL (verify that the certification presented by the
+    # server was signed by a trusted CA and the server host name matches the one
+    # in the certificate)
+    sslmode: "disable"
+  # The maximum number of connections in the idle connection pool.
+  # If it <=0, no idle connections are retained.
+  maxIdleConns: 50
+  # The maximum number of open connections to the database.
+  # If it <= 0, then there is no limit on the number of open connections.
+  # Note: the default number of connections is 1024 for postgre of harbor.
+  maxOpenConns: 1000
+  ## Additional deployment annotations
+  podAnnotations: {}
+
+redis:
+  # if external Redis is used, set "type" to "external"
+  # and fill the connection informations in "external" section
+  type: internal
+  internal:
+    # set the service account to be used, default if left empty
+    serviceAccountName: ""
+    image:
+      repository: {{ hyperregistry_redis_image_repo }}
+      tag: v2.2.2
+    # resources:
+    #  requests:
+    #    memory: 256Mi
+    #    cpu: 100m
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  external:
+    # support redis, redis+sentinel
+    # addr for redis: <host_redis>:<port_redis>
+    # addr for redis+sentinel: <host_sentinel1>:<port_sentinel1>,<host_sentinel2>:<port_sentinel2>,<host_sentinel3>:<port_sentinel3>
+    addr: "192.168.0.2:6379"
+    # The name of the set of Redis instances to monitor, it must be set to support redis+sentinel
+    sentinelMasterSet: ""
+    # The "coreDatabaseIndex" must be "0" as the library Harbor
+    # used doesn't support configuring it
+    coreDatabaseIndex: "0"
+    jobserviceDatabaseIndex: "1"
+    registryDatabaseIndex: "2"
+    chartmuseumDatabaseIndex: "3"
+    trivyAdapterIndex: "5"
+    password: ""
+  ## Additional deployment annotations
+  podAnnotations: {}
+
+exporter:
+    replicas: 1
+  # resources:
+  #  requests:
+  #    memory: 256Mi
+  #    cpu: 100m
+    podAnnotations: {}
+    serviceAccountName: ""
+    image:
+      repository: {{ hyperregistry_exporter_image_repo }}
+      tag: v2.2.2
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    cacheDuration: 30
+    cacheCleanInterval: 14400
+
+metrics:
+  enabled: false
+  core:
+    path: /metrics
+    port: 8001
+  registry:
+    path: /metrics
+    port: 8001
+  exporter:
+    path: /metrics
+    port: 8001

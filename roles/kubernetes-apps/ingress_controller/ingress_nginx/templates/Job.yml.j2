@@ -1,35 +1,39 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ ingress_nginx_name }}-admission-create
+  name: ingress-nginx-system-admission-create
   annotations:
     helm.sh/hook: pre-install,pre-upgrade
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
   labels:
-    app.kubernetes.io/name: {{ ingress_nginx_name }}
-    app.kubernetes.io/instance: {{ ingress_nginx_name }}
+    app.kubernetes.io/name: ingress-nginx-system
+    app.kubernetes.io/instance: ingress-nginx-system
     app.kubernetes.io/component: admission-webhook
-  namespace: {{ ingress_nginx_name }}
+  namespace: ingress-nginx-system
 spec:
   template:
     metadata:
-      name: {{ ingress_nginx_name }}-admission-create
+      name: ingress-nginx-system-admission-create
       labels:
-        app.kubernetes.io/name: {{ ingress_nginx_name }}
-        app.kubernetes.io/instance: {{ ingress_nginx_name }}
+        app.kubernetes.io/name: ingress-nginx-system
+        app.kubernetes.io/instance: ingress-nginx-system
         app.kubernetes.io/component: admission-webhook
     spec:
       containers:
         - name: create
-          image: {{ ingress_nginx_certgen_registry }}/jettech/kube-webhook-certgen:{{ ingress_nginx_certgen_version }}
+{% if is_this_offline %}
+          image: {{ docker_image_repo }}/jettech/kube-webhook-certgen:v1.2.2
+{% else %}
+          image: docker.io/jettech/kube-webhook-certgen:v1.2.2
+{% endif %}
           imagePullPolicy: IfNotPresent
           args:
             - create
-            - --host={{ ingress_nginx_name }}-controller-admission,{{ ingress_nginx_name }}-controller-admission.{{ ingress_nginx_name }}.svc
-            - --namespace={{ ingress_nginx_name }}
-            - --secret-name={{ ingress_nginx_name }}-admission
+            - --host=ingress-nginx-system-controller-admission,ingress-nginx-system-controller-admission.ingress-nginx-system.svc
+            - --namespace=ingress-nginx-system
+            - --secret-name=ingress-nginx-system-admission
       restartPolicy: OnFailure
-      serviceAccountName: {{ ingress_nginx_name }}-admission
+      serviceAccountName: ingress-nginx-system-admission
       securityContext:
         runAsNonRoot: true
         runAsUser: 2000
@@ -37,37 +41,41 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ ingress_nginx_name }}-admission-patch
+  name: ingress-nginx-system-admission-patch
   annotations:
     helm.sh/hook: post-install,post-upgrade
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
   labels:
-    app.kubernetes.io/name: {{ ingress_nginx_name }}
-    app.kubernetes.io/instance: {{ ingress_nginx_name }}
+    app.kubernetes.io/name: ingress-nginx-system
+    app.kubernetes.io/instance: ingress-nginx-system
     app.kubernetes.io/component: admission-webhook
-  namespace: {{ ingress_nginx_name }}
+  namespace: ingress-nginx-system
 spec:
   template:
     metadata:
-      name: {{ ingress_nginx_name }}-admission-patch
+      name: ingress-nginx-system-admission-patch
       labels:
-        app.kubernetes.io/name: {{ ingress_nginx_name }}
-        app.kubernetes.io/instance: {{ ingress_nginx_name }}
+        app.kubernetes.io/name: ingress-nginx-system
+        app.kubernetes.io/instance: ingress-nginx-system
         app.kubernetes.io/component: admission-webhook
     spec:
       containers:
         - name: patch
-          image: {{ ingress_nginx_certgen_registry }}/jettech/kube-webhook-certgen:{{ ingress_nginx_certgen_version }}
+{% if is_this_offline %}
+          image: {{ docker_image_repo }}/jettech/kube-webhook-certgen:v1.2.2
+{% else %}
+          image: docker.io/jettech/kube-webhook-certgen:v1.2.2
+{% endif %}
           imagePullPolicy: IfNotPresent
           args:
             - patch
-            - --webhook-name={{ ingress_nginx_name }}-admission
-            - --namespace={{ ingress_nginx_name }}
+            - --webhook-name=ingress-nginx-system-admission
+            - --namespace=ingress-nginx-system
             - --patch-mutating=false
-            - --secret-name={{ ingress_nginx_name }}-admission
+            - --secret-name=ingress-nginx-system-admission
             - --patch-failure-policy=Fail
       restartPolicy: OnFailure
-      serviceAccountName: {{ ingress_nginx_name }}-admission
+      serviceAccountName: ingress-nginx-system-admission
       securityContext:
         runAsNonRoot: true
         runAsUser: 2000

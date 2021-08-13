@@ -2,30 +2,34 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/name: {{ ingress_nginx_name }}
-    app.kubernetes.io/instance: {{ ingress_nginx_name }}
+    app.kubernetes.io/name: ingress-nginx-system
+    app.kubernetes.io/instance: ingress-nginx-system
     app.kubernetes.io/component: controller
-  name: {{ ingress_nginx_name }}-controller
-  namespace: {{ ingress_nginx_name }}
+  name: ingress-nginx-system-controller
+  namespace: ingress-nginx-system
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ ingress_nginx_name }}
-      app.kubernetes.io/instance: {{ ingress_nginx_name }}
+      app.kubernetes.io/name: ingress-nginx-system
+      app.kubernetes.io/instance: ingress-nginx-system
       app.kubernetes.io/component: controller
   revisionHistoryLimit: 10
   minReadySeconds: 0
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ ingress_nginx_name }}
-        app.kubernetes.io/instance: {{ ingress_nginx_name }}
+        app.kubernetes.io/name: ingress-nginx-system
+        app.kubernetes.io/instance: ingress-nginx-system
         app.kubernetes.io/component: controller
     spec:
       dnsPolicy: ClusterFirst
       containers:
         - name: controller
-          image: {{ ingress_nginx_controller_registry }}/kubernetes-ingress-controller/nginx-ingress-controller:{{ ingress_nginx_controller_version }}
+{% if is_this_offline %}
+          image: {{ quay_image_repo }}/kubernetes-ingress-controller/nginx-ingress-controller:{{ ingress_nginx_controller_version }}
+{% else %}
+          image: quay.io/kubernetes-ingress-controller/nginx-ingress-controller:{{ ingress_nginx_controller_version }}
+{% endif %}
           imagePullPolicy: IfNotPresent
           lifecycle:
             preStop:
@@ -34,13 +38,14 @@ spec:
                   - /wait-shutdown
           args:
             - /nginx-ingress-controller
-            - --publish-service={{ ingress_nginx_name }}/{{ ingress_nginx_name }}-controller
+            - --publish-service=ingress-nginx-system/ingress-nginx-system-controller
             - --election-id=ingress-controller-leader
-            - --ingress-class={{ ingress_nginx_class }}
-            - --configmap={{ ingress_nginx_name }}/{{ ingress_nginx_name }}-controller
+            - --ingress-class=nginx-system
+            - --configmap=ingress-nginx-system/ingress-nginx-system-controller
             - --validating-webhook=:8443
             - --validating-webhook-certificate=/usr/local/certificates/cert
             - --validating-webhook-key=/usr/local/certificates/key
+            - --tcp-services-configmap=ingress-nginx-system/tcp-services
           securityContext:
             capabilities:
               drop:
@@ -99,9 +104,9 @@ spec:
             limits:
               cpu: 200m
               memory: 180Mi
-      serviceAccountName: {{ ingress_nginx_name }}
+      serviceAccountName: ingress-nginx-system
       terminationGracePeriodSeconds: 300
       volumes:
         - name: webhook-cert
           secret:
-            secretName: {{ ingress_nginx_name }}-admission
+            secretName: ingress-nginx-system-admission

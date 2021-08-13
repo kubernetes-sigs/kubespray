@@ -1,0 +1,138 @@
+<< Keystore, Truststore Guide >>
+
+# 모든 Password는 tmax@23 으로 통일한다.
+
+1. hypercloud-root-ca.key, hypercloud-root-ca.crt 는 이미 /etc/kubernetes/pki/ 경로에 있다고 가정한다. ( 없는경우, openssl req -new -x509 -keyout ca-key -out ca-cert -days 3650)
+
+2. Create Truststore
+
+3. Create Keystore
+
+4. Create certificate signing request (CSR) from keystore
+
+5. Sign the CSR
+
+6. Import the CA into Keystore
+
+7. Import the signed certificate into keystore
+
+8. Create Secret with keystore truststore to mount in Pod
+
+* 2~8을 반복해서 만드는 것
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+< kafka-broker1 >
+
+keytool -keystore kafka.broker1.truststore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+
+keytool -keystore kafka.broker1.keystore.jks -alias broker1 -validity 3650 -genkey -keyalg RSA -ext SAN=dns:kafka-1.hyperauth,dns:kafka-2.hyperauth,dns:kafka-3.hyperauth -dname "CN=kafka-1.hyperauth" -storepass tmax@23 -keypass tmax@23
+
+keytool -keystore kafka.broker1.keystore.jks -alias broker1 -certreq -file ca-request-broker1 -storepass tmax@23
+
+openssl x509 -req -CA /etc/kubernetes/pki/hypercloud-root-ca.crt -CAkey /etc/kubernetes/pki/hypercloud-root-ca.key -in ca-request-broker1 -out ca-signed-broker1 -days 3650 -CAcreateserial
+
+keytool -keystore kafka.broker1.keystore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+
+keytool -keystore kafka.broker1.keystore.jks -alias broker1 -import -file ca-signed-broker1 -storepass tmax@23 -noprompt
+
+rm ca*
+
+
+< kafka-broker2 >
+
+keytool -keystore kafka.broker2.truststore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+
+keytool -keystore kafka.broker2.keystore.jks -alias broker2 -validity 3650 -genkey -keyalg RSA -ext SAN=dns:kafka-1.hyperauth,dns:kafka-2.hyperauth,dns:kafka-3.hyperauth -dname "CN=kafka-2.hyperauth" -storepass tmax@23 -keypass tmax@23
+
+keytool -keystore kafka.broker2.keystore.jks -alias broker2 -certreq -file ca-request-broker2 -storepass tmax@23
+
+openssl x509 -req -CA /etc/kubernetes/pki/hypercloud-root-ca.crt -CAkey /etc/kubernetes/pki/hypercloud-root-ca.key -in ca-request-broker2 -out ca-signed-broker2 -days 3650 -CAcreateserial
+
+keytool -keystore kafka.broker2.keystore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+
+keytool -keystore kafka.broker2.keystore.jks -alias broker2 -import -file ca-signed-broker2 -storepass tmax@23 -noprompt
+
+rm ca*
+
+
+< kafka-broker3 >
+
+keytool -keystore kafka.broker3.truststore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+
+keytool -keystore kafka.broker3.keystore.jks -alias broker3 -validity 3650 -genkey -keyalg RSA -ext SAN=dns:kafka-1.hyperauth,dns:kafka-2.hyperauth,dns:kafka-3.hyperauth -dname "CN=kafka-3.hyperauth" -storepass tmax@23 -keypass tmax@23
+
+keytool -keystore kafka.broker3.keystore.jks -alias broker3 -certreq -file ca-request-broker3 -storepass tmax@23
+
+openssl x509 -req -CA /etc/kubernetes/pki/hypercloud-root-ca.crt -CAkey /etc/kubernetes/pki/hypercloud-root-ca.key -in ca-request-broker3 -out ca-signed-broker3 -days 3650 -CAcreateserial
+
+keytool -keystore kafka.broker3.keystore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+
+keytool -keystore kafka.broker3.keystore.jks -alias broker3 -import -file ca-signed-broker3 -storepass tmax@23 -noprompt
+
+rm ca*
+
+< kafka.broker1.keystore.jks, kafka.broker1.truststore.jks ..... 6개를 이용해서 kafka-jks secret 만들기 >
+kubectl create secret generic kafka-jks --from-file=./kafka.broker1.keystore.jks --from-file=./kafka.broker1.truststore.jks --from-file=./kafka.broker2.keystore.jks --from-file=./kafka.broker2.truststore.jks --from-file=./kafka.broker3.keystore.jks --from-file=./kafka.broker3.truststore.jks -n hyperauth
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+< kafka-producer (hyperauth) >
+
+keytool -keystore hyperauth.truststore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+
+keytool -keystore hyperauth.keystore.jks -alias hyperauth -validity 3650 -genkey -keyalg RSA -ext SAN=dns:hyperauth.hyperauth -dname "CN=hyperauth.hyperauth" -storepass tmax@23 -keypass tmax@23
+
+keytool -keystore hyperauth.keystore.jks -alias hyperauth -certreq -file ca-request-hyperauth -storepass tmax@23
+
+openssl x509 -req -CA /etc/kubernetes/pki/hypercloud-root-ca.crt -CAkey /etc/kubernetes/pki/hypercloud-root-ca.key -in ca-request-hyperauth -out ca-signed-hyperauth -days 3650 -CAcreateserial
+
+keytool -keystore hyperauth.keystore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+
+keytool -keystore hyperauth.keystore.jks -alias hyperauth -import -file ca-signed-hyperauth -storepass tmax@23 -noprompt
+
+
+kubectl create secret generic hyperauth-kafka-jks --from-file=./hyperauth.keystore.jks --from-file=./hyperauth.truststore.jks -n hyperauth
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+< kafka-consumer (hypercloud) >
+* Consumer에서 사용할 예제 Certs
+* hypercloud 부분을 각자 상황에 맞는 제품명으로 바꿔서 사용
+* hypercloud4-system Namespace도 바꿔서 사용
+
+keytool -keystore hypercloud.truststore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+
+keytool -keystore hypercloud.keystore.jks -alias hypercloud -validity 3650 -genkey -keyalg RSA -ext SAN=dns:hypercloud4-operator-service.hypercloud4-system -dname "CN=hypercloud4-operator-service.hypercloud4-system" -storepass tmax@23 -keypass tmax@23
+
+keytool -keystore hypercloud.keystore.jks -alias hypercloud -certreq -file ca-request-hypercloud -storepass tmax@23
+
+openssl x509 -req -CA /etc/kubernetes/pki/hypercloud-root-ca.crt -CAkey /etc/kubernetes/pki/hypercloud-root-ca.key -in ca-request-hypercloud -out ca-signed-hypercloud -days 3650 -CAcreateserial
+
+keytool -keystore hypercloud.keystore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+
+keytool -keystore hypercloud.keystore.jks -alias hypercloud -import -file ca-signed-hypercloud -storepass tmax@23 -noprompt
+
+
+kubectl create secret generic hypercloud-kafka-jks --from-file=./hypercloud.keystore.jks --from-file=./hypercloud.truststore.jks -n hypercloud4-system
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+./kafka-console-producer.sh --broker-list kafka-1.hyperauth:9092,kafka-2.hyperauth:9092,kafka-3.hyperauth:9092 --topic tmax
+./kafka-console-consumer.sh --bootstrap-server kafka-1.hyperauth:9092,kafka-2.hyperauth:9092,kafka-3.hyperauth:9092 --topic tmax
+
+
+
+
+* zookeeper-shell.sh 는 dns 를 처리하지 못한다 ㅠ
+
+
+      imagePullSecrets:
+        - name : docker-pull-secret

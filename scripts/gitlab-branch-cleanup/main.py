@@ -5,8 +5,6 @@ import sys
 from datetime import timedelta, datetime, timezone
 
 
-from pprint import pprint
-
 parser = argparse.ArgumentParser(
     description='Cleanup old branches in a GitLab project')
 parser.add_argument('--api', default='https://gitlab.com/',

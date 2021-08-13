@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-manager
+  namespace: hyperauth
+  labels:
+    app: manager
+spec:
+  ports:
+  - port: 9000
+    nodePort: 31234
+  selector:
+    app: manager
+  type: NodePort
+  
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-manager
+  namespace: hyperauth
+  labels:
+    app: manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: manager
+  template:
+    metadata:
+      labels:
+        app: manager
+    spec:
+      containers:
+        - image: 192.168.9.12:5000/kafka-manager:b03
+          name: kafka-manager
+          env:
+          - name: ZK_HOSTS
+            value: 10.96.5.70:2181    # zookeeper cluster ip
+          - name: CONSUMER_PROPERTIES_FILE
+            value: /opt/cmak-3.0.0.4/conf/consumer.properties
+          - name: TZ
+            value: Asia/Seoul
+          resources:
+            limits:
+              cpu: "0.5"
+              memory: "1Gi"
+            requests:
+              cpu: "0.5"
+              memory: "1Gi"
+          ports:
+            - containerPort: 9000
+              name: manager
+          volumeMounts:
+          - name: ssl
+            mountPath: /opt/cmak-3.0.0.4/conf/ssl   
+      volumes:
+      - name: ssl
+        secret:
+          secretName: kafka-manager-jks      

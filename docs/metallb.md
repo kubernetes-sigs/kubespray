@@ -4,6 +4,14 @@ MetalLB hooks into your Kubernetes cluster, and provides a network load-balancer
 It allows you to create Kubernetes services of type "LoadBalancer" in clusters that don't run on a cloud provider, and thus cannot simply hook into 3rd party products to provide load-balancers.
 The default operationg mode of MetalLB is in ["Layer2"](https://metallb.universe.tf/concepts/layer2/) but it can also operate in ["BGP"](https://metallb.universe.tf/concepts/bgp/) mode.
 
+## Prerequisites
+
+You have to configure arp_ignore and arp_announce to avoid answering ARP queries from kube-ipvs0 interface for MetalLB to work.
+
+```yaml
+kube_proxy_strict_arp: true
+```
+
 ## Install
 
 You have to explicitly enable the MetalLB extension and set an IP address range from which to allocate LoadBalancer IPs.

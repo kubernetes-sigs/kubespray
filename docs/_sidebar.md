@@ -21,7 +21,7 @@
 * Ingress
   * [ALB Ingress](docs/ingress_controller/alb_ingress_controller.md)
   * [Ambassador](docs/ingress_controller/ambassador.md)
-  * [MetalLB](docs/ingress_controller/metallb.md)
+  * [MetalLB](docs/metallb.md)
   * [Nginx Ingress](docs/ingress_controller/ingress_nginx.md)
 * [Cloud providers](docs/cloud.md)
   * [AWS](docs/aws.md)
@@ -36,7 +36,7 @@
   * [OpenSUSE](docs/opensuse.md)
   * [RedHat Enterprise Linux](docs/rhel.md)
   * [CentOS/OracleLinux/AlmaLinux](docs/centos8.md)
-  * [Amaxon Linux 2](docs/amazonlinux.md)
+  * [Amazon Linux 2](docs/amazonlinux.md)
 * CRI
   * [Containerd](docs/containerd.md)
   * [CRI-O](docs/cri-o.md)

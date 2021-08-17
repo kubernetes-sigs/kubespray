@@ -187,3 +187,28 @@ For more information about Ansible and bastion hosts, read
 ## Mitogen
 
 You can use [mitogen](mitogen.md) to speed up kubespray.
+
+## Beyond ansible 2.9
+
+Ansible project has decided, in order to ease their maintenance burden, to split between
+two projects which are now joined under the Ansible umbrella.
+
+Ansible-base (2.10.x branch) will contain just the ansible language implementation while
+ansible modules that were previously bundled into a single repository will be part of the
+ansible 3.x package. Pleasee see [this blog post](https://blog.while-true-do.io/ansible-release-3-0-0/)
+that explains in detail the need and the evolution plan.
+
+**Note:** this change means that ansible virtual envs cannot be upgraded with `pip install -U`.
+You first need to uninstall your old ansible (pre 2.10) version and install the new one.
+
+```ShellSession
+pip uninstall ansible
+cd kubespray/
+pip install -U .
+```
+
+**Note:** some changes needed to support ansible 2.10+ are not backwards compatible with 2.9
+Kubespray needs to evolve and keep pace with upstream ansible and will be forced to eventually
+drop 2.9 support. Kubespray CIs use only the ansible version specified in the `requirements.txt`
+and while the `ansible_version.yml` may allow older versions to be used, these are not
+exercised in the CI and compatibility is not guaranteed.

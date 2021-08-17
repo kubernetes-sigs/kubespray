@@ -136,14 +136,12 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   [kubelet-rubber-stamp](https://github.com/kontena/kubelet-rubber-stamp).
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
-  *node_labels* can be defined either as a dict or a comma-separated labels string:
+  *node_labels* can only be defined as a dict:
 
 ```yml
 node_labels:
   label1_name: label1_value
   label2_name: label2_value
-
-node_labels: "label1_name=label1_value,label2_name=label2_value"
 ```
 
 * *node_taints* - Taints applied to nodes via kubelet --register-with-taints parameter.

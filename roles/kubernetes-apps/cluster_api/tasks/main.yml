@@ -11,45 +11,6 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
-
-- name: Hypercloud | Check Cert-Manager exists
-  stat:
-    path: "{{ kube_config_dir }}/addons/cluster_api/cert-manager.yaml"
-  register: cert_manager
-
-
-- name: Hypercloud | Get Cert-Manager
-  ansible.builtin.get_url:
-    url: "https://github.com/jetstack/cert-manager/releases/download/v1.2.0/cert-manager.yaml"
-    dest: "{{ kube_config_dir }}/addons/cluster_api/cert-manager.yaml"
-    mode: '0664'
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - not cert_manager.stat.exists
-
-
-- name: Hypercloud | Install Cert-Manager
-  kube:
-    kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/addons/cluster_api/cert-manager.yaml"
-    state: "latest"
-    wait: true
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]   
-    - not cert_manager.stat.exists
-
-
-- name: Hypercloud | Wait for Cert-Manager Pod become available
-  ansible.builtin.shell: |
-    kubectl get pods -n cert-manager -o json
-  register: cert_manager_status
-  until: cert_manager_status.stdout|from_json|json_query('items[*].status.phase')|unique == ["Running"]
-  retries: 400
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-
-
-
 - name: Cluster API | Generate Manifests
   template:
     src: "{{ item.file }}.j2"
@@ -70,19 +31,6 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Cluster API - Provider AWS | Generate Binary - clusterawsadm
-  ansible.builtin.copy:
-    src: "templates/{{ item.file }}"
-    dest: "{{ kube_config_dir }}/addons/cluster_api/"
-    owner: "root"
-    group: "root"
-    mode: '0777'
-  with_items:
-    - { name: "clusterawsadm", file: "clusterawsadm" }
-  when: 
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - cluster_api_provider_aws
-
 - name: Cluster API - Provider AWS | Generate AWS Credential File
   template:
     src: "{{ item.file }}"
@@ -94,21 +42,18 @@
     - cluster_api_provider_aws
 
 - name: Cluster API - Provider AWS | Generate Manifests CAPI Provider AWS - Step1
-  ansible.builtin.copy:
-    src: "templates/{{ item.file }}.yaml"
-    dest: "{{ kube_config_dir }}/addons/cluster_api/"
-    owner: "root"
-    group: "root"
-    mode: '0644'
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/cluster_api/{{ item.file }}"
   with_items:
-    - { name: "infrastructure-components-aws", file: "infrastructure-components-aws" }
+    - { name: "infrastructure-components-aws", file: "infrastructure-components-aws.yaml"}
   when: 
     - inventory_hostname == groups['kube_control_plane'][0]
     - cluster_api_provider_aws
 
 - name: Cluster API - Provider AWS | Generate Manifests CAPI Provider AWS - Step2
   ansible.builtin.shell: |
-    source ./aws-config
+    AWS_B64ENCODED_CREDENTIALS=$(cat aws-config | base64 | tr -d '\n')
     sed -i 's#${AWS_B64ENCODED_CREDENTIALS}#'${AWS_B64ENCODED_CREDENTIALS}'#g' ./infrastructure-components-aws.yaml
   args:
     chdir: "{{ kube_config_dir }}/addons/cluster_api"

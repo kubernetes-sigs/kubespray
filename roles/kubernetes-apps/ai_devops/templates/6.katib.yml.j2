@@ -1,0 +1,1151 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    katib-metricscollector-injection: enabled
+  name: kubeflow
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: experiments.kubeflow.org
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.conditions[-1:].type
+    name: Type
+    type: string
+  - JSONPath: .status.conditions[-1:].status
+    name: Status
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date 
+  group: kubeflow.org  
+  version: v1beta1
+  names:
+    categories:
+    - all
+    - kubeflow
+    - katib
+    kind: Experiment
+    listKind: ExperimentList
+    plural: experiments
+    singular: experiment
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: Structure of the Experiment custom resource.
+      type: object      
+      properties:        
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:  
+          description: ExperimentSpec is the specification of an Experiment.
+          type: object
+          properties:
+            algorithm:
+              description: Describes the suggestion algorithm.
+              type: object
+              properties:
+                algorithmName:
+                  description: HP or NAS algorithm name.
+                  type: string
+                algorithmSettings:
+                  description: Key-value pairs representing settings for suggestion algorithms.
+                  type: array
+                  items:
+                    description: AlgorithmSetting represents key-value pair for HP or NAS algorithm settings.
+                    type: object
+                    properties:
+                      name:
+                        description: Name is setting name.
+                        type: string
+                      value:
+                        description: Value is the setting value.
+                        type: string
+            earlyStopping:
+              description: Describes the early stopping algorithm.
+              type: object
+              properties:
+                algorithmName:
+                  description: Early stopping algorithm name.
+                  type: string
+                algorithmSettings:
+                  description: Key-value pairs representing settings for early stopping algorithm.
+                  type: array
+                  items:
+                    description: EarlyStoppingSetting represents key-value pair for early stopping algorithm settings.
+                    type: object
+                    properties:
+                      name:
+                        description: Name is the setting name.
+                        type: string
+                      value:
+                        description: Value is the setting value.
+                        type: string
+            maxFailedTrialCount:
+              description: Max failed trials to mark experiment as failed.
+              type: integer
+              format: int32
+            maxTrialCount:
+              description: Max completed trials to mark experiment as succeeded
+              type: integer
+              format: int32
+            metricsCollectorSpec:
+              description: Describes the specification of the metrics collector
+              type: object
+              properties:
+                collector:
+                  type: object
+                  required:
+                    - kind
+                  properties:
+                    customCollector:
+                      description: 'When kind is "customCollector", this field will be used'
+                      type: object
+                      required:
+                        - image
+                      properties:
+                        image:
+                          description: 'Docker image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.'
+                          type: string
+                    kind:
+                      type: string                        
+                source:
+                  type: object
+                  properties:
+                    fileSystemPath:
+                      description: 'During training model, metrics may be persisted into local file in source code, such as tfEvent use case'
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                        path:
+                          type: string
+                    filter:
+                      description: 'Default metric output format is {"metric": "<metric_name>", "value": <int_or_float>, "epoch": <int>, "step": <int>}, but if the output doesn''t follow default format, please extend it here'
+                      type: object
+                      properties:
+                        metricsFormat:
+                          description: 'When the metrics output follows format as this field specified, metricsCollector collects it and reports to metrics server, it can be "<metric_name>: <float>" or else'
+                          type: array
+                          items:
+                            type: string                              
+                    httpGet:
+                      description: 'Model-train source code can expose metrics by http, such as HTTP endpoint in prometheus metric format'
+                      type: object
+                      required:
+                        - port
+                      properties:
+                        host:
+                          description: 'Host name to connect to, defaults to the pod IP. You probably want to set "Host" in httpHeaders instead.'
+                          type: string
+                        httpHeaders:
+                          description: Custom headers to set in the request. HTTP allows repeated headers.
+                          type: array
+                          items:
+                            type: object
+                            required:
+                              - name
+                              - value
+                            properties:
+                              name:
+                                description: The header field name
+                                type: string
+                              value:
+                                description: The header field value
+                                type: string
+                        path:
+                          description: Path to access on the HTTP server.
+                          type: string
+                        port:
+                          description: Name or number of the port to access on the container. Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
+                          type: string
+                        scheme:
+                          description: Scheme to use for connecting to the host. Defaults to HTTP.
+                          type: string
+            nasConfig:
+              description: NasConfig contains config for NAS job
+              type: object
+              properties:
+                graphConfig:
+                  description: GraphConfig contains a config of DAG
+                  type: object
+                  properties:
+                    inputSizes:
+                      type: array
+                      items:
+                        type: integer
+                        format: int32                          
+                    numLayers:
+                      type: integer
+                      format: int32
+                    outputSizes:
+                      type: array
+                      items:
+                        type: integer
+                        format: int32                          
+                operations:
+                  type: array
+                  items:
+                    description: Operation contains type of operation in DAG
+                    type: object
+                    properties:
+                      operationType:
+                        type: string
+                      parameters:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            feasibleSpace:
+                              type: object
+                              properties:
+                                list:
+                                  type: array
+                                  items:
+                                    type: string                                      
+                                max:
+                                  type: string
+                                min:
+                                  type: string
+                                step:
+                                  type: string
+                            name:
+                              type: string
+                            parameterType:
+                              type: string
+            objective:
+              description: Describes the objective of the experiment.
+              type: object
+              properties:
+                additionalMetricNames:
+                  description: 'AdditionalMetricNames represents metrics that should be collected from Trials. This can be empty if we only care about the objective metric. Note: If we adopt a push instead of pull mechanism, this can be omitted completely.'
+                  type: array
+                  items:
+                    type: string                      
+                goal:
+                  description: 'Goal is the Experiment''s objective goal that should be reached. In case of empty goal, Experiment is running until MaxTrialCount = TrialsSucceeded.'
+                  type: number
+                  format: double
+                metricStrategies:
+                  description: 'MetricStrategies defines various rules (min, max or latest) to extract metrics values. This field is allowed to missing, experiment defaulter (webhook) will fill it.'
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                objectiveMetricName:
+                  description: ObjectiveMetricName represents primary Experiment's metric to optimize.
+                  type: string
+                type:
+                  description: Type for Experiment optimization.
+                  type: string
+            parallelTrialCount:
+              description: How many trials can be processed in parallel. Defaults to 3
+              type: integer
+              format: int32
+            parameters:
+              description: List of hyperparameter configurations.
+              type: array
+              items:
+                type: object
+                properties:
+                  feasibleSpace:
+                    type: object
+                    properties:
+                      list:
+                        type: array
+                        items:
+                          type: string                            
+                      max:
+                        type: string
+                      min:
+                        type: string
+                      step:
+                        type: string
+                  name:
+                    type: string
+                  parameterType:
+                    type: string
+            resumePolicy:
+              description: Describes resuming policy which usually take effect after experiment terminated.
+              type: string
+            trialTemplate:
+              description: Template for each run of the trial.
+              type: object
+              properties:
+                configMap:
+                  description: ConfigMap spec represents a reference to ConfigMap
+                  type: object
+                  properties:
+                    configMapName:
+                      description: Name of config map where trial template is located
+                      type: string
+                    configMapNamespace:
+                      description: Namespace of config map where trial template is located
+                      type: string
+                    templatePath:
+                      description: Path in config map where trial template is located
+                      type: string
+                failureCondition:
+                  description: 'Condition when trial custom resource is failed. Condition must be in GJSON format, ref https://github.com/tidwall/gjson. For example for BatchJob: status.conditions.#(type=="Failed")#|#(status=="True")#'
+                  type: string
+                primaryContainerName:
+                  description: Name of training container where actual model training is running
+                  type: string
+                primaryPodLabels:
+                  description: 'Labels that determines if pod needs to be injected by Katib sidecar container. If PrimaryPodLabels is omitted, metrics collector wraps all Trial''s pods.'
+                  type: object
+                  additionalProperties:
+                    type: string                      
+                retain:
+                  description: Retain indicates that trial resources must be not cleanup
+                  type: boolean
+                successCondition:
+                  description: 'Condition when trial custom resource is succeeded. Condition must be in GJSON format, ref https://github.com/tidwall/gjson. For example for BatchJob: status.conditions.#(type=="Complete")#|#(status=="True")#'
+                  type: string
+                trialParameters:
+                  description: List of parameters that are used in trial template
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      description:
+                        description: Description of the parameter
+                        type: string
+                      name:
+                        description: Name of the parameter that must be replaced in trial template
+                        type: string
+                      reference:
+                        description: Reference to the parameter in search space
+                        type: string
+                trialSpec:
+                  description: TrialSpec represents trial template in unstructured format
+                  type: object  
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true     
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: suggestions.kubeflow.org
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.conditions[-1:].type
+    name: Type
+    type: string
+  - JSONPath: .status.conditions[-1:].status
+    name: Status
+    type: string
+  - JSONPath: .spec.requests
+    name: Requested
+    type: string
+  - JSONPath: .status.suggestionCount
+    name: Assigned
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  group: kubeflow.org
+  names:
+    categories:
+    - all
+    - kubeflow
+    - katib
+    kind: Suggestion
+    plural: suggestions
+    singular: suggestion
+  scope: Namespaced
+  subresources:
+    status: {}
+  version: v1beta1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: trials.kubeflow.org
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.conditions[-1:].type
+    name: Type
+    type: string
+  - JSONPath: .status.conditions[-1:].status
+    name: Status
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  group: kubeflow.org
+  names:
+    categories:
+    - all
+    - kubeflow
+    - katib
+    kind: Trial
+    plural: trials
+    singular: trial
+  scope: Namespaced
+  subresources:
+    status: {}
+  version: v1beta1
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: katib-cert-generator
+  namespace: {{ ai_devops_namespace }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: katib-controller
+  namespace: {{ ai_devops_namespace }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: katib-ui
+  namespace: {{ ai_devops_namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: katib-cert-generator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - create
+  - delete
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - get
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - validatingwebhookconfigurations
+  - mutatingwebhookconfigurations
+  verbs:
+  - get
+  - patch
+- apiGroups:
+  - certificates.k8s.io
+  resources:
+  - certificatesigningrequests
+  verbs:
+  - get
+  - create
+  - delete
+- apiGroups:
+  - certificates.k8s.io
+  resources:
+  - certificatesigningrequests/approval
+  verbs:
+  - update
+- apiGroups:
+  - certificates.k8s.io
+  resourceNames:
+  - kubernetes.io/*
+  resources:
+  - signers
+  verbs:
+  - approve
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: katib-controller
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - serviceaccounts
+  - services
+  - events
+  - namespaces
+  - persistentvolumes
+  - persistentvolumeclaims
+  - pods
+  - pods/log
+  - pods/status
+  verbs:
+  - '*'
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - '*'
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - '*'
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - '*'
+- apiGroups:
+  - kubeflow.org
+  resources:
+  - experiments
+  - experiments/status
+  - experiments/finalizers
+  - trials
+  - trials/status
+  - trials/finalizers
+  - suggestions
+  - suggestions/status
+  - suggestions/finalizers
+  - tfjobs
+  - pytorchjobs
+  - mpijobs
+  verbs:
+  - '*'
+- apiGroups:
+  - tekton.dev
+  resources:
+  - pipelineruns
+  - taskruns
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: katib-ui
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - namespaces
+  verbs:
+  - '*'
+- apiGroups:
+  - kubeflow.org
+  resources:
+  - experiments
+  - trials
+  - suggestions
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: katib-cert-generator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: katib-cert-generator
+subjects:
+- kind: ServiceAccount
+  name: katib-cert-generator
+  namespace: {{ ai_devops_namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: katib-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: katib-controller
+subjects:
+- kind: ServiceAccount
+  name: katib-controller
+  namespace: {{ ai_devops_namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: katib-ui
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: katib-ui
+subjects:
+- kind: ServiceAccount
+  name: katib-ui
+  namespace: {{ ai_devops_namespace }}
+---
+apiVersion: v1
+data:
+  early-stopping: |-
+    {
+      "medianstop": {
+        "image": "docker.io/kubeflowkatib/earlystopping-medianstop:latest"
+      }
+    }
+  metrics-collector-sidecar: |-
+    {
+      "StdOut": {
+        "image": "docker.io/kubeflowkatib/file-metrics-collector:latest"
+      },
+      "File": {
+        "image": "docker.io/kubeflowkatib/file-metrics-collector:latest"
+      },
+      "TensorFlowEvent": {
+        "image": "docker.io/kubeflowkatib/tfevent-metrics-collector:latest",
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          }
+        }
+      }
+    }
+  suggestion: |-
+    {
+      "random": {
+        "image": "docker.io/kubeflowkatib/suggestion-hyperopt:latest"
+      },
+      "tpe": {
+        "image": "docker.io/kubeflowkatib/suggestion-hyperopt:latest"
+      },
+      "grid": {
+        "image": "docker.io/kubeflowkatib/suggestion-chocolate:latest"
+      },
+      "hyperband": {
+        "image": "docker.io/kubeflowkatib/suggestion-hyperband:latest"
+      },
+      "bayesianoptimization": {
+        "image": "docker.io/kubeflowkatib/suggestion-skopt:latest"
+      },
+      "cmaes": {
+        "image": "docker.io/kubeflowkatib/suggestion-goptuna:latest"
+      },
+      "sobol": {
+        "image": "docker.io/kubeflowkatib/suggestion-goptuna:latest"
+      },
+      "enas": {
+        "image": "docker.io/kubeflowkatib/suggestion-enas:latest",
+        "resources": {
+          "limits": {
+            "memory": "200Mi"
+          }
+        }
+      },
+      "darts": {
+        "image": "docker.io/kubeflowkatib/suggestion-darts:latest"
+      }
+    }
+kind: ConfigMap
+metadata:
+  name: katib-config
+  namespace: {{ ai_devops_namespace }}
+---
+apiVersion: v1
+data:
+  cluster-name: ""
+  clusterDomain: cluster.local
+  istio-namespace: {{ istio_namespace }}
+  userid-header: kubeflow-userid
+  userid-prefix: ""
+kind: ConfigMap
+metadata:
+  name: kubeflow-config-mb6ktt4hf9
+  namespace: {{ ai_devops_namespace }}
+---
+apiVersion: v1
+data:
+  defaultTrialTemplate.yaml: |-
+    apiVersion: batch/v1
+    kind: Job
+    spec:
+      template:
+        spec:
+          containers:
+            - name: training-container
+              image: {{ default_trial_template_image_repo }}:{{ default_trial_template_image_tag }}
+              command:
+                - "python3"
+                - "/opt/mxnet-mnist/mnist.py"
+                - "--batch-size=64"
+                - "--lr=${trialParameters.learningRate}"
+                - "--num-layers=${trialParameters.numberLayers}"
+                - "--optimizer=${trialParameters.optimizer}"
+          restartPolicy: Never
+  enasCPUTemplate: |-
+    apiVersion: batch/v1
+    kind: Job
+    spec:
+      template:
+        spec:
+          containers:
+            - name: training-container
+              image: {{ default_trial_template_image_2_repo }}:{{ default_trial_template_image_2_tag }}
+              command:
+                - python3
+                - -u
+                - RunTrial.py
+                - --num_epochs=1
+                - "--architecture=\"${trialParameters.neuralNetworkArchitecture}\""
+                - "--nn_config=\"${trialParameters.neuralNetworkConfig}\""
+          restartPolicy: Never
+  pytorchJobTemplate: |-
+    apiVersion: "kubeflow.org/v1"
+    kind: PyTorchJob
+    spec:
+      pytorchReplicaSpecs:
+        Master:
+          replicas: 1
+          restartPolicy: OnFailure
+          template:
+            spec:
+              containers:
+                - name: pytorch
+                  image: {{ default_trial_template_image_3_repo }}:{{ default_trial_template_image_3_tag }}
+                  imagePullPolicy: Always
+                  command:
+                    - "python3"
+                    - "/opt/pytorch-mnist/mnist.py"
+                    - "--epochs=1"
+                    - "--lr=${trialParameters.learningRate}"
+                    - "--momentum=${trialParameters.momentum}"
+        Worker:
+          replicas: 2
+          restartPolicy: OnFailure
+          template:
+            spec:
+              containers:
+                - name: pytorch
+                  image: {{ default_trial_template_image_3_repo }}:{{ default_trial_template_image_3_tag }}
+                  imagePullPolicy: Always
+                  command:
+                    - "python3"
+                    - "/opt/pytorch-mnist/mnist.py"
+                    - "--epochs=1"
+                    - "--lr=${trialParameters.learningRate}"
+                    - "--momentum=${trialParameters.momentum}"
+kind: ConfigMap
+metadata:
+  labels:
+    app: katib-trial-templates
+  name: trial-template
+  namespace: {{ ai_devops_namespace }}
+---
+apiVersion: v1
+data:
+  MYSQL_ROOT_PASSWORD: dGVzdA==
+kind: Secret
+metadata:
+  name: katib-mysql-secrets
+  namespace: {{ ai_devops_namespace }}
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/port: "8080"
+    prometheus.io/scheme: http
+    prometheus.io/scrape: "true"
+  name: katib-controller
+  namespace: {{ ai_devops_namespace }}
+spec:
+  ports:
+  - name: webhook
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: katib-controller
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: katib-db-manager
+  name: katib-db-manager
+  namespace: {{ ai_devops_namespace }}
+spec:
+  ports:
+  - name: api
+    port: 6789
+    protocol: TCP
+  selector:
+    app: katib-db-manager
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: katib-mysql
+  name: katib-mysql
+  namespace: {{ ai_devops_namespace }}
+spec:
+  ports:
+  - name: dbapi
+    port: 3306
+    protocol: TCP
+  selector:
+    app: katib-mysql
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: katib-ui
+  name: katib-ui
+  namespace: {{ ai_devops_namespace }}
+spec:
+  ports:
+  - name: ui
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: katib-ui
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: katib-mysql
+  namespace: {{ ai_devops_namespace }}
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: katib-controller
+  name: katib-controller
+  namespace: {{ ai_devops_namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: katib-controller
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        sidecar.istio.io/inject: "false"
+      labels:
+        app: katib-controller
+    spec:
+      containers:
+      - args:
+        - --webhook-port=8443
+        - --trial-resources=Job.v1.batch
+        - --trial-resources=TFJob.v1.kubeflow.org
+        - --trial-resources=PyTorchJob.v1.kubeflow.org
+        - --trial-resources=MPIJob.v1.kubeflow.org
+        - --trial-resources=PipelineRun.v1beta1.tekton.dev
+        command:
+        - ./katib-controller
+        env:
+        - name: KATIB_CORE_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: {{ katib_controller_image_repo }}:{{ katib_controller_image_tag }}
+        name: katib-controller
+        ports:
+        - containerPort: 8443
+          name: webhook
+          protocol: TCP
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /tmp/cert
+          name: cert
+          readOnly: true
+      serviceAccountName: katib-controller
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: katib-webhook-cert
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: katib-db-manager
+  name: katib-db-manager
+  namespace: {{ ai_devops_namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: katib-db-manager
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      labels:
+        app: katib-db-manager
+    spec:
+      containers:
+      - command:
+        - ./katib-db-manager
+        env:
+        - name: DB_NAME
+          value: mysql
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: katib-mysql-secrets
+        image: {{ katib_db_manager_image_repo }}:{{ katib_db_manager_image_tag }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/grpc_health_probe
+            - -addr=:6789
+          failureThreshold: 5
+          initialDelaySeconds: 10
+          periodSeconds: 60
+        name: katib-db-manager
+        ports:
+        - containerPort: 6789
+          name: api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: katib-mysql
+  name: katib-mysql
+  namespace: {{ ai_devops_namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: katib-mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      labels:
+        app: katib-mysql
+    spec:
+      containers:
+      - args:
+        - --datadir
+        - /var/lib/mysql/datadir
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: katib-mysql-secrets
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "true"
+        - name: MYSQL_DATABASE
+          value: katib
+        image: {{ mysql_image_repo }}:{{ mysql_image_tag }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}
+          failureThreshold: 10
+          periodSeconds: 2
+        name: katib-mysql
+        ports:
+        - containerPort: 3306
+          name: dbapi
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - mysql -D ${MYSQL_DATABASE} -u root -p${MYSQL_ROOT_PASSWORD} -e 'SELECT 1'
+          failureThreshold: 10
+          periodSeconds: 2
+        startupProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}
+          failureThreshold: 60
+          periodSeconds: 15
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: katib-mysql
+      volumes:
+      - name: katib-mysql
+        persistentVolumeClaim:
+          claimName: katib-mysql
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: katib-ui
+  name: katib-ui
+  namespace: {{ ai_devops_namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: katib-ui
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      labels:
+        app: katib-ui
+    spec:
+      containers:
+      - args:
+        - --port=8080
+        command:
+        - ./katib-ui
+        env:
+        - name: KATIB_CORE_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: {{ katib_ui_image_repo }}:{{ katib_ui_image_tag }}
+        name: katib-ui
+        ports:
+        - containerPort: 8080
+          name: ui
+      serviceAccountName: katib-ui
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: katib-cert-generator
+  namespace: {{ ai_devops_namespace }}
+spec:
+  backoffLimit: 4
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      containers:
+      - env:
+        - name: KATIB_CORE_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: {{ katib_cert_generator_image_repo }}:{{ katib_cert_generator_image_tag }}
+        imagePullPolicy: Always
+        name: cert-generator
+      restartPolicy: Never
+      serviceAccountName: katib-cert-generator
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: katib.kubeflow.org
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: Cg==
+    service:
+      name: katib-controller
+      namespace: {{ ai_devops_namespace }}
+      path: /mutate-experiment
+  failurePolicy: Ignore
+  name: defaulter.experiment.katib.kubeflow.org
+  rules:
+  - apiGroups:
+    - kubeflow.org
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - experiments
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: Cg==
+    service:
+      name: katib-controller
+      namespace: {{ ai_devops_namespace }}
+      path: /mutate-pod
+  failurePolicy: Ignore
+  name: mutator.pod.katib.kubeflow.org
+  namespaceSelector:
+    matchLabels:
+      katib-metricscollector-injection: enabled
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: katib.kubeflow.org
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: Cg==
+    service:
+      name: katib-controller
+      namespace: {{ ai_devops_namespace }}
+      path: /validate-experiment
+  failurePolicy: Ignore
+  name: validator.experiment.katib.kubeflow.org
+  rules:
+  - apiGroups:
+    - kubeflow.org
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - experiments
+  sideEffects: None

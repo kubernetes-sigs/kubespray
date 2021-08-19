@@ -430,6 +430,7 @@ def main(argv=None):
     if not argv:
         argv = sys.argv[1:]
     KubesprayInventory(argv, CONFIG_FILE)
+    return 0
 
 
 if __name__ == "__main__":

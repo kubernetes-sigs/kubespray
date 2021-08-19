@@ -1,0 +1,319 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zookeeper
+  namespace: hyperauth
+  labels:
+    app: zookeeper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+      - name: zookeeper
+{% if not is_this_offline %}
+        image: {{ hyperauth_zookeeper_image_repo }}:{{ hyperauth_zookeeper_image_tag }}
+{% else %}
+        image: {{ registry_host }}/{{ hyperauth_zookeeper_image_repo }}:{{ hyperauth_zookeeper_image_tag }}
+{% endif %}
+        env:
+          - name: ALLOW_ANONYMOUS_LOGIN
+            value: "yes"
+        ports:
+          - containerPort: 2181
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "1"
+            memory: "1Gi"  
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-1
+  namespace: hyperauth
+  labels:
+    app: kafka-1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-1
+  template:
+    metadata:
+      labels:
+        app: kafka-1
+    spec:
+      containers:
+      - name: kafka
+{% if not is_this_offline %}
+        image: {{ hyperauth_kafka_image_repo }}:{{ hyperauth_kafka_image_tag }}
+{% else %}
+        image: {{ registry_host }}/{{ hyperauth_kafka_image_repo }}:{{ hyperauth_kafka_image_tag }}
+{% endif %}
+        env:
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "INSIDE://kafka-1.hyperauth:9092,OUTSIDE://{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}:9001"
+        - name: KAFKA_LISTENERS
+          value: "INSIDE://:9092,OUTSIDE://:9093"
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: "INSIDE:SSL,OUTSIDE:SSL"
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: "INSIDE"
+        - name: KAFKA_ZOOKEEPER_CONNECT
+          value: "zookeeper:2181"
+        - name: KAFKA_SSL_KEYSTORE_LOCATION
+          value: "/certs/kafka.broker.keystore.jks"
+        - name: KAFKA_SSL_KEYSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: CERTS_PASSWORD
+        - name: KAFKA_SSL_KEY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: CERTS_PASSWORD
+        - name: KAFKA_SSL_TRUSTSTORE_LOCATION
+          value: "/certs/kafka.broker.truststore.jks"
+        - name: KAFKA_SSL_TRUSTSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: CERTS_PASSWORD
+        - name: KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM
+          value: ""
+        - name: KAFKA_CREATE_TOPICS
+          value: "tmax:1:3"   # Topic명:Partition개수:Replica개수
+        - name: KAFKA_BROKER_ID
+          value: "501"
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: "true"
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "3"
+        - name: KAFKA_LOG_DIRS
+          value: "/kafka/logs"
+        - name: JMX_PORT
+          value: "1099"
+        - name: KAFKA_JMX_OPTS
+          value: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka-1.hyperauth -Dcom.sun.management.jmxremote.rmi.port=1099"  
+        ports:
+        - name: client
+          containerPort: 9092
+        volumeMounts:
+        - name: kafka-data
+          mountPath: /kafka
+        - name: ssl
+          mountPath: /certs
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "1"
+            memory: "1Gi"  
+      volumes:
+      - name: kafka-data
+        persistentVolumeClaim:
+          claimName: kafka-pvc-1
+      - name: ssl
+        secret:
+          secretName: kafka-jks
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-2
+  namespace: hyperauth
+  labels:
+    app: kafka-2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-2
+  template:
+    metadata:
+      labels:
+        app: kafka-2
+    spec:
+      containers:
+      - name: kafka
+{% if not is_this_offline %}
+        image: {{ hyperauth_kafka_image_repo }}:{{ hyperauth_kafka_image_tag }}
+{% else %}
+        image: {{ registry_host }}/{{ hyperauth_kafka_image_repo }}:{{ hyperauth_kafka_image_tag }}
+{% endif %}
+        env:
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "INSIDE://kafka-2.hyperauth:9092,OUTSIDE://{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}:9002"
+        - name: KAFKA_LISTENERS
+          value: "INSIDE://:9092,OUTSIDE://:9093"
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: "INSIDE:SSL,OUTSIDE:SSL"
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: "INSIDE"
+        - name: KAFKA_ZOOKEEPER_CONNECT
+          value: "zookeeper:2181"
+        - name: KAFKA_SSL_KEYSTORE_LOCATION
+          value: "/certs/kafka.broker.keystore.jks"
+        - name: KAFKA_SSL_KEYSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: CERTS_PASSWORD
+        - name: KAFKA_SSL_KEY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: CERTS_PASSWORD
+        - name: KAFKA_SSL_TRUSTSTORE_LOCATION
+          value: "/certs/kafka.broker.truststore.jks"
+        - name: KAFKA_SSL_TRUSTSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: CERTS_PASSWORD
+        - name: KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM
+          value: ""
+        - name: KAFKA_CREATE_TOPICS
+          value: "tmax:1:3"   # Topic명:Partition개수:Replica개수
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: "true"
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "3"
+        - name: KAFKA_LOG_DIRS
+          value: "/kafka/logs"
+        - name: KAFKA_BROKER_ID
+          value: "502"
+        - name: JMX_PORT
+          value: "1099"
+        - name: KAFKA_JMX_OPTS
+          value: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka-2.hyperauth -Dcom.sun.management.jmxremote.rmi.port=1099"  
+        ports:
+        - name: client
+          containerPort: 9092
+        volumeMounts:
+        - name: kafka-data
+          mountPath: /kafka
+        - name: ssl
+          mountPath: /certs
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "1"
+            memory: "1Gi"  
+      volumes:
+      - name: kafka-data
+        persistentVolumeClaim:
+          claimName: kafka-pvc-2
+      - name: ssl
+        secret:
+          secretName: kafka-jks
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-3
+  namespace: hyperauth
+  labels:
+    app: kafka-3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-3
+  template:
+    metadata:
+      labels:
+        app: kafka-3
+    spec:
+      containers:
+      - name: kafka
+{% if not is_this_offline %}
+        image: {{ hyperauth_kafka_image_repo }}:{{ hyperauth_kafka_image_tag }}
+{% else %}
+        image: {{ registry_host }}/{{ hyperauth_kafka_image_repo }}:{{ hyperauth_kafka_image_tag }}
+{% endif %}
+        env:
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "INSIDE://kafka-3.hyperauth:9092,OUTSIDE://{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}:9003"
+        - name: KAFKA_LISTENERS
+          value: "INSIDE://:9092,OUTSIDE://:9093"
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: "INSIDE:SSL,OUTSIDE:SSL"
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: "INSIDE"
+        - name: KAFKA_ZOOKEEPER_CONNECT
+          value: "zookeeper:2181"
+        - name: KAFKA_SSL_KEYSTORE_LOCATION
+          value: "/certs/kafka.broker.keystore.jks"
+        - name: KAFKA_SSL_KEYSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: CERTS_PASSWORD
+        - name: KAFKA_SSL_KEY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: CERTS_PASSWORD
+        - name: KAFKA_SSL_TRUSTSTORE_LOCATION
+          value: "/certs/kafka.broker.truststore.jks"
+        - name: KAFKA_SSL_TRUSTSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: passwords
+              key: CERTS_PASSWORD
+        - name: KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM
+          value: ""
+        - name: KAFKA_CREATE_TOPICS
+          value: "tmax:1:3"   # Topic명:Partition개수:Replica개수
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: "true"
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "3"
+        - name: KAFKA_LOG_DIRS
+          value: "/kafka/logs"
+        - name: KAFKA_BROKER_ID
+          value: "503"
+        - name: JMX_PORT
+          value: "1099"
+        - name: KAFKA_JMX_OPTS
+          value: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka-1.hyperauth -Dcom.sun.management.jmxremote.rmi.port=1099"  
+        ports:
+        - name: client
+          containerPort: 9092
+        volumeMounts:
+        - name: kafka-data
+          mountPath: /kafka
+        - name: ssl
+          mountPath: /certs
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "1"
+            memory: "1Gi"  
+      volumes:
+      - name: kafka-data
+        persistentVolumeClaim:
+          claimName: kafka-pvc-3
+      - name: ssl
+        secret:
+          secretName: kafka-jks

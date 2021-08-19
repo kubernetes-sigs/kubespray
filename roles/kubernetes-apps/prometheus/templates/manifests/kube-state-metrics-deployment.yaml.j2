@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: kube-state-metrics
+  name: kube-state-metrics
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-state-metrics
+  template:
+    metadata:
+      labels:
+        app: kube-state-metrics
+    spec:
+      containers:
+      - args:
+        - --logtostderr
+        - --secure-listen-address=:8443
+        - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+        - --upstream=http://127.0.0.1:8081/
+        image: {{ kube_rbac_proxy_image_repo2 }}:{{ kube_rbac_proxy_image_tag2 }}
+        name: kube-rbac-proxy-main
+        ports:
+        - containerPort: 8443
+          name: https-main
+        resources:
+          limits:
+            cpu: 20m
+            memory: 40Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
+      - args:
+        - --logtostderr
+        - --secure-listen-address=:9443
+        - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+        - --upstream=http://127.0.0.1:8082/
+        image:  {{ kube_rbac_proxy_image_repo2 }}:{{ kube_rbac_proxy_image_tag2 }}
+        name: kube-rbac-proxy-self
+        ports:
+        - containerPort: 9443
+          name: https-self
+        resources:
+          limits:
+            cpu: 20m
+            memory: 40Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
+      - args:
+        - --host=127.0.0.1
+        - --port=8081
+        - --telemetry-host=127.0.0.1
+        - --telemetry-port=8082
+        image: {{ kube_state_metrics_image_repo }}:{{ kube_state_metrics_image_tag }}
+        name: kube-state-metrics
+        resources:
+          limits:
+            cpu: 100m
+            memory: 150Mi
+          requests:
+            cpu: 100m
+            memory: 150Mi
+      nodeSelector:
+        kubernetes.io/os: linux
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      serviceAccountName: kube-state-metrics

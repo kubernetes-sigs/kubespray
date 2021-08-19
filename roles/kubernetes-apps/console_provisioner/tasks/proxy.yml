@@ -1,0 +1,54 @@
+---
+- name: Kiali | Find ingress Service's IP of Kiali
+  command: "{{ bin_dir }}/kubectl get ingress kiali -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+  changed_when: false
+  register: "kiali_ip_status"
+  when: 
+    - kiali_ip == "0.0.0.0"
+  ignore_errors: yes 
+
+- name: Kiali | Set ingress Service IP of Kiali when succeed 
+  set_fact:
+    kiali_ip: "{{ kiali_ip_status.stdout }}"
+  when: kiali_ip_status.stdout | length != 0
+
+- name: Kiali | Set ingress Service IP of Kiali when failed
+  set_fact:
+    kiali_ip: "1.1.1.1"
+  when: kiali_ip_status.stdout | length == 0
+
+
+- name: Kubeflow | Find Service's IP of Kubeflow
+  command: "{{ bin_dir }}/kubectl get services -n istio-system istio-ingressgateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+  changed_when: false
+  register: "kubeflow_ip_status"
+  when: kubeflow_ip == "0.0.0.0"
+  ignore_errors: yes 
+  
+- name: Kubeflow | Set Service IP of Kubeflow when succeed 
+  set_fact:
+    kubeflow_ip: "{{ kubeflow_ip_status.stdout }}"
+  when: kubeflow_ip_status.stdout | length != 0
+
+- name: Kubeflow | Set Service IP of Kubeflow when failed
+  set_fact:
+    kubeflow_ip: "1.1.1.1"
+  when: kubeflow_ip_status.stdout | length == 0
+
+
+- name: gitlab | Find gitlab pod 
+  command: "{{ bin_dir }}/kubectl -n gitlab-system exec -t $({{ bin_dir }}/kubectl -n gitlab-system get pod | grep gitlab | awk '{print $1}') -- cat /tmp/shared/omnibus.env 2>/dev/null | grep -oP \"external_url '\\K[^']*(?=')\""
+  changed_when: false
+  register: "gitlab_pod"
+  when: gitlab_url == "http://localhost"
+  ignore_errors: yes 
+
+- name: gitlab | Set gitlab url when succeed 
+  set_fact:
+    kubeflow_ip: "{{ gitlab_pod.stdout }}"
+  when: gitlab_pod.stdout | length != 0
+
+- name: gitlab | Set gitlab url when failed
+  set_fact:
+    kubeflow_ip: "http://failed-to-get-gitlab-url"
+  when: gitlab_pod.stdout | length == 0

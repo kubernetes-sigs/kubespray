@@ -1,0 +1,273 @@
+---
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hyperauth
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hyperauth-admin
+  namespace: hyperauth
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hyperauth-admin
+subjects:
+- kind: ServiceAccount
+  name: hyperauth-admin
+  namespace: hyperauth
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: passwords
+  namespace: hyperauth
+type: Opaque
+data:
+  CERTS_PASSWORD: dG1heEAyMw==
+  HYPERAUTH_PASSWORD: YWRtaW4=
+  HYPERAUTH_ADMIN: YWRtaW4=
+  DB_PASSWORD: a2V5Y2xvYWs=
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: hyperauth
+  labels:
+    app: postgresql
+spec:
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hyperauth-log-pvc
+  namespace: hyperauth
+  labels:
+    hyperauth: log
+spec:
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+---      
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: hyperauth
+  labels:
+    app: postgresql
+spec:
+  ports:
+  - port: 5432
+    #nodePort: 31226
+  selector:
+    app: postgresql
+    tier: postgreSQL
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+  namespace: hyperauth
+  labels:
+    app: postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: postgresql
+        tier: postgreSQL
+    spec:
+      containers:
+{% if not is_this_offline %}
+        - image: {{ hyperauth_postgres_image_repo }}:{{ hyperauth_postgres_image_tag }}
+{% else %}
+        - image: {{ registry_host }}/{{ hyperauth_postgres_image_repo }}:{{ hyperauth_postgres_image_tag }}
+{% endif %}
+          name: postgresql
+          env:
+            - name: POSTGRES_USER
+              value: keycloak
+            - name: POSTGRES_DB
+              value: keycloak
+            - name: POSTGRES_PASSWORD
+              value: keycloak
+            - name: TZ
+              value: Asia/Seoul
+          resources:
+            limits:
+              cpu: "1"
+              memory: "5Gi"
+            requests:
+              cpu: "1"
+              memory: "5Gi"
+          ports:
+            - containerPort: 5432
+              name: postgresql
+          volumeMounts:
+            - name: postgresql
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+      volumes:
+        - name: postgresql
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hyperauth
+  namespace: hyperauth
+  labels:
+    app: keycloak
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  - name: https
+    port: 443
+    targetPort: 8443
+  selector:
+    app: hyperauth
+  type: ClusterIP   # ClusterIP or LoadBalancer or NodePort
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx-system
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  name: hyperauth
+  namespace: hyperauth
+spec:
+  rules:
+  - host: hyperauth.{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}.nip.io
+    http:
+      paths:
+      - backend:
+          serviceName: hyperauth
+          servicePort: 8080
+ 
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: hyperauth
+  labels:
+    app: zookeeper
+spec:
+  ports:
+  - name: zookeeper
+    port: 2181
+    targetPort: 2181
+  - name: follower
+    port: 2888
+    targetPort: 2888
+  - name: leader
+    port: 3888
+    targetPort: 3888
+  selector:
+    app: zookeeper
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-1
+  namespace: hyperauth
+  labels:
+    app: kafka-1
+spec:
+  type: ClusterIP
+  ports:
+    - name: int
+      port: 9092
+      targetPort: 9092
+    - name: ext
+      port: 9093
+      targetPort: 9093
+    - name: jmx
+      port: 1099
+      targetPort: 1099
+  selector:
+    app: kafka-1
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-2
+  namespace: hyperauth
+  labels:
+    app: kafka-2
+spec:
+  type: ClusterIP
+  ports:
+    - name: int
+      port: 9092
+      targetPort: 9092
+    - name: ext
+      port: 9093
+      targetPort: 9093
+    - name: jmx
+      port: 1099
+      targetPort: 1099  
+  selector:
+    app: kafka-2
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-3
+  namespace: hyperauth
+  labels:
+    app: kafka-3
+spec:
+  type: ClusterIP
+  ports:
+    - name: int
+      port: 9092
+      targetPort: 9092
+    - name: ext
+      port: 9093
+      targetPort: 9093
+    - name: jmx
+      port: 1099
+      targetPort: 1099  
+  selector:
+    app: kafka-3
+    

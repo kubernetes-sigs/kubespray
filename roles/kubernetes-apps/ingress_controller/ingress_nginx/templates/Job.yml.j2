@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ingress-nginx-system-admission-create
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/name: ingress-nginx-system
+    app.kubernetes.io/instance: ingress-nginx-system
+    app.kubernetes.io/component: admission-webhook
+  namespace: ingress-nginx-system
+spec:
+  template:
+    metadata:
+      name: ingress-nginx-system-admission-create
+      labels:
+        app.kubernetes.io/name: ingress-nginx-system
+        app.kubernetes.io/instance: ingress-nginx-system
+        app.kubernetes.io/component: admission-webhook
+    spec:
+      containers:
+        - name: create
+          image: {{ ingress_nginx_certgen_image_repo }}:{{ ingress_nginx_certgen_image_tag }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - create
+            - --host=ingress-nginx-system-controller-admission,ingress-nginx-system-controller-admission.ingress-nginx-system.svc
+            - --namespace=ingress-nginx-system
+            - --secret-name=ingress-nginx-system-admission
+      restartPolicy: OnFailure
+      serviceAccountName: ingress-nginx-system-admission
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2000
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ingress-nginx-system-admission-patch
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/name: ingress-nginx-system
+    app.kubernetes.io/instance: ingress-nginx-system
+    app.kubernetes.io/component: admission-webhook
+  namespace: ingress-nginx-system
+spec:
+  template:
+    metadata:
+      name: ingress-nginx-system-admission-patch
+      labels:
+        app.kubernetes.io/name: ingress-nginx-system
+        app.kubernetes.io/instance: ingress-nginx-system
+        app.kubernetes.io/component: admission-webhook
+    spec:
+      containers:
+        - name: patch
+          image: {{ ingress_nginx_certgen_image_repo }}:{{ ingress_nginx_certgen_image_tag }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - patch
+            - --webhook-name=ingress-nginx-system-admission
+            - --namespace=ingress-nginx-system
+            - --patch-mutating=false
+            - --secret-name=ingress-nginx-system-admission
+            - --patch-failure-policy=Fail
+      restartPolicy: OnFailure
+      serviceAccountName: ingress-nginx-system-admission
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2000

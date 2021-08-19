@@ -1,0 +1,50 @@
+- name: Service Mesh | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/service_mesh"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0] 
+
+- name: Service Mesh | Copy Manifests
+  copy:
+    src: "{{ item }}"
+    dest: "{{ kube_config_dir }}/addons/service_mesh/{{ item }}"
+  with_items:
+    - crd.yml
+  when: 
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Service Mesh | Template Manifests
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ kube_config_dir }}/addons/service_mesh/{{ item }}"
+  with_items:
+    - base.yml
+    - tracing.yml
+    - core.yml
+    - ingress-gateway.yml
+    - metric.yml
+    - kiali.yml
+  when: 
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: Service Mesh | Apply manifests
+  kube:
+    kubectl: "kubectl"
+    filename: "{{ kube_config_dir }}/addons/service_mesh/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - crd.yml
+    - base.yml
+    - tracing.yml
+    - core.yml
+    - ingress-gateway.yml
+    - metric.yml
+    - kiali.yml
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]

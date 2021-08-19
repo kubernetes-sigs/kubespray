@@ -1,0 +1,257 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: grafana
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      restartPolicy: Always
+      serviceAccountName: grafana
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsUser: 65534
+        runAsNonRoot: true
+      containers:
+        - resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+              scheme: HTTP
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          name: grafana
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
+            - name: grafana-config
+              mountPath: /etc/grafana
+            - name: grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: grafana-dashboards
+              mountPath: /etc/grafana/provisioning/dashboards
+#            - name: grafana-dashboard-apiserver
+#              mountPath: /grafana-dashboard-definitions/0/apiserver
+#            - name: grafana-dashboard-cluster-total
+#              mountPath: /grafana-dashboard-definitions/0/cluster-total
+#            - name: grafana-dashboard-controller-manager
+#              mountPath: /grafana-dashboard-definitions/0/controller-manager
+#            - name: grafana-dashboard-k8s-resources-cluster
+#              mountPath: /grafana-dashboard-definitions/0/k8s-resources-cluster
+            - name: grafana-dashboard-k8s-resources-namespace
+              mountPath: /grafana-dashboard-definitions/0/k8s-resources-namespace
+            - name: grafana-dashboard-hyperauth
+              mountPath: /grafana-dashboard-definitions/0/hyperauth
+#            - name: grafana-dashboard-k8s-resources-node
+#              mountPath: /grafana-dashboard-definitions/0/k8s-resources-node
+#            - name: grafana-dashboard-k8s-resources-pod
+#              mountPath: /grafana-dashboard-definitions/0/k8s-resources-pod
+#            - name: grafana-dashboard-k8s-resources-workload
+#              mountPath: /grafana-dashboard-definitions/0/k8s-resources-workload
+#            - name: grafana-dashboard-k8s-resources-workloads-namespace
+#              mountPath: >-
+#                /grafana-dashboard-definitions/0/k8s-resources-workloads-namespace
+#            - name: grafana-dashboard-kubelet
+#              mountPath: /grafana-dashboard-definitions/0/kubelet
+#            - name: grafana-dashboard-namespace-by-pod
+#              mountPath: /grafana-dashboard-definitions/0/namespace-by-pod
+#            - name: grafana-dashboard-namespace-by-workload
+#              mountPath: /grafana-dashboard-definitions/0/namespace-by-workload
+#            - name: grafana-dashboard-node-cluster-rsrc-use
+#              mountPath: /grafana-dashboard-definitions/0/node-cluster-rsrc-use
+#            - name: grafana-dashboard-node-rsrc-use
+#              mountPath: /grafana-dashboard-definitions/0/node-rsrc-use
+#            - name: grafana-dashboard-nodes
+#              mountPath: /grafana-dashboard-definitions/0/nodes
+#            - name: grafana-dashboard-persistentvolumesusage
+#              mountPath: /grafana-dashboard-definitions/0/persistentvolumesusage
+#            - name: grafana-dashboard-pod-total
+#              mountPath: /grafana-dashboard-definitions/0/pod-total
+#            - name: grafana-dashboard-pods
+#              mountPath: /grafana-dashboard-definitions/0/pods
+#            - name: grafana-dashboard-prometheus-remote-write
+#              mountPath: /grafana-dashboard-definitions/0/prometheus-remote-write
+#            - name: grafana-dashboard-prometheus
+#              mountPath: /grafana-dashboard-definitions/0/prometheus
+#            - name: grafana-dashboard-proxy
+#              mountPath: /grafana-dashboard-definitions/0/proxy
+#            - name: grafana-dashboard-scheduler
+#              mountPath: /grafana-dashboard-definitions/0/scheduler
+#            - name: grafana-dashboard-statefulset
+#              mountPath: /grafana-dashboard-definitions/0/statefulset
+#            - name: grafana-dashboard-workload-total
+#              mountPath: /grafana-dashboard-definitions/0/workload-total
+          terminationMessagePolicy: File
+          image: {{ grafana_image_repo }}:{{ grafana_image_tag }}
+      serviceAccount: grafana
+      volumes:
+        - name: grafana-storage
+          persistentVolumeClaim:
+            claimName: grafana-pvc
+        - name: grafana-datasources
+          secret:
+            secretName: grafana-datasources
+            defaultMode: 420
+        - name: grafana-config
+          configMap:
+            name: grafana-config
+            defaultMode: 420
+        - name: grafana-dashboards
+          configMap:
+            name: grafana-dashboards
+            defaultMode: 420
+#        - name: grafana-dashboard-apiserver
+#          configMap:
+#            name: grafana-dashboard-apiserver
+#            defaultMode: 420
+#        - name: grafana-dashboard-cluster-total
+#          configMap:
+#            name: grafana-dashboard-cluster-total
+#            defaultMode: 420
+#        - name: grafana-dashboard-controller-manager
+#          configMap:
+#            name: grafana-dashboard-controller-manager
+#            defaultMode: 420
+#        - name: grafana-dashboard-k8s-resources-cluster
+#          configMap:
+#            name: grafana-dashboard-k8s-resources-cluster
+#            defaultMode: 420
+        - name: grafana-dashboard-k8s-resources-namespace
+          configMap:
+            name: grafana-dashboard-k8s-resources-namespace
+            defaultMode: 420
+        - name: grafana-dashboard-hyperauth
+          configMap:
+            name: grafana-dashboard-hyperauth
+            defaultMode: 420
+#        - name: grafana-dashboard-k8s-resources-node
+#          configMap:
+#            name: grafana-dashboard-k8s-resources-node
+#            defaultMode: 420
+#        - name: grafana-dashboard-k8s-resources-pod
+#          configMap:
+#            name: grafana-dashboard-k8s-resources-pod
+#            defaultMode: 420
+#        - name: grafana-dashboard-k8s-resources-workload
+#          configMap:
+#            name: grafana-dashboard-k8s-resources-workload
+#            defaultMode: 420
+#        - name: grafana-dashboard-k8s-resources-workloads-namespace
+#          configMap:
+#            name: grafana-dashboard-k8s-resources-workloads-namespace
+#            defaultMode: 420
+#        - name: grafana-dashboard-kubelet
+#          configMap:
+#            name: grafana-dashboard-kubelet
+#            defaultMode: 420
+#        - name: grafana-dashboard-namespace-by-pod
+#          configMap:
+#            name: grafana-dashboard-namespace-by-pod
+#            defaultMode: 420
+#        - name: grafana-dashboard-namespace-by-workload
+#          configMap:
+#            name: grafana-dashboard-namespace-by-workload
+#            defaultMode: 420
+#        - name: grafana-dashboard-node-cluster-rsrc-use
+#          configMap:
+#            name: grafana-dashboard-node-cluster-rsrc-use
+#            defaultMode: 420
+#        - name: grafana-dashboard-node-rsrc-use
+#          configMap:
+#            name: grafana-dashboard-node-rsrc-use
+#            defaultMode: 420
+#        - name: grafana-dashboard-nodes
+#          configMap:
+#            name: grafana-dashboard-nodes
+#            defaultMode: 420
+#        - name: grafana-dashboard-persistentvolumesusage
+#          configMap:
+#            name: grafana-dashboard-persistentvolumesusage
+#            defaultMode: 420
+#        - name: grafana-dashboard-pod-total
+#          configMap:
+#            name: grafana-dashboard-pod-total
+#            defaultMode: 420
+#        - name: grafana-dashboard-pods
+#          configMap:
+#            name: grafana-dashboard-pods
+#            defaultMode: 420
+#        - name: grafana-dashboard-prometheus-remote-write
+#          configMap:
+#            name: grafana-dashboard-prometheus-remote-write
+#            defaultMode: 420
+#        - name: grafana-dashboard-prometheus
+#          configMap:
+#            name: grafana-dashboard-prometheus
+#            defaultMode: 420
+#        - name: grafana-dashboard-proxy
+#          configMap:
+#            name: grafana-dashboard-proxy
+#            defaultMode: 420
+#        - name: grafana-dashboard-scheduler
+#          configMap:
+#            name: grafana-dashboard-scheduler
+#            defaultMode: 420
+#        - name: grafana-dashboard-statefulset
+#          configMap:
+#            name: grafana-dashboard-statefulset
+#            defaultMode: 420
+#        - name: grafana-dashboard-workload-total
+#          configMap:
+#            name: grafana-dashboard-workload-total
+#            defaultMode: 420
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
+status:
+  observedGeneration: 6
+  replicas: 1
+  updatedReplicas: 1
+  readyReplicas: 1
+  availableReplicas: 1
+  conditions:
+    - type: Progressing
+      status: 'True'
+      lastUpdateTime: '2020-07-06T03:15:38Z'
+      lastTransitionTime: '2020-05-29T03:16:50Z'
+      reason: NewReplicaSetAvailable
+      message: ReplicaSet "grafana-5445b8fd6f" has successfully progressed.
+    - type: Available
+      status: 'True'
+      lastUpdateTime: '2020-07-06T03:17:13Z'
+      lastTransitionTime: '2020-07-06T03:17:13Z'
+      reason: MinimumReplicasAvailable
+      message: Deployment has minimum availability.

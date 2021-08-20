@@ -56,7 +56,7 @@ ingress_nginx_enabled: true
 For example, if you're using the Nginx ingress controller, you can secure the Prometheus ingress by adding the annotation `cert-manager.io/cluster-issuer: ca-issuer` and the `spec.tls` section to the `Ingress` resource definition.
 
 ```yaml
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: prometheus-k8s
@@ -76,9 +76,12 @@ spec:
     http:
       paths:
       - path: /
+        pathType: ImplementationSpecific
         backend:
-          serviceName: prometheus-k8s
-          servicePort: web
+          service:
+            name: prometheus-k8s
+            port:
+              name: web
 ```
 
 Once deployed to your K8s cluster, every 3 months cert-manager will automatically rotate the Prometheus `prometheus.example.com` TLS client certificate and key, and store these as the Kubernetes `prometheus-dashboard-certs` secret.

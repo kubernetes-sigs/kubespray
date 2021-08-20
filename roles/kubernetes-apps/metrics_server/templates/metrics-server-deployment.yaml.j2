@@ -13,9 +13,6 @@ spec:
     matchLabels:
       app.kubernetes.io/name: metrics-server
       version: {{ metrics_server_version }}
-  strategy:
-    rollingUpdate:
-      maxUnavailable: 0
   template:
     metadata:
       name: metrics-server
@@ -31,10 +28,11 @@ spec:
       - name: metrics-server
         image: {{ metrics_server_image_repo }}:{{ metrics_server_image_tag }}
         imagePullPolicy: {{ k8s_image_pull_policy }}
-        args:
+        command:
+        - /metrics-server
         - --logtostderr
         - --cert-dir=/tmp
-        - --secure-port=443
+        - --secure-port=8443
 {% if metrics_server_kubelet_preferred_address_types %}
         - --kubelet-preferred-address-types={{ metrics_server_kubelet_preferred_address_types }}
 {% endif %}
@@ -43,8 +41,12 @@ spec:
         - --kubelet-insecure-tls
 {% endif %}
         - --metric-resolution={{ metrics_server_metric_resolution }}
+        resources:
+          requests:
+            cpu: 100m
+            memory: 300Mi
         ports:
-        - containerPort: 443
+        - containerPort: 8443
           name: https
           protocol: TCP
         volumeMounts:
@@ -52,25 +54,20 @@ spec:
           mountPath: /tmp
         livenessProbe:
           httpGet:
-            path: /livez
+            path: /healthz?exclude=readyz
             port: https
             scheme: HTTPS
-          periodSeconds: 10
-          failureThreshold: 3
-          initialDelaySeconds: 40
+          timeoutSeconds: 10
         readinessProbe:
           httpGet:
-            path: /readyz
+            path: /healthz?exclude=livez
             port: https
             scheme: HTTPS
-          periodSeconds: 10
-          failureThreshold: 3
-          initialDelaySeconds: 40
+          timeoutSeconds: 10
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["all"]
-            add: ["CAP_NET_BIND_SERVICE"]
           readOnlyRootFilesystem: true
           runAsGroup: 10001
           runAsNonRoot: true
@@ -108,7 +105,7 @@ spec:
           - /pod_nanny
           - --config-dir=/etc/config
           - --cpu={{ metrics_server_cpu }}
-          - --extra-cpu=1m
+          - --extra-cpu=0.5m
           - --memory={{ metrics_server_memory }}
           - --extra-memory={{ metrics_server_memory_per_node }}
           - --threshold=5

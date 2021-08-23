@@ -56,8 +56,9 @@ def main(argv=None):
         argv = sys.argv[1:]
     if not argv:
         usage()
-        sys.exit(1)
+        return 1
     download_hash(argv)
+    return 0
 
 
 if __name__ == "__main__":

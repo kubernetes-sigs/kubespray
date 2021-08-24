@@ -72,7 +72,7 @@
     sudo cp ../generateCerts.sh ./
     sudo chmod +755 generateCerts.sh
     sudo ./generateCerts.sh -ip={{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}
-    kubectl create secret tls hyperauth-https-secret --cert=./hyperauth.crt --key=./hyperauth.key -n hyperauth
+    {{ bin_dir }}/kubectl create secret tls hyperauth-https-secret --cert=./hyperauth.crt --key=./hyperauth.key -n hyperauth
     sudo cp hypercloud-root-ca.crt /etc/kubernetes/pki/hypercloud-root-ca.crt
     sudo cp hypercloud-root-ca.key /etc/kubernetes/pki/hypercloud-root-ca.key
     sudo cp hyperauth.crt /etc/kubernetes/pki/hyperauth.crt
@@ -83,7 +83,7 @@
     sudo openssl x509 -req -CA /etc/kubernetes/pki/hypercloud-root-ca.crt -CAkey /etc/kubernetes/pki/hypercloud-root-ca.key -in ca-request-hyperauth -out ca-signed-hyperauth -days 3650 -CAcreateserial
     sudo keytool -keystore hyperauth.keystore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
     sudo keytool -keystore hyperauth.keystore.jks -alias hyperauth -import -file ca-signed-hyperauth -storepass tmax@23 -noprompt
-    kubectl create secret generic hyperauth-kafka-jks --from-file=./hyperauth.keystore.jks --from-file=./hyperauth.truststore.jks -n hyperauth 
+    {{ bin_dir }}/kubectl create secret generic hyperauth-kafka-jks --from-file=./hyperauth.keystore.jks --from-file=./hyperauth.truststore.jks -n hyperauth 
   args:
     chdir: "{{ kube_config_dir }}/addons/hyperauth/ssl"
   when:
@@ -91,7 +91,7 @@
     - not root_ca_exists_result.stat.exists
 
 - name: Register db_addr variable 
-  ansible.builtin.shell: kubectl describe service postgresql -n hyperauth | grep 'IP:' | cut -d ':' -f 2 | tr -d ' '
+  ansible.builtin.shell: {{ bin_dir }}/kubectl describe service postgresql -n hyperauth | grep 'IP:' | cut -d ':' -f 2 | tr -d ' '
   register: db_addr
   ignore_errors: true
 
@@ -158,7 +158,7 @@
     sudo keytool -keystore kafka.broker.truststore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
     sudo keytool -keystore kafka.broker.keystore.jks -alias broker -validity 3650 -genkey -keyalg RSA -dname "CN=kafka" -storepass tmax@23 -keypass tmax@23
     sudo keytool -keystore kafka.broker.keystore.jks -alias broker -certreq -file ca-request-broker -storepass tmax@23
-    # export nginx_ip=`kubectl describe pod -n ingress-nginx-system | grep IP | head -n 1 | cut -d ':' -f2 | tr -d ' '`
+    # export nginx_ip=`{{ bin_dir }}/kubectl describe pod -n ingress-nginx-system | grep IP | head -n 1 | cut -d ':' -f2 | tr -d ' '`
     cat > "kafka.cnf" <<EOL
     [kafka]
     subjectAltName = DNS:kafka-1.hyperauth,DNS:kafka-2.hyperauth,DNS:kafka-3.hyperauth,IP:{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}
@@ -166,7 +166,7 @@
     sudo openssl x509 -req -CA /etc/kubernetes/pki/hypercloud-root-ca.crt -CAkey /etc/kubernetes/pki/hypercloud-root-ca.key -in ca-request-broker -out ca-signed-broker -days 3650 -CAcreateserial -extfile "kafka.cnf" -extensions kafka -sha256
     sudo keytool -keystore kafka.broker.keystore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
     sudo keytool -keystore kafka.broker.keystore.jks -alias broker -import -file ca-signed-broker -storepass tmax@23 -noprompt
-    kubectl create secret generic kafka-jks --from-file=./kafka.broker.keystore.jks --from-file=./kafka.broker.truststore.jks -n hyperauth
+    {{ bin_dir }}/kubectl create secret generic kafka-jks --from-file=./kafka.broker.keystore.jks --from-file=./kafka.broker.truststore.jks -n hyperauth
   args:
     chdir: "{{ kube_config_dir }}/addons/hyperauth/ssl"
   when:
@@ -200,7 +200,7 @@
     sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.11.1/yq_linux_amd64
     sudo chmod +x /usr/local/bin/yq
     sudo cp /etc/kubernetes/manifests/kube-apiserver.yaml .
-    # export port=`kubectl describe service hyperauth -n hyperauth | grep 'NodePort' | grep -v 'https' | grep 'http' | cut -d '/' -f1 | cut -d 'p' -f2 | tr -d ' '`
+    # export port=`{{ bin_dir }}/kubectl describe service hyperauth -n hyperauth | grep 'NodePort' | grep -v 'https' | grep 'http' | cut -d '/' -f1 | cut -d 'p' -f2 | tr -d ' '`
     yq e '.spec.containers[0].command += "--oidc-issuer-url=https://hyperauth.{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}.nip.io:{{ ingress_nginx_https_port }}/auth/realms/tmax"' -i ./kube-apiserver.yaml
     yq e '.spec.containers[0].command += "--oidc-client-id=hypercloud5"' -i ./kube-apiserver.yaml
     yq e '.spec.containers[0].command += "--oidc-username-claim=preferred_username"' -i ./kube-apiserver.yaml

@@ -11,12 +11,11 @@
   set_fact:
     is_ostree: "{{ ostree.stat.exists }}"
 
-
 - name: Fail containerd setup if distribution is not supported
   fail:
     msg: "{{ ansible_distribution }} is not supported by containerd."
   when:
-    - not ansible_distribution in ["CentOS", "OracleLinux", "RedHat", "Ubuntu", "Debian", "Fedora", "AlmaLinux"]
+    - not ansible_distribution in ["CentOS", "OracleLinux", "RedHat", "Ubuntu", "Debian", "Fedora", "AlmaLinux", "Amazon", "Flatcar Container Linux by Kinvolk"]
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
@@ -43,6 +42,7 @@
     - ansible_distribution == "Fedora"
     - (ansible_distribution_major_version | int) >= 31
     - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
+    - not is_ostree
 
 - name: reboot in Fedora 31+
   reboot:
@@ -50,19 +50,22 @@
     - ansible_distribution == "Fedora"
     - (ansible_distribution_major_version | int) >= 31
     - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
+    - not is_ostree
 
 - include_tasks: containerd_repo.yml
-  when: not is_ostree
+  when: not (is_ostree or (ansible_distribution == "Flatcar Container Linux by Kinvolk"))
 
 - name: Create containerd service systemd directory if it doesn't exist
   file:
     path: /etc/systemd/system/containerd.service.d
     state: directory
+    mode: 0755
 
 - name: Write containerd proxy drop-in
   template:
     src: http-proxy.conf.j2
     dest: /etc/systemd/system/containerd.service.d/http-proxy.conf
+    mode: 0644
   notify: restart containerd
   when: http_proxy is defined or https_proxy is defined
 
@@ -113,10 +116,10 @@
   delay: "{{ retry_stagger | d(3) }}"
   notify: restart containerd
   when:
-    - not is_ostree
+    - not (is_ostree or (ansible_distribution == "Flatcar Container Linux by Kinvolk"))
     - containerd_package_info.pkgs|length > 0
 
-- include_role:
+- include_role:  # noqa unnamed-task
     name: container-engine/crictl
 
 # you can sometimes end up in a state where everything is installed

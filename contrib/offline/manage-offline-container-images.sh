@@ -100,15 +100,35 @@ function register_container_images() {
 
 	tar -zxvf ${IMAGE_TAR_FILE}
 	sudo docker load -i ${IMAGE_DIR}/registry-latest.tar
-	sudo docker run --restart=always -d -p 5000:5000 --name registry registry:latest
 	set +e
-
+	sudo docker container inspect registry >/dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		sudo docker run --restart=always -d -p 5000:5000 --name registry registry:latest
+	fi
 	set -e
+
 	while read -r line; do
 		file_name=$(echo ${line} | awk '{print $1}')
-		org_image=$(echo ${line} | awk '{print $2}')
-		new_image="${LOCALHOST_NAME}:5000/${org_image}"
-		image_id=$(tar -tf ${IMAGE_DIR}/${file_name} | grep "\.json" | grep -v manifest.json | sed s/"\.json"//)
+		raw_image=$(echo ${line} | awk '{print $2}')
+		new_image="${LOCALHOST_NAME}:5000/${raw_image}"
+		org_image=$(sudo docker load -i ${IMAGE_DIR}/${file_name} | head -n1 | awk '{print $3}')
+		image_id=$(sudo docker image inspect ${org_image} | grep "\"Id\":" | awk -F: '{print $3}'| sed s/'\",'//)
+		if [ -z "${file_name}" ]; then
+			echo "Failed to get file_name for line ${line}"
+			exit 1
+		fi
+		if [ -z "${raw_image}" ]; then
+			echo "Failed to get raw_image for line ${line}"
+			exit 1
+		fi
+		if [ -z "${org_image}" ]; then
+			echo "Failed to get org_image for line ${line}"
+			exit 1
+		fi
+		if [ -z "${image_id}" ]; then
+			echo "Failed to get image_id for file ${file_name}"
+			exit 1
+		fi
 		sudo docker load -i ${IMAGE_DIR}/${file_name}
 		sudo docker tag  ${image_id} ${new_image}
 		sudo docker push ${new_image}

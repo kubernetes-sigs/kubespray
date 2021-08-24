@@ -30,16 +30,16 @@ external_cloud_provider: "vsphere"
 
 Then, `inventory/sample/group_vars/vsphere.yml`, you need to declare your vCenter credentials and enable the vSphere CSI following the description below.
 
-| Variable                               | Required | Type    | Choices                    | Default | Comment                                                                   |
-|----------------------------------------|----------|---------|----------------------------|---------|---------------------------------------------------------------------------|
-| external_vsphere_vcenter_ip            | TRUE     | string  |                            |                           | IP/URL of the vCenter                                   |
-| external_vsphere_vcenter_port          | TRUE     | string  |                            | "443"                     | Port of the vCenter API                                 |
-| external_vsphere_insecure              | TRUE     | string  | "true", "false"            | "true"                    | set to "true" if the host above uses a self-signed cert |
-| external_vsphere_user                  | TRUE     | string  |                            |                           | User name for vCenter with required privileges          |
-| external_vsphere_password              | TRUE     | string  |                            |                           | Password for vCenter                                    |
-| external_vsphere_datacenter            | TRUE     | string  |                            |                           | Datacenter name to use                                  |
-| external_vsphere_kubernetes_cluster_id | TRUE     | string  |                            | "kubernetes-cluster-id"   | Kubernetes cluster ID to use                            |
-| vsphere_csi_enabled                    | TRUE     | boolean |                            | false                     | Enable vSphere CSI                                      |
+| Variable                               | Required | Type    | Choices                    | Default                   | Comment                                                                                                             |
+|----------------------------------------|----------|---------|----------------------------|---------------------------|---------------------------------------------------------------------------------------------------------------------|
+| external_vsphere_vcenter_ip            | TRUE     | string  |                            |                           | IP/URL of the vCenter                                                                                               |
+| external_vsphere_vcenter_port          | TRUE     | string  |                            | "443"                     | Port of the vCenter API                                                                                             |
+| external_vsphere_insecure              | TRUE     | string  | "true", "false"            | "true"                    | set to "true" if the host above uses a self-signed cert                                                             |
+| external_vsphere_user                  | TRUE     | string  |                            |                           | User name for vCenter with required privileges (Can also be specified with the `VSPHERE_USER` environment variable) |
+| external_vsphere_password              | TRUE     | string  |                            |                           | Password for vCenter (Can also be specified with the `VSPHERE_PASSWORD` environment variable)                       |
+| external_vsphere_datacenter            | TRUE     | string  |                            |                           | Datacenter name to use                                                                                              |
+| external_vsphere_kubernetes_cluster_id | TRUE     | string  |                            | "kubernetes-cluster-id"   | Kubernetes cluster ID to use                                                                                        |
+| vsphere_csi_enabled                    | TRUE     | boolean |                            | false                     | Enable vSphere CSI                                                                                                  |
 
 Example configuration:
 

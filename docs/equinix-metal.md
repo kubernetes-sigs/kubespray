@@ -1,15 +1,15 @@
-# Packet
+# Equinix Metal
 
-Kubespray provides support for bare metal deployments using the [Packet bare metal cloud](http://www.packet.com).
+Kubespray provides support for bare metal deployments using the [Equinix Metal](http://metal.equinix.com).
 Deploying upon bare metal allows Kubernetes to run at locations where an existing public or private cloud might not exist such
-as cell tower, edge collocated installations. The deployment mechanism used by Kubespray for Packet is similar to that used for
-AWS and OpenStack clouds (notably using Terraform to deploy the infrastructure). Terraform uses the Packet provider plugin
+as cell tower, edge collocated installations. The deployment mechanism used by Kubespray for Equinix Metal is similar to that used for
+AWS and OpenStack clouds (notably using Terraform to deploy the infrastructure). Terraform uses the Equinix Metal provider plugin
 to provision and configure hosts which are then used by the Kubespray Ansible playbooks. The Ansible inventory is generated
 dynamically from the Terraform state file.
 
 ## Local Host Configuration
 
-To perform this installation, you will need a localhost to run Terraform/Ansible (laptop, VM, etc) and an account with Packet.
+To perform this installation, you will need a localhost to run Terraform/Ansible (laptop, VM, etc) and an account with Equinix Metal.
 In this example, we're using an m1.large CentOS 7 OpenStack VM as the localhost to kickoff the Kubernetes installation.
 You'll need Ansible, Git, and PIP.
 
@@ -64,7 +64,7 @@ ln -s ../../contrib/terraform/packet/hosts
 ```
 
 Details about the cluster, such as the name, as well as the authentication tokens and project ID
-for Packet need to be defined. To find these values see [Packet API Integration](https://support.packet.com/kb/articles/api-integrations)
+for Equinix Metal need to be defined. To find these values see [Equinix Metal API Accounts](https://metal.equinix.com/developers/docs/accounts/).
 
 ```bash
 vi cluster.tfvars

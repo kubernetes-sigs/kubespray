@@ -219,6 +219,19 @@ calico_vxlan_mode: 'Never'
 
 If you use VXLAN mode, BGP networking is not required. You can disable BGP to reduce the moving parts in your cluster by `calico_network_backend: vxlan`
 
+## Configuring interface MTU
+
+This is an advanced topic and should usually not be modified unless you know exactly what you are doing. Calico is smart enough to deal with the defaults and calculate the proper MTU. If you do need to set up a custom MTU you can change `calico_veth_mtu` as follows:
+
+* If Wireguard is enabled, subtract 60 from your network MTU (i.e. 1500-60=1440)
+* If using VXLAN or BPF mode is enabled, subtract 50 from your network MTU (i.e. 1500-50=1450)
+* If using IPIP, subtract 20 from your network MTU (i.e. 1500-20=1480)
+* if not using any encapsulation, set to your network MTU (i.e. 1500 or 9000)
+
+```yaml
+calico_veth_mtu: 1440
+```
+
 ## Cloud providers configuration
 
 Please refer to the official documentation, for example [GCE configuration](http://docs.projectcalico.org/v1.5/getting-started/docker/installation/gce) requires a security rule for calico ip-ip tunnels. Note, calico is always configured with ``calico_ipip_mode: Always`` if the cloud provider was defined.
@@ -260,3 +273,93 @@ calico_ipam_host_local: true
 ```
 
 Refer to Project Calico section [Using host-local IPAM](https://docs.projectcalico.org/reference/cni-plugin/configuration#using-host-local-ipam) for further information.
+
+## eBPF Support
+
+Calico supports eBPF for its data plane see [an introduction to the Calico eBPF Dataplane](https://www.projectcalico.org/introducing-the-calico-ebpf-dataplane/) for further information.
+
+Note that it is advisable to always use the latest version of Calico when using the eBPF dataplane.
+
+### Enabling eBPF support
+
+To enable the eBPF dataplane support ensure you add the following to your inventory. Note that the `kube-proxy` is incompatible with running Calico in eBPF mode and the kube-proxy should be removed from the system.
+
+```yaml
+calico_bpf_enabled: true
+kube_proxy_remove: true
+```
+
+### Cleaning up after kube-proxy
+
+Calico node cannot clean up after kube-proxy has run in ipvs mode. If you are converting an existing cluster to eBPF you will need to ensure the `kube-proxy` DaemonSet is deleted and that ipvs rules are cleaned.
+
+To check that kube-proxy was running in ipvs mode:
+
+```ShellSession
+# ipvsadm -l
+```
+
+To clean up any ipvs leftovers:
+
+```ShellSession
+# ipvsadm -C
+```
+
+### Calico access to the kube-api
+
+Calico node, typha and kube-controllers need to be able to talk to the kubernetes API. Please reference the [Enabling eBPF Calico Docs](https://docs.projectcalico.org/maintenance/ebpf/enabling-bpf) for guidelines on how to do this.
+
+Kubespray sets up the `kubernetes-services-endpoint` configmap based on the contents of the `loadbalancer_apiserver` inventory variable documented in [HA Mode](./ha-mode.md).
+
+If no external loadbalancer is used, Calico eBPF can also use the localhost loadbalancer option. In this case Calico Automatic Host Endpoints need to be enabled to allow services like `coredns` and `metrics-server` to communicate with the kubernetes host endpoint. See [this blog post](https://www.projectcalico.org/securing-kubernetes-nodes-with-calico-automatic-host-endpoints/) on enabling automatic host endpoints.
+
+```yaml
+loadbalancer_apiserver_localhost: true
+use_localhost_as_kubeapi_loadbalancer: true
+```
+
+### Tunneled versus Direct Server Return
+
+By default Calico usese Tunneled service mode but it can use direct server return (DSR) in order to optimize the return path for a service.
+
+To configure DSR:
+
+```yaml
+calico_bpf_service_mode: "DSR"
+```
+
+### eBPF Logging and Troubleshooting
+
+In order to enable Calico eBPF mode logging:
+
+```yaml
+calico_bpf_log_level: "Debug"
+```
+
+To view the logs you need to use the `tc` command to read the kernel trace buffer:
+
+```ShellSession
+tc exec bpf debug
+```
+
+Please see [Calico eBPF troubleshooting guide](https://docs.projectcalico.org/maintenance/troubleshoot/troubleshoot-ebpf#ebpf-program-debug-logs).
+
+## Wireguard Encryption
+
+Calico supports using Wireguard for encryption. Please see the docs on [encryptiong cluster pod traffic](https://docs.projectcalico.org/security/encrypt-cluster-pod-traffic).
+
+To enable wireguard support:
+
+```yaml
+calico_wireguard_enabled: true
+```
+
+The following OSes will require enabling the EPEL repo in order to bring in wireguard tools:
+
+* CentOS 7 & 8
+* AlmaLinux 8
+* Amazon Linux 2
+
+```yaml
+epel_enabled: true
+```

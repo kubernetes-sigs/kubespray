@@ -2,7 +2,7 @@
 - name: Get etcd endpoint health
   command: "{{ bin_dir }}/etcdctl endpoint health"
   register: etcd_endpoint_health
-  ignore_errors: true
+  ignore_errors: true  # noqa ignore-errors
   changed_when: false
   check_mode: no
   environment:
@@ -24,6 +24,8 @@
 - name: Set has_quorum fact
   set_fact:
     has_quorum: "{{ etcd_endpoint_health.stderr_lines | select('match', '.*is healthy.*') | list | length >= etcd_endpoint_health.stderr_lines | select('match', '.*is unhealthy.*') | list | length }}"
+  when:
+    - groups['broken_etcd']
 
 - include_tasks: recover_lost_quorum.yml
   when:
@@ -36,13 +38,13 @@
     state: absent
   delegate_to: "{{ item }}"
   with_items: "{{ groups['broken_etcd'] }}"
-  ignore_errors: true
+  ignore_errors: true  # noqa ignore-errors
   when:
     - groups['broken_etcd']
     - has_quorum
 
 - name: Delete old certificates
-  # noqa 302 - rm is ok here for now
+  # noqa 302 ignore-error - rm is ok here for now
   shell: "rm {{ etcd_cert_dir }}/*{{ item }}*"
   with_items: "{{ groups['broken_etcd'] }}"
   register: delete_old_cerificates

@@ -1,5 +1,4 @@
-Local Storage Provisioner
-=========================
+# Local Storage Provisioner
 
 The [local storage provisioner](https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume)
 is NOT a dynamic storage provisioner as you would
@@ -47,8 +46,7 @@ data:
 The default StorageClass is local-storage on /mnt/disks,
 the rest of this doc will use that path as an example.
 
-Examples to create local storage volumes
-----------------------------------------
+## Examples to create local storage volumes
 
 1. tmpfs method:
 
@@ -80,7 +78,7 @@ for disk in /dev/sdc /dev/sdd /dev/sde; do
 done
 ```
 
-This saves time of precreatnig filesystems. Note that your storageclass must have
+This saves time of precreating filesystems. Note that your storageclass must have
 volume_mode set to "Filesystem" and fs_type defined. If either is not set, the
 disk will be added as a raw block device.
 
@@ -106,8 +104,7 @@ management.
 Create a symbolic link under discovery directory to the block device on the node. To use
 raw block devices in pods, volume_type should be set to "Block".
 
-Usage notes
------------
+## Usage notes
 
 Beta PV.NodeAffinity field is used by default. If running against an older K8s
 version, the useAlphaAPI flag must be set in the configMap.
@@ -120,7 +117,6 @@ Make sure to make any mounts persist via /etc/fstab or with systemd mounts (for
 Flatcar Container Linux). Pods with persistent volume claims will not be
 able to start if the mounts become unavailable.
 
-Further reading
----------------
+## Further reading
 
 Refer to the upstream docs here: <https://github.com/kubernetes-incubator/external-storage/tree/master/local-volume>

@@ -10,19 +10,18 @@ ${public_ip_address_bastion}
 [kube_control_plane]
 ${list_master}
 
-
 [kube_node]
 ${list_node}
-
 
 [etcd]
 ${list_etcd}
 
+[calico_rr]
 
 [k8s_cluster:children]
 kube_node
 kube_control_plane
-
+calico_rr
 
 [k8s_cluster:vars]
 ${elb_api_fqdn}

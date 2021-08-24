@@ -1,4 +1,4 @@
-# Configure the Packet Provider
+# Configure the Equinix Metal Provider
 provider "packet" {
   version = "~> 2.0"
 }

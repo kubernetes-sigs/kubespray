@@ -24,7 +24,7 @@
 
 - name: Stop if unknown OS
   assert:
-    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar Container Linux by Kinvolk', 'Suse', 'openSUSE Leap', 'ClearLinux', 'OracleLinux', 'AlmaLinux']
+    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar Container Linux by Kinvolk', 'Suse', 'openSUSE Leap', 'ClearLinux', 'OracleLinux', 'AlmaLinux', 'Amazon']
     msg: "{{ ansible_distribution }} is not a known OS"
   when: not ignore_assert_errors
 
@@ -44,6 +44,25 @@
     msg: "When using cloud_provider azure and network_plugin calico calico_ipip_mode must be 'Never' and calico_vxlan_mode 'Always' or 'CrossSubnet'"
   when:
     - cloud_provider is defined and cloud_provider == 'azure'
+    - kube_network_plugin == 'calico'
+    - not ignore_assert_errors
+
+- name: Stop if supported Calico versions
+  assert:
+    that:
+      - "calico_version in calico_crds_archive_checksums.keys()"
+    msg: "Calico version not supported {{ calico_version }} not in {{ calico_crds_archive_checksums.keys() }}"
+  when:
+    - kube_network_plugin == 'calico'
+    - not ignore_assert_errors
+
+- name: Stop if kube-proxy is enabled when using eBPF dataplane
+  assert:
+    that:
+      - kube_proxy_remove
+    msg: "kube-proxy needs to be disabled when using Calico with eBPF dataplane"
+  when:
+    - calico_bpf_enabled | default(false)
     - kube_network_plugin == 'calico'
     - not ignore_assert_errors
 
@@ -87,6 +106,13 @@
   when:
     - not ignore_assert_errors
     - inventory_hostname in groups['kube_node']
+
+- name: Stop when ShutdownGracePeriod less than ShutdownGracePeriodCriticalPods
+  assert:
+    that: kubelet_shutdown_grace_period > kubelet_shutdown_grace_period_critical_pods
+    msg: "ShutdownGracePeriod ({{ kubelet_shutdown_grace_period }}) needs to be greater than ShutdownGracePeriodCriticalPods ({{ kubelet_shutdown_grace_period_critical_pods }}) in order to give normal pods time to be evacuated, please see https://kubernetes.io/blog/2021/04/21/graceful-node-shutdown-beta/ for details"
+  when:
+    - kube_version is version('v1.21.0', '>=')
 
 # This assertion will fail on the safe side: One can indeed schedule more pods
 # on a node than the CIDR-range has space for when additional pods use the host
@@ -292,6 +318,12 @@
     that: container_manager != 'docker'
     msg: "kata_containers_enabled support only for containerd and crio-o. See https://github.com/kata-containers/documentation/blob/1.11.4/how-to/run-kata-with-k8s.md#install-a-cri-implementation for details"
   when: kata_containers_enabled
+
+- name: Stop if gvisor_enabled is enabled when container_manager is not containerd
+  assert:
+    that: container_manager == 'containerd'
+    msg: "gvisor_enabled support only compatible with containerd. See https://github.com/kubernetes-sigs/kubespray/issues/7650 for details"
+  when: gvisor_enabled
 
 - name: Stop if download_localhost is enabled for Flatcar Container Linux
   assert:

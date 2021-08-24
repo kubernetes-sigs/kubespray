@@ -15,7 +15,7 @@ is_fedora_coreos: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.20.6
+kube_version: v1.21.3
 
 ## The minimum version working
 kube_version_min_required: v1.19.0
@@ -89,6 +89,7 @@ dns_mode: coredns
 enable_nodelocaldns: true
 nodelocaldns_ip: 169.254.25.10
 nodelocaldns_health_port: 9254
+nodelocaldns_bind_metrics_host_ip: false
 
 # Should be set to a cluster IP if using a custom cluster DNS
 manual_dns_server: ""
@@ -120,7 +121,7 @@ enable_coredns_k8s_endpoint_pod_names: false
 # Kubernetes configuration dirs and system namespace.
 # Those are where all the additional config stuff goes
 # the kubernetes normally puts in /srv/kubernetes.
-# This puts them in a sane location and namespace.
+# This puts them in a same location and namespace.
 # Editing those values will almost surely break something.
 kube_config_dir: /etc/kubernetes
 kube_script_dir: "{{ bin_dir }}/kubernetes-scripts"
@@ -230,12 +231,23 @@ kube_api_aggregator_routing: false
 # Profiling
 kube_profiling: false
 
+# Graceful Node Shutdown
+# This requires kubernetes >= 1.21.0
+kubelet_shutdown_grace_period: 60s
+# kubelet_shutdown_grace_period_critical_pods should be less than kubelet_shutdown_grace_period
+# to give normal pods time to be gracefully evacuated
+kubelet_shutdown_grace_period_critical_pods: 20s
+
 # Container for runtime
 container_manager: docker
 
 # Enable Kata Containers as additional container runtime
 # When enabled, it requires `container_manager` different than Docker
 kata_containers_enabled: false
+
+# Enable gVisor as an additional container runtime
+# gVisor is only supported with container_manager Docker or containerd
+gvisor_enabled: false
 
 # Enable crun as additional container runtime
 # When enabled, it requires container_manager=crio
@@ -310,12 +322,7 @@ docker_plugins: []
 etcd_kubeadm_enabled: false
 
 # Containerd options
-containerd_version: >-
-  {%- if ansible_os_family == "Debian" and ansible_distribution_release == "stretch" -%}
-  1.4.3
-  {%- else -%}
-  1.4.4
-  {%- endif -%}
+containerd_version: 1.4.6
 containerd_use_systemd_cgroup: true
 
 # Settings for containerized control plane (etcd/kubelet/secrets)
@@ -375,6 +382,7 @@ openstack_blockstorage_ignore_volume_az: "{{ volume_cross_zone_attachment | defa
 # Set Cinder topology zones (can be multiple zones, default not set)
 # cinder_topology_zones:
 #   - nova
+cinder_csi_ignore_volume_az: "{{ volume_cross_zone_attachment | default('false') }}"
 
 ## When OpenStack is used, if LBaaSv2 is available you can enable it with the following 2 variables.
 openstack_lbaas_enabled: false

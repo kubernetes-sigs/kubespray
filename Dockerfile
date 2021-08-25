@@ -16,9 +16,9 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
 
 WORKDIR /kubespray
 COPY . .
-RUN /usr/bin/python3 -m pip install pip -U \
-    && /usr/bin/python3 -m pip install -r tests/requirements.txt \
-    && python3 -m pip install -r requirements.txt \
+RUN /usr/bin/python3 -m pip install --no-cache-dir pip -U \
+    && /usr/bin/python3 -m pip install --no-cache-dir -r tests/requirements.txt \
+    && python3 -m pip install --no-cache-dir -r requirements.txt \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 RUN KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \

@@ -12,30 +12,6 @@
   include_tasks: "ingress_ip.yml"
   when: hyperregistry_ingress_nginx_ip | length == 0
 
-- name: HyperRegistry | Templates list
-  set_fact:
-    hyperregistry_templates:
-      - { name: 00-namespace, file: 00-namespace.yml, type: ns }
-
-- name: HyperRegistry | Create manifests
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/addons/hyperregistry/{{ item.file }}"
-  with_items: "{{ hyperregistry_templates }}"
-  register: hyperregistry_manifests
-  when: inventory_hostname == groups['kube_control_plane'][0]
-
-- name: HyperRegistry | Apply manifests
-  kube:
-    name: "{{ item.item.name }}"
-    namespace: "{{ hyperregistry_namespace }}"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/addons/hyperregistry/{{ item.item.file }}"
-    state: "latest"
-  with_items: "{{ hyperregistry_manifests.results }}"
-  when: inventory_hostname == groups['kube_control_plane'][0]
-
 - name: HyperRegistry | Create values.yml
   template:
     src: "{{ item }}.j2"
@@ -43,22 +19,7 @@
   with_items: ["values.yml"]
   when: inventory_hostname == groups['kube_control_plane'][0]
 
-- name: HyperRegistry | Create chart download dir
-  file:
-    path: "{{ files_repo }}/hyperregistry"
-    state: directory
-    mode: 0755
-  when: inventory_hostname == groups['kube_control_plane'][0]
-
-- name: HyperRegistry | Unpacking chart archive
-  unarchive:
-    src: "{{ files_repo }}/hyperregistry-{{ hyperregistry_version }}.tgz"
-    dest: "{{ files_repo }}/hyperregistry"
-    copy: no
-  when: inventory_hostname == groups['kube_control_plane'][0]
-
 - name: HyperRegistry | Install HyperRegistry Chart
   shell: |
-    /usr/local/bin/helm install hyperregistry {{ files_repo }}/hyperregistry -n {{ hyperregistry_namespace }} -f {{ kube_config_dir }}/addons/hyperregistry/values.yml
+    /usr/local/bin/helm install hyperregistry {{ files_repo }}/hyperregistry-{{ hyperregistry_version }}.tgz -n {{ hyperregistry_namespace }} --create-namespace -f {{ kube_config_dir }}/addons/hyperregistry/values.yml
   when: inventory_hostname == groups['kube_control_plane'][0]
-

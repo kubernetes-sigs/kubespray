@@ -67,12 +67,20 @@
   register: root_ca_exists_result
 
 
-- name: Hyperauth | SSL Settings for Hyperauth Server
+- name: Hyperauth | SSL Settings for Hyperauth Server 1
   ansible.builtin.shell: | 
     sudo cp ../generateCerts.sh ./
     sudo chmod +755 generateCerts.sh
     sudo ./generateCerts.sh -ip={{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}
     {{ bin_dir }}/kubectl create secret tls hyperauth-https-secret --cert=./hyperauth.crt --key=./hyperauth.key -n hyperauth
+  args:
+    chdir: "{{ kube_config_dir }}/addons/hyperauth/ssl"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not root_ca_exists_result.stat.exists
+    
+- name: Hyperauth | SSL Settings for Hyperauth Server 2
+  ansible.builtin.shell: | 
     sudo cp hypercloud-root-ca.crt /etc/kubernetes/pki/hypercloud-root-ca.crt
     sudo cp hypercloud-root-ca.key /etc/kubernetes/pki/hypercloud-root-ca.key
     sudo cp hyperauth.crt /etc/kubernetes/pki/hyperauth.crt
@@ -88,7 +96,6 @@
     chdir: "{{ kube_config_dir }}/addons/hyperauth/ssl"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
-    - not root_ca_exists_result.stat.exists
 
 - name: Register db_addr variable 
   ansible.builtin.shell: "{{ bin_dir }}/kubectl describe service postgresql -n hyperauth | grep 'IP:' | cut -d ':' -f 2 | tr -d ' '"
@@ -171,8 +178,6 @@
     chdir: "{{ kube_config_dir }}/addons/hyperauth/ssl"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
-    - not root_ca_exists_result.stat.exists
-
 
 - name: Hyperauth | Apply 4.kafka_init, 5.kakfa_deployment.yml
   kube:

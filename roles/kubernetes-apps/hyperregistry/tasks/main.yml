@@ -45,33 +45,20 @@
 
 - name: HyperRegistry | Create chart download dir
   file:
-    path: "/tmp/kubespray/hyperregistry"
+    path: "{{ files_repo }}/hyperregistry"
     state: directory
     mode: 0755
   when: inventory_hostname == groups['kube_control_plane'][0]
 
-- name: HyperRegistry | Download chart
-  get_url:
-#    url: "https://tmax-cloud.github.io/HyperRegistry-Chart/hyperregistry-v2.2.2.tgz"
-    url: "{{ files_repo }}/hyperregistry-v2.2.2.tgz"
-    dest: "/tmp/kubespray/hyperregistry/hyperregistry.tar.gz"
-    mode: "0644"
-    checksum: "sha256:63da491dcdc77d7231fc1d8e280e2453127451e177727146e722627cc711fdde"
-  register: get_chart_result
-  until: "'OK' in get_chart_result.msg or 'file already exists' in get_chart_result.msg"
-  retries: 4
-  delay: "{{ retry_stagger | default(5) }}"
-  when: inventory_hostname == groups['kube_control_plane'][0]
-
 - name: HyperRegistry | Unpacking chart archive
   unarchive:
-    src: "/tmp/kubespray/hyperregistry/hyperregistry.tar.gz"
-    dest: "/tmp/kubespray/hyperregistry/"
+    src: "{{ files_repo }}/hyperregistry-{{ hyperregistry_version }}.tgz"
+    dest: "{{ files_repo }}/hyperregistry"
     copy: no
   when: inventory_hostname == groups['kube_control_plane'][0]
 
 - name: HyperRegistry | Install HyperRegistry Chart
   shell: |
-    /usr/local/bin/helm install hyperregistry /tmp/kubespray/hyperregistry -n hyperregistry -f {{ kube_config_dir }}/addons/hyperregistry/values.yml
+    /usr/local/bin/helm install hyperregistry {{ files_repo }}/hyperregistry -n {{ hyperregistry_namespace }} -f {{ kube_config_dir }}/addons/hyperregistry/values.yml
   when: inventory_hostname == groups['kube_control_plane'][0]
 

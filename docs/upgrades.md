@@ -313,6 +313,12 @@ Upgrade etcd:
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=etcd
 ```
 
+Upgrade etcd without rotating etcd certs:
+
+```ShellSession
+ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=etcd --limit=etcd --skip-tags=etcd-secrets
+```
+
 Upgrade kubelet:
 
 ```ShellSession

@@ -14,6 +14,12 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
     && apt update -y && apt-get install --no-install-recommends -y docker-ce \
     && rm -rf /var/lib/apt/lists/*
 
+# Some tools like yamllint need this
+# Pip needs this as well at the moment to install ansible
+# (and potentially other packages)
+# See: https://github.com/pypa/pip/issues/10219
+ENV LANG=C.UTF-8
+
 WORKDIR /kubespray
 COPY . .
 RUN /usr/bin/python3 -m pip install --no-cache-dir pip -U \
@@ -25,6 +31,3 @@ RUN KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaul
     && curl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/amd64/kubectl \
     && chmod a+x kubectl \
     && mv kubectl /usr/local/bin/kubectl
-
-# Some tools like yamllint need this
-ENV LANG=C.UTF-8

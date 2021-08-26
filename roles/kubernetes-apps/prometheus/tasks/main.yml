@@ -107,7 +107,7 @@
     - { name: prometheus-serviceMonitorKubeControllerManager, file: prometheus-serviceMonitorKubeControllerManager.yaml}
     - { name: prometheus-serviceMonitorKubeScheduler, file: prometheus-serviceMonitorKubeScheduler.yaml}
     - { name: prometheus-serviceMonitorKubelet, file: prometheus-serviceMonitorKubelet.yaml}
-    - { name: prometheusrule-rules, file: prometheusrule-rules.yaml}
+    
     - { name: grafana-config, file: grafana-config.yaml}
     - { name: grafana, file: grafana.yaml}
     - { name: grafana-dashboardDatasources, file: grafana-dashboardDatasources.yaml}
@@ -122,8 +122,19 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
-
-
+- name: prometheus | move rule
+  ansible.builtin.copy:
+    src: "templates/manifests/{{ item.file }}.yaml"
+    dest: "{{ kube_config_dir }}/addons/prometheus/manifests"
+    owner: "root"
+    group: "root"
+    mode: '0644'
+  register: prometheus_rule_move
+  with_items:
+    - { name: prometheusrule-rules, file: prometheusrule-rules.yaml}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    
 - name: prometheus | Apply setup
   kube:
     kubectl: "{{ bin_dir }}/kubectl"

@@ -1,5 +1,7 @@
 # Use imutable image tags rather than mutable tags (like ubuntu:18.04)
 FROM ubuntu:bionic-20200807
+# Some tools like yamllint need this
+ENV LANG=C.UTF-8
 
 RUN apt update -y \
     && apt install -y \
@@ -25,6 +27,3 @@ RUN KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaul
     && curl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/amd64/kubectl \
     && chmod a+x kubectl \
     && mv kubectl /usr/local/bin/kubectl
-
-# Some tools like yamllint need this
-ENV LANG=C.UTF-8

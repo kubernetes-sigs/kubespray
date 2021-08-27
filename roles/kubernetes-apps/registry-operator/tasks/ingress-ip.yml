@@ -1,11 +1,25 @@
 ---
-- name: Registry Operator | Find ingress Service's IP
-  command: "{{ bin_dir }}/kubectl get services -n {{ ingress_nginx_namespace }} {{ ingress_nginx_namespace }}-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+- name: Registry Operator | Scan nginx-ingress service
+  vars:
+    - ingress_namespace: "{{ ingress_nginx_namespace | default('ingress-nginx-system') }}"
+  command: "{{ bin_dir }}/kubectl get services -n {{ ingress_namespace }} {{ ingress_namespace }}-controller -o json"
   changed_when: false
-  register: "ingress_status"
-  when: registry_operator_ingress_nginx_ip | length == 0
+  register: "ingress_result"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Registry Operator | Set ingress Service IP
+- name: Registry Operator | Set Ingress service type
   set_fact:
-    registry_operator_ingress_nginx_ip: "{{ ingress_status.stdout }}"
-  when: registry_operator_ingress_nginx_ip | length == 0
+    registry_operator_ingress_nginx_svc_type: "{{ ingress_result.stdout | from_json | json_query('spec.type') }}"
+
+- name: Registry Operator | Set ingress IP
+  set_fact:
+    registry_operator_ingress_nginx_ip: "{{ ingress_result.stdout | from_json | json_query('status.loadBalancer.ingress[0].ip')}}"
+  when:
+    - registry_operator_ingress_nginx_svc_type == "LoadBalancer"
+
+- name: Registry Operator | Set ingress IP
+  set_fact:
+    registry_operator_ingress_nginx_ip: "{{ ansible_default_ipv4.address }}"
+  when:
+    - registry_operator_ingress_nginx_svc_type == "NodePort"

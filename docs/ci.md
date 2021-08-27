@@ -12,7 +12,7 @@ centos8 |  :white_check_mark: | :x: | :x: | :x: | :white_check_mark: | :x: | :x:
 debian10 |  :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: |
 fedora33 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-fedora34 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
+fedora34 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
 opensuse |  :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 oracle7 |  :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu16 |  :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :x: | :white_check_mark: |

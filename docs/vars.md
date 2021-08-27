@@ -26,7 +26,7 @@ Some variables of note include:
 * *kube_version* - Specify a given Kubernetes version
 * *searchdomains* - Array of DNS domains to search when looking up hostnames
 * *nameservers* - Array of nameservers to use for DNS lookup
-* *preinstall_selinux_state* - Set selinux state, permitted values are permissive and disabled.
+* *preinstall_selinux_state* - Set selinux state, permitted values are permissive, enforcing and disabled.
 
 ## Addressing variables
 

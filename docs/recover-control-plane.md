@@ -20,7 +20,7 @@ __Note that you need at least one functional node to be able to recover using th
 ## Runbook
 
 * Move any broken etcd nodes into the "broken\_etcd" group, make sure the "etcd\_member\_name" variable is set.
-* Move any broken master nodes into the "broken\_kube\_control\_plane" group.
+* Move any broken control plane nodes into the "broken\_kube\_control\_plane" group.
 
 Then run the playbook with ```--limit etcd,kube_control_plane``` and increase the number of ETCD retries by setting ```-e etcd_retries=10``` or something even larger. The amount of retries required is difficult to predict.
 

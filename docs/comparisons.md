@@ -21,7 +21,6 @@ does generic configuration management tasks from the "OS operators" ansible
 world, plus some initial K8s clustering (with networking plugins included) and
 control plane bootstrapping.
 
-Kubespray supports `kubeadm` for cluster creation since v2.3
-(and deprecated non-kubeadm deployment starting from v2.8)
+Kubespray has started using `kubeadm` internally for cluster creation since v2.3
 in order to consume life cycle management domain knowledge from it
 and offload generic OS configuration things from it, which hopefully benefits both sides.

@@ -12,6 +12,7 @@ Kubespray has been tested on a number of OpenStack Public Clouds including (in a
 - [ELASTX](https://elastx.se/)
 - [EnterCloudSuite](https://www.entercloudsuite.com/)
 - [FugaCloud](https://fuga.cloud/)
+- [Infomaniak](https://infomaniak.com)
 - [Open Telekom Cloud](https://cloud.telekom.de/) : requires to set the variable `wait_for_floatingip = "true"` in your cluster.tfvars
 - [OVHcloud](https://www.ovhcloud.com/)
 - [Rackspace](https://www.rackspace.com/)
@@ -102,6 +103,12 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
 
   ```yaml
   cinder_topology: true
+  ```
+
+- Enabling `cinder_csi_ignore_volume_az: true`, ignores volumeAZ and schedules on any of the available node AZ.
+
+  ```yaml
+  cinder_csi_ignore_volume_az: true
   ```
 
 - If you are using OpenStack loadbalancer(s) replace the `openstack_lbaas_subnet_id` with the new `external_openstack_lbaas_subnet_id`. **Note** The new cloud provider is using Octavia instead of Neutron LBaaS by default!

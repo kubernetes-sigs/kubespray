@@ -27,7 +27,7 @@ class Data:
         self.db = Base(':memory:')
         self.db.create('container_manager', 'network_plugin', 'operating_system')
 
-    
+
     def set(self, container_manager, network_plugin, operating_system):
         self.db.insert(container_manager=container_manager, network_plugin=network_plugin, operating_system=operating_system)
         self.db.commit()

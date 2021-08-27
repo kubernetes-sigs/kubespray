@@ -21,3 +21,33 @@
 
   when:
   - disable_service_firewall
+
+- block:
+  - name: List services
+    service_facts:
+
+  - block:
+    - name: Enable service firewalld
+      systemd:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Allow ports on public chain of firewalld
+      firewalld:
+        permanent=True port={{ item }} state=enabled zone=public
+      with_items: "{{ public_port_list_on_control_plane }}"
+      when: inventory_hostname in groups['kube_control_plane']
+
+    - name: Allow ports on public chain of firewalld
+      firewalld:
+        permanent=True port={{ item }} state=enabled zone=public
+      with_items: "{{ public_port_list_on_node }}"
+      notify: Reload service firewalld
+      when: inventory_hostname in groups['kube_node']
+
+    when:
+      "'firewalld.service' in services"
+
+  when:
+  - enable_service_firewall

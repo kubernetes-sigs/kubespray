@@ -184,8 +184,8 @@ data:
       strategy: "openid"
       openid:
         client_id: "hypercloud5"
-        issuer_url: "https://{hyperauth_IP}/auth/realms/tmax"
-        authorization_endpoint: "https://{hyperauth_IP}/auth/realms/tmax/protocol/openid-connect/auth"
+        issuer_url: "https://{{ service_mesh_hyperauth_ip }}/auth/realms/tmax"
+        authorization_endpoint: "https://{{ service_mesh_hyperauth_ip }}/auth/realms/tmax/protocol/openid-connect/auth"
     deployment:
       accessible_namespaces: ['**']
     login_token:
@@ -358,4 +358,99 @@ spec:
       port: 20001
   selector:
     app: kiali
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kiali-admission
+  labels:
+    app: kiali
+    release: istio
+  namespace: istio-system
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kiali-admission
+  labels:
+    app: kiali
+    release: istio
+  namespace: istio-system
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - secrets
+    verbs:
+      - get
+      - create
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kiali-admission
+  labels:
+    app: kiali
+    release: istio
+  namespace: istio-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kiali-admission
+subjects:
+  - kind: ServiceAccount
+    name: kiali-admission
+    namespace: istio-system
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kiali-admission-create
+  labels:
+    app: kiali
+    release: istio
+  namespace: istio-system
+spec:
+  template:
+    metadata:
+      name: kiali-admission-create
+      labels:
+        app: kiali
+        release: istio
+    spec:
+      containers:
+        - name: create
+          image: {{ service_mesh_certgen_image_repo }}:{{ service_mesh_certgen_image_tag }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - create
+            - --host=kiali,kiali.istio-system.svc
+            - --namespace=istio-system
+            - --secret-name=kiali-https-secret
+      restartPolicy: OnFailure
+      serviceAccountName: kiali-admission
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2000
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: kiali-ingress
+  namespace: istio-system
+  annotations:
+    kubernetes.io/ingress.class: nginx-system
+spec:
+    rules:
+    - http:
+        paths:
+        - backend:
+            serviceName: kiali
+            servicePort: 20001
+          path: /api/kiali
+          pathType: ImplementationSpecific
+    tls:
+    - secretName: kiali-https-secret
 ---

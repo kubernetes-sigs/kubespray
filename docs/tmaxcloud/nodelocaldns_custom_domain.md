@@ -14,3 +14,8 @@
   custom_domain_ip: 10.12.10.12
   ```
   사용 예시:  `{{호스트}}.hypercloud.shinhan.com` DNS query할 때 응답은 10.12.10.12 
+
+* Update kube-apiserver POD's dnsPolicy to 'clusterFirstWithNet'
+  ```yaml
+   api_server_dns_cfwhn: true
+  ```

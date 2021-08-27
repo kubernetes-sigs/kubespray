@@ -1,0 +1,36 @@
+# Check if 
+- name: Kube-apiserver - dnsPolicy | Check if nodelocaldns exists
+  command: "{{ bin_dir }}/kubectl -n kube-system get daemonsets.apps nodelocaldns"
+  register: result
+  ignore_errors: true
+  changed_when: false
+
+# Update kube-apiserver POD's Policy to clusterFirstWithHostNet
+- name: Kube-apiserver - dnsPolicy | Update to clusterFirstWithHostNet
+  lineinfile:
+    path        : '/etc/kubernetes/manifests/kube-apiserver.yaml'
+    regexp      : '^  dnsPolicy:'
+    line        : '  dnsPolicy: ClusterFirstWithHostNet'
+    insertafter : '^  hostNetwork:'
+  register: updated
+  when: result.rc == 0
+
+# Restart kube-apiserver docker
+- name: Kube-apiserver - dnsPolicy | restart kube-apiserver docker
+  shell: "{{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-apiserver* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
+  when:
+    - container_manager == "docker"
+    - inventory_hostname in groups['kube_control_plane']
+    - dns_mode != 'none'
+    - updated.changed
+    - result.rc == 0
+
+# Restart kube-apiserver crio/containerd
+- name: Kube-apiserver - dnsPolicy | restart kube-apiserver crio/containerd
+  shell: "{{ bin_dir }}/crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
+  when:
+    - container_manager in ['crio', 'containerd']
+    - inventory_hostname in groups['kube_control_plane']
+    - dns_mode != 'none'
+    - updated.changed
+    - result.rc == 0

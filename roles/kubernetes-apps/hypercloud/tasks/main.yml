@@ -147,7 +147,7 @@
     - inventory_hostname == groups['kube_control_plane'][0]  
 
 - name: Hypercloud | Check Hypercloud Secret Exists
-  shell: kubectl get secret  hypercloud5-api-server-certs -n hypercloud5-system
+  shell: {{ bin_dir }}/kubectl get secret  hypercloud5-api-server-certs -n hypercloud5-system
   register: hypercloud_secret_result
   failed_when: >
     (hypercloud_secret_result.stderr != '') or
@@ -159,7 +159,7 @@
     sudo chmod +x *.sh
     sudo ./generateTls.sh -name=hypercloud-api-server -dns=hypercloud5-api-server-service.hypercloud5-system.svc -dns=hypercloud5-api-server-service.hypercloud5-system.svc.cluster.local
     sudo chmod +777 hypercloud-api-server.*
-    kubectl -n hypercloud5-system create secret generic hypercloud5-api-server-certs \
+    {{ bin_dir }}/kubectl -n hypercloud5-system create secret generic hypercloud5-api-server-certs \
     --from-file=hypercloud-api-server.crt \
     --from-file=hypercloud-api-server.key 
 #    sudo sed -i 's/{hypercloud_kafka_group_id}/'hypercloud-api-server-$HOSTNAME-$(($RANDOM%100))'/g' {{ kube_config_dir }}/addons/hypercloud/03_hypercloud-api-server.yaml
@@ -172,7 +172,7 @@
 
 
 - name: Hypercloud | Check Html Config Exists
-  shell: kubectl get configmap html-config -n hypercloud5-system
+  shell: {{ bin_dir }}/kubectl get configmap html-config -n hypercloud5-system
   register: html_config_result
   failed_when: >
     (html_config_result.stderr != '') or
@@ -183,7 +183,7 @@
 - name: Hypercloud | Create Html
   ansible.builtin.shell: |
     sudo chmod +777 {{ kube_config_dir }}/addons/hypercloud/html/cluster-invitation.html
-    kubectl create configmap html-config --from-file={{ kube_config_dir }}/addons/hypercloud/html/cluster-invitation.html -n hypercloud5-system
+    {{ bin_dir }}/kubectl create configmap html-config --from-file={{ kube_config_dir }}/addons/hypercloud/html/cluster-invitation.html -n hypercloud5-system
   args:
     chdir: "{{ kube_config_dir }}/addons/hypercloud/html"
   when:
@@ -191,7 +191,7 @@
     - html_config_result.failed
 
 - name: Hypercloud | Check Kafka Secret Exists
-  shell: kubectl get secret hypercloud-kafka-secret -n hypercloud5-system
+  shell: {{ bin_dir }}/kubectl get secret hypercloud-kafka-secret -n hypercloud5-system
   register: kafka_secret_result
   failed_when: >
     (kafka_secret_result.stderr != '') or
@@ -204,7 +204,7 @@
     sudo cp /etc/kubernetes/pki/hypercloud-root-ca.crt {{ kube_config_dir }}/addons/hypercloud/pki/
     sudo chmod +777 {{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-root-ca.crt
     sudo chmod +777 {{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-api-server.*
-    kubectl -n hypercloud5-system create secret generic hypercloud-kafka-secret \
+    {{ bin_dir }}/kubectl -n hypercloud5-system create secret generic hypercloud-kafka-secret \
     --from-file={{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-root-ca.crt \
     --from-file={{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-api-server.crt \
     --from-file={{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-api-server.key
@@ -231,7 +231,7 @@
 
 - name: Hypercloud | Wait for Hypercloud Api Server Pod become available
   ansible.builtin.shell: |
-    kubectl wait -n hypercloud5-system --for=condition=Ready pods --selector hypercloud5=api-server --timeout=1200s
+    {{ bin_dir }}/kubectl wait -n hypercloud5-system --for=condition=Ready pods --selector hypercloud5=api-server --timeout=1200s
   register: hypercloud5_api_server_status
   until: ("condition met" in hypercloud5_api_server_status.stdout)
   retries: 400
@@ -246,7 +246,7 @@
     sudo ./gen-webhook-config.sh
     sudo cp audit-policy.yaml /etc/kubernetes/pki/
     sudo cp audit-webhook-config /etc/kubernetes/pki/
-    kubectl apply -f webhook-configuration.yaml
+    {{ bin_dir }}/kubectl apply -f webhook-configuration.yaml
   args:
     chdir: "{{ kube_config_dir }}/addons/hypercloud/config"
   when:

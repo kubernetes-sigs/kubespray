@@ -13,8 +13,6 @@
     dest: "{{ kube_config_dir }}/addons/image_validation_webhook/{{ item.file }}"
   with_items:
     - { name: webhook-namespace, file: webhook-namespace.yaml }
-    - { name: webhook-create-signed-cert, file: webhook-create-signed-cert.sh }
-    - { name: webhook-patch-ca-bundle, file: webhook-patch-ca-bundle.sh }
     - { name: tmax.io_signerpolicies, file: tmax.io_signerpolicies.yaml }
     - { name: validating-webhook, file: validating-webhook.yaml }
     - { name: webhook-role, file: webhook-role.yaml }
@@ -26,38 +24,15 @@
   register: image_validation_webhook_manifests
   when: inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Image Validating Webhook | Create Namespace
-  kube:
-    kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/addons/image_validation_webhook/{{ item }}"
-    state: "latest"
-    wait: true
-  with_items:
-    - "webhook-namespace.yaml"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-
-- name: Image Validating Webhook | Create Certs
-  raw: |
-    bash {{ kube_config_dir }}/addons/image_validation_webhook/webhook-create-signed-cert.sh
-    cat {{ kube_config_dir }}/addons/image_validation_webhook/validating-webhook.yaml | bash {{ kube_config_dir }}/addons/image_validation_webhook/webhook-patch-ca-bundle.sh > {{ kube_config_dir }}/addons/image_validation_webhook/validating-webhook-ca-bundle.yaml
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-
 - name: Image Validating Webhook | Apply Manifests
   kube:
     kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/addons/image_validation_webhook/{{ item }}"
+    filename: "{{ kube_config_dir }}/addons/image_validation_webhook/{{ item.item.file }}"
     state: "latest"
     wait: true
   with_items:
-    - "tmax.io_signerpolicies.yaml"
-    - "webhook-account.yaml"
-    - "webhook-role.yaml"
-    - "webhook-role-binding.yaml"
-    - "whitelist-configmap.yaml"
-    - "webhook-deployment.yaml"
-    - "webhook-service.yaml"
-    - "validating-webhook-ca-bundle.yaml"
+    - "{{ image_validation_webhook_manifests.results }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
+  loop_control:
+    label: "{{ item.item.file }}"

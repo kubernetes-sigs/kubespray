@@ -85,7 +85,6 @@
     - { name: cluster-tsb-rolebinding, file: cluster_tsb_rolebinding.yaml }
     - { name: cluster-tsb-service, file: cluster_tsb_service.yaml }
     - { name: cluster-tsb-deployment, file: cluster_tsb_deployment.yaml }
-    - { name: cluster-tsb-service-broker, file: cluster_tsb_service_broker.yaml }
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
@@ -117,31 +116,6 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
-
-- name: Cluster-tsb | Wait for Cluster-tsb Pod become available
-  uri:
-    url: http://{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}:32323/v2/catalog
-    return_content: yes
-  register: cluster_tsb_status
-  retries: 400
-  delay: 5
-  until: "cluster_tsb_status.status == 200"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-
-
-- name: Cluster-tsb | Apply Cluster-TSB
-  kube:
-    kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/addons/template-service-broker/{{ item }}"
-    state: "latest"
-    wait: true
-  with_items:
-    - "cluster_tsb_service_broker.yaml"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-
-
 - name: Namespaced-tsb | Generate Manifests
   template:
     src: "{{ item.file }}.j2"
@@ -153,7 +127,6 @@
     - { name: tsb-rolebinding, file: tsb_rolebinding.yaml }
     - { name: tsb-service, file: tsb_service.yaml }
     - { name: tsb-deployment, file: tsb_deployment.yaml }
-    - { name: tsb-service-broker, file: tsb_service_broker.yaml }
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
@@ -182,29 +155,5 @@
     - "tsb_rolebinding.yaml"
     - "tsb_deployment.yaml"
     - "tsb_service.yaml"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-
-
-- name: Namespaced-tsb | Wait for Namespaced-tsb Pod become available
-  uri:
-    url: http://{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}:32324/v2/catalog
-    return_content: yes
-  register: namespaced_tsb_status
-  retries: 400
-  delay: 5
-  until: "namespaced_tsb_status.status == 200"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-
-
-- name: Namespaced-tsb | Apply Namespaced-TSB
-  kube:
-    kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/addons/template-service-broker/{{ item }}"
-    state: "latest"
-    wait: true
-  with_items:
-    - "tsb_service_broker.yaml"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]

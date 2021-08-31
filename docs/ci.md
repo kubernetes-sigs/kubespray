@@ -10,6 +10,7 @@ amazon |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :white_check_mark: |
 centos8 |  :white_check_mark: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: |
 debian10 |  :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
+debian11 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: |
 fedora33 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora34 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
@@ -27,6 +28,7 @@ amazon |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian10 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+debian11 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora33 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora34 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
@@ -44,6 +46,7 @@ amazon |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 centos8 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian10 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+debian11 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora33 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora34 |  :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: |

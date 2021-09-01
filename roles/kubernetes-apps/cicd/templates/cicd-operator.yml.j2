@@ -13,7 +13,6 @@ metadata:
   labels:
     cicd.tmax.io/part-of: controller
 spec:
-  type: "{{ cicd_webhook_service_type }}"
   selector:
     control-plane: controller-manager
   ports:
@@ -58,9 +57,24 @@ data:
   smtpUserSecret: ""
   collectPeriod: "120"
   integrationJobTTL: "120"
+  exposeMode: "{{ cicd_webhook_expose_type }}"
   ingressClass: "{{ cicd_ingress_class }}"
   ingressHost: "{{ cicd_ingress_host }}"
   gitImage: "{{ cicd_git_image_repo }}:{{ cicd_git_image_tag }}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plugin-config
+  namespace: cicd-system
+  labels:
+    cicd.tmax.io/part-of: controller
+data:
+  sizeS: '10'
+  sizeM: '30'
+  sizeL: '100'
+  sizeXL: '500'
+  sizeXXL: '1000'
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -232,6 +246,18 @@ rules:
       - update
       - watch
   - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
       - apiregistration.k8s.io
     resourceNames:
       - v1.cicdapi.tmax.io
@@ -335,14 +361,6 @@ rules:
       - patch
       - update
       - watch
-  - apiGroups:
-      - networking.k8s.io
-    resources:
-      - ingresses/status
-    verbs:
-      - get
-      - patch
-      - update
   - apiGroups:
       - rbac.authorization.k8s.io
     resources:
@@ -3218,7 +3236,6 @@ spec:
                       description: "%cicd.tmax.io_integrationconfigs.yaml.spec.versions.schema.openAPIV3Schema.properties.spec.properties.mergeConfig.properties.method"
                       enum:
                         - "squash"
-                        - "rebase"
                         - "merge"
                       type: "string"
                     query:
@@ -7391,33 +7408,36 @@ spec:
                     link:
                       description: "%cicd.tmax.io_integrationjobs.yaml.spec.versions.schema.openAPIV3Schema.properties.spec.properties.refs.properties.link"
                       type: "string"
-                    pull:
-                      description: "%cicd.tmax.io_integrationjobs.yaml.spec.versions.schema.openAPIV3Schema.properties.spec.properties.refs.properties.pull"
-                      properties:
-                        author:
-                          description: "%cicd.tmax.io_integrationjobs.yaml.spec.versions.schema.openAPIV3Schema.properties.spec.properties.refs.properties.pull.properties.author"
-                          properties:
-                            name:
-                              type: "string"
-                          required:
-                            - "name"
-                          type: "object"
-                        id:
-                          type: "integer"
-                        link:
-                          type: "string"
-                        ref:
-                          description: "%cicd.tmax.io_integrationjobs.yaml.spec.versions.schema.openAPIV3Schema.properties.spec.properties.refs.properties.pull.properties.ref"
-                          type: "string"
-                        sha:
-                          type: "string"
-                      required:
-                        - "author"
-                        - "id"
-                        - "link"
-                        - "ref"
-                        - "sha"
-                      type: "object"
+                    pulls:
+                      description: "%cicd.tmax.io_integrationjobs.yaml.spec.versions.schema.openAPIV3Schema.properties.spec.properties.refs.properties.pulls"
+                      items:
+                        description: "%cicd.tmax.io_integrationjobs.yaml.spec.versions.schema.openAPIV3Schema.properties.spec.properties.refs.properties.pulls.items"
+                        properties:
+                          author:
+                            description: "%cicd.tmax.io_integrationjobs.yaml.spec.versions.schema.openAPIV3Schema.properties.spec.properties.refs.properties.pulls.items.properties.author"
+                            properties:
+                              name:
+                                type: "string"
+                            required:
+                              - "name"
+                            type: "object"
+                          id:
+                            type: "integer"
+                          link:
+                            type: "string"
+                          ref:
+                            description: "%cicd.tmax.io_integrationjobs.yaml.spec.versions.schema.openAPIV3Schema.properties.spec.properties.refs.properties.pulls.items.properties.ref"
+                            type: "string"
+                          sha:
+                            type: "string"
+                        required:
+                          - "author"
+                          - "id"
+                          - "link"
+                          - "ref"
+                          - "sha"
+                        type: "object"
+                      type: "array"
                     repository:
                       description: "%cicd.tmax.io_integrationjobs.yaml.spec.versions.schema.openAPIV3Schema.properties.spec.properties.refs.properties.repository"
                       pattern: ".+/.+"

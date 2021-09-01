@@ -58,9 +58,7 @@ metadata:
 spec:
   allowPrivilegeEscalation: false
   allowedCapabilities:
-  - NET_ADMIN
   - NET_RAW
-  - SYS_ADMIN
   allowedHostPaths: []
   defaultAddCapabilities: []
   defaultAllowPrivilegeEscalation: false
@@ -72,6 +70,8 @@ spec:
   hostPorts:
   - max: {{ metallb_port }}
     min: {{ metallb_port }}
+  - max: {{ metallb_memberlist_port }}
+    min: {{ metallb_memberlist_port }}
   privileged: true
   readOnlyRootFilesystem: true
   requiredDropCapabilities:
@@ -121,7 +121,6 @@ rules:
   - get
   - list
   - watch
-  - update
 - apiGroups:
   - ''
   resources:
@@ -158,6 +157,13 @@ rules:
   - services
   - endpoints
   - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["discovery.k8s.io"]
+  resources:
+  - endpointslices
   verbs:
   - get
   - list
@@ -212,6 +218,37 @@ rules:
   - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app: metallb
+  name: controller
+  namespace: metallb-system
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - secrets
+  verbs:
+  - create
+- apiGroups:
+  - ''
+  resources:
+  - secrets
+  resourceNames:
+  - memberlist
+  verbs:
+  - list
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  resourceNames:
+  - controller
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
@@ -275,6 +312,21 @@ subjects:
 - kind: ServiceAccount
   name: speaker
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app: metallb
+  name: controller
+  namespace: metallb-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: controller
+subjects:
+- kind: ServiceAccount
+  name: controller
+---
 {% if metallb_speaker_enabled %}
 apiVersion: apps/v1
 kind: DaemonSet
@@ -316,36 +368,32 @@ spec:
             fieldRef:
               fieldPath: status.podIP
         # needed when another software is also using memberlist / port 7946
+        # when changing this default you also need to update the container ports definition
+        # and the PodSecurityPolicy hostPorts definition
         #- name: METALLB_ML_BIND_PORT
-        #  value: "7946"
+        #  value: "{{ metallb_memberlist_port }}"
         - name: METALLB_ML_LABELS
           value: "app=metallb,component=speaker"
-        - name: METALLB_ML_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
         - name: METALLB_ML_SECRET_KEY
           valueFrom:
             secretKeyRef:
               name: memberlist
               key: secretkey
         image: {{ metallb_speaker_image_repo }}:{{ metallb_version }}
-        imagePullPolicy: {{ k8s_image_pull_policy }}
         name: speaker
         ports:
         - containerPort: {{ metallb_port }}
           name: monitoring
-        resources:
-          limits:
-            cpu: {{ metallb_limits_cpu }}
-            memory: {{ metallb_limits_mem }}
+        - containerPort: {{ metallb_memberlist_port }}
+          name: memberlist-tcp
+        - containerPort: {{ metallb_memberlist_port }}
+          name: memberlist-udp
+          protocol: UDP
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
             add:
-            - NET_ADMIN
             - NET_RAW
-            - SYS_ADMIN
             drop:
             - ALL
           readOnlyRootFilesystem: true
@@ -399,16 +447,16 @@ spec:
       - args:
         - --port={{ metallb_port }}
         - --config=config
+        env:
+        - name: METALLB_ML_SECRET_NAME
+          value: memberlist
+        - name: METALLB_DEPLOYMENT
+          value: controller
         image: {{ metallb_controller_image_repo }}:{{ metallb_version }}
-        imagePullPolicy: {{ k8s_image_pull_policy }}
         name: controller
         ports:
         - containerPort: {{ metallb_port }}
           name: monitoring
-        resources:
-          limits:
-            cpu: {{ metallb_limits_cpu }}
-            memory: {{ metallb_limits_mem }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

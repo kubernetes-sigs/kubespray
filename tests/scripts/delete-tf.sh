@@ -2,4 +2,4 @@
 set -euxo pipefail
 
 cd ..
-terraform destroy -auto-approve "contrib/terraform/$PROVIDER"
+terraform -chdir="contrib/terraform/$PROVIDER" destroy -auto-approve

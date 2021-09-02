@@ -161,7 +161,7 @@ class KubeManager(object):
             return None
         return out.splitlines()
 
-    def create(self, check=True, force=True):
+    def create(self, check=False, force=True):
         if check and self.exists():
             return []
 
@@ -325,7 +325,7 @@ def main():
     manager = KubeManager(module)
     state = module.params.get('state')
     if state == 'present':
-        result = manager.create(check=False)
+        result = manager.create(check=True)
 
     elif state == 'absent':
         result = manager.delete()

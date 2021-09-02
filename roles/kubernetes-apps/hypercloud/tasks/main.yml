@@ -54,23 +54,20 @@
     - { name: hypercloud-api-server, file: 03_hypercloud-api-server.yaml }
     - { name: default-role, file: 04_default-role.yaml }
     - { name: "hypercloud-single-operator-v{{ hypercloud_single_operator_image_tag }}", file: "hypercloud-single-operator-v{{ hypercloud_single_operator_image_tag }}.yaml" }
-    - { name: "hypercloud-multi-operator-v{{ hypercloud_multi_operator_image_tag }}", file: "hypercloud-multi-operator-v{{ hypercloud_multi_operator_image_tag }}.yaml" }
   register: hypercloud_manifests
   when: 
     - inventory_hostname == groups['kube_control_plane'][0]
 
 
 - name: Hypercloud | Generate Manifests CAPI Template
-  ansible.builtin.copy:
-    src: "templates/{{ item.file }}.yaml"
-    dest: "{{ kube_config_dir }}/addons/hypercloud/"
-    owner: "root"
-    group: "root"
-    mode: '0644'
-  register: hypercloud_manifests_CAPI_template
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/hypercloud/{{ item.file }}"
   with_items:
-    - { name: "service-catalog-template-CAPI-aws-v{{ hypercloud_hpcd_template_version }}", file: "service-catalog-template-CAPI-aws-v{{ hypercloud_hpcd_template_version }}" }
-    - { name: "service-catalog-template-CAPI-vsphere-v{{ hypercloud_hpcd_template_version }}", file: "service-catalog-template-CAPI-vsphere-v{{ hypercloud_hpcd_template_version }}" }
+    - { name: "hypercloud-multi-operator-v{{ hypercloud_multi_operator_image_tag }}", file: "hypercloud-multi-operator-v{{ hypercloud_multi_operator_image_tag }}.yaml" }
+    - { name: "service-catalog-template-CAPI-aws-v{{ hypercloud_hpcd_template_version }}", file: "service-catalog-template-CAPI-aws-v{{ hypercloud_hpcd_template_version }}.yaml" }
+    - { name: "service-catalog-template-CAPI-vsphere-v{{ hypercloud_hpcd_template_version }}", file: "service-catalog-template-CAPI-vsphere-v{{ hypercloud_hpcd_template_version }}.yaml" }
+  register: hypercloud_manifests_CAPI_template     
   when: 
     - inventory_hostname == groups['kube_control_plane'][0]
     - hypercloud_hpcd_mode == "multi"
@@ -303,17 +300,6 @@
   when:
     - inventory_hostname in groups['kube_control_plane']
     - not audit_config_exists.stat.exists
-
-
-- name: Hypercloud | Modify CAPI Vsphere Yaml
-  ansible.builtin.shell: |
-    sed -i 's#image: #image: {{ registry_host }}/#g: ' ./service-catalog-template-CAPI-vsphere*.yaml
-  args:
-    chdir: "{{ kube_config_dir }}/addons/hypercloud/"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - hypercloud_hpcd_mode == "multi"
-    - is_this_offline == true
 
 
 - name: Hypercloud | Modify Multi Operator Config

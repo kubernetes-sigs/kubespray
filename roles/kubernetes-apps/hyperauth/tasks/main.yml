@@ -199,11 +199,24 @@
     (oidc_registered_result.stderr != '') or
     (oidc_registered_result.rc == 1)
   ignore_errors: yes
+  
+- name: Hyperauth | Generate Binary - yq
+  ansible.builtin.copy:
+    src: "templates/{{ item.file }}"
+    dest: "{{ kube_config_dir }}/addons/hyperauth/"
+    owner: "root"
+    group: "root"
+    mode: '0755'
+  with_items:
+    - { name: "yq_linux_amd64", file: "yq_linux_amd64" }
+  when: 
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Hyperauth | OIDC with k8s
   ansible.builtin.shell: |
     # sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.11.1/yq_linux_amd64
-    sudo chmod +x /usr/local/bin/yq
+    sudo cp ./yq_linux_amd64 /usr/bin/yq
+    sudo chmod +x /usr/bin/yq
     sudo cp /etc/kubernetes/manifests/kube-apiserver.yaml .
     # export port=`{{ bin_dir }}/kubectl describe service hyperauth -n hyperauth | grep 'NodePort' | grep -v 'https' | grep 'http' | cut -d '/' -f1 | cut -d 'p' -f2 | tr -d ' '`
     yq e '.spec.containers[0].command += "--oidc-issuer-url=https://hyperauth.{{ custom_domain_name }}/auth/realms/tmax"' -i ./kube-apiserver.yaml

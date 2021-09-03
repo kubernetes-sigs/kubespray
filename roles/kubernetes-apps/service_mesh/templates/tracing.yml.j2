@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: jaeger-configuration
-  namespace: {{ service_mesh_namespace }}
+  namespace: istio-system
   labels:
     app: jaeger
     app.kubernetes.io/name: jaeger
@@ -10,13 +10,13 @@ data:
   span-storage-type: elasticsearch
   collector: |
     es:
-      server-urls: http://elasticsearch.kube-logging.svc.cluster.local:9200
+      server-urls: http://{{ efk_es_svc_name }}.{{ efk_namespace }}.svc.cluster.local:9200
     collector:
       zipkin:
         http-port: 9411
   query: |
     es:
-      server-urls: http://elasticsearch.kube-logging.svc.cluster.local:9200
+      server-urls: http://{{ efk_es_svc_name }}.{{ efk_namespace }}.svc.cluster.local:9200
   agent: |
     collector:
       host-port: "jaeger-collector:14267"
@@ -40,7 +40,7 @@ items:
   - apiVersion: apps/v1
     kind: Deployment
     metadata:
-      namespace: {{ service_mesh_namespace }}
+      namespace: istio-system
       name: jaeger-collector
       labels:
         app: jaeger
@@ -97,7 +97,7 @@ items:
   - apiVersion: v1
     kind: Service
     metadata:
-      namespace: {{ service_mesh_namespace }}
+      namespace: istio-system
       name: jaeger-collector
       labels:
         app: jaeger
@@ -142,7 +142,7 @@ items:
   - apiVersion: apps/v1
     kind: Deployment
     metadata:
-      namespace: {{ service_mesh_namespace }}
+      namespace: istio-system
       name: jaeger-query
       labels:
         app: jaeger
@@ -203,7 +203,7 @@ items:
   - apiVersion: v1
     kind: Service
     metadata:
-      namespace: {{ service_mesh_namespace }}
+      namespace: istio-system
       name: jaeger-query
       labels:
         app: jaeger
@@ -218,12 +218,34 @@ items:
       selector:
         app.kubernetes.io/name: jaeger
         app.kubernetes.io/component: query
-      type: LoadBalancer
-
+      type: ClusterIP
+  - apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: jaeger-query
+      namespace: istio-system
+      labels:
+        app: jaeger
+        app.kubernetes.io/name: jaeger
+        app.kubernetes.io/component: query
+      annotations:
+        kubernetes.io/ingress.class: nginx-system
+    spec:
+      rules:
+        - host: jaeger-query.{{ custom_domain_name }}
+          http:
+            paths:
+              - pathType: Prefix
+                path: /
+                backend:
+                  service:
+                    name: jaeger-query
+                    port:
+                      number: 80
   - apiVersion: apps/v1
     kind: DaemonSet
     metadata:
-      namespace: {{ service_mesh_namespace }}
+      namespace: istio-system
       name: jaeger-agent
       labels:
         app: jaeger

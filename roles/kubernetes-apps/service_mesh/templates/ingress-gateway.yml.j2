@@ -4,7 +4,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: istio-ingressgateway-sds
-  namespace: {{ service_mesh_namespace }}
+  namespace: istio-system
   labels:
     release: istio
 rules:
@@ -18,7 +18,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: istio-ingressgateway-service-account
-  namespace: {{ service_mesh_namespace }}
+  namespace: istio-system
   labels:
     app: istio-ingressgateway
     istio: ingressgateway
@@ -30,7 +30,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: istio-ingressgateway-sds
-  namespace: {{ service_mesh_namespace }}
+  namespace: istio-system
   labels:
     release: istio
 roleRef:
@@ -51,7 +51,7 @@ metadata:
     istio: ingressgateway
     release: istio
   name: istio-ingressgateway
-  namespace: {{ service_mesh_namespace }}
+  namespace: istio-system
 spec:
   selector:
     matchLabels:
@@ -125,7 +125,7 @@ spec:
         - --serviceCluster
         - istio-ingressgateway
         - --zipkinAddress
-        - zipkin.{{ service_mesh_namespace }}:9411
+        - zipkin.istio-system:9411
         - --proxyAdminPort
         - "15000"
         - --statusPort
@@ -133,7 +133,7 @@ spec:
         - --controlPlaneAuthPolicy
         - NONE
         - --discoveryAddress
-        - istio-pilot.{{ service_mesh_namespace }}.svc:15012
+        - istio-pilot.istio-system.svc:15012
         - --trust-domain=cluster.local
         env:
         - name: JWT_POLICY
@@ -143,7 +143,7 @@ spec:
         - name: ISTIO_META_USER_SDS
           value: "true"
         - name: CA_ADDR
-          value: istio-pilot.{{ service_mesh_namespace }}.svc:15012
+          value: istio-pilot.istio-system.svc:15012
         - name: NODE_NAME
           valueFrom:
             fieldRef:
@@ -176,7 +176,7 @@ spec:
         - name: ISTIO_META_WORKLOAD_NAME
           value: istio-ingressgateway
         - name: ISTIO_META_OWNER
-          value: kubernetes://apis/apps/v1/namespaces/{{ service_mesh_namespace }}/deployments/istio-ingressgateway
+          value: kubernetes://apis/apps/v1/namespaces/istio-system/deployments/istio-ingressgateway
         - name: ISTIO_META_MESH_ID
           value: cluster.local
         - name: ISTIO_AUTO_MTLS_ENABLED
@@ -281,7 +281,7 @@ metadata:
     istio: ingressgateway
     release: istio
   name: istio-ingressgateway
-  namespace: {{ service_mesh_namespace }}
+  namespace: istio-system
 spec:
   ports:
   - name: status-port
@@ -312,10 +312,31 @@ spec:
   selector:
     app: istio-ingressgateway
     istio: ingressgateway
-  type: LoadBalancer
-
 ---
-
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: istio-ingressgateway
+  namespace: istio-system
+  labels:
+    app: istio-ingressgateway
+    istio: ingressgateway
+    release: istio
+  annotations:
+    kubernetes.io/ingress.class: nginx-system
+spec:
+  rules:
+    - host: istio-ingressgateway.{{ custom_domain_name }}
+      http:
+        paths:
+          - pathType: Prefix
+            path: /
+            backend:
+              service:
+                name: istio-ingressgateway
+                port:
+                  number: 80
+---
 
 apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler
@@ -325,7 +346,7 @@ metadata:
     istio: ingressgateway
     release: istio
   name: istio-ingressgateway
-  namespace: {{ service_mesh_namespace }}
+  namespace: istio-system
 spec:
   maxReplicas: 1
   metrics:
@@ -346,7 +367,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
   name: ingressgateway
-  namespace: {{ service_mesh_namespace }}
+  namespace: istio-system
   labels:
     release: istio
 spec:
@@ -367,7 +388,7 @@ apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
 metadata:
   name: ingressgateway
-  namespace: {{ service_mesh_namespace }}
+  namespace: istio-system
   labels:
     app: istio-ingressgateway
     istio: ingressgateway

@@ -81,15 +81,15 @@
     
 - name: Hyperauth | SSL Settings for Hyperauth Server 2
   ansible.builtin.shell: | 
-    sudo cp hypercloud-root-ca.crt /etc/kubernetes/pki/hypercloud-root-ca.crt
-    sudo cp hypercloud-root-ca.key /etc/kubernetes/pki/hypercloud-root-ca.key
-    sudo cp hyperauth.crt /etc/kubernetes/pki/hyperauth.crt
-    sudo cp hyperauth.key /etc/kubernetes/pki/hyperauth.key
-    sudo keytool -keystore hyperauth.truststore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+    sudo cp hypercloud-root-ca.crt /etc/kubernetes/ssl/hypercloud-root-ca.crt
+    sudo cp hypercloud-root-ca.key /etc/kubernetes/ssl/hypercloud-root-ca.key
+    sudo cp hyperauth.crt /etc/kubernetes/ssl/hyperauth.crt
+    sudo cp hyperauth.key /etc/kubernetes/ssl/hyperauth.key
+    sudo keytool -keystore hyperauth.truststore.jks -alias ca-cert -import -file /etc/kubernetes/ssl/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
     sudo keytool -keystore hyperauth.keystore.jks -alias hyperauth -validity 3650 -genkey -keyalg RSA -dname "CN=hyperauth" -storepass tmax@23 -keypass tmax@23
     sudo keytool -keystore hyperauth.keystore.jks -alias hyperauth -certreq -file ca-request-hyperauth -storepass tmax@23
-    sudo openssl x509 -req -CA /etc/kubernetes/pki/hypercloud-root-ca.crt -CAkey /etc/kubernetes/pki/hypercloud-root-ca.key -in ca-request-hyperauth -out ca-signed-hyperauth -days 3650 -CAcreateserial
-    sudo keytool -keystore hyperauth.keystore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+    sudo openssl x509 -req -CA /etc/kubernetes/ssl/hypercloud-root-ca.crt -CAkey /etc/kubernetes/ssl/hypercloud-root-ca.key -in ca-request-hyperauth -out ca-signed-hyperauth -days 3650 -CAcreateserial
+    sudo keytool -keystore hyperauth.keystore.jks -alias ca-cert -import -file /etc/kubernetes/ssl/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
     sudo keytool -keystore hyperauth.keystore.jks -alias hyperauth -import -file ca-signed-hyperauth -storepass tmax@23 -noprompt
     {{ bin_dir }}/kubectl create secret generic hyperauth-kafka-jks --from-file=./hyperauth.keystore.jks --from-file=./hyperauth.truststore.jks -n hyperauth 
   args:
@@ -153,8 +153,8 @@
     - inventory_hostname == groups['kube_control_plane'][0]
     - not root_ca_exists_result.stat.exists
 
-- name: Hyperauth | Cpoy SSL File to All Master /etc/kubernetes/pki
-  copy: src=./inventory/mycluster/{{ item }} dest=/etc/kubernetes/pki/
+- name: Hyperauth | Cpoy SSL File to All Master /etc/kubernetes/ssl
+  copy: src=./inventory/mycluster/{{ item }} dest=/etc/kubernetes/ssl/
   with_items:
     - hyperauth.crt
     - hyperauth.key
@@ -167,7 +167,7 @@
 
 - name: Hyperauth | SSL Settings for Kafka
   ansible.builtin.shell: |
-    sudo keytool -keystore kafka.broker.truststore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+    sudo keytool -keystore kafka.broker.truststore.jks -alias ca-cert -import -file /etc/kubernetes/ssl/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
     sudo keytool -keystore kafka.broker.keystore.jks -alias broker -validity 3650 -genkey -keyalg RSA -dname "CN=kafka" -storepass tmax@23 -keypass tmax@23
     sudo keytool -keystore kafka.broker.keystore.jks -alias broker -certreq -file ca-request-broker -storepass tmax@23
     # export nginx_ip=`{{ bin_dir }}/kubectl describe pod -n ingress-nginx-system | grep IP | head -n 1 | cut -d ':' -f2 | tr -d ' '`
@@ -175,8 +175,8 @@
     [kafka]
     subjectAltName = DNS:kafka-1.hyperauth,DNS:kafka-2.hyperauth,DNS:kafka-3.hyperauth,DNS:{{ custom_domain_name }}
     EOL
-    sudo openssl x509 -req -CA /etc/kubernetes/pki/hypercloud-root-ca.crt -CAkey /etc/kubernetes/pki/hypercloud-root-ca.key -in ca-request-broker -out ca-signed-broker -days 3650 -CAcreateserial -extfile "kafka.cnf" -extensions kafka -sha256
-    sudo keytool -keystore kafka.broker.keystore.jks -alias ca-cert -import -file /etc/kubernetes/pki/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
+    sudo openssl x509 -req -CA /etc/kubernetes/ssl/hypercloud-root-ca.crt -CAkey /etc/kubernetes/ssl/hypercloud-root-ca.key -in ca-request-broker -out ca-signed-broker -days 3650 -CAcreateserial -extfile "kafka.cnf" -extensions kafka -sha256
+    sudo keytool -keystore kafka.broker.keystore.jks -alias ca-cert -import -file /etc/kubernetes/ssl/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
     sudo keytool -keystore kafka.broker.keystore.jks -alias broker -import -file ca-signed-broker -storepass tmax@23 -noprompt
     {{ bin_dir }}/kubectl create secret generic kafka-jks --from-file=./kafka.broker.keystore.jks --from-file=./kafka.broker.truststore.jks -n hyperauth
   args:

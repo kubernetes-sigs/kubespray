@@ -3,11 +3,12 @@
   * nss - 3.53.1-17.el8_3
   * conntrack - 1.4.4-10.el8
   * socat - 1.7.3.3-2.el8
-  * cri-o-1.19 - cri-o-1.19.1-12.1.el8.x86_64.rpm
-  * calico-3.17.4.tar.gz
-  * cni-plugins-linux-amd64-v0.9.1.tgz
+  * cri-o-1.19
+  * calico-3.17.4
+  * cni-plugins-linux-amd64-v0.9.1
   * calicoctl-linux-amd64
-  * dnstools.tar.gz
+  * dnstools
+  * sshpass
   * nfs-utils-1:2.3.3-41.el8_4.2.x86_64
   * java-1.8.0-openjdk-devel.x86_64
 
@@ -36,10 +37,12 @@
     registries = ['<내부망IP>:<PORT>']
     ex) registries = ['10.0.10.50:5000']
     ```
-  * supercloud-images.tar를 다운로드 후 tar 압축을 풀고 해당 host path로 image registry를 띄운다.
+  * 아래의 ftp에서 supercloud-images.tar를 다운로드 한다.
+    * ftp : 192.168.1.150:/home/ck-ftp/k8s/install/offline/supercloud-images 
+  * 다운로드 한 tar 압축을 풀고 해당 host path로 image registry를 띄운다.
     ```bash
-    $ tar -xvf registry.tar
-    $ podman run -it -d -p{ image registry ip:port }:5000 --privileged -v { image tar 푼 경로 }:/var/lib/registry registry
+    $ tar -xvf supercloud-images.tar
+    $ podman run -it -d -p{image registry ip:port}:5000 --privileged -v {image tar 푼 경로}:/var/lib/registry registry
     EX) podman run -it -d -p10.0.10.50:5000:5000 --privileged -v /root/supercloud-registry:/var/lib/registry registry
     ```
 * 비고 :

@@ -1,24 +1,27 @@
 ## 구성 요소 및 버전
-* nss - 3.53.1-17.el8_3
-* conntrack - 1.4.4-10.el8
-* socat - 1.7.3.3-2.el8
-* python3-pip-python 3.6
-* python3-cryptography-3.2.1-4.el8 (BaseOS)
-* python3-jinja2- 2.10.1-2.el8_0 (AppStream)
-* python3-netaddr-0.7.19-8.el8 (AppStream)
-* python3-jmespath-0.9.0-11.el8 (AppStream)
-* python3-ruamel-yaml-0.15.41-2.el8 (epel)
-* python3-pbr-5.1.2-3.el8 (epel-release)
-* ansible - 2.9.23-1.el8 (epel)
-* cri-o-1.19 - cri-o-1.19.1-12.1.el8.x86_64.rpm
-* calico-3.17.4.tar.gz
-* cni-plugins-linux-amd64-v0.9.1.tgz
-* calicoctl-linux-amd64
-* dnstools.tar.gz
-* nfs-utils-1:2.3.3-41.el8_4.2.x86_64
-* java-1.8.0-openjdk-devel.x86_64
-* community.crypto
-* community.kubernetes 
+* 모든 node에 필요
+  * nss - 3.53.1-17.el8_3
+  * conntrack - 1.4.4-10.el8
+  * socat - 1.7.3.3-2.el8
+  * cri-o-1.19 - cri-o-1.19.1-12.1.el8.x86_64.rpm
+  * calico-3.17.4.tar.gz
+  * cni-plugins-linux-amd64-v0.9.1.tgz
+  * calicoctl-linux-amd64
+  * dnstools.tar.gz
+  * nfs-utils-1:2.3.3-41.el8_4.2.x86_64
+  * java-1.8.0-openjdk-devel.x86_64
+
+* kubespray install 실행하는 node에만 필요
+  * python3-pip-python 3.6
+  * python3-cryptography-3.2.1-4.el8 (BaseOS)
+  * python3-jinja2- 2.10.1-2.el8_0 (AppStream)
+  * python3-netaddr-0.7.19-8.el8 (AppStream)
+  * python3-jmespath-0.9.0-11.el8 (AppStream)
+  * python3-ruamel-yaml-0.15.41-2.el8 (epel)
+  * python3-pbr-5.1.2-3.el8 (epel-release)
+  * ansible - 2.9.23-1.el8 (epel)
+  * community.crypto
+  * community.kubernetes 
 
 ## Prerequisites
 * 클러스터 구성전 master, worker node 최소 스팩

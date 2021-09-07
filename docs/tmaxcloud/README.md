@@ -11,6 +11,7 @@
   * sshpass
   * nfs-utils-1:2.3.3-41.el8_4.2.x86_64
   * java-1.8.0-openjdk-devel.x86_64
+  * hyperregistry-v2.2.2
 
 * kubespray install 실행하는 node에만 필요
   * python3-pip-python 3.6

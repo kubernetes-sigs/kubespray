@@ -98,3 +98,6 @@
     
 5. kubespray에서 사용할 사용자 변수들을 설정한다.
   * https://github.com/tmax-cloud/kubespray/tree/tmax-master/docs/tmaxcloud 에 있는 md를 참고하여 설정한다.
+
+6. kubespray install playbook을 실행한다. (cluster.yml)
+  * ex) ansible-playbook -i inventory/tmaxcloud/inventory.ini --become --become-user=root cluster.yml

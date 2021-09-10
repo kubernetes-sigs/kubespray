@@ -11,11 +11,13 @@ provider "upcloud" {
 module "kubernetes" {
   source = "./modules/kubernetes-cluster"
 
-  zone     = var.zone
-  hostname = var.hostname
+  prefix = var.prefix
+  zone   = var.zone
 
   template_name = var.template_name
   username      = var.username
+
+  private_network_cidr = var.private_network_cidr
 
   machines = var.machines
 
@@ -30,13 +32,15 @@ data "template_file" "inventory" {
   template = file("${path.module}/templates/inventory.tpl")
 
   vars = {
-    connection_strings_master = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s etcd_member_name=etcd%d",
+    connection_strings_master = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s ip=%s etcd_member_name=etcd%d",
       keys(module.kubernetes.master_ip),
-      values(module.kubernetes.master_ip),
+      values(module.kubernetes.master_ip).*.public_ip,
+      values(module.kubernetes.master_ip).*.private_ip,
     range(1, length(module.kubernetes.master_ip) + 1)))
-    connection_strings_worker = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s",
+    connection_strings_worker = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s ip=%s",
       keys(module.kubernetes.worker_ip),
-    values(module.kubernetes.worker_ip)))
+      values(module.kubernetes.worker_ip).*.public_ip,
+    values(module.kubernetes.worker_ip).*.private_ip))
     list_master = join("\n", formatlist("%s",
     keys(module.kubernetes.master_ip)))
     list_worker = join("\n", formatlist("%s",

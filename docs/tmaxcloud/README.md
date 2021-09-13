@@ -26,7 +26,11 @@
   * master node (controll plane node) - CPU : 2Core 이상
   * master/worker node - RAM : 2GiB 이상
 
-## 폐쇄망 구축 가이드 
+## 폐쇄망 구축 가이드
+0. 각 호스트에 local-package-repo 구축한다.
+  * https://github.com/tmax-cloud/install-pkg-repo/tree/5.0 참고
+  * pre-required packages들은 반드시 포함되어있어야 한다.
+  
 1. 아래 가이드를 참고 하여 image registry를 구축한다.
   * podman을 설치 후 /etc/containers/registries.conf에 insecure registry 등록한다.
     ```bash

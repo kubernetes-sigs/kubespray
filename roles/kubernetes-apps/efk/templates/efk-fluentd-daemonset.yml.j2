@@ -28,6 +28,14 @@ data:
       logstash_format "#{ENV['FLUENT_ELASTICSEARCH_LOGSTASH_FORMAT'] || 'true'}"
       index_name "#{ENV['FLUENT_ELASTICSEARCH_LOGSTASH_INDEX_NAME'] || 'logstash'}"
       type_name "#{ENV['FLUENT_ELASTICSEARCH_LOGSTASH_TYPE_NAME'] || 'fluentd'}"
+      enable_ilm true
+      #ilm_policy_id watch-history-ilm-policy
+      #ilm_policy_overwrite false
+      #rollover_index true
+      #ilm_policy {}
+      template_name delete-after-7days
+      template_file /fluentd/etc/index_template.json
+      #customize_template {"<<index_prefix>>": "fluentd"}
       <buffer>
         @type file
         path /var/log/fluentd-buffer
@@ -44,7 +52,7 @@ data:
       tag kubernetes.*
       path /var/log/containers/*.log
       pos_file /var/log/kube-containers.log.pos
-      read_from_head true
+      read_from_head false
       <parse>
         @type multi_format
         <pattern>
@@ -64,6 +72,7 @@ data:
       path /var/log/salt/minion
       pos_file /var/log/fluentd-salt.pos
       tag salt
+      read_from_head false
       <parse>
         @type regexp
         expression /^(?<time>[^ ]* [^ ,]*)[^\[]*\[[^\]]*\]\[(?<severity>[^ \]]*) *\] (?<message>.*)$/
@@ -71,11 +80,12 @@ data:
       </parse>
     </source>
     <source>
-      type tail
+      @type tail
       @id in_tail_startupscript
       path /var/log/startupscript.log
       pos_file /var/log/fluentd-startupscript.log.pos
       tag startupscript
+      read_from_head false
       <parse>
         @type syslog
       </parse>
@@ -86,6 +96,7 @@ data:
       path /var/log/docker.log
       pos_file /var/log/fluentd-docker.log.pos
       tag docker
+      read_from_head false
       <parse>
         @type regexp
         expression /^time="(?<time>[^)]*)" level=(?<severity>[^ ]*) msg="(?<message>[^"]*)"( err="(?<error>[^"]*)")?( statusCode=($<status_code>\d+))?/
@@ -97,6 +108,7 @@ data:
       path /var/log/etcd.log
       pos_file /var/log/fluentd-etcd.log.pos
       tag etcd
+      read_from_head false
       <parse>
         @type none
       </parse>
@@ -108,6 +120,7 @@ data:
       path /var/log/kubelet.log
       pos_file /var/log/fluentd-kubelet.log.pos
       tag kubelet
+      read_from_head false
       <parse>
         @type kubernetes
       </parse>
@@ -119,6 +132,7 @@ data:
       path /var/log/kube-proxy.log
       pos_file /var/log/fluentd-kube-proxy.log.pos
       tag kube-proxy
+      read_from_head false
       <parse>
         @type kubernetes
       </parse>
@@ -130,6 +144,7 @@ data:
       path /var/log/kube-apiserver.log
       pos_file /var/log/fluentd-kube-apiserver.log.pos
       tag kube-apiserver
+      read_from_head false
       <parse>
         @type kubernetes
       </parse>
@@ -141,6 +156,7 @@ data:
       path /var/log/kube-controller-manager.log
       pos_file /var/log/fluentd-kube-controller-manager.log.pos
       tag kube-controller-manager
+      read_from_head false
       <parse>
         @type kubernetes
       </parse>
@@ -152,6 +168,7 @@ data:
       path /var/log/kube-scheduler.log
       pos_file /var/log/fluentd-kube-scheduler.log.pos
       tag kube-scheduler
+      read_from_head false
       <parse>
         @type kubernetes
       </parse>
@@ -163,6 +180,7 @@ data:
       path /var/log/rescheduler.log
       pos_file /var/log/fluentd-rescheduler.log.pos
       tag rescheduler
+      read_from_head false
       <parse>
         @type kubernetes
       </parse>
@@ -174,6 +192,7 @@ data:
       path /var/log/glbc.log
       pos_file /var/log/fluentd-glbc.log.pos
       tag glbc
+      read_from_head false
       <parse>
         @type kubernetes
       </parse>
@@ -185,6 +204,7 @@ data:
       path /var/log/cluster-autoscaler.log
       pos_file /var/log/fluentd-cluster-autoscaler.log.pos
       tag cluster-autoscaler
+      read_from_head false
       <parse>
         @type kubernetes
       </parse>
@@ -199,6 +219,7 @@ data:
       path /var/log/kubernetes/kube-apiserver-audit.log
       pos_file /var/log/kube-apiserver-audit.log.pos
       tag kube-apiserver-audit
+      read_from_head false
       <parse>
         @type multiline
         format_firstline /^\S+\s+AUDIT:/
@@ -216,6 +237,20 @@ data:
       @type kubernetes_metadata
       @id filter_kube_metadata
     </filter>
+  index_template.json: |-
+    {
+      "index_patterns": [
+        "logstash-*"
+      ],
+      "settings": {
+        "index": {
+          "lifecycle": {
+            "name": "watch-history-ilm-policy",
+            "rollover_alias": ""
+          }
+        }
+      }
+    }
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -274,8 +309,7 @@ spec:
       serviceAccount: fluentd
       serviceAccountName: fluentd
       tolerations:
-      - key: node-role.kubernetes.io/master
-        effect: NoSchedule
+        - operator: Exists
       containers:
       - name: fluentd
         image: {{ efk_fluentd_image_repo }}:{{ efk_fluentd_image_tag }}
@@ -292,10 +326,11 @@ spec:
             value: "true"
         resources:
           limits:
+            cpu: 300m
             memory: 512Mi
           requests:
-            cpu: 100m
-            memory: 200Mi
+            cpu: 50m
+            memory: 100Mi
         volumeMounts:
         - name: varlog
           mountPath: /var/log
@@ -305,6 +340,9 @@ spec:
         - name: config
           mountPath: /fluentd/etc/kubernetes.conf
           subPath: kubernetes.conf
+        - name: index-template
+          mountPath: /fluentd/etc/index_template.json
+          subPath: index_template.json
       terminationGracePeriodSeconds: 30
       volumes:
       - name: varlog
@@ -316,3 +354,12 @@ spec:
       - name: config
         configMap:
           name: fluentd-config
+          items:
+          - key: kubernetes.conf
+            path: kubernetes.conf
+      - name: index-template
+        configMap:
+          name: fluentd-config
+          items:
+          - key: index_template.json
+            path: index_template.json

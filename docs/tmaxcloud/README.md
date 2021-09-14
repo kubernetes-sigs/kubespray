@@ -4,14 +4,9 @@
   * conntrack - 1.4.4-10.el8
   * socat - 1.7.3.3-2.el8
   * cri-o-1.19
-  * calico-3.17.4
-  * cni-plugins-linux-amd64-v0.9.1
-  * calicoctl-linux-amd64
-  * dnstools
   * sshpass
-  * nfs-utils-1:2.3.3-41.el8_4.2.x86_64
+  * nfs-utils - 1:2.3.3-41.el8_4.2.x86_64
   * java-1.8.0-openjdk-devel.x86_64
-  * hyperregistry-v2.2.2
 
 * kubespray install 실행하는 node에만 필요
   * python3-pip-python 3.6
@@ -22,18 +17,25 @@
   * python3-ruamel-yaml-0.15.41-2.el8 (epel)
   * python3-pbr-5.1.2-3.el8 (epel-release)
   * ansible - 2.9.23-1.el8 (epel)
-  * community.crypto
-  * community.kubernetes 
+
+* private registry node에만 필요
+  * podman
 
 ## Prerequisites
 * 클러스터 구성전 master, worker node 최소 스팩
   * master node (controll plane node) - CPU : 2Core 이상
   * master/worker node - RAM : 2GiB 이상
 
-## 폐쇄망 구축 가이드 
+## 폐쇄망 구축 가이드
+0. 각 호스트에 local-package-repo 구축한다.
+  * https://github.com/tmax-cloud/install-pkg-repo/tree/5.0 참고
+  * pre-required packages들은 반드시 포함되어있어야 한다.
+  
 1. 아래 가이드를 참고 하여 image registry를 구축한다.
   * podman을 설치 후 /etc/containers/registries.conf에 insecure registry 등록한다.
     ```bash
+    yum install podman
+    
     [registires.insecure]
     registries = ['<내부망IP>:<PORT>']
     ex) registries = ['10.0.10.50:5000']
@@ -69,7 +71,6 @@
 * 비고 :
     * 특정 디렉토리 변경시에는 kubespray/inventory/tmaxcloud/group_vars/all/offline.yml 의 "files_repo" 부분을 경로에 맞게 수정한다.
 
-
 3. 아래 가이드를 참고 하여 kubespray 설치를 위한 환경설정을 한다.
   * (kubespray install playbook 실행 하는 노드) sshpass 설치 및 ssh key 배포 한다.
     ```bash
@@ -87,17 +88,19 @@
     ```bash
     $ git clone https://github.com/tmax-cloud/kubespray.git
     $ cd kubespray
-    $ git checkout tmax-master
+    $ git checkout shinhan-master
     ```
   * (kubespray install playbook 실행 하는 노드) kubespray 의존성 패키지 설치 한다.
     ```bash
     $ yum -y install python3-pip python3-cryptography python3-jinja2 python3-netaddr python3-jmespath python3-ruamel-yaml python3-pbr ansible
-    $ ansible-galaxy collection install community.crypto 
-    $ ansible-galaxy collection install community.kubernetes 
     ```
     
 5. kubespray에서 사용할 사용자 변수들을 설정한다.
   * https://github.com/tmax-cloud/kubespray/tree/tmax-master/docs/tmaxcloud 에 있는 md를 참고하여 설정한다.
+  
+* 비고 :
+    * 필수 설정 파일
+      * all.yml, k8s_cluster.yml, k8s-net-calico.yml, addon.yml, offline.md (offline시에만)
 
 6. kubespray install playbook을 실행한다. (cluster.yml)
   * ex) ansible-playbook -i inventory/tmaxcloud/inventory.ini --become --become-user=root cluster.yml

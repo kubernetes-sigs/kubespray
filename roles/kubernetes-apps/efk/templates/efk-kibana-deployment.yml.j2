@@ -37,12 +37,37 @@ spec:
         image: {{ efk_kibana_image_repo }}:{{ efk_kibana_image_tag }}
         resources:
           limits:
-            cpu: 1000m
+            cpu: 300m
+            memory: 500Mi
           requests:
-            cpu: 100m
+            cpu: 50m
+            memory: 50Mi
         env:
           - name: ELASTICSEARCH_URL
             value: http://{{ efk_es_svc_name }}.{{ efk_namespace }}.svc.cluster.local:9200
         ports:
         - containerPort: 5601
+        volumeMounts:
+        - mountPath: /usr/share/kibana/config/kibana.yml
+          name: config
+          subPath: kibana.yml
+      volumes:
+      - name: config
+        configMap:
+          name: kibana-config
 
+---
+
+apiVersion: v1
+data:
+  kibana.yml: |
+    server.name: kibana
+    server.host: "0"
+    server.basePath: "/api/kibana"
+    server.rewriteBasePath: true
+    elasticsearch.hosts: [ "http://{{ efk_es_svc_name }}:9200" ]
+    elasticsearch.requestTimeout: "100000ms"
+kind: ConfigMap
+metadata:
+  name: kibana-config
+  namespace: {{ efk_namespace }}

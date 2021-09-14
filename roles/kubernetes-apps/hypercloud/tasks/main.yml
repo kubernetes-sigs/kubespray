@@ -138,7 +138,7 @@
 
 - name: Hypercloud | Check that the root-ca exists
   stat:
-    path: "{{ kube_config_dir }}/pki/hypercloud-root-ca.crt"
+    path: "{{ kube_config_dir }}/ssl/hypercloud-root-ca.crt"
   register: root_ca_exists_result
   when:
     - inventory_hostname == groups['kube_control_plane'][0]  
@@ -198,7 +198,7 @@
 
 - name: Hypercloud | Create Kafka Secret
   ansible.builtin.shell: |
-    sudo cp /etc/kubernetes/pki/hypercloud-root-ca.crt {{ kube_config_dir }}/addons/hypercloud/pki/
+    sudo cp /etc/kubernetes/ssl/hypercloud-root-ca.crt {{ kube_config_dir }}/addons/hypercloud/pki/
     sudo chmod +777 {{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-root-ca.crt
     sudo chmod +777 {{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-api-server.*
     {{ bin_dir }}/kubectl -n hypercloud5-system create secret generic hypercloud-kafka-secret \
@@ -241,8 +241,8 @@
     sudo chmod +x *.sh 
     sudo ./gen-audit-config.sh
     sudo ./gen-webhook-config.sh
-    sudo cp audit-policy.yaml /etc/kubernetes/pki/
-    sudo cp audit-webhook-config /etc/kubernetes/pki/
+    sudo cp audit-policy.yaml /etc/kubernetes/ssl/
+    sudo cp audit-webhook-config /etc/kubernetes/ssl/
     {{ bin_dir }}/kubectl apply -f webhook-configuration.yaml
   args:
     chdir: "{{ kube_config_dir }}/addons/hypercloud/config"
@@ -265,8 +265,8 @@
     yq e '.spec.containers[0].command += "--audit-webhook-mode=batch"' -i ./kube-apiserver.yaml
     yq e '.spec.containers[0].command += "--audit-policy-file=/etc/kubernetes/ssl/audit-policy.yaml"' -i ./kube-apiserver.yaml
     yq e '.spec.containers[0].command += "--audit-webhook-config-file=/etc/kubernetes/ssl/audit-webhook-config"' -i ./kube-apiserver.yaml
-    yq e 'del(.spec.dnsPolicy)' -i kube-apiserver.yaml
-    yq e '.spec.dnsPolicy += "ClusterFirstWithHostNet"' -i kube-apiserver.yaml
+    #yq e 'del(.spec.dnsPolicy)' -i kube-apiserver.yaml
+    #yq e '.spec.dnsPolicy += "ClusterFirstWithHostNet"' -i kube-apiserver.yaml
     mv -f ./kube-apiserver.yaml /etc/kubernetes/manifests/kube-apiserver.yaml
   args:
     chdir: "{{ kube_config_dir }}/addons/hypercloud/"
@@ -277,13 +277,13 @@
 
 - name: Hypercloud | Check Whether Audit Config Exists
   stat:
-    path: "{{ kube_config_dir }}/pki/audit-webhook-config"
+    path: "{{ kube_config_dir }}/ssl/audit-webhook-config"
   register: audit_config_exists
 
 
 - name: Hypercloud | Fetch Audit Config from master1
   run_once: yes
-  fetch: src={{ kube_config_dir }}/pki/{{ item }} dest=./inventory/mycluster/ flat=yes
+  fetch: src={{ kube_config_dir }}/ssl/{{ item }} dest=./inventory/mycluster/ flat=yes
   with_items:
     - audit-policy.yaml
     - audit-webhook-config
@@ -292,8 +292,8 @@
     - audit_config_exists.stat.exists
 
 
-- name: Hypercloud | Cpoy Audit Config to All Master /etc/kubernetes/pki
-  copy: src=./inventory/mycluster/{{ item }} dest=/etc/kubernetes/pki/
+- name: Hypercloud | Copy Audit Config to All Master /etc/kubernetes/ssl
+  copy: src=./inventory/mycluster/{{ item }} dest=/etc/kubernetes/ssl/
   with_items:
     - audit-policy.yaml
     - audit-webhook-config
@@ -308,7 +308,7 @@
     PARAM=("\${HYPERAUTH_CERT}" "\${AUDIT_WEBHOOK_CONFIG}" "\${AUDIT_POLICY}")
     for i in ${!FILE[*]}
     do
-      sudo awk '{print "          " $0}' /etc/kubernetes/pki/${FILE[$i]} > ./${FILE[$i]}
+      sudo awk '{print "          " $0}' /etc/kubernetes/ssl/${FILE[$i]} > ./${FILE[$i]}
       sudo sed -e '/'${PARAM[$i]}'/r ./'${FILE[$i]}'' -e '/'${PARAM[$i]}'/d' -i ./capi-*-template-v{{ hypercloud_hpcd_template_version }}.yaml
       rm -f ./${FILE[$i]}
     done

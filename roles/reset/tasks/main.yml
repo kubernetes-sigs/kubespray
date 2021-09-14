@@ -169,6 +169,25 @@
   tags:
     - services
 
+- name: reset | remove containerd
+  when: container_manager == 'containerd'
+  block:
+    - name: reset | stop containerd service
+      service:
+        name: containerd
+        state: stopped
+      failed_when: false
+      tags:
+        - services
+
+    - name: reset | remove containerd service
+      file:
+        path: /etc/systemd/system/containerd.service
+        state: absent
+      register: services_removed
+      tags:
+        - services
+
 - name: reset | gather mounted kubelet dirs  # noqa 301
   shell: set -o pipefail && mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
   args:
@@ -279,6 +298,7 @@
     - "{{ bin_dir }}/etcd"
     - "{{ bin_dir }}/etcd-events"
     - "{{ bin_dir }}/etcdctl"
+    - "{{ bin_dir }}/etcdctl.sh"
     - "{{ bin_dir }}/kubernetes-scripts"
     - "{{ bin_dir }}/kubectl"
     - "{{ bin_dir }}/kubeadm"
@@ -307,6 +327,26 @@
     - /etc/modules-load.d/kubespray-br_netfilter.conf
     - /usr/libexec/kubernetes
   ignore_errors: true  # noqa ignore-errors
+  tags:
+    - files
+
+- name: reset | remove containerd binary files
+  file:
+    path: "{{ containerd_bin_dir }}/{{ item }}"
+    state: absent
+  with_items:
+    - containerd
+    - containerd-shim
+    - containerd-shim-runc-v1
+    - containerd-shim-runc-v2
+    - containerd-stress
+    - crictl
+    - critest
+    - ctd-decoder
+    - ctr
+    - runc
+  ignore_errors: true  # noqa ignore-errors
+  when: container_manager == 'containerd'
   tags:
     - files
 

@@ -52,6 +52,7 @@ image_arch: "{{host_architecture | default('amd64')}}"
 kubeadm_version: "{{ kube_version }}"
 etcd_version: v3.5.0
 crun_version: 1.2
+runc_version: v1.0.2
 kata_containers_version: 2.2.0
 gvisor_version: 20210921
 
@@ -110,6 +111,7 @@ calicoctl_download_url: "https://github.com/projectcalico/calicoctl/releases/dow
 calico_crds_download_url: "https://github.com/projectcalico/calico/archive/{{ calico_version }}.tar.gz"
 crictl_download_url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
 helm_download_url: "https://get.helm.sh/helm-{{ helm_version }}-linux-{{ image_arch }}.tar.gz"
+runc_download_url: "https://github.com/opencontainers/runc/releases/download/{{ runc_version }}/runc.{{ image_arch }}"
 crun_download_url: "https://github.com/containers/crun/releases/download/{{ crun_version }}/crun-{{ crun_version }}-linux-{{ image_arch }}"
 kata_containers_download_url: "https://github.com/kata-containers/kata-containers/releases/download/{{ kata_containers_version }}/kata-static-{{ kata_containers_version }}-{{ ansible_architecture }}.tar.xz"
 # gVisor only supports amd64 and uses x86_64 to in the download link
@@ -117,6 +119,7 @@ gvisor_runsc_download_url: "https://storage.googleapis.com/gvisor/releases/relea
 gvisor_containerd_shim_runsc_download_url: "https://storage.googleapis.com/gvisor/releases/release/{{ gvisor_version }}/{{ ansible_architecture }}/containerd-shim-runsc-v1"
 nerdctl_download_url: "https://github.com/containerd/nerdctl/releases/download/v{{ nerdctl_version }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
 krew_download_url: "https://github.com/kubernetes-sigs/krew/releases/download/{{ krew_version }}/krew.tar.gz"
+containerd_download_url: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
 
 crictl_checksums:
   arm:
@@ -375,6 +378,14 @@ helm_archive_checksums:
   arm64:
     v3.7.0: 03bf55435b4ebef739f862334bdfbf7b7eed714b94340a22298c485b6626aaca
 
+runc_checksums:
+  arm:
+    v1.0.2: 0
+  arm64:
+    v1.0.2: 0
+  amd64:
+    v1.0.2: 44d1ba01a286aaf0b31b4be9c6abc20deab0653d44ecb0d93b4d0d20eac3e0b6
+
 crun_checksums:
   arm: 0
   amd64:
@@ -436,6 +447,17 @@ nerdctl_archive_checksums:
   amd64:
     0.12.1: 868dc5997c3edb0bd06f75012e71c2b15ee0885b83bad191fbe2a1d6d5f4f2ac
 
+containerd_archive_checksums:
+  arm:
+    1.4.9: 0
+    1.5.5: 0
+  arm64:
+    1.4.9: 0
+    1.5.5: 0
+  amd64:
+    1.4.9: 346f88ad5b973960ff81b5539d4177af5941ec2e4703b479ca9a6081ff1d023b
+    1.5.5: 8efc527ffb772a82021800f0151374a3113ed2439922497ff08f2596a70f10f1
+
 etcd_binary_checksum: "{{ etcd_binary_checksums[image_arch] }}"
 cni_binary_checksum: "{{ cni_binary_checksums[image_arch] }}"
 kubelet_binary_checksum: "{{ kubelet_checksums[image_arch][kube_version] }}"
@@ -445,12 +467,14 @@ calicoctl_binary_checksum: "{{ calicoctl_binary_checksums[image_arch][calico_ctl
 calico_crds_archive_checksum: "{{ calico_crds_archive_checksums[calico_version] }}"
 crictl_binary_checksum: "{{ crictl_checksums[image_arch][crictl_version] }}"
 helm_archive_checksum: "{{ helm_archive_checksums[image_arch][helm_version] }}"
+runc_binary_checksum: "{{ runc_checksums[image_arch][runc_version] }}"
 crun_binary_checksum: "{{ crun_checksums[image_arch][crun_version] }}"
 kata_containers_binary_checksum: "{{ kata_containers_binary_checksums[image_arch][kata_containers_version] }}"
 gvisor_runsc_binary_checksum: "{{ gvisor_runsc_binary_checksums[image_arch][gvisor_version] }}"
 gvisor_containerd_shim_binary_checksum: "{{ gvisor_containerd_shim_binary_checksums[image_arch][gvisor_version] }}"
 nerdctl_archive_checksum: "{{ nerdctl_archive_checksums[image_arch][nerdctl_version] }}"
 krew_archive_checksum: "{{ krew_archive_checksums[krew_version] }}"
+containerd_archive_checksum: "{{ containerd_archive_checksums[image_arch][containerd_version] }}"
 
 # Containers
 # In some cases, we need a way to set --registry-mirror or --insecure-registry for docker,
@@ -737,6 +761,19 @@ downloads:
     groups:
     - k8s_cluster
 
+  runc:
+    file: true
+    enabled: "{{ container_manager == 'containerd' }}"
+    version: "{{ runc_version }}"
+    dest: "{{ local_release_dir }}/runc"
+    sha256: "{{ runc_binary_checksum }}"
+    url: "{{ runc_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+    - k8s_cluster
+
   kata_containers:
     enabled: "{{ kata_containers_enabled }}"
     file: true
@@ -744,6 +781,19 @@ downloads:
     dest: "{{ local_release_dir }}/kata-static-{{ kata_containers_version }}-{{ image_arch }}.tar.xz"
     sha256: "{{ kata_containers_binary_checksum }}"
     url: "{{ kata_containers_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+    - k8s_cluster
+
+  containerd:
+    enabled: "{{ container_manager == 'containerd' }}"
+    file: true
+    version: "{{ containerd_version }}"
+    dest: "{{ local_release_dir }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
+    sha256: "{{ containerd_archive_checksum }}"
+    url: "{{ containerd_download_url }}"
     unarchive: false
     owner: "root"
     mode: "0755"

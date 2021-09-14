@@ -13,7 +13,7 @@ Hypercloud 설치를 위해 사용되는 이미지의 경로와 태그는 roles/
 hypercloud_postgres_image_repo: "{{ docker_image_repo }}/tmaxcloudck/postgres-cron"
 hypercloud_postgres_image_tag: "b5.0.0.1"
 hypercloud_api_server_image_repo: "{{ docker_image_repo }}/tmaxcloudck/hypercloud-api-server"
-hypercloud_api_server_image_tag: "b5.0.23.0"
+hypercloud_api_server_image_tag: "b5.0.25.0"
 hypercloud_fluent_sidecar_image_repo: "fluent/fluent-bit"
 hypercloud_fluent_sidecar_image_tag: "1.5-debug"
 ```
@@ -21,13 +21,15 @@ hypercloud_fluent_sidecar_image_tag: "1.5-debug"
 2. Hypercloud Single Operator
 ```yml
 hypercloud_single_operator_image_repo: "{{ docker_image_repo }}/tmaxcloudck/hypercloud-single-operator"
+hypercloud_single_operator_image_tag: "b5.0.25.3"
 hypercloud_operator_proxy_image_repo: "{{ gcr_image_repo }}/kubebuilder/kube-rbac-proxy"
 hypercloud_operator_proxy_image_tag: "v0.5.0"
 ```
 
 3. Hypercloud Multi Operator
 ```yml
-hypercloud_multi_operator_image_repo: "{{ docker_image_repo }}/tmaxcloudck/hypercloud-single-operator"
+hypercloud_multi_operator_image_repo: "{{ docker_image_repo }}/tmaxcloudck/hypercloud-multi-operator"
+hypercloud_multi_operator_image_tag: "b5.0.24.0"
 hypercloud_operator_proxy_image_repo: "{{ gcr_image_repo }}/kubebuilder/kube-rbac-proxy"
 hypercloud_operator_proxy_image_tag: "v0.5.0"
 ```

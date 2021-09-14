@@ -60,7 +60,7 @@ objects:
         name: '${VcenterNetwork}'
       providerConfig:
         cloud:
-          controllerImage: gcr.io/cloud-provider-vsphere/cpi/release/manager:v1.18.1
+          controllerImage: {{ hypercloud_vsphere_cpi_image_repo }}:{{ hypercloud_vsphere_cpi_image_tag }}
       virtualCenter:
         ${VcenterIp}:
           datacenters: '${VcenterDataCenter}'
@@ -120,7 +120,7 @@ objects:
             oidc-ca-file: /etc/kubernetes/pki/hyperauth.crt
             oidc-client-id: hypercloud5
             oidc-groups-claim: group
-            oidc-issuer-url: ${HYPERAUTH_URL}
+            oidc-issuer-url: https://hyperauth.{{ custom_domain_name }}:/auth/realms/tmax
             oidc-username-claim: preferred_username
             oidc-username-prefix: '-'
         controllerManager:
@@ -153,7 +153,7 @@ objects:
                 value: "10"
               - name: vip_retryperiod
                 value: "2"
-              image: plndr/kube-vip:0.3.2
+              image: {{ hypercloud_vsphere_kube_vip_repo }}:{{ hypercloud_vsphere_kube_vip_tag }}
               imagePullPolicy: IfNotPresent
               name: kube-vip
               resources: {}
@@ -194,19 +194,19 @@ objects:
           criSocket: /var/run/containerd/containerd.sock
           kubeletExtraArgs:
             cloud-provider: external
-          name: '{{ ds.meta_data.hostname }}'
+          name: '{% raw %}{{ ds.meta_data.hostname }}{% endraw %}'
       joinConfiguration:
         nodeRegistration:
           criSocket: /var/run/containerd/containerd.sock
           kubeletExtraArgs:
             cloud-provider: external
-          name: '{{ ds.meta_data.hostname }}'
+          name: '{% raw %}{{ ds.meta_data.hostname }}{% endraw %}'
       preKubeadmCommands:
-      - hostname "{{ ds.meta_data.hostname }}"
+      - hostname "{% raw %}{{ ds.meta_data.hostname }}{% endraw %}"
       - echo "::1         ipv6-localhost ipv6-loopback" >/etc/hosts
       - echo "127.0.0.1   localhost" >>/etc/hosts
-      - echo "127.0.0.1   {{ ds.meta_data.hostname }}" >>/etc/hosts
-      - echo "{{ ds.meta_data.hostname }}" >/etc/hostname
+      - echo "127.0.0.1   {% raw %}{{ ds.meta_data.hostname }}{% endraw %}" >>/etc/hosts
+      - echo "{% raw %}{{ ds.meta_data.hostname }}{% endraw %}" >/etc/hostname
       postKubeadmCommands:
       - mkdir -p $HOME/.kube
       - cp /etc/kubernetes/admin.conf $HOME/.kube/config
@@ -234,13 +234,13 @@ objects:
             criSocket: /var/run/containerd/containerd.sock
             kubeletExtraArgs:
               cloud-provider: external
-            name: '{{ ds.meta_data.hostname }}'
+            name: '{% raw %}{{ ds.meta_data.hostname }}{% endraw %}'
         preKubeadmCommands:
-        - hostname "{{ ds.meta_data.hostname }}"
+        - hostname "{% raw %}{{ ds.meta_data.hostname }}{% endraw %}"
         - echo "::1         ipv6-localhost ipv6-loopback" >/etc/hosts
         - echo "127.0.0.1   localhost" >>/etc/hosts
-        - echo "127.0.0.1   {{ ds.meta_data.hostname }}" >>/etc/hosts
-        - echo "{{ ds.meta_data.hostname }}" >/etc/hostname
+        - echo "127.0.0.1   {% raw %}{{ ds.meta_data.hostname }}{% endraw %}" >>/etc/hosts
+        - echo "{% raw %}{{ ds.meta_data.hostname }}{% endraw %}" >/etc/hostname
         users:
         - name: root
           sshAuthorizedKeys:
@@ -512,7 +512,7 @@ objects:
                 value: /csi/csi.sock
               - name: DRIVER_REG_SOCK_PATH
                 value: /var/lib/kubelet/plugins/csi.vsphere.vmware.com/csi.sock
-              image: quay.io/k8scsi/csi-node-driver-registrar:v2.0.1
+              {{ hypercloud_vsphere_node_driver_repo }}:{{ hypercloud_vsphere_node_driver_tag }}
               lifecycle:
                 preStop:
                   exec:
@@ -546,7 +546,7 @@ objects:
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName
-              image: gcr.io/cloud-provider-vsphere/csi/release/driver:v2.1.0
+              image: {{ hypercloud_vsphere_csi_driver_image_repo }}:{{ hypercloud_vsphere_csi_driver_image_tag }}
               livenessProbe:
                 failureThreshold: 3
                 httpGet:
@@ -579,7 +579,7 @@ objects:
                 name: device-dir
             - args:
               - --csi-address=/csi/csi.sock
-              image: quay.io/k8scsi/livenessprobe:v2.1.0
+              image: {{ hypercloud_vsphere_csi_livenessprobe_image_repo }}:{{ hypercloud_vsphere_csi_livenessprobe_image_tag }}
               name: liveness-probe
               resources: {}
               volumeMounts:
@@ -644,7 +644,7 @@ objects:
               env:
               - name: ADDRESS
                 value: /csi/csi.sock
-              image: quay.io/k8scsi/csi-attacher:v3.0.0
+              image: {{ hypercloud_vsphere_csi_attacher_image_repo }}:{{ hypercloud_vsphere_csi_attacher_image_tag }}
               name: csi-attacher
               resources: {}
               volumeMounts:
@@ -661,7 +661,7 @@ objects:
                 value: PRODUCTION
               - name: X_CSI_LOG_LEVEL
                 value: INFO
-              image: gcr.io/cloud-provider-vsphere/csi/release/driver:v2.1.0
+              image: {{ hypercloud_vsphere_csi_driver_image_repo }}:{{ hypercloud_vsphere_csi_driver_image_tag }}
               livenessProbe:
                 failureThreshold: 3
                 httpGet:
@@ -687,7 +687,7 @@ objects:
               env:
               - name: ADDRESS
                 value: /var/lib/csi/sockets/pluginproxy/csi.sock
-              image: quay.io/k8scsi/livenessprobe:v2.1.0
+              image: {{ hypercloud_vsphere_csi_livenessprobe_image_repo }}:{{ hypercloud_vsphere_csi_livenessprobe_image_tag }}
               name: liveness-probe
               resources: {}
               volumeMounts:
@@ -702,7 +702,7 @@ objects:
                 value: PRODUCTION
               - name: VSPHERE_CSI_CONFIG
                 value: /etc/cloud/csi-vsphere.conf
-              image: gcr.io/cloud-provider-vsphere/csi/release/syncer:v2.1.0
+              image: {{ hypercloud_vsphere_csi_syncer_image_repo }}:{{ hypercloud_vsphere_csi_syncer_image_tag }}
               name: vsphere-syncer
               resources: {}
               volumeMounts:
@@ -718,7 +718,7 @@ objects:
               env:
               - name: ADDRESS
                 value: /csi/csi.sock
-              image: quay.io/k8scsi/csi-provisioner:v2.0.0
+              image: {{ hypercloud_vsphere_csi_provisioner_image_repo }}:{{ hypercloud_vsphere_csi_provisioner_image_tag }}
               name: csi-provisioner
               resources: {}
               volumeMounts:

@@ -21,7 +21,7 @@ hypercloud_fluent_sidecar_image_tag: "1.5-debug"
 2. Hypercloud Single Operator
 ```yml
 hypercloud_single_operator_image_repo: "{{ docker_image_repo }}/tmaxcloudck/hypercloud-single-operator"
-hypercloud_single_operator_image_tag: "b5.0.25.3"
+hypercloud_single_operator_image_tag: "5.0.25.3"
 hypercloud_operator_proxy_image_repo: "{{ gcr_image_repo }}/kubebuilder/kube-rbac-proxy"
 hypercloud_operator_proxy_image_tag: "v0.5.0"
 ```
@@ -29,7 +29,7 @@ hypercloud_operator_proxy_image_tag: "v0.5.0"
 3. Hypercloud Multi Operator
 ```yml
 hypercloud_multi_operator_image_repo: "{{ docker_image_repo }}/tmaxcloudck/hypercloud-multi-operator"
-hypercloud_multi_operator_image_tag: "b5.0.24.0"
+hypercloud_multi_operator_image_tag: "5.0.24.0"
 hypercloud_operator_proxy_image_repo: "{{ gcr_image_repo }}/kubebuilder/kube-rbac-proxy"
 hypercloud_operator_proxy_image_tag: "v0.5.0"
 ```

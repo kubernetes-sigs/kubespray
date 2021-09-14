@@ -37,6 +37,18 @@ master_ip: "address of master node"
 
 ```
 
+## Grafana Keycloak 연동
+* 목적 : 'Keycloak 연동'
+* 순서: 
+	* keycloak에서 client 생성 후
+	* Client protocol = openid-connect , Access type = confidential Standard Flow Enabled = On, Direct Access Grants Enabled = On
+	* Client > grafana > Credentials > Secret 복사 후 version.conf CLIENT_SECRET,CLIENT_ID 를 채운다
+	* version.conf KETCLOAK_ADDR에  keycloak 주소를 채운다.
+	* Root URL = https://${DOMAIN}/api/grafana/, Valid Redirect URIs = https://${DOMAIN}/api/grafana/login/generic_oauth/* , Admin URL = https://${DOMAIN}/api/grafana/, Web Origins = https://${DOMAIN}/api/grafana/ 
+	* DOMAIN = hypercloud의 주소
+![image](https://user-images.githubusercontent.com/66110096/118447268-8a7f3000-b72b-11eb-9bdd-01d4252427c6.png)
+
+
 ### Grafana
 ```yml
 grafana_home: "Grafana home"

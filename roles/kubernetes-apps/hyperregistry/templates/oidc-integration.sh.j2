@@ -1,0 +1,84 @@
+#!/bin/bash
+set -euxo pipefail
+
+AUTH_DOMAIN=hyperauth.{{ custom_domain_name }}
+OIDC_CLIENT_DOMAIN="https://core.{{ hyperregistry_release_name }}.{{ custom_domain_name }}"
+
+AUTH_USER="admin"
+AUTH_PASS="admin"
+
+# GET access token
+TOKEN=$(curl -XPOST 'http://'${AUTH_DOMAIN}':8080/auth/realms/master/protocol/openid-connect/token' \
+ -H "Content-Type: application/x-www-form-urlencoded" \
+ -d "username=admin" \
+ -d "password=admin" \
+ -d 'grant_type=password' \
+ -d 'client_id=admin-cli' | jq -r '.access_token')
+
+new_oidc_client_json_form()
+{
+  cat <<EOF
+{
+  "clientId": "${OIDC_CLIENT_DOMAIN}",
+  "protocol": "openid-connect",
+  "clientAuthenticatorType": "client-secret",
+  "publicClient": "false",
+  "redirectUris": [
+	  "${OIDC_CLIENT_DOMAIN}/c/oidc/callback"
+  ],
+  "defaultClientScopes": [
+      "web-origins",
+      "role_list",
+      "roles",
+      "profile",
+      "isAdmin",
+      "email",
+      "group"
+  ],
+  "enabled": "true"
+}
+EOF
+}
+
+# Add OIDC client for HyperRegistry
+curl -i \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST  --data "$(new_oidc_client_json_form)" 'http://'${AUTH_DOMAIN}':8080/auth/admin/realms/tmax/clients'
+
+
+# Get client ID
+CLIENT_ID=$(curl \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X GET 'http://'${AUTH_DOMAIN}':8080/auth/admin/realms/tmax/clients' | jq -r ".[] | select(.clientId==\"${OIDC_CLIENT_DOMAIN}\") | .id")
+
+# Get client credential
+CLIENT_CRED=$(curl \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X GET 'http://'${AUTH_DOMAIN}':8080/auth/admin/realms/tmax/clients/'${CLIENT_ID}'/client-secret' | jq -r '.value')
+
+oidc_configuration_json_form()
+{
+  cat <<EOF
+{
+  "auth_mode": "oidc_auth",
+  "oidc_admin_group": "admin",
+  "oidc_auto_onboard": true,
+  "oidc_client_id": "${OIDC_CLIENT_DOMAIN}",
+  "oidc_client_secret": "${CLIENT_CRED}",
+  "oidc_endpoint": "https://${AUTH_DOMAIN}/auth/realms/tmax",
+  "oidc_groups_claim": "group",
+  "oidc_name": "hyperregistry",
+  "oidc_scope": "openid",
+  "oidc_user_claim": "preferred_username",
+  "oidc_verify_cert": false
+}
+EOF
+}
+
+# Configure OIDC integration with HyperRegistry
+curl -k -u "admin:{{ hyperregistry_admin_password }}" \
+  -H "Content-Type: application/json" \
+  -X PUT --data "$(oidc_configuration_json_form)" ''${OIDC_CLIENT_DOMAIN}'/api/v2.0/configurations'

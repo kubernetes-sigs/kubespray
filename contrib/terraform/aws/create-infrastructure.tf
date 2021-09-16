@@ -166,7 +166,7 @@ data "template_file" "inventory" {
     connection_strings_node   = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-worker.*.private_dns, aws_instance.k8s-worker.*.private_ip))
     list_master               = join("\n", aws_instance.k8s-master.*.private_dns)
     list_node                 = join("\n", aws_instance.k8s-worker.*.private_dns)
-    connection_strings_etcd   = join("\n", formatlist("%s ansible_host=%s", ((var.aws_etcd_num > 0) ? (aws_instance.k8s-etcd.*.private_dns) : (aws_instance.k8s-master.*.private_dns)), ((var.aws_etcd_num > 0) ? (aws_instance.k8s-etcd.*.private_ip) : (aws_instance.k8s-master.*.private_ip))))
+    connection_strings_etcd   = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-etcd.*.private_dns, aws_instance.k8s-etcd.*.private_ip))
     list_etcd                 = join("\n", ((var.aws_etcd_num > 0) ? (aws_instance.k8s-etcd.*.private_dns) : (aws_instance.k8s-master.*.private_dns)))
     elb_api_fqdn              = "apiserver_loadbalancer_domain_name=\"${module.aws-elb.aws_elb_api_fqdn}\""
   }

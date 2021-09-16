@@ -115,7 +115,7 @@ vagrant up
 ## Supported Linux Distributions
 
 - **Flatcar Container Linux by Kinvolk**
-- **Debian** Buster, Jessie, Stretch, Wheezy
+- **Debian** Bullseye, Buster, Jessie, Stretch
 - **Ubuntu** 16.04, 18.04, 20.04
 - **CentOS/RHEL** 7, [8](docs/centos8.md)
 - **Fedora** 33, 34
@@ -130,18 +130,18 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.21.3
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.21.4
   - [etcd](https://github.com/coreos/etcd) v3.4.13
   - [docker](https://www.docker.com/) v20.10 (see note)
-  - [containerd](https://containerd.io/) v1.4.6
+  - [containerd](https://containerd.io/) v1.4.9
   - [cri-o](http://cri-o.io/) v1.21 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.1
-  - [calico](https://github.com/projectcalico/calico) v3.17.4
+  - [calico](https://github.com/projectcalico/calico) v3.19.2
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-  - [cilium](https://github.com/cilium/cilium) v1.9.9
+  - [cilium](https://github.com/cilium/cilium) v1.9.10
   - [flanneld](https://github.com/flannel-io/flannel) v0.14.0
-  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.7.1
+  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.7.2
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.3.0
   - [multus](https://github.com/intel/multus-cni) v3.7.2
   - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.1.0
@@ -150,9 +150,9 @@ Note: Upstart/SysV init based OS types are not supported.
   - [ambassador](https://github.com/datawire/ambassador): v1.5
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
-  - [cert-manager](https://github.com/jetstack/cert-manager) v0.16.1
+  - [cert-manager](https://github.com/jetstack/cert-manager) v1.0.4
   - [coredns](https://github.com/coredns/coredns) v1.8.0
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.43.0
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.0.0
 
 ## Container Runtime Notes
 

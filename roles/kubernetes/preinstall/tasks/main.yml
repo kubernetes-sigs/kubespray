@@ -1,0 +1,115 @@
+---
+# Disable swap
+- import_tasks: 0010-swapoff.yml
+  when:
+    - not dns_late
+    - disable_swap
+
+- import_tasks: 0020-verify-settings.yml
+  when:
+    - not dns_late
+  tags:
+    - asserts
+
+- import_tasks: 0040-set_facts.yml
+  tags:
+    - resolvconf
+    - facts
+
+- import_tasks: 0050-create_directories.yml
+  when:
+    - not dns_late
+
+- import_tasks: 0060-resolvconf.yml
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - systemd_resolved_enabled.rc != 0
+    - not is_fedora_coreos
+  tags:
+    - bootstrap-os
+    - resolvconf
+
+- import_tasks: 0061-systemd-resolved.yml
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - systemd_resolved_enabled.rc == 0
+  tags:
+    - bootstrap-os
+    - resolvconf
+
+- import_tasks: 0062-networkmanager-unmanaged-devices.yml
+  tags:
+    - bootstrap-os
+
+- import_tasks: 0063-networkmanager-dns.yml
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - is_fedora_coreos
+  tags:
+    - bootstrap-os
+    - resolvconf
+
+- import_tasks: 0070-system-packages.yml
+  when:
+    - not dns_late
+  tags:
+    - bootstrap-os
+
+- import_tasks: 0080-system-configurations.yml
+  when:
+    - not dns_late
+  tags:
+    - bootstrap-os
+
+- import_tasks: 0090-etchosts.yml
+  when:
+    - not dns_late
+  tags:
+    - bootstrap-os
+    - etchosts
+
+- import_tasks: 0100-dhclient-hooks.yml
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  tags:
+    - bootstrap-os
+    - resolvconf
+
+- import_tasks: 0110-dhclient-hooks-undo.yml
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode != 'host_resolvconf'
+    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  tags:
+    - bootstrap-os
+    - resolvconf
+
+# We need to make sure the network is restarted early enough so that docker can later pick up the correct system
+# nameservers and search domains
+- name: Flush handlers
+  meta: flush_handlers
+
+- name: Check if we are running inside a Azure VM
+  stat:
+    path: /var/lib/waagent/
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: azure_check
+  when:
+    - not dns_late
+  tags:
+    - bootstrap-os
+
+- import_tasks: 0120-growpart-azure-centos-7.yml
+  when:
+    - not dns_late
+    - azure_check.stat.exists
+    - ansible_os_family == "RedHat"
+  tags:
+    - bootstrap-os

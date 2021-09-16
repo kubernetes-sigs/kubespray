@@ -1,0 +1,176 @@
+# This manifest creates a Service, which will be backed by Calico's Typha daemon.
+# Typha sits in between Felix and the API server, reducing Calico's load on the API server.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: calico-typha
+  namespace: kube-system
+  labels:
+    k8s-app: calico-typha
+spec:
+  ports:
+    - port: 5473
+      protocol: TCP
+      targetPort: calico-typha
+      name: calico-typha
+  selector:
+    k8s-app: calico-typha
+
+---
+
+# This manifest creates a Deployment of Typha to back the above service.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calico-typha
+  namespace: kube-system
+  labels:
+    k8s-app: calico-typha
+spec:
+  # Number of Typha replicas.  To enable Typha, set this to a non-zero value *and* set the
+  # typha_service_name variable in the calico-config ConfigMap above.
+  #
+  # We recommend using Typha if you have more than 50 nodes.  Above 100 nodes it is essential
+  # (when using the Kubernetes datastore).  Use one replica for every 100-200 nodes.  In
+  # production, we recommend running at least 3 replicas to reduce the impact of rolling upgrade.
+  replicas: {{ typha_replicas }}
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      k8s-app: calico-typha
+  template:
+    metadata:
+      labels:
+        k8s-app: calico-typha
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: 'true'
+{% if typha_prometheusmetricsenabled %}
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: "{{ typha_prometheusmetricsport }}"
+{% endif %}
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      hostNetwork: true
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      # Since Calico can't network a pod until Typha is up, we need to run Typha itself
+      # as a host-networked pod.
+      serviceAccountName: calico-node
+      priorityClassName: system-cluster-critical
+      # fsGroup allows using projected serviceaccount tokens as described here kubernetes/kubernetes#82573
+      securityContext:
+        fsGroup: 65534
+      containers:
+      - image: {{ calico_typha_image_repo }}:{{ calico_typha_image_tag }}
+        name: calico-typha
+        ports:
+        - containerPort: 5473
+          name: calico-typha
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+            name: kubernetes-services-endpoint
+            optional: true
+        env:
+          # Enable "info" logging by default.  Can be set to "debug" to increase verbosity.
+          - name: TYPHA_LOGSEVERITYSCREEN
+            value: "info"
+          # Disable logging to file and syslog since those don't make sense in Kubernetes.
+          - name: TYPHA_LOGFILEPATH
+            value: "none"
+          - name: TYPHA_LOGSEVERITYSYS
+            value: "none"
+          # Monitor the Kubernetes API to find the number of running instances and rebalance
+          # connections.
+          - name: TYPHA_CONNECTIONREBALANCINGMODE
+            value: "kubernetes"
+          - name: TYPHA_DATASTORETYPE
+            value: "kubernetes"
+          - name: TYPHA_HEALTHENABLED
+            value: "true"
+          - name: TYPHA_MAXCONNECTIONSLOWERLIMIT
+            value: "{{ typha_max_connections_lower_limit }}"
+{% if typha_secure %}
+          - name: TYPHA_CAFILE
+            value: /etc/ca/ca.crt
+          - name: TYPHA_CLIENTCN
+            value: typha-client
+          - name: TYPHA_SERVERCERTFILE
+            value: /etc/typha/server_certificate.pem
+          - name: TYPHA_SERVERKEYFILE
+            value: /etc/typha/server_key.pem
+        volumeMounts:
+          - mountPath: /etc/typha
+            name: typha-server
+            readOnly: true
+          - mountPath: /etc/ca/ca.crt
+            subPath: ca.crt
+            name: cacert
+            readOnly: true
+{% endif %}
+{% if typha_prometheusmetricsenabled %}
+          # Since Typha is host-networked,
+          # this opens a port on the host, which may need to be secured.
+          - name: TYPHA_PROMETHEUSMETRICSENABLED
+            value: "true"
+          - name: TYPHA_PROMETHEUSMETRICSPORT
+            value: "{{ typha_prometheusmetricsport }}"
+{% endif %}
+          # Needed for version >=3.7 when the 'host-local' ipam is used
+          # Should never happen given templates/cni-calico.conflist.j2
+          # Configure route aggregation based on pod CIDR.
+          # - name: USE_POD_CIDR
+          #   value: "true"
+        livenessProbe:
+          httpGet:
+            path: /liveness
+            port: 9098
+            host: localhost
+          periodSeconds: 30
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: 9098
+            host: localhost
+          periodSeconds: 10
+{% if typha_secure %}
+      volumes:
+        - name: typha-server
+          secret:
+            secretName: typha-server
+            items:
+              - key: tls.crt
+                path: server_certificate.pem
+              - key: tls.key
+                path: server_key.pem
+        - name: cacert
+          hostPath:
+            path: "{{ kube_cert_dir }}"
+{% endif %}
+
+---
+
+# This manifest creates a Pod Disruption Budget for Typha to allow K8s Cluster Autoscaler to evict
+
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: calico-typha
+  namespace: kube-system
+  labels:
+    k8s-app: calico-typha
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      k8s-app: calico-typha

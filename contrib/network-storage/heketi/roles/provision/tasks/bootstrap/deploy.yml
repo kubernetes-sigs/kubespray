@@ -1,0 +1,27 @@
+---
+- name: "Kubernetes Apps | Lay Down Heketi Bootstrap"
+  become: true
+  template:
+    src: "heketi-bootstrap.json.j2"
+    dest: "{{ kube_config_dir }}/heketi-bootstrap.json"
+    mode: 0640
+  register: "rendering"
+- name: "Kubernetes Apps | Install and configure Heketi Bootstrap"
+  kube:
+    name: "GlusterFS"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/heketi-bootstrap.json"
+    state: "{{ rendering.changed | ternary('latest', 'present') }}"
+- name: "Wait for heketi bootstrap to complete."
+  changed_when: false
+  register: "initial_heketi_state"
+  vars:
+    initial_heketi_state: { stdout: "{}" }
+    pods_query: "items[?kind=='Pod'].status.conditions|[0][?type=='Ready'].status|[0]"
+    deployments_query: "items[?kind=='Deployment'].status.conditions|[0][?type=='Available'].status|[0]"
+  command: "{{ bin_dir }}/kubectl get services,deployments,pods --selector=deploy-heketi --output=json"
+  until:
+    - "initial_heketi_state.stdout|from_json|json_query(pods_query) == 'True'"
+    - "initial_heketi_state.stdout|from_json|json_query(deployments_query) == 'True'"
+  retries: 60
+  delay: 5

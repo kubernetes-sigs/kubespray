@@ -1,0 +1,591 @@
+---
+# Use proxycommand if bastion host is in group all
+# This change obseletes editing ansible.cfg file depending on bastion existence
+ansible_ssh_common_args: "{% if 'bastion' in groups['all'] %} -o ProxyCommand='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p -p {{ hostvars['bastion']['ansible_port'] | default(22) }} {{ hostvars['bastion']['ansible_user'] }}@{{ hostvars['bastion']['ansible_host'] }} {% if ansible_ssh_private_key_file is defined %}-i {{ ansible_ssh_private_key_file }}{% endif %} ' {% endif %}"
+
+# selinux state
+preinstall_selinux_state: permissive
+
+kube_api_anonymous_auth: true
+
+# Default value, but will be set to true automatically if detected
+is_fedora_coreos: false
+
+# optional disable the swap
+disable_swap: true
+
+## Change this to use another Kubernetes version, e.g. a current beta release
+kube_version: v1.21.3
+
+## The minimum version working
+kube_version_min_required: v1.19.0
+
+## Kube Proxy mode One of ['iptables','ipvs']
+kube_proxy_mode: ipvs
+
+## List of kubeadm init phases that should be skipped during control plane setup
+## By default 'addon/coredns' is skipped
+## 'addon/kube-proxy' gets skipped for some network plugins
+kubeadm_init_phases_skip_default: [ "addon/coredns" ]
+kubeadm_init_phases_skip: >-
+  {%- if kube_network_plugin == 'kube-router' and (kube_router_run_service_proxy is defined and kube_router_run_service_proxy) -%}
+  {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
+  {%- elif kube_network_plugin == 'cilium' and (cilium_kube_proxy_replacement is defined and cilium_kube_proxy_replacement == 'strict') -%}
+  {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
+  {%- elif kube_proxy_remove is defined and kube_proxy_remove -%}
+  {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
+  {%- else -%}
+  {{ kubeadm_init_phases_skip_default }}
+  {%- endif -%}
+
+# A string slice of values which specify the addresses to use for NodePorts.
+# Values may be valid IP blocks (e.g. 1.2.3.0/24, 1.2.3.4/32).
+# The default empty string slice ([]) means to use all local addresses.
+# kube_proxy_nodeport_addresses_cidr is retained for legacy config
+kube_proxy_nodeport_addresses: >-
+  {%- if kube_proxy_nodeport_addresses_cidr is defined -%}
+  [{{ kube_proxy_nodeport_addresses_cidr }}]
+  {%- else -%}
+  []
+  {%- endif -%}
+
+# Set to true to allow pre-checks to fail and continue deployment
+ignore_assert_errors: false
+
+# nginx-proxy configure
+nginx_config_dir: "/etc/nginx"
+
+# haproxy configure
+haproxy_config_dir: "/etc/haproxy"
+
+# Directory where the binaries will be installed
+bin_dir: /usr/local/bin
+docker_bin_dir: /usr/bin
+containerd_bin_dir: /usr/bin
+etcd_data_dir: /var/lib/etcd
+# Where the binaries will be downloaded.
+# Note: ensure that you've enough disk space (about 1G)
+local_release_dir: "/tmp/releases"
+# Random shifts for retrying failed ops like pushing/downloading
+retry_stagger: 5
+
+# Install epel repo on Centos/RHEL
+epel_enabled: false
+
+# DNS configuration.
+# Kubernetes cluster name, also will be used as DNS domain
+cluster_name: cluster.local
+# Subdomains of DNS domain to be resolved via /etc/resolv.conf for hostnet pods
+ndots: 2
+# Default resolv.conf options
+docker_dns_options:
+- ndots:{{ ndots }}
+- timeout:2
+- attempts:2
+# Can be coredns, coredns_dual, manual, or none
+dns_mode: coredns
+
+# Enable nodelocal dns cache
+enable_nodelocaldns: true
+nodelocaldns_ip: 169.254.25.10
+nodelocaldns_health_port: 9254
+nodelocaldns_bind_metrics_host_ip: false
+
+# Should be set to a cluster IP if using a custom cluster DNS
+manual_dns_server: ""
+
+# Can be docker_dns, host_resolvconf or none
+resolvconf_mode: docker_dns
+# Deploy netchecker app to verify DNS resolve as an HTTP service
+deploy_netchecker: false
+# Ip address of the kubernetes DNS service (called skydns for historical reasons)
+skydns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(3)|ipaddr('address') }}"
+skydns_server_secondary: "{{ kube_service_addresses|ipaddr('net')|ipaddr(4)|ipaddr('address') }}"
+dns_domain: "{{ cluster_name }}"
+docker_dns_search_domains:
+- 'default.svc.{{ dns_domain }}'
+- 'svc.{{ dns_domain }}'
+
+kube_dns_servers:
+  coredns: ["{{skydns_server}}"]
+  coredns_dual: "{{[skydns_server] + [ skydns_server_secondary ]}}"
+  manual: ["{{manual_dns_server}}"]
+
+dns_servers: "{{kube_dns_servers[dns_mode]}}"
+
+enable_coredns_k8s_external: false
+coredns_k8s_external_zone: k8s_external.local
+
+enable_coredns_k8s_endpoint_pod_names: false
+
+# Kubernetes configuration dirs and system namespace.
+# Those are where all the additional config stuff goes
+# the kubernetes normally puts in /srv/kubernetes.
+# This puts them in a same location and namespace.
+# Editing those values will almost surely break something.
+kube_config_dir: /etc/kubernetes
+kube_script_dir: "{{ bin_dir }}/kubernetes-scripts"
+kube_manifest_dir: "{{ kube_config_dir }}/manifests"
+
+# This is where all the cert scripts and certs will be located
+kube_cert_dir: "{{ kube_config_dir }}/ssl"
+
+# compatibility directory for kubeadm
+kube_cert_compat_dir: "/etc/kubernetes/pki"
+
+# This is where all of the bearer tokens will be stored
+kube_token_dir: "{{ kube_config_dir }}/tokens"
+
+# This is the group that the cert creation scripts chgrp the
+# cert files to. Not really changeable...
+kube_cert_group: kube-cert
+
+# Cluster Loglevel configuration
+kube_log_level: 2
+
+# Choose network plugin (cilium, calico, weave or flannel)
+# Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
+kube_network_plugin: calico
+kube_network_plugin_multus: false
+
+# Determines if calico_rr group exists
+peer_with_calico_rr: "{{ 'calico_rr' in groups and groups['calico_rr']|length > 0 }}"
+
+# Choose data store type for calico: "etcd" or "kdd" (kubernetes datastore)
+calico_datastore: "kdd"
+
+# Kubernetes internal network for services, unused block of space.
+kube_service_addresses: 10.233.0.0/18
+
+# internal network. When used, it will assign IP
+# addresses from this range to individual pods.
+# This network must be unused in your network infrastructure!
+kube_pods_subnet: 10.233.64.0/18
+
+# internal network node size allocation (optional). This is the size allocated
+# to each node for pod IP address allocation. Note that the number of pods per node is
+# also limited by the kubelet_max_pods variable which defaults to 110.
+#
+# Example:
+# Up to 64 nodes and up to 254 or kubelet_max_pods (the lowest of the two) pods per node:
+#  - kube_pods_subnet: 10.233.64.0/18
+#  - kube_network_node_prefix: 24
+#  - kubelet_max_pods: 110
+#
+# Example:
+# Up to 128 nodes and up to 126 or kubelet_max_pods (the lowest of the two) pods per node:
+#  - kube_pods_subnet: 10.233.64.0/18
+#  - kube_network_node_prefix: 25
+#  - kubelet_max_pods: 110
+kube_network_node_prefix: 24
+
+# Configure Dual Stack networking (i.e. both IPv4 and IPv6)
+enable_dual_stack_networks: false
+
+# Kubernetes internal network for IPv6 services, unused block of space.
+# This is only used if enable_dual_stack_networks is set to true
+# This provides 4096 IPv6 IPs
+kube_service_addresses_ipv6: fd85:ee78:d8a6:8607::1000/116
+
+# Internal network. When used, it will assign IPv6 addresses from this range to individual pods.
+# This network must not already be in your network infrastructure!
+# This is only used if enable_dual_stack_networks is set to true.
+# This provides room for 256 nodes with 254 pods per node.
+kube_pods_subnet_ipv6: fd85:ee78:d8a6:8607::1:0000/112
+
+# IPv6 subnet size allocated to each for pods.
+# This is only used if enable_dual_stack_networks is set to true
+# This provides room for 254 pods per node.
+kube_network_node_prefix_ipv6: 120
+
+# The virtual cluster IP, real host IPs and ports the API Server will be
+# listening on.
+# NOTE: loadbalancer_apiserver_localhost somewhat alters the final API enpdoint
+# access IP value (automatically evaluated below)
+kube_apiserver_ip: "{{ kube_service_addresses|ipaddr('net')|ipaddr(1)|ipaddr('address') }}"
+kube_apiserver_bind_address: 0.0.0.0
+# https
+kube_apiserver_port: 6443
+# http
+kube_apiserver_insecure_bind_address: 127.0.0.1
+kube_apiserver_insecure_port: 0
+
+# If non-empty, will use this string as identification instead of the actual hostname
+kube_override_hostname: >-
+  {%- if cloud_provider is defined and cloud_provider in [ 'aws' ] -%}
+  {%- else -%}
+  {{ inventory_hostname }}
+  {%- endif -%}
+
+# dynamic kubelet configuration
+dynamic_kubelet_configuration: false
+
+# define kubelet config dir for dynamic kubelet
+# kubelet_config_dir:
+default_kubelet_config_dir: "{{ kube_config_dir }}/dynamic_kubelet_dir"
+dynamic_kubelet_configuration_dir: "{{ kubelet_config_dir | default(default_kubelet_config_dir) }}"
+
+# Aggregator
+kube_api_aggregator_routing: false
+
+# Profiling
+kube_profiling: false
+
+# Graceful Node Shutdown
+# This requires kubernetes >= 1.21.0
+kubelet_shutdown_grace_period: 60s
+# kubelet_shutdown_grace_period_critical_pods should be less than kubelet_shutdown_grace_period
+# to give normal pods time to be gracefully evacuated
+kubelet_shutdown_grace_period_critical_pods: 20s
+
+# Container for runtime
+container_manager: docker
+
+# Enable Kata Containers as additional container runtime
+# When enabled, it requires `container_manager` different than Docker
+kata_containers_enabled: false
+
+# Enable gVisor as an additional container runtime
+# gVisor is only supported with container_manager Docker or containerd
+gvisor_enabled: false
+
+# Enable crun as additional container runtime
+# When enabled, it requires container_manager=crio
+crun_enabled: false
+
+# Container on localhost (download images when download_localhost is true)
+container_manager_on_localhost: "{{ container_manager }}"
+
+# CRI socket path
+cri_socket: >-
+  {%- if container_manager == 'crio' -%}
+  /var/run/crio/crio.sock
+  {%- elif container_manager == 'containerd' -%}
+  /var/run/containerd/containerd.sock
+  {%- else -%}
+  /var/run/dockershim.sock
+  {%- endif -%}
+
+## Uncomment this if you want to force overlay/overlay2 as docker storage driver
+## Please note that overlay2 is only supported on newer kernels
+# docker_storage_options: -s overlay2
+
+## Enable docker_container_storage_setup, it will configure devicemapper driver on Centos7 or RedHat7.
+docker_container_storage_setup: false
+
+## It must be define a disk path for docker_container_storage_setup_devs.
+## Otherwise docker-storage-setup will be executed incorrectly.
+# docker_container_storage_setup_devs: /dev/vdb
+
+## Only set this if you have more than 3 nameservers:
+## If true Kubespray will only use the first 3, otherwise it will fail
+docker_dns_servers_strict: false
+
+# Path used to store Docker data
+docker_daemon_graph: "/var/lib/docker"
+
+## Used to set docker daemon iptables options to true
+docker_iptables_enabled: "false"
+
+# Docker log options
+# Rotate container stderr/stdout logs at 50m and keep last 5
+docker_log_opts: "--log-opt max-size=50m --log-opt max-file=5"
+
+## A list of insecure docker registries (IP address or domain name), for example
+## to allow insecure-registry access to self-hosted registries. Empty by default.
+# docker_insecure_registries:
+#   - mirror.registry.io
+#   - 172.19.16.11
+docker_insecure_registries: []
+
+## A list of additional registry mirrors, for example China registry mirror. Empty by default.
+# docker_registry_mirrors:
+#   - https://registry.docker-cn.com
+#   - https://mirror.aliyuncs.com
+docker_registry_mirrors: []
+
+## If non-empty will override default system MounFlags value.
+## This option takes a mount propagation flag: shared, slave
+## or private, which control whether mounts in the file system
+## namespace set up for docker will receive or propagate mounts
+## and unmounts. Leave empty for system default
+# docker_mount_flags:
+
+## A string of extra options to pass to the docker daemon.
+# docker_options: ""
+
+## A list of plugins to install using 'docker plugin install --grant-all-permissions'
+## Empty by default so no plugins will be installed.
+docker_plugins: []
+
+# Experimental kubeadm etcd deployment mode. Available only for new deployment
+etcd_kubeadm_enabled: false
+
+# Containerd options
+containerd_version: 1.4.6
+containerd_use_systemd_cgroup: true
+
+# Settings for containerized control plane (etcd/kubelet/secrets)
+# deployment type for legacy etcd mode
+etcd_deployment_type: docker
+cert_management: script
+
+# Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
+kubeconfig_localhost: false
+# Download kubectl onto the host that runs Ansible in {{ bin_dir }}
+kubectl_localhost: false
+
+# Define credentials_dir here so it can be overridden
+credentials_dir: "{{ inventory_dir }}/credentials"
+
+# K8s image pull policy (imagePullPolicy)
+k8s_image_pull_policy: IfNotPresent
+
+# Kubernetes dashboard
+# RBAC required. see docs/getting-started.md for access details.
+dashboard_enabled: false
+
+# Addons which can be enabled
+helm_enabled: false
+krew_enabled: false
+registry_enabled: false
+metrics_server_enabled: false
+enable_network_policy: true
+local_path_provisioner_enabled: false
+local_volume_provisioner_enabled: false
+local_volume_provisioner_directory_mode: 0700
+cinder_csi_enabled: false
+aws_ebs_csi_enabled: false
+azure_csi_enabled: false
+gcp_pd_csi_enabled: false
+vsphere_csi_enabled: false
+persistent_volumes_enabled: false
+cephfs_provisioner_enabled: false
+rbd_provisioner_enabled: false
+ingress_nginx_enabled: false
+ingress_ambassador_enabled: false
+ingress_alb_enabled: false
+cert_manager_enabled: false
+expand_persistent_volumes: false
+metallb_enabled: false
+
+# containerd official CLI tool
+nerdctl_enabled: false
+
+## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
+# openstack_blockstorage_version: "v1/v2/auto (default)"
+openstack_blockstorage_ignore_volume_az: "{{ volume_cross_zone_attachment | default('false') }}"
+# set max volumes per node (cinder-csi), default not set
+# node_volume_attach_limit: 25
+# Cinder CSI topology, when false volumes can be cross-mounted between availability zones
+# cinder_topology: false
+# Set Cinder topology zones (can be multiple zones, default not set)
+# cinder_topology_zones:
+#   - nova
+cinder_csi_ignore_volume_az: "{{ volume_cross_zone_attachment | default('false') }}"
+
+## When OpenStack is used, if LBaaSv2 is available you can enable it with the following 2 variables.
+openstack_lbaas_enabled: false
+# openstack_lbaas_subnet_id: "Neutron subnet ID (not network ID) to create LBaaS VIP"
+## To enable automatic floating ip provisioning, specify a subnet.
+# openstack_lbaas_floating_network_id: "Neutron network ID (not subnet ID) to get floating IP from, disabled by default"
+## Override default LBaaS behavior
+# openstack_lbaas_use_octavia: False
+# openstack_lbaas_method: "ROUND_ROBIN"
+# openstack_lbaas_provider: "haproxy"
+openstack_lbaas_create_monitor: "yes"
+openstack_lbaas_monitor_delay: "1m"
+openstack_lbaas_monitor_timeout: "30s"
+openstack_lbaas_monitor_max_retries: "3"
+openstack_cacert: "{{ lookup('env','OS_CACERT') }}"
+
+# Default values for the external OpenStack Cloud Controller
+external_openstack_enable_ingress_hostname: false
+external_openstack_lbaas_create_monitor: false
+external_openstack_lbaas_monitor_delay: "1m"
+external_openstack_lbaas_monitor_timeout: "30s"
+external_openstack_lbaas_monitor_max_retries: "3"
+external_openstack_network_ipv6_disabled: false
+external_openstack_lbaas_use_octavia: false
+external_openstack_network_internal_networks: []
+external_openstack_network_public_networks: []
+
+## List of authorization modes that must be configured for
+## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
+## 'RBAC' modes are tested. Order is important.
+authorization_modes: ['Node', 'RBAC']
+rbac_enabled: "{{ 'RBAC' in authorization_modes }}"
+
+# When enabled, API bearer tokens (including service account tokens) can be used to authenticate to the kubelet's HTTPS endpoint
+kubelet_authentication_token_webhook: true
+
+# When enabled, access to the kubelet API requires authorization by delegation to the API server
+kubelet_authorization_mode_webhook: true
+
+# kubelet uses certificates for authenticating to the Kubernetes API
+# Automatically generate a new key and request a new certificate from the Kubernetes API as the current certificate approaches expiration
+kubelet_rotate_certificates: true
+# kubelet can also request a new server certificate from the Kubernetes API
+kubelet_rotate_server_certificates: false
+
+# If set to true, kubelet errors if any of kernel tunables is different than kubelet defaults
+kubelet_protect_kernel_defaults: true
+
+## List of key=value pairs that describe feature gates for
+## the k8s cluster.
+kube_feature_gates: []
+kubeadm_feature_gates: []
+
+# Local volume provisioner storage classes
+# Levarages Ansibles string to Python datatype casting. Otherwise the dict_key isn't substituted
+# see https://github.com/ansible/ansible/issues/17324
+local_volume_provisioner_storage_classes: |
+  {
+    "{{ local_volume_provisioner_storage_class | default('local-storage') }}": {
+      "host_dir": "{{ local_volume_provisioner_base_dir | default ('/mnt/disks') }}",
+      "mount_dir": "{{ local_volume_provisioner_mount_dir | default('/mnt/disks') }}",
+      "volume_mode": "Filesystem",
+      "fs_type": "ext4"
+
+    }
+  }
+
+# weave's network password for encryption
+# if null then no network encryption
+# you can use --extra-vars to pass the password in command line
+weave_password: EnterPasswordHere
+
+ssl_ca_dirs: |-
+  [
+  {% if ansible_os_family in ['Flatcar Container Linux by Kinvolk'] -%}
+  '/usr/share/ca-certificates',
+  {% elif ansible_os_family == 'RedHat' -%}
+  '/etc/pki/tls',
+  '/etc/pki/ca-trust',
+  {% elif ansible_os_family == 'Debian' -%}
+  '/usr/share/ca-certificates',
+  {% endif -%}
+  ]
+
+# Vars for pointing to kubernetes api endpoints
+is_kube_master: "{{ inventory_hostname in groups['kube_control_plane'] }}"
+kube_apiserver_count: "{{ groups['kube_control_plane'] | length }}"
+kube_apiserver_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
+kube_apiserver_access_address: "{{ access_ip | default(kube_apiserver_address) }}"
+first_kube_master: "{{ hostvars[groups['kube_control_plane'][0]]['access_ip'] | default(hostvars[groups['kube_control_plane'][0]]['ip'] | default(fallback_ips[groups['kube_control_plane'][0]])) }}"
+loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
+loadbalancer_apiserver_type: "nginx"
+# applied if only external loadbalancer_apiserver is defined, otherwise ignored
+apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
+kube_apiserver_global_endpoint: |-
+  {% if loadbalancer_apiserver is defined -%}
+      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+  {%- elif use_localhost_as_kubeapi_loadbalancer|default(False)|bool -%}
+      https://127.0.0.1:{{ kube_apiserver_port }}
+  {%- else -%}
+      https://{{ first_kube_master }}:{{ kube_apiserver_port }}
+  {%- endif %}
+kube_apiserver_endpoint: |-
+  {% if loadbalancer_apiserver is defined -%}
+      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+  {%- elif not is_kube_master and loadbalancer_apiserver_localhost -%}
+      https://localhost:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }}
+  {%- elif is_kube_master -%}
+      https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_port }}
+  {%- else -%}
+      https://{{ first_kube_master }}:{{ kube_apiserver_port }}
+  {%- endif %}
+kube_apiserver_insecure_endpoint: >-
+  http://{{ kube_apiserver_insecure_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_insecure_port }}
+kube_apiserver_client_cert: "{{ kube_cert_dir }}/ca.crt"
+kube_apiserver_client_key: "{{ kube_cert_dir }}/ca.key"
+
+# Set to true to deploy etcd-events cluster
+etcd_events_cluster_enabled: false
+
+# etcd group can be empty when kubeadm manages etcd
+etcd_hosts: "{{ groups['etcd'] | default(groups['kube_control_plane']) }}"
+
+# Vars for pointing to etcd endpoints
+is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"
+etcd_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
+etcd_access_address: "{{ access_ip | default(etcd_address) }}"
+etcd_events_access_address: "{{ access_ip | default(etcd_address) }}"
+etcd_peer_url: "https://{{ etcd_access_address }}:2380"
+etcd_client_url: "https://{{ etcd_access_address }}:2379"
+etcd_events_peer_url: "https://{{ etcd_events_access_address }}:2382"
+etcd_events_client_url: "https://{{ etcd_events_access_address }}:2381"
+etcd_access_addresses: |-
+  {% for item in etcd_hosts -%}
+    https://{{ hostvars[item]['etcd_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2379{% if not loop.last %},{% endif %}
+  {%- endfor %}
+etcd_events_access_addresses_list: |-
+  [
+  {% for item in etcd_hosts -%}
+    'https://{{ hostvars[item]['etcd_events_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2381'{% if not loop.last %},{% endif %}
+  {%- endfor %}
+  ]
+etcd_events_access_addresses: "{{etcd_events_access_addresses_list | join(',')}}"
+etcd_events_access_addresses_semicolon: "{{etcd_events_access_addresses_list | join(';')}}"
+# user should set etcd_member_name in inventory/mycluster/hosts.ini
+etcd_member_name: |-
+  {% for host in groups['etcd'] %}
+  {%   if inventory_hostname == host %}{{ hostvars[host].etcd_member_name | default("etcd" + loop.index|string) }}{% endif %}
+  {% endfor %}
+etcd_peer_addresses: |-
+  {% for item in groups['etcd'] -%}
+    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}=https://{{ hostvars[item].etcd_access_address | default(hostvars[item].ip | default(fallback_ips[item])) }}:2380{% if not loop.last %},{% endif %}
+  {%- endfor %}
+etcd_events_peer_addresses: |-
+  {% for item in groups['etcd'] -%}
+    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}-events=https://{{ hostvars[item].etcd_events_access_address | default(hostvars[item].ip | default(fallback_ips[item])) }}:2382{% if not loop.last %},{% endif %}
+  {%- endfor %}
+
+podsecuritypolicy_enabled: false
+etcd_heartbeat_interval: "250"
+etcd_election_timeout: "5000"
+etcd_snapshot_count: "10000"
+
+certificates_key_size: 2048
+certificates_duration: 36500
+
+etcd_config_dir: /etc/ssl/etcd
+etcd_events_data_dir: "/var/lib/etcd-events"
+etcd_cert_dir: "{{ etcd_config_dir }}/ssl"
+
+typha_enabled: false
+
+_host_architecture_groups:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
+host_architecture: >-
+  {%- if ansible_architecture in _host_architecture_groups -%}
+  {{ _host_architecture_groups[ansible_architecture] }}
+  {%- else -%}
+  {{ ansible_architecture }}
+  {%- endif -%}
+
+# Sets the eventRecordQPS parameter in kubelet-config.yaml. The default value is 5 (see types.go)
+# Setting it to 0 allows unlimited requests per second.
+kubelet_event_record_qps: 5
+
+proxy_env:
+  http_proxy: "{{ http_proxy | default ('') }}"
+  HTTP_PROXY: "{{ http_proxy | default ('') }}"
+  https_proxy: "{{ https_proxy | default ('') }}"
+  HTTPS_PROXY: "{{ https_proxy | default ('') }}"
+  no_proxy: "{{ no_proxy | default ('') }}"
+  NO_PROXY: "{{ no_proxy | default ('') }}"
+
+proxy_disable_env:
+  ALL_PROXY: ''
+  FTP_PROXY: ''
+  HTTPS_PROXY: ''
+  HTTP_PROXY: ''
+  NO_PROXY: ''
+  all_proxy: ''
+  ftp_proxy: ''
+  http_proxy: ''
+  https_proxy: ''
+  no_proxy: ''

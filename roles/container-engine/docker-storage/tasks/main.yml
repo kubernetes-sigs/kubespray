@@ -1,0 +1,47 @@
+---
+
+- name: docker-storage-setup | install git and make
+  with_items: [git, make]
+  package:
+    pkg: "{{ item }}"
+    state: present
+
+- name: docker-storage-setup | docker-storage-setup sysconfig template
+  template:
+    src: docker-storage-setup.j2
+    dest: /etc/sysconfig/docker-storage-setup
+
+- name: docker-storage-override-directory | docker service storage-setup override dir
+  file:
+    dest: /etc/systemd/system/docker.service.d
+    mode: 0755
+    owner: root
+    group: root
+    state: directory
+
+- name: docker-storage-override | docker service storage-setup override file
+  copy:
+    dest: /etc/systemd/system/docker.service.d/override.conf
+    content: |-
+      ### This file is managed by Ansible
+      [Service]
+      EnvironmentFile=-/etc/sysconfig/docker-storage
+
+    owner: root
+    group: root
+    mode: 0644
+
+# https://docs.docker.com/engine/installation/linux/docker-ce/centos/#install-using-the-repository
+- name: docker-storage-setup | install lvm2
+  package:
+    name: lvm2
+    state: present
+
+- name: docker-storage-setup | install and run container-storage-setup
+  become: yes
+  script: |
+    install_container_storage_setup.sh \
+      {{ docker_container_storage_setup_repository }} \
+      {{ docker_container_storage_setup_version }} \
+      {{ docker_container_storage_setup_profile_name }}
+  notify: Docker | reload systemd

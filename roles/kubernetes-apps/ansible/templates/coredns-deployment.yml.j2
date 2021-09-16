@@ -1,0 +1,123 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "coredns{{ coredns_ordinal_suffix }}"
+  namespace: kube-system
+  labels:
+    k8s-app: "kube-dns{{ coredns_ordinal_suffix }}"
+    addonmanager.kubernetes.io/mode: Reconcile
+    kubernetes.io/name: "coredns{{ coredns_ordinal_suffix }}"
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 10%
+  selector:
+    matchLabels:
+      k8s-app: kube-dns{{ coredns_ordinal_suffix }}
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-dns{{ coredns_ordinal_suffix }}
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: 'runtime/default'
+        createdby: 'kubespray'
+    spec:
+      nodeSelector:
+        {{ coredns_deployment_nodeselector }}
+      priorityClassName: system-cluster-critical
+      serviceAccountName: coredns
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+{% if dns_extra_tolerations | default(None) %}
+        {{ dns_extra_tolerations | list | to_nice_yaml(indent=2) | indent(8) }}
+{% endif %}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: "kubernetes.io/hostname"
+            labelSelector:
+              matchLabels:
+                k8s-app: kube-dns{{ coredns_ordinal_suffix }}
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+{% if kube_version is version('v1.20.0', '<') %}
+              - key: node-role.kubernetes.io/master
+{% else %}
+              - key: node-role.kubernetes.io/control-plane
+{% endif %}
+                operator: In
+                values:
+                - ""
+      containers:
+      - name: coredns
+        image: "{{ coredns_image_repo }}:{{ coredns_image_tag }}"
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        resources:
+          # TODO: Set memory limits when we've profiled the container for large
+          # clusters, then set request = limit to keep this container in
+          # guaranteed class. Currently, this container falls into the
+          # "burstable" category so the kubelet doesn't backoff from restarting it.
+          limits:
+            memory: {{ dns_memory_limit }}
+          requests:
+            cpu: {{ dns_cpu_requests }}
+            memory: {{ dns_memory_requests }}
+        args: [ "-conf", "/etc/coredns/Corefile" ]
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/coredns
+        ports:
+        - containerPort: 53
+          name: dns
+          protocol: UDP
+        - containerPort: 53
+          name: dns-tcp
+          protocol: TCP
+        - containerPort: 9153
+          name: metrics
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+            - NET_BIND_SERVICE
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8181
+            scheme: HTTP
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 10
+      dnsPolicy: Default
+      volumes:
+        - name: config-volume
+          configMap:
+            name: coredns
+            items:
+            - key: Corefile
+              path: Corefile
+{% if dns_etchosts | default(None) %}
+            - key: hosts
+              path: hosts
+{% endif %}

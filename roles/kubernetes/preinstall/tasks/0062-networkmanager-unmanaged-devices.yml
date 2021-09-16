@@ -1,0 +1,38 @@
+---
+- name: NetworkManager | Check if host has NetworkManager
+  # noqa 303 Should we use service_facts for this?
+  command: systemctl is-active --quiet NetworkManager.service
+  register: nm_check
+  failed_when: false
+  changed_when: false
+
+- name: NetworkManager | Ensure NetworkManager conf.d dir
+  file:
+    path: "/etc/NetworkManager/conf.d"
+    state: directory
+    recurse: yes
+  when: nm_check.rc == 0
+
+- name: NetworkManager | Prevent NetworkManager from managing Calico interfaces (cali*/tunl*/vxlan.calico)
+  copy:
+    content: |
+      [keyfile]
+      unmanaged-devices+=interface-name:cali*;interface-name:tunl*;interface-name:vxlan.calico
+    dest: /etc/NetworkManager/conf.d/calico.conf
+    mode: 0644
+  when:
+    - nm_check.rc == 0
+    - kube_network_plugin == "calico"
+  notify: Preinstall | reload NetworkManager
+
+# TODO: add other network_plugin interfaces
+
+- name: NetworkManager | Prevent NetworkManager from managing K8S interfaces (kube-ipvs0/nodelocaldns)
+  copy:
+    content: |
+      [keyfile]
+      unmanaged-devices+=interface-name:kube-ipvs0;interface-name:nodelocaldns
+    dest: /etc/NetworkManager/conf.d/k8s.conf
+    mode: 0644
+  when: nm_check.rc == 0
+  notify: Preinstall | reload NetworkManager

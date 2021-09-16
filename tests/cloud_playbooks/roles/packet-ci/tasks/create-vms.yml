@@ -1,0 +1,54 @@
+---
+
+- name: "Create CI namespace {{ test_name }} for test vms"
+  k8s:
+    name: "{{ test_name }}"
+    kind: Namespace
+    state: present
+  register: create_ci_ns
+  failed_when: not create_ci_ns.changed
+
+- name: "Create temp dir /tmp/{{ test_name }} for CI files"
+  file:
+    path: "/tmp/{{ test_name }}"
+    state: directory
+    mode: 0755
+
+- name: Template vm files for CI job
+  template:
+    src: "vm.yml.j2"
+    dest: "/tmp/{{ test_name }}/instance-{{ vm_id }}.yml"
+    mode: 0644
+  loop: "{{ range(1, vm_count|int + 1, 1) | list }}"
+  loop_control:
+    index_var: vm_id
+
+- name: Start vms for CI job
+  k8s:
+    state: present
+    src: "/tmp/{{ test_name }}/instance-{{ vm_id }}.yml"
+  loop: "{{ range(1, vm_count|int + 1, 1) | list }}"
+  loop_control:
+    index_var: vm_id
+
+- name: Wait for vms to have ipaddress assigned
+  shell: "set -o pipefail && kubectl get vmis -n {{ test_name }} instance-{{ vm_id }} -o json | jq '.status.interfaces[].ipAddress' | tr -d '\"'"
+  args:
+    executable: /bin/bash
+  changed_when: false
+  register: vm_ips
+  loop: "{{ range(1, vm_count|int + 1, 1) | list }}"
+  loop_control:
+    index_var: vm_id
+  retries: 20
+  delay: 15
+  until:
+    - vm_ips.stdout | ipaddr
+
+- name: "Create inventory for CI test in file /tmp/{{ test_name }}/inventory"
+  template:
+    src: "inventory.j2"
+    dest: "{{ inventory_path }}"
+    mode: 0644
+  vars:
+    vms: "{{ vm_ips }}"

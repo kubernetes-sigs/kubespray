@@ -1,0 +1,134 @@
+---
+- name: check if fedora coreos
+  stat:
+    path: /run/ostree-booted
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: ostree
+
+- name: set is_ostree
+  set_fact:
+    is_ostree: "{{ ostree.stat.exists }}"
+
+- name: Fail containerd setup if distribution is not supported
+  fail:
+    msg: "{{ ansible_distribution }} is not supported by containerd."
+  when:
+    - not ansible_distribution in ["CentOS", "OracleLinux", "RedHat", "Ubuntu", "Debian", "Fedora", "AlmaLinux", "Amazon", "Flatcar Container Linux by Kinvolk"]
+
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+      paths:
+        - ../vars
+      skip: true
+  tags:
+    - facts
+
+- name: disable unified_cgroup_hierarchy in Fedora 31+
+  command: grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=0"
+  when:
+    - ansible_distribution == "Fedora"
+    - (ansible_distribution_major_version | int) >= 31
+    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
+    - not is_ostree
+
+- name: reboot in Fedora 31+
+  reboot:
+  when:
+    - ansible_distribution == "Fedora"
+    - (ansible_distribution_major_version | int) >= 31
+    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
+    - not is_ostree
+
+- include_tasks: containerd_repo.yml
+  when: not (is_ostree or (ansible_distribution == "Flatcar Container Linux by Kinvolk"))
+
+- name: Create containerd service systemd directory if it doesn't exist
+  file:
+    path: /etc/systemd/system/containerd.service.d
+    state: directory
+    mode: 0755
+
+- name: Write containerd proxy drop-in
+  template:
+    src: http-proxy.conf.j2
+    dest: /etc/systemd/system/containerd.service.d/http-proxy.conf
+    mode: 0644
+  notify: restart containerd
+  when: http_proxy is defined or https_proxy is defined
+
+- name: ensure containerd config directory
+  file:
+    dest: "{{ containerd_cfg_dir }}"
+    state: directory
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Copy containerd config file
+  template:
+    src: config.toml.j2
+    dest: "{{ containerd_cfg_dir }}/config.toml"
+    owner: "root"
+    mode: 0640
+  notify: restart containerd
+
+# This is required to ensure any apt upgrade will not break kubernetes
+- name: Set containerd pin priority to apt_preferences on Debian family
+  copy:
+    content: |
+      Package: {{ containerd_package }}
+      Pin: version {{ containerd_version }}*
+      Pin-Priority: 1001
+    dest: "/etc/apt/preferences.d/containerd"
+    owner: "root"
+    mode: 0644
+  when: ansible_pkg_mgr == 'apt'
+
+- name: ensure containerd packages are installed
+  package:
+    name: "{{ containerd_package_info.pkgs }}"
+    state: present
+  module_defaults:
+    apt:
+      update_cache: true
+    dnf:
+      enablerepo: "{{ containerd_package_info.enablerepo | default(omit) }}"
+    yum:
+      enablerepo: "{{ containerd_package_info.enablerepo | default(omit) }}"
+    zypper:
+      update_cache: true
+  register: containerd_task_result
+  until: containerd_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | d(3) }}"
+  notify: restart containerd
+  when:
+    - not (is_ostree or (ansible_distribution == "Flatcar Container Linux by Kinvolk"))
+    - containerd_package_info.pkgs|length > 0
+
+- include_role:  # noqa unnamed-task
+    name: container-engine/crictl
+
+# you can sometimes end up in a state where everything is installed
+# but containerd was not started / enabled
+- name: flush handlers
+  meta: flush_handlers
+
+- name: ensure containerd is started and enabled
+  service:
+    name: containerd
+    enabled: yes
+    state: started

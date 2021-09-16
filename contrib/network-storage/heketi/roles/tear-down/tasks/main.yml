@@ -1,0 +1,51 @@
+---
+- name: Remove storage class.  # noqa 301
+  command: "{{ bin_dir }}/kubectl delete storageclass gluster"
+  ignore_errors: true  # noqa ignore-errors
+- name: Tear down heketi.  # noqa 301
+  command: "{{ bin_dir }}/kubectl delete all,service,jobs,deployment,secret --selector=\"glusterfs=heketi-pod\""
+  ignore_errors: true  # noqa ignore-errors
+- name: Tear down heketi.  # noqa 301
+  command: "{{ bin_dir }}/kubectl delete all,service,jobs,deployment,secret --selector=\"glusterfs=heketi-deployment\""
+  ignore_errors: true  # noqa ignore-errors
+- name: Tear down bootstrap.
+  include_tasks: "../../provision/tasks/bootstrap/tear-down.yml"
+- name: Ensure there is nothing left over.  # noqa 301
+  command: "{{ bin_dir }}/kubectl get all,service,jobs,deployment,secret --selector=\"glusterfs=heketi-pod\" -o=json"
+  register: "heketi_result"
+  until: "heketi_result.stdout|from_json|json_query('items[*]')|length == 0"
+  retries: 60
+  delay: 5
+- name: Ensure there is nothing left over.  # noqa 301
+  command: "{{ bin_dir }}/kubectl get all,service,jobs,deployment,secret --selector=\"glusterfs=heketi-deployment\" -o=json"
+  register: "heketi_result"
+  until: "heketi_result.stdout|from_json|json_query('items[*]')|length == 0"
+  retries: 60
+  delay: 5
+- name: Tear down glusterfs.  # noqa 301
+  command: "{{ bin_dir }}/kubectl delete daemonset.extensions/glusterfs"
+  ignore_errors: true  # noqa ignore-errors
+- name: Remove heketi storage service.  # noqa 301
+  command: "{{ bin_dir }}/kubectl delete service heketi-storage-endpoints"
+  ignore_errors: true  # noqa ignore-errors
+- name: Remove heketi gluster role binding  # noqa 301
+  command: "{{ bin_dir }}/kubectl delete clusterrolebinding heketi-gluster-admin"
+  ignore_errors: true  # noqa ignore-errors
+- name: Remove heketi config secret  # noqa 301
+  command: "{{ bin_dir }}/kubectl delete secret heketi-config-secret"
+  ignore_errors: true  # noqa ignore-errors
+- name: Remove heketi db backup  # noqa 301
+  command: "{{ bin_dir }}/kubectl delete secret heketi-db-backup"
+  ignore_errors: true  # noqa ignore-errors
+- name: Remove heketi service account  # noqa 301
+  command: "{{ bin_dir }}/kubectl delete serviceaccount heketi-service-account"
+  ignore_errors: true  # noqa ignore-errors
+- name: Get secrets
+  command: "{{ bin_dir }}/kubectl get secrets --output=\"json\""
+  register: "secrets"
+  changed_when: false
+- name: Remove heketi storage secret
+  vars: { storage_query: "items[?metadata.annotations.\"kubernetes.io/service-account.name\"=='heketi-service-account'].metadata.name|[0]" }
+  command: "{{ bin_dir }}/kubectl delete secret {{ secrets.stdout|from_json|json_query(storage_query) }}"
+  when: "storage_query is defined"
+  ignore_errors: true  # noqa ignore-errors

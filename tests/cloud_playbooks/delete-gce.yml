@@ -1,0 +1,48 @@
+---
+- hosts: localhost
+  become: false
+  gather_facts: no
+  vars:
+    mode: default
+
+  tasks:
+    - name: replace_test_id
+      set_fact:
+        test_name: "{{ test_id |regex_replace('\\.', '-') }}"
+
+    - name: set instance names
+      set_fact:
+        instance_names: >-
+          {%- if mode in ['separate', 'ha'] -%}
+          k8s-{{ test_name }}-1,k8s-{{ test_name }}-2,k8s-{{ test_name }}-3
+          {%- else -%}
+          k8s-{{ test_name }}-1,k8s-{{ test_name }}-2
+          {%- endif -%}
+
+    - name: stop gce instances
+      google.cloud.gcp_compute_instance:
+        instance_names: "{{ instance_names }}"
+        image: "{{ cloud_image | default(omit) }}"
+        service_account_email: "{{ gce_service_account_email }}"
+        pem_file: "{{ gce_pem_file | default(omit) }}"
+        credentials_file: "{{ gce_credentials_file | default(omit) }}"
+        project_id: "{{ gce_project_id }}"
+        zone: "{{ cloud_region | default('europe-west1-b') }}"
+        state: 'stopped'
+      async: 120
+      poll: 3
+      register: gce
+
+    - name: delete gce instances
+      google.cloud.gcp_compute_instance:
+        instance_names: "{{ instance_names }}"
+        image: "{{ cloud_image | default(omit) }}"
+        service_account_email: "{{ gce_service_account_email }}"
+        pem_file: "{{ gce_pem_file | default(omit) }}"
+        credentials_file: "{{ gce_credentials_file | default(omit) }}"
+        project_id: "{{ gce_project_id }}"
+        zone: "{{ cloud_region | default('europe-west1-b') }}"
+        state: 'absent'
+      async: 120
+      poll: 3
+      register: gce

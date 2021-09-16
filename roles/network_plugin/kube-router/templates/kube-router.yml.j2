@@ -1,0 +1,194 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    k8s-app: kube-router
+    tier: node
+  name: kube-router
+  namespace: kube-system
+spec:
+  minReadySeconds: 3
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      k8s-app: kube-router
+      tier: node
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-router
+        tier: node
+      annotations:
+{% if kube_router_enable_metrics %}
+        prometheus.io/path: {{ kube_router_metrics_path }}
+        prometheus.io/port: "{{ kube_router_metrics_port }}"
+        prometheus.io/scrape: "true"
+{% endif %}
+    spec:
+      priorityClassName: system-node-critical
+      serviceAccountName: kube-router
+      containers:
+      - name: kube-router
+        image: {{ kube_router_image_repo }}:{{ kube_router_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        args:
+        - --run-router={{ kube_router_run_router | bool }}
+        - --run-firewall={{ kube_router_run_firewall | bool }}
+        - --run-service-proxy={{ kube_router_run_service_proxy | bool }}
+        - --kubeconfig=/var/lib/kube-router/kubeconfig
+        - --bgp-graceful-restart=true
+{% if kube_router_advertise_cluster_ip %}
+        - --advertise-cluster-ip
+{% endif %}
+{% if kube_router_advertise_external_ip %}
+        - --advertise-external-ip
+{% endif %}
+{% if kube_router_advertise_loadbalancer_ip %}
+        - --advertise-loadbalancer-ip
+{% endif %}
+{% if kube_router_peer_router_asns %}
+        - --peer-router-asns={{ kube_router_peer_router_asns }}
+{% endif %}
+{% if kube_router_peer_router_ips %}
+        - --peer-router-ips={{ kube_router_peer_router_ips }}
+{% endif %}
+{% if kube_router_peer_router_ports %}
+        - --peer-router-ports={{ kube_router_peer_router_ports }}
+{% endif %}
+{% if kube_router_enable_metrics %}
+        - --metrics-path={{ kube_router_metrics_path }}
+        - --metrics-port={{ kube_router_metrics_port }}
+{% endif %}
+{% for arg in kube_router_extra_args %}
+        - "{{ arg }}"
+{% endfor %}
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: KUBE_ROUTER_CNI_CONF_FILE
+          value: /etc/cni/net.d/10-kuberouter.conflist
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 20244
+          initialDelaySeconds: 10
+          periodSeconds: 3
+        resources:
+          requests:
+            cpu: 250m
+            memory: 250Mi
+        securityContext:
+          privileged: true
+        volumeMounts:
+{% if kube_router_enable_dsr %}
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+          readOnly: true
+{% endif %}
+        - name: lib-modules
+          mountPath: /lib/modules
+          readOnly: true
+        - name: cni-conf-dir
+          mountPath: /etc/cni/net.d
+        - name: kubeconfig
+          mountPath: /var/lib/kube-router
+          readOnly: true
+        - name: xtables-lock
+          mountPath: /run/xtables.lock
+          readOnly: false
+{% if kube_router_enable_metrics %}
+        ports:
+        - containerPort: {{ kube_router_metrics_port }}
+          hostPort: {{ kube_router_metrics_port }}
+          name: metrics
+          protocol: TCP
+{% endif %}
+      hostNetwork: true
+      dnsPolicy: {{ kube_router_dns_policy }}
+{% if kube_router_enable_dsr %}
+      hostIPC: true
+      hostPID: true
+{% endif %}
+      tolerations:
+      - operator: Exists
+      volumes:
+{% if kube_router_enable_dsr %}
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+{% endif %}
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+      - name: cni-conf-dir
+        hostPath:
+          path: /etc/cni/net.d
+      - name: kubeconfig
+        hostPath:
+          path: /var/lib/kube-router
+      - name: xtables-lock
+        hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-router
+  namespace: kube-system
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kube-router
+  namespace: kube-system
+rules:
+  - apiGroups:
+    - ""
+    resources:
+      - namespaces
+      - pods
+      - services
+      - nodes
+      - endpoints
+    verbs:
+      - list
+      - get
+      - watch
+  - apiGroups:
+    - "networking.k8s.io"
+    resources:
+      - networkpolicies
+    verbs:
+      - list
+      - get
+      - watch
+  - apiGroups:
+    - extensions
+    resources:
+      - networkpolicies
+    verbs:
+      - get
+      - list
+      - watch
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kube-router
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-router
+subjects:
+- kind: ServiceAccount
+  name: kube-router
+  namespace: kube-system

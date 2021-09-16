@@ -1,0 +1,82 @@
+# Copyright 2017 Google Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-driver-installer
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: nvidia-driver-installer
+  template:
+    metadata:
+      labels:
+        name: nvidia-driver-installer
+    spec:
+      priorityClassName: system-node-critical
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: "nvidia.com/gpu"
+                operator: Exists
+      tolerations:
+      - key: "nvidia.com/gpu"
+        effect: "NoSchedule"
+        operator: "Exists"
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      hostPID: true
+      volumes:
+      - name: dev
+        hostPath:
+          path: /dev
+      - name: nvidia-install-dir-host
+        hostPath:
+          path: /home/kubernetes/bin/nvidia
+      - name: root-mount
+        hostPath:
+          path: /
+      initContainers:
+      - image: "{{ nvidia_driver_install_container }}"
+        name: nvidia-driver-installer
+        resources:
+          requests:
+            cpu: 0.15
+        securityContext:
+          privileged: true
+        env:
+          - name: NVIDIA_INSTALL_DIR_HOST
+            value: /home/kubernetes/bin/nvidia
+          - name: NVIDIA_INSTALL_DIR_CONTAINER
+            value: /usr/local/nvidia
+          - name: ROOT_MOUNT_DIR
+            value: /root
+          - name: NVIDIA_DRIVER_VERSION
+            value: "{{ nvidia_driver_version }}"
+          - name: NVIDIA_DRIVER_DOWNLOAD_URL
+            value: "{{ nvidia_driver_download_url_default }}"
+        volumeMounts:
+        - name: nvidia-install-dir-host
+          mountPath: /usr/local/nvidia
+        - name: dev
+          mountPath: /dev
+        - name: root-mount
+          mountPath: /root
+      containers:
+      - image: "{{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}"
+        name: pause

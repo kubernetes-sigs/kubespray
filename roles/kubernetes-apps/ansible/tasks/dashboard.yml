@@ -1,0 +1,20 @@
+---
+- name: Kubernetes Apps | Lay down dashboard template
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - { file: dashboard.yml, type: deploy, name: kubernetes-dashboard }
+  register: manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Kubernetes Apps | Start dashboard
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ dashboard_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ manifests.results }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]

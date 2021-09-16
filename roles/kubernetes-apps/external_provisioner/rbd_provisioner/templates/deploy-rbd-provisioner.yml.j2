@@ -1,0 +1,40 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rbd-provisioner
+  namespace: {{ rbd_provisioner_namespace }}
+  labels:
+    app: rbd-provisioner
+    version: {{ rbd_provisioner_image_tag }}
+spec:
+  replicas: {{ rbd_provisioner_replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: rbd-provisioner
+      version: {{ rbd_provisioner_image_tag }}
+  template:
+    metadata:
+      labels:
+        app: rbd-provisioner
+        version: {{ rbd_provisioner_image_tag }}
+    spec:
+      priorityClassName: {% if rbd_provisioner_namespace == 'kube-system' %}system-cluster-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
+      serviceAccount: rbd-provisioner
+      containers:
+        - name: rbd-provisioner
+          image: {{ rbd_provisioner_image_repo }}:{{ rbd_provisioner_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          env:
+            - name: PROVISIONER_NAME
+              value: ceph.com/rbd
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          command:
+            - "/usr/local/bin/rbd-provisioner"
+          args:
+            - "-id=${POD_NAME}"

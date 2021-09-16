@@ -1,0 +1,63 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: local-volume-provisioner
+  namespace: {{ local_volume_provisioner_namespace }}
+  labels:
+    k8s-app: local-volume-provisioner
+    version: {{ local_volume_provisioner_image_tag }}
+spec:
+  selector:
+    matchLabels:
+      k8s-app: local-volume-provisioner
+      version: {{ local_volume_provisioner_image_tag }}
+  template:
+    metadata:
+      labels:
+        k8s-app: local-volume-provisioner
+        version: {{ local_volume_provisioner_image_tag }}
+    spec:
+      priorityClassName: {% if local_volume_provisioner_namespace == 'kube-system' %}system-node-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
+      serviceAccountName: local-volume-provisioner
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+        - name: provisioner
+          image: {{ local_volume_provisioner_image_repo }}:{{ local_volume_provisioner_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          securityContext:
+            privileged: true
+          env:
+          - name: MY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: MY_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          volumeMounts:
+            - name: local-volume-provisioner
+              mountPath: /etc/provisioner/config
+              readOnly: true
+            - mountPath: /dev
+              name: provisioner-dev
+{% for class_name, class_config in local_volume_provisioner_storage_classes.items() %}
+            - name: local-volume-provisioner-hostpath-{{ class_name }}
+              mountPath: {{ class_config.mount_dir }}
+              mountPropagation: "HostToContainer"
+{% endfor %}
+      volumes:
+        - name: local-volume-provisioner
+          configMap:
+            name: local-volume-provisioner
+        - name: provisioner-dev
+          hostPath:
+            path: /dev
+{% for class_name, class_config in local_volume_provisioner_storage_classes.items() %}
+        - name: local-volume-provisioner-hostpath-{{ class_name }}
+          hostPath:
+            path: {{ class_config.host_dir }}
+{% endfor %}

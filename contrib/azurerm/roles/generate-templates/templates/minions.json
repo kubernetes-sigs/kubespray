@@ -1,0 +1,115 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+  },
+  "variables": {
+    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', '{{virtualNetworkName}}')]",
+    "kubeMinionsSubnetRef": "[concat(variables('vnetID'),'/subnets/', '{{subnetMinionsName}}')]"
+  },
+  "resources": [
+    {% for i in range(number_of_k8s_nodes) %}
+    {% if not use_bastion %}
+    {
+      "apiVersion": "{{apiVersion}}",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "minion-{{i}}-pubip",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publicIPAllocationMethod": "Static"
+      }
+    },
+    {% endif %}
+    {
+      "apiVersion": "{{apiVersion}}",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "minion-{{i}}-nic",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        {% if not use_bastion %}
+        "[concat('Microsoft.Network/publicIPAddresses/', 'minion-{{i}}-pubip')]"
+        {% endif %}
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "MinionsIpConfig",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              {% if not use_bastion %}
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'minion-{{i}}-pubip')]"
+              },
+              {% endif %}
+              "subnet": {
+                "id": "[variables('kubeMinionsSubnetRef')]"
+              }
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', '{{securityGroupName}}')]"
+        },
+        "enableIPForwarding": true
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "minion-{{i}}",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', 'minion-{{i}}-nic')]"
+      ],
+      "tags": {
+        "roles": "kube_node"
+      },
+      "apiVersion": "{{apiVersion}}",
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', '{{availabilitySetMinions}}')]"
+        },
+        "hardwareProfile": {
+          "vmSize": "{{minions_vm_size}}"
+        },
+        "osProfile": {
+          "computerName": "minion-{{i}}",
+          "adminUsername": "{{admin_username}}",
+          "adminPassword": "{{admin_password}}",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": "{{disablePasswordAuthentication}}",
+            "ssh": {
+              "publicKeys": [
+                {% for key in ssh_public_keys %}
+                {
+                  "path": "{{sshKeyPath}}",
+                  "keyData": "{{key}}"
+                }{% if loop.index < ssh_public_keys | length %},{% endif %}
+                {% endfor %}
+              ]
+            }
+          }
+        },
+        "storageProfile": {
+          "imageReference": {{imageReferenceJson}},
+          "osDisk": {
+            "name": "mi{{nameSuffix}}{{i}}",
+            "vhd": {
+              "uri": "[concat('http://','{{storageAccountName}}','.blob.core.windows.net/vhds/minion-{{i}}.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "diskSizeGB": "{{minions_os_disk_size}}"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'minion-{{i}}-nic')]"
+            }
+          ]
+        }
+      }
+    } {% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}

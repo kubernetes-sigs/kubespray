@@ -1,0 +1,106 @@
+---
+- name: Create kubernetes directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: kube
+    mode: 0755
+  when: inventory_hostname in groups['k8s_cluster']
+  become: true
+  tags:
+    - kubelet
+    - k8s-secrets
+    - kube-controller-manager
+    - kube-apiserver
+    - bootstrap-os
+    - apps
+    - network
+    - master
+    - node
+  with_items:
+    - "{{ kube_config_dir }}"
+    - "{{ kube_cert_dir }}"
+    - "{{ kube_manifest_dir }}"
+    - "{{ kube_script_dir }}"
+    - "{{ kubelet_flexvolumes_plugins_dir }}"
+
+- name: Create other directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    mode: 0755
+  when: inventory_hostname in groups['k8s_cluster']
+  become: true
+  tags:
+    - kubelet
+    - k8s-secrets
+    - kube-controller-manager
+    - kube-apiserver
+    - bootstrap-os
+    - apps
+    - network
+    - master
+    - node
+  with_items:
+    - "{{ bin_dir }}"
+
+- name: Check if kubernetes kubeadm compat cert dir exists
+  stat:
+    path: "{{ kube_cert_compat_dir }}"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: kube_cert_compat_dir_check
+  when:
+    - inventory_hostname in groups['k8s_cluster']
+    - kube_cert_dir != kube_cert_compat_dir
+
+- name: Create kubernetes kubeadm compat cert dir (kubernetes/kubeadm issue 1498)
+  file:
+    src: "{{ kube_cert_dir }}"
+    dest: "{{ kube_cert_compat_dir }}"
+    state: link
+    mode: 0755
+  when:
+    - inventory_hostname in groups['k8s_cluster']
+    - kube_cert_dir != kube_cert_compat_dir
+    - not kube_cert_compat_dir_check.stat.exists
+
+- name: Create cni directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: kube
+    mode: 0755
+  with_items:
+    - "/etc/cni/net.d"
+    - "/opt/cni/bin"
+    - "/var/lib/calico"
+  when:
+    - kube_network_plugin in ["calico", "weave", "canal", "flannel", "cilium", "kube-ovn", "ovn4nfv", "kube-router", "macvlan"]
+    - inventory_hostname in groups['k8s_cluster']
+  tags:
+    - network
+    - cilium
+    - calico
+    - weave
+    - canal
+    - ovn4nfv
+    - kube-ovn
+    - kube-router
+    - bootstrap-os
+
+- name: Create local volume provisioner directories
+  file:
+    path: "{{ local_volume_provisioner_storage_classes[item].host_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ local_volume_provisioner_directory_mode }}"
+  with_items: "{{ local_volume_provisioner_storage_classes.keys() | list }}"
+  when:
+    - inventory_hostname in groups['k8s_cluster']
+    - local_volume_provisioner_enabled
+  tags:
+    - persistent_volumes

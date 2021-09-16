@@ -1,0 +1,90 @@
+{% macro private_key() %}{{ oci_private_key }}{% endmacro %}
+
+{% if oci_use_instance_principals %}
+  # (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Tasks/callingservicesfrominstances.htm).
+  # Ensure you have setup the following OCI policies and your kubernetes nodes are running within them
+  # allow dynamic-group [your dynamic group name] to read instance-family in compartment [your compartment name]
+  # allow dynamic-group [your dynamic group name] to use virtual-network-family in compartment [your compartment name]
+  # allow dynamic-group [your dynamic group name] to manage load-balancers in compartment [your compartment name]
+useInstancePrincipals: true
+{% else %}
+useInstancePrincipals: false
+{% endif %}
+
+auth:
+
+{% if oci_use_instance_principals %}
+  # This key is put here too for backwards compatibility
+  useInstancePrincipals: true
+{% else %}
+  useInstancePrincipals: false
+
+  region: {{ oci_region_id }}
+  tenancy: {{ oci_tenancy_id }}
+  user: {{ oci_user_id }}
+  key: |
+    {{ oci_private_key }}
+
+  {% if oci_private_key_passphrase is defined %}
+  passphrase: {{ oci_private_key_passphrase }}
+  {% endif %}
+
+
+  fingerprint: {{ oci_user_fingerprint }}
+{% endif %}
+
+# compartment configures Compartment within which the cluster resides.
+compartment: {{ oci_compartment_id }}
+
+# vcn configures the Virtual Cloud Network (VCN) within which the cluster resides.
+vcn: {{ oci_vnc_id }}
+
+loadBalancer:
+  # subnet1 configures one of two subnets to which load balancers will be added.
+  # OCI load balancers require two subnets to ensure high availability.
+  subnet1: {{ oci_subnet1_id }}
+{% if oci_subnet2_id is defined %}
+  # subnet2 configures the second of two subnets to which load balancers will be
+  # added. OCI load balancers require two subnets to ensure high availability.
+  subnet2: {{ oci_subnet2_id }}
+{% endif %}
+  # SecurityListManagementMode configures how security lists are managed by the CCM.
+  #   "All" (default): Manage all required security list rules for load balancer services.
+  #   "Frontend":      Manage only security list rules for ingress to the load
+  #                    balancer. Requires that the user has setup a rule that
+  #                    allows inbound traffic to the appropriate ports for kube
+  #                    proxy health port, node port ranges, and health check port ranges.
+  #                    E.g. 10.82.0.0/16 30000-32000.
+  #   "None":          Disables all security list management. Requires that the
+  #                    user has setup a rule that allows inbound traffic to the
+  #                    appropriate ports for kube proxy health port, node port
+  #                    ranges, and health check port ranges. E.g. 10.82.0.0/16 30000-32000.
+  #                    Additionally requires the user to mange rules to allow
+  #                    inbound traffic to load balancers.
+  securityListManagementMode: {{ oci_security_list_management }}
+
+{% if oci_security_lists is defined and oci_security_lists|length > 0 %}
+  # Optional specification of which security lists to modify per subnet. This does not apply if security list management is off.
+  securityLists:
+{% for subnet_ocid, list_ocid in oci_security_lists.items() %}
+    {{ subnet_ocid }}: {{ list_ocid }}
+{% endfor %}
+{% endif %}
+
+{% if oci_rate_limit is defined and oci_rate_limit|length > 0 %}
+# Optional rate limit controls for accessing OCI API
+rateLimiter:
+{% if oci_rate_limit.rate_limit_qps_read %}
+  rateLimitQPSRead: {{ oci_rate_limit.rate_limit_qps_read }}
+{% endif %}
+{% if oci_rate_limit.rate_limit_qps_write %}
+  rateLimitQPSWrite: {{ oci_rate_limit.rate_limit_qps_write }}
+{% endif %}
+{% if oci_rate_limit.rate_limit_bucket_read %}
+  rateLimitBucketRead: {{ oci_rate_limit.rate_limit_bucket_read }}
+{% endif %}
+{% if oci_rate_limit.rate_limit_bucket_write %}
+  rateLimitBucketWrite: {{ oci_rate_limit.rate_limit_bucket_write }}
+{% endif %}
+{% endif %}
+

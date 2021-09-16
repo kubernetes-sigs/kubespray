@@ -1,0 +1,75 @@
+---
+- name: Kubernetes Apps | Wait for kube-apiserver
+  uri:
+    url: "{{ kube_apiserver_endpoint }}/healthz"
+    validate_certs: no
+    client_cert: "{{ kube_apiserver_client_cert }}"
+    client_key: "{{ kube_apiserver_client_key }}"
+  register: result
+  until: result.status == 200
+  retries: 20
+  delay: 1
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Kubernetes Apps | Cleanup DNS
+  import_tasks: cleanup_dns.yml
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - upgrade
+    - coredns
+    - nodelocaldns
+
+- name: Kubernetes Apps | CoreDNS
+  import_tasks: "coredns.yml"
+  when:
+    - dns_mode in ['coredns', 'coredns_dual']
+    - inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - coredns
+
+- name: Kubernetes Apps | nodelocalDNS
+  import_tasks: "nodelocaldns.yml"
+  when:
+    - enable_nodelocaldns
+    - inventory_hostname == groups['kube_control_plane'] | first
+  tags:
+    - nodelocaldns
+
+- name: Kubernetes Apps | Start Resources
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "kube-system"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ coredns_manifests.results | default({}) }}"
+    - "{{ coredns_secondary_manifests.results | default({}) }}"
+    - "{{ nodelocaldns_manifests.results | default({}) }}"
+  when:
+    - dns_mode != 'none'
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  register: resource_result
+  until: resource_result is succeeded
+  retries: 4
+  delay: 5
+  tags:
+    - coredns
+    - nodelocaldns
+  loop_control:
+    label: "{{ item.item.file }}"
+
+- name: Kubernetes Apps | Netchecker
+  import_tasks: netchecker.yml
+  when: deploy_netchecker
+  tags:
+    - netchecker
+
+- name: Kubernetes Apps | Dashboard
+  import_tasks: dashboard.yml
+  when: dashboard_enabled
+  tags:
+    - dashboard

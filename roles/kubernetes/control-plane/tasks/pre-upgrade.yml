@@ -1,0 +1,21 @@
+---
+- name: "Pre-upgrade | Delete master manifests if etcd secrets changed"
+  file:
+    path: "/etc/kubernetes/manifests/{{ item }}.manifest"
+    state: absent
+  with_items:
+    - ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
+  register: kube_apiserver_manifest_replaced
+  when: etcd_secret_changed|default(false)
+
+- name: "Pre-upgrade | Delete master containers forcefully"  # noqa 503
+  shell: "set -o pipefail && docker ps -af name=k8s_{{ item }}* -q | xargs --no-run-if-empty docker rm -f"
+  args:
+    executable: /bin/bash
+  with_items:
+    - ["kube-apiserver", "kube-controller-manager", "kube-scheduler"]
+  when: kube_apiserver_manifest_replaced.changed
+  register: remove_master_container
+  retries: 10
+  until: remove_master_container.rc == 0
+  delay: 1

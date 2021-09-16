@@ -1,0 +1,45 @@
+---
+- name: Kubernetes Apps | set up necessary nodelocaldns parameters
+  set_fact:
+    primaryClusterIP: >-
+      {%- if dns_mode in ['coredns', 'coredns_dual'] -%}
+      {{ skydns_server }}
+      {%- elif dns_mode == 'manual' -%}
+      {{ manual_dns_server }}
+      {%- endif -%}
+    secondaryclusterIP: "{{ skydns_server_secondary }}"
+  when:
+    - enable_nodelocaldns
+    - inventory_hostname == groups['kube_control_plane'] | first
+  tags:
+    - nodelocaldns
+    - coredns
+
+- name: Kubernetes Apps | Lay Down nodelocaldns Template
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - { name: nodelocaldns, file: nodelocaldns-config.yml, type: configmap }
+    - { name: nodelocaldns, file: nodelocaldns-sa.yml, type: sa }
+    - { name: nodelocaldns, file: nodelocaldns-daemonset.yml, type: daemonset }
+  register: nodelocaldns_manifests
+  vars:
+    forwardTarget: >-
+      {%- if secondaryclusterIP is defined and dns_mode == 'coredns_dual' -%}
+      {{ primaryClusterIP }} {{ secondaryclusterIP }}
+      {%- else -%}
+      {{ primaryClusterIP }}
+      {%- endif -%}
+    upstreamForwardTarget: >-
+      {%- if resolvconf_mode == 'host_resolvconf' and upstream_dns_servers is defined and upstream_dns_servers|length > 0 -%}
+      {{ upstream_dns_servers|join(' ') }}
+      {%- else -%}
+      /etc/resolv.conf
+      {%- endif -%}
+  when:
+    - enable_nodelocaldns
+    - inventory_hostname == groups['kube_control_plane'] | first
+  tags:
+    - nodelocaldns
+    - coredns

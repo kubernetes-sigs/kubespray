@@ -1,0 +1,161 @@
+---
+
+- block:
+    - name: Add Debian Backports apt repo
+      apt_repository:
+        repo: "deb http://deb.debian.org/debian {{ ansible_distribution_release }}-backports main"
+        state: present
+        filename: debian-backports
+
+    - name: Set libseccomp2 pin priority to apt_preferences on Debian buster
+      copy:
+        content: |
+          Package: libseccomp2
+          Pin: release a={{ ansible_distribution_release }}-backports
+          Pin-Priority: 1001
+        dest: "/etc/apt/preferences.d/libseccomp2"
+        owner: "root"
+        mode: 0644
+  when:
+    - ansible_distribution == "Debian"
+    - ansible_distribution_version == "10"
+
+- name: CRI-O kubic repo name for debian os family
+  set_fact:
+    crio_kubic_debian_repo_name: "{{ ((ansible_distribution == 'Ubuntu') | ternary('x','')) ~ ansible_distribution ~ '_' ~ ansible_distribution_version }}"
+  when: ansible_os_family == "Debian"
+
+- name: Add CRI-O kubic apt repo key
+  apt_key:
+    url: "https://{{ crio_download_base }}/{{ crio_kubic_debian_repo_name }}/Release.key"
+    state: present
+  when: crio_kubic_debian_repo_name is defined
+  register: apt_key_download
+  until: apt_key_download is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | d(3) }}"
+  environment: "{{ proxy_env }}"
+
+- name: Add CRI-O kubic apt repo
+  apt_repository:
+    repo: "deb http://{{ crio_download_base }}/{{ crio_kubic_debian_repo_name }}/ /"
+    state: present
+    filename: devel-kubic-libcontainers-stable
+  when: crio_kubic_debian_repo_name is defined
+
+- name: Add CRI-O kubic cri-o apt repo
+  apt_repository:
+    repo: "deb {{ crio_download_crio }}{{ crio_version }}/{{ crio_kubic_debian_repo_name }}/ /"
+    state: present
+    filename: devel-kubic-libcontainers-stable-cri-o
+  when: crio_kubic_debian_repo_name is defined
+
+- name: Check that amzn2-extras.repo exists
+  stat:
+    path: /etc/yum.repos.d/amzn2-extras.repo
+  register: amzn2_extras_file_stat
+  when: ansible_distribution in ["Amazon"]
+
+- name: Find docker repo in amzn2-extras.repo file
+  lineinfile:
+    dest: /etc/yum.repos.d/amzn2-extras.repo
+    line: "[amzn2extra-docker]"
+  check_mode: yes
+  register: amzn2_extras_docker_repo
+  when:
+    - ansible_distribution in ["Amazon"]
+    - amzn2_extras_file_stat.stat.exists
+
+- name: Remove docker repository
+  ini_file:
+    dest: /etc/yum.repos.d/amzn2-extras.repo
+    section: amzn2extra-docker
+    option: enabled
+    value: "0"
+    backup: yes
+    mode: 0644
+  when:
+    - ansible_distribution in ["Amazon"]
+    - amzn2_extras_file_stat.stat.exists
+    - not amzn2_extras_docker_repo.changed
+
+- name: Add container-selinux yum repo
+  yum_repository:
+    name: copr:copr.fedorainfracloud.org:lsm5:container-selinux
+    file: _copr_lsm5-container-selinux.repo
+    description: Copr repo for container-selinux owned by lsm5
+    baseurl: https://download.copr.fedorainfracloud.org/results/lsm5/container-selinux/epel-7-$basearch/
+    gpgcheck: yes
+    gpgkey: https://download.copr.fedorainfracloud.org/results/lsm5/container-selinux/pubkey.gpg
+    skip_if_unavailable: yes
+    enabled: yes
+    repo_gpgcheck: no
+  when: ansible_distribution in ["Amazon"]
+
+- name: Add CRI-O kubic yum repo
+  yum_repository:
+    name: devel_kubic_libcontainers_stable
+    description: Stable Releases of Upstream github.com/containers packages (CentOS_$releasever)
+    baseurl: http://{{ crio_download_base }}/CentOS_{{ ansible_distribution_major_version }}/
+    gpgcheck: yes
+    gpgkey: http://{{ crio_download_base }}/CentOS_{{ ansible_distribution_major_version }}/repodata/repomd.xml.key
+    keepcache: '0'
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution not in ["Amazon", "Fedora"]
+
+- name: Add CRI-O kubic yum repo
+  yum_repository:
+    name: "devel_kubic_libcontainers_stable_cri-o_{{ crio_version }}"
+    description: "CRI-O {{ crio_version }} (CentOS_$releasever)"
+    baseurl: "{{ crio_download_crio }}{{ crio_version }}/CentOS_{{ ansible_distribution_major_version }}/"
+    gpgcheck: yes
+    gpgkey: "{{ crio_download_crio }}{{ crio_version }}/CentOS_{{ ansible_distribution_major_version }}/repodata/repomd.xml.key"
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution not in ["Amazon", "Fedora"]
+
+- name: Add CRI-O kubic yum repo
+  yum_repository:
+    name: devel_kubic_libcontainers_stable
+    description: Stable Releases of Upstream github.com/containers packages
+    baseurl: http://{{ crio_download_base }}/CentOS_7/
+    gpgcheck: yes
+    gpgkey: http://{{ crio_download_base }}/CentOS_7/repodata/repomd.xml.key
+    keepcache: '0'
+  when: ansible_distribution in ["Amazon"]
+
+- name: Add CRI-O kubic yum repo
+  yum_repository:
+    name: "devel_kubic_libcontainers_stable_cri-o_{{ crio_version }}"
+    description: "CRI-O {{ crio_version }}"
+    baseurl: "{{ crio_download_crio }}{{ crio_version }}/CentOS_7/"
+    gpgcheck: yes
+    gpgkey: "{{ crio_download_crio }}{{ crio_version }}/CentOS_7/repodata/repomd.xml.key"
+  when: ansible_distribution in ["Amazon"]
+
+- name: Enable modular repos for CRI-O
+  ini_file:
+    path: "/etc/yum.repos.d/{{ item.repo }}.repo"
+    section: "{{ item.section }}"
+    option: enabled
+    value: 1
+    mode: 0644
+  become: true
+  when: is_ostree
+  loop:
+    - repo: "fedora-updates-modular"
+      section: "updates-modular"
+    - repo: "fedora-modular"
+      section: "fedora-modular"
+
+- name: Enable CRI-O module
+  command: "dnf -y module enable cri-o:{{ crio_version }}"
+  args:
+    warn: False
+  register: crio_dnf_result
+  changed_when: "'Enabling' in crio_dnf_result.stdout"
+  become: true
+  when:
+    - ansible_distribution in ["Fedora"]
+    - not is_ostree

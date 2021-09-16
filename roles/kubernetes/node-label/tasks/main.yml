@@ -1,0 +1,49 @@
+---
+- name: Kubernetes Apps | Wait for kube-apiserver
+  uri:
+    url: "{{ kube_apiserver_endpoint }}/healthz"
+    validate_certs: no
+    client_cert: "{{ kube_apiserver_client_cert }}"
+    client_key: "{{ kube_apiserver_client_key }}"
+  register: result
+  until: result.status == 200
+  retries: 10
+  delay: 6
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Set role node label to empty list
+  set_fact:
+    role_node_labels: []
+
+- name: Node label for nvidia GPU nodes
+  set_fact:
+    role_node_labels: "{{ role_node_labels + [ 'nvidia.com/gpu=true' ] }}"
+  when:
+    - nvidia_gpu_nodes is defined
+    - nvidia_accelerator_enabled|bool
+    - inventory_hostname in nvidia_gpu_nodes
+
+- name: Set inventory node label to empty list
+  set_fact:
+    inventory_node_labels: []
+
+- name: Populate inventory node label
+  set_fact:
+    inventory_node_labels: "{{ inventory_node_labels + [ '%s=%s'|format(item.key, item.value) ] }}"
+  loop: "{{ node_labels|d({})|dict2items }}"
+  when:
+    - node_labels is defined
+    - node_labels is mapping
+
+- debug:  # noqa unnamed-task
+    var: role_node_labels
+- debug:  # noqa unnamed-task
+    var: inventory_node_labels
+
+- name: Set label to node
+  command: >-
+      {{ bin_dir }}/kubectl label node {{ kube_override_hostname | default(inventory_hostname) }} {{ item }} --overwrite=true
+  loop: "{{ role_node_labels + inventory_node_labels }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  changed_when: false
+...

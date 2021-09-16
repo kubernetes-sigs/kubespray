@@ -1,0 +1,66 @@
+---
+- include_tasks: check_certs.yml
+  when: cert_management == "script"
+  tags:
+    - etcd-secrets
+    - facts
+
+- include_tasks: "gen_certs_script.yml"
+  when:
+    - cert_management |d('script') == "script"
+  tags:
+    - etcd-secrets
+
+- include_tasks: upd_ca_trust.yml
+  tags:
+    - etcd-secrets
+
+- name: "Gen_certs | Get etcd certificate serials"
+  command: "openssl x509 -in {{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem -noout -serial"
+  register: "etcd_client_cert_serial_result"
+  changed_when: false
+  when:
+    - inventory_hostname in groups['k8s_cluster']|union(groups['calico_rr']|default([]))|unique|sort
+  tags:
+    - master
+    - network
+
+- name: Set etcd_client_cert_serial
+  set_fact:
+    etcd_client_cert_serial: "{{ etcd_client_cert_serial_result.stdout.split('=')[1] }}"
+  when:
+    - inventory_hostname in groups['k8s_cluster']|union(groups['calico_rr']|default([]))|unique|sort
+  tags:
+    - master
+    - network
+
+- include_tasks: "install_{{ etcd_deployment_type }}.yml"
+  when: is_etcd_master
+  tags:
+    - upgrade
+
+- include_tasks: configure.yml
+  when: is_etcd_master
+
+- include_tasks: refresh_config.yml
+  when: is_etcd_master
+
+- name: Restart etcd if certs changed
+  service:
+    name: etcd
+    state: restarted
+    enabled: yes
+  when: is_etcd_master and etcd_cluster_setup and etcd_secret_changed|default(false)
+
+- name: Restart etcd-events if certs changed
+  service:
+    name: etcd-events
+    state: restarted
+    enabled: yes
+  when: is_etcd_master and etcd_events_cluster_setup and etcd_secret_changed|default(false)
+
+# After etcd cluster is assembled, make sure that
+# initial state of the cluster is in `existing`
+# state instead of `new`.
+- include_tasks: refresh_config.yml
+  when: is_etcd_master

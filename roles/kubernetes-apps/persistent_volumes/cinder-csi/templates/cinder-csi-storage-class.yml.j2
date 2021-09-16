@@ -1,0 +1,25 @@
+{% for class in storage_classes %}
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: "{{ class.name }}"
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "{{ class.is_default | default(false) | ternary("true","false") }}"
+provisioner: cinder.csi.openstack.org
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+{% for key, value in (class.parameters | default({})).items() %}
+  "{{ key }}": "{{ value }}"
+{% endfor %}
+{% if cinder_topology is defined and cinder_topology is sameas true %}
+allowedTopologies:
+- matchLabelExpressions:
+  - key: topology.cinder.csi.openstack.org/zone
+    values:
+{% for zone in cinder_topology_zones %}
+    - "{{ zone }}"
+{% endfor %}
+{% endif  %}
+allowVolumeExpansion: {{ expand_persistent_volumes }}
+{% endfor %}

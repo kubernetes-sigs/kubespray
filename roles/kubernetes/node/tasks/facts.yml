@@ -1,0 +1,39 @@
+---
+- block:
+  - name: look up docker cgroup driver
+    shell: "docker info | grep 'Cgroup Driver' | awk -F': ' '{ print $2; }'"
+    register: docker_cgroup_driver_result
+    changed_when: false
+
+  - name: set kubelet_cgroup_driver_detected fact for docker
+    set_fact:
+      kubelet_cgroup_driver_detected: "{{ docker_cgroup_driver_result.stdout }}"
+  when: container_manager == 'docker'
+
+- block:
+  - name: look up crio cgroup driver
+    shell: "crio-status info | grep 'cgroup driver' | awk -F': ' '{ print $2; }'"
+    register: crio_cgroup_driver_result
+    changed_when: false
+
+  - name: set kubelet_cgroup_driver_detected fact for crio
+    set_fact:
+      kubelet_cgroup_driver_detected: "{{ crio_cgroup_driver_result.stdout }}"
+  when: container_manager == 'crio'
+
+- name: set kubelet_cgroup_driver_detected fact for containerd
+  set_fact:
+    kubelet_cgroup_driver_detected: >-
+      {%- if containerd_use_systemd_cgroup -%}systemd{%- else -%}cgroupfs{%- endif -%}
+  when: container_manager == 'containerd'
+
+- name: os specific vars
+  include_vars: "{{ item }}"
+  with_first_found:
+  - files:
+    - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+    - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
+    - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+    - "{{ ansible_distribution|lower }}.yml"
+    - "{{ ansible_os_family|lower }}.yml"
+    skip: true

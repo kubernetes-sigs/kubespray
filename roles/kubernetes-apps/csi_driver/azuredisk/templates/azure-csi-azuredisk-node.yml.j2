@@ -1,0 +1,156 @@
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: csi-azuredisk-node
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: csi-azuredisk-node
+  template:
+    metadata:
+      labels:
+        app: csi-azuredisk-node
+    spec:
+      hostNetwork: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-node-critical
+      containers:
+        - name: liveness-probe
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+          image: {{ azure_csi_image_repo }}/livenessprobe:{{ azure_csi_livenessprobe_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - --csi-address=/csi/csi.sock
+            - --connection-timeout=3s
+            - --health-port=29603
+            - --v=5
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+        - name: node-driver-registrar
+          image: {{ azure_csi_image_repo }}/csi-node-driver-registrar:{{ azure_csi_node_registrar_image_tag }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+            - --v=5
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "rm -rf /registration/disk.csi.azure.com-reg.sock /csi/csi.sock"]
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: DRIVER_REG_SOCK_PATH
+              value: /var/lib/kubelet/plugins/disk.csi.azure.com/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+        - name: azuredisk
+          image: {{ azure_csi_plugin_image_repo }}/azuredisk-csi:{{ azure_csi_plugin_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--v=5"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--nodeid=$(KUBE_NODE_NAME)"
+            - "--metrics-address=0.0.0.0:29605"
+          ports:
+            - containerPort: 29603
+              name: healthz
+              protocol: TCP
+            - containerPort: 29605
+              name: metrics
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+            periodSeconds: 30
+          env:
+            - name: AZURE_CREDENTIAL_FILE
+              value: "/etc/kubernetes/azure.json"
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+            - mountPath: /var/lib/kubelet/
+              mountPropagation: Bidirectional
+              name: mountpoint-dir
+            - mountPath: /etc/kubernetes/
+              name: azure-cred
+              readOnly: true
+            - mountPath: /var/lib/waagent/ManagedIdentity-Settings
+              readOnly: true
+              name: msi
+            - mountPath: /dev
+              name: device-dir
+            - mountPath: /sys/bus/scsi/devices
+              name: sys-devices-dir
+            - mountPath: /sys/class/scsi_host/
+              name: scsi-host-dir
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+      volumes:
+        - hostPath:
+            path: /var/lib/kubelet/plugins/disk.csi.azure.com
+            type: DirectoryOrCreate
+          name: socket-dir
+        - hostPath:
+            path: /var/lib/kubelet/
+            type: DirectoryOrCreate
+          name: mountpoint-dir
+        - hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: DirectoryOrCreate
+          name: registration-dir
+        - name: azure-cred
+          secret:
+            secretName: cloud-config
+        - hostPath:
+            path: /var/lib/waagent/ManagedIdentity-Settings
+          name: msi
+        - hostPath:
+            path: /dev
+            type: Directory
+          name: device-dir
+        - hostPath:
+            path: /sys/bus/scsi/devices
+            type: Directory
+          name: sys-devices-dir
+        - hostPath:
+            path: /sys/class/scsi_host/
+            type: Directory
+          name: scsi-host-dir

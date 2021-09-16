@@ -1,0 +1,53 @@
+---
+
+- name: NGINX Ingress Controller | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/ingress_nginx"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: NGINX Ingress Controller | Templates list
+  set_fact:
+    ingress_nginx_templates:
+      - { name: 00-namespace, file: 00-namespace.yml, type: ns }
+      - { name: cm-ingress-nginx, file: cm-ingress-nginx.yml, type: cm }
+      - { name: cm-tcp-services, file: cm-tcp-services.yml, type: cm }
+      - { name: cm-udp-services, file: cm-udp-services.yml, type: cm }
+      - { name: sa-ingress-nginx, file: sa-ingress-nginx.yml, type: sa }
+      - { name: clusterrole-ingress-nginx, file: clusterrole-ingress-nginx.yml, type: clusterrole }
+      - { name: clusterrolebinding-ingress-nginx, file: clusterrolebinding-ingress-nginx.yml, type: clusterrolebinding }
+      - { name: role-ingress-nginx, file: role-ingress-nginx.yml, type: role }
+      - { name: rolebinding-ingress-nginx, file: rolebinding-ingress-nginx.yml, type: rolebinding }
+      - { name: ds-ingress-nginx-controller, file: ds-ingress-nginx-controller.yml, type: ds }
+    ingress_nginx_templates_for_psp:
+      - { name: psp-ingress-nginx, file: psp-ingress-nginx.yml, type: podsecuritypolicy }
+
+- name: NGINX Ingress Controller | Append extra templates to NGINX Ingress Templates list for PodSecurityPolicy
+  set_fact:
+    ingress_nginx_templates: "{{ ingress_nginx_templates_for_psp + ingress_nginx_templates }}"
+  when: podsecuritypolicy_enabled
+
+- name: NGINX Ingress Controller | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/ingress_nginx/{{ item.file }}"
+  with_items: "{{ ingress_nginx_templates }}"
+  register: ingress_nginx_manifests
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: NGINX Ingress Controller | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ ingress_nginx_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/ingress_nginx/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ ingress_nginx_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]

@@ -1,0 +1,36 @@
+---
+- name: ensure containerd repository public key is installed
+  apt_key:
+    id: "{{ item }}"
+    url: "{{ containerd_repo_key_info.url }}"
+    state: present
+  register: keyserver_task_result
+  until: keyserver_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | d(3) }}"
+  with_items: "{{ containerd_repo_key_info.repo_keys }}"
+  environment: "{{ proxy_env }}"
+  when: ansible_pkg_mgr == 'apt'
+
+- name: ensure containerd repository is enabled
+  apt_repository:
+    repo: "{{ item }}"
+    state: present
+  with_items: "{{ containerd_repo_info.repos }}"
+  when: ansible_pkg_mgr == 'apt'
+
+- name: Configure containerd repository on Fedora
+  template:
+    src: "fedora_containerd.repo.j2"
+    dest: "{{ yum_repo_dir }}/containerd.repo"
+    mode: 0644
+  when: ansible_distribution == "Fedora"
+
+- name: Configure containerd repository on RedHat/OracleLinux/CentOS/AlmaLinux
+  template:
+    src: "rh_containerd.repo.j2"
+    dest: "{{ yum_repo_dir }}/containerd.repo"
+    mode: 0644
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution not in ["Fedora", "Amazon"]

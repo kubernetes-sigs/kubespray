@@ -1,0 +1,31 @@
+---
+
+- name: Query Azure VMs IPs  # noqa 301
+  command: az vm list-ip-addresses -o json --resource-group {{ azure_resource_group }}
+  register: vm_ip_list_cmd
+
+- name: Query Azure VMs Roles  # noqa 301
+  command: az vm list -o json --resource-group {{ azure_resource_group }}
+  register: vm_list_cmd
+
+- name: Query Azure Load Balancer Public IP  # noqa 301
+  command: az network public-ip show -o json -g {{ azure_resource_group }} -n kubernetes-api-pubip
+  register: lb_pubip_cmd
+
+- name: Set VM IP, roles lists and load balancer public IP
+  set_fact:
+    vm_ip_list: "{{ vm_ip_list_cmd.stdout }}"
+    vm_roles_list: "{{ vm_list_cmd.stdout }}"
+    lb_pubip: "{{ lb_pubip_cmd.stdout }}"
+
+- name: Generate inventory
+  template:
+    src: inventory.j2
+    dest: "{{ playbook_dir }}/inventory"
+    mode: 0644
+
+- name: Generate Load Balancer variables
+  template:
+    src: loadbalancer_vars.j2
+    dest: "{{ playbook_dir }}/loadbalancer_vars.yml"
+    mode: 0644

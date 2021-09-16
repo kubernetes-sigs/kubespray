@@ -1,0 +1,145 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: kube-flannel-cfg
+  namespace: kube-system
+  labels:
+    tier: node
+    app: flannel
+data:
+  cni-conf.json: |
+    {
+      "name": "cbr0",
+      "cniVersion": "0.3.1",
+      "plugins": [
+        {
+          "type": "flannel",
+          "delegate": {
+            "hairpinMode": true,
+            "isDefaultGateway": true
+          }
+        },
+        {
+          "type": "portmap",
+          "capabilities": {
+            "portMappings": true
+          }
+        }
+      ]
+    }
+  net-conf.json: |
+    {
+      "Network": "{{ kube_pods_subnet }}",
+      "Backend": {
+        "Type": "{{ flannel_backend_type }}"{% if flannel_backend_type == "vxlan" %},
+        "VNI": {{ flannel_vxlan_vni }},
+        "Port": {{ flannel_vxlan_port }}
+{% endif %}
+      }
+    }
+{% for arch in ['amd64', 'arm64', 'arm', 'ppc64le', 's390x'] %}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+{% if arch == 'amd64' %}
+  name: kube-flannel
+{% else %}
+  name: kube-flannel-ds-{{ arch }}
+{% endif %}
+  namespace: kube-system
+  labels:
+    tier: node
+    app: flannel
+spec:
+  selector:
+    matchLabels:
+      app: flannel
+  template:
+    metadata:
+      labels:
+        tier: node
+        app: flannel
+    spec:
+      priorityClassName: system-node-critical
+      serviceAccountName: flannel
+      containers:
+      - name: kube-flannel
+        image: {{ flannel_image_repo }}:{{ flannel_image_tag | regex_replace(image_arch,'') }}{{ arch }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        resources:
+          limits:
+            cpu: {{ flannel_cpu_limit }}
+            memory: {{ flannel_memory_limit }}
+          requests:
+            cpu: {{ flannel_cpu_requests }}
+            memory: {{ flannel_memory_requests }}
+        command: [ "/opt/bin/flanneld", "--ip-masq", "--kube-subnet-mgr"{% if flannel_interface is defined %}, "--iface={{ flannel_interface }}"{% endif %}{% if flannel_interface_regexp is defined %}, "--iface-regex={{ flannel_interface_regexp }}"{% endif %} ]
+        securityContext:
+          privileged: false
+          capabilities:
+            add: ["NET_ADMIN"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
+        - name: run
+          mountPath: /run/flannel
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - {{ arch }}
+      initContainers:
+      - name: install-cni
+        image: {{ flannel_image_repo }}:{{ flannel_image_tag | regex_replace(image_arch,'') }}{{ arch }}
+        command:
+        - cp
+        args:
+        - -f
+        - /etc/kube-flannel/cni-conf.json
+        - /etc/cni/net.d/10-flannel.conflist
+        volumeMounts:
+        - name: cni
+          mountPath: /etc/cni/net.d
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+      - operator: Exists
+      volumes:
+        - name: run
+          hostPath:
+            path: /run/flannel
+        - name: cni
+          hostPath:
+            path: /etc/cni/net.d
+        - name: flannel-cfg
+          configMap:
+            name: kube-flannel-cfg
+        - name: host-cni-bin
+          hostPath:
+            path: /opt/cni/bin
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: {{ serial | default('20%') }}
+    type: RollingUpdate
+{% endfor %}

@@ -1,0 +1,19 @@
+---
+- name: Get storage nodes
+  register: "label_present"
+  command: "{{ bin_dir }}/kubectl get node --selector=storagenode=glusterfs,kubernetes.io/hostname={{ node }} --ignore-not-found=true"
+  changed_when: false
+
+- name: "Assign storage label"
+  when: "label_present.stdout_lines|length == 0"
+  command: "{{ bin_dir }}/kubectl label node {{ node }} storagenode=glusterfs"
+
+- name: Get storage nodes again
+  register: "label_present"
+  command: "{{ bin_dir }}/kubectl get node --selector=storagenode=glusterfs,kubernetes.io/hostname={{ node }} --ignore-not-found=true"
+  changed_when: false
+
+- name: Ensure the label has been set
+  assert:
+    that: "label_present|length > 0"
+    msg: "Node {{ node }} has not been assigned with label storagenode=glusterfs."

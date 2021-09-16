@@ -1,0 +1,32 @@
+---
+
+- name: Check if temp directory for {{ test_name }} exists
+  stat:
+    path: "/tmp/{{ test_name }}"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: temp_dir_details
+
+- name: "Cleanup temp directory for {{ test_name }}"
+  file:
+    path: "/tmp/{{ test_name }}"
+    state: absent
+
+- name: "Cleanup namespace for {{ test_name }}"
+  k8s:
+    kind: Namespace
+    state: absent
+    name: "{{ test_name }}"
+
+- name: Wait for namespace {{ test_name }} to be fully deleted
+  command: kubectl get ns {{ test_name }}
+  register: delete_namespace
+  failed_when:
+    - delete_namespace.rc == 0
+  changed_when:
+    - delete_namespace.rc == 0
+  retries: 12
+  delay: "10"
+  until:
+    - delete_namespace.rc != 0

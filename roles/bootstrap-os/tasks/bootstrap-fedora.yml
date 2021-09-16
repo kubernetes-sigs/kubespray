@@ -1,0 +1,36 @@
+---
+# Some Fedora based distros ship without Python installed
+
+- name: Check if bootstrap is needed
+  raw: which python
+  register: need_bootstrap
+  failed_when: false
+  changed_when: false
+  tags:
+    - facts
+
+- name: Add proxy to dnf.conf if http_proxy is defined
+  ini_file:
+    path: "/etc/dnf/dnf.conf"
+    section: main
+    option: proxy
+    value: "{{ http_proxy | default(omit) }}"
+    state: "{{ http_proxy | default(False) | ternary('present', 'absent') }}"
+    no_extra_spaces: true
+    mode: 0644
+  become: true
+  when: not skip_http_proxy_on_os_packages
+
+- name: Install python3 on fedora
+  raw: "dnf install --assumeyes --quiet python3"
+  become: true
+  when:
+    - need_bootstrap.rc != 0
+
+# libselinux-python3 is required on SELinux enabled hosts
+# See https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#managed-node-requirements
+- name: Install libselinux-python3
+  package:
+    name: libselinux-python3
+    state: present
+  become: true

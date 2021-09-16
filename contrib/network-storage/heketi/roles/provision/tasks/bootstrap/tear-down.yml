@@ -1,0 +1,14 @@
+---
+- name: "Get existing Heketi deploy resources."
+  command: "{{ bin_dir }}/kubectl get all --selector=\"deploy-heketi\" -o=json"
+  register: "heketi_resources"
+  changed_when: false
+- name: "Delete bootstrap Heketi."
+  command: "{{ bin_dir }}/kubectl delete all,service,jobs,deployment,secret --selector=\"deploy-heketi\""
+  when: "heketi_resources.stdout|from_json|json_query('items[*]')|length > 0"
+- name: "Ensure there is nothing left over."  # noqa 301
+  command: "{{ bin_dir }}/kubectl get all,service,jobs,deployment,secret --selector=\"deploy-heketi\" -o=json"
+  register: "heketi_result"
+  until: "heketi_result.stdout|from_json|json_query('items[*]')|length == 0"
+  retries: 60
+  delay: 5

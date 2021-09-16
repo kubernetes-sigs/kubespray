@@ -1,0 +1,64 @@
+---
+# Bootstrap heketi
+- name: "Get state of heketi service, deployment and pods."
+  register: "initial_heketi_state"
+  changed_when: false
+  command: "{{ bin_dir }}/kubectl get services,deployments,pods --selector=deploy-heketi --output=json"
+
+- name: "Bootstrap heketi."
+  when:
+    - "(initial_heketi_state.stdout|from_json|json_query(\"items[?kind=='Service']\"))|length == 0"
+    - "(initial_heketi_state.stdout|from_json|json_query(\"items[?kind=='Deployment']\"))|length == 0"
+    - "(initial_heketi_state.stdout|from_json|json_query(\"items[?kind=='Pod']\"))|length == 0"
+  include_tasks: "bootstrap/deploy.yml"
+
+# Prepare heketi topology
+- name: "Get heketi initial pod state."
+  register: "initial_heketi_pod"
+  command: "{{ bin_dir }}/kubectl get pods --selector=deploy-heketi=pod,glusterfs=heketi-pod,name=deploy-heketi --output=json"
+  changed_when: false
+
+- name: "Ensure heketi bootstrap pod is up."
+  assert:
+    that: "(initial_heketi_pod.stdout|from_json|json_query('items[*]'))|length == 1"
+
+- name: Store the initial heketi pod name
+  set_fact:
+    initial_heketi_pod_name: "{{ initial_heketi_pod.stdout|from_json|json_query(\"items[*].metadata.name|[0]\") }}"
+
+- name: "Test heketi topology."
+  changed_when: false
+  register: "heketi_topology"
+  command: "{{ bin_dir }}/kubectl exec {{ initial_heketi_pod_name }} -- heketi-cli --user admin --secret {{ heketi_admin_key }} topology info --json"
+
+- name: "Load heketi topology."
+  when: "heketi_topology.stdout|from_json|json_query(\"clusters[*].nodes[*]\")|flatten|length == 0"
+  include_tasks: "bootstrap/topology.yml"
+
+# Provision heketi database volume
+- name: "Prepare heketi volumes."
+  include_tasks: "bootstrap/volumes.yml"
+
+# Remove bootstrap heketi
+- name: "Tear down bootstrap."
+  include_tasks: "bootstrap/tear-down.yml"
+
+# Prepare heketi storage
+- name: "Test heketi storage."
+  command: "{{ bin_dir }}/kubectl get secrets,endpoints,services,jobs --output=json"
+  changed_when: false
+  register: "heketi_storage_state"
+
+# ensure endpoints actually exist before trying to move database data to it
+- name: "Create heketi storage."
+  include_tasks: "bootstrap/storage.yml"
+  vars:
+    secret_query: "items[?metadata.name=='heketi-storage-secret' && kind=='Secret']"
+    endpoints_query: "items[?metadata.name=='heketi-storage-endpoints' && kind=='Endpoints']"
+    service_query: "items[?metadata.name=='heketi-storage-endpoints' && kind=='Service']"
+    job_query: "items[?metadata.name=='heketi-storage-copy-job' && kind=='Job']"
+  when:
+    - "heketi_storage_state.stdout|from_json|json_query(secret_query)|length == 0"
+    - "heketi_storage_state.stdout|from_json|json_query(endpoints_query)|length == 0"
+    - "heketi_storage_state.stdout|from_json|json_query(service_query)|length == 0"
+    - "heketi_storage_state.stdout|from_json|json_query(job_query)|length == 0"

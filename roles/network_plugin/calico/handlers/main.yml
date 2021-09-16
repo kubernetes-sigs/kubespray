@@ -1,0 +1,27 @@
+---
+- name: reset_calico_cni
+  command: /bin/true
+  when: calico_cni_config is defined
+  notify:
+    - delete 10-calico.conflist
+    - Calico | delete calico-node docker containers
+    - Calico | delete calico-node crio/containerd containers
+
+- name: delete 10-calico.conflist
+  file:
+    path: /etc/cni/net.d/10-calico.conflist
+    state: absent
+
+- name: Calico | delete calico-node docker containers
+  shell: "{{ docker_bin_dir }}/docker ps -af name=k8s_POD_calico-node* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
+  register: docker_calico_node_remove
+  until: docker_calico_node_remove is succeeded
+  retries: 5
+  when: container_manager in ["docker"]
+
+- name: Calico | delete calico-node crio/containerd containers
+  shell: '{{ bin_dir }}/crictl pods --name calico-node-* -q | xargs -I% --no-run-if-empty bash -c "{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %"'
+  register: crictl_calico_node_remove
+  until: crictl_calico_node_remove is succeeded
+  retries: 5
+  when: container_manager in ["crio", "containerd"]

@@ -1,0 +1,57 @@
+---
+
+- name: Create image directory
+  file:
+    state: directory
+    path: "{{ images_dir }}"
+    mode: 0755
+
+- name: Download images files
+  get_url:
+    url: "{{ item.value.url }}"
+    dest: "{{ images_dir }}/{{ item.value.filename }}"
+    checksum: "{{ item.value.checksum }}"
+  loop: "{{ images|dict2items }}"
+
+- name: Unxz compressed images
+  command: unxz --force {{ images_dir }}/{{ item.value.filename }}
+  loop: "{{ images|dict2items }}"
+  when:
+    - item.value.filename.endswith('.xz')
+
+- name: Convert images which is not in qcow2 format
+  command: qemu-img convert -O qcow2 {{ images_dir }}/{{ item.value.filename.rstrip('.xz') }} {{ images_dir }}/{{ item.key }}.qcow2
+  loop: "{{ images|dict2items }}"
+  when:
+    - not (item.value.converted|bool)
+
+- name: Make sure all images are ending with qcow2
+  command: cp {{ images_dir }}/{{ item.value.filename.rstrip('.xz') }} {{ images_dir }}/{{ item.key }}.qcow2
+  loop: "{{ images|dict2items }}"
+  when:
+    - item.value.converted|bool
+
+- name: Resize images  # noqa 301
+  command: qemu-img resize {{ images_dir }}/{{ item.key }}.qcow2 +8G
+  loop: "{{ images|dict2items }}"
+
+# STEP 2: Include the images inside a container
+- name: Template default Dockerfile
+  template:
+    src: Dockerfile
+    dest: "{{ images_dir }}/Dockerfile"
+    mode: 0644
+
+- name: Create docker images for each OS  # noqa 301
+  command: docker build -t {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }} --build-arg cloud_image="{{ item.key }}.qcow2" {{ images_dir }}
+  loop: "{{ images|dict2items }}"
+
+- name: docker login  # noqa 301
+  command: docker login -u="{{ docker_user }}" -p="{{ docker_password }}" "{{ docker_host }}"
+
+- name: docker push image  # noqa 301
+  command: docker push {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }}
+  loop: "{{ images|dict2items }}"
+
+- name: docker logout  # noqa 301
+  command: docker logout -u="{{ docker_user }}" "{{ docker_host }}"

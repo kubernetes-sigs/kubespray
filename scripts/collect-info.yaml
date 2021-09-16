@@ -1,0 +1,146 @@
+---
+- hosts: all
+  become: true
+  gather_facts: no
+
+  vars:
+    docker_bin_dir: /usr/bin
+    bin_dir: /usr/local/bin
+    ansible_ssh_pipelining: true
+    etcd_cert_dir: /etc/ssl/etcd/ssl
+    kube_network_plugin: calico
+    archive_dirname: collect-info
+    commands:
+      - name: timedate_info
+        cmd: timedatectl status
+      - name: kernel_info
+        cmd: uname -r
+      - name: docker_info
+        cmd: "{{ docker_bin_dir }}/docker info"
+      - name: ip_info
+        cmd: ip -4 -o a
+      - name: route_info
+        cmd: ip ro
+      - name: proc_info
+        cmd: ps auxf | grep -v ]$
+      - name: systemctl_failed_info
+        cmd: systemctl --state=failed --no-pager
+      - name: k8s_info
+        cmd: "{{ bin_dir }}/kubectl get all --all-namespaces -o wide"
+      - name: errors_info
+        cmd: journalctl -p err --no-pager
+      - name: etcd_info
+        cmd: "{{ bin_dir }}/etcdctl endpoint --cluster health"
+      - name: calico_info
+        cmd: "{{ bin_dir }}/calicoctl node status"
+        when: '{{ kube_network_plugin == "calico" }}'
+      - name: calico_workload_info
+        cmd: "{{ bin_dir }}/calicoctl get workloadEndpoint -o wide"
+        when: '{{ kube_network_plugin == "calico" }}'
+      - name: calico_pool_info
+        cmd: "{{ bin_dir }}/calicoctl get ippool -o wide"
+        when: '{{ kube_network_plugin == "calico" }}'
+      - name: weave_info
+        cmd: weave report
+        when: '{{ kube_network_plugin == "weave" }}'
+      - name: weave_logs
+        cmd: "{{ docker_bin_dir }}/docker logs weave"
+        when: '{{ kube_network_plugin == "weave" }}'
+      - name: kube_describe_all
+        cmd: "{{ bin_dir }}/kubectl describe all --all-namespaces"
+      - name: kube_describe_nodes
+        cmd: "{{ bin_dir }}/kubectl describe nodes"
+      - name: kubelet_logs
+        cmd: journalctl -u kubelet --no-pager
+      - name: coredns_logs
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l k8s-app=coredns -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
+      - name: apiserver_logs
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l component=kube-apiserver -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
+      - name: controller_logs
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l component=kube-controller-manager -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
+      - name: scheduler_logs
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l component=kube-scheduler -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
+      - name: proxy_logs
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l k8s-app=kube-proxy -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
+      - name: nginx_logs
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l k8s-app=kube-nginx -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system; done"
+      - name: flannel_logs
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l app=flannel -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system flannel-container; done"
+        when: '{{ kube_network_plugin == "flannel" }}'
+      - name: canal_logs
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l k8s-app=canal-node -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system flannel; done"
+        when: '{{ kube_network_plugin == "canal" }}'
+      - name: calico_policy_logs
+        cmd: "for i in `{{ bin_dir }}/kubectl get pods -n kube-system -l k8s-app=calico-kube-controllers -o jsonpath={.items..metadata.name}`;
+          do {{ bin_dir }}/kubectl logs ${i} -n kube-system ; done"
+        when: '{{ kube_network_plugin in ["canal", "calico"] }}'
+      - name: helm_show_releases_history
+        cmd: "for i in `{{ bin_dir }}/helm list -q`; do {{ bin_dir }}/helm history ${i} --col-width=0; done"
+        when: "{{ helm_enabled|default(true) }}"
+
+    logs:
+      - /var/log/syslog
+      - /var/log/daemon.log
+      - /var/log/kern.log
+      - /var/log/dpkg.log
+      - /var/log/apt/history.log
+      - /var/log/yum.log
+      - /var/log/messages
+      - /var/log/dmesg
+
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
+
+  tasks:
+    - name: set etcd_access_addresses
+      set_fact:
+        etcd_access_addresses: |-
+          {% for item in groups['etcd'] -%}
+            https://{{ item }}:2379{% if not loop.last %},{% endif %}
+          {%- endfor %}
+      when: "'etcd' in groups"
+
+    - name: Storing commands output
+      shell: "{{ item.cmd }} &> {{ item.name }}"
+      failed_when: false
+      with_items: "{{ commands }}"
+      when: item.when | default(True)
+      no_log: True
+
+    - name: Fetch results
+      fetch: src={{ item.name }} dest=/tmp/{{ archive_dirname }}/commands
+      with_items: "{{ commands }}"
+      when: item.when | default(True)
+      failed_when: false
+
+    - name: Fetch logs
+      fetch: src={{ item }} dest=/tmp/{{ archive_dirname }}/logs
+      with_items: "{{ logs }}"
+      failed_when: false
+
+    - name: Pack results and logs
+      archive:
+        path: "/tmp/{{ archive_dirname }}"
+        dest: "{{ dir|default('.') }}/logs.tar.gz"
+        remove: true
+        mode: 0640
+      delegate_to: localhost
+      connection: local
+      become: false
+      run_once: true
+
+    - name: Clean up collected command outputs
+      file: path={{ item.name }} state=absent
+      with_items: "{{ commands }}"

@@ -1,0 +1,79 @@
+---
+- name: Cilium | Ensure BPFFS mounted
+  mount:
+    fstype: bpf
+    path: /sys/fs/bpf
+    src: bpffs
+    state: mounted
+
+- name: Cilium | Create Cilium certs directory
+  file:
+    dest: "{{ cilium_cert_dir }}"
+    state: directory
+    mode: 0750
+    owner: root
+    group: root
+
+- name: Cilium | Link etcd certificates for cilium
+  file:
+    src: "{{ etcd_cert_dir }}/{{ item.s }}"
+    dest: "{{ cilium_cert_dir }}/{{ item.d }}"
+    state: hard
+    force: yes
+  loop:
+    - {s: "{{ kube_etcd_cacert_file }}", d: "ca_cert.crt"}
+    - {s: "{{ kube_etcd_cert_file }}", d: "cert.crt"}
+    - {s: "{{ kube_etcd_key_file }}", d: "key.pem"}
+
+- name: Cilium | Create hubble dir
+  file:
+    path: "{{ kube_config_dir }}/addons/hubble"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_hubble_install
+
+- name: Cilium | Create Cilium node manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  loop:
+    - {name: cilium, file: cilium-config.yml, type: cm}
+    - {name: cilium, file: cilium-crb.yml, type: clusterrolebinding}
+    - {name: cilium, file: cilium-cr.yml, type: clusterrole}
+    - {name: cilium, file: cilium-secret.yml, type: secret, when: "{{ cilium_ipsec_enabled }}"}
+    - {name: cilium, file: cilium-ds.yml, type: ds}
+    - {name: cilium, file: cilium-deploy.yml, type: deploy}
+    - {name: cilium, file: cilium-sa.yml, type: sa}
+  register: cilium_node_manifests
+  when:
+    - inventory_hostname in groups['kube_control_plane']
+    - item.when | default(True) | bool
+
+- name: Cilium | Create Cilium Hubble manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/hubble/{{ item.file }}"
+  loop:
+    - {name: hubble, file: hubble-config.yml, type: cm}
+    - {name: hubble, file: hubble-crb.yml, type: clusterrolebinding}
+    - {name: hubble, file: hubble-cr.yml, type: clusterrole}
+    - {name: hubble, file: hubble-cronjob.yml, type: cronjob, when: "{{ cilium_hubble_tls_generate }}"}
+    - {name: hubble, file: hubble-deploy.yml, type: deploy}
+    - {name: hubble, file: hubble-job.yml, type: job, when: "{{ cilium_hubble_tls_generate }}"}
+    - {name: hubble, file: hubble-sa.yml, type: sa}
+    - {name: hubble, file: hubble-service.yml, type: service}
+  register: cilium_hubble_manifests
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_enable_hubble and cilium_hubble_install
+    - item.when | default(True) | bool
+
+- name: Cilium | Enable portmap addon
+  template:
+    src: 000-cilium-portmap.conflist.j2
+    dest: /etc/cni/net.d/000-cilium-portmap.conflist
+  when: cilium_enable_portmap

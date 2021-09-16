@@ -1,0 +1,94 @@
+---
+# Include variables and define needed variables.
+- name: Include OS-specific variables.
+  include_vars: "{{ ansible_os_family }}.yml"
+
+# Install xfs package
+- name: install xfs Debian
+  apt: name=xfsprogs state=present
+  when: ansible_os_family == "Debian"
+
+- name: install xfs RedHat
+  package: name=xfsprogs state=present
+  when: ansible_os_family == "RedHat"
+
+# Format external volumes in xfs
+- name: Format volumes in xfs
+  filesystem: "fstype=xfs dev={{ disk_volume_device_1 }}"
+
+# Mount external volumes
+- name: mounting new xfs filesystem
+  mount: "name={{ gluster_volume_node_mount_dir }} src={{ disk_volume_device_1 }} fstype=xfs state=mounted"
+
+# Setup/install tasks.
+- include: setup-RedHat.yml
+  when: ansible_os_family == 'RedHat'
+
+- include: setup-Debian.yml
+  when: ansible_os_family == 'Debian'
+
+- name: Ensure GlusterFS is started and enabled at boot.
+  service: "name={{ glusterfs_daemon }} state=started enabled=yes"
+
+- name: Ensure Gluster brick and mount directories exist.
+  file: "path={{ item }} state=directory mode=0775"
+  with_items:
+    - "{{ gluster_brick_dir }}"
+    - "{{ gluster_mount_dir }}"
+
+- name: Configure Gluster volume with replicas
+  gluster_volume:
+    state: present
+    name: "{{ gluster_brick_name }}"
+    brick: "{{ gluster_brick_dir }}"
+    replicas: "{{ groups['gfs-cluster'] | length }}"
+    cluster: "{% for item in groups['gfs-cluster'] -%}{{ hostvars[item]['ip']|default(hostvars[item].ansible_default_ipv4['address']) }}{% if not loop.last %},{% endif %}{%- endfor %}"
+    host: "{{ inventory_hostname }}"
+    force: yes
+  run_once: true
+  when: groups['gfs-cluster']|length > 1
+
+- name: Configure Gluster volume without replicas
+  gluster_volume:
+    state: present
+    name: "{{ gluster_brick_name }}"
+    brick: "{{ gluster_brick_dir }}"
+    cluster: "{% for item in groups['gfs-cluster'] -%}{{ hostvars[item]['ip']|default(hostvars[item].ansible_default_ipv4['address']) }}{% if not loop.last %},{% endif %}{%- endfor %}"
+    host: "{{ inventory_hostname }}"
+    force: yes
+  run_once: true
+  when: groups['gfs-cluster']|length <= 1
+
+- name: Mount glusterfs to retrieve disk size
+  mount:
+    name: "{{ gluster_mount_dir }}"
+    src: "{{ ip|default(ansible_default_ipv4['address']) }}:/gluster"
+    fstype: glusterfs
+    opts: "defaults,_netdev"
+    state: mounted
+  when: groups['gfs-cluster'] is defined and inventory_hostname == groups['gfs-cluster'][0]
+
+- name: Get Gluster disk size
+  setup: filter=ansible_mounts
+  register: mounts_data
+  when: groups['gfs-cluster'] is defined and inventory_hostname == groups['gfs-cluster'][0]
+
+- name: Set Gluster disk size to variable
+  set_fact:
+    gluster_disk_size_gb: "{{ (mounts_data.ansible_facts.ansible_mounts | selectattr('mount', 'equalto', gluster_mount_dir) | map(attribute='size_total') | first | int / (1024*1024*1024)) | int }}"
+  when: groups['gfs-cluster'] is defined and inventory_hostname == groups['gfs-cluster'][0]
+
+- name: Create file on GlusterFS
+  template:
+    dest: "{{ gluster_mount_dir }}/.test-file.txt"
+    src: test-file.txt
+    mode: 0644
+  when: groups['gfs-cluster'] is defined and inventory_hostname == groups['gfs-cluster'][0]
+
+- name: Unmount glusterfs
+  mount:
+    name: "{{ gluster_mount_dir }}"
+    fstype: glusterfs
+    src: "{{ ip|default(ansible_default_ipv4['address']) }}:/gluster"
+    state: unmounted
+  when: groups['gfs-cluster'] is defined and inventory_hostname == groups['gfs-cluster'][0]

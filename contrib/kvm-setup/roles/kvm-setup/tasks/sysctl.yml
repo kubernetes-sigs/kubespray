@@ -1,0 +1,46 @@
+---
+- name: Load br_netfilter module
+  modprobe:
+    name: br_netfilter
+    state: present
+  register: br_netfilter
+
+- name: Add br_netfilter into /etc/modules
+  lineinfile:
+    dest: /etc/modules
+    state: present
+    line: 'br_netfilter'
+  when: br_netfilter is defined and ansible_os_family == 'Debian'
+
+- name: Add br_netfilter into /etc/modules-load.d/kubespray.conf
+  copy:
+    dest: /etc/modules-load.d/kubespray.conf
+    content: |-
+      ### This file is managed by Ansible
+      br-netfilter
+    owner: root
+    group: root
+    mode: 0644
+  when: br_netfilter is defined
+
+
+- name: Enable net.ipv4.ip_forward in sysctl
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+    sysctl_file: /etc/sysctl.d/ipv4-ip_forward.conf
+    state: present
+    reload: yes
+
+- name: Set bridge-nf-call-{arptables,iptables} to 0
+  sysctl:
+    name: "{{ item }}"
+    state: present
+    value: 0
+    sysctl_file: /etc/sysctl.d/bridge-nf-call.conf
+    reload: yes
+  with_items:
+    - net.bridge.bridge-nf-call-arptables
+    - net.bridge.bridge-nf-call-ip6tables
+    - net.bridge.bridge-nf-call-iptables
+  when: br_netfilter is defined

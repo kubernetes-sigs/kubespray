@@ -1,0 +1,93 @@
+---
+
+crio_cgroup_manager: "{{ kubelet_cgroup_driver | default('systemd') }}"
+crio_conmon: "/usr/bin/conmon"
+crio_enable_metrics: false
+crio_log_level: "info"
+crio_metrics_port: "9090"
+crio_pause_image: "{{ pod_infra_image_repo }}:{{ pod_infra_version }}"
+
+# Trusted registries to pull unqualified images (e.g. alpine:latest) from
+# By default unqualified images are not allowed for security reasons
+crio_registries: []
+
+# Configure insecure registries.
+crio_insecure_registries: []
+
+# Define registiries mirror
+
+crio_registries_mirrors: []
+#  - prefix: docker.io
+#    insecure: false
+#    blocked: false
+#    location: registry-1.docker.io
+#    mirrors:
+#      - location: 172.20.100.52:5000
+#        insecure: true
+#      - location: mirror.gcr.io
+#        insecure: false
+
+crio_seccomp_profile: ""
+crio_selinux: "{{ (preinstall_selinux_state == 'enforcing')|lower }}"
+crio_signature_policy: "{% if ansible_os_family == 'ClearLinux' %}/usr/share/defaults/crio/policy.json{% endif %}"
+
+# Override system default for storage driver
+# crio_storage_driver: "overlay"
+
+crio_stream_port: "10010"
+
+crio_required_version: "{{ kube_version | regex_replace('^v(?P<major>\\d+).(?P<minor>\\d+).(?P<patch>\\d+)$', '\\g<major>.\\g<minor>') }}"
+
+crio_kubernetes_version_matrix:
+  "1.21": "1.21"
+  "1.20": "1.20"
+  "1.19": "1.19"
+
+crio_version: "{{ crio_kubernetes_version_matrix[crio_required_version] | default('1.21') }}"
+
+# The crio_runtimes variable defines a list of OCI compatible runtimes.
+crio_runtimes:
+  - name: runc
+    path: /usr/bin/runc
+    type: oci
+    root: /run/runc
+
+# Kata Containers is an OCI runtime, where containers are run inside lightweight
+# VMs. Kata provides additional isolation towards the host, minimizing the host attack
+# surface and mitigating the consequences of containers breakout.
+kata_runtimes:
+  # Kata Containers with the default configured VMM
+  - name: kata-runtime
+    path: /opt/kata/bin/kata-runtime
+    type: oci
+    root: /run/kata-containers
+  # Kata Containers with the QEMU VMM
+  - name: kata-qemu
+    path: /opt/kata/bin/kata-qemu
+    type: oci
+    root: /run/kata-containers
+
+# crun is a fast and low-memory footprint OCI Container Runtime fully written in C.
+crun_runtime:
+  name: crun
+  path: /usr/bin/crun
+  type: oci
+  root: /run/crun
+
+# When this is true, CRI-O package repositories are added. Set this to false when using an
+# environment with preconfigured CRI-O package repositories.
+crio_add_repos: true
+
+# Allow crio offline installation
+crio_download_base: "download.opensuse.org/repositories/devel:kubic:libcontainers:stable"
+
+# Allow crio offline installation
+crio_download_crio: "http://{{ crio_download_base }}:/cri-o:/"
+
+# skopeo need for save/load images when download_run_once=true
+skopeo_packages:
+  - "skopeo"
+
+# Configure the cri-o pids limit, increase this for heavily multi-threaded workloads
+# see https://github.com/cri-o/cri-o/issues/1921
+crio_pids_limit: 1024

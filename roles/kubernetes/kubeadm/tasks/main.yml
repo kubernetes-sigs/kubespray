@@ -1,0 +1,157 @@
+---
+- name: Set kubeadm_discovery_address
+  set_fact:
+    kubeadm_discovery_address: >-
+      {%- if "127.0.0.1" in kube_apiserver_endpoint or "localhost" in kube_apiserver_endpoint -%}
+      {{ first_kube_master }}:{{ kube_apiserver_port }}
+      {%- else -%}
+      {{ kube_apiserver_endpoint | replace("https://", "") }}
+      {%- endif %}
+  tags:
+    - facts
+
+- name: Check if kubelet.conf exists
+  stat:
+    path: "{{ kube_config_dir }}/kubelet.conf"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: kubelet_conf
+
+- name: Check if kubeadm CA cert is accessible
+  stat:
+    path: "{{ kube_cert_dir }}/ca.crt"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: kubeadm_ca_stat
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+
+- name: Calculate kubeadm CA cert hash
+  shell: set -o pipefail && openssl x509 -pubkey -in {{ kube_cert_dir }}/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+  args:
+    executable: /bin/bash
+  register: kubeadm_ca_hash
+  when:
+    - kubeadm_ca_stat.stat is defined
+    - kubeadm_ca_stat.stat.exists
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  changed_when: false
+
+- name: Create kubeadm token for joining nodes with 24h expiration (default)
+  command: "{{ bin_dir }}/kubeadm token create"
+  register: temp_token
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  when: kubeadm_token is not defined
+  changed_when: false
+
+- name: Set kubeadm_token to generated token
+  set_fact:
+    kubeadm_token: "{{ temp_token.stdout }}"
+  when: kubeadm_token is not defined
+
+- name: Set kubeadm api version to v1beta2
+  set_fact:
+    kubeadmConfig_api_version: v1beta2
+
+- name: Create kubeadm client config
+  template:
+    src: "kubeadm-client.conf.{{ kubeadmConfig_api_version }}.j2"
+    dest: "{{ kube_config_dir }}/kubeadm-client.conf"
+    backup: yes
+    mode: 0640
+  when: not is_kube_master
+
+- name: Join to cluster if needed
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}:/sbin"
+  when: not is_kube_master and (not kubelet_conf.stat.exists)
+  block:
+
+    - name: Join to cluster
+      command: >-
+        timeout -k {{ kubeadm_join_timeout }} {{ kubeadm_join_timeout }}
+        {{ bin_dir }}/kubeadm join
+        --config {{ kube_config_dir }}/kubeadm-client.conf
+        --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+      register: kubeadm_join
+
+  rescue:
+
+    - name: Join to cluster with ignores
+      command: >-
+        timeout -k {{ kubeadm_join_timeout }} {{ kubeadm_join_timeout }}
+        {{ bin_dir }}/kubeadm join
+        --config {{ kube_config_dir }}/kubeadm-client.conf
+        --ignore-preflight-errors=all
+      register: kubeadm_join
+
+  always:
+
+    - name: Display kubeadm join stderr if any
+      when: kubeadm_join is failed
+      debug:
+        msg: |
+          Joined with warnings
+          {{ kubeadm_join.stderr_lines }}
+
+- name: Update server field in kubelet kubeconfig
+  lineinfile:
+    dest: "{{ kube_config_dir }}/kubelet.conf"
+    regexp: 'server:'
+    line: '    server: {{ kube_apiserver_endpoint }}'
+    backup: yes
+  when:
+    - kubeadm_config_api_fqdn is not defined
+    - not is_kube_master
+    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
+  notify: Kubeadm | restart kubelet
+
+# FIXME(mattymo): Need to point to localhost, otherwise masters will all point
+#                 incorrectly to first master, creating SPoF.
+- name: Update server field in kube-proxy kubeconfig
+  shell: >-
+    set -o pipefail && {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get configmap kube-proxy -n kube-system -o yaml
+    | sed 's#server:.*#server: https://127.0.0.1:{{ kube_apiserver_port }}#g'
+    | {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
+  args:
+    executable: /bin/bash
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
+  delegate_facts: false
+  when:
+    - kubeadm_config_api_fqdn is not defined
+    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
+    - kube_proxy_deployed
+    - loadbalancer_apiserver_localhost
+  tags:
+    - kube-proxy
+
+- name: Set ca.crt file permission
+  file:
+    path: "{{ kube_cert_dir }}/ca.crt"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Restart all kube-proxy pods to ensure that they load the new configmap
+  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
+  delegate_facts: false
+  when:
+    - kubeadm_config_api_fqdn is not defined
+    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
+    - kube_proxy_deployed
+  tags:
+    - kube-proxy
+
+- name: Extract etcd certs from control plane if using etcd kubeadm mode
+  include_tasks: kubeadm_etcd_node.yml
+  when:
+    - etcd_kubeadm_enabled
+    - inventory_hostname not in groups['kube_control_plane']
+    - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"

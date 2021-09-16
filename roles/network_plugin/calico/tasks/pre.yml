@@ -1,0 +1,44 @@
+---
+- name: Slurp CNI config
+  slurp:
+    src: /etc/cni/net.d/10-calico.conflist
+  register: calico_cni_config_slurp
+  failed_when: false
+
+- block:
+  - name: Set fact calico_cni_config from slurped CNI config
+    set_fact:
+      calico_cni_config: "{{ calico_cni_config_slurp['content'] | b64decode | from_json }}"
+  - name: Set fact calico_datastore to etcd if needed
+    set_fact:
+      calico_datastore: etcd
+    when: "'etcd_endpoints' in calico_cni_config.plugins.0"
+  when: calico_cni_config_slurp.content is defined
+
+- name: Calico | Get kubelet hostname
+  shell: >-
+    set -o pipefail && {{ bin_dir }}/kubectl get node -o custom-columns='NAME:.metadata.name,INTERNAL-IP:.status.addresses[?(@.type=="InternalIP")].address'
+    | egrep "{{ ansible_all_ipv4_addresses | join('$|') }}$" | cut -d" " -f1
+  args:
+    executable: /bin/bash
+  register: calico_kubelet_name
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  when:
+  - "cloud_provider is defined"
+
+- name: Calico | Gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+  - files:
+    - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+    - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
+    - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+    - "{{ ansible_distribution|lower }}.yml"
+    - "{{ ansible_os_family|lower }}-{{ ansible_architecture }}.yml"
+    - "{{ ansible_os_family|lower }}.yml"
+    - defaults.yml
+    paths:
+    - ../vars
+    skip: true
+  tags:
+  - facts

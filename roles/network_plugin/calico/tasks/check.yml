@@ -1,0 +1,62 @@
+---
+- name: "Check vars defined correctly"
+  assert:
+    that:
+      - "calico_pool_name is defined"
+      - "calico_pool_name is match('^[a-zA-Z0-9-_\\\\.]{2,63}$')"
+    msg: "calico_pool_name contains invalid characters"
+
+- name: "Check calico network backend defined correctly"
+  assert:
+    that:
+      - "calico_network_backend in ['bird', 'vxlan', 'none']"
+    msg: "calico network backend is not 'bird', 'vxlan' or 'none'"
+  when:
+    - calico_network_backend is defined
+
+- name: "Check ipip and vxlan mode defined correctly"
+  assert:
+    that:
+      - "calico_ipip_mode in ['Always', 'CrossSubnet', 'Never']"
+      - "calico_vxlan_mode in ['Always', 'CrossSubnet', 'Never']"
+    msg: "calico inter host encapsulation mode is not 'Always', 'CrossSubnet' or 'Never'"
+
+- name: "Check ipip and vxlan mode if simultaneously enabled"
+  assert:
+    that:
+      - "calico_vxlan_mode in ['Never']"
+    msg: "IP in IP and VXLAN mode is mutualy exclusive modes"
+  when:
+    - "calico_ipip_mode in ['Always', 'CrossSubnet']"
+
+- name: "Check ipip and vxlan mode if simultaneously enabled"
+  assert:
+    that:
+      - "calico_ipip_mode in ['Never']"
+    msg: "IP in IP and VXLAN mode is mutualy exclusive modes"
+  when:
+    - "calico_vxlan_mode in ['Always', 'CrossSubnet']"
+
+- name: "Get Calico {{ calico_pool_name }} configuration"
+  command: calicoctl.sh get ipPool {{ calico_pool_name }} -o json
+  failed_when: False
+  changed_when: False
+  register: calico
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: "Set calico_pool_conf"
+  set_fact:
+    calico_pool_conf: '{{ calico.stdout | from_json }}'
+  when: calico.rc == 0 and calico.stdout
+
+- name: "Check if inventory match current cluster configuration"
+  assert:
+    that:
+      - calico_pool_conf.spec.blockSize == (calico_pool_blocksize | default(kube_network_node_prefix))
+      - calico_pool_conf.spec.cidr == (calico_pool_cidr | default(kube_pods_subnet))
+      - not calico_pool_conf.spec.ipipMode is defined or calico_pool_conf.spec.ipipMode == calico_ipip_mode
+      - not calico_pool_conf.spec.vxlanMode is defined or calico_pool_conf.spec.vxlanMode == calico_vxlan_mode
+    msg: "Your inventory doesn't match the current cluster configuration"
+  when:
+    - calico_pool_conf is defined

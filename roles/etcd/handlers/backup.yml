@@ -1,0 +1,69 @@
+---
+- name: Backup etcd data
+  command: /bin/true
+  notify:
+    - Refresh Time Fact
+    - Set Backup Directory
+    - Create Backup Directory
+    - Stat etcd v2 data directory
+    - Backup etcd v2 data
+    - Backup etcd v3 data
+    - Remove old etcd backups
+  when: etcd_cluster_is_healthy.rc == 0
+
+- name: Refresh Time Fact
+  setup: filter=ansible_date_time
+
+- name: Set Backup Directory
+  set_fact:
+    etcd_backup_directory: "{{ etcd_backup_prefix }}/etcd-{{ ansible_date_time.date }}_{{ ansible_date_time.time }}"
+
+- name: Create Backup Directory
+  file:
+    path: "{{ etcd_backup_directory }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Stat etcd v2 data directory
+  stat:
+    path: "{{ etcd_data_dir }}/member"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: etcd_data_dir_member
+
+- name: Backup etcd v2 data
+  when: etcd_data_dir_member.stat.exists
+  command: >-
+    {{ bin_dir }}/etcdctl backup
+      --data-dir {{ etcd_data_dir }}
+      --backup-dir {{ etcd_backup_directory }}
+  environment:
+    ETCDCTL_API: 2
+  retries: 3
+  register: backup_v2_command
+  until: backup_v2_command.rc == 0
+  delay: "{{ retry_stagger | random + 3 }}"
+
+- name: Backup etcd v3 data
+  command: >-
+    {{ bin_dir }}/etcdctl
+      snapshot save {{ etcd_backup_directory }}/snapshot.db
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses.split(',') | first }}"
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+  retries: 3
+  register: etcd_backup_v3_command
+  until: etcd_backup_v3_command.rc == 0
+  delay: "{{ retry_stagger | random + 3 }}"
+
+- name: Remove old etcd backups
+  shell:
+    chdir: "{{ etcd_backup_prefix }}"
+    cmd: "find . -name 'etcd-*' -type d | sort -n | head -n -{{ etcd_backup_retention_count }} | xargs rm -rf"
+  when: etcd_backup_retention_count >= 0

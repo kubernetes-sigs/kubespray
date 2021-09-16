@@ -1,0 +1,36 @@
+---
+- name: kata-containers | Download kata binary
+  include_tasks: "../../../download/tasks/download_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.kata_containers) }}"
+
+- name: kata-containers | Copy kata-containers binary
+  unarchive:
+    src: "{{ local_release_dir }}/kata-static-{{ kata_containers_version }}-{{ image_arch }}.tar.xz"
+    dest: "/"
+    mode: 0755
+    remote_src: yes
+
+- name: kata-containers | Create config directory
+  file:
+    path: "{{ kata_containers_config_dir }}"
+    state: directory
+    mode: 0755
+
+- name: kata-containers | Set configuration
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ kata_containers_config_dir }}/{{ item }}"
+    mode: 0644
+  with_items:
+    - configuration-qemu.toml
+
+- name: kata-containers | Set containerd bin
+  vars:
+    shim: "{{ item }}"
+  template:
+    dest: "{{ kata_containers_containerd_bin_dir }}/containerd-shim-kata-{{ item }}-v2"
+    src: containerd-shim-kata-v2.j2
+    mode: 0755
+  with_items:
+    - qemu

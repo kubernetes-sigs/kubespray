@@ -1,0 +1,36 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: registry-proxy
+  namespace: {{ registry_namespace }}
+  labels:
+    k8s-app: registry-proxy
+    version: v{{ registry_proxy_image_tag }}
+spec:
+  selector:
+    matchLabels:
+      k8s-app: registry-proxy
+      version: v{{ registry_proxy_image_tag }}
+  template:
+    metadata:
+      labels:
+        k8s-app: registry-proxy
+        kubernetes.io/name: "registry-proxy"
+        version: v{{ registry_proxy_image_tag }}
+    spec:
+      priorityClassName: {% if registry_namespace == 'kube-system' %}system-node-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
+      serviceAccountName: registry-proxy
+      containers:
+        - name: registry-proxy
+          image: {{ registry_proxy_image_repo }}:{{ registry_proxy_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          env:
+            - name: REGISTRY_HOST
+              value: registry.{{ registry_namespace }}.svc.{{ cluster_name }}
+            - name: REGISTRY_PORT
+              value: "{{ registry_port }}"
+          ports:
+            - name: registry
+              containerPort: 80
+              hostPort: {{ registry_port }}

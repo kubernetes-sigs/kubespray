@@ -1,0 +1,31 @@
+---
+# Set 127.0.0.1 as fallback IP if we do not have host facts for host
+# ansible_default_ipv4 isn't what you think.
+# Thanks https://medium.com/opsops/ansible-default-ipv4-is-not-what-you-think-edb8ab154b10
+
+- name: Gather ansible_default_ipv4 from all hosts
+  tags: always
+  include_tasks: fallback_ips_gather.yml
+  when: hostvars[delegate_host_to_gather_facts].ansible_default_ipv4 is not defined
+  loop: "{{ groups['k8s_cluster']|default([]) + groups['etcd']|default([]) + groups['calico_rr']|default([]) }}"
+  loop_control:
+    loop_var: delegate_host_to_gather_facts
+  run_once: yes
+
+- name: create fallback_ips_base
+  set_fact:
+    fallback_ips_base: |
+      ---
+      {% for item in (groups['k8s_cluster']|default([]) + groups['etcd']|default([]) + groups['calico_rr']|default([]))|unique %}
+      {% set found = hostvars[item].get('ansible_default_ipv4') %}
+      {{ item }}: "{{ found.get('address', '127.0.0.1') }}"
+      {% endfor %}
+  delegate_to: localhost
+  connection: local
+  delegate_facts: yes
+  become: no
+  run_once: yes
+
+- name: set fallback_ips
+  set_fact:
+    fallback_ips: "{{ hostvars.localhost.fallback_ips_base | from_yaml }}"

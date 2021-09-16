@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nodelocaldns
+  namespace: kube-system
+  labels:
+    addonmanager.kubernetes.io/mode: EnsureExists
+
+data:
+  Corefile: |
+{% if nodelocaldns_external_zones is defined and nodelocaldns_external_zones|length > 0 %}
+{% for block in nodelocaldns_external_zones %}
+    {{ block['zones'] | join(' ') }} {
+        errors
+        cache {{ block['cache'] | default(30) }}
+        reload
+        loop
+        bind {{ nodelocaldns_ip }}
+        forward . {{ block['nameservers'] | join(' ') }}
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:9253
+        log
+{% if dns_etchosts | default(None) %}
+        hosts /etc/coredns/hosts {
+          fallthrough
+        }
+{% endif %}
+    }
+{% endfor %}
+{% endif %}
+    {{ dns_domain }}:53 {
+        errors
+        cache {
+            success 9984 30
+            denial 9984 5
+        }
+        reload
+        loop
+        bind {{ nodelocaldns_ip }}
+        forward . {{ forwardTarget }} {
+            force_tcp
+        }
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:9253
+        health {{ nodelocaldns_ip }}:{{ nodelocaldns_health_port }}
+{% if dns_etchosts | default(None) %}
+        hosts /etc/coredns/hosts {
+          fallthrough
+        }
+{% endif %}
+    }
+    in-addr.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind {{ nodelocaldns_ip }}
+        forward . {{ forwardTarget }} {
+            force_tcp
+        }
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:9253
+    }
+    ip6.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind {{ nodelocaldns_ip }}
+        forward . {{ forwardTarget }} {
+            force_tcp
+        }
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:9253
+    }
+    .:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind {{ nodelocaldns_ip }}
+        forward . {{ upstreamForwardTarget }}
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:9253
+{% if dns_etchosts | default(None) %}
+        hosts /etc/coredns/hosts {
+          fallthrough
+        }
+{% endif %}
+    }
+{% if dns_etchosts | default(None) %}
+  hosts: |
+    {{ dns_etchosts | indent(width=4, indentfirst=None) }}
+{% endif %}

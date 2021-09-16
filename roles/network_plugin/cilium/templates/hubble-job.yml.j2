@@ -1,0 +1,45 @@
+---
+# Source: cilium/templates/hubble-generate-certs-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hubble-generate-certs
+  namespace: kube-system
+  labels:
+    k8s-app: hubble-generate-certs
+spec:
+  template:
+    metadata:
+      labels:
+        k8s-app: hubble-generate-certs
+    spec:
+      serviceAccount: hubble-generate-certs
+      serviceAccountName: hubble-generate-certs
+      containers:
+        - name: certgen
+          image: "{{ cilium_hubble_certgen_image_repo }}:{{ cilium_hubble_certgen_image_tag }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          command:
+            - "/usr/bin/cilium-certgen"
+          # Because this is executed as a job, we pass the values as command
+          # line args instead of via config map. This allows users to inspect
+          # the values used in past runs by inspecting the completed pod.
+          args:
+            - "--cilium-namespace=kube-system"
+            - "--hubble-ca-reuse-secret=true"
+            - "--hubble-ca-secret-name=hubble-ca-secret"
+            - "--hubble-ca-generate=true"
+            - "--hubble-ca-validity-duration=94608000s"
+            - "--hubble-ca-config-map-create=true"
+            - "--hubble-ca-config-map-name=hubble-ca-cert"
+            - "--hubble-server-cert-generate=true"
+            - "--hubble-server-cert-common-name=*.default.hubble-grpc.cilium.io"
+            - "--hubble-server-cert-validity-duration=94608000s"
+            - "--hubble-server-cert-secret-name=hubble-server-certs"
+            - "--hubble-relay-client-cert-generate=true"
+            - "--hubble-relay-client-cert-validity-duration=94608000s"
+            - "--hubble-relay-client-cert-secret-name=hubble-relay-client-certs"
+            - "--hubble-relay-server-cert-generate=false"
+      hostNetwork: true
+      restartPolicy: OnFailure
+  ttlSecondsAfterFinished: 1800

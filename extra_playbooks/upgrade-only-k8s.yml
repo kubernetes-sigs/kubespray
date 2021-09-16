@@ -1,0 +1,58 @@
+---
+### NOTE: This playbook cannot be used to deploy any new nodes to the cluster.
+### Additional information:
+### * Will not upgrade etcd
+### * Will not upgrade network plugins
+### * Will not upgrade Docker
+### * Will not pre-download containers or kubeadm
+### * Currently does not support Vault deployment.
+###
+### In most cases, you probably want to use upgrade-cluster.yml playbook and
+### not this one.
+
+- hosts: localhost
+  gather_facts: False
+  roles:
+    - { role: kubespray-defaults}
+    - { role: bastion-ssh-config, tags: ["localhost", "bastion"]}
+
+- hosts: k8s_cluster:etcd:calico_rr
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  gather_facts: false
+  vars:
+    # Need to disable pipelining for bootstrap-os as some systems have requiretty in sudoers set, which makes pipelining
+    # fail. bootstrap-os fixes this on these systems, so in later plays it can be enabled.
+    ansible_ssh_pipelining: false
+  roles:
+    - { role: kubespray-defaults}
+    - { role: bootstrap-os, tags: bootstrap-os}
+
+- hosts: k8s_cluster:etcd:calico_rr
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: kubernetes/preinstall, tags: preinstall }
+
+- name: Handle upgrades to master components first to maintain backwards compat.
+  hosts: kube_control_plane
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  serial: 1
+  roles:
+    - { role: kubespray-defaults}
+    - { role: upgrade/pre-upgrade, tags: pre-upgrade }
+    - { role: kubernetes/node, tags: node }
+    - { role: kubernetes/control-plane, tags: master, upgrade_cluster_setup: true }
+    - { role: kubernetes/client, tags: client }
+    - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
+    - { role: upgrade/post-upgrade, tags: post-upgrade }
+
+- name: Finally handle worker upgrades, based on given batch size
+  hosts: kube_node:!kube_control_plane
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  serial: "{{ serial | default('20%') }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: upgrade/pre-upgrade, tags: pre-upgrade }
+    - { role: kubernetes/node, tags: node }
+    - { role: upgrade/post-upgrade, tags: post-upgrade }
+    - { role: kubespray-defaults}

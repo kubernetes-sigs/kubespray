@@ -1,0 +1,88 @@
+---
+# Copyright 2016 The Kubernetes Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dns-autoscaler{{ coredns_ordinal_suffix }}
+  namespace: kube-system
+  labels:
+    k8s-app: dns-autoscaler{{ coredns_ordinal_suffix }}
+    addonmanager.kubernetes.io/mode: Reconcile
+spec:
+  selector:
+    matchLabels:
+      k8s-app: dns-autoscaler{{ coredns_ordinal_suffix }}
+  template:
+    metadata:
+      labels:
+        k8s-app: dns-autoscaler{{ coredns_ordinal_suffix }}
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: 'runtime/default'
+    spec:
+      nodeSelector:
+        {{ dns_autoscaler_deployment_nodeselector}}
+      priorityClassName: system-cluster-critical
+      securityContext:
+        supplementalGroups: [ 65534 ]
+        fsGroup: 65534
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: "kubernetes.io/hostname"
+            labelSelector:
+              matchLabels:
+                k8s-app: dns-autoscaler{{ coredns_ordinal_suffix }}
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+{% if kube_version is version('v1.20.0', '<') %}
+              - key: node-role.kubernetes.io/master
+{% else %}
+              - key: node-role.kubernetes.io/control-plane
+{% endif %}
+                operator: In
+                values:
+                - ""
+      containers:
+      - name: autoscaler
+        image: "{{ dnsautoscaler_image_repo }}:{{ dnsautoscaler_image_tag }}"
+        resources:
+          requests:
+            cpu: {{ dns_autoscaler_cpu_requests }}
+            memory: {{ dns_autoscaler_memory_requests }}
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+        command:
+        - /cluster-proportional-autoscaler
+        - --namespace=kube-system
+        - --default-params={"linear":{"preventSinglePointFailure":{{ dns_prevent_single_point_failure }},"coresPerReplica":{{ dns_cores_per_replica }},"nodesPerReplica":{{ dns_nodes_per_replica }},"min":{{ dns_min_replicas }}}}
+        - --logtostderr=true
+        - --v=2
+        - --configmap=dns-autoscaler{{ coredns_ordinal_suffix }}
+        - --target=Deployment/coredns{{ coredns_ordinal_suffix }}
+      serviceAccountName: dns-autoscaler

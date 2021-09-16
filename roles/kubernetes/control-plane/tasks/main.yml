@@ -1,0 +1,101 @@
+---
+- import_tasks: pre-upgrade.yml
+  tags:
+    - k8s-pre-upgrade
+
+- name: Create webhook token auth config
+  template:
+    src: webhook-token-auth-config.yaml.j2
+    dest: "{{ kube_config_dir }}/webhook-token-auth-config.yaml"
+    mode: 0640
+  when: kube_webhook_token_auth|default(false)
+
+- name: Create webhook authorization config
+  template:
+    src: webhook-authorization-config.yaml.j2
+    dest: "{{ kube_config_dir }}/webhook-authorization-config.yaml"
+    mode: 0640
+  when: kube_webhook_authorization|default(false)
+
+- name: Create kube-scheduler config
+  template:
+    src: kubescheduler-config.v1beta1.yaml.j2
+    dest: "{{ kube_config_dir }}/kubescheduler-config.yaml"
+    mode: 0644
+
+- import_tasks: encrypt-at-rest.yml
+  when:
+    - kube_encrypt_secret_data
+
+- name: Install | Copy kubectl binary from download dir
+  copy:
+    src: "{{ local_release_dir }}/kubectl-{{ kube_version }}-{{ image_arch }}"
+    dest: "{{ bin_dir }}/kubectl"
+    mode: 0755
+    remote_src: true
+  tags:
+    - kubectl
+    - upgrade
+
+- name: Install kubectl bash completion
+  shell: "{{ bin_dir }}/kubectl completion bash >/etc/bash_completion.d/kubectl.sh"
+  when: ansible_os_family in ["Debian","RedHat"]
+  tags:
+    - kubectl
+  ignore_errors: true  # noqa ignore-errors
+
+- name: Set kubectl bash completion file permissions
+  file:
+    path: /etc/bash_completion.d/kubectl.sh
+    owner: root
+    group: root
+    mode: 0755
+  when: ansible_os_family in ["Debian","RedHat"]
+  tags:
+    - kubectl
+    - upgrade
+  ignore_errors: true  # noqa ignore-errors
+
+- name: Disable SecurityContextDeny admission-controller and enable PodSecurityPolicy
+  set_fact:
+    kube_apiserver_enable_admission_plugins: "{{ kube_apiserver_enable_admission_plugins | difference(['SecurityContextDeny']) | union(['PodSecurityPolicy']) | unique }}"
+  when: podsecuritypolicy_enabled
+
+- name: Include kubeadm setup
+  import_tasks: kubeadm-setup.yml
+
+- name: Include kubeadm etcd extra tasks
+  include_tasks: kubeadm-etcd.yml
+  when: etcd_kubeadm_enabled
+
+- name: Include kubeadm secondary server apiserver fixes
+  include_tasks: kubeadm-fix-apiserver.yml
+
+- name: Include kubelet client cert rotation fixes
+  include_tasks: kubelet-fix-client-cert-rotation.yml
+  when: kubelet_rotate_certificates
+
+- name: Install script to renew K8S control plane certificates
+  template:
+    src: k8s-certs-renew.sh.j2
+    dest: "{{ bin_dir }}/k8s-certs-renew.sh"
+    mode: 0755
+
+- name: Renew K8S control plane certificates monthly 1/2
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: 0644
+  with_items:
+    - k8s-certs-renew.service
+    - k8s-certs-renew.timer
+  register: k8s_certs_units
+  when: auto_renew_certificates
+
+- name: Renew K8S control plane certificates monthly 2/2
+  systemd:
+    name: k8s-certs-renew.timer
+    enabled: yes
+    state: started
+    daemon-reload: "{{ k8s_certs_units is changed }}"
+  when: auto_renew_certificates

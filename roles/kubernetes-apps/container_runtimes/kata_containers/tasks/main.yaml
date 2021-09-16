@@ -1,0 +1,34 @@
+---
+
+- name: Kata Containers | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/kata_containers"
+    owner: root
+    group: root
+    mode: 0755
+    recurse: true
+
+- name: Kata Containers | Templates list
+  set_fact:
+    kata_containers_templates:
+      - { name: runtimeclass-kata-qemu, file: runtimeclass-kata-qemu.yml, type: runtimeclass }
+
+- name: Kata Containers | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/kata_containers/{{ item.file }}"
+  with_items: "{{ kata_containers_templates }}"
+  register: kata_containers_manifests
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Kata Containers | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/kata_containers/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ kata_containers_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]

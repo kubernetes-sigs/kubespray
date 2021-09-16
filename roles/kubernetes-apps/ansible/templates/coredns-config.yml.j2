@@ -1,0 +1,69 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+  labels:
+      addonmanager.kubernetes.io/mode: EnsureExists
+data:
+  Corefile: |
+{% if coredns_external_zones is defined and coredns_external_zones|length > 0 %}
+{%   for block in coredns_external_zones %}
+    {{ block['zones'] | join(' ') }} {
+        log
+        errors
+        forward . {{ block['nameservers'] | join(' ') }}
+        loadbalance
+        cache {{ block['cache'] | default(5) }}
+        reload
+{% if dns_etchosts | default(None) %}
+        hosts /etc/coredns/hosts {
+          fallthrough
+        }
+{% endif %}
+    }
+{%   endfor %}
+{% endif %}
+    .:53 {
+        errors
+        health {
+            lameduck 5s
+        }
+        ready
+        kubernetes {{ dns_domain }} {% if enable_coredns_reverse_dns_lookups %}in-addr.arpa ip6.arpa {% endif %}{
+          pods insecure
+{% if enable_coredns_k8s_endpoint_pod_names %}
+          endpoint_pod_names
+{% endif %}
+{% if enable_coredns_reverse_dns_lookups %}
+          fallthrough in-addr.arpa ip6.arpa
+{% endif %}
+        }
+        prometheus :9153
+{% if resolvconf_mode == 'host_resolvconf' and upstream_dns_servers is defined and upstream_dns_servers|length > 0 %}
+        forward . {{ upstream_dns_servers|join(' ') }} {
+          prefer_udp
+        }
+{% else %}
+        forward . /etc/resolv.conf {
+          prefer_udp
+        }
+{% endif %}
+{% if enable_coredns_k8s_external %}
+        k8s_external {{ coredns_k8s_external_zone }}
+{% endif %}
+        cache 30
+        loop
+        reload
+        loadbalance
+{% if dns_etchosts | default(None) %}
+        hosts /etc/coredns/hosts {
+          fallthrough
+        }
+{% endif %}
+    }
+{% if dns_etchosts | default(None) %}
+  hosts: |
+    {{ dns_etchosts | indent(width=4, indentfirst=None) }}
+{% endif %}

@@ -1,0 +1,123 @@
+# This YAML file contains driver-registrar & csi driver nodeplugin API objects,
+# which are necessary to run csi nodeplugin for cinder.
+
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: csi-cinder-nodeplugin
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: csi-cinder-nodeplugin
+  template:
+    metadata:
+      labels:
+        app: csi-cinder-nodeplugin
+    spec:
+      serviceAccount: csi-cinder-node-sa
+      hostNetwork: true
+      containers:
+        - name: node-driver-registrar
+          image: {{ csi_node_driver_registrar_image_repo }}:{{ csi_node_driver_registrar_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "rm -rf /registration/cinder.csi.openstack.org /registration/cinder.csi.openstack.org-reg.sock"]
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: DRIVER_REG_SOCK_PATH
+              value: /var/lib/kubelet/plugins/cinder.csi.openstack.org/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+        - name: cinder-csi-plugin
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          image: {{ cinder_csi_plugin_image_repo }}:{{ cinder_csi_plugin_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - /bin/cinder-csi-plugin
+            - "--nodeid=$(NODE_ID)"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--cloud-config=$(CLOUD_CONFIG)"
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix://csi/csi.sock
+            - name: CLOUD_CONFIG
+              value: /etc/config/cloud.conf
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: kubelet-dir
+              mountPath: /var/lib/kubelet
+              mountPropagation: "Bidirectional"
+            - name: pods-cloud-data
+              mountPath: /var/lib/cloud/data
+              readOnly: true
+            - name: pods-probe-dir
+              mountPath: /dev
+              mountPropagation: "HostToContainer"
+            - name: secret-cinderplugin
+              mountPath: /etc/config
+              readOnly: true
+            - name: ca-certs
+              mountPath: /etc/ssl/certs
+              readOnly: true
+{% if cinder_cacert is defined and cinder_cacert != "" %}
+            - name: cinder-cacert
+              mountPath: {{ kube_config_dir }}/cinder-cacert.pem
+              readOnly: true
+{% endif %}
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/cinder.csi.openstack.org
+            type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: Directory
+        - name: kubelet-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        - name: pods-cloud-data
+          hostPath:
+            path: /var/lib/cloud/data
+            type: Directory
+        - name: pods-probe-dir
+          hostPath:
+            path: /dev
+            type: Directory
+        - name: secret-cinderplugin
+          secret:
+            secretName: cloud-config
+        - name: ca-certs
+          hostPath:
+            path: /etc/ssl/certs
+            type: DirectoryOrCreate
+{% if cinder_cacert is defined and cinder_cacert != "" %}
+        - name: cinder-cacert
+          hostPath:
+            path: {{ kube_config_dir }}/cinder-cacert.pem
+            type: FileOrCreate
+{% endif %}

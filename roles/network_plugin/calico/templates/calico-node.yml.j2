@@ -1,0 +1,435 @@
+---
+# This manifest installs the calico/node container, as well
+# as the Calico CNI plugins and network config on
+# each master and worker node in a Kubernetes cluster.
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: calico-node
+  namespace: kube-system
+  labels:
+    k8s-app: calico-node
+spec:
+  selector:
+    matchLabels:
+      k8s-app: calico-node
+  template:
+    metadata:
+      labels:
+        k8s-app: calico-node
+      annotations:
+{% if calico_datastore == "etcd" %}
+        kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
+{% endif %}
+{% if calico_felix_prometheusmetricsenabled %}
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: "{{ calico_felix_prometheusmetricsport }}"
+{% endif %}
+    spec:
+      nodeSelector:
+        {{ calico_ds_nodeselector }}
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      serviceAccountName: calico-node
+      tolerations:
+      - operator: Exists
+      # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
+      # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
+      terminationGracePeriodSeconds: 0
+      initContainers:
+{% if calico_datastore == "kdd" %}
+        # This container performs upgrade from host-local IPAM to calico-ipam.
+        # It can be deleted if this is a fresh installation, or if you have already
+        # upgraded to use calico-ipam.
+        - name: upgrade-ipam
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          command: ["/opt/cni/bin/calico-ipam", "-upgrade"]
+          envFrom:
+            - configMapRef:
+                # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+                name: kubernetes-services-endpoint
+                optional: true
+          env:
+            - name: KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CALICO_NETWORKING_BACKEND
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: calico_backend
+          volumeMounts:
+            - mountPath: /var/lib/cni/networks
+              name: host-local-net-dir
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+          securityContext:
+            privileged: true
+{% endif %}
+        # This container installs the Calico CNI binaries
+        # and CNI network config file on each node.
+        - name: install-cni
+          image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          command: ["/opt/cni/bin/install"]
+          env:
+            # Name of the CNI config file to create.
+            - name: CNI_CONF_NAME
+              value: "10-calico.conflist"
+            # Install CNI binaries
+            - name: UPDATE_CNI_BINARIES
+              value: "true"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG_FILE
+              value: "/host/etc/cni/net.d/calico.conflist.template"
+            # Prevents the container from sleeping forever.
+            - name: SLEEP
+              value: "false"
+{% if calico_datastore == "kdd" %}
+            # Set the hostname based on the k8s node name.
+            - name: KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+{% endif %}
+          volumeMounts:
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+          securityContext:
+            privileged: true
+        # Adds a Flex Volume Driver that creates a per-pod Unix Domain Socket to allow Dikastes
+        # to communicate with Felix over the Policy Sync API.
+        - name: flexvol-driver
+          image: {{ calico_flexvol_image_repo }}:{{ calico_flexvol_image_tag }}
+          volumeMounts:
+            - name: flexvol-driver-host
+              mountPath: /host/driver
+          securityContext:
+            privileged: true
+      containers:
+        # Runs calico/node container on each Kubernetes node.  This
+        # container programs network policy and routes on each
+        # host.
+        - name: calico-node
+          image: {{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+          envFrom:
+            - configMapRef:
+                # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+                name: kubernetes-services-endpoint
+                optional: true
+          env:
+            # The location of the Calico etcd cluster.
+{% if calico_datastore == "etcd" %}
+            - name: ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_endpoints
+            # Location of the CA certificate for etcd.
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_ca
+            # Location of the client key for etcd.
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_key
+            # Location of the client certificate for etcd.
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_cert
+{% elif calico_datastore == "kdd" %}
+            # Use Kubernetes API as the backing datastore.
+            - name: DATASTORE_TYPE
+              value: "kubernetes"
+{% if typha_enabled %}
+            # Typha support: controlled by the ConfigMap.
+            - name: FELIX_TYPHAK8SSERVICENAME
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: typha_service_name
+{% if typha_secure %}
+            - name: FELIX_TYPHACN
+              value: typha-server
+            - name: FELIX_TYPHACAFILE
+              value: /etc/typha-ca/ca.crt
+            - name: FELIX_TYPHACERTFILE
+              value: /etc/typha-client/typha-client.crt
+            - name: FELIX_TYPHAKEYFILE
+              value: /etc/typha-client/typha-client.key
+{% endif %}
+{% endif %}
+            # Wait for the datastore.
+            - name: WAIT_FOR_DATASTORE
+              value: "true"
+{% endif %}
+{% if calico_network_backend is defined and calico_network_backend == 'vxlan' %}
+            - name: FELIX_VXLANVNI
+              value: "{{ calico_vxlan_vni }}"
+            - name: FELIX_VXLANPORT
+              value: "{{ calico_vxlan_port }}"
+{% endif %}
+            # Choose the backend to use.
+            - name: CALICO_NETWORKING_BACKEND
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: calico_backend
+            # Cluster type to identify the deployment type
+            - name: CLUSTER_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: cluster_type
+            # Set noderef for node controller.
+            - name: CALICO_K8S_NODE_REF
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            # Disable file logging so `kubectl logs` works.
+            - name: CALICO_DISABLE_FILE_LOGGING
+              value: "true"
+            # Set Felix endpoint to host default action to ACCEPT.
+            - name: FELIX_DEFAULTENDPOINTTOHOSTACTION
+              value: "{{ calico_endpoint_to_host_action|default('RETURN') }}"
+            - name: FELIX_HEALTHHOST
+              value: "{{ calico_healthhost }}"
+{% if kube_proxy_mode == 'ipvs' and kube_apiserver_node_port_range is defined %}
+            - name: FELIX_KUBENODEPORTRANGES
+              value: "{{ kube_apiserver_node_port_range.split('-')[0] }}:{{ kube_apiserver_node_port_range.split('-')[1] }}"
+{% endif %}
+            - name: FELIX_IPTABLESBACKEND
+              value: "{{ calico_iptables_backend }}"
+            - name: FELIX_IPTABLESLOCKTIMEOUTSECS
+              value: "{{ calico_iptables_lock_timeout_secs }}"
+# should be set in etcd before deployment
+#            # Configure the IP Pool from which Pod IPs will be chosen.
+#            - name: CALICO_IPV4POOL_CIDR
+#              value: "{{ calico_pool_cidr | default(kube_pods_subnet) }}"
+{% if calico_veth_mtu is defined %}
+# Set MTU for the Wireguard tunnel device.
+            - name: FELIX_WIREGUARDMTU
+              value: "{{ calico_veth_mtu }}"
+{% endif %}
+            - name: CALICO_IPV4POOL_IPIP
+              value: "{{ calico_ipv4pool_ipip }}"
+            - name: FELIX_IPV6SUPPORT
+              value: "{{ enable_dual_stack_networks | default(false) }}"
+            # Set Felix logging to "info"
+            - name: FELIX_LOGSEVERITYSCREEN
+              value: "{{ calico_loglevel }}"
+            # Set Calico startup logging to "error"
+            - name: CALICO_STARTUP_LOGLEVEL
+              value: "{{ calico_node_startup_loglevel }}"
+            # Enable or disable usage report
+            - name: FELIX_USAGEREPORTINGENABLED
+              value: "{{ calico_usage_reporting }}"
+            # Set MTU for tunnel device used if ipip is enabled
+{% if calico_mtu is defined %}
+            - name: FELIX_IPINIPMTU
+              value: "{{ calico_veth_mtu | default(calico_mtu) }}"
+{% endif %}
+            - name: FELIX_CHAININSERTMODE
+              value: "{{ calico_felix_chaininsertmode }}"
+            - name: FELIX_PROMETHEUSMETRICSENABLED
+              value: "{{ calico_felix_prometheusmetricsenabled }}"
+            - name: FELIX_PROMETHEUSMETRICSPORT
+              value: "{{ calico_felix_prometheusmetricsport }}"
+            - name: FELIX_PROMETHEUSGOMETRICSENABLED
+              value: "{{ calico_felix_prometheusgometricsenabled }}"
+            - name: FELIX_PROMETHEUSPROCESSMETRICSENABLED
+              value: "{{ calico_felix_prometheusprocessmetricsenabled }}"
+{% if calico_ip_auto_method is defined %}
+            - name: IP_AUTODETECTION_METHOD
+              value: "{{ calico_ip_auto_method }}"
+{% else %}
+            - name: NODEIP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: IP_AUTODETECTION_METHOD
+              value: "can-reach=$(NODEIP)"
+{% endif %}
+            - name: IP
+              value: "autodetect"
+{% if enable_dual_stack_networks %}
+            - name: IP6
+              value: autodetect
+{% endif %}
+{% if calico_use_default_route_src_ipaddr|default(false) %}
+            - name: FELIX_DEVICEROUTESOURCEADDRESS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+{% endif %}
+            - name: NODENAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: FELIX_HEALTHENABLED
+              value: "true"
+            - name: FELIX_IGNORELOOSERPF
+              value: "{{ calico_node_ignorelooserpf }}"
+            - name: CALICO_MANAGE_CNI
+              value: "true"
+{% if calico_node_extra_envs is defined %}
+{% for key in calico_node_extra_envs %}
+            - name: {{ key }}
+              value: "{{ calico_node_extra_envs[key] }}"
+{% endfor %}
+{% endif %}
+          securityContext:
+            privileged: true
+          resources:
+            limits:
+              cpu: {{ calico_node_cpu_limit }}
+              memory: {{ calico_node_memory_limit }}
+            requests:
+              cpu: {{ calico_node_cpu_requests }}
+              memory: {{ calico_node_memory_requests }}
+          livenessProbe:
+            exec:
+              command:
+              - /bin/calico-node
+              - -felix-live
+{% if calico_network_backend|default("bird") == "bird" %}
+              - -bird-live
+{% endif %}
+            periodSeconds: 10
+            initialDelaySeconds: 10
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command:
+              - /bin/calico-node
+{% if calico_network_backend|default("bird") == "bird" %}
+              - -bird-ready
+{% endif %}
+              - -felix-ready
+            periodSeconds: 10
+            failureThreshold: 6
+          volumeMounts:
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - mountPath: /var/run/calico
+              name: var-run-calico
+              readOnly: false
+            - mountPath: /var/lib/calico
+              name: var-lib-calico
+              readOnly: false
+{% if calico_datastore == "etcd" %}
+            - mountPath: /calico-secrets
+              name: etcd-certs
+              readOnly: true
+{% endif %}
+            - name: xtables-lock
+              mountPath: /run/xtables.lock
+              readOnly: false
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+{% if typha_secure %}
+            - name: typha-client
+              mountPath: /etc/typha-client
+              readOnly: true
+            - name: typha-cacert
+              subPath: ca.crt
+              mountPath: /etc/typha-ca/ca.crt
+              readOnly: true
+{% endif %}
+            - name: policysync
+              mountPath: /var/run/nodeagent
+{% if calico_bpf_enabled %}
+            # For eBPF mode, we need to be able to mount the BPF filesystem at /sys/fs/bpf so we mount in the
+            # parent directory.
+            - name: sysfs
+              mountPath: /sys/fs/
+              # Bidirectional means that, if we mount the BPF filesystem at /sys/fs/bpf it will propagate to the host.
+              # If the host is known to mount that filesystem already then Bidirectional can be omitted.
+              mountPropagation: Bidirectional
+{% endif %}
+            - name: cni-log-dir
+              mountPath: /var/log/calico/cni
+              readOnly: true
+      volumes:
+        # Used by calico/node.
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: var-run-calico
+          hostPath:
+            path: /var/run/calico
+        - name: var-lib-calico
+          hostPath:
+            path: /var/lib/calico
+        # Used to install CNI.
+        - name: cni-net-dir
+          hostPath:
+            path: /etc/cni/net.d
+        - name: cni-bin-dir
+          hostPath:
+            path: /opt/cni/bin
+{% if calico_datastore == "etcd" %}
+        # Mount in the etcd TLS secrets.
+        - name: etcd-certs
+          hostPath:
+            path: "{{ calico_cert_dir }}"
+{% endif %}
+        # Mount the global iptables lock file, used by calico/node
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
+{% if calico_datastore == "kdd" %}
+        # Mount in the directory for host-local IPAM allocations. This is
+        # used when upgrading from host-local to calico-ipam, and can be removed
+        # if not using the upgrade-ipam init container.
+        - name: host-local-net-dir
+          hostPath:
+            path: /var/lib/cni/networks
+{% endif %}
+{% if typha_enabled and typha_secure %}
+        - name: typha-client
+          secret:
+            secretName: typha-client
+            items:
+                - key: tls.crt
+                  path: typha-client.crt
+                - key: tls.key
+                  path: typha-client.key
+        - name: typha-cacert
+          hostPath:
+            path: "/etc/kubernetes/ssl/"
+{% endif %}
+{% if calico_bpf_enabled %}
+        - name: sysfs
+          hostPath:
+            path: /sys/fs/
+            type: DirectoryOrCreate
+{% endif %}
+        # Used to access CNI logs.
+        - name: cni-log-dir
+          hostPath:
+            path: /var/log/calico/cni
+        # Used to create per-pod Unix Domain Sockets
+        - name: policysync
+          hostPath:
+            type: DirectoryOrCreate
+            path: /var/run/nodeagent
+        # Used to install Flex Volume Driver
+        - name: flexvol-driver-host
+          hostPath:
+            type: DirectoryOrCreate
+            path: "{{ kubelet_flexvolumes_plugins_dir | default('/usr/libexec/kubernetes/kubelet-plugins/volume/exec') }}/nodeagent~uds"
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: {{ serial | default('20%') }}
+    type: RollingUpdate

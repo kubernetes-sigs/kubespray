@@ -1,0 +1,38 @@
+---
+- name: Set no_proxy to all assigned cluster IPs and hostnames
+  set_fact:
+    no_proxy_prepare: >-
+      {%- if loadbalancer_apiserver is defined -%}
+      {{ apiserver_loadbalancer_domain_name| default('') }},
+      {{ loadbalancer_apiserver.address | default('') }},
+      {%- endif -%}
+      {%- if no_proxy_exclude_workers | default(false) -%}
+      {% set cluster_or_master = 'kube_control_plane' %}
+      {%- else -%}
+      {% set cluster_or_master = 'k8s_cluster' %}
+      {%- endif -%}
+      {%- for item in (groups[cluster_or_master] + groups['etcd']|default([]) + groups['calico_rr']|default([]))|unique -%}
+      {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }},
+      {%-   if item != hostvars[item].get('ansible_hostname', '') -%}
+      {{ hostvars[item]['ansible_hostname'] }},
+      {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }},
+      {%-   endif -%}
+      {{ item }},{{ item }}.{{ dns_domain }},
+      {%- endfor -%}
+      {%- if additional_no_proxy is defined -%}
+      {{ additional_no_proxy }},
+      {%- endif -%}
+      127.0.0.1,localhost,{{ kube_service_addresses }},{{ kube_pods_subnet }},svc,svc.{{ dns_domain }}
+  delegate_to: localhost
+  connection: local
+  delegate_facts: yes
+  become: no
+  run_once: yes
+
+- name: Populates no_proxy to all hosts
+  set_fact:
+    no_proxy: "{{ hostvars.localhost.no_proxy_prepare }}"
+    proxy_env: "{{ proxy_env | combine({
+      'no_proxy': hostvars.localhost.no_proxy_prepare,
+      'NO_PROXY': hostvars.localhost.no_proxy_prepare
+    }) }}"

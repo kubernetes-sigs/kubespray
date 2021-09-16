@@ -1,0 +1,154 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: calico-node
+  namespace: kube-system
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - nodes
+      - namespaces
+      - configmaps
+    verbs:
+      - get
+{% if calico_version is version("v3.20.0", ">=") %}
+  # EndpointSlices are used for Service-based network policy rule
+  # enforcement.
+  - apiGroups: ["discovery.k8s.io"]
+    resources:
+      - endpointslices
+    verbs:
+      - watch
+      - list
+{% endif %}
+  - apiGroups: [""]
+    resources:
+      - endpoints
+      - services
+    verbs:
+      - watch
+      - list
+{% if calico_datastore == "kdd" %}
+      # Used to discover Typhas.
+      - get
+{% endif %}
+  - apiGroups: [""]
+    resources:
+      - nodes/status
+    verbs:
+      # Needed for clearing NodeNetworkUnavailable flag.
+      - patch
+{% if calico_datastore == "etcd" %}
+  - apiGroups:
+    - policy
+    resourceNames:
+    - privileged
+    resources:
+    - podsecuritypolicies
+    verbs:
+    - use
+{% elif calico_datastore == "kdd" %}
+      # Calico stores some configuration information in node annotations.
+      - update
+  # Watch for changes to Kubernetes NetworkPolicies.
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - networkpolicies
+    verbs:
+      - watch
+      - list
+  # Used by Calico for policy information.
+  - apiGroups: [""]
+    resources:
+      - pods
+      - namespaces
+      - serviceaccounts
+    verbs:
+      - list
+      - watch
+  # The CNI plugin patches pods/status.
+  - apiGroups: [""]
+    resources:
+      - pods/status
+    verbs:
+      - patch
+  # Calico monitors various CRDs for config.
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - globalfelixconfigs
+      - felixconfigurations
+      - bgppeers
+      - globalbgpconfigs
+      - bgpconfigurations
+      - ippools
+      - ipamblocks
+      - globalnetworkpolicies
+      - globalnetworksets
+      - networkpolicies
+      - networksets
+      - clusterinformations
+      - hostendpoints
+      - blockaffinities
+    verbs:
+      - get
+      - list
+      - watch
+  # Calico must create and update some CRDs on startup.
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - ippools
+      - felixconfigurations
+      - clusterinformations
+    verbs:
+      - create
+      - update
+  # Calico stores some configuration information on the node.
+  - apiGroups: [""]
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  # These permissions are only required for upgrade from v2.6, and can
+  # be removed after upgrade or on fresh installations.
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - bgpconfigurations
+      - bgppeers
+    verbs:
+      - create
+      - update
+  # These permissions are required for Calico CNI to perform IPAM allocations.
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - blockaffinities
+      - ipamblocks
+      - ipamhandles
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - ipamconfigs
+    verbs:
+      - get
+  # Block affinities must also be watchable by confd for route aggregation.
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - blockaffinities
+    verbs:
+      - watch
+  # The Calico IPAM migration needs to get daemonsets. These permissions can be
+  # removed if not upgrading from an installation using host-local IPAM.
+  - apiGroups: ["apps"]
+    resources:
+      - daemonsets
+    verbs:
+      - get
+{% endif %}

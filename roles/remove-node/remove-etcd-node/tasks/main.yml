@@ -1,0 +1,64 @@
+---
+- name: Lookup node IP in kubernetes
+  shell: >-
+    {{ bin_dir }}/kubectl get nodes {{ node }}
+    -o jsonpath='{range.status.addresses[?(@.type=="InternalIP")]}{.address}{"\n"}{end}'
+  register: remove_node_ip
+  when:
+    - inventory_hostname in groups['etcd']
+    - ip is not defined
+    - access_ip is not defined
+  delegate_to: "{{ groups['etcd']|first }}"
+  failed_when: false
+
+- name: Set node IP
+  set_fact:
+    node_ip: "{{ ip | default(access_ip | default(remove_node_ip.stdout)) | trim }}"
+  when:
+    - inventory_hostname in groups['etcd']
+
+- name: Make sure node_ip is set
+  assert:
+    that: node_ip is defined and node_ip | length > 0
+    msg: "Etcd node ip is not set !"
+  when:
+    - inventory_hostname in groups['etcd']
+
+- name: Lookup etcd member id
+  shell: "{{ bin_dir }}/etcdctl member list | grep {{ node_ip }} | cut -d, -f1"
+  register: etcd_member_id
+  ignore_errors: true  # noqa ignore-errors
+  changed_when: false
+  check_mode: no
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ groups['etcd']|first }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ groups['etcd']|first }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    ETCDCTL_ENDPOINTS: "https://{{ hostvars[groups['etcd']|first]['etcd_access_address'] |
+                                   default(hostvars[groups['etcd']|first]['ip']) |
+                                   default(hostvars[groups['etcd']|first]['fallback_ips'][groups['etcd']|first]) }}:2379"
+  delegate_to: "{{ groups['etcd']|first }}"
+  when: inventory_hostname in groups['etcd']
+
+- name: Remove etcd member from cluster
+  command: "{{ bin_dir }}/etcdctl member remove {{ etcd_member_id.stdout }}"
+  register: etcd_member_in_cluster
+  changed_when: false
+  check_mode: no
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ groups['etcd']|first }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ groups['etcd']|first }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    ETCDCTL_ENDPOINTS: "https://{{ hostvars[groups['etcd']|first]['etcd_access_address'] |
+                                   default(hostvars[groups['etcd']|first]['ip']) |
+                                   default(hostvars[groups['etcd']|first]['fallback_ips'][groups['etcd']|first]) }}:2379"
+  delegate_to: "{{ groups['etcd']|first }}"
+  when:
+    - inventory_hostname in groups['etcd']
+    - etcd_member_id.stdout | length > 0

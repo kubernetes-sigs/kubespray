@@ -1,0 +1,137 @@
+# This YAML file contains CSI Controller Plugin Sidecars
+# external-attacher, external-provisioner, external-snapshotter
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: csi-cinder-controllerplugin
+  namespace: kube-system
+spec:
+  replicas: {{ cinder_csi_controller_replicas }}
+  selector:
+    matchLabels:
+      app: csi-cinder-controllerplugin
+  template:
+    metadata:
+      labels:
+        app: csi-cinder-controllerplugin
+    spec:
+      serviceAccount: csi-cinder-controller-sa
+      containers:
+        - name: csi-attacher
+          image: {{ csi_attacher_image_repo }}:{{ csi_attacher_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--timeout=3m"
+{% if cinder_csi_controller_replicas is defined and cinder_csi_controller_replicas > 1 %}
+            - --leader-election
+            - --leader-election-namespace=kube-system
+{% endif %}
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-provisioner
+          image: {{ csi_provisioner_image_repo }}:{{ csi_provisioner_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--timeout=3m"
+{% if cinder_topology is defined and cinder_topology %}
+            - --feature-gates=Topology=true
+{% endif %}
+{% if cinder_csi_controller_replicas is defined and cinder_csi_controller_replicas > 1 %}
+            - --enable-leader-election
+            - --leader-election-type=leases
+            - --leader-election-namespace=kube-system
+{% endif %}
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-snapshotter
+          image: {{ csi_snapshotter_image_repo }}:{{ csi_snapshotter_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+{% if cinder_csi_controller_replicas is defined and cinder_csi_controller_replicas > 1 %}
+            - --leader-election
+            - --leader-election-namespace=kube-system
+{% endif %}
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - mountPath: /var/lib/csi/sockets/pluginproxy/
+              name: socket-dir
+        - name: csi-resizer
+          image: {{ csi_resizer_image_repo }}:{{ csi_resizer_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+{% if cinder_csi_controller_replicas is defined and cinder_csi_controller_replicas > 1 %}
+            - --leader-election
+            - --leader-election-namespace=kube-system
+{% endif %}
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: cinder-csi-plugin
+          image: {{ cinder_csi_plugin_image_repo }}:{{ cinder_csi_plugin_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - /bin/cinder-csi-plugin
+            - "--nodeid=$(NODE_ID)"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--cloud-config=$(CLOUD_CONFIG)"
+            - "--cluster=$(CLUSTER_NAME)"
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix://csi/csi.sock
+            - name: CLOUD_CONFIG
+              value: /etc/config/cloud.conf
+            - name: CLUSTER_NAME
+              value: kubernetes
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: secret-cinderplugin
+              mountPath: /etc/config
+              readOnly: true
+            - name: ca-certs
+              mountPath: /etc/ssl/certs
+              readOnly: true
+{% if cinder_cacert is defined and cinder_cacert != "" %}
+            - name: cinder-cacert
+              mountPath: {{ kube_config_dir }}/cinder-cacert.pem
+              readOnly: true
+{% endif %}
+      volumes:
+        - name: socket-dir
+          emptyDir:
+        - name: secret-cinderplugin
+          secret:
+            secretName: cloud-config
+        - name: ca-certs
+          hostPath:
+            path: /etc/ssl/certs
+            type: DirectoryOrCreate
+{% if cinder_cacert is defined and cinder_cacert != "" %}
+        - name: cinder-cacert
+          hostPath:
+            path: {{ kube_config_dir }}/cinder-cacert.pem
+            type: FileOrCreate
+{% endif %}

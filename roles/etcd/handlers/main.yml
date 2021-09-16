@@ -1,0 +1,59 @@
+---
+- name: restart etcd
+  command: /bin/true
+  notify:
+    - Backup etcd data
+    - etcd | reload systemd
+    - reload etcd
+    - wait for etcd up
+
+- name: restart etcd-events
+  command: /bin/true
+  notify:
+    - etcd | reload systemd
+    - reload etcd-events
+    - wait for etcd-events up
+
+- import_tasks: backup.yml
+
+- name: etcd | reload systemd
+  systemd:
+    daemon_reload: true
+
+- name: reload etcd
+  service:
+    name: etcd
+    state: restarted
+  when: is_etcd_master
+
+- name: reload etcd-events
+  service:
+    name: etcd-events
+    state: restarted
+  when: is_etcd_master
+
+- name: wait for etcd up
+  uri:
+    url: "https://{% if is_etcd_master %}{{ etcd_address }}{% else %}127.0.0.1{% endif %}:2379/health"
+    validate_certs: no
+    client_cert: "{{ etcd_cert_dir }}/member-{{ inventory_hostname }}.pem"
+    client_key: "{{ etcd_cert_dir }}/member-{{ inventory_hostname }}-key.pem"
+  register: result
+  until: result.status is defined and result.status == 200
+  retries: 60
+  delay: 1
+
+- name: wait for etcd-events up
+  uri:
+    url: "https://{% if is_etcd_master %}{{ etcd_address }}{% else %}127.0.0.1{% endif %}:2381/health"
+    validate_certs: no
+    client_cert: "{{ etcd_cert_dir }}/member-{{ inventory_hostname }}.pem"
+    client_key: "{{ etcd_cert_dir }}/member-{{ inventory_hostname }}-key.pem"
+  register: result
+  until: result.status is defined and result.status == 200
+  retries: 60
+  delay: 1
+
+- name: set etcd_secret_changed
+  set_fact:
+    etcd_secret_changed: true

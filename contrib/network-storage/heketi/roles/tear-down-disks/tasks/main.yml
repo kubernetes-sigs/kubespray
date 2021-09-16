@@ -1,0 +1,52 @@
+---
+- name: "Install lvm utils (RedHat)"
+  become: true
+  package:
+    name: "lvm2"
+    state: "present"
+  when: "ansible_os_family == 'RedHat'"
+
+- name: "Install lvm utils (Debian)"
+  become: true
+  apt:
+    name: "lvm2"
+    state: "present"
+  when: "ansible_os_family == 'Debian'"
+
+- name: "Get volume group information."
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin"  # Make sure we can workaround RH / CentOS conservative path management
+  become: true
+  shell: "pvs {{ disk_volume_device_1 }} --option vg_name | tail -n+2"
+  register: "volume_groups"
+  ignore_errors: true   # noqa ignore-errors
+  changed_when: false
+
+- name: "Remove volume groups."  # noqa 301
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin"  # Make sure we can workaround RH / CentOS conservative path management
+  become: true
+  command: "vgremove {{ volume_group }} --yes"
+  with_items: "{{ volume_groups.stdout_lines }}"
+  loop_control: { loop_var: "volume_group" }
+
+- name: "Remove physical volume from cluster disks."  # noqa 301
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin"  # Make sure we can workaround RH / CentOS conservative path management
+  become: true
+  command: "pvremove {{ disk_volume_device_1 }} --yes"
+  ignore_errors: true   # noqa ignore-errors
+
+- name: "Remove lvm utils (RedHat)"
+  become: true
+  package:
+    name: "lvm2"
+    state: "absent"
+  when: "ansible_os_family == 'RedHat' and heketi_remove_lvm"
+
+- name: "Remove lvm utils (Debian)"
+  become: true
+  apt:
+    name: "lvm2"
+    state: "absent"
+  when: "ansible_os_family == 'Debian' and heketi_remove_lvm"

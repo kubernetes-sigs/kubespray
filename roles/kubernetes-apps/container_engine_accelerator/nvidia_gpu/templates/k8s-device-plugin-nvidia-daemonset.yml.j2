@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-gpu-device-plugin
+  namespace: kube-system
+  labels:
+    k8s-app: nvidia-gpu-device-plugin
+    addonmanager.kubernetes.io/mode: Reconcile
+spec:
+  selector:
+    matchLabels:
+      k8s-app: nvidia-gpu-device-plugin
+  template:
+    metadata:
+      labels:
+        k8s-app: nvidia-gpu-device-plugin
+    spec:
+      priorityClassName: system-node-critical
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: "nvidia.com/gpu"
+                operator: Exists
+      tolerations:
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      hostPID: true
+      volumes:
+      - name: device-plugin
+        hostPath:
+          path: /var/lib/kubelet/device-plugins
+      - name: dev
+        hostPath:
+          path: /dev
+      containers:
+      - image: "{{ nvidia_gpu_device_plugin_container }}"
+        command: ["/usr/bin/nvidia-gpu-device-plugin", "-logtostderr"]
+        name: nvidia-gpu-device-plugin
+        resources:
+          requests:
+            cpu: 50m
+            memory: {{ nvidia_gpu_device_plugin_memory }}
+          limits:
+            cpu: 50m
+            memory: {{ nvidia_gpu_device_plugin_memory }}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: device-plugin
+          mountPath: /device-plugin
+        - name: dev
+          mountPath: /dev
+  updateStrategy:
+    type: RollingUpdate

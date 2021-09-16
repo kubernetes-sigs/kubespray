@@ -1,0 +1,78 @@
+---
+
+- name: Registry | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/registry"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Registry | Templates list
+  set_fact:
+    registry_templates:
+      - { name: registry-ns, file: registry-ns.yml, type: ns }
+      - { name: registry-sa, file: registry-sa.yml, type: sa }
+      - { name: registry-proxy-sa, file: registry-proxy-sa.yml, type: sa }
+      - { name: registry-svc, file: registry-svc.yml, type: svc }
+      - { name: registry-rs, file: registry-rs.yml, type: rs }
+      - { name: registry-proxy-ds, file: registry-proxy-ds.yml, type: ds }
+    registry_templates_for_psp:
+      - { name: registry-psp, file: registry-psp.yml, type: psp }
+      - { name: registry-cr, file: registry-cr.yml, type: clusterrole }
+      - { name: registry-crb, file: registry-crb.yml, type: rolebinding }
+      - { name: registry-proxy-psp, file: registry-proxy-psp.yml, type: psp }
+      - { name: registry-proxy-cr, file: registry-proxy-cr.yml, type: clusterrole }
+      - { name: registry-proxy-crb, file: registry-proxy-crb.yml, type: rolebinding }
+
+- name: Registry | Append extra templates to Registry Templates list for PodSecurityPolicy
+  set_fact:
+    registry_templates: "{{ registry_templates[:3] + registry_templates_for_psp + registry_templates[3:] }}"
+  when:
+    - podsecuritypolicy_enabled
+    - registry_namespace != "kube-system"
+
+- name: Registry | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/registry/{{ item.file }}"
+  with_items: "{{ registry_templates }}"
+  register: registry_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Registry | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ registry_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/registry/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ registry_manifests.results }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Registry | Create PVC manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/registry/{{ item.file }}"
+  with_items:
+    - { name: registry-pvc, file: registry-pvc.yml, type: pvc }
+  register: registry_manifests
+  when:
+    - registry_storage_class != none and registry_storage_class
+    - registry_disk_size != none and registry_disk_size
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Registry | Apply PVC manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ registry_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/registry/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ registry_manifests.results }}"
+  when:
+    - registry_storage_class != none and registry_storage_class
+    - registry_disk_size != none and registry_disk_size
+    - inventory_hostname == groups['kube_control_plane'][0]

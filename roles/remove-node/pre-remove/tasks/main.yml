@@ -1,0 +1,27 @@
+---
+- name: remove-node | List nodes
+  command: >-
+    {{ bin_dir }}/kubectl get nodes -o go-template={% raw %}'{{ range .items }}{{ .metadata.name }}{{ "\n" }}{{ end }}'{% endraw %}
+  register: nodes
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
+  changed_when: false
+  run_once: true
+
+- name: remove-node | Drain node except daemonsets resource  # noqa 301
+  command: >-
+    {{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf drain
+      --force
+      --ignore-daemonsets
+      --grace-period {{ drain_grace_period }}
+      --timeout {{ drain_timeout }}
+      --delete-local-data {{ hostvars[item]['kube_override_hostname']|default(item) }}
+  loop: "{{ node.split(',') | default(groups['kube_node']) }}"
+  # ignore servers that are not nodes
+  when: hostvars[item]['kube_override_hostname']|default(item) in nodes.stdout_lines
+  register: result
+  failed_when: result.rc != 0 and not allow_ungraceful_removal
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
+  run_once: true
+  until: result.rc == 0 or allow_ungraceful_removal
+  retries: "{{ drain_retries }}"
+  delay: "{{ drain_retry_delay_seconds }}"

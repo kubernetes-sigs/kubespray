@@ -1,0 +1,127 @@
+---
+- name: Set external kube-apiserver endpoint
+  set_fact:
+    external_apiserver_address: >-
+      {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined -%}
+      {{ loadbalancer_apiserver.address }}
+      {%- else -%}
+      {{ kube_apiserver_access_address }}
+      {%- endif -%}
+    external_apiserver_port: >-
+      {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined and loadbalancer_apiserver.port is defined -%}
+      {{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      {%- else -%}
+      {{ kube_apiserver_port }}
+      {%- endif -%}
+  tags:
+    - facts
+
+- name: Create kube config dir for current/ansible become user
+  file:
+    path: "{{ ansible_env.HOME | default('/root') }}/.kube"
+    mode: "0700"
+    state: directory
+
+- name: Copy admin kubeconfig to current/ansible become user home
+  copy:
+    src: "{{ kube_config_dir }}/admin.conf"
+    dest: "{{ ansible_env.HOME | default('/root') }}/.kube/config"
+    remote_src: yes
+    mode: "0600"
+    backup: yes
+
+- name: Create kube artifacts dir
+  file:
+    path: "{{ artifacts_dir }}"
+    mode: "0750"
+    state: directory
+  delegate_to: localhost
+  connection: local
+  become: no
+  run_once: yes
+  when: kubeconfig_localhost
+
+- name: Wait for k8s apiserver
+  wait_for:
+    host: "{{ kube_apiserver_access_address }}"
+    port: "{{ kube_apiserver_port }}"
+    timeout: 180
+
+- name: Create external_kubeconfig dir
+  file:
+    path: "{{ kube_config_dir }}/external_kubeconfig"
+    mode: "0750"
+    state: directory
+  when: kubeconfig_localhost
+
+# NOTE(mattymo): Please forgive this workaround
+- name: Generate admin kubeconfig with external api endpoint  # noqa 302
+  shell: >-
+    {{ bin_dir }}/kubeadm
+    init phase
+    kubeconfig admin
+    --kubeconfig-dir {{ kube_config_dir }}/external_kubeconfig
+    --cert-dir {{ kube_cert_dir }}
+    --apiserver-advertise-address {{ external_apiserver_address }}
+    --apiserver-bind-port {{ external_apiserver_port }}
+    >/dev/null && cat {{ kube_config_dir }}/external_kubeconfig/admin.conf &&
+    rm -rf {{ kube_config_dir }}/external_kubeconfig
+  environment: "{{ proxy_env }}"
+  run_once: yes
+  register: raw_admin_kubeconfig
+  when: kubeconfig_localhost
+
+- name: Convert kubeconfig to YAML
+  set_fact:
+    admin_kubeconfig: "{{ raw_admin_kubeconfig.stdout | from_yaml }}"
+  when: kubeconfig_localhost
+
+- name: Override username in kubeconfig
+  set_fact:
+    final_admin_kubeconfig: "{{ admin_kubeconfig | combine(override_cluster_name, recursive=true) | combine(override_context, recursive=true) | combine(override_user, recursive=true) }}"
+  vars:
+    cluster_infos: "{{ admin_kubeconfig['clusters'][0]['cluster'] }}"
+    user_certs: "{{ admin_kubeconfig['users'][0]['user'] }}"
+    username: "kubernetes-admin-{{ cluster_name }}"
+    context: "kubernetes-admin-{{ cluster_name }}@{{ cluster_name }}"
+    override_cluster_name: "{{ { 'clusters': [ { 'cluster': cluster_infos, 'name': cluster_name } ] } }}"
+    override_context: "{{ { 'contexts': [ { 'context': { 'user': username, 'cluster': cluster_name }, 'name': context } ], 'current-context': context } }}"
+    override_user: "{{ { 'users': [ { 'name': username, 'user': user_certs  } ] } }}"
+  when: kubeconfig_localhost
+
+- name: Write admin kubeconfig on ansible host
+  copy:
+    content: "{{ final_admin_kubeconfig | to_nice_yaml(indent=2) }}"
+    dest: "{{ artifacts_dir }}/admin.conf"
+    mode: 0600
+  delegate_to: localhost
+  connection: local
+  become: no
+  run_once: yes
+  when: kubeconfig_localhost
+
+- name: Copy kubectl binary to ansible host
+  fetch:
+    src: "{{ bin_dir }}/kubectl"
+    dest: "{{ artifacts_dir }}/kubectl"
+    flat: yes
+    validate_checksum: no
+  register: copy_binary_result
+  until: copy_binary_result is not failed
+  retries: 20
+  become: no
+  run_once: yes
+  when: kubectl_localhost
+
+- name: create helper script kubectl.sh on ansible host
+  copy:
+    content: |
+      #!/bin/bash
+      ${BASH_SOURCE%/*}/kubectl --kubeconfig=${BASH_SOURCE%/*}/admin.conf "$@"
+    dest: "{{ artifacts_dir }}/kubectl.sh"
+    mode: 0755
+  become: no
+  run_once: yes
+  delegate_to: localhost
+  connection: local
+  when: kubectl_localhost and kubeconfig_localhost

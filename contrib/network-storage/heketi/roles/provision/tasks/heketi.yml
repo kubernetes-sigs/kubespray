@@ -1,0 +1,34 @@
+---
+- name: "Kubernetes Apps | Lay Down Heketi"
+  become: true
+  template:
+    src: "heketi-deployment.json.j2"
+    dest: "{{ kube_config_dir }}/heketi-deployment.json"
+    mode: 0644
+  register: "rendering"
+
+- name: "Kubernetes Apps | Install and configure Heketi"
+  kube:
+    name: "GlusterFS"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/heketi-deployment.json"
+    state: "{{ rendering.changed | ternary('latest', 'present') }}"
+
+- name: "Ensure heketi is up and running."
+  changed_when: false
+  register: "heketi_state"
+  vars:
+    heketi_state:
+      stdout: "{}"
+    pods_query: "items[?kind=='Pod'].status.conditions|[0][?type=='Ready'].status|[0]"
+    deployments_query: "items[?kind=='Deployment'].status.conditions|[0][?type=='Available'].status|[0]"
+  command: "{{ bin_dir }}/kubectl get deployments,pods --selector=glusterfs --output=json"
+  until:
+    - "heketi_state.stdout|from_json|json_query(pods_query) == 'True'"
+    - "heketi_state.stdout|from_json|json_query(deployments_query) == 'True'"
+  retries: 60
+  delay: 5
+
+- name: Set the Heketi pod name
+  set_fact:
+    heketi_pod_name: "{{ heketi_state.stdout|from_json|json_query(\"items[?kind=='Pod'].metadata.name|[0]\") }}"

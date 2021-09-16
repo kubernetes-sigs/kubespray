@@ -1,0 +1,56 @@
+---
+- name: Local Path Provisioner | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/local_path_provisioner"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Local Path Provisioner | Create claim root dir
+  file:
+    path: "{{ local_path_provisioner_claim_root }}"
+    state: directory
+
+- name: Local Path Provisioner | Render Template
+  set_fact:
+    local_path_provisioner_templates:
+      - { name: local-path-storage-ns, file: local-path-storage-ns.yml, type: ns }
+      - { name: local-path-storage-sa, file: local-path-storage-sa.yml, type: sa }
+      - { name: local-path-storage-cr, file: local-path-storage-cr.yml, type: cr }
+      - { name: local-path-storage-clusterrolebinding, file: local-path-storage-clusterrolebinding.yml, type: clusterrolebinding }
+      - { name: local-path-storage-cm, file: local-path-storage-cm.yml, type: cm }
+      - { name: local-path-storage-deployment, file: local-path-storage-deployment.yml, type: deployment }
+      - { name: local-path-storage-sc, file: local-path-storage-sc.yml, type: sc }
+    local_path_provisioner_templates_for_psp_not_system_ns:
+      - { name: local-path-storage-psp, file: local-path-storage-psp.yml, type: psp }
+      - { name: local-path-storage-psp-role, file: local-path-storage-psp-cr.yml, type: clusterrole }
+      - { name: local-path-storage-psp-rb, file: local-path-storage-psp-rb.yml, type: rolebinding }
+
+- name: Local Path Provisioner | Insert extra templates to Local Path Provisioner templates list for PodSecurityPolicy
+  set_fact:
+    local_path_provisioner_templates: "{{ local_path_provisioner_templates[:3] + local_path_provisioner_templates_for_psp_not_system_ns + local_path_provisioner_templates[3:] }}"
+  when:
+    - podsecuritypolicy_enabled
+    - local_path_provisioner_namespace != "kube-system"
+
+- name: Local Path Provisioner | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/local_path_provisioner/{{ item.file }}"
+  with_items: "{{ local_path_provisioner_templates }}"
+  register: local_path_provisioner_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Local Path Provisioner | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ local_path_provisioner_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/local_path_provisioner/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ local_path_provisioner_manifests.results }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]

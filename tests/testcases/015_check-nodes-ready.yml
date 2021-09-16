@@ -1,0 +1,35 @@
+---
+- hosts: kube_control_plane[0]
+  tasks:
+
+  - name: Force binaries directory for Flatcar Container Linux by Kinvolk
+    set_fact:
+      bin_dir: "/opt/bin"
+    when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+
+  - name: Force binaries directory for other hosts
+    set_fact:
+      bin_dir: "/usr/local/bin"
+    when: not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+
+  - import_role:  # noqa unnamed-task
+      name: cluster-dump
+
+  - name: Check kubectl output
+    command: "{{ bin_dir }}/kubectl get nodes"
+    changed_when: false
+    register: get_nodes
+    no_log: true
+
+  - debug:  # noqa unnamed-task
+      msg: "{{ get_nodes.stdout.split('\n') }}"
+
+  - name: Check that all nodes are running and ready
+    command: "{{ bin_dir }}/kubectl get nodes --no-headers -o yaml"
+    changed_when: false
+    register: get_nodes_yaml
+    until:
+    # Check that all nodes are Status=Ready
+    - '(get_nodes_yaml.stdout | from_yaml)["items"] | map(attribute = "status.conditions") | map("items2dict", key_name="type", value_name="status") | map(attribute="Ready") | list | min'
+    retries: 30
+    delay: 10

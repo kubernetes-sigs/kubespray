@@ -1,0 +1,280 @@
+---
+# Tests for contrib/terraform/
+.terraform_install:
+  extends: .job
+  before_script:
+    - update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+    - ./tests/scripts/rebase.sh
+    - ./tests/scripts/testcases_prepare.sh
+    - ./tests/scripts/terraform_install.sh
+    # Set Ansible config
+    - cp ansible.cfg ~/.ansible.cfg
+    # Prepare inventory
+    - cp contrib/terraform/$PROVIDER/sample-inventory/cluster.tfvars .
+    - ln -s contrib/terraform/$PROVIDER/hosts
+    - terraform -chdir="contrib/terraform/$PROVIDER" init
+    # Copy SSH keypair
+    - mkdir -p ~/.ssh
+    - echo "$PACKET_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
+    - chmod 400 ~/.ssh/id_rsa
+    - echo "$PACKET_PUBLIC_KEY" | base64 -d > ~/.ssh/id_rsa.pub
+    - mkdir -p contrib/terraform/$PROVIDER/group_vars
+    # Random subnet to avoid routing conflicts
+    - export TF_VAR_subnet_cidr="10.$(( $RANDOM % 256 )).$(( $RANDOM % 256 )).0/24"
+
+.terraform_validate:
+  extends: .terraform_install
+  stage: unit-tests
+  tags: [light]
+  only: ['master', /^pr-.*$/]
+  script:
+    - terraform -chdir="contrib/terraform/$PROVIDER" validate
+    - terraform -chdir="contrib/terraform/$PROVIDER" fmt -check -diff
+
+.terraform_apply:
+  extends: .terraform_install
+  tags: [light]
+  stage: deploy-part3
+  when: manual
+  only: [/^pr-.*$/]
+  artifacts:
+    when: always
+    paths:
+      - cluster-dump/
+  variables:
+    ANSIBLE_INVENTORY_UNPARSED_FAILED: "true"
+    ANSIBLE_INVENTORY: hosts
+    CI_PLATFORM: tf
+    TF_VAR_ssh_user: $SSH_USER
+    TF_VAR_cluster_name: $CI_JOB_ID
+  script:
+    - tests/scripts/testcases_run.sh
+  after_script:
+    # Cleanup regardless of exit code
+    - chronic ./tests/scripts/testcases_cleanup.sh
+
+tf-0.15.x-validate-openstack:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_15_VERSION
+    PROVIDER: openstack
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-0.15.x-validate-packet:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_15_VERSION
+    PROVIDER: packet
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-0.15.x-validate-aws:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_15_VERSION
+    PROVIDER: aws
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-0.15.x-validate-exoscale:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_15_VERSION
+    PROVIDER: exoscale
+
+tf-0.15.x-validate-vsphere:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_15_VERSION
+    PROVIDER: vsphere
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-0.15.x-validate-upcloud:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_15_VERSION
+    PROVIDER: upcloud
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-0.14.x-validate-openstack:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_14_VERSION
+    PROVIDER: openstack
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-0.14.x-validate-packet:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_14_VERSION
+    PROVIDER: packet
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-0.14.x-validate-aws:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_14_VERSION
+    PROVIDER: aws
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-0.14.x-validate-exoscale:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_14_VERSION
+    PROVIDER: exoscale
+
+tf-0.14.x-validate-vsphere:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_14_VERSION
+    PROVIDER: vsphere
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+tf-0.14.x-validate-upcloud:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_14_VERSION
+    PROVIDER: upcloud
+    CLUSTER: $CI_COMMIT_REF_NAME
+
+# tf-packet-ubuntu16-default:
+#   extends: .terraform_apply
+#   variables:
+#     TF_VERSION: $TERRAFORM_14_VERSION
+#     PROVIDER: packet
+#     CLUSTER: $CI_COMMIT_REF_NAME
+#     TF_VAR_number_of_k8s_masters: "1"
+#     TF_VAR_number_of_k8s_nodes: "1"
+#     TF_VAR_plan_k8s_masters: t1.small.x86
+#     TF_VAR_plan_k8s_nodes: t1.small.x86
+#     TF_VAR_facility: ewr1
+#     TF_VAR_public_key_path: ""
+#     TF_VAR_operating_system: ubuntu_16_04
+#
+# tf-packet-ubuntu18-default:
+#   extends: .terraform_apply
+#   variables:
+#     TF_VERSION: $TERRAFORM_14_VERSION
+#     PROVIDER: packet
+#     CLUSTER: $CI_COMMIT_REF_NAME
+#     TF_VAR_number_of_k8s_masters: "1"
+#     TF_VAR_number_of_k8s_nodes: "1"
+#     TF_VAR_plan_k8s_masters: t1.small.x86
+#     TF_VAR_plan_k8s_nodes: t1.small.x86
+#     TF_VAR_facility: ams1
+#     TF_VAR_public_key_path: ""
+#     TF_VAR_operating_system: ubuntu_18_04
+
+.ovh_variables: &ovh_variables
+  OS_AUTH_URL: https://auth.cloud.ovh.net/v3
+  OS_PROJECT_ID: 8d3cd5d737d74227ace462dee0b903fe
+  OS_PROJECT_NAME: "9361447987648822"
+  OS_USER_DOMAIN_NAME: Default
+  OS_PROJECT_DOMAIN_ID: default
+  OS_USERNAME: 8XuhBMfkKVrk
+  OS_REGION_NAME: UK1
+  OS_INTERFACE: public
+  OS_IDENTITY_API_VERSION: "3"
+
+# Elastx is generously donating resources for Kubespray on Openstack CI
+# Contacts: @gix @bl0m1
+.elastx_variables: &elastx_variables
+  OS_AUTH_URL: https://ops.elastx.cloud:5000
+  OS_PROJECT_ID: 564c6b461c6b44b1bb19cdb9c2d928e4
+  OS_PROJECT_NAME: kubespray_ci
+  OS_USER_DOMAIN_NAME: Default
+  OS_PROJECT_DOMAIN_ID: default
+  OS_USERNAME: kubespray@root314.com
+  OS_REGION_NAME: se-sto
+  OS_INTERFACE: public
+  OS_IDENTITY_API_VERSION: "3"
+  TF_VAR_router_id: "ab95917c-41fb-4881-b507-3a6dfe9403df"
+  # Since ELASTX is in Stockholm, Mitogen helps with latency
+  MITOGEN_ENABLE: "false"
+  # Mitogen doesn't support interpreter discovery yet
+  ANSIBLE_PYTHON_INTERPRETER: "/usr/bin/python3"
+
+tf-elastx_cleanup:
+  stage: unit-tests
+  tags: [light]
+  image: python
+  variables:
+    <<: *elastx_variables
+  before_script:
+    - pip install -r scripts/openstack-cleanup/requirements.txt
+  script:
+    - ./scripts/openstack-cleanup/main.py
+
+tf-elastx_ubuntu18-calico:
+  extends: .terraform_apply
+  stage: deploy-part3
+  when: on_success
+  allow_failure: true
+  variables:
+    <<: *elastx_variables
+    TF_VERSION: $TERRAFORM_15_VERSION
+    PROVIDER: openstack
+    CLUSTER: $CI_COMMIT_REF_NAME
+    ANSIBLE_TIMEOUT: "60"
+    SSH_USER: ubuntu
+    TF_VAR_number_of_k8s_masters: "1"
+    TF_VAR_number_of_k8s_masters_no_floating_ip: "0"
+    TF_VAR_number_of_k8s_masters_no_floating_ip_no_etcd: "0"
+    TF_VAR_number_of_etcd: "0"
+    TF_VAR_number_of_k8s_nodes: "1"
+    TF_VAR_number_of_k8s_nodes_no_floating_ip: "0"
+    TF_VAR_number_of_gfs_nodes_no_floating_ip: "0"
+    TF_VAR_number_of_bastions: "0"
+    TF_VAR_number_of_k8s_masters_no_etcd: "0"
+    TF_VAR_floatingip_pool: "elx-public1"
+    TF_VAR_dns_nameservers: '["1.1.1.1", "8.8.8.8", "8.8.4.4"]'
+    TF_VAR_use_access_ip: "0"
+    TF_VAR_external_net: "600b8501-78cb-4155-9c9f-23dfcba88828"
+    TF_VAR_network_name: "ci-$CI_JOB_ID"
+    TF_VAR_az_list: '["sto1"]'
+    TF_VAR_az_list_node: '["sto1"]'
+    TF_VAR_flavor_k8s_master: 3f73fc93-ec61-4808-88df-2580d94c1a9b    # v1-standard-2
+    TF_VAR_flavor_k8s_node: 3f73fc93-ec61-4808-88df-2580d94c1a9b      # v1-standard-2
+    TF_VAR_image: ubuntu-18.04-server-latest
+    TF_VAR_k8s_allowed_remote_ips: '["0.0.0.0/0"]'
+
+# OVH voucher expired, commenting job until things are sorted  out
+
+# tf-ovh_cleanup:
+#  stage: unit-tests
+#  tags: [light]
+#  image: python
+#  environment: ovh
+#  variables:
+#    <<: *ovh_variables
+#  before_script:
+#    - pip install -r scripts/openstack-cleanup/requirements.txt
+#  script:
+#    - ./scripts/openstack-cleanup/main.py
+
+# tf-ovh_ubuntu18-calico:
+#  extends: .terraform_apply
+#  when: on_success
+#  environment: ovh
+#  variables:
+#    <<: *ovh_variables
+#    TF_VERSION: $TERRAFORM_14_VERSION
+#    PROVIDER: openstack
+#    CLUSTER: $CI_COMMIT_REF_NAME
+#    ANSIBLE_TIMEOUT: "60"
+#    SSH_USER: ubuntu
+#    TF_VAR_number_of_k8s_masters: "0"
+#    TF_VAR_number_of_k8s_masters_no_floating_ip: "1"
+#    TF_VAR_number_of_k8s_masters_no_floating_ip_no_etcd: "0"
+#    TF_VAR_number_of_etcd: "0"
+#    TF_VAR_number_of_k8s_nodes: "0"
+#    TF_VAR_number_of_k8s_nodes_no_floating_ip: "1"
+#    TF_VAR_number_of_gfs_nodes_no_floating_ip: "0"
+#    TF_VAR_number_of_bastions: "0"
+#    TF_VAR_number_of_k8s_masters_no_etcd: "0"
+#    TF_VAR_use_neutron: "0"
+#    TF_VAR_floatingip_pool: "Ext-Net"
+#    TF_VAR_external_net: "6011fbc9-4cbf-46a4-8452-6890a340b60b"
+#    TF_VAR_network_name: "Ext-Net"
+#    TF_VAR_flavor_k8s_master: "defa64c3-bd46-43b4-858a-d93bbae0a229"    # s1-8
+#    TF_VAR_flavor_k8s_node: "defa64c3-bd46-43b4-858a-d93bbae0a229"      # s1-8
+#    TF_VAR_image: "Ubuntu 18.04"
+#    TF_VAR_k8s_allowed_remote_ips: '["0.0.0.0/0"]'

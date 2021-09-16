@@ -1,0 +1,124 @@
+---
+- block:
+    - name: set default values for flag variables
+      set_fact:
+        image_is_cached: false
+        image_changed: false
+        pull_required: "{{ download_always_pull }}"
+      tags:
+        - facts
+
+    - name: download_container | Set a few facts
+      import_tasks: set_container_facts.yml
+      tags:
+        - facts
+
+    - name: download_container | Prepare container download
+      include_tasks: check_pull_required.yml
+      when:
+        - not download_always_pull
+
+    - debug:  # noqa unnamed-task
+        msg: "Pull {{ image_reponame }} required is: {{ pull_required }}"
+
+    - name: download_container | Determine if image is in cache
+      stat:
+        path: "{{ image_path_cached }}"
+        get_attributes: no
+        get_checksum: no
+        get_mime: no
+      delegate_to: localhost
+      connection: local
+      delegate_facts: no
+      register: cache_image
+      changed_when: false
+      become: false
+      when:
+        - download_force_cache
+
+    - name: download_container | Set fact indicating if image is in cache
+      set_fact:
+        image_is_cached: "{{ cache_image.stat.exists }}"
+      tags:
+        - facts
+      when:
+        - download_force_cache
+
+    - name: Stop if image not in cache on ansible host when download_force_cache=true
+      assert:
+        that: image_is_cached
+        msg: "Image cache file {{ image_path_cached }} not found for {{ image_reponame }} on localhost"
+      when:
+        - download_force_cache
+        - not download_run_once
+
+    - name: download_container | Download image if required
+      command: "{{ image_pull_command_on_localhost if download_localhost else image_pull_command }} {{ image_reponame }}"
+      delegate_to: "{{ download_delegate if download_run_once else inventory_hostname }}"
+      delegate_facts: yes
+      run_once: "{{ download_run_once }}"
+      register: pull_task_result
+      until: pull_task_result is succeeded
+      delay: "{{ retry_stagger | random + 3 }}"
+      retries: 4
+      become: "{{ user_can_become_root | default(false) or not download_localhost }}"
+      when:
+        - pull_required or download_run_once
+        - not image_is_cached
+
+    - name: download_container | Save and compress image
+      shell: "{{ image_save_command_on_localhost if download_localhost else image_save_command }}"  # noqa 305 image_save_command_on_localhost contains a pipe, therefore requires shell
+      delegate_to: "{{ download_delegate }}"
+      delegate_facts: no
+      register: container_save_status
+      failed_when: container_save_status.stderr
+      run_once: true
+      become: "{{ user_can_become_root | default(false) or not download_localhost }}"
+      when:
+        - not image_is_cached
+        - download_run_once
+
+    - name: download_container | Copy image to ansible host cache
+      synchronize:
+        src: "{{ image_path_final }}"
+        dest: "{{ image_path_cached }}"
+        use_ssh_args: "{{ has_bastion | default(false) }}"
+        mode: pull
+      when:
+        - not image_is_cached
+        - download_run_once
+        - not download_localhost
+        - download_delegate == inventory_hostname
+
+    - name: download_container | Upload image to node if it is cached
+      synchronize:
+        src: "{{ image_path_cached }}"
+        dest: "{{ image_path_final }}"
+        use_ssh_args: "{{ has_bastion | default(false) }}"
+        mode: push
+      delegate_facts: no
+      register: upload_image
+      failed_when: not upload_image
+      until: upload_image is succeeded
+      retries: 4
+      delay: "{{ retry_stagger | random + 3 }}"
+      when:
+        - pull_required
+        - download_force_cache
+
+    - name: download_container | Load image into the local container registry
+      shell: "{{ image_load_command }}"  # noqa 305 image_load_command uses pipes, therefore requires shell
+      register: container_load_status
+      failed_when: container_load_status is failed
+      when:
+        - pull_required
+        - download_force_cache
+
+    - name: download_container | Remove container image from cache
+      file:
+        state: absent
+        path: "{{ image_path_final }}"
+      when:
+        - not download_keep_remote_cache
+  tags:
+    - download

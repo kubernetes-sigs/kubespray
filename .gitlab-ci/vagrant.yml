@@ -1,0 +1,61 @@
+---
+
+molecule_tests:
+  tags: [c3.small.x86]
+  only: [/^pr-.*$/]
+  except: ['triggers']
+  image: quay.io/kubespray/vagrant:$KUBESPRAY_VERSION
+  services: []
+  stage: deploy-part1
+  before_script:
+    - tests/scripts/rebase.sh
+    - apt-get update && apt-get install -y python3-pip
+    - update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+    - python -m pip uninstall -y ansible
+    - python -m pip install -r tests/requirements.txt
+    - ./tests/scripts/vagrant_clean.sh
+  script:
+    - ./tests/scripts/molecule_run.sh
+
+.vagrant:
+  extends: .testcases
+  variables:
+    CI_PLATFORM: "vagrant"
+    SSH_USER: "vagrant"
+    VAGRANT_DEFAULT_PROVIDER: "libvirt"
+    KUBESPRAY_VAGRANT_CONFIG: tests/files/${CI_JOB_NAME}.rb
+  tags: [c3.small.x86]
+  only: [/^pr-.*$/]
+  except: ['triggers']
+  image: quay.io/kubespray/vagrant:$KUBESPRAY_VERSION
+  services: []
+  before_script:
+    - apt-get update && apt-get install -y python3-pip
+    - update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+    - python -m pip uninstall -y ansible
+    - python -m pip install -r tests/requirements.txt
+    - ./tests/scripts/vagrant_clean.sh
+  script:
+    - ./tests/scripts/testcases_run.sh
+  after_script:
+    - chronic ./tests/scripts/testcases_cleanup.sh
+
+vagrant_ubuntu18-calico-dual-stack:
+  stage: deploy-part2
+  extends: .vagrant
+  when: on_success
+
+vagrant_ubuntu18-flannel:
+  stage: deploy-part2
+  extends: .vagrant
+  when: on_success
+
+vagrant_ubuntu18-weave-medium:
+  stage: deploy-part2
+  extends: .vagrant
+  when: manual
+
+vagrant_ubuntu20-flannel:
+  stage: deploy-part2
+  extends: .vagrant
+  when: on_success

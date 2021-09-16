@@ -1,0 +1,75 @@
+{
+  "name": "cni0",
+  "cniVersion":"0.3.1",
+  "plugins":[
+    {
+{% if calico_datastore == "kdd" %}
+      "datastore_type": "kubernetes",
+      "nodename": "__KUBERNETES_NODE_NAME__",
+{% else %}
+{% if cloud_provider is defined %}
+      "nodename": "{{ calico_kubelet_name.stdout }}",
+{% else %}
+      "nodename": "{{ calico_baremetal_nodename }}",
+{% endif %}
+{% endif %}
+      "type": "calico",
+      "log_level": "info",
+      "log_file_path": "/var/log/calico/cni/cni.log",
+{% if calico_datastore == "etcd" %}
+      "etcd_endpoints": "{{ etcd_access_addresses }}",
+      "etcd_cert_file": "{{ calico_cert_dir }}/cert.crt",
+      "etcd_key_file": "{{ calico_cert_dir }}/key.pem",
+      "etcd_ca_cert_file": "{{ calico_cert_dir }}/ca_cert.crt",
+{% endif %}
+{% if calico_ipam_host_local is defined %}
+      "ipam": {
+        "type": "host-local",
+        "subnet": "usePodCidr"
+      },
+{% else %}
+      "ipam": {
+        "type": "calico-ipam",
+{%   if enable_dual_stack_networks %}
+        "assign_ipv6": "true",
+        "ipv6_pools": ["{{ calico_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}"],
+{%   endif %}
+        "assign_ipv4": "true",
+        "ipv4_pools": ["{{ calico_pool_cidr | default(kube_pods_subnet) }}"]
+      },
+{% endif %}
+{% if (calico_feature_control is defined) and (calico_feature_control|length > 0) %}
+      "feature_control": {
+        {% for fc in calico_feature_control -%}
+        {% set fcval = calico_feature_control[fc] -%}
+          "{{ fc }}": {{ (fcval | string | lower) if (fcval == true or fcval == false) else "\"" + fcval + "\"" }}{{ "," if not loop.last else "" }}
+        {% endfor -%}
+      {{- "" }}
+      },
+{% endif %}
+{% if enable_network_policy %}
+      "policy": {
+        "type": "k8s"
+      },
+{% endif %}
+{% if calico_mtu is defined and calico_mtu is number %}
+      "mtu": {{ calico_mtu }},
+{% endif %}
+      "kubernetes": {
+        "kubeconfig": "__KUBECONFIG_FILEPATH__"
+      }
+    },
+    {
+      "type":"portmap",
+      "capabilities": {
+        "portMappings": true
+      }
+    },
+    {
+      "type":"bandwidth",
+      "capabilities": {
+        "bandwidth": true
+      }
+    }
+  ]
+}

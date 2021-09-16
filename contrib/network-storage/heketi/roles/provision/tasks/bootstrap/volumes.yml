@@ -1,0 +1,41 @@
+---
+- name: "Get heketi volume ids."
+  command: "{{ bin_dir }}/kubectl exec {{ initial_heketi_pod_name }} -- heketi-cli --user admin --secret {{ heketi_admin_key }} volume list --json"
+  changed_when: false
+  register: "heketi_volumes"
+- name: "Get heketi volumes."
+  changed_when: false
+  command: "{{ bin_dir }}/kubectl exec {{ initial_heketi_pod_name }} -- heketi-cli --user admin --secret {{ heketi_admin_key }} volume info {{ volume_id }} --json"
+  with_items: "{{ heketi_volumes.stdout|from_json|json_query(\"volumes[*]\") }}"
+  loop_control: { loop_var: "volume_id" }
+  register: "volumes_information"
+- name: "Test heketi database volume."
+  set_fact: { heketi_database_volume_exists: true }
+  with_items: "{{ volumes_information.results }}"
+  loop_control: { loop_var: "volume_information" }
+  vars: { volume: "{{ volume_information.stdout|from_json }}" }
+  when: "volume.name == 'heketidbstorage'"
+- name: "Provision database volume."
+  command: "{{ bin_dir }}/kubectl exec {{ initial_heketi_pod_name }} -- heketi-cli --user admin --secret {{ heketi_admin_key }} setup-openshift-heketi-storage"
+  when: "heketi_database_volume_exists is undefined"
+- name: "Copy configuration from pod."  # noqa 301
+  become: true
+  command: "{{ bin_dir }}/kubectl cp {{ initial_heketi_pod_name }}:/heketi-storage.json {{ kube_config_dir }}/heketi-storage-bootstrap.json"
+- name: "Get heketi volume ids."
+  command: "{{ bin_dir }}/kubectl exec {{ initial_heketi_pod_name }} -- heketi-cli --user admin --secret {{ heketi_admin_key }} volume list --json"
+  changed_when: false
+  register: "heketi_volumes"
+- name: "Get heketi volumes."
+  changed_when: false
+  command: "{{ bin_dir }}/kubectl exec {{ initial_heketi_pod_name }} -- heketi-cli --user admin --secret {{ heketi_admin_key }} volume info {{ volume_id }} --json"
+  with_items: "{{ heketi_volumes.stdout|from_json|json_query(\"volumes[*]\") }}"
+  loop_control: { loop_var: "volume_id" }
+  register: "volumes_information"
+- name: "Test heketi database volume."
+  set_fact: { heketi_database_volume_created: true }
+  with_items: "{{ volumes_information.results }}"
+  loop_control: { loop_var: "volume_information" }
+  vars: { volume: "{{ volume_information.stdout|from_json }}" }
+  when: "volume.name == 'heketidbstorage'"
+- name: "Ensure heketi database volume exists."
+  assert: { that: "heketi_database_volume_created is defined", msg: "Heketi database volume does not exist." }

@@ -1,0 +1,20 @@
+---
+- hosts: kube_control_plane
+
+  tasks:
+  - name: Check the API servers are responding
+    uri:
+      url: "https://{{ access_ip | default(ansible_default_ipv4.address) }}:{{ kube_apiserver_port | default(6443) }}/version"
+      validate_certs: no
+      status_code: 200
+    register: apiserver_response
+
+  - debug:  # noqa unnamed-task
+      msg: "{{ apiserver_response.json }}"
+
+  - name: Check API servers version
+    assert:
+      that:
+      - apiserver_response.json.gitVersion == kube_version
+      fail_msg: "apiserver version different than expected {{ kube_version }}"
+    when: kube_version is defined

@@ -1,0 +1,76 @@
+---
+- name: Update package management cache (zypper) - SUSE
+  command: zypper -n --gpg-auto-import-keys ref
+  register: make_cache_output
+  until: make_cache_output is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - ansible_pkg_mgr == 'zypper'
+  tags: bootstrap-os
+
+- name: Update package management cache (APT)
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  tags:
+    - bootstrap-os
+
+- name: Remove legacy docker repo file
+  file:
+    path: "{{ yum_repo_dir }}/docker.repo"
+    state: absent
+  when:
+    - ansible_os_family == "RedHat"
+    - not is_fedora_coreos
+
+- name: Install python3-dnf for latest RedHat versions
+  command: dnf install -y python3-dnf
+  register: dnf_task_result
+  until: dnf_task_result is succeeded
+  retries: 4
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - ansible_distribution == "Fedora"
+    - ansible_distribution_major_version|int >= 30
+    - not is_fedora_coreos
+  changed_when: False
+  tags:
+    - bootstrap-os
+
+- name: Install epel-release on RHEL derivatives
+  package:
+    name: epel-release
+    state: present
+  when:
+    - ansible_os_family == "RedHat"
+    - not is_fedora_coreos
+    - epel_enabled|bool
+  tags:
+    - bootstrap-os
+
+- name: Update common_required_pkgs with ipvsadm when kube_proxy_mode is ipvs
+  set_fact:
+    common_required_pkgs: "{{ common_required_pkgs|default([]) + ['ipvsadm', 'ipset'] }}"
+  when: kube_proxy_mode == 'ipvs'
+
+- name: Install packages requirements
+  package:
+    name: "{{ required_pkgs | default([]) | union(common_required_pkgs|default([])) }}"
+    state: present
+  register: pkgs_task_result
+  until: pkgs_task_result is succeeded
+  retries: "{{ pkg_install_retries }}"
+  delay: "{{ retry_stagger | random + 3 }}"
+  when: not (ansible_os_family in ["Flatcar Container Linux by Kinvolk", "ClearLinux"] or is_fedora_coreos)
+  tags:
+    - bootstrap-os
+
+- name: Install ipvsadm for ClearLinux
+  package:
+    name: ipvsadm
+    state: present
+  when:
+    - ansible_os_family in ["ClearLinux"]
+    - kube_proxy_mode == 'ipvs'

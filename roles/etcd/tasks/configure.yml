@@ -1,0 +1,168 @@
+---
+- name: Configure | Check if etcd cluster is healthy
+  shell: "set -o pipefail && {{ bin_dir }}/etcdctl endpoint --cluster status && {{ bin_dir }}/etcdctl endpoint --cluster health  2>&1 | grep -v 'Error: unhealthy cluster' >/dev/null"
+  args:
+    executable: /bin/bash
+  register: etcd_cluster_is_healthy
+  failed_when: false
+  changed_when: false
+  check_mode: no
+  run_once: yes
+  when: is_etcd_master and etcd_cluster_setup
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
+
+- name: Configure | Check if etcd-events cluster is healthy
+  shell: "set -o pipefail && {{ bin_dir }}/etcdctl endpoint --cluster status && {{ bin_dir }}/etcdctl endpoint --cluster health  2>&1 | grep -v 'Error: unhealthy cluster' >/dev/null"
+  args:
+    executable: /bin/bash
+  register: etcd_events_cluster_is_healthy
+  failed_when: false
+  changed_when: false
+  check_mode: no
+  run_once: yes
+  when: is_etcd_master and etcd_events_cluster_setup
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_events_access_addresses }}"
+
+- include_tasks: refresh_config.yml
+  when: is_etcd_master
+
+- name: Configure | Copy etcd.service systemd file
+  template:
+    src: "etcd-{{ etcd_deployment_type }}.service.j2"
+    dest: /etc/systemd/system/etcd.service
+    backup: yes
+    mode: 0644
+  when: is_etcd_master and etcd_cluster_setup
+
+- name: Configure | Copy etcd-events.service systemd file
+  template:
+    src: "etcd-events-{{ etcd_deployment_type }}.service.j2"
+    dest: /etc/systemd/system/etcd-events.service
+    backup: yes
+    mode: 0644
+  when: is_etcd_master and etcd_events_cluster_setup
+
+- name: Configure | reload systemd
+  systemd:
+    daemon_reload: true
+  when: is_etcd_master
+
+# when scaling new etcd will fail to start
+- name: Configure | Ensure etcd is running
+  service:
+    name: etcd
+    state: started
+    enabled: yes
+  ignore_errors: "{{ etcd_cluster_is_healthy.rc == 0 }}"  # noqa ignore-errors
+  when: is_etcd_master and etcd_cluster_setup
+
+# when scaling new etcd will fail to start
+- name: Configure | Ensure etcd-events is running
+  service:
+    name: etcd-events
+    state: started
+    enabled: yes
+  ignore_errors: "{{ etcd_events_cluster_is_healthy.rc != 0 }}"  # noqa ignore-errors
+  when: is_etcd_master and etcd_events_cluster_setup
+
+- name: Configure | Wait for etcd cluster to be healthy
+  shell: "set -o pipefail && {{ bin_dir }}/etcdctl endpoint --cluster status && {{ bin_dir }}/etcdctl endpoint --cluster health 2>&1 | grep -v 'Error: unhealthy cluster' >/dev/null"
+  args:
+    executable: /bin/bash
+  register: etcd_cluster_is_healthy
+  until: etcd_cluster_is_healthy.rc == 0
+  retries: "{{ etcd_retries }}"
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+  check_mode: no
+  run_once: yes
+  when:
+    - is_etcd_master
+    - etcd_cluster_setup
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
+
+- name: Configure | Wait for etcd-events cluster to be healthy
+  shell: "set -o pipefail && {{ bin_dir }}/etcdctl endpoint --cluster status && {{ bin_dir }}/etcdctl endpoint --cluster health 2>&1 | grep -v 'Error: unhealthy cluster' >/dev/null"
+  args:
+    executable: /bin/bash
+  register: etcd_events_cluster_is_healthy
+  until: etcd_events_cluster_is_healthy.rc == 0
+  retries: "{{ etcd_retries }}"
+  delay: "{{ retry_stagger | random + 3 }}"
+  changed_when: false
+  check_mode: no
+  run_once: yes
+  when:
+    - is_etcd_master
+    - etcd_events_cluster_setup
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_events_access_addresses }}"
+
+- name: Configure | Check if member is in etcd cluster
+  shell: "{{ bin_dir }}/etcdctl member list | grep -q {{ etcd_access_address }}"
+  register: etcd_member_in_cluster
+  ignore_errors: true  # noqa ignore-errors
+  changed_when: false
+  check_mode: no
+  when: is_etcd_master and etcd_cluster_setup
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
+
+- name: Configure | Check if member is in etcd-events cluster
+  shell: "{{ bin_dir }}/etcdctl member list | grep -q {{ etcd_access_address }}"
+  register: etcd_events_member_in_cluster
+  ignore_errors: true  # noqa ignore-errors
+  changed_when: false
+  check_mode: no
+  when: is_etcd_master and etcd_events_cluster_setup
+  tags:
+    - facts
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+    ETCDCTL_ENDPOINTS: "{{ etcd_events_access_addresses }}"
+
+- name: Configure | Join member(s) to etcd cluster one at a time
+  include_tasks: join_etcd_member.yml
+  with_items: "{{ groups['etcd'] }}"
+  when: inventory_hostname == item and etcd_cluster_setup and etcd_member_in_cluster.rc != 0 and etcd_cluster_is_healthy.rc == 0
+
+- name: Configure | Join member(s) to etcd-events cluster one at a time
+  include_tasks: join_etcd-events_member.yml
+  with_items: "{{ groups['etcd'] }}"
+  when: inventory_hostname == item and etcd_events_cluster_setup and etcd_events_member_in_cluster.rc != 0 and etcd_events_cluster_is_healthy.rc == 0

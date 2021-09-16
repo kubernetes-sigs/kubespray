@@ -1,0 +1,80 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloud-controller-manager
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vsphere-cloud-controller-manager
+  namespace: kube-system
+  labels:
+    k8s-app: vsphere-cloud-controller-manager
+spec:
+  selector:
+    matchLabels:
+      k8s-app: vsphere-cloud-controller-manager
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        k8s-app: vsphere-cloud-controller-manager
+    spec:
+      nodeSelector:
+{% if kube_version is version('v1.20.0', '<') %}
+        node-role.kubernetes.io/master: ""
+{% else %}
+        node-role.kubernetes.io/control-plane: ""
+{% endif %}
+      securityContext:
+        runAsUser: 0
+      tolerations:
+      - key: node.cloudprovider.kubernetes.io/uninitialized
+        value: "true"
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+      serviceAccountName: cloud-controller-manager
+      containers:
+        - name: vsphere-cloud-controller-manager
+          image: {{ gcr_image_repo }}/cloud-provider-vsphere/cpi/release/manager:{{ external_vsphere_cloud_controller_image_tag }}
+          args:
+            - --v=2
+            - --cloud-provider=vsphere
+            - --cloud-config=/etc/cloud/vsphere.conf
+{% for key, value in external_vsphere_cloud_controller_extra_args.items() %}
+            - "{{ '--' + key + '=' + value }}"
+{% endfor %}
+          volumeMounts:
+            - mountPath: /etc/cloud
+              name: vsphere-config-volume
+              readOnly: true
+          resources:
+            requests:
+              cpu: 200m
+      hostNetwork: true
+      volumes:
+      - name: vsphere-config-volume
+        configMap:
+          name: cloud-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: cloud-controller-manager
+  name: vsphere-cloud-controller-manager
+  namespace: kube-system
+spec:
+  type: NodePort
+  ports:
+    - port: 43001
+      protocol: TCP
+      targetPort: 43001
+  selector:
+    component: cloud-controller-manager

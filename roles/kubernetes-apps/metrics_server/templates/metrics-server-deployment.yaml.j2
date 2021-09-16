@@ -1,0 +1,148 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: metrics-server
+    addonmanager.kubernetes.io/mode: Reconcile
+    version: {{ metrics_server_version }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: metrics-server
+      version: {{ metrics_server_version }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+  template:
+    metadata:
+      name: metrics-server
+      labels:
+        app.kubernetes.io/name: metrics-server
+        version: {{ metrics_server_version }}
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: 'runtime/default'
+    spec:
+      priorityClassName: system-cluster-critical
+      serviceAccountName: metrics-server
+      containers:
+      - name: metrics-server
+        image: {{ metrics_server_image_repo }}:{{ metrics_server_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        args:
+        - --logtostderr
+        - --cert-dir=/tmp
+        - --secure-port=443
+{% if metrics_server_kubelet_preferred_address_types %}
+        - --kubelet-preferred-address-types={{ metrics_server_kubelet_preferred_address_types }}
+{% endif %}
+        - --kubelet-use-node-status-port
+{% if metrics_server_kubelet_insecure_tls %}
+        - --kubelet-insecure-tls
+{% endif %}
+        - --metric-resolution={{ metrics_server_metric_resolution }}
+        ports:
+        - containerPort: 443
+          name: https
+          protocol: TCP
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        livenessProbe:
+          httpGet:
+            path: /livez
+            port: https
+            scheme: HTTPS
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 40
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: https
+            scheme: HTTPS
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 40
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["all"]
+            add: ["NET_BIND_SERVICE"]
+          readOnlyRootFilesystem: true
+          runAsGroup: 10001
+          runAsNonRoot: true
+          runAsUser: 10001
+        resources:
+          limits:
+            cpu: {{ metrics_server_limits_cpu }}
+            memory: {{ metrics_server_limits_memory }}
+          requests:
+            cpu: {{ metrics_server_requests_cpu }}
+            memory: {{ metrics_server_requests_memory }}
+      - name: metrics-server-nanny
+        image: {{ addon_resizer_image_repo }}:{{ addon_resizer_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        resources:
+          limits:
+            cpu: {{ addon_resizer_limits_cpu }}
+            memory: {{ addon_resizer_limits_memory }}
+          requests:
+            cpu: {{ addon_resizer_requests_cpu }}
+            memory: {{ addon_resizer_requests_memory }}
+        env:
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        volumeMounts:
+        - name: metrics-server-config-volume
+          mountPath: /etc/config
+        command:
+          - /pod_nanny
+          - --config-dir=/etc/config
+          - --cpu={{ metrics_server_cpu }}
+          - --extra-cpu=1m
+          - --memory={{ metrics_server_memory }}
+          - --extra-memory={{ metrics_server_memory_per_node }}
+          - --threshold=5
+          - --deployment=metrics-server
+          - --container=metrics-server
+          - --poll-period=300000
+          - --estimator=exponential
+          # Specifies the smallest cluster (defined in number of nodes)
+          # resources will be scaled to.
+          - --minClusterSize={{ metrics_server_min_cluster_size }}
+      volumes:
+        - name: metrics-server-config-volume
+          configMap:
+            name: metrics-server-config
+        - name: tmp
+          emptyDir: {}
+{% if not masters_are_not_tainted %}
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+{% endif %}
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+{% if kube_version is version('v1.20.0', '<') %}
+              - key: node-role.kubernetes.io/master
+{% else %}
+              - key: node-role.kubernetes.io/control-plane
+{% endif %}
+                operator: In
+                values:
+                - ""

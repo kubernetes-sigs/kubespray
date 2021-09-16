@@ -1,0 +1,71 @@
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: kube-multus-ds-amd64
+  namespace: kube-system
+  labels:
+    tier: node
+    app: multus
+spec:
+  selector:
+    matchLabels:
+      tier: node
+      app: multus
+  template:
+    metadata:
+      labels:
+        tier: node
+        app: multus
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      tolerations:
+      - operator: Exists
+      serviceAccountName: multus
+      containers:
+      - name: kube-multus
+        image: {{ multus_image_repo }}:{{ multus_image_tag }}
+        command: ["/entrypoint.sh"]
+        args:
+        - "--cni-conf-dir={{ multus_cni_conf_dir }}"
+        - "--cni-bin-dir={{ multus_cni_bin_dir }}"
+        - "--multus-conf-file={{ multus_conf_file }}"
+        - "--multus-kubeconfig-file-host={{ multus_kubeconfig_file_host }}"
+        - "--cni-version={{ multus_cni_version }}"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "90Mi"
+          limits:
+            cpu: "100m"
+            memory: "90Mi"
+        securityContext:
+          privileged: true
+{% if container_manager == 'crio' %}
+          capabilities:
+            add: ["SYS_ADMIN"]
+{% endif %}
+        volumeMounts:
+{% if container_manager == 'crio' %}
+        - name: run
+          mountPath: {{ multus_cni_run_dir }}
+{% endif %}
+        - name: cni
+          mountPath: {{  multus_cni_conf_dir }}
+        - name: cnibin
+          mountPath: {{ multus_cni_bin_dir }}
+      volumes:
+{% if container_manager == 'crio' %}
+      - name: run
+        hostPath:
+          path: {{ multus_cni_run_dir_host }}
+{% endif %}
+      - name: cni
+        hostPath:
+          path: {{ multus_cni_conf_dir_host }}
+      - name: cnibin
+        hostPath:
+          path: {{ multus_cni_bin_dir_host }}

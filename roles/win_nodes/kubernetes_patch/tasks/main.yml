@@ -1,0 +1,41 @@
+---
+
+- name: Ensure that user manifests directory exists
+  file:
+    path: "{{ kubernetes_user_manifests_path }}/kubernetes"
+    state: directory
+    recurse: yes
+  tags: [init, cni]
+
+- name: Apply kube-proxy nodeselector
+  block:
+    # Due to https://github.com/kubernetes/kubernetes/issues/58212 we cannot rely on exit code for "kubectl patch"
+    - name: Check current nodeselector for kube-proxy daemonset
+      command: >-
+        {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf
+        get ds kube-proxy --namespace=kube-system
+        -o jsonpath='{.spec.template.spec.nodeSelector.{{ kube_proxy_nodeselector | regex_replace('\.', '\\.') }}}'
+      register: current_kube_proxy_state
+      retries: 60
+      delay: 5
+      until: current_kube_proxy_state is succeeded
+      changed_when: false
+
+    - name: Apply nodeselector patch for kube-proxy daemonset
+      shell: >-
+        {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf
+        patch ds kube-proxy --namespace=kube-system --type=strategic -p
+        '{"spec":{"template":{"spec":{"nodeSelector":{"{{ kube_proxy_nodeselector }}":"linux"} }}}}'
+      register: patch_kube_proxy_state
+      when: current_kube_proxy_state.stdout | trim | lower != "linux"
+
+    - debug:  # noqa unnamed-task
+        msg: "{{ patch_kube_proxy_state.stdout_lines }}"
+      when: patch_kube_proxy_state is not skipped
+
+    - debug:  # noqa unnamed-task
+        msg: "{{ patch_kube_proxy_state.stderr_lines }}"
+      when: patch_kube_proxy_state is not skipped
+  tags: init
+  when:
+    - kube_proxy_deployed

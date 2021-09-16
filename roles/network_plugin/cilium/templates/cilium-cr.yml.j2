@@ -1,0 +1,208 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cilium-operator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  # to automatically delete [core|kube]dns pods so that are starting to being
+  # managed by Cilium
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+  - delete
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+{% if cilium_version | regex_replace('v') is version('1.8', '<') %}
+  # to automatically read from k8s and import the node's pod CIDR to cilium's
+  # etcd so all nodes know how to reach another pod running in in a different
+  # node.
+  - nodes
+{% endif %}
+  # to perform the translation of a CNP that contains `ToGroup` to its endpoints
+  - services
+  - endpoints
+  # to check apiserver connectivity
+  - namespaces
+{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
+  - componentstatuses
+{% endif %}
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cilium.io
+  resources:
+  - ciliumnetworkpolicies
+  - ciliumnetworkpolicies/status
+  - ciliumclusterwidenetworkpolicies
+  - ciliumclusterwidenetworkpolicies/status
+  - ciliumendpoints
+  - ciliumendpoints/status
+{% if cilium_version | regex_replace('v') is version('1.6', '>=') %}
+  - ciliumnodes
+  - ciliumnodes/status
+  - ciliumidentities
+  - ciliumidentities/status
+{% endif %}
+{% if cilium_version | regex_replace('v') is version('1.9', '>=') %}
+  - ciliumnetworkpolicies/finalizers
+  - ciliumclusterwidenetworkpolicies/finalizers
+  - ciliumendpoints/finalizers
+  - ciliumnodes/finalizers
+  - ciliumidentities/finalizers
+  - ciliumlocalredirectpolicies
+  - ciliumlocalredirectpolicies/status
+  - ciliumlocalredirectpolicies/finalizers
+{% endif %}
+  verbs:
+  - '*'
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - create
+  - get
+  - list
+  - update
+  - watch
+{% if cilium_version | regex_replace('v') is version('1.8', '>=') %}
+  # For cilium-operator running in HA mode.
+  #
+  # Cilium operator running in HA mode requires the use of ResourceLock for Leader Election
+  # between mulitple running instances.
+  # The preferred way of doing this is to use LeasesResourceLock as edits to Leases are less
+  # common and fewer objects in the cluster watch "all Leases".
+  # The support for leases was introduced in coordination.k8s.io/v1 during Kubernetes 1.14 release.
+  # In Cilium we currently don't support HA mode for K8s version < 1.14. This condition make sure
+  # that we only authorize access to leases resources in supported K8s versions.
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - get
+  - update
+{% endif %}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cilium
+rules:
+- apiGroups:
+  - networking.k8s.io
+  resources:
+{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
+  - ingresses
+{% endif %}
+  - networkpolicies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  - services
+  - nodes
+  - endpoints
+{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
+  - componentstatuses
+{% endif %}
+  verbs:
+  - get
+  - list
+  - watch
+{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+{% endif %}
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - nodes/status
+  verbs:
+  - patch
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - cilium.io
+  resources:
+  - ciliumnetworkpolicies
+  - ciliumnetworkpolicies/status
+{% if cilium_version | regex_replace('v') is version('1.7', '>=') %}
+  - ciliumclusterwidenetworkpolicies
+  - ciliumclusterwidenetworkpolicies/status
+{% endif %}
+  - ciliumendpoints
+  - ciliumendpoints/status
+{% if cilium_version | regex_replace('v') is version('1.6', '>=') %}
+  - ciliumnodes
+  - ciliumnodes/status
+  - ciliumidentities
+  - ciliumidentities/status
+{% endif %}
+{% if cilium_version | regex_replace('v') is version('1.9', '>=') %}
+  - ciliumnetworkpolicies/finalizers
+  - ciliumclusterwidenetworkpolicies/finalizers
+  - ciliumendpoints/finalizers
+  - ciliumnodes/finalizers
+  - ciliumidentities/finalizers
+  - ciliumlocalredirectpolicies
+  - ciliumlocalredirectpolicies/status
+  - ciliumlocalredirectpolicies/finalizers
+{% endif %}
+  verbs:
+  - '*'

@@ -1,0 +1,100 @@
+---
+# Todo : selinux configuration
+- name: Confirm selinux deployed
+  stat:
+    path: /etc/selinux/config
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  when:
+    - ansible_os_family == "RedHat"
+    - "'Amazon' not in ansible_distribution"
+  register: slc
+
+- name: Set selinux policy
+  selinux:
+    policy: targeted
+    state: "{{ preinstall_selinux_state }}"
+  when:
+    - ansible_os_family == "RedHat"
+    - "'Amazon' not in ansible_distribution"
+    - slc.stat.exists
+  changed_when: False
+  tags:
+    - bootstrap-os
+
+- name: Disable IPv6 DNS lookup
+  lineinfile:
+    dest: /etc/gai.conf
+    line: "precedence ::ffff:0:0/96  100"
+    state: present
+    create: yes
+    backup: yes
+    mode: 0644
+  when:
+    - disable_ipv6_dns
+    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  tags:
+    - bootstrap-os
+
+- name: Stat sysctl file configuration
+  stat:
+    path: "{{ sysctl_file_path }}"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: sysctl_file_stat
+  tags:
+    - bootstrap-os
+
+- name: Change sysctl file path to link source if linked
+  set_fact:
+    sysctl_file_path: "{{ sysctl_file_stat.stat.lnk_source }}"
+  when:
+    - sysctl_file_stat.stat.islnk is defined
+    - sysctl_file_stat.stat.islnk
+  tags:
+    - bootstrap-os
+
+- name: Make sure sysctl file path folder exists
+  file:
+    name: "{{ sysctl_file_path | dirname }}"
+    state: directory
+    mode: 0755
+
+- name: Enable ip forwarding
+  sysctl:
+    sysctl_file: "{{ sysctl_file_path }}"
+    name: net.ipv4.ip_forward
+    value: "1"
+    state: present
+    reload: yes
+
+- name: Enable ipv6 forwarding
+  sysctl:
+    sysctl_file: "{{ sysctl_file_path }}"
+    name: net.ipv6.conf.all.forwarding
+    value: 1
+    state: present
+    reload: yes
+  when: enable_dual_stack_networks | bool
+
+- name: Ensure kube-bench parameters are set
+  sysctl:
+    sysctl_file: /etc/sysctl.d/bridge-nf-call.conf
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  with_items:
+    - { name: vm.overcommit_memory, value: 1 }
+    - { name: kernel.panic, value: 10 }
+    - { name: kernel.panic_on_oops, value: 1 }
+  when: kubelet_protect_kernel_defaults|bool
+
+- name: Check dummy module
+  modprobe:
+    name: dummy
+    state: present
+    params: 'numdummies=0'
+  when: enable_nodelocaldns

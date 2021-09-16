@@ -1,0 +1,323 @@
+# Copyright 2017 The Kubernetes Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Configuration to deploy release version of the Dashboard UI compatible with
+# Kubernetes 1.8.
+#
+# Example usage: kubectl create -f <this_file>
+
+{% if dashboard_namespace != "kube-system" %}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ dashboard_namespace }}
+  labels:
+    name: {{ dashboard_namespace }}
+{% endif %}
+
+---
+# ------------------- Dashboard Secrets ------------------- #
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard-certs
+  namespace: {{ dashboard_namespace }}
+type: Opaque
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard-csrf
+  namespace: {{ dashboard_namespace }}
+type: Opaque
+data:
+  csrf: ""
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard-key-holder
+  namespace: {{ dashboard_namespace }}
+type: Opaque
+
+---
+# ------------------- Dashboard ConfigMap ------------------- #
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard-settings
+  namespace: {{ dashboard_namespace }}
+
+---
+# ------------------- Dashboard Service Account ------------------- #
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: {{ dashboard_namespace }}
+
+---
+# ------------------- Dashboard Role & Role Binding ------------------- #
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: {{ dashboard_namespace }}
+rules:
+  # Allow Dashboard to get, update and delete Dashboard exclusive secrets.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["kubernetes-dashboard-key-holder", "kubernetes-dashboard-certs", "kubernetes-dashboard-csrf"]
+    verbs: ["get", "update", "delete"]
+    # Allow Dashboard to get and update 'kubernetes-dashboard-settings' config map.
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["kubernetes-dashboard-settings"]
+    verbs: ["get", "update"]
+    # Allow Dashboard to get metrics.
+  - apiGroups: [""]
+    resources: ["services"]
+    resourceNames: ["heapster", "dashboard-metrics-scraper"]
+    verbs: ["proxy"]
+  - apiGroups: [""]
+    resources: ["services/proxy"]
+    resourceNames: ["heapster", "http:heapster:", "https:heapster:", "dashboard-metrics-scraper", "http:dashboard-metrics-scraper"]
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: {{ dashboard_namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kubernetes-dashboard
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-dashboard
+    namespace: {{ dashboard_namespace }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubernetes-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubernetes-dashboard
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-dashboard
+    namespace: {{ dashboard_namespace }}
+
+---
+# ------------------- Dashboard Deployment ------------------- #
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: {{ dashboard_namespace }}
+spec:
+  replicas: {{ dashboard_replicas }}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      k8s-app: kubernetes-dashboard
+  template:
+    metadata:
+      labels:
+        k8s-app: kubernetes-dashboard
+    spec:
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: kubernetes-dashboard
+          image: {{ dashboard_image_repo }}:{{ dashboard_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          resources:
+            limits:
+              cpu: {{ dashboard_cpu_limit }}
+              memory: {{ dashboard_memory_limit }}
+            requests:
+              cpu: {{ dashboard_cpu_requests }}
+              memory: {{ dashboard_memory_requests }}
+          ports:
+            - containerPort: 8443
+              protocol: TCP
+          args:
+            - --namespace={{ dashboard_namespace }}
+{% if dashboard_use_custom_certs %}
+            - --tls-key-file={{ dashboard_tls_key_file }}
+            - --tls-cert-file={{ dashboard_tls_cert_file }}
+{% else %}
+            - --auto-generate-certificates
+{% endif %}
+{% if dashboard_skip_login %}
+            - --enable-skip-login
+{% endif %}
+            - --authentication-mode=token
+            # Uncomment the following line to manually specify Kubernetes API server Host
+            # If not specified, Dashboard will attempt to auto discover the API server and connect
+            # to it. Uncomment only if the default does not work.
+            # - --apiserver-host=http://my-address:port
+            - --token-ttl={{ dashboard_token_ttl }}
+          volumeMounts:
+            - name: kubernetes-dashboard-certs
+              mountPath: /certs
+              # Create on-disk volume to store exec logs
+            - mountPath: /tmp
+              name: tmp-volume
+          livenessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /
+              port: 8443
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+      volumes:
+        - name: kubernetes-dashboard-certs
+          secret:
+            secretName: {{ dashboard_certs_secret_name }}
+        - name: tmp-volume
+          emptyDir: {}
+      serviceAccountName: kubernetes-dashboard
+{% if dashboard_master_toleration %}
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+{% endif %}
+
+---
+# ------------------- Dashboard Service ------------------- #
+
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: {{ dashboard_namespace }}
+spec:
+  ports:
+    - port: 443
+      targetPort: 8443
+  selector:
+    k8s-app: kubernetes-dashboard
+
+---
+# ------------------- Metrics Scrapper Service Account ------------------- #
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+rules:
+  # Allow Metrics Scraper to get metrics from the Metrics server
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list", "watch"]
+
+---
+
+# ------------------- Metrics Scrapper Service  ------------------- #
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    k8s-app: kubernetes-metrics-scraper
+  name: dashboard-metrics-scraper
+  namespace: {{ dashboard_namespace }}
+spec:
+  ports:
+    - port: 8000
+      targetPort: 8000
+  selector:
+    k8s-app: kubernetes-metrics-scraper
+
+---
+
+# ------------------- Metrics Scrapper Deployment  ------------------- #
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    k8s-app: kubernetes-metrics-scraper
+  name: kubernetes-metrics-scraper
+  namespace: {{ dashboard_namespace }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      k8s-app: kubernetes-metrics-scraper
+  template:
+    metadata:
+      labels:
+        k8s-app: kubernetes-metrics-scraper
+    spec:
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: kubernetes-metrics-scraper
+          image: {{ dashboard_metrics_scraper_repo }}:{{ dashboard_metrics_scraper_tag }}
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /
+              port: 8000
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+          volumeMounts:
+          - mountPath: /tmp
+            name: tmp-volume
+      serviceAccountName: kubernetes-dashboard
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
+{% if dashboard_master_toleration %}
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+{% endif %}

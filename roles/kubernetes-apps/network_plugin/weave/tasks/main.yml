@@ -1,0 +1,21 @@
+---
+
+- name: Weave | Start Resources
+  kube:
+    name: "weave-net"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/weave-net.yml"
+    resource: "ds"
+    namespace: "kube-system"
+    state: "latest"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Weave | Wait for Weave to become available
+  uri:
+    url: http://127.0.0.1:6784/status
+    return_content: yes
+  register: weave_status
+  retries: 180
+  delay: 5
+  until: "weave_status.status == 200 and 'Status: ready' in weave_status.content"
+  when: inventory_hostname == groups['kube_control_plane'][0]

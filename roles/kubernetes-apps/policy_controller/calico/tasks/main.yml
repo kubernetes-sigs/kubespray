@@ -1,0 +1,39 @@
+---
+- name: Set cert dir
+  set_fact:
+    calico_cert_dir: "{{ canal_cert_dir }}"
+  when:
+    - kube_network_plugin == 'canal'
+  tags:
+    - facts
+    - canal
+
+- name: Create calico-kube-controllers manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - {name: calico-kube-controllers, file: calico-kube-controllers.yml, type: deployment}
+    - {name: calico-kube-controllers, file: calico-kube-sa.yml, type: sa}
+    - {name: calico-kube-controllers, file: calico-kube-cr.yml, type: clusterrole}
+    - {name: calico-kube-controllers, file: calico-kube-crb.yml, type: clusterrolebinding}
+  register: calico_kube_manifests
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - rbac_enabled or item.type not in rbac_resources
+
+- name: Start of Calico kube controllers
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "kube-system"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ calico_kube_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"

@@ -1,0 +1,117 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ingress-nginx-controller
+  namespace: {{ ingress_nginx_namespace }}
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+      app.kubernetes.io/part-of: ingress-nginx
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ingress-nginx
+        app.kubernetes.io/part-of: ingress-nginx
+      annotations:
+        prometheus.io/port: "10254"
+        prometheus.io/scrape: "true"
+    spec:
+      serviceAccountName: ingress-nginx
+{% if ingress_nginx_host_network %}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+{% endif %}
+{% if ingress_nginx_nodeselector %}
+      nodeSelector:
+        {{ ingress_nginx_nodeselector | to_nice_yaml | indent(width=8) }}
+{%- endif %}
+{% if ingress_nginx_tolerations %}
+      tolerations:
+        {{ ingress_nginx_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
+{% endif %}
+      priorityClassName: {% if ingress_nginx_namespace == 'kube-system' %}system-node-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
+      containers:
+        - name: ingress-nginx-controller
+          image: {{ ingress_nginx_controller_image_repo }}:{{ ingress_nginx_controller_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /wait-shutdown
+          args:
+            - /nginx-ingress-controller
+            - --configmap=$(POD_NAMESPACE)/ingress-nginx
+            - --tcp-services-configmap=$(POD_NAMESPACE)/tcp-services
+            - --udp-services-configmap=$(POD_NAMESPACE)/udp-services
+            - --annotations-prefix=nginx.ingress.kubernetes.io
+{% if ingress_nginx_class is defined %}
+            - --ingress-class={{ ingress_nginx_class }}
+{% endif %}
+{% if ingress_nginx_host_network %}
+            - --report-node-internal-ip-address
+{% endif %}
+{% if ingress_publish_status_address != "" %}
+            - --publish-status-address={{ ingress_publish_status_address }}
+{% endif %}
+{% for extra_arg in ingress_nginx_extra_args %}
+            - {{ extra_arg }}
+{% endfor %}
+          securityContext:
+            capabilities:
+                drop:
+                  - ALL
+                add:
+                  - NET_BIND_SERVICE
+            # www-data -> 101
+            runAsUser: 101
+            allowPrivilegeEscalation: true
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: LD_PRELOAD
+              value: /usr/local/lib/libmimalloc.so
+          ports:
+            - name: http
+              containerPort: 80
+              hostPort: {{ ingress_nginx_insecure_port }}
+            - name: https
+              containerPort: 443
+              hostPort: {{ ingress_nginx_secure_port }}
+            - name: metrics
+              containerPort: 10254
+{% if not ingress_nginx_host_network %}
+              hostPort: {{ ingress_nginx_metrics_port }}
+{% endif %}
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 10254
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3

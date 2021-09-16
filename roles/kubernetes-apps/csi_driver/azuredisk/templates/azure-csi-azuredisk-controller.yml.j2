@@ -1,0 +1,200 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: csi-azuredisk-controller
+  namespace: kube-system
+spec:
+  replicas: {{ azure_csi_controller_replicas }}
+  selector:
+    matchLabels:
+      app: csi-azuredisk-controller
+  template:
+    metadata:
+      labels:
+        app: csi-azuredisk-controller
+    spec:
+      hostNetwork: true
+      serviceAccountName: csi-azuredisk-controller-sa
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-cluster-critical
+      tolerations:
+        - key: "node-role.kubernetes.io/master"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/control-plane"
+          effect: "NoSchedule"
+      containers:
+        - name: csi-provisioner
+          image: {{ azure_csi_image_repo }}/csi-provisioner:{{ azure_csi_provisioner_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--provisioner=disk.csi.azure.com"
+            - "--feature-gates=Topology=true"
+            - "--csi-address=$(ADDRESS)"
+            - "--connection-timeout=15s"
+            - "--v=5"
+            - "--timeout=120s"
+            - "--enable-leader-election"
+            - "--leader-election-type=leases"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+        - name: csi-attacher
+          image: {{ azure_csi_image_repo }}/csi-attacher:{{ azure_csi_attacher_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "-v=5"
+            - "-csi-address=$(ADDRESS)"
+            - "-timeout=120s"
+            - "-leader-election"
+            - "-leader-election-type=leases"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+        - name: cluster-driver-registrar
+          image: {{ azure_csi_image_repo }}/csi-cluster-driver-registrar:{{ azure_csi_cluster_registrar_image_tag }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --driver-requires-attachment=true
+            - --v=5
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+        - name: csi-snapshotter
+          image: {{ azure_csi_image_repo }}/csi-snapshotter:{{ azure_csi_snapshotter_image_tag }}
+          args:
+            - "-csi-address=$(ADDRESS)"
+            - "-leader-election"
+            - "--v=5"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+        - name: csi-resizer
+          image: {{ azure_csi_image_repo }}/csi-resizer:{{ azure_csi_resizer_image_tag }}
+          args:
+            - "-csi-address=$(ADDRESS)"
+            - "-v=5"
+            - "-leader-election"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+        - name: liveness-probe
+          image: {{ azure_csi_image_repo }}/livenessprobe:{{ azure_csi_livenessprobe_image_tag }}
+          args:
+            - --csi-address=/csi/csi.sock
+            - --connection-timeout=3s
+            - --health-port=29602
+            - --v=5
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+        - name: azuredisk
+          image: {{ azure_csi_plugin_image_repo }}/azuredisk-csi:{{ azure_csi_plugin_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--v=5"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--nodeid=$(KUBE_NODE_NAME)"
+          ports:
+            - containerPort: 29602
+              name: healthz
+              protocol: TCP
+            - containerPort: 29604
+              name: metrics
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+            periodSeconds: 30
+          env:
+            - name: AZURE_CREDENTIAL_FILE
+              value: "/etc/kubernetes/azure.json"
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+            - mountPath: /etc/kubernetes/
+              name: azure-cred
+              readOnly: true
+            - mountPath: /var/lib/waagent/ManagedIdentity-Settings
+              readOnly: true
+              name: msi
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+        - name: azure-cred
+          secret:
+            secretName: cloud-config
+        - name: msi
+          hostPath:
+            path: /var/lib/waagent/ManagedIdentity-Settings

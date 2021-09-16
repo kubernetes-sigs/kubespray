@@ -1,0 +1,94 @@
+---
+- name: Fetch /etc/os-release
+  raw: cat /etc/os-release
+  register: os_release
+  changed_when: false
+  # This command should always run, even in check mode
+  check_mode: false
+
+- include_tasks: bootstrap-centos.yml
+  when: '''ID="centos"'' in os_release.stdout_lines or ''ID="ol"'' in os_release.stdout_lines or ''ID="almalinux"'' in os_release.stdout_lines'
+
+- include_tasks: bootstrap-amazon.yml
+  when: '''ID="amzn"'' in os_release.stdout_lines'
+
+- include_tasks: bootstrap-redhat.yml
+  when: '''ID="rhel"'' in os_release.stdout_lines'
+
+- include_tasks: bootstrap-clearlinux.yml
+  when: '''ID=clear-linux-os'' in os_release.stdout_lines'
+
+# Fedora CoreOS
+- include_tasks: bootstrap-fedora-coreos.yml
+  when:
+    - '''ID=fedora'' in os_release.stdout_lines'
+    - '''VARIANT_ID=coreos'' in os_release.stdout_lines'
+
+- include_tasks: bootstrap-flatcar.yml
+  when: '''ID=flatcar'' in os_release.stdout_lines'
+
+- include_tasks: bootstrap-debian.yml
+  when: '''ID=debian'' in os_release.stdout_lines or ''ID=ubuntu'' in os_release.stdout_lines'
+
+# Fedora "classic"
+- include_tasks: bootstrap-fedora.yml
+  when:
+    - '''ID=fedora'' in os_release.stdout_lines'
+    - '''VARIANT_ID=coreos'' not in os_release.stdout_lines'
+
+- include_tasks: bootstrap-opensuse.yml
+  when: '''ID="opensuse-leap"'' in os_release.stdout_lines or ''ID="opensuse-tumbleweed"'' in os_release.stdout_lines'
+
+- name: Create remote_tmp for it is used by another module
+  file:
+    path: "{{ ansible_remote_tmp | default('~/.ansible/tmp') }}"
+    state: directory
+    mode: 0700
+
+# Workaround for https://github.com/ansible/ansible/issues/42726
+# (1/3)
+- name: Gather host facts to get ansible_os_family
+  setup:
+    gather_subset: '!all'
+    filter: ansible_*
+
+- name: Assign inventory name to unconfigured hostnames (non-CoreOS, non-Flatcar, Suse and ClearLinux)
+  hostname:
+    name: "{{ inventory_hostname }}"
+  when:
+    - override_system_hostname
+    - ansible_os_family not in ['Suse', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] and not is_fedora_coreos
+
+# (2/3)
+- name: Assign inventory name to unconfigured hostnames (CoreOS, Flatcar, Suse and ClearLinux only)
+  command: "hostnamectl set-hostname {{ inventory_hostname }}"
+  register: hostname_changed
+  become: true
+  changed_when: false
+  when:
+    - override_system_hostname
+    - ansible_os_family in ['Suse', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] or is_fedora_coreos
+
+# (3/3)
+- name: Update hostname fact (CoreOS, Flatcar, Suse and ClearLinux only)
+  setup:
+    gather_subset: '!all'
+    filter: ansible_hostname
+  when:
+    - override_system_hostname
+    - ansible_os_family in ['Suse', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] or is_fedora_coreos
+
+- name: "Install ceph-commmon package"
+  package:
+    name:
+      - ceph-common
+    state: present
+  when: rbd_provisioner_enabled|default(false)
+
+- name: Ensure bash_completion.d folder exists
+  file:
+    name: /etc/bash_completion.d/
+    state: directory
+    owner: root
+    group: root
+    mode: 0755

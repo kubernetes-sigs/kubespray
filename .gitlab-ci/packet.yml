@@ -1,0 +1,251 @@
+---
+.packet:
+  extends: .testcases
+  variables:
+    CI_PLATFORM: packet
+    SSH_USER: kubespray
+  tags:
+    - packet
+  except: [triggers]
+
+# CI template for PRs
+.packet_pr:
+  only: [/^pr-.*$/]
+  retry: 1
+  extends: .packet
+
+# CI template for periodic CI jobs
+# Enabled when PERIODIC_CI_ENABLED var is set
+.packet_periodic:
+  only:
+    variables:
+      - $PERIODIC_CI_ENABLED
+  allow_failure: true
+  extends: .packet
+
+packet_ubuntu18-calico-aio:
+  stage: deploy-part1
+  extends: .packet_pr
+  when: on_success
+
+# Future AIO job
+packet_ubuntu20-calico-aio:
+  stage: deploy-part1
+  extends: .packet_pr
+  when: on_success
+
+# ### PR JOBS PART2
+
+packet_centos7-flannel-containerd-addons-ha:
+  extends: .packet_pr
+  stage: deploy-part2
+  when: on_success
+  variables:
+    MITOGEN_ENABLE: "true"
+
+packet_centos8-crio:
+  extends: .packet_pr
+  stage: deploy-part2
+  when: on_success
+
+packet_ubuntu18-crio:
+  extends: .packet_pr
+  stage: deploy-part2
+  when: manual
+  variables:
+    MITOGEN_ENABLE: "true"
+
+packet_ubuntu16-canal-kubeadm-ha:
+  stage: deploy-part2
+  extends: .packet_periodic
+  when: on_success
+
+packet_ubuntu16-canal-sep:
+  stage: deploy-special
+  extends: .packet_pr
+  when: manual
+
+packet_ubuntu16-flannel-ha:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_ubuntu16-kube-router-sep:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_ubuntu16-kube-router-svc-proxy:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_debian10-cilium-svc-proxy:
+  stage: deploy-part2
+  extends: .packet_periodic
+  when: on_success
+
+packet_debian10-containerd:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: on_success
+  variables:
+    MITOGEN_ENABLE: "true"
+
+packet_debian11-calico:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: on_success
+
+packet_centos7-calico-ha-once-localhost:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: on_success
+  variables:
+    # This will instruct Docker not to start over TLS.
+    DOCKER_TLS_CERTDIR: ""
+  services:
+    - docker:19.03.9-dind
+
+packet_centos8-kube-ovn:
+  stage: deploy-part2
+  extends: .packet_periodic
+  when: on_success
+
+packet_centos8-calico:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: on_success
+
+packet_fedora34-weave:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: on_success
+
+packet_opensuse-canal:
+  stage: deploy-part2
+  extends: .packet_periodic
+  when: on_success
+
+packet_ubuntu18-ovn4nfv:
+  stage: deploy-part2
+  extends: .packet_periodic
+  when: on_success
+
+# ### MANUAL JOBS
+
+packet_ubuntu16-weave-sep:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_ubuntu18-cilium-sep:
+  stage: deploy-special
+  extends: .packet_pr
+  when: manual
+
+packet_ubuntu18-flannel-containerd-ha:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_ubuntu18-flannel-containerd-ha-once:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_debian9-macvlan:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_centos7-calico-ha:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_centos7-kube-router:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_centos7-multus-calico:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_oracle7-canal-ha:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_fedora33-calico:
+  stage: deploy-part2
+  extends: .packet_periodic
+  when: on_success
+
+packet_fedora34-calico-selinux:
+  stage: deploy-part2
+  extends: .packet_periodic
+  when: on_success
+
+packet_amazon-linux-2-aio:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+
+packet_fedora34-kube-ovn-containerd:
+  stage: deploy-part2
+  extends: .packet_periodic
+  when: on_success
+
+# ### PR JOBS PART3
+# Long jobs (45min+)
+
+packet_centos7-weave-upgrade-ha:
+  stage: deploy-part3
+  extends: .packet_periodic
+  when: on_success
+  variables:
+    UPGRADE_TEST: basic
+    MITOGEN_ENABLE: "false"
+
+# Calico HA Wireguard
+packet_ubuntu20-calico-ha-wireguard:
+  stage: deploy-part2
+  extends: .packet_pr
+  when: manual
+  variables:
+    MITOGEN_ENABLE: "true"
+
+packet_debian9-calico-upgrade:
+  stage: deploy-part3
+  extends: .packet_pr
+  when: on_success
+  variables:
+    UPGRADE_TEST: graceful
+    MITOGEN_ENABLE: "false"
+
+packet_debian9-calico-upgrade-once:
+  stage: deploy-part3
+  extends: .packet_periodic
+  when: on_success
+  variables:
+    UPGRADE_TEST: graceful
+    MITOGEN_ENABLE: "false"
+
+packet_ubuntu18-calico-ha-recover:
+  stage: deploy-part3
+  extends: .packet_periodic
+  when: on_success
+  variables:
+    RECOVER_CONTROL_PLANE_TEST: "true"
+    RECOVER_CONTROL_PLANE_TEST_GROUPS: "etcd[2:],kube_control_plane[1:]"
+
+packet_ubuntu18-calico-ha-recover-noquorum:
+  stage: deploy-part3
+  extends: .packet_periodic
+  when: on_success
+  variables:
+    RECOVER_CONTROL_PLANE_TEST: "true"
+    RECOVER_CONTROL_PLANE_TEST_GROUPS: "etcd[1:],kube_control_plane[1:]"

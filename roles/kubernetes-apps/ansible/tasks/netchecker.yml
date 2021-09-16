@@ -1,0 +1,42 @@
+---
+- name: Kubernetes Apps | Netchecker Templates list
+  set_fact:
+    netchecker_templates:
+      - {file: netchecker-ns.yml, type: ns, name: netchecker-namespace}
+      - {file: netchecker-agent-sa.yml, type: sa, name: netchecker-agent}
+      - {file: netchecker-agent-ds.yml, type: ds, name: netchecker-agent}
+      - {file: netchecker-agent-hostnet-ds.yml, type: ds, name: netchecker-agent-hostnet}
+      - {file: netchecker-server-sa.yml, type: sa, name: netchecker-server}
+      - {file: netchecker-server-clusterrole.yml, type: clusterrole, name: netchecker-server}
+      - {file: netchecker-server-clusterrolebinding.yml, type: clusterrolebinding, name: netchecker-server}
+      - {file: netchecker-server-deployment.yml, type: deployment, name: netchecker-server}
+      - {file: netchecker-server-svc.yml, type: svc, name: netchecker-service}
+    netchecker_templates_for_psp:
+      - {file: netchecker-agent-hostnet-psp.yml, type: podsecuritypolicy, name: netchecker-agent-hostnet-policy}
+      - {file: netchecker-agent-hostnet-clusterrole.yml, type: clusterrole, name: netchecker-agent}
+      - {file: netchecker-agent-hostnet-clusterrolebinding.yml, type: clusterrolebinding, name: netchecker-agent}
+
+- name: Kubernetes Apps | Append extra templates to Netchecker Templates list for PodSecurityPolicy
+  set_fact:
+    netchecker_templates: "{{ netchecker_templates_for_psp + netchecker_templates }}"
+  when: podsecuritypolicy_enabled
+
+- name: Kubernetes Apps | Lay Down Netchecker Template
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items: "{{ netchecker_templates }}"
+  register: manifests
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Kubernetes Apps | Start Netchecker Resources
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ netcheck_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ manifests.results }}"
+  when: inventory_hostname == groups['kube_control_plane'][0] and not item is skipped

@@ -1,0 +1,73 @@
+{% set node1 = gce.instance_data[0].name %}
+{{node1}} ansible_ssh_host={{gce.instance_data[0].public_ip}}
+{% if mode != "aio" %}
+{% set node2 = gce.instance_data[1].name %}
+{{node2}} ansible_ssh_host={{gce.instance_data[1].public_ip}}
+{% endif %}
+{% if mode is defined and mode in ["ha", "ha-scale", "separate", "separate-scale"] %}
+{% set node3 = gce.instance_data[2].name %}
+{{node3}} ansible_ssh_host={{gce.instance_data[2].public_ip}}
+{% endif %}
+{% if mode is defined and mode in ["separate", "separate-scale"] %}
+[kube_control_plane]
+{{node1}}
+
+[kube_node]
+{{node2}}
+
+[etcd]
+{{node3}}
+
+{% elif mode is defined and mode in ["ha", "ha-scale"] %}
+[kube_control_plane]
+{{node1}}
+{{node2}}
+
+[kube_node]
+{{node3}}
+
+[etcd]
+{{node1}}
+{{node2}}
+{{node3}}
+
+[broken_kube_control_plane]
+{{node2}}
+
+[etcd]
+{{node2}}
+{{node3}}
+{% elif mode == "default" %}
+[kube_control_plane]
+{{node1}}
+
+[kube_node]
+{{node2}}
+
+[etcd]
+{{node1}}
+{% elif mode == "aio" %}
+[kube_control_plane]
+{{node1}}
+
+[kube_node]
+{{node1}}
+
+[etcd]
+{{node1}}
+{% endif %}
+
+[k8s_cluster:children]
+kube_node
+kube_control_plane
+calico_rr
+
+[calico_rr]
+
+{% if mode is defined and mode in ["scale", "separate-scale", "ha-scale"] %}
+[fake_hosts]
+fake_scale_host[1:200]
+
+[kube_node:children]
+fake_hosts
+{% endif %}

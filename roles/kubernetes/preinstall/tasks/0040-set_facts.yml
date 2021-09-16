@@ -1,0 +1,203 @@
+---
+- name: Force binaries directory for Flatcar Container Linux by Kinvolk
+  set_fact:
+    bin_dir: "/opt/bin"
+  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  tags:
+    - facts
+
+- name: check if booted with ostree
+  stat:
+    path: /run/ostree-booted
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: ostree
+
+- name: set is_fedora_coreos
+  lineinfile:
+    path: /etc/os-release
+    line: "VARIANT_ID=coreos"
+    state: present
+  check_mode: yes
+  register: os_variant_coreos
+  changed_when: false
+
+- name: set is_fedora_coreos
+  set_fact:
+    is_fedora_coreos: "{{ ostree.stat.exists and os_variant_coreos is not changed }}"
+
+- name: check resolvconf
+  command: which resolvconf
+  register: resolvconf
+  failed_when: false
+  changed_when: false
+  check_mode: no
+
+- name: check systemd-resolved
+  # noqa 303 Should we use service_facts for this?
+  command: systemctl is-active systemd-resolved
+  register: systemd_resolved_enabled
+  failed_when: false
+  changed_when: false
+  check_mode: no
+
+- name: set dns facts
+  set_fact:
+    resolvconf: >-
+      {%- if resolvconf.rc == 0 -%}true{%- else -%}false{%- endif -%}
+    bogus_domains: |-
+      {% for d in [ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([]) -%}
+      {{ dns_domain }}.{{ d }}./{{ d }}.{{ d }}./com.{{ d }}./
+      {%- endfor %}
+    cloud_resolver: "{{ ['169.254.169.254'] if cloud_provider is defined and cloud_provider == 'gce' else
+                        ['169.254.169.253'] if cloud_provider is defined and cloud_provider == 'aws' else
+                        [] }}"
+
+- name: check if kubelet is configured
+  stat:
+    path: "{{ kube_config_dir }}/kubelet.env"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: kubelet_configured
+  changed_when: false
+
+- name: check if early DNS configuration stage
+  set_fact:
+    dns_early: >-
+      {%- if kubelet_configured.stat.exists -%}false{%- else -%}true{%- endif -%}
+
+- name: target resolv.conf files
+  set_fact:
+    resolvconffile: /etc/resolv.conf
+    base: >-
+      {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/base{%- endif -%}
+    head: >-
+      {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/head{%- endif -%}
+  when: not ansible_os_family in ["Flatcar Container Linux by Kinvolk"] and not is_fedora_coreos
+
+- name: target temporary resolvconf cloud init file (Flatcar Container Linux by Kinvolk / Fedora CoreOS)
+  set_fact:
+    resolvconffile: /tmp/resolveconf_cloud_init_conf
+  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"] or is_fedora_coreos
+
+- name: check if /etc/dhclient.conf exists
+  stat:
+    path: /etc/dhclient.conf
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: dhclient_stat
+
+- name: target dhclient conf file for /etc/dhclient.conf
+  set_fact:
+    dhclientconffile: /etc/dhclient.conf
+  when: dhclient_stat.stat.exists
+
+- name: check if /etc/dhcp/dhclient.conf exists
+  stat:
+    path: /etc/dhcp/dhclient.conf
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: dhcp_dhclient_stat
+
+- name: target dhclient conf file for /etc/dhcp/dhclient.conf
+  set_fact:
+    dhclientconffile: /etc/dhcp/dhclient.conf
+  when: dhcp_dhclient_stat.stat.exists
+
+- name: target dhclient hook file for Red Hat family
+  set_fact:
+    dhclienthookfile: /etc/dhcp/dhclient.d/zdnsupdate.sh
+  when: ansible_os_family == "RedHat"
+
+- name: target dhclient hook file for Debian family
+  set_fact:
+    dhclienthookfile: /etc/dhcp/dhclient-exit-hooks.d/zdnsupdate
+  when: ansible_os_family == "Debian"
+
+- name: generate search domains to resolvconf
+  set_fact:
+    searchentries:
+      search {{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join(' ') }}
+    domainentry:
+      domain {{ dns_domain }}
+    supersede_search:
+      supersede domain-search "{{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join('", "') }}";
+    supersede_domain:
+      supersede domain-name "{{ dns_domain }}";
+
+- name: pick coredns cluster IP or default resolver
+  set_fact:
+    coredns_server: |-
+      {%- if dns_mode == 'coredns' and not dns_early|bool -%}
+        {{ [ skydns_server ] }}
+      {%- elif dns_mode == 'coredns_dual' and not dns_early|bool -%}
+        {{ [ skydns_server ] + [ skydns_server_secondary ] }}
+      {%- elif dns_mode == 'manual' and not dns_early|bool -%}
+        {{ ( manual_dns_server.split(',') | list) }}
+      {%- elif dns_mode == 'none' and not dns_early|bool -%}
+        []
+      {%- elif dns_early|bool -%}
+        {{ upstream_dns_servers|default([]) }}
+      {%- endif -%}
+
+- name: generate nameservers to resolvconf
+  set_fact:
+    nameserverentries:
+      nameserver {{ ( coredns_server|d([]) + nameservers|d([]) + cloud_resolver|d([])) | unique | join(',nameserver ') }}
+    supersede_nameserver:
+      supersede domain-name-servers {{ ( coredns_server|d([]) + nameservers|d([]) + cloud_resolver|d([])) | unique | join(', ') }};
+
+- name: gather os specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+      paths:
+        - ../vars
+      skip: true
+
+- name: set etcd vars if using kubeadm mode
+  set_fact:
+    etcd_cert_dir: "{{ kube_cert_dir }}"
+    kube_etcd_cacert_file: "etcd/ca.crt"
+    kube_etcd_cert_file: "apiserver-etcd-client.crt"
+    kube_etcd_key_file: "apiserver-etcd-client.key"
+  when:
+    - etcd_kubeadm_enabled
+
+- name: check /usr readonly
+  stat:
+    path: "/usr"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: usr
+
+- name: set alternate flexvolume path
+  set_fact:
+    kubelet_flexvolumes_plugins_dir: /var/lib/kubelet/volumeplugins
+  when: not usr.stat.writeable
+
+- block:
+    - name: Ensure IPv6DualStack featureGate is set when enable_dual_stack_networks is true
+      set_fact:
+        kube_feature_gates: "{{ kube_feature_gates + [ 'IPv6DualStack=true' ] }}"
+      when:
+        - not 'IPv6DualStack=true' in kube_feature_gates
+
+    - name: Ensure IPv6DualStack kubeadm featureGate is set when enable_dual_stack_networks is true
+      set_fact:
+        kubeadm_feature_gates: "{{ kubeadm_feature_gates + [ 'IPv6DualStack=true' ] }}"
+      when:
+        - not 'IPv6DualStack=true' in kubeadm_feature_gates
+  when:
+    - enable_dual_stack_networks

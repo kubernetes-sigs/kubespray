@@ -1,0 +1,199 @@
+---
+- name: Install OIDC certificate
+  copy:
+    content: "{{ kube_oidc_ca_cert | b64decode }}"
+    dest: "{{ kube_oidc_ca_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - kube_oidc_auth
+    - kube_oidc_ca_cert is defined
+
+- name: kubeadm | Check if kubeadm has already run
+  stat:
+    path: "/var/lib/kubelet/config.yaml"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: kubeadm_already_run
+
+- name: kubeadm | Backup kubeadm certs / kubeconfig
+  import_tasks: kubeadm-backup.yml
+  when:
+    - kubeadm_already_run.stat.exists
+
+- name: kubeadm | aggregate all SANs
+  set_fact:
+    apiserver_sans: "{{ (sans_base + groups['kube_control_plane'] + sans_lb + sans_lb_ip + sans_supp + sans_access_ip + sans_ip + sans_address + sans_override + sans_hostname + sans_fqdn) | unique }}"
+  vars:
+    sans_base:
+      - "kubernetes"
+      - "kubernetes.default"
+      - "kubernetes.default.svc"
+      - "kubernetes.default.svc.{{ dns_domain }}"
+      - "{{ kube_apiserver_ip }}"
+      - "localhost"
+      - "127.0.0.1"
+    sans_lb: "{{ [apiserver_loadbalancer_domain_name] if apiserver_loadbalancer_domain_name is defined else [] }}"
+    sans_lb_ip: "{{ [loadbalancer_apiserver.address] if loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined else [] }}"
+    sans_supp: "{{ supplementary_addresses_in_ssl_keys if supplementary_addresses_in_ssl_keys is defined else [] }}"
+    sans_access_ip: "{{ groups['kube_control_plane'] | map('extract', hostvars, 'access_ip') | list | select('defined') | list }}"
+    sans_ip: "{{ groups['kube_control_plane'] | map('extract', hostvars, 'ip') | list | select('defined') | list }}"
+    sans_address: "{{ groups['kube_control_plane'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | list | select('defined') | list }}"
+    sans_override: "{{ [kube_override_hostname] if kube_override_hostname else [] }}"
+    sans_hostname: "{{ groups['kube_control_plane'] | map('extract', hostvars, ['ansible_hostname']) | list | select('defined') | list }}"
+    sans_fqdn: "{{ groups['kube_control_plane'] | map('extract', hostvars, ['ansible_fqdn']) | list | select('defined') | list }}"
+  tags: facts
+
+- name: Create audit-policy directory
+  file:
+    path: "{{ audit_policy_file | dirname }}"
+    state: directory
+    mode: 0640
+  when: kubernetes_audit|default(false) or kubernetes_audit_webhook|default(false)
+
+- name: Write api audit policy yaml
+  template:
+    src: apiserver-audit-policy.yaml.j2
+    dest: "{{ audit_policy_file }}"
+    mode: 0640
+  when: kubernetes_audit|default(false) or kubernetes_audit_webhook|default(false)
+
+- name: Write api audit webhook config yaml
+  template:
+    src: apiserver-audit-webhook-config.yaml.j2
+    dest: "{{ audit_webhook_config_file }}"
+    mode: 0640
+  when: kubernetes_audit_webhook|default(false)
+
+# Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
+- name: set kubeadm_config_api_fqdn define
+  set_fact:
+    kubeadm_config_api_fqdn: "{{ apiserver_loadbalancer_domain_name|default('lb-apiserver.kubernetes.local') }}"
+  when: loadbalancer_apiserver is defined
+
+- name: Set kubeadm api version to v1beta2
+  set_fact:
+    kubeadmConfig_api_version: v1beta2
+
+- name: kubeadm | Create kubeadm config
+  template:
+    src: "kubeadm-config.{{ kubeadmConfig_api_version }}.yaml.j2"
+    dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
+    mode: 0640
+
+- name: kubeadm | Check if apiserver.crt contains all needed SANs
+  shell: |
+    set -o pipefail
+    for IP in {{ apiserver_ips | join(' ') }}; do
+      openssl x509 -noout -in "{{ kube_cert_dir }}/apiserver.crt" -checkip $IP | grep -q 'does match certificate' || echo 'NEED-RENEW'
+    done
+    for HOST in {{ apiserver_hosts | join(' ') }}; do
+      openssl x509 -noout -in "{{ kube_cert_dir }}/apiserver.crt" -checkhost $HOST | grep -q 'does match certificate' || echo 'NEED-RENEW'
+    done
+  vars:
+    apiserver_ips: "{{ apiserver_sans|map('ipaddr')|reject('equalto', False)|list }}"
+    apiserver_hosts: "{{ apiserver_sans|difference(apiserver_ips) }}"
+  args:
+    executable: /bin/bash
+  register: apiserver_sans_check
+  changed_when: "'NEED-RENEW' in apiserver_sans_check.stdout"
+  when:
+    - kubeadm_already_run.stat.exists
+
+- name: kubeadm | regenerate apiserver cert 1/2
+  file:
+    state: absent
+    path: "{{ kube_cert_dir }}/{{ item }}"
+  with_items:
+    - apiserver.crt
+    - apiserver.key
+  when:
+    - kubeadm_already_run.stat.exists
+    - apiserver_sans_check.changed
+
+- name: kubeadm | regenerate apiserver cert 2/2
+  command: >-
+    {{ bin_dir }}/kubeadm
+    init phase certs apiserver
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+  when:
+    - kubeadm_already_run.stat.exists
+    - apiserver_sans_check.changed
+
+- name: kubeadm | Initialize first master
+  command: >-
+    timeout -k 300s 300s
+    {{ bin_dir }}/kubeadm init
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    --ignore-preflight-errors=all
+    --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
+    --upload-certs
+  register: kubeadm_init
+  # Retry is because upload config sometimes fails
+  retries: 3
+  until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
+  when: inventory_hostname == groups['kube_control_plane']|first and not kubeadm_already_run.stat.exists
+  failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+  notify: Master | restart kubelet
+
+- name: set kubeadm certificate key
+  set_fact:
+    kubeadm_certificate_key: "{{ item | regex_search('--certificate-key ([^ ]+)','\\1') | first }}"
+  with_items: "{{ hostvars[groups['kube_control_plane'][0]]['kubeadm_init'].stdout_lines | default([]) }}"
+  when:
+    - kubeadm_certificate_key is not defined
+    - (item | trim) is match('.*--certificate-key.*')
+
+- name: Create hardcoded kubeadm token for joining nodes with 24h expiration (if defined)
+  shell: >-
+    {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token delete {{ kubeadm_token }} || :;
+    {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create {{ kubeadm_token }}
+  changed_when: false
+  when:
+    - inventory_hostname == groups['kube_control_plane']|first
+    - kubeadm_token is defined
+    - kubeadm_refresh_token
+  tags:
+    - kubeadm_token
+
+- name: Create kubeadm token for joining nodes with 24h expiration (default)
+  command: "{{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create"
+  changed_when: false
+  register: temp_token
+  retries: 5
+  delay: 5
+  until: temp_token is succeeded
+  delegate_to: "{{ groups['kube_control_plane'] | first }}"
+  when: kubeadm_token is not defined
+  tags:
+    - kubeadm_token
+
+- name: Set kubeadm_token
+  set_fact:
+    kubeadm_token: "{{ temp_token.stdout }}"
+  when: temp_token.stdout is defined
+  tags:
+    - kubeadm_token
+
+- name: kubeadm | Join other masters
+  include_tasks: kubeadm-secondary.yml
+
+- name: kubeadm | upgrade kubernetes cluster
+  include_tasks: kubeadm-upgrade.yml
+  when:
+    - upgrade_cluster_setup
+    - kubeadm_already_run.stat.exists
+
+# FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
+- name: kubeadm | Remove taint for master with node role
+  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf taint node {{ inventory_hostname }} {{ item }}"
+  delegate_to: "{{ groups['kube_control_plane'] | first }}"
+  with_items:
+    - "node-role.kubernetes.io/master:NoSchedule-"
+    - "node-role.kubernetes.io/control-plane:NoSchedule-"
+  when: inventory_hostname in groups['kube_node']
+  failed_when: false

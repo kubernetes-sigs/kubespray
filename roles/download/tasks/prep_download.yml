@@ -1,0 +1,118 @@
+---
+- name: prep_download | Set a few facts
+  set_fact:
+    download_force_cache: "{{ true if download_run_once else download_force_cache }}"
+  tags:
+    - facts
+
+# The docker image_info_command might seems weird but we are using raw/endraw and `{{ `{{` }}` to manage the double jinja2 processing
+# done here and when `image_info_command` is used (first the raw/endraw allow to store the command, then the second processing replace `{{`
+- name: prep_download | Set image pull/info command for docker
+  set_fact:
+    image_pull_command: "{{ docker_bin_dir }}/docker pull"
+    image_info_command: "{{ docker_bin_dir }}/docker images -q | xargs -i {{ '{{' }} docker_bin_dir }}/docker inspect -f {% raw %}'{{ '{{' }} if .RepoTags }}{{ '{{' }} join .RepoTags \",\" }}{{ '{{' }} end }}{{ '{{' }} if .RepoDigests }},{{ '{{' }} join .RepoDigests \",\" }}{{ '{{' }} end }}' {% endraw %} {} | tr '\n' ','"
+  when: container_manager == 'docker'
+
+- name: prep_download | Set image pull/info command for containerd and crio
+  set_fact:
+    image_info_command: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
+    image_pull_command: "{{ bin_dir }}/crictl pull"
+  when: container_manager in ['crio' ,'containerd']
+
+- name: prep_download | Set image pull/info command for docker on localhost
+  set_fact:
+    image_pull_command_on_localhost: "{{ docker_bin_dir }}/docker pull"
+    image_info_command_on_localhost: "{{ docker_bin_dir }}/docker images"
+  when: container_manager_on_localhost == 'docker'
+
+- name: prep_download | Set image pull/info command for containerd and crio on localhost
+  set_fact:
+    image_info_command_on_localhost: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
+    image_pull_command_on_localhost: "{{ bin_dir }}/crictl pull"
+  when: container_manager_on_localhost in ['crio' ,'containerd']
+
+- name: prep_download | On localhost, check if passwordless root is possible
+  command: "true"
+  delegate_to: localhost
+  connection: local
+  run_once: true
+  register: test_become
+  changed_when: false
+  ignore_errors: true  # noqa ignore-errors
+  become: true
+  when:
+    - download_localhost
+  tags:
+    - localhost
+    - asserts
+
+- name: prep_download | On localhost, check if user has access to the container runtime without using sudo
+  shell: "{{ image_info_command_on_localhost }}"  # noqa 305 image_info_command_on_localhost contains pipe, therefore requires shell
+  delegate_to: localhost
+  connection: local
+  run_once: true
+  register: test_docker
+  changed_when: false
+  ignore_errors: true  # noqa ignore-errors
+  become: false
+  when:
+    - download_localhost
+  tags:
+    - localhost
+    - asserts
+
+- name: prep_download | Parse the outputs of the previous commands
+  set_fact:
+    user_in_docker_group: "{{ not test_docker.failed }}"
+    user_can_become_root: "{{ not test_become.failed }}"
+  when:
+    - download_localhost
+  tags:
+    - localhost
+    - asserts
+
+- name: prep_download | Check that local user is in group or can become root
+  assert:
+    that: "user_in_docker_group or user_can_become_root"
+    msg: >-
+      Error: User is not in docker group and cannot become root. When download_localhost is true, at least one of these two conditions must be met.
+  when:
+    - download_localhost
+  tags:
+    - localhost
+    - asserts
+
+- name: prep_download | Register docker images info
+  shell: "{{ image_info_command }}"  # noqa 305 image_info_command contains pipe therefore requires shell
+  no_log: true
+  register: docker_images
+  failed_when: false
+  changed_when: false
+  check_mode: no
+  when: download_container
+
+- name: prep_download | Create staging directory on remote node
+  file:
+    path: "{{ local_release_dir }}/images"
+    state: directory
+    recurse: yes
+    mode: 0755
+    owner: "{{ ansible_ssh_user | default(ansible_user_id) }}"
+  when:
+    - ansible_os_family not in ["Flatcar Container Linux by Kinvolk"]
+
+- name: prep_download | Create local cache for files and images on control node
+  file:
+    path: "{{ download_cache_dir }}/images"
+    state: directory
+    recurse: yes
+    mode: 0755
+  delegate_to: localhost
+  connection: local
+  delegate_facts: no
+  run_once: true
+  become: false
+  when:
+    - download_force_cache
+  tags:
+    - localhost

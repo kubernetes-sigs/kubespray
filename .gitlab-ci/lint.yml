@@ -1,0 +1,77 @@
+---
+yamllint:
+  extends: .job
+  stage: unit-tests
+  tags: [light]
+  variables:
+    LANG: C.UTF-8
+  script:
+    - yamllint --strict .
+  except: ['triggers', 'master']
+
+vagrant-validate:
+  extends: .job
+  stage: unit-tests
+  tags: [light]
+  variables:
+    VAGRANT_VERSION: 2.2.15
+  script:
+    - ./tests/scripts/vagrant-validate.sh
+  except: ['triggers', 'master']
+
+ansible-lint:
+  extends: .job
+  stage: unit-tests
+  tags: [light]
+  # lint every yml/yaml file that looks like it contains Ansible plays
+  script: |-
+    grep -Rl '^- hosts: \|^  hosts: ' --include \*.yml --include \*.yaml . | xargs -P 4 -n 25 ansible-lint -v
+  except: ['triggers', 'master']
+
+syntax-check:
+  extends: .job
+  stage: unit-tests
+  tags: [light]
+  variables:
+    ANSIBLE_INVENTORY: inventory/local-tests.cfg
+    ANSIBLE_REMOTE_USER: root
+    ANSIBLE_BECOME: "true"
+    ANSIBLE_BECOME_USER: root
+    ANSIBLE_VERBOSITY: "3"
+  script:
+    - ansible-playbook --syntax-check cluster.yml
+    - ansible-playbook --syntax-check upgrade-cluster.yml
+    - ansible-playbook --syntax-check reset.yml
+    - ansible-playbook --syntax-check extra_playbooks/upgrade-only-k8s.yml
+  except: ['triggers', 'master']
+
+tox-inventory-builder:
+  stage: unit-tests
+  tags: [light]
+  extends: .job
+  before_script:
+    - ./tests/scripts/rebase.sh
+    - apt-get update && apt-get install -y python3-pip
+    - update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+    - python -m pip uninstall -y ansible
+    - python -m pip install -r tests/requirements.txt
+  script:
+    - pip3 install tox
+    - cd contrib/inventory_builder && tox
+  except: ['triggers', 'master']
+
+markdownlint:
+  stage: unit-tests
+  tags: [light]
+  image: node
+  before_script:
+    - npm install -g markdownlint-cli@0.22.0
+  script:
+    - markdownlint $(find . -name '*.md' | grep -vF './.git') --ignore docs/_sidebar.md --ignore contrib/dind/README.md
+
+ci-matrix:
+  stage: unit-tests
+  tags: [light]
+  image: python:3
+  script:
+    - tests/scripts/md-table/test.sh

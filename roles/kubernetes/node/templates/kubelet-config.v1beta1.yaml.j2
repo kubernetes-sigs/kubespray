@@ -1,0 +1,102 @@
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+nodeStatusUpdateFrequency: "{{ kubelet_status_update_frequency }}"
+failSwapOn: {{ kubelet_fail_swap_on|default(true) }}
+authentication:
+  anonymous:
+    enabled: false
+  webhook:
+    enabled: {{ kubelet_authentication_token_webhook }}
+  x509:
+    clientCAFile: {{ kube_cert_dir }}/ca.crt
+authorization:
+{% if kubelet_authorization_mode_webhook %}
+  mode: Webhook
+{% else %}
+  mode: AlwaysAllow
+{% endif %}
+{% if kubelet_enforce_node_allocatable is defined and kubelet_enforce_node_allocatable != "\"\"" %}
+{% set kubelet_enforce_node_allocatable_list = kubelet_enforce_node_allocatable.split() %}
+enforceNodeAllocatable:
+{% for item in kubelet_enforce_node_allocatable_list %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+staticPodPath: {{ kube_manifest_dir }}
+cgroupDriver: {{ kubelet_cgroup_driver|default(kubelet_cgroup_driver_detected) }}
+containerLogMaxFiles: {{ kubelet_logfiles_max_nr }}
+containerLogMaxSize: {{ kubelet_logfiles_max_size }}
+maxPods: {{ kubelet_max_pods }}
+address: {{ kubelet_bind_address }}
+readOnlyPort: {{ kube_read_only_port }}
+healthzPort: {{ kubelet_healthz_port }}
+healthzBindAddress: {{ kubelet_healthz_bind_address }}
+kubeletCgroups: {{ kubelet_kubelet_cgroups }}
+clusterDomain: {{ dns_domain }}
+{% if kubelet_protect_kernel_defaults|bool %}
+protectKernelDefaults: true
+{% endif %}
+{% if kubelet_rotate_certificates|bool %}
+rotateCertificates: true
+{% endif %}
+{% if kubelet_rotate_server_certificates|bool %}
+serverTLSBootstrap: true
+{% endif %}
+{# DNS settings for kubelet #}
+{% if enable_nodelocaldns %}
+{% set kubelet_cluster_dns = [nodelocaldns_ip] %}
+{% elif dns_mode in ['coredns'] %}
+{% set kubelet_cluster_dns = [skydns_server] %}
+{% elif dns_mode == 'coredns_dual' %}
+{% set kubelet_cluster_dns = [skydns_server,skydns_server_secondary] %}
+{% elif dns_mode == 'manual' %}
+{% set kubelet_cluster_dns = [manual_dns_server] %}
+{% else %}
+{% set kubelet_cluster_dns = [] %}
+{% endif %}
+clusterDNS:
+{% for dns_address in kubelet_cluster_dns %}
+- {{ dns_address }}
+{% endfor %}
+{# Node reserved CPU/memory #}
+kubeReserved:
+{% if is_kube_master|bool %}
+  cpu: {{ kube_master_cpu_reserved }}
+  memory: {{ kube_master_memory_reserved }}
+{% else %}
+  cpu: {{ kube_cpu_reserved }}
+  memory: {{ kube_memory_reserved }}
+{% endif %}
+{% if system_reserved is defined and system_reserved %}
+systemReserved:
+{% if is_kube_master|bool %}
+  cpu: {{ system_master_cpu_reserved }}
+  memory: {{ system_master_memory_reserved }}
+{% else %}
+  cpu: {{ system_cpu_reserved }}
+  memory: {{ system_memory_reserved }}
+{% endif %}
+{% endif %}
+resolvConf: "{{ kube_resolv_conf }}"
+{% if kubelet_config_extra_args %}
+{{ kubelet_config_extra_args | to_nice_yaml(indent=2) }}
+{% endif %}
+{% if inventory_hostname in groups['kube_node'] and kubelet_node_config_extra_args %}
+{{ kubelet_node_config_extra_args | to_nice_yaml(indent=2) }}
+{% endif %}
+{% if tls_min_version is defined %}
+tlsMinVersion: {{ tls_min_version }}
+{% endif %}
+{% if tls_cipher_suites is defined %}
+tlsCipherSuites:
+{% for tls in tls_cipher_suites %}
+- {{ tls }}
+{% endfor %}
+{% endif %}
+{% if kubelet_event_record_qps %}
+eventRecordQPS: {{ kubelet_event_record_qps }}
+{% endif %}
+{% if kube_version is version('v1.21.0', '>=') %}
+shutdownGracePeriod: {{ kubelet_shutdown_grace_period }}
+shutdownGracePeriodCriticalPods: {{ kubelet_shutdown_grace_period_critical_pods }}
+{% endif %}

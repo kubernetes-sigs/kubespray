@@ -1,0 +1,54 @@
+error_log stderr notice;
+
+worker_processes 2;
+worker_rlimit_nofile 130048;
+worker_shutdown_timeout 10s;
+
+events {
+  multi_accept on;
+  use epoll;
+  worker_connections 16384;
+}
+
+stream {
+  upstream kube_apiserver {
+    least_conn;
+    {% for host in groups['kube_control_plane'] -%}
+    server {{ hostvars[host]['access_ip'] | default(hostvars[host]['ip'] | default(fallback_ips[host])) }}:{{ kube_apiserver_port }};
+    {% endfor -%}
+  }
+
+  server {
+    listen        127.0.0.1:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }};
+    proxy_pass    kube_apiserver;
+    proxy_timeout 10m;
+    proxy_connect_timeout 1s;
+  }
+}
+
+http {
+  aio threads;
+  aio_write on;
+  tcp_nopush on;
+  tcp_nodelay on;
+
+  keepalive_timeout {{ loadbalancer_apiserver_keepalive_timeout }};
+  keepalive_requests 100;
+  reset_timedout_connection on;
+  server_tokens off;
+  autoindex off;
+
+  {% if loadbalancer_apiserver_healthcheck_port is defined -%}
+  server {
+    listen {{ loadbalancer_apiserver_healthcheck_port }};
+    location /healthz {
+      access_log off;
+      return 200;
+    }
+    location /stub_status {
+      stub_status on;
+      access_log off;
+    }
+  }
+  {% endif %}
+}

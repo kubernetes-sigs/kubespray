@@ -1,0 +1,184 @@
+---
+- import_tasks: facts.yml
+  tags:
+    - facts
+
+- import_tasks: pre_upgrade.yml
+  tags:
+    - kubelet
+
+- name: Ensure /var/lib/cni exists
+  file:
+    path: /var/lib/cni
+    state: directory
+    mode: 0755
+
+- import_tasks: install.yml
+  tags:
+    - kubelet
+
+- import_tasks: loadbalancer/nginx-proxy.yml
+  when:
+    - not is_kube_master
+    - loadbalancer_apiserver_localhost
+    - loadbalancer_apiserver_type == 'nginx'
+  tags:
+    - nginx
+
+- import_tasks: loadbalancer/haproxy.yml
+  when:
+    - not is_kube_master
+    - loadbalancer_apiserver_localhost
+    - loadbalancer_apiserver_type == 'haproxy'
+  tags:
+    - haproxy
+
+- name: Ensure nodePort range is reserved
+  sysctl:
+    name: net.ipv4.ip_local_reserved_ports
+    value: "{{ kube_apiserver_node_port_range }}"
+    sysctl_set: yes
+    sysctl_file: "{{ sysctl_file_path }}"
+    state: present
+    reload: yes
+  when: kube_apiserver_node_port_range is defined
+  tags:
+    - kube-proxy
+
+- name: Verify if br_netfilter module exists
+  command: "modinfo br_netfilter"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/sbin"  # Make sure we can workaround RH's conservative path management
+  register: modinfo_br_netfilter
+  failed_when: modinfo_br_netfilter.rc not in [0, 1]
+  changed_when: false
+
+- name: Verify br_netfilter module path exists
+  file:
+    path: /etc/modules-load.d
+    state: directory
+    mode: 0755
+
+- name: Enable br_netfilter module
+  modprobe:
+    name: br_netfilter
+    state: present
+  when: modinfo_br_netfilter.rc == 0
+
+- name: Persist br_netfilter module
+  copy:
+    dest: /etc/modules-load.d/kubespray-br_netfilter.conf
+    content: br_netfilter
+    mode: 0644
+  when: modinfo_br_netfilter.rc == 0
+
+# kube-proxy needs net.bridge.bridge-nf-call-iptables enabled when found if br_netfilter is not a module
+- name: Check if bridge-nf-call-iptables key exists
+  command: "sysctl net.bridge.bridge-nf-call-iptables"
+  failed_when: false
+  changed_when: false
+  register: sysctl_bridge_nf_call_iptables
+
+- name: Enable bridge-nf-call tables
+  sysctl:
+    name: "{{ item }}"
+    state: present
+    sysctl_file: "{{ sysctl_file_path }}"
+    value: "1"
+    reload: yes
+  when: sysctl_bridge_nf_call_iptables.rc == 0
+  with_items:
+    - net.bridge.bridge-nf-call-iptables
+    - net.bridge.bridge-nf-call-arptables
+    - net.bridge.bridge-nf-call-ip6tables
+
+- name: Modprobe Kernel Module for IPVS
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - ip_vs
+    - ip_vs_rr
+    - ip_vs_wrr
+    - ip_vs_sh
+  when: kube_proxy_mode == 'ipvs'
+  tags:
+    - kube-proxy
+
+- name: Modprobe nf_conntrack_ipv4
+  modprobe:
+    name: nf_conntrack_ipv4
+    state: present
+  register: modprobe_nf_conntrack_ipv4
+  ignore_errors: true  # noqa ignore-errors
+  when:
+    - kube_proxy_mode == 'ipvs'
+  tags:
+    - kube-proxy
+
+- name: Persist ip_vs modules
+  copy:
+    dest: /etc/modules-load.d/kube_proxy-ipvs.conf
+    mode: 0644
+    content: |
+      ip_vs
+      ip_vs_rr
+      ip_vs_wrr
+      ip_vs_sh
+      {% if modprobe_nf_conntrack_ipv4 is success -%}
+      nf_conntrack_ipv4
+      {%-   endif -%}
+  when: kube_proxy_mode == 'ipvs'
+  tags:
+    - kube-proxy
+
+- include_tasks: "cloud-credentials/{{ cloud_provider }}-credential-check.yml"
+  when:
+    - cloud_provider is defined
+    - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]
+  tags:
+    - cloud-provider
+    - facts
+
+- name: Test if openstack_cacert is a base64 string
+  set_fact:
+    openstack_cacert_is_base64: "{% if openstack_cacert is search ('^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$') %}true{% else %}false{% endif %}"
+  when:
+    - cloud_provider is defined
+    - cloud_provider == 'openstack'
+    - openstack_cacert is defined
+    - openstack_cacert | length > 0
+
+
+- name: Write cacert file
+  copy:
+    src: "{{ openstack_cacert if not openstack_cacert_is_base64 else omit }}"
+    content: "{{ openstack_cacert | b64decode if openstack_cacert_is_base64 else omit }}"
+    dest: "{{ kube_config_dir }}/openstack-cacert.pem"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  when:
+    - cloud_provider is defined
+    - cloud_provider == 'openstack'
+    - openstack_cacert is defined
+    - openstack_cacert | length > 0
+  tags:
+    - cloud-provider
+
+- name: Write cloud-config
+  template:
+    src: "cloud-configs/{{ cloud_provider }}-cloud-config.j2"
+    dest: "{{ kube_config_dir }}/cloud_config"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  when:
+    - cloud_provider is defined
+    - cloud_provider in [ 'openstack', 'azure', 'vsphere', 'aws' ]
+  notify: Node | restart kubelet
+  tags:
+    - cloud-provider
+
+- import_tasks: kubelet.yml
+  tags:
+    - kubelet
+    - kubeadm

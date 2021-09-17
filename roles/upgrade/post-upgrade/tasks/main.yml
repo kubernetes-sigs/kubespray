@@ -1,4 +1,16 @@
 ---
+- name: wait for cilium
+  when:
+    - needs_cordoning|default(false)
+    - kube_network_plugin == 'cilium'
+  command: >
+    {{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf
+    wait pod -n kube-system -l k8s-app=cilium
+    --field-selector 'spec.nodeName=={{ kube_override_hostname|default(inventory_hostname) }}'
+    --for=condition=Ready
+    --timeout={{ upgrade_post_cilium_wait_timeout }}
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
 - name: Uncordon node
   command: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf uncordon {{ kube_override_hostname|default(inventory_hostname) }}"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"

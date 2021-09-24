@@ -298,6 +298,8 @@ calico_bpf_enabled: true
 kube_proxy_remove: true
 ```
 
+**NOTE:** there is known incompatibility in using the `kernel-kvm` kernel package on Ubuntu OSes because it is missing support for `CONFIG_NET_SCHED` which is a requirement for Calico eBPF support. When using Calico eBPF with Ubuntu ensure you run the `-generic` kernel.
+
 ### Cleaning up after kube-proxy
 
 Calico node cannot clean up after kube-proxy has run in ipvs mode. If you are converting an existing cluster to eBPF you will need to ensure the `kube-proxy` DaemonSet is deleted and that ipvs rules are cleaned.

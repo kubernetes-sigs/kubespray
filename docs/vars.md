@@ -3,7 +3,7 @@
 ## Generic Ansible variables
 
 You can view facts gathered by Ansible automatically
-[here](https://docs.ansible.com/ansible/latest/playbooks_variables.html#information-discovered-from-systems-facts).
+[here](https://docs.ansible.com/ansible/latest/user_guide/playbooks_vars_facts.html#ansible-facts).
 
 Some variables of note include:
 

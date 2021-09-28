@@ -25,7 +25,7 @@ not _kube_node_.
 
 There are also two special groups:
 
-* **calico_rr** : explained for [advanced Calico networking cases](calico.md)
+* **calico_rr** : explained for [advanced Calico networking cases](/docs/calico.md)
 * **bastion** : configure a bastion host if your nodes are not directly reachable
 
 Below is a complete inventory example:
@@ -252,7 +252,7 @@ For more information about Ansible and bastion hosts, read
 
 ## Mitogen
 
-You can use [mitogen](mitogen.md) to speed up kubespray.
+You can use [mitogen](/docs/mitogen.md) to speed up kubespray.
 
 ## Beyond ansible 2.9
 

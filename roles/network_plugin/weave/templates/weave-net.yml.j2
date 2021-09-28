@@ -27,7 +27,7 @@ items:
           - list
           - watch
       - apiGroups:
-          - networking.k8s.io
+          - extensions
         resources:
           - networkpolicies
         verbs:
@@ -35,20 +35,20 @@ items:
           - list
           - watch
       - apiGroups:
-          - ''
+          - 'networking.k8s.io'
         resources:
-          - nodes/status
+          - networkpolicies
         verbs:
-          - patch
-          - update
+          - get
+          - list
+          - watch
       - apiGroups:
-          - policy
-        resourceNames:
-          - privileged
+        - ''
         resources:
-          - podsecuritypolicies
+        - nodes/status
         verbs:
-          - use
+        - patch
+        - update
   - apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding
     metadata:
@@ -67,16 +67,16 @@ items:
     kind: Role
     metadata:
       name: weave-net
+      namespace: kube-system
       labels:
         name: weave-net
-      namespace: kube-system
     rules:
       - apiGroups:
           - ''
-        resourceNames:
-          - weave-net
         resources:
           - configmaps
+        resourceNames:
+          - weave-net
         verbs:
           - get
           - update
@@ -90,9 +90,9 @@ items:
     kind: RoleBinding
     metadata:
       name: weave-net
+      namespace: kube-system
       labels:
         name: weave-net
-      namespace: kube-system
     roleRef:
       kind: Role
       name: weave-net
@@ -109,16 +109,16 @@ items:
         name: weave-net
       namespace: kube-system
     spec:
-      minReadySeconds: 5
+      # Wait 5 seconds to let pod connect before rolling next pod
       selector:
         matchLabels:
           name: weave-net
+      minReadySeconds: 5
       template:
         metadata:
           labels:
             name: weave-net
         spec:
-          priorityClassName: system-node-critical
           initContainers:
             - name: weave-init
               image: {{ weave_kube_image_repo }}:{{ weave_kube_image_tag }}
@@ -217,6 +217,9 @@ items:
                 - name: dbus
                   mountPath: /host/var/lib/dbus
                   readOnly: true
+                - mountPath: /host/etc/machine-id
+                  name: cni-machine-id
+                  readOnly: true
                 - name: xtables-lock
                   mountPath: /run/xtables.lock
                   readOnly: false
@@ -246,7 +249,10 @@ items:
             seLinuxOptions: {}
           serviceAccountName: weave-net
           tolerations:
-            - operator: Exists
+            - effect: NoSchedule
+              operator: Exists
+            - effect: NoExecute
+              operator: Exists
           volumes:
             - name: weavedb
               hostPath:
@@ -260,6 +266,9 @@ items:
             - name: cni-conf
               hostPath:
                 path: /etc
+            - name: cni-machine-id
+              hostPath:
+                path: /etc/machine-id
             - name: dbus
               hostPath:
                 path: /var/lib/dbus
@@ -270,6 +279,7 @@ items:
               hostPath:
                 path: /run/xtables.lock
                 type: FileOrCreate
+          priorityClassName: system-node-critical
       updateStrategy:
         rollingUpdate:
           maxUnavailable: {{ serial | default('20%') }}

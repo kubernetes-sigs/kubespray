@@ -15,7 +15,7 @@ one platform for the foreseeable future.
 
 [Kubeadm](https://github.com/kubernetes/kubeadm) provides domain Knowledge of Kubernetes clusters' life cycle
 management, including self-hosted layouts, dynamic discovery services and so
-on. Had it belonged to the new [operators world](https://coreos.com/blog/introducing-operators.html),
+on. Had it belonged to the new [operators world](https://cloud.redhat.com/learn/topics/operators),
 it may have been named a "Kubernetes cluster operator". Kubespray however,
 does generic configuration management tasks from the "OS operators" ansible
 world, plus some initial K8s clustering (with networking plugins included) and

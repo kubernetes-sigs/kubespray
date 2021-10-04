@@ -14,7 +14,7 @@ hands-on guide to get started with Kubespray.
 
 ## Cluster Details
 
-* [kubespray](https://github.com/kubernetes-sigs/kubespray) v2.13.x
+* [kubespray](https://github.com/kubernetes-sigs/kubespray) v2.17.x
 * [kubernetes](https://github.com/kubernetes/kubernetes) v1.17.9
 
 ## Prerequisites
@@ -196,7 +196,7 @@ Next, we will git clone the Kubespray code into our working directory:
 ```ShellSession
 git clone https://github.com/kubernetes-sigs/kubespray.git
 cd kubespray
-git checkout release-2.13
+git checkout release-2.17
 ```
 
 Now we need to install the dependencies for Ansible to run the Kubespray

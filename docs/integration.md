@@ -5,7 +5,7 @@
      * All forked public repos at github will be also public, so **never commit sensitive data to your public forks**.
      * List of all forked repos could be retrieved from github page of original project.
 
-2. Add **forked repo** as submodule to desired folder in your existent ansible repo(for example 3d/kubespray):
+2. Add **forked repo** as submodule to desired folder in your existent ansible repo (for example 3d/kubespray):
   ```git submodule add https://github.com/YOUR_GITHUB/kubespray.git kubespray```
   Git will create `.gitmodules` file in your existent ansible repo:
 
@@ -19,7 +19,7 @@
 ```git config --global status.submoduleSummary true```
 
 4. Add *original* kubespray repo as upstream:
-```git remote add upstream https://github.com/kubernetes-sigs/kubespray.git```
+```cd kubespray && git remote add upstream https://github.com/kubernetes-sigs/kubespray.git```
 
 5. Sync your master branch with upstream:
 
@@ -34,45 +34,46 @@
 ```git checkout -b work```
     ***Never*** use master branch of your repository for your commits.
 
-7. Modify path to library and roles in your ansible.cfg file (role naming should be uniq, you may have to rename your existent roles if they have same names as kubespray project):
+7. Modify path to library and roles in your ansible.cfg file (role naming should be unique, you may have to rename your existent roles if they have same names as kubespray project),
+   if you had roles in your existing ansible project before, you can add the path to those separated with `:`:
 
-   ```ini
+8. ```ini
    ...
-   library       = 3d/kubespray/library/
-   roles_path    = 3d/kubespray/roles/
+   library       = ./library/:3d/kubespray/library/
+   roles_path    = ./roles/:3d/kubespray/roles/
    ...
    ```
 
-8. Copy and modify configs from kubespray `group_vars` folder to corresponding `group_vars` folder in your existent project.
+9. Copy and modify configs from kubespray `group_vars` folder to corresponding `group_vars` folder in your existent project.
 You could rename *all.yml* config to something else, i.e. *kubespray.yml* and create corresponding group in your inventory file, which will include all hosts groups related to kubernetes setup.
 
-9. Modify your ansible inventory file by adding mapping of your existent groups (if any) to kubespray naming.
-   For example:
+10. Modify your ansible inventory file by adding mapping of your existent groups (if any) to kubespray naming.
+    For example:
 
-   ```ini
-     ...
-     #Kargo groups:
-     [kube_node:children]
-     kubenode
+    ```ini
+      ...
+      #Kargo groups:
+      [kube_node:children]
+      kubenode
 
-     [k8s_cluster:children]
-     kubernetes
+      [k8s_cluster:children]
+      kubernetes
 
-     [etcd:children]
-     kubemaster
-     kubemaster-ha
+      [etcd:children]
+      kubemaster
+      kubemaster-ha
 
-     [kube_control_plane:children]
-     kubemaster
-     kubemaster-ha
+      [kube_control_plane:children]
+      kubemaster
+      kubemaster-ha
 
-     [kubespray:children]
-     kubernetes
-     ```
+      [kubespray:children]
+      kubernetes
+      ```
 
-     * Last entry here needed to apply kubespray.yml config file, renamed from all.yml of kubespray project.
+      * Last entry here needed to apply kubespray.yml config file, renamed from all.yml of kubespray project.
 
-10. Now you can include kubespray tasks in you existent playbooks by including cluster.yml file:
+11. Now you can include kubespray tasks in you existent playbooks by including cluster.yml file:
 
      ```yml
      - name: Include kubespray tasks
@@ -81,7 +82,7 @@ You could rename *all.yml* config to something else, i.e. *kubespray.yml* and cr
 
      Or your could copy separate tasks from cluster.yml into your ansible repository.
 
-11. Commit changes to your ansible repo. Keep in mind, that submodule folder is just a link to the git commit hash of your forked repo.
+12. Commit changes to your ansible repo. Keep in mind, that submodule folder is just a link to the git commit hash of your forked repo.
 When you update your "work" branch you need to commit changes to ansible repo as well.
 Other members of your team should use ```git submodule sync```, ```git submodule update --init``` to get actual code from submodule.
 

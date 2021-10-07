@@ -15,7 +15,7 @@ if [[ "$PLATFORM" = *"Ubuntu"* ]]; then
                OPENSSLCNF=${path}
            fi
         done
-elif [[ "$PLATFORM" = *"CentOS"* ]] || [[ "$PLATFORM" = *"ProLinux"* ]] || [[ "$PLATFORM" = *"Red Hat Enterprise Linux Server"* ]]; then
+elif [[ "$PLATFORM" = *"CentOS"* ]] || [[ "$PLATFORM" = *"ProLinux"* ]] || [[ "$PLATFORM" = *"Red Hat Enterprise Linux"* ]]; then
         echo "Platform is CentOS or ProLinux"
         echo "CentOS version must be 7.x or 8.x"
         OPENSSLCNF=

@@ -11,29 +11,13 @@
 
 Cert-Manager is a native Kubernetes certificate management controller. It can help with issuing certificates from a variety of sources, such as Let’s Encrypt, HashiCorp Vault, Venafi, a simple signing key pair, or self signed. It will ensure certificates are valid and up to date, and attempt to renew certificates at a configured time before expiry.
 
-The Kubespray out-of-the-box cert-manager deployment uses a TLS Root CA certificate and key stored as the Kubernetes `ca-key-pair` secret consisting of `tls.crt` and `tls.key`, which are the base64 encode values of the TLS Root CA certificate and key respectively.
-
-Integration with other PKI/Certificate management solutions, such as HashiCorp Vault will require some further development changes to the current cert-manager deployment and may be introduced in the future.
-
 ## Kubernetes TLS Root CA Certificate/Key Secret
 
 If you're planning to secure your ingress resources using TLS client certificates, you'll need to create and deploy the Kubernetes `ca-key-pair` secret consisting of the Root CA certificate and key to your K8s cluster.
 
-If these are already available, simply update `templates\secret-cert-manager.yml.j2` with the base64 encoded values of your TLS Root CA certificate and key prior to enabling and deploying cert-manager.
-
-e.g.
-
-```shell
-$ cat ca.pem | base64 -w 0
-LS0tLS1CRUdJTiBDRVJU...
-
-$ cat ca-key.pem | base64 -w 0
-LS0tLS1CRUdJTiBSU0Eg...
-```
-
 For further information, read the official [Cert-Manager CA Configuration](https://cert-manager.io/docs/configuration/ca/) doc.
 
-Once the base64 encoded values have been added to `templates\secret-cert-manager.yml.j2`, cert-manager can now be enabled by editing your K8s cluster addons inventory e.g. `inventory\sample\group_vars\k8s_cluster\addons.yml` and setting `cert_manager_enabled` to true.
+`cert-manager` can now be enabled by editing your K8s cluster addons inventory e.g. `inventory\sample\group_vars\k8s_cluster\addons.yml` and setting `cert_manager_enabled` to true.
 
 ```ini
 # Cert manager deployment

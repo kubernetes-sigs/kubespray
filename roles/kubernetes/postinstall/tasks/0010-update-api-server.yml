@@ -10,6 +10,10 @@
 # Restart kube-apiserver docker
 - name: Kube-apiserver - dnsPolicy | restart kube-apiserver docker
   shell: "{{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-apiserver* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
+  register: remove_apiserver_container
+  retries: 10
+  until: remove_apiserver_container.rc == 0
+  delay: 1
   when:
     - container_manager == "docker"
     - inventory_hostname in groups['kube_control_plane']
@@ -19,8 +23,22 @@
 # Restart kube-apiserver crio/containerd
 - name: Kube-apiserver - dnsPolicy | restart kube-apiserver crio/containerd
   shell: "{{ bin_dir }}/crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
+  register: remove_apiserver_container
+  retries: 10
+  until: remove_apiserver_container.rc == 0
+  delay: 1
   when:
     - container_manager in ['crio', 'containerd']
     - inventory_hostname in groups['kube_control_plane']
     - dns_mode != 'none'
     - updated.changed
+
+# Waiting for the apiserver to be running
+- name: Kube-apiserver - dnsPolicy | wait for the apiserver to be running
+  uri:
+    url: "{{ kube_apiserver_endpoint }}/healthz"
+    validate_certs: no
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 1

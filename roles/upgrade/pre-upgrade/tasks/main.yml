@@ -53,17 +53,49 @@
         - drain_nodes
         - drain_pod_selector
 
+    - name: Set drain facts
+      set_fact:
+        drain_grace_period_final: >-
+          {{ (hostvars[groups['kube-master'][0]]['regular_drain_failed'] | default(false))
+             | ternary(drain_fallback_grace_period, drain_grace_period) }}
+        drain_timeout_final: >-
+          {{ (hostvars[groups['kube-master'][0]]['regular_drain_failed'] | default(false))
+             | ternary(drain_fallback_timeout, drain_timeout) }}
+
     - name: Drain node
       command: >-
         {{ bin_dir }}/kubectl drain
         --force
         --ignore-daemonsets
-        --grace-period {{ drain_grace_period }}
-        --timeout {{ drain_timeout }}
+        --grace-period {{ drain_grace_period_final }}
+        --timeout {{ drain_timeout_final }}
         --delete-local-data {{ kube_override_hostname|default(inventory_hostname) }}
         {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
-      when:
-        - drain_nodes
+      when: drain_nodes
+      register: result
+      failed_when: result.rc != 0 and (not drain_fallback_enabled)
+
+    - name: Set fact regular_drain_failed
+      set_fact:
+        regular_drain_failed: "{{ result.rc != 0 }}"
+      delegate_to: "{{ groups['kube-master'][0] }}"
+      run_once: yes
+      when: >-
+        drain_nodes and
+        drain_fallback_enabled and
+        (hostvars[groups['kube-master'][0]]['regular_drain_failed'] is not defined)
+
+    - name: Drain node - fallback with disabled eviction
+      command: >-
+        {{ bin_dir }}/kubectl drain
+        --force
+        --ignore-daemonsets
+        --grace-period {{ drain_fallback_grace_period }}
+        --timeout {{ drain_fallback_timeout }}
+        --delete-local-data {{ kube_override_hostname|default(inventory_hostname) }}
+        {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
+        --disable-eviction
+      when: drain_nodes and drain_fallback_enabled
   rescue:
     - name: Set node back to schedulable
       command: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf uncordon {{ inventory_hostname }}"

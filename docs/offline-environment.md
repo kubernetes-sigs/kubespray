@@ -31,7 +31,7 @@ calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_ctl_versio
 # If using Calico with kdd
 calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_version }}.tar.gz"
 
-# CentOS/Redhat/AlmaLinux
+# CentOS/Redhat/AlmaLinux/Rocky Linux
 ## Docker / Containerd
 docker_rh_repo_base_url: "{{ yum_repo }}/docker-ce/$releasever/$basearch"
 docker_rh_repo_gpgkey: "{{ yum_repo }}/docker-ce/gpg"

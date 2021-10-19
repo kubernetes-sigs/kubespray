@@ -35,7 +35,7 @@
   * [Fedora CoreOS](docs/fcos.md)
   * [OpenSUSE](docs/opensuse.md)
   * [RedHat Enterprise Linux](docs/rhel.md)
-  * [CentOS/OracleLinux/AlmaLinux](docs/centos8.md)
+  * [CentOS/OracleLinux/AlmaLinux/Rocky Linux](docs/centos8.md)
   * [Amazon Linux 2](docs/amazonlinux.md)
 * CRI
   * [Containerd](docs/containerd.md)

@@ -369,6 +369,7 @@ The following OSes will require enabling the EPEL repo in order to bring in wire
 
 * CentOS 7 & 8
 * AlmaLinux 8
+* Rocky Linux 8
 * Amazon Linux 2
 
 ```yaml

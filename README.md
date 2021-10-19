@@ -123,6 +123,7 @@ vagrant up
 - **openSUSE** Leap 15.x/Tumbleweed
 - **Oracle Linux** 7, [8](docs/centos8.md)
 - **Alma Linux** [8](docs/centos8.md)
+- **Rocky Linux** [8](docs/centos8.md)
 - **Amazon Linux 2** (experimental: see [amazon linux notes](docs/amazonlinux.md))
 
 Note: Upstart/SysV init based OS types are not supported.

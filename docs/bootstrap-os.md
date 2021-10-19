@@ -35,7 +35,7 @@ Variables are listed with their default values, if applicable.
 * `coreos_locksmithd_disable: false`
   Whether `locksmithd` (responsible for rolling restarts) should be disabled or be left alone.
 
-#### CentOS/RHEL/AlmaLinux
+#### CentOS/RHEL/AlmaLinux/Rocky Linux
 
 * `centos_fastestmirror_enabled: false`
   Whether the [fastestmirror](https://wiki.centos.org/PackageManagement/Yum/FastestMirror) yum plugin should be enabled.

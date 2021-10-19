@@ -1,0 +1,22 @@
+---
+- name: Set facts after regular drain has failed
+  set_fact:
+    drain_grace_period_after_failure: "{{ drain_fallback_grace_period }}"
+    drain_timeout_after_failure: "{{ drain_fallback_timeout }}"
+  delegate_to: localhost
+  run_once: yes
+
+- name: Drain node - fallback with disabled eviction
+  command: >-
+    {{ bin_dir }}/kubectl drain
+    --force
+    --ignore-daemonsets
+    --grace-period {{ drain_fallback_grace_period }}
+    --timeout {{ drain_fallback_timeout }}
+    --delete-emptydir-data {{ kube_override_hostname|default(inventory_hostname) }}
+    {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
+    --disable-eviction
+  register: drain_fallback_result
+  until: drain_fallback_result.rc == 0
+  retries: "{{ drain_fallback_retries }}"
+  delay: "{{ drain_fallback_retry_delay_seconds }}"

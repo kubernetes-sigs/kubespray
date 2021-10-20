@@ -73,15 +73,48 @@
         {{ bin_dir }}/kubectl drain
         --force
         --ignore-daemonsets
-        --grace-period {{ drain_grace_period }}
-        --timeout {{ drain_timeout }}
+        --grace-period {{ hostvars['localhost']['drain_grace_period_after_failure'] | default(drain_grace_period) }}
+        --timeout {{ hostvars['localhost']['drain_timeout_after_failure'] | default(drain_timeout) }}
         --delete-local-data {{ kube_override_hostname|default(inventory_hostname) }}
         {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
       when: drain_nodes
       register: result
+      failed_when:
+        - result.rc != 0
+        - not drain_fallback_enabled
       until: result.rc == 0
       retries: "{{ drain_retries }}"
       delay: "{{ drain_retry_delay_seconds }}"
+
+    - name: Drain fallback
+      block:
+        - name: Set facts after regular drain has failed
+          set_fact:
+            drain_grace_period_after_failure: "{{ drain_fallback_grace_period }}"
+            drain_timeout_after_failure: "{{ drain_fallback_timeout }}"
+          delegate_to: localhost
+          delegate_facts: yes
+          run_once: yes
+
+        - name: Drain node - fallback with disabled eviction
+          command: >-
+            {{ bin_dir }}/kubectl drain
+            --force
+            --ignore-daemonsets
+            --grace-period {{ drain_fallback_grace_period }}
+            --timeout {{ drain_fallback_timeout }}
+            --delete-local-data {{ kube_override_hostname|default(inventory_hostname) }}
+            {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
+            --disable-eviction
+          register: drain_fallback_result
+          until: drain_fallback_result.rc == 0
+          retries: "{{ drain_fallback_retries }}"
+          delay: "{{ drain_fallback_retry_delay_seconds }}"
+      when:
+        - drain_nodes
+        - drain_fallback_enabled
+        - result.rc != 0
+
   rescue:
     - name: Set node back to schedulable
       command: "{{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf uncordon {{ inventory_hostname }}"

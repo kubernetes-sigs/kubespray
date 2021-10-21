@@ -100,27 +100,37 @@
 5. kubespray에서 설치할 노드들을 정의한다.
     * kubespray/inventory/tmaxcloud/inventory.ini
       * [all] : all node
-        * [hostname] [ansibleip] [backupip] 
-        * ex) master1 ansible_host=10.0.10.51 ip=10.0.10.51
+        * [hostname] [ansibleip] [backupip]
+        ```bash 
+          ex) master1 ansible_host=10.0.10.51 ip=10.0.10.51
               master2 ansible_host=10.0.10.52 ip=10.0.10.52
               master3 ansible_host=10.0.10.53 ip=10.0.10.53
               worker1 ansible_host=10.0.10.54 ip=10.0.10.54
               worker2 ansible_host=10.0.10.55 ip=10.0.10.55
               
               bastion ansible_host=192.168.9.1 ip=192.168.9.1
+        ```
       * [kube_control_plane] : master node
-        * ex) master1
-              master2
-              master3
+        ```bash        
+         master1
+         master2
+         master3
+        ```        
       * [etcd] : master node (etcd node)
-        * ex) master1
-              master2
-              master3
-      * [kube_node] : kube node
-        * ex) node1
-              node2 
+        ```bash        
+         master1
+         master2
+         master3
+        ```
+      * [kube_node] : worker node
+        ```bash        
+         node1
+         node2
+        ```
       * [bastion] : proxy node
-        * bastion
+        ```bash 
+         bastion
+        ``` 
     * etcd node를 따로 설정하는 것도 가능하다.
     * [all] 에만 ip를 정의하고, 나머지는 [all]에서 정의한 hostname만 작성한다.
     

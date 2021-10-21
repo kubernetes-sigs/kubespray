@@ -1,6 +1,6 @@
-# offline 환경 설정
+# k8s_cluster 환경 설정
 
-offline 환경에서의 kubespray 설치를 위해 inventory/tmaxcloud/group_vars/all/offline.yml 을 수정한다.
+kubespray 설치를 위해 inventory/tmaxcloud/group_vars/group_vars/k8s_cluster/k8s-cluster.yml 을 수정한다.
 
 ```yml
 kube_version: k8s version

@@ -68,6 +68,8 @@
     https://get.helm.sh/helm-v3.5.4-linux-amd64.tar.gz
     
     ```
+   * 아래의 ftp에서 다운로드도 가능하다.
+     * ftp : 192.168.1.150:/home/ck-ftp/k8s/install/offline/files-repo
 * 비고 :
     * file repo의 디렉토리 변경시에는 kubespray/inventory/tmaxcloud/group_vars/all/offline.yml 의 "files_repo" 부분을 경로에 맞게 수정한다.
 

@@ -23,6 +23,11 @@ ai_devops를 설치하기 위해서는 먼저 다음과 같은 모듈들이 설�
 5. (Optional) GPU plug-in
     * Kubernetes cluster 내 node에 GPU가 탑재되어 있으며 AI DevOps 기능을 사용할 때 GPU가 요구될 경우에 필요하다.
      
+# ai-devops 설정
+
+kubespray로 ai-devops 설치를 위해 roles/kubernetes-apps/ai_devops/defaults/main.yml에서 설정해야하는 값은 다음과 같다.
+예시들은 기본 설정 값들이다.
+
 # ai_devops 모듈 설치 namespace
 
 ai_devops의 모듈들이 설치되는 namespace
@@ -76,7 +81,7 @@ Controller(crd 관리), UI, DB, DB-manager로 구성된 katib 모듈 관련 이�
 
 ```yml
 default_trial_template_image_repo: "{{ docker_image_repo }}/kubeflowkatib/mxnet-mnist"
-default_trial_templage_image_tag: "v1beta1-45c5727"
+default_trial_template_image_tag: "v1beta1-45c5727"
 default_trial_template_image_2_repo: "{{ docker_image_repo }}/kubeflowkatib/enas-cnn-cifar10-cpu"
 default_trial_template_image_2_tag: "v1beta1-45c5727"
 default_trial_template_image_3_repo: "{{ docker_image_repo }}/kubeflowkatib/pytorch-mnist"
@@ -85,8 +90,8 @@ katib_controller_image_repo: "{{ docker_image_repo }}/kubeflowkatib/katib-contro
 katib_controller_image_tag: "v0.11.0"
 katib_db_manager_image_repo: "{{ docker_image_repo }}/kubeflowkatib/katib-db-manager"
 katib_db_manager_image_tag: "v0.11.0"
-mysql_image_repo: "{{ docker_image_repo }}/library/mysql"
-mysql_image_tag: "8"
+mysql_deploy_image_repo: "{{ mysql_image_repo }}"
+mysql_deploy_image_tag: "8"
 katib_ui_image_repo: "{{ docker_image_repo }}/kubeflowkatib/katib-ui"
 katib_ui_image_tag: "v0.11.0"
 katib_cert_generator_image_repo: "{{ docker_image_repo }}/kubeflowkatib/cert-generator"
@@ -150,19 +155,19 @@ knative 모듈 관련 이미지/tag
 
 ```yml
 queue_sidecar_image_repo: "{{ gcr_image_repo }}/knative-releases/knative.dev/serving/cmd/queue"
-queue_sidecar_image_tag: "sha256:d066ae5b642885827506610ae25728d442ce11447b82df6e9cc4c174bb97ecb3"
+queue_sidecar_image_tag: "v0.14.3"
 activator_image_repo: "{{ gcr_image_repo }}/knative-releases/knative.dev/serving/cmd/activator"
-activator_image_tag: "sha256:ffa3d72ee6c2eeb2357999248191a643405288061b7080381f22875cb703e929"
+activator_image_tag: "v0.14.3"
 autoscaler_image_repo: "{{ gcr_image_repo }}/knative-releases/knative.dev/serving/cmd/autoscaler"
-autoscaler_image_tag: "sha256:f89fd23889c3e0ca3d8e42c9b189dc2f93aa5b3a91c64e8aab75e952a210eeb3"
+autoscaler_image_tag: "v0.14.3"
 controller_image_repo: "{{ gcr_image_repo }}/knative-releases/knative.dev/serving/cmd/controller"
-controller_image_tag: "sha256:b86ac8ecc6b2688a0e0b9cb68298220a752125d0a048b8edf2cf42403224393c"
+controller_image_tag: "v0.14.3"
 istio_webhook_image_repo: "{{ gcr_image_repo }}/knative-releases/knative.dev/net-istio/cmd/webhook"
-istio_webhook_image_tag: "sha256:e6b142c0f82e0e0b8cb670c11eb4eef6ded827f98761bbf4bea7bdb777b80092"
+istio_webhook_image_tag: "v0.14.1"
 networking_istio_image_repo: "{{ gcr_image_repo }}/knative-releases/knative.dev/net-istio/cmd/controller"
-networking_istio_image_tag: "sha256:75c7918ca887622e7242ec1965f87036db1dc462464810b72735a8e64111f6f7"
+networking_istio_image_tag: "v0.14.1"
 webhook_image_repo: "{{ gcr_image_repo }}/knative-releases/knative.dev/serving/cmd/webhook"
-webhook_image_tag: "sha256:7e6df0fda229a13219bbc90ff72a10434a0c64cd7fe13dc534b914247d1087f4"
+webhook_image_tag: "v0.14.3"
 ```
 
 # 12. kfserving parameters
@@ -174,6 +179,39 @@ kfserving_controller_image_repo: "{{ gcr_image_repo }}/kfserving/kfserving-contr
 kfserving_controller_image_tag: "v0.5.1"
 kube_rbac_proxy_image_repo: "{{ gcr_image_repo }}/kubebuilder/kube-rbac-proxy"
 kube_rbac_proxy_image_tag: "v0.4.0"
+kfserving_agent_image_repo: "{{ docker_image_repo }}/kfserving/agent"
+kfserving_agent_image_tag: "v0.5.1"
+alibi_explainer_image_repo: "{{ docker_image_repo }}/kfserving/alibi-explainer"
+alibi_explainer_image_tag: "v0.5.1"
+aix_explainer_image_repo: "{{ docker_image_repo }}/kfserving/aix-explainer"
+aix_explainer_image_tag: "v0.5.1"
+art_explainer_image_repo: "{{ docker_image_repo }}/kfserving/art-explainer"
+art_explainer_image_tag: "v0.5.1"
+tensorflow_image_repo: "{{ docker_image_repo }}/tensorflow/serving"
+tensorflow_image_tag: "1.14.0"
+tensorflow_image_gpu_tag: "1.14.0-gpu"
+onnx_image_repo: "{{ mcr_image_repo }}/onnxruntime/server"
+onnx_image_tag: "v1.0.0"
+sklearn_image_repo: "{{ gcr_image_repo }}/kfserving/sklearnserver"
+sklearn_image_tag: "v0.5.1"
+mlserver_image_repo: "{{ docker_image_repo }}/seldonio/mlserver"
+mlserver_image_tag: "0.2.1"
+xgboost_image_repo: "{{ gcr_image_repo }}/kfserving/xgbserver"
+xgboost_image_tag: "v0.5.1"
+pytorch_server_image_repo: "{{ gcr_image_repo }}/kfserving/pytorchserver"
+pytorch_server_image_tag: "v0.5.1"
+pytorch_server_image_gpu_tag: "v0.5.1-gpu"
+torchserve_kfs_image_repo: "{{ docker_image_repo }}/kfserving/torchserve-kfs"
+torchserve_kfs_image_tag: "0.3.0"
+torchserve_kfs_image_gpu_tag: "0.3.0-gpu"
+triton_image_repo: "{{ nvcr_image_repo }}/nvidia/tritonserver"
+triton_image_tag: "20.08-py3"
+pmml_image_repo: "{{ docker_image_repo }}/kfserving/pmmlserver"
+pmml_image_tag: "v0.5.1"
+lgb_image_repo: "{{ docker_image_repo }}/kfserving/lgbserver"
+lgb_image_tag: "v0.5.1"
+storage_initializer_image_repo: "{{ gcr_image_repo }}/kfserving/storage-initializer"
+storage_initializer_image_tag: "v0.5.1"
 ```
 
 

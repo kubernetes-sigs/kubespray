@@ -152,4 +152,4 @@
 0. kubespray uninstall playbook을 실행한다. (reset.yml)
   * ex) ansible-playbook -i inventory/tmaxcloud/inventory.ini --become --become-user=root reset.yml
 * 비고 :
-  * inventory에 정의된 host에 image registry를 구축했더라면 함께 삭제 되므로 reset 후 클러스터 재설치에는 image registry도 해야 한다.
+  * inventory에 정의된 host에 image registry를 설치했다면 함께 삭제 되므로, reset 후 클러스터 재설치시에 image registry를 재설치 해야 한다.

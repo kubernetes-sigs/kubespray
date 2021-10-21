@@ -1,6 +1,7 @@
 # Prometheus Grafana
 
 Kubespray 를 통해 Prometheus, Grafana 배포를 하기 위해서는 아래의 parameter 들을 설정해야 한다.
+
 Prometheus, Grafana 설치를 위해 사용되는 이미지의 경로와 태그는 roles/kubernetes-apps/prometheus/defaults/main.yml 에 정의되어있다.
 
 ### Common

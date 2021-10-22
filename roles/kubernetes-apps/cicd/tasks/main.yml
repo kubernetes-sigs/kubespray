@@ -16,7 +16,6 @@
   with_items:
     - { name: 01-tekton-pipelines, file: 01-tekton-pipelines.yml }
     - { name: 02-tekton-triggers, file: 02-tekton-triggers.yml }
-    - { name: 03-tekton-triggers-interceptor, file: 03-tekton-triggers-interceptor.yml }
     - { name: 04-cicd-operator, file: 04-cicd-operator.yml }
   register: cicd_manifests
   when: inventory_hostname == groups['kube_control_plane'][0]
@@ -29,6 +28,35 @@
     wait: true
   with_items:
     - "{{ cicd_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+  loop_control:
+    label: "{{ item.item.file }}"
+
+- name: CI/CD Operator | Wait for CRD apply
+  shell: "while [ \"$({{ bin_dir }}/kubectl get crd | grep clusterinterceptors.triggers.tekton.dev | wc -l)\" == \"0\" ]; do echo 'CRD Interceptor is not registered yet'; sleep 2; done; echo 'CRD is registered'; sleep 5"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  register: cicd_crd_wait
+- debug:
+    msg: "{{ cicd_crd_wait.stdout_lines }}"
+
+- name: CI/CD Operator | Generate Interceptors Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/cicd/{{ item.file }}"
+  with_items:
+    - { name: 03-tekton-triggers-interceptor, file: 03-tekton-triggers-interceptor.yml }
+  register: cicd_manifests_interceptors
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: CI/CD Operator | Apply Interceptors Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/cicd/{{ item.item.file }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "{{ cicd_manifests_interceptors.results }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
   loop_control:

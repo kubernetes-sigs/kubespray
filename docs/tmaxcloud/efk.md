@@ -1,6 +1,6 @@
 # EFK
 
-Kubespray 를 통해 EFK 배포를 하기 위해서는 아래의 parameter 들을 설정해야 한다.
+Kubespray 를 통해 EFK 배포를 하기 위해서는 roles/kubernetes-apps/efk/defaults/main.yml 아래의 parameter 들을 설정해야 한다.
 
 ### Common
 ```yml

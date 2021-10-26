@@ -70,23 +70,7 @@ spec:
 
 Once deployed to your K8s cluster, every 3 months cert-manager will automatically rotate the Prometheus `prometheus.example.com` TLS client certificate and key, and store these as the Kubernetes `prometheus-dashboard-certs` secret.
 
-Please consult the official upstream documentation:
-
-- [cert-manager Ingress Usage](https://cert-manager.io/v1.5-docs/usage/ingress/)
-- [cert-manager Ingress Tutorial](https://cert-manager.io/v1.5-docs/tutorials/acme/ingress/#step-3-assign-a-dns-name)
-
-### ACME
-
-The ACME Issuer type represents a single account registered with the Automated Certificate Management Environment (ACME) Certificate Authority server. When you create a new ACME Issuer, cert-manager will generate a private key which is used to identify you with the ACME server.
-
-Certificates issued by public ACME servers are typically trusted by client’s computers by default. This means that, for example, visiting a website that is backed by an ACME certificate issued for that URL, will be trusted by default by most client’s web browsers. ACME certificates are typically free.
-
-- [ACME Configuration](https://cert-manager.io/v1.5-docs/configuration/acme/)
-- [ACME HTTP Validation](https://cert-manager.io/v1.5-docs/tutorials/acme/http-validation/)
-  - [HTTP01 Challenges](https://cert-manager.io/v1.5-docs/configuration/acme/http01/)
-- [ACME DNS Validation](https://cert-manager.io/v1.5-docs/tutorials/acme/dns-validation/)
-  - [DNS01 Challenges](https://cert-manager.io/v1.5-docs/configuration/acme/dns01/)
-- [ACME FAQ](https://cert-manager.io/v1.5-docs/faq/acme/)
+For further information, read the official [Cert-Manager Ingress](https://cert-manager.io/docs/usage/ingress/) doc.
 
 ### Create New TLS Root CA Certificate and Key
 

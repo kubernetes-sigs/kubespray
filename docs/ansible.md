@@ -100,7 +100,6 @@ The following tags are defined in playbooks:
 
 |                       Tag name | Used for
 |--------------------------------|---------
-|                     ambassador | Ambassador Ingress Controller
 |                       annotate | Create kube-router annotation
 |                           apps | K8s apps definitions
 |                        asserts | Check tasks for download role

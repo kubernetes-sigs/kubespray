@@ -13,13 +13,19 @@
 - name: Check if kubelet.conf exists
   stat:
     path: "{{ kube_config_dir }}/kubelet.conf"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: kubelet_conf
 
 - name: Check if kubeadm CA cert is accessible
   stat:
     path: "{{ kube_cert_dir }}/ca.crt"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: kubeadm_ca_stat
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
 
 - name: Calculate kubeadm CA cert hash
@@ -30,14 +36,14 @@
   when:
     - kubeadm_ca_stat.stat is defined
     - kubeadm_ca_stat.stat.exists
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
   changed_when: false
 
 - name: Create kubeadm token for joining nodes with 24h expiration (default)
   command: "{{ bin_dir }}/kubeadm token create"
   register: temp_token
-  delegate_to: "{{ groups['kube-master'][0] }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
   when: kubeadm_token is not defined
   changed_when: false
 
@@ -45,11 +51,6 @@
   set_fact:
     kubeadm_token: "{{ temp_token.stdout }}"
   when: kubeadm_token is not defined
-
-- name: Get the kubeadm version
-  command: "{{ bin_dir }}/kubeadm version -o short"
-  register: kubeadm_output
-  changed_when: false
 
 - name: Set kubeadm api version to v1beta2
   set_fact:
@@ -60,11 +61,12 @@
     src: "kubeadm-client.conf.{{ kubeadmConfig_api_version }}.j2"
     dest: "{{ kube_config_dir }}/kubeadm-client.conf"
     backup: yes
+    mode: 0640
   when: not is_kube_master
 
 - name: Join to cluster if needed
   environment:
-    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}:/sbin"  # Make sure we can workaround RH / CentOS conservative path management
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}:/sbin"
   when: not is_kube_master and (not kubelet_conf.stat.exists)
   block:
 
@@ -74,6 +76,7 @@
         {{ bin_dir }}/kubeadm join
         --config {{ kube_config_dir }}/kubeadm-client.conf
         --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+        --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
       register: kubeadm_join
 
   rescue:
@@ -84,6 +87,7 @@
         {{ bin_dir }}/kubeadm join
         --config {{ kube_config_dir }}/kubeadm-client.conf
         --ignore-preflight-errors=all
+        --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
       register: kubeadm_join
 
   always:
@@ -117,10 +121,9 @@
   args:
     executable: /bin/bash
   run_once: true
-  delegate_to: "{{ groups['kube-master']|first }}"
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
   delegate_facts: false
   when:
-    - inventory_hostname in groups['kube-master']
     - kubeadm_config_api_fqdn is not defined
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
     - kube_proxy_deployed
@@ -138,10 +141,9 @@
 - name: Restart all kube-proxy pods to ensure that they load the new configmap
   command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
   run_once: true
-  delegate_to: "{{ groups['kube-master']|first }}"
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
   delegate_facts: false
   when:
-    - inventory_hostname in groups['kube-master']
     - kubeadm_config_api_fqdn is not defined
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
     - kube_proxy_deployed
@@ -152,6 +154,6 @@
   include_tasks: kubeadm_etcd_node.yml
   when:
     - etcd_kubeadm_enabled
-    - inventory_hostname not in groups['kube-master']
+    - inventory_hostname not in groups['kube_control_plane']
     - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
     - kube_network_plugin != "calico" or calico_datastore == "etcd"

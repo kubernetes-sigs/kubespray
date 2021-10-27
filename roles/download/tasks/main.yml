@@ -14,18 +14,26 @@
     - not skip_downloads|default(false)
     - container_manager in ['containerd', 'crio']
 
+- name: install nerdctl
+  import_role:
+    name: container-engine/nerdctl
+  when:
+    - not skip_downloads|default(false)
+    - container_manager in ['containerd']
+    - nerdctl_enabled
+
 - name: download | Get kubeadm binary and list of required images
   include_tasks: prep_kubeadm_images.yml
   when:
     - not skip_downloads|default(false)
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname in groups['kube_control_plane']
   tags:
     - download
     - upload
 
 - name: download | Download files / images
   include_tasks: "{{ include_file }}"
-  with_dict: "{{ downloads | combine(kubeadm_images) }}"
+  loop: "{{ downloads | combine(kubeadm_images) | dict2items }}"
   vars:
     download: "{{ download_defaults | combine(item.value) }}"
     include_file: "download_{% if download.container %}container{% else %}file{% endif %}.yml"

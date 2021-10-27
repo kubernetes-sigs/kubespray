@@ -2,13 +2,13 @@
 
 There are four node layout types: `default`, `separate`, `ha`, and `scale`.
 
-`default` is a non-HA two nodes setup with one separate `kube-node`
-and the `etcd` group merged with the `kube-master`.
+`default` is a non-HA two nodes setup with one separate `kube_node`
+and the `etcd` group merged with the `kube_control_plane`.
 
 `separate` layout is when there is only node of each type, which includes
- a kube-master, kube-node, and etcd cluster member.
+ a kube_control_plane, kube_node, and etcd cluster member.
 
-`ha` layout consists of two etcd nodes, two masters and a single worker node,
+`ha` layout consists of two etcd nodes, two control planes and a single worker node,
 with role intersection.
 
 `scale` layout can be combined with above layouts (`ha-scale`, `separate-scale`). It includes 200 fake hosts

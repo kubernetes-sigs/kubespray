@@ -12,6 +12,10 @@ ipip_mode: "{{ 'Always' if ipip else 'Never' }}"  # change to "CrossSubnet" if y
 calico_ipip_mode: "{{ ipip_mode }}"
 calico_vxlan_mode: 'Never'
 
+calico_ipip_mode_ipv6: Never
+calico_vxlan_mode_ipv6: Never
+calico_pool_blocksize_ipv6: 116
+
 calico_cert_dir: /etc/calico/certs
 
 # Global as_num (/calico/bgp/v1/global/as_num)
@@ -25,12 +29,24 @@ global_as_num: "64512"
 # Advertise Service External IPs
 calico_advertise_service_external_ips: []
 
+# Adveritse Service LoadBalancer IPs
+calico_advertise_service_loadbalancer_ips: []
+
+# Calico eBPF support
+calico_bpf_enabled: false
+calico_bpf_log_level: ""
+# Valid option for service mode: Tunnel (default), DSR=Direct Server Return
+calico_bpf_service_mode: Tunnel
+
 # Limits for apps
 calico_node_memory_limit: 500M
 calico_node_cpu_limit: 300m
 calico_node_memory_requests: 64M
 calico_node_cpu_requests: 150m
 calico_felix_chaininsertmode: Insert
+
+# Calico daemonset nodeselector
+calico_ds_nodeselector: "kubernetes.io/os: linux"
 
 # Virtual network ID to use for VXLAN traffic. A value of 0 means “use the kernel default”.
 calico_vxlan_vni: 4096
@@ -44,13 +60,9 @@ calico_felix_prometheusmetricsport: 9091
 calico_felix_prometheusgometricsenabled: true
 calico_felix_prometheusprocessmetricsenabled: true
 
-### check latest version https://github.com/projectcalico/calico-upgrade/releases
-calico_upgrade_enabled: true
-calico_upgrade_version: v1.0.5
-calico_upgrade_url: "https://github.com/projectcalico/calico-upgrade/releases/download/{{ calico_upgrade_version }}/calico-upgrade"
-
 # Set the agent log level. Can be debug, warning, info or fatal
 calico_loglevel: info
+calico_node_startup_loglevel: error
 
 # Enable or disable usage report to 'usage.projectcalico.org'
 calico_usage_reporting: false
@@ -68,6 +80,11 @@ calico_iptables_lock_timeout_secs: 10
 # Choose Calico iptables backend: "Legacy", "Auto" or "NFT" (FELIX_IPTABLESBACKEND)
 calico_iptables_backend: "Legacy"
 
+# Calico Wireguard support
+calico_wireguard_enabled: false
+calico_wireguard_packages: []
+calico_wireguard_repo: https://download.copr.fedorainfracloud.org/results/jdoss/wireguard/epel-{{ ansible_distribution_major_version }}-$basearch/
+
 # If you want to use non default IP_AUTODETECTION_METHOD for calico node set this option to one of:
 # * can-reach=DESTINATION
 # * interface=INTERFACE-REGEX
@@ -75,9 +92,6 @@ calico_iptables_backend: "Legacy"
 # calico_ip_auto_method: "interface=eth.*"
 
 calico_baremetal_nodename: "{{ kube_override_hostname | default(inventory_hostname) }}"
-
-### do not enable this, this is detected in scope of tasks, this is just a default value
-calico_upgrade_needed: false
 
 kube_etcd_cacert_file: ca.pem
 kube_etcd_cert_file: node-{{ inventory_hostname }}.pem
@@ -88,6 +102,8 @@ kube_etcd_key_file: node-{{ inventory_hostname }}-key.pem
 
 # Use typha (only with kdd)
 typha_enabled: false
+typha_prometheusmetricsenabled: false
+typha_prometheusmetricsport: 9093
 
 # Scaling typha: 1 replica per 100 nodes is adequate
 # Number of typha replicas
@@ -100,3 +116,10 @@ typha_max_connections_lower_limit: 300
 typha_secure: false
 
 calico_feature_control: {}
+
+# Calico default BGP port
+calico_bgp_listen_port: 179
+
+# Calico FelixConfiguration options
+calico_felix_reporting_interval: 0s
+calico_felix_log_severity_screen: Info

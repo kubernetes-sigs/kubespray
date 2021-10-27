@@ -10,7 +10,7 @@ Not all features are supported yet though, for a list of the current status have
 
 Before creating the instances you must first set the `azure_` variables in the `group_vars/all/all.yml` file.
 
-All of the values can be retrieved using the azure cli tool which can be downloaded here: <https://docs.microsoft.com/en-gb/azure/xplat-cli-install>
+All of the values can be retrieved using the Azure CLI tool which can be downloaded here: <https://docs.microsoft.com/en-gb/cli/azure/install-azure-cli>
 After installation you have to run `az login` to get access to your account.
 
 ### azure_cloud
@@ -42,6 +42,10 @@ The type of the vm. Supported values are `standard` or `vmss`. If vm is type of 
 
 The name of the virtual network your instances are in, can be retrieved via `az network vnet list`
 
+### azure\_vnet\_resource\_group
+
+The name of the resource group that contains the vnet.
+
 ### azure\_subnet\_name
 
 The name of the subnet your instances are in, can be retrieved via `az network vnet subnet list --resource-group RESOURCE_GROUP --vnet-name VNET_NAME`
@@ -49,6 +53,18 @@ The name of the subnet your instances are in, can be retrieved via `az network v
 ### azure\_security\_group\_name
 
 The name of the network security group your instances are in, can be retrieved via `az network nsg list`
+
+### azure\_security\_group\_resource\_group
+
+The name of the resource group that contains the network security group.  Defaults to `azure_vnet_resource_group`
+
+### azure\_route\_table\_name
+
+The name of the route table used with your instances.
+
+### azure\_route\_table\_resource\_group
+
+The name of the resource group that contains the route table.  Defaults to `azure_vnet_resource_group`
 
 ### azure\_aad\_client\_id + azure\_aad\_client\_secret
 

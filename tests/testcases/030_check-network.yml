@@ -1,19 +1,19 @@
 ---
-- hosts: kube-master[0]
+- hosts: kube_control_plane[0]
   vars:
-    test_image_repo: busybox
+    test_image_repo: k8s.gcr.io/busybox
     test_image_tag: latest
 
   tasks:
   - name: Force binaries directory for Flatcar Container Linux by Kinvolk
     set_fact:
       bin_dir: "/opt/bin"
-    when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
   - name: Force binaries directory for other hosts
     set_fact:
       bin_dir: "/usr/local/bin"
-    when: not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    when: not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
   - name: Approve kubelet serving certificates
     block:
@@ -34,7 +34,7 @@
       when: get_csr.stdout_lines | length > 0
       changed_when: certificate_approve.stdout
 
-    - debug:
+    - debug:  # noqa unnamed-task
         msg: "{{ certificate_approve.stdout.split('\n') }}"
 
     when: kubelet_rotate_server_certificates | default(false)
@@ -49,7 +49,7 @@
       executable: /bin/bash
     changed_when: false
     register: default_token
-    until: default_token.stdout.find('<none>') == -1
+    until: default_token.stdout | length > 0
     retries: 5
     delay: 5
 
@@ -60,7 +60,7 @@
     - busybox1
     - busybox2
 
-  - import_role:
+  - import_role:  # noqa unnamed-task
       name: cluster-dump
 
   - name: Check that all pods are running and ready
@@ -83,7 +83,7 @@
     register: pods
     no_log: true
 
-  - debug:
+  - debug:  # noqa unnamed-task
       msg: "{{ pods.stdout.split('\n') }}"
     failed_when: not run_pods_log is success
 
@@ -92,7 +92,7 @@
             jsonpath='{range .items[?(.spec.hostNetwork)]}{.metadata.name} {.status.podIP} {.status.containerStatuses} {end}'"
     changed_when: false
     register: hostnet_pods
-    ignore_errors: true
+    ignore_errors: true  # noqa ignore-errors
     no_log: true
 
   - name: Get running pods
@@ -108,7 +108,7 @@
     register: get_pods
     no_log: true
 
-  - debug:
+  - debug:  # noqa unnamed-task
       msg: "{{ get_pods.stdout.split('\n') }}"
 
   - name: Set networking facts

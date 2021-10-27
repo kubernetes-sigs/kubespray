@@ -5,25 +5,25 @@
     path: "{{ kube_config_dir }}/addons/rbd_provisioner"
     state: absent
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags:
     - upgrade
 
 - name: RBD Provisioner | Remove legacy namespace
   shell: |
     {{ bin_dir }}/kubectl delete namespace {{ rbd_provisioner_namespace }}
-  ignore_errors: yes
+  ignore_errors: true  # noqa ignore-errrors
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags:
     - upgrade
 
 - name: RBD Provisioner | Remove legacy storageclass
   shell: |
     {{ bin_dir }}/kubectl delete storageclass {{ rbd_provisioner_storage_class }}
-  ignore_errors: yes
+  ignore_errors: true  # noqa ignore-errrors
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags:
     - upgrade
 
@@ -35,7 +35,7 @@
     group: root
     mode: 0755
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: RBD Provisioner | Templates list
   set_fact:
@@ -63,9 +63,10 @@
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/addons/rbd_provisioner/{{ item.file }}"
+    mode: 0644
   with_items: "{{ rbd_provisioner_templates }}"
   register: rbd_provisioner_manifests
-  when: inventory_hostname == groups['kube-master'][0]
+  when: inventory_hostname == groups['kube_control_plane'][0]
 
 - name: RBD Provisioner | Apply manifests
   kube:
@@ -76,4 +77,4 @@
     filename: "{{ kube_config_dir }}/addons/rbd_provisioner/{{ item.item.file }}"
     state: "latest"
   with_items: "{{ rbd_provisioner_manifests.results }}"
-  when: inventory_hostname == groups['kube-master'][0]
+  when: inventory_hostname == groups['kube_control_plane'][0]

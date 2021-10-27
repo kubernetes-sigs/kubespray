@@ -135,3 +135,23 @@ variable "extra_sec_groups" {
 variable "extra_sec_groups_name" {
   type = string
 }
+
+variable "image_uuid" {
+  type = string
+}
+
+variable "image_gfs_uuid" {
+  type = string
+}
+
+variable "image_master" {
+  type = string
+}
+
+variable "image_master_uuid" {
+  type = string
+}
+
+variable "group_vars_path" {
+  type = string
+}

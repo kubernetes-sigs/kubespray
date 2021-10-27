@@ -11,14 +11,6 @@
   tags:
     - asserts
 
-# This is run before bin_dir is pinned because these tasks are run on localhost
-- import_tasks: 0030-pre_upgrade.yml
-  run_once: true
-  when:
-    - not dns_late
-  tags:
-    - upgrade
-
 - import_tasks: 0040-set_facts.yml
   tags:
     - resolvconf
@@ -47,7 +39,11 @@
     - bootstrap-os
     - resolvconf
 
-- import_tasks: 0062-networkmanager.yml
+- import_tasks: 0062-networkmanager-unmanaged-devices.yml
+  tags:
+    - bootstrap-os
+
+- import_tasks: 0063-networkmanager-dns.yml
   when:
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
@@ -79,7 +75,7 @@
   when:
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
-    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
   tags:
     - bootstrap-os
     - resolvconf
@@ -88,18 +84,22 @@
   when:
     - dns_mode != 'none'
     - resolvconf_mode != 'host_resolvconf'
-    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
   tags:
     - bootstrap-os
     - resolvconf
 
 # We need to make sure the network is restarted early enough so that docker can later pick up the correct system
 # nameservers and search domains
-- meta: flush_handlers
+- name: Flush handlers
+  meta: flush_handlers
 
 - name: Check if we are running inside a Azure VM
   stat:
     path: /var/lib/waagent/
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: azure_check
   when:
     - not dns_late
@@ -110,6 +110,6 @@
   when:
     - not dns_late
     - azure_check.stat.exists
-    - ansible_distribution in ["CentOS","RedHat","OracleLinux"]
+    - ansible_os_family == "RedHat"
   tags:
     - bootstrap-os

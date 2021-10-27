@@ -4,7 +4,7 @@ Intro to [ovn4nfv-k8s-plugin](https://github.com/opnfv/ovn4nfv-k8s-plugin)
 
 ## How to use it
 
-* Enable ovn4nfv in `group_vars/k8s-cluster/k8s-cluster.yml`
+* Enable ovn4nfv in `group_vars/k8s_cluster/k8s_cluster.yml`
 
 ```yml
 ...

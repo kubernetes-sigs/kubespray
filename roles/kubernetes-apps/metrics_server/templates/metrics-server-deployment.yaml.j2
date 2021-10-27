@@ -13,6 +13,9 @@ spec:
     matchLabels:
       app.kubernetes.io/name: metrics-server
       version: {{ metrics_server_version }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
   template:
     metadata:
       name: metrics-server
@@ -28,20 +31,20 @@ spec:
       - name: metrics-server
         image: {{ metrics_server_image_repo }}:{{ metrics_server_image_tag }}
         imagePullPolicy: {{ k8s_image_pull_policy }}
-        command:
-        - /metrics-server
+        args:
         - --logtostderr
         - --cert-dir=/tmp
-        - --secure-port=8443
+        - --secure-port=443
 {% if metrics_server_kubelet_preferred_address_types %}
         - --kubelet-preferred-address-types={{ metrics_server_kubelet_preferred_address_types }}
 {% endif %}
+        - --kubelet-use-node-status-port
 {% if metrics_server_kubelet_insecure_tls %}
         - --kubelet-insecure-tls
 {% endif %}
         - --metric-resolution={{ metrics_server_metric_resolution }}
         ports:
-        - containerPort: 8443
+        - containerPort: 443
           name: https
           protocol: TCP
         volumeMounts:
@@ -49,26 +52,24 @@ spec:
           mountPath: /tmp
         livenessProbe:
           httpGet:
-            path: /healthz
+            path: /livez
             port: https
             scheme: HTTPS
-          successThreshold: 1
-          initialDelaySeconds: 20
+          periodSeconds: 10
           failureThreshold: 3
-          timeoutSeconds: 10
+          initialDelaySeconds: 40
         readinessProbe:
           httpGet:
-            path: /healthz
+            path: /readyz
             port: https
             scheme: HTTPS
-          successThreshold: 1
-          initialDelaySeconds: 20
+          periodSeconds: 10
           failureThreshold: 3
-          timeoutSeconds: 10
+          initialDelaySeconds: 40
         securityContext:
-          allowPrivilegeEscalation: false
           capabilities:
             drop: ["all"]
+            add: ["NET_BIND_SERVICE"]
           readOnlyRootFilesystem: true
           runAsGroup: 10001
           runAsNonRoot: true
@@ -80,6 +81,7 @@ spec:
           requests:
             cpu: {{ metrics_server_requests_cpu }}
             memory: {{ metrics_server_requests_memory }}
+{% if metrics_server_resizer %}
       - name: metrics-server-nanny
         image: {{ addon_resizer_image_repo }}:{{ addon_resizer_image_tag }}
         imagePullPolicy: {{ k8s_image_pull_policy }}
@@ -106,7 +108,7 @@ spec:
           - /pod_nanny
           - --config-dir=/etc/config
           - --cpu={{ metrics_server_cpu }}
-          - --extra-cpu=0.5m
+          - --extra-cpu=1m
           - --memory={{ metrics_server_memory }}
           - --extra-memory={{ metrics_server_memory_per_node }}
           - --threshold=5
@@ -117,6 +119,7 @@ spec:
           # Specifies the smallest cluster (defined in number of nodes)
           # resources will be scaled to.
           - --minClusterSize={{ metrics_server_min_cluster_size }}
+{% endif %}
       volumes:
         - name: metrics-server-config-volume
           configMap:
@@ -127,6 +130,8 @@ spec:
       tolerations:
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
 {% endif %}
       affinity:
         nodeAffinity:
@@ -134,7 +139,7 @@ spec:
           - weight: 100
             preference:
               matchExpressions:
-              - key: node-role.kubernetes.io/master
+              - key: node-role.kubernetes.io/control-plane
                 operator: In
                 values:
                 - ""

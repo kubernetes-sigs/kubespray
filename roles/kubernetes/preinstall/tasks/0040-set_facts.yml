@@ -2,13 +2,16 @@
 - name: Force binaries directory for Flatcar Container Linux by Kinvolk
   set_fact:
     bin_dir: "/opt/bin"
-  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
   tags:
     - facts
 
 - name: check if booted with ostree
   stat:
     path: /run/ostree-booted
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: ostree
 
 - name: set is_fedora_coreos
@@ -47,18 +50,16 @@
       {% for d in [ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([]) -%}
       {{ dns_domain }}.{{ d }}./{{ d }}.{{ d }}./com.{{ d }}./
       {%- endfor %}
-    cloud_resolver: >-
-      {%- if cloud_provider is defined and cloud_provider == 'gce' -%}
-        ['169.254.169.254']
-      {%- elif cloud_provider is defined and cloud_provider == 'aws' -%}
-        ['169.254.169.253']
-      {%- else -%}
-        []
-      {%- endif -%}
+    cloud_resolver: "{{ ['169.254.169.254'] if cloud_provider is defined and cloud_provider == 'gce' else
+                        ['169.254.169.253'] if cloud_provider is defined and cloud_provider == 'aws' else
+                        [] }}"
 
 - name: check if kubelet is configured
   stat:
     path: "{{ kube_config_dir }}/kubelet.env"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: kubelet_configured
   changed_when: false
 
@@ -74,16 +75,19 @@
       {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/base{%- endif -%}
     head: >-
       {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/head{%- endif -%}
-  when: not ansible_os_family in ["Flatcar Container Linux by Kinvolk"] and not is_fedora_coreos
+  when: not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] and not is_fedora_coreos
 
 - name: target temporary resolvconf cloud init file (Flatcar Container Linux by Kinvolk / Fedora CoreOS)
   set_fact:
     resolvconffile: /tmp/resolveconf_cloud_init_conf
-  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"] or is_fedora_coreos
+  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] or is_fedora_coreos
 
 - name: check if /etc/dhclient.conf exists
   stat:
     path: /etc/dhclient.conf
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: dhclient_stat
 
 - name: target dhclient conf file for /etc/dhclient.conf
@@ -94,6 +98,9 @@
 - name: check if /etc/dhcp/dhclient.conf exists
   stat:
     path: /etc/dhcp/dhclient.conf
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: dhcp_dhclient_stat
 
 - name: target dhclient conf file for /etc/dhcp/dhclient.conf
@@ -170,9 +177,27 @@
 - name: check /usr readonly
   stat:
     path: "/usr"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: usr
 
 - name: set alternate flexvolume path
   set_fact:
     kubelet_flexvolumes_plugins_dir: /var/lib/kubelet/volumeplugins
   when: not usr.stat.writeable
+
+- block:
+    - name: Ensure IPv6DualStack featureGate is set when enable_dual_stack_networks is true
+      set_fact:
+        kube_feature_gates: "{{ kube_feature_gates + [ 'IPv6DualStack=true' ] }}"
+      when:
+        - not 'IPv6DualStack=true' in kube_feature_gates
+
+    - name: Ensure IPv6DualStack kubeadm featureGate is set when enable_dual_stack_networks is true
+      set_fact:
+        kubeadm_feature_gates: "{{ kubeadm_feature_gates + [ 'IPv6DualStack=true' ] }}"
+      when:
+        - not 'IPv6DualStack=true' in kubeadm_feature_gates
+  when:
+    - enable_dual_stack_networks

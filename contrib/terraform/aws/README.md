@@ -122,7 +122,7 @@ You can use the following set of commands to get the kubeconfig file from your n
 
 ```commandline
 # Get the controller's IP address.
-CONTROLLER_HOST_NAME=$(cat ./inventory/hosts | grep "\[kube-master\]" -A 1 | tail -n 1)
+CONTROLLER_HOST_NAME=$(cat ./inventory/hosts | grep "\[kube_control_plane\]" -A 1 | tail -n 1)
 CONTROLLER_IP=$(cat ./inventory/hosts | grep $CONTROLLER_HOST_NAME | grep ansible_host | cut -d'=' -f2)
 
 # Get the hostname of the load balancer.

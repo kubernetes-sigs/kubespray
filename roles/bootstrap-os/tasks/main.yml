@@ -5,35 +5,39 @@
   changed_when: false
   # This command should always run, even in check mode
   check_mode: false
-  environment: {}
 
 - include_tasks: bootstrap-centos.yml
-  when: '"CentOS" in os_release.stdout or "Oracle" in os_release.stdout'
+  when: '''ID="centos"'' in os_release.stdout_lines or ''ID="ol"'' in os_release.stdout_lines or ''ID="almalinux"'' in os_release.stdout_lines or ''ID="rocky"'' in os_release.stdout_lines'
+
+- include_tasks: bootstrap-amazon.yml
+  when: '''ID="amzn"'' in os_release.stdout_lines'
 
 - include_tasks: bootstrap-redhat.yml
-  when: '"Red Hat Enterprise Linux" in os_release.stdout'
+  when: '''ID="rhel"'' in os_release.stdout_lines'
 
 - include_tasks: bootstrap-clearlinux.yml
-  when: '"Clear Linux OS" in os_release.stdout'
+  when: '''ID=clear-linux-os'' in os_release.stdout_lines'
 
+# Fedora CoreOS
 - include_tasks: bootstrap-fedora-coreos.yml
-  when: '"ID=fedora" in os_release.stdout and "VARIANT_ID=coreos" in os_release.stdout'
+  when:
+    - '''ID=fedora'' in os_release.stdout_lines'
+    - '''VARIANT_ID=coreos'' in os_release.stdout_lines'
 
 - include_tasks: bootstrap-flatcar.yml
-  when:
-    - '"Flatcar" in os_release.stdout'
-    - '"ID=fedora" not in os_release.stdout'
+  when: '''ID=flatcar'' in os_release.stdout_lines'
 
 - include_tasks: bootstrap-debian.yml
-  when: '"Debian" in os_release.stdout or "Ubuntu" in os_release.stdout'
+  when: '''ID=debian'' in os_release.stdout_lines or ''ID=ubuntu'' in os_release.stdout_lines'
 
+# Fedora "classic"
 - include_tasks: bootstrap-fedora.yml
   when:
-    - '"Fedora" in os_release.stdout'
-    - '"VARIANT_ID=coreos" not in os_release.stdout'
+    - '''ID=fedora'' in os_release.stdout_lines'
+    - '''VARIANT_ID=coreos'' not in os_release.stdout_lines'
 
 - include_tasks: bootstrap-opensuse.yml
-  when: '"openSUSE" in os_release.stdout'
+  when: '''ID="opensuse-leap"'' in os_release.stdout_lines or ''ID="opensuse-tumbleweed"'' in os_release.stdout_lines'
 
 - name: Create remote_tmp for it is used by another module
   file:
@@ -53,7 +57,7 @@
     name: "{{ inventory_hostname }}"
   when:
     - override_system_hostname
-    - ansible_os_family not in ['Suse', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] and not is_fedora_coreos
+    - ansible_os_family not in ['Suse', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] and not is_fedora_coreos
 
 # (2/3)
 - name: Assign inventory name to unconfigured hostnames (CoreOS, Flatcar, Suse and ClearLinux only)
@@ -63,7 +67,7 @@
   changed_when: false
   when:
     - override_system_hostname
-    - ansible_os_family in ['Suse', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] or is_fedora_coreos
+    - ansible_os_family in ['Suse', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] or is_fedora_coreos
 
 # (3/3)
 - name: Update hostname fact (CoreOS, Flatcar, Suse and ClearLinux only)
@@ -72,7 +76,7 @@
     filter: ansible_hostname
   when:
     - override_system_hostname
-    - ansible_os_family in ['Suse', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] or is_fedora_coreos
+    - ansible_os_family in ['Suse', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] or is_fedora_coreos
 
 - name: "Install ceph-commmon package"
   package:

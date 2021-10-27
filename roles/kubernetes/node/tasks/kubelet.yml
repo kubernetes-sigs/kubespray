@@ -4,12 +4,9 @@
     path: "{{ dynamic_kubelet_configuration_dir }}"
     mode: 0600
     state: directory
-  when: dynamic_kubelet_configuration
-
-- name: Get the kubeadm version
-  command: "{{ bin_dir }}/kubeadm version -o short"
-  register: kubeadm_output
-  changed_when: false
+  when:
+    - dynamic_kubelet_configuration
+    - kube_version is version('v1.22.0', '<')
 
 - name: Set kubelet api version to v1beta1
   set_fact:
@@ -22,7 +19,9 @@
   template:
     src: "kubelet.env.{{ kubeletConfig_api_version }}.j2"
     dest: "{{ kube_config_dir }}/kubelet.env"
+    setype: "{{ (preinstall_selinux_state != 'disabled') | ternary('etc_t', omit) }}"
     backup: yes
+    mode: 0640
   notify: Node | restart kubelet
   tags:
     - kubelet
@@ -32,6 +31,7 @@
   template:
     src: "kubelet-config.{{ kubeletConfig_api_version }}.yaml.j2"
     dest: "{{ kube_config_dir }}/kubelet-config.yaml"
+    mode: 0640
   notify: Kubelet | restart kubelet
   tags:
     - kubelet
@@ -42,6 +42,7 @@
     src: "kubelet.service.j2"
     dest: "/etc/systemd/system/kubelet.service"
     backup: "yes"
+    mode: 0644
   notify: Node | restart kubelet
   tags:
     - kubelet

@@ -3,6 +3,9 @@
 - name: Confirm selinux deployed
   stat:
     path: /etc/selinux/config
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   when:
     - ansible_os_family == "RedHat"
     - "'Amazon' not in ansible_distribution"
@@ -27,15 +30,19 @@
     state: present
     create: yes
     backup: yes
+    mode: 0644
   when:
     - disable_ipv6_dns
-    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
   tags:
     - bootstrap-os
 
 - name: Stat sysctl file configuration
   stat:
     path: "{{ sysctl_file_path }}"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: sysctl_file_stat
   tags:
     - bootstrap-os
@@ -53,6 +60,7 @@
   file:
     name: "{{ sysctl_file_path | dirname }}"
     state: directory
+    mode: 0755
 
 - name: Enable ip forwarding
   sysctl:
@@ -61,6 +69,15 @@
     value: "1"
     state: present
     reload: yes
+
+- name: Enable ipv6 forwarding
+  sysctl:
+    sysctl_file: "{{ sysctl_file_path }}"
+    name: net.ipv6.conf.all.forwarding
+    value: 1
+    state: present
+    reload: yes
+  when: enable_dual_stack_networks | bool
 
 - name: Ensure kube-bench parameters are set
   sysctl:
@@ -74,3 +91,10 @@
     - { name: kernel.panic, value: 10 }
     - { name: kernel.panic_on_oops, value: 1 }
   when: kubelet_protect_kernel_defaults|bool
+
+- name: Check dummy module
+  modprobe:
+    name: dummy
+    state: present
+    params: 'numdummies=0'
+  when: enable_nodelocaldns

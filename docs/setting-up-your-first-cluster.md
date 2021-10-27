@@ -14,7 +14,7 @@ hands-on guide to get started with Kubespray.
 
 ## Cluster Details
 
-* [kubespray](https://github.com/kubernetes-sigs/kubespray) v2.13.x
+* [kubespray](https://github.com/kubernetes-sigs/kubespray) v2.17.x
 * [kubernetes](https://github.com/kubernetes/kubernetes) v1.17.9
 
 ## Prerequisites
@@ -196,7 +196,7 @@ Next, we will git clone the Kubespray code into our working directory:
 ```ShellSession
 git clone https://github.com/kubernetes-sigs/kubespray.git
 cd kubespray
-git checkout release-2.13
+git checkout release-2.17
 ```
 
 Now we need to install the dependencies for Ansible to run the Kubespray
@@ -225,7 +225,7 @@ worker-0, worker-1 and worker-2 are worker nodes. Also update the `ip` to the re
 remove the `access_ip`.
 
 The main configuration for the cluster is stored in
-`inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml`. In this file we
+`inventory/mycluster/group_vars/k8s_cluster/k8s_cluster.yml`. In this file we
  will update the `supplementary_addresses_in_ssl_keys` with a list of the IP
  addresses of the controller nodes. In that way we can access the
   kubernetes API server as an administrator from outside the VPC network. You
@@ -234,7 +234,7 @@ The main configuration for the cluster is stored in
 
 Kubespray also offers to easily enable popular kubernetes add-ons. You can
 modify the
-list of add-ons in `inventory/mycluster/group_vars/k8s-cluster/addons.yml`.
+list of add-ons in `inventory/mycluster/group_vars/k8s_cluster/addons.yml`.
 Let's enable the metrics server as this is a crucial monitoring element for
 the kubernetes cluster, just change the 'false' to 'true' for
 `metrics_server_enabled`.
@@ -279,7 +279,7 @@ access the API server. This kubeconfig file will thus not work of from
 outside of the VPC network. We will need to change the API server IP address
 to the controller node his external IP address. The external IP address will be
 accepted in the
-TLS negotation as we added the controllers external IP addresses in the SSL
+TLS negotiation as we added the controllers external IP addresses in the SSL
 certificate configuration.
 Open the file and modify the server IP address from the local IP to the
 external IP address of controller-0, as stored in $IP_CONTROLLER_0.
@@ -353,7 +353,7 @@ each other:
 ```ShellSession
 kubectl run myshell1 -it --rm --image busybox -- sh
 hostname -i
-# launch myshell2 in seperate terminal (see next code block) and ping the hostname of myshell2
+# launch myshell2 in separate terminal (see next code block) and ping the hostname of myshell2
 ping <hostname myshell2>
 ```
 
@@ -589,7 +589,7 @@ Delete the dev namespace, the nginx deployment and service:
 ```ShellSession
 kubectl delete namespace dev
 kubectl delete deployment nginx
-kubectl delete svc/ngninx
+kubectl delete svc/nginx
 ```
 
 ### Kubernetes state

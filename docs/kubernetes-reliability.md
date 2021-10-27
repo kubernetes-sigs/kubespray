@@ -21,7 +21,7 @@ By default the normal behavior looks like:
 
 > Kubernetes controller manager and Kubelet work asynchronously. It means that
 > the delay may include any network latency, API Server latency, etcd latency,
-> latency caused by load on one's master nodes and so on. So if
+> latency caused by load on one's control plane nodes and so on. So if
 > `--node-status-update-frequency` is set to 5s in reality it may appear in
 > etcd in 6-7 seconds or even longer when etcd cannot commit data to quorum
 > nodes.
@@ -43,8 +43,10 @@ attempts to set a status of node.
 
 At the same time Kubernetes controller manager will try to check
 `nodeStatusUpdateRetry` times every `--node-monitor-period` of time. After
-`--node-monitor-grace-period` it will consider node unhealthy. It will remove
-its pods based on `--pod-eviction-timeout`
+`--node-monitor-grace-period` it will consider node unhealthy.  Pods will then be rescheduled based on the
+[Taint Based Eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#taint-based-evictions)
+timers that you set on them individually, or the API Server's global timers:`--default-not-ready-toleration-seconds` &
+``--default-unreachable-toleration-seconds``.
 
 Kube proxy has a watcher over API. Once pods are evicted, Kube proxy will
 notice and will update iptables of the node. It will remove endpoints from
@@ -54,15 +56,17 @@ services so pods from failed node won't be accessible anymore.
 
 ## Fast Update and Fast Reaction
 
-If `-–node-status-update-frequency` is set to **4s** (10s is default).
+If `--node-status-update-frequency` is set to **4s** (10s is default).
 `--node-monitor-period` to **2s** (5s is default).
 `--node-monitor-grace-period` to **20s** (40s is default).
-`--pod-eviction-timeout` is set to **30s** (5m is default)
+`--default-not-ready-toleration-seconds` and ``--default-unreachable-toleration-seconds`` are set to **30**
+(300 seconds is default).  Note these two values should be integers representing the number of seconds ("s" or "m" for
+seconds\minutes are not specified).
 
 In such scenario, pods will be evicted in **50s** because the node will be
-considered as down after **20s**, and `--pod-eviction-timeout` occurs after
-**30s** more.  However, this scenario creates an overhead on etcd as every node
-will try to update its status every 2 seconds.
+considered as down after **20s**, and `--default-not-ready-toleration-seconds` or
+``--default-unreachable-toleration-seconds`` occur after **30s** more.  However, this scenario creates an overhead on
+etcd as every node will try to update its status every 2 seconds.
 
 If the environment has 1000 nodes, there will be 15000 node updates per
 minute which may require large etcd containers or even dedicated nodes for etcd.
@@ -74,8 +78,9 @@ minute which may require large etcd containers or even dedicated nodes for etcd.
 
 ## Medium Update and Average Reaction
 
-Let's set `-–node-status-update-frequency` to **20s**
-`--node-monitor-grace-period` to **2m** and `--pod-eviction-timeout` to **1m**.
+Let's set `--node-status-update-frequency` to **20s**
+`--node-monitor-grace-period` to **2m** and `--default-not-ready-toleration-seconds` and
+``--default-unreachable-toleration-seconds`` to **60**.
 In that case, Kubelet will try to update status every 20s. So, it will be 6 * 5
 = 30 attempts before Kubernetes controller manager will consider unhealthy
 status of node. After 1m it will evict all pods. The total time will be 3m
@@ -89,10 +94,10 @@ etcd updates per minute.
 
 ## Low Update and Slow reaction
 
-Let's set `-–node-status-update-frequency` to **1m**.
-`--node-monitor-grace-period` will set to **5m** and `--pod-eviction-timeout`
-to **1m**. In this scenario, every kubelet will try to update the status every
-minute. There will be 5 * 5 = 25 attempts before unhealthy status. After 5m,
+Let's set `--node-status-update-frequency` to **1m**.
+`--node-monitor-grace-period` will set to **5m** and `--default-not-ready-toleration-seconds` and
+``--default-unreachable-toleration-seconds`` to **60**. In this scenario, every kubelet will try to update the status
+every minute. There will be 5 * 5 = 25 attempts before unhealthy status. After 5m,
 Kubernetes controller manager will set unhealthy status. This means that pods
 will be evicted after 1m after being marked unhealthy. (6m in total).
 

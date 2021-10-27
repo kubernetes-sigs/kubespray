@@ -1,38 +1,9 @@
 ---
-- name: check if fedora coreos
-  stat:
-    path: /run/ostree-booted
-  register: ostree
-
-- name: set is_ostree
-  set_fact:
-    is_ostree: "{{ ostree.stat.exists }}"
-
-
 - name: Fail containerd setup if distribution is not supported
   fail:
     msg: "{{ ansible_distribution }} is not supported by containerd."
   when:
-    - not ansible_distribution in ["CentOS","RedHat", "Ubuntu", "Debian", "Fedora"]
-
-- name: gather os specific variables
-  include_vars: "{{ item }}"
-  with_first_found:
-    - files:
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_distribution|lower }}.yml"
-        - "{{ ansible_os_family|lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_os_family|lower }}.yml"
-        - defaults.yml
-      paths:
-        - ../vars
-      skip: true
-  tags:
-    - facts
+    - not ansible_distribution in ["CentOS", "OracleLinux", "RedHat", "Ubuntu", "Debian", "Fedora", "AlmaLinux", "Rocky", "Amazon", "Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: disable unified_cgroup_hierarchy in Fedora 31+
   command: grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=0"
@@ -40,6 +11,7 @@
     - ansible_distribution == "Fedora"
     - (ansible_distribution_major_version | int) >= 31
     - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
+    - not is_ostree
 
 - name: reboot in Fedora 31+
   reboot:
@@ -47,67 +19,87 @@
     - ansible_distribution == "Fedora"
     - (ansible_distribution_major_version | int) >= 31
     - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
+    - not is_ostree
 
-- include_tasks: containerd_repo.yml
-  when: not is_ostree
+- name: containerd | Remove any package manager controlled containerd package
+  package:
+    name: "{{ containerd_package }}"
+    state: absent
+  when:
+    - not (is_ostree or (ansible_distribution == "Flatcar Container Linux by Kinvolk") or (ansible_distribution == "Flatcar"))
 
-- name: Create containerd service systemd directory if it doesn't exist
+- name: containerd | Remove containerd repository
   file:
-    path: /etc/systemd/system/containerd.service.d
-    state: directory
+    path: "{{ yum_repo_dir }}/containerd.repo"
+    state: absent
+  when:
+    - ansible_os_family in ['RedHat']
 
-- name: Write containerd proxy drop-in
-  template:
-    src: http-proxy.conf.j2
-    dest: /etc/systemd/system/containerd.service.d/http-proxy.conf
+- name: containerd | Remove containerd repository
+  apt_repository:
+    repo: "{{ item }}"
+    state: absent
+  with_items: "{{ containerd_repo_info.repos }}"
+  when: ansible_pkg_mgr == 'apt'
+
+- name: containerd | Download containerd
+  include_tasks: "../../../download/tasks/download_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.containerd) }}"
+
+- name: containerd | Unpack containerd archive
+  unarchive:
+    src: "{{ downloads.containerd.dest }}"
+    dest: "{{ containerd_bin_dir }}"
+    mode: 0755
+    remote_src: yes
+    extra_opts:
+      - --strip-components=1
   notify: restart containerd
-  when: http_proxy is defined or https_proxy is defined
 
-- name: ensure containerd config directory
+- name: containerd | Generate systemd service for containerd
+  template:
+    src: containerd.service.j2
+    dest: /etc/systemd/system/containerd.service
+    mode: 0644
+  notify: restart containerd
+
+- name: containerd | Ensure containerd directories exist
   file:
-    dest: "{{ containerd_cfg_dir }}"
+    dest: "{{ item }}"
     state: directory
     mode: 0755
     owner: root
     group: root
+  with_items:
+    - "{{ containerd_systemd_dir }}"
+    - "{{ containerd_cfg_dir }}"
+    - "{{ containerd_storage_dir }}"
+    - "{{ containerd_state_dir }}"
 
-- name: Copy containerd config file
+- name: containerd | Write containerd proxy drop-in
+  template:
+    src: http-proxy.conf.j2
+    dest: "{{ containerd_systemd_dir }}/http-proxy.conf"
+    mode: 0644
+  notify: restart containerd
+  when: http_proxy is defined or https_proxy is defined
+
+- name: containerd | Copy containerd config file
   template:
     src: config.toml.j2
     dest: "{{ containerd_cfg_dir }}/config.toml"
     owner: "root"
-    mode: 0644
+    mode: 0640
   notify: restart containerd
 
-# This is required to ensure any apt upgrade will not break kubernetes
-- name: Set containerd pin priority to apt_preferences on Debian family
-  template:
-    src: "apt_preferences.d/debian_containerd.j2"
-    dest: "/etc/apt/preferences.d/containerd"
-    owner: "root"
-    mode: 0644
-  when:
-    - ansible_os_family in ['Ubuntu', 'Debian']
-    - not is_ostree
+# you can sometimes end up in a state where everything is installed
+# but containerd was not started / enabled
+- name: containerd | Flush handlers
+  meta: flush_handlers
 
-- name: ensure containerd packages are installed
-  action: "{{ containerd_package_info.pkg_mgr }}"
-  args:
-    pkg: "{{ item.name }}"
-    force: "{{ item.force | default(omit) }}"
-    state: present
-    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
-    enablerepo: "{{ item.repo | default(omit) }}"
-  register: containerd_task_result
-  until: containerd_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
-  with_items: "{{ containerd_package_info.pkgs }}"
-  notify: restart containerd
-  when:
-    - not is_ostree
-    - containerd_package_info.pkgs|length > 0
-  ignore_errors: true
-
-- include_role:
-    name: container-engine/crictl
+- name: containerd | Ensure containerd is started and enabled
+  service:
+    name: containerd
+    enabled: yes
+    state: started

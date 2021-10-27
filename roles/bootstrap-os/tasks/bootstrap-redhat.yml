@@ -12,14 +12,22 @@
     value: "{{ http_proxy | default(omit) }}"
     state: "{{ http_proxy | default(False) | ternary('present', 'absent') }}"
     no_extra_spaces: true
+    mode: 0644
   become: true
   when: not skip_http_proxy_on_os_packages
+
+- name: Add proxy to RHEL subscription-manager if http_proxy is defined
+  command: /sbin/subscription-manager config --server.proxy_hostname={{ http_proxy | regex_replace(':\\d+$') }} --server.proxy_port={{ http_proxy | regex_replace('^.*:') }}
+  become: true
+  when:
+    - not skip_http_proxy_on_os_packages
+    - http_proxy is defined
 
 - name: Check RHEL subscription-manager status
   command: /sbin/subscription-manager status
   register: rh_subscription_status
   changed_when: "rh_subscription_status != 0"
-  ignore_errors: true
+  ignore_errors: true  # noqa ignore-errors
   become: true
 
 - name: RHEL subscription Organization ID/Activation Key registration
@@ -35,12 +43,13 @@
       service_level_agreement: "{{ rh_subscription_sla }}"
       sync: true
   notify: RHEL auto-attach subscription
-  ignore_errors: true
+  ignore_errors: true  # noqa ignore-errors
   become: true
   when:
     - rh_subscription_org_id is defined
     - rh_subscription_status.changed
 
+# this task has no_log set to prevent logging security sensitive information such as subscription passwords
 - name: RHEL subscription Username/Password registration
   redhat_subscription:
     state: present
@@ -54,15 +63,41 @@
       service_level_agreement: "{{ rh_subscription_sla }}"
       sync: true
   notify: RHEL auto-attach subscription
-  ignore_errors: true
+  ignore_errors: true  # noqa ignore-errors
   become: true
+  no_log: true
   when:
     - rh_subscription_username is defined
     - rh_subscription_status.changed
 
+# container-selinux is in extras repo
+- name: Enable RHEL 7 repos
+  rhsm_repository:
+    name:
+      - "rhel-7-server-rpms"
+      - "rhel-7-server-extras-rpms"
+    state: enabled
+  when:
+    - rhel_enable_repos | default(True)
+    - ansible_distribution_major_version == "7"
+
+# container-selinux is in appstream repo
+- name: Enable RHEL 8 repos
+  rhsm_repository:
+    name:
+      - "rhel-8-for-*-baseos-rpms"
+      - "rhel-8-for-*-appstream-rpms"
+    state: enabled
+  when:
+    - rhel_enable_repos | default(True)
+    - ansible_distribution_major_version == "8"
+
 - name: Check presence of fastestmirror.conf
   stat:
     path: /etc/yum/pluginconf.d/fastestmirror.conf
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: fastestmirror
 
 # the fastestmirror plugin can actually slow down Ansible deployments

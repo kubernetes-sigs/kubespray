@@ -1,16 +1,16 @@
-# Kubernetes on Packet with Terraform
+# Kubernetes on Equinix Metal with Terraform
 
 Provision a Kubernetes cluster with [Terraform](https://www.terraform.io) on
-[Packet](https://www.packet.com).
+[Equinix Metal](https://metal.equinix.com) ([formerly Packet](https://blog.equinix.com/blog/2020/10/06/equinix-metal-metal-and-more/)).
 
 ## Status
 
-This will install a Kubernetes cluster on Packet bare metal. It should work in all locations and on most server types.
+This will install a Kubernetes cluster on Equinix Metal. It should work in all locations and on most server types.
 
 ## Approach
 
 The terraform configuration inspects variables found in
-[variables.tf](variables.tf) to create resources in your Packet project.
+[variables.tf](variables.tf) to create resources in your Equinix Metal project.
 There is a [python script](../terraform.py) that reads the generated`.tfstate`
 file to generate a dynamic inventory that is consumed by [cluster.yml](../../..//cluster.yml)
 to actually install Kubernetes with Kubespray.
@@ -36,12 +36,12 @@ now six total etcd replicas.
 
 - [Install Terraform](https://www.terraform.io/intro/getting-started/install.html)
 - Install dependencies: `sudo pip install -r requirements.txt`
-- Account with Packet Host
+- Account with Equinix Metal
 - An SSH key pair
 
 ## SSH Key Setup
 
-An SSH keypair is required so Ansible can access the newly provisioned nodes (bare metal Packet hosts). By default, the public SSH key defined in cluster.tfvars will be installed in authorized_key on the newly provisioned nodes (~/.ssh/id_rsa.pub). Terraform will upload this public key and then it will be distributed out to all the nodes. If you have already set this public key in Packet (i.e. via the portal), then set the public keyfile name in cluster.tfvars to blank to prevent the duplicate key from being uploaded which will cause an error.
+An SSH keypair is required so Ansible can access the newly provisioned nodes (Equinix Metal hosts). By default, the public SSH key defined in cluster.tfvars will be installed in authorized_key on the newly provisioned nodes (~/.ssh/id_rsa.pub). Terraform will upload this public key and then it will be distributed out to all the nodes. If you have already set this public key in Equinix Metal (i.e. via the portal), then set the public keyfile name in cluster.tfvars to blank to prevent the duplicate key from being uploaded which will cause an error.
 
 If you don't already have a keypair generated (~/.ssh/id_rsa and ~/.ssh/id_rsa.pub), then a new keypair can be generated with the command:
 
@@ -51,7 +51,7 @@ ssh-keygen -f ~/.ssh/id_rsa
 
 ## Terraform
 
-Terraform will be used to provision all of the Packet resources with base software as appropriate.
+Terraform will be used to provision all of the Equinix Metal resources with base software as appropriate.
 
 ### Configuration
 
@@ -67,18 +67,18 @@ ln -s ../../contrib/terraform/packet/hosts
 
 This will be the base for subsequent Terraform commands.
 
-#### Packet API access
+#### Equinix Metal API access
 
-Your Packet API key must be available in the `PACKET_AUTH_TOKEN` environment variable.
+Your Equinix Metal API key must be available in the `PACKET_AUTH_TOKEN` environment variable.
 This key is typically stored outside of the code repo since it is considered secret.
 If someone gets this key, they can startup/shutdown hosts in your project!
 
 For more information on how to generate an API key or find your project ID, please see
-[API Integrations](https://support.packet.com/kb/articles/api-integrations)
+[Accounts Index](https://metal.equinix.com/developers/docs/accounts/).
 
-The Packet Project ID associated with the key will be set later in cluster.tfvars.
+The Equinix Metal Project ID associated with the key will be set later in `cluster.tfvars`.
 
-For more information about the API, please see [Packet API](https://www.packet.com/developers/api/)
+For more information about the API, please see [Equinix Metal API](https://metal.equinix.com/developers/api/).
 
 Example:
 
@@ -101,14 +101,14 @@ This helps when identifying which hosts are associated with each cluster.
 While the defaults in variables.tf will successfully deploy a cluster, it is recommended to set the following values:
 
 - cluster_name = the name of the inventory directory created above as $CLUSTER
-- packet_project_id = the Packet Project ID associated with the Packet API token above
+- packet_project_id = the Equinix Metal Project ID associated with the Equinix Metal API token above
 
 #### Enable localhost access
 
 Kubespray will pull down a Kubernetes configuration file to access this cluster by enabling the
 `kubeconfig_localhost: true` in the Kubespray configuration.
 
-Edit `inventory/$CLUSTER/group_vars/k8s-cluster/k8s-cluster.yml` and comment back in the following line and change from `false` to `true`:
+Edit `inventory/$CLUSTER/group_vars/k8s_cluster/k8s_cluster.yml` and comment back in the following line and change from `false` to `true`:
 `\# kubeconfig_localhost: false`
 becomes:
 `kubeconfig_localhost: true`

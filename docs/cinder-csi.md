@@ -10,7 +10,7 @@ You need to source the OpenStack credentials you use to deploy your machines tha
 
 Make sure the hostnames in your `inventory` file are identical to your instance names in OpenStack. Otherwise [cinder](https://docs.openstack.org/cinder/latest/) won't work as expected.
 
-If you want to deploy the cinder provisioner used with Cinder CSI Driver, you should set `persistent_volumes_enabled` in `group_vars/k8s-cluster/k8s-cluster.yml` to `true`.
+If you want to deploy the cinder provisioner used with Cinder CSI Driver, you should set `persistent_volumes_enabled` in `group_vars/k8s_cluster/k8s_cluster.yml` to `true`.
 
 You can now run the kubespray playbook (cluster.yml) to deploy Kubernetes over OpenStack with Cinder CSI Driver enabled.
 

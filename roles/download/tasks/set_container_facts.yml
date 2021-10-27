@@ -5,8 +5,7 @@
 
 - name: set_container_facts | Set if containers should be pulled by digest
   set_fact:
-    pull_by_digest: >-
-      {%- if download.sha256 is defined and download.sha256 -%}true{%- else -%}false{%- endif -%}
+    pull_by_digest: "{{ download.sha256 is defined and download.sha256 }}"
 
 - name: set_container_facts | Define by what name to pull the image
   set_fact:
@@ -22,6 +21,12 @@
     image_path_cached: "{{ download_cache_dir }}/images/{{ image_filename }}"
     image_path_final: "{{ local_release_dir }}/images/{{ image_filename }}"
 
+- name: Set image save/load command for docker
+  set_fact:
+    image_save_command: "{{ docker_bin_dir }}/docker save {{ image_reponame }} | gzip -{{ download_compress }} > {{ image_path_final }}"
+    image_load_command: "{{ docker_bin_dir }}/docker load < {{ image_path_final }}"
+  when: container_manager == 'docker'
+
 - name: Set image save/load command for containerd
   set_fact:
     image_save_command: "{{ containerd_bin_dir }}/ctr -n k8s.io image export {{ image_path_final }} {{ image_reponame }}"
@@ -33,6 +38,11 @@
     image_save_command: "skopeo copy containers-storage:{{ image_reponame }} docker-archive:{{ image_path_final }}"
     image_load_command: "skopeo copy docker-archive:{{ image_path_final }} containers-storage:{{ image_reponame }}"
   when: container_manager == 'crio'
+
+- name: Set image save/load command for docker on localhost
+  set_fact:
+    image_save_command_on_localhost: "{{ docker_bin_dir }}/docker save {{ image_reponame }} | gzip -{{ download_compress }} > {{ image_path_cached }}"
+  when: container_manager_on_localhost == 'docker'
 
 - name: Set image save/load command for containerd on localhost
   set_fact:

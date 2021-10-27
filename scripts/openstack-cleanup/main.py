@@ -4,7 +4,6 @@ import openstack
 import logging
 import datetime
 import time
-from pprint import pprint
 
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 PAUSE_SECONDS = 5
@@ -41,6 +40,10 @@ def main():
     print('Security groups...')
     map_if_old(conn.network.delete_security_group,
                conn.network.security_groups())
+
+    print('Ports...')
+    map_if_old(conn.network.delete_port,
+               conn.network.ports())
 
     print('Subnets...')
     map_if_old(conn.network.delete_subnet,

@@ -8,7 +8,6 @@
   changed_when: false
   # This command should always run, even in check mode
   check_mode: false
-  environment: {}
   tags:
     - facts
 
@@ -19,12 +18,10 @@
   changed_when: false
   # This command should always run, even in check mode
   check_mode: false
-  environment: {}
 
 - name: Add http_proxy to /etc/apt/apt.conf if http_proxy is defined
   raw: echo 'Acquire::http::proxy "{{ http_proxy }}";' >> /etc/apt/apt.conf
   become: true
-  environment: {}
   when:
     - http_proxy is defined
     - need_http_proxy.rc != 0
@@ -37,52 +34,37 @@
   changed_when: false
   # This command should always run, even in check mode
   check_mode: false
-  environment: {}
 
 - name: Add https_proxy to /etc/apt/apt.conf if https_proxy is defined
   raw: echo 'Acquire::https::proxy "{{ https_proxy }}";' >> /etc/apt/apt.conf
   become: true
-  environment: {}
   when:
     - https_proxy is defined
     - need_https_proxy.rc != 0
     - not skip_http_proxy_on_os_packages
-
-- name: Check Network Name Resolution configuration
-  raw: grep '^DNSSEC=allow-downgrade' /etc/systemd/resolved.conf
-  register: need_dnssec_allow_downgrade
-  failed_when: false
-  changed_when: false
-  # This command should always run, even in check mode
-  check_mode: false
-  environment: {}
-  when:
-    - '"bionic" in os_release.stdout'
-
-- name: Change Network Name Resolution configuration
-  raw: sed -i 's/^DNSSEC=yes/DNSSEC=allow-downgrade/g' /etc/systemd/resolved.conf
-  become: true
-  environment: {}
-  when:
-    - '"bionic" in os_release.stdout'
-    - need_dnssec_allow_downgrade.rc
-
-- name: Restart systemd-resolved service
-  raw: systemctl restart systemd-resolved
-  become: true
-  environment: {}
-  when:
-    - '"bionic" in os_release.stdout'
-    - need_dnssec_allow_downgrade.rc
 
 - name: Install python3
   raw:
     apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y python3-minimal
   become: true
-  environment: {}
   when:
     - need_bootstrap.rc != 0
+
+- name: Update Apt cache
+  raw: apt-get update --allow-releaseinfo-change
+  become: true
+  when:
+    - '''ID=debian'' in os_release.stdout_lines'
+    - (
+        '''VERSION="10'' in os_release.stdout_lines' or
+        '''VERSION="11'' in os_release.stdout_lines'
+      )
+  register: bootstrap_update_apt_result
+  changed_when:
+    - '"changed its" in bootstrap_update_apt_result.stdout'
+    - '"value from" in bootstrap_update_apt_result.stdout'
+  ignore_errors: true
 
 - name: Set the ansible_python_interpreter fact
   set_fact:

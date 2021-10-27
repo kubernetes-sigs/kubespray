@@ -1,0 +1,48 @@
+---
+- name: Prepare generic
+  hosts: all
+  become: true
+  roles:
+    - role: kubespray-defaults
+    - role: bootstrap-os
+    - role: adduser
+      user: "{{ addusers.kube }}"
+  tasks:
+    - include_tasks: "../../../../download/tasks/download_file.yml"
+      vars:
+        download: "{{ download_defaults | combine(downloads.cni) }}"
+
+- name: Prepare container runtime
+  hosts: all
+  become: true
+  vars:
+    container_manager: containerd
+    kube_network_plugin: cni
+  roles:
+    - role: kubespray-defaults
+    - role: network_plugin/cni
+    - role: container-engine/crictl
+  tasks:
+    - name: Copy test container files
+      copy:
+        src: "{{ item }}"
+        dest: "/tmp/{{ item }}"
+        owner: root
+        mode: 0644
+      with_items:
+        - container.json
+        - sandbox.json
+    - name: Create /etc/cni/net.d directory
+      file:
+        path: /etc/cni/net.d
+        state: directory
+        owner: root
+        mode: 0755
+    - name: Setup CNI
+      copy:
+        src: "{{ item }}"
+        dest: "/etc/cni/net.d/{{ item }}"
+        owner: root
+        mode: 0644
+      with_items:
+        - 10-mynet.conf

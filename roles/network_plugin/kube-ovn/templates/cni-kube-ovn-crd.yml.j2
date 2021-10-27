@@ -9,12 +9,12 @@ spec:
       served: true
       storage: true
       additionalPrinterColumns:
-      - name: Provider
+      - name: V4IP
         type: string
-        jsonPath: .spec.provider
-      - name: IP
+        jsonPath: .spec.v4IpAddress
+      - name: V6IP
         type: string
-        jsonPath: .spec.ipAddress
+        jsonPath: .spec.v6IpAddress
       - name: Mac
         type: string
         jsonPath: .spec.macAddress
@@ -44,6 +44,10 @@ spec:
                 nodeName:
                   type: string
                 ipAddress:
+                  type: string
+                v4IpAddress:
+                  type: string
+                v6IpAddress:
                   type: string
                 attachIps:
                   type: array
@@ -78,6 +82,12 @@ spec:
       subresources:
         status: {}
       additionalPrinterColumns:
+      - name: Provider
+        type: string
+        jsonPath: .spec.provider
+      - name: Vpc
+        type: string
+        jsonPath: .spec.vpc
       - name: Protocol
         type: string
         jsonPath: .spec.protocol
@@ -96,12 +106,21 @@ spec:
       - name: GatewayType
         type: string
         jsonPath: .spec.gatewayType
-      - name: Used
+      - name: V4Used
         type: number
-        jsonPath: .status.usingIPs
-      - name: Available
+        jsonPath: .status.v4usingIPs
+      - name: V4Available
         type: number
-        jsonPath: .status.availableIPs
+        jsonPath: .status.v4availableIPs
+      - name: V6Used
+        type: number
+        jsonPath: .status.v6usingIPs
+      - name: V6Available
+        type: number
+        jsonPath: .status.v6availableIPs
+      - name: ExcludeIPs
+        type: string
+        jsonPath: .spec.excludeIps
       schema:
         openAPIV3Schema:
           type: object
@@ -109,9 +128,13 @@ spec:
             status:
               type: object
               properties:
-                availableIPs:
+                v4availableIPs:
                   type: number
-                usingIPs:
+                v4usingIPs:
+                  type: number
+                v6availableIPs:
+                  type: number
+                v6usingIPs:
                   type: number
                 activateGateway:
                   type: string
@@ -135,6 +158,8 @@ spec:
             spec:
               type: object
               properties:
+                vpc:
+                  type: string
                 default:
                   type: boolean
                 protocol:
@@ -163,11 +188,29 @@ spec:
                   type: string
                 natOutgoing:
                   type: boolean
+                externalEgressGateway:
+                  type: string
+                policyRoutingPriority:
+                  type: integer
+                  minimum: 1
+                  maximum: 32765
+                policyRoutingTableID:
+                  type: integer
+                  minimum: 1
+                  maximum: 2147483647
+                  not:
+                    enum:
+                      - 252 # compat
+                      - 253 # default
+                      - 254 # main
+                      - 255 # local
                 private:
                   type: boolean
                 vlan:
                   type: string
-                underlayGateway:
+                disableGatewayCheck:
+                  type: boolean
+                disableInterConnection:
                   type: boolean
   scope: Cluster
   names:
@@ -194,24 +237,34 @@ spec:
             spec:
               type: object
               properties:
+                id:
+                  type: integer
+                  minimum: 0
+                  maximum: 4095
+                provider:
+                  type: string
                 vlanId:
                   type: integer
+                  description: Deprecated in favor of id
                 providerInterfaceName:
                   type: string
-                logicalInterfaceName:
-                  type: string
-                subnet:
-                  type: string
+                  description: Deprecated in favor of provider
+              required:
+                - provider
+            status:
+              type: object
+              properties:
+                subnets:
+                  type: array
+                  items:
+                    type: string
       additionalPrinterColumns:
-      - name: VlanID
+      - name: ID
         type: string
-        jsonPath: .spec.vlanId
-      - name: ProviderInterfaceName
+        jsonPath: .spec.id
+      - name: Provider
         type: string
-        jsonPath: .spec.providerInterfaceName
-      - name: Subnet
-        type: string
-        jsonPath: .spec.subnet
+        jsonPath: .spec.provider
   scope: Cluster
   names:
     plural: vlans
@@ -219,3 +272,373 @@ spec:
     kind: Vlan
     shortNames:
       - vlan
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: provider-networks.kubeovn.io
+spec:
+  group: kubeovn.io
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            metadata:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 12
+                  not:
+                    enum:
+                      - int
+                      - external
+            spec:
+              type: object
+              properties:
+                defaultInterface:
+                  type: string
+                  maxLength: 15
+                  pattern: '^[^/\s]+$'
+                customInterfaces:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      interface:
+                        type: string
+                        maxLength: 15
+                        pattern: '^[^/\s]+$'
+                      nodes:
+                        type: array
+                        items:
+                          type: string
+                excludeNodes:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - defaultInterface
+            status:
+              type: object
+              properties:
+                ready:
+                  type: boolean
+                readyNodes:
+                  type: array
+                  items:
+                    type: string
+                vlans:
+                  type: array
+                  items:
+                    type: string
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      node:
+                        type: string
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      reason:
+                        type: string
+                      message:
+                        type: string
+                      lastUpdateTime:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+      additionalPrinterColumns:
+      - name: DefaultInterface
+        type: string
+        jsonPath: .spec.defaultInterface
+      - name: Ready
+        type: boolean
+        jsonPath: .status.ready
+  scope: Cluster
+  names:
+    plural: provider-networks
+    singular: provider-network
+    kind: ProviderNetwork
+    listKind: ProviderNetworkList
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: vpcs.kubeovn.io
+spec:
+  group: kubeovn.io
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .status.standby
+          name: Standby
+          type: boolean
+        - jsonPath: .status.subnets
+          name: Subnets
+          type: string
+        - jsonPath: .spec.namespaces
+          name: Namespaces
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          properties:
+            spec:
+              properties:
+                namespaces:
+                  items:
+                    type: string
+                  type: array
+                staticRoutes:
+                  items:
+                    properties:
+                      policy:
+                        type: string
+                      cidr:
+                        type: string
+                      nextHopIP:
+                        type: string
+                    type: object
+                  type: array
+              type: object
+            status:
+              properties:
+                conditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        type: string
+                      lastUpdateTime:
+                        type: string
+                      message:
+                        type: string
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      type:
+                        type: string
+                    type: object
+                  type: array
+                default:
+                  type: boolean
+                defaultLogicalSwitch:
+                  type: string
+                router:
+                  type: string
+                standby:
+                  type: boolean
+                subnets:
+                  items:
+                    type: string
+                  type: array
+                tcpLoadBalancer:
+                  type: string
+                tcpSessionLoadBalancer:
+                  type: string
+                udpLoadBalancer:
+                  type: string
+                udpSessionLoadBalancer:
+                  type: string
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+  names:
+    kind: Vpc
+    listKind: VpcList
+    plural: vpcs
+    shortNames:
+      - vpc
+    singular: vpc
+  scope: Cluster
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: vpc-nat-gateways.kubeovn.io
+spec:
+  group: kubeovn.io
+  names:
+    plural: vpc-nat-gateways
+    singular: vpc-nat-gateway
+    shortNames:
+      - vpc-nat-gw
+    kind: VpcNatGateway
+    listKind: VpcNatGatewayList
+  scope: Cluster
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.vpc
+          name: Vpc
+          type: string
+        - jsonPath: .spec.subnet
+          name: Subnet
+          type: string
+        - jsonPath: .spec.lanIp
+          name: LanIP
+          type: string
+      name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                dnatRules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      eip:
+                        type: string
+                      externalPort:
+                        type: string
+                      internalIp:
+                        type: string
+                      internalPort:
+                        type: string
+                      protocol:
+                        type: string
+                eips:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      eipCIDR:
+                        type: string
+                      gateway:
+                        type: string
+                floatingIpRules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      eip:
+                        type: string
+                      internalIp:
+                        type: string
+                lanIp:
+                  type: string
+                snatRules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      eip:
+                        type: string
+                      internalCIDR:
+                        type: string
+                subnet:
+                  type: string
+                vpc:
+                  type: string
+      subresources:
+        status: {}
+  conversion:
+    strategy: None
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: security-groups.kubeovn.io
+spec:
+  group: kubeovn.io
+  names:
+    plural: security-groups
+    singular: security-group
+    shortNames:
+      - sg
+    kind: SecurityGroup
+    listKind: SecurityGroupList
+  scope: Cluster
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                ingressRules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      ipVersion:
+                        type: string
+                      protocol:
+                        type: string
+                      priority:
+                        type: integer
+                      remoteType:
+                        type: string
+                      remoteAddress:
+                        type: string
+                      remoteSecurityGroup:
+                        type: string
+                      portRangeMin:
+                        type: integer
+                      portRangeMax:
+                        type: integer
+                      policy:
+                        type: string
+                egressRules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      ipVersion:
+                        type: string
+                      protocol:
+                        type: string
+                      priority:
+                        type: integer
+                      remoteType:
+                        type: string
+                      remoteAddress:
+                        type: string
+                      remoteSecurityGroup:
+                        type: string
+                      portRangeMin:
+                        type: integer
+                      portRangeMax:
+                        type: integer
+                      policy:
+                        type: string
+                allowSameGroupTraffic:
+                  type: boolean
+            status:
+              type: object
+              properties:
+                portGroup:
+                  type: string
+                allowSameGroupTraffic:
+                  type: boolean
+                ingressMd5:
+                  type: string
+                egressMd5:
+                  type: string
+                ingressLastSyncSuccess:
+                  type: boolean
+                egressLastSyncSuccess:
+                  type: boolean
+      subresources:
+        status: {}
+  conversion:
+    strategy: None

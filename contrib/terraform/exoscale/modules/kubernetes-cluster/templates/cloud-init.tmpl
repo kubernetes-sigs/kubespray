@@ -1,0 +1,52 @@
+#cloud-config
+%{ if ceph_partition_size > 0 || node_local_partition_size > 0}
+bootcmd:
+- [ cloud-init-per, once, move-second-header, sgdisk, --move-second-header, /dev/vda ]
+%{ if node_local_partition_size > 0 }
+  # Create partition for node local storage
+- [ cloud-init-per, once, create-node-local-part, parted, --script, /dev/vda, 'mkpart extended ext4 ${root_partition_size}GB %{ if ceph_partition_size == 0 }-1%{ else }${root_partition_size + node_local_partition_size}GB%{ endif }' ]
+- [ cloud-init-per, once, create-fs-node-local-part, mkfs.ext4, /dev/vda2 ]
+%{ endif }
+%{ if ceph_partition_size > 0 }
+  # Create partition for rook to use for ceph
+- [ cloud-init-per, once, create-ceph-part, parted, --script, /dev/vda, 'mkpart extended ${root_partition_size + node_local_partition_size}GB -1' ]
+%{ endif }
+%{ endif }
+
+ssh_authorized_keys:
+%{ for ssh_public_key in ssh_public_keys ~}
+  - ${ssh_public_key}
+%{ endfor ~}
+
+write_files:
+  - path: /etc/netplan/eth1.yaml
+    content: |
+      network:
+        version: 2
+        ethernets:
+          eth1:
+            dhcp4: true
+%{ if node_type == "worker" }
+  # TODO: When a VM is seen as healthy and is added to the EIP loadbalancer
+  #       pool it no longer can send traffic back to itself via the EIP IP
+  #       address.
+  #       Remove this if it ever gets solved.
+  - path: /etc/netplan/20-eip-fix.yaml
+    content: |
+      network:
+        version: 2
+        ethernets:
+          "lo:0":
+            match:
+              name: lo
+            dhcp4: false
+            addresses:
+            - ${eip_ip_address}/32
+%{ endif }
+runcmd:
+  - netplan apply
+%{ if node_local_partition_size > 0 }
+  - mkdir -p /mnt/disks/node-local-storage
+  - chown nobody:nogroup /mnt/disks/node-local-storage
+  - mount /dev/vda2 /mnt/disks/node-local-storage
+%{ endif }

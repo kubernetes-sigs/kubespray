@@ -4,7 +4,8 @@
     path: "{{ item }}"
     state: directory
     owner: kube
-  when: inventory_hostname in groups['k8s-cluster']
+    mode: 0755
+  when: inventory_hostname in groups['k8s_cluster']
   become: true
   tags:
     - kubelet
@@ -28,7 +29,8 @@
     path: "{{ item }}"
     state: directory
     owner: root
-  when: inventory_hostname in groups['k8s-cluster']
+    mode: 0755
+  when: inventory_hostname in groups['k8s_cluster']
   become: true
   tags:
     - kubelet
@@ -46,9 +48,12 @@
 - name: Check if kubernetes kubeadm compat cert dir exists
   stat:
     path: "{{ kube_cert_compat_dir }}"
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: kube_cert_compat_dir_check
   when:
-    - inventory_hostname in groups['k8s-cluster']
+    - inventory_hostname in groups['k8s_cluster']
     - kube_cert_dir != kube_cert_compat_dir
 
 - name: Create kubernetes kubeadm compat cert dir (kubernetes/kubeadm issue 1498)
@@ -56,8 +61,9 @@
     src: "{{ kube_cert_dir }}"
     dest: "{{ kube_cert_compat_dir }}"
     state: link
+    mode: 0755
   when:
-    - inventory_hostname in groups['k8s-cluster']
+    - inventory_hostname in groups['k8s_cluster']
     - kube_cert_dir != kube_cert_compat_dir
     - not kube_cert_compat_dir_check.stat.exists
 
@@ -66,13 +72,14 @@
     path: "{{ item }}"
     state: directory
     owner: kube
+    mode: 0755
   with_items:
     - "/etc/cni/net.d"
     - "/opt/cni/bin"
     - "/var/lib/calico"
   when:
     - kube_network_plugin in ["calico", "weave", "canal", "flannel", "cilium", "kube-ovn", "ovn4nfv", "kube-router", "macvlan"]
-    - inventory_hostname in groups['k8s-cluster']
+    - inventory_hostname in groups['k8s_cluster']
   tags:
     - network
     - cilium
@@ -93,7 +100,7 @@
     mode: "{{ local_volume_provisioner_directory_mode }}"
   with_items: "{{ local_volume_provisioner_storage_classes.keys() | list }}"
   when:
-    - inventory_hostname in groups['k8s-cluster']
+    - inventory_hostname in groups['k8s_cluster']
     - local_volume_provisioner_enabled
   tags:
     - persistent_volumes

@@ -12,13 +12,13 @@
     # Prepare inventory
     - cp contrib/terraform/$PROVIDER/sample-inventory/cluster.tfvars .
     - ln -s contrib/terraform/$PROVIDER/hosts
-    - terraform init contrib/terraform/$PROVIDER
+    - terraform -chdir="contrib/terraform/$PROVIDER" init
     # Copy SSH keypair
     - mkdir -p ~/.ssh
     - echo "$PACKET_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
     - chmod 400 ~/.ssh/id_rsa
     - echo "$PACKET_PUBLIC_KEY" | base64 -d > ~/.ssh/id_rsa.pub
-    - mkdir -p group_vars
+    - mkdir -p contrib/terraform/$PROVIDER/group_vars
     # Random subnet to avoid routing conflicts
     - export TF_VAR_subnet_cidr="10.$(( $RANDOM % 256 )).$(( $RANDOM % 256 )).0/24"
 
@@ -28,8 +28,8 @@
   tags: [light]
   only: ['master', /^pr-.*$/]
   script:
-    - terraform validate -var-file=cluster.tfvars contrib/terraform/$PROVIDER
-    - terraform fmt -check -diff contrib/terraform/$PROVIDER
+    - terraform -chdir="contrib/terraform/$PROVIDER" validate
+    - terraform -chdir="contrib/terraform/$PROVIDER" fmt -check -diff
 
 .terraform_apply:
   extends: .terraform_install
@@ -56,70 +56,48 @@
 tf-validate-openstack:
   extends: .terraform_validate
   variables:
-    TF_VERSION: 0.12.29
+    TF_VERSION: $TERRAFORM_VERSION
     PROVIDER: openstack
     CLUSTER: $CI_COMMIT_REF_NAME
 
 tf-validate-packet:
   extends: .terraform_validate
   variables:
-    TF_VERSION: 0.12.29
+    TF_VERSION: $TERRAFORM_VERSION
     PROVIDER: packet
     CLUSTER: $CI_COMMIT_REF_NAME
 
 tf-validate-aws:
   extends: .terraform_validate
   variables:
-    TF_VERSION: 0.12.29
+    TF_VERSION: $TERRAFORM_VERSION
     PROVIDER: aws
     CLUSTER: $CI_COMMIT_REF_NAME
 
-tf-0.13.x-validate-openstack:
+tf-validate-exoscale:
   extends: .terraform_validate
   variables:
-    TF_VERSION: 0.13.5
-    PROVIDER: openstack
+    TF_VERSION: $TERRAFORM_VERSION
+    PROVIDER: exoscale
+
+tf-validate-vsphere:
+  extends: .terraform_validate
+  variables:
+    TF_VERSION: $TERRAFORM_VERSION
+    PROVIDER: vsphere
     CLUSTER: $CI_COMMIT_REF_NAME
 
-tf-0.13.x-validate-packet:
+tf-validate-upcloud:
   extends: .terraform_validate
   variables:
-    TF_VERSION: 0.13.5
-    PROVIDER: packet
-    CLUSTER: $CI_COMMIT_REF_NAME
-
-tf-0.13.x-validate-aws:
-  extends: .terraform_validate
-  variables:
-    TF_VERSION: 0.13.5
-    PROVIDER: aws
-    CLUSTER: $CI_COMMIT_REF_NAME
-
-tf-0.14.x-validate-openstack:
-  extends: .terraform_validate
-  variables:
-    TF_VERSION: 0.14.3
-    PROVIDER: openstack
-    CLUSTER: $CI_COMMIT_REF_NAME
-
-tf-0.14.x-validate-packet:
-  extends: .terraform_validate
-  variables:
-    TF_VERSION: 0.14.3
-    PROVIDER: packet
-    CLUSTER: $CI_COMMIT_REF_NAME
-
-tf-0.14.x-validate-aws:
-  extends: .terraform_validate
-  variables:
-    TF_VERSION: 0.14.3
-    PROVIDER: aws
+    TF_VERSION: $TERRAFORM_VERSION
+    PROVIDER: upcloud
     CLUSTER: $CI_COMMIT_REF_NAME
 
 # tf-packet-ubuntu16-default:
 #   extends: .terraform_apply
 #   variables:
-#     TF_VERSION: 0.12.29
+#     TF_VERSION: $TERRAFORM_VERSION
 #     PROVIDER: packet
 #     CLUSTER: $CI_COMMIT_REF_NAME
 #     TF_VAR_number_of_k8s_masters: "1"
@@ -133,7 +111,7 @@ tf-0.14.x-validate-aws:
 # tf-packet-ubuntu18-default:
 #   extends: .terraform_apply
 #   variables:
-#     TF_VERSION: 0.12.29
+#     TF_VERSION: $TERRAFORM_VERSION
 #     PROVIDER: packet
 #     CLUSTER: $CI_COMMIT_REF_NAME
 #     TF_VAR_number_of_k8s_masters: "1"
@@ -188,9 +166,10 @@ tf-elastx_ubuntu18-calico:
   extends: .terraform_apply
   stage: deploy-part3
   when: on_success
+  allow_failure: true
   variables:
     <<: *elastx_variables
-    TF_VERSION: 0.12.29
+    TF_VERSION: $TERRAFORM_VERSION
     PROVIDER: openstack
     CLUSTER: $CI_COMMIT_REF_NAME
     ANSIBLE_TIMEOUT: "60"
@@ -216,44 +195,45 @@ tf-elastx_ubuntu18-calico:
     TF_VAR_image: ubuntu-18.04-server-latest
     TF_VAR_k8s_allowed_remote_ips: '["0.0.0.0/0"]'
 
+# OVH voucher expired, commenting job until things are sorted  out
 
-tf-ovh_cleanup:
-  stage: unit-tests
-  tags: [light]
-  image: python
-  environment: ovh
-  variables:
-    <<: *ovh_variables
-  before_script:
-    - pip install -r scripts/openstack-cleanup/requirements.txt
-  script:
-    - ./scripts/openstack-cleanup/main.py
+# tf-ovh_cleanup:
+#  stage: unit-tests
+#  tags: [light]
+#  image: python
+#  environment: ovh
+#  variables:
+#    <<: *ovh_variables
+#  before_script:
+#    - pip install -r scripts/openstack-cleanup/requirements.txt
+#  script:
+#    - ./scripts/openstack-cleanup/main.py
 
-tf-ovh_ubuntu18-calico:
-  extends: .terraform_apply
-  when: on_success
-  environment: ovh
-  variables:
-    <<: *ovh_variables
-    TF_VERSION: 0.12.29
-    PROVIDER: openstack
-    CLUSTER: $CI_COMMIT_REF_NAME
-    ANSIBLE_TIMEOUT: "60"
-    SSH_USER: ubuntu
-    TF_VAR_number_of_k8s_masters: "0"
-    TF_VAR_number_of_k8s_masters_no_floating_ip: "1"
-    TF_VAR_number_of_k8s_masters_no_floating_ip_no_etcd: "0"
-    TF_VAR_number_of_etcd: "0"
-    TF_VAR_number_of_k8s_nodes: "0"
-    TF_VAR_number_of_k8s_nodes_no_floating_ip: "1"
-    TF_VAR_number_of_gfs_nodes_no_floating_ip: "0"
-    TF_VAR_number_of_bastions: "0"
-    TF_VAR_number_of_k8s_masters_no_etcd: "0"
-    TF_VAR_use_neutron: "0"
-    TF_VAR_floatingip_pool: "Ext-Net"
-    TF_VAR_external_net: "6011fbc9-4cbf-46a4-8452-6890a340b60b"
-    TF_VAR_network_name: "Ext-Net"
-    TF_VAR_flavor_k8s_master: "defa64c3-bd46-43b4-858a-d93bbae0a229"    # s1-8
-    TF_VAR_flavor_k8s_node: "defa64c3-bd46-43b4-858a-d93bbae0a229"      # s1-8
-    TF_VAR_image: "Ubuntu 18.04"
-    TF_VAR_k8s_allowed_remote_ips: '["0.0.0.0/0"]'
+# tf-ovh_ubuntu18-calico:
+#  extends: .terraform_apply
+#  when: on_success
+#  environment: ovh
+#  variables:
+#    <<: *ovh_variables
+#    TF_VERSION: $TERRAFORM_VERSION
+#    PROVIDER: openstack
+#    CLUSTER: $CI_COMMIT_REF_NAME
+#    ANSIBLE_TIMEOUT: "60"
+#    SSH_USER: ubuntu
+#    TF_VAR_number_of_k8s_masters: "0"
+#    TF_VAR_number_of_k8s_masters_no_floating_ip: "1"
+#    TF_VAR_number_of_k8s_masters_no_floating_ip_no_etcd: "0"
+#    TF_VAR_number_of_etcd: "0"
+#    TF_VAR_number_of_k8s_nodes: "0"
+#    TF_VAR_number_of_k8s_nodes_no_floating_ip: "1"
+#    TF_VAR_number_of_gfs_nodes_no_floating_ip: "0"
+#    TF_VAR_number_of_bastions: "0"
+#    TF_VAR_number_of_k8s_masters_no_etcd: "0"
+#    TF_VAR_use_neutron: "0"
+#    TF_VAR_floatingip_pool: "Ext-Net"
+#    TF_VAR_external_net: "6011fbc9-4cbf-46a4-8452-6890a340b60b"
+#    TF_VAR_network_name: "Ext-Net"
+#    TF_VAR_flavor_k8s_master: "defa64c3-bd46-43b4-858a-d93bbae0a229"    # s1-8
+#    TF_VAR_flavor_k8s_node: "defa64c3-bd46-43b4-858a-d93bbae0a229"      # s1-8
+#    TF_VAR_image: "Ubuntu 18.04"
+#    TF_VAR_k8s_allowed_remote_ips: '["0.0.0.0/0"]'

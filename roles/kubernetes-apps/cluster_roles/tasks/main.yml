@@ -9,14 +9,14 @@
   until: result.status == 200
   retries: 10
   delay: 6
-  when: inventory_hostname == groups['kube-master'][0]
+  when: inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Kubernetes Apps | Check AppArmor status
   command: which apparmor_parser
   register: apparmor_status
   when:
     - podsecuritypolicy_enabled
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   failed_when: false
 
 - name: Kubernetes Apps | Set apparmor_enabled
@@ -24,12 +24,13 @@
     apparmor_enabled: "{{ apparmor_status.rc == 0 }}"
   when:
     - podsecuritypolicy_enabled
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Kubernetes Apps | Render templates for PodSecurityPolicy
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0640
   register: psp_manifests
   with_items:
     - {file: psp.yml, type: psp, name: psp}
@@ -37,7 +38,7 @@
     - {file: psp-crb.yml, type: rolebinding, name: psp-crb}
   when:
     - podsecuritypolicy_enabled
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Kubernetes Apps | Add policies, roles, bindings for PodSecurityPolicy
   kube:
@@ -52,7 +53,7 @@
   delay: 6
   with_items: "{{ psp_manifests.results }}"
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
     - not item is skipped
   loop_control:
     label: "{{ item.item.file }}"
@@ -61,10 +62,11 @@
   template:
     src: "node-crb.yml.j2"
     dest: "{{ kube_config_dir }}/node-crb.yml"
+    mode: 0640
   register: node_crb_manifest
   when:
     - rbac_enabled
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Apply workaround to allow all nodes with cert O=system:nodes to register
   kube:
@@ -80,17 +82,18 @@
   when:
     - rbac_enabled
     - node_crb_manifest.changed
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Kubernetes Apps | Add webhook ClusterRole that grants access to proxy, stats, log, spec, and metrics on a kubelet
   template:
     src: "node-webhook-cr.yml.j2"
     dest: "{{ kube_config_dir }}/node-webhook-cr.yml"
+    mode: 0640
   register: node_webhook_cr_manifest
   when:
     - rbac_enabled
     - kubelet_authorization_mode_webhook
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags: node-webhook
 
 - name: Apply webhook ClusterRole
@@ -104,18 +107,19 @@
     - rbac_enabled
     - kubelet_authorization_mode_webhook
     - node_webhook_cr_manifest.changed
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags: node-webhook
 
 - name: Kubernetes Apps | Add ClusterRoleBinding for system:nodes to webhook ClusterRole
   template:
     src: "node-webhook-crb.yml.j2"
     dest: "{{ kube_config_dir }}/node-webhook-crb.yml"
+    mode: 0640
   register: node_webhook_crb_manifest
   when:
     - rbac_enabled
     - kubelet_authorization_mode_webhook
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags: node-webhook
 
 - name: Grant system:nodes the webhook ClusterRole
@@ -129,7 +133,7 @@
     - rbac_enabled
     - kubelet_authorization_mode_webhook
     - node_webhook_crb_manifest.changed
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   tags: node-webhook
 
 - include_tasks: oci.yml
@@ -139,8 +143,8 @@
     - cloud_provider == 'oci'
 
 - name: PriorityClass | Copy k8s-cluster-critical-pc.yml file
-  copy: src=k8s-cluster-critical-pc.yml dest={{ kube_config_dir }}/k8s-cluster-critical-pc.yml
-  when: inventory_hostname == groups['kube-master']|last
+  copy: src=k8s-cluster-critical-pc.yml dest={{ kube_config_dir }}/k8s-cluster-critical-pc.yml mode=0640
+  when: inventory_hostname == groups['kube_control_plane']|last
 
 - name: PriorityClass | Create k8s-cluster-critical
   kube:
@@ -149,4 +153,4 @@
     resource: "PriorityClass"
     filename: "{{ kube_config_dir }}/k8s-cluster-critical-pc.yml"
     state: latest
-  when: inventory_hostname == groups['kube-master']|last
+  when: inventory_hostname == groups['kube_control_plane']|last

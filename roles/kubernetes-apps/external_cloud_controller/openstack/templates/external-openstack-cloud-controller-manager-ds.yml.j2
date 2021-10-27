@@ -24,14 +24,16 @@ spec:
         k8s-app: openstack-cloud-controller-manager
     spec:
       nodeSelector:
-        node-role.kubernetes.io/master: ""
+        node-role.kubernetes.io/control-plane: ""
       securityContext:
-        runAsUser: 1001
+        runAsUser: 999
       tolerations:
       - key: node.cloudprovider.kubernetes.io/uninitialized
         value: "true"
         effect: NoSchedule
       - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
         effect: NoSchedule
       serviceAccountName: cloud-controller-manager
       containers:
@@ -55,14 +57,14 @@ spec:
             - mountPath: /etc/ssl/certs
               name: ca-certs
               readOnly: true
-            - mountPath: /etc/config
+            - mountPath: /etc/config/cloud.conf
               name: cloud-config-volume
               readOnly: true
-{% if external_openstack_cacert is defined and external_openstack_cacert != "" %}
+              subPath: cloud.conf
             - mountPath: {{ kube_config_dir }}/external-openstack-cacert.pem
-              name: openstack-cacert
+              name: cloud-config-volume
               readOnly: true
-{% endif %}
+              subPath: ca.cert
 {% if kubelet_flexvolumes_plugins_dir is defined %}
             - mountPath: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
               name: flexvolume-dir
@@ -92,9 +94,3 @@ spec:
       - name: cloud-config-volume
         secret:
           secretName: external-openstack-cloud-config
-{% if external_openstack_cacert is defined and external_openstack_cacert != "" %}
-      - hostPath:
-          path: {{ kube_config_dir }}/external-openstack-cacert.pem
-          type: FileOrCreate
-        name: openstack-cacert
-{% endif %}

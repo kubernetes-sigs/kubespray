@@ -46,7 +46,7 @@ test_distro() {
     pass_or_fail "$prefix: netcheck" || return 1
 }
 
-NODES=($(egrep ^kube-node hosts))
+NODES=($(egrep ^kube_node hosts))
 NETCHECKER_HOST=localhost
 
 : ${OUTPUT_DIR:=./out}

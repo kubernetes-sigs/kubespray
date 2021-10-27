@@ -177,12 +177,12 @@ variable "external_net" {
 }
 
 variable "supplementary_master_groups" {
-  description = "supplementary kubespray ansible groups for masters, such kube-node"
+  description = "supplementary kubespray ansible groups for masters, such kube_node"
   default     = ""
 }
 
 variable "supplementary_node_groups" {
-  description = "supplementary kubespray ansible groups for worker nodes, such as kube-ingress"
+  description = "supplementary kubespray ansible groups for worker nodes, such as kube_ingress"
   default     = ""
 }
 
@@ -257,4 +257,30 @@ variable "extra_sec_groups" {
 
 variable "extra_sec_groups_name" {
   default = "custom"
+}
+
+variable "image_uuid" {
+  description = "uuid of image inside openstack to use"
+  default     = ""
+}
+
+variable "image_gfs_uuid" {
+  description = "uuid of image to be used on gluster fs nodes. If empty defaults to image_uuid"
+  default     = ""
+}
+
+variable "image_master" {
+  description = "uuid of image inside openstack to use"
+  default     = ""
+}
+
+variable "image_master_uuid" {
+  description = "uuid of image to be used on master nodes. If empty defaults to image_uuid"
+  default     = ""
+}
+
+variable "group_vars_path" {
+  description = "path to the inventory group vars directory"
+  type        = string
+  default     = "./group_vars"
 }

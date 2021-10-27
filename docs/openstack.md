@@ -12,6 +12,7 @@ Kubespray has been tested on a number of OpenStack Public Clouds including (in a
 - [ELASTX](https://elastx.se/)
 - [EnterCloudSuite](https://www.entercloudsuite.com/)
 - [FugaCloud](https://fuga.cloud/)
+- [Infomaniak](https://infomaniak.com)
 - [Open Telekom Cloud](https://cloud.telekom.de/) : requires to set the variable `wait_for_floatingip = "true"` in your cluster.tfvars
 - [OVHcloud](https://www.ovhcloud.com/)
 - [Rackspace](https://www.rackspace.com/)
@@ -104,6 +105,12 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
   cinder_topology: true
   ```
 
+- Enabling `cinder_csi_ignore_volume_az: true`, ignores volumeAZ and schedules on any of the available node AZ.
+
+  ```yaml
+  cinder_csi_ignore_volume_az: true
+  ```
+
 - If you are using OpenStack loadbalancer(s) replace the `openstack_lbaas_subnet_id` with the new `external_openstack_lbaas_subnet_id`. **Note** The new cloud provider is using Octavia instead of Neutron LBaaS by default!
 - Enable 3 feature gates to allow migration of all volumes and storage classes (if you have any feature gates already set just add the 3 listed below):
 
@@ -118,16 +125,33 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
 
   ```yaml
   external_openstack_network_ipv6_disabled: false
-  external_openstack_network_internal_networks:
-  - ""
-  external_openstack_network_public_networks:
-  - ""
+  external_openstack_network_internal_networks: []
+  external_openstack_network_public_networks: []
   ```
 
 - You can override the default OpenStack metadata configuration (see [#6338](https://github.com/kubernetes-sigs/kubespray/issues/6338) for explanation):
-  
+
   ```yaml
   external_openstack_metadata_search_order: "configDrive,metadataService"
+  ```
+
+- Available variables for configuring lbaas:
+
+  ```yaml
+  external_openstack_lbaas_create_monitor: false
+  external_openstack_lbaas_monitor_delay: "1m"
+  external_openstack_lbaas_monitor_timeout: "30s"
+  external_openstack_lbaas_monitor_max_retries: "3"
+  external_openstack_lbaas_provider: octavia
+  external_openstack_lbaas_use_octavia: false
+  external_openstack_lbaas_network_id: "Neutron network ID to create LBaaS VIP"
+  external_openstack_lbaas_subnet_id: "Neutron subnet ID to create LBaaS VIP"
+  external_openstack_lbaas_floating_network_id: "Neutron network ID to get floating IP from"
+  external_openstack_lbaas_floating_subnet_id: "Neutron subnet ID to get floating IP from"
+  external_openstack_lbaas_method: "ROUND_ROBIN"
+  external_openstack_lbaas_manage_security_groups: false
+  external_openstack_lbaas_internal_lb: false
+
   ```
 
 - Run `source path/to/your/openstack-rc` to read your OpenStack credentials like `OS_AUTH_URL`, `OS_USERNAME`, `OS_PASSWORD`, etc. Those variables are used for accessing OpenStack from the external cloud provider.

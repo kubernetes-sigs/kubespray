@@ -2,6 +2,9 @@
 - name: check if fedora coreos
   stat:
     path: /run/ostree-booted
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
   register: ostree
 
 - name: set is_ostree
@@ -37,16 +40,6 @@
   tags:
     - facts
 
-- name: check for minimum kernel version
-  fail:
-    msg: >
-          docker requires a minimum kernel version of
-          {{ docker_kernel_min_version }} on
-          {{ ansible_distribution }}-{{ ansible_distribution_version }}
-  when: (not ansible_os_family in ["Flatcar Container Linux by Kinvolk", "ClearLinux"]) and (ansible_kernel is version(docker_kernel_min_version, "<"))
-  tags:
-    - facts
-
 - name: disable unified_cgroup_hierarchy in Fedora 31+
   command: grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=0"
   when:
@@ -64,8 +57,7 @@
 - import_tasks: pre-upgrade.yml
 
 - name: ensure docker-ce repository public key is installed
-  action: "{{ docker_repo_key_info.pkg_key }}"
-  args:
+  apt_key:
     id: "{{ item }}"
     url: "{{ docker_repo_key_info.url }}"
     state: present
@@ -74,144 +66,76 @@
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ docker_repo_key_info.repo_keys }}"
-  when: not (ansible_os_family in ["Flatcar Container Linux by Kinvolk", "RedHat", "Suse", "ClearLinux"] or is_ostree)
+  environment: "{{ proxy_env }}"
+  when: ansible_pkg_mgr == 'apt'
 
 - name: ensure docker-ce repository is enabled
-  action: "{{ docker_repo_info.pkg_repo }}"
-  args:
+  apt_repository:
     repo: "{{ item }}"
     state: present
   with_items: "{{ docker_repo_info.repos }}"
-  when: not (ansible_os_family in ["Flatcar Container Linux by Kinvolk", "RedHat", "Suse", "ClearLinux"] or is_ostree) and (docker_repo_info.repos|length > 0)
-
-- name: ensure docker-engine repository public key is installed
-  action: "{{ dockerproject_repo_key_info.pkg_key }}"
-  args:
-    id: "{{ item }}"
-    url: "{{ dockerproject_repo_key_info.url }}"
-    state: present
-  register: keyserver_task_result
-  until: keyserver_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
-  with_items: "{{ dockerproject_repo_key_info.repo_keys }}"
-  when:
-    - not (ansible_os_family in ["Flatcar Container Linux by Kinvolk", "RedHat", "Suse", "ClearLinux"] or is_ostree)
-    - use_docker_engine is defined and use_docker_engine
-
-- name: ensure docker-engine repository is enabled
-  action: "{{ dockerproject_repo_info.pkg_repo }}"
-  args:
-    repo: "{{ item }}"
-    state: present
-  with_items: "{{ dockerproject_repo_info.repos }}"
-  when:
-    - use_docker_engine is defined and use_docker_engine
-    - not (ansible_os_family in ["Flatcar Container Linux by Kinvolk", "RedHat", "Suse", "ClearLinux"] or is_ostree) and (dockerproject_repo_info.repos|length > 0)
+  when: ansible_pkg_mgr == 'apt'
 
 - name: Configure docker repository on Fedora
   template:
     src: "fedora_docker.repo.j2"
     dest: "{{ yum_repo_dir }}/docker.repo"
+    mode: 0644
   when: ansible_distribution == "Fedora" and not is_ostree
 
-- name: Configure docker repository on RedHat/CentOS/Oracle Linux
+- name: Configure docker repository on RedHat/CentOS/Oracle/AlmaLinux Linux
   template:
     src: "rh_docker.repo.j2"
     dest: "{{ yum_repo_dir }}/docker-ce.repo"
-  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
-
-- name: check if container-selinux is available
-  yum:
-    list: "container-selinux"
-  register: yum_result
-  when: ansible_distribution in ["CentOS","RedHat"] and not is_ostree
-
-- name: Configure extras repository on RedHat/CentOS if container-selinux is not available in current repos
-  yum_repository:
-    name: extras
-    description: "CentOS-{{ ansible_distribution_major_version }} - Extras"
-    state: present
-    baseurl: "{{ extras_rh_repo_base_url }}"
-    file: "extras"
-    gpgcheck: "{{ 'yes' if extras_rh_repo_gpgkey else 'no' }}"
-    gpgkey: "{{ extras_rh_repo_gpgkey }}"
-    keepcache: "{{ docker_rpm_keepcache | default('1') }}"
-    proxy: " {{ http_proxy | default('_none_') }}"
+    mode: 0644
   when:
-    - ansible_distribution in ["CentOS","RedHat"] and not is_ostree
-    - yum_result.results | length == 0
+    - ansible_os_family == "RedHat"
+    - ansible_distribution != "Fedora"
+    - not is_ostree
 
-- name: Copy yum.conf for editing
-  copy:
-    src: "{{ yum_conf }}"
-    dest: "{{ docker_yum_conf }}"
-    remote_src: yes
-  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
-
-- name: Edit copy of yum.conf to set obsoletes=0
-  ini_file:
-    path: "{{ docker_yum_conf }}"
-    section: main
-    option: obsoletes
-    value: "0"
-    no_extra_spaces: true
-  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
+- name: Remove dpkg hold
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: install
+  when: ansible_pkg_mgr == 'apt'
+  changed_when: false
+  with_items:
+    - "{{ containerd_package }}"
+    - docker-ce
+    - docker-ce-cli
 
 - name: ensure docker packages are installed
-  action: "{{ docker_package_info.pkg_mgr }}"
-  args:
-    pkg: "{{ item.name }}"
-    force: "{{ item.force|default(omit) }}"
-    conf_file: "{{ item.yum_conf|default(omit) }}"
-    state: "{{ item.state | default('present') }}"
-    update_cache: "{{ omit if ansible_distribution == 'Fedora' else True }}"
-    enablerepo: "{{ item.repo | default(omit) }}"
-  register: docker_task_result
-  until: docker_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
-  with_items: "{{ docker_package_info.pkgs }}"
-  notify: restart docker
-  when: not (ansible_os_family in ["Flatcar Container Linux by Kinvolk", "ClearLinux"] or is_ostree) and (docker_package_info.pkgs|length > 0)
-  ignore_errors: true
-
-- name: Ensure docker packages are installed
-  action: "{{ docker_package_info.pkg_mgr }}"
-  args:
-    name: "{{ item.name }}"
-    state: "{{ item.state | default('present') }}"
-  with_items: "{{ docker_package_info.pkgs }}"
+  package:
+    name: "{{ docker_package_info.pkgs }}"
+    state: "{{ docker_package_info.state | default('present') }}"
+  module_defaults:
+    apt:
+      update_cache: true
+    dnf:
+      enablerepo: "{{ docker_package_info.enablerepo | default(omit) }}"
+    yum:
+      enablerepo: "{{ docker_package_info.enablerepo | default(omit) }}"
+    zypper:
+      update_cache: true
   register: docker_task_result
   until: docker_task_result is succeeded
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
   notify: restart docker
-  ignore_errors: true
-  when: ansible_os_family in ["ClearLinux"]
-
-- name: get available packages on Ubuntu
-  command: apt-cache policy docker-ce
   when:
-    - docker_task_result is failed
-    - ansible_distribution == 'Ubuntu'
-  register: available_packages
-  check_mode: false
-
-- name: show available packages on ubuntu
-  fail:
-    msg: "{{ available_packages }}"
-  when:
-    - docker_task_result is failed
-    - ansible_distribution == 'Ubuntu'
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+    - not is_ostree
+    - docker_package_info.pkgs|length > 0
 
 # This is required to ensure any apt upgrade will not break kubernetes
 - name: Tell Debian hosts not to change the docker version with apt upgrade
   dpkg_selections:
     name: "{{ item }}"
     selection: hold
-  when: ansible_os_family in ["Debian"]
+  when: ansible_pkg_mgr == 'apt'
+  changed_when: false
   with_items:
+    - "{{ containerd_package }}"
     - docker-ce
     - docker-ce-cli
 
@@ -223,7 +147,7 @@
         state: started
       when: docker_task_result is not changed
   rescue:
-    - debug:
+    - debug:  # noqa unnamed-task
         msg: "Docker start failed. Try to remove our config"
     - name: remove kubespray generated config
       file:
@@ -238,20 +162,6 @@
 
 - name: flush handlers so we can wait for docker to come up
   meta: flush_handlers
-
-- name: set fact for docker_version
-  command: "docker version -f '{{ '{{' }}.Client.Version{{ '}}' }}'"
-  register: installed_docker_version
-  changed_when: false
-  check_mode: false
-
-- name: check minimum docker version for docker_dns mode. You need at least docker version >= 1.12 for resolvconf_mode=docker_dns
-  fail:
-    msg: "You need at least docker version >= 1.12 for resolvconf_mode=docker_dns"
-  when: >
-        dns_mode != 'none' and
-        resolvconf_mode == 'docker_dns' and
-        installed_docker_version.stdout is version('1.12', '<')
 
 # Install each plugin using a looped include to make error handling in the included task simpler.
 - include_tasks: docker_plugin.yml

@@ -1,10 +1,10 @@
 ---
-- name: Stop if either kube-master or kube-node group is empty
+- name: Stop if either kube_control_plane or kube_node group is empty
   assert:
     that: "groups.get('{{ item }}')"
   with_items:
-    - kube-master
-    - kube-node
+    - kube_control_plane
+    - kube_node
   run_once: true
   when: not ignore_assert_errors
 
@@ -24,8 +24,8 @@
 
 - name: Stop if unknown OS
   assert:
-    that: ansible_os_family in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar Container Linux by Kinvolk', 'Suse', 'ClearLinux', 'OracleLinux']
-    msg: "{{ ansible_os_family }} is not a known OS"
+    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'Suse', 'openSUSE Leap', 'ClearLinux', 'OracleLinux', 'AlmaLinux', 'Rocky', 'Amazon']
+    msg: "{{ ansible_distribution }} is not a known OS"
   when: not ignore_assert_errors
 
 - name: Stop if unknown network plugin
@@ -38,10 +38,32 @@
 
 - name: Stop if incompatible network plugin and cloudprovider
   assert:
-    that: kube_network_plugin != 'calico'
-    msg: "Azure and Calico are not compatible. See https://github.com/projectcalico/calicoctl/issues/949 for details."
+    that:
+      - calico_ipip_mode == 'Never'
+      - calico_vxlan_mode in ['Always', 'CrossSubnet']
+    msg: "When using cloud_provider azure and network_plugin calico calico_ipip_mode must be 'Never' and calico_vxlan_mode 'Always' or 'CrossSubnet'"
   when:
     - cloud_provider is defined and cloud_provider == 'azure'
+    - kube_network_plugin == 'calico'
+    - not ignore_assert_errors
+
+- name: Stop if supported Calico versions
+  assert:
+    that:
+      - "calico_version in calico_crds_archive_checksums.keys()"
+    msg: "Calico version not supported {{ calico_version }} not in {{ calico_crds_archive_checksums.keys() }}"
+  when:
+    - kube_network_plugin == 'calico'
+    - not ignore_assert_errors
+
+- name: Stop if kube-proxy is enabled when using eBPF dataplane
+  assert:
+    that:
+      - kube_proxy_remove
+    msg: "kube-proxy needs to be disabled when using Calico with eBPF dataplane"
+  when:
+    - calico_bpf_enabled | default(false)
+    - kube_network_plugin == 'calico'
     - not ignore_assert_errors
 
 - name: Stop if unsupported version of Kubernetes
@@ -69,22 +91,31 @@
     that: groups.etcd|length is not divisibleby 2
   when:
     - not ignore_assert_errors
-    - groups.get('etcd')
-    - inventory_hostname in groups['etcd']
+    - inventory_hostname in groups.get('etcd',[])
 
 - name: Stop if memory is too small for masters
   assert:
     that: ansible_memtotal_mb >= minimal_master_memory_mb
   when:
     - not ignore_assert_errors
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname in groups['kube_control_plane']
 
 - name: Stop if memory is too small for nodes
   assert:
     that: ansible_memtotal_mb >= minimal_node_memory_mb
   when:
     - not ignore_assert_errors
-    - inventory_hostname in groups['kube-node']
+    - inventory_hostname in groups['kube_node']
+
+- name: Stop when dynamic_kubelet_configuration enabled for kubernetes >= 1.22
+  assert:
+    that: not dynamic_kubelet_configuration
+    msg: >
+      Feature DynamicKubeletConfig is deprecated in 1.22 and will not move to GA.
+      It is planned to be removed from Kubernetes in the version 1.23.
+      Please use alternative ways to update kubelet configuration.
+  when:
+    - kube_version is version('v1.22.0', '>=')
 
 # This assertion will fail on the safe side: One can indeed schedule more pods
 # on a node than the CIDR-range has space for when additional pods use the host
@@ -97,7 +128,7 @@
     msg: "Do not schedule more pods on a node than inet addresses are available."
   when:
     - not ignore_assert_errors
-    - inventory_hostname in groups['k8s-cluster']
+    - inventory_hostname in groups['k8s_cluster']
     - kube_network_node_prefix is defined
     - kube_network_plugin != 'calico'
 
@@ -114,6 +145,7 @@
   when:
     - access_ip is defined
     - not ignore_assert_errors
+    - ping_access_ip
 
 - name: Stop if RBAC is not enabled when dashboard is enabled
   assert:
@@ -133,7 +165,7 @@
   assert:
     that: rbac_enabled and kube_api_anonymous_auth
   when:
-    - kube_apiserver_insecure_port == 0 and inventory_hostname in groups['kube-master']
+    - kube_apiserver_insecure_port == 0 and inventory_hostname in groups['kube_control_plane']
     - not ignore_assert_errors
 
 - name: Stop if kernel version is too low
@@ -160,14 +192,6 @@
     - cloud-provider
     - facts
 
-- name: Ensure minimum calico version
-  assert:
-    that: calico_version is version(calico_min_version_required, '>=')
-    msg: "calico_version is too low. Minimum version {{ calico_min_version_required }}"
-  run_once: yes
-  when:
-    - kube_network_plugin == 'calico'
-
 - name: Get current calico cluster version
   shell: "set -o pipefail && {{ bin_dir }}/calicoctl.sh version  | grep 'Cluster Version:' | awk '{ print $3}'"
   args:
@@ -185,12 +209,14 @@
   assert:
     that:
       - calico_version_on_server.stdout is version(calico_min_version_required, '>=')
-    msg: "Your version of calico is not fresh enough for upgrade. Minimum version {{ calico_min_version_required }}"
+    msg: >
+      Your version of calico is not fresh enough for upgrade.
+      Minimum version is {{ calico_min_version_required }} supported by the previous kubespray release.
   when:
     - kube_network_plugin == 'calico'
     - 'calico_version_on_server.stdout is defined'
     - calico_version_on_server.stdout
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   run_once: yes
 
 - name: "Check that cluster_id is set if calico_rr enabled"
@@ -201,17 +227,17 @@
   when:
     - kube_network_plugin == 'calico'
     - peer_with_calico_rr
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
   run_once: yes
 
-- name: "Check that calico_rr nodes are in k8s-cluster group"
+- name: "Check that calico_rr nodes are in k8s_cluster group"
   assert:
     that:
-      - '"k8s-cluster" in group_names'
-    msg: "calico-rr must be a child group of k8s-cluster group"
+      - '"k8s_cluster" in group_names'
+    msg: "calico_rr must be a child group of k8s_cluster group"
   when:
     - kube_network_plugin == 'calico'
-    - '"calico-rr" in group_names'
+    - '"calico_rr" in group_names'
 
 - name: "Check that kube_service_addresses is a network range"
   assert:
@@ -248,13 +274,6 @@
   when: kube_proxy_mode is defined
   run_once: true
 
-- name: Stop if vault is chose
-  assert:
-    that: cert_management != 'vault'
-    msg: "Support for vault have been removed, please use 'script' or 'none'"
-  when: cert_management is defined
-  run_once: true
-
 - name: Stop if unknown cert_management
   assert:
     that: cert_management|d('script') in ['script', 'none']
@@ -272,7 +291,18 @@
   assert:
     that: etcd_deployment_type in ['host', 'docker']
     msg: "The etcd deployment type, 'etcd_deployment_type', must be host or docker"
-  run_once: true
+  when:
+    - inventory_hostname in groups.get('etcd',[])
+    - not etcd_kubeadm_enabled
+
+- name: Stop if etcd deployment type is not host when container_manager != docker
+  assert:
+    that: etcd_deployment_type == 'host'
+    msg: "The etcd deployment type, 'etcd_deployment_type', must be host when container_manager is not docker"
+  when:
+    - inventory_hostname in groups.get('etcd',[])
+    - not etcd_kubeadm_enabled
+    - container_manager != 'docker'
 
 - name: Stop if download_localhost is enabled but download_run_once is not
   assert:
@@ -286,8 +316,31 @@
     msg: "kata_containers_enabled support only for containerd and crio-o. See https://github.com/kata-containers/documentation/blob/1.11.4/how-to/run-kata-with-k8s.md#install-a-cri-implementation for details"
   when: kata_containers_enabled
 
+- name: Stop if gvisor_enabled is enabled when container_manager is not containerd
+  assert:
+    that: container_manager == 'containerd'
+    msg: "gvisor_enabled support only compatible with containerd. See https://github.com/kubernetes-sigs/kubespray/issues/7650 for details"
+  when: gvisor_enabled
+
 - name: Stop if download_localhost is enabled for Flatcar Container Linux
   assert:
-    that: ansible_os_family not in ["Flatcar Container Linux by Kinvolk"]
+    that: ansible_os_family not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     msg: "download_run_once not supported for Flatcar Container Linux"
   when: download_run_once or download_force_cache
+
+- name: Ensure minimum containerd version
+  assert:
+    that: containerd_version is version(containerd_min_version_required, '>=')
+    msg: "containerd_version is too low. Minimum version {{ containerd_min_version_required }}"
+  run_once: yes
+  when:
+    - containerd_version not in ['latest', 'edge', 'stable']
+    - container_manager == 'containerd'
+
+- name: Stop if using deprecated containerd_config variable
+  assert:
+    that: containerd_config is not defined
+    msg: "Variable containerd_config is now deprecated. See https://github.com/kubernetes-sigs/kubespray/blob/master/inventory/sample/group_vars/all/containerd.yml for details."
+  when:
+    - containerd_config is defined
+    - not ignore_assert_errors

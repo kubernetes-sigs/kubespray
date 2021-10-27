@@ -25,6 +25,11 @@ data:
     key-file: "{{ cilium_cert_dir }}/key.pem"
     cert-file: "{{ cilium_cert_dir }}/cert.crt"
 
+  # kvstore
+  # https://docs.cilium.io/en/latest/cmdref/kvstore/
+  kvstore: etcd
+  kvstore-opt: '{"etcd.config": "/var/lib/etcd-config/etcd.config"}'
+
   # If you want metrics enabled in all of your Cilium agents, set the port for
   # which the Cilium agents will have their metrics exposed.
   # This option deprecates the "prometheus-serve-addr" in the
@@ -33,6 +38,8 @@ data:
   # scheduled.
 {% if cilium_enable_prometheus %}
   prometheus-serve-addr: ":9090"
+  operator-prometheus-serve-addr: ":6942"
+  enable-metrics: "true"
 {% endif %}
 
   # If you want to run cilium in debug mode change this value to true
@@ -146,12 +153,39 @@ data:
   native-routing-cidr: "{{ cilium_native_routing_cidr }}"
   auto-direct-node-routes: "{{ cilium_auto_direct_node_routes }}"
 
+  operator-api-serve-addr: "{{ cilium_operator_api_serve_addr }}"
+
   # Hubble settings
 {% if cilium_enable_hubble %}
   enable-hubble: "true"
-  hubble-metrics: "{{ cilium_hubble_metrics }}"
-  hubble-listen-address: ":4244"
 {% if cilium_enable_hubble_metrics %}
   hubble-metrics-server: ":9091"
+  hubble-metrics:
+{% for hubble_metrics_cycle in cilium_hubble_metrics %}
+    {{ hubble_metrics_cycle }}
+{% endfor %}
 {% endif %}
+  hubble-listen-address: ":4244"
+{% if cilium_enable_hubble and cilium_hubble_install %}
+  hubble-disable-tls: "false"
+  hubble-tls-cert-file: /var/lib/cilium/tls/hubble/server.crt
+  hubble-tls-key-file: /var/lib/cilium/tls/hubble/server.key
+  hubble-tls-client-ca-files: /var/lib/cilium/tls/hubble/client-ca.crt
+{% endif %}
+{% endif %}
+
+{% for key, value in cilium_config_extra_vars.items() %}
+  {{ key }}: "{{ value }}"
+{% endfor %}
+
+  # IPsec based transparent encryption between nodes
+{% if cilium_ipsec_enabled %}
+  enable-ipsec: "true"
+  ipsec-key-file: /etc/ipsec/keys
+  encrypt-node: "false"
+{% endif %}
+
+  # IPAM settings
+{% if cilium_version | regex_replace('v') is version('1.9', '>=') %}
+  ipam: "{{ cilium_ipam_mode }}"
 {% endif %}

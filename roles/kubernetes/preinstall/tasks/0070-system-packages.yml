@@ -22,23 +22,8 @@
     path: "{{ yum_repo_dir }}/docker.repo"
     state: absent
   when:
-    - ansible_distribution in ["CentOS","RedHat","OracleLinux"]
+    - ansible_os_family == "RedHat"
     - not is_fedora_coreos
-
-- name: Install python-dnf for latest RedHat versions
-  command: dnf install -y python-dnf yum
-  register: dnf_task_result
-  until: dnf_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  when:
-    - ansible_distribution == "Fedora"
-    - ansible_distribution_major_version|int > 21
-    - ansible_distribution_major_version|int <= 29
-    - not is_fedora_coreos
-  changed_when: False
-  tags:
-    - bootstrap-os
 
 - name: Install python3-dnf for latest RedHat versions
   command: dnf install -y python3-dnf
@@ -54,12 +39,12 @@
   tags:
     - bootstrap-os
 
-- name: Install epel-release on RedHat/CentOS
-  yum:
+- name: Install epel-release on RHEL derivatives
+  package:
     name: epel-release
     state: present
   when:
-    - ansible_distribution in ["CentOS","RedHat"]
+    - ansible_os_family == "RedHat"
     - not is_fedora_coreos
     - epel_enabled|bool
   tags:
@@ -71,20 +56,19 @@
   when: kube_proxy_mode == 'ipvs'
 
 - name: Install packages requirements
-  action:
-    module: "{{ ansible_pkg_mgr }}"
+  package:
     name: "{{ required_pkgs | default([]) | union(common_required_pkgs|default([])) }}"
-    state: latest
+    state: present
   register: pkgs_task_result
   until: pkgs_task_result is succeeded
   retries: "{{ pkg_install_retries }}"
   delay: "{{ retry_stagger | random + 3 }}"
-  when: not (ansible_os_family in ["Flatcar Container Linux by Kinvolk", "ClearLinux"] or is_fedora_coreos)
+  when: not (ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk", "ClearLinux"] or is_fedora_coreos)
   tags:
     - bootstrap-os
 
 - name: Install ipvsadm for ClearLinux
-  swupd:
+  package:
     name: ipvsadm
     state: present
   when:

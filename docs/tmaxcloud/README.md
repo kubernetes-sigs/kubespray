@@ -1,5 +1,4 @@
 ## 구성 요소 및 버전
-
 * 모든 node에 필요
   * nss - 3.53.1-17.el8_3
   * conntrack - 1.4.4-10.el8
@@ -147,6 +146,10 @@
       * ex) ansible-playbook -i inventory/tmaxcloud/inventory.ini --become --become-user=root cluster.yml -t apps
     * worker node 없이 master node만 구성한 경우 -e ignore_assert_errors=yes 옵션을 주어 playbook을 실행한다.
       * ex) ansible-playbook -i inventory/tmaxcloud/inventory.ini --become --become-user=root cluster.yml -e ignore_assert_errors=yes
+
+* 비고 :
+    * (LB, ELB가 없는 경우) master 다중화 구축시 아래가이드를 참조하여 master node에 keepalived를 미리 설치한다.
+      * https://github.com/tmax-cloud/install-k8s#step-3-1-kubernetes-cluster-%EB%8B%A4%EC%A4%91%ED%99%94-%EA%B5%AC%EC%84%B1%EC%9D%84-%EC%9C%84%ED%95%9C-keepalived-%EC%84%A4%EC%B9%98-master
 
 ## 삭제 가이드
 0. kubespray uninstall playbook을 실행한다. (reset.yml)

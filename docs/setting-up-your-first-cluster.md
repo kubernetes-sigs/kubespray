@@ -48,7 +48,7 @@ gcloud compute networks create kubernetes-the-kubespray-way --subnet-mode custom
 
 A [subnet](https://cloud.google.com/compute/docs/vpc/#vpc_networks_and_subnets) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
 
-Create the `kubernetes` subnet in the `kubernetes-the-hard-way` VPC network:
+Create the `kubernetes` subnet in the `kubernetes-the-kubespray-way` VPC network:
 
 ```ShellSession
 gcloud compute networks subnets create kubernetes \

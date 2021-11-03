@@ -1,5 +1,4 @@
 ---
-
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -214,10 +213,7 @@ spec:
       targetPort: 1099
   selector:
     app: kafka-1
-
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -239,9 +235,7 @@ spec:
       targetPort: 1099  
   selector:
     app: kafka-2
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -263,4 +257,92 @@ spec:
       targetPort: 1099  
   selector:
     app: kafka-3
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: hyperauth-certificate
+  namespace: hyperauth
+spec:
+  secretName: hyperauth-https-secret
+  duration: 8760h # 360d=1y
+  renewBefore: 720h # 30d
+  isCA: false
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth  
+  dnsNames:
+    - hyperauth.{{ custom_domain_name }}
+  issuerRef:
+    kind: ClusterIssuer
+    group: cert-manager.io
+    name: tmaxcloud-issuer
     
+---
+
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: hyperauth-kafka-jks-certificate
+  namespace: hyperauth
+spec:
+  secretName: hyperauth-kafka-jks
+  commonName: hyperauth
+  isCA: false
+  keySize: 2048
+  duration: 8760h # 360d=1y
+  renewBefore: 720h # 30d
+  keyAlgorithm: rsa
+  keyEncoding: pkcs1
+  keystores:
+    jks:
+      create: true
+      passwordSecretRef: # Password used to encrypt the keystore
+        key: CERTS_PASSWORD
+        name: passwords
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+  issuerRef:
+    name: tmaxcloud-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+    
+---
+
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: kafka-broker-jks-certificate
+  namespace: hyperauth
+spec:
+  secretName: kafka-jks
+  commonName: kafka
+  dnsNames:
+    - kafka-1.hyperauth
+    - kafka-2.hyperauth
+    - kafka-3.hyperauth
+    - hyperauth.{{ custom_domain_name }}
+  isCA: false
+  keySize: 2048
+  duration: 8760h # 360d=1y
+  renewBefore: 720h # 30d
+  keyAlgorithm: rsa
+  keyEncoding: pkcs1
+  keystores:
+    jks:
+      create: true
+      passwordSecretRef: # Password used to encrypt the keystore
+        key: CERTS_PASSWORD
+        name: passwords
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+  issuerRef:
+    name: tmaxcloud-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io    

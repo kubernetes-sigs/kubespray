@@ -22,17 +22,6 @@
     - inventory_hostname == groups['kube_control_plane'][0]
 
 
-- name: Hyperauth | Create ssl dir
-  file:
-    path: "{{ kube_config_dir }}/addons/hyperauth/ssl"
-    state: directory
-    owner: root
-    group: root
-    mode: 0755
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]      
-
-
 - name: Hyperauth | Generate Manifests
   template:
     src: "{{ item.file }}.j2"
@@ -61,65 +50,15 @@
     - "1.initialization.yml"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
-
-
-- name: Hyperauth | Check that the root-ca exists
-  stat:
-    path: "{{ kube_config_dir }}/addons/hyperauth/ssl/hypercloud-root-ca.key"
-  register: root_ca_exists_result
-
-
-- name: Hyperauth | SSL Settings for Hyperauth Server 1
-  ansible.builtin.shell: | 
-    sudo cp ../generateCerts.sh ./
-    sudo chmod +755 generateCerts.sh
-    sudo ./generateCerts.sh -dns=hyperauth.{{ custom_domain_name }}
-    {{ bin_dir }}/kubectl delete secret hyperauth-https-secret -n hyperauth
-  args:
-    chdir: "{{ kube_config_dir }}/addons/hyperauth/ssl"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - not root_ca_exists_result.stat.exists
-  ignore_errors: yes
   
-    
-- name: Hyperauth | SSL Settings for Hyperauth Server 2
+- name: Hyperauth | SSL Settings for Hyperauth Server & K8s Api server
   ansible.builtin.shell: | 
-    {{ bin_dir }}/kubectl create secret tls hyperauth-https-secret --cert=./hyperauth.crt --key=./hyperauth.key -n hyperauth
-  args:
-    chdir: "{{ kube_config_dir }}/addons/hyperauth/ssl"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - not root_ca_exists_result.stat.exists    
-  ignore_errors: yes
-  
-- name: Hyperauth | SSL Settings for Hyperauth Server 3
-  ansible.builtin.shell: | 
-    sudo cp hypercloud-root-ca.crt /etc/kubernetes/ssl/hypercloud-root-ca.crt
-    sudo cp hypercloud-root-ca.key /etc/kubernetes/ssl/hypercloud-root-ca.key
-    sudo cp hyperauth.crt /etc/kubernetes/ssl/hyperauth.crt
-    sudo cp hyperauth.key /etc/kubernetes/ssl/hyperauth.key
-    sudo keytool -keystore hyperauth.truststore.jks -alias ca-cert -import -file /etc/kubernetes/ssl/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
-    sudo keytool -keystore hyperauth.keystore.jks -alias hyperauth -validity 3650 -genkey -keyalg RSA -dname "CN=hyperauth" -storepass tmax@23 -keypass tmax@23
-    sudo keytool -keystore hyperauth.keystore.jks -alias hyperauth -certreq -file ca-request-hyperauth -storepass tmax@23
-    sudo openssl x509 -req -CA /etc/kubernetes/ssl/hypercloud-root-ca.crt -CAkey /etc/kubernetes/ssl/hypercloud-root-ca.key -in ca-request-hyperauth -out ca-signed-hyperauth -days 3650 -CAcreateserial
-    sudo keytool -keystore hyperauth.keystore.jks -alias ca-cert -import -file /etc/kubernetes/ssl/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
-    sudo keytool -keystore hyperauth.keystore.jks -alias hyperauth -import -file ca-signed-hyperauth -storepass tmax@23 -noprompt
-    {{ bin_dir }}/kubectl delete secret hyperauth-kafka-jks -n hyperauth 
-  args:
-    chdir: "{{ kube_config_dir }}/addons/hyperauth/ssl"
+    {{ bin_dir }}/kubectl get secret hyperauth-https-secret -n hyperauth -o jsonpath="{['data']['tls\.crt']}" | base64 -d > /etc/kubernetes/ssl/hyperauth.crt
+    {{ bin_dir }}/kubectl get secret hyperauth-https-secret -n hyperauth -o jsonpath="{['data']['ca\.crt']}" | base64 -d > /etc/kubernetes/ssl/hypercloud-root-ca.crt
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
   ignore_errors: yes
   
-- name: Hyperauth | SSL Settings for Hyperauth Server 4
-  ansible.builtin.shell: |  
-    {{ bin_dir }}/kubectl create secret generic hyperauth-kafka-jks --from-file=./hyperauth.keystore.jks --from-file=./hyperauth.truststore.jks -n hyperauth 
-  args:
-    chdir: "{{ kube_config_dir }}/addons/hyperauth/ssl"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-  ignore_errors: yes
 
 - name: Register db_addr variable 
   ansible.builtin.shell: "{{ bin_dir }}/kubectl describe service postgresql -n hyperauth | grep 'IP:' | cut -d ':' -f 2 | tr -d ' '"
@@ -170,8 +109,6 @@
   fetch: src={{ kube_config_dir }}/addons/hyperauth/ssl/{{ item }} dest=./inventory/mycluster/ flat=yes
   with_items:
     - hyperauth.crt
-    - hyperauth.key
-    - hypercloud-root-ca.key
     - hypercloud-root-ca.crt
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
@@ -181,42 +118,10 @@
   copy: src=./inventory/mycluster/{{ item }} dest=/etc/kubernetes/ssl/
   with_items:
     - hyperauth.crt
-    - hyperauth.key
-    - hypercloud-root-ca.key
     - hypercloud-root-ca.crt
   when:
     - inventory_hostname in groups['kube_control_plane']
     - not root_ca_exists_result.stat.exists
-
-
-- name: Hyperauth | SSL Settings for Kafka 1
-  ansible.builtin.shell: |
-    sudo keytool -keystore kafka.broker.truststore.jks -alias ca-cert -import -file /etc/kubernetes/ssl/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
-    sudo keytool -keystore kafka.broker.keystore.jks -alias broker -validity 3650 -genkey -keyalg RSA -dname "CN=kafka" -storepass tmax@23 -keypass tmax@23
-    sudo keytool -keystore kafka.broker.keystore.jks -alias broker -certreq -file ca-request-broker -storepass tmax@23
-    # export nginx_ip=`{{ bin_dir }}/kubectl describe pod -n ingress-nginx-system | grep IP | head -n 1 | cut -d ':' -f2 | tr -d ' '`
-    cat > "kafka.cnf" <<EOL
-    [kafka]
-    subjectAltName = DNS:kafka-1.hyperauth,DNS:kafka-2.hyperauth,DNS:kafka-3.hyperauth,DNS:{{ custom_domain_name }}
-    EOL
-    sudo openssl x509 -req -CA /etc/kubernetes/ssl/hypercloud-root-ca.crt -CAkey /etc/kubernetes/ssl/hypercloud-root-ca.key -in ca-request-broker -out ca-signed-broker -days 3650 -CAcreateserial -extfile "kafka.cnf" -extensions kafka -sha256
-    sudo keytool -keystore kafka.broker.keystore.jks -alias ca-cert -import -file /etc/kubernetes/ssl/hypercloud-root-ca.crt -storepass tmax@23 -noprompt
-    sudo keytool -keystore kafka.broker.keystore.jks -alias broker -import -file ca-signed-broker -storepass tmax@23 -noprompt
-    {{ bin_dir }}/kubectl delete secret kafka-jks -n hyperauth    
-  args:
-    chdir: "{{ kube_config_dir }}/addons/hyperauth/ssl"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-  ignore_errors: true
-  
-- name: Hyperauth | SSL Settings for Kafka 2
-  ansible.builtin.shell: |
-    {{ bin_dir }}/kubectl create secret generic kafka-jks --from-file=./kafka.broker.keystore.jks --from-file=./kafka.broker.truststore.jks -n hyperauth
-  args:
-    chdir: "{{ kube_config_dir }}/addons/hyperauth/ssl"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-  ignore_errors: true  
 
 - name: Hyperauth | Apply 4.kafka_init, 5.kakfa_deployment.yml
   kube:
@@ -263,7 +168,7 @@
     yq e '.spec.containers[0].command += "--oidc-username-claim=preferred_username"' -i ./kube-apiserver.yaml
     yq e '.spec.containers[0].command += "--oidc-username-prefix=-"' -i ./kube-apiserver.yaml
     yq e '.spec.containers[0].command += "--oidc-groups-claim=group"' -i ./kube-apiserver.yaml
-    yq e '.spec.containers[0].command += "--oidc-ca-file=/etc/kubernetes/ssl/hyperauth.crt"' -i ./kube-apiserver.yaml
+    yq e '.spec.containers[0].command += "--oidc-ca-file=/etc/kubernetes/ssl/hypercloud-root-ca.crt"' -i ./kube-apiserver.yaml
     mv -f ./kube-apiserver.yaml /etc/kubernetes/manifests/kube-apiserver.yaml
   args:
     chdir: "{{ kube_config_dir }}"

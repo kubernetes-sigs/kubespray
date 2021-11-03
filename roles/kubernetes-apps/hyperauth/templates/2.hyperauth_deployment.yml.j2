@@ -1,23 +1,29 @@
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  annotations:
-    kubernetes.io/ingress.class: nginx-system
-    nginx.ingress.kubernetes.io/rewrite-target: /
+  labels:
+    ingress.tmaxcloud.org/name: hyperauth
+  annotations: 
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
   name: hyperauth
   namespace: hyperauth
 spec:
-  tls:
-  - hosts:
-    - hyperauth.{{ custom_domain_name }}
-    secretName: hyperauth-https-secret
+  ingressClassName: tmax-cloud
   rules:
-  - host: hyperauth.{{ custom_domain_name }}
-    http:
-      paths:
-      - backend:
-          serviceName: hyperauth
-          servicePort: 8080
+    - host: hyperauth.{{ custom_domain_name }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: hyperauth
+                port:
+                  number: 8080
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - hyperauth.{{ custom_domain_name }}
+      secretName: hyperauth-https-secret
 
 ---
 
@@ -48,7 +54,10 @@ spec:
           secretName: hyperauth-kafka-jks
       - name: log
         persistentVolumeClaim:
-          claimName: hyperauth-log-pvc          
+          claimName: hyperauth-log-pvc
+      - name: picture  # Only needed Version After tmaxcloudck/hyperauth:b1.1.1.33
+        persistentVolumeClaim:
+          claimName: hyperauth-profile-picture    
       containers:
       - name: hyperauth
         image: {{ hyperauth_server_image_repo }}:{{ hyperauth_server_image_tag }}
@@ -107,6 +116,8 @@ spec:
           mountPath: /etc/x509/kafka  
         - name: log
           mountPath: /opt/jboss/keycloak/standalone/log/hyperauth
+        - name: picture  # Only needed Version After tmaxcloudck/hyperauth:b1.1.1.33
+          mountPath: /opt/jboss/keycloak/welcome-content/profile-picture  
         readinessProbe:
           httpGet:
             path: /auth/realms/master

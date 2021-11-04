@@ -142,6 +142,25 @@
     - inventory_hostname == groups['kube_control_plane'][0]
     - html_config_result.failed
 
+- name: Hypercloud | Check Hypercloud Kafka Secret Exists
+  shell: "{{ bin_dir }}/kubectl get secret hypercloud-kafka-secret -n hypercloud5-system"
+  register: hypercloud_kafka_secret_result
+  failed_when: >
+    (hypercloud_kafka_secret_result.stderr != '') or
+    (hypercloud_kafka_secret_result.rc == 1)
+  ignore_errors: yes
+
+- name : Hypercloud | Create Hypercloud Kafka Secret
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/hypercloud/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "kafka-secret.yaml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - hypercloud_kafka_secret_result.failed
 
 - name: Hypercloud | Apply Hypercloud Api Server
   kube:

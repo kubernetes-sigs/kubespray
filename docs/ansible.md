@@ -106,7 +106,7 @@ The following tags are defined in playbooks:
 |             aws-ebs-csi-driver | Configuring csi driver: aws-ebs
 |               azure-csi-driver | Configuring csi driver: azure
 |                        bastion | Setup ssh config for bastion
-|                   bootstrap-os | Anything related to host OS configuration
+|                   bootstrap_os | Anything related to host OS configuration
 |                         calico | Network plugin Calico
 |                      calico_rr | Configuring Calico route reflector
 |                          canal | Network plugin Canal
@@ -120,7 +120,7 @@ The following tags are defined in playbooks:
 |                            cni | CNI plugins for Network Plugins
 |                     containerd | Configuring containerd engine runtime for hosts
 |   container_engine_accelerator | Enable nvidia accelerator for runtimes
-|               container-engine | Configuring container engines
+|               container_engine | Configuring container engines
 |             container-runtimes | Configuring container runtimes
 |                        coredns | Configuring coredns deployment
 |                           crio | Configuring crio container engine for hosts
@@ -175,7 +175,7 @@ The following tags are defined in playbooks:
 |                          nginx | Configuring LB for kube-apiserver instances
 |                           node | Configuring K8s minion (compute) node role
 |                   nodelocaldns | Configuring nodelocaldns daemonset
-|                     node-label | Tasks linked to labeling of nodes
+|                     node_label | Tasks linked to labeling of nodes
 |                   node-webhook | Tasks linked to webhook (grating access to resources)
 |                     nvidia_gpu | Enable nvidia accelerator for runtimes
 |                            oci | Cloud provider: oci
@@ -186,10 +186,10 @@ The following tags are defined in playbooks:
 | persistent_volumes_gcp_pd_csi  | Configuring csi driver: gcp-pd
 | persistent_volumes_openstack   | Configuring csi driver: openstack
 |              policy-controller | Configuring Calico policy controller
-|                    post-remove | Tasks running post-remove operation
-|                   post-upgrade | Tasks running post-upgrade operation
-|                     pre-remove | Tasks running pre-remove operation
-|                    pre-upgrade | Tasks running pre-upgrade operation
+|                    post_remove | Tasks running post_remove operation
+|                   post_upgrade | Tasks running post_upgrade operation
+|                     post_remove | Tasks running post_remove operation
+|                    pre_upgrade | Tasks running pre_upgrade operation
 |                     preinstall | Preliminary configuration steps
 |                       registry | Configuring local docker registry
 |                          reset | Tasks running doing the node reset
@@ -214,7 +214,7 @@ Example command to filter and apply only DNS configuration tasks and skip
 everything else related to host OS configuration and downloading images of containers:
 
 ```ShellSession
-ansible-playbook -i inventory/sample/hosts.ini cluster.yml --tags preinstall,facts --skip-tags=download,bootstrap-os
+ansible-playbook -i inventory/sample/hosts.ini cluster.yml --tags preinstall,facts --skip-tags=download,bootstrap_os
 ```
 
 And this play only removes the K8s cluster DNS resolver IP from hosts' /etc/resolv.conf files:

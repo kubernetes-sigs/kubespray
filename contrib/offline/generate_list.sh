@@ -9,7 +9,7 @@ REPO_ROOT_DIR="${CURRENT_DIR%/contrib/offline}"
 : ${ANSIBLE_SYSTEM:="linux"}
 : ${ANSIBLE_ARCHITECTURE:="x86_64"}
 : ${DOWNLOAD_YML:="roles/download/defaults/main.yml"}
-: ${KUBE_VERSION_YAML:="roles/kubespray-defaults/defaults/main.yaml"}
+: ${KUBE_VERSION_YAML:="roles/kubespray_defaults/defaults/main.yaml"}
 
 mkdir -p ${TEMP_DIR}
 

@@ -9,8 +9,8 @@
   gather_facts: False
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
-    - { role: bastion-ssh-config, tags: ["localhost", "bastion"] }
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - { role: kubernetes.kubespray.bastion_ssh_config, tags: ["localhost", "bastion"] }
 
 - hosts: k8s_cluster:etcd:calico_rr
   strategy: linear
@@ -18,12 +18,12 @@
   gather_facts: false
   environment: "{{ proxy_disable_env }}"
   vars:
-    # Need to disable pipelining for bootstrap-os as some systems have requiretty in sudoers set, which makes pipelining
-    # fail. bootstrap-os fixes this on these systems, so in later plays it can be enabled.
+    # Need to disable pipelining for bootstrap_os as some systems have requiretty in sudoers set, which makes pipelining
+    # fail. bootstrap_os fixes this on these systems, so in later plays it can be enabled.
     ansible_ssh_pipelining: false
   roles:
-    - { role: kubespray-defaults }
-    - { role: bootstrap-os, tags: bootstrap-os}
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - { role: kubernetes.kubespray.bootstrap_os, tags: bootstrap_os}
 
 - name: Gather facts
   tags: always
@@ -35,9 +35,9 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults, when: "not skip_downloads and download_run_once and not download_localhost"}
-    - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
-    - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
+    - { role: kubernetes.kubespray.kubespray_defaults, when: "not skip_downloads and download_run_once and not download_localhost"}
+    - { role: kubernetes.kubespray.kubernetes.preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
+    - { role: kubernetes.kubespray.download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
 
 - name: Prepare nodes for upgrade
   hosts: k8s_cluster:etcd:calico_rr
@@ -45,9 +45,9 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
-    - { role: kubernetes/preinstall, tags: preinstall }
-    - { role: download, tags: download, when: "not skip_downloads" }
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - { role: kubernetes.kubespray.kubernetes.preinstall, tags: preinstall }
+    - { role: kubernetes.kubespray.download, tags: download, when: "not skip_downloads" }
 
 - name: Upgrade container engine on non-cluster nodes
   hosts: etcd:calico_rr:!k8s_cluster
@@ -56,16 +56,16 @@
   environment: "{{ proxy_disable_env }}"
   serial: "{{ serial | default('20%') }}"
   roles:
-    - { role: kubespray-defaults }
-    - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - { role: kubernetes.kubespray.container_engine, tags: "container_engine", when: deploy_container_engine }
 
 - hosts: etcd
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
-    - role: etcd
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - role: kubernetes.kubespray.etcd
       tags: etcd
       vars:
         etcd_cluster_setup: true
@@ -77,8 +77,8 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
-    - role: etcd
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - role: kubernetes.kubespray.etcd
       tags: etcd
       vars:
         etcd_cluster_setup: false
@@ -92,16 +92,16 @@
   environment: "{{ proxy_disable_env }}"
   serial: 1
   roles:
-    - { role: kubespray-defaults }
-    - { role: upgrade/pre-upgrade, tags: pre-upgrade }
-    - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
-    - { role: kubernetes/node, tags: node }
-    - { role: kubernetes/control-plane, tags: master, upgrade_cluster_setup: true }
-    - { role: kubernetes/client, tags: client }
-    - { role: kubernetes/node-label, tags: node-label }
-    - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
-    - { role: kubernetes-apps, tags: csi-driver }
-    - { role: upgrade/post-upgrade, tags: post-upgrade }
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - { role: kubernetes.kubespray.upgrade.pre_upgrade, tags: pre_upgrade }
+    - { role: kubernetes.kubespray.container_engine, tags: "container_engine", when: deploy_container_engine }
+    - { role: kubernetes.kubespray.kubernetes.node, tags: node }
+    - { role: kubernetes.kubespray.kubernetes.control_plane, tags: master, upgrade_cluster_setup: true }
+    - { role: kubernetes.kubespray.kubernetes.client, tags: client }
+    - { role: kubernetes.kubespray.kubernetes.node_label, tags: node_label }
+    - { role: kubernetes.kubespray.kubernetes_apps.cluster_roles, tags: cluster-roles }
+    - { role: kubernetes.kubespray.kubernetes_apps, tags: csi-driver }
+    - { role: kubernetes.kubespray.upgrade.post_upgrade, tags: post_upgrade }
 
 - name: Upgrade calico and external cloud provider on all masters, calico-rrs, and nodes
   hosts: kube_control_plane:calico_rr:kube_node
@@ -110,11 +110,11 @@
   serial: "{{ serial | default('20%') }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
-    - { role: kubernetes-apps/external_cloud_controller, tags: external-cloud-controller }
-    - { role: network_plugin, tags: network }
-    - { role: kubernetes-apps/network_plugin, tags: network }
-    - { role: kubernetes-apps/policy_controller, tags: policy-controller }
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - { role: kubernetes.kubespray.kubernetes_apps.external_cloud_controller, tags: external-cloud-controller }
+    - { role: kubernetes.kubespray.network_plugin, tags: network }
+    - { role: kubernetes.kubespray.kubernetes_apps.network_plugin, tags: network }
+    - { role: kubernetes.kubespray.kubernetes_apps.policy_controller, tags: policy-controller }
 
 - name: Finally handle worker upgrades, based on given batch size
   hosts: kube_node:calico_rr:!kube_control_plane
@@ -123,42 +123,42 @@
   environment: "{{ proxy_disable_env }}"
   serial: "{{ serial | default('20%') }}"
   roles:
-    - { role: kubespray-defaults }
-    - { role: upgrade/pre-upgrade, tags: pre-upgrade }
-    - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
-    - { role: kubernetes/node, tags: node }
-    - { role: kubernetes/kubeadm, tags: kubeadm }
-    - { role: kubernetes/node-label, tags: node-label }
-    - { role: upgrade/post-upgrade, tags: post-upgrade }
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - { role: kubernetes.kubespray.upgrade.pre_upgrade, tags: pre_upgrade }
+    - { role: kubernetes.kubespray.container_engine, tags: "container_engine", when: deploy_container_engine }
+    - { role: kubernetes.kubespray.kubernetes.node, tags: node }
+    - { role: kubernetes.kubespray.kubernetes.kubeadm, tags: kubeadm }
+    - { role: kubernetes.kubespray.kubernetes.node_label, tags: node_label }
+    - { role: kubernetes.kubespray.upgrade.post_upgrade, tags: post_upgrade }
 
 - hosts: kube_control_plane[0]
   gather_facts: False
   any_errors_fatal: true
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
-    - { role: win_nodes/kubernetes_patch, tags: ["master", "win_nodes"] }
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - { role: kubernetes.kubespray.win_nodes.kubernetes_patch, tags: ["master", "win_nodes"] }
 
 - hosts: calico_rr
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
-    - { role: network_plugin/calico/rr, tags: network }
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - { role: kubernetes.kubespray.network_plugin.calico.rr, tags: network }
 
 - hosts: kube_control_plane
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
-    - { role: kubernetes-apps, tags: apps }
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - { role: kubernetes.kubespray.kubernetes_apps, tags: apps }
 
 - hosts: k8s_cluster
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
-    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }
+    - { role: kubernetes.kubespray.kubespray_defaults }
+    - { role: kubernetes.kubespray.kubernetes.preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }

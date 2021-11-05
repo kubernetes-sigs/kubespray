@@ -17,7 +17,7 @@ Some variables of note include:
 * *calico_cni_version* - Specify version of Calico CNI plugin to use
 * *docker_version* - Specify version of Docker to used (should be quoted
   string). Must match one of the keys defined for *docker_versioned_pkg*
-  in `roles/container-engine/docker/vars/*.yml`.
+  in `roles/container_engine/docker/vars/*.yml`.
 * *containerd_version* - Specify version of Containerd to use
 * *etcd_version* - Specify version of ETCD to use
 * *ipip* - Enables Calico ipip encapsulation by default
@@ -96,7 +96,7 @@ and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.
 
 ## Enabling Dual Stack (IPV4 + IPV6) networking
 
-If *enable_dual_stack_networks* is set to ``true``, Dual Stack networking will be enabled in the cluster. This will use the default IPv4 and IPv6 subnets specified in the defaults file in the ``kubespray-defaults`` role, unless overridden of course. The default config will give you room for up to 256 nodes with 126 pods per node, and up to 4096 services.
+If *enable_dual_stack_networks* is set to ``true``, Dual Stack networking will be enabled in the cluster. This will use the default IPv4 and IPv6 subnets specified in the defaults file in the ``kubespray_defaults`` role, unless overridden of course. The default config will give you room for up to 256 nodes with 126 pods per node, and up to 4096 services.
 
 ## DNS variables
 
@@ -120,7 +120,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install.
 * *containerd_default_runtime* - Sets the default Containerd runtime used by the Kubernetes CRI plugin.
 * *containerd_additional_runtimes* - Sets the additional Containerd runtimes used by the Kubernetes CRI plugin.
-  [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container-engine/containerd/defaults/main.yml) can be overriden in inventory vars.
+  [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container_engine/containerd/defaults/main.yml) can be overriden in inventory vars.
 * *http_proxy/https_proxy/no_proxy/no_proxy_exclude_workers/additional_no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.

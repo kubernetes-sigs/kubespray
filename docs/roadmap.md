@@ -38,7 +38,7 @@
 ## Networking
 
 - [ ] Opencontrail
-- [ ] Consolidate roles/network_plugin and roles/kubernetes-apps/network_plugin
+- [ ] Consolidate roles/network_plugin and roles/kubernetes_apps/network_plugin
 
 ## Kubespray API
 

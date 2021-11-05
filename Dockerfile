@@ -27,7 +27,7 @@ RUN /usr/bin/python3 -m pip install --no-cache-dir pip -U \
     && python3 -m pip install --no-cache-dir -r requirements.txt \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
-RUN KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \
+RUN KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray_defaults/defaults/main.yaml) \
     && curl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/amd64/kubectl \
     && chmod a+x kubectl \
     && mv kubectl /usr/local/bin/kubectl

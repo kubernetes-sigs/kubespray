@@ -18,7 +18,8 @@ Some variables of note include:
 * *docker_version* - Specify version of Docker to used (should be quoted
   string). Must match one of the keys defined for *docker_versioned_pkg*
   in `roles/container-engine/docker/vars/*.yml`.
-* *containerd_version* - Specify version of Containerd to use
+* *containerd_version* - Specify version of containerd to use when setting `container_manager` to `containerd`
+* *docker_containerd_version* - Specify which version of containerd to use when setting `container_manager` to `docker`
 * *etcd_version* - Specify version of ETCD to use
 * *ipip* - Enables Calico ipip encapsulation by default
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)

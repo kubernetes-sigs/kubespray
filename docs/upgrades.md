@@ -7,7 +7,8 @@ You can also individually control versions of components by explicitly defining 
 versions. Here are all version vars for each component:
 
 * docker_version
-* containerd_version
+* docker_containerd_version (relevant when `container_manager` == `docker`)
+* containerd_version (relevant when `container_manager` == `containerd`)
 * kube_version
 * etcd_version
 * calico_version

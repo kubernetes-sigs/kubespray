@@ -1,4 +1,6 @@
 # tasks file for install catalog controller
+# TLS setting for webhook is done by cert manager
+
 - name: Catalog-controller | Create addon dir
   file:
     path: "{{ kube_config_dir }}/addons/catalog-controller"
@@ -9,15 +11,15 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Catalog-controller | Create ssl dir
-  file:
-    path: "{{ kube_config_dir }}/addons/catalog-controller/ssl"
-    state: directory
-    owner: root
-    group: root
-    mode: 0755
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+# - name: Catalog-controller | Create ssl dir
+#   file:
+#     path: "{{ kube_config_dir }}/addons/catalog-controller/ssl"
+#     state: directory
+#     owner: root
+#     group: root
+#     mode: 0755
+#   when:
+#     - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Catalog-controller | Generate CRDs
   template:
@@ -32,6 +34,7 @@
     - { name: serviceclass, file: serviceclass.yaml }
     - { name: serviceinstance, file: serviceinstance.yaml }
     - { name: serviceplan, file: serviceplan.yaml }
+    - { name: certificate for webhook, file: catalog-webhook-cert.yaml }
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
@@ -50,6 +53,7 @@
     - "serviceclass.yaml"
     - "serviceinstance.yaml"
     - "serviceplan.yaml"
+    - "catalog-webhook-cert.yaml"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
@@ -64,7 +68,6 @@
     - { name: rbac, file: rbac.yaml  }
     - { name: controller-manager-deployment, file: controller-manager-deployment.yaml }
     - { name: controller-manager-service, file: controller-manager-service.yaml }
-    - { name: v3, file: v3.ext }
   when:    
     - inventory_hostname == groups['kube_control_plane'][0]
 
@@ -95,40 +98,40 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Catalog-controller | SSL Settings for Catalog Webhook
-  ansible.builtin.shell: |
-    sudo openssl genrsa -out rootca.key 2048
-    sudo openssl req -x509 -new -nodes -key rootca.key -sha256 -days 3650 -subj /C=KO/ST=None/L=None/O=None/CN=catalog-catalog-webhook -out rootca.crt
-    sudo openssl req -new -newkey rsa:2048 -sha256 -nodes -keyout server.key -subj /C=KO/ST=None/L=None/O=None/CN=catalog-catalog-webhook -out server.csr
-    sudo openssl x509 -req -in server.csr -CA rootca.crt -CAkey rootca.key -CAcreateserial -out server.crt -days 3650 -sha256 -extfile ../v3.ext
-    sudo openssl base64 -in rootca.crt -out key0
-    sudo openssl base64 -in server.crt -out cert
-    sudo openssl base64 -in server.key -out key
-  args:
-    chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl" 
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+# - name: Catalog-controller | SSL Settings for Catalog Webhook
+#   ansible.builtin.shell: |
+#     sudo openssl genrsa -out rootca.key 2048
+#     sudo openssl req -x509 -new -nodes -key rootca.key -sha256 -days 3650 -subj /C=KO/ST=None/L=None/O=None/CN=catalog-catalog-webhook -out rootca.crt
+#     sudo openssl req -new -newkey rsa:2048 -sha256 -nodes -keyout server.key -subj /C=KO/ST=None/L=None/O=None/CN=catalog-catalog-webhook -out server.csr
+#     sudo openssl x509 -req -in server.csr -CA rootca.crt -CAkey rootca.key -CAcreateserial -out server.crt -days 3650 -sha256 -extfile ../v3.ext
+#     sudo openssl base64 -in rootca.crt -out key0
+#     sudo openssl base64 -in server.crt -out cert
+#     sudo openssl base64 -in server.key -out key
+#   args:
+#     chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl" 
+#   when:
+#     - inventory_hostname == groups['kube_control_plane'][0]
 
 
-- name: Register key0 variable
-  ansible.builtin.shell: awk 'NF {sub(/\r/, ""); printf "%s",$0;}' key0
-  args:
-    chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl"
-  register: key0
+# - name: Register key0 variable
+#   ansible.builtin.shell: awk 'NF {sub(/\r/, ""); printf "%s",$0;}' key0
+#   args:
+#     chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl"
+#   register: key0
 
 
-- name: Register cert variable
-  ansible.builtin.shell: awk 'NF {sub(/\r/, ""); printf "%s",$0;}' cert
-  args:
-    chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl" 
-  register: cert
+# - name: Register cert variable
+#   ansible.builtin.shell: awk 'NF {sub(/\r/, ""); printf "%s",$0;}' cert
+#   args:
+#     chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl" 
+#   register: cert
 
 
-- name: Register key variable
-  ansible.builtin.shell: awk 'NF {sub(/\r/, ""); printf "%s",$0;}' key
-  args:
-    chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl" 
-  register: key
+# - name: Register key variable
+#   ansible.builtin.shell: awk 'NF {sub(/\r/, ""); printf "%s",$0;}' key
+#   args:
+#     chdir: "{{ kube_config_dir }}/addons/catalog-controller/ssl" 
+#   register: key
 
 
 - name: Catalog-webhook | Generate Manifests
@@ -140,6 +143,7 @@
     - { name: webhook-deployment, file: webhook-deployment.yaml }
     - { name: webhook-service, file: webhook-service.yaml }
     - { name: cluster-tsb-service-broker, file: cluster_tsb_service_broker.yaml }
+    - { name: tsb-service-broker, file: tsb_service_broker.yaml }
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
@@ -157,13 +161,48 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
-# - name: Cluster-tsb | Apply Cluster-TSB
-#   kube:
-#     kubectl: "{{ bin_dir }}/kubectl"
-#     filename: "{{ kube_config_dir }}/addons/catalog-controller/{{ item }}"
-#     state: "latest"
-#     wait: true
-#   with_items:
-#     - "cluster_tsb_service_broker.yaml"
-#   when:
-#     - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Wait until cluster-tsb pod is running
+  ansible.builtin.shell: |
+    {{ bin_dir }}/kubectl describe pod -n cluster-tsb-ns | grep 'Status' | awk '/Status:/{print $2}'
+  register: cluster_tsb_status
+  retries: 400
+  delay: 5
+  until: cluster_tsb_status.stdout == "Running"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: Cluster-tsb | Apply Cluster-TSB
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/catalog-controller/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "cluster_tsb_service_broker.yaml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: Wait until tsb pod is running
+  ansible.builtin.shell: |
+    {{ bin_dir }}/kubectl describe pod -n tsb-ns | grep 'Status' | awk '/Status:/{print $2}'
+  register: tsb_status
+  retries: 400
+  delay: 5
+  until: tsb_status.stdout == "Running"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: tsb | Apply TSB
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/catalog-controller/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "tsb_service_broker.yaml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]

@@ -25,6 +25,7 @@
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/addons/ai_devops/{{ item.file }}"
   with_items:
+    - { name: crd, file: 0.crd.yml }
     - { name: cluster-local-gateway, file: 1.cluster-local-gateway.yml }      
     - { name: kubeflow-istio-resources, file: 2.kubeflow-istio-resources.yml }
     - { name: add-anonymous-filter, file: 3.add-anonymous-user-filter.yml }
@@ -48,6 +49,33 @@
   register: ai_devops_manifests
   when: 
     - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: ai_devops | Create crd
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/ai_devops/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "0.crd.yml"     
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+
+- name: ai_devops | Wait for CRD apply 1
+  shell: "while [ \"$({{ bin_dir }}/kubectl get crd | grep applications.app.k8s.io  | wc -l)\" == \"0\" ]; do echo 'CRD Interceptor is not registered yet'; sleep 2; done; echo 'CRD is registered'; sleep 5"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  register: ai_devops_crd_wait
+- debug:
+    msg: "{{ ai_devops_crd_wait.stdout_lines }}"
+
+
+- name: ai_devops | Wait for CRD apply 2
+  shell: "while [ \"$({{ bin_dir }}/kubectl get crd | grep images.caching.internal.knative.dev  | wc -l)\" == \"0\" ]; do echo 'CRD Interceptor is not registered yet'; sleep 2; done; echo 'CRD is registered'; sleep 5"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  register: ai_devops_crd_wait
+- debug:
+    msg: "{{ ai_devops_crd_wait.stdout_lines }}"    
 
 
 - name: ai_devops | Apply manifests

@@ -27,3 +27,9 @@ $ ip addr show dev enp3s0
 ```yml
 calico_ip_auto_method: "cidr=192.168.7.0/24"
 ```
+
+### AWS 환경에서 IP-in-IP 모드 사용을 위한 설정입니다.
+파일: inventory/tmaxcloud/group_vars/k8s_cluster/k8s-net-calico.yml
+```yml
+calico_ipip_mode: 'Always'
+```

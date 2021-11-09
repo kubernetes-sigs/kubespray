@@ -66,12 +66,13 @@
   with_items:
     - { name: "hypercloud-multi-operator-v{{ hypercloud_multi_operator_image_tag }}", file: "hypercloud-multi-operator-v{{ hypercloud_multi_operator_image_tag }}.yaml" }
     - { name: "capi-aws-template-v{{ hypercloud_hpcd_template_version }}", file: "capi-aws-template-v{{ hypercloud_hpcd_template_version }}.yaml" }
-    - { name: "capi-vsphere-template-v{{ hypercloud_hpcd_template_version }}", file: "capi-vsphere-template-v{{ hypercloud_hpcd_template_version }}.yaml" }
+#    - { name: "capi-vsphere-template-v{{ hypercloud_hpcd_template_version }}", file: "capi-vsphere-template-v{{ hypercloud_hpcd_template_version }}.yaml" }
   register: hypercloud_manifests_CAPI_template     
   when: 
     - inventory_hostname == groups['kube_control_plane'][0]
     - hypercloud_hpcd_mode == "multi"
-
+  ignore_errors: yes
+  
 
 - name: Hypercloud | Generate Config
   template:
@@ -83,23 +84,9 @@
     - { name: audit-webhook-config.template, file: audit-webhook-config.template }
     - { name: gen-audit-config, file: gen-audit-config.sh }
     - { name: webhook-configuration, file: webhook-configuration.yaml }
-    - { name: webhook-configuration.yaml.template, file: webhook-configuration.yaml.template }
-    - { name: gen-webhook-config, file: gen-webhook-config.sh }
   register: hypercloud_config
   when: 
     - inventory_hostname == groups['kube_control_plane'][0]
-
-  
-- name: Hypercloud | Generate Pki
-  template:
-    src: "pki/{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/addons/hypercloud/pki/{{ item.file }}"
-  with_items:
-    - { name: generateTls, file: generateTls.sh }
-  register: hypercloud_pki
-  when: 
-    - inventory_hostname == groups['kube_control_plane'][0]
-
 
 - name: Hypercloud | Generate Html
   template:
@@ -136,38 +123,6 @@
     - inventory_hostname == groups['kube_control_plane'][0]
 
 
-- name: Hypercloud | Check that the root-ca exists
-  stat:
-    path: "{{ kube_config_dir }}/ssl/hypercloud-root-ca.crt"
-  register: root_ca_exists_result
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]  
-
-- name: Hypercloud | Check Hypercloud Secret Exists
-  shell: "{{ bin_dir }}/kubectl get secret  hypercloud5-api-server-certs -n hypercloud5-system"
-  register: hypercloud_secret_result
-  failed_when: >
-    (hypercloud_secret_result.stderr != '') or
-    (hypercloud_secret_result.rc == 1)
-  ignore_errors: yes
-
-- name: Hypercloud | Generate Hypercloud Cert,Key
-  ansible.builtin.shell: | 
-    sudo chmod +x *.sh
-    sudo ./generateTls.sh -name=hypercloud-api-server -dns=hypercloud5-api-server-service.hypercloud5-system.svc -dns=hypercloud5-api-server-service.hypercloud5-system.svc.cluster.local
-    sudo chmod +777 hypercloud-api-server.*
-    {{ bin_dir }}/kubectl -n hypercloud5-system create secret generic hypercloud5-api-server-certs \
-    --from-file=hypercloud-api-server.crt \
-    --from-file=hypercloud-api-server.key 
-#    sudo sed -i 's/{hypercloud_kafka_group_id}/'hypercloud-api-server-$HOSTNAME-$(($RANDOM%100))'/g' {{ kube_config_dir }}/addons/hypercloud/03_hypercloud-api-server.yaml
-  args:
-    chdir: "{{ kube_config_dir }}/addons/hypercloud/pki"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - root_ca_exists_result.stat.exists
-    - hypercloud_secret_result.failed
-
-
 - name: Hypercloud | Check Html Config Exists
   shell: "{{ bin_dir }}/kubectl get configmap html-config -n hypercloud5-system"
   register: html_config_result
@@ -187,29 +142,25 @@
     - inventory_hostname == groups['kube_control_plane'][0]
     - html_config_result.failed
 
-- name: Hypercloud | Check Kafka Secret Exists
+- name: Hypercloud | Check Hypercloud Kafka Secret Exists
   shell: "{{ bin_dir }}/kubectl get secret hypercloud-kafka-secret -n hypercloud5-system"
-  register: kafka_secret_result
+  register: hypercloud_kafka_secret_result
   failed_when: >
-    (kafka_secret_result.stderr != '') or
-    (kafka_secret_result.rc == 1)
+    (hypercloud_kafka_secret_result.stderr != '') or
+    (hypercloud_kafka_secret_result.rc == 1)
   ignore_errors: yes
 
-
-- name: Hypercloud | Create Kafka Secret
-  ansible.builtin.shell: |
-    sudo cp /etc/kubernetes/ssl/hypercloud-root-ca.crt {{ kube_config_dir }}/addons/hypercloud/pki/
-    sudo chmod +777 {{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-root-ca.crt
-    sudo chmod +777 {{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-api-server.*
-    {{ bin_dir }}/kubectl -n hypercloud5-system create secret generic hypercloud-kafka-secret \
-    --from-file={{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-root-ca.crt \
-    --from-file={{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-api-server.crt \
-    --from-file={{ kube_config_dir }}/addons/hypercloud/pki/hypercloud-api-server.key
-  args:
-    chdir: "{{ kube_config_dir }}/addons/hypercloud/html"
+- name : Hypercloud | Create Hypercloud Kafka Secret
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/hypercloud/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "kafka-secret.yaml"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
-    - kafka_secret_result.failed
+    - hypercloud_kafka_secret_result.failed
 
 - name: Hypercloud | Apply Hypercloud Api Server
   kube:
@@ -240,9 +191,7 @@
   ansible.builtin.shell: |
     sudo chmod +x *.sh 
     sudo ./gen-audit-config.sh
-    sudo ./gen-webhook-config.sh
     sudo cp audit-policy.yaml /etc/kubernetes/ssl/
-    sudo cp audit-webhook-config /etc/kubernetes/ssl/
     {{ bin_dir }}/kubectl apply -f webhook-configuration.yaml
   args:
     chdir: "{{ kube_config_dir }}/addons/hypercloud/config"
@@ -265,8 +214,6 @@
     yq e '.spec.containers[0].command += "--audit-webhook-mode=batch"' -i ./kube-apiserver.yaml
     yq e '.spec.containers[0].command += "--audit-policy-file=/etc/kubernetes/ssl/audit-policy.yaml"' -i ./kube-apiserver.yaml
     yq e '.spec.containers[0].command += "--audit-webhook-config-file=/etc/kubernetes/ssl/audit-webhook-config"' -i ./kube-apiserver.yaml
-    #yq e 'del(.spec.dnsPolicy)' -i kube-apiserver.yaml
-    #yq e '.spec.dnsPolicy += "ClusterFirstWithHostNet"' -i kube-apiserver.yaml
     mv -f ./kube-apiserver.yaml /etc/kubernetes/manifests/kube-apiserver.yaml
   args:
     chdir: "{{ kube_config_dir }}/addons/hypercloud/"
@@ -327,9 +274,38 @@
     state: "latest"
     wait: true
   with_items:
-    - "hypercloud-multi-operator-v{{ hypercloud_multi_operator_image_tag }}.yaml"
+    - "hypercloud-multi-operator-v{{ hypercloud_hpcd_multi_operator_version }}.yaml"
     - "capi-aws-template-v{{ hypercloud_hpcd_template_version }}.yaml"
-    - "capi-vsphere-template-v{{ hypercloud_hpcd_template_version }}.yaml"
+#    - "capi-vsphere-template-v{{ hypercloud_hpcd_template_version }}.yaml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - hypercloud_hpcd_mode == "multi"
+
+
+- name: Hypercloud | Generate Manifests Hypercloud Multi Agent
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/hypercloud/{{ item.file }}"
+  with_items:
+    - { name: "01_federate-namespace.yaml", file: "01_federate-namespace.yaml" }
+    - { name: "02_federate-clusterRoleBinding.yaml", file: "02_federate-clusterRoleBinding.yaml" }
+    - { name: "03_federate-deployment.yaml", file: "03_federate-deployment.yaml" }
+  register: hypercloud_manifests_multi_agent
+  when: 
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - hypercloud_hpcd_mode == "multi"
+
+
+- name: Hypercloud | Apply Hypercloud Multi Agent
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/hypercloud/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "01_federate-namespace.yaml"
+    - "02_federate-clusterRoleBinding.yaml"
+    - "03_federate-deployment.yaml"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
     - hypercloud_hpcd_mode == "multi"

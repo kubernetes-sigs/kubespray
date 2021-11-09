@@ -32,6 +32,8 @@ hypercloud_multi_operator_image_repo: "{{ docker_image_repo }}/tmaxcloudck/hyper
 hypercloud_multi_operator_image_tag: "5.0.24.0"
 hypercloud_operator_proxy_image_repo: "{{ gcr_image_repo }}/kubebuilder/kube-rbac-proxy"
 hypercloud_operator_proxy_image_tag: "v0.5.0"
+hypercloud_multi_agent_image_repo: "{{ docker_image_repo }}/tmaxcloudck/hypercloud-multi-operator"
+hypercloud_multi_agent_image_tag: "5.0.24.0"
 ```
 
 4. Template(Vsphere)

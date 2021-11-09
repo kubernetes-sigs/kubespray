@@ -86,27 +86,26 @@ ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIO
 ## Kubernetes conformance tests
 ansible-playbook -i ${ANSIBLE_INVENTORY} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} --limit "all:!fake_hosts" tests/testcases/100_check-k8s-conformance.yml $ANSIBLE_LOG_LEVEL
 
-## Idempotency checks 1/5 (repeat deployment)
 if [ "${IDEMPOT_CHECK}" = "true" ]; then
+  ## Idempotency checks 1/5 (repeat deployment)
   ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} ${CI_TEST_ADDITIONAL_VARS} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
-fi
 
-## Idempotency checks 2/5 (Advanced DNS checks)
-if [ "${IDEMPOT_CHECK}" = "true" ]; then
+  ## Idempotency checks 2/5 (Advanced DNS checks)
   ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} --limit "all:!fake_hosts" tests/testcases/040_check-network-adv.yml
+
+  if [ "${RESET_CHECK}" = "true" ]; then
+    ## Idempotency checks 3/5 (reset deployment)
+    ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR}  -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} -e reset_confirmation=yes --limit "all:!fake_hosts" reset.yml
+
+    ## Idempotency checks 4/5 (redeploy after reset)
+    ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
+
+    ## Idempotency checks 5/5 (Advanced DNS checks)
+    ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} --limit "all:!fake_hosts" tests/testcases/040_check-network-adv.yml
+  fi
 fi
 
-## Idempotency checks 3/5 (reset deployment)
-if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
+# Clean up at the end, this is to allow stage1 tests to include cleanup test
+if [ "${RESET_CHECK}" = "true" ]; then
   ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR}  -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} -e reset_confirmation=yes --limit "all:!fake_hosts" reset.yml
-fi
-
-## Idempotency checks 4/5 (redeploy after reset)
-if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
-fi
-
-## Idempotency checks 5/5 (Advanced DNS checks)
-if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} --limit "all:!fake_hosts" tests/testcases/040_check-network-adv.yml
 fi

@@ -212,6 +212,22 @@ nodelocaldns_external_zones:
 
 See [dns_etchosts](#dns_etchosts-coredns) above.
 
+### Nodelocal DNS HA
+
+Under some circumstances the single POD nodelocaldns implementation may not be able to be replaced soon enough and a cluster upgrade or a nodelocaldns upgrade can cause DNS requests to time out for short intervals. If for any reason your applications cannot tollerate this behavior you can enable a redundant nodelocal DNS pod on each node:
+
+```yaml
+enable_nodelocaldns_secondary: true
+```
+
+**Note:** when the nodelocaldns secondary is enabled, the primary is instructed to no longer tear down the iptables rules it sets up to direct traffic to itself. In case both daemonsets have failing pods on the same node, this can cause a DNS blackout with traffic no longer being forwarded to the coredns central service as a fallback. Please ensure you account for this also if you decide to disable the nodelocaldns cache.
+
+There is a time delta (in seconds) allowed for the secondary nodelocaldns to survive in case both primary and secondary daemonsets are updated at the same time. It is advised to tune this variable after you have performed some tests in your own environment.
+
+```yaml
+nodelocaldns_secondary_skew_seconds: 5
+```
+
 ## Limitations
 
 * Kubespray has yet ways to configure Kubedns addon to forward requests SkyDns can

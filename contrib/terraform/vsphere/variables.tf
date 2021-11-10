@@ -1,34 +1,19 @@
 ## Global ##
 
-variable "prefix" {
-  default = ""
-}
+# Required variables
 
 variable "machines" {
   description = "Cluster machines"
   type = map(object({
     node_type = string
     ip        = string
+    netmask   = string
   }))
 }
 
-variable "inventory_file" {
-  default = "inventory.ini"
-}
-
-variable "network" {
-  default = "VM Network"
-}
+variable "network" {}
 
 variable "gateway" {}
-
-variable "dns_primary" {
-  default = "8.8.4.4"
-}
-
-variable "dns_secondary" {
-  default = "8.8.8.8"
-}
 
 variable "vsphere_datacenter" {}
 
@@ -44,21 +29,41 @@ variable "vsphere_server" {}
 
 variable "vsphere_hostname" {}
 
+variable "ssh_public_keys" {
+  description = "List of public SSH keys which are injected into the VMs."
+  type        = list(string)
+}
+
+variable "template_name" {}
+
+# Optional variables (ones where reasonable defaults exist)
+
+variable "folder" {
+  default = ""
+}
+
+variable "prefix" {
+  default = ""
+}
+
+variable "inventory_file" {
+  default = "inventory.ini"
+}
+
+variable "dns_primary" {
+  default = "8.8.4.4"
+}
+
+variable "dns_secondary" {
+  default = "8.8.8.8"
+}
+
 variable "firmware" {
   default = "bios"
 }
 
 variable "hardware_version" {
   default = "15"
-}
-
-variable "template_name" {
-  default = "ubuntu-focal-20.04-cloudimg"
-}
-
-variable "ssh_public_keys" {
-  description = "List of public SSH keys which are injected into the VMs."
-  type        = list(string)
 }
 
 ## Master ##

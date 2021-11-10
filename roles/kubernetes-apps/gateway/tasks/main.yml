@@ -16,26 +16,26 @@
   with_items:
     - { name: 000_namespace, file: 000_namespace.yaml }
     - { name: 000_crd, file: 001_crd.yaml }
-  register: 00_INIT
+  register: INIT
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: gateway | Create Manifests 01_TLS
   template:
-    src: "00_TLS/{{ item.file }}.j2"
+    src: "01_TLS/{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/addons/gateway/{{ item.file }}"
   with_items:
     - { name: 001_clusterissuer, file: 001_clusterissuer-selfsigned.yaml }
     - { name: 001_backend, file: 002_certificate-selfsigned.yaml }
     - { name: 001_front, file: 003_certificate-selfsigned-front.yaml }
     - { name: 001_default, file: 004_default-tls.yaml }
-  register: 01_TLS
+  register: TLS
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: gateway | Create Manifests 02_GATEWAY
   template:
-    src: "00_TLS/{{ item.file }}.j2"
+    src: "02_GATEWAY/{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/addons/gateway/{{ item.file }}"
   with_items:
     - { name: 002_sa, file: 001_serviceaccount.yaml }
@@ -43,13 +43,13 @@
     - { name: 002_config, file: 003_config.yaml }
     - { name: 002_deploy, file: 004_deploy.yaml }
     - { name: 002_service, file: 005_service.yaml }
-  register: 02_GATEWAY
+  register: GATEWAY
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: gateway | Create Manifests 03_INGRESSROUTE
   template:
-    src: "00_TLS/{{ item.file }}.j2"
+    src: "03_INGRESSROUTE/{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/addons/gateway/{{ item.file }}"
   with_items:
     - { name: 003_dashboard, file: 001_dashboard-ingressroute.yaml }
@@ -58,7 +58,7 @@
     - { name: 003_hypercloud, file: 004_hypercloud-ingressroute.yaml }
     - { name: 003_monitoring, file: 005_monitoring-ingressroutes.yaml }
     - { name: 003_kubectl, file: 006_kubectl-ingressroute.yaml }
-  register: 03_INGRESSROUTE
+  register: INGRESSROUTE
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
@@ -69,10 +69,10 @@
     state: "latest"
     wait: true
   with_items:
-    - "{{ 00_INIT.results }}"
-    - "{{ 01_TLS.results }}"
-    - "{{ 02_GATEWAY.results }}"
-    - "{{ 03_INGRESSROUTE.results }}"
+    - "{{ INIT.results }}"
+    - "{{ TLS.results }}"
+    - "{{ GATEWAY.results }}"
+    - "{{ INGRESSROUTE.results }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
   loop_control:

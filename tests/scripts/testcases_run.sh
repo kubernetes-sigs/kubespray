@@ -50,13 +50,6 @@ test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY
 test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
 test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" ${CI_TEST_REGISTRY_MIRROR}
 
-# Install mitogen ansible plugin
-if [ "${MITOGEN_ENABLE}" = "true" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} mitogen.yml
-  export ANSIBLE_STRATEGY=mitogen_linear
-  export ANSIBLE_STRATEGY_PLUGINS=plugins/mitogen/ansible_mitogen/plugins/strategy
-fi
-
 # Create cluster
 ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
 

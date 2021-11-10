@@ -1,0 +1,79 @@
+---
+- name: gateway | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/gateway"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: gateway | Create Manifests 00_INIT
+  template:
+    src: "00_INIT/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/gateway/{{ item.file }}"
+  with_items:
+    - { name: 000_namespace, file: 000_namespace.yaml }
+    - { name: 000_crd, file: 001_crd.yaml }
+  register: INIT
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: gateway | Create Manifests 01_TLS
+  template:
+    src: "01_TLS/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/gateway/{{ item.file }}"
+  with_items:
+    - { name: 001_clusterissuer, file: 001_clusterissuer-selfsigned.yaml }
+    - { name: 001_backend, file: 002_certificate-selfsigned.yaml }
+    - { name: 001_front, file: 003_certificate-selfsigned-front.yaml }
+    - { name: 001_default, file: 004_default-tls.yaml }
+  register: TLS
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: gateway | Create Manifests 02_GATEWAY
+  template:
+    src: "02_GATEWAY/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/gateway/{{ item.file }}"
+  with_items:
+    - { name: 002_sa, file: 001_serviceaccount.yaml }
+    - { name: 002_ingressclass, file: 002_ingressclass.yaml }
+    - { name: 002_config, file: 003_config.yaml }
+    - { name: 002_deploy, file: 004_deploy.yaml }
+    - { name: 002_service, file: 005_service.yaml }
+  register: GATEWAY
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: gateway | Create Manifests 03_INGRESSROUTE
+  template:
+    src: "03_INGRESSROUTE/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/gateway/{{ item.file }}"
+  with_items:
+    - { name: 003_dashboard, file: 001_dashboard-ingressroute.yaml }
+    - { name: 003_console, file: 002_console-ingressroute.yaml }
+    - { name: 003_kubernetes, file: 003_kubernetes-ingressroutes.yaml }
+    - { name: 003_hypercloud, file: 004_hypercloud-ingressroute.yaml }
+    - { name: 003_monitoring, file: 005_monitoring-ingressroutes.yaml }
+    - { name: 003_kubectl, file: 006_kubectl-ingressroute.yaml }
+  register: INGRESSROUTE
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: gateway | Apply Manifests 00.INIT
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/gateway/{{ item.item.file }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "{{ INIT.results }}"
+    - "{{ TLS.results }}"
+    - "{{ GATEWAY.results }}"
+    - "{{ INGRESSROUTE.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+  loop_control:
+    label: "{{ item.item.file }}"

@@ -8,17 +8,17 @@ machines = {
   "master-0" : {
     "node_type" : "master",
     "ip" : "i-did-not-read-the-docs", # e.g. 192.168.0.10
-    "netmask": "24"
+    "netmask" : "24"
   },
   "worker-0" : {
     "node_type" : "worker",
     "ip" : "i-did-not-read-the-docs", # e.g. 192.168.0.20
-    "netmask": "24"
+    "netmask" : "24"
   },
   "worker-1" : {
     "node_type" : "worker",
     "ip" : "i-did-not-read-the-docs", # e.g. 192.168.0.21
-    "netmask": "24"
+    "netmask" : "24"
   }
 }
 

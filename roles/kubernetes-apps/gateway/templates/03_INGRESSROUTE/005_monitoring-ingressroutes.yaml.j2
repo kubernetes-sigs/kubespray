@@ -1,0 +1,81 @@
+---
+
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: monitoring-stripprefix
+  namespace: api-gateway-system
+spec:
+  stripPrefix:
+    prefixes:
+      - "/api/prometheus"
+      - "/api/alertmanager"
+    # forceSlash: true
+---
+
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: monitoring-stripprefix-tenancy
+  namespace: api-gateway-system
+spec:
+  stripPrefix:
+    prefixes:
+      - "/api/prometheus-tenancy"
+---
+
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  labels:
+    app.kubernetes.io/instance: traefik
+    app.kubernetes.io/managed-by: tmax-cloud
+    app.kubernetes.io/name: api-gateway
+  name: monitoring-ingressroute
+  namespace: api-gateway-system
+spec:
+  entryPoints:
+  - websecure
+#  - web
+  routes:
+  - kind: Rule
+    match: PathPrefix(`/api/prometheus-tenancy/api`) && Host(`console.{{ custom_domain_name }}`)
+    priority: 100                      
+    middlewares:
+    - name: monitoring-stripprefix-tenancy
+      namespace: api-gateway-system
+    - name: jwt-decode-auth@file
+    services:
+    - kind: Service
+      name: prometheus-k8s
+      namespace: monitoring
+      port: web
+      scheme: http
+  - kind: Rule
+    match: PathPrefix(`/api/prometheus/api`) && Host(`console.{{ custom_domain_name }}`)
+    priority: 100                      
+    middlewares:
+    - name: monitoring-stripprefix
+      namespace: api-gateway-system
+    - name: jwt-decode-auth@file
+    services:
+    - kind: Service
+      name: prometheus-k8s
+      namespace: monitoring
+      port: web
+      scheme: http
+  - kind: Rule
+    match: PathPrefix(`/api/alertmanager/api`) && Host(`console.{{ custom_domain_name }}`)
+    priority: 100                       
+    middlewares:
+    - name: monitoring-stripprefix
+      namespace: api-gateway-system
+    - name: jwt-decode-auth@file
+    services:
+    - kind: Service
+      name: alertmanager-main 
+      namespace: monitoring 
+      port: web
+      scheme: http
+  tls: {}
+---

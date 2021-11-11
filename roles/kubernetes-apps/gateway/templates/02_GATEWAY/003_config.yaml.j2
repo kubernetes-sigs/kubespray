@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: traefik
+    app.kubernetes.io/managed-by: tmax-cloud
+    app.kubernetes.io/name: api-gateway
+  name: gateway-config
+  namespace: api-gateway-system
+data:
+  traefik.yml: |
+    http:
+      services:
+        console-service:
+          loadBalancer:
+            servers:
+            - url: "http://0.0.0.0:31303"
+      serversTransports:
+        insecure:
+          insecureSkipVerify: true
+        tmax-cloud:
+          serverName: tmax-cloud
+          rootCAs:
+            - /run/secrets/tmaxcloud.org/ca.crt
+        kubernetes:
+          rootCAs:
+            - /run/secrets/kubernetes.io/serviceaccount/ca.crt
+      middlewares:
+        dashboard-auth:
+          basicAuth:
+            users:
+              - "admin:$apr1$WboCaB7Z$PJbsvKlI3XMq12xMeQMmG."
+        jwt-decode-auth:
+          forwardAuth:
+            address: "http://localhost:8080"
+            authResponseHeaders:
+              - jwt-token-validated
+              - Authorization
+            trustForwardHeader: true
+            tls:
+              insecureSkipVerify: true
+        cors-header:
+          # need to revise
+          headers:
+            accessControlAllowMethods:
+              - "*"
+            accessControlAllowOriginList:
+              - "*"
+            accessControlAllowHeaders:
+              - "*"
+            accessControlMaxAge: 100
+            # accessControlExposeHeaders: true
+            # hostsProxyHeaders: true
+            # addVaryHeader: true

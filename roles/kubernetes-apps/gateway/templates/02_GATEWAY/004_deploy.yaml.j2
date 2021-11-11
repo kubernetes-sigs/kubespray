@@ -1,0 +1,190 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: traefik
+    app.kubernetes.io/managed-by: tmax-cloud
+    app.kubernetes.io/name: api-gateway
+  name: api-gateway
+  namespace: api-gateway-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: traefik
+      app.kubernetes.io/name: api-gateway
+      app.kubernetes.io/managed-by: tmax-cloud
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: traefik
+        app.kubernetes.io/managed-by: tmax-cloud
+        app.kubernetes.io/name: api-gateway
+    spec:
+      containers:
+      - args:
+        - --entryPoints.traefik.address=:9000
+        - --entryPoints.web.address=:80
+        - --entryPoints.websecure.address=:443
+        # prevent cors error
+        - --entrypoints.websecure.http.middlewares=cors-header@file
+        # http.tls 설정을 하면 websecure를 entrypoint로 사용하면 모든 서비스에 대해 자동으로 기본 tls 적용을 함 (따로 설정을 안해줘도 됌)
+        - --entrypoints.websecure.http.tls
+        - --entryPoints.k8s.address=:6443
+        - --entrypoints.k8s.http.tls
+        - --entryPoints.9001.address=:9001
+        - --entrypoints.9001.http.tls
+        - --entryPoints.9002.address=:9002
+        - --entrypoints.9002.http.tls
+        - --entryPoints.9003.address=:9003
+        - --entrypoints.9003.http.tls
+        ## insecureSkipVerify disables SSL certificate verification.
+        - --serverstransport.insecureskipverify=true # disables SSL certificate verification. (verify ssl certificate beween traefik - backend)
+        ## user rootCAs :rootCAs is the list of certificates (as file paths, or data bytes) that will be set as Root Certificate Authorities when using a self-signed TLS certificate.
+        # - --serverstransport.rootcas=/run/secrets/tmaxcloud.org/ca.crt, /run/secrets/kubernetes.io/serviceaccount/ca.crt
+        # Uncomment the below lines to redirect http requests to https.
+        - --entryPoints.web.http.redirections.entrypoint.to=websecure
+        - --entryPoints.web.http.redirections.entrypoint.scheme=https
+        - --api=true
+        - --ping=true
+        - --providers.kubernetesingress=true
+        - --providers.kubernetesingress.ingressclass=tmax-cloud
+        - --providers.kubernetesingress.ingressendpoint.publishedservice=api-gateway-system/api-gateway
+        - --providers.kubernetesingress.allowemptyservices=true
+        - --providers.kubernetesingress.allowexternalnameservices=true
+        - --providers.kubernetescrd
+        - --providers.kubernetescrd.allowcrossnamespace=true
+        - --providers.kubernetesgateway=true
+        - --providers.file
+        - --providers.file.directory=/data/config
+        - --providers.file.watch=true
+        - --log=true
+        - --log.level=ERROR
+        - --log.format=common
+        - --accesslog=true
+        - --accesslog.format=json
+#        - --accesslog.format=common
+        - --accesslog.filepath=/var/log/gateway/access.log
+        - --accesslog.bufferingsize=500
+        - --accesslog.fields.headers.defaultmode=keep
+        - --accesslog.filters.statuscodes=300-600
+        image: {{gateway_traefik_image_repo}}:{{gateway_traefik_image_tag}}
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ping
+            port: 9000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 2
+        name: gateway
+        ports:
+        - containerPort: 9000
+          name: traefik
+          protocol: TCP
+        - containerPort: 80
+          name: web
+          protocol: TCP
+        - containerPort: 443
+          name: websecure
+          protocol: TCP
+        - containerPort: 6443
+          name: k8s
+          protocol: TCP
+        - containerPort: 9001
+          name: kafka1
+          protocol: TCP
+        - containerPort: 9002
+          name: kafka2
+          protocol: TCP
+        - containerPort: 9003
+          name: kafka3
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 1
+          httpGet:
+            path: /ping
+            port: 9000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 2
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /data/config
+          name: configmap-volume
+          readOnly: true
+        - mountPath: /run/secrets/tmaxcloud.org
+          name: gateway-cert
+          readOnly: true
+        - name: logs
+          mountPath: /var/log/gateway
+      - name: console 
+        command:
+          - /opt/bridge/bin/console
+          - server
+          - --public-dir=/opt/bridge/static 
+          - --listen=http://0.0.0.0:31303
+          - --base-address=http://0.0.0.0:31303
+          - --keycloak-realm=tmax
+          - --keycloak-auth-url=https://{{ keycloak }}/auth
+          - --keycloak-client-id=hypercloud5
+          - --mc-mode=true
+          - --release-mode=true
+        image: {{ gateway_console_image_repo }}:{{ gateway_console_image_tag }}
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 31303
+            protocol: TCP
+            name: console
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      - name: jwt-decode
+        env:
+          - name: JWKS_URL
+            value: https://{{ keycloak }}/auth/realms/tmax/protocol/openid-connect/certs
+          - name: AUTH_HEADER_KEY
+            value: Authorization
+          - name: CACHE_ENABLED
+            value: "true"
+          - name: LOG_LEVEL
+            value: debug
+          - name: LOG_TYPE
+            value: pretty
+          - name: MAX_CACHE_KEYS
+            value: "10000"
+          - name: PORT
+            value: "8080"
+          - name: TOKEN_VALIDATED_HEADER_KEY
+            value: jwt-token-validated
+        image: {{ gateway_jwt_image_repo }}:{{gateway_jwt_image_tag}}
+        imagePullPolicy: IfNotPresent
+        ports:
+          - name: jwt-decode
+            protocol: TCP
+            containerPort: 8080
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      # securityContext:
+      #   fsGroup: 65532
+      serviceAccountName: api-gateway
+      terminationGracePeriodSeconds: 60
+      volumes:
+      - name: configmap-volume
+        configMap: 
+          name: gateway-config
+      - name: gateway-cert
+        secret:
+          defaultMode: 288
+          secretName: tmaxcloud-gateway-selfsigned
+      - name: logs
+        emptyDir: {}

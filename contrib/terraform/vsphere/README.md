@@ -113,7 +113,7 @@ ansible-playbook -i inventory.ini ../../cluster.yml -b -v
 ### Optional
 
 * `folder`: Name of the folder to put all machines in (default: `""`)
-* `prefix`: Prefix to use for all resources, required to be unique for all clusters in the same project (default: `""`)
+* `prefix`: Prefix to use for all resources, required to be unique for all clusters in the same project (default: `"k8s"`)
 * `inventory_file`: Name of the generated inventory file for Kubespray to use in the Ansible step (default: `inventory.ini`)
 * `dns_primary`: The IP address of primary DNS server (default: `8.8.4.4`)
 * `dns_secondary`: The IP address of secondary DNS server (default: `8.8.8.8`)

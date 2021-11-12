@@ -43,7 +43,7 @@ variable "folder" {
 }
 
 variable "prefix" {
-  default = ""
+  default = "k8s"
 }
 
 variable "inventory_file" {

@@ -124,8 +124,16 @@ variable "worker_allowed_ports" {
 
 variable "use_access_ip" {}
 
-variable "use_server_groups" {
-  type = bool
+variable "master_server_group_policy" {
+  type = string
+}
+
+variable "node_server_group_policy" {
+  type = string
+}
+
+variable "etcd_server_group_policy" {
+  type = string
 }
 
 variable "extra_sec_groups" {

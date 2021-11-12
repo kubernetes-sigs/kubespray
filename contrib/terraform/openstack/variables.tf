@@ -233,8 +233,19 @@ variable "use_access_ip" {
   default = 1
 }
 
-variable "use_server_groups" {
-  default = false
+variable "master_server_group_policy" {
+  description = "desired server group policy, e.g. anti-affinity"
+  default     = ""
+}
+
+variable "node_server_group_policy" {
+  description = "desired server group policy, e.g. anti-affinity"
+  default     = ""
+}
+
+variable "etcd_server_group_policy" {
+  description = "desired server group policy, e.g. anti-affinity"
+  default     = ""
 }
 
 variable "router_id" {

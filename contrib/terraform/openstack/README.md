@@ -277,7 +277,9 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`gfs_root_volume_size_in_gb` | Size of the root volume for gluster, 0 to use ephemeral storage |
 |`etcd_root_volume_size_in_gb` | Size of the root volume for etcd nodes, 0 to use ephemeral storage |
 |`bastion_root_volume_size_in_gb` | Size of the root volume for bastions, 0 to use ephemeral storage |
-|`use_server_group` | Create and use openstack nova servergroups, default: false |
+|`master_server_group_policy` | Enable and use openstack nova servergroups for masters with set policy, default: "" (disabled) |
+|`node_server_group_policy` | Enable and use openstack nova servergroups for nodes with set policy, default: "" (disabled) |
+|`etcd_server_group_policy` | Enable and use openstack nova servergroups for etcd with set policy, default: "" (disabled) |
 |`use_access_ip` | If 1, nodes with floating IPs will transmit internal cluster traffic via floating IPs; if 0 private IPs will be used instead. Default value is 1. |
 |`k8s_nodes` | Map containing worker node definition, see explanation below |
 

@@ -5,7 +5,8 @@ variable "machines" {
   description = "Cluster machines"
   type = map(object({
     node_type = string
-    ip      = string
+    ip        = string
+    netmask   = string
   }))
 }
 

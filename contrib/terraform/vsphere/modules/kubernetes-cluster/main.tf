@@ -5,7 +5,8 @@ resource "vsphere_virtual_machine" "worker" {
     if machine.node_type == "worker"
   }
 
-  name                = each.key
+  name = "${var.prefix}-${each.key}"
+
   resource_pool_id    = var.pool_id
   datastore_id        = var.datastore_id
 
@@ -13,13 +14,14 @@ resource "vsphere_virtual_machine" "worker" {
   memory              = var.worker_memory
   memory_reservation  = var.worker_memory
   guest_id            = var.guest_id
-  enable_disk_uuid    = "true"
+  enable_disk_uuid    = "true" # needed for CSI provider
   scsi_type           = var.scsi_type
   folder              = var.folder
   firmware            = var.firmware
   hardware_version    = var.hardware_version
 
   wait_for_guest_net_routable = false
+  wait_for_guest_net_timeout = 0
 
   network_interface {
     network_id        = var.network_id
@@ -47,6 +49,7 @@ resource "vsphere_virtual_machine" "worker" {
   vapp {
     properties = {
       "user-data" = base64encode(templatefile("${path.module}/templates/cloud-init.tmpl", { ip = each.value.ip,
+                                                                  netmask = each.value.netmask,
                                                                   gw = var.gateway,
                                                                   dns = var.dns_primary,
                                                                   ssh_public_keys = var.ssh_public_keys}))
@@ -61,7 +64,8 @@ resource "vsphere_virtual_machine" "master" {
     if machine.node_type == "master"
   }
 
-  name                = each.key
+  name = "${var.prefix}-${each.key}"
+
   resource_pool_id    = var.pool_id
   datastore_id        = var.datastore_id
 
@@ -69,11 +73,14 @@ resource "vsphere_virtual_machine" "master" {
   memory              = var.master_memory
   memory_reservation  = var.master_memory
   guest_id            = var.guest_id
-  enable_disk_uuid    = "true"
+  enable_disk_uuid    = "true" # needed for CSI provider
   scsi_type           = var.scsi_type
   folder              = var.folder
   firmware            = var.firmware
   hardware_version    = var.hardware_version
+
+  wait_for_guest_net_routable = false
+  wait_for_guest_net_timeout = 0
 
   network_interface {
     network_id        = var.network_id
@@ -101,6 +108,7 @@ resource "vsphere_virtual_machine" "master" {
   vapp {
     properties = {
       "user-data" = base64encode(templatefile("${path.module}/templates/cloud-init.tmpl", { ip = each.value.ip,
+                                                                  netmask = each.value.netmask,
                                                                   gw = var.gateway,
                                                                   dns = var.dns_primary,
                                                                   ssh_public_keys = var.ssh_public_keys}))

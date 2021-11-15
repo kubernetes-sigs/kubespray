@@ -173,13 +173,18 @@
     - inventory_hostname == groups['kube_control_plane'][0]
     
 
-- name: Wait until catalog-webhook pod is running
-  ansible.builtin.shell: |
-    {{ bin_dir }}/kubectl get pod -n catalog | grep webhook | awk '{print $3}'
-  register: webhook_status
+- name: Catalog-webhook | Register catalog webhook clusterIP
+  ansible.builtin.shell: "{{ bin_dir }}/kubectl describe svc catalog-catalog-webhook -n catalog | grep IP: | cut -d ':' -f2 | tr -d ' '" 
+  register: catalog_cluster_ip
+
+- name: Catalog-webhook | Wait for Catalog-webhook Pod become available
+  uri: 
+    url: http://{{ catalog_cluster_ip.stdout }}:80/healthz/ready
+    return_content: yes
+  register: catalog_status
   retries: 400
   delay: 5
-  until: webhook_status.stdout == "Running"
+  until: "catalog_status.status == 200"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 

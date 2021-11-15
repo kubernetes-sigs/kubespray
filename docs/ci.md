@@ -43,7 +43,7 @@ ubuntu20 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 | OS / CNI | calico | canal | cilium | flannel | kube-ovn | kube-router | macvlan | ovn4nfv | weave |
 |---| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-centos7 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+centos7 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian10 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |

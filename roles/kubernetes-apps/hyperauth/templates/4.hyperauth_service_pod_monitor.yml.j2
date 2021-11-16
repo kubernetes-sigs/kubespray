@@ -1,0 +1,131 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hyperauth
+  namespace: monitoring
+  labels:
+    app: hyperauth
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: keycloak
+  endpoints:
+  - path: /auth/realms/tmax/metrics
+    port: http
+    interval: 15s
+    basicAuth:
+      password:
+        name: passwords
+        key: HYPERAUTH_PASSWORD
+      username:
+        name: passwords
+        key: HYPERAUTH_ADMIN
+---
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: cluster-operator-metrics
+  namespace: monitoring
+  labels:
+    app: strimzi
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      strimzi.io/kind: cluster-operator
+  namespaceSelector:
+    matchNames:
+      - hyperauth
+  podMetricsEndpoints:
+  - path: /metrics
+    port: http
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: entity-operator-metrics
+  namespace: monitoring
+  labels:
+    app: strimzi
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: entity-operator
+  namespaceSelector:
+    matchNames:
+      - hyperauth
+  podMetricsEndpoints:
+  - path: /metrics
+    port: healthcheck
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: bridge-metrics
+  namespace: monitoring
+  labels:
+    app: strimzi
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      strimzi.io/kind: KafkaBridge
+  namespaceSelector:
+    matchNames:
+      - hyperauth
+  podMetricsEndpoints:
+  - path: /metrics
+    port: rest-api
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kafka-resources-metrics
+  namespace: monitoring
+  labels:
+    app: strimzi
+    release: prometheus
+spec:
+  selector:
+    matchExpressions:
+      - key: "strimzi.io/kind"
+        operator: In
+        values: ["Kafka", "KafkaConnect", "KafkaMirrorMaker", "KafkaMirrorMaker2"]
+  namespaceSelector:
+    matchNames:
+      - hyperauth
+  podMetricsEndpoints:
+  - path: /metrics
+    port: tcp-prometheus
+    relabelings:
+    - separator: ;
+      regex: __meta_kubernetes_pod_label_(strimzi_io_.+)
+      replacement: $1
+      action: labelmap
+    - sourceLabels: [__meta_kubernetes_namespace]
+      separator: ;
+      regex: (.*)
+      targetLabel: namespace
+      replacement: $1
+      action: replace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      separator: ;
+      regex: (.*)
+      targetLabel: kubernetes_pod_name
+      replacement: $1
+      action: replace
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      separator: ;
+      regex: (.*)
+      targetLabel: node_name
+      replacement: $1
+      action: replace
+    - sourceLabels: [__meta_kubernetes_pod_host_ip]
+      separator: ;
+      regex: (.*)
+      targetLabel: node_ip
+      replacement: $1
+      action: replace

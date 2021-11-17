@@ -29,12 +29,8 @@
   with_items:
     - { name: initialization, file: 1.initialization.yml }
       # - { name: hyperauth_deployment, file: 2.hyperauth_deployment.yml }
-    - { name: tmax-realm-export, file: 3.tmax-realm-export.json }
-    - { name: kafka_init, file: 4.kafka_init.yml }
-    - { name: kafka_deployment, file: 5.kafka_deployment.yml }
-    - { name: hyperauth_service_monitor, file: 6.hyperauth_service_monitor.yml }
-    - { name: generateCerts, file: generateCerts.sh }
-    - { name: kafka-manager, file: kafka-manager.yml }
+    - { name: kafka_deployment, file: 3.kafka_deployment.yml }
+    - { name: hyperauth_service_pod_monitor, file: 4.hyperauth_service_pod_monitor.yml }
   register: hyperauth_manifests
   when: 
     - inventory_hostname == groups['kube_control_plane'][0]
@@ -106,7 +102,7 @@
 
 - name: Hyperauth | Fetch SSL File from master1
   run_once: yes
-  fetch: src={{ kube_config_dir }}/addons/hyperauth/ssl/{{ item }} dest=./inventory/mycluster/ flat=yes
+  fetch: src=/etc/kubernetes/ssl/{{ item }} dest=./inventory/mycluster/ flat=yes
   with_items:
     - hyperauth.crt
     - hypercloud-root-ca.crt
@@ -121,15 +117,14 @@
   when:
     - inventory_hostname in groups['kube_control_plane']
 
-- name: Hyperauth | Apply 4.kafka_init, 5.kakfa_deployment.yml
+- name: Hyperauth | Apply 3.kafka_deployment.yml
   kube:
     kubectl: "{{ bin_dir }}/kubectl"
     filename: "{{ kube_config_dir }}/addons/hyperauth/{{ item }}"
     state: "latest"
     wait: true
   with_items:
-    - "4.kafka_init.yml"
-    - "5.kafka_deployment.yml"
+    - "3.kafka_deployment.yml"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
@@ -176,6 +171,14 @@
   ignore_errors: yes
 
 
+- name: Hyperauth | Wait for Kubernetes Api Server Pod become available
+  ansible.builtin.shell: |
+    {{ bin_dir }}/kubectl wait -n kube-system --for=condition=Ready pods --selector component=kube-apiserver --timeout=1200s
+  register: kube_api_server_status
+  until: ("condition met" in kube_api_server_status.stdout)
+  retries: 400
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 
 

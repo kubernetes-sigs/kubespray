@@ -26,4 +26,4 @@ def test_run_pod(host):
       log_f = host.file("/tmp/gvisor1.0.log")
 
       assert log_f.exists
-      assert b"Hello from Docker!" in log_f.content
+      assert b"Hello from Docker" in log_f.content

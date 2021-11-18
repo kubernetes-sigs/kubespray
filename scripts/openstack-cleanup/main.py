@@ -42,23 +42,40 @@ def main():
                conn.network.security_groups())
 
     print('Ports...')
-    map_if_old(conn.network.delete_port,
-               conn.network.ports())
+    map_if_old_without_conflict_exception(conn.network.delete_port,
+                                          conn.network.ports())
 
     print('Subnets...')
-    map_if_old(conn.network.delete_subnet,
-               conn.network.subnets())
+    map_if_old_without_conflict_exception(conn.network.delete_subnet,
+                                          conn.network.subnets())
 
     print('Networks...')
     for n in conn.network.networks():
         if not n.is_router_external:
-            fn_if_old(conn.network.delete_network, n)
+            try:
+                fn_if_old(conn.network.delete_network, n)
+            except openstack.exceptions.ConflictException as ex:
+                print('Failed to delete some network as %s', ex)
+                continue
 
 
 # runs the given fn to all elements of the that are older than allowed
 def map_if_old(fn, items):
     for item in items:
         fn_if_old(fn, item)
+
+
+def map_if_old_without_conflict_exception(fn, items):
+    for item in items:
+        try:
+            fn_if_old(fn, item)
+        except openstack.exceptions.ConflictException as ex:
+            # This can happen if the target port is still connected to a
+            # router with the following error:
+            #   Port xxxxxx cannot be deleted directly via the port API:
+            #   has device owner network:router_interface.
+            print('Failed to delete some resource as %s', ex)
+            continue
 
 
 # run the given fn function only if the passed item is older than allowed

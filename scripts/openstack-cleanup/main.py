@@ -41,6 +41,13 @@ def main():
     map_if_old(conn.network.delete_security_group,
                conn.network.security_groups())
 
+    for r in conn.network.routers():
+        try:
+            conn.network.remove_interface_from_router(r, subnet_id='e2aa07b8-1283-4f2d-939d-8b16e51dd87a')
+        except Exception as ex:
+            print('Failed to delete subnet from router as %s', ex)
+            continue
+
     print('Ports...')
     map_if_old(conn.network.delete_port,
                conn.network.ports())

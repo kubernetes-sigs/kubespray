@@ -162,6 +162,12 @@ variable "k8s_master_fips" {
   default     = []
 }
 
+variable "bastion_fips" {
+  description = "specific pre-existing floating IPs to use for bastion node"
+  type        = list(string)
+  default     = []
+}
+
 variable "floatingip_pool" {
   description = "name of the floating ip pool to use"
   default     = "external"

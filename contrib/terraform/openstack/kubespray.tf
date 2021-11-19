@@ -24,6 +24,7 @@ module "ips" {
   router_id                     = module.network.router_id
   k8s_nodes                     = var.k8s_nodes
   k8s_master_fips               = var.k8s_master_fips
+  bastion_fips                  = var.bastion_fips
   router_internal_port_id       = module.network.router_internal_port_id
 }
 

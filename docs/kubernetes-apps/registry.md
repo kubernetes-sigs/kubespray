@@ -140,7 +140,7 @@ spec:
 ```
 <!-- END MUNGE: EXAMPLE registry-rc.yaml -->
 
-Note that if you have set mulit replicas, make sure the storage support `ReadWriteMany` accessMode.
+*Note:* that if you have set multiple replicas, make sure your CSI driver has support for the `ReadWriteMany` accessMode.
 
 ## Expose the registry in the cluster
 

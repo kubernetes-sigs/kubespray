@@ -140,6 +140,8 @@ spec:
 ```
 <!-- END MUNGE: EXAMPLE registry-rc.yaml -->
 
+Note that if you have set mulit replicas, make sure the storage support `ReadWriteMany` accessMode.
+
 ## Expose the registry in the cluster
 
 Now that we have a registry `Pod` running, we can expose it as a Service:

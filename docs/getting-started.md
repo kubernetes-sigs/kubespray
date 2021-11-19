@@ -86,7 +86,7 @@ More details on this process are in the [HA guide](/docs/ha-mode.md).
 Kubespray permits connecting to the cluster remotely on any IP of any
 kube_control_plane host on port 6443 by default. However, this requires
 authentication. One can get a kubeconfig from kube_control_plane hosts
-(see [below](#accessing-kubernetes-api)) or connect with a [username and password](/docs/vars.md#user-accounts).
+(see [below](#accessing-kubernetes-api)).
 
 For more information on kubeconfig and accessing a Kubernetes cluster, refer to
 the Kubernetes [documentation](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/).

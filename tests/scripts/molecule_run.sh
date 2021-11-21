@@ -6,7 +6,7 @@ export LANG=C.UTF-8
 
 for d in $(find roles -name molecule -type d)
 do
-    cd $(dirname $d)
+    pushd $(dirname $d)
     molecule test --all
-    cd -
+    popd
 done

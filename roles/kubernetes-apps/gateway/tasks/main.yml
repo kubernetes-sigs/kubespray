@@ -70,10 +70,47 @@
     wait: true
   with_items:
     - "{{ INIT.results }}"
+  register: init_result
+  failed_when:
+    - init_result == 0
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+  loop_control:
+    label: "{{ item.item.file }}"
+    pause: 3
+
+- name: gateway | Apply Manifests 01.TLS
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/gateway/{{ item.item.file }}"
+    state: "latest"
+    wait: true
+  with_items:
     - "{{ TLS.results }}"
+    - "{{ GATEWAY.results }}"
+    - "{{ INGRESSROUTE.results }}"
+  register: tls_result
+  failed_when:
+    - tls_result == 0
+  when:
+    - init_result != 0
+    - inventory_hostname == groups['kube_control_plane'][0]
+  loop_control:
+    label: "{{ item.item.file }}"
+    pause: 3
+
+- name: gateway | Apply Manifests 02.GATEWAY 03.INGRESSROUTE
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/gateway/{{ item.item.file }}"
+    state: "latest"
+    wait: true
+  with_items:
     - "{{ GATEWAY.results }}"
     - "{{ INGRESSROUTE.results }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
+    - init_result != 0
+    - tls_result != 0
   loop_control:
     label: "{{ item.item.file }}"

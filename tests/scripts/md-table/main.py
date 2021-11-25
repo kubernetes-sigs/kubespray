@@ -41,7 +41,6 @@ class Data:
         operating_systems = list(self.db.get_unique_ids("operating_system"))
 
         container_engines.sort()
-        container_engines.reverse() # reverse sort container_engines to get Docker first in the list
         network_plugins.sort()
         operating_systems.sort()
 
@@ -88,7 +87,7 @@ files = p.glob('*.yml')
 for f in files:
     y = yaml.load(f.open(), Loader=yaml.FullLoader)
 
-    container_manager = y.get('container_manager', 'docker')
+    container_manager = y.get('container_manager', 'containerd')
     network_plugin = y.get('kube_network_plugin', 'calico')
     x = re.match(r"^[a-z-]+_([a-z0-9]+).*", f.name)
     operating_system = x.group(1)

@@ -80,6 +80,7 @@ resource "aws_instance" "k8s-master" {
   count = var.aws_kube_master_num
 
   availability_zone = element(slice(data.aws_availability_zones.available.names, 0, 2), count.index)
+  source_dest_check     = var.aws_src_dest_check
   subnet_id         = element(module.aws-vpc.aws_subnet_ids_private, count.index)
 
   vpc_security_group_ids = module.aws-vpc.aws_security_group
@@ -107,6 +108,7 @@ resource "aws_instance" "k8s-etcd" {
   count = var.aws_etcd_num
 
   availability_zone = element(slice(data.aws_availability_zones.available.names, 0, 2), count.index)
+  source_dest_check     = var.aws_src_dest_check
   subnet_id         = element(module.aws-vpc.aws_subnet_ids_private, count.index)
 
   vpc_security_group_ids = module.aws-vpc.aws_security_group
@@ -127,6 +129,7 @@ resource "aws_instance" "k8s-worker" {
   count = var.aws_kube_worker_num
 
   availability_zone = element(slice(data.aws_availability_zones.available.names, 0, 2), count.index)
+  source_dest_check     = var.aws_src_dest_check
   subnet_id         = element(module.aws-vpc.aws_subnet_ids_private, count.index)
 
   vpc_security_group_ids = module.aws-vpc.aws_security_group

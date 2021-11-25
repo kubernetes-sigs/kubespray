@@ -38,19 +38,36 @@ spec:
               value: :{{ registry_port }}
             - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
               value: /var/lib/registry
+{% if registry_tls_secret != "" %}
+            - name: REGISTRY_HTTP_TLS_CERTIFICATE
+              value: /etc/ssl/docker/tls.crt
+            - name: REGISTRY_HTTP_TLS_KEY
+              value: /etc/ssl/docker/tls.key
+{% endif %}
           volumeMounts:
             - name: registry-pvc
               mountPath: /var/lib/registry
+{% if registry_tls_secret != "" %}
+            - name: tls-cert
+              mountPath: /etc/ssl/docker
+              readOnly: true
+{% endif %}
           ports:
             - containerPort: {{ registry_port }}
               name: registry
               protocol: TCP
           livenessProbe:
             httpGet:
+{% if registry_tls_secret != "" %}
+              scheme: HTTPS
+{% endif %}
               path: /
               port: {{ registry_port }}
           readinessProbe:
             httpGet:
+{% if registry_tls_secret != "" %}
+              scheme: HTTPS
+{% endif %}
               path: /
               port: {{ registry_port }}
       volumes:
@@ -60,4 +77,9 @@ spec:
             claimName: registry-pvc
 {% else %}
           emptyDir: {}
+{% endif %}
+{% if registry_tls_secret != "" %}
+        - name: tls-cert
+          secret:
+            secretName: {{ registry_tls_secret }}
 {% endif %}

@@ -22,7 +22,7 @@ aws_kube_worker_num  = 4
 aws_kube_worker_size = "t2.medium"
 
 #EC2 Source/Dest Check
-aws_src_dest_check      = true
+aws_src_dest_check      = false
 
 #Settings AWS ELB
 

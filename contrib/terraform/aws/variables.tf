@@ -88,6 +88,16 @@ variable "aws_kube_worker_size" {
 }
 
 /*
+* EC2 Source/Dest Check
+*
+*/
+variable "aws_src_dest_check" {
+  description   = "Instance source/destination check of Kubernetes Cluster"
+  type          = bool
+  default	= true
+}
+
+/*
 * AWS ELB Settings
 *
 */

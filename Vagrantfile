@@ -26,7 +26,6 @@ SUPPORTED_OS = {
   "centos-bento"        => {box: "bento/centos-7.6",           user: "vagrant"},
   "centos8"             => {box: "centos/8",                   user: "vagrant"},
   "centos8-bento"       => {box: "bento/centos-8",             user: "vagrant"},
-  "fedora33"            => {box: "fedora/33-cloud-base",       user: "vagrant"},
   "fedora34"            => {box: "fedora/34-cloud-base",       user: "vagrant"},
   "fedora35"            => {box: "fedora/35-cloud-base",       user: "vagrant"},
   "opensuse"            => {box: "bento/opensuse-leap-15.2",   user: "vagrant"},

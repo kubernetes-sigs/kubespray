@@ -72,6 +72,11 @@ spec:
         - name: install-cni
           image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
           command: ["/opt/cni/bin/install"]
+          envFrom:
+          - configMapRef:
+              # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+              name: kubernetes-services-endpoint
+              optional: true
           env:
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
@@ -214,11 +219,6 @@ spec:
 #            # Configure the IP Pool from which Pod IPs will be chosen.
 #            - name: CALICO_IPV4POOL_CIDR
 #              value: "{{ calico_pool_cidr | default(kube_pods_subnet) }}"
-{% if calico_veth_mtu is defined %}
-# Set MTU for the Wireguard tunnel device.
-            - name: FELIX_WIREGUARDMTU
-              value: "{{ calico_veth_mtu }}"
-{% endif %}
             - name: CALICO_IPV4POOL_IPIP
               value: "{{ calico_ipv4pool_ipip }}"
             - name: FELIX_IPV6SUPPORT
@@ -234,7 +234,14 @@ spec:
               value: "{{ calico_usage_reporting }}"
             # Set MTU for tunnel device used if ipip is enabled
 {% if calico_mtu is defined %}
+            # Set MTU for tunnel device used if ipip is enabled
             - name: FELIX_IPINIPMTU
+              value: "{{ calico_veth_mtu | default(calico_mtu) }}"
+            # Set MTU for the VXLAN tunnel device.
+            - name: FELIX_VXLANMTU
+              value: "{{ calico_veth_mtu | default(calico_mtu) }}"
+            # Set MTU for the Wireguard tunnel device.
+            - name: FELIX_WIREGUARDMTU
               value: "{{ calico_veth_mtu | default(calico_mtu) }}"
 {% endif %}
             - name: FELIX_CHAININSERTMODE
@@ -270,6 +277,12 @@ spec:
                 fieldRef:
                   fieldPath: status.hostIP
 {% endif %}
+            # Disable file logging so `kubectl logs` works.
+            - name: CALICO_DISABLE_FILE_LOGGING
+              value: "true"
+            # Set Felix endpoint to host default action to ACCEPT.
+            - name: FELIX_DEFAULTENDPOINTTOHOSTACTION
+              value: "ACCEPT"
             - name: NODENAME
               valueFrom:
                 fieldRef:
@@ -295,6 +308,14 @@ spec:
             requests:
               cpu: {{ calico_node_cpu_requests }}
               memory: {{ calico_node_memory_requests }}
+{% if calico_version is version('v3.21.0', '>=') %}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                - /bin/calico-node
+                - -shutdown
+{% endif %}
           livenessProbe:
             exec:
               command:
@@ -336,8 +357,10 @@ spec:
             - name: xtables-lock
               mountPath: /run/xtables.lock
               readOnly: false
+            # For maintaining CNI plugin API credentials.
             - mountPath: /host/etc/cni/net.d
               name: cni-net-dir
+              readOnly: false
 {% if typha_secure %}
             - name: typha-client
               mountPath: /etc/typha-client

@@ -18,3 +18,10 @@ Kubespray has 3 types of GitLab runners:
 ## Vagrant
 
 Vagrant jobs are using the [quay.io/kubespray/vagrant](/test-infra/vagrant-docker/Dockerfile) docker image with `/var/run/libvirt/libvirt-sock` exposed from the host, allowing the container to boot VMs on the host.
+
+## CI Variables
+
+In CI we have a set of overrides we use to ensure greater success of our CI jobs and avoid throttling by various APIs we depend on. See:
+
+- [Docker mirrors](/tests/common/_docker_hub_registry_mirror.yml)
+- [Test settings](/tests/common/_kubespray_test_settings.yml)

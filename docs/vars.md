@@ -125,9 +125,9 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *http_proxy/https_proxy/no_proxy/no_proxy_exclude_workers/additional_no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.
-* *kubelet_cgroup_driver* - Allows manual override of the
-  cgroup-driver option for Kubelet. By default autodetection is used
-  to match Docker configuration.
+* *kubelet_cgroup_driver* - Allows manual override of the cgroup-driver option for Kubelet.
+  By default autodetection is used to match container manager configuration.
+  `systemd` is the preferred driver for `containerd` though it can have issues with `cgroups v1` and `kata-containers` in which case you may want to change to `cgroupfs`.
 * *kubelet_rotate_certificates* - Auto rotate the kubelet client certificates by requesting new certificates
   from the kube-apiserver when the certificate expiration approaches.
 * *kubelet_rotate_server_certificates* - Auto rotate the kubelet server certificates by requesting new certificates

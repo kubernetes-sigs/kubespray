@@ -12,7 +12,6 @@ centos8 |  :white_check_mark: | :x: | :x: | :x: | :white_check_mark: | :x: | :x:
 debian10 |  :white_check_mark: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: |
-fedora33 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora34 |  :white_check_mark: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: |
 fedora35 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: |
 opensuse |  :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
@@ -31,7 +30,6 @@ centos8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian10 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-fedora33 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora34 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora35 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
@@ -50,9 +48,8 @@ centos8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian10 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-fedora33 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora34 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
-fedora35 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+fedora35 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 oracle7 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu16 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |

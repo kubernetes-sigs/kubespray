@@ -441,6 +441,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
       uuid                  = local.image_to_use_node
       source_type           = "image"
       volume_size           = var.node_root_volume_size_in_gb
+      volume_type           = var.node_volume_type
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -486,6 +487,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
       uuid                  = local.image_to_use_node
       source_type           = "image"
       volume_size           = var.node_root_volume_size_in_gb
+      volume_type           = var.node_volume_type
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -527,6 +529,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
       uuid                  = local.image_to_use_node
       source_type           = "image"
       volume_size           = var.node_root_volume_size_in_gb
+      volume_type           = var.node_volume_type
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true

@@ -275,6 +275,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`node_root_volume_size_in_gb` | Size of the root volume for nodes, 0 to use ephemeral storage |
 |`master_root_volume_size_in_gb` | Size of the root volume for masters, 0 to use ephemeral storage |
 |`master_volume_type` | Volume type of the root volume for control_plane, 'Default' by default |
+|`node_volume_type` | Volume type of the root volume for nodes, 'Default' by default |
 |`gfs_root_volume_size_in_gb` | Size of the root volume for gluster, 0 to use ephemeral storage |
 |`etcd_root_volume_size_in_gb` | Size of the root volume for etcd nodes, 0 to use ephemeral storage |
 |`bastion_root_volume_size_in_gb` | Size of the root volume for bastions, 0 to use ephemeral storage |

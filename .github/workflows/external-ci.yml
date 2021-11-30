@@ -1,0 +1,91 @@
+name: external-network-ci
+
+on:
+  pull_request:
+    branches: [tmax-master]
+  
+jobs:
+  playbook-test:
+    runs-on: self-hosted
+    steps:
+      - name: Init environment variables
+        id: vars
+        run: |
+          PR_NUMBER=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
+          WORK_DIR=/home/github
+          TERRAFORM_DIR=${WORK_DIR}/terraform
+          MASTER_IP=172.21.7.101
+          WORKER_IP=172.21.7.102
+          VM_CIDR=172.21.7.0/24
+          # TODO: changes static values to use above env variables
+          SSH_MASTER='ssh -q -i /home/github/terraform/e2e_sshkey -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@172.21.7.101'
+          SSH_WORKER='ssh -q -i /home/github/terraform/e2e_sshkey -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@172.21.7.102'
+          echo ::set-output name=PR_NUMBER::${PR_NUMBER}
+          echo ::set-output name=TERRAFORM_DIR::${TERRAFORM_DIR}
+          echo ::set-output name=MASTER_IP::${MASTER_IP}
+          echo ::set-output name=WORKER_IP::${WORKER_IP}
+          echo ::set-output name=VM_CIDR::${VM_CIDR}
+          echo ::set-output name=SSH_MASTER::${SSH_MASTER}
+          echo ::set-output name=SSH_WORKER::${SSH_WORKER}
+      - name: Create VMs
+        run: |
+          cd ${{ steps.vars.outputs.TERRAFORM_DIR }}
+          terraform init
+          rm -f e2e_sshkey* && ssh-keygen -b 2048 -t rsa -f ./e2e_sshkey -q -N ""
+          chmod 600 e2e_sshkey && chmod 600 e2e_sshkey.pub
+          terraform apply -auto-approve
+          for ((i=0; i<=18; i++))
+          do
+            ${{ steps.vars.outputs.SSH_MASTER }} "echo 2>&1" && break || echo "Waits master VM to be up"
+            sleep 10
+          done
+          for ((i=0; i<=18; i++))
+          do
+            ${{ steps.vars.outputs.SSH_WORKER }} "echo 2>&1" && break || echo "Waits worker VM to be up"
+            sleep 10
+          done
+          scp -q -i e2e_sshkey -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null e2e_sshkey root@${{ steps.vars.outputs.MASTER_IP }}:~/.ssh/id_rsa
+          scp -q -i e2e_sshkey -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null e2e_sshkey root@${{ steps.vars.outputs.WORKER_IP }}:~/.ssh/id_rsa
+          ${{ steps.vars.outputs.SSH_MASTER }} "hostnamectl set-hostname kubespray-master"
+          ${{ steps.vars.outputs.SSH_WORKER }} "hostnamectl set-hostname kubespray-node"
+          ${{ steps.vars.outputs.SSH_MASTER }} "rm -f /root/.ssh/known_hosts"
+          ${{ steps.vars.outputs.SSH_WORKER }} "rm -f /root/.ssh/known_hosts"
+      - name: Fetch PR
+        run: |
+          ${{ steps.vars.outputs.SSH_MASTER }} "rm -rf /root/kubespray"
+          ${{ steps.vars.outputs.SSH_MASTER }} "git clone http://github.com/tmax-cloud/kubespray.git /root/kubespray"
+          ${{ steps.vars.outputs.SSH_MASTER }} "cd /root/kubespray && git fetch origin pull/${{ steps.vars.outputs.PR_NUMBER }}/head:pr-${{ steps.vars.outputs.PR_NUMBER }} && git checkout pr-${{ steps.vars.outputs.PR_NUMBER }}" 
+      - name: Replace configuration variables
+        run: |
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#10.0.10.21#'${{ steps.vars.outputs.MASTER_IP }}'#g' /root/kubespray/inventory/tmaxcloud/inventory.ini"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#10.0.10.22#'${{ steps.vars.outputs.WORKER_IP }}'#g' /root/kubespray/inventory/tmaxcloud/inventory.ini"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#\[kube_node\]#\[kube_node\]\nkubespray-master#g' /root/kubespray/inventory/tmaxcloud/inventory.ini"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#10.0.10.50#'${{ steps.vars.outputs.MASTER_IP }}'#g' /root/kubespray/inventory/tmaxcloud/group_vars/all/all.yml"
+          ${{ steps.vars.outputs.SSH_MASTER }} "echo 'is_this_offline: false' > /root/kubespray/inventory/tmaxcloud/group_vars/all/offline.yml"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#192.168.7.17#'${{ steps.vars.outputs.MASTER_IP }}'#g' /root/kubespray/inventory/tmaxcloud/group_vars/k8s_cluster/addons.yml"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#/root/test#/mnt/nfs-shared-dir#g' /root/kubespray/inventory/tmaxcloud/group_vars/k8s_cluster/addons.yml"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#192.168.9.39#'${{ steps.vars.outputs.MASTER_IP }}'#g' /root/kubespray/inventory/tmaxcloud/group_vars/k8s_cluster/addons.yml"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#10.0.10.0/24#'${{ steps.vars.outputs.VM_CIDR }}'#g' /root/kubespray/inventory/tmaxcloud/group_vars/k8s_cluster/k8s-net-calico.yml"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#10.12.10.12#'${{ steps.vars.outputs.MASTER_IP }}'#g' /root/kubespray/inventory/tmaxcloud/group_vars/k8s_cluster/k8s-cluster.yml"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#    - { role: offline-pretask, when: is_this_offline }##g' /root/kubespray/cluster.yml"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#    - { role: bootstrap-os, tags: bootstrap-os}##g' /root/kubespray/cluster.yml"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#"{{ registry_host }}"##g' /root/kubespray/roles/container-engine/cri-o/defaults/main.yml"
+          ${{ steps.vars.outputs.SSH_MASTER }} "sed -i 's#\[defaults\]#\[defaults\]\nlog_path=/root/kubespray/output.log\n#g' /root/kubespray/ansible.cfg"
+      - name: Run playbook
+        run: |
+          ${{ steps.vars.outputs.SSH_MASTER }} "export ANSIBLE_CONFIG=/root/kubespray/ansible.cfg && ansible-playbook -i /root/kubespray/inventory/tmaxcloud/inventory.ini --become --become-user=root /root/kubespray/cluster.yml > /dev/null"
+      - name: Check output log
+        if: always()
+        run: |
+          FATAL_LOG=`${{ steps.vars.outputs.SSH_MASTER }} "cat /root/kubespray/output.log | grep fatal"`
+          if [ ! -z "${FATAL_LOG}" ]; then
+            echo ${FATAL_LOG};
+          fi 
+          FAIL_LOG=`${{ steps.vars.outputs.SSH_MASTER }} "cat /root/kubespray/output.log | grep failed"`
+          if [ ! -z "${FAIL_LOG}" ]; then
+            echo ${FAIL_LOG};
+          fi 
+          cd ${{ steps.vars.outputs.TERRAFORM_DIR }}
+          terraform destroy -auto-approve
+          rm -f terraform.tfstate*
+          rm -f e2e_sshkey && rm -f e2e_sshkey.pub

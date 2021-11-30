@@ -40,6 +40,8 @@ variable "gfs_volume_size_in_gb" {}
 
 variable "master_volume_type" {}
 
+variable "node_volume_type" {}
+
 variable "public_key_path" {}
 
 variable "image" {}

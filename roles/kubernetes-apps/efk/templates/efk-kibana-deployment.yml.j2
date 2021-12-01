@@ -5,11 +5,14 @@ metadata:
   namespace: {{ efk_namespace }}
   labels:
     app: kibana
+  annotations:
+    traefik.ingress.kubernetes.io/service.serverstransport: tmaxcloud@file
 spec:
   type: {{ efk_kibana_service_type }}
   ports:
-  - port: 5601
-    targetPort: 5601
+  - port: 443
+    name: https
+    targetPort: 3000
   selector:
     app: kibana
 
@@ -33,6 +36,36 @@ spec:
         app: kibana
     spec:
       containers:
+      - name: gatekeeper
+        image: quay.io/keycloak/keycloak-gatekeeper:10.0.0
+        imagePullPolicy: Always
+        args:
+        - --client-id={{ efk_kibana_client_id }}
+        - --client-secret={{ kibana_client_secret.stdout }}
+        - --listen=:3000
+        - --upstream-url=http://127.0.0.1:5601
+        - --discovery-url=https://{{ efk_hyperauth_url }}/auth/realms/{{ efk_hyperauth_realm }}
+        - --secure-cookie=false
+        - --tls-cert=/etc/secrets/tls.crt
+        - --tls-private-key=/etc/secrets/tls.key
+        - --tls-ca-certificate=/etc/secrets/ca.crt
+        - --skip-openid-provider-tls-verify=true
+        - --enable-self-signed-tls=false
+        - --skip-upstream-tls-verify=true
+        - --upstream-keepalives=false
+        - --enable-default-deny=true
+        - --enable-refresh-tokens=true
+        - --enable-metrics=true
+        - --encryption-key={{ efk_kibana_encryption_key }}
+        - --resources=uri=/*|roles=kibana:kibana-manager
+        - --verbose
+        ports:
+        - containerPort: 3000
+          name: service
+        volumeMounts:
+        - name: secret
+          mountPath: "/etc/secrets"
+          readOnly: true
       - name: kibana
         image: {{ efk_kibana_image_repo }}:{{ efk_kibana_image_tag }}
         resources:
@@ -52,6 +85,9 @@ spec:
           name: config
           subPath: kibana.yml
       volumes:
+      - name: secret
+        secret:
+          secretName: kibana-secret
       - name: config
         configMap:
           name: kibana-config
@@ -63,8 +99,6 @@ data:
   kibana.yml: |
     server.name: kibana
     server.host: "0"
-    server.basePath: "/api/kibana"
-    server.rewriteBasePath: true
     elasticsearch.hosts: [ "http://{{ efk_es_svc_name }}:9200" ]
     elasticsearch.requestTimeout: "100000ms"
 kind: ConfigMap

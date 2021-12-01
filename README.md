@@ -135,7 +135,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [etcd](https://github.com/coreos/etcd) v3.5.0
   - [docker](https://www.docker.com/) v20.10 (see note)
   - [containerd](https://containerd.io/) v1.4.9
-  - [cri-o](http://cri-o.io/) v1.21 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [cri-o](http://cri-o.io/) v1.22 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.1
   - [calico](https://github.com/projectcalico/calico) v3.20.3

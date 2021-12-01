@@ -50,7 +50,7 @@ debian11 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora34 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
 fedora35 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-opensuse |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+opensuse |  :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 oracle7 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu16 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
 ubuntu18 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |

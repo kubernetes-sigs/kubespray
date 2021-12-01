@@ -17,20 +17,93 @@
   with_items:
     - { name: efk-namespace, file: efk-namespace.yml }
     - { name: efk-elasticsearch-statefulset, file: efk-elasticsearch-statefulset.yml }
-    - { name: efk-kibana-deployment, file: efk-kibana-deployment.yml }
+    - { name: efk-certificate, file: efk-certificate.yml}
+    - { name: efk-ingress, file: efk-ingress.yml}
     - { name: efk-fluentd-daemonset, file: efk-fluentd-daemonset.yml }
+    - { name: getKibanaClientSecret, file: getKibanaClientSecret.sh}
   register: efk_manifests
   when: inventory_hostname == groups['kube_control_plane'][0]
 
-- name: EFK | Apply Manifests
+- name: EFK | Apply efk-namespace.yml
   kube:
     kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/addons/efk/{{ item.item.file }}"
+    filename: "{{ kube_config_dir }}/addons/efk/{{ item }}"
     state: "latest"
     wait: true
   with_items:
-    - "{{ efk_manifests.results }}"
+    - "efk-namespace.yml"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
-  loop_control:
-    label: "{{ item.item.file }}"
+
+- name: EFK | Apply efk-elasticsearch-statefulset.yml
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/efk/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "efk-elasticsearch-statefulset.yml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: EFK | Apply efk-certificate.yml
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/efk/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "efk-certificate.yml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Register kibana_client_secret variable
+  ansible.builtin.shell: |
+    sudo chmod +755 getKibanaClientSecret.sh
+    sudo ./getKibanaClientSecret.sh
+  args:
+    chdir: "{{ kube_config_dir }}/addons/efk"
+  register: kibana_client_secret
+  ignore_errors: true
+
+- name: EFK | Generate Manifests for efk-kibana-deployment.yml
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/efk/{{ item.file }}"
+  with_items:
+    - { name: efk-kibana-deployment, file: efk-kibana-deployment.yml }
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: EFK | Apply efk-kibana-deployment.yml
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/efk/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "efk-kibana-deployment.yml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: EFK | Apply efk-ingress.yml
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/efk/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "efk-ingress.yml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: EFK | Apply efk-fluentd-daemonset.yml
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/efk/{{ item }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "efk-fluentd-daemonset.yml"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]

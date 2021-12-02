@@ -21,6 +21,9 @@ aws_etcd_size = "t2.medium"
 aws_kube_worker_num  = 4
 aws_kube_worker_size = "t2.medium"
 
+#EC2 Source/Dest Check
+aws_src_dest_check      = false
+
 #Settings AWS ELB
 
 aws_elb_api_port                = 6443

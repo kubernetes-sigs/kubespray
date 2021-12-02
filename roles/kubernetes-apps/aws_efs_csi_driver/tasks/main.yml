@@ -1,0 +1,31 @@
+---
+# tasks file for aws_efs_csi_driver
+- name: AWS EFS CSI Driver | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  with_items:
+    - { name: aws-efs-csi-namespace, file: aws-efs-csi-namespace.yml }
+    - { name: aws-efs-csi-driver, file: aws-efs-csi-driver.yml }
+    - { name: aws-efs-csi-controller-serviceaccount-rbac, file: aws-efs-csi-controller-serviceaccount-rbac.yml }
+    - { name: aws-efs-csi-node-serviceaccount, file: aws-efs-csi-node-serviceaccount.yml }
+    - { name: aws-efs-csi-controller-deployment, file: aws-efs-csi-controller-deployment.yml }
+    - { name: aws-efs-csi-node-daemonset, file: aws-efs-csi-node-daemonset.yml }
+    - { name: aws-efs-csi-storageclass, file: aws-efs-csi-storageclass.yml }
+  register: aws_efs_csi_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags: aws-efs-csi-driver
+
+- name: AWS EFS CSI Driver | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ aws_efs_csi_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+  tags: aws-efs-csi-driver

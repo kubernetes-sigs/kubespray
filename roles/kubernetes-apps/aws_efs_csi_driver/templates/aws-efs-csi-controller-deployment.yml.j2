@@ -1,0 +1,84 @@
+---
+# Controller Service
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: efs-csi-controller
+  namespace: {{ aws_efs_csi_namespace }}
+  labels:
+    app.kubernetes.io/name: aws-efs-csi-driver
+spec:
+  replicas: {{ aws_efs_csi_controller_replicas }}
+  selector:
+    matchLabels:
+      app: efs-csi-controller
+      app.kubernetes.io/name: aws-efs-csi-driver
+      app.kubernetes.io/instance: kustomize
+  template:
+    metadata:
+      labels:
+        app: efs-csi-controller
+        app.kubernetes.io/name: aws-efs-csi-driver
+        app.kubernetes.io/instance: kustomize
+    spec:
+      hostNetwork: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      serviceAccountName: efs-csi-controller-sa
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: efs-plugin
+          securityContext:
+            privileged: true
+          image: {{ aws_efs_csi_driver_image_repo }}:{{ aws_efs_csi_driver_image_tag }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - --endpoint=$(CSI_ENDPOINT)
+            - --logtostderr
+            - --v=2
+            - --delete-access-point-root-dir=false
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          ports:
+            - name: healthz
+              containerPort: 9909
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 5
+        - name: csi-provisioner
+          image: {{ aws_efs_csi_external_provisioner_image_repo }}:{{ aws_efs_csi_external_provisioner_image_tag }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - --csi-address=$(ADDRESS)
+            - --v=2
+            - --feature-gates=Topology=true
+            - --extra-create-metadata
+            - --leader-election
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: liveness-probe
+          image: {{ aws_efs_csi_livenessprobe_image_repo }}:{{ aws_efs_csi_livenessprobe_image_tag }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - --csi-address=/csi/csi.sock
+            - --health-port=9909
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+      volumes:
+        - name: socket-dir
+          emptyDir: {}

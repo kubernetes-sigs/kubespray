@@ -165,6 +165,59 @@ resource "aws_instance" "k8s-worker" {
 }
 
 /*
+* Create EFS file system and mount target
+*
+*/
+
+resource "aws_efs_file_system" "efs" {
+  encrypted = "true"
+  lifecycle_policy {
+    transition_to_ia = "AFTER_30_DAYS"
+  }
+  lifecycle_policy {
+    transition_to_primary_storage_class = "AFTER_1_ACCESS"
+  }
+
+  tags = {
+    Name = "kubernetes-${var.aws_cluster_name}-efs"
+  }
+}
+
+resource "aws_efs_backup_policy" "policy" {
+  file_system_id = aws_efs_file_system.efs.id
+
+  backup_policy {
+    status = "ENABLED"
+  }
+}
+
+resource "aws_efs_mount_target" "alpha" {
+  count = length(var.aws_cidr_subnets_public)
+
+  file_system_id = aws_efs_file_system.efs.id
+  subnet_id = element(module.aws-vpc.aws_subnet_ids_public, count.index)
+}
+
+/*
+* Add inbound rule to the default security group used by efs
+*
+*/
+
+data "aws_security_group" "default" {
+  name = "default"
+  vpc_id = module.aws-vpc.aws_vpc_id
+}
+
+resource "aws_security_group_rule" "allow-all-ingress" {
+  type = "ingress"
+  from_port = 0
+  to_port = 65535
+  protocol = "-1"
+  cidr_blocks = ["0.0.0.0/0"]
+  security_group_id = data.aws_security_group.default.id
+}
+
+/*
 * Create Kubespray Inventory File
 *
 */
@@ -181,6 +234,7 @@ data "template_file" "inventory" {
     list_etcd                 = join("\n", aws_instance.k8s-etcd.*.private_dns)
     elb_api_fqdn              = "apiserver_loadbalancer_domain_name=\"${module.aws-elb.aws_elb_api_fqdn}\""
     nlb_api_fqdn              = "apiserver_loadbalancer_domain_name=\"${module.aws-nlb.aws_nlb_api_fqdn}\""
+    aws_efs_filesystem        = "aws_efs_filesystem_id=${aws_efs_file_system.efs.id}"
   }
 }
 

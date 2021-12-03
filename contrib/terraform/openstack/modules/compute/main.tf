@@ -130,21 +130,21 @@ resource "openstack_networking_secgroup_rule_v2" "worker" {
 }
 
 resource "openstack_compute_servergroup_v2" "k8s_master" {
-  count    = "%{if var.use_server_groups}1%{else}0%{endif}"
+  count    = var.master_server_group_policy != "" ? 1 : 0
   name     = "k8s-master-srvgrp"
-  policies = ["anti-affinity"]
+  policies = [var.master_server_group_policy]
 }
 
 resource "openstack_compute_servergroup_v2" "k8s_node" {
-  count    = "%{if var.use_server_groups}1%{else}0%{endif}"
+  count    = var.node_server_group_policy != "" ? 1 : 0
   name     = "k8s-node-srvgrp"
-  policies = ["anti-affinity"]
+  policies = [var.node_server_group_policy]
 }
 
 resource "openstack_compute_servergroup_v2" "k8s_etcd" {
-  count    = "%{if var.use_server_groups}1%{else}0%{endif}"
+  count    = var.etcd_server_group_policy != "" ? 1 : 0
   name     = "k8s-etcd-srvgrp"
-  policies = ["anti-affinity"]
+  policies = [var.etcd_server_group_policy]
 }
 
 locals {
@@ -237,7 +237,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   security_groups = local.master_sec_groups
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    for_each = var.master_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
     content {
       group = openstack_compute_servergroup_v2.k8s_master[0].id
     }
@@ -284,7 +284,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   security_groups = local.master_sec_groups
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    for_each = var.master_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
     content {
       group = openstack_compute_servergroup_v2.k8s_master[0].id
     }
@@ -329,7 +329,7 @@ resource "openstack_compute_instance_v2" "etcd" {
   security_groups = [openstack_networking_secgroup_v2.k8s.name]
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_etcd[0]] : []
+    for_each = var.etcd_server_group_policy ? [openstack_compute_servergroup_v2.k8s_etcd[0]] : []
     content {
       group = openstack_compute_servergroup_v2.k8s_etcd[0].id
     }
@@ -371,7 +371,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   security_groups = local.master_sec_groups
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    for_each = var.master_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
     content {
       group = openstack_compute_servergroup_v2.k8s_master[0].id
     }
@@ -413,7 +413,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   security_groups = local.master_sec_groups
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
+    for_each = var.master_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
     content {
       group = openstack_compute_servergroup_v2.k8s_master[0].id
     }
@@ -441,6 +441,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
       uuid                  = local.image_to_use_node
       source_type           = "image"
       volume_size           = var.node_root_volume_size_in_gb
+      volume_type           = var.node_volume_type
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -454,7 +455,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   security_groups = local.worker_sec_groups
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    for_each = var.node_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
     content {
       group = openstack_compute_servergroup_v2.k8s_node[0].id
     }
@@ -486,6 +487,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
       uuid                  = local.image_to_use_node
       source_type           = "image"
       volume_size           = var.node_root_volume_size_in_gb
+      volume_type           = var.node_volume_type
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -499,7 +501,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   security_groups = local.worker_sec_groups
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    for_each = var.node_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
     content {
       group = openstack_compute_servergroup_v2.k8s_node[0].id
     }
@@ -527,6 +529,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
       uuid                  = local.image_to_use_node
       source_type           = "image"
       volume_size           = var.node_root_volume_size_in_gb
+      volume_type           = var.node_volume_type
       boot_index            = 0
       destination_type      = "volume"
       delete_on_termination = true
@@ -540,7 +543,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   security_groups = local.worker_sec_groups
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    for_each = var.node_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
     content {
       group = openstack_compute_servergroup_v2.k8s_node[0].id
     }
@@ -585,7 +588,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
   security_groups = [openstack_networking_secgroup_v2.k8s.name]
 
   dynamic "scheduler_hints" {
-    for_each = var.use_server_groups ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
+    for_each = var.node_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
     content {
       group = openstack_compute_servergroup_v2.k8s_node[0].id
     }

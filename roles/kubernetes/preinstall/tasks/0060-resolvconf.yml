@@ -1,7 +1,7 @@
 ---
 - name: create temporary resolveconf cloud init file
   command: cp -f /etc/resolv.conf "{{ resolvconffile }}"
-  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: Add domain/search/nameservers/options to resolv.conf
   blockinfile:
@@ -23,10 +23,9 @@
 
 - name: Remove search/domain/nameserver options before block
   replace:
-    dest: "{{ item[0] }}"
+    path: "{{ item[0] }}"
     regexp: '^{{ item[1] }}[^#]*(?=# Ansible entries BEGIN)'
     backup: yes
-    follow: yes
   with_nested:
     - "{{ [resolvconffile, base|default(''), head|default('')] | difference(['']) }}"
     - [ 'search ', 'nameserver ', 'domain ', 'options ' ]
@@ -34,11 +33,10 @@
 
 - name: Remove search/domain/nameserver options after block
   replace:
-    dest: "{{ item[0] }}"
+    path: "{{ item[0] }}"
     regexp: '(# Ansible entries END\n(?:(?!^{{ item[1] }}).*\n)*)(?:^{{ item[1] }}.*\n?)+'
     replace: '\1'
     backup: yes
-    follow: yes
   with_nested:
     - "{{ [resolvconffile, base|default(''), head|default('')] | difference(['']) }}"
     - [ 'search ', 'nameserver ', 'domain ', 'options ' ]
@@ -48,7 +46,7 @@
 - name: get temporary resolveconf cloud init file content
   command: cat {{ resolvconffile }}
   register: cloud_config
-  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: persist resolvconf cloud init file
   template:
@@ -57,4 +55,4 @@
     owner: root
     mode: 0644
   notify: Preinstall | update resolvconf for Flatcar Container Linux by Kinvolk
-  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]

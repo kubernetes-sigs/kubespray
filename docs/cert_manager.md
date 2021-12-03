@@ -11,29 +11,13 @@
 
 Cert-Manager is a native Kubernetes certificate management controller. It can help with issuing certificates from a variety of sources, such as Let’s Encrypt, HashiCorp Vault, Venafi, a simple signing key pair, or self signed. It will ensure certificates are valid and up to date, and attempt to renew certificates at a configured time before expiry.
 
-The Kubespray out-of-the-box cert-manager deployment uses a TLS Root CA certificate and key stored as the Kubernetes `ca-key-pair` secret consisting of `tls.crt` and `tls.key`, which are the base64 encode values of the TLS Root CA certificate and key respectively.
-
-Integration with other PKI/Certificate management solutions, such as HashiCorp Vault will require some further development changes to the current cert-manager deployment and may be introduced in the future.
-
 ## Kubernetes TLS Root CA Certificate/Key Secret
 
 If you're planning to secure your ingress resources using TLS client certificates, you'll need to create and deploy the Kubernetes `ca-key-pair` secret consisting of the Root CA certificate and key to your K8s cluster.
 
-If these are already available, simply update `templates\secret-cert-manager.yml.j2` with the base64 encoded values of your TLS Root CA certificate and key prior to enabling and deploying cert-manager.
-
-e.g.
-
-```shell
-$ cat ca.pem | base64 -w 0
-LS0tLS1CRUdJTiBDRVJU...
-
-$ cat ca-key.pem | base64 -w 0
-LS0tLS1CRUdJTiBSU0Eg...
-```
-
 For further information, read the official [Cert-Manager CA Configuration](https://cert-manager.io/docs/configuration/ca/) doc.
 
-Once the base64 encoded values have been added to `templates\secret-cert-manager.yml.j2`, cert-manager can now be enabled by editing your K8s cluster addons inventory e.g. `inventory\sample\group_vars\k8s_cluster\addons.yml` and setting `cert_manager_enabled` to true.
+`cert-manager` can now be enabled by editing your K8s cluster addons inventory e.g. `inventory\sample\group_vars\k8s_cluster\addons.yml` and setting `cert_manager_enabled` to true.
 
 ```ini
 # Cert manager deployment
@@ -56,7 +40,7 @@ ingress_nginx_enabled: true
 For example, if you're using the Nginx ingress controller, you can secure the Prometheus ingress by adding the annotation `cert-manager.io/cluster-issuer: ca-issuer` and the `spec.tls` section to the `Ingress` resource definition.
 
 ```yaml
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: prometheus-k8s
@@ -76,14 +60,47 @@ spec:
     http:
       paths:
       - path: /
+        pathType: ImplementationSpecific
         backend:
-          serviceName: prometheus-k8s
-          servicePort: web
+          service:
+            name: prometheus-k8s
+            port:
+              name: web
 ```
 
 Once deployed to your K8s cluster, every 3 months cert-manager will automatically rotate the Prometheus `prometheus.example.com` TLS client certificate and key, and store these as the Kubernetes `prometheus-dashboard-certs` secret.
 
-For further information, read the official [Cert-Manager Ingress](https://cert-manager.io/docs/usage/ingress/) doc.
+Please consult the official upstream documentation:
+
+- [cert-manager Ingress Usage](https://cert-manager.io/v1.5-docs/usage/ingress/)
+- [cert-manager Ingress Tutorial](https://cert-manager.io/v1.5-docs/tutorials/acme/ingress/#step-3-assign-a-dns-name)
+
+### ACME
+
+The ACME Issuer type represents a single account registered with the Automated Certificate Management Environment (ACME) Certificate Authority server. When you create a new ACME Issuer, cert-manager will generate a private key which is used to identify you with the ACME server.
+
+Certificates issued by public ACME servers are typically trusted by client’s computers by default. This means that, for example, visiting a website that is backed by an ACME certificate issued for that URL, will be trusted by default by most client’s web browsers. ACME certificates are typically free.
+
+- [ACME Configuration](https://cert-manager.io/v1.5-docs/configuration/acme/)
+- [ACME HTTP Validation](https://cert-manager.io/v1.5-docs/tutorials/acme/http-validation/)
+  - [HTTP01 Challenges](https://cert-manager.io/v1.5-docs/configuration/acme/http01/)
+- [ACME DNS Validation](https://cert-manager.io/v1.5-docs/tutorials/acme/dns-validation/)
+  - [DNS01 Challenges](https://cert-manager.io/v1.5-docs/configuration/acme/dns01/)
+- [ACME FAQ](https://cert-manager.io/v1.5-docs/faq/acme/)
+
+#### ACME With An Internal Certificate Authority
+
+The ACME Issuer with an internal certificate authority requires cert-manager to trust the certificate authority. This trust must be done at the cert-manager deployment level.
+To add a trusted certificate authority to cert-manager, add it's certificate to `group_vars/k8s-cluster/addons.yml`:
+
+```yaml
+cert_manager_trusted_internal_ca: |
+  -----BEGIN CERTIFICATE-----
+  [REPLACE with your CA certificate]
+  -----END CERTIFICATE-----
+```
+
+Once the CA is trusted, you can define your issuer normally.
 
 ### Create New TLS Root CA Certificate and Key
 

@@ -16,11 +16,7 @@ spec:
     spec:
       serviceAccountName: vsphere-csi-controller
       nodeSelector:
-{% if kube_version is version('v1.20.0', '<') %}
-        node-role.kubernetes.io/master: ""
-{% else %}
         node-role.kubernetes.io/control-plane: ""
-{% endif %}
       tolerations:
         - operator: "Exists"
           key: node-role.kubernetes.io/master
@@ -28,6 +24,18 @@ spec:
         - operator: "Exists"
           key: node-role.kubernetes.io/control-plane
           effect: NoSchedule
+{% if vsphere_csi_aggressive_node_drain %}
+        # set below toleration if you need an aggressive pod eviction in case when
+        # node becomes not-ready or unreachable. Default is 300 seconds if not specified.
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: {{ vsphere_csi_aggressive_node_not_ready_timeout }}
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: {{ vsphere_csi_aggressive_node_unreachable_timeout }}
+{% endif %}
       dnsPolicy: "Default"
       containers:
         - name: csi-attacher
@@ -51,6 +59,11 @@ spec:
             - "--timeout=300s"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election"
+{% if vsphere_csi_controller is version('v2.2.0', '>=') %}
+            - "--handle-volume-inuse-error=false"
+            - "--kube-api-qps=100"
+            - "--kube-api-burst=100"
+{% endif %}
           env:
             - name: ADDRESS
               value: /csi/csi.sock
@@ -97,6 +110,9 @@ spec:
             - name: healthz
               containerPort: 9808
               protocol: TCP
+            - name: prometheus
+              containerPort: 2112
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /healthz
@@ -125,6 +141,10 @@ spec:
             - "--fss-namespace=$(CSI_NAMESPACE)"
 {% endif %}
           imagePullPolicy: {{ k8s_image_pull_policy }}
+          ports:
+            - containerPort: 2113
+              name: prometheus
+              protocol: TCP
           env:
             - name: FULL_SYNC_INTERVAL_MINUTES
               value: "30"
@@ -154,6 +174,10 @@ spec:
             - "--csi-address=$(ADDRESS)"
             - "--leader-election"
             - "--default-fstype=ext4"
+{% if vsphere_csi_controller is version('v2.2.0', '>=') %}
+            - "--kube-api-qps=100"
+            - "--kube-api-burst=100"
+{% endif %}
             # needed only for topology aware setup
             #- "--feature-gates=Topology=true"
             #- "--strict-topology"
@@ -173,6 +197,8 @@ spec:
 apiVersion: v1
 data:
   "csi-migration": "false" # csi-migration feature is only available for vSphere 7.0U1
+  "csi-auth-check": "true"
+  "online-volume-extend": "true"
 kind: ConfigMap
 metadata:
   name: internal-feature-states.csi.vsphere.vmware.com
@@ -185,4 +211,24 @@ metadata:
 spec:
   attachRequired: true
   podInfoOnMount: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vsphere-csi-controller
+  namespace: kube-system
+  labels:
+    app: vsphere-csi-controller
+spec:
+  ports:
+    - name: ctlr
+      port: 2112
+      targetPort: 2112
+      protocol: TCP
+    - name: syncer
+      port: 2113
+      targetPort: 2113
+      protocol: TCP
+  selector:
+    app: vsphere-csi-controller
 

@@ -24,7 +24,7 @@
 
 - name: Stop if unknown OS
   assert:
-    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar Container Linux by Kinvolk', 'Suse', 'openSUSE Leap', 'ClearLinux', 'OracleLinux', 'AlmaLinux', 'Amazon']
+    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'Suse', 'openSUSE Leap', 'ClearLinux', 'OracleLinux', 'AlmaLinux', 'Rocky', 'Amazon']
     msg: "{{ ansible_distribution }} is not a known OS"
   when: not ignore_assert_errors
 
@@ -53,16 +53,6 @@
       - "calico_version in calico_crds_archive_checksums.keys()"
     msg: "Calico version not supported {{ calico_version }} not in {{ calico_crds_archive_checksums.keys() }}"
   when:
-    - kube_network_plugin == 'calico'
-    - not ignore_assert_errors
-
-- name: Stop if kube-proxy is enabled when using eBPF dataplane
-  assert:
-    that:
-      - kube_proxy_remove
-    msg: "kube-proxy needs to be disabled when using Calico with eBPF dataplane"
-  when:
-    - calico_bpf_enabled | default(false)
     - kube_network_plugin == 'calico'
     - not ignore_assert_errors
 
@@ -107,12 +97,15 @@
     - not ignore_assert_errors
     - inventory_hostname in groups['kube_node']
 
-- name: Stop when ShutdownGracePeriod less than ShutdownGracePeriodCriticalPods
+- name: Stop when dynamic_kubelet_configuration enabled for kubernetes >= 1.22
   assert:
-    that: kubelet_shutdown_grace_period > kubelet_shutdown_grace_period_critical_pods
-    msg: "ShutdownGracePeriod ({{ kubelet_shutdown_grace_period }}) needs to be greater than ShutdownGracePeriodCriticalPods ({{ kubelet_shutdown_grace_period_critical_pods }}) in order to give normal pods time to be evacuated, please see https://kubernetes.io/blog/2021/04/21/graceful-node-shutdown-beta/ for details"
+    that: not dynamic_kubelet_configuration
+    msg: >
+      Feature DynamicKubeletConfig is deprecated in 1.22 and will not move to GA.
+      It is planned to be removed from Kubernetes in the version 1.23.
+      Please use alternative ways to update kubelet configuration.
   when:
-    - kube_version is version('v1.21.0', '>=')
+    - kube_version is version('v1.22.0', '>=')
 
 # This assertion will fail on the safe side: One can indeed schedule more pods
 # on a node than the CIDR-range has space for when additional pods use the host
@@ -180,22 +173,14 @@
 
 - name: check cloud_provider value
   assert:
-    that: cloud_provider in ['generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci', 'external']
-    msg: "If set the 'cloud_provider' var must be set either to 'generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere', or external"
+    that: cloud_provider in ['gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci', 'external']
+    msg: "If set the 'cloud_provider' var must be set either to 'gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci' or 'external'"
   when:
     - cloud_provider is defined
     - not ignore_assert_errors
   tags:
     - cloud-provider
     - facts
-
-- name: Ensure minimum calico version
-  assert:
-    that: calico_version is version(calico_min_version_required, '>=')
-    msg: "calico_version is too low. Minimum version {{ calico_min_version_required }}"
-  run_once: yes
-  when:
-    - kube_network_plugin == 'calico'
 
 - name: Get current calico cluster version
   shell: "set -o pipefail && {{ bin_dir }}/calicoctl.sh version  | grep 'Cluster Version:' | awk '{ print $3}'"
@@ -213,8 +198,10 @@
 - name: Check that current calico version is enough for upgrade
   assert:
     that:
-      - calico_version_on_server.stdout is version( 'v3.0.0', '>=')
-    msg: "Your version of calico is not fresh enough for upgrade. Minimum version is v3.0.0"
+      - calico_version_on_server.stdout is version(calico_min_version_required, '>=')
+    msg: >
+      Your version of calico is not fresh enough for upgrade.
+      Minimum version is {{ calico_min_version_required }} supported by the previous kubespray release.
   when:
     - kube_network_plugin == 'calico'
     - 'calico_version_on_server.stdout is defined'
@@ -327,7 +314,7 @@
 
 - name: Stop if download_localhost is enabled for Flatcar Container Linux
   assert:
-    that: ansible_os_family not in ["Flatcar Container Linux by Kinvolk"]
+    that: ansible_os_family not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     msg: "download_run_once not supported for Flatcar Container Linux"
   when: download_run_once or download_force_cache
 
@@ -337,7 +324,7 @@
     msg: "containerd_version is too low. Minimum version {{ containerd_min_version_required }}"
   run_once: yes
   when:
-    - containerd_version != 'latest'
+    - containerd_version not in ['latest', 'edge', 'stable']
     - container_manager == 'containerd'
 
 - name: Stop if using deprecated containerd_config variable

@@ -20,7 +20,6 @@
   * [OVN4NFV](docs/ovn4nfv.md)
 * Ingress
   * [ALB Ingress](docs/ingress_controller/alb_ingress_controller.md)
-  * [Ambassador](docs/ingress_controller/ambassador.md)
   * [MetalLB](docs/metallb.md)
   * [Nginx Ingress](docs/ingress_controller/ingress_nginx.md)
 * [Cloud providers](docs/cloud.md)
@@ -35,7 +34,7 @@
   * [Fedora CoreOS](docs/fcos.md)
   * [OpenSUSE](docs/opensuse.md)
   * [RedHat Enterprise Linux](docs/rhel.md)
-  * [CentOS/OracleLinux/AlmaLinux](docs/centos8.md)
+  * [CentOS/OracleLinux/AlmaLinux/Rocky Linux](docs/centos8.md)
   * [Amazon Linux 2](docs/amazonlinux.md)
 * CRI
   * [Containerd](docs/containerd.md)

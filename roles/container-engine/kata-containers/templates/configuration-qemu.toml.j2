@@ -12,9 +12,32 @@
 
 [hypervisor.qemu]
 path = "/opt/kata/bin/qemu-system-x86_64"
+{% if kata_containers_version is version('2.2.0', '>=') %}
+kernel = "/opt/kata/share/kata-containers/vmlinux.container"
+{% else %}
 kernel = "/opt/kata/share/kata-containers/vmlinuz.container"
+{% endif %}
 image = "/opt/kata/share/kata-containers/kata-containers.img"
-machine_type = "pc"
+machine_type = "q35"
+
+# Enable confidential guest support.
+# Toggling that setting may trigger different hardware features, ranging
+# from memory encryption to both memory and CPU-state encryption and integrity.
+# The Kata Containers runtime dynamically detects the available feature set and
+# aims at enabling the largest possible one.
+# Default false
+# confidential_guest = true
+
+# List of valid annotation names for the hypervisor
+# Each member of the list is a regular expression, which is the base name
+# of the annotation, e.g. "path" for io.katacontainers.config.hypervisor.path"
+enable_annotations = []
+
+# List of valid annotations values for the hypervisor
+# Each member of the list is a path pattern as described by glob(3).
+# The default if not set is empty (all annotations rejected.)
+# Your distribution recommends: ["/opt/kata/bin/qemu-system-x86_64"]
+valid_hypervisor_paths = ["/opt/kata/bin/qemu-system-x86_64"]
 
 # Optional space-separated list of options to pass to the guest kernel.
 # For example, use `kernel_params = "vsyscall=emulate"` if you are having
@@ -37,6 +60,11 @@ firmware = ""
 # For example, `machine_accelerators = "nosmm,nosmbus,nosata,nopit,static-prt,nofw"`
 machine_accelerators=""
 
+# CPU features
+# comma-separated list of cpu features to pass to the cpu
+# For example, `cpu_features = "pmu=off,vmx=off"
+cpu_features="pmu=off"
+
 # Default number of vCPUs per SB/VM:
 # unspecified or 0                --> will be set to 1
 # < 0                             --> will be set to the actual number of physical cores
@@ -58,6 +86,7 @@ default_vcpus = 1
 # `default_maxvcpus = 8` the memory footprint will be small, but 8 will be the maximum number of
 # vCPUs supported by the SB/VM. In general, we recommend that you do not edit this variable,
 # unless you know what are you doing.
+# NOTICE: on arm platform with gicv2 interrupt controller, set it to 8.
 default_maxvcpus = 0
 
 # Bridges can be used to hot plug devices.
@@ -103,15 +132,24 @@ default_memory = {{ kata_containers_qemu_default_memory }}
 disable_block_device_use = false
 
 # Shared file system type:
-#   - virtio-9p (default)
-#   - virtio-fs
+#   - virtio-fs (default)
+#   - virtio-9p
+{% if kata_containers_version is version('2.2.0', '>=') %}
+shared_fs = "virtio-fs"
+{% else %}
 shared_fs = "virtio-9p"
+{% endif %}
 
 # Path to vhost-user-fs daemon.
-virtio_fs_daemon = "/opt/kata/bin/virtiofsd"
+virtio_fs_daemon = "/opt/kata/libexec/kata-qemu/virtiofsd"
+
+# List of valid annotations values for the virtiofs daemon
+# The default if not set is empty (all annotations rejected.)
+# Your distribution recommends: ["/opt/kata/libexec/kata-qemu/virtiofsd"]
+valid_virtio_fs_daemon_paths = ["/opt/kata/libexec/kata-qemu/virtiofsd"]
 
 # Default size of DAX cache in MiB
-virtio_fs_cache_size = 1024
+virtio_fs_cache_size = 0
 
 # Extra args for virtiofsd daemon
 #
@@ -119,7 +157,7 @@ virtio_fs_cache_size = 1024
 #   ["-o", "arg1=xxx,arg2", "-o", "hello world", "--arg3=yyy"]
 #
 # see `virtiofsd -h` for possible options.
-virtio_fs_extra_args = []
+virtio_fs_extra_args = ["--thread-pool-size=1"]
 
 # Cache mode:
 #
@@ -189,15 +227,39 @@ enable_vhost_user_store = false
 # simulated block device nodes for vhost-user devices to live.
 vhost_user_store_path = "/var/run/kata-containers/vhost-user"
 
+# Enable vIOMMU, default false
+# Enabling this will result in the VM having a vIOMMU device
+# This will also add the following options to the kernel's
+# command line: intel_iommu=on,iommu=pt
+#enable_iommu = true
+
+# Enable IOMMU_PLATFORM, default false
+# Enabling this will result in the VM device having iommu_platform=on set
+#enable_iommu_platform = true
+
+# List of valid annotations values for the vhost user store path
+# The default if not set is empty (all annotations rejected.)
+# Your distribution recommends: ["/var/run/kata-containers/vhost-user"]
+valid_vhost_user_store_paths = ["/var/run/kata-containers/vhost-user"]
+
 # Enable file based guest memory support. The default is an empty string which
 # will disable this feature. In the case of virtio-fs, this is enabled
 # automatically and '/dev/shm' is used as the backing folder.
 # This option will be ignored if VM templating is enabled.
 #file_mem_backend = ""
 
+# List of valid annotations values for the file_mem_backend annotation
+# The default if not set is empty (all annotations rejected.)
+# Your distribution recommends: [""]
+valid_file_mem_backends = [""]
+
 # Enable swap of vm memory. Default false.
 # The behaviour is undefined if mem_prealloc is also set to true
 #enable_swap = true
+
+# -pflash can add image file to VM. The arguments of it should be in format
+# of ["/path/to/flash0.img", "/path/to/flash1.img"]
+pflashes = []
 
 # This option changes the default hypervisor and kernel parameters
 # to enable debug output where available. This extra output is added
@@ -257,6 +319,11 @@ enable_debug = {{ kata_containers_qemu_debug }}
 # all practical purposes.
 #entropy_source= "/dev/urandom"
 
+# List of valid annotations values for entropy_source
+# The default if not set is empty (all annotations rejected.)
+# Your distribution recommends: ["/dev/urandom","/dev/random",""]
+valid_entropy_sources = ["/dev/urandom","/dev/random",""]
+
 # Path to OCI hook binaries in the *guest rootfs*.
 # This does not affect host-side hooks which must instead be added to
 # the OCI spec passed to the runtime.
@@ -273,6 +340,47 @@ enable_debug = {{ kata_containers_qemu_debug }}
 # Warnings will be logged if any error is encountered will scanning for hooks,
 # but it will not abort container execution.
 #guest_hook_path = "/usr/share/oci/hooks"
+#
+# Use rx Rate Limiter to control network I/O inbound bandwidth(size in bits/sec for SB/VM).
+# In Qemu, we use classful qdiscs HTB(Hierarchy Token Bucket) to discipline traffic.
+# Default 0-sized value means unlimited rate.
+#rx_rate_limiter_max_rate = 0
+# Use tx Rate Limiter to control network I/O outbound bandwidth(size in bits/sec for SB/VM).
+# In Qemu, we use classful qdiscs HTB(Hierarchy Token Bucket) and ifb(Intermediate Functional Block)
+# to discipline traffic.
+# Default 0-sized value means unlimited rate.
+#tx_rate_limiter_max_rate = 0
+
+# Set where to save the guest memory dump file.
+# If set, when GUEST_PANICKED event occurred,
+# guest memeory will be dumped to host filesystem under guest_memory_dump_path,
+# This directory will be created automatically if it does not exist.
+#
+# The dumped file(also called vmcore) can be processed with crash or gdb.
+#
+# WARNING:
+#   Dump guest’s memory can take very long depending on the amount of guest memory
+#   and use much disk space.
+#guest_memory_dump_path="/var/crash/kata"
+
+# If enable paging.
+# Basically, if you want to use "gdb" rather than "crash",
+# or need the guest-virtual addresses in the ELF vmcore,
+# then you should enable paging.
+#
+# See: https://www.qemu.org/docs/master/qemu-qmp-ref.html#Dump-guest-memory for details
+#guest_memory_dump_paging=false
+
+# Enable swap in the guest. Default false.
+# When enable_guest_swap is enabled, insert a raw file to the guest as the swap device
+# if the swappiness of a container (set by annotation "io.katacontainers.container.resource.swappiness")
+# is bigger than 0.
+# The size of the swap device should be 
+# swap_in_bytes (set by annotation "io.katacontainers.container.resource.swap_in_bytes") - memory_limit_in_bytes.
+# If swap_in_bytes is not set, the size should be memory_limit_in_bytes.
+# If swap_in_bytes and memory_limit_in_bytes is not set, the size should
+# be default_memory.
+#enable_guest_swap = true
 
 [factory]
 # VM templating support. Once enabled, new VMs are created from template
@@ -381,6 +489,16 @@ enable_debug = {{ kata_containers_qemu_debug }}
 #
 kernel_modules=[]
 
+# Enable debug console.
+
+# If enabled, user can connect guest OS running inside hypervisor
+# through "kata-runtime exec <sandbox-id>" command
+
+#debug_console_enabled = true
+
+# Agent connection dialing timeout value in seconds
+# (default: 30)
+#dial_timeout = 30
 
 [netmon]
 # If enabled, the network monitoring process gets started when the
@@ -433,6 +551,16 @@ disable_guest_seccomp=true
 # (default: disabled)
 #enable_tracing = true
 
+# Set the full url to the Jaeger HTTP Thrift collector.
+# The default if not set will be "http://localhost:14268/api/traces"
+#jaeger_endpoint = ""
+
+# Sets the username to be used if basic auth is required for Jaeger.
+#jaeger_user = ""
+
+# Sets the password to be used if basic auth is required for Jaeger.
+#jaeger_password = ""
+
 # If enabled, the runtime will not create a network namespace for shim and hypervisor processes.
 # This option may have some potential impacts to your host. It should only be used when you know what you're doing.
 # `disable_new_netns` conflicts with `enable_netmon`
@@ -451,9 +579,46 @@ disable_guest_seccomp=true
 # See: https://godoc.org/github.com/kata-containers/runtime/virtcontainers#ContainerType
 sandbox_cgroup_only={{ kata_containers_qemu_sandbox_cgroup_only }}
 
+# If specified, sandbox_bind_mounts identifieds host paths to be mounted (ro) into the sandboxes shared path.
+# This is only valid if filesystem sharing is utilized. The provided path(s) will be bindmounted into the shared fs directory.
+# If defaults are utilized, these mounts should be available in the guest at `/run/kata-containers/shared/containers/sandbox-mounts`
+# These will not be exposed to the container workloads, and are only provided for potential guest services.
+sandbox_bind_mounts=[]
+
 # Enabled experimental feature list, format: ["a", "b"].
 # Experimental features are features not stable enough for production,
 # they may break compatibility, and are prepared for a big version bump.
 # Supported experimental features:
 # (default: [])
 experimental=[]
+
+# If enabled, user can run pprof tools with shim v2 process through kata-monitor.
+# (default: false)
+# enable_pprof = true
+
+# WARNING: All the options in the following section have not been implemented yet.
+# This section was added as a placeholder. DO NOT USE IT!
+[image]
+# Container image service.
+#
+# Offload the CRI image management service to the Kata agent.
+# (default: false)
+#service_offload = true
+
+# Container image decryption keys provisioning.
+# Applies only if service_offload is true.
+# Keys can be provisioned locally (e.g. through a special command or
+# a local file) or remotely (usually after the guest is remotely attested).
+# The provision setting is a complete URL that lets the Kata agent decide
+# which method to use in order to fetch the keys.
+#
+# Keys can be stored in a local file, in a measured and attested initrd:
+#provision=data:///local/key/file
+#
+# Keys could be fetched through a special command or binary from the
+# initrd (guest) image, e.g. a firmware call:
+#provision=file:///path/to/bin/fetcher/in/guest
+#
+# Keys can be remotely provisioned. The Kata agent fetches them from e.g.
+# a HTTPS URL:
+#provision=https://my-key-broker.foo/tenant/<tenant-id>

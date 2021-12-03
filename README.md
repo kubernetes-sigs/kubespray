@@ -57,10 +57,10 @@ A simple way to ensure you get all the correct version of Ansible is to use the 
 You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mounts/) to get the inventory and ssh key into the container, like this:
 
 ```ShellSession
-docker pull quay.io/kubespray/kubespray:v2.16.0
+docker pull quay.io/kubespray/kubespray:v2.17.1
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.16.0 bash
+  quay.io/kubespray/kubespray:v2.17.1 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
@@ -115,14 +115,15 @@ vagrant up
 ## Supported Linux Distributions
 
 - **Flatcar Container Linux by Kinvolk**
-- **Debian** Buster, Jessie, Stretch, Wheezy
+- **Debian** Bullseye, Buster, Jessie, Stretch
 - **Ubuntu** 16.04, 18.04, 20.04
 - **CentOS/RHEL** 7, [8](docs/centos8.md)
-- **Fedora** 33, 34
+- **Fedora** 34, 35
 - **Fedora CoreOS** (see [fcos Note](docs/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
 - **Oracle Linux** 7, [8](docs/centos8.md)
 - **Alma Linux** [8](docs/centos8.md)
+- **Rocky Linux** [8](docs/centos8.md)
 - **Amazon Linux 2** (experimental: see [amazon linux notes](docs/amazonlinux.md))
 
 Note: Upstart/SysV init based OS types are not supported.
@@ -130,29 +131,28 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.21.3
-  - [etcd](https://github.com/coreos/etcd) v3.4.13
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.22.4
+  - [etcd](https://github.com/coreos/etcd) v3.5.0
   - [docker](https://www.docker.com/) v20.10 (see note)
-  - [containerd](https://containerd.io/) v1.4.6
-  - [cri-o](http://cri-o.io/) v1.21 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [containerd](https://containerd.io/) v1.4.9
+  - [cri-o](http://cri-o.io/) v1.22 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v0.9.1
-  - [calico](https://github.com/projectcalico/calico) v3.17.4
+  - [calico](https://github.com/projectcalico/calico) v3.20.3
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-  - [cilium](https://github.com/cilium/cilium) v1.8.9
+  - [cilium](https://github.com/cilium/cilium) v1.9.11
   - [flanneld](https://github.com/flannel-io/flannel) v0.14.0
-  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.7.1
-  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.3.0
-  - [multus](https://github.com/intel/multus-cni) v3.7.2
+  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.8.1
+  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.3.2
+  - [multus](https://github.com/intel/multus-cni) v3.8
   - [ovn4nfv](https://github.com/opnfv/ovn4nfv-k8s-plugin) v1.1.0
   - [weave](https://github.com/weaveworks/weave) v2.8.1
 - Application
-  - [ambassador](https://github.com/datawire/ambassador): v1.5
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
-  - [cert-manager](https://github.com/jetstack/cert-manager) v0.16.1
+  - [cert-manager](https://github.com/jetstack/cert-manager) v1.5.4
   - [coredns](https://github.com/coredns/coredns) v1.8.0
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v0.43.0
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.0.4
 
 ## Container Runtime Notes
 
@@ -161,7 +161,7 @@ Note: Upstart/SysV init based OS types are not supported.
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.19**
+- **Minimum required version of Kubernetes is v1.20**
 - **Ansible v2.9.x, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands, Ansible 2.10.x is experimentally supported for now**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.
@@ -216,8 +216,6 @@ option to leverage built-in cloud provider networking instead.
 See also [Network checker](docs/netcheck.md).
 
 ## Ingress Plugins
-
-- [ambassador](docs/ambassador.md): the Ambassador Ingress Controller and API gateway.
 
 - [nginx](https://kubernetes.github.io/ingress-nginx): the NGINX Ingress Controller.
 

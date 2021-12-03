@@ -7,7 +7,7 @@
   check_mode: false
 
 - include_tasks: bootstrap-centos.yml
-  when: '''ID="centos"'' in os_release.stdout_lines or ''ID="ol"'' in os_release.stdout_lines or ''ID="almalinux"'' in os_release.stdout_lines'
+  when: '''ID="centos"'' in os_release.stdout_lines or ''ID="ol"'' in os_release.stdout_lines or ''ID="almalinux"'' in os_release.stdout_lines or ''ID="rocky"'' in os_release.stdout_lines'
 
 - include_tasks: bootstrap-amazon.yml
   when: '''ID="amzn"'' in os_release.stdout_lines'
@@ -52,31 +52,37 @@
     gather_subset: '!all'
     filter: ansible_*
 
-- name: Assign inventory name to unconfigured hostnames (non-CoreOS, non-Flatcar, Suse and ClearLinux)
+- name: Assign inventory name to unconfigured hostnames (non-CoreOS, non-Flatcar, Suse and ClearLinux, non-Fedora)
   hostname:
     name: "{{ inventory_hostname }}"
   when:
     - override_system_hostname
-    - ansible_os_family not in ['Suse', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] and not is_fedora_coreos
+    - ansible_os_family not in ['Suse', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'ClearLinux']
+    - not ansible_distribution == "Fedora"
+    - not is_fedora_coreos
 
 # (2/3)
-- name: Assign inventory name to unconfigured hostnames (CoreOS, Flatcar, Suse and ClearLinux only)
+- name: Assign inventory name to unconfigured hostnames (CoreOS, Flatcar, Suse, ClearLinux and Fedora only)
   command: "hostnamectl set-hostname {{ inventory_hostname }}"
   register: hostname_changed
   become: true
   changed_when: false
-  when:
-    - override_system_hostname
-    - ansible_os_family in ['Suse', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] or is_fedora_coreos
+  when: >
+    override_system_hostname
+    and (ansible_os_family in ['Suse', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'ClearLinux']
+    or is_fedora_coreos
+    or ansible_distribution == "Fedora")
 
 # (3/3)
-- name: Update hostname fact (CoreOS, Flatcar, Suse and ClearLinux only)
+- name: Update hostname fact (CoreOS, Flatcar, Suse, ClearLinux and Fedora only)
   setup:
     gather_subset: '!all'
     filter: ansible_hostname
-  when:
-    - override_system_hostname
-    - ansible_os_family in ['Suse', 'Flatcar Container Linux by Kinvolk', 'ClearLinux'] or is_fedora_coreos
+  when: >
+    override_system_hostname
+    and (ansible_os_family in ['Suse', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'ClearLinux']
+    or is_fedora_coreos
+    or ansible_distribution == "Fedora")
 
 - name: "Install ceph-commmon package"
   package:

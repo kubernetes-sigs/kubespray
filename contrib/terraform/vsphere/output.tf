@@ -23,7 +23,7 @@ output "vsphere_network" {
 }
 
 output "vsphere_folder" {
-  value = terraform.workspace
+  value = var.folder
 }
 
 output "vsphere_pool" {

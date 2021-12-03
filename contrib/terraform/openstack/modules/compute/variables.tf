@@ -40,6 +40,8 @@ variable "gfs_volume_size_in_gb" {}
 
 variable "master_volume_type" {}
 
+variable "node_volume_type" {}
+
 variable "public_key_path" {}
 
 variable "image" {}
@@ -124,8 +126,16 @@ variable "worker_allowed_ports" {
 
 variable "use_access_ip" {}
 
-variable "use_server_groups" {
-  type = bool
+variable "master_server_group_policy" {
+  type = string
+}
+
+variable "node_server_group_policy" {
+  type = string
+}
+
+variable "etcd_server_group_policy" {
+  type = string
 }
 
 variable "extra_sec_groups" {

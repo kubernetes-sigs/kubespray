@@ -7,7 +7,8 @@ You can also individually control versions of components by explicitly defining 
 versions. Here are all version vars for each component:
 
 * docker_version
-* containerd_version
+* docker_containerd_version (relevant when `container_manager` == `docker`)
+* containerd_version (relevant when `container_manager` == `containerd`)
 * kube_version
 * etcd_version
 * calico_version
@@ -61,6 +62,29 @@ If you want to manually control the upgrade procedure, you can use the variables
 
 `upgrade_node_confirm: true` - waiting to confirmation to upgrade next node
 `upgrade_node_pause_seconds: 60` - pause 60 seconds before upgrade next node
+
+## Node-based upgrade
+
+If you don't want to upgrade all nodes in one run, you can use `--limit` [patterns](https://docs.ansible.com/ansible/latest/user_guide/intro_patterns.html#patterns-and-ansible-playbook-flags).
+
+Before using `--limit` run playbook `facts.yml` without the limit to refresh facts cache for all nodes:
+
+```ShellSession
+ansible-playbook facts.yml -b -i inventory/sample/hosts.ini
+```
+
+After this upgrade control plane and etcd groups [#5147](https://github.com/kubernetes-sigs/kubespray/issues/5147):
+
+```ShellSession
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 --limit "kube_control_plane:etcd"
+```
+
+Now you can upgrade other nodes in any order and quantity:
+
+```ShellSession
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 --limit "node4:node6:node7:node12"
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 --limit "node5*"
+```
 
 ## Multiple upgrades
 
@@ -311,6 +335,12 @@ Upgrade etcd:
 
 ```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=etcd
+```
+
+Upgrade etcd without rotating etcd certs:
+
+```ShellSession
+ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=etcd --limit=etcd --skip-tags=etcd-secrets
 ```
 
 Upgrade kubelet:

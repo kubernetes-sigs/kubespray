@@ -8,26 +8,28 @@ The setup looks like following
 
 ```text
    Kubernetes cluster
-+-----------------------+
-|   +--------------+    |
-|   | +--------------+  |
-|   | |              |  |
-|   | | Master/etcd  |  |
-|   | | node(s)      |  |
-|   +-+              |  |
-|     +--------------+  |
-|           ^           |
-|           |           |
-|           v           |
-|   +--------------+    |
-|   | +--------------+  |
-|   | |              |  |
-|   | |    Worker    |  |
-|   | |    node(s)   |  |
-|   +-+              |  |
-|     +--------------+  |
-+-----------------------+
++--------------------------+
+|      +--------------+    |
+|      | +--------------+  |
+| -->  | |              |  |
+|      | | Master/etcd  |  |
+|      | | node(s)      |  |
+|      +-+              |  |
+|        +--------------+  |
+|              ^           |
+|              |           |
+|              v           |
+|      +--------------+    |
+|      | +--------------+  |
+| -->  | |              |  |
+|      | |    Worker    |  |
+|      | |    node(s)   |  |
+|      +-+              |  |
+|        +--------------+  |
++--------------------------+
 ```
+
+The nodes uses a private network for node to node communication and a public interface for all external communication.
 
 ## Requirements
 
@@ -94,9 +96,10 @@ terraform destroy --var-file cluster-settings.tfvars \
 
 ## Variables
 
-* `hostname`: A valid domain name, e.g. example.com. The maximum length is 128 characters.
+* `prefix`: Prefix to add to all resources, if set to "" don't set any prefix
 * `template_name`: The name or UUID  of a base image
-* `username`: a user to access the nodes
+* `username`: a user to access the nodes, defaults to "ubuntu"
+* `private_network_cidr`: CIDR to use for the private network, defaults to "172.16.0.0/24"
 * `ssh_public_keys`: List of public SSH keys to install on all machines
 * `zone`: The zone where to run the cluster
 * `machines`: Machines to provision. Key of this object will be used as the name of the machine
@@ -104,3 +107,6 @@ terraform destroy --var-file cluster-settings.tfvars \
   * `cpu`: number of cpu cores
   * `mem`: memory size in MB
   * `disk_size`: The size of the storage in GB
+  * `additional_disks`: Additional disks to attach to the node.
+    * `size`: The size of the additional disk in GB
+    * `tier`: The tier of disk to use (`maxiops` is the only one you can choose atm)

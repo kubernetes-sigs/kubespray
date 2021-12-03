@@ -11,6 +11,13 @@
   set_fact:
     is_ostree: "{{ ostree.stat.exists }}"
 
+- name: get ostree version
+  shell: "set -o pipefail && rpm-ostree --version | awk -F\\' '/Version/{print $2}'"
+  args:
+    executable: /bin/bash
+  register: ostree_version
+  when: is_ostree
+
 - name: gather os specific variables
   include_vars: "{{ item }}"
   with_first_found:
@@ -79,6 +86,13 @@
     dest: /etc/crio/crio.conf
     mode: 0644
   register: config_install
+
+- name: Install config.json
+  template:
+    src: config.json.j2
+    dest: /etc/crio/config.json
+    mode: 0644
+  register: reg_auth_install
 
 - name: Add skopeo pkg to install
   set_fact:
@@ -198,6 +212,7 @@
     state: restarted
   when:
     - config_install.changed
+    - reg_auth_install.changed
     - not package_install.changed
     - not service_start.changed
 

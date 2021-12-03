@@ -25,7 +25,7 @@ not _kube_node_.
 
 There are also two special groups:
 
-* **calico_rr** : explained for [advanced Calico networking cases](calico.md)
+* **calico_rr** : explained for [advanced Calico networking cases](/docs/calico.md)
 * **bastion** : configure a bastion host if your nodes are not directly reachable
 
 Below is a complete inventory example:
@@ -98,46 +98,111 @@ task vars (only for the task) | Unused for roles, but only for helper scripts
 
 The following tags are defined in playbooks:
 
-|                 Tag name | Used for
-|--------------------------|---------
-|                     apps | K8s apps definitions
-|                    azure | Cloud-provider Azure
-|                  bastion | Setup ssh config for bastion
-|             bootstrap-os | Anything related to host OS configuration
-|                   calico | Network plugin Calico
-|                    canal | Network plugin Canal
-|           cloud-provider | Cloud-provider related tasks
-|                   docker | Configuring docker for hosts
-|                 download | Fetching container images to a delegate host
-|                     etcd | Configuring etcd cluster
-|         etcd-pre-upgrade | Upgrading etcd cluster
-|             etcd-secrets | Configuring etcd certs/keys
-|                 etchosts | Configuring /etc/hosts entries for hosts
-|                    facts | Gathering facts and misc check results
-|                  flannel | Network plugin flannel
-|                      gce | Cloud-provider GCP
-|          k8s-pre-upgrade | Upgrading K8s cluster
-|              k8s-secrets | Configuring K8s certs/keys
-|           kube-apiserver | Configuring static pod kube-apiserver
-|  kube-controller-manager | Configuring static pod kube-controller-manager
-|                  kubectl | Installing kubectl and bash completion
-|                  kubelet | Configuring kubelet service
-|               kube-proxy | Configuring static pod kube-proxy
-|           kube-scheduler | Configuring static pod kube-scheduler
-|                localhost | Special steps for the localhost (ansible runner)
-|                   master | Configuring K8s master node role
-|               netchecker | Installing netchecker K8s app
-|                  network | Configuring networking plugins for K8s
-|                    nginx | Configuring LB for kube-apiserver instances
-|                     node | Configuring K8s minion (compute) node role
-|                openstack | Cloud-provider OpenStack
-|               preinstall | Preliminary configuration steps
-|               resolvconf | Configuring /etc/resolv.conf for hosts/apps
-|                  upgrade | Upgrading, f.e. container images/binaries
-|                   upload | Distributing images/binaries across hosts
-|                    weave | Network plugin Weave
-|              ingress_alb | AWS ALB Ingress Controller
-|              ambassador  | Ambassador Ingress Controller
+|                       Tag name | Used for
+|--------------------------------|---------
+|                       annotate | Create kube-router annotation
+|                           apps | K8s apps definitions
+|                        asserts | Check tasks for download role
+|             aws-ebs-csi-driver | Configuring csi driver: aws-ebs
+|               azure-csi-driver | Configuring csi driver: azure
+|                        bastion | Setup ssh config for bastion
+|                   bootstrap-os | Anything related to host OS configuration
+|                         calico | Network plugin Calico
+|                      calico_rr | Configuring Calico route reflector
+|                          canal | Network plugin Canal
+|             cephfs-provisioner | Configuring CephFS
+|                   cert-manager | Configuring certificate manager for K8s
+|                         cilium | Network plugin Cilium
+|              cinder-csi-driver | Configuring csi driver: cinder
+|                         client | Kubernetes clients role
+|                 cloud-provider | Cloud-provider related tasks
+|                  cluster-roles | Configuring cluster wide application (psp ...)
+|                            cni | CNI plugins for Network Plugins
+|                     containerd | Configuring containerd engine runtime for hosts
+|   container_engine_accelerator | Enable nvidia accelerator for runtimes
+|               container-engine | Configuring container engines
+|             container-runtimes | Configuring container runtimes
+|                        coredns | Configuring coredns deployment
+|                           crio | Configuring crio container engine for hosts
+|                           crun | Configuring crun runtime
+|                     csi-driver | Configuring csi driver
+|                      dashboard | Installing and configuring the Kubernetes Dashboard
+|                            dns | Remove dns entries when resetting
+|                         docker | Configuring docker engine runtime for hosts
+|                       download | Fetching container images to a delegate host
+|                           etcd | Configuring etcd cluster
+|                   etcd-secrets | Configuring etcd certs/keys
+|                       etchosts | Configuring /etc/hosts entries for hosts
+|      external-cloud-controller | Configure cloud controllers
+|             external-openstack | Cloud controller : openstack
+|           external-provisioner | Configure external provisioners
+|               external-vsphere | Cloud controller : vsphere
+|                          facts | Gathering facts and misc check results
+|                          files | Remove files when resetting
+|                        flannel | Network plugin flannel
+|                            gce | Cloud-provider GCP
+|              gcp-pd-csi-driver | Configuring csi driver: gcp-pd
+|                         gvisor | Configuring gvisor runtime
+|                           helm | Installing and configuring Helm
+|             ingress-controller | Configure ingress controllers
+|                    ingress_alb | AWS ALB Ingress Controller
+|                           init | Windows kubernetes init nodes
+|                       iptables | Flush and clear iptable when resetting
+|                k8s-pre-upgrade | Upgrading K8s cluster
+|                    k8s-secrets | Configuring K8s certs/keys
+|                 k8s-gen-tokens | Configuring K8s tokens
+|                kata-containers | Configuring kata-containers runtime
+|                           krew | Install and manage krew
+|                        kubeadm | Roles linked to kubeadm tasks
+|                 kube-apiserver | Configuring static pod kube-apiserver
+|        kube-controller-manager | Configuring static pod kube-controller-manager
+|                        kubectl | Installing kubectl and bash completion
+|                        kubelet | Configuring kubelet service
+|                       kube-ovn | Network plugin kube-ovn
+|                    kube-router | Network plugin kube-router
+|                     kube-proxy | Configuring static pod kube-proxy
+|                      localhost | Special steps for the localhost (ansible runner)
+|         local-path-provisioner | Configure External provisioner: local-path
+|       local-volume-provisioner | Configure External provisioner: local-volume
+|                        macvlan | Network plugin macvlan
+|                         master | Configuring K8s master node role
+|                        metallb | Installing and configuring metallb
+|                 metrics_server | Configuring metrics_server
+|                     netchecker | Installing netchecker K8s app
+|                        network | Configuring networking plugins for K8s
+|                         mounts | Umount kubelet dirs when reseting
+|                         multus | Network plugin multus
+|                          nginx | Configuring LB for kube-apiserver instances
+|                           node | Configuring K8s minion (compute) node role
+|                   nodelocaldns | Configuring nodelocaldns daemonset
+|                     node-label | Tasks linked to labeling of nodes
+|                   node-webhook | Tasks linked to webhook (grating access to resources)
+|                     nvidia_gpu | Enable nvidia accelerator for runtimes
+|                            oci | Cloud provider: oci
+|                        ovn4nfv | Network plugin ovn4nfv
+|             persistent_volumes | Configure csi volumes
+| persistent_volumes_aws_ebs_csi | Configuring csi driver: aws-ebs
+| persistent_volumes_cinder_csi  | Configuring csi driver: cinder
+| persistent_volumes_gcp_pd_csi  | Configuring csi driver: gcp-pd
+| persistent_volumes_openstack   | Configuring csi driver: openstack
+|              policy-controller | Configuring Calico policy controller
+|                    post-remove | Tasks running post-remove operation
+|                   post-upgrade | Tasks running post-upgrade operation
+|                     pre-remove | Tasks running pre-remove operation
+|                    pre-upgrade | Tasks running pre-upgrade operation
+|                     preinstall | Preliminary configuration steps
+|                       registry | Configuring local docker registry
+|                          reset | Tasks running doing the node reset
+|                     resolvconf | Configuring /etc/resolv.conf for hosts/apps
+|                rbd-provisioner | Configure External provisioner: rdb
+|                       services | Remove services (etcd, kubelet etc...) when resetting
+|                       snapshot | Enabling csi snapshot
+|            snapshot-controller | Configuring csi snapshot controller
+|                        upgrade | Upgrading, f.e. container images/binaries
+|                         upload | Distributing images/binaries across hosts
+|             vsphere-csi-driver | Configuring csi driver: vsphere
+|                          weave | Network plugin Weave
+|                      win_nodes | Running windows specific tasks
 
 Note: Use the ``bash scripts/gen_tags.sh`` command to generate a list of all
 tags found in the codebase. New tags will be listed with the empty "Used for"
@@ -186,7 +251,7 @@ For more information about Ansible and bastion hosts, read
 
 ## Mitogen
 
-You can use [mitogen](mitogen.md) to speed up kubespray.
+Mitogen support is deprecated, please see [mitogen related docs](/docs/mitogen.md) for useage and reasons for deprecation.
 
 ## Beyond ansible 2.9
 

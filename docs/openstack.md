@@ -12,6 +12,7 @@ Kubespray has been tested on a number of OpenStack Public Clouds including (in a
 - [ELASTX](https://elastx.se/)
 - [EnterCloudSuite](https://www.entercloudsuite.com/)
 - [FugaCloud](https://fuga.cloud/)
+- [Infomaniak](https://infomaniak.com)
 - [Open Telekom Cloud](https://cloud.telekom.de/) : requires to set the variable `wait_for_floatingip = "true"` in your cluster.tfvars
 - [OVHcloud](https://www.ovhcloud.com/)
 - [Rackspace](https://www.rackspace.com/)

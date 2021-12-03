@@ -151,7 +151,7 @@ At this point, you will have an even number of nodes.
 Everything should still be working, and you should only have problems if the cluster decides to elect a new etcd leader before you remove a node.
 Even so, running applications should continue to be available.
 
-If you add multiple ectd nodes with one run, you might want to append `-e etcd_retries=10` to increase the amount of retries between each ectd node join.
+If you add multiple etcd nodes with one run, you might want to append `-e etcd_retries=10` to increase the amount of retries between each etcd node join.
 Otherwise the etcd cluster might still be processing the first join and fail on subsequent nodes. `etcd_retries=10` might work to join 3 new nodes.
 
 ### 2) Add the new node to apiserver config

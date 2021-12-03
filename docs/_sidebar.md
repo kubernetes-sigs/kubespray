@@ -17,7 +17,6 @@
   * [Kube OVN](docs/kube-ovn.md)
   * [Weave](docs/weave.md)
   * [Multus](docs/multus.md)
-  * [OVN4NFV](docs/ovn4nfv.md)
 * Ingress
   * [ALB Ingress](docs/ingress_controller/alb_ingress_controller.md)
   * [MetalLB](docs/metallb.md)

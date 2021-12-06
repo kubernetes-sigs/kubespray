@@ -1,0 +1,19 @@
+---
+
+- name: Check which kube-control nodes are already members of the cluster
+  command: "{{ bin_dir }}/kubectl get nodes --selector=node-role.kubernetes.io/control-plane -o json"
+  register: kube_control_planes_raw
+  ignore_errors: yes
+  changed_when: false
+
+- name: Set fact joined_control_panes
+  set_fact:
+    joined_control_planes: "{{ ((kube_control_planes_raw.stdout| from_json)['items'])| default([]) | map (attribute='metadata') | map (attribute='name') | list }}"
+  delegate_to: item
+  loop: "{{ groups['kube_control_plane'] }}"
+  when: kube_control_planes_raw is succeeded
+  run_once: yes
+
+- name: Set fact first_kube_control_plane
+  set_fact:
+    first_kube_control_plane: "{{ joined_control_planes|default([]) | first | default(groups['kube_control_plane']|first) }}"

@@ -34,6 +34,19 @@
   changed_when: false
   check_mode: no
 
+- name: check existence of /etc/resolvconf/resolv.conf.d
+  stat:
+    path: /etc/resolvconf/resolv.conf.d
+  failed_when: false
+  register: resolvconfd_path
+
+- name: check status of /etc/resolv.conf
+  stat:
+    path: /etc/resolv.conf
+    follow: no
+  failed_when: false
+  register: resolvconf_stat
+
 - name: check systemd-resolved
   # noqa 303 Should we use service_facts for this?
   command: systemctl is-active systemd-resolved
@@ -45,7 +58,7 @@
 - name: set dns facts
   set_fact:
     resolvconf: >-
-      {%- if resolvconf.rc == 0 -%}true{%- else -%}false{%- endif -%}
+      {%- if resolvconf.rc == 0 and resolvconfd_path.stat.isdir is defined and resolvconfd_path.stat.isdir -%}true{%- else -%}false{%- endif -%}
     bogus_domains: |-
       {% for d in [ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([]) -%}
       {{ dns_domain }}.{{ d }}./{{ d }}.{{ d }}./com.{{ d }}./

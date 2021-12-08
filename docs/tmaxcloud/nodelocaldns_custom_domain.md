@@ -54,6 +54,18 @@ wildcard 도메인은 `*.my.domain  IN   A 1.2.3.4` 형식이라서 'my.domain' 
   ```
   사용 예시:  `{{호스트}}.hypercloud.shinhan.com` DNS query할 때 응답은 10.12.10.12 
 
+## External CoreDNS - k8s_gatway
+Kubernetes external resources (LoadBalancer Service, Ingress) 외부에서 도메인으로 접속 할 수 있게 해 주는 기능입니다.
+* External CoreDNS 사용을 휘한 설정입니다.
+  파일: `inventory/tmaxcloud/group_vars/k8s_cluster/k8s-cluster.yml`
+  ```yaml
+  enable_excoredns: true
+  excoredns_zone: "hypercloud.shinhan.com"
+  ```
+  `true` : External CoreDNS 사용, `false` External CoreDNS 미사용  
+  `excoredns_zone`: 사용하고 싶은 도메인 이름 (ex: hypercloud.shinhan.com)  
+  Service 사용 예시: {{ ServiceName }}.{{ ServiceNamespace }}.hypercloud.shinhan.com  
+  Ingress 사용 예시: ingress의 FQDN hostname - spec.rules[].host  
 
 ## Static POD `kube-apiserver` 에 'clusterFirstWithHostNet' dnsPolicy 적용
 기본적으로 kube-apiserver POD는 hostNetwork를 사용해서 cluster 네트워크랑 통신 안돼서 cluster domain 접속 안됩니다.  

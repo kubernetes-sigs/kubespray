@@ -1,0 +1,71 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: excoredns
+  namespace: kube-system
+  labels:
+    k8s-app: "excoredns"
+    addonmanager.kubernetes.io/mode: Reconcile
+    kubernetes.io/name: "excoredns"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: "excoredns"
+  template:
+    metadata:
+      labels:
+        k8s-app: "excoredns"
+      annotations:
+        createdby: 'kubespray'
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      serviceAccountName: excoredns
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: "kubernetes.io/hostname"
+            labelSelector:
+              matchLabels:
+                k8s-app: excoredns
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: In
+                values:
+                - ""
+      containers:
+      - name: "excoredns"
+        image: "{{ excoredns_image_repo }}:{{ excoredns_image_tag }}"
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        args: [ "-conf", "/etc/coredns/Corefile" ]
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/coredns
+        resources:
+          limits:
+            memory: {{ dns_memory_limit }}
+          requests:
+            cpu: {{ dns_cpu_requests }}
+            memory: {{ dns_memory_requests }}
+        ports:
+        - {containerPort: 53, protocol: UDP, name: udp-53}
+        - {containerPort: 53, protocol: TCP, name: tcp-53}
+      dnsPolicy: Default
+      volumes:
+        - name: config-volume
+          configMap:
+            name: excoredns
+            items:
+            - key: Corefile
+              path: Corefile

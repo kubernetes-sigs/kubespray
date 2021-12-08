@@ -30,10 +30,14 @@ jobs:
       - name: Create VMs
         run: |
           cd ${{ steps.vars.outputs.TERRAFORM_DIR }}
-          terraform init
-          rm -f e2e_sshkey* && ssh-keygen -b 2048 -t rsa -f ./e2e_sshkey -q -N ""
+          if [ -f "/home/github/terraform/e2e_sshkey" ]; then
+            terraform destroy -auto-approve || true
+            rm -f terraform.tfstate*
+            rm -f e2e_sshkey*
+          fi
+          ssh-keygen -b 2048 -t rsa -f ./e2e_sshkey -q -N ""
           chmod 600 e2e_sshkey && chmod 600 e2e_sshkey.pub
-          terraform apply -auto-approve
+          terraform init && terraform apply -auto-approve
           for ((i=0; i<=30; i++))
           do
             ${{ steps.vars.outputs.SSH_MASTER }} "echo 2>&1" && break || echo "Waits master VM to be up"

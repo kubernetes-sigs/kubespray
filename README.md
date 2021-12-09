@@ -58,11 +58,11 @@ You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mou
 
 ```ShellSession
 docker pull quay.io/kubespray/kubespray:v2.17.1
-docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
+docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/,dst=/kubespray/inventory/ \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
   quay.io/kubespray/kubespray:v2.17.1 bash
 # Inside the container you may now run the kubespray playbooks:
-ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
+ansible-playbook -i inventory/sample/inventory.ini cluster.yml
 ```
 
 ### Vagrant

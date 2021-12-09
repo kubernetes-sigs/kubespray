@@ -62,18 +62,3 @@
   when:
     - inventory_hostname in groups['etcd']
     - etcd_member_id.stdout | length > 0
-
-# Delete node from kubeadm-config
-- name: Update kubeadm-config configmap removing control-plane no longer existing endpoints
-  vars:
-    kubeadm_config_cm_content: "{{ lookup('kubernetes.core.k8s', kind='ConfigMap', namespace='kube-system', resource_name='kubeadm-config', kubeconfig=keos_kubeconfig_path) }}"
-  kubernetes.core.k8s:
-    kubeconfig: "{{ keos_kubeconfig_path }}"
-    definition:
-      api_version: v1
-      kind: ConfigMap
-      metadata:
-        name: kubeadm-config-test
-        namespace: default
-      data:
-        ClusterStatus: "{{ kubeadm_config_cm_content.data.ClusterStatus | regex_replace( node |default(kube_node)  + ':\n' + ' *advertiseAddress: ([0-9]{1,3}.){3}[0-9]{1,3}\n' + ' *bindPort: [0-9]{1,5}' , '') }}"

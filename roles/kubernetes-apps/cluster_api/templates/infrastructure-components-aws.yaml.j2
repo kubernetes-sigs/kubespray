@@ -4118,10 +4118,28 @@ metadata:
   namespace: capa-system
 ---
 apiVersion: v1
+kind: Secret
+metadata:
+  name: capa-controller-manager-token
+  namespace: capa-system
+  annotations:
+     kubernetes.io/service-account.name: capa-controller-manager
+type: kubernetes.io/service-account-token
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: capa-controller-manager
   namespace: capi-webhook-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: capa-controller-manager-token
+  namespace: capi-webhook-system
+  annotations:
+     kubernetes.io/service-account.name: capa-controller-manager
+type: kubernetes.io/service-account-token
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -4526,6 +4544,9 @@ spec:
         volumeMounts:
         - mountPath: /home/.aws
           name: credentials
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capa-controller-manager-token
+          readOnly: true
       - args:
         - --secure-listen-address=0.0.0.0:8443
         - --upstream=http://127.0.0.1:8080/
@@ -4536,6 +4557,10 @@ spec:
         ports:
         - containerPort: 8443
           name: https
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capa-controller-manager-token
+          readOnly: true
       securityContext:
         fsGroup: 1000
       serviceAccountName: capa-controller-manager
@@ -4547,6 +4572,10 @@ spec:
       - name: credentials
         secret:
           secretName: capa-manager-bootstrap-credentials
+      - name: capa-controller-manager-token
+        secret:
+          defaultMode: 420
+          secretName: capa-controller-manager-token
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -4595,6 +4624,9 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capa-controller-manager-token
+          readOnly: true
       - args:
         - --secure-listen-address=0.0.0.0:8443
         - --upstream=http://127.0.0.1:8080/
@@ -4605,6 +4637,10 @@ spec:
         ports:
         - containerPort: 8443
           name: https
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capa-controller-manager-token
+          readOnly: true
       serviceAccountName: capa-controller-manager
       terminationGracePeriodSeconds: 10
       tolerations:
@@ -4615,6 +4651,10 @@ spec:
         secret:
           defaultMode: 420
           secretName: capa-webhook-service-cert
+      - name: capa-controller-manager-token
+        secret:
+          defaultMode: 420
+          secretName: capa-controller-manager-token
 ---
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate

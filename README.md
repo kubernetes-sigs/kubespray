@@ -62,7 +62,7 @@ docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/,dst=/kubespray/
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
   quay.io/kubespray/kubespray:v2.17.1 bash
 # Inside the container you may now run the kubespray playbooks:
-ansible-playbook -i inventory/sample/inventory.ini cluster.yml
+ansible-playbook -i inventory/sample/inventory.ini --become --become-user=root cluster.yml
 ```
 
 ### Vagrant

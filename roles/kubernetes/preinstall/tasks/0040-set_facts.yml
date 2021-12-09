@@ -34,6 +34,39 @@
   changed_when: false
   check_mode: no
 
+- name: check existence of /etc/resolvconf/resolv.conf.d
+  stat:
+    path: /etc/resolvconf/resolv.conf.d
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  failed_when: false
+  register: resolvconfd_path
+
+- name: check status of /etc/resolv.conf
+  stat:
+    path: /etc/resolv.conf
+    follow: no
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  failed_when: false
+  register: resolvconf_stat
+
+- block:
+
+    - name: get content of /etc/resolv.conf
+      slurp:
+        src: /etc/resolv.conf
+      register: resolvconf_slurp
+
+    - name: get currently configured nameservers
+      set_fact:
+        configured_nameservers: "{{ resolvconf_slurp.content | b64decode | regex_findall('\\s*nameserver\\s*(.*)') | ipaddr }}"
+      when: resolvconf_slurp.content is defined
+
+  when: resolvconf_stat.stat.exists is defined and resolvconf_stat.stat.exists
+
 - name: check systemd-resolved
   # noqa 303 Should we use service_facts for this?
   command: systemctl is-active systemd-resolved
@@ -45,7 +78,7 @@
 - name: set dns facts
   set_fact:
     resolvconf: >-
-      {%- if resolvconf.rc == 0 -%}true{%- else -%}false{%- endif -%}
+      {%- if resolvconf.rc == 0 and resolvconfd_path.stat.isdir is defined and resolvconfd_path.stat.isdir -%}true{%- else -%}false{%- endif -%}
     bogus_domains: |-
       {% for d in [ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([]) -%}
       {{ dns_domain }}.{{ d }}./{{ d }}.{{ d }}./com.{{ d }}./
@@ -147,7 +180,7 @@
 - name: generate nameservers to resolvconf
   set_fact:
     nameserverentries:
-      nameserver {{ ( ( [nodelocaldns_ip] if enable_nodelocaldns else []) + coredns_server|d([]) + nameservers|d([]) + cloud_resolver|d([])) | unique | join(',nameserver ') }}
+      nameserver {{ ( ( [nodelocaldns_ip] if enable_nodelocaldns else []) + coredns_server|d([]) + nameservers|d([]) + cloud_resolver|d([]) + configured_nameservers|d([])) | unique | join(',nameserver ') }}
     supersede_nameserver:
       supersede domain-name-servers {{ ( coredns_server|d([]) + nameservers|d([]) + cloud_resolver|d([])) | unique | join(', ') }};
 

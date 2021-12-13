@@ -4478,10 +4478,28 @@ metadata:
   namespace: capi-system
 ---
 apiVersion: v1
+kind: Secret
+metadata:
+  name: capi-controller-manager-token
+  namespace: capi-system
+  annotations:
+     kubernetes.io/service-account.name: capi-controller-manager
+type: kubernetes.io/service-account-token
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: capi-controller-manager
   namespace: capi-webhook-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: capi-controller-manager-token
+  namespace: capi-webhook-system
+  annotations:
+     kubernetes.io/service-account.name: capi-controller-manager
+type: kubernetes.io/service-account-token
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -4490,10 +4508,28 @@ metadata:
   namespace: capi-kubeadm-bootstrap-system
 ---
 apiVersion: v1
+kind: Secret
+metadata:
+  name: capi-kubeadm-bootstrap-controller-manager-token
+  namespace: capi-kubeadm-bootstrap-system
+  annotations:
+     kubernetes.io/service-account.name: capi-kubeadm-bootstrap-controller-manager
+type: kubernetes.io/service-account-token
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: capi-kubeadm-bootstrap-controller-manager
   namespace: capi-webhook-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: capi-kubeadm-bootstrap-controller-manager-token
+  namespace: capi-webhook-system
+  annotations:
+     kubernetes.io/service-account.name: capi-kubeadm-bootstrap-controller-manager
+type: kubernetes.io/service-account-token
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -4502,10 +4538,28 @@ metadata:
   namespace: capi-kubeadm-control-plane-system
 ---
 apiVersion: v1
+kind: Secret
+metadata:
+  name: capi-kubeadm-control-plane-controller-manager-token
+  namespace: capi-kubeadm-control-plane-system
+  annotations:
+     kubernetes.io/service-account.name: capi-kubeadm-control-plane-controller-manager
+type: kubernetes.io/service-account-token
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: capi-kubeadm-control-plane-controller-manager
   namespace: capi-webhook-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: capi-kubeadm-control-plane-controller-manager-token
+  namespace: capi-webhook-system
+  annotations:
+     kubernetes.io/service-account.name: capi-kubeadm-control-plane-controller-manager
+type: kubernetes.io/service-account-token
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -4891,6 +4945,10 @@ spec:
         ports:
         - containerPort: 8443
           name: https
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-controller-manager-token
+          readOnly: true
       - args:
         - --metrics-addr=127.0.0.1:8080
         - --enable-leader-election
@@ -4912,10 +4970,19 @@ spec:
           httpGet:
             path: /readyz
             port: healthz
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-controller-manager-token
+          readOnly: true
       terminationGracePeriodSeconds: 10
       tolerations:
       - effect: NoSchedule
         key: node-role.kubernetes.io/master
+      volumes:
+      - name: capi-controller-manager-token
+        secret:
+          defaultMode: 420
+          secretName: capi-controller-manager-token
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -4948,6 +5015,10 @@ spec:
         ports:
         - containerPort: 8443
           name: https
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-controller-manager-token
+          readOnly: true
       - args:
         - --metrics-addr=127.0.0.1:8080
         - --webhook-port=9443
@@ -4976,6 +5047,9 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-controller-manager-token
+          readOnly: true
       terminationGracePeriodSeconds: 10
       tolerations:
       - effect: NoSchedule
@@ -4985,6 +5059,10 @@ spec:
         secret:
           defaultMode: 420
           secretName: capi-webhook-service-cert
+      - name: capi-controller-manager-token
+        secret:
+          defaultMode: 420
+          secretName: capi-controller-manager-token
 ---
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
@@ -9083,6 +9161,10 @@ spec:
         ports:
         - containerPort: 8443
           name: https
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-kubeadm-bootstrap-controller-manager-token
+          readOnly: true
       - args:
         - --metrics-addr=127.0.0.1:8080
         - --enable-leader-election
@@ -9092,10 +9174,19 @@ spec:
         image: {{ cluster_api_kubeadm_bootstrap_controller_image_repo }}:{{ cluster_api_kubeadm_bootstrap_controller_image_tag }}
         imagePullPolicy: IfNotPresent
         name: manager
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-kubeadm-bootstrap-controller-manager-token
+          readOnly: true
       terminationGracePeriodSeconds: 10
       tolerations:
       - effect: NoSchedule
         key: node-role.kubernetes.io/master
+      volumes:
+      - name: capi-kubeadm-bootstrap-controller-manager-token
+        secret:
+          defaultMode: 420
+          secretName: capi-kubeadm-bootstrap-controller-manager-token
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -9128,6 +9219,9 @@ spec:
         ports:
         - containerPort: 8443
           name: https
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-kubeadm-bootstrap-controller-manager-token
       - args:
         - --metrics-addr=127.0.0.1:8080
         - --webhook-port=9443
@@ -9145,6 +9239,8 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-kubeadm-bootstrap-controller-manager-token
       terminationGracePeriodSeconds: 10
       tolerations:
       - effect: NoSchedule
@@ -9154,6 +9250,10 @@ spec:
         secret:
           defaultMode: 420
           secretName: capi-kubeadm-bootstrap-webhook-service-cert
+      - name: capi-kubeadm-bootstrap-controller-manager-token
+        secret:
+          defaultMode: 420
+          secretName: capi-kubeadm-bootstrap-controller-manager-token
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -10697,6 +10797,10 @@ spec:
         ports:
         - containerPort: 8443
           name: https
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-kubeadm-control-plane-controller-manager-token
+          readOnly: true
       - args:
         - --metrics-addr=127.0.0.1:8080
         - --enable-leader-election
@@ -10705,10 +10809,19 @@ spec:
         image: {{ cluster_api_kubeadm_control_plane_controller_image_repo }}:{{ cluster_api_kubeadm_control_plane_controller_image_tag }}
         imagePullPolicy: IfNotPresent
         name: manager
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-kubeadm-control-plane-controller-manager-token
+          readOnly: true
       terminationGracePeriodSeconds: 10
       tolerations:
       - effect: NoSchedule
         key: node-role.kubernetes.io/master
+      volumes:
+      - name: capi-kubeadm-control-plane-controller-manager-token
+        secret:
+          defaultMode: 420
+          secretName: capi-kubeadm-control-plane-controller-manager-token
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -10741,6 +10854,10 @@ spec:
         ports:
         - containerPort: 8443
           name: https
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-kubeadm-control-plane-controller-manager-token
+          readOnly: true
       - args:
         - --metrics-addr=127.0.0.1:8080
         - --webhook-port=9443
@@ -10757,6 +10874,9 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capi-kubeadm-control-plane-controller-manager-token
+          readOnly: true
       terminationGracePeriodSeconds: 10
       tolerations:
       - effect: NoSchedule
@@ -10766,6 +10886,10 @@ spec:
         secret:
           defaultMode: 420
           secretName: capi-kubeadm-control-plane-webhook-service-cert
+      - name: capi-kubeadm-control-plane-controller-manager-token
+        secret:
+          defaultMode: 420
+          secretName: capi-kubeadm-control-plane-controller-manager-token
 ---
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate

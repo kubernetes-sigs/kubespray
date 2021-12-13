@@ -10,6 +10,15 @@ metadata:
   name: hyperauth-admin
   namespace: hyperauth
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    kubernetes.io/service-account.name: hyperauth-admin
+  name: hyperauth-admin-service-account-token
+  namespace: hyperauth
+type: kubernetes.io/service-account-token
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -117,7 +126,7 @@ spec:
         app: postgresql
         tier: postgreSQL
     spec:
-      serviceAccount: hyperauth-admin
+      serviceAccountName: hyperauth-admin
       containers:
         - image: {{ hyperauth_postgres_image_repo }}:{{ hyperauth_postgres_image_tag }}
           name: postgresql
@@ -144,10 +153,16 @@ spec:
             - name: postgresql
               mountPath: /var/lib/postgresql/data
               subPath: postgres
+            - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              name: hyperauth-admin-service-account-token  
       volumes:
         - name: postgresql
           persistentVolumeClaim:
             claimName: postgres-pvc
+        - name: hyperauth-admin-service-account-token
+          secret:
+            defaultMode: 420
+            secretName: hyperauth-admin-service-account-token    
 ---
 apiVersion: v1
 kind: Service
@@ -156,6 +171,10 @@ metadata:
   namespace: hyperauth
   labels:
     app: keycloak
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.name: hyperauth
+    traefik.ingress.kubernetes.io/service.sticky.cookie.secure: "true"
 spec:
   ports:
   - name: http

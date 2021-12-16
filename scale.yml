@@ -5,11 +5,16 @@
 - name: Ensure compatibility with old groups
   import_playbook: legacy_groups.yml
 
-- hosts: bastion[0]
+- hosts: bastion[0]:k8s_cluster:etcd:calico_rr
   gather_facts: False
   environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults }
+
+- hosts: bastion[0]
+  gather_facts: False
+  environment: "{{ proxy_disable_env }}"
+  roles:
     - { role: bastion-ssh-config, tags: ["localhost", "bastion"] }
 
 - name: Bootstrap any new workers
@@ -19,7 +24,6 @@
   gather_facts: false
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
     - { role: bootstrap-os, tags: bootstrap-os }
 
 - name: Gather facts
@@ -32,7 +36,6 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
     - { role: etcd, tags: etcd, etcd_cluster_setup: false }
 
 - name: Download images to ansible host cache via first kube_control_plane node
@@ -41,7 +44,6 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults, when: "not skip_downloads and download_run_once and not download_localhost" }
     - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
     - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
 
@@ -51,7 +53,6 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
     - { role: download, tags: download, when: "not skip_downloads" }
@@ -63,7 +64,6 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
     - { role: kubernetes/node, tags: node }
 
 - name: Upload control plane certs and retrieve encryption key
@@ -71,8 +71,6 @@
   environment: "{{ proxy_disable_env }}"
   gather_facts: False
   tags: kubeadm
-  roles:
-    - { role: kubespray-defaults }
   tasks:
     - name: Upload control plane certificates
       command: >-
@@ -94,7 +92,6 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
     - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: kubernetes/node-label, tags: node-label }
     - { role: network_plugin, tags: network }

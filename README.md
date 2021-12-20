@@ -131,7 +131,7 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.22.4
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.22.5
   - [etcd](https://github.com/coreos/etcd) v3.5.0
   - [docker](https://www.docker.com/) v20.10 (see note)
   - [containerd](https://containerd.io/) v1.5.8

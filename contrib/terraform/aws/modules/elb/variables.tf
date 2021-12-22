@@ -28,3 +28,9 @@ variable "default_tags" {
   description = "Tags for all resources"
   type        = map(string)
 }
+
+variable "aws_elb_api_internal" {
+  description   = "AWS ELB Scheme Internet-facing/Internal"
+  type          = bool
+  default	= true
+}

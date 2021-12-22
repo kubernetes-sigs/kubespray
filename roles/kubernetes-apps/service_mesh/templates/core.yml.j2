@@ -723,7 +723,7 @@ data:
         "sts": {
           "servicePort": 0
         },
-        "tag": "",
+        "tag": "{{ service_mesh_proxyv2_image_tag }}",
         "telemetryNamespace": "istio-system",
         "tracer": {
           "datadog": {
@@ -796,7 +796,11 @@ data:
       {{ else -}}
       - name: istio-init
       {{ end -}}
+      {{- if contains "/" .Values.global.proxy_init.image }}
         image: "{{ .Values.global.proxy_init.image }}"
+      {{- else }}
+        image: "{{ .Values.global.hub }}/{{ .Values.global.proxy_init.image }}:{{ .Values.global.tag }}"
+      {{- end }}
         command:
         - istio-iptables
         - "-p"
@@ -827,6 +831,7 @@ data:
         - "--run-validation"
         - "--skip-rule-apply"
         {{ end -}}
+
         imagePullPolicy: "{{ valueOrDefault .Values.global.imagePullPolicy `Always` }}"
       {{- if .Values.global.proxy_init.resources }}
         resources:
@@ -864,7 +869,11 @@ data:
         - sysctl -w kernel.core_pattern=/var/lib/istio/core.proxy && ulimit -c unlimited
         command:
           - /bin/sh
+      {{- if contains "/" .Values.global.proxy_init.image }}
         image: "{{ .Values.global.proxy_init.image }}"
+      {{- else }}
+        image: "{{ .Values.global.hub }}/{{ .Values.global.proxy_init.image }}:{{ .Values.global.tag }}"
+      {{- end }}
         imagePullPolicy: "{{ valueOrDefault .Values.global.imagePullPolicy `Always` }}"
         resources: {}
         securityContext:
@@ -882,7 +891,11 @@ data:
       {{ end }}
       containers:
       - name: istio-proxy
-        image: "{{ .Values.global.proxy.image }}"
+      {{- if contains "/" (annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image) }}
+        image: "{{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image }}"
+      {{- else }}
+        image: "{{ .Values.global.hub }}/{{ .Values.global.proxy.image }}:{{ .Values.global.tag }}"
+      {{- end }}
         ports:
         - containerPort: 15090
           protocol: TCP

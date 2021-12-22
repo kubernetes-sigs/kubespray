@@ -308,6 +308,18 @@ caprica   Ready    master,node   7h40m   v1.14.1
 
 ```
 
+## Upgrading to v2.19
+
+`etcd_kubeadm_enabled` is being deprecated at v2.19. The same functionality is achievable by setting `etcd_deployment_type` to `kubeadm`.
+Deploying etcd using kubeadm is experimental and is only available for either new or deployments where `etcd_kubeadm_enabled` was set to `true` while deploying the cluster.
+
+From 2.19 and onward `etcd_deployment_type` variable will be placed in `group_vars/all/etcd.yml` instead of `group_vars/etcd.yml`, due to scope issues.
+The placement of the variable is only important for `etcd_deployment_type: kubeadm` right now. However, since this might change in future updates, it is recommended to move the variable.
+
+Upgrading is straightforward; no changes are required if `etcd_kubeadm_enabled` was not set to `true` when deploying.
+
+If you have a cluster where `etcd` was deployed using `kubeadm`, you will need to remove `etcd_kubeadm_enabled` the variable. Then move `etcd_deployment_type` variable from `group_vars/etcd.yml` to `group_vars/all/etcd.yml` due to scope issues and set `etcd_deployment_type` to `kubeadm`.
+
 ## Upgrade order
 
 As mentioned above, components are upgraded in the order in which they were

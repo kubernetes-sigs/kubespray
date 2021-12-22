@@ -1,5 +1,21 @@
 # etcd
 
+## Deployment Types
+
+It is possible to deploy etcd with three methods. To change the default deployment method (host), use the `etcd_deployment_type` variable. Possible values are `host`, `kubeadm`, and `docker`.
+
+### Host
+
+Host deployment is the default method. Using this method will result in etcd installed as a systemd service.
+
+### Docker
+
+Installs docker in etcd group members and runs etcd on docker containers. Only usable when `container_manager` is set to `docker`.
+
+### Kubeadm
+
+This deployment method is experimental and is only available for new deployments. This deploys etcd as a static pod in master hosts.
+
 ## Metrics
 
 To expose metrics on a separate HTTP port, define it in the inventory with:

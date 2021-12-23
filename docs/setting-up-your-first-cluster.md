@@ -14,7 +14,7 @@ hands-on guide to get started with Kubespray.
 
 ## Cluster Details
 
-* [kubespray](https://github.com/kubernetes-sigs/kubespray) v2.13.x
+* [kubespray](https://github.com/kubernetes-sigs/kubespray) v2.17.x
 * [kubernetes](https://github.com/kubernetes/kubernetes) v1.17.9
 
 ## Prerequisites
@@ -48,7 +48,7 @@ gcloud compute networks create kubernetes-the-kubespray-way --subnet-mode custom
 
 A [subnet](https://cloud.google.com/compute/docs/vpc/#vpc_networks_and_subnets) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
 
-Create the `kubernetes` subnet in the `kubernetes-the-hard-way` VPC network:
+Create the `kubernetes` subnet in the `kubernetes-the-kubespray-way` VPC network:
 
 ```ShellSession
 gcloud compute networks subnets create kubernetes \
@@ -196,7 +196,7 @@ Next, we will git clone the Kubespray code into our working directory:
 ```ShellSession
 git clone https://github.com/kubernetes-sigs/kubespray.git
 cd kubespray
-git checkout release-2.13
+git checkout release-2.17
 ```
 
 Now we need to install the dependencies for Ansible to run the Kubespray

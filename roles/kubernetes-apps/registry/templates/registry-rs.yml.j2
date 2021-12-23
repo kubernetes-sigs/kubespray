@@ -9,7 +9,11 @@ metadata:
     version: v{{ registry_image_tag }}
     addonmanager.kubernetes.io/mode: Reconcile
 spec:
+{% if registry_storage_class != "" and registry_storage_access_mode == "ReadWriteMany" %}
+  replicas: {{ registry_replica_count }}
+{% else %}
   replicas: 1
+{% endif %}
   selector:
     matchLabels:
       k8s-app: registry
@@ -22,22 +26,69 @@ spec:
     spec:
       priorityClassName: {% if registry_namespace == 'kube-system' %}system-cluster-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
       serviceAccountName: registry
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
       containers:
         - name: registry
           image: {{ registry_image_repo }}:{{ registry_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
+          command:
+          - /bin/registry
+          - serve
+          - /etc/docker/registry/config.yml
           env:
             - name: REGISTRY_HTTP_ADDR
               value: :{{ registry_port }}
             - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
               value: /var/lib/registry
+{% if registry_htpasswd != "" %}
+            - name: REGISTRY_AUTH
+              value: "htpasswd"
+            - name: REGISTRY_AUTH_HTPASSWD_REALM
+              value: "Registry Realm"
+            - name: REGISTRY_AUTH_HTPASSWD_PATH
+              value: "/auth/htpasswd"
+{% endif %}
+{% if registry_tls_secret != "" %}
+            - name: REGISTRY_HTTP_TLS_CERTIFICATE
+              value: /etc/ssl/docker/tls.crt
+            - name: REGISTRY_HTTP_TLS_KEY
+              value: /etc/ssl/docker/tls.key
+{% endif %}
           volumeMounts:
             - name: registry-pvc
               mountPath: /var/lib/registry
+            - name: registry-config
+              mountPath: /etc/docker/registry
+{% if registry_htpasswd != "" %}
+            - name: auth
+              mountPath: /auth
+              readOnly: true
+{% endif %}
+{% if registry_tls_secret != "" %}
+            - name: tls-cert
+              mountPath: /etc/ssl/docker
+              readOnly: true
+{% endif %}
           ports:
             - containerPort: {{ registry_port }}
               name: registry
               protocol: TCP
+          livenessProbe:
+            httpGet:
+{% if registry_tls_secret != "" %}
+              scheme: HTTPS
+{% endif %}
+              path: /
+              port: {{ registry_port }}
+          readinessProbe:
+            httpGet:
+{% if registry_tls_secret != "" %}
+              scheme: HTTPS
+{% endif %}
+              path: /
+              port: {{ registry_port }}
       volumes:
         - name: registry-pvc
 {% if registry_storage_class != "" %}
@@ -45,4 +96,20 @@ spec:
             claimName: registry-pvc
 {% else %}
           emptyDir: {}
+{% endif %}
+        - name: registry-config
+          configMap:
+            name: registry-config
+{% if registry_htpasswd != "" %}
+        - name: auth
+          secret:
+            secretName: registry-secret
+            items:
+            - key: htpasswd
+              path: htpasswd
+{% endif %}
+{% if registry_tls_secret != "" %}
+        - name: tls-cert
+          secret:
+            secretName: {{ registry_tls_secret }}
 {% endif %}

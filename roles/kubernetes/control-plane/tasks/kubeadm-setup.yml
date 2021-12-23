@@ -134,7 +134,7 @@
   # Retry is because upload config sometimes fails
   retries: 3
   until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
-  when: inventory_hostname == groups['kube_control_plane']|first and not kubeadm_already_run.stat.exists
+  when: inventory_hostname == first_kube_control_plane and not kubeadm_already_run.stat.exists
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
@@ -150,24 +150,24 @@
 
 - name: Create hardcoded kubeadm token for joining nodes with 24h expiration (if defined)
   shell: >-
-    {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token delete {{ kubeadm_token }} || :;
-    {{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create {{ kubeadm_token }}
+    {{ bin_dir }}/kubeadm --kubeconfig {{ kube_config_dir }}/admin.conf token delete {{ kubeadm_token }} || :;
+    {{ bin_dir }}/kubeadm --kubeconfig {{ kube_config_dir }}/admin.conf token create {{ kubeadm_token }}
   changed_when: false
   when:
-    - inventory_hostname == groups['kube_control_plane']|first
+    - inventory_hostname ==  first_kube_control_plane
     - kubeadm_token is defined
     - kubeadm_refresh_token
   tags:
     - kubeadm_token
 
 - name: Create kubeadm token for joining nodes with 24h expiration (default)
-  command: "{{ bin_dir }}/kubeadm --kubeconfig /etc/kubernetes/admin.conf token create"
+  command: "{{ bin_dir }}/kubeadm --kubeconfig {{ kube_config_dir }}/admin.conf token create"
   changed_when: false
   register: temp_token
   retries: 5
   delay: 5
   until: temp_token is succeeded
-  delegate_to: "{{ groups['kube_control_plane'] | first }}"
+  delegate_to: "{{ first_kube_control_plane }}"
   when: kubeadm_token is not defined
   tags:
     - kubeadm_token
@@ -191,7 +191,7 @@
 # FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
 - name: kubeadm | Remove taint for master with node role
   command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf taint node {{ inventory_hostname }} {{ item }}"
-  delegate_to: "{{ groups['kube_control_plane'] | first }}"
+  delegate_to: "{{ first_kube_control_plane }}"
   with_items:
     - "node-role.kubernetes.io/master:NoSchedule-"
     - "node-role.kubernetes.io/control-plane:NoSchedule-"

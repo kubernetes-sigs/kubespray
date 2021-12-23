@@ -1,7 +1,7 @@
 # Network Checker Application
 
 With the ``deploy_netchecker`` var enabled (defaults to false), Kubespray deploys a
-Network Checker Application from the 3rd side `l23network/k8s-netchecker` docker
+Network Checker Application from the 3rd side `mirantis/k8s-netchecker` docker
 images. It consists of the server and agents trying to reach the server by usual
 for Kubernetes applications network connectivity meanings. Therefore, this
 automatically verifies a pod to pod connectivity via the cluster IP and checks

@@ -100,7 +100,7 @@
   when:
     - crictl.stat.exists
     - container_manager in ["crio", "containerd"]
-    - deploy_container_engine|default(true)
+    - deploy_container_engine
 
 - name: reset | stop and disable crio service
   service:
@@ -168,6 +168,25 @@
   register: services_removed
   tags:
     - services
+
+- name: reset | remove containerd
+  when: container_manager == 'containerd'
+  block:
+    - name: reset | stop containerd service
+      service:
+        name: containerd
+        state: stopped
+      failed_when: false
+      tags:
+        - services
+
+    - name: reset | remove containerd service
+      file:
+        path: /etc/systemd/system/containerd.service
+        state: absent
+      register: services_removed
+      tags:
+        - services
 
 - name: reset | gather mounted kubelet dirs  # noqa 301
   shell: set -o pipefail && mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
@@ -279,6 +298,7 @@
     - "{{ bin_dir }}/etcd"
     - "{{ bin_dir }}/etcd-events"
     - "{{ bin_dir }}/etcdctl"
+    - "{{ bin_dir }}/etcdctl.sh"
     - "{{ bin_dir }}/kubernetes-scripts"
     - "{{ bin_dir }}/kubectl"
     - "{{ bin_dir }}/kubeadm"
@@ -302,11 +322,35 @@
     - /etc/bash_completion.d/crictl
     - /etc/bash_completion.d/nerdctl
     - /etc/bash_completion.d/krew
+    - /etc/bash_completion.d/krew.sh
     - "{{ krew_root_dir | default('/usr/local/krew') }}"
     - /etc/modules-load.d/kube_proxy-ipvs.conf
     - /etc/modules-load.d/kubespray-br_netfilter.conf
+    - /etc/modules-load.d/kubespray-kata-containers.conf
     - /usr/libexec/kubernetes
+    - /etc/origin/openvswitch
+    - /etc/origin/ovn
   ignore_errors: true  # noqa ignore-errors
+  tags:
+    - files
+
+- name: reset | remove containerd binary files
+  file:
+    path: "{{ containerd_bin_dir }}/{{ item }}"
+    state: absent
+  with_items:
+    - containerd
+    - containerd-shim
+    - containerd-shim-runc-v1
+    - containerd-shim-runc-v2
+    - containerd-stress
+    - crictl
+    - critest
+    - ctd-decoder
+    - ctr
+    - runc
+  ignore_errors: true  # noqa ignore-errors
+  when: container_manager == 'containerd'
   tags:
     - files
 
@@ -333,7 +377,7 @@
     - dns
 
 - name: reset | include file with reset tasks specific to the network_plugin if exists
-  include_tasks: "{{ (role_path,'../network_plugin',kube_network_plugin,'tasks/reset.yml') | path_join | realpath  }}"
+  include_tasks: "{{ (role_path,'../network_plugin',kube_network_plugin,'tasks/reset.yml') | community.general.path_join | realpath  }}"
   when:
     - kube_network_plugin in ['flannel', 'cilium', 'kube-router', 'calico']
   tags:
@@ -343,19 +387,19 @@
   service:
     name: >-
       {% if ansible_os_family == "RedHat" -%}
-      {%- if ansible_distribution_major_version|int == 8 or is_fedora_coreos -%}
+      {%- if ansible_distribution_major_version|int == 8 or is_fedora_coreos or ansible_distribution == "Fedora" -%}
       NetworkManager
       {%- else -%}
       network
       {%- endif -%}
-      {%- elif ansible_distribution == "Ubuntu" and ansible_distribution_release in ["bionic", "focal"] -%}
+      {%- elif ansible_distribution == "Ubuntu" and ansible_distribution_release in ["hirsute","bionic", "focal"] -%}
       systemd-networkd
       {%- elif ansible_os_family == "Debian" -%}
       networking
       {%- endif %}
     state: restarted
   when:
-    - ansible_os_family not in ["Flatcar Container Linux by Kinvolk"]
+    - ansible_os_family not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     - reset_restart_network
   tags:
     - services

@@ -24,13 +24,13 @@
 
 - name: Stop if unknown OS
   assert:
-    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar Container Linux by Kinvolk', 'Suse', 'openSUSE Leap', 'ClearLinux', 'OracleLinux', 'AlmaLinux', 'Amazon']
+    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'Suse', 'openSUSE Leap', 'ClearLinux', 'OracleLinux', 'AlmaLinux', 'Rocky', 'Amazon']
     msg: "{{ ansible_distribution }} is not a known OS"
   when: not ignore_assert_errors
 
 - name: Stop if unknown network plugin
   assert:
-    that: kube_network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'ovn4nfv','kube-ovn', 'kube-router', 'macvlan']
+    that: kube_network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud', 'cilium', 'cni','kube-ovn', 'kube-router', 'macvlan']
     msg: "{{ kube_network_plugin }} is not supported"
   when:
     - kube_network_plugin is defined
@@ -53,16 +53,6 @@
       - "calico_version in calico_crds_archive_checksums.keys()"
     msg: "Calico version not supported {{ calico_version }} not in {{ calico_crds_archive_checksums.keys() }}"
   when:
-    - kube_network_plugin == 'calico'
-    - not ignore_assert_errors
-
-- name: Stop if kube-proxy is enabled when using eBPF dataplane
-  assert:
-    that:
-      - kube_proxy_remove
-    msg: "kube-proxy needs to be disabled when using Calico with eBPF dataplane"
-  when:
-    - calico_bpf_enabled | default(false)
     - kube_network_plugin == 'calico'
     - not ignore_assert_errors
 
@@ -106,13 +96,6 @@
   when:
     - not ignore_assert_errors
     - inventory_hostname in groups['kube_node']
-
-- name: Stop when ShutdownGracePeriod less than ShutdownGracePeriodCriticalPods
-  assert:
-    that: kubelet_shutdown_grace_period > kubelet_shutdown_grace_period_critical_pods
-    msg: "ShutdownGracePeriod ({{ kubelet_shutdown_grace_period }}) needs to be greater than ShutdownGracePeriodCriticalPods ({{ kubelet_shutdown_grace_period_critical_pods }}) in order to give normal pods time to be evacuated, please see https://kubernetes.io/blog/2021/04/21/graceful-node-shutdown-beta/ for details"
-  when:
-    - kube_version is version('v1.21.0', '>=')
 
 - name: Stop when dynamic_kubelet_configuration enabled for kubernetes >= 1.22
   assert:
@@ -190,8 +173,8 @@
 
 - name: check cloud_provider value
   assert:
-    that: cloud_provider in ['generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci', 'external']
-    msg: "If set the 'cloud_provider' var must be set either to 'generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere', or external"
+    that: cloud_provider in ['gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci', 'external']
+    msg: "If set the 'cloud_provider' var must be set either to 'gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci' or 'external'"
   when:
     - cloud_provider is defined
     - not ignore_assert_errors
@@ -323,6 +306,12 @@
     msg: "kata_containers_enabled support only for containerd and crio-o. See https://github.com/kata-containers/documentation/blob/1.11.4/how-to/run-kata-with-k8s.md#install-a-cri-implementation for details"
   when: kata_containers_enabled
 
+- name: Stop if kata_containers_version is >= 2.3.0 and kube_version < 1.22.0
+  assert:
+    that: kube_version is version('v1.22.0', '>')
+    msg: "Kata containers version 2.3.0 is compatible with Kubernetes 1.22.0+"
+  when: kata_containers_version is version ('2.3.0', '>=')
+
 - name: Stop if gvisor_enabled is enabled when container_manager is not containerd
   assert:
     that: container_manager == 'containerd'
@@ -331,7 +320,7 @@
 
 - name: Stop if download_localhost is enabled for Flatcar Container Linux
   assert:
-    that: ansible_os_family not in ["Flatcar Container Linux by Kinvolk"]
+    that: ansible_os_family not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     msg: "download_run_once not supported for Flatcar Container Linux"
   when: download_run_once or download_force_cache
 
@@ -341,7 +330,7 @@
     msg: "containerd_version is too low. Minimum version {{ containerd_min_version_required }}"
   run_once: yes
   when:
-    - containerd_version != 'latest'
+    - containerd_version not in ['latest', 'edge', 'stable']
     - container_manager == 'containerd'
 
 - name: Stop if using deprecated containerd_config variable

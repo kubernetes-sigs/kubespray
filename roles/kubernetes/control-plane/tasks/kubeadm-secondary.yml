@@ -3,7 +3,7 @@
   set_fact:
     kubeadm_discovery_address: >-
       {%- if "127.0.0.1" in kube_apiserver_endpoint or "localhost" in kube_apiserver_endpoint -%}
-      {{ first_kube_master }}:{{ kube_apiserver_port }}
+      {{ first_kube_control_plane }}:{{ kube_apiserver_port }}
       {%- else -%}
       {{ kube_apiserver_endpoint | regex_replace('https://', '') }}
       {%- endif %}
@@ -18,7 +18,7 @@
     --upload-certs
   register: kubeadm_upload_cert
   when:
-    - inventory_hostname == groups['kube_control_plane']|first
+    - inventory_hostname == first_kube_control_plane
 
 - name: Parse certificate key if not set
   set_fact:
@@ -35,7 +35,7 @@
     mode: 0640
     backup: yes
   when:
-    - inventory_hostname != groups['kube_control_plane']|first
+    - inventory_hostname != first_kube_control_plane
     - not kubeadm_already_run.stat.exists
 
 - name: Wait for k8s apiserver
@@ -57,6 +57,7 @@
     {{ bin_dir }}/kubeadm join
     --config {{ kube_config_dir }}/kubeadm-controlplane.yaml
     --ignore-preflight-errors=all
+    --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   register: kubeadm_join_control_plane
@@ -64,5 +65,5 @@
   throttle: 1
   until: kubeadm_join_control_plane is succeeded
   when:
-    - inventory_hostname != groups['kube_control_plane']|first
+    - inventory_hostname != first_kube_control_plane
     - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists

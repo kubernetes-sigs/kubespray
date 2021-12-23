@@ -67,7 +67,6 @@ spec:
           failureThreshold: 3
           initialDelaySeconds: 40
         securityContext:
-          allowPrivilegeEscalation: false
           capabilities:
             drop: ["all"]
             add: ["NET_BIND_SERVICE"]
@@ -82,6 +81,7 @@ spec:
           requests:
             cpu: {{ metrics_server_requests_cpu }}
             memory: {{ metrics_server_requests_memory }}
+{% if metrics_server_resizer %}
       - name: metrics-server-nanny
         image: {{ addon_resizer_image_repo }}:{{ addon_resizer_image_tag }}
         imagePullPolicy: {{ k8s_image_pull_policy }}
@@ -119,6 +119,7 @@ spec:
           # Specifies the smallest cluster (defined in number of nodes)
           # resources will be scaled to.
           - --minClusterSize={{ metrics_server_min_cluster_size }}
+{% endif %}
       volumes:
         - name: metrics-server-config-volume
           configMap:
@@ -138,11 +139,7 @@ spec:
           - weight: 100
             preference:
               matchExpressions:
-{% if kube_version is version('v1.20.0', '<') %}
-              - key: node-role.kubernetes.io/master
-{% else %}
               - key: node-role.kubernetes.io/control-plane
-{% endif %}
                 operator: In
                 values:
                 - ""

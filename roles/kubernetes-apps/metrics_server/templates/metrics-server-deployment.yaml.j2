@@ -34,7 +34,7 @@ spec:
         args:
         - --logtostderr
         - --cert-dir=/tmp
-        - --secure-port=443
+        - --secure-port={{ metrics_server_container_port }}
 {% if metrics_server_kubelet_preferred_address_types %}
         - --kubelet-preferred-address-types={{ metrics_server_kubelet_preferred_address_types }}
 {% endif %}
@@ -44,7 +44,7 @@ spec:
 {% endif %}
         - --metric-resolution={{ metrics_server_metric_resolution }}
         ports:
-        - containerPort: 443
+        - containerPort: {{ metrics_server_container_port }}
           name: https
           protocol: TCP
         volumeMounts:
@@ -67,13 +67,11 @@ spec:
           failureThreshold: 3
           initialDelaySeconds: 40
         securityContext:
-          capabilities:
-            drop: ["all"]
-            add: ["NET_BIND_SERVICE"]
           readOnlyRootFilesystem: true
           runAsGroup: 10001
           runAsNonRoot: true
           runAsUser: 10001
+          allowPrivilegeEscalation: false
         resources:
           limits:
             cpu: {{ metrics_server_limits_cpu }}
@@ -81,49 +79,7 @@ spec:
           requests:
             cpu: {{ metrics_server_requests_cpu }}
             memory: {{ metrics_server_requests_memory }}
-{% if metrics_server_resizer %}
-      - name: metrics-server-nanny
-        image: {{ addon_resizer_image_repo }}:{{ addon_resizer_image_tag }}
-        imagePullPolicy: {{ k8s_image_pull_policy }}
-        resources:
-          limits:
-            cpu: {{ addon_resizer_limits_cpu }}
-            memory: {{ addon_resizer_limits_memory }}
-          requests:
-            cpu: {{ addon_resizer_requests_cpu }}
-            memory: {{ addon_resizer_requests_memory }}
-        env:
-          - name: MY_POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-          - name: MY_POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-        volumeMounts:
-        - name: metrics-server-config-volume
-          mountPath: /etc/config
-        command:
-          - /pod_nanny
-          - --config-dir=/etc/config
-          - --cpu={{ metrics_server_cpu }}
-          - --extra-cpu=1m
-          - --memory={{ metrics_server_memory }}
-          - --extra-memory={{ metrics_server_memory_per_node }}
-          - --threshold=5
-          - --deployment=metrics-server
-          - --container=metrics-server
-          - --poll-period=300000
-          - --estimator=exponential
-          # Specifies the smallest cluster (defined in number of nodes)
-          # resources will be scaled to.
-          - --minClusterSize={{ metrics_server_min_cluster_size }}
-{% endif %}
       volumes:
-        - name: metrics-server-config-volume
-          configMap:
-            name: metrics-server-config
         - name: tmp
           emptyDir: {}
 {% if not masters_are_not_tainted %}

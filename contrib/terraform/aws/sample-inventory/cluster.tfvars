@@ -26,6 +26,7 @@ aws_kube_worker_num = 4
 aws_kube_worker_size = "t2.medium"
 
 #Settings AWS ELB
+aws_elb_api_internal = false
 
 aws_elb_api_port = 6443
 

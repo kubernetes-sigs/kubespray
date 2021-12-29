@@ -69,6 +69,36 @@ resource "aws_iam_role_policy" "kube_control_plane" {
       "Resource": [
         "arn:aws:s3:::kubernetes-*"
       ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elasticfilesystem:DescribeAccessPoints",
+        "elasticfilesystem:DescribeFileSystems"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elasticfilesystem:CreateAccessPoint"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringLike": {
+          "aws:RequestTag/efs.csi.aws.com/cluster": "true"
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": "elasticfilesystem:DeleteAccessPoint",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/efs.csi.aws.com/cluster": "true"
+        }
+      }
     }
   ]
 }
@@ -122,6 +152,36 @@ resource "aws_iam_role_policy" "kube-worker" {
             "ecr:BatchGetImage"
           ],
           "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "elasticfilesystem:DescribeAccessPoints",
+            "elasticfilesystem:DescribeFileSystems"
+          ],
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "elasticfilesystem:CreateAccessPoint"
+          ],
+          "Resource": "*",
+          "Condition": {
+            "StringLike": {
+              "aws:RequestTag/efs.csi.aws.com/cluster": "true"
+            }
+          }
+        },
+        {
+          "Effect": "Allow",
+          "Action": "elasticfilesystem:DeleteAccessPoint",
+          "Resource": "*",
+          "Condition": {
+            "StringEquals": {
+              "aws:ResourceTag/efs.csi.aws.com/cluster": "true"
+            }
+          }
         }
       ]
 }

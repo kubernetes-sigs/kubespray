@@ -25,7 +25,7 @@ data "aws_ami" "distro" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"]
+    values = ["CentOS 8.4.2105 x86_64"]
   }
 
   filter {
@@ -33,7 +33,7 @@ data "aws_ami" "distro" {
     values = ["hvm"]
   }
 
-  owners = ["099720109477"] # Canonical
+  owners = ["125523088429"] # Canonical
 }
 
 //AWS VPC Variables
@@ -58,6 +58,10 @@ variable "aws_bastion_size" {
   description = "EC2 Instance Size of Bastion Host"
 }
 
+variable "aws_bastion_num" {
+  description = "Number of Bastion Nodes"
+}
+
 /*
 * AWS EC2 Settings
 * The number should be divisable by the number of used
@@ -71,6 +75,10 @@ variable "aws_kube_master_size" {
   description = "Instance size of Kube Master Nodes"
 }
 
+variable "aws_kube_master_disk_size" {
+  description = "Disk size for Kubernetes Master Nodes (in GiB)"
+}
+
 variable "aws_etcd_num" {
   description = "Number of etcd Nodes"
 }
@@ -79,12 +87,20 @@ variable "aws_etcd_size" {
   description = "Instance size of etcd Nodes"
 }
 
+variable "aws_etcd_disk_size" {
+  description = "Disk size for etcd Nodes (in GiB)"
+}
+
 variable "aws_kube_worker_num" {
   description = "Number of Kubernetes Worker Nodes"
 }
 
 variable "aws_kube_worker_size" {
   description = "Instance size of Kubernetes Worker Nodes"
+}
+
+variable "aws_kube_worker_disk_size" {
+  description = "Disk size for Kubernetes Worker Nodes (in GiB)"
 }
 
 /*
@@ -116,4 +132,10 @@ variable "default_tags" {
 
 variable "inventory_file" {
   description = "Where to store the generated inventory file"
+}
+
+variable "aws_elb_api_internal" {
+  description   = "AWS ELB Scheme Internet-facing/Internal"
+  type          = bool
+  default	= true
 }

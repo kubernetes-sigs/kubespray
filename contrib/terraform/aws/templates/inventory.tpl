@@ -25,4 +25,4 @@ kube_control_plane
 
 
 [k8s_cluster:vars]
-${elb_api_fqdn}
+${nlb_api_fqdn}

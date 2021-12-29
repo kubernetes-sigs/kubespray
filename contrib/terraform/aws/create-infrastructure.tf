@@ -33,6 +33,20 @@ module "aws-elb" {
   aws_vpc_id            = module.aws-vpc.aws_vpc_id
   aws_avail_zones       = slice(data.aws_availability_zones.available.names, 0, 2)
   aws_subnet_ids_public = module.aws-vpc.aws_subnet_ids_public
+  aws_elb_api_internal  = var.aws_elb_api_internal
+  aws_elb_api_port      = var.aws_elb_api_port
+  k8s_secure_api_port   = var.k8s_secure_api_port
+  default_tags          = var.default_tags
+}
+
+module "aws-nlb" {
+  source = "./modules/nlb"
+
+  aws_cluster_name      = var.aws_cluster_name
+  aws_vpc_id            = module.aws-vpc.aws_vpc_id
+  aws_avail_zones       = slice(data.aws_availability_zones.available.names, 0, 2)
+  aws_subnet_ids_public = module.aws-vpc.aws_subnet_ids_public
+  aws_elb_api_internal  = var.aws_elb_api_internal
   aws_elb_api_port      = var.aws_elb_api_port
   k8s_secure_api_port   = var.k8s_secure_api_port
   default_tags          = var.default_tags
@@ -52,7 +66,7 @@ module "aws-iam" {
 resource "aws_instance" "bastion-server" {
   ami                         = data.aws_ami.distro.id
   instance_type               = var.aws_bastion_size
-  count                       = length(var.aws_cidr_subnets_public)
+  count                       = var.aws_bastion_num
   associate_public_ip_address = true
   availability_zone           = element(slice(data.aws_availability_zones.available.names, 0, 2), count.index)
   subnet_id                   = element(module.aws-vpc.aws_subnet_ids_public, count.index)
@@ -99,6 +113,12 @@ resource "aws_elb_attachment" "attach_master_nodes" {
   count    = var.aws_kube_master_num
   elb      = module.aws-elb.aws_elb_api_id
   instance = element(aws_instance.k8s-master.*.id, count.index)
+}
+
+resource "aws_lb_target_group_attachment" "tg-attach_master_nodes" {
+  count    = var.aws_kube_master_num
+  target_group_arn = module.aws-nlb.aws_nlb_api_tg_arn
+  target_id = element(aws_instance.k8s-master.*.id, count.index)
 }
 
 resource "aws_instance" "k8s-etcd" {
@@ -160,6 +180,7 @@ data "template_file" "inventory" {
     list_node                 = join("\n", aws_instance.k8s-worker.*.private_dns)
     list_etcd                 = join("\n", aws_instance.k8s-etcd.*.private_dns)
     elb_api_fqdn              = "apiserver_loadbalancer_domain_name=\"${module.aws-elb.aws_elb_api_fqdn}\""
+    nlb_api_fqdn              = "apiserver_loadbalancer_domain_name=\"${module.aws-nlb.aws_nlb_api_fqdn}\""
   }
 }
 

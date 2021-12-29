@@ -26,3 +26,5 @@ kube_control_plane
 
 [k8s_cluster:vars]
 ${nlb_api_fqdn}
+${elb_api_fqdn}
+${aws_efs_filesystem}

@@ -118,7 +118,7 @@ resource "aws_elb_attachment" "attach_master_nodes" {
 resource "aws_lb_target_group_attachment" "tg-attach_master_nodes" {
   count    = var.aws_kube_master_num
   target_group_arn = module.aws-nlb.aws_nlb_api_tg_arn
-  target_id = element(aws_instance.k8s-master.*.id, count.index)
+  target_id = element(aws_instance.k8s-master.*.private_ip, count.index)
 }
 
 resource "aws_instance" "k8s-etcd" {

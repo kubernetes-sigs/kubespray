@@ -17,6 +17,7 @@ resource "aws_lb_target_group" "aws-nlb-api-tg" {
   name     = "kubernetes-nlb-tg-${var.aws_cluster_name}"
   port     = var.k8s_secure_api_port
   protocol = "TCP"
+  target_type = "ip"
   vpc_id   = var.aws_vpc_id
 
   health_check {

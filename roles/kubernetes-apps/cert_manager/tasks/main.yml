@@ -32,23 +32,51 @@
     cert_manager_templates:
       - { name: cert-manager, file: cert-manager.yml, type: all }
       - { name: cert-manager.crds, file: cert-manager.crds.yml, type: crd }
+      - { name: tmax-root-ca, file: tmax-root-ca.yml, type: rootca }
 
-- name: Cert Manager | Create manifests
+- name: Cert Manager | Create manifests 00_INIT 
   template:
-    src: "{{ item.file }}.j2"
+    src: "00_INIT/{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/addons/cert_manager/{{ item.file }}"
-  with_items: "{{ cert_manager_templates }}"
-  register: cert_manager_manifests
+  with_items: 
+    - { name: cert-manager-crd, file: cert-manager.crds.yml }
+    - { name: cert-manager-all, file: cert-manager.yml }
+  register: INIT
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Cert Manager | Apply manifests
+- name: Cert Manager | Apply manifests 00_INIT
   kube:
     name: "{{ item.item.name }}"
     kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
     filename: "{{ kube_config_dir }}/addons/cert_manager/{{ item.item.file }}"
     state: "latest"
-  with_items: "{{ cert_manager_manifests.results }}"
+  with_items: 
+    - "{{ INIT.results }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Cert Manager | Create manifests 01_ROOT_CA
+  template:
+    src: "01_ROOT_CA/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/cert_manager/{{ item.file }}"
+  with_items: 
+    - { name: tmax-root-ca, file: tmax-root-ca.yml }
+  register: ROOT_CA
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Cert Manager | Apply manifests 01_ROOT_CA
+  kube:
+    name: "{{ item.item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/cert_manager/{{ item.item.file }}"
+    state: "latest"
+  with_items: 
+    - "{{ ROOT_CA.results }}"
+  when:
+   - inventory_hostname == groups['kube_control_plane'][0]
+  register: ca_result
+  until: ca_result is succeeded
+  retries: 10
+  delay: 5

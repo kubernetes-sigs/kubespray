@@ -7,6 +7,8 @@ _To use the containerd container runtime set the following variables:_
 
 ## k8s_cluster.yml
 
+When kube_node_ contains etcd, you define your etcd cluster to be as well schedulable for Kubernetes workloads. Thus containerd and dockerd can not run same time, must be set to bellow for running etcd cluster with only containerd.
+
 ```yaml
 container_manager: containerd
 ```

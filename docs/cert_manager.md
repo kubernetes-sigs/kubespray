@@ -88,6 +88,20 @@ Certificates issued by public ACME servers are typically trusted by client’s c
   - [DNS01 Challenges](https://cert-manager.io/v1.5-docs/configuration/acme/dns01/)
 - [ACME FAQ](https://cert-manager.io/v1.5-docs/faq/acme/)
 
+#### ACME With An Internal Certificate Authority
+
+The ACME Issuer with an internal certificate authority requires cert-manager to trust the certificate authority. This trust must be done at the cert-manager deployment level.
+To add a trusted certificate authority to cert-manager, add it's certificate to `group_vars/k8s-cluster/addons.yml`:
+
+```yaml
+cert_manager_trusted_internal_ca: |
+  -----BEGIN CERTIFICATE-----
+  [REPLACE with your CA certificate]
+  -----END CERTIFICATE-----
+```
+
+Once the CA is trusted, you can define your issuer normally.
+
 ### Create New TLS Root CA Certificate and Key
 
 #### Install Cloudflare PKI/TLS `cfssl` Toolkit

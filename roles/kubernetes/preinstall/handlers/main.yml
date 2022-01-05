@@ -9,6 +9,7 @@
     - Preinstall | restart kube-controller-manager crio/containerd
     - Preinstall | restart kube-apiserver docker
     - Preinstall | restart kube-apiserver crio/containerd
+    - Preinstall | wait for the apiserver to be running
   when: not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] and not is_fedora_coreos
 
 - name: Preinstall | update resolvconf for Flatcar Container Linux by Kinvolk
@@ -97,6 +98,21 @@
   shell: "{{ bin_dir }}/crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
   when:
     - container_manager in ['crio', 'containerd']
+    - inventory_hostname in groups['kube_control_plane']
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+
+# When running this as the last phase ensure we wait for kube-apiserver to come up
+- name: Preinstall | wait for the apiserver to be running
+  uri:
+    url: "{{ kube_apiserver_endpoint }}/healthz"
+    validate_certs: no
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 1
+  when:
+    - dns_late
     - inventory_hostname in groups['kube_control_plane']
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'

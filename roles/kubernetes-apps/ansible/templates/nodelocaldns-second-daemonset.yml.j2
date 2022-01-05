@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nodelocaldns-second
+  namespace: kube-system
+  labels:
+    k8s-app: kube-dns
+    addonmanager.kubernetes.io/mode: Reconcile
+spec:
+  selector:
+    matchLabels:
+      k8s-app: nodelocaldns-second
+  template:
+    metadata:
+      labels:
+        k8s-app: nodelocaldns-second
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '{{ nodelocaldns_secondary_prometheus_port }}'
+    spec:
+      nodeSelector:
+        {{ nodelocaldns_ds_nodeselector }}
+      priorityClassName: system-cluster-critical
+      serviceAccountName: nodelocaldns
+      hostNetwork: true
+      dnsPolicy: Default  # Don't use cluster DNS.
+      tolerations:
+      - effect: NoSchedule
+        operator: "Exists"
+      - effect: NoExecute
+        operator: "Exists"
+      containers:
+      - name: node-cache
+        image: "{{ nodelocaldns_image_repo }}:{{ nodelocaldns_image_tag }}"
+        resources:
+          limits:
+            memory: {{ nodelocaldns_memory_limit }}
+          requests:
+            cpu: {{ nodelocaldns_cpu_requests }}
+            memory: {{ nodelocaldns_memory_requests }}
+        args: [ "-localip", "{{ nodelocaldns_ip }}", "-conf", "/etc/coredns/Corefile", "-upstreamsvc", "coredns", "-skipteardown" ]
+        securityContext:
+          privileged: true
+{% if nodelocaldns_bind_metrics_host_ip %}
+        env:
+          - name: MY_HOST_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+{% endif %}
+        livenessProbe:
+          httpGet:
+            host: {{ nodelocaldns_ip }}
+            path: /health
+            port: {{ nodelocaldns_health_port }}
+            scheme: HTTP
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 10
+        readinessProbe:
+          httpGet:
+            host: {{ nodelocaldns_ip }}
+            path: /health
+            port: {{ nodelocaldns_health_port }}
+            scheme: HTTP
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 10
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/coredns
+        - name: xtables-lock
+          mountPath: /run/xtables.lock
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - sh
+                - -c
+                - sleep {{ nodelocaldns_secondary_skew_seconds }} && kill -9 1
+      volumes:
+        - name: config-volume
+          configMap:
+            name: nodelocaldns
+            items:
+            - key: Corefile-second
+              path: Corefile
+{% if dns_etchosts | default(None) %}
+            - key: hosts
+              path: hosts
+{% endif %}
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
+      # Implement a time skew between the main nodelocaldns and this secondary.
+      # Since the two nodelocaldns instances share the :53 port, we want to keep
+      # at least one running at any time enven if the manifests are replaced simultaneously
+      terminationGracePeriodSeconds: {{ nodelocaldns_secondary_skew_seconds }}
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: {{ serial | default('20%') }}
+    type: RollingUpdate

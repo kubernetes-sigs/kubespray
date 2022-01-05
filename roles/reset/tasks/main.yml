@@ -322,10 +322,14 @@
     - /etc/bash_completion.d/crictl
     - /etc/bash_completion.d/nerdctl
     - /etc/bash_completion.d/krew
+    - /etc/bash_completion.d/krew.sh
     - "{{ krew_root_dir | default('/usr/local/krew') }}"
     - /etc/modules-load.d/kube_proxy-ipvs.conf
     - /etc/modules-load.d/kubespray-br_netfilter.conf
+    - /etc/modules-load.d/kubespray-kata-containers.conf
     - /usr/libexec/kubernetes
+    - /etc/origin/openvswitch
+    - /etc/origin/ovn
   ignore_errors: true  # noqa ignore-errors
   tags:
     - files
@@ -373,7 +377,7 @@
     - dns
 
 - name: reset | include file with reset tasks specific to the network_plugin if exists
-  include_tasks: "{{ (role_path,'../network_plugin',kube_network_plugin,'tasks/reset.yml') | path_join | realpath  }}"
+  include_tasks: "{{ (role_path,'../network_plugin',kube_network_plugin,'tasks/reset.yml') | community.general.path_join | realpath  }}"
   when:
     - kube_network_plugin in ['flannel', 'cilium', 'kube-router', 'calico']
   tags:
@@ -383,12 +387,12 @@
   service:
     name: >-
       {% if ansible_os_family == "RedHat" -%}
-      {%- if ansible_distribution_major_version|int == 8 or is_fedora_coreos -%}
+      {%- if ansible_distribution_major_version|int == 8 or is_fedora_coreos or ansible_distribution == "Fedora" -%}
       NetworkManager
       {%- else -%}
       network
       {%- endif -%}
-      {%- elif ansible_distribution == "Ubuntu" and ansible_distribution_release in ["bionic", "focal"] -%}
+      {%- elif ansible_distribution == "Ubuntu" and ansible_distribution_release in ["hirsute","bionic", "focal"] -%}
       systemd-networkd
       {%- elif ansible_os_family == "Debian" -%}
       networking

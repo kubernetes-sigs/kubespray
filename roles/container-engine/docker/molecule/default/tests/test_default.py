@@ -14,6 +14,6 @@ def test_docker_service(host):
 
 def test_docker_run(host):
     with host.sudo():
-        cmd = host.command("docker run hello-world")
+        cmd = host.command("docker run quay.io/kubespray/hello-world:latest")
     assert cmd.rc == 0
-    assert "Hello from Docker!" in cmd.stdout
+    assert "Hello from Docker" in cmd.stdout

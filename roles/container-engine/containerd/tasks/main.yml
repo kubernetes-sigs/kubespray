@@ -3,23 +3,7 @@
   fail:
     msg: "{{ ansible_distribution }} is not supported by containerd."
   when:
-    - not ansible_distribution in ["CentOS", "OracleLinux", "RedHat", "Ubuntu", "Debian", "Fedora", "AlmaLinux", "Rocky", "Amazon", "Flatcar", "Flatcar Container Linux by Kinvolk"]
-
-- name: disable unified_cgroup_hierarchy in Fedora 31+
-  command: grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=0"
-  when:
-    - ansible_distribution == "Fedora"
-    - (ansible_distribution_major_version | int) >= 31
-    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
-    - not is_ostree
-
-- name: reboot in Fedora 31+
-  reboot:
-  when:
-    - ansible_distribution == "Fedora"
-    - (ansible_distribution_major_version | int) >= 31
-    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
-    - not is_ostree
+    - ansible_distribution not in ["CentOS", "OracleLinux", "RedHat", "Ubuntu", "Debian", "Fedora", "AlmaLinux", "Rocky", "Amazon", "Flatcar", "Flatcar Container Linux by Kinvolk", "Suse", "openSUSE Leap", "openSUSE Tumbleweed"]
 
 - name: containerd | Remove any package manager controlled containerd package
   package:
@@ -56,6 +40,19 @@
     extra_opts:
       - --strip-components=1
   notify: restart containerd
+
+- name: containerd | Remove orphaned binary
+  file:
+    path: "/usr/bin/{{ item }}"
+    state: absent
+  when: containerd_bin_dir != "/usr/bin"
+  ignore_errors: true  # noqa ignore-errors
+  with_items:
+    - containerd
+    - containerd-shim
+    - containerd-shim-runc-v1
+    - containerd-shim-runc-v2
+    - ctr
 
 - name: containerd | Generate systemd service for containerd
   template:

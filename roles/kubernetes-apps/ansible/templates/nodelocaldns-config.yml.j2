@@ -17,7 +17,7 @@ data:
         loop
         bind {{ nodelocaldns_ip }}
         forward . {{ block['nameservers'] | join(' ') }}
-        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:9253
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:{{ nodelocaldns_prometheus_port }}
         log
 {% if dns_etchosts | default(None) %}
         hosts /etc/coredns/hosts {
@@ -39,7 +39,7 @@ data:
         forward . {{ forwardTarget }} {
             force_tcp
         }
-        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:9253
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:{{ nodelocaldns_prometheus_port }}
         health {{ nodelocaldns_ip }}:{{ nodelocaldns_health_port }}
 {% if dns_etchosts | default(None) %}
         hosts /etc/coredns/hosts {
@@ -56,7 +56,7 @@ data:
         forward . {{ forwardTarget }} {
             force_tcp
         }
-        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:9253
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:{{ nodelocaldns_prometheus_port }}
     }
     ip6.arpa:53 {
         errors
@@ -67,7 +67,7 @@ data:
         forward . {{ forwardTarget }} {
             force_tcp
         }
-        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:9253
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:{{ nodelocaldns_prometheus_port }}
     }
     .:53 {
         errors
@@ -76,14 +76,92 @@ data:
         loop
         bind {{ nodelocaldns_ip }}
         forward . {{ upstreamForwardTarget }}
-        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:9253
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:{{ nodelocaldns_prometheus_port }}
 {% if dns_etchosts | default(None) %}
         hosts /etc/coredns/hosts {
           fallthrough
         }
 {% endif %}
     }
+{% if enable_nodelocaldns_secondary %}
+  Corefile-second: |
+{% if nodelocaldns_external_zones is defined and nodelocaldns_external_zones|length > 0 %}
+{% for block in nodelocaldns_external_zones %}
+    {{ block['zones'] | join(' ') }} {
+        errors
+        cache {{ block['cache'] | default(30) }}
+        reload
+        loop
+        bind {{ nodelocaldns_ip }}
+        forward . {{ block['nameservers'] | join(' ') }}
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:{{ nodelocaldns_secondary_prometheus_port }}
+        log
+{% if dns_etchosts | default(None) %}
+        hosts /etc/coredns/hosts {
+          fallthrough
+        }
+{% endif %}
+    }
+{% endfor %}
+{% endif %}
+    {{ dns_domain }}:53 {
+        errors
+        cache {
+            success 9984 30
+            denial 9984 5
+        }
+        reload
+        loop
+        bind {{ nodelocaldns_ip }}
+        forward . {{ forwardTarget }} {
+            force_tcp
+        }
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:{{ nodelocaldns_secondary_prometheus_port }}
+        health {{ nodelocaldns_ip }}:{{ nodelocaldns_second_health_port }}
+{% if dns_etchosts | default(None) %}
+        hosts /etc/coredns/hosts {
+          fallthrough
+        }
+{% endif %}
+    }
+    in-addr.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind {{ nodelocaldns_ip }}
+        forward . {{ forwardTarget }} {
+            force_tcp
+        }
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:{{ nodelocaldns_secondary_prometheus_port }}
+    }
+    ip6.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind {{ nodelocaldns_ip }}
+        forward . {{ forwardTarget }} {
+            force_tcp
+        }
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:{{ nodelocaldns_secondary_prometheus_port }}
+    }
+    .:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind {{ nodelocaldns_ip }}
+        forward . {{ upstreamForwardTarget }}
+        prometheus {% if nodelocaldns_bind_metrics_host_ip %}{$MY_HOST_IP}{% endif %}:{{ nodelocaldns_secondary_prometheus_port }}
+{% if dns_etchosts | default(None) %}
+        hosts /etc/coredns/hosts {
+          fallthrough
+        }
+{% endif %}
+    }
+{% endif %}
 {% if dns_etchosts | default(None) %}
   hosts: |
-    {{ dns_etchosts | indent(width=4, indentfirst=None) }}
+    {{ dns_etchosts | indent(width=4, first=False) }}
 {% endif %}

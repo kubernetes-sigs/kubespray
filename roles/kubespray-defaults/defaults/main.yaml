@@ -15,10 +15,10 @@ is_fedora_coreos: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.22.2
+kube_version: v1.23.1
 
 ## The minimum version working
-kube_version_min_required: v1.20.0
+kube_version_min_required: v1.21.0
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
@@ -31,6 +31,8 @@ kubeadm_init_phases_skip: >-
   {%- if kube_network_plugin == 'kube-router' and (kube_router_run_service_proxy is defined and kube_router_run_service_proxy) -%}
   {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
   {%- elif kube_network_plugin == 'cilium' and (cilium_kube_proxy_replacement is defined and cilium_kube_proxy_replacement == 'strict') -%}
+  {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
+  {%- elif kube_network_plugin == 'calico' and (calico_bpf_enabled is defined and calico_bpf_enabled) -%}
   {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
   {%- elif kube_proxy_remove is defined and kube_proxy_remove -%}
   {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
@@ -67,7 +69,7 @@ haproxy_config_dir: "/etc/haproxy"
 # Directory where the binaries will be installed
 bin_dir: /usr/local/bin
 docker_bin_dir: /usr/bin
-containerd_bin_dir: /usr/bin
+containerd_bin_dir: "{{ bin_dir }}"
 etcd_data_dir: /var/lib/etcd
 # Where the binaries will be downloaded.
 # Note: ensure that you've enough disk space (about 1G)
@@ -93,15 +95,18 @@ dns_mode: coredns
 
 # Enable nodelocal dns cache
 enable_nodelocaldns: true
+enable_nodelocaldns_secondary: false
 nodelocaldns_ip: 169.254.25.10
 nodelocaldns_health_port: 9254
+nodelocaldns_second_health_port: 9256
 nodelocaldns_bind_metrics_host_ip: false
+nodelocaldns_secondary_skew_seconds: 5
 
 # Should be set to a cluster IP if using a custom cluster DNS
 manual_dns_server: ""
 
 # Can be docker_dns, host_resolvconf or none
-resolvconf_mode: docker_dns
+resolvconf_mode: host_resolvconf
 # Deploy netchecker app to verify DNS resolve as an HTTP service
 deploy_netchecker: false
 # Ip address of the kubernetes DNS service (called skydns for historical reasons)
@@ -209,7 +214,11 @@ kube_network_node_prefix_ipv6: 120
 # NOTE: loadbalancer_apiserver_localhost somewhat alters the final API enpdoint
 # access IP value (automatically evaluated below)
 kube_apiserver_ip: "{{ kube_service_addresses|ipaddr('net')|ipaddr(1)|ipaddr('address') }}"
+
+# NOTE: If you specific address/interface and use loadbalancer_apiserver_localhost
+# loadbalancer_apiserver_localhost (nginx/haproxy) will deploy on masters on 127.0.0.1:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }} too.
 kube_apiserver_bind_address: 0.0.0.0
+
 # https
 kube_apiserver_port: 6443
 # http
@@ -248,7 +257,7 @@ kubelet_shutdown_grace_period_critical_pods: 20s
 deploy_container_engine: inventory_hostname in groups['k8s_cluster'] or etcd_deployment_type != 'host'
 
 # Container for runtime
-container_manager: docker
+container_manager: containerd
 
 # Enable Kata Containers as additional container runtime
 # When enabled, it requires `container_manager` different than Docker
@@ -330,13 +339,25 @@ docker_plugins: []
 # Experimental kubeadm etcd deployment mode. Available only for new deployment
 etcd_kubeadm_enabled: false
 
-# Containerd options
-containerd_version: 1.4.9
+# Containerd options - thse are relevant when container_manager == 'containerd'
+containerd_version: 1.5.8
 containerd_use_systemd_cgroup: true
+
+# Docker options - this is relevant when container_manager == 'docker'
+docker_containerd_version: 1.4.12
+
+## An obvious use case is allowing insecure-registry access to self hosted registries.
+## Can be ipaddress and domain_name.
+## example define mirror.registry.io or 172.19.16.11:5000
+## Port number is also needed if the default HTTPS port is not used.
+# containerd_insecure_registries:
+#   - mirror.registry.io
+#   - 172.19.16.11:5000
+containerd_insecure_registries: []
 
 # Settings for containerized control plane (etcd/kubelet/secrets)
 # deployment type for legacy etcd mode
-etcd_deployment_type: docker
+etcd_deployment_type: host
 cert_management: script
 
 # Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
@@ -377,9 +398,7 @@ ingress_alb_enabled: false
 cert_manager_enabled: false
 expand_persistent_volumes: false
 metallb_enabled: false
-
-# containerd official CLI tool
-nerdctl_enabled: false
+argocd_enabled: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -481,7 +500,7 @@ is_kube_master: "{{ inventory_hostname in groups['kube_control_plane'] }}"
 kube_apiserver_count: "{{ groups['kube_control_plane'] | length }}"
 kube_apiserver_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
 kube_apiserver_access_address: "{{ access_ip | default(kube_apiserver_address) }}"
-first_kube_master: "{{ hostvars[groups['kube_control_plane'][0]]['access_ip'] | default(hostvars[groups['kube_control_plane'][0]]['ip'] | default(fallback_ips[groups['kube_control_plane'][0]])) }}"
+first_kube_control_plane: "{{ hostvars[groups['kube_control_plane'][0]]['access_ip'] | default(hostvars[groups['kube_control_plane'][0]]['ip'] | default(fallback_ips[groups['kube_control_plane'][0]])) }}"
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
@@ -492,7 +511,7 @@ kube_apiserver_global_endpoint: |-
   {%- elif use_localhost_as_kubeapi_loadbalancer|default(False)|bool -%}
       https://127.0.0.1:{{ kube_apiserver_port }}
   {%- else -%}
-      https://{{ first_kube_master }}:{{ kube_apiserver_port }}
+      https://{{ first_kube_control_plane }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
@@ -502,7 +521,7 @@ kube_apiserver_endpoint: |-
   {%- elif is_kube_master -%}
       https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_port }}
   {%- else -%}
-      https://{{ first_kube_master }}:{{ kube_apiserver_port }}
+      https://{{ first_kube_control_plane }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_insecure_endpoint: >-
   http://{{ kube_apiserver_insecure_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_insecure_port }}
@@ -523,7 +542,7 @@ etcd_events_access_address: "{{ access_ip | default(etcd_address) }}"
 etcd_peer_url: "https://{{ etcd_access_address }}:2380"
 etcd_client_url: "https://{{ etcd_access_address }}:2379"
 etcd_events_peer_url: "https://{{ etcd_events_access_address }}:2382"
-etcd_events_client_url: "https://{{ etcd_events_access_address }}:2381"
+etcd_events_client_url: "https://{{ etcd_events_access_address }}:2383"
 etcd_access_addresses: |-
   {% for item in etcd_hosts -%}
     https://{{ hostvars[item]['etcd_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2379{% if not loop.last %},{% endif %}
@@ -531,9 +550,13 @@ etcd_access_addresses: |-
 etcd_events_access_addresses_list: |-
   [
   {% for item in etcd_hosts -%}
-    'https://{{ hostvars[item]['etcd_events_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2381'{% if not loop.last %},{% endif %}
+    'https://{{ hostvars[item]['etcd_events_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2383'{% if not loop.last %},{% endif %}
   {%- endfor %}
   ]
+etcd_metrics_addresses: |-
+  {% for item in etcd_hosts -%}
+    https://{{ hostvars[item]['etcd_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:{{ etcd_metrics_port | default(2381) }}{% if not loop.last %},{% endif %}
+  {%- endfor %}
 etcd_events_access_addresses: "{{etcd_events_access_addresses_list | join(',')}}"
 etcd_events_access_addresses_semicolon: "{{etcd_events_access_addresses_list | join(';')}}"
 # user should set etcd_member_name in inventory/mycluster/hosts.ini
@@ -573,6 +596,17 @@ host_architecture: >-
   {{ _host_architecture_groups[ansible_architecture] }}
   {%- else -%}
   {{ ansible_architecture }}
+  {%- endif -%}
+
+_host_os_groups:
+  Linux: linux
+  Darwin: darwin
+  Win32NT: windows
+host_os: >-
+  {%- if ansible_system in _host_os_groups -%}
+  {{ _host_os_groups[ansible_system] }}
+  {%- else -%}
+  {{ ansible_system }}
   {%- endif -%}
 
 # Sets the eventRecordQPS parameter in kubelet-config.yaml. The default value is 5 (see types.go)

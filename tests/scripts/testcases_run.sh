@@ -49,29 +49,23 @@ test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY
 # Checkout the CI vars file so it is available
 test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
 test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" ${CI_TEST_REGISTRY_MIRROR}
-
-# Install mitogen ansible plugin
-if [ "${MITOGEN_ENABLE}" = "true" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} mitogen.yml
-  export ANSIBLE_STRATEGY=mitogen_linear
-  export ANSIBLE_STRATEGY_PLUGINS=plugins/mitogen/ansible_mitogen/plugins/strategy
-fi
+test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" ${CI_TEST_SETTING}
 
 # Create cluster
-ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
+ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
 
 # Repeat deployment if testing upgrade
 if [ "${UPGRADE_TEST}" != "false" ]; then
   test "${UPGRADE_TEST}" == "basic" && PLAYBOOK="cluster.yml"
   test "${UPGRADE_TEST}" == "graceful" && PLAYBOOK="upgrade-cluster.yml"
   git checkout "${CI_BUILD_REF}"
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" $PLAYBOOK
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" $PLAYBOOK
 fi
 
 # Test control plane recovery
 if [ "${RECOVER_CONTROL_PLANE_TEST}" != "false" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "${RECOVER_CONTROL_PLANE_TEST_GROUPS}:!fake_hosts" -e reset_confirmation=yes reset.yml
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e etcd_retries=10 --limit etcd,kube_control_plane:!fake_hosts recover-control-plane.yml
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "${RECOVER_CONTROL_PLANE_TEST_GROUPS}:!fake_hosts" -e reset_confirmation=yes reset.yml
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e etcd_retries=10 --limit etcd,kube_control_plane:!fake_hosts recover-control-plane.yml
 fi
 
 # Tests Cases
@@ -93,27 +87,26 @@ ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIO
 ## Kubernetes conformance tests
 ansible-playbook -i ${ANSIBLE_INVENTORY} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} --limit "all:!fake_hosts" tests/testcases/100_check-k8s-conformance.yml $ANSIBLE_LOG_LEVEL
 
-## Idempotency checks 1/5 (repeat deployment)
 if [ "${IDEMPOT_CHECK}" = "true" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} ${CI_TEST_ADDITIONAL_VARS} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
-fi
+  ## Idempotency checks 1/5 (repeat deployment)
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} ${CI_TEST_ADDITIONAL_VARS} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
 
-## Idempotency checks 2/5 (Advanced DNS checks)
-if [ "${IDEMPOT_CHECK}" = "true" ]; then
+  ## Idempotency checks 2/5 (Advanced DNS checks)
   ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} --limit "all:!fake_hosts" tests/testcases/040_check-network-adv.yml
+
+  if [ "${RESET_CHECK}" = "true" ]; then
+    ## Idempotency checks 3/5 (reset deployment)
+    ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR}  -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} -e reset_confirmation=yes --limit "all:!fake_hosts" reset.yml
+
+    ## Idempotency checks 4/5 (redeploy after reset)
+    ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
+
+    ## Idempotency checks 5/5 (Advanced DNS checks)
+    ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} --limit "all:!fake_hosts" tests/testcases/040_check-network-adv.yml
+  fi
 fi
 
-## Idempotency checks 3/5 (reset deployment)
-if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR}  -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} -e reset_confirmation=yes --limit "all:!fake_hosts" reset.yml
-fi
-
-## Idempotency checks 4/5 (redeploy after reset)
-if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
-fi
-
-## Idempotency checks 5/5 (Advanced DNS checks)
-if [ "${IDEMPOT_CHECK}" = "true" -a "${RESET_CHECK}" = "true" ]; then
-  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} --limit "all:!fake_hosts" tests/testcases/040_check-network-adv.yml
+# Clean up at the end, this is to allow stage1 tests to include cleanup test
+if [ "${RESET_CHECK}" = "true" ]; then
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR}  -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} -e reset_confirmation=yes --limit "all:!fake_hosts" reset.yml
 fi

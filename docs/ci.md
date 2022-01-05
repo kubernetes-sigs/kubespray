@@ -6,9 +6,9 @@ To generate this Matrix run `./tests/scripts/md-table/main.py`
 
 | OS / CNI | calico | canal | cilium | flannel | kube-ovn | kube-router | macvlan | weave |
 |---| --- | --- | --- | --- | --- | --- | --- | --- |
+almalinux8 |  :white_check_mark: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: |
 amazon |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :white_check_mark: | :x: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :x: |
-centos8 |  :white_check_mark: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: |
 debian10 |  :white_check_mark: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: |
@@ -24,9 +24,9 @@ ubuntu20 |  :white_check_mark: | :x: | :x: | :white_check_mark: | :x: | :x: | :x
 
 | OS / CNI | calico | canal | cilium | flannel | kube-ovn | kube-router | macvlan | weave |
 |---| --- | --- | --- | --- | --- | --- | --- | --- |
+almalinux8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-centos8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian10 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
@@ -42,9 +42,9 @@ ubuntu20 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 
 | OS / CNI | calico | canal | cilium | flannel | kube-ovn | kube-router | macvlan | weave |
 |---| --- | --- | --- | --- | --- | --- | --- | --- |
+almalinux8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
-centos8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian10 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |

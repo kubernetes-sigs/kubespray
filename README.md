@@ -143,14 +143,14 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cilium](https://github.com/cilium/cilium) v1.9.11
   - [flanneld](https://github.com/flannel-io/flannel) v0.15.1
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.8.1
-  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.3.2
+  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.4.0
   - [multus](https://github.com/intel/multus-cni) v3.8
   - [weave](https://github.com/weaveworks/weave) v2.8.1
 - Application
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v1.5.4
-  - [coredns](https://github.com/coredns/coredns) v1.8.0
+  - [coredns](https://github.com/coredns/coredns) v1.8.6
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.0.4
 
 ## Container Runtime Notes

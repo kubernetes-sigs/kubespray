@@ -422,6 +422,7 @@ You can apply cloud-init based customization for the openstack instances before 
 One common template is used for all instances. Adjust the file shown below:
 `contrib/terraform/openstack/modules/compute/templates/cloudinit.yaml`
 For example, to enable openstack novnc access and ansible_user=root SSH access:
+```
 #cloud-config
 ## in some cases novnc console access is required
 ## it requires ssh password to be set

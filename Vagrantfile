@@ -26,8 +26,10 @@ SUPPORTED_OS = {
   "centos-bento"        => {box: "bento/centos-7.6",           user: "vagrant"},
   "centos8"             => {box: "centos/8",                   user: "vagrant"},
   "centos8-bento"       => {box: "bento/centos-8",             user: "vagrant"},
-  "fedora33"            => {box: "fedora/33-cloud-base",       user: "vagrant"},
+  "almalinux8"          => {box: "almalinux/8",                user: "vagrant"},
+  "almalinux8-bento"    => {box: "bento/almalinux-8",          user: "vagrant"},
   "fedora34"            => {box: "fedora/34-cloud-base",       user: "vagrant"},
+  "fedora35"            => {box: "fedora/35-cloud-base",       user: "vagrant"},
   "opensuse"            => {box: "bento/opensuse-leap-15.2",   user: "vagrant"},
   "opensuse-tumbleweed" => {box: "opensuse/Tumbleweed.x86_64", user: "vagrant"},
   "oraclelinux"         => {box: "generic/oracle7",            user: "vagrant"},
@@ -55,7 +57,7 @@ $network_plugin ||= "flannel"
 # Setting multi_networking to true will install Multus: https://github.com/intel/multus-cni
 $multi_networking ||= false
 $download_run_once ||= "True"
-$download_force_cache ||= "True"
+$download_force_cache ||= "False"
 # The first three nodes are etcd servers
 $etcd_instances ||= $num_instances
 # The first two nodes are kube masters

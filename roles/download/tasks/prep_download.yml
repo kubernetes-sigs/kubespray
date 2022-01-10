@@ -13,11 +13,17 @@
     image_info_command: "{{ docker_bin_dir }}/docker images -q | xargs -i {{ '{{' }} docker_bin_dir }}/docker inspect -f {% raw %}'{{ '{{' }} if .RepoTags }}{{ '{{' }} join .RepoTags \",\" }}{{ '{{' }} end }}{{ '{{' }} if .RepoDigests }},{{ '{{' }} join .RepoDigests \",\" }}{{ '{{' }} end }}' {% endraw %} {} | tr '\n' ','"
   when: container_manager == 'docker'
 
-- name: prep_download | Set image pull/info command for containerd and crio
+- name: prep_download | Set image pull/info command for containerd
+  set_fact:
+    image_info_command: "{{ bin_dir }}/nerdctl -n k8s.io images --format '{% raw %}{{ '{{' }} .Repository {{ '}}' }}:{{ '{{' }} .Tag {{ '}}' }}{% endraw %}' 2>/dev/null | grep -v ^:$ | tr '\n' ','"
+    image_pull_command: "{{ bin_dir }}/nerdctl -n k8s.io pull --quiet{{ nerdctl_extra_flags }}"
+  when: container_manager == 'containerd'
+
+- name: prep_download | Set image pull/info command for crio
   set_fact:
     image_info_command: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
     image_pull_command: "{{ bin_dir }}/crictl pull"
-  when: container_manager in ['crio' ,'containerd']
+  when: container_manager == 'crio'
 
 - name: prep_download | Set image pull/info command for docker on localhost
   set_fact:
@@ -25,11 +31,17 @@
     image_info_command_on_localhost: "{{ docker_bin_dir }}/docker images"
   when: container_manager_on_localhost == 'docker'
 
-- name: prep_download | Set image pull/info command for containerd and crio on localhost
+- name: prep_download | Set image pull/info command for containerd on localhost
+  set_fact:
+    image_info_command_on_localhost: "{{ bin_dir }}/nerdctl -n k8s.io images --format '{% raw %}{{ '{{' }} .Repository {{ '}}' }}:{{ '{{' }} .Tag {{ '}}' }}{% endraw %}' 2>/dev/null | grep -v ^:$ | tr '\n' ','"
+    image_pull_command_on_localhost: "{{ bin_dir }}/nerdctl -n k8s.io pull --quiet{{ nerdctl_extra_flags }}"
+  when: container_manager_on_localhost == 'containerd'
+
+- name: prep_download | Set image pull/info command for crio on localhost
   set_fact:
     image_info_command_on_localhost: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
     image_pull_command_on_localhost: "{{ bin_dir }}/crictl pull"
-  when: container_manager_on_localhost in ['crio' ,'containerd']
+  when: container_manager_on_localhost == 'crio'
 
 - name: prep_download | On localhost, check if passwordless root is possible
   command: "true"

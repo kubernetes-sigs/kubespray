@@ -16,7 +16,7 @@
     state: present
     insertbefore: BOF
     create: yes
-    backup: yes
+    backup: "{{ not resolvconf_stat.stat.islnk }}"
     marker: "# Ansible entries {mark}"
     mode: 0644
   notify: Preinstall | propagate resolvconf to k8s components
@@ -25,7 +25,7 @@
   replace:
     path: "{{ item[0] }}"
     regexp: '^{{ item[1] }}[^#]*(?=# Ansible entries BEGIN)'
-    backup: yes
+    backup: "{{ not resolvconf_stat.stat.islnk }}"
   with_nested:
     - "{{ [resolvconffile, base|default(''), head|default('')] | difference(['']) }}"
     - [ 'search ', 'nameserver ', 'domain ', 'options ' ]
@@ -36,12 +36,11 @@
     path: "{{ item[0] }}"
     regexp: '(# Ansible entries END\n(?:(?!^{{ item[1] }}).*\n)*)(?:^{{ item[1] }}.*\n?)+'
     replace: '\1'
-    backup: yes
+    backup: "{{ not resolvconf_stat.stat.islnk }}"
   with_nested:
     - "{{ [resolvconffile, base|default(''), head|default('')] | difference(['']) }}"
     - [ 'search ', 'nameserver ', 'domain ', 'options ' ]
   notify: Preinstall | propagate resolvconf to k8s components
-
 
 - name: get temporary resolveconf cloud init file content
   command: cat {{ resolvconffile }}

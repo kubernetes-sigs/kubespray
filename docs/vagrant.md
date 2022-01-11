@@ -67,11 +67,11 @@ scp kub-1:/var/cache/yum/x86_64/7/docker-ce/packages/* temp/docker_rpms/
 
 # copy kubectl access configuration in place
 mkdir $HOME/.kube/ &> /dev/null
-ln -s $INV/artifacts/admin.conf $HOME/.kube/config
+ln -s $PWD/$INV/artifacts/admin.conf $HOME/.kube/config
 # make the kubectl binary available
-sudo ln -s $INV/artifacts/kubectl /usr/local/bin/kubectl
+sudo ln -s $PWD/$INV/artifacts/kubectl /usr/local/bin/kubectl
 #or
-export PATH=$PATH:$INV/artifacts
+export PATH=$PATH:$PWD/$INV/artifacts
 ```
 
 If a vagrant run failed and you've made some changes to fix the issue causing the fail, here is how you would re-run ansible:
@@ -90,49 +90,44 @@ The output should look like this:
 
 ```ShellSession
 $ kubectl get nodes
-NAME    STATUS   ROLES    AGE   VERSION
-kub-1   Ready    master   32m   v1.14.1
-kub-2   Ready    master   31m   v1.14.1
-kub-3   Ready    <none>   31m   v1.14.1
+NAME    STATUS   ROLES                  AGE     VERSION
+kub-1   Ready    control-plane,master   4m37s   v1.22.5
+kub-2   Ready    control-plane,master   4m7s    v1.22.5
+kub-3   Ready    <none>                 3m7s    v1.22.5
 ```
 
 Another nice test is the following:
 
 ```ShellSession
-kubectl get po --all-namespaces -o wide
+kubectl get pods --all-namespaces -o wide
 ```
 
 Which should yield something like the following:
 
 ```ShellSession
-NAMESPACE     NAME                                    READY   STATUS    RESTARTS   AGE   IP            NODE     NOMINATED NODE   READINESS GATES
-kube-system   coredns-97c4b444f-9wm86                 1/1     Running   0          31m   10.233.66.2   kub-3    <none>           <none>
-kube-system   coredns-97c4b444f-g7hqx                 0/1     Pending   0          30m   <none>        <none>   <none>           <none>
-kube-system   dns-autoscaler-5fc5fdbf6-5c48k          1/1     Running   0          31m   10.233.66.3   kub-3    <none>           <none>
-kube-system   kube-apiserver-kub-1                    1/1     Running   0          32m   10.0.20.101   kub-1    <none>           <none>
-kube-system   kube-apiserver-kub-2                    1/1     Running   0          32m   10.0.20.102   kub-2    <none>           <none>
-kube-system   kube-controller-manager-kub-1           1/1     Running   0          32m   10.0.20.101   kub-1    <none>           <none>
-kube-system   kube-controller-manager-kub-2           1/1     Running   0          32m   10.0.20.102   kub-2    <none>           <none>
-kube-system   kube-flannel-8tgcn                      2/2     Running   0          31m   10.0.20.103   kub-3    <none>           <none>
-kube-system   kube-flannel-b2hgt                      2/2     Running   0          31m   10.0.20.101   kub-1    <none>           <none>
-kube-system   kube-flannel-zx4bc                      2/2     Running   0          31m   10.0.20.102   kub-2    <none>           <none>
-kube-system   kube-proxy-4bjdn                        1/1     Running   0          31m   10.0.20.102   kub-2    <none>           <none>
-kube-system   kube-proxy-l5tt5                        1/1     Running   0          31m   10.0.20.103   kub-3    <none>           <none>
-kube-system   kube-proxy-x59q8                        1/1     Running   0          31m   10.0.20.101   kub-1    <none>           <none>
-kube-system   kube-scheduler-kub-1                    1/1     Running   0          32m   10.0.20.101   kub-1    <none>           <none>
-kube-system   kube-scheduler-kub-2                    1/1     Running   0          32m   10.0.20.102   kub-2    <none>           <none>
-kube-system   kubernetes-dashboard-6c7466966c-jqz42   1/1     Running   0          31m   10.233.66.4   kub-3    <none>           <none>
-kube-system   nginx-proxy-kub-3                       1/1     Running   0          32m   10.0.20.103   kub-3    <none>           <none>
-kube-system   nodelocaldns-2x7vh                      1/1     Running   0          31m   10.0.20.102   kub-2    <none>           <none>
-kube-system   nodelocaldns-fpvnz                      1/1     Running   0          31m   10.0.20.103   kub-3    <none>           <none>
-kube-system   nodelocaldns-h2f42                      1/1     Running   0          31m   10.0.20.101   kub-1    <none>           <none>
+$ kubectl get pods --all-namespaces -o wide
+NAMESPACE            NAME                                      READY   STATUS    RESTARTS   AGE     IP            NODE    NOMINATED NODE   READINESS GATES
+kube-system          coredns-8474476ff8-m2469                  1/1     Running   0          2m45s   10.233.65.2   kub-2   <none>           <none>
+kube-system          coredns-8474476ff8-v5wzj                  1/1     Running   0          2m41s   10.233.64.3   kub-1   <none>           <none>
+kube-system          dns-autoscaler-5ffdc7f89d-76tnv           1/1     Running   0          2m43s   10.233.64.2   kub-1   <none>           <none>
+kube-system          kube-apiserver-kub-1                      1/1     Running   1          4m54s   10.0.20.101   kub-1   <none>           <none>
+kube-system          kube-apiserver-kub-2                      1/1     Running   1          4m33s   10.0.20.102   kub-2   <none>           <none>
+kube-system          kube-controller-manager-kub-1             1/1     Running   1          5m1s    10.0.20.101   kub-1   <none>           <none>
+kube-system          kube-controller-manager-kub-2             1/1     Running   1          4m33s   10.0.20.102   kub-2   <none>           <none>
+kube-system          kube-flannel-9xgf5                        1/1     Running   0          3m10s   10.0.20.102   kub-2   <none>           <none>
+kube-system          kube-flannel-l8jbl                        1/1     Running   0          3m10s   10.0.20.101   kub-1   <none>           <none>
+kube-system          kube-flannel-zss4t                        1/1     Running   0          3m10s   10.0.20.103   kub-3   <none>           <none>
+kube-system          kube-multus-ds-amd64-bhpc9                1/1     Running   0          3m2s    10.0.20.103   kub-3   <none>           <none>
+kube-system          kube-multus-ds-amd64-n6vl8                1/1     Running   0          3m2s    10.0.20.102   kub-2   <none>           <none>
+kube-system          kube-multus-ds-amd64-qttgs                1/1     Running   0          3m2s    10.0.20.101   kub-1   <none>           <none>
+kube-system          kube-proxy-2x4jl                          1/1     Running   0          3m33s   10.0.20.101   kub-1   <none>           <none>
+kube-system          kube-proxy-d48r7                          1/1     Running   0          3m33s   10.0.20.103   kub-3   <none>           <none>
+kube-system          kube-proxy-f45lp                          1/1     Running   0          3m33s   10.0.20.102   kub-2   <none>           <none>
+kube-system          kube-scheduler-kub-1                      1/1     Running   1          4m54s   10.0.20.101   kub-1   <none>           <none>
+kube-system          kube-scheduler-kub-2                      1/1     Running   1          4m33s   10.0.20.102   kub-2   <none>           <none>
+kube-system          nginx-proxy-kub-3                         1/1     Running   0          3m33s   10.0.20.103   kub-3   <none>           <none>
+kube-system          nodelocaldns-cg9tz                        1/1     Running   0          2m41s   10.0.20.102   kub-2   <none>           <none>
+kube-system          nodelocaldns-htswt                        1/1     Running   0          2m41s   10.0.20.103   kub-3   <none>           <none>
+kube-system          nodelocaldns-nsp7s                        1/1     Running   0          2m41s   10.0.20.101   kub-1   <none>           <none>
+local-path-storage   local-path-provisioner-66df45bfdd-km4zg   1/1     Running   0          2m54s   10.233.66.2   kub-3   <none>           <none>
 ```
-
-Create clusteradmin rbac and get the login token for the dashboard:
-
-```ShellSession
-kubectl create -f contrib/misc/clusteradmin-rbac.yml
-kubectl -n kube-system describe secret kubernetes-dashboard-token | grep 'token:' | grep -o '[^ ]\+$'
-```
-
-Copy it to the clipboard and now log in to the [dashboard](https://10.0.20.101:6443/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/login).

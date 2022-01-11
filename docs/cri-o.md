@@ -33,7 +33,7 @@ etcd_deployment_type: host # optionally and mutually exclusive with etcd_kubeadm
 Enable docker hub registry mirrors
 
 ```yaml
-crio_registries_mirrors:
+crio_registries:
   - prefix: docker.io
     insecure: false
     blocked: false

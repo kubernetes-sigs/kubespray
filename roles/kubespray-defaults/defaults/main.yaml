@@ -15,10 +15,10 @@ is_fedora_coreos: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.22.5
+kube_version: v1.23.1
 
 ## The minimum version working
-kube_version_min_required: v1.20.0
+kube_version_min_required: v1.21.0
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
@@ -138,6 +138,10 @@ kube_config_dir: /etc/kubernetes
 kube_script_dir: "{{ bin_dir }}/kubernetes-scripts"
 kube_manifest_dir: "{{ kube_config_dir }}/manifests"
 
+# Kubectl command
+# This is for consistency when using kubectl command in roles, and ensure
+kubectl: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf"
+
 # This is where all the cert scripts and certs will be located
 kube_cert_dir: "{{ kube_config_dir }}/ssl"
 
@@ -254,7 +258,7 @@ kubelet_shutdown_grace_period: 60s
 kubelet_shutdown_grace_period_critical_pods: 20s
 
 # Whether to deploy the container engine
-deploy_container_engine: inventory_hostname in groups['k8s_cluster'] or etcd_deployment_type != 'host'
+deploy_container_engine: "{{ inventory_hostname in groups['k8s_cluster'] or etcd_deployment_type != 'host' }}"
 
 # Container for runtime
 container_manager: containerd
@@ -340,11 +344,7 @@ docker_plugins: []
 etcd_kubeadm_enabled: false
 
 # Containerd options - thse are relevant when container_manager == 'containerd'
-containerd_version: 1.5.8
 containerd_use_systemd_cgroup: true
-
-# Docker options - this is relevant when container_manager == 'docker'
-docker_containerd_version: 1.4.12
 
 ## An obvious use case is allowing insecure-registry access to self hosted registries.
 ## Can be ipaddress and domain_name.
@@ -500,7 +500,7 @@ is_kube_master: "{{ inventory_hostname in groups['kube_control_plane'] }}"
 kube_apiserver_count: "{{ groups['kube_control_plane'] | length }}"
 kube_apiserver_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
 kube_apiserver_access_address: "{{ access_ip | default(kube_apiserver_address) }}"
-first_kube_control_plane: "{{ hostvars[groups['kube_control_plane'][0]]['access_ip'] | default(hostvars[groups['kube_control_plane'][0]]['ip'] | default(fallback_ips[groups['kube_control_plane'][0]])) }}"
+first_kube_control_plane_address: "{{ hostvars[groups['kube_control_plane'][0]]['access_ip'] | default(hostvars[groups['kube_control_plane'][0]]['ip'] | default(fallback_ips[groups['kube_control_plane'][0]])) }}"
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
@@ -511,7 +511,7 @@ kube_apiserver_global_endpoint: |-
   {%- elif use_localhost_as_kubeapi_loadbalancer|default(False)|bool -%}
       https://127.0.0.1:{{ kube_apiserver_port }}
   {%- else -%}
-      https://{{ first_kube_control_plane }}:{{ kube_apiserver_port }}
+      https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
@@ -521,7 +521,7 @@ kube_apiserver_endpoint: |-
   {%- elif is_kube_master -%}
       https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_port }}
   {%- else -%}
-      https://{{ first_kube_control_plane }}:{{ kube_apiserver_port }}
+      https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_insecure_endpoint: >-
   http://{{ kube_apiserver_insecure_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_insecure_port }}

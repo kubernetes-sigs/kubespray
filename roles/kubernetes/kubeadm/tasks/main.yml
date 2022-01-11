@@ -3,7 +3,7 @@
   set_fact:
     kubeadm_discovery_address: >-
       {%- if "127.0.0.1" in kube_apiserver_endpoint or "localhost" in kube_apiserver_endpoint -%}
-      {{ first_kube_control_plane }}:{{ kube_apiserver_port }}
+      {{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
       {%- else -%}
       {{ kube_apiserver_endpoint | replace("https://", "") }}
       {%- endif %}
@@ -115,9 +115,9 @@
 #                 incorrectly to first master, creating SPoF.
 - name: Update server field in kube-proxy kubeconfig
   shell: >-
-    set -o pipefail && {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf get configmap kube-proxy -n kube-system -o yaml
+    set -o pipefail && {{ kubectl }} get configmap kube-proxy -n kube-system -o yaml
     | sed 's#server:.*#server: https://127.0.0.1:{{ kube_apiserver_port }}#g'
-    | {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf replace -f -
+    | {{ kubectl }} replace -f -
   args:
     executable: /bin/bash
   run_once: true
@@ -139,7 +139,7 @@
     mode: "0644"
 
 - name: Restart all kube-proxy pods to ensure that they load the new configmap
-  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
+  command: "{{ kubectl }} delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
   run_once: true
   delegate_to: "{{ groups['kube_control_plane']|first }}"
   delegate_facts: false

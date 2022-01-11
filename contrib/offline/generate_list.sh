@@ -21,6 +21,7 @@ arch=${ARCH}
 image_arch=${IMAGE_ARCH}
 ansible_system=${ANSIBLE_SYSTEM}
 ansible_architecture=${ANSIBLE_ARCHITECTURE}
+host_os=${ANSIBLE_SYSTEM}
 EOF
 
 # generate all component version by $DOWNLOAD_YML

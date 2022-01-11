@@ -8,21 +8,21 @@
   fail:
     msg: "registry_service_cluster_ip support only compatible with ClusterIP."
   when:
-    - registry_service_cluster_ip is defined and registry_service_cluster_ip != ""
+    - registry_service_cluster_ip is defined and registry_service_cluster_ip|length > 0
     - registry_service_type != "ClusterIP"
 
 - name: Registry | Stop if registry_service_loadbalancer_ip is defined when registry_service_type is not 'LoadBalancer'
   fail:
     msg: "registry_service_loadbalancer_ip support only compatible with LoadBalancer."
   when:
-    - registry_service_loadbalancer_ip is defined and registry_service_loadbalancer_ip != ""
+    - registry_service_loadbalancer_ip is defined and registry_service_loadbalancer_ip|length > 0
     - registry_service_type != "LoadBalancer"
 
 - name: Registry | Stop if registry_service_nodeport is defined when registry_service_type is not 'NodePort'
   fail:
     msg: "registry_service_nodeport support only compatible with NodePort."
   when:
-    - registry_service_nodeport is defined and registry_service_nodeport != ""
+    - registry_service_nodeport is defined and registry_service_nodeport|length > 0
     - registry_service_type != "NodePort"
 
 - name: Registry | Create addon dir
@@ -59,12 +59,13 @@
     registry_templates: "{{ registry_templates + [item] }}"
   with_items:
     - [{ name: registry-ing, file: registry-ing.yml, type: ing }]
-  when: ingress_nginx_enabled == true or ingress_alb_enabled == true
+  when: ingress_nginx_enabled or ingress_alb_enabled
 
 - name: Registry | Create manifests
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/addons/registry/{{ item.file }}"
+    mode: 0644
   with_items: "{{ registry_templates }}"
   register: registry_manifests
   when: inventory_hostname == groups['kube_control_plane'][0]
@@ -84,6 +85,7 @@
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/addons/registry/{{ item.file }}"
+    mode: 0644
   with_items:
     - { name: registry-pvc, file: registry-pvc.yml, type: pvc }
   register: registry_manifests

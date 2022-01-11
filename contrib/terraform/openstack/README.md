@@ -416,6 +416,27 @@ terraform init ../../contrib/terraform/openstack
 
 This should finish fairly quickly telling you Terraform has successfully initialized and loaded necessary modules.
 
+### Customizing with cloud-init
+
+You can apply cloud-init based customization for the openstack instances before provisioning your cluster.
+One common template is used for all instances. Adjust the file shown below:
+`contrib/terraform/openstack/modules/compute/templates/cloudinit.yaml`
+For example, to enable openstack novnc access and ansible_user=root SSH access:
+
+```ShellSession
+#cloud-config
+## in some cases novnc console access is required
+## it requires ssh password to be set
+ssh_pwauth: yes
+chpasswd:
+  list: |
+    root:secret
+  expire: False
+
+## in some cases direct root ssh access via ssh key is required
+disable_root: false
+```
+
 ### Provisioning cluster
 
 You can apply the Terraform configuration to your cluster with the following command

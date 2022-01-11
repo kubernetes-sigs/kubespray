@@ -15,6 +15,10 @@ data "openstack_images_image_v2" "image_master" {
   name = var.image_master == "" ? var.image : var.image_master
 }
 
+data "template_file" "cloudinit" {
+    template = file("${path.module}/templates/cloudinit.yaml")
+}
+
 resource "openstack_compute_keypair_v2" "k8s" {
   name       = "kubernetes-${var.cluster_name}"
   public_key = chomp(file(var.public_key_path))
@@ -175,6 +179,7 @@ resource "openstack_compute_instance_v2" "bastion" {
   image_id   = var.bastion_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id  = var.flavor_bastion
   key_pair   = openstack_compute_keypair_v2.k8s.name
+  user_data  = data.template_file.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.bastion_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []
@@ -215,6 +220,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   image_id          = var.master_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_k8s_master
   key_pair          = openstack_compute_keypair_v2.k8s.name
+  user_data         = data.template_file.cloudinit.rendered
 
 
   dynamic "block_device" {
@@ -262,6 +268,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   image_id          = var.master_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_k8s_master
   key_pair          = openstack_compute_keypair_v2.k8s.name
+  user_data         = data.template_file.cloudinit.rendered
 
 
   dynamic "block_device" {
@@ -309,6 +316,7 @@ resource "openstack_compute_instance_v2" "etcd" {
   image_id          = var.etcd_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_etcd
   key_pair          = openstack_compute_keypair_v2.k8s.name
+  user_data         = data.template_file.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.etcd_root_volume_size_in_gb > 0 ? [local.image_to_use_master] : []
@@ -392,6 +400,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   image_id          = var.master_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_k8s_master
   key_pair          = openstack_compute_keypair_v2.k8s.name
+  user_data         = data.template_file.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.master_root_volume_size_in_gb > 0 ? [local.image_to_use_master] : []
@@ -434,6 +443,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   image_id          = var.node_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id         = var.flavor_k8s_node
   key_pair          = openstack_compute_keypair_v2.k8s.name
+  user_data         = data.template_file.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.node_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []
@@ -480,6 +490,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   image_id          = var.node_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id         = var.flavor_k8s_node
   key_pair          = openstack_compute_keypair_v2.k8s.name
+  user_data         = data.template_file.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.node_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []
@@ -522,6 +533,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   image_id          = var.node_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id         = each.value.flavor
   key_pair          = openstack_compute_keypair_v2.k8s.name
+  user_data         = data.template_file.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.node_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []

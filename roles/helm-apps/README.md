@@ -29,11 +29,11 @@ Playbook example:
     repos:
       - repo_name: simple-app
         repo_url: "https://blog.leiwang.info/simple-app"
-    helm_settings:
+    helm_params:
       wait_timeout: "5m"
   roles:
     - name: helm-apps
       helm_charts: "{{ helm_apps }}"
       helm_repositories: "{{ repos }}"
-      helm_settings:
+      helm_settings: "{{ helm_params }}"
 ```

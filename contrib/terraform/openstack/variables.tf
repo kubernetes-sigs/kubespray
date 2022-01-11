@@ -148,6 +148,12 @@ variable "use_neutron" {
   default     = 1
 }
 
+variable "port_security_enabled" {
+  description = "Enable port security on the internal network"
+  type        = bool
+  default     = "true"
+}
+
 variable "subnet_cidr" {
   description = "Subnet CIDR block."
   type        = string

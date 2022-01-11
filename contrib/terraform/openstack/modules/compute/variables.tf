@@ -165,3 +165,7 @@ variable "image_master_uuid" {
 variable "group_vars_path" {
   type = string
 }
+
+variable "port_security_enabled" {
+  type = bool
+}

@@ -63,9 +63,9 @@ git clone https://github.com/tmax-cloud/kubespray.git
    #VPC Vars
    aws_vpc_cidr_block       = "10.0.0.0/18" // VPC대역대 설정
    // 폐쇠망 subnet CIDR
-   aws_cidr_subnets_private = ["10.0.1.0/24", "10.0.3.0/24"]
+   aws_cidr_subnets_private = ["10.0.1.0/24", "10.0.3.0/24", "10.0.5.0/24"]
    // 외부망 subnet CIDR
-   aws_cidr_subnets_public  = ["10.0.2.0/24", "10.0.4.0/24"]
+   aws_cidr_subnets_public  = ["10.0.2.0/24", "10.0.4.0/24", "10.0.6.0/24"]
       
    #Bastion Host
    aws_bastion_num  = 2

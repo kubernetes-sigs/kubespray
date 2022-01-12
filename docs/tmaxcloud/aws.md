@@ -49,6 +49,8 @@ apiserver_loadbalancer_domain_name="kubernetes-nlb-supercloud-43e596a4155bc464.e
 aws_efs_filesystem_id=fs-060bd1a1362dfb2ee
 ```
 * etcd 인스턴스가 따로 없는  [etcd] 란에 master node name을 추가한다.
+* bastion을 proxy하여 master node나 worker node에 접근한다. bastion에도 다른 노드에 접근하기 위해서 pem 파일이 필요하다.
+  ** ex) ssh -i "/root/.ssh/terraform.pem" centos@18.183.94.33
 
 * apiserver_loadbalancer_domain_name을 수정한다. (inventory/tmaxcloud/group_vars/all/all.yml)
 
@@ -74,3 +76,22 @@ aws_efs_csi_namespace: aws-efs-csi
 aws_efs_csi_filesystem_id: fs-01f418ae6c17a6ae4
 aws_efs_csi_controller_replicas: 1
 ```
+
+3. kubespray playbook을 실행한다. (cluster.yml)
+
+```yml
+ex)
+ansible-playbook -i ./inventory/tmaxcloud/hosts ./cluster.yml \
+-e ansible_user=centos -e bootstrap_os=centos \
+-e ansible_ssh_private_key_file=/root/terraform.pem \
+-e cloud_provider=aws -b --become-user=root --flush-cache -v
+```
+
+## 삭제 가이드
+
+1. kubespray playbook을 실행한다. (reset.yml)
+
+ansible-playbook -i ./inventory/tmaxcloud/hosts ./reset.yml \
+-e ansible_user=centos -e bootstrap_os=centos \
+-e ansible_ssh_private_key_file=/root/terraform.pem \
+-e cloud_provider=aws -b --become-user=root --flush-cache -v

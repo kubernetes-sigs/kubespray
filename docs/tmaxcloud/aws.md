@@ -16,7 +16,6 @@ loadbalancer_apiserver:
   port: 6443
 
 ex)
-```yml
 ## External LB example config
 apiserver_loadbalancer_domain_name: "kubernetes-nlb-supercloud-43e596a4155bc464.elb.ap-northeast-1.amazonaws.com"
 loadbalancer_apiserver:

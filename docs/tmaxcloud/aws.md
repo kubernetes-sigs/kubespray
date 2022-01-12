@@ -8,6 +8,48 @@
 
 2. terraform apply 후 생성된 hosts 파일을 참고하여 kubespray 설정을 한다.
 
+* terraform apply 성공시 hosts 파일 예시
+```yml
+[all]
+ip-10-0-1-247.ap-northeast-1.compute.internal ansible_host=10.0.1.247
+ip-10-0-3-14.ap-northeast-1.compute.internal ansible_host=10.0.3.14
+ip-10-0-5-27.ap-northeast-1.compute.internal ansible_host=10.0.5.27
+ip-10-0-1-53.ap-northeast-1.compute.internal ansible_host=10.0.1.53
+ip-10-0-3-26.ap-northeast-1.compute.internal ansible_host=10.0.3.26
+ip-10-0-5-240.ap-northeast-1.compute.internal ansible_host=10.0.5.240
+
+bastion ansible_host=18.183.94.33
+bastion ansible_host=54.250.249.187
+
+[bastion]
+bastion ansible_host=18.183.94.33
+bastion ansible_host=54.250.249.187
+
+[kube_control_plane]
+ip-10-0-1-247.ap-northeast-1.compute.internal
+ip-10-0-3-14.ap-northeast-1.compute.internal
+ip-10-0-5-27.ap-northeast-1.compute.internal
+
+[kube_node]
+ip-10-0-1-53.ap-northeast-1.compute.internal
+ip-10-0-3-26.ap-northeast-1.compute.internal
+ip-10-0-5-240.ap-northeast-1.compute.internal
+
+[etcd]
+ip-10-0-1-247.ap-northeast-1.compute.internal
+ip-10-0-3-14.ap-northeast-1.compute.internal
+ip-10-0-5-27.ap-northeast-1.compute.internal
+
+[k8s_cluster:children]
+kube_node
+kube_control_plane
+
+[k8s_cluster:vars]
+apiserver_loadbalancer_domain_name="kubernetes-nlb-supercloud-43e596a4155bc464.elb.ap-northeast-1.amazonaws.com"
+aws_efs_filesystem_id=fs-060bd1a1362dfb2ee
+```
+* etcd 인스턴스가 따로 없는  [etcd] 란에 master node name을 추가한다.
+
 * apiserver_loadbalancer_domain_name을 수정한다. (inventory/tmaxcloud/group_vars/all/all.yml)
 
 ```yml

@@ -99,7 +99,7 @@ git clone https://github.com/tmax-cloud/kubespray.git
    
    - VPC는 한 리전당 생성 가능한 갯수 및 할당량이 존재하므로 적절히 고려하여 인스턴스를 생성한다.
    - Subnet 설정에서 리스트 안의 갯수를 늘리면 그에따라 여러 존에 Subnet을 생성하고 노드를 배포한다. Ex) ["10.0.1.0/24", "10.0.3.0/24"]로 설정하면 2개의 zone에 배포(AZ2). 
-   - 인스턴스 유형의 정보는 https://aws.amazon.com/ko/ec2/instance-types을 참조한다.
+   - 인스턴스 유형의 정보는 https://aws.amazon.com/ko/ec2/instance-types 을 참조한다.
    
 2. ami(이미지) 설정 (kubespray/contrib/terraform/aws/variable.tf)
 

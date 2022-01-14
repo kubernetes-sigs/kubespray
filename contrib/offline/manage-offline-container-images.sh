@@ -48,11 +48,13 @@ function create_container_image_tar() {
 		# so that these parts will be replaced with Kubespray.
 		# - kube_image_repo: "k8s.gcr.io"
 		# - gcr_image_repo: "gcr.io"
+		# - ghcr_image_repo: "ghcr.io"
 		# - docker_image_repo: "docker.io"
 		# - quay_image_repo: "quay.io"
 		FIRST_PART=$(echo ${image} | awk -F"/" '{print $1}')
 		if [ "${FIRST_PART}" = "k8s.gcr.io" ] ||
 		   [ "${FIRST_PART}" = "gcr.io" ] ||
+		   [ "${FIRST_PART}" = "ghcr.io" ] ||
 		   [ "${FIRST_PART}" = "docker.io" ] ||
 		   [ "${FIRST_PART}" = "quay.io" ]; then
 			image=$(echo ${image} | sed s@"${FIRST_PART}/"@@)
@@ -118,6 +120,7 @@ function register_container_images() {
 	echo "Please specify ${LOCALHOST_NAME}:5000 for the following options in your inventry:"
 	echo "- kube_image_repo"
 	echo "- gcr_image_repo"
+	echo "- ghcr_image_repo"
 	echo "- docker_image_repo"
 	echo "- quay_image_repo"
 }

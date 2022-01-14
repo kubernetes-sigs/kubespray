@@ -47,6 +47,7 @@ is_this_offline: false
 #kube_image_repo: "{{ registry_host }}/k8s.gcr.io"
 #etcd_image_repo: "{{ registry_host }}/k8s.gcr.io"
 #gcr_image_repo: "{{ registry_host }}/gcr.io"
+#ghcr_image_repo: "{{ registry_host }}/ghcr.io"
 #docker_image_repo: "{{ registry_host }}/docker.io"
 #quay_image_repo: "{{ registry_host }}/quay.io"
 #mcr_image_repo: "{{ registry_host }}/mcr.microsoft.com"

@@ -164,6 +164,15 @@ locals {
     openstack_networking_secgroup_v2.worker.name,
     var.extra_sec_groups ? openstack_networking_secgroup_v2.worker_extra[0].name : "",
   ])
+# bastion groups
+  bastion_sec_groups = compact(concat([
+    openstack_networking_secgroup_v2.k8s.name,
+    openstack_networking_secgroup_v2.bastion[0].name,
+  ]))
+# etcd groups
+  etcd_sec_groups = compact([openstack_networking_secgroup_v2.k8s.name])
+# glusterfs groups
+  gfs_sec_groups = compact([openstack_networking_secgroup_v2.k8s.name])
 
 # Image uuid
   image_to_use_node = var.image_uuid != "" ? var.image_uuid : data.openstack_images_image_v2.vm_image[0].id
@@ -197,9 +206,7 @@ resource "openstack_compute_instance_v2" "bastion" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s.name,
-    element(openstack_networking_secgroup_v2.bastion.*.name, count.index),
-  ]
+  security_groups = var.port_security_enabled ? local.bastion_sec_groups : null
 
   metadata = {
     ssh_user         = var.ssh_user
@@ -240,7 +247,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
     name = var.network_name
   }
 
-  security_groups = local.master_sec_groups
+  security_groups = var.port_security_enabled ? local.master_sec_groups : null
 
   dynamic "scheduler_hints" {
     for_each = var.master_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
@@ -288,7 +295,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
     name = var.network_name
   }
 
-  security_groups = local.master_sec_groups
+  security_groups = var.port_security_enabled ? local.master_sec_groups : null
 
   dynamic "scheduler_hints" {
     for_each = var.master_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
@@ -334,7 +341,7 @@ resource "openstack_compute_instance_v2" "etcd" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s.name]
+  security_groups = var.port_security_enabled ? local.etcd_sec_groups : null
 
   dynamic "scheduler_hints" {
     for_each = var.etcd_server_group_policy ? [openstack_compute_servergroup_v2.k8s_etcd[0]] : []
@@ -376,7 +383,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
     name = var.network_name
   }
 
-  security_groups = local.master_sec_groups
+  security_groups = var.port_security_enabled ? local.master_sec_groups : null
 
   dynamic "scheduler_hints" {
     for_each = var.master_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
@@ -419,7 +426,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
     name = var.network_name
   }
 
-  security_groups = local.master_sec_groups
+  security_groups = var.port_security_enabled ? local.master_sec_groups : null
 
   dynamic "scheduler_hints" {
     for_each = var.master_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_master[0]] : []
@@ -462,7 +469,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
     name = var.network_name
   }
 
-  security_groups = local.worker_sec_groups
+  security_groups = var.port_security_enabled ? local.worker_sec_groups : null
 
   dynamic "scheduler_hints" {
     for_each = var.node_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
@@ -509,7 +516,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
     name = var.network_name
   }
 
-  security_groups = local.worker_sec_groups
+  security_groups = var.port_security_enabled ? local.worker_sec_groups : null
 
   dynamic "scheduler_hints" {
     for_each = var.node_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
@@ -552,7 +559,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
     name = var.network_name
   }
 
-  security_groups = local.worker_sec_groups
+  security_groups = var.port_security_enabled ? local.worker_sec_groups : null
 
   dynamic "scheduler_hints" {
     for_each = var.node_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_node[0]] : []
@@ -597,7 +604,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
     name = var.network_name
   }
 
-  security_groups = [openstack_networking_secgroup_v2.k8s.name]
+  security_groups = var.port_security_enabled ? local.gfs_sec_groups : null
 
   dynamic "scheduler_hints" {
     for_each = var.node_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_node[0]] : []

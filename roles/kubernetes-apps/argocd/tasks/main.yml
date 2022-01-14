@@ -1,0 +1,32 @@
+---
+- name: ArgoCD | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/argocd"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: ArgoCD | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/argocd/{{ item.file }}"
+  with_items:
+    - { name: argocd-install, file: argocd.yml }
+  register: argocd_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: ArgoCD | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/argocd/{{ item.item.file }}"
+    state: "latest"
+    wait: true
+  with_items:
+    - "{{ argocd_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+  loop_control:
+    label: "{{ item.item.file }}"

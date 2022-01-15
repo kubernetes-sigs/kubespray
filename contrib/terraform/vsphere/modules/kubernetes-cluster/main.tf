@@ -46,14 +46,30 @@ resource "vsphere_virtual_machine" "worker" {
     client_device = true
   }
 
-  vapp {
-    properties = {
-      "user-data" = base64encode(templatefile("${path.module}/templates/cloud-init.tmpl", { ip = each.value.ip,
-                                                                  netmask = each.value.netmask,
-                                                                  gw = var.gateway,
-                                                                  dns = var.dns_primary,
-                                                                  ssh_public_keys = var.ssh_public_keys}))
+  dynamic "vapp" {
+    for_each = var.vapp ? [1] : []
+
+    content {
+      properties = {
+        "user-data" = base64encode(templatefile("${path.module}/templates/vapp-cloud-init.tpl", { ssh_public_keys = var.ssh_public_keys }))
+      }
     }
+  }
+
+  extra_config = {
+    "isolation.tools.copy.disable"         = "FALSE"
+    "isolation.tools.paste.disable"        = "FALSE"
+    "isolation.tools.setGUIOptions.enable" = "TRUE"
+    "guestinfo.userdata"                   = base64encode(templatefile("${path.module}/templates/cloud-init.tpl", { ssh_public_keys = var.ssh_public_keys }))
+    "guestinfo.userdata.encoding"          = "base64"
+    "guestinfo.metadata" = base64encode(templatefile("${path.module}/templates/metadata.tpl", { hostname = "${var.prefix}-${each.key}",
+      interface_name = var.interface_name
+      ip             = each.value.ip,
+      netmask        = each.value.netmask,
+      gw             = var.gateway,
+      dns            = var.dns_primary,
+    ssh_public_keys = var.ssh_public_keys }))
+    "guestinfo.metadata.encoding" = "base64"
   }
 }
 
@@ -105,13 +121,29 @@ resource "vsphere_virtual_machine" "master" {
     client_device = true
   }
 
-  vapp {
-    properties = {
-      "user-data" = base64encode(templatefile("${path.module}/templates/cloud-init.tmpl", { ip = each.value.ip,
-                                                                  netmask = each.value.netmask,
-                                                                  gw = var.gateway,
-                                                                  dns = var.dns_primary,
-                                                                  ssh_public_keys = var.ssh_public_keys}))
+  dynamic "vapp" {
+    for_each = var.vapp ? [1] : []
+
+    content {
+      properties = {
+        "user-data" = base64encode(templatefile("${path.module}/templates/vapp-cloud-init.tpl", { ssh_public_keys = var.ssh_public_keys }))
+      }
     }
+  }
+
+  extra_config = {
+    "isolation.tools.copy.disable"         = "FALSE"
+    "isolation.tools.paste.disable"        = "FALSE"
+    "isolation.tools.setGUIOptions.enable" = "TRUE"
+    "guestinfo.userdata"                   = base64encode(templatefile("${path.module}/templates/cloud-init.tpl", { ssh_public_keys = var.ssh_public_keys }))
+    "guestinfo.userdata.encoding"          = "base64"
+    "guestinfo.metadata" = base64encode(templatefile("${path.module}/templates/metadata.tpl", { hostname = "${var.prefix}-${each.key}",
+      interface_name = var.interface_name
+      ip             = each.value.ip,
+      netmask        = each.value.netmask,
+      gw             = var.gateway,
+      dns            = var.dns_primary,
+    ssh_public_keys = var.ssh_public_keys }))
+    "guestinfo.metadata.encoding" = "base64"
   }
 }

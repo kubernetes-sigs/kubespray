@@ -105,8 +105,7 @@ ansible-playbook -i inventory.ini ../../cluster.yml -b -v
 * `vsphere_datacenter`: The identifier of vSphere data center
 * `vsphere_compute_cluster`: The identifier of vSphere compute cluster
 * `vsphere_datastore`: The identifier of vSphere data store
-* `vsphere_server`: The address of vSphere server
-* `vsphere_hostname`: The IP address of vSphere hostname
+* `vsphere_server`: This is the vCenter server name or address for vSphere API operations.
 * `ssh_public_keys`: List of public SSH keys to install on all machines
 * `template_name`: The name of a base image (the OVF template be defined in vSphere beforehand)
 

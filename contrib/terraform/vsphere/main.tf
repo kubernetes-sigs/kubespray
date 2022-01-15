@@ -35,7 +35,7 @@ data "vsphere_compute_cluster" "compute_cluster" {
 
 resource "vsphere_resource_pool" "pool" {
   name                    = "${var.prefix}-cluster-pool"
-  parent_resource_pool_id = "${data.vsphere_compute_cluster.compute_cluster.resource_pool_id}"
+  parent_resource_pool_id = data.vsphere_compute_cluster.compute_cluster.resource_pool_id
 }
 
 module "kubernetes" {
@@ -82,15 +82,15 @@ module "kubernetes" {
 # Generate ansible inventory
 #
 
-resource local_file "inventory" {
+resource "local_file" "inventory" {
   content = templatefile("${path.module}/templates/inventory.tpl", {
     connection_strings_master = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s etcd_member_name=etcd%d",
       keys(module.kubernetes.master_ip),
       values(module.kubernetes.master_ip),
-      range(1, length(module.kubernetes.master_ip) + 1))),
+    range(1, length(module.kubernetes.master_ip) + 1))),
     connection_strings_worker = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s",
       keys(module.kubernetes.worker_ip),
-      values(module.kubernetes.worker_ip))),
+    values(module.kubernetes.worker_ip))),
     list_master = join("\n", formatlist("%s", keys(module.kubernetes.master_ip))),
     list_worker = join("\n", formatlist("%s", keys(module.kubernetes.worker_ip)))
   })

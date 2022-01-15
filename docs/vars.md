@@ -21,7 +21,9 @@ Some variables of note include:
 * *containerd_version* - Specify version of containerd to use when setting `container_manager` to `containerd`
 * *docker_containerd_version* - Specify which version of containerd to use when setting `container_manager` to `docker`
 * *etcd_version* - Specify version of ETCD to use
-* *ipip* - Enables Calico ipip encapsulation by default
+* *calico_ipip_mode* - Configures Calico ipip encapsulation - valid values are 'Never', 'Always' and 'CrossSubnet' (default 'Never')
+* *calico_vxlan_mode* - Configures Calico vxlan encapsulation - valid values are 'Never', 'Always' and 'CrossSubnet' (default 'Always')
+* *calico_network_backend* - Configures Calico network backend - valid values are 'none', 'bird' and 'vxlan' (default 'vxlan')
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)
 * *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
 * *kube_version* - Specify a given Kubernetes version

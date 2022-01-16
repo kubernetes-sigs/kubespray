@@ -35,6 +35,13 @@ variable "ssh_public_keys" {
 variable "template_name" {}
 
 # Optional variables (ones where reasonable defaults exist)
+variable "vapp" {
+  default = false
+}
+
+variable "interface_name" {
+  default = "ens192"
+}
 
 variable "folder" {
   default = ""

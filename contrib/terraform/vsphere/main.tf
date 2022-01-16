@@ -69,11 +69,13 @@ module "kubernetes" {
   scsi_type             = data.vsphere_virtual_machine.template.scsi_type
   network_id            = data.vsphere_network.network.id
   adapter_type          = data.vsphere_virtual_machine.template.network_interface_types[0]
+  interface_name        = var.interface_name
   firmware              = var.firmware
   hardware_version      = var.hardware_version
   disk_thin_provisioned = data.vsphere_virtual_machine.template.disks.0.thin_provisioned
 
   template_id = data.vsphere_virtual_machine.template.id
+  vapp        = var.vapp
 
   ssh_public_keys = var.ssh_public_keys
 }

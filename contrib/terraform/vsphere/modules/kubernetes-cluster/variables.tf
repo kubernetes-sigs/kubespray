@@ -18,14 +18,12 @@ variable "datastore_id" {}
 variable "guest_id" {}
 variable "scsi_type" {}
 variable "network_id" {}
-variable "interface_name" {
-  default = "ens160"
-}
+variable "interface_name" {}
 variable "adapter_type" {}
 variable "disk_thin_provisioned" {}
 variable "template_id" {}
 variable "vapp" {
-  default = false
+  type = bool
 }
 variable "firmware" {}
 variable "folder" {}

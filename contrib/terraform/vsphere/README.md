@@ -124,5 +124,7 @@ ansible-playbook -i inventory.ini ../../cluster.yml -b -v
 * `worker_cores`: The number of CPU cores for the worker nodes (default: 16)
 * `worker_memory`: The amount of RAM for the worker nodes in MB (default: 8192)
 * `worker_disk_size`: The amount of disk space for the worker nodes in GB (default: 100)
+* `vapp`: Boolean to set the template type to vapp. (Default: false)
+* `interface_name`: Name of the interface to configure. (Default: ens192)
 
 An example variables file can be found `default.tfvars`

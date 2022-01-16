@@ -15,7 +15,7 @@ balancer deployed by Kubespray and **only contacts the first master**.
 ## Choose Cilium version
 
 ```yml
-cilium_version: v1.9.9
+cilium_version: v1.11.0
 ```
 
 ## Add variable to config
@@ -28,6 +28,16 @@ Example:
 cilium_config_extra_vars:
   enable-endpoint-routes: true
 ```
+
+## Change Identity Allocation Mode
+
+Cilium assigns an identity for each endpoint. This identity is used to enforce basic connectivity between endpoints.
+
+Cilium currently supports two different identity allocation modes:
+
+- "crd" stores identities in kubernetes as CRDs (custom resource definition).
+  - These can be queried with `kubectl get ciliumid`
+- "kvstore" stores identities in an etcd kvstore.
 
 ## Install Cilium Hubble
 

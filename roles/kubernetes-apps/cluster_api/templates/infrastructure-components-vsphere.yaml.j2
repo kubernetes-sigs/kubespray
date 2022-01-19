@@ -2693,6 +2693,36 @@ status:
   conditions: []
   storedVersions: []
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: capv-controller-manager
+  namespace: capv-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: capv-controller-manager-token
+  namespace: capv-system
+  annotations:
+     kubernetes.io/service-account.name: capv-controller-manager
+type: kubernetes.io/service-account-token
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: capv-controller-manager
+  namespace: capi-webhook-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: capv-controller-manager-token
+  namespace: capi-webhook-system
+  annotations:
+     kubernetes.io/service-account.name: capv-controller-manager
+type: kubernetes.io/service-account-token
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -2884,7 +2914,7 @@ roleRef:
   name: capv-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: capv-controller-manager
   namespace: capv-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -2899,7 +2929,7 @@ roleRef:
   name: capv-manager-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: capv-controller-manager
   namespace: capv-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -2914,7 +2944,7 @@ roleRef:
   name: capv-proxy-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: capv-controller-manager
   namespace: capv-system
 ---
 apiVersion: v1
@@ -2996,6 +3026,10 @@ spec:
         ports:
         - containerPort: 8443
           name: https
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capv-controller-manager-token
+          readOnly: true
       - args:
         - --metrics-addr=127.0.0.1:8080
         - --webhook-port=9443
@@ -3022,6 +3056,10 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capv-controller-manager-token
+          readOnly: true
+      serviceAccountName: capv-controller-manager
       terminationGracePeriodSeconds: 10
       tolerations:
       - effect: NoSchedule
@@ -3031,6 +3069,10 @@ spec:
         secret:
           defaultMode: 420
           secretName: capv-webhook-service-cert
+      - name: capv-controller-manager-token
+        secret:
+          defaultMode: 420
+          secretName: capv-controller-manager-token
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -3063,6 +3105,10 @@ spec:
         ports:
         - containerPort: 8443
           name: https
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capv-controller-manager-token
+          readOnly: true
       - args:
         - --metrics-addr=127.0.0.1:8080
         image: {{ cluster_api_provider_vsphere_manager_image_repo }}:{{ cluster_api_provider_vsphere_manager_image_tag }}
@@ -3084,6 +3130,10 @@ spec:
         - mountPath: /etc/capv
           name: manager-bootstrap-credentials
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: capv-controller-manager-token
+          readOnly: true
+      serviceAccountName: capv-controller-manager
       terminationGracePeriodSeconds: 10
       tolerations:
       - effect: NoSchedule
@@ -3092,8 +3142,12 @@ spec:
       - name: manager-bootstrap-credentials
         secret:
           secretName: capv-manager-bootstrap-credentials
+      - name: capv-controller-manager-token
+        secret:
+          defaultMode: 420
+          secretName: capv-controller-manager-token
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   labels:

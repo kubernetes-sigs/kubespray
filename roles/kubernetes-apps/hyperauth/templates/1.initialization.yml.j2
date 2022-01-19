@@ -10,6 +10,15 @@ metadata:
   name: hyperauth-admin
   namespace: hyperauth
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    kubernetes.io/service-account.name: hyperauth-admin
+  name: hyperauth-admin-service-account-token
+  namespace: hyperauth
+type: kubernetes.io/service-account-token
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -117,6 +126,7 @@ spec:
         app: postgresql
         tier: postgreSQL
     spec:
+      serviceAccountName: hyperauth-admin
       containers:
         - image: {{ hyperauth_postgres_image_repo }}:{{ hyperauth_postgres_image_tag }}
           name: postgresql
@@ -143,10 +153,16 @@ spec:
             - name: postgresql
               mountPath: /var/lib/postgresql/data
               subPath: postgres
+            - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              name: hyperauth-admin-service-account-token  
       volumes:
         - name: postgresql
           persistentVolumeClaim:
             claimName: postgres-pvc
+        - name: hyperauth-admin-service-account-token
+          secret:
+            defaultMode: 420
+            secretName: hyperauth-admin-service-account-token    
 ---
 apiVersion: v1
 kind: Service
@@ -155,6 +171,10 @@ metadata:
   namespace: hyperauth
   labels:
     app: keycloak
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.name: hyperauth
+    traefik.ingress.kubernetes.io/service.sticky.cookie.secure: "true"
 spec:
   ports:
   - name: http
@@ -232,11 +252,9 @@ spec:
   secretName: kafka-jks
   commonName: kafka
   dnsNames:
-    - kafka-1.hyperauth
-    - kafka-2.hyperauth
-    - kafka-3.hyperauth
-    - "*.*.*.svc"
     - kafka-kafka-bootstrap.hyperauth
+    - "*.kafka-kafka-brokers.hyperauth.svc"
+    - "*.hyperauth"
     - tmax-cloud
   isCA: false
   keySize: 2048
@@ -269,33 +287,12 @@ metadata:
 data:
   tmax-realm.json: |
     {
-      "users": [
-        {
-          "username": "hc-admin@tmax.co.kr",
-          "enabled": true,
-          "email": "hc-admin@tmax.co.kr",
-          "credentials": [
-            {
-              "type": "password",
-              "value": "Tmaxadmin1!",
-              "temporary": false
-            }
-          ],
-          "clientRoles": {
-            "account": [
-              "view-profile",
-              "manage-account"
-            ]
-          },
-          "groups": ["hypercloud5"]
-        }
-      ],
       "id": "tmax",
       "realm": "tmax",
       "notBefore": 1618199421,
       "revokeRefreshToken": true,
       "refreshTokenMaxReuse": 2,
-      "accessTokenLifespan": 18000,
+      "accessTokenLifespan": 3600,
       "accessTokenLifespanForImplicitFlow": 54000,
       "ssoSessionIdleTimeout": 1800,
       "ssoSessionMaxLifespan": 108000,
@@ -367,15 +364,6 @@ data:
             "attributes": {}
           },
           {
-            "id": "007ff4c8-5f41-48ad-998a-d1006cbead57",
-            "name": "readall",
-            "description": "kibana readall",
-            "composite": false,
-            "clientRole": false,
-            "containerId": "tmax",
-            "attributes": {}
-          },
-          {
             "id": "5a288393-f708-4c69-8749-72b27f54f833",
             "name": "hyperauth tmax realm user all role",
             "composite": false,
@@ -421,7 +409,6 @@ data:
           }
         ],
         "client": {
-          "core.hyperregistry.192.168.9.148.nip.io": [],
           "realm-management": [
             {
               "id": "448e91ad-40b6-4cdb-ae31-487c4b079587",
@@ -635,7 +622,6 @@ data:
             }
           ],
           "security-admin-console": [],
-          "ck-ai-console": [],
           "traefik": [],
           "harbor": [],
           "account-console": [],
@@ -651,6 +637,28 @@ data:
             }
           ],
           "hypercloud5": [],
+          "jaeger": [
+            {
+              "id": "dd61d4dd-5958-4802-87f4-810d786efb35",
+              "name": "uma_protection",
+              "composite": false,
+              "clientRole": true,
+              "containerId": "5b3bf957-d015-412a-aa53-c4a9298b15bc",
+              "attributes": {}
+            },
+            {
+              "id": "f12a2bd4-4d18-439d-a8a3-a92c6033d9b2",
+              "name": "jaeger-manager",
+              "description": "jaeger-manger for accessing jaeger via api-gateway",
+              "composite": false,
+              "clientRole": true,
+              "containerId": "5b3bf957-d015-412a-aa53-c4a9298b15bc",
+              "attributes": {}
+            }
+          ],
+          "core.hyperregistry.tmaxcloud.org": [],
+          "gatekeeper": [],
+          "hyperregistry.tmaxcloud.org": [],
           "grafana": [
             {
               "id": "a968e141-9ee0-40bb-8a59-c89c32258a92",
@@ -661,11 +669,28 @@ data:
               "attributes": {}
             }
           ],
+          "kiali": [
+            {
+              "id": "147dcb27-5d59-4927-be36-77487df4ea80",
+              "name": "uma_protection",
+              "composite": false,
+              "clientRole": true,
+              "containerId": "dab4db22-92f4-4051-9c60-c37bb08ba69e",
+              "attributes": {}
+            }
+          ],
           "admin-cli": [],
-          "ck-1-4-console": [],
           "gitlab": [],
-          "gitlab.azssi.io": [],
-          "kibana": [],
+          "kibana": [
+            {
+              "id": "90db8999-1107-47bc-b868-6f5bb0b5a16a",
+              "name": "kibana-manager",
+              "composite": false,
+              "clientRole": true,
+              "containerId": "37955f07-cc97-4828-8a93-72fba084795b",
+              "attributes": {}
+            }
+          ],
           "account": [
             {
               "id": "377303cb-e84e-4e7a-ab63-6fd28623346e",
@@ -746,11 +771,31 @@ data:
           "attributes": {},
           "realmRoles": [
             "hyperauth tmax realm all role",
-            "readall",
             "hyperauth tmax realm user all role",
             "all_access",
             "uma_authorization",
             "offline_access",
+            "admin"
+          ],
+          "clientRoles": {},
+          "subGroups": []
+        },
+        {
+          "id": "ac363d6e-e90c-4e11-ac3e-3f8cfb9fac24",
+          "name": "hyperregistry",
+          "path": "/hyperregistry",
+          "attributes": {},
+          "realmRoles": [],
+          "clientRoles": {},
+          "subGroups": []
+        },
+        {
+          "id": "7cde55a1-7d04-489c-98f3-28eb5b296f63",
+          "name": "kiali",
+          "path": "/kiali",
+          "attributes": {},
+          "realmRoles": [
+            "all_access",
             "admin"
           ],
           "clientRoles": {},
@@ -807,6 +852,85 @@ data:
       "webAuthnPolicyPasswordlessCreateTimeout": 0,
       "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
       "webAuthnPolicyPasswordlessAcceptableAaguids": [],
+      "users": [
+        {
+          "username": "hc-admin@tmax.co.kr",
+          "enabled": true,
+          "emailVerified": true,
+          "email": "hc-admin@tmax.co.kr",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "Tmaxadmin1!",
+              "temporary": false
+            }
+          ],
+          "clientRoles": {
+            "account": [
+              "view-profile",
+              "manage-account"
+            ]
+          },
+          "groups": ["hypercloud5"]
+        },
+        {
+          "id": "3fc4854d-a416-48fc-bd54-dfa6f92be66a",
+          "createdTimestamp": 1636954461156,
+          "username": "service-account-kiali",
+          "enabled": true,
+          "totp": false,
+          "emailVerified": false,
+          "serviceAccountClientId": "kiali",
+          "disableableCredentialTypes": [],
+          "requiredActions": [
+            "VERIFY_EMAIL"
+          ],
+          "realmRoles": [
+            "uma_authorization",
+            "offline_access"
+          ],
+          "clientRoles": {
+            "kiali": [
+              "uma_protection"
+            ],
+            "account": [
+              "manage-account",
+              "view-profile"
+            ]
+          },
+          "notBefore": 0,
+          "groups": [
+            "/hypercloud5"
+          ]
+        },
+        {
+          "id": "3980bd42-ce7e-46ae-a17d-f10730533a10",
+          "createdTimestamp": 1638249579669,
+          "username": "service-account-kibana",
+          "enabled": true,
+          "totp": false,
+          "emailVerified": false,
+          "serviceAccountClientId": "kibana",
+          "disableableCredentialTypes": [],
+          "requiredActions": [
+            "VERIFY_EMAIL"
+          ],
+          "realmRoles": [
+            "uma_authorization",
+            "offline_access"
+          ],
+          "clientRoles": {
+            "account": [
+              "manage-account",
+              "view-profile"
+            ]
+          },
+          "notBefore": 0,
+          "groups": [
+            "/hypercloud5"
+          ]
+        }
+      ],
       "scopeMappings": [
         {
           "clientScope": "offline_access",
@@ -1036,162 +1160,15 @@ data:
           ]
         },
         {
-          "id": "9950b5a7-3f5f-4df3-98f3-7acbb0e03f08",
-          "clientId": "ck-1-4-console",
-          "rootUrl": "https://172.23.4.104:31200",
-          "adminUrl": "",
-          "baseUrl": "/",
+          "id": "baf1f64c-629a-49b6-adbd-18f685dad7a8",
+          "clientId": "core.hyperregistry.tmaxcloud.org",
           "surrogateAuthRequired": false,
           "enabled": true,
           "alwaysDisplayInConsole": false,
           "clientAuthenticatorType": "client-secret",
           "secret": "**********",
           "redirectUris": [
-            "*"
-          ],
-          "webOrigins": [
-            "*",
-            "https://172.23.4.104:31200"
-          ],
-          "notBefore": 0,
-          "bearerOnly": false,
-          "consentRequired": false,
-          "standardFlowEnabled": true,
-          "implicitFlowEnabled": false,
-          "directAccessGrantsEnabled": true,
-          "serviceAccountsEnabled": false,
-          "publicClient": true,
-          "frontchannelLogout": false,
-          "protocol": "openid-connect",
-          "attributes": {
-            "saml.assertion.signature": "false",
-            "saml.force.post.binding": "false",
-            "saml.multivalued.roles": "false",
-            "saml.encrypt": "false",
-            "saml.server.signature": "false",
-            "saml.server.signature.keyinfo.ext": "false",
-            "exclude.session.state.from.auth.response": "false",
-            "saml_force_name_id_format": "false",
-            "saml.client.signature": "false",
-            "tls.client.certificate.bound.access.tokens": "false",
-            "saml.authnstatement": "false",
-            "display.on.consent.screen": "false",
-            "saml.onetimeuse.condition": "false"
-          },
-          "authenticationFlowBindingOverrides": {},
-          "fullScopeAllowed": true,
-          "nodeReRegistrationTimeout": -1,
-          "protocolMappers": [
-            {
-              "id": "6548db9b-42d7-4d12-831a-b8f9aca7e76d",
-              "name": "docker-v2-allow-all-mapper",
-              "protocol": "docker-v2",
-              "protocolMapper": "docker-v2-allow-all-mapper",
-              "consentRequired": false,
-              "config": {}
-            }
-          ],
-          "defaultClientScopes": [
-            "web-origins",
-            "role_list",
-            "user_name",
-            "profile",
-            "roles",
-            "email",
-            "group"
-          ],
-          "optionalClientScopes": [
-            "address",
-            "phone",
-            "offline_access",
-            "microprofile-jwt"
-          ]
-        },
-        {
-          "id": "f97a4a3e-a137-478b-9846-395cd44144a2",
-          "clientId": "ck-ai-console",
-          "rootUrl": "https://172.23.4.110",
-          "adminUrl": "https://172.23.4.110",
-          "baseUrl": "/",
-          "surrogateAuthRequired": false,
-          "enabled": true,
-          "alwaysDisplayInConsole": false,
-          "clientAuthenticatorType": "client-secret",
-          "secret": "**********",
-          "redirectUris": [
-            "*",
-            "https://172.23.4.110/*"
-          ],
-          "webOrigins": [
-            "https://172.23.4.110",
-            "*"
-          ],
-          "notBefore": 0,
-          "bearerOnly": false,
-          "consentRequired": false,
-          "standardFlowEnabled": true,
-          "implicitFlowEnabled": false,
-          "directAccessGrantsEnabled": true,
-          "serviceAccountsEnabled": false,
-          "publicClient": true,
-          "frontchannelLogout": false,
-          "protocol": "openid-connect",
-          "attributes": {
-            "saml.assertion.signature": "false",
-            "access.token.lifespan": "8553600",
-            "saml.multivalued.roles": "false",
-            "saml.force.post.binding": "false",
-            "saml.encrypt": "false",
-            "login_theme": "hypercloud",
-            "saml.server.signature": "false",
-            "saml.server.signature.keyinfo.ext": "false",
-            "exclude.session.state.from.auth.response": "false",
-            "saml_force_name_id_format": "false",
-            "saml.client.signature": "false",
-            "tls.client.certificate.bound.access.tokens": "false",
-            "saml.authnstatement": "false",
-            "display.on.consent.screen": "false",
-            "saml.onetimeuse.condition": "false"
-          },
-          "authenticationFlowBindingOverrides": {},
-          "fullScopeAllowed": true,
-          "nodeReRegistrationTimeout": -1,
-          "protocolMappers": [
-            {
-              "id": "fc8ad8f2-f2db-4194-89dc-c0f0f1d53e62",
-              "name": "docker-v2-allow-all-mapper",
-              "protocol": "docker-v2",
-              "protocolMapper": "docker-v2-allow-all-mapper",
-              "consentRequired": false,
-              "config": {}
-            }
-          ],
-          "defaultClientScopes": [
-            "web-origins",
-            "role_list",
-            "user_name",
-            "profile",
-            "roles",
-            "email",
-            "group"
-          ],
-          "optionalClientScopes": [
-            "address",
-            "phone",
-            "offline_access",
-            "microprofile-jwt"
-          ]
-        },
-        {
-          "id": "48c6b0ad-e162-4051-ac6a-fb6a93a520cc",
-          "clientId": "core.hyperregistry.192.168.9.148.nip.io",
-          "surrogateAuthRequired": false,
-          "enabled": true,
-          "alwaysDisplayInConsole": false,
-          "clientAuthenticatorType": "client-secret",
-          "secret": "**********",
-          "redirectUris": [
-            "https://core.hyperregistry.192.168.9.148.nip.io/c/oidc/callback"
+            "https://core.hyperregistry.tmaxcloud.org/c/oidc/callback"
           ],
           "webOrigins": [],
           "notBefore": 0,
@@ -1224,7 +1201,7 @@ data:
           "nodeReRegistrationTimeout": -1,
           "protocolMappers": [
             {
-              "id": "4764cd00-7208-4879-87b1-a267f0290f19",
+              "id": "9ced06fe-4ac9-47ba-b04c-dc38dd29d7df",
               "name": "docker-v2-allow-all-mapper",
               "protocol": "docker-v2",
               "protocolMapper": "docker-v2-allow-all-mapper",
@@ -1238,6 +1215,84 @@ data:
             "user_name",
             "profile",
             "roles",
+            "email",
+            "group"
+          ],
+          "optionalClientScopes": [
+            "address",
+            "phone",
+            "offline_access",
+            "microprofile-jwt"
+          ]
+        },
+        {
+          "id": "d8de71a1-aaf7-4e4e-986a-474c0d4bf9ab",
+          "clientId": "gatekeeper",
+          "surrogateAuthRequired": false,
+          "enabled": true,
+          "alwaysDisplayInConsole": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "**********",
+          "redirectUris": [
+            "*"
+          ],
+          "webOrigins": [],
+          "notBefore": 0,
+          "bearerOnly": false,
+          "consentRequired": false,
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": false,
+          "publicClient": false,
+          "frontchannelLogout": false,
+          "protocol": "openid-connect",
+          "attributes": {
+            "saml.assertion.signature": "false",
+            "saml.multivalued.roles": "false",
+            "saml.force.post.binding": "false",
+            "saml.encrypt": "false",
+            "saml.server.signature": "false",
+            "saml.server.signature.keyinfo.ext": "false",
+            "exclude.session.state.from.auth.response": "false",
+            "saml_force_name_id_format": "false",
+            "saml.client.signature": "false",
+            "tls.client.certificate.bound.access.tokens": "false",
+            "saml.authnstatement": "false",
+            "display.on.consent.screen": "false",
+            "saml.onetimeuse.condition": "false"
+          },
+          "authenticationFlowBindingOverrides": {},
+          "fullScopeAllowed": true,
+          "nodeReRegistrationTimeout": -1,
+          "protocolMappers": [
+            {
+              "id": "f87e9594-9139-403f-a410-18896b988170",
+              "name": "gatekeeper",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-audience-mapper",
+              "consentRequired": false,
+              "config": {
+                "included.client.audience": "gatekeeper",
+                "id.token.claim": "false",
+                "access.token.claim": "true"
+              }
+            },
+            {
+              "id": "c065a554-f7fc-481d-8f82-22cd91fab2a7",
+              "name": "docker-v2-allow-all-mapper",
+              "protocol": "docker-v2",
+              "protocolMapper": "docker-v2-allow-all-mapper",
+              "consentRequired": false,
+              "config": {}
+            }
+          ],
+          "defaultClientScopes": [
+            "web-origins",
+            "role_list",
+            "user_name",
+            "roles",
+            "profile",
             "email",
             "group"
           ],
@@ -1315,76 +1370,10 @@ data:
           ]
         },
         {
-          "id": "067bcb4f-2cdd-4f82-af51-910b7aaba444",
-          "clientId": "gitlab.azssi.io",
-          "surrogateAuthRequired": false,
-          "enabled": true,
-          "alwaysDisplayInConsole": false,
-          "clientAuthenticatorType": "client-secret",
-          "secret": "**********",
-          "redirectUris": [
-            "https://gitlab.azssi.io/users/auth/openid_connect/callback"
-          ],
-          "webOrigins": [],
-          "notBefore": 0,
-          "bearerOnly": false,
-          "consentRequired": false,
-          "standardFlowEnabled": true,
-          "implicitFlowEnabled": false,
-          "directAccessGrantsEnabled": true,
-          "serviceAccountsEnabled": false,
-          "publicClient": false,
-          "frontchannelLogout": false,
-          "protocol": "openid-connect",
-          "attributes": {
-            "saml.assertion.signature": "false",
-            "saml.force.post.binding": "false",
-            "saml.multivalued.roles": "false",
-            "saml.encrypt": "false",
-            "saml.server.signature": "false",
-            "saml.server.signature.keyinfo.ext": "false",
-            "exclude.session.state.from.auth.response": "false",
-            "saml_force_name_id_format": "false",
-            "saml.client.signature": "false",
-            "tls.client.certificate.bound.access.tokens": "false",
-            "saml.authnstatement": "false",
-            "display.on.consent.screen": "false",
-            "saml.onetimeuse.condition": "false"
-          },
-          "authenticationFlowBindingOverrides": {},
-          "fullScopeAllowed": true,
-          "nodeReRegistrationTimeout": -1,
-          "protocolMappers": [
-            {
-              "id": "6fa52f97-81df-414e-8707-57152b092b04",
-              "name": "docker-v2-allow-all-mapper",
-              "protocol": "docker-v2",
-              "protocolMapper": "docker-v2-allow-all-mapper",
-              "consentRequired": false,
-              "config": {}
-            }
-          ],
-          "defaultClientScopes": [
-            "web-origins",
-            "role_list",
-            "user_name",
-            "roles",
-            "profile",
-            "email",
-            "group"
-          ],
-          "optionalClientScopes": [
-            "address",
-            "phone",
-            "offline_access",
-            "microprofile-jwt"
-          ]
-        },
-        {
           "id": "6e693f32-07ef-4671-a33f-4baaabcc3ec5",
           "clientId": "grafana",
-          "rootUrl": "https://console.tmaxcloud.org/api/grafana/",
-          "adminUrl": "https://console.hypercloud.com/api/grafana/",
+          "rootUrl": "https://grafana.tmaxcloud.org/api/grafana/",
+          "adminUrl": "https://grafana.tmaxcloud.org/api/grafana/",
           "baseUrl": "",
           "surrogateAuthRequired": false,
           "enabled": true,
@@ -1392,11 +1381,11 @@ data:
           "clientAuthenticatorType": "client-secret",
           "secret": "**********",
           "redirectUris": [
-            "https://console.tmaxcloud.org/api/grafana/login/generic_oauth/*",
-            "*"
+            "*",
+            "https://grafana.tmaxcloud.org/api/grafana/login/generic_oauth/*"
           ],
           "webOrigins": [
-            "https://console.hypercloud.com/api/grafana/"
+            "https://grafana.tmaxcloud.org/api/grafana/"
           ],
           "notBefore": 0,
           "bearerOnly": false,
@@ -1526,7 +1515,7 @@ data:
         {
           "id": "5cc0c3df-8287-4819-ad71-9ad534d6250a",
           "clientId": "hypercloud5",
-          "rootUrl": "https://console.{{ custom_domain_name }}",
+          "rootUrl": "",
           "adminUrl": "",
           "baseUrl": "/",
           "surrogateAuthRequired": false,
@@ -1579,6 +1568,33 @@ data:
               "protocolMapper": "docker-v2-allow-all-mapper",
               "consentRequired": false,
               "config": {}
+            },
+            {
+              "id": "48c94501-f1b3-4278-8f5e-7c5d5a23780b",
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {
+                "full.path": "true",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "claim.name": "hypercloud5",
+                "userinfo.token.claim": "true"
+              }
+            },
+            {
+              "id": "2fe55ccf-f926-4a84-ab94-a2d3914cbe49",
+              "name": "hypercloud5",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-audience-mapper",
+              "consentRequired": false,
+              "config": {
+                "included.client.audience": "hypercloud5",
+                "id.token.claim": "false",
+                "access.token.claim": "true",
+                "included.custom.audience": "hypercloud5"
+              }
             }
           ],
           "defaultClientScopes": [
@@ -1598,22 +1614,17 @@ data:
           ]
         },
         {
-          "id": "37955f07-cc97-4828-8a93-72fba084795b",
-          "clientId": "kibana",
-          "rootUrl": "https://172.22.6.2:31114/api/kibana",
-          "adminUrl": "https://172.22.6.2:31114/api/kibana",
+          "id": "cf9c34ca-adfc-4024-8c5c-83e2968bb928",
+          "clientId": "hyperregistry.tmaxcloud.org",
           "surrogateAuthRequired": false,
           "enabled": true,
           "alwaysDisplayInConsole": false,
           "clientAuthenticatorType": "client-secret",
           "secret": "**********",
           "redirectUris": [
-            "https://172.22.6.2:31114/*",
-            "https://172.22.6.2:31114/api/kibana/auth/openid/login"
+            "https://hyperregistry.tmaxcloud.org/c/oidc/callback"
           ],
-          "webOrigins": [
-            "https://172.22.6.2:31114"
-          ],
+          "webOrigins": [],
           "notBefore": 0,
           "bearerOnly": false,
           "consentRequired": false,
@@ -1621,7 +1632,7 @@ data:
           "implicitFlowEnabled": false,
           "directAccessGrantsEnabled": true,
           "serviceAccountsEnabled": false,
-          "publicClient": true,
+          "publicClient": false,
           "frontchannelLogout": false,
           "protocol": "openid-connect",
           "attributes": {
@@ -1644,54 +1655,282 @@ data:
           "nodeReRegistrationTimeout": -1,
           "protocolMappers": [
             {
-              "id": "ff8b6867-4e45-4c10-a090-8bfd0221ecb3",
-              "name": "email",
+              "id": "3394cd3c-cf02-4be1-8e0e-b306399cdbb1",
+              "name": "docker-v2-allow-all-mapper",
+              "protocol": "docker-v2",
+              "protocolMapper": "docker-v2-allow-all-mapper",
+              "consentRequired": false,
+              "config": {}
+            }
+          ],
+          "defaultClientScopes": [
+            "web-origins",
+            "role_list",
+            "user_name",
+            "profile",
+            "roles",
+            "email",
+            "group"
+          ],
+          "optionalClientScopes": [
+            "address",
+            "phone",
+            "offline_access",
+            "microprofile-jwt"
+          ]
+        },
+        {
+          "id": "5b3bf957-d015-412a-aa53-c4a9298b15bc",
+          "clientId": "jaeger",
+          "rootUrl": "",
+          "adminUrl": "",
+          "surrogateAuthRequired": false,
+          "enabled": true,
+          "alwaysDisplayInConsole": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "**********",
+          "redirectUris": [
+            "*"
+          ],
+          "webOrigins": [
+            ""
+          ],
+          "notBefore": 0,
+          "bearerOnly": false,
+          "consentRequired": false,
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": false,
+          "publicClient": false,
+          "frontchannelLogout": false,
+          "protocol": "openid-connect",
+          "attributes": {
+            "saml.assertion.signature": "false",
+            "saml.multivalued.roles": "false",
+            "saml.force.post.binding": "false",
+            "saml.encrypt": "false",
+            "saml.server.signature": "false",
+            "saml.server.signature.keyinfo.ext": "false",
+            "exclude.session.state.from.auth.response": "false",
+            "saml_force_name_id_format": "false",
+            "saml.client.signature": "false",
+            "tls.client.certificate.bound.access.tokens": "false",
+            "saml.authnstatement": "false",
+            "display.on.consent.screen": "false",
+            "saml.onetimeuse.condition": "false"
+          },
+          "authenticationFlowBindingOverrides": {},
+          "fullScopeAllowed": true,
+          "nodeReRegistrationTimeout": -1,
+          "protocolMappers": [
+            {
+              "id": "ee84594c-adf1-4217-90d5-041b1fea3112",
+              "name": "jaeger",
               "protocol": "openid-connect",
-              "protocolMapper": "oidc-usermodel-property-mapper",
+              "protocolMapper": "oidc-audience-mapper",
               "consentRequired": false,
               "config": {
-                "id.token.claim": "true",
-                "access.token.claim": "true",
-                "userinfo.token.claim": "true"
+                "included.client.audience": "jaeger",
+                "id.token.claim": "false",
+                "access.token.claim": "true"
               }
             },
             {
-              "id": "ecfecb0b-667a-4d47-a3ef-021f662586a9",
-              "name": "realm roles",
-              "protocol": "openid-connect",
-              "protocolMapper": "oidc-usermodel-realm-role-mapper",
+              "id": "5c286b16-5a1e-4cf3-8f17-8f7071b4fee8",
+              "name": "docker-v2-allow-all-mapper",
+              "protocol": "docker-v2",
+              "protocolMapper": "docker-v2-allow-all-mapper",
               "consentRequired": false,
-              "config": {
-                "multivalued": "true",
-                "userinfo.token.claim": "true",
-                "id.token.claim": "true",
-                "access.token.claim": "true",
-                "claim.name": "role",
-                "jsonType.label": "String"
-              }
-            },
+              "config": {}
+            }
+          ],
+          "defaultClientScopes": [
+            "web-origins",
+            "role_list",
+            "user_name",
+            "profile",
+            "roles",
+            "email",
+            "group"
+          ],
+          "optionalClientScopes": [
+            "address",
+            "phone",
+            "offline_access",
+            "microprofile-jwt"
+          ]
+        },
+        {
+          "id": "dab4db22-92f4-4051-9c60-c37bb08ba69e",
+          "clientId": "kiali",
+          "rootUrl": "https://kiali.tmaxcloud.org/api/kiali",
+          "adminUrl": "",
+          "surrogateAuthRequired": false,
+          "enabled": true,
+          "alwaysDisplayInConsole": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "**********",
+          "redirectUris": [
+            "",
+            "*"
+          ],
+          "webOrigins": [
+            ""
+          ],
+          "notBefore": 0,
+          "bearerOnly": false,
+          "consentRequired": true,
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": true,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "authorizationServicesEnabled": true,
+          "publicClient": false,
+          "frontchannelLogout": false,
+          "protocol": "openid-connect",
+          "attributes": {
+            "saml.assertion.signature": "false",
+            "saml.multivalued.roles": "false",
+            "saml.force.post.binding": "false",
+            "saml.encrypt": "false",
+            "login_theme": "hypercloud",
+            "saml.server.signature": "false",
+            "saml.server.signature.keyinfo.ext": "false",
+            "exclude.session.state.from.auth.response": "false",
+            "saml_force_name_id_format": "false",
+            "saml.client.signature": "false",
+            "tls.client.certificate.bound.access.tokens": "false",
+            "saml.authnstatement": "false",
+            "display.on.consent.screen": "true",
+            "saml.onetimeuse.condition": "false"
+          },
+          "authenticationFlowBindingOverrides": {},
+          "fullScopeAllowed": true,
+          "nodeReRegistrationTimeout": -1,
+          "protocolMappers": [
             {
-              "id": "31edbdde-724d-4075-b080-fa53c0dd9b43",
-              "name": "username",
-              "protocol": "openid-connect",
-              "protocolMapper": "oidc-usermodel-property-mapper",
+              "id": "6d7098e7-b46b-473d-8728-ac9e0e44a307",
+              "name": "docker-v2-allow-all-mapper",
+              "protocol": "docker-v2",
+              "protocolMapper": "docker-v2-allow-all-mapper",
               "consentRequired": false,
-              "config": {
-                "id.token.claim": "true",
-                "access.token.claim": "true",
-                "userinfo.token.claim": "true"
+              "config": {}
+            }
+          ],
+          "defaultClientScopes": [
+            "web-origins",
+            "role_list",
+            "user_name",
+            "profile",
+            "roles",
+            "email",
+            "group"
+          ],
+          "optionalClientScopes": [
+            "address",
+            "phone",
+            "offline_access",
+            "microprofile-jwt"
+          ],
+          "authorizationSettings": {
+            "allowRemoteResourceManagement": true,
+            "policyEnforcementMode": "ENFORCING",
+            "resources": [
+              {
+                "name": "Default Resource",
+                "type": "urn:kiali:resources:default",
+                "ownerManagedAccess": false,
+                "attributes": {},
+                "_id": "403540f6-4461-4d78-b39f-e01255c87b4c",
+                "uris": [
+                  "/*"
+                ]
               }
-            },
+            ],
+            "policies": [
+              {
+                "id": "857872ba-5c7e-4e7c-988a-e065635de76c",
+                "name": "Default Policy",
+                "description": "A policy that grants access only for users within this realm",
+                "type": "js",
+                "logic": "POSITIVE",
+                "decisionStrategy": "AFFIRMATIVE",
+                "config": {
+                  "code": "// by default, grants any permission associated with this policy\n$evaluation.grant();\n"
+                }
+              },
+              {
+                "id": "70ad22b2-f858-4256-9a84-1cf199c92af8",
+                "name": "Default Permission",
+                "description": "A permission that applies to the default resource type",
+                "type": "resource",
+                "logic": "POSITIVE",
+                "decisionStrategy": "UNANIMOUS",
+                "config": {
+                  "defaultResourceType": "urn:kiali:resources:default",
+                  "applyPolicies": "[\"Default Policy\"]"
+                }
+              }
+            ],
+            "scopes": [],
+            "decisionStrategy": "UNANIMOUS"
+          }
+        },
+        {
+          "id": "37955f07-cc97-4828-8a93-72fba084795b",
+          "clientId": "kibana",
+          "rootUrl": "",
+          "adminUrl": "",
+          "surrogateAuthRequired": false,
+          "enabled": true,
+          "alwaysDisplayInConsole": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "**********",
+          "redirectUris": [
+            "*"
+          ],
+          "webOrigins": [],
+          "notBefore": 0,
+          "bearerOnly": false,
+          "consentRequired": false,
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "publicClient": false,
+          "frontchannelLogout": false,
+          "protocol": "openid-connect",
+          "attributes": {
+            "saml.assertion.signature": "false",
+            "saml.multivalued.roles": "false",
+            "saml.force.post.binding": "false",
+            "saml.encrypt": "false",
+            "login_theme": "tmax",
+            "saml.server.signature": "false",
+            "saml.server.signature.keyinfo.ext": "false",
+            "exclude.session.state.from.auth.response": "false",
+            "saml_force_name_id_format": "false",
+            "saml.client.signature": "false",
+            "tls.client.certificate.bound.access.tokens": "false",
+            "saml.authnstatement": "false",
+            "display.on.consent.screen": "false",
+            "saml.onetimeuse.condition": "false"
+          },
+          "authenticationFlowBindingOverrides": {},
+          "fullScopeAllowed": true,
+          "nodeReRegistrationTimeout": -1,
+          "protocolMappers": [
             {
-              "id": "406bb425-cfb5-467f-98c9-75ac9abfba27",
-              "name": "profile",
+              "id": "567ddff3-330d-4e68-9c55-883fd84ae550",
+              "name": "kibana",
               "protocol": "openid-connect",
-              "protocolMapper": "oidc-usermodel-attribute-mapper",
+              "protocolMapper": "oidc-audience-mapper",
               "consentRequired": false,
               "config": {
-                "id.token.claim": "true",
-                "access.token.claim": "true",
-                "userinfo.token.claim": "true"
+                "included.client.audience": "kibana",
+                "id.token.claim": "false",
+                "access.token.claim": "true"
               }
             },
             {
@@ -1955,8 +2194,8 @@ data:
             "web-origins",
             "role_list",
             "user_name",
-            "roles",
             "profile",
+            "roles",
             "email",
             "group"
           ],
@@ -2524,6 +2763,29 @@ data:
               "config": {
                 "included.client.audience": "hypercloud5",
                 "id.token.claim": "true",
+                "access.token.claim": "true"
+              }
+            }
+          ]
+        },
+        {
+          "id": "cbf4adae-b868-47d0-a739-fd7d8f0199bf",
+          "name": "kibana",
+          "protocol": "openid-connect",
+          "attributes": {
+            "include.in.token.scope": "true",
+            "display.on.consent.screen": "true"
+          },
+          "protocolMappers": [
+            {
+              "id": "05bf9ea2-2721-42ae-aff0-b6dcb8f4149e",
+              "name": "kibana",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-audience-mapper",
+              "consentRequired": false,
+              "config": {
+                "included.client.audience": "kibana",
+                "id.token.claim": "false",
                 "access.token.claim": "true"
               }
             }
@@ -3789,7 +4051,7 @@ data:
           "alias": "webauthn-register-passwordless",
           "name": "Webauthn Register Passwordless",
           "providerId": "webauthn-register-passwordless",
-          "enabled": true,
+          "enabled": false,
           "defaultAction": false,
           "priority": 40,
           "config": {}
@@ -12676,7 +12938,7 @@ spec:
             name: strimzi-cluster-operator
       containers:
         - name: strimzi-cluster-operator
-          image: 'quay.io/strimzi/operator:0.26.0'
+          image: {{ kafka_cluster_operator_image_repo }}:0.26.0
           ports:
             - containerPort: 8080
               name: http

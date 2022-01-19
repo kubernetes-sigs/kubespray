@@ -1,0 +1,43 @@
+---
+- name: Kubernetes Apps | Lay Down External CoreDNS templates
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+  loop:
+    - { name: excoredns, file: excoredns-clusterrole.yml, type: clusterrole }
+    - { name: excoredns, file: excoredns-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: excoredns, file: excoredns-config.yml, type: configmap }
+    - { name: excoredns, file: excoredns-deployment.yml, type: deployment }
+    - { name: excoredns, file: excoredns-sa.yml, type: sa }
+    - { name: excoredns, file: excoredns-svc.yml, type: svc }
+  register: excoredns_manifests
+  vars:
+    clusterIP: "{{ excoredns_server }}"
+  when:
+    - dns_mode in ['coredns', 'coredns_dual']
+    - inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - excoredns
+
+- name: Kubernetes Apps | Start External CoreDNS Resources
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "kube-system"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ excoredns_manifests.results | default({}) }}"
+  when:
+    - dns_mode != 'none'
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  register: resource_result
+  until: resource_result is succeeded
+  retries: 4
+  delay: 5
+  tags:
+    - excoredns
+  loop_control:
+    label: "{{ item.item.file }}"

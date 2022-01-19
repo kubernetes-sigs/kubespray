@@ -428,6 +428,12 @@ rules:
   verbs:
   - get
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hypercloud-single-operator-service-account
+  namespace: hypercloud5-system
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -439,7 +445,7 @@ roleRef:
   name: hypercloud-single-operator-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: hypercloud-single-operator-service-account
   namespace: hypercloud5-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -452,7 +458,7 @@ roleRef:
   name: hypercloud-single-operator-manager-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: hypercloud-single-operator-service-account
   namespace: hypercloud5-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -465,8 +471,17 @@ roleRef:
   name: hypercloud-single-operator-proxy-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: hypercloud-single-operator-service-account
   namespace: hypercloud5-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    kubernetes.io/service-account.name: hypercloud-single-operator-service-account
+  name: hypercloud-single-operator-service-account-token
+  namespace: hypercloud5-system
+type: kubernetes.io/service-account-token
 ---
 apiVersion: v1
 kind: Service
@@ -518,7 +533,7 @@ spec:
         - --enable-leader-election
         command:
         - /manager
-        image: tmaxcloudck/hypercloud-single-operator:b5.0.25.9
+        image: {{ hypercloud_single_operator_image_repo }}:b5.0.25.9
         name: manager
         ports:
         - containerPort: 9443
@@ -535,6 +550,8 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: hypercloud-single-operator-service-account-token
         - mountPath: /logs
           name: operator-log-mnt
       - args:
@@ -542,7 +559,7 @@ spec:
         - --upstream=http://127.0.0.1:8080/
         - --logtostderr=true
         - --v=10
-        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
+        image: {{ hypercloud_operator_proxy_image_repo }}:{{ hypercloud_operator_proxy_image_tag }}
         name: kube-rbac-proxy
         ports:
         - containerPort: 8443
@@ -555,6 +572,7 @@ spec:
             cpu: 100m
             memory: 20Mi
       dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: hypercloud-single-operator-service-account
       terminationGracePeriodSeconds: 10
       tolerations:
       - effect: NoSchedule
@@ -565,6 +583,10 @@ spec:
         secret:
           defaultMode: 420
           secretName: hypercloud-single-operator-webhook-server-cert
+      - name: hypercloud-single-operator-service-account-token
+        secret:
+          defaultMode: 420
+          secretName: hypercloud-single-operator-service-account-token
       - name: operator-log-mnt
 ---
 apiVersion: cert-manager.io/v1

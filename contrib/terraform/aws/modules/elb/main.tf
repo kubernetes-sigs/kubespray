@@ -46,6 +46,7 @@ resource "aws_elb" "aws-elb-api" {
     interval            = 30
   }
 
+  internal                    = var.aws_elb_api_internal
   cross_zone_load_balancing   = true
   idle_timeout                = 400
   connection_draining         = true

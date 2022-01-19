@@ -91,3 +91,38 @@
     - not healthy
     - has_quorum
     - hostvars[item[0]]['etcd_member_name'] == item[1].replace(' ','').split(',')[2]
+
+- name: Get etcd events cluster members
+  command: "{{ bin_dir }}/etcdctl member list"
+  register: member_list
+  changed_when: false
+  check_mode: no
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_ENDPOINTS: "{{ etcd_events_access_addresses }}"
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+  when:
+    - groups['broken_etcd']
+    - not healthy
+    - has_quorum
+    - etcd_events_cluster_enabled
+
+- name: Remove broken cluster events members
+  command: "{{ bin_dir }}/etcdctl member remove {{ item[1].replace(' ','').split(',')[0] }}"
+  environment:
+    ETCDCTL_API: 3
+    ETCDCTL_ENDPOINTS: "{{ etcd_events_access_addresses }}"
+    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+  with_nested:
+    - "{{ groups['broken_etcd'] }}"
+    - "{{ member_list.stdout_lines }}"
+  when:
+    - groups['broken_etcd']
+    - not healthy
+    - has_quorum
+    - hostvars[item[0]]['etcd_member_name'] == item[1].replace(' ','').split(',')[2]
+    - etcd_events_cluster_enabled

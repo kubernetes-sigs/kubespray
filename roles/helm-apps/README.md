@@ -19,7 +19,7 @@ Playbook example:
 
 ```yaml
 ---
-- hosts: kube_controle_plane[0]
+- hosts: kube_control_plane[0]
   gather_facts: no
   vars:
     helm_apps:

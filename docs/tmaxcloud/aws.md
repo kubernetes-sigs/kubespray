@@ -77,6 +77,42 @@ aws_efs_csi_filesystem_id: fs-01f418ae6c17a6ae4
 aws_efs_csi_controller_replicas: 1
 ```
 
+* 아래의 모듈 enabled 옵션을 수정한다. (inventory/tmaxcloud/group_vars/k8s_cluster/addons.yml)
+
+```yml
+ex)
+krew_enabled: false
+metallb_enabled: false
+metallb_speaker_enabled: false
+registry_enabled: false
+metrics_server_enabled: false
+local_path_provisioner_enabled: false
+local_volume_provisioner_enabled: false
+cephfs_provisioner_enabled: false
+rbd_provisioner_enabled: false
+ingress_ambassador_enabled: false
+ingress_alb_enabled: false
+
+helm_enabled: false
+ingress_nginx_enabled: false
+nfs_external_provisioner_enabled: false
+hyperauth_enabled: false
+cert_manager_enabled: false
+cluster_api_enabled: false
+template_service_broker_enabled: false
+catalog_controller_enabled: false
+hypercloud_enabled: false
+federation_enabled: false
+hyperregistry_enabled: false
+registry_operator_enabled: false
+prometheus_enabled: false 
+service_mesh_enabled: false
+console_provisioner_enabled: false
+cicd_enabled: false
+efk_enabled: false
+image_validating_webhook_enabled: false
+```
+
 3. kubespray playbook을 실행한다. (cluster.yml)
 
 ```yml

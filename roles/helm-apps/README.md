@@ -33,7 +33,7 @@ Playbook example:
       wait_timeout: "5m"
   roles:
     - name: helm-apps
-      helm_charts: "{{ helm_apps }}"
-      helm_repositories: "{{ repos }}"
-      helm_settings: "{{ helm_params }}"
+      charts: "{{ helm_apps }}"
+      repositories: "{{ repos }}"
+      charts_common_opts: "{{ helm_params }}"
 ```

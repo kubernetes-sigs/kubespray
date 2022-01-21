@@ -202,6 +202,7 @@ The following tags are defined in playbooks:
 |             vsphere-csi-driver | Configuring csi driver: vsphere
 |                          weave | Network plugin Weave
 |                      win_nodes | Running windows specific tasks
+|                          youki | Configuring youki runtime
 
 Note: Use the ``bash scripts/gen_tags.sh`` command to generate a list of all
 tags found in the codebase. New tags will be listed with the empty "Used for"

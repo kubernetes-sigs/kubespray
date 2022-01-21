@@ -255,6 +255,8 @@ resource "null_resource" "inventories" {
 module "transit_gateway" {
   source = "./modules/tgw"
 
+  create_tgw       = var.vpn_connection_enable
+  
   aws_cluster_name = var.aws_cluster_name
 
   vpc_attachments  = {

@@ -5,7 +5,6 @@ variable "aws_cluster_name" {
 variable "create_tgw" {
   description = "Controls if TGW should be created (it affects almost all resources)"
   type        = bool
-  default     = true
 }
 
 variable "name" {

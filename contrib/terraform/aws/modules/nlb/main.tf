@@ -3,7 +3,7 @@ resource "aws_lb" "aws-nlb-api" {
   name               = "kubernetes-nlb-${var.aws_cluster_name}"
   load_balancer_type = "network"
   internal           = var.aws_elb_api_internal
-  subnets            = var.aws_subnet_ids_public
+  subnets            = var.aws_elb_api_public_subnet ? var.aws_subnet_ids_public : var.aws_subnet_ids_private
   idle_timeout       = 400
   enable_cross_zone_load_balancing   = true
 

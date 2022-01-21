@@ -42,14 +42,16 @@ module "aws-elb" {
 module "aws-nlb" {
   source = "./modules/nlb"
 
-  aws_cluster_name      = var.aws_cluster_name
-  aws_vpc_id            = module.aws-vpc.aws_vpc_id
-  aws_avail_zones       = slice(data.aws_availability_zones.available.names, 0, 3)
-  aws_subnet_ids_public = module.aws-vpc.aws_subnet_ids_public
-  aws_elb_api_internal  = var.aws_elb_api_internal
-  aws_elb_api_port      = var.aws_elb_api_port
-  k8s_secure_api_port   = var.k8s_secure_api_port
-  default_tags          = var.default_tags
+  aws_cluster_name          = var.aws_cluster_name
+  aws_vpc_id                = module.aws-vpc.aws_vpc_id
+  aws_avail_zones           = slice(data.aws_availability_zones.available.names, 0, 3)
+  aws_subnet_ids_public     = module.aws-vpc.aws_subnet_ids_public
+  aws_subnet_ids_private    = module.aws-vpc.aws_subnet_ids_private
+  aws_elb_api_internal      = var.aws_elb_api_internal
+  aws_elb_api_public_subnet = var.aws_elb_api_public_subnet
+  aws_elb_api_port          = var.aws_elb_api_port
+  k8s_secure_api_port       = var.k8s_secure_api_port
+  default_tags              = var.default_tags
 }
 
 module "aws-iam" {

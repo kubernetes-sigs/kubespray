@@ -139,3 +139,9 @@ variable "aws_elb_api_internal" {
   type          = bool
   default	= true
 }
+
+variable "aws_elb_api_public_subnet" {
+  description   = "where to attach AWS ELB API endpoint (public/private subnet)"
+  type          = bool
+  default	= true
+}

@@ -306,6 +306,8 @@ resource "aws_route" "this" {
 }
 
 resource "aws_security_group_rule" "allow-local-ingress" {
+  count = var.vpn_connection_enable ? 1 : 0
+
   type              = "ingress"
   from_port         = 6443
   to_port           = 6443

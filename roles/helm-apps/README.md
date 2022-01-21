@@ -23,17 +23,17 @@ Playbook example:
   gather_facts: no
   roles:
     - name: helm-apps
-      charts:
-        - release_name: app
-          release_namespace: app
+      releases:
+        - name: app
+          namespace: app
           chart_ref: simple-app/simple-app
-        - release_name: app2
-          release_namespace: app
+        - name: app2
+          namespace: app
           chart_ref: simple-app/simple-app
-          wait_timeout: "10m" # override the same option in `charts_common_opts`
+          wait_timeout: "10m" # override the same option in `release_common_opts`
       repositories: "{{ repos }}"
         - repo_name: simple-app
           repo_url: "https://blog.leiwang.info/simple-app"
-      charts_common_opts: "{{ helm_params }}"
+      release_common_opts: "{{ helm_params }}"
         wait_timeout: "5m"
 ```

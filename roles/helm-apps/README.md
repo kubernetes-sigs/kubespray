@@ -21,19 +21,19 @@ Playbook example:
 ---
 - hosts: kube_control_plane[0]
   gather_facts: no
-  vars:
-    helm_apps:
-      - release_name: app
-        release_namespace: app
-        chart_ref: simple-app/simple-app
-    repos:
-      - repo_name: simple-app
-        repo_url: "https://blog.leiwang.info/simple-app"
-    helm_params:
-      wait_timeout: "5m"
   roles:
     - name: helm-apps
-      charts: "{{ helm_apps }}"
+      charts:
+        - release_name: app
+          release_namespace: app
+          chart_ref: simple-app/simple-app
+        - release_name: app2
+          release_namespace: app
+          chart_ref: simple-app/simple-app
+          wait_timeout: "10m" # override the same option in `charts_common_opts`
       repositories: "{{ repos }}"
+        - repo_name: simple-app
+          repo_url: "https://blog.leiwang.info/simple-app"
       charts_common_opts: "{{ helm_params }}"
+        wait_timeout: "5m"
 ```

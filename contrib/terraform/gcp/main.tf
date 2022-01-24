@@ -1,8 +1,16 @@
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 3.48"
+    }
+  }
+}
+
 provider "google" {
   credentials = file(var.keyfile_location)
   region      = var.region
   project     = var.gcp_project_id
-  version     = "~> 3.48"
 }
 
 module "kubernetes" {

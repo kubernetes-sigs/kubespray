@@ -12,7 +12,6 @@
   > customer_gateway_ip : AWS TGW와 VPN 연결을 하기 위한 Customer측 Gateway의 Public IP
   ```
   #local_cidr = "172.16.3.0/24"
-  
   ```
   > local_cidr : On-Premise의 Private CIDR
 

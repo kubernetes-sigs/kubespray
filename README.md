@@ -14,7 +14,9 @@ You can get your invite [here](http://slack.k8s.io/)
 ## Quick Start
 
 To deploy the cluster you can use :
-
+### If you are using Ubuntu versions, Please enable system-resolve to avoid error when init first master:
+#systemctl start system-resolve
+#systemctl enable system-resolve
 ### Ansible
 
 #### Usage

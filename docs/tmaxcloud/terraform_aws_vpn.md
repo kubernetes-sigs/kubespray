@@ -18,7 +18,16 @@
 - VPN Connection을 위한 세부 설정(optional)  
   file: contrib/terraform/aws/vpn/variable.tf  
   ```
-  vpn_connection_static_routes_only = `true`
-  propagateion_enable = `false`
+  variable "vpn_connection_static_routes_only" {
+    type        = string
+    description = "If set to `true`, the VPN connection will use static routes exclusively. Static routes must be used for devices that don't support BGP"
+    default     = "true"
+  }
+  
+  variable "propagateion_enable" {                                                                                                                              
+    description = "Propagateion enable"
+    type        = bool
+    default     = false
+  }
   ```
   > 주의: BGP가 활성화 되어있지 않은 경우, 위 variable들은 기본 설정 유지

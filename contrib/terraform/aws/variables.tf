@@ -140,6 +140,12 @@ variable "aws_elb_api_internal" {
   default	= true
 }
 
+variable "aws_elb_api_public_subnet" {
+  description   = "where to attach AWS ELB API endpoint (public/private subnet)"
+  type          = bool
+  default	= true
+}
+
 /*
 * VPN Connection
 *

@@ -6,3 +6,11 @@
   ```
   `false` : Public  
   `true`  : Private  
+
+- Whether to create Kube API ELB attach to Private or Public subnets
+  file: contrib/terraform/aws/terraform.tfvars  
+  ```
+  aws_elb_api_public_subnet = true
+  ```
+  `false` : Attach Kube API ELB to Private subnets
+  `true`  : Attach Kube API ELB to Public subnets

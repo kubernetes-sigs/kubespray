@@ -229,7 +229,7 @@ resource "google_compute_instance" "master" {
 
   # Since we use google_compute_attached_disk we need to ignore this
   lifecycle {
-    ignore_changes = ["attached_disk"]
+    ignore_changes = [attached_disk]
   }
 }
 
@@ -326,7 +326,7 @@ resource "google_compute_instance" "worker" {
 
   # Since we use google_compute_attached_disk we need to ignore this
   lifecycle {
-    ignore_changes = ["attached_disk"]
+    ignore_changes = [attached_disk]
   }
 }
 

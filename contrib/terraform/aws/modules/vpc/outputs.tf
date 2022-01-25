@@ -17,3 +17,7 @@ output "aws_security_group" {
 output "default_tags" {
   value = var.default_tags
 }
+
+output "aws_route_table_private" {
+  value = aws_route_table.kubernetes-private.*.id
+}

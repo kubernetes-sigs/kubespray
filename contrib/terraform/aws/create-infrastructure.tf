@@ -188,7 +188,7 @@ resource "aws_efs_backup_policy" "policy" {
 }
 
 resource "aws_efs_mount_target" "alpha" {
-  count = length(var.aws_cidr_subnets_public)
+  count = length(var.aws_cidr_subnets_public) > length(data.aws_availability_zones.available.names) ? length(data.aws_availability_zones.available.names) : length(var.aws_cidr_subnets_public)
 
   file_system_id = aws_efs_file_system.efs.id
   subnet_id = element(module.aws-vpc.aws_subnet_ids_public, count.index)

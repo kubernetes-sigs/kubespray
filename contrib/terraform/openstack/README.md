@@ -283,6 +283,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`node_server_group_policy` | Enable and use openstack nova servergroups for nodes with set policy, default: "" (disabled) |
 |`etcd_server_group_policy` | Enable and use openstack nova servergroups for etcd with set policy, default: "" (disabled) |
 |`use_access_ip` | If 1, nodes with floating IPs will transmit internal cluster traffic via floating IPs; if 0 private IPs will be used instead. Default value is 1. |
+|`port_security_enabled` | Allow to disable port security by setting this to `false`. `true` by default |
 |`k8s_nodes` | Map containing worker node definition, see explanation below |
 
 ##### k8s_nodes
@@ -411,10 +412,31 @@ plugins. This is accomplished as follows:
 
 ```ShellSession
 cd inventory/$CLUSTER
-terraform init ../../contrib/terraform/openstack
+terraform -chdir="../../contrib/terraform/openstack" init
 ```
 
 This should finish fairly quickly telling you Terraform has successfully initialized and loaded necessary modules.
+
+### Customizing with cloud-init
+
+You can apply cloud-init based customization for the openstack instances before provisioning your cluster.
+One common template is used for all instances. Adjust the file shown below:
+`contrib/terraform/openstack/modules/compute/templates/cloudinit.yaml`
+For example, to enable openstack novnc access and ansible_user=root SSH access:
+
+```ShellSession
+#cloud-config
+## in some cases novnc console access is required
+## it requires ssh password to be set
+ssh_pwauth: yes
+chpasswd:
+  list: |
+    root:secret
+  expire: False
+
+## in some cases direct root ssh access via ssh key is required
+disable_root: false
+```
 
 ### Provisioning cluster
 
@@ -422,7 +444,7 @@ You can apply the Terraform configuration to your cluster with the following com
 issued from your cluster's inventory directory (`inventory/$CLUSTER`):
 
 ```ShellSession
-terraform apply -var-file=cluster.tfvars ../../contrib/terraform/openstack
+terraform -chdir="../../contrib/terraform/openstack" apply -var-file=cluster.tfvars
 ```
 
 if you chose to create a bastion host, this script will create
@@ -437,7 +459,7 @@ pick it up automatically.
 You can destroy your new cluster with the following command issued from the cluster's inventory directory:
 
 ```ShellSession
-terraform destroy -var-file=cluster.tfvars ../../contrib/terraform/openstack
+terraform -chdir="../../contrib/terraform/openstack" destroy -var-file=cluster.tfvars
 ```
 
 If you've started the Ansible run, it may also be a good idea to do some manual cleanup:

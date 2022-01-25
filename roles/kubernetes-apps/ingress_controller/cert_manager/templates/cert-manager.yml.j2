@@ -93,6 +93,12 @@ rules:
   - apiGroups: ["auditregistration.k8s.io"]
     resources: ["auditsinks"]
     verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "get", "update"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["create", "get", "update"]
 ---
 # Source: cert-manager/templates/rbac.yaml
 # Issuer controller role
@@ -630,7 +636,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: cert-manager-cainjector:leaderelection
-  namespace: {{ cert_manager_namespace }}
+  namespace: {{ cert_manager_leader_election_namespace }}
   labels:
     app: cainjector
     app.kubernetes.io/name: cainjector
@@ -661,10 +667,10 @@ rules:
 ---
 # Source: cert-manager/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   name: cert-manager:leaderelection
-  namespace: {{ cert_manager_namespace }}
+  namespace: {{ cert_manager_leader_election_namespace }}
   labels:
     app: cert-manager
     app.kubernetes.io/name: cert-manager
@@ -719,7 +725,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: cert-manager-cainjector:leaderelection
-  namespace: {{ cert_manager_namespace }}
+  namespace: {{ cert_manager_leader_election_namespace }}
   labels:
     app: cainjector
     app.kubernetes.io/name: cainjector
@@ -739,10 +745,10 @@ subjects:
 # grant cert-manager permission to manage the leaderelection configmap in the
 # leader election namespace
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: cert-manager:leaderelection
-  namespace: {{ cert_manager_namespace }}
+  namespace: {{ cert_manager_leader_election_namespace }}
   labels:
     app: cert-manager
     app.kubernetes.io/name: cert-manager
@@ -751,7 +757,7 @@ metadata:
     app.kubernetes.io/version: "{{ cert_manager_version }}"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
+  kind: ClusterRole
   name: cert-manager:leaderelection
 subjects:
   - apiGroup: ""
@@ -866,7 +872,7 @@ spec:
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
           - --v=2
-          - --leader-election-namespace=kube-system
+          - --leader-election-namespace={{ cert_manager_leader_election_namespace }}
           env:
           - name: POD_NAMESPACE
             valueFrom:
@@ -874,6 +880,18 @@ spec:
                 fieldPath: metadata.namespace
           resources:
             {}
+{% if cert_manager_tolerations %}
+      tolerations:
+        {{ cert_manager_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
+{% endif %}
+{% if cert_manager_nodeselector %}
+      nodeSelector:
+        {{ cert_manager_nodeselector | to_nice_yaml | indent(width=8) }}
+{% endif %}
+{% if cert_manager_affinity %}
+      affinity:
+        {{ cert_manager_affinity | to_nice_yaml | indent(width=8) }}
+{% endif %}
 ---
 {% if cert_manager_trusted_internal_ca is defined %}
 apiVersion: v1
@@ -928,7 +946,7 @@ spec:
           args:
           - --v=2
           - --cluster-resource-namespace=$(POD_NAMESPACE)
-          - --leader-election-namespace=kube-system
+          - --leader-election-namespace={{ cert_manager_leader_election_namespace }}
           ports:
           - containerPort: 9402
             protocol: TCP
@@ -939,6 +957,18 @@ spec:
                 fieldPath: metadata.namespace
           resources:
             {}
+{% if cert_manager_tolerations %}
+      tolerations:
+        {{ cert_manager_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
+{% endif %}
+{% if cert_manager_nodeselector %}
+      nodeSelector:
+        {{ cert_manager_nodeselector | to_nice_yaml | indent(width=8) }}
+{% endif %}
+{% if cert_manager_affinity %}
+      affinity:
+        {{ cert_manager_affinity | to_nice_yaml | indent(width=8) }}
+{% endif %}
 {% if cert_manager_trusted_internal_ca is defined %}
           volumeMounts:
           - mountPath: /etc/ssl/certs/internal-ca.pem
@@ -1023,6 +1053,18 @@ spec:
                 fieldPath: metadata.namespace
           resources:
             {}
+{% if cert_manager_tolerations %}
+      tolerations:
+        {{ cert_manager_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
+{% endif %}
+{% if cert_manager_nodeselector %}
+      nodeSelector:
+        {{ cert_manager_nodeselector | to_nice_yaml | indent(width=8) }}
+{% endif %}
+{% if cert_manager_affinity %}
+      affinity:
+        {{ cert_manager_affinity | to_nice_yaml | indent(width=8) }}
+{% endif %}
 ---
 # Source: cert-manager/templates/webhook-mutating-webhook.yaml
 apiVersion: admissionregistration.k8s.io/v1

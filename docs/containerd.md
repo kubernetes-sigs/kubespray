@@ -30,4 +30,13 @@ containerd_registries:
     - "https://registry-1.docker.io"
 ```
 
+`containerd_registries` is ignored for pulling images when `image_command_tool=nerdctl`
+(the default for `container_manager=containerd`). Use `crictl` instead, it supports
+`containerd_registries` but lacks proper multi-arch support (see
+[#8375](https://github.com/kubernetes-sigs/kubespray/issues/8375)):
+
+```yaml
+image_command_tool: crictl
+```
+
 [containerd]: https://containerd.io/

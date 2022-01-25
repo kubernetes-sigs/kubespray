@@ -105,8 +105,7 @@ ansible-playbook -i inventory.ini ../../cluster.yml -b -v
 * `vsphere_datacenter`: The identifier of vSphere data center
 * `vsphere_compute_cluster`: The identifier of vSphere compute cluster
 * `vsphere_datastore`: The identifier of vSphere data store
-* `vsphere_server`: The address of vSphere server
-* `vsphere_hostname`: The IP address of vSphere hostname
+* `vsphere_server`: This is the vCenter server name or address for vSphere API operations.
 * `ssh_public_keys`: List of public SSH keys to install on all machines
 * `template_name`: The name of a base image (the OVF template be defined in vSphere beforehand)
 
@@ -125,5 +124,7 @@ ansible-playbook -i inventory.ini ../../cluster.yml -b -v
 * `worker_cores`: The number of CPU cores for the worker nodes (default: 16)
 * `worker_memory`: The amount of RAM for the worker nodes in MB (default: 8192)
 * `worker_disk_size`: The amount of disk space for the worker nodes in GB (default: 100)
+* `vapp`: Boolean to set the template type to vapp. (Default: false)
+* `interface_name`: Name of the interface to configure. (Default: ens192)
 
 An example variables file can be found `default.tfvars`

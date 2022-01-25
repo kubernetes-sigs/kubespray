@@ -6,23 +6,12 @@ ssh_authorized_keys:
 %{ endfor ~}
 
 write_files:
-  - path: /etc/netplan/20-internal-network.yaml
-    content: |
-      network:
-        version: 2
-        ethernets:
-          "lo:0":
-            match:
-              name: lo
-            dhcp4: false
-            addresses:
-            - 172.17.0.100/32
   - path: /etc/netplan/10-user-network.yaml
-    content: |
+    content: |.
       network:
         version: 2
         ethernets:
-          ens192:
+          ${interface_name}:
             dhcp4: false #true to use dhcp
             addresses:
             - ${ip}/${netmask}

@@ -251,6 +251,8 @@ resource "null_resource" "inventories" {
 module "transit_gateway" {
   source = "./modules/tgw"
 
+  count = var.vpn_connection_enable ? 1 : 0
+
   create_tgw       = var.vpn_connection_enable
   
   aws_cluster_name = var.aws_cluster_name
@@ -283,11 +285,11 @@ module "vpn_connection" {
   aws_cluster_name               = var.aws_cluster_name
 
   customer_gateway_ip_address    = var.customer_gateway_ip
-  transit_gateway_id             = module.transit_gateway.ec2_transit_gateway_id
+  transit_gateway_id             = module.transit_gateway[0].ec2_transit_gateway_id
 
   local_cidr                     = var.local_cidr
 
-  transit_gateway_route_table_id = module.transit_gateway.ec2_transit_gateway_route_table_id
+  transit_gateway_route_table_id = module.transit_gateway[0].ec2_transit_gateway_route_table_id
 
   default_tags = var.default_tags
 }
@@ -298,7 +300,7 @@ resource "aws_route" "this" {
   destination_cidr_block = var.local_cidr
 
   route_table_id         = element(module.aws-vpc.aws_route_table_private, count.index)
-  transit_gateway_id     = module.transit_gateway.ec2_transit_gateway_id
+  transit_gateway_id     = module.transit_gateway[0].ec2_transit_gateway_id
 }
 
 resource "aws_security_group_rule" "allow-local-ingress" {

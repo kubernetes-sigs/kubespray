@@ -27,8 +27,6 @@ variable "vsphere_password" {}
 
 variable "vsphere_server" {}
 
-variable "vsphere_hostname" {}
-
 variable "ssh_public_keys" {
   description = "List of public SSH keys which are injected into the VMs."
   type        = list(string)
@@ -37,6 +35,13 @@ variable "ssh_public_keys" {
 variable "template_name" {}
 
 # Optional variables (ones where reasonable defaults exist)
+variable "vapp" {
+  default = false
+}
+
+variable "interface_name" {
+  default = "ens192"
+}
 
 variable "folder" {
   default = ""

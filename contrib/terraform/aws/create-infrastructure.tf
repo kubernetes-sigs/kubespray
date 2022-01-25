@@ -42,14 +42,14 @@ module "aws-elb" {
 module "aws-nlb" {
   source = "./modules/nlb"
 
-  aws_cluster_name          = var.aws_cluster_name
-  aws_vpc_id                = module.aws-vpc.aws_vpc_id
-  aws_avail_zones           = data.aws_availability_zones.available.names
-  aws_elb_api_subnets       = var.aws_elb_api_public_subnet? module.aws-vpc.aws_subnet_ids_public : module.aws-vpc.aws_subnet_ids_private
-  aws_elb_api_internal      = var.aws_elb_api_internal
-  aws_elb_api_port          = var.aws_elb_api_port
-  k8s_secure_api_port       = var.k8s_secure_api_port
-  default_tags              = var.default_tags
+  aws_cluster_name     = var.aws_cluster_name
+  aws_vpc_id           = module.aws-vpc.aws_vpc_id
+  aws_avail_zones      = data.aws_availability_zones.available.names
+  aws_elb_api_subnets  = var.aws_elb_api_public_subnet? module.aws-vpc.aws_subnet_ids_public : module.aws-vpc.aws_subnet_ids_private
+  aws_elb_api_internal = var.aws_elb_api_internal
+  aws_elb_api_port     = var.aws_elb_api_port
+  k8s_secure_api_port  = var.k8s_secure_api_port
+  default_tags         = var.default_tags
 }
 
 module "aws-iam" {
@@ -242,4 +242,72 @@ resource "null_resource" "inventories" {
   triggers = {
     template = data.template_file.inventory.rendered
   }
+}
+
+/*
+* Create Transit Gateway
+*
+*/
+module "transit_gateway" {
+  source = "./modules/tgw"
+
+  create_tgw       = var.vpn_connection_enable
+  
+  aws_cluster_name = var.aws_cluster_name
+
+  vpc_attachments  = {
+    vpc = {
+      vpc_id       = module.aws-vpc.aws_vpc_id
+      subnet_ids   = module.aws-vpc.aws_subnet_ids_private
+
+      tgw_routes   = flatten([
+        for cidr in var.aws_cidr_subnets_private: {
+          destination_cidr_block = cidr
+        }
+      ])
+    }
+  }
+
+  default_tags = var.default_tags
+}
+
+/*
+* VPN Connection
+*
+*/
+module "vpn_connection" {
+  source = "./modules/vpn"
+
+  count = var.vpn_connection_enable ? 1 : 0
+
+  aws_cluster_name               = var.aws_cluster_name
+
+  customer_gateway_ip_address    = var.customer_gateway_ip
+  transit_gateway_id             = module.transit_gateway.ec2_transit_gateway_id
+
+  local_cidr                     = var.local_cidr
+
+  transit_gateway_route_table_id = module.transit_gateway.ec2_transit_gateway_route_table_id
+
+  default_tags = var.default_tags
+}
+
+resource "aws_route" "this" {
+  count = var.vpn_connection_enable ? length(module.aws-vpc.aws_route_table_private) : 0
+
+  destination_cidr_block = var.local_cidr
+
+  route_table_id         = element(module.aws-vpc.aws_route_table_private, count.index)
+  transit_gateway_id     = module.transit_gateway.ec2_transit_gateway_id
+}
+
+resource "aws_security_group_rule" "allow-local-ingress" {
+  count = var.vpn_connection_enable ? 1 : 0
+
+  type              = "ingress"
+  from_port         = 6443
+  to_port           = 6443
+  protocol          = "TCP"
+  cidr_blocks       = [var.local_cidr]
+  security_group_id = module.aws-vpc.aws_security_group[0]
 }

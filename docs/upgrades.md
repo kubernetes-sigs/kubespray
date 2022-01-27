@@ -372,3 +372,11 @@ Upgrade just helm (assuming `helm_enabled` is true):
 ```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=helm
 ```
+
+## Migrate from Docker to Containerd
+
+Please note that **migrating container engines is not officially supported by Kubespray**. While this procedure can be used to migrate your cluster, it applies to one particular scenario and will likely evolve over time. At the moment, they are intended as an additional resource to provide insight into how these steps can be officially integrated into the Kubespray playbooks.
+
+As of Kubespray 2.18.0, containerd is already the default container engine. If you have the chance, it is advisable and safer to reset and redeploy the entire cluster with a new container engine.
+
+* [Migrating from Docker do Containerd](upgrades/migrate_docker2containerd.md)

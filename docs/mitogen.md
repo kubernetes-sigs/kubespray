@@ -7,10 +7,10 @@
 ## Install
 
 ```ShellSession
-ansible-playbook mitogen.yml
+ansible-playbook contrib/mitogen/mitogen.yml
 ```
 
-Ensure to enable mitogen use by environment varialbles:
+The above playbook sets the ansible `strategy` and `strategy_plugins` in `ansible.cfg` but you can also enable them if you use your own `ansible.cfg` by setting the environment varialbles:
 
 ```ShellSession
 export ANSIBLE_STRATEGY=mitogen_linear

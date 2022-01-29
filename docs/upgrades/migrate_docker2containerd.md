@@ -27,7 +27,6 @@ Everything done here requires full root access to every node.
 
 Before you begin, adjust your inventory:
 
-
 ```yaml
 # Filename: k8s_cluster/k8s-cluster.yml
 resolvconf_mode: host_resolvconf

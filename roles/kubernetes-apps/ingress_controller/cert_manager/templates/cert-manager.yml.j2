@@ -60,6 +60,19 @@ metadata:
     app.kubernetes.io/component: "webhook"
     app.kubernetes.io/version: "{{ cert_manager_version }}"
 ---
+# Source: cert-manager/templates/webhook-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cert-manager-webhook
+  namespace: {{ cert_manager_namespace }}
+  labels:
+    app: webhook
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/component: "webhook"
+data:
+---
 # Source: cert-manager/templates/cainjector-rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -93,12 +106,6 @@ rules:
   - apiGroups: ["auditregistration.k8s.io"]
     resources: ["auditsinks"]
     verbs: ["get", "list", "watch", "update"]
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["create", "get", "update"]
-  - apiGroups: ["coordination.k8s.io"]
-    resources: ["leases"]
-    verbs: ["create", "get", "update"]
 ---
 # Source: cert-manager/templates/rbac.yaml
 # Issuer controller role
@@ -182,7 +189,7 @@ rules:
     verbs: ["create", "delete", "get", "list", "watch"]
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "list", "watch", "create", "update", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["create", "patch"]
@@ -667,7 +674,7 @@ rules:
 ---
 # Source: cert-manager/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
   name: cert-manager:leaderelection
   namespace: {{ cert_manager_leader_election_namespace }}
@@ -745,7 +752,7 @@ subjects:
 # grant cert-manager permission to manage the leaderelection configmap in the
 # leader election namespace
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
   name: cert-manager:leaderelection
   namespace: {{ cert_manager_leader_election_namespace }}
@@ -757,7 +764,7 @@ metadata:
     app.kubernetes.io/version: "{{ cert_manager_version }}"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
+  kind: Role
   name: cert-manager:leaderelection
 subjects:
   - apiGroup: ""
@@ -829,7 +836,7 @@ spec:
   - name: https
     port: 443
     protocol: TCP
-    targetPort: 10250
+    targetPort: "https"
   selector:
     app.kubernetes.io/name: webhook
     app.kubernetes.io/instance: cert-manager
@@ -1092,15 +1099,7 @@ webhooks:
           - UPDATE
         resources:
           - "*/*"
-    # We don't actually support `v1beta1` but is listed here as it is a
-    # required value for
-    # [Kubernetes v1.16](https://github.com/kubernetes/kubernetes/issues/82025).
-    # The API server reads the supported versions in order, so _should always_
-    # attempt a `v1` request which is understood by the cert-manager webhook.
-    # Any `v1beta1` request will return an error and fail closed for that
-    # resource (the whole object request is rejected). When we no longer
-    # support v1.16 we can remove `v1beta1` from this list.
-    admissionReviewVersions: ["v1", "v1beta1"]
+    admissionReviewVersions: ["v1"]
     # This webhook only accepts v1 cert-manager resources.
     # Equivalent matchPolicy ensures that non-v1 resource requests are sent to
     # this webhook (after the resources have been converted to v1).
@@ -1151,15 +1150,7 @@ webhooks:
           - UPDATE
         resources:
           - "*/*"
-    # We don't actually support `v1beta1` but is listed here as it is a
-    # required value for
-    # [Kubernetes v1.16](https://github.com/kubernetes/kubernetes/issues/82025).
-    # The API server reads the supported versions in order, so _should always_
-    # attempt a `v1` request which is understood by the cert-manager webhook.
-    # Any `v1beta1` request will return an error and fail closed for that
-    # resource (the whole object request is rejected). When we no longer
-    # support v1.16 we can remove `v1beta1` from this list.
-    admissionReviewVersions: ["v1", "v1beta1"]
+    admissionReviewVersions: ["v1"]
     # This webhook only accepts v1 cert-manager resources.
     # Equivalent matchPolicy ensures that non-v1 resource requests are sent to
     # this webhook (after the resources have been converted to v1).

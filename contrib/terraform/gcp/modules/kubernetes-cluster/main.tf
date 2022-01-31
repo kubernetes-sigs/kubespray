@@ -5,6 +5,8 @@
 
 resource "google_compute_network" "main" {
   name = "${var.prefix}-network"
+
+  auto_create_subnetworks = false
 }
 
 resource "google_compute_subnetwork" "main" {

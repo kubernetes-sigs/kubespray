@@ -38,6 +38,7 @@ crio_registries:
     insecure: false
     blocked: false
     location: registry-1.docker.io
+    unqualified: false
     mirrors:
       - location: 192.168.100.100:5000
         insecure: true

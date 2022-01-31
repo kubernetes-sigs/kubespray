@@ -22,6 +22,8 @@ resource "google_compute_firewall" "deny_all" {
 
   priority = 1000
 
+  source_ranges = ["0.0.0.0/0"]
+
   deny {
     protocol = "all"
   }
@@ -88,6 +90,8 @@ resource "google_compute_firewall" "ingress_http" {
 
   priority = 100
 
+  source_ranges = ["0.0.0.0/0"]
+
   allow {
     protocol = "tcp"
     ports    = ["80"]
@@ -99,6 +103,8 @@ resource "google_compute_firewall" "ingress_https" {
   network = google_compute_network.main.name
 
   priority = 100
+
+  source_ranges = ["0.0.0.0/0"]
 
   allow {
     protocol = "tcp"

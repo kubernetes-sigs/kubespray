@@ -231,6 +231,11 @@ resource "google_compute_instance" "master" {
   lifecycle {
     ignore_changes = [attached_disk]
   }
+
+  scheduling {
+    preemptible = var.master_preemptible
+    automatic_restart = !var.master_preemptible
+  }
 }
 
 resource "google_compute_forwarding_rule" "master_lb" {
@@ -327,6 +332,11 @@ resource "google_compute_instance" "worker" {
   # Since we use google_compute_attached_disk we need to ignore this
   lifecycle {
     ignore_changes = [attached_disk]
+  }
+
+  scheduling {
+    preemptible = var.worker_preemptible
+    automatic_restart = !var.worker_preemptible
   }
 }
 

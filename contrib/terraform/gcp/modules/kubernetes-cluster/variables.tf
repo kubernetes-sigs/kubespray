@@ -27,12 +27,20 @@ variable "master_sa_scopes" {
   type = list(string)
 }
 
+variable "master_preemptible" {
+  type = bool
+}
+
 variable "worker_sa_email" {
   type = string
 }
 
 variable "worker_sa_scopes" {
   type = list(string)
+}
+
+variable "worker_preemptible" {
+  type = bool
 }
 
 variable "ssh_pub_key" {}

@@ -119,7 +119,20 @@ leaves you with a non functional cluster.
 ``resolvconf_mode`` configures how Kubespray will setup DNS for ``hostNetwork: true`` PODs and non-k8s containers.
 There are three modes available:
 
-### resolvconf_mode: docker_dns (default)
+### resolvconf_mode: host_resolvconf (default)
+
+This activates the classic Kubespray behavior that modifies the hosts ``/etc/resolv.conf`` file and dhclient
+configuration to point to the cluster dns server (either coredns or coredns_dual, depending on dns_mode).
+
+As cluster DNS is not available on early deployment stage, this mode is split into 2 stages. In the first
+stage (``dns_early: true``), ``/etc/resolv.conf`` is configured to use the DNS servers found in ``upstream_dns_servers``
+and ``nameservers``. Later, ``/etc/resolv.conf`` is reconfigured to use the cluster DNS server first, leaving
+the other nameservers as backups.
+
+Also note, existing records will be purged from the `/etc/resolv.conf`,
+including resolvconf's base/head/cloud-init config files and those that come from dhclient.
+
+### resolvconf_mode: docker_dns
 
 This sets up the docker daemon with additional --dns/--dns-search/--dns-opt flags.
 
@@ -162,20 +175,7 @@ DNS queries to the cluster DNS will timeout after a few seconds, resulting in th
 used as a backup nameserver. After cluster DNS is running, all queries will be answered by the cluster DNS
 servers, which in turn will forward queries to the system nameserver if required.
 
-#### resolvconf_mode: host_resolvconf
-
-This activates the classic Kubespray behavior that modifies the hosts ``/etc/resolv.conf`` file and dhclient
-configuration to point to the cluster dns server (either coredns or coredns_dual, depending on dns_mode).
-
-As cluster DNS is not available on early deployment stage, this mode is split into 2 stages. In the first
-stage (``dns_early: true``), ``/etc/resolv.conf`` is configured to use the DNS servers found in ``upstream_dns_servers``
-and ``nameservers``. Later, ``/etc/resolv.conf`` is reconfigured to use the cluster DNS server first, leaving
-the other nameservers as backups.
-
-Also note, existing records will be purged from the `/etc/resolv.conf`,
-including resolvconf's base/head/cloud-init config files and those that come from dhclient.
-
-#### resolvconf_mode: none
+### resolvconf_mode: none
 
 Does nothing regarding ``/etc/resolv.conf``. This leaves you with a cluster that works as expected in most cases.
 The only exception is that ``hostNetwork: true`` PODs and non-k8s managed containers will not be able to resolve

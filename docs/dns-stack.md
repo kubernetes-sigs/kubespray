@@ -86,6 +86,28 @@ dns_etchosts: |
 
 Whether reverse DNS lookups are enabled in the coredns config. Defaults to `true`.
 
+### CoreDNS default zone cache plugin
+
+If you wish to configure the caching behaviour of CoreDNS on the default zone, you can do so using the `coredns_default_zone_cache_block` string block.
+
+An example value (more information on the [plugin's documentation](https://coredns.io/plugins/cache/)) to:
+
+* raise the max cache TTL to 3600 seconds
+* raise the max amount of success responses to cache to 3000
+* disable caching of denial responses altogether
+* enable pre-fetching of lookups with at least 10 lookups per minute before they expire
+
+Would be as follows:
+
+```yaml
+coredns_default_zone_cache_block: |
+  cache 3600 {
+    success 3000
+    denial 0
+    prefetch 10 1m
+  }
+```
+
 ## DNS modes supported by Kubespray
 
 You can modify how Kubespray sets up DNS for your cluster with the variables ``dns_mode`` and ``resolvconf_mode``.

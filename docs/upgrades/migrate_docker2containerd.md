@@ -25,11 +25,15 @@ Everything done here requires full root access to every node.
 
 ## Migration steps
 
-Before you begin, adjust `k8s-cluster.yml` in your inventory.
+Before you begin, adjust your inventory:
 
 ```yaml
+# Filename: k8s_cluster/k8s-cluster.yml
 resolvconf_mode: host_resolvconf
 container_manager: containerd
+
+# Filename: etcd.yml
+etcd_deployment_type: host
 ```
 
 ### 1) Pick one or more nodes for processing
@@ -51,6 +55,12 @@ service docker stop
 
 ```commandline
 apt-get remove -y --allow-change-held-packages containerd.io docker-ce docker-ce-cli docker-ce-rootless-extras
+```
+
+In some cases, there might a `pigz` missing dependency. Some image layers need this to be extracted.
+
+```shell
+apt-get install pigz
 ```
 
 ### 5) Run `cluster.yml` playbook with `--limit`

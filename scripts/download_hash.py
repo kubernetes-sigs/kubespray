@@ -25,7 +25,7 @@ def open_main_yaml():
 
 
 def download_hash(versions):
-    architectures = ["arm", "arm64", "amd64"]
+    architectures = ["arm", "arm64", "amd64", "ppc64le"]
     downloads = ["kubelet", "kubectl", "kubeadm"]
 
     data, yaml = open_main_yaml()

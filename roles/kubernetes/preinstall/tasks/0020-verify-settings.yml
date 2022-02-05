@@ -294,6 +294,65 @@
     - not etcd_kubeadm_enabled
     - container_manager != 'docker'
 
+- name: Ensure kubelet systemd unit exists
+  stat:
+    path: "/etc/systemd/system/kubelet.service"
+  register: kubelet_systemd_unit_exists
+
+- name: Get container manager from kubelet systemd unit
+  lineinfile:
+    path: "/etc/systemd/system/kubelet.service"
+    line: "After={{ container_manager }}.service"
+    state: present
+  check_mode: true
+  register: kubelet_current_container_manager
+  when:
+    - kubelet_systemd_unit_exists.stat.exists
+
+- name: Ensure current container manager is docker
+  lineinfile:
+    path: "/etc/systemd/system/kubelet.service"
+    line: "After=docker.service"
+    state: present
+  check_mode: true
+  register: kubelet_current_container_manager_is_docker
+  when:
+    - kubelet_systemd_unit_exists.stat.exists | d(false)
+
+- name: Stop if detect migrate NOT from docker to containerd
+  assert:
+    that: container_manager == 'containerd'
+    msg: "Migrate from CRI docker support only to containerd"
+  when:
+    - kubelet_current_container_manager.changed | d(false)
+    - kubelet_current_container_manager_is_docker | d(false)
+
+- name: Stop if detect migrate when enabled download_run_once
+  assert:
+    that: not download_run_once
+    msg: "Migrating container runtime detected. Please set download_run_once=false"
+  when:
+    - container_manager == 'containerd'
+    - kubelet_current_container_manager.changed | d(false)
+    - kubelet_current_container_manager_is_docker | d(false)
+
+- name: Stop if detect migrate but playbook is not upgrade-cluster.yml
+  assert:
+    that: upgrade_cluster_playbook
+    msg: "Migrating container runtime detected. Please run playbook upgrade-cluster.yml"
+  when:
+    - container_manager == 'containerd'
+    - kubelet_current_container_manager.changed | d(false)
+    - kubelet_current_container_manager_is_docker | d(false)
+
+- name: Stop if current container manager different from inventory settings
+  assert:
+    that: container_manager != 'containerd'
+    msg: "Current container manager in kubelet systemd unit different from invetory settings"
+  when:
+    - kubelet_current_container_manager.changed | d(false)
+    - not kubelet_current_container_manager_is_docker | d(false)
+
 - name: Stop if download_localhost is enabled but download_run_once is not
   assert:
     that: download_run_once

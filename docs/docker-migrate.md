@@ -26,3 +26,5 @@ If your cluster run with `etcd_deployment_type=docker`, you can change it to mod
 
 1. Set `container_runtime=containerd` in inventory
 2. Start playbook upgrade-cluster.yml
+3. Check current container runtime `kubectl get node -o wide`
+4. Remove docker data directory `rm -rf /var/lib/docker`

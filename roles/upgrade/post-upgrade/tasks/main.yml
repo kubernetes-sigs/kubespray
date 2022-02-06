@@ -11,11 +11,23 @@
     --timeout={{ upgrade_post_cilium_wait_timeout }}
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
+
 - name: Uncordon node
   command: "{{ kubectl }} uncordon {{ kube_override_hostname|default(inventory_hostname) }}"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   when:
     - needs_cordoning|default(false)
+
+- name: wait for control-plane pods
+  when:
+    - inventory_hostname in groups['kube_control_plane']
+  command: >
+    {{ kubectl }}
+    wait pod -n kube-system -l tier=control-plane
+    --field-selector 'spec.nodeName=={{ kube_override_hostname|default(inventory_hostname) }}'
+    --for=condition=Ready
+    --timeout={{ upgrade_post_control_plane_wait_timeout }}
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
 - name: Remove docker after container runtime migrate
   include_tasks: remove_docker.yml

@@ -1,8 +1,8 @@
 # Migrate container runtime from docker to containerd
 
-You can change container runtime from docker to containerd on your existing cluster:
+You can change container runtime from docker to containerd on your existing cluster
 
-## Known limitations:
+## Known limitations
 
 - support change only from docker to containerd
 - etcd should run in mode: `etcd_deployment_type=host` or `etcd_kubeadm_enabled=true`
@@ -17,10 +17,11 @@ If your cluster run with `etcd_deployment_type=docker`, you can change it to mod
 1. Set `etcd_deployment_type=host` in inventory
 2. Start playbook cluster.yml
 3. Shell to control plane nodes and do on it:
-  - `docker stop $(docker ps --format '{{.Names}}' | grep etcd)`
-  - `systemctl stop etcd`
-  - `systemctl start etcd`
-  - `/usr/local/bin/etcdctl.sh endpoint status --cluster`
+
+- `docker stop $(docker ps --format '{{.Names}}' | grep etcd)`
+- `systemctl stop etcd`
+- `systemctl start etcd`
+- `/usr/local/bin/etcdctl.sh endpoint status --cluster`
 
 ## Change container runtime
 

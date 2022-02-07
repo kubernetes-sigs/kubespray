@@ -16,6 +16,18 @@ else
   fi
 fi
 
+if [[ "$CI_JOB_NAME" =~ "migrate" ]]; then
+  if [ "${MIGRATE_TEST}" != "containerd" ]; then
+    echo "Job name contains 'migrate', but UPGRADE_TEST!='containerd'. Currently support migrate only to containerd"
+    exit 1
+  fi
+else
+  if [ "${MIGRATE_TEST}" != "false" ]; then
+    echo "MIGRATE_TEST!='false', but job names does not contain 'migrate'"
+    exit 1
+  fi
+fi
+
 
 export ANSIBLE_REMOTE_USER=$SSH_USER
 export ANSIBLE_BECOME=true
@@ -64,6 +76,11 @@ if [ "${UPGRADE_TEST}" != "false" ]; then
   fi
   git checkout "${CI_BUILD_REF}"
   ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" $CI_TEST_CRI_MIGRATE $PLAYBOOK
+fi
+
+# Repeat deployment if testing CRI migrate
+if [ "${MIGRATE_TEST}" != "false" ]; then
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" -e container_manager="$MIGRATE_TEST" upgrade-cluster.yml
 fi
 
 # Test control plane recovery

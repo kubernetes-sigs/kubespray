@@ -1,4 +1,9 @@
 ---
+- name: Migrate from docker | Ensure kubelet systemd unit exists
+  stat:
+    path: "/etc/systemd/system/kubelet.service"
+  register: kubelet_systemd_unit_exists
+
 - name: Migrate from docker | Ensure kubelet wants docker
   lineinfile:
     path: "/etc/systemd/system/kubelet.service"
@@ -6,7 +11,11 @@
     state: present
   check_mode: true
   register: kubelet_systemd_unit_need_docker
+  when:
+    - kubelet_systemd_unit_exists.stat.exists
 
 - name: Migrate from docker | Set Flag to stop docker
   set_fact:
     force_stop_docker_demon: "{{ not kubelet_systemd_unit_need_docker.changed | bool }}"
+  when:
+    - kubelet_systemd_unit_exists.stat.exists

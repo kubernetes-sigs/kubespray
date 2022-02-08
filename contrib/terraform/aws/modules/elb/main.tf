@@ -28,7 +28,7 @@ resource "aws_security_group_rule" "aws-allow-api-egress" {
 # Create a new AWS ELB for K8S API
 resource "aws_elb" "aws-elb-api" {
   name            = "kubernetes-elb-${var.aws_cluster_name}"
-  subnets         = var.aws_subnet_ids_public
+  subnets         = length(var.aws_subnet_ids_public) <= length(var.aws_avail_zones) ? var.aws_subnet_ids_public : slice(var.aws_subnet_ids_public, 0, length(var.aws_avail_zones))
   security_groups = [aws_security_group.aws-elb.id]
 
   listener {

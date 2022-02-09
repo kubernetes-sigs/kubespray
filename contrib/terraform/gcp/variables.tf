@@ -49,6 +49,11 @@ variable "master_preemptible" {
   default = false
 }
 
+variable "master_additional_disk_type" {
+  type = string
+  default = "pd-ssd"
+}
+
 variable "worker_sa_email" {
   type    = string
   default = ""
@@ -62,6 +67,11 @@ variable "worker_sa_scopes" {
 variable "worker_preemptible" {
   type    = bool
   default = false
+}
+
+variable "worker_additional_disk_type" {
+  type = string
+  default = "pd-ssd"
 }
 
 variable ssh_pub_key {

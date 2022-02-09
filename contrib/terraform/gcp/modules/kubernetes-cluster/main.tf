@@ -181,7 +181,7 @@ resource "google_compute_disk" "master" {
    }
 
   name = "${var.prefix}-${each.key}"
-  type = "pd-ssd"
+  type = var.master_additional_disk_type
   zone = each.value.machine.zone
   size = each.value.disk_size
 
@@ -271,7 +271,7 @@ resource "google_compute_disk" "worker" {
    }
 
   name = "${var.prefix}-${each.key}"
-  type = "pd-ssd"
+  type = var.worker_additional_disk_type
   zone = each.value.machine.zone
   size = each.value.disk_size
 

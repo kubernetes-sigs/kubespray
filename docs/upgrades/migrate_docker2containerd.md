@@ -65,6 +65,13 @@ apt-get install pigz
 
 ### 5) Run `cluster.yml` playbook with `--limit`
 
+> NOTE: If your cluster is previously setup using `etcd_kubeadm_enabled: true` then you will need to update the static manifest `/etc/kubernetes/manifests/etcd.yaml` on all etcd nodes with the new version before this step.
+>
+> ```diff
+> -     image: quay.io/coreos/etcd:v3.4.13
+> +     image: quay.io/coreos/etcd:v3.5.0
+> ```
+
 ```commandline
 ansible-playbook cluster.yml -i inventory/sample/hosts.ini cluster.yml --limit=NODENAME
 ```

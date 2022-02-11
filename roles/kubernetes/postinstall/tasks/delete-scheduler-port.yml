@@ -1,0 +1,18 @@
+# Delete kube-scheduler's command/--port
+- name: Kube-scheduler - command | Delete --port=0
+  lineinfile:
+    path        : '{{ kube_manifest_dir }}/kube-scheduler.yaml'
+    regexp      : '- --port=0'
+    state       : absent
+  register: updated
+
+# Restart kube-scheduler crio/containerd
+- name: Kube-scheduler - command | restart kube-scheduler crio/containerd
+  shell: "{{ bin_dir }}/crictl pods --name kube-scheduler* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
+  register: remove_scheduler_container
+  retries: 10
+  until: remove_scheduler_container.rc == 0
+  delay: 1
+  when:
+    - container_manager in ['crio', 'containerd']
+    - inventory_hostname in groups['kube_control_plane']

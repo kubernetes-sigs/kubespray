@@ -22,3 +22,24 @@
     regexp: '^    - --etcd-servers='
     line: '    - --etcd-servers={{ etcd_access_addresses }}'
   when: not etcd_kubeadm_enabled | default(false)
+
+- name: patch kubeapi manifest
+  block:
+    - name: load manifest
+      slurp:
+        src: "{{ kube_config_dir }}/manifests/kube-apiserver.yaml"
+      register: manifest_output
+    - name: patch manifest
+      vars:
+        orig_kubeapi_manifest: "{{ manifest_output.content | b64decode | from_yaml }}"
+        patch_kubeapi_container: "{{ orig_kubeapi_manifest.spec.containers[0] | combine({'resources': kube_apiserver_resources}) }}"
+      copy:
+        content: >-
+          {{
+            orig_kubeapi_manifest
+            | combine({'spec':{'containers':[patch_kubeapi_container]}}, recursive=True)
+            | to_nice_yaml(indent=2)
+          }}
+        dest: "{{ kube_config_dir }}/manifests/kube-apiserver.yaml"
+      notify:
+        - "Master | restart kubelet"

@@ -25,8 +25,8 @@ resource "aws_internet_gateway" "cluster-vpc-internetgw" {
 
 resource "aws_subnet" "cluster-vpc-subnets-public" {
   vpc_id            = aws_vpc.cluster-vpc.id
-  count             = length(var.aws_avail_zones)
-  availability_zone = element(var.aws_avail_zones, count.index)
+  count             = length(var.aws_cidr_subnets_public)
+  availability_zone = element(var.aws_avail_zones, count.index % length(var.aws_avail_zones))
   cidr_block        = element(var.aws_cidr_subnets_public, count.index)
 
   tags = merge(var.default_tags, tomap({
@@ -43,8 +43,8 @@ resource "aws_nat_gateway" "cluster-nat-gateway" {
 
 resource "aws_subnet" "cluster-vpc-subnets-private" {
   vpc_id            = aws_vpc.cluster-vpc.id
-  count             = length(var.aws_avail_zones)
-  availability_zone = element(var.aws_avail_zones, count.index)
+  count             = length(var.aws_cidr_subnets_private)
+  availability_zone = element(var.aws_avail_zones, count.index % length(var.aws_avail_zones))
   cidr_block        = element(var.aws_cidr_subnets_private, count.index)
 
   tags = merge(var.default_tags, tomap({

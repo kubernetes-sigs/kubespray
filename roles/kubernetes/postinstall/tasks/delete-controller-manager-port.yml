@@ -1,0 +1,18 @@
+# Delete kube-controller manager's command/--port
+- name: Kube-controller manager - command | Delete --port=0
+  lineinfile:
+    path        : '{{ kube_manifest_dir }}/kube-controller-manager.yaml'
+    regexp      : '- --port=0'
+    state       : absent
+  register: updated
+
+# Restart kube-controller-manager crio/containerd
+- name: Kube-controller-manager - command | restart kube-controller-manager crio/containerd
+  shell: "{{ bin_dir }}/crictl pods --name kube-controller-manager-* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
+  register: remove_controller_manager_container
+  retries: 10
+  until: remove_controller_manager_container.rc == 0
+  delay: 1
+  when:
+    - container_manager in ['crio', 'containerd']
+    - inventory_hostname in groups['kube_control_plane']

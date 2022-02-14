@@ -28,16 +28,19 @@ manage-offline-container-images.sh   register
 
 This script generates the list of downloaded files and the list of container images by `roles/download/defaults/main.yml` file.
 
-Run this script will generates three files, all downloaded files url in files.list, all container images in images.list, all component version in generate.sh.
+Run this script will execute `generate_list.yml` playbook in kubespray root directory and generate four files,
+all downloaded files url in files.list, all container images in images.list, jinja2 templates in *.template.
 
 ```shell
-bash generate_list.sh
+./generate_list.sh
 tree temp
 temp
 ├── files.list
-├── generate.sh
-└── images.list
-0 directories, 3 files
+├── files.list.template
+├── images.list
+└── images.list.template
+0 directories, 5 files
 ```
 
-In some cases you may want to update some component version, you can edit `generate.sh` file, then run `bash generate.sh | grep 'https' > files.list` to update file.list or run `bash generate.sh | grep -v 'https'> images.list` to update images.list.
+In some cases you may want to update some component version, you can declare version variables in ansible inventory file or group_vars,
+then run `./generate_list.sh -i [inventory_file]` to update file.list and images.list.

@@ -25,6 +25,8 @@
 
 - name: patch kubeapi manifest
   block:
+    - debug:
+        msg: "{{ __ansible_memtotal_gb }}"
     - name: load manifest
       slurp:
         src: "{{ kube_config_dir }}/manifests/kube-apiserver.yaml"
@@ -32,17 +34,17 @@
     - name: patch manifest
       vars:
         orig_kubeapi_manifest: "{{ manifest_output.content | b64decode | from_yaml }}"
-        patch_kubeapi_container: "{{ orig_kubeapi_manifest.spec.containers[0] | combine({'resources': kube_apiserver_resources}) }}"
+        patch_kubeapi:
+          spec:
+            containers:
+              - "{{ orig_kubeapi_manifest.spec.containers[0] | combine(kube_apiserver_resources, recursive=True) }}"
       copy:
         content: >-
           {{
-            orig_kubeapi_manifest
-            | combine({ 'spec':{ 'containers':[patch_kubeapi_container] } }, recursive=True)
-            | to_nice_yaml(indent=2)
+            orig_kubeapi_manifest |
+            combine(patch_kubeapi, recursive=True) |
+            to_nice_yaml(indent=2)
           }}
         dest: "{{ kube_config_dir }}/manifests/kube-apiserver.yaml"
-        owner: root
-        group: root
-        mode: '0600'
       notify:
         - "Master | restart kubelet"

@@ -31,6 +31,10 @@ variable "master_preemptible" {
   type = bool
 }
 
+variable "master_additional_disk_type" {
+  type = string
+}
+
 variable "worker_sa_email" {
   type = string
 }
@@ -41,6 +45,10 @@ variable "worker_sa_scopes" {
 
 variable "worker_preemptible" {
   type = bool
+}
+
+variable "worker_additional_disk_type" {
+  type = string
 }
 
 variable "ssh_pub_key" {}

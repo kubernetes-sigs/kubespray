@@ -37,6 +37,9 @@ Some variables of note include:
   public/floating and private IPs.
 * *ansible_default_ipv4.address* - Not Kubespray-specific, but it is used if ip
   and access_ip are undefined
+* *ip6* - IPv6 address to use for binding services. (host var)
+  If *enable_dual_stack_networks* is set to ``true`` and *ip6* is defined,
+  kubelet's ``--node-ip`` and node's ``InternalIP`` will be the combination of *ip* and *ip6*.
 * *loadbalancer_apiserver* - If defined, all hosts will connect to this
   address instead of localhost for kube_control_planes and kube_control_plane[0] for
   kube_nodes. See more details in the

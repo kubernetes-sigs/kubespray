@@ -99,7 +99,7 @@
     gpgcheck=0
     ```  
 * 비고 :
-    * 위 내용은 1개의 node에서만 진행한다.
+    * 위 내용은 1개의 node에서만 구축 진행한다.
     * aws같은 다른 provider에 sub cluster 구축시에는 on-premise node에 구축 가능하다.
       * 접근 환경에 따라 AWS 보안그룹 수정 및 transit gateway 설정이 추가로 필요할 수도 있다. 
     
@@ -125,7 +125,7 @@
     EX) podman run -it -d -p10.0.10.50:5000:5000 --privileged -v /root/supercloud-registry:/var/lib/registry registry
     ```
 * 비고 :
-    * 위 내용은 1개의 node에서만 진행한다.
+    * 위 내용은 1개의 node에서만 구축 진행한다.
     * aws같은 다른 provider에 sub cluster 구축시에는 on-premise node에 구축 가능하다.
     
 2. 아래 가이드를 참고 하여 kubespray 설치를 위한 환경설정을 한다.

@@ -88,7 +88,16 @@
   * httpd를 재시작 한다.
     ```bash
     $ systemctl restart httpd
-    ```      
+    ```
+  * kubespray로 설치할 모든 노드(master, worker)에는 구축한 repo를 바라볼수 있도록 설정한다.
+    * vi /etc/yum.repos.d/files-repo.repo
+    ```bash
+    [files_repo]
+    name=files repo
+    baseurl=http://172.22.5.2/
+    enabled=1
+    gpgcheck=0
+    ```  
 * 비고 :
     * 위 내용은 1개의 node에서만 진행한다.
     * aws같은 다른 provider에 sub cluster 구축시에는 on-premise node에 구축 가능하다.

@@ -5,7 +5,7 @@ offline 환경에서의 kubespray 설치를 위해 inventory/tmaxcloud/group_var
 ```yml
 is_this_offline: true
 registry_host: private registry 주소
-files_repo: file repo 경로
+files_repo: 구축한 webserver repo 경로
 ```
 
 ### 예시
@@ -15,7 +15,7 @@ files_repo: file repo 경로
 ```yml
 is_this_offline: true
 registry_host: "10.0.10.50:5000"
-files_repo: "file:///tmp/files-repo"
+files_repo: "http://172.22.5.2"
 ```
 
 # online 환경 설정
@@ -35,7 +35,7 @@ is_this_offline: false
 
 ### Private Container Image Registry
 #registry_host: "10.0.10.50:5000"
-#files_repo: "file:///tmp/files-repo"
+#files_repo: "http://172.22.5.2"
 ### If using CentOS, RedHat, AlmaLinux or Fedora
 # yum_repo: "file:///tmp/packages-repo"
 ### If using Debian

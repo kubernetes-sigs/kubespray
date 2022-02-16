@@ -58,10 +58,17 @@ Client Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.7", GitCom
 Server Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.7", GitCommit:"1dd5338295409edcfff11505e7bb246f0d325d15", GitTreeState:"clean", BuildDate:"2021-01-13T13:15:20Z", GoVersion:"go1.15.5", Compiler:"gc", Platform:"linux/amd64"}
 ```
 
-If you want to manually control the upgrade procedure, you can use the variables `upgrade_node_confirm` or `upgrade_node_pause_seconds`:
+### Pausing the upgrade
 
-`upgrade_node_confirm: true` - waiting to confirmation to upgrade next node
-`upgrade_node_pause_seconds: 60` - pause 60 seconds before upgrade next node
+If you want to manually control the upgrade procedure, you can set some variables to pause the upgrade playbook. Pausing *before* upgrading each upgrade may be useful for inspecting pods running on that node, or performing manual actions on the node:
+
+* `upgrade_node_confirm: true` - This will pause the playbook execution prior to upgrading each node. The play will resume when manually approved by typing "yes" at the terminal.
+* `upgrade_node_pause_seconds: 60` - This will pause the playbook execution for 60 seconds prior to upgrading each node. The play will resume automatically after 60 seconds.
+
+Pausing *after* upgrading each node may be useful for rebooting the node to apply kernel updates, or testing the still-cordoned node:
+
+* `upgrade_node_post_upgrade_confirm: true` - This will pause the playbook execution after upgrading each node, but before the node is uncordoned. The play will resume when manually approved by typing "yes" at the terminal.
+* `upgrade_node_post_upgrade_pause_seconds: 60` - This will pause the playbook execution for 60 seconds after upgrading each node, but before the node is uncordoned. The play will resume automatically after 60 seconds.
 
 ## Node-based upgrade
 

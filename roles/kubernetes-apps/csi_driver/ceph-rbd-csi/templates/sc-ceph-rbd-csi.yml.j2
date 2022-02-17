@@ -1,0 +1,143 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+   name: "{{ ceph_rbd_csi_sc_name }}"
+provisioner: rbd.csi.ceph.com
+# If topology based provisioning is desired, delayed provisioning of
+# PV is required and is enabled using the following attribute
+# For further information read TODO<doc>
+# volumeBindingMode: WaitForFirstConsumer
+parameters:
+   # (required) String representing a Ceph cluster to provision storage from.
+   # Should be unique across all Ceph clusters in use for provisioning,
+   # cannot be greater than 36 bytes in length, and should remain immutable for
+   # the lifetime of the StorageClass in use.
+   # Ensure to create an entry in the configmap named ceph-csi-config, based on
+   # csi-config-map-sample.yaml, to accompany the string chosen to
+   # represent the Ceph cluster in clusterID below
+   clusterID: "{{ ceph_rbd_csi_fsid }}"
+
+   # (optional) If you want to use erasure coded pool with RBD, you need to
+   # create two pools. one erasure coded and one replicated.
+   # You need to specify the replicated pool here in the `pool` parameter, it is
+   # used for the metadata of the images.
+   # The erasure coded pool must be set as the `dataPool` parameter below.
+   # dataPool: <ec-data-pool>
+
+   # (required) Ceph pool into which the RBD image shall be created
+   # eg: pool: rbdpool
+   pool: "{{ ceph_rbd_csi_pool }}"
+
+   # Deprecated: Set thickProvision to true if you want RBD images to be fully
+   # allocated on creation (thin provisioning is the default).
+   # thickProvision: "false"
+
+   # (required) RBD image features, CSI creates image with image-format 2
+   # CSI RBD currently supports `layering`, `journaling`, `exclusive-lock`,
+   # `object-map`, `fast-diff` features. If `journaling` is enabled, must
+   # enable `exclusive-lock` too.
+   # imageFeatures: layering,journaling,exclusive-lock,object-map,fast-diff
+   imageFeatures: "{{ ceph_rbd_csi_image_features }}"
+
+   # (optional) Specifies whether to try other mounters in case if the current
+   # mounter fails to mount the rbd image for any reason. True means fallback
+   # to next mounter, default is set to false.
+   # Note: tryOtherMounters is currently useful to fallback from krbd to rbd-nbd
+   # in case if any of the specified imageFeatures is not supported by krbd
+   # driver on node scheduled for application pod launch, but in the future this
+   # should work with any mounter type.
+   # tryOtherMounters: false
+
+   # (optional) mapOptions is a comma-separated list of map options.
+   # For krbd options refer
+   # https://docs.ceph.com/docs/master/man/8/rbd/#kernel-rbd-krbd-options
+   # For nbd options refer
+   # https://docs.ceph.com/docs/master/man/8/rbd-nbd/#options
+   # Format:
+   # mapOptions: "<mounter>:op1,op2;<mounter>:op1,op2"
+   # An empty mounter field is treated as krbd type for compatibility.
+   # eg:
+   # mapOptions: "krbd:lock_on_read,queue_depth=1024;nbd:try-netlink"
+
+   # (optional) unmapOptions is a comma-separated list of unmap options.
+   # For krbd options refer
+   # https://docs.ceph.com/docs/master/man/8/rbd/#kernel-rbd-krbd-options
+   # For nbd options refer
+   # https://docs.ceph.com/docs/master/man/8/rbd-nbd/#options
+   # Format:
+   # unmapOptions: "<mounter>:op1,op2;<mounter>:op1,op2"
+   # An empty mounter field is treated as krbd type for compatibility.
+   # eg:
+   # unmapOptions: "krbd:force;nbd:force"
+
+   # The secrets have to contain Ceph credentials with required access
+   # to the 'pool'.
+   csi.storage.k8s.io/provisioner-secret-name: "{{ ceph_csi_rbd_secret_name }}"
+   csi.storage.k8s.io/provisioner-secret-namespace: "{{ ceph_rbd_csi_namespace }}"
+   csi.storage.k8s.io/controller-expand-secret-name: "{{ ceph_csi_rbd_secret_name }}"
+   csi.storage.k8s.io/controller-expand-secret-namespace: "{{ ceph_rbd_csi_namespace }}"
+   csi.storage.k8s.io/node-stage-secret-name: "{{ ceph_csi_rbd_secret_name }}"
+   csi.storage.k8s.io/node-stage-secret-namespace: "{{ ceph_rbd_csi_namespace }}"
+
+   # (optional) Specify the filesystem type of the volume. If not specified,
+   # csi-provisioner will set default as `ext4`.
+   csi.storage.k8s.io/fstype: "{{ ceph_rbd_csi_fs_type }}"
+
+   # (optional) uncomment the following to use rbd-nbd as mounter
+   # on supported nodes
+   # mounter: rbd-nbd
+
+   # (optional) ceph client log location, eg: rbd-nbd
+   # By default host-path /var/log/ceph of node is bind-mounted into
+   # csi-rbdplugin pod at /var/log/ceph mount path. This is to configure
+   # target bindmount path used inside container for ceph clients logging.
+   # See docs/rbd-nbd.md for available configuration options.
+   # cephLogDir: /var/log/ceph
+
+   # (optional) ceph client log strategy
+   # By default, log file belonging to a particular volume will be deleted
+   # on unmap, but you can choose to just compress instead of deleting it
+   # or even preserve the log file in text format as it is.
+   # Available options `remove` or `compress` or `preserve`
+   # cephLogStrategy: remove
+
+   # (optional) Prefix to use for naming RBD images.
+   # If omitted, defaults to "csi-vol-".
+   # volumeNamePrefix: "foo-bar-"
+
+   # (optional) Instruct the plugin it has to encrypt the volume
+   # By default it is disabled. Valid values are "true" or "false".
+   # A string is expected here, i.e. "true", not true.
+   # encrypted: "true"
+
+   # (optional) Use external key management system for encryption passphrases by
+   # specifying a unique ID matching KMS ConfigMap. The ID is only used for
+   # correlation to configmap entry.
+   # encryptionKMSID: ceph-csi-encryption-kms-config
+
+   # Add topology constrained pools configuration, if topology based pools
+   # are setup, and topology constrained provisioning is required.
+   # For further information read TODO<doc>
+   # topologyConstrainedPools: |
+   #   [{"poolName":"pool0",
+   #     "dataPool":"ec-pool0" # optional, erasure-coded pool for data
+   #     "domainSegments":[
+   #       {"domainLabel":"region","value":"east"},
+   #       {"domainLabel":"zone","value":"zone1"}]},
+   #    {"poolName":"pool1",
+   #     "dataPool":"ec-pool1" # optional, erasure-coded pool for data
+   #     "domainSegments":[
+   #       {"domainLabel":"region","value":"east"},
+   #       {"domainLabel":"zone","value":"zone2"}]},
+   #    {"poolName":"pool2",
+   #     "dataPool":"ec-pool2" # optional, erasure-coded pool for data
+   #     "domainSegments":[
+   #       {"domainLabel":"region","value":"west"},
+   #       {"domainLabel":"zone","value":"zone1"}]}
+   #   ]
+
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+mountOptions:
+   - discard

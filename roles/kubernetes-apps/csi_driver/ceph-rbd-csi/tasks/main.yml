@@ -1,0 +1,66 @@
+---
+
+- name: Ceph RBD CSI | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/ceph_rbd_csi"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - ceph_rbd_csi
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Ceph RBD CSI | Templates list
+  set_fact:
+    ceph_rbd_csi_templates:
+      - { name: 00-namespace, file: 00-namespace.yml, type: ns }
+      - { name: confignap-ceph-rbd-csi, file: confignap-ceph-rbd-csi.yml, type: cm }
+      - { name: secret-ceph-rbd-csi, file: secret-ceph-rbd-csi.yml, type: secret }
+      - { name: sa-ceph-rbd-csi, file: sa-ceph-rbd-csi.yml, type: sa }
+      - { name: clusterrole-ceph-rbd-csi, file: clusterrole-ceph-rbd-csi.yml, type: clusterrole }
+      - { name: clusterrolebinding-ceph-rbd-csi, file: clusterrolebinding-ceph-rbd-csi.yml, type: clusterrolebinding }
+      - { name: role-ceph-rbd-csi, file: role-ceph-rbd-csi.yml, type: role }
+      - { name: rolebinding-ceph-rbd-csi, file: rolebinding-ceph-rbd-csi.yml, type: rolebinding }
+      - { name: deploy-ceph-rbd-csi, file: deploy-ceph-rbd-csi.yml, type: deploy }
+      - { name: ds-ceph-rbd-csi, file: ds-ceph-rbd-csi.yml, type: ds }
+      - { name: service-ceph-rbd-csi, file: service-ceph-rbd-csi.yml, type: service }
+      - { name: sc-ceph-rbd-csi, file: sc-ceph-rbd-csi.yml, type: sc }
+    ceph_rbd_csi_templates_for_psp:
+      - { name: psp-ceph-rbd-csi, file: psp-ceph-rbd-csi.yml, type: psp }
+      - { name: psp-role-ceph-rbd-csi, file: psp-role-ceph-rbd-csi.yml, type: role }
+      - { name: psp-rolebinding-ceph-rbd-csi, file: psp-rolebinding-ceph-rbd-csi.yml, type: rolebinding }
+  when:
+    - ceph_rbd_csi
+
+- name: Ceph RBD CSI | Append extra templates to Ceph RBD CSI Templates list for PodSecurityPolicy
+  set_fact:
+    ceph_rbd_csi_templates: "{{ ceph_rbd_csi_templates_for_psp + ceph_rbd_csi_templates }}"
+  when:
+    - ceph_rbd_csi
+    - podsecuritypolicy_enabled
+    - ceph_rbd_csi_namespace != "kube-system"
+
+- name: Ceph RBD CSI | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/ceph_rbd_csi/{{ item.file }}"
+    mode: 0644
+  with_items: "{{ ceph_rbd_csi_templates }}"
+  register: ceph_rbd_csi_manifests
+  when:
+    - ceph_rbd_csi
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Ceph RBD CSI | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "{{ ceph_rbd_csi_namespace }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/ceph_rbd_csi/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ ceph_rbd_csi_manifests.results }}"
+  when:
+    - ceph_rbd_csi
+    - inventory_hostname == groups['kube_control_plane'][0]

@@ -1,7 +1,16 @@
 ---
 - name: Kubernetes Apps | Register coredns deployment annotation `createdby`
   command: "{{ kubectl }} get deploy -n kube-system coredns -o jsonpath='{ .spec.template.metadata.annotations.createdby }'"
-  register: createdby_annotation
+  register: createdby_annotation_deploy
+  changed_when: false
+  ignore_errors: true  # noqa ignore-errors
+  when:
+    - dns_mode in ['coredns', 'coredns_dual']
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Kubernetes Apps | Register coredns service annotation `createdby`
+  command: "{{ kubectl }} get svc -n kube-system kube-dns -o jsonpath='{ .metadata.annotations.createdby }'"
+  register: createdby_annotation_svc
   changed_when: false
   ignore_errors: true  # noqa ignore-errors
   when:
@@ -18,7 +27,7 @@
   when:
     - dns_mode in ['coredns', 'coredns_dual']
     - inventory_hostname == groups['kube_control_plane'][0]
-    - createdby_annotation.stdout != 'kubespray'
+    - createdby_annotation_deploy.stdout != 'kubespray'
 
 - name: Kubernetes Apps | Delete kubeadm Kube-DNS service
   kube:
@@ -30,3 +39,4 @@
   when:
     - dns_mode in ['coredns', 'coredns_dual']
     - inventory_hostname == groups['kube_control_plane'][0]
+    - createdby_annotation_svc.stdout != 'kubespray'

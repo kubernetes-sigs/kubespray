@@ -15,7 +15,7 @@
   run_once: true
   when:
     - not ignore_assert_errors
-    - not etcd_kubeadm_enabled
+    - etcd_deployment_type != "kubeadm"
 
 - name: Stop if non systemd OS type
   assert:
@@ -277,22 +277,40 @@
   when: resolvconf_mode is defined
   run_once: true
 
-- name: Stop if etcd deployment type is not host or docker
+- name: Stop if etcd deployment type is not host, docker or kubeadm
   assert:
-    that: etcd_deployment_type in ['host', 'docker']
-    msg: "The etcd deployment type, 'etcd_deployment_type', must be host or docker"
+    that: etcd_deployment_type in ['host', 'docker', 'kubeadm']
+    msg: "The etcd deployment type, 'etcd_deployment_type', must be host, docker or kubeadm"
   when:
     - inventory_hostname in groups.get('etcd',[])
-    - not etcd_kubeadm_enabled
 
-- name: Stop if etcd deployment type is not host when container_manager != docker
+- name: Stop if etcd deployment type is not host or kubeadm when container_manager != docker
   assert:
-    that: etcd_deployment_type == 'host'
-    msg: "The etcd deployment type, 'etcd_deployment_type', must be host when container_manager is not docker"
+    that: etcd_deployment_type in ['host', 'kubeadm']
+    msg: "The etcd deployment type, 'etcd_deployment_type', must be host or kubeadm when container_manager is not docker"
   when:
     - inventory_hostname in groups.get('etcd',[])
-    - not etcd_kubeadm_enabled
     - container_manager != 'docker'
+
+# TODO: Clean this task up when we drop backward compatibility support for `etcd_kubeadm_enabled`
+- name: Stop if etcd deployment type is not host or kubeadm when container_manager != docker and etcd_kubeadm_enabled is not defined
+  block:
+    - name: Warn the user if they are still using `etcd_kubeadm_enabled`
+      debug:
+        msg: >
+          "WARNING! => `etcd_kubeadm_enabled` is deprecated and will be removed in a future release.
+          You can set `etcd_deployment_type` to `kubeadm` instead of setting `etcd_kubeadm_enabled` to `true`."
+      changed_when: true
+
+    - name: Stop if `etcd_kubeadm_enabled` is defined and `etcd_deployment_type` is not `kubadm` or `host`
+      assert:
+        that: etcd_deployment_type == 'kubeadm'
+        msg: >
+          It is not possible to use `etcd_kubeadm_enabled` when `etcd_deployment_type` is set to {{ etcd_deployment_type }}.
+          Unset the `etcd_kubeadm_enabled` variable and set `etcd_deployment_type` to desired deployment type (`host`, `kubeadm`, `docker`) instead."
+      when: etcd_kubeadm_enabled
+  run_once: yes
+  when: etcd_kubeadm_enabled is defined
 
 - name: Stop if download_localhost is enabled but download_run_once is not
   assert:

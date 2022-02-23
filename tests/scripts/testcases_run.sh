@@ -16,10 +16,13 @@ else
   fi
 fi
 
+# needed for ara not to complain
+export TZ=UTC
 
 export ANSIBLE_REMOTE_USER=$SSH_USER
 export ANSIBLE_BECOME=true
 export ANSIBLE_BECOME_USER=root
+export ANSIBLE_CALLBACK_PLUGINS="$(python -m ara.setup.callback_plugins)"
 
 cd tests && make create-${CI_PLATFORM} -s ; cd -
 ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml

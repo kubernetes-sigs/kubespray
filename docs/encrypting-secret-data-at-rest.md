@@ -17,7 +17,6 @@ Alternatively you can use the values `identity`, `aesgcm`, `aescbc` or `kms`.
 | aescbc   | Not recommended due to CBC's vulnerability to padding oracle attacks.                                                                                                                    |
 | kms      | Is the official recommended way, but assumes that a key management service independent of Kubernetes exists, we cannot assume this in all environments, so not a suitable default value. |
 
-
 ## Details about Secretbox
 
 Secretbox uses [Poly1305](https://cr.yp.to/mac.html) as message-authentication code and [XSalsa20](https://www.xsalsa20.com/) as secret-key authenticated encryption and secret-key encryption.

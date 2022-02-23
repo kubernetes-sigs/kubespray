@@ -14,8 +14,8 @@ output "etcd" {
   value = join("\n", ((var.aws_etcd_num > 0) ? (aws_instance.k8s-etcd.*.private_ip) : (aws_instance.k8s-master.*.private_ip)))
 }
 
-output "aws_elb_api_fqdn" {
-  value = "${module.aws-elb.aws_elb_api_fqdn}:${var.aws_elb_api_port}"
+output "aws_nlb_api_fqdn" {
+  value = "${module.aws-nlb.aws_nlb_api_fqdn}:${var.aws_nlb_api_port}"
 }
 
 output "inventory" {

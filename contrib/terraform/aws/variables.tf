@@ -104,11 +104,11 @@ variable "aws_kube_worker_size" {
 }
 
 /*
-* AWS ELB Settings
+* AWS NLB Settings
 *
 */
-variable "aws_elb_api_port" {
-  description = "Port for AWS ELB"
+variable "aws_nlb_api_port" {
+  description = "Port for AWS NLB"
 }
 
 variable "k8s_secure_api_port" {

@@ -67,6 +67,14 @@
 
   when: resolvconf_stat.stat.exists is defined and resolvconf_stat.stat.exists
 
+- name: NetworkManager | Check if host has NetworkManager
+  # noqa 303 Should we use service_facts for this?
+  command: systemctl is-active --quiet NetworkManager.service
+  register: networkmanager_enabled
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
 - name: check systemd-resolved
   # noqa 303 Should we use service_facts for this?
   command: systemctl is-active systemd-resolved
@@ -98,8 +106,7 @@
 
 - name: check if early DNS configuration stage
   set_fact:
-    dns_early: >-
-      {%- if kubelet_configured.stat.exists -%}false{%- else -%}true{%- endif -%}
+    dns_early: "{{ not kubelet_configured.stat.exists }}"
 
 - name: target resolv.conf files
   set_fact:
@@ -177,12 +184,24 @@
         {{ upstream_dns_servers|default([]) }}
       {%- endif -%}
 
-- name: generate nameservers to resolvconf
+# This task should only run after cluster/nodelocal DNS is up, otherwise all DNS lookups will timeout
+- name: generate nameservers for resolvconf, including cluster DNS
   set_fact:
-    nameserverentries:
-      nameserver {{ ( ( [nodelocaldns_ip] if enable_nodelocaldns else []) + coredns_server|d([]) + nameservers|d([]) + cloud_resolver|d([]) + configured_nameservers|d([])) | unique | join(',nameserver ') }}
+    nameserverentries: |-
+      {{ ( ( [nodelocaldns_ip] if enable_nodelocaldns else []) + coredns_server|d([]) + nameservers|d([]) + cloud_resolver|d([]) + configured_nameservers|d([])) | unique | join(',') }}
     supersede_nameserver:
       supersede domain-name-servers {{ ( coredns_server|d([]) + nameservers|d([]) + cloud_resolver|d([])) | unique | join(', ') }};
+  when: not dns_early or dns_late
+
+# This task should run instead of the above task when cluster/nodelocal DNS hasn't
+# been deployed yet (like scale.yml/cluster.yml) or when it's down (reset.yml)
+- name: generate nameservers for resolvconf, not including cluster DNS
+  set_fact:
+    nameserverentries: |-
+      {{ ( nameservers|d([]) + cloud_resolver|d([]) + configured_nameservers|d([])) | unique | join(',') }}
+    supersede_nameserver:
+      supersede domain-name-servers {{ ( nameservers|d([]) + cloud_resolver|d([])) | unique | join(', ') }};
+  when: dns_early and not dns_late
 
 - name: gather os specific variables
   include_vars: "{{ item }}"

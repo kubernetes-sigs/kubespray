@@ -1,0 +1,117 @@
+---
+- name: Ensure kubelet systemd unit exists
+  stat:
+    path: "/etc/systemd/system/kubelet.service"
+  register: kubelet_systemd_unit_exists
+
+- name: Check if containerd is installed
+  find:
+    file_type: file
+    recurse: yes
+    use_regex: yes
+    patterns:
+      - containerd.service$
+    paths:
+      - /lib/systemd
+      - /etc/systemd
+      - /run/systemd
+  register: containerd_installed
+
+- name: Check if docker is installed
+  find:
+    file_type: file
+    recurse: yes
+    use_regex: yes
+    patterns:
+      - docker.service$
+    paths:
+      - /lib/systemd
+      - /etc/systemd
+      - /run/systemd
+  register: docker_installed
+
+- name: Check if crio is installed
+  find:
+    file_type: file
+    recurse: yes
+    use_regex: yes
+    patterns:
+      - crio.service$
+    paths:
+      - /lib/systemd
+      - /etc/systemd
+      - /run/systemd
+  register: crio_installed
+
+- name: Uninstall containerd
+  block:
+    - name: Drain node
+      include_role:
+        name: remove-node/pre-remove
+        apply:
+          tags:
+            - pre-remove
+    - name: Stop kubelet
+      service:
+        name: kubelet
+        state: stopped
+      when:
+        - kubelet_systemd_unit_exists
+    - name: Remove Containerd
+      include_role:
+        name: container-engine/containerd
+        apply:
+          tags:
+            - reset_containerd
+  when:
+    - container_manager != "containerd"
+    - docker_installed.matched == 0
+    - containerd_installed.matched > 0
+
+- name: Uninstall docker
+  block:
+    - name: Drain node
+      include_role:
+        name: remove-node/pre-remove
+        apply:
+          tags:
+            - pre-remove
+    - name: Stop kubelet
+      service:
+        name: kubelet
+        state: stopped
+      when:
+        - kubelet_systemd_unit_exists
+    - name: Remove Docker
+      include_role:
+        name: container-engine/docker
+        apply:
+          tags:
+            - reset_docker
+  when:
+    - container_manager != "docker"
+    - docker_installed.matched > 0
+
+- name: Uninstall crio
+  block:
+    - name: Drain node
+      include_role:
+        name: remove-node/pre-remove
+        apply:
+          tags:
+            - pre-remove
+    - name: Stop kubelet
+      service:
+        name: kubelet
+        state: stopped
+      when:
+        - kubelet_systemd_unit_exists
+    - name: Remove CRI-O
+      include_role:
+        name: container-engine/crio
+        apply:
+          tags:
+            - reset_crio
+  when:
+    - container_manager != "crio"
+    - crio_installed.matched > 0

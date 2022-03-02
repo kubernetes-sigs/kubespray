@@ -11,7 +11,7 @@ For a large scaled deployments, consider the following configuration changes:
 * Override the ``download_run_once: true`` and/or ``download_localhost: true``.
   See download modes for details.
 
-* Adjust the `retry_stagger` global var as appropriate. It should provide same
+* Adjust the `retry_stagger` global var as appropriate. It should provide sane
   load on a delegate (the first K8s control plane node) then retrying failed
   push or download operations.
 

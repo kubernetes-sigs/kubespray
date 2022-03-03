@@ -90,3 +90,8 @@ variable api_server_whitelist {
 variable nodeport_whitelist {
   type = list(string)
 }
+
+variable "ingress_whitelist" {
+  type = list(string)
+  default = ["0.0.0.0/0"]
+}

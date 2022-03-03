@@ -74,6 +74,7 @@ ansible-playbook -i contrib/terraform/gcs/inventory.ini cluster.yml -b -v
 * `ssh_whitelist`: List of IP ranges (CIDR) that will be allowed to ssh to the nodes
 * `api_server_whitelist`: List of IP ranges (CIDR) that will be allowed to connect to the API server
 * `nodeport_whitelist`: List of IP ranges (CIDR) that will be allowed to connect to the kubernetes nodes on port 30000-32767 (kubernetes nodeports)
+* `ingress_whitelist`: List of IP ranges (CIDR) that will be allowed to connect to ingress on ports 80 and 443
 
 ### Optional
 

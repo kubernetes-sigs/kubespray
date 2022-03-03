@@ -65,6 +65,11 @@ variable "nodeport_whitelist" {
   type = list(string)
 }
 
+variable "ingress_whitelist" {
+  type = list(string)
+  default = ["0.0.0.0/0"]
+}
+
 variable "private_network_cidr" {
   default = "10.0.10.0/24"
 }

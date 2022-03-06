@@ -1,4 +1,24 @@
 ---
+- name: Docker | Stop docker service
+  service:
+    name: docker
+    enabled: false
+    masked: true
+    state: stopped
+  tags:
+    - reset_docker
+
+- name: Docker | Remove dpkg hold
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: install
+  when: ansible_pkg_mgr == 'apt'
+  changed_when: false
+  with_items:
+    - "{{ containerd_package }}"
+    - docker-ce
+    - docker-ce-cli
+
 - name: Docker | ensure docker-ce repository is removed
   apt_repository:
     repo: "{{ item }}"
@@ -27,16 +47,6 @@
   tags:
     - reset_docker
 
-- name: Docker | Stop docker service
-  service:
-    name: docker
-    daemon_reload: true
-    enabled: false
-    masked: true
-    state: stopped
-  tags:
-    - reset_docker
-
 - name: Docker | Remove docker configuration files
   file:
     name: "{{ item }}"
@@ -45,6 +55,9 @@
     - /etc/systemd/system/docker.service.d/
     - /var/lib/docker
     - /etc/docker
+    - /etc/init/docker.conf
+    - /etc/init.d/docker
+    - /run/systemd/generator.late/docker.service
   tags:
     - reset_docker
 
@@ -57,5 +70,11 @@
     - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     - not is_ostree
     - docker_package_info.pkgs|length > 0
+  tags:
+    - reset_docker
+
+- name: reset | systemctl daemon-reload  # noqa 503
+  systemd:
+    daemon_reload: true
   tags:
     - reset_docker

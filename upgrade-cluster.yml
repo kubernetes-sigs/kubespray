@@ -29,6 +29,26 @@
   tags: always
   import_playbook: facts.yml
 
+- name: Upgrade container engine on non-cluster nodes
+  hosts: etcd:calico_rr:!k8s_cluster
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  serial: "{{ serial | default('20%') }}"
+  roles:
+    - { role: kubespray-defaults }
+    - { role: container-engine, tags: "container-engine" }
+
+- name: Upgrade container engine on kube_control_plane
+  hosts: kube_control_plane
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults }
+    - { role: upgrade/pre-upgrade, tags: pre-upgrade, when: deploy_container_engine }
+    - { role: container-engine, tags: "container-engine" }
+
 - name: Download images to ansible host cache via first kube_control_plane node
   hosts: kube_control_plane[0]
   gather_facts: False
@@ -39,6 +59,16 @@
     - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
     - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
 
+- name: Upgrade container engine on nodes
+  hosts: kube_node:calico_rr:!kube_control_plane
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults }
+    - { role: upgrade/pre-upgrade, tags: pre-upgrade, when: deploy_container_engine }
+    - { role: container-engine, tags: "container-engine" }
+
 - name: Prepare nodes for upgrade
   hosts: k8s_cluster:etcd:calico_rr
   gather_facts: False
@@ -48,16 +78,6 @@
     - { role: kubespray-defaults }
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: download, tags: download, when: "not skip_downloads" }
-
-- name: Upgrade container engine on non-cluster nodes
-  hosts: etcd:calico_rr:!k8s_cluster
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  serial: "{{ serial | default('20%') }}"
-  roles:
-    - { role: kubespray-defaults }
-    - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
 
 - hosts: etcd
   gather_facts: False
@@ -94,7 +114,6 @@
   roles:
     - { role: kubespray-defaults }
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
-    - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
     - { role: kubernetes/node, tags: node }
     - { role: kubernetes/control-plane, tags: master, upgrade_cluster_setup: true }
     - { role: kubernetes/client, tags: client }
@@ -125,7 +144,6 @@
   roles:
     - { role: kubespray-defaults }
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
-    - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
     - { role: kubernetes/node, tags: node }
     - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: kubernetes/node-label, tags: node-label }

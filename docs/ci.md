@@ -27,7 +27,7 @@ ubuntu20 |  :white_check_mark: | :x: | :x: | :white_check_mark: | :x: | :x: | :x
 almalinux8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-debian10 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+debian10 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora34 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |

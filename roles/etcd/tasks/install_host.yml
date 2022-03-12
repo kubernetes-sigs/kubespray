@@ -1,4 +1,25 @@
 ---
+- name: Get currently-deployed etcd version
+  command: "{{ bin_dir }}/etcd --version"
+  register: etcd_current_host_version
+  # There's a chance this play could run before etcd is installed at all
+  ignore_errors: true
+  when: etcd_cluster_setup
+
+- name: Restart etcd if necessary
+  command: /bin/true
+  notify: restart etcd
+  when:
+    - etcd_cluster_setup
+    - etcd_version.lstrip('v') not in etcd_current_host_version.stdout|default('')
+
+- name: Restart etcd-events if necessary
+  command: /bin/true
+  notify: restart etcd-events
+  when:
+    - etcd_events_cluster_setup
+    - etcd_version.lstrip('v') not in etcd_current_host_version.stdout|default('')
+
 - name: install | Download etcd and etcdctl
   include_tasks: "../../download/tasks/download_file.yml"
   vars:

@@ -13,6 +13,7 @@
 # under the License.
 
 import inventory
+from test import support
 import unittest
 from unittest import mock
 
@@ -24,6 +25,28 @@ if path not in sys.path:
     sys.path.append(path)
 
 import inventory  # noqa
+
+
+class TestInventoryPrintHostnames(unittest.TestCase):
+
+    @mock.patch('ruamel.yaml.YAML.load')
+    def test_print_hostnames(self, load_mock):
+        mock_io = mock.mock_open(read_data='')
+        load_mock.return_value = OrderedDict({'all': {'hosts': {
+            'node1': {'ansible_host': '10.90.0.2',
+                      'ip': '10.90.0.2',
+                      'access_ip': '10.90.0.2'},
+            'node2': {'ansible_host': '10.90.0.3',
+                      'ip': '10.90.0.3',
+                      'access_ip': '10.90.0.3'}}}})
+        with mock.patch('builtins.open', mock_io):
+            with self.assertRaises(SystemExit) as cm:
+                with support.captured_stdout() as stdout:
+                    inventory.KubesprayInventory(
+                        changed_hosts=["print_hostnames"],
+                        config_file="file")
+            self.assertEqual("node1 node2\n", stdout.getvalue())
+            self.assertEqual(cm.exception.code, 0)
 
 
 class TestInventory(unittest.TestCase):

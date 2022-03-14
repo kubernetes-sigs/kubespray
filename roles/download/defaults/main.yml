@@ -75,6 +75,7 @@ kata_containers_version: 2.2.3
 youki_version: 0.0.1
 gvisor_version: 20210921
 containerd_version: 1.6.1
+cri_dockerd_version: v0.2.0
 
 # this is relevant when container_manager == 'docker'
 docker_containerd_version: 1.4.12
@@ -152,6 +153,7 @@ gvisor_containerd_shim_runsc_download_url: "https://storage.googleapis.com/gviso
 nerdctl_download_url: "https://github.com/containerd/nerdctl/releases/download/v{{ nerdctl_version }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
 krew_download_url: "https://github.com/kubernetes-sigs/krew/releases/download/{{ krew_version }}/krew-{{ host_os }}_{{ image_arch }}.tar.gz"
 containerd_download_url: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
+cri_dockerd_download_url: "https://github.com/Mirantis/cri-dockerd/releases/download/{{ cri_dockerd_version }}/cri-dockerd-{{ cri_dockerd_version }}-linux-{{ image_arch }}.tar.gz"
 
 crictl_checksums:
   arm:
@@ -577,6 +579,16 @@ helm_archive_checksums:
   ppc64le:
     v3.8.0: 5070fa5188e7bc798dd54bc1ea9fc4cda623d9ff45eedb05ec93db234309f391
 
+cri_dockerd_archive_checksums:
+  arm:
+    v0.2.0: 0
+  arm64:
+    v0.2.0: 6ddcb77bc7ca9d93008fdcb81659e3acfb45105dc935782030afb7dab4a3250b
+  amd64:
+    v0.2.0: ad0e5f2ac6e7a57af4b560d1638ee26baab68c56a49ff3337e10ff9cea0a3539
+  ppc64le:
+    v0.2.0: 0
+
 runc_checksums:
   arm:
     v1.0.2: 0
@@ -738,6 +750,7 @@ kubeadm_binary_checksum: "{{ kubeadm_checksums[image_arch][kubeadm_version] }}"
 calicoctl_binary_checksum: "{{ calicoctl_binary_checksums[image_arch][calico_ctl_version] }}"
 calico_crds_archive_checksum: "{{ calico_crds_archive_checksums[calico_version] }}"
 crictl_binary_checksum: "{{ crictl_checksums[image_arch][crictl_version] }}"
+cri_dockerd_archive_checksum: "{{ cri_dockerd_archive_checksums[image_arch][cri_dockerd_version] }}"
 helm_archive_checksum: "{{ helm_archive_checksums[image_arch][helm_version] }}"
 runc_binary_checksum: "{{ runc_checksums[image_arch][runc_version] }}"
 crun_binary_checksum: "{{ crun_checksums[image_arch][crun_version] }}"
@@ -1011,11 +1024,24 @@ downloads:
 
   crictl:
     file: true
-    enabled: "{{ container_manager in ['crio', 'cri', 'containerd'] }}"
+    enabled: "{{ container_manager in ['crio', 'cri', 'containerd'] or cri_dockerd_enabled }}"
     version: "{{ crictl_version }}"
     dest: "{{ local_release_dir }}/crictl-{{ crictl_version }}-linux-{{ image_arch }}.tar.gz"
     sha256: "{{ crictl_binary_checksum }}"
     url: "{{ crictl_download_url }}"
+    unarchive: true
+    owner: "root"
+    mode: "0755"
+    groups:
+    - k8s_cluster
+
+  cri_dockerd:
+    file: true
+    enabled: "{{ cri_dockerd_enabled }}"
+    version: "{{ cri_dockerd_version }}"
+    dest: "{{ local_release_dir }}/cri-dockerd-{{ crictl_version }}-linux-{{ image_arch }}.tar.gz"
+    sha256: "{{ cri_dockerd_archive_checksum }}"
+    url: "{{ cri_dockerd_download_url }}"
     unarchive: true
     owner: "root"
     mode: "0755"

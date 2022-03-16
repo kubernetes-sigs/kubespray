@@ -37,6 +37,7 @@
   * [Amazon Linux 2](docs/amazonlinux.md)
 * CRI
   * [Containerd](docs/containerd.md)
+  * [Docker](docs/docker.md)
   * [CRI-O](docs/cri-o.md)
   * [Kata Containers](docs/kata-containers.md)
   * [gVisor](docs/gvisor.md)

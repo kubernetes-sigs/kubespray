@@ -55,7 +55,7 @@ $subnet_ipv6 ||= "fd3c:b398:0698:0756"
 $os ||= "ubuntu1804"
 $network_plugin ||= "flannel"
 # Setting multi_networking to true will install Multus: https://github.com/intel/multus-cni
-$multi_networking ||= false
+$multi_networking ||= "False"
 $download_run_once ||= "True"
 $download_force_cache ||= "False"
 # The first three nodes are etcd servers

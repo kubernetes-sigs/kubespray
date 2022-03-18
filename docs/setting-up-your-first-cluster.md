@@ -61,12 +61,12 @@ gcloud compute networks subnets create kubernetes \
 #### Firewall Rules
 
 Create a firewall rule that allows internal communication across all protocols.
-It is important to note that the ipip protocol has to be allowed in order for
+It is important to note that the vxlan protocol has to be allowed in order for
 the calico (see later) networking plugin to work.
 
 ```ShellSession
 gcloud compute firewall-rules create kubernetes-the-kubespray-way-allow-internal \
-  --allow tcp,udp,icmp,ipip \
+  --allow tcp,udp,icmp,vxlan \
   --network kubernetes-the-kubespray-way \
   --source-ranges 10.240.0.0/24
 ```

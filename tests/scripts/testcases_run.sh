@@ -72,6 +72,9 @@ if [ "${RECOVER_CONTROL_PLANE_TEST}" != "false" ]; then
 fi
 
 # Tests Cases
+## test hostos
+ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} tests/testcases/000_check-hostos.yml $ANSIBLE_LOG_LEVEL
+
 ## Test Master API
 ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} tests/testcases/010_check-apiserver.yml $ANSIBLE_LOG_LEVEL
 

@@ -1,0 +1,63 @@
+---
+- hosts: all
+
+  tasks:
+  - name: Check ip
+    shell: "ip a"
+    register: get_ip
+
+  - debug:  # noqa unnamed-task
+      msg: "{{ get_ip.stdout.split('\n') }}"  
+  
+  - name: Check ip route
+    shell: "ip r"
+    register: get_ipr
+
+  - debug:  # noqa unnamed-task
+      msg: "{{ get_ipr.stdout.split('\n') }}"
+
+  - name: Check ip 6 route
+    shell: "ip -6 r"
+    register: get_ipv6r
+
+  - debug:  # noqa unnamed-task
+      msg: "{{ get_ipv6r.stdout.split('\n') }}"
+
+- hosts: kube_control_plane[0]
+  tasks:
+
+  - name: Force binaries directory for Flatcar Container Linux by Kinvolk
+    set_fact:
+      bin_dir: "/opt/bin"
+    when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+
+  - name: Force binaries directory for other hosts
+    set_fact:
+      bin_dir: "/usr/local/bin"
+    when: not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+
+  - name: Check kubectl output
+    command: "{{ bin_dir }}/kubectl describe  pod -n kube-system kube-ovn-cni"
+    changed_when: false
+    register: describe_pods
+
+  - debug:  # noqa unnamed-task
+      msg: "{{ describe_pods.stdout.split('\n') }}"
+
+
+  - name: Check kubectl output
+    command: "{{ bin_dir }}/kubectl get subnets.kubeovn.io -oyaml"
+    changed_when: false
+    register: describe_subnets
+
+  - debug:  # noqa unnamed-task
+      msg: "{{ describe_subnets.stdout.split('\n') }}"
+
+
+  - name: Check kubectl output
+    command: "{{ bin_dir }}/kubectl get ips.kubeovn.io -oyaml"
+    changed_when: false
+    register: describe_ips
+
+  - debug:  # noqa unnamed-task
+      msg: "{{ describe_ips.stdout.split('\n') }}"

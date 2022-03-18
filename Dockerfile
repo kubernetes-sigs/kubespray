@@ -1,5 +1,5 @@
-# Use imutable image tags rather than mutable tags (like ubuntu:18.04)
-FROM ubuntu:bionic-20200807
+# Use imutable image tags rather than mutable tags (like ubuntu:20.04)
+FROM ubuntu:focal-20220316
 
 RUN apt update -y \
     && apt install -y \

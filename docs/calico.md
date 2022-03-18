@@ -210,23 +210,42 @@ calico_node_readinessprobe_timeout: 10
 
 ## Config encapsulation for cross server traffic
 
-Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.projectcalico.org/v3.11/networking/vxlan-ipip). VXLAN is supported in some environments where IP in IP is not (for example, Azure).
+Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.projectcalico.org/v3.11/networking/vxlan-ipip). VXLAN is the more mature implementation and enabled by default, please check your environment if you need *IP in IP* encapsulation.
 
 *IP in IP* and *VXLAN* is mutualy exclusive modes.
 
-Configure Ip in Ip mode. Possible values is `Always`, `CrossSubnet`, `Never`.
+### IP in IP mode
+
+To configure Ip in Ip mode you need to use the bird network backend.
 
 ```yml
-calico_ipip_mode: 'Always'
-```
-
-Configure VXLAN mode. Possible values is `Always`, `CrossSubnet`, `Never`.
-
-```yml
+calico_ipip_mode: 'Always'  # Possible values is `Always`, `CrossSubnet`, `Never`
 calico_vxlan_mode: 'Never'
+calico_network_backend: 'bird'
 ```
 
-If you use VXLAN mode, BGP networking is not required. You can disable BGP to reduce the moving parts in your cluster by `calico_network_backend: vxlan`
+### VXLAN mode (default)
+
+To configure VXLAN mode you can use the default settings, the example below is provided for your reference.
+
+```yml
+calico_ipip_mode: 'Never'
+calico_vxlan_mode: 'Always'  # Possible values is `Always`, `CrossSubnet`, `Never`.
+calico_network_backend: 'vxlan'
+```
+
+In VXLAN mode BGP networking is not required.
+We disable BGP to reduce the moving parts in your cluster by `calico_network_backend: vxlan`
+
+### BGP mode
+
+To enable BGP no-encapsulation mode:
+
+```yml
+calico_ipip_mode: 'Never'
+calico_vxlan_mode: 'Never'
+calico_network_backend: 'bird'
+```
 
 ## Configuring interface MTU
 

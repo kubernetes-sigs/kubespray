@@ -240,6 +240,7 @@ Vagrant.configure("2") do |config|
       }
 
       # Only execute the Ansible provisioner once, when all the machines are up and ready.
+      # And limit the action to gathering facts, the full playbook is going to be ran by testcases_run.sh
       if i == $num_instances
         node.vm.provision "ansible" do |ansible|
           ansible.playbook = $playbook
@@ -252,7 +253,7 @@ Vagrant.configure("2") do |config|
           ansible.host_key_checking = false
           ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
           ansible.host_vars = host_vars
-          #ansible.tags = ['download']
+          ansible.tags = ['facts']
           ansible.groups = {
             "etcd" => ["#{$instance_name_prefix}-[1:#{$etcd_instances}]"],
             "kube_control_plane" => ["#{$instance_name_prefix}-[1:#{$kube_master_instances}]"],

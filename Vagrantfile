@@ -73,6 +73,8 @@ $disk_size ||= "20GB"
 $local_path_provisioner_enabled ||= false
 $local_path_provisioner_claim_root ||= "/opt/local-path-provisioner/"
 $libvirt_nested ||= false
+# boolean or string (e.g. "-vvv")
+$ansible_verbosity ||= false
 
 $playbook ||= "cluster.yml"
 
@@ -244,6 +246,7 @@ Vagrant.configure("2") do |config|
       if i == $num_instances
         node.vm.provision "ansible" do |ansible|
           ansible.playbook = $playbook
+          ansible.verbose = $ansible_verbosity
           $ansible_inventory_path = File.join( $inventory, "hosts.ini")
           if File.exist?($ansible_inventory_path)
             ansible.inventory_path = $ansible_inventory_path

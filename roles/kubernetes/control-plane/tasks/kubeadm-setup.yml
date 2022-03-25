@@ -101,6 +101,7 @@
   changed_when: "'NEED-RENEW' in apiserver_sans_check.stdout"
   when:
     - kubeadm_already_run.stat.exists
+    - not kube_external_ca_mode
 
 - name: kubeadm | regenerate apiserver cert 1/2
   file:
@@ -112,6 +113,7 @@
   when:
     - kubeadm_already_run.stat.exists
     - apiserver_sans_check.changed
+    - not kube_external_ca_mode
 
 - name: kubeadm | regenerate apiserver cert 2/2
   command: >-
@@ -121,6 +123,7 @@
   when:
     - kubeadm_already_run.stat.exists
     - apiserver_sans_check.changed
+    - not kube_external_ca_mode
 
 - name: kubeadm | Initialize first master
   command: >-
@@ -129,7 +132,7 @@
     --config={{ kube_config_dir }}/kubeadm-config.yaml
     --ignore-preflight-errors=all
     --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
-    --upload-certs
+    {{ kube_external_ca_mode | ternary('', '--upload-certs') }}
   register: kubeadm_init
   # Retry is because upload config sometimes fails
   retries: 3

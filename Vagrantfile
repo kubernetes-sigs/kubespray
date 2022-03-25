@@ -55,7 +55,7 @@ $subnet_ipv6 ||= "fd3c:b398:0698:0756"
 $os ||= "ubuntu1804"
 $network_plugin ||= "flannel"
 # Setting multi_networking to true will install Multus: https://github.com/intel/multus-cni
-$multi_networking ||= false
+$multi_networking ||= "False"
 $download_run_once ||= "True"
 $download_force_cache ||= "False"
 # The first three nodes are etcd servers
@@ -70,7 +70,7 @@ $kube_node_instances_with_disks_size ||= "20G"
 $kube_node_instances_with_disks_number ||= 2
 $override_disk_size ||= false
 $disk_size ||= "20GB"
-$local_path_provisioner_enabled ||= false
+$local_path_provisioner_enabled ||= "False"
 $local_path_provisioner_claim_root ||= "/opt/local-path-provisioner/"
 $libvirt_nested ||= false
 # boolean or string (e.g. "-vvv")

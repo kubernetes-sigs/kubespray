@@ -171,7 +171,7 @@ Vagrant.configure("2") do |config|
           # always make /dev/sd{a/b/c} so that CI can ensure that
           # virtualbox and libvirt will have the same devices to use for OSDs
           (1..$kube_node_instances_with_disks_number).each do |d|
-            lv.storage :file, :device => "hd#{driverletters[d]}", :path => "disk-#{i}-#{d}-#{DISK_UUID}.disk", :size => $kube_node_instances_with_disks_size, :bus => "ide"
+            lv.storage :file, :device => "hd#{driverletters[d]}", :path => "disk-#{i}-#{d}-#{DISK_UUID}.disk", :size => $kube_node_instances_with_disks_size, :bus => "scsi"
           end
         end
       end

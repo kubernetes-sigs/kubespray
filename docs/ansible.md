@@ -267,7 +267,7 @@ that explains in detail the need and the evolution plan.
 You first need to uninstall your old ansible (pre 2.10) version and install the new one.
 
 ```ShellSession
-pip uninstall ansible
+pip uninstall ansible ansible-base ansible-core
 cd kubespray/
 pip install -U .
 ```

@@ -228,7 +228,7 @@ resource "openstack_compute_instance_v2" "bastion" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ${path.root}/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.bastion_fips[0]}/ > ${var.group_vars_path}/no_floating.yml"
+    command = "sed -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${var.bastion_fips[0]}/ ${path.module}/ansible_bastion_template.txt > ${var.group_vars_path}/no_floating.yml"
   }
 }
 
@@ -284,7 +284,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ${path.root}/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > ${var.group_vars_path}/no_floating.yml"
+    command = "sed -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ ${path.module}/ansible_bastion_template.txt > ${var.group_vars_path}/no_floating.yml"
   }
 }
 
@@ -340,7 +340,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ${path.root}/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ > ${var.group_vars_path}/no_floating.yml"
+    command = "sed -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_master_fips), 0)}/ ${path.module}/ansible_bastion_template.txt > ${var.group_vars_path}/no_floating.yml"
   }
 }
 
@@ -547,7 +547,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   }
 
   provisioner "local-exec" {
-    command = "sed s/USER/${var.ssh_user}/ ${path.root}/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_node_fips), 0)}/ > ${var.group_vars_path}/no_floating.yml"
+    command = "sed -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${element(concat(var.bastion_fips, var.k8s_node_fips), 0)}/ ${path.module}/ansible_bastion_template.txt > ${var.group_vars_path}/no_floating.yml"
   }
 }
 
@@ -653,7 +653,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   }
 
   provisioner "local-exec" {
-    command = "%{if each.value.floating_ip}sed s/USER/${var.ssh_user}/ ${path.root}/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_nodes_fips : value.address]), 0)}/ > ${var.group_vars_path}/no_floating.yml%{else}true%{endif}"
+    command = "%{if each.value.floating_ip}sed -e s/USER/${var.ssh_user}/ -e s/BASTION_ADDRESS/${element(concat(var.bastion_fips, [for key, value in var.k8s_nodes_fips : value.address]), 0)}/ ${path.module}/ansible_bastion_template.txt > ${var.group_vars_path}/no_floating.yml%{else}true%{endif}"
   }
 }
 

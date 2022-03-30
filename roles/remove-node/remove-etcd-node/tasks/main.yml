@@ -43,6 +43,11 @@
 
 - name: Remove etcd member from cluster
   command: "{{ bin_dir }}/etcdctl member remove {{ etcd_member_id.stdout }}"
+  register: etcd_member_in_cluster
+  changed_when: false
+  check_mode: no
+  tags:
+    - facts
   environment:
     ETCDCTL_API: 3
     ETCDCTL_CERT: "{{ kube_cert_dir + '/etcd/server.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/admin-' + groups['etcd']|first + '.pem' }}"
@@ -52,4 +57,31 @@
   delegate_to: "{{ groups['etcd']|first }}"
   when:
     - inventory_hostname in groups['etcd']
+    - etcd_member_id.stdout is defined
     - etcd_member_id.stdout | length > 0
+
+# Delete node from kubeadm-config
+- name: Fetch kubeadm-config information
+  kube_info:
+    kubectl: "{{ bin_dir }}/kubectl"
+    name: kubeadm-config
+    resource: configmap
+    namespace: kube-system
+  register: current_kubeadm_config
+  retries: 5
+  delay: 15
+
+- name: Create kubeadm-config file removing control-plane no longer existing etcd endpoints
+  copy:
+    dest: /tmp/kubeadm-config
+    content: "{{ current_kubeadm_config.k8s_info | regex_replace( node |default(kube_node)  + ':\\\\n' + ' *advertiseAddress: ([0-9]{1,3}.){3}[0-9]{1,3}\\\\n' + ' *bindPort: [0-9]{1,5}' , '') }}"
+
+- name: Update kubeadm-config configmap removing control-plane no longer existing endpoints
+  kube:
+      kubectl: "{{ bin_dir }}/kubectl"
+      file:  /tmp/kubeadm-config
+
+- name: Clean the leftovers of the cm file
+  file:
+    state: absent
+    path: /tmp/kubeadm-config

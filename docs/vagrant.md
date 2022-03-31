@@ -1,18 +1,40 @@
 # Vagrant
 
-Assuming you have Vagrant 2.0+ installed with virtualbox, libvirt/qemu or vmware, but is untested) you should be able to launch a 3 node Kubernetes cluster by simply running `vagrant up`. This will spin up 3 VMs and install kubernetes on them.  Once they are completed you can connect to any of them by running `vagrant ssh k8s-[1..3]`.
+Assuming you have Vagrant 2.0+ installed with virtualbox, libvirt/qemu or
+vmware, but is untested) you should be able to launch a 3 node Kubernetes
+cluster by simply running `vagrant up`.
 
-To give an estimate of the expected duration of a provisioning run: On a dual core i5-6300u laptop with an SSD, provisioning takes around 13 to 15 minutes, once the container images and other files are cached. Note that libvirt/qemu is recommended over virtualbox as it is quite a bit faster, especially during boot-up time.
+This will spin up 3 VMs and install kubernetes on them.
+Once they are completed you can connect to any of them by running `vagrant ssh k8s-[1..3]`.
 
-For proper performance a minimum of 12GB RAM is recommended. It is possible to run a 3 node cluster on a laptop with 8GB of RAM using the default Vagrantfile, provided you have 8GB zram swap configured and not much more than a browser and a mail client running. If you decide to run on such a machine, then also make sure that any tmpfs devices, that are mounted, are mostly empty and disable any swapfiles mounted on HDD/SSD or you will be in for some serious swap-madness. Things can get a bit sluggish during provisioning, but when that's done, the system will actually be able to perform quite well.
+To give an estimate of the expected duration of a provisioning run:
+On a dual core i5-6300u laptop with an SSD, provisioning takes around 13
+to 15 minutes, once the container images and other files are cached.
+Note that libvirt/qemu is recommended over virtualbox as it is quite a bit
+faster, especially during boot-up time.
+
+For proper performance a minimum of 12GB RAM is recommended.
+It is possible to run a 3 node cluster on a laptop with 8GB of RAM using
+the default Vagrantfile, provided you have 8GB zram swap configured and
+not much more than a browser and a mail client running.
+If you decide to run on such a machine, then also make sure that any tmpfs
+devices, that are mounted, are mostly empty and disable any swapfiles
+mounted on HDD/SSD or you will be in for some serious swap-madness.
+Things can get a bit sluggish during provisioning, but when that's done,
+the system will actually be able to perform quite well.
 
 ## Customize Vagrant
 
-You can override the default settings in the `Vagrantfile` either by directly modifying the `Vagrantfile` or through an override file. In the same directory as the `Vagrantfile`, create a folder called `vagrant` and create `config.rb` file in it. An example of how to configure this file is given below.
+You can override the default settings in the `Vagrantfile` either by
+directly modifying the `Vagrantfile` or through an override file.
+In the same directory as the `Vagrantfile`, create a folder called
+`vagrant` and create `config.rb` file in it.
+An example of how to configure this file is given below.
 
 ## Use alternative OS for Vagrant
 
-By default, Vagrant uses Ubuntu 18.04 box to provision a local cluster. You may use an alternative supported operating system for your local cluster.
+By default, Vagrant uses Ubuntu 18.04 box to provision a local cluster.
+You may use an alternative supported operating system for your local cluster.
 
 Customize `$os` variable in `Vagrantfile` or as override, e.g.,:
 
@@ -20,15 +42,23 @@ Customize `$os` variable in `Vagrantfile` or as override, e.g.,:
 echo '$os = "flatcar-stable"' >> vagrant/config.rb
 ```
 
-The supported operating systems for vagrant are defined in the `SUPPORTED_OS` constant in the `Vagrantfile`.
+The supported operating systems for vagrant are defined in the `SUPPORTED_OS`
+constant in the `Vagrantfile`.
 
 ## File and image caching
 
-Kubespray can take quite a while to start on a laptop. To improve provisioning speed, the variable 'download_run_once' is set. This will make kubespray download all files and containers just once and then redistributes them to the other nodes and as a bonus, also cache all downloads locally and re-use them on the next provisioning run. For more information on download settings see [download documentation](/docs/downloads.md).
+Kubespray can take quite a while to start on a laptop. To improve provisioning
+speed, the variable 'download_run_once' is set. This will make kubespray
+download all files and containers just once and then redistributes them to
+the other nodes and as a bonus, also cache all downloads locally and re-use
+them on the next provisioning run. For more information on download settings
+see [download documentation](/docs/downloads.md).
 
 ## Example use of Vagrant
 
-The following is an example of setting up and running kubespray using `vagrant`. For repeated runs, you could save the script to a file in the root of the kubespray and run it by executing 'source <name_of_the_file>.
+The following is an example of setting up and running kubespray using `vagrant`.
+For repeated runs, you could save the script to a file in the root of the
+kubespray and run it by executing 'source <name_of_the_file>.
 
 ```ShellSession
 # use virtualenv to install all python requirements
@@ -74,7 +104,8 @@ sudo ln -s $PWD/$INV/artifacts/kubectl /usr/local/bin/kubectl
 export PATH=$PATH:$PWD/$INV/artifacts
 ```
 
-If a vagrant run failed and you've made some changes to fix the issue causing the fail, here is how you would re-run ansible:
+If a vagrant run failed and you've made some changes to fix the issue causing
+the fail, here is how you would re-run ansible:
 
 ```ShellSession
 ansible-playbook -vvv -i .vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory cluster.yml

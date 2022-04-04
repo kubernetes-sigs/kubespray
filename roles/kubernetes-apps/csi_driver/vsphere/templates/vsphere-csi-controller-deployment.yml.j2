@@ -75,10 +75,10 @@ spec:
             - "--v=4"
             - "--timeout=300s"
             - "--csi-address=$(ADDRESS)"
-            - "--leader-election"
             - "--handle-volume-inuse-error=false"
             - "--kube-api-qps=100"
             - "--kube-api-burst=100"
+            - "--leader-election"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
@@ -190,12 +190,12 @@ spec:
             - "--v=4"
             - "--timeout=300s"
             - "--csi-address=$(ADDRESS)"
-            - "--leader-election"
-            - "--default-fstype=ext4"
 {% if vsphere_csi_controller is version('v2.2.0', '>=') %}
             - "--kube-api-qps=100"
             - "--kube-api-burst=100"
 {% endif %}
+            - "--leader-election"
+            - "--default-fstype=ext4"
             # needed only for topology aware setup
             #- "--feature-gates=Topology=true"
             #- "--strict-topology"
@@ -205,6 +205,23 @@ spec:
           volumeMounts:
             - mountPath: /csi
               name: socket-dir
+{% if vsphere_csi_controller is version('v2.5.0', '>=') %}
+        - name: csi-snapshotter
+          image: {{ kube_image_repo }}/sig-storage/csi-snapshotter:{{ vsphere_csi_snapshotter_image_tag }}
+          args:
+            - "--v=4"
+            - "--kube-api-qps=100"
+            - "--kube-api-burst=100"
+            - "--timeout=300s"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+{% endif %}
       volumes:
       - name: vsphere-config-volume
         secret:

@@ -103,9 +103,6 @@ rules:
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
     verbs: ["get", "list", "watch", "update"]
-  - apiGroups: ["auditregistration.k8s.io"]
-    resources: ["auditsinks"]
-    verbs: ["get", "list", "watch", "update"]
 ---
 # Source: cert-manager/templates/rbac.yaml
 # Issuer controller role
@@ -122,7 +119,7 @@ metadata:
 rules:
   - apiGroups: ["cert-manager.io"]
     resources: ["issuers", "issuers/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   - apiGroups: ["cert-manager.io"]
     resources: ["issuers"]
     verbs: ["get", "list", "watch"]
@@ -148,7 +145,7 @@ metadata:
 rules:
   - apiGroups: ["cert-manager.io"]
     resources: ["clusterissuers", "clusterissuers/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   - apiGroups: ["cert-manager.io"]
     resources: ["clusterissuers"]
     verbs: ["get", "list", "watch"]
@@ -174,7 +171,7 @@ metadata:
 rules:
   - apiGroups: ["cert-manager.io"]
     resources: ["certificates", "certificates/status", "certificaterequests", "certificaterequests/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   - apiGroups: ["cert-manager.io"]
     resources: ["certificates", "certificaterequests", "clusterissuers", "issuers"]
     verbs: ["get", "list", "watch"]
@@ -209,7 +206,7 @@ metadata:
 rules:
   - apiGroups: ["acme.cert-manager.io"]
     resources: ["orders", "orders/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   - apiGroups: ["acme.cert-manager.io"]
     resources: ["orders", "challenges"]
     verbs: ["get", "list", "watch"]
@@ -248,7 +245,7 @@ rules:
   # Use to update challenge resource status
   - apiGroups: ["acme.cert-manager.io"]
     resources: ["challenges", "challenges/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   # Used to watch challenge resources
   - apiGroups: ["acme.cert-manager.io"]
     resources: ["challenges"]
@@ -272,7 +269,7 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["get", "list", "watch", "create", "delete", "update"]
-  - apiGroups: [ "networking.x-k8s.io" ]
+  - apiGroups: [ "gateway.networking.k8s.io" ]
     resources: [ "httproutes" ]
     verbs: ["get", "list", "watch", "create", "delete", "update"]
   # We require the ability to specify a custom hostname when we are creating
@@ -320,10 +317,10 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses/finalizers"]
     verbs: ["update"]
-  - apiGroups: ["networking.x-k8s.io"]
+  - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["gateways", "httproutes"]
     verbs: ["get", "list", "watch"]
-  - apiGroups: ["networking.x-k8s.io"]
+  - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["gateways/finalizers", "httproutes/finalizers"]
     verbs: ["update"]
   - apiGroups: [""]
@@ -369,6 +366,9 @@ rules:
   - apiGroups: ["cert-manager.io"]
     resources: ["certificates", "certificaterequests", "issuers"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates/status"]
+    verbs: ["update"]
   - apiGroups: ["acme.cert-manager.io"]
     resources: ["challenges", "orders"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
@@ -411,7 +411,7 @@ rules:
     verbs: ["get", "list", "watch", "update"]
   - apiGroups: ["certificates.k8s.io"]
     resources: ["certificatesigningrequests/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   - apiGroups: ["certificates.k8s.io"]
     resources: ["signers"]
     resourceNames: ["issuers.cert-manager.io/*", "clusterissuers.cert-manager.io/*"]
@@ -656,14 +656,6 @@ rules:
   #   see cmd/cainjector/start.go#L113
   # cert-manager-cainjector-leader-election-core is used by the SecretBased injector controller
   #   see cmd/cainjector/start.go#L137
-  # See also: https://github.com/kubernetes-sigs/controller-runtime/pull/1144#discussion_r480173688
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    resourceNames: ["cert-manager-cainjector-leader-election", "cert-manager-cainjector-leader-election-core"]
-    verbs: ["get", "update", "patch"]
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["create"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     resourceNames: ["cert-manager-cainjector-leader-election", "cert-manager-cainjector-leader-election-core"]
@@ -685,15 +677,6 @@ metadata:
     app.kubernetes.io/component: "controller"
     app.kubernetes.io/version: "{{ cert_manager_version }}"
 rules:
-  # Used for leader election by the controller
-  # See also: https://github.com/kubernetes-sigs/controller-runtime/pull/1144#discussion_r480173688
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    resourceNames: ["cert-manager-controller"]
-    verbs: ["get", "update", "patch"]
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["create"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     resourceNames: ["cert-manager-controller"]
@@ -809,10 +792,10 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - protocol: TCP
-      port: 9402
-      name: tcp-prometheus-servicemonitor
-      targetPort: 9402
+  - protocol: TCP
+    port: 9402
+    name: tcp-prometheus-servicemonitor
+    targetPort: 9402
   selector:
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/instance: cert-manager
@@ -885,8 +868,8 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          resources:
-            {}
+          securityContext:
+            allowPrivilegeEscalation: false
 {% if cert_manager_tolerations %}
       tolerations:
         {{ cert_manager_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
@@ -945,6 +928,7 @@ spec:
     spec:
       serviceAccountName: cert-manager
       securityContext:
+
         runAsNonRoot: true
       containers:
         - name: cert-manager
@@ -956,14 +940,15 @@ spec:
           - --leader-election-namespace={{ cert_manager_leader_election_namespace }}
           ports:
           - containerPort: 9402
+            name: http-metrics
             protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
           env:
           - name: POD_NAMESPACE
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          resources:
-            {}
 {% if cert_manager_tolerations %}
       tolerations:
         {{ cert_manager_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
@@ -1053,13 +1038,13 @@ spec:
             timeoutSeconds: 1
             successThreshold: 1
             failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
           env:
           - name: POD_NAMESPACE
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          resources:
-            {}
 {% if cert_manager_tolerations %}
       tolerations:
         {{ cert_manager_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}

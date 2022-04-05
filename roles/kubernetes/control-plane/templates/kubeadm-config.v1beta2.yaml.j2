@@ -196,8 +196,8 @@ apiServer:
 {% for key in kube_kubeadm_apiserver_extra_args %}
     {{ key }}: "{{ kube_kubeadm_apiserver_extra_args[key] }}"
 {% endfor %}
-{% if kube_feature_gates %}
-    feature-gates: {{ kube_feature_gates|join(',') }}
+{% if kube_apiserver_feature_gates or kube_feature_gates %}
+    feature-gates: "{{ kube_apiserver_feature_gates | default(kube_feature_gates, true) | join(',') }}"
 {% endif %}
 {% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] %}
     cloud-provider: {{ cloud_provider }}
@@ -288,8 +288,8 @@ controllerManager:
     bind-address: {{ kube_controller_manager_bind_address }}
     leader-elect-lease-duration: {{ kube_controller_manager_leader_elect_lease_duration }}
     leader-elect-renew-deadline: {{ kube_controller_manager_leader_elect_renew_deadline }}
-{% if kube_feature_gates %}
-    feature-gates: {{ kube_feature_gates|join(',') }}
+{% if kube_controller_feature_gates or kube_feature_gates %}
+    feature-gates: "{{ kube_controller_feature_gates | default(kube_feature_gates, true) | join(',') }}"
 {% endif %}
 {% for key in kube_kubeadm_controller_extra_args %}
     {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
@@ -334,8 +334,8 @@ scheduler:
   extraArgs:
     bind-address: {{ kube_scheduler_bind_address }}
     config: {{ kube_config_dir }}/kubescheduler-config.yaml
-{% if kube_feature_gates %}
-    feature-gates: {{ kube_feature_gates|join(',') }}
+{% if kube_scheduler_feature_gates or kube_feature_gates %}
+    feature-gates: "{{ kube_scheduler_feature_gates | default(kube_feature_gates, true) | join(',') }}"
 {% endif %}
 {% if kube_kubeadm_scheduler_extra_args|length > 0 %}
 {% for key in kube_kubeadm_scheduler_extra_args %}
@@ -404,9 +404,10 @@ nodePortAddresses: {{ kube_proxy_nodeport_addresses }}
 oomScoreAdj: {{ kube_proxy_oom_score_adj }}
 portRange: {{ kube_proxy_port_range }}
 udpIdleTimeout: {{ kube_proxy_udp_idle_timeout }}
-{% if kube_feature_gates %}
+{% if kube_proxy_feature_gates or kube_feature_gates %}
+{% set feature_gates = ( kube_proxy_feature_gates | default(kube_feature_gates, true) ) %}
 featureGates:
-{%   for feature in kube_feature_gates %}
+{%   for feature in feature_gates %}
   {{ feature|replace("=", ": ") }}
 {%   endfor %}
 {% endif %}
@@ -429,9 +430,11 @@ clusterDNS:
 {% for dns_address in kubelet_cluster_dns %}
 - {{ dns_address }}
 {% endfor %}
-{% if kube_feature_gates %}
+{% if kubelet_feature_gates or kube_feature_gates %}
+{% set feature_gates = ( kubelet_feature_gates | default(kube_feature_gates, true) ) %}
 featureGates:
-{%   for feature in kube_feature_gates %}
+{%   for feature in feature_gates %}
   {{ feature|replace("=", ": ") }}
 {%   endfor %}
 {% endif %}
+

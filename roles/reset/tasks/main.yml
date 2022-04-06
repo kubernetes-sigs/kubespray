@@ -30,43 +30,18 @@
     - containerd
     - crio
 
-- name: reset | remove docker dropins
-  file:
-    path: "/etc/systemd/system/docker.service.d/{{ item }}"
-    state: absent
-  with_items:
-    - docker-dns.conf
-    - docker-options.conf
-    - http-proxy.conf
-    - docker-orphan-cleanup.conf
-  register: docker_dropins_removed
+- name: reset | Remove Docker
+  include_role:
+    name: container-engine/docker
+    tasks_from: reset
+  when: container_manager == 'docker'
   tags:
     - docker
 
 - name: reset | systemctl daemon-reload  # noqa 503
   systemd:
     daemon_reload: true
-  when: services_removed.changed or docker_dropins_removed.changed
-
-- name: reset | remove all containers
-  shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -aq | xargs -r docker rm -fv"
-  args:
-    executable: /bin/bash
-  register: remove_all_containers
-  retries: 4
-  until: remove_all_containers.rc == 0
-  delay: 5
-  when: container_manager == "docker"
-  tags:
-    - docker
-
-- name: reset | restart docker if needed  # noqa 503
-  service:
-    name: docker
-    state: restarted
-  when: docker_dropins_removed.changed and container_manager == "docker"
-  tags:
-    - docker
+  when: services_removed.changed
 
 - name: reset | check if crictl is present
   stat:

@@ -53,6 +53,12 @@
     - typha_secure
     - inventory_hostname == groups['kube_control_plane'][0]
 
+- name: Calico | Generate apiserver certs
+  include_tasks: calico_apiserver_certs.yml
+  when:
+    - calico_apiserver_enabled and calico_datastore == "kdd"
+    - inventory_hostname == groups['kube_control_plane'][0]
+
 - name: Calico | Install calicoctl wrapper script
   template:
     src: "calicoctl.{{ calico_datastore }}.sh.j2"
@@ -364,6 +370,18 @@
     - inventory_hostname in groups['kube_control_plane']
     - typha_enabled and calico_datastore == "kdd"
 
+- name: Calico | Create calico manifests for apiserver
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
+  with_items:
+    - {name: calico, file: calico-apiserver.yml, type: calico-apiserver}
+  register: calico_apiserver_manifest
+  when:
+    - inventory_hostname in groups['kube_control_plane']
+    - calico_apiserver_enabled and calico_datastore == "kdd"
+
 - name: Start Calico resources
   kube:
     name: "{{ item.item.name }}"
@@ -375,6 +393,22 @@
   with_items:
     - "{{ calico_node_manifests.results }}"
     - "{{ calico_node_typha_manifest.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+
+- name: Start Calico apiserver resources
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "calico-apiserver"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ calico_apiserver_manifest.results }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
     - not item is skipped

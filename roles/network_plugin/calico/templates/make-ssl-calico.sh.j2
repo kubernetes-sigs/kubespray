@@ -26,6 +26,7 @@ Usage : $(basename $0) -f <config> [-d <ssldir>]
       -f | --config       : Openssl configuration file
       -d | --ssldir       : Directory where the certificates will be installed
       -c | --cadir        : Directory where the existing CA is located
+      -s | --service      : Service for the ca
 
                ex :
                $(basename $0) -f openssl.conf -d /srv/ssl
@@ -39,6 +40,7 @@ while (($#)); do
         -f | --config) CONFIG=${2}; shift 2;;
         -d | --ssldir) SSLDIR="${2}"; shift 2;;
         -c | --cadir) CADIR="${2}"; shift 2;;
+        -s | --service) SERVICE="${2}"; shift 2;;
         *)
             usage
             echo "ERROR : Unknown option"
@@ -55,7 +57,7 @@ if [ -z ${SSLDIR} ]; then
     SSLDIR="/etc/calico/certs"
 fi
 
-tmpdir=$(mktemp -d /tmp/calico_typha_certs.XXXXXX)
+tmpdir=$(mktemp -d /tmp/calico_${SERVICE}_certs.XXXXXX)
 trap 'rm -rf "${tmpdir}"' EXIT
 cd "${tmpdir}"
 
@@ -66,19 +68,30 @@ if [ -e "$CADIR/ca.key" ]; then
   # Reuse existing CA
   cp $CADIR/{ca.crt,ca.key} .
 else
-  openssl genrsa -out ca.key 2048 > /dev/null 2>&1
-  openssl req -x509 -new -nodes -key ca.key -days 3650 -out ca.crt -subj "/CN=calico-typha-ca" > /dev/null 2>&1
+  openssl genrsa -out ca.key {{certificates_key_size}} > /dev/null 2>&1
+  openssl req -x509 -new -nodes -key ca.key -days {{certificates_duration}}  -out ca.crt -subj "/CN=calico-${SERVICE}-ca" > /dev/null 2>&1
 fi
 
-# Typha server
-openssl genrsa -out typha-server.key 2048 > /dev/null 2>&1
-openssl req -new -key typha-server.key -out typha-server.csr -subj "/CN=typha-server" -config ${CONFIG} > /dev/null 2>&1
-openssl x509 -req -in typha-server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out typha-server.crt -days 3650 -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
+if [ $SERVICE == "typha" ]; then
+    # Typha server
+    openssl genrsa -out typha-server.key {{certificates_key_size}} > /dev/null 2>&1
+    openssl req -new -key typha-server.key -out typha-server.csr -subj "/CN=typha-server" -config ${CONFIG} > /dev/null 2>&1
+    openssl x509 -req -in typha-server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out typha-server.crt -days {{certificates_duration}}  -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
 
-# Typha client
-openssl genrsa -out typha-client.key 2048 > /dev/null 2>&1
-openssl req -new -key typha-client.key -out typha-client.csr -subj "/CN=typha-client" -config ${CONFIG} > /dev/null 2>&1
-openssl x509 -req -in typha-client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out typha-client.crt -days 3650 -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
+    # Typha client
+    openssl genrsa -out typha-client.key {{certificates_key_size}} > /dev/null 2>&1
+    openssl req -new -key typha-client.key -out typha-client.csr -subj "/CN=typha-client" -config ${CONFIG} > /dev/null 2>&1
+    openssl x509 -req -in typha-client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out typha-client.crt -days {{certificates_duration}}  -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
+
+elif [ $SERVICE == "apiserver" ]; then
+    # calico-apiserver
+    openssl genrsa -out apiserver.key {{certificates_key_size}} > /dev/null 2>&1
+    openssl req -new -key apiserver.key -out apiserver.csr -subj "/" -addext "subjectAltName = DNS:calico-api.calico-apiserver.svc" -config ${CONFIG} > /dev/null 2>&1
+    openssl x509 -req -in apiserver.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out apiserver.crt -days {{certificates_duration}}  -extensions ssl_client -extfile ${CONFIG} > /dev/null 2>&1
+else
+    echo "ERROR: the openssl configuration file is missing. option -s"
+    exit 1
+fi
 
 # Install certs
 if [ -e "$CADIR/ca.key" ]; then

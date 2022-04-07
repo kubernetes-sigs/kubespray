@@ -18,6 +18,7 @@
   * [Weave](docs/weave.md)
   * [Multus](docs/multus.md)
 * Ingress
+  * [kube-vip](docs/kube-vip.md)
   * [ALB Ingress](docs/ingress_controller/alb_ingress_controller.md)
   * [MetalLB](docs/metallb.md)
   * [Nginx Ingress](docs/ingress_controller/ingress_nginx.md)

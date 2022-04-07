@@ -29,9 +29,7 @@ configure kubelet and kube-proxy on non-master nodes to use the local internal
 loadbalancer.
 
 If you choose to NOT use the local internal loadbalancer, you will need to
-configure your own loadbalancer to achieve HA. Note that deploying a
-loadbalancer is up to a user and is not covered by ansible roles in Kubespray.
-By default, it only configures a non-HA endpoint, which points to the
+use the [kube-vip](kube-vip.md) ansible role or configure your own loadbalancer to achieve HA. By default, it only configures a non-HA endpoint, which points to the
 `access_ip` or IP address of the first server node in the `kube_control_plane` group.
 It can also configure clients to use endpoints for a given loadbalancer type.
 The following diagram shows how traffic to the apiserver is directed.

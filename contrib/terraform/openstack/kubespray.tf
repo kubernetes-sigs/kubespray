@@ -89,8 +89,10 @@ module "compute" {
   extra_sec_groups_name                        = var.extra_sec_groups_name
   group_vars_path                              = var.group_vars_path
   port_security_enabled                        = var.port_security_enabled
-
-  network_id = module.network.router_id
+  force_null_port_security                     = var.force_null_port_security
+  network_router_id                            = module.network.router_id
+  network_id                                   = module.network.network_id
+  use_existing_network                         = var.use_existing_network
 }
 
 output "private_subnet_id" {

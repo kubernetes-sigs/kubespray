@@ -52,6 +52,9 @@ number_of_k8s_nodes_no_floating_ip = 4
 # networking
 network_name = "<network>"
 
+# Use a existing network with the name of network_name. Set to false to create a network with name of network_name.
+# use_existing_network = true
+
 external_net = "<UUID>"
 
 subnet_cidr = "<cidr>"
@@ -59,3 +62,6 @@ subnet_cidr = "<cidr>"
 floatingip_pool = "<pool>"
 
 bastion_allowed_remote_ips = ["0.0.0.0/0"]
+
+# Force port security to be null. Some cloud providers do not allow to set port security.
+# force_null_port_security = false

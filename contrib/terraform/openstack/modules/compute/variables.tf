@@ -68,6 +68,14 @@ variable "network_id" {
   default = ""
 }
 
+variable "use_existing_network" {
+  type = bool
+}
+
+variable "network_router_id" {
+  default = ""
+}
+
 variable "k8s_master_fips" {
   type = list
 }
@@ -165,5 +173,9 @@ variable "group_vars_path" {
 }
 
 variable "port_security_enabled" {
+  type = bool
+}
+
+variable "force_null_port_security" {
   type = bool
 }

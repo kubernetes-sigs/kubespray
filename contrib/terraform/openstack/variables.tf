@@ -137,6 +137,12 @@ variable "network_name" {
   default     = "internal"
 }
 
+variable "use_existing_network" {
+  description = "Use an existing network"
+  type        = bool
+  default     = "false"
+}
+
 variable "network_dns_domain" {
   description = "dns_domain for the internal network"
   type        = string
@@ -152,6 +158,12 @@ variable "port_security_enabled" {
   description = "Enable port security on the internal network"
   type        = bool
   default     = "true"
+}
+
+variable "force_null_port_security" {
+  description = "Force port security to be null. Some providers does not allow setting port security"
+  type        = bool
+  default     = "false"
 }
 
 variable "subnet_cidr" {

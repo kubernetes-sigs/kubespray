@@ -20,7 +20,8 @@ data "template_file" "cloudinit" {
 }
 
 data "openstack_networking_network_v2" "k8s_network" {
-  name = var.network_name
+  count = var.use_existing_network ? 1 : 0
+  name  = var.network_name
 }
 
 resource "openstack_compute_keypair_v2" "k8s" {
@@ -158,25 +159,25 @@ resource "openstack_compute_servergroup_v2" "k8s_etcd" {
 locals {
 # master groups
   master_sec_groups = compact([
-    openstack_networking_secgroup_v2.k8s_master.name,
-    openstack_networking_secgroup_v2.k8s.name,
-    var.extra_sec_groups ?openstack_networking_secgroup_v2.k8s_master_extra[0].name : "",
+    openstack_networking_secgroup_v2.k8s_master.id,
+    openstack_networking_secgroup_v2.k8s.id,
+    var.extra_sec_groups ?openstack_networking_secgroup_v2.k8s_master_extra[0].id : "",
   ])
 # worker groups
   worker_sec_groups = compact([
-    openstack_networking_secgroup_v2.k8s.name,
-    openstack_networking_secgroup_v2.worker.name,
-    var.extra_sec_groups ? openstack_networking_secgroup_v2.worker_extra[0].name : "",
+    openstack_networking_secgroup_v2.k8s.id,
+    openstack_networking_secgroup_v2.worker.id,
+    var.extra_sec_groups ? openstack_networking_secgroup_v2.worker_extra[0].id : "",
   ])
 # bastion groups
   bastion_sec_groups = compact(concat([
-    openstack_networking_secgroup_v2.k8s.name,
-    openstack_networking_secgroup_v2.bastion[0].name,
+    openstack_networking_secgroup_v2.k8s.id,
+    openstack_networking_secgroup_v2.bastion[0].id,
   ]))
 # etcd groups
-  etcd_sec_groups = compact([openstack_networking_secgroup_v2.k8s.name])
+  etcd_sec_groups = compact([openstack_networking_secgroup_v2.k8s.id])
 # glusterfs groups
-  gfs_sec_groups = compact([openstack_networking_secgroup_v2.k8s.name])
+  gfs_sec_groups = compact([openstack_networking_secgroup_v2.k8s.id])
 
 # Image uuid
   image_to_use_node = var.image_uuid != "" ? var.image_uuid : data.openstack_images_image_v2.vm_image[0].id
@@ -189,11 +190,15 @@ locals {
 resource "openstack_networking_port_v2" "bastion_port" {
   count                 = var.number_of_bastions
   name                  = "${var.cluster_name}-bastion-${count.index + 1}"
-  network_id            = "${data.openstack_networking_network_v2.k8s_network.id}"
+  network_id            = var.use_existing_network ? data.openstack_networking_network_v2.k8s_network[0].id : var.network_id
   admin_state_up        = "true"
-  port_security_enabled = var.port_security_enabled
+  port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.bastion_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+
+  depends_on = [
+    var.network_router_id
+  ]
 }
 
 resource "openstack_compute_instance_v2" "bastion" {
@@ -223,7 +228,7 @@ resource "openstack_compute_instance_v2" "bastion" {
   metadata = {
     ssh_user         = var.ssh_user
     kubespray_groups = "bastion"
-    depends_on       = var.network_id
+    depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
 
@@ -235,11 +240,15 @@ resource "openstack_compute_instance_v2" "bastion" {
 resource "openstack_networking_port_v2" "k8s_master_port" {
   count                 = var.number_of_k8s_masters
   name                  = "${var.cluster_name}-k8s-master-${count.index + 1}"
-  network_id            = "${data.openstack_networking_network_v2.k8s_network.id}"
+  network_id            = var.use_existing_network ? data.openstack_networking_network_v2.k8s_network[0].id : var.network_id
   admin_state_up        = "true"
-  port_security_enabled = var.port_security_enabled
+  port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+
+  depends_on = [
+    var.network_router_id
+  ]
 }
 
 resource "openstack_compute_instance_v2" "k8s_master" {
@@ -279,7 +288,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   metadata = {
     ssh_user         = var.ssh_user
     kubespray_groups = "etcd,kube_control_plane,${var.supplementary_master_groups},k8s_cluster"
-    depends_on       = var.network_id
+    depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
 
@@ -291,11 +300,15 @@ resource "openstack_compute_instance_v2" "k8s_master" {
 resource "openstack_networking_port_v2" "k8s_master_no_etcd_port" {
   count                 = var.number_of_k8s_masters_no_etcd
   name                  = "${var.cluster_name}-k8s-master-ne-${count.index + 1}"
-  network_id            = "${data.openstack_networking_network_v2.k8s_network.id}"
+  network_id            = var.use_existing_network ? data.openstack_networking_network_v2.k8s_network[0].id : var.network_id
   admin_state_up        = "true"
-  port_security_enabled = var.port_security_enabled
+  port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+
+  depends_on = [
+    var.network_router_id
+  ]
 }
 
 resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
@@ -335,7 +348,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   metadata = {
     ssh_user         = var.ssh_user
     kubespray_groups = "kube_control_plane,${var.supplementary_master_groups},k8s_cluster"
-    depends_on       = var.network_id
+    depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
 
@@ -347,11 +360,15 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
 resource "openstack_networking_port_v2" "etcd_port" {
   count                 = var.number_of_etcd
   name                  = "${var.cluster_name}-etcd-${count.index + 1}"
-  network_id            = "${data.openstack_networking_network_v2.k8s_network.id}"
+  network_id            = var.use_existing_network ? data.openstack_networking_network_v2.k8s_network[0].id : var.network_id
   admin_state_up        = "true"
-  port_security_enabled = var.port_security_enabled
+  port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.etcd_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+
+  depends_on = [
+    var.network_router_id
+  ]
 }
 
 resource "openstack_compute_instance_v2" "etcd" {
@@ -389,7 +406,7 @@ resource "openstack_compute_instance_v2" "etcd" {
   metadata = {
     ssh_user         = var.ssh_user
     kubespray_groups = "etcd,no_floating"
-    depends_on       = var.network_id
+    depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
 }
@@ -397,11 +414,15 @@ resource "openstack_compute_instance_v2" "etcd" {
 resource "openstack_networking_port_v2" "k8s_master_no_floating_ip_port" {
   count                 = var.number_of_k8s_masters_no_floating_ip
   name                  = "${var.cluster_name}-k8s-master-nf-${count.index + 1}"
-  network_id            = "${data.openstack_networking_network_v2.k8s_network.id}"
+  network_id            = var.use_existing_network ? data.openstack_networking_network_v2.k8s_network[0].id : var.network_id
   admin_state_up        = "true"
-  port_security_enabled = var.port_security_enabled
+  port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+
+  depends_on = [
+    var.network_router_id
+  ]
 }
 
 resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
@@ -439,7 +460,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
   metadata = {
     ssh_user         = var.ssh_user
     kubespray_groups = "etcd,kube_control_plane,${var.supplementary_master_groups},k8s_cluster,no_floating"
-    depends_on       = var.network_id
+    depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
 }
@@ -447,11 +468,15 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
 resource "openstack_networking_port_v2" "k8s_master_no_floating_ip_no_etcd_port" {
   count                 = var.number_of_k8s_masters_no_floating_ip_no_etcd
   name                  = "${var.cluster_name}-k8s-master-ne-nf-${count.index + 1}"
-  network_id            = "${data.openstack_networking_network_v2.k8s_network.id}"
+  network_id            = var.use_existing_network ? data.openstack_networking_network_v2.k8s_network[0].id : var.network_id
   admin_state_up        = "true"
-  port_security_enabled = var.port_security_enabled
+  port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+
+  depends_on = [
+    var.network_router_id
+  ]
 }
 
 resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
@@ -490,7 +515,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   metadata = {
     ssh_user         = var.ssh_user
     kubespray_groups = "kube_control_plane,${var.supplementary_master_groups},k8s_cluster,no_floating"
-    depends_on       = var.network_id
+    depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
 }
@@ -498,11 +523,15 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
 resource "openstack_networking_port_v2" "k8s_node_port" {
   count                 = var.number_of_k8s_nodes
   name                  = "${var.cluster_name}-k8s-node-${count.index + 1}"
-  network_id            = "${data.openstack_networking_network_v2.k8s_network.id}"
+  network_id            = var.use_existing_network ? data.openstack_networking_network_v2.k8s_network[0].id : var.network_id
   admin_state_up        = "true"
-  port_security_enabled = var.port_security_enabled
+  port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.worker_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+
+  depends_on = [
+    var.network_router_id
+  ]
 }
 
 resource "openstack_compute_instance_v2" "k8s_node" {
@@ -542,7 +571,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   metadata = {
     ssh_user         = var.ssh_user
     kubespray_groups = "kube_node,k8s_cluster,${var.supplementary_node_groups}"
-    depends_on       = var.network_id
+    depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
 
@@ -554,11 +583,15 @@ resource "openstack_compute_instance_v2" "k8s_node" {
 resource "openstack_networking_port_v2" "k8s_node_no_floating_ip_port" {
   count                 = var.number_of_k8s_nodes_no_floating_ip
   name                  = "${var.cluster_name}-k8s-node-nf-${count.index + 1}"
-  network_id            = "${data.openstack_networking_network_v2.k8s_network.id}"
+  network_id            = var.use_existing_network ? data.openstack_networking_network_v2.k8s_network[0].id : var.network_id
   admin_state_up        = "true"
-  port_security_enabled = var.port_security_enabled
+  port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.worker_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+
+  depends_on = [
+    var.network_router_id
+  ]
 }
 
 resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
@@ -597,7 +630,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   metadata = {
     ssh_user         = var.ssh_user
     kubespray_groups = "kube_node,k8s_cluster,no_floating,${var.supplementary_node_groups}"
-    depends_on       = var.network_id
+    depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
 }
@@ -605,11 +638,15 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
 resource "openstack_networking_port_v2" "k8s_nodes_port" {
   for_each              = var.number_of_k8s_nodes == 0 && var.number_of_k8s_nodes_no_floating_ip == 0 ? var.k8s_nodes : {}
   name                  = "${var.cluster_name}-k8s-node-${each.key}"
-  network_id            = "${data.openstack_networking_network_v2.k8s_network.id}"
+  network_id            = var.use_existing_network ? data.openstack_networking_network_v2.k8s_network[0].id : var.network_id
   admin_state_up        = "true"
-  port_security_enabled = var.port_security_enabled
+  port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.worker_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+
+  depends_on = [
+    var.network_router_id
+  ]
 }
 
 resource "openstack_compute_instance_v2" "k8s_nodes" {
@@ -648,7 +685,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   metadata = {
     ssh_user         = var.ssh_user
     kubespray_groups = "kube_node,k8s_cluster,%{if each.value.floating_ip == false}no_floating,%{endif}${var.supplementary_node_groups}"
-    depends_on       = var.network_id
+    depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
 
@@ -660,11 +697,15 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
 resource "openstack_networking_port_v2" "glusterfs_node_no_floating_ip_port" {
   count                 = var.number_of_gfs_nodes_no_floating_ip
   name                  = "${var.cluster_name}-gfs-node-nf-${count.index + 1}"
-  network_id            = "${data.openstack_networking_network_v2.k8s_network.id}"
+  network_id            = var.use_existing_network ? data.openstack_networking_network_v2.k8s_network[0].id : var.network_id
   admin_state_up        = "true"
-  port_security_enabled = var.port_security_enabled
-  security_group_ids   = var.port_security_enabled ? local.gfs_sec_groups : null
+  port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
+  security_group_ids    = var.port_security_enabled ? local.gfs_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+
+  depends_on = [
+    var.network_router_id
+  ]
 }
 
 resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
@@ -701,7 +742,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
   metadata = {
     ssh_user         = var.ssh_user_gfs
     kubespray_groups = "gfs-cluster,network-storage,no_floating"
-    depends_on       = var.network_id
+    depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
 }

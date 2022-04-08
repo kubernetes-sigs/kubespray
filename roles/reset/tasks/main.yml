@@ -20,14 +20,12 @@
     - cri-dockerd.service
     - cri-dockerd.socket
     - calico-node.service
-    - containerd.service.d/http-proxy.conf
     - crio.service.d/http-proxy.conf
     - k8s-certs-renew.service
     - k8s-certs-renew.timer
   register: services_removed
   tags:
     - services
-    - containerd
     - crio
 
 - name: reset | Remove Docker
@@ -129,6 +127,14 @@
       ignore_errors: true  # noqa ignore-errors
       changed_when: true
 
+- name: reset | Remove containerd
+  include_role:
+    name: container-engine/containerd
+    tasks_from: reset
+  when: container_manager == 'containerd'
+  tags:
+    - containerd
+
 - name: reset | stop etcd services
   service:
     name: "{{ item }}"
@@ -150,25 +156,6 @@
   register: services_removed
   tags:
     - services
-
-- name: reset | remove containerd
-  when: container_manager == 'containerd'
-  block:
-    - name: reset | stop containerd service
-      service:
-        name: containerd
-        state: stopped
-      failed_when: false
-      tags:
-        - services
-
-    - name: reset | remove containerd service
-      file:
-        path: /etc/systemd/system/containerd.service
-        state: absent
-      register: services_removed
-      tags:
-        - services
 
 - name: reset | gather mounted kubelet dirs  # noqa 301
   shell: set -o pipefail && mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
@@ -246,7 +233,6 @@
   with_items:
     - "{{ kube_config_dir }}"
     - /var/lib/kubelet
-    - "{{ containerd_storage_dir }}"
     - "{{ ansible_env.HOME | default('/root') }}/.kube"
     - "{{ ansible_env.HOME | default('/root') }}/.helm"
     - "{{ etcd_data_dir }}"
@@ -318,26 +304,6 @@
     - "{{ sysctl_file_path }}"
     - /etc/crictl.yaml
   ignore_errors: true  # noqa ignore-errors
-  tags:
-    - files
-
-- name: reset | remove containerd binary files
-  file:
-    path: "{{ containerd_bin_dir }}/{{ item }}"
-    state: absent
-  with_items:
-    - containerd
-    - containerd-shim
-    - containerd-shim-runc-v1
-    - containerd-shim-runc-v2
-    - containerd-stress
-    - crictl
-    - critest
-    - ctd-decoder
-    - ctr
-    - runc
-  ignore_errors: true  # noqa ignore-errors
-  when: container_manager == 'containerd'
   tags:
     - files
 

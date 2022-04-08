@@ -1,12 +1,11 @@
 ---
+
 - name: containerd | Remove containerd repository for RedHat os family
   file:
     path: "{{ yum_repo_dir }}/containerd.repo"
     state: absent
   when:
     - ansible_os_family in ['RedHat']
-  tags:
-    - reset_containerd
 
 - name: containerd | Remove containerd repository for Debian os family
   apt_repository:
@@ -14,18 +13,30 @@
     state: absent
   with_items: "{{ containerd_repo_info.repos }}"
   when: ansible_pkg_mgr == 'apt'
-  tags:
-    - reset_containerd
 
 - name: containerd | Stop containerd service
   service:
     name: containerd
-    daemon_reload: true
     enabled: false
-    masked: true
     state: stopped
-  tags:
-    - reset_containerd
+  failed_when: false
+
+- name: containerd | Remove containerd binary files
+  file:
+    path: "{{ containerd_bin_dir }}/{{ item }}"
+    state: absent
+  with_items:
+    - containerd
+    - containerd-shim
+    - containerd-shim-runc-v1
+    - containerd-shim-runc-v2
+    - containerd-stress
+    - crictl
+    - critest
+    - ctd-decoder
+    - ctr
+    - runc
+  ignore_errors: true  # noqa ignore-errors
 
 - name: containerd | Remove configuration files
   file:
@@ -36,6 +47,7 @@
     - "{{ containerd_systemd_dir }}"
     - "{{ containerd_cfg_dir }}"
     - "{{ containerd_storage_dir }}"
-    - "{{ containerd_state_dir }}"
-  tags:
-    - reset_containerd
+
+- name: containerd | systemctl daemon-reload  # noqa 503
+  systemd:
+    daemon_reload: true

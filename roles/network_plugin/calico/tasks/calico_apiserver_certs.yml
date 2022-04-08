@@ -1,0 +1,60 @@
+---
+- name: Calico | Check if calico apiserver exists
+  command: "{{ kubectl }} -n calico-apiserver get secret calico-apiserver-certs"
+  register: calico_apiserver_secret
+  changed_when: false
+  failed_when: false
+
+- name: Calico | Create ns manifests
+  template:
+    src: "calico-apiserver-ns.yml.j2"
+    dest: "{{ kube_config_dir }}/calico-apiserver-ns.yml"
+    mode: 0644
+
+- name: Calico | Apply ns manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/calico-apiserver-ns.yml"
+    state: "latest"
+
+- name: Calico | Ensure calico certs dir
+  file:
+    path: /etc/calico/certs
+    state: directory
+    mode: 0755
+  when: calico_apiserver_secret.rc != 0
+
+- name: Calico | Copy ssl script for apiserver certs
+  template:
+    src: make-ssl-calico.sh.j2
+    dest: "{{ bin_dir }}/make-ssl-apiserver.sh"
+    mode: 0755
+  when: calico_apiserver_secret.rc != 0
+
+- name: Calico | Copy ssl config for apiserver certs
+  copy:
+    src: openssl.conf
+    dest: /etc/calico/certs/openssl.conf
+    mode: 0644
+  when: calico_apiserver_secret.rc != 0
+
+- name: Calico | Generate apiserver certs
+  command: >-
+    {{ bin_dir }}/make-ssl-apiserver.sh
+    -f /etc/calico/certs/openssl.conf
+    -c {{ kube_cert_dir }}
+    -d /etc/calico/certs
+    -s apiserver
+  when: calico_apiserver_secret.rc != 0
+
+- name: Calico | Create calico apiserver generic secrets
+  command: >-
+    {{ kubectl }} -n calico-apiserver
+    create secret generic {{ item.name }}
+    --from-file={{ item.cert }}
+    --from-file={{ item.key }}
+  with_items:
+    - name: calico-apiserver-certs
+      cert: /etc/calico/certs/apiserver.crt
+      key: /etc/calico/certs/apiserver.key
+  when: calico_apiserver_secret.rc != 0

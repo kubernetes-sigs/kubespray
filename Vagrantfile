@@ -75,6 +75,7 @@ $local_path_provisioner_claim_root ||= "/opt/local-path-provisioner/"
 $libvirt_nested ||= false
 # boolean or string (e.g. "-vvv")
 $ansible_verbosity ||= false
+$ansible_tags ||= ENV['VAGRANT_ANSIBLE_TAGS'] || ""
 
 $playbook ||= "cluster.yml"
 
@@ -256,7 +257,9 @@ Vagrant.configure("2") do |config|
           ansible.host_key_checking = false
           ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
           ansible.host_vars = host_vars
-          ansible.tags = ['facts']
+          if $ansible_tags != ""
+            ansible.tags = [$ansible_tags]
+          end
           ansible.groups = {
             "etcd" => ["#{$instance_name_prefix}-[1:#{$etcd_instances}]"],
             "kube_control_plane" => ["#{$instance_name_prefix}-[1:#{$kube_master_instances}]"],

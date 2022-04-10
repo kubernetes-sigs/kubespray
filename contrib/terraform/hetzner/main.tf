@@ -35,7 +35,6 @@ data "template_file" "inventory" {
       keys(module.kubernetes.worker_ip_addresses),
       values(module.kubernetes.worker_ip_addresses).*.public_ip,
     values(module.kubernetes.worker_ip_addresses).*.private_ip))
-    
     list_master = join("\n", keys(module.kubernetes.master_ip_addresses))
     list_worker = join("\n", keys(module.kubernetes.worker_ip_addresses))
     network_id = module.kubernetes.network_id

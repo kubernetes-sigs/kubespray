@@ -106,6 +106,25 @@ following default cluster parameters:
   require a service account and cluster role bindings. You can override this
   setting by setting authorization_modes to `[]`.
 
+* *kube_apiserver_admission_control_config_file* - Enable configuration for `kube-apiserver` admission plugins.
+  Currently this variable allow you to configure the `EventRateLimit` admission plugin.
+
+  To configure the **EventRateLimit** plugin you have to define a data structure like this:
+
+```yml
+kube_apiserver_admission_event_rate_limits:
+  limit_1:
+    type: Namespace
+    qps: 50
+    burst: 100
+    cache_size: 2000
+  limit_2:
+    type: User
+    qps: 50
+    burst: 100
+  ...
+```
+
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``
 and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.

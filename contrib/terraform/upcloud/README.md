@@ -111,3 +111,10 @@ terraform destroy --var-file cluster-settings.tfvars \
   * `additional_disks`: Additional disks to attach to the node.
     * `size`: The size of the additional disk in GB
     * `tier`: The tier of disk to use (`maxiops` is the only one you can choose atm)
+* `firewall_enabled`: Enable firewall rules
+* `master_allowed_remote_ips`: List of IP ranges that should be allowed to access API of masters
+  * `start_address`: Start of address range to allow
+  * `end_address`: End of address range to allow
+* `k8s_allowed_remote_ips`: List of IP ranges that should be allowed SSH access to all nodes
+  * `start_address`: Start of address range to allow
+  * `end_address`: End of address range to allow

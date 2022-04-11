@@ -70,6 +70,8 @@ resource "upcloud_server" "master" {
   lifecycle {
     ignore_changes = [storage_devices]
   }
+  
+  firewall  = var.firewall_enabled
 
   dynamic "storage_devices" {
     for_each = {
@@ -126,6 +128,8 @@ resource "upcloud_server" "worker" {
     ignore_changes = [storage_devices]
   }
 
+  firewall  = var.firewall_enabled
+
   dynamic "storage_devices" {
     for_each = {
       for disk_key_name, disk in upcloud_storage.additional_disks :
@@ -144,5 +148,111 @@ resource "upcloud_server" "worker" {
     user            = var.username
     keys            = var.ssh_public_keys
     create_password = false
+  }
+}
+
+resource "upcloud_firewall_rules" "master" {
+  for_each = upcloud_server.master
+  server_id = each.value.id
+
+  dynamic firewall_rule {
+    for_each = var.master_allowed_remote_ips
+
+    content {
+      action                 = "accept"
+      comment                = "Allow master API access from this network"
+      destination_port_end   = "6443"
+      destination_port_start = "6443"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = firewall_rule.value.end_address
+      source_address_start   = firewall_rule.value.start_address
+    }
+  }
+
+  dynamic firewall_rule {
+    for_each = length(var.master_allowed_remote_ips) > 0 ? [1] : []
+
+    content {
+      action                 = "drop"
+      comment                = "Deny master API access from other networks"
+      destination_port_end   = "6443"
+      destination_port_start = "6443"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = "255.255.255.255"
+      source_address_start   = "0.0.0.0"
+    }
+  }
+
+  dynamic firewall_rule {
+    for_each = var.k8s_allowed_remote_ips
+
+    content {
+      action                 = "accept"
+      comment                = "Allow SSH from this network"
+      destination_port_end   = "22"
+      destination_port_start = "22"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = firewall_rule.value.end_address
+      source_address_start   = firewall_rule.value.start_address
+    }
+  }
+
+  dynamic firewall_rule {
+    for_each = length(var.k8s_allowed_remote_ips) > 0 ? [1] : []
+
+    content {
+      action                 = "drop"
+      comment                = "Deny SSH from other networks"
+      destination_port_end   = "22"
+      destination_port_start = "22"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = "255.255.255.255"
+      source_address_start   = "0.0.0.0"
+    }
+  }
+}
+
+resource "upcloud_firewall_rules" "k8s" {
+  for_each = upcloud_server.worker
+  server_id = each.value.id
+
+  dynamic firewall_rule {
+    for_each = var.k8s_allowed_remote_ips
+
+    content {
+      action                 = "accept"
+      comment                = "Allow SSH from this network"
+      destination_port_end   = "22"
+      destination_port_start = "22"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = firewall_rule.value.end_address
+      source_address_start   = firewall_rule.value.start_address
+    }
+  }
+
+  dynamic firewall_rule {
+    for_each = length(var.k8s_allowed_remote_ips) > 0 ? [1] : []
+
+    content {
+      action                 = "drop"
+      comment                = "Deny SSH from other networks"
+      destination_port_end   = "22"
+      destination_port_start = "22"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = "255.255.255.255"
+      source_address_start   = "0.0.0.0"
+    }
   }
 }

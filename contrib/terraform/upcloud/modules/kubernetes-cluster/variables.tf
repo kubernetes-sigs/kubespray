@@ -30,3 +30,21 @@ variable "machines" {
 variable "ssh_public_keys" {
   type = list(string)
 }
+
+variable "firewall_enabled" {
+  type = bool
+}
+
+variable "master_allowed_remote_ips" {
+  type = list(object({
+    start_address = string
+    end_address   = string
+  }))
+}
+
+variable "k8s_allowed_remote_ips" {
+  type = list(object({
+    start_address = string
+    end_address   = string
+  }))
+}

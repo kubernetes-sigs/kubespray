@@ -94,3 +94,19 @@ machines = {
     }
   }
 }
+
+firewall_enabled = false
+
+master_allowed_remote_ips = [
+  {
+    "start_address" : "0.0.0.0"
+    "end_address" : "255.255.255.255"
+  }
+]
+
+k8s_allowed_remote_ips = [
+  {
+    "start_address" : "0.0.0.0"
+    "end_address" : "255.255.255.255"
+  }
+]

@@ -55,3 +55,26 @@ variable "UPCLOUD_USERNAME" {
 variable "UPCLOUD_PASSWORD" {
   description = "Password for UpCloud API user"
 }
+
+variable "firewall_enabled" {
+  description = "Enable firewall rules"
+  default     = false
+}
+
+variable "master_allowed_remote_ips" {
+  description = "List of IP start/end addresses allowed to access API of masters"
+  type = list(object({
+    start_address = string
+    end_address   = string
+  }))
+  default = []
+}
+
+variable "k8s_allowed_remote_ips" {
+  description = "List of IP start/end addresses allowed to SSH to hosts"
+  type = list(object({
+    start_address = string
+    end_address   = string
+  }))
+  default = []
+}

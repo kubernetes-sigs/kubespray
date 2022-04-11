@@ -1,6 +1,6 @@
 prefix = "default"
 zone   = "hel1"
-
+network_zone = "eu-central"
 inventory_file = "inventory.ini"
 
 ssh_public_keys = [

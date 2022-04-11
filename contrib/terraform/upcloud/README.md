@@ -104,6 +104,7 @@ terraform destroy --var-file cluster-settings.tfvars \
 * `zone`: The zone where to run the cluster
 * `machines`: Machines to provision. Key of this object will be used as the name of the machine
   * `node_type`: The role of this node *(master|worker)*
+  * `plan`: Preconfigured cpu/mem plan to use (disables `cpu` and `mem` attributes below)
   * `cpu`: number of cpu cores
   * `mem`: memory size in MB
   * `disk_size`: The size of the storage in GB

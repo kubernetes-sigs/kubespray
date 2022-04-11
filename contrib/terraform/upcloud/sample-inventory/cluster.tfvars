@@ -20,6 +20,8 @@ ssh_public_keys = [
 machines = {
   "master-0" : {
     "node_type" : "master",
+    # plan to use instead of custom cpu/mem
+    "plan" : null,
     #number of cpu cores
     "cpu" : "2",
     #memory size in MB
@@ -30,6 +32,8 @@ machines = {
   },
   "worker-0" : {
     "node_type" : "worker",
+    # plan to use instead of custom cpu/mem
+    "plan" : null,
     #number of cpu cores
     "cpu" : "2",
     #memory size in MB
@@ -49,6 +53,8 @@ machines = {
   },
   "worker-1" : {
     "node_type" : "worker",
+    # plan to use instead of custom cpu/mem
+    "plan" : null,
     #number of cpu cores
     "cpu" : "2",
     #memory size in MB
@@ -68,6 +74,8 @@ machines = {
   },
   "worker-2" : {
     "node_type" : "worker",
+    # plan to use instead of custom cpu/mem
+    "plan" : null,
     #number of cpu cores
     "cpu" : "2",
     #memory size in MB

@@ -16,6 +16,7 @@ variable "machines" {
   description = "Cluster machines"
   type = map(object({
     node_type       = string
+    plan            = string
     cpu             = string
     mem             = string
     disk_size       =  number

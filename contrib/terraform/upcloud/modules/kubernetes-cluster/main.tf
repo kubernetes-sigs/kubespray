@@ -45,8 +45,9 @@ resource "upcloud_server" "master" {
   }
 
   hostname = "${local.resource-prefix}${each.key}"
-  cpu      = each.value.cpu
-  mem      = each.value.mem
+  plan     = each.value.plan
+  cpu      = each.value.plan == null ? each.value.cpu : null
+  mem      = each.value.plan == null ? each.value.mem : null
   zone     = var.zone
 
   template {
@@ -99,8 +100,9 @@ resource "upcloud_server" "worker" {
   }
 
   hostname = "${local.resource-prefix}${each.key}"
-  cpu      = each.value.cpu
-  mem      = each.value.mem
+  plan     = each.value.plan
+  cpu      = each.value.plan == null ? each.value.cpu : null
+  mem      = each.value.plan == null ? each.value.mem : null
   zone     = var.zone
 
   template {

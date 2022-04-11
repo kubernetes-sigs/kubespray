@@ -1,6 +1,10 @@
 variable "zone" {
   description = "The zone where to run the cluster"
 }
+variable "network_zone" {
+  description = "The network zone where the cluster is running"
+  default = "eu-central"
+}
 
 variable "prefix" {
   description = "Prefix for resource names"

@@ -14,3 +14,6 @@ ${list_worker}
 [k8s-cluster:children]
 kube-master
 kube-node
+
+[k8s-cluster:vars]
+network_id=${network_id}

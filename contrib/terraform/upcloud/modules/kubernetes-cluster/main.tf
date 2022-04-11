@@ -65,6 +65,11 @@ resource "upcloud_server" "master" {
     network = upcloud_network.private.id
   }
 
+  # Ignore volumes created by csi-driver
+  lifecycle {
+    ignore_changes = [storage_devices]
+  }
+
   dynamic "storage_devices" {
     for_each = {
       for disk_key_name, disk in upcloud_storage.additional_disks :
@@ -112,6 +117,11 @@ resource "upcloud_server" "worker" {
   network_interface {
     type    = "private"
     network = upcloud_network.private.id
+  }
+
+  # Ignore volumes created by csi-driver
+  lifecycle {
+    ignore_changes = [storage_devices]
   }
 
   dynamic "storage_devices" {

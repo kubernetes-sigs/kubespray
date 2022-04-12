@@ -1,6 +1,9 @@
 # Use imutable image tags rather than mutable tags (like ubuntu:20.04)
 FROM ubuntu:focal-20220316
 
+ARG TZ=Etc/UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 RUN apt update -y \
     && apt install -y \
     libssl-dev python3-dev sshpass apt-transport-https jq moreutils \

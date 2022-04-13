@@ -287,6 +287,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`port_security_enabled` | Allow to disable port security by setting this to `false`. `true` by default |
 |`force_null_port_security` | Set `null` instead of `true` or `false` for `port_security`. `false` by default |
 |`k8s_nodes` | Map containing worker node definition, see explanation below |
+|`k8s_masters` | Map containing master node definition, see explanation for k8s_nodes and `sample-inventory/cluster.tfvars` |
 
 ##### k8s_nodes
 

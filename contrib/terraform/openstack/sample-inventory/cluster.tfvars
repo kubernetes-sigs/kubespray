@@ -32,6 +32,28 @@ number_of_k8s_masters_no_floating_ip_no_etcd = 0
 
 flavor_k8s_master = "<UUID>"
 
+k8s_masters = {
+  # "master-1" = {
+  #   "az"          = "nova"
+  #   "flavor"      = "<UUID>"
+  #   "floating_ip" = true
+  #   "etcd" = true
+  # },
+  # "master-2" = {
+  #   "az"          = "nova"
+  #   "flavor"      = "<UUID>"
+  #   "floating_ip" = false
+  #   "etcd" = true
+  # },
+  # "master-3" = {
+  #   "az"          = "nova"
+  #   "flavor"      = "<UUID>"
+  #   "floating_ip" = true
+  #   "etcd" = true
+  # },
+}
+
+
 # nodes
 number_of_k8s_nodes = 2
 

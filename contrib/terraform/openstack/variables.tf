@@ -286,6 +286,10 @@ variable "router_internal_port_id" {
   default     = null
 }
 
+variable "k8s_masters" {
+  default = {}
+}
+
 variable "k8s_nodes" {
   default = {}
 }

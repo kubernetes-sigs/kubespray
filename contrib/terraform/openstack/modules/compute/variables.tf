@@ -88,6 +88,10 @@ variable "k8s_node_fips" {
   type = list
 }
 
+variable "k8s_masters_fips" {
+  type = map
+}
+
 variable "k8s_nodes_fips" {
   type = map
 }
@@ -111,6 +115,8 @@ variable "k8s_allowed_remote_ips" {
 variable "k8s_allowed_egress_ips" {
   type = list
 }
+
+variable "k8s_masters" {}
 
 variable "k8s_nodes" {}
 

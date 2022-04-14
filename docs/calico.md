@@ -214,6 +214,13 @@ Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.pr
 
 *IP in IP* and *VXLAN* is mutualy exclusive modes.
 
+Kubespray defaults have changed after version 2.18 from auto-enabling `ipip` mode to auto-enabling `vxlan`. This was done to facilitate wider deployment scenarios including those where vxlan acceleration is provided by the underlying network devices.
+
+If you are running your cluster with the default calico settings and are upgrading to a release post 2.18.x (i.e. 2.19 and later or `master` branch) then you have two options:
+
+* perform a manual migration to vxlan before upgrading kubespray (see migrating from IP in IP to VXLAN below)
+* pin the pre-2.19 settings in your ansible inventory (see IP in IP mode settings below)
+
 ### IP in IP mode
 
 To configure Ip in Ip mode you need to use the bird network backend.
@@ -224,19 +231,6 @@ calico_vxlan_mode: 'Never'
 calico_network_backend: 'bird'
 ```
 
-### VXLAN mode (default)
-
-To configure VXLAN mode you can use the default settings, the example below is provided for your reference.
-
-```yml
-calico_ipip_mode: 'Never'
-calico_vxlan_mode: 'Always'  # Possible values is `Always`, `CrossSubnet`, `Never`.
-calico_network_backend: 'vxlan'
-```
-
-In VXLAN mode BGP networking is not required.
-We disable BGP to reduce the moving parts in your cluster by `calico_network_backend: vxlan`
-
 ### BGP mode
 
 To enable BGP no-encapsulation mode:
@@ -245,6 +239,25 @@ To enable BGP no-encapsulation mode:
 calico_ipip_mode: 'Never'
 calico_vxlan_mode: 'Never'
 calico_network_backend: 'bird'
+```
+
+### Migrating from IP in IP to VXLAN
+
+If you would like to migrate from the old IP in IP with `bird` network backends default to the new VXLAN based encapsulation you need to perform this change before running an upgrade of your cluster; the `cluster.yml` and `upgrade-cluster.yml` playbooks will refuse to continue if they detect incompatible settings.
+
+Execute the following sters on one of the control plane nodes, ensure the cluster in healthy before proceeding.
+
+```shell
+calicoctl.sh patch felixconfig default -p '{"spec":{"vxlanEnabled":true}}'
+calicoctl.sh patch ippool default-pool -p '{"spec":{"ipipMode":"Never", "vxlanMode":"Always"}}'
+```
+
+**Note:** if you created multiple ippools you will need to patch all of them individually to change their encapsulation. The kubespray playbooks only handle the default ippool creaded by kubespray.
+
+Wait for the `vxlan.calico` interfaces to be created on all cluster nodes and traffic to be routed through it then you can disable `ipip`.
+
+```shell
+calicoctl.sh patch felixconfig default -p '{"spec":{"ipipEnabled":false}}'
 ```
 
 ## Configuring interface MTU

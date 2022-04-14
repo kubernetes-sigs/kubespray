@@ -12,6 +12,47 @@ the external loadbalancer (even from a node in the control plane)
 and if there is no external load balancer It will ignore any local load
 balancer deployed by Kubespray and **only contacts the first master**.
 
+## Cilium Operator
+
+Unlike some operators, Cilium Operator does not exist for installation purposes.
+> The Cilium Operator is responsible for managing duties in the cluster which should logically be handled once for the entire cluster, rather than once for each node in the cluster.
+
+### Adding custom flags to the Cilium Operator
+
+You can set additional cilium-operator container arguments using `cilium_operator_custom_args`.
+This is an advanced option, and you should only use it if you know what you are doing.
+
+Accepts an array or a string.
+
+```yml
+cilium_operator_custom_args: ["--foo=bar", "--baz=qux"]
+```
+
+or
+
+```yml
+cilium_operator_custom_args: "--foo=bar"
+```
+
+You do not need to add a custom flag to enable debugging. Instead, feel free to use the `CILIUM_DEBUG` variable.
+
+### Adding extra volumes and mounting them
+
+You can use `cilium_operator_extra_volumes` to add extra volumes to the Cilium Operator, and use `cilium_operator_extra_volume_mounts` to mount those volumes.
+This is an advanced option, and you should only use it if you know what you are doing.
+
+```yml
+cilium_operator_extra_volumes:
+  - configMap:
+      name: foo
+    name: foo-mount-path
+
+cilium_operator_extra_volume_mounts:
+  - mountPath: /tmp/foo/bar
+    name: foo-mount-path
+    readOnly: true
+```
+
 ## Choose Cilium version
 
 ```yml
@@ -68,6 +109,6 @@ cilium_hubble_metrics:
   - flow
   - icmp
   - http
-```  
+```
 
 [More](https://docs.cilium.io/en/v1.9/operations/metrics/#hubble-exported-metrics)

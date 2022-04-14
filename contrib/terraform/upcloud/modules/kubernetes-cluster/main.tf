@@ -10,6 +10,16 @@ locals {
     ]
   ])
 
+  lb_backend_servers = flatten([
+    for lb_name, loadbalancer in var.loadbalancers : [
+      for backend_server in loadbalancer.backend_servers : {
+        port = loadbalancer.port
+        lb_name = lb_name
+        server_name = backend_server
+      }
+    ]
+  ])
+
   # If prefix is set, all resources will be prefixed with "${var.prefix}-"
   # Else don't prefix with anything
   resource-prefix = "%{ if var.prefix != ""}${var.prefix}-%{ endif }"
@@ -255,4 +265,46 @@ resource "upcloud_firewall_rules" "k8s" {
       source_address_start   = "0.0.0.0"
     }
   }
+}
+
+resource "upcloud_loadbalancer" "lb" {
+  count             = var.loadbalancer_enabled ? 1 : 0
+  configured_status = "started"
+  name              = "${local.resource-prefix}lb"
+  plan              = var.loadbalancer_plan
+  zone              = var.zone
+  network           = upcloud_network.private.id
+}
+
+resource "upcloud_loadbalancer_backend" "lb_backend" {
+  for_each = var.loadbalancer_enabled ? var.loadbalancers : {}
+
+  loadbalancer = upcloud_loadbalancer.lb[0].id
+  name         = "lb-backend-${each.key}"
+}
+
+resource "upcloud_loadbalancer_frontend" "lb_frontend" {
+  for_each = var.loadbalancer_enabled ? var.loadbalancers : {}
+  
+  loadbalancer         = upcloud_loadbalancer.lb[0].id
+  name                 = "lb-frontend-${each.key}"
+  mode                 = "tcp"
+  port                 = each.value.port
+  default_backend_name = upcloud_loadbalancer_backend.lb_backend[each.key].name
+}
+
+resource "upcloud_loadbalancer_static_backend_member" "lb_backend_member" {
+  for_each = {
+    for be_server in local.lb_backend_servers: 
+      "${be_server.server_name}-lb-backend-${be_server.lb_name}" => be_server
+      if var.loadbalancer_enabled
+  }
+
+  backend      = upcloud_loadbalancer_backend.lb_backend[each.value.lb_name].id
+  name         = "${local.resource-prefix}${each.key}"
+  ip           = merge(upcloud_server.master, upcloud_server.worker)[each.value.server_name].network_interface[1].ip_address
+  port         = each.value.port
+  weight       = 100
+  max_sessions = var.loadbalancer_plan == "production-small" ? 50000 : 1000
+  enabled      = true
 }

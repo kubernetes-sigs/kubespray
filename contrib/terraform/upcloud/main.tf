@@ -26,6 +26,10 @@ module "kubernetes" {
   firewall_enabled          = var.firewall_enabled
   master_allowed_remote_ips = var.master_allowed_remote_ips
   k8s_allowed_remote_ips    = var.k8s_allowed_remote_ips
+
+  loadbalancer_enabled = var.loadbalancer_enabled
+  loadbalancer_plan    = var.loadbalancer_plan
+  loadbalancers        = var.loadbalancers
 }
 
 #

@@ -78,3 +78,23 @@ variable "k8s_allowed_remote_ips" {
   }))
   default = []
 }
+
+variable "loadbalancer_enabled" {
+  description = "Enable load balancer"
+  default     = false
+}
+
+variable "loadbalancer_plan" {
+  description = "Load balancer plan (development/production-small)"
+  default     = "development"
+}
+
+variable "loadbalancers" {
+  description = "Load balancers"
+
+  type = map(object({
+    port            = number
+    backend_servers = list(string)
+  }))
+  default = {}
+}

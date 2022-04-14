@@ -118,3 +118,8 @@ terraform destroy --var-file cluster-settings.tfvars \
 * `k8s_allowed_remote_ips`: List of IP ranges that should be allowed SSH access to all nodes
   * `start_address`: Start of address range to allow
   * `end_address`: End of address range to allow
+* `loadbalancer_enabled`: Enable managed load balancer
+* `loadbalancer_plan`: Plan to use for load balancer *(development|production-small)*
+* `loadbalancers`: Ports to load balance and which machines to forward to. Key of this object will be used as the name of the load balancer frontends/backends
+  * `port`: Port to load balance.
+  * `backend_servers`: List of servers that traffic to the port should be forwarded to.

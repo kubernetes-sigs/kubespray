@@ -48,3 +48,20 @@ variable "k8s_allowed_remote_ips" {
     end_address   = string
   }))
 }
+
+variable "loadbalancer_enabled" {
+  type = bool
+}
+
+variable "loadbalancer_plan" {
+  type = string
+}
+
+variable "loadbalancers" {
+  description = "Load balancers"
+
+  type = map(object({
+    port            = number
+    backend_servers = list(string)
+  }))
+}

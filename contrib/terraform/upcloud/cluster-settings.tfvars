@@ -110,3 +110,16 @@ k8s_allowed_remote_ips = [
     "end_address" : "255.255.255.255"
   }
 ]
+
+loadbalancer_enabled = false
+loadbalancer_plan    = "development"
+loadbalancers = {
+  # "http" : {
+  #   "port" : 80,
+  #   "backend_servers" : [
+  #     "worker-0",
+  #     "worker-1",
+  #     "worker-2"
+  #   ]
+  # }
+}

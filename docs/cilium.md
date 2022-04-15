@@ -80,6 +80,47 @@ Cilium currently supports two different identity allocation modes:
   - These can be queried with `kubectl get ciliumid`
 - "kvstore" stores identities in an etcd kvstore.
 
+## Enable Transparent Encryption
+
+Cilium supports the transparent encryption of Cilium-managed host traffic and
+traffic between Cilium-managed endpoints either using IPsec or Wireguard.
+
+Wireguard option is only available in Cilium 1.10.0 and newer.
+
+### IPsec Encryption
+
+For further information, make sure to check the official [Cilium documentation.](https://docs.cilium.io/en/stable/gettingstarted/encryption-ipsec/)
+
+To enable IPsec encryption, you just need to set three variables.
+
+```yml
+cilium_encryption_enabled: true
+cilium_encryption_type: "ipsec"
+```
+
+The third variable is `cilium_ipsec_key.` You need to create a secret key string for this variable.
+Kubespray does not automate this process.
+Cilium documentation currently recommends creating a key using the following command:
+
+```shell
+echo "3 rfc4106(gcm(aes)) $(echo $(dd if=/dev/urandom count=20 bs=1 2> /dev/null | xxd -p -c 64)) 128"
+```
+
+Note that Kubespray handles secret creation. So you only need to pass the key as the `cilium_ipsec_key` variable.
+
+### Wireguard Encryption
+
+For further information, make sure to check the official [Cilium documentation.](https://docs.cilium.io/en/stable/gettingstarted/encryption-wireguard/)
+
+To enable Wireguard encryption, you just need to set two variables.
+
+```yml
+cilium_encryption_enabled: true
+cilium_encryption_type: "wireguard"
+```
+
+Kubespray currently supports Linux distributions with Wireguard Kernel mode on Linux 5.6 and newer.
+
 ## Install Cilium Hubble
 
 k8s-net-cilium.yml:

@@ -138,7 +138,6 @@ kubelet_download_url: "https://storage.googleapis.com/kubernetes-release/release
 kubectl_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl"
 kubeadm_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm"
 etcd_download_url: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
-flannel_cni_download_url: "https://github.com/flannel-io/cni-plugin/releases/download/{{ flannel_cni_version }}/flannel-{{ image_arch }}"
 cni_download_url: "https://github.com/containernetworking/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
 calicoctl_download_url: "https://github.com/projectcalico/calicoctl/releases/download/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
 calicoctl_alternate_download_url: "https://github.com/projectcalico/calico/releases/download/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
@@ -531,16 +530,6 @@ etcd_binary_checksums:
     v3.5.2: 3d37187b042a32b7234a1e2a4612374db50c9a50e0cdd63baaa0d52d91335186
     v3.5.3: f14154897ca5ad4698383b4c197001340fbe467525f6fab3b89ee8116246480f
 
-flannel_cni_binary_checksums:
-  arm:
-    v1.0.0: bd36adccabf9974c0a9f9a09bfe35558ddeb83636efefa94bc260ef267e14671
-  arm64:
-    v1.0.0: eb7183498b5d1ae4034dde6184e4396270e29ed88482b295f81b93eb3120c61c
-  amd64:
-    v1.0.0: 22dc9152571167f30d59d1e512bb7f4b4978175ddd46a30b24ad247c8c843dd7
-  ppc64le:
-    v1.0.0: 994d206a84013b050677d3e09b53485faaa9e769a43065cf4674efb52fafb18c
-
 cni_binary_checksums:
   arm:
     v1.0.1: d35e3e9fd71687fc7e165f7dc7b1e35654b8012995bbfd937946b0681926d62d
@@ -800,7 +789,6 @@ containerd_archive_checksums:
     1.6.2: 0
 
 etcd_binary_checksum: "{{ etcd_binary_checksums[image_arch][etcd_version] }}"
-flannel_cni_binary_checksum: "{{ flannel_cni_binary_checksums[image_arch][flannel_cni_version] }}"
 cni_binary_checksum: "{{ cni_binary_checksums[image_arch][cni_version] }}"
 kubelet_binary_checksum: "{{ kubelet_checksums[image_arch][kube_version] }}"
 kubectl_binary_checksum: "{{ kubectl_checksums[image_arch][kube_version] }}"
@@ -833,6 +821,8 @@ etcd_image_repo: "{{ quay_image_repo }}/coreos/etcd"
 etcd_image_tag: "{{ etcd_version }}{%- if image_arch != 'amd64' -%}-{{ image_arch }}{%- endif -%}"
 flannel_image_repo: "{{ quay_image_repo }}/coreos/flannel"
 flannel_image_tag: "{{ flannel_version }}-{{ image_arch }}"
+flannel_init_image_repo: "{{ docker_image_repo }}/flannelcni/flannel-cni-plugin"
+flannel_init_image_tag: "{{ flannel_cni_version }}"
 calico_node_image_repo: "{{ quay_image_repo }}/calico/node"
 calico_node_image_tag: "{{ calico_version }}{%- if image_arch != 'amd64' -%}-{{ image_arch }}{%- endif -%}"
 calico_cni_image_repo: "{{ quay_image_repo }}/calico/cni"
@@ -1019,19 +1009,6 @@ downloads:
     mode: "0755"
     groups:
     - etcd
-
-  flannel_cni:
-    enabled: "{{ kube_network_plugin == 'flannel' }}"
-    file: true
-    version: "{{ flannel_cni_version }}"
-    dest: "{{ local_release_dir }}/flannel-{{ flannel_cni_version }}-{{ image_arch }}"
-    sha256: "{{ flannel_cni_binary_checksum }}"
-    url: "{{ flannel_cni_download_url }}"
-    unarchive: false
-    owner: "root"
-    mode: "0755"
-    groups:
-    - k8s_cluster
 
   cni:
     enabled: true
@@ -1257,6 +1234,15 @@ downloads:
     repo: "{{ flannel_image_repo }}"
     tag: "{{ flannel_image_tag }}"
     sha256: "{{ flannel_digest_checksum|default(None) }}"
+    groups:
+    - k8s_cluster
+
+  flannel_init:
+    enabled: "{{ kube_network_plugin == 'flannel' or kube_network_plugin == 'canal' }}"
+    container: true
+    repo: "{{ flannel_init_image_repo }}"
+    tag: "{{ flannel_init_image_tag }}"
+    sha256: "{{ flannel_init_digest_checksum|default(None) }}"
     groups:
     - k8s_cluster
 

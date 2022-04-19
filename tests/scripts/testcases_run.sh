@@ -109,6 +109,11 @@ if [ "${IDEMPOT_CHECK}" = "true" ]; then
   fi
 fi
 
+# Test node removal procedure
+if [ "${REMOVE_NODE_CHECK}" = "true" ]; then
+  ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR}  -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} -e skip_confirmation=yes -e node=${REMOVE_NODE_NAME} --limit "all:!fake_hosts" remove-node.yml
+fi
+
 # Clean up at the end, this is to allow stage1 tests to include cleanup test
 if [ "${RESET_CHECK}" = "true" ]; then
   ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR}  -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} -e reset_confirmation=yes --limit "all:!fake_hosts" reset.yml

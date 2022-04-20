@@ -20,6 +20,7 @@ most modern installs of OpenStack that support the basic services.
 - [Open Telekom Cloud](https://cloud.telekom.de/)
 - [OVH](https://www.ovh.com/)
 - [Rackspace](https://www.rackspace.com/)
+- [Safespring](https://www.safespring.com)
 - [Ultimum](https://ultimum.io/)
 - [VexxHost](https://vexxhost.com/)
 - [Zetta](https://www.zetta.io/)

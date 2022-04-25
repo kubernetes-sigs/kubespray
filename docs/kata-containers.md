@@ -10,7 +10,7 @@ _Qemu_ is the only hypervisor supported by Kubespray.
 
 To use Kata Containers, set the following variables:
 
-**k8s_cluster.yml**:
+**k8s-cluster.yml**:
 
 ```yaml
 container_manager: containerd
@@ -61,7 +61,7 @@ kata_containers_qemu_overhead_fixed_memory: 290Mi
 
 ### Optional : Select Kata Containers version
 
-Optionally you can select the Kata Containers release version to be installed. The available releases are published in [GitHub](https://github.com/kata-containers/runtime/releases).
+Optionally you can select the Kata Containers release version to be installed. The available releases are published in [GitHub](https://github.com/kata-containers/kata-containers/releases).
 
 ```yaml
 kata_containers_version: 2.2.2

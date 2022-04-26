@@ -195,8 +195,8 @@ def parse_bool(string_form):
         raise ValueError('could not convert %r to a bool' % string_form)
 
 
-@parses('packet_device')
-def packet_device(resource, tfvars=None):
+@parses('metal_device')
+def metal_device(resource, tfvars=None):
     raw_attrs = resource['primary']['attributes']
     name = raw_attrs['hostname']
     groups = []
@@ -213,14 +213,14 @@ def packet_device(resource, tfvars=None):
         'state': raw_attrs['state'],
         # ansible
         'ansible_ssh_host': raw_attrs['network.0.address'],
-        'ansible_ssh_user': 'root',  # Use root by default in packet
+        'ansible_ssh_user': 'root',  # Use root by default in metal
         # generic
         'ipv4_address': raw_attrs['network.0.address'],
         'public_ipv4': raw_attrs['network.0.address'],
         'ipv6_address': raw_attrs['network.1.address'],
         'public_ipv6': raw_attrs['network.1.address'],
         'private_ipv4': raw_attrs['network.2.address'],
-        'provider': 'packet',
+        'provider': 'metal',
     }
 
     if raw_attrs['operating_system'] == 'flatcar_stable':
@@ -228,10 +228,10 @@ def packet_device(resource, tfvars=None):
         attrs.update({'ansible_ssh_user': 'core'})
 
     # add groups based on attrs
-    groups.append('packet_operating_system=' + attrs['operating_system'])
-    groups.append('packet_locked=%s' % attrs['locked'])
-    groups.append('packet_state=' + attrs['state'])
-    groups.append('packet_plan=' + attrs['plan'])
+    groups.append('metal_operating_system=' + attrs['operating_system'])
+    groups.append('metal_locked=%s' % attrs['locked'])
+    groups.append('metal_state=' + attrs['state'])
+    groups.append('metal_plan=' + attrs['plan'])
 
     # groups specific to kubespray
     groups = groups + attrs['tags']

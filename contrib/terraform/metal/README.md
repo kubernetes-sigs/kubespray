@@ -60,9 +60,9 @@ Terraform will be used to provision all of the Equinix Metal resources with base
 Create an inventory directory for your cluster by copying the existing sample and linking the `hosts` script (used to build the inventory based on Terraform state):
 
 ```ShellSession
-cp -LRp contrib/terraform/packet/sample-inventory inventory/$CLUSTER
+cp -LRp contrib/terraform/metal/sample-inventory inventory/$CLUSTER
 cd inventory/$CLUSTER
-ln -s ../../contrib/terraform/packet/hosts
+ln -s ../../contrib/terraform/metal/hosts
 ```
 
 This will be the base for subsequent Terraform commands.
@@ -101,7 +101,7 @@ This helps when identifying which hosts are associated with each cluster.
 While the defaults in variables.tf will successfully deploy a cluster, it is recommended to set the following values:
 
 - cluster_name = the name of the inventory directory created above as $CLUSTER
-- packet_project_id = the Equinix Metal Project ID associated with the Equinix Metal API token above
+- metal_project_id = the Equinix Metal Project ID associated with the Equinix Metal API token above
 
 #### Enable localhost access
 
@@ -119,7 +119,7 @@ Once the Kubespray playbooks are run, a Kubernetes configuration file will be wr
 
 In the cluster's inventory folder, the following files might be created (either by Terraform
 or manually), to prevent you from pushing them accidentally they are in a
-`.gitignore` file in the `terraform/packet` directory :
+`.gitignore` file in the `terraform/metal` directory :
 
 - `.terraform`
 - `.tfvars`
@@ -135,7 +135,7 @@ plugins. This is accomplished as follows:
 
 ```ShellSession
 cd inventory/$CLUSTER
-terraform init ../../contrib/terraform/packet
+terraform init ../../contrib/terraform/metal
 ```
 
 This should finish fairly quickly telling you Terraform has successfully initialized and loaded necessary modules.
@@ -146,7 +146,7 @@ You can apply the Terraform configuration to your cluster with the following com
 issued from your cluster's inventory directory (`inventory/$CLUSTER`):
 
 ```ShellSession
-terraform apply -var-file=cluster.tfvars ../../contrib/terraform/packet
+terraform apply -var-file=cluster.tfvars ../../contrib/terraform/metal
 export ANSIBLE_HOST_KEY_CHECKING=False
 ansible-playbook -i hosts ../../cluster.yml
 ```
@@ -156,7 +156,7 @@ ansible-playbook -i hosts ../../cluster.yml
 You can destroy your new cluster with the following command issued from the cluster's inventory directory:
 
 ```ShellSession
-terraform destroy -var-file=cluster.tfvars ../../contrib/terraform/packet
+terraform destroy -var-file=cluster.tfvars ../../contrib/terraform/metal
 ```
 
 If you've started the Ansible run, it may also be a good idea to do some manual cleanup:

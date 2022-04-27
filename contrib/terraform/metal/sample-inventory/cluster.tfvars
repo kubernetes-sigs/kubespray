@@ -2,7 +2,7 @@
 cluster_name = "mycluster"
 
 # Your Equinix Metal project ID. See hhttps://metal.equinix.com/developers/docs/accounts/
-packet_project_id = "Example-API-Token"
+metal_project_id = "Example-API-Token"
 
 # The public SSH key to be uploaded into authorized_keys in bare metal Equinix Metal nodes provisioned
 # leave this value blank if the public key is already setup in the Equinix Metal project

@@ -2,12 +2,12 @@ variable "cluster_name" {
   default = "kubespray"
 }
 
-variable "packet_project_id" {
+variable "metal_project_id" {
   description = "Your Equinix Metal project ID. See https://metal.equinix.com/developers/docs/accounts/"
 }
 
 variable "operating_system" {
-  default = "ubuntu_16_04"
+  default = "ubuntu_20_04"
 }
 
 variable "public_key_path" {
@@ -24,23 +24,23 @@ variable "facility" {
 }
 
 variable "plan_k8s_masters" {
-  default = "c2.medium.x86"
+  default = "c3.small.x86"
 }
 
 variable "plan_k8s_masters_no_etcd" {
-  default = "c2.medium.x86"
+  default = "c3.small.x86"
 }
 
 variable "plan_etcd" {
-  default = "c2.medium.x86"
+  default = "c3.small.x86"
 }
 
 variable "plan_k8s_nodes" {
-  default = "c2.medium.x86"
+  default = "c3.medium.x86"
 }
 
 variable "number_of_k8s_masters" {
-  default = 0
+  default = 1
 }
 
 variable "number_of_k8s_masters_no_etcd" {
@@ -52,6 +52,6 @@ variable "number_of_etcd" {
 }
 
 variable "number_of_k8s_nodes" {
-  default = 0
+  default = 1
 }
 

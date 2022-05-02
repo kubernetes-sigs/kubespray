@@ -57,36 +57,55 @@ Kubernetes needs some parameters in order to get deployed. These are the
 following default cluster parameters:
 
 * *cluster_name* - Name of cluster (default is cluster.local)
+
 * *container_manager* - Container Runtime to install in the nodes (default is containerd)
+
 * *image_command_tool* - Tool used to pull images (default depends on `container_manager`
   and is `nerdctl` for `containerd`, `crictl` for `crio`, `docker` for `docker`)
+
 * *image_command_tool_on_localhost* - Tool used to pull images on localhost
   (default is equal to `image_command_tool`)
+
 * *dns_domain* - Name of cluster DNS domain (default is cluster.local)
+
 * *kube_network_plugin* - Plugin to use for container networking
+
 * *kube_service_addresses* - Subnet for cluster IPs (default is
   10.233.0.0/18). Must not overlap with kube_pods_subnet
+
 * *kube_pods_subnet* - Subnet for Pod IPs (default is 10.233.64.0/18). Must not
   overlap with kube_service_addresses.
+
 * *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remaining
   bits in kube_pods_subnet dictates how many kube_nodes can be in cluster. Setting this > 25 will
   raise an assertion in playbooks if the `kubelet_max_pods` var also isn't adjusted accordingly
   (assertion not applicable to calico which doesn't use this as a hard limit, see
   [Calico IP block sizes](https://docs.projectcalico.org/reference/resources/ippool#block-sizes).
+  
 * *enable_dual_stack_networks* - Setting this to true will provision both IPv4 and IPv6 networking for pods and services.
+
 * *kube_service_addresses_ipv6* - Subnet for cluster IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1000/116``). Must not overlap with ``kube_pods_subnet_ipv6``.
+
 * *kube_pods_subnet_ipv6* - Subnet for Pod IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1:0000/112``). Must not overlap with ``kube_service_addresses_ipv6``.
+
 * *kube_network_node_prefix_ipv6* - Subnet allocated per-node for pod IPv6 IPs. Remaining bits in ``kube_pods_subnet_ipv6`` dictates how many kube_nodes can be in cluster.
+
 * *skydns_server* - Cluster IP for DNS (default is 10.233.0.3)
+
 * *skydns_server_secondary* - Secondary Cluster IP for CoreDNS used with coredns_dual deployment (default is 10.233.0.4)
+
 * *enable_coredns_k8s_external* - If enabled, it configures the [k8s_external plugin](https://coredns.io/plugins/k8s_external/)
   on the CoreDNS service.
+
 * *coredns_k8s_external_zone* - Zone that will be used when CoreDNS k8s_external plugin is enabled
   (default is k8s_external.local)
+  
 * *enable_coredns_k8s_endpoint_pod_names* - If enabled, it configures endpoint_pod_names option for kubernetes plugin.
   on the CoreDNS service.
+
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)
+
 * *kube_feature_gates* - A list of key=value pairs that describe feature gates for
   alpha/experimental Kubernetes features. (defaults is `[]`).
   Additionally, you can use also the following variables to individually customize your kubernetes components installation (they works exactly like `kube_feature_gates`):
@@ -95,8 +114,10 @@ following default cluster parameters:
   * *kube_scheduler_feature_gates*
   * *kube_proxy_feature_gates*
   * *kubelet_feature_gates*
+
 * *kubeadm_feature_gates* - A list of key=value pairs that describe feature gates for
   alpha/experimental Kubeadm features. (defaults is `[]`)
+
 * *authorization_modes* - A list of [authorization mode](
   https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
   that the cluster should be configured for. Defaults to `['Node', 'RBAC']`
@@ -105,6 +126,25 @@ following default cluster parameters:
   converted to RBAC mode. However, your apps which rely on Kubernetes API will
   require a service account and cluster role bindings. You can override this
   setting by setting authorization_modes to `[]`.
+
+* *kube_apiserver_admission_control_config_file* - Enable configuration for `kube-apiserver` admission plugins.
+  Currently this variable allow you to configure the `EventRateLimit` admission plugin.
+
+  To configure the **EventRateLimit** plugin you have to define a data structure like this:
+
+```yml
+kube_apiserver_admission_event_rate_limits:
+  limit_1:
+    type: Namespace
+    qps: 50
+    burst: 100
+    cache_size: 2000
+  limit_2:
+    type: User
+    qps: 50
+    burst: 100
+  ...
+```
 
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``

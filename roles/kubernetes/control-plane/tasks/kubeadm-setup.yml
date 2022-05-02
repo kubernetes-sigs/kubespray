@@ -83,6 +83,30 @@
     dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
     mode: 0640
 
+- name: kubeadm | Create directory to store admission control configurations
+  file:
+    path: "{{ kube_config_dir }}/admission-controls"
+    state: directory
+    mode: 0640
+  when: kube_apiserver_admission_control_config_file
+
+- name: kubeadm | Push admission control config file
+  template:
+    src: "admission-controls.{{ kubeadmConfig_api_version }}.yaml.j2"
+    dest: "{{ kube_config_dir }}/admission-controls/admission-controls.yaml"
+    mode: 0640
+  when: kube_apiserver_admission_control_config_file
+
+- name: kubeadm | Push admission control config files
+  template:
+    src: "{{ item|lower }}.{{ kubeadmConfig_api_version }}.yaml.j2"
+    dest: "{{ kube_config_dir }}/admission-controls/{{ item|lower }}.yaml"
+    mode: 0640
+  when:
+    - kube_apiserver_admission_control_config_file
+    - item in kube_apiserver_admission_plugins_needs_configuration
+  loop: "{{ kube_apiserver_enable_admission_plugins[0].split(',') }}"
+
 - name: kubeadm | Check if apiserver.crt contains all needed SANs
   shell: |
     set -o pipefail

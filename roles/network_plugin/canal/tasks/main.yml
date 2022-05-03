@@ -3,6 +3,7 @@
   template:
     src: "cni-canal.conflist.j2"
     dest: "/etc/cni/net.d/canal.conflist.template"
+    mode: 0644
     owner: kube
   register: canal_conflist
   notify: reset_canal_cni
@@ -41,15 +42,16 @@
   run_once: true
   environment:
     ETCDCTL_API: 2
-    ETCDCTL_CA_FILE: "{{ etcd_cert_dir }}/ca.pem"
-    ETCDCTL_CERT_FILE: "{{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}.pem"
-    ETCDCTL_KEY_FILE: "{{ etcd_cert_dir }}/admin-{{ groups['etcd'][0] }}-key.pem"
+    ETCDCTL_CA_FILE: "{{ kube_cert_dir + '/etcd/ca.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/ca.pem' }}"
+    ETCDCTL_CERT_FILE: "{{ kube_cert_dir + '/etcd/server.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/admin-' + groups['etcd'][0] + '.pem' }}"
+    ETCDCTL_KEY_FILE: "{{ kube_cert_dir + '/etcd/server.key' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/admin-' + groups['etcd'][0] + '-key.pem' }}"
     ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
 
 - name: Canal | Create canal node manifests
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
   with_items:
     - {name: canal-config, file: canal-config.yaml, type: cm}
     - {name: canal-node, file: canal-node.yaml, type: ds}
@@ -74,3 +76,4 @@
   file:
     path: "{{ canal_policy_dir }}"
     state: directory
+    mode: 0755

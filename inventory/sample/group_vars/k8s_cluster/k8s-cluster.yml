@@ -2,7 +2,7 @@
 # Kubernetes configuration dirs and system namespace.
 # Those are where all the additional config stuff goes
 # the kubernetes normally puts in /srv/kubernetes.
-# This puts them in a same location and namespace.
+# This puts them in a sane location and namespace.
 # Editing those values will almost surely break something.
 kube_config_dir: /etc/kubernetes
 kube_script_dir: "{{ bin_dir }}/kubernetes-scripts"
@@ -17,7 +17,7 @@ kube_token_dir: "{{ kube_config_dir }}/tokens"
 kube_api_anonymous_auth: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.22.2
+kube_version: v1.23.6
 
 # Where the binaries will be downloaded.
 # Note: ensure that you've enough disk space (about 1G)
@@ -146,7 +146,7 @@ kube_proxy_nodeport_addresses: >-
 #   {{ inventory_hostname }}
 #   {%- endif -%}
 
-## Encrypting Secret Data at Rest (experimental)
+## Encrypting Secret Data at Rest
 kube_encrypt_secret_data: false
 
 # Graceful Node Shutdown (Kubernetes >= 1.21.0), see https://kubernetes.io/blog/2021/04/21/graceful-node-shutdown-beta/
@@ -166,9 +166,12 @@ dns_mode: coredns
 # manual_dns_server: 10.x.x.x
 # Enable nodelocal dns cache
 enable_nodelocaldns: true
+enable_nodelocaldns_secondary: false
 nodelocaldns_ip: 169.254.25.10
 nodelocaldns_health_port: 9254
+nodelocaldns_second_health_port: 9256
 nodelocaldns_bind_metrics_host_ip: false
+nodelocaldns_secondary_skew_seconds: 5
 # nodelocaldns_external_zones:
 # - zones:
 #   - example.com
@@ -189,7 +192,7 @@ coredns_k8s_external_zone: k8s_external.local
 enable_coredns_k8s_endpoint_pod_names: false
 
 # Can be docker_dns, host_resolvconf or none
-resolvconf_mode: docker_dns
+resolvconf_mode: host_resolvconf
 # Deploy netchecker app to verify DNS resolve as an HTTP service
 deploy_netchecker: false
 # Ip address of the kubernetes skydns service
@@ -199,7 +202,8 @@ dns_domain: "{{ cluster_name }}"
 
 ## Container runtime
 ## docker for docker, crio for cri-o and containerd for containerd.
-container_manager: docker
+## Default: containerd
+container_manager: containerd
 
 # Additional container runtimes
 kata_containers_enabled: false
@@ -234,6 +238,8 @@ podsecuritypolicy_enabled: false
 
 # Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
 # kubeconfig_localhost: false
+# Use ansible_host as external api ip when copying over kubeconfig.
+# kubeconfig_localhost_ansible_host: false
 # Download kubectl onto the host that runs Ansible in {{ bin_dir }}
 # kubectl_localhost: false
 
@@ -249,6 +255,11 @@ podsecuritypolicy_enabled: false
 ## Reservation for master hosts
 # system_master_memory_reserved: 256Mi
 # system_master_cpu_reserved: 250m
+
+## Eviction Thresholds to avoid system OOMs
+# https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#eviction-thresholds
+# eviction_hard: {}
+# eviction_hard_control_plane: {}
 
 # An alternative flexvolume plugin directory
 # kubelet_flexvolumes_plugins_dir: /usr/libexec/kubernetes/kubelet-plugins/volume/exec

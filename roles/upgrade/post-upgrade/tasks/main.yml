@@ -1,6 +1,32 @@
 ---
+- name: wait for cilium
+  when:
+    - needs_cordoning|default(false)
+    - kube_network_plugin == 'cilium'
+  command: >
+    {{ kubectl }}
+    wait pod -n kube-system -l k8s-app=cilium
+    --field-selector 'spec.nodeName=={{ kube_override_hostname|default(inventory_hostname) }}'
+    --for=condition=Ready
+    --timeout={{ upgrade_post_cilium_wait_timeout }}
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: Confirm node uncordon
+  pause:
+    echo: yes
+    prompt: "Ready to uncordon node?"
+  when:
+    - upgrade_node_post_upgrade_confirm
+
+- name: Wait before uncordoning node
+  pause:
+    seconds: "{{ upgrade_node_post_upgrade_pause_seconds }}"
+  when:
+    - not upgrade_node_post_upgrade_confirm
+    - upgrade_node_post_upgrade_pause_seconds != 0
+
 - name: Uncordon node
-  command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf uncordon {{ kube_override_hostname|default(inventory_hostname) }}"
+  command: "{{ kubectl }} uncordon {{ kube_override_hostname|default(inventory_hostname) }}"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   when:
     - needs_cordoning|default(false)

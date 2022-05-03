@@ -43,6 +43,7 @@ spec:
         # upgraded to use calico-ipam.
         - name: upgrade-ipam
           image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
           command: ["/opt/cni/bin/calico-ipam", "-upgrade"]
           envFrom:
             - configMapRef:
@@ -71,7 +72,13 @@ spec:
         # and CNI network config file on each node.
         - name: install-cni
           image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
           command: ["/opt/cni/bin/install"]
+          envFrom:
+          - configMapRef:
+              # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+              name: kubernetes-services-endpoint
+              optional: true
           env:
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
@@ -103,6 +110,7 @@ spec:
         # to communicate with Felix over the Policy Sync API.
         - name: flexvol-driver
           image: {{ calico_flexvol_image_repo }}:{{ calico_flexvol_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
           volumeMounts:
             - name: flexvol-driver-host
               mountPath: /host/driver
@@ -114,6 +122,7 @@ spec:
         # host.
         - name: calico-node
           image: {{ calico_node_image_repo }}:{{ calico_node_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
           envFrom:
             - configMapRef:
                 # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
@@ -171,7 +180,7 @@ spec:
             - name: WAIT_FOR_DATASTORE
               value: "true"
 {% endif %}
-{% if calico_network_backend is defined and calico_network_backend == 'vxlan' %}
+{% if calico_network_backend == 'vxlan' %}
             - name: FELIX_VXLANVNI
               value: "{{ calico_vxlan_vni }}"
             - name: FELIX_VXLANPORT
@@ -214,11 +223,6 @@ spec:
 #            # Configure the IP Pool from which Pod IPs will be chosen.
 #            - name: CALICO_IPV4POOL_CIDR
 #              value: "{{ calico_pool_cidr | default(kube_pods_subnet) }}"
-{% if calico_veth_mtu is defined %}
-# Set MTU for the Wireguard tunnel device.
-            - name: FELIX_WIREGUARDMTU
-              value: "{{ calico_veth_mtu }}"
-{% endif %}
             - name: CALICO_IPV4POOL_IPIP
               value: "{{ calico_ipv4pool_ipip }}"
             - name: FELIX_IPV6SUPPORT
@@ -234,7 +238,14 @@ spec:
               value: "{{ calico_usage_reporting }}"
             # Set MTU for tunnel device used if ipip is enabled
 {% if calico_mtu is defined %}
+            # Set MTU for tunnel device used if ipip is enabled
             - name: FELIX_IPINIPMTU
+              value: "{{ calico_veth_mtu | default(calico_mtu) }}"
+            # Set MTU for the VXLAN tunnel device.
+            - name: FELIX_VXLANMTU
+              value: "{{ calico_veth_mtu | default(calico_mtu) }}"
+            # Set MTU for the Wireguard tunnel device.
+            - name: FELIX_WIREGUARDMTU
               value: "{{ calico_veth_mtu | default(calico_mtu) }}"
 {% endif %}
             - name: FELIX_CHAININSERTMODE
@@ -260,6 +271,10 @@ spec:
 {% endif %}
             - name: IP
               value: "autodetect"
+{% if calico_ip6_auto_method is defined and enable_dual_stack_networks %}
+            - name: IP6_AUTODETECTION_METHOD
+              value: "{{ calico_ip6_auto_method }}"
+{% endif %}
 {% if enable_dual_stack_networks %}
             - name: IP6
               value: autodetect
@@ -295,12 +310,20 @@ spec:
             requests:
               cpu: {{ calico_node_cpu_requests }}
               memory: {{ calico_node_memory_requests }}
+{% if calico_version is version('v3.21.0', '>=') %}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                - /bin/calico-node
+                - -shutdown
+{% endif %}
           livenessProbe:
             exec:
               command:
               - /bin/calico-node
               - -felix-live
-{% if calico_network_backend|default("bird") == "bird" %}
+{% if calico_network_backend == "bird" %}
               - -bird-live
 {% endif %}
             periodSeconds: 10
@@ -311,7 +334,7 @@ spec:
             exec:
               command:
               - /bin/calico-node
-{% if calico_network_backend|default("bird") == "bird" %}
+{% if calico_network_backend == "bird" %}
               - -bird-ready
 {% endif %}
               - -felix-ready
@@ -336,8 +359,10 @@ spec:
             - name: xtables-lock
               mountPath: /run/xtables.lock
               readOnly: false
+            # For maintaining CNI plugin API credentials.
             - mountPath: /host/etc/cni/net.d
               name: cni-net-dir
+              readOnly: false
 {% if typha_secure %}
             - name: typha-client
               mountPath: /etc/typha-client

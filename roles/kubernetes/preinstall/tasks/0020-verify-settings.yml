@@ -15,7 +15,7 @@
   run_once: true
   when:
     - not ignore_assert_errors
-    - not etcd_kubeadm_enabled
+    - etcd_deployment_type != "kubeadm"
 
 - name: Stop if non systemd OS type
   assert:
@@ -24,46 +24,16 @@
 
 - name: Stop if unknown OS
   assert:
-    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar Container Linux by Kinvolk', 'Suse', 'openSUSE Leap', 'ClearLinux', 'OracleLinux', 'AlmaLinux', 'Amazon']
+    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'Suse', 'openSUSE Leap', 'ClearLinux', 'OracleLinux', 'AlmaLinux', 'Rocky', 'Amazon']
     msg: "{{ ansible_distribution }} is not a known OS"
   when: not ignore_assert_errors
 
 - name: Stop if unknown network plugin
   assert:
-    that: kube_network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'ovn4nfv','kube-ovn', 'kube-router', 'macvlan']
+    that: kube_network_plugin in ['calico', 'canal', 'flannel', 'weave', 'cloud', 'cilium', 'cni','kube-ovn', 'kube-router', 'macvlan']
     msg: "{{ kube_network_plugin }} is not supported"
   when:
     - kube_network_plugin is defined
-    - not ignore_assert_errors
-
-- name: Stop if incompatible network plugin and cloudprovider
-  assert:
-    that:
-      - calico_ipip_mode == 'Never'
-      - calico_vxlan_mode in ['Always', 'CrossSubnet']
-    msg: "When using cloud_provider azure and network_plugin calico calico_ipip_mode must be 'Never' and calico_vxlan_mode 'Always' or 'CrossSubnet'"
-  when:
-    - cloud_provider is defined and cloud_provider == 'azure'
-    - kube_network_plugin == 'calico'
-    - not ignore_assert_errors
-
-- name: Stop if supported Calico versions
-  assert:
-    that:
-      - "calico_version in calico_crds_archive_checksums.keys()"
-    msg: "Calico version not supported {{ calico_version }} not in {{ calico_crds_archive_checksums.keys() }}"
-  when:
-    - kube_network_plugin == 'calico'
-    - not ignore_assert_errors
-
-- name: Stop if kube-proxy is enabled when using eBPF dataplane
-  assert:
-    that:
-      - kube_proxy_remove
-    msg: "kube-proxy needs to be disabled when using Calico with eBPF dataplane"
-  when:
-    - calico_bpf_enabled | default(false)
-    - kube_network_plugin == 'calico'
     - not ignore_assert_errors
 
 - name: Stop if unsupported version of Kubernetes
@@ -183,61 +153,14 @@
 
 - name: check cloud_provider value
   assert:
-    that: cloud_provider in ['generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci', 'external']
-    msg: "If set the 'cloud_provider' var must be set either to 'generic', 'gce', 'aws', 'azure', 'openstack', 'vsphere', or external"
+    that: cloud_provider in ['gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci', 'external']
+    msg: "If set the 'cloud_provider' var must be set either to 'gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci' or 'external'"
   when:
     - cloud_provider is defined
     - not ignore_assert_errors
   tags:
     - cloud-provider
     - facts
-
-- name: Get current calico cluster version
-  shell: "set -o pipefail && {{ bin_dir }}/calicoctl.sh version  | grep 'Cluster Version:' | awk '{ print $3}'"
-  args:
-    executable: /bin/bash
-  register: calico_version_on_server
-  async: 10
-  poll: 3
-  run_once: yes
-  changed_when: false
-  failed_when: false
-  when:
-    - kube_network_plugin == 'calico'
-
-- name: Check that current calico version is enough for upgrade
-  assert:
-    that:
-      - calico_version_on_server.stdout is version(calico_min_version_required, '>=')
-    msg: >
-      Your version of calico is not fresh enough for upgrade.
-      Minimum version is {{ calico_min_version_required }} supported by the previous kubespray release.
-  when:
-    - kube_network_plugin == 'calico'
-    - 'calico_version_on_server.stdout is defined'
-    - calico_version_on_server.stdout
-    - inventory_hostname == groups['kube_control_plane'][0]
-  run_once: yes
-
-- name: "Check that cluster_id is set if calico_rr enabled"
-  assert:
-    that:
-      - cluster_id is defined
-    msg: "A unique cluster_id is required if using calico_rr"
-  when:
-    - kube_network_plugin == 'calico'
-    - peer_with_calico_rr
-    - inventory_hostname == groups['kube_control_plane'][0]
-  run_once: yes
-
-- name: "Check that calico_rr nodes are in k8s_cluster group"
-  assert:
-    that:
-      - '"k8s_cluster" in group_names'
-    msg: "calico_rr must be a child group of k8s_cluster group"
-  when:
-    - kube_network_plugin == 'calico'
-    - '"calico_rr" in group_names'
 
 - name: "Check that kube_service_addresses is a network range"
   assert:
@@ -287,22 +210,40 @@
   when: resolvconf_mode is defined
   run_once: true
 
-- name: Stop if etcd deployment type is not host or docker
+- name: Stop if etcd deployment type is not host, docker or kubeadm
   assert:
-    that: etcd_deployment_type in ['host', 'docker']
-    msg: "The etcd deployment type, 'etcd_deployment_type', must be host or docker"
+    that: etcd_deployment_type in ['host', 'docker', 'kubeadm']
+    msg: "The etcd deployment type, 'etcd_deployment_type', must be host, docker or kubeadm"
   when:
     - inventory_hostname in groups.get('etcd',[])
-    - not etcd_kubeadm_enabled
 
-- name: Stop if etcd deployment type is not host when container_manager != docker
+- name: Stop if etcd deployment type is not host or kubeadm when container_manager != docker
   assert:
-    that: etcd_deployment_type == 'host'
-    msg: "The etcd deployment type, 'etcd_deployment_type', must be host when container_manager is not docker"
+    that: etcd_deployment_type in ['host', 'kubeadm']
+    msg: "The etcd deployment type, 'etcd_deployment_type', must be host or kubeadm when container_manager is not docker"
   when:
     - inventory_hostname in groups.get('etcd',[])
-    - not etcd_kubeadm_enabled
     - container_manager != 'docker'
+
+# TODO: Clean this task up when we drop backward compatibility support for `etcd_kubeadm_enabled`
+- name: Stop if etcd deployment type is not host or kubeadm when container_manager != docker and etcd_kubeadm_enabled is not defined
+  block:
+    - name: Warn the user if they are still using `etcd_kubeadm_enabled`
+      debug:
+        msg: >
+          "WARNING! => `etcd_kubeadm_enabled` is deprecated and will be removed in a future release.
+          You can set `etcd_deployment_type` to `kubeadm` instead of setting `etcd_kubeadm_enabled` to `true`."
+      changed_when: true
+
+    - name: Stop if `etcd_kubeadm_enabled` is defined and `etcd_deployment_type` is not `kubadm` or `host`
+      assert:
+        that: etcd_deployment_type == 'kubeadm'
+        msg: >
+          It is not possible to use `etcd_kubeadm_enabled` when `etcd_deployment_type` is set to {{ etcd_deployment_type }}.
+          Unset the `etcd_kubeadm_enabled` variable and set `etcd_deployment_type` to desired deployment type (`host`, `kubeadm`, `docker`) instead."
+      when: etcd_kubeadm_enabled
+  run_once: yes
+  when: etcd_kubeadm_enabled is defined
 
 - name: Stop if download_localhost is enabled but download_run_once is not
   assert:
@@ -316,6 +257,12 @@
     msg: "kata_containers_enabled support only for containerd and crio-o. See https://github.com/kata-containers/documentation/blob/1.11.4/how-to/run-kata-with-k8s.md#install-a-cri-implementation for details"
   when: kata_containers_enabled
 
+- name: Stop if kata_containers_version is >= 2.3.0 and kube_version < 1.22.0
+  assert:
+    that: kube_version is version('v1.22.0', '>')
+    msg: "Kata containers version 2.3.0 is compatible with Kubernetes 1.22.0+"
+  when: kata_containers_version is version ('2.3.0', '>=')
+
 - name: Stop if gvisor_enabled is enabled when container_manager is not containerd
   assert:
     that: container_manager == 'containerd'
@@ -324,7 +271,7 @@
 
 - name: Stop if download_localhost is enabled for Flatcar Container Linux
   assert:
-    that: ansible_os_family not in ["Flatcar Container Linux by Kinvolk"]
+    that: ansible_os_family not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     msg: "download_run_once not supported for Flatcar Container Linux"
   when: download_run_once or download_force_cache
 
@@ -334,7 +281,7 @@
     msg: "containerd_version is too low. Minimum version {{ containerd_min_version_required }}"
   run_once: yes
   when:
-    - containerd_version != 'latest'
+    - containerd_version not in ['latest', 'edge', 'stable']
     - container_manager == 'containerd'
 
 - name: Stop if using deprecated containerd_config variable
@@ -343,4 +290,12 @@
     msg: "Variable containerd_config is now deprecated. See https://github.com/kubernetes-sigs/kubespray/blob/master/inventory/sample/group_vars/all/containerd.yml for details."
   when:
     - containerd_config is defined
+    - not ignore_assert_errors
+
+- name: Stop if auto_renew_certificates is enabled when certificates are managed externally (kube_external_ca_mode is true)
+  assert:
+    that: not auto_renew_certificates
+    msg: "Variable auto_renew_certificates must be disabled when CA are managed externally:  kube_external_ca_mode = true"
+  when:
+    - kube_external_ca_mode
     - not ignore_assert_errors

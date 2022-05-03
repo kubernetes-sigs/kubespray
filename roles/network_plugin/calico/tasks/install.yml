@@ -20,7 +20,8 @@
   template:
     src: "cni-calico.conflist.j2"
     dest: "/etc/cni/net.d/calico.conflist.template"
-    owner: kube
+    mode: 0644
+    owner: root
   register: calico_conflist
   notify: reset_calico_cni
 
@@ -50,6 +51,12 @@
   include_tasks: typha_certs.yml
   when:
     - typha_secure
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Calico | Generate apiserver certs
+  include_tasks: calico_apiserver_certs.yml
+  when:
+    - calico_apiserver_enabled
     - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Calico | Install calicoctl wrapper script
@@ -122,10 +129,18 @@
     - enable_dual_stack_networks
 
 - block:
+    - name: Calico | Check if extra directory is needed
+      stat:
+        path: "{{ local_release_dir }}/calico-{{ calico_version }}-kdd-crds/kdd"
+      register: kdd_path
+    - name: Calico | Set kdd path
+      set_fact:
+        calico_kdd_path: "{{ local_release_dir }}/calico-{{ calico_version }}-kdd-crds{{ '/kdd' if kdd_path.stat.exists is defined and kdd_path.stat.exists }}"
     - name: Calico | Create calico manifests for kdd
       assemble:
-        src: "{{ local_release_dir }}/calico-{{ calico_version }}-kdd-crds"
+        src: "{{ calico_kdd_path }}"
         dest: "{{ kube_config_dir }}/kdd-crds.yml"
+        mode: 0644
         delimiter: "---\n"
         regexp: ".*\\.yaml"
         remote_src: true
@@ -159,7 +174,8 @@
           "bpfEnabled": {{ calico_bpf_enabled | bool }},
           "bpfExternalServiceMode": "{{ calico_bpf_service_mode }}",
           "wireguardEnabled": {{ calico_wireguard_enabled | bool }},
-          "logSeverityScreen": "{{ calico_felix_log_severity_screen }}" }}
+          "logSeverityScreen": "{{ calico_felix_log_severity_screen }}",
+          "vxlanEnabled": {{ calico_vxlan_mode != 'Never' }} }}
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
@@ -184,7 +200,7 @@
     - inventory_hostname == groups['kube_control_plane'][0]
     - 'calico_conf.stdout == "0"'
 
-- name: Calico | Configure calico ipv6 network pool (version >= v3.3.0)
+- name: Calico | Configure calico ipv6 network pool
   command:
     cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
     stdin: >
@@ -329,6 +345,7 @@
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
   with_items:
     - {name: calico-config, file: calico-config.yml, type: cm}
     - {name: calico-node, file: calico-node.yml, type: ds}
@@ -345,12 +362,40 @@
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
   with_items:
     - {name: calico, file: calico-typha.yml, type: typha}
   register: calico_node_typha_manifest
   when:
     - inventory_hostname in groups['kube_control_plane']
-    - typha_enabled and calico_datastore == "kdd"
+    - typha_enabled
+
+- name: Calico | get calico apiserver caBundle
+  command: "{{ bin_dir }}/kubectl get secret -n calico-apiserver calico-apiserver-certs -o jsonpath='{.data.apiserver\\.crt}'"
+  changed_when: false
+  register: calico_apiserver_cabundle
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - calico_apiserver_enabled
+
+- name: Calico | set calico apiserver caBundle fact
+  set_fact:
+    calico_apiserver_cabundle: "{{ calico_apiserver_cabundle.stdout }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - calico_apiserver_enabled
+
+- name: Calico | Create calico manifests for apiserver
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
+  with_items:
+    - {name: calico, file: calico-apiserver.yml, type: calico-apiserver}
+  register: calico_apiserver_manifest
+  when:
+    - inventory_hostname in groups['kube_control_plane']
+    - calico_apiserver_enabled
 
 - name: Start Calico resources
   kube:
@@ -363,6 +408,22 @@
   with_items:
     - "{{ calico_node_manifests.results }}"
     - "{{ calico_node_typha_manifest.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+
+- name: Start Calico apiserver resources
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "calico-apiserver"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ calico_apiserver_manifest.results }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
     - not item is skipped
@@ -417,7 +478,8 @@
       "spec": {
         "asNumber": "{{ item.as }}",
         "node": "{{ inventory_hostname }}",
-        "peerIP": "{{ item.router_id }}"
+        "peerIP": "{{ item.router_id }}",
+        "sourceAddress": "{{ item.sourceaddress|default('UseNodeIP') }}"
       }}
   register: output
   retries: 4
@@ -427,4 +489,15 @@
     - "{{ peers|selectattr('scope','undefined')|list|default([]) | union(peers|selectattr('scope','defined')|selectattr('scope','equalto', 'node')|list|default([])) }}"
   when:
     - peer_with_router|default(false)
+    - inventory_hostname in groups['k8s_cluster']
+
+- name: Calico | Configure ipam strictaffinity
+  command:
+    cmd: "{{ bin_dir }}/calicoctl.sh ipam configure --strictaffinity={{ calico_ipam_strictaffinity }}"
+  register: output
+  retries: 4
+  until: output.rc == 0
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - calico_ipam_strictaffinity is defined
     - inventory_hostname in groups['k8s_cluster']

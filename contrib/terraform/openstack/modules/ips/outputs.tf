@@ -17,5 +17,5 @@ output "k8s_nodes_fips" {
 }
 
 output "bastion_fips" {
-  value = openstack_networking_floatingip_v2.bastion[*].address
+  value = length(var.bastion_fips) > 0 ? var.bastion_fips : openstack_networking_floatingip_v2.bastion[*].address
 }

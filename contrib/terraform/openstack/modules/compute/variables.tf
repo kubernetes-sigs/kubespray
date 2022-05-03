@@ -40,6 +40,8 @@ variable "gfs_volume_size_in_gb" {}
 
 variable "master_volume_type" {}
 
+variable "node_volume_type" {}
+
 variable "public_key_path" {}
 
 variable "image" {}
@@ -104,8 +106,6 @@ variable "k8s_allowed_egress_ips" {
 
 variable "k8s_nodes" {}
 
-variable "wait_for_floatingip" {}
-
 variable "supplementary_master_groups" {
   default = ""
 }
@@ -124,8 +124,16 @@ variable "worker_allowed_ports" {
 
 variable "use_access_ip" {}
 
-variable "use_server_groups" {
-  type = bool
+variable "master_server_group_policy" {
+  type = string
+}
+
+variable "node_server_group_policy" {
+  type = string
+}
+
+variable "etcd_server_group_policy" {
+  type = string
 }
 
 variable "extra_sec_groups" {
@@ -154,4 +162,8 @@ variable "image_master_uuid" {
 
 variable "group_vars_path" {
   type = string
+}
+
+variable "port_security_enabled" {
+  type = bool
 }

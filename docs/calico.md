@@ -50,7 +50,7 @@ calico_datastore: kdd
 
 ### Optional : Define network backend
 
-In some cases you may want to define Calico network backend. Allowed values are `bird`, `vxlan` or `none`. Bird is a default value.
+In some cases you may want to define Calico network backend. Allowed values are `bird`, `vxlan` or `none`. `vxlan` is the default value.
 
 To re-define you need to edit the inventory and add a group variable `calico_network_backend`
 
@@ -210,23 +210,55 @@ calico_node_readinessprobe_timeout: 10
 
 ## Config encapsulation for cross server traffic
 
-Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.projectcalico.org/v3.11/networking/vxlan-ipip). VXLAN is supported in some environments where IP in IP is not (for example, Azure).
+Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.projectcalico.org/v3.11/networking/vxlan-ipip). VXLAN is the more mature implementation and enabled by default, please check your environment if you need *IP in IP* encapsulation.
 
 *IP in IP* and *VXLAN* is mutualy exclusive modes.
 
-Configure Ip in Ip mode. Possible values is `Always`, `CrossSubnet`, `Never`.
+Kubespray defaults have changed after version 2.18 from auto-enabling `ipip` mode to auto-enabling `vxlan`. This was done to facilitate wider deployment scenarios including those where vxlan acceleration is provided by the underlying network devices.
+
+If you are running your cluster with the default calico settings and are upgrading to a release post 2.18.x (i.e. 2.19 and later or `master` branch) then you have two options:
+
+* perform a manual migration to vxlan before upgrading kubespray (see migrating from IP in IP to VXLAN below)
+* pin the pre-2.19 settings in your ansible inventory (see IP in IP mode settings below)
+
+### IP in IP mode
+
+To configure Ip in Ip mode you need to use the bird network backend.
 
 ```yml
-calico_ipip_mode: 'Always'
-```
-
-Configure VXLAN mode. Possible values is `Always`, `CrossSubnet`, `Never`.
-
-```yml
+calico_ipip_mode: 'Always'  # Possible values is `Always`, `CrossSubnet`, `Never`
 calico_vxlan_mode: 'Never'
+calico_network_backend: 'bird'
 ```
 
-If you use VXLAN mode, BGP networking is not required. You can disable BGP to reduce the moving parts in your cluster by `calico_network_backend: vxlan`
+### BGP mode
+
+To enable BGP no-encapsulation mode:
+
+```yml
+calico_ipip_mode: 'Never'
+calico_vxlan_mode: 'Never'
+calico_network_backend: 'bird'
+```
+
+### Migrating from IP in IP to VXLAN
+
+If you would like to migrate from the old IP in IP with `bird` network backends default to the new VXLAN based encapsulation you need to perform this change before running an upgrade of your cluster; the `cluster.yml` and `upgrade-cluster.yml` playbooks will refuse to continue if they detect incompatible settings.
+
+Execute the following sters on one of the control plane nodes, ensure the cluster in healthy before proceeding.
+
+```shell
+calicoctl.sh patch felixconfig default -p '{"spec":{"vxlanEnabled":true}}'
+calicoctl.sh patch ippool default-pool -p '{"spec":{"ipipMode":"Never", "vxlanMode":"Always"}}'
+```
+
+**Note:** if you created multiple ippools you will need to patch all of them individually to change their encapsulation. The kubespray playbooks only handle the default ippool creaded by kubespray.
+
+Wait for the `vxlan.calico` interfaces to be created on all cluster nodes and traffic to be routed through it then you can disable `ipip`.
+
+```shell
+calicoctl.sh patch felixconfig default -p '{"spec":{"ipipEnabled":false}}'
+```
 
 ## Configuring interface MTU
 
@@ -295,8 +327,9 @@ To enable the eBPF dataplane support ensure you add the following to your invent
 
 ```yaml
 calico_bpf_enabled: true
-kube_proxy_remove: true
 ```
+
+**NOTE:** there is known incompatibility in using the `kernel-kvm` kernel package on Ubuntu OSes because it is missing support for `CONFIG_NET_SCHED` which is a requirement for Calico eBPF support. When using Calico eBPF with Ubuntu ensure you run the `-generic` kernel.
 
 ### Cleaning up after kube-proxy
 
@@ -318,7 +351,7 @@ To clean up any ipvs leftovers:
 
 Calico node, typha and kube-controllers need to be able to talk to the kubernetes API. Please reference the [Enabling eBPF Calico Docs](https://docs.projectcalico.org/maintenance/ebpf/enabling-bpf) for guidelines on how to do this.
 
-Kubespray sets up the `kubernetes-services-endpoint` configmap based on the contents of the `loadbalancer_apiserver` inventory variable documented in [HA Mode](./ha-mode.md).
+Kubespray sets up the `kubernetes-services-endpoint` configmap based on the contents of the `loadbalancer_apiserver` inventory variable documented in [HA Mode](/docs/ha-mode.md).
 
 If no external loadbalancer is used, Calico eBPF can also use the localhost loadbalancer option. In this case Calico Automatic Host Endpoints need to be enabled to allow services like `coredns` and `metrics-server` to communicate with the kubernetes host endpoint. See [this blog post](https://www.projectcalico.org/securing-kubernetes-nodes-with-calico-automatic-host-endpoints/) on enabling automatic host endpoints.
 
@@ -367,6 +400,7 @@ The following OSes will require enabling the EPEL repo in order to bring in wire
 
 * CentOS 7 & 8
 * AlmaLinux 8
+* Rocky Linux 8
 * Amazon Linux 2
 
 ```yaml

@@ -33,7 +33,7 @@ apiVersion: kubeadm.k8s.io/v1beta2
 kind: ClusterConfiguration
 clusterName: {{ cluster_name }}
 etcd:
-{% if not etcd_kubeadm_enabled %}
+{% if etcd_deployment_type != "kubeadm" %}
   external:
       endpoints:
 {% for endpoint in etcd_access_addresses.split(',') %}
@@ -42,7 +42,7 @@ etcd:
       caFile: {{ etcd_cert_dir }}/{{ kube_etcd_cacert_file }}
       certFile: {{ etcd_cert_dir }}/{{ kube_etcd_cert_file }}
       keyFile: {{ etcd_cert_dir }}/{{ kube_etcd_key_file }}
-{% elif etcd_kubeadm_enabled %}
+{% elif etcd_deployment_type == "kubeadm" %}
   local:
     imageRepository: "{{ etcd_image_repo | regex_replace("/etcd$","") }}"
     imageTag: "{{ etcd_image_tag }}"
@@ -84,12 +84,14 @@ etcd:
 {% endif %}
 dns:
   type: CoreDNS
-  imageRepository: {{ coredns_image_repo | regex_replace('/coredns.*$','') }}
+  imageRepository: {{ coredns_image_repo | regex_replace('/coredns(?!/coredns).*$','') }}
   imageTag: {{ coredns_image_tag }}
 networking:
   dnsDomain: {{ dns_domain }}
   serviceSubnet: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks else '' }}"
+{% if kube_network_plugin is defined and kube_network_plugin not in ["kube-ovn"] %}
   podSubnet: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks else '' }}"
+{% endif %}
 {% if kubeadm_feature_gates %}
 featureGates:
 {%   for feature in kubeadm_feature_gates %}
@@ -123,6 +125,9 @@ apiServer:
     insecure-port: "{{ kube_apiserver_insecure_port }}"
 {% if kube_apiserver_enable_admission_plugins|length > 0 %}
     enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }}
+{% endif %}
+{% if kube_apiserver_admission_control_config_file %}
+    admission-control-config-file: {{ kube_config_dir }}/admission-controls.yaml
 {% endif %}
 {% if kube_apiserver_disable_admission_plugins|length > 0 %}
     disable-admission-plugins: {{ kube_apiserver_disable_admission_plugins | join(',') }}
@@ -194,10 +199,10 @@ apiServer:
 {% for key in kube_kubeadm_apiserver_extra_args %}
     {{ key }}: "{{ kube_kubeadm_apiserver_extra_args[key] }}"
 {% endfor %}
-{% if kube_feature_gates %}
-    feature-gates: {{ kube_feature_gates|join(',') }}
+{% if kube_apiserver_feature_gates or kube_feature_gates %}
+    feature-gates: "{{ kube_apiserver_feature_gates | default(kube_feature_gates, true) | join(',') }}"
 {% endif %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] %}
     cloud-provider: {{ cloud_provider }}
     cloud-config: {{ kube_config_dir }}/cloud_config
 {% endif %}
@@ -214,9 +219,9 @@ apiServer:
 {% if kubelet_rotate_server_certificates %}
     kubelet-certificate-authority: {{ kube_cert_dir }}/ca.crt
 {% endif %}
-{% if kubernetes_audit or kube_token_auth|default(true) or kube_webhook_token_auth|default(false) or ( cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] ) or apiserver_extra_volumes or ssl_ca_dirs|length %}
+{% if kubernetes_audit or kube_token_auth|default(true) or kube_webhook_token_auth|default(false) or ( cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] ) or apiserver_extra_volumes or ssl_ca_dirs|length %}
   extraVolumes:
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] %}
   - name: cloud-config
     hostPath: {{ kube_config_dir }}/cloud_config
     mountPath: {{ kube_config_dir }}/cloud_config
@@ -247,6 +252,13 @@ apiServer:
     readOnly: false
 {% endif %}
 {% endif %}
+{% if kube_apiserver_admission_control_config_file %}
+  - name: admission-control-configs
+    hostPath: {{ kube_config_dir }}/admission-controls
+    mountPath: {{ kube_config_dir }}
+    readOnly: false
+    pathType: DirectoryOrCreate
+{% endif %}
 {% for volume in apiserver_extra_volumes %}
   - name: {{ volume.name }}
     hostPath: {{ volume.hostPath }}
@@ -271,7 +283,9 @@ controllerManager:
   extraArgs:
     node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
     node-monitor-period: {{ kube_controller_node_monitor_period }}
+{% if kube_network_plugin is defined and kube_network_plugin not in ["kube-ovn"] %}
     cluster-cidr: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks else '' }}"
+{% endif %}
     service-cluster-ip-range: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks else '' }}"
 {% if enable_dual_stack_networks %}
     node-cidr-mask-size-ipv4: "{{ kube_network_node_prefix }}"
@@ -284,13 +298,13 @@ controllerManager:
     bind-address: {{ kube_controller_manager_bind_address }}
     leader-elect-lease-duration: {{ kube_controller_manager_leader_elect_lease_duration }}
     leader-elect-renew-deadline: {{ kube_controller_manager_leader_elect_renew_deadline }}
-{% if kube_feature_gates %}
-    feature-gates: {{ kube_feature_gates|join(',') }}
+{% if kube_controller_feature_gates or kube_feature_gates %}
+    feature-gates: "{{ kube_controller_feature_gates | default(kube_feature_gates, true) | join(',') }}"
 {% endif %}
 {% for key in kube_kubeadm_controller_extra_args %}
     {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
 {% endfor %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] %}
     cloud-provider: {{ cloud_provider }}
     cloud-config: {{ kube_config_dir }}/cloud_config
 {% endif %}
@@ -307,14 +321,14 @@ controllerManager:
     tls-cipher-suites: {% for tls in tls_cipher_suites %}{{ tls }}{{ "," if not loop.last else "" }}{% endfor %}
 
 {% endif %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] or controller_manager_extra_volumes %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] or controller_manager_extra_volumes %}
   extraVolumes:
 {% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
   - name: openstackcacert
     hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
     mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
 {% endif %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws"] %}
+{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] %}
   - name: cloud-config
     hostPath: {{ kube_config_dir }}/cloud_config
     mountPath: {{ kube_config_dir }}/cloud_config
@@ -330,8 +344,8 @@ scheduler:
   extraArgs:
     bind-address: {{ kube_scheduler_bind_address }}
     config: {{ kube_config_dir }}/kubescheduler-config.yaml
-{% if kube_feature_gates %}
-    feature-gates: {{ kube_feature_gates|join(',') }}
+{% if kube_scheduler_feature_gates or kube_feature_gates %}
+    feature-gates: "{{ kube_scheduler_feature_gates | default(kube_feature_gates, true) | join(',') }}"
 {% endif %}
 {% if kube_kubeadm_scheduler_extra_args|length > 0 %}
 {% for key in kube_kubeadm_scheduler_extra_args %}
@@ -368,7 +382,9 @@ clientConnection:
   contentType: {{ kube_proxy_client_content_type }}
   kubeconfig: {{ kube_proxy_client_kubeconfig }}
   qps: {{ kube_proxy_client_qps }}
+{% if kube_network_plugin is defined and kube_network_plugin not in ["kube-ovn"] %}
 clusterCIDR: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks else '' }}"
+{% endif %}
 configSyncPeriod: {{ kube_proxy_config_sync_period }}
 conntrack:
   maxPerCore: {{ kube_proxy_conntrack_max_per_core }}
@@ -398,9 +414,10 @@ nodePortAddresses: {{ kube_proxy_nodeport_addresses }}
 oomScoreAdj: {{ kube_proxy_oom_score_adj }}
 portRange: {{ kube_proxy_port_range }}
 udpIdleTimeout: {{ kube_proxy_udp_idle_timeout }}
-{% if kube_feature_gates %}
+{% if kube_proxy_feature_gates or kube_feature_gates %}
+{% set feature_gates = ( kube_proxy_feature_gates | default(kube_feature_gates, true) ) %}
 featureGates:
-{%   for feature in kube_feature_gates %}
+{%   for feature in feature_gates %}
   {{ feature|replace("=", ": ") }}
 {%   endfor %}
 {% endif %}
@@ -423,9 +440,11 @@ clusterDNS:
 {% for dns_address in kubelet_cluster_dns %}
 - {{ dns_address }}
 {% endfor %}
-{% if kube_feature_gates %}
+{% if kubelet_feature_gates or kube_feature_gates %}
+{% set feature_gates = ( kubelet_feature_gates | default(kube_feature_gates, true) ) %}
 featureGates:
-{%   for feature in kube_feature_gates %}
+{%   for feature in feature_gates %}
   {{ feature|replace("=", ": ") }}
 {%   endfor %}
 {% endif %}
+

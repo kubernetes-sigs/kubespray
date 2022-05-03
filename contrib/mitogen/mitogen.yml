@@ -1,0 +1,49 @@
+---
+- name: Check ansible version
+  import_playbook: ansible_version.yml
+
+- hosts: localhost
+  strategy: linear
+  vars:
+    mitogen_version: 0.3.2
+    mitogen_url: https://github.com/mitogen-hq/mitogen/archive/refs/tags/v{{ mitogen_version }}.tar.gz
+    ansible_connection: local
+  tasks:
+    - name: Create mitogen plugin dir
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: 0755
+      become: false
+      loop:
+        - "{{ playbook_dir }}/plugins/mitogen"
+        - "{{ playbook_dir }}/dist"
+
+    - name: download mitogen release
+      get_url:
+        url: "{{ mitogen_url }}"
+        dest: "{{ playbook_dir }}/dist/mitogen_{{ mitogen_version }}.tar.gz"
+        validate_certs: true
+
+    - name: extract archive
+      unarchive:
+        src: "{{ playbook_dir }}/dist/mitogen_{{ mitogen_version }}.tar.gz"
+        dest: "{{ playbook_dir }}/dist/"
+
+    - name: copy plugin
+      synchronize:
+        src: "{{ playbook_dir }}/dist/mitogen-{{ mitogen_version }}/"
+        dest: "{{ playbook_dir }}/plugins/mitogen"
+
+    - name: add strategy to ansible.cfg
+      ini_file:
+        path: ansible.cfg
+        mode: 0644
+        section: "{{ item.section | d('defaults') }}"
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+      with_items:
+        - option: strategy
+          value: mitogen_linear
+        - option: strategy_plugins
+          value: plugins/mitogen/ansible_mitogen/plugins/strategy

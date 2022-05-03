@@ -1,0 +1,79 @@
+---
+- name: Kubernetes Apps | Install yq
+  become: yes
+  get_url:
+    url: "https://github.com/mikefarah/yq/releases/download/v4.11.2/yq_linux_amd64"
+    dest: "{{ bin_dir }}/yq"
+    mode: '0755'
+
+- name: Kubernetes Apps | Set ArgoCD template list
+  set_fact:
+    argocd_templates:
+      - name: namespace
+        file: argocd-namespace.yml
+      - name: install
+        file: argocd-install.yml
+        namespace: "{{ argocd_namespace }}"
+        url: "https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml"
+  when:
+    - "inventory_hostname == groups['kube_control_plane'][0]"
+
+- name: Kubernetes Apps | Download ArgoCD remote manifests
+  become: yes
+  get_url:
+    url: "{{ item.url }}"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
+  with_items: "{{ argocd_templates | selectattr('url', 'defined') | list }}"
+  loop_control:
+    label: "{{ item.file }}"
+  when:
+    - "inventory_hostname == groups['kube_control_plane'][0]"
+
+- name: Kubernetes Apps | Set ArgoCD namespace for remote manifests
+  become: yes
+  command: |
+    {{ bin_dir }}/yq eval-all -i '.metadata.namespace="{{ argocd_namespace }}"' {{ kube_config_dir }}/{{ item.file }}
+  with_items: "{{ argocd_templates | selectattr('url', 'defined') | list }}"
+  loop_control:
+    label: "{{ item.file }}"
+  when:
+    - "inventory_hostname == groups['kube_control_plane'][0]"
+
+- name: Kubernetes Apps | Create ArgoCD manifests from templates
+  become: yes
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
+  with_items: "{{ argocd_templates | selectattr('url', 'undefined') | list }}"
+  loop_control:
+    label: "{{ item.file }}"
+  when:
+    - "inventory_hostname == groups['kube_control_plane'][0]"
+
+- name: Kubernetes Apps | Install ArgoCD
+  become: yes
+  kube:
+    name: ArgoCD
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.file }}"
+    state: latest
+  with_items: "{{ argocd_templates }}"
+  when:
+    - "inventory_hostname == groups['kube_control_plane'][0]"
+
+# https://github.com/argoproj/argo-cd/blob/master/docs/faq.md#i-forgot-the-admin-password-how-do-i-reset-it
+- name: Kubernetes Apps | Set ArgoCD custom admin password
+  become: yes
+  shell: |
+    {{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf -n {{ argocd_namespace }} patch secret argocd-secret -p \
+      '{
+        "stringData": {
+          "admin.password": "{{ argocd_admin_password | password_hash('bcrypt') }}",
+          "admin.passwordMtime": "'$(date +%FT%T%Z)'"
+        }
+      }'
+  when:
+    - argocd_admin_password is defined
+    - "inventory_hostname == groups['kube_control_plane'][0]"

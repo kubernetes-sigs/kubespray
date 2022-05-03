@@ -2,7 +2,7 @@
 set -eo pipefail
 
 VERSIONS="$@"
-ARCHITECTURES="arm arm64 amd64"
+ARCHITECTURES="arm arm64 amd64 ppc64le"
 DOWNLOADS="kubelet kubectl kubeadm"
 DOWNLOAD_DIR="tmp/kubeadm_hasher"
 

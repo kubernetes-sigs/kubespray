@@ -11,7 +11,7 @@ For a large scaled deployments, consider the following configuration changes:
 * Override the ``download_run_once: true`` and/or ``download_localhost: true``.
   See download modes for details.
 
-* Adjust the `retry_stagger` global var as appropriate. It should provide same
+* Adjust the `retry_stagger` global var as appropriate. It should provide sane
   load on a delegate (the first K8s control plane node) then retrying failed
   push or download operations.
 
@@ -32,18 +32,16 @@ For a large scaled deployments, consider the following configuration changes:
   ``kube_controller_node_monitor_period``,
   ``kube_apiserver_pod_eviction_not_ready_timeout_seconds`` &
   ``kube_apiserver_pod_eviction_unreachable_timeout_seconds`` for better Kubernetes reliability.
-  Check out [Kubernetes Reliability](kubernetes-reliability.md)
+  Check out [Kubernetes Reliability](/docs/kubernetes-reliability.md)
 
 * Tune network prefix sizes. Those are ``kube_network_node_prefix``,
   ``kube_service_addresses`` and ``kube_pods_subnet``.
 
 * Add calico_rr nodes if you are deploying with Calico or Canal. Nodes recover
-  from host/network interruption much quicker with calico_rr. Note that
-  calico_rr role must be on a host without kube_control_plane or kube_node role (but
-  etcd role is okay).
+  from host/network interruption much quicker with calico_rr.
 
 * Check out the
-  [Inventory](getting-started.md#building-your-own-inventory)
+  [Inventory](/docs/getting-started.md#building-your-own-inventory)
   section of the Getting started guide for tips on creating a large scale
   Ansible inventory.
 

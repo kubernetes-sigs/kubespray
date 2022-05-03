@@ -32,8 +32,6 @@ spec:
             topologyKey: kubernetes.io/hostname
       containers:
       - args:
-        - --kvstore=etcd
-        - --kvstore-opt=etcd.config=/var/lib/etcd-config/etcd.config
         - --config-dir=/tmp/cilium/config-map
 {% if cilium_mtu != "" %}
         - --mtu={{ cilium_mtu }}
@@ -148,12 +146,14 @@ spec:
           mountPath: {{ cri_socket }}
           readOnly: true
 {% endif %}
+{% if cilium_identity_allocation_mode == "kvstore" %}
         - mountPath: /var/lib/etcd-config
           name: etcd-config-path
           readOnly: true
         - mountPath: "{{cilium_cert_dir}}"
           name: etcd-secrets
           readOnly: true
+{% endif %}
         - mountPath: /var/lib/cilium/clustermesh
           name: clustermesh-secrets
           readOnly: true
@@ -272,6 +272,7 @@ spec:
           path: /run/xtables.lock
           type: FileOrCreate
         name: xtables-lock
+{% if cilium_identity_allocation_mode == "kvstore" %}
         # To read the etcd config stored in config maps
       - configMap:
           defaultMode: 420
@@ -284,6 +285,7 @@ spec:
       - name: etcd-secrets
         hostPath:
           path: "{{cilium_cert_dir}}"
+{% endif %}
         # To read the clustermesh configuration
       - name: clustermesh-secrets
         secret:

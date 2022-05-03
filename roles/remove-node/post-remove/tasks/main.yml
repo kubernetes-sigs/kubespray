@@ -1,5 +1,10 @@
 ---
-- name: Delete node  # noqa 301 ignore-errors
-  command: "{{ bin_dir }}/kubectl delete node {{ kube_override_hostname|default(inventory_hostname) }}"
+- name: Delete node
+  command: "{{ kubectl }} delete node {{ kube_override_hostname|default(inventory_hostname) }}"
   delegate_to: "{{ groups['kube_control_plane']|first }}"
-  ignore_errors: true
+  when: inventory_hostname in groups['k8s_cluster']
+  retries: 10
+  # Sometimes the api-server can have a short window of indisponibility when we delete a master node
+  delay: 3
+  register: result
+  until: result is not failed

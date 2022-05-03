@@ -13,7 +13,7 @@ the _etcd_ group into the _k8s_cluster_, unless you are certain
 to do that and you have it fully contained in the latter:
 
 ```ShellSession
-k8s_cluster ⊂ etcd => kube_node ∩ etcd = etcd
+etcd ⊂ k8s_cluster => kube_node ∩ etcd = etcd
 ```
 
 When _kube_node_ contains _etcd_, you define your etcd cluster to be as well schedulable for Kubernetes workloads.
@@ -25,7 +25,7 @@ not _kube_node_.
 
 There are also two special groups:
 
-* **calico_rr** : explained for [advanced Calico networking cases](calico.md)
+* **calico_rr** : explained for [advanced Calico networking cases](/docs/calico.md)
 * **bastion** : configure a bastion host if your nodes are not directly reachable
 
 Below is a complete inventory example:
@@ -100,7 +100,6 @@ The following tags are defined in playbooks:
 
 |                       Tag name | Used for
 |--------------------------------|---------
-|                     ambassador | Ambassador Ingress Controller
 |                       annotate | Create kube-router annotation
 |                           apps | K8s apps definitions
 |                        asserts | Check tasks for download role
@@ -157,6 +156,7 @@ The following tags are defined in playbooks:
 |                        kubeadm | Roles linked to kubeadm tasks
 |                 kube-apiserver | Configuring static pod kube-apiserver
 |        kube-controller-manager | Configuring static pod kube-controller-manager
+|                       kube-vip | Installing and configuring kube-vip
 |                        kubectl | Installing kubectl and bash completion
 |                        kubelet | Configuring kubelet service
 |                       kube-ovn | Network plugin kube-ovn
@@ -180,7 +180,6 @@ The following tags are defined in playbooks:
 |                   node-webhook | Tasks linked to webhook (grating access to resources)
 |                     nvidia_gpu | Enable nvidia accelerator for runtimes
 |                            oci | Cloud provider: oci
-|                        ovn4nfv | Network plugin ovn4nfv
 |             persistent_volumes | Configure csi volumes
 | persistent_volumes_aws_ebs_csi | Configuring csi driver: aws-ebs
 | persistent_volumes_cinder_csi  | Configuring csi driver: cinder
@@ -204,6 +203,7 @@ The following tags are defined in playbooks:
 |             vsphere-csi-driver | Configuring csi driver: vsphere
 |                          weave | Network plugin Weave
 |                      win_nodes | Running windows specific tasks
+|                          youki | Configuring youki runtime
 
 Note: Use the ``bash scripts/gen_tags.sh`` command to generate a list of all
 tags found in the codebase. New tags will be listed with the empty "Used for"
@@ -252,7 +252,7 @@ For more information about Ansible and bastion hosts, read
 
 ## Mitogen
 
-You can use [mitogen](mitogen.md) to speed up kubespray.
+Mitogen support is deprecated, please see [mitogen related docs](/docs/mitogen.md) for useage and reasons for deprecation.
 
 ## Beyond ansible 2.9
 
@@ -268,7 +268,7 @@ that explains in detail the need and the evolution plan.
 You first need to uninstall your old ansible (pre 2.10) version and install the new one.
 
 ```ShellSession
-pip uninstall ansible
+pip uninstall ansible ansible-base ansible-core
 cd kubespray/
 pip install -U .
 ```

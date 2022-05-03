@@ -57,7 +57,7 @@
   serial: "{{ serial | default('20%') }}"
   roles:
     - { role: kubespray-defaults }
-    - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
+    - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
 
 - hosts: etcd
   gather_facts: False
@@ -69,8 +69,8 @@
       tags: etcd
       vars:
         etcd_cluster_setup: true
-        etcd_events_cluster_setup: false
-      when: not etcd_kubeadm_enabled | default(false)
+        etcd_events_cluster_setup: "{{ etcd_events_cluster_enabled }}"
+      when: etcd_deployment_type != "kubeadm"
 
 - hosts: k8s_cluster
   gather_facts: False
@@ -83,7 +83,7 @@
       vars:
         etcd_cluster_setup: false
         etcd_events_cluster_setup: false
-      when: not etcd_kubeadm_enabled | default(false)
+      when: etcd_deployment_type != "kubeadm"
 
 - name: Handle upgrades to master components first to maintain backwards compat.
   gather_facts: False
@@ -94,7 +94,7 @@
   roles:
     - { role: kubespray-defaults }
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
-    - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
+    - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
     - { role: kubernetes/node, tags: node }
     - { role: kubernetes/control-plane, tags: master, upgrade_cluster_setup: true }
     - { role: kubernetes/client, tags: client }
@@ -125,7 +125,7 @@
   roles:
     - { role: kubespray-defaults }
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
-    - { role: container-engine, tags: "container-engine", when: deploy_container_engine|default(true) }
+    - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
     - { role: kubernetes/node, tags: node }
     - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: kubernetes/node-label, tags: node-label }
@@ -153,12 +153,15 @@
   environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults }
+    - { role: kubernetes-apps/ingress_controller, tags: ingress-controller }
+    - { role: kubernetes-apps/external_provisioner, tags: external-provisioner }
     - { role: kubernetes-apps, tags: apps }
 
-- hosts: k8s_cluster
+- name: Apply resolv.conf changes now that cluster DNS is up
+  hosts: k8s_cluster
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults }
-    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf }
+    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_late: true }

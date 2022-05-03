@@ -25,7 +25,7 @@
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
     - systemd_resolved_enabled.rc != 0
-    - not is_fedora_coreos
+    - networkmanager_enabled.rc != 0
   tags:
     - bootstrap-os
     - resolvconf
@@ -40,6 +40,8 @@
     - resolvconf
 
 - import_tasks: 0062-networkmanager-unmanaged-devices.yml
+  when:
+    - networkmanager_enabled.rc == 0
   tags:
     - bootstrap-os
 
@@ -47,7 +49,7 @@
   when:
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
-    - is_fedora_coreos
+    - networkmanager_enabled.rc == 0
   tags:
     - bootstrap-os
     - resolvconf
@@ -75,7 +77,8 @@
   when:
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
-    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    - dhclientconffile is defined
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
   tags:
     - bootstrap-os
     - resolvconf
@@ -84,7 +87,8 @@
   when:
     - dns_mode != 'none'
     - resolvconf_mode != 'host_resolvconf'
-    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    - dhclientconffile is defined
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
   tags:
     - bootstrap-os
     - resolvconf
@@ -113,3 +117,11 @@
     - ansible_os_family == "RedHat"
   tags:
     - bootstrap-os
+
+- name: Run calico checks
+  include_role:
+    name: network_plugin/calico
+    tasks_from: check
+  when:
+    - kube_network_plugin == 'calico'
+    - not ignore_assert_errors

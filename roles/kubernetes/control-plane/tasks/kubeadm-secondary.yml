@@ -3,7 +3,7 @@
   set_fact:
     kubeadm_discovery_address: >-
       {%- if "127.0.0.1" in kube_apiserver_endpoint or "localhost" in kube_apiserver_endpoint -%}
-      {{ first_kube_master }}:{{ kube_apiserver_port }}
+      {{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
       {%- else -%}
       {{ kube_apiserver_endpoint | regex_replace('https://', '') }}
       {%- endif %}
@@ -18,7 +18,8 @@
     --upload-certs
   register: kubeadm_upload_cert
   when:
-    - inventory_hostname == groups['kube_control_plane']|first
+    - inventory_hostname == first_kube_control_plane
+    - not kube_external_ca_mode
 
 - name: Parse certificate key if not set
   set_fact:
@@ -35,7 +36,7 @@
     mode: 0640
     backup: yes
   when:
-    - inventory_hostname != groups['kube_control_plane']|first
+    - inventory_hostname != first_kube_control_plane
     - not kubeadm_already_run.stat.exists
 
 - name: Wait for k8s apiserver
@@ -49,14 +50,24 @@
   debug:
     msg: "{{ kubeadm_already_run.stat.exists }}"
 
-- name: Joining control plane node to the cluster.
+- name: Reset cert directory
   shell: >-
     if [ -f /etc/kubernetes/manifests/kube-apiserver.yaml ]; then
     {{ bin_dir }}/kubeadm reset -f --cert-dir {{ kube_cert_dir }};
-    fi &&
+    fi
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+  when:
+    - inventory_hostname != first_kube_control_plane
+    - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists
+    - not kube_external_ca_mode
+
+- name: Joining control plane node to the cluster.
+  command: >-
     {{ bin_dir }}/kubeadm join
     --config {{ kube_config_dir }}/kubeadm-controlplane.yaml
     --ignore-preflight-errors=all
+    --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   register: kubeadm_join_control_plane
@@ -64,5 +75,5 @@
   throttle: 1
   until: kubeadm_join_control_plane is succeeded
   when:
-    - inventory_hostname != groups['kube_control_plane']|first
+    - inventory_hostname != first_kube_control_plane
     - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists

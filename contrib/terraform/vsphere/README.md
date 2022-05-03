@@ -1,6 +1,6 @@
-# Kubernetes on Exoscale with Terraform
+# Kubernetes on vSphere with Terraform
 
-Provision a Kubernetes cluster on [vSphere](https://www.vmware.com/se/products/vsphere.html) using Terraform and Kubespray.
+Provision a Kubernetes cluster on [vSphere](https://www.vmware.com/products/vsphere.html) using Terraform and Kubespray.
 
 ## Overview
 
@@ -98,20 +98,33 @@ ansible-playbook -i inventory.ini ../../cluster.yml -b -v
 
 * `machines`: Machines to provision. Key of this object will be used as the name of the machine
   * `node_type`: The role of this node *(master|worker)*
-  * `ip`: The IP address with the netmask (CIDR notation)
+  * `ip`: The IP address of the machine
+  * `netmask`: The netmask to use (to be used on the right hand side in CIDR notation, e.g., `24`)
+* `network`: The name of the network to attach the machines to
 * `gateway`: The IP address of the network gateway
-* `ssh_public_keys`: List of public SSH keys to install on all machines
 * `vsphere_datacenter`: The identifier of vSphere data center
 * `vsphere_compute_cluster`: The identifier of vSphere compute cluster
 * `vsphere_datastore`: The identifier of vSphere data store
-* `vsphere_server`: The address of vSphere server
-* `vsphere_hostname`: The IP address of vSphere hostname
-* `template_name`: The name of a base image (the image has to be uploaded to vSphere beforehand)
+* `vsphere_server`: This is the vCenter server name or address for vSphere API operations.
+* `ssh_public_keys`: List of public SSH keys to install on all machines
+* `template_name`: The name of a base image (the OVF template be defined in vSphere beforehand)
 
 ### Optional
 
-* `prefix`: Prefix to use for all resources, required to be unique for all clusters in the same project *(Defaults to `default`)*
-* `dns_primary`: The IP address of primary DNS server *(Defaults to `8.8.4.4`)*
-* `dns_secondary`:The IP address of secondary DNS server *(Defaults to `8.8.8.8`)*
+* `folder`: Name of the folder to put all machines in (default: `""`)
+* `prefix`: Prefix to use for all resources, required to be unique for all clusters in the same project (default: `"k8s"`)
+* `inventory_file`: Name of the generated inventory file for Kubespray to use in the Ansible step (default: `inventory.ini`)
+* `dns_primary`: The IP address of primary DNS server (default: `8.8.4.4`)
+* `dns_secondary`: The IP address of secondary DNS server (default: `8.8.8.8`)
+* `firmware`: Firmware to use (default: `bios`)
+* `hardware_version`: The version of the hardware (default: `15`)
+* `master_cores`: The number of CPU cores for the master nodes (default: 4)
+* `master_memory`: The amount of RAM for the master nodes in MB (default: 4096)
+* `master_disk_size`: The amount of disk space for the master nodes in GB (default: 20)
+* `worker_cores`: The number of CPU cores for the worker nodes (default: 16)
+* `worker_memory`: The amount of RAM for the worker nodes in MB (default: 8192)
+* `worker_disk_size`: The amount of disk space for the worker nodes in GB (default: 100)
+* `vapp`: Boolean to set the template type to vapp. (Default: false)
+* `interface_name`: Name of the interface to configure. (Default: ens192)
 
 An example variables file can be found `default.tfvars`

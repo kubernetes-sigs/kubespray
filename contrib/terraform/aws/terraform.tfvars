@@ -32,7 +32,7 @@ aws_kube_worker_size      = "t3.medium"
 aws_kube_worker_disk_size = 50
 
 #Settings AWS ELB
-aws_elb_api_port    = 6443
+aws_nlb_api_port    = 6443
 k8s_secure_api_port = 6443
 
 default_tags = {

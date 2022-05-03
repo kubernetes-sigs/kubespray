@@ -3,7 +3,7 @@
 - name: Confirm node upgrade
   pause:
     echo: yes
-    prompt: "Ready to upgrade node ?"
+    prompt: "Ready to upgrade node? (Press Enter to continue or Ctrl+C for other options)"
   when:
     - upgrade_node_confirm
 
@@ -17,8 +17,8 @@
 # Node Ready: type = ready, status = True
 # Node NotReady: type = ready, status = Unknown
 - name: See if node is in ready state
-  shell: >-
-    {{ bin_dir }}/kubectl get node {{ kube_override_hostname|default(inventory_hostname) }}
+  command: >
+    {{ kubectl }} get node {{ kube_override_hostname|default(inventory_hostname) }}
     -o jsonpath='{ range .status.conditions[?(@.type == "Ready")].status }{ @ }{ end }'
   register: kubectl_node_ready
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
@@ -28,9 +28,9 @@
 # SchedulingDisabled: unschedulable = true
 # else unschedulable key doesn't exist
 - name: See if node is schedulable
-  shell: >-
-    {{ bin_dir }}/kubectl get node {{ kube_override_hostname|default(inventory_hostname) }}
-    -o jsonpath='{ .spec.unschedulable }'
+  command: >
+    {{ kubectl }} get node {{ kube_override_hostname|default(inventory_hostname) }}
+    -o jsonpath={ .spec.unschedulable }
   register: kubectl_node_schedulable
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   failed_when: false
@@ -48,11 +48,12 @@
 - name: Node draining
   block:
     - name: Cordon node
-      command: "{{ bin_dir }}/kubectl cordon {{ kube_override_hostname|default(inventory_hostname) }}"
+      command: "{{ kubectl }} cordon {{ kube_override_hostname|default(inventory_hostname) }}"
       delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      changed_when: true
 
     - name: Check kubectl version
-      command: "{{ bin_dir }}/kubectl version --client --short"
+      command: "{{ kubectl }} version --client --short"
       register: kubectl_version
       delegate_to: "{{ groups['kube_control_plane'][0] }}"
       run_once: yes
@@ -70,21 +71,55 @@
 
     - name: Drain node
       command: >-
-        {{ bin_dir }}/kubectl drain
+        {{ kubectl }} drain
         --force
         --ignore-daemonsets
-        --grace-period {{ drain_grace_period }}
-        --timeout {{ drain_timeout }}
-        --delete-local-data {{ kube_override_hostname|default(inventory_hostname) }}
+        --grace-period {{ hostvars['localhost']['drain_grace_period_after_failure'] | default(drain_grace_period) }}
+        --timeout {{ hostvars['localhost']['drain_timeout_after_failure'] | default(drain_timeout) }}
+        --delete-emptydir-data {{ kube_override_hostname|default(inventory_hostname) }}
         {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
       when: drain_nodes
       register: result
+      failed_when:
+        - result.rc != 0
+        - not drain_fallback_enabled
       until: result.rc == 0
       retries: "{{ drain_retries }}"
       delay: "{{ drain_retry_delay_seconds }}"
+
+    - name: Drain fallback
+      block:
+        - name: Set facts after regular drain has failed
+          set_fact:
+            drain_grace_period_after_failure: "{{ drain_fallback_grace_period }}"
+            drain_timeout_after_failure: "{{ drain_fallback_timeout }}"
+          delegate_to: localhost
+          delegate_facts: yes
+          run_once: yes
+
+        - name: Drain node - fallback with disabled eviction
+          command: >-
+            {{ kubectl }} drain
+            --force
+            --ignore-daemonsets
+            --grace-period {{ drain_fallback_grace_period }}
+            --timeout {{ drain_fallback_timeout }}
+            --delete-emptydir-data {{ kube_override_hostname|default(inventory_hostname) }}
+            {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
+            --disable-eviction
+          register: drain_fallback_result
+          until: drain_fallback_result.rc == 0
+          retries: "{{ drain_fallback_retries }}"
+          delay: "{{ drain_fallback_retry_delay_seconds }}"
+          changed_when: drain_fallback_result.rc == 0
+      when:
+        - drain_nodes
+        - drain_fallback_enabled
+        - result.rc != 0
+
   rescue:
     - name: Set node back to schedulable
-      command: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf uncordon {{ inventory_hostname }}"
+      command: "{{ kubectl }} uncordon {{ inventory_hostname }}"
       when: upgrade_node_uncordon_after_drain_failure
     - name: Fail after rescue
       fail:

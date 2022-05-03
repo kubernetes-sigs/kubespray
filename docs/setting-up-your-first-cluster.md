@@ -14,7 +14,7 @@ hands-on guide to get started with Kubespray.
 
 ## Cluster Details
 
-* [kubespray](https://github.com/kubernetes-sigs/kubespray) v2.13.x
+* [kubespray](https://github.com/kubernetes-sigs/kubespray) v2.17.x
 * [kubernetes](https://github.com/kubernetes/kubernetes) v1.17.9
 
 ## Prerequisites
@@ -48,7 +48,7 @@ gcloud compute networks create kubernetes-the-kubespray-way --subnet-mode custom
 
 A [subnet](https://cloud.google.com/compute/docs/vpc/#vpc_networks_and_subnets) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
 
-Create the `kubernetes` subnet in the `kubernetes-the-hard-way` VPC network:
+Create the `kubernetes` subnet in the `kubernetes-the-kubespray-way` VPC network:
 
 ```ShellSession
 gcloud compute networks subnets create kubernetes \
@@ -61,12 +61,12 @@ gcloud compute networks subnets create kubernetes \
 #### Firewall Rules
 
 Create a firewall rule that allows internal communication across all protocols.
-It is important to note that the ipip protocol has to be allowed in order for
+It is important to note that the vxlan protocol has to be allowed in order for
 the calico (see later) networking plugin to work.
 
 ```ShellSession
 gcloud compute firewall-rules create kubernetes-the-kubespray-way-allow-internal \
-  --allow tcp,udp,icmp,ipip \
+  --allow tcp,udp,icmp,vxlan \
   --network kubernetes-the-kubespray-way \
   --source-ranges 10.240.0.0/24
 ```
@@ -196,7 +196,7 @@ Next, we will git clone the Kubespray code into our working directory:
 ```ShellSession
 git clone https://github.com/kubernetes-sigs/kubespray.git
 cd kubespray
-git checkout release-2.13
+git checkout release-2.17
 ```
 
 Now we need to install the dependencies for Ansible to run the Kubespray

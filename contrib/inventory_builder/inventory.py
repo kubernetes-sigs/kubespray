@@ -83,11 +83,15 @@ class KubesprayInventory(object):
         self.config_file = config_file
         self.yaml_config = {}
         loadPreviousConfig = False
+        printHostnames = False
         # See whether there are any commands to process
         if changed_hosts and changed_hosts[0] in AVAILABLE_COMMANDS:
             if changed_hosts[0] == "add":
                 loadPreviousConfig = True
                 changed_hosts = changed_hosts[1:]
+            elif changed_hosts[0] == "print_hostnames":
+                loadPreviousConfig = True
+                printHostnames = True
             else:
                 self.parse_command(changed_hosts[0], changed_hosts[1:])
                 sys.exit(0)
@@ -104,6 +108,10 @@ class KubesprayInventory(object):
                 # I am assuming we are catching "cannot open file" exceptions
                 print(e)
                 sys.exit(1)
+
+        if printHostnames:
+            self.print_hostnames()
+            sys.exit(0)
 
         self.ensure_required_groups(ROLES)
 

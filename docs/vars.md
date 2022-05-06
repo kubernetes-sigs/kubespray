@@ -146,6 +146,8 @@ kube_apiserver_admission_event_rate_limits:
   ...
 ```
 
+* *kube_apiserver_service_account_lookup* - Enable validation service account before validating token. Default `true`.
+
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``
 and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.

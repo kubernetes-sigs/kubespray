@@ -192,6 +192,8 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   **Note** that server certificates are **not** approved automatically. Approve them manually
   (`kubectl get csr`, `kubectl certificate approve`) or implement custom approving controller like
   [kubelet-rubber-stamp](https://github.com/kontena/kubelet-rubber-stamp).
+* *kubelet_streaming_connection_idle_timeout* - Set the maximum time a streaming connection can be idle before the connection is automatically closed.
+* *kubelet_make_iptables_util_chains* - If `true`, causes the kubelet ensures a set of `iptables` rules are present on host.
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
   *node_labels* can only be defined as a dict:

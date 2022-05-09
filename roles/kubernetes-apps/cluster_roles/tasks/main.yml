@@ -11,53 +11,6 @@
   delay: 6
   when: inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Kubernetes Apps | Check AppArmor status
-  command: which apparmor_parser
-  register: apparmor_status
-  when:
-    - podsecuritypolicy_enabled
-    - inventory_hostname == groups['kube_control_plane'][0]
-  failed_when: false
-
-- name: Kubernetes Apps | Set apparmor_enabled
-  set_fact:
-    apparmor_enabled: "{{ apparmor_status.rc == 0 }}"
-  when:
-    - podsecuritypolicy_enabled
-    - inventory_hostname == groups['kube_control_plane'][0]
-
-- name: Kubernetes Apps | Render templates for PodSecurityPolicy
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: 0640
-  register: psp_manifests
-  with_items:
-    - {file: psp.yml, type: psp, name: psp}
-    - {file: psp-cr.yml, type: clusterrole, name: psp-cr}
-    - {file: psp-crb.yml, type: rolebinding, name: psp-crb}
-  when:
-    - podsecuritypolicy_enabled
-    - inventory_hostname == groups['kube_control_plane'][0]
-
-- name: Kubernetes Apps | Add policies, roles, bindings for PodSecurityPolicy
-  kube:
-    name: "{{ item.item.name }}"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
-    state: "latest"
-  register: result
-  until: result is succeeded
-  retries: 10
-  delay: 6
-  with_items: "{{ psp_manifests.results }}"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - not item is skipped
-  loop_control:
-    label: "{{ item.item.file }}"
-
 - name: Kubernetes Apps | Add ClusterRoleBinding to admit nodes
   template:
     src: "node-crb.yml.j2"

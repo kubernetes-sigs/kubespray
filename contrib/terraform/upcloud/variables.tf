@@ -28,6 +28,7 @@ variable "machines" {
 
   type = map(object({
     node_type = string
+    plan      = string
     cpu       = string
     mem       = string
     disk_size = number
@@ -53,4 +54,47 @@ variable "UPCLOUD_USERNAME" {
 
 variable "UPCLOUD_PASSWORD" {
   description = "Password for UpCloud API user"
+}
+
+variable "firewall_enabled" {
+  description = "Enable firewall rules"
+  default     = false
+}
+
+variable "master_allowed_remote_ips" {
+  description = "List of IP start/end addresses allowed to access API of masters"
+  type = list(object({
+    start_address = string
+    end_address   = string
+  }))
+  default = []
+}
+
+variable "k8s_allowed_remote_ips" {
+  description = "List of IP start/end addresses allowed to SSH to hosts"
+  type = list(object({
+    start_address = string
+    end_address   = string
+  }))
+  default = []
+}
+
+variable "loadbalancer_enabled" {
+  description = "Enable load balancer"
+  default     = false
+}
+
+variable "loadbalancer_plan" {
+  description = "Load balancer plan (development/production-small)"
+  default     = "development"
+}
+
+variable "loadbalancers" {
+  description = "Load balancers"
+
+  type = map(object({
+    port            = number
+    backend_servers = list(string)
+  }))
+  default = {}
 }

@@ -18,3 +18,7 @@ output "worker_ip" {
     }
   }
 }
+
+output "loadbalancer_domain" {
+  value = var.loadbalancer_enabled ? upcloud_loadbalancer.lb[0].dns_name : null
+}

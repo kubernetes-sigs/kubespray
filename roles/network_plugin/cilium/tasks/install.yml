@@ -43,17 +43,20 @@
 
 - name: Cilium | Create Cilium node manifests
   template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    src: "{{ item.name }}/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
     mode: 0644
   loop:
-    - {name: cilium, file: cilium-config.yml, type: cm}
-    - {name: cilium, file: cilium-crb.yml, type: clusterrolebinding}
-    - {name: cilium, file: cilium-cr.yml, type: clusterrole}
-    - {name: cilium, file: cilium-secret.yml, type: secret, when: "{{ cilium_ipsec_enabled }}"}
-    - {name: cilium, file: cilium-ds.yml, type: ds}
-    - {name: cilium, file: cilium-deploy.yml, type: deploy}
-    - {name: cilium, file: cilium-sa.yml, type: sa}
+    - {name: cilium, file: config.yml, type: cm}
+    - {name: cilium-operator, file: crb.yml, type: clusterrolebinding}
+    - {name: cilium-operator, file: cr.yml, type: clusterrole}
+    - {name: cilium, file: crb.yml, type: clusterrolebinding}
+    - {name: cilium, file: cr.yml, type: clusterrole}
+    - {name: cilium, file: secret.yml, type: secret, when: "{{ cilium_encryption_enabled and cilium_encryption_type == 'ipsec' }}"}
+    - {name: cilium, file: ds.yml, type: ds}
+    - {name: cilium-operator, file: deploy.yml, type: deploy}
+    - {name: cilium-operator, file: sa.yml, type: sa}
+    - {name: cilium, file: sa.yml, type: sa}
   register: cilium_node_manifests
   when:
     - inventory_hostname in groups['kube_control_plane']
@@ -61,18 +64,18 @@
 
 - name: Cilium | Create Cilium Hubble manifests
   template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/addons/hubble/{{ item.file }}"
+    src: "{{ item.name }}/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/hubble/{{ item.name }}-{{ item.file }}"
     mode: 0644
   loop:
-    - {name: hubble, file: hubble-config.yml, type: cm}
-    - {name: hubble, file: hubble-crb.yml, type: clusterrolebinding}
-    - {name: hubble, file: hubble-cr.yml, type: clusterrole}
-    - {name: hubble, file: hubble-cronjob.yml, type: cronjob, when: "{{ cilium_hubble_tls_generate }}"}
-    - {name: hubble, file: hubble-deploy.yml, type: deploy}
-    - {name: hubble, file: hubble-job.yml, type: job, when: "{{ cilium_hubble_tls_generate }}"}
-    - {name: hubble, file: hubble-sa.yml, type: sa}
-    - {name: hubble, file: hubble-service.yml, type: service}
+    - {name: hubble, file: config.yml, type: cm}
+    - {name: hubble, file: crb.yml, type: clusterrolebinding}
+    - {name: hubble, file: cr.yml, type: clusterrole}
+    - {name: hubble, file: cronjob.yml, type: cronjob, when: "{{ cilium_hubble_tls_generate }}"}
+    - {name: hubble, file: deploy.yml, type: deploy}
+    - {name: hubble, file: job.yml, type: job, when: "{{ cilium_hubble_tls_generate }}"}
+    - {name: hubble, file: sa.yml, type: sa}
+    - {name: hubble, file: service.yml, type: service}
   register: cilium_hubble_manifests
   when:
     - inventory_hostname == groups['kube_control_plane'][0]

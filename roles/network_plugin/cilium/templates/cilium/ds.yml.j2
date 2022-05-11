@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -36,6 +37,13 @@ spec:
 {% if cilium_mtu != "" %}
         - --mtu={{ cilium_mtu }}
 {% endif %}
+{% if cilium_agent_custom_args is string %}
+        - {{ cilium_agent_custom_args }}
+{% else %}
+{% for flag in cilium_agent_custom_args %}
+        - {{ flag }}
+{% endfor %}
+{% endif %}
         command:
         - cilium-agent
         env:
@@ -57,6 +65,9 @@ spec:
         - name: KUBERNETES_SERVICE_PORT
           value: "{{ kube_apiserver_global_endpoint | urlsplit('port') }}"
 {% endif %}
+{% for env_var in cilium_agent_extra_env_vars %}
+        - {{ env_var | to_nice_yaml(indent=2) | indent(10) }}
+{% endfor %}
         image: "{{cilium_image_repo}}:{{cilium_image_tag}}"
         imagePullPolicy: {{ k8s_image_pull_policy }}
         resources:
@@ -70,11 +81,29 @@ spec:
           postStart:
             exec:
               command:
-              - /cni-install.sh
+              - "/cni-install.sh"
+{% if cilium_version | regex_replace('v') is version('1.10', '>=') %}
+              - "--cni-exclusive={{ cilium_cni_exclusive }}"
+{% endif %}
+{% if cilium_version | regex_replace('v') is version('1.12', '>=') %}
+              - "--log-file={{ cilium_cni_log_file }}"
+{% endif %}
           preStop:
             exec:
               command:
               - /cni-uninstall.sh
+        startupProbe:
+          httpGet:
+            host: '127.0.0.1'
+            path: /healthz
+            port: 9876
+            scheme: HTTP
+            httpHeaders:
+            - name: "brief"
+              value: "true"
+          failureThreshold: 105
+          periodSeconds: 2
+          successThreshold: 1
         livenessProbe:
           httpGet:
             host: '127.0.0.1'
@@ -85,12 +114,22 @@ spec:
             - name: "brief"
               value: "true"
           failureThreshold: 10
-          # The initial delay for the liveness probe is intentionally large to
-          # avoid an endless kill & restart cycle if in the event that the initial
-          # bootstrapping takes longer than expected.
-          initialDelaySeconds: 120
           periodSeconds: 30
           successThreshold: 1
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            host: 127.0.0.1
+            path: /healthz
+            port: 9876
+            scheme: HTTP
+            httpHeaders:
+            - name: "brief"
+              value: "true"
+          initialDelaySeconds: 5
+          periodSeconds: 30
+          successThreshold: 1
+          failureThreshold: 3
           timeoutSeconds: 5
         name: cilium-agent
 {% if cilium_enable_prometheus or cilium_enable_hubble_metrics %}
@@ -108,35 +147,21 @@ spec:
           name: hubble-metrics
           protocol: TCP
 {% endif %}
-        readinessProbe:
-          httpGet:
-            host: '127.0.0.1'
-            path: /healthz
-            port: 9876
-            scheme: HTTP
-            httpHeaders:
-            - name: "brief"
-              value: "true"
-          failureThreshold: 3
-          initialDelaySeconds: 5
-          periodSeconds: 30
-          successThreshold: 1
-          timeoutSeconds: 5
         securityContext:
-          capabilities:
-            add:
-            - NET_ADMIN
-            - SYS_MODULE
           privileged: true
         volumeMounts:
         - mountPath: /sys/fs/bpf
           name: bpf-maps
+          mountPropagation: Bidirectional
         - mountPath: /var/run/cilium
           name: cilium-run
         - mountPath: /host/opt/cni/bin
           name: cni-path
         - mountPath: /host/etc/cni/net.d
           name: etc-cni-netd
+# pkg/workloads was depreca, removed in 1.7
+# https://github.com/cilium/cilium/pull/9447
+{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
 {% if container_manager == 'docker' %}
         - mountPath: /var/run/docker.sock
           name: docker-socket
@@ -145,6 +170,7 @@ spec:
         - name: "{{ container_manager }}-socket"
           mountPath: {{ cri_socket }}
           readOnly: true
+{% endif %}
 {% endif %}
 {% if cilium_identity_allocation_mode == "kvstore" %}
         - mountPath: /var/lib/etcd-config
@@ -166,7 +192,7 @@ spec:
           readOnly: true
         - mountPath: /run/xtables.lock
           name: xtables-lock
-{% if cilium_ipsec_enabled %}
+{% if cilium_encryption_enabled and cilium_encryption_type == "ipsec" %}
         - mountPath: /etc/ipsec
           name: cilium-ipsec-secrets
           readOnly: true
@@ -176,9 +202,14 @@ spec:
           name: hubble-tls
           readOnly: true
 {% endif %}
+{% for volume_mount in cilium_agent_extra_volume_mounts %}
+        - {{ volume_mount | to_nice_yaml(indent=2) | indent(10) }}
+{% endfor %}
+# In managed etcd mode, Cilium must be able to resolve the DNS name of the etcd service
+{% if cilium_identity_allocation_mode == "kvstore" %}
       dnsPolicy: ClusterFirstWithHostNet
+{% endif %}
       hostNetwork: true
-      hostPID: false
       initContainers:
       - command:
         - /init-container.sh
@@ -189,18 +220,30 @@ spec:
               key: clean-cilium-state
               name: cilium-config
               optional: true
-        - name: CLEAN_CILIUM_BPF_STATE
+        # CLEAN_CILIUM_BPF_STATE is deprecated in 1.6.
+        # https://github.com/cilium/cilium/pull/7478
+        - name: "{{ cilium_version | regex_replace('v') is version('1.6', '<')| ternary('CLEAN_CILIUM_BPF_STATE','CILIUM_BPF_STATE') }}"
           valueFrom:
             configMapKeyRef:
               key: clean-cilium-bpf-state
               name: cilium-config
               optional: true
+# Removed in 1.11 and up.
+# https://github.com/cilium/cilium/commit/f7a3f59fd74983c600bfce9cac364b76d20849d9
+{% if cilium_version | regex_replace('v') is version('1.11', '<') %}
         - name: CILIUM_WAIT_BPF_MOUNT
           valueFrom:
             configMapKeyRef:
               key: wait-bpf-mount
               name: cilium-config
               optional: true
+{% endif %}
+{% if cilium_kube_proxy_replacement == 'strict' %}
+        - name: KUBERNETES_SERVICE_HOST
+          value: "{{ kube_apiserver_global_endpoint | urlsplit('hostname') }}"
+        - name: KUBERNETES_SERVICE_PORT
+          value: "{{ kube_apiserver_global_endpoint | urlsplit('port') }}"
+{% endif %}
 {% if cilium_version | regex_replace('v') is version('1.9', '<') %}
         image: "{{cilium_init_image_repo}}:{{cilium_init_image_tag}}"
 {% else %}
@@ -209,13 +252,16 @@ spec:
         imagePullPolicy: {{ k8s_image_pull_policy }}
         name: clean-cilium-state
         securityContext:
-          capabilities:
-            add:
-            - NET_ADMIN
           privileged: true
         volumeMounts:
         - mountPath: /sys/fs/bpf
           name: bpf-maps
+{% if cilium_version | regex_replace('v') is version('1.11', '>=') %}
+          # Required to mount cgroup filesystem from the host to cilium agent pod
+        - name: cilium-cgroup
+          mountPath: /run/cilium/cgroupv2
+          mountPropagation: HostToContainer
+{% endif %}
         - mountPath: /var/run/cilium
           name: cilium-run
         resources:
@@ -227,6 +273,11 @@ spec:
       serviceAccount: cilium
       serviceAccountName: cilium
       terminationGracePeriodSeconds: 1
+      hostNetwork: true
+# In managed etcd mode, Cilium must be able to resolve the DNS name of the etcd service
+{% if cilium_identity_allocation_mode == "kvstore" %}
+      dnsPolicy: ClusterFirstWithHostNet
+{% endif %}
       tolerations:
       - operator: Exists
       volumes:
@@ -240,6 +291,9 @@ spec:
           path: /sys/fs/bpf
           type: DirectoryOrCreate
         name: bpf-maps
+# pkg/workloads was deprecated in 1.6, removed in 1.7
+# https://github.com/cilium/cilium/pull/9447
+{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
 {% if container_manager == 'docker' %}
         # To read docker events from the node
       - hostPath:
@@ -252,6 +306,19 @@ spec:
           path: {{ cri_socket }}
           type: Socket
         name: {{ container_manager }}-socket
+{% endif %}
+{% endif %}
+{% if cilium_version | regex_replace('v') is version('1.11', '>=') %}
+      # To mount cgroup2 filesystem on the host
+      - name: hostproc
+        hostPath:
+          path: /proc
+          type: Directory
+      # To keep state between restarts / upgrades for cgroup2 filesystem
+      - name: cilium-cgroup
+        hostPath:
+          path: /run/cilium/cgroupv2
+          type: DirectoryOrCreate
 {% endif %}
         # To install cilium cni plugin in the host
       - hostPath:
@@ -275,7 +342,8 @@ spec:
 {% if cilium_identity_allocation_mode == "kvstore" %}
         # To read the etcd config stored in config maps
       - configMap:
-          defaultMode: 420
+          # note: the leading zero means this number is in octal representation: do not remove it
+          defaultMode: 0400
           items:
           - key: etcd-config
             path: etcd.config
@@ -289,14 +357,15 @@ spec:
         # To read the clustermesh configuration
       - name: clustermesh-secrets
         secret:
-          defaultMode: 420
+          # note: the leading zero means this number is in octal representation: do not remove it
+          defaultMode: 0400
           optional: true
           secretName: cilium-clustermesh
         # To read the configuration from the config map
       - configMap:
           name: cilium-config
         name: cilium-config-path
-{% if cilium_ipsec_enabled %}
+{% if cilium_encryption_enabled and cilium_encryption_type == "ipsec" %}
       - name: cilium-ipsec-secrets
         secret:
           secretName: cilium-ipsec-keys
@@ -304,6 +373,8 @@ spec:
 {% if cilium_hubble_install %}
       - name: hubble-tls
         projected:
+          # note: the leading zero means this number is in octal representation: do not remove it
+          defaultMode: 0400
           sources:
           - secret:
               name: hubble-server-certs

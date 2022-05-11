@@ -118,12 +118,18 @@ data:
   tunnel: "{{ cilium_tunnel_mode }}"
 
   # Name of the cluster. Only relevant when building a mesh of clusters.
-  cluster-name: default
+  cluster-name: "{{ cilium_cluster_name }}"
 
   # Unique ID of the cluster. Must be unique across all conneted clusters and
   # in the range of 1 and 255. Only relevant when building a mesh of clusters.
   #cluster-id: 1
+{% if cilium_cluster_id is defined %}
+  cluster-id: "{{ cilium_cluster_id }}"
+{% endif %}
 
+# `tofqdns-enable-poller` is deprecated in 1.8, removed in 1.9
+# https://github.com/cilium/cilium/issues/8604
+{% if cilium_version | regex_replace('v') is version('1.9', '<') %}
   # DNS Polling periodically issues a DNS lookup for each `matchName` from
   # cilium-agent. The result is used to regenerate endpoint policy.
   # DNS lookups are repeated with an interval of 5 seconds, and are made for
@@ -144,17 +150,39 @@ data:
   # [0] http://docs.cilium.io/en/stable/policy/language/#dns-based
   # [1] http://docs.cilium.io/en/stable/install/upgrade/#changes-that-may-require-action
   tofqdns-enable-poller: "{{cilium_tofqdns_enable_poller}}"
+{% endif %}
 
+# `wait-bpf-mount` is removed after v1.10.4
+# https://github.com/cilium/cilium/commit/d2217045cb3726a7f823174e086913b69b8090da
+{% if cilium_version | regex_replace('v') is version('1.10.4', '<') %}
   # wait-bpf-mount makes init container wait until bpf filesystem is mounted
   wait-bpf-mount: "false"
+{% endif %}
 
+# `enable-legacy-services` is deprecated in 1.6, removed in 1.9
+# https://github.com/cilium/cilium/pull/10255
+{% if cilium_version | regex_replace('v') is version('1.9', '<') %}
   # Enable legacy services (prior v1.5) to prevent from terminating existing
   # connections with services when upgrading Cilium from < v1.5 to v1.5.
   enable-legacy-services: "{{cilium_enable_legacy_services}}"
+{% endif %}
 
   kube-proxy-replacement: "{{ cilium_kube_proxy_replacement }}"
 
+# `native-routing-cidr` is deprecated in 1.10, removed in 1.12.
+# Replaced by `ipv4-native-routing-cidr`
+# https://github.com/cilium/cilium/pull/16695
+{% if cilium_version | regex_replace('v') is version('1.12', '<') %}
   native-routing-cidr: "{{ cilium_native_routing_cidr }}"
+{% else %}
+  {% if cilium_native_routing_cidr | length %}
+  ipv4-native-routing-cidr: "{{ cilium_native_routing_cidr }}"
+  {% endif %}
+  {% if cilium_native_routing_cidr_ipv6 | length %}
+  ipv6-native-routing-cidr: "{{ cilium_native_routing_cidr_ipv6 }}"
+  {% endif %}
+{% endif %}
+
   auto-direct-node-routes: "{{ cilium_auto_direct_node_routes }}"
 
   operator-api-serve-addr: "{{ cilium_operator_api_serve_addr }}"
@@ -182,11 +210,18 @@ data:
   {{ key }}: "{{ value }}"
 {% endfor %}
 
-  # IPsec based transparent encryption between nodes
-{% if cilium_ipsec_enabled %}
+  # Enable transparent network encryption
+{% if cilium_encryption_enabled %}
+  {% if cilium_encryption_type == "ipsec" %}
   enable-ipsec: "true"
   ipsec-key-file: /etc/ipsec/keys
-  encrypt-node: "false"
+  encrypt-node: "{{ cilium_ipsec_node_encryption }}"
+  {% endif %}
+
+  {% if cilium_encryption_type == "wireguard" %}
+  enable-wireguard: "true"
+  enable-wireguard-userspace-fallback: "{{ cilium_wireguard_userspace_fallback }}"
+  {% endif %}
 {% endif %}
 
   # IPAM settings

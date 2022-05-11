@@ -10,6 +10,16 @@ locals {
     ]
   ])
 
+  lb_backend_servers = flatten([
+    for lb_name, loadbalancer in var.loadbalancers : [
+      for backend_server in loadbalancer.backend_servers : {
+        port = loadbalancer.port
+        lb_name = lb_name
+        server_name = backend_server
+      }
+    ]
+  ])
+
   # If prefix is set, all resources will be prefixed with "${var.prefix}-"
   # Else don't prefix with anything
   resource-prefix = "%{ if var.prefix != ""}${var.prefix}-%{ endif }"
@@ -45,8 +55,9 @@ resource "upcloud_server" "master" {
   }
 
   hostname = "${local.resource-prefix}${each.key}"
-  cpu      = each.value.cpu
-  mem      = each.value.mem
+  plan     = each.value.plan
+  cpu      = each.value.plan == null ? each.value.cpu : null
+  mem      = each.value.plan == null ? each.value.mem : null
   zone     = var.zone
 
   template {
@@ -69,6 +80,8 @@ resource "upcloud_server" "master" {
   lifecycle {
     ignore_changes = [storage_devices]
   }
+  
+  firewall  = var.firewall_enabled
 
   dynamic "storage_devices" {
     for_each = {
@@ -99,8 +112,9 @@ resource "upcloud_server" "worker" {
   }
 
   hostname = "${local.resource-prefix}${each.key}"
-  cpu      = each.value.cpu
-  mem      = each.value.mem
+  plan     = each.value.plan
+  cpu      = each.value.plan == null ? each.value.cpu : null
+  mem      = each.value.plan == null ? each.value.mem : null
   zone     = var.zone
 
   template {
@@ -124,6 +138,8 @@ resource "upcloud_server" "worker" {
     ignore_changes = [storage_devices]
   }
 
+  firewall  = var.firewall_enabled
+
   dynamic "storage_devices" {
     for_each = {
       for disk_key_name, disk in upcloud_storage.additional_disks :
@@ -143,4 +159,152 @@ resource "upcloud_server" "worker" {
     keys            = var.ssh_public_keys
     create_password = false
   }
+}
+
+resource "upcloud_firewall_rules" "master" {
+  for_each = upcloud_server.master
+  server_id = each.value.id
+
+  dynamic firewall_rule {
+    for_each = var.master_allowed_remote_ips
+
+    content {
+      action                 = "accept"
+      comment                = "Allow master API access from this network"
+      destination_port_end   = "6443"
+      destination_port_start = "6443"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = firewall_rule.value.end_address
+      source_address_start   = firewall_rule.value.start_address
+    }
+  }
+
+  dynamic firewall_rule {
+    for_each = length(var.master_allowed_remote_ips) > 0 ? [1] : []
+
+    content {
+      action                 = "drop"
+      comment                = "Deny master API access from other networks"
+      destination_port_end   = "6443"
+      destination_port_start = "6443"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = "255.255.255.255"
+      source_address_start   = "0.0.0.0"
+    }
+  }
+
+  dynamic firewall_rule {
+    for_each = var.k8s_allowed_remote_ips
+
+    content {
+      action                 = "accept"
+      comment                = "Allow SSH from this network"
+      destination_port_end   = "22"
+      destination_port_start = "22"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = firewall_rule.value.end_address
+      source_address_start   = firewall_rule.value.start_address
+    }
+  }
+
+  dynamic firewall_rule {
+    for_each = length(var.k8s_allowed_remote_ips) > 0 ? [1] : []
+
+    content {
+      action                 = "drop"
+      comment                = "Deny SSH from other networks"
+      destination_port_end   = "22"
+      destination_port_start = "22"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = "255.255.255.255"
+      source_address_start   = "0.0.0.0"
+    }
+  }
+}
+
+resource "upcloud_firewall_rules" "k8s" {
+  for_each = upcloud_server.worker
+  server_id = each.value.id
+
+  dynamic firewall_rule {
+    for_each = var.k8s_allowed_remote_ips
+
+    content {
+      action                 = "accept"
+      comment                = "Allow SSH from this network"
+      destination_port_end   = "22"
+      destination_port_start = "22"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = firewall_rule.value.end_address
+      source_address_start   = firewall_rule.value.start_address
+    }
+  }
+
+  dynamic firewall_rule {
+    for_each = length(var.k8s_allowed_remote_ips) > 0 ? [1] : []
+
+    content {
+      action                 = "drop"
+      comment                = "Deny SSH from other networks"
+      destination_port_end   = "22"
+      destination_port_start = "22"
+      direction              = "in"
+      family                 = "IPv4"
+      protocol               = "tcp"
+      source_address_end     = "255.255.255.255"
+      source_address_start   = "0.0.0.0"
+    }
+  }
+}
+
+resource "upcloud_loadbalancer" "lb" {
+  count             = var.loadbalancer_enabled ? 1 : 0
+  configured_status = "started"
+  name              = "${local.resource-prefix}lb"
+  plan              = var.loadbalancer_plan
+  zone              = var.zone
+  network           = upcloud_network.private.id
+}
+
+resource "upcloud_loadbalancer_backend" "lb_backend" {
+  for_each = var.loadbalancer_enabled ? var.loadbalancers : {}
+
+  loadbalancer = upcloud_loadbalancer.lb[0].id
+  name         = "lb-backend-${each.key}"
+}
+
+resource "upcloud_loadbalancer_frontend" "lb_frontend" {
+  for_each = var.loadbalancer_enabled ? var.loadbalancers : {}
+  
+  loadbalancer         = upcloud_loadbalancer.lb[0].id
+  name                 = "lb-frontend-${each.key}"
+  mode                 = "tcp"
+  port                 = each.value.port
+  default_backend_name = upcloud_loadbalancer_backend.lb_backend[each.key].name
+}
+
+resource "upcloud_loadbalancer_static_backend_member" "lb_backend_member" {
+  for_each = {
+    for be_server in local.lb_backend_servers: 
+      "${be_server.server_name}-lb-backend-${be_server.lb_name}" => be_server
+      if var.loadbalancer_enabled
+  }
+
+  backend      = upcloud_loadbalancer_backend.lb_backend[each.value.lb_name].id
+  name         = "${local.resource-prefix}${each.key}"
+  ip           = merge(upcloud_server.master, upcloud_server.worker)[each.value.server_name].network_interface[1].ip_address
+  port         = each.value.port
+  weight       = 100
+  max_sessions = var.loadbalancer_plan == "production-small" ? 50000 : 1000
+  enabled      = true
 }

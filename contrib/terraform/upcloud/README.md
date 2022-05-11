@@ -104,9 +104,22 @@ terraform destroy --var-file cluster-settings.tfvars \
 * `zone`: The zone where to run the cluster
 * `machines`: Machines to provision. Key of this object will be used as the name of the machine
   * `node_type`: The role of this node *(master|worker)*
+  * `plan`: Preconfigured cpu/mem plan to use (disables `cpu` and `mem` attributes below)
   * `cpu`: number of cpu cores
   * `mem`: memory size in MB
   * `disk_size`: The size of the storage in GB
   * `additional_disks`: Additional disks to attach to the node.
     * `size`: The size of the additional disk in GB
     * `tier`: The tier of disk to use (`maxiops` is the only one you can choose atm)
+* `firewall_enabled`: Enable firewall rules
+* `master_allowed_remote_ips`: List of IP ranges that should be allowed to access API of masters
+  * `start_address`: Start of address range to allow
+  * `end_address`: End of address range to allow
+* `k8s_allowed_remote_ips`: List of IP ranges that should be allowed SSH access to all nodes
+  * `start_address`: Start of address range to allow
+  * `end_address`: End of address range to allow
+* `loadbalancer_enabled`: Enable managed load balancer
+* `loadbalancer_plan`: Plan to use for load balancer *(development|production-small)*
+* `loadbalancers`: Ports to load balance and which machines to forward to. Key of this object will be used as the name of the load balancer frontends/backends
+  * `port`: Port to load balance.
+  * `backend_servers`: List of servers that traffic to the port should be forwarded to.

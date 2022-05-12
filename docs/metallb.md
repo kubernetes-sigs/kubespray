@@ -54,6 +54,19 @@ metallb_peers:
     my_asn: 4200000000
 ```
 
+Some upstream BGP peers may require password authentication:
+
+```yaml
+metallb_protocol: bgp
+metallb_ip_range:
+  - 10.5.0.0/16
+metallb_peers:
+  - peer_address: 192.0.2.1
+    peer_asn: 64512
+    my_asn: 4200000000
+    password: "changeme"
+```
+
 When using calico >= 3.18 you can replace MetalLB speaker by calico Service LoadBalancer IP advertisement.
 See [calico service IPs advertisement documentation](https://docs.projectcalico.org/archive/v3.18/networking/advertise-service-ips#advertise-service-load-balancer-ip-addresses).
 In this scenarion you should disable the MetalLB speaker and configure the `calico_advertise_service_loadbalancer_ips` to match your `metallb_ip_range`

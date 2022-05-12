@@ -198,45 +198,83 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Calico | Configure calico network pool
-  command:
-    cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-    stdin: "{{ stdin is string | ternary(stdin, stdin|to_json) }}"
-  vars:
-    stdin: >
-      { "kind": "IPPool",
-        "apiVersion": "projectcalico.org/v3",
-        "metadata": {
-          "name": "{{ calico_pool_name }}",
-        },
-        "spec": {
-          "blockSize": {{ calico_pool_blocksize | default(kube_network_node_prefix) }},
-          "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
-          "ipipMode": "{{ calico_ipip_mode }}",
-          "vxlanMode": "{{ calico_vxlan_mode }}",
-          "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }} }}
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - 'calico_conf.stdout == "0"'
+- block:
+    - name: Calico | Get existing calico network pool
+      command: "{{ bin_dir }}/calicoctl.sh get ippool {{ calico_pool_name }} -o json"
+      register: _calico_pool_cmd
+      ignore_errors: True
+      changed_when: False
 
-- name: Calico | Configure calico ipv6 network pool
-  command:
-    cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-    stdin: >
-      { "kind": "IPPool",
-        "apiVersion": "projectcalico.org/v3",
-        "metadata": {
-          "name": "{{ calico_pool_name }}-ipv6",
-        },
-        "spec": {
-          "blockSize": {{ calico_pool_blocksize_ipv6 | default(kube_network_node_prefix_ipv6) }},
-          "cidr": "{{ calico_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}",
-          "ipipMode": "{{ calico_ipip_mode_ipv6 }}",
-          "vxlanMode": "{{ calico_vxlan_mode_ipv6 }}",
-          "natOutgoing": {{ nat_outgoing_ipv6|default(false) and not peer_with_router_ipv6|default(false) }} }}
+    - name: Calico | Set kubespray calico network pool
+      set_fact:
+        _calico_pool: >
+          {
+            "kind": "IPPool",
+            "apiVersion": "projectcalico.org/v3",
+            "metadata": {
+              "name": "{{ calico_pool_name }}",
+            },
+            "spec": {
+              "blockSize": {{ calico_pool_blocksize | default(kube_network_node_prefix) }},
+              "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
+              "ipipMode": "{{ calico_ipip_mode }}",
+              "vxlanMode": "{{ calico_vxlan_mode }}",
+              "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }}
+            }
+          }
+
+    - name: Calico | Process calico network pool
+      set_fact:
+        _calico_pool: "{{ _calico_pool_cmd.stdout | from_json | combine(_calico_pool, recursive=True) }}"
+      when:
+        - _calico_pool_cmd is success
+
+    - name: Calico | Configure calico network pool
+      command:
+        cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
+        stdin: "{{ _calico_pool is string | ternary(_calico_pool, _calico_pool|to_json) }}"
+      changed_when: False
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
-    - calico_conf_ipv6.stdout is defined and calico_conf_ipv6.stdout == "0"
+
+- block:
+    - name: Calico | Get existing calico ipv6 network pool
+      command: "{{ bin_dir }}/calicoctl.sh get ippool {{ calico_pool_name }}-ipv6 -o json"
+      register: _calico_pool_ipv6_cmd
+      ignore_errors: True
+      changed_when: False
+
+    - name: Calico | Set kubespray calico network pool
+      set_fact:
+        _calico_pool_ipv6: >
+          {
+            "kind": "IPPool",
+            "apiVersion": "projectcalico.org/v3",
+            "metadata": {
+              "name": "{{ calico_pool_name }}-ipv6",
+            },
+            "spec": {
+              "blockSize": {{ calico_pool_blocksize_ipv6 | default(kube_network_node_prefix_ipv6) }},
+              "cidr": "{{ calico_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}",
+              "ipipMode": "{{ calico_ipip_mode_ipv6 }}",
+              "vxlanMode": "{{ calico_vxlan_mode_ipv6 }}",
+              "natOutgoing": {{ nat_outgoing_ipv6|default(false) and not peer_with_router_ipv6|default(false) }}
+            }
+          }
+
+    - name: Calico | Process calico ipv6 network pool
+      set_fact:
+        _calico_pool_ipv6: "{{ _calico_pool_ipv6_cmd.stdout | from_json | combine(_calico_pool_ipv6, recursive=True) }}"
+      when:
+        - _calico_pool_ipv6_cmd is success
+
+    - name: Calico | Configure calico ipv6 network pool
+      command:
+        cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
+        stdin: "{{ _calico_pool_ipv6 is string | ternary(_calico_pool_ipv6, _calico_pool_ipv6|to_json) }}"
+      changed_when: False
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
     - enable_dual_stack_networks | bool
 
 - name: Populate Service External IPs

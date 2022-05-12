@@ -156,26 +156,45 @@
     - inventory_hostname in groups['kube_control_plane']
     - calico_datastore == "kdd"
 
-- name: Calico | Configure calico FelixConfiguration
-  command:
-    cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-    stdin: "{{ stdin is string | ternary(stdin, stdin|to_json) }}"
-  vars:
-    stdin: >
-      { "kind": "FelixConfiguration",
-        "apiVersion": "projectcalico.org/v3",
-        "metadata": {
-          "name": "default",
-        },
-        "spec": {
-          "ipipEnabled": {{ calico_ipip_mode != 'Never' }},
-          "reportingInterval": "{{ calico_felix_reporting_interval }}",
-          "bpfLogLevel": "{{ calico_bpf_log_level }}",
-          "bpfEnabled": {{ calico_bpf_enabled | bool }},
-          "bpfExternalServiceMode": "{{ calico_bpf_service_mode }}",
-          "wireguardEnabled": {{ calico_wireguard_enabled | bool }},
-          "logSeverityScreen": "{{ calico_felix_log_severity_screen }}",
-          "vxlanEnabled": {{ calico_vxlan_mode != 'Never' }} }}
+- block:
+    - name: Calico | Get existing FelixConfiguration
+      command: "{{ bin_dir }}/calicoctl.sh get felixconfig default -o json"
+      register: _felix_cmd
+      ignore_errors: True
+      changed_when: False
+
+    - name: Calico | Set kubespray FelixConfiguration
+      set_fact:
+        _felix_config: >
+          {
+            "kind": "FelixConfiguration",
+            "apiVersion": "projectcalico.org/v3",
+            "metadata": {
+              "name": "default",
+            },
+            "spec": {
+              "ipipEnabled": {{ calico_ipip_mode != 'Never' }},
+              "reportingInterval": "{{ calico_felix_reporting_interval }}",
+              "bpfLogLevel": "{{ calico_bpf_log_level }}",
+              "bpfEnabled": {{ calico_bpf_enabled | bool }},
+              "bpfExternalServiceMode": "{{ calico_bpf_service_mode }}",
+              "wireguardEnabled": {{ calico_wireguard_enabled | bool }},
+              "logSeverityScreen": "{{ calico_felix_log_severity_screen }}",
+              "vxlanEnabled": {{ calico_vxlan_mode != 'Never' }}
+            }
+          }
+
+    - name: Calico | Process FelixConfiguration
+      set_fact:
+        _felix_config: "{{ _felix_cmd.stdout | from_json | combine(_felix_config, recursive=True) }}"
+      when:
+        - _felix_cmd is success
+
+    - name: Calico | Configure calico FelixConfiguration
+      command:
+        cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
+        stdin: "{{ _felix_config is string | ternary(_felix_config, _felix_config|to_json) }}"
+      changed_when: False
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 

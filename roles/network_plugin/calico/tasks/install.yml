@@ -297,27 +297,45 @@
     - inventory_hostname in groups['k8s_cluster']
   run_once: yes
 
-- name: Calico | Set up BGP Configuration
-  command:
-    cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-    stdin: "{{ stdin is string | ternary(stdin, stdin|to_json) }}"
-  vars:
-    stdin: >
-      { "kind": "BGPConfiguration",
-      "apiVersion": "projectcalico.org/v3",
-      "metadata": {
-          "name": "default",
-      },
-      "spec": {
-          "listenPort": {{ calico_bgp_listen_port }},
-          "logSeverityScreen": "Info",
-          {% if not calico_no_global_as_num|default(false) %}"asNumber": {{ global_as_num }},{% endif %}
-          "nodeToNodeMeshEnabled": {{ nodeToNodeMeshEnabled|default('true') }} ,
-          {% if calico_advertise_cluster_ips|default(false) %}
-          "serviceClusterIPs": [{"cidr": "{{ kube_service_addresses }}" } {{ ',{"cidr":"' + kube_service_addresses_ipv6 + '"}' if enable_dual_stack_networks else '' }}],{% endif %}
-          {% if calico_advertise_service_loadbalancer_ips|length > 0  %}"serviceLoadBalancerIPs": {{ _service_loadbalancer_ips }},{% endif %}
-          "serviceExternalIPs": {{ _service_external_ips|default([]) }} }}
-  changed_when: false
+- block:
+    - name: Calico | Get existing BGP Configuration
+      command: "{{ bin_dir }}/calicoctl.sh get bgpconfig default -o json"
+      register: _bgp_config_cmd
+      ignore_errors: True
+      changed_when: False
+
+    - name: Calico | Set kubespray BGP Configuration
+      set_fact:
+        _bgp_config: >
+          {
+            "kind": "BGPConfiguration",
+            "apiVersion": "projectcalico.org/v3",
+            "metadata": {
+              "name": "default",
+            },
+            "spec": {
+              "listenPort": {{ calico_bgp_listen_port }},
+              "logSeverityScreen": "Info",
+              {% if not calico_no_global_as_num|default(false) %}"asNumber": {{ global_as_num }},{% endif %}
+              "nodeToNodeMeshEnabled": {{ nodeToNodeMeshEnabled|default('true') }} ,
+              {% if calico_advertise_cluster_ips|default(false) %}
+              "serviceClusterIPs": [{"cidr": "{{ kube_service_addresses }}" } {{ ',{"cidr":"' + kube_service_addresses_ipv6 + '"}' if enable_dual_stack_networks else '' }}],{% endif %}
+              {% if calico_advertise_service_loadbalancer_ips|length > 0  %}"serviceLoadBalancerIPs": {{ _service_loadbalancer_ips }},{% endif %}
+              "serviceExternalIPs": {{ _service_external_ips|default([]) }}
+            }
+          }
+
+    - name: Calico | Process BGP Configuration
+      set_fact:
+        _bgp_config: "{{ _bgp_config_cmd.stdout | from_json | combine(_bgp_config, recursive=True) }}"
+      when:
+        - _bgp_config_cmd is success
+
+    - name: Calico | Set up BGP Configuration
+      command:
+        cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
+        stdin: "{{ _bgp_config is string | ternary(_bgp_config, _bgp_config|to_json) }}"
+      changed_when: False
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 

@@ -9,7 +9,8 @@ This script has two features:
 (2) Deploy local container registry and register the container images to the registry.
 
 Step(1) should be done online site as a preparation, then we bring the gotten images
-to the target offline environment.
+to the target offline environment. if images are from a private registry,
+you need to set `PRIVATE_REGISTRY` environment variable.
 Then we will run step(2) for registering the images to local registry.
 
 Step(1) can be operated with:

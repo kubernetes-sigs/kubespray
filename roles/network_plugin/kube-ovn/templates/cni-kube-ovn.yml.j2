@@ -8,7 +8,7 @@ metadata:
     kubernetes.io/description: |
       kube-ovn controller
 spec:
-  replicas: 1
+  replicas: {{ kube_ovn_controller_replics }}
   selector:
     matchLabels:
       app: kube-ovn-controller
@@ -43,14 +43,26 @@ spec:
           command:
           - /kube-ovn/start-controller.sh
           args:
-          - --default-cidr={{ kube_pods_subnet }}
-          - --pod-nic-type=veth-pair
-          - --enable-lb=true
-          - --enable-np=true
-          - --enable-external-vpc=true
+            - --default-cidr={{ kube_pods_subnet }}{% if enable_dual_stack_networks %},{{ kube_ovn_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}{% endif %}{{''}}
+            - --default-gateway={% if kube_ovn_default_gateway is defined %}{{ kube_ovn_default_gateway }}{% endif %}{{''}}
+            - --default-gateway-check={{ kube_ovn_default_gateway_check|string }}
+            - --default-logical-gateway={{ kube_ovn_default_logical_gateway|string }}
+            - --default-exclude-ips={% if kube_ovn_default_exclude_ips is defined %}{{ kube_ovn_default_exclude_ips }}{% endif %}{{''}}
+            - --node-switch-cidr={{ kube_ovn_node_switch_cidr }}{% if enable_dual_stack_networks %},{{ kube_ovn_node_switch_cidr_ipv6 }}{% endif %}{{''}}
+            - --service-cluster-ip-range={{ kube_service_addresses }}{% if enable_dual_stack_networks %},{{ kube_service_addresses_ipv6 }}{% endif %}{{''}}
+            - --network-type={{ kube_ovn_network_type }}
+            - --default-interface-name={{ kube_ovn_default_interface_name|default('') }}
+            - --default-vlan-id={{ kube_ovn_default_vlan_id }}
+            - --pod-nic-type={{ kube_ovn_pod_nic_type }}
+            - --enable-lb={{ kube_ovn_enable_lb|string }}
+            - --enable-np={{ kube_ovn_enable_np|string }}
+            - --enable-external-vpc={{ kube_ovn_enable_external_vpc|string }}
+            - --logtostderr=false
+            - --alsologtostderr=true
+            - --log_file=/var/log/kube-ovn/kube-ovn-controller.log
           env:
             - name: ENABLE_SSL
-              value: "{{ enable_ssl | lower }}"
+              value: "{{ kube_ovn_enable_ssl | lower }}"
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -66,20 +78,20 @@ spec:
           volumeMounts:
             - mountPath: /etc/localtime
               name: localtime
+            - mountPath: /var/log/kube-ovn
+              name: kube-ovn-log
             - mountPath: /var/run/tls
               name: kube-ovn-tls
           readinessProbe:
             exec:
               command:
-                - bash
-                - /kube-ovn/kube-ovn-controller-healthcheck.sh
+                - /kube-ovn/kube-ovn-controller-healthcheck
             periodSeconds: 3
             timeoutSeconds: 45
           livenessProbe:
             exec:
               command:
-                - bash
-                - /kube-ovn/kube-ovn-controller-healthcheck.sh
+                - /kube-ovn/kube-ovn-controller-healthcheck
             initialDelaySeconds: 300
             periodSeconds: 7
             failureThreshold: 5
@@ -97,10 +109,14 @@ spec:
         - name: localtime
           hostPath:
             path: /etc/localtime
+        - name: kube-ovn-log
+          hostPath:
+            path: /var/log/kube-ovn
         - name: kube-ovn-tls
           secret:
             optional: true
             secretName: kube-ovn-tls
+
 ---
 kind: DaemonSet
 apiVersion: apps/v1
@@ -146,15 +162,24 @@ spec:
           - bash
           - /kube-ovn/start-cniserver.sh
         args:
-          - --enable-mirror={{ traffic_mirror | lower }}
-          - --encap-checksum={{ encap_checksum | lower }}
-          - --service-cluster-ip-range={{ kube_service_addresses }}
+          - --enable-mirror={{ kube_ovn_traffic_mirror | lower }}
+          - --encap-checksum={{ kube_ovn_encap_checksum | lower }}
+          - --service-cluster-ip-range={{ kube_service_addresses }}{% if enable_dual_stack_networks %},{{ kube_service_addresses_ipv6 }}{% endif %}{{''}}
+          - --iface={{ kube_ovn_iface|default('') }}
+          - --network-type={{ kube_ovn_network_type }}
+          - --default-interface-name={{ kube_ovn_default_interface_name|default('') }}
+{% if kube_ovn_mtu is defined %}
+          - --mtu={{ kube_ovn_mtu }}
+{% endif %}
+          - --logtostderr=false
+          - --alsologtostderr=true
+          - --log_file=/var/log/kube-ovn/kube-ovn-cni.log
         securityContext:
           runAsUser: 0
           privileged: true
         env:
-          - name: ENABLE_SSL
-            value: "{{ enable_ssl | lower }}"
+          - name: kube_ovn_enable_ssl
+            value: "{{ kube_ovn_enable_ssl | lower }}"
           - name: POD_IP
             valueFrom:
               fieldRef:
@@ -175,6 +200,8 @@ spec:
           - mountPath: /var/run/netns
             name: host-ns
             mountPropagation: HostToContainer
+          - mountPath: /var/log/kube-ovn
+            name: kube-ovn-log
           - mountPath: /etc/localtime
             name: localtime
         readinessProbe:
@@ -186,6 +213,7 @@ spec:
               - 127.0.0.1
               - "10665"
           periodSeconds: 3
+          timeoutSeconds: 5
         livenessProbe:
           exec:
             command:
@@ -197,6 +225,7 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 7
           failureThreshold: 5
+          timeoutSeconds: 5
         resources:
           requests:
             cpu: {{ kube_ovn_cni_server_cpu_request }}
@@ -225,6 +254,9 @@ spec:
         - name: host-ns
           hostPath:
             path: /var/run/netns
+        - name: kube-ovn-log
+          hostPath:
+            path: /var/log/kube-ovn
         - name: localtime
           hostPath:
             path: /etc/localtime
@@ -251,21 +283,26 @@ spec:
         component: network
         type: infra
     spec:
-      tolerations:
-      - operator: Exists
       serviceAccountName: ovn
       hostPID: true
       containers:
         - name: pinger
           image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
-          command: ["/kube-ovn/kube-ovn-pinger", "--external-address=114.114.114.114"]
+          command:
+          - /kube-ovn/kube-ovn-pinger
+          args:
+          - --external-address={{ kube_ovn_external_address }}{% if enable_dual_stack_networks %},{{ kube_ovn_external_address_ipv6 }}{% endif %}{{''}}
+          - --external-dns={{ kube_ovn_external_dns }}
+          - --logtostderr=false
+          - --alsologtostderr=true
+          - --log_file=/var/log/kube-ovn/kube-ovn-pinger.log
           securityContext:
             runAsUser: 0
             privileged: false
           env:
             - name: ENABLE_SSL
-              value: "{{ enable_ssl | lower }}"
+              value: "{{ kube_ovn_enable_ssl | lower }}"
             - name: POD_IP
               valueFrom:
                 fieldRef:
@@ -301,6 +338,8 @@ spec:
               name: host-log-ovs
             - mountPath: /var/log/ovn
               name: host-log-ovn
+            - mountPath: /var/log/kube-ovn
+              name: kube-ovn-log
             - mountPath: /etc/localtime
               name: localtime
             - mountPath: /var/run/tls
@@ -333,6 +372,9 @@ spec:
         - name: host-log-ovs
           hostPath:
             path: /var/log/openvswitch
+        - name: kube-ovn-log
+          hostPath:
+            path: /var/log/kube-ovn
         - name: host-log-ovn
           hostPath:
             path: /var/log/ovn
@@ -356,7 +398,7 @@ spec:
   replicas: 1
   strategy:
     rollingUpdate:
-      maxSurge: 0
+      maxSurge: 1
       maxUnavailable: 1
     type: RollingUpdate
   selector:
@@ -380,6 +422,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       priorityClassName: system-cluster-critical
       serviceAccountName: ovn
+      hostNetwork: true
       containers:
         - name: kube-ovn-monitor
           image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
@@ -390,7 +433,7 @@ spec:
             privileged: false
           env:
             - name: ENABLE_SSL
-              value: "{{ enable_ssl | lower }}"
+              value: "{{ kube_ovn_enable_ssl | lower }}"
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
@@ -407,9 +450,6 @@ spec:
               name: host-run-ovs
             - mountPath: /var/run/ovn
               name: host-run-ovn
-            - mountPath: /sys
-              name: host-sys
-              readOnly: true
             - mountPath: /etc/openvswitch
               name: host-config-openvswitch
             - mountPath: /etc/ovn
@@ -427,13 +467,13 @@ spec:
               command:
               - cat
               - /var/run/ovn/ovnnb_db.pid
-            periodSeconds: 3
+            periodSeconds: 10
             timeoutSeconds: 45
           livenessProbe:
             exec:
               command:
               - cat
-              - /var/run/ovn/ovn-nbctl.pid
+              - /var/run/ovn/ovnnb_db.pid
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 5
@@ -448,9 +488,6 @@ spec:
         - name: host-run-ovn
           hostPath:
             path: /run/ovn
-        - name: host-sys
-          hostPath:
-            path: /sys
         - name: host-config-openvswitch
           hostPath:
             path: /etc/origin/openvswitch
@@ -483,6 +520,9 @@ spec:
     - name: metrics
       port: 10661
   type: ClusterIP
+{% if enable_dual_stack_networks %}
+  ipFamilyPolicy: PreferDualStack
+{% endif %}
   selector:
     app: kube-ovn-monitor
   sessionAffinity: None
@@ -495,6 +535,9 @@ metadata:
   labels:
     app: kube-ovn-pinger
 spec:
+{% if enable_dual_stack_networks %}
+  ipFamilyPolicy: PreferDualStack
+{% endif %}
   selector:
     app: kube-ovn-pinger
   ports:
@@ -509,6 +552,9 @@ metadata:
   labels:
     app: kube-ovn-controller
 spec:
+{% if enable_dual_stack_networks %}
+  ipFamilyPolicy: PreferDualStack
+{% endif %}
   selector:
     app: kube-ovn-controller
   ports:
@@ -523,6 +569,9 @@ metadata:
   labels:
     app: kube-ovn-cni
 spec:
+{% if enable_dual_stack_networks %}
+  ipFamilyPolicy: PreferDualStack
+{% endif %}
   selector:
     app: kube-ovn-cni
   ports:

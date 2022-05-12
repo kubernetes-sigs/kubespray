@@ -151,7 +151,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v1.6.1
   - [coredns](https://github.com/coredns/coredns) v1.8.6
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.1.1
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.2.0
 
 ## Container Runtime Notes
 

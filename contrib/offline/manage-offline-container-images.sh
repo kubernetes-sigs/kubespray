@@ -54,7 +54,8 @@ function create_container_image_tar() {
 		if [ "${FIRST_PART}" = "k8s.gcr.io" ] ||
 		   [ "${FIRST_PART}" = "gcr.io" ] ||
 		   [ "${FIRST_PART}" = "docker.io" ] ||
-		   [ "${FIRST_PART}" = "quay.io" ]; then
+		   [ "${FIRST_PART}" = "quay.io" ] ||
+		   [ "${FIRST_PART}" = "${PRIVATE_REGISTRY}" ]; then
 			image=$(echo ${image} | sed s@"${FIRST_PART}/"@@)
 		fi
 		echo "${FILE_NAME}  ${image}" >> ${IMAGE_LIST}
@@ -152,7 +153,8 @@ else
 	echo "(2) Deploy local container registry and register the container images to the registry."
 	echo ""
 	echo "Step(1) should be done online site as a preparation, then we bring"
-	echo "the gotten images to the target offline environment."
+	echo "the gotten images to the target offline environment. if images are from"
+	echo "a private registry, you need to set PRIVATE_REGISTRY environment variable."
 	echo "Then we will run step(2) for registering the images to local registry."
 	echo ""
 	echo "${IMAGE_TAR_FILE} is created to contain your container images."

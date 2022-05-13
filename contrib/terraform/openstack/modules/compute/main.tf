@@ -455,7 +455,7 @@ resource "openstack_compute_instance_v2" "etcd" {
   }
 
   dynamic "scheduler_hints" {
-    for_each = var.etcd_server_group_policy ? [openstack_compute_servergroup_v2.k8s_etcd[0]] : []
+    for_each = var.etcd_server_group_policy != "" ? [openstack_compute_servergroup_v2.k8s_etcd[0]] : []
     content {
       group = openstack_compute_servergroup_v2.k8s_etcd[0].id
     }

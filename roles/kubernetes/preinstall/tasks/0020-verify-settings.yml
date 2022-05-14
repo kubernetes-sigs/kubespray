@@ -314,3 +314,18 @@
   when:
     - kube_external_ca_mode
     - not ignore_assert_errors
+
+- name: Get current state of time synchronization
+  shell: "echo $(($(date +%s%N)/1000000))"
+  args:
+    executable: /bin/bash
+  changed_when: false
+  register: cur_time_ms_string
+
+- name: Stop if time is not synchronized
+  assert:
+    that: ((hostvars[item]['cur_time_ms_string'].stdout|int - cur_time_ms_string.stdout|int) | abs) < max_allowed_time_sync_diff
+    msg: "Do not allow more than {{ max_allowed_time_sync_diff }} ms diff between servers. {{ ((hostvars[item]['cur_time_ms_string'].stdout|int - cur_time_ms_string.stdout|int) | abs) }}ms is different between the two servers."
+  when:
+    - not ignore_assert_errors
+  with_items: "{{ play_hosts }}"

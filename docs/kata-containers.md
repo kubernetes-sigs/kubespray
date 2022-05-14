@@ -8,7 +8,7 @@ _Qemu_ is the only hypervisor supported by Kubespray.
 
 ## Installation
 
-To use Kata Containers, set the following variables:
+To enable Kata Containers, set the following variables:
 
 **k8s-cluster.yml**:
 
@@ -21,6 +21,31 @@ kata_containers_enabled: true
 
 ```yaml
 etcd_deployment_type: host
+```
+
+## Usage
+
+By default, runc is used for pods.
+Kubespray generates the runtimeClass kata-qemu, and it is necessary to specify it as
+the runtimeClassName of a pod spec to use Kata Containers:
+
+```shell
+$ kubectl get runtimeclass
+NAME        HANDLER     AGE
+kata-qemu   kata-qemu   3m34s
+$
+$ cat nginx.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  runtimeClassName: kata-qemu
+  containers:
+  - name: nginx
+    image: nginx:1.14.2
+$
+$ kubectl apply -f nginx.yaml
 ```
 
 ## Configuration

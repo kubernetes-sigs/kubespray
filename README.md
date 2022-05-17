@@ -128,6 +128,7 @@ vagrant up
 - **Alma Linux** [8](docs/centos.md#centos-8)
 - **Rocky Linux** [8](docs/centos.md#centos-8)
 - **Amazon Linux 2** (experimental: see [amazon linux notes](docs/amazonlinux.md))
+- **Archlinux**
 
 Note: Upstart/SysV init based OS types are not supported.
 

@@ -37,6 +37,7 @@ SUPPORTED_OS = {
   "oraclelinux8"        => {box: "generic/oracle8",            user: "vagrant"},
   "rhel7"               => {box: "generic/rhel7",              user: "vagrant"},
   "rhel8"               => {box: "generic/rhel8",              user: "vagrant"},
+  "archlinux"           => {box: "archlinux/archlinux",        user: "vagrant"},
 }
 
 if File.exist?(CONFIG)

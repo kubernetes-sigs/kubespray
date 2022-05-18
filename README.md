@@ -19,10 +19,10 @@ To deploy the cluster you can use :
 
 #### Usage
 
-```ShellSession
-# Install dependencies from ``requirements.txt``
-sudo pip3 install -r requirements.txt
+Install Ansible according to [Ansible installation guide](/docs/ansible.md#installing-ansible)
+then run the following steps:
 
+```ShellSession
 # Copy ``inventory/sample`` as ``inventory/mycluster``
 cp -rfp inventory/sample inventory/mycluster
 
@@ -75,10 +75,11 @@ python -V && pip -V
 ```
 
 If this returns the version of the software, you're good to go. If not, download and install Python from here <https://www.python.org/downloads/source/>
-Install the necessary requirements
+
+Install Ansible according to [Ansible installation guide](/docs/ansible.md#installing-ansible)
+then run the following step:
 
 ```ShellSession
-sudo pip install -r requirements.txt
 vagrant up
 ```
 

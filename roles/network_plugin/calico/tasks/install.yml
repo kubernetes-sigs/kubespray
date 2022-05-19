@@ -491,13 +491,20 @@
     - peer_with_router|default(false)
     - inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Calico | Configure ipam strictaffinity
-  command:
-    cmd: "{{ bin_dir }}/calicoctl.sh ipam configure --strictaffinity={{ calico_ipam_strictaffinity }}"
-  register: output
-  retries: 4
-  until: output.rc == 0
-  delay: "{{ retry_stagger | random + 3 }}"
+- name: Calico | Create Calico ipam manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
+  with_items:
+    - {name: calico, file: calico-ipamconfig.yml, type: ipam}
   when:
-    - calico_ipam_strictaffinity is defined
+    - inventory_hostname in groups['kube_control_plane']
+
+- name: Calico | Create ipamconfig resources
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/calico-ipamconfig.yml"
+    state: "latest"
+  when:
     - inventory_hostname == groups['kube_control_plane'][0]

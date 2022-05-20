@@ -50,8 +50,11 @@ Pull over Kubespray and setup any required libraries.
 ```bash
 git clone https://github.com/kubernetes-sigs/kubespray
 cd kubespray
-sudo pip install -r requirements.txt
 ```
+
+## Install Ansible
+
+Install Ansible according to [Ansible installation guide](/docs/ansible.md#installing-ansible)
 
 ## Cluster Definition
 

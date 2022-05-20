@@ -130,7 +130,7 @@ $ git checkout v2.7.0
 Previous HEAD position was 8b3ce6e4 bump upgrade tests to v2.5.0 commit (#3087)
 HEAD is now at 05dabb7e Fix Bionic networking restart error #3430 (#3431)
 
-# NOTE: May need to sudo pip3 install -r requirements.txt when upgrading.
+# NOTE: May need to `pip3 install -r requirements.txt` when upgrading.
 
 ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
 

@@ -111,6 +111,7 @@ vagrant up
 - [Adding/replacing a node](docs/nodes.md)
 - [Upgrades basics](docs/upgrades.md)
 - [Air-Gap installation](docs/offline-environment.md)
+- [Hardening](docs/hardening.md)
 - [Roadmap](docs/roadmap.md)
 
 ## Supported Linux Distributions

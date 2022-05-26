@@ -1,0 +1,32 @@
+- hosts: kube_control_plane[0]
+  tasks:
+  - name: Lock the calico datastore
+    command: "{{ bin_dir }}/calicoctl.sh datastore migrate lock"
+  - name: Export calico data
+    command: "{{ bin_dir }}/calicoctl.sh datastore migrate export"
+    register: calico_data
+  - command: "{{ bin_dir }}/calicoctl datastore migrate import -f -"
+    stdin: calico_data.stdout
+    environment:
+      DATASTORE_TYPE: kubernetes
+      KUBECONFIG: /home/root/.kube/config #TODO: check location
+
+- hosts: k8s_cluster
+  serial: "{{ serial | default('20%') }}"
+  environment: "{{ proxy_disable_env }}"
+  vars:
+    calico_datastore: kdd
+  roles:
+    - { role: kubespray-defaults }
+    - { role: network_plugin, tags: network }
+
+- hosts: kube_control_plane
+  tasks:
+    - name: Wait for calico-node daemonset
+      command: "{{ kubectl }} rollout status daemonset calico-node -n kube-system --watch"
+    - name: Wait for calico-node daemonset
+    - name: Unlock calico datastore
+      command: "{{ bin_dir }}/calicoctl datastore migrate unlock"
+      environment:
+        DATASTORE_TYPE: kubernetes
+        KUBECONFIG: /home/root/.kube/config #TODO: same as above

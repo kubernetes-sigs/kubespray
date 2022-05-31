@@ -206,6 +206,9 @@ data:
 {% endif %}
 {% endif %}
 
+  # IP Masquerade Agent
+  enable-ip-masq-agent: "{{ cilium_ip_masq_agent_enable }}"
+
 {% for key, value in cilium_config_extra_vars.items() %}
   {{ key }}: "{{ value }}"
 {% endfor %}
@@ -227,4 +230,21 @@ data:
   # IPAM settings
 {% if cilium_version | regex_replace('v') is version('1.9', '>=') %}
   ipam: "{{ cilium_ipam_mode }}"
+{% endif %}
+
+{% if cilium_ip_masq_agent_enable %}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ip-masq-agent
+  namespace: kube-system
+data:
+  config: |
+    nonMasqueradeCIDRs:
+{% for cidr in cilium_non_masquerade_cidrs %}
+      - {{ cidr }}
+{% endfor %}
+    masqLinkLocal: {{ cilium_masq_link_local|bool }}
+    resyncInterval: "{{ cilium_ip_masq_resync_interval }}"
 {% endif %}

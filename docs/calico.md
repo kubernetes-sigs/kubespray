@@ -315,6 +315,16 @@ calico_ipam_host_local: true
 
 Refer to Project Calico section [Using host-local IPAM](https://docs.projectcalico.org/reference/cni-plugin/configuration#using-host-local-ipam) for further information.
 
+### Optional : Disable CNI logging to disk
+
+Calico CNI plugin logs to /var/log/calico/cni/cni.log and to stderr.
+stderr of CNI plugins can be found in the logs of container runtime.
+
+You can disable Calico CNI logging to disk by setting
+```yml
+calico_cni_log_file_path: false
+```
+
 ## eBPF Support
 
 Calico supports eBPF for its data plane see [an introduction to the Calico eBPF Dataplane](https://www.projectcalico.org/introducing-the-calico-ebpf-dataplane/) for further information.

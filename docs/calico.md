@@ -320,10 +320,7 @@ Refer to Project Calico section [Using host-local IPAM](https://docs.projectcali
 Calico CNI plugin logs to /var/log/calico/cni/cni.log and to stderr.
 stderr of CNI plugins can be found in the logs of container runtime.
 
-You can disable Calico CNI logging to disk by setting
-```yml
-calico_cni_log_file_path: false
-```
+You can disable Calico CNI logging to disk by setting `calico_cni_log_file_path: false`.
 
 ## eBPF Support
 

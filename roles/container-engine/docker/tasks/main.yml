@@ -15,15 +15,15 @@
   include_vars: "{{ item }}"
   with_first_found:
     - files:
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release|lower }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_distribution|lower }}.yml"
-        - "{{ ansible_os_family|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
-        - "{{ ansible_os_family|lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_os_family|lower }}.yml"
+        - "{{ ansible_facts.distribution|lower }}-{{ ansible_facts.distribution_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_facts.distribution|lower }}-{{ ansible_facts.distribution_release|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_facts.distribution|lower }}-{{ ansible_facts.distribution_release|lower }}.yml"
+        - "{{ ansible_facts.distribution|lower }}-{{ ansible_facts.distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_facts.distribution|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_facts.distribution|lower }}.yml"
+        - "{{ ansible_facts.os_family|lower }}-{{ ansible_facts.distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_facts.os_family|lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_facts.os_family|lower }}.yml"
         - defaults.yml
       paths:
         - ../vars
@@ -34,7 +34,7 @@
 - name: Warn about Docker version on SUSE
   debug:
     msg: "SUSE distributions always install Docker from the distro repos"
-  when: ansible_pkg_mgr == 'zypper'
+  when: ansible_facts.pkg_mgr == 'zypper'
 
 - include_tasks: set_facts_dns.yml
   when: dns_mode != 'none' and resolvconf_mode == 'docker_dns'
@@ -54,21 +54,21 @@
   delay: "{{ retry_stagger | d(3) }}"
   with_items: "{{ docker_repo_key_info.repo_keys }}"
   environment: "{{ proxy_env }}"
-  when: ansible_pkg_mgr == 'apt'
+  when: ansible_facts.pkg_mgr == 'apt'
 
 - name: ensure docker-ce repository is enabled
   apt_repository:
     repo: "{{ item }}"
     state: present
   with_items: "{{ docker_repo_info.repos }}"
-  when: ansible_pkg_mgr == 'apt'
+  when: ansible_facts.pkg_mgr == 'apt'
 
 - name: Configure docker repository on Fedora
   template:
     src: "fedora_docker.repo.j2"
     dest: "{{ yum_repo_dir }}/docker.repo"
     mode: 0644
-  when: ansible_distribution == "Fedora" and not is_ostree
+  when: ansible_facts.distribution == "Fedora" and not is_ostree
 
 - name: Configure docker repository on RedHat/CentOS/Oracle/AlmaLinux Linux
   template:
@@ -76,15 +76,15 @@
     dest: "{{ yum_repo_dir }}/docker-ce.repo"
     mode: 0644
   when:
-    - ansible_os_family == "RedHat"
-    - ansible_distribution != "Fedora"
+    - ansible_facts.os_family == "RedHat"
+    - ansible_facts.distribution != "Fedora"
     - not is_ostree
 
 - name: Remove dpkg hold
   dpkg_selections:
     name: "{{ item }}"
     selection: install
-  when: ansible_pkg_mgr == 'apt'
+  when: ansible_facts.pkg_mgr == 'apt'
   changed_when: false
   with_items:
     - "{{ containerd_package }}"
@@ -110,7 +110,7 @@
   delay: "{{ retry_stagger | d(3) }}"
   notify: restart docker
   when:
-    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+    - not ansible_facts.os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     - not is_ostree
     - docker_package_info.pkgs|length > 0
 
@@ -119,7 +119,7 @@
   dpkg_selections:
     name: "{{ item }}"
     selection: hold
-  when: ansible_pkg_mgr == 'apt'
+  when: ansible_facts.pkg_mgr == 'apt'
   changed_when: false
   with_items:
     - "{{ containerd_package }}"

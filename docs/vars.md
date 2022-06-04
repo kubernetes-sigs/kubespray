@@ -8,7 +8,7 @@ You can view facts gathered by Ansible automatically
 Some variables of note include:
 
 * *ansible_user*: user to connect to via SSH
-* *ansible_default_ipv4.address*: IP address Ansible automatically chooses.
+* *ansible_facts.default_ipv4.address*: IP address Ansible automatically chooses.
   Generated based on the output from the command ``ip -4 route get 8.8.8.8``
 
 ## Common vars that are used in Kubespray
@@ -37,7 +37,7 @@ Some variables of note include:
 * *access_ip* - IP for other hosts to use to connect to. Often required when
   deploying from a cloud, such as OpenStack or GCE and you have separate
   public/floating and private IPs.
-* *ansible_default_ipv4.address* - Not Kubespray-specific, but it is used if ip
+* *ansible_facts.default_ipv4.address* - Not Kubespray-specific, but it is used if ip
   and access_ip are undefined
 * *ip6* - IPv6 address to use for binding services. (host var)
   If *enable_dual_stack_networks* is set to ``true`` and *ip6* is defined,

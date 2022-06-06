@@ -1,4 +1,5 @@
-apiVersion: kubeadm.k8s.io/v1beta2
+---
+apiVersion: kubeadm.k8s.io/v1beta3
 kind: JoinConfiguration
 discovery:
   bootstrapToken:
@@ -8,21 +9,20 @@ discovery:
     apiServerEndpoint: {{ kubeadm_discovery_address }}
 {% endif %}
     token: {{ kubeadm_token }}
+{% if kubeadm_ca_hash.stdout is defined %}
+    caCertHashes:
+    - sha256:{{ kubeadm_ca_hash.stdout }}
+{% else %}
     unsafeSkipCAVerification: true
+{% endif %}
   timeout: {{ discovery_timeout }}
   tlsBootstrapToken: {{ kubeadm_token }}
-controlPlane:
-  localAPIEndpoint:
-    advertiseAddress: {{ kube_apiserver_address }}
-    bindPort: {{ kube_apiserver_port }}
-  certificateKey: {{ kubeadm_certificate_key }}
+caCertPath: {{ kube_cert_dir }}/ca.crt
 nodeRegistration:
-  name: {{ kube_override_hostname|default(inventory_hostname) }}
+  name: {{ kube_override_hostname }}
   criSocket: {{ cri_socket }}
-{% if inventory_hostname in groups['kube_control_plane'] and inventory_hostname not in groups['kube_node'] %}
+{% if 'calico_rr' in group_names and 'kube_node' not in group_names %}
   taints:
   - effect: NoSchedule
-    key: node-role.kubernetes.io/master
-{% else %}
-  taints: []
+    key: node-role.kubernetes.io/calico-rr
 {% endif %}

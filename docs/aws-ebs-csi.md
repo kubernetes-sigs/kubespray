@@ -27,7 +27,7 @@ Check the associated storage class (if you enabled persistent_volumes):
 ```ShellSession
 $ kubectl get storageclass
 NAME         PROVISIONER                AGE
-ebs-sc   ebs.csi.aws.com   45s
+ebs-sc       ebs.csi.aws.com            45s
 ```
 
 You can run a PVC and an example Pod using this file `ebs-pod.yml`:
@@ -71,8 +71,8 @@ You should see the PVC provisioned and bound:
 
 ```ShellSession
 $ kubectl get pvc
-NAME                   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
-ebs-claim   Bound    pvc-0034cb9e-1ddd-4b3f-bb9e-0b5edbf5194c   1Gi        RWO            ebs-sc         50s
+NAME          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+ebs-claim     Bound    pvc-0034cb9e-1ddd-4b3f-bb9e-0b5edbf5194c   1Gi        RWO            ebs-sc         50s
 ```
 
 And the volume mounted to the example Pod (wait until the Pod is Running):

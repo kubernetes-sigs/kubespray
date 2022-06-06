@@ -8,13 +8,7 @@ Using the docker container manager:
 container_manager: docker
 ```
 
-Using `cri-dockerd` instead of `dockershim`:
-
-```yaml
-cri_dockerd_enabled: false
-```
-
-*Note:* The `cri_dockerd_enabled: true` setting will become the default in a future kubespray release once kubespray 1.24+ is supported and `dockershim` is removed. At that point, changing this option will be deprecated and silently ignored.
+*Note:* `cri-dockerd` has replaced `dockershim` across supported kubernetes version in kubespray 2.20.
 
 Enabling the `overlay2` graph driver:
 

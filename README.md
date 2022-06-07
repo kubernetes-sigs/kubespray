@@ -57,10 +57,10 @@ A simple way to ensure you get all the correct version of Ansible is to use the 
 You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mounts/) to get the inventory and ssh key into the container, like this:
 
 ```ShellSession
-docker pull quay.io/kubespray/kubespray:v2.18.1
+docker pull quay.io/kubespray/kubespray:v2.19.0
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.18.1 bash
+  quay.io/kubespray/kubespray:v2.19.0 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
@@ -145,7 +145,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cilium](https://github.com/cilium/cilium) v1.11.3
   - [flanneld](https://github.com/flannel-io/flannel) v0.17.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.9.2
-  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.4.0
+  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.5.0
   - [multus](https://github.com/intel/multus-cni) v3.8
   - [weave](https://github.com/weaveworks/weave) v2.8.1
 - Application

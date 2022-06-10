@@ -84,6 +84,10 @@ kubelet_rotate_certificates: true
 kubelet_streaming_connection_idle_timeout: "5m"
 kubelet_make_iptables_util_chains: true
 kubelet_feature_gates: ["RotateKubeletServerCertificate=true"]
+
+# additional configurations
+kube_owner: root
+kube_cert_group: root
 ```
 
 Let's take a deep look to the resultant **kubernetes** configuration:

@@ -45,3 +45,21 @@ temp
 
 In some cases you may want to update some component version, you can declare version variables in ansible inventory file or group_vars,
 then run `./generate_list.sh -i [inventory_file]` to update file.list and images.list.
+
+## manage-offline-files.sh
+
+This script will download all files according to `temp/files.list` and run nginx container to provide offline file download.
+
+Step(1) generate `files.list`
+
+```shell
+./generate_list.sh
+```
+
+Step(2) download files and run nginx container
+
+```shell
+./manage-offline-files.sh
+```
+
+when nginx container is running, it can be accessed through <http://127.0.0.1:8080/>.

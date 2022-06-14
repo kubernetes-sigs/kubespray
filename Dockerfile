@@ -1,5 +1,5 @@
 # Use imutable image tags rather than mutable tags (like ubuntu:20.04)
-FROM ubuntu:focal-20220316
+FROM ubuntu:focal-20220531
 
 ARG ARCH=amd64
 ARG TZ=Etc/UTC

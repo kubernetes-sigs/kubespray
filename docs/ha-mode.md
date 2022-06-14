@@ -36,12 +36,6 @@ The following diagram shows how traffic to the apiserver is directed.
 
 ![Image](figures/loadbalancer_localhost.png?raw=true)
 
-  Note: Kubernetes master nodes still use insecure localhost access because
-  there are bugs in Kubernetes <1.5.0 in using TLS auth on master role
-  services. This makes backends receiving unencrypted traffic and may be a
-  security issue when interconnecting different nodes, or maybe not, if those
-  belong to the isolated management network without external access.
-
 A user may opt to use an external loadbalancer (LB) instead. An external LB
 provides access for external clients, while the internal LB accepts client
 connections only to the localhost.
@@ -128,11 +122,6 @@ Kubespray has nothing to do with it, this is informational only.
 
 As you can see, the masters' internal API endpoints are always
 contacted via the local bind IP, which is `https://bip:sp`.
-
-**Note** that for some cases, like healthchecks of applications deployed by
-Kubespray, the masters' APIs are accessed via the insecure endpoint, which
-consists of the local `kube_apiserver_insecure_bind_address` and
-`kube_apiserver_insecure_port`.
 
 ## Optional configurations
 

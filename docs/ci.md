@@ -19,6 +19,7 @@ oracle7 |  :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu16 |  :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :x: |
 ubuntu18 |  :white_check_mark: | :x: | :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :white_check_mark: |
 ubuntu20 |  :white_check_mark: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: |
+ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 
 ## crio
 
@@ -37,6 +38,7 @@ oracle7 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu16 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu18 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu20 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+ubuntu22 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 
 ## docker
 
@@ -55,3 +57,4 @@ oracle7 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu16 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
 ubuntu18 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu20 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |

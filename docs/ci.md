@@ -8,7 +8,7 @@ To generate this Matrix run `./tests/scripts/md-table/main.py`
 |---| --- | --- | --- | --- | --- | --- | --- | --- |
 almalinux8 |  :white_check_mark: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: |
 amazon |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-centos7 |  :white_check_mark: | :x: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :x: |
+centos7 |  :white_check_mark: | :x: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: |
 debian10 |  :white_check_mark: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: |
@@ -46,7 +46,7 @@ ubuntu22 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 |---| --- | --- | --- | --- | --- | --- | --- | --- |
 almalinux8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-centos7 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
+centos7 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian10 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |

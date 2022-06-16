@@ -118,7 +118,7 @@ vagrant up
 
 - **Flatcar Container Linux by Kinvolk**
 - **Debian** Bullseye, Buster, Jessie, Stretch
-- **Ubuntu** 16.04, 18.04, 20.04
+- **Ubuntu** 16.04, 18.04, 20.04, 22.04
 - **CentOS/RHEL** 7, [8](docs/centos8.md)
 - **Fedora** 34, 35
 - **Fedora CoreOS** (see [fcos Note](docs/fcos.md))
@@ -133,14 +133,14 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.23.7
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.24.1
   - [etcd](https://github.com/etcd-io/etcd) v3.5.3
   - [docker](https://www.docker.com/) v20.10 (see note)
   - [containerd](https://containerd.io/) v1.6.4
   - [cri-o](http://cri-o.io/) v1.22 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v1.1.1
-  - [calico](https://github.com/projectcalico/calico) v3.22.3
+  - [calico](https://github.com/projectcalico/calico) v3.23.1
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.11.3
   - [flanneld](https://github.com/flannel-io/flannel) v0.17.0
@@ -151,7 +151,7 @@ Note: Upstart/SysV init based OS types are not supported.
 - Application
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
-  - [cert-manager](https://github.com/jetstack/cert-manager) v1.8.0
+  - [cert-manager](https://github.com/jetstack/cert-manager) v1.8.1
   - [coredns](https://github.com/coredns/coredns) v1.8.6
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.2.1
 
@@ -162,8 +162,8 @@ Note: Upstart/SysV init based OS types are not supported.
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.21**
-- **Ansible v2.9.x, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
+- **Minimum required version of Kubernetes is v1.22**
+- **Ansible v2.11+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.
 - If using IPv6 for pods and services, the target servers are configured to allow **IPv6 forwarding**.

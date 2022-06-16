@@ -2,23 +2,39 @@
 set -e
 
 BINDIR="/opt/bin"
-PYPY_VERSION=7.3.2
-PYPI_URL="https://downloads.python.org/pypy/pypy3.6-v${PYPY_VERSION}-linux64.tar.bz2"
-PYPI_HASH=d7a91f179076aaa28115ffc0a81e46c6a787785b2bc995c926fe3b02f0e9ad83
+if [[ -e $BINDIR/.bootstrapped ]]; then
+  exit 0
+fi
+
+ARCH=$(uname -m)
+case $ARCH in
+  "x86_64")
+    PYPY_ARCH=linux64
+    PYPI_HASH=46818cb3d74b96b34787548343d266e2562b531ddbaf330383ba930ff1930ed5
+    ;;
+  "aarch64")
+    PYPY_ARCH=aarch64
+    PYPI_HASH=2e1ae193d98bc51439642a7618d521ea019f45b8fb226940f7e334c548d2b4b9
+    ;;
+  *)
+    echo "Unsupported Architecture: ${ARCH}"
+    exit 1
+esac
+
+PYTHON_VERSION=3.9
+PYPY_VERSION=7.3.9
+PYPY_FILENAME="pypy${PYTHON_VERSION}-v${PYPY_VERSION}-${PYPY_ARCH}"
+PYPI_URL="https://downloads.python.org/pypy/${PYPY_FILENAME}.tar.bz2"
 
 mkdir -p $BINDIR
 
 cd $BINDIR
 
-if [[ -e $BINDIR/.bootstrapped ]]; then
-  exit 0
-fi
-
 TAR_FILE=pyp.tar.bz2
 wget -O "${TAR_FILE}" "${PYPI_URL}"
 echo "${PYPI_HASH} ${TAR_FILE}" | sha256sum -c -
 tar -xjf "${TAR_FILE}" && rm "${TAR_FILE}"
-mv -n "pypy3.6-v${PYPY_VERSION}-linux64" pypy3
+mv -n "${PYPY_FILENAME}" pypy3
 
 ln -s ./pypy3/bin/pypy3 python
 $BINDIR/python --version

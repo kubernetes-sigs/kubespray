@@ -15,10 +15,10 @@ is_fedora_coreos: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.23.7
+kube_version: v1.24.1
 
 ## The minimum version working
-kube_version_min_required: v1.21.0
+kube_version_min_required: v1.22.0
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
@@ -233,9 +233,6 @@ kube_apiserver_bind_address: 0.0.0.0
 
 # https
 kube_apiserver_port: 6443
-# http
-kube_apiserver_insecure_bind_address: 127.0.0.1
-kube_apiserver_insecure_port: 0
 
 # If non-empty, will use this string as identification instead of the actual hostname
 kube_override_hostname: >-
@@ -244,13 +241,9 @@ kube_override_hostname: >-
   {{ inventory_hostname }}
   {%- endif -%}
 
-# dynamic kubelet configuration
-dynamic_kubelet_configuration: false
-
 # define kubelet config dir for dynamic kubelet
 # kubelet_config_dir:
 default_kubelet_config_dir: "{{ kube_config_dir }}/dynamic_kubelet_dir"
-dynamic_kubelet_configuration_dir: "{{ kubelet_config_dir | default(default_kubelet_config_dir) }}"
 
 # Aggregator
 kube_api_aggregator_routing: false
@@ -259,7 +252,6 @@ kube_api_aggregator_routing: false
 kube_profiling: false
 
 # Graceful Node Shutdown
-# This requires kubernetes >= 1.21.0
 kubelet_shutdown_grace_period: 60s
 # kubelet_shutdown_grace_period_critical_pods should be less than kubelet_shutdown_grace_period
 # to give normal pods time to be gracefully evacuated
@@ -270,9 +262,6 @@ deploy_container_engine: "{{ inventory_hostname in groups['k8s_cluster'] or etcd
 
 # Container for runtime
 container_manager: containerd
-
-# Enable CRI Docker interface
-cri_dockerd_enabled: false
 
 # Enable Kata Containers as additional container runtime
 # When enabled, it requires `container_manager` different than Docker
@@ -296,13 +285,11 @@ container_manager_on_localhost: "{{ container_manager }}"
 # CRI socket path
 cri_socket: >-
   {%- if container_manager == 'crio' -%}
-  /var/run/crio/crio.sock
+  unix:///var/run/crio/crio.sock
   {%- elif container_manager == 'containerd' -%}
-  /var/run/containerd/containerd.sock
-  {%- elif cri_dockerd_enabled -%}
-  /var/run/cri-dockerd.sock
-  {%- else -%}
-  /var/run/dockershim.sock
+  unix:////var/run/containerd/containerd.sock
+  {%- elif container_manager == 'docker' -%}
+  unix:///var/run/cri-dockerd.sock
   {%- endif -%}
 
 ## Uncomment this if you want to force overlay/overlay2 as docker storage driver
@@ -564,8 +551,6 @@ kube_apiserver_endpoint: |-
   {%- else -%}
       https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
   {%- endif %}
-kube_apiserver_insecure_endpoint: >-
-  http://{{ kube_apiserver_insecure_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_insecure_port }}
 kube_apiserver_client_cert: "{{ kube_cert_dir }}/ca.crt"
 kube_apiserver_client_key: "{{ kube_cert_dir }}/ca.key"
 

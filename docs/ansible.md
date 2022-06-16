@@ -26,8 +26,6 @@ Based on the table below and the available python version for your ansible host 
 
 | Ansible Version | Python Version |
 | --------------- | -------------- |
-| 2.9             | 2.7,3.5-3.8    |
-| 2.10            | 2.7,3.5-3.8    |
 | 2.11            | 2.7,3.5-3.9    |
 | 2.12            | 3.8-3.10       |
 

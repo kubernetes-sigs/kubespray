@@ -536,21 +536,21 @@ loadbalancer_apiserver_type: "nginx"
 apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
 kube_apiserver_global_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      https://{{ apiserver_loadbalancer_domain_name | ipwrap }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
   {%- elif use_localhost_as_kubeapi_loadbalancer|default(False)|bool -%}
       https://127.0.0.1:{{ kube_apiserver_port }}
   {%- else -%}
-      https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
+      https://{{ first_kube_control_plane_address | ipwrap }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      https://{{ apiserver_loadbalancer_domain_name | ipwrap }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
   {%- elif not is_kube_master and loadbalancer_apiserver_localhost -%}
       https://localhost:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }}
   {%- elif is_kube_master -%}
-      https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_port }}
+      https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') | ipwrap }}:{{ kube_apiserver_port }}
   {%- else -%}
-      https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
+      https://{{ first_kube_control_plane_address | ipwrap }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_client_cert: "{{ kube_cert_dir }}/ca.crt"
 kube_apiserver_client_key: "{{ kube_cert_dir }}/ca.key"
@@ -564,25 +564,25 @@ etcd_hosts: "{{ groups['etcd'] | default(groups['kube_control_plane']) }}"
 # Vars for pointing to etcd endpoints
 is_etcd_master: "{{ inventory_hostname in groups['etcd'] }}"
 etcd_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
-etcd_access_address: "{{ access_ip | default(etcd_address) }}"
-etcd_events_access_address: "{{ access_ip | default(etcd_address) }}"
-etcd_peer_url: "https://{{ etcd_access_address }}:2380"
-etcd_client_url: "https://{{ etcd_access_address }}:2379"
-etcd_events_peer_url: "https://{{ etcd_events_access_address }}:2382"
-etcd_events_client_url: "https://{{ etcd_events_access_address }}:2383"
+etcd_access_address: "{{ access_ip | default(etcd_address) | ipwrap }}"
+etcd_events_access_address: "{{ access_ip | default(etcd_address) | ipwrap }}"
+etcd_peer_url: "https://{{ etcd_access_address | ipwrap }}:2380"
+etcd_client_url: "https://{{ etcd_access_address | ipwrap }}:2379"
+etcd_events_peer_url: "https://{{ etcd_events_access_address | ipwrap }}:2382"
+etcd_events_client_url: "https://{{ etcd_events_access_address | ipwrap }}:2383"
 etcd_access_addresses: |-
   {% for item in etcd_hosts -%}
-    https://{{ hostvars[item]['etcd_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2379{% if not loop.last %},{% endif %}
+    https://{{ hostvars[item]['etcd_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) | ipwrap }}:2379{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_events_access_addresses_list: |-
   [
   {% for item in etcd_hosts -%}
-    'https://{{ hostvars[item]['etcd_events_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2383'{% if not loop.last %},{% endif %}
+    'https://{{ hostvars[item]['etcd_events_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) | ipwrap }}:2383'{% if not loop.last %},{% endif %}
   {%- endfor %}
   ]
 etcd_metrics_addresses: |-
   {% for item in etcd_hosts -%}
-    https://{{ hostvars[item]['etcd_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:{{ etcd_metrics_port | default(2381) }}{% if not loop.last %},{% endif %}
+    https://{{ hostvars[item]['etcd_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) | ipwrap }}:{{ etcd_metrics_port | default(2381) }}{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_events_access_addresses: "{{etcd_events_access_addresses_list | join(',')}}"
 etcd_events_access_addresses_semicolon: "{{etcd_events_access_addresses_list | join(';')}}"
@@ -593,11 +593,11 @@ etcd_member_name: |-
   {% endfor %}
 etcd_peer_addresses: |-
   {% for item in groups['etcd'] -%}
-    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}=https://{{ hostvars[item].etcd_access_address | default(hostvars[item].ip | default(fallback_ips[item])) }}:2380{% if not loop.last %},{% endif %}
+    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}=https://{{ hostvars[item].etcd_access_address | default(hostvars[item].ip | default(fallback_ips[item])) | ipwrap }}:2380{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_events_peer_addresses: |-
   {% for item in groups['etcd'] -%}
-    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}-events=https://{{ hostvars[item].etcd_events_access_address | default(hostvars[item].ip | default(fallback_ips[item])) }}:2382{% if not loop.last %},{% endif %}
+    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index|string) }}-events=https://{{ hostvars[item].etcd_events_access_address | default(hostvars[item].ip | default(fallback_ips[item])) | ipwrap }}:2382{% if not loop.last %},{% endif %}
   {%- endfor %}
 
 podsecuritypolicy_enabled: false

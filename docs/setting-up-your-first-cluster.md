@@ -14,8 +14,8 @@ hands-on guide to get started with Kubespray.
 
 ## Cluster Details
 
-* [kubespray](https://github.com/kubernetes-sigs/kubespray) v2.17.x
-* [kubernetes](https://github.com/kubernetes/kubernetes) v1.17.9
+* [kubespray](https://github.com/kubernetes-sigs/kubespray) v2.19.x
+* [kubernetes](https://github.com/kubernetes/kubernetes) v1.23.7
 
 ## Prerequisites
 

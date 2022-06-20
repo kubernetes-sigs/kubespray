@@ -1,15 +1,27 @@
 ---
+- name: check if snapshot namespace exists
+  register: snapshot_namespace_exists
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    name: "{{ snapshot_controller_namespace }}"
+    resource: "namespace"
+    state: "exists"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags: snapshot-controller
+
 - name: Snapshot Controller | Generate Manifests
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
     mode: 0644
   with_items:
-    - {name: snapshot-ns, file: snapshot-ns.yml}
+    - {name: snapshot-ns, file: snapshot-ns.yml, apply: not snapshot_namespace_exists}
     - {name: rbac-snapshot-controller, file: rbac-snapshot-controller.yml}
     - {name: snapshot-controller, file: snapshot-controller.yml}
   register: snapshot_controller_manifests
-  when: inventory_hostname == groups['kube_control_plane'][0]
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - item.apply | default(True) | bool
   tags: snapshot-controller
 
 - name: Snapshot Controller | Apply Manifests

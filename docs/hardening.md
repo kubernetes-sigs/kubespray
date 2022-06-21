@@ -89,6 +89,11 @@ kubelet_seccomp_default: true
 # additional configurations
 kube_owner: root
 kube_cert_group: root
+
+# create a default Pod Security Configuration and deny running of insecure pods
+# kube_system namespace is exempted by default
+kube_pod_security_use_default: true
+kube_pod_security_default_enforce: restricted
 ```
 
 Let's take a deep look to the resultant **kubernetes** configuration:

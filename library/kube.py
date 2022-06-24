@@ -314,7 +314,7 @@ def main():
             wait=dict(default=False, type='bool'),
             all=dict(default=False, type='bool'),
             log_level=dict(default=0, type='int'),
-            state=dict(default='present', choices=['present', 'absent', 'latest', 'reloaded', 'stopped']),
+            state=dict(default='present', choices=['present', 'absent', 'latest', 'reloaded', 'stopped', 'exists']),
             recursive=dict(default=False, type='bool'),
             ),
             mutually_exclusive=[['filename', 'list']]
@@ -338,6 +338,11 @@ def main():
 
     elif state == 'latest':
         result = manager.replace()
+
+    elif state == 'exists':
+        result = manager.exists()
+        module.exit_json(changed=changed,
+                     msg='%s' % result)
 
     else:
         module.fail_json(msg='Unrecognized state %s.' % state)

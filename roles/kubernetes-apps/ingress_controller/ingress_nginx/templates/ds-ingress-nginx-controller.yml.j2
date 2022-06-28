@@ -65,6 +65,11 @@ spec:
 {% for extra_arg in ingress_nginx_extra_args %}
             - {{ extra_arg }}
 {% endfor %}
+{% if ingress_nginx_webhook_enabled %}
+            - --validating-webhook=:8443
+            - --validating-webhook-certificate=/usr/local/certificates/cert
+            - --validating-webhook-key=/usr/local/certificates/key
+{% endif %}
           securityContext:
             capabilities:
                 drop:
@@ -97,6 +102,11 @@ spec:
 {% if not ingress_nginx_host_network %}
               hostPort: {{ ingress_nginx_metrics_port }}
 {% endif %}
+{% if ingress_nginx_webhook_enabled %}
+            - name: webhook
+              containerPort: 8443
+              protocol: TCP
+{% endif %}
           livenessProbe:
             failureThreshold: 3
             httpGet:
@@ -118,3 +128,15 @@ spec:
             timeoutSeconds: 5
             successThreshold: 1
             failureThreshold: 3
+{% if ingress_nginx_webhook_enabled %}
+          volumeMounts:
+            - mountPath: /usr/local/certificates/
+              name: webhook-cert
+              readOnly: true
+{% endif %}
+{% if ingress_nginx_webhook_enabled %}
+      volumes:
+        - name: webhook-cert
+          secret:
+            secretName: ingress-nginx-admission
+{% endif %}

@@ -50,6 +50,7 @@
   * [DNS Stack](docs/dns-stack.md)
   * [Kubernetes reliability](docs/kubernetes-reliability.md)
   * [Local Registry](docs/kubernetes-apps/registry.md)
+  * [NTP](docs/ntp.md)
 * External Storage Provisioners
   * [RBD Provisioner](docs/kubernetes-apps/rbd_provisioner.md)
   * [CEPHFS Provisioner](docs/kubernetes-apps/cephfs_provisioner.md)

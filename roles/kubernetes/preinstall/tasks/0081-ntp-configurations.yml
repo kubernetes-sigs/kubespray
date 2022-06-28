@@ -1,0 +1,65 @@
+---
+- name: Ensure NTP package
+  package:
+    name:
+      - "{{ ntp_package }}"
+    state: present
+
+- name: Disable systemd-timesyncd
+  service:
+    name: systemd-timesyncd.service
+    enabled: false
+    state: stopped
+  failed_when: false
+
+- name: Set fact NTP settings
+  set_fact:
+    ntp_config_file: >-
+      {% if ntp_package == "ntp" -%}
+      /etc/ntp.conf
+      {%- elif ansible_os_family in ['RedHat', 'Suse'] -%}
+      /etc/chrony.conf
+      {%- else -%}
+      /etc/chrony/chrony.conf
+      {%- endif -%}
+    ntp_service_name: >-
+      {% if ntp_package == "chrony" -%}
+      chronyd
+      {%- elif ansible_os_family == 'RedHat' -%}
+      ntpd
+      {%- else -%}
+      ntp
+      {%- endif %}
+
+- name: Generate NTP configuration file.
+  template:
+    src: "{{ ntp_config_file | basename }}.j2"
+    dest: "{{ ntp_config_file }}"
+    mode: 0644
+  notify: Preinstall | restart ntp
+  when:
+    - ntp_manage_config
+
+- name: Stop the NTP Deamon For Sync Immediately   # `ntpd -gq`,`chronyd -q` requires the ntp daemon stop
+  service:
+    name: "{{ ntp_service_name }}"
+    state: stopped
+  when:
+    - ntp_force_sync_immediately
+
+- name: Force Sync NTP Immediately
+  command: >-
+      timeout -k 60s 60s
+      {% if ntp_package == "ntp" -%}
+      ntpd -gq
+      {%- else -%}
+      chronyd -q
+      {%- endif -%}
+  when:
+    - ntp_force_sync_immediately
+
+- name: Ensure NTP service is started and enabled
+  service:
+    name: "{{ ntp_service_name }}"
+    state: started
+    enabled: true

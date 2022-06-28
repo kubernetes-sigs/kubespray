@@ -1,4 +1,17 @@
 ---
+- name: Kubernetes Apps | Check AppArmor status
+  command: which apparmor_parser
+  register: apparmor_status
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+  failed_when: false
+
+- name: Kubernetes Apps | Set apparmor_enabled
+  set_fact:
+    apparmor_enabled: "{{ apparmor_status.rc == 0 }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
 - name: Kubernetes Apps | Netchecker Templates list
   set_fact:
     netchecker_templates:
@@ -25,6 +38,7 @@
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
   with_items: "{{ netchecker_templates }}"
   register: manifests
   when:

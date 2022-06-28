@@ -18,9 +18,12 @@ Some variables of note include:
 * *docker_version* - Specify version of Docker to used (should be quoted
   string). Must match one of the keys defined for *docker_versioned_pkg*
   in `roles/container-engine/docker/vars/*.yml`.
-* *containerd_version* - Specify version of Containerd to use
+* *containerd_version* - Specify version of containerd to use when setting `container_manager` to `containerd`
+* *docker_containerd_version* - Specify which version of containerd to use when setting `container_manager` to `docker`
 * *etcd_version* - Specify version of ETCD to use
-* *ipip* - Enables Calico ipip encapsulation by default
+* *calico_ipip_mode* - Configures Calico ipip encapsulation - valid values are 'Never', 'Always' and 'CrossSubnet' (default 'Never')
+* *calico_vxlan_mode* - Configures Calico vxlan encapsulation - valid values are 'Never', 'Always' and 'CrossSubnet' (default 'Always')
+* *calico_network_backend* - Configures Calico network backend - valid values are 'none', 'bird' and 'vxlan' (default 'vxlan')
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)
 * *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
 * *kube_version* - Specify a given Kubernetes version
@@ -36,6 +39,9 @@ Some variables of note include:
   public/floating and private IPs.
 * *ansible_default_ipv4.address* - Not Kubespray-specific, but it is used if ip
   and access_ip are undefined
+* *ip6* - IPv6 address to use for binding services. (host var)
+  If *enable_dual_stack_networks* is set to ``true`` and *ip6* is defined,
+  kubelet's ``--node-ip`` and node's ``InternalIP`` will be the combination of *ip* and *ip6*.
 * *loadbalancer_apiserver* - If defined, all hosts will connect to this
   address instead of localhost for kube_control_planes and kube_control_plane[0] for
   kube_nodes. See more details in the
@@ -51,44 +57,96 @@ Kubernetes needs some parameters in order to get deployed. These are the
 following default cluster parameters:
 
 * *cluster_name* - Name of cluster (default is cluster.local)
-* *container_manager* - Container Runtime to install in the nodes (default is docker)
+
+* *container_manager* - Container Runtime to install in the nodes (default is containerd)
+
+* *image_command_tool* - Tool used to pull images (default depends on `container_manager`
+  and is `nerdctl` for `containerd`, `crictl` for `crio`, `docker` for `docker`)
+
+* *image_command_tool_on_localhost* - Tool used to pull images on localhost
+  (default is equal to `image_command_tool`)
+
 * *dns_domain* - Name of cluster DNS domain (default is cluster.local)
+
 * *kube_network_plugin* - Plugin to use for container networking
+
 * *kube_service_addresses* - Subnet for cluster IPs (default is
   10.233.0.0/18). Must not overlap with kube_pods_subnet
+
 * *kube_pods_subnet* - Subnet for Pod IPs (default is 10.233.64.0/18). Must not
   overlap with kube_service_addresses.
+
 * *kube_network_node_prefix* - Subnet allocated per-node for pod IPs. Remaining
   bits in kube_pods_subnet dictates how many kube_nodes can be in cluster. Setting this > 25 will
   raise an assertion in playbooks if the `kubelet_max_pods` var also isn't adjusted accordingly
   (assertion not applicable to calico which doesn't use this as a hard limit, see
   [Calico IP block sizes](https://docs.projectcalico.org/reference/resources/ippool#block-sizes).
+  
 * *enable_dual_stack_networks* - Setting this to true will provision both IPv4 and IPv6 networking for pods and services.
+
 * *kube_service_addresses_ipv6* - Subnet for cluster IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1000/116``). Must not overlap with ``kube_pods_subnet_ipv6``.
+
 * *kube_pods_subnet_ipv6* - Subnet for Pod IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1:0000/112``). Must not overlap with ``kube_service_addresses_ipv6``.
+
 * *kube_network_node_prefix_ipv6* - Subnet allocated per-node for pod IPv6 IPs. Remaining bits in ``kube_pods_subnet_ipv6`` dictates how many kube_nodes can be in cluster.
+
 * *skydns_server* - Cluster IP for DNS (default is 10.233.0.3)
+
 * *skydns_server_secondary* - Secondary Cluster IP for CoreDNS used with coredns_dual deployment (default is 10.233.0.4)
+
 * *enable_coredns_k8s_external* - If enabled, it configures the [k8s_external plugin](https://coredns.io/plugins/k8s_external/)
   on the CoreDNS service.
+
 * *coredns_k8s_external_zone* - Zone that will be used when CoreDNS k8s_external plugin is enabled
   (default is k8s_external.local)
+  
 * *enable_coredns_k8s_endpoint_pod_names* - If enabled, it configures endpoint_pod_names option for kubernetes plugin.
   on the CoreDNS service.
+
 * *cloud_provider* - Enable extra Kubelet option if operating inside GCE or
   OpenStack (default is unset)
+
 * *kube_feature_gates* - A list of key=value pairs that describe feature gates for
-  alpha/experimental Kubernetes features. (defaults is `[]`)
+  alpha/experimental Kubernetes features. (defaults is `[]`).
+  Additionally, you can use also the following variables to individually customize your kubernetes components installation (they works exactly like `kube_feature_gates`):
+  * *kube_apiserver_feature_gates*
+  * *kube_controller_feature_gates*
+  * *kube_scheduler_feature_gates*
+  * *kube_proxy_feature_gates*
+  * *kubelet_feature_gates*
+
 * *kubeadm_feature_gates* - A list of key=value pairs that describe feature gates for
   alpha/experimental Kubeadm features. (defaults is `[]`)
+
 * *authorization_modes* - A list of [authorization mode](
-https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
+  https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
   that the cluster should be configured for. Defaults to `['Node', 'RBAC']`
   (Node and RBAC authorizers).
   Note: `Node` and `RBAC` are enabled by default. Previously deployed clusters can be
   converted to RBAC mode. However, your apps which rely on Kubernetes API will
   require a service account and cluster role bindings. You can override this
   setting by setting authorization_modes to `[]`.
+
+* *kube_apiserver_admission_control_config_file* - Enable configuration for `kube-apiserver` admission plugins.
+  Currently this variable allow you to configure the `EventRateLimit` admission plugin.
+
+  To configure the **EventRateLimit** plugin you have to define a data structure like this:
+
+```yml
+kube_apiserver_admission_event_rate_limits:
+  limit_1:
+    type: Namespace
+    qps: 50
+    burst: 100
+    cache_size: 2000
+  limit_2:
+    type: User
+    qps: 50
+    burst: 100
+  ...
+```
+
+* *kube_apiserver_service_account_lookup* - Enable validation service account before validating token. Default `true`.
 
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``
@@ -118,15 +176,15 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
 * *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install.
-* *containerd_default_runtime* - Sets the default Containerd runtime used by the Kubernetes CRI plugin.
+* *containerd_default_runtime* - If defined, changes the default Containerd runtime used by the Kubernetes CRI plugin.
 * *containerd_additional_runtimes* - Sets the additional Containerd runtimes used by the Kubernetes CRI plugin.
   [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container-engine/containerd/defaults/main.yml) can be overriden in inventory vars.
 * *http_proxy/https_proxy/no_proxy/no_proxy_exclude_workers/additional_no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.
-* *kubelet_cgroup_driver* - Allows manual override of the
-  cgroup-driver option for Kubelet. By default autodetection is used
-  to match Docker configuration.
+* *kubelet_cgroup_driver* - Allows manual override of the cgroup-driver option for Kubelet.
+  By default autodetection is used to match container manager configuration.
+  `systemd` is the preferred driver for `containerd` though it can have issues with `cgroups v1` and `kata-containers` in which case you may want to change to `cgroupfs`.
 * *kubelet_rotate_certificates* - Auto rotate the kubelet client certificates by requesting new certificates
   from the kube-apiserver when the certificate expiration approaches.
 * *kubelet_rotate_server_certificates* - Auto rotate the kubelet server certificates by requesting new certificates
@@ -134,6 +192,8 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   **Note** that server certificates are **not** approved automatically. Approve them manually
   (`kubectl get csr`, `kubectl certificate approve`) or implement custom approving controller like
   [kubelet-rubber-stamp](https://github.com/kontena/kubelet-rubber-stamp).
+* *kubelet_streaming_connection_idle_timeout* - Set the maximum time a streaming connection can be idle before the connection is automatically closed.
+* *kubelet_make_iptables_util_chains* - If `true`, causes the kubelet ensures a set of `iptables` rules are present on host.
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
   *node_labels* can only be defined as a dict:

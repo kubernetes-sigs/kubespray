@@ -20,6 +20,8 @@ ssh_public_keys = [
 machines = {
   "master-0" : {
     "node_type" : "master",
+    # plan to use instead of custom cpu/mem
+    "plan" : null,
     #number of cpu cores
     "cpu" : "2",
     #memory size in MB
@@ -30,6 +32,8 @@ machines = {
   },
   "worker-0" : {
     "node_type" : "worker",
+    # plan to use instead of custom cpu/mem
+    "plan" : null,
     #number of cpu cores
     "cpu" : "2",
     #memory size in MB
@@ -49,6 +53,8 @@ machines = {
   },
   "worker-1" : {
     "node_type" : "worker",
+    # plan to use instead of custom cpu/mem
+    "plan" : null,
     #number of cpu cores
     "cpu" : "2",
     #memory size in MB
@@ -68,6 +74,8 @@ machines = {
   },
   "worker-2" : {
     "node_type" : "worker",
+    # plan to use instead of custom cpu/mem
+    "plan" : null,
     #number of cpu cores
     "cpu" : "2",
     #memory size in MB
@@ -85,4 +93,33 @@ machines = {
       # }
     }
   }
+}
+
+firewall_enabled = false
+
+master_allowed_remote_ips = [
+  {
+    "start_address" : "0.0.0.0"
+    "end_address" : "255.255.255.255"
+  }
+]
+
+k8s_allowed_remote_ips = [
+  {
+    "start_address" : "0.0.0.0"
+    "end_address" : "255.255.255.255"
+  }
+]
+
+loadbalancer_enabled = false
+loadbalancer_plan = "development"
+loadbalancers = {
+  # "http" : {
+  #   "port" : 80,
+  #   "backend_servers" : [
+  #     "worker-0",
+  #     "worker-1",
+  #     "worker-2"
+  #   ]
+  # }
 }

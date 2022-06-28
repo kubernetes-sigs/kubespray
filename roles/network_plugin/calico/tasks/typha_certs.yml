@@ -1,6 +1,6 @@
 ---
 - name: Calico | Check if typha-server exists
-  command: "{{ bin_dir }}/kubectl -n kube-system get secret typha-server"
+  command: "{{ kubectl }} -n kube-system get secret typha-server"
   register: typha_server_secret
   changed_when: false
   failed_when: false
@@ -9,11 +9,12 @@
   file:
     path: /etc/calico/certs
     state: directory
+    mode: 0755
   when: typha_server_secret.rc != 0
 
 - name: Calico | Copy ssl script for typha certs
-  copy:
-    src: make-ssl-typha.sh
+  template:
+    src: make-ssl-calico.sh.j2
     dest: "{{ bin_dir }}/make-ssl-typha.sh"
     mode: 0755
   when: typha_server_secret.rc != 0
@@ -31,11 +32,12 @@
     -f /etc/calico/certs/openssl.conf
     -c {{ kube_cert_dir }}
     -d /etc/calico/certs
+    -s typha
   when: typha_server_secret.rc != 0
 
 - name: Calico | Create typha tls secrets
   command: >-
-    {{ bin_dir }}/kubectl -n kube-system
+    {{ kubectl }} -n kube-system
     create secret tls {{ item.name }}
     --cert {{ item.cert }}
     --key {{ item.key }}

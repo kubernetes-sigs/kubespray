@@ -97,6 +97,7 @@ terraform destroy --var-file default.tfvars ../../contrib/terraform/hetzner
 * `prefix`: Prefix to add to all resources, if set to "" don't set any prefix
 * `ssh_public_keys`: List of public SSH keys to install on all machines
 * `zone`: The zone where to run the cluster
+* `network_zone`: the network zone where the cluster is running
 * `machines`: Machines to provision. Key of this object will be used as the name of the machine
   * `node_type`: The role of this node *(master|worker)*
   * `size`: Size of the VM

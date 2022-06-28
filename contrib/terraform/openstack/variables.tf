@@ -78,6 +78,10 @@ variable "master_volume_type" {
   default = "Default"
 }
 
+variable "node_volume_type" {
+  default = "Default"
+}
+
 variable "public_key_path" {
   description = "The path of the ssh pub key"
   default     = "~/.ssh/id_rsa.pub"
@@ -133,6 +137,12 @@ variable "network_name" {
   default     = "internal"
 }
 
+variable "use_existing_network" {
+  description = "Use an existing network"
+  type        = bool
+  default     = "false"
+}
+
 variable "network_dns_domain" {
   description = "dns_domain for the internal network"
   type        = string
@@ -142,6 +152,18 @@ variable "network_dns_domain" {
 variable "use_neutron" {
   description = "Use neutron"
   default     = 1
+}
+
+variable "port_security_enabled" {
+  description = "Enable port security on the internal network"
+  type        = bool
+  default     = "true"
+}
+
+variable "force_null_port_security" {
+  description = "Force port security to be null. Some providers does not allow setting port security"
+  type        = bool
+  default     = "false"
 }
 
 variable "subnet_cidr" {
@@ -158,6 +180,12 @@ variable "dns_nameservers" {
 
 variable "k8s_master_fips" {
   description = "specific pre-existing floating IPs to use for master nodes"
+  type        = list(string)
+  default     = []
+}
+
+variable "bastion_fips" {
+  description = "specific pre-existing floating IPs to use for bastion node"
   type        = list(string)
   default     = []
 }
@@ -233,8 +261,19 @@ variable "use_access_ip" {
   default = 1
 }
 
-variable "use_server_groups" {
-  default = false
+variable "master_server_group_policy" {
+  description = "desired server group policy, e.g. anti-affinity"
+  default     = ""
+}
+
+variable "node_server_group_policy" {
+  description = "desired server group policy, e.g. anti-affinity"
+  default     = ""
+}
+
+variable "etcd_server_group_policy" {
+  description = "desired server group policy, e.g. anti-affinity"
+  default     = ""
 }
 
 variable "router_id" {
@@ -245,6 +284,10 @@ variable "router_id" {
 variable "router_internal_port_id" {
   description = "uuid of the port connection our router to our network"
   default     = null
+}
+
+variable "k8s_masters" {
+  default = {}
 }
 
 variable "k8s_nodes" {

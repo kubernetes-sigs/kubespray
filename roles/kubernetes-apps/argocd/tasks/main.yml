@@ -14,7 +14,7 @@
       - name: install
         file: argocd-install.yml
         namespace: "{{ argocd_namespace }}"
-        url: "https://raw.githubusercontent.com/argoproj/argo-cd/{{argocd_version}}/manifests/install.yaml"
+        url: "https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml"
   when:
     - "inventory_hostname == groups['kube_control_plane'][0]"
 
@@ -23,6 +23,7 @@
   get_url:
     url: "{{ item.url }}"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
   with_items: "{{ argocd_templates | selectattr('url', 'defined') | list }}"
   loop_control:
     label: "{{ item.file }}"
@@ -32,7 +33,7 @@
 - name: Kubernetes Apps | Set ArgoCD namespace for remote manifests
   become: yes
   command: |
-    {{ bin_dir }}/yq eval-all -i '.metadata.namespace="{{argocd_namespace}}"' {{ kube_config_dir }}/{{ item.file }}
+    {{ bin_dir }}/yq eval-all -i '.metadata.namespace="{{ argocd_namespace }}"' {{ kube_config_dir }}/{{ item.file }}
   with_items: "{{ argocd_templates | selectattr('url', 'defined') | list }}"
   loop_control:
     label: "{{ item.file }}"
@@ -44,6 +45,7 @@
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
   with_items: "{{ argocd_templates | selectattr('url', 'undefined') | list }}"
   loop_control:
     label: "{{ item.file }}"
@@ -65,10 +67,10 @@
 - name: Kubernetes Apps | Set ArgoCD custom admin password
   become: yes
   shell: |
-    {{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf -n {{argocd_namespace}} patch secret argocd-secret -p \
+    {{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf -n {{ argocd_namespace }} patch secret argocd-secret -p \
       '{
         "stringData": {
-          "admin.password": "{{argocd_admin_password|password_hash('bcrypt')}}",
+          "admin.password": "{{ argocd_admin_password | password_hash('bcrypt') }}",
           "admin.passwordMtime": "'$(date +%FT%T%Z)'"
         }
       }'

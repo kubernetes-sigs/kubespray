@@ -1,5 +1,5 @@
 {
-  "name": "cni0",
+  "name": "{{ calico_cni_name }}",
   "cniVersion":"0.3.1",
   "plugins":[
     {
@@ -15,7 +15,9 @@
 {% endif %}
       "type": "calico",
       "log_level": "info",
-      "log_file_path": "/var/log/calico/cni/cni.log",
+{% if calico_cni_log_file_path %}
+      "log_file_path": "{{ calico_cni_log_file_path }}",
+{% endif %}
 {% if calico_datastore == "etcd" %}
       "etcd_endpoints": "{{ etcd_access_addresses }}",
       "etcd_cert_file": "{{ calico_cert_dir }}/cert.crt",
@@ -32,10 +34,19 @@
         "type": "calico-ipam",
 {%   if enable_dual_stack_networks %}
         "assign_ipv6": "true",
+{%      if calico_cni_pool_ipv6 %}
         "ipv6_pools": ["{{ calico_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}"],
+{%      endif %}
 {%   endif %}
-        "assign_ipv4": "true",
-        "ipv4_pools": ["{{ calico_pool_cidr | default(kube_pods_subnet) }}"]
+{%      if calico_cni_pool %}
+        "ipv4_pools": ["{{ calico_pool_cidr | default(kube_pods_subnet) }}"],
+{%      endif %}
+        "assign_ipv4": "true"
+      },
+{% endif %}
+{% if calico_allow_ip_forwarding %}
+      "container_settings": {
+        "allow_ip_forwarding": true
       },
 {% endif %}
 {% if (calico_feature_control is defined) and (calico_feature_control|length > 0) %}

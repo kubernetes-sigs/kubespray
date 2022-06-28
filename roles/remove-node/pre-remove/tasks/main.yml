@@ -1,7 +1,7 @@
 ---
 - name: remove-node | List nodes
   command: >-
-    {{ bin_dir }}/kubectl get nodes -o go-template={% raw %}'{{ range .items }}{{ .metadata.name }}{{ "\n" }}{{ end }}'{% endraw %}
+    {{ kubectl }} get nodes -o go-template={% raw %}'{{ range .items }}{{ .metadata.name }}{{ "\n" }}{{ end }}'{% endraw %}
   register: nodes
   delegate_to: "{{ groups['kube_control_plane']|first }}"
   changed_when: false
@@ -9,19 +9,30 @@
 
 - name: remove-node | Drain node except daemonsets resource  # noqa 301
   command: >-
-    {{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf drain
+    {{ kubectl }} drain
       --force
       --ignore-daemonsets
       --grace-period {{ drain_grace_period }}
       --timeout {{ drain_timeout }}
-      --delete-emptydir-data {{ hostvars[item]['kube_override_hostname']|default(item) }}
-  loop: "{{ node.split(',') | default(groups['kube_node']) }}"
+      --delete-emptydir-data {{ kube_override_hostname|default(inventory_hostname) }}
   # ignore servers that are not nodes
-  when: hostvars[item]['kube_override_hostname']|default(item) in nodes.stdout_lines
+  when: kube_override_hostname|default(inventory_hostname) in nodes.stdout_lines
   register: result
   failed_when: result.rc != 0 and not allow_ungraceful_removal
   delegate_to: "{{ groups['kube_control_plane']|first }}"
-  run_once: true
   until: result.rc == 0 or allow_ungraceful_removal
   retries: "{{ drain_retries }}"
   delay: "{{ drain_retry_delay_seconds }}"
+
+- name: remove-node | Wait until Volumes will be detached from the node
+  command: >-
+    {{ kubectl }} get volumeattachments -o go-template={% raw %}'{{ range .items }}{{ .spec.nodeName }}{{ "\n" }}{{ end }}'{% endraw %}
+  register: nodes_with_volumes
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
+  changed_when: false
+  until: not (kube_override_hostname|default(inventory_hostname) in nodes_with_volumes.stdout_lines)
+  retries: 3
+  delay: "{{ drain_grace_period }}"
+  when:
+    - not allow_ungraceful_removal
+    - kube_override_hostname|default(inventory_hostname) in nodes.stdout_lines

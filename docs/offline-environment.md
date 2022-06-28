@@ -30,6 +30,13 @@ crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-{{ crictl_ver
 calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
 # If using Calico with kdd
 calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_version }}.tar.gz"
+# Containerd
+containerd_download_url: "{{ files_repo }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
+runc_download_url: "{{ files_repo }}/runc.{{ image_arch }}"
+nerdctl_download_url: "{{ files_repo }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+# Insecure registries for containerd
+containerd_insecure_registries:
+  - "{{ registry_host }}"
 
 # CentOS/Redhat/AlmaLinux/Rocky Linux
 ## Docker / Containerd

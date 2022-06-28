@@ -15,7 +15,7 @@ function create_container_image_tar() {
 	IMAGES=$(kubectl describe pods --all-namespaces | grep " Image:" | awk '{print $2}' | sort | uniq)
 	# NOTE: etcd and pause cannot be seen as pods.
 	# The pause image is used for --pod-infra-container-image option of kubelet.
-	EXT_IMAGES=$(kubectl cluster-info dump | egrep "quay.io/coreos/etcd:|k8s.gcr.io/pause:" | sed s@\"@@g)
+	EXT_IMAGES=$(kubectl cluster-info dump | egrep "quay.io/coreos/etcd:|registry.k8s.io/pause:" | sed s@\"@@g)
 	IMAGES="${IMAGES} ${EXT_IMAGES}"
 
 	rm -f  ${IMAGE_TAR_FILE}
@@ -46,15 +46,16 @@ function create_container_image_tar() {
 
 		# NOTE: Here removes the following repo parts from each image
 		# so that these parts will be replaced with Kubespray.
-		# - kube_image_repo: "k8s.gcr.io"
+		# - kube_image_repo: "registry.k8s.io"
 		# - gcr_image_repo: "gcr.io"
 		# - docker_image_repo: "docker.io"
 		# - quay_image_repo: "quay.io"
 		FIRST_PART=$(echo ${image} | awk -F"/" '{print $1}')
-		if [ "${FIRST_PART}" = "k8s.gcr.io" ] ||
+		if [ "${FIRST_PART}" = "registry.k8s.io" ] ||
 		   [ "${FIRST_PART}" = "gcr.io" ] ||
 		   [ "${FIRST_PART}" = "docker.io" ] ||
-		   [ "${FIRST_PART}" = "quay.io" ]; then
+		   [ "${FIRST_PART}" = "quay.io" ] ||
+		   [ "${FIRST_PART}" = "${PRIVATE_REGISTRY}" ]; then
 			image=$(echo ${image} | sed s@"${FIRST_PART}/"@@)
 		fi
 		echo "${FILE_NAME}  ${image}" >> ${IMAGE_LIST}
@@ -152,7 +153,8 @@ else
 	echo "(2) Deploy local container registry and register the container images to the registry."
 	echo ""
 	echo "Step(1) should be done online site as a preparation, then we bring"
-	echo "the gotten images to the target offline environment."
+	echo "the gotten images to the target offline environment. if images are from"
+	echo "a private registry, you need to set PRIVATE_REGISTRY environment variable."
 	echo "Then we will run step(2) for registering the images to local registry."
 	echo ""
 	echo "${IMAGE_TAR_FILE} is created to contain your container images."

@@ -15,10 +15,10 @@ is_fedora_coreos: false
 disable_swap: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.22.3
+kube_version: v1.24.2
 
 ## The minimum version working
-kube_version_min_required: v1.20.0
+kube_version_min_required: v1.22.0
 
 ## Kube Proxy mode One of ['iptables','ipvs']
 kube_proxy_mode: ipvs
@@ -31,6 +31,8 @@ kubeadm_init_phases_skip: >-
   {%- if kube_network_plugin == 'kube-router' and (kube_router_run_service_proxy is defined and kube_router_run_service_proxy) -%}
   {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
   {%- elif kube_network_plugin == 'cilium' and (cilium_kube_proxy_replacement is defined and cilium_kube_proxy_replacement == 'strict') -%}
+  {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
+  {%- elif kube_network_plugin == 'calico' and (calico_bpf_enabled is defined and calico_bpf_enabled) -%}
   {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
   {%- elif kube_proxy_remove is defined and kube_proxy_remove -%}
   {{ kubeadm_init_phases_skip_default }} + [ "addon/kube-proxy" ]
@@ -57,6 +59,8 @@ kube_proxy_nodeport_addresses: >-
 
 # Set to true to allow pre-checks to fail and continue deployment
 ignore_assert_errors: false
+
+kube_vip_enabled: false
 
 # nginx-proxy configure
 nginx_config_dir: "/etc/nginx"
@@ -93,15 +97,18 @@ dns_mode: coredns
 
 # Enable nodelocal dns cache
 enable_nodelocaldns: true
+enable_nodelocaldns_secondary: false
 nodelocaldns_ip: 169.254.25.10
 nodelocaldns_health_port: 9254
+nodelocaldns_second_health_port: 9256
 nodelocaldns_bind_metrics_host_ip: false
+nodelocaldns_secondary_skew_seconds: 5
 
 # Should be set to a cluster IP if using a custom cluster DNS
 manual_dns_server: ""
 
-# Can be docker_dns, host_resolvconf or none
-resolvconf_mode: docker_dns
+# Can be host_resolvconf, docker_dns or none
+resolvconf_mode: host_resolvconf
 # Deploy netchecker app to verify DNS resolve as an HTTP service
 deploy_netchecker: false
 # Ip address of the kubernetes DNS service (called skydns for historical reasons)
@@ -127,11 +134,15 @@ enable_coredns_k8s_endpoint_pod_names: false
 # Kubernetes configuration dirs and system namespace.
 # Those are where all the additional config stuff goes
 # the kubernetes normally puts in /srv/kubernetes.
-# This puts them in a same location and namespace.
+# This puts them in a sane location and namespace.
 # Editing those values will almost surely break something.
 kube_config_dir: /etc/kubernetes
 kube_script_dir: "{{ bin_dir }}/kubernetes-scripts"
 kube_manifest_dir: "{{ kube_config_dir }}/manifests"
+
+# Kubectl command
+# This is for consistency when using kubectl command in roles, and ensure
+kubectl: "{{ bin_dir }}/kubectl --kubeconfig {{ kube_config_dir }}/admin.conf"
 
 # This is where all the cert scripts and certs will be located
 kube_cert_dir: "{{ kube_config_dir }}/ssl"
@@ -142,14 +153,23 @@ kube_cert_compat_dir: "/etc/kubernetes/pki"
 # This is where all of the bearer tokens will be stored
 kube_token_dir: "{{ kube_config_dir }}/tokens"
 
+# This is the user that owns tha cluster installation.
+kube_owner: kube
+
 # This is the group that the cert creation scripts chgrp the
 # cert files to. Not really changeable...
 kube_cert_group: kube-cert
 
+# Set to true when the CAs are managed externally.
+# When true, disables all tasks manipulating certificates. Ensure before the kubespray run that:
+# - Certificates and CAs are present in kube_cert_dir
+# - Kubeconfig files are present in kube_config_dir
+kube_external_ca_mode: false
+
 # Cluster Loglevel configuration
 kube_log_level: 2
 
-# Choose network plugin (cilium, calico, weave or flannel)
+# Choose network plugin (cilium, calico, kube-ovn, weave or flannel. Use cni for generic cni plugin)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
 kube_network_plugin: calico
 kube_network_plugin_multus: false
@@ -209,12 +229,13 @@ kube_network_node_prefix_ipv6: 120
 # NOTE: loadbalancer_apiserver_localhost somewhat alters the final API enpdoint
 # access IP value (automatically evaluated below)
 kube_apiserver_ip: "{{ kube_service_addresses|ipaddr('net')|ipaddr(1)|ipaddr('address') }}"
+
+# NOTE: If you specific address/interface and use loadbalancer_apiserver_localhost
+# loadbalancer_apiserver_localhost (nginx/haproxy) will deploy on masters on 127.0.0.1:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }} too.
 kube_apiserver_bind_address: 0.0.0.0
+
 # https
 kube_apiserver_port: 6443
-# http
-kube_apiserver_insecure_bind_address: 127.0.0.1
-kube_apiserver_insecure_port: 0
 
 # If non-empty, will use this string as identification instead of the actual hostname
 kube_override_hostname: >-
@@ -223,13 +244,9 @@ kube_override_hostname: >-
   {{ inventory_hostname }}
   {%- endif -%}
 
-# dynamic kubelet configuration
-dynamic_kubelet_configuration: false
-
 # define kubelet config dir for dynamic kubelet
 # kubelet_config_dir:
 default_kubelet_config_dir: "{{ kube_config_dir }}/dynamic_kubelet_dir"
-dynamic_kubelet_configuration_dir: "{{ kubelet_config_dir | default(default_kubelet_config_dir) }}"
 
 # Aggregator
 kube_api_aggregator_routing: false
@@ -238,17 +255,16 @@ kube_api_aggregator_routing: false
 kube_profiling: false
 
 # Graceful Node Shutdown
-# This requires kubernetes >= 1.21.0
 kubelet_shutdown_grace_period: 60s
 # kubelet_shutdown_grace_period_critical_pods should be less than kubelet_shutdown_grace_period
 # to give normal pods time to be gracefully evacuated
 kubelet_shutdown_grace_period_critical_pods: 20s
 
 # Whether to deploy the container engine
-deploy_container_engine: inventory_hostname in groups['k8s_cluster'] or etcd_deployment_type != 'host'
+deploy_container_engine: "{{ inventory_hostname in groups['k8s_cluster'] or etcd_deployment_type == 'docker' }}"
 
 # Container for runtime
-container_manager: docker
+container_manager: containerd
 
 # Enable Kata Containers as additional container runtime
 # When enabled, it requires `container_manager` different than Docker
@@ -262,17 +278,21 @@ gvisor_enabled: false
 # When enabled, it requires container_manager=crio
 crun_enabled: false
 
+# Enable youki as additional container runtime
+# When enabled, it requires container_manager=crio
+youki_enabled: false
+
 # Container on localhost (download images when download_localhost is true)
 container_manager_on_localhost: "{{ container_manager }}"
 
 # CRI socket path
 cri_socket: >-
   {%- if container_manager == 'crio' -%}
-  /var/run/crio/crio.sock
+  unix:///var/run/crio/crio.sock
   {%- elif container_manager == 'containerd' -%}
-  /var/run/containerd/containerd.sock
-  {%- else -%}
-  /var/run/dockershim.sock
+  unix:////var/run/containerd/containerd.sock
+  {%- elif container_manager == 'docker' -%}
+  unix:///var/run/cri-dockerd.sock
   {%- endif -%}
 
 ## Uncomment this if you want to force overlay/overlay2 as docker storage driver
@@ -327,16 +347,27 @@ docker_registry_mirrors: []
 ## Empty by default so no plugins will be installed.
 docker_plugins: []
 
-# Experimental kubeadm etcd deployment mode. Available only for new deployment
-etcd_kubeadm_enabled: false
-
-# Containerd options
-containerd_version: 1.4.9
+# Containerd options - thse are relevant when container_manager == 'containerd'
 containerd_use_systemd_cgroup: true
+
+## An obvious use case is allowing insecure-registry access to self hosted registries.
+## Can be ipaddress and domain_name.
+## example define mirror.registry.io or 172.19.16.11:5000
+## Port number is also needed if the default HTTPS port is not used.
+# containerd_insecure_registries:
+#   - mirror.registry.io
+#   - 172.19.16.11:5000
+containerd_insecure_registries: []
+
+# Containerd conf default dir
+containerd_storage_dir: "/var/lib/containerd"
+containerd_state_dir: "/run/containerd"
+containerd_systemd_dir: "/etc/systemd/system/containerd.service.d"
+containerd_cfg_dir: "/etc/containerd"
 
 # Settings for containerized control plane (etcd/kubelet/secrets)
 # deployment type for legacy etcd mode
-etcd_deployment_type: docker
+etcd_deployment_type: host
 cert_management: script
 
 # Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
@@ -368,6 +399,7 @@ aws_ebs_csi_enabled: false
 azure_csi_enabled: false
 gcp_pd_csi_enabled: false
 vsphere_csi_enabled: false
+upcloud_csi_enabled: false
 csi_snapshot_controller_enabled: false
 persistent_volumes_enabled: false
 cephfs_provisioner_enabled: false
@@ -378,9 +410,6 @@ cert_manager_enabled: false
 expand_persistent_volumes: false
 metallb_enabled: false
 argocd_enabled: false
-
-# containerd official CLI tool
-nerdctl_enabled: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -420,6 +449,21 @@ external_openstack_lbaas_use_octavia: false
 external_openstack_network_internal_networks: []
 external_openstack_network_public_networks: []
 
+# Default values for the external Hcloud Cloud Controller
+external_hcloud_cloud:
+  hcloud_api_token: ""
+  token_secret_name: hcloud
+
+  service_account_name: cloud-controller-manager
+
+  controller_image_tag: "latest"
+  ## A dictionary of extra arguments to add to the openstack cloud controller manager daemonset
+  ## Format:
+  ##  external_hcloud_cloud.controller_extra_args:
+  ##    arg1: "value1"
+  ##    arg2: "value2"
+  controller_extra_args: {}
+
 ## List of authorization modes that must be configured for
 ## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
 ## 'RBAC' modes are tested. Order is important.
@@ -444,6 +488,11 @@ kubelet_protect_kernel_defaults: true
 ## List of key=value pairs that describe feature gates for
 ## the k8s cluster.
 kube_feature_gates: []
+kube_apiserver_feature_gates: []
+kube_controller_feature_gates: []
+kube_scheduler_feature_gates: []
+kube_proxy_feature_gates: []
+kubelet_feature_gates: []
 kubeadm_feature_gates: []
 
 # Local volume provisioner storage classes
@@ -482,7 +531,7 @@ is_kube_master: "{{ inventory_hostname in groups['kube_control_plane'] }}"
 kube_apiserver_count: "{{ groups['kube_control_plane'] | length }}"
 kube_apiserver_address: "{{ ip | default(fallback_ips[inventory_hostname]) }}"
 kube_apiserver_access_address: "{{ access_ip | default(kube_apiserver_address) }}"
-first_kube_master: "{{ hostvars[groups['kube_control_plane'][0]]['access_ip'] | default(hostvars[groups['kube_control_plane'][0]]['ip'] | default(fallback_ips[groups['kube_control_plane'][0]])) }}"
+first_kube_control_plane_address: "{{ hostvars[groups['kube_control_plane'][0]]['access_ip'] | default(hostvars[groups['kube_control_plane'][0]]['ip'] | default(fallback_ips[groups['kube_control_plane'][0]])) }}"
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
@@ -493,7 +542,7 @@ kube_apiserver_global_endpoint: |-
   {%- elif use_localhost_as_kubeapi_loadbalancer|default(False)|bool -%}
       https://127.0.0.1:{{ kube_apiserver_port }}
   {%- else -%}
-      https://{{ first_kube_master }}:{{ kube_apiserver_port }}
+      https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
@@ -503,10 +552,8 @@ kube_apiserver_endpoint: |-
   {%- elif is_kube_master -%}
       https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_port }}
   {%- else -%}
-      https://{{ first_kube_master }}:{{ kube_apiserver_port }}
+      https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
   {%- endif %}
-kube_apiserver_insecure_endpoint: >-
-  http://{{ kube_apiserver_insecure_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_insecure_port }}
 kube_apiserver_client_cert: "{{ kube_cert_dir }}/ca.crt"
 kube_apiserver_client_key: "{{ kube_cert_dir }}/ca.key"
 
@@ -524,7 +571,7 @@ etcd_events_access_address: "{{ access_ip | default(etcd_address) }}"
 etcd_peer_url: "https://{{ etcd_access_address }}:2380"
 etcd_client_url: "https://{{ etcd_access_address }}:2379"
 etcd_events_peer_url: "https://{{ etcd_events_access_address }}:2382"
-etcd_events_client_url: "https://{{ etcd_events_access_address }}:2381"
+etcd_events_client_url: "https://{{ etcd_events_access_address }}:2383"
 etcd_access_addresses: |-
   {% for item in etcd_hosts -%}
     https://{{ hostvars[item]['etcd_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2379{% if not loop.last %},{% endif %}
@@ -532,9 +579,13 @@ etcd_access_addresses: |-
 etcd_events_access_addresses_list: |-
   [
   {% for item in etcd_hosts -%}
-    'https://{{ hostvars[item]['etcd_events_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2381'{% if not loop.last %},{% endif %}
+    'https://{{ hostvars[item]['etcd_events_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:2383'{% if not loop.last %},{% endif %}
   {%- endfor %}
   ]
+etcd_metrics_addresses: |-
+  {% for item in etcd_hosts -%}
+    https://{{ hostvars[item]['etcd_access_address'] | default(hostvars[item]['ip'] | default(fallback_ips[item])) }}:{{ etcd_metrics_port | default(2381) }}{% if not loop.last %},{% endif %}
+  {%- endfor %}
 etcd_events_access_addresses: "{{etcd_events_access_addresses_list | join(',')}}"
 etcd_events_access_addresses_semicolon: "{{etcd_events_access_addresses_list | join(';')}}"
 # user should set etcd_member_name in inventory/mycluster/hosts.ini
@@ -564,6 +615,8 @@ etcd_events_data_dir: "/var/lib/etcd-events"
 etcd_cert_dir: "{{ etcd_config_dir }}/ssl"
 
 typha_enabled: false
+
+calico_apiserver_enabled: false
 
 _host_architecture_groups:
   x86_64: amd64
@@ -610,3 +663,9 @@ proxy_disable_env:
   http_proxy: ''
   https_proxy: ''
   no_proxy: ''
+
+# krew root dir
+krew_root_dir: "/usr/local/krew"
+
+# sysctl_file_path to add sysctl conf to
+sysctl_file_path: "/etc/sysctl.d/99-sysctl.conf"

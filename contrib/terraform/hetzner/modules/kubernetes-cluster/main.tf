@@ -6,7 +6,7 @@ resource "hcloud_network" "kubernetes" {
 resource "hcloud_network_subnet" "kubernetes" {
   type         = "cloud"
   network_id   = hcloud_network.kubernetes.id
-  network_zone = "eu-central"
+  network_zone = var.network_zone
   ip_range     = var.private_subnet_cidr
 }
 

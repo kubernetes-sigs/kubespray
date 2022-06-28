@@ -7,7 +7,8 @@ You can also individually control versions of components by explicitly defining 
 versions. Here are all version vars for each component:
 
 * docker_version
-* containerd_version
+* docker_containerd_version (relevant when `container_manager` == `docker`)
+* containerd_version (relevant when `container_manager` == `containerd`)
 * kube_version
 * etcd_version
 * calico_version
@@ -57,10 +58,17 @@ Client Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.7", GitCom
 Server Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.7", GitCommit:"1dd5338295409edcfff11505e7bb246f0d325d15", GitTreeState:"clean", BuildDate:"2021-01-13T13:15:20Z", GoVersion:"go1.15.5", Compiler:"gc", Platform:"linux/amd64"}
 ```
 
-If you want to manually control the upgrade procedure, you can use the variables `upgrade_node_confirm` or `upgrade_node_pause_seconds`:
+### Pausing the upgrade
 
-`upgrade_node_confirm: true` - waiting to confirmation to upgrade next node
-`upgrade_node_pause_seconds: 60` - pause 60 seconds before upgrade next node
+If you want to manually control the upgrade procedure, you can set some variables to pause the upgrade playbook. Pausing *before* upgrading each upgrade may be useful for inspecting pods running on that node, or performing manual actions on the node:
+
+* `upgrade_node_confirm: true` - This will pause the playbook execution prior to upgrading each node. The play will resume when manually approved by typing "yes" at the terminal.
+* `upgrade_node_pause_seconds: 60` - This will pause the playbook execution for 60 seconds prior to upgrading each node. The play will resume automatically after 60 seconds.
+
+Pausing *after* upgrading each node may be useful for rebooting the node to apply kernel updates, or testing the still-cordoned node:
+
+* `upgrade_node_post_upgrade_confirm: true` - This will pause the playbook execution after upgrading each node, but before the node is uncordoned. The play will resume when manually approved by typing "yes" at the terminal.
+* `upgrade_node_post_upgrade_pause_seconds: 60` - This will pause the playbook execution for 60 seconds after upgrading each node, but before the node is uncordoned. The play will resume automatically after 60 seconds.
 
 ## Node-based upgrade
 
@@ -122,7 +130,7 @@ $ git checkout v2.7.0
 Previous HEAD position was 8b3ce6e4 bump upgrade tests to v2.5.0 commit (#3087)
 HEAD is now at 05dabb7e Fix Bionic networking restart error #3430 (#3431)
 
-# NOTE: May need to sudo pip3 install -r requirements.txt when upgrading.
+# NOTE: May need to `pip3 install -r requirements.txt` when upgrading.
 
 ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
 
@@ -300,6 +308,18 @@ caprica   Ready    master,node   7h40m   v1.14.1
 
 ```
 
+## Upgrading to v2.19
+
+`etcd_kubeadm_enabled` is being deprecated at v2.19. The same functionality is achievable by setting `etcd_deployment_type` to `kubeadm`.
+Deploying etcd using kubeadm is experimental and is only available for either new or deployments where `etcd_kubeadm_enabled` was set to `true` while deploying the cluster.
+
+From 2.19 and onward `etcd_deployment_type` variable will be placed in `group_vars/all/etcd.yml` instead of `group_vars/etcd.yml`, due to scope issues.
+The placement of the variable is only important for `etcd_deployment_type: kubeadm` right now. However, since this might change in future updates, it is recommended to move the variable.
+
+Upgrading is straightforward; no changes are required if `etcd_kubeadm_enabled` was not set to `true` when deploying.
+
+If you have a cluster where `etcd` was deployed using `kubeadm`, you will need to remove `etcd_kubeadm_enabled` the variable. Then move `etcd_deployment_type` variable from `group_vars/etcd.yml` to `group_vars/all/etcd.yml` due to scope issues and set `etcd_deployment_type` to `kubeadm`.
+
 ## Upgrade order
 
 As mentioned above, components are upgraded in the order in which they were
@@ -371,3 +391,11 @@ Upgrade just helm (assuming `helm_enabled` is true):
 ```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=helm
 ```
+
+## Migrate from Docker to Containerd
+
+Please note that **migrating container engines is not officially supported by Kubespray**. While this procedure can be used to migrate your cluster, it applies to one particular scenario and will likely evolve over time. At the moment, they are intended as an additional resource to provide insight into how these steps can be officially integrated into the Kubespray playbooks.
+
+As of Kubespray 2.18.0, containerd is already the default container engine. If you have the chance, it is advisable and safer to reset and redeploy the entire cluster with a new container engine.
+
+* [Migrating from Docker do Containerd](upgrades/migrate_docker2containerd.md)

@@ -1,0 +1,191 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.cilium/app: operator
+    name: cilium-operator
+  name: cilium-operator
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.cilium/app: operator
+      name: cilium-operator
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+{% if cilium_enable_prometheus %}
+      annotations:
+        prometheus.io/port: "6942"
+        prometheus.io/scrape: "true"
+{% endif %}
+      labels:
+        io.cilium/app: operator
+        name: cilium-operator
+    spec:
+      # In HA mode, cilium-operator pods must not be scheduled on the same
+      # node as they will clash with each other.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: io.cilium/app
+                operator: In
+                values:
+                - operator
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+        - args:
+            - --debug=$(CILIUM_DEBUG)
+            - --config-dir=/tmp/cilium/config-map
+{% if cilium_operator_custom_args is string %}
+            - {{ cilium_operator_custom_args }}
+{% else %}
+{% for flag in cilium_operator_custom_args %}
+            - {{ flag }}
+{% endfor %}
+{% endif %}
+          command:
+            - cilium-operator
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: CILIUM_K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: CILIUM_DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  key: debug
+                  name: cilium-config
+                  optional: true
+# We are already mounting the whole ConfigMap as a directory.
+# https://github.com/cilium/cilium/pull/10347
+{% if cilium_version | regex_replace('v') is version('1.8', '<') %}
+            - name: CILIUM_CLUSTER_NAME
+              valueFrom:
+                configMapKeyRef:
+                  key: cluster-name
+                  name: cilium-config
+                  optional: true
+            - name: CILIUM_CLUSTER_ID
+              valueFrom:
+                configMapKeyRef:
+                  key: cluster-id
+                  name: cilium-config
+                  optional: true
+            - name: CILIUM_DISABLE_ENDPOINT_CRD
+              valueFrom:
+                configMapKeyRef:
+                  key: disable-endpoint-crd
+                  name: cilium-config
+                  optional: true
+{% endif %}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  key: AWS_ACCESS_KEY_ID
+                  name: cilium-aws
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: AWS_SECRET_ACCESS_KEY
+                  name: cilium-aws
+                  optional: true
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                secretKeyRef:
+                  key: AWS_DEFAULT_REGION
+                  name: cilium-aws
+                  optional: true
+{% if cilium_kube_proxy_replacement == 'strict' %}
+            - name: KUBERNETES_SERVICE_HOST
+              value: "{{ kube_apiserver_global_endpoint | urlsplit('hostname') }}"
+            - name: KUBERNETES_SERVICE_PORT
+              value: "{{ kube_apiserver_global_endpoint | urlsplit('port') }}"
+{% endif %}
+          image: "{{ cilium_operator_image_repo }}:{{ cilium_operator_image_tag }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          name: cilium-operator
+{% if cilium_enable_prometheus %}
+          ports:
+            - containerPort: 6942
+              hostPort: 6942
+              name: prometheus
+              protocol: TCP
+{% endif %}
+          livenessProbe:
+            httpGet:
+{% if cilium_enable_ipv4 %}
+              host: 127.0.0.1
+{% else %}
+              host: '::1'
+{% endif %}
+              path: /healthz
+              port: 9234
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 3
+          volumeMounts:
+{% if cilium_identity_allocation_mode == "kvstore" %}
+            - mountPath: /var/lib/etcd-config
+              name: etcd-config-path
+              readOnly: true
+            - mountPath: "{{cilium_cert_dir}}"
+              name: etcd-secrets
+              readOnly: true
+{% endif %}
+            - mountPath: /tmp/cilium/config-map
+              name: cilium-config-path
+              readOnly: true
+{% for volume_mount in cilium_operator_extra_volume_mounts %}
+            - {{ volume_mount | to_nice_yaml(indent=2) | indent(14) }}
+{% endfor %}
+      dnsPolicy: ClusterFirst
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      serviceAccount: cilium-operator
+      serviceAccountName: cilium-operator
+      hostNetwork: true
+      tolerations:
+        - operator: Exists
+      volumes:
+{% if cilium_identity_allocation_mode == "kvstore" %}
+        # To read the etcd config stored in config maps
+        - configMap:
+            defaultMode: 420
+            items:
+              - key: etcd-config
+                path: etcd.config
+            name: cilium-config
+          name: etcd-config-path
+          # To read the k8s etcd secrets in case the user might want to use TLS
+        - name: etcd-secrets
+          hostPath:
+            path: "{{cilium_cert_dir}}"
+{% endif %}
+        - configMap:
+            name: cilium-config
+          name: cilium-config-path
+{% for volume in cilium_operator_extra_volumes %}
+        - {{ volume | to_nice_yaml(indent=2) | indent(10) }}
+{% endfor %}

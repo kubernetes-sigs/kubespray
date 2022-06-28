@@ -60,6 +60,19 @@ metadata:
     app.kubernetes.io/component: "webhook"
     app.kubernetes.io/version: "{{ cert_manager_version }}"
 ---
+# Source: cert-manager/templates/webhook-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cert-manager-webhook
+  namespace: {{ cert_manager_namespace }}
+  labels:
+    app: webhook
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/component: "webhook"
+data:
+---
 # Source: cert-manager/templates/cainjector-rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -90,9 +103,6 @@ rules:
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
     verbs: ["get", "list", "watch", "update"]
-  - apiGroups: ["auditregistration.k8s.io"]
-    resources: ["auditsinks"]
-    verbs: ["get", "list", "watch", "update"]
 ---
 # Source: cert-manager/templates/rbac.yaml
 # Issuer controller role
@@ -109,7 +119,7 @@ metadata:
 rules:
   - apiGroups: ["cert-manager.io"]
     resources: ["issuers", "issuers/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   - apiGroups: ["cert-manager.io"]
     resources: ["issuers"]
     verbs: ["get", "list", "watch"]
@@ -135,7 +145,7 @@ metadata:
 rules:
   - apiGroups: ["cert-manager.io"]
     resources: ["clusterissuers", "clusterissuers/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   - apiGroups: ["cert-manager.io"]
     resources: ["clusterissuers"]
     verbs: ["get", "list", "watch"]
@@ -161,7 +171,7 @@ metadata:
 rules:
   - apiGroups: ["cert-manager.io"]
     resources: ["certificates", "certificates/status", "certificaterequests", "certificaterequests/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   - apiGroups: ["cert-manager.io"]
     resources: ["certificates", "certificaterequests", "clusterissuers", "issuers"]
     verbs: ["get", "list", "watch"]
@@ -176,7 +186,7 @@ rules:
     verbs: ["create", "delete", "get", "list", "watch"]
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "list", "watch", "create", "update", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["create", "patch"]
@@ -196,7 +206,7 @@ metadata:
 rules:
   - apiGroups: ["acme.cert-manager.io"]
     resources: ["orders", "orders/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   - apiGroups: ["acme.cert-manager.io"]
     resources: ["orders", "challenges"]
     verbs: ["get", "list", "watch"]
@@ -235,7 +245,7 @@ rules:
   # Use to update challenge resource status
   - apiGroups: ["acme.cert-manager.io"]
     resources: ["challenges", "challenges/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   # Used to watch challenge resources
   - apiGroups: ["acme.cert-manager.io"]
     resources: ["challenges"]
@@ -259,7 +269,7 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["get", "list", "watch", "create", "delete", "update"]
-  - apiGroups: [ "networking.x-k8s.io" ]
+  - apiGroups: [ "gateway.networking.k8s.io" ]
     resources: [ "httproutes" ]
     verbs: ["get", "list", "watch", "create", "delete", "update"]
   # We require the ability to specify a custom hostname when we are creating
@@ -307,10 +317,10 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses/finalizers"]
     verbs: ["update"]
-  - apiGroups: ["networking.x-k8s.io"]
+  - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["gateways", "httproutes"]
     verbs: ["get", "list", "watch"]
-  - apiGroups: ["networking.x-k8s.io"]
+  - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["gateways/finalizers", "httproutes/finalizers"]
     verbs: ["update"]
   - apiGroups: [""]
@@ -356,6 +366,9 @@ rules:
   - apiGroups: ["cert-manager.io"]
     resources: ["certificates", "certificaterequests", "issuers"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates/status"]
+    verbs: ["update"]
   - apiGroups: ["acme.cert-manager.io"]
     resources: ["challenges", "orders"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
@@ -398,7 +411,7 @@ rules:
     verbs: ["get", "list", "watch", "update"]
   - apiGroups: ["certificates.k8s.io"]
     resources: ["certificatesigningrequests/status"]
-    verbs: ["update"]
+    verbs: ["update", "patch"]
   - apiGroups: ["certificates.k8s.io"]
     resources: ["signers"]
     resourceNames: ["issuers.cert-manager.io/*", "clusterissuers.cert-manager.io/*"]
@@ -630,7 +643,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: cert-manager-cainjector:leaderelection
-  namespace: {{ cert_manager_namespace }}
+  namespace: {{ cert_manager_leader_election_namespace }}
   labels:
     app: cainjector
     app.kubernetes.io/name: cainjector
@@ -643,14 +656,6 @@ rules:
   #   see cmd/cainjector/start.go#L113
   # cert-manager-cainjector-leader-election-core is used by the SecretBased injector controller
   #   see cmd/cainjector/start.go#L137
-  # See also: https://github.com/kubernetes-sigs/controller-runtime/pull/1144#discussion_r480173688
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    resourceNames: ["cert-manager-cainjector-leader-election", "cert-manager-cainjector-leader-election-core"]
-    verbs: ["get", "update", "patch"]
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["create"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     resourceNames: ["cert-manager-cainjector-leader-election", "cert-manager-cainjector-leader-election-core"]
@@ -664,7 +669,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: cert-manager:leaderelection
-  namespace: {{ cert_manager_namespace }}
+  namespace: {{ cert_manager_leader_election_namespace }}
   labels:
     app: cert-manager
     app.kubernetes.io/name: cert-manager
@@ -672,15 +677,6 @@ metadata:
     app.kubernetes.io/component: "controller"
     app.kubernetes.io/version: "{{ cert_manager_version }}"
 rules:
-  # Used for leader election by the controller
-  # See also: https://github.com/kubernetes-sigs/controller-runtime/pull/1144#discussion_r480173688
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    resourceNames: ["cert-manager-controller"]
-    verbs: ["get", "update", "patch"]
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["create"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     resourceNames: ["cert-manager-controller"]
@@ -719,7 +715,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: cert-manager-cainjector:leaderelection
-  namespace: {{ cert_manager_namespace }}
+  namespace: {{ cert_manager_leader_election_namespace }}
   labels:
     app: cainjector
     app.kubernetes.io/name: cainjector
@@ -742,7 +738,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: cert-manager:leaderelection
-  namespace: {{ cert_manager_namespace }}
+  namespace: {{ cert_manager_leader_election_namespace }}
   labels:
     app: cert-manager
     app.kubernetes.io/name: cert-manager
@@ -796,10 +792,10 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - protocol: TCP
-      port: 9402
-      name: tcp-prometheus-servicemonitor
-      targetPort: 9402
+  - protocol: TCP
+    port: 9402
+    name: tcp-prometheus-servicemonitor
+    targetPort: 9402
   selector:
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/instance: cert-manager
@@ -823,7 +819,7 @@ spec:
   - name: https
     port: 443
     protocol: TCP
-    targetPort: 10250
+    targetPort: "https"
   selector:
     app.kubernetes.io/name: webhook
     app.kubernetes.io/instance: cert-manager
@@ -866,20 +862,32 @@ spec:
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
           - --v=2
-          - --leader-election-namespace=kube-system
+          - --leader-election-namespace={{ cert_manager_leader_election_namespace }}
           env:
           - name: POD_NAMESPACE
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          resources:
-            {}
+          securityContext:
+            allowPrivilegeEscalation: false
+{% if cert_manager_tolerations %}
+      tolerations:
+        {{ cert_manager_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
+{% endif %}
+{% if cert_manager_nodeselector %}
+      nodeSelector:
+        {{ cert_manager_nodeselector | to_nice_yaml | indent(width=8) }}
+{% endif %}
+{% if cert_manager_affinity %}
+      affinity:
+        {{ cert_manager_affinity | to_nice_yaml | indent(width=8) }}
+{% endif %}
 ---
 {% if cert_manager_trusted_internal_ca is defined %}
 apiVersion: v1
 data:
   internal-ca.pem: |
-    {{ cert_manager_trusted_internal_ca | indent(width=4, indentfirst=False) }}
+    {{ cert_manager_trusted_internal_ca | indent(width=4, first=False) }}
 kind: ConfigMap
 metadata:
   name: ca-internal-truststore
@@ -920,6 +928,7 @@ spec:
     spec:
       serviceAccountName: cert-manager
       securityContext:
+
         runAsNonRoot: true
       containers:
         - name: cert-manager
@@ -928,27 +937,40 @@ spec:
           args:
           - --v=2
           - --cluster-resource-namespace=$(POD_NAMESPACE)
-          - --leader-election-namespace=kube-system
+          - --leader-election-namespace={{ cert_manager_leader_election_namespace }}
           ports:
           - containerPort: 9402
+            name: http-metrics
             protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
           env:
           - name: POD_NAMESPACE
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          resources:
-            {}
+{% if cert_manager_tolerations %}
+      tolerations:
+        {{ cert_manager_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
+{% endif %}
+{% if cert_manager_nodeselector %}
+      nodeSelector:
+        {{ cert_manager_nodeselector | to_nice_yaml | indent(width=8) }}
+{% endif %}
+{% if cert_manager_affinity %}
+      affinity:
+        {{ cert_manager_affinity | to_nice_yaml | indent(width=8) }}
+{% endif %}
 {% if cert_manager_trusted_internal_ca is defined %}
           volumeMounts:
           - mountPath: /etc/ssl/certs/internal-ca.pem
             name: ca-internal-truststore
             subPath: internal-ca.pem
-        volumes:
-        - configMap:
-            defaultMode: 420
-            name: ca-internal-truststore
+      volumes:
+      - configMap:
+          defaultMode: 420
           name: ca-internal-truststore
+        name: ca-internal-truststore
 {% endif %}
 ---
 # Source: cert-manager/templates/webhook-deployment.yaml
@@ -1016,13 +1038,25 @@ spec:
             timeoutSeconds: 1
             successThreshold: 1
             failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
           env:
           - name: POD_NAMESPACE
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          resources:
-            {}
+{% if cert_manager_tolerations %}
+      tolerations:
+        {{ cert_manager_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
+{% endif %}
+{% if cert_manager_nodeselector %}
+      nodeSelector:
+        {{ cert_manager_nodeselector | to_nice_yaml | indent(width=8) }}
+{% endif %}
+{% if cert_manager_affinity %}
+      affinity:
+        {{ cert_manager_affinity | to_nice_yaml | indent(width=8) }}
+{% endif %}
 ---
 # Source: cert-manager/templates/webhook-mutating-webhook.yaml
 apiVersion: admissionregistration.k8s.io/v1
@@ -1050,15 +1084,7 @@ webhooks:
           - UPDATE
         resources:
           - "*/*"
-    # We don't actually support `v1beta1` but is listed here as it is a
-    # required value for
-    # [Kubernetes v1.16](https://github.com/kubernetes/kubernetes/issues/82025).
-    # The API server reads the supported versions in order, so _should always_
-    # attempt a `v1` request which is understood by the cert-manager webhook.
-    # Any `v1beta1` request will return an error and fail closed for that
-    # resource (the whole object request is rejected). When we no longer
-    # support v1.16 we can remove `v1beta1` from this list.
-    admissionReviewVersions: ["v1", "v1beta1"]
+    admissionReviewVersions: ["v1"]
     # This webhook only accepts v1 cert-manager resources.
     # Equivalent matchPolicy ensures that non-v1 resource requests are sent to
     # this webhook (after the resources have been converted to v1).
@@ -1109,15 +1135,7 @@ webhooks:
           - UPDATE
         resources:
           - "*/*"
-    # We don't actually support `v1beta1` but is listed here as it is a
-    # required value for
-    # [Kubernetes v1.16](https://github.com/kubernetes/kubernetes/issues/82025).
-    # The API server reads the supported versions in order, so _should always_
-    # attempt a `v1` request which is understood by the cert-manager webhook.
-    # Any `v1beta1` request will return an error and fail closed for that
-    # resource (the whole object request is rejected). When we no longer
-    # support v1.16 we can remove `v1beta1` from this list.
-    admissionReviewVersions: ["v1", "v1beta1"]
+    admissionReviewVersions: ["v1"]
     # This webhook only accepts v1 cert-manager resources.
     # Equivalent matchPolicy ensures that non-v1 resource requests are sent to
     # this webhook (after the resources have been converted to v1).

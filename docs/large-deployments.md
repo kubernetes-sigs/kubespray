@@ -11,7 +11,7 @@ For a large scaled deployments, consider the following configuration changes:
 * Override the ``download_run_once: true`` and/or ``download_localhost: true``.
   See download modes for details.
 
-* Adjust the `retry_stagger` global var as appropriate. It should provide same
+* Adjust the `retry_stagger` global var as appropriate. It should provide sane
   load on a delegate (the first K8s control plane node) then retrying failed
   push or download operations.
 
@@ -38,9 +38,7 @@ For a large scaled deployments, consider the following configuration changes:
   ``kube_service_addresses`` and ``kube_pods_subnet``.
 
 * Add calico_rr nodes if you are deploying with Calico or Canal. Nodes recover
-  from host/network interruption much quicker with calico_rr. Note that
-  calico_rr role must be on a host without kube_control_plane or kube_node role (but
-  etcd role is okay).
+  from host/network interruption much quicker with calico_rr.
 
 * Check out the
   [Inventory](/docs/getting-started.md#building-your-own-inventory)

@@ -1,0 +1,40 @@
+---
+- name: UpCloud CSI Driver | Check if UPCLOUD_USERNAME exists
+  fail:
+    msg: "UpCloud username is missing. Env UPCLOUD_USERNAME is mandatory"
+  when: upcloud_username is not defined or not upcloud_username
+
+- name: UpCloud CSI Driver | Check if UPCLOUD_PASSWORD exists
+  fail:
+    msg: "UpCloud password is missing. Env UPCLOUD_PASSWORD is mandatory"
+  when:
+    - upcloud_username is defined
+    - upcloud_username|length > 0
+    - upcloud_password is not defined or not upcloud_password
+
+- name: UpCloud CSI Driver | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
+  with_items:
+    - {name: upcloud-csi-cred-secret, file: upcloud-csi-cred-secret.yml}
+    - {name: upcloud-csi-setup, file: upcloud-csi-setup.yml}
+    - {name: upcloud-csi-controller, file: upcloud-csi-controller.yml}
+    - {name: upcloud-csi-node, file: upcloud-csi-node.yml}
+    - {name: upcloud-csi-driver, file: upcloud-csi-driver.yml}
+  register: upcloud_csi_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: UpCloud CSI Driver | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ upcloud_csi_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"

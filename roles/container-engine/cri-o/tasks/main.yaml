@@ -11,6 +11,13 @@
   set_fact:
     is_ostree: "{{ ostree.stat.exists }}"
 
+- name: get ostree version
+  shell: "set -o pipefail && rpm-ostree --version | awk -F\\' '/Version/{print $2}'"
+  args:
+    executable: /bin/bash
+  register: ostree_version
+  when: is_ostree
+
 - name: gather os specific variables
   include_vars: "{{ item }}"
   with_first_found:
@@ -28,28 +35,9 @@
   tags:
     - facts
 
-- name: disable unified_cgroup_hierarchy in Fedora 31+
-  command: grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=0"
-  when:
-    - ansible_distribution == "Fedora"
-    - (ansible_distribution_major_version | int) >= 31
-    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
-    - not is_ostree
-
-- name: reboot in Fedora 31+
-  reboot:
-  when:
-    - ansible_distribution == "Fedora"
-    - (ansible_distribution_major_version | int) >= 31
-    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
-    - not is_ostree
-
 - name: import crio repo
   import_tasks: "crio_repo.yml"
   when: crio_add_repos
-
-- include_role:  # noqa unnamed-task
-    name: container-engine/crictl
 
 - name: Build a list of crio runtimes with Katacontainers runtimes
   set_fact:
@@ -62,6 +50,12 @@
     crio_runtimes: "{{ crio_runtimes + [crun_runtime] }}"
   when:
     - crun_enabled
+
+- name: Build a list of crio runtimes with youki runtime
+  set_fact:
+    crio_runtimes: "{{ crio_runtimes + [youki_runtime] }}"
+  when:
+    - youki_enabled
 
 - name: Make sure needed folders exist in the system
   with_items:
@@ -121,7 +115,7 @@
   register: need_bootstrap_crio
   when: is_ostree
 
-- name: Install cri-o packages with osttree
+- name: Install cri-o packages with ostree
   command: "rpm-ostree install {{ crio_packages|join(' ') }}"
   when:
     - is_ostree
@@ -175,12 +169,19 @@
     owner: root
     mode: 0755
 
-- name: Write registries mirror configs
+- name: Write registries configs
   template:
-    src: registry-mirror.conf.j2
-    dest: "/etc/containers/registries.conf.d/{{ item.prefix }}.conf"
+    src: registry.conf.j2
+    dest: "/etc/containers/registries.conf.d/10-{{ item.prefix | default(item.location) | regex_replace(':', '_') }}.conf"
     mode: 0644
-  loop: "{{ crio_registries_mirrors }}"
+  loop: "{{ crio_registries }}"
+  notify: restart crio
+
+- name: Configure unqualified registry settings
+  template:
+    src: unqualified.conf.j2
+    dest: "/etc/containers/registries.conf.d/01-unqualified.conf"
+    mode: 0644
   notify: restart crio
 
 - name: Write cri-o proxy drop-in
@@ -190,6 +191,20 @@
     mode: 0644
   notify: restart crio
   when: http_proxy is defined or https_proxy is defined
+
+- name: Configure the uid/gid space for user namespaces
+  lineinfile:
+    path: '{{ item.path }}'
+    line: '{{ item.entry }}'
+    regex: '^\s*{{ crio_remap_user }}:'
+    state: '{{ "present" if crio_remap_enable | bool else "absent" }}'
+  loop:
+    - path: /etc/subuid
+      entry: '{{ crio_remap_user }}:{{ crio_subuid_start }}:{{ crio_subuid_length }}'
+    - path: /etc/subgid
+      entry: '{{ crio_remap_user }}:{{ crio_subgid_start }}:{{ crio_subgid_length }}'
+  loop_control:
+    label: '{{ item.path }}'
 
 - name: Ensure crio service is started and enabled
   service:

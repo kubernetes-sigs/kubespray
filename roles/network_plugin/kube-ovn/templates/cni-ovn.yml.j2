@@ -1,40 +1,10 @@
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: kube-ovn
-  annotations:
-    seccomp.security.alpha.kubernetes.io/allowedProfileNames: '*'
-spec:
-  privileged: true
-  allowPrivilegeEscalation: true
-  allowedCapabilities:
-    - '*'
-  volumes:
-    - '*'
-  hostNetwork: true
-  hostPorts:
-    - min: 0
-      max: 65535
-  hostIPC: true
-  hostPID: true
-  runAsUser:
-    rule: 'RunAsAny'
-  seLinux:
-    rule: 'RunAsAny'
-  supplementalGroups:
-    rule: 'RunAsAny'
-  fsGroup:
-    rule: 'RunAsAny'
-
----
-
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ovn-config
   namespace: kube-system
 data:
-  defaultNetworkType: geneve
+  defaultNetworkType: '{{ kube_ovn_network_type }}'
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -49,29 +19,27 @@ metadata:
     rbac.authorization.k8s.io/system-only: "true"
   name: system:ovn
 rules:
-  - apiGroups:
-      - policy
-    resources:
-      - podsecuritypolicies
-    verbs:
-      - use
+  - apiGroups: ['policy']
+    resources: ['podsecuritypolicies']
+    verbs:     ['use']
     resourceNames:
       - kube-ovn
   - apiGroups:
       - "kubeovn.io"
     resources:
-      - subnets
-      - subnets/status
       - vpcs
       - vpcs/status
       - vpc-nat-gateways
+      - subnets
+      - subnets/status
       - ips
       - vlans
+      - vlans/status
       - provider-networks
       - provider-networks/status
-      - networks
       - security-groups
       - security-groups/status
+      - htbqoses
     verbs:
       - "*"
   - apiGroups:
@@ -111,6 +79,7 @@ rules:
       - statefulsets
       - daemonsets
       - deployments
+      - deployments/scale
     verbs:
       - create
       - delete
@@ -127,6 +96,24 @@ rules:
       - create
       - patch
       - update
+  - apiGroups:
+      - "k8s.cni.cncf.io"
+    resources:
+      - network-attachment-definitions
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - update
+  - apiGroups:
+      - "kubevirt.io"
+    resources:
+      - virtualmachines
+      - virtualmachineinstances
+    verbs:
+      - get
+      - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -153,6 +140,9 @@ spec:
       port: 6641
       targetPort: 6641
   type: ClusterIP
+{% if enable_dual_stack_networks %}
+  ipFamilyPolicy: PreferDualStack
+{% endif %}
   selector:
     app: ovn-central
     ovn-nb-leader: "true"
@@ -170,6 +160,9 @@ spec:
       port: 6642
       targetPort: 6642
   type: ClusterIP
+{% if enable_dual_stack_networks %}
+  ipFamilyPolicy: PreferDualStack
+{% endif %}
   selector:
     app: ovn-central
     ovn-sb-leader: "true"
@@ -187,6 +180,9 @@ spec:
       port: 6643
       targetPort: 6643
   type: ClusterIP
+{% if enable_dual_stack_networks %}
+  ipFamilyPolicy: PreferDualStack
+{% endif %}
   selector:
     app: ovn-central
     ovn-northd-leader: "true"
@@ -201,7 +197,7 @@ metadata:
     kubernetes.io/description: |
       OVN components: northd, nb and sb.
 spec:
-  replicas: 1
+  replicas: {{ kube_ovn_central_replics }}
   strategy:
     rollingUpdate:
       maxSurge: 0
@@ -218,7 +214,7 @@ spec:
         type: infra
     spec:
       tolerations:
-        - operator: Exists
+      - operator: Exists
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -239,7 +235,7 @@ spec:
               add: ["SYS_NICE"]
           env:
             - name: ENABLE_SSL
-              value: "{{ enable_ssl | lower }}"
+              value: "{{ kube_ovn_enable_ssl | lower }}"
             - name: POD_IP
               valueFrom:
                 fieldRef:
@@ -284,7 +280,7 @@ spec:
               command:
                 - bash
                 - /kube-ovn/ovn-is-leader.sh
-            periodSeconds: 3
+            periodSeconds: 15
             timeoutSeconds: 45
           livenessProbe:
             exec:
@@ -292,7 +288,7 @@ spec:
                 - bash
                 - /kube-ovn/ovn-healthcheck.sh
             initialDelaySeconds: 30
-            periodSeconds: 7
+            periodSeconds: 15
             failureThreshold: 5
             timeoutSeconds: 45
       nodeSelector:
@@ -350,28 +346,33 @@ spec:
         type: infra
     spec:
       tolerations:
-        - operator: Exists
+      - operator: Exists
       priorityClassName: system-cluster-critical
       serviceAccountName: ovn
       hostNetwork: true
       hostPID: true
       containers:
         - name: openvswitch
-          image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
+          image: {% if kube_ovn_dpdk_enabled %}{{ kube_ovn_dpdk_container_image_repo }}:{{ kube_ovn_dpdk_container_image_tag }}{% else %}{{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}{% endif %}
+
           imagePullPolicy: {{ k8s_image_pull_policy }}
-          command: ["/kube-ovn/start-ovs.sh"]
+          command: [{% if kube_ovn_dpdk_enabled %}"/kube-ovn/start-ovs-dpdk.sh"{% else %}"/kube-ovn/start-ovs.sh"{% endif %}]
           securityContext:
             runAsUser: 0
             privileged: true
           env:
             - name: ENABLE_SSL
-              value: "{{ enable_ssl | lower }}"
+              value: "{{ kube_ovn_enable_ssl | lower }}"
             - name: POD_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+{% if not kube_ovn_dpdk_enabled %}
             - name: HW_OFFLOAD
-              value: "false"
+              value: "{{ kube_ovn_hw_offload }}"
+            - name: TUNNEL_TYPE
+              value: "{{ kube_ovn_tunnel_type }}"
+{% endif %}
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
@@ -397,6 +398,12 @@ spec:
               name: host-log-ovs
             - mountPath: /var/log/ovn
               name: host-log-ovn
+{% if kube_ovn_dpdk_enabled %}
+            - mountPath: /opt/ovs-config
+              name: host-config-ovs
+            - mountPath: /dev/hugepages
+              name: hugepage
+{% endif %}
             - mountPath: /etc/localtime
               name: localtime
             - mountPath: /var/run/tls
@@ -405,25 +412,43 @@ spec:
             exec:
               command:
                 - bash
+{% if kube_ovn_dpdk_enabled %}
+                - /kube-ovn/ovs-dpdk-healthcheck.sh
+{% else %}
                 - /kube-ovn/ovs-healthcheck.sh
+{% endif %}
             periodSeconds: 5
             timeoutSeconds: 45
           livenessProbe:
             exec:
               command:
                 - bash
+{% if kube_ovn_dpdk_enabled %}
+                - /kube-ovn/ovs-dpdk-healthcheck.sh
+{% else %}
                 - /kube-ovn/ovs-healthcheck.sh
+{% endif %}
             initialDelaySeconds: 10
             periodSeconds: 5
             failureThreshold: 5
             timeoutSeconds: 45
           resources:
+{% if kube_ovn_dpdk_enabled %}
+            requests:
+              cpu: {{ kube_ovn_dpdk_node_cpu_request }}
+              memory: {{ kube_ovn_dpdk_node_memory_request }}
+            limits:
+              cpu: {{ kube_ovn_dpdk_node_cpu_limit }}
+              memory: {{ kube_ovn_dpdk_node_memory_limit }}
+              hugepages-1Gi: 1Gi
+{% else %}
             requests:
               cpu: {{ kube_ovn_node_cpu_request }}
               memory: {{ kube_ovn_node_memory_request }}
             limits:
               cpu: {{ kube_ovn_node_cpu_limit }}
               memory: {{ kube_ovn_node_memory_limit }}
+{% endif %}
       nodeSelector:
         kubernetes.io/os: "linux"
       volumes:
@@ -454,6 +479,15 @@ spec:
         - name: host-log-ovn
           hostPath:
             path: /var/log/ovn
+{% if kube_ovn_dpdk_enabled %}
+        - name: host-config-ovs
+          hostPath:
+            path: /opt/ovs-config
+            type: DirectoryOrCreate
+        - name: hugepage
+          emptyDir:
+            medium: HugePages
+{% endif %}
         - name: localtime
           hostPath:
             path: /etc/localtime

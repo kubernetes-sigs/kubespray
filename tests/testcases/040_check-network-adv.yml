@@ -62,7 +62,6 @@
 
     - debug:  # noqa unnamed-task
         var: nca_pod.stdout_lines
-      failed_when: not nca_pod is success
       when: inventory_hostname == groups['kube_control_plane'][0]
 
     - name: Get netchecker agents
@@ -78,16 +77,7 @@
         agents.content[0] == '{' and
         agents.content|from_json|length >= groups['k8s_cluster']|intersect(ansible_play_hosts)|length * 2
       failed_when: false
-      no_log: true
-
-    - debug:  # noqa unnamed-task
-        var: agents.content | from_json
-      failed_when: not agents is success and not agents.content=='{}'
-      run_once: true
-      when:
-        - agents.content is defined
-        - agents.content
-        - agents.content[0] == '{'
+      no_log: false
 
     - name: Check netchecker status
       uri:
@@ -96,12 +86,12 @@
         return_content: yes
       delegate_to: "{{ groups['kube_control_plane'][0] }}"
       run_once: true
-      register: result
+      register: connectivity_check
       retries: 3
       delay: "{{ agent_report_interval }}"
-      until: result.content|length > 0 and
-        result.content[0] == '{'
-      no_log: true
+      until: connectivity_check.content|length > 0 and
+        connectivity_check.content[0] == '{'
+      no_log: false
       failed_when: false
       when:
         - agents.content != '{}'
@@ -109,20 +99,19 @@
     - debug:  # noqa unnamed-task
         var: ncs_pod
       run_once: true
-      when: not result is success
 
     - name: Get kube-proxy logs
       command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app=kube-proxy"
       no_log: false
       when:
         - inventory_hostname == groups['kube_control_plane'][0]
-        - not result is success
+        - not connectivity_check is success
 
     - name: Get logs from other apps
       command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app={{ item }} --all-containers"
       when:
         - inventory_hostname == groups['kube_control_plane'][0]
-        - not result is success
+        - not connectivity_check is success
       no_log: false
       with_items:
         - kube-router
@@ -131,27 +120,51 @@
         - calico-node
         - cilium
 
-    - debug:  # noqa unnamed-task
-        var: result.content | from_json
-      failed_when: not result is success
+    - name: Parse agents list
+      set_fact:
+        agents_check_result: "{{ agents.content | from_json }}"
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
       run_once: true
       when:
-        - not agents.content == '{}'
-        - result.content
-        - result.content[0] == '{'
+        - agents is success
+        - agents.content is defined
+        - agents.content[0] == '{'
 
     - debug:  # noqa unnamed-task
-        var: result
-      failed_when: not result is success
+        var: agents_check_result
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
       run_once: true
       when:
-        - not agents.content == '{}'
+        - agents_check_result is defined
+
+    - name: Parse connectivity check
+      set_fact:
+        connectivity_check_result: "{{ connectivity_check.content | from_json }}"
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      run_once: true
+      when:
+        - connectivity_check is success
+        - connectivity_check.content is defined
+        - connectivity_check.content[0] == '{'
 
     - debug:  # noqa unnamed-task
-        msg: "Cannot get reports from agents, consider as PASSING"
+        var: connectivity_check_result
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
       run_once: true
       when:
-        - agents.content == '{}'
+        - connectivity_check_result is defined
+
+    - name: Check connectivity with all netchecker agents
+      assert:
+        that:
+          - agents_check_result is defined
+          - connectivity_check_result is defined
+          - agents_check_result.keys() | length > 0
+          - not connectivity_check_result.Absent
+          - not connectivity_check_result.Outdated
+        msg: "Connectivity check to netchecker agents failed"
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      run_once: true
 
     - name: Create macvlan network conf
       # We cannot use only shell: below because Ansible will render the text

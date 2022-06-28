@@ -1,18 +1,102 @@
 ---
+- name: Stop if legacy encapsulation variables are detected (ipip)
+  assert:
+    that:
+      - ipip is not defined
+    msg: "'ipip' configuration variable is deprecated, please configure your inventory with 'calico_ipip_mode' set to 'Always' or 'CrossSubnet' according to your specific needs"
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: Stop if legacy encapsulation variables are detected (ipip_mode)
+  assert:
+    that:
+      - ipip_mode is not defined
+    msg: "'ipip_mode' configuration variable is deprecated, please configure your inventory with 'calico_ipip_mode' set to 'Always' or 'CrossSubnet' according to your specific needs"
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: Stop if incompatible network plugin and cloudprovider
+  assert:
+    that:
+      - calico_ipip_mode == 'Never'
+      - calico_vxlan_mode in ['Always', 'CrossSubnet']
+    msg: "When using cloud_provider azure and network_plugin calico calico_ipip_mode must be 'Never' and calico_vxlan_mode 'Always' or 'CrossSubnet'"
+  when:
+    - cloud_provider is defined and cloud_provider == 'azure'
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: Stop if supported Calico versions
+  assert:
+    that:
+      - "calico_version in calico_crds_archive_checksums.keys()"
+    msg: "Calico version not supported {{ calico_version }} not in {{ calico_crds_archive_checksums.keys() }}"
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: Get current calico cluster version
+  shell: "set -o pipefail && {{ bin_dir }}/calicoctl.sh version  | grep 'Cluster Version:' | awk '{ print $3}'"
+  args:
+    executable: /bin/bash
+  register: calico_version_on_server
+  async: 10
+  poll: 3
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  changed_when: false
+  failed_when: false
+
+- name: Check that current calico version is enough for upgrade
+  assert:
+    that:
+      - calico_version_on_server.stdout is version(calico_min_version_required, '>=')
+    msg: >
+      Your version of calico is not fresh enough for upgrade.
+      Minimum version is {{ calico_min_version_required }} supported by the previous kubespray release.
+  when:
+    - 'calico_version_on_server.stdout is defined'
+    - calico_version_on_server.stdout
+    - inventory_hostname == groups['kube_control_plane'][0]
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: "Check that cluster_id is set if calico_rr enabled"
+  assert:
+    that:
+      - cluster_id is defined
+    msg: "A unique cluster_id is required if using calico_rr"
+  when:
+    - peer_with_calico_rr
+    - inventory_hostname == groups['kube_control_plane'][0]
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: "Check that calico_rr nodes are in k8s_cluster group"
+  assert:
+    that:
+      - '"k8s_cluster" in group_names'
+    msg: "calico_rr must be a child group of k8s_cluster group"
+  when:
+    - '"calico_rr" in group_names'
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
 - name: "Check vars defined correctly"
   assert:
     that:
       - "calico_pool_name is defined"
       - "calico_pool_name is match('^[a-zA-Z0-9-_\\\\.]{2,63}$')"
     msg: "calico_pool_name contains invalid characters"
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
 - name: "Check calico network backend defined correctly"
   assert:
     that:
       - "calico_network_backend in ['bird', 'vxlan', 'none']"
     msg: "calico network backend is not 'bird', 'vxlan' or 'none'"
-  when:
-    - calico_network_backend is defined
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
 - name: "Check ipip and vxlan mode defined correctly"
   assert:
@@ -20,6 +104,8 @@
       - "calico_ipip_mode in ['Always', 'CrossSubnet', 'Never']"
       - "calico_vxlan_mode in ['Always', 'CrossSubnet', 'Never']"
     msg: "calico inter host encapsulation mode is not 'Always', 'CrossSubnet' or 'Never'"
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
 - name: "Check ipip and vxlan mode if simultaneously enabled"
   assert:
@@ -28,6 +114,8 @@
     msg: "IP in IP and VXLAN mode is mutualy exclusive modes"
   when:
     - "calico_ipip_mode in ['Always', 'CrossSubnet']"
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
 - name: "Check ipip and vxlan mode if simultaneously enabled"
   assert:
@@ -36,11 +124,14 @@
     msg: "IP in IP and VXLAN mode is mutualy exclusive modes"
   when:
     - "calico_vxlan_mode in ['Always', 'CrossSubnet']"
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
 - name: "Get Calico {{ calico_pool_name }} configuration"
   command: calicoctl.sh get ipPool {{ calico_pool_name }} -o json
   failed_when: False
   changed_when: False
+  check_mode: no
   register: calico
   run_once: True
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
@@ -49,14 +140,46 @@
   set_fact:
     calico_pool_conf: '{{ calico.stdout | from_json }}'
   when: calico.rc == 0 and calico.stdout
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
 - name: "Check if inventory match current cluster configuration"
   assert:
     that:
-      - calico_pool_conf.spec.blockSize|string == (calico_pool_blocksize | default(kube_network_node_prefix | string))
+      - calico_pool_conf.spec.blockSize|int == (calico_pool_blocksize | default(kube_network_node_prefix) | int)
       - calico_pool_conf.spec.cidr == (calico_pool_cidr | default(kube_pods_subnet))
       - not calico_pool_conf.spec.ipipMode is defined or calico_pool_conf.spec.ipipMode == calico_ipip_mode
       - not calico_pool_conf.spec.vxlanMode is defined or calico_pool_conf.spec.vxlanMode == calico_vxlan_mode
     msg: "Your inventory doesn't match the current cluster configuration"
   when:
     - calico_pool_conf is defined
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: "Check kdd calico_datastore if calico_apiserver_enabled"
+  assert:
+    that: calico_datastore == "kdd"
+    msg: "When using calico apiserver you need to use the kubernetes datastore"
+  when:
+    - calico_apiserver_enabled
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: "Check kdd calico_datastore if typha_enabled"
+  assert:
+    that: calico_datastore == "kdd"
+    msg: "When using typha you need to use the kubernetes datastore"
+  when:
+    - typha_enabled
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: "Check ipip mode is Never for calico ipv6"
+  assert:
+    that:
+      - "calico_ipip_mode_ipv6 in ['Never']"
+    msg: "Calico doesn't support ipip tunneling for the IPv6"
+  when:
+    - enable_dual_stack_networks
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"

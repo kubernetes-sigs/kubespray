@@ -24,19 +24,23 @@ spec:
           effect: "NoSchedule"
         - key: "node-role.kubernetes.io/control-plane"
           effect: "NoSchedule"
+{% if azure_csi_controller_affinity %}
+      affinity:
+        {{ azure_csi_controller_affinity | to_nice_yaml | indent(width=8) }}
+{% endif %}
       containers:
         - name: csi-provisioner
           image: {{ azure_csi_image_repo }}/csi-provisioner:{{ azure_csi_provisioner_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
-            - "--provisioner=disk.csi.azure.com"
             - "--feature-gates=Topology=true"
             - "--csi-address=$(ADDRESS)"
-            - "--connection-timeout=15s"
-            - "--v=5"
-            - "--timeout=120s"
-            - "--enable-leader-election"
-            - "--leader-election-type=leases"
+            - "--v=2"
+            - "--timeout=15s"
+            - "--leader-election"
+            - "--worker-threads=40"
+            - "--extra-create-metadata=true"
+            - "--strict-topology=true"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
@@ -45,8 +49,7 @@ spec:
               name: socket-dir
           resources:
             limits:
-              cpu: 200m
-              memory: 200Mi
+              memory: 500Mi
             requests:
               cpu: 10m
               memory: 20Mi
@@ -54,40 +57,20 @@ spec:
           image: {{ azure_csi_image_repo }}/csi-attacher:{{ azure_csi_attacher_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
-            - "-v=5"
+            - "-v=2"
             - "-csi-address=$(ADDRESS)"
-            - "-timeout=120s"
+            - "-timeout=600s"
             - "-leader-election"
-            - "-leader-election-type=leases"
+            - "-worker-threads=500"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
           volumeMounts:
-            - mountPath: /csi
-              name: socket-dir
+          - mountPath: /csi
+            name: socket-dir
           resources:
             limits:
-              cpu: 200m
-              memory: 200Mi
-            requests:
-              cpu: 10m
-              memory: 20Mi
-        - name: cluster-driver-registrar
-          image: {{ azure_csi_image_repo }}/csi-cluster-driver-registrar:{{ azure_csi_cluster_registrar_image_tag }}
-          args:
-            - --csi-address=$(ADDRESS)
-            - --driver-requires-attachment=true
-            - --v=5
-          env:
-            - name: ADDRESS
-              value: /csi/csi.sock
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-          resources:
-            limits:
-              cpu: 200m
-              memory: 200Mi
+              memory: 500Mi
             requests:
               cpu: 10m
               memory: 20Mi
@@ -96,7 +79,7 @@ spec:
           args:
             - "-csi-address=$(ADDRESS)"
             - "-leader-election"
-            - "--v=5"
+            - "-v=2"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
@@ -105,8 +88,7 @@ spec:
               mountPath: /csi
           resources:
             limits:
-              cpu: 200m
-              memory: 200Mi
+              memory: 100Mi
             requests:
               cpu: 10m
               memory: 20Mi
@@ -114,8 +96,10 @@ spec:
           image: {{ azure_csi_image_repo }}/csi-resizer:{{ azure_csi_resizer_image_tag }}
           args:
             - "-csi-address=$(ADDRESS)"
-            - "-v=5"
+            - "-v=2"
             - "-leader-election"
+            - '-handle-volume-inuse-error=false'
+            - "-timeout=60s"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
@@ -124,8 +108,7 @@ spec:
               mountPath: /csi
           resources:
             limits:
-              cpu: 200m
-              memory: 200Mi
+              memory: 500Mi
             requests:
               cpu: 10m
               memory: 20Mi
@@ -133,16 +116,15 @@ spec:
           image: {{ azure_csi_image_repo }}/livenessprobe:{{ azure_csi_livenessprobe_image_tag }}
           args:
             - --csi-address=/csi/csi.sock
-            - --connection-timeout=3s
+            - --probe-timeout=3s
             - --health-port=29602
-            - --v=5
+            - --v=2
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
           resources:
             limits:
-              cpu: 200m
-              memory: 200Mi
+              memory: 100Mi
             requests:
               cpu: 10m
               memory: 20Mi
@@ -152,7 +134,11 @@ spec:
           args:
             - "--v=5"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--nodeid=$(KUBE_NODE_NAME)"
+            - "--metrics-address=0.0.0.0:29604"
+            - "--disable-avset-nodes=true"
+            - "--drivername=disk.csi.azure.com"
+            - "--cloud-config-secret-name=cloud-config"
+            - "--cloud-config-secret-namespace=kube-system"
           ports:
             - containerPort: 29602
               name: healthz
@@ -184,8 +170,7 @@ spec:
               name: msi
           resources:
             limits:
-              cpu: 200m
-              memory: 200Mi
+              memory: 500Mi
             requests:
               cpu: 10m
               memory: 20Mi
@@ -195,6 +180,3 @@ spec:
         - name: azure-cred
           secret:
             secretName: cloud-config
-        - name: msi
-          hostPath:
-            path: /var/lib/waagent/ManagedIdentity-Settings

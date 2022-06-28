@@ -2,14 +2,10 @@
 # disable upgrade cluster
 upgrade_cluster_setup: false
 
-# Experimental kubeadm etcd deployment mode. Available only for new deployment
-etcd_kubeadm_enabled: false
-
-# change to 0.0.0.0 to enable insecure access from anywhere (not recommended)
-kube_apiserver_insecure_bind_address: 127.0.0.1
-
 # By default the external API listens on all interfaces, this can be changed to
 # listen on a specific address/interface.
+# NOTE: If you specific address/interface and use loadbalancer_apiserver_localhost
+# loadbalancer_apiserver_localhost (nginx/haproxy) will deploy on masters on 127.0.0.1:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }} too.
 kube_apiserver_bind_address: 0.0.0.0
 
 # A port range to reserve for services with NodePort visibility.
@@ -18,6 +14,11 @@ kube_apiserver_node_port_range: "30000-32767"
 
 # ETCD backend for k8s data
 kube_apiserver_storage_backend: etcd3
+
+# CIS 1.2.26
+# Validate that the service account token
+# in the request is actually present in etcd.
+kube_apiserver_service_account_lookup: true
 
 kube_etcd_cacert_file: ca.pem
 kube_etcd_cert_file: node-{{ inventory_hostname }}.pem
@@ -90,6 +91,19 @@ kube_apiserver_pod_eviction_unreachable_timeout_seconds: "300"
 # 1.10+ admission plugins
 kube_apiserver_enable_admission_plugins: []
 
+# enable admission plugins configuration
+kube_apiserver_admission_control_config_file: false
+
+# data structure to configure EventRateLimit admission plugin
+# this should have the following structure:
+# kube_apiserver_admission_event_rate_limits:
+# <limit_name>:
+#   type: <limit_type>
+#   qps: <qps_value>
+#   burst: <burst_value>
+#   cache_size: <cache_size_value>
+kube_apiserver_admission_event_rate_limits: {}
+
 # 1.10+ list of disabled admission plugins
 kube_apiserver_disable_admission_plugins: []
 
@@ -99,13 +113,17 @@ kube_api_runtime_config: []
 ## Enable/Disable Kube API Server Authentication Methods
 kube_token_auth: false
 kube_oidc_auth: false
+
+## Variables for webhook token auth https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication
 kube_webhook_token_auth: false
 kube_webhook_token_auth_url_skip_tls_verify: false
-## Variables for webhook token auth https://kubernetes.io/docs/reference/access-authn-authz/authentication/#webhook-token-authentication
 # kube_webhook_token_auth_url: https://...
-kube_webhook_authorization: false
+## base64-encoded string of the webhook's CA certificate
+# kube_webhook_token_auth_ca_data: "LS0t..."
+
 ## Variables for webhook token authz https://kubernetes.io/docs/reference/access-authn-authz/webhook/
 # kube_webhook_authorization_url: https://...
+kube_webhook_authorization: false
 kube_webhook_authorization_url_skip_tls_verify: false
 
 
@@ -145,7 +163,7 @@ controller_manager_extra_volumes: {}
 kube_encrypt_secret_data: false
 kube_encrypt_token: "{{ lookup('password', credentials_dir + '/kube_encrypt_token.creds length=32 chars=ascii_letters,digits') }}"
 # Must be either: aescbc, secretbox or aesgcm
-kube_encryption_algorithm: "aescbc"
+kube_encryption_algorithm: "secretbox"
 # Which kubernetes resources to encrypt
 kube_encryption_resources: [secrets]
 
@@ -192,7 +210,8 @@ event_ttl_duration: "1h0m0s"
 ## Automatically renew K8S control plane certificates on first Monday of each month
 auto_renew_certificates: false
 # First Monday of each month
-auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:{{ groups['kube_control_plane'].index(inventory_hostname) }}0:00"
+auto_renew_certificates_systemd_calendar: "{{ 'Mon *-*-1,2,3,4,5,6,7 03:' ~
+  groups['kube_control_plane'].index(inventory_hostname) ~ '0:00' }}"
 # kubeadm renews all the certificates during control plane upgrade.
 # If we have requirement like without renewing certs upgrade the cluster,
 # we can opt out from the default behavior by setting kubeadm_upgrade_auto_cert_renewal to false

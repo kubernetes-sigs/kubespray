@@ -1,4 +1,33 @@
-# Ansible variables
+# Ansible
+
+## Installing Ansible
+
+Kubespray supports multiple ansible versions and ships different `requirements.txt` files for them.
+Depending on your available python version you may be limited in chooding which ansible version to use.
+
+It is recommended to deploy the ansible version used by kubespray into a python virtual environment.
+
+```ShellSession
+VENVDIR=kubespray-venv
+KUBESPRAYDIR=kubespray
+ANSIBLE_VERSION=2.12
+virtualenv  --python=$(which python3) $VENVDIR
+source $VENVDIR/bin/activate
+cd $KUBESPRAYDIR
+pip install -U -r requirements-$ANSIBLE_VERSION.txt
+test -f requirements-$ANSIBLE_VERSION.yml && \
+  ansible-galaxy role install -r requirements-$ANSIBLE_VERSION.yml && \
+  ansible-galaxy collection -r requirements-$ANSIBLE_VERSION.yml
+```
+
+### Ansible Python Compatibility
+
+Based on the table below and the available python version for your ansible host you should choose the appropriate ansible version to use with kubespray.
+
+| Ansible Version | Python Version |
+| --------------- | -------------- |
+| 2.11            | 2.7,3.5-3.9    |
+| 2.12            | 3.8-3.10       |
 
 ## Inventory
 
@@ -13,7 +42,7 @@ the _etcd_ group into the _k8s_cluster_, unless you are certain
 to do that and you have it fully contained in the latter:
 
 ```ShellSession
-k8s_cluster ⊂ etcd => kube_node ∩ etcd = etcd
+etcd ⊂ k8s_cluster => kube_node ∩ etcd = etcd
 ```
 
 When _kube_node_ contains _etcd_, you define your etcd cluster to be as well schedulable for Kubernetes workloads.
@@ -156,6 +185,7 @@ The following tags are defined in playbooks:
 |                        kubeadm | Roles linked to kubeadm tasks
 |                 kube-apiserver | Configuring static pod kube-apiserver
 |        kube-controller-manager | Configuring static pod kube-controller-manager
+|                       kube-vip | Installing and configuring kube-vip
 |                        kubectl | Installing kubectl and bash completion
 |                        kubelet | Configuring kubelet service
 |                       kube-ovn | Network plugin kube-ovn
@@ -179,7 +209,6 @@ The following tags are defined in playbooks:
 |                   node-webhook | Tasks linked to webhook (grating access to resources)
 |                     nvidia_gpu | Enable nvidia accelerator for runtimes
 |                            oci | Cloud provider: oci
-|                        ovn4nfv | Network plugin ovn4nfv
 |             persistent_volumes | Configure csi volumes
 | persistent_volumes_aws_ebs_csi | Configuring csi driver: aws-ebs
 | persistent_volumes_cinder_csi  | Configuring csi driver: cinder
@@ -203,6 +232,7 @@ The following tags are defined in playbooks:
 |             vsphere-csi-driver | Configuring csi driver: vsphere
 |                          weave | Network plugin Weave
 |                      win_nodes | Running windows specific tasks
+|                          youki | Configuring youki runtime
 
 Note: Use the ``bash scripts/gen_tags.sh`` command to generate a list of all
 tags found in the codebase. New tags will be listed with the empty "Used for"
@@ -267,13 +297,7 @@ that explains in detail the need and the evolution plan.
 You first need to uninstall your old ansible (pre 2.10) version and install the new one.
 
 ```ShellSession
-pip uninstall ansible
+pip uninstall ansible ansible-base ansible-core
 cd kubespray/
 pip install -U .
 ```
-
-**Note:** some changes needed to support ansible 2.10+ are not backwards compatible with 2.9
-Kubespray needs to evolve and keep pace with upstream ansible and will be forced to eventually
-drop 2.9 support. Kubespray CIs use only the ansible version specified in the `requirements.txt`
-and while the `ansible_version.yml` may allow older versions to be used, these are not
-exercised in the CI and compatibility is not guaranteed.

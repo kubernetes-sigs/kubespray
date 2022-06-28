@@ -20,20 +20,20 @@ module "aws-vpc" {
 
   aws_cluster_name         = var.aws_cluster_name
   aws_vpc_cidr_block       = var.aws_vpc_cidr_block
-  aws_avail_zones          = slice(data.aws_availability_zones.available.names, 0, length(var.aws_cidr_subnets_public) <= length(data.aws_availability_zones.available.names) ? length(var.aws_cidr_subnets_public) : length(data.aws_availability_zones.available.names))
+  aws_avail_zones          = data.aws_availability_zones.available.names
   aws_cidr_subnets_private = var.aws_cidr_subnets_private
   aws_cidr_subnets_public  = var.aws_cidr_subnets_public
   default_tags             = var.default_tags
 }
 
-module "aws-elb" {
-  source = "./modules/elb"
+module "aws-nlb" {
+  source = "./modules/nlb"
 
   aws_cluster_name      = var.aws_cluster_name
   aws_vpc_id            = module.aws-vpc.aws_vpc_id
-  aws_avail_zones       = slice(data.aws_availability_zones.available.names, 0, length(var.aws_cidr_subnets_public) <= length(data.aws_availability_zones.available.names) ? length(var.aws_cidr_subnets_public) : length(data.aws_availability_zones.available.names))
+  aws_avail_zones       = data.aws_availability_zones.available.names
   aws_subnet_ids_public = module.aws-vpc.aws_subnet_ids_public
-  aws_elb_api_port      = var.aws_elb_api_port
+  aws_nlb_api_port      = var.aws_nlb_api_port
   k8s_secure_api_port   = var.k8s_secure_api_port
   default_tags          = var.default_tags
 }
@@ -54,7 +54,6 @@ resource "aws_instance" "bastion-server" {
   instance_type               = var.aws_bastion_size
   count                       = var.aws_bastion_num
   associate_public_ip_address = true
-  availability_zone           = element(slice(data.aws_availability_zones.available.names, 0, length(var.aws_cidr_subnets_public) <= length(data.aws_availability_zones.available.names) ? length(var.aws_cidr_subnets_public) : length(data.aws_availability_zones.available.names)), count.index)
   subnet_id                   = element(module.aws-vpc.aws_subnet_ids_public, count.index)
 
   vpc_security_group_ids = module.aws-vpc.aws_security_group
@@ -79,8 +78,7 @@ resource "aws_instance" "k8s-master" {
 
   count = var.aws_kube_master_num
 
-  availability_zone = element(slice(data.aws_availability_zones.available.names, 0, length(var.aws_cidr_subnets_public) <= length(data.aws_availability_zones.available.names) ? length(var.aws_cidr_subnets_public) : length(data.aws_availability_zones.available.names)), count.index)
-  subnet_id         = element(module.aws-vpc.aws_subnet_ids_private, count.index)
+  subnet_id = element(module.aws-vpc.aws_subnet_ids_private, count.index)
 
   vpc_security_group_ids = module.aws-vpc.aws_security_group
 
@@ -98,10 +96,10 @@ resource "aws_instance" "k8s-master" {
   }))
 }
 
-resource "aws_elb_attachment" "attach_master_nodes" {
-  count    = var.aws_kube_master_num
-  elb      = module.aws-elb.aws_elb_api_id
-  instance = element(aws_instance.k8s-master.*.id, count.index)
+resource "aws_lb_target_group_attachment" "tg-attach_master_nodes" {
+  count            = var.aws_kube_master_num
+  target_group_arn = module.aws-nlb.aws_nlb_api_tg_arn
+  target_id        = element(aws_instance.k8s-master.*.private_ip, count.index)
 }
 
 resource "aws_instance" "k8s-etcd" {
@@ -110,8 +108,7 @@ resource "aws_instance" "k8s-etcd" {
 
   count = var.aws_etcd_num
 
-  availability_zone = element(slice(data.aws_availability_zones.available.names, 0, length(var.aws_cidr_subnets_public) <= length(data.aws_availability_zones.available.names) ? length(var.aws_cidr_subnets_public) : length(data.aws_availability_zones.available.names)), count.index)
-  subnet_id         = element(module.aws-vpc.aws_subnet_ids_private, count.index)
+  subnet_id = element(module.aws-vpc.aws_subnet_ids_private, count.index)
 
   vpc_security_group_ids = module.aws-vpc.aws_security_group
 
@@ -134,8 +131,7 @@ resource "aws_instance" "k8s-worker" {
 
   count = var.aws_kube_worker_num
 
-  availability_zone = element(slice(data.aws_availability_zones.available.names, 0, length(var.aws_cidr_subnets_public) <= length(data.aws_availability_zones.available.names) ? length(var.aws_cidr_subnets_public) : length(data.aws_availability_zones.available.names)), count.index)
-  subnet_id         = element(module.aws-vpc.aws_subnet_ids_private, count.index)
+  subnet_id = element(module.aws-vpc.aws_subnet_ids_private, count.index)
 
   vpc_security_group_ids = module.aws-vpc.aws_security_group
 
@@ -168,7 +164,7 @@ data "template_file" "inventory" {
     list_node                 = join("\n", aws_instance.k8s-worker.*.private_dns)
     connection_strings_etcd   = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-etcd.*.private_dns, aws_instance.k8s-etcd.*.private_ip))
     list_etcd                 = join("\n", ((var.aws_etcd_num > 0) ? (aws_instance.k8s-etcd.*.private_dns) : (aws_instance.k8s-master.*.private_dns)))
-    elb_api_fqdn              = "apiserver_loadbalancer_domain_name=\"${module.aws-elb.aws_elb_api_fqdn}\""
+    nlb_api_fqdn              = "apiserver_loadbalancer_domain_name=\"${module.aws-nlb.aws_nlb_api_fqdn}\""
   }
 }
 

@@ -25,13 +25,14 @@ resource "aws_internet_gateway" "cluster-vpc-internetgw" {
 
 resource "aws_subnet" "cluster-vpc-subnets-public" {
   vpc_id            = aws_vpc.cluster-vpc.id
-  count             = length(var.aws_avail_zones)
-  availability_zone = element(var.aws_avail_zones, count.index)
+  count             = length(var.aws_cidr_subnets_public)
+  availability_zone = element(var.aws_avail_zones, count.index % length(var.aws_avail_zones))
   cidr_block        = element(var.aws_cidr_subnets_public, count.index)
 
   tags = merge(var.default_tags, tomap({
     Name = "kubernetes-${var.aws_cluster_name}-${element(var.aws_avail_zones, count.index)}-public"
-    "kubernetes.io/cluster/${var.aws_cluster_name}" = "member"
+    "kubernetes.io/cluster/${var.aws_cluster_name}" = "shared"
+    "kubernetes.io/role/elb" = "1"
   }))
 }
 
@@ -43,12 +44,14 @@ resource "aws_nat_gateway" "cluster-nat-gateway" {
 
 resource "aws_subnet" "cluster-vpc-subnets-private" {
   vpc_id            = aws_vpc.cluster-vpc.id
-  count             = length(var.aws_avail_zones)
-  availability_zone = element(var.aws_avail_zones, count.index)
+  count             = length(var.aws_cidr_subnets_private)
+  availability_zone = element(var.aws_avail_zones, count.index % length(var.aws_avail_zones))
   cidr_block        = element(var.aws_cidr_subnets_private, count.index)
 
   tags = merge(var.default_tags, tomap({
     Name = "kubernetes-${var.aws_cluster_name}-${element(var.aws_avail_zones, count.index)}-private"
+    "kubernetes.io/cluster/${var.aws_cluster_name}" = "shared"
+    "kubernetes.io/role/internal-elb" = "1"
   }))
 }
 

@@ -1,0 +1,86 @@
+---
+
+.molecule:
+  tags: [c3.small.x86]
+  only: [/^pr-.*$/]
+  except: ['triggers']
+  image: quay.io/kubespray/vagrant:$KUBESPRAY_VERSION
+  services: []
+  stage: deploy-part1
+  before_script:
+    - tests/scripts/rebase.sh
+    - apt-get update && apt-get install -y python3-pip
+    - update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+    - python -m pip uninstall -y ansible ansible-base ansible-core
+    - python -m pip install -r tests/requirements.txt
+    - ./tests/scripts/vagrant_clean.sh
+  script:
+    - ./tests/scripts/molecule_run.sh
+  after_script:
+    - chronic ./tests/scripts/molecule_logs.sh
+  artifacts:
+    when: always
+    paths:
+      - molecule_logs/
+
+# CI template for periodic CI jobs
+# Enabled when PERIODIC_CI_ENABLED var is set
+.molecule_periodic:
+  only:
+    variables:
+      - $PERIODIC_CI_ENABLED
+  allow_failure: true
+  extends: .molecule
+
+molecule_full:
+  extends: .molecule_periodic
+
+molecule_no_container_engines:
+  extends: .molecule
+  script:
+    - ./tests/scripts/molecule_run.sh -e container-engine
+  when: on_success
+
+molecule_docker:
+  extends: .molecule
+  script:
+    - ./tests/scripts/molecule_run.sh -i container-engine/cri-dockerd
+  when: on_success
+
+molecule_containerd:
+  extends: .molecule
+  script:
+    - ./tests/scripts/molecule_run.sh -i container-engine/containerd
+  when: on_success
+
+molecule_cri-o:
+  extends: .molecule
+  stage: deploy-part2
+  script:
+    - ./tests/scripts/molecule_run.sh -i container-engine/cri-o
+  when: on_success
+
+# Stage 3 container engines don't get as much attention so allow them to fail
+molecule_kata:
+  extends: .molecule
+  stage: deploy-part3
+  allow_failure: true
+  script:
+    - ./tests/scripts/molecule_run.sh -i container-engine/kata-containers
+  when: on_success
+
+molecule_gvisor:
+  extends: .molecule
+  stage: deploy-part3
+  allow_failure: true
+  script:
+    - ./tests/scripts/molecule_run.sh -i container-engine/gvisor
+  when: on_success
+
+molecule_youki:
+  extends: .molecule
+  stage: deploy-part3
+  allow_failure: true
+  script:
+    - ./tests/scripts/molecule_run.sh -i container-engine/youki
+  when: on_success

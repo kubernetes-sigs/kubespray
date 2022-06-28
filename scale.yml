@@ -55,7 +55,7 @@
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
     - { role: download, tags: download, when: "not skip_downloads" }
-    - { role: etcd, tags: etcd, etcd_cluster_setup: false, when: "not etcd_kubeadm_enabled|default(false)" }
+    - { role: etcd, tags: etcd, etcd_cluster_setup: false, when: "etcd_deployment_type != 'kubeadm'" }
 
 - name: Target only workers to get kubelet installed and checking in on any new nodes(node)
   hosts: kube_node
@@ -98,3 +98,12 @@
     - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: kubernetes/node-label, tags: node-label }
     - { role: network_plugin, tags: network }
+
+- name: Apply resolv.conf changes now that cluster DNS is up
+  hosts: k8s_cluster
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults }
+    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_late: true }

@@ -114,10 +114,10 @@ def iterhosts(resources):
 
 
 def iterips(resources):
-    '''yield ip tuples of (instance_id, ip)'''
+    '''yield ip tuples of (port_id, ip)'''
     for module_name, key, resource in resources:
         resource_type, name = key.split('.', 1)
-        if resource_type == 'openstack_compute_floatingip_associate_v2':
+        if resource_type == 'openstack_networking_floatingip_associate_v2':
             yield openstack_floating_ips(resource)
 
 
@@ -195,8 +195,8 @@ def parse_bool(string_form):
         raise ValueError('could not convert %r to a bool' % string_form)
 
 
-@parses('packet_device')
-def packet_device(resource, tfvars=None):
+@parses('metal_device')
+def metal_device(resource, tfvars=None):
     raw_attrs = resource['primary']['attributes']
     name = raw_attrs['hostname']
     groups = []
@@ -212,15 +212,15 @@ def packet_device(resource, tfvars=None):
         'project_id': raw_attrs['project_id'],
         'state': raw_attrs['state'],
         # ansible
-        'ansible_ssh_host': raw_attrs['network.0.address'],
-        'ansible_ssh_user': 'root',  # Use root by default in packet
+        'ansible_host': raw_attrs['network.0.address'],
+        'ansible_ssh_user': 'root',  # Use root by default in metal
         # generic
         'ipv4_address': raw_attrs['network.0.address'],
         'public_ipv4': raw_attrs['network.0.address'],
         'ipv6_address': raw_attrs['network.1.address'],
         'public_ipv6': raw_attrs['network.1.address'],
         'private_ipv4': raw_attrs['network.2.address'],
-        'provider': 'packet',
+        'provider': 'metal',
     }
 
     if raw_attrs['operating_system'] == 'flatcar_stable':
@@ -228,10 +228,10 @@ def packet_device(resource, tfvars=None):
         attrs.update({'ansible_ssh_user': 'core'})
 
     # add groups based on attrs
-    groups.append('packet_operating_system=' + attrs['operating_system'])
-    groups.append('packet_locked=%s' % attrs['locked'])
-    groups.append('packet_state=' + attrs['state'])
-    groups.append('packet_plan=' + attrs['plan'])
+    groups.append('metal_operating_system=' + attrs['operating_system'])
+    groups.append('metal_locked=%s' % attrs['locked'])
+    groups.append('metal_state=' + attrs['state'])
+    groups.append('metal_plan=' + attrs['plan'])
 
     # groups specific to kubespray
     groups = groups + attrs['tags']
@@ -243,13 +243,13 @@ def openstack_floating_ips(resource):
     raw_attrs = resource['primary']['attributes']
     attrs = {
         'ip': raw_attrs['floating_ip'],
-        'instance_id': raw_attrs['instance_id'],
+        'port_id': raw_attrs['port_id'],
     }
     return attrs
 
 def openstack_floating_ips(resource):
     raw_attrs = resource['primary']['attributes']
-    return raw_attrs['instance_id'], raw_attrs['floating_ip']
+    return raw_attrs['port_id'], raw_attrs['floating_ip']
 
 @parses('openstack_compute_instance_v2')
 @calculate_mantl_vars
@@ -282,6 +282,7 @@ def openstack_host(resource, module_name):
         # generic
         'public_ipv4': raw_attrs['access_ip_v4'],
         'private_ipv4': raw_attrs['access_ip_v4'],
+        'port_id' : raw_attrs['network.0.port'],
         'provider': 'openstack',
     }
 
@@ -291,16 +292,16 @@ def openstack_host(resource, module_name):
     try:
         if 'metadata.prefer_ipv6' in raw_attrs and raw_attrs['metadata.prefer_ipv6'] == "1":
             attrs.update({
-                'ansible_ssh_host': re.sub("[\[\]]", "", raw_attrs['access_ip_v6']),
+                'ansible_host': re.sub("[\[\]]", "", raw_attrs['access_ip_v6']),
                 'publicly_routable': True,
             })
         else:
             attrs.update({
-                'ansible_ssh_host': raw_attrs['access_ip_v4'],
+                'ansible_host': raw_attrs['access_ip_v4'],
                 'publicly_routable': True,
             })
     except (KeyError, ValueError):
-        attrs.update({'ansible_ssh_host': '', 'publicly_routable': False})
+        attrs.update({'ansible_host': '', 'publicly_routable': False})
 
     # Handling of floating IPs has changed: https://github.com/terraform-providers/terraform-provider-openstack/blob/master/CHANGELOG.md#010-june-21-2017
 
@@ -339,16 +340,16 @@ def openstack_host(resource, module_name):
 def iter_host_ips(hosts, ips):
     '''Update hosts that have an entry in the floating IP list'''
     for host in hosts:
-        host_id = host[1]['id']
+        port_id = host[1]['port_id']
 
-        if host_id in ips:
-            ip = ips[host_id]
+        if port_id in ips:
+            ip = ips[port_id]
 
             host[1].update({
                 'access_ip_v4': ip,
                 'access_ip': ip,
                 'public_ipv4': ip,
-                'ansible_ssh_host': ip,
+                'ansible_host': ip,
             })
 
         if 'use_access_ip' in host[1]['metadata'] and host[1]['metadata']['use_access_ip'] == "0":
@@ -388,7 +389,7 @@ def query_list(hosts):
 def query_hostfile(hosts):
     out = ['## begin hosts generated by terraform.py ##']
     out.extend(
-        '{}\t{}'.format(attrs['ansible_ssh_host'].ljust(16), name)
+        '{}\t{}'.format(attrs['ansible_host'].ljust(16), name)
         for name, attrs, _ in hosts
     )
 

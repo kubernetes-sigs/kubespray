@@ -11,7 +11,6 @@ metadata:
   labels:
     app: metallb
   name: controller
-  namespace: metallb-system
 spec:
   allowPrivilegeEscalation: false
   allowedCapabilities: []
@@ -31,10 +30,7 @@ spec:
   requiredDropCapabilities:
   - ALL
   runAsUser:
-    ranges:
-    - max: 65535
-      min: 1
-    rule: MustRunAs
+    rule: MustRunAsNonRoot
   seLinux:
     rule: RunAsAny
   supplementalGroups:
@@ -54,7 +50,6 @@ metadata:
   labels:
     app: metallb
   name: speaker
-  namespace: metallb-system
 spec:
   allowPrivilegeEscalation: false
   allowedCapabilities:
@@ -354,6 +349,7 @@ spec:
       - args:
         - --port={{ metallb_port }}
         - --config=config
+        - --log-level={{ metallb_log_level }}
         env:
         - name: METALLB_NODE_NAME
           valueFrom:
@@ -389,6 +385,24 @@ spec:
         - containerPort: {{ metallb_memberlist_port }}
           name: memberlist-udp
           protocol: UDP
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: monitoring
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: monitoring
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -433,6 +447,7 @@ spec:
         app: metallb
         component: controller
     spec:
+      priorityClassName: system-cluster-critical
 {% if metallb_controller_tolerations %}
       tolerations:
         {{ metallb_controller_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
@@ -441,6 +456,7 @@ spec:
       - args:
         - --port={{ metallb_port }}
         - --config=config
+        - --log-level={{ metallb_log_level }}
         env:
         - name: METALLB_ML_SECRET_NAME
           value: memberlist
@@ -457,6 +473,24 @@ spec:
             drop:
             - all
           readOnlyRootFilesystem: true
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: monitoring
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: monitoring
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
 {% if metallb_controller_nodeselector %}
       nodeSelector:
         {{ metallb_controller_nodeselector | to_nice_yaml | indent(width=8) }}

@@ -76,8 +76,8 @@ You could rename *all.yml* config to something else, i.e. *kubespray.yml* and cr
 11. Now you can include kubespray tasks in you existent playbooks by including cluster.yml file:
 
      ```yml
-     - name: Include kubespray tasks
-       include: 3d/kubespray/cluster.yml
+     - name: Import kubespray playbook
+       ansible.builtin.import_playbook: 3d/kubespray/cluster.yml
      ```
 
      Or your could copy separate tasks from cluster.yml into your ansible repository.

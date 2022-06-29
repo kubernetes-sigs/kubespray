@@ -161,10 +161,10 @@ Note: Upstart/SysV init based OS types are not supported.
 - Storage Plugin
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
-  - [aws-ebs-csi](https://github.com/kubernetes-sigs/aws-ebs-csi-driver) v0.5.0
-  - [azuredisk-csi](https://github.com/kubernetes-sigs/azuredisk-csi-driver) v1.10.0
-  - [cinder-csi](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/using-cinder-csi-plugin.md) v1.22.0
-  - [gcp-pd-csi](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver) v0.7.0-gke.0
+  - [aws-ebs-csi-plugin](https://github.com/kubernetes-sigs/aws-ebs-csi-driver) v0.5.0
+  - [azure-csi-plugin](https://github.com/kubernetes-sigs/azuredisk-csi-driver) v1.10.0
+  - [cinder-csi-plugin](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/using-cinder-csi-plugin.md) v1.22.0
+  - [gcp-pd-csi-plugin](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver) v1.4.0
   - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) v0.0.21
   - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) v2.4.0
 

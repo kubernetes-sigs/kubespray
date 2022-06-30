@@ -150,11 +150,23 @@ Note: Upstart/SysV init based OS types are not supported.
   - [multus](https://github.com/intel/multus-cni) v3.8
   - [weave](https://github.com/weaveworks/weave) v2.8.1
 - Application
-  - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
-  - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
   - [cert-manager](https://github.com/jetstack/cert-manager) v1.8.2
   - [coredns](https://github.com/coredns/coredns) v1.8.6
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.2.1
+  - [krew](https://github.com/kubernetes-sigs/krew) v0.4.3
+  - [argocd](https://argoproj.github.io/) v2.1.6
+  - [helm](https://helm.sh/) v3.8.2
+  - [metallb](https://metallb.universe.tf/)  v0.12.1
+  - [registry](https://github.com/distribution/distribution) v2.7.1
+- Storage Plugin
+  - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
+  - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
+  - [aws-ebs-csi](https://github.com/kubernetes-sigs/aws-ebs-csi-driver) v0.5.0
+  - [azuredisk-csi](https://github.com/kubernetes-sigs/azuredisk-csi-driver) v1.10.0
+  - [cinder-csi](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/using-cinder-csi-plugin.md) v1.22.0
+  - [gcp-pd-csi](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver) v0.7.0-gke.0
+  - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) v0.0.21
+  - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) v2.4.0
 
 ## Container Runtime Notes
 

@@ -108,22 +108,23 @@
     - item in kube_apiserver_admission_plugins_needs_configuration
   loop: "{{ kube_apiserver_enable_admission_plugins }}"
 
-- name: kubeadm | Check if apiserver.crt contains all needed SANs
-  shell: |
-    set -o pipefail
-    for IP in {{ apiserver_ips | join(' ') }}; do
-      openssl x509 -noout -in "{{ kube_cert_dir }}/apiserver.crt" -checkip $IP | grep -q 'does match certificate' || echo 'NEED-RENEW'
-    done
-    for HOST in {{ apiserver_hosts | join(' ') }}; do
-      openssl x509 -noout -in "{{ kube_cert_dir }}/apiserver.crt" -checkhost $HOST | grep -q 'does match certificate' || echo 'NEED-RENEW'
-    done
+- name: kubeadm | Check apiserver.crt SANs
+  block:
+    - name: kubeadm | Check apiserver.crt SAN IPs
+      command:
+        cmd: "openssl x509 -noout -in {{ kube_cert_dir }}/apiserver.crt -checkip {{ item }}"
+      loop: "{{ apiserver_ips }}"
+      register: apiserver_sans_ip_check
+      changed_when: apiserver_sans_ip_check.stdout is not search('does match certificate')
+    - name: kubeadm | Check apiserver.crt SAN hosts
+      command:
+        cmd: "openssl x509 -noout -in {{ kube_cert_dir }}/apiserver.crt -checkhost {{ item }}"
+      loop: "{{ apiserver_hosts }}"
+      register: apiserver_sans_host_check
+      changed_when: apiserver_sans_host_check.stdout is not search('does match certificate')
   vars:
     apiserver_ips: "{{ apiserver_sans|map('ipaddr')|reject('equalto', False)|list }}"
     apiserver_hosts: "{{ apiserver_sans|difference(apiserver_ips) }}"
-  args:
-    executable: /bin/bash
-  register: apiserver_sans_check
-  changed_when: "'NEED-RENEW' in apiserver_sans_check.stdout"
   when:
     - kubeadm_already_run.stat.exists
     - not kube_external_ca_mode
@@ -137,7 +138,7 @@
     - apiserver.key
   when:
     - kubeadm_already_run.stat.exists
-    - apiserver_sans_check.changed
+    - apiserver_sans_ip_check.changed or apiserver_sans_host_check.changed
     - not kube_external_ca_mode
 
 - name: kubeadm | regenerate apiserver cert 2/2
@@ -147,7 +148,7 @@
     --config={{ kube_config_dir }}/kubeadm-config.yaml
   when:
     - kubeadm_already_run.stat.exists
-    - apiserver_sans_check.changed
+    - apiserver_sans_ip_check.changed or apiserver_sans_host_check.changed
     - not kube_external_ca_mode
 
 - name: kubeadm | Create directory to store kubeadm patches

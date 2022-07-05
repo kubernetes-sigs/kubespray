@@ -24,8 +24,12 @@ module "kubernetes" {
   ssh_public_keys = var.ssh_public_keys
 
   firewall_enabled          = var.firewall_enabled
+  firewall_default_deny_in  = var.firewall_default_deny_in
+  firewall_default_deny_out = var.firewall_default_deny_out
   master_allowed_remote_ips = var.master_allowed_remote_ips
   k8s_allowed_remote_ips    = var.k8s_allowed_remote_ips
+  master_allowed_ports      = var.master_allowed_ports
+  worker_allowed_ports      = var.worker_allowed_ports
 
   loadbalancer_enabled = var.loadbalancer_enabled
   loadbalancer_plan    = var.loadbalancer_plan

@@ -95,7 +95,10 @@ machines = {
   }
 }
 
-firewall_enabled = false
+firewall_enabled          = false
+firewall_default_deny_in  = false
+firewall_default_deny_out = false
+
 
 master_allowed_remote_ips = [
   {
@@ -110,6 +113,9 @@ k8s_allowed_remote_ips = [
     "end_address" : "255.255.255.255"
   }
 ]
+
+master_allowed_ports = []
+worker_allowed_ports = []
 
 loadbalancer_enabled = false
 loadbalancer_plan = "development"

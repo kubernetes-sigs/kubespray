@@ -154,7 +154,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [coredns](https://github.com/coredns/coredns) v1.8.6
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.2.1
   - [krew](https://github.com/kubernetes-sigs/krew) v0.4.3
-  - [argocd](https://argoproj.github.io/) v2.1.6
+  - [argocd](https://argoproj.github.io/) v2.4.3
   - [helm](https://helm.sh/) v3.8.2
   - [metallb](https://metallb.universe.tf/)  v0.12.1
   - [registry](https://github.com/distribution/distribution) v2.7.1

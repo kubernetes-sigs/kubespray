@@ -95,6 +95,17 @@
     - ansible_distribution == "Debian"
     - ansible_distribution_version == "10"
 
+- name: Remove dpkg hold
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: install
+  when:
+    - ansible_pkg_mgr == 'apt'
+    - not is_ostree
+  changed_when: false
+  with_items:
+    - "{{ crio_package }}"
+
 - name: Install cri-o packages
   package:
     name: "{{ item }}"
@@ -105,6 +116,17 @@
   until: package_install is succeeded
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
+  
+- name: Restore dpkg hold
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  when:
+    - ansible_pkg_mgr == 'apt'
+    - not is_ostree
+  changed_when: false
+  with_items:
+    - "{{ crio_package }}"
 
 - name: Check if already installed
   stat:

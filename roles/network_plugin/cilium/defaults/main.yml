@@ -6,6 +6,9 @@ cilium_mtu: ""
 cilium_enable_ipv4: true
 cilium_enable_ipv6: false
 
+# Cilium agent health port
+cilium_agent_health_port: "{%- if cilium_version | regex_replace('v') is version('1.11.6', '>=') -%}9879{%- else -%}9876{%- endif -%}"
+
 # Identity allocation mode selects how identities are shared between cilium
 # nodes by setting how they are stored. The options are "crd" or "kvstore".
 # - "crd" stores identities in kubernetes as CRDs (custom resource definition).
@@ -91,13 +94,13 @@ cilium_encryption_type: "ipsec"
 
 # Enable encryption for pure node to node traffic.
 # This option is only effective when `cilium_encryption_type` is set to `ipsec`.
-cilium_ipsec_node_encryption: "false"
+cilium_ipsec_node_encryption: false
 
 # If your kernel or distribution does not support WireGuard, Cilium agent can be configured to fall back on the user-space implementation.
 # When this flag is enabled and Cilium detects that the kernel has no native support for WireGuard,
 # it will fallback on the wireguard-go user-space implementation of WireGuard.
 # This option is only effective when `cilium_encryption_type` is set to `wireguard`.
-cilium_wireguard_userspace_fallback: "false"
+cilium_wireguard_userspace_fallback: false
 
 # IP Masquerade Agent
 # https://docs.cilium.io/en/stable/concepts/networking/masquerading/
@@ -153,6 +156,8 @@ cilium_agent_extra_volume_mounts: []
 
 cilium_agent_extra_env_vars: []
 
+cilium_operator_replicas: 2
+
 # The address at which the cillium operator bind health check api
 cilium_operator_api_serve_addr: "127.0.0.1:9234"
 
@@ -175,9 +180,59 @@ cilium_cluster_name: default
 # Make Cilium take ownership over the `/etc/cni/net.d` directory on the node, renaming all non-Cilium CNI configurations to `*.cilium_bak`.
 # This ensures no Pods can be scheduled using other CNI plugins during Cilium agent downtime.
 # Available for Cilium v1.10 and up.
-cilium_cni_exclusive: "true"
+cilium_cni_exclusive: true
 
 # Configure the log file for CNI logging with retention policy of 7 days.
 # Disable CNI file logging by setting this field to empty explicitly.
 # Available for Cilium v1.12 and up.
 cilium_cni_log_file: "/var/run/cilium/cilium-cni.log"
+
+# -- Configure cgroup related configuration
+# -- Enable auto mount of cgroup2 filesystem.
+# When `cilium_cgroup_auto_mount` is enabled, cgroup2 filesystem is mounted at
+# `cilium_cgroup_host_root` path on the underlying host and inside the cilium agent pod.
+# If users disable `cilium_cgroup_auto_mount`, it's expected that users have mounted
+# cgroup2 filesystem at the specified `cilium_cgroup_auto_mount` volume, and then the
+# volume will be mounted inside the cilium agent pod at the same path.
+# Available for Cilium v1.11 and up
+cilium_cgroup_auto_mount: true
+# -- Configure cgroup root where cgroup2 filesystem is mounted on the host
+cilium_cgroup_host_root: "/run/cilium/cgroupv2"
+
+# Specifies the ratio (0.0-1.0) of total system memory to use for dynamic
+# sizing of the TCP CT, non-TCP CT, NAT and policy BPF maps.
+cilium_bpf_map_dynamic_size_ratio: "{%- if cilium_version | regex_replace('v') is version('1.8', '>=') -%}0.0025{%- else -%}0.0{%- endif -%}"
+
+# -- Enables masquerading of IPv4 traffic leaving the node from endpoints.
+# Available for Cilium v1.10 and up
+cilium_enable_ipv4_masquerade: true
+# -- Enables masquerading of IPv6 traffic leaving the node from endpoints.
+# Available for Cilium v1.10 and up
+cilium_enable_ipv6_masquerade: true
+
+# -- Enable native IP masquerade support in eBPF
+cilium_enable_bpf_masquerade: false
+
+# -- Configure whether direct routing mode should route traffic via
+# host stack (true) or directly and more efficiently out of BPF (false) if
+# the kernel supports it. The latter has the implication that it will also
+# bypass netfilter in the host namespace.
+cilium_enable_host_legacy_routing: true
+
+# -- Enable use of the remote node identity.
+# ref: https://docs.cilium.io/en/v1.7/install/upgrade/#configmap-remote-node-identity
+cilium_enable_remote_node_identity: true
+
+# -- Enable the use of well-known identities.
+cilium_enable_well_known_identities: false
+
+# The monitor aggregation flags determine which TCP flags which, upon the
+# first observation, cause monitor notifications to be generated.
+#
+# Only effective when monitor aggregation is set to "medium" or higher.
+cilium_monitor_aggregation_flags: "all"
+
+cilium_enable_bpf_clock_probe: true
+
+# -- Whether to enable CNP status updates.
+cilium_disable_cnp_status_updates: true

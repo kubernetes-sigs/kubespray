@@ -11,12 +11,22 @@
 
   tasks:
     - name: version_specified?
-      set_fact:
+      ansible.builtin.set_fact:
         default_kube_version: "{{ kube_version }}"
         specified_version: "{{lookup('ansible.builtin.file', './contrib/offline/.use-kube-version') }}"
-      failed_when: false
+    - name: "Check_k8s_specified_version"
+      ansible.builtin.assert:
+        fail_msg: "USE_KUBE_VERSION must be between {{ kube_version_min_required }} and {{ default_kube_version }} inclusive"
+        quiet: yes
+        that:
+          - specified_version is version(kube_version_min_required , ">=")
+          - specified_version is version(default_kube_version, "<=")
+      when: specified_version | length > 2
+      changed_when: false
+      tags:
+        - check
     - name: up_version
-      set_fact:
+      ansible.builtin.set_fact:
         kube_version: "{{ specified_version }}"
       when: specified_version | length > 2
     - name: kube_version_info
@@ -26,7 +36,8 @@
           - "current kube version: {{ kube_version }}"
           - "The minimum version working: {{ kube_version_min_required }}"
     # Generate files.list and images.list files from templates.
-    - template:
+    - name: generate files.list and images.list files
+      ansible.builtin.template:
         src: ./contrib/offline/temp/{{ item }}.list.template
         dest: ./contrib/offline/temp/{{ item }}.list
       with_items:

@@ -1,28 +1,30 @@
 # Offline deployment
 
-## manage-offline-container-images.sh
+## tl;dr
 
-Container image collecting script for offline deployment
+* generate offline archive files.
+* sync the archive files(and current offline directory) to offline environment.
+* unarchive archive files and restore.
 
-This script has two features:
-(1) Get container images from an environment which is deployed online.
-(2) Deploy local container registry and register the container images to the registry.
-
-Step(1) should be done online site as a preparation, then we bring the gotten images
-to the target offline environment. if images are from a private registry,
-you need to set `PRIVATE_REGISTRY` environment variable.
-Then we will run step(2) for registering the images to local registry.
-
-Step(1) can be operated with:
+### on internet-available machine
 
 ```shell
-manage-offline-container-images.sh   create
+./generate_list.sh
+./manage-offline-images.sh archive-k8s #docker required
+env NO_HTTP_SERVER=true ./manage-offline-files.sh
+tar czvf offline-scripts.tar.gz manage*sh
+tar cvf offline-all.tar k8s-images.tar.gz offline-files.tar.gz offline-scripts.tar.gz
+<sync_method> offline-all.tar <dest_offline_machine>
 ```
 
-Step(2) can be operated with:
+### on offline machine (maybe tobe-k8s node)
 
 ```shell
-manage-offline-container-images.sh   register
+tar xvf offline-all.tar
+tar xzvf k8s-images.tar.gz
+tar xzvf offline-files.tar.gz
+tar xzvf offline-scripts.tar.gz
+./manage-offline-images.sh restore-k8s #docker required
 ```
 
 ## generate_list.sh
@@ -63,3 +65,30 @@ Step(2) download files and run nginx container
 ```
 
 when nginx container is running, it can be accessed through <http://127.0.0.1:8080/>.
+
+## manage-offline-container-images.sh
+
+Container image collecting script for offline deployment
+
+This script has two features:
+(1) Get container images from an environment which is deployed online.
+(2) Deploy local container registry and register the container images to the registry.
+
+Step(1) should be done online site as a preparation, then we bring the gotten images
+to the target offline environment. if images are from a private registry,
+you need to set `PRIVATE_REGISTRY` environment variable.
+Then we will run step(2) for registering the images to local registry.
+
+Step(1) can be operated with:
+
+```shell
+./manage-offline-images.sh   archive-k8s #for k8s deploy images only"
+./manage-offline-container-images.sh   create  #for running k8s cluster images"
+```
+
+Step(2) can be operated with:
+
+```shell
+./manage-offline-images.sh   restore-k8s #restore k8s deploy images, restore tags"
+./manage-offline-container-images.sh   register   #for running k8s cluster images and pushing images"
+```

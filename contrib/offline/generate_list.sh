@@ -14,9 +14,9 @@ grep 'download_url:' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
     | sed 's/^.*_url: //g;s/\"//g' > ${TEMP_DIR}/files.list.template
 
 # generate all images list template
-sed -n '/^downloads:/,/download_defaults:/p' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
+sed -n '/^downloads:/,/download_defaults:/p' "${REPO_ROOT_DIR}/${DOWNLOAD_YML}" \
     | sed -n "s/repo: //p;s/tag: //p" | tr -d ' ' \
-    | sed 'N;s#\n# #g' | tr ' ' ':' | sed 's/\"//g' > ${TEMP_DIR}/images.list.template
+    | sed 'N;s#\n# #g' | tr ' ' ':' | sed 's/\"//g' > "${TEMP_DIR}/images.list.template"
 
 # add kube-* images to images list template
 # Those container images are downloaded by kubeadm, then roles/download/defaults/main.yml
@@ -24,10 +24,16 @@ sed -n '/^downloads:/,/download_defaults:/p' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
 # list separately.
 KUBE_IMAGES="kube-apiserver kube-controller-manager kube-scheduler kube-proxy"
 for i in $KUBE_IMAGES; do
-    echo "{{ kube_image_repo }}/$i:{{ kube_version }}" >> ${TEMP_DIR}/images.list.template
+    echo "{{ kube_image_repo }}/$i:{{ kube_version }}" >> "${TEMP_DIR}/images.list.template"
 done
 
-# run ansible to expand templates
-/bin/cp ${CURRENT_DIR}/generate_list.yml ${REPO_ROOT_DIR}
+version_file="${CURRENT_DIR}/.use-kube-version"
+rm "$version_file" 2>/dev/null || true
+echo -n "${USE_KUBE_VERSION}" > "${version_file}"
 
-(cd ${REPO_ROOT_DIR} && ansible-playbook $* generate_list.yml && /bin/rm generate_list.yml) || exit 1
+# run ansible to expand templates
+/bin/cp "${CURRENT_DIR}/generate_list.yml" "${REPO_ROOT_DIR}"
+
+(cd "${REPO_ROOT_DIR}" && ansible-playbook $* generate_list.yml && /bin/rm generate_list.yml) || exit 1
+
+rm "$version_file"

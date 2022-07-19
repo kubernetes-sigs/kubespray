@@ -79,6 +79,38 @@ variable "k8s_allowed_remote_ips" {
   default = []
 }
 
+variable "master_allowed_ports" {
+  description = "List of ports to allow on masters"
+  type = list(object({
+    protocol       = string
+    port_range_min = number
+    port_range_max = number
+    start_address  = string
+    end_address    = string
+  }))
+}
+
+variable "worker_allowed_ports" {
+  description = "List of ports to allow on workers"
+  type = list(object({
+    protocol       = string
+    port_range_min = number
+    port_range_max = number
+    start_address  = string
+    end_address    = string
+  }))
+}
+
+variable "firewall_default_deny_in" {
+  description = "Add firewall policies that deny all inbound traffic by default"
+  default     = false
+}
+
+variable "firewall_default_deny_out" {
+  description = "Add firewall policies that deny all outbound traffic by default"
+  default     = false
+}
+
 variable "loadbalancer_enabled" {
   description = "Enable load balancer"
   default     = false

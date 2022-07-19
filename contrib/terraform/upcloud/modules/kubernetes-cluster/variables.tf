@@ -49,6 +49,34 @@ variable "k8s_allowed_remote_ips" {
   }))
 }
 
+variable "master_allowed_ports" {
+  type = list(object({
+    protocol       = string
+    port_range_min = number
+    port_range_max = number
+    start_address  = string
+    end_address    = string
+  }))
+}
+
+variable "worker_allowed_ports" {
+  type = list(object({
+    protocol       = string
+    port_range_min = number
+    port_range_max = number
+    start_address  = string
+    end_address    = string
+  }))
+}
+
+variable "firewall_default_deny_in" {
+  type = bool
+}
+
+variable "firewall_default_deny_out" {
+  type = bool
+}
+
 variable "loadbalancer_enabled" {
   type = bool
 }

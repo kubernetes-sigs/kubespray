@@ -104,6 +104,9 @@ pip install -i https://pypiserver/pypi -r requirements.txt
 pip install -i https://pypiserver/pypi package_you_miss
 ```
 
+## Download images and binaries
+Download needed k8s binaries and images using [contributed offline scripts](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/offline) on an internet-accessible machine. Read [the README file](https://github.com/kubernetes-sigs/kubespray/blob/master/contrib/offline/README.md) for further instructions.
+
 ## Run Kubespray as usual
 
 Once all artifacts are in place and your inventory properly set up, you can run kubespray with the regular `cluster.yaml` command:

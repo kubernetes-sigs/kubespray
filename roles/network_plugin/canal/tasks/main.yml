@@ -28,10 +28,28 @@
     - {s: "{{ kube_etcd_cert_file }}", d: "cert.crt"}
     - {s: "{{ kube_etcd_key_file }}", d: "key.pem"}
 
+- name: Slurp etcd cacert file
+  slurp:
+    src: "{{ canal_cert_dir }}/ca_cert.crt"
+  register: etcd_ca_cert_file
+  failed_when: false
+
+- name: Slurp etcd cert file
+  slurp:
+    src: "{{ canal_cert_dir }}/cert.crt"
+  register: etcd_cert_file
+  failed_when: false
+
+- name: Slurp etcd key file
+  slurp:
+    src: "{{ canal_cert_dir }}/key.pem"
+  register: etcd_key_file
+  failed_when: false
+
 # Flannel need etcd v2 API
 - name: Canal | Set Flannel etcd configuration
   command: |-
-    {{ bin_dir }}/etcdctl set /{{ cluster_name }}/network/config \
+    {{ bin_dir }}/etcdctl set /coreos.com/network/config \
     '{ "Network": "{{ kube_pods_subnet }}", "SubnetLen": {{ kube_network_node_prefix }}, "Backend": { "Type": "{{ flannel_backend_type }}" } }'
   register: output
   retries: 4
@@ -53,14 +71,17 @@
     dest: "{{ kube_config_dir }}/{{ item.file }}"
     mode: 0644
   with_items:
+    - {name: canal-calico-etcd-secret, file: canal-secret-calico-etcd.yml, type: secret}
     - {name: canal-config, file: canal-config.yaml, type: cm}
     - {name: canal-node, file: canal-node.yaml, type: ds}
     - {name: canal-kube-controllers, file: canal-calico-kube-controllers.yml, type: deployment}
+    - {name: canal-cr, file: canal-cr.yml, type: clusterrole}
     - {name: canal, file: canal-node-sa.yml, type: sa}
     - {name: calico-cr, file: canal-cr-calico-node.yml, type: clusterrole}
     - {name: calico-kube-cr, file: canal-cr-calico-kube-controllers.yml, type: clusterrole}
     - {name: calico-crd, file: canal-crd-calico.yml, type: crd}
     - {name: flannel, file: canal-cr-flannel.yml, type: clusterrole}
+    - {name: canal, file: canal-crb-canal.yml, type: clusterrolebinding}
     - {name: canal-calico, file: canal-crb-calico.yml, type: clusterrolebinding}
     - {name: canal-flannel, file: canal-crb-flannel.yml, type: clusterrolebinding}
   register: canal_manifests

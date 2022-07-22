@@ -5,23 +5,69 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: canal-config
+  namespace: kube-system
 data:
-  # Configure this with the location of your etcd cluster.
-  etcd_endpoints: "{{ etcd_access_addresses }}"
+  # Typha is disabled.
+  typha_service_name: "none"
 
   # The interface used by canal for host <-> host communication.
-  # If left blank, then the interface is choosing using the node's
+  # If left blank, then the interface is chosen using the node's
   # default route.
-  flanneld_iface: "{{ canal_iface }}"
+  canal_iface: "{{ canal_iface }}"
 
   # Whether or not to masquerade traffic to destinations not within
   # the pod network.
   masquerade: "{{ canal_masquerade }}"
 
-  # Cluster name for Flannel etcd path
-  cluster_name: "{{ cluster_name }}"
+  # Configure the MTU to use for workload interfaces and tunnels.
+  # By default, MTU is auto-detected, and explicitly setting this field should not be required.
+  # You can override auto-detection by providing a non-zero value.
+  veth_mtu: "0"
 
-  # SSL Etcd configuration
-  etcd_cafile: "{{ canal_cert_dir }}/ca_cert.crt"
-  etcd_certfile: "{{ canal_cert_dir }}/cert.crt"
-  etcd_keyfile: "{{ canal_cert_dir }}/key.pem"
+  # The CNI network configuration to install on each node. The special
+  # values in this config will be automatically populated.
+  cni_network_config: |-
+    {
+      "name": "k8s-pod-network",
+      "cniVersion": "0.3.1",
+      "plugins": [
+        {
+          "type": "calico",
+          "log_level": "info",
+{% if calico_cni_log_file_path %}
+          "log_file_path": "{{ calico_cni_log_file_path }}",
+{% endif %}
+          "datastore_type": "kubernetes",
+          "nodename": "__KUBERNETES_NODE_NAME__",
+          "mtu": __CNI_MTU__,
+          "ipam": {
+              "type": "host-local",
+              "subnet": "usePodCidr"
+          },
+          "policy": {
+              "type": "k8s"
+          },
+          "kubernetes": {
+              "kubeconfig": "__KUBECONFIG_FILEPATH__"
+          }
+        },
+        {
+          "type": "portmap",
+          "snat": true,
+          "capabilities": {"portMappings": true}
+        },
+        {
+          "type": "bandwidth",
+          "capabilities": {"bandwidth": true}
+        }
+      ]
+    }
+
+  # Flannel network configuration. Mounted into the flannel container.
+  net-conf.json: |
+    {
+      "Network": "{{ kube_pods_subnet }}",
+      "Backend": {
+        "Type": "vxlan"
+      }
+    }

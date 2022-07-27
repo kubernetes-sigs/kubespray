@@ -17,7 +17,7 @@ pass_or_fail() {
 test_distro() {
     local distro=${1:?};shift
     local extra="${*:-}"
-    local prefix="$distro[${extra}]}"
+    local prefix="${distro[${extra}]}"
     ansible-playbook -i hosts dind-cluster.yaml -e node_distro=$distro
     pass_or_fail "$prefix: dind-nodes" || return 1
     (cd ../..
@@ -71,15 +71,15 @@ for spec in ${SPECS}; do
     echo "Loading file=${spec} ..."
     . ${spec} || continue
     : ${DISTROS:?} || continue
-    echo "DISTROS=${DISTROS[@]}"
+    echo "DISTROS:" "${DISTROS[@]}"
     echo "EXTRAS->"
     printf "  %s\n" "${EXTRAS[@]}"
     let n=1
-    for distro in ${DISTROS[@]}; do
+    for distro in "${DISTROS[@]}"; do
         for extra in "${EXTRAS[@]:-NULL}"; do
             # Magic value to let this for run once:
             [[ ${extra} == NULL ]] && unset extra
-            docker rm -f ${NODES[@]}
+            docker rm -f "${NODES[@]}"
             printf -v file_out "%s/%s-%02d.out" ${OUTPUT_DIR} ${spec} $((n++))
             {
                 info "${distro}[${extra}] START: file_out=${file_out}"

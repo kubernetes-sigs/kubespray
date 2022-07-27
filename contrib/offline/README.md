@@ -1,6 +1,6 @@
 # Offline deployment
 
-## tl;dr
+## Steps
 
 * generate offline archive files.
 * sync the archive files(and current offline directory) to offline environment.
@@ -17,7 +17,7 @@ tar cvf offline-all.tar k8s-images.tar.gz offline-files.tar.gz offline-scripts.t
 <sync_method> offline-all.tar <dest_offline_machine>
 ```
 
-### on offline machine (maybe tobe-k8s node)
+### on offline machine
 
 ```shell
 tar xvf offline-all.tar

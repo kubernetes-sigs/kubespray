@@ -1,65 +1,15 @@
 ---
-- name: Calico | Set lable for route reflector
-  shell: "kubectl label nodes {{ item }} calico-rr-id={{ calcio_rr_id }} --overwrite"
-  changed_when: false
-  register: calico_rr_id_label
-  until: calico_rr_id_label is succeeded
-  delay: "{{ retry_stagger | random + 3 }}"
-  retries: 10
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-  with_items:
-    - "{{ groups['calico_rr'] | default([]) }}"
+
 
 - name: Calico | Set lable for groups nodes
-  shell: "kubectl label nodes {{ item }} calico-group-id={{ calico_group_id }} --overwrite"
+  shell: "{{ bin_dir }}/calicoctl.sh label node  {{ inventory_hostname }} calico-group-id={{ calico_group_id }} --overwrite"
   changed_when: false
   register: calico_group_id_label
   until: calico_group_id_label is succeeded
   delay: "{{ retry_stagger | random + 3 }}"
   retries: 10
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-  with_items:
-    - "{{ groups['k8s_cluster'] | default([]) }}"
-
-# rr roles
-- name: Calico-rr | Set label for route reflector  # noqa 301
-  command: >-
-    {{ bin_dir }}/calicoctl.sh label node {{ item }}
-    'i-am-a-route-reflector=true' --overwrite
-  changed_when: false
-  register: calico_rr_label
-  until: calico_rr_label is succeeded
-  delay: "{{ retry_stagger | random + 3 }}"
-  retries: 10
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-  with_items:
-    - "{{ groups['calico_rr'] | default([]) }}"
-
-- block:
-  - name: Calico-rr | Fetch current node object
-    command: "{{ bin_dir }}/calicoctl.sh get node {{ inventory_hostname }} -ojson"
-    changed_when: false
-    register: calico_rr_node
-    until: calico_rr_node is succeeded
-    delay: "{{ retry_stagger | random + 3 }}"
-    retries: 10
-
-  - name: Calico-rr | Set route reflector cluster ID
-    set_fact:
-      calico_rr_node_patched: >-
-        {{ calico_rr_node.stdout | from_json | combine({ 'spec': { 'bgp':
-        { 'routeReflectorClusterID': cluster_id }}}, recursive=True) }}
-
-  - name: Calico-rr | Configure route reflector  # noqa 301 305
-    shell: "{{ bin_dir }}/calicoctl.sh replace -f-"
-    args:
-      stdin: "{{ calico_rr_node_patched | to_json }}"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-
+    - calico_group_id is defined
 
 - name: Calico | Configure peering with route reflectors at global scope
   command:
@@ -74,8 +24,33 @@
         "name": "{{ calcio_rr_id }}-to-node"
       },
       "spec": {
-        "nodeSelector": "calico-rr-id == {{ calcio_rr_id }}",
-        "peerSelector": "calico-group-id == {{ calico_group_id }}"
+        "peerSelector": "calico-rr-id == '{{ calcio_rr_id }}'",
+        "nodeSelector": "calico-group-id == '{{ calico_group_id }}'"
+      }}
+  register: output
+  retries: 4
+  until: output.rc == 0
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - calcio_rr_id is defined
+    - calico_group_id is defined
+    - inventory_hostname in groups['calico_rr']
+
+- name: Calico | Configure peering with route reflectors at global scope
+  command:
+    cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
+    # revert when it's already a string
+    stdin: "{{ stdin is string | ternary(stdin, stdin|to_json) }}"
+  vars:
+    stdin: >
+      {"apiVersion": "projectcalico.org/v3",
+      "kind": "BGPPeer",
+      "metadata": {
+        "name": "peer-to-rrs"
+      },
+      "spec": {
+        "nodeSelector": "!has(i-am-a-route-reflector)",
+        "peerSelector": "has(i-am-a-route-reflector)"
       }}
   register: output
   retries: 4
@@ -85,6 +60,7 @@
     - "{{ groups['calico_rr'] | default([]) }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
+    - calcio_rr_id is not defined or calico_group_id is not defined
 
 - name: Calico | Configure route reflectors to peer with each other
   command:

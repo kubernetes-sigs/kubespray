@@ -1,3 +1,6 @@
+#!/bin/sh
+set -eo pipefail
+
 # see https://github.com/kubernetes-sigs/kubespray/pull/8927
 # run me from top dir like ./scripts/find_injected_facts.sh
 git grep -h -E -o '([$_/]|filter(: "?|=)|ansible_facts.)?ansible_[a-z_*]*' | # find strings looking like injected facts (ansible_...), but also capture some prefixes if they exist

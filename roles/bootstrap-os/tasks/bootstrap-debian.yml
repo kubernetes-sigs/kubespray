@@ -74,3 +74,34 @@
     state: present
     use: apt
   become: true
+
+# Workaround for https://github.com/kubernetes-sigs/kubespray/issues/8850
+- name: check if cgroupv2 are enabled
+  stat:
+    path: "/sys/fs/cgroup/cgroup.controllers"
+
+# Workaround for https://github.com/kubernetes-sigs/kubespray/issues/8850
+- name: Disable Systemd Resolved
+  become: true
+  block:
+    - name: Set default as DNS operational mode
+      ini_file:
+        path: "/etc/NetworkManager/NetworkManager.conf"
+        section: main
+        option: dns
+        value: default
+        no_extra_spaces: yes
+    - name: Disable systemd-resolved
+      systemd:
+        name: systemd-resolved
+        state: stopped
+        enabled: no
+    - name: Remove resolv.conf
+      file:
+        path: "/etc/resolv.conf"
+        state: absent
+    - name: Restart and enable NetworkManager
+      systemd:
+        name: NetworkManager
+        state: restarted
+        enabled: yes

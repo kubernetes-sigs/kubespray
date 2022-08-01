@@ -166,7 +166,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [azure-csi-plugin](https://github.com/kubernetes-sigs/azuredisk-csi-driver) v1.10.0
   - [cinder-csi-plugin](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/using-cinder-csi-plugin.md) v1.22.0
   - [gcp-pd-csi-plugin](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver) v1.4.0
-  - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) v0.0.21
+  - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) v0.0.22
   - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) v2.4.0
 
 ## Container Runtime Notes

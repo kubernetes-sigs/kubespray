@@ -158,7 +158,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [argocd](https://argoproj.github.io/) v2.4.7
   - [helm](https://helm.sh/) v3.9.2
   - [metallb](https://metallb.universe.tf/)  v0.12.1
-  - [registry](https://github.com/distribution/distribution) v2.7.1
+  - [registry](https://github.com/distribution/distribution) v2.8.1
 - Storage Plugin
   - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
   - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11

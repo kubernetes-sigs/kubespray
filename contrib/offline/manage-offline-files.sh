@@ -18,7 +18,7 @@ rm "${OFFLINE_FILES_ARCHIVE}"
 mkdir  "${OFFLINE_FILES_DIR}"
 
 wget -x -P "${OFFLINE_FILES_DIR}" -i "${FILES_LIST}"
-tar -czvf "${OFFLINE_FILES_ARCHIVE}"  "${OFFLINE_FILES_DIR_NAME}"
+tar -czvf "${OFFLINE_FILES_ARCHIVE}"  "${OFFLINE_FILES_DIR}"
 
 [ -n "$NO_HTTP_SERVER" ] && echo "skip to run nginx" && exit 0
 

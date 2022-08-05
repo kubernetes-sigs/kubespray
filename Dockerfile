@@ -8,7 +8,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt update -y \
     && apt install -y \
     libssl-dev python3-dev sshpass apt-transport-https jq moreutils \
-    ca-certificates curl gnupg2 software-properties-common python3-pip unzip rsync git \
+    ca-certificates curl gnupg2 software-properties-common python3-pip unzip rsync git vim \
     && rm -rf /var/lib/apt/lists/*
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
     && add-apt-repository \

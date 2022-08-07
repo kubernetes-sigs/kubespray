@@ -35,9 +35,7 @@ This setup assumes that the DHCP is disabled in the vSphere cluster and IP addre
 
 ## Requirements
 
-* Terraform 0.13.0 or newer
-
-*0.12 also works if you modify the provider block to include version and remove all `versions.tf` files*
+* Terraform 0.13.0 or newer (0.12 also works if you modify the provider block to include version and remove all `versions.tf` files)
 
 ## Quickstart
 

@@ -48,11 +48,13 @@ The `kubespray-defaults` role is expected to be run before this role.
 
 Remember to disable fact gathering since Python might not be present on hosts.
 
-    - hosts: all
-      gather_facts: false  # not all hosts might be able to run modules yet
-      roles:
-         - kubespray-defaults
-         - bootstrap-os
+```yaml
+- hosts: all
+  gather_facts: false  # not all hosts might be able to run modules yet
+  roles:
+    - kubespray-defaults
+    - bootstrap-os
+```
 
 ## License
 

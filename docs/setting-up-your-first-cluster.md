@@ -252,11 +252,7 @@ Ansible will now execute the playbook, this can take up to 20 minutes.
 We will leverage a kubeconfig file from one of the controller nodes to access
  the cluster as administrator from our local workstation.
 
-> In this simplified set-up, we did not include a load balancer that usually
- sits on top of the
-three controller nodes for a high available API server endpoint. In this
- simplified tutorial we connect directly to one of the three
- controllers.
+> In this simplified set-up, we did not include a load balancer that usually sits on top of the three controller nodes for a high available API server endpoint. In this simplified tutorial we connect directly to one of the three controllers.
 
 First, we need to edit the permission of the kubeconfig file on one of the
 controller nodes:

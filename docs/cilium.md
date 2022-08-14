@@ -153,3 +153,32 @@ cilium_hubble_metrics:
 ```
 
 [More](https://docs.cilium.io/en/v1.9/operations/metrics/#hubble-exported-metrics)
+
+## Upgrade considerations
+
+### Rolling-restart timeouts
+
+Cilium relies on the kernel's BPF support, which is extremely fast at runtime but incurs a compilation penalty on initialization and update.
+
+As a result, the Cilium DaemonSet pods can take a significant time to start, which scales with the number of nodes and endpoints in your cluster.
+
+As part of cluster.yml, this DaemonSet is restarted, and Kubespray's [default timeouts for this operation](../roles/network_plugin/cilium/defaults/main.yml)
+are not appropriate for large clusters.
+
+This means that you will likely want to update these timeouts to a value more in-line with your cluster's number of nodes and their respective CPU performance.
+This is configured by the following values:
+
+```yaml
+# Configure how long to wait for the Cilium DaemonSet to be ready again
+cilium_rolling_restart_wait_retries_count: 30
+cilium_rolling_restart_wait_retries_delay_seconds: 10
+```
+
+The total time allowed (count * delay) should be at least `($number_of_nodes_in_cluster * $cilium_pod_start_time)` for successful rolling updates. There are no
+drawbacks to making it higher and giving yourself a time buffer to accommodate transient slowdowns.
+
+Note: To find the `$cilium_pod_start_time` for your cluster, you can simply restart a Cilium pod on a node of your choice and look at how long it takes for it
+to become ready.
+
+Note 2: The default CPU requests/limits for Cilium pods is set to a very conservative 100m:500m which will likely yield very slow startup for Cilium pods. You
+probably want to significantly increase the CPU limit specifically if short bursts of CPU from Cilium are acceptable to you.

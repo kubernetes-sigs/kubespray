@@ -59,7 +59,7 @@
     - { role: kubespray-defaults }
     - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
 
-- hosts: etcd
+- hosts: etcd:kube_control_plane
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -83,7 +83,10 @@
       vars:
         etcd_cluster_setup: false
         etcd_events_cluster_setup: false
-      when: etcd_deployment_type != "kubeadm"
+      when:
+        - etcd_deployment_type != "kubeadm"
+        - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
+        - kube_network_plugin != "calico" or calico_datastore == "etcd"
 
 - name: Handle upgrades to master components first to maintain backwards compat.
   gather_facts: False

@@ -12,6 +12,16 @@
     - etcd-secrets
 
 - include_tasks: upd_ca_trust.yml
+  when:
+    - inventory_hostname in groups['etcd']|union(groups['kube_control_plane'])|unique|sort
+  tags:
+    - etcd-secrets
+
+- include_tasks: upd_ca_trust.yml
+  when:
+    - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - inventory_hostname in groups['k8s_cluster']|unique|sort
   tags:
     - etcd-secrets
 
@@ -21,7 +31,9 @@
   changed_when: false
   check_mode: no
   when:
-    - inventory_hostname in groups['k8s_cluster']|union(groups['calico_rr']|default([]))|unique|sort
+    - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - inventory_hostname in groups['k8s_cluster']|unique|sort
   tags:
     - master
     - network
@@ -30,7 +42,9 @@
   set_fact:
     etcd_client_cert_serial: "{{ etcd_client_cert_serial_result.stdout.split('=')[1] }}"
   when:
-    - inventory_hostname in groups['k8s_cluster']|union(groups['calico_rr']|default([]))|unique|sort
+    - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - inventory_hostname in groups['k8s_cluster']|unique|sort
   tags:
     - master
     - network

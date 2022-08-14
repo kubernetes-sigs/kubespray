@@ -38,7 +38,7 @@
     - gen_certs|default(false)
     - inventory_hostname == groups['etcd'][0]
 
-- name: Gen_certs | run cert generation script
+- name: Gen_certs | run cert generation script for etcd and kube control plane nodes
   command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
   environment:
     - MASTERS: "{% for m in groups['etcd'] %}
@@ -46,7 +46,7 @@
                     {{ m }}
                   {% endif %}
                 {% endfor %}"
-    - HOSTS: "{% for h in (groups['k8s_cluster'] + groups['calico_rr']|default([]))|unique %}
+    - HOSTS: "{% for h in groups['kube_control_plane'] %}
                 {% if gen_node_certs[h] %}
                     {{ h }}
                 {% endif %}
@@ -56,7 +56,23 @@
   when: gen_certs|default(false)
   notify: set etcd_secret_changed
 
-- name: Gen_certs | Gather etcd member and admin certs from first etcd node
+- name: Gen_certs | run cert generation script for all clients
+  command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
+  environment:
+    - HOSTS: "{% for h in groups['k8s_cluster'] %}
+                {% if gen_node_certs[h] %}
+                    {{ h }}
+                {% endif %}
+              {% endfor %}"
+  run_once: yes
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when:
+    - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - gen_certs|default(false)
+  notify: set etcd_secret_changed
+
+- name: Gen_certs | Gather etcd member/admin and kube_control_plane clinet certs from first etcd node
   slurp:
     src: "{{ item }}"
   register: etcd_master_certs
@@ -69,6 +85,10 @@
         '{{ etcd_cert_dir }}/member-{{ node }}.pem',
         '{{ etcd_cert_dir }}/member-{{ node }}-key.pem',
         {% endfor %}]"
+    - "[{% for node in (groups['kube_control_plane']) %}
+        '{{ etcd_cert_dir }}/node-{{ node }}.pem',
+        '{{ etcd_cert_dir }}/node-{{ node }}-key.pem',
+        {% endfor %}]"
   delegate_to: "{{ groups['etcd'][0] }}"
   when:
     - inventory_hostname in groups['etcd']
@@ -76,7 +96,7 @@
     - inventory_hostname != groups['etcd'][0]
   notify: set etcd_secret_changed
 
-- name: Gen_certs | Write etcd member and admin certs to other etcd nodes
+- name: Gen_certs | Write etcd member/admin and kube_control_plane clinet certs to other etcd nodes
   copy:
     dest: "{{ item.item }}"
     content: "{{ item.content | b64decode }}"
@@ -96,7 +116,7 @@
     src: "{{ item }}"
   register: etcd_master_node_certs
   with_items:
-    - "[{% for node in (groups['k8s_cluster'] + groups['calico_rr']|default([]))|unique %}
+    - "[{% for node in (groups['k8s_cluster'])|unique %}
         '{{ etcd_cert_dir }}/node-{{ node }}.pem',
         '{{ etcd_cert_dir }}/node-{{ node }}-key.pem',
         {% endfor %}]"
@@ -104,6 +124,8 @@
   when:
     - inventory_hostname in groups['etcd']
     - inventory_hostname != groups['etcd'][0]
+    - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
   notify: set etcd_secret_changed
 
 - name: Gen_certs | Write node certs to other etcd nodes
@@ -117,47 +139,21 @@
   when:
     - inventory_hostname in groups['etcd']
     - inventory_hostname != groups['etcd'][0]
+    - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
   loop_control:
     label: "{{ item.item }}"
 
-- name: Gen_certs | Set cert names per node
-  set_fact:
-    my_etcd_node_certs: [ 'ca.pem',
-                          'node-{{ inventory_hostname }}.pem',
-                          'node-{{ inventory_hostname }}-key.pem']
-  tags:
-    - facts
-
-- name: "Check_certs | Set 'sync_certs' to true on nodes"
-  set_fact:
-    sync_certs: true
-  when: (('calico_rr' in groups and inventory_hostname in groups['calico_rr']) or
-        inventory_hostname in groups['k8s_cluster']) and
-        inventory_hostname not in groups['etcd']
-  with_items:
-    - "{{ my_etcd_node_certs }}"
-
-- name: Gen_certs | Gather node certs
-  shell: "set -o pipefail && tar cfz - -C {{ etcd_cert_dir }} {{ my_etcd_node_certs|join(' ') }} | base64 --wrap=0"
-  args:
-    executable: /bin/bash
-    warn: false
-  no_log: "{{ not (unsafe_show_logs|bool) }}"
-  register: etcd_node_certs
-  check_mode: no
-  delegate_to: "{{ groups['etcd'][0] }}"
-  when: (('calico_rr' in groups and inventory_hostname in groups['calico_rr']) or
-        inventory_hostname in groups['k8s_cluster']) and
+- include_tasks: gen_nodes_certs_script.yml
+  when:
+    - inventory_hostname in groups['kube_control_plane'] and
         sync_certs|default(false) and inventory_hostname not in groups['etcd']
 
-- name: Gen_certs | Copy certs on nodes
-  shell: "set -o pipefail && base64 -d <<< '{{ etcd_node_certs.stdout|quote }}' | tar xz -C {{ etcd_cert_dir }}"
-  args:
-    executable: /bin/bash
-  no_log: "{{ not (unsafe_show_logs|bool) }}"
-  changed_when: false
-  when: (('calico_rr' in groups and inventory_hostname in groups['calico_rr']) or
-        inventory_hostname in groups['k8s_cluster']) and
+- include_tasks: gen_nodes_certs_script.yml
+  when:
+    - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - inventory_hostname in groups['k8s_cluster'] and
         sync_certs|default(false) and inventory_hostname not in groups['etcd']
 
 - name: Gen_certs | check certificate permissions

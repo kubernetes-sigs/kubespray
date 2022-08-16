@@ -96,11 +96,11 @@ module "compute" {
   network_router_id                            = module.network.router_id
   network_id                                   = module.network.network_id
   use_existing_network                         = var.use_existing_network
-}
-
-depends_on = [
+    
+  depends_on = [
   module.network.subnet_id
-]
+  ]
+}
 
 output "private_subnet_id" {
   value = module.network.subnet_id

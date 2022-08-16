@@ -96,9 +96,9 @@ module "compute" {
   network_router_id                            = module.network.router_id
   network_id                                   = module.network.network_id
   use_existing_network                         = var.use_existing_network
-    
+
   depends_on = [
-  module.network.subnet_id
+    module.network.subnet_id
   ]
 }
 
@@ -115,7 +115,7 @@ output "router_id" {
 }
 
 output "k8s_master_fips" {
-  value = var.number_of_k8s_masters + var.number_of_k8s_masters_no_etcd > 0 ? concat(module.ips.k8s_master_fips, module.ips.k8s_master_no_etcd_fips) : [ for key, value in module.ips.k8s_masters_fips : value.address ]
+  value = var.number_of_k8s_masters + var.number_of_k8s_masters_no_etcd > 0 ? concat(module.ips.k8s_master_fips, module.ips.k8s_master_no_etcd_fips) : [for key, value in module.ips.k8s_masters_fips : value.address]
 }
 
 output "k8s_node_fips" {

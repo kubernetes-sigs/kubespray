@@ -172,6 +172,8 @@ node5
 
 [rack0:vars]
 cluster_id="1.0.0.1"
+calcio_rr_id=rr1
+calico_group_id=rr1
 ```
 
 The inventory above will deploy the following topology assuming that calico's

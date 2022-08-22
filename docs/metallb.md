@@ -19,6 +19,7 @@ You have to explicitly enable the MetalLB extension and set an IP address range 
 ```yaml
 metallb_enabled: true
 metallb_speaker_enabled: true
+metallb_avoid_buggy_ips: true
 metallb_ip_range:
   - 10.5.0.0/16
 ```
@@ -73,12 +74,13 @@ In this scenarion you should disable the MetalLB speaker and configure the `cali
 
 ```yaml
 metallb_speaker_enabled: false
+metallb_avoid_buggy_ips: true
 metallb_ip_range:
   - 10.5.0.0/16
 calico_advertise_service_loadbalancer_ips: "{{ metallb_ip_range }}"
 ```
 
-If you have additional loadbalancer IP pool in `metallb_additional_address_pools`, ensure to add them to the list.
+If you have additional loadbalancer IP pool in `metallb_additional_address_pools` , ensure to add them to the list.
 
 ```yaml
 metallb_speaker_enabled: false
@@ -90,11 +92,13 @@ metallb_additional_address_pools:
       - 10.6.0.0/16
     protocol: "bgp"
     auto_assign: false
+    avoid_buggy_ips: true
   kube_service_pool_2:
     ip_range:
       - 10.10.0.0/16
     protocol: "bgp"
     auto_assign: false
+    avoid_buggy_ips: true
 calico_advertise_service_loadbalancer_ips:
   - 10.5.0.0/16
   - 10.6.0.0/16

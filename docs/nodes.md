@@ -124,7 +124,7 @@ to
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=node-1` to the playbook to limit the execution to the node being removed.
 If the node you want to remove is not online, you should add `reset_nodes=false` and `allow_ungraceful_removal=true` to your extra-vars.
 
-### 3) Edit cluster-info configmap in kube-system namespace
+### 3) Edit cluster-info configmap in kube-public namespace
 
 `kubectl  edit cm -n kube-public cluster-info`
 

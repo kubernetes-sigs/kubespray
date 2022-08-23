@@ -15,7 +15,7 @@ Some variables of note include:
 
 * *calico_version* - Specify version of Calico to use
 * *calico_cni_version* - Specify version of Calico CNI plugin to use
-* *docker_version* - Specify version of Docker to used (should be quoted
+* *docker_version* - Specify version of Docker to use (should be quoted
   string). Must match one of the keys defined for *docker_versioned_pkg*
   in `roles/container-engine/docker/vars/*.yml`.
 * *containerd_version* - Specify version of containerd to use when setting `container_manager` to `containerd`

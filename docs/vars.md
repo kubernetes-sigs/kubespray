@@ -81,7 +81,7 @@ following default cluster parameters:
   raise an assertion in playbooks if the `kubelet_max_pods` var also isn't adjusted accordingly
   (assertion not applicable to calico which doesn't use this as a hard limit, see
   [Calico IP block sizes](https://docs.projectcalico.org/reference/resources/ippool#block-sizes).
-  
+
 * *enable_dual_stack_networks* - Setting this to true will provision both IPv4 and IPv6 networking for pods and services.
 
 * *kube_service_addresses_ipv6* - Subnet for cluster IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1000/116``). Must not overlap with ``kube_pods_subnet_ipv6``.
@@ -99,7 +99,7 @@ following default cluster parameters:
 
 * *coredns_k8s_external_zone* - Zone that will be used when CoreDNS k8s_external plugin is enabled
   (default is k8s_external.local)
-  
+
 * *enable_coredns_k8s_endpoint_pod_names* - If enabled, it configures endpoint_pod_names option for kubernetes plugin.
   on the CoreDNS service.
 

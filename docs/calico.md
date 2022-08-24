@@ -124,8 +124,7 @@ You need to edit your inventory and add:
 * `calico_rr` group with nodes in it. `calico_rr` can be combined with
   `kube_node` and/or `kube_control_plane`. `calico_rr` group also must be a child
    group of `k8s_cluster` group.
-* `cluster_id` by route reflector node/group (see details
-[here](https://hub.docker.com/r/calico/routereflector/))
+* `cluster_id` by route reflector node/group (see details [here](https://hub.docker.com/r/calico/routereflector/))
 
 Here's an example of Kubespray inventory with standalone route reflectors:
 

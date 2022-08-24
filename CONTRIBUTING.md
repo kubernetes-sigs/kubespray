@@ -16,7 +16,12 @@ pip install -r tests/requirements.txt
 
 #### Linting
 
-Kubespray uses `yamllint` and `ansible-lint`. To run them locally use `yamllint .` and `ansible-lint`. It is a good idea to add call these tools as part of your pre-commit hook and avoid a lot of back end forth on fixing linting issues (<https://support.gitkraken.com/working-with-repositories/githooksexample/>).
+Kubespray uses [pre-commit](https://pre-commit.com) hook configuration to run several linters, please install this tool and use it to run validation tests before submitting a PR.
+
+```ShellSession
+pre-commit install
+pre-commit run -a  # To run pre-commit hook on all files in the repository, even if they were not modified
+```
 
 #### Molecule
 
@@ -33,7 +38,9 @@ Vagrant with VirtualBox or libvirt driver helps you to quickly spin test cluster
 1. Submit an issue describing your proposed change to the repo in question.
 2. The [repo owners](OWNERS) will respond to your issue promptly.
 3. Fork the desired repo, develop and test your code changes.
-4. Sign the CNCF CLA (<https://git.k8s.io/community/CLA.md#the-contributor-license-agreement>)
-5. Submit a pull request.
-6. Work with the reviewers on their suggestions.
-7. Ensure to rebase to the HEAD of your target branch and squash un-necessary commits (<https://blog.carbonfive.com/always-squash-and-rebase-your-git-commits/>) before final merger of your contribution.
+4. Install [pre-commit](https://pre-commit.com) and install it in your development repo.
+5. Addess any pre-commit validation failures.
+6. Sign the CNCF CLA (<https://git.k8s.io/community/CLA.md#the-contributor-license-agreement>)
+7. Submit a pull request.
+8. Work with the reviewers on their suggestions.
+9. Ensure to rebase to the HEAD of your target branch and squash un-necessary commits (<https://blog.carbonfive.com/always-squash-and-rebase-your-git-commits/>) before final merger of your contribution.

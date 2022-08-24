@@ -82,9 +82,7 @@ spec:
             exec:
               command:
               - "/cni-install.sh"
-{% if cilium_version | regex_replace('v') is version('1.10', '>=') %}
               - "--cni-exclusive={{ cilium_cni_exclusive }}"
-{% endif %}
 {% if cilium_version | regex_replace('v') is version('1.12', '>=') %}
               - "--log-file={{ cilium_cni_log_file }}"
 {% endif %}
@@ -159,19 +157,6 @@ spec:
           name: cni-path
         - mountPath: /host/etc/cni/net.d
           name: etc-cni-netd
-# pkg/workloads was depreca, removed in 1.7
-# https://github.com/cilium/cilium/pull/9447
-{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
-{% if container_manager == 'docker' %}
-        - mountPath: /var/run/docker.sock
-          name: docker-socket
-          readOnly: true
-{% else %}
-        - name: "{{ container_manager }}-socket"
-          mountPath: {{ cri_socket }}
-          readOnly: true
-{% endif %}
-{% endif %}
 {% if cilium_identity_allocation_mode == "kvstore" %}
         - mountPath: /var/lib/etcd-config
           name: etcd-config-path
@@ -256,7 +241,7 @@ spec:
               optional: true
         # CLEAN_CILIUM_BPF_STATE is deprecated in 1.6.
         # https://github.com/cilium/cilium/pull/7478
-        - name: "{{ cilium_version | regex_replace('v') is version('1.6', '<')| ternary('CLEAN_CILIUM_BPF_STATE','CILIUM_BPF_STATE') }}"
+        - name: "CILIUM_BPF_STATE"
           valueFrom:
             configMapKeyRef:
               key: clean-cilium-bpf-state
@@ -278,11 +263,7 @@ spec:
         - name: KUBERNETES_SERVICE_PORT
           value: "{{ kube_apiserver_global_endpoint | urlsplit('port') }}"
 {% endif %}
-{% if cilium_version | regex_replace('v') is version('1.9', '<') %}
-        image: "{{cilium_init_image_repo}}:{{cilium_init_image_tag}}"
-{% else %}
         image: "{{cilium_image_repo}}:{{cilium_image_tag}}"
-{% endif %}
         imagePullPolicy: {{ k8s_image_pull_policy }}
         name: clean-cilium-state
         securityContext:
@@ -325,23 +306,6 @@ spec:
           path: /sys/fs/bpf
           type: DirectoryOrCreate
         name: bpf-maps
-# pkg/workloads was deprecated in 1.6, removed in 1.7
-# https://github.com/cilium/cilium/pull/9447
-{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
-{% if container_manager == 'docker' %}
-        # To read docker events from the node
-      - hostPath:
-          path: /var/run/docker.sock
-          type: Socket
-        name: docker-socket
-{% else %}
-        # To read crio events from the node
-      - hostPath:
-          path: {{ cri_socket }}
-          type: Socket
-        name: {{ container_manager }}-socket
-{% endif %}
-{% endif %}
 {% if cilium_version | regex_replace('v') is version('1.11', '>=') %}
       # To mount cgroup2 filesystem on the host
       - name: hostproc

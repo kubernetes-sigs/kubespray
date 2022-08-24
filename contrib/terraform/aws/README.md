@@ -36,8 +36,7 @@ terraform apply -var-file=credentials.tfvars
 ```
 
 - Terraform automatically creates an Ansible Inventory file called `hosts` with the created infrastructure in the directory `inventory`
-- Ansible will automatically generate an ssh config file for your bastion hosts. To connect to hosts with ssh using bastion host use generated ssh-bastion.conf.
-  Ansible automatically detects bastion and changes ssh_args  
+- Ansible will automatically generate an ssh config file for your bastion hosts. To connect to hosts with ssh using bastion host use generated `ssh-bastion.conf`. Ansible automatically detects bastion and changes `ssh_args`
 
 ```commandline
 ssh -F ./ssh-bastion.conf user@$ip

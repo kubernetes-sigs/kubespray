@@ -58,7 +58,7 @@ see [download documentation](/docs/downloads.md).
 
 The following is an example of setting up and running kubespray using `vagrant`.
 For repeated runs, you could save the script to a file in the root of the
-kubespray and run it by executing 'source <name_of_the_file>.
+kubespray and run it by executing `source <name_of_the_file>`.
 
 ```ShellSession
 # use virtualenv to install all python requirements

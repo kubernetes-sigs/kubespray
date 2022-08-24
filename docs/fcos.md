@@ -54,7 +54,7 @@ Prepare ignition and serve via http (a.e. python -m http.server )
 
 ### create guest
 
-```shell script
+```ShellSeasion
 machine_name=myfcos1
 ignition_url=http://mywebserver/fcos.ign
 

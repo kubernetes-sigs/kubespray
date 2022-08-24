@@ -71,14 +71,27 @@ The name of the resource group that contains the route table.  Defaults to `azur
 These will have to be generated first:
 
 - Create an Azure AD Application with:
-`az ad app create --display-name kubernetes --identifier-uris http://kubernetes --homepage http://example.com --password CLIENT_SECRET`
+
+  ```ShellSession
+   az ad app create --display-name kubernetes --identifier-uris http://kubernetes --homepage http://example.com --password CLIENT_SECRET
+  ```
+
 display name, identifier-uri, homepage and the password can be chosen
 Note the AppId in the output.
+
 - Create Service principal for the application with:
-`az ad sp create --id AppId`
+
+  ```ShellSession
+  az ad sp create --id AppId
+  ```
+
 This is the AppId from the last command
+
 - Create the role assignment with:
-`az role assignment create --role "Owner" --assignee http://kubernetes --subscription SUBSCRIPTION_ID`
+
+  ```ShellSession
+  az role assignment create --role "Owner" --assignee http://kubernetes --subscription SUBSCRIPTION_ID
+  ```
 
 azure\_aad\_client\_id must be set to the AppId, azure\_aad\_client\_secret is your chosen secret.
 

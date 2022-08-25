@@ -22,25 +22,13 @@ spec:
     metadata:
 {% if cilium_enable_prometheus %}
       annotations:
-        prometheus.io/port: "6942"
+        prometheus.io/port: "{{ cilium_operator_scrape_port }}"
         prometheus.io/scrape: "true"
 {% endif %}
       labels:
         io.cilium/app: operator
         name: cilium-operator
     spec:
-      # In HA mode, cilium-operator pods must not be scheduled on the same
-      # node as they will clash with each other.
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: io.cilium/app
-                operator: In
-                values:
-                - operator
-            topologyKey: "kubernetes.io/hostname"
       containers:
         - name: cilium-operator
           image: "{{ cilium_operator_image_repo }}:{{ cilium_operator_image_tag }}"
@@ -105,10 +93,10 @@ spec:
                   apiVersion: v1
                   fieldPath: metadata.namespace
           ports:
-          -  name: prometheus
-             containerPort: 6942
-             hostPort: 6942
-             protocol: TCP
+            - name: prometheus
+              containerPort: {{ cilium_operator_scrape_port }}
+              hostPort: {{ cilium_operator_scrape_port }}
+              protocol: TCP
 {% endif %}
           livenessProbe:
             httpGet:
@@ -144,6 +132,15 @@ spec:
       priorityClassName: system-node-critical
       serviceAccount: cilium-operator
       serviceAccountName: cilium-operator
+      # In HA mode, cilium-operator pods must not be scheduled on the same
+      # node as they will clash with each other.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                io.cilium/app: operator
       tolerations:
         - operator: Exists
       volumes:

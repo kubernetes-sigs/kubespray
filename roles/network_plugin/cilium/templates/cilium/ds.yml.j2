@@ -19,23 +19,13 @@ spec:
     metadata:
       annotations:
 {% if cilium_enable_prometheus %}
-        prometheus.io/port: "9090"
+        prometheus.io/port: "{{ cilium_agent_scrape_port }}"
         prometheus.io/scrape: "true"
 {% endif %}
         scheduler.alpha.kubernetes.io/tolerations: '[{"key":"dedicated","operator":"Equal","value":"master","effect":"NoSchedule"}]'
       labels:
         k8s-app: cilium
     spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: k8s-app
-                operator: In
-                values:
-                - cilium
-            topologyKey: kubernetes.io/hostname
       containers:
       - name: cilium-agent
         image: "{{cilium_image_repo}}:{{cilium_image_tag}}"
@@ -120,8 +110,9 @@ spec:
             exec:
               command:
               - "/cni-install.sh"
-              - "--cni-exclusive={{ cilium_cni_exclusive }}"
+              - "--cni-exclusive={{ cilium_cni_exclusive | string | lower }}"
 {% if cilium_version | regex_replace('v') is version('1.12', '>=') %}
+              - "--enable-debug={{ cilium_debug | string | lower }}"
               - "--log-file={{ cilium_cni_log_file }}"
 {% endif %}
           preStop:
@@ -139,15 +130,15 @@ spec:
         ports:
 {% endif %}
 {% if cilium_enable_prometheus %}
-        - containerPort: 9090
-          hostPort: 9090
-          name: prometheus
+        - name: prometheus
+          containerPort: {{ cilium_agent_scrape_port }}
+          hostPort: {{ cilium_agent_scrape_port }}
           protocol: TCP
 {% endif %}
 {% if cilium_enable_hubble_metrics %}
-        - containerPort: 9091
-          hostPort: 9091
-          name: hubble-metrics
+        - name: hubble-metrics
+          containerPort: {{ cilium_hubble_scrape_port }}
+          hostPort: {{ cilium_hubble_scrape_port }}
           protocol: TCP
 {% endif %}
         securityContext:
@@ -176,7 +167,7 @@ spec:
         - name: cilium-config-path
           mountPath: /tmp/cilium/config-map
           readOnly: true
-{% if cilium_ip_masq_agent_enable %}
+{% if cilium_ip_masq_agent_enable %}\
         - name: ip-masq-agent
           mountPath: /etc/config
           readOnly: true
@@ -323,6 +314,13 @@ spec:
 {% if cilium_identity_allocation_mode == "kvstore" %}
       dnsPolicy: ClusterFirstWithHostNet
 {% endif %}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                k8s-app: cilium
       tolerations:
       - operator: Exists
       volumes:
@@ -397,6 +395,7 @@ spec:
       - name: ip-masq-agent
         configMap:
           name: ip-masq-agent
+          optional: true
           items:
           - key: config
             path: ip-masq-agent

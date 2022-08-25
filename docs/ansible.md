@@ -3,7 +3,7 @@
 ## Installing Ansible
 
 Kubespray supports multiple ansible versions and ships different `requirements.txt` files for them.
-Depending on your available python version you may be limited in chooding which ansible version to use.
+Depending on your available python version you may be limited in choosing which ansible version to use.
 
 It is recommended to deploy the ansible version used by kubespray into a python virtual environment.
 

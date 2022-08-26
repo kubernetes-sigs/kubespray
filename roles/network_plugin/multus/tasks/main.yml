@@ -10,12 +10,28 @@
     - {name: multus-clusterrole, file: multus-clusterrole.yml, type: clusterrole}
     - {name: multus-clusterrolebinding, file: multus-clusterrolebinding.yml, type: clusterrolebinding}
   register: multus_manifest_1
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Multus | Check container engine type
+  set_fact:
+    container_manager_types: "{{ ansible_play_hosts_all|map('extract', hostvars, ['container_manager'])|list|unique }}"
+  run_once: true
+  when: inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Multus | Copy manifest templates
   template:
-    src: "{{ item.file }}.j2"
+    src: multus-daemonset.yml.j2
     dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: 0644
   with_items:
-    - {name: multus-daemonset, file: multus-daemonset.yml, type: daemonset}
+    - {name: multus-daemonset-containerd, file: multus-daemonset-containerd.yml, type: daemonset, engine: containerd }
+    - {name: multus-daemonset-docker, file: multus-daemonset-docker.yml, type: daemonset, engine: docker }
+    - {name: multus-daemonset-crio, file: multus-daemonset-crio.yml, type: daemonset, engine: crio }
   register: multus_manifest_2
+  vars:
+    query: "*|[?container_manager=='{{ container_manager }}']|[0].inventory_hostname"
+    vars_from_node: "{{ hostvars|json_query(query) }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  when:
+    - item.engine in container_manager_types
+    - hostvars[inventory_hostname].container_manager == item.engine
+    - inventory_hostname == vars_from_node

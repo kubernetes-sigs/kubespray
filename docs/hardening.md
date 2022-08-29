@@ -86,10 +86,12 @@ kubelet_make_iptables_util_chains: true
 kubelet_feature_gates: ["RotateKubeletServerCertificate=true","SeccompDefault=true"]
 kubelet_seccomp_default: true
 kubelet_systemd_hardening: true
-# in case you have multiple interfaces in your
+# In case you have multiple interfaces in your
 # control plane nodes and you want to specify the right
-# IP addresses
-kubelet_secure_address: "192.168.10.110 192.168.10.111 192.168.10.112"
+# IP addresses, kubelet_secure_addresses allows you
+# to specify the IP from which the kubelet
+# will receive the packets.
+kubelet_secure_addresses: "192.168.10.110 192.168.10.111 192.168.10.112"
 
 # additional configurations
 kube_owner: root

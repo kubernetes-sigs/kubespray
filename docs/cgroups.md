@@ -1,8 +1,8 @@
 # cgroups
 
-To avoid the rivals for resources between containers or the impact on the host in Kubernetes, the kubelet components will rely on cgroups to limit the container’s resources usage. 
+To avoid the rivals for resources between containers or the impact on the host in Kubernetes, the kubelet components will rely on cgroups to limit the container’s resources usage.
 
-## Enforcing Node Allocatable 
+## Enforcing Node Allocatable
 
 You can use `kubelet_enforce_node_allocatable` to set node allocatable enforcement.
 

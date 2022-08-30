@@ -110,6 +110,8 @@ Let's take a deep look to the resultant **kubernetes** configuration:
 * The `encryption-provider-config` provide encryption at rest. This means that the `kube-apiserver` encrypt data that is going to be stored before they reach `etcd`. So the data is completely unreadable from `etcd` (in case an attacker is able to exploit this).
 * The `rotateCertificates` in `KubeletConfiguration` is set to `true` along with `serverTLSBootstrap`. This could be used in alternative to `tlsCertFile` and `tlsPrivateKeyFile` parameters. Additionally it automatically generates certificates by itself, but you need to manually approve them or at least using an operator to do this (for more details, please take a look here: <https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet-tls-bootstrapping/>).
 * If you are installing **kubernetes** in an AppArmor-based OS (eg. Debian/Ubuntu) you can enable the `AppArmor` feature gate uncommenting the lines with the comment `# AppArmor-based OS` on top.
+* The `kubelet_systemd_hardening`, both with `kubelet_secure_addresses` setup a minimal firewall on the system. To better understand how these variables work, here's an explanatory image:
+  ![kubelet hardening](img/kubelet-hardening.png)
 
 Once you have the file properly filled, you can run the **Ansible** command to start the installation:
 

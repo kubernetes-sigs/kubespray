@@ -74,7 +74,6 @@ kube_kubeadm_scheduler_extra_args:
 etcd_deployment_type: kubeadm
 
 ## kubelet
-kubelet_authorization_mode_webhook: true
 kubelet_authentication_token_webhook: true
 kube_read_only_port: 0
 kubelet_rotate_server_certificates: true

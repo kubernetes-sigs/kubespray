@@ -7,7 +7,7 @@ Kubespray supports multiple ansible versions but only the default (5.x) gets wid
 
 ## CentOS 8
 
-CentOS 8 / Oracle Linux 8 / AlmaLinux 8 / Rocky Linux 8 ship only with iptables-nft (ie without iptables-legacy similar to RHEL8)
+CentOS 8 / Oracle Linux 8,9 / AlmaLinux 8,9 / Rocky Linux 8,9 ship only with iptables-nft (ie without iptables-legacy similar to RHEL8)
 The only tested configuration for now is using Calico CNI
 You need to add `calico_iptables_backend: "NFT"` to your configuration.
 

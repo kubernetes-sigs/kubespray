@@ -62,6 +62,13 @@ coredns_external_zones:
   nameservers:
   - 192.168.0.53
   cache: 0
+- zones:
+  - mydomain.tld
+  nameservers:
+  - 10.233.0.3
+  cache: 5
+  rewrite:
+  - name stop website.tld website.namespace.svc.cluster.local
 ```
 
 or as INI

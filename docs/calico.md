@@ -82,6 +82,7 @@ node1 ansible_ssh_host=95.54.0.12 local_as=xxxxxx
 
 In another cases you may want to utilize `peer_with_router` with NAT.
 Then the following variables need to be set:
+
 * `nat_outgoing` to enable NAT (default value: true).
 * `peer_with_router_nat_outgoing` to forcefully enable NAT (default value: false).
 

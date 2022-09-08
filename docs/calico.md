@@ -214,6 +214,14 @@ calico_node_livenessprobe_timeout: 10
 calico_node_readinessprobe_timeout: 10
 ```
 
+### Optional : Configure VXLAN hardware Offload
+
+Because of the Issue [projectcalico/calico#4727](https://github.com/projectcalico/calico/issues/4727), The VXLAN Offload is disable by default. It can be configured like this:
+
+```yml
+calico_feature_detect_override: "" # The vxlan offload will enabled with kernel version is > 5.7 (It may cause problem on buggy NIC driver)
+```
+
 ## Config encapsulation for cross server traffic
 
 Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.projectcalico.org/v3.11/networking/vxlan-ipip). VXLAN is the more mature implementation and enabled by default, please check your environment if you need *IP in IP* encapsulation.

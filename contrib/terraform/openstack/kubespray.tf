@@ -97,6 +97,7 @@ module "compute" {
   network_router_id                            = module.network.router_id
   network_id                                   = module.network.network_id
   use_existing_network                         = var.use_existing_network
+  private_subnet_id                            = module.network.subnet_id
 
   depends_on = [
     module.network.subnet_id

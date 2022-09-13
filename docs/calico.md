@@ -72,9 +72,14 @@ calico_pool_cidr_ipv6: fd85:ee78:d8a6:8607::1:0000/112
 
 In some cases you may want to route the pods subnet and so NAT is not needed on the nodes.
 For instance if you have a cluster spread on different locations and you want your pods to talk each other no matter where they are located.
-The following variables need to be set:
-`peer_with_router` to enable the peering with the datacenter's border router (default value: false).
-you'll need to edit the inventory and add a hostvar `local_as` by node.
+The following variables need to be set as follow:
+
+```yml
+peer_with_router: true  # enable the peering with the datacenter's border router (default value: false).
+nat_outgoing: false  # (optional) NAT outgoing (default value: true).
+```
+
+And you'll need to edit the inventory and add a hostvar `local_as` by node.
 
 ```ShellSession
 node1 ansible_ssh_host=95.54.0.12 local_as=xxxxxx

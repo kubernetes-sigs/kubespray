@@ -12,7 +12,7 @@ ntp_enabled: true
 
 The NTP service would be enabled and sync time automatically.
 
-## Custimize the NTP configure file
+## Customize the NTP configure file
 
 In the Air-Gap environment, the node cannot access the NTP server by internet. So the node can use the customized ntp server by configuring ntp file.
 

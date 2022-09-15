@@ -26,6 +26,15 @@ ntp_servers:
   - "3.your-ntp-server.org iburst"
 ```
 
+## Setting the TimeZone
+
+The timezone can also be set by the `ntp_timezone` , eg: "Etc/UTC","Asia/Shanghai". If not set, the timezone will not change.
+
+```ShellSession
+ntp_enabled: true
+ntp_timezone: Etc/UTC
+```
+
 ## Advanced Configure
 
 Enable `tinker panic` is useful when running NTP in a VM environment to avoiding clock drift on VMs. It only takes effect when ntp_manage_config is true.

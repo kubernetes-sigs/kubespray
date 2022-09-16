@@ -44,6 +44,18 @@
     register: get_pods
     no_log: true
 
-  - debug:  # noqa unnamed-task
-      msg: "{{ get_pods.stdout.split('\n') }}"
-    failed_when: not run_pods_log is success
+  - name: Show debugging information when some pods are not ready
+    when: not run_pods_log is success
+    block:
+    - debug:  # noqa unnamed-task
+        msg: "{{ get_pods.stdout.split('\n') }}"
+
+    - name: Get a not-running pod name
+      command: "{{ bin_dir }}/kubectl get pods --all-namespaces --field-selector=status.phase!=Running --output=jsonpath='{.items[0].metadata.namespace} {.items[0].metadata.name}'"
+      register: problematic_pod
+      no_log: true
+      failed_when: false
+
+    - name: Describe the problematic pod
+      command: "{{ bin_dir }}/kubectl describe pod -n {{ problematic_pod.stdout }}"
+      failed_when: true

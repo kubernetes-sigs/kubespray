@@ -60,7 +60,7 @@ Run Terraform to create the infrastructure.
 
 ```bash
 terraform -chdir=../../contrib/terraform/hetzner init
-terraform apply --var-file default.tfvars ../../contrib/terraform/hetzner/
+terraform -chdir=../../contrib/terraform/hetzner/ apply --var-file=default.tfvars
 ```
 
 You should now have a inventory file named `inventory.ini` that you can use with kubespray.

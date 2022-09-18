@@ -1,7 +1,7 @@
 provider "hcloud" {}
 
 module "kubernetes" {
-  source = "./modules/kubernetes-cluster"
+  source = "./modules/kubernetes-cluster-flatcar"
 
   prefix = var.prefix
 

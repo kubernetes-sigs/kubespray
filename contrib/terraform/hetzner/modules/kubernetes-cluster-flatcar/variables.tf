@@ -1,5 +1,4 @@
 
-variable "ssh_private_key_path" {}
 variable "zone" {
   type = string
   default = "fsn1"
@@ -19,6 +18,11 @@ variable "machines" {
 
 variable "ssh_public_keys" {
   type = list(string)
+}
+
+variable "ssh_public_keys" {
+  type    = string
+  default = "~/.ssh/id_rsa"
 }
 
 variable "ssh_whitelist" {

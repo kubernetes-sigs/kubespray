@@ -59,7 +59,7 @@ Edit `default.tfvars` to match your requirement.
 Run Terraform to create the infrastructure.
 
 ```bash
-terraform init ../../contrib/terraform/hetzner
+terraform -chdir=../../contrib/terraform/hetzner init
 terraform apply --var-file default.tfvars ../../contrib/terraform/hetzner/
 ```
 

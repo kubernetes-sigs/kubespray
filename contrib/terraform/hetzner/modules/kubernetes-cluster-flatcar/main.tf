@@ -143,7 +143,7 @@ data "template_file" "machine-configs" {
     name => machine
   }
   #template = file("${path.module}/machine-${each.key}.yaml.tmpl")
-  template = file("${path.module}/machine.yaml.tmpl")
+  template = file("${path.module}/template/machine.yaml.tmpl")
 
   vars = {
     ssh_keys = jsonencode(var.ssh_public_keys)

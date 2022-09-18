@@ -1,7 +1,5 @@
 
 variable "ssh_private_key_path" {}
-variable "hcloud_token" {}
-###########################
 variable "zone" {
   type = string
   default = "fsn1"

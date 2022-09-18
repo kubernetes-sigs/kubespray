@@ -55,6 +55,8 @@ cd inventory/$CLUSTER
 ```
 
 Edit `default.tfvars` to match your requirement.
+Edit `main.tf` to use flatcar instead the standard images
+
 
 Run Terraform to create the infrastructure.
 

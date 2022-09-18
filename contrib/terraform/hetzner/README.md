@@ -59,8 +59,8 @@ Edit `default.tfvars` to match your requirement.
 Run Terraform to create the infrastructure.
 
 ```bash
-terraform -chdir=../../contrib/terraform/hetzner init
-terraform -chdir=../../contrib/terraform/hetzner/ apply --var-file=default.tfvars
+terraform -chdir=./kubespray/contrib/terraform/hetzner/ init
+terraform -chdir=./kubespray/contrib/terraform/hetzner/ apply --var-file=./kubespray/inventory/my-hetzner-cluster/default.tfvars
 ```
 
 You should now have a inventory file named `inventory.ini` that you can use with kubespray.
@@ -75,7 +75,7 @@ ansible -i inventory.ini -m ping all
 You can setup Kubernetes with kubespray using the generated inventory:
 
 ```bash
-ansible-playbook -i inventory.ini ../../cluster.yml -b -v
+ansible-playbook -i inventory.ini ./kubespray/cluster.yml -b -v
 ```
 
 ## Cloud controller

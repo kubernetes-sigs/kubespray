@@ -9,7 +9,7 @@ module "kubernetes" {
 
   machines = var.machines
 
-  ssh_public_keys = var.ssh_private_key_path
+  ssh_private_key_path = var.ssh_private_key_path
   ssh_public_keys = var.ssh_public_keys
   network_zone = var.network_zone
 

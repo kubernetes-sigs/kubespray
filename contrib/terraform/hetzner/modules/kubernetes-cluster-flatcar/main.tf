@@ -142,7 +142,6 @@ data "template_file" "machine-configs" {
     for name, machine in var.machines :
     name => machine
   }
-  #template = file("${path.module}/machine-${each.key}.yaml.tmpl")
   template = file("${path.module}/templates/machine.yaml.tmpl")
 
   vars = {

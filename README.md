@@ -157,7 +157,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.3.1
   - [krew](https://github.com/kubernetes-sigs/krew) v0.4.3
   - [argocd](https://argoproj.github.io/) v2.4.12
-  - [helm](https://helm.sh/) v3.9.2
+  - [helm](https://helm.sh/) v3.9.4
   - [metallb](https://metallb.universe.tf/)  v0.12.1
   - [registry](https://github.com/distribution/distribution) v2.8.1
 - Storage Plugin

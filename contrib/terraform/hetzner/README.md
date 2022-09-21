@@ -56,12 +56,12 @@ cd inventory/$CLUSTER
 
 Edit `default.tfvars` to match your requirement.
 
-NOTE: when you want to use Flatcar Container Linux instead of the basic Hetzner Images.
+NOTE: when you prefer use Flatcar Container Linux instead of the basic Hetzner Images.
 
 ```bash
 cd contrib/terraform/hetzner
-
 ```
+
 Edit `main.tf` and reactivate the module `source = "./modules/kubernetes-cluster-flatcar"`and
 comment out the `#source = "./modules/kubernetes-cluster"`.
 
@@ -90,7 +90,7 @@ ansible -i inventory.ini -m ping all
 You can setup Kubernetes with kubespray using the generated inventory:
 
 ```bash
-ansible-playbook -i inventory.ini ./kubespray/cluster.yml -b -v
+ansible-playbook -i inventory.ini ../../cluster.yml -b -v
 ```
 
 ## Cloud controller

@@ -57,7 +57,7 @@ resource "hcloud_server" "master" {
     connection {
       host    = self.ipv4_address
       timeout = "3m"
-      user    = ${var.user_flatcar}
+      user    = var.user_flatcar
     }
 
     inline = [
@@ -114,7 +114,7 @@ resource "hcloud_server" "worker" {
     connection {
       host    = self.ipv4_address
       timeout = "3m"
-      user    = ${var.user_flatcar}
+      user    = var.user_flatcar
     }
 
     inline = [

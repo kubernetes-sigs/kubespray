@@ -8,6 +8,11 @@ variable "prefix" {
   default = "k8s"
 }
 
+variable "user" {
+  type = string
+  default = "core"
+}
+
 variable "machines" {
   type = map(object({
     node_type = string
@@ -15,6 +20,8 @@ variable "machines" {
     image     = string
   }))
 }
+
+
 
 variable "ssh_public_keys" {
   type = list(string)

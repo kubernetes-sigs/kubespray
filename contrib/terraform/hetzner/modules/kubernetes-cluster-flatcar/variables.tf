@@ -8,7 +8,7 @@ variable "prefix" {
   default = "k8s"
 }
 
-variable "user" {
+variable "user_flatcar" {
   type = string
   default = "core"
 }

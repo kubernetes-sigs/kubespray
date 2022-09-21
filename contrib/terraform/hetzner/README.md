@@ -66,6 +66,8 @@ Rescue-Mode with the selected image of the `var.machines` but installs Flatcar i
 
 Run Terraform to create the infrastructure.
 
+NOTE: Assumes you are at the root of the kubespray repo.
+
 ```bash
 terraform -chdir=./contrib/terraform/hetzner/ init
 terraform -chdir=./contrib/terraform/hetzner/ apply --var-file=./inventory/my-hetzner-cluster/default.tfvars

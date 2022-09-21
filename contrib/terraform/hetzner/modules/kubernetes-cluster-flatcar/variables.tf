@@ -27,7 +27,7 @@ variable "ssh_public_keys" {
   type = list(string)
 }
 
-variable "ssh_public_keys" {
+variable "ssh_private_key_path" {
   type    = string
   default = "~/.ssh/id_rsa"
 }

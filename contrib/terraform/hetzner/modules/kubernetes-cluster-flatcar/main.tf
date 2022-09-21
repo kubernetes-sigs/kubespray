@@ -146,6 +146,7 @@ data "template_file" "machine-configs" {
 
   vars = {
     ssh_keys = jsonencode(var.ssh_public_keys)
+    user_flatcar = jsonencode(var.user_flatcar)
     name     = each.key
   }
 }

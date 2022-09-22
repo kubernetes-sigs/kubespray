@@ -50,7 +50,7 @@ calico_datastore: kdd
 
 ### Optional : Define network backend
 
-In some cases you may want to define Calico network backend. Allowed values are `bird`, `vxlan` or `none`. `vxlan` is the default value.
+In some cases you may want to define Calico network backend. Allowed values are `bird`, `vxlan` or `none`. `bird` is the default value.
 
 To re-define you need to edit the inventory and add a group variable `calico_network_backend`
 

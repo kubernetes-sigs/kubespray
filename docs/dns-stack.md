@@ -19,12 +19,22 @@ ndots value to be used in ``/etc/resolv.conf``
 It is important to note that multiple search domains combined with high ``ndots``
 values lead to poor performance of DNS stack, so please choose it wisely.
 
+## dns_timeout
+
+timeout value to be used in ``/etc/resolv.conf``
+
+## dns_attempts
+
+attempts value to be used in ``/etc/resolv.conf``
+
 ### searchdomains
 
 Custom search domains to be added in addition to the cluster search domains (``default.svc.{{ dns_domain }}, svc.{{ dns_domain }}``).
 
 Most Linux systems limit the total number of search domains to 6 and the total length of all search domains
 to 256 characters. Depending on the length of ``dns_domain``, you're limited to less than the total limit.
+
+`remove_default_searchdomains: true` will remove the default cluster search domains.
 
 Please note that ``resolvconf_mode: docker_dns`` will automatically add your systems search domains as
 additional search domains. Please take this into the accounts for the limits.
@@ -270,7 +280,8 @@ nodelocaldns_secondary_skew_seconds: 5
 
 * the ``searchdomains`` have a limitation of a 6 names and 256 chars
   length. Due to default ``svc, default.svc`` subdomains, the actual
-  limits are a 4 names and 239 chars respectively.
+  limits are a 4 names and 239 chars respectively. If `remove_default_searchdomains: true`
+  added you are back to 6 names.
 
 * the ``nameservers`` have a limitation of a 3 servers, although there
   is a way to mitigate that with the ``upstream_dns_servers``,

@@ -28,6 +28,7 @@ Some variables of note include:
 * *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
 * *kube_version* - Specify a given Kubernetes version
 * *searchdomains* - Array of DNS domains to search when looking up hostnames
+* *remove_default_searchdomains* - Boolean that removes the default searchdomain
 * *nameservers* - Array of nameservers to use for DNS lookup
 * *preinstall_selinux_state* - Set selinux state, permitted values are permissive, enforcing and disabled.
 
@@ -166,6 +167,7 @@ variables to match your requirements.
   addition to Kubespray deployed DNS
 * *nameservers* - Array of DNS servers configured for use by hosts
 * *searchdomains* - Array of up to 4 search domains
+* *remove_default_searchdomains* - Boolean. If enabled, `searchdomains` variable can hold 6 search domains.
 * *dns_etchosts* - Content of hosts file for coredns and nodelocaldns
 
 For more information, see [DNS

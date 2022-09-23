@@ -91,12 +91,17 @@
   changed_when: false
   check_mode: no
 
+- name: set default dns if remove_default_searchdomains is false
+  set_fact:
+    default_searchdomains: ["default.svc.{{ dns_domain }}", "svc.{{ dns_domain }}"]
+  when: not remove_default_searchdomains|default()|bool or (remove_default_searchdomains|default()|bool and searchdomains|default([])|length==0)
+
 - name: set dns facts
   set_fact:
     resolvconf: >-
       {%- if resolvconf.rc == 0 and resolvconfd_path.stat.isdir is defined and resolvconfd_path.stat.isdir -%}true{%- else -%}false{%- endif -%}
     bogus_domains: |-
-      {% for d in [ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([]) -%}
+      {% for d in default_searchdomains|default([]) + searchdomains|default([]) -%}
       {{ dns_domain }}.{{ d }}./{{ d }}.{{ d }}./com.{{ d }}./
       {%- endfor %}
     cloud_resolver: "{{ ['169.254.169.254'] if cloud_provider is defined and cloud_provider == 'gce' else
@@ -169,11 +174,11 @@
 - name: generate search domains to resolvconf
   set_fact:
     searchentries:
-      search {{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join(' ') }}
+      search {{ (default_searchdomains|default([]) + searchdomains|default([])) | join(' ') }}
     domainentry:
       domain {{ dns_domain }}
     supersede_search:
-      supersede domain-search "{{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join('", "') }}";
+      supersede domain-search "{{ (default_searchdomains|default([]) + searchdomains|default([])) | join('", "') }}";
     supersede_domain:
       supersede domain-name "{{ dns_domain }}";
 
@@ -196,7 +201,7 @@
 - name: generate nameservers for resolvconf, including cluster DNS
   set_fact:
     nameserverentries: |-
-      {{ ( ( [nodelocaldns_ip] if enable_nodelocaldns else []) + coredns_server|d([]) + nameservers|d([]) + cloud_resolver|d([]) + configured_nameservers|d([])) | unique | join(',') }}
+      {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server|d([]) if not enable_nodelocaldns else []) + nameservers|d([]) + cloud_resolver|d([]) + configured_nameservers|d([])) | unique | join(',') }}
     supersede_nameserver:
       supersede domain-name-servers {{ ( coredns_server|d([]) + nameservers|d([]) + cloud_resolver|d([])) | unique | join(', ') }};
   when: not dns_early or dns_late

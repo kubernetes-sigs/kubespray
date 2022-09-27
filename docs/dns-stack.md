@@ -40,6 +40,12 @@ is not set, a default resolver is chosen (depending on cloud provider or 8.8.8.8
 DNS servers to be added *after* the cluster DNS. Used by all ``resolvconf_mode`` modes. These serve as backup
 DNS servers in early cluster deployment when no cluster DNS is available yet.
 
+### dns_upstream_forward_extra_opts
+
+Whether or not upstream DNS servers come from `upstream_dns_servers` variable or /etc/resolv.conf, related forward block in coredns (and nodelocaldns) configuration can take options (see <https://coredns.io/plugins/forward/> for details).
+These are configurable in inventory in as a dictionary in the `dns_upstream_forward_extra_opts` variable.
+By default, no other option than the ones hardcoded (see `roles/kubernetes-apps/ansible/templates/coredns-config.yml.j2` and `roles/kubernetes-apps/ansible/templates/nodelocaldns-config.yml.j2`).
+
 ### coredns_external_zones
 
 Array of optional external zones to coredns forward queries to. It's  injected into

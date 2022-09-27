@@ -167,6 +167,7 @@ variables to match your requirements.
 * *nameservers* - Array of DNS servers configured for use by hosts
 * *searchdomains* - Array of up to 4 search domains
 * *dns_etchosts* - Content of hosts file for coredns and nodelocaldns
+* *dns_upstream_forward_extra_opts* - Options to add in the forward section of coredns/nodelocaldns related to upstream DNS servers
 
 For more information, see [DNS
 Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.md).

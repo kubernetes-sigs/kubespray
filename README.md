@@ -246,6 +246,7 @@ See also [Network checker](docs/netcheck.md).
 
 - [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/v4/doc/integrations/ansible.rst)
 - [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
+- [Kubean](https://github.com/kubean-io/kubean)
 
 ## CI Tests
 

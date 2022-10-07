@@ -281,7 +281,7 @@ For more information about Ansible and bastion hosts, read
 
 ## Mitogen
 
-Mitogen support is deprecated, please see [mitogen related docs](/docs/mitogen.md) for useage and reasons for deprecation.
+Mitogen support is deprecated, please see [mitogen related docs](/docs/mitogen.md) for usage and reasons for deprecation.
 
 ## Beyond ansible 2.9
 

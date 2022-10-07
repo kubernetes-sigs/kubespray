@@ -2,7 +2,7 @@
 
 ## CentOS 7
 
-The maximum python version offically supported in CentOS is 3.6. Ansible as of version 5 (ansible core 2.12.x) increased their python requirement to python 3.8 and above.
+The maximum python version officially supported in CentOS is 3.6. Ansible as of version 5 (ansible core 2.12.x) increased their python requirement to python 3.8 and above.
 Kubespray supports multiple ansible versions but only the default (5.x) gets wide testing coverage. If your deployment host is CentOS 7 it is recommended to use one of the earlier versions still supported.
 
 ## CentOS 8

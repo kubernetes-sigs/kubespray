@@ -1,5 +1,5 @@
 ---
-- name: check if fedora coreos
+- name: cri-o | check if fedora coreos
   stat:
     path: /run/ostree-booted
     get_attributes: no
@@ -7,11 +7,11 @@
     get_mime: no
   register: ostree
 
-- name: set is_ostree
+- name: cri-o | set is_ostree
   set_fact:
     is_ostree: "{{ ostree.stat.exists }}"
 
-- name: get ostree version
+- name: cri-o | get ostree version
   shell: "set -o pipefail && rpm-ostree --version | awk -F\\' '/Version/{print $2}'"
   args:
     executable: /bin/bash
@@ -35,29 +35,34 @@
   tags:
     - facts
 
-- name: import crio repo
-  import_tasks: "crio_repo.yml"
-  when: crio_add_repos
+- name: cri-o | Download cri-o
+  include_tasks: "../../../download/tasks/download_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.crio) }}"
 
-- name: Build a list of crio runtimes with Katacontainers runtimes
+#- name: import crio repo
+#  import_tasks: "crio_repo.yml"
+#  when: crio_add_repos
+
+- name: cri-o | build a list of crio runtimes with Katacontainers runtimes
   set_fact:
     crio_runtimes: "{{ crio_runtimes + kata_runtimes  }}"
   when:
     - kata_containers_enabled
 
-- name: Build a list of crio runtimes with crun runtime
+- name: cri-o | build a list of crio runtimes with crun runtime
   set_fact:
     crio_runtimes: "{{ crio_runtimes + [crun_runtime] }}"
   when:
     - crun_enabled
 
-- name: Build a list of crio runtimes with youki runtime
+- name: cri-o | build a list of crio runtimes with youki runtime
   set_fact:
     crio_runtimes: "{{ crio_runtimes + [youki_runtime] }}"
   when:
     - youki_enabled
 
-- name: Make sure needed folders exist in the system
+- name: cri-o | make sure needed folders exist in the system
   with_items:
     - /etc/crio
     - /etc/containers
@@ -67,98 +72,116 @@
     state: directory
     mode: 0755
 
-- name: Install cri-o config
+- name: cri-o | install cri-o config
   template:
     src: crio.conf.j2
     dest: /etc/crio/crio.conf
     mode: 0644
   register: config_install
 
-- name: Install config.json
+- name: cri-o | install config.json
   template:
     src: config.json.j2
     dest: /etc/crio/config.json
     mode: 0644
   register: reg_auth_install
 
-- name: Add skopeo pkg to install
-  set_fact:
-    crio_packages: "{{ crio_packages + skopeo_packages }}"
-  when:
-    - not skip_downloads|default(false)
-    - download_run_once
+#- name: cri-o | add skopeo pkg to install
+#  set_fact:
+#    crio_packages: "{{ crio_packages + skopeo_packages }}"
+#  when:
+#    - not skip_downloads|default(false)
+#    - download_run_once
 
-- name: Add libseccomp2 package from Debian Backports to install
-  set_fact:
-    crio_packages: "{{ crio_debian_buster_backports_packages + crio_packages }}"
-  when:
-    - ansible_distribution == "Debian"
-    - ansible_distribution_version == "10"
+#- name: cri-o | add libseccomp2 package from Debian Backports to install
+#  set_fact:
+#    crio_packages: "{{ crio_debian_buster_backports_packages + crio_packages }}"
+#  when:
+#    - ansible_distribution == "Debian"
+#    - ansible_distribution_version == "10"
 
-- name: Remove dpkg hold
-  dpkg_selections:
-    name: "{{ item | split ('=') | first }}"
-    selection: install
-  when:
-    - ansible_pkg_mgr == 'apt'
-  changed_when: false
+#- name: cri-o | remove dpkg hold
+#  dpkg_selections:
+#    name: "{{ item | split ('=') | first }}"
+#    selection: install
+#  when:
+#    - ansible_pkg_mgr == 'apt'
+#  changed_when: false
+#  with_items:
+#    - "{{ crio_packages }}"
+
+#- name: cri-o | install cri-o packages
+#  package:
+#    name: "{{ item }}"
+#    state: present
+#  when: not is_ostree
+#  with_items: "{{ crio_packages }}"
+#  register: package_install
+#  until: package_install is succeeded
+#  retries: 4
+#  delay: "{{ retry_stagger | d(3) }}"
+
+- name: cri-o | copy binaries
+  copy:
+    src: "{{ local_release_dir }}/cri-o/bin/{{ item }}"
+    dest: "{{ bin_dir }}/{{ item }}"
+    mode: 0755
+    remote_src: true
   with_items:
-    - "{{ crio_packages }}"
+    - "{{ crio_bin_files }}"
+  notify: restart crio
 
-- name: Install cri-o packages
-  package:
-    name: "{{ item }}"
-    state: present
-  when: not is_ostree
-  with_items: "{{ crio_packages }}"
-  register: package_install
-  until: package_install is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
+- name: cri-o | copy service file
+  copy:
+    src: "{{ local_release_dir }}/cri-o/contrib/crio.service"
+    dest: /etc/systemd/system/crio.service
+    mode: 0755
+    remote_src: true
+  notify: restart crio
 
 # This is required to ensure any apt upgrade will not break kubernetes
-- name: Tell Debian hosts not to change the cri-o version with apt upgrade
-  dpkg_selections:
-    name: "{{ item | split ('=') | first }}"
-    selection: hold
-  when:
-    - ansible_pkg_mgr == 'apt'
-  changed_when: false
-  with_items:
-    - "{{ crio_packages }}"
+#- name: cri-o | tell Debian hosts not to change the cri-o version with apt upgrade
+#  dpkg_selections:
+#    name: "{{ item | split ('=') | first }}"
+#    selection: hold
+#  when:
+#    - ansible_pkg_mgr == 'apt'
+#  changed_when: false
+#  with_items:
+#    - "{{ crio_packages }}"
 
-- name: Check if already installed
-  stat:
-    path: "/bin/crio"
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
-  register: need_bootstrap_crio
-  when: is_ostree
+#- name: cri-o | check if already installed
+#  stat:
+#    path: "/bin/crio"
+#    get_attributes: no
+#    get_checksum: no
+#    get_mime: no
+#  register: need_bootstrap_crio
+#  when: is_ostree
 
-- name: Install cri-o packages with ostree
-  command: "rpm-ostree install {{ crio_packages|join(' ') }}"
-  when:
-    - is_ostree
-    - not need_bootstrap_crio.stat.exists
-  become: true
+#- name: cri-o | install cri-o packages with ostree
+#  command: "rpm-ostree install {{ crio_packages|join(' ') }}"
+#  when:
+#    - is_ostree
+#    - not need_bootstrap_crio.stat.exists
+#  become: true
 
-- name: Reboot immediately for updated ostree
-  reboot:
-  become: true
-  when:
-    - is_ostree
-    - not need_bootstrap_crio.stat.exists
+#- name: cri-o | reboot immediately for updated ostree
+#  reboot:
+#  become: true
+#  when:
+#    - is_ostree
+#    - not need_bootstrap_crio.stat.exists
 
-- name: Remove example CNI configs
-  file:
-    path: "/etc/cni/net.d/{{ item }}"
-    state: absent
-  loop:
-    - 100-crio-bridge.conf
-    - 200-loopback.conf
+#- name: cri-o | remove example CNI configs
+#  file:
+#    path: "/etc/cni/net.d/{{ item }}"
+#    state: absent
+#  loop:
+#    - 100-crio-bridge.conf
+#    - 200-loopback.conf
 
-- name: Copy mounts.conf
+- name: cri-o | copy mounts.conf
   copy:
     src: mounts.conf
     dest: /etc/containers/mounts.conf
@@ -167,15 +190,28 @@
     - ansible_os_family == 'RedHat'
   notify: restart crio
 
-- name: Create directory for oci hooks
+- name: cri-o | create directory for oci hooks
   file:
     path: /etc/containers/oci/hooks.d
     state: directory
     owner: root
     mode: 0755
 
+- name: cri-o | set overlay driver
+  ini_file:
+    dest: /etc/containers/storage.conf
+    section: storage
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    mode: 0644
+  with_items:
+    - option: driver
+      value: '"overlay"'
+    - option: graphroot
+      value: '"/var/lib/containers/storage"'
+
 # metacopy=on is available since 4.19 and was backported to RHEL 4.18 kernel
-- name: Set metacopy mount options correctly
+- name: cri-o | set metacopy mount options correctly
   ini_file:
     dest: /etc/containers/storage.conf
     section: storage.options.overlay
@@ -183,14 +219,14 @@
     value: '{{ ''"nodev"'' if ansible_kernel is version_compare(("4.18" if ansible_os_family == "RedHat" else "4.19"), "<") else ''"nodev,metacopy=on"'' }}'
     mode: 0644
 
-- name: Create directory registries configs
+- name: cri-o | create directory registries configs
   file:
     path: /etc/containers/registries.conf.d
     state: directory
     owner: root
     mode: 0755
 
-- name: Write registries configs
+- name: cri-o | write registries configs
   template:
     src: registry.conf.j2
     dest: "/etc/containers/registries.conf.d/10-{{ item.prefix | default(item.location) | regex_replace(':', '_') }}.conf"
@@ -198,14 +234,14 @@
   loop: "{{ crio_registries }}"
   notify: restart crio
 
-- name: Configure unqualified registry settings
+- name: cri-o | configure unqualified registry settings
   template:
     src: unqualified.conf.j2
     dest: "/etc/containers/registries.conf.d/01-unqualified.conf"
     mode: 0644
   notify: restart crio
 
-- name: Write cri-o proxy drop-in
+- name: cri-o | write cri-o proxy drop-in
   template:
     src: http-proxy.conf.j2
     dest: /etc/systemd/system/crio.service.d/http-proxy.conf
@@ -213,7 +249,7 @@
   notify: restart crio
   when: http_proxy is defined or https_proxy is defined
 
-- name: Configure the uid/gid space for user namespaces
+- name: cri-o | configure the uid/gid space for user namespaces
   lineinfile:
     path: '{{ item.path }}'
     line: '{{ item.entry }}'
@@ -227,7 +263,7 @@
   loop_control:
     label: '{{ item.path }}'
 
-- name: Ensure crio service is started and enabled
+- name: cri-o | ensure crio service is started and enabled
   service:
     name: crio
     daemon_reload: true
@@ -235,18 +271,18 @@
     state: started
   register: service_start
 
-- name: Trigger service restart only when needed
+- name: cri-o | trigger service restart only when needed
   service:  # noqa 503
     name: crio
     state: restarted
   when:
     - config_install.changed
     - reg_auth_install.changed
-    - not package_install.changed
+#    - not package_install.changed
     - not service_start.changed
 
-- name: Verify that crio is running
-  command: "crio-status info"
+- name: cri-o | verify that crio is running
+  command: "{{ bin_dir }}/crio-status info"
   register: get_crio_info
   until: get_crio_info is succeeded
   changed_when: false

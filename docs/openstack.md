@@ -109,6 +109,7 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
   ```
 
 - Run `source path/to/your/openstack-rc` to read your OpenStack credentials like `OS_AUTH_URL`, `OS_USERNAME`, `OS_PASSWORD`, etc. Those variables are used for accessing OpenStack from the external cloud provider.
+- If you are using an external OpenStack CA certificate, you will need to set `OS_CACERT = <path_to_external_cacert>` in your openrc.
 - Run the `cluster.yml` playbook
 
 ## Additional step needed when using calico or kube-router

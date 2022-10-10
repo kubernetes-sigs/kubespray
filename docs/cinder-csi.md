@@ -93,6 +93,8 @@ kubectl exec -it nginx -- df -h | grep /var/lib/www/html
 It is not necessary to enable OpenStack as a cloud provider for Cinder CSI Driver to work.
 Though, you can run both the in-tree openstack cloud provider and the Cinder CSI Driver at the same time. The storage class provisioners associated to each one of them are differently named.
 
+When using the in-tree OpenStack cloud provider with an external CA certificate, Cinder will not use the external CA certificate set by base64 encoding the cacert file and storing it in the variable `openstack_cacert`, it will use the `OS_CACERT = <path_to_external_cacert>` in your openrc.
+
 ## Cinder v2 support
 
 For the moment, only Cinder v3 is supported by the CSI Driver.

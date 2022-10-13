@@ -17,9 +17,9 @@ The **kubernetes** version should be at least `v1.23.6` to have all the most rec
 ---
 
 ## kube-apiserver
-authorization_modes: ['Node','RBAC']
+authorization_modes: ['Node', 'RBAC']
 # AppArmor-based OS
-#kube_apiserver_feature_gates: ['AppArmor=true']
+# kube_apiserver_feature_gates: ['AppArmor=true']
 kube_apiserver_request_timeout: 120s
 kube_apiserver_service_account_lookup: true
 
@@ -60,7 +60,7 @@ kube_profiling: false
 kube_controller_manager_bind_address: 127.0.0.1
 kube_controller_terminated_pod_gc_threshold: 50
 # AppArmor-based OS
-#kube_controller_feature_gates: ["RotateKubeletServerCertificate=true","AppArmor=true"]
+# kube_controller_feature_gates: ["RotateKubeletServerCertificate=true", "AppArmor=true"]
 kube_controller_feature_gates: ["RotateKubeletServerCertificate=true"]
 
 ## kube-scheduler
@@ -68,7 +68,7 @@ kube_scheduler_bind_address: 127.0.0.1
 kube_kubeadm_scheduler_extra_args:
   profiling: false
 # AppArmor-based OS
-#kube_scheduler_feature_gates: ["AppArmor=true"]
+# kube_scheduler_feature_gates: ["AppArmor=true"]
 
 ## etcd
 etcd_deployment_type: kubeadm
@@ -82,7 +82,7 @@ kubelet_event_record_qps: 1
 kubelet_rotate_certificates: true
 kubelet_streaming_connection_idle_timeout: "5m"
 kubelet_make_iptables_util_chains: true
-kubelet_feature_gates: ["RotateKubeletServerCertificate=true","SeccompDefault=true"]
+kubelet_feature_gates: ["RotateKubeletServerCertificate=true", "SeccompDefault=true"]
 kubelet_seccomp_default: true
 kubelet_systemd_hardening: true
 # In case you have multiple interfaces in your

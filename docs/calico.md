@@ -205,6 +205,14 @@ To re-define health host please set the following variable in your inventory:
 calico_healthhost: "0.0.0.0"
 ```
 
+### Optional : Configure VXLAN hardware Offload
+
+Because of the Issue [projectcalico/calico#4727](https://github.com/projectcalico/calico/issues/4727), The VXLAN Offload is disable by default. It can be configured like this:
+
+```yml
+calico_feature_detect_override: "ChecksumOffloadBroken=true" # The vxlan offload will enabled with kernel version is > 5.7 (It may cause problem on buggy NIC driver)
+```
+
 ### Optional : Configure Calico Node probe timeouts
 
 Under certain conditions a deployer may need to tune the Calico liveness and readiness probes timeout settings. These can be configured like this:

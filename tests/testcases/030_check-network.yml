@@ -1,8 +1,8 @@
 ---
 - hosts: kube_control_plane[0]
   vars:
-    test_image_repo: registry.k8s.io/busybox
-    test_image_tag: latest
+    test_image_repo: registry.k8s.io/e2e-test-images/agnhost
+    test_image_tag: "2.40"
 
   tasks:
   - name: Force binaries directory for Flatcar Container Linux by Kinvolk
@@ -53,12 +53,33 @@
     retries: 5
     delay: 5
 
-  - name: Run 2 busybox pods in test ns
-    command: "{{ bin_dir }}/kubectl run {{ item }} --image={{ test_image_repo }}:{{ test_image_tag }} --namespace test --command -- tail -f /dev/null"
+  - name: Run 2 agnhost pods in test ns
+    shell:
+      cmd: |
+        cat <<EOF | {{ bin_dir }}/kubectl apply -f -
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: {{ item }}
+          namespace: test
+        spec:
+          containers:
+          - name: agnhost
+            image: {{ test_image_repo }}:{{ test_image_tag }}
+            command: ['/agnhost', 'netexec', '--http-port=8080']
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ['ALL']
+              runAsUser: 1000
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+        EOF
     changed_when: false
     loop:
-    - busybox1
-    - busybox2
+    - agnhost1
+    - agnhost2
 
   - import_role:  # noqa unnamed-task
       name: cluster-dump
@@ -131,8 +152,8 @@
     - item in pods_running
     with_items: "{{ pod_ips }}"
 
-  - name: Ping between pods is working
-    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- ping -c 4 {{ item[1] }}"
+  - name: Curl between pods is working
+    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- curl {{ item[1] }}:8080"
     when:
     - not item[0] in pods_hostnet
     - not item[1] in pods_hostnet
@@ -140,8 +161,8 @@
     - "{{ pod_names }}"
     - "{{ pod_ips }}"
 
-  - name: Ping between hostnet pods is working
-    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- ping -c 4 {{ item[1] }}"
+  - name: Curl between hostnet pods is working
+    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- curl {{ item[1] }}:8080"
     when:
     - item[0] in pods_hostnet
     - item[1] in pods_hostnet

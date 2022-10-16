@@ -1,147 +1,92 @@
 ---
+# TODO(cristicalin): drop this file after 2.21
 - name: CRI-O kubic repo name for debian os family
   set_fact:
     crio_kubic_debian_repo_name: "{{ ((ansible_distribution == 'Ubuntu') | ternary('x','')) ~ ansible_distribution ~ '_' ~ ansible_distribution_version }}"
   when: ansible_os_family == "Debian"
 
-- name: Add CRI-O kubic apt repo key
+- name: Remove legacy CRI-O kubic apt repo key
   apt_key:
     url: "https://{{ crio_download_base }}/{{ crio_kubic_debian_repo_name }}/Release.key"
-    state: present
+    state: absent
   when: crio_kubic_debian_repo_name is defined
-  register: apt_key_download
-  until: apt_key_download is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
-  environment: "{{ proxy_env }}"
 
-- name: Add CRI-O kubic apt repo
+- name: Remove legacy CRI-O kubic apt repo
   apt_repository:
     repo: "deb http://{{ crio_download_base }}/{{ crio_kubic_debian_repo_name }}/ /"
-    state: present
+    state: absent
     filename: devel-kubic-libcontainers-stable
   when: crio_kubic_debian_repo_name is defined
 
-- name: Add CRI-O kubic cri-o apt repo
+- name: Remove legacy CRI-O kubic cri-o apt repo
   apt_repository:
     repo: "deb {{ crio_download_crio }}{{ crio_version }}/{{ crio_kubic_debian_repo_name }}/ /"
-    state: present
+    state: absent
     filename: devel-kubic-libcontainers-stable-cri-o
   when: crio_kubic_debian_repo_name is defined
 
-- name: Check that amzn2-extras.repo exists
-  stat:
-    path: /etc/yum.repos.d/amzn2-extras.repo
-  register: amzn2_extras_file_stat
-  when: ansible_distribution in ["Amazon"]
-
-- name: Find docker repo in amzn2-extras.repo file
-  lineinfile:
-    dest: /etc/yum.repos.d/amzn2-extras.repo
-    line: "[amzn2extra-docker]"
-  check_mode: yes
-  register: amzn2_extras_docker_repo
-  when:
-    - ansible_distribution in ["Amazon"]
-    - amzn2_extras_file_stat.stat.exists
-
-- name: Remove docker repository
-  ini_file:
-    dest: /etc/yum.repos.d/amzn2-extras.repo
-    section: amzn2extra-docker
-    option: enabled
-    value: "0"
-    backup: yes
-    mode: 0644
-  when:
-    - ansible_distribution in ["Amazon"]
-    - amzn2_extras_file_stat.stat.exists
-    - not amzn2_extras_docker_repo.changed
-
-- name: Add container-selinux yum repo
-  yum_repository:
-    name: copr:copr.fedorainfracloud.org:lsm5:container-selinux
-    file: _copr_lsm5-container-selinux.repo
-    description: Copr repo for container-selinux owned by lsm5
-    baseurl: https://download.copr.fedorainfracloud.org/results/lsm5/container-selinux/epel-7-$basearch/
-    gpgcheck: yes
-    gpgkey: https://download.copr.fedorainfracloud.org/results/lsm5/container-selinux/pubkey.gpg
-    skip_if_unavailable: yes
-    enabled: yes
-    repo_gpgcheck: no
-  when: ansible_distribution in ["Amazon"]
-
-- name: Add CRI-O kubic yum repo
+- name: Remove legacy CRI-O kubic yum repo
   yum_repository:
     name: devel_kubic_libcontainers_stable
     description: Stable Releases of Upstream github.com/containers packages (CentOS_$releasever)
     baseurl: http://{{ crio_download_base }}/CentOS_{{ ansible_distribution_major_version }}/
-    gpgcheck: yes
-    gpgkey: http://{{ crio_download_base }}/CentOS_{{ ansible_distribution_major_version }}/repodata/repomd.xml.key
-    keepcache: "0"
+    state: absent
   when:
     - ansible_os_family == "RedHat"
     - ansible_distribution not in ["Amazon", "Fedora"]
 
-- name: Add CRI-O kubic yum repo
+- name: Remove legacy CRI-O kubic yum repo
   yum_repository:
     name: "devel_kubic_libcontainers_stable_cri-o_{{ crio_version }}"
     description: "CRI-O {{ crio_version }} (CentOS_$releasever)"
     baseurl: "{{ crio_download_crio }}{{ crio_version }}/CentOS_{{ ansible_distribution_major_version }}/"
-    gpgcheck: yes
-    gpgkey: "{{ crio_download_crio }}{{ crio_version }}/CentOS_{{ ansible_distribution_major_version }}/repodata/repomd.xml.key"
+    state: absent
   when:
     - ansible_os_family == "RedHat"
     - ansible_distribution not in ["Amazon", "Fedora"]
 
-- name: Add CRI-O kubic yum repo
+- name: Remove legacy CRI-O kubic yum repo
   yum_repository:
     name: devel_kubic_libcontainers_stable
     description: Stable Releases of Upstream github.com/containers packages
     baseurl: http://{{ crio_download_base }}/Fedora_{{ ansible_distribution_major_version }}/
-    gpgcheck: yes
-    gpgkey: http://{{ crio_download_base }}/Fedora_{{ ansible_distribution_major_version }}/repodata/repomd.xml.key
-    keepcache: "0"
+    state: absent
   when:
     - ansible_distribution in ["Fedora"]
     - not is_ostree
 
-- name: Add CRI-O kubic yum repo
+- name: Remove legacy CRI-O kubic yum repo
   yum_repository:
     name: "devel_kubic_libcontainers_stable_cri-o_{{ crio_version }}"
     description: "CRI-O {{ crio_version }}"
     baseurl: "{{ crio_download_crio }}{{ crio_version }}/Fedora_{{ ansible_distribution_major_version }}/"
-    gpgcheck: yes
-    gpgkey: "{{ crio_download_crio }}{{ crio_version }}/Fedora_{{ ansible_distribution_major_version }}/repodata/repomd.xml.key"
+    state: absent
   when:
     - ansible_distribution in ["Fedora"]
     - not is_ostree
 
-- name: Add CRI-O kubic yum repo
+- name: Remove legacy CRI-O kubic yum repo
   yum_repository:
     name: devel_kubic_libcontainers_stable
     description: Stable Releases of Upstream github.com/containers packages
     baseurl: http://{{ crio_download_base }}/CentOS_7/
-    gpgcheck: yes
-    gpgkey: http://{{ crio_download_base }}/CentOS_7/repodata/repomd.xml.key
-    keepcache: "0"
+    state: absent
   when: ansible_distribution in ["Amazon"]
 
-- name: Add CRI-O kubic yum repo
+- name: Remove legacy CRI-O kubic yum repo
   yum_repository:
     name: "devel_kubic_libcontainers_stable_cri-o_{{ crio_version }}"
     description: "CRI-O {{ crio_version }}"
     baseurl: "{{ crio_download_crio }}{{ crio_version }}/CentOS_7/"
-    gpgcheck: yes
-    gpgkey: "{{ crio_download_crio }}{{ crio_version }}/CentOS_7/repodata/repomd.xml.key"
+    state: absent
   when: ansible_distribution in ["Amazon"]
 
-- name: Enable modular repos for CRI-O
+- name: Disable modular repos for CRI-O
   ini_file:
     path: "/etc/yum.repos.d/{{ item.repo }}.repo"
     section: "{{ item.section }}"
     option: enabled
-    value: 1
+    value: 0
     mode: 0644
   become: true
   when: is_ostree
@@ -151,9 +96,24 @@
     - repo: "fedora-modular"
       section: "fedora-modular"
 
-- name: Enable CRI-O ex module
-  command: "rpm-ostree ex module enable cri-o:{{ crio_version }}"
+# Disable any older module version if we enabled them before
+- name: Disable CRI-O ex module
+  command: "rpm-ostree ex module disable cri-o:{{ item }}"
   become: true
   when:
     - is_ostree
     - ostree_version is defined and ostree_version.stdout is version('2021.9', '>=')
+  with_items:
+    - 1.22
+    - 1.23
+    - 1.24
+
+- name: cri-o | remove installed packages
+  package:
+    name: "{{ item }}"
+    state: absent
+  when: not is_ostree
+  with_items:
+    - cri-o
+    - cri-o-runc
+    - oci-systemd-hook

@@ -113,6 +113,7 @@ vagrant up
 - [Air-Gap installation](docs/offline-environment.md)
 - [NTP](docs/ntp.md)
 - [Hardening](docs/hardening.md)
+- [Mirror](docs/mirror.md)
 - [Roadmap](docs/roadmap.md)
 
 ## Supported Linux Distributions

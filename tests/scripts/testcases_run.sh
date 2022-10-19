@@ -47,6 +47,13 @@ if [[ "$CI_JOB_NAME" =~ "ubuntu" ]]; then
   CI_TEST_ADDITIONAL_VARS="-e ansible_python_interpreter=/usr/bin/python3"
 fi
 
+ENABLE_040_TEST="true"
+if [[ "$CI_JOB_NAME" =~ "hardening" ]]; then
+  # TODO: We need to remove this condition by finding alternative container
+  # image instead of netchecker which doesn't work at hardening environments.
+  ENABLE_040_TEST="false"
+fi
+
 # Check out latest tag if testing upgrade
 test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY_VERSION"
 # Checkout the CI vars file so it is available
@@ -85,7 +92,9 @@ ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIO
 ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} tests/testcases/030_check-network.yml $ANSIBLE_LOG_LEVEL
 
 ## Advanced DNS checks
-ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} tests/testcases/040_check-network-adv.yml $ANSIBLE_LOG_LEVEL
+if [ "${ENABLE_040_TEST}" = "true" ]; then
+  ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} tests/testcases/040_check-network-adv.yml $ANSIBLE_LOG_LEVEL
+fi
 
 ## Kubernetes conformance tests
 ansible-playbook -i ${ANSIBLE_INVENTORY} -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} --limit "all:!fake_hosts" tests/testcases/100_check-k8s-conformance.yml $ANSIBLE_LOG_LEVEL

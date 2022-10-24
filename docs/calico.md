@@ -213,7 +213,7 @@ calico_node_readinessprobe_timeout: 10
 
 Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.projectcalico.org/v3.11/networking/vxlan-ipip). VXLAN is the more mature implementation and enabled by default, please check your environment if you need *IP in IP* encapsulation.
 
-*IP in IP* and *VXLAN* is mutualy exclusive modes.
+*IP in IP* and *VXLAN* is mutually exclusive modes.
 
 Kubespray defaults have changed after version 2.18 from auto-enabling `ipip` mode to auto-enabling `vxlan`. This was done to facilitate wider deployment scenarios including those where vxlan acceleration is provided by the underlying network devices.
 
@@ -246,14 +246,14 @@ calico_network_backend: 'bird'
 
 If you would like to migrate from the old IP in IP with `bird` network backends default to the new VXLAN based encapsulation you need to perform this change before running an upgrade of your cluster; the `cluster.yml` and `upgrade-cluster.yml` playbooks will refuse to continue if they detect incompatible settings.
 
-Execute the following sters on one of the control plane nodes, ensure the cluster in healthy before proceeding.
+Execute the following steps on one of the control plane nodes, ensure the cluster in healthy before proceeding.
 
 ```shell
 calicoctl.sh patch felixconfig default -p '{"spec":{"vxlanEnabled":true}}'
 calicoctl.sh patch ippool default-pool -p '{"spec":{"ipipMode":"Never", "vxlanMode":"Always"}}'
 ```
 
-**Note:** if you created multiple ippools you will need to patch all of them individually to change their encapsulation. The kubespray playbooks only handle the default ippool creaded by kubespray.
+**Note:** if you created multiple ippools you will need to patch all of them individually to change their encapsulation. The kubespray playbooks only handle the default ippool created by kubespray.
 
 Wait for the `vxlan.calico` interfaces to be created on all cluster nodes and traffic to be routed through it then you can disable `ipip`.
 
@@ -370,7 +370,7 @@ use_localhost_as_kubeapi_loadbalancer: true
 
 ### Tunneled versus Direct Server Return
 
-By default Calico usese Tunneled service mode but it can use direct server return (DSR) in order to optimize the return path for a service.
+By default Calico uses Tunneled service mode but it can use direct server return (DSR) in order to optimize the return path for a service.
 
 To configure DSR:
 
@@ -396,7 +396,7 @@ Please see [Calico eBPF troubleshooting guide](https://docs.projectcalico.org/ma
 
 ## Wireguard Encryption
 
-Calico supports using Wireguard for encryption. Please see the docs on [encryptiong cluster pod traffic](https://docs.projectcalico.org/security/encrypt-cluster-pod-traffic).
+Calico supports using Wireguard for encryption. Please see the docs on [encrypt cluster pod traffic](https://docs.projectcalico.org/security/encrypt-cluster-pod-traffic).
 
 To enable wireguard support:
 

@@ -1,0 +1,38 @@
+---
+- name: Check that amzn2-extras.repo exists
+  stat:
+    path: /etc/yum.repos.d/amzn2-extras.repo
+  register: amzn2_extras_file_stat
+
+- name: Find docker repo in amzn2-extras.repo file
+  lineinfile:
+    dest: /etc/yum.repos.d/amzn2-extras.repo
+    line: "[amzn2extra-docker]"
+  check_mode: yes
+  register: amzn2_extras_docker_repo
+  when:
+    - amzn2_extras_file_stat.stat.exists
+
+- name: Remove docker repository
+  ini_file:
+    dest: /etc/yum.repos.d/amzn2-extras.repo
+    section: amzn2extra-docker
+    option: enabled
+    value: "0"
+    backup: yes
+    mode: 0644
+  when:
+    - amzn2_extras_file_stat.stat.exists
+    - not amzn2_extras_docker_repo.changed
+
+- name: Add container-selinux yum repo
+  yum_repository:
+    name: copr:copr.fedorainfracloud.org:lsm5:container-selinux
+    file: _copr_lsm5-container-selinux.repo
+    description: Copr repo for container-selinux owned by lsm5
+    baseurl: https://download.copr.fedorainfracloud.org/results/lsm5/container-selinux/epel-7-$basearch/
+    gpgcheck: yes
+    gpgkey: https://download.copr.fedorainfracloud.org/results/lsm5/container-selinux/pubkey.gpg
+    skip_if_unavailable: yes
+    enabled: yes
+    repo_gpgcheck: no

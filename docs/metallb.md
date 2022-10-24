@@ -2,7 +2,7 @@
 
 MetalLB hooks into your Kubernetes cluster, and provides a network load-balancer implementation.
 It allows you to create Kubernetes services of type "LoadBalancer" in clusters that don't run on a cloud provider, and thus cannot simply hook into 3rd party products to provide load-balancers.
-The default operationg mode of MetalLB is in ["Layer2"](https://metallb.universe.tf/concepts/layer2/) but it can also operate in ["BGP"](https://metallb.universe.tf/concepts/bgp/) mode.
+The default operating mode of MetalLB is in ["Layer2"](https://metallb.universe.tf/concepts/layer2/) but it can also operate in ["BGP"](https://metallb.universe.tf/concepts/bgp/) mode.
 
 ## Prerequisites
 
@@ -70,7 +70,7 @@ metallb_peers:
 
 When using calico >= 3.18 you can replace MetalLB speaker by calico Service LoadBalancer IP advertisement.
 See [calico service IPs advertisement documentation](https://docs.projectcalico.org/archive/v3.18/networking/advertise-service-ips#advertise-service-load-balancer-ip-addresses).
-In this scenarion you should disable the MetalLB speaker and configure the `calico_advertise_service_loadbalancer_ips` to match your `metallb_ip_range`
+In this scenario you should disable the MetalLB speaker and configure the `calico_advertise_service_loadbalancer_ips` to match your `metallb_ip_range`
 
 ```yaml
 metallb_speaker_enabled: false

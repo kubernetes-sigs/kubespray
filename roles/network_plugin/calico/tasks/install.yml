@@ -187,7 +187,8 @@
               "bpfExternalServiceMode": "{{ calico_bpf_service_mode }}",
               "wireguardEnabled": {{ calico_wireguard_enabled | bool }},
               "logSeverityScreen": "{{ calico_felix_log_severity_screen }}",
-              "vxlanEnabled": {{ calico_vxlan_mode != 'Never' }}
+              "vxlanEnabled": {{ calico_vxlan_mode != 'Never' }},
+              "featureDetectOverride": "{{ calico_feature_detect_override }}"
             }
           }
 
@@ -226,7 +227,7 @@
               "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
               "ipipMode": "{{ calico_ipip_mode }}",
               "vxlanMode": "{{ calico_vxlan_mode }}",
-              "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }}
+              "natOutgoing": {{ nat_outgoing|default(false) }}
             }
           }
 
@@ -265,7 +266,7 @@
               "cidr": "{{ calico_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}",
               "ipipMode": "{{ calico_ipip_mode_ipv6 }}",
               "vxlanMode": "{{ calico_vxlan_mode_ipv6 }}",
-              "natOutgoing": {{ nat_outgoing_ipv6|default(false) and not peer_with_router_ipv6|default(false) }}
+              "natOutgoing": {{ nat_outgoing_ipv6|default(false) }}
             }
           }
 
@@ -458,6 +459,9 @@
     kubectl: "{{ bin_dir }}/kubectl"
     filename: "{{ kube_config_dir }}/calico-ipamconfig.yml"
     state: "latest"
+  register: resource_result
+  until: resource_result is succeeded
+  retries: 4
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
     - calico_datastore == "kdd"

@@ -37,6 +37,7 @@ You need to source the vSphere credentials you use to deploy your machines that 
 | vsphere_csi_aggressive_node_drain           | FALSE    | boolean |                            | false                     | Enable aggressive node drain strategy                                                                               |
 | vsphere_csi_aggressive_node_unreachable_timeout            | FALSE     | int  | 300   |                           | Timeout till node will be drained when it in an unreachable state                                                           |
 | vsphere_csi_aggressive_node_not_ready_timeout              | FALSE     | int  | 300   |                           | Timeout till node will be drained when it in not-ready state                                                                |
+| vsphere_csi_namespace                       | TRUE     | string  |                            | "kube-system"       | vSphere CSI namespace to use; kube-system for backward compatibility, should be change to vmware-system-csi on the long run |
 
 ## Usage example
 

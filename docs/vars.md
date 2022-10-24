@@ -28,6 +28,7 @@ Some variables of note include:
 * *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
 * *kube_version* - Specify a given Kubernetes version
 * *searchdomains* - Array of DNS domains to search when looking up hostnames
+* *remove_default_searchdomains* - Boolean that removes the default searchdomain
 * *nameservers* - Array of nameservers to use for DNS lookup
 * *preinstall_selinux_state* - Set selinux state, permitted values are permissive, enforcing and disabled.
 
@@ -166,6 +167,7 @@ variables to match your requirements.
   addition to Kubespray deployed DNS
 * *nameservers* - Array of DNS servers configured for use by hosts
 * *searchdomains* - Array of up to 4 search domains
+* *remove_default_searchdomains* - Boolean. If enabled, `searchdomains` variable can hold 6 search domains.
 * *dns_etchosts* - Content of hosts file for coredns and nodelocaldns
 
 For more information, see [DNS
@@ -175,25 +177,46 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 
 * *docker_options* - Commonly used to set
   ``--insecure-registry=myregistry.mydomain:5000``
+
 * *docker_plugins* - This list can be used to define [Docker plugins](https://docs.docker.com/engine/extend/) to install.
+
 * *containerd_default_runtime* - If defined, changes the default Containerd runtime used by the Kubernetes CRI plugin.
+
 * *containerd_additional_runtimes* - Sets the additional Containerd runtimes used by the Kubernetes CRI plugin.
-  [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container-engine/containerd/defaults/main.yml) can be overriden in inventory vars.
+  [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container-engine/containerd/defaults/main.yml) can be overridden in inventory vars.
+
 * *http_proxy/https_proxy/no_proxy/no_proxy_exclude_workers/additional_no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
   that correspond to each node.
+  
 * *kubelet_cgroup_driver* - Allows manual override of the cgroup-driver option for Kubelet.
   By default autodetection is used to match container manager configuration.
   `systemd` is the preferred driver for `containerd` though it can have issues with `cgroups v1` and `kata-containers` in which case you may want to change to `cgroupfs`.
+
 * *kubelet_rotate_certificates* - Auto rotate the kubelet client certificates by requesting new certificates
   from the kube-apiserver when the certificate expiration approaches.
+
 * *kubelet_rotate_server_certificates* - Auto rotate the kubelet server certificates by requesting new certificates
   from the kube-apiserver when the certificate expiration approaches.
   **Note** that server certificates are **not** approved automatically. Approve them manually
   (`kubectl get csr`, `kubectl certificate approve`) or implement custom approving controller like
   [kubelet-rubber-stamp](https://github.com/kontena/kubelet-rubber-stamp).
+
 * *kubelet_streaming_connection_idle_timeout* - Set the maximum time a streaming connection can be idle before the connection is automatically closed.
+
 * *kubelet_make_iptables_util_chains* - If `true`, causes the kubelet ensures a set of `iptables` rules are present on host.
+
+* *kubelet_systemd_hardening* - If `true`, provides kubelet systemd service with security features for isolation.
+
+  **N.B.** To enable this feature, ensure you are using the **`cgroup v2`** on your system. Check it out with command: `sudo ls -l /sys/fs/cgroup/*.slice`. If directory does not exists, enable this with the following guide: [enable cgroup v2](https://rootlesscontaine.rs/getting-started/common/cgroup2/#enabling-cgroup-v2).
+
+  * *kubelet_secure_addresses* - By default *kubelet_systemd_hardening* set the **control plane** `ansible_host` IPs as the `kubelet_secure_addresses`. In case you have multiple interfaces in your control plane nodes and the `kube-apiserver` is not bound to the default interface, you can override them with this variable.
+    Example:
+  
+    The **control plane** node may have 2 interfaces with the following IP addresses: `eth0:10.0.0.110`, `eth1:192.168.1.110`.
+  
+    By default the `kubelet_secure_addresses` is set with the `10.0.0.110` the ansible control host uses `eth0` to  connect to the machine. In case you want to use `eth1` as the outgoing interface on which `kube-apiserver` connects to the `kubelet`s, you should override the variable in this way: `kubelet_secure_addresses: "192.168.1.110"`.
+
 * *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
   *node_labels* can only be defined as a dict:

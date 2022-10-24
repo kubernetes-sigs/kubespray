@@ -57,10 +57,10 @@ A simple way to ensure you get all the correct version of Ansible is to use the 
 You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mounts/) to get the inventory and ssh key into the container, like this:
 
 ```ShellSession
-docker pull quay.io/kubespray/kubespray:v2.19.0
+docker pull quay.io/kubespray/kubespray:v2.20.0
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.19.0 bash
+  quay.io/kubespray/kubespray:v2.20.0 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
@@ -113,6 +113,7 @@ vagrant up
 - [Air-Gap installation](docs/offline-environment.md)
 - [NTP](docs/ntp.md)
 - [Hardening](docs/hardening.md)
+- [Mirror](docs/mirror.md)
 - [Roadmap](docs/roadmap.md)
 
 ## Supported Linux Distributions
@@ -120,13 +121,13 @@ vagrant up
 - **Flatcar Container Linux by Kinvolk**
 - **Debian** Bullseye, Buster, Jessie, Stretch
 - **Ubuntu** 16.04, 18.04, 20.04, 22.04
-- **CentOS/RHEL** 7, [8](docs/centos.md#centos-8)
+- **CentOS/RHEL** 7, [8, 9](docs/centos.md#centos-8)
 - **Fedora** 35, 36
 - **Fedora CoreOS** (see [fcos Note](docs/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
-- **Oracle Linux** 7, [8](docs/centos.md#centos-8)
-- **Alma Linux** [8](docs/centos.md#centos-8)
-- **Rocky Linux** [8](docs/centos.md#centos-8)
+- **Oracle Linux** 7, [8, 9](docs/centos.md#centos-8)
+- **Alma Linux** [8, 9](docs/centos.md#centos-8)
+- **Rocky Linux** [8, 9](docs/centos.md#centos-8)
 - **Kylin Linux Advanced Server V10** (experimental: see [kylin linux notes](docs/kylinlinux.md))
 - **Amazon Linux 2** (experimental: see [amazon linux notes](docs/amazonlinux.md))
 
@@ -135,8 +136,8 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.24.4
-  - [etcd](https://github.com/etcd-io/etcd) v3.5.4
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.25.3
+  - [etcd](https://github.com/etcd-io/etcd) v3.5.5
   - [docker](https://www.docker.com/) v20.10 (see note)
   - [containerd](https://containerd.io/) v1.6.8
   - [cri-o](http://cri-o.io/) v1.24 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
@@ -144,20 +145,20 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cni-plugins](https://github.com/containernetworking/plugins) v1.1.1
   - [calico](https://github.com/projectcalico/calico) v3.23.3
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
-  - [cilium](https://github.com/cilium/cilium) v1.11.7
-  - [flannel](https://github.com/flannel-io/flannel) v0.18.1
+  - [cilium](https://github.com/cilium/cilium) v1.12.1
+  - [flannel](https://github.com/flannel-io/flannel) v0.19.2
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.9.7
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.5.1
   - [multus](https://github.com/intel/multus-cni) v3.8
   - [weave](https://github.com/weaveworks/weave) v2.8.1
   - [kube-vip](https://github.com/kube-vip/kube-vip) v0.4.2
 - Application
-  - [cert-manager](https://github.com/jetstack/cert-manager) v1.9.0
+  - [cert-manager](https://github.com/jetstack/cert-manager) v1.9.1
   - [coredns](https://github.com/coredns/coredns) v1.8.6
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.3.0
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.4.0
   - [krew](https://github.com/kubernetes-sigs/krew) v0.4.3
-  - [argocd](https://argoproj.github.io/) v2.4.7
-  - [helm](https://helm.sh/) v3.9.2
+  - [argocd](https://argoproj.github.io/) v2.4.15
+  - [helm](https://helm.sh/) v3.9.4
   - [metallb](https://metallb.universe.tf/)  v0.12.1
   - [registry](https://github.com/distribution/distribution) v2.8.1
 - Storage Plugin
@@ -177,7 +178,7 @@ Note: Upstart/SysV init based OS types are not supported.
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.22**
+- **Minimum required version of Kubernetes is v1.23**
 - **Ansible v2.11+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.
@@ -246,6 +247,7 @@ See also [Network checker](docs/netcheck.md).
 
 - [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/v4/doc/integrations/ansible.rst)
 - [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
+- [Kubean](https://github.com/kubean-io/kubean)
 
 ## CI Tests
 

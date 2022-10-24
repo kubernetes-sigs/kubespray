@@ -12,7 +12,7 @@ ntp_enabled: true
 
 The NTP service would be enabled and sync time automatically.
 
-## Custimize the NTP configure file
+## Customize the NTP configure file
 
 In the Air-Gap environment, the node cannot access the NTP server by internet. So the node can use the customized ntp server by configuring ntp file.
 
@@ -24,6 +24,15 @@ ntp_servers:
   - "1.your-ntp-server.org iburst"
   - "2.your-ntp-server.org iburst"
   - "3.your-ntp-server.org iburst"
+```
+
+## Setting the TimeZone
+
+The timezone can also be set by the `ntp_timezone` , eg: "Etc/UTC","Asia/Shanghai". If not set, the timezone will not change.
+
+```ShellSession
+ntp_enabled: true
+ntp_timezone: Etc/UTC
 ```
 
 ## Advanced Configure

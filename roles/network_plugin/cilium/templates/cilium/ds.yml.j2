@@ -2,37 +2,37 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  labels:
-    k8s-app: cilium
   name: cilium
   namespace: kube-system
+  labels:
+    k8s-app: cilium
 spec:
   selector:
     matchLabels:
       k8s-app: cilium
+  updateStrategy:
+    rollingUpdate:
+      # Specifies the maximum number of Pods that can be unavailable during the update process.
+      maxUnavailable: 2
+    type: RollingUpdate
   template:
     metadata:
       annotations:
 {% if cilium_enable_prometheus %}
-        prometheus.io/port: "9090"
+        prometheus.io/port: "{{ cilium_agent_scrape_port }}"
         prometheus.io/scrape: "true"
 {% endif %}
         scheduler.alpha.kubernetes.io/tolerations: '[{"key":"dedicated","operator":"Equal","value":"master","effect":"NoSchedule"}]'
       labels:
         k8s-app: cilium
     spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: k8s-app
-                operator: In
-                values:
-                - cilium
-            topologyKey: kubernetes.io/hostname
       containers:
-      - args:
+      - name: cilium-agent
+        image: "{{cilium_image_repo}}:{{cilium_image_tag}}"
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        command:
+        - cilium-agent
+        args:
         - --config-dir=/tmp/cilium/config-map
 {% if cilium_mtu != "" %}
         - --mtu={{ cilium_mtu }}
@@ -44,54 +44,6 @@ spec:
         - {{ flag }}
 {% endfor %}
 {% endif %}
-        command:
-        - cilium-agent
-        env:
-        - name: K8S_NODE_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: spec.nodeName
-        - name: CILIUM_K8S_NAMESPACE
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.namespace
-        - name: CILIUM_CLUSTERMESH_CONFIG
-          value: /var/lib/cilium/clustermesh/
-{% if cilium_kube_proxy_replacement == 'strict' %}
-        - name: KUBERNETES_SERVICE_HOST
-          value: "{{ kube_apiserver_global_endpoint | urlsplit('hostname') }}"
-        - name: KUBERNETES_SERVICE_PORT
-          value: "{{ kube_apiserver_global_endpoint | urlsplit('port') }}"
-{% endif %}
-{% for env_var in cilium_agent_extra_env_vars %}
-        - {{ env_var | to_nice_yaml(indent=2) | indent(10) }}
-{% endfor %}
-        image: "{{cilium_image_repo}}:{{cilium_image_tag}}"
-        imagePullPolicy: {{ k8s_image_pull_policy }}
-        resources:
-          limits:
-            cpu: {{ cilium_cpu_limit }}
-            memory: {{ cilium_memory_limit }}
-          requests:
-            cpu: {{ cilium_cpu_requests }}
-            memory: {{ cilium_memory_requests }}
-        lifecycle:
-          postStart:
-            exec:
-              command:
-              - "/cni-install.sh"
-{% if cilium_version | regex_replace('v') is version('1.10', '>=') %}
-              - "--cni-exclusive={{ cilium_cni_exclusive }}"
-{% endif %}
-{% if cilium_version | regex_replace('v') is version('1.12', '>=') %}
-              - "--log-file={{ cilium_cni_log_file }}"
-{% endif %}
-          preStop:
-            exec:
-              command:
-              - /cni-uninstall.sh
         startupProbe:
           httpGet:
             host: '127.0.0.1'
@@ -131,60 +83,89 @@ spec:
           successThreshold: 1
           failureThreshold: 3
           timeoutSeconds: 5
-        name: cilium-agent
+        env:
+        - name: K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: CILIUM_K8S_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: CILIUM_CLUSTERMESH_CONFIG
+          value: /var/lib/cilium/clustermesh/
+{% if cilium_kube_proxy_replacement == 'strict' %}
+        - name: KUBERNETES_SERVICE_HOST
+          value: "{{ kube_apiserver_global_endpoint | urlsplit('hostname') }}"
+        - name: KUBERNETES_SERVICE_PORT
+          value: "{{ kube_apiserver_global_endpoint | urlsplit('port') }}"
+{% endif %}
+{% for env_var in cilium_agent_extra_env_vars %}
+        - {{ env_var | to_nice_yaml(indent=2) | indent(10) }}
+{% endfor %}
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - "/cni-install.sh"
+              - "--cni-exclusive={{ cilium_cni_exclusive | string | lower }}"
+{% if cilium_version | regex_replace('v') is version('1.12', '>=') %}
+              - "--enable-debug={{ cilium_debug | string | lower }}"
+              - "--log-file={{ cilium_cni_log_file }}"
+{% endif %}
+          preStop:
+            exec:
+              command:
+              - /cni-uninstall.sh
+        resources:
+          limits:
+            cpu: {{ cilium_cpu_limit }}
+            memory: {{ cilium_memory_limit }}
+          requests:
+            cpu: {{ cilium_cpu_requests }}
+            memory: {{ cilium_memory_requests }}
 {% if cilium_enable_prometheus or cilium_enable_hubble_metrics %}
         ports:
 {% endif %}
 {% if cilium_enable_prometheus %}
-        - containerPort: 9090
-          hostPort: 9090
-          name: prometheus
+        - name: prometheus
+          containerPort: {{ cilium_agent_scrape_port }}
+          hostPort: {{ cilium_agent_scrape_port }}
           protocol: TCP
 {% endif %}
 {% if cilium_enable_hubble_metrics %}
-        - containerPort: 9091
-          hostPort: 9091
-          name: hubble-metrics
+        - name: hubble-metrics
+          containerPort: {{ cilium_hubble_scrape_port }}
+          hostPort: {{ cilium_hubble_scrape_port }}
           protocol: TCP
 {% endif %}
         securityContext:
           privileged: true
         volumeMounts:
-        - mountPath: /sys/fs/bpf
-          name: bpf-maps
+        - name: bpf-maps
+          mountPath: /sys/fs/bpf
           mountPropagation: Bidirectional
-        - mountPath: /var/run/cilium
-          name: cilium-run
-        - mountPath: /host/opt/cni/bin
-          name: cni-path
-        - mountPath: /host/etc/cni/net.d
-          name: etc-cni-netd
-# pkg/workloads was depreca, removed in 1.7
-# https://github.com/cilium/cilium/pull/9447
-{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
-{% if container_manager == 'docker' %}
-        - mountPath: /var/run/docker.sock
-          name: docker-socket
-          readOnly: true
-{% else %}
-        - name: "{{ container_manager }}-socket"
-          mountPath: {{ cri_socket }}
-          readOnly: true
-{% endif %}
-{% endif %}
+        - name: cilium-run
+          mountPath: /var/run/cilium
+        - name: cni-path
+          mountPath: /host/opt/cni/bin
+        - name: etc-cni-netd
+          mountPath: /host/etc/cni/net.d
 {% if cilium_identity_allocation_mode == "kvstore" %}
-        - mountPath: /var/lib/etcd-config
-          name: etcd-config-path
+        - name: etcd-config-path
+          mountPath: /var/lib/etcd-config
           readOnly: true
-        - mountPath: "{{cilium_cert_dir}}"
-          name: etcd-secrets
+        - name: etcd-secrets
+          mountPath: "{{cilium_cert_dir}}"
           readOnly: true
 {% endif %}
-        - mountPath: /var/lib/cilium/clustermesh
-          name: clustermesh-secrets
+        - name: clustermesh-secrets
+          mountPath: /var/lib/cilium/clustermesh
           readOnly: true
-        - mountPath: /tmp/cilium/config-map
-          name: cilium-config-path
+        - name: cilium-config-path
+          mountPath: /tmp/cilium/config-map
           readOnly: true
 {% if cilium_ip_masq_agent_enable %}
         - name: ip-masq-agent
@@ -192,19 +173,19 @@ spec:
           readOnly: true
 {% endif %}
           # Needed to be able to load kernel modules
-        - mountPath: /lib/modules
-          name: lib-modules
+        - name: lib-modules
+          mountPath: /lib/modules
           readOnly: true
-        - mountPath: /run/xtables.lock
-          name: xtables-lock
+        - name: xtables-lock
+          mountPath: /run/xtables.lock
 {% if cilium_encryption_enabled and cilium_encryption_type == "ipsec" %}
-        - mountPath: /etc/ipsec
-          name: cilium-ipsec-secrets
+        - name: cilium-ipsec-secrets
+          mountPath: /etc/ipsec
           readOnly: true
 {% endif %}
 {% if cilium_hubble_install %}
-        - mountPath: /var/lib/cilium/tls/hubble
-          name: hubble-tls
+        - name: hubble-tls
+          mountPath: /var/lib/cilium/tls/hubble
           readOnly: true
 {% endif %}
 {% for volume_mount in cilium_agent_extra_volume_mounts %}
@@ -245,22 +226,50 @@ spec:
         securityContext:
           privileged: true
 {% endif %}
-      - command:
+{% if cilium_version | regex_replace('v') is version('1.11.7', '>=') %}
+      - name: apply-sysctl-overwrites
+        image: "{{cilium_image_repo}}:{{cilium_image_tag}}"
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        env:
+        - name: BIN_PATH
+          value: /opt/cni/bin
+        command:
+        - sh
+        - -ec
+        # The statically linked Go program binary is invoked to avoid any
+        # dependency on utilities like sh that can be missing on certain
+        # distros installed on the underlying host. Copy the binary to the
+        # same directory where we install cilium cni plugin so that exec permissions
+        # are available.
+        - |
+          cp /usr/bin/cilium-sysctlfix /hostbin/cilium-sysctlfix;
+          nsenter --mount=/hostproc/1/ns/mnt "${BIN_PATH}/cilium-sysctlfix";
+          rm /hostbin/cilium-sysctlfix
+        volumeMounts:
+        - name: hostproc
+          mountPath: /hostproc
+        - name: cni-path
+          mountPath: /hostbin
+        securityContext:
+          privileged: true
+{% endif %}
+      - name: clean-cilium-state
+        image: "{{cilium_image_repo}}:{{cilium_image_tag}}"
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        command:
         - /init-container.sh
         env:
         - name: CILIUM_ALL_STATE
           valueFrom:
             configMapKeyRef:
-              key: clean-cilium-state
               name: cilium-config
+              key: clean-cilium-state
               optional: true
-        # CLEAN_CILIUM_BPF_STATE is deprecated in 1.6.
-        # https://github.com/cilium/cilium/pull/7478
-        - name: "{{ cilium_version | regex_replace('v') is version('1.6', '<')| ternary('CLEAN_CILIUM_BPF_STATE','CILIUM_BPF_STATE') }}"
+        - name: CILIUM_BPF_STATE
           valueFrom:
             configMapKeyRef:
-              key: clean-cilium-bpf-state
               name: cilium-config
+              key: clean-cilium-bpf-state
               optional: true
 # Removed in 1.11 and up.
 # https://github.com/cilium/cilium/commit/f7a3f59fd74983c600bfce9cac364b76d20849d9
@@ -278,32 +287,25 @@ spec:
         - name: KUBERNETES_SERVICE_PORT
           value: "{{ kube_apiserver_global_endpoint | urlsplit('port') }}"
 {% endif %}
-{% if cilium_version | regex_replace('v') is version('1.9', '<') %}
-        image: "{{cilium_init_image_repo}}:{{cilium_init_image_tag}}"
-{% else %}
-        image: "{{cilium_image_repo}}:{{cilium_image_tag}}"
-{% endif %}
-        imagePullPolicy: {{ k8s_image_pull_policy }}
-        name: clean-cilium-state
         securityContext:
           privileged: true
         volumeMounts:
-        - mountPath: /sys/fs/bpf
-          name: bpf-maps
+        - name: bpf-maps
+          mountPath: /sys/fs/bpf
 {% if cilium_version | regex_replace('v') is version('1.11', '>=') %}
           # Required to mount cgroup filesystem from the host to cilium agent pod
         - name: cilium-cgroup
           mountPath: {{ cilium_cgroup_host_root }}
           mountPropagation: HostToContainer
 {% endif %}
-        - mountPath: /var/run/cilium
-          name: cilium-run
+        - name: cilium-run
+          mountPath: /var/run/cilium
         resources:
           requests:
             cpu: 100m
             memory: 100Mi
-      priorityClassName: system-node-critical
       restartPolicy: Always
+      priorityClassName: system-node-critical
       serviceAccount: cilium
       serviceAccountName: cilium
       terminationGracePeriodSeconds: 1
@@ -312,36 +314,26 @@ spec:
 {% if cilium_identity_allocation_mode == "kvstore" %}
       dnsPolicy: ClusterFirstWithHostNet
 {% endif %}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                k8s-app: cilium
       tolerations:
       - operator: Exists
       volumes:
         # To keep state between restarts / upgrades
-      - hostPath:
+      - name: cilium-run
+        hostPath:
           path: /var/run/cilium
           type: DirectoryOrCreate
-        name: cilium-run
         # To keep state between restarts / upgrades for bpf maps
-      - hostPath:
+      - name: bpf-maps
+        hostPath:
           path: /sys/fs/bpf
           type: DirectoryOrCreate
-        name: bpf-maps
-# pkg/workloads was deprecated in 1.6, removed in 1.7
-# https://github.com/cilium/cilium/pull/9447
-{% if cilium_version | regex_replace('v') is version('1.7', '<') %}
-{% if container_manager == 'docker' %}
-        # To read docker events from the node
-      - hostPath:
-          path: /var/run/docker.sock
-          type: Socket
-        name: docker-socket
-{% else %}
-        # To read crio events from the node
-      - hostPath:
-          path: {{ cri_socket }}
-          type: Socket
-        name: {{ container_manager }}-socket
-{% endif %}
-{% endif %}
 {% if cilium_version | regex_replace('v') is version('1.11', '>=') %}
       # To mount cgroup2 filesystem on the host
       - name: hostproc
@@ -355,34 +347,34 @@ spec:
           type: DirectoryOrCreate
 {% endif %}
         # To install cilium cni plugin in the host
-      - hostPath:
+      - name: cni-path
+        hostPath:
           path: /opt/cni/bin
           type: DirectoryOrCreate
-        name: cni-path
         # To install cilium cni configuration in the host
-      - hostPath:
+      - name: etc-cni-netd
+        hostPath:
           path: /etc/cni/net.d
           type: DirectoryOrCreate
-        name: etc-cni-netd
         # To be able to load kernel modules
-      - hostPath:
+      - name: lib-modules
+        hostPath:
           path: /lib/modules
-        name: lib-modules
         # To access iptables concurrently with other processes (e.g. kube-proxy)
-      - hostPath:
+      - name: xtables-lock
+        hostPath:
           path: /run/xtables.lock
           type: FileOrCreate
-        name: xtables-lock
 {% if cilium_identity_allocation_mode == "kvstore" %}
         # To read the etcd config stored in config maps
-      - configMap:
+      - name: etcd-config-path
+        configMap:
+          name: cilium-config
           # note: the leading zero means this number is in octal representation: do not remove it
           defaultMode: 0400
           items:
           - key: etcd-config
             path: etcd.config
-          name: cilium-config
-        name: etcd-config-path
         # To read the k8s etcd secrets in case the user might want to use TLS
       - name: etcd-secrets
         hostPath:
@@ -391,21 +383,22 @@ spec:
         # To read the clustermesh configuration
       - name: clustermesh-secrets
         secret:
+          secretName: cilium-clustermesh
           # note: the leading zero means this number is in octal representation: do not remove it
           defaultMode: 0400
           optional: true
-          secretName: cilium-clustermesh
         # To read the configuration from the config map
-      - configMap:
+      - name: cilium-config-path
+        configMap:
           name: cilium-config
-        name: cilium-config-path
 {% if cilium_ip_masq_agent_enable %}
-      - configMap:
+      - name: ip-masq-agent
+        configMap:
           name: ip-masq-agent
+          optional: true
           items:
           - key: config
             path: ip-masq-agent
-        name: ip-masq-agent
 {% endif %}
 {% if cilium_encryption_enabled and cilium_encryption_type == "ipsec" %}
       - name: cilium-ipsec-secrets
@@ -420,21 +413,12 @@ spec:
           sources:
           - secret:
               name: hubble-server-certs
+              optional: true
               items:
+                - key: ca.crt
+                  path: client-ca.crt
                 - key: tls.crt
                   path: server.crt
                 - key: tls.key
                   path: server.key
-              optional: true
-          - configMap:
-              name: hubble-ca-cert
-              items:
-                - key: ca.crt
-                  path: client-ca.crt
-              optional: true
 {% endif %}
-  updateStrategy:
-    rollingUpdate:
-      # Specifies the maximum number of Pods that can be unavailable during the update process.
-      maxUnavailable: 2
-    type: RollingUpdate

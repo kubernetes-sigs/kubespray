@@ -82,6 +82,17 @@ resource "openstack_networking_secgroup_rule_v2" "bastion" {
   security_group_id = openstack_networking_secgroup_v2.bastion[0].id
 }
 
+resource "openstack_networking_secgroup_rule_v2" "k8s_bastion_ports" {
+  count             = length(var.bastion_allowed_ports)
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = lookup(var.bastion_allowed_ports[count.index], "protocol", "tcp")
+  port_range_min    = lookup(var.bastion_allowed_ports[count.index], "port_range_min")
+  port_range_max    = lookup(var.bastion_allowed_ports[count.index], "port_range_max")
+  remote_ip_prefix  = lookup(var.bastion_allowed_ports[count.index], "remote_ip_prefix", "0.0.0.0/0")
+  security_group_id = openstack_networking_secgroup_v2.bastion[0].id
+}
+
 resource "openstack_networking_secgroup_v2" "k8s" {
   name                 = "${var.cluster_name}-k8s"
   description          = "${var.cluster_name} - Kubernetes"
@@ -195,6 +206,9 @@ resource "openstack_networking_port_v2" "bastion_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.bastion_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -245,6 +259,9 @@ resource "openstack_networking_port_v2" "k8s_master_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -305,6 +322,9 @@ resource "openstack_networking_port_v2" "k8s_masters_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -363,6 +383,9 @@ resource "openstack_networking_port_v2" "k8s_master_no_etcd_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -423,6 +446,9 @@ resource "openstack_networking_port_v2" "etcd_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.etcd_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -477,6 +503,9 @@ resource "openstack_networking_port_v2" "k8s_master_no_floating_ip_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -531,6 +560,9 @@ resource "openstack_networking_port_v2" "k8s_master_no_floating_ip_no_etcd_port"
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -586,6 +618,9 @@ resource "openstack_networking_port_v2" "k8s_node_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.worker_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -646,6 +681,9 @@ resource "openstack_networking_port_v2" "k8s_node_no_floating_ip_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.worker_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -701,6 +739,9 @@ resource "openstack_networking_port_v2" "k8s_nodes_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.worker_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -742,7 +783,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
 
   metadata = {
     ssh_user         = var.ssh_user
-    kubespray_groups = "kube_node,k8s_cluster,%{if each.value.floating_ip == false}no_floating,%{endif}${var.supplementary_node_groups}"
+    kubespray_groups = "kube_node,k8s_cluster,%{if each.value.floating_ip == false}no_floating,%{endif}${var.supplementary_node_groups},${try(each.value.extra_groups, "")}"
     depends_on       = var.network_router_id
     use_access_ip    = var.use_access_ip
   }
@@ -760,6 +801,9 @@ resource "openstack_networking_port_v2" "glusterfs_node_no_floating_ip_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.gfs_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id

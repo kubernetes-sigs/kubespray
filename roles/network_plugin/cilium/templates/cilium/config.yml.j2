@@ -41,8 +41,8 @@ data:
   # NOTE that this will open the port on ALL nodes where Cilium pods are
   # scheduled.
 {% if cilium_enable_prometheus %}
-  prometheus-serve-addr: ":9090"
-  operator-prometheus-serve-addr: ":6942"
+  prometheus-serve-addr: ":{{ cilium_agent_scrape_port }}"
+  operator-prometheus-serve-addr: ":{{ cilium_operator_scrape_port }}"
   enable-metrics: "true"
 {% endif %}
 
@@ -127,44 +127,11 @@ data:
   cluster-id: "{{ cilium_cluster_id }}"
 {% endif %}
 
-# `tofqdns-enable-poller` is deprecated in 1.8, removed in 1.9
-# https://github.com/cilium/cilium/issues/8604
-{% if cilium_version | regex_replace('v') is version('1.9', '<') %}
-  # DNS Polling periodically issues a DNS lookup for each `matchName` from
-  # cilium-agent. The result is used to regenerate endpoint policy.
-  # DNS lookups are repeated with an interval of 5 seconds, and are made for
-  # A(IPv4) and AAAA(IPv6) addresses. Should a lookup fail, the most recent IP
-  # data is used instead. An IP change will trigger a regeneration of the Cilium
-  # policy for each endpoint and increment the per cilium-agent policy
-  # repository revision.
-  #
-  # This option is disabled by default starting from version 1.4.x in favor
-  # of a more powerful DNS proxy-based implementation, see [0] for details.
-  # Enable this option if you want to use FQDN policies but do not want to use
-  # the DNS proxy.
-  #
-  # To ease upgrade, users may opt to set this option to "true".
-  # Otherwise please refer to the Upgrade Guide [1] which explains how to
-  # prepare policy rules for upgrade.
-  #
-  # [0] http://docs.cilium.io/en/stable/policy/language/#dns-based
-  # [1] http://docs.cilium.io/en/stable/install/upgrade/#changes-that-may-require-action
-  tofqdns-enable-poller: "{{cilium_tofqdns_enable_poller}}"
-{% endif %}
-
 # `wait-bpf-mount` is removed after v1.10.4
 # https://github.com/cilium/cilium/commit/d2217045cb3726a7f823174e086913b69b8090da
 {% if cilium_version | regex_replace('v') is version('1.10.4', '<') %}
   # wait-bpf-mount makes init container wait until bpf filesystem is mounted
   wait-bpf-mount: "false"
-{% endif %}
-
-# `enable-legacy-services` is deprecated in 1.6, removed in 1.9
-# https://github.com/cilium/cilium/pull/10255
-{% if cilium_version | regex_replace('v') is version('1.9', '<') %}
-  # Enable legacy services (prior v1.5) to prevent from terminating existing
-  # connections with services when upgrading Cilium from < v1.5 to v1.5.
-  enable-legacy-services: "{{cilium_enable_legacy_services}}"
 {% endif %}
 
   kube-proxy-replacement: "{{ cilium_kube_proxy_replacement }}"
@@ -175,12 +142,12 @@ data:
 {% if cilium_version | regex_replace('v') is version('1.12', '<') %}
   native-routing-cidr: "{{ cilium_native_routing_cidr }}"
 {% else %}
-  {% if cilium_native_routing_cidr | length %}
+{% if cilium_native_routing_cidr | length %}
   ipv4-native-routing-cidr: "{{ cilium_native_routing_cidr }}"
-  {% endif %}
-  {% if cilium_native_routing_cidr_ipv6 | length %}
+{% endif %}
+{% if cilium_native_routing_cidr_ipv6 | length %}
   ipv6-native-routing-cidr: "{{ cilium_native_routing_cidr_ipv6 }}"
-  {% endif %}
+{% endif %}
 {% endif %}
 
   auto-direct-node-routes: "{{ cilium_auto_direct_node_routes }}"
@@ -191,7 +158,7 @@ data:
 {% if cilium_enable_hubble %}
   enable-hubble: "true"
 {% if cilium_enable_hubble_metrics %}
-  hubble-metrics-server: ":9091"
+  hubble-metrics-server: ":{{ cilium_hubble_scrape_port }}"
   hubble-metrics:
 {% for hubble_metrics_cycle in cilium_hubble_metrics %}
     {{ hubble_metrics_cycle }}
@@ -215,22 +182,20 @@ data:
 
   # Enable transparent network encryption
 {% if cilium_encryption_enabled %}
-  {% if cilium_encryption_type == "ipsec" %}
+{% if cilium_encryption_type == "ipsec" %}
   enable-ipsec: "true"
   ipsec-key-file: /etc/ipsec/keys
   encrypt-node: "{{ cilium_ipsec_node_encryption }}"
-  {% endif %}
+{% endif %}
 
-  {% if cilium_encryption_type == "wireguard" %}
+{% if cilium_encryption_type == "wireguard" %}
   enable-wireguard: "true"
   enable-wireguard-userspace-fallback: "{{ cilium_wireguard_userspace_fallback }}"
-  {% endif %}
+{% endif %}
 {% endif %}
 
   # IPAM settings
-{% if cilium_version | regex_replace('v') is version('1.9', '>=') %}
   ipam: "{{ cilium_ipam_mode }}"
-{% endif %}
 
   agent-health-port: "{{ cilium_agent_health_port }}"
 
@@ -240,10 +205,8 @@ data:
 
   bpf-map-dynamic-size-ratio: "{{ cilium_bpf_map_dynamic_size_ratio }}"
 
-{% if cilium_version | regex_replace('v') is version('1.10', '>=') %}
   enable-ipv4-masquerade: "{{ cilium_enable_ipv4_masquerade }}"
   enable-ipv6-masquerade: "{{ cilium_enable_ipv6_masquerade }}"
-{% endif %}
 
   enable-bpf-masquerade: "{{ cilium_enable_bpf_masquerade }}"
 
@@ -258,7 +221,6 @@ data:
   enable-bpf-clock-probe: "{{ cilium_enable_bpf_clock_probe }}"
 
   disable-cnp-status-updates: "{{ cilium_disable_cnp_status_updates }}"
-
 {% if cilium_ip_masq_agent_enable %}
 ---
 apiVersion: v1

@@ -72,9 +72,14 @@ calico_pool_cidr_ipv6: fd85:ee78:d8a6:8607::1:0000/112
 
 In some cases you may want to route the pods subnet and so NAT is not needed on the nodes.
 For instance if you have a cluster spread on different locations and you want your pods to talk each other no matter where they are located.
-The following variables need to be set:
-`peer_with_router` to enable the peering with the datacenter's border router (default value: false).
-you'll need to edit the inventory and add a hostvar `local_as` by node.
+The following variables need to be set as follow:
+
+```yml
+peer_with_router: true  # enable the peering with the datacenter's border router (default value: false).
+nat_outgoing: false  # (optional) NAT outgoing (default value: true).
+```
+
+And you'll need to edit the inventory and add a hostvar `local_as` by node.
 
 ```ShellSession
 node1 ansible_ssh_host=95.54.0.12 local_as=xxxxxx
@@ -171,7 +176,7 @@ node5
 
 [rack0:vars]
 cluster_id="1.0.0.1"
-calcio_rr_id=rr1
+calico_rr_id=rr1
 calico_group_id=rr1
 ```
 
@@ -198,6 +203,14 @@ To re-define health host please set the following variable in your inventory:
 
 ```yml
 calico_healthhost: "0.0.0.0"
+```
+
+### Optional : Configure VXLAN hardware Offload
+
+Because of the Issue [projectcalico/calico#4727](https://github.com/projectcalico/calico/issues/4727), The VXLAN Offload is disable by default. It can be configured like this:
+
+```yml
+calico_feature_detect_override: "ChecksumOffloadBroken=true" # The vxlan offload will enabled with kernel version is > 5.7 (It may cause problem on buggy NIC driver)
 ```
 
 ### Optional : Configure Calico Node probe timeouts

@@ -270,6 +270,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`supplementary_node_groups` | To add ansible groups to the nodes, such as `kube_ingress` for running ingress controller pods, empty by default. |
 |`bastion_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, `["0.0.0.0/0"]` by default |
 |`master_allowed_remote_ips` | List of CIDR blocks allowed to initiate an API connection, `["0.0.0.0/0"]` by default |
+|`bastion_allowed_ports` | List of ports to open on bastion node, `[]` by default |
 |`k8s_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, empty by default |
 |`worker_allowed_ports` | List of ports to open on worker nodes, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "0.0.0.0/0"}]` by default |
 |`master_allowed_ports` | List of ports to open on master nodes, expected format is `[{ "protocol" = "tcp", "port_range_min" = 443, "port_range_max" = 443, "remote_ip_prefix" = "0.0.0.0/0"}]`, empty by default |
@@ -294,7 +295,8 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 Allows a custom definition of worker nodes giving the operator full control over individual node flavor and
 availability zone placement. To enable the use of this mode set the `number_of_k8s_nodes` and
 `number_of_k8s_nodes_no_floating_ip` variables to 0. Then define your desired worker node configuration
-using the `k8s_nodes` variable.
+using the `k8s_nodes` variable. The `az`, `flavor` and `floating_ip` parameters are mandatory.
+The optional parameter `extra_groups` (a comma-delimited string) can be used to define extra inventory group memberships for specific nodes.
 
 For example:
 
@@ -314,6 +316,7 @@ k8s_nodes = {
     "az" = "sto3"
     "flavor" = "83d8b44a-26a0-4f02-a981-079446926445"
     "floating_ip" = true
+    "extra_groups" = "calico_rr"
   }
 }
 ```

@@ -300,6 +300,13 @@ variable "k8s_nodes" {
   default = {}
 }
 
+variable "additional_server_groups" {
+  default = {}
+  type = map(object({
+    policy = string
+  }))
+}
+
 variable "extra_sec_groups" {
   default = false
 }

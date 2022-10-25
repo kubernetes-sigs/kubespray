@@ -98,6 +98,7 @@ module "compute" {
   network_id                                   = module.network.network_id
   use_existing_network                         = var.use_existing_network
   private_subnet_id                            = module.network.subnet_id
+  additional_server_groups                     = var.additional_server_groups
 
   depends_on = [
     module.network.subnet_id

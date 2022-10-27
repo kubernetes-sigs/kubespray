@@ -121,6 +121,23 @@ cilium_encryption_type: "wireguard"
 
 Kubespray currently supports Linux distributions with Wireguard Kernel mode on Linux 5.6 and newer.
 
+## Bandwidth Manager
+
+Cilium’s bandwidth manager supports the kubernetes.io/egress-bandwidth Pod annotation.
+
+Bandwidth enforcement currently does not work in combination with L7 Cilium Network Policies.
+In case they select the Pod at egress, then the bandwidth enforcement will be disabled for those Pods.
+
+Bandwidth Manager requires a v5.1.x or more recent Linux kernel.
+
+For further information, make sure to check the official [Cilium documentation.](https://docs.cilium.io/en/v1.12/gettingstarted/bandwidth-manager/)
+
+To use this function, set the following parameters
+
+```yml
+cilium_enable_bandwidth_manager: true
+```
+
 ## Install Cilium Hubble
 
 k8s-net-cilium.yml:

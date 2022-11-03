@@ -1,72 +1,61 @@
 ---
-# The root directory for containerd metadata
-containerd_metadata_root_dir: /var/lib/containerd
-# The state directory for containerd
-containerd_state_dir: /run/containerd
+containerd_storage_dir: "/var/lib/containerd"
+containerd_state_dir: "/run/containerd"
+containerd_systemd_dir: "/etc/systemd/system/containerd.service.d"
+# The default value is not -999 here because containerd's oom_score_adj has been
+# set to the -999 even if containerd_oom_score is 0.
+# Ref: https://github.com/kubernetes-sigs/kubespray/pull/9275#issuecomment-1246499242
+containerd_oom_score: 0
 
-containerd_config:
-  grpc:
-    max_recv_message_size: 16777216
-    max_send_message_size: 16777216
-  debug:
-    level: ""
-  registries:
-    "docker.io": "https://registry-1.docker.io"
-  max_container_log_line_size: -1
-  # containerd:
-  #   snapshotter: native
+# containerd_default_runtime: "runc"
+# containerd_snapshotter: "native"
+
+containerd_runc_runtime:
+  name: runc
+  type: "io.containerd.runc.v2"
+  engine: ""
+  root: ""
+  # base_runtime_spec: cri-base.json # use this to limit number of file descriptors per container
+  options:
+    systemdCgroup: "{{ containerd_use_systemd_cgroup | ternary('true', 'false') }}"
+
+containerd_additional_runtimes: []
+# Example for Kata Containers as additional runtime:
+#  - name: kata
+#    type: "io.containerd.kata.v2"
+#    engine: ""
+#    root: ""
+
+containerd_base_runtime_specs:
+  cri-base.json: "{{ lookup('file', 'cri-base.json') }}"
+
+containerd_grpc_max_recv_message_size: 16777216
+containerd_grpc_max_send_message_size: 16777216
+
+containerd_debug_level: "info"
+
+containerd_metrics_address: ""
+
+containerd_metrics_grpc_histogram: false
+
+containerd_registries:
+  "docker.io": "https://registry-1.docker.io"
+
+containerd_max_container_log_line_size: -1
 
 containerd_cfg_dir: /etc/containerd
 
-# Path to runc binary
-runc_binary: /usr/bin/runc
+# Extra config to be put in {{ containerd_cfg_dir }}/config.toml literally
+containerd_extra_args: ''
 
+# Configure registry auth (if applicable to secure/insecure registries)
+containerd_registry_auth: []
+#  - registry: 10.0.0.2:5000
+#    username: user
+#    password: pass
 
-yum_repo_dir: /etc/yum.repos.d
-
-# Optional values for containerd apt repo
-containerd_package_info:
-  pkgs:
-
-containerd_repo_key_info:
-  repo_keys:
-
-containerd_repo_info:
-  repos:
-
-# Ubuntu docker-ce repo
-containerd_ubuntu_repo_base_url: "https://download.docker.com/linux/ubuntu"
-containerd_ubuntu_repo_gpgkey: 'https://download.docker.com/linux/ubuntu/gpg'
-containerd_ubuntu_repo_repokey: '9DC858229FC7DD38854AE2D88D81803C0EBFCD88'
-containerd_ubuntu_repo_component: 'stable'
-
-# Debian docker-ce repo
-containerd_debian_repo_base_url: 'https://download.docker.com/linux/debian'
-containerd_debian_repo_gpgkey: 'https://download.docker.com/linux/debian/gpg'
-containerd_debian_repo_repokey: '9DC858229FC7DD38854AE2D88D81803C0EBFCD88'
-containerd_debian_repo_component: 'stable'
-
-# Fedora docker-ce repo
-containerd_fedora_repo_base_url: 'https://download.docker.com/linux/fedora/{{ ansible_distribution_major_version }}/$basearch/stable'
-containerd_fedora_repo_gpgkey: 'https://download.docker.com/linux/fedora/gpg'
-containerd_fedora_repo_repokey: '9DC858229FC7DD38854AE2D88D81803C0EBFCD88'
-containerd_fedora_repo_component: 'stable'
-
-containerd_default_runtime:
-  type: io.containerd.runtime.v1.linux
-  engine: ''
-  root: ''
-
-# Additional runtimes for containerd configuration
-#
-# Example for Kata Containers:
-# containerd_runtimes:
-#   - name: kata
-#     type: io.containerd.kata.v2
-#     engine: ""
-#     root: ""
-containerd_runtimes: []
-
-containerd_untrusted_runtime_type: ''
-containerd_untrusted_runtime_engine: ''
-containerd_untrusted_runtime_root: ''
+# Configure containerd service
+containerd_limit_proc_num: "infinity"
+containerd_limit_core: "infinity"
+containerd_limit_open_file_num: "infinity"
+containerd_limit_mem_lock: "infinity"

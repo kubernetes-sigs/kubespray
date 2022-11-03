@@ -7,6 +7,8 @@ You can also individually control versions of components by explicitly defining 
 versions. Here are all version vars for each component:
 
 * docker_version
+* docker_containerd_version (relevant when `container_manager` == `docker`)
+* containerd_version (relevant when `container_manager` == `containerd`)
 * kube_version
 * etcd_version
 * calico_version
@@ -17,21 +19,21 @@ versions. Here are all version vars for each component:
 
 :warning: [Attempting to upgrade from an older release straight to the latest release is unsupported and likely to break something](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515) :warning:
 
-See [Multiple Upgrades](#multiple-upgrades) for how to upgrade from older releases to the latest release
+See [Multiple Upgrades](#multiple-upgrades) for how to upgrade from older Kubespray release to the latest release
 
 ## Unsafe upgrade example
 
-If you wanted to upgrade just kube_version from v1.4.3 to v1.4.6, you could
+If you wanted to upgrade just kube_version from v1.18.10 to v1.19.7, you could
 deploy the following way:
 
 ```ShellSession
-ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.3 -e upgrade_cluster_setup=true
+ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.18.10 -e upgrade_cluster_setup=true
 ```
 
-And then repeat with v1.4.6 as kube_version:
+And then repeat with v1.19.7 as kube_version:
 
 ```ShellSession
-ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.4.6 -e upgrade_cluster_setup=true
+ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.19.7 -e upgrade_cluster_setup=true
 ```
 
 The var ```-e upgrade_cluster_setup=true``` is needed to be set in order to migrate the deploys of e.g kube-apiserver inside the cluster immediately which is usually only done in the graceful upgrade. (Refer to [#4139](https://github.com/kubernetes-sigs/kubespray/issues/4139) and [#4736](https://github.com/kubernetes-sigs/kubespray/issues/4736))
@@ -41,25 +43,55 @@ The var ```-e upgrade_cluster_setup=true``` is needed to be set in order to migr
 Kubespray also supports cordon, drain and uncordoning of nodes when performing
 a cluster upgrade. There is a separate playbook used for this purpose. It is
 important to note that upgrade-cluster.yml can only be used for upgrading an
-existing cluster. That means there must be at least 1 kube-master already
+existing cluster. That means there must be at least 1 kube_control_plane already
 deployed.
 
 ```ShellSession
-ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.6.0
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.19.7
 ```
 
 After a successful upgrade, the Server Version should be updated:
 
 ```ShellSession
 $ kubectl version
-Client Version: version.Info{Major:"1", Minor:"6", GitVersion:"v1.6.0", GitCommit:"fff5156092b56e6bd60fff75aad4dc9de6b6ef37", GitTreeState:"clean", BuildDate:"2017-03-28T19:15:41Z", GoVersion:"go1.8", Compiler:"gc", Platform:"darwin/amd64"}
-Server Version: version.Info{Major:"1", Minor:"6", GitVersion:"v1.6.0+coreos.0", GitCommit:"8031716957d697332f9234ddf85febb07ac6c3e3", GitTreeState:"clean", BuildDate:"2017-03-29T04:33:09Z", GoVersion:"go1.7.5", Compiler:"gc", Platform:"linux/amd64"}
+Client Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.7", GitCommit:"1dd5338295409edcfff11505e7bb246f0d325d15", GitTreeState:"clean", BuildDate:"2021-01-13T13:23:52Z", GoVersion:"go1.15.5", Compiler:"gc", Platform:"linux/amd64"}
+Server Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.7", GitCommit:"1dd5338295409edcfff11505e7bb246f0d325d15", GitTreeState:"clean", BuildDate:"2021-01-13T13:15:20Z", GoVersion:"go1.15.5", Compiler:"gc", Platform:"linux/amd64"}
 ```
 
-If you want to manually control the upgrade procedure, you can use the variables `upgrade_node_confirm` or `upgrade_node_pause_seconds`:
+### Pausing the upgrade
 
-`upgrade_node_confirm: true` - waiting to confirmation to upgrade next node
-`upgrade_node_pause_seconds: 60` - pause 60 seconds before upgrade next node
+If you want to manually control the upgrade procedure, you can set some variables to pause the upgrade playbook. Pausing *before* upgrading each upgrade may be useful for inspecting pods running on that node, or performing manual actions on the node:
+
+* `upgrade_node_confirm: true` - This will pause the playbook execution prior to upgrading each node. The play will resume when manually approved by typing "yes" at the terminal.
+* `upgrade_node_pause_seconds: 60` - This will pause the playbook execution for 60 seconds prior to upgrading each node. The play will resume automatically after 60 seconds.
+
+Pausing *after* upgrading each node may be useful for rebooting the node to apply kernel updates, or testing the still-cordoned node:
+
+* `upgrade_node_post_upgrade_confirm: true` - This will pause the playbook execution after upgrading each node, but before the node is uncordoned. The play will resume when manually approved by typing "yes" at the terminal.
+* `upgrade_node_post_upgrade_pause_seconds: 60` - This will pause the playbook execution for 60 seconds after upgrading each node, but before the node is uncordoned. The play will resume automatically after 60 seconds.
+
+## Node-based upgrade
+
+If you don't want to upgrade all nodes in one run, you can use `--limit` [patterns](https://docs.ansible.com/ansible/latest/user_guide/intro_patterns.html#patterns-and-ansible-playbook-flags).
+
+Before using `--limit` run playbook `facts.yml` without the limit to refresh facts cache for all nodes:
+
+```ShellSession
+ansible-playbook facts.yml -b -i inventory/sample/hosts.ini
+```
+
+After this upgrade control plane and etcd groups [#5147](https://github.com/kubernetes-sigs/kubespray/issues/5147):
+
+```ShellSession
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 --limit "kube_control_plane:etcd"
+```
+
+Now you can upgrade other nodes in any order and quantity:
+
+```ShellSession
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 --limit "node4:node6:node7:node12"
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 --limit "node5*"
+```
 
 ## Multiple upgrades
 
@@ -67,9 +99,9 @@ If you want to manually control the upgrade procedure, you can use the variables
 
 For instance, if you're on v2.6.0, then check out v2.7.0, run the upgrade, check out the next tag, and run the next upgrade, etc.
 
-Assuming you don't explicitly define a kubernetes version in your k8s-cluster.yml, you simply check out the next tag and run the upgrade-cluster.yml playbook
+Assuming you don't explicitly define a kubernetes version in your k8s_cluster.yml, you simply check out the next tag and run the upgrade-cluster.yml playbook
 
-* If you do define kubernetes version in your inventory (e.g. group_vars/k8s-cluster.yml) then either make sure to update it before running upgrade-cluster, or specify the new version you're upgrading to: `ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml -e kube_version=v1.11.3`
+* If you do define kubernetes version in your inventory (e.g. group_vars/k8s_cluster.yml) then either make sure to update it before running upgrade-cluster, or specify the new version you're upgrading to: `ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml -e kube_version=v1.11.3`
 
   Otherwise, the upgrade will leave your cluster at the same k8s version defined in your inventory vars.
 
@@ -98,7 +130,7 @@ $ git checkout v2.7.0
 Previous HEAD position was 8b3ce6e4 bump upgrade tests to v2.5.0 commit (#3087)
 HEAD is now at 05dabb7e Fix Bionic networking restart error #3430 (#3431)
 
-# NOTE: May need to sudo pip3 install -r requirements.txt when upgrading.
+# NOTE: May need to `pip3 install -r requirements.txt` when upgrading.
 
 ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml
 
@@ -231,7 +263,7 @@ Previous HEAD position was 6f97687d Release 2.8 robust san handling (#4478)
 HEAD is now at a4e65c7c Upgrade to Ansible >2.7.0 (#4471)
 ```
 
-:warning: IMPORTANT: Some of the variable formats changed in the k8s-cluster.yml between 2.8.5 and 2.9.0 :warning:
+:warning: IMPORTANT: Some of the variable formats changed in the k8s_cluster.yml between 2.8.5 and 2.9.0 :warning:
 
 If you do not keep your inventory copy up to date, **your upgrade will fail** and your first master will be left non-functional until fixed and re-run.
 
@@ -276,6 +308,18 @@ caprica   Ready    master,node   7h40m   v1.14.1
 
 ```
 
+## Upgrading to v2.19
+
+`etcd_kubeadm_enabled` is being deprecated at v2.19. The same functionality is achievable by setting `etcd_deployment_type` to `kubeadm`.
+Deploying etcd using kubeadm is experimental and is only available for either new or deployments where `etcd_kubeadm_enabled` was set to `true` while deploying the cluster.
+
+From 2.19 and onward `etcd_deployment_type` variable will be placed in `group_vars/all/etcd.yml` instead of `group_vars/etcd.yml`, due to scope issues.
+The placement of the variable is only important for `etcd_deployment_type: kubeadm` right now. However, since this might change in future updates, it is recommended to move the variable.
+
+Upgrading is straightforward; no changes are required if `etcd_kubeadm_enabled` was not set to `true` when deploying.
+
+If you have a cluster where `etcd` was deployed using `kubeadm`, you will need to remove `etcd_kubeadm_enabled` the variable. Then move `etcd_deployment_type` variable from `group_vars/etcd.yml` to `group_vars/all/etcd.yml` due to scope issues and set `etcd_deployment_type` to `kubeadm`.
+
 ## Upgrade order
 
 As mentioned above, components are upgraded in the order in which they were
@@ -283,25 +327,12 @@ installed in the Ansible playbook. The order of component installation is as
 follows:
 
 * Docker
+* Containerd
 * etcd
 * kubelet and kube-proxy
 * network_plugin (such as Calico or Weave)
 * kube-apiserver, kube-scheduler, and kube-controller-manager
 * Add-ons (such as KubeDNS)
-
-## Upgrade considerations
-
-Kubespray supports rotating certificates used for etcd and Kubernetes
-components, but some manual steps may be required. If you have a pod that
-requires use of a service token and is deployed in a namespace other than
-`kube-system`, you will need to manually delete the affected pods after
-rotating certificates. This is because all service account tokens are dependent
-on the apiserver token that is used to generate them. When the certificate
-rotates, all service account tokens must be rotated as well. During the
-kubernetes-apps/rotate_tokens role, only pods in kube-system are destroyed and
-recreated. All other invalidated service account tokens are cleaned up
-automatically, but other pods are not deleted out of an abundance of caution
-for impact to user deployed pods.
 
 ### Component-based upgrades
 
@@ -325,10 +356,10 @@ Upgrade etcd:
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=etcd
 ```
 
-Upgrade vault:
+Upgrade etcd without rotating etcd certs:
 
 ```ShellSession
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=vault
+ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=etcd --limit=etcd --skip-tags=etcd-secrets
 ```
 
 Upgrade kubelet:
@@ -360,3 +391,11 @@ Upgrade just helm (assuming `helm_enabled` is true):
 ```ShellSession
 ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=helm
 ```
+
+## Migrate from Docker to Containerd
+
+Please note that **migrating container engines is not officially supported by Kubespray**. While this procedure can be used to migrate your cluster, it applies to one particular scenario and will likely evolve over time. At the moment, they are intended as an additional resource to provide insight into how these steps can be officially integrated into the Kubespray playbooks.
+
+As of Kubespray 2.18.0, containerd is already the default container engine. If you have the chance, it is advisable and safer to reset and redeploy the entire cluster with a new container engine.
+
+* [Migrating from Docker do Containerd](upgrades/migrate_docker2containerd.md)

@@ -10,7 +10,7 @@ In case your servers don't have access to internet (for example when deploying o
 
 ## Configure Inventory
 
-Once all artifacts are accessible from your internal network, **adjust** the following variables in [your inventory](/inventory/sample/group_vars/k8s-cluster/offline.yml) to match your environment:
+Once all artifacts are accessible from your internal network, **adjust** the following variables in [your inventory](/inventory/sample/group_vars/all/offline.yml) to match your environment:
 
 ```yaml
 # Registry overrides
@@ -23,13 +23,22 @@ kubeadm_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubeadm"
 kubectl_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubectl"
 kubelet_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubelet"
 # etcd is optional if you **DON'T** use etcd_deployment=host
-etcd_download_url: "{{ files_repo }}/kubernetes/etcd/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+etcd_download_url: "{{ files_repo }}/kubernetes/etcd/etcd-{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
 cni_download_url: "{{ files_repo }}/kubernetes/cni/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
 crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
 # If using Calico
 calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
+# If using Calico with kdd
+calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_version }}.tar.gz"
+# Containerd
+containerd_download_url: "{{ files_repo }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
+runc_download_url: "{{ files_repo }}/runc.{{ image_arch }}"
+nerdctl_download_url: "{{ files_repo }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+# Insecure registries for containerd
+containerd_insecure_registries:
+  - "{{ registry_host }}"
 
-# CentOS/Redhat
+# CentOS/Redhat/AlmaLinux/Rocky Linux
 ## Docker / Containerd
 docker_rh_repo_base_url: "{{ yum_repo }}/docker-ce/$releasever/$basearch"
 docker_rh_repo_gpgkey: "{{ yum_repo }}/docker-ce/gpg"
@@ -108,5 +117,3 @@ If you use [Kubespray Container Image](#recommended-way:-kubespray-container-ima
 ```bash
 docker run --rm -it -v path_to_inventory/my_airgap_cluster:inventory/my_airgap_cluster myprivateregisry.com/kubespray/kubespray:v2.14.0 ansible-playbook -i inventory/my_airgap_cluster/hosts.yaml -b cluster.yml
 ```
-
-## Please Note: Offline installation doesn't support CRI-O container runtime at the moment (see [this issue](https://github.com/kubernetes-sigs/kubespray/issues/6233))

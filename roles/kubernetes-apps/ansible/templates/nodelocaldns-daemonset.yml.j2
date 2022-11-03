@@ -16,8 +16,10 @@ spec:
         k8s-app: nodelocaldns
       annotations:
         prometheus.io/scrape: 'true'
-        prometheus.io/port: '9253'
+        prometheus.io/port: '{{ nodelocaldns_prometheus_port }}'
     spec:
+      nodeSelector:
+        {{ nodelocaldns_ds_nodeselector }}
       priorityClassName: system-cluster-critical
       serviceAccountName: nodelocaldns
       hostNetwork: true
@@ -35,10 +37,17 @@ spec:
             memory: {{ nodelocaldns_memory_limit }}
           requests:
             cpu: {{ nodelocaldns_cpu_requests }}
-            memory: {{ nodelocaldnsdns_memory_requests }}
-        args: [ "-localip", "{{ nodelocaldns_ip }}", "-conf", "/etc/coredns/Corefile", "-upstreamsvc", "coredns" ]
-        securityContext:
-          privileged: true
+            memory: {{ nodelocaldns_memory_requests }}
+        args:
+        - -localip
+        - {{ nodelocaldns_ip }}
+        - -conf
+        - /etc/coredns/Corefile
+        - -upstreamsvc
+        - coredns
+{% if enable_nodelocaldns_secondary %}
+        - -skipteardown
+{% else %}
         ports:
         - containerPort: 53
           name: dns
@@ -49,6 +58,16 @@ spec:
         - containerPort: 9253
           name: metrics
           protocol: TCP
+{% endif %}
+        securityContext:
+          privileged: true
+{% if nodelocaldns_bind_metrics_host_ip %}
+        env:
+          - name: MY_HOST_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+{% endif %}
         livenessProbe:
           httpGet:
             host: {{ nodelocaldns_ip }}

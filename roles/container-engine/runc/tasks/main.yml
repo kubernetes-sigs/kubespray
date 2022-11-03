@@ -1,0 +1,38 @@
+---
+- name: runc | check if fedora coreos
+  stat:
+    path: /run/ostree-booted
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: ostree
+
+- name: runc | set is_ostree
+  set_fact:
+    is_ostree: "{{ ostree.stat.exists }}"
+
+- name: runc | Uninstall runc package managed by package manager
+  package:
+    name: "{{ runc_package_name }}"
+    state: absent
+  when:
+    - not (is_ostree or (ansible_distribution == "Flatcar Container Linux by Kinvolk") or (ansible_distribution == "Flatcar"))
+
+- name: runc | Download runc binary
+  include_tasks: "../../../download/tasks/download_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.runc) }}"
+
+- name: Copy runc binary from download dir
+  copy:
+    src: "{{ downloads.runc.dest }}"
+    dest: "{{ runc_bin_dir }}/runc"
+    mode: 0755
+    remote_src: true
+
+- name: runc | Remove orphaned binary
+  file:
+    path: /usr/bin/runc
+    state: absent
+  when: runc_bin_dir != "/usr/bin"
+  ignore_errors: true  # noqa ignore-errors

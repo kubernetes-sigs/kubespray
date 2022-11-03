@@ -1,0 +1,72 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: hcloud-cloud-controller-manager
+  namespace: kube-system
+  labels:
+    k8s-app: hcloud-cloud-controller-manger
+spec:
+  selector:
+    matchLabels:
+      app: hcloud-cloud-controller-manager
+  template:
+    metadata:
+      labels:
+        app: hcloud-cloud-controller-manager
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      serviceAccountName: {{ external_hcloud_cloud.service_account_name }}
+      dnsPolicy: Default
+      tolerations:
+        - key: "node.cloudprovider.kubernetes.io/uninitialized"
+          value: "true"
+          effect: "NoSchedule"
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+        - key: "node-role.kubernetes.io/master"
+          effect: NoSchedule
+          operator: Exists
+        - key: "node-role.kubernetes.io/control-plane"
+          effect: NoSchedule
+          operator: Exists
+        - key: "node.kubernetes.io/not-ready"
+          effect: "NoSchedule"
+      hostNetwork: true
+      containers:
+        - image: {{ docker_image_repo }}/hetznercloud/hcloud-cloud-controller-manager:{{ external_hcloud_cloud.controller_image_tag }}
+          name: hcloud-cloud-controller-manager
+          command:
+            - "/bin/hcloud-cloud-controller-manager"
+            - "--cloud-provider=hcloud"
+            - "--leader-elect=false"
+            - "--allow-untagged-cloud"
+            - "--allocate-node-cidrs=true"
+            - "--cluster-cidr={{ kube_pods_subnet }}"
+{% if external_hcloud_cloud.controller_extra_args is defined %}
+
+          args:
+{% for key, value in external_hcloud_cloud.controller_extra_args.items() %}
+            - "{{ '--' + key + '=' + value }}"
+{% endfor %}
+{% endif %}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 50Mi
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: HCLOUD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ external_hcloud_cloud.token_secret_name }}
+                  key: token
+            - name: HCLOUD_NETWORK
+              valueFrom:
+                secretKeyRef:
+                  name: {{ external_hcloud_cloud.token_secret_name }}
+                  key: network

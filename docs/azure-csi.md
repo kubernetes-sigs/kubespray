@@ -8,7 +8,7 @@ To deploy Azure Disk CSI driver, uncomment the `azure_csi_enabled` option in `gr
 
 ## Azure Disk CSI Storage Class
 
-If you want to deploy the Azure Disk storage class to provision volumes dynamically, you should set `persistent_volumes_enabled` in `group_vars/k8s-cluster/k8s-cluster.yml` to `true`.
+If you want to deploy the Azure Disk storage class to provision volumes dynamically, you should set `persistent_volumes_enabled` in `group_vars/k8s_cluster/k8s_cluster.yml` to `true`.
 
 ## Parameters
 
@@ -57,19 +57,28 @@ The name of the network security group your instances are in, can be retrieved v
 These will have to be generated first:
 
 - Create an Azure AD Application with:
-`az ad app create --display-name kubespray --identifier-uris http://kubespray --homepage http://kubespray.com --password CLIENT_SECRET`
+
+  ```ShellSession
+  az ad app create --display-name kubespray --identifier-uris http://kubespray --homepage http://kubespray.com --password CLIENT_SECRET
+  ```
 
 Display name, identifier-uri, homepage and the password can be chosen
 
 Note the AppId in the output.
 
 - Create Service principal for the application with:
-`az ad sp create --id AppId`
+
+  ```ShellSession
+  az ad sp create --id AppId
+  ```
 
 This is the AppId from the last command
 
 - Create the role assignment with:
-`az role assignment create --role "Owner" --assignee http://kubespray --subscription SUBSCRIPTION_ID`
+
+  ```ShellSession
+  az role assignment create --role "Owner" --assignee http://kubespray --subscription SUBSCRIPTION_ID
+  ```
 
 azure\_csi\_aad\_client\_id must be set to the AppId, azure\_csi\_aad\_client\_secret is your chosen secret.
 

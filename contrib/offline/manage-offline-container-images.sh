@@ -15,7 +15,7 @@ function create_container_image_tar() {
 	IMAGES=$(kubectl describe pods --all-namespaces | grep " Image:" | awk '{print $2}' | sort | uniq)
 	# NOTE: etcd and pause cannot be seen as pods.
 	# The pause image is used for --pod-infra-container-image option of kubelet.
-	EXT_IMAGES=$(kubectl cluster-info dump | egrep "quay.io/coreos/etcd:|k8s.gcr.io/pause:" | sed s@\"@@g)
+	EXT_IMAGES=$(kubectl cluster-info dump | egrep "quay.io/coreos/etcd:|registry.k8s.io/pause:" | sed s@\"@@g)
 	IMAGES="${IMAGES} ${EXT_IMAGES}"
 
 	rm -f  ${IMAGE_TAR_FILE}
@@ -46,15 +46,16 @@ function create_container_image_tar() {
 
 		# NOTE: Here removes the following repo parts from each image
 		# so that these parts will be replaced with Kubespray.
-		# - kube_image_repo: "k8s.gcr.io"
+		# - kube_image_repo: "registry.k8s.io"
 		# - gcr_image_repo: "gcr.io"
 		# - docker_image_repo: "docker.io"
 		# - quay_image_repo: "quay.io"
 		FIRST_PART=$(echo ${image} | awk -F"/" '{print $1}')
-		if [ "${FIRST_PART}" = "k8s.gcr.io" ] ||
+		if [ "${FIRST_PART}" = "registry.k8s.io" ] ||
 		   [ "${FIRST_PART}" = "gcr.io" ] ||
 		   [ "${FIRST_PART}" = "docker.io" ] ||
-		   [ "${FIRST_PART}" = "quay.io" ]; then
+		   [ "${FIRST_PART}" = "quay.io" ] ||
+		   [ "${FIRST_PART}" = "${PRIVATE_REGISTRY}" ]; then
 			image=$(echo ${image} | sed s@"${FIRST_PART}/"@@)
 		fi
 		echo "${FILE_NAME}  ${image}" >> ${IMAGE_LIST}
@@ -100,15 +101,35 @@ function register_container_images() {
 
 	tar -zxvf ${IMAGE_TAR_FILE}
 	sudo docker load -i ${IMAGE_DIR}/registry-latest.tar
-	sudo docker run --restart=always -d -p 5000:5000 --name registry registry:latest
 	set +e
-
+	sudo docker container inspect registry >/dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		sudo docker run --restart=always -d -p 5000:5000 --name registry registry:latest
+	fi
 	set -e
+
 	while read -r line; do
 		file_name=$(echo ${line} | awk '{print $1}')
-		org_image=$(echo ${line} | awk '{print $2}')
-		new_image="${LOCALHOST_NAME}:5000/${org_image}"
-		image_id=$(tar -tf ${IMAGE_DIR}/${file_name} | grep "\.json" | grep -v manifest.json | sed s/"\.json"//)
+		raw_image=$(echo ${line} | awk '{print $2}')
+		new_image="${LOCALHOST_NAME}:5000/${raw_image}"
+		org_image=$(sudo docker load -i ${IMAGE_DIR}/${file_name} | head -n1 | awk '{print $3}')
+		image_id=$(sudo docker image inspect ${org_image} | grep "\"Id\":" | awk -F: '{print $3}'| sed s/'\",'//)
+		if [ -z "${file_name}" ]; then
+			echo "Failed to get file_name for line ${line}"
+			exit 1
+		fi
+		if [ -z "${raw_image}" ]; then
+			echo "Failed to get raw_image for line ${line}"
+			exit 1
+		fi
+		if [ -z "${org_image}" ]; then
+			echo "Failed to get org_image for line ${line}"
+			exit 1
+		fi
+		if [ -z "${image_id}" ]; then
+			echo "Failed to get image_id for file ${file_name}"
+			exit 1
+		fi
 		sudo docker load -i ${IMAGE_DIR}/${file_name}
 		sudo docker tag  ${image_id} ${new_image}
 		sudo docker push ${new_image}
@@ -132,7 +153,8 @@ else
 	echo "(2) Deploy local container registry and register the container images to the registry."
 	echo ""
 	echo "Step(1) should be done online site as a preparation, then we bring"
-	echo "the gotten images to the target offline environment."
+	echo "the gotten images to the target offline environment. if images are from"
+	echo "a private registry, you need to set PRIVATE_REGISTRY environment variable."
 	echo "Then we will run step(2) for registering the images to local registry."
 	echo ""
 	echo "${IMAGE_TAR_FILE} is created to contain your container images."

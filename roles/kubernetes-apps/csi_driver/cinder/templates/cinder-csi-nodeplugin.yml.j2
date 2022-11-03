@@ -15,7 +15,7 @@ spec:
       labels:
         app: csi-cinder-nodeplugin
     spec:
-      serviceAccount: csi-cinder-node-sa
+      serviceAccountName: csi-cinder-node-sa
       hostNetwork: true
       containers:
         - name: node-driver-registrar
@@ -24,10 +24,6 @@ spec:
           args:
             - "--csi-address=$(ADDRESS)"
             - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
-          lifecycle:
-            preStop:
-              exec:
-                command: ["/bin/sh", "-c", "rm -rf /registration/cinder.csi.openstack.org /registration/cinder.csi.openstack.org-reg.sock"]
           env:
             - name: ADDRESS
               value: /csi/csi.sock
@@ -42,6 +38,13 @@ spec:
               mountPath: /csi
             - name: registration-dir
               mountPath: /registration
+        - name: liveness-probe
+          image: {{ csi_livenessprobe_image_repo }}:{{ csi_livenessprobe_image_tag }}
+          args:
+            - "--csi-address=/csi/csi.sock"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
         - name: cinder-csi-plugin
           securityContext:
             privileged: true
@@ -52,27 +55,31 @@ spec:
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
             - /bin/cinder-csi-plugin
-            - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--cloud-config=$(CLOUD_CONFIG)"
           env:
-            - name: NODE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix://csi/csi.sock
             - name: CLOUD_CONFIG
               value: /etc/config/cloud.conf
+          ports:
+            - containerPort: 9808
+              name: healthz
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
             - name: kubelet-dir
               mountPath: /var/lib/kubelet
               mountPropagation: "Bidirectional"
-            - name: pods-cloud-data
-              mountPath: /var/lib/cloud/data
-              readOnly: true
             - name: pods-probe-dir
               mountPath: /dev
               mountPropagation: "HostToContainer"
@@ -100,10 +107,6 @@ spec:
           hostPath:
             path: /var/lib/kubelet
             type: Directory
-        - name: pods-cloud-data
-          hostPath:
-            path: /var/lib/cloud/data
-            type: Directory
         - name: pods-probe-dir
           hostPath:
             path: /dev
@@ -120,4 +123,8 @@ spec:
           hostPath:
             path: {{ kube_config_dir }}/cinder-cacert.pem
             type: FileOrCreate
+{% endif %}
+{% if cinder_tolerations %}
+      tolerations:
+        {{ cinder_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
 {% endif %}

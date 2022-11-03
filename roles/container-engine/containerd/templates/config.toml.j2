@@ -1,78 +1,77 @@
-# persistent data location
-root = "{{ containerd_metadata_root_dir }}"
-# runtime state information
+version = 2
+root = "{{ containerd_storage_dir }}"
 state = "{{ containerd_state_dir }}"
+oom_score = {{ containerd_oom_score }}
 
-# Kubernetes doesn't use containerd restart manager.
-disabled_plugins = ["restart"]
+[grpc]
+  max_recv_message_size = {{ containerd_grpc_max_recv_message_size | default(16777216) }}
+  max_send_message_size = {{ containerd_grpc_max_send_message_size | default(16777216) }}
 
 [debug]
-  level = "{{ containerd_config.debug.level | default("") }}"
+  level = "{{ containerd_debug_level | default('info') }}"
 
-{% if 'grpc' in containerd_config %}
-[grpc]
-{% for param, value in containerd_config.grpc.items() %}
-  {{ param }} = {{ value }}
-{% endfor %}
-{% endif %}
-
-[plugins.linux]
-  shim = "/usr/bin/containerd-shim"
-  runtime = "{{ runc_binary }}"
-
-[plugins.cri]
-  stream_server_address = "127.0.0.1"
-  max_container_log_line_size = {{ containerd_config.max_container_log_line_size }}
-  sandbox_image = "{{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}"
-  systemd_cgroup = {{ containerd_use_systemd_cgroup|lower }}
-
-[plugins.cri.cni]
-  bin_dir = "/opt/cni/bin"
-  conf_dir = "/etc/cni/net.d"
-  conf_template = ""
-
-{% if 'containerd' in containerd_config %}
-[plugins.cri.containerd]
-{% for param, value in containerd_config.containerd.items() %}
-  {{ param }} = "{{ value }}"
-{% endfor %}
-{% endif %}
-
-[plugins.cri.containerd.default_runtime]
-  runtime_type = "{{ containerd_default_runtime.type }}"
-  runtime_engine = "{{ containerd_default_runtime.engine }}"
-  runtime_root = "{{ containerd_default_runtime.root }}"
-
-{% if kata_containers_enabled %}
-[plugins.cri.containerd.runtimes.kata-qemu]
-  runtime_type = "io.containerd.kata-qemu.v2"
-  [plugins.cri.containerd.runtimes.kata-qemu.options]
-    ConfigPath = "/etc/kata-containers/configuration-qemu.toml"
-{% endif %}
-
-{% for runtime in containerd_runtimes %}
-[plugins.cri.containerd.runtimes.{{ runtime.name }}]
-  runtime_type = "{{ runtime.type }}"
-  runtime_engine = "{{ runtime.engine }}"
-  runtime_root = "{{ runtime.root }}"
-{% endfor %}
-
-[plugins.cri.containerd.untrusted_workload_runtime]
-  runtime_type = "{{ containerd_untrusted_runtime_type }}"
-  runtime_engine = "{{ containerd_untrusted_runtime_engine }}"
-  runtime_root = "{{ containerd_untrusted_runtime_root }}"
-
-{% if 'registries' in containerd_config %}
-[plugins.cri.registry]
-[plugins.cri.registry.mirrors]
-{% for registry, addr in containerd_config.registries.items() %}
-[plugins.cri.registry.mirrors."{{ registry }}"]
-  endpoint = ["{{ ([ addr ] | flatten ) | join('","') }}"]
-{% endfor %}
-{% endif %}
-
-{% if 'metrics' in containerd_config %}
 [metrics]
-  address = "{{ containerd_config.metrics.address | default('') }}"
-  grpc_histogram = {{ containerd_config.metrics.grpc_histogram | default(false) | lower }}
+  address = "{{ containerd_metrics_address | default('') }}"
+  grpc_histogram = {{ containerd_metrics_grpc_histogram | default(false) | lower }}
+
+[plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+    sandbox_image = "{{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}"
+    max_container_log_line_size = {{ containerd_max_container_log_line_size }}
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+      default_runtime_name = "{{ containerd_default_runtime | default('runc') }}"
+      snapshotter = "{{ containerd_snapshotter | default('overlayfs') }}"
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+{% for runtime in [containerd_runc_runtime] + containerd_additional_runtimes %}
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.{{ runtime.name }}]
+          runtime_type = "{{ runtime.type }}"
+          runtime_engine = "{{ runtime.engine }}"
+          runtime_root = "{{ runtime.root }}"
+{% if runtime.base_runtime_spec is defined %}
+          base_runtime_spec = "{{ containerd_cfg_dir }}/{{ runtime.base_runtime_spec }}"
+{% endif %}
+
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.{{ runtime.name }}.options]
+{% for key, value in runtime.options.items() %}
+            {{ key }} = {{ value }}
+{% endfor %}
+{% endfor %}
+{% if kata_containers_enabled %}
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.kata-qemu]
+          runtime_type = "io.containerd.kata-qemu.v2"
+{% endif %}
+{% if gvisor_enabled %}
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
+          runtime_type = "io.containerd.runsc.v1"
+{% endif %}
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+{% for registry, addr in containerd_registries.items() %}
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ registry }}"]
+          endpoint = ["{{ ([ addr ] | flatten ) | join('","') }}"]
+{% endfor %}
+{% if containerd_insecure_registries is defined and containerd_insecure_registries|length>0 %}
+{% for registry, addr in containerd_insecure_registries.items() %}
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ registry }}"]
+          endpoint = ["{{ ([ addr ] | flatten ) | join('","') }}"]
+{% endfor %}
+{% for addr in containerd_insecure_registries.values() | flatten | unique %}
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ addr }}".tls]
+          insecure_skip_verify = true
+{% endfor %}
+{% endif %}
+{% for registry in containerd_registry_auth if registry['registry'] is defined %}
+{% if (registry['username'] is defined and registry['password'] is defined) or registry['auth'] is defined %}
+      [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ registry['registry'] }}".auth]
+{% if registry['username'] is defined and registry['password'] is defined %}
+        password = "{{ registry['password'] }}"
+        username = "{{ registry['username'] }}"
+{% else %}
+        auth = "{{ registry['auth'] }}"
+{% endif %}
+{% endif %}
+{% endfor %}
+
+{% if containerd_extra_args is defined %}
+{{ containerd_extra_args }}
 {% endif %}

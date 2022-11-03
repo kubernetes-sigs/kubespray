@@ -6,7 +6,7 @@ To deploy GCP Persistent Disk CSI driver, uncomment the `gcp_pd_csi_enabled` opt
 
 ## GCP Persistent Disk Storage Class
 
-If you want to deploy the GCP Persistent Disk storage class to provision volumes dynamically, you should set `persistent_volumes_enabled` in `group_vars/k8s-cluster/k8s-cluster.yml` to `true`.
+If you want to deploy the GCP Persistent Disk storage class to provision volumes dynamically, you should set `persistent_volumes_enabled` in `group_vars/k8s_cluster/k8s_cluster.yml` to `true`.
 
 ## GCP credentials
 

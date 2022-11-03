@@ -8,7 +8,7 @@ To set the number of replicas for the AWS CSI controller, you can change `aws_eb
 
 Make sure to add a role, for your EC2 instances hosting Kubernetes, that allows it to do the actions necessary to request a volume and attach it: [AWS CSI Policy](https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/master/docs/example-iam-policy.json)
 
-If you want to deploy the AWS EBS storage class used with the CSI Driver, you should set `persistent_volumes_enabled` in `group_vars/k8s-cluster/k8s-cluster.yml` to `true`.
+If you want to deploy the AWS EBS storage class used with the CSI Driver, you should set `persistent_volumes_enabled` in `group_vars/k8s_cluster/k8s_cluster.yml` to `true`.
 
 You can now run the kubespray playbook (cluster.yml) to deploy Kubernetes over AWS EC2 with EBS CSI Driver enabled.
 
@@ -27,7 +27,7 @@ Check the associated storage class (if you enabled persistent_volumes):
 ```ShellSession
 $ kubectl get storageclass
 NAME         PROVISIONER                AGE
-ebs-sc   ebs.csi.aws.com   45s
+ebs-sc       ebs.csi.aws.com            45s
 ```
 
 You can run a PVC and an example Pod using this file `ebs-pod.yml`:
@@ -71,8 +71,8 @@ You should see the PVC provisioned and bound:
 
 ```ShellSession
 $ kubectl get pvc
-NAME                   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
-ebs-claim   Bound    pvc-0034cb9e-1ddd-4b3f-bb9e-0b5edbf5194c   1Gi        RWO            ebs-sc         50s
+NAME          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+ebs-claim     Bound    pvc-0034cb9e-1ddd-4b3f-bb9e-0b5edbf5194c   1Gi        RWO            ebs-sc         50s
 ```
 
 And the volume mounted to the example Pod (wait until the Pod is Running):

@@ -11,7 +11,7 @@ You can use an
 to create or modify an Ansible inventory. Currently, it is limited in
 functionality and is only used for configuring a basic Kubespray cluster inventory, but it does
 support creating inventory file for large clusters as well. It now supports
-separated ETCD and Kubernetes master roles from node role if the size exceeds a
+separated ETCD and Kubernetes control plane roles from node role if the size exceeds a
 certain threshold. Run `python3 contrib/inventory_builder/inventory.py help` for more information.
 
 Example inventory generator usage:
@@ -40,9 +40,9 @@ See more details in the [ansible guide](/docs/ansible.md).
 
 ### Adding nodes
 
-You may want to add worker, master or etcd nodes to your existing cluster. This can be done by re-running the `cluster.yml` playbook, or you can target the bare minimum needed to get kubelet installed on the worker and talking to your masters. This is especially helpful when doing something like autoscaling your clusters.
+You may want to add worker, control plane or etcd nodes to your existing cluster. This can be done by re-running the `cluster.yml` playbook, or you can target the bare minimum needed to get kubelet installed on the worker and talking to your control planes. This is especially helpful when doing something like autoscaling your clusters.
 
-- Add the new worker node to your inventory in the appropriate group (or utilize a [dynamic inventory](https://docs.ansible.com/ansible/intro_dynamic_inventory.html)).
+- Add the new worker node to your inventory in the appropriate group (or utilize a [dynamic inventory](https://docs.ansible.com/ansible/latest/user_guide/intro_inventory.html)).
 - Run the ansible-playbook command, substituting `cluster.yml` for `scale.yml`:
 
 ```ShellSession
@@ -52,7 +52,7 @@ ansible-playbook -i inventory/mycluster/hosts.yml scale.yml -b -v \
 
 ### Remove nodes
 
-You may want to remove **master**, **worker**, or **etcd** nodes from your
+You may want to remove **control plane**, **worker**, or **etcd** nodes from your
 existing cluster. This can be done by re-running the `remove-node.yml`
 playbook. First, all specified nodes will be drained, then stop some
 kubernetes services and delete some certificates,
@@ -76,17 +76,17 @@ var in inventory.
 
 ## Connecting to Kubernetes
 
-By default, Kubespray configures kube-master hosts with insecure access to
+By default, Kubespray configures kube_control_plane hosts with insecure access to
 kube-apiserver via port 8080. A kubeconfig file is not necessary in this case,
 because kubectl will use <http://localhost:8080> to connect. The kubeconfig files
-generated will point to localhost (on kube-masters) and kube-node hosts will
+generated will point to localhost (on kube_control_planes) and kube_node hosts will
 connect either to a localhost nginx proxy or to a loadbalancer if configured.
 More details on this process are in the [HA guide](/docs/ha-mode.md).
 
 Kubespray permits connecting to the cluster remotely on any IP of any
-kube-master host on port 6443 by default. However, this requires
-authentication. One can get a kubeconfig from kube-master hosts
-(see [below](#accessing-kubernetes-api)) or connect with a [username and password](/docs/vars.md#user-accounts).
+kube_control_plane host on port 6443 by default. However, this requires
+authentication. One can get a kubeconfig from kube_control_plane hosts
+(see [below](#accessing-kubernetes-api)).
 
 For more information on kubeconfig and accessing a Kubernetes cluster, refer to
 the Kubernetes [documentation](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/).
@@ -108,18 +108,18 @@ Accessing through Ingress is highly recommended. For proxy access, please note t
 
 For token authentication, guide to create Service Account is provided in [dashboard sample user](https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md) doc. Still take care of default namespace.
 
-Access can also by achieved via ssh tunnel on a master :
+Access can also by achieved via ssh tunnel on a control plane :
 
 ```bash
-# localhost:8081 will be sent to master-1's own localhost:8081
-ssh -L8001:localhost:8001 user@master-1
+# localhost:8081 will be sent to control-plane-1's own localhost:8081
+ssh -L8001:localhost:8001 user@control-plane-1
 sudo -i
 kubectl proxy
 ```
 
 ## Accessing Kubernetes API
 
-The main client of Kubernetes is `kubectl`. It is installed on each kube-master
+The main client of Kubernetes is `kubectl`. It is installed on each kube_control_plane
 host and can optionally be configured on your ansible host by setting
 `kubectl_localhost: true` and `kubeconfig_localhost: true` in the configuration:
 

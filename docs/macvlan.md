@@ -2,7 +2,7 @@
 
 ## How to use it
 
-* Enable macvlan in `group_vars/k8s-cluster/k8s-cluster.yml`
+* Enable macvlan in `group_vars/k8s_cluster/k8s_cluster.yml`
 
 ```yml
 ...
@@ -10,7 +10,7 @@ kube_network_plugin: macvlan
 ...
 ```
 
-* Adjust the `macvlan_interface` in `group_vars/k8s-cluster/k8s-net-macvlan.yml` or by host in the `host.yml` file:
+* Adjust the `macvlan_interface` in `group_vars/k8s_cluster/k8s-net-macvlan.yml` or by host in the `host.yml` file:
 
 ```yml
 all:
@@ -34,7 +34,7 @@ add `kube_proxy_masquerade_all: true` in `group_vars/all/all.yml`
 
 The nodelocal dns IP is not reacheable.
 
-Disable it in `sample/group_vars/k8s-cluster/k8s-cluster.yml`
+Disable it in `sample/group_vars/k8s_cluster/k8s_cluster.yml`
 
 ```yml
 enable_nodelocaldns: false

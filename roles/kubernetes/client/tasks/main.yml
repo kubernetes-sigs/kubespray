@@ -4,6 +4,8 @@
     external_apiserver_address: >-
       {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined -%}
       {{ loadbalancer_apiserver.address }}
+      {%- elif kubeconfig_localhost_ansible_host is defined and kubeconfig_localhost_ansible_host -%}
+      {{ hostvars[groups['kube_control_plane'][0]].ansible_host }}
       {%- else -%}
       {{ kube_apiserver_access_address }}
       {%- endif -%}
@@ -47,33 +49,16 @@
     port: "{{ kube_apiserver_port }}"
     timeout: 180
 
-- name: Create external_kubeconfig dir
-  file:
-    path: "{{ kube_config_dir }}/external_kubeconfig"
-    mode: "0750"
-    state: directory
-  when: kubeconfig_localhost
-
-# NOTE(mattymo): Please forgive this workaround
-- name: Generate admin kubeconfig with external api endpoint  # noqa 302
-  shell: >-
-    {{ bin_dir }}/kubeadm
-    init phase
-    kubeconfig admin
-    --kubeconfig-dir {{ kube_config_dir }}/external_kubeconfig
-    --cert-dir {{ kube_cert_dir }}
-    --apiserver-advertise-address {{ external_apiserver_address }}
-    --apiserver-bind-port {{ external_apiserver_port }}
-    >/dev/null && cat {{ kube_config_dir }}/external_kubeconfig/admin.conf &&
-    rm -rf {{ kube_config_dir }}/external_kubeconfig
-  environment: "{{ proxy_env }}"
+- name: Get admin kubeconfig from remote host
+  slurp:
+    src: "{{ kube_config_dir }}/admin.conf"
   run_once: yes
   register: raw_admin_kubeconfig
   when: kubeconfig_localhost
 
 - name: Convert kubeconfig to YAML
   set_fact:
-    admin_kubeconfig: "{{ raw_admin_kubeconfig.stdout | from_yaml }}"
+    admin_kubeconfig: "{{ raw_admin_kubeconfig.content | b64decode | from_yaml }}"
   when: kubeconfig_localhost
 
 - name: Override username in kubeconfig
@@ -84,7 +69,7 @@
     user_certs: "{{ admin_kubeconfig['users'][0]['user'] }}"
     username: "kubernetes-admin-{{ cluster_name }}"
     context: "kubernetes-admin-{{ cluster_name }}@{{ cluster_name }}"
-    override_cluster_name: "{{ { 'clusters': [ { 'cluster': cluster_infos, 'name': cluster_name } ] } }}"
+    override_cluster_name: "{{ { 'clusters': [ { 'cluster': (cluster_infos|combine({'server': 'https://'+external_apiserver_address+':'+(external_apiserver_port|string)})), 'name': cluster_name } ] } }}"
     override_context: "{{ { 'contexts': [ { 'context': { 'user': username, 'cluster': cluster_name }, 'name': context } ], 'current-context': context } }}"
     override_user: "{{ { 'users': [ { 'name': username, 'user': user_certs  } ] } }}"
   when: kubeconfig_localhost
@@ -106,6 +91,9 @@
     dest: "{{ artifacts_dir }}/kubectl"
     flat: yes
     validate_checksum: no
+  register: copy_binary_result
+  until: copy_binary_result is not failed
+  retries: 20
   become: no
   run_once: yes
   when: kubectl_localhost

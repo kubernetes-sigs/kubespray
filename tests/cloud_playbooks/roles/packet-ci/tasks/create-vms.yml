@@ -1,30 +1,27 @@
 ---
 
 - name: "Create CI namespace {{ test_name }} for test vms"
-  k8s:
-    name: "{{ test_name }}"
-    kind: Namespace
-    state: present
-  register: create_ci_ns
-  failed_when: not create_ci_ns.changed
+  command: "kubectl create namespace {{ test_name }}"
+  changed_when: false
 
 - name: "Create temp dir /tmp/{{ test_name }} for CI files"
   file:
     path: "/tmp/{{ test_name }}"
     state: directory
+    mode: 0755
 
 - name: Template vm files for CI job
   template:
     src: "vm.yml.j2"
     dest: "/tmp/{{ test_name }}/instance-{{ vm_id }}.yml"
+    mode: 0644
   loop: "{{ range(1, vm_count|int + 1, 1) | list }}"
   loop_control:
     index_var: vm_id
 
 - name: Start vms for CI job
-  k8s:
-    state: present
-    src: "/tmp/{{ test_name }}/instance-{{ vm_id }}.yml"
+  command: "kubectl apply -f /tmp/{{ test_name }}/instance-{{ vm_id }}.yml"
+  changed_when: false
   loop: "{{ range(1, vm_count|int + 1, 1) | list }}"
   loop_control:
     index_var: vm_id
@@ -47,5 +44,6 @@
   template:
     src: "inventory.j2"
     dest: "{{ inventory_path }}"
+    mode: 0644
   vars:
     vms: "{{ vm_ips }}"

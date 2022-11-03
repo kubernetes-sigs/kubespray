@@ -3,11 +3,13 @@
   file:
     path: /etc/systemd/system/docker.service.d
     state: directory
+    mode: 0755
 
 - name: Write docker proxy drop-in
   template:
     src: http-proxy.conf.j2
     dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+    mode: 0644
   notify: restart docker
   when: http_proxy is defined or https_proxy is defined
 
@@ -25,22 +27,25 @@
   template:
     src: docker.service.j2
     dest: /etc/systemd/system/docker.service
+    mode: 0644
   register: docker_service_file
   notify: restart docker
   when:
-    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     - not is_fedora_coreos
 
 - name: Write docker options systemd drop-in
   template:
     src: docker-options.conf.j2
     dest: "/etc/systemd/system/docker.service.d/docker-options.conf"
+    mode: 0644
   notify: restart docker
 
 - name: Write docker dns systemd drop-in
   template:
     src: docker-dns.conf.j2
     dest: "/etc/systemd/system/docker.service.d/docker-dns.conf"
+    mode: 0644
   notify: restart docker
   when: dns_mode != 'none' and resolvconf_mode == 'docker_dns'
 
@@ -55,7 +60,9 @@
   template:
     src: docker-orphan-cleanup.conf.j2
     dest: "/etc/systemd/system/docker.service.d/docker-orphan-cleanup.conf"
+    mode: 0644
   notify: restart docker
   when: docker_orphan_clean_up | bool
 
-- meta: flush_handlers
+- name: Flush handlers
+  meta: flush_handlers

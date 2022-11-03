@@ -22,6 +22,7 @@ spec:
         prometheus.io/scrape: "true"
     spec:
       serviceAccountName: ingress-nginx
+      terminationGracePeriodSeconds: {{ ingress_nginx_termination_grace_period_seconds }}
 {% if ingress_nginx_host_network %}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
@@ -50,6 +51,11 @@ spec:
             - --tcp-services-configmap=$(POD_NAMESPACE)/tcp-services
             - --udp-services-configmap=$(POD_NAMESPACE)/udp-services
             - --annotations-prefix=nginx.ingress.kubernetes.io
+{% if ingress_nginx_class is defined %}
+            - --ingress-class={{ ingress_nginx_class }}
+{% else %}
+            - --watch-ingress-without-class=true
+{% endif %}
 {% if ingress_nginx_host_network %}
             - --report-node-internal-ip-address
 {% endif %}
@@ -59,6 +65,11 @@ spec:
 {% for extra_arg in ingress_nginx_extra_args %}
             - {{ extra_arg }}
 {% endfor %}
+{% if ingress_nginx_webhook_enabled %}
+            - --validating-webhook=:8443
+            - --validating-webhook-certificate=/usr/local/certificates/cert
+            - --validating-webhook-key=/usr/local/certificates/key
+{% endif %}
           securityContext:
             capabilities:
                 drop:
@@ -91,13 +102,17 @@ spec:
 {% if not ingress_nginx_host_network %}
               hostPort: {{ ingress_nginx_metrics_port }}
 {% endif %}
+{% if ingress_nginx_webhook_enabled %}
+            - name: webhook
+              containerPort: 8443
+              protocol: TCP
+{% endif %}
           livenessProbe:
-            failureThreshold: 3
             httpGet:
               path: /healthz
               port: 10254
               scheme: HTTP
-            initialDelaySeconds: 10
+            initialDelaySeconds: {{ ingress_nginx_probe_initial_delay_seconds }}
             periodSeconds: 10
             timeoutSeconds: 5
             successThreshold: 1
@@ -107,8 +122,20 @@ spec:
               path: /healthz
               port: 10254
               scheme: HTTP
-            initialDelaySeconds: 10
+            initialDelaySeconds: {{ ingress_nginx_probe_initial_delay_seconds }}
             periodSeconds: 10
             timeoutSeconds: 5
             successThreshold: 1
             failureThreshold: 3
+{% if ingress_nginx_webhook_enabled %}
+          volumeMounts:
+            - mountPath: /usr/local/certificates/
+              name: webhook-cert
+              readOnly: true
+{% endif %}
+{% if ingress_nginx_webhook_enabled %}
+      volumes:
+        - name: webhook-cert
+          secret:
+            secretName: ingress-nginx-admission
+{% endif %}

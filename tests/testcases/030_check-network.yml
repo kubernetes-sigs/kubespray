@@ -1,19 +1,19 @@
 ---
-- hosts: kube-master[0]
+- hosts: kube_control_plane[0]
   vars:
-    test_image_repo: busybox
-    test_image_tag: latest
+    test_image_repo: registry.k8s.io/e2e-test-images/agnhost
+    test_image_tag: "2.40"
 
   tasks:
   - name: Force binaries directory for Flatcar Container Linux by Kinvolk
     set_fact:
       bin_dir: "/opt/bin"
-    when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
   - name: Force binaries directory for other hosts
     set_fact:
       bin_dir: "/usr/local/bin"
-    when: not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    when: not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
   - name: Approve kubelet serving certificates
     block:
@@ -34,7 +34,7 @@
       when: get_csr.stdout_lines | length > 0
       changed_when: certificate_approve.stdout
 
-    - debug:
+    - debug:  # noqa unnamed-task
         msg: "{{ certificate_approve.stdout.split('\n') }}"
 
     when: kubelet_rotate_server_certificates | default(false)
@@ -49,18 +49,39 @@
       executable: /bin/bash
     changed_when: false
     register: default_token
-    until: default_token.stdout.find('<none>') == -1
+    until: default_token.stdout | length > 0
     retries: 5
     delay: 5
 
-  - name: Run 2 busybox pods in test ns
-    command: "{{ bin_dir }}/kubectl run {{ item }} --image={{ test_image_repo }}:{{ test_image_tag }} --namespace test --command -- tail -f /dev/null"
+  - name: Run 2 agnhost pods in test ns
+    shell:
+      cmd: |
+        cat <<EOF | {{ bin_dir }}/kubectl apply -f -
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: {{ item }}
+          namespace: test
+        spec:
+          containers:
+          - name: agnhost
+            image: {{ test_image_repo }}:{{ test_image_tag }}
+            command: ['/agnhost', 'netexec', '--http-port=8080']
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ['ALL']
+              runAsUser: 1000
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+        EOF
     changed_when: false
     loop:
-    - busybox1
-    - busybox2
+    - agnhost1
+    - agnhost2
 
-  - import_role:
+  - import_role:  # noqa unnamed-task
       name: cluster-dump
 
   - name: Check that all pods are running and ready
@@ -83,7 +104,7 @@
     register: pods
     no_log: true
 
-  - debug:
+  - debug:  # noqa unnamed-task
       msg: "{{ pods.stdout.split('\n') }}"
     failed_when: not run_pods_log is success
 
@@ -92,7 +113,7 @@
             jsonpath='{range .items[?(.spec.hostNetwork)]}{.metadata.name} {.status.podIP} {.status.containerStatuses} {end}'"
     changed_when: false
     register: hostnet_pods
-    ignore_errors: true
+    ignore_errors: true  # noqa ignore-errors
     no_log: true
 
   - name: Get running pods
@@ -108,7 +129,7 @@
     register: get_pods
     no_log: true
 
-  - debug:
+  - debug:  # noqa unnamed-task
       msg: "{{ get_pods.stdout.split('\n') }}"
 
   - name: Set networking facts
@@ -131,8 +152,8 @@
     - item in pods_running
     with_items: "{{ pod_ips }}"
 
-  - name: Ping between pods is working
-    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- ping -c 4 {{ item[1] }}"
+  - name: Curl between pods is working
+    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- curl {{ item[1] }}:8080"
     when:
     - not item[0] in pods_hostnet
     - not item[1] in pods_hostnet
@@ -140,8 +161,8 @@
     - "{{ pod_names }}"
     - "{{ pod_ips }}"
 
-  - name: Ping between hostnet pods is working
-    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- ping -c 4 {{ item[1] }}"
+  - name: Curl between hostnet pods is working
+    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- curl {{ item[1] }}:8080"
     when:
     - item[0] in pods_hostnet
     - item[1] in pods_hostnet

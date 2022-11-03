@@ -25,7 +25,7 @@
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
     - systemd_resolved_enabled.rc != 0
-    - not is_fedora_coreos
+    - networkmanager_enabled.rc != 0
   tags:
     - bootstrap-os
     - resolvconf
@@ -39,11 +39,17 @@
     - bootstrap-os
     - resolvconf
 
-- import_tasks: 0062-networkmanager.yml
+- import_tasks: 0062-networkmanager-unmanaged-devices.yml
+  when:
+    - networkmanager_enabled.rc == 0
+  tags:
+    - bootstrap-os
+
+- import_tasks: 0063-networkmanager-dns.yml
   when:
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
-    - is_fedora_coreos
+    - networkmanager_enabled.rc == 0
   tags:
     - bootstrap-os
     - resolvconf
@@ -60,6 +66,13 @@
   tags:
     - bootstrap-os
 
+- import_tasks: 0081-ntp-configurations.yml
+  when:
+    - not dns_late
+    - ntp_enabled
+  tags:
+    - bootstrap-os
+
 - import_tasks: 0090-etchosts.yml
   when:
     - not dns_late
@@ -71,7 +84,8 @@
   when:
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
-    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    - dhclientconffile is defined
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
   tags:
     - bootstrap-os
     - resolvconf
@@ -80,14 +94,16 @@
   when:
     - dns_mode != 'none'
     - resolvconf_mode != 'host_resolvconf'
-    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    - dhclientconffile is defined
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
   tags:
     - bootstrap-os
     - resolvconf
 
 # We need to make sure the network is restarted early enough so that docker can later pick up the correct system
 # nameservers and search domains
-- meta: flush_handlers
+- name: Flush handlers
+  meta: flush_handlers
 
 - name: Check if we are running inside a Azure VM
   stat:
@@ -105,6 +121,14 @@
   when:
     - not dns_late
     - azure_check.stat.exists
-    - ansible_distribution in ["CentOS","RedHat","OracleLinux"]
+    - ansible_os_family == "RedHat"
   tags:
     - bootstrap-os
+
+- name: Run calico checks
+  include_role:
+    name: network_plugin/calico
+    tasks_from: check
+  when:
+    - kube_network_plugin == 'calico'
+    - not ignore_assert_errors

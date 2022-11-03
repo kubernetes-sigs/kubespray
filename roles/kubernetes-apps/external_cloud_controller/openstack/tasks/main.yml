@@ -2,32 +2,20 @@
 - include_tasks: openstack-credential-check.yml
   tags: external-openstack
 
-- name: External OpenStack Cloud Controller | Write cacert file
-  include_tasks: openstack-write-cacert.yml
-  run_once: true
-  loop: "{{ groups['k8s-cluster'] }}"
-  loop_control:
-    loop_var: delegate_host_to_write_cacert
+- name: External OpenStack Cloud Controller | Get base64 cacert
+  slurp:
+    src: "{{ external_openstack_cacert }}"
+  register: external_openstack_cacert_b64
   when:
-    - inventory_hostname in groups['k8s-cluster']
+    - inventory_hostname == groups['kube_control_plane'][0]
     - external_openstack_cacert is defined
     - external_openstack_cacert | length > 0
   tags: external-openstack
 
-- name: External OpenStack Cloud Controller | Write External OpenStack cloud-config
-  template:
-    src: "external-openstack-cloud-config.j2"
-    dest: "{{ kube_config_dir }}/external_openstack_cloud_config"
-    group: "{{ kube_cert_group }}"
-    mode: 0640
-  when: inventory_hostname == groups['kube-master'][0]
-  tags: external-openstack
-
 - name: External OpenStack Cloud Controller | Get base64 cloud-config
-  slurp:
-    src: "{{ kube_config_dir }}/external_openstack_cloud_config"
-  register: external_openstack_cloud_config_secret
-  when: inventory_hostname == groups['kube-master'][0]
+  set_fact:
+    external_openstack_cloud_config_secret: "{{ lookup('template', 'external-openstack-cloud-config.j2') | b64encode }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]
   tags: external-openstack
 
 - name: External OpenStack Cloud Controller | Generate Manifests
@@ -42,7 +30,7 @@
     - {name: external-openstack-cloud-controller-manager-role-bindings, file: external-openstack-cloud-controller-manager-role-bindings.yml}
     - {name: external-openstack-cloud-controller-manager-ds, file: external-openstack-cloud-controller-manager-ds.yml}
   register: external_openstack_manifests
-  when: inventory_hostname == groups['kube-master'][0]
+  when: inventory_hostname == groups['kube_control_plane'][0]
   tags: external-openstack
 
 - name: External OpenStack Cloud Controller | Apply Manifests
@@ -53,7 +41,7 @@
   with_items:
     - "{{ external_openstack_manifests.results }}"
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
     - not item is skipped
   loop_control:
     label: "{{ item.item.file }}"

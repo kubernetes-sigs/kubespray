@@ -1,0 +1,101 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: csi-upcloud-node
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: csi-upcloud-node
+  template:
+    metadata:
+      labels:
+        app: csi-upcloud-node
+        role: csi-upcloud
+    spec:
+      priorityClassName: system-node-critical
+      serviceAccount: csi-upcloud-node-sa
+      hostNetwork: true
+      containers:
+        - name: csi-node-driver-registrar
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:{{ upcloud_csi_node_image_tag }}
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: DRIVER_REG_SOCK_PATH
+              value: /var/lib/kubelet/plugins/storage.csi.upcloud.com/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi/
+            - name: registration-dir
+              mountPath: /registration/
+        - name: csi-upcloud-plugin
+          image: ghcr.io/upcloudltd/upcloud-csi:{{ upcloud_csi_plugin_image_tag }}
+          args:
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--nodehost=$(NODE_ID)"
+            - "--username=$(UPCLOUD_USERNAME)"
+            - "--password=$(UPCLOUD_PASSWORD)"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: UPCLOUD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: upcloud
+                  key: username
+            - name: UPCLOUD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: upcloud
+                  key: password
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          imagePullPolicy: "Always"
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: pods-mount-dir
+              mountPath: /var/lib/kubelet
+              # needed so that any mounts setup inside this container are
+              # propagated back to the host machine.
+              mountPropagation: "Bidirectional"
+            - name: device-dir
+              mountPath: /dev
+      imagePullSecrets:
+        - name: regcred
+      volumes:
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: DirectoryOrCreate
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/storage.csi.upcloud.com
+            type: DirectoryOrCreate
+        - name: pods-mount-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        - name: device-dir
+          hostPath:
+            path: /dev
+{% if upcloud_tolerations %}
+      tolerations:
+        {{ upcloud_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
+{% endif %}

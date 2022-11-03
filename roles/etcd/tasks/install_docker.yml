@@ -2,6 +2,30 @@
 - import_tasks: install_etcdctl_docker.yml
   when: etcd_cluster_setup
 
+- name: Get currently-deployed etcd version
+  shell: "{{ docker_bin_dir }}/docker ps --filter='name={{ etcd_member_name }}' --format='{{ '{{ .Image }}' }}'"
+  register: etcd_current_docker_image
+  when: etcd_cluster_setup
+
+- name: Get currently-deployed etcd-events version
+  shell: "{{ docker_bin_dir }}/docker ps --filter='name={{ etcd_member_name }}-events' --format='{{ '{{ .Image }}' }}'"
+  register: etcd_events_current_docker_image
+  when: etcd_events_cluster_setup
+
+- name: Restart etcd if necessary
+  command: /bin/true
+  notify: restart etcd
+  when:
+    - etcd_cluster_setup
+    - etcd_image_tag not in etcd_current_docker_image.stdout|default('')
+
+- name: Restart etcd-events if necessary
+  command: /bin/true
+  notify: restart etcd-events
+  when:
+    - etcd_events_cluster_setup
+    - etcd_image_tag not in etcd_events_current_docker_image.stdout|default('')
+
 - name: Install etcd launch script
   template:
     src: etcd.j2

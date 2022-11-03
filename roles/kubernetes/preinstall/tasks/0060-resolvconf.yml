@@ -1,53 +1,52 @@
 ---
 - name: create temporary resolveconf cloud init file
   command: cp -f /etc/resolv.conf "{{ resolvconffile }}"
-  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: Add domain/search/nameservers/options to resolv.conf
   blockinfile:
     path: "{{ resolvconffile }}"
     block: |-
-      {% for item in [domainentry] + [searchentries] + nameserverentries.split(',') -%}
+      {% for item in [domainentry] + [searchentries] -%}
       {{ item }}
       {% endfor %}
-      options ndots:{{ ndots }}
-      options timeout:2
-      options attempts:2
+      {% for item in nameserverentries.split(',') %}
+      nameserver {{ item }}
+      {% endfor %}
+      options ndots:{{ ndots }} timeout:{{ dns_timeout|default('2') }} attempts:{{ dns_attempts|default('2') }}
     state: present
     insertbefore: BOF
     create: yes
-    backup: yes
+    backup: "{{ not resolvconf_stat.stat.islnk }}"
     marker: "# Ansible entries {mark}"
+    mode: 0644
   notify: Preinstall | propagate resolvconf to k8s components
 
 - name: Remove search/domain/nameserver options before block
   replace:
-    dest: "{{ item[0] }}"
+    path: "{{ item[0] }}"
     regexp: '^{{ item[1] }}[^#]*(?=# Ansible entries BEGIN)'
-    backup: yes
-    follow: yes
+    backup: "{{ not resolvconf_stat.stat.islnk }}"
   with_nested:
     - "{{ [resolvconffile, base|default(''), head|default('')] | difference(['']) }}"
-    - [ 'search ', 'nameserver ', 'domain ', 'options ' ]
+    - [ 'search\s', 'nameserver\s', 'domain\s', 'options\s' ]
   notify: Preinstall | propagate resolvconf to k8s components
 
 - name: Remove search/domain/nameserver options after block
   replace:
-    dest: "{{ item[0] }}"
+    path: "{{ item[0] }}"
     regexp: '(# Ansible entries END\n(?:(?!^{{ item[1] }}).*\n)*)(?:^{{ item[1] }}.*\n?)+'
     replace: '\1'
-    backup: yes
-    follow: yes
+    backup: "{{ not resolvconf_stat.stat.islnk }}"
   with_nested:
     - "{{ [resolvconffile, base|default(''), head|default('')] | difference(['']) }}"
-    - [ 'search ', 'nameserver ', 'domain ', 'options ' ]
+    - [ 'search\s', 'nameserver\s', 'domain\s', 'options\s' ]
   notify: Preinstall | propagate resolvconf to k8s components
-
 
 - name: get temporary resolveconf cloud init file content
   command: cat {{ resolvconffile }}
   register: cloud_config
-  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: persist resolvconf cloud init file
   template:
@@ -56,4 +55,4 @@
     owner: root
     mode: 0644
   notify: Preinstall | update resolvconf for Flatcar Container Linux by Kinvolk
-  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]

@@ -21,6 +21,8 @@
         - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
         - "{{ ansible_distribution|lower }}-{{ host_architecture }}.yml"
         - "{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_distribution.split(' ')[0]|lower }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
         - "{{ ansible_os_family|lower }}-{{ host_architecture }}.yml"
         - "{{ ansible_os_family|lower }}.yml"
         - defaults.yml
@@ -39,20 +41,6 @@
   when: dns_mode != 'none' and resolvconf_mode == 'docker_dns'
   tags:
     - facts
-
-- name: disable unified_cgroup_hierarchy in Fedora 31+
-  command: grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=0"
-  when:
-    - ansible_distribution == "Fedora"
-    - (ansible_distribution_major_version | int) >= 31
-    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
-
-- name: reboot in Fedora 31+
-  reboot:
-  when:
-    - ansible_distribution == "Fedora"
-    - (ansible_distribution_major_version | int) >= 31
-    - ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] is not defined or ansible_proc_cmdline['systemd.unified_cgroup_hierarchy'] != '0'
 
 - import_tasks: pre-upgrade.yml
 
@@ -80,13 +68,18 @@
   template:
     src: "fedora_docker.repo.j2"
     dest: "{{ yum_repo_dir }}/docker.repo"
+    mode: 0644
   when: ansible_distribution == "Fedora" and not is_ostree
 
-- name: Configure docker repository on RedHat/CentOS/Oracle Linux
+- name: Configure docker repository on RedHat/CentOS/OracleLinux/AlmaLinux/KylinLinux
   template:
     src: "rh_docker.repo.j2"
     dest: "{{ yum_repo_dir }}/docker-ce.repo"
-  when: ansible_distribution in ["CentOS","RedHat","OracleLinux"] and not is_ostree
+    mode: 0644
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution != "Fedora"
+    - not is_ostree
 
 - name: Remove dpkg hold
   dpkg_selections:
@@ -108,6 +101,7 @@
       update_cache: true
     dnf:
       enablerepo: "{{ docker_package_info.enablerepo | default(omit) }}"
+      disablerepo: "{{ docker_package_info.disablerepo | default(omit) }}"
     yum:
       enablerepo: "{{ docker_package_info.enablerepo | default(omit) }}"
     zypper:
@@ -118,7 +112,7 @@
   delay: "{{ retry_stagger | d(3) }}"
   notify: restart docker
   when:
-    - not ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     - not is_ostree
     - docker_package_info.pkgs|length > 0
 
@@ -142,7 +136,7 @@
         state: started
       when: docker_task_result is not changed
   rescue:
-    - debug:
+    - debug:  # noqa unnamed-task
         msg: "Docker start failed. Try to remove our config"
     - name: remove kubespray generated config
       file:

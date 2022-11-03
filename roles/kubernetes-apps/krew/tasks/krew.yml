@@ -1,0 +1,38 @@
+---
+- name: Krew | Download krew
+  include_tasks: "../../../download/tasks/download_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.krew) }}"
+
+- name: Krew | krew env
+  template:
+    src: krew.j2
+    dest: /etc/bash_completion.d/krew
+    mode: 0644
+
+- name: Krew | Copy krew manifest
+  template:
+    src: krew.yml.j2
+    dest: "{{ local_release_dir }}/krew.yml"
+    mode: 0644
+
+- name: Krew | Install krew  # noqa 301 305
+  shell: "{{ local_release_dir }}/krew-{{ host_os }}_{{ image_arch }} install --archive={{ local_release_dir }}/krew-{{ host_os }}_{{ image_arch }}.tar.gz --manifest={{ local_release_dir }}/krew.yml"
+  environment:
+    KREW_ROOT: "{{ krew_root_dir }}"
+    KREW_DEFAULT_INDEX_URI: "{{ krew_default_index_uri | default('') }}"
+
+- name: Krew | Get krew completion
+  command: "{{ local_release_dir }}/krew-{{ host_os }}_{{ image_arch }} completion bash"
+  changed_when: False
+  register: krew_completion
+  check_mode: False
+  ignore_errors: yes  # noqa ignore-errors
+
+- name: Krew | Install krew completion
+  copy:
+    dest: /etc/bash_completion.d/krew.sh
+    content: "{{ krew_completion.stdout }}"
+    mode: 0755
+  become: True
+  when: krew_completion.rc == 0

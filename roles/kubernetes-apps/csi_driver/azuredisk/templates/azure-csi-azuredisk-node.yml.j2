@@ -5,6 +5,10 @@ metadata:
   name: csi-azuredisk-node
   namespace: kube-system
 spec:
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
   selector:
     matchLabels:
       app: csi-azuredisk-node
@@ -14,9 +18,17 @@ spec:
         app: csi-azuredisk-node
     spec:
       hostNetwork: true
+      dnsPolicy: Default
+      serviceAccountName: csi-azuredisk-node-sa
       nodeSelector:
         kubernetes.io/os: linux
+{% if azure_csi_node_affinity %}
+      affinity:
+        {{ azure_csi_node_affinity | to_nice_yaml | indent(width=8) }}
+{% endif %}
       priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists
       containers:
         - name: liveness-probe
           volumeMounts:
@@ -26,13 +38,12 @@ spec:
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
             - --csi-address=/csi/csi.sock
-            - --connection-timeout=3s
+            - --probe-timeout=3s
             - --health-port=29603
-            - --v=5
+            - --v=2
           resources:
             limits:
-              cpu: 200m
-              memory: 200Mi
+              memory: 100Mi
             requests:
               cpu: 10m
               memory: 20Mi
@@ -41,11 +52,15 @@ spec:
           args:
             - --csi-address=$(ADDRESS)
             - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
-            - --v=5
-          lifecycle:
-            preStop:
-              exec:
-                command: ["/bin/sh", "-c", "rm -rf /registration/disk.csi.azure.com-reg.sock /csi/csi.sock"]
+            - --v=2
+          livenessProbe:
+            exec:
+              command:
+                - /csi-node-driver-registrar
+                - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+                - --mode=kubelet-registration-probe
+            initialDelaySeconds: 30
+            timeoutSeconds: 15
           env:
             - name: ADDRESS
               value: /csi/csi.sock
@@ -58,8 +73,7 @@ spec:
               mountPath: /registration
           resources:
             limits:
-              cpu: 200m
-              memory: 200Mi
+              memory: 100Mi
             requests:
               cpu: 10m
               memory: 20Mi
@@ -71,6 +85,11 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--nodeid=$(KUBE_NODE_NAME)"
             - "--metrics-address=0.0.0.0:29605"
+            - "--enable-perf-optimization=true"
+            - "--drivername=disk.csi.azure.com"
+            - "--volume-attach-limit=-1"
+            - "--cloud-config-secret-name=cloud-config"
+            - "--cloud-config-secret-namespace=kube-system"
           ports:
             - containerPort: 29603
               name: healthz
@@ -106,10 +125,6 @@ spec:
               name: mountpoint-dir
             - mountPath: /etc/kubernetes/
               name: azure-cred
-              readOnly: true
-            - mountPath: /var/lib/waagent/ManagedIdentity-Settings
-              readOnly: true
-              name: msi
             - mountPath: /dev
               name: device-dir
             - mountPath: /sys/bus/scsi/devices
@@ -118,7 +133,6 @@ spec:
               name: scsi-host-dir
           resources:
             limits:
-              cpu: 200m
               memory: 200Mi
             requests:
               cpu: 10m
@@ -136,12 +150,10 @@ spec:
             path: /var/lib/kubelet/plugins_registry/
             type: DirectoryOrCreate
           name: registration-dir
-        - name: azure-cred
-          secret:
+        - secret:
+            defaultMode: 0644
             secretName: cloud-config
-        - hostPath:
-            path: /var/lib/waagent/ManagedIdentity-Settings
-          name: msi
+          name: azure-cred
         - hostPath:
             path: /dev
             type: Directory

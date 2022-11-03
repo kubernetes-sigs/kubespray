@@ -8,7 +8,7 @@
     group: root
     mode: 0755
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: NGINX Ingress Controller | Templates list
   set_fact:
@@ -23,22 +23,29 @@
       - { name: role-ingress-nginx, file: role-ingress-nginx.yml, type: role }
       - { name: rolebinding-ingress-nginx, file: rolebinding-ingress-nginx.yml, type: rolebinding }
       - { name: ds-ingress-nginx-controller, file: ds-ingress-nginx-controller.yml, type: ds }
-    ingress_nginx_templates_for_psp:
-      - { name: psp-ingress-nginx, file: psp-ingress-nginx.yml, type: podsecuritypolicy }
+    ingress_nginx_templates_for_webhook:
+      - { name: admission-webhook-configuration, file: admission-webhook-configuration.yml, type: sa }
+      - { name: sa-admission-webhook, file: sa-admission-webhook.yml, type: sa }
+      - { name: clusterrole-admission-webhook, file: clusterrole-admission-webhook.yml, type: clusterrole }
+      - { name: clusterrolebinding-admission-webhook, file: clusterrolebinding-admission-webhook.yml, type: clusterrolebinding }
+      - { name: role-admission-webhook, file: role-admission-webhook.yml, type: role }
+      - { name: rolebinding-admission-webhook, file: rolebinding-admission-webhook.yml, type: rolebinding }
+      - { name: admission-webhook-job, file: admission-webhook-job.yml, type: job }
 
-- name: NGINX Ingress Controller | Append extra templates to NGINX Ingress Templates list for PodSecurityPolicy
+- name: NGINX Ingress Controller | Append extra templates to NGINX Ingress Templates list for webhook
   set_fact:
-    ingress_nginx_templates: "{{ ingress_nginx_templates_for_psp + ingress_nginx_templates }}"
-  when: podsecuritypolicy_enabled
+    ingress_nginx_templates: "{{ ingress_nginx_templates + ingress_nginx_templates_for_webhook }}"
+  when: ingress_nginx_webhook_enabled
 
 - name: NGINX Ingress Controller | Create manifests
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/addons/ingress_nginx/{{ item.file }}"
+    mode: 0644
   with_items: "{{ ingress_nginx_templates }}"
   register: ingress_nginx_manifests
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: NGINX Ingress Controller | Apply manifests
   kube:
@@ -50,4 +57,4 @@
     state: "latest"
   with_items: "{{ ingress_nginx_manifests.results }}"
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]

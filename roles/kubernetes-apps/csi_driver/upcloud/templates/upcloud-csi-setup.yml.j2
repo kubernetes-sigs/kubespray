@@ -1,0 +1,185 @@
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: csi-upcloud-controller-sa
+  namespace: kube-system
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-upcloud-node-sa
+  namespace: kube-system
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-upcloud-node-driver-registrar-role
+  namespace: kube-system
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "events" ]
+    verbs: [ "get", "list", "watch", "create", "update", "patch" ]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-upcloud-node-driver-registrar-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-upcloud-node-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-upcloud-node-driver-registrar-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-upcloud-provisioner-role
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "secrets" ]
+    verbs: [ "get", "list" ]
+  - apiGroups: [ "" ]
+    resources: [ "persistentvolumes" ]
+    verbs: [ "get", "list", "watch", "create", "delete" ]
+  - apiGroups: [ "" ]
+    resources: [ "persistentvolumeclaims" ]
+    verbs: [ "get", "list", "watch", "update" ]
+  - apiGroups: [ "storage.k8s.io" ]
+    resources: [ "storageclasses" ]
+    verbs: [ "get", "list", "watch" ]
+  - apiGroups: [ "storage.k8s.io" ]
+    resources: [ "csinodes" ]
+    verbs: [ "get", "list", "watch" ]
+  - apiGroups: [ "" ]
+    resources: [ "events" ]
+    verbs: [ "list", "watch", "create", "update", "patch" ]
+  - apiGroups: [ "" ]
+    resources: [ "nodes" ]
+    verbs: [ "get", "list", "watch" ]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-upcloud-provisioner-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-upcloud-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-upcloud-provisioner-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Attacher must be able to work with PVs, nodes and VolumeAttachments
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-upcloud-attacher-role
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "persistentvolumes" ]
+    verbs: [ "get", "list", "watch", "update", "patch" ]
+  - apiGroups: [ "" ]
+    resources: [ "nodes" ]
+    verbs: [ "get", "list", "watch" ]
+  - apiGroups: [ "storage.k8s.io" ]
+    resources: [ "csinodes" ]
+    verbs: [ "get", "list", "watch" ]
+  - apiGroups: [ "storage.k8s.io" ]
+    resources: [ "volumeattachments" ]
+    verbs: [ "get", "list", "watch", "update", "patch" ]
+  - apiGroups: [ "storage.k8s.io" ]
+    resources: [ "volumeattachments/status" ]
+    verbs: [ "get", "list", "watch", "update", "patch" ]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-upcloud-attacher-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-upcloud-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-upcloud-attacher-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Provisioner must be able to work with endpoints and leases in current namespace
+# if (and only if) leadership election is enabled
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: kube-system
+  name: csi-upcloud-provisioner-cfg-role
+rules:
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["get", "watch", "list", "delete", "update", "create"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "watch", "list", "delete", "update", "create"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-provisioner-role-cfg-binding
+  namespace: kube-system
+subjects:
+  - kind: ServiceAccount
+    name: csi-upcloud-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: Role
+  name: csi-upcloud-provisioner-cfg-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-upcloud-resizer-role
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "persistentvolumes" ]
+    verbs: [ "get", "list", "watch", "update", "patch" ]
+  - apiGroups: [ "" ]
+    resources: [ "persistentvolumeclaims" ]
+    verbs: [ "get", "list", "watch" ]
+  - apiGroups: [ "" ]
+    resources: [ "persistentvolumeclaims/status" ]
+    verbs: [ "update", "patch" ]
+  - apiGroups: [ "" ]
+    resources: [ "events" ]
+    verbs: [ "list", "watch", "create", "update", "patch" ]
+  - apiGroups: [ "" ]
+    resources: [ "pods" ]
+    verbs: [ "watch", "list" ]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-upcloud-resizer-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-upcloud-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-upcloud-resizer-role
+  apiGroup: rbac.authorization.k8s.io

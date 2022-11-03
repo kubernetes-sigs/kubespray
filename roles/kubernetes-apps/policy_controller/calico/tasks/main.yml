@@ -12,6 +12,7 @@
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
   with_items:
     - {name: calico-kube-controllers, file: calico-kube-controllers.yml, type: deployment}
     - {name: calico-kube-controllers, file: calico-kube-sa.yml, type: sa}
@@ -19,7 +20,7 @@
     - {name: calico-kube-controllers, file: calico-kube-crb.yml, type: clusterrolebinding}
   register: calico_kube_manifests
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
     - rbac_enabled or item.type not in rbac_resources
 
 - name: Start of Calico kube controllers
@@ -32,8 +33,11 @@
     state: "latest"
   with_items:
     - "{{ calico_kube_manifests.results }}"
+  register: calico_kube_controller_start
+  until: calico_kube_controller_start is succeeded
+  retries: 4
   when:
-    - inventory_hostname == groups['kube-master'][0]
+    - inventory_hostname == groups['kube_control_plane'][0]
     - not item is skipped
   loop_control:
     label: "{{ item.item.file }}"

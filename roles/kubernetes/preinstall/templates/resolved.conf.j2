@@ -1,9 +1,21 @@
 [Resolve]
-DNS={{ coredns_server | list | join(' ') }}
-FallbackDNS={{ ( nameservers|d([]) + cloud_resolver|d([])) | unique | join(' ') }}
+{% if dns_early is sameas true and dns_late is sameas false %}
+#DNS=
+{% else %}
+DNS={{ ([nodelocaldns_ip] if enable_nodelocaldns else coredns_server )| list | join(' ') }}
+{% endif %}
+FallbackDNS={{ ( upstream_dns_servers|d([]) + nameservers|d([]) + cloud_resolver|d([])) | unique | join(' ') }}
+{% if remove_default_searchdomains is sameas false or (remove_default_searchdomains is sameas true and searchdomains|default([])|length==0)%}
 Domains={{ ([ 'default.svc.' + dns_domain, 'svc.' + dns_domain ] + searchdomains|default([])) | join(' ') }}
+{% else %}
+Domains={{ searchdomains|default([]) | join(' ') }}
+{% endif %}
 #LLMNR=no
 #MulticastDNS=no
 DNSSEC=no
 Cache=no-negative
+{% if ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] %}
+DNSStubListener=no
+{% else %}
 #DNSStubListener=yes
+{% endif %}

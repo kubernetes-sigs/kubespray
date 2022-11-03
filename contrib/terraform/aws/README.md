@@ -36,8 +36,7 @@ terraform apply -var-file=credentials.tfvars
 ```
 
 - Terraform automatically creates an Ansible Inventory file called `hosts` with the created infrastructure in the directory `inventory`
-- Ansible will automatically generate an ssh config file for your bastion hosts. To connect to hosts with ssh using bastion host use generated ssh-bastion.conf.
-  Ansible automatically detects bastion and changes ssh_args  
+- Ansible will automatically generate an ssh config file for your bastion hosts. To connect to hosts with ssh using bastion host use generated `ssh-bastion.conf`. Ansible automatically detects bastion and changes `ssh_args`
 
 ```commandline
 ssh -F ./ssh-bastion.conf user@$ip
@@ -122,7 +121,7 @@ You can use the following set of commands to get the kubeconfig file from your n
 
 ```commandline
 # Get the controller's IP address.
-CONTROLLER_HOST_NAME=$(cat ./inventory/hosts | grep "\[kube-master\]" -A 1 | tail -n 1)
+CONTROLLER_HOST_NAME=$(cat ./inventory/hosts | grep "\[kube_control_plane\]" -A 1 | tail -n 1)
 CONTROLLER_IP=$(cat ./inventory/hosts | grep $CONTROLLER_HOST_NAME | grep ansible_host | cut -d'=' -f2)
 
 # Get the hostname of the load balancer.

@@ -3,7 +3,7 @@
   uri:
     url: "https://{{ ip | default(fallback_ips[inventory_hostname]) }}:{{ kube_apiserver_port }}/healthz"
     validate_certs: false
-  when: inventory_hostname == groups['kube-master']
+  when: inventory_hostname in groups['kube_control_plane']
   register: _result
   retries: 60
   delay: 5
@@ -14,16 +14,17 @@
     timeout -k 600s 600s
     {{ bin_dir }}/kubeadm
     upgrade apply -y {{ kube_version }}
+    --certificate-renewal={{ kubeadm_upgrade_auto_cert_renewal }}
     --config={{ kube_config_dir }}/kubeadm-config.yaml
     --ignore-preflight-errors=all
     --allow-experimental-upgrades
-    --etcd-upgrade={{ etcd_kubeadm_enabled | bool | lower }}
+    --etcd-upgrade={{ (etcd_deployment_type == "kubeadm") | bool | lower }}
     --force
   register: kubeadm_upgrade
   # Retry is because upload config sometimes fails
   retries: 3
   until: kubeadm_upgrade.rc == 0
-  when: inventory_hostname == groups['kube-master']|first
+  when: inventory_hostname == first_kube_control_plane
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
@@ -34,13 +35,14 @@
     timeout -k 600s 600s
     {{ bin_dir }}/kubeadm
     upgrade apply -y {{ kube_version }}
+    --certificate-renewal={{ kubeadm_upgrade_auto_cert_renewal }}
     --config={{ kube_config_dir }}/kubeadm-config.yaml
     --ignore-preflight-errors=all
     --allow-experimental-upgrades
-    --etcd-upgrade={{ etcd_kubeadm_enabled | bool | lower }}
+    --etcd-upgrade={{ (etcd_deployment_type == "kubeadm") | bool | lower }}
     --force
   register: kubeadm_upgrade
-  when: inventory_hostname != groups['kube-master']|first
+  when: inventory_hostname != first_kube_control_plane
   failed_when:
     - kubeadm_upgrade.rc != 0
     - '"field is immutable" not in kubeadm_upgrade.stderr'
@@ -59,8 +61,7 @@
 # FIXME: https://github.com/kubernetes/kubeadm/issues/1318
 - name: kubeadm | scale down coredns replicas to 0 if not using coredns dns_mode
   command: >-
-    {{ bin_dir }}/kubectl
-    --kubeconfig /etc/kubernetes/admin.conf
+    {{ kubectl }}
     -n kube-system
     scale deployment/coredns --replicas 0
   register: scale_down_coredns

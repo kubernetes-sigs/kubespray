@@ -6,17 +6,25 @@
 # Vanilla Kubernetes, kube-system makes sense for the namespace.
 
 ---
-kind: StatefulSet
+kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: snapshot-controller
-  namespace: kube-system
+  namespace: {{ snapshot_controller_namespace }}
 spec:
-  serviceName: "snapshot-controller"
   replicas: {{ snapshot_controller_replicas }}
   selector:
     matchLabels:
       app: snapshot-controller
+  # the snapshot controller won't be marked as ready if the v1 CRDs are unavailable
+  # in #504 the snapshot-controller will exit after around 7.5 seconds if it
+  # can't find the v1 CRDs so this value should be greater than that
+  minReadySeconds: 15
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate
   template:
     metadata:
       labels:

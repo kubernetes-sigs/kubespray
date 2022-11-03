@@ -9,31 +9,30 @@
     - Preinstall | restart kube-controller-manager crio/containerd
     - Preinstall | restart kube-apiserver docker
     - Preinstall | restart kube-apiserver crio/containerd
-  when: not ansible_os_family in ["Flatcar Container Linux by Kinvolk"] and not is_fedora_coreos
+    - Preinstall | wait for the apiserver to be running
+  when: not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] and not is_fedora_coreos
 
 - name: Preinstall | update resolvconf for Flatcar Container Linux by Kinvolk
   command: /bin/true
   notify:
     - Preinstall | apply resolvconf cloud-init
     - Preinstall | reload kubelet
-  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: Preinstall | apply resolvconf cloud-init
   command: /usr/bin/coreos-cloudinit --from-file {{ resolveconf_cloud_init_conf }}
-  when: ansible_os_family in ["Flatcar Container Linux by Kinvolk"]
+  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
-- name: Preinstall | update resolvconf for Fedora CoreOS
+- name: Preinstall | update resolvconf for networkmanager
   command: /bin/true
   notify:
     - Preinstall | reload NetworkManager
     - Preinstall | reload kubelet
-  when: is_fedora_coreos
 
 - name: Preinstall | reload NetworkManager
   service:
     name: NetworkManager.service
     state: restarted
-  when: is_fedora_coreos
 
 - name: Preinstall | reload kubelet
   service:
@@ -56,7 +55,7 @@
     get_checksum: no
     get_mime: no
   register: kube_apiserver_set
-  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
+  when: inventory_hostname in groups['kube_control_plane'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
 
 # FIXME(mattymo): Also restart for kubeadm mode
 - name: Preinstall | kube-controller configured
@@ -66,13 +65,13 @@
     get_checksum: no
     get_mime: no
   register: kube_controller_set
-  when: inventory_hostname in groups['kube-master'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
+  when: inventory_hostname in groups['kube_control_plane'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
 
 - name: Preinstall | restart kube-controller-manager docker
   shell: "{{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-controller-manager* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
   when:
     - container_manager == "docker"
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname in groups['kube_control_plane']
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
     - kube_controller_set.stat.exists
@@ -81,7 +80,7 @@
   shell: "{{ bin_dir }}/crictl pods --name kube-controller-manager* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
   when:
     - container_manager in ['crio', 'containerd']
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname in groups['kube_control_plane']
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
     - kube_controller_set.stat.exists
@@ -90,15 +89,34 @@
   shell: "{{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-apiserver* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
   when:
     - container_manager == "docker"
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname in groups['kube_control_plane']
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
 
 - name: Preinstall | restart kube-apiserver crio/containerd
   shell: "{{ bin_dir }}/crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
+  register: preinstall_restart_apiserver
+  retries: 10
+  until: preinstall_restart_apiserver.rc == 0
+  delay: 1
   when:
     - container_manager in ['crio', 'containerd']
-    - inventory_hostname in groups['kube-master']
+    - inventory_hostname in groups['kube_control_plane']
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+
+# When running this as the last phase ensure we wait for kube-apiserver to come up
+- name: Preinstall | wait for the apiserver to be running
+  uri:
+    url: "{{ kube_apiserver_endpoint }}/healthz"
+    validate_certs: no
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 1
+  when:
+    - dns_late
+    - inventory_hostname in groups['kube_control_plane']
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
 
@@ -106,3 +124,9 @@
   service:
     name: systemd-resolved
     state: restarted
+
+- name: Preinstall | restart ntp
+  service:
+    name: "{{ ntp_service_name }}"
+    state: restarted
+  when: ntp_enabled

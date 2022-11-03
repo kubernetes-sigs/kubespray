@@ -1,4 +1,16 @@
 ---
+- name: reset | check vxlan.calico network device
+  stat:
+    path: /sys/class/net/vxlan.calico
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: vxlan
+
+- name: reset | remove the network vxlan.calico device created by calico
+  command: ip link del vxlan.calico
+  when: vxlan.stat.exists
+
 - name: reset | check dummy0 network device
   stat:
     path: /sys/class/net/dummy0
@@ -11,13 +23,8 @@
   command: ip link del dummy0
   when: dummy0.stat.exists
 
-- name: reset | get remaining routes set by bird
-  command: ip route show proto bird
+- name: reset | get and remove remaining routes set by bird
+  shell: set -o pipefail && ip route show proto bird | xargs -i bash -c "ip route del {} proto bird "
+  args:
+    executable: /bin/bash
   changed_when: false
-  register: bird_routes
-
-- name: reset | remove remaining routes set by bird  # noqa 301
-  command: "ip route del {{ bird_route }} proto bird"
-  with_items: "{{ bird_routes.stdout_lines }}"
-  loop_control:
-    loop_var: bird_route

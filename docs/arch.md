@@ -12,6 +12,6 @@ The following table shows the impact of the CPU architecture on compatible featu
 | Weave               | Y     | Y     | Y             |
 | Flannel             | Y     | N     | N             |
 | Canal               | Y     | N     | N             |
-| Cilium              | Y     | N     | N             |
+| Cilium              | Y     | Y     | N             |
 | Contib              | Y     | N     | N             |
 | kube-router         | Y     | N     | N             |

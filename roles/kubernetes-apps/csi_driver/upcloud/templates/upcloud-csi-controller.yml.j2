@@ -1,0 +1,93 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: csi-upcloud-controller
+  namespace: kube-system
+spec:
+  serviceName: "csi-upcloud"
+  replicas: {{ upcloud_csi_controller_replicas }}
+  selector:
+    matchLabels:
+      app: csi-upcloud-controller
+  template:
+    metadata:
+      labels:
+        app: csi-upcloud-controller
+        role: csi-upcloud
+    spec:
+      priorityClassName: system-cluster-critical
+      serviceAccount: csi-upcloud-controller-sa
+      containers:
+        - name: csi-provisioner
+          image: registry.k8s.io/sig-storage/csi-provisioner:{{ upcloud_csi_provisioner_image_tag }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+            - "--timeout=600s"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "Always"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-attacher
+          image: registry.k8s.io/sig-storage/csi-attacher:{{ upcloud_csi_attacher_image_tag }}
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+            - "--timeout=120s"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "Always"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-resizer
+          image: registry.k8s.io/sig-storage/csi-resizer:{{ upcloud_csi_resizer_image_tag }}
+          args:
+            - "--v=5"
+            - "--timeout=120s"
+            - "--csi-address=$(ADDRESS)"
+            - "--handle-volume-inuse-error=true"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "Always"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-upcloud-plugin
+          image: ghcr.io/upcloudltd/upcloud-csi:{{ upcloud_csi_plugin_image_tag }}
+          args:
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--nodehost=$(NODE_ID)"
+            - "--username=$(UPCLOUD_USERNAME)"
+            - "--password=$(UPCLOUD_PASSWORD)"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+            - name: UPCLOUD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: upcloud
+                  key: username
+            - name: UPCLOUD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: upcloud
+                  key: password
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          imagePullPolicy: "Always"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+      imagePullSecrets:
+        - name: regcred
+      volumes:
+        - name: socket-dir
+          emptyDir: {}

@@ -10,7 +10,7 @@
     secondaryclusterIP: "{{ skydns_server_secondary }}"
   when:
     - enable_nodelocaldns
-    - inventory_hostname == groups['kube-master'] | first
+    - inventory_hostname == groups['kube_control_plane'] | first
   tags:
     - nodelocaldns
     - coredns
@@ -19,6 +19,7 @@
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
   with_items:
     - { name: nodelocaldns, file: nodelocaldns-config.yml, type: configmap }
     - { name: nodelocaldns, file: nodelocaldns-sa.yml, type: sa }
@@ -32,14 +33,43 @@
       {{ primaryClusterIP }}
       {%- endif -%}
     upstreamForwardTarget: >-
-      {%- if resolvconf_mode == 'host_resolvconf' and upstream_dns_servers is defined and upstream_dns_servers|length > 0 -%}
+      {%- if upstream_dns_servers is defined and upstream_dns_servers|length > 0 -%}
       {{ upstream_dns_servers|join(' ') }}
       {%- else -%}
       /etc/resolv.conf
       {%- endif -%}
   when:
     - enable_nodelocaldns
-    - inventory_hostname == groups['kube-master'] | first
+    - inventory_hostname == groups['kube_control_plane'] | first
+  tags:
+    - nodelocaldns
+    - coredns
+
+- name: Kubernetes Apps | Lay Down nodelocaldns-secondary Template
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    mode: 0644
+  with_items:
+    - { name: nodelocaldns, file: nodelocaldns-second-daemonset.yml, type: daemonset }
+  register: nodelocaldns_second_manifests
+  vars:
+    forwardTarget: >-
+      {%- if secondaryclusterIP is defined and dns_mode == 'coredns_dual' -%}
+      {{ primaryClusterIP }} {{ secondaryclusterIP }}
+      {%- else -%}
+      {{ primaryClusterIP }}
+      {%- endif -%}
+    upstreamForwardTarget: >-
+      {%- if upstream_dns_servers is defined and upstream_dns_servers|length > 0 -%}
+      {{ upstream_dns_servers|join(' ') }}
+      {%- else -%}
+      /etc/resolv.conf
+      {%- endif -%}
+  when:
+    - enable_nodelocaldns
+    - enable_nodelocaldns_secondary
+    - inventory_hostname == groups['kube_control_plane'] | first
   tags:
     - nodelocaldns
     - coredns

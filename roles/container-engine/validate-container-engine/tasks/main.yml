@@ -1,0 +1,153 @@
+---
+- name: validate-container-engine | check if fedora coreos
+  stat:
+    path: /run/ostree-booted
+    get_attributes: no
+    get_checksum: no
+    get_mime: no
+  register: ostree
+  tags:
+    - facts
+
+- name: validate-container-engine | set is_ostree
+  set_fact:
+    is_ostree: "{{ ostree.stat.exists }}"
+  tags:
+    - facts
+
+- name: Ensure kubelet systemd unit exists
+  stat:
+    path: "/etc/systemd/system/kubelet.service"
+  register: kubelet_systemd_unit_exists
+  tags:
+    - facts
+
+- name: Populate service facts
+  service_facts:
+  tags:
+    - facts
+
+- name: Check if containerd is installed
+  find:
+    file_type: file
+    recurse: yes
+    use_regex: yes
+    patterns:
+      - containerd.service$
+    paths:
+      - /lib/systemd
+      - /etc/systemd
+      - /run/systemd
+  register: containerd_installed
+  tags:
+    - facts
+
+- name: Check if docker is installed
+  find:
+    file_type: file
+    recurse: yes
+    use_regex: yes
+    patterns:
+      - docker.service$
+    paths:
+      - /lib/systemd
+      - /etc/systemd
+      - /run/systemd
+  register: docker_installed
+  tags:
+    - facts
+
+- name: Check if crio is installed
+  find:
+    file_type: file
+    recurse: yes
+    use_regex: yes
+    patterns:
+      - crio.service$
+    paths:
+      - /lib/systemd
+      - /etc/systemd
+      - /run/systemd
+  register: crio_installed
+  tags:
+    - facts
+
+- name: Uninstall containerd
+  block:
+    - name: Drain node
+      include_role:
+        name: remove-node/pre-remove
+        apply:
+          tags:
+            - pre-remove
+      when: kubelet_systemd_unit_exists.stat.exists
+    - name: Stop kubelet
+      service:
+        name: kubelet
+        state: stopped
+      when: kubelet_systemd_unit_exists.stat.exists
+    - name: Remove Containerd
+      import_role:
+        name: container-engine/containerd
+        tasks_from: reset
+        handlers_from: reset
+  vars:
+    service_name: containerd.service
+  when:
+    - not (is_ostree or (ansible_distribution == "Flatcar Container Linux by Kinvolk") or (ansible_distribution == "Flatcar"))
+    - container_manager != "containerd"
+    - docker_installed.matched == 0
+    - containerd_installed.matched > 0
+    - ansible_facts.services[service_name]['state'] == 'running'
+
+- name: Uninstall docker
+  block:
+    - name: Drain node
+      include_role:
+        name: remove-node/pre-remove
+        apply:
+          tags:
+            - pre-remove
+      when: kubelet_systemd_unit_exists.stat.exists
+    - name: Stop kubelet
+      service:
+        name: kubelet
+        state: stopped
+      when: kubelet_systemd_unit_exists.stat.exists
+    - name: Remove Docker
+      import_role:
+        name: container-engine/docker
+        tasks_from: reset
+  vars:
+    service_name: docker.service
+  when:
+    - not (is_ostree or (ansible_distribution == "Flatcar Container Linux by Kinvolk") or (ansible_distribution == "Flatcar"))
+    - container_manager != "docker"
+    - docker_installed.matched > 0
+    - ansible_facts.services[service_name]['state'] == 'running'
+
+- name: Uninstall crio
+  block:
+    - name: Drain node
+      include_role:
+        name: remove-node/pre-remove
+        apply:
+          tags:
+            - pre-remove
+      when: kubelet_systemd_unit_exists.stat.exists
+    - name: Stop kubelet
+      service:
+        name: kubelet
+        state: stopped
+      when: kubelet_systemd_unit_exists.stat.exists
+    - name: Remove CRI-O
+      import_role:
+        name: container-engine/cri-o
+        tasks_from: reset
+  vars:
+    service_name: crio.service
+  when:
+    - not (is_ostree or (ansible_distribution == "Flatcar Container Linux by Kinvolk") or (ansible_distribution == "Flatcar"))
+    - container_manager != "crio"
+    - crio_installed.matched > 0
+    - ansible_facts.services[service_name]['state'] == 'running'

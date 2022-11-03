@@ -17,9 +17,16 @@
   tags:
     - kubelet
 
+- import_tasks: loadbalancer/kube-vip.yml
+  when:
+    - is_kube_master
+    - kube_vip_enabled
+  tags:
+    - kube-vip
+
 - import_tasks: loadbalancer/nginx-proxy.yml
   when:
-    - not is_kube_master
+    - not is_kube_master or kube_apiserver_bind_address != '0.0.0.0'
     - loadbalancer_apiserver_localhost
     - loadbalancer_apiserver_type == 'nginx'
   tags:
@@ -27,7 +34,7 @@
 
 - import_tasks: loadbalancer/haproxy.yml
   when:
-    - not is_kube_master
+    - not is_kube_master or kube_apiserver_bind_address != '0.0.0.0'
     - loadbalancer_apiserver_localhost
     - loadbalancer_apiserver_type == 'haproxy'
   tags:
@@ -52,11 +59,13 @@
   register: modinfo_br_netfilter
   failed_when: modinfo_br_netfilter.rc not in [0, 1]
   changed_when: false
+  check_mode: no
 
 - name: Verify br_netfilter module path exists
   file:
     path: /etc/modules-load.d
     state: directory
+    mode: 0755
 
 - name: Enable br_netfilter module
   modprobe:
@@ -68,6 +77,7 @@
   copy:
     dest: /etc/modules-load.d/kubespray-br_netfilter.conf
     content: br_netfilter
+    mode: 0644
   when: modinfo_br_netfilter.rc == 0
 
 # kube-proxy needs net.bridge.bridge-nf-call-iptables enabled when found if br_netfilter is not a module
@@ -75,6 +85,7 @@
   command: "sysctl net.bridge.bridge-nf-call-iptables"
   failed_when: false
   changed_when: false
+  check_mode: no
   register: sysctl_bridge_nf_call_iptables
 
 - name: Enable bridge-nf-call tables
@@ -108,7 +119,7 @@
     name: nf_conntrack_ipv4
     state: present
   register: modprobe_nf_conntrack_ipv4
-  ignore_errors: yes
+  ignore_errors: true  # noqa ignore-errors
   when:
     - kube_proxy_mode == 'ipvs'
   tags:
@@ -117,6 +128,7 @@
 - name: Persist ip_vs modules
   copy:
     dest: /etc/modules-load.d/kube_proxy-ipvs.conf
+    mode: 0644
     content: |
       ip_vs
       ip_vs_rr
@@ -170,7 +182,7 @@
     mode: 0640
   when:
     - cloud_provider is defined
-    - cloud_provider in [ 'openstack', 'azure', 'vsphere', 'aws' ]
+    - cloud_provider in [ 'openstack', 'azure', 'vsphere', 'aws', 'gce' ]
   notify: Node | restart kubelet
   tags:
     - cloud-provider

@@ -1,40 +1,38 @@
 ---
-- name: remove-node | Set `nodes_to_drain` as empty list
-  set_fact:
-    nodes_to_drain: []
-
-- name: remove-node | Identify nodes to drain, ignore non-cluster nodes
-  shell: |
-    set -o pipefail
-    {{ bin_dir }}/kubectl get nodes -o json \
-                  | jq .items[].metadata.name \
-                  | jq "select(. | test(\"^{{ hostvars[item]['kube_override_hostname']|default(item) }}$\"))"
-  loop: "{{ node.split(',') | default(groups['kube-node']) }}"
+- name: remove-node | List nodes
+  command: >-
+    {{ kubectl }} get nodes -o go-template={% raw %}'{{ range .items }}{{ .metadata.name }}{{ "\n" }}{{ end }}'{% endraw %}
   register: nodes
-  delegate_to: "{{ groups['kube-master']|first }}"
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
   changed_when: false
-  run_once: true
-
-- name: remove-node | Generate list of nodes to drain
-  set_fact:
-    nodes_to_drain: "{{  nodes_to_drain }} + [ '{{ item.stdout  | regex_replace('\"', '') }}' ]"
-  loop: "{{ nodes.results }}"
-  when: item.stdout | length != 0
   run_once: true
 
 - name: remove-node | Drain node except daemonsets resource  # noqa 301
   command: >-
-    {{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf drain
+    {{ kubectl }} drain
       --force
       --ignore-daemonsets
       --grace-period {{ drain_grace_period }}
       --timeout {{ drain_timeout }}
-      --delete-local-data {{ hostvars[item]['kube_override_hostname']|default(item) }}
-  loop: "{{ nodes_to_drain }}"
+      --delete-emptydir-data {{ kube_override_hostname|default(inventory_hostname) }}
+  # ignore servers that are not nodes
+  when: kube_override_hostname|default(inventory_hostname) in nodes.stdout_lines
   register: result
   failed_when: result.rc != 0 and not allow_ungraceful_removal
-  delegate_to: "{{ groups['kube-master']|first }}"
-  run_once: true
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
   until: result.rc == 0 or allow_ungraceful_removal
   retries: "{{ drain_retries }}"
   delay: "{{ drain_retry_delay_seconds }}"
+
+- name: remove-node | Wait until Volumes will be detached from the node
+  command: >-
+    {{ kubectl }} get volumeattachments -o go-template={% raw %}'{{ range .items }}{{ .spec.nodeName }}{{ "\n" }}{{ end }}'{% endraw %}
+  register: nodes_with_volumes
+  delegate_to: "{{ groups['kube_control_plane']|first }}"
+  changed_when: false
+  until: not (kube_override_hostname|default(inventory_hostname) in nodes_with_volumes.stdout_lines)
+  retries: 3
+  delay: "{{ drain_grace_period }}"
+  when:
+    - not allow_ungraceful_removal
+    - kube_override_hostname|default(inventory_hostname) in nodes.stdout_lines

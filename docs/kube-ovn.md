@@ -12,7 +12,7 @@ kernel version 3.10.0-862 has a nat related bug that will affect ovs function, p
 
 ## How to use it
 
-Enable kube-ovn in `group_vars/k8s-cluster/k8s-cluster.yml`
+Enable kube-ovn in `group_vars/k8s_cluster/k8s_cluster.yml`
 
 ```yml
 ...

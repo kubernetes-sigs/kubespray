@@ -5,32 +5,6 @@
   tags:
     - facts
 
-# The docker image_info_command might seems weird but we are using raw/endraw and `{{ `{{` }}` to manage the double jinja2 processing
-# done here and when `image_info_command` is used (first the raw/endraw allow to store the command, then the second processing replace `{{`
-- name: prep_download | Set image pull/info command for docker
-  set_fact:
-    image_pull_command: "{{ docker_bin_dir }}/docker pull"
-    image_info_command: "{{ docker_bin_dir }}/docker images -q | xargs -i {{ '{{' }} docker_bin_dir }}/docker inspect -f {% raw %}'{{ '{{' }} if .RepoTags }}{{ '{{' }} join .RepoTags \",\" }}{{ '{{' }} end }}{{ '{{' }} if .RepoDigests }},{{ '{{' }} join .RepoDigests \",\" }}{{ '{{' }} end }}' {% endraw %} {} | tr '\n' ','"
-  when: container_manager == 'docker'
-
-- name: prep_download | Set image pull/info command for containerd and crio
-  set_fact:
-    image_info_command: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
-    image_pull_command: "{{ bin_dir }}/crictl pull"
-  when: container_manager in ['crio' ,'containerd']
-
-- name: prep_download | Set image pull/info command for docker on localhost
-  set_fact:
-    image_pull_command_on_localhost: "{{ docker_bin_dir }}/docker pull"
-    image_info_command_on_localhost: "{{ docker_bin_dir }}/docker images"
-  when: container_manager_on_localhost == 'docker'
-
-- name: prep_download | Set image pull/info command for containerd and crio on localhost
-  set_fact:
-    image_info_command_on_localhost: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
-    image_pull_command_on_localhost: "{{ bin_dir }}/crictl pull"
-  when: container_manager_on_localhost in ['crio' ,'containerd']
-
 - name: prep_download | On localhost, check if passwordless root is possible
   command: "true"
   delegate_to: localhost
@@ -38,7 +12,7 @@
   run_once: true
   register: test_become
   changed_when: false
-  ignore_errors: true
+  ignore_errors: true  # noqa ignore-errors
   become: true
   when:
     - download_localhost
@@ -53,7 +27,7 @@
   run_once: true
   register: test_docker
   changed_when: false
-  ignore_errors: true
+  ignore_errors: true  # noqa ignore-errors
   become: false
   when:
     - download_localhost
@@ -84,7 +58,7 @@
 
 - name: prep_download | Register docker images info
   shell: "{{ image_info_command }}"  # noqa 305 image_info_command contains pipe therefore requires shell
-  no_log: true
+  no_log: "{{ not (unsafe_show_logs|bool) }}"
   register: docker_images
   failed_when: false
   changed_when: false
@@ -99,7 +73,7 @@
     mode: 0755
     owner: "{{ ansible_ssh_user | default(ansible_user_id) }}"
   when:
-    - ansible_os_family not in ["Flatcar Container Linux by Kinvolk"]
+    - ansible_os_family not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: prep_download | Create local cache for files and images on control node
   file:

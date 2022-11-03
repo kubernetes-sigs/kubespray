@@ -14,8 +14,8 @@ hands-on guide to get started with Kubespray.
 
 ## Cluster Details
 
-* [kubespray](https://github.com/kubernetes-sigs/kubespray) v2.13.x
-* [kubernetes](https://github.com/kubernetes/kubernetes) v1.17.9
+* [kubespray](https://github.com/kubernetes-sigs/kubespray)
+* [kubernetes](https://github.com/kubernetes/kubernetes)
 
 ## Prerequisites
 
@@ -48,7 +48,7 @@ gcloud compute networks create kubernetes-the-kubespray-way --subnet-mode custom
 
 A [subnet](https://cloud.google.com/compute/docs/vpc/#vpc_networks_and_subnets) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
 
-Create the `kubernetes` subnet in the `kubernetes-the-hard-way` VPC network:
+Create the `kubernetes` subnet in the `kubernetes-the-kubespray-way` VPC network:
 
 ```ShellSession
 gcloud compute networks subnets create kubernetes \
@@ -61,12 +61,12 @@ gcloud compute networks subnets create kubernetes \
 #### Firewall Rules
 
 Create a firewall rule that allows internal communication across all protocols.
-It is important to note that the ipip protocol has to be allowed in order for
+It is important to note that the vxlan protocol has to be allowed in order for
 the calico (see later) networking plugin to work.
 
 ```ShellSession
 gcloud compute firewall-rules create kubernetes-the-kubespray-way-allow-internal \
-  --allow tcp,udp,icmp,ipip \
+  --allow tcp,udp,icmp,vxlan \
   --network kubernetes-the-kubespray-way \
   --source-ranges 10.240.0.0/24
 ```
@@ -196,7 +196,7 @@ Next, we will git clone the Kubespray code into our working directory:
 ```ShellSession
 git clone https://github.com/kubernetes-sigs/kubespray.git
 cd kubespray
-git checkout release-2.13
+git checkout release-2.17
 ```
 
 Now we need to install the dependencies for Ansible to run the Kubespray
@@ -225,7 +225,7 @@ worker-0, worker-1 and worker-2 are worker nodes. Also update the `ip` to the re
 remove the `access_ip`.
 
 The main configuration for the cluster is stored in
-`inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml`. In this file we
+`inventory/mycluster/group_vars/k8s_cluster/k8s_cluster.yml`. In this file we
  will update the `supplementary_addresses_in_ssl_keys` with a list of the IP
  addresses of the controller nodes. In that way we can access the
   kubernetes API server as an administrator from outside the VPC network. You
@@ -234,7 +234,7 @@ The main configuration for the cluster is stored in
 
 Kubespray also offers to easily enable popular kubernetes add-ons. You can
 modify the
-list of add-ons in `inventory/mycluster/group_vars/k8s-cluster/addons.yml`.
+list of add-ons in `inventory/mycluster/group_vars/k8s_cluster/addons.yml`.
 Let's enable the metrics server as this is a crucial monitoring element for
 the kubernetes cluster, just change the 'false' to 'true' for
 `metrics_server_enabled`.
@@ -252,11 +252,7 @@ Ansible will now execute the playbook, this can take up to 20 minutes.
 We will leverage a kubeconfig file from one of the controller nodes to access
  the cluster as administrator from our local workstation.
 
-> In this simplified set-up, we did not include a load balancer that usually
- sits on top of the
-three controller nodes for a high available API server endpoint. In this
- simplified tutorial we connect directly to one of the three
- controllers.
+> In this simplified set-up, we did not include a load balancer that usually sits on top of the three controller nodes for a high available API server endpoint. In this simplified tutorial we connect directly to one of the three controllers.
 
 First, we need to edit the permission of the kubeconfig file on one of the
 controller nodes:
@@ -353,7 +349,7 @@ each other:
 ```ShellSession
 kubectl run myshell1 -it --rm --image busybox -- sh
 hostname -i
-# launch myshell2 in seperate terminal (see next code block) and ping the hostname of myshell2
+# launch myshell2 in separate terminal (see next code block) and ping the hostname of myshell2
 ping <hostname myshell2>
 ```
 
@@ -589,7 +585,7 @@ Delete the dev namespace, the nginx deployment and service:
 ```ShellSession
 kubectl delete namespace dev
 kubectl delete deployment nginx
-kubectl delete svc/ngninx
+kubectl delete svc/nginx
 ```
 
 ### Kubernetes state

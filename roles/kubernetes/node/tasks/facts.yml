@@ -4,6 +4,7 @@
     shell: "docker info | grep 'Cgroup Driver' | awk -F': ' '{ print $2; }'"
     register: docker_cgroup_driver_result
     changed_when: false
+    check_mode: no
 
   - name: set kubelet_cgroup_driver_detected fact for docker
     set_fact:
@@ -12,7 +13,7 @@
 
 - block:
   - name: look up crio cgroup driver
-    shell: "crio-status info | grep 'cgroup driver' | awk -F': ' '{ print $2; }'"
+    shell: "{{ bin_dir }}/crio-status info | grep 'cgroup driver' | awk -F': ' '{ print $2; }'"
     register: crio_cgroup_driver_result
     changed_when: false
 
@@ -26,6 +27,23 @@
     kubelet_cgroup_driver_detected: >-
       {%- if containerd_use_systemd_cgroup -%}systemd{%- else -%}cgroupfs{%- endif -%}
   when: container_manager == 'containerd'
+
+- name: set kubelet_cgroup_driver
+  set_fact:
+    kubelet_cgroup_driver: "{{ kubelet_cgroup_driver_detected }}"
+  when: kubelet_cgroup_driver is undefined
+
+- name: set kubelet_cgroups options when cgroupfs is used
+  set_fact:
+    kubelet_runtime_cgroups: "{{ kubelet_runtime_cgroups_cgroupfs }}"
+    kubelet_kubelet_cgroups: "{{ kubelet_kubelet_cgroups_cgroupfs }}"
+  when: kubelet_cgroup_driver == 'cgroupfs'
+
+- name: set kubelet_config_extra_args options when cgroupfs is used
+  vars:
+  set_fact:
+    kubelet_config_extra_args: "{{ kubelet_config_extra_args | combine(kubelet_config_extra_args_cgroupfs) }}"
+  when: kubelet_cgroup_driver == 'cgroupfs'
 
 - name: os specific vars
   include_vars: "{{ item }}"

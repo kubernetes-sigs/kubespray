@@ -1,0 +1,101 @@
+---
+- name: CRI-O | Kubic repo name for debian os family
+  set_fact:
+    crio_kubic_debian_repo_name: "{{ ((ansible_distribution == 'Ubuntu') | ternary('x','')) ~ ansible_distribution ~ '_' ~ ansible_distribution_version }}"
+  when: ansible_os_family == "Debian"
+  tags:
+    - reset_crio
+
+- name: CRI-O | Remove kubic apt repo
+  apt_repository:
+    repo: "deb http://{{ crio_download_base }}/{{ crio_kubic_debian_repo_name }}/ /"
+    state: absent
+  when: crio_kubic_debian_repo_name is defined
+  tags:
+    - reset_crio
+
+- name: CRI-O | Remove cri-o apt repo
+  apt_repository:
+    repo: "deb {{ crio_download_crio }}{{ crio_version }}/{{ crio_kubic_debian_repo_name }}/ /"
+    state: present
+    filename: devel-kubic-libcontainers-stable-cri-o
+  when: crio_kubic_debian_repo_name is defined
+  tags:
+    - reset_crio
+
+- name: CRI-O | Remove CRI-O kubic yum repo
+  yum_repository:
+    name: devel_kubic_libcontainers_stable
+    state: absent
+  when: ansible_distribution in ["Amazon"]
+  tags:
+    - reset_crio
+
+- name: CRI-O | Remove CRI-O kubic yum repo
+  yum_repository:
+    name: "devel_kubic_libcontainers_stable_cri-o_{{ crio_version }}"
+    state: absent
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution not in ["Amazon", "Fedora"]
+  tags:
+    - reset_crio
+
+- name: CRI-O | Run yum-clean-metadata
+  command: yum clean metadata
+  args:
+    warn: no
+  when:
+    - ansible_os_family == "RedHat"
+  tags:
+    - reset_crio
+
+- name: CRI-O | Remove crictl
+  file:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/crictl.yaml
+    - "{{ bin_dir }}/crictl"
+  tags:
+    - reset_crio
+
+- name: CRI-O | Stop crio service
+  service:
+    name: crio
+    daemon_reload: true
+    enabled: false
+    masked: true
+    state: stopped
+  tags:
+    - reset_crio
+
+- name: CRI-O | Remove CRI-O configuration files
+  file:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/crio
+    - /etc/containers
+    - /etc/systemd/system/crio.service.d
+  tags:
+    - reset_crio
+
+- name: CRI-O | Remove dpkg hold
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: install
+  when: ansible_pkg_mgr == 'apt'
+  changed_when: false
+  with_items: "{{ crio_packages }}"
+  tags:
+    - reset_crio
+
+- name: CRI-O | Uninstall CRI-O package
+  package:
+    name: "{{ item }}"
+    state: absent
+  when: not is_ostree
+  with_items: "{{ crio_packages }}"
+  tags:
+    - reset_crio

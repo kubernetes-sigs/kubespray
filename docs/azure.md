@@ -10,7 +10,7 @@ Not all features are supported yet though, for a list of the current status have
 
 Before creating the instances you must first set the `azure_` variables in the `group_vars/all/all.yml` file.
 
-All of the values can be retrieved using the azure cli tool which can be downloaded here: <https://docs.microsoft.com/en-gb/azure/xplat-cli-install>
+All of the values can be retrieved using the Azure CLI tool which can be downloaded here: <https://docs.microsoft.com/en-gb/cli/azure/install-azure-cli>
 After installation you have to run `az login` to get access to your account.
 
 ### azure_cloud
@@ -71,14 +71,27 @@ The name of the resource group that contains the route table.  Defaults to `azur
 These will have to be generated first:
 
 - Create an Azure AD Application with:
-`az ad app create --display-name kubernetes --identifier-uris http://kubernetes --homepage http://example.com --password CLIENT_SECRET`
+
+  ```ShellSession
+   az ad app create --display-name kubernetes --identifier-uris http://kubernetes --homepage http://example.com --password CLIENT_SECRET
+  ```
+
 display name, identifier-uri, homepage and the password can be chosen
 Note the AppId in the output.
+
 - Create Service principal for the application with:
-`az ad sp create --id AppId`
+
+  ```ShellSession
+  az ad sp create --id AppId
+  ```
+
 This is the AppId from the last command
+
 - Create the role assignment with:
-`az role assignment create --role "Owner" --assignee http://kubernetes --subscription SUBSCRIPTION_ID`
+
+  ```ShellSession
+  az role assignment create --role "Owner" --assignee http://kubernetes --subscription SUBSCRIPTION_ID
+  ```
 
 azure\_aad\_client\_id must be set to the AppId, azure\_aad\_client\_secret is your chosen secret.
 

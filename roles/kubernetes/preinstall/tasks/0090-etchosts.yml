@@ -2,10 +2,11 @@
 - name: Hosts | create list from inventory
   set_fact:
     etc_hosts_inventory_block: |-
-      {% for item in (groups['k8s-cluster'] + groups['etcd']|default([]) + groups['calico-rr']|default([]))|unique -%}
+      {% for item in (groups['k8s_cluster'] + groups['etcd']|default([]) + groups['calico_rr']|default([]))|unique -%}
       {% if 'access_ip' in hostvars[item] or 'ip' in hostvars[item] or 'ansible_default_ipv4' in hostvars[item] -%}
       {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}
-      {%- if ('ansible_hostname' in hostvars[item] and item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }} {{ hostvars[item]['ansible_hostname'] }}{% endif %} {{ item }}.{{ dns_domain }} {{ item }}
+      {%- if ('ansible_hostname' in hostvars[item] and item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }} {{ hostvars[item]['ansible_hostname'] }} {% else %} {{ item }}.{{ dns_domain }} {{ item }} {% endif %}
+
       {% endif %}
       {% endfor %}
   delegate_to: localhost
@@ -22,6 +23,7 @@
     backup: yes
     unsafe_writes: yes
     marker: "# Ansible inventory hosts {mark}"
+    mode: 0644
   when: populate_inventory_to_hosts_file
 
 - name: Hosts | populate kubernetes loadbalancer address into hosts file
@@ -33,6 +35,7 @@
     backup: yes
     unsafe_writes: yes
   when:
+    - populate_loadbalancer_apiserver_to_hosts_file
     - loadbalancer_apiserver is defined
     - loadbalancer_apiserver.address is defined
 
@@ -56,7 +59,7 @@
     etc_hosts_localhosts_dict_target: >-
       {%- set target_entries = (etc_hosts_localhosts_dict|default({})).get(item.key, []) | difference(item.value.get('unexpected' ,[])) -%}
       {{ etc_hosts_localhosts_dict_target|default({}) | combine({item.key: (target_entries + item.value.expected)|unique}) }}
-  with_dict: "{{ etc_hosts_localhost_entries }}"
+  loop: "{{ etc_hosts_localhost_entries|dict2items }}"
 
 - name: Hosts | Update (if necessary) hosts file
   lineinfile:
@@ -66,7 +69,7 @@
     state: present
     backup: yes
     unsafe_writes: yes
-  with_dict: "{{ etc_hosts_localhosts_dict_target }}"
+  loop: "{{ etc_hosts_localhosts_dict_target|default({})|dict2items }}"
 
 # gather facts to update ansible_fqdn
 - name: Update facts

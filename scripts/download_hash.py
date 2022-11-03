@@ -25,7 +25,7 @@ def open_main_yaml():
 
 
 def download_hash(versions):
-    architectures = ["arm", "arm64", "amd64"]
+    architectures = ["arm", "arm64", "amd64", "ppc64le"]
     downloads = ["kubelet", "kubectl", "kubeadm"]
 
     data, yaml = open_main_yaml()
@@ -56,8 +56,9 @@ def main(argv=None):
         argv = sys.argv[1:]
     if not argv:
         usage()
-        sys.exit(1)
+        return 1
     download_hash(argv)
+    return 0
 
 
 if __name__ == "__main__":

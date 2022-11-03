@@ -1,0 +1,28 @@
+---
+- name: runc | Download cri-dockerd binary
+  include_tasks: "../../../download/tasks/download_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.cri_dockerd) }}"
+
+- name: Copy cri-dockerd binary from download dir
+  copy:
+    src: "{{ local_release_dir }}/cri-dockerd"
+    dest: "{{ bin_dir }}/cri-dockerd"
+    mode: 0755
+    remote_src: true
+  notify:
+    - restart and enable cri-dockerd
+
+- name: Generate cri-dockerd systemd unit files
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: 0644
+  with_items:
+    - cri-dockerd.service
+    - cri-dockerd.socket
+  notify:
+    - restart and enable cri-dockerd
+
+- name: Flush handlers
+  meta: flush_handlers

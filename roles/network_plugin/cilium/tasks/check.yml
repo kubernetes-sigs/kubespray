@@ -1,0 +1,63 @@
+---
+- name: Cilium | Check Cilium encryption `cilium_ipsec_key` for ipsec
+  assert:
+    that:
+      - "cilium_ipsec_key is defined"
+    msg: "cilium_ipsec_key should be defined to enable encryption using ipsec"
+  when:
+    - cilium_encryption_enabled
+    - cilium_encryption_type == "ipsec"
+    - cilium_tunnel_mode in ['vxlan']
+
+# TODO: Clean this task up when we drop backward compatibility support for `cilium_ipsec_enabled`
+- name: Stop if `cilium_ipsec_enabled` is defined and `cilium_encryption_type` is not `ipsec`
+  assert:
+    that: cilium_encryption_type == 'ipsec'
+    msg: >
+      It is not possible to use `cilium_ipsec_enabled` when `cilium_encryption_type` is set to {{ cilium_encryption_type }}.
+  when:
+    - cilium_ipsec_enabled is defined
+    - cilium_ipsec_enabled
+    - kube_network_plugin == 'cilium' or cilium_deploy_additionally | default(false) | bool
+
+- name: Stop if kernel version is too low for Cilium Wireguard encryption
+  assert:
+    that: ansible_kernel.split('-')[0] is version('5.6.0', '>=')
+  when:
+    - kube_network_plugin == 'cilium' or cilium_deploy_additionally | default(false) | bool
+    - cilium_encryption_enabled
+    - cilium_encryption_type == "wireguard"
+    - not ignore_assert_errors
+
+- name: Stop if bad Cilium identity allocation mode
+  assert:
+    that: cilium_identity_allocation_mode in ['crd', 'kvstore']
+    msg: "cilium_identity_allocation_mode must be either 'crd' or 'kvstore'"
+
+- name: Stop if bad Cilium Cluster ID
+  assert:
+    that:
+      - cilium_cluster_id <= 255
+      - cilium_cluster_id >= 0
+    msg: "'cilium_cluster_id' must be between 1 and 255"
+  when: cilium_cluster_id is defined
+
+- name: Stop if bad encryption type
+  assert:
+    that: cilium_encryption_type in ['ipsec', 'wireguard']
+    msg: "cilium_encryption_type must be either 'ipsec' or 'wireguard'"
+  when: cilium_encryption_enabled
+
+- name: Stop if cilium_version is < v1.10.0
+  assert:
+    that: cilium_version | regex_replace('v') is version(cilium_min_version_required, '>=')
+    msg: "cilium_version is too low. Minimum version {{ cilium_min_version_required }}"
+
+# TODO: Clean this task up when we drop backward compatibility support for `cilium_ipsec_enabled`
+- name: Set `cilium_encryption_type` to "ipsec" and  if `cilium_ipsec_enabled` is true
+  set_fact:
+    cilium_encryption_type: ipsec
+    cilium_encryption_enabled: true
+  when:
+    - cilium_ipsec_enabled is defined
+    - cilium_ipsec_enabled

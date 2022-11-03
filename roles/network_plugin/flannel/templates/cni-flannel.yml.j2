@@ -34,7 +34,8 @@ data:
       "Backend": {
         "Type": "{{ flannel_backend_type }}"{% if flannel_backend_type == "vxlan" %},
         "VNI": {{ flannel_vxlan_vni }},
-        "Port": {{ flannel_vxlan_port }}
+        "Port": {{ flannel_vxlan_port }},
+        "DirectRouting": {{ flannel_vxlan_direct_routing | to_json }}
 {% endif %}
       }
     }
@@ -66,7 +67,7 @@ spec:
       serviceAccountName: flannel
       containers:
       - name: kube-flannel
-        image: {{ flannel_image_repo }}:{{ flannel_image_tag }}-{{ arch }}
+        image: {{ flannel_image_repo }}:{{ flannel_image_tag | regex_replace(image_arch,'') }}{{ arch }}
         imagePullPolicy: {{ k8s_image_pull_policy }}
         resources:
           limits:
@@ -79,7 +80,7 @@ spec:
         securityContext:
           privileged: false
           capabilities:
-            add: ["NET_ADMIN"]
+            add: ["NET_ADMIN", "NET_RAW"]
         env:
         - name: POD_NAME
           valueFrom:
@@ -89,11 +90,15 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: EVENT_QUEUE_DEPTH
+          value: "5000"
         volumeMounts:
         - name: run
           mountPath: /run/flannel
         - name: flannel-cfg
           mountPath: /etc/kube-flannel/
+        - name: xtables-lock
+          mountPath: /run/xtables.lock
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -108,8 +113,19 @@ spec:
                     values:
                       - {{ arch }}
       initContainers:
+      - name: install-cni-plugin
+        image: {{ flannel_init_image_repo }}:{{ flannel_init_image_tag | regex_replace(image_arch,'') }}{{ arch }}
+        command:
+        - cp
+        args:
+        - -f
+        - /flannel
+        - /opt/cni/bin/flannel
+        volumeMounts:
+        - name: cni-plugin
+          mountPath: /opt/cni/bin
       - name: install-cni
-        image: {{ flannel_image_repo }}:{{ flannel_image_tag }}-{{ arch }}
+        image: {{ flannel_image_repo }}:{{ flannel_image_tag | regex_replace(image_arch,'') }}{{ arch }}
         command:
         - cp
         args:
@@ -135,7 +151,11 @@ spec:
         - name: flannel-cfg
           configMap:
             name: kube-flannel-cfg
-        - name: host-cni-bin
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
+        - name: cni-plugin
           hostPath:
             path: /opt/cni/bin
   updateStrategy:

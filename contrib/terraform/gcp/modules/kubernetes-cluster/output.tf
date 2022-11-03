@@ -19,9 +19,9 @@ output "worker_ip_addresses" {
 }
 
 output "ingress_controller_lb_ip_address" {
-  value = google_compute_address.worker_lb.address
+  value = length(var.ingress_whitelist) > 0 ? google_compute_address.worker_lb.0.address : ""
 }
 
 output "control_plane_lb_ip_address" {
-  value = google_compute_forwarding_rule.master_lb.ip_address
+  value = length(var.api_server_whitelist) > 0 ? google_compute_forwarding_rule.master_lb.0.ip_address : ""
 }

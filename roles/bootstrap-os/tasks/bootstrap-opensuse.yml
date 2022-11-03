@@ -1,5 +1,9 @@
 ---
 # OpenSUSE ships with Python installed
+- name: Gather host facts to get ansible_distribution_version ansible_distribution_major_version
+  setup:
+    gather_subset: '!all'
+    filter: ansible_distribution_*version
 
 - name: Check that /etc/sysconfig/proxy file exists
   stat:
@@ -10,7 +14,7 @@
   register: stat_result
 
 - name: Create the /etc/sysconfig/proxy empty file
-  file:
+  file:  # noqa risky-file-permissions
     path: /etc/sysconfig/proxy
     state: touch
   when:
@@ -58,4 +62,24 @@
     name: python-cryptography
     state: present
     update_cache: true
+  become: true
+  when:
+    - ansible_distribution_version is version('15.4', '<')
+
+- name: Install python3-cryptography
+  zypper:
+    name: python3-cryptography
+    state: present
+    update_cache: true
+  become: true
+  when:
+    - ansible_distribution_version is version('15.4', '>=')
+
+# Nerdctl needs some basic packages to get an environment up
+- name: Install basic dependencies
+  zypper:
+    name:
+      - iptables
+      - apparmor-parser
+    state: present
   become: true

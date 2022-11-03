@@ -1,5 +1,5 @@
 $num_instances = 16
-$vm_memory ||= 1600
+$vm_memory ||= 2048
 $os = "ubuntu1804"
 $network_plugin = "weave"
 $kube_master_instances = 1

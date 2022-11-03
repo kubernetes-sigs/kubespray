@@ -43,30 +43,6 @@
     - need_https_proxy.rc != 0
     - not skip_http_proxy_on_os_packages
 
-- name: Check Network Name Resolution configuration
-  raw: grep '^DNSSEC=allow-downgrade' /etc/systemd/resolved.conf
-  register: need_dnssec_allow_downgrade
-  failed_when: false
-  changed_when: false
-  # This command should always run, even in check mode
-  check_mode: false
-  when:
-    - '''UBUNTU_CODENAME=bionic'' in os_release.stdout_lines'
-
-- name: Change Network Name Resolution configuration
-  raw: sed -i 's/^DNSSEC=yes/DNSSEC=allow-downgrade/g' /etc/systemd/resolved.conf
-  become: true
-  when:
-    - '''UBUNTU_CODENAME=bionic'' in os_release.stdout_lines'
-    - need_dnssec_allow_downgrade.rc
-
-- name: Restart systemd-resolved service
-  raw: systemctl restart systemd-resolved
-  become: true
-  when:
-    - '''UBUNTU_CODENAME=bionic'' in os_release.stdout_lines'
-    - need_dnssec_allow_downgrade.rc
-
 - name: Install python3
   raw:
     apt-get update && \
@@ -74,6 +50,18 @@
   become: true
   when:
     - need_bootstrap.rc != 0
+
+- name: Update Apt cache
+  raw: apt-get update --allow-releaseinfo-change
+  become: true
+  when:
+    - '''ID=debian'' in os_release.stdout_lines'
+    - '''VERSION_ID="10"'' in os_release.stdout_lines or ''VERSION_ID="11"'' in os_release.stdout_lines'
+  register: bootstrap_update_apt_result
+  changed_when:
+    - '"changed its" in bootstrap_update_apt_result.stdout'
+    - '"value from" in bootstrap_update_apt_result.stdout'
+  ignore_errors: true
 
 - name: Set the ansible_python_interpreter fact
   set_fact:

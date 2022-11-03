@@ -14,7 +14,7 @@ vagrant-validate:
   stage: unit-tests
   tags: [light]
   variables:
-    VAGRANT_VERSION: 2.2.14
+    VAGRANT_VERSION: 2.2.19
   script:
     - ./tests/scripts/vagrant-validate.sh
   except: ['triggers', 'master']
@@ -23,9 +23,8 @@ ansible-lint:
   extends: .job
   stage: unit-tests
   tags: [light]
-  # lint every yml/yaml file that looks like it contains Ansible plays
-  script: |-
-    grep -Rl '^- hosts: \|^  hosts: ' --include \*.yml --include \*.yaml . | xargs -P 4 -n 25 ansible-lint -v
+  script:
+    - ansible-lint -v
   except: ['triggers', 'master']
 
 syntax-check:
@@ -53,6 +52,7 @@ tox-inventory-builder:
     - ./tests/scripts/rebase.sh
     - apt-get update && apt-get install -y python3-pip
     - update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+    - python -m pip uninstall -y ansible ansible-base ansible-core
     - python -m pip install -r tests/requirements.txt
   script:
     - pip3 install tox
@@ -67,6 +67,20 @@ markdownlint:
     - npm install -g markdownlint-cli@0.22.0
   script:
     - markdownlint $(find . -name '*.md' | grep -vF './.git') --ignore docs/_sidebar.md --ignore contrib/dind/README.md
+
+check-readme-versions:
+  stage: unit-tests
+  tags: [light]
+  image: python:3
+  script:
+    - tests/scripts/check_readme_versions.sh
+
+check-typo:
+  stage: unit-tests
+  tags: [light]
+  image: python:3
+  script:
+    - tests/scripts/check_typo.sh
 
 ci-matrix:
   stage: unit-tests

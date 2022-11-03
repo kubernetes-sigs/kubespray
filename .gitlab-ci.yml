@@ -8,7 +8,7 @@ stages:
   - deploy-special
 
 variables:
-  KUBESPRAY_VERSION: v2.15.0
+  KUBESPRAY_VERSION: v2.20.0
   FAILFASTCI_NAMESPACE: 'kargo-ci'
   GITLAB_REPOSITORY: 'kargo-ci/kubernetes-sigs-kubespray'
   ANSIBLE_FORCE_COLOR: "true"
@@ -16,6 +16,7 @@ variables:
   TEST_ID: "$CI_PIPELINE_ID-$CI_BUILD_ID"
   CI_TEST_VARS: "./tests/files/${CI_JOB_NAME}.yml"
   CI_TEST_REGISTRY_MIRROR: "./tests/common/_docker_hub_registry_mirror.yml"
+  CI_TEST_SETTING: "./tests/common/_kubespray_test_settings.yml"
   GS_ACCESS_KEY_ID: $GS_KEY
   GS_SECRET_ACCESS_KEY: $GS_SECRET
   CONTAINER_ENGINE: docker
@@ -26,16 +27,20 @@ variables:
   ANSIBLE_INVENTORY: ./inventory/sample/${CI_JOB_NAME}-${BUILD_NUMBER}.ini
   IDEMPOT_CHECK: "false"
   RESET_CHECK: "false"
+  REMOVE_NODE_CHECK: "false"
   UPGRADE_TEST: "false"
   MITOGEN_ENABLE: "false"
   ANSIBLE_LOG_LEVEL: "-vv"
   RECOVER_CONTROL_PLANE_TEST: "false"
-  RECOVER_CONTROL_PLANE_TEST_GROUPS: "etcd[2:],kube-master[1:]"
+  RECOVER_CONTROL_PLANE_TEST_GROUPS: "etcd[2:],kube_control_plane[1:]"
+  TERRAFORM_VERSION: 1.0.8
+  ANSIBLE_MAJOR_VERSION: "2.11"
 
 before_script:
   - ./tests/scripts/rebase.sh
   - update-alternatives --install /usr/bin/python python /usr/bin/python3 1
-  - python -m pip install -r tests/requirements.txt
+  - python -m pip uninstall -y ansible ansible-base ansible-core
+  - python -m pip install -r tests/requirements-${ANSIBLE_MAJOR_VERSION}.txt
   - mkdir -p /.ssh
 
 .job: &job
@@ -49,6 +54,7 @@ before_script:
 
 .testcases: &testcases
   <<: *job
+  retry: 1
   before_script:
     - update-alternatives --install /usr/bin/python python /usr/bin/python3 1
     - ./tests/scripts/rebase.sh
@@ -75,3 +81,4 @@ include:
   - .gitlab-ci/terraform.yml
   - .gitlab-ci/packet.yml
   - .gitlab-ci/vagrant.yml
+  - .gitlab-ci/molecule.yml

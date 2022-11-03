@@ -9,8 +9,8 @@ Summary:        Ansible modules for installing Kubernetes
 
 Group:          System Environment/Libraries
 License:        ASL 2.0
-Url:            https://github.com/kubernetes-incubator/kubespray
-Source0:        https://github.com/kubernetes-incubator/kubespray/archive/%{upstream_version}.tar.gz#/%{name}-%{release}.tar.gz
+Url:            https://github.com/kubernetes-sigs/kubespray
+Source0:        https://github.com/kubernetes-sigs/kubespray/archive/%{upstream_version}.tar.gz#/%{name}-%{release}.tar.gz
 
 BuildArch:      noarch
 BuildRequires:  git
@@ -51,7 +51,7 @@ export SKIP_PIP_INSTALL=1
 %doc %{_docdir}/%{name}/inventory/sample/hosts.ini
 %config %{_sysconfdir}/%{name}/ansible.cfg
 %config %{_sysconfdir}/%{name}/inventory/sample/group_vars/all.yml
-%config %{_sysconfdir}/%{name}/inventory/sample/group_vars/k8s-cluster.yml
+%config %{_sysconfdir}/%{name}/inventory/sample/group_vars/k8s_cluster.yml
 %license %{_docdir}/%{name}/LICENSE
 %{python2_sitelib}/%{srcname}-%{release}-py%{python2_version}.egg-info
 %{_datarootdir}/%{name}/roles/

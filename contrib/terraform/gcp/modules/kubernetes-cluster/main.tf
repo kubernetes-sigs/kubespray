@@ -5,6 +5,8 @@
 
 resource "google_compute_network" "main" {
   name = "${var.prefix}-network"
+
+  auto_create_subnetworks = false
 }
 
 resource "google_compute_subnetwork" "main" {
@@ -19,6 +21,8 @@ resource "google_compute_firewall" "deny_all" {
   network = google_compute_network.main.name
 
   priority = 1000
+
+  source_ranges = ["0.0.0.0/0"]
 
   deny {
     protocol = "all"
@@ -39,6 +43,8 @@ resource "google_compute_firewall" "allow_internal" {
 }
 
 resource "google_compute_firewall" "ssh" {
+  count = length(var.ssh_whitelist) > 0 ? 1 : 0
+
   name    = "${var.prefix}-ssh-firewall"
   network = google_compute_network.main.name
 
@@ -53,6 +59,8 @@ resource "google_compute_firewall" "ssh" {
 }
 
 resource "google_compute_firewall" "api_server" {
+  count = length(var.api_server_whitelist) > 0 ? 1 : 0
+
   name    = "${var.prefix}-api-server-firewall"
   network = google_compute_network.main.name
 
@@ -67,6 +75,8 @@ resource "google_compute_firewall" "api_server" {
 }
 
 resource "google_compute_firewall" "nodeport" {
+  count = length(var.nodeport_whitelist) > 0 ? 1 : 0
+
   name    = "${var.prefix}-nodeport-firewall"
   network = google_compute_network.main.name
 
@@ -81,10 +91,14 @@ resource "google_compute_firewall" "nodeport" {
 }
 
 resource "google_compute_firewall" "ingress_http" {
+  count = length(var.ingress_whitelist) > 0 ? 1 : 0
+
   name    = "${var.prefix}-http-ingress-firewall"
   network = google_compute_network.main.name
 
   priority = 100
+
+  source_ranges = var.ingress_whitelist
 
   allow {
     protocol = "tcp"
@@ -93,10 +107,14 @@ resource "google_compute_firewall" "ingress_http" {
 }
 
 resource "google_compute_firewall" "ingress_https" {
+  count = length(var.ingress_whitelist) > 0 ? 1 : 0
+
   name    = "${var.prefix}-https-ingress-firewall"
   network = google_compute_network.main.name
 
   priority = 100
+
+  source_ranges = var.ingress_whitelist
 
   allow {
     protocol = "tcp"
@@ -173,7 +191,7 @@ resource "google_compute_disk" "master" {
    }
 
   name = "${var.prefix}-${each.key}"
-  type = "pd-ssd"
+  type = var.master_additional_disk_type
   zone = each.value.machine.zone
   size = each.value.disk_size
 
@@ -229,19 +247,28 @@ resource "google_compute_instance" "master" {
 
   # Since we use google_compute_attached_disk we need to ignore this
   lifecycle {
-    ignore_changes = ["attached_disk"]
+    ignore_changes = [attached_disk]
+  }
+
+  scheduling {
+    preemptible = var.master_preemptible
+    automatic_restart = !var.master_preemptible
   }
 }
 
 resource "google_compute_forwarding_rule" "master_lb" {
+  count = length(var.api_server_whitelist) > 0 ? 1 : 0
+
   name = "${var.prefix}-master-lb-forward-rule"
 
   port_range = "6443"
 
-  target = google_compute_target_pool.master_lb.id
+  target = google_compute_target_pool.master_lb[count.index].id
 }
 
 resource "google_compute_target_pool" "master_lb" {
+  count = length(var.api_server_whitelist) > 0 ? 1 : 0
+
   name      = "${var.prefix}-master-lb-pool"
   instances = local.master_target_list
 }
@@ -258,7 +285,7 @@ resource "google_compute_disk" "worker" {
    }
 
   name = "${var.prefix}-${each.key}"
-  type = "pd-ssd"
+  type = var.worker_additional_disk_type
   zone = each.value.machine.zone
   size = each.value.disk_size
 
@@ -326,35 +353,48 @@ resource "google_compute_instance" "worker" {
 
   # Since we use google_compute_attached_disk we need to ignore this
   lifecycle {
-    ignore_changes = ["attached_disk"]
+    ignore_changes = [attached_disk]
+  }
+
+  scheduling {
+    preemptible = var.worker_preemptible
+    automatic_restart = !var.worker_preemptible
   }
 }
 
 resource "google_compute_address" "worker_lb" {
+  count = length(var.ingress_whitelist) > 0 ? 1 : 0
+
   name         = "${var.prefix}-worker-lb-address"
   address_type = "EXTERNAL"
   region       = var.region
 }
 
 resource "google_compute_forwarding_rule" "worker_http_lb" {
+  count = length(var.ingress_whitelist) > 0 ? 1 : 0
+
   name = "${var.prefix}-worker-http-lb-forward-rule"
 
-  ip_address = google_compute_address.worker_lb.address
+  ip_address = google_compute_address.worker_lb[count.index].address
   port_range = "80"
 
-  target = google_compute_target_pool.worker_lb.id
+  target = google_compute_target_pool.worker_lb[count.index].id
 }
 
 resource "google_compute_forwarding_rule" "worker_https_lb" {
+  count = length(var.ingress_whitelist) > 0 ? 1 : 0
+
   name = "${var.prefix}-worker-https-lb-forward-rule"
 
-  ip_address = google_compute_address.worker_lb.address
+  ip_address = google_compute_address.worker_lb[count.index].address
   port_range = "443"
 
-  target = google_compute_target_pool.worker_lb.id
+  target = google_compute_target_pool.worker_lb[count.index].id
 }
 
 resource "google_compute_target_pool" "worker_lb" {
+  count = length(var.ingress_whitelist) > 0 ? 1 : 0
+
   name      = "${var.prefix}-worker-lb-pool"
   instances = local.worker_target_list
 }

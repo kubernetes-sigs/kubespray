@@ -14,6 +14,12 @@ spec:
       protocol: TCP
       targetPort: calico-typha
       name: calico-typha
+{% if typha_prometheusmetricsenabled %}
+    - port: {{ typha_prometheusmetricsport }}
+      protocol: TCP
+      targetPort: http-metrics
+      name: metrics
+{% endif %}
   selector:
     k8s-app: calico-typha
 
@@ -46,6 +52,10 @@ spec:
         k8s-app: calico-typha
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: 'true'
+{% if typha_prometheusmetricsenabled %}
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: "{{ typha_prometheusmetricsport }}"
+{% endif %}
     spec:
       nodeSelector:
         kubernetes.io/os: linux
@@ -61,13 +71,27 @@ spec:
       # as a host-networked pod.
       serviceAccountName: calico-node
       priorityClassName: system-cluster-critical
+      # fsGroup allows using projected serviceaccount tokens as described here kubernetes/kubernetes#82573
+      securityContext:
+        fsGroup: 65534
       containers:
       - image: {{ calico_typha_image_repo }}:{{ calico_typha_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
         name: calico-typha
         ports:
         - containerPort: 5473
           name: calico-typha
           protocol: TCP
+{% if typha_prometheusmetricsenabled %}
+        - containerPort: {{ typha_prometheusmetricsport }}
+          name: http-metrics
+          protocol: TCP
+{% endif %}
+        envFrom:
+        - configMapRef:
+            # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
+            name: kubernetes-services-endpoint
+            optional: true
         env:
           # Enable "info" logging by default.  Can be set to "debug" to increase verbosity.
           - name: TYPHA_LOGSEVERITYSCREEN
@@ -96,6 +120,16 @@ spec:
             value: /etc/typha/server_certificate.pem
           - name: TYPHA_SERVERKEYFILE
             value: /etc/typha/server_key.pem
+{% endif %}
+{% if typha_prometheusmetricsenabled %}
+          # Since Typha is host-networked,
+          # this opens a port on the host, which may need to be secured.
+          - name: TYPHA_PROMETHEUSMETRICSENABLED
+            value: "true"
+          - name: TYPHA_PROMETHEUSMETRICSPORT
+            value: "{{ typha_prometheusmetricsport }}"
+{% endif %}
+{% if typha_secure %}
         volumeMounts:
           - mountPath: /etc/typha
             name: typha-server
@@ -105,13 +139,6 @@ spec:
             name: cacert
             readOnly: true
 {% endif %}
-          # Uncomment these lines to enable prometheus metrics.  Since Typha is host-networked,
-          # this opens a port on the host, which may need to be secured.
-          #- name: TYPHA_PROMETHEUSMETRICSENABLED
-          #  value: "true"
-          #- name: TYPHA_PROMETHEUSMETRICSPORT
-          #  value: "9093"
-
           # Needed for version >=3.7 when the 'host-local' ipam is used
           # Should never happen given templates/cni-calico.conflist.j2
           # Configure route aggregation based on pod CIDR.
@@ -149,7 +176,7 @@ spec:
 
 # This manifest creates a Pod Disruption Budget for Typha to allow K8s Cluster Autoscaler to evict
 
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: calico-typha

@@ -5,8 +5,8 @@ To recover from broken nodes in the control plane use the "recover\-control\-pla
 
 * Backup what you can
 * Provision new nodes to replace the broken ones
-* Place the surviving nodes of the control plane first in the "etcd" and "kube-master" groups
-* Add the new nodes below the surviving control plane nodes in the "etcd" and "kube-master" groups
+* Place the surviving nodes of the control plane first in the "etcd" and "kube\_control\_plane" groups
+* Add the new nodes below the surviving control plane nodes in the "etcd" and "kube\_control\_plane" groups
 
 Examples of what broken means in this context:
 
@@ -20,9 +20,9 @@ __Note that you need at least one functional node to be able to recover using th
 ## Runbook
 
 * Move any broken etcd nodes into the "broken\_etcd" group, make sure the "etcd\_member\_name" variable is set.
-* Move any broken master nodes into the "broken\_kube-master" group.
+* Move any broken control plane nodes into the "broken\_kube\_control\_plane" group.
 
-Then run the playbook with ```--limit etcd,kube-master``` and increase the number of ETCD retries by setting ```-e etcd_retries=10``` or something even larger. The amount of retries required is difficult to predict.
+Then run the playbook with ```--limit etcd,kube_control_plane``` and increase the number of ETCD retries by setting ```-e etcd_retries=10``` or something even larger. The amount of retries required is difficult to predict.
 
 When finished you should have a fully working control plane again.
 

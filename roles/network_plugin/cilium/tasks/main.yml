@@ -1,47 +1,6 @@
 ---
-- name: Cilium | Ensure BFPFS mounted
-  mount:
-    fstype: bpf
-    path: /sys/fs/bpf
-    src: bpffs
-    state: mounted
+- import_tasks: check.yml
 
-- name: Cilium | Create Cilium certs directory
-  file:
-    dest: "{{ cilium_cert_dir }}"
-    state: directory
-    mode: 0750
-    owner: root
-    group: root
+- include_tasks: install.yml
 
-- name: Cilium | Link etcd certificates for cilium
-  file:
-    src: "{{ etcd_cert_dir }}/{{ item.s }}"
-    dest: "{{ cilium_cert_dir }}/{{ item.d }}"
-    state: hard
-    force: yes
-  with_items:
-    - {s: "{{ kube_etcd_cacert_file }}", d: "ca_cert.crt"}
-    - {s: "{{ kube_etcd_cert_file }}", d: "cert.crt"}
-    - {s: "{{ kube_etcd_key_file }}", d: "key.pem"}
-
-- name: Cilium | Create Cilium node manifests
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-  with_items:
-    - {name: cilium, file: cilium-config.yml, type: cm}
-    - {name: cilium, file: cilium-crb.yml, type: clusterrolebinding}
-    - {name: cilium, file: cilium-cr.yml, type: clusterrole}
-    - {name: cilium, file: cilium-ds.yml, type: ds}
-    - {name: cilium, file: cilium-deploy.yml, type: deploy}
-    - {name: cilium, file: cilium-sa.yml, type: sa}
-  register: cilium_node_manifests
-  when:
-    - inventory_hostname in groups['kube-master']
-
-- name: Cilium | Enable portmap addon
-  template:
-    src: 000-cilium-portmap.conflist.j2
-    dest: /etc/cni/net.d/000-cilium-portmap.conflist
-  when: cilium_enable_portmap
+- include_tasks: apply.yml

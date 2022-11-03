@@ -1,0 +1,220 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: vsphere-csi-controller
+  namespace: "{{ vsphere_csi_namespace }}"
+spec:
+  replicas: {{ vsphere_csi_controller_replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  selector:
+    matchLabels:
+      app: vsphere-csi-controller
+  template:
+    metadata:
+      labels:
+        app: vsphere-csi-controller
+        role: vsphere-csi
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "app"
+                    operator: In
+                    values:
+                      - vsphere-csi-controller
+              topologyKey: "kubernetes.io/hostname"
+      serviceAccountName: vsphere-csi-controller
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - operator: "Exists"
+          key: node-role.kubernetes.io/master
+          effect: NoSchedule
+        - operator: "Exists"
+          key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+{% if vsphere_csi_aggressive_node_drain %}
+        # set below toleration if you need an aggressive pod eviction in case when
+        # node becomes not-ready or unreachable. Default is 300 seconds if not specified.
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: {{ vsphere_csi_aggressive_node_not_ready_timeout }}
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: {{ vsphere_csi_aggressive_node_unreachable_timeout }}
+{% endif %}
+      dnsPolicy: "Default"
+      containers:
+        - name: csi-attacher
+          image: {{ kube_image_repo }}/sig-storage/csi-attacher:{{ vsphere_csi_attacher_image_tag }}
+          args:
+            - "--v=4"
+            - "--timeout=300s"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election"
+            - "--kube-api-qps=100"
+            - "--kube-api-burst=100"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+{% if external_vsphere_version >= "7.0" %}
+        - name: csi-resizer
+          image: {{ kube_image_repo }}/sig-storage/csi-resizer:{{ vsphere_csi_resizer_tag }}
+          args:
+            - "--v=4"
+            - "--timeout=300s"
+            - "--csi-address=$(ADDRESS)"
+            - "--handle-volume-inuse-error=false"
+            - "--kube-api-qps=100"
+            - "--kube-api-burst=100"
+            - "--leader-election"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+{% endif %}
+        - name: vsphere-csi-controller
+          image: {{ gcr_image_repo }}/cloud-provider-vsphere/csi/release/driver:{{ vsphere_csi_controller }}
+          args:
+            - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
+            - "--fss-namespace={{ vsphere_csi_namespace }}"
+            - "--supervisor-fss-namespace={{ vsphere_csi_namespace }}"
+            - "--use-gocsi=false"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          env:
+            - name: CSI_ENDPOINT
+              value: unix://{{ csi_endpoint }}/csi.sock
+            - name: X_CSI_MODE
+              value: "controller"
+            - name: X_CSI_SPEC_DISABLE_LEN_CHECK
+              value: "true"
+            - name: X_CSI_SERIAL_VOL_ACCESS_TIMEOUT
+              value: 3m
+            - name: VSPHERE_CSI_CONFIG
+              value: "/etc/cloud/csi-vsphere.conf"
+            - name: LOGGER_LEVEL
+              value: "PRODUCTION" # Options: DEVELOPMENT, PRODUCTION
+{% if external_vsphere_version >= "7.0u1" %}
+            - name: INCLUSTER_CLIENT_QPS
+              value: "100"
+            - name: INCLUSTER_CLIENT_BURST
+              value: "100"
+{% endif %}
+          volumeMounts:
+            - mountPath: /etc/cloud
+              name: vsphere-config-volume
+              readOnly: true
+            - mountPath: {{ csi_endpoint }}
+              name: socket-dir
+          ports:
+            - name: healthz
+              containerPort: 9808
+              protocol: TCP
+            - name: prometheus
+              containerPort: 2112
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 5
+            failureThreshold: 3
+        - name: liveness-probe
+          image: {{ kube_image_repo }}/sig-storage/livenessprobe:{{ vsphere_csi_liveness_probe_image_tag }}
+          args:
+            - "--v=4"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: {{ csi_endpoint }}/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: {{ csi_endpoint }}
+        - name: vsphere-syncer
+          image: {{ gcr_image_repo }}/cloud-provider-vsphere/csi/release/syncer:{{ vsphere_syncer_image_tag }}
+          args:
+            - "--leader-election"
+            - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
+            - "--fss-namespace={{ vsphere_csi_namespace }}"
+            - "--supervisor-fss-namespace={{ vsphere_csi_namespace }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          ports:
+            - containerPort: 2113
+              name: prometheus
+              protocol: TCP
+          env:
+            - name: FULL_SYNC_INTERVAL_MINUTES
+              value: "30"
+            - name: VSPHERE_CSI_CONFIG
+              value: "/etc/cloud/csi-vsphere.conf"
+            - name: LOGGER_LEVEL
+              value: "PRODUCTION" # Options: DEVELOPMENT, PRODUCTION
+{% if external_vsphere_version >= "7.0u1" %}
+            - name: INCLUSTER_CLIENT_QPS
+              value: "100"
+            - name: INCLUSTER_CLIENT_BURST
+              value: "100"
+{% endif %}
+          volumeMounts:
+            - mountPath: /etc/cloud
+              name: vsphere-config-volume
+              readOnly: true
+        - name: csi-provisioner
+          image: {{ kube_image_repo }}/sig-storage/csi-provisioner:{{ vsphere_csi_provisioner_image_tag }}
+          args:
+            - "--v=4"
+            - "--timeout=300s"
+            - "--csi-address=$(ADDRESS)"
+{% if vsphere_csi_controller is version('v2.2.0', '>=') %}
+            - "--kube-api-qps=100"
+            - "--kube-api-burst=100"
+{% endif %}
+            - "--leader-election"
+            - "--default-fstype=ext4"
+            # needed only for topology aware setup
+            #- "--feature-gates=Topology=true"
+            #- "--strict-topology"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+{% if vsphere_csi_controller is version('v2.5.0', '>=') %}
+        - name: csi-snapshotter
+          image: {{ kube_image_repo }}/sig-storage/csi-snapshotter:{{ vsphere_csi_snapshotter_image_tag }}
+          args:
+            - "--v=4"
+            - "--kube-api-qps=100"
+            - "--kube-api-burst=100"
+            - "--timeout=300s"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+{% endif %}
+      volumes:
+      - name: vsphere-config-volume
+        secret:
+          secretName: vsphere-config-secret
+      - name: socket-dir
+        emptyDir: {}

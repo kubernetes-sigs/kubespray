@@ -25,7 +25,7 @@ data "aws_ami" "distro" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"]
+    values = ["debian-10-amd64-*"]
   }
 
   filter {
@@ -33,7 +33,7 @@ data "aws_ami" "distro" {
     values = ["hvm"]
   }
 
-  owners = ["099720109477"] # Canonical
+  owners = ["136693071363"] # Debian-10
 }
 
 //AWS VPC Variables
@@ -63,8 +63,16 @@ variable "aws_bastion_size" {
 * The number should be divisable by the number of used
 * AWS Availability Zones without an remainder.
 */
+variable "aws_bastion_num" {
+  description = "Number of Bastion Nodes"
+}
+
 variable "aws_kube_master_num" {
   description = "Number of Kubernetes Master Nodes"
+}
+
+variable "aws_kube_master_disk_size" {
+  description = "Disk size for Kubernetes Master Nodes (in GiB)"
 }
 
 variable "aws_kube_master_size" {
@@ -75,6 +83,10 @@ variable "aws_etcd_num" {
   description = "Number of etcd Nodes"
 }
 
+variable "aws_etcd_disk_size" {
+  description = "Disk size for etcd Nodes (in GiB)"
+}
+
 variable "aws_etcd_size" {
   description = "Instance size of etcd Nodes"
 }
@@ -83,16 +95,20 @@ variable "aws_kube_worker_num" {
   description = "Number of Kubernetes Worker Nodes"
 }
 
+variable "aws_kube_worker_disk_size" {
+  description = "Disk size for Kubernetes Worker Nodes (in GiB)"
+}
+
 variable "aws_kube_worker_size" {
   description = "Instance size of Kubernetes Worker Nodes"
 }
 
 /*
-* AWS ELB Settings
+* AWS NLB Settings
 *
 */
-variable "aws_elb_api_port" {
-  description = "Port for AWS ELB"
+variable "aws_nlb_api_port" {
+  description = "Port for AWS NLB"
 }
 
 variable "k8s_secure_api_port" {

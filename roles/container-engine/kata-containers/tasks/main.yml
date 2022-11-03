@@ -1,24 +1,31 @@
 ---
+- name: kata-containers | Download kata binary
+  include_tasks: "../../../download/tasks/download_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.kata_containers) }}"
 
-- name: Download artifacts
+- name: kata-containers | Copy kata-containers binary
   unarchive:
-    src: "{{ kata_containers_release_url }}"
-    dest: /
-    remote_src: true
+    src: "{{ local_release_dir }}/kata-static-{{ kata_containers_version }}-{{ image_arch }}.tar.xz"
+    dest: "/"
+    mode: 0755
+    remote_src: yes
 
-- name: Create config directory
+- name: kata-containers | Create config directory
   file:
     path: "{{ kata_containers_config_dir }}"
     state: directory
+    mode: 0755
 
-- name: Set configuration
+- name: kata-containers | Set configuration
   template:
     src: "{{ item }}.j2"
     dest: "{{ kata_containers_config_dir }}/{{ item }}"
+    mode: 0644
   with_items:
     - configuration-qemu.toml
 
-- name: Set containerd bin
+- name: kata-containers | Set containerd bin
   vars:
     shim: "{{ item }}"
   template:
@@ -27,3 +34,19 @@
     mode: 0755
   with_items:
     - qemu
+
+- name: kata-containers | Load vhost kernel modules
+  modprobe:
+    state: present
+    name: "{{ item }}"
+  with_items:
+    - vhost_vsock
+    - vhost_net
+
+- name: kata-containers | Persist vhost kernel modules
+  copy:
+    dest: /etc/modules-load.d/kubespray-kata-containers.conf
+    mode: 0644
+    content: |
+      vhost_vsock
+      vhost_net

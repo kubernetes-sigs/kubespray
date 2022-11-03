@@ -17,6 +17,9 @@ spec:
         app: netchecker-server
     spec:
       priorityClassName: {% if netcheck_namespace == 'kube-system' %}system-cluster-critical{% else %}k8s-cluster-critical{% endif %}{{''}}
+      volumes:
+        - name: etcd-data
+          emptyDir: {}
       containers:
         - name: netchecker-server
           image: "{{ netcheck_server_image_repo }}:{{ netcheck_server_image_tag }}"
@@ -29,15 +32,51 @@ spec:
               cpu: {{ netchecker_server_cpu_requests }}
               memory: {{ netchecker_server_memory_requests }}
           securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ['ALL']
             runAsUser: {{ netchecker_server_user | default('0') }}
             runAsGroup: {{ netchecker_server_group | default('0') }}
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 8081
           args:
-            - "-v=5"
-            - "-logtostderr"
-            - "-kubeproxyinit"
-            - "-endpoint=0.0.0.0:8081"
+            - -v=5
+            - -logtostderr
+            - -kubeproxyinit=false
+            - -endpoint=0.0.0.0:8081
+            - -etcd-endpoints=http://127.0.0.1:2379
+        - name: etcd
+          image: "{{ etcd_image_repo }}:{{ netcheck_etcd_image_tag }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          command:
+            - etcd
+            - --listen-client-urls=http://127.0.0.1:2379
+            - --advertise-client-urls=http://127.0.0.1:2379
+            - --data-dir=/var/lib/etcd
+            - --enable-v2
+            - --force-new-cluster
+          volumeMounts:
+            - mountPath: /var/lib/etcd
+              name: etcd-data
+          resources:
+            limits:
+              cpu: {{ netchecker_etcd_cpu_limit }}
+              memory: {{ netchecker_etcd_memory_limit }}
+            requests:
+              cpu: {{ netchecker_etcd_cpu_requests }}
+              memory: {{ netchecker_etcd_memory_requests }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ['ALL']
+            runAsUser: {{ netchecker_server_user | default('0') }}
+            runAsGroup: {{ netchecker_server_group | default('0') }}
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
       tolerations:
         - effect: NoSchedule
           operator: Exists

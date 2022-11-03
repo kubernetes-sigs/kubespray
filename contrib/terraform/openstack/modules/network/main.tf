@@ -11,10 +11,11 @@ data "openstack_networking_router_v2" "k8s" {
 }
 
 resource "openstack_networking_network_v2" "k8s" {
-  name           = var.network_name
-  count          = var.use_neutron
-  dns_domain     = var.network_dns_domain != null ? var.network_dns_domain : null
-  admin_state_up = "true"
+  name                  = var.network_name
+  count                 = var.use_neutron
+  dns_domain            = var.network_dns_domain != null ? var.network_dns_domain : null
+  admin_state_up        = "true"
+  port_security_enabled = var.port_security_enabled
 }
 
 resource "openstack_networking_subnet_v2" "k8s" {

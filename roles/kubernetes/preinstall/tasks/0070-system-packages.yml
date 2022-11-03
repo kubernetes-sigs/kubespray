@@ -9,6 +9,28 @@
     - ansible_pkg_mgr == 'zypper'
   tags: bootstrap-os
 
+- block:
+    - name: Add Debian Backports apt repo
+      apt_repository:
+        repo: "deb http://deb.debian.org/debian {{ ansible_distribution_release }}-backports main"
+        state: present
+        filename: debian-backports
+
+    - name: Set libseccomp2 pin priority to apt_preferences on Debian buster
+      copy:
+        content: |
+          Package: libseccomp2
+          Pin: release a={{ ansible_distribution_release }}-backports
+          Pin-Priority: 1001
+        dest: "/etc/apt/preferences.d/libseccomp2"
+        owner: "root"
+        mode: 0644
+  when:
+    - ansible_distribution == "Debian"
+    - ansible_distribution_version == "10"
+  tags:
+    - bootstrap-os
+
 - name: Update package management cache (APT)
   apt:
     update_cache: yes
@@ -22,7 +44,7 @@
     path: "{{ yum_repo_dir }}/docker.repo"
     state: absent
   when:
-    - ansible_distribution in ["CentOS","RedHat","OracleLinux"]
+    - ansible_os_family == "RedHat"
     - not is_fedora_coreos
 
 - name: Install python3-dnf for latest RedHat versions
@@ -39,12 +61,12 @@
   tags:
     - bootstrap-os
 
-- name: Install epel-release on RedHat/CentOS
+- name: Install epel-release on RHEL derivatives
   package:
     name: epel-release
     state: present
   when:
-    - ansible_distribution in ["CentOS","RedHat"]
+    - ansible_os_family == "RedHat"
     - not is_fedora_coreos
     - epel_enabled|bool
   tags:
@@ -63,7 +85,7 @@
   until: pkgs_task_result is succeeded
   retries: "{{ pkg_install_retries }}"
   delay: "{{ retry_stagger | random + 3 }}"
-  when: not (ansible_os_family in ["Flatcar Container Linux by Kinvolk", "ClearLinux"] or is_fedora_coreos)
+  when: not (ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk", "ClearLinux"] or is_fedora_coreos)
   tags:
     - bootstrap-os
 

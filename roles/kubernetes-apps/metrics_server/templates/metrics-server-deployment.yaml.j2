@@ -13,6 +13,9 @@ spec:
     matchLabels:
       app.kubernetes.io/name: metrics-server
       version: {{ metrics_server_version }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
   template:
     metadata:
       name: metrics-server
@@ -28,11 +31,10 @@ spec:
       - name: metrics-server
         image: {{ metrics_server_image_repo }}:{{ metrics_server_image_tag }}
         imagePullPolicy: {{ k8s_image_pull_policy }}
-        command:
-        - /metrics-server
+        args:
         - --logtostderr
         - --cert-dir=/tmp
-        - --secure-port=8443
+        - --secure-port={{ metrics_server_container_port }}
 {% if metrics_server_kubelet_preferred_address_types %}
         - --kubelet-preferred-address-types={{ metrics_server_kubelet_preferred_address_types }}
 {% endif %}
@@ -41,12 +43,8 @@ spec:
         - --kubelet-insecure-tls
 {% endif %}
         - --metric-resolution={{ metrics_server_metric_resolution }}
-        resources:
-          requests:
-            cpu: 100m
-            memory: 300Mi
         ports:
-        - containerPort: 8443
+        - containerPort: {{ metrics_server_container_port }}
           name: https
           protocol: TCP
         volumeMounts:
@@ -54,24 +52,26 @@ spec:
           mountPath: /tmp
         livenessProbe:
           httpGet:
-            path: /healthz?exclude=readyz
+            path: /livez
             port: https
             scheme: HTTPS
-          timeoutSeconds: 10
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 40
         readinessProbe:
           httpGet:
-            path: /healthz?exclude=livez
+            path: /readyz
             port: https
             scheme: HTTPS
-          timeoutSeconds: 10
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 40
         securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["all"]
           readOnlyRootFilesystem: true
           runAsGroup: 10001
           runAsNonRoot: true
           runAsUser: 10001
+          allowPrivilegeEscalation: false
         resources:
           limits:
             cpu: {{ metrics_server_limits_cpu }}
@@ -79,47 +79,7 @@ spec:
           requests:
             cpu: {{ metrics_server_requests_cpu }}
             memory: {{ metrics_server_requests_memory }}
-      - name: metrics-server-nanny
-        image: {{ addon_resizer_image_repo }}:{{ addon_resizer_image_tag }}
-        imagePullPolicy: {{ k8s_image_pull_policy }}
-        resources:
-          limits:
-            cpu: {{ addon_resizer_limits_cpu }}
-            memory: {{ addon_resizer_limits_memory }}
-          requests:
-            cpu: {{ addon_resizer_requests_cpu }}
-            memory: {{ addon_resizer_requests_memory }}
-        env:
-          - name: MY_POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-          - name: MY_POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-        volumeMounts:
-        - name: metrics-server-config-volume
-          mountPath: /etc/config
-        command:
-          - /pod_nanny
-          - --config-dir=/etc/config
-          - --cpu={{ metrics_server_cpu }}
-          - --extra-cpu=0.5m
-          - --memory={{ metrics_server_memory }}
-          - --extra-memory={{ metrics_server_memory_per_node }}
-          - --threshold=5
-          - --deployment=metrics-server
-          - --container=metrics-server
-          - --poll-period=300000
-          - --estimator=exponential
-          # Specifies the smallest cluster (defined in number of nodes)
-          # resources will be scaled to.
-          - --minClusterSize={{ metrics_server_min_cluster_size }}
       volumes:
-        - name: metrics-server-config-volume
-          configMap:
-            name: metrics-server-config
         - name: tmp
           emptyDir: {}
 {% if not masters_are_not_tainted %}
@@ -135,11 +95,7 @@ spec:
           - weight: 100
             preference:
               matchExpressions:
-{% if kube_version is version('v1.20.0', '<') %}
-              - key: node-role.kubernetes.io/master
-{% else %}
               - key: node-role.kubernetes.io/control-plane
-{% endif %}
                 operator: In
                 values:
                 - ""

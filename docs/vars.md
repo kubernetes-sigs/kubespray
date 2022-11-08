@@ -169,6 +169,7 @@ variables to match your requirements.
 * *searchdomains* - Array of up to 4 search domains
 * *remove_default_searchdomains* - Boolean. If enabled, `searchdomains` variable can hold 6 search domains.
 * *dns_etchosts* - Content of hosts file for coredns and nodelocaldns
+* *dns_upstream_forward_extra_opts* - Options to add in the forward section of coredns/nodelocaldns related to upstream DNS servers
 
 For more information, see [DNS
 Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.md).

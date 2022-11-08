@@ -46,17 +46,15 @@ data:
 {% endif %}
         }
         prometheus :9153
-{% if upstream_dns_servers is defined and upstream_dns_servers|length > 0 %}
-        forward . {{ upstream_dns_servers|join(' ') }} {
+        forward . {{ upstream_dns_servers|join(' ') if upstream_dns_servers is defined and upstream_dns_servers|length > 0 else '/etc/resolv.conf' }} {
           prefer_udp
           max_concurrent 1000
-        }
-{% else %}
-        forward . /etc/resolv.conf {
-          prefer_udp
-          max_concurrent 1000
-        }
+{% if dns_upstream_forward_extra_opts is defined %}
+{% for optname, optvalue in dns_upstream_forward_extra_opts.items() %}
+          {{ optname }} {{ optvalue }}
+{% endfor %}
 {% endif %}
+        }
 {% if enable_coredns_k8s_external %}
         k8s_external {{ coredns_k8s_external_zone }}
 {% endif %}

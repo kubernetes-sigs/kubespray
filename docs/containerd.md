@@ -64,14 +64,17 @@ is a list of such dictionaries.
 
 Default runtime can be changed by setting `containerd_default_runtime`.
 
-#### base_runtime_spec
+#### Base runtime specs and limiting number of open files
 
-`base_runtime_spec` key in a runtime dictionary can be used to explicitly
-specify a runtime spec json file. We ship the default one which is generated
-with `ctr oci spec > /etc/containerd/cri-base.json`. It will be used if you set
-`base_runtime_spec: cri-base.json`. The main advantage of doing so is the presence of
-`rlimits` section in this configuration, which will restrict the maximum number
-of file descriptors(open files) per container to 1024.
+`base_runtime_spec` key in a runtime dictionary is used to explicitly
+specify a runtime spec json file. `runc` runtime has it set to `cri-base.json`,
+which is generated with `ctr oci spec > /etc/containerd/cri-base.json` and
+updated to include a custom setting for maximum number of file descriptors per
+container.
+
+You can change maximum number of file descriptors per container for the default
+`runc` runtime by setting the `containerd_base_runtime_spec_rlimit_nofile`
+variable.
 
 You can tune many more [settings][runtime-spec] by supplying your own file name and content with `containerd_base_runtime_specs`:
 

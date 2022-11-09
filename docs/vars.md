@@ -218,7 +218,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   
     By default the `kubelet_secure_addresses` is set with the `10.0.0.110` the ansible control host uses `eth0` to  connect to the machine. In case you want to use `eth1` as the outgoing interface on which `kube-apiserver` connects to the `kubelet`s, you should override the variable in this way: `kubelet_secure_addresses: "192.168.1.110"`.
 
-* *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
+* *node_labels* - Labels applied to nodes via `kubectl label node`.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
   *node_labels* can only be defined as a dict:
 

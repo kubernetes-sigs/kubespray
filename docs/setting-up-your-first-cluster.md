@@ -466,7 +466,7 @@ kubectl logs $POD_NAME
 
 #### Exec
 
-In this section you will verify the ability to [execute commands in a container](https://kubernetes.io/docs/tasks/debug-application-cluster/get-shell-running-container/#running-individual-commands-in-a-container).
+In this section you will verify the ability to [execute commands in a container](https://kubernetes.io/docs/tasks/debug/debug-application/get-shell-running-container/#running-individual-commands-in-a-container).
 
 Print the nginx version by executing the `nginx -v` command in the `nginx` container:
 

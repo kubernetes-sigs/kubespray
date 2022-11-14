@@ -18,8 +18,8 @@ Then you need to setup the following services on your offline environment:
 * [Optional] an internal PyPi server for python packages used by Kubespray
 * [Optional] an internal Helm registry for Helm chart files
 
-You can get artifact lists with [generate_list.sh](contrib/offline/generate_list.sh) script.
-In addition, you can find some tools for offline deployment under [contrib/offline](contrib/offline/README.md).
+You can get artifact lists with [generate_list.sh](/contrib/offline/generate_list.sh) script.
+In addition, you can find some tools for offline deployment under [contrib/offline](/contrib/offline/README.md).
 
 ## Configure Inventory
 

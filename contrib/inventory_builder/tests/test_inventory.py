@@ -13,7 +13,7 @@
 # under the License.
 
 import inventory
-from test import support
+from io import StringIO
 import unittest
 from unittest import mock
 
@@ -41,7 +41,7 @@ class TestInventoryPrintHostnames(unittest.TestCase):
                       'access_ip': '10.90.0.3'}}}})
         with mock.patch('builtins.open', mock_io):
             with self.assertRaises(SystemExit) as cm:
-                with support.captured_stdout() as stdout:
+                with mock.patch('sys.stdout', new_callable=StringIO) as stdout:
                     inventory.KubesprayInventory(
                         changed_hosts=["print_hostnames"],
                         config_file="file")

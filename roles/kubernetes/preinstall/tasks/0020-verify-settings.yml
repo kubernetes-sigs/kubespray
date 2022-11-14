@@ -24,7 +24,7 @@
 
 - name: Stop if unknown OS
   assert:
-    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'Suse', 'openSUSE Leap', 'openSUSE Tumbleweed', 'ClearLinux', 'OracleLinux', 'AlmaLinux', 'Rocky', 'Amazon', 'Kylin Linux Advanced Server']
+    that: ansible_distribution in ['RedHat', 'CentOS', 'Fedora', 'Ubuntu', 'Debian', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'Suse', 'openSUSE Leap', 'openSUSE Tumbleweed', 'ClearLinux', 'OracleLinux', 'AlmaLinux', 'Rocky', 'Amazon', 'Kylin Linux Advanced Server', 'UnionTech']
     msg: "{{ ansible_distribution }} is not a known OS"
   when: not ignore_assert_errors
 
@@ -103,10 +103,10 @@
 - name: Ensure ping package
   package:
     name: >-
-          {%- if ansible_os_family in ['RedHat', 'Suse'] -%}
-          iputils
-          {%- else -%}
+          {%- if ansible_os_family == 'Debian' -%}
           iputils-ping
+          {%- else -%}
+          iputils
           {%- endif -%}
     state: present
   when:
@@ -305,3 +305,11 @@
   when:
     - kube_external_ca_mode
     - not ignore_assert_errors
+
+- name: Stop if using deprecated comma separated list for admission plugins
+  assert:
+    that: "',' not in kube_apiserver_enable_admission_plugins[0]"
+    msg: "Comma-separated list for kube_apiserver_enable_admission_plugins is now deprecated, use separate list items for each plugin."
+  when:
+    - kube_apiserver_enable_admission_plugins is defined
+    - kube_apiserver_enable_admission_plugins | length > 0

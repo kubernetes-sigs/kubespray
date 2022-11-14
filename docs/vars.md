@@ -169,6 +169,7 @@ variables to match your requirements.
 * *searchdomains* - Array of up to 4 search domains
 * *remove_default_searchdomains* - Boolean. If enabled, `searchdomains` variable can hold 6 search domains.
 * *dns_etchosts* - Content of hosts file for coredns and nodelocaldns
+* *dns_upstream_forward_extra_opts* - Options to add in the forward section of coredns/nodelocaldns related to upstream DNS servers
 
 For more information, see [DNS
 Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.md).
@@ -217,7 +218,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   
     By default the `kubelet_secure_addresses` is set with the `10.0.0.110` the ansible control host uses `eth0` to  connect to the machine. In case you want to use `eth1` as the outgoing interface on which `kube-apiserver` connects to the `kubelet`s, you should override the variable in this way: `kubelet_secure_addresses: "192.168.1.110"`.
 
-* *node_labels* - Labels applied to nodes via kubelet --node-labels parameter.
+* *node_labels* - Labels applied to nodes via `kubectl label node`.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
   *node_labels* can only be defined as a dict:
 

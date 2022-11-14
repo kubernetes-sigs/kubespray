@@ -3,7 +3,7 @@
   fail:
     msg: "{{ ansible_distribution }} is not supported by containerd."
   when:
-    - ansible_distribution not in ["CentOS", "OracleLinux", "RedHat", "Ubuntu", "Debian", "Fedora", "AlmaLinux", "Rocky", "Amazon", "Flatcar", "Flatcar Container Linux by Kinvolk", "Suse", "openSUSE Leap", "openSUSE Tumbleweed", "Kylin Linux Advanced Server"]
+    - ansible_distribution not in ["CentOS", "OracleLinux", "RedHat", "Ubuntu", "Debian", "Fedora", "AlmaLinux", "Rocky", "Amazon", "Flatcar", "Flatcar Container Linux by Kinvolk", "Suse", "openSUSE Leap", "openSUSE Tumbleweed", "Kylin Linux Advanced Server", "UnionTech"]
 
 - name: containerd | Remove any package manager controlled containerd package
   package:
@@ -83,6 +83,16 @@
     mode: 0644
   notify: restart containerd
   when: http_proxy is defined or https_proxy is defined
+
+- name: containerd | Generate default base_runtime_spec
+  register: ctr_oci_spec
+  command: "{{ containerd_bin_dir }}/ctr oci spec"
+  check_mode: false
+  changed_when: false
+
+- name: containerd | Store generated default base_runtime_spec
+  set_fact:
+    containerd_default_base_runtime_spec: "{{ ctr_oci_spec.stdout | from_json }}"
 
 - name: containerd | Write base_runtime_specs
   copy:

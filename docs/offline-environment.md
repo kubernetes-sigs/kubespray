@@ -1,12 +1,25 @@
 # Offline environment
 
-In case your servers don't have access to internet (for example when deploying on premises with security constraints), you need to setup:
+In case your servers don't have access to the internet directly (for example
+when deploying on premises with security constraints), you need to get the
+following artifacts in advance from another environment where has access to the internet.
+
+* Some static files (zips and binaries)
+* OS packages (rpm/deb files)
+* Container images used by Kubespray. Exhaustive list depends on your setup
+* [Optional] Python packages used by Kubespray (only required if your OS doesn't provide all python packages/versions listed in `requirements.txt`)
+* [Optional] Helm chart files (only required if `helm_enabled=true`)
+
+Then you need to setup the following services on your offline environment:
 
 * a HTTP reverse proxy/cache/mirror to serve some static files (zips and binaries)
 * an internal Yum/Deb repository for OS packages
-* an internal container image registry that need to be populated with all container images used by Kubespray. Exhaustive list depends on your setup
-* [Optional] an internal PyPi server for kubespray python packages (only required if your OS doesn't provide all python packages/versions listed in `requirements.txt`)
-* [Optional] an internal Helm registry (only required if `helm_enabled=true`)
+* an internal container image registry that need to be populated with all container images used by Kubespray
+* [Optional] an internal PyPi server for python packages used by Kubespray
+* [Optional] an internal Helm registry for Helm chart files
+
+You can get artifact lists with [generate_list.sh](/contrib/offline/generate_list.sh) script.
+In addition, you can find some tools for offline deployment under [contrib/offline](/contrib/offline/README.md).
 
 ## Configure Inventory
 

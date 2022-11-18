@@ -1,6 +1,6 @@
 # OpenEuler
 
-[OpenEuler](https://www.openeuler.org/en/) Linux currently only supports the containerd runtime.
+[OpenEuler](https://www.openeuler.org/en/) Linux is supported with docker and containerd runtimes.
 
 **Note:** that OpenEuler Linux is not currently covered in kubespray CI and
 support for it is currently considered experimental.

@@ -482,6 +482,20 @@ resource "upcloud_firewall_rules" "k8s" {
     }
   }
 
+  dynamic firewall_rule {
+    for_each = var.firewall_default_deny_in ? ["udp"] : []
+
+    content {
+      action                 = "accept"
+      comment                = "NTP Port"
+      source_port_end        = "123"
+      source_port_start      = "123"
+      direction              = "in"
+      family                 = "IPv6"
+      protocol               = firewall_rule.value
+    }
+  }
+
   firewall_rule {
     action    = var.firewall_default_deny_in ? "drop" : "accept"
     direction = "in"

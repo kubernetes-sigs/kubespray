@@ -57,6 +57,7 @@ A simple way to ensure you get all the correct version of Ansible is to use the 
 You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mounts/) to get the inventory and ssh key into the container, like this:
 
 ```ShellSession
+git checkout v2.20.0
 docker pull quay.io/kubespray/kubespray:v2.20.0
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \

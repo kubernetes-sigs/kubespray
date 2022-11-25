@@ -3,8 +3,8 @@ provider "exoscale" {}
 module "kubernetes" {
   source = "./modules/kubernetes-cluster"
 
-  prefix = var.prefix
-
+  prefix   = var.prefix
+  zone     = var.zone
   machines = var.machines
 
   ssh_public_keys = var.ssh_public_keys

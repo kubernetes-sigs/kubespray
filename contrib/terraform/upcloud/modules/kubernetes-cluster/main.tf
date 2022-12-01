@@ -251,8 +251,8 @@ resource "upcloud_firewall_rules" "master" {
     content {
       action                 = "accept"
       comment                = "UpCloud DNS"
-      destination_port_end   = "53"
-      destination_port_start = "53"
+      source_port_end        = "53"
+      source_port_start      = "53"
       direction              = "in"
       family                 = "IPv4"
       protocol               = firewall_rule.value
@@ -267,8 +267,8 @@ resource "upcloud_firewall_rules" "master" {
     content {
       action                 = "accept"
       comment                = "UpCloud DNS"
-      destination_port_end   = "53"
-      destination_port_start = "53"
+      source_port_end        = "53"
+      source_port_start      = "53"
       direction              = "in"
       family                 = "IPv4"
       protocol               = firewall_rule.value
@@ -283,8 +283,8 @@ resource "upcloud_firewall_rules" "master" {
     content {
       action                 = "accept"
       comment                = "UpCloud DNS"
-      destination_port_end   = "53"
-      destination_port_start = "53"
+      source_port_end        = "53"
+      source_port_start      = "53"
       direction              = "in"
       family                 = "IPv6"
       protocol               = firewall_rule.value
@@ -299,8 +299,8 @@ resource "upcloud_firewall_rules" "master" {
     content {
       action                 = "accept"
       comment                = "UpCloud DNS"
-      destination_port_end   = "53"
-      destination_port_start = "53"
+      source_port_end        = "53"
+      source_port_start      = "53"
       direction              = "in"
       family                 = "IPv6"
       protocol               = firewall_rule.value
@@ -315,13 +315,27 @@ resource "upcloud_firewall_rules" "master" {
     content {
       action                 = "accept"
       comment                = "NTP Port"
-      destination_port_end   = "123"
-      destination_port_start = "123"
+      source_port_end        = "123"
+      source_port_start      = "123"
       direction              = "in"
       family                 = "IPv4"
       protocol               = firewall_rule.value
       source_address_end     = "255.255.255.255"
       source_address_start   = "0.0.0.0"
+    }
+  }
+
+  dynamic firewall_rule {
+    for_each = var.firewall_default_deny_in ? ["udp"] : []
+
+    content {
+      action                 = "accept"
+      comment                = "NTP Port"
+      source_port_end        = "123"
+      source_port_start      = "123"
+      direction              = "in"
+      family                 = "IPv6"
+      protocol               = firewall_rule.value
     }
   }
 
@@ -394,8 +408,8 @@ resource "upcloud_firewall_rules" "k8s" {
     content {
       action                 = "accept"
       comment                = "UpCloud DNS"
-      destination_port_end   = "53"
-      destination_port_start = "53"
+      source_port_end        = "53"
+      source_port_start      = "53"
       direction              = "in"
       family                 = "IPv4"
       protocol               = firewall_rule.value
@@ -410,8 +424,8 @@ resource "upcloud_firewall_rules" "k8s" {
     content {
       action                 = "accept"
       comment                = "UpCloud DNS"
-      destination_port_end   = "53"
-      destination_port_start = "53"
+      source_port_end        = "53"
+      source_port_start      = "53"
       direction              = "in"
       family                 = "IPv4"
       protocol               = firewall_rule.value
@@ -426,8 +440,8 @@ resource "upcloud_firewall_rules" "k8s" {
     content {
       action                 = "accept"
       comment                = "UpCloud DNS"
-      destination_port_end   = "53"
-      destination_port_start = "53"
+      source_port_end        = "53"
+      source_port_start      = "53"
       direction              = "in"
       family                 = "IPv6"
       protocol               = firewall_rule.value
@@ -442,8 +456,8 @@ resource "upcloud_firewall_rules" "k8s" {
     content {
       action                 = "accept"
       comment                = "UpCloud DNS"
-      destination_port_end   = "53"
-      destination_port_start = "53"
+      source_port_end        = "53"
+      source_port_start      = "53"
       direction              = "in"
       family                 = "IPv6"
       protocol               = firewall_rule.value
@@ -458,13 +472,27 @@ resource "upcloud_firewall_rules" "k8s" {
     content {
       action                 = "accept"
       comment                = "NTP Port"
-      destination_port_end   = "123"
-      destination_port_start = "123"
+      source_port_end        = "123"
+      source_port_start      = "123"
       direction              = "in"
       family                 = "IPv4"
       protocol               = firewall_rule.value
       source_address_end     = "255.255.255.255"
       source_address_start   = "0.0.0.0"
+    }
+  }
+
+  dynamic firewall_rule {
+    for_each = var.firewall_default_deny_in ? ["udp"] : []
+
+    content {
+      action                 = "accept"
+      comment                = "NTP Port"
+      source_port_end        = "123"
+      source_port_start      = "123"
+      direction              = "in"
+      family                 = "IPv6"
+      protocol               = firewall_rule.value
     }
   }
 

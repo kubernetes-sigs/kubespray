@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-TARGET_COMPONENTS="containerd calico cilium flannel kube-ovn kube-router weave cert-manager krew helm metallb registry cephfs-provisioner rbd-provisioner aws-ebs-csi-plugin azure-csi-plugin cinder-csi-plugin gcp-pd-csi-plugin local-path-provisioner local-volume-provisioner kube-vip"
+TARGET_COMPONENTS="containerd calico cilium flannel kube-ovn kube-router weave cert-manager krew helm metallb registry cephfs-provisioner rbd-provisioner aws-ebs-csi-plugin azure-csi-plugin cinder-csi-plugin gcp-pd-csi-plugin local-path-provisioner local-volume-provisioner kube-vip ingress-nginx"
 
 # cd to the root directory of kubespray
 cd $(dirname $0)/../../

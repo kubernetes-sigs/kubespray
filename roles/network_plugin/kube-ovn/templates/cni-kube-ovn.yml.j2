@@ -56,10 +56,13 @@ spec:
             - --pod-nic-type={{ kube_ovn_pod_nic_type }}
             - --enable-lb={{ kube_ovn_enable_lb|string }}
             - --enable-np={{ kube_ovn_enable_np|string }}
+            - --enable-eip-snat={{ kube_ovn_eip_snat_enabled }}
             - --enable-external-vpc={{ kube_ovn_enable_external_vpc|string }}
             - --logtostderr=false
             - --alsologtostderr=true
             - --log_file=/var/log/kube-ovn/kube-ovn-controller.log
+            - --log_file_max_size=0
+            - --keep-vm-ip={{ kube_ovn_keep_vm_ip }}
           env:
             - name: ENABLE_SSL
               value: "{{ kube_ovn_enable_ssl | lower }}"
@@ -166,14 +169,17 @@ spec:
           - --encap-checksum={{ kube_ovn_encap_checksum | lower }}
           - --service-cluster-ip-range={{ kube_service_addresses }}{% if enable_dual_stack_networks %},{{ kube_service_addresses_ipv6 }}{% endif %}{{''}}
           - --iface={{ kube_ovn_iface|default('') }}
+          - --dpdk-tunnel-iface={{ kube_ovn_dpdk_tunnel_iface }}
           - --network-type={{ kube_ovn_network_type }}
           - --default-interface-name={{ kube_ovn_default_interface_name|default('') }}
 {% if kube_ovn_mtu is defined %}
           - --mtu={{ kube_ovn_mtu }}
 {% endif %}
+          - --cni-conf-name={{ kube_ovn_cni_config_priority }}-kube-ovn.conflist
           - --logtostderr=false
           - --alsologtostderr=true
           - --log_file=/var/log/kube-ovn/kube-ovn-cni.log
+          - --log_file_max_size=0
         securityContext:
           runAsUser: 0
           privileged: true
@@ -188,13 +194,23 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
+          - name: MODULES
+            value: kube_ovn_fastpath.ko
+          - name: RPMS
+            value: openvswitch-kmod
         volumeMounts:
+          - name: host-modules
+            mountPath: /lib/modules
+            readOnly: true
+          - name: shared-dir
+            mountPath: /var/lib/kubelet/pods
           - mountPath: /etc/openvswitch
             name: systemid
           - mountPath: /etc/cni/net.d
             name: cni-conf
           - mountPath: /run/openvswitch
             name: host-run-ovs
+            mountPropagation: Bidirectional
           - mountPath: /run/ovn
             name: host-run-ovn
           - mountPath: /var/run/netns
@@ -202,30 +218,30 @@ spec:
             mountPropagation: HostToContainer
           - mountPath: /var/log/kube-ovn
             name: kube-ovn-log
+          - mountPath: /var/log/openvswitch
+            name: host-log-ovs
+          - mountPath: /var/log/ovn
+            name: host-log-ovn
           - mountPath: /etc/localtime
             name: localtime
-        readinessProbe:
-          exec:
-            command:
-              - nc
-              - -z
-              - -w3
-              - 127.0.0.1
-              - "10665"
-          periodSeconds: 3
-          timeoutSeconds: 5
+          - mountPath: /tmp
+            name: tmp
         livenessProbe:
-          exec:
-            command:
-              - nc
-              - -z
-              - -w3
-              - 127.0.0.1
-              - "10665"
+          failureThreshold: 3
           initialDelaySeconds: 30
           periodSeconds: 7
-          failureThreshold: 5
-          timeoutSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 10665
+          timeoutSeconds: 3
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 7
+          successThreshold: 1
+          tcpSocket:
+            port: 10665
+          timeoutSeconds: 3
         resources:
           requests:
             cpu: {{ kube_ovn_cni_server_cpu_request }}
@@ -236,6 +252,12 @@ spec:
       nodeSelector:
         kubernetes.io/os: "linux"
       volumes:
+        - name: host-modules
+          hostPath:
+            path: /lib/modules
+        - name: shared-dir
+          hostPath:
+            path: /var/lib/kubelet/pods
         - name: systemid
           hostPath:
             path: /etc/origin/openvswitch
@@ -254,13 +276,21 @@ spec:
         - name: host-ns
           hostPath:
             path: /var/run/netns
+        - name: host-log-ovs
+          hostPath:
+            path: /var/log/openvswitch
         - name: kube-ovn-log
           hostPath:
             path: /var/log/kube-ovn
+        - name: host-log-ovn
+          hostPath:
+            path: /var/log/ovn
         - name: localtime
           hostPath:
             path: /etc/localtime
-
+        - name: tmp
+          hostPath:
+            path: /tmp
 ---
 kind: DaemonSet
 apiVersion: apps/v1
@@ -297,6 +327,7 @@ spec:
           - --logtostderr=false
           - --alsologtostderr=true
           - --log_file=/var/log/kube-ovn/kube-ovn-pinger.log
+          - --log_file_max_size=0
           securityContext:
             runAsUser: 0
             privileged: false
@@ -466,14 +497,14 @@ spec:
             exec:
               command:
               - cat
-              - /var/run/ovn/ovnnb_db.pid
+              - /var/run/ovn/ovn-controller.pid
             periodSeconds: 10
             timeoutSeconds: 45
           livenessProbe:
             exec:
               command:
               - cat
-              - /var/run/ovn/ovnnb_db.pid
+              - /var/run/ovn/ovn-controller.pid
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 5

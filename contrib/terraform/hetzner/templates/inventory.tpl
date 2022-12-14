@@ -2,18 +2,18 @@
 ${connection_strings_master}
 ${connection_strings_worker}
 
-[kube-master]
+[kube_control_plane]
 ${list_master}
 
 [etcd]
 ${list_master}
 
-[kube-node]
+[kube_node]
 ${list_worker}
 
-[k8s-cluster:children]
+[k8s_cluster:children]
 kube-master
 kube-node
 
-[k8s-cluster:vars]
+[k8s_cluster:vars]
 network_id=${network_id}

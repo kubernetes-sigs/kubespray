@@ -1,10 +1,3 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ovn-config
-  namespace: kube-system
-data:
-  defaultNetworkType: '{{ kube_ovn_network_type }}'
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -33,6 +26,8 @@ rules:
       - subnets
       - subnets/status
       - ips
+      - vips
+      - vips/status
       - vlans
       - vlans/status
       - provider-networks
@@ -40,6 +35,14 @@ rules:
       - security-groups
       - security-groups/status
       - htbqoses
+      - iptables-eips
+      - iptables-fip-rules
+      - iptables-dnat-rules
+      - iptables-snat-rules
+      - iptables-eips/status
+      - iptables-fip-rules/status
+      - iptables-dnat-rules/status
+      - iptables-snat-rules/status
     verbs:
       - "*"
   - apiGroups:
@@ -96,6 +99,12 @@ rules:
       - create
       - patch
       - update
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - "*"
   - apiGroups:
       - "k8s.cni.cncf.io"
     resources:
@@ -279,7 +288,7 @@ spec:
             exec:
               command:
                 - bash
-                - /kube-ovn/ovn-is-leader.sh
+                - /kube-ovn/ovn-healthcheck.sh
             periodSeconds: 15
             timeoutSeconds: 45
           livenessProbe:
@@ -378,6 +387,9 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
+            - mountPath: /var/run/netns
+              name: host-ns
+              mountPropagation: HostToContainer
             - mountPath: /lib/modules
               name: host-modules
               readOnly: true
@@ -451,6 +463,7 @@ spec:
 {% endif %}
       nodeSelector:
         kubernetes.io/os: "linux"
+        ovn.kubernetes.io/ovs_dp_type: "kernel"
       volumes:
         - name: host-modules
           hostPath:
@@ -464,6 +477,9 @@ spec:
         - name: host-sys
           hostPath:
             path: /sys
+        - name: host-ns
+          hostPath:
+            path: /var/run/netns
         - name: cni-conf
           hostPath:
             path: /etc/cni/net.d

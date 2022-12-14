@@ -37,6 +37,8 @@
   * [CentOS/OracleLinux/AlmaLinux/Rocky Linux](docs/centos.md)
   * [Kylin Linux Advanced Server V10](docs/kylinlinux.md)
   * [Amazon Linux 2](docs/amazonlinux.md)
+  * [UOS Linux](docs/uoslinux.md)
+  * [openEuler notes](docs/openeuler.md))
 * CRI
   * [Containerd](docs/containerd.md)
   * [Docker](docs/docker.md)

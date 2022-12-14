@@ -6,11 +6,11 @@
   tags:
     - facts
 
-- name: Set os_family fact for Kylin Linux Advanced Server
+- name: Set os_family fact for Kylin Linux Advanced Server and openEuler
   set_fact:
     ansible_os_family: "RedHat"
     ansible_distribution_major_version: "8"
-  when: ansible_distribution == "Kylin Linux Advanced Server"
+  when: ansible_distribution in ["Kylin Linux Advanced Server", "openEuler"]
   tags:
     - facts
 
@@ -70,10 +70,20 @@
 
     - name: get currently configured nameservers
       set_fact:
-        configured_nameservers: "{{ resolvconf_slurp.content | b64decode | regex_findall('\\s*nameserver\\s*(.*)') | ipaddr }}"
+        configured_nameservers: "{{ resolvconf_slurp.content | b64decode | regex_findall('^nameserver\\s*(.*)', multiline=True) | ipaddr }}"
       when: resolvconf_slurp.content is defined
 
   when: resolvconf_stat.stat.exists is defined and resolvconf_stat.stat.exists
+
+- name: Stop if /etc/resolv.conf not configured nameservers
+  assert:
+    that: configured_nameservers|length>0
+    fail_msg: "nameserver should not empty in /etc/resolv.conf"
+  when:
+    - not ignore_assert_errors
+    - configured_nameservers is defined
+    - not (upstream_dns_servers is defined and upstream_dns_servers|length > 0)
+    - not (disable_host_nameservers | default(false))
 
 - name: NetworkManager | Check if host has NetworkManager
   # noqa 303 Should we use service_facts for this?
@@ -203,7 +213,7 @@
     nameserverentries: |-
       {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server|d([]) if not enable_nodelocaldns else []) + nameservers|d([]) + cloud_resolver|d([]) + (configured_nameservers|d([]) if not disable_host_nameservers|d()|bool else [])) | unique | join(',') }}
     supersede_nameserver:
-      supersede domain-name-servers {{ ( ( [nodelocaldns_ip] if enable_nodelocaldns else []) + coredns_server|d([]) + nameservers|d([]) + cloud_resolver|d([])) | unique | join(', ') }};
+      supersede domain-name-servers {{ ( ( [nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server|d([]) if not enable_nodelocaldns else []) + nameservers|d([]) + cloud_resolver|d([])) | unique | join(', ') }};
   when: not dns_early or dns_late
 
 # This task should run instead of the above task when cluster/nodelocal DNS hasn't

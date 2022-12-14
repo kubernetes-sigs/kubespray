@@ -2,6 +2,9 @@
 containerd_storage_dir: "/var/lib/containerd"
 containerd_state_dir: "/run/containerd"
 containerd_systemd_dir: "/etc/systemd/system/containerd.service.d"
+# The default value is not -999 here because containerd's oom_score_adj has been
+# set to the -999 even if containerd_oom_score is 0.
+# Ref: https://github.com/kubernetes-sigs/kubespray/pull/9275#issuecomment-1246499242
 containerd_oom_score: 0
 
 # containerd_default_runtime: "runc"
@@ -12,7 +15,7 @@ containerd_runc_runtime:
   type: "io.containerd.runc.v2"
   engine: ""
   root: ""
-  # base_runtime_spec: cri-base.json # use this to limit number of file descriptors per container
+  base_runtime_spec: cri-base.json
   options:
     systemdCgroup: "{{ containerd_use_systemd_cgroup | ternary('true', 'false') }}"
 
@@ -23,8 +26,17 @@ containerd_additional_runtimes: []
 #    engine: ""
 #    root: ""
 
+containerd_base_runtime_spec_rlimit_nofile: 65535
+
+containerd_default_base_runtime_spec_patch:
+  process:
+    rlimits:
+      - type: RLIMIT_NOFILE
+        hard: "{{ containerd_base_runtime_spec_rlimit_nofile }}"
+        soft: "{{ containerd_base_runtime_spec_rlimit_nofile }}"
+
 containerd_base_runtime_specs:
-  cri-base.json: "{{ lookup('file', 'cri-base.json') }}"
+  cri-base.json: "{{ containerd_default_base_runtime_spec | combine(containerd_default_base_runtime_spec_patch,recursive=1) }}"
 
 containerd_grpc_max_recv_message_size: 16777216
 containerd_grpc_max_send_message_size: 16777216
@@ -39,6 +51,11 @@ containerd_registries:
   "docker.io": "https://registry-1.docker.io"
 
 containerd_max_container_log_line_size: -1
+
+# If enabled it will allow non root users to use port numbers <1024
+containerd_enable_unprivileged_ports: false
+# If enabled it will allow non root users to use icmp sockets
+containerd_enable_unprivileged_icmp: false
 
 containerd_cfg_dir: /etc/containerd
 

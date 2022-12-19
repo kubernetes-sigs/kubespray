@@ -1,0 +1,105 @@
+
+
+## Cert-manager
+- hosts: kube_control_plane
+  gather_facts: false
+  become: true
+  vars:
+      helm_chart_url: "https://charts.jetstack.io"
+  tasks:
+    - name: Add helm repo
+      kubernetes.core.helm_repository:
+        name: jetstack
+        repo_url: "{{ helm_chart_url }}"
+      ignore_errors: yes
+- hosts: kube_control_plane
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Install Cert-manager Chart
+      kubernetes.core.helm:
+        kubeconfig: /etc/kubernetes/admin.conf
+        #atomic: yes
+        update_repo_cache: yes
+        name: cert-manager
+        namespace: cert-manager
+        chart_ref: jetstack/cert-manager
+        create_namespace: true
+        release_state: present
+        chart_version: v1.10.1
+        values:
+            installCRDs: true
+    # - name: install cert-manager CRD
+    #   command: kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.10.1/cert-manager.crds.yaml
+
+## rancher-latest
+- hosts: kube_control_plane
+  gather_facts: false
+  become: true
+  vars:
+      helm_chart_url: "https://releases.rancher.com/server-charts/latest"
+  tasks:
+    - name: Add helm repo
+      kubernetes.core.helm_repository:
+        name: rancher-latest
+        repo_url: "{{ helm_chart_url }}"
+      ignore_errors: yes
+- hosts: kube_control_plane
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Install Rancher Chart
+      kubernetes.core.helm:
+        kubeconfig: /etc/kubernetes/admin.conf
+        #atomic: yes
+        update_repo_cache: yes
+        name: rancher
+        namespace: cattle-system
+        chart_ref: rancher-latest/rancher
+        create_namespace: true
+        release_state: present
+        # values:
+        #     hostname: rancher.my.org
+        #     ingress.tls.source : rancher
+        #     replicas: 3
+
+
+## Prometheus install customization
+
+- hosts: kube_control_plane
+  gather_facts: false
+  become: true
+  vars:
+      helm_chart_url: "https://prometheus-community.github.io/helm-charts"
+  tasks:
+    - name: Add helm repo
+      kubernetes.core.helm_repository:
+        name: prometheus-community
+        repo_url: "{{ helm_chart_url }}"
+      ignore_errors: yes
+- hosts: kube_control_plane
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Install Prometheus Chart
+      kubernetes.core.helm:
+        kubeconfig: /etc/kubernetes/admin.conf
+        #atomic: yes
+        update_repo_cache: yes
+        name: kube-prometheus-stack
+        namespace: monitoring
+        chart_ref: prometheus-community/kube-prometheus-stack
+        create_namespace: true
+        release_state: present
+
+
+- hosts: kube_control_plane
+  gather_facts: false
+  tasks:
+    #- command: kubectl expose deployment argocd-server --type=LoadBalancer --name=argocd-server-ext -n argocd
+    # - command: kubectl expose deployment kube-prometheus-stack-grafana --type=LoadBalancer --name=grafana-server-ext -n monitoring
+     #- command: kubectl expose deployment rancher --type=LoadBalancer --name=rancher-ext -n cattle-system
+     #minikube start -n 2 --cpus=2 --memory=4g
+
+    - debug:
+        msg: "ArogCD: https://172.18.8.150:8080/ user:admin pass:password \n Grafana: http://172.18.8.151:3000 user:admin pass:prom-operator"

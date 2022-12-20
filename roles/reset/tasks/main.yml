@@ -253,12 +253,24 @@
     - enable_nodelocaldns|default(false)|bool
     - nodelocaldns_device.stat.exists
 
-- name: reset | Remove immutable flag from /var/lib/kubelet subdirs
+- name: reset | find files/dirs with immutable flag in /var/lib/kubelet
+  command: lsattr -laR /var/lib/kubelet
+  become: true
+  register: var_lib_kubelet_files_dirs_w_attrs
+  changed_when: false
+  no_log: true
+
+- name: reset | remove immutable flag from files/dirs in /var/lib/kubelet
   file:
-    path: /var/lib/kubelet
-    state: directory
+    path: "{{ filedir_path }}"
+    state: touch
     attributes: "-i"
-    recurse: true
+  loop: "{{ var_lib_kubelet_files_dirs_w_attrs.stdout_lines|select('search', 'Immutable')|list }}"
+  loop_control:
+    loop_var: file_dir_line
+    label: "{{ filedir_path }}"
+  vars:
+    filedir_path: "{{ file_dir_line.split(' ')[0] }}"
 
 - name: reset | delete some files and directories
   file:

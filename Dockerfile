@@ -7,15 +7,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt update -y \
     && apt install -y \
-    libssl-dev python3-dev sshpass apt-transport-https jq moreutils \
-    ca-certificates curl gnupg2 software-properties-common python3-pip unzip rsync git \
-    && rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
-    && add-apt-repository \
-    "deb [arch=$ARCH] https://download.docker.com/linux/ubuntu \
-    $(lsb_release -cs) \
-    stable" \
-    && apt update -y && apt-get install --no-install-recommends -y docker-ce \
+    curl python3 python3-pip sshpass \
     && rm -rf /var/lib/apt/lists/*
 
 # Some tools like yamllint need this
@@ -25,13 +17,20 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
 ENV LANG=C.UTF-8
 
 WORKDIR /kubespray
-COPY . .
-RUN /usr/bin/python3 -m pip install --no-cache-dir pip -U \
-    && /usr/bin/python3 -m pip install --no-cache-dir -r tests/requirements.txt \
-    && python3 -m pip install --no-cache-dir -r requirements.txt \
-    && update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+COPY *yml /kubespray/
+COPY roles /kubespray/roles
+COPY inventory /kubespray/inventory
+COPY library /kubespray/library
+COPY extra_playbooks /kubespray/extra_playbooks
 
-RUN KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \
+RUN python3 -m pip install --no-cache-dir \
+    ansible==5.7.1 \
+    ansible-core==2.12.5 \
+    cryptography==3.4.8 \
+    jinja2==2.11.3 \
+    netaddr==0.7.19 \
+    MarkupSafe==1.1.1 \
+    && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \
     && curl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$ARCH/kubectl \
     && chmod a+x kubectl \
     && mv kubectl /usr/local/bin/kubectl

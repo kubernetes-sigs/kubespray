@@ -56,6 +56,10 @@ Whether or not upstream DNS servers come from `upstream_dns_servers` variable or
 These are configurable in inventory in as a dictionary in the `dns_upstream_forward_extra_opts` variable.
 By default, no other option than the ones hardcoded (see `roles/kubernetes-apps/ansible/templates/coredns-config.yml.j2` and `roles/kubernetes-apps/ansible/templates/nodelocaldns-config.yml.j2`).
 
+### coredns_kubernetes_extra_opts
+
+Custom options to be added to the kubernetes coredns plugin.
+
 ### coredns_external_zones
 
 Array of optional external zones to coredns forward queries to. It's  injected into

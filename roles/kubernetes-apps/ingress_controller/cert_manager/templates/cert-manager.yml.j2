@@ -1,4 +1,4 @@
-# Copyright 2021 The cert-manager Authors.
+# Copyright 2022 The cert-manager Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -856,8 +856,10 @@ spec:
       serviceAccountName: cert-manager-cainjector
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-        - name: cert-manager
+        - name: cert-manager-cainjector
           image: "{{ cert_manager_cainjector_image_repo }}:{{ cert_manager_cainjector_image_tag }}"
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
@@ -870,6 +872,12 @@ spec:
                 fieldPath: metadata.namespace
           securityContext:
             allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
 {% if cert_manager_tolerations %}
       tolerations:
         {{ cert_manager_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
@@ -928,10 +936,11 @@ spec:
     spec:
       serviceAccountName: cert-manager
       securityContext:
-
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-        - name: cert-manager
+        - name: cert-manager-controller
           image: "{{ cert_manager_controller_image_repo }}:{{ cert_manager_controller_image_tag }}"
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
@@ -944,6 +953,12 @@ spec:
             protocol: TCP
           securityContext:
             allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
           env:
           - name: POD_NAMESPACE
             valueFrom:
@@ -1004,8 +1019,10 @@ spec:
       serviceAccountName: cert-manager-webhook
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-        - name: cert-manager
+        - name: cert-manager-webhook
           image: "{{ cert_manager_webhook_image_repo }}:{{ cert_manager_webhook_image_tag }}"
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
@@ -1013,11 +1030,16 @@ spec:
           - --secure-port=10250
           - --dynamic-serving-ca-secret-namespace=$(POD_NAMESPACE)
           - --dynamic-serving-ca-secret-name=cert-manager-webhook-ca
-          - --dynamic-serving-dns-names=cert-manager-webhook,cert-manager-webhook.$(POD_NAMESPACE),cert-manager-webhook.$(POD_NAMESPACE).svc
+          - --dynamic-serving-dns-names=cert-manager-webhook
+          - --dynamic-serving-dns-names=cert-manager-webhook.$(POD_NAMESPACE)
+          - --dynamic-serving-dns-names=cert-manager-webhook.$(POD_NAMESPACE).svc
           ports:
           - name: https
             protocol: TCP
             containerPort: 10250
+          - name: healthcheck
+            protocol: TCP
+            containerPort: 6080
           livenessProbe:
             httpGet:
               path: /livez
@@ -1040,6 +1062,12 @@ spec:
             failureThreshold: 3
           securityContext:
             allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
           env:
           - name: POD_NAMESPACE
             valueFrom:

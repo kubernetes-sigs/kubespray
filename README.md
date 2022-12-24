@@ -57,10 +57,11 @@ A simple way to ensure you get all the correct version of Ansible is to use the 
 You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mounts/) to get the inventory and ssh key into the container, like this:
 
 ```ShellSession
-docker pull quay.io/kubespray/kubespray:v2.19.1
+git checkout v2.20.0
+docker pull quay.io/kubespray/kubespray:v2.20.0
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.19.1 bash
+  quay.io/kubespray/kubespray:v2.20.0 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
@@ -113,6 +114,7 @@ vagrant up
 - [Air-Gap installation](docs/offline-environment.md)
 - [NTP](docs/ntp.md)
 - [Hardening](docs/hardening.md)
+- [Mirror](docs/mirror.md)
 - [Roadmap](docs/roadmap.md)
 
 ## Supported Linux Distributions
@@ -129,34 +131,36 @@ vagrant up
 - **Rocky Linux** [8, 9](docs/centos.md#centos-8)
 - **Kylin Linux Advanced Server V10** (experimental: see [kylin linux notes](docs/kylinlinux.md))
 - **Amazon Linux 2** (experimental: see [amazon linux notes](docs/amazonlinux.md))
+- **UOS Linux** (experimental: see [uos linux notes](docs/uoslinux.md))
+- **openEuler** (experimental: see [openEuler notes](docs/openeuler.md))
 
 Note: Upstart/SysV init based OS types are not supported.
 
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.24.5
-  - [etcd](https://github.com/etcd-io/etcd) v3.5.4
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.25.5
+  - [etcd](https://github.com/etcd-io/etcd) v3.5.6
   - [docker](https://www.docker.com/) v20.10 (see note)
-  - [containerd](https://containerd.io/) v1.6.8
+  - [containerd](https://containerd.io/) v1.6.14
   - [cri-o](http://cri-o.io/) v1.24 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v1.1.1
-  - [calico](https://github.com/projectcalico/calico) v3.23.3
+  - [calico](https://github.com/projectcalico/calico) v3.24.5
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.12.1
-  - [flannel](https://github.com/flannel-io/flannel) v0.18.1
-  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.9.7
+  - [flannel](https://github.com/flannel-io/flannel) v0.19.2
+  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.10.7
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.5.1
   - [multus](https://github.com/intel/multus-cni) v3.8
   - [weave](https://github.com/weaveworks/weave) v2.8.1
-  - [kube-vip](https://github.com/kube-vip/kube-vip) v0.4.2
+  - [kube-vip](https://github.com/kube-vip/kube-vip) v0.5.5
 - Application
-  - [cert-manager](https://github.com/jetstack/cert-manager) v1.9.1
-  - [coredns](https://github.com/coredns/coredns) v1.8.6
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.3.1
+  - [cert-manager](https://github.com/jetstack/cert-manager) v1.10.1
+  - [coredns](https://github.com/coredns/coredns) v1.9.3
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.5.1
   - [krew](https://github.com/kubernetes-sigs/krew) v0.4.3
-  - [argocd](https://argoproj.github.io/) v2.4.12
+  - [argocd](https://argoproj.github.io/) v2.5.5
   - [helm](https://helm.sh/) v3.9.4
   - [metallb](https://metallb.universe.tf/)  v0.12.1
   - [registry](https://github.com/distribution/distribution) v2.8.1
@@ -168,7 +172,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cinder-csi-plugin](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/using-cinder-csi-plugin.md) v1.22.0
   - [gcp-pd-csi-plugin](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver) v1.4.0
   - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) v0.0.22
-  - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) v2.4.0
+  - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) v2.5.0
 
 ## Container Runtime Notes
 
@@ -177,7 +181,7 @@ Note: Upstart/SysV init based OS types are not supported.
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.22**
+- **Minimum required version of Kubernetes is v1.23**
 - **Ansible v2.11+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.
@@ -246,6 +250,7 @@ See also [Network checker](docs/netcheck.md).
 
 - [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/v4/doc/integrations/ansible.rst)
 - [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
+- [Kubean](https://github.com/kubean-io/kubean)
 
 ## CI Tests
 

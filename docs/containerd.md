@@ -39,4 +39,68 @@ containerd_registries:
 image_command_tool: crictl
 ```
 
+### Containerd Runtimes
+
+Containerd supports multiple runtime configurations that can be used with
+[RuntimeClass] Kubernetes feature. See [runtime classes in containerd] for the
+details of containerd configuration.
+
+In kubespray, the default runtime name is "runc", and it can be configured with the `containerd_runc_runtime` dictionary:
+
+```yaml
+containerd_runc_runtime:
+  name: runc
+  type: "io.containerd.runc.v2"
+  engine: ""
+  root: ""
+  options:
+    systemdCgroup: "false"
+    binaryName: /usr/local/bin/my-runc
+  base_runtime_spec: cri-base.json
+```
+
+Further runtimes can be configured with `containerd_additional_runtimes`, which
+is a list of such dictionaries.
+
+Default runtime can be changed by setting `containerd_default_runtime`.
+
+#### Base runtime specs and limiting number of open files
+
+`base_runtime_spec` key in a runtime dictionary is used to explicitly
+specify a runtime spec json file. `runc` runtime has it set to `cri-base.json`,
+which is generated with `ctr oci spec > /etc/containerd/cri-base.json` and
+updated to include a custom setting for maximum number of file descriptors per
+container.
+
+You can change maximum number of file descriptors per container for the default
+`runc` runtime by setting the `containerd_base_runtime_spec_rlimit_nofile`
+variable.
+
+You can tune many more [settings][runtime-spec] by supplying your own file name and content with `containerd_base_runtime_specs`:
+
+```yaml
+containerd_base_runtime_specs:
+  cri-spec-custom.json: |
+    {
+      "ociVersion": "1.0.2-dev",
+      "process": {
+        "user": {
+          "uid": 0,
+    ...
+```
+
+The files in this dict will be placed in containerd config directory,
+`/etc/containerd` by default. The files can then be referenced by filename in a
+runtime:
+
+```yaml
+containerd_runc_runtime:
+  name: runc
+  base_runtime_spec: cri-spec-custom.json
+  ...
+```
+
 [containerd]: https://containerd.io/
+[RuntimeClass]: https://kubernetes.io/docs/concepts/containers/runtime-class/
+[runtime classes in containerd]: https://github.com/containerd/containerd/blob/main/docs/cri/config.md#runtime-classes
+[runtime-spec]: https://github.com/opencontainers/runtime-spec

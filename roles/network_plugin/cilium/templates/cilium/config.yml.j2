@@ -117,6 +117,15 @@ data:
   #   - geneve
   tunnel: "{{ cilium_tunnel_mode }}"
 
+  # Enable Bandwidth Manager
+  # Cilium’s bandwidth manager supports the kubernetes.io/egress-bandwidth Pod annotation.
+  # Bandwidth enforcement currently does not work in combination with L7 Cilium Network Policies.
+  # In case they select the Pod at egress, then the bandwidth enforcement will be disabled for those Pods.
+  # Bandwidth Manager requires a v5.1.x or more recent Linux kernel.
+{% if cilium_enable_bandwidth_manager %}
+  enable-bandwidth-manager: "true"
+{% endif %}
+
   # Name of the cluster. Only relevant when building a mesh of clusters.
   cluster-name: "{{ cilium_cluster_name }}"
 
@@ -142,12 +151,12 @@ data:
 {% if cilium_version | regex_replace('v') is version('1.12', '<') %}
   native-routing-cidr: "{{ cilium_native_routing_cidr }}"
 {% else %}
-  {% if cilium_native_routing_cidr | length %}
+{% if cilium_native_routing_cidr | length %}
   ipv4-native-routing-cidr: "{{ cilium_native_routing_cidr }}"
-  {% endif %}
-  {% if cilium_native_routing_cidr_ipv6 | length %}
+{% endif %}
+{% if cilium_native_routing_cidr_ipv6 | length %}
   ipv6-native-routing-cidr: "{{ cilium_native_routing_cidr_ipv6 }}"
-  {% endif %}
+{% endif %}
 {% endif %}
 
   auto-direct-node-routes: "{{ cilium_auto_direct_node_routes }}"
@@ -166,7 +175,7 @@ data:
 {% endif %}
   hubble-listen-address: ":4244"
 {% if cilium_enable_hubble and cilium_hubble_install %}
-  hubble-disable-tls: "false"
+  hubble-disable-tls: "{% if cilium_hubble_tls_generate %}false{% else %}true{% endif %}"
   hubble-tls-cert-file: /var/lib/cilium/tls/hubble/server.crt
   hubble-tls-key-file: /var/lib/cilium/tls/hubble/server.key
   hubble-tls-client-ca-files: /var/lib/cilium/tls/hubble/client-ca.crt
@@ -182,16 +191,16 @@ data:
 
   # Enable transparent network encryption
 {% if cilium_encryption_enabled %}
-  {% if cilium_encryption_type == "ipsec" %}
+{% if cilium_encryption_type == "ipsec" %}
   enable-ipsec: "true"
   ipsec-key-file: /etc/ipsec/keys
   encrypt-node: "{{ cilium_ipsec_node_encryption }}"
-  {% endif %}
+{% endif %}
 
-  {% if cilium_encryption_type == "wireguard" %}
+{% if cilium_encryption_type == "wireguard" %}
   enable-wireguard: "true"
   enable-wireguard-userspace-fallback: "{{ cilium_wireguard_userspace_fallback }}"
-  {% endif %}
+{% endif %}
 {% endif %}
 
   # IPAM settings

@@ -257,6 +257,12 @@ variable "worker_allowed_ports" {
   ]
 }
 
+variable "bastion_allowed_ports" {
+  type = list(any)
+
+  default = []
+}
+
 variable "use_access_ip" {
   default = 1
 }

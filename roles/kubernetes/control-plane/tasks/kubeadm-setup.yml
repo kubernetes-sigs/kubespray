@@ -106,7 +106,7 @@
   when:
     - kube_apiserver_admission_control_config_file
     - item in kube_apiserver_admission_plugins_needs_configuration
-  loop: "{{ kube_apiserver_enable_admission_plugins[0].split(',') }}"
+  loop: "{{ kube_apiserver_enable_admission_plugins }}"
 
 - name: kubeadm | Check if apiserver.crt contains all needed SANs
   shell: |
@@ -149,6 +149,21 @@
     - kubeadm_already_run.stat.exists
     - apiserver_sans_check.changed
     - not kube_external_ca_mode
+
+- name: kubeadm | Create directory to store kubeadm patches
+  file:
+    path: "{{ kubeadm_patches.dest_dir }}"
+    state: directory
+    mode: 0640
+  when: kubeadm_patches is defined and kubeadm_patches.enabled
+
+- name: kubeadm | Copy kubeadm patches from inventory files
+  copy:
+    src: "{{ kubeadm_patches.source_dir }}/"
+    dest: "{{ kubeadm_patches.dest_dir }}"
+    owner: "root"
+    mode: 0644
+  when: kubeadm_patches is defined and kubeadm_patches.enabled
 
 - name: kubeadm | Initialize first master
   command: >-

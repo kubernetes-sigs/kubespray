@@ -15,8 +15,11 @@ data "openstack_images_image_v2" "image_master" {
   name = var.image_master == "" ? var.image : var.image_master
 }
 
-data "template_file" "cloudinit" {
-  template = file("${path.module}/templates/cloudinit.yaml")
+data "cloudinit_config" "cloudinit" {
+  part {
+    content_type =  "text/cloud-config"
+    content = file("${path.module}/templates/cloudinit.yaml")
+  }
 }
 
 data "openstack_networking_network_v2" "k8s_network" {
@@ -79,6 +82,17 @@ resource "openstack_networking_secgroup_rule_v2" "bastion" {
   port_range_min    = "22"
   port_range_max    = "22"
   remote_ip_prefix  = var.bastion_allowed_remote_ips[count.index]
+  security_group_id = openstack_networking_secgroup_v2.bastion[0].id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "k8s_bastion_ports" {
+  count             = length(var.bastion_allowed_ports)
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = lookup(var.bastion_allowed_ports[count.index], "protocol", "tcp")
+  port_range_min    = lookup(var.bastion_allowed_ports[count.index], "port_range_min")
+  port_range_max    = lookup(var.bastion_allowed_ports[count.index], "port_range_max")
+  remote_ip_prefix  = lookup(var.bastion_allowed_ports[count.index], "remote_ip_prefix", "0.0.0.0/0")
   security_group_id = openstack_networking_secgroup_v2.bastion[0].id
 }
 
@@ -195,6 +209,9 @@ resource "openstack_networking_port_v2" "bastion_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.bastion_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -207,7 +224,7 @@ resource "openstack_compute_instance_v2" "bastion" {
   image_id   = var.bastion_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id  = var.flavor_bastion
   key_pair   = openstack_compute_keypair_v2.k8s.name
-  user_data  = data.template_file.cloudinit.rendered
+  user_data  = data.cloudinit_config.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.bastion_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []
@@ -245,6 +262,9 @@ resource "openstack_networking_port_v2" "k8s_master_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -258,7 +278,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
   image_id          = var.master_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_k8s_master
   key_pair          = openstack_compute_keypair_v2.k8s.name
-  user_data         = data.template_file.cloudinit.rendered
+  user_data         = data.cloudinit_config.cloudinit.rendered
 
 
   dynamic "block_device" {
@@ -305,6 +325,9 @@ resource "openstack_networking_port_v2" "k8s_masters_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -363,6 +386,9 @@ resource "openstack_networking_port_v2" "k8s_master_no_etcd_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -376,7 +402,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
   image_id          = var.master_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_k8s_master
   key_pair          = openstack_compute_keypair_v2.k8s.name
-  user_data         = data.template_file.cloudinit.rendered
+  user_data         = data.cloudinit_config.cloudinit.rendered
 
 
   dynamic "block_device" {
@@ -423,6 +449,9 @@ resource "openstack_networking_port_v2" "etcd_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.etcd_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -436,7 +465,7 @@ resource "openstack_compute_instance_v2" "etcd" {
   image_id          = var.etcd_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_etcd
   key_pair          = openstack_compute_keypair_v2.k8s.name
-  user_data         = data.template_file.cloudinit.rendered
+  user_data         = data.cloudinit_config.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.etcd_root_volume_size_in_gb > 0 ? [local.image_to_use_master] : []
@@ -477,6 +506,9 @@ resource "openstack_networking_port_v2" "k8s_master_no_floating_ip_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -531,6 +563,9 @@ resource "openstack_networking_port_v2" "k8s_master_no_floating_ip_no_etcd_port"
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.master_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -544,7 +579,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
   image_id          = var.master_root_volume_size_in_gb == 0 ? local.image_to_use_master : null
   flavor_id         = var.flavor_k8s_master
   key_pair          = openstack_compute_keypair_v2.k8s.name
-  user_data         = data.template_file.cloudinit.rendered
+  user_data         = data.cloudinit_config.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.master_root_volume_size_in_gb > 0 ? [local.image_to_use_master] : []
@@ -586,6 +621,9 @@ resource "openstack_networking_port_v2" "k8s_node_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.worker_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -599,7 +637,7 @@ resource "openstack_compute_instance_v2" "k8s_node" {
   image_id          = var.node_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id         = var.flavor_k8s_node
   key_pair          = openstack_compute_keypair_v2.k8s.name
-  user_data         = data.template_file.cloudinit.rendered
+  user_data         = data.cloudinit_config.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.node_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []
@@ -646,6 +684,9 @@ resource "openstack_networking_port_v2" "k8s_node_no_floating_ip_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.worker_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -659,7 +700,7 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
   image_id          = var.node_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id         = var.flavor_k8s_node
   key_pair          = openstack_compute_keypair_v2.k8s.name
-  user_data         = data.template_file.cloudinit.rendered
+  user_data         = data.cloudinit_config.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.node_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []
@@ -701,6 +742,9 @@ resource "openstack_networking_port_v2" "k8s_nodes_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.worker_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id
@@ -714,7 +758,7 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   image_id          = var.node_root_volume_size_in_gb == 0 ? local.image_to_use_node : null
   flavor_id         = each.value.flavor
   key_pair          = openstack_compute_keypair_v2.k8s.name
-  user_data         = data.template_file.cloudinit.rendered
+  user_data         = data.cloudinit_config.cloudinit.rendered
 
   dynamic "block_device" {
     for_each = var.node_root_volume_size_in_gb > 0 ? [local.image_to_use_node] : []
@@ -760,6 +804,9 @@ resource "openstack_networking_port_v2" "glusterfs_node_no_floating_ip_port" {
   port_security_enabled = var.force_null_port_security ? null : var.port_security_enabled
   security_group_ids    = var.port_security_enabled ? local.gfs_sec_groups : null
   no_security_groups    = var.port_security_enabled ? null : false
+  fixed_ip {
+    subnet_id = var.private_subnet_id
+  }
 
   depends_on = [
     var.network_router_id

@@ -176,7 +176,7 @@ node5
 
 [rack0:vars]
 cluster_id="1.0.0.1"
-calcio_rr_id=rr1
+calico_rr_id=rr1
 calico_group_id=rr1
 ```
 
@@ -203,6 +203,14 @@ To re-define health host please set the following variable in your inventory:
 
 ```yml
 calico_healthhost: "0.0.0.0"
+```
+
+### Optional : Configure VXLAN hardware Offload
+
+Because of the Issue [projectcalico/calico#4727](https://github.com/projectcalico/calico/issues/4727), The VXLAN Offload is disable by default. It can be configured like this:
+
+```yml
+calico_feature_detect_override: "ChecksumOffloadBroken=true" # The vxlan offload will enabled with kernel version is > 5.7 (It may cause problem on buggy NIC driver)
 ```
 
 ### Optional : Configure Calico Node probe timeouts

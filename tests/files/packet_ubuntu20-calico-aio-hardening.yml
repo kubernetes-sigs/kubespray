@@ -1,0 +1,107 @@
+---
+# Instance settings
+cloud_image: ubuntu-2004
+mode: aio
+
+# Kubespray settings
+auto_renew_certificates: true
+
+# Currently ipvs not available on KVM: https://packages.ubuntu.com/search?suite=focal&arch=amd64&mode=exactfilename&searchon=contents&keywords=ip_vs_sh.ko
+kube_proxy_mode: iptables
+enable_nodelocaldns: False
+
+# The followings are for hardening
+## kube-apiserver
+authorization_modes: ['Node', 'RBAC']
+# AppArmor-based OS
+kube_apiserver_feature_gates: ['AppArmor=true']
+kube_apiserver_request_timeout: 120s
+kube_apiserver_service_account_lookup: true
+
+# enable kubernetes audit
+kubernetes_audit: true
+audit_log_path: "/var/log/kube-apiserver-log.json"
+audit_log_maxage: 30
+audit_log_maxbackups: 10
+audit_log_maxsize: 100
+
+tls_min_version: VersionTLS12
+tls_cipher_suites:
+  - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+  - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+  - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+
+# enable encryption at rest
+kube_encrypt_secret_data: true
+kube_encryption_resources: [secrets]
+kube_encryption_algorithm: "secretbox"
+
+kube_apiserver_enable_admission_plugins:
+  - EventRateLimit
+  - AlwaysPullImages
+  - ServiceAccount
+  - NamespaceLifecycle
+  - NodeRestriction
+  - LimitRanger
+  - ResourceQuota
+  - MutatingAdmissionWebhook
+  - ValidatingAdmissionWebhook
+  - PodNodeSelector
+  - PodSecurity
+kube_apiserver_admission_control_config_file: true
+# EventRateLimit plugin configuration
+kube_apiserver_admission_event_rate_limits:
+  limit_1:
+    type: Namespace
+    qps: 50
+    burst: 100
+    cache_size: 2000
+  limit_2:
+    type: User
+    qps: 50
+    burst: 100
+kube_profiling: false
+
+## kube-controller-manager
+kube_controller_manager_bind_address: 127.0.0.1
+kube_controller_terminated_pod_gc_threshold: 50
+# AppArmor-based OS
+kube_controller_feature_gates: ["RotateKubeletServerCertificate=true", "AppArmor=true"]
+
+## kube-scheduler
+kube_scheduler_bind_address: 127.0.0.1
+kube_kubeadm_scheduler_extra_args:
+  profiling: false
+# AppArmor-based OS
+kube_scheduler_feature_gates: ["AppArmor=true"]
+
+## etcd
+etcd_deployment_type: kubeadm
+
+## kubelet
+kubelet_authentication_token_webhook: true
+kube_read_only_port: 0
+kubelet_rotate_server_certificates: true
+kubelet_protect_kernel_defaults: true
+kubelet_event_record_qps: 1
+kubelet_rotate_certificates: true
+kubelet_streaming_connection_idle_timeout: "5m"
+kubelet_make_iptables_util_chains: true
+kubelet_feature_gates: ["RotateKubeletServerCertificate=true", "SeccompDefault=true"]
+kubelet_seccomp_default: true
+kubelet_systemd_hardening: true
+# In case you have multiple interfaces in your
+# control plane nodes and you want to specify the right
+# IP addresses, kubelet_secure_addresses allows you
+# to specify the IP from which the kubelet
+# will receive the packets.
+# kubelet_secure_addresses: "192.168.10.110 192.168.10.111 192.168.10.112"
+
+# additional configurations
+kube_owner: root
+kube_cert_group: root
+
+# create a default Pod Security Configuration and deny running of insecure pods
+# kube-system namespace is exempted by default
+kube_pod_security_use_default: true
+kube_pod_security_default_enforce: restricted

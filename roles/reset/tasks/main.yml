@@ -253,6 +253,25 @@
     - enable_nodelocaldns|default(false)|bool
     - nodelocaldns_device.stat.exists
 
+- name: reset | find files/dirs with immutable flag in /var/lib/kubelet
+  command: lsattr -laR /var/lib/kubelet
+  become: true
+  register: var_lib_kubelet_files_dirs_w_attrs
+  changed_when: false
+  no_log: true
+
+- name: reset | remove immutable flag from files/dirs in /var/lib/kubelet
+  file:
+    path: "{{ filedir_path }}"
+    state: touch
+    attributes: "-i"
+  loop: "{{ var_lib_kubelet_files_dirs_w_attrs.stdout_lines|select('search', 'Immutable')|list }}"
+  loop_control:
+    loop_var: file_dir_line
+    label: "{{ filedir_path }}"
+  vars:
+    filedir_path: "{{ file_dir_line.split(' ')[0] }}"
+
 - name: reset | delete some files and directories
   file:
     path: "{{ item }}"
@@ -263,6 +282,9 @@
     - "{{ containerd_storage_dir }}"
     - "{{ ansible_env.HOME | default('/root') }}/.kube"
     - "{{ ansible_env.HOME | default('/root') }}/.helm"
+    - "{{ ansible_env.HOME | default('/root') }}/.config/helm"
+    - "{{ ansible_env.HOME | default('/root') }}/.cache/helm"
+    - "{{ ansible_env.HOME | default('/root') }}/.local/share/helm"
     - "{{ etcd_data_dir }}"
     - "{{ etcd_events_data_dir }}"
     - "{{ etcd_config_dir }}"
@@ -390,7 +412,7 @@
   service:
     name: >-
       {% if ansible_os_family == "RedHat" -%}
-      {%- if ansible_distribution_major_version|int == 8 or is_fedora_coreos or ansible_distribution == "Fedora" -%}
+      {%- if ansible_distribution_major_version|int >= 8 or is_fedora_coreos or ansible_distribution == "Fedora" -%}
       NetworkManager
       {%- else -%}
       network

@@ -5,6 +5,40 @@ metadata:
   namespace: kube-system
 
 ---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-upcloud-node-sa
+  namespace: kube-system
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-upcloud-node-driver-registrar-role
+  namespace: kube-system
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "events" ]
+    verbs: [ "get", "list", "watch", "create", "update", "patch" ]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-upcloud-node-driver-registrar-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-upcloud-node-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-upcloud-node-driver-registrar-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -28,12 +62,6 @@ rules:
   - apiGroups: [ "" ]
     resources: [ "events" ]
     verbs: [ "list", "watch", "create", "update", "patch" ]
-  - apiGroups: [ "snapshot.storage.k8s.io" ]
-    resources: [ "volumesnapshots" ]
-    verbs: [ "get", "list" ]
-  - apiGroups: [ "snapshot.storage.k8s.io" ]
-    resources: [ "volumesnapshotcontents" ]
-    verbs: [ "get", "list" ]
   - apiGroups: [ "" ]
     resources: [ "nodes" ]
     verbs: [ "get", "list", "watch" ]
@@ -90,85 +118,37 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
-kind: ClusterRole
+# Provisioner must be able to work with endpoints and leases in current namespace
+# if (and only if) leadership election is enabled
+kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-upcloud-snapshotter-role
+  namespace: kube-system
+  name: csi-upcloud-provisioner-cfg-role
 rules:
-  - apiGroups: [ "" ]
-    resources: [ "persistentvolumes" ]
-    verbs: [ "get", "list", "watch" ]
-  - apiGroups: [ "" ]
-    resources: [ "persistentvolumeclaims" ]
-    verbs: [ "get", "list", "watch" ]
-  - apiGroups: [ "storage.k8s.io" ]
-    resources: [ "storageclasses" ]
-    verbs: [ "get", "list", "watch" ]
-  - apiGroups: [ "" ]
-    resources: [ "events" ]
-    verbs: [ "list", "watch", "create", "update", "patch" ]
-  - apiGroups: [ "" ]
-    resources: [ "secrets" ]
-    verbs: [ "get", "list" ]
-  - apiGroups: [ "snapshot.storage.k8s.io" ]
-    resources: [ "volumesnapshotclasses" ]
-    verbs: [ "get", "list", "watch" ]
-  - apiGroups: [ "snapshot.storage.k8s.io" ]
-    resources: [ "volumesnapshotcontents" ]
-    verbs: [ "create", "get", "list", "watch", "update", "delete" ]
-  - apiGroups: [ "snapshot.storage.k8s.io" ]
-    resources: [ "volumesnapshots" ]
-    verbs: [ "get", "list", "watch", "update" ]
-  - apiGroups: [ "apiextensions.k8s.io" ]
-    resources: [ "customresourcedefinitions" ]
-    verbs: [ "create", "list", "watch", "delete" ]
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["get", "watch", "list", "delete", "update", "create"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "watch", "list", "delete", "update", "create"]
 
 ---
-kind: ClusterRoleBinding
+kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-upcloud-snapshotter-binding
+  name: csi-provisioner-role-cfg-binding
+  namespace: kube-system
 subjects:
   - kind: ServiceAccount
     name: csi-upcloud-controller-sa
     namespace: kube-system
 roleRef:
-  kind: ClusterRole
-  name: csi-upcloud-snapshotter-role
+  kind: Role
+  name: csi-upcloud-provisioner-cfg-role
   apiGroup: rbac.authorization.k8s.io
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: csi-upcloud-node-sa
-  namespace: kube-system
 
 ---
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: csi-upcloud-node-driver-registrar-role
-  namespace: kube-system
-rules:
-  - apiGroups: [ "" ]
-    resources: [ "events" ]
-    verbs: [ "get", "list", "watch", "create", "update", "patch" ]
-
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: csi-upcloud-node-driver-registrar-binding
-subjects:
-  - kind: ServiceAccount
-    name: csi-upcloud-node-sa
-    namespace: kube-system
-roleRef:
-  kind: ClusterRole
-  name: csi-upcloud-node-driver-registrar-role
-  apiGroup: rbac.authorization.k8s.io
----
-# Resizer must be able to work with PVCs, PVs, SCs.
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:

@@ -2,12 +2,16 @@ provider "hcloud" {}
 
 module "kubernetes" {
   source = "./modules/kubernetes-cluster"
+  #source = "./modules/kubernetes-cluster-flatcar"
 
   prefix = var.prefix
 
   zone = var.zone
 
   machines = var.machines
+
+  #only for flatcar
+  #ssh_private_key_path = var.ssh_private_key_path
 
   ssh_public_keys = var.ssh_public_keys
   network_zone = var.network_zone

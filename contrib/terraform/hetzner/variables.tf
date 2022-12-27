@@ -25,6 +25,12 @@ variable "ssh_public_keys" {
   type        = list(string)
 }
 
+variable "ssh_private_key_path" {
+  description = "Private SSH key which connect to the VMs."
+  type        = string
+  default     = "~/.ssh/id_rsa"
+}
+
 variable "ssh_whitelist" {
   description = "List of IP ranges (CIDR) to whitelist for ssh"
   type        = list(string)

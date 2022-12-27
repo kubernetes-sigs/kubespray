@@ -9,6 +9,8 @@ ssh_public_keys = [
   "ssh-rsa I-did-not-read-the-docs 2",
 ]
 
+ssh_private_key_path = "~/.ssh/id_rsa"
+
 machines = {
   "master-0" : {
     "node_type" : "master",

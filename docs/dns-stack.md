@@ -259,7 +259,7 @@ See [dns_etchosts](#dns_etchosts-coredns) above.
 
 ### Nodelocal DNS HA
 
-Under some circumstances the single POD nodelocaldns implementation may not be able to be replaced soon enough and a cluster upgrade or a nodelocaldns upgrade can cause DNS requests to time out for short intervals. If for any reason your applications cannot tollerate this behavior you can enable a redundant nodelocal DNS pod on each node:
+Under some circumstances the single POD nodelocaldns implementation may not be able to be replaced soon enough and a cluster upgrade or a nodelocaldns upgrade can cause DNS requests to time out for short intervals. If for any reason your applications cannot tolerate this behavior you can enable a redundant nodelocal DNS pod on each node:
 
 ```yaml
 enable_nodelocaldns_secondary: true

@@ -56,11 +56,24 @@ cd inventory/$CLUSTER
 
 Edit `default.tfvars` to match your requirement.
 
+Flatcar Container Linux instead of the basic Hetzner Images.
+
+```bash
+cd ../../contrib/terraform/hetzner
+```
+
+Edit `main.tf` and reactivate the module `source = "./modules/kubernetes-cluster-flatcar"`and
+comment out the `#source = "./modules/kubernetes-cluster"`.
+
+activate `ssh_private_key_path = var.ssh_private_key_path`. The VM boots into
+Rescue-Mode with the selected image of the `var.machines` but installs Flatcar instead.
+
 Run Terraform to create the infrastructure.
 
 ```bash
-terraform init ../../contrib/terraform/hetzner
-terraform apply --var-file default.tfvars ../../contrib/terraform/hetzner/
+cd ./kubespray
+terraform -chdir=./contrib/terraform/hetzner/ init
+terraform -chdir=./contrib/terraform/hetzner/ apply --var-file=../../../inventory/$CLUSTER/default.tfvars
 ```
 
 You should now have a inventory file named `inventory.ini` that you can use with kubespray.

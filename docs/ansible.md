@@ -290,7 +290,7 @@ two projects which are now joined under the Ansible umbrella.
 
 Ansible-base (2.10.x branch) will contain just the ansible language implementation while
 ansible modules that were previously bundled into a single repository will be part of the
-ansible 3.x package. Pleasee see [this blog post](https://blog.while-true-do.io/ansible-release-3-0-0/)
+ansible 3.x package. Please see [this blog post](https://blog.while-true-do.io/ansible-release-3-0-0/)
 that explains in detail the need and the evolution plan.
 
 **Note:** this change means that ansible virtual envs cannot be upgraded with `pip install -U`.

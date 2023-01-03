@@ -267,7 +267,7 @@ Note: use `--tags` and `--skip-tags` wise and only if you're 100% sure what you'
 ## Bastion host
 
 If you prefer to not make your nodes publicly accessible (nodes with private IPs only),
-you can use a so called *bastion* host to connect to your nodes. To specify and use a bastion,
+you can use a so-called _bastion_ host to connect to your nodes. To specify and use a bastion,
 simply add a line to your inventory, where you have to replace x.x.x.x with the public IP of the
 bastion host.
 

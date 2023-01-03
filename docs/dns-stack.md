@@ -60,6 +60,10 @@ By default, no other option than the ones hardcoded (see `roles/kubernetes-apps/
 
 Custom options to be added to the kubernetes coredns plugin.
 
+### coredns_kubernetes_extra_domains
+
+Extra domains to be forwarded to the kubernetes coredns plugin.
+
 ### coredns_external_zones
 
 Array of optional external zones to coredns forward queries to. It's  injected into

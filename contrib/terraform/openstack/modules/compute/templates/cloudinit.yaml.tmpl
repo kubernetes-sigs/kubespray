@@ -1,0 +1,39 @@
+%{~ if length(extra_partitions) > 0 }
+#cloud-config
+bootcmd:
+%{~ for idx, partition in extra_partitions }
+- [ cloud-init-per, once, move-second-header, sgdisk, --move-second-header, ${partition.volume_path} ]
+- [ cloud-init-per, once, create-part-${idx}, parted, --script, ${partition.volume_path}, 'mkpart extended ext4 ${partition.partition_start} ${partition.partition_end}' ]
+- [ cloud-init-per, once, create-fs-part-${idx}, mkfs.ext4, ${partition.partition_path} ]
+%{~ endfor }
+
+runcmd:
+%{~ for idx, partition in extra_partitions }
+  - mkdir -p ${partition.mount_path}
+  - chown nobody:nogroup ${partition.mount_path}
+  - mount ${partition.partition_path} ${partition.mount_path}
+%{~ endfor }
+
+mounts:
+%{~ for idx, partition in extra_partitions }
+  - [ ${partition.partition_path}, ${partition.mount_path} ]
+%{~ endfor }
+%{~ else ~}
+# yamllint disable rule:comments
+#cloud-config
+## in some cases novnc console access is required
+## it requires ssh password to be set
+#ssh_pwauth: yes
+#chpasswd:
+#  list: |
+#    root:secret
+#  expire: False
+
+## in some cases direct root ssh access via ssh key is required
+#disable_root: false
+
+## in some cases additional CA certs are required
+#ca-certs:
+#  trusted: |
+#      -----BEGIN CERTIFICATE-----
+%{~ endif }

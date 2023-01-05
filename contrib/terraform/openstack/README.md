@@ -88,7 +88,7 @@ binaries available on hyperkube v1.4.3_coreos.0 or higher.
 
 ## Requirements
 
-- [Install Terraform](https://www.terraform.io/intro/getting-started/install.html) 0.12 or later
+- [Install Terraform](https://www.terraform.io/intro/getting-started/install.html) 0.14 or later
 - [Install Ansible](http://docs.ansible.com/ansible/latest/intro_installation.html)
 - you already have a suitable OS image in Glance
 - you already have a floating IP pool created
@@ -284,6 +284,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`master_server_group_policy` | Enable and use openstack nova servergroups for masters with set policy, default: "" (disabled) |
 |`node_server_group_policy` | Enable and use openstack nova servergroups for nodes with set policy, default: "" (disabled) |
 |`etcd_server_group_policy` | Enable and use openstack nova servergroups for etcd with set policy, default: "" (disabled) |
+|`additional_server_groups` | Extra server groups to create. Set "policy" to the policy for the group, expected format is `{"new-server-group" = {"policy" = "anti-affinity"}}`, default: {} (to not create any extra groups) |
 |`use_access_ip` | If 1, nodes with floating IPs will transmit internal cluster traffic via floating IPs; if 0 private IPs will be used instead. Default value is 1. |
 |`port_security_enabled` | Allow to disable port security by setting this to `false`. `true` by default |
 |`force_null_port_security` | Set `null` instead of `true` or `false` for `port_security`. `false` by default |
@@ -292,11 +293,32 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 
 ##### k8s_nodes
 
-Allows a custom definition of worker nodes giving the operator full control over individual node flavor and
-availability zone placement. To enable the use of this mode set the `number_of_k8s_nodes` and
-`number_of_k8s_nodes_no_floating_ip` variables to 0. Then define your desired worker node configuration
-using the `k8s_nodes` variable. The `az`, `flavor` and `floating_ip` parameters are mandatory.
+Allows a custom definition of worker nodes giving the operator full control over individual node flavor and availability zone placement.
+To enable the use of this mode set the `number_of_k8s_nodes` and `number_of_k8s_nodes_no_floating_ip` variables to 0.
+Then define your desired worker node configuration using the `k8s_nodes` variable.
+The `az`, `flavor` and `floating_ip` parameters are mandatory.
 The optional parameter `extra_groups` (a comma-delimited string) can be used to define extra inventory group memberships for specific nodes.
+
+```yaml
+k8s_nodes:
+   node-name:
+    az: string # Name of the AZ
+    flavor: string # Flavor ID to use
+    floating_ip: bool # If floating IPs should be created or not
+    extra_groups: string # (optional) Additional groups to add for kubespray, defaults to no groups
+    image_id: string # (optional) Image ID to use, defaults to var.image_id or var.image
+    root_volume_size_in_gb: number # (optional) Size of the block storage to use as root disk, defaults to var.node_root_volume_size_in_gb or to use volume from flavor otherwise
+    volume_type: string # (optional) Volume type to use, defaults to var.node_volume_type
+    network_id: string # (optional) Use this network_id for the node, defaults to either var.network_id or ID of var.network_name
+    server_group: string # (optional) Server group to add this node to. If set, this has to be one specified in additional_server_groups, defaults to use the server group specified in node_server_group_policy
+    cloudinit: # (optional) Options for cloud-init
+      extra_partitions: # List of extra partitions (other than the root partition) to setup during creation
+        volume_path: string # Path to the volume to create partition for (e.g. /dev/vda )
+        partition_path: string # Path to the partition (e.g. /dev/vda2 )
+        mount_path: string # Path to where the partition should be mounted
+        partition_start: string # Where the partition should start (e.g. 10GB ). Note, if you set the partition_start to 0 there will be no space left for the root partition
+        partition_end: string # Where the partition should end (e.g. 10GB or -1 for end of volume)
+```
 
 For example:
 
@@ -427,7 +449,7 @@ This should finish fairly quickly telling you Terraform has successfully initial
 
 You can apply cloud-init based customization for the openstack instances before provisioning your cluster.
 One common template is used for all instances. Adjust the file shown below:
-`contrib/terraform/openstack/modules/compute/templates/cloudinit.yaml`
+`contrib/terraform/openstack/modules/compute/templates/cloudinit.yaml.tmpl`
 For example, to enable openstack novnc access and ansible_user=root SSH access:
 
 ```ShellSession

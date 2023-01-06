@@ -207,10 +207,10 @@ calico_healthhost: "0.0.0.0"
 
 ### Optional : Configure VXLAN hardware Offload
 
-Because of the Issue [projectcalico/calico#4727](https://github.com/projectcalico/calico/issues/4727), The VXLAN Offload is disable by default. It can be configured like this:
+The VXLAN Offload is disable by default. It can be configured like this to enabled it:
 
 ```yml
-calico_feature_detect_override: "ChecksumOffloadBroken=true" # The vxlan offload will enabled with kernel version is > 5.7 (It may cause problem on buggy NIC driver)
+calico_feature_detect_override: "ChecksumOffloadBroken=false" # The vxlan offload will enabled (It may cause problem on buggy NIC driver)
 ```
 
 ### Optional : Configure Calico Node probe timeouts

@@ -1,0 +1,40 @@
+{{- range $server := .Values.storage }}
+{{- range $folder := $server.folders }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ include "nfs.fullname" $ }}-{{ $server.name }}-{{ $folder.name }}
+  labels:
+    {{- include "nfs.labels" $ | nindent 4 }}
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  {{ toYaml $.Values.spec | nindent 2 }}
+  source:
+    chart: nfs-subdir-external-provisioner
+    repoURL: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+    targetRevision: {{ $.Values.versions.nfs_provisioner }}
+    helm:
+      releaseName: {{ include "nfs.fullname" $ }}-{{ $server.name }}-{{ $folder.name }}
+      values: |-
+        nfs:
+          server: {{ $server.hostname }}
+          path: {{ $server.mount_path }}
+        storageClass:
+          name: nfs-{{ $server.name }}-{{ $folder.name }}
+          provisionerName: nfs.io/nfs-{{ $server.name }}-{{ $folder.name }}
+          accessModes: ReadWriteMany
+          onDelete: retain
+          {{- if $folder.fixed }}
+          pathPattern: "{{ $folder.name }}"
+          {{- else if $folder.pathOverride }}
+          pathPattern: "{{ $folder.name }}/${.PVC.namespace}/${.PVC.annotations.nfs.io/storage-path}"
+          {{- else }}
+          pathPattern: "{{ $folder.name }}/${.PVC.namespace}/${.PVC.name}"
+          {{- end }}
+          mountOptions:
+            - vers=4
+{{- end }}
+{{- end }}

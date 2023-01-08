@@ -1,0 +1,120 @@
+{{- range $tool := .Values.tools }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ include "tools.fullname" $ }}-{{ $tool.name }}
+  labels:
+    {{- include "tools.labels" $ | nindent 4 }}
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: image={{ $tool.image.name }}:{{ $tool.image.semvar }}
+spec:
+  project: {{ $.Values.spec.project }}
+  destination:
+    {{ toYaml $.Values.spec.destination | nindent 4 }}
+    {{- with $tool.namespace }}
+    namespace: {{ $tool.namespace }}
+    {{- end }}
+  source:
+    {{ toYaml $.Values.templateSource | nindent 4 }}
+    helm:
+      values: |-
+        fullnameOverride: {{ include "tools.fullname" $ }}-{{ $tool.name }}
+        image:
+          name: {{ $tool.image.name }}
+          tag: {{ $tool.image.tag }}
+          suffix: {{ $tool.image.suffix | default "" }}
+
+        {{- with $tool.serviceAccount }}
+        serviceAccountName: {{ $tool.serviceAccount }}
+        {{- end }}
+
+        {{- with $tool.env }}
+        env:
+          {{ toYaml . | nindent 10 }}
+        {{- end }}
+        
+        {{- with $tool.resources }}
+        resources:
+          {{ toYaml . | nindent 10 }}
+        {{- end }}
+
+        {{- with $tool.args }}
+        args:
+          {{ toYaml . | nindent 10 }}
+        {{- end }}
+
+        {{- if gt (len $tool.secrets) 0 }}
+        envFrom:
+        {{- range $secret := $tool.secrets }}
+          - secretRef: 
+              name: {{ $secret }}
+        {{- end }}
+        {{- end }}
+
+        {{- if gt (len $tool.ports) 0 }}
+        ports:
+        {{- range $port := $tool.ports }}
+          - name: port-{{ $port.port }}
+            containerPort: {{ $port.port }}
+        {{- end }}
+        {{- end }}
+          
+        service:
+            {{- if gt (len $tool.ports) 0 }}
+          ports:
+          {{- range $port := $tool.ports }}
+            - name: port-{{ $port.port }}
+              targetPort: {{ $port.port }}
+              port: {{ $port.port }}
+          {{- end }}
+          {{- end }}
+
+        {{- with $tool.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+
+        {{- if hasKey $tool "volumes" }}
+        volumeMounts:
+        {{- range $volume := $tool.volumes }}
+          - name: config
+            mountPath: {{ $volume.mountPath }}
+            {{- if hasKey $volume "subPath" }}
+            subPath: {{ $volume.subPath }}
+            {{- end }}
+        {{- end }}
+        {{- with $tool.extraVolumeMounts }}
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        pvc:
+          enabled: true
+          name: config
+          storageClass: {{ $tool.className | default $.Values.defaultClassName }}
+        {{- end }}
+
+        {{- with $tool.extraVolumes }}
+        volumes:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        
+        {{- if hasKey $tool "url" }}
+        ingress:
+          enabled: true
+          {{- if hasKey $tool "ingress" }}
+          {{- with $tool.ingress.annotations }}
+          annotations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          hosts:
+            - host: {{ $tool.url }}
+              paths:
+                - path: /
+                  pathType: Prefix
+        {{- end }}
+{{- end }}

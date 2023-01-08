@@ -1,0 +1,83 @@
+{{- range $task := .Values.tasks.configs }}
+{{- range $server := $.Values.storage }}
+{{- range $folder := $server.folders }}
+{{- if (index $folder $task.name) }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "nfs.fullname" $ }}-{{ $task.name }}-{{ $server.name }}-{{ $folder.name }}
+  namespace: {{ $.Values.spec.destination.namespace }}
+  labels:
+    {{- include "nfs.labels" $ | nindent 4 }}
+spec:
+  schedule: {{ $task.cron | default "0 3 * * *" | quote }}
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 1
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    metadata:
+      name: {{ include "nfs.fullname" $ }}-{{ $task.name }}-{{ $server.name }}-{{ $folder.name }}
+      labels:
+        {{- include "nfs.labels" $ | nindent 8 }}
+    spec:
+      template:
+        metadata:
+          name: {{ include "nfs.fullname" $ }}-{{ $task.name }}-{{ $server.name }}-{{ $folder.name }}
+          labels:
+            {{- include "nfs.labels" $ | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: task
+              image: {{ default $task.image $.Values.tasks.secrets.image }}
+              imagePullPolicy: Always
+              {{- with $task.command }}
+              command:
+              {{ toYaml . | nindent 16 }}
+              {{- end }}
+              {{- with $task.args }}
+              args:
+              {{ toYaml . | nindent 16 }}
+              {{- end }}
+              env:
+                - name: RCLONE_CONFIG_PATH
+                  value: /rclone/rclone.conf
+              {{- with $task.env }}
+              {{ toYaml . | nindent 16 }}
+              {{- end }}
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+              volumeMounts:
+                - name: rclone
+                  mountPath: /rclone
+                - name: scripts
+                  mountPath: /scripts
+                - name: source
+                  mountPath: /source
+                  subPath: {{ $folder.name }}
+              {{- with $task.volumeMounts }}
+              {{ toYaml . | nindent 16}}
+              {{- end }}
+          volumes:
+            - name: rclone
+              secret:
+                defaultMode: 0755
+                secretName: {{ $.Values.tasks.secrets.rclone }}
+            - name: scripts
+              secret:
+                defaultMode: 0755
+                secretName: {{ $.Values.tasks.secrets.scripts }}
+            - name: source
+              nfs:
+                server: {{ $server.hostname }}
+                path: {{ $server.mount_path }}
+            {{- with $task.volumes }}
+            {{ toYaml . | nindent 12 }}
+            {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

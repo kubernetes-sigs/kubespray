@@ -1,0 +1,46 @@
+{{- if .Values.pvc.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "app.fullname" . }}-backup
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.pvc.backup.cron }}
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 1
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    metadata:
+      name: {{ include "app.fullname" . }}-backup
+      labels:
+        {{- include "app.labels" . | nindent 8 }}
+    spec:
+      parallelism: 1
+      template:
+        metadata:
+          name: {{ include "app.fullname" . }}-backup
+          labels:
+            {{- include "app.labels" . | nindent 12 }}
+        spec:
+          containers:
+            - name: {{ .Chart.Name }}
+              image: curlimages/curl
+              {{- with default .Values.pvc.backup.securityContext .Values.securityContext  }}
+              securityContext:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              command:
+                - curl
+                - http://{{ include "app.fullname" . }}:{{ .Values.pvc.backup.port }}
+                - -o
+                - /backup/backup.tar.gz
+              volumeMounts:
+                - name: {{ .Values.pvc.name}}
+                  mountPath: /backup
+          volumes:
+            - name: {{ .Values.pvc.name}}
+              persistentVolumeClaim:
+                claimName: {{ include "app.fullname" . }}-pvc
+          restartPolicy: Never
+{{- end }}

@@ -1,0 +1,66 @@
+---
+- name: Install softare
+  hosts: k8s_cluster
+  tasks:
+    - name: install nfs and fuse software
+      ansible.builtin.apt:
+        name:
+          - fuse
+          - nfs-common
+        state: latest
+
+- name: Install nfs storage software
+  hosts: cloud_storage
+  tasks:
+    - name: install nfs server
+      ansible.builtin.apt:
+        name: 
+          - nfs-kernel-server
+        state: latest
+    - name: make exports
+      copy:
+        content: /var/lib/mounts 10.99.0.1/24(rw,no_subtree_check,no_root_squash)
+        dest: /etc/exports
+    - name: restart server
+      ansible.builtin.service:
+        name: nfs-kernel-server
+        state: started
+        enabled: true
+
+- name: Wireguard
+  hosts: k8s_cluster
+  tasks:
+    - name: install wireguard
+      ansible.builtin.apt:
+        name:
+          - wireguard
+        state: latest
+    - name: make directory
+      file:
+        path: /etc/wireguard
+        state: directory
+    - name: copy configuration
+      copy: 
+        src: "/vpn_configs/{{ hostvars[inventory_hostname].wg_index }}.conf"
+        dest: /etc/wireguard/wg0.conf
+        owner: root
+        group: root
+        mode: '0644'
+    - name: wireguard start
+      ansible.builtin.service:
+        name: wg-quick@wg0
+        state: started
+        enabled: true
+    - name: iptables allow
+      iptables:
+        chain: INPUT
+        source: 10.99.0.0/24
+        destination: 10.99.0.0/24
+        jump: ACCEPT
+    - name: iptables allow wireguard forwarding
+      iptables:
+        chain: FORWARD
+        in_interface: wg0
+        out_interface: wg0
+        jump: ACCEPT
+  become: true

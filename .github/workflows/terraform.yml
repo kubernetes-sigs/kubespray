@@ -1,0 +1,39 @@
+on:
+  pull_request:
+    types: [opened, reopened]
+  push:
+    branches:
+      - master
+
+jobs:
+  terraform:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v2
+
+      - run: terraform -chdir=terraform init
+      - run: terraform -chdir=terraform plan -no-color -input=false -state=/inventory/terraform/state.tfstate -var='ID_RSA_PUB=/inventory/id_rsa.pub' -var='ID_RSA=/inventory/id_rsa' -var-file="/inventory/variables.tfvars"
+      
+      - if: github.event_name != 'pull_request'
+        run: terraform -chdir=terraform apply -auto-approve -input=false -state=/inventory/terraform/state.tfstate -var='ID_RSA_PUB=/inventory/id_rsa.pub' -var='ID_RSA=/inventory/id_rsa' -var-file="/inventory/variables.tfvars"
+
+  scale-nodes:
+    runs-on: self-hosted
+    steps:
+      - name: clean ssh hosts
+        run: rm -rf ~/.ssh
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: install packages
+        run: pip install -r requirements.txt
+
+      - name: deploy changes
+        run: ansible-playbook -i /inventory/mycluster/hosts.yaml post_install.yml -b -v --private-key /inventory/id_rsa

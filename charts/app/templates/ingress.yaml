@@ -1,0 +1,68 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ include "app.fullname" . }}-ingress
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: {{ .Values.ingress.namespace }}
+    server: {{ .Values.spec.destination.server }}
+  project: {{ .Values.spec.project }}
+  source:
+    chart: ingress-nginx
+    repoURL: https://kubernetes.github.io/ingress-nginx
+    targetRevision: {{ .Values.ingress.version }}
+    helm:
+      releaseName: ingress-nginx
+      values: |-
+      controller:
+        minAvailable: 2
+
+        tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Equal
+          effect: NoSchedule
+        
+        autoscaling:
+          enabled: false
+          minReplicas: 3
+        
+        metrics:
+          namespace: {{ .Values.ingress.namespace }}
+          enabled: trure
+          serviceMonitor:
+            enabled: true
+            namespaceSelector:
+              any: true
+
+        replicaCount: 3
+
+        resources:
+          requests:
+            memory: 500Mi
+        
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: onpremise
+                  operator: DoesNotExist
+
+        service:
+          type: NodePort
+          nodePorts:
+              http: 80
+              https: 443
+
+        extraArgs:
+          enable-ssl-passthrough: true
+          default-ssl-certificate: {{ .Values.ingress.sslSecret }}
+
+      service:
+        externalIPs: {{ .Values.ingress.nodeIps }}

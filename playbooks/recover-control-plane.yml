@@ -1,0 +1,34 @@
+---
+- name: Check ansible version
+  import_playbook: ansible_version.yml
+
+- name: Ensure compatibility with old groups
+  import_playbook: legacy_groups.yml
+
+- hosts: bastion[0]
+  gather_facts: False
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: bastion-ssh-config, tags: ["localhost", "bastion"]}
+
+- hosts: etcd[0]
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults}
+    - role: recover_control_plane/etcd
+      when: etcd_deployment_type != "kubeadm"
+
+- hosts: kube_control_plane[0]
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: recover_control_plane/control-plane }
+
+- import_playbook: cluster.yml
+
+- hosts: kube_control_plane
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: recover_control_plane/post-recover }

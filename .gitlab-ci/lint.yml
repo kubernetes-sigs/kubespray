@@ -39,9 +39,26 @@ syntax-check:
     ANSIBLE_VERBOSITY: "3"
   script:
     - ansible-playbook --syntax-check cluster.yml
+    - ansible-playbook --syntax-check playbooks/cluster.yml
     - ansible-playbook --syntax-check upgrade-cluster.yml
+    - ansible-playbook --syntax-check playbooks/upgrade-cluster.yml
     - ansible-playbook --syntax-check reset.yml
+    - ansible-playbook --syntax-check playbooks/reset.yml
     - ansible-playbook --syntax-check extra_playbooks/upgrade-only-k8s.yml
+  except: ['triggers', 'master']
+
+collection-build-install-sanity-check:
+  extends: .job
+  stage: unit-tests
+  tags: [light]
+  variables:
+    ANSIBLE_COLLECTIONS_PATH: "./ansible_collections"
+  script:
+    - ansible-galaxy collection build
+    - ansible-galaxy collection install kubernetes_sigs-kubespray-$(grep "^version:" galaxy.yml | awk '{print $2}').tar.gz
+    - ansible-galaxy collection list $(egrep -i '(name:\s+|namespace:\s+)' galaxy.yml | awk '{print $2}' | tr '\n' '.' | sed 's|\.$||g') | grep "^kubernetes_sigs.kubespray"
+    - test -f ansible_collections/kubernetes_sigs/kubespray/playbooks/cluster.yml
+    - test -f ansible_collections/kubernetes_sigs/kubespray/playbooks/reset.yml
   except: ['triggers', 'master']
 
 tox-inventory-builder:
@@ -74,6 +91,13 @@ check-readme-versions:
   image: python:3
   script:
     - tests/scripts/check_readme_versions.sh
+
+check-galaxy-version:
+  stage: unit-tests
+  tags: [light]
+  image: python:3
+  script:
+    - tests/scripts/check_galaxy_version.sh
 
 check-typo:
   stage: unit-tests

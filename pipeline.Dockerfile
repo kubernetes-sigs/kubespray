@@ -45,3 +45,7 @@ RUN wget https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAG
  dpkg -i vagrant_${VAGRANT_VERSION}_x86_64.deb && \
  rm vagrant_${VAGRANT_VERSION}_x86_64.deb && \
  vagrant plugin install vagrant-libvirt
+
+# Install Kubernetes collections
+RUN pip3 install kubernetes \
+    && ansible-galaxy collection install kubernetes.core

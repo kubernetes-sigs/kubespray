@@ -14,7 +14,7 @@ variable "machines" {
     }))
     boot_disk = object({
       image_name = string
-      size = number
+      size       = number
     })
   }))
 }
@@ -72,4 +72,15 @@ variable "ingress_whitelist" {
 
 variable "private_network_cidr" {
   default = "10.0.10.0/24"
+}
+
+variable "extra_ingress_firewalls" {
+  type = map(object({
+    source_ranges = set(string)
+    protocol      = string
+    ports         = list(string)
+    target_tags   = set(string)
+  }))
+
+  default = {}
 }

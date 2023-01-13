@@ -37,55 +37,25 @@
     - node_crb_manifest.changed
     - inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Kubernetes Apps | Add webhook ClusterRole that grants access to proxy, stats, log, spec, and metrics on a kubelet
-  template:
-    src: "node-webhook-cr.yml.j2"
-    dest: "{{ kube_config_dir }}/node-webhook-cr.yml"
-    mode: 0640
-  register: node_webhook_cr_manifest
-  when:
-    - rbac_enabled
-    - kubelet_authorization_mode_webhook
-    - inventory_hostname == groups['kube_control_plane'][0]
-  tags: node-webhook
-
-- name: Apply webhook ClusterRole
+- name: Kubernetes Apps | Remove old webhook ClusterRole
   kube:
     name: "system:node-webhook"
     kubectl: "{{ bin_dir }}/kubectl"
     resource: "clusterrole"
-    filename: "{{ kube_config_dir }}/node-webhook-cr.yml"
-    state: latest
+    state: absent
   when:
     - rbac_enabled
-    - kubelet_authorization_mode_webhook
-    - node_webhook_cr_manifest.changed
     - inventory_hostname == groups['kube_control_plane'][0]
   tags: node-webhook
 
-- name: Kubernetes Apps | Add ClusterRoleBinding for system:nodes to webhook ClusterRole
-  template:
-    src: "node-webhook-crb.yml.j2"
-    dest: "{{ kube_config_dir }}/node-webhook-crb.yml"
-    mode: 0640
-  register: node_webhook_crb_manifest
-  when:
-    - rbac_enabled
-    - kubelet_authorization_mode_webhook
-    - inventory_hostname == groups['kube_control_plane'][0]
-  tags: node-webhook
-
-- name: Grant system:nodes the webhook ClusterRole
+- name: Kubernetes Apps | Remove old webhook ClusterRoleBinding
   kube:
     name: "system:node-webhook"
     kubectl: "{{ bin_dir }}/kubectl"
     resource: "clusterrolebinding"
-    filename: "{{ kube_config_dir }}/node-webhook-crb.yml"
-    state: latest
+    state: absent
   when:
     - rbac_enabled
-    - kubelet_authorization_mode_webhook
-    - node_webhook_crb_manifest.changed
     - inventory_hostname == groups['kube_control_plane'][0]
   tags: node-webhook
 

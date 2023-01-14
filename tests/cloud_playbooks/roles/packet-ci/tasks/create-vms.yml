@@ -11,20 +11,19 @@
     mode: 0755
 
 - name: Template vm files for CI job
-  template:
-    src: "vm.yml.j2"
-    dest: "/tmp/{{ test_name }}/instance-{{ vm_id }}.yml"
-    mode: 0644
+  set_fact:
+    vms_files: "{{ vms_files }} + [{{ lookup('ansible.builtin.template', 'vm.yml.j2') | from_yaml }}]"
+  vars:
+    vms_files: []
   loop: "{{ range(1, vm_count|int + 1, 1) | list }}"
   loop_control:
     index_var: vm_id
 
 - name: Start vms for CI job
-  command: "kubectl apply -f /tmp/{{ test_name }}/instance-{{ vm_id }}.yml"
+  kubernetes.core.k8s:
+    definition: "{{ item }}"
   changed_when: false
-  loop: "{{ range(1, vm_count|int + 1, 1) | list }}"
-  loop_control:
-    index_var: vm_id
+  loop: "{{ vms_files }}"
 
 - name: Wait for vms to have ipaddress assigned
   shell: "set -o pipefail && kubectl get vmis -n {{ test_name }} instance-{{ vm_id }} -o json | jq '.status.interfaces[].ipAddress' | tr -d '\"'"

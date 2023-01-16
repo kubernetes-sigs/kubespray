@@ -235,6 +235,8 @@ If you are running your cluster with the default calico settings and are upgradi
 * perform a manual migration to vxlan before upgrading kubespray (see migrating from IP in IP to VXLAN below)
 * pin the pre-2.19 settings in your ansible inventory (see IP in IP mode settings below)
 
+**Note:**: Vxlan in ipv6 only supported when kernel >= 3.12. So if your kernel version < 3.12, Please don't set `calico_vxlan_mode_ipv6: vxlanAlways`. More details see [#Issue 6877](https://github.com/projectcalico/calico/issues/6877).
+
 ### IP in IP mode
 
 To configure Ip in Ip mode you need to use the bird network backend.

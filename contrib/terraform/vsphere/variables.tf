@@ -23,7 +23,9 @@ variable "vsphere_datastore" {}
 
 variable "vsphere_user" {}
 
-variable "vsphere_password" {}
+variable "vsphere_password" {
+  sensitive = true
+}
 
 variable "vsphere_server" {}
 

@@ -34,4 +34,6 @@ module "kubernetes" {
   api_server_whitelist = var.api_server_whitelist
   nodeport_whitelist   = var.nodeport_whitelist
   ingress_whitelist    = var.ingress_whitelist
+
+  extra_ingress_firewalls = var.extra_ingress_firewalls
 }

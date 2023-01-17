@@ -2,7 +2,11 @@
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
+{% if container_manager_types|length >= 2 %}
+  name: kube-multus-{{ container_manager }}-{{ image_arch }}
+{% else %}
   name: kube-multus-ds-{{ image_arch }}
+{% endif %}
   namespace: kube-system
   labels:
     tier: node
@@ -22,6 +26,9 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
         kubernetes.io/arch: {{ image_arch }}
+{% if container_manager_types|length >= 2 %}
+        kubespray.io/container_manager: {{ container_manager }}
+{% endif %}
       tolerations:
       - operator: Exists
       serviceAccountName: multus
@@ -52,6 +59,7 @@ spec:
 {% if container_manager == 'crio' %}
         - name: run
           mountPath: {{ multus_cni_run_dir }}
+          mountPropagation: HostToContainer
 {% endif %}
         - name: cni
           mountPath: {{  multus_cni_conf_dir }}

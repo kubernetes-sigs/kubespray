@@ -95,3 +95,14 @@ variable "ingress_whitelist" {
   type = list(string)
   default = ["0.0.0.0/0"]
 }
+
+variable "extra_ingress_firewalls" {
+  type = map(object({
+    source_ranges = set(string)
+    protocol      = string
+    ports         = list(string)
+    target_tags   = set(string)
+  }))
+
+  default = {}
+}

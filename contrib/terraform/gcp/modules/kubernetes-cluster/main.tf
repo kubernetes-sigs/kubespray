@@ -219,7 +219,7 @@ resource "google_compute_instance" "master" {
   machine_type = each.value.size
   zone         = each.value.zone
 
-  tags = ["master"]
+  tags = ["control-plane", "master", each.key]
 
   boot_disk {
     initialize_params {
@@ -325,7 +325,7 @@ resource "google_compute_instance" "worker" {
   machine_type = each.value.size
   zone         = each.value.zone
 
-  tags = ["worker"]
+  tags = ["worker", each.key]
 
   boot_disk {
     initialize_params {
@@ -397,4 +397,25 @@ resource "google_compute_target_pool" "worker_lb" {
 
   name      = "${var.prefix}-worker-lb-pool"
   instances = local.worker_target_list
+}
+
+resource "google_compute_firewall" "extra_ingress_firewall" {
+  for_each = {
+    for name, firewall in var.extra_ingress_firewalls :
+    name => firewall
+  }
+
+  name    = "${var.prefix}-${each.key}-ingress"
+  network = google_compute_network.main.name
+
+  priority = 100
+
+  source_ranges = each.value.source_ranges
+
+  target_tags = each.value.target_tags
+
+  allow {
+    protocol = each.value.protocol
+    ports    = each.value.ports
+  }
 }

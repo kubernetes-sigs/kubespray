@@ -4,22 +4,23 @@
     kubeadm_certificate_key: "{{ hostvars[groups['kube_control_plane'][0]]['kubeadm_certificate_key'] }}"
   when: kubeadm_certificate_key is undefined
 
+- name: Create kubeadm cert controlplane config
+  template:
+    src: "kubeadm-client.conf.{{ kubeadmConfig_api_version }}.j2"
+    dest: "{{ kube_config_dir }}/kubeadm-cert-controlplane.conf"
+    mode: 0640
+  vars:
+    kubeadm_cert_controlplane: true
+
 - name: Pull control plane certs down
   shell: >-
     {{ bin_dir }}/kubeadm join phase
     control-plane-prepare download-certs
-    --certificate-key {{ kubeadm_certificate_key }}
-    --control-plane
-    --token {{ kubeadm_token }}
-    --discovery-token-unsafe-skip-ca-verification
-    {{ kubeadm_discovery_address }}
+    --config {{ kube_config_dir }}/kubeadm-cert-controlplane.conf
     &&
     {{ bin_dir }}/kubeadm join phase
     control-plane-prepare certs
-    --control-plane
-    --token {{ kubeadm_token }}
-    --discovery-token-unsafe-skip-ca-verification
-    {{ kubeadm_discovery_address }}
+    --config {{ kube_config_dir }}/kubeadm-cert-controlplane.conf
   args:
     creates: "{{ kube_cert_dir }}/apiserver-etcd-client.key"
 

@@ -4,6 +4,5 @@ terraform {
       source = "terraform-provider-openstack/openstack"
     }
   }
-  experiments = [module_variable_optional_attrs]
-  required_version = ">= 0.14.0"
+  required_version = ">= 1.3.0"
 }

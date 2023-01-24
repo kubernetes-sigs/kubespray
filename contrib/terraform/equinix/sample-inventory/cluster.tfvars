@@ -2,7 +2,7 @@
 cluster_name = "mycluster"
 
 # Your Equinix Metal project ID. See hhttps://metal.equinix.com/developers/docs/accounts/
-metal_project_id = "Example-API-Token"
+equinix_metal_project_id = "Example-Project-Id"
 
 # The public SSH key to be uploaded into authorized_keys in bare metal Equinix Metal nodes provisioned
 # leave this value blank if the public key is already setup in the Equinix Metal project
@@ -11,6 +11,9 @@ public_key_path = "~/.ssh/id_rsa.pub"
 
 # cluster location
 facility = "ewr1"
+
+# operating_system
+operating_system = "ubuntu_22_04"
 
 # standalone etcds
 number_of_etcd = 0

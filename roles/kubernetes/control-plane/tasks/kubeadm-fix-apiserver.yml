@@ -16,9 +16,56 @@
     - "Master | Restart kube-scheduler"
     - "Master | reload kubelet"
 
-- name: Update etcd-servers for apiserver
+- name: Check if multiple etcd nodes (HA)
+  set_fact:
+    etcd_ha: |-
+             {%- if etcd_hosts|length > 1 -%}
+             true
+             {%- else -%}
+             false
+             {%- endif -%}
+
+- name: create lexicographically sorted etcd_access_addresses to detect whether the list of etcd servers has changed
+  set_fact:
+    etcd_access_addresses_lex: "{{ etcd_access_addresses | split(',') | sort }}"
+  when: etcd_ha
+
+- name: Read apiserver manifest
+  command: "cat {{ kube_config_dir }}/manifests/kube-apiserver.yaml"
+  register: apiserver_manifest
+  when: etcd_ha
+
+- name: Get etcd servers from apiserver manifest
+  set_fact:
+    etcd_servers_from_manifest_string: "{{ yaml.spec.containers[0].command | select('match', '.*--etcd-servers=.*') | first | split('=') | last }}"
+  vars:
+    yaml: "{{ apiserver_manifest.stdout | from_yaml }}"
+  when: etcd_ha
+
+- name: Place etcd servers from apiserver manifest in a sorted list so can compare with etcd_access_addresses_lex
+  set_fact:
+    etcd_servers_from_manifest_lex: "{{ etcd_servers_from_manifest_string | split(',') | sort }}"
+  when: etcd_ha
+
+- name: Update etcd-servers in apiserver static pod manifest one by one to prevent downtime  # noqa command-instead-of-module
+  shell: |
+    sed --in-place \
+      '/^    - --etcd-servers/s~=.*$~={{ etcd_access_addresses }}~' {{ kube_config_dir }}/manifests/kube-apiserver.yaml
+    # To-do: detect when old pod goes down instead of sleeping:
+    sleep 10s  # apiserver static pod becomes unresponsive almost immediately, then takes > 20 seconds to return.
+    until curl -k -s https://127.0.0.1:{{ kube_apiserver_port }}/healthz; do sleep 1; done
+  when:
+    - etcd_deployment_type != "kubeadm"
+    - etcd_ha  # run only if apiserver comprises multiple pods, if so downtime can be avoided by updating one at a time
+    - etcd_access_addresses_lex != etcd_servers_from_manifest_lex  # run if addresses have changed, not just order
+  timeout: 300
+  throttle: 1  # would like to use serial here, but it doesn't work with individual tasks
+
+- name: Update etcd-servers in apiserver manifest when only a single static pod
   lineinfile:
     dest: "{{ kube_config_dir }}/manifests/kube-apiserver.yaml"
     regexp: '^    - --etcd-servers='
     line: '    - --etcd-servers={{ etcd_access_addresses }}'
-  when: etcd_deployment_type != "kubeadm"
+  when:
+    - etcd_deployment_type != "kubeadm"
+    - not etcd_ha

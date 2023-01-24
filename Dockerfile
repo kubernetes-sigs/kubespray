@@ -29,6 +29,7 @@ RUN python3 -m pip install --no-cache-dir \
     cryptography==3.4.8 \
     jinja2==2.11.3 \
     netaddr==0.7.19 \
+    jmespath==1.0.1 \
     MarkupSafe==1.1.1 \
     ruamel.yaml==0.17.21 \
     && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \

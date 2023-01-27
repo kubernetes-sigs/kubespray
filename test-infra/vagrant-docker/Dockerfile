@@ -3,14 +3,14 @@
 ARG KUBESPRAY_VERSION
 FROM quay.io/kubespray/kubespray:${KUBESPRAY_VERSION}
 
-ENV VAGRANT_VERSION=2.2.19
+ENV VAGRANT_VERSION=2.3.4
 ENV VAGRANT_DEFAULT_PROVIDER=libvirt
 ENV VAGRANT_ANSIBLE_TAGS=facts
 
 RUN apt-get update && apt-get install -y wget libvirt-dev openssh-client rsync git
 
 # Install Vagrant
-RUN wget https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}_x86_64.deb && \
- dpkg -i vagrant_${VAGRANT_VERSION}_x86_64.deb && \
- rm vagrant_${VAGRANT_VERSION}_x86_64.deb && \
+RUN wget https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}-1_amd64.deb && \
+ dpkg -i vagrant_${VAGRANT_VERSION}-1_amd64.deb && \
+ rm vagrant_${VAGRANT_VERSION}-1_amd64.deb && \
  vagrant plugin install vagrant-libvirt

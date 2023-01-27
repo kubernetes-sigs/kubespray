@@ -10,6 +10,7 @@ Vagrant.require_version ">= 2.0.0"
 CONFIG = File.join(File.dirname(__FILE__), ENV['KUBESPRAY_VAGRANT_CONFIG'] || 'vagrant/config.rb')
 
 FLATCAR_URL_TEMPLATE = "https://%s.release.flatcar-linux.net/amd64-usr/current/flatcar_production_vagrant.json"
+FEDORA35_MIRROR = "https://download.fedoraproject.org/pub/fedora/linux/releases/35/Cloud/x86_64/images/Fedora-Cloud-Base-Vagrant-35-1.2.x86_64.vagrant-libvirt.box"
 
 # Uniq disk UUID for libvirt
 DISK_UUID = Time.now.utc.to_i
@@ -29,7 +30,7 @@ SUPPORTED_OS = {
   "almalinux8"          => {box: "almalinux/8",                user: "vagrant"},
   "almalinux8-bento"    => {box: "bento/almalinux-8",          user: "vagrant"},
   "rockylinux8"         => {box: "generic/rocky8",             user: "vagrant"},
-  "fedora35"            => {box: "fedora/35-cloud-base",       user: "vagrant"},
+  "fedora35"            => {box: "fedora/35-cloud-base",       user: "vagrant", box_url: FEDORA35_MIRROR},
   "fedora36"            => {box: "fedora/36-cloud-base",       user: "vagrant"},
   "opensuse"            => {box: "opensuse/Leap-15.4.x86_64",  user: "vagrant"},
   "opensuse-tumbleweed" => {box: "opensuse/Tumbleweed.x86_64", user: "vagrant"},

@@ -12,7 +12,7 @@ This will install a Kubernetes cluster on Equinix Metal. It should work in all l
 The terraform configuration inspects variables found in
 [variables.tf](variables.tf) to create resources in your Equinix Metal project.
 There is a [python script](../terraform.py) that reads the generated`.tfstate`
-file to generate a dynamic inventory that is consumed by [cluster.yml](../../..//cluster.yml)
+file to generate a dynamic inventory that is consumed by [cluster.yml](../../../cluster.yml)
 to actually install Kubernetes with Kubespray.
 
 ### Kubernetes Nodes
@@ -60,16 +60,16 @@ Terraform will be used to provision all of the Equinix Metal resources with base
 Create an inventory directory for your cluster by copying the existing sample and linking the `hosts` script (used to build the inventory based on Terraform state):
 
 ```ShellSession
-cp -LRp contrib/terraform/metal/sample-inventory inventory/$CLUSTER
+cp -LRp contrib/terraform/equinix/sample-inventory inventory/$CLUSTER
 cd inventory/$CLUSTER
-ln -s ../../contrib/terraform/metal/hosts
+ln -s ../../contrib/terraform/equinix/hosts
 ```
 
 This will be the base for subsequent Terraform commands.
 
 #### Equinix Metal API access
 
-Your Equinix Metal API key must be available in the `PACKET_AUTH_TOKEN` environment variable.
+Your Equinix Metal API key must be available in the `METAL_AUTH_TOKEN` environment variable.
 This key is typically stored outside of the code repo since it is considered secret.
 If someone gets this key, they can startup/shutdown hosts in your project!
 
@@ -80,10 +80,12 @@ The Equinix Metal Project ID associated with the key will be set later in `clust
 
 For more information about the API, please see [Equinix Metal API](https://metal.equinix.com/developers/api/).
 
+For more information about terraform provider authentication, please see [the equinix provider documentation](https://registry.terraform.io/providers/equinix/equinix/latest/docs).
+
 Example:
 
 ```ShellSession
-export PACKET_AUTH_TOKEN="Example-API-Token"
+export METAL_AUTH_TOKEN="Example-API-Token"
 ```
 
 Note that to deploy several clusters within the same project you need to use [terraform workspace](https://www.terraform.io/docs/state/workspaces.html#using-workspaces).
@@ -101,7 +103,7 @@ This helps when identifying which hosts are associated with each cluster.
 While the defaults in variables.tf will successfully deploy a cluster, it is recommended to set the following values:
 
 - cluster_name = the name of the inventory directory created above as $CLUSTER
-- metal_project_id = the Equinix Metal Project ID associated with the Equinix Metal API token above
+- equinix_metal_project_id = the Equinix Metal Project ID associated with the Equinix Metal API token above
 
 #### Enable localhost access
 
@@ -119,12 +121,13 @@ Once the Kubespray playbooks are run, a Kubernetes configuration file will be wr
 
 In the cluster's inventory folder, the following files might be created (either by Terraform
 or manually), to prevent you from pushing them accidentally they are in a
-`.gitignore` file in the `terraform/metal` directory :
+`.gitignore` file in the `contrib/terraform/equinix` directory :
 
 - `.terraform`
 - `.tfvars`
 - `.tfstate`
 - `.tfstate.backup`
+- `.lock.hcl`
 
 You can still add them manually if you want to.
 
@@ -135,7 +138,7 @@ plugins. This is accomplished as follows:
 
 ```ShellSession
 cd inventory/$CLUSTER
-terraform init ../../contrib/terraform/metal
+terraform -chdir=../../contrib/terraform/metal init -var-file=cluster.tfvars
 ```
 
 This should finish fairly quickly telling you Terraform has successfully initialized and loaded necessary modules.
@@ -146,7 +149,7 @@ You can apply the Terraform configuration to your cluster with the following com
 issued from your cluster's inventory directory (`inventory/$CLUSTER`):
 
 ```ShellSession
-terraform apply -var-file=cluster.tfvars ../../contrib/terraform/metal
+terraform -chdir=../../contrib/terraform/equinix apply -var-file=cluster.tfvars
 export ANSIBLE_HOST_KEY_CHECKING=False
 ansible-playbook -i hosts ../../cluster.yml
 ```
@@ -156,7 +159,7 @@ ansible-playbook -i hosts ../../cluster.yml
 You can destroy your new cluster with the following command issued from the cluster's inventory directory:
 
 ```ShellSession
-terraform destroy -var-file=cluster.tfvars ../../contrib/terraform/metal
+terraform -chdir=../../contrib/terraform/equinix destroy -var-file=cluster.tfvars
 ```
 
 If you've started the Ansible run, it may also be a good idea to do some manual cleanup:

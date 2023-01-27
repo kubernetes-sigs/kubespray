@@ -194,9 +194,19 @@ def parse_bool(string_form):
     else:
         raise ValueError('could not convert %r to a bool' % string_form)
 
+def sanitize_groups(groups):
+    _groups = []
+    chars_to_replace = ['+', '-', '=', '.', '/', ' ']
+    for i in groups:
+        _i = i
+        for char in chars_to_replace:
+            _i = _i.replace(char, '_')
+        _groups.append(_i)
+    groups.clear()
+    groups.extend(_groups)
 
-@parses('metal_device')
-def metal_device(resource, tfvars=None):
+@parses('equinix_metal_device')
+def equinix_metal_device(resource, tfvars=None):
     raw_attrs = resource['primary']['attributes']
     name = raw_attrs['hostname']
     groups = []
@@ -220,7 +230,7 @@ def metal_device(resource, tfvars=None):
         'ipv6_address': raw_attrs['network.1.address'],
         'public_ipv6': raw_attrs['network.1.address'],
         'private_ipv4': raw_attrs['network.2.address'],
-        'provider': 'metal',
+        'provider': 'equinix',
     }
 
     if raw_attrs['operating_system'] == 'flatcar_stable':
@@ -228,13 +238,14 @@ def metal_device(resource, tfvars=None):
         attrs.update({'ansible_ssh_user': 'core'})
 
     # add groups based on attrs
-    groups.append('metal_operating_system=' + attrs['operating_system'])
-    groups.append('metal_locked=%s' % attrs['locked'])
-    groups.append('metal_state=' + attrs['state'])
-    groups.append('metal_plan=' + attrs['plan'])
+    groups.append('equinix_metal_operating_system_%s' % attrs['operating_system'])
+    groups.append('equinix_metal_locked_%s' % attrs['locked'])
+    groups.append('equinix_metal_state_%s' % attrs['state'])
+    groups.append('equinix_metal_plan_%s' % attrs['plan'])
 
     # groups specific to kubespray
     groups = groups + attrs['tags']
+    sanitize_groups(groups)
 
     return name, attrs, groups
 
@@ -333,6 +344,8 @@ def openstack_host(resource, module_name):
     # groups specific to kubespray
     for group in attrs['metadata'].get('kubespray_groups', "").split(","):
         groups.append(group)
+
+    sanitize_groups(groups)
 
     return name, attrs, groups
 

@@ -31,6 +31,7 @@ RUN python3 -m pip install --no-cache-dir \
     netaddr==0.7.19 \
     jmespath==1.0.1 \
     MarkupSafe==1.1.1 \
+    ruamel.yaml==0.17.21 \
     && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \
     && curl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$ARCH/kubectl \
     && chmod a+x kubectl \

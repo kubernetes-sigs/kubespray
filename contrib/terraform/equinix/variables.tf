@@ -2,12 +2,12 @@ variable "cluster_name" {
   default = "kubespray"
 }
 
-variable "metal_project_id" {
+variable "equinix_metal_project_id" {
   description = "Your Equinix Metal project ID. See https://metal.equinix.com/developers/docs/accounts/"
 }
 
 variable "operating_system" {
-  default = "ubuntu_20_04"
+  default = "ubuntu_22_04"
 }
 
 variable "public_key_path" {

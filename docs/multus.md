@@ -4,7 +4,7 @@ Multus is a meta CNI plugin that provides multiple network interface support to
 pods. For each interface, Multus delegates CNI calls to secondary CNI plugins
 such as Calico, macvlan, etc.
 
-See [multus documentation](https://github.com/intel/multus-cni).
+See [multus documentation](https://github.com/k8snetworkplumbingwg/multus-cni).
 
 ## Multus installation
 
@@ -71,4 +71,4 @@ You may now inspect the pod and see that there is an additional interface config
 kubectl exec -it samplepod -- ip a
 ```
 
-For more details on how to use Multus, please visit <https://github.com/intel/multus-cni>
+For more details on how to use Multus, please visit <https://github.com/k8snetworkplumbingwg/multus-cni>

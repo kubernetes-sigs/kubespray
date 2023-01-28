@@ -1,9 +1,7 @@
 # Use imutable image tags rather than mutable tags (like ubuntu:20.04)
-FROM ubuntu:focal-20220531
+FROM ubuntu:focal-20220531 as kubespray-build
 
 ARG ARCH=amd64
-ARG TZ=Etc/UTC
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt update -y \
     && apt install -y \
@@ -36,3 +34,14 @@ RUN python3 -m pip install --no-cache-dir \
     && curl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$ARCH/kubectl \
     && chmod a+x kubectl \
     && mv kubectl /usr/local/bin/kubectl
+
+RUN find / -type d -name '*__pycache__' -print0 | xargs -0 -r rm -rf 
+
+
+FROM scratch
+COPY --from=kubespray-build / / 
+
+ARG TZ=Etc/UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+WORKDIR /kubespray

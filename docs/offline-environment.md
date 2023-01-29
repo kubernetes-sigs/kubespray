@@ -7,7 +7,8 @@ following artifacts in advance from another environment where has access to the 
 * Some static files (zips and binaries)
 * OS packages (rpm/deb files)
 * Container images used by Kubespray. Exhaustive list depends on your setup
-* [Optional] Python packages used by Kubespray (only required if your OS doesn't provide all python packages/versions listed in `requirements.txt`)
+* [Optional] Python packages used by Kubespray (only required if your OS doesn't provide all python packages/versions
+  listed in `requirements.txt`)
 * [Optional] Helm chart files (only required if `helm_enabled=true`)
 
 Then you need to setup the following services on your offline environment:
@@ -23,7 +24,8 @@ In addition, you can find some tools for offline deployment under [contrib/offli
 
 ## Configure Inventory
 
-Once all artifacts are accessible from your internal network, **adjust** the following variables in [your inventory](/inventory/sample/group_vars/all/offline.yml) to match your environment:
+Once all artifacts are accessible from your internal network, **adjust** the following variables
+in [your inventory](/inventory/sample/group_vars/all/offline.yml) to match your environment:
 
 ```yaml
 # Registry overrides
@@ -49,7 +51,7 @@ runc_download_url: "{{ files_repo }}/runc.{{ image_arch }}"
 nerdctl_download_url: "{{ files_repo }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
 # Insecure registries for containerd
 containerd_insecure_registries:
-  - "{{ registry_host }}"
+    "{{ registry_addr }}"："{{ registry_host }}"
 
 # CentOS/Redhat/AlmaLinux/Rocky Linux
 ## Docker / Containerd
@@ -86,20 +88,31 @@ containerd_ubuntu_repo_repokey: 'YOURREPOKEY'
 For the OS specific settings, just define the one matching your OS.
 If you use the settings like the one above, you'll need to define in your inventory the following variables:
 
-* `registry_host`: Container image registry. If you _don't_ use the same repository path for the container images that the ones defined in [Download's role defaults](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/download/defaults/main.yml), you need to override the `*_image_repo` for these container images. If you want to make your life easier, use the same repository path, you won't have to override anything else.
-* `files_repo`: HTTP webserver or reverse proxy that is able to serve the files listed above. Path is not important, you can store them anywhere as long as it's accessible by kubespray. It's recommended to use `*_version` in the path so that you don't need to modify this setting everytime kubespray upgrades one of these components.
-* `yum_repo`/`debian_repo`/`ubuntu_repo`: OS package repository depending of your OS, should point to your internal repository. Adjust the path accordingly.
+* `registry_host`: Container image registry. If you _don't_ use the same repository path for the container images that
+  the ones defined
+  in [Download's role defaults](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/download/defaults/main.yml)
+  , you need to override the `*_image_repo` for these container images. If you want to make your life easier, use the
+  same repository path, you won't have to override anything else.
+* `registry_addr`: Container image registry, but only have [domain or ip]:[port].
+* `files_repo`: HTTP webserver or reverse proxy that is able to serve the files listed above. Path is not important, you
+  can store them anywhere as long as it's accessible by kubespray. It's recommended to use `*_version` in the path so
+  that you don't need to modify this setting everytime kubespray upgrades one of these components.
+* `yum_repo`/`debian_repo`/`ubuntu_repo`: OS package repository depending of your OS, should point to your internal
+  repository. Adjust the path accordingly.
 
 ## Install Kubespray Python Packages
 
 ### Recommended way: Kubespray Container Image
 
-The easiest way is to use [kubespray container image](https://quay.io/kubespray/kubespray) as all the required packages are baked in the image.
+The easiest way is to use [kubespray container image](https://quay.io/kubespray/kubespray) as all the required packages
+are baked in the image.
 Just copy the container image in your private container image registry and you are all set!
 
 ### Manual installation
 
-Look at the `requirements.txt` file and check if your OS provides all packages out-of-the-box (Using the OS package manager). For those missing, you need to either use a proxy that has Internet access (typically from a DMZ) or setup a PyPi server in your network that will host these packages.
+Look at the `requirements.txt` file and check if your OS provides all packages out-of-the-box (Using the OS package
+manager). For those missing, you need to either use a proxy that has Internet access (typically from a DMZ) or setup a
+PyPi server in your network that will host these packages.
 
 If you're using a HTTP(S) proxy to download your python packages:
 
@@ -119,13 +132,15 @@ pip install -i https://pypiserver/pypi package_you_miss
 
 ## Run Kubespray as usual
 
-Once all artifacts are in place and your inventory properly set up, you can run kubespray with the regular `cluster.yaml` command:
+Once all artifacts are in place and your inventory properly set up, you can run kubespray with the
+regular `cluster.yaml` command:
 
 ```bash
 ansible-playbook -i inventory/my_airgap_cluster/hosts.yaml -b cluster.yml
 ```
 
-If you use [Kubespray Container Image](#recommended-way:-kubespray-container-image), you can mount your inventory inside the container:
+If you use [Kubespray Container Image](#recommended-way:-kubespray-container-image), you can mount your inventory inside
+the container:
 
 ```bash
 docker run --rm -it -v path_to_inventory/my_airgap_cluster:inventory/my_airgap_cluster myprivateregisry.com/kubespray/kubespray:v2.14.0 ansible-playbook -i inventory/my_airgap_cluster/hosts.yaml -b cluster.yml

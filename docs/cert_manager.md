@@ -114,7 +114,7 @@ sudo apt-get install -y golang-cfssl
 
 #### Create Root Certificate Authority (CA) Configuration File
 
-The default TLS certificate expiry time period is `8760h` which is 5 years from the date the certificate is created.
+The default TLS certificate expiry time period is `8760h` which is 1 years from the date the certificate is created.
 
 ```shell
 $ cat > ca-config.json <<EOF

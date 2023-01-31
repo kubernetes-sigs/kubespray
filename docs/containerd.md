@@ -100,6 +100,15 @@ containerd_runc_runtime:
   ...
 ```
 
+Config insecure-registry access to self hosted registries.
+
+```yaml
+containerd_insecure_registries:
+  "test.registry.io": "http://test.registry.io"
+  "172.19.16.11:5000": "http://172.19.16.11:5000"
+  "repo:5000": "http://repo:5000"
+```
+
 [containerd]: https://containerd.io/
 [RuntimeClass]: https://kubernetes.io/docs/concepts/containers/runtime-class/
 [runtime classes in containerd]: https://github.com/containerd/containerd/blob/main/docs/cri/config.md#runtime-classes

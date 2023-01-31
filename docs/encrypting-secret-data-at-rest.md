@@ -12,7 +12,7 @@ Alternatively you can use the values `identity`, `aesgcm`, `aescbc` or `kms`.
 
 | Provider | Why we have decided against the value as default                                                                                                                                         |
 |----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| identity | no encryption                                                                                                                                                                    |
+| identity | no encryption                                                                                                                                                                            |
 | aesgcm   | Must be rotated every 200k writes                                                                                                                                                        |
 | aescbc   | Not recommended due to CBC's vulnerability to padding oracle attacks.                                                                                                                    |
 | kms      | Is the official recommended way, but assumes that a key management service independent of Kubernetes exists, we cannot assume this in all environments, so not a suitable default value. |

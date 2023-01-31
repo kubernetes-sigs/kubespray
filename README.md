@@ -45,7 +45,7 @@ Note: When Ansible is already installed via system packages on the control node,
 Python packages installed via `sudo pip install -r requirements.txt` will go to
 a different directory tree (e.g. `/usr/local/lib/python2.7/dist-packages` on
 Ubuntu) from Ansible's (e.g. `/usr/lib/python2.7/dist-packages/ansible` still on
-buntu). As a consequence, the `ansible-playbook` command will fail with:
+Ubuntu). As a consequence, the `ansible-playbook` command will fail with:
 
 ```raw
 ERROR! no action detected in task. This often indicates a misspelled module name, or incorrect module path.

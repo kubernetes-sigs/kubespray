@@ -7,7 +7,7 @@ The following table shows the impact of the CPU architecture on compatible featu
 - amd64 + arm64: Cluster with a mix of x86/amd64 and arm64 CPUs
 
 | kube_network_plugin | amd64 | arm64 | amd64 + arm64 |
-| ------------------- | ----- | ----- | ------------- |
+|---------------------|-------|-------|---------------|
 | Calico              | Y     | Y     | Y             |
 | Weave               | Y     | Y     | Y             |
 | Flannel             | Y     | N     | N             |

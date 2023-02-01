@@ -10,7 +10,7 @@ Not all features are supported yet though, for a list of the current status have
 
 Before creating the instances you must first set the `azure_` variables in the `group_vars/all/all.yml` file.
 
-All of the values can be retrieved using the Azure CLI tool which can be downloaded here: <https://docs.microsoft.com/en-gb/cli/azure/install-azure-cli>
+All values can be retrieved using the Azure CLI tool which can be downloaded here: <https://docs.microsoft.com/en-gb/cli/azure/install-azure-cli>
 After installation you have to run `az login` to get access to your account.
 
 ### azure_cloud

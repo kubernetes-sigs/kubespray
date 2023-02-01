@@ -81,7 +81,7 @@ following default cluster parameters:
   bits in kube_pods_subnet dictates how many kube_nodes can be in cluster. Setting this > 25 will
   raise an assertion in playbooks if the `kubelet_max_pods` var also isn't adjusted accordingly
   (assertion not applicable to calico which doesn't use this as a hard limit, see
-  [Calico IP block sizes](https://docs.projectcalico.org/reference/resources/ippool#block-sizes).
+  [Calico IP block sizes](https://docs.projectcalico.org/reference/resources/ippool#block-sizes)).
 
 * *enable_dual_stack_networks* - Setting this to true will provision both IPv4 and IPv6 networking for pods and services.
 
@@ -209,7 +209,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 
 * *kubelet_systemd_hardening* - If `true`, provides kubelet systemd service with security features for isolation.
 
-  **N.B.** To enable this feature, ensure you are using the **`cgroup v2`** on your system. Check it out with command: `sudo ls -l /sys/fs/cgroup/*.slice`. If directory does not exists, enable this with the following guide: [enable cgroup v2](https://rootlesscontaine.rs/getting-started/common/cgroup2/#enabling-cgroup-v2).
+  **N.B.** To enable this feature, ensure you are using the **`cgroup v2`** on your system. Check it out with command: `sudo ls -l /sys/fs/cgroup/*.slice`. If directory does not exist, enable this with the following guide: [enable cgroup v2](https://rootlesscontaine.rs/getting-started/common/cgroup2/#enabling-cgroup-v2).
 
   * *kubelet_secure_addresses* - By default *kubelet_systemd_hardening* set the **control plane** `ansible_host` IPs as the `kubelet_secure_addresses`. In case you have multiple interfaces in your control plane nodes and the `kube-apiserver` is not bound to the default interface, you can override them with this variable.
     Example:

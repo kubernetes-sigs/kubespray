@@ -10,7 +10,7 @@ dynamically from the Terraform state file.
 ## Local Host Configuration
 
 To perform this installation, you will need a localhost to run Terraform/Ansible (laptop, VM, etc) and an account with Equinix Metal.
-In this example, we're using an m1.large CentOS 7 OpenStack VM as the localhost to kickoff the Kubernetes installation.
+In this example, we are provisioning a m1.large CentOS7 OpenStack VM as the localhost for the Kubernetes installation.
 You'll need Ansible, Git, and PIP.
 
 ```bash

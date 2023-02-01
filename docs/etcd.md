@@ -25,7 +25,7 @@ etcd_metrics_port: 2381
 ```
 
 To create a service `etcd-metrics` and associated endpoints in the `kube-system` namespace,
-define it's labels in the inventory with:
+define its labels in the inventory with:
 
 ```yaml
 etcd_metrics_service_labels:

@@ -4,7 +4,7 @@ Distributed system such as Kubernetes are designed to be resilient to the
 failures.  More details about Kubernetes High-Availability (HA) may be found at
 [Building High-Availability Clusters](https://kubernetes.io/docs/admin/high-availability/)
 
-To have a simple view the most of parts of HA will be skipped to describe
+To have a simple view the most of the parts of HA will be skipped to describe
 Kubelet<->Controller Manager communication only.
 
 By default the normal behavior looks like:

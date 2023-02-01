@@ -95,7 +95,7 @@
       ansible.builtin.import_playbook: 3d/kubespray/cluster.yml
     ```
 
-    Or your could copy separate tasks from cluster.yml into your ansible repository.
+    Or you could copy separate tasks from cluster.yml into your ansible repository.
 
 11. Commit changes to your ansible repo. Keep in mind, that submodule folder is just a link to the git commit hash of your forked repo.
 
@@ -170,7 +170,7 @@ If you made useful changes or fixed a bug in existent kubespray repo, use this f
    git push
    ```
 
-   If your branch doesn't exists on github, git will propose you to use something like
+   If your branch doesn't exist on github, git will propose you to use something like
 
    ```ShellSession
    git push --set-upstream origin fixes-name-date-index

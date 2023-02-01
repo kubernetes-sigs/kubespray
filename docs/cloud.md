@@ -2,7 +2,7 @@
 
 ## Provisioning
 
-You can deploy instances in your cloud environment in several different ways. Examples include Terraform, Ansible (ec2 and gce modules), and manual creation.
+You can deploy instances in your cloud environment in several ways. Examples include Terraform, Ansible (ec2 and gce modules), and manual creation.
 
 ## Deploy kubernetes
 

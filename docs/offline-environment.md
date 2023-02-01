@@ -13,7 +13,7 @@ following artifacts in advance from another environment where has access to the 
 
 Then you need to setup the following services on your offline environment:
 
-* a HTTP reverse proxy/cache/mirror to serve some static files (zips and binaries)
+* an HTTP reverse proxy/cache/mirror to serve some static files (zips and binaries)
 * an internal Yum/Deb repository for OS packages
 * an internal container image registry that need to be populated with all container images used by Kubespray
 * [Optional] an internal PyPi server for python packages used by Kubespray
@@ -97,7 +97,7 @@ If you use the settings like the one above, you'll need to define in your invent
 * `files_repo`: HTTP webserver or reverse proxy that is able to serve the files listed above. Path is not important, you
   can store them anywhere as long as it's accessible by kubespray. It's recommended to use `*_version` in the path so
   that you don't need to modify this setting everytime kubespray upgrades one of these components.
-* `yum_repo`/`debian_repo`/`ubuntu_repo`: OS package repository depending of your OS, should point to your internal
+* `yum_repo`/`debian_repo`/`ubuntu_repo`: OS package repository depending on your OS, should point to your internal
   repository. Adjust the path accordingly.
 
 ## Install Kubespray Python Packages
@@ -114,7 +114,7 @@ Look at the `requirements.txt` file and check if your OS provides all packages o
 manager). For those missing, you need to either use a proxy that has Internet access (typically from a DMZ) or setup a
 PyPi server in your network that will host these packages.
 
-If you're using a HTTP(S) proxy to download your python packages:
+If you're using an HTTP(S) proxy to download your python packages:
 
 ```bash
 sudo pip install --proxy=https://[username:password@]proxyserver:port -r requirements.txt

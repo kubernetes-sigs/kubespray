@@ -14,7 +14,7 @@ If you want to deploy the Azure Disk storage class to provision volumes dynamica
 
 Before creating the instances you must first set the `azure_csi_` variables in the `group_vars/all.yml` file.
 
-All of the values can be retrieved using the azure cli tool which can be downloaded here: <https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest>
+All values can be retrieved using the azure cli tool which can be downloaded here: <https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest>
 
 After installation you have to run `az login` to get access to your account.
 
@@ -34,7 +34,7 @@ The name of the resource group your instances are in, a list of your resource gr
 
 Or you can do `az vm list | grep resourceGroup` and get the resource group corresponding to the VMs of your cluster.
 
-The resource group name is not case sensitive.
+The resource group name is not case-sensitive.
 
 ### azure\_csi\_vnet\_name
 

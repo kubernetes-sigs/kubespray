@@ -206,7 +206,7 @@ Note: Upstart/SysV init based OS types are not supported.
 - If using IPv6 for pods and services, the target servers are configured to allow **IPv6 forwarding**.
 - The **firewalls are not managed**, you'll need to implement your own rules the way you used to.
     in order to avoid any issue during deployment you should disable your firewall.
-- If kubespray is ran from non-root user account, correct privilege escalation method
+- If kubespray is run from non-root user account, correct privilege escalation method
     should be configured in the target servers. Then the `ansible_become` flag
     or command parameters `--become or -b` should be specified.
 

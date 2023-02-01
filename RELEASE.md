@@ -60,7 +60,7 @@ release-notes --start-sha <The start commit-id> --end-sha <The end commit-id> --
 ```
 
 If the release note file(/tmp/kubespray-release-note) contains "### Uncategorized" pull requests, those pull requests don't have a valid kind label(`kind/feature`, etc.).
-It is necessary to put a valid label on each pull request and run the above release-notes command again to get a better release note)
+It is necessary to put a valid label on each pull request and run the above release-notes command again to get a better release note
 
 ## Container image creation
 

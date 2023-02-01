@@ -138,7 +138,7 @@ Run `cluster.yml` with `--limit=kube_control_plane`
 
 ## Adding an etcd node
 
-You need to make sure there are always an odd number of etcd nodes in the cluster. In such a way, this is always a replace or scale up operation. Either add two new nodes or remove an old one.
+You need to make sure there are always an odd number of etcd nodes in the cluster. In such a way, this is always a replacement or scale up operation. Either add two new nodes or remove an old one.
 
 ### 1) Add the new node running cluster.yml
 

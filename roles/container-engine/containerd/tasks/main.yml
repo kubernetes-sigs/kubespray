@@ -120,16 +120,32 @@
   with_dict: "{{ containerd_insecure_registries }}"
   when: containerd_insecure_registries is defined
 
-- name: containerd ｜ Write hosts.toml file
+- name: containerd ｜ Write registries hosts.toml file
+  blockinfile:
+    path: "{{ containerd_cfg_dir }}/certs.d/{{ item.key }}/hosts.toml"
+    mode: 0640
+    create: true
+    block: |
+      server = "https://{{ item.key }}"
+      {% for addr in [ item.value ] | flatten  %}
+      [host."{{ addr }}"]
+        capabilities = ["pull", "resolve", "push"]
+      {% endfor %}
+  with_dict: "{{ containerd_registries }}"
+  when: containerd_registries is defined
+
+- name: containerd ｜ Write insecure registries hosts.toml file
   blockinfile:
     path: "{{ containerd_cfg_dir }}/certs.d/{{ item.key }}/hosts.toml"
     mode: 0640
     create: true
     block: |
       server = "{{ item.value }}"
-      [host."{{ item.value }}"]
+      {% for addr in [ item.value ] | flatten  %}
+      [host."{{ addr }}"]
         capabilities = ["pull", "resolve", "push"]
         skip_verify = true
+      {% endfor %}
   with_dict: "{{ containerd_insecure_registries }}"
   when: containerd_insecure_registries is defined
 

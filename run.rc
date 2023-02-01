@@ -1,0 +1,45 @@
+# use virtualenv to install all python requirements
+VENVDIR=venv
+python3 -m venv $VENVDIR
+source $VENVDIR/bin/activate
+pip install --upgrade pip
+pip install wheel
+pip install --upgrade setuptools
+pip install -r requirements.txt
+pip install -r tests/requirements.txt
+pre-commit install
+# prepare an inventory to test with
+INV=inventory/lab
+rm -rf ${INV}.bak &> /dev/null
+mv ${INV} ${INV}.bak &> /dev/null
+cp -a inventory/sample ${INV}
+rm -f ${INV}/hosts.ini
+
+# customize the vagrant environment
+mkdir vagrant
+cat << EOF > vagrant/config.rb
+\$instance_name_prefix = kub"
+\$vm_cpus = 2
+\$num_instances = 3
+\$os = "almalinux8"
+\$subnet = "192.168.56"
+\$network_plugin = "calico"
+\$inventory = "$INV"
+\$shared_folders = { 'temp/docker_rpms' => "/var/cache/yum/x86_64/7/docker-ce/packages" }
+EOF
+
+# make the rpm cache
+mkdir -p temp/docker_rpms
+
+vagrant up
+
+# make a copy of the downloaded docker rpm, to speed up the next provisioning run
+scp kub-1:/var/cache/yum/x86_64/7/docker-ce/packages/* temp/docker_rpms/
+
+# copy kubectl access configuration in place
+mkdir $HOME/.kube/ &> /dev/null
+ln -s $PWD/$INV/artifacts/admin.conf $HOME/.kube/config
+# make the kubectl binary available
+sudo ln -s $PWD/$INV/artifacts/kubectl /usr/local/bin/kubectl
+#or
+export PATH=$PATH:$PWD/$INV/artifacts

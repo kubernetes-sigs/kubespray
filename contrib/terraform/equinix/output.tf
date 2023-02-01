@@ -13,4 +13,3 @@ output "k8s_etcds" {
 output "k8s_nodes" {
   value = equinix_metal_device.k8s_node.*.access_public_ipv4
 }
-

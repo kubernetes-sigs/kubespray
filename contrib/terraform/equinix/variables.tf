@@ -54,4 +54,3 @@ variable "number_of_etcd" {
 variable "number_of_k8s_nodes" {
   default = 1
 }
-

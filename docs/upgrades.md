@@ -263,7 +263,7 @@ Previous HEAD position was 6f97687d Release 2.8 robust san handling (#4478)
 HEAD is now at a4e65c7c Upgrade to Ansible >2.7.0 (#4471)
 ```
 
-:warning: IMPORTANT: Some of the variable formats changed in the k8s_cluster.yml between 2.8.5 and 2.9.0 :warning:
+:warning: IMPORTANT: Some variable formats changed in the k8s_cluster.yml between 2.8.5 and 2.9.0 :warning:
 
 If you do not keep your inventory copy up to date, **your upgrade will fail** and your first master will be left non-functional until fixed and re-run.
 

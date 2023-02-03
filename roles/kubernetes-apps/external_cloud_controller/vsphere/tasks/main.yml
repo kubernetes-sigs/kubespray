@@ -8,7 +8,7 @@
     mode: 0640
   with_items:
     - external-vsphere-cpi-cloud-config
-  when: inventory_hostname == groups['kube_control_plane'][0]
+  when: inventory_hostname == first_kube_control_plane
 
 - name: External vSphere Cloud Controller | Generate Manifests
   template:
@@ -21,18 +21,18 @@
     - external-vsphere-cloud-controller-manager-role-bindings.yml
     - external-vsphere-cloud-controller-manager-ds.yml
   register: external_vsphere_manifests
-  when: inventory_hostname == groups['kube_control_plane'][0]
+  when: inventory_hostname == first_kube_control_plane
 
 - name: External vSphere Cloud Provider Interface | Create a CPI configMap manifest
   command: "{{ bin_dir }}/kubectl create configmap cloud-config --from-file=vsphere.conf={{ kube_config_dir }}/external-vsphere-cpi-cloud-config -n kube-system --dry-run --save-config -o yaml"
   register: external_vsphere_configmap_manifest
-  when: inventory_hostname == groups['kube_control_plane'][0]
+  when: inventory_hostname == first_kube_control_plane
 
 - name: External vSphere Cloud Provider Interface | Apply a CPI configMap manifest
   command:
     cmd: "{{ bin_dir }}/kubectl apply -f -"
     stdin: "{{ external_vsphere_configmap_manifest.stdout }}"
-  when: inventory_hostname == groups['kube_control_plane'][0]
+  when: inventory_hostname == first_kube_control_plane
 
 - name: External vSphere Cloud Controller | Apply Manifests
   kube:
@@ -42,7 +42,7 @@
   with_items:
     - "{{ external_vsphere_manifests.results }}"
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
     - not item is skipped
   loop_control:
     label: "{{ item.item }}"

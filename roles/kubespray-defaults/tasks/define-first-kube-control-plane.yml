@@ -1,0 +1,49 @@
+---
+
+- name: Check which kube-control nodes are already members of the cluster
+  command: "{{ bin_dir }}/kubectl get nodes --selector=node-role.kubernetes.io/control-plane -o json"
+  register: kube_control_planes_raw
+  ignore_errors: true
+  changed_when: false
+
+- name: Set fact joined_control_panes
+  set_fact:
+    joined_control_planes: "{{ ((kube_control_planes_raw.stdout| from_json)['items'])| default([]) | map (attribute='metadata') | sort(attribute='creationTimestamp') | map (attribute='name') | list }}"
+  delegate_to: item
+  loop: "{{ groups['kube_control_plane'] }}"
+  when: kube_control_planes_raw is succeeded
+  run_once: true
+
+- name: Set fact first_kube_control_plane
+  set_fact:
+    first_kube_control_plane: "{{ joined_control_planes|default([]) | first | default(first_kube_control_plane) }}"
+
+- name: Set fact first_kube_control_plane_address
+  set_fact:
+    first_kube_control_plane_address: "{{ hostvars[first_kube_control_plane]['access_ip'] | default(hostvars[first_kube_control_plane]['ip'] | default(fallback_ips[first_kube_control_plane])) }}"
+
+- name: Set fact kube_apiserver_global_endpoint
+  when: kube_apiserver_global_endpoint is not defined
+  set_fact:
+    kube_apiserver_global_endpoint: |-
+      {% if loadbalancer_apiserver is defined -%}
+          https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      {%- elif use_localhost_as_kubeapi_loadbalancer|default(False)|bool -%}
+          https://127.0.0.1:{{ kube_apiserver_port }}
+      {%- else -%}
+          https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
+      {%- endif %}
+
+- name: Set fact kube_apiserver_endpoint
+  when: kube_apiserver_endpoint is not defined
+  set_fact:
+    kube_apiserver_endpoint: |-
+      {% if loadbalancer_apiserver is defined -%}
+          https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port|default(kube_apiserver_port) }}
+      {%- elif not is_kube_master and loadbalancer_apiserver_localhost -%}
+          https://localhost:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }}
+      {%- elif is_kube_master -%}
+          https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0','127.0.0.1') }}:{{ kube_apiserver_port }}
+      {%- else -%}
+          https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
+      {%- endif %}

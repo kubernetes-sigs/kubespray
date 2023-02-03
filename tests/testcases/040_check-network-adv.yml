@@ -37,7 +37,7 @@
       until: ncs_pod.stdout.find('Running') != -1
       retries: 3
       delay: 10
-      when: inventory_hostname == groups['kube_control_plane'][0]
+      when: inventory_hostname == first_kube_control_plane
 
     - name: Wait for netchecker agents
       shell: "set -o pipefail && {{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep '^netchecker-agent-.*Running'"
@@ -48,12 +48,12 @@
       retries: 3
       delay: 10
       failed_when: false
-      when: inventory_hostname == groups['kube_control_plane'][0]
+      when: inventory_hostname == first_kube_control_plane
 
     - name: Get netchecker pods
       command: "{{ bin_dir }}/kubectl -n {{ netcheck_namespace }} describe pod -l app={{ item }}"
       run_once: true
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      delegate_to: "{{ first_kube_control_plane }}"
       no_log: false
       with_items:
         - netchecker-agent
@@ -62,14 +62,14 @@
 
     - debug:  # noqa unnamed-task
         var: nca_pod.stdout_lines
-      when: inventory_hostname == groups['kube_control_plane'][0]
+      when: inventory_hostname == first_kube_control_plane
 
     - name: Get netchecker agents
       uri:
         url: "http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/agents/"
         return_content: yes
       run_once: true
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      delegate_to: "{{ first_kube_control_plane }}"
       register: agents
       retries: 18
       delay: "{{ agent_report_interval }}"
@@ -84,7 +84,7 @@
         url: "http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/connectivity_check"
         status_code: 200
         return_content: yes
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      delegate_to: "{{ first_kube_control_plane }}"
       run_once: true
       register: connectivity_check
       retries: 3
@@ -104,13 +104,13 @@
       command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app=kube-proxy"
       no_log: false
       when:
-        - inventory_hostname == groups['kube_control_plane'][0]
+        - inventory_hostname == first_kube_control_plane
         - not connectivity_check is success
 
     - name: Get logs from other apps
       command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app={{ item }} --all-containers"
       when:
-        - inventory_hostname == groups['kube_control_plane'][0]
+        - inventory_hostname == first_kube_control_plane
         - not connectivity_check is success
       no_log: false
       with_items:
@@ -123,7 +123,7 @@
     - name: Parse agents list
       set_fact:
         agents_check_result: "{{ agents.content | from_json }}"
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      delegate_to: "{{ first_kube_control_plane }}"
       run_once: true
       when:
         - agents is success
@@ -132,7 +132,7 @@
 
     - debug:  # noqa unnamed-task
         var: agents_check_result
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      delegate_to: "{{ first_kube_control_plane }}"
       run_once: true
       when:
         - agents_check_result is defined
@@ -140,7 +140,7 @@
     - name: Parse connectivity check
       set_fact:
         connectivity_check_result: "{{ connectivity_check.content | from_json }}"
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      delegate_to: "{{ first_kube_control_plane }}"
       run_once: true
       when:
         - connectivity_check is success
@@ -149,7 +149,7 @@
 
     - debug:  # noqa unnamed-task
         var: connectivity_check_result
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      delegate_to: "{{ first_kube_control_plane }}"
       run_once: true
       when:
         - connectivity_check_result is defined
@@ -163,7 +163,7 @@
           - not connectivity_check_result.Absent
           - not connectivity_check_result.Outdated
         msg: "Connectivity check to netchecker agents failed"
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      delegate_to: "{{ first_kube_control_plane }}"
       run_once: true
 
     - name: Create macvlan network conf
@@ -197,7 +197,7 @@
           }'
           EOF
       when:
-        - inventory_hostname == groups['kube_control_plane'][0]
+        - inventory_hostname == first_kube_control_plane
         - kube_network_plugin_multus|default(false)|bool
 
     - name: Annotate pod with macvlan network
@@ -221,7 +221,7 @@
               image: dougbtv/centos-network
           EOF
       when:
-        - inventory_hostname == groups['kube_control_plane'][0]
+        - inventory_hostname == first_kube_control_plane
         - kube_network_plugin_multus|default(false)|bool
 
     - name: Check secondary macvlan interface
@@ -231,5 +231,5 @@
       retries: 90
       changed_when: false
       when:
-        - inventory_hostname == groups['kube_control_plane'][0]
+        - inventory_hostname == first_kube_control_plane
         - kube_network_plugin_multus|default(false)|bool

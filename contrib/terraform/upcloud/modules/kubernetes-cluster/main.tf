@@ -80,7 +80,7 @@ resource "upcloud_server" "master" {
   lifecycle {
     ignore_changes = [storage_devices]
   }
-  
+
   firewall  = var.firewall_enabled
 
   dynamic "storage_devices" {
@@ -525,7 +525,7 @@ resource "upcloud_loadbalancer_backend" "lb_backend" {
 
 resource "upcloud_loadbalancer_frontend" "lb_frontend" {
   for_each = var.loadbalancer_enabled ? var.loadbalancers : {}
-  
+
   loadbalancer         = upcloud_loadbalancer.lb[0].id
   name                 = "lb-frontend-${each.key}"
   mode                 = "tcp"
@@ -535,7 +535,7 @@ resource "upcloud_loadbalancer_frontend" "lb_frontend" {
 
 resource "upcloud_loadbalancer_static_backend_member" "lb_backend_member" {
   for_each = {
-    for be_server in local.lb_backend_servers: 
+    for be_server in local.lb_backend_servers:
       "${be_server.server_name}-lb-backend-${be_server.lb_name}" => be_server
       if var.loadbalancer_enabled
   }

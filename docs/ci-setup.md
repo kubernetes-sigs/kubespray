@@ -39,7 +39,7 @@ The following files are used for that inventory:
 # your Kubernetes cluster name here
 cluster_name = "ci"
 
-# Your Equinix Metal project ID. See hhttps://metal.equinix.com/developers/docs/accounts/
+# Your Equinix Metal project ID. See https://metal.equinix.com/developers/docs/accounts/
 equinix_metal_project_id = "_redacted_"
 
 # The public SSH key to be uploaded into authorized_keys in bare metal Equinix Metal nodes provisioned

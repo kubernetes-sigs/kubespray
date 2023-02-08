@@ -51,13 +51,13 @@
   include_tasks: typha_certs.yml
   when:
     - typha_secure
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
 
 - name: Calico | Generate apiserver certs
   include_tasks: calico_apiserver_certs.yml
   when:
     - calico_apiserver_enabled
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
 
 - name: Calico | Install calicoctl wrapper script
   template:
@@ -92,14 +92,14 @@
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
 
 - name: Calico | Ensure that calico_pool_cidr is within kube_pods_subnet when defined
   assert:
     that: "[calico_pool_cidr] | ipaddr(kube_pods_subnet) | length == 1"
     msg: "{{ calico_pool_cidr }} is not within or equal to {{ kube_pods_subnet }}"
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
     - 'calico_conf.stdout == "0"'
     - calico_pool_cidr is defined
 
@@ -115,7 +115,7 @@
   delay: "{{ retry_stagger | random + 3 }}"
   changed_when: false
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
     - enable_dual_stack_networks
 
 - name: Calico | Ensure that calico_pool_cidr_ipv6 is within kube_pods_subnet_ipv6 when defined
@@ -123,7 +123,7 @@
     that: "[calico_pool_cidr_ipv6] | ipaddr(kube_pods_subnet_ipv6) | length == 1"
     msg: "{{ calico_pool_cidr_ipv6 }} is not within or equal to {{ kube_pods_subnet_ipv6 }}"
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
     - calico_conf_ipv6.stdout is defined and calico_conf_ipv6.stdout == "0"
     - calico_pool_cidr_ipv6 is defined
     - enable_dual_stack_networks
@@ -158,7 +158,7 @@
         filename: "{{ kube_config_dir }}/kdd-crds.yml"
         state: "latest"
       when:
-        - inventory_hostname == groups['kube_control_plane'][0]
+        - inventory_hostname == first_kube_control_plane
   when:
     - inventory_hostname in groups['kube_control_plane']
     - calico_datastore == "kdd"
@@ -205,7 +205,7 @@
         stdin: "{{ _felix_config is string | ternary(_felix_config, _felix_config|to_json) }}"
       changed_when: False
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
 
 - block:
     - name: Calico | Get existing calico network pool
@@ -244,7 +244,7 @@
         stdin: "{{ _calico_pool is string | ternary(_calico_pool, _calico_pool|to_json) }}"
       changed_when: False
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
 
 - block:
     - name: Calico | Get existing calico ipv6 network pool
@@ -283,7 +283,7 @@
         stdin: "{{ _calico_pool_ipv6 is string | ternary(_calico_pool_ipv6, _calico_pool_ipv6|to_json) }}"
       changed_when: False
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
     - enable_dual_stack_networks | bool
 
 - name: Populate Service External IPs
@@ -346,7 +346,7 @@
         stdin: "{{ _bgp_config is string | ternary(_bgp_config, _bgp_config|to_json) }}"
       changed_when: False
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
 
 - name: Calico | Create calico manifests
   template:
@@ -382,14 +382,14 @@
   changed_when: false
   register: calico_apiserver_cabundle
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
     - calico_apiserver_enabled
 
 - name: Calico | set calico apiserver caBundle fact
   set_fact:
     calico_apiserver_cabundle: "{{ calico_apiserver_cabundle.stdout }}"
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
     - calico_apiserver_enabled
 
 - name: Calico | Create calico manifests for apiserver
@@ -416,7 +416,7 @@
     - "{{ calico_node_manifests.results }}"
     - "{{ calico_node_typha_manifest.results }}"
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
     - not item is skipped
   loop_control:
     label: "{{ item.item.file }}"
@@ -432,7 +432,7 @@
   with_items:
     - "{{ calico_apiserver_manifest.results }}"
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
     - not item is skipped
   loop_control:
     label: "{{ item.item.file }}"
@@ -464,7 +464,7 @@
   until: resource_result is succeeded
   retries: 4
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
     - calico_datastore == "kdd"
 
 - include_tasks: peer_with_calico_rr.yml

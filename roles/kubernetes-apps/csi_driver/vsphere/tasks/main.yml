@@ -8,7 +8,7 @@
     mode: 0640
   with_items:
     - vsphere-csi-cloud-config
-  when: inventory_hostname == groups['kube_control_plane'][0]
+  when: inventory_hostname == first_kube_control_plane
 
 - name: vSphere CSI Driver | Generate Manifests
   template:
@@ -25,19 +25,19 @@
     - vsphere-csi-controller-service.yml
     - vsphere-csi-node.yml
   register: vsphere_csi_manifests
-  when: inventory_hostname == groups['kube_control_plane'][0]
+  when: inventory_hostname == first_kube_control_plane
 
 - name: vSphere CSI Driver | Generate a CSI secret manifest
   command: "{{ kubectl }} create secret generic vsphere-config-secret --from-file=csi-vsphere.conf={{ kube_config_dir }}/vsphere-csi-cloud-config -n {{ vsphere_csi_namespace }} --dry-run --save-config -o yaml"
   register: vsphere_csi_secret_manifest
-  when: inventory_hostname == groups['kube_control_plane'][0]
+  when: inventory_hostname == first_kube_control_plane
   no_log: "{{ not (unsafe_show_logs|bool) }}"
 
 - name: vSphere CSI Driver | Apply a CSI secret manifest
   command:
     cmd: "{{ kubectl }} apply -f -"
     stdin: "{{ vsphere_csi_secret_manifest.stdout }}"
-  when: inventory_hostname == groups['kube_control_plane'][0]
+  when: inventory_hostname == first_kube_control_plane
   no_log: "{{ not (unsafe_show_logs|bool) }}"
 
 - name: vSphere CSI Driver | Apply Manifests
@@ -48,7 +48,7 @@
   with_items:
     - "{{ vsphere_csi_manifests.results }}"
   when:
-    - inventory_hostname == groups['kube_control_plane'][0]
+    - inventory_hostname == first_kube_control_plane
     - not item is skipped
   loop_control:
     label: "{{ item.item }}"

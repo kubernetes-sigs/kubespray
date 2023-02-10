@@ -2,9 +2,9 @@
 
 Modified from [comments in #3471](https://github.com/kubernetes-sigs/kubespray/issues/3471#issuecomment-530036084)
 
-## Limitation: Removal of first kube_control_plane and etcd-master
+## Limitation: Removal of first etcd_master
 
-Currently you can't remove the first node in your kube_control_plane and etcd-master list. If you still want to remove this node you have to:
+Currently you can't remove the first node in your etcd_master list. If you still want to remove this node you have to:
 
 ### 1) Change order of current control planes
 
@@ -12,16 +12,6 @@ Modify the order of your control plane list by pushing your first entry to any o
 
 ```yaml
   children:
-    kube_control_plane:
-      hosts:
-        node-1:
-        node-2:
-        node-3:
-    kube_node:
-      hosts:
-        node-1:
-        node-2:
-        node-3:
     etcd:
       hosts:
         node-1:
@@ -33,16 +23,6 @@ change your inventory to:
 
 ```yaml
   children:
-    kube_control_plane:
-      hosts:
-        node-2:
-        node-3:
-        node-1:
-    kube_node:
-      hosts:
-        node-2:
-        node-3:
-        node-1:
     etcd:
       hosts:
         node-2:
@@ -96,45 +76,6 @@ docker ps | grep k8s_nginx-proxy_nginx-proxy | awk '{print $1}' | xargs docker r
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.
 If the node you want to remove is not online, you should add `reset_nodes=false` and `allow_ungraceful_removal=true` to your extra-vars.
-
-## Replacing a first control plane node
-
-### 1) Change control plane nodes order in inventory
-
-from
-
-```ini
-[kube_control_plane]
- node-1
- node-2
- node-3
-```
-
-to
-
-```ini
-[kube_control_plane]
- node-2
- node-3
- node-1
-```
-
-### 2) Remove old first control plane node from cluster
-
-With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=node-1` to the playbook to limit the execution to the node being removed.
-If the node you want to remove is not online, you should add `reset_nodes=false` and `allow_ungraceful_removal=true` to your extra-vars.
-
-### 3) Edit cluster-info configmap in kube-public namespace
-
-`kubectl  edit cm -n kube-public cluster-info`
-
-Change ip of old kube_control_plane node with ip of live kube_control_plane node (`server` field). Also, update `certificate-authority-data` field if you changed certs.
-
-### 4) Add new control plane node
-
-Update inventory (if needed)
-
-Run `cluster.yml` with `--limit=kube_control_plane`
 
 ## Adding an etcd node
 

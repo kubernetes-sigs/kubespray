@@ -19,6 +19,7 @@ ENV LANG=C.UTF-8
 WORKDIR /kubespray
 COPY *yml /kubespray/
 COPY roles /kubespray/roles
+COPY contrib /kubespray/contrib
 COPY inventory /kubespray/inventory
 COPY library /kubespray/library
 COPY extra_playbooks /kubespray/extra_playbooks

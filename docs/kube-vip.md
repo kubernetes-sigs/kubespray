@@ -64,3 +64,9 @@ kube_vip_bgppeers:
 # kube_vip_bgp_peerpass:
 # kube_vip_bgp_peeras:
 ```
+
+If using [control plane load-balancing](https://kube-vip.io/docs/about/architecture/#control-plane-load-balancing):
+
+```yaml
+kube_vip_lb_enable: true
+```

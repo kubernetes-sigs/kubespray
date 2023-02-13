@@ -64,11 +64,18 @@
     - kube-cluster-info
 
 - name: Update kubernetes cluster-info
-  shell: |
-    {{ kubectl }} -n kube-public patch configmap cluster-info -p \
-      '{
-        "kubeconfig": "{{ kube_cluster_info | to_yaml(indent=2) }}",
-      }'
+  shell:
+    cmd: "{{ kubectl }} -n kube-public patch configmap cluster-info -f -"
+    stdin: |
+      ---
+      apiVersion: v1
+      data:
+        kubeconfig: |
+          {{ kube_cluster_info | to_nice_yaml(indent=2) | indent(width=4) }}
+      kind: ConfigMap
+      metadata:
+        name: cluster-info
+        namespace: kube-public
   register: kube_cluster_info_update
   run_once: true
   changed_when: kube_cluster_info_update.rc == 0

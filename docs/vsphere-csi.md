@@ -55,7 +55,7 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: Space-Efficient
+  storageClassName: mongodb-sc
 
 ---
 apiVersion: v1

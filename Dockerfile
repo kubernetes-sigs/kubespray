@@ -10,6 +10,8 @@ RUN apt update -y \
     curl python3 python3-pip sshpass \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt install -y vim nano vi
+
 # Some tools like yamllint need this
 # Pip needs this as well at the moment to install ansible
 # (and potentially other packages)

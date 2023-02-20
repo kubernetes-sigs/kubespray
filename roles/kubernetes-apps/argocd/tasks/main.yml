@@ -1,10 +1,18 @@
 ---
-- name: Kubernetes Apps | Install yq
-  become: yes
-  get_url:
-    url: "https://github.com/mikefarah/yq/releases/download/v4.30.6/yq_linux_{{ host_architecture }}"
+- name: Kubernetes Apps | Download yq
+  include_tasks: "../../../download/tasks/download_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.yq) }}"
+
+- name: Kubernetes Apps | Copy yq binary from download dir
+  synchronize:
+    src: "{{ local_release_dir }}/yq"
     dest: "{{ bin_dir }}/yq"
-    mode: '0755'
+    compress: no
+    perms: yes
+    owner: no
+    group: no
+  delegate_to: "{{ inventory_hostname }}"
 
 - name: Kubernetes Apps | Set ArgoCD template list
   set_fact:
@@ -19,14 +27,34 @@
     - "inventory_hostname == groups['kube_control_plane'][0]"
 
 - name: Kubernetes Apps | Download ArgoCD remote manifests
-  become: yes
-  get_url:
-    url: "{{ item.url }}"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: 0644
+  include_tasks: "../../../download/tasks/download_file.yml"
+  vars:
+    download_argocd:
+      enabled: "{{ argocd_enabled }}"
+      file: true
+      dest: "{{ local_release_dir }}/{{ item.file }}"
+      url: "{{ item.url }}"
+      unarchive: false
+      owner: "root"
+      mode: 0644
+      sha256: ""
+    download: "{{ download_defaults | combine(download_argocd) }}"
   with_items: "{{ argocd_templates | selectattr('url', 'defined') | list }}"
   loop_control:
     label: "{{ item.file }}"
+  when:
+    - "inventory_hostname == groups['kube_control_plane'][0]"
+
+- name: Kubernetes Apps | Copy ArgoCD remote manifests from download dir
+  synchronize:
+    src: "{{ local_release_dir }}/{{ item.file }}"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    compress: no
+    perms: yes
+    owner: no
+    group: no
+  delegate_to: "{{ inventory_hostname }}"
+  with_items: "{{ argocd_templates | selectattr('url', 'defined') | list }}"
   when:
     - "inventory_hostname == groups['kube_control_plane'][0]"
 

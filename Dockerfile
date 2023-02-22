@@ -3,10 +3,9 @@ FROM ubuntu:focal-20220531
 
 ARG ARCH=amd64
 ARG TZ=Etc/UTC
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-RUN apt update -y \
-    && apt install -y \
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
+    && apt update \
+    && apt install -y --no-install-recommends \
     curl python3 python3-pip sshpass vim \
     && rm -rf /var/lib/apt/lists/*
 
@@ -33,6 +32,7 @@ RUN python3 -m pip install --no-cache-dir \
     jmespath==1.0.1 \
     MarkupSafe==1.1.1 \
     ruamel.yaml==0.17.21 \
+    && find / -type d -name '*__pycache__' -prune -exec rm -rf {} \; \
     && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \
     && curl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$ARCH/kubectl \
     && chmod a+x kubectl \

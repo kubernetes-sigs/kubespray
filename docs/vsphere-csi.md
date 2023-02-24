@@ -55,7 +55,7 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: Space-Efficient
+  storageClassName: mongodb-sc
 
 ---
 apiVersion: v1
@@ -86,8 +86,8 @@ You should see the PVC provisioned and bound:
 
 ```ShellSession
 $ kubectl get pvc
-NAME              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS      AGE
-csi-pvc-vsphere   Bound    pvc-dc7b1d21-ee41-45e1-98d9-e877cc1533ac   1Gi        RWO            Space-Efficient   10s
+NAME              STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+csi-pvc-vsphere   Bound    pvc-dc7b1d21-ee41-45e1-98d9-e877cc1533ac   1Gi        RWO            mongodb-sc     10s
 ```
 
 And the volume mounted to the Nginx Pod (wait until the Pod is Running):

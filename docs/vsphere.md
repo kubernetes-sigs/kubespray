@@ -21,7 +21,7 @@ After this step you should have:
 
 ### Kubespray configuration
 
-First in `inventory/sample/group_vars/all/all.yml` you must set the cloud provider to `external` and external_cloud_provider to `external_cloud_provider`.
+First in `inventory/sample/group_vars/all/all.yml` you must set the `cloud_provider` to `external` and `external_cloud_provider` to `vsphere`.
 
 ```yml
 cloud_provider:  "external"

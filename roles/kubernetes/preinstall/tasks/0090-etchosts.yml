@@ -1,29 +1,31 @@
 ---
-- name: Hosts | create list from inventory
-  set_fact:
-    etc_hosts_inventory_block: |-
-      {% for item in (groups['k8s_cluster'] + groups['etcd']|default([]) + groups['calico_rr']|default([]))|unique -%}
-      {% if 'access_ip' in hostvars[item] or 'ip' in hostvars[item] or 'ansible_default_ipv4' in hostvars[item] -%}
-      {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}
-      {%- if ('ansible_hostname' in hostvars[item] and item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }} {{ hostvars[item]['ansible_hostname'] }} {% else %} {{ item }}.{{ dns_domain }} {{ item }} {% endif %}
+- name: Hosts | update inventory in hosts file
+  block:
+    - name: Hosts | create list from inventory
+      set_fact:
+        etc_hosts_inventory_block: |-
+          {% for item in (groups['k8s_cluster'] + groups['etcd']|default([]) + groups['calico_rr']|default([]))|unique -%}
+          {% if 'access_ip' in hostvars[item] or 'ip' in hostvars[item] or 'ansible_default_ipv4' in hostvars[item] -%}
+          {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}
+          {%- if ('ansible_hostname' in hostvars[item] and item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }} {{ hostvars[item]['ansible_hostname'] }} {% else %} {{ item }}.{{ dns_domain }} {{ item }} {% endif %}
 
-      {% endif %}
-      {% endfor %}
-  delegate_to: localhost
-  connection: local
-  delegate_facts: yes
-  run_once: yes
+          {% endif %}
+          {% endfor %}
+      delegate_to: localhost
+      connection: local
+      delegate_facts: yes
+      run_once: yes
 
-- name: Hosts | populate inventory into hosts file
-  blockinfile:
-    path: /etc/hosts
-    block: "{{ hostvars.localhost.etc_hosts_inventory_block }}"
-    state: present
-    create: yes
-    backup: yes
-    unsafe_writes: yes
-    marker: "# Ansible inventory hosts {mark}"
-    mode: 0644
+    - name: Hosts | populate inventory into hosts file
+      blockinfile:
+        path: /etc/hosts
+        block: "{{ hostvars.localhost.etc_hosts_inventory_block }}"
+        state: present
+        create: yes
+        backup: yes
+        unsafe_writes: yes
+        marker: "# Ansible inventory hosts {mark}"
+        mode: 0644
   when: populate_inventory_to_hosts_file
 
 - name: Hosts | populate kubernetes loadbalancer address into hosts file
@@ -39,39 +41,44 @@
     - loadbalancer_apiserver is defined
     - loadbalancer_apiserver.address is defined
 
-- name: Hosts | Retrieve hosts file content
-  slurp:
-    src: /etc/hosts
-  register: etc_hosts_content
+- name: Hosts | Update localhost entries in hosts file
+  block:
+    - name: Hosts | Retrieve hosts file content
+      slurp:
+        src: /etc/hosts
+      register: etc_hosts_content
 
-- name: Hosts | Extract existing entries for localhost from hosts file
-  set_fact:
-    etc_hosts_localhosts_dict: >-
-      {%- set splitted = (item | regex_replace('[ \t]+', ' ')|regex_replace('#.*$')|trim).split( ' ') -%}
-      {{ etc_hosts_localhosts_dict|default({}) | combine({splitted[0]: splitted[1::] }) }}
-  with_items: "{{ (etc_hosts_content['content'] | b64decode).splitlines() }}"
-  when:
-    - etc_hosts_content.content is defined
-    - (item is match('^::1 .*') or item is match('^127.0.0.1 .*'))
+    - name: Hosts | Extract existing entries for localhost from hosts file
+      set_fact:
+        etc_hosts_localhosts_dict: >-
+          {%- set splitted = (item | regex_replace('[ \t]+', ' ')|regex_replace('#.*$')|trim).split( ' ') -%}
+          {{ etc_hosts_localhosts_dict|default({}) | combine({splitted[0]: splitted[1::] }) }}
+      with_items: "{{ (etc_hosts_content['content'] | b64decode).splitlines() }}"
+      when:
+        - etc_hosts_content.content is defined
+        - (item is match('^::1 .*') or item is match('^127.0.0.1 .*'))
 
-- name: Hosts | Update target hosts file entries dict with required entries
-  set_fact:
-    etc_hosts_localhosts_dict_target: >-
-      {%- set target_entries = (etc_hosts_localhosts_dict|default({})).get(item.key, []) | difference(item.value.get('unexpected' ,[])) -%}
-      {{ etc_hosts_localhosts_dict_target|default({}) | combine({item.key: (target_entries + item.value.expected)|unique}) }}
-  loop: "{{ etc_hosts_localhost_entries|dict2items }}"
+    - name: Hosts | Update target hosts file entries dict with required entries
+      set_fact:
+        etc_hosts_localhosts_dict_target: >-
+          {%- set target_entries = (etc_hosts_localhosts_dict|default({})).get(item.key, []) | difference(item.value.get('unexpected' ,[])) -%}
+          {{ etc_hosts_localhosts_dict_target|default({}) | combine({item.key: (target_entries + item.value.expected)|unique}) }}
+      loop: "{{ etc_hosts_localhost_entries|dict2items }}"
 
-- name: Hosts | Update (if necessary) hosts file
-  lineinfile:
-    dest: /etc/hosts
-    line: "{{ item.key }} {{ item.value|join(' ') }}"
-    regexp: "^{{ item.key }}.*$"
-    state: present
-    backup: yes
-    unsafe_writes: yes
-  loop: "{{ etc_hosts_localhosts_dict_target|default({})|dict2items }}"
+    - name: Hosts | Update (if necessary) hosts file
+      lineinfile:
+        dest: /etc/hosts
+        line: "{{ item.key }} {{ item.value|join(' ') }}"
+        regexp: "^{{ item.key }}.*$"
+        state: present
+        backup: yes
+        unsafe_writes: yes
+      loop: "{{ etc_hosts_localhosts_dict_target|default({})|dict2items }}"
+  when: populate_localhost_entries_to_hosts_file
 
 # gather facts to update ansible_fqdn
 - name: Update facts
   setup:
     gather_subset: min
+  when:
+    - not dns_late

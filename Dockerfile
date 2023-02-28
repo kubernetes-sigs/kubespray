@@ -17,7 +17,7 @@ COPY library ./library
 COPY extra_playbooks ./extra_playbooks
 
 RUN apt update && apt install -y --no-install-recommends \
-    curl python3 python3-pip sshpass vim \
+    curl python3 python3-pip sshpass vim rsync \
     && rm -rf /var/lib/apt/lists/* /var/log/* \
     && pip install --no-cache-dir \
     ansible==5.7.1 \

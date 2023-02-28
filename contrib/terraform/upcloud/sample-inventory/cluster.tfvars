@@ -122,10 +122,28 @@ loadbalancer_plan = "development"
 loadbalancers = {
   # "http" : {
   #   "port" : 80,
+  #   "target_port" : 80,
   #   "backend_servers" : [
   #     "worker-0",
   #     "worker-1",
   #     "worker-2"
   #   ]
+  # }
+}
+
+server_groups = {
+  # "control-plane" = {
+  #   servers = [
+  #     "master-0"
+  #   ]
+  #   anti_affinity = true
+  # },
+  # "workers" = {
+  #   servers = [
+  #     "worker-0",
+  #     "worker-1",
+  #     "worker-2"
+  #   ]
+  #   anti_affinity = true
   # }
 }

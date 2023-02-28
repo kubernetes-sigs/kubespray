@@ -13,7 +13,7 @@ locals {
   lb_backend_servers = flatten([
     for lb_name, loadbalancer in var.loadbalancers : [
       for backend_server in loadbalancer.backend_servers : {
-        port = loadbalancer.port
+        port = loadbalancer.target_port
         lb_name = lb_name
         server_name = backend_server
       }
@@ -547,4 +547,12 @@ resource "upcloud_loadbalancer_static_backend_member" "lb_backend_member" {
   weight       = 100
   max_sessions = var.loadbalancer_plan == "production-small" ? 50000 : 1000
   enabled      = true
+}
+
+resource "upcloud_server_group" "server_groups" {
+  for_each      = var.server_groups
+  title         = each.key
+  anti_affinity = each.value.anti_affinity
+  labels        = {}
+  members       = [for server in each.value.servers : merge(upcloud_server.master, upcloud_server.worker)[server].id]
 }

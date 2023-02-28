@@ -90,6 +90,16 @@ variable "loadbalancers" {
 
   type = map(object({
     port            = number
+    target_port     = number
     backend_servers = list(string)
+  }))
+}
+
+variable "server_groups" {
+  description = "Server groups"
+
+  type = map(object({
+    anti_affinity   = bool
+    servers = list(string)
   }))
 }

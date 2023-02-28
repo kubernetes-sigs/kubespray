@@ -136,4 +136,8 @@ terraform destroy --var-file cluster-settings.tfvars \
 * `loadbalancer_plan`: Plan to use for load balancer *(development|production-small)*
 * `loadbalancers`: Ports to load balance and which machines to forward to. Key of this object will be used as the name of the load balancer frontends/backends
   * `port`: Port to load balance.
+  * `target_port`: Port to the backend servers.
   * `backend_servers`: List of servers that traffic to the port should be forwarded to.
+* `server_groups`: Group servers together
+  * `servers`: The servers that should be included in the group.
+  * `anti_affinity`: If anti-affinity should be enabled, try to spread the VMs out on separate nodes.

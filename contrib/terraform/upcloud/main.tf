@@ -34,6 +34,8 @@ module "kubernetes" {
   loadbalancer_enabled = var.loadbalancer_enabled
   loadbalancer_plan    = var.loadbalancer_plan
   loadbalancers        = var.loadbalancers
+
+  server_groups = var.server_groups
 }
 
 #

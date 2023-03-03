@@ -42,10 +42,11 @@
     --etcd-upgrade={{ (etcd_deployment_type == "kubeadm") | bool | lower }}
     --force
   register: kubeadm_upgrade
+  # Retry is because upload config sometimes fails
+  retries: 3
+  until: kubeadm_upgrade.rc == 0
   when: inventory_hostname != first_kube_control_plane
-  failed_when:
-    - kubeadm_upgrade.rc != 0
-    - '"field is immutable" not in kubeadm_upgrade.stderr'
+  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Master | restart kubelet
@@ -68,7 +69,7 @@
   retries: 6
   delay: 5
   until: scale_down_coredns is succeeded
-  run_once: yes
+  run_once: true
   when:
     - kubeadm_scale_down_coredns_enabled
     - dns_mode not in ['coredns', 'coredns_dual']

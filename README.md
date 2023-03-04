@@ -168,7 +168,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [kube-vip](https://github.com/kube-vip/kube-vip) v0.5.8
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) v1.11.0
-  - [coredns](https://github.com/coredns/coredns) v1.9.3
+  - [coredns](https://github.com/coredns/coredns) v1.10.1
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.6.4
   - [krew](https://github.com/kubernetes-sigs/krew) v0.4.3
   - [argocd](https://argoproj.github.io/) v2.6.3

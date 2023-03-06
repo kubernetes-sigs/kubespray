@@ -170,7 +170,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [flannel](https://github.com/flannel-io/flannel) v0.20.2
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.10.7
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.5.1
-  - [multus](https://github.com/intel/multus-cni) v3.8
+  - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) v3.8
   - [weave](https://github.com/weaveworks/weave) v2.8.1
   - [kube-vip](https://github.com/kube-vip/kube-vip) v0.5.11
 - Application

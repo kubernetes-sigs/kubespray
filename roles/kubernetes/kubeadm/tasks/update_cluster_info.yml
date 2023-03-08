@@ -1,0 +1,83 @@
+---
+- name: Load ca.crt
+  shell: set -o pipefail && cat "{{ kube_apiserver_client_cert }}" | base64 --wrap=0
+  args:
+    executable: /bin/bash
+    warn: false
+  register: kube_cluster_info_ca_crt_raw
+  run_once: true
+  check_mode: false
+  changed_when: false
+
+- name: Get current kubernetes cluster-info
+  command: "{{ kubectl }} -n kube-public get configmap cluster-info -o jsonpath --template '{.data.kubeconfig}'"
+  register: kube_cluster_info_last_raw
+  run_once: true
+  changed_when: false
+  tags:
+    - kube-cluster-info
+
+- name: Parse current kubernetes cluster-info
+  set_fact:
+    kube_cluster_info_ca_crt: "{{ kube_cluster_info_ca_crt_raw.stdout }}"
+    kube_cluster_info_server_address: "https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}"
+    kube_cluster_info_last: "{{ kube_cluster_info_last_raw.stdout | from_yaml }}"
+  run_once: true
+  tags:
+    - kube-cluster-info
+
+- name: Check that cluster-info is dictionary
+  assert:
+    msg: "Kubernetes cluster-info must be a kind of YAML dictionary"
+    that: kube_cluster_info_last is mapping
+  tags:
+    - kube-cluster-info
+
+- name: Change kubernetes cluster-info cluster status
+  set_fact:
+    kube_cluster_info_clusters: >
+      {{
+        ( kube_cluster_info_clusters | default([]) )
+        + [
+            (
+              item | combine({
+                "cluster": {
+                  "certificate-authority-data": kube_cluster_info_ca_crt,
+                  "server": kube_cluster_info_server_address,
+                },
+              })
+            )
+            if item.name == ""
+            else item
+          ]
+      }}
+  run_once: true
+  loop: "{{ kube_cluster_info_last['clusters'] }}"
+  tags:
+    - kube-cluster-info
+
+- name: Change kubernetes cluster-info
+  set_fact:
+    kube_cluster_info: "{{ kube_cluster_info_last | combine({ 'clusters': kube_cluster_info_clusters }) }}"
+  run_once: true
+  tags:
+    - kube-cluster-info
+
+- name: Update kubernetes cluster-info
+  command:
+    cmd: "{{ kubectl }} apply -f -"
+    stdin: |
+      ---
+      apiVersion: v1
+      data:
+        kubeconfig: |
+          {{ kube_cluster_info | to_nice_yaml(indent=2) | indent(width=4) }}
+      kind: ConfigMap
+      metadata:
+        name: cluster-info
+        namespace: kube-public
+  register: kube_cluster_info_update
+  run_once: true
+  changed_when: kube_cluster_info_update.rc == 0
+  tags:
+    - kube-cluster-info

@@ -2,6 +2,29 @@
 # Set 127.0.0.1 as fallback IP if we do not have host facts for host
 # ansible_default_ipv4 isn't what you think.
 # Thanks https://medium.com/opsops/ansible-default-ipv4-is-not-what-you-think-edb8ab154b10
+- name: Create a list
+  set_fact:
+    reachable_nodes: []
+  run_once: yes
+
+- name: Testing connection to hosts
+  ansible.builtin.wait_for:
+    port: 22
+    host: "{{ item }}"
+    search_regex: OpenSSH
+    timeout : 10
+  connection: local
+  register: reachability_status
+  ignore_errors: true
+  loop: "{{ groups['k8s_cluster'] + groups['etcd']|default([]) + groups['calico_rr']  | unique }}"
+  run_once: yes
+
+- name: Create a list of reachable nodes
+  set_fact:
+    reachable_nodes: "{{ reachable_nodes + [item.item] }}"
+  when: item.failed == False
+  with_items: "{{ reachability_status.results }}"
+  no_log: true
 
 - name: Gather ansible_default_ipv4 from all hosts
   setup:
@@ -10,7 +33,7 @@
   delegate_to: "{{ item }}"
   delegate_facts: yes
   when: hostvars[item].ansible_default_ipv4 is not defined
-  loop: "{{ (groups['k8s_cluster']|default([]) + groups['etcd']|default([]) + groups['calico_rr']|default([])) | unique }}"
+  loop: "{{ reachable_nodes }}"
   run_once: yes
   tags: always
 
@@ -18,7 +41,7 @@
   set_fact:
     fallback_ips_base: |
       ---
-      {% for item in (groups['k8s_cluster']|default([]) + groups['etcd']|default([]) + groups['calico_rr']|default([]))|unique %}
+      {% for item in (reachable_nodes) %}
       {% set found = hostvars[item].get('ansible_default_ipv4') %}
       {{ item }}: "{{ found.get('address', '127.0.0.1') }}"
       {% endfor %}

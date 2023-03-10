@@ -43,12 +43,19 @@
   run_once: True
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
-- name: Check if calico exists
+- name: Check if calicoctl.sh exists
   stat:
     path: "{{ bin_dir }}/calicoctl.sh"
-  register: calico_exists
+  register: calicoctl_sh_exists
   run_once: True
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: Check if calico ClusterInformation exists
+  command: "{{ bin_dir }}/calicoctl.sh get ClusterInformation"
+  register: clusterinformation_exists
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  when: calicoctl_sh_exists.stat.exists
 
 - name: Check that current calico version is enough for upgrade
   block:
@@ -69,7 +76,7 @@
           But current version is {{ calico_version_on_server.stdout }}.
   run_once: True
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
-  when: calico_exists.stat.exists
+  when: calicoctl_sh_exists.stat.exists and clusterinformation_exists.rc == 0
 
 - name: "Check that cluster_id is set if calico_rr enabled"
   assert:

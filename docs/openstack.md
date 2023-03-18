@@ -92,18 +92,18 @@ The new cloud provider is configured to have Octavia by default in Kubespray.
 - Available variables for configuring lbaas:
 
   ```yaml
-  external_openstack_lbaas_create_monitor: false
-  external_openstack_lbaas_monitor_delay: "1m"
-  external_openstack_lbaas_monitor_timeout: "30s"
-  external_openstack_lbaas_monitor_max_retries: "3"
-  external_openstack_lbaas_provider: octavia
-  external_openstack_lbaas_use_octavia: false
-  external_openstack_lbaas_network_id: "Neutron network ID to create LBaaS VIP"
-  external_openstack_lbaas_subnet_id: "Neutron subnet ID to create LBaaS VIP"
+  external_openstack_lbaas_enabled: true
   external_openstack_lbaas_floating_network_id: "Neutron network ID to get floating IP from"
   external_openstack_lbaas_floating_subnet_id: "Neutron subnet ID to get floating IP from"
-  external_openstack_lbaas_method: "ROUND_ROBIN"
+  external_openstack_lbaas_method: ROUND_ROBIN
+  external_openstack_lbaas_provider: amphora
+  external_openstack_lbaas_subnet_id: "Neutron subnet ID to create LBaaS VIP"
+  external_openstack_lbaas_network_id: "Neutron network ID to create LBaaS VIP"
   external_openstack_lbaas_manage_security_groups: false
+  external_openstack_lbaas_create_monitor: false
+  external_openstack_lbaas_monitor_delay: 5
+  external_openstack_lbaas_monitor_max_retries: 1
+  external_openstack_lbaas_monitor_timeout: 3
   external_openstack_lbaas_internal_lb: false
 
   ```

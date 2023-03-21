@@ -149,8 +149,10 @@ spec:
           mountPropagation: Bidirectional
         - name: cilium-run
           mountPath: /var/run/cilium
+{% if cilium_version | regex_replace('v') is version('1.13.1', '<') %}
         - name: cni-path
           mountPath: /host/opt/cni/bin
+{% endif %}
         - name: etc-cni-netd
           mountPath: /host/etc/cni/net.d
 {% if cilium_identity_allocation_mode == "kvstore" %}
@@ -304,6 +306,24 @@ spec:
           requests:
             cpu: 100m
             memory: 100Mi
+{% if cilium_version | regex_replace('v') is version('1.13.1', '>=') %}
+      # Install the CNI binaries in an InitContainer so we don't have a writable host mount in the agent
+      - name: install-cni-binaries
+        image: "{{cilium_image_repo}}:{{cilium_image_tag}}"
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        command:
+          - "/install-plugin.sh"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 10Mi
+        securityContext:
+          privileged: true
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+          - name: cni-path
+            mountPath: /host/opt/cni/bin
+{% endif %}
       restartPolicy: Always
       priorityClassName: system-node-critical
       serviceAccount: cilium

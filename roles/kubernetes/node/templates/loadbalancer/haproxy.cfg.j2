@@ -21,13 +21,19 @@ defaults
 
 {% if loadbalancer_apiserver_healthcheck_port is defined -%}
 frontend healthz
-  bind *:{{ loadbalancer_apiserver_healthcheck_port }}
+  bind 0.0.0.0:{{ loadbalancer_apiserver_healthcheck_port }}
+  {% if enable_dual_stack_networks -%}
+  bind :::{{ loadbalancer_apiserver_healthcheck_port }}
+  {% endif -%}
   mode http
   monitor-uri /healthz
 {% endif %}
 
 frontend kube_api_frontend
   bind 127.0.0.1:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }}
+  {% if enable_dual_stack_networks -%}
+  bind [::1]:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }};
+  {% endif -%}
   mode tcp
   option tcplog
   default_backend kube_api_backend

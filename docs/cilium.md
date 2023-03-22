@@ -1,5 +1,50 @@
 # Cilium
 
+## IP Address Management (IPAM)
+
+IP Address Management (IPAM) is responsible for the allocation and management of IP addresses used by network endpoints (container and others) managed by Cilium. The default mode is "Cluster Scope".
+
+You can set the following parameters, for example: cluster-pool, kubernetes:
+
+```yml
+cilium_ipam_mode: cluster-pool
+```
+
+### Set the cluster Pod CIDRs
+
+Cluster Pod CIDRs use the kube_pods_subnet value by default.
+If your node network is in the same range you will lose connectivity to other nodes.
+Defaults to kube_pods_subnet if not set.
+You can set the following parameters:
+
+```yml
+cilium_pool_cidr: 10.233.64.0/18
+```
+
+When cilium_enable_ipv6 is used. Defaults to kube_pods_subnet_ipv6 if not set.
+you need to set the IPV6 value:
+
+```yml
+cilium_pool_cidr_ipv6: fd85:ee78:d8a6:8607::1:0000/112
+```
+
+### Set the Pod CIDR size of a node
+
+When cilium IPAM uses the "Cluster Scope" mode, it will pre-allocate a segment of IP to each node,
+schedule the Pod to this node, and then allocate IP from here. cilium_pool_mask_size Specifies
+the size allocated from cluster Pod CIDR to node.ipam.podCIDRs.
+Defaults to kube_network_node_prefix if not set.
+
+```yml
+cilium_pool_mask_size: "24"
+```
+
+cilium_pool_mask_size Specifies the size allocated to node.ipam.podCIDRs from cluster Pod IPV6 CIDR. Defaults to kube_network_node_prefix_ipv6 if not set.
+
+```yml
+cilium_pool_mask_size_ipv6: "120"
+```
+
 ## Kube-proxy replacement with Cilium
 
 Cilium can run without kube-proxy by setting `cilium_kube_proxy_replacement`

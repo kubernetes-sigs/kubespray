@@ -157,14 +157,14 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.26.2
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.26.3
   - [etcd](https://github.com/etcd-io/etcd) v3.5.6
   - [docker](https://www.docker.com/) v20.10 (see note)
-  - [containerd](https://containerd.io/) v1.6.19
+  - [containerd](https://containerd.io/) v1.7.0
   - [cri-o](http://cri-o.io/) v1.24 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v1.2.0
-  - [calico](https://github.com/projectcalico/calico) v3.24.5
+  - [calico](https://github.com/projectcalico/calico) v3.25.0
   - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.12.1
   - [flannel](https://github.com/flannel-io/flannel) v0.20.2
@@ -246,6 +246,9 @@ You can choose among ten network plugins. (default: `calico`, except Vagrant use
 - [macvlan](docs/macvlan.md): Macvlan is a Linux network driver. Pods have their own unique Mac and Ip address, connected directly the physical (layer 2) network.
 
 - [multus](docs/multus.md): Multus is a meta CNI plugin that provides multiple network interface support to pods. For each interface Multus delegates CNI calls to secondary CNI plugins such as Calico, macvlan, etc.
+
+- [custom_cni](roles/network-plugin/custom_cni/) : You can specify some manifests that will be applied to the clusters to bring you own CNI and use non-supported ones by Kubespray.
+  See `tests/files/custom_cni/README.md` and `tests/files/custom_cni/values.yaml`for an example with a CNI provided by a Helm Chart.
 
 The network plugin to use is defined by the variable `kube_network_plugin`. There is also an
 option to leverage built-in cloud provider networking instead.

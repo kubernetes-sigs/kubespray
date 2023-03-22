@@ -43,35 +43,44 @@
   run_once: True
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
-- name: Get current calico cluster version
-  shell: "set -o pipefail && {{ bin_dir }}/calicoctl.sh version  | grep 'Cluster Version:' | awk '{ print $3}'"
-  args:
-    executable: /bin/bash
-  register: calico_version_on_server
-  async: 10
-  poll: 3
+- name: Check if calicoctl.sh exists
+  stat:
+    path: "{{ bin_dir }}/calicoctl.sh"
+  register: calicoctl_sh_exists
   run_once: True
-  until: calico_version_on_server.stdout != 'unknown'
-  retries: 5
-  delay: "{{ retry_stagger | random + 3 }}"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
-  changed_when: false
-  failed_when: false
+
+- name: Check if calico ready
+  command: "{{ bin_dir }}/calicoctl.sh get ClusterInformation default"
+  register: calico_ready
+  run_once: True
+  ignore_errors: True
+  retries: 5
+  delay: 10
+  until: calico_ready.rc == 0
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  when: calicoctl_sh_exists.stat.exists
 
 - name: Check that current calico version is enough for upgrade
-  assert:
-    that:
-      - calico_version_on_server.stdout is version(calico_min_version_required, '>=')
-    msg: >
-      Your version of calico is not fresh enough for upgrade.
-      Minimum version is {{ calico_min_version_required }} supported by the previous kubespray release.
-      But current version is {{ calico_version_on_server.stdout }}.
-  when:
-    - 'calico_version_on_server.stdout is defined'
-    - calico_version_on_server.stdout
-    - inventory_hostname == groups['kube_control_plane'][0]
+  block:
+    - name: Get current calico version
+      shell: "set -o pipefail && {{ bin_dir }}/calicoctl.sh version | grep 'Client Version:' | awk '{ print $3}'"
+      args:
+        executable: /bin/bash
+      register: calico_version_on_server
+      changed_when: false
+
+    - name: Assert that current calico version is enough for upgrade
+      assert:
+        that:
+          - calico_version_on_server.stdout is version(calico_min_version_required, '>=')
+        msg: >
+          Your version of calico is not fresh enough for upgrade.
+          Minimum version is {{ calico_min_version_required }} supported by the previous kubespray release.
+          But current version is {{ calico_version_on_server.stdout }}.
   run_once: True
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  when: calicoctl_sh_exists.stat.exists and calico_ready.rc == 0
 
 - name: "Check that cluster_id is set if calico_rr enabled"
   assert:

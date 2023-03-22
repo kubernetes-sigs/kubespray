@@ -17,7 +17,8 @@ versions. Here are all version vars for each component:
 * flannel_version
 * kubedns_version
 
-:warning: [Attempting to upgrade from an older release straight to the latest release is unsupported and likely to break something](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515) :warning:
+> **Warning**
+> [Attempting to upgrade from an older release straight to the latest release is unsupported and likely to break something](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515)
 
 See [Multiple Upgrades](#multiple-upgrades) for how to upgrade from older Kubespray release to the latest release
 
@@ -95,7 +96,8 @@ ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_ve
 
 ## Multiple upgrades
 
-:warning: [Do not skip releases when upgrading--upgrade by one tag at a time.](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515) :warning:
+> **Warning**
+> [Do not skip releases when upgrading--upgrade by one tag at a time.](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515)
 
 For instance, if you're on v2.6.0, then check out v2.7.0, run the upgrade, check out the next tag, and run the next upgrade, etc.
 
@@ -147,7 +149,8 @@ Previous HEAD position was 05dabb7e Fix Bionic networking restart error #3430 (#
 HEAD is now at 9051aa52 Fix ubuntu-contiv test failed (#3808)
 ```
 
-:info: NOTE: Review changes between the sample inventory and your inventory when upgrading versions. :info:
+> **Note**
+> Review changes between the sample inventory and your inventory when upgrading versions.
 
 Some deprecations between versions that mean you can't just upgrade straight from 2.7.0 to 2.8.0 if you started with the sample inventory.
 
@@ -263,7 +266,8 @@ Previous HEAD position was 6f97687d Release 2.8 robust san handling (#4478)
 HEAD is now at a4e65c7c Upgrade to Ansible >2.7.0 (#4471)
 ```
 
-:warning: IMPORTANT: Some variable formats changed in the k8s_cluster.yml between 2.8.5 and 2.9.0 :warning:
+> **Warning**
+> IMPORTANT: Some variable formats changed in the k8s_cluster.yml between 2.8.5 and 2.9.0
 
 If you do not keep your inventory copy up to date, **your upgrade will fail** and your first master will be left non-functional until fixed and re-run.
 
@@ -398,4 +402,4 @@ Please note that **migrating container engines is not officially supported by Ku
 
 As of Kubespray 2.18.0, containerd is already the default container engine. If you have the chance, it is advisable and safer to reset and redeploy the entire cluster with a new container engine.
 
-* [Migrating from Docker do Containerd](upgrades/migrate_docker2containerd.md)
+* [Migrating from Docker to Containerd](upgrades/migrate_docker2containerd.md)

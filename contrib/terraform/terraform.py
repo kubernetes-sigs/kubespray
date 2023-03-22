@@ -298,6 +298,9 @@ def openstack_host(resource, module_name):
     if 'floating_ip' in raw_attrs:
         attrs['private_ipv4'] = raw_attrs['network.0.fixed_ip_v4']
 
+    if 'metadata.use_access_ip' in raw_attrs and raw_attrs['metadata.use_access_ip'] == "0":
+        attrs.pop('access_ip')
+
     try:
         if 'metadata.prefer_ipv6' in raw_attrs and raw_attrs['metadata.prefer_ipv6'] == "1":
             attrs.update({

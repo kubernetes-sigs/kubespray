@@ -90,7 +90,7 @@ spec:
                   path: hubble-server-ca.crt
         name: tls
 ---
-# Source: cilium/templates/hubble-ui-deployment.yaml
+# Source: cilium/templates/hubble-ui/deployment.yaml
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -118,8 +118,14 @@ spec:
           image: "{{ cilium_hubble_ui_image_repo }}:{{ cilium_hubble_ui_image_tag }}"
           imagePullPolicy: {{ k8s_image_pull_policy }}
           ports:
-            - containerPort: 8080
+            - containerPort: 8081
               name: http
+          volumeMounts:
+            - name: hubble-ui-nginx-conf
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: nginx.conf
+            - name: tmp-dir
+              mountPath: /tmp
           resources:
             {}
         - name: backend
@@ -135,27 +141,10 @@ spec:
               name: grpc
           resources:
             {}
-        - name: proxy
-          image: "{{ cilium_hubble_envoy_image_repo }}:{{ cilium_hubble_envoy_image_tag }}"
-          imagePullPolicy: {{ k8s_image_pull_policy }}
-          ports:
-            - containerPort: 8081
-              name: http
-          resources:
-            {}
-          command: ["envoy"]
-          args:
-            [
-              "-c",
-              "/etc/envoy.yaml",
-              "-l",
-              "info"
-            ]
-          volumeMounts:
-            - name: hubble-ui-envoy-yaml
-              mountPath: /etc/envoy.yaml
-              subPath: envoy.yaml
       volumes:
-        - name: hubble-ui-envoy-yaml
-          configMap:
-            name: hubble-ui-envoy
+        - configMap:
+            defaultMode: 420
+            name: hubble-ui-nginx
+          name: hubble-ui-nginx-conf
+        - emptyDir: {}
+          name: tmp-dir

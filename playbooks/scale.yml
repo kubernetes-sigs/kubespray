@@ -1,0 +1,124 @@
+---
+- name: Check ansible version
+  import_playbook: ansible_version.yml
+
+- name: Ensure compatibility with old groups
+  import_playbook: legacy_groups.yml
+
+- hosts: bastion[0]
+  gather_facts: False
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults }
+    - { role: bastion-ssh-config, tags: ["localhost", "bastion"] }
+
+- name: Bootstrap any new workers
+  hosts: kube_node
+  strategy: linear
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  gather_facts: false
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults }
+    - { role: bootstrap-os, tags: bootstrap-os }
+
+- name: Gather facts
+  tags: always
+  import_playbook: facts.yml
+
+- name: Generate the etcd certificates beforehand
+  hosts: etcd:kube_control_plane
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults }
+    - role: etcd
+      tags: etcd
+      vars:
+        etcd_cluster_setup: false
+        etcd_events_cluster_setup: false
+      when:
+        - etcd_deployment_type != "kubeadm"
+        - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
+        - kube_network_plugin != "calico" or calico_datastore == "etcd"
+
+- name: Download images to ansible host cache via first kube_control_plane node
+  hosts: kube_control_plane[0]
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults, when: "not skip_downloads and download_run_once and not download_localhost" }
+    - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
+    - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
+
+- name: Target only workers to get kubelet installed and checking in on any new nodes(engine)
+  hosts: kube_node
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults }
+    - { role: kubernetes/preinstall, tags: preinstall }
+    - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
+    - { role: download, tags: download, when: "not skip_downloads" }
+    - role: etcd
+      tags: etcd
+      vars:
+        etcd_cluster_setup: false
+      when:
+        - etcd_deployment_type != "kubeadm"
+        - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
+        - kube_network_plugin != "calico" or calico_datastore == "etcd"
+
+- name: Target only workers to get kubelet installed and checking in on any new nodes(node)
+  hosts: kube_node
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults }
+    - { role: kubernetes/node, tags: node }
+
+- name: Upload control plane certs and retrieve encryption key
+  hosts: kube_control_plane | first
+  environment: "{{ proxy_disable_env }}"
+  gather_facts: False
+  tags: kubeadm
+  roles:
+    - { role: kubespray-defaults }
+  tasks:
+    - name: Upload control plane certificates
+      command: >-
+        {{ bin_dir }}/kubeadm init phase
+        --config {{ kube_config_dir }}/kubeadm-config.yaml
+        upload-certs
+        --upload-certs
+      environment: "{{ proxy_disable_env }}"
+      register: kubeadm_upload_cert
+      changed_when: false
+    - name: set fact 'kubeadm_certificate_key' for later use
+      set_fact:
+        kubeadm_certificate_key: "{{ kubeadm_upload_cert.stdout_lines[-1] | trim }}"
+      when: kubeadm_certificate_key is not defined
+
+- name: Target only workers to get kubelet installed and checking in on any new nodes(network)
+  hosts: kube_node
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults }
+    - { role: kubernetes/kubeadm, tags: kubeadm }
+    - { role: kubernetes/node-label, tags: node-label }
+    - { role: network_plugin, tags: network }
+
+- name: Apply resolv.conf changes now that cluster DNS is up
+  hosts: k8s_cluster
+  gather_facts: False
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults }
+    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_late: true }

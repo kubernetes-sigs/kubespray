@@ -78,6 +78,39 @@ if [ "${RECOVER_CONTROL_PLANE_TEST}" != "false" ]; then
   ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads -e etcd_retries=10 --limit etcd,kube_control_plane:!fake_hosts recover-control-plane.yml
 fi
 
+# Test collection build and install by installing our collection, emptying our repository, adding
+# cluster.yml, reset.yml, and remote-node.yml files that simply point to our collection's playbooks, and then
+# running the same tests as before
+if [[ "${CI_JOB_NAME}" =~ "collection" ]]; then
+  # Build and install collection
+  ansible-galaxy collection build
+  ansible-galaxy collection install kubernetes_sigs-kubespray-$(grep "^version:" galaxy.yml | awk '{print $2}').tar.gz
+
+  # Simply remove all of our files and directories except for our tests directory
+  # to be absolutely certain that none of our playbooks or roles
+  # are interfering with our collection
+  find -maxdepth 1 ! -name tests -exec rm -rfv {} \;
+
+  # Write cluster.yml
+cat > cluster.yml <<EOF
+- name: Install Kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.cluster
+EOF
+
+  # Write reset.yml
+cat > reset.yml <<EOF
+- name: Remove Kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.reset
+EOF
+
+  # Write remove-node.yml
+cat > remove-node.yml <<EOF
+- name: Remove node from Kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.remote-node
+EOF
+
+fi
+
 # Tests Cases
 ## Test Master API
 ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} tests/testcases/010_check-apiserver.yml $ANSIBLE_LOG_LEVEL

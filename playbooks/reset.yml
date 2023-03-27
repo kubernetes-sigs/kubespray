@@ -1,0 +1,39 @@
+---
+- name: Check ansible version
+  import_playbook: ansible_version.yml
+
+- name: Ensure compatibility with old groups
+  import_playbook: legacy_groups.yml
+
+- hosts: bastion[0]
+  gather_facts: False
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: bastion-ssh-config, tags: ["localhost", "bastion"]}
+
+- name: Gather facts
+  import_playbook: facts.yml
+
+- hosts: etcd:k8s_cluster:calico_rr
+  gather_facts: False
+  vars_prompt:
+    name: "reset_confirmation"
+    prompt: "Are you sure you want to reset cluster state? Type 'yes' to reset your cluster."
+    default: "no"
+    private: no
+
+  pre_tasks:
+    - name: check confirmation
+      fail:
+        msg: "Reset confirmation failed"
+      when: reset_confirmation != "yes"
+
+    - name: Gather information about installed services
+      service_facts:
+
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray-defaults}
+    - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_early: true }
+    - { role: reset, tags: reset }

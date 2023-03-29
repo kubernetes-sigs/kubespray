@@ -26,10 +26,16 @@
   register: vsphere_csi_manifests
   when: inventory_hostname == groups['kube_control_plane'][0]
 
+- name: vSphere CSI Driver | Check namespace exists
+  command: "{{ kubectl }} get ns {{ vsphere_csi_namespace }} -o yaml"
+  register: check_vsphere_namespace
+  ignore_errors: yes
+
 - name: vSphere CSI Driver | Create namespace
   command: "{{ kubectl }} create ns {{ vsphere_csi_namespace }}"
-  when: inventory_hostname == groups['kube_control_plane'][0]
-  ignore_errors: yes  # noqa ignore-errors
+  when:
+    - check_vsphere_namespace is failed
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: vSphere CSI Driver | Generate a CSI secret manifest
   command: "{{ kubectl }} create secret generic vsphere-config-secret --from-file=csi-vsphere.conf={{ kube_config_dir }}/vsphere-csi-cloud-config -n {{ vsphere_csi_namespace }} --dry-run --save-config -o yaml"

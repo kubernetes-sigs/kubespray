@@ -252,7 +252,7 @@ node_taints:
   The auditing parameters can be tuned via the following variables (which default values are shown below):
   * `audit_log_path`: /var/log/audit/kube-apiserver-audit.log
   * `audit_log_maxage`: 30
-  * `audit_log_maxbackups`: 1
+  * `audit_log_maxbackups`: 10
   * `audit_log_maxsize`: 100
   * `audit_policy_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-policy.yaml"
 

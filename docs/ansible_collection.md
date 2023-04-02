@@ -13,7 +13,7 @@ Kubespray can be installed as an [Ansible collection](https://docs.ansible.com/a
 
    ```yaml
    collections:
-   - name: https://github.com/kubernetes_sigs/kubespray
+   - name: https://github.com/kubernetes-sigs/kubespray
      type: git
      version: v2.21.0
    ```

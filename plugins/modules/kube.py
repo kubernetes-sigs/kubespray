@@ -46,6 +46,11 @@ options:
     default: null
     description:
       - The url for the API server that commands are executed against.
+  kubeconfig:
+    required: false
+    default: null
+    description:
+      - The path to the kubeconfig.
   force:
     required: false
     default: false
@@ -125,6 +130,9 @@ class KubeManager(object):
 
         if module.params.get('server'):
             self.base_cmd.append('--server=' + module.params.get('server'))
+
+        if module.params.get('kubeconfig'):
+            self.base_cmd.append('--kubeconfig=' + module.params.get('kubeconfig'))
 
         if module.params.get('log_level'):
             self.base_cmd.append('--v=' + str(module.params.get('log_level')))
@@ -309,6 +317,7 @@ def main():
             resource=dict(),
             label=dict(),
             server=dict(),
+            kubeconfig=dict(),
             kubectl=dict(),
             force=dict(default=False, type='bool'),
             wait=dict(default=False, type='bool'),

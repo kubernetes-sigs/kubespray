@@ -68,7 +68,7 @@ If you have other networking devices or SDN systems that talk BGP, kube-router w
 From a simple full node-to-node mesh to per-node peering configurations, most routing needs can be attained.
 The configuration is Kubernetes native (annotations) just like the rest of kube-router.
 
-For more details please refer to the <https://github.com/cloudnativelabs/kube-router/blob/master/docs/bgp.md.>
+For more details please refer to the <https://github.com/cloudnativelabs/kube-router/blob/master/docs/bgp.md>.
 
 Next options will set up annotations for kube-router, using `kubectl annotate` command.
 

@@ -1,0 +1,125 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+# yamllint disable-file
+---
+# Create layer3 configuration
+{% if metallb_config.layer3.communities is defined %}
+{% for community_name, community in metallb_config.layer3.communities.items() %}
+---
+apiVersion: metallb.io/v1beta1
+kind: Community
+metadata:
+  name: "{{ community_name }}"
+  namespace: metallb-system
+spec:
+  communities:
+  - name: "{{ community_name }}"
+    value: "{{ community }}"
+{% endfor %}
+{% endif %}
+---
+apiVersion: metallb.io/v1beta1
+kind: Community
+metadata:
+  name: well-known
+  namespace: metallb-system
+spec:
+  communities:
+  - name: no-export
+    value: 65535:65281
+  - name: no-advertise
+    value: 65535:65282
+  - name: local-as
+    value: 65535:65283
+  - name: nopeer
+    value: 65535:65284
+
+# BGPAdvertisement is used to advertise address pools to the BGP peer. Specific pools can be listed to be advertised.
+# Local BGP Advertisement specifies that the IP specified in the address pool will be used as remote source address for traffic entering your cluster from the remote peer.
+# When using this option, be sure to use a subnet and routable IP for your address pool.
+# This is good: 10.0.0.10/24. This is also good: 10.0.0.129/25. This is bad: 10.0.0.0/24. This is also bad: 10.0.0.128/25.
+# In this example, 10.0.0.10 will be used as the remote source address.
+# This is also bad: 10.0.0.10-10.0.0.25. Remember: you are working with aggregationLength, which specifies a subnet, not an IP range!
+# The no-advertise community is set on the local advertisement to prevent this route from being published to the BGP peer.
+# Your aggregationLength ideally is the same size as your address pool.
+
+{% for peer_name, peer in metallb_config.layer3.metallb_peers.items() %}
+
+{% if peer.aggregation_length is defined and peer.aggregation_length <= 30 %}
+
+---
+apiVersion: metallb.io/v1beta1
+kind: BGPAdvertisement
+metadata:
+  name: "{{ peer_name }}-local"
+  namespace: metallb-system
+spec:
+  aggregationLength: 32
+  aggregationLengthV6: 128
+  communities:
+  - no-advertise
+  localpref: "{{ peer.localpref | default ("100") }}"
+  ipAddressPools:
+  {% for address_pool in peer.address_pool %}
+  - "{{ address_pool }}"
+  {% endfor %}
+{% endif %}
+
+# External BGP Advertisement. The IP range specied in the address pool is advertised to the BGP peer.
+---
+apiVersion: metallb.io/v1beta1
+kind: BGPAdvertisement
+metadata:
+  name: "{{ peer_name }}-external"
+  namespace: metallb-system
+spec:
+  {% if peer.aggregation_length is defined and peer.aggregation_length <= 30 %}
+  aggregationLength: {{ peer.aggregation_length }}
+  {% endif %}
+  ipAddressPools:
+  {% for address_pool in peer.address_pool %}
+  - "{{ address_pool }}"
+  {% endfor %}
+  {% if peer.communities is defined %}
+    {% for community in peer.communities %}
+  communities:
+  - "{{ community }}"
+    {% endfor %}
+  {% endif %}
+
+
+# Configuration for the BGP peer.
+---
+apiVersion: metallb.io/v1beta2
+kind: BGPPeer
+metadata:
+  name: "{{ peer_name }}"
+  namespace: metallb-system
+spec:
+  myASN: {{ peer.my_asn }}
+  peerASN: {{ peer.peer_asn }}
+  peerAddress: {{ peer.peer_address }}
+  {% if peer.peer_port is defined %}
+  peerPort: {{ peer.peer_port }}
+  {% else %}
+  peerPort: {{ metallb_config.layer3.defaults.peer_port }}
+  {% endif -%}
+
+  {% if peer.password is defined %}
+  password: "{{ peer.password }}"
+  {% endif -%}
+
+  {% if peer.router_id is defined %}
+  routerID: "{{ peer.router_id }}"
+  {% endif -%}
+
+  {% if peer.hold_time is defined %}
+  holdTime: {{ peer.hold_time }}
+  {% elif metallb_config.layer3.defaults.hold_time is defined %}
+  holdTime: {{ metallb_config.layer3.defaults.hold_time }}
+  {% endif -%}
+
+  {% if peer.multihop is defined %}
+  ebgpMultiHop: {{ peer.multihop }}
+  {% endif -%}
+
+{% endfor %}

@@ -76,8 +76,6 @@ kube_controller_feature_gates: ["RotateKubeletServerCertificate=true"]
 
 ## kube-scheduler
 kube_scheduler_bind_address: 127.0.0.1
-kube_kubeadm_scheduler_extra_args:
-  profiling: false
 # AppArmor-based OS
 # kube_scheduler_feature_gates: ["AppArmor=true"]
 

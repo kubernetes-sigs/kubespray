@@ -1,6 +1,6 @@
 
 variable "zone" {
-  type = string
+  type    = string
   default = "fsn1"
 }
 
@@ -9,7 +9,7 @@ variable "prefix" {
 }
 
 variable "user_flatcar" {
-  type = string
+  type    = string
   default = "core"
 }
 

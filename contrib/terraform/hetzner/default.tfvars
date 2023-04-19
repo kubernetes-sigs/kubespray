@@ -1,6 +1,6 @@
-prefix = "default"
-zone   = "hel1"
-network_zone = "eu-central"
+prefix         = "default"
+zone           = "hel1"
+network_zone   = "eu-central"
 inventory_file = "inventory.ini"
 
 ssh_public_keys = [
@@ -15,17 +15,17 @@ machines = {
   "master-0" : {
     "node_type" : "master",
     "size" : "cx21",
-    "image" : "ubuntu-20.04",
+    "image" : "ubuntu-22.04",
   },
   "worker-0" : {
     "node_type" : "worker",
     "size" : "cx21",
-    "image" : "ubuntu-20.04",
+    "image" : "ubuntu-22.04",
   },
   "worker-1" : {
     "node_type" : "worker",
     "size" : "cx21",
-    "image" : "ubuntu-20.04",
+    "image" : "ubuntu-22.04",
   }
 }
 

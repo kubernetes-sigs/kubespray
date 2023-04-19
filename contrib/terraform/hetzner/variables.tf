@@ -3,7 +3,7 @@ variable "zone" {
 }
 variable "network_zone" {
   description = "The network zone where the cluster is running"
-  default = "eu-central"
+  default     = "eu-central"
 }
 
 variable "prefix" {

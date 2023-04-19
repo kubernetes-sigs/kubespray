@@ -15,12 +15,12 @@ resource "hcloud_ssh_key" "first" {
   public_key = var.ssh_public_keys.0
 }
 
-resource "hcloud_server" "master" {
+resource "hcloud_server" "machine" {
   for_each = {
     for name, machine in var.machines :
     name => machine
-    if machine.node_type == "master"
   }
+
   name     = "${var.prefix}-${each.key}"
   ssh_keys = [hcloud_ssh_key.first.id]
   # boot into rescue OS
@@ -34,7 +34,7 @@ resource "hcloud_server" "master" {
     timeout     = "5m"
     private_key = file(var.ssh_private_key_path)
   }
-  firewall_ids = [hcloud_firewall.master.id]
+  firewall_ids = each.value.node_type == "master" ? [hcloud_firewall.master.id] : [hcloud_firewall.worker.id]
   provisioner "file" {
     content     = data.ct_config.machine-ignitions[each.key].rendered
     destination = "/root/ignition.json"
@@ -67,66 +67,11 @@ resource "hcloud_server" "master" {
   }
 }
 
-resource "hcloud_server_network" "master" {
-  for_each  = hcloud_server.master
-  server_id = each.value.id
-  subnet_id = hcloud_network_subnet.kubernetes.id
-}
-
-resource "hcloud_server" "worker" {
+resource "hcloud_server_network" "machine" {
   for_each = {
     for name, machine in var.machines :
-    name => machine
-    if machine.node_type == "worker"
+    name => hcloud_server.machine[name]
   }
-  name     = "${var.prefix}-${each.key}"
-  ssh_keys = [hcloud_ssh_key.first.id]
-  # boot into rescue OS
-  rescue = "linux64"
-  # dummy value for the OS because Flatcar is not available
-  image       = each.value.image
-  server_type = each.value.size
-  location    = var.zone
-  connection {
-    host        = self.ipv4_address
-    timeout     = "5m"
-    private_key = file(var.ssh_private_key_path)
-  }
-  firewall_ids = [hcloud_firewall.worker.id]
-  provisioner "file" {
-    content     = data.ct_config.machine-ignitions[each.key].rendered
-    destination = "/root/ignition.json"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "set -ex",
-      "apt update",
-      "apt install -y gawk",
-      "curl -fsSLO --retry-delay 1 --retry 60 --retry-connrefused --retry-max-time 60 --connect-timeout 20 https://raw.githubusercontent.com/flatcar/init/flatcar-master/bin/flatcar-install",
-      "chmod +x flatcar-install",
-      "./flatcar-install -s -i /root/ignition.json -C stable",
-      "shutdown -r +1",
-    ]
-  }
-
-  # optional:
-  provisioner "remote-exec" {
-    connection {
-      host        = self.ipv4_address
-      private_key = file(var.ssh_private_key_path)
-      timeout     = "3m"
-      user        = var.user_flatcar
-    }
-
-    inline = [
-      "sudo hostnamectl set-hostname ${self.name}",
-    ]
-  }
-}
-
-resource "hcloud_server_network" "worker" {
-  for_each  = hcloud_server.worker
   server_id = each.value.id
   subnet_id = hcloud_network_subnet.kubernetes.id
 }

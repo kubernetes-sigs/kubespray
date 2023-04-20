@@ -36,11 +36,13 @@ RUN apt update -q \
     && apt autoremove -yqq --purge && apt clean && rm -rf /var/lib/apt/lists/* /var/log/*
 
 WORKDIR /kubespray
-COPY . .
 
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
+RUN --mount=type=bind,target=./requirements-2.12.txt,src=./requirements-2.12.txt \
+    --mount=type=bind,target=./tests/requirements-2.12.txt,src=./tests/requirements-2.12.txt \
+    --mount=type=bind,target=./roles/kubespray-defaults/defaults/main.yaml,src=./roles/kubespray-defaults/defaults/main.yaml \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
     && pip install --no-compile --no-cache-dir pip -U \
-    && pip install --no-compile --no-cache-dir -r tests/requirements.txt -r requirements.txt \
+    && pip install --no-compile --no-cache-dir -r tests/requirements-2.12.txt \
     && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \
     && curl -L https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
     && echo $(curl -L https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
@@ -52,6 +54,4 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
     && vagrant plugin install vagrant-libvirt \
     # Install Kubernetes collections
     && pip install --no-compile --no-cache-dir kubernetes \
-    && ansible-galaxy collection install kubernetes.core \
-    # Clean cache python
-    && find / -type d -name '*__pycache__' -prune -exec rm -rf {} \;
+    && ansible-galaxy collection install kubernetes.core

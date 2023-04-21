@@ -14,3 +14,16 @@ nodes:
 install:
 	@echo ansible-playbook -i inventory/cluster/hosts.yaml --user ansible --become --become-user=root cluster.yml
 	@ansible-playbook -i inventory/cluster/hosts.yaml  --user ansible --become --become-user=root cluster.yml
+
+info:
+	@ansible-playbook -i inventory/cluster/hosts.yaml  --user ansible --become --become-user=root scripts/collect-info.yaml
+
+etcd-check:
+	@echo checking etcd service
+	@echo make nodes
+	@echo set -a
+	@echo source /etc/etcd.env
+	@echo set +a
+	@echo /usr/local/bin/etcdctl endpoint --cluster health
+	@echo /usr/local/bin/etcdctl endpoint --cluster status
+	@echo /usr/local/bin/etcdctl endpoint --cluster hashkv

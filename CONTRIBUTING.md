@@ -12,6 +12,7 @@ To install development dependencies you can set up a python virtual env with the
 virtualenv venv
 source venv/bin/activate
 pip install -r tests/requirements.txt
+ansible-galaxy install -r tests/requirements.yml
 ```
 
 #### Linting

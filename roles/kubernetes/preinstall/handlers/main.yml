@@ -68,7 +68,9 @@
   when: inventory_hostname in groups['kube_control_plane'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
 
 - name: Preinstall | restart kube-controller-manager docker
-  shell: "{{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-controller-manager* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
+  shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-controller-manager* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
+  args:
+    executable: /bin/bash
   when:
     - container_manager == "docker"
     - inventory_hostname in groups['kube_control_plane']
@@ -77,7 +79,9 @@
     - kube_controller_set.stat.exists
 
 - name: Preinstall | restart kube-controller-manager crio/containerd
-  shell: "{{ bin_dir }}/crictl pods --name kube-controller-manager* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
+  shell: "set -o pipefail && {{ bin_dir }}/crictl pods --name kube-controller-manager* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
+  args:
+    executable: /bin/bash
   register: preinstall_restart_controller_manager
   retries: 10
   delay: 1
@@ -90,7 +94,9 @@
     - kube_controller_set.stat.exists
 
 - name: Preinstall | restart kube-apiserver docker
-  shell: "{{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-apiserver* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
+  shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-apiserver* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
+  args:
+    executable: /bin/bash
   when:
     - container_manager == "docker"
     - inventory_hostname in groups['kube_control_plane']
@@ -99,7 +105,9 @@
     - kube_apiserver_set.stat.exists
 
 - name: Preinstall | restart kube-apiserver crio/containerd
-  shell: "{{ bin_dir }}/crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
+  shell: "set -o pipefail && {{ bin_dir }}/crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
+  args:
+    executable: /bin/bash
   register: preinstall_restart_apiserver
   retries: 10
   until: preinstall_restart_apiserver.rc == 0

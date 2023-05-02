@@ -1,16 +1,40 @@
 ---
-pipeline image:
+.build:
   stage: build
-  image: docker:20.10.22-cli
+  image:
+    name: moby/buildkit:rootless
+    entrypoint: [""]
   variables:
-    DOCKER_TLS_CERTDIR: ""
-  services:
-    - name: docker:20.10.22-dind
-      # See https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27300 for why this is required
-      command: ["--tls=false"]
+    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
   before_script:
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - mkdir ~/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > ~/.docker/config.json
+
+pipeline image:
+  extends: .build
   script:
-    # DOCKER_HOST is overwritten if we set it as a GitLab variable
-    - DOCKER_HOST=tcp://docker:2375; docker build --network host --file pipeline.Dockerfile --tag $PIPELINE_IMAGE .
-    - docker push $PIPELINE_IMAGE
+    - |
+      buildctl-daemonless.sh build \
+        --frontend=dockerfile.v0 \
+        --local context=. \
+        --local dockerfile=. \
+        --opt filename=./pipeline.Dockerfile \
+        --output type=image,name=$PIPELINE_IMAGE,push=true \
+        --import-cache type=registry,ref=$CI_REGISTRY_IMAGE/pipeline:cache
+  rules:
+    - if: '$CI_COMMIT_REF_NAME != $CI_DEFAULT_BRANCH'
+
+pipeline image and build cache:
+  extends: .build
+  script:
+    - |
+      buildctl-daemonless.sh build \
+        --frontend=dockerfile.v0 \
+        --local context=. \
+        --local dockerfile=. \
+        --opt filename=./pipeline.Dockerfile \
+        --output type=image,name=$PIPELINE_IMAGE,push=true \
+        --import-cache type=registry,ref=$CI_REGISTRY_IMAGE/pipeline:cache \
+        --export-cache type=registry,ref=$CI_REGISTRY_IMAGE/pipeline:cache,mode=max
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'

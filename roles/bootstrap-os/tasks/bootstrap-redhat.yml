@@ -26,7 +26,7 @@
 - name: Check RHEL subscription-manager status
   command: /sbin/subscription-manager status
   register: rh_subscription_status
-  changed_when: "rh_subscription_status != 0"
+  changed_when: "rh_subscription_status.rc != 0"
   ignore_errors: true  # noqa ignore-errors
   become: true
 
@@ -43,7 +43,6 @@
       service_level_agreement: "{{ rh_subscription_sla }}"
       sync: true
   notify: RHEL auto-attach subscription
-  ignore_errors: true  # noqa ignore-errors
   become: true
   when:
     - rh_subscription_org_id is defined
@@ -63,7 +62,6 @@
       service_level_agreement: "{{ rh_subscription_sla }}"
       sync: true
   notify: RHEL auto-attach subscription
-  ignore_errors: true  # noqa ignore-errors
   become: true
   no_log: "{{ not (unsafe_show_logs|bool) }}"
   when:
@@ -79,6 +77,7 @@
     state: "{{ 'enabled' if (rhel_enable_repos | default(True) | bool) else 'disabled' }}"
   when:
     - ansible_distribution_major_version == "7"
+    - (not rh_subscription_status.changed) or (rh_subscription_username is defined) or (rh_subscription_org_id is defined)
 
 # container-selinux is in appstream repo
 - name: Enable RHEL 8 repos
@@ -89,6 +88,7 @@
     state: "{{ 'enabled' if (rhel_enable_repos | default(True) | bool) else 'disabled' }}"
   when:
     - ansible_distribution_major_version == "8"
+    - (not rh_subscription_status.changed) or (rh_subscription_username is defined) or (rh_subscription_org_id is defined)
 
 - name: Check presence of fastestmirror.conf
   stat:

@@ -9,8 +9,8 @@ equinix_metal_project_id = "Example-Project-Id"
 # Terraform will complain if the public key is setup in Equinix Metal
 public_key_path = "~/.ssh/id_rsa.pub"
 
-# cluster location
-facility = "ewr1"
+# Equinix interconnected bare metal across our global metros.
+metro = "da"
 
 # operating_system
 operating_system = "ubuntu_22_04"

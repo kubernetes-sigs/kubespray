@@ -64,6 +64,10 @@ Custom options to be added to the kubernetes coredns plugin.
 
 Extra domains to be forwarded to the kubernetes coredns plugin.
 
+### coredns_rewrite_block
+
+[Rewrite](https://coredns.io/plugins/rewrite/) plugin block to perform internal message rewriting.
+
 ### coredns_external_zones
 
 Array of optional external zones to coredns forward queries to. It's  injected into

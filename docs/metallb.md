@@ -133,7 +133,7 @@ metallb_config:
 
 When using calico >= 3.18 you can replace MetalLB speaker by calico Service LoadBalancer IP advertisement.
 See [calico service IPs advertisement documentation](https://docs.projectcalico.org/archive/v3.18/networking/advertise-service-ips#advertise-service-load-balancer-ip-addresses).
-In this scenario you should disable the MetalLB speaker and configure the `calico_advertise_service_loadbalancer_ips` to match your `metallb_ip_range`
+In this scenario you should disable the MetalLB speaker and configure the `calico_advertise_service_loadbalancer_ips` to match your `ip_range`
 
 ```yaml
 metallb_speaker_enabled: false

@@ -2,18 +2,18 @@
 # A naive premoderation script to allow Gitlab CI pipeline on a specific PRs' comment
 # Exits with 0, if the pipeline is good to go
 # Exits with 1, if the user is not allowed to start pipeline
-# Exits with 2, if script is unable to get issue id from CI_BUILD_REF_NAME variable
+# Exits with 2, if script is unable to get issue id from CI_COMMIT_REF_NAME variable
 # Exits with 3, if missing the magic comment in the pipeline to start the pipeline
 
 CURL_ARGS="-fs --retry 4 --retry-delay 5"
 MAGIC="${MAGIC:-ci check this}"
 exit_code=0
 
-# Get PR number from CI_BUILD_REF_NAME
-issue=$(echo ${CI_BUILD_REF_NAME} | perl -ne '/^pr-(\d+)-\S+$/ && print $1')
+# Get PR number from CI_COMMIT_REF_NAME
+issue=$(echo ${CI_COMMIT_REF_NAME} | perl -ne '/^pr-(\d+)-\S+$/ && print $1')
 
 if [ "$issue" = "" ]; then
-  echo "Unable to get issue id from: $CI_BUILD_REF_NAME"
+  echo "Unable to get issue id from: $CI_COMMIT_REF_NAME"
   exit 2
 fi
 

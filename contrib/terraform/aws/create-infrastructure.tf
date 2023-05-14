@@ -153,27 +153,32 @@ resource "aws_instance" "k8s-worker" {
 * Create Kubespray Inventory File
 *
 */
-data "template_file" "inventory" {
-  template = file("${path.module}/templates/inventory.tpl")
-
-  vars = {
-    public_ip_address_bastion = join("\n", formatlist("bastion ansible_host=%s", aws_instance.bastion-server.*.public_ip))
-    connection_strings_master = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-master.*.private_dns, aws_instance.k8s-master.*.private_ip))
-    connection_strings_node   = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-worker.*.private_dns, aws_instance.k8s-worker.*.private_ip))
-    list_master               = join("\n", aws_instance.k8s-master.*.private_dns)
-    list_node                 = join("\n", aws_instance.k8s-worker.*.private_dns)
-    connection_strings_etcd   = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-etcd.*.private_dns, aws_instance.k8s-etcd.*.private_ip))
-    list_etcd                 = join("\n", ((var.aws_etcd_num > 0) ? (aws_instance.k8s-etcd.*.private_dns) : (aws_instance.k8s-master.*.private_dns)))
-    nlb_api_fqdn              = "apiserver_loadbalancer_domain_name=\"${module.aws-nlb.aws_nlb_api_fqdn}\""
-  }
+locals {
+  inventory = templatefile(
+    "${path.module}/templates/inventory.tpl",
+    {
+      connection_strings_master = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s ip=%s etcd_member_name=etcd%d",
+        keys(module.kubernetes.master_ip_addresses),
+        values(module.kubernetes.master_ip_addresses).*.public_ip,
+        values(module.kubernetes.master_ip_addresses).*.private_ip,
+      range(1, length(module.kubernetes.master_ip_addresses) + 1)))
+      connection_strings_worker = join("\n", formatlist("%s ansible_user=ubuntu ansible_host=%s ip=%s",
+        keys(module.kubernetes.worker_ip_addresses),
+        values(module.kubernetes.worker_ip_addresses).*.public_ip,
+      values(module.kubernetes.worker_ip_addresses).*.private_ip))
+      list_master = join("\n", keys(module.kubernetes.master_ip_addresses))
+      list_worker = join("\n", keys(module.kubernetes.worker_ip_addresses))
+      network_id  = module.kubernetes.network_id
+    }
+  )
 }
 
 resource "null_resource" "inventories" {
   provisioner "local-exec" {
-    command = "echo '${data.template_file.inventory.rendered}' > ${var.inventory_file}"
+    command = "echo '${local.inventory}' > ${var.inventory_file}"
   }
 
   triggers = {
-    template = data.template_file.inventory.rendered
+    template = local.inventory
   }
 }

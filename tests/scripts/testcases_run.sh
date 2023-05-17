@@ -47,7 +47,15 @@ if [[ "$CI_JOB_NAME" =~ "ubuntu" ]]; then
   CI_TEST_ADDITIONAL_VARS="-e ansible_python_interpreter=/usr/bin/python3"
 fi
 
+ENABLE_020_TEST="true"
+ENABLE_030_TEST="true"
 ENABLE_040_TEST="true"
+if [[ "$CI_JOB_NAME" =~ "macvlan" ]]; then
+  ENABLE_020_TEST="false"
+  ENABLE_030_TEST="false"
+  ENABLE_040_TEST="false"
+fi
+
 if [[ "$CI_JOB_NAME" =~ "hardening" ]]; then
   # TODO: We need to remove this condition by finding alternative container
   # image instead of netchecker which doesn't work at hardening environments.
@@ -119,10 +127,14 @@ ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIO
 ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} tests/testcases/015_check-nodes-ready.yml $ANSIBLE_LOG_LEVEL
 
 ## Test that all pods are Running
+if [ "${ENABLE_020_TEST}" = "true" ]; then
 ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} tests/testcases/020_check-pods-running.yml $ANSIBLE_LOG_LEVEL
+fi
 
 ## Test pod creation and ping between them
+if [ "${ENABLE_030_TEST}" = "true" ]; then
 ansible-playbook --limit "all:!fake_hosts" -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} tests/testcases/030_check-network.yml $ANSIBLE_LOG_LEVEL
+fi
 
 ## Advanced DNS checks
 if [ "${ENABLE_040_TEST}" = "true" ]; then

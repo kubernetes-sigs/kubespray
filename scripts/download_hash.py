@@ -36,7 +36,7 @@ def download_hash(versions):
             for version in versions:
                 if not version.startswith("v"):
                     version = f"v{version}"
-                url = f"https://storage.googleapis.com/kubernetes-release/release/{version}/bin/linux/{arch}/{download}"
+                url = f"https://dl.k8s.io/release/{version}/bin/linux/{arch}/{download}"
                 download_file = requests.get(url, allow_redirects=True)
                 download_file.raise_for_status()
                 sha256sum = hashlib.sha256(download_file.content).hexdigest()

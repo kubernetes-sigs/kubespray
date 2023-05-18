@@ -1,6 +1,6 @@
 # Fedora CoreOS
 
-Tested with stable version 34.20210611.3.0
+Tested with stable version 37.20230322.3.0
 
 Because package installation with `rpm-ostree` requires a reboot, playbook may fail while bootstrap.
 Restart playbook again.

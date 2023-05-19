@@ -142,7 +142,7 @@ vagrant up
 ## Supported Linux Distributions
 
 - **Flatcar Container Linux by Kinvolk**
-- **Debian** Bullseye, Buster, Jessie, Stretch
+- **Debian** Bullseye, Buster
 - **Ubuntu** 16.04, 18.04, 20.04, 22.04
 - **CentOS/RHEL** 7, [8, 9](docs/centos.md#centos-8)
 - **Fedora** 35, 36
@@ -161,7 +161,7 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.26.3
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.26.5
   - [etcd](https://github.com/etcd-io/etcd) v3.5.6
   - [docker](https://www.docker.com/) v20.10 (see note)
   - [containerd](https://containerd.io/) v1.7.1
@@ -169,7 +169,6 @@ Note: Upstart/SysV init based OS types are not supported.
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v1.2.0
   - [calico](https://github.com/projectcalico/calico) v3.25.1
-  - [canal](https://github.com/projectcalico/canal) (given calico/flannel versions)
   - [cilium](https://github.com/cilium/cilium) v1.13.0
   - [flannel](https://github.com/flannel-io/flannel) v0.21.4
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.10.7
@@ -232,8 +231,6 @@ You can choose among ten network plugins. (default: `calico`, except Vagrant use
     designed to give you the most efficient networking across a range of situations, including non-overlay
     and overlay networks, with or without BGP. Calico uses the same engine to enforce network policy for hosts,
     pods, and (if using Istio and Envoy) applications at the service mesh layer.
-
-- [canal](https://github.com/projectcalico/canal): a composition of calico and flannel plugins.
 
 - [cilium](http://docs.cilium.io/en/latest/): layer 3/4 networking (as well as layer 7 to protect and secure application protocols), supports dynamic insertion of BPF bytecode into the Linux kernel to implement security services, networking and visibility logic.
 

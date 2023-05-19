@@ -44,8 +44,8 @@ RUN --mount=type=bind,target=./requirements-2.12.txt,src=./requirements-2.12.txt
     && pip install --no-compile --no-cache-dir pip -U \
     && pip install --no-compile --no-cache-dir -r tests/requirements-2.12.txt \
     && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \
-    && curl -L https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
-    && echo $(curl -L https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
+    && curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
+    && echo $(curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
     && chmod a+x /usr/local/bin/kubectl \
     # Install Vagrant
     && curl -LO https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}-1_$(dpkg --print-architecture).deb \

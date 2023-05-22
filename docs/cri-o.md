@@ -40,21 +40,7 @@ crio_registries:
         insecure: false
 ```
 
-## Note about pids_limit
-
-For heavily mult-threaded workloads like databases, the default of 1024 for pids-limit is too low.
-This parameter controls not just the number of processes but also the amount of threads
-(since a thread is technically a process with shared memory). See [cri-o#1921]
-
-In order to increase the default `pids_limit` for cri-o based deployments you need to set the `crio_pids_limit`
-for your `k8s_cluster` ansible group or per node depending on the use case.
-
-```yaml
-crio_pids_limit: 4096
-```
-
 [CRI-O]: https://cri-o.io/
-[cri-o#1921]: https://github.com/cri-o/cri-o/issues/1921
 
 ## Note about user namespaces
 

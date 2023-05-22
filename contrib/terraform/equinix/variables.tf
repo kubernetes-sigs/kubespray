@@ -19,8 +19,8 @@ variable "billing_cycle" {
   default = "hourly"
 }
 
-variable "facility" {
-  default = "dfw2"
+variable "metro" {
+  default = "da"
 }
 
 variable "plan_k8s_masters" {

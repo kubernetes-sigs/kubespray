@@ -48,7 +48,7 @@ equinix_metal_project_id = "_redacted_"
 public_key_path = "~/.ssh/id_rsa.pub"
 
 # cluster location
-facility = "am6"
+metro = "da"
 
 # standalone etcds
 number_of_etcd = 0

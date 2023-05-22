@@ -10,7 +10,7 @@ import sys
 import requests
 from ruamel.yaml import YAML
 
-MAIN_YML = "../roles/download/defaults/main.yml"
+MAIN_YML = "../roles/download/defaults/main/main.yml"
 
 def open_main_yaml():
     yaml = YAML()

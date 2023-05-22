@@ -41,11 +41,21 @@ variables:
 before_script:
   - ./tests/scripts/rebase.sh
   - update-alternatives --install /usr/bin/python python /usr/bin/python3 1
-  - python -m pip uninstall -y ansible ansible-base ansible-core
-  - python -m pip install -r tests/requirements-${ANSIBLE_MAJOR_VERSION}.txt
+  # Enter venv if it doesn't exist
+  - test -e venv || python -m venv venv && source ./venv/bin/activate
+  - pip install -r tests/requirements-${ANSIBLE_MAJOR_VERSION}.txt
   - mkdir -p /.ssh
 
+# FIXME: add a manual job to clear cache ?
+# The cache greatly accelerates the CI but introduce a new kind of bug where we
+# need to be careful when upgrading the dependencies.
+cache:
+  key: venv-cache
+  paths:
+    - venv
+
 .job: &job
+  <<: *cache
   tags:
     - packet
   image: $PIPELINE_IMAGE

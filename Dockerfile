@@ -7,7 +7,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt update -y \
     && apt install -y \
-    curl python3 python3-pip sshpass \
+    curl python3 python3-pip sshpass rsync\
     && rm -rf /var/lib/apt/lists/*
 
 # Some tools like yamllint need this

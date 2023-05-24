@@ -75,17 +75,17 @@ resource "hcloud_firewall" "master" {
   name = "${var.prefix}-master-firewall"
 
   rule {
-   direction = "in"
-   protocol = "tcp"
-   port = "22"
-   source_ips = var.ssh_whitelist
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "22"
+    source_ips = var.ssh_whitelist
   }
 
   rule {
-   direction = "in"
-   protocol = "tcp"
-   port = "6443"
-   source_ips = var.api_server_whitelist
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "6443"
+    source_ips = var.api_server_whitelist
   }
 }
 
@@ -93,30 +93,30 @@ resource "hcloud_firewall" "worker" {
   name = "${var.prefix}-worker-firewall"
 
   rule {
-   direction = "in"
-   protocol = "tcp"
-   port = "22"
-   source_ips = var.ssh_whitelist
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "22"
+    source_ips = var.ssh_whitelist
   }
 
   rule {
-   direction = "in"
-   protocol = "tcp"
-   port = "80"
-   source_ips = var.ingress_whitelist
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "80"
+    source_ips = var.ingress_whitelist
   }
 
   rule {
-   direction = "in"
-   protocol = "tcp"
-   port = "443"
-   source_ips = var.ingress_whitelist
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "443"
+    source_ips = var.ingress_whitelist
   }
 
   rule {
-   direction = "in"
-   protocol = "tcp"
-   port = "30000-32767"
-   source_ips = var.nodeport_whitelist
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "30000-32767"
+    source_ips = var.nodeport_whitelist
   }
 }

@@ -15,6 +15,35 @@
       bin_dir: "/usr/local/bin"
     when: not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
+  - name: Check kubelet serving certificates approved with kubelet_csr_approver
+    block:
+
+    - name: Get certificate signing requests
+      command: "{{ bin_dir }}/kubectl get csr"
+      register: get_csr
+      changed_when: false
+
+    - debug:  # noqa unnamed-task
+        msg: "{{ get_csr.stdout.split('\n') }}"
+
+    - name: Check there are csrs
+      assert:
+        that: get_csr.stdout_lines | length > 0
+        fail_msg: kubelet_rotate_server_certificates is {{ kubelet_rotate_server_certificates }} but no csr's found
+
+    - name: Get Denied/Pending certificate signing requests
+      shell: "{{ bin_dir }}/kubectl get csr | grep -e Denied -e Pending || true"
+      register: get_csr_denied_pending
+      changed_when: false
+
+    - name: Check there are Denied/Pending csrs
+      assert:
+        that: get_csr_denied_pending.stdout_lines | length == 0
+        fail_msg: kubelet_csr_approver is enabled but CSRs are not approved
+    when:
+    - kubelet_rotate_server_certificates | default(false)
+    - kubelet_csr_approver_enabled | default(kubelet_rotate_server_certificates | default(false))
+
   - name: Approve kubelet serving certificates
     block:
 
@@ -37,7 +66,9 @@
     - debug:  # noqa unnamed-task
         msg: "{{ certificate_approve.stdout.split('\n') }}"
 
-    when: kubelet_rotate_server_certificates | default(false)
+    when:
+    - kubelet_rotate_server_certificates | default(false)
+    - not (kubelet_csr_approver_enabled | default(kubelet_rotate_server_certificates | default(false)))
 
   - name: Create test namespace
     command: "{{ bin_dir }}/kubectl create namespace test"

@@ -1,4 +1,4 @@
-$os = "ubuntu1604"
+$os = "ubuntu2004"
 
 # For CI we are not worried about data persistence across reboot
 $libvirt_volume_cache = "unsafe"

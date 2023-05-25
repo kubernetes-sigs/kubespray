@@ -20,9 +20,8 @@ SUPPORTED_OS = {
   "flatcar-beta"        => {box: "flatcar-beta",               user: "core", box_url: FLATCAR_URL_TEMPLATE % ["beta"]},
   "flatcar-alpha"       => {box: "flatcar-alpha",              user: "core", box_url: FLATCAR_URL_TEMPLATE % ["alpha"]},
   "flatcar-edge"        => {box: "flatcar-edge",               user: "core", box_url: FLATCAR_URL_TEMPLATE % ["edge"]},
-  "ubuntu1604"          => {box: "generic/ubuntu1604",         user: "vagrant"},
-  "ubuntu1804"          => {box: "generic/ubuntu1804",         user: "vagrant"},
   "ubuntu2004"          => {box: "generic/ubuntu2004",         user: "vagrant"},
+  "ubuntu2204"          => {box: "generic/ubuntu2204",         user: "vagrant"},
   "centos"              => {box: "centos/7",                   user: "vagrant"},
   "centos-bento"        => {box: "bento/centos-7.6",           user: "vagrant"},
   "centos8"             => {box: "centos/8",                   user: "vagrant"},
@@ -54,7 +53,7 @@ $shared_folders ||= {}
 $forwarded_ports ||= {}
 $subnet ||= "172.18.8"
 $subnet_ipv6 ||= "fd3c:b398:0698:0756"
-$os ||= "ubuntu1804"
+$os ||= "ubuntu2004"
 $network_plugin ||= "flannel"
 # Setting multi_networking to true will install Multus: https://github.com/k8snetworkplumbingwg/multus-cni
 $multi_networking ||= "False"
@@ -219,8 +218,8 @@ Vagrant.configure("2") do |config|
       # Disable swap for each vm
       node.vm.provision "shell", inline: "swapoff -a"
 
-      # ubuntu1804 and ubuntu2004 have IPv6 explicitly disabled. This undoes that.
-      if ["ubuntu1804", "ubuntu2004"].include? $os
+      # ubuntu2004 and ubuntu2204 have IPv6 explicitly disabled. This undoes that.
+      if ["ubuntu2004", "ubuntu2204"].include? $os
         node.vm.provision "shell", inline: "rm -f /etc/modprobe.d/local.conf"
         node.vm.provision "shell", inline: "sed -i '/net.ipv6.conf.all.disable_ipv6/d' /etc/sysctl.d/99-sysctl.conf /etc/sysctl.conf"
       end

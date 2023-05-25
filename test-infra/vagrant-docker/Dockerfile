@@ -7,7 +7,7 @@ ENV VAGRANT_VERSION=2.3.4
 ENV VAGRANT_DEFAULT_PROVIDER=libvirt
 ENV VAGRANT_ANSIBLE_TAGS=facts
 
-RUN apt-get update && apt-get install -y wget libvirt-dev openssh-client rsync git
+RUN apt-get update && apt-get install -y wget libvirt-dev openssh-client rsync git build-essential
 
 # Install Vagrant
 RUN wget https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}-1_amd64.deb && \

@@ -75,11 +75,11 @@ You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mou
 to access the inventory and SSH key in the container, like this:
 
 ```ShellSession
-git checkout v2.21.0
-docker pull quay.io/kubespray/kubespray:v2.21.0
+git checkout v2.22.0
+docker pull quay.io/kubespray/kubespray:v2.22.0
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.21.0 bash
+  quay.io/kubespray/kubespray:v2.22.0 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
@@ -143,7 +143,7 @@ vagrant up
 
 - **Flatcar Container Linux by Kinvolk**
 - **Debian** Bullseye, Buster
-- **Ubuntu** 16.04, 18.04, 20.04, 22.04
+- **Ubuntu** 20.04, 22.04
 - **CentOS/RHEL** 7, [8, 9](docs/centos.md#centos-8)
 - **Fedora** 35, 36
 - **Fedora CoreOS** (see [fcos Note](docs/fcos.md))
@@ -171,7 +171,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [calico](https://github.com/projectcalico/calico) v3.25.1
   - [cilium](https://github.com/cilium/cilium) v1.13.0
   - [flannel](https://github.com/flannel-io/flannel) v0.21.4
-  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.10.7
+  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.11.5
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.5.1
   - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) v3.8
   - [weave](https://github.com/weaveworks/weave) v2.8.1

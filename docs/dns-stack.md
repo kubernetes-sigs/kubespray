@@ -143,6 +143,11 @@ coredns_default_zone_cache_block: |
   }
 ```
 
+### systemd_resolved_disable_stub_listener
+
+Whether or not to set `DNSStubListener=no` when using systemd-resolved. Defaults to `true` on Flatcar.
+You might need to set it to `true` if CoreDNS fails to start with `address already in use` errors.
+
 ## DNS modes supported by Kubespray
 
 You can modify how Kubespray sets up DNS for your cluster with the variables ``dns_mode`` and ``resolvconf_mode``.

@@ -40,29 +40,34 @@ spec:
         - name: kube-ovn-controller
           image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
-          command:
-          - /kube-ovn/start-controller.sh
           args:
-            - --default-cidr={{ kube_pods_subnet }}{% if enable_dual_stack_networks %},{{ kube_ovn_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}{% endif %}{{''}}
-            - --default-gateway={% if kube_ovn_default_gateway is defined %}{{ kube_ovn_default_gateway }}{% endif %}{{''}}
-            - --default-gateway-check={{ kube_ovn_default_gateway_check|string }}
-            - --default-logical-gateway={{ kube_ovn_default_logical_gateway|string }}
-            - --default-exclude-ips={% if kube_ovn_default_exclude_ips is defined %}{{ kube_ovn_default_exclude_ips }}{% endif %}{{''}}
-            - --node-switch-cidr={{ kube_ovn_node_switch_cidr }}{% if enable_dual_stack_networks %},{{ kube_ovn_node_switch_cidr_ipv6 }}{% endif %}{{''}}
-            - --service-cluster-ip-range={{ kube_service_addresses }}{% if enable_dual_stack_networks %},{{ kube_service_addresses_ipv6 }}{% endif %}{{''}}
-            - --network-type={{ kube_ovn_network_type }}
-            - --default-interface-name={{ kube_ovn_default_interface_name|default('') }}
-            - --default-vlan-id={{ kube_ovn_default_vlan_id }}
-            - --pod-nic-type={{ kube_ovn_pod_nic_type }}
-            - --enable-lb={{ kube_ovn_enable_lb|string }}
-            - --enable-np={{ kube_ovn_enable_np|string }}
-            - --enable-eip-snat={{ kube_ovn_eip_snat_enabled }}
-            - --enable-external-vpc={{ kube_ovn_enable_external_vpc|string }}
-            - --logtostderr=false
-            - --alsologtostderr=true
-            - --log_file=/var/log/kube-ovn/kube-ovn-controller.log
-            - --log_file_max_size=0
-            - --keep-vm-ip={{ kube_ovn_keep_vm_ip }}
+          - /kube-ovn/start-controller.sh
+          - --default-cidr={{ kube_pods_subnet }}{% if enable_dual_stack_networks %},{{ kube_ovn_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}{% endif %}{{''}}
+          - --default-gateway={% if kube_ovn_default_gateway is defined %}{{ kube_ovn_default_gateway }}{% endif %}{{''}}
+          - --default-gateway-check={{ kube_ovn_default_gateway_check|string }}
+          - --default-logical-gateway={{ kube_ovn_default_logical_gateway|string }}
+          - --default-u2o-interconnection={{ kube_ovn_u2o_interconnection }}
+          - --default-exclude-ips={% if kube_ovn_default_exclude_ips is defined %}{{ kube_ovn_default_exclude_ips }}{% endif %}{{''}}
+          - --node-switch-cidr={{ kube_ovn_node_switch_cidr }}{% if enable_dual_stack_networks %},{{ kube_ovn_node_switch_cidr_ipv6 }}{% endif %}{{''}}
+          - --service-cluster-ip-range={{ kube_service_addresses }}{% if enable_dual_stack_networks %},{{ kube_service_addresses_ipv6 }}{% endif %}{{''}}
+          - --network-type={{ kube_ovn_network_type }}
+          - --default-interface-name={{ kube_ovn_default_interface_name|default('') }}
+          - --default-vlan-id={{ kube_ovn_default_vlan_id }}
+          - --ls-dnat-mod-dl-dst={{ kube_ovn_ls_dnat_mod_dl_dst }}
+          - --pod-nic-type={{ kube_ovn_pod_nic_type }}
+          - --enable-lb={{ kube_ovn_enable_lb|string }}
+          - --enable-np={{ kube_ovn_enable_np|string }}
+          - --enable-eip-snat={{ kube_ovn_eip_snat_enabled }}
+          - --enable-external-vpc={{ kube_ovn_enable_external_vpc|string }}
+          - --logtostderr=false
+          - --alsologtostderr=true
+          - --gc-interval=360
+          - --inspect-interval=20
+          - --log_file=/var/log/kube-ovn/kube-ovn-controller.log
+          - --log_file_max_size=0
+          - --enable-lb-svc=false
+          - --keep-vm-ip={{ kube_ovn_keep_vm_ip }}
+          - --pod-default-fip-type=""
           env:
             - name: ENABLE_SSL
               value: "{{ kube_ovn_enable_ssl | lower }}"
@@ -78,6 +83,14 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: OVN_DB_IPS
+              value: "{{ kube_ovn_central_ips }}"
+            - name: POD_IPS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIPs
+            - name: ENABLE_BIND_LOCAL_IP
+              value: "{{ kube_ovn_bind_local_ip_enabled }}"
           volumeMounts:
             - mountPath: /etc/localtime
               name: localtime
@@ -141,8 +154,13 @@ spec:
         type: infra
     spec:
       tolerations:
-      - operator: Exists
-      priorityClassName: system-cluster-critical
+        - effect: NoSchedule
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+        - key: CriticalAddonsOnly
+          operator: Exists
+      priorityClassName: system-node-critical
       serviceAccountName: ovn
       hostNetwork: true
       hostPID: true
@@ -157,6 +175,8 @@ spec:
         volumeMounts:
           - mountPath: /opt/cni/bin
             name: cni-bin
+          - mountPath: /usr/local/bin
+            name: local-bin
       containers:
       - name: cni-server
         image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
@@ -172,7 +192,7 @@ spec:
           - --dpdk-tunnel-iface={{ kube_ovn_dpdk_tunnel_iface }}
           - --network-type={{ kube_ovn_network_type }}
           - --default-interface-name={{ kube_ovn_default_interface_name|default('') }}
-{% if kube_ovn_mtu is defined %}
+          {% if kube_ovn_mtu is defined %}
           - --mtu={{ kube_ovn_mtu }}
 {% endif %}
           - --cni-conf-name={{ kube_ovn_cni_config_priority }}-kube-ovn.conflist
@@ -184,7 +204,7 @@ spec:
           runAsUser: 0
           privileged: true
         env:
-          - name: kube_ovn_enable_ssl
+          - name: ENABLE_SSL
             value: "{{ kube_ovn_enable_ssl | lower }}"
           - name: POD_IP
             valueFrom:
@@ -198,6 +218,14 @@ spec:
             value: kube_ovn_fastpath.ko
           - name: RPMS
             value: openvswitch-kmod
+          - name: POD_IPS
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIPs
+          - name: ENABLE_BIND_LOCAL_IP
+            value: "{{ kube_ovn_bind_local_ip_enabled }}"
+          - name: DBUS_SYSTEM_BUS_ADDRESS
+            value: "unix:path=/host/var/run/dbus/system_bus_socket"
         volumeMounts:
           - name: host-modules
             mountPath: /lib/modules
@@ -213,6 +241,9 @@ spec:
             mountPropagation: Bidirectional
           - mountPath: /run/ovn
             name: host-run-ovn
+          - mountPath: /host/var/run/dbus
+            name: host-dbus
+            mountPropagation: HostToContainer
           - mountPath: /var/run/netns
             name: host-ns
             mountPropagation: HostToContainer
@@ -276,6 +307,9 @@ spec:
         - name: host-ns
           hostPath:
             path: /var/run/netns
+        - name: host-dbus
+          hostPath:
+            path: /var/run/dbus
         - name: host-log-ovs
           hostPath:
             path: /var/log/openvswitch
@@ -291,6 +325,9 @@ spec:
         - name: tmp
           hostPath:
             path: /tmp
+        - name: local-bin
+          hostPath:
+            path: /usr/local/bin
 ---
 kind: DaemonSet
 apiVersion: apps/v1
@@ -313,12 +350,12 @@ spec:
         component: network
         type: infra
     spec:
+      priorityClassName: system-node-critical
       serviceAccountName: ovn
       hostPID: true
       containers:
         - name: pinger
           image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
-          imagePullPolicy: {{ k8s_image_pull_policy }}
           command:
           - /kube-ovn/kube-ovn-pinger
           args:
@@ -328,6 +365,7 @@ spec:
           - --alsologtostderr=true
           - --log_file=/var/log/kube-ovn/kube-ovn-pinger.log
           - --log_file_max_size=0
+          imagePullPolicy: {{ k8s_image_pull_policy }}
           securityContext:
             runAsUser: 0
             privileged: false
@@ -443,7 +481,10 @@ spec:
         type: infra
     spec:
       tolerations:
-      - operator: Exists
+        - effect: NoSchedule
+          operator: Exists
+        - key: CriticalAddonsOnly
+          operator: Exists
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -469,6 +510,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: POD_IPS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIPs
+            - name: ENABLE_BIND_LOCAL_IP
+              value: "{{ kube_ovn_bind_local_ip_enabled }}"
           resources:
             requests:
               cpu: {{ kube_ovn_monitor_cpu_request }}
@@ -608,7 +655,7 @@ spec:
   ports:
     - port: 10665
       name: metrics
-{% if kube_ovn_ic_enable %}
+      {% if kube_ovn_ic_enable %}
 ---
 kind: ConfigMap
 apiVersion: v1

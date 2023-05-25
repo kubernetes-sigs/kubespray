@@ -12,11 +12,6 @@ metadata:
     rbac.authorization.k8s.io/system-only: "true"
   name: system:ovn
 rules:
-  - apiGroups: ['policy']
-    resources: ['podsecuritypolicies']
-    verbs:     ['use']
-    resourceNames:
-      - kube-ovn
   - apiGroups:
       - "kubeovn.io"
     resources:
@@ -34,7 +29,6 @@ rules:
       - provider-networks/status
       - security-groups
       - security-groups/status
-      - htbqoses
       - iptables-eips
       - iptables-fip-rules
       - iptables-dnat-rules
@@ -43,6 +37,16 @@ rules:
       - iptables-fip-rules/status
       - iptables-dnat-rules/status
       - iptables-snat-rules/status
+      - ovn-eips
+      - ovn-fips
+      - ovn-snat-rules
+      - ovn-eips/status
+      - ovn-fips/status
+      - ovn-snat-rules/status
+      - switch-lb-rules
+      - switch-lb-rules/status
+      - vpc-dnses
+      - vpc-dnses/status
     verbs:
       - "*"
   - apiGroups:
@@ -78,6 +82,7 @@ rules:
     resources:
       - networkpolicies
       - services
+      - services/status
       - endpoints
       - statefulsets
       - daemonsets
@@ -105,16 +110,6 @@ rules:
       - leases
     verbs:
       - "*"
-  - apiGroups:
-      - "k8s.cni.cncf.io"
-    resources:
-      - network-attachment-definitions
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - update
   - apiGroups:
       - "kubevirt.io"
     resources:
@@ -245,12 +240,12 @@ spec:
           env:
             - name: ENABLE_SSL
               value: "{{ kube_ovn_enable_ssl | lower }}"
+            - name: NODE_IPS
+              value: "{{ kube_ovn_central_ips }}"
             - name: POD_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-            - name: NODE_IPS
-              value: "{{ kube_ovn_central_ips }}"
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -259,6 +254,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: POD_IPS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIPs
+            - name: ENABLE_BIND_LOCAL_IP
+              value: "{{ kube_ovn_bind_local_ip_enabled }}"
           resources:
             requests:
               cpu: {{ kube_ovn_db_cpu_request }}
@@ -358,7 +359,7 @@ spec:
     spec:
       tolerations:
       - operator: Exists
-      priorityClassName: system-cluster-critical
+      priorityClassName: system-node-critical
       serviceAccountName: ovn
       hostNetwork: true
       hostPID: true
@@ -444,7 +445,7 @@ spec:
 {% else %}
                 - /kube-ovn/ovs-healthcheck.sh
 {% endif %}
-            initialDelaySeconds: 10
+            initialDelaySeconds: 60
             periodSeconds: 5
             failureThreshold: 5
             timeoutSeconds: 45

@@ -169,7 +169,8 @@ function _get_checksum {
     readonly github_releases_url="$github_url/%s/releases/download/$version/%s"
     readonly github_archive_url="$github_url/%s/archive/%s"
     readonly google_url="https://storage.googleapis.com"
-    readonly k8s_url="$google_url/kubernetes-release/release/$version/bin/$os/$arch/%s"
+    readonly release_url="https://dl.k8s.io"
+    readonly k8s_url="$release_url/release/$version/bin/$os/$arch/%s"
 
     # Download URLs
     declare -A urls=(

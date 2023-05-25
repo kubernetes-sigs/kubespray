@@ -59,6 +59,9 @@ def main():
                     except Exception as ex:
                         print("Failed to delete subnet from router as %s", ex)
 
+        for ip in conn.network.ips():
+            fn_if_old(conn.network.delete_ip, ip)
+                
         # After removing unnecessary subnet from router, retry to delete ports
         map_if_old(conn.network.delete_port,
                    conn.network.ports())

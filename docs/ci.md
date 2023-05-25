@@ -16,9 +16,7 @@ fedora36 |  :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
-ubuntu16 |  :x: | :x: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :x: |
-ubuntu18 |  :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: | :x: | :x: | :x: | :white_check_mark: |
-ubuntu20 |  :white_check_mark: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: |
+ubuntu20 |  :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 
 ## crio
@@ -35,9 +33,7 @@ fedora36 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux8 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-ubuntu16 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-ubuntu18 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-ubuntu20 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+ubuntu20 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu22 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 
 ## docker
@@ -54,7 +50,5 @@ fedora36 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :white_chec
 opensuse |  :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux8 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-ubuntu16 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
-ubuntu18 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-ubuntu20 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+ubuntu20 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |

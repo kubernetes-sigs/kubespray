@@ -1,6 +1,6 @@
 $num_instances = 2
 $vm_memory ||= 2048
-$os = "ubuntu1604"
+$os = "ubuntu2004"
 
 $kube_master_instances = 1
 $etcd_instances = 1

@@ -8,7 +8,7 @@ ENV LANG=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1
 WORKDIR /kubespray
-COPY *yml .
+COPY *.yml ./
 COPY roles ./roles
 COPY contrib ./contrib
 COPY inventory ./inventory

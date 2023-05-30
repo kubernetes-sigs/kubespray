@@ -1,4 +1,14 @@
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+  name: metallb-system
+
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -1703,8 +1713,8 @@ spec:
   template:
     metadata:
       annotations:
-        prometheus.io/port: "{{ metallb_port }}"
-        prometheus.io/scrape: "true"
+        prometheus.io/port: '{{ metallb_port }}'
+        prometheus.io/scrape: 'true'
       labels:
         app: metallb
         component: controller
@@ -1719,7 +1729,7 @@ spec:
           value: memberlist
         - name: METALLB_DEPLOYMENT
           value: controller
-        image: {{ metallb_controller_image_repo }}:{{ metallb_version }}
+        image: "{{ metallb_controller_image_repo }}:{{ metallb_version }}"
         livenessProbe:
           failureThreshold: 3
           httpGet:
@@ -1755,14 +1765,15 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
-{% if metallb_config.controller.tolerations %}
+{% if metallb_config.controller is defined and metallb_config.controller.tolerations is defined %}
       tolerations:
         {{ metallb_config.controller.tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
-{% endif %}
-{% if metallb_controller_nodeselector %}
-      nodeSelector:
-        {{ metallb_controller_nodeselector | to_nice_yaml | indent(width=8) }}
 {%- endif %}
+      nodeSelector:
+        {{ metallb_controller_nodeselector | to_nice_yaml | indent(width=8) -}}
+        {% if metallb_config.controller is defined and metallb_config.controller.nodeselector is defined %}
+        {{ metallb_config.controller.nodeselector | to_nice_yaml | indent(width=8) -}}
+        {%- endif %}
       securityContext:
         fsGroup: 65534
         runAsNonRoot: true
@@ -1793,8 +1804,8 @@ spec:
   template:
     metadata:
       annotations:
-        prometheus.io/port: "{{ metallb_port }}"
-        prometheus.io/scrape: "true"
+        prometheus.io/port: '{{ metallb_port }}'
+        prometheus.io/scrape: 'true'
       labels:
         app: metallb
         component: speaker
@@ -1823,7 +1834,7 @@ spec:
             secretKeyRef:
               key: secretkey
               name: memberlist
-        image: {{ metallb_speaker_image_repo }}:{{ metallb_version }}
+        image: "{{ metallb_speaker_image_repo }}:{{ metallb_version }}"
         livenessProbe:
           failureThreshold: 3
           httpGet:
@@ -1860,16 +1871,19 @@ spec:
             - ALL
           readOnlyRootFilesystem: true
       hostNetwork: true
-{% if metallb_speaker_nodeselector %}
       nodeSelector:
-        {{ metallb_speaker_nodeselector | to_nice_yaml | indent(width=8) }}
-{%- endif %}
+        {{ metallb_speaker_nodeselector | to_nice_yaml | indent(width=8) -}}
+        {% if metallb_config.speaker is defined and metallb_config.speaker.nodeselector is defined %}
+        {{ metallb_config.speaker.nodeselector | to_nice_yaml | indent(width=8) -}}
+        {%- endif %}
+
       serviceAccountName: speaker
       terminationGracePeriodSeconds: 2
-{% if metallb_speaker_tolerations %}
       tolerations:
-        {{ metallb_speaker_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
-{% endif %}
+        {{ metallb_speaker_tolerations | to_nice_yaml(indent=2) | indent(width=8) -}}
+        {% if metallb_config.speaker is defined and metallb_config.speaker.tolerations is defined %}
+        {{ metallb_config.speaker.tolerations | to_nice_yaml(indent=2) | indent(width=8) -}}
+        {% endif %}
 {% endif %}
 
 ---
@@ -2004,7 +2018,7 @@ webhooks:
   clientConfig:
     service:
       name: webhook-service
-  namespace: metallb-system
+      namespace: metallb-system
       path: /validate-metallb-io-v1beta1-l2advertisement
   failurePolicy: Fail
   name: l2advertisementvalidationwebhook.metallb.io

@@ -1,6 +1,6 @@
 # K8s DNS stack by Kubespray
 
-For K8s cluster nodes, Kubespray configures a [Kubernetes DNS](https://kubernetes.io/docs/admin/dns/)
+For K8s cluster nodes, Kubespray configures a [Kubernetes DNS](https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/)
 [cluster add-on](https://releases.k8s.io/master/cluster/addons/README.md)
 to serve as an authoritative DNS server for a given ``dns_domain`` and its
 ``svc, default.svc`` default subdomains (a total of ``ndots: 5`` max levels).

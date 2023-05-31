@@ -120,7 +120,7 @@ following default cluster parameters:
   alpha/experimental Kubeadm features. (defaults is `[]`)
 
 * *authorization_modes* - A list of [authorization mode](
-  https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
+  https://kubernetes.io/docs/reference/access-authn-authz/authorization/#using-flags-for-your-authorization-module)
   that the cluster should be configured for. Defaults to `['Node', 'RBAC']`
   (Node and RBAC authorizers).
   Note: `Node` and `RBAC` are enabled by default. Previously deployed clusters can be

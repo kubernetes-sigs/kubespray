@@ -99,4 +99,4 @@ For the moment, only Cinder v3 is supported by the CSI Driver.
 
 ## More info
 
-For further information about the Cinder CSI Driver, you can refer to this page: [Cloud Provider OpenStack](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/using-cinder-csi-plugin.md).
+For further information about the Cinder CSI Driver, you can refer to this page: [Cloud Provider OpenStack](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/using-cinder-csi-plugin.md).

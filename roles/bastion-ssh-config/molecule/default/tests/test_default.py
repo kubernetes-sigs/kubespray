@@ -1,12 +1,15 @@
 import os
-import yaml
-import glob
+from pathlib import Path
+
 import testinfra.utils.ansible_runner
-from ansible.playbook import Playbook
+import yaml
 from ansible.cli.playbook import PlaybookCLI
+from ansible.playbook import Playbook
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
+    os.environ["MOLECULE_INVENTORY_FILE"]
+).get_hosts("all")
+
 
 def read_playbook(playbook):
     cli_args = [os.path.realpath(playbook), testinfra_hosts]
@@ -19,16 +22,19 @@ def read_playbook(playbook):
     for play in pb.get_plays():
         yield variable_manager.get_vars(play)
 
+
 def get_playbook():
-    with open(os.path.realpath(' '.join(map(str,glob.glob('molecule.*')))), 'r') as yamlfile:
+    playbooks_path = Path(__file__).parent.parent
+    with open(os.path.join(playbooks_path, "molecule.yml"), "r") as yamlfile:
         data = yaml.load(yamlfile, Loader=yaml.FullLoader)
-        if 'playbooks' in data['provisioner'].keys():
-            if 'converge' in data['provisioner']['playbooks'].keys():
-                return data['provisioner']['playbooks']['converge']
+        if "playbooks" in data["provisioner"].keys():
+            if "converge" in data["provisioner"]["playbooks"].keys():
+                return data["provisioner"]["playbooks"]["converge"]
         else:
-            return ' '.join(map(str,glob.glob('converge.*')))
+            return os.path.join(playbooks_path, "converge.yml")
+
 
 def test_ssh_config(host):
     for vars in read_playbook(get_playbook()):
-        assert host.file(vars['ssh_bastion_confing__name']).exists
-        assert host.file(vars['ssh_bastion_confing__name']).is_file
+        assert host.file(vars["ssh_bastion_confing__name"]).exists
+        assert host.file(vars["ssh_bastion_confing__name"]).is_file

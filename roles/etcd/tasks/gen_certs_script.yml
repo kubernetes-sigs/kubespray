@@ -56,6 +56,66 @@
   when: gen_certs|default(false)
   notify: set etcd_secret_changed
 
+- name: Dump kube_control_plane groups
+  ansible.builtin.debug:
+    var: groups['kube_control_plane']
+  run_once: yes
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when:
+    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - gen_certs|default(false)
+
+- name: Dump k8s_cluster group
+  ansible.builtin.debug:
+    var: groups['k8s_cluster']
+  run_once: yes
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when:
+    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - gen_certs|default(false)
+
+- name: Dump gen_node_certs
+  ansible.builtin.debug:
+    var: gen_node_certs
+  run_once: yes
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when:
+    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - gen_certs|default(false)
+
+- name: Dump HOSTS control plane
+  ansible.builtin.debug:
+    msg: |
+      {% for h in groups['kube_control_plane'] %}
+        {% if gen_node_certs[h] %}
+          {{ h }}
+        {% endif %}
+      {% endfor %}
+  run_once: yes
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when:
+    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - gen_certs|default(false)
+
+- name: Dump HOSTS k8s_cluster
+  ansible.builtin.debug:
+    msg: |
+      {% for h in groups['k8s_cluster'] %}
+        {% if gen_node_certs[h] %}
+          {{ h }}
+        {% endif %}
+      {% endfor %}
+  run_once: yes
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when:
+    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - gen_certs|default(false)
+
 - name: Gen_certs | run cert generation script for all clients
   command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
   environment:

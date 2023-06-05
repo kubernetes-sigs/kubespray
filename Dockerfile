@@ -9,11 +9,14 @@ ENV LANG=C.UTF-8 \
     PYTHONDONTWRITEBYTECODE=1
 WORKDIR /kubespray
 COPY *.yml ./
+COPY *.cfg ./
 COPY roles ./roles
 COPY contrib ./contrib
 COPY inventory ./inventory
 COPY library ./library
 COPY extra_playbooks ./extra_playbooks
+COPY playbooks ./playbooks
+COPY plugins ./plugins
 
 RUN apt update -q \
     && apt install -yq --no-install-recommends \

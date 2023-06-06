@@ -41,4 +41,4 @@ RUN apt update -q \
     && echo $(curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
     && chmod a+x /usr/local/bin/kubectl \
     && rm -rf /var/lib/apt/lists/* /var/log/* \
-    && find / -type d -name '*__pycache__' -prune -exec rm -rf {} \;
+    && find /usr -type d -name '*__pycache__' -prune -exec rm -rf {} \;

@@ -51,8 +51,12 @@ containerd_download_url: "{{ files_repo }}/containerd-{{ containerd_version }}-l
 runc_download_url: "{{ files_repo }}/runc.{{ image_arch }}"
 nerdctl_download_url: "{{ files_repo }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
 # Insecure registries for containerd
-containerd_insecure_registries:
-    "{{ registry_addr }}"："{{ registry_host }}"
+containerd_registries:
+  - prefix: "{{ registry_addr }}"
+    mirrors:
+      - host: "{{ registry_host }}"
+        capabilities: ["pull", "resolve"]
+        skip_verify: true
 
 # CentOS/Redhat/AlmaLinux/Rocky Linux
 ## Docker / Containerd

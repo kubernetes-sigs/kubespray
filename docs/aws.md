@@ -58,10 +58,22 @@ Guide:
 ```ShellSession
 export AWS_ACCESS_KEY_ID="xxxxx"
 export AWS_SECRET_ACCESS_KEY="yyyyy"
-export REGION="us-east-2"
+export AWS_REGION="us-east-2"
 ```
 
 - We will now create our cluster. There will be either one or two small changes. The first is that we will specify `-i inventory/kubespray-aws-inventory.py` as our inventory script. The other is conditional. If your AWS instances are public facing, you can set the `VPC_VISIBILITY` variable to `public` and that will result in public IP and DNS names being passed into the inventory. This causes your cluster.yml command to look like `VPC_VISIBILITY="public" ansible-playbook ... cluster.yml`
+
+**Optional** Using labels and taints
+
+To add labels to your kubernetes node, add the following tag to your instance:
+
+- Key: `kubespray-node-labels`
+- Value: `node-role.kubernetes.io/ingress=`
+
+To add taints to your kubernetes node, add the following tag to your instance:
+
+- Key: `kubespray-node-taints`
+- Value: `node-role.kubernetes.io/ingress=:NoSchedule`
 
 ## Kubespray configuration
 

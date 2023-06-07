@@ -1,6 +1,6 @@
 # K8s DNS stack by Kubespray
 
-For K8s cluster nodes, Kubespray configures a [Kubernetes DNS](https://kubernetes.io/docs/admin/dns/)
+For K8s cluster nodes, Kubespray configures a [Kubernetes DNS](https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/)
 [cluster add-on](https://releases.k8s.io/master/cluster/addons/README.md)
 to serve as an authoritative DNS server for a given ``dns_domain`` and its
 ``svc, default.svc`` default subdomains (a total of ``ndots: 5`` max levels).
@@ -63,6 +63,10 @@ Custom options to be added to the kubernetes coredns plugin.
 ### coredns_kubernetes_extra_domains
 
 Extra domains to be forwarded to the kubernetes coredns plugin.
+
+### coredns_rewrite_block
+
+[Rewrite](https://coredns.io/plugins/rewrite/) plugin block to perform internal message rewriting.
 
 ### coredns_external_zones
 
@@ -138,6 +142,11 @@ coredns_default_zone_cache_block: |
     prefetch 10 1m
   }
 ```
+
+### systemd_resolved_disable_stub_listener
+
+Whether or not to set `DNSStubListener=no` when using systemd-resolved. Defaults to `true` on Flatcar.
+You might need to set it to `true` if CoreDNS fails to start with `address already in use` errors.
 
 ## DNS modes supported by Kubespray
 

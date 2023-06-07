@@ -120,7 +120,7 @@ following default cluster parameters:
   alpha/experimental Kubeadm features. (defaults is `[]`)
 
 * *authorization_modes* - A list of [authorization mode](
-  https://kubernetes.io/docs/admin/authorization/#using-flags-for-your-authorization-module)
+  https://kubernetes.io/docs/reference/access-authn-authz/authorization/#using-flags-for-your-authorization-module)
   that the cluster should be configured for. Defaults to `['Node', 'RBAC']`
   (Node and RBAC authorizers).
   Note: `Node` and `RBAC` are enabled by default. Previously deployed clusters can be
@@ -199,9 +199,9 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 
 * *kubelet_rotate_server_certificates* - Auto rotate the kubelet server certificates by requesting new certificates
   from the kube-apiserver when the certificate expiration approaches.
-  **Note** that server certificates are **not** approved automatically. Approve them manually
-  (`kubectl get csr`, `kubectl certificate approve`) or implement custom approving controller like
-  [kubelet-rubber-stamp](https://github.com/kontena/kubelet-rubber-stamp).
+  Note that enabling this also activates *kubelet_csr_approver* which approves automatically the CSRs.
+  To customize its behavior, you can override the Helm values via *kubelet_csr_approver_values*.
+  See [kubelet-csr-approver](https://github.com/postfinance/kubelet-csr-approver) for more information.
 
 * *kubelet_streaming_connection_idle_timeout* - Set the maximum time a streaming connection can be idle before the connection is automatically closed.
 

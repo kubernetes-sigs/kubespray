@@ -57,6 +57,13 @@ spec:
             - mountPath: /etc/ssl/certs
               name: ca-certs
               readOnly: true
+{% if ssl_ca_dirs|length %}
+{% for dir in ssl_ca_dirs %}
+            - name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+              mountPath: {{ dir }}
+              readOnly: true
+{% endfor %}
+{% endif %}
             - mountPath: /etc/config/cloud.conf
               name: cloud-config-volume
               readOnly: true
@@ -78,19 +85,27 @@ spec:
       hostNetwork: true
       volumes:
 {% if kubelet_flexvolumes_plugins_dir is defined %}
-      - hostPath:
+      - name: flexvolume-dir
+        hostPath:
           path: "{{ kubelet_flexvolumes_plugins_dir }}"
           type: DirectoryOrCreate
-        name: flexvolume-dir
 {% endif %}
-      - hostPath:
+      - name: k8s-certs
+        hostPath:
           path: /etc/kubernetes/pki
           type: DirectoryOrCreate
-        name: k8s-certs
-      - hostPath:
+      - name: ca-certs
+        hostPath:
           path: /etc/ssl/certs
           type: DirectoryOrCreate
-        name: ca-certs
+{% if ssl_ca_dirs|length %}
+{% for dir in ssl_ca_dirs %}
+      - name: {{ dir | regex_replace('^/(.*)$', '\\1' ) | regex_replace('/', '-') }}
+        hostPath:
+          path: {{ dir }}
+          type: DirectoryOrCreate
+{% endfor %}
+{% endif %}
       - name: cloud-config-volume
         secret:
           secretName: external-openstack-cloud-config

@@ -24,9 +24,10 @@ configured by the variable `loadbalancer_apiserver_localhost` (defaults to
 `True`. Or `False`, if there is an external `loadbalancer_apiserver` defined).
 You may also define the port the local internal loadbalancer uses by changing,
 `loadbalancer_apiserver_port`.  This defaults to the value of
-`kube_apiserver_port`. It is also important to note that Kubespray will only
+`kube_apiserver_port`.  It is also important to note that Kubespray will only
 configure kubelet and kube-proxy on non-master nodes to use the local internal
-loadbalancer.
+loadbalancer.  If you wish to control the name of the loadbalancer container,
+you can set the variable `loadbalancer_apiserver_pod_name`.
 
 If you choose to NOT use the local internal loadbalancer, you will need to
 use the [kube-vip](kube-vip.md) ansible role or configure your own loadbalancer to achieve HA. By default, it only configures a non-HA endpoint, which points to the

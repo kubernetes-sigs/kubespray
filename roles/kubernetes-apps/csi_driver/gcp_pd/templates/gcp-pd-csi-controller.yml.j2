@@ -1,10 +1,9 @@
-kind: StatefulSet
+kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: csi-gce-pd-controller
   namespace: kube-system
 spec:
-  serviceName: "csi-gce-pd"
   replicas: {{ gcp_pd_csi_controller_replicas }}
   selector:
     matchLabels:
@@ -19,6 +18,8 @@ spec:
       # this requirement when issue is resolved and before any exposure of
       # metrics ports
       hostNetwork: true
+      nodeSelector:
+        kubernetes.io/os: linux
       serviceAccountName: csi-gce-pd-controller-sa
       priorityClassName: csi-gce-pd-controller
       containers:
@@ -28,9 +29,32 @@ spec:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
             - "--feature-gates=Topology=true"
+            - "--http-endpoint=:22011"
+            - "--leader-election-namespace=$(PDCSI_NAMESPACE)"
+            - "--timeout=250s"
+            - "--extra-create-metadata"
+          # - "--run-controller-service=false"  # disable the controller service of the CSI driver
+          # - "--run-node-service=false"        # disable the node service of the CSI driver
+            - "--leader-election"
             - "--default-fstype=ext4"
-          # - "--run-controller-service=false" # disable the controller service of the CSI driver
-          # - "--run-node-service=false"       # disable the node service of the CSI driver
+            - "--controller-publish-readonly=true"
+          env:
+            - name: PDCSI_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - containerPort: 22011
+              name: http-endpoint
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 1
+            httpGet:
+              path: /healthz/leader-election
+              port: http-endpoint
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+            periodSeconds: 20
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -39,6 +63,27 @@ spec:
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
+            - "--http-endpoint=:22012"
+            - "--leader-election"
+            - "--leader-election-namespace=$(PDCSI_NAMESPACE)"
+            - "--timeout=250s"
+          env:
+            - name: PDCSI_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - containerPort: 22012
+              name: http-endpoint
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 1
+            httpGet:
+              path: /healthz/leader-election
+              port: http-endpoint
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+            periodSeconds: 20
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -47,6 +92,44 @@ spec:
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
+            - "--http-endpoint=:22013"
+            - "--leader-election"
+            - "--leader-election-namespace=$(PDCSI_NAMESPACE)"
+            - "--handle-volume-inuse-error=false"
+          env:
+            - name: PDCSI_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - containerPort: 22013
+              name: http-endpoint
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 1
+            httpGet:
+              path: /healthz/leader-election
+              port: http-endpoint
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+            periodSeconds: 20
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+        - name: csi-snapshotter
+          image: {{ csi_snapshotter_image_repo }}:{{ csi_snapshotter_image_tag }}
+          args:
+            - "--v=5"
+            - "--csi-address=/csi/csi.sock"
+            - "--metrics-address=:22014"
+            - "--leader-election"
+            - "--leader-election-namespace=$(PDCSI_NAMESPACE)"
+            - "--timeout=300s"
+          env:
+            - name: PDCSI_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -72,4 +155,11 @@ spec:
         - name: cloud-sa-volume
           secret:
             secretName: cloud-sa
-  volumeClaimTemplates: []
+---
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: pd.csi.storage.gke.io
+spec:
+  attachRequired: true
+  podInfoOnMount: false

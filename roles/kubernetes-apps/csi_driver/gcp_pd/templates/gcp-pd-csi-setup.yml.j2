@@ -38,8 +38,21 @@ rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "watch"]
-
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["get", "list"]
+  # Access to volumeattachments is only needed when the CSI driver
+  # has the PUBLISH_UNPUBLISH_VOLUME controller capability.
+  # In that case, external-provisioner will watch volumeattachments
+  # to determine when it is safe to delete a volume.
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch"]
 ---
+
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -130,6 +143,10 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list", "watch", "create", "update", "patch"]
+  # If handle-volume-inuse-error=true, the pod specific rbac is needed
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
 
 ---
 kind: ClusterRoleBinding
@@ -144,34 +161,30 @@ roleRef:
   kind: ClusterRole
   name: csi-gce-pd-resizer-role
   apiGroup: rbac.authorization.k8s.io
-
 ---
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-gce-pd-node-psp
-spec:
-  seLinux:
-    rule: RunAsAny
-  supplementalGroups:
-    rule: RunAsAny
-  runAsUser:
-    rule: RunAsAny
-  fsGroup:
-    rule: RunAsAny
-  privileged: true
-  volumes:
-  - '*'
-  hostNetwork: true
-  allowedHostPaths:
-  - pathPrefix: "/var/lib/kubelet/plugins_registry/"
-  - pathPrefix: "/var/lib/kubelet"
-  - pathPrefix: "/var/lib/kubelet/plugins/pd.csi.storage.gke.io/"
-  - pathPrefix: "/dev"
-  - pathPrefix: "/etc/udev"
-  - pathPrefix: "/lib/udev"
-  - pathPrefix: "/run/udev"
-  - pathPrefix: "/sys"
+  name: csi-gce-pd-controller-deploy
+rules:
+  - apiGroups: ["policy"]
+    resources: ["podsecuritypolicies"]
+    verbs: ["use"]
+    resourceNames:
+      - csi-gce-pd-controller-psp
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: csi-gce-pd-controller-deploy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: csi-gce-pd-controller-deploy
+subjects:
+  - kind: ServiceAccount
+    name: csi-gce-pd-controller-sa
+    namespace: kube-system
 ---
 
 kind: ClusterRole
@@ -198,3 +211,81 @@ subjects:
 - kind: ServiceAccount
   name: csi-gce-pd-node-sa
   namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: csi-gce-pd-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: csi-gce-pd-node-deploy
+subjects:
+- kind: ServiceAccount
+  name: csi-gce-pd-controller-sa
+  namespace: kube-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: csi-gce-pd-snapshotter-role
+rules:
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  # Secrets resource omitted since GCE PD snapshots does not require them
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["create", "get", "list", "watch", "update", "delete", "patch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents/status"]
+    verbs: ["update", "patch"]
+---
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-gce-pd-controller-snapshotter-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-gce-pd-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-gce-pd-snapshotter-role
+  apiGroup: rbac.authorization.k8s.io
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-gce-pd-leaderelection-role
+  namespace: kube-system
+  labels:
+    k8s-app: gcp-compute-persistent-disk-csi-driver
+rules:
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "watch", "list", "delete", "update", "create"]
+
+---
+
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-gce-pd-controller-leaderelection-binding
+  namespace: kube-system
+  labels:
+    k8s-app: gcp-compute-persistent-disk-csi-driver
+subjects:
+- kind: ServiceAccount
+  name: csi-gce-pd-controller-sa
+  namespace: kube-system
+roleRef:
+  kind: Role
+  name: csi-gce-pd-leaderelection-role
+  apiGroup: rbac.authorization.k8s.io

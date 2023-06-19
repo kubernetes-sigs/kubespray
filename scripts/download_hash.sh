@@ -159,6 +159,23 @@ function get_containerd_archive_checksums {
     done
 }
 
+function get_k8s_checksums {
+    local binary=$1
+
+    echo "${binary}_checksums:" | tee --append "$checksums_file"
+    echo "  arm:" | tee --append "$checksums_file"
+    for version in "${@:2}"; do
+        _vercmp "${version#v}" '<' "1.27" && checksum=$(_get_checksum "$binary" "$version" "$arch") || checksum=0
+        echo "    ${version#v}: $checksum" | tee --append "$checksums_file"
+    done
+    for arch in arm64 amd64 ppc64le; do
+        echo "  $arch:" | tee --append "$checksums_file"
+        for version in "${@:2}"; do
+            echo "    ${version#v}: $(_get_checksum "$binary" "$version" "$arch")" | tee --append "$checksums_file"
+        done
+    done
+}
+
 function _get_checksum {
     local binary="$1"
     local version="$2"
@@ -175,7 +192,7 @@ function _get_checksum {
     # Download URLs
     declare -A urls=(
 ["crictl"]="$(printf "$github_releases_url" "kubernetes-sigs/cri-tools" "crictl-$version-$os-$arch.tar.gz")"
-["crio_archive"]="$(printf "$github_releases_url" "cri-o/cri-o" "cri-o.$arch.$version.tar.gz")"
+["crio_archive"]="$google_url/cri-o/artifacts/cri-o.$arch.$version.tar.gz"
 ["kubelet"]="$(printf "$k8s_url" "kubelet")"
 ["kubectl"]="$(printf "$k8s_url" "kubectl")"
 ["kubeadm"]="$(printf "$k8s_url" "kubeadm")"
@@ -212,9 +229,9 @@ function main {
     kubernetes_versions=$(get_versions github_tags kubernetes/kubernetes 20)
     echo "# Checksum" | tee --append "$checksums_file"
     echo "# Kubernetes versions above Kubespray's current target version are untested and should be used with caution." | tee --append "$checksums_file"
-    get_checksums kubelet $kubernetes_versions
+    get_k8s_checksums kubelet $kubernetes_versions
     get_checksums kubectl $kubernetes_versions
-    get_checksums kubeadm $kubernetes_versions
+    get_k8s_checksums kubeadm $kubernetes_versions
     get_checksums etcd_binary $(get_versions github_tags etcd-io/etcd)
     get_checksums cni_binary $(get_versions github_tags containernetworking/plugins)
     calico_versions=$(get_versions github_tags projectcalico/calico 20)

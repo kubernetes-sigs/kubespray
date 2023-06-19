@@ -165,7 +165,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [etcd](https://github.com/etcd-io/etcd) v3.5.6
   - [docker](https://www.docker.com/) v20.10 (see note)
   - [containerd](https://containerd.io/) v1.7.2
-  - [cri-o](http://cri-o.io/) v1.24 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [cri-o](http://cri-o.io/) v1.27 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v1.2.0
   - [calico](https://github.com/projectcalico/calico) v3.25.1
@@ -202,7 +202,7 @@ Note: Upstart/SysV init based OS types are not supported.
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.24**
+- **Minimum required version of Kubernetes is v1.25**
 - **Ansible v2.11+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.

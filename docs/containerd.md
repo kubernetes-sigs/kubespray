@@ -24,7 +24,7 @@ etcd_deployment_type: host
 Example: define registry mirror for docker hub
 
 ```yaml
-containerd_registries:
+containerd_registries_mirrors:
   - prefix: docker.io
     mirrors:
       - host: https://mirror.gcr.io
@@ -35,9 +35,9 @@ containerd_registries:
         skip_verify: false
 ```
 
-`containerd_registries` is ignored for pulling images when `image_command_tool=nerdctl`
+`containerd_registries_mirrors` is ignored for pulling images when `image_command_tool=nerdctl`
 (the default for `container_manager=containerd`). Use `crictl` instead, it supports
-`containerd_registries` but lacks proper multi-arch support (see
+`containerd_registries_mirrors` but lacks proper multi-arch support (see
 [#8375](https://github.com/kubernetes-sigs/kubespray/issues/8375)):
 
 ```yaml
@@ -108,7 +108,7 @@ containerd_runc_runtime:
 Config insecure-registry access to self hosted registries.
 
 ```yaml
-containerd_registries:
+containerd_registries_mirrors:
   - prefix: test.registry.io
     mirrors:
       - host: http://test.registry.io

@@ -80,7 +80,7 @@ docker_registry_mirrors:
 containerd_grpc_max_recv_message_size: 16777216
 containerd_grpc_max_send_message_size: 16777216
 
-containerd_registries:
+containerd_registries_mirrors:
   - prefix: docker.io
     mirrors:
       - host: https://mirror.gcr.io

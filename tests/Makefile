@@ -77,6 +77,10 @@ delete-packet:
 	-e pipeline_id="$(CI_PIPELINE_ID)" \
 	-e inventory_path=$(INVENTORY)
 
+cleanup-packet:
+	ansible-playbook cloud_playbooks/cleanup-packet.yml -c local \
+	$(ANSIBLE_LOG_LEVEL)
+
 create-vagrant:
 	vagrant up
 	find / -name vagrant_ansible_inventory

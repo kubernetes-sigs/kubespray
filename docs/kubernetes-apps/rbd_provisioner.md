@@ -5,7 +5,7 @@ You can use it quickly & easily deploy ceph RBD storage that works almost
 anywhere.
 
 It works just like in-tree dynamic provisioner. For more information on how
-dynamic provisioning works, see [the docs](http://kubernetes.io/docs/user-guide/persistent-volumes/)
+dynamic provisioning works, see [the docs](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 or [this blog post](http://blog.kubernetes.io/2016/10/dynamic-provisioning-and-storage-in-kubernetes.html).
 
 ## Development

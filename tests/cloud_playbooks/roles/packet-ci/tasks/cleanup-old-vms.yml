@@ -1,0 +1,28 @@
+---
+
+- name: Fetch current namespace
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    name: "{{ test_name }}"
+    label_selectors:
+      - cijobs = true
+      - branch = {{ branch }}
+  register: current_namespace
+
+- name: Fetch a list of namespaces
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    label_selectors:
+      - cijobs = true
+      - branch = {{ branch }}
+  register: namespaces
+
+- name: Delete older namespaces
+  command: "kubectl delete namespace {{ item.metadata.name }}"
+  loop: "{{ namespaces.resources }}"
+  when:
+    - |-
+        (item.metadata.labels.pipeline_id | int)
+          < (current_namespace.resources[0].metadata.labels.pipeline_id | int)

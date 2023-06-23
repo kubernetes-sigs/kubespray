@@ -7,6 +7,12 @@ If you set http and https proxy, all nodes and loadbalancer will be excluded fro
  `http_proxy:"http://example.proxy.tld:port"`
  `https_proxy:"http://example.proxy.tld:port"`
 
+## Set custom CA
+
+CA must be already on each target nodes
+
+  `https_proxy_cert_file: /path/to/host/custom/ca.crt`
+
 ## Set default no_proxy (this will override default no_proxy generation)
 
 `no_proxy: "node1,node1_ip,node2,node2_ip...additional_host"`

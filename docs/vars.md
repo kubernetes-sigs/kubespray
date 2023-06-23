@@ -17,7 +17,7 @@ Some variables of note include:
 * *calico_cni_version* - Specify version of Calico CNI plugin to use
 * *docker_version* - Specify version of Docker to use (should be quoted
   string). Must match one of the keys defined for *docker_versioned_pkg*
-  in `roles/container-engine/docker/vars/*.yml`.
+  in `roles/container_engine/docker/vars/*.yml`.
 * *containerd_version* - Specify version of containerd to use when setting `container_manager` to `containerd`
 * *docker_containerd_version* - Specify which version of containerd to use when setting `container_manager` to `docker`
 * *etcd_version* - Specify version of ETCD to use
@@ -155,7 +155,7 @@ and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.
 
 ## Enabling Dual Stack (IPV4 + IPV6) networking
 
-If *enable_dual_stack_networks* is set to ``true``, Dual Stack networking will be enabled in the cluster. This will use the default IPv4 and IPv6 subnets specified in the defaults file in the ``kubespray-defaults`` role, unless overridden of course. The default config will give you room for up to 256 nodes with 126 pods per node, and up to 4096 services.
+If *enable_dual_stack_networks* is set to ``true``, Dual Stack networking will be enabled in the cluster. This will use the default IPv4 and IPv6 subnets specified in the defaults file in the ``kubespray_defaults`` role, unless overridden of course. The default config will give you room for up to 256 nodes with 126 pods per node, and up to 4096 services.
 
 ## DNS variables
 
@@ -184,7 +184,7 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
 * *containerd_default_runtime* - If defined, changes the default Containerd runtime used by the Kubernetes CRI plugin.
 
 * *containerd_additional_runtimes* - Sets the additional Containerd runtimes used by the Kubernetes CRI plugin.
-  [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container-engine/containerd/defaults/main.yml) can be overridden in inventory vars.
+  [Default config](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/container_engine/containerd/defaults/main.yml) can be overridden in inventory vars.
 
 * *http_proxy/https_proxy/no_proxy/no_proxy_exclude_workers/additional_no_proxy* - Proxy variables for deploying behind a
   proxy. Note that no_proxy defaults to all internal cluster IPs and hostnames
@@ -258,7 +258,7 @@ node_taints:
   * `audit_log_maxsize`: 100
   * `audit_policy_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-policy.yaml"
 
-  By default, the `audit_policy_file` contains [default rules](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubernetes/control-plane/templates/apiserver-audit-policy.yaml.j2) that can be overridden with the `audit_policy_custom_rules` variable.
+  By default, the `audit_policy_file` contains [default rules](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubernetes/control_plane/templates/apiserver-audit-policy.yaml.j2) that can be overridden with the `audit_policy_custom_rules` variable.
 * *kubernetes_audit_webhook* - When set to `true`, enables the webhook audit backend.
   The webhook parameters can be tuned via the following variables (which default values are shown below):
   * `audit_webhook_config_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-webhook-config.yaml"

@@ -7,7 +7,7 @@ TARGET_COMPONENTS="containerd calico cilium flannel kube-ovn kube-router weave c
 cd $(dirname $0)/../../
 
 echo checking kubernetes..
-version_from_default=$(grep "^kube_version:" ./roles/kubespray-defaults/defaults/main.yaml | awk '{print $2}' | sed s/\"//g)
+version_from_default=$(grep "^kube_version:" ./roles/kubespray_defaults/defaults/main.yaml | awk '{print $2}' | sed s/\"//g)
 version_from_readme=$(grep " \[kubernetes\]" ./README.md | awk '{print $3}')
 if [ "${version_from_default}" != "${version_from_readme}" ]; then
 	echo "The version of kubernetes is different between main.yml(${version_from_default}) and README.md(${version_from_readme})."

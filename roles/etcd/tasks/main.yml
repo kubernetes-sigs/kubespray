@@ -1,23 +1,27 @@
 ---
-- include_tasks: check_certs.yml
+- name: Check etcd certs
+  include_tasks: check_certs.yml
   when: cert_management == "script"
   tags:
     - etcd-secrets
     - facts
 
-- include_tasks: "gen_certs_script.yml"
+- name: Generate etcd certs
+  include_tasks: "gen_certs_script.yml"
   when:
     - cert_management | d('script') == "script"
   tags:
     - etcd-secrets
 
-- include_tasks: upd_ca_trust.yml
+- name: Trust etcd CA
+  include_tasks: upd_ca_trust.yml
   when:
     - inventory_hostname in groups['etcd'] | union(groups['kube_control_plane']) | unique | sort
   tags:
     - etcd-secrets
 
-- include_tasks: upd_ca_trust.yml
+- name: Trust etcd CA on nodes if needed
+  include_tasks: upd_ca_trust.yml
   when:
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
@@ -49,15 +53,18 @@
     - master
     - network
 
-- include_tasks: "install_{{ etcd_deployment_type }}.yml"
+- name: Install etcd
+  include_tasks: "install_{{ etcd_deployment_type }}.yml"
   when: is_etcd_master
   tags:
     - upgrade
 
-- include_tasks: configure.yml
+- name: Configure etcd
+  include_tasks: configure.yml
   when: is_etcd_master
 
-- include_tasks: refresh_config.yml
+- name: Refresh etcd config
+  include_tasks: refresh_config.yml
   when: is_etcd_master
 
 - name: Restart etcd if certs changed
@@ -73,5 +80,6 @@
 # After etcd cluster is assembled, make sure that
 # initial state of the cluster is in `existing`
 # state instead of `new`.
-- include_tasks: refresh_config.yml
+- name: Refresh etcd config again for idempotency
+  include_tasks: refresh_config.yml
   when: is_etcd_master

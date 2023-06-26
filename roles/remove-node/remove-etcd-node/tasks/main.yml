@@ -26,7 +26,9 @@
     - inventory_hostname in groups['etcd']
 
 - name: Lookup etcd member id
-  shell: "{{ bin_dir }}/etcdctl member list | grep {{ node_ip }} | cut -d, -f1"
+  shell: "set -o pipefail && {{ bin_dir }}/etcdctl member list | grep {{ node_ip }} | cut -d, -f1"
+  args:
+    executable: /bin/bash
   register: etcd_member_id
   ignore_errors: true  # noqa ignore-errors
   changed_when: false
@@ -34,7 +36,7 @@
   tags:
     - facts
   environment:
-    ETCDCTL_API: 3
+    ETCDCTL_API: "3"
     ETCDCTL_CERT: "{{ kube_cert_dir + '/etcd/server.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/admin-' + groups['etcd']|first + '.pem' }}"
     ETCDCTL_KEY: "{{ kube_cert_dir + '/etcd/server.key' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/admin-' + groups['etcd']|first + '-key.pem' }}"
     ETCDCTL_CACERT: "{{ kube_cert_dir + '/etcd/ca.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/ca.pem' }}"
@@ -45,7 +47,7 @@
 - name: Remove etcd member from cluster
   command: "{{ bin_dir }}/etcdctl member remove {{ etcd_member_id.stdout }}"
   environment:
-    ETCDCTL_API: 3
+    ETCDCTL_API: "3"
     ETCDCTL_CERT: "{{ kube_cert_dir + '/etcd/server.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/admin-' + groups['etcd']|first + '.pem' }}"
     ETCDCTL_KEY: "{{ kube_cert_dir + '/etcd/server.key' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/admin-' + groups['etcd']|first + '-key.pem' }}"
     ETCDCTL_CACERT: "{{ kube_cert_dir + '/etcd/ca.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/ca.pem' }}"

@@ -64,6 +64,8 @@ create-packet: init-packet
 	$(ANSIBLE_LOG_LEVEL) \
 	-e @"files/${CI_JOB_NAME}.yml" \
 	-e test_id=$(TEST_ID) \
+	-e branch="$(CI_COMMIT_BRANCH)" \
+	-e pipeline_id="$(CI_PIPELINE_ID)" \
 	-e inventory_path=$(INVENTORY)
 
 delete-packet:
@@ -71,7 +73,13 @@ delete-packet:
 	$(ANSIBLE_LOG_LEVEL) \
 	-e @"files/${CI_JOB_NAME}.yml" \
 	-e test_id=$(TEST_ID) \
+	-e branch="$(CI_COMMIT_BRANCH)" \
+	-e pipeline_id="$(CI_PIPELINE_ID)" \
 	-e inventory_path=$(INVENTORY)
+
+cleanup-packet:
+	ansible-playbook cloud_playbooks/cleanup-packet.yml -c local \
+	$(ANSIBLE_LOG_LEVEL)
 
 create-vagrant:
 	vagrant up

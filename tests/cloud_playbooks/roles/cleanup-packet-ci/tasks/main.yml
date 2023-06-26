@@ -1,0 +1,16 @@
+---
+
+- name: Fetch a list of namespaces
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    label_selectors:
+      - cijobs = true
+  register: namespaces
+
+- name: Delete stale namespaces for more than 2 hours
+  command: "kubectl delete namespace {{ item.metadata.name }}"
+  failed_when: false
+  loop: "{{ namespaces.resources }}"
+  when:
+    - (now() - (item.metadata.creationTimestamp | to_datetime("%Y-%m-%dT%H:%M:%SZ"))).total_seconds() >= 7200

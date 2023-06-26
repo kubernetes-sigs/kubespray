@@ -21,7 +21,7 @@
   tags:
     - facts
 
-- name: check if booted with ostree
+- name: Check if booted with ostree
   stat:
     path: /run/ostree-booted
     get_attributes: no
@@ -29,7 +29,7 @@
     get_mime: no
   register: ostree
 
-- name: set is_fedora_coreos
+- name: Set is_fedora_coreos
   lineinfile:
     path: /etc/os-release
     line: "VARIANT_ID=coreos"
@@ -38,18 +38,18 @@
   register: os_variant_coreos
   changed_when: false
 
-- name: set is_fedora_coreos
+- name: Set is_fedora_coreos
   set_fact:
     is_fedora_coreos: "{{ ostree.stat.exists and os_variant_coreos is not changed }}"
 
-- name: check resolvconf
+- name: Check resolvconf
   command: which resolvconf
   register: resolvconf
   failed_when: false
   changed_when: false
   check_mode: no
 
-- name: check existence of /etc/resolvconf/resolv.conf.d
+- name: Check existence of /etc/resolvconf/resolv.conf.d
   stat:
     path: /etc/resolvconf/resolv.conf.d
     get_attributes: no
@@ -58,7 +58,7 @@
   failed_when: false
   register: resolvconfd_path
 
-- name: check status of /etc/resolv.conf
+- name: Check status of /etc/resolv.conf
   stat:
     path: /etc/resolv.conf
     follow: no
@@ -71,12 +71,12 @@
 - name: Fetch resolconf
   block:
 
-    - name: get content of /etc/resolv.conf
+    - name: Get content of /etc/resolv.conf
       slurp:
         src: /etc/resolv.conf
       register: resolvconf_slurp
 
-    - name: get currently configured nameservers
+    - name: Get currently configured nameservers
       set_fact:
         configured_nameservers: "{{ resolvconf_slurp.content | b64decode | regex_findall('^nameserver\\s*(.*)', multiline=True) | ipaddr }}"
       when: resolvconf_slurp.content is defined
@@ -101,7 +101,7 @@
   changed_when: false
   check_mode: false
 
-- name: check systemd-resolved
+- name: Check systemd-resolved
   # noqa command-instead-of-module - Should we use service_facts for this?
   command: systemctl is-active systemd-resolved
   register: systemd_resolved_enabled
@@ -109,12 +109,12 @@
   changed_when: false
   check_mode: no
 
-- name: set default dns if remove_default_searchdomains is false
+- name: Set default dns if remove_default_searchdomains is false
   set_fact:
     default_searchdomains: ["default.svc.{{ dns_domain }}", "svc.{{ dns_domain }}"]
   when: not remove_default_searchdomains | default() | bool or (remove_default_searchdomains | default() | bool and searchdomains | default([]) | length==0)
 
-- name: set dns facts
+- name: Set dns facts
   set_fact:
     resolvconf: >-
       {%- if resolvconf.rc == 0 and resolvconfd_path.stat.isdir is defined and resolvconfd_path.stat.isdir -%}true{%- else -%}false{%- endif -%}
@@ -126,7 +126,7 @@
                         ['169.254.169.253'] if cloud_provider is defined and cloud_provider == 'aws' else
                         [] }}"
 
-- name: check if kubelet is configured
+- name: Check if kubelet is configured
   stat:
     path: "{{ kube_config_dir }}/kubelet.env"
     get_attributes: no
@@ -135,11 +135,11 @@
   register: kubelet_configured
   changed_when: false
 
-- name: check if early DNS configuration stage
+- name: Check if early DNS configuration stage
   set_fact:
     dns_early: "{{ not kubelet_configured.stat.exists }}"
 
-- name: target resolv.conf files
+- name: Target resolv.conf files
   set_fact:
     resolvconffile: /etc/resolv.conf
     base: >-
@@ -148,12 +148,12 @@
       {%- if resolvconf | bool -%}/etc/resolvconf/resolv.conf.d/head{%- endif -%}
   when: not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] and not is_fedora_coreos
 
-- name: target temporary resolvconf cloud init file (Flatcar Container Linux by Kinvolk / Fedora CoreOS)
+- name: Target temporary resolvconf cloud init file (Flatcar Container Linux by Kinvolk / Fedora CoreOS)
   set_fact:
     resolvconffile: /tmp/resolveconf_cloud_init_conf
   when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] or is_fedora_coreos
 
-- name: check if /etc/dhclient.conf exists
+- name: Check if /etc/dhclient.conf exists
   stat:
     path: /etc/dhclient.conf
     get_attributes: no
@@ -161,12 +161,12 @@
     get_mime: no
   register: dhclient_stat
 
-- name: target dhclient conf file for /etc/dhclient.conf
+- name: Target dhclient conf file for /etc/dhclient.conf
   set_fact:
     dhclientconffile: /etc/dhclient.conf
   when: dhclient_stat.stat.exists
 
-- name: check if /etc/dhcp/dhclient.conf exists
+- name: Check if /etc/dhcp/dhclient.conf exists
   stat:
     path: /etc/dhcp/dhclient.conf
     get_attributes: no
@@ -174,22 +174,22 @@
     get_mime: no
   register: dhcp_dhclient_stat
 
-- name: target dhclient conf file for /etc/dhcp/dhclient.conf
+- name: Target dhclient conf file for /etc/dhcp/dhclient.conf
   set_fact:
     dhclientconffile: /etc/dhcp/dhclient.conf
   when: dhcp_dhclient_stat.stat.exists
 
-- name: target dhclient hook file for Red Hat family
+- name: Target dhclient hook file for Red Hat family
   set_fact:
     dhclienthookfile: /etc/dhcp/dhclient.d/zdnsupdate.sh
   when: ansible_os_family == "RedHat"
 
-- name: target dhclient hook file for Debian family
+- name: Target dhclient hook file for Debian family
   set_fact:
     dhclienthookfile: /etc/dhcp/dhclient-exit-hooks.d/zdnsupdate
   when: ansible_os_family == "Debian"
 
-- name: generate search domains to resolvconf
+- name: Generate search domains to resolvconf
   set_fact:
     searchentries:
       search {{ (default_searchdomains | default([]) + searchdomains | default([])) | join(' ') }}
@@ -200,7 +200,7 @@
     supersede_domain:
       supersede domain-name "{{ dns_domain }}";
 
-- name: pick coredns cluster IP or default resolver
+- name: Pick coredns cluster IP or default resolver
   set_fact:
     coredns_server: |-
       {%- if dns_mode == 'coredns' and not dns_early | bool -%}
@@ -216,7 +216,7 @@
       {%- endif -%}
 
 # This task should only run after cluster/nodelocal DNS is up, otherwise all DNS lookups will timeout
-- name: generate nameservers for resolvconf, including cluster DNS
+- name: Generate nameservers for resolvconf, including cluster DNS
   set_fact:
     nameserverentries: |-
       {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique | join(',') }}
@@ -226,7 +226,7 @@
 
 # This task should run instead of the above task when cluster/nodelocal DNS hasn't
 # been deployed yet (like scale.yml/cluster.yml) or when it's down (reset.yml)
-- name: generate nameservers for resolvconf, not including cluster DNS
+- name: Generate nameservers for resolvconf, not including cluster DNS
   set_fact:
     nameserverentries: |-
       {{ (nameservers | d([]) + cloud_resolver | d([]) + configured_nameservers | d([])) | unique | join(',') }}
@@ -234,7 +234,7 @@
       supersede domain-name-servers {{ (nameservers | d([]) + cloud_resolver | d([])) | unique | join(', ') }};
   when: dns_early and not dns_late
 
-- name: gather os specific variables
+- name: Gather os specific variables
   include_vars: "{{ item }}"
   with_first_found:
     - files:
@@ -248,7 +248,7 @@
         - ../vars
       skip: true
 
-- name: set etcd vars if using kubeadm mode
+- name: Set etcd vars if using kubeadm mode
   set_fact:
     etcd_cert_dir: "{{ kube_cert_dir }}"
     kube_etcd_cacert_file: "etcd/ca.crt"
@@ -257,7 +257,7 @@
   when:
     - etcd_deployment_type == "kubeadm"
 
-- name: check /usr readonly
+- name: Check /usr readonly
   stat:
     path: "/usr"
     get_attributes: no
@@ -265,7 +265,7 @@
     get_mime: no
   register: usr
 
-- name: set alternate flexvolume path
+- name: Set alternate flexvolume path
   set_fact:
     kubelet_flexvolumes_plugins_dir: /var/lib/kubelet/volumeplugins
   when: not usr.stat.writeable

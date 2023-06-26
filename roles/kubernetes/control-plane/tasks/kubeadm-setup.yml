@@ -10,7 +10,7 @@
     - kube_oidc_auth
     - kube_oidc_ca_cert is defined
 
-- name: kubeadm | Check if kubeadm has already run
+- name: Kubeadm | Check if kubeadm has already run
   stat:
     path: "/var/lib/kubelet/config.yaml"
     get_attributes: no
@@ -18,12 +18,12 @@
     get_mime: no
   register: kubeadm_already_run
 
-- name: kubeadm | Backup kubeadm certs / kubeconfig
+- name: Kubeadm | Backup kubeadm certs / kubeconfig
   import_tasks: kubeadm-backup.yml
   when:
     - kubeadm_already_run.stat.exists
 
-- name: kubeadm | aggregate all SANs
+- name: Kubeadm | aggregate all SANs
   set_fact:
     apiserver_sans: "{{ (sans_base + groups['kube_control_plane'] + sans_lb + sans_lb_ip + sans_supp + sans_access_ip + sans_ip + sans_address + sans_override + sans_hostname + sans_fqdn + sans_kube_vip_address) | unique }}"
   vars:
@@ -69,7 +69,7 @@
   when: kubernetes_audit_webhook | default(false)
 
 # Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
-- name: set kubeadm_config_api_fqdn define
+- name: Set kubeadm_config_api_fqdn define
   set_fact:
     kubeadm_config_api_fqdn: "{{ apiserver_loadbalancer_domain_name | default('lb-apiserver.kubernetes.local') }}"
   when: loadbalancer_apiserver is defined
@@ -78,27 +78,27 @@
   set_fact:
     kubeadmConfig_api_version: v1beta3
 
-- name: kubeadm | Create kubeadm config
+- name: Kubeadm | Create kubeadm config
   template:
     src: "kubeadm-config.{{ kubeadmConfig_api_version }}.yaml.j2"
     dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
     mode: 0640
 
-- name: kubeadm | Create directory to store admission control configurations
+- name: Kubeadm | Create directory to store admission control configurations
   file:
     path: "{{ kube_config_dir }}/admission-controls"
     state: directory
     mode: 0640
   when: kube_apiserver_admission_control_config_file
 
-- name: kubeadm | Push admission control config file
+- name: Kubeadm | Push admission control config file
   template:
     src: "admission-controls.yaml.j2"
     dest: "{{ kube_config_dir }}/admission-controls/admission-controls.yaml"
     mode: 0640
   when: kube_apiserver_admission_control_config_file
 
-- name: kubeadm | Push admission control config files
+- name: Kubeadm | Push admission control config files
   template:
     src: "{{ item | lower }}.yaml.j2"
     dest: "{{ kube_config_dir }}/admission-controls/{{ item | lower }}.yaml"
@@ -108,15 +108,15 @@
     - item in kube_apiserver_admission_plugins_needs_configuration
   loop: "{{ kube_apiserver_enable_admission_plugins }}"
 
-- name: kubeadm | Check apiserver.crt SANs
+- name: Kubeadm | Check apiserver.crt SANs
   block:
-    - name: kubeadm | Check apiserver.crt SAN IPs
+    - name: Kubeadm | Check apiserver.crt SAN IPs
       command:
         cmd: "openssl x509 -noout -in {{ kube_cert_dir }}/apiserver.crt -checkip {{ item }}"
       loop: "{{ apiserver_ips }}"
       register: apiserver_sans_ip_check
       changed_when: apiserver_sans_ip_check.stdout is not search('does match certificate')
-    - name: kubeadm | Check apiserver.crt SAN hosts
+    - name: Kubeadm | Check apiserver.crt SAN hosts
       command:
         cmd: "openssl x509 -noout -in {{ kube_cert_dir }}/apiserver.crt -checkhost {{ item }}"
       loop: "{{ apiserver_hosts }}"
@@ -129,7 +129,7 @@
     - kubeadm_already_run.stat.exists
     - not kube_external_ca_mode
 
-- name: kubeadm | regenerate apiserver cert 1/2
+- name: Kubeadm | regenerate apiserver cert 1/2
   file:
     state: absent
     path: "{{ kube_cert_dir }}/{{ item }}"
@@ -141,7 +141,7 @@
     - apiserver_sans_ip_check.changed or apiserver_sans_host_check.changed
     - not kube_external_ca_mode
 
-- name: kubeadm | regenerate apiserver cert 2/2
+- name: Kubeadm | regenerate apiserver cert 2/2
   command: >-
     {{ bin_dir }}/kubeadm
     init phase certs apiserver
@@ -151,14 +151,14 @@
     - apiserver_sans_ip_check.changed or apiserver_sans_host_check.changed
     - not kube_external_ca_mode
 
-- name: kubeadm | Create directory to store kubeadm patches
+- name: Kubeadm | Create directory to store kubeadm patches
   file:
     path: "{{ kubeadm_patches.dest_dir }}"
     state: directory
     mode: 0640
   when: kubeadm_patches is defined and kubeadm_patches.enabled
 
-- name: kubeadm | Copy kubeadm patches from inventory files
+- name: Kubeadm | Copy kubeadm patches from inventory files
   copy:
     src: "{{ kubeadm_patches.source_dir }}/"
     dest: "{{ kubeadm_patches.dest_dir }}"
@@ -166,7 +166,7 @@
     mode: 0644
   when: kubeadm_patches is defined and kubeadm_patches.enabled
 
-- name: kubeadm | Initialize first master
+- name: Kubeadm | Initialize first master
   command: >-
     timeout -k {{ kubeadm_init_timeout }} {{ kubeadm_init_timeout }}
     {{ bin_dir }}/kubeadm init
@@ -184,7 +184,7 @@
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Master | restart kubelet
 
-- name: set kubeadm certificate key
+- name: Set kubeadm certificate key
   set_fact:
     kubeadm_certificate_key: "{{ item | regex_search('--certificate-key ([^ ]+)', '\\1') | first }}"
   with_items: "{{ hostvars[groups['kube_control_plane'][0]]['kubeadm_init'].stdout_lines | default([]) }}"
@@ -229,17 +229,17 @@
     - podsecuritypolicy_enabled
     - inventory_hostname == first_kube_control_plane
 
-- name: kubeadm | Join other masters
+- name: Kubeadm | Join other masters
   include_tasks: kubeadm-secondary.yml
 
-- name: kubeadm | upgrade kubernetes cluster
+- name: Kubeadm | upgrade kubernetes cluster
   include_tasks: kubeadm-upgrade.yml
   when:
     - upgrade_cluster_setup
     - kubeadm_already_run.stat.exists
 
 # FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
-- name: kubeadm | Remove taint for master with node role
+- name: Kubeadm | Remove taint for master with node role
   command: "{{ kubectl }} taint node {{ inventory_hostname }} {{ item }}"
   delegate_to: "{{ first_kube_control_plane }}"
   with_items:

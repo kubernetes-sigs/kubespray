@@ -1,22 +1,22 @@
 ---
-- name: "download_file | download {{ download.dest }}"
+- name: "Download_file | download {{ download.dest }}"
   block:
-  - name: prep_download | Set a few facts
+  - name: Prep_download | Set a few facts
     set_fact:
       download_force_cache: "{{ true if download_run_once else download_force_cache }}"
 
-  - name: download_file | Starting download of file
+  - name: Download_file | Starting download of file
     debug:
       msg: "{{ download.url }}"
     run_once: "{{ download_run_once }}"
 
-  - name: download_file | Set pathname of cached file
+  - name: Download_file | Set pathname of cached file
     set_fact:
       file_path_cached: "{{ download_cache_dir }}/{{ download.dest | basename }}"
     tags:
     - facts
 
-  - name: download_file | Create dest directory on node
+  - name: Download_file | Create dest directory on node
     file:
       path: "{{ download.dest | dirname }}"
       owner: "{{ download.owner | default(omit) }}"
@@ -24,7 +24,7 @@
       state: directory
       recurse: yes
 
-  - name: download_file | Create local cache directory
+  - name: Download_file | Create local cache directory
     file:
       path: "{{ file_path_cached | dirname }}"
       state: directory
@@ -39,7 +39,7 @@
     tags:
     - localhost
 
-  - name: download_file | Create cache directory on download_delegate host
+  - name: Download_file | Create cache directory on download_delegate host
     file:
       path: "{{ file_path_cached | dirname }}"
       state: directory
@@ -53,7 +53,7 @@
 
   # We check a number of mirrors that may hold the file and pick a working one at random
   # This task will avoid logging it's parameters to not leak environment passwords in the log
-  - name: download_file | Validate mirrors
+  - name: Download_file | Validate mirrors
     uri:
       url: "{{ mirror }}"
       method: HEAD
@@ -76,14 +76,14 @@
     ignore_errors: true
 
   # Ansible 2.9 requires we convert a generator to a list
-  - name: download_file | Get the list of working mirrors
+  - name: Download_file | Get the list of working mirrors
     set_fact:
       valid_mirror_urls: "{{ uri_result.results | selectattr('failed', 'eq', False) | map(attribute='mirror') | list }}"
     delegate_to: "{{ download_delegate if download_force_cache else inventory_hostname }}"
 
   # This must always be called, to check if the checksum matches. On no-match the file is re-downloaded.
   # This task will avoid logging it's parameters to not leak environment passwords in the log
-  - name: download_file | Download item
+  - name: Download_file | Download item
     get_url:
       url: "{{ valid_mirror_urls | random }}"
       dest: "{{ file_path_cached if download_force_cache else download.dest }}"
@@ -105,7 +105,7 @@
     environment: "{{ proxy_env }}"
     no_log: "{{ not (unsafe_show_logs | bool) }}"
 
-  - name: download_file | Copy file back to ansible host file cache
+  - name: Download_file | Copy file back to ansible host file cache
     ansible.posix.synchronize:
       src: "{{ file_path_cached }}"
       dest: "{{ file_path_cached }}"
@@ -116,7 +116,7 @@
     - not download_localhost
     - download_delegate == inventory_hostname
 
-  - name: download_file | Copy file from cache to nodes, if it is available
+  - name: Download_file | Copy file from cache to nodes, if it is available
     ansible.posix.synchronize:
       src: "{{ file_path_cached }}"
       dest: "{{ download.dest }}"
@@ -129,7 +129,7 @@
     when:
     - download_force_cache
 
-  - name: download_file | Set mode and owner
+  - name: Download_file | Set mode and owner
     file:
       path: "{{ download.dest }}"
       mode: "{{ download.mode | default(omit) }}"
@@ -137,7 +137,7 @@
     when:
     - download_force_cache
 
-  - name: "download_file | Extract file archives"
+  - name: "Download_file | Extract file archives"
     include_tasks: "extract_file.yml"
 
   tags:

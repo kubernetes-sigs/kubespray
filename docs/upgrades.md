@@ -403,3 +403,16 @@ Please note that **migrating container engines is not officially supported by Ku
 As of Kubespray 2.18.0, containerd is already the default container engine. If you have the chance, it is advisable and safer to reset and redeploy the entire cluster with a new container engine.
 
 * [Migrating from Docker to Containerd](upgrades/migrate_docker2containerd.md)
+
+## System upgrade
+
+If you want to upgrade the APT or YUM packages while the nodes are cordoned, you can use:
+
+```ShellSession
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e system_upgrade=true
+```
+
+Nodes will be rebooted when there are package upgrades (`system_upgrade_reboot: on-upgrade`).
+This can be changed to `always` or `never`.
+
+Note: Downloads will happen twice unless `system_upgrade_reboot` is `never`.

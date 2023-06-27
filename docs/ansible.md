@@ -16,6 +16,16 @@ cd $KUBESPRAYDIR
 pip install -U -r requirements.txt
 ```
 
+In case you have a similar message when installing the requirements:
+
+```ShellSession
+ERROR: Could not find a version that satisfies the requirement ansible==7.6.0 (from -r requirements.txt (line 1)) (from versions: [...], 6.7.0)
+ERROR: No matching distribution found for ansible==7.6.0 (from -r requirements.txt (line 1))
+```
+
+It means that the version of Python you are running is not compatible with the version of Ansible that Kubespray supports.
+If the latest version supported according to pip is 6.7.0 it means you are running Python 3.8 or lower while you need at least Python 3.9 (see the table below).
+
 ### Ansible Python Compatibility
 
 Based on the table below and the available python version for your ansible host you should choose the appropriate ansible version to use with kubespray.

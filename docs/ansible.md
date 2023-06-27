@@ -10,11 +10,10 @@ It is recommended to deploy the ansible version used by kubespray into a python 
 ```ShellSession
 VENVDIR=kubespray-venv
 KUBESPRAYDIR=kubespray
-ANSIBLE_VERSION=2.12
-virtualenv  --python=$(which python3) $VENVDIR
+python3 -m venv $VENVDIR
 source $VENVDIR/bin/activate
 cd $KUBESPRAYDIR
-pip install -U -r requirements-$ANSIBLE_VERSION.txt
+pip install -U -r requirements.txt
 ```
 
 ### Ansible Python Compatibility
@@ -23,8 +22,7 @@ Based on the table below and the available python version for your ansible host 
 
 | Ansible Version | Python Version |
 |-----------------|----------------|
-| 2.11            | 2.7,3.5-3.9    |
-| 2.12            | 3.8-3.10       |
+| 2.14            | 3.9-3.11       |
 
 ## Inventory
 

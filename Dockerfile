@@ -28,13 +28,13 @@ RUN apt update -q \
        rsync \
        openssh-client \
     && pip install --no-compile --no-cache-dir \
-       ansible==5.7.1 \
-       ansible-core==2.12.10 \
-       cryptography==3.4.8 \
+       ansible==7.6.0 \
+       ansible-core==2.14.6 \
+       cryptography==41.0.1 \
        jinja2==3.1.2 \
        netaddr==0.8.0 \
        jmespath==1.0.1 \
-       MarkupSafe==2.1.2 \
+       MarkupSafe==2.1.3 \
        ruamel.yaml==0.17.21 \
     && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \
     && curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \

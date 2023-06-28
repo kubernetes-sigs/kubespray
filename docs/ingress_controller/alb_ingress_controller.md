@@ -10,20 +10,20 @@ This project was donated to Kubernetes SIG-AWS to allow AWS, CoreOS, Ticketmaste
 
 ## Documentation
 
-Checkout our [Live Docs](https://kubernetes-sigs.github.io/aws-alb-ingress-controller/)!
+Checkout our [Live Docs](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v1.1/#aws-alb-ingress-controller)!
 
 ## Getting started
 
-To get started with the controller, see our [walkthrough](https://kubernetes-sigs.github.io/aws-alb-ingress-controller/guide/walkthrough/echoserver/).
+To get started with the controller, see our [walkthrough](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v1.1/guide/walkthrough/echoserver/).
 
 ## Setup
 
-- See [controller setup](https://kubernetes-sigs.github.io/aws-alb-ingress-controller/guide/controller/setup/) on how to install ALB ingress controller
-- See [external-dns setup](https://kubernetes-sigs.github.io/aws-alb-ingress-controller/guide/external-dns/setup/) for how to setup the external-dns to manage route 53 records.
+- See [controller setup](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v1.1/guide/controller/setup/) on how to install ALB ingress controller
+- See [external-dns setup](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v1.1/guide/external-dns/setup/) for how to setup the external-dns to manage route 53 records.
 
 ## Building
 
-For details on building this project, see our [building guide](https://kubernetes-sigs.github.io/aws-alb-ingress-controller/BUILDING/).
+For details on building this project, see our [building guide](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v1.1/BUILDING/).
 
 ## Community, discussion, contribution, and support
 

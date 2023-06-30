@@ -33,6 +33,7 @@ kube_image_repo: "{{ registry_host }}"
 gcr_image_repo: "{{ registry_host }}"
 docker_image_repo: "{{ registry_host }}"
 quay_image_repo: "{{ registry_host }}"
+github_image_repo: "{{ registry_host }}"
 
 kubeadm_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubeadm"
 kubectl_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubectl"

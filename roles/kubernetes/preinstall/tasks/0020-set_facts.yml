@@ -84,12 +84,12 @@
 
 - name: Stop if /etc/resolv.conf not configured nameservers
   assert:
-    that: configured_nameservers|length>0
+    that: configured_nameservers | length>0
     fail_msg: "nameserver should not empty in /etc/resolv.conf"
   when:
     - not ignore_assert_errors
     - configured_nameservers is defined
-    - not (upstream_dns_servers is defined and upstream_dns_servers|length > 0)
+    - not (upstream_dns_servers is defined and upstream_dns_servers | length > 0)
     - not (disable_host_nameservers | default(false))
 
 - name: NetworkManager | Check if host has NetworkManager
@@ -111,14 +111,14 @@
 - name: set default dns if remove_default_searchdomains is false
   set_fact:
     default_searchdomains: ["default.svc.{{ dns_domain }}", "svc.{{ dns_domain }}"]
-  when: not remove_default_searchdomains|default()|bool or (remove_default_searchdomains|default()|bool and searchdomains|default([])|length==0)
+  when: not remove_default_searchdomains | default() | bool or (remove_default_searchdomains | default() | bool and searchdomains | default([]) | length==0)
 
 - name: set dns facts
   set_fact:
     resolvconf: >-
       {%- if resolvconf.rc == 0 and resolvconfd_path.stat.isdir is defined and resolvconfd_path.stat.isdir -%}true{%- else -%}false{%- endif -%}
     bogus_domains: |-
-      {% for d in default_searchdomains|default([]) + searchdomains|default([]) -%}
+      {% for d in default_searchdomains | default([]) + searchdomains | default([]) -%}
       {{ dns_domain }}.{{ d }}./{{ d }}.{{ d }}./com.{{ d }}./
       {%- endfor %}
     cloud_resolver: "{{ ['169.254.169.254'] if cloud_provider is defined and cloud_provider == 'gce' else
@@ -142,9 +142,9 @@
   set_fact:
     resolvconffile: /etc/resolv.conf
     base: >-
-      {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/base{%- endif -%}
+      {%- if resolvconf | bool -%}/etc/resolvconf/resolv.conf.d/base{%- endif -%}
     head: >-
-      {%- if resolvconf|bool -%}/etc/resolvconf/resolv.conf.d/head{%- endif -%}
+      {%- if resolvconf | bool -%}/etc/resolvconf/resolv.conf.d/head{%- endif -%}
   when: not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] and not is_fedora_coreos
 
 - name: target temporary resolvconf cloud init file (Flatcar Container Linux by Kinvolk / Fedora CoreOS)
@@ -191,36 +191,36 @@
 - name: generate search domains to resolvconf
   set_fact:
     searchentries:
-      search {{ (default_searchdomains|default([]) + searchdomains|default([])) | join(' ') }}
+      search {{ (default_searchdomains | default([]) + searchdomains | default([])) | join(' ') }}
     domainentry:
       domain {{ dns_domain }}
     supersede_search:
-      supersede domain-search "{{ (default_searchdomains|default([]) + searchdomains|default([])) | join('", "') }}";
+      supersede domain-search "{{ (default_searchdomains | default([]) + searchdomains | default([])) | join('", "') }}";
     supersede_domain:
       supersede domain-name "{{ dns_domain }}";
 
 - name: pick coredns cluster IP or default resolver
   set_fact:
     coredns_server: |-
-      {%- if dns_mode == 'coredns' and not dns_early|bool -%}
+      {%- if dns_mode == 'coredns' and not dns_early | bool -%}
         {{ [ skydns_server ] }}
-      {%- elif dns_mode == 'coredns_dual' and not dns_early|bool -%}
+      {%- elif dns_mode == 'coredns_dual' and not dns_early | bool -%}
         {{ [ skydns_server ] + [ skydns_server_secondary ] }}
-      {%- elif dns_mode == 'manual' and not dns_early|bool -%}
+      {%- elif dns_mode == 'manual' and not dns_early | bool -%}
         {{ ( manual_dns_server.split(',') | list) }}
-      {%- elif dns_mode == 'none' and not dns_early|bool -%}
+      {%- elif dns_mode == 'none' and not dns_early | bool -%}
         []
-      {%- elif dns_early|bool -%}
-        {{ upstream_dns_servers|default([]) }}
+      {%- elif dns_early | bool -%}
+        {{ upstream_dns_servers | default([]) }}
       {%- endif -%}
 
 # This task should only run after cluster/nodelocal DNS is up, otherwise all DNS lookups will timeout
 - name: generate nameservers for resolvconf, including cluster DNS
   set_fact:
     nameserverentries: |-
-      {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server|d([]) if not enable_nodelocaldns else []) + nameservers|d([]) + cloud_resolver|d([]) + (configured_nameservers|d([]) if not disable_host_nameservers|d()|bool else [])) | unique | join(',') }}
+      {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique | join(',') }}
     supersede_nameserver:
-      supersede domain-name-servers {{ ( ( [nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server|d([]) if not enable_nodelocaldns else []) + nameservers|d([]) + cloud_resolver|d([])) | unique | join(', ') }};
+      supersede domain-name-servers {{ ( ( [nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([])) | unique | join(', ') }};
   when: not dns_early or dns_late
 
 # This task should run instead of the above task when cluster/nodelocal DNS hasn't
@@ -228,20 +228,20 @@
 - name: generate nameservers for resolvconf, not including cluster DNS
   set_fact:
     nameserverentries: |-
-      {{ ( nameservers|d([]) + cloud_resolver|d([]) + configured_nameservers|d([])) | unique | join(',') }}
+      {{ ( nameservers | d([]) + cloud_resolver | d([]) + configured_nameservers | d([])) | unique | join(',') }}
     supersede_nameserver:
-      supersede domain-name-servers {{ ( nameservers|d([]) + cloud_resolver|d([])) | unique | join(', ') }};
+      supersede domain-name-servers {{ ( nameservers | d([]) + cloud_resolver | d([])) | unique | join(', ') }};
   when: dns_early and not dns_late
 
 - name: gather os specific variables
   include_vars: "{{ item }}"
   with_first_found:
     - files:
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
-        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
-        - "{{ ansible_distribution|lower }}.yml"
-        - "{{ ansible_os_family|lower }}.yml"
+        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower | replace('/', '_') }}.yml"
+        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_release }}.yml"
+        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version | lower | replace('/', '_') }}.yml"
+        - "{{ ansible_distribution | lower }}.yml"
+        - "{{ ansible_os_family | lower }}.yml"
         - defaults.yml
       paths:
         - ../vars

@@ -165,13 +165,13 @@ function get_k8s_checksums {
     echo "${binary}_checksums:" | tee --append "$checksums_file"
     echo "  arm:" | tee --append "$checksums_file"
     for version in "${@:2}"; do
-        _vercmp "${version#v}" '<' "1.27" && checksum=$(_get_checksum "$binary" "$version" "$arch") || checksum=0
-        echo "    ${version#v}: $checksum" | tee --append "$checksums_file"
+        _vercmp "${version#v}" '<' "1.27" && checksum=$(_get_checksum "$binary" "$version" "arm") || checksum=0
+        echo "    ${version}: $checksum" | tee --append "$checksums_file"
     done
     for arch in arm64 amd64 ppc64le; do
         echo "  $arch:" | tee --append "$checksums_file"
         for version in "${@:2}"; do
-            echo "    ${version#v}: $(_get_checksum "$binary" "$version" "$arch")" | tee --append "$checksums_file"
+            echo "    ${version}: $(_get_checksum "$binary" "$version" "$arch")" | tee --append "$checksums_file"
         done
     done
 }
@@ -224,9 +224,9 @@ function _get_checksum {
 function main {
     mkdir -p "$(dirname "$checksums_file")"
     echo "---" | tee "$checksums_file"
-    get_checksums crictl $(get_versions github_tags kubernetes-sigs/cri-tools)
+    get_checksums crictl $(get_versions github_tags kubernetes-sigs/cri-tools 4)
     get_checksums crio_archive $(get_versions github_tags cri-o/cri-o)
-    kubernetes_versions=$(get_versions github_tags kubernetes/kubernetes 20)
+    kubernetes_versions=$(get_versions github_tags kubernetes/kubernetes 25)
     echo "# Checksum" | tee --append "$checksums_file"
     echo "# Kubernetes versions above Kubespray's current target version are untested and should be used with caution." | tee --append "$checksums_file"
     get_k8s_checksums kubelet $kubernetes_versions

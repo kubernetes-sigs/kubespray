@@ -18,7 +18,7 @@
 # Node NotReady: type = ready, status = Unknown
 - name: See if node is in ready state
   command: >
-    {{ kubectl }} get node {{ kube_override_hostname|default(inventory_hostname) }}
+    {{ kubectl }} get node {{ kube_override_hostname | default(inventory_hostname) }}
     -o jsonpath='{ range .status.conditions[?(@.type == "Ready")].status }{ @ }{ end }'
   register: kubectl_node_ready
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
@@ -29,7 +29,7 @@
 # else unschedulable key doesn't exist
 - name: See if node is schedulable
   command: >
-    {{ kubectl }} get node {{ kube_override_hostname|default(inventory_hostname) }}
+    {{ kubectl }} get node {{ kube_override_hostname | default(inventory_hostname) }}
     -o jsonpath='{ .spec.unschedulable }'
   register: kubectl_node_schedulable
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
@@ -38,6 +38,7 @@
 
 - name: Set if node needs cordoning
   set_fact:
+    # noqa: jinja[spacing]
     needs_cordoning: >-
       {% if (kubectl_node_ready.stdout == "True" and not kubectl_node_schedulable.stdout) or upgrade_node_always_cordon -%}
       true
@@ -48,7 +49,7 @@
 - name: Node draining
   block:
     - name: Cordon node
-      command: "{{ kubectl }} cordon {{ kube_override_hostname|default(inventory_hostname) }}"
+      command: "{{ kubectl }} cordon {{ kube_override_hostname | default(inventory_hostname) }}"
       delegate_to: "{{ groups['kube_control_plane'][0] }}"
       changed_when: true
 
@@ -76,7 +77,7 @@
         --ignore-daemonsets
         --grace-period {{ hostvars['localhost']['drain_grace_period_after_failure'] | default(drain_grace_period) }}
         --timeout {{ hostvars['localhost']['drain_timeout_after_failure'] | default(drain_timeout) }}
-        --delete-emptydir-data {{ kube_override_hostname|default(inventory_hostname) }}
+        --delete-emptydir-data {{ kube_override_hostname | default(inventory_hostname) }}
         {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
       when: drain_nodes
       register: result
@@ -104,7 +105,7 @@
             --ignore-daemonsets
             --grace-period {{ drain_fallback_grace_period }}
             --timeout {{ drain_fallback_timeout }}
-            --delete-emptydir-data {{ kube_override_hostname|default(inventory_hostname) }}
+            --delete-emptydir-data {{ kube_override_hostname | default(inventory_hostname) }}
             {% if drain_pod_selector %}--pod-selector '{{ drain_pod_selector }}'{% endif %}
             --disable-eviction
           register: drain_fallback_result
@@ -119,11 +120,11 @@
 
   rescue:
     - name: Set node back to schedulable
-      command: "{{ kubectl }} uncordon {{ kube_override_hostname|default(inventory_hostname) }}"
+      command: "{{ kubectl }} uncordon {{ kube_override_hostname | default(inventory_hostname) }}"
       when: upgrade_node_uncordon_after_drain_failure
     - name: Fail after rescue
       fail:
-        msg: "Failed to drain node {{ kube_override_hostname|default(inventory_hostname) }}"
+        msg: "Failed to drain node {{ kube_override_hostname | default(inventory_hostname) }}"
       when: upgrade_node_fail_if_drain_fails
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   when:

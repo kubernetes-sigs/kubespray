@@ -12,29 +12,29 @@
     dest: "{{ images_dir }}/{{ item.value.filename }}"
     checksum: "{{ item.value.checksum }}"
     mode: 0644
-  loop: "{{ images|dict2items }}"
+  loop: "{{ images | dict2items }}"
 
 - name: Unxz compressed images
   command: unxz --force {{ images_dir }}/{{ item.value.filename }}
-  loop: "{{ images|dict2items }}"
+  loop: "{{ images | dict2items }}"
   when:
     - item.value.filename.endswith('.xz')
 
 - name: Convert images which is not in qcow2 format
   command: qemu-img convert -O qcow2 {{ images_dir }}/{{ item.value.filename.rstrip('.xz') }} {{ images_dir }}/{{ item.key }}.qcow2
-  loop: "{{ images|dict2items }}"
+  loop: "{{ images | dict2items }}"
   when:
-    - not (item.value.converted|bool)
+    - not (item.value.converted | bool)
 
 - name: Make sure all images are ending with qcow2
   command: cp {{ images_dir }}/{{ item.value.filename.rstrip('.xz') }} {{ images_dir }}/{{ item.key }}.qcow2
-  loop: "{{ images|dict2items }}"
+  loop: "{{ images | dict2items }}"
   when:
-    - item.value.converted|bool
+    - item.value.converted | bool
 
 - name: Resize images
   command: qemu-img resize {{ images_dir }}/{{ item.key }}.qcow2 +8G
-  loop: "{{ images|dict2items }}"
+  loop: "{{ images | dict2items }}"
 
 # STEP 2: Include the images inside a container
 - name: Template default Dockerfile
@@ -45,14 +45,14 @@
 
 - name: Create docker images for each OS
   command: docker build -t {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }} --build-arg cloud_image="{{ item.key }}.qcow2" {{ images_dir }}
-  loop: "{{ images|dict2items }}"
+  loop: "{{ images | dict2items }}"
 
 - name: docker login
   command: docker login -u="{{ docker_user }}" -p="{{ docker_password }}" "{{ docker_host }}"
 
 - name: docker push image
   command: docker push {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }}
-  loop: "{{ images|dict2items }}"
+  loop: "{{ images | dict2items }}"
 
 - name: docker logout
   command: docker logout -u="{{ docker_user }}" "{{ docker_host }}"

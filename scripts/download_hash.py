@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # After a new version of Kubernetes has been released,
-# run this script to update roles/download/defaults/main.yml
+# run this script to update roles/download/defaults/main/main.yml
 # with new hashes.
 
 import hashlib

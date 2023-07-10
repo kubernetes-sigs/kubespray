@@ -2,9 +2,17 @@
 
 ![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-sigs/kubespray/master/docs/img/kubernetes-logo.png)
 
-If you have questions, check the documentation at [kubespray.io](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
-You can get your invite [here](http://slack.k8s.io/)
+Welcome to Kubespray!
 
+Deploying a production-ready Kubernetes cluster has never been easier.
+Whether you're new to Kubernetes or an experienced user, Kubespray provides a streamlined solution for setting up and managing your cluster.
+
+If you have any questions, our comprehensive documentation at [kubespray.io](https://kubespray.io) is your go-to resource. You'll find step-by-step instructions, configuration options, and troubleshooting tips to guide you through the deployment process.
+
+Looking for support or want to connect with other users?  
+Join our vibrant community on the [Kubernetes Slack](https://kubernetes.slack.com) and engage in discussions in the dedicated **#kubespray** channel. You can get your invite to the Slack workspace [here](http://slack.k8s.io/).
+
+## Features
 - Can be deployed on **[AWS](docs/aws.md), GCE, [Azure](docs/azure.md), [OpenStack](docs/openstack.md), [vSphere](docs/vsphere.md), [Equinix Metal](docs/equinix-metal.md) (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
 - **Highly available** cluster
 - **Composable** (Choice of the network plugin for instance)

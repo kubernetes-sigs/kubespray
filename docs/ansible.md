@@ -138,6 +138,7 @@ The following tags are defined in playbooks:
 | apps                           | K8s apps definitions                                  |
 | asserts                        | Check tasks for download role                         |
 | aws-ebs-csi-driver             | Configuring csi driver: aws-ebs                       |
+| argocd                         | Install and configuration argocd                      |
 | azure-csi-driver               | Configuring csi driver: azure                         |
 | bastion                        | Setup ssh config for bastion                          |
 | bootstrap-os                   | Anything related to host OS configuration             |

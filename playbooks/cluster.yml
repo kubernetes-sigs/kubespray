@@ -5,7 +5,8 @@
 - name: Ensure compatibility with old groups
   import_playbook: legacy_groups.yml
 
-- hosts: bastion[0]
+- name: Install bastion ssh config
+  hosts: bastion[0]
   gather_facts: False
   environment: "{{ proxy_disable_env }}"
   roles:
@@ -16,7 +17,8 @@
   tags: always
   import_playbook: facts.yml
 
-- hosts: k8s_cluster:etcd
+- name: Prepare for etcd install
+  hosts: k8s_cluster:etcd
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -26,7 +28,8 @@
     - { role: "container-engine", tags: "container-engine", when: deploy_container_engine }
     - { role: download, tags: download, when: "not skip_downloads" }
 
-- hosts: etcd:kube_control_plane
+- name: Install etcd
+  hosts: etcd:kube_control_plane
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -39,7 +42,8 @@
         etcd_events_cluster_setup: "{{ etcd_events_cluster_enabled }}"
       when: etcd_deployment_type != "kubeadm"
 
-- hosts: k8s_cluster
+- name: Install etcd certs on nodes if required
+  hosts: k8s_cluster
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -55,7 +59,8 @@
         - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
         - kube_network_plugin != "calico" or calico_datastore == "etcd"
 
-- hosts: k8s_cluster
+- name: Install Kubernetes nodes
+  hosts: k8s_cluster
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -63,7 +68,8 @@
     - { role: kubespray-defaults }
     - { role: kubernetes/node, tags: node }
 
-- hosts: kube_control_plane
+- name: Install the control plane
+  hosts: kube_control_plane
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -73,7 +79,8 @@
     - { role: kubernetes/client, tags: client }
     - { role: kubernetes-apps/cluster_roles, tags: cluster-roles }
 
-- hosts: k8s_cluster
+- name: Invoke kubeadm and install a CNI
+  hosts: k8s_cluster
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -84,7 +91,8 @@
     - { role: network_plugin, tags: network }
     - { role: kubernetes-apps/kubelet-csr-approver, tags: kubelet-csr-approver }
 
-- hosts: calico_rr
+- name: Install Calico Route Reflector
+  hosts: calico_rr
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -92,7 +100,8 @@
     - { role: kubespray-defaults }
     - { role: network_plugin/calico/rr, tags: ['network', 'calico_rr'] }
 
-- hosts: kube_control_plane[0]
+- name: Patch Kubernetes for Windows
+  hosts: kube_control_plane[0]
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -100,7 +109,8 @@
     - { role: kubespray-defaults }
     - { role: win_nodes/kubernetes_patch, tags: ["master", "win_nodes"] }
 
-- hosts: kube_control_plane
+- name: Install Kubernetes apps
+  hosts: kube_control_plane
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"

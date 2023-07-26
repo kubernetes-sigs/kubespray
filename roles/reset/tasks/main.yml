@@ -1,5 +1,5 @@
 ---
-- name: reset | stop services
+- name: Reset | stop services
   service:
     name: "{{ item }}"
     state: stopped
@@ -11,7 +11,7 @@
   tags:
     - services
 
-- name: reset | remove services
+- name: Reset | remove services
   file:
     path: "/etc/systemd/system/{{ item }}"
     state: absent
@@ -30,7 +30,7 @@
     - containerd
     - crio
 
-- name: reset | Remove Docker
+- name: Reset | Remove Docker
   include_role:
     name: container-engine/docker
     tasks_from: reset
@@ -38,12 +38,12 @@
   tags:
     - docker
 
-- name: reset | systemctl daemon-reload  # noqa no-handler
+- name: Reset | systemctl daemon-reload  # noqa no-handler
   systemd:
     daemon_reload: true
   when: services_removed.changed
 
-- name: reset | check if crictl is present
+- name: Reset | check if crictl is present
   stat:
     path: "{{ bin_dir }}/crictl"
     get_attributes: no
@@ -51,7 +51,7 @@
     get_mime: no
   register: crictl
 
-- name: reset | stop all cri containers
+- name: Reset | stop all cri containers
   shell: "set -o pipefail && {{ bin_dir }}/crictl ps -q | xargs -r {{ bin_dir }}/crictl -t 60s stop"
   args:
     executable: /bin/bash
@@ -68,7 +68,7 @@
     - ansible_facts.services['containerd.service'] is defined or ansible_facts.services['cri-o.service'] is defined
   ignore_errors: true  # noqa ignore-errors
 
-- name: reset | force remove all cri containers
+- name: Reset | force remove all cri containers
   command: "{{ bin_dir }}/crictl rm -a -f"
   register: remove_all_cri_containers
   retries: 5
@@ -84,7 +84,7 @@
     - ansible_facts.services['containerd.service'] is defined or ansible_facts.services['cri-o.service'] is defined
   ignore_errors: true  # noqa ignore-errors
 
-- name: reset | stop and disable crio service
+- name: Reset | stop and disable crio service
   service:
     name: crio
     state: stopped
@@ -93,13 +93,13 @@
   tags: [ crio ]
   when: container_manager == "crio"
 
-- name: reset | forcefully wipe CRI-O's container and image storage
+- name: Reset | forcefully wipe CRI-O's container and image storage
   command: "crio wipe -f"
   failed_when: false
   tags: [ crio ]
   when: container_manager == "crio"
 
-- name: reset | stop all cri pods
+- name: Reset | stop all cri pods
   shell: "set -o pipefail && {{ bin_dir }}/crictl pods -q | xargs -r {{ bin_dir }}/crictl -t 60s stopp"
   args:
     executable: /bin/bash
@@ -114,8 +114,9 @@
     - ansible_facts.services['containerd.service'] is defined or ansible_facts.services['cri-o.service'] is defined
   ignore_errors: true  # noqa ignore-errors
 
-- block:
-    - name: reset | force remove all cri pods
+- name: Reset | force remove all cri pods
+  block:
+    - name: Reset | force remove all cri pods
       command: "{{ bin_dir }}/crictl rmp -a -f"
       register: remove_all_cri_containers
       retries: 5
@@ -128,12 +129,12 @@
         - ansible_facts.services['containerd.service'] is defined or ansible_facts.services['cri-o.service'] is defined
 
   rescue:
-    - name: reset | force remove all cri pods (rescue)
+    - name: Reset | force remove all cri pods (rescue)
       shell: "ip netns list | cut -d' ' -f 1 | xargs -n1 ip netns delete && {{ bin_dir }}/crictl rmp -a -f"
       ignore_errors: true  # noqa ignore-errors
       changed_when: true
 
-- name: reset | stop etcd services
+- name: Reset | stop etcd services
   service:
     name: "{{ item }}"
     state: stopped
@@ -144,7 +145,7 @@
   tags:
     - services
 
-- name: reset | remove etcd services
+- name: Reset | remove etcd services
   file:
     path: "/etc/systemd/system/{{ item }}.service"
     state: absent
@@ -155,10 +156,10 @@
   tags:
     - services
 
-- name: reset | remove containerd
+- name: Reset | remove containerd
   when: container_manager == 'containerd'
   block:
-    - name: reset | stop containerd service
+    - name: Reset | stop containerd service
       service:
         name: containerd
         state: stopped
@@ -166,7 +167,7 @@
       tags:
         - services
 
-    - name: reset | remove containerd service
+    - name: Reset | remove containerd service
       file:
         path: /etc/systemd/system/containerd.service
         state: absent
@@ -174,7 +175,7 @@
       tags:
         - services
 
-- name: reset | gather mounted kubelet dirs
+- name: Reset | gather mounted kubelet dirs
   shell: set -o pipefail && mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
   args:
     executable: /bin/bash
@@ -185,7 +186,7 @@
   tags:
     - mounts
 
-- name: reset | unmount kubelet dirs
+- name: Reset | unmount kubelet dirs
   command: umount -f {{ item }}
   with_items: "{{ mounted_dirs.stdout_lines }}"
   register: umount_dir
@@ -196,7 +197,7 @@
   tags:
     - mounts
 
-- name: flush iptables
+- name: Flush iptables
   iptables:
     table: "{{ item }}"
     flush: yes
@@ -209,7 +210,7 @@
   tags:
     - iptables
 
-- name: flush ip6tables
+- name: Flush ip6tables
   iptables:
     table: "{{ item }}"
     flush: yes
@@ -229,7 +230,7 @@
   when:
     - kube_proxy_mode == 'ipvs' and inventory_hostname in groups['k8s_cluster']
 
-- name: reset | check kube-ipvs0 network device
+- name: Reset | check kube-ipvs0 network device
   stat:
     path: /sys/class/net/kube-ipvs0
     get_attributes: no
@@ -237,13 +238,13 @@
     get_mime: no
   register: kube_ipvs0
 
-- name: reset | Remove kube-ipvs0
+- name: Reset | Remove kube-ipvs0
   command: "ip link del kube-ipvs0"
   when:
     - kube_proxy_mode == 'ipvs'
     - kube_ipvs0.stat.exists
 
-- name: reset | check nodelocaldns network device
+- name: Reset | check nodelocaldns network device
   stat:
     path: /sys/class/net/nodelocaldns
     get_attributes: no
@@ -251,13 +252,13 @@
     get_mime: no
   register: nodelocaldns_device
 
-- name: reset | Remove nodelocaldns
+- name: Reset | Remove nodelocaldns
   command: "ip link del nodelocaldns"
   when:
     - enable_nodelocaldns | default(false) | bool
     - nodelocaldns_device.stat.exists
 
-- name: reset | Check whether /var/lib/kubelet directory exists
+- name: Reset | Check whether /var/lib/kubelet directory exists
   stat:
     path: /var/lib/kubelet
     get_attributes: no
@@ -265,7 +266,7 @@
     get_mime: no
   register: var_lib_kubelet_directory
 
-- name: reset | Find files/dirs with immutable flag in /var/lib/kubelet
+- name: Reset | Find files/dirs with immutable flag in /var/lib/kubelet
   command: lsattr -laR /var/lib/kubelet
   become: true
   register: var_lib_kubelet_files_dirs_w_attrs
@@ -273,7 +274,7 @@
   no_log: true
   when: var_lib_kubelet_directory.stat.exists
 
-- name: reset | Remove immutable flag from files/dirs in /var/lib/kubelet
+- name: Reset | Remove immutable flag from files/dirs in /var/lib/kubelet
   file:
     path: "{{ filedir_path }}"
     state: touch
@@ -287,7 +288,7 @@
     filedir_path: "{{ file_dir_line.split(' ')[0] }}"
   when: var_lib_kubelet_directory.stat.exists
 
-- name: reset | delete some files and directories
+- name: Reset | delete some files and directories
   file:
     path: "{{ item }}"
     state: absent
@@ -375,7 +376,7 @@
   tags:
     - files
 
-- name: reset | remove containerd binary files
+- name: Reset | remove containerd binary files
   file:
     path: "{{ containerd_bin_dir }}/{{ item }}"
     state: absent
@@ -395,7 +396,7 @@
   tags:
     - files
 
-- name: reset | remove dns settings from dhclient.conf
+- name: Reset | remove dns settings from dhclient.conf
   blockinfile:
     path: "{{ item }}"
     state: absent
@@ -408,7 +409,7 @@
     - files
     - dns
 
-- name: reset | remove host entries from /etc/hosts
+- name: Reset | remove host entries from /etc/hosts
   blockinfile:
     path: "/etc/hosts"
     state: absent
@@ -417,7 +418,7 @@
     - files
     - dns
 
-- name: reset | include file with reset tasks specific to the network_plugin if exists
+- name: Reset | include file with reset tasks specific to the network_plugin if exists
   include_role:
     name: "network_plugin/{{ kube_network_plugin }}"
     tasks_from: reset
@@ -426,7 +427,7 @@
   tags:
     - network
 
-- name: reset | Restart network
+- name: Reset | Restart network
   service:
     # noqa: jinja[spacing]
     name: >-

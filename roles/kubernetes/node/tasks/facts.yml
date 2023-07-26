@@ -1,6 +1,7 @@
 ---
-- block:
-  - name: look up docker cgroup driver
+- name: Gather cgroups facts for docker
+  block:
+  - name: Look up docker cgroup driver
     shell: "set -o pipefail && docker info | grep 'Cgroup Driver' | awk -F': ' '{ print $2; }'"
     args:
       executable: /bin/bash
@@ -8,47 +9,48 @@
     changed_when: false
     check_mode: no
 
-  - name: set kubelet_cgroup_driver_detected fact for docker
+  - name: Set kubelet_cgroup_driver_detected fact for docker
     set_fact:
       kubelet_cgroup_driver_detected: "{{ docker_cgroup_driver_result.stdout }}"
   when: container_manager == 'docker'
 
-- block:
-  - name: look up crio cgroup driver
+- name: Gather cgroups facts for crio
+  block:
+  - name: Look up crio cgroup driver
     shell: "set -o pipefail && {{ bin_dir }}/crio-status info | grep 'cgroup driver' | awk -F': ' '{ print $2; }'"
     args:
       executable: /bin/bash
     register: crio_cgroup_driver_result
     changed_when: false
 
-  - name: set kubelet_cgroup_driver_detected fact for crio
+  - name: Set kubelet_cgroup_driver_detected fact for crio
     set_fact:
       kubelet_cgroup_driver_detected: "{{ crio_cgroup_driver_result.stdout }}"
   when: container_manager == 'crio'
 
-- name: set kubelet_cgroup_driver_detected fact for containerd
+- name: Set kubelet_cgroup_driver_detected fact for containerd
   set_fact:
     kubelet_cgroup_driver_detected: >-
       {%- if containerd_use_systemd_cgroup -%}systemd{%- else -%}cgroupfs{%- endif -%}
   when: container_manager == 'containerd'
 
-- name: set kubelet_cgroup_driver
+- name: Set kubelet_cgroup_driver
   set_fact:
     kubelet_cgroup_driver: "{{ kubelet_cgroup_driver_detected }}"
   when: kubelet_cgroup_driver is undefined
 
-- name: set kubelet_cgroups options when cgroupfs is used
+- name: Set kubelet_cgroups options when cgroupfs is used
   set_fact:
     kubelet_runtime_cgroups: "{{ kubelet_runtime_cgroups_cgroupfs }}"
     kubelet_kubelet_cgroups: "{{ kubelet_kubelet_cgroups_cgroupfs }}"
   when: kubelet_cgroup_driver == 'cgroupfs'
 
-- name: set kubelet_config_extra_args options when cgroupfs is used
+- name: Set kubelet_config_extra_args options when cgroupfs is used
   set_fact:
     kubelet_config_extra_args: "{{ kubelet_config_extra_args | combine(kubelet_config_extra_args_cgroupfs) }}"
   when: kubelet_cgroup_driver == 'cgroupfs'
 
-- name: os specific vars
+- name: Os specific vars
   include_vars: "{{ item }}"
   with_first_found:
   - files:

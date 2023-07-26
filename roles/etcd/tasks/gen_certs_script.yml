@@ -56,7 +56,7 @@
   run_once: yes
   delegate_to: "{{ groups['etcd'][0] }}"
   when: gen_certs | default(false)
-  notify: set etcd_secret_changed
+  notify: Set etcd_secret_changed
 
 - name: Gen_certs | run cert generation script for all clients
   command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
@@ -73,7 +73,7 @@
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
     - gen_certs | default(false)
-  notify: set etcd_secret_changed
+  notify: Set etcd_secret_changed
 
 - name: Gen_certs | Gather etcd member/admin and kube_control_plane client certs from first etcd node
   slurp:
@@ -97,7 +97,7 @@
     - inventory_hostname in groups['etcd']
     - sync_certs | default(false)
     - inventory_hostname != groups['etcd'][0]
-  notify: set etcd_secret_changed
+  notify: Set etcd_secret_changed
 
 - name: Gen_certs | Write etcd member/admin and kube_control_plane client certs to other etcd nodes
   copy:
@@ -129,7 +129,7 @@
     - inventory_hostname != groups['etcd'][0]
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
-  notify: set etcd_secret_changed
+  notify: Set etcd_secret_changed
 
 - name: Gen_certs | Write node certs to other etcd nodes
   copy:
@@ -147,12 +147,14 @@
   loop_control:
     label: "{{ item.item }}"
 
-- include_tasks: gen_nodes_certs_script.yml
+- name: Gen_certs | Generate etcd certs
+  include_tasks: gen_nodes_certs_script.yml
   when:
     - inventory_hostname in groups['kube_control_plane'] and
         sync_certs | default(false) and inventory_hostname not in groups['etcd']
 
-- include_tasks: gen_nodes_certs_script.yml
+- name: Gen_certs | Generate etcd certs on nodes if needed
+  include_tasks: gen_nodes_certs_script.yml
   when:
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
     - kube_network_plugin != "calico" or calico_datastore == "etcd"

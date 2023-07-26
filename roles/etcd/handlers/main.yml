@@ -1,39 +1,40 @@
 ---
-- name: restart etcd
+- name: Restart etcd
   command: /bin/true
   notify:
     - Backup etcd data
-    - etcd | reload systemd
-    - reload etcd
-    - wait for etcd up
+    - Etcd | reload systemd
+    - Reload etcd
+    - Wait for etcd up
     - Cleanup etcd backups
 
-- name: restart etcd-events
+- name: Restart etcd-events
   command: /bin/true
   notify:
-    - etcd | reload systemd
-    - reload etcd-events
-    - wait for etcd-events up
+    - Etcd | reload systemd
+    - Reload etcd-events
+    - Wait for etcd-events up
 
-- import_tasks: backup.yml
+- name: Backup etcd
+  import_tasks: backup.yml
 
-- name: etcd | reload systemd
+- name: Etcd | reload systemd
   systemd:
     daemon_reload: true
 
-- name: reload etcd
+- name: Reload etcd
   service:
     name: etcd
     state: restarted
   when: is_etcd_master
 
-- name: reload etcd-events
+- name: Reload etcd-events
   service:
     name: etcd-events
     state: restarted
   when: is_etcd_master
 
-- name: wait for etcd up
+- name: Wait for etcd up
   uri:
     url: "https://{% if is_etcd_master %}{{ etcd_address }}{% else %}127.0.0.1{% endif %}:2379/health"
     validate_certs: no
@@ -44,9 +45,10 @@
   retries: 60
   delay: 1
 
-- import_tasks: backup_cleanup.yml
+- name: Cleanup etcd backups
+  import_tasks: backup_cleanup.yml
 
-- name: wait for etcd-events up
+- name: Wait for etcd-events up
   uri:
     url: "https://{% if is_etcd_master %}{{ etcd_address }}{% else %}127.0.0.1{% endif %}:2383/health"
     validate_certs: no
@@ -57,6 +59,6 @@
   retries: 60
   delay: 1
 
-- name: set etcd_secret_changed
+- name: Set etcd_secret_changed
   set_fact:
     etcd_secret_changed: true

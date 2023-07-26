@@ -5,14 +5,16 @@
 - name: Ensure compatibility with old groups
   import_playbook: legacy_groups.yml
 
-- hosts: bastion[0]
+- name: Install bastion ssh config
+  hosts: bastion[0]
   gather_facts: False
   environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults }
     - { role: bastion-ssh-config, tags: ["localhost", "bastion"] }
 
-- hosts: "{{ node | default('etcd:k8s_cluster:calico_rr') }}"
+- name: Confirm node removal
+  hosts: "{{ node | default('etcd:k8s_cluster:calico_rr') }}"
   gather_facts: no
   tasks:
     - name: Confirm Execution
@@ -32,7 +34,8 @@
   import_playbook: facts.yml
   when: reset_nodes | default(True) | bool
 
-- hosts: "{{ node | default('kube_node') }}"
+- name: Reset node
+  hosts: "{{ node | default('kube_node') }}"
   gather_facts: no
   environment: "{{ proxy_disable_env }}"
   roles:
@@ -42,7 +45,8 @@
     - { role: reset, tags: reset, when: reset_nodes | default(True) | bool }
 
 # Currently cannot remove first master or etcd
-- hosts: "{{ node | default('kube_control_plane[1:]:etcd[1:]') }}"
+- name: Post node removal
+  hosts: "{{ node | default('kube_control_plane[1:]:etcd[1:]') }}"
   gather_facts: no
   environment: "{{ proxy_disable_env }}"
   roles:

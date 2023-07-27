@@ -15,6 +15,7 @@
   register: stat_etcdctl
 
 - name: Remove old etcd binary
+  when: stat_etcdctl.stat.exists
   block:
   - name: Check version
     command: "{{ bin_dir }}/etcdctl version"
@@ -27,7 +28,6 @@
       path: "{{ bin_dir }}/etcdctl"
       state: absent
     when: etcd_version.lstrip('v') not in etcdctl_version.stdout
-  when: stat_etcdctl.stat.exists
 
 - name: Check if etcdctl still exist after version check
   stat:
@@ -38,6 +38,7 @@
   register: stat_etcdctl
 
 - name: Copy etcdctl script to host
+  when: not stat_etcdctl.stat.exists
   block:
   - name: Copy etcdctl script to host
     shell: "{{ docker_bin_dir }}/docker cp \"$({{ docker_bin_dir }}/docker ps -qf ancestor={{ etcd_image_repo }}:{{ etcd_image_tag }})\":/usr/local/bin/etcdctl {{ etcd_data_dir }}/etcdctl"
@@ -56,7 +57,6 @@
       dest: "{{ bin_dir }}"
       remote_src: true
       mode: 0755
-  when: not stat_etcdctl.stat.exists
 
 - name: Remove binary in etcd data dir
   file:

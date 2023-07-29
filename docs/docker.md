@@ -103,3 +103,8 @@ For Debian based distributions, set the path to store the GPG key to avoid using
 ```yaml
 docker_repo_key_keyring: /etc/apt/trusted.gpg.d/docker.gpg
 ```
+
+The proxy settings are forwarded to the Docker daemon by default. Set this to `false` if you don't want Docker's outgoing traffic to use the proxy. Note that this flag will have no effect if the `http_proxy` or `https_proxy` variables are not set.
+```yaml
+docker_forward_proxy: true
+```

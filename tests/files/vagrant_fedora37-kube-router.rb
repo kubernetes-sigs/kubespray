@@ -1,6 +1,6 @@
 $num_instances = 2
 $vm_memory ||= 2048
-$os = "fedora35"
+$os = "fedora37"
 
 $kube_master_instances = 1
 $etcd_instances = 1

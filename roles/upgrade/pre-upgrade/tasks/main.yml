@@ -47,6 +47,9 @@
       {%- endif %}
 
 - name: Node draining
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  when:
+    - needs_cordoning
   block:
     - name: Cordon node
       command: "{{ kubectl }} cordon {{ kube_override_hostname | default(inventory_hostname) }}"
@@ -89,6 +92,10 @@
       delay: "{{ drain_retry_delay_seconds }}"
 
     - name: Drain fallback
+      when:
+        - drain_nodes
+        - drain_fallback_enabled
+        - result.rc != 0
       block:
         - name: Set facts after regular drain has failed
           set_fact:
@@ -113,10 +120,6 @@
           retries: "{{ drain_fallback_retries }}"
           delay: "{{ drain_fallback_retry_delay_seconds }}"
           changed_when: drain_fallback_result.rc == 0
-      when:
-        - drain_nodes
-        - drain_fallback_enabled
-        - result.rc != 0
 
   rescue:
     - name: Set node back to schedulable
@@ -126,6 +129,3 @@
       fail:
         msg: "Failed to drain node {{ kube_override_hostname | default(inventory_hostname) }}"
       when: upgrade_node_fail_if_drain_fails
-  delegate_to: "{{ groups['kube_control_plane'][0] }}"
-  when:
-    - needs_cordoning

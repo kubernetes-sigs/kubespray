@@ -120,6 +120,9 @@
     - enable_dual_stack_networks
 
 - name: Calico | kdd specific configuration
+  when:
+    - inventory_hostname in groups['kube_control_plane']
+    - calico_datastore == "kdd"
   block:
     - name: Calico | Check if extra directory is needed
       stat:
@@ -154,11 +157,10 @@
       retries: 5
       when:
         - inventory_hostname == groups['kube_control_plane'][0]
-  when:
-    - inventory_hostname in groups['kube_control_plane']
-    - calico_datastore == "kdd"
 
 - name: Calico | Configure Felix
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
   block:
     - name: Calico | Get existing FelixConfiguration
       command: "{{ bin_dir }}/calicoctl.sh get felixconfig default -o json"
@@ -200,10 +202,10 @@
         cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
         stdin: "{{ _felix_config is string | ternary(_felix_config, _felix_config | to_json) }}"
       changed_when: False
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Calico | Configure Calico IP Pool
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
   block:
     - name: Calico | Get existing calico network pool
       command: "{{ bin_dir }}/calicoctl.sh get ippool {{ calico_pool_name }} -o json"
@@ -240,10 +242,11 @@
         cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
         stdin: "{{ _calico_pool is string | ternary(_calico_pool, _calico_pool | to_json) }}"
       changed_when: False
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Calico | Configure Calico IPv6 Pool
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - enable_dual_stack_networks | bool
   block:
     - name: Calico | Get existing calico ipv6 network pool
       command: "{{ bin_dir }}/calicoctl.sh get ippool {{ calico_pool_name }}-ipv6 -o json"
@@ -280,9 +283,6 @@
         cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
         stdin: "{{ _calico_pool_ipv6 is string | ternary(_calico_pool_ipv6, _calico_pool_ipv6 | to_json) }}"
       changed_when: False
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - enable_dual_stack_networks | bool
 
 - name: Populate Service External IPs
   set_fact:
@@ -305,6 +305,8 @@
   run_once: yes
 
 - name: Calico | Configure Calico BGP
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
   block:
     - name: Calico | Get existing BGP Configuration
       command: "{{ bin_dir }}/calicoctl.sh get bgpconfig default -o json"
@@ -345,8 +347,6 @@
         cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
         stdin: "{{ _bgp_config is string | ternary(_bgp_config, _bgp_config | to_json) }}"
       changed_when: False
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Calico | Create calico manifests
   template:

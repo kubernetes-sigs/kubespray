@@ -44,3 +44,9 @@ kubeEtcd:
   service:
     enabled: false
 ```
+
+To fully override metrics exposition urls, define it in the inventory with:
+
+```yaml
+etcd_listen_metrics_urls: "http://0.0.0.0:2381"
+```

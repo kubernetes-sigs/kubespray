@@ -109,6 +109,12 @@
   loop: "{{ kube_apiserver_enable_admission_plugins }}"
 
 - name: Kubeadm | Check apiserver.crt SANs
+  vars:
+    apiserver_ips: "{{ apiserver_sans | map('ipaddr') | reject('equalto', False) | list }}"
+    apiserver_hosts: "{{ apiserver_sans | difference(apiserver_ips) }}"
+  when:
+    - kubeadm_already_run.stat.exists
+    - not kube_external_ca_mode
   block:
     - name: Kubeadm | Check apiserver.crt SAN IPs
       command:
@@ -122,12 +128,6 @@
       loop: "{{ apiserver_hosts }}"
       register: apiserver_sans_host_check
       changed_when: apiserver_sans_host_check.stdout is not search('does match certificate')
-  vars:
-    apiserver_ips: "{{ apiserver_sans | map('ipaddr') | reject('equalto', False) | list }}"
-    apiserver_hosts: "{{ apiserver_sans | difference(apiserver_ips) }}"
-  when:
-    - kubeadm_already_run.stat.exists
-    - not kube_external_ca_mode
 
 - name: Kubeadm | regenerate apiserver cert 1/2
   file:

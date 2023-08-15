@@ -1,5 +1,6 @@
 ---
 - name: Gather cgroups facts for docker
+  when: container_manager == 'docker'
   block:
   - name: Look up docker cgroup driver
     shell: "set -o pipefail && docker info | grep 'Cgroup Driver' | awk -F': ' '{ print $2; }'"
@@ -12,9 +13,9 @@
   - name: Set kubelet_cgroup_driver_detected fact for docker
     set_fact:
       kubelet_cgroup_driver_detected: "{{ docker_cgroup_driver_result.stdout }}"
-  when: container_manager == 'docker'
 
 - name: Gather cgroups facts for crio
+  when: container_manager == 'crio'
   block:
   - name: Look up crio cgroup driver
     shell: "set -o pipefail && {{ bin_dir }}/crio-status info | grep 'cgroup driver' | awk -F': ' '{ print $2; }'"
@@ -26,13 +27,12 @@
   - name: Set kubelet_cgroup_driver_detected fact for crio
     set_fact:
       kubelet_cgroup_driver_detected: "{{ crio_cgroup_driver_result.stdout }}"
-  when: container_manager == 'crio'
 
 - name: Set kubelet_cgroup_driver_detected fact for containerd
+  when: container_manager == 'containerd'
   set_fact:
     kubelet_cgroup_driver_detected: >-
       {%- if containerd_use_systemd_cgroup -%}systemd{%- else -%}cgroupfs{%- endif -%}
-  when: container_manager == 'containerd'
 
 - name: Set kubelet_cgroup_driver
   set_fact:

@@ -39,4 +39,8 @@ mv -n "${PYPY_FILENAME}" pypy3
 ln -s ./pypy3/bin/pypy3 python
 $BINDIR/python --version
 
+# install PyYAML
+./python -m ensurepip
+./python -m pip install pyyaml
+
 touch $BINDIR/.bootstrapped

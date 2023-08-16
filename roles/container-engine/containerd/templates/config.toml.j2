@@ -51,18 +51,18 @@ oom_score = {{ containerd_oom_score }}
       config_path = "{{ containerd_cfg_dir }}/certs.d"
 {% else %}
       [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-{% for registry, addr in containerd_registries.items() %}
-        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ registry }}"]
-          endpoint = ["{{ ([ addr ] | flatten ) | join('","') }}"]
+{% set insecure_registries_addr = [] %}
+{% for registry in containerd_registries_mirrors %}
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ registry.prefix }}"]
+{% set endpoint = [] %}
+{% for mirror in registry.mirrors %}
+{% if endpoint.append(mirror.host) %}{% endif %}
+{% if mirror.skip_verify is defined and mirror.skip_verify|bool %}{% if insecure_registries_addr.append(mirror.host | urlsplit('netloc')) %}{% endif %}{% endif %}
 {% endfor %}
-{% if containerd_insecure_registries is defined and containerd_insecure_registries|length>0 %}
-{% for registry, addr in containerd_insecure_registries.items() %}
-        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ registry }}"]
-          endpoint = ["{{ ([ addr ] | flatten ) | join('","') }}"]
+          endpoint = ["{{ ( endpoint | unique ) | join('","') }}"]
 {% endfor %}
-{% endif %}
-{% for addr in containerd_insecure_registries.values() | flatten | unique %}
-        [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ addr | urlsplit('netloc') }}".tls]
+{% for addr in insecure_registries_addr | unique %}
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ addr }}".tls]
           insecure_skip_verify = true
 {% endfor %}
 {% endif %}

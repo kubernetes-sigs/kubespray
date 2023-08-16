@@ -54,7 +54,7 @@ DNS servers in early cluster deployment when no cluster DNS is available yet.
 
 Whether or not upstream DNS servers come from `upstream_dns_servers` variable or /etc/resolv.conf, related forward block in coredns (and nodelocaldns) configuration can take options (see <https://coredns.io/plugins/forward/> for details).
 These are configurable in inventory in as a dictionary in the `dns_upstream_forward_extra_opts` variable.
-By default, no other option than the ones hardcoded (see `roles/kubernetes-apps/ansible/templates/coredns-config.yml.j2` and `roles/kubernetes-apps/ansible/templates/nodelocaldns-config.yml.j2`).
+By default, no other option than the ones hardcoded (see `roles/kubernetes_apps/ansible/templates/coredns-config.yml.j2` and `roles/kubernetes_apps/ansible/templates/nodelocaldns-config.yml.j2`).
 
 ### coredns_kubernetes_extra_opts
 

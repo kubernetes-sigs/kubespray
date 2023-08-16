@@ -36,7 +36,7 @@ RUN apt update -q \
        jmespath==1.0.1 \
        MarkupSafe==2.1.3 \
        ruamel.yaml==0.17.21 \
-    && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \
+    && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray_defaults/defaults/main.yaml) \
     && curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
     && echo $(curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
     && chmod a+x /usr/local/bin/kubectl \

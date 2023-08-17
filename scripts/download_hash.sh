@@ -85,7 +85,7 @@ function _vercmp {
 
 function get_checksums {
     local binary="$1"
-    local version_exceptions="cri_dockerd_archive nerdctl_archive containerd_archive"
+    local version_exceptions="cri_dockerd_archive nerdctl_archive containerd_archive youki"
     declare -A skip_archs=(
 ["crio_archive"]="arm ppc64le"
 ["calicoctl_binary"]="arm"

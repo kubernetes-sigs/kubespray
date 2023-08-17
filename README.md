@@ -145,7 +145,7 @@ vagrant up
 - **Debian** Bookworm, Bullseye, Buster
 - **Ubuntu** 20.04, 22.04
 - **CentOS/RHEL** 7, [8, 9](docs/centos.md#centos-8)
-- **Fedora** 35, 36
+- **Fedora** 37, 38
 - **Fedora CoreOS** (see [fcos Note](docs/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
 - **Oracle Linux** 7, [8, 9](docs/centos.md#centos-8)
@@ -161,7 +161,7 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.26.7
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.27.4
   - [etcd](https://github.com/etcd-io/etcd) v3.5.6
   - [docker](https://www.docker.com/) v20.10 (see note)
   - [containerd](https://containerd.io/) v1.7.2
@@ -181,8 +181,8 @@ Note: Upstart/SysV init based OS types are not supported.
   - [coredns](https://github.com/coredns/coredns) v1.10.1
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.8.1
   - [krew](https://github.com/kubernetes-sigs/krew) v0.4.3
-  - [argocd](https://argoproj.github.io/) v2.7.4
-  - [helm](https://helm.sh/) v3.12.2
+  - [argocd](https://argoproj.github.io/) v2.8.0
+  - [helm](https://helm.sh/) v3.12.3
   - [metallb](https://metallb.universe.tf/)  v0.13.9
   - [registry](https://github.com/distribution/distribution) v2.8.1
 - Storage Plugin

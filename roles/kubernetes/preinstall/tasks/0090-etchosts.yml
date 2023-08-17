@@ -1,32 +1,29 @@
 ---
-- name: Hosts | update inventory in hosts file
-  block:
-    - name: Hosts | create list from inventory
-      set_fact:
-        etc_hosts_inventory_block: |-
-          {% for item in (groups['k8s_cluster'] + groups['etcd'] | default([]) + groups['calico_rr'] | default([])) | unique -%}
-          {% if 'access_ip' in hostvars[item] or 'ip' in hostvars[item] or 'ansible_default_ipv4' in hostvars[item] -%}
-          {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}
-          {%- if ('ansible_hostname' in hostvars[item] and item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }} {{ hostvars[item]['ansible_hostname'] }} {% else %} {{ item }}.{{ dns_domain }} {{ item }} {% endif %}
+- name: Hosts | create hosts list from inventory
+  set_fact:
+    etc_hosts_inventory_block: |-
+      {% for item in (groups['k8s_cluster'] + groups['etcd'] | default([]) + groups['calico_rr'] | default([])) | unique -%}
+      {% if 'access_ip' in hostvars[item] or 'ip' in hostvars[item] or 'ansible_default_ipv4' in hostvars[item] -%}
+      {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}
+      {%- if ('ansible_hostname' in hostvars[item] and item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }} {{ hostvars[item]['ansible_hostname'] }} {% else %} {{ item }}.{{ dns_domain }} {{ item }} {% endif %}
 
-          {% endif %}
-          {% endfor %}
-      delegate_to: localhost
-      connection: local
-      delegate_facts: yes
-      run_once: yes
+      {% endif %}
+      {% endfor %}
+  delegate_to: localhost
+  connection: local
+  delegate_facts: yes
+  run_once: yes
 
-    - name: Hosts | populate inventory into hosts file
-      blockinfile:
-        path: /etc/hosts
-        block: "{{ hostvars.localhost.etc_hosts_inventory_block }}"
-        state: present
-        create: yes
-        backup: yes
-        unsafe_writes: yes
-        marker: "# Ansible inventory hosts {mark}"
-        mode: 0644
-  when: populate_inventory_to_hosts_file
+- name: Hosts | populate inventory into hosts file
+  blockinfile:
+    path: /etc/hosts
+    block: "{{ hostvars.localhost.etc_hosts_inventory_block }}"
+    state: "{{ 'present' if populate_inventory_to_hosts_file else 'absent' }}"
+    create: yes
+    backup: yes
+    unsafe_writes: yes
+    marker: "# Ansible inventory hosts {mark}"
+    mode: 0644
 
 - name: Hosts | populate kubernetes loadbalancer address into hosts file
   lineinfile:
@@ -42,6 +39,7 @@
     - loadbalancer_apiserver.address is defined
 
 - name: Hosts | Update localhost entries in hosts file
+  when: populate_localhost_entries_to_hosts_file
   block:
     - name: Hosts | Retrieve hosts file content
       slurp:
@@ -74,7 +72,6 @@
         backup: yes
         unsafe_writes: yes
       loop: "{{ etc_hosts_localhosts_dict_target | default({}) | dict2items }}"
-  when: populate_localhost_entries_to_hosts_file
 
 # gather facts to update ansible_fqdn
 - name: Update facts

@@ -112,26 +112,20 @@
   notify: Restart containerd
 
 - name: Containerd | Configure containerd registries
+  when: containerd_registries_mirrors is defined
   block:
-    - name: Containerd ｜ Create registry directories
+    - name: Containerd | Create registry directories
       file:
-        path: "{{ containerd_cfg_dir }}/certs.d/{{ item.key }}"
+        path: "{{ containerd_cfg_dir }}/certs.d/{{ item.prefix }}"
         state: directory
         mode: 0755
-        recurse: true
-      with_dict: "{{ containerd_insecure_registries }}"
-    - name: Containerd ｜ Write hosts.toml file
-      blockinfile:
-        path: "{{ containerd_cfg_dir }}/certs.d/{{ item.key }}/hosts.toml"
+      loop: "{{ containerd_registries_mirrors }}"
+    - name: Containerd | Write hosts.toml file
+      template:
+        src: hosts.toml.j2
+        dest: "{{ containerd_cfg_dir }}/certs.d/{{ item.prefix }}/hosts.toml"
         mode: 0640
-        create: true
-        block: |
-          server = "{{ item.value }}"
-          [host."{{ item.value }}"]
-            capabilities = ["pull", "resolve", "push"]
-            skip_verify = true
-      with_dict: "{{ containerd_insecure_registries }}"
-  when: containerd_use_config_path is defined and containerd_use_config_path | bool and containerd_insecure_registries is defined
+      loop: "{{ containerd_registries_mirrors }}"
 
 # you can sometimes end up in a state where everything is installed
 # but containerd was not started / enabled

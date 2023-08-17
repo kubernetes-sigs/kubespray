@@ -62,6 +62,9 @@
   when: calicoctl_sh_exists.stat.exists
 
 - name: Check that current calico version is enough for upgrade
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  when: calicoctl_sh_exists.stat.exists and calico_ready.rc == 0
   block:
     - name: Get current calico version
       shell: "set -o pipefail && {{ bin_dir }}/calicoctl.sh version | grep 'Client Version:' | awk '{ print $3}'"
@@ -78,9 +81,6 @@
           Your version of calico is not fresh enough for upgrade.
           Minimum version is {{ calico_min_version_required }} supported by the previous kubespray release.
           But current version is {{ calico_version_on_server.stdout }}.
-  run_once: True
-  delegate_to: "{{ groups['kube_control_plane'][0] }}"
-  when: calicoctl_sh_exists.stat.exists and calico_ready.rc == 0
 
 - name: "Check that cluster_id is set if calico_rr enabled"
   assert:
@@ -121,13 +121,13 @@
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
 - name: "Check ipip and vxlan mode defined correctly"
+  run_once: True
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
   assert:
     that:
       - "calico_ipip_mode in ['Always', 'CrossSubnet', 'Never']"
       - "calico_vxlan_mode in ['Always', 'CrossSubnet', 'Never']"
     msg: "calico inter host encapsulation mode is not 'Always', 'CrossSubnet' or 'Never'"
-  run_once: True
-  delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
 - name: "Check ipip and vxlan mode if simultaneously enabled"
   assert:

@@ -1,0 +1,93 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: huawei-cloud-provider
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloud-controller-manager
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: huawei-cloud-controller-manager
+  namespace: kube-system
+  labels:
+    k8s-app: huawei-cloud-controller-manager
+spec:
+  selector:
+    matchLabels:
+      k8s-app: huawei-cloud-controller-manager
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        k8s-app: huawei-cloud-controller-manager
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      securityContext:
+        runAsUser: 1001
+      tolerations:
+      - key: node.cloudprovider.kubernetes.io/uninitialized
+        value: "true"
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+      serviceAccountName: cloud-controller-manager
+      containers:
+        - name: huawei-cloud-controller-manager
+          image: {{ external_huawei_cloud_controller_image_repo }}/k8s-cloudprovider/huawei-cloud-controller-manager:{{ external_huawei_cloud_controller_image_tag }}
+          args:
+            - /bin/huawei-cloud-controller-manager
+            - --v=1
+            - --cloud-config=$(CLOUD_CONFIG)
+            - --cloud-provider=huaweicloud
+            - --use-service-account-credentials=true
+{% for key, value in external_huawei_cloud_controller_extra_args.items() %}
+            - "{{ '--' + key + '=' + value }}"
+{% endfor %}
+          volumeMounts:
+            - mountPath: /etc/kubernetes
+              name: k8s-certs
+              readOnly: true
+            - mountPath: /etc/ssl/certs
+              name: ca-certs
+              readOnly: true
+            - mountPath: /etc/config
+              name: cloud-config-volume
+              readOnly: true
+{% if kubelet_flexvolumes_plugins_dir is defined %}
+            - mountPath: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+              name: flexvolume-dir
+{% endif %}
+          resources:
+            requests:
+              cpu: 200m
+          env:
+            - name: CLOUD_CONFIG
+              value: /etc/config/cloud-config
+      hostNetwork: true
+      volumes:
+{% if kubelet_flexvolumes_plugins_dir is defined %}
+      - name: flexvolume-dir
+        hostPath:
+          path: "{{ kubelet_flexvolumes_plugins_dir }}"
+          type: DirectoryOrCreate
+{% endif %}
+      - name: k8s-certs
+        hostPath:
+          path: /etc/kubernetes
+          type: DirectoryOrCreate
+      - name: ca-certs
+        hostPath:
+          path: /etc/ssl/certs
+          type: DirectoryOrCreate
+      - name: cloud-config-volume
+        secret:
+          secretName: external-huawei-cloud-config

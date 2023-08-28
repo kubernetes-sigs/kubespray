@@ -70,6 +70,36 @@ resource "openstack_networking_secgroup_rule_v2" "k8s_master_ports" {
   security_group_id = openstack_networking_secgroup_v2.k8s_master.id
 }
 
+resource "openstack_networking_secgroup_rule_v2" "k8s_master_ipv6_ingress" {
+  count             = length(var.master_allowed_remote_ipv6_ips)
+  direction         = "ingress"
+  ethertype         = "IPv6"
+  protocol          = "tcp"
+  port_range_min    = "6443"
+  port_range_max    = "6443"
+  remote_ip_prefix  = var.master_allowed_remote_ipv6_ips[count.index]
+  security_group_id = openstack_networking_secgroup_v2.k8s_master.id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "k8s_master_ports_ipv6_ingress" {
+  count             = length(var.master_allowed_ports_ipv6)
+  direction         = "ingress"
+  ethertype         = "IPv6"
+  protocol          = lookup(var.master_allowed_ports_ipv6[count.index], "protocol", "tcp")
+  port_range_min    = lookup(var.master_allowed_ports_ipv6[count.index], "port_range_min")
+  port_range_max    = lookup(var.master_allowed_ports_ipv6[count.index], "port_range_max")
+  remote_ip_prefix  = lookup(var.master_allowed_ports_ipv6[count.index], "remote_ip_prefix", "::/0")
+  security_group_id = openstack_networking_secgroup_v2.k8s_master.id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "master_egress_ipv6" {
+  count             = length(var.k8s_allowed_egress_ipv6_ips)
+  direction         = "egress"
+  ethertype         = "IPv6"
+  remote_ip_prefix  = var.k8s_allowed_egress_ipv6_ips[count.index]
+  security_group_id = openstack_networking_secgroup_v2.k8s_master.id
+}
+
 resource "openstack_networking_secgroup_v2" "bastion" {
   name                 = "${var.cluster_name}-bastion"
   count                = var.number_of_bastions != "" ? 1 : 0
@@ -99,6 +129,28 @@ resource "openstack_networking_secgroup_rule_v2" "k8s_bastion_ports" {
   security_group_id = openstack_networking_secgroup_v2.bastion[0].id
 }
 
+resource "openstack_networking_secgroup_rule_v2" "bastion_ipv6_ingress" {
+  count             = var.number_of_bastions != "" ? length(var.bastion_allowed_remote_ipv6_ips) : 0
+  direction         = "ingress"
+  ethertype         = "IPv6"
+  protocol          = "tcp"
+  port_range_min    = "22"
+  port_range_max    = "22"
+  remote_ip_prefix  = var.bastion_allowed_remote_ipv6_ips[count.index]
+  security_group_id = openstack_networking_secgroup_v2.bastion[0].id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "k8s_bastion_ports_ipv6_ingress" {
+  count             = length(var.bastion_allowed_ports_ipv6)
+  direction         = "ingress"
+  ethertype         = "IPv6"
+  protocol          = lookup(var.bastion_allowed_ports_ipv6[count.index], "protocol", "tcp")
+  port_range_min    = lookup(var.bastion_allowed_ports_ipv6[count.index], "port_range_min")
+  port_range_max    = lookup(var.bastion_allowed_ports_ipv6[count.index], "port_range_max")
+  remote_ip_prefix  = lookup(var.bastion_allowed_ports_ipv6[count.index], "remote_ip_prefix", "::/0")
+  security_group_id = openstack_networking_secgroup_v2.bastion[0].id
+}
+
 resource "openstack_networking_secgroup_v2" "k8s" {
   name                 = "${var.cluster_name}-k8s"
   description          = "${var.cluster_name} - Kubernetes"
@@ -108,6 +160,13 @@ resource "openstack_networking_secgroup_v2" "k8s" {
 resource "openstack_networking_secgroup_rule_v2" "k8s" {
   direction         = "ingress"
   ethertype         = "IPv4"
+  remote_group_id   = openstack_networking_secgroup_v2.k8s.id
+  security_group_id = openstack_networking_secgroup_v2.k8s.id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "k8s_ipv6" {
+  direction         = "ingress"
+  ethertype         = "IPv6"
   remote_group_id   = openstack_networking_secgroup_v2.k8s.id
   security_group_id = openstack_networking_secgroup_v2.k8s.id
 }
@@ -123,11 +182,30 @@ resource "openstack_networking_secgroup_rule_v2" "k8s_allowed_remote_ips" {
   security_group_id = openstack_networking_secgroup_v2.k8s.id
 }
 
+resource "openstack_networking_secgroup_rule_v2" "k8s_allowed_remote_ips_ipv6" {
+  count             = length(var.k8s_allowed_remote_ips_ipv6)
+  direction         = "ingress"
+  ethertype         = "IPv6"
+  protocol          = "tcp"
+  port_range_min    = "22"
+  port_range_max    = "22"
+  remote_ip_prefix  = var.k8s_allowed_remote_ips_ipv6[count.index]
+  security_group_id = openstack_networking_secgroup_v2.k8s.id
+}
+
 resource "openstack_networking_secgroup_rule_v2" "egress" {
   count             = length(var.k8s_allowed_egress_ips)
   direction         = "egress"
   ethertype         = "IPv4"
   remote_ip_prefix  = var.k8s_allowed_egress_ips[count.index]
+  security_group_id = openstack_networking_secgroup_v2.k8s.id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "egress_ipv6" {
+  count             = length(var.k8s_allowed_egress_ipv6_ips)
+  direction         = "egress"
+  ethertype         = "IPv6"
+  remote_ip_prefix  = var.k8s_allowed_egress_ipv6_ips[count.index]
   security_group_id = openstack_networking_secgroup_v2.k8s.id
 }
 
@@ -152,6 +230,17 @@ resource "openstack_networking_secgroup_rule_v2" "worker" {
   port_range_min    = lookup(var.worker_allowed_ports[count.index], "port_range_min")
   port_range_max    = lookup(var.worker_allowed_ports[count.index], "port_range_max")
   remote_ip_prefix  = lookup(var.worker_allowed_ports[count.index], "remote_ip_prefix", "0.0.0.0/0")
+  security_group_id = openstack_networking_secgroup_v2.worker.id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "worker_ipv6_ingress" {
+  count             = length(var.worker_allowed_ports_ipv6)
+  direction         = "ingress"
+  ethertype         = "IPv6"
+  protocol          = lookup(var.worker_allowed_ports_ipv6[count.index], "protocol", "tcp")
+  port_range_min    = lookup(var.worker_allowed_ports_ipv6[count.index], "port_range_min")
+  port_range_max    = lookup(var.worker_allowed_ports_ipv6[count.index], "port_range_max")
+  remote_ip_prefix  = lookup(var.worker_allowed_ports_ipv6[count.index], "remote_ip_prefix", "::/0")
   security_group_id = openstack_networking_secgroup_v2.worker.id
 }
 

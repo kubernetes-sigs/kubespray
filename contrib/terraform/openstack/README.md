@@ -269,11 +269,18 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`supplementary_master_groups` | To add ansible groups to the masters, such as `kube_node` for tainting them as nodes, empty by default. |
 |`supplementary_node_groups` | To add ansible groups to the nodes, such as `kube_ingress` for running ingress controller pods, empty by default. |
 |`bastion_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, `["0.0.0.0/0"]` by default |
+|`bastion_allowed_remote_ipv6_ips` | List of IPv6 CIDR allowed to initiate a SSH connection, `["::/0"]` by default |
 |`master_allowed_remote_ips` | List of CIDR blocks allowed to initiate an API connection, `["0.0.0.0/0"]` by default |
+|`master_allowed_remote_ipv6_ips` | List of IPv6 CIDR blocks allowed to initiate an API connection, `["::/0"]` by default |
 |`bastion_allowed_ports` | List of ports to open on bastion node, `[]` by default |
+|`bastion_allowed_ports_ipv6` | List of ports to open on bastion node for IPv6 CIDR blocks, `[]` by default |
 |`k8s_allowed_remote_ips` | List of CIDR allowed to initiate a SSH connection, empty by default |
+|`k8s_allowed_remote_ips_ipv6` | List of IPv6 CIDR allowed to initiate a SSH connection, empty by default |
+|`k8s_allowed_egress_ipv6_ips` | List of IPv6 CIDRs allowed for egress traffic, `["::/0"]` by default |
 |`worker_allowed_ports` | List of ports to open on worker nodes, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "0.0.0.0/0"}]` by default |
+|`worker_allowed_ports_ipv6` | List of ports to open on worker nodes for IPv6 CIDR blocks, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "::/0"}]` by default |
 |`master_allowed_ports` | List of ports to open on master nodes, expected format is `[{ "protocol" = "tcp", "port_range_min" = 443, "port_range_max" = 443, "remote_ip_prefix" = "0.0.0.0/0"}]`, empty by default |
+|`master_allowed_ports_ipv6` | List of ports to open on master nodes for IPv6 CIDR blocks, expected format is `[{ "protocol" = "tcp", "port_range_min" = 443, "port_range_max" = 443, "remote_ip_prefix" = "::/0"}]`, empty by default |
 |`node_root_volume_size_in_gb` | Size of the root volume for nodes, 0 to use ephemeral storage |
 |`master_root_volume_size_in_gb` | Size of the root volume for masters, 0 to use ephemeral storage |
 |`master_volume_type` | Volume type of the root volume for control_plane, 'Default' by default |

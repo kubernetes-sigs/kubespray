@@ -90,6 +90,9 @@ In all hosts, restart nginx-proxy pod. This pod is a local proxy for the apiserv
 ```sh
 # run in every host
 docker ps | grep k8s_nginx-proxy_nginx-proxy | awk '{print $1}' | xargs docker restart
+
+# or with containerd
+crictl ps | grep nginx-proxy | awk '{print $1}' | xargs crictl stop
 ```
 
 ### 3) Remove old control plane nodes

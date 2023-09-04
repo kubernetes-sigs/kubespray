@@ -12,19 +12,19 @@
     ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
     ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
   when:
-    - inventory_hostname in groups['broken_etcd']
+    - groups['broken_etcd']
 
 - name: Set healthy fact
   set_fact:
     healthy: "{{ etcd_endpoint_health.stderr is match('Error: unhealthy cluster') }}"
   when:
-    - inventory_hostname in groups['broken_etcd']
+    - groups['broken_etcd']
 
 - name: Set has_quorum fact
   set_fact:
     has_quorum: "{{ etcd_endpoint_health.stdout_lines | select('match', '.*is healthy.*') | list | length >= etcd_endpoint_health.stderr_lines | select('match', '.*is unhealthy.*') | list | length }}"
   when:
-    - inventory_hostname in groups['broken_etcd']
+    - groups['broken_etcd']
 
 - name: Recover lost etcd quorum
   include_tasks: recover_lost_quorum.yml
@@ -40,7 +40,7 @@
   with_items: "{{ groups['broken_etcd'] }}"
   ignore_errors: true  # noqa ignore-errors
   when:
-    - inventory_hostname in groups['broken_etcd']
+    - groups['broken_etcd']
     - has_quorum
 
 - name: Delete old certificates
@@ -56,7 +56,7 @@
   loop: "{{ delete_old_cerificates.results }}"
   changed_when: false
   when:
-    - inventory_hostname in groups['broken_etcd']
+    - groups['broken_etcd']
     - "item.rc != 0 and not 'No such file or directory' in item.stderr"
 
 - name: Get etcd cluster members
@@ -71,7 +71,7 @@
     ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
     ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
   when:
-    - inventory_hostname in groups['broken_etcd']
+    - groups['broken_etcd']
     - not healthy
     - has_quorum
 
@@ -87,7 +87,7 @@
     - "{{ groups['broken_etcd'] }}"
     - "{{ member_list.stdout_lines }}"
   when:
-    - inventory_hostname in groups['broken_etcd']
+    - groups['broken_etcd']
     - not healthy
     - has_quorum
     - hostvars[item[0]]['etcd_member_name'] == item[1].replace(' ', '').split(',')[2]

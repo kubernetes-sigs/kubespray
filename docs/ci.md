@@ -11,7 +11,7 @@ amazon |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :white_check_mark: | :x: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: |
 debian10 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: |
 debian11 |  :white_check_mark: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
-debian12 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+debian12 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora37 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: |
 fedora38 |  :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |

@@ -15,7 +15,7 @@ Kubespray can be installed as an [Ansible collection](https://docs.ansible.com/a
    collections:
    - name: https://github.com/kubernetes-sigs/kubespray
      type: git
-     version: v2.22.1
+     version: v2.23.0
    ```
 
 2. Install your collection

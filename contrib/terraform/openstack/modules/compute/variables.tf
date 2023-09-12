@@ -149,6 +149,7 @@ variable "k8s_nodes" {
         partition_end   = string
         mount_path      = string
       })), [])
+      netplan_critical_dhcp_interface = optional(string, "")
     }))
   }))
 }

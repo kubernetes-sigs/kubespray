@@ -1,4 +1,4 @@
-%{~ if length(extra_partitions) > 0 }
+%{~ if length(extra_partitions) > 0 || netplan_critical_dhcp_interface != "" }
 #cloud-config
 bootcmd:
 %{~ for idx, partition in extra_partitions }
@@ -8,11 +8,26 @@ bootcmd:
 %{~ endfor }
 
 runcmd:
+%{~ if netplan_critical_dhcp_interface != "" }
+  - netplan apply
+%{~ endif }
 %{~ for idx, partition in extra_partitions }
   - mkdir -p ${partition.mount_path}
   - chown nobody:nogroup ${partition.mount_path}
   - mount ${partition.partition_path} ${partition.mount_path}
-%{~ endfor }
+%{~ endfor ~}
+
+%{~ if netplan_critical_dhcp_interface != "" }
+write_files:
+  - path: /etc/netplan/90-critical-dhcp.yaml
+    content: |
+      network:
+        version: 2
+        ethernets:
+          ${ netplan_critical_dhcp_interface }:
+            dhcp4: true
+            critical: true
+%{~ endif }
 
 mounts:
 %{~ for idx, partition in extra_partitions }

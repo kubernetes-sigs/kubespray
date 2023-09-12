@@ -13,6 +13,7 @@
 * CNI
   * [Calico](docs/calico.md)
   * [Flannel](docs/flannel.md)
+  * [Cilium](docs/cilium.md)
   * [Kube Router](docs/kube-router.md)
   * [Kube OVN](docs/kube-ovn.md)
   * [Weave](docs/weave.md)

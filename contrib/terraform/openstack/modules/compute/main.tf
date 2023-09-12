@@ -19,8 +19,7 @@ data "cloudinit_config" "cloudinit" {
   part {
     content_type =  "text/cloud-config"
     content = templatefile("${path.module}/templates/cloudinit.yaml.tmpl", {
-      # template_file doesn't support lists
-      extra_partitions = ""
+      extra_partitions = []
     })
   }
 }

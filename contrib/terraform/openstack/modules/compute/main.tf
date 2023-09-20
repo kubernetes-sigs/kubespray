@@ -19,8 +19,8 @@ data "cloudinit_config" "cloudinit" {
   part {
     content_type =  "text/cloud-config"
     content = templatefile("${path.module}/templates/cloudinit.yaml.tmpl", {
-      # template_file doesn't support lists
-      extra_partitions = ""
+      extra_partitions = [],
+      netplan_critical_dhcp_interface = ""
     })
   }
 }
@@ -821,7 +821,8 @@ resource "openstack_compute_instance_v2" "k8s_nodes" {
   flavor_id         = each.value.flavor
   key_pair          = openstack_compute_keypair_v2.k8s.name
   user_data         = each.value.cloudinit != null ? templatefile("${path.module}/templates/cloudinit.yaml.tmpl", {
-    extra_partitions = each.value.cloudinit.extra_partitions
+    extra_partitions = each.value.cloudinit.extra_partitions,
+    netplan_critical_dhcp_interface = each.value.cloudinit.netplan_critical_dhcp_interface,
   }) : data.cloudinit_config.cloudinit.rendered
 
   dynamic "block_device" {

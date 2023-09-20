@@ -19,6 +19,7 @@ spec:
         app: vsphere-csi-controller
         role: vsphere-csi
     spec:
+      priorityClassName: system-cluster-critical # Guarantees scheduling for critical system pods
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -60,6 +61,9 @@ spec:
             - "--timeout=300s"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election"
+            - "--leader-election-lease-duration=120s"
+            - "--leader-election-renew-deadline=60s"
+            - "--leader-election-retry-period=30s"
             - "--kube-api-qps=100"
             - "--kube-api-burst=100"
 {% if vsphere_csi_attacher_resources | length > 0 %}
@@ -83,6 +87,9 @@ spec:
             - "--kube-api-qps=100"
             - "--kube-api-burst=100"
             - "--leader-election"
+            - "--leader-election-lease-duration=120s"
+            - "--leader-election-renew-deadline=60s"
+            - "--leader-election-retry-period=30s"
 {% if vsphere_csi_resizer_resources | length > 0 %}
           resources:
             {{ vsphere_csi_resizer_resources | default({}) | to_nice_yaml | trim | indent(width=12) }}
@@ -99,8 +106,6 @@ spec:
           args:
             - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
             - "--fss-namespace={{ vsphere_csi_namespace }}"
-            - "--supervisor-fss-namespace={{ vsphere_csi_namespace }}"
-            - "--use-gocsi=false"
 {% if vsphere_csi_resources | length > 0 %}
           resources:
             {{ vsphere_csi_resources | default({}) | to_nice_yaml | trim | indent(width=12) }}
@@ -131,6 +136,10 @@ spec:
               readOnly: true
             - mountPath: {{ csi_endpoint }}
               name: socket-dir
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
           ports:
             - name: healthz
               containerPort: 9808
@@ -142,9 +151,9 @@ spec:
             httpGet:
               path: /healthz
               port: healthz
-            initialDelaySeconds: 10
-            timeoutSeconds: 3
-            periodSeconds: 5
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+            periodSeconds: 180
             failureThreshold: 3
         - name: liveness-probe
           image: {{ kube_image_repo }}/sig-storage/livenessprobe:{{ vsphere_csi_liveness_probe_image_tag }}
@@ -165,10 +174,16 @@ spec:
           image: {{ gcr_image_repo }}/cloud-provider-vsphere/csi/release/syncer:{{ vsphere_syncer_image_tag }}
           args:
             - "--leader-election"
+            - "--leader-election-lease-duration=30s"
+            - "--leader-election-renew-deadline=20s"
+            - "--leader-election-retry-period=10s"
             - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
             - "--fss-namespace={{ vsphere_csi_namespace }}"
-            - "--supervisor-fss-namespace={{ vsphere_csi_namespace }}"
           imagePullPolicy: {{ k8s_image_pull_policy }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
           ports:
             - containerPort: 2113
               name: prometheus
@@ -200,10 +215,13 @@ spec:
             - "--v=4"
             - "--timeout=300s"
             - "--csi-address=$(ADDRESS)"
-{% if vsphere_csi_controller is version('v2.2.0', '>=') %}
             - "--kube-api-qps=100"
             - "--kube-api-burst=100"
-{% endif %}
+            - "--leader-election"
+            - "--leader-election-lease-duration=120s"
+            - "--leader-election-renew-deadline=60s"
+            - "--leader-election-retry-period=30s"
+            - "--default-fstype=ext4"
             - "--leader-election"
             - "--default-fstype=ext4"
             # needed only for topology aware setup
@@ -213,13 +231,6 @@ spec:
           resources:
             {{ vsphere_csi_provisioner_resources | default({}) | to_nice_yaml | trim | indent(width=12) }}
 {% endif %}
-          env:
-            - name: ADDRESS
-              value: /csi/csi.sock
-          volumeMounts:
-            - mountPath: /csi
-              name: socket-dir
-{% if vsphere_csi_controller is version('v2.5.0', '>=') %}
         - name: csi-snapshotter
           image: {{ kube_image_repo }}/sig-storage/csi-snapshotter:{{ vsphere_csi_snapshotter_image_tag }}
           args:
@@ -229,13 +240,15 @@ spec:
             - "--timeout=300s"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election"
+            - "--leader-election-lease-duration=120s"
+            - "--leader-election-renew-deadline=60s"
+            - "--leader-election-retry-period=30s"
           env:
             - name: ADDRESS
               value: /csi/csi.sock
           volumeMounts:
             - mountPath: /csi
               name: socket-dir
-{% endif %}
       volumes:
       - name: vsphere-config-volume
         secret:

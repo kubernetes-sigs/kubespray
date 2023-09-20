@@ -54,6 +54,11 @@ kube_apiserver_enable_admission_plugins:
   - PodNodeSelector
   - PodSecurity
 kube_apiserver_admission_control_config_file: true
+# Creates config file for PodNodeSelector
+kube_apiserver_admission_plugins_needs_configuration: [PodNodeSelector]
+# Define the default node selector, by default all the workloads will be scheduled on nodes
+# with label network=srv1
+kube_apiserver_admission_plugins_podnodeselector_default_node_selector: "network=srv1"
 # EventRateLimit plugin configuration
 kube_apiserver_admission_event_rate_limits:
   limit_1:

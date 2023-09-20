@@ -318,6 +318,7 @@ k8s_nodes:
         mount_path: string # Path to where the partition should be mounted
         partition_start: string # Where the partition should start (e.g. 10GB ). Note, if you set the partition_start to 0 there will be no space left for the root partition
         partition_end: string # Where the partition should end (e.g. 10GB or -1 for end of volume)
+      netplan_critical_dhcp_interface: string # Name of interface to set the dhcp flag critical = true, to circumvent [this issue](https://bugs.launchpad.net/ubuntu/+source/systemd/+bug/1776013).
 ```
 
 For example:

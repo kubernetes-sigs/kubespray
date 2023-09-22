@@ -18,7 +18,7 @@ ssh_public_keys = [
 
 # check list of available plan https://developers.upcloud.com/1.3/7-plans/
 machines = {
-  "master-0" : {
+  "control-plane-0" : {
     "node_type" : "master",
     # plan to use instead of custom cpu/mem
     "plan" : null,
@@ -28,7 +28,7 @@ machines = {
     "mem" : "4096"
     # The size of the storage in GB
     "disk_size" : 250
-    "additional_disks": {}
+    "additional_disks" : {}
   },
   "worker-0" : {
     "node_type" : "worker",
@@ -40,7 +40,7 @@ machines = {
     "mem" : "4096"
     # The size of the storage in GB
     "disk_size" : 250
-    "additional_disks": {
+    "additional_disks" : {
       # "some-disk-name-1": {
       #   "size": 100,
       #   "tier": "maxiops",
@@ -61,7 +61,7 @@ machines = {
     "mem" : "4096"
     # The size of the storage in GB
     "disk_size" : 250
-    "additional_disks": {
+    "additional_disks" : {
       # "some-disk-name-1": {
       #   "size": 100,
       #   "tier": "maxiops",
@@ -82,7 +82,7 @@ machines = {
     "mem" : "4096"
     # The size of the storage in GB
     "disk_size" : 250
-    "additional_disks": {
+    "additional_disks" : {
       # "some-disk-name-1": {
       #   "size": 100,
       #   "tier": "maxiops",
@@ -118,7 +118,7 @@ master_allowed_ports = []
 worker_allowed_ports = []
 
 loadbalancer_enabled = false
-loadbalancer_plan = "development"
+loadbalancer_plan    = "development"
 loadbalancers = {
   # "http" : {
   #   "port" : 80,
@@ -134,9 +134,9 @@ loadbalancers = {
 server_groups = {
   # "control-plane" = {
   #   servers = [
-  #     "master-0"
+  #     "control-plane-0"
   #   ]
-  #   anti_affinity = true
+  #   anti_affinity_policy = "strict"
   # },
   # "workers" = {
   #   servers = [
@@ -144,6 +144,6 @@ server_groups = {
   #     "worker-1",
   #     "worker-2"
   #   ]
-  #   anti_affinity = true
+  #   anti_affinity_policy = "yes"
   # }
 }

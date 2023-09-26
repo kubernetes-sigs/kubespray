@@ -130,3 +130,13 @@ containerd_registries_mirrors:
 [RuntimeClass]: https://kubernetes.io/docs/concepts/containers/runtime-class/
 [runtime classes in containerd]: https://github.com/containerd/containerd/blob/main/docs/cri/config.md#runtime-classes
 [runtime-spec]: https://github.com/opencontainers/runtime-spec
+
+### Optional : NRI
+
+[Node Resource Interface](https://github.com/containerd/nri) (NRI) is disabled by default for the containerd. If you
+are using contained version v1.7.0 or above, then you can enable it with the
+following configuration:
+
+```yaml
+nri_enabled: true
+```

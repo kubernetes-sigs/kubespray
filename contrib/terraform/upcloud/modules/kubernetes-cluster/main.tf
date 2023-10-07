@@ -3,7 +3,7 @@ locals {
   disks = flatten([
     for node_name, machine in var.machines : [
       for disk_name, disk in machine.additional_disks : {
-        disk = disk
+        disk      = disk
         disk_name = disk_name
         node_name = node_name
       }
@@ -13,8 +13,8 @@ locals {
   lb_backend_servers = flatten([
     for lb_name, loadbalancer in var.loadbalancers : [
       for backend_server in loadbalancer.backend_servers : {
-        port = loadbalancer.target_port
-        lb_name = lb_name
+        port        = loadbalancer.target_port
+        lb_name     = lb_name
         server_name = backend_server
       }
     ]
@@ -22,7 +22,7 @@ locals {
 
   # If prefix is set, all resources will be prefixed with "${var.prefix}-"
   # Else don't prefix with anything
-  resource-prefix = "%{ if var.prefix != ""}${var.prefix}-%{ endif }"
+  resource-prefix = "%{if var.prefix != ""}${var.prefix}-%{endif}"
 }
 
 resource "upcloud_network" "private" {
@@ -38,7 +38,7 @@ resource "upcloud_network" "private" {
 
 resource "upcloud_storage" "additional_disks" {
   for_each = {
-    for disk in local.disks: "${disk.node_name}_${disk.disk_name}" => disk.disk
+    for disk in local.disks : "${disk.node_name}_${disk.disk_name}" => disk.disk
   }
 
   size  = each.value.size
@@ -61,8 +61,8 @@ resource "upcloud_server" "master" {
   zone     = var.zone
 
   template {
-  storage = var.template_name
-  size    = each.value.disk_size
+    storage = var.template_name
+    size    = each.value.disk_size
   }
 
   # Public network interface
@@ -81,14 +81,14 @@ resource "upcloud_server" "master" {
     ignore_changes = [storage_devices]
   }
 
-  firewall  = var.firewall_enabled
+  firewall = var.firewall_enabled
 
   dynamic "storage_devices" {
     for_each = {
       for disk_key_name, disk in upcloud_storage.additional_disks :
-        disk_key_name => disk
-        # Only add the disk if it matches the node name in the start of its name
-        if length(regexall("^${each.key}_.+", disk_key_name)) > 0
+      disk_key_name => disk
+      # Only add the disk if it matches the node name in the start of its name
+      if length(regexall("^${each.key}_.+", disk_key_name)) > 0
     }
 
     content {
@@ -138,14 +138,14 @@ resource "upcloud_server" "worker" {
     ignore_changes = [storage_devices]
   }
 
-  firewall  = var.firewall_enabled
+  firewall = var.firewall_enabled
 
   dynamic "storage_devices" {
     for_each = {
       for disk_key_name, disk in upcloud_storage.additional_disks :
-        disk_key_name => disk
-        # Only add the disk if it matches the node name in the start of its name
-        if length(regexall("^${each.key}_.+", disk_key_name)) > 0
+      disk_key_name => disk
+      # Only add the disk if it matches the node name in the start of its name
+      if length(regexall("^${each.key}_.+", disk_key_name)) > 0
     }
 
     content {
@@ -162,10 +162,10 @@ resource "upcloud_server" "worker" {
 }
 
 resource "upcloud_firewall_rules" "master" {
-  for_each = upcloud_server.master
+  for_each  = upcloud_server.master
   server_id = each.value.id
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.master_allowed_remote_ips
 
     content {
@@ -181,7 +181,7 @@ resource "upcloud_firewall_rules" "master" {
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = length(var.master_allowed_remote_ips) > 0 ? [1] : []
 
     content {
@@ -197,7 +197,7 @@ resource "upcloud_firewall_rules" "master" {
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.k8s_allowed_remote_ips
 
     content {
@@ -213,7 +213,7 @@ resource "upcloud_firewall_rules" "master" {
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = length(var.k8s_allowed_remote_ips) > 0 ? [1] : []
 
     content {
@@ -229,7 +229,7 @@ resource "upcloud_firewall_rules" "master" {
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.master_allowed_ports
 
     content {
@@ -245,97 +245,97 @@ resource "upcloud_firewall_rules" "master" {
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["tcp", "udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "UpCloud DNS"
-      source_port_end        = "53"
-      source_port_start      = "53"
-      direction              = "in"
-      family                 = "IPv4"
-      protocol               = firewall_rule.value
-      source_address_end     = "94.237.40.9"
-      source_address_start   = "94.237.40.9"
+      action               = "accept"
+      comment              = "UpCloud DNS"
+      source_port_end      = "53"
+      source_port_start    = "53"
+      direction            = "in"
+      family               = "IPv4"
+      protocol             = firewall_rule.value
+      source_address_end   = "94.237.40.9"
+      source_address_start = "94.237.40.9"
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["tcp", "udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "UpCloud DNS"
-      source_port_end        = "53"
-      source_port_start      = "53"
-      direction              = "in"
-      family                 = "IPv4"
-      protocol               = firewall_rule.value
-      source_address_end     = "94.237.127.9"
-      source_address_start   = "94.237.127.9"
+      action               = "accept"
+      comment              = "UpCloud DNS"
+      source_port_end      = "53"
+      source_port_start    = "53"
+      direction            = "in"
+      family               = "IPv4"
+      protocol             = firewall_rule.value
+      source_address_end   = "94.237.127.9"
+      source_address_start = "94.237.127.9"
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["tcp", "udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "UpCloud DNS"
-      source_port_end        = "53"
-      source_port_start      = "53"
-      direction              = "in"
-      family                 = "IPv6"
-      protocol               = firewall_rule.value
-      source_address_end     = "2a04:3540:53::1"
-      source_address_start   = "2a04:3540:53::1"
+      action               = "accept"
+      comment              = "UpCloud DNS"
+      source_port_end      = "53"
+      source_port_start    = "53"
+      direction            = "in"
+      family               = "IPv6"
+      protocol             = firewall_rule.value
+      source_address_end   = "2a04:3540:53::1"
+      source_address_start = "2a04:3540:53::1"
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["tcp", "udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "UpCloud DNS"
-      source_port_end        = "53"
-      source_port_start      = "53"
-      direction              = "in"
-      family                 = "IPv6"
-      protocol               = firewall_rule.value
-      source_address_end     = "2a04:3544:53::1"
-      source_address_start   = "2a04:3544:53::1"
+      action               = "accept"
+      comment              = "UpCloud DNS"
+      source_port_end      = "53"
+      source_port_start    = "53"
+      direction            = "in"
+      family               = "IPv6"
+      protocol             = firewall_rule.value
+      source_address_end   = "2a04:3544:53::1"
+      source_address_start = "2a04:3544:53::1"
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "NTP Port"
-      source_port_end        = "123"
-      source_port_start      = "123"
-      direction              = "in"
-      family                 = "IPv4"
-      protocol               = firewall_rule.value
-      source_address_end     = "255.255.255.255"
-      source_address_start   = "0.0.0.0"
+      action               = "accept"
+      comment              = "NTP Port"
+      source_port_end      = "123"
+      source_port_start    = "123"
+      direction            = "in"
+      family               = "IPv4"
+      protocol             = firewall_rule.value
+      source_address_end   = "255.255.255.255"
+      source_address_start = "0.0.0.0"
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "NTP Port"
-      source_port_end        = "123"
-      source_port_start      = "123"
-      direction              = "in"
-      family                 = "IPv6"
-      protocol               = firewall_rule.value
+      action            = "accept"
+      comment           = "NTP Port"
+      source_port_end   = "123"
+      source_port_start = "123"
+      direction         = "in"
+      family            = "IPv6"
+      protocol          = firewall_rule.value
     }
   }
 
@@ -351,10 +351,10 @@ resource "upcloud_firewall_rules" "master" {
 }
 
 resource "upcloud_firewall_rules" "k8s" {
-  for_each = upcloud_server.worker
+  for_each  = upcloud_server.worker
   server_id = each.value.id
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.k8s_allowed_remote_ips
 
     content {
@@ -370,7 +370,7 @@ resource "upcloud_firewall_rules" "k8s" {
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = length(var.k8s_allowed_remote_ips) > 0 ? [1] : []
 
     content {
@@ -386,7 +386,7 @@ resource "upcloud_firewall_rules" "k8s" {
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.worker_allowed_ports
 
     content {
@@ -402,97 +402,97 @@ resource "upcloud_firewall_rules" "k8s" {
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["tcp", "udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "UpCloud DNS"
-      source_port_end        = "53"
-      source_port_start      = "53"
-      direction              = "in"
-      family                 = "IPv4"
-      protocol               = firewall_rule.value
-      source_address_end     = "94.237.40.9"
-      source_address_start   = "94.237.40.9"
+      action               = "accept"
+      comment              = "UpCloud DNS"
+      source_port_end      = "53"
+      source_port_start    = "53"
+      direction            = "in"
+      family               = "IPv4"
+      protocol             = firewall_rule.value
+      source_address_end   = "94.237.40.9"
+      source_address_start = "94.237.40.9"
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["tcp", "udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "UpCloud DNS"
-      source_port_end        = "53"
-      source_port_start      = "53"
-      direction              = "in"
-      family                 = "IPv4"
-      protocol               = firewall_rule.value
-      source_address_end     = "94.237.127.9"
-      source_address_start   = "94.237.127.9"
+      action               = "accept"
+      comment              = "UpCloud DNS"
+      source_port_end      = "53"
+      source_port_start    = "53"
+      direction            = "in"
+      family               = "IPv4"
+      protocol             = firewall_rule.value
+      source_address_end   = "94.237.127.9"
+      source_address_start = "94.237.127.9"
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["tcp", "udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "UpCloud DNS"
-      source_port_end        = "53"
-      source_port_start      = "53"
-      direction              = "in"
-      family                 = "IPv6"
-      protocol               = firewall_rule.value
-      source_address_end     = "2a04:3540:53::1"
-      source_address_start   = "2a04:3540:53::1"
+      action               = "accept"
+      comment              = "UpCloud DNS"
+      source_port_end      = "53"
+      source_port_start    = "53"
+      direction            = "in"
+      family               = "IPv6"
+      protocol             = firewall_rule.value
+      source_address_end   = "2a04:3540:53::1"
+      source_address_start = "2a04:3540:53::1"
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["tcp", "udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "UpCloud DNS"
-      source_port_end        = "53"
-      source_port_start      = "53"
-      direction              = "in"
-      family                 = "IPv6"
-      protocol               = firewall_rule.value
-      source_address_end     = "2a04:3544:53::1"
-      source_address_start   = "2a04:3544:53::1"
+      action               = "accept"
+      comment              = "UpCloud DNS"
+      source_port_end      = "53"
+      source_port_start    = "53"
+      direction            = "in"
+      family               = "IPv6"
+      protocol             = firewall_rule.value
+      source_address_end   = "2a04:3544:53::1"
+      source_address_start = "2a04:3544:53::1"
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "NTP Port"
-      source_port_end        = "123"
-      source_port_start      = "123"
-      direction              = "in"
-      family                 = "IPv4"
-      protocol               = firewall_rule.value
-      source_address_end     = "255.255.255.255"
-      source_address_start   = "0.0.0.0"
+      action               = "accept"
+      comment              = "NTP Port"
+      source_port_end      = "123"
+      source_port_start    = "123"
+      direction            = "in"
+      family               = "IPv4"
+      protocol             = firewall_rule.value
+      source_address_end   = "255.255.255.255"
+      source_address_start = "0.0.0.0"
     }
   }
 
-  dynamic firewall_rule {
+  dynamic "firewall_rule" {
     for_each = var.firewall_default_deny_in ? ["udp"] : []
 
     content {
-      action                 = "accept"
-      comment                = "NTP Port"
-      source_port_end        = "123"
-      source_port_start      = "123"
-      direction              = "in"
-      family                 = "IPv6"
-      protocol               = firewall_rule.value
+      action            = "accept"
+      comment           = "NTP Port"
+      source_port_end   = "123"
+      source_port_start = "123"
+      direction         = "in"
+      family            = "IPv6"
+      protocol          = firewall_rule.value
     }
   }
 
@@ -535,9 +535,9 @@ resource "upcloud_loadbalancer_frontend" "lb_frontend" {
 
 resource "upcloud_loadbalancer_static_backend_member" "lb_backend_member" {
   for_each = {
-    for be_server in local.lb_backend_servers:
-      "${be_server.server_name}-lb-backend-${be_server.lb_name}" => be_server
-      if var.loadbalancer_enabled
+    for be_server in local.lb_backend_servers :
+    "${be_server.server_name}-lb-backend-${be_server.lb_name}" => be_server
+    if var.loadbalancer_enabled
   }
 
   backend      = upcloud_loadbalancer_backend.lb_backend[each.value.lb_name].id
@@ -550,9 +550,9 @@ resource "upcloud_loadbalancer_static_backend_member" "lb_backend_member" {
 }
 
 resource "upcloud_server_group" "server_groups" {
-  for_each      = var.server_groups
-  title         = each.key
-  anti_affinity = each.value.anti_affinity
-  labels        = {}
-  members       = [for server in each.value.servers : merge(upcloud_server.master, upcloud_server.worker)[server].id]
+  for_each             = var.server_groups
+  title                = each.key
+  anti_affinity_policy = each.value.anti_affinity_policy
+  labels               = {}
+  members              = [for server in each.value.servers : merge(upcloud_server.master, upcloud_server.worker)[server].id]
 }

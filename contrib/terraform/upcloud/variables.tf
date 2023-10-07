@@ -136,8 +136,8 @@ variable "server_groups" {
   description = "Server groups"
 
   type = map(object({
-    anti_affinity = bool
-    servers       = list(string)
+    anti_affinity_policy = string
+    servers              = list(string)
   }))
 
   default = {}

@@ -97,3 +97,9 @@ Adding extra options to pass to the docker daemon:
 ## This string should be exactly as you wish it to appear.
 docker_options: ""
 ```
+
+For Debian based distributions, set the path to store the GPG key to avoid using the default one used in `apt_key` module (e.g. /etc/apt/trusted.gpg)
+
+```yaml
+docker_repo_key_keyring: /etc/apt/trusted.gpg.d/docker.gpg
+```

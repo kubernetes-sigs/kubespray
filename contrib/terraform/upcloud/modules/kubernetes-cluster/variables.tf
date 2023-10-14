@@ -15,11 +15,11 @@ variable "private_network_cidr" {}
 variable "machines" {
   description = "Cluster machines"
   type = map(object({
-    node_type       = string
-    plan            = string
-    cpu             = string
-    mem             = string
-    disk_size       =  number
+    node_type = string
+    plan      = string
+    cpu       = string
+    mem       = string
+    disk_size = number
     additional_disks = map(object({
       size = number
       tier = string
@@ -99,7 +99,7 @@ variable "server_groups" {
   description = "Server groups"
 
   type = map(object({
-    anti_affinity   = bool
-    servers = list(string)
+    anti_affinity_policy = string
+    servers              = list(string)
   }))
 }

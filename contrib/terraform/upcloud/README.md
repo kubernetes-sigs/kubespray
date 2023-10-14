@@ -140,4 +140,4 @@ terraform destroy --var-file cluster-settings.tfvars \
   * `backend_servers`: List of servers that traffic to the port should be forwarded to.
 * `server_groups`: Group servers together
   * `servers`: The servers that should be included in the group.
-  * `anti_affinity`: If anti-affinity should be enabled, try to spread the VMs out on separate nodes.
+  * `anti_affinity_policy`: Defines if a server group is an anti-affinity group. Setting this to "strict" or yes" will result in all servers in the group being placed on separate compute hosts. The value can be "strict", "yes" or "no". "strict" refers to strict policy doesn't allow servers in the same server group to be on the same host. "yes" refers to best-effort policy and tries to put servers on different hosts, but this is not guaranteed.

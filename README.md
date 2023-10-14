@@ -179,7 +179,7 @@ Note: Upstart/SysV init based OS types are not supported.
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) v1.11.1
   - [coredns](https://github.com/coredns/coredns) v1.10.1
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.8.2
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.9.0
   - [krew](https://github.com/kubernetes-sigs/krew) v0.4.4
   - [argocd](https://argoproj.github.io/) v2.8.0
   - [helm](https://helm.sh/) v3.12.3

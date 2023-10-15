@@ -54,7 +54,7 @@ ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_user=ubuntu -b --
 
 To leverage a Linux distribution other than Ubuntu 18.04 (Bionic) LTS for your Terraform configurations, you can adjust the AMI search filters within the 'data "aws_ami" "distro"' block by utilizing variables in your `terraform.tfvars` file. This approach ensures a flexible configuration that adapts to various Linux distributions without directly modifying the core Terraform files.
 
-### Example Usages:
+### Example Usages
 
 - **Debian Jessie**: To configure the usage of Debian Jessie, insert the subsequent lines into your `terraform.tfvars`:
 

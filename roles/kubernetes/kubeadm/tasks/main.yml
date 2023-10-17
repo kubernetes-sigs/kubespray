@@ -129,6 +129,17 @@
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
   notify: Kubeadm | restart kubelet
 
+- name: Update server field in kubelet kubeconfig - external lb
+  lineinfile:
+    dest: "{{ kube_config_dir }}/kubelet.conf"
+    regexp: '^    server: https'
+    line: '    server: {{ kube_apiserver_endpoint }}'
+    backup: yes
+  when:
+    - not is_kube_master
+    - loadbalancer_apiserver is defined
+  notify: Kubeadm | restart kubelet
+
 # FIXME(mattymo): Need to point to localhost, otherwise masters will all point
 #                 incorrectly to first master, creating SPoF.
 - name: Update server field in kube-proxy kubeconfig
@@ -149,6 +160,22 @@
   tags:
     - kube-proxy
 
+- name: Update server field in kube-proxy kubeconfig - external lb
+  shell: >-
+    set -o pipefail && {{ kubectl }} get configmap kube-proxy -n kube-system -o yaml
+    | sed 's#server:.*#server: {{kube_apiserver_endpoint}}#g'
+    | {{ kubectl }} replace -f -
+  args:
+    executable: /bin/bash
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'] | first }}"
+  delegate_facts: false
+  when:
+    - kube_proxy_deployed
+    - loadbalancer_apiserver is defined
+  tags:
+    - kube-proxy
+
 - name: Set ca.crt file permission
   file:
     path: "{{ kube_cert_dir }}/ca.crt"
@@ -162,8 +189,8 @@
   delegate_to: "{{ groups['kube_control_plane'] | first }}"
   delegate_facts: false
   when:
-    - kubeadm_config_api_fqdn is not defined
-    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
+    - kubeadm_config_api_fqdn is not defined or loadbalancer_apiserver is defined
+    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "") or loadbalancer_apiserver is defined
     - kube_proxy_deployed
   tags:
     - kube-proxy

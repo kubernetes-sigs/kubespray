@@ -29,10 +29,6 @@ metallb_config:
     nodeselector:
       kubernetes.io/os: linux
     tolerations:
-    - key: "node-role.kubernetes.io/master"
-      operator: "Equal"
-      value: ""
-      effect: "NoSchedule"
     - key: "node-role.kubernetes.io/control-plane"
       operator: "Equal"
       value: ""

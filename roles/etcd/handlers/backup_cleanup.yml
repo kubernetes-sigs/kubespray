@@ -2,11 +2,21 @@
 - name: Cleanup etcd backups
   command: /bin/true
   notify:
+    - Find old etcd backups
     - Remove old etcd backups
 
+- name: Find old etcd backups
+  ansible.builtin.find:
+    file_type: directory
+    recurse: false
+    paths: "{{ etcd_backup_prefix }}"
+    patterns: "etcd-*"
+  register: _etcd_backups
+  when: etcd_backup_retention_count >= 0
+
 - name: Remove old etcd backups
-  shell:
-    chdir: "{{ etcd_backup_prefix }}"
-    cmd: "set -o pipefail && find . -name 'etcd-*' -type d | sort -n | head -n -{{ etcd_backup_retention_count }} | xargs rm -rf"
-    executable: /bin/bash
+  ansible.builtin.file:
+    state: absent
+    path: "{{ item }}"
+  loop: "{{ (_etcd_backups.files | sort(attribute='ctime', reverse=True))[etcd_backup_retention_count:] | map(attribute='path') }}"
   when: etcd_backup_retention_count >= 0

@@ -20,20 +20,38 @@ variable "aws_cluster_name" {
   description = "Name of AWS Cluster"
 }
 
+variable "ami_name_pattern" {
+  description = "The name pattern to use for AMI lookup"
+  type        = string
+  default     = "debian-10-amd64-*"
+}
+
+variable "ami_virtualization_type" {
+  description = "The virtualization type to use for AMI lookup"
+  type        = string
+  default     = "hvm"
+}
+
+variable "ami_owners" {
+  description = "The owners to use for AMI lookup"
+  type        = list(string)
+  default     = ["136693071363"]
+}
+
 data "aws_ami" "distro" {
   most_recent = true
 
   filter {
     name   = "name"
-    values = ["debian-10-amd64-*"]
+    values = [var.ami_name_pattern]
   }
 
   filter {
     name   = "virtualization-type"
-    values = ["hvm"]
+    values = [var.ami_virtualization_type]
   }
 
-  owners = ["136693071363"] # Debian-10
+  owners = var.ami_owners
 }
 
 //AWS VPC Variables

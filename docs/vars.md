@@ -271,6 +271,7 @@ node_taints:
   * `audit_webhook_mode`: batch
   * `audit_webhook_batch_max_size`: 100
   * `audit_webhook_batch_max_wait`: 1s
+* *kubectl_alias* - Bash alias of kubectl to interact with Kubernetes cluster much easier.
 
 ### Custom flags for Kube Components
 

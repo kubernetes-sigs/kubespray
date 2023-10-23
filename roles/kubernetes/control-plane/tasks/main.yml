@@ -60,6 +60,26 @@
     - upgrade
   ignore_errors: true  # noqa ignore-errors
 
+- name: Set bash alias for kubectl
+  blockinfile:
+    path: /etc/bash_completion.d/kubectl.sh
+    block: |-
+      alias {{ kubectl_alias }}=kubectl
+      if [[ $(type -t compopt) = "builtin" ]]; then
+        complete -o default -F __start_kubectl {{ kubectl_alias }}
+      else
+        complete -o default -o nospace -F __start_kubectl {{ kubectl_alias }}
+      fi
+    state: present
+    marker: "# Ansible entries {mark}"
+  when:
+    - ansible_os_family in ["Debian","RedHat"]
+    - kubectl_alias is defined and kubectl_alias != ""
+  tags:
+    - kubectl
+    - upgrade
+  ignore_errors: true  # noqa ignore-errors
+
 - name: Disable SecurityContextDeny admission-controller and enable PodSecurityPolicy
   set_fact:
     kube_apiserver_enable_admission_plugins: "{{ kube_apiserver_enable_admission_plugins | difference(['SecurityContextDeny']) | union(['PodSecurityPolicy']) | unique }}"

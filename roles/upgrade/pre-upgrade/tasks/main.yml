@@ -46,6 +46,31 @@
       false
       {%- endif %}
 
+# Legacy taint: key = node-role.kubernetes.io/master, effect = NoSchedule
+# New taint: key = node-role.kubernetes.io/control-plane, effect = NoSchedule
+#
+# During the upgrade to k8s v1.25 legacy taint is deleted:
+#   https://github.com/kubernetes/kubernetes/commit/ddd046f3dd88186cbc83b57e83144db96eae4af4
+#
+# In order to avoid taint lost we need to ensure node-role.kubernetes.io/control-plane:NoSchedule
+# if node-role.kubernetes.io/master:NoSchedule is set prior to k8s upgrade
+- name: See if node has legacy taints
+  command: >
+    {{ kubectl }} get node {{ kube_override_hostname | default(inventory_hostname) }}
+    -o jsonpath='{.spec.taints[?(@.key=="node-role.kubernetes.io/master")]}'
+  register: kubectl_node_legacy_taints
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  failed_when: false
+  changed_when: false
+
+- name: Migrate node legacy taints
+  command: >
+    {{ kubectl }} taint --overwrite node {{ kube_override_hostname | default(inventory_hostname) }}
+    node-role.kubernetes.io/control-plane:NoSchedule
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  when:
+    - kubectl_node_legacy_taints.stdout | length
+
 - name: Node draining
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   when:

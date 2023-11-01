@@ -113,10 +113,7 @@
     name: "{{ item }}"
     state: present
   with_items:
-    - ip_vs
-    - ip_vs_rr
-    - ip_vs_wrr
-    - ip_vs_sh
+    - "{{ kube_proxy_ipvs_modules }}"
   when: kube_proxy_mode == 'ipvs'
   tags:
     - kube-proxy
@@ -136,20 +133,18 @@
   copy:
     dest: /etc/modules-load.d/kube_proxy-ipvs.conf
     mode: 0644
-    content: |
-      ip_vs
-      ip_vs_rr
-      ip_vs_wrr
-      ip_vs_sh
-      {% if modprobe_nf_conntrack_ipv4 is success -%}
-      nf_conntrack_ipv4
-      {%-   endif -%}
+    content: "{{ kube_proxy_ipvs_modules_list }}"
   when: kube_proxy_mode == 'ipvs'
   tags:
     - kube-proxy
 
-- name: Check cloud provider credentials
-  include_tasks: "cloud-credentials/{{ cloud_provider }}-credential-check.yml"
+- name: Add nf_conntrack_ipv4 to file if module is mounted
+  shell: "echo 'nf_conntrack_ipv4' >> /etc/modules-load.d/kube_proxy-ipvs.conf"
+  when: modprobe_nf_conntrack_ipv4 is success
+  tags:
+    - kube-proxy
+
+- include_tasks: "cloud-credentials/{{ cloud_provider }}-credential-check.yml"
   when:
     - cloud_provider is defined
     - cloud_provider in [ 'openstack', 'azure', 'vsphere' ]

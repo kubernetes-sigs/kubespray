@@ -112,8 +112,7 @@
   community.general.modprobe:
     name: "{{ item }}"
     state: present
-  with_items:
-    - "{{ kube_proxy_ipvs_modules }}"
+  loop: "{{ kube_proxy_ipvs_modules }}"
   when: kube_proxy_mode == 'ipvs'
   tags:
     - kube-proxy
@@ -129,18 +128,19 @@
   tags:
     - kube-proxy
 
+- name: Add nf_conntrack_ipv4 kube-proxy ipvs module list
+  set_fact:
+    kube_proxy_ipvs_modules: "{{ kube_proxy_ipvs_modules + ['nf_conntrack_ipv4'] }}"
+  when: modprobe_nf_conntrack_ipv4 is success
+  tags:
+    - kube-proxy
+
 - name: Persist ip_vs modules
   copy:
     dest: /etc/modules-load.d/kube_proxy-ipvs.conf
     mode: 0644
-    content: "{{ kube_proxy_ipvs_modules_list }}"
+    content: "{{ kube_proxy_ipvs_modules | join('\n') }}"
   when: kube_proxy_mode == 'ipvs'
-  tags:
-    - kube-proxy
-
-- name: Add nf_conntrack_ipv4 to file if module is mounted
-  shell: "echo 'nf_conntrack_ipv4' >> /etc/modules-load.d/kube_proxy-ipvs.conf"
-  when: modprobe_nf_conntrack_ipv4 is success
   tags:
     - kube-proxy
 

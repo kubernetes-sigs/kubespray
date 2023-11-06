@@ -51,6 +51,7 @@
 - name: Cri-o | make sure needed folders exist in the system
   with_items:
     - /etc/crio
+    - /etc/crio/crio.conf.d
     - /etc/containers
     - /etc/systemd/system/crio.service.d
   file:
@@ -64,6 +65,20 @@
     dest: /etc/crio/crio.conf
     mode: 0644
   register: config_install
+
+- name: Cri-o | install custom crio configuration settings
+  community.general.ini_file:
+    path: /etc/crio/crio.conf.d/custom.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ lookup('template', 'custom-crio.conf.j2') | trim }}"
+    mode: 0644
+  vars:
+    string_conversion_action: ignore
+  loop_control:
+    label: "[{{ item.section }}] -> {{ item.option }}"
+  loop: "{{ crio_config }}"
+  register: custom_config_install
 
 - name: Cri-o | install config.json
   template:
@@ -202,7 +217,7 @@
     name: crio
     state: restarted
   when:
-    - config_install.changed or reg_auth_install.changed
+    - config_install.changed or reg_auth_install.changed or custom_config_install.changed
     - not service_start.changed
 
 - name: Cri-o | verify that crio is running

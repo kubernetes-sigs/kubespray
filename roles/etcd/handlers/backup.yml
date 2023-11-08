@@ -1,22 +1,14 @@
 ---
-- name: Backup etcd data
-  command: /bin/true
-  notify:
-    - Refresh Time Fact
-    - Set Backup Directory
-    - Create Backup Directory
-    - Stat etcd v2 data directory
-    - Backup etcd v2 data
-    - Backup etcd v3 data
-  when: etcd_cluster_is_healthy.rc == 0
-
 - name: Refresh Time Fact
   setup:
     filter: ansible_date_time
+  listen: Restart etcd
+  when: etcd_cluster_is_healthy.rc == 0
 
 - name: Set Backup Directory
   set_fact:
     etcd_backup_directory: "{{ etcd_backup_prefix }}/etcd-{{ ansible_date_time.date }}_{{ ansible_date_time.time }}"
+  listen: Restart etcd
 
 - name: Create Backup Directory
   file:
@@ -25,6 +17,8 @@
     owner: root
     group: root
     mode: 0600
+  listen: Restart etcd
+  when: etcd_cluster_is_healthy.rc == 0
 
 - name: Stat etcd v2 data directory
   stat:
@@ -33,9 +27,13 @@
     get_checksum: no
     get_mime: no
   register: etcd_data_dir_member
+  listen: Restart etcd
+  when: etcd_cluster_is_healthy.rc == 0
 
 - name: Backup etcd v2 data
-  when: etcd_data_dir_member.stat.exists
+  when:
+    - etcd_data_dir_member.stat.exists
+    - etcd_cluster_is_healthy.rc == 0
   command: >-
     {{ bin_dir }}/etcdctl backup
       --data-dir {{ etcd_data_dir }}
@@ -46,6 +44,7 @@
   register: backup_v2_command
   until: backup_v2_command.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
+  listen: Restart etcd
 
 - name: Backup etcd v3 data
   command: >-
@@ -61,3 +60,5 @@
   register: etcd_backup_v3_command
   until: etcd_backup_v3_command.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
+  listen: Restart etcd
+  when: etcd_cluster_is_healthy.rc == 0

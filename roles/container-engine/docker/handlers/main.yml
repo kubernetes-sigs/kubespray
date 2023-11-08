@@ -1,28 +1,25 @@
 ---
-- name: Restart docker
-  command: /bin/true
-  notify:
-    - Docker | reload systemd
-    - Docker | reload docker.socket
-    - Docker | reload docker
-    - Docker | wait for docker
-
 - name: Docker | reload systemd
   systemd:
     name: docker
     daemon_reload: true
     masked: no
+  listen: Restart docker
 
 - name: Docker | reload docker.socket
   service:
     name: docker.socket
     state: restarted
   when: ansible_os_family in ['Flatcar', 'Flatcar Container Linux by Kinvolk'] or is_fedora_coreos
+  listen: Restart docker
+
 
 - name: Docker | reload docker
   service:
     name: docker
     state: restarted
+  listen: Restart docker
+
 
 - name: Docker | wait for docker
   command: "{{ docker_bin_dir }}/docker images"
@@ -30,3 +27,4 @@
   retries: 20
   delay: 1
   until: docker_ready.rc == 0
+  listen: Restart docker

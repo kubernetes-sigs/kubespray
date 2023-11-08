@@ -1,47 +1,14 @@
 ---
-- name: Master | restart kubelet
-  command: /bin/true
-  notify:
-    - Master | reload systemd
-    - Master | reload kubelet
-    - Master | wait for master static pods
-
-- name: Master | wait for master static pods
-  command: /bin/true
-  notify:
-    - Master | wait for the apiserver to be running
-    - Master | wait for kube-scheduler
-    - Master | wait for kube-controller-manager
-
-- name: Master | Restart apiserver
-  command: /bin/true
-  notify:
-    - Master | Remove apiserver container docker
-    - Master | Remove apiserver container containerd/crio
-    - Master | wait for the apiserver to be running
-
-- name: Master | Restart kube-scheduler
-  command: /bin/true
-  notify:
-    - Master | Remove scheduler container docker
-    - Master | Remove scheduler container containerd/crio
-    - Master | wait for kube-scheduler
-
-- name: Master | Restart kube-controller-manager
-  command: /bin/true
-  notify:
-    - Master | Remove controller manager container docker
-    - Master | Remove controller manager container containerd/crio
-    - Master | wait for kube-controller-manager
-
 - name: Master | reload systemd
   systemd:
     daemon_reload: true
+  listen: Master | restart kubelet
 
 - name: Master | reload kubelet
   service:
     name: kubelet
     state: restarted
+  listen: Master | restart kubelet
 
 - name: Master | Remove apiserver container docker
   shell: "set -o pipefail && docker ps -af name=k8s_kube-apiserver* -q | xargs --no-run-if-empty docker rm -f"
@@ -52,6 +19,7 @@
   until: remove_apiserver_container.rc == 0
   delay: 1
   when: container_manager == "docker"
+  listen: Master | Restart apiserver
 
 - name: Master | Remove apiserver container containerd/crio
   shell: "set -o pipefail && {{ bin_dir }}/crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
@@ -62,6 +30,7 @@
   until: remove_apiserver_container.rc == 0
   delay: 1
   when: container_manager in ['containerd', 'crio']
+  listen: Master | Restart apiserver
 
 - name: Master | Remove scheduler container docker
   shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -af name=k8s_kube-scheduler* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
@@ -72,6 +41,7 @@
   until: remove_scheduler_container.rc == 0
   delay: 1
   when: container_manager == "docker"
+  listen: Master | Restart kube-scheduler
 
 - name: Master | Remove scheduler container containerd/crio
   shell: "set -o pipefail && {{ bin_dir }}/crictl pods --name kube-scheduler* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
@@ -82,6 +52,7 @@
   until: remove_scheduler_container.rc == 0
   delay: 1
   when: container_manager in ['containerd', 'crio']
+  listen: Master | Restart kube-scheduler
 
 - name: Master | Remove controller manager container docker
   shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -af name=k8s_kube-controller-manager* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
@@ -92,6 +63,7 @@
   until: remove_cm_container.rc == 0
   delay: 1
   when: container_manager == "docker"
+  listen: Master | Restart kube-controller-manager
 
 - name: Master | Remove controller manager container containerd/crio
   shell: "set -o pipefail && {{ bin_dir }}/crictl pods --name kube-controller-manager* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
@@ -102,6 +74,7 @@
   until: remove_cm_container.rc == 0
   delay: 1
   when: container_manager in ['containerd', 'crio']
+  listen: Master | Restart kube-controller-manager
 
 - name: Master | wait for kube-scheduler
   vars:
@@ -113,6 +86,9 @@
   until: scheduler_result.status == 200
   retries: 60
   delay: 1
+  listen:
+    - Master | restart kubelet
+    - Master | Restart kube-scheduler
 
 - name: Master | wait for kube-controller-manager
   vars:
@@ -124,6 +100,9 @@
   until: controller_manager_result.status == 200
   retries: 60
   delay: 1
+  listen:
+    - Master | restart kubelet
+    - Master | Restart kube-controller-manager
 
 - name: Master | wait for the apiserver to be running
   uri:
@@ -133,3 +112,6 @@
   until: result.status == 200
   retries: 60
   delay: 1
+  listen:
+    - Master | restart kubelet
+    - Master | Restart apiserver

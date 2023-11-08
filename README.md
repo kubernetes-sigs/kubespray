@@ -75,11 +75,11 @@ You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mou
 to access the inventory and SSH key in the container, like this:
 
 ```ShellSession
-git checkout v2.23.0
-docker pull quay.io/kubespray/kubespray:v2.23.0
+git checkout v2.23.1
+docker pull quay.io/kubespray/kubespray:v2.23.1
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.23.0 bash
+  quay.io/kubespray/kubespray:v2.23.1 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
@@ -164,7 +164,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [kubernetes](https://github.com/kubernetes/kubernetes) v1.28.3
   - [etcd](https://github.com/etcd-io/etcd) v3.5.9
   - [docker](https://www.docker.com/) v20.10 (see note)
-  - [containerd](https://containerd.io/) v1.7.7
+  - [containerd](https://containerd.io/) v1.7.8
   - [cri-o](http://cri-o.io/) v1.27 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v1.2.0
@@ -172,14 +172,14 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cilium](https://github.com/cilium/cilium) v1.13.4
   - [flannel](https://github.com/flannel-io/flannel) v0.22.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.11.5
-  - [kube-router](https://github.com/cloudnativelabs/kube-router) v1.6.0
+  - [kube-router](https://github.com/cloudnativelabs/kube-router) v2.0.0
   - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) v3.8
   - [weave](https://github.com/weaveworks/weave) v2.8.1
   - [kube-vip](https://github.com/kube-vip/kube-vip) v0.5.12
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) v1.12.5
   - [coredns](https://github.com/coredns/coredns) v1.10.1
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.9.3
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.9.4
   - [krew](https://github.com/kubernetes-sigs/krew) v0.4.4
   - [argocd](https://argoproj.github.io/) v2.8.4
   - [helm](https://helm.sh/) v3.13.1

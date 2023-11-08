@@ -1,38 +1,14 @@
 ---
-- name: Preinstall | propagate resolvconf to k8s components
-  command: /bin/true
-  notify:
-    - Preinstall | reload kubelet
-    - Preinstall | kube-controller configured
-    - Preinstall | kube-apiserver configured
-    - Preinstall | restart kube-controller-manager docker
-    - Preinstall | restart kube-controller-manager crio/containerd
-    - Preinstall | restart kube-apiserver docker
-    - Preinstall | restart kube-apiserver crio/containerd
-    - Preinstall | wait for the apiserver to be running
-  when: not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] and not is_fedora_coreos
-
-- name: Preinstall | update resolvconf for Flatcar Container Linux by Kinvolk
-  command: /bin/true
-  notify:
-    - Preinstall | apply resolvconf cloud-init
-    - Preinstall | reload kubelet
-  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
-
 - name: Preinstall | apply resolvconf cloud-init
   command: /usr/bin/coreos-cloudinit --from-file {{ resolveconf_cloud_init_conf }}
   when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
-
-- name: Preinstall | update resolvconf for networkmanager
-  command: /bin/true
-  notify:
-    - Preinstall | reload NetworkManager
-    - Preinstall | reload kubelet
+  listen: Preinstall | update resolvconf for Flatcar Container Linux by Kinvolk
 
 - name: Preinstall | reload NetworkManager
   service:
     name: NetworkManager.service
     state: restarted
+  listen: Preinstall | update resolvconf for networkmanager
 
 - name: Preinstall | reload kubelet
   service:
@@ -46,6 +22,10 @@
     - Preinstall | restart kube-apiserver docker
     - Preinstall | restart kube-apiserver crio/containerd
   when: not dns_early | bool
+  listen:
+    - Preinstall | propagate resolvconf to k8s components
+    - Preinstall | update resolvconf for Flatcar Container Linux by Kinvolk
+    - Preinstall | update resolvconf for networkmanager
 
 # FIXME(mattymo): Also restart for kubeadm mode
 - name: Preinstall | kube-apiserver configured
@@ -56,6 +36,7 @@
     get_mime: no
   register: kube_apiserver_set
   when: inventory_hostname in groups['kube_control_plane'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
+  listen: Preinstall | propagate resolvconf to k8s components
 
 # FIXME(mattymo): Also restart for kubeadm mode
 - name: Preinstall | kube-controller configured
@@ -66,6 +47,7 @@
     get_mime: no
   register: kube_controller_set
   when: inventory_hostname in groups['kube_control_plane'] and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
+  listen: Preinstall | propagate resolvconf to k8s components
 
 - name: Preinstall | restart kube-controller-manager docker
   shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-controller-manager* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
@@ -77,6 +59,7 @@
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
     - kube_controller_set.stat.exists
+  listen: Preinstall | propagate resolvconf to k8s components
 
 - name: Preinstall | restart kube-controller-manager crio/containerd
   shell: "set -o pipefail && {{ bin_dir }}/crictl pods --name kube-controller-manager* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
@@ -92,6 +75,7 @@
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
     - kube_controller_set.stat.exists
+  listen: Preinstall | propagate resolvconf to k8s components
 
 - name: Preinstall | restart kube-apiserver docker
   shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-apiserver* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
@@ -103,6 +87,7 @@
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
     - kube_apiserver_set.stat.exists
+  listen: Preinstall | propagate resolvconf to k8s components
 
 - name: Preinstall | restart kube-apiserver crio/containerd
   shell: "set -o pipefail && {{ bin_dir }}/crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
@@ -118,6 +103,7 @@
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
     - kube_apiserver_set.stat.exists
+  listen: Preinstall | propagate resolvconf to k8s components
 
 # When running this as the last phase ensure we wait for kube-apiserver to come up
 - name: Preinstall | wait for the apiserver to be running
@@ -133,6 +119,8 @@
     - inventory_hostname in groups['kube_control_plane']
     - dns_mode != 'none'
     - resolvconf_mode == 'host_resolvconf'
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] and not is_fedora_coreos
+  listen: Preinstall | propagate resolvconf to k8s components
 
 - name: Preinstall | Restart systemd-resolved
   service:

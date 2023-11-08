@@ -1,38 +1,27 @@
 ---
-- name: Restart etcd
-  command: /bin/true
-  notify:
-    - Backup etcd data
-    - Etcd | reload systemd
-    - Reload etcd
-    - Wait for etcd up
-    - Cleanup etcd backups
-
-- name: Restart etcd-events
-  command: /bin/true
-  notify:
-    - Etcd | reload systemd
-    - Reload etcd-events
-    - Wait for etcd-events up
-
 - name: Backup etcd
   import_tasks: backup.yml
 
 - name: Etcd | reload systemd
   systemd:
     daemon_reload: true
+  listen:
+    - Restart etcd
+    - Restart etcd-events
 
 - name: Reload etcd
   service:
     name: etcd
     state: restarted
   when: is_etcd_master
+  listen: Restart etcd
 
 - name: Reload etcd-events
   service:
     name: etcd-events
     state: restarted
   when: is_etcd_master
+  listen: Restart etcd-events
 
 - name: Wait for etcd up
   uri:
@@ -44,6 +33,7 @@
   until: result.status is defined and result.status == 200
   retries: 60
   delay: 1
+  listen: Restart etcd
 
 - name: Cleanup etcd backups
   import_tasks: backup_cleanup.yml
@@ -58,6 +48,7 @@
   until: result.status is defined and result.status == 200
   retries: 60
   delay: 1
+  listen: Restart etcd-events
 
 - name: Set etcd_secret_changed
   set_fact:

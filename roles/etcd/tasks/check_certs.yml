@@ -11,7 +11,6 @@
 - name: "Check_certs | Set default value for 'sync_certs', 'gen_certs' and 'etcd_secret_changed' to false"
   set_fact:
     sync_certs: false
-    gen_certs: false
     etcd_secret_changed: false
 
 - name: "Check certs | Register ca and etcd admin/member certs on etcd hosts"
@@ -38,55 +37,6 @@
     - ca.pem
     - node-{{ inventory_hostname }}.pem
     - node-{{ inventory_hostname }}-key.pem
-
-- name: "Check_certs | Set 'gen_certs' to true if expected certificates are not on the first etcd node(1/2)"
-  set_fact:
-    gen_certs: true
-  when: force_etcd_cert_refresh or not item in etcdcert_master.files | map(attribute='path') | list
-  run_once: true
-  with_items: "{{ expected_files }}"
-  vars:
-    expected_files: >-
-      ['{{ etcd_cert_dir }}/ca.pem',
-      {% set etcd_members = groups['etcd'] %}
-      {% for host in etcd_members %}
-        '{{ etcd_cert_dir }}/admin-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/admin-{{ host }}-key.pem',
-        '{{ etcd_cert_dir }}/member-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/member-{{ host }}-key.pem',
-      {% endfor %}
-      {% set k8s_nodes = groups['kube_control_plane'] %}
-      {% for host in k8s_nodes %}
-        '{{ etcd_cert_dir }}/node-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/node-{{ host }}-key.pem'
-        {% if not loop.last %}{{ ',' }}{% endif %}
-      {% endfor %}]
-
-- name: "Check_certs | Set 'gen_certs' to true if expected certificates are not on the first etcd node(2/2)"
-  set_fact:
-    gen_certs: true
-  run_once: true
-  with_items: "{{ expected_files }}"
-  vars:
-    expected_files: >-
-      ['{{ etcd_cert_dir }}/ca.pem',
-      {% set etcd_members = groups['etcd'] %}
-      {% for host in etcd_members %}
-        '{{ etcd_cert_dir }}/admin-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/admin-{{ host }}-key.pem',
-        '{{ etcd_cert_dir }}/member-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/member-{{ host }}-key.pem',
-      {% endfor %}
-      {% set k8s_nodes = groups['k8s_cluster'] | unique | sort %}
-      {% for host in k8s_nodes %}
-        '{{ etcd_cert_dir }}/node-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/node-{{ host }}-key.pem'
-        {% if not loop.last %}{{ ',' }}{% endif %}
-      {% endfor %}]
-  when:
-    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
-    - kube_network_plugin != "calico" or calico_datastore == "etcd"
-    - force_etcd_cert_refresh or not item in etcdcert_master.files | map(attribute='path') | list
 
 - name: "Check_certs | Set 'gen_*_certs' groups to track which nodes needs to have certs generated on first etcd node"
   vars:

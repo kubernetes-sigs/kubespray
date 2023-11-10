@@ -88,49 +88,12 @@
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
     - force_etcd_cert_refresh or not item in etcdcert_master.files | map(attribute='path') | list
 
-- name: "Check_certs | Set 'gen_master_certs' object to track whether member and admin certs exist on first etcd node"
-  set_fact:
-    # noqa: jinja[spacing]
-    gen_master_certs: |-
-      {
-      {% set etcd_members = groups['etcd'] -%}
-      {% set existing_certs = etcdcert_master.files | map(attribute='path') | list | sort %}
-      {% for host in etcd_members -%}
-        {% set member_cert = "%s/member-%s.pem" | format(etcd_cert_dir, host) %}
-        {% set member_key = "%s/member-%s-key.pem" | format(etcd_cert_dir, host) %}
-        {% set admin_cert = "%s/admin-%s.pem" | format(etcd_cert_dir, host) %}
-        {% set admin_key = "%s/admin-%s-key.pem" | format(etcd_cert_dir, host) %}
-        {% if force_etcd_cert_refresh -%}
-        "{{ host }}": True,
-        {% elif member_cert in existing_certs and member_key in existing_certs and admin_cert in existing_certs and admin_key in existing_certs  -%}
-        "{{ host }}": False,
-        {% else -%}
-        "{{ host }}": True,
-        {% endif -%}
-      {% endfor %}
-      }
-  run_once: true
-
-- name: "Check_certs | Set 'gen_node_certs' object to track whether node certs exist on first etcd node"
-  set_fact:
-    # noqa: jinja[spacing]
-    gen_node_certs: |-
-      {
-      {% set k8s_nodes = groups['k8s_cluster'] -%}
-      {% set existing_certs = etcdcert_master.files | map(attribute='path') | list | sort %}
-      {% for host in k8s_nodes -%}
-        {% set host_cert = "%s/node-%s.pem" | format(etcd_cert_dir, host) %}
-        {% set host_key = "%s/node-%s-key.pem" | format(etcd_cert_dir, host) %}
-        {% if force_etcd_cert_refresh -%}
-        "{{ host }}": True,
-        {% elif host_cert in existing_certs and host_key in existing_certs -%}
-        "{{ host }}": False,
-        {% else -%}
-        "{{ host }}": True,
-        {% endif -%}
-      {% endfor %}
-      }
-  run_once: true
+- name: "Check_certs | Set 'gen_*_certs' groups to track which nodes needs to have certs generated on first etcd node"
+  vars:
+    existing_certs: etcdcert_master.files | map(attribute='path')
+  ansible.builtin.group_by:
+    key: "gen_{{ item.node_type }}_certs_{{ force_etcd_cert_refresh or item.certs is not subset(existing_certs) }}"
+  loop: "{{ cert_files | dict2items(key_name='node_type', value_name='certs') }}"
 
 - name: "Check_certs | Set 'etcd_member_requires_sync' to true if ca or member/admin cert and key don't exist on etcd member or checksum doesn't match"
   set_fact:
@@ -167,5 +130,5 @@
   when:
     - etcd_member_requires_sync | default(false) or
       kubernetes_host_requires_sync | default(false) or
-      (inventory_hostname in gen_master_certs and gen_master_certs[inventory_hostname]) or
-      (inventory_hostname in gen_node_certs and gen_node_certs[inventory_hostname])
+      'gen_master_certs_True' in group_names or
+      'gen_node_certs_True' in group_names

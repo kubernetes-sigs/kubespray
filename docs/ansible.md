@@ -32,7 +32,7 @@ Based on the table below and the available python version for your ansible host 
 
 | Ansible Version | Python Version |
 |-----------------|----------------|
-| 2.14            | 3.9-3.11       |
+| >= 2.15.5       | 3.9-3.11       |
 
 ## Inventory
 

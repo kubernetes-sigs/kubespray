@@ -15,12 +15,13 @@ authorization:
 {% else %}
   mode: AlwaysAllow
 {% endif %}
-{% if kubelet_enforce_node_allocatable is defined and kubelet_enforce_node_allocatable != "\"\"" %}
-{% set kubelet_enforce_node_allocatable_list = kubelet_enforce_node_allocatable.split(",") %}
 enforceNodeAllocatable:
-{% for item in kubelet_enforce_node_allocatable_list %}
+{% if enforce_node_allocatable %}
+{% for item in enforce_node_allocatable %}
 - {{ item }}
 {% endfor %}
+{% else %}
+- none # don't enforce anything
 {% endif %}
 staticPodPath: "{{ kubelet_static_pod_path }}"
 cgroupDriver: {{ kubelet_cgroup_driver | default('systemd') }}
@@ -62,9 +63,7 @@ clusterDNS:
 {% endfor %}
 {# Node reserved CPU/memory #}
 {% for scope in "kube", "system" %}
-{% if lookup('ansible.builtin.vars', scope + "_reserved") | bool %}
 {{ scope }}ReservedCgroup: {{ lookup('ansible.builtin.vars', scope + '_slice_cgroup') }}
-{% endif %}
 {{ scope }}Reserved:
 {% for resource in "cpu", "memory", "ephemeral-storage", "pid" %}
   {{ resource }}: "{{ lookup('ansible.builtin.vars', scope + '_' ~ (resource | replace('-', '_')) + '_reserved') }}"

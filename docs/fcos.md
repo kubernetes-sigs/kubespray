@@ -67,3 +67,30 @@ sudo virt-install --name ${machine_name} --ram 4048 --graphics=none --vcpus 2 --
                 --network bridge=virbr0 \
                 --install kernel=${kernel},initrd=${initrd},kernel_args_overwrite=yes,kernel_args="${kernel_args}"
 ```
+
+## Downloading files with kubespray
+Occurred somewhere between FCOS 37 and 39- wget needs to be manually added with ignition to download files (container runtime, etc.)
+
+```
+systemd:
+  units:
+    - name: kubespray-support.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Layer packages with rpm-ostree
+        # We run after `systemd-machine-id-commit.service` to ensure that
+        # `ConditionFirstBoot=true` services won't rerun on the next boot.
+        After=systemd-machine-id-commit.service
+        After=network-online.target
+        # We run before `zincati.service` to avoid conflicting rpm-ostree
+        # transactions.
+        Before=zincati.service
+        ConditionPathExists=!/var/lib/kubespray-support.stamp
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/rpm-ostree install --allow-inactive python3 libselinux-python3 wget --reboot
+        ExecStart=/bin/touch /var/lib/kubespray-support.stamp
+        ExecStart=/bin/systemctl --no-block reboot```

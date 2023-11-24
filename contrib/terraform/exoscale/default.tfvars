@@ -12,7 +12,7 @@ ssh_public_keys = [
 machines = {
   "master-0" : {
     "node_type" : "master",
-    "size" : "Medium",
+    "size" : "standard.medium",
     "boot_disk" : {
       "image_name" : "Linux Ubuntu 20.04 LTS 64-bit",
       "root_partition_size" : 50,
@@ -22,7 +22,7 @@ machines = {
   },
   "worker-0" : {
     "node_type" : "worker",
-    "size" : "Large",
+    "size" : "standard.large",
     "boot_disk" : {
       "image_name" : "Linux Ubuntu 20.04 LTS 64-bit",
       "root_partition_size" : 50,
@@ -32,7 +32,7 @@ machines = {
   },
   "worker-1" : {
     "node_type" : "worker",
-    "size" : "Large",
+    "size" : "standard.large",
     "boot_disk" : {
       "image_name" : "Linux Ubuntu 20.04 LTS 64-bit",
       "root_partition_size" : 50,
@@ -42,7 +42,7 @@ machines = {
   },
   "worker-2" : {
     "node_type" : "worker",
-    "size" : "Large",
+    "size" : "standard.large",
     "boot_disk" : {
       "image_name" : "Linux Ubuntu 20.04 LTS 64-bit",
       "root_partition_size" : 50,

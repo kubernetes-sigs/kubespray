@@ -34,7 +34,6 @@ The playbook attempts to figure out it the etcd quorum is intact. If quorum is l
 ## Caveats
 
 * The playbook has only been tested with fairly small etcd databases.
-* If your new control plane nodes have new ip addresses you may have to change settings in various places.
 * There may be disruptions while running the playbook.
 * There are absolutely no guarantees.
 

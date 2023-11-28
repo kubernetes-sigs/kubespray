@@ -112,35 +112,23 @@
   community.general.modprobe:
     name: "{{ item }}"
     state: present
+    persistent: present
   loop: "{{ kube_proxy_ipvs_modules }}"
   when: kube_proxy_mode == 'ipvs'
   tags:
     - kube-proxy
 
-- name: "Modprobe {{ conntrack_module }}"
+- name: Modprobe conntrack module
   community.general.modprobe:
-    name: "{{ conntrack_module }}"
+    name: "{{ item }}"
     state: present
+    persistent: present
   register: modprobe_conntrack_module
   ignore_errors: true  # noqa ignore-errors
+  loop: "{{ conntrack_modules }}"
   when:
     - kube_proxy_mode == 'ipvs'
-  tags:
-    - kube-proxy
-
-- name: "Add {{ conntrack_module }} kube-proxy ipvs module list"
-  set_fact:
-    kube_proxy_ipvs_modules: "{{ kube_proxy_ipvs_modules + [conntrack_module] }}"
-  when: modprobe_conntrack_module is success
-  tags:
-    - kube-proxy
-
-- name: Persist ip_vs modules
-  copy:
-    dest: /etc/modules-load.d/kube_proxy-ipvs.conf
-    mode: 0644
-    content: "{{ kube_proxy_ipvs_modules | join('\n') }}"
-  when: kube_proxy_mode == 'ipvs'
+    - "(modprobe_conntrack_module|default({'rc': 1})).rc != 0"  # loop until first success
   tags:
     - kube-proxy
 

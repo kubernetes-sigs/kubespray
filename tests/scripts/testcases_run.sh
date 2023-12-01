@@ -57,9 +57,9 @@ fi
 # Check out latest tag if testing upgrade
 test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY_VERSION"
 # Checkout the CI vars file so it is available
-test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" tests/files/${CI_JOB_NAME}.yml
-test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" ${CI_TEST_REGISTRY_MIRROR}
-test "${UPGRADE_TEST}" != "false" && git checkout "${CI_BUILD_REF}" ${CI_TEST_SETTING}
+test "${UPGRADE_TEST}" != "false" && git checkout "${CI_COMMIT_SHA}" tests/files/${CI_JOB_NAME}.yml
+test "${UPGRADE_TEST}" != "false" && git checkout "${CI_COMMIT_SHA}" ${CI_TEST_REGISTRY_MIRROR}
+test "${UPGRADE_TEST}" != "false" && git checkout "${CI_COMMIT_SHA}" ${CI_TEST_SETTING}
 
 # Create cluster
 ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" cluster.yml
@@ -68,7 +68,7 @@ ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGIS
 if [ "${UPGRADE_TEST}" != "false" ]; then
   test "${UPGRADE_TEST}" == "basic" && PLAYBOOK="cluster.yml"
   test "${UPGRADE_TEST}" == "graceful" && PLAYBOOK="upgrade-cluster.yml"
-  git checkout "${CI_BUILD_REF}"
+  git checkout "${CI_COMMIT_SHA}"
   ansible-playbook ${ANSIBLE_LOG_LEVEL} -e @${CI_TEST_SETTING} -e @${CI_TEST_REGISTRY_MIRROR} -e @${CI_TEST_VARS} -e local_release_dir=${PWD}/downloads --limit "all:!fake_hosts" $PLAYBOOK
 fi
 

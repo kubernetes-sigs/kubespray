@@ -111,27 +111,26 @@
     mode: 0640
   notify: restart containerd
 
-- name: containerd ｜ Create registry directories
-  file:
-    path: "{{ containerd_cfg_dir }}/certs.d/{{ item.key }}"
-    state: directory
-    mode: 0755
-    recurse: true
-  with_dict: "{{ containerd_insecure_registries }}"
-  when: containerd_insecure_registries is defined
-
-- name: containerd ｜ Write hosts.toml file
-  blockinfile:
-    path: "{{ containerd_cfg_dir }}/certs.d/{{ item.key }}/hosts.toml"
-    mode: 0640
-    create: true
-    block: |
-      server = "{{ item.value }}"
-      [host."{{ item.value }}"]
-        capabilities = ["pull", "resolve", "push"]
-        skip_verify = true
-  with_dict: "{{ containerd_insecure_registries }}"
-  when: containerd_insecure_registries is defined
+- block:
+    - name: containerd ｜ Create registry directories
+      file:
+        path: "{{ containerd_cfg_dir }}/certs.d/{{ item.key }}"
+        state: directory
+        mode: 0755
+        recurse: true
+      with_dict: "{{ containerd_insecure_registries }}"
+    - name: containerd ｜ Write hosts.toml file
+      blockinfile:
+        path: "{{ containerd_cfg_dir }}/certs.d/{{ item.key }}/hosts.toml"
+        mode: 0640
+        create: true
+        block: |
+          server = "{{ item.value }}"
+          [host."{{ item.value }}"]
+            capabilities = ["pull", "resolve", "push"]
+            skip_verify = true
+      with_dict: "{{ containerd_insecure_registries }}"
+  when: containerd_use_config_path is defined and containerd_use_config_path|bool and containerd_insecure_registries is defined
 
 # you can sometimes end up in a state where everything is installed
 # but containerd was not started / enabled

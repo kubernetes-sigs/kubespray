@@ -11,48 +11,23 @@
   delay: 1
   when: inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Kubernetes Apps | CoreDNS
-  import_tasks: "coredns.yml"
-  when:
-    - dns_mode in ['coredns', 'coredns_dual']
-    - inventory_hostname == groups['kube_control_plane'][0]
-  tags:
-    - coredns
-
-- name: Kubernetes Apps | nodelocalDNS
-  import_tasks: "nodelocaldns.yml"
-  when:
-    - enable_nodelocaldns
-    - inventory_hostname == groups['kube_control_plane'] | first
-  tags:
-    - nodelocaldns
-
-- name: Kubernetes Apps | Start Resources
-  kube:
-    name: "{{ item.item.name }}"
-    namespace: "kube-system"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
-    state: "latest"
-  with_items:
-    - "{{ coredns_manifests.results | default({}) }}"
-    - "{{ coredns_secondary_manifests.results | default({}) }}"
-    - "{{ nodelocaldns_manifests.results | default({}) }}"
-    - "{{ nodelocaldns_second_manifests.results | default({}) }}"
-  when:
-    - dns_mode != 'none'
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - not item is skipped
-  register: resource_result
-  until: resource_result is succeeded
-  retries: 4
+- name: Kubernetes Apps | DNS
+  vars:
+    ansible_python_interpreter: "{{ kubespray_virtualenvs_base }}/kubernetes.core/bin/python"
+  kubernetes.core.k8s:
+    state: present
+    apply: true
+    server_side_apply:
+      field_manager: kubespray
+      force_conflicts: true
+    template: "{{ all_manifests_lists | flatten }}"
+  register: result
+  until: result is succeeded
+  retries: 10
   delay: 5
   tags:
     - coredns
     - nodelocaldns
-  loop_control:
-    label: "{{ item.item.file }}"
 
 - name: Kubernetes Apps | Etcd metrics endpoints
   import_tasks: etcd_metrics.yml

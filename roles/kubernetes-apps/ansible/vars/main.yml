@@ -12,3 +12,27 @@ primary_dns_by_mode:
 
 nodelocaldns_forward_target: "{{ ([primary_dns_by_mode[dns_mode]] + (dns_mode == 'coredns_dual') | ternary([skydns_server_secondary], [])) | join(' ') }}"
 nodelocaldns_upstream_forward_target: "{{ upstream_dns_servers | d([]) | join(' ') | d('/etc/resolv.conf', true) }}"
+
+coredns_manifests:
+- coredns-clusterrole.yml.j2
+- coredns-clusterrolebinding.yml.j2
+- coredns-config.yml.j2
+- coredns-deployment.yml.j2
+- coredns-sa.yml.j2
+- coredns-svc.yml.j2
+- dns-autoscaler.yml.j2
+- dns-autoscaler-clusterrole.yml.j2
+- dns-autoscaler-clusterrolebinding.yml.j2
+- dns-autoscaler-sa.yml.j2
+- "{{ coredns_pod_disruption_budget | ternary('coredns-poddisruptionbudget.yml.j2', '') }}"
+
+nodelocaldns_manifests:
+- nodelocaldns-config.yml.j2
+- nodelocaldns-sa.yml.j2
+- nodelocaldns-daemonset.yml.j2
+
+all_apps:
+- coredns
+all_manifests_lists:
+- "{{ (dns_mode in ['coredns', 'coredns_dual'] and ansible_run_tags | intersect(['all', 'coredns']) | length > 0 and 'coredns' not in ansible_skip_tags) | ternary(coredns_manifests | select, []) }}"
+- "{{ (enable_nodelocaldns and ansible_run_tags | intersect(['all', 'coredns', 'nodelocaldns']) | length > 0 and ansible_skip_tags | intersect(['coredns', 'nodelocaldns']) | length == 0) | ternary(nodelocaldns_manifests, []) }}"

@@ -1,0 +1,26 @@
+---
+- name: Scheduler Plugins | Check if the scheduler plugins are supported
+  assert:
+    that:
+      - "(scheduler_plugins | intersect(scheduler_plugins_supported_list) | length) == (scheduler_plugins | length) or scheduler_plugins | length == 0"
+    msg: "{{ scheduler_plugins | difference(scheduler_plugins_supported_list) | join(',') }} is/are not in the list of supported scheduler plugins"
+  when:
+    - scheduler_plugins_enabled
+    - inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Install plugin controller
+  include_tasks: plugins_controller.yml
+  when: scheduler_plugins_enabled
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Install plugin
+  include_role:
+    name: kubernetes-apps/scheduler_plugins/plugins
+  when:
+    - scheduler_plugins_enabled
+    - scheduler_plugins | length > 0
+  tags:
+    - scheduler_plugins

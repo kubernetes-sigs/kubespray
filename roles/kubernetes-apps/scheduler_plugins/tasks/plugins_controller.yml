@@ -1,0 +1,53 @@
+---
+- name: Scheduler Plugins | Create dir
+  file:
+    path: "{{ kube_config_dir }}/scheduler-plugins"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/scheduler-plugins/{{ item.file }}"
+    mode: 0644
+  with_items:
+    - { name: plugins-cr, file: plugins-cr.yml, type: cr }
+    - { name: plugins-crb, file: plugins-crb.yml, type: crb }
+    - { name: controller-ns, file: controller-ns.yml, type: ns }
+    - { name: controller-sa, file: controller-sa.yml, type: sa }
+    - { name: controller-cr, file: controller-cr.yml, type: cr }
+    - { name: controller-crb, file: controller-crb.yml, type: crb }
+    - { name: controller-deploy, file: controller-deploy.yml, type: deployment }
+  register: scheduler_plugins_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/scheduler-plugins/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ scheduler_plugins_manifests.results }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Wait for scheduler-plugins-controller pods to be ready
+  command: "{{ kubectl }} -n scheduler-plugins get pods -l app=scheduler-plugins-controller -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==false)].metadata.name}'"   # noqa ignore-errors
+  register: pods_not_ready
+  until: pods_not_ready.stdout.find("scheduler-plugins-controller")==-1
+  retries: 30
+  delay: 10
+  ignore_errors: true
+  changed_when: false
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins

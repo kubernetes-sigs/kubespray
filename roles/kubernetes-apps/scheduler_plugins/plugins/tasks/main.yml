@@ -1,0 +1,37 @@
+---
+- name: Scheduler Plugins | Ensure dir exists
+  file:
+    path: "{{ kube_config_dir }}/scheduler-plugins"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Enable plugins
+  include_tasks: apply_plugin.yml
+  with_items: "{{ scheduler_plugins }}"
+  vars:
+    plugin: "{{ item }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Create scheduler configuration
+  template:
+    src: "scheduler-config.yml.j2"
+    dest: "{{ scheduler_configuration_path }}"
+    mode: 0644
+  vars:
+    enable_leader_election: "{{ (groups['kube_control_plane'] | length) > 1 }}"
+  when: inventory_hostname in groups['kube_control_plane']
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Patch kube-scheduler
+  import_tasks: patch_kube_scheduler.yml
+  when: inventory_hostname in groups['kube_control_plane']
+  tags:
+    - scheduler_plugins

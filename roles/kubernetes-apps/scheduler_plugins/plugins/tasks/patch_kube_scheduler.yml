@@ -1,0 +1,62 @@
+---
+- name: Scheduler Plugins | Backup kube-scheduler.yaml
+  copy:
+    src: "{{ kube_manifest_dir }}/kube-scheduler.yaml"
+    dest: "{{ kube_config_dir }}/kube-scheduler.yaml"
+    remote_src: true
+    mode: preserve
+    force: false     # backup only once
+  when: inventory_hostname in groups['kube_control_plane']
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Download yq
+  include_tasks: "../../../../download/tasks/download_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.yq) }}"
+  when: inventory_hostname in groups['kube_control_plane']
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Copy yq binary from download dir
+  copy:
+    src: "{{ downloads.yq.dest }}"
+    dest: "{{ bin_dir }}/yq"
+    mode: 0755
+    remote_src: yes
+  when: inventory_hostname in groups['kube_control_plane']
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Create yq patch for kube-scheduler
+  template:
+    src: kube-scheduler-patch.yq.j2
+    dest: "{{ kube_config_dir }}/scheduler-plugins/kube-scheduler-patch.yq"
+    mode: 0644
+  when: inventory_hostname in groups['kube_control_plane']
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Patch {{ kube_manifest_dir }}/kube-scheduler.yaml
+  command: "{{ bin_dir }}/yq -i --from-file {{ kube_config_dir }}/scheduler-plugins/kube-scheduler-patch.yq {{ kube_manifest_dir }}/kube-scheduler.yaml"
+  when: inventory_hostname in groups['kube_control_plane']
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Remove kube-scheduler pods immediately
+  command: "{{ kubectl }} -n kube-system delete pods -l component=kube-scheduler,tier=control-plane"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Scheduler Plugins | Wait for kube-scheduler pod to be ready
+  command: "{{ kubectl }} -n kube-system get pods -l component=kube-scheduler,tier=control-plane -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==false)].metadata.name}'"   # noqa ignore-errors
+  register: pods_not_ready
+  until: pods_not_ready.stdout.find("kube-scheduler")==-1
+  retries: 30
+  delay: 10
+  ignore_errors: true
+  delegate_to: "{{ groups['kube_control_plane'] | first }}"
+  run_once: true
+  changed_when: false
+  when: inventory_hostname in groups['kube_control_plane']
+  tags:
+    - scheduler_plugins

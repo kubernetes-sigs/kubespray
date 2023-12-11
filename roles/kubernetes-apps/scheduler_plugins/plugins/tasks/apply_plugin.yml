@@ -1,0 +1,34 @@
+---
+- name: Schedler Plugins | Set scheduler plugin template lists
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+  set_fact:
+    scheduler_plugins_templates:
+      CoScheduling:
+        - { name: coscheduling-crd, file: coscheduling-crd.yml }
+      CapacityScheduling:
+        - { name: capacityscheduling-crd, file: capacityscheduling-crd.yml }
+      NodeResources: []
+
+- name: Scheduler Plugins {{ plugin }} | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/scheduler-plugins/{{ item.file }}"
+    mode: 0644
+  with_items: "{{ scheduler_plugins_templates[plugin] }}"
+  register: coscheduling_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins {{ plugin }} | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/scheduler-plugins/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ coscheduling_manifests.results }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins

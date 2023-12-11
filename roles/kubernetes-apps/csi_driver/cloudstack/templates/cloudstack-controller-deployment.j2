@@ -1,0 +1,79 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudstack-csi-controller
+  namespace: {{ cloudstack_csi_namespace }}
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cloudstack-csi-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cloudstack-csi-controller
+        app.kubernetes.io/part-of: cloudstack-csi-driver
+    spec:
+      serviceAccountName: cloudstack-csi-controller
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - effect: NoExecute
+          operator: Exists
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+        - name: cloudstack-csi-controller
+          image: {{ quay_image_repo }}/apalia/cloudstack-csi-driver:{{ cloudstack_csi_driver_image_tag }}
+          imagePullPolicy: Always
+          args:
+            - "-endpoint=$(CSI_ENDPOINT)"
+            - "-cloudstackconfig=/etc/cloudstack-csi-driver/cloud-config"
+            - "-debug"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+            - name: cloudstack-conf
+              mountPath: /etc/cloudstack-csi-driver
+        - name: external-provisioner
+          image: {{ kube_image_repo }}/sig-storage/csi-provisioner:{{ cloudstack_csi_provisioner_image_tag}}
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+            - "--feature-gates=Topology=true"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+
+        - name: external-attacher
+          image: {{ kube_image_repo }}/sig-storage/csi-attacher:{{ cloudstack_csi_attacher_image_tag }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+        - name: cloudstack-conf
+          secret:
+            secretName: cloudstack-secret

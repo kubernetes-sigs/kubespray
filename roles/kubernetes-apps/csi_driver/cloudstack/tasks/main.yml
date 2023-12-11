@@ -1,0 +1,45 @@
+---
+- name: Cloudstack CSI Driver | Check cloudstack credentials
+  include_tasks: cloudstack-credentials-check.yml
+
+- name: Cloudstack CSI Driver | Generate Manifests
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item }}"
+    mode: 0644
+  with_items:
+    - cloudstack-cloud-config
+    - cloudstack-controller-deployment
+    - cloudstack-csidriver.yaml
+    - cloudstack-node-daemonset.yaml
+    - cloudstack-rbac.yaml
+    - cloudstack-storageclass.yaml
+  register: cloudstack_csi_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Cloudstack CSI Driver | Generate a CSI secret manifest
+  command: "{{ kubectl }} create secret generic cloudstack-secret --from-file=cloud-config={{ kube_config_dir }}/cloudstack-cloud-config -n {{ cloudstack_csi_namespace }} --dry-run --save-config -o yaml"
+  register: cloudstack_csi_secret_manifest
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  no_log: "{{ not (unsafe_show_logs | bool) }}"
+
+- name: Cloudstack CSI Driver | Apply a CSI secret manifest
+  command:
+    cmd: "{{ kubectl }} apply -f -"
+    stdin: "{{ cloudstack_csi_secret_manifest.stdout }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  no_log: "{{ not (unsafe_show_logs | bool) }}"
+
+- name: Cloudstack CSI Driver | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item }}"
+    state: "latest"
+  with_items:
+    - "{{ cloudstack_csi_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+    - item.item != "cloudstack-cloud-config"
+  loop_control:
+    label: "{{ item.item }}"

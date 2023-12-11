@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cloudstack-csi-node
+  namespace: {{ cloudstack_csi_namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cloudstack-csi-node
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cloudstack-csi-node
+        app.kubernetes.io/part-of: cloudstack-csi-driver
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - effect: NoExecute
+          operator: Exists
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+        - name: cloudstack-csi-node
+          image: {{ quay_image_repo }}/apalia/cloudstack-csi-driver:{{ cloudstack_csi_driver_image_tag }}
+          imagePullPolicy: Always
+          args:
+            - "-endpoint=$(CSI_ENDPOINT)"
+            - "-cloudstackconfig=/etc/cloudstack-csi-driver/cloud-config"
+            - "-nodeName=$(NODE_NAME)"
+            - "-debug"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: kubelet-dir
+              mountPath: /var/lib/kubelet
+              # needed so that any mounts setup inside this container are
+              # propagated back to the host machine.
+              mountPropagation: Bidirectional
+            - name: device-dir
+              mountPath: /dev
+            - name: cloud-init-dir
+              mountPath: /run/cloud-init/
+            - name: cloudstack-conf
+              mountPath: /etc/cloudstack-csi-driver
+        - name: node-driver-registrar
+          image: {{ kube_image_repo }}/sig-storage/csi-node-driver-registrar:{{ cloudstack_csi_node_driver_registrar_image_tag }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+            - "--v=5"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: DRIVER_REG_SOCK_PATH
+              value: /var/lib/kubelet/plugins/csi.cloudstack.apache.org/csi.sock
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+      volumes:
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/csi.cloudstack.apache.org/
+            type: DirectoryOrCreate
+        - name: kubelet-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        - name: device-dir
+          hostPath:
+            path: /dev
+            type: Directory
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry
+            type: Directory
+        - name: cloud-init-dir
+          hostPath:
+            path: /run/cloud-init/
+            type: Directory
+        - name: cloudstack-conf
+          secret:
+            secretName: cloudstack-secret

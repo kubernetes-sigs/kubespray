@@ -6,7 +6,7 @@ if [[ ${DEBUG:-false} == "true" ]]; then
     set -o xtrace
 fi
 
-checksums_file="$(git rev-parse --show-toplevel)/roles/download/defaults/main/checksums.yml"
+checksums_file="$(git rev-parse --show-toplevel)/roles/kubespray-defaults/defaults/main/checksums.yml"
 downloads_folder=/tmp/kubespray_binaries
 
 function get_versions {

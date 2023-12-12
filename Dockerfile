@@ -18,8 +18,9 @@ COPY extra_playbooks ./extra_playbooks
 COPY playbooks ./playbooks
 COPY plugins ./plugins
 
-RUN apt update -q \
-    && apt install -yq --no-install-recommends \
+RUN --mount=type=bind,source=requirements.txt,target=requirements.txt \
+   apt update -q \
+   && apt install -yq --no-install-recommends \
        curl \
        python3 \
        python3-pip \
@@ -27,16 +28,7 @@ RUN apt update -q \
        vim \
        rsync \
        openssh-client \
-    && pip install --no-compile --no-cache-dir \
-       ansible==7.6.0 \
-       ansible-core==2.14.6 \
-       cryptography==41.0.1 \
-       jinja2==3.1.2 \
-       netaddr==0.8.0 \
-       jmespath==1.0.1 \
-       MarkupSafe==2.1.3 \
-       ruamel.yaml==0.17.21 \
-       passlib==1.7.4 \
+    && pip install --no-compile --no-cache-dir -r requirements.txt \
     && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main/main.yml) \
     && curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
     && echo $(curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \

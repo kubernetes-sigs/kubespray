@@ -145,7 +145,7 @@ vagrant up
 - **Debian** Bullseye, Buster
 - **Ubuntu** 16.04, 18.04, 20.04, 22.04
 - **CentOS/RHEL** 7, [8, 9](docs/centos.md#centos-8)
-- **Fedora** 35, 36
+- **Fedora** 37, 38
 - **Fedora CoreOS** (see [fcos Note](docs/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
 - **Oracle Linux** 7, [8, 9](docs/centos.md#centos-8)
@@ -161,7 +161,7 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.26.9
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.26.11
   - [etcd](https://github.com/etcd-io/etcd) v3.5.6
   - [docker](https://www.docker.com/) v20.10 (see note)
   - [containerd](https://containerd.io/) v1.7.1

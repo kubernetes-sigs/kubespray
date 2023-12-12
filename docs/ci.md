@@ -11,8 +11,8 @@ amazon |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :white_check_mark: | :x: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: |
 debian10 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: |
 debian11 |  :white_check_mark: | :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
-fedora35 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: |
-fedora36 |  :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: |
+fedora37 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: |
+fedora38 |  :x: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
@@ -30,8 +30,8 @@ amazon |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian10 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-fedora35 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-fedora36 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+fedora37 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+fedora38 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux8 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
@@ -49,8 +49,8 @@ amazon |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 centos7 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian10 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-fedora35 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-fedora36 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
+fedora37 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+fedora38 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: | :white_check_mark: |
 opensuse |  :x: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux8 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: | :x: |

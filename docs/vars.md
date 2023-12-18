@@ -254,8 +254,6 @@ node_taints:
   - "node.example.com/external=true:NoSchedule"
 ```
 
-* *podsecuritypolicy_enabled* - When set to `true`, enables the PodSecurityPolicy admission controller and defines two policies `privileged` (applying to all resources in `kube-system` namespace and kubelet) and `restricted` (applying all other namespaces).
-  Addons deployed in kube-system namespaces are handled.
 * *kubernetes_audit* - When set to `true`, enables Auditing.
   The auditing parameters can be tuned via the following variables (which default values are shown below):
   * `audit_log_path`: /var/log/audit/kube-apiserver-audit.log

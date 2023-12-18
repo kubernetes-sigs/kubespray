@@ -57,7 +57,8 @@ download_retries: 4
 docker_image_pull_command: "{{ docker_bin_dir }}/docker pull"
 docker_image_info_command: "{{ docker_bin_dir }}/docker images -q | xargs -i {{ '{{' }} docker_bin_dir }}/docker inspect -f {% raw %}'{{ '{{' }} if .RepoTags }}{{ '{{' }} join .RepoTags \",\" }}{{ '{{' }} end }}{{ '{{' }} if .RepoDigests }},{{ '{{' }} join .RepoDigests \",\" }}{{ '{{' }} end }}' {% endraw %} {} | tr '\n' ','"
 nerdctl_image_info_command: "{{ bin_dir }}/nerdctl -n k8s.io images --format '{% raw %}{{ .Repository }}:{{ .Tag }}{% endraw %}' 2>/dev/null | grep -v ^:$ | tr '\n' ','"
-nerdctl_image_pull_command: "{{ bin_dir }}/nerdctl -n k8s.io pull --quiet"
+# Using the ctr instead of nerdctl to workdaround the https://github.com/kubernetes-sigs/kubespray/issues/10670
+nerdctl_image_pull_command: "{{ bin_dir }}/ctr -n k8s.io images pull"
 crictl_image_info_command: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
 crictl_image_pull_command: "{{ bin_dir }}/crictl pull"
 
@@ -75,11 +76,11 @@ image_arch: "{{ host_architecture | default('amd64') }}"
 # Versions
 kubeadm_version: "{{ kube_version }}"
 crun_version: 1.8.5
-runc_version: v1.1.9
+runc_version: v1.1.10
 kata_containers_version: 3.1.3
 youki_version: 0.1.0
 gvisor_version: 20230807
-containerd_version: 1.7.8
+containerd_version: 1.7.11
 cri_dockerd_version: 0.3.4
 
 # this is relevant when container_manager == 'docker'
@@ -100,7 +101,7 @@ github_image_repo: "ghcr.io"
 
 # TODO(mattymo): Move calico versions to roles/network_plugins/calico/defaults
 # after migration to container download
-calico_version: "v3.26.3"
+calico_version: "v3.26.4"
 calico_ctl_version: "{{ calico_version }}"
 calico_cni_version: "{{ calico_version }}"
 calico_flexvol_version: "{{ calico_version }}"
@@ -125,7 +126,7 @@ kube_ovn_dpdk_version: "19.11-{{ kube_ovn_version }}"
 kube_router_version: "v2.0.0"
 multus_version: "v3.8"
 helm_version: "v3.13.1"
-nerdctl_version: "1.6.0"
+nerdctl_version: "1.7.1"
 krew_version: "v0.4.4"
 skopeo_version: "v1.13.2"
 
@@ -280,7 +281,7 @@ coredns_image_is_namespaced: "{{ (coredns_version is version('v1.7.1', '>=')) }}
 coredns_image_repo: "{{ kube_image_repo }}{{ '/coredns/coredns' if (coredns_image_is_namespaced | bool) else '/coredns' }}"
 coredns_image_tag: "{{ coredns_version if (coredns_image_is_namespaced | bool) else (coredns_version | regex_replace('^v', '')) }}"
 
-nodelocaldns_version: "1.22.20"
+nodelocaldns_version: "1.22.28"
 nodelocaldns_image_repo: "{{ kube_image_repo }}/dns/k8s-dns-node-cache"
 nodelocaldns_image_tag: "{{ nodelocaldns_version }}"
 

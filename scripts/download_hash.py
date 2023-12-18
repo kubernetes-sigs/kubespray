@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # After a new version of Kubernetes has been released,
-# run this script to update roles/download/defaults/main/main.yml
+# run this script to update roles/kubespray-defaults/defaults/main/download.yml
 # with new hashes.
 
 import hashlib
@@ -10,7 +10,7 @@ import sys
 import requests
 from ruamel.yaml import YAML
 
-MAIN_YML = "../roles/download/defaults/main/main.yml"
+MAIN_YML = "../roles/kubespray-defaults/defaults/main/download.yml"
 
 def open_main_yaml():
     yaml = YAML()

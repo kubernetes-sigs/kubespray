@@ -1,5 +1,8 @@
+# syntax=docker/dockerfile:1
+
 # Use imutable image tags rather than mutable tags (like ubuntu:22.04)
-FROM ubuntu:jammy-20230308
+FROM ubuntu:22.04@sha256:149d67e29f765f4db62aa52161009e99e389544e25a8f43c8c89d4a445a7ca37
+
 # Some tools like yamllint need this
 # Pip needs this as well at the moment to install ansible
 # (and potentially other packages)
@@ -7,7 +10,37 @@ FROM ubuntu:jammy-20230308
 ENV LANG=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1
+
 WORKDIR /kubespray
+
+# hadolint ignore=DL3008
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update -q \
+    && apt-get install -yq --no-install-recommends \
+    curl \
+    python3 \
+    python3-pip \
+    sshpass \
+    vim \
+    rsync \
+    openssh-client \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /var/log/*
+
+RUN --mount=type=bind,source=requirements.txt,target=requirements.txt \
+    --mount=type=cache,sharing=locked,id=pipcache,mode=0777,target=/root/.cache/pip \
+    pip install --no-compile --no-cache-dir -r requirements.txt \
+    && find /usr -type d -name '*__pycache__' -prune -exec rm -rf {} \;
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN --mount=type=bind,source=roles/kubespray-defaults/defaults/main/main.yml,target=roles/kubespray-defaults/defaults/main/main.yml \
+    KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main/main.yml) \
+    OS_ARCHITECTURE=$(dpkg --print-architecture) \
+    && curl -L "https://dl.k8s.io/release/${KUBE_VERSION}/bin/linux/${OS_ARCHITECTURE}/kubectl" -o /usr/local/bin/kubectl \
+    && echo "$(curl -L "https://dl.k8s.io/release/${KUBE_VERSION}/bin/linux/${OS_ARCHITECTURE}/kubectl.sha256")" /usr/local/bin/kubectl | sha256sum --check \
+    && chmod a+x /usr/local/bin/kubectl
+
 COPY *.yml ./
 COPY *.cfg ./
 COPY roles ./roles
@@ -17,29 +50,3 @@ COPY library ./library
 COPY extra_playbooks ./extra_playbooks
 COPY playbooks ./playbooks
 COPY plugins ./plugins
-
-RUN apt update -q \
-    && apt install -yq --no-install-recommends \
-       curl \
-       python3 \
-       python3-pip \
-       sshpass \
-       vim \
-       rsync \
-       openssh-client \
-    && pip install --no-compile --no-cache-dir \
-       ansible==7.6.0 \
-       ansible-core==2.14.6 \
-       cryptography==41.0.1 \
-       jinja2==3.1.2 \
-       netaddr==0.8.0 \
-       jmespath==1.0.1 \
-       MarkupSafe==2.1.3 \
-       ruamel.yaml==0.17.21 \
-       passlib==1.7.4 \
-    && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main.yaml) \
-    && curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
-    && echo $(curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
-    && chmod a+x /usr/local/bin/kubectl \
-    && rm -rf /var/lib/apt/lists/* /var/log/* \
-    && find /usr -type d -name '*__pycache__' -prune -exec rm -rf {} \;

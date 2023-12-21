@@ -23,8 +23,8 @@ function create_container_image_tar() {
 	mkdir  ${IMAGE_DIR}
 	cd     ${IMAGE_DIR}
 
-	sudo docker pull registry:latest
-	sudo docker save -o registry-latest.tar registry:latest
+	sudo ${runtime} pull registry:latest
+	sudo ${runtime} save -o registry-latest.tar registry:latest
 
 	for image in ${IMAGES}
 	do
@@ -32,7 +32,7 @@ function create_container_image_tar() {
 		set +e
 		for step in $(seq 1 ${RETRY_COUNT})
 		do
-			sudo docker pull ${image}
+			sudo ${runtime} pull ${image}
 			if [ $? -eq 0 ]; then
 				break
 			fi
@@ -42,7 +42,7 @@ function create_container_image_tar() {
 			fi
 		done
 		set -e
-		sudo docker save -o ${FILE_NAME}  ${image}
+		sudo ${runtime} save -o ${FILE_NAME}  ${image}
 
 		# NOTE: Here removes the following repo parts from each image
 		# so that these parts will be replaced with Kubespray.
@@ -95,16 +95,16 @@ function register_container_images() {
 		sed -i s@"HOSTNAME"@"${LOCALHOST_NAME}"@  ${TEMP_DIR}/registries.conf
 		sudo cp ${TEMP_DIR}/registries.conf   /etc/containers/registries.conf
 	else
-		echo "docker package(docker-ce, etc.) should be installed"
+		echo "runtime package(docker-ce, podman, nerctl, etc.) should be installed"
 		exit 1
 	fi
 
 	tar -zxvf ${IMAGE_TAR_FILE}
-	sudo docker load -i ${IMAGE_DIR}/registry-latest.tar
+	sudo ${runtime} load -i ${IMAGE_DIR}/registry-latest.tar
 	set +e
-	sudo docker container inspect registry >/dev/null 2>&1
+	sudo ${runtime} container inspect registry >/dev/null 2>&1
 	if [ $? -ne 0 ]; then
-		sudo docker run --restart=always -d -p 5000:5000 --name registry registry:latest
+		sudo ${runtime} run --restart=always -d -p 5000:5000 --name registry registry:latest
 	fi
 	set -e
 
@@ -112,8 +112,8 @@ function register_container_images() {
 		file_name=$(echo ${line} | awk '{print $1}')
 		raw_image=$(echo ${line} | awk '{print $2}')
 		new_image="${LOCALHOST_NAME}:5000/${raw_image}"
-		org_image=$(sudo docker load -i ${IMAGE_DIR}/${file_name} | head -n1 | awk '{print $3}')
-		image_id=$(sudo docker image inspect ${org_image} | grep "\"Id\":" | awk -F: '{print $3}'| sed s/'\",'//)
+		org_image=$(sudo ${runtime} load -i ${IMAGE_DIR}/${file_name} | head -n1 | awk '{print $3}')
+		image_id=$(sudo ${runtime} image inspect ${org_image} | grep "\"Id\":" | awk -F: '{print $3}'| sed s/'\",'//)
 		if [ -z "${file_name}" ]; then
 			echo "Failed to get file_name for line ${line}"
 			exit 1
@@ -130,9 +130,9 @@ function register_container_images() {
 			echo "Failed to get image_id for file ${file_name}"
 			exit 1
 		fi
-		sudo docker load -i ${IMAGE_DIR}/${file_name}
-		sudo docker tag  ${image_id} ${new_image}
-		sudo docker push ${new_image}
+		sudo ${runtime} load -i ${IMAGE_DIR}/${file_name}
+		sudo ${runtime} tag  ${image_id} ${new_image}
+		sudo ${runtime} push ${new_image}
 	done <<< "$(cat ${IMAGE_LIST})"
 
 	echo "Succeeded to register container images to local registry."
@@ -142,6 +142,18 @@ function register_container_images() {
 	echo "- docker_image_repo"
 	echo "- quay_image_repo"
 }
+
+# get runtime command
+if command -v nerdctl 1>/dev/null 2>&1; then
+    runtime="nerdctl"
+elif command -v podman 1>/dev/null 2>&1; then
+    runtime="podman"
+elif command -v docker 1>/dev/null 2>&1; then
+    runtime="docker"
+else
+    echo "No supported container runtime found"
+    exit 1
+fi
 
 if [ "${OPTION}" == "create" ]; then
 	create_container_image_tar

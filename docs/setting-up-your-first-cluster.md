@@ -216,10 +216,10 @@ Update Ansible inventory file with inventory builder:
 
 ```ShellSession
 declare -a IPS=($(gcloud compute instances list --filter="tags.items=kubernetes-the-kubespray-way" --format="value(EXTERNAL_IP)"  | tr '\n' ' '))
-CONFIG_FILE=inventory/mycluster/hosts.yaml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+CONFIG_FILE=inventory/mycluster/hosts.yml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
 ```
 
-Open the generated `inventory/mycluster/hosts.yaml` file and adjust it so
+Open the generated `inventory/mycluster/hosts.yml` file and adjust it so
 that controller-0, controller-1 and controller-2 are control plane nodes and
 worker-0, worker-1 and worker-2 are worker nodes. Also update the `ip` to the respective local VPC IP and
 remove the `access_ip`.
@@ -242,7 +242,7 @@ the kubernetes cluster, just change the 'false' to 'true' for
 Now we will deploy the configuration:
 
 ```ShellSession
-ansible-playbook -i inventory/mycluster/hosts.yaml -u $USERNAME -b -v --private-key=~/.ssh/id_rsa cluster.yml
+ansible-playbook -i inventory/mycluster/hosts.yml -u $USERNAME -b -v --private-key=~/.ssh/id_rsa cluster.yml
 ```
 
 Ansible will now execute the playbook, this can take up to 20 minutes.
@@ -596,7 +596,7 @@ If you want to keep the VMs and just remove the cluster state, you can simply
  run another Ansible playbook:
 
 ```ShellSession
-ansible-playbook -i inventory/mycluster/hosts.yaml -u $USERNAME -b -v --private-key=~/.ssh/id_rsa reset.yml
+ansible-playbook -i inventory/mycluster/hosts.yml -u $USERNAME -b -v --private-key=~/.ssh/id_rsa reset.yml
 ```
 
 Resetting the cluster to the VMs original state usually takes about a couple

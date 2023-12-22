@@ -141,12 +141,12 @@ Once all artifacts are in place and your inventory properly set up, you can run 
 regular `cluster.yaml` command:
 
 ```bash
-ansible-playbook -i inventory/my_airgap_cluster/hosts.yaml -b cluster.yml
+ansible-playbook -i inventory/my_airgap_cluster/hosts.yml -b cluster.yml
 ```
 
 If you use [Kubespray Container Image](#recommended-way:-kubespray-container-image), you can mount your inventory inside
 the container:
 
 ```bash
-docker run --rm -it -v path_to_inventory/my_airgap_cluster:inventory/my_airgap_cluster myprivateregisry.com/kubespray/kubespray:v2.14.0 ansible-playbook -i inventory/my_airgap_cluster/hosts.yaml -b cluster.yml
+docker run --rm -it -v path_to_inventory/my_airgap_cluster:inventory/my_airgap_cluster myprivateregisry.com/kubespray/kubespray:v2.14.0 ansible-playbook -i inventory/my_airgap_cluster/hosts.yml -b cluster.yml
 ```

@@ -25,7 +25,7 @@
 # Delete a host: inventory.py -10.10.1.3
 # Delete a host by id: inventory.py -node1
 #
-# Load a YAML or JSON file with inventory data: inventory.py load hosts.yaml
+# Load a YAML or JSON file with inventory data: inventory.py load hosts.yml
 # YAML file should be in the following format:
 #    group1:
 #      host1:
@@ -62,7 +62,7 @@ def get_var_as_bool(name, default):
 # Configurable as shell vars start
 
 
-CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory/sample/hosts.yaml")
+CONFIG_FILE = os.environ.get("CONFIG_FILE", "./inventory/sample/hosts.yml")
 # Remove the reference of KUBE_MASTERS after some deprecation cycles.
 KUBE_CONTROL_HOSTS = int(os.environ.get("KUBE_CONTROL_HOSTS",
                          os.environ.get("KUBE_MASTERS", 2)))
@@ -448,7 +448,7 @@ Delete a host by id: inventory.py -node1
 
 Configurable env vars:
 DEBUG                   Enable debug printing. Default: True
-CONFIG_FILE             File to write config to Default: ./inventory/sample/hosts.yaml
+CONFIG_FILE             File to write config to Default: ./inventory/sample/hosts.yml
 HOST_PREFIX             Host prefix for generated hosts. Default: node
 KUBE_CONTROL_HOSTS      Set the number of kube-control-planes. Default: 2
 SCALE_THRESHOLD         Separate ETCD role if # of nodes >= 50

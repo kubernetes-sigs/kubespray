@@ -1,0 +1,68 @@
+---
+- name: Scheduler Plugins | Ensure dir exists
+  file:
+    path: "{{ kube_config_dir }}/scheduler-plugins"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/scheduler-plugins/{{ item.file }}"
+    mode: 0644
+  with_items:
+    - { name: appgroup, file: appgroup.diktyo.x-k8s.io_appgroups.yaml, type: crd }
+    - { name: networktopology, file: networktopology.diktyo.x-k8s.io_networktopologies.yaml, type: crd }
+    - { name: elasticquotas, file: scheduling.x-k8s.io_elasticquotas.yaml, type: crd }
+    - { name: podgroups, file: scheduling.x-k8s.io_podgroups.yaml, type: crd }
+    - { name: noderesourcetopologies, file: topology.node.k8s.io_noderesourcetopologies.yaml, type: crd }
+    - { name: namespace, file: namespace.yaml, type: namespace }
+    - { name: sa, file: sa-scheduler-plugins.yaml, type: serviceaccount }
+    - { name: rbac, file: rbac-scheduler-plugins.yaml, type: rbac }
+    - { name: cm, file: cm-scheduler-plugins.yaml, type: configmap }
+    - { name: deploy, file: deploy-scheduler-plugins.yaml, type: deployment }
+  register: scheduler_plugins_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/scheduler-plugins/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ scheduler_plugins_manifests.results }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Wait for controller pods to be ready
+  command: "{{ kubectl }} -n {{ scheduler_plugins_namespace }} get pods -l app=scheduler-plugins-controller -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==false)].metadata.name}'"   # noqa ignore-errors
+  register: controller_pods_not_ready
+  until: controller_pods_not_ready.stdout.find("scheduler-plugins-controller")==-1
+  retries: 30
+  delay: 10
+  ignore_errors: true
+  changed_when: false
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins
+
+- name: Scheduler Plugins | Wait for scheduler pods to be ready
+  command: "{{ kubectl }} -n {{ scheduler_plugins_namespace }} get pods -l component=scheduler -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==false)].metadata.name}'"   # noqa ignore-errors
+  register: scheduler_pods_not_ready
+  until: scheduler_pods_not_ready.stdout.find("scheduler-plugins-scheduler")==-1
+  retries: 30
+  delay: 10
+  ignore_errors: true
+  changed_when: false
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags:
+    - scheduler_plugins

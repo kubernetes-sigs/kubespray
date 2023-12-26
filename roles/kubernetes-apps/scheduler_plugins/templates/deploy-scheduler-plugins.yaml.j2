@@ -1,0 +1,74 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: scheduler-plugins-controller
+  namespace: {{ scheduler_plugins_namespace }}
+  labels:
+    app: scheduler-plugins-controller
+spec:
+  replicas: {{ scheduler_plugins_controller_replicas }}
+  selector:
+    matchLabels:
+      app: scheduler-plugins-controller
+  template:
+    metadata:
+      labels:
+        app: scheduler-plugins-controller
+    spec:
+      serviceAccountName: scheduler-plugins-controller
+      containers:
+      - name: scheduler-plugins-controller
+        image: {{ scheduler_plugins_controller_image_repo }}:{{ scheduler_plugins_controller_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: scheduler
+  name: scheduler-plugins-scheduler
+  namespace: {{ scheduler_plugins_namespace }}
+spec:
+  selector:
+    matchLabels:
+      component: scheduler
+  replicas: {{ scheduler_plugins_scheduler_replicas }}
+  template:
+    metadata:
+      labels:
+        component: scheduler
+    spec:
+      serviceAccountName: scheduler-plugins-scheduler
+      containers:
+      - command:
+        - /bin/kube-scheduler
+        - --config=/etc/kubernetes/scheduler-config.yaml
+        image: {{ scheduler_plugins_scheduler_image_repo }}:{{ scheduler_plugins_scheduler_image_tag }}
+        imagePullPolicy: {{ k8s_image_pull_policy }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 10259
+            scheme: HTTPS
+          initialDelaySeconds: 15
+        name: scheduler-plugins-scheduler
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 10259
+            scheme: HTTPS
+        resources:
+          requests:
+            cpu: '0.1'
+        securityContext:
+          privileged: false
+        volumeMounts:
+        - name: scheduler-config
+          mountPath: /etc/kubernetes
+          readOnly: true
+      hostNetwork: false
+      hostPID: false
+      volumes:
+      - name: scheduler-config
+        configMap:
+          name: scheduler-config

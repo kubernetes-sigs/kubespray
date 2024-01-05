@@ -262,6 +262,7 @@ Vagrant.configure("2") do |config|
       # And limit the action to gathering facts, the full playbook is going to be ran by testcases_run.sh
       if i == $num_instances
         node.vm.provision "ansible" do |ansible|
+          ansible.compatibility_mode = "2.0"
           ansible.playbook = $playbook
           ansible.verbose = $ansible_verbosity
           $ansible_inventory_path = File.join( $inventory, "hosts.ini")

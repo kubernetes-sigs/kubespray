@@ -1,6 +1,21 @@
 ---
+- name: Add worker nodes to the etcd play if needed
+  hosts: kube_node
+  roles:
+    - { role: kubespray-defaults }
+  tasks:
+    - name: Check if nodes needs etcd client certs (depends on network_plugin)
+      group_by:
+        key: "_kubespray_needs_etcd"
+      when:
+        - kube_network_plugin in ["flannel", "canal", "cilium"] or
+          (cilium_deploy_additionally | default(false)) or
+          (kube_network_plugin == "calico" and calico_datastore == "etcd")
+        - etcd_deployment_type != "kubeadm"
+      tags: etcd
+
 - name: Install etcd
-  hosts: etcd:kube_control_plane
+  hosts: etcd:kube_control_plane:_kubespray_needs_etcd
   gather_facts: False
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
@@ -12,20 +27,3 @@
         etcd_cluster_setup: true
         etcd_events_cluster_setup: "{{ etcd_events_cluster_enabled }}"
       when: etcd_deployment_type != "kubeadm"
-
-- name: Install etcd certs on nodes if required
-  hosts: k8s_cluster
-  gather_facts: False
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - role: etcd
-      tags: etcd
-      vars:
-        etcd_cluster_setup: false
-        etcd_events_cluster_setup: false
-      when:
-        - etcd_deployment_type != "kubeadm"
-        - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
-        - kube_network_plugin != "calico" or calico_datastore == "etcd"

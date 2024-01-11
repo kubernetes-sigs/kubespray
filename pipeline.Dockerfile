@@ -4,7 +4,7 @@ FROM ubuntu:jammy-20230308
 # Pip needs this as well at the moment to install ansible
 # (and potentially other packages)
 # See: https://github.com/pypa/pip/issues/10219
-ENV VAGRANT_VERSION=2.3.4 \
+ENV VAGRANT_VERSION=2.3.7 \
     VAGRANT_DEFAULT_PROVIDER=libvirt \
     VAGRANT_ANSIBLE_TAGS=facts \
     LANG=C.UTF-8 \

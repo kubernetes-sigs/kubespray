@@ -1,6 +1,6 @@
 # Node Layouts
 
-There are four node layout types: `default`, `separate`, `ha`, and `scale`.
+There are six node layout types: `default`, `separate`, `ha`, `scale`, `all-in-one`, and `multinode`.
 
 `default` is a non-HA two nodes setup with one separate `kube_node`
 and the `etcd` group merged with the `kube_control_plane`.
@@ -15,6 +15,10 @@ with role intersection.
 in the Ansible inventory. This helps test TLS certificate generation at scale
 to prevent regressions and profile certain long-running tasks. These nodes are
 never actually deployed, but certificates are generated for them.
+
+`all-in-one` layout use a single node for with `kube_control_plane`, `etcd` and `kube_node` merged.
+
+`multinode` layout consists of two separate `kube_node` and a merged single `etcd+kube_control_plane` node.
 
 Note, the canal network plugin deploys flannel as well plus calico policy controller.
 

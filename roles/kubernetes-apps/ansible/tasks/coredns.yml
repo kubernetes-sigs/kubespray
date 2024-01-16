@@ -14,6 +14,7 @@
     - { name: dns-autoscaler, file: dns-autoscaler.yml, type: deployment }
     - { name: dns-autoscaler, file: dns-autoscaler-clusterrole.yml, type: clusterrole }
     - { name: dns-autoscaler, file: dns-autoscaler-clusterrolebinding.yml, type: clusterrolebinding }
+    - { name: coredns, file: coredns-poddisruptionbudget.yml, type: poddisruptionbudget, condition: coredns_pod_disruption_budget }
     - { name: dns-autoscaler, file: dns-autoscaler-sa.yml, type: sa }
   register: coredns_manifests
   vars:
@@ -22,6 +23,7 @@
     - dns_mode in ['coredns', 'coredns_dual']
     - inventory_hostname == groups['kube_control_plane'][0]
     - enable_dns_autoscaler or item.name != 'dns-autoscaler'
+    - item.condition | default(True)
   tags:
     - coredns
 
@@ -34,6 +36,7 @@
     - { name: coredns, src: coredns-deployment.yml, file: coredns-deployment-secondary.yml, type: deployment }
     - { name: coredns, src: coredns-svc.yml, file: coredns-svc-secondary.yml, type: svc }
     - { name: dns-autoscaler, src: dns-autoscaler.yml, file: coredns-autoscaler-secondary.yml, type: deployment }
+    - { name: coredns, file: coredns-poddisruptionbudget.yml, type: poddisruptionbudget, condition: coredns_pod_disruption_budget }
   register: coredns_secondary_manifests
   vars:
     clusterIP: "{{ skydns_server_secondary }}"
@@ -42,5 +45,6 @@
     - dns_mode == 'coredns_dual'
     - inventory_hostname == groups['kube_control_plane'][0]
     - enable_dns_autoscaler or item.name != 'dns-autoscaler'
+    - item.condition | default(True)
   tags:
     - coredns

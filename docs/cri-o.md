@@ -42,6 +42,22 @@ crio_registries:
 
 [CRI-O]: https://cri-o.io/
 
+The following is a method to enable insecure registries.
+
+```yaml
+crio_insecure_registries:
+  - 10.0.0.2:5000
+```
+
+And you can config authentication for these registries after `crio_insecure_registries`.
+
+```yaml
+crio_registry_auth:
+  - registry: 10.0.0.2:5000
+    username: user
+    password: pass
+```
+
 ## Note about user namespaces
 
 CRI-O has support for user namespaces. This feature is optional and can be enabled by setting the following two variables.

@@ -304,6 +304,10 @@ resource "openstack_networking_port_v2" "k8s_master_port" {
     }
   }
 
+  lifecycle {
+    ignore_changes = [ allowed_address_pairs ]
+  }
+
   depends_on = [
     var.network_router_id
   ]
@@ -370,6 +374,10 @@ resource "openstack_networking_port_v2" "k8s_masters_port" {
     }
   }
 
+  lifecycle {
+    ignore_changes = [ allowed_address_pairs ]
+  }
+
   depends_on = [
     var.network_router_id
   ]
@@ -432,6 +440,10 @@ resource "openstack_networking_port_v2" "k8s_master_no_etcd_port" {
     content {
       subnet_id = var.private_subnet_id
     }
+  }
+
+  lifecycle {
+    ignore_changes = [ allowed_address_pairs ]
   }
 
   depends_on = [
@@ -560,6 +572,10 @@ resource "openstack_networking_port_v2" "k8s_master_no_floating_ip_port" {
     }
   }
 
+  lifecycle {
+    ignore_changes = [ allowed_address_pairs ]
+  }
+
   depends_on = [
     var.network_router_id
   ]
@@ -618,6 +634,10 @@ resource "openstack_networking_port_v2" "k8s_master_no_floating_ip_no_etcd_port"
     content {
       subnet_id = var.private_subnet_id
     }
+  }
+
+  lifecycle {
+    ignore_changes = [ allowed_address_pairs ]
   }
 
   depends_on = [
@@ -679,6 +699,10 @@ resource "openstack_networking_port_v2" "k8s_node_port" {
     content {
       subnet_id = var.private_subnet_id
     }
+  }
+
+  lifecycle {
+    ignore_changes = [ allowed_address_pairs ]
   }
 
   depends_on = [
@@ -747,6 +771,10 @@ resource "openstack_networking_port_v2" "k8s_node_no_floating_ip_port" {
     }
   }
 
+  lifecycle {
+    ignore_changes = [ allowed_address_pairs ]
+  }
+
   depends_on = [
     var.network_router_id
   ]
@@ -806,6 +834,10 @@ resource "openstack_networking_port_v2" "k8s_nodes_port" {
     content {
       subnet_id = var.private_subnet_id
     }
+  }
+
+  lifecycle {
+    ignore_changes = [ allowed_address_pairs ]
   }
 
   depends_on = [

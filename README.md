@@ -121,7 +121,6 @@ vagrant up
 - [Vagrant install](docs/vagrant.md)
 - [Flatcar Container Linux bootstrap](docs/flatcar.md)
 - [Fedora CoreOS bootstrap](docs/fcos.md)
-- [Debian Jessie setup](docs/debian.md)
 - [openSUSE setup](docs/opensuse.md)
 - [Downloaded artifacts](docs/downloads.md)
 - [Cloud providers](docs/cloud.md)

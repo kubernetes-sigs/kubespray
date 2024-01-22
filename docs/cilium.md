@@ -141,7 +141,7 @@ cilium_encryption_enabled: true
 cilium_encryption_type: "ipsec"
 ```
 
-The third variable is `cilium_ipsec_key.` You need to create a secret key string for this variable.
+The third variable is `cilium_ipsec_key`. You need to create a secret key string for this variable.
 Kubespray does not automate this process.
 Cilium documentation currently recommends creating a key using the following command:
 
@@ -149,7 +149,11 @@ Cilium documentation currently recommends creating a key using the following com
 echo "3 rfc4106(gcm(aes)) $(echo $(dd if=/dev/urandom count=20 bs=1 2> /dev/null | xxd -p -c 64)) 128"
 ```
 
-Note that Kubespray handles secret creation. So you only need to pass the key as the `cilium_ipsec_key` variable.
+Note that Kubespray handles secret creation. So you only need to pass the key as the `cilium_ipsec_key` variable, base64 encoded:
+
+```shell
+echo "cilium_ipsec_key: "$(echo -n "3 rfc4106(gcm(aes)) $(echo $(dd if=/dev/urandom count=20 bs=1 2> /dev/null | xxd -p -c 64)) 128" | base64 -w0)
+```
 
 ### Wireguard Encryption
 

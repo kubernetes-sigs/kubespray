@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-config
+  namespace: {{ scheduler_plugins_namespace }}
+data:
+  scheduler-config.yaml: |
+    apiVersion: kubescheduler.config.k8s.io/v1
+    kind: KubeSchedulerConfiguration
+    leaderElection:
+      leaderElect: {{ scheduler_plugins_scheduler_leader_elect | bool | lower }}
+    profiles:
+    # Compose all plugins in one profile
+    - schedulerName: scheduler-plugins-scheduler
+      plugins:
+        multiPoint:
+          enabled:
+{% for enabeld_plugin in scheduler_plugins_enabled_plugins %}
+          - name: {{ enabeld_plugin }}
+{% endfor %}
+          disabled:
+{% for disabled_plugin in scheduler_plugins_disabled_plugins %}
+          - name: {{ disabled_plugin }}
+{% endfor %}
+{% if scheduler_plugins_plugin_config is defined and scheduler_plugins_plugin_config | length != 0 %}
+      pluginConfig:
+{{ scheduler_plugins_plugin_config | to_nice_yaml(indent=2, width=256) | indent(6, true) }}
+{% endif %}

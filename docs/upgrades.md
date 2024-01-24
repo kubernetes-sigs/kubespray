@@ -94,6 +94,12 @@ ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_ve
 ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 --limit "node5*"
 ```
 
+If you wish to upgrade the cluster one node at a time, then what you need is to override the environment variable `serial` and set it to 1.
+
+```ShellSession
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 -e "serial=1"
+```
+
 ## Multiple upgrades
 
 > **Warning**

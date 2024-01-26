@@ -59,7 +59,7 @@ Client Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.7", GitCom
 Server Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.7", GitCommit:"1dd5338295409edcfff11505e7bb246f0d325d15", GitTreeState:"clean", BuildDate:"2021-01-13T13:15:20Z", GoVersion:"go1.15.5", Compiler:"gc", Platform:"linux/amd64"}
 ```
 
-You can controll how many nodes are upgraded at the same time by modifying the ansible variable named `serial`, as explained [here](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_strategies.html#setting-the-batch-size-with-serial). If you don't set this variable, it will upgrade the cluster nodes in batches of  20% of the available nodes. Setting `serial=1` would mean upgrade one node at a time.
+You can control how many nodes are upgraded at the same time by modifying the ansible variable named `serial`, as explained [here](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_strategies.html#setting-the-batch-size-with-serial). If you don't set this variable, it will upgrade the cluster nodes in batches of  20% of the available nodes. Setting `serial=1` would mean upgrade one node at a time.
 
 ```ShellSession
 ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 -e "serial=1"

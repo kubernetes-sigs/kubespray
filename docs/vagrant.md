@@ -1,6 +1,6 @@
 # Vagrant
 
-Assuming you have Vagrant 2.0+ installed with virtualbox, libvirt/qemu or
+Assuming you have Vagrant 2.0+ installed with virtualbox (it may work with libvirt/qemu or
 vmware, but is untested) you should be able to launch a 3 node Kubernetes
 cluster by simply running `vagrant up`.
 

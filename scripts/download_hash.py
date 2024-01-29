@@ -6,8 +6,10 @@
 
 import sys
 
+from itertools import count
 import requests
 from ruamel.yaml import YAML
+from packaging.version import Version
 
 CHECKSUMS_YML = "../roles/kubespray-defaults/defaults/main/checksums.yml"
 
@@ -23,7 +25,7 @@ def open_checksums_yaml():
     return data, yaml
 
 
-def download_hash(versions):
+def download_hash(minors):
     architectures = ["arm", "arm64", "amd64", "ppc64le"]
     downloads = ["kubelet", "kubectl", "kubeadm"]
 
@@ -32,24 +34,27 @@ def download_hash(versions):
     for download in downloads:
         checksum_name = f"{download}_checksums"
         for arch in architectures:
-            for version in versions:
-                if not version.startswith("v"):
-                    version = f"v{version}"
-                url = f"https://dl.k8s.io/release/{version}/bin/linux/{arch}/{download}.sha256"
-                hash_file = requests.get(url, allow_redirects=True)
-                if hash_file.status_code == 404:
-                    print(f"Unable to find hash file for release {version} (arch: {arch})")
-                    continue
-                if hash_file.status_code != 200:
-                    raise Exception(f"Received a non-200 HTTP response code: {hash_file.status_code} (arch: {arch}, version: {version})")
-                sha256sum = hash_file.content.decode().strip()
-                if len(sha256sum) != 64:
-                    raise Exception(f"Checksum has an unexpected length: {len(sha256sum)} (arch: {arch}, version: {version})")
-                if checksum_name not in data:
-                    data[checksum_name] = {}
-                if arch not in data[checksum_name]:
-                    data[checksum_name][arch] = {}
-                data[checksum_name][arch][version] = sha256sum
+            for minor in minors:
+                if not minor.startswith("v"):
+                    minor = f"v{minor}"
+                for release in (f"{minor}.{patch}" for patch in count(start=0, step=1)):
+                    if release in data[checksum_name][arch]:
+                        continue
+                    hash_file = requests.get(f"https://dl.k8s.io/release/{release}/bin/linux/{arch}/{download}.sha256", allow_redirects=True)
+                    if hash_file.status_code == 404:
+                        print(f"Unable to find hash file for release {release} (arch: {arch})")
+                        break
+                    hash_file.raise_for_status()
+                    sha256sum = hash_file.content.decode().strip()
+                    if len(sha256sum) != 64:
+                        raise Exception(f"Checksum has an unexpected length: {len(sha256sum)} (arch: {arch}, release: 1.{minor}.{patch})")
+                    if arch not in data[checksum_name]:
+                        data[checksum_name][arch] = {}
+                    data[checksum_name][arch][release] = sha256sum
+        data[checksum_name] = {arch : {r : releases[r] for r in sorted(releases.keys(),
+                                                  key=lambda v : Version(v[1:]),
+                                                  reverse=True)}
+                               for arch, releases in data[checksum_name].items()}
 
     with open(CHECKSUMS_YML, "w") as checksums_yml:
         yaml.dump(data, checksums_yml)

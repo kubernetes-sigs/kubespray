@@ -30,6 +30,8 @@ def download_hash(minors):
     downloads = ["kubelet", "kubectl", "kubeadm"]
 
     data, yaml = open_checksums_yaml()
+    if not minors:
+        minors = {'.'.join(minor.split('.')[:-1]) for minor in data["kubelet_checksums"]["amd64"].keys()}
 
     for download in downloads:
         checksum_name = f"{download}_checksums"
@@ -66,12 +68,7 @@ def usage():
 
 
 def main(argv=None):
-    if not argv:
-        argv = sys.argv[1:]
-    if not argv:
-        usage()
-        return 1
-    download_hash(argv)
+    download_hash(sys.argv[1:])
     return 0
 
 

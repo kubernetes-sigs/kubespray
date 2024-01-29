@@ -7,6 +7,7 @@
 import sys
 
 from itertools import count
+from collections import defaultdict
 import requests
 from ruamel.yaml import YAML
 from packaging.version import Version
@@ -35,6 +36,7 @@ def download_hash(minors):
 
     for download in downloads:
         checksum_name = f"{download}_checksums"
+        data[checksum_name] = defaultdict(dict, data[checksum_name])
         for arch in architectures:
             for minor in minors:
                 if not minor.startswith("v"):
@@ -44,14 +46,12 @@ def download_hash(minors):
                         continue
                     hash_file = requests.get(f"https://dl.k8s.io/release/{release}/bin/linux/{arch}/{download}.sha256", allow_redirects=True)
                     if hash_file.status_code == 404:
-                        print(f"Unable to find hash file for release {release} (arch: {arch})")
+                        print(f"Unable to find {download} hash file for release {release} (arch: {arch})")
                         break
                     hash_file.raise_for_status()
                     sha256sum = hash_file.content.decode().strip()
                     if len(sha256sum) != 64:
-                        raise Exception(f"Checksum has an unexpected length: {len(sha256sum)} (arch: {arch}, release: 1.{minor}.{patch})")
-                    if arch not in data[checksum_name]:
-                        data[checksum_name][arch] = {}
+                        raise Exception(f"Checksum has an unexpected length: {len(sha256sum)} (binary: {download}, arch: {arch}, release: 1.{minor}.{patch})")
                     data[checksum_name][arch][release] = sha256sum
         data[checksum_name] = {arch : {r : releases[r] for r in sorted(releases.keys(),
                                                   key=lambda v : Version(v[1:]),

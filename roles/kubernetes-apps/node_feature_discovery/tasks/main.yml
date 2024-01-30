@@ -1,0 +1,49 @@
+---
+- name: Node Feature Discovery | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/node_feature_discovery"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Node Feature Discovery | Templates list
+  set_fact:
+    node_feature_discovery_templates:
+      - { name: nfd-ns, file: nfd-ns.yaml, type: ns }
+      - { name: nfd-api-crd, file: nfd-api-crds.yaml, type: crd }
+      - { name: nfd-serviceaccount, file: nfd-serviceaccount.yaml, type: sa }
+      - { name: nfd-role, file: nfd-role.yaml, type: role }
+      - { name: nfd-clusterrole, file: nfd-clusterrole.yaml, type: clusterrole }
+      - { name: nfd-rolebinding, file: nfd-rolebinding.yaml, type: rolebinding }
+      - { name: nfd-clusterrolebinding, file: nfd-clusterrolebinding.yaml, type: clusterrolebinding }
+      - { name: nfd-master-conf, file: nfd-master-conf.yaml, type: cm }
+      - { name: nfd-worker-conf, file: nfd-worker-conf.yaml, type: cm }
+      - { name: nfd-topologyupdater-conf, file: nfd-topologyupdater-conf.yaml, type: cm }
+      - { name: nfd-gc, file: nfd-gc.yaml, type: deploy }
+      - { name: nfd-master, file: nfd-master.yaml, type: deploy }
+      - { name: nfd-worker, file: nfd-worker.yaml, type: ds }
+      - { name: nfd-service, file: nfd-service.yaml, type: srv }
+
+- name: Node Feature Discovery | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/node_feature_discovery/{{ item.file }}"
+    mode: 0644
+  with_items: "{{ node_feature_discovery_templates }}"
+  register: node_feature_discovery_manifests
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Node Feature Discovery | Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/node_feature_discovery/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ node_feature_discovery_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]

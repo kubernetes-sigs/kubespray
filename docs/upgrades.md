@@ -103,9 +103,26 @@ ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_ve
 ## Multiple upgrades
 
 > **Warning**
-> [Do not skip releases when upgrading--upgrade by one tag at a time.](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515)
+> [Do not skip minor releases (patches releases are ok) when upgrading--upgrade by one tag at a
+> time.](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515)
 
-For instance, if you're on v2.6.0, then check out v2.7.0, run the upgrade, check out the next tag, and run the next upgrade, etc.
+For instances, given the tag list:
+
+```console
+$ git tag
+v2.20.0
+v2.21.0
+v2.22.0
+v2.22.1
+v2.23.0
+v2.23.1
+v2.23.2
+v2.24.0
+...
+```
+
+v2.22.0 -> v2.23.2 -> v2.24.0 : ✓
+v.22.0 -> v2.24.0 : ✕
 
 Assuming you don't explicitly define a kubernetes version in your k8s_cluster.yml, you simply check out the next tag and run the upgrade-cluster.yml playbook
 

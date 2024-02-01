@@ -222,6 +222,14 @@ calico_node_livenessprobe_timeout: 10
 calico_node_readinessprobe_timeout: 10
 ```
 
+### Optional :  Enable NAT with IPv6
+
+To allow outgoing IPv6 traffic going from pods to the Internet, enable the following:
+
+```yml
+nat_outgoing_ipv6: true  # NAT outgoing ipv6 (default value: false).
+```
+
 ## Config encapsulation for cross server traffic
 
 Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.projectcalico.org/v3.11/networking/vxlan-ipip). VXLAN is the more mature implementation and enabled by default, please check your environment if you need *IP in IP* encapsulation.
@@ -235,7 +243,7 @@ If you are running your cluster with the default calico settings and are upgradi
 * perform a manual migration to vxlan before upgrading kubespray (see migrating from IP in IP to VXLAN below)
 * pin the pre-2.19 settings in your ansible inventory (see IP in IP mode settings below)
 
-**Note:**: Vxlan in ipv6 only supported when kernel >= 3.12. So if your kernel version < 3.12, Please don't set `calico_vxlan_mode_ipv6: vxlanAlways`. More details see [#Issue 6877](https://github.com/projectcalico/calico/issues/6877).
+**Note:**: Vxlan in ipv6 only supported when kernel >= 3.12. So if your kernel version < 3.12, Please don't set `calico_vxlan_mode_ipv6: Always`. More details see [#Issue 6877](https://github.com/projectcalico/calico/issues/6877).
 
 ### IP in IP mode
 

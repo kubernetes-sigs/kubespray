@@ -34,8 +34,16 @@ def download_hash(minors):
         "kubeadm": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubeadm.sha256",
         "kubectl": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubectl.sha256",
         "kubelet": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubelet.sha256",
-        "runc": "https://github.com/opencontainers/runc/releases/download/{version}/runc.{arch}.sha256sum",
+        "runc": "https://github.com/opencontainers/runc/releases/download/{version}/runc.sha256sum",
     }
+    # Handle hashes not directly in one url per hash. Return dict of hashs indexed by arch
+    download_hash_extract = {
+            "runc": lambda hashes : {
+                parts[1].split('.')[1] : parts[0]
+                for parts in (line.split()
+                              for line in hashes.split('\n')[3:9])
+                },
+            }
 
     data, yaml = open_checksums_yaml()
 
@@ -61,7 +69,13 @@ def download_hash(minors):
                         print(f"Unable to find {download} hash file for version {version} (arch: {arch}) at {hash_file.url}")
                         break
                     hash_file.raise_for_status()
-                    sha256sum = hash_file.content.decode().split(' ')[0]
+                    sha256sum = hash_file.content.decode()
+                    if download in download_hash_extract:
+                        sha256sum = download_hash_extract[download](sha256sum).get(arch)
+                        if sha256sum == None:
+                            break
+                    sha256sum = sha256sum.split()[0]
+
                     if len(sha256sum) != 64:
                         raise Exception(f"Checksum has an unexpected length: {len(sha256sum)} (binary: {download}, arch: {arch}, release: {version}, checksum: '{sha256sum}')")
                     data[checksum_name][arch][version] = sha256sum

@@ -231,6 +231,7 @@ The following tags are defined in playbooks:
 | services                       | Remove services (etcd, kubelet etc...) when resetting |
 | snapshot                       | Enabling csi snapshot                                 |
 | snapshot-controller            | Configuring csi snapshot controller                   |
+| system-packages                | Install packages using OS package manager             |
 | upgrade                        | Upgrading, f.e. container images/binaries             |
 | upload                         | Distributing images/binaries across hosts             |
 | vsphere-csi-driver             | Configuring csi driver: vsphere                       |

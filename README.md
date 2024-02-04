@@ -162,7 +162,7 @@ Note: Upstart/SysV init based OS types are not supported.
 - Core
   - [kubernetes](https://github.com/kubernetes/kubernetes) v1.29.1
   - [etcd](https://github.com/etcd-io/etcd) v3.5.10
-  - [docker](https://www.docker.com/) v20.10 (see note)
+  - [docker](https://www.docker.com/) v24.0 (see [Note](#container-runtime-notes))
   - [containerd](https://containerd.io/) v1.7.13
   - [cri-o](http://cri-o.io/) v1.29.1 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
@@ -196,7 +196,7 @@ Note: Upstart/SysV init based OS types are not supported.
 
 ## Container Runtime Notes
 
-- Supported Docker versions are 18.09, 19.03, 20.10, 23.0 and 24.0. The *recommended* Docker version is 20.10 (except on Debian bookworm which without supporting for 20.10 and below any more). `Kubelet` might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. the YUM  ``versionlock`` plugin or ``apt pin``).
+- Supported Docker versions are 18.09, 19.03, 20.10, 23.0 and 24.0. The *recommended* Docker version is 24.0. `Kubelet` might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. the YUM  ``versionlock`` plugin or ``apt pin``).
 - The cri-o version should be aligned with the respective kubernetes version (i.e. kube_version=1.20.x, crio_version=1.20)
 
 ## Requirements

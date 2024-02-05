@@ -20,27 +20,11 @@ Kubespray has been tested on a number of OpenStack Public Clouds including (in a
 - [VexxHost](https://vexxhost.com/)
 - [Zetta](https://www.zetta.io/)
 
-## The in-tree cloud provider
+## The OpenStack cloud provider
 
-To deploy Kubespray on [OpenStack](https://www.openstack.org/) uncomment the `cloud_provider` option in `group_vars/all/all.yml` and set it to `openstack`.
+The cloud provider is configured to have Octavia by default in Kubespray.
 
-After that make sure to source in your OpenStack credentials like you would do when using `nova-client` or `neutron-client` by using `source path/to/your/openstack-rc` or `. path/to/your/openstack-rc`.
-
-For those who prefer to pass the OpenStack CA certificate as a string, one can
-base64 encode the cacert file and store it in the variable `openstack_cacert`.
-
-The next step is to make sure the hostnames in your `inventory` file are identical to your instance names in OpenStack.
-Otherwise [cinder](https://wiki.openstack.org/wiki/Cinder) won't work as expected.
-
-Unless you are using calico or kube-router you can now run the playbook.
-
-## The external cloud provider
-
-The in-tree cloud provider is deprecated and will be removed in a future version of Kubernetes. The target release for removing all remaining in-tree cloud providers is set to 1.21.
-
-The new cloud provider is configured to have Octavia by default in Kubespray.
-
-- Enable the new external cloud provider in `group_vars/all/all.yml`:
+- Enable the external OpenStack cloud provider in `group_vars/all/all.yml`:
 
   ```yaml
   cloud_provider: external

@@ -1,5 +1,6 @@
 # This YAML file contains CSI Controller Plugin Sidecars
 # external-attacher, external-provisioner, external-snapshotter
+# external-resize, liveness-probe
 
 ---
 kind: Deployment
@@ -17,10 +18,10 @@ spec:
       labels:
         app: csi-cinder-controllerplugin
     spec:
-      serviceAccountName: csi-cinder-controller-sa
+      serviceAccount: csi-cinder-controller-sa
       containers:
         - name: csi-attacher
-          image: {{ csi_attacher_image_repo }}:{{ csi_attacher_image_tag }}
+          image: {{ csi_attacher_image_repo }}:{{ cinder_csi_attacher_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
             - "--csi-address=$(ADDRESS)"
@@ -28,6 +29,7 @@ spec:
 {% if cinder_csi_controller_replicas is defined and cinder_csi_controller_replicas > 1 %}
             - --leader-election=true
 {% endif %}
+            - "--default-fstype=ext4"
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
@@ -35,7 +37,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-provisioner
-          image: {{ csi_provisioner_image_repo }}:{{ csi_provisioner_image_tag }}
+          image: {{ csi_provisioner_image_repo }}:{{ cinder_csi_provisioner_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
             - "--csi-address=$(ADDRESS)"
@@ -55,7 +57,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-snapshotter
-          image: {{ csi_snapshotter_image_repo }}:{{ csi_snapshotter_image_tag }}
+          image: {{ csi_snapshotter_image_repo }}:{{ cinder_csi_snapshotter_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
             - "--csi-address=$(ADDRESS)"
@@ -71,7 +73,7 @@ spec:
             - mountPath: /var/lib/csi/sockets/pluginproxy/
               name: socket-dir
         - name: csi-resizer
-          image: {{ csi_resizer_image_repo }}:{{ csi_resizer_image_tag }}
+          image: {{ csi_resizer_image_repo }}:{{ cinder_csi_resizer_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
             - "--csi-address=$(ADDRESS)"
@@ -87,7 +89,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: liveness-probe
-          image: {{ csi_livenessprobe_image_repo }}:{{ csi_livenessprobe_image_tag }}
+          image: {{ csi_livenessprobe_image_repo }}:{{ cinder_csi_livenessprobe_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
             - "--csi-address=$(ADDRESS)"

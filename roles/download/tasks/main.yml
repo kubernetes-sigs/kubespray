@@ -26,24 +26,38 @@
     # The trick (converting list of tuples to list of dicts) below come from
     # https://docs.ansible.com/ansible/latest/collections/community/general/dict_filter.html#examples
     _kubeadm_images: "{{ dict(names | map('regex_replace', '^(.*)', 'kubeadm_\\1') |
-      zip( repos | zip(_tags) |
+      zip( repos | zip(_tags, _groups) |
       map('zip', keys) | map('map', 'reverse') | map('community.general.dict') |
       map('combine', defaults))) |
       dict2items | rejectattr('key', 'in', excluded) | items2dict }}"
     keys:
       - repo
       - tag
+      - groups
     images: "{{ kubeadm_images_raw.stdout_lines | map('split', ':') }}"
     _tags: "{{ images | map(attribute=1) }}"
     repos: "{{ images | map(attribute=0) }}"
     names: "{{ repos | map('split', '/') | map(attribute=-1) }}"
+    _groups: "{{ names | map('extract', images_groups) }}"
     defaults:
-      groups: k8s_cluster
       enabled: true
       container: true
     excluded:
       - kubeadm_coredns
       - kubeadm_pause
+    images_groups:
+      coredns: []
+      pause: []
+      kube-proxy:
+        - k8s_cluster
+      etcd:
+        - etcd
+      kube-scheduler:
+        - kube_control_plane
+      kube-controller-manager:
+        - kube_control_plane
+      kube-apiserver:
+        - kube_control_plane
   when:
     - not skip_downloads
     - download.enabled

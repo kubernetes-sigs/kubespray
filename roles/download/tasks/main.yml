@@ -22,6 +22,28 @@
   vars:
     download: "{{ download_defaults | combine(item.value) }}"
     include_file: "download_{% if download.container %}container{% else %}file{% endif %}.yml"
+    kubeadm_images: "{{ skip_kubeadm_images | ternary({}, _kubeadm_images) }}"
+    # The trick (converting list of tuples to list of dicts) below come from
+    # https://docs.ansible.com/ansible/latest/collections/community/general/dict_filter.html#examples
+    _kubeadm_images: "{{ dict(names | map('regex_replace', '^(.*)', 'kubeadm_\\1') |
+      zip( repos | zip(_tags) |
+      map('zip', keys) | map('map', 'reverse') | map('community.general.dict') |
+      map('combine', defaults))) |
+      dict2items | rejectattr('key', 'in', excluded) | items2dict }}"
+    keys:
+      - repo
+      - tag
+    images: "{{ kubeadm_images_raw.stdout_lines | map('split', ':') }}"
+    _tags: "{{ images | map(attribute=1) }}"
+    repos: "{{ images | map(attribute=0) }}"
+    names: "{{ repos | map('split', '/') | map(attribute=-1) }}"
+    defaults:
+      groups: k8s_cluster
+      enabled: true
+      container: true
+    excluded:
+      - kubeadm_coredns
+      - kubeadm_pause
   when:
     - not skip_downloads | default(false)
     - download.enabled

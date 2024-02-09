@@ -213,7 +213,6 @@ function _get_checksum {
 ["nerdctl_archive"]="$(printf "$github_releases_url" "containerd/nerdctl" "nerdctl-${version#v}-$os-$([ "$arch" == "arm" ] && echo "arm-v7" || echo "$arch" ).tar.gz")"
 ["containerd_archive"]="$(printf "$github_releases_url" "containerd/containerd" "containerd-${version#v}-$os-$arch.tar.gz")"
 ["skopeo_binary"]="$(printf "$github_releases_url" "lework/skopeo-binary" "skopeo-$os-$arch")"
-["yq"]="$(printf "$github_releases_url" "mikefarah/yq" "yq_${os}_$arch")"
 )
 
     mkdir -p "$(dirname $target)"
@@ -251,7 +250,6 @@ function main {
     get_checksums nerdctl_archive $(get_versions github_tags containerd/nerdctl)
     get_containerd_archive_checksums $(get_versions github_tags containerd/containerd 30)
     get_checksums skopeo_binary $(get_versions github_tags lework/skopeo-binary)
-    get_checksums yq $(get_versions github_tags mikefarah/yq)
 }
 
 if [[ ${__name__:-"__main__"} == "__main__" ]]; then

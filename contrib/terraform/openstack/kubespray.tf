@@ -1,15 +1,15 @@
 module "network" {
   source = "./modules/network"
 
-  external_net          = var.external_net
-  network_name          = var.network_name
-  subnet_cidr           = var.subnet_cidr
-  cluster_name          = var.cluster_name
-  dns_nameservers       = var.dns_nameservers
-  network_dns_domain    = var.network_dns_domain
-  use_neutron           = var.use_neutron
-  port_security_enabled = var.port_security_enabled
-  router_id             = var.router_id
+  external_net                        = var.external_net
+  network_name                        = var.network_name
+  subnet_cidr                         = var.subnet_cidr
+  cluster_name                        = var.cluster_name
+  dns_nameservers                     = var.dns_nameservers
+  network_dns_domain                  = var.network_dns_domain
+  use_neutron                         = var.use_neutron
+  port_security_enabled               = var.port_security_enabled
+  router_id                           = var.router_id
 }
 
 module "ips" {
@@ -111,6 +111,24 @@ module "compute" {
     module.network.subnet_id
   ]
 }
+
+module "loadbalancer" {
+  source = "./modules/loadbalancer"
+
+  cluster_name                            = var.cluster_name
+  subnet_id                               = module.network.subnet_id
+  floatingip_pool                         = var.floatingip_pool
+  k8s_master_ips                          = module.compute.k8s_master_ips
+  k8s_master_loadbalancer_enabled         = var.k8s_master_loadbalancer_enabled
+  k8s_master_loadbalancer_listener_port   = var.k8s_master_loadbalancer_listener_port
+  k8s_master_loadbalancer_server_port     = var.k8s_master_loadbalancer_server_port
+  k8s_master_loadbalancer_public_ip       = var.k8s_master_loadbalancer_public_ip
+  
+  depends_on = [
+    module.compute.k8s_master
+  ]
+}
+
 
 output "private_subnet_id" {
   value = module.network.subnet_id

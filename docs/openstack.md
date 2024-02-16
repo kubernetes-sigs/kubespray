@@ -50,14 +50,6 @@ The cloud provider is configured to have Octavia by default in Kubespray.
   ```
 
 - If you are using OpenStack loadbalancer(s) replace the `openstack_lbaas_subnet_id` with the new `external_openstack_lbaas_subnet_id`. **Note** The new cloud provider is using Octavia instead of Neutron LBaaS by default!
-- Enable 3 feature gates to allow migration of all volumes and storage classes (if you have any feature gates already set just add the 3 listed below):
-
-  ```yaml
-  kube_feature_gates:
-  - CSIMigration=true
-  - CSIMigrationOpenStack=true
-  - ExpandCSIVolumes=true
-  ```
 
 - If you are in a case of a multi-nic OpenStack VMs (see [kubernetes/cloud-provider-openstack#407](https://github.com/kubernetes/cloud-provider-openstack/issues/407) and [#6083](https://github.com/kubernetes-sigs/kubespray/issues/6083) for explanation), you should override the default OpenStack networking configuration:
 

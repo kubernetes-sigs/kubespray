@@ -24,6 +24,7 @@ most modern installs of OpenStack that support the basic services.
 - [Ultimum](https://ultimum.io/)
 - [VexxHost](https://vexxhost.com/)
 - [Zetta](https://www.zetta.io/)
+- [Cloudify](https://www.cloudify.ro/en)
 
 ## Approach
 

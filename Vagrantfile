@@ -80,6 +80,7 @@ $ansible_tags ||= ENV['VAGRANT_ANSIBLE_TAGS'] || ""
 $vagrant_dir ||= File.join(File.dirname(__FILE__), ".vagrant")
 
 $playbook ||= "cluster.yml"
+$extra_vars ||= {}
 
 host_vars = {}
 
@@ -276,6 +277,7 @@ Vagrant.configure("2") do |config|
           ansible.host_key_checking = false
           ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
           ansible.host_vars = host_vars
+          ansible.extra_vars = $extra_vars
           if $ansible_tags != ""
             ansible.tags = [$ansible_tags]
           end

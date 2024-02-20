@@ -389,3 +389,23 @@ variable "group_vars_path" {
   type        = string
   default     = "./group_vars"
 }
+
+variable "k8s_master_loadbalancer_enabled" {
+  type    = bool
+  default = "false"
+}
+
+variable "k8s_master_loadbalancer_listener_port" {
+  type    = string
+  default = "6443"
+}
+
+variable "k8s_master_loadbalancer_server_port" {
+  type    = string
+  default = 6443
+}
+
+variable "k8s_master_loadbalancer_public_ip" {
+  type    = string
+  default = ""
+}

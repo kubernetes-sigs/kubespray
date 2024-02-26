@@ -92,6 +92,34 @@
   set_fact:
     kubeadmConfig_api_version: v1beta3
 
+- name: Kubeadm | Patch kube-scheduler manifest for scheduler-plugins
+  when:
+    - kube_major_version is version('v1.28', '<')
+    - scheduler_plugins_enabled is defined and scheduler_plugins_enabled
+    - scheduler_plugins_single_scheduler_mode is defined and scheduler_plugins_single_scheduler_mode
+  tags:
+    - scheduler_plugins
+  block:
+    - name: Enable kubeadm_patches
+      set_fact:
+        kubeadm_patches:
+          enabled: true
+          source_dir: "{{ inventory_dir }}/patches"
+          dest_dir: "{{ kube_config_dir }}/patches"
+      when: kubeadm_patches is not defined or not kubeadm_patches.enabled
+    - name: Ensure patch source dirs exists
+      file:
+        path: "{{ kubeadm_patches.source_dir }}"
+        state: directory
+        mode: 0640
+      delegate_to: localhost
+    - name: Render patches
+      template:
+        src: "kube-scheduler0+json.yaml.j2"
+        dest: "{{ kubeadm_patches.source_dir }}/kube-scheduler0+json.yaml"
+        mode: 0640
+      delegate_to: localhost
+
 - name: Kubeadm | Create kubeadm config
   template:
     src: "kubeadm-config.{{ kubeadmConfig_api_version }}.yaml.j2"

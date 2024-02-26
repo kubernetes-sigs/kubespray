@@ -1,3 +1,4 @@
+{% if not scheduler_plugins_single_scheduler_mode %}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -67,12 +68,12 @@ rules:
   resources: ["podgroups", "elasticquotas", "podgroups/status", "elasticquotas/status"]
   verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
 # for network-aware plugins add the following lines (scheduler-plugins v0.27.8)
-#- apiGroups: [ "appgroup.diktyo.x-k8s.io" ]
-#  resources: [ "appgroups" ]
-#  verbs: [ "get", "list", "watch", "create", "delete", "update", "patch" ]
-#- apiGroups: [ "networktopology.diktyo.x-k8s.io" ]
-#  resources: [ "networktopologies" ]
-#  verbs: [ "get", "list", "watch", "create", "delete", "update", "patch" ]
+- apiGroups: [ "appgroup.diktyo.x-k8s.io" ]
+  resources: [ "appgroups" ]
+  verbs: [ "get", "list", "watch", "create", "delete", "update", "patch" ]
+- apiGroups: [ "networktopology.diktyo.x-k8s.io" ]
+  resources: [ "networktopologies" ]
+  verbs: [ "get", "list", "watch", "create", "delete", "update", "patch" ]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -86,6 +87,38 @@ subjects:
 - kind: ServiceAccount
   name: scheduler-plugins-scheduler
   namespace: {{ scheduler_plugins_namespace }}
+{% else %}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: system:kube-scheduler:plugins
+rules:
+- apiGroups: [ "topology.node.k8s.io" ]
+  resources: [ "noderesourcetopologies" ]
+  verbs: [ "get", "list", "watch" ]
+- apiGroups: ["scheduling.x-k8s.io"]
+  resources: ["podgroups", "elasticquotas", "podgroups/status", "elasticquotas/status"]
+  verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+- apiGroups: [ "appgroup.diktyo.k8s.io" ]
+  resources: [ "appgroups" ]
+  verbs: [ "get", "list", "watch", "create", "delete", "update", "patch" ]
+- apiGroups: [ "networktopology.diktyo.k8s.io" ]
+  resources: [ "networktopologies" ]
+  verbs: [ "get", "list", "watch", "create", "delete", "update", "patch" ]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: system:kube-scheduler:plugins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:kube-scheduler:plugins
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: system:kube-scheduler
+{% endif %}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -132,9 +165,11 @@ roleRef:
   kind: Role
   name: extension-apiserver-authentication-reader
 subjects:
+{% if not scheduler_plugins_single_scheduler_mode %}
 - kind: ServiceAccount
   name: scheduler-plugins-scheduler
   namespace: {{ scheduler_plugins_namespace }}
+{% endif %}
 - kind: ServiceAccount
   name: scheduler-plugins-controller
   namespace: {{ scheduler_plugins_namespace }}

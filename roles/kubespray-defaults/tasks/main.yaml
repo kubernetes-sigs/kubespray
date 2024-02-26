@@ -1,30 +1,22 @@
 ---
-- name: Configure defaults
-  debug:
-    msg: "Check roles/kubespray-defaults/defaults/main/main.yml"
+- name: Set facts variables
+  # do not run gather facts when bootstrap-os in roles
+  when: >
+        ansible_play_role_names |
+        intersect(['bootstrap-os', 'kubernetes-sigs.kubespray.bootstrap-os']) |
+        length == 0
   tags:
     - always
+  block:
+    - name: Set fallback_ips
+      import_tasks: fallback_ips.yml
+      when: fallback_ips is not defined
 
-# do not run gather facts when bootstrap-os in roles
-- name: Set fallback_ips
-  import_tasks: fallback_ips.yml
-  when:
-    - "'bootstrap-os' not in ansible_play_role_names or
-      'kubernetes-sigs.kubespray.bootstrap-os' not in ansible_play_role_names"
-    - fallback_ips is not defined
-  tags:
-    - always
-
-
-- name: Set no_proxy
-  import_tasks: no_proxy.yml
-  when:
-    - "'bootstrap-os' not in ansible_play_role_names or
-      'kubernetes-sigs.kubespray.bootstrap-os' not in ansible_play_role_names"
-    - http_proxy is defined or https_proxy is defined
-    - no_proxy is not defined
-  tags:
-    - always
+    - name: Set no_proxy
+      import_tasks: no_proxy.yml
+      when:
+        - http_proxy is defined or https_proxy is defined
+        - no_proxy is not defined
 
 # TODO: Clean this task up when we drop backward compatibility support for `etcd_kubeadm_enabled`
 - name: Set `etcd_deployment_type` to "kubeadm" if `etcd_kubeadm_enabled` is true

@@ -58,7 +58,7 @@ docker_image_pull_command: "{{ docker_bin_dir }}/docker pull"
 docker_image_info_command: "{{ docker_bin_dir }}/docker images -q | xargs -i {{ '{{' }} docker_bin_dir }}/docker inspect -f {% raw %}'{{ '{{' }} if .RepoTags }}{{ '{{' }} join .RepoTags \",\" }}{{ '{{' }} end }}{{ '{{' }} if .RepoDigests }},{{ '{{' }} join .RepoDigests \",\" }}{{ '{{' }} end }}' {% endraw %} {} | tr '\n' ','"
 nerdctl_image_info_command: "{{ bin_dir }}/nerdctl -n k8s.io images --format '{% raw %}{{ .Repository }}:{{ .Tag }}{% endraw %}' 2>/dev/null | grep -v ^:$ | tr '\n' ','"
 # Using the ctr instead of nerdctl to workdaround the https://github.com/kubernetes-sigs/kubespray/issues/10670
-nerdctl_image_pull_command: "{{ bin_dir }}/ctr -n k8s.io images pull"
+nerdctl_image_pull_command: "{{ bin_dir }}/ctr -n k8s.io images pull{% if containerd_registries_mirrors is defined %} --hosts-dir {{ containerd_cfg_dir }}/certs.d{%- endif -%}"
 crictl_image_info_command: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
 crictl_image_pull_command: "{{ bin_dir }}/crictl pull"
 
@@ -76,15 +76,15 @@ image_arch: "{{ host_architecture | default('amd64') }}"
 # Versions
 kubeadm_version: "{{ kube_version }}"
 crun_version: 1.8.5
-runc_version: v1.1.10
+runc_version: v1.1.12
 kata_containers_version: 3.1.3
 youki_version: 0.1.0
 gvisor_version: 20230807
-containerd_version: 1.7.11
-cri_dockerd_version: 0.3.4
+containerd_version: 1.7.13
+cri_dockerd_version: 0.3.9
 
 # this is relevant when container_manager == 'docker'
-docker_containerd_version: 1.6.16
+docker_containerd_version: 1.6.28
 
 # gcr and kubernetes image repo define
 gcr_image_repo: "gcr.io"
@@ -115,7 +115,6 @@ flannel_version: "v0.22.0"
 flannel_cni_version: "v1.1.2"
 cni_version: "v1.3.0"
 weave_version: 2.8.1
-pod_infra_version: "3.9"
 
 cilium_version: "v1.13.4"
 cilium_cli_version: "v0.15.0"
@@ -125,7 +124,7 @@ kube_ovn_version: "v1.11.5"
 kube_ovn_dpdk_version: "19.11-{{ kube_ovn_version }}"
 kube_router_version: "v2.0.0"
 multus_version: "v3.8"
-helm_version: "v3.13.1"
+helm_version: "v3.14.2"
 nerdctl_version: "1.7.1"
 krew_version: "v0.4.4"
 skopeo_version: "v1.13.2"
@@ -133,23 +132,36 @@ skopeo_version: "v1.13.2"
 # Get kubernetes major version (i.e. 1.17.4 => 1.17)
 kube_major_version: "{{ kube_version | regex_replace('^v([0-9])+\\.([0-9]+)\\.[0-9]+', 'v\\1.\\2') }}"
 
+pod_infra_supported_versions:
+  v1.29: "3.9"
+  v1.28: "3.9"
+  v1.27: "3.9"
+pod_infra_version: "{{ pod_infra_supported_versions[kube_major_version] }}"
+
 etcd_supported_versions:
-  v1.28: "v3.5.9"
-  v1.27: "v3.5.9"
-  v1.26: "v3.5.9"
+  v1.29: "v3.5.10"
+  v1.28: "v3.5.10"
+  v1.27: "v3.5.10"
 etcd_version: "{{ etcd_supported_versions[kube_major_version] }}"
 
 crictl_supported_versions:
+  v1.29: "v1.29.0"
   v1.28: "v1.28.0"
   v1.27: "v1.27.1"
-  v1.26: "v1.26.1"
 crictl_version: "{{ crictl_supported_versions[kube_major_version] }}"
 
 crio_supported_versions:
+  v1.29: v1.29.1
   v1.28: v1.28.1
   v1.27: v1.27.1
-  v1.26: v1.26.4
 crio_version: "{{ crio_supported_versions[kube_major_version] }}"
+
+# Scheduler plugins doesn't build for K8s 1.28 yet
+scheduler_plugins_supported_versions:
+  v1.29: 0
+  v1.28: 0
+  v1.27: v0.27.8
+scheduler_plugins_version: "{{ scheduler_plugins_supported_versions[kube_major_version] }}"
 
 yq_version: "v4.35.2"
 
@@ -275,7 +287,7 @@ haproxy_image_tag: 2.8.2-alpine
 # Coredns version should be supported by corefile-migration (or at least work with)
 # bundle with kubeadm; if not 'basic' upgrade can sometimes fail
 
-coredns_version: "{{ 'v1.10.1' if (kube_version is version('v1.27.0', '>=')) else 'v1.9.3' }}"
+coredns_version: "{{ 'v1.11.1' if (kube_version is version('v1.29.0', '>=')) else 'v1.10.1' }}"
 coredns_image_is_namespaced: "{{ (coredns_version is version('v1.7.1', '>=')) }}"
 
 coredns_image_repo: "{{ kube_image_repo }}{{ '/coredns/coredns' if (coredns_image_is_namespaced | bool) else '/coredns' }}"
@@ -289,10 +301,15 @@ dnsautoscaler_version: v1.8.8
 dnsautoscaler_image_repo: "{{ kube_image_repo }}/cpa/cluster-proportional-autoscaler"
 dnsautoscaler_image_tag: "{{ dnsautoscaler_version }}"
 
+scheduler_plugins_controller_image_repo: "{{ kube_image_repo }}/scheduler-plugins/controller"
+scheduler_plugins_controller_image_tag: "{{ scheduler_plugins_version }}"
+scheduler_plugins_scheduler_image_repo: "{{ kube_image_repo }}/scheduler-plugins/kube-scheduler"
+scheduler_plugins_scheduler_image_tag: "{{ scheduler_plugins_version }}"
+
 registry_version: "2.8.1"
 registry_image_repo: "{{ docker_image_repo }}/library/registry"
 registry_image_tag: "{{ registry_version }}"
-metrics_server_version: "v0.6.4"
+metrics_server_version: "v0.7.0"
 metrics_server_image_repo: "{{ kube_image_repo }}/metrics-server/metrics-server"
 metrics_server_image_tag: "{{ metrics_server_version }}"
 local_volume_provisioner_version: "v2.5.0"
@@ -307,14 +324,14 @@ rbd_provisioner_image_tag: "{{ rbd_provisioner_version }}"
 local_path_provisioner_version: "v0.0.24"
 local_path_provisioner_image_repo: "{{ docker_image_repo }}/rancher/local-path-provisioner"
 local_path_provisioner_image_tag: "{{ local_path_provisioner_version }}"
-ingress_nginx_version: "v1.9.4"
+ingress_nginx_version: "v1.9.6"
 ingress_nginx_controller_image_repo: "{{ kube_image_repo }}/ingress-nginx/controller"
 ingress_nginx_controller_image_tag: "{{ ingress_nginx_version }}"
 ingress_nginx_kube_webhook_certgen_image_repo: "{{ kube_image_repo }}/ingress-nginx/kube-webhook-certgen"
 ingress_nginx_kube_webhook_certgen_image_tag: "v20231011-8b53cabe0"
 alb_ingress_image_repo: "{{ docker_image_repo }}/amazon/aws-alb-ingress-controller"
 alb_ingress_image_tag: "v1.1.9"
-cert_manager_version: "v1.12.6"
+cert_manager_version: "v1.13.2"
 cert_manager_controller_image_repo: "{{ quay_image_repo }}/jetstack/cert-manager-controller"
 cert_manager_controller_image_tag: "{{ cert_manager_version }}"
 cert_manager_cainjector_image_repo: "{{ quay_image_repo }}/jetstack/cert-manager-cainjector"
@@ -336,14 +353,14 @@ csi_livenessprobe_image_repo: "{{ kube_image_repo }}/sig-storage/livenessprobe"
 csi_livenessprobe_image_tag: "v2.5.0"
 
 snapshot_controller_supported_versions:
+  v1.29: "v6.3.3"
   v1.28: "v4.2.1"
   v1.27: "v4.2.1"
-  v1.26: "v4.2.1"
 snapshot_controller_image_repo: "{{ kube_image_repo }}/sig-storage/snapshot-controller"
 snapshot_controller_image_tag: "{{ snapshot_controller_supported_versions[kube_major_version] }}"
 
-cinder_csi_plugin_version: "v1.22.0"
-cinder_csi_plugin_image_repo: "{{ docker_image_repo }}/k8scloudprovider/cinder-csi-plugin"
+cinder_csi_plugin_version: "v1.29.0"
+cinder_csi_plugin_image_repo: "{{ kube_image_repo }}/provider-os/cinder-csi-plugin"
 cinder_csi_plugin_image_tag: "{{ cinder_csi_plugin_version }}"
 
 aws_ebs_csi_plugin_version: "v0.5.0"
@@ -695,7 +712,7 @@ downloads:
     enabled: "{{ kube_network_plugin == 'cilium' or cilium_deploy_additionally | default(false) | bool }}"
     file: true
     version: "{{ cilium_cli_version }}"
-    dest: "{{ local_release_dir }}/cilium-{{ cilium_cli_version }}-{{ image_arch }}"
+    dest: "{{ local_release_dir }}/cilium-{{ cilium_cli_version }}-{{ image_arch }}.tar.gz"
     sha256: "{{ ciliumcli_binary_checksum }}"
     url: "{{ ciliumcli_download_url }}"
     unarchive: true

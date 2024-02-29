@@ -1,8 +1,8 @@
 # Vagrant
 
-Assuming you have Vagrant 2.0+ installed with virtualbox, libvirt/qemu or
-vmware, but is untested) you should be able to launch a 3 node Kubernetes
-cluster by simply running `vagrant up`.
+Assuming you have Vagrant 2.0+ installed with virtualbox or libvirt/qemu
+(vmware may work, but is untested) you should be able to launch a 3 node
+Kubernetes cluster by simply running `vagrant up`.
 
 This will spin up 3 VMs and install kubernetes on them.
 Once they are completed you can connect to any of them by running `vagrant ssh k8s-[1..3]`.
@@ -85,6 +85,11 @@ cat << EOF > vagrant/config.rb
 \$network_plugin = "flannel"
 \$inventory = "$INV"
 \$shared_folders = { 'temp/docker_rpms' => "/var/cache/yum/x86_64/7/docker-ce/packages" }
+\$extra_vars = {
+    dns_domain: my.custom.domain
+}
+# or
+\$extra_vars = "path/to/extra/vars/file.yml"
 EOF
 
 # make the rpm cache

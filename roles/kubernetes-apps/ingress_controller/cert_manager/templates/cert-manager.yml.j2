@@ -60,6 +60,20 @@ metadata:
     app.kubernetes.io/component: "webhook"
     app.kubernetes.io/version: "{{ cert_manager_version }}"
 ---
+# Source: cert-manager/deploy/charts/cert-manager/templates/controller-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cert-manager
+  namespace: {{ cert_manager_namespace }}
+  labels:
+    app: cert-manager
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/component: "controller"
+    app.kubernetes.io/version: "{{ cert_manager_version }}"
+data:
+---
 # Source: cert-manager/deploy/charts/cert-manager/templates/webhook-config.yaml
 apiVersion: v1
 kind: ConfigMap
@@ -71,6 +85,7 @@ metadata:
     app.kubernetes.io/name: webhook
     app.kubernetes.io/instance: cert-manager
     app.kubernetes.io/component: "webhook"
+    app.kubernetes.io/version: "{{ cert_manager_version }}"
 data:
 ---
 # Source: cert-manager/deploy/charts/cert-manager/templates/cainjector-rbac.yaml
@@ -96,13 +111,13 @@ rules:
     verbs: ["get", "create", "update", "patch"]
   - apiGroups: ["admissionregistration.k8s.io"]
     resources: ["validatingwebhookconfigurations", "mutatingwebhookconfigurations"]
-    verbs: ["get", "list", "watch", "update"]
+    verbs: ["get", "list", "watch", "update", "patch"]
   - apiGroups: ["apiregistration.k8s.io"]
     resources: ["apiservices"]
-    verbs: ["get", "list", "watch", "update"]
+    verbs: ["get", "list", "watch", "update", "patch"]
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
-    verbs: ["get", "list", "watch", "update"]
+    verbs: ["get", "list", "watch", "update", "patch"]
 ---
 # Source: cert-manager/deploy/charts/cert-manager/templates/rbac.yaml
 # Issuer controller role
@@ -331,6 +346,23 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  name: cert-manager-cluster-view
+  labels:
+    app: cert-manager
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/component: "controller"
+    app.kubernetes.io/version: "{{ cert_manager_version }}"
+    rbac.authorization.k8s.io/aggregate-to-cluster-reader: "true"
+rules:
+  - apiGroups: ["cert-manager.io"]
+    resources: ["clusterissuers"]
+    verbs: ["get", "list", "watch"]
+---
+# Source: cert-manager/deploy/charts/cert-manager/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
   name: cert-manager-view
   labels:
     app: cert-manager
@@ -341,6 +373,7 @@ metadata:
     rbac.authorization.k8s.io/aggregate-to-view: "true"
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-cluster-reader: "true"
 rules:
   - apiGroups: ["cert-manager.io"]
     resources: ["certificates", "certificaterequests", "issuers"]
@@ -476,7 +509,7 @@ subjects:
     namespace: {{ cert_manager_namespace }}
     kind: ServiceAccount
 ---
-# Source: cert-manager/deploy/charts/cert-manager/templates//rbac.yaml
+# Source: cert-manager/deploy/charts/cert-manager/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -854,6 +887,7 @@ spec:
         app.kubernetes.io/version: "{{ cert_manager_version }}"
     spec:
       serviceAccountName: cert-manager-cainjector
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -947,6 +981,7 @@ spec:
         prometheus.io/port: '9402'
     spec:
       serviceAccountName: cert-manager
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -965,6 +1000,9 @@ spec:
           ports:
           - containerPort: 9402
             name: http-metrics
+            protocol: TCP
+          - containerPort: 9403
+            name: http-healthz
             protocol: TCP
           securityContext:
             allowPrivilegeEscalation: false
@@ -1051,6 +1089,7 @@ spec:
         app.kubernetes.io/version: "{{ cert_manager_version }}"
     spec:
       serviceAccountName: cert-manager-webhook
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -1194,10 +1233,6 @@ webhooks:
         operator: "NotIn"
         values:
         - "true"
-      - key: "name"
-        operator: "NotIn"
-        values:
-        - cert-manager
     rules:
       - apiGroups:
           - "cert-manager.io"

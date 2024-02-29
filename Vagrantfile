@@ -77,7 +77,10 @@ $libvirt_nested ||= false
 $ansible_verbosity ||= false
 $ansible_tags ||= ENV['VAGRANT_ANSIBLE_TAGS'] || ""
 
+$vagrant_dir ||= File.join(File.dirname(__FILE__), ".vagrant")
+
 $playbook ||= "cluster.yml"
+$extra_vars ||= {}
 
 host_vars = {}
 
@@ -96,7 +99,7 @@ $inventory = File.absolute_path($inventory, File.dirname(__FILE__))
 # if $inventory has a hosts.ini file use it, otherwise copy over
 # vars etc to where vagrant expects dynamic inventory to be
 if ! File.exist?(File.join(File.dirname($inventory), "hosts.ini"))
-  $vagrant_ansible = File.join(File.dirname(__FILE__), ".vagrant", "provisioners", "ansible")
+  $vagrant_ansible = File.join(File.absolute_path($vagrant_dir), "provisioners", "ansible")
   FileUtils.mkdir_p($vagrant_ansible) if ! File.exist?($vagrant_ansible)
   $vagrant_inventory = File.join($vagrant_ansible,"inventory")
   FileUtils.rm_f($vagrant_inventory)
@@ -263,6 +266,7 @@ Vagrant.configure("2") do |config|
       if i == $num_instances
         node.vm.provision "ansible" do |ansible|
           ansible.playbook = $playbook
+          ansible.compatibility_mode = "2.0"
           ansible.verbose = $ansible_verbosity
           $ansible_inventory_path = File.join( $inventory, "hosts.ini")
           if File.exist?($ansible_inventory_path)
@@ -273,6 +277,7 @@ Vagrant.configure("2") do |config|
           ansible.host_key_checking = false
           ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
           ansible.host_vars = host_vars
+          ansible.extra_vars = $extra_vars
           if $ansible_tags != ""
             ansible.tags = [$ansible_tags]
           end

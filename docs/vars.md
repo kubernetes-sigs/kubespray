@@ -34,10 +34,10 @@ Some variables of note include:
 
 ## Addressing variables
 
-* *ip* - IP to use for binding services (host var)
+* *ip* - IP to use for binding services (host var). This would **usually** be the public ip.
 * *access_ip* - IP for other hosts to use to connect to. Often required when
   deploying from a cloud, such as OpenStack or GCE and you have separate
-  public/floating and private IPs.
+  public/floating and private IPs. This would **usually** be the private ip.
 * *ansible_default_ipv4.address* - Not Kubespray-specific, but it is used if ip
   and access_ip are undefined
 * *ip6* - IPv6 address to use for binding services. (host var)
@@ -245,7 +245,7 @@ node_labels:
   label2_name: label2_value
 ```
 
-* *node_taints* - Taints applied to nodes via kubelet --register-with-taints parameter.
+* *node_taints* - Taints applied to nodes via `kubectl taint node`.
   For example, taints can be set in the inventory as variables or more widely in group_vars.
   *node_taints* has to be defined as a list of strings in format `key=value:effect`, e.g.:
 

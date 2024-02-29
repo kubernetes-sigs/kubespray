@@ -220,14 +220,32 @@ variable "bastion_allowed_remote_ips" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "bastion_allowed_remote_ipv6_ips" {
+  description = "An array of IPv6 CIDRs allowed to SSH to hosts"
+  type        = list(string)
+  default     = ["::/0"]
+}
+
 variable "master_allowed_remote_ips" {
   description = "An array of CIDRs allowed to access API of masters"
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
 
+variable "master_allowed_remote_ipv6_ips" {
+  description = "An array of IPv6 CIDRs allowed to access API of masters"
+  type        = list(string)
+  default     = ["::/0"]
+}
+
 variable "k8s_allowed_remote_ips" {
   description = "An array of CIDRs allowed to SSH to hosts"
+  type        = list(string)
+  default     = []
+}
+
+variable "k8s_allowed_remote_ips_ipv6" {
+  description = "An array of IPv6 CIDRs allowed to SSH to hosts"
   type        = list(string)
   default     = []
 }
@@ -238,7 +256,19 @@ variable "k8s_allowed_egress_ips" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "k8s_allowed_egress_ipv6_ips" {
+  description = "An array of CIDRs allowed for egress IPv6 traffic"
+  type        = list(string)
+  default     = ["::/0"]
+}
+
 variable "master_allowed_ports" {
+  type = list(any)
+
+  default = []
+}
+
+variable "master_allowed_ports_ipv6" {
   type = list(any)
 
   default = []
@@ -257,7 +287,26 @@ variable "worker_allowed_ports" {
   ]
 }
 
+variable "worker_allowed_ports_ipv6" {
+  type = list(any)
+
+  default = [
+    {
+      "protocol"         = "tcp"
+      "port_range_min"   = 30000
+      "port_range_max"   = 32767
+      "remote_ip_prefix" = "::/0"
+    },
+  ]
+}
+
 variable "bastion_allowed_ports" {
+  type = list(any)
+
+  default = []
+}
+
+variable "bastion_allowed_ports_ipv6" {
   type = list(any)
 
   default = []
@@ -339,4 +388,24 @@ variable "group_vars_path" {
   description = "path to the inventory group vars directory"
   type        = string
   default     = "./group_vars"
+}
+
+variable "k8s_master_loadbalancer_enabled" {
+  type    = bool
+  default = "false"
+}
+
+variable "k8s_master_loadbalancer_listener_port" {
+  type    = string
+  default = "6443"
+}
+
+variable "k8s_master_loadbalancer_server_port" {
+  type    = string
+  default = 6443
+}
+
+variable "k8s_master_loadbalancer_public_ip" {
+  type    = string
+  default = ""
 }

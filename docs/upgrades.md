@@ -59,6 +59,12 @@ Client Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.7", GitCom
 Server Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.7", GitCommit:"1dd5338295409edcfff11505e7bb246f0d325d15", GitTreeState:"clean", BuildDate:"2021-01-13T13:15:20Z", GoVersion:"go1.15.5", Compiler:"gc", Platform:"linux/amd64"}
 ```
 
+You can control how many nodes are upgraded at the same time by modifying the ansible variable named `serial`, as explained [here](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_strategies.html#setting-the-batch-size-with-serial). If you don't set this variable, it will upgrade the cluster nodes in batches of  20% of the available nodes. Setting `serial=1` would mean upgrade one node at a time.
+
+```ShellSession
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 -e "serial=1"
+```
+
 ### Pausing the upgrade
 
 If you want to manually control the upgrade procedure, you can set some variables to pause the upgrade playbook. Pausing *before* upgrading each upgrade may be useful for inspecting pods running on that node, or performing manual actions on the node:
@@ -97,9 +103,26 @@ ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_ve
 ## Multiple upgrades
 
 > **Warning**
-> [Do not skip releases when upgrading--upgrade by one tag at a time.](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515)
+> [Do not skip minor releases (patches releases are ok) when upgrading--upgrade by one tag at a
+> time.](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515)
 
-For instance, if you're on v2.6.0, then check out v2.7.0, run the upgrade, check out the next tag, and run the next upgrade, etc.
+For instances, given the tag list:
+
+```console
+$ git tag
+v2.20.0
+v2.21.0
+v2.22.0
+v2.22.1
+v2.23.0
+v2.23.1
+v2.23.2
+v2.24.0
+...
+```
+
+v2.22.0 -> v2.23.2 -> v2.24.0 : ✓
+v.22.0 -> v2.24.0 : ✕
 
 Assuming you don't explicitly define a kubernetes version in your k8s_cluster.yml, you simply check out the next tag and run the upgrade-cluster.yml playbook
 

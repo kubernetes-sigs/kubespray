@@ -97,7 +97,7 @@ kubelet_event_record_qps: 1
 kubelet_rotate_certificates: true
 kubelet_streaming_connection_idle_timeout: "5m"
 kubelet_make_iptables_util_chains: true
-kubelet_feature_gates: ["RotateKubeletServerCertificate=true", "SeccompDefault=true"]
+kubelet_feature_gates: ["RotateKubeletServerCertificate=true"]
 kubelet_seccomp_default: true
 kubelet_systemd_hardening: true
 # In case you have multiple interfaces in your

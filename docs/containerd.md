@@ -44,6 +44,8 @@ containerd_registries_mirrors:
 image_command_tool: crictl
 ```
 
+The `containerd_registries` and `containerd_insecure_registries` configs are deprecated.
+
 ### Containerd Runtimes
 
 Containerd supports multiple runtime configurations that can be used with

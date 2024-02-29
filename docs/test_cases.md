@@ -1,6 +1,6 @@
 # Node Layouts
 
-There are five node layout types: `default`, `separate`, `ha`, `scale`, and `all-in-one`.
+There are six node layout types: `default`, `separate`, `ha`, `scale`, `all-in-one`, and `node-etcd-client`.
 
 `default` is a non-HA two nodes setup with one separate `kube_node`
 and the `etcd` group merged with the `kube_control_plane`.
@@ -17,6 +17,9 @@ to prevent regressions and profile certain long-running tasks. These nodes are
 never actually deployed, but certificates are generated for them.
 
 `all-in-one` layout use a single node for with `kube_control_plane`, `etcd` and `kube_node` merged.
+
+`node-etcd-client` layout consists of a 4 nodes cluster, all of them in `kube_node`, first 3 in `etcd` and only one `kube_control_plane`.
+This is necessary to tests setups requiring that nodes are etcd clients (use of cilium as `network_plugin` for instance)
 
 Note, the canal network plugin deploys flannel as well plus calico policy controller.
 

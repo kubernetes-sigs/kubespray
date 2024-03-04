@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  
+
   pull_request:
 
 jobs:
@@ -20,11 +20,15 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: downcase REPO
+        run: |
+          echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >>${GITHUB_ENV}
+
       - name: Install ansible-builder
         run: pip install ansible-builder
 
       - name: Build Ansible Image
-        run: ansible-builder build --tag kubespray-ee:${{ github.sha }} --container-runtime docker
+        run: ansible-builder build --tag kubespray-ee:${{ github.sha }} --tag ghcr.io/${{ env.OWNER }}/kubespray-ee --container-runtime docker
 
       - name: Tag image with PR name
         if: github.event_name == 'pull_request'
@@ -41,8 +45,5 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: downcase REPO
-        run: |
-          echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >>${GITHUB_ENV}
       - name: Push Image to GitHub Container Registry
         run: docker push -a ghcr.io/${{ env.OWNER }}/kubespray-ee:${{ github.sha }}

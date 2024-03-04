@@ -1,0 +1,49 @@
+name: Build and Publish Ansible Image
+
+on:
+  push:
+    branches:
+      - main
+  
+  pull_request:
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+
+      - name: Install ansible-builder
+        run: pip install ansible-builder
+
+      - name: Build Ansible Image
+        run: ansible-builder build --tag kubespray-ee:${{ github.sha }}
+
+      - name: Tag image with PR name
+        if: github.event_name == 'pull_request'
+        run: docker tag kubespray-ee:${{ github.sha }} kubespray-ee:pr-${{ github.event.number }}
+
+      - name: Tag image with branch name
+        if: github.event_name == 'push'
+        run: docker tag kubespray-ee:${{ github.sha }} kubespray-ee:${{ github.ref }}
+
+      - name: Tag image with latest
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker tag kubespray-ee:${{ github.sha }} kubespray-ee:latest
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Image to GitHub Container Registry
+        run: docker push -a ghcr.io/${{ github.repository_owner }}/kubespray-ee:${{ github.sha }} 

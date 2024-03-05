@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-feature-discovery-gc
+  namespace: {{ node_feature_discovery_namespace }}
+  labels:
+    app.kubernetes.io/name: node-feature-discovery
+    role: gc
+spec:
+  replicas: {{ node_feature_discovery_gc_replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-feature-discovery
+      role: gc
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: node-feature-discovery
+        role: gc
+    spec:
+      serviceAccountName: {{ node_feature_discovery_gc_sa_name }}
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: gc
+        image: {{ node_feature_discovery_image_repo }}:{{ node_feature_discovery_image_tag }}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        command:
+          - "nfd-gc"
+        args:
+          - "-gc-interval={{ node_feature_discovery_gc_interval }}"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true

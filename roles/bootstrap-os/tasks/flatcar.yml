@@ -9,12 +9,6 @@
   tags:
     - facts
 
-- name: Force binaries directory for Flatcar Container Linux by Kinvolk
-  set_fact:
-    bin_dir: "/opt/bin"
-  tags:
-    - facts
-
 - name: Run bootstrap.sh
   script: bootstrap.sh
   become: true
@@ -22,11 +16,14 @@
   when:
     - need_bootstrap.rc != 0
 
-- name: Set the ansible_python_interpreter fact
+# Workaround ansible https://github.com/ansible/ansible/pull/82821
+# We set the interpreter rather than ansible_python_interpreter to allow
+# - using virtual env with task level ansible_python_interpreter later
+# - let users specify an ansible_python_interpreter in group_vars
+
+- name: Make interpreter discovery works on Flatcar
   set_fact:
-    ansible_python_interpreter: "{{ bin_dir }}/python"
-  tags:
-    - facts
+    ansible_interpreter_python_fallback: "{{ ansible_interpreter_python_fallback + [ '/opt/bin/python' ] }}"
 
 - name: Disable auto-upgrade
   systemd:

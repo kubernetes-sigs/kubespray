@@ -1,0 +1,115 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  node-feature-discovery-master
+  namespace: {{ node_feature_discovery_namespace }}
+  labels:
+    app.kubernetes.io/name: node-feature-discovery
+    role: master
+spec:
+  replicas: {{ node_feature_discovery_master_replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-feature-discovery
+      role: master
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: node-feature-discovery
+        role: master
+    spec:
+      serviceAccountName: node-feature-discovery
+      enableServiceLinks: false
+      containers:
+      - name: master
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+        image: {{ node_feature_discovery_image_repo }}:{{ node_feature_discovery_image_tag }}
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - "/usr/bin/grpc_health_probe"
+            - "-addr=:8080"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - "/usr/bin/grpc_health_probe"
+            - "-addr=:8080"
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 10
+        ports:
+        - containerPort: 8080
+          name: grpc
+        - containerPort: 8081
+          name: metrics
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        command:
+          - "nfd-master"
+        args:
+          - "-port=8080"
+{% if not node_feature_discovery_enable_nodefeature_api %}
+          - "-enable-nodefeature-api=false"
+{% elif node_feature_discovery_master_replicas > 1 %}
+          - "-enable-leader-election"
+{% endif %}
+{% if node_feature_discovery_master_crd_controller != none %}
+          - "-crd-controller={{ node_feature_discovery_master_crd_controller }}"
+{% else %}
+{% if node_feature_discovery_master_instance  %}
+          ## By default, disable crd controller for other than the default instances
+          - "-crd-controller=false"
+{% else %}
+          ## By default, disable crd controller for other than the default instances
+          - "-crd-controller=true"
+{% endif %}
+{% endif %}
+          - "-metrics=8081"
+        volumeMounts:
+          - name: nfd-master-conf
+            mountPath: "/etc/kubernetes/node-feature-discovery"
+            readOnly: true
+      volumes:
+        - name: nfd-master-conf
+          configMap:
+            name: node-feature-discovery-master-conf
+            items:
+              - key: nfd-master.conf
+                path: nfd-master.conf
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: In
+                values:
+                - ""
+            weight: 1
+          - preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: In
+                values:
+                - ""
+            weight: 1
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Equal
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+        operator: Equal

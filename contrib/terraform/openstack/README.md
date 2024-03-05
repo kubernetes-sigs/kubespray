@@ -24,6 +24,7 @@ most modern installs of OpenStack that support the basic services.
 - [Ultimum](https://ultimum.io/)
 - [VexxHost](https://vexxhost.com/)
 - [Zetta](https://www.zetta.io/)
+- [Cloudify](https://www.cloudify.ro/en)
 
 ## Approach
 
@@ -97,9 +98,10 @@ binaries available on hyperkube v1.4.3_coreos.0 or higher.
 
 ## Module Architecture
 
-The configuration is divided into three modules:
+The configuration is divided into four modules:
 
 - Network
+- Loadbalancer
 - IPs
 - Compute
 
@@ -297,6 +299,10 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`force_null_port_security` | Set `null` instead of `true` or `false` for `port_security`. `false` by default |
 |`k8s_nodes` | Map containing worker node definition, see explanation below |
 |`k8s_masters` | Map containing master node definition, see explanation for k8s_nodes and `sample-inventory/cluster.tfvars` |
+| `k8s_master_loadbalancer_enabled`| Enable and use an Octavia load balancer for the K8s master nodes |
+| `k8s_master_loadbalancer_listener_port` | Define via which port the K8s Api should be exposed. `6443` by default  |
+| `k8s_master_loadbalancer_server_port` | Define via which port the K8S api is available on the mas. `6443` by default |
+| `k8s_master_loadbalancer_public_ip` | Specify if an existing floating IP should be used for the load balancer. A new floating IP is assigned by default  |
 
 ##### k8s_nodes
 

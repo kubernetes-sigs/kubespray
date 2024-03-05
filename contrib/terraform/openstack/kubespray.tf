@@ -112,6 +112,24 @@ module "compute" {
   ]
 }
 
+module "loadbalancer" {
+  source = "./modules/loadbalancer"
+
+  cluster_name                          = var.cluster_name
+  subnet_id                             = module.network.subnet_id
+  floatingip_pool                       = var.floatingip_pool
+  k8s_master_ips                        = module.compute.k8s_master_ips
+  k8s_master_loadbalancer_enabled       = var.k8s_master_loadbalancer_enabled
+  k8s_master_loadbalancer_listener_port = var.k8s_master_loadbalancer_listener_port
+  k8s_master_loadbalancer_server_port   = var.k8s_master_loadbalancer_server_port
+  k8s_master_loadbalancer_public_ip     = var.k8s_master_loadbalancer_public_ip
+
+  depends_on = [
+    module.compute.k8s_master
+  ]
+}
+
+
 output "private_subnet_id" {
   value = module.network.subnet_id
 }

@@ -85,6 +85,11 @@ cat << EOF > vagrant/config.rb
 \$network_plugin = "flannel"
 \$inventory = "$INV"
 \$shared_folders = { 'temp/docker_rpms' => "/var/cache/yum/x86_64/7/docker-ce/packages" }
+\$extra_vars = {
+    dns_domain: my.custom.domain
+}
+# or
+\$extra_vars = "path/to/extra/vars/file.yml"
 EOF
 
 # make the rpm cache

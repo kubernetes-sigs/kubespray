@@ -22,28 +22,6 @@ create-tf:
 delete-tf:
 	./scripts/delete-tf.sh
 
-create-gce: init-gce
-	ansible-playbook cloud_playbooks/create-gce.yml -i local_inventory/hosts.cfg -c local \
-	$(ANSIBLE_LOG_LEVEL) \
-	-e @"files/${CI_JOB_NAME}.yml" \
-	-e gce_credentials_file=$(HOME)/.ssh/gce.json \
-	-e gce_project_id=$(GCE_PROJECT_ID) \
-	-e gce_service_account_email=$(GCE_ACCOUNT) \
-	-e inventory_path=$(INVENTORY) \
-	-e test_id=$(TEST_ID) \
-	-e preemptible=$(GCE_PREEMPTIBLE)
-
-
-delete-gce:
-	ansible-playbook -i $(INVENTORY) cloud_playbooks/delete-gce.yml -c local \
-	$(ANSIBLE_LOG_LEVEL) \
-	-e @"files/${CI_JOB_NAME}.yml" \
-	-e test_id=$(TEST_ID) \
-	-e gce_project_id=$(GCE_PROJECT_ID) \
-	-e gce_service_account_email=$(GCE_ACCOUNT) \
-	-e gce_credentials_file=$(HOME)/.ssh/gce.json \
-	-e inventory_path=$(INVENTORY)
-
 create-do: init-do
 	ansible-playbook cloud_playbooks/create-do.yml -i local_inventory/hosts.cfg -c local \
 	${ANSIBLE_LOG_LEVEL} \

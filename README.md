@@ -106,94 +106,7 @@ then run the following step:
 vagrant up
 ```
 
-## Documents
-
-- [Requirements](#requirements)
-- [Kubespray vs ...](docs/comparisons.md)
-- [Getting started](docs/getting-started.md)
-- [Setting up your first cluster](docs/setting-up-your-first-cluster.md)
-- [Ansible inventory and tags](docs/ansible.md)
-- [Integration with existing ansible repo](docs/integration.md)
-- [Deployment data variables](docs/vars.md)
-- [DNS stack](docs/dns-stack.md)
-- [HA mode](docs/ha-mode.md)
-- [Network plugins](#network-plugins)
-- [Vagrant install](docs/vagrant.md)
-- [Flatcar Container Linux bootstrap](docs/flatcar.md)
-- [Fedora CoreOS bootstrap](docs/fcos.md)
-- [openSUSE setup](docs/opensuse.md)
-- [Downloaded artifacts](docs/downloads.md)
-- [Cloud providers](docs/cloud.md)
-- [OpenStack](docs/openstack.md)
-- [AWS](docs/aws.md)
-- [Azure](docs/azure.md)
-- [vSphere](docs/vsphere.md)
-- [Equinix Metal](docs/equinix-metal.md)
-- [Large deployments](docs/large-deployments.md)
-- [Adding/replacing a node](docs/nodes.md)
-- [Upgrades basics](docs/upgrades.md)
-- [Air-Gap installation](docs/offline-environment.md)
-- [NTP](docs/ntp.md)
-- [Hardening](docs/hardening.md)
-- [Mirror](docs/mirror.md)
-- [Roadmap](docs/roadmap.md)
-
-## Supported Linux Distributions
-
-- **Flatcar Container Linux by Kinvolk**
-- **Debian** Bookworm, Bullseye, Buster
-- **Ubuntu** 20.04, 22.04
-- **CentOS/RHEL** 7, [8, 9](docs/centos.md#centos-8)
-- **Fedora** 37, 38
-- **Fedora CoreOS** (see [fcos Note](docs/fcos.md))
-- **openSUSE** Leap 15.x/Tumbleweed
-- **Oracle Linux** 7, [8, 9](docs/centos.md#centos-8)
-- **Alma Linux** [8, 9](docs/centos.md#centos-8)
-- **Rocky Linux** [8, 9](docs/centos.md#centos-8)
-- **Kylin Linux Advanced Server V10** (experimental: see [kylin linux notes](docs/kylinlinux.md))
-- **Amazon Linux 2** (experimental: see [amazon linux notes](docs/amazonlinux.md))
-- **UOS Linux** (experimental: see [uos linux notes](docs/uoslinux.md))
-- **openEuler** (experimental: see [openEuler notes](docs/openeuler.md))
-
 Note: Upstart/SysV init based OS types are not supported.
-
-## Supported Components
-
-- Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.29.2
-  - [etcd](https://github.com/etcd-io/etcd) v3.5.10
-  - [docker](https://www.docker.com/) v24.0 (see [Note](#container-runtime-notes))
-  - [containerd](https://containerd.io/) v1.7.13
-  - [cri-o](http://cri-o.io/) v1.29.1 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
-- Network Plugin
-  - [cni-plugins](https://github.com/containernetworking/plugins) v1.2.0
-  - [calico](https://github.com/projectcalico/calico) v3.26.4
-  - [cilium](https://github.com/cilium/cilium) v1.13.4
-  - [flannel](https://github.com/flannel-io/flannel) v0.22.0
-  - [kube-ovn](https://github.com/alauda/kube-ovn) v1.11.5
-  - [kube-router](https://github.com/cloudnativelabs/kube-router) v2.0.0
-  - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) v3.8
-  - [weave](https://github.com/weaveworks/weave) v2.8.1
-  - [kube-vip](https://github.com/kube-vip/kube-vip) v0.5.12
-- Application
-  - [cert-manager](https://github.com/jetstack/cert-manager) v1.13.2
-  - [coredns](https://github.com/coredns/coredns) v1.11.1
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.9.6
-  - [krew](https://github.com/kubernetes-sigs/krew) v0.4.4
-  - [argocd](https://argoproj.github.io/) v2.8.4
-  - [helm](https://helm.sh/) v3.14.2
-  - [metallb](https://metallb.universe.tf/)  v0.13.9
-  - [registry](https://github.com/distribution/distribution) v2.8.1
-- Storage Plugin
-  - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.0-k8s1.11
-  - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) v2.1.1-k8s1.11
-  - [aws-ebs-csi-plugin](https://github.com/kubernetes-sigs/aws-ebs-csi-driver) v0.5.0
-  - [azure-csi-plugin](https://github.com/kubernetes-sigs/azuredisk-csi-driver) v1.10.0
-  - [cinder-csi-plugin](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/using-cinder-csi-plugin.md) v1.29.0
-  - [gcp-pd-csi-plugin](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver) v1.9.2
-  - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) v0.0.24
-  - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) v2.5.0
-  - [node-feature-discovery](https://github.com/kubernetes-sigs/node-feature-discovery) v0.14.2
 
 ## Container Runtime Notes
 
@@ -221,62 +134,12 @@ These limits are safeguarded by Kubespray. Actual requirements for your workload
 - Node
   - Memory: 1024 MB
 
-## Network Plugins
-
-You can choose among ten network plugins. (default: `calico`, except Vagrant uses `flannel`)
-
-- [flannel](docs/flannel.md): gre/vxlan (layer 2) networking.
-
-- [Calico](https://docs.tigera.io/calico/latest/about/) is a networking and network policy provider. Calico supports a flexible set of networking options
-    designed to give you the most efficient networking across a range of situations, including non-overlay
-    and overlay networks, with or without BGP. Calico uses the same engine to enforce network policy for hosts,
-    pods, and (if using Istio and Envoy) applications at the service mesh layer.
-
-- [cilium](http://docs.cilium.io/en/latest/): layer 3/4 networking (as well as layer 7 to protect and secure application protocols), supports dynamic insertion of BPF bytecode into the Linux kernel to implement security services, networking and visibility logic.
-
-- [weave](docs/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster.
-    (Please refer to `weave` [troubleshooting documentation](https://www.weave.works/docs/net/latest/troubleshooting/)).
-
-- [kube-ovn](docs/kube-ovn.md): Kube-OVN integrates the OVN-based Network Virtualization with Kubernetes. It offers an advanced Container Network Fabric for Enterprises.
-
-- [kube-router](docs/kube-router.md): Kube-router is a L3 CNI for Kubernetes networking aiming to provide operational
-    simplicity and high performance: it uses IPVS to provide Kube Services Proxy (if setup to replace kube-proxy),
-    iptables for network policies, and BGP for ods L3 networking (with optionally BGP peering with out-of-cluster BGP peers).
-    It can also optionally advertise routes to Kubernetes cluster Pods CIDRs, ClusterIPs, ExternalIPs and LoadBalancerIPs.
-
-- [macvlan](docs/macvlan.md): Macvlan is a Linux network driver. Pods have their own unique Mac and Ip address, connected directly the physical (layer 2) network.
-
-- [multus](docs/multus.md): Multus is a meta CNI plugin that provides multiple network interface support to pods. For each interface Multus delegates CNI calls to secondary CNI plugins such as Calico, macvlan, etc.
-
-- [custom_cni](roles/network-plugin/custom_cni/) : You can specify some manifests that will be applied to the clusters to bring you own CNI and use non-supported ones by Kubespray.
-  See `tests/files/custom_cni/README.md` and `tests/files/custom_cni/values.yaml`for an example with a CNI provided by a Helm Chart.
-
-The network plugin to use is defined by the variable `kube_network_plugin`. There is also an
-option to leverage built-in cloud provider networking instead.
-See also [Network checker](docs/netcheck.md).
-
 ## Ingress Plugins
 
 - [nginx](https://kubernetes.github.io/ingress-nginx): the NGINX Ingress Controller.
 
 - [metallb](docs/metallb.md): the MetalLB bare-metal service LoadBalancer provider.
 
-## Community docs and resources
-
-- [kubernetes.io/docs/setup/production-environment/tools/kubespray/](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/)
-- [kubespray, monitoring and logging](https://github.com/gregbkr/kubernetes-kargo-logging-monitoring) by @gregbkr
-- [Deploy Kubernetes w/ Ansible & Terraform](https://rsmitty.github.io/Terraform-Ansible-Kubernetes/) by @rsmitty
-- [Deploy a Kubernetes Cluster with Kubespray (video)](https://www.youtube.com/watch?v=CJ5G4GpqDy0)
-
-## Tools and projects on top of Kubespray
-
-- [Digital Rebar Provision](https://github.com/digitalrebar/provision/blob/v4/doc/integrations/ansible.rst)
-- [Terraform Contrib](https://github.com/kubernetes-sigs/kubespray/tree/master/contrib/terraform)
-- [Kubean](https://github.com/kubean-io/kubean)
-
-## CI Tests
-
-[![Build graphs](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/badges/master/pipeline.svg)](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/-/pipelines)
 
 CI/end-to-end tests sponsored by: [CNCF](https://cncf.io), [Equinix Metal](https://metal.equinix.com/), [OVHcloud](https://www.ovhcloud.com/), [ELASTX](https://elastx.se/).
 

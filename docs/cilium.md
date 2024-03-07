@@ -177,13 +177,33 @@ In case they select the Pod at egress, then the bandwidth enforcement will be di
 
 Bandwidth Manager requires a v5.1.x or more recent Linux kernel.
 
-For further information, make sure to check the official [Cilium documentation.](https://docs.cilium.io/en/v1.12/gettingstarted/bandwidth-manager/)
+For further information, make sure to check the official [Cilium documentation](https://docs.cilium.io/en/v1.12/gettingstarted/bandwidth-manager/).
 
 To use this function, set the following parameters
 
 ```yml
 cilium_enable_bandwidth_manager: true
 ```
+
+## Host Firewall
+
+Host Firewall enforces security policies for Kubernetes nodes. It is disable by default, since it can break the cluster connectivity.
+
+```yaml
+cilium_enable_host_firewall: true
+```
+
+For further information, check [host firewall documentation](https://docs.cilium.io/en/v1.15/security/host-firewall/)
+
+## Policy Audit Mode
+
+When _Policy Audit Mode_ is enabled, no network policy is enforced. This feautre helps to validate the impact of host policies before enforcing them.
+
+```yaml
+cilium_policy_audit_mode: true
+```
+
+It is disable by default, and should not be enabled in production.
 
 ## Install Cilium Hubble
 

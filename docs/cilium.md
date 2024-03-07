@@ -170,7 +170,7 @@ Kubespray currently supports Linux distributions with Wireguard Kernel mode on L
 
 ## Bandwidth Manager
 
-Cilium’s bandwidth manager supports the kubernetes.io/egress-bandwidth Pod annotation.
+Cilium's bandwidth manager supports the kubernetes.io/egress-bandwidth Pod annotation.
 
 Bandwidth enforcement currently does not work in combination with L7 Cilium Network Policies.
 In case they select the Pod at egress, then the bandwidth enforcement will be disabled for those Pods.

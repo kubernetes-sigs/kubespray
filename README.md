@@ -181,7 +181,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.9.6
   - [krew](https://github.com/kubernetes-sigs/krew) v0.4.4
   - [argocd](https://argoproj.github.io/) v2.8.4
-  - [helm](https://helm.sh/) v3.13.1
+  - [helm](https://helm.sh/) v3.14.2
   - [metallb](https://metallb.universe.tf/)  v0.13.9
   - [registry](https://github.com/distribution/distribution) v2.8.1
 - Storage Plugin
@@ -193,6 +193,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [gcp-pd-csi-plugin](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver) v1.9.2
   - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) v0.0.24
   - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) v2.5.0
+  - [node-feature-discovery](https://github.com/kubernetes-sigs/node-feature-discovery) v0.14.2
 
 ## Container Runtime Notes
 

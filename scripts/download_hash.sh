@@ -261,7 +261,7 @@ function _get_checksum() {
     # Download URLs
     declare -A urls=(
 ["crictl"]="$(printf "$github_releases_url" "kubernetes-sigs/cri-tools" "crictl-$version-$os-$arch.tar.gz.sha256")"
-["crio_archive"]="$google_url/cri-o/artifacts/cri-o.$arch.$version.tar.gz"
+["crio_archive"]="$google_url/cri-o/artifacts/cri-o.$arch.$version.tar.gz.sha256sum"
 ["kubelet"]="$(printf "$k8s_url" "kubelet")"
 ["kubectl"]="$(printf "$k8s_url" "kubectl")"
 ["kubeadm"]="$(printf "$k8s_url" "kubeadm")"

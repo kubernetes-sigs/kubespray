@@ -127,7 +127,7 @@ function get_checksums() {
     local binary="$1"
     local version_exceptions="cri_dockerd_archive nerdctl_archive containerd_archive youki"
     declare -A skip_archs=(
-["crio_archive"]="arm ppc64le"
+["crio_archive"]="arm"
 ["calicoctl_binary"]="arm"
 ["ciliumcli_binary"]="arm ppc64le"
 ["etcd_binary"]="arm"
@@ -261,7 +261,7 @@ function _get_checksum() {
     # Download URLs
     declare -A urls=(
 ["crictl"]="$(printf "$github_releases_url" "kubernetes-sigs/cri-tools" "crictl-$version-$os-$arch.tar.gz.sha256")"
-["crio_archive"]="$google_url/cri-o/artifacts/cri-o.$arch.$version.tar.gz"
+["crio_archive"]="$google_url/cri-o/artifacts/cri-o.$arch.$version.tar.gz.sha256sum"
 ["kubelet"]="$(printf "$k8s_url" "kubelet")"
 ["kubectl"]="$(printf "$k8s_url" "kubectl")"
 ["kubeadm"]="$(printf "$k8s_url" "kubeadm")"
@@ -287,6 +287,11 @@ function _get_checksum() {
 
     mkdir -p "$(dirname $target)"
     [ -f "$target" ] || curl -LfSs -o "${target}" "${urls[$binary]}"
+    if [ ! -f "$target" ]; then
+        echo "$target can't be downloaded" >&2
+        echo 0
+        return
+    fi
     if echo "${urls[$binary]}" | grep -qi sha256sum; then
         local hashes="$(cat "${target}")"
         if [ "$(echo "${hashes}" | wc -l)" -gt 1 ]; then

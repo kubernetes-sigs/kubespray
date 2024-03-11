@@ -287,6 +287,11 @@ function _get_checksum() {
 
     mkdir -p "$(dirname $target)"
     [ -f "$target" ] || curl -LfSs -o "${target}" "${urls[$binary]}"
+    if [ ! -f "$target" ]; then
+        echo "$target can't be downloaded" >&2
+        echo 0
+        return
+    fi
     if echo "${urls[$binary]}" | grep -qi sha256sum; then
         local hashes="$(cat "${target}")"
         if [ "$(echo "${hashes}" | wc -l)" -gt 1 ]; then

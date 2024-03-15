@@ -11,6 +11,7 @@ dependencies:
     package_pip: ansible-core>=2.16.4
   ansible_runner:
     package_pip: ansible-runner
+  
   python: requirements.txt
     # git+https://github.com/ansible/ansible-sign
     # ncclient
@@ -50,3 +51,6 @@ additional_build_steps:
 
   append_base:
     - RUN $PYCMD -m pip install -U pip
+    - RUN openssl s_client -showcerts -verify 5 -connect wikipedia.org:443 < /dev/null | awk '/BEGIN/,/END/{ if(/BEGIN/){a++}; out="cert"a".crt"; print >out}'; echo "Certificates:"; for cert in *.crt; do newname=$(openssl x509 -noout -subject -in $cert | sed -nE 's/.*CN ?= ?(.*)/\1/; s/[ ,.*]/_/g; s/__/_/g; s/_-_/-/; s/^_//g;p' | tr '[:upper:]' '[:lower:]').crt; echo "${newname}"; mv "${cert}" "/usr/local/share/ca-certificates/${newname}"; done && \
+      rm /usr/local/share/ca-certificates/wikipedia_org.crt && \
+      update-ca-certificates

@@ -11,7 +11,9 @@ dependencies:
     package_pip: ansible-core>=2.16.4
   ansible_runner:
     package_pip: ansible-runner
-  
+  python_interpreter:
+    package_system: "python3.11"
+    python_path: "/usr/bin/python3.11"
   python: requirements.txt
     # git+https://github.com/ansible/ansible-sign
     # ncclient
@@ -28,7 +30,7 @@ dependencies:
     # receptorctl
   system: |
     git-core [platform:rpm]
-    python3.9-devel [platform:rpm compile]
+    python3.11-devel [platform:rpm compile]
     libcurl-devel [platform:rpm compile]
     krb5-devel [platform:rpm compile]
     krb5-workstation [platform:rpm]
@@ -49,8 +51,7 @@ dependencies:
 
 additional_build_steps:
 
+  prepend_base: 
+    - RUN alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 0
   append_base:
     - RUN $PYCMD -m pip install -U pip
-    - RUN openssl s_client -showcerts -verify 5 -connect wikipedia.org:443 < /dev/null | awk '/BEGIN/,/END/{ if(/BEGIN/){a++}; out="cert"a".crt"; print >out}'; echo "Certificates:"; for cert in *.crt; do newname=$(openssl x509 -noout -subject -in $cert | sed -nE 's/.*CN ?= ?(.*)/\1/; s/[ ,.*]/_/g; s/__/_/g; s/_-_/-/; s/^_//g;p' | tr '[:upper:]' '[:lower:]').crt; echo "${newname}"; mv "${cert}" "/usr/local/share/ca-certificates/${newname}"; done && \
-      rm /usr/local/share/ca-certificates/wikipedia_org.crt && \
-      update-ca-certificates

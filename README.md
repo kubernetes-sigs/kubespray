@@ -167,7 +167,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [cri-o](http://cri-o.io/) v1.29.1 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v1.2.0
-  - [calico](https://github.com/projectcalico/calico) v3.26.4
+  - [calico](https://github.com/projectcalico/calico) v3.27.2
   - [cilium](https://github.com/cilium/cilium) v1.13.4
   - [flannel](https://github.com/flannel-io/flannel) v0.22.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.11.5
@@ -193,6 +193,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [gcp-pd-csi-plugin](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver) v1.9.2
   - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) v0.0.24
   - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) v2.5.0
+  - [node-feature-discovery](https://github.com/kubernetes-sigs/node-feature-discovery) v0.14.2
 
 ## Container Runtime Notes
 

@@ -143,6 +143,22 @@ coredns_default_zone_cache_block: |
   }
 ```
 
+### Handle old/extra dns_domains
+
+If you need to change the dns_domain of your cluster for whatever reason (switching to or from `cluster.local` for example),
+and you have workloads that embed it in their configuration you can use the variable `old_dns_domains`.
+This will add some configuration to coredns and nodelocaldns to ensure the DNS requests using the old domain are handled correctly.
+Example:
+
+```yaml
+old_dns_domains:
+- example1.com
+- example2.com
+dns_domain: cluster.local
+```
+
+will make `my-svc.my-ns.svc.example1.com`, `my-svc.my-ns.svc.example2.com` and `my-svc.my-ns.svc.cluster.local` have the same DNS answer.
+
 ### systemd_resolved_disable_stub_listener
 
 Whether or not to set `DNSStubListener=no` when using systemd-resolved. Defaults to `true` on Flatcar.

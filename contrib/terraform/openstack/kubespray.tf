@@ -77,14 +77,21 @@ module "compute" {
   k8s_nodes_fips                               = module.ips.k8s_nodes_fips
   bastion_fips                                 = module.ips.bastion_fips
   bastion_allowed_remote_ips                   = var.bastion_allowed_remote_ips
+  bastion_allowed_remote_ipv6_ips              = var.bastion_allowed_remote_ipv6_ips
   master_allowed_remote_ips                    = var.master_allowed_remote_ips
+  master_allowed_remote_ipv6_ips               = var.master_allowed_remote_ipv6_ips
   k8s_allowed_remote_ips                       = var.k8s_allowed_remote_ips
+  k8s_allowed_remote_ips_ipv6                  = var.k8s_allowed_remote_ips_ipv6
   k8s_allowed_egress_ips                       = var.k8s_allowed_egress_ips
+  k8s_allowed_egress_ipv6_ips                  = var.k8s_allowed_egress_ipv6_ips
   supplementary_master_groups                  = var.supplementary_master_groups
   supplementary_node_groups                    = var.supplementary_node_groups
   master_allowed_ports                         = var.master_allowed_ports
+  master_allowed_ports_ipv6                    = var.master_allowed_ports_ipv6
   worker_allowed_ports                         = var.worker_allowed_ports
+  worker_allowed_ports_ipv6                    = var.worker_allowed_ports_ipv6
   bastion_allowed_ports                        = var.bastion_allowed_ports
+  bastion_allowed_ports_ipv6                   = var.bastion_allowed_ports_ipv6
   use_access_ip                                = var.use_access_ip
   master_server_group_policy                   = var.master_server_group_policy
   node_server_group_policy                     = var.node_server_group_policy
@@ -104,6 +111,24 @@ module "compute" {
     module.network.subnet_id
   ]
 }
+
+module "loadbalancer" {
+  source = "./modules/loadbalancer"
+
+  cluster_name                          = var.cluster_name
+  subnet_id                             = module.network.subnet_id
+  floatingip_pool                       = var.floatingip_pool
+  k8s_master_ips                        = module.compute.k8s_master_ips
+  k8s_master_loadbalancer_enabled       = var.k8s_master_loadbalancer_enabled
+  k8s_master_loadbalancer_listener_port = var.k8s_master_loadbalancer_listener_port
+  k8s_master_loadbalancer_server_port   = var.k8s_master_loadbalancer_server_port
+  k8s_master_loadbalancer_public_ip     = var.k8s_master_loadbalancer_public_ip
+
+  depends_on = [
+    module.compute.k8s_master
+  ]
+}
+
 
 output "private_subnet_id" {
   value = module.network.subnet_id

@@ -35,7 +35,7 @@ kubectl create clusterrolebinding cluster-admin-binding \
 The following **Mandatory Command** is required for all deployments except for AWS. See below for the AWS version.
 
 ```console
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.40.2/deploy/static/provider/cloud/deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.6/deploy/static/provider/cloud/deploy.yaml
 ```
 
 ### Provider Specific Steps

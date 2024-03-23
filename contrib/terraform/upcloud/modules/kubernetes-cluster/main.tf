@@ -521,6 +521,9 @@ resource "upcloud_loadbalancer_backend" "lb_backend" {
 
   loadbalancer = upcloud_loadbalancer.lb[0].id
   name         = "lb-backend-${each.key}"
+  properties {
+    outbound_proxy_protocol = var.loadbalancer_outbound_proxy_protocol
+  }
 }
 
 resource "upcloud_loadbalancer_frontend" "lb_frontend" {

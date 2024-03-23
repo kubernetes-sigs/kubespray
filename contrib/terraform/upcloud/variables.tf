@@ -121,6 +121,11 @@ variable "loadbalancer_plan" {
   default     = "development"
 }
 
+variable "loadbalancer_proxy_protocol" {
+  type    = bool
+  default = false
+}
+
 variable "loadbalancers" {
   description = "Load balancers"
 

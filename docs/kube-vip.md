@@ -76,3 +76,11 @@ In addition, [load-balancing method](https://kube-vip.io/docs/installation/flags
 ```yaml
 kube_vip_lb_fwdmethod: masquerade
 ```
+
+If you want to adjust the parameters of [kube-vip LeaderElection](https://kube-vip.io/docs/installation/flags/#environment-variables):
+
+```yaml
+kube_vip_leaseduration: 30
+kube_vip_renewdeadline: 20
+kube_vip_retryperiod: 4
+```

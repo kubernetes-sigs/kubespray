@@ -133,7 +133,13 @@ If the node you want to remove is not online, you should add `reset_nodes=false`
 
 Change ip of old kube_control_plane node with ip of live kube_control_plane node (`server` field). Also, update `certificate-authority-data` field if you changed certs.
 
-### 4) Add new control plane node
+### 4) Edit kubeadm-config configmap in kube-system namespace
+
+`kubectl -n kube-system edit cm kubeadm-config`
+
+Change ip of old kube_control_plane node with ip of live kube_control_plane node (`controlPlaneEndpoint` field).
+
+### 5) Add new control plane node
 
 Update inventory (if needed)
 

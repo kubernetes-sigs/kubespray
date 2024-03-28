@@ -27,3 +27,10 @@ Since workers are included in the no_proxy variable, by default, docker engine w
 pods will restart) when adding or removing workers.  To override this behaviour by only including control plane nodes in the
 no_proxy variable, set:
 `no_proxy_exclude_workers: true`
+
+## Forward proxy to docker
+
+By default, the `http_proxy` and `no_proxy` settings will be forwarded to the docker engine.
+Sometimes you might use a proxy for binary file downloads while using a container registry mirror for image downloads.
+If the proxy server cannot access the self-hosted registry, set:
+`docker_forward_proxy: false`

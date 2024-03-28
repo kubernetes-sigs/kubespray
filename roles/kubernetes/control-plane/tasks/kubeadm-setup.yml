@@ -207,12 +207,26 @@
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Master | restart kubelet
 
+  # The following variable contains another resolve pattern
+  # kubeadm_certificate_key:  {{ lookup('password', credentials_dir + '/kubeadm_certificate_key.creds length=64 chars=hexdigits') | lower }}
+  # if you have MORE than one master/control-plane, then this creates a race condition
+  # where the lookup tries to lock the "kubeadm_certificate_key.creds", which leads to
+  # an exception in ansible.
+  #
+  # Avoid the race condition by running the resolve only once before entering the step "set kubeadm"
+  # because this is a lookup to a static filename, which does not change
+
+- name: Set kubeadm_certificate_key_resolved to avoid race condition
+  set_fact:
+    kubeadm_certificate_key_resolved: "{{ kubeadm_certificate_key | default('') }}"
+  run_once: true
+
 - name: Set kubeadm certificate key
   set_fact:
     kubeadm_certificate_key: "{{ item | regex_search('--certificate-key ([^ ]+)', '\\1') | first }}"
   with_items: "{{ hostvars[groups['kube_control_plane'][0]]['kubeadm_init'].stdout_lines | default([]) }}"
   when:
-    - kubeadm_certificate_key is not defined
+    - kubeadm_certificate_key_resolved|length == 0
     - (item | trim) is match('.*--certificate-key.*')
 
 - name: Create hardcoded kubeadm token for joining nodes with 24h expiration (if defined)

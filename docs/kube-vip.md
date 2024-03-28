@@ -33,11 +33,17 @@ loadbalancer_apiserver:
 # LoadBalancer for services
 kube_vip_services_enabled: false
 # kube_vip_services_interface: ens320
+# kube_vip_cloud_provider_enabled: true
+# kube_vip_cloud_provider_ip_pools:
+#   cidr-global: 172.16.0.0/24
+#   cidr-default: 192.168.0.200/30,192.168.0.200/29
+#   range-development: 192.168.0.210-192.168.0.220
+#   cidr-ipv6: 2001::10/127
 ```
 
 > Note: When using `kube-vip` as LoadBalancer for services,
-[additional manual steps](https://kube-vip.io/docs/usage/cloud-provider/)
-are needed.
+> [additional manual steps](https://kube-vip.io/docs/usage/cloud-provider/)
+> are needed.
 
 If using [local traffic policy](https://kube-vip.io/docs/usage/kubernetes-services/#external-traffic-policy-kube-vip-v050):
 
@@ -58,8 +64,8 @@ kube_vip_bgp_enabled: true
 kube_vip_local_as: 65000
 kube_vip_bgp_routerid: 192.168.0.2
 kube_vip_bgppeers:
-- 192.168.0.10:65000::false
-- 192.168.0.11:65000::false
+  - 192.168.0.10:65000::false
+  - 192.168.0.11:65000::false
 # kube_vip_bgp_peeraddress:
 # kube_vip_bgp_peerpass:
 # kube_vip_bgp_peeras:

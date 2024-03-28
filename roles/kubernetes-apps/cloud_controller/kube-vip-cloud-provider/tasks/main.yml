@@ -1,0 +1,49 @@
+---
+
+- name: Kube-VIP Cloud Provider  | Check kube-vip settings for kube-vip cloud provider
+  fail:
+    msg: "kube-vip cloud provider require kube_vip_enabled = true and kube_vip_services_enabled = true"
+  when:
+    - kube_vip_enabled
+    - kube_vip_services_enabled
+
+- name: Kube-VIP Cloud Provider | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/kube_vip_cloud_provider"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Kube-VIP Cloud Provider | Templates list
+  set_fact:
+    kube_vip_cloud_provider_templates:
+      - { name: cm-kube-vip-cloud-provider, file: cm-kube-vip-cloud-provider.yml, type: cm }
+      - { name: sa-kube-vip-cloud-provider, file: sa-kube-vip-cloud-provider.yml, type: sa }
+      - { name: cr-kube-vip-cloud-provider, file: cr-kube-vip-cloud-provider.yml, type: clusterrole }
+      - { name: crb-kube-vip-cloud-provider, file: crb-kube-vip-cloud-provider.yml, type: clusterrolebinding }
+      - { name: deploy-kube-vip-cloud-provider, file: deploy-kube-vip-cloud-provider.yml", type: deploy }
+
+- name: Kube-VIP Cloud Provider | Create manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/addons/kube_vip_cloud_provider/{{ item.file }}"
+    mode: 0644
+  with_items: "{{ kube_vip_cloud_provider_templates }}"
+  register: kube_vip_cloud_provider_manifests
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Kube-VIP Cloud Provider| Apply manifests
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "kube-system"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/addons/kube_vip_cloud_provider/{{ item.item.file }}"
+    state: "latest"
+  with_items: "{{ kube_vip_cloud_provider_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]

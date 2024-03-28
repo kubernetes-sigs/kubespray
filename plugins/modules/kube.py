@@ -169,13 +169,13 @@ class KubeManager(object):
             return None
         return out.splitlines()
 
-    def create(self, check=True, force=True):
+    def create(self, check=True):
         if check and self.exists():
             return []
 
         cmd = ['apply']
 
-        if force:
+        if self.force:
             cmd.append('--force')
 
         if self.wait:
@@ -191,11 +191,11 @@ class KubeManager(object):
 
         return self._execute(cmd)
 
-    def replace(self, force=True):
+    def replace(self):
 
         cmd = ['apply']
 
-        if force:
+        if self.force:
             cmd.append('--force')
 
         if self.wait:

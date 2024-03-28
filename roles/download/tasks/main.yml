@@ -17,11 +17,10 @@
     - upload
 
 - name: Download | Download files / images
-  include_tasks: "{{ include_file }}"
+  include_tasks: "download_{{ download.type }}.yml"
   loop: "{{ downloads | combine(kubeadm_images) | dict2items }}"
   vars:
     download: "{{ download_defaults | combine(item.value) }}"
-    include_file: "download_{% if download.container %}container{% else %}file{% endif %}.yml"
     kubeadm_images: "{{ skip_kubeadm_images | ternary({}, _kubeadm_images) }}"
     # The trick (converting list of tuples to list of dicts) below come from
     # https://docs.ansible.com/ansible/latest/collections/community/general/dict_filter.html#examples
@@ -41,7 +40,7 @@
     _groups: "{{ names | map('extract', images_groups) }}"
     defaults:
       enabled: true
-      container: true
+      type: "container"
     excluded:
       - kubeadm_coredns
       - kubeadm_pause
@@ -62,5 +61,5 @@
     - not skip_downloads
     - download.enabled
     - item.value.enabled
-    - (not (item.value.container | default(false))) or (item.value.container and download_container)
+    - download_types_enabled[item.value.type]
     - (download_run_once and inventory_hostname == download_delegate) or (group_names | intersect(download.groups) | length)

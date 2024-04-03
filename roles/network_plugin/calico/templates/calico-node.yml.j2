@@ -38,7 +38,7 @@ spec:
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 0
       initContainers:
-{% if calico_datastore == "kdd" %}
+{% if calico_datastore == "kdd" and not calico_ipam_host_local %}
         # This container performs upgrade from host-local IPAM to calico-ipam.
         # It can be deleted if this is a fresh installation, or if you have already
         # upgraded to use calico-ipam.
@@ -310,6 +310,10 @@ spec:
               value: "{{ calico_node_ignorelooserpf }}"
             - name: CALICO_MANAGE_CNI
               value: "true"
+{% if calico_ipam_host_local %}
+            - name: USE_POD_CIDR
+              value: "true"
+{% endif %}
 {% if calico_node_extra_envs is defined %}
 {% for key in calico_node_extra_envs %}
             - name: {{ key }}
@@ -428,7 +432,7 @@ spec:
           hostPath:
             path: /run/xtables.lock
             type: FileOrCreate
-{% if calico_datastore == "kdd" %}
+{% if calico_datastore == "kdd" and not calico_ipam_host_local %}
         # Mount in the directory for host-local IPAM allocations. This is
         # used when upgrading from host-local to calico-ipam, and can be removed
         # if not using the upgrade-ipam init container.

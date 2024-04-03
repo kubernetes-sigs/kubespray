@@ -281,6 +281,11 @@ node_taints:
   * `audit_webhook_batch_max_wait`: 1s
 * *kubectl_alias* - Bash alias of kubectl to interact with Kubernetes cluster much easier.
 
+* *remove_anonymous_access* - When set to `true`, removes the `kubeadm:bootstrap-signer-clusterinfo` rolebinding created by kubeadm.
+  By default, kubeadm creates a rolebinding in the `kube-public` namespace which grants permissions to anonymous users. This rolebinding allows kubeadm to discover and validate cluster information during the join phase.
+  In a nutshell, this option removes the rolebinding after the init phase of the first control plane node and then configures kubeadm to use file discovery for the join phase of other nodes.
+  This option does not remove the anonymous authentication feature of the API server.
+
 ### Custom flags for Kube Components
 
 For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments.

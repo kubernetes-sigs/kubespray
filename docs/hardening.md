@@ -107,7 +107,7 @@ kubelet_systemd_hardening: true
 # IP addresses, kubelet_secure_addresses allows you
 # to specify the IP from which the kubelet
 # will receive the packets.
-kubelet_secure_addresses: "192.168.10.110 192.168.10.111 192.168.10.112"
+kubelet_secure_addresses: "localhost link-local {{ kube_pods_subnet }} 192.168.10.110 192.168.10.111 192.168.10.112"
 
 # additional configurations
 kube_owner: root

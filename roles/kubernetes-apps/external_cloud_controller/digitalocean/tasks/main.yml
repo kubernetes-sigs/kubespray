@@ -1,0 +1,64 @@
+---
+### Here are DigitalOcean csi crds and localredirect policy crd
+- name: Wait for CRD registration
+  pause:
+    seconds: 30
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: External Digitalocean Cloud Controller CRDs | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  with_items:
+    - {name: external-do-csi-crds, file: external-do-csi-crds.yml}
+  register: external_do_crd_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags: external-digitalocean
+
+- name: External Digitalocean Cloud Controller | Apply CRD Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ external_do_crd_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+  tags: external-digitalocean
+
+- name: External Digitalocean Cloud Controller | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    group: "{{ kube_cert_group }}"
+    mode: 0640
+  with_items:
+    - {name: external-do-cloud-secret, file: external-do-cloud-secret.yml}
+    - {name: external-do-cloud-service-account, file: external-do-cloud-service-account.yml}
+    - {name: external-do-cloud-role-bindings, file: external-do-cloud-role-bindings.yml}
+    - {name: external-do-cloud-manager-deployment, file: external-do-cloud-manager-deployment.yml}
+    - {name: external-do-cloud-clusterrole, file: external-do-cloud-clusterrole.yml}
+    - {name: external-do-csi-snapshot-validation, file: external-do-csi-snapshot-validation.yml}
+    - {name: external-do-csi-driver, file: external-do-csi-driver.yml}
+  register: external_do_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags: external-digitalocean
+
+- name: External Digitalocean Cloud Controller | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ external_do_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+  tags: external-digitalocean

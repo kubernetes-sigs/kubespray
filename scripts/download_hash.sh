@@ -139,7 +139,7 @@ function get_checksums() {
 ["gvisor_runsc_binary"]="arm ppc64le"
 ["gvisor_containerd_shim_binary"]="arm ppc64le"
 ["containerd_archive"]="arm"
-["skopeo_binary"]="arm ppc64le"
+["skopeo_binary"]="arm"
 )
     echo "${binary}_checksums:" | tee --append "$checksums_file"
     for arch in arm arm64 amd64 ppc64le; do

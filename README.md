@@ -163,7 +163,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [kubernetes](https://github.com/kubernetes/kubernetes) v1.29.3
   - [etcd](https://github.com/etcd-io/etcd) v3.5.12
   - [docker](https://www.docker.com/) v24.0 (see [Note](#container-runtime-notes))
-  - [containerd](https://containerd.io/) v1.7.13
+  - [containerd](https://containerd.io/) v1.7.15
   - [cri-o](http://cri-o.io/) v1.29.1 (experimental: see [CRI-O Note](docs/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v1.2.0

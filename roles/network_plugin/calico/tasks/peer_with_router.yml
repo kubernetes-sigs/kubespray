@@ -23,6 +23,38 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
+- name: Calico | Get node for per node peering
+  command:
+    cmd: "{{ bin_dir }}/calicoctl.sh get node {{ inventory_hostname }}"
+  register: output_get_node
+  when:
+    - inventory_hostname in groups['k8s_cluster']
+    - local_as is defined
+    - groups['calico_rr'] | default([]) | length == 0
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: Calico | Patch node asNumber for per node peering
+  command:
+    cmd: |-
+      {{ bin_dir }}/calicoctl.sh patch node "{{ inventory_hostname }}" --patch '{{ patch is string | ternary(patch, patch | to_json) }}'
+  vars:
+    patch: >
+      {"spec": {
+        "bgp": {
+          "asNumber": "{{ local_as }}"
+        },
+        "orchRefs": [{"nodeName": "{{ inventory_hostname }}", "orchestrator": "k8s"}]
+      }}
+  register: output
+  retries: 0
+  until: output.rc == 0
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - inventory_hostname in groups['k8s_cluster']
+    - local_as is defined
+    - groups['calico_rr'] | default([]) | length == 0
+    - output_get_node.rc == 0
+
 - name: Calico | Configure node asNumber for per node peering
   command:
     cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
@@ -48,6 +80,7 @@
     - inventory_hostname in groups['k8s_cluster']
     - local_as is defined
     - groups['calico_rr'] | default([]) | length == 0
+    - output_get_node.rc != 0
 
 - name: Calico | Configure peering with router(s) at node scope
   command:

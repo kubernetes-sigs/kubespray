@@ -2,7 +2,7 @@
 - name: Download | Prepare working directories and variables
   import_tasks: prep_download.yml
   when:
-    - not skip_downloads
+    - not skip_downloads | default(false)
   tags:
     - download
     - upload
@@ -10,7 +10,7 @@
 - name: Download | Get kubeadm binary and list of required images
   include_tasks: prep_kubeadm_images.yml
   when:
-    - not skip_downloads
+    - not skip_downloads | default(false)
     - inventory_hostname in groups['kube_control_plane']
   tags:
     - download
@@ -22,44 +22,8 @@
   vars:
     download: "{{ download_defaults | combine(item.value) }}"
     include_file: "download_{% if download.container %}container{% else %}file{% endif %}.yml"
-    kubeadm_images: "{{ skip_kubeadm_images | ternary({}, _kubeadm_images) }}"
-    # The trick (converting list of tuples to list of dicts) below come from
-    # https://docs.ansible.com/ansible/latest/collections/community/general/dict_filter.html#examples
-    _kubeadm_images: "{{ dict(names | map('regex_replace', '^(.*)', 'kubeadm_\\1') |
-      zip( repos | zip(_tags, _groups) |
-      map('zip', keys) | map('map', 'reverse') | map('community.general.dict') |
-      map('combine', defaults))) |
-      dict2items | rejectattr('key', 'in', excluded) | items2dict }}"
-    keys:
-      - repo
-      - tag
-      - groups
-    images: "{{ kubeadm_images_raw.stdout_lines | map('split', ':') }}"
-    _tags: "{{ images | map(attribute=1) }}"
-    repos: "{{ images | map(attribute=0) }}"
-    names: "{{ repos | map('split', '/') | map(attribute=-1) }}"
-    _groups: "{{ names | map('extract', images_groups) }}"
-    defaults:
-      enabled: true
-      container: true
-    excluded:
-      - kubeadm_coredns
-      - kubeadm_pause
-    images_groups:
-      coredns: []
-      pause: []
-      kube-proxy:
-        - k8s_cluster
-      etcd:
-        - etcd
-      kube-scheduler:
-        - kube_control_plane
-      kube-controller-manager:
-        - kube_control_plane
-      kube-apiserver:
-        - kube_control_plane
   when:
-    - not skip_downloads
+    - not skip_downloads | default(false)
     - download.enabled
     - item.value.enabled
     - (not (item.value.container | default(false))) or (item.value.container and download_container)

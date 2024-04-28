@@ -95,8 +95,8 @@ ssh-keyscan -H $CONTROLLER_IP >> ~/.ssh/known_hosts 2>/dev/null
 
 # Get the kubeconfig from the controller.
 mkdir -p ~/.kube
-ssh -F ssh-bastion.conf centos@$CONTROLLER_IP "sudo chmod 644 /etc/kubernetes/admin.conf"
-scp -F ssh-bastion.conf centos@$CONTROLLER_IP:/etc/kubernetes/admin.conf ~/.kube/config
+ssh -F ssh-bastion.conf admin@$CONTROLLER_IP "sudo chmod 644 /etc/kubernetes/admin.conf"
+scp -F ssh-bastion.conf admin@$CONTROLLER_IP:/etc/kubernetes/admin.conf ~/.kube/config
 sed -i "s^server:.*^server: https://$LB_HOST:6443^" ~/.kube/config
 kubectl get nodes
 ```

@@ -47,7 +47,7 @@ ssh -F ./ssh-bastion.conf user@$ip
 Example (this one assumes you are using Ubuntu)
 
 ```commandline
-ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_user=ubuntu -b --become-user=root --flush-cache
+ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_user=admin -b --become-user=root --flush-cache
 ```
 
 ## Using other distrib than Ubuntu***

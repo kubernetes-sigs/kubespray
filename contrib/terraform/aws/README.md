@@ -20,7 +20,7 @@ This project will create:
 
 ```commandline
 export TF_VAR_AWS_ACCESS_KEY_ID="www"
-export TF_VAR_AWS_SECRET_ACCESS_KEY ="xxx"
+export TF_VAR_AWS_SECRET_ACCESS_KEY="xxx"
 export TF_VAR_AWS_SSH_KEY_NAME="yyy"
 export TF_VAR_AWS_DEFAULT_REGION="zzz"
 ```

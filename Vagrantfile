@@ -36,6 +36,8 @@ SUPPORTED_OS = {
   "oraclelinux8"        => {box: "generic/oracle8",            user: "vagrant"},
   "rhel7"               => {box: "generic/rhel7",              user: "vagrant"},
   "rhel8"               => {box: "generic/rhel8",              user: "vagrant"},
+  "debian11"            => {box: "debian/bullseye64",          user: "vagrant"},
+  "debian12"            => {box: "debian/bookworm64",          user: "vagrant"},
 }
 
 if File.exist?(CONFIG)

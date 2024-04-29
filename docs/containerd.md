@@ -35,13 +35,20 @@ containerd_registries_mirrors:
         skip_verify: false
 ```
 
-`containerd_registries_mirrors` is ignored for pulling images when `image_command_tool=nerdctl`
-(the default for `container_manager=containerd`). Use `crictl` instead, it supports
-`containerd_registries_mirrors` but lacks proper multi-arch support (see
-[#8375](https://github.com/kubernetes-sigs/kubespray/issues/8375)):
+containerd falls back to `https://{{ prefix }}` when none of the mirrors have the image.
+This can be changed with the [`server` field](https://github.com/containerd/containerd/blob/main/docs/hosts.md#server-field):
 
 ```yaml
-image_command_tool: crictl
+containerd_registries_mirrors:
+  - prefix: docker.io
+    mirrors:
+      - host: https://mirror.gcr.io
+        capabilities: ["pull", "resolve"]
+        skip_verify: false
+      - host: https://registry-1.docker.io
+        capabilities: ["pull", "resolve"]
+        skip_verify: false
+    server: https://mirror.example.org
 ```
 
 The `containerd_registries` and `containerd_insecure_registries` configs are deprecated.

@@ -23,6 +23,26 @@ spec:
     spec:
       serviceAccountName: ingress-nginx
       terminationGracePeriodSeconds: {{ ingress_nginx_termination_grace_period_seconds }}
+{% if ingress_nginx_opentelemetry_enabled %}
+      initContainers:
+      - name: opentelemetry
+        command:
+        - /init_module
+        image: {{ ingress_nginx_opentelemetry_image_repo }}:{{ ingress_nginx_opentelemetry_image_tag }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65532
+          allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /modules_mount
+          name: modules
+{% endif %}
 {% if ingress_nginx_host_network %}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
@@ -127,15 +147,27 @@ spec:
             timeoutSeconds: 5
             successThreshold: 1
             failureThreshold: 3
-{% if ingress_nginx_webhook_enabled %}
+{% if ingress_nginx_webhook_enabled or ingress_nginx_opentelemetry_enabled %}
           volumeMounts:
+{% if ingress_nginx_webhook_enabled %}
             - mountPath: /usr/local/certificates/
               name: webhook-cert
               readOnly: true
 {% endif %}
-{% if ingress_nginx_webhook_enabled %}
+{% if ingress_nginx_opentelemetry_enabled %}
+            - name: modules
+              mountPath: /modules_mount
+{% endif %}
+{% endif %}
+{% if ingress_nginx_webhook_enabled or ingress_nginx_opentelemetry_enabled %}
       volumes:
+{% if ingress_nginx_webhook_enabled %}
         - name: webhook-cert
           secret:
             secretName: ingress-nginx-admission
+{% endif %}
+{% if ingress_nginx_opentelemetry_enabled %}
+        - name: modules
+          emptyDir: {}
+{% endif %}
 {% endif %}

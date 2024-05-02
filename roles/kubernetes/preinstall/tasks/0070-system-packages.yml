@@ -59,12 +59,13 @@
   tags:
     - bootstrap-os
 
-- name: Install packages requirements
+- name: Install requirements
+  tags:
+    - bootstrap-os
   vars:
     # The json_query for selecting packages name is split for readability
     # see files/pkgs-schema.json for the structure of `pkgs`
     # and the matching semantics
-    full_query: "[? value | (enabled == null || enabled) && ( {{ filters_os }} ) && ( {{ filters_groups }} ) ].key"
     filters_groups: "groups | @ == null || [? contains(`{{ group_names }}`, @)]"
     filters_os: "os == null || (os | ( {{ filters_family }} ) || ( {{ filters_distro }} ))"
     dquote: !unsafe '"'
@@ -75,12 +76,40 @@
                           contains(not_null(versions, `[]`), '{{ ansible_distribution_version }}') ||
                           contains(not_null(releases, `[]`), '{{ ansible_distribution_release }}')"
     filters_family: "families && contains(families, '{{ ansible_os_family }}')"
-  package:
-    name: "{{ pkgs | dict2items | to_json|from_json | community.general.json_query(full_query) }}"
-    state: present
-  register: pkgs_task_result
-  until: pkgs_task_result is succeeded
-  retries: "{{ pkg_install_retries }}"
-  delay: "{{ retry_stagger | random + 3 }}"
-  tags:
-    - bootstrap-os
+    to_install: "{{ pkgs | dict2items | to_json|from_json | community.general.json_query(full_query) }}"
+  block:
+    - name: Install system packages
+      vars:
+        full_query: "[? value | (enabled == null || enabled) && ( {{ filters_os }} ) && ( {{ filters_groups }} ) ].key"
+        pkgs: "{{ os_pkgs }}"
+      package:
+        name: "{{ to_install }}"
+        state: present
+      register: pkgs_task_result
+      until: pkgs_task_result is succeeded
+      retries: "{{ pkg_install_retries }}"
+      delay: "{{ retry_stagger | random + 3 }}"
+    - name: Copy requirements.txt
+      copy:
+        dest: "{{ kubespray_virtualenvs_base }}/{{ item }}/"
+        src: "host_virtualenvs/{{ item }}/requirements.txt"
+        mode: 0644
+      loop: "{{ to_install }}"
+      vars:
+        full_query: "[? value | ( {{ filters_groups }} ) ].key"
+        pkgs: "{{ python_pkgs }}"
+      when:
+        - to_install | length != 0
+    - name: Install virtualenv with needed packages
+      loop: "{{ to_install }}"
+      vars:
+        full_query: "[? value | ( {{ filters_groups }} ) ].key"
+        pkgs: "{{ python_pkgs }}"
+      when:
+        - to_install | length != 0
+      ansible.builtin.pip:
+        requirements: "{{ kubespray_virtualenvs_base }}/{{ item }}/requirements.txt"
+        extra_args: "--only-binary :all: --no-deps --require-hashes"
+        virtualenv_site_packages: true
+        virtualenv: "{{ kubespray_virtualenvs_base }}/{{ item }}"
+        virtualenv_command: "{{ ansible_facts.python.executable }} -m venv"

@@ -5,6 +5,11 @@
     state: directory
     owner: "{{ kube_owner }}"
     mode: 0755
+  with_items:
+    - "{{ kube_config_dir }}"
+    - "{{ kube_manifest_dir }}"
+    - "{{ kube_script_dir }}"
+    - "{{ kubelet_flexvolumes_plugins_dir }}"
   when: inventory_hostname in groups['k8s_cluster']
   become: true
   tags:
@@ -17,11 +22,6 @@
     - network
     - master
     - node
-  with_items:
-    - "{{ kube_config_dir }}"
-    - "{{ kube_manifest_dir }}"
-    - "{{ kube_script_dir }}"
-    - "{{ kubelet_flexvolumes_plugins_dir }}"
 
 - name: Create other directories of root owner
   file:
@@ -29,6 +29,8 @@
     state: directory
     owner: root
     mode: 0755
+  with_items:
+    - "{{ bin_dir }}"
   when: inventory_hostname in groups['k8s_cluster']
   become: true
   tags:
@@ -41,9 +43,26 @@
     - network
     - master
     - node
-  with_items:
-    - "{{ kube_cert_dir }}"
-    - "{{ bin_dir }}"
+
+- name: Create kubernetes pki directory
+  file:
+    path: "{{ kube_cert_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0700
+  when: inventory_hostname in groups['k8s_cluster']
+  become: true
+  tags:
+    - kubelet
+    - k8s-secrets
+    - kube-controller-manager
+    - kube-apiserver
+    - bootstrap-os
+    - apps
+    - network
+    - master
+    - node
 
 - name: Check if kubernetes kubeadm compat cert dir exists
   stat:
@@ -61,7 +80,7 @@
     src: "{{ kube_cert_dir }}"
     dest: "{{ kube_cert_compat_dir }}"
     state: link
-    mode: 0755
+    mode: 0700
   when:
     - inventory_hostname in groups['k8s_cluster']
     - kube_cert_dir != kube_cert_compat_dir

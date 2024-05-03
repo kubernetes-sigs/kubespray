@@ -185,6 +185,14 @@ Vagrant.configure("2") do |config|
             lv.storage :file, :device => "hd#{driverletters[d]}", :path => "disk-#{i}-#{d}-#{DISK_UUID}.disk", :size => $kube_node_instances_with_disks_size, :bus => "scsi"
           end
         end
+        node.vm.provider :virtualbox do |vb|
+          # always make /dev/sd{a/b/c} so that CI can ensure that
+          # virtualbox and libvirt will have the same devices to use for OSDs
+          (1..$kube_node_instances_with_disks_number).each do |d|
+            vb.customize ['createhd', '--filename', "disk-#{i}-#{driverletters[d]}-#{DISK_UUID}.disk", '--size', $kube_node_instances_with_disks_size] # 10GB disk
+            vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', d, '--device', 0, '--type', 'hdd', '--medium', "disk-#{i}-#{driverletters[d]}-#{DISK_UUID}.disk", '--nonrotational', 'on', '--mtype', 'normal']
+          end
+        end
       end
 
       if $expose_docker_tcp

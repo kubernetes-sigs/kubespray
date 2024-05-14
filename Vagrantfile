@@ -246,6 +246,13 @@ Vagrant.configure("2") do |config|
         SHELL
       end
 
+      # Rockylinux boxes needs UEFI
+      if ["rockylinux8", "rockylinux9"].include? $os
+        config.vm.provider "libvirt" do |domain|
+          domain.loader = "/usr/share/OVMF/x64/OVMF_CODE.fd"
+        end
+      end
+
       # Disable firewalld on oraclelinux/redhat vms
       if ["oraclelinux","oraclelinux8","rhel7","rhel8","rockylinux8"].include? $os
         node.vm.provision "shell", inline: "systemctl stop firewalld; systemctl disable firewalld"

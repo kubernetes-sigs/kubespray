@@ -2,7 +2,6 @@
 set -euxo pipefail
 
 echo "CI_JOB_NAME is $CI_JOB_NAME"
-CI_TEST_ADDITIONAL_VARS=""
 
 if [[ "$CI_JOB_NAME" =~ "upgrade" ]]; then
   if [ "${UPGRADE_TEST}" == "false" ]; then
@@ -42,11 +41,6 @@ if [[ "$CI_JOB_NAME" =~ "opensuse" ]]; then
   ansible all -m raw -a 'zypper --gpg-auto-import-keys refresh'
 fi
 
-if [[ "$CI_JOB_NAME" =~ "ubuntu" ]]; then
-  # We need to tell ansible that ubuntu hosts are python3 only
-  CI_TEST_ADDITIONAL_VARS="-e ansible_python_interpreter=/usr/bin/python3"
-fi
-
 # Check out latest tag if testing upgrade
 test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY_VERSION"
 # Checkout the CI vars file so it is available
@@ -63,7 +57,7 @@ ansible-playbook --limit "all:!fake_hosts" \
      $ANSIBLE_LOG_LEVEL \
     -e @${CI_TEST_SETTING} \
     -e @${CI_TEST_REGISTRY_MIRROR} \
-    -e @${CI_TEST_VARS} ${CI_TEST_ADDITIONAL_VARS} \
+    -e @${CI_TEST_VARS} \
     -e local_release_dir=${PWD}/downloads \
     "$@" \
     ${playbook}

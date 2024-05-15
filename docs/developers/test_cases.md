@@ -25,7 +25,7 @@ Note, the canal network plugin deploys flannel as well plus calico policy contro
 
 ## Test cases
 
-The [CI Matrix](/docs/ci.md) displays OS, Network Plugin and Container Manager tested.
+The [CI Matrix](/docs/developers/ci.md) displays OS, Network Plugin and Container Manager tested.
 
 All tests are breakdown into 3 "stages" ("Stage" means a build step of the build pipeline) as follows:
 

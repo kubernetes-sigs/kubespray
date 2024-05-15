@@ -49,7 +49,7 @@ If you need to delete all resources from a resource group, simply call:
 
 ## Installing Ansible and the dependencies
 
-Install Ansible according to [Ansible installation guide](/docs/ansible.md#installing-ansible)
+Install Ansible according to [Ansible installation guide](/docs/ansible/ansible.md#installing-ansible)
 
 ## Generating an inventory for kubespray
 

@@ -46,11 +46,11 @@ Some variables of note include:
 * *loadbalancer_apiserver* - If defined, all hosts will connect to this
   address instead of localhost for kube_control_planes and kube_control_plane[0] for
   kube_nodes. See more details in the
-  [HA guide](/docs/ha-mode.md).
+  [HA guide](/docs/operations/ha-mode.md).
 * *loadbalancer_apiserver_localhost* - makes all hosts to connect to
   the apiserver internally load balanced endpoint. Mutual exclusive to the
   `loadbalancer_apiserver`. See more details in the
-  [HA guide](/docs/ha-mode.md).
+  [HA guide](/docs/operations/ha-mode.md).
 
 ## Cluster variables
 

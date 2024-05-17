@@ -54,7 +54,7 @@ cd kubespray
 
 ## Install Ansible
 
-Install Ansible according to [Ansible installation guide](/docs/ansible.md#installing-ansible)
+Install Ansible according to [Ansible installation guide](/docs/ansible/ansible.md#installing-ansible)
 
 ## Cluster Definition
 

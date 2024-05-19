@@ -8,6 +8,7 @@
 # The script will ignore any files that are not markdown files.
 # Usage: bash scripts/gen_docs_sidebar.sh > docs/_sidebar.md
 
+{
 echo "* [Readme](/)"
 
 for folder in $(find docs/*/ | sort -f); do
@@ -29,3 +30,4 @@ for folder in $(find docs/*/ | sort -f); do
     done
   fi
 done
+} > docs/_sidebar.md

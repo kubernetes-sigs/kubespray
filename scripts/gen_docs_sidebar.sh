@@ -8,6 +8,7 @@
 # The script will ignore any files that are not markdown files.
 # Usage: bash scripts/gen_docs_sidebar.sh > docs/_sidebar.md
 
+export LANG=C
 {
 echo "* [Readme](/)"
 

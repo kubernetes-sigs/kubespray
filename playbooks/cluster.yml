@@ -46,7 +46,7 @@
   environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults }
-    - { role: kubernetes/kubeadm, tags: kubeadm}
+    - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: kubernetes/node-label, tags: node-label }
     - { role: kubernetes/node-taint, tags: node-taint }
     - { role: network_plugin, tags: network }
@@ -92,3 +92,12 @@
   roles:
     - { role: kubespray-defaults }
     - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_late: true }
+
+- name: Cleanup dangling images
+  hosts: k8s_cluster
+  gather_facts: False
+  tasks:
+    - name: Remove duplicate <none>:<none> tagged images
+      command: "nerdctl rmi $(nerdctl images -q --filter dangling=true)"
+      when: container_manager == "containerd"
+      ignore_errors: yes

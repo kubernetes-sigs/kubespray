@@ -225,7 +225,7 @@ These limits are safeguarded by Kubespray. Actual requirements for your workload
 
 You can choose among ten network plugins. (default: `calico`, except Vagrant uses `flannel`)
 
-- [flannel]CNI/flannel.md): gre/vxlan (layer 2) networking.
+- [flannel](docs/CNI/flannel.md): gre/vxlan (layer 2) networking.
 
 - [Calico](https://docs.tigera.io/calico/latest/about/) is a networking and network policy provider. Calico supports a flexible set of networking options
     designed to give you the most efficient networking across a range of situations, including non-overlay

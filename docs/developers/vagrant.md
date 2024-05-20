@@ -52,7 +52,7 @@ speed, the variable 'download_run_once' is set. This will make kubespray
 download all files and containers just once and then redistributes them to
 the other nodes and as a bonus, also cache all downloads locally and re-use
 them on the next provisioning run. For more information on download settings
-see [download documentation](/docs/downloads.md).
+see [download documentation](/docs/advanced/downloads.md).
 
 ## Example use of Vagrant
 

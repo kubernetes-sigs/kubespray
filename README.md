@@ -142,7 +142,7 @@ vagrant up
 
 - **Flatcar Container Linux by Kinvolk**
 - **Debian** Bookworm, Bullseye, Buster
-- **Ubuntu** 20.04, 22.04
+- **Ubuntu** 20.04, 22.04, 24.04
 - **CentOS/RHEL** 7, [8, 9](docs/operating_systems/centos.md#centos-8)
 - **Fedora** 37, 38
 - **Fedora CoreOS** (see [fcos Note](docs/operating_systems/fcos.md))
@@ -162,7 +162,7 @@ Note: Upstart/SysV init based OS types are not supported.
 - Core
   - [kubernetes](https://github.com/kubernetes/kubernetes) v1.29.5
   - [etcd](https://github.com/etcd-io/etcd) v3.5.12
-  - [docker](https://www.docker.com/) v24.0 (see [Note](#container-runtime-notes))
+  - [docker](https://www.docker.com/) v26.1
   - [containerd](https://containerd.io/) v1.7.16
   - [cri-o](http://cri-o.io/) v1.29.1 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
@@ -197,7 +197,6 @@ Note: Upstart/SysV init based OS types are not supported.
 
 ## Container Runtime Notes
 
-- Supported Docker versions are 18.09, 19.03, 20.10, 23.0 and 24.0. The *recommended* Docker version is 24.0. `Kubelet` might break on docker's non-standard version numbering (it no longer uses semantic versioning). To ensure auto-updates don't break your cluster look into e.g. the YUM  ``versionlock`` plugin or ``apt pin``).
 - The cri-o version should be aligned with the respective kubernetes version (i.e. kube_version=1.20.x, crio_version=1.20)
 
 ## Requirements

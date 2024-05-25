@@ -21,6 +21,7 @@ SUPPORTED_OS = {
   "flatcar-edge"        => {box: "flatcar-edge",               user: "core", box_url: FLATCAR_URL_TEMPLATE % ["edge"]},
   "ubuntu2004"          => {box: "generic/ubuntu2004",         user: "vagrant"},
   "ubuntu2204"          => {box: "generic/ubuntu2204",         user: "vagrant"},
+  "ubuntu2404"          => {box: "bento/ubuntu-24.04",         user: "vagrant"},
   "centos"              => {box: "centos/7",                   user: "vagrant"},
   "centos-bento"        => {box: "bento/centos-7.6",           user: "vagrant"},
   "centos8"             => {box: "centos/8",                   user: "vagrant"},
@@ -37,6 +38,8 @@ SUPPORTED_OS = {
   "oraclelinux8"        => {box: "generic/oracle8",            user: "vagrant"},
   "rhel7"               => {box: "generic/rhel7",              user: "vagrant"},
   "rhel8"               => {box: "generic/rhel8",              user: "vagrant"},
+  "debian11"            => {box: "debian/bullseye64",          user: "vagrant"},
+  "debian12"            => {box: "debian/bookworm64",          user: "vagrant"},
 }
 
 if File.exist?(CONFIG)
@@ -242,6 +245,13 @@ Vagrant.configure("2") do |config|
           nmcli conn modify 'Wired connection 2' ipv4.method manual
           service NetworkManager restart
         SHELL
+      end
+
+      # Rockylinux boxes needs UEFI
+      if ["rockylinux8", "rockylinux9"].include? $os
+        config.vm.provider "libvirt" do |domain|
+          domain.loader = "/usr/share/OVMF/x64/OVMF_CODE.fd"
+        end
       end
 
       # Disable firewalld on oraclelinux/redhat vms

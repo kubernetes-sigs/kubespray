@@ -24,8 +24,8 @@ There are requirements for the version of Kubernetes, please see [Compatibility 
 
 | Scheduler Plugins | Compiled With K8s Version |
 | ----------------- | ------------------------- |
+| v0.28.9           | v1.28.9                   |
 | v0.27.8           | v1.27.8                   |
-| v0.26.8           | v1.26.7                   |
 
 ## Turning it on
 

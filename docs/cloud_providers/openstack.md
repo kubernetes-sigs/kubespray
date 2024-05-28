@@ -1,4 +1,3 @@
-
 # OpenStack
 
 ## Known compatible public clouds

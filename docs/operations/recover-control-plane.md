@@ -1,4 +1,3 @@
-
 # Recovering the control plane
 
 To recover from broken nodes in the control plane use the "recover\-control\-plane.yml" playbook.

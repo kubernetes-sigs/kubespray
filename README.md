@@ -143,11 +143,11 @@ vagrant up
 - **Flatcar Container Linux by Kinvolk**
 - **Debian** Bookworm, Bullseye
 - **Ubuntu** 20.04, 22.04, 24.04
-- **CentOS/RHEL** 7, [8, 9](docs/operating_systems/centos.md#centos-8)
+- **CentOS/RHEL** [8, 9](docs/operating_systems/centos.md#centos-8)
 - **Fedora** 37, 38
 - **Fedora CoreOS** (see [fcos Note](docs/operating_systems/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
-- **Oracle Linux** 7, [8, 9](docs/operating_systems/centos.md#centos-8)
+- **Oracle Linux** [8, 9](docs/operating_systems/centos.md#centos-8)
 - **Alma Linux** [8, 9](docs/operating_systems/centos.md#centos-8)
 - **Rocky Linux** [8, 9](docs/operating_systems/centos.md#centos-8)
 - **Kylin Linux Advanced Server V10** (experimental: see [kylin linux notes](docs/operating_systems/kylinlinux.md))

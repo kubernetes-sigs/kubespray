@@ -1,6 +1,6 @@
 $num_instances = 2
 $vm_memory ||= 2048
-$os = "centos"
+$os = "centos8"
 
 $kube_master_instances = 1
 $etcd_instances = 1

@@ -1,4 +1,3 @@
-
 # Recovering the control plane
 
 To recover from broken nodes in the control plane use the "recover\-control\-plane.yml" playbook.
@@ -8,7 +7,6 @@ Examples of what broken means in this context:
 * One or more bare metal node(s) suffer from unrecoverable hardware failure
 * One or more node(s) fail during patching or upgrading
 * Etcd database corruption
-  
 * Other node related failures leaving your control plane degraded or nonfunctional
 
 __Note that you need at least one functional node to be able to recover using this method.__

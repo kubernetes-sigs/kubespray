@@ -1,7 +1,7 @@
 ---
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v4.6.0
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
@@ -15,52 +15,72 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.27.1
+    rev: v1.35.1
     hooks:
       - id: yamllint
         args: [--strict]
 
   - repo: https://github.com/markdownlint/markdownlint
-    rev: v0.11.0
+    rev: v0.12.0
     hooks:
       - id: markdownlint
-        args: [-r, "~MD013,~MD029"]
-        exclude: "^.git"
+        exclude: "^.github|(^docs/_sidebar\\.md$)"
 
-  - repo: https://github.com/jumanjihouse/pre-commit-hooks
-    rev: 3.0.0
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
     hooks:
       - id: shellcheck
-        args: [--severity, "error"]
+        args: ["--severity=error"]
         exclude: "^.git"
         files: "\\.sh$"
 
-  - repo: local
+  - repo: https://github.com/ansible/ansible-lint
+    rev: v24.5.0
     hooks:
       - id: ansible-lint
-        name: ansible-lint
-        entry: ansible-lint -v
-        language: python
-        pass_filenames: false
         additional_dependencies:
-          - .[community]
+          - ansible==9.5.1
+          - jsonschema==4.22.0
+          - jmespath==1.0.1
+          - netaddr==1.2.1
 
+  - repo: https://github.com/VannTen/misspell
+    # Waiting on https://github.com/golangci/misspell/pull/19 to get merged
+    rev: 8592a4e
+    hooks:
+      - id: misspell
+        exclude: "OWNERS_ALIASES$"
+
+  - repo: local
+    hooks:
       - id: ansible-syntax-check
         name: ansible-syntax-check
         entry: env ANSIBLE_INVENTORY=inventory/local-tests.cfg ANSIBLE_REMOTE_USER=root ANSIBLE_BECOME="true" ANSIBLE_BECOME_USER=root ANSIBLE_VERBOSITY="3" ansible-playbook --syntax-check
         language: python
         files: "^cluster.yml|^upgrade-cluster.yml|^reset.yml|^extra_playbooks/upgrade-only-k8s.yml"
+        additional_dependencies:
+          - ansible==9.5.1
 
       - id: tox-inventory-builder
         name: tox-inventory-builder
         entry: bash -c "cd contrib/inventory_builder && tox"
         language: python
         pass_filenames: false
+        additional_dependencies:
+          - tox==4.15.0
 
       - id: check-readme-versions
         name: check-readme-versions
         entry: tests/scripts/check_readme_versions.sh
         language: script
+        pass_filenames: false
+
+      - id: collection-build-install
+        name: Build and install kubernetes-sigs.kubespray Ansible collection
+        language: python
+        additional_dependencies:
+          - ansible-core>=2.16.4
+        entry: tests/scripts/collection-build-install.sh
         pass_filenames: false
 
       - id: generate-docs-sidebar
@@ -71,9 +91,13 @@ repos:
 
       - id: ci-matrix
         name: ci-matrix
-        entry: tests/scripts/md-table/test.sh
-        language: script
+        entry: tests/scripts/md-table/main.py
+        language: python
         pass_filenames: false
+        additional_dependencies:
+          - jinja2
+          - pathlib
+          - pyaml
 
       - id: jinja-syntax-check
         name: jinja-syntax-check
@@ -82,4 +106,4 @@ repos:
         types:
           - jinja
         additional_dependencies:
-          - Jinja2
+          - jinja2

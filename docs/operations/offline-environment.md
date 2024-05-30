@@ -103,7 +103,9 @@ If you use the settings like the one above, you'll need to define in your invent
   can store them anywhere as long as it's accessible by kubespray. It's recommended to use `*_version` in the path so
   that you don't need to modify this setting everytime kubespray upgrades one of these components.
 * `yum_repo`/`debian_repo`/`ubuntu_repo`: OS package repository depending on your OS, should point to your internal
-  repository. Adjust the path accordingly.
+  repository. Adjust the path accordingly. Used only for Docker/Containerd packages (if needed); other packages might
+  be installed from other repositories. You might disable installing packages from other repositories by skipping
+  the `system-packages` tag
 
 ## Install Kubespray Python Packages
 

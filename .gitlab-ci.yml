@@ -1,12 +1,10 @@
 ---
 stages:
   - build
-  - unit-tests
-  - moderator
+  - test
+  - deploy-extended
   - deploy-part1
-  - deploy-part2
-  - deploy-part3
-  - deploy-special
+
 
 variables:
   KUBESPRAY_VERSION: v2.25.0
@@ -49,9 +47,17 @@ before_script:
     when: always
     paths:
       - cluster-dump/
+  needs:
+    - pipeline-image
+
+.job-moderated:
+  extends: .job
+  needs:
+    - pipeline-image
+    - ci-not-authorized
 
 .testcases: &testcases
-  <<: *job
+  extends: .job-moderated
   retry: 1
   interruptible: true
   before_script:
@@ -66,7 +72,7 @@ before_script:
 # For failfast, at least 1 job must be defined in .gitlab-ci.yml
 # Premoderated with manual actions
 ci-not-authorized:
-  stage: moderator
+  stage: build
   before_script: []
   after_script: []
   rules:
@@ -88,7 +94,7 @@ ci-not-authorized:
     - exit $CI_OK_TO_TEST
   tags:
     - light
-
+  needs: []
 
 include:
   - .gitlab-ci/build.yml

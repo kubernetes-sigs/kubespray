@@ -5,8 +5,8 @@
 1. build: build a docker image to be used in the pipeline
 2. unit-tests: fast jobs for fast feedback (linting, etc...)
 3. deploy-part1: small number of jobs to test if the PR works with default settings
-4. deploy-part2: slow jobs testing different platforms, OS, settings, CNI, etc...
-5. deploy-part3: very slow jobs (upgrades, etc...)
+4. deploy-extended: slow jobs testing different platforms, OS, settings, CNI, etc...
+5. deploy-extended: very slow jobs (upgrades, etc...)
 
 ## Runners
 

@@ -515,7 +515,7 @@ resource "upcloud_loadbalancer" "lb" {
   configured_status = "started"
   name              = "${local.resource-prefix}lb"
   plan              = var.loadbalancer_plan
-  zone              = var.zone
+  zone              = var.private_cloud ? var.public_zone : var.zone
   networks {
     name    = "Private-Net"
     type    = "private"

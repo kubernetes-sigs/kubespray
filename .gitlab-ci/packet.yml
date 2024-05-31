@@ -7,6 +7,9 @@
     SSH_USER: kubespray
   tags:
     - packet
+  needs:
+    - pipeline-image
+    - ci-not-authorized
 
 # CI template for PRs
 .packet_pr:
@@ -14,35 +17,44 @@
   rules:
     - if: $PR_LABELS =~ /.*ci-short.*/
       when: manual
+      allow_failure: true
     - if: $CI_COMMIT_BRANCH =~ /^pr-.*$/
       when: on_success
     - when: manual
+      allow_failure: true
   extends: .packet
+
+  ## Uncomment this to have multiple stages
+  # needs:
+  #   - packet_ubuntu20-calico-all-in-one
 
 .packet_pr_short:
   stage: deploy-part1
-  extends: .packet_pr
+  extends: .packet
   rules:
     - if: $CI_COMMIT_BRANCH =~ /^pr-.*$/
       when: on_success
     - when: manual
+      allow_failure: true
 
 .packet_pr_manual:
   extends: .packet_pr
-  stage: deploy-part2
+  stage: deploy-extended
   rules:
     - if: $PR_LABELS =~ /.*ci-full.*/
       when: on_success
     # Else run as manual
     - when: manual
+      allow_failure: true
 
 .packet_pr_extended:
   extends: .packet_pr
-  stage: deploy-part2
+  stage: deploy-extended
   rules:
     - if: $PR_LABELS =~ /.*(ci-extended|ci-full).*/
       when: on_success
     - when: manual
+      allow_failure: true
 
 # CI template for periodic CI jobs
 # Enabled when PERIODIC_CI_ENABLED var is set
@@ -221,58 +233,58 @@ packet_ubuntu20-calico-ha-wireguard:
 
 # PERIODIC
 packet_fedora38-docker-calico:
-  stage: deploy-part2
+  stage: deploy-extended
   extends: .packet_periodic
   variables:
     RESET_CHECK: "true"
 
 packet_fedora37-calico-selinux:
-  stage: deploy-part2
+  stage: deploy-extended
   extends: .packet_periodic
 
 packet_fedora38-kube-ovn:
-  stage: deploy-part2
+  stage: deploy-extended
   extends: .packet_periodic
 
 packet_centos7-weave-upgrade-ha:
-  stage: deploy-part3
+  stage: deploy-extended
   extends: .packet_periodic
   variables:
     UPGRADE_TEST: basic
 
 packet_ubuntu20-calico-etcd-kubeadm-upgrade-ha:
-  stage: deploy-part3
+  stage: deploy-extended
   extends: .packet_periodic
   variables:
     UPGRADE_TEST: basic
 
 
 packet_debian11-calico-upgrade-once:
-  stage: deploy-part3
+  stage: deploy-extended
   extends: .packet_periodic
   variables:
     UPGRADE_TEST: graceful
 
 packet_ubuntu20-calico-ha-recover:
-  stage: deploy-part3
+  stage: deploy-extended
   extends: .packet_periodic
   variables:
     RECOVER_CONTROL_PLANE_TEST: "true"
     RECOVER_CONTROL_PLANE_TEST_GROUPS: "etcd[2:]:kube_control_plane[1:]"
 
 packet_ubuntu20-calico-ha-recover-noquorum:
-  stage: deploy-part3
+  stage: deploy-extended
   extends: .packet_periodic
   variables:
     RECOVER_CONTROL_PLANE_TEST: "true"
     RECOVER_CONTROL_PLANE_TEST_GROUPS: "etcd[1:]:kube_control_plane[1:]"
 
 packet_debian10-cilium-svc-proxy:
-  stage: deploy-part2
+  stage: deploy-extended
   extends: .packet_periodic
 
 packet_debian11-calico-upgrade:
-  stage: deploy-part2
+  stage: deploy-extended
   extends: .packet_periodic
   variables:
     UPGRADE_TEST: graceful

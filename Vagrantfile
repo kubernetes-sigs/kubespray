@@ -255,7 +255,9 @@ Vagrant.configure("2") do |config|
         "kubectl_localhost": "True",
         "local_path_provisioner_enabled": "#{$local_path_provisioner_enabled}",
         "local_path_provisioner_claim_root": "#{$local_path_provisioner_claim_root}",
-        "ansible_ssh_user": SUPPORTED_OS[$os][:user]
+        "ansible_ssh_user": SUPPORTED_OS[$os][:user],
+        "ansible_ssh_private_key_file": File.join(Dir.home, ".vagrant.d", "insecure_private_key"),
+        "unsafe_show_logs": "True"
       }
 
       # Only execute the Ansible provisioner once, when all the machines are up and ready.

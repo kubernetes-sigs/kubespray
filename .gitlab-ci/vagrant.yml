@@ -1,5 +1,4 @@
 ---
-
 .vagrant:
   extends: .testcases
   variables:
@@ -7,18 +6,25 @@
     SSH_USER: "vagrant"
     VAGRANT_DEFAULT_PROVIDER: "libvirt"
     KUBESPRAY_VAGRANT_CONFIG: tests/files/${CI_JOB_NAME}.rb
-  tags: [c3.small.x86]
-  only: [/^pr-.*$/]
-  except: ['triggers']
-  image: $PIPELINE_IMAGE
+    DOCKER_NAME: vagrant
+    VAGRANT_ANSIBLE_TAGS: facts
+  tags: [ffci-vm-large]
+  # only: [/^pr-.*$/]
+  # except: ['triggers']
+  image: quay.io/kubespray/vm-kubespray-ci:v6
   services: []
   before_script:
+    - echo $USER
+    - python3 -m venv citest
+    - source citest/bin/activate
+    - vagrant plugin expunge --reinstall --force --no-tty
+    - vagrant plugin install vagrant-libvirt
+    - pip install --no-compile --no-cache-dir pip -U
+    - pip install --no-compile --no-cache-dir -r $CI_PROJECT_DIR/requirements.txt
+    - pip install --no-compile --no-cache-dir -r $CI_PROJECT_DIR/tests/requirements.txt
     - ./tests/scripts/vagrant_clean.sh
   script:
     - ./tests/scripts/testcases_run.sh
-  after_script:
-    - chronic ./tests/scripts/testcases_cleanup.sh
-  allow_failure: true
 
 vagrant_ubuntu20-calico-dual-stack:
   stage: deploy-part2

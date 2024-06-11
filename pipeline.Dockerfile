@@ -38,11 +38,12 @@ RUN apt update -q \
     && apt autoremove -yqq --purge && apt clean && rm -rf /var/lib/apt/lists/* /var/log/*
 
 WORKDIR /kubespray
+ADD ./requirements.txt  /kubespray/requirements.txt
+ADD ./tests/requirements.txt /kubespray/tests/requirements.txt
+ADD ./roles/kubespray-defaults/defaults/main/main.yml /kubespray/roles/kubespray-defaults/defaults/main/main.yml
 
-RUN --mount=type=bind,target=./requirements.txt,src=./requirements.txt \
-    --mount=type=bind,target=./tests/requirements.txt,src=./tests/requirements.txt \
-    --mount=type=bind,target=./roles/kubespray-defaults/defaults/main/main.yml,src=./roles/kubespray-defaults/defaults/main/main.yml \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
+
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
     && pip install --no-compile --no-cache-dir pip -U \
     && pip install --no-compile --no-cache-dir -r tests/requirements.txt \
     && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main/main.yml) \

@@ -2,7 +2,10 @@
 # Tests for contrib/terraform/
 .terraform_install:
   extends: .job
-  stage: test
+  needs:
+    - ci-not-authorized
+    - pipeline-image
+  stage: deploy-part1
   before_script:
     - update-alternatives --install /usr/bin/python python /usr/bin/python3 1
     - ./tests/scripts/rebase.sh
@@ -30,6 +33,9 @@
   script:
     - terraform -chdir="contrib/terraform/$PROVIDER" validate
     - terraform -chdir="contrib/terraform/$PROVIDER" fmt -check -diff
+  stage: test
+  needs:
+    - pipeline-image
 
 .terraform_apply:
   extends: .terraform_install
@@ -51,7 +57,7 @@
     - tests/scripts/testcases_run.sh
   after_script:
     # Cleanup regardless of exit code
-    - chronic ./tests/scripts/testcases_cleanup.sh
+    - ./tests/scripts/testcases_cleanup.sh
 
 tf-validate-openstack:
   extends: .terraform_validate

@@ -54,11 +54,12 @@ resource "upcloud_server" "master" {
     if machine.node_type == "master"
   }
 
-  hostname = "${local.resource-prefix}${each.key}"
-  plan     = each.value.plan
-  cpu      = each.value.plan == null ? each.value.cpu : null
-  mem      = each.value.plan == null ? each.value.mem : null
-  zone     = var.zone
+  hostname     = "${local.resource-prefix}${each.key}"
+  plan         = each.value.plan
+  cpu          = each.value.plan == null ? null : each.value.cpu
+  mem          = each.value.plan == null ? null : each.value.mem
+  zone         = var.zone
+  server_group = each.value.server_group == null ? null : upcloud_server_group.server_groups[each.value.server_group].id
 
   template {
     storage = var.template_name
@@ -111,11 +112,13 @@ resource "upcloud_server" "worker" {
     if machine.node_type == "worker"
   }
 
-  hostname = "${local.resource-prefix}${each.key}"
-  plan     = each.value.plan
-  cpu      = each.value.plan == null ? each.value.cpu : null
-  mem      = each.value.plan == null ? each.value.mem : null
-  zone     = var.zone
+  hostname     = "${local.resource-prefix}${each.key}"
+  plan         = each.value.plan
+  cpu          = each.value.plan == null ? null : each.value.cpu
+  mem          = each.value.plan == null ? null : each.value.mem
+  zone         = var.zone
+  server_group = each.value.server_group == null ? null : upcloud_server_group.server_groups[each.value.server_group].id
+
 
   template {
     storage = var.template_name
@@ -513,7 +516,17 @@ resource "upcloud_loadbalancer" "lb" {
   name              = "${local.resource-prefix}lb"
   plan              = var.loadbalancer_plan
   zone              = var.zone
-  network           = upcloud_network.private.id
+  networks {
+    name    = "Private-Net"
+    type    = "private"
+    family  = "IPv4"
+    network = upcloud_network.private.id
+  }
+  networks {
+    name   = "Public-Net"
+    type   = "public"
+    family = "IPv4"
+  }
 }
 
 resource "upcloud_loadbalancer_backend" "lb_backend" {
@@ -534,6 +547,9 @@ resource "upcloud_loadbalancer_frontend" "lb_frontend" {
   mode                 = "tcp"
   port                 = each.value.port
   default_backend_name = upcloud_loadbalancer_backend.lb_backend[each.key].name
+  networks {
+    name = "Public-Net"
+  }
 }
 
 resource "upcloud_loadbalancer_static_backend_member" "lb_backend_member" {
@@ -557,5 +573,9 @@ resource "upcloud_server_group" "server_groups" {
   title                = each.key
   anti_affinity_policy = each.value.anti_affinity_policy
   labels               = {}
-  members              = [for server in each.value.servers : merge(upcloud_server.master, upcloud_server.worker)[server].id]
+  # Managed upstream via upcloud_server resource
+  members              = []
+  lifecycle {
+    ignore_changes = [members]
+  }
 }

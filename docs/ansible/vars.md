@@ -216,6 +216,8 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.m
   The percent is calculated by dividing this field value by 100, so the field value must be between 0 and 100, inclusive.
   When specified, the value must be less than imageGCHighThresholdPercent. Default: 80
 
+* *kubelet_max_parallel_image_pulls* - Sets the maximum number of image pulls in parallel. The value is `1` by default which means the default is serial image pulling, set it to a integer great than `1` to enable image pulling in parallel.
+
 * *kubelet_make_iptables_util_chains* - If `true`, causes the kubelet ensures a set of `iptables` rules are present on host.
 
 * *kubelet_cpu_manager_policy* -  If set to `static`, allows pods with certain resource characteristics to be granted increased CPU affinity and exclusivity on the node. And it should be set with `kube_reserved` or `system-reserved`, enable this with the following guide:[Control CPU Management Policies on the Node](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/)

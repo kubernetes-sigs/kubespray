@@ -16,6 +16,7 @@ The Kubespray Project is released on an as-needed basis. The process is as follo
 1. The release issue is closed
 1. An announcement email is sent to `dev@kubernetes.io` with the subject `[ANNOUNCE] Kubespray $VERSION is released`
 1. The topic of the #kubespray channel is updated with `vX.Y.Z is released! | ...`
+1. Create/Update Issue for upgradeing kubernetes and [k8s-conformance](https://github.com/cncf/k8s-conformance)
 
 ## Major/minor releases and milestones
 

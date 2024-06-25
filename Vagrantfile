@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # # vi: set ft=ruby :
 
-# For help on using kubespray with vagrant, check out docs/vagrant.md
+# For help on using kubespray with vagrant, check out docs/developers/vagrant.md
 
 require 'fileutils'
 

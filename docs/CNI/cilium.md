@@ -132,7 +132,7 @@ Wireguard option is only available in Cilium 1.10.0 and newer.
 
 ### IPsec Encryption
 
-For further information, make sure to check the official [Cilium documentation.](https://docs.cilium.io/en/stable/gettingstarted/encryption-ipsec/)
+For further information, make sure to check the official [Cilium documentation.](https://docs.cilium.io/en/stable/security/network/encryption-ipsec/)
 
 To enable IPsec encryption, you just need to set three variables.
 
@@ -157,7 +157,7 @@ echo "cilium_ipsec_key: "$(echo -n "3 rfc4106(gcm(aes)) $(echo $(dd if=/dev/uran
 
 ### Wireguard Encryption
 
-For further information, make sure to check the official [Cilium documentation.](https://docs.cilium.io/en/stable/gettingstarted/encryption-wireguard/)
+For further information, make sure to check the official [Cilium documentation.](https://docs.cilium.io/en/stable/security/network/encryption-wireguard/)
 
 To enable Wireguard encryption, you just need to set two variables.
 

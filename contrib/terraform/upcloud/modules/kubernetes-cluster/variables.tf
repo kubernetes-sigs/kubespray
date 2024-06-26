@@ -20,6 +20,7 @@ variable "machines" {
     cpu       = string
     mem       = string
     disk_size = number
+    server_group : string
     additional_disks = map(object({
       size = number
       tier = string
@@ -104,6 +105,5 @@ variable "server_groups" {
 
   type = map(object({
     anti_affinity_policy = string
-    servers              = list(string)
   }))
 }

@@ -173,7 +173,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.11.5
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v2.0.0
   - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) v3.8
-  - [weave](https://github.com/weaveworks/weave) v2.8.1
+  - [weave](https://github.com/rajch/weave) v2.8.7
   - [kube-vip](https://github.com/kube-vip/kube-vip) v0.8.0
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) v1.13.6

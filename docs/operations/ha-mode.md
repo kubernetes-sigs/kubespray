@@ -30,12 +30,12 @@ loadbalancer.  If you wish to control the name of the loadbalancer container,
 you can set the variable `loadbalancer_apiserver_pod_name`.
 
 If you choose to NOT use the local internal loadbalancer, you will need to
-use the [kube-vip](kube-vip.md) ansible role or configure your own loadbalancer to achieve HA. By default, it only configures a non-HA endpoint, which points to the
+use the [kube-vip](/docs/ingress/kube-vip.md) ansible role or configure your own loadbalancer to achieve HA. By default, it only configures a non-HA endpoint, which points to the
 `access_ip` or IP address of the first server node in the `kube_control_plane` group.
 It can also configure clients to use endpoints for a given loadbalancer type.
 The following diagram shows how traffic to the apiserver is directed.
 
-![Image](figures/loadbalancer_localhost.png?raw=true)
+![Image](/docs/figures/loadbalancer_localhost.png?raw=true)
 
 A user may opt to use an external loadbalancer (LB) instead. An external LB
 provides access for external clients, while the internal LB accepts client

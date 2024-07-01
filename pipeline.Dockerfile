@@ -4,7 +4,7 @@ FROM ubuntu:jammy-20230308
 # Pip needs this as well at the moment to install ansible
 # (and potentially other packages)
 # See: https://github.com/pypa/pip/issues/10219
-ENV VAGRANT_VERSION=2.3.7 \
+ENV VAGRANT_VERSION=2.4.1 \
     VAGRANT_DEFAULT_PROVIDER=libvirt \
     VAGRANT_ANSIBLE_TAGS=facts \
     LANG=C.UTF-8 \
@@ -31,6 +31,8 @@ RUN apt update -q \
          unzip \
          libvirt-clients \
          qemu-utils \
+         qemu-kvm \
+         dnsmasq \
     && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
     && add-apt-repository "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
     && apt update -q \
@@ -46,6 +48,7 @@ ADD ./roles/kubespray-defaults/defaults/main/main.yml /kubespray/roles/kubespray
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
     && pip install --no-compile --no-cache-dir pip -U \
     && pip install --no-compile --no-cache-dir -r tests/requirements.txt \
+    && pip install --no-compile --no-cache-dir -r requirements.txt \
     && KUBE_VERSION=$(sed -n 's/^kube_version: //p' roles/kubespray-defaults/defaults/main/main.yml) \
     && curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
     && echo $(curl -L https://dl.k8s.io/release/$KUBE_VERSION/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \

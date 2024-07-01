@@ -1,40 +1,35 @@
 ---
-generate-pre-commit:
-  image: 'mikefarah/yq@sha256:bcb889a1f9bdb0613c8a054542d02360c2b1b35521041be3e1bd8fbd0534d411'
-  stage: build
-  before_script: []
+pre-commit:
+  stage: test
+  tags:
+  - ffci
+  image: 'ghcr.io/pre-commit-ci/runner-image@sha256:aaf2c7b38b22286f2d381c11673bec571c28f61dd086d11b43a1c9444a813cef'
+  variables:
+    PRE_COMMIT_HOME: /pre-commit-cache
   script:
-    - >
-      yq -r < .pre-commit-config.yaml '.repos[].hooks[].id' |
-      sed 's/^/      - /' |
-      cat .gitlab-ci/pre-commit-dynamic-stub.yml - > pre-commit-generated.yml
-  artifacts:
+  - pre-commit run --all-files
+  cache:
+    key: pre-commit-all
     paths:
-      - pre-commit-generated.yml
-
-run-pre-commit:
-  stage: unit-tests
-  trigger:
-    include:
-      - artifact: pre-commit-generated.yml
-        job: generate-pre-commit
-    strategy: depend
+    - /pre-commit-cache
+  needs: []
 
 vagrant-validate:
   extends: .job
-  stage: unit-tests
-  tags: [light]
+  stage: test
+  tags: [ffci]
   variables:
     VAGRANT_VERSION: 2.3.7
   script:
-    - ./tests/scripts/vagrant-validate.sh
+  - ./tests/scripts/vagrant-validate.sh
   except: ['triggers', 'master']
 
 
 # TODO: convert to pre-commit hook
 check-galaxy-version:
-  stage: unit-tests
-  tags: [light]
+  needs: []
+  stage: test
+  tags: [ffci]
   image: python:3
   script:
-    - tests/scripts/check_galaxy_version.sh
+  - tests/scripts/check_galaxy_version.sh

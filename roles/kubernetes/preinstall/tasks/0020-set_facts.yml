@@ -185,8 +185,8 @@
   set_fact:
     nameserverentries: |-
       {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique | join(',') }}
-    supersede_nameserver:
-      supersede domain-name-servers {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique | join(', ') }};
+    dhclient_supersede_nameserver_entries_list: |-
+      {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique }}
   when: not dns_early or dns_late
 
 # This task should run instead of the above task when cluster/nodelocal DNS hasn't
@@ -195,9 +195,16 @@
   set_fact:
     nameserverentries: |-
       {{ (nameservers | d([]) + cloud_resolver | d([]) + configured_nameservers | d([])) | unique | join(',') }}
-    supersede_nameserver:
-      supersede domain-name-servers {{ (nameservers | d([]) + cloud_resolver | d([])) | unique | join(', ') }};
+    dhclient_supersede_nameserver_entries_list: |-
+      {{ (nameservers | d([]) + cloud_resolver | d([])) | unique }}
   when: dns_early and not dns_late
+
+- name: Generate supersede_nameserver from dhclient_supersede_nameserver_entries_list
+  set_fact:
+    supersede_nameserver: |-
+      {%- if dhclient_supersede_nameserver_entries_list | length > 0 -%}
+      supersede domain-name-servers {{ dhclient_supersede_nameserver_entries_list | join(', ') }};
+      {%- endif -%}
 
 - name: Set etcd vars if using kubeadm mode
   set_fact:

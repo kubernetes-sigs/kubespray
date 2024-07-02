@@ -1,0 +1,54 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: digitalocean-cloud-controller-manager
+  namespace: kube-system
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: digitalocean-cloud-controller-manager
+  template:
+    metadata:
+      labels:
+        app: digitalocean-cloud-controller-manager
+    spec:
+      dnsPolicy: Default
+      hostNetwork: true
+      serviceAccountName: cloud-controller-manager
+      priorityClassName: system-cluster-critical
+      tolerations:
+        # this taint is set by all kubelets running `--cloud-provider=external`
+        # so we should tolerate it to schedule the digitalocean ccm
+        - key: "node.cloudprovider.kubernetes.io/uninitialized"
+          value: "true"
+          effect: "NoSchedule"
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+        # cloud controller manages should be able to run on masters
+        # TODO: remove this when ccm is not supported on k8s <= 1.23
+        - key: "node-role.kubernetes.io/master"
+          effect: NoSchedule
+        # k8s clusters 1.24+ uses control-plane name instead of master
+        - key: "node-role.kubernetes.io/control-plane"
+          effect: NoSchedule
+      containers:
+      - image: digitalocean/digitalocean-cloud-controller-manager:{{ external_do_cloud.controller_image_tag }}
+        name: digitalocean-cloud-controller-manager
+        command:
+          - "/bin/digitalocean-cloud-controller-manager"
+          - "--leader-elect=false"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        env:
+          - name: DO_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: digitalocean
+                key: access-token
+          - name: DO_CLUSTER_VPC_ID
+            value: {{ external_do_cloud.vpc_id }}

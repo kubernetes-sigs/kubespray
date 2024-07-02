@@ -16,6 +16,18 @@
     - download
     - upload
 
+# The image_info_command depends on the Container Runtime and will output something like the following:
+# nginx:1.15,gcr.io/google-containers/kube-proxy:v1.14.1,gcr.io/google-containers/kube-proxy@sha256:44af2833c6cbd9a7fc2e9d2f5244a39dfd2e31ad91bf9d4b7d810678db738ee9,gcr.io/google-containers/kube-apiserver:v1.14.1,etc...
+- name: Download | Generate a list of information about the images on a node  # noqa command-instead-of-shell - image_info_command contains a pipe, therefore requiring shell
+  shell: "{{ image_info_command }}"
+  register: node_images
+  changed_when: false
+  check_mode: no
+
+- name: Show node images
+  debug:
+    msg: "{{ node_images.stdout }}"
+
 - name: Download | Download files / images
   include_tasks: "{{ include_file }}"
   loop: "{{ downloads | combine(kubeadm_images) | dict2items }}"
@@ -26,5 +38,9 @@
     - not skip_downloads | default(false)
     - download.enabled
     - item.value.enabled
-    - (not (item.value.container | default(false))) or (item.value.container and download_container)
+    - (not (item.value.container | default(false))) or (item.value.container and download_container and (not (((item.value.repo | regex_replace('^docker\.io/(library/)?', '')) ~ ':' ~ item.value.tag in node_images.stdout.split(',')) or (item.value.repo ~ '@sha256:' ~ (item.value.sha256 | default(None)) in node_images.stdout.split(','))) or download_always_pull))
     - (download_run_once and inventory_hostname == download_delegate) or (group_names | intersect(download.groups) | length)
+
+- name: Show downloads
+  debug:
+    msg: "{{ downloads }}"

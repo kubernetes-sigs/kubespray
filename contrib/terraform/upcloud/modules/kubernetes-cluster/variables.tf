@@ -6,6 +6,14 @@ variable "zone" {
   type = string
 }
 
+variable "private_cloud" {
+  type = bool
+}
+
+variable "public_zone" {
+  type = string
+}
+
 variable "template_name" {}
 
 variable "username" {}

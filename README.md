@@ -141,7 +141,7 @@ vagrant up
 ## Supported Linux Distributions
 
 - **Flatcar Container Linux by Kinvolk**
-- **Debian** Bookworm, Bullseye, Buster
+- **Debian** Bookworm, Bullseye
 - **Ubuntu** 20.04, 22.04, 24.04
 - **CentOS/RHEL** 7, [8, 9](docs/operating_systems/centos.md#centos-8)
 - **Fedora** 37, 38

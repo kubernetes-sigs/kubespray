@@ -140,9 +140,10 @@ variable "loadbalancers" {
   description = "Load balancers"
 
   type = map(object({
-    port            = number
-    target_port     = number
-    backend_servers = list(string)
+    port                    = number
+    target_port             = number
+    allow_internal_frontend = optional(bool, false)
+    backend_servers         = list(string)
   }))
   default = {}
 }
@@ -154,5 +155,63 @@ variable "server_groups" {
     anti_affinity_policy = string
   }))
 
+  default = {}
+}
+
+variable "router_enable" {
+  description = "If a router should be enabled and connected to the private network or not"
+
+  type    = bool
+  default = false
+}
+
+variable "gateways" {
+  description = "Gateways that should be connected to the router, requires router_enable is set to true"
+
+  type = map(object({
+    features = list(string)
+    plan     = optional(string)
+    connections = optional(map(object({
+      type = string
+      local_routes = optional(map(object({
+        type           = string
+        static_network = string
+      })), {})
+      remote_routes = optional(map(object({
+        type           = string
+        static_network = string
+      })), {})
+      remote_address = string
+    })), {})
+  }))
+  default = {}
+}
+
+variable "gateway_vpn_psks" {
+  description = "Separate variable for providing psks for connection tunnels"
+
+  type = map(object({
+    psk = string
+  }))
+  default   = {}
+  sensitive = true
+}
+
+variable "static_routes" {
+  description = "Static routes to apply to the router, requires router_enable is set to true"
+
+  type = map(object({
+    nexthop = string
+    route   = string
+  }))
+  default = {}
+}
+
+variable "network_peerings" {
+  description = "Other UpCloud private networks to peer with, requires router_enable is set to true"
+
+  type = map(object({
+    remote_network = string
+  }))
   default = {}
 }

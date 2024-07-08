@@ -138,6 +138,22 @@ terraform destroy --var-file cluster-settings.tfvars \
   * `port`: Port to load balance.
   * `target_port`: Port to the backend servers.
   * `backend_servers`: List of servers that traffic to the port should be forwarded to.
+* `router_enable`: If a router should be connected to the private network or not
+* `gateways`: Gateways that should be connected to the router, requires router_enable is set to true
+  * `features`: List of features for the gateway
+  * `plan`: Plan to use for the gateway
+  * `connections`: The connections and tunnel to create for the gateway
+    * `type`: What type of connection
+    * `local_routes`: Map of local routes for the connection
+      * `type`: Type of route
+      * `static_network`: Destination prefix of the route; needs to be a valid IPv4 prefix
+    * `remote_routes`: Map of local routes for the connection
+      * `type`: Type of route
+      * `static_network`: Destination prefix of the route; needs to be a valid IPv4 prefix
+    * `remote_address`: The remote address for the tunnel
+* `gateway_vpn_psks`: Separate variable for providing psks for connection tunnels. Environment variable can be exported in the following format `export TF_VAR_gateway_vpn_psks='{"${gateway-name}-${connecton-name}-tunnel":{psk:"..."}}'`
+* `static_routes`: Static routes to apply to the router, requires `router_enable` is set to true
+* `network_peerings`: Other UpCloud private networks to peer with, requires `router_enable` is set to true
 * `server_groups`: Group servers together
   * `servers`: The servers that should be included in the group.
   * `anti_affinity_policy`: Defines if a server group is an anti-affinity group. Setting this to "strict" or yes" will result in all servers in the group being placed on separate compute hosts. The value can be "strict", "yes" or "no". "strict" refers to strict policy doesn't allow servers in the same server group to be on the same host. "yes" refers to best-effort policy and tries to put servers on different hosts, but this is not guaranteed.

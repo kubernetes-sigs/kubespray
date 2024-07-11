@@ -80,12 +80,32 @@
     - { option: "name", value: "CentOS-{{ ansible_distribution_major_version }} - Extras" }
     - { option: "enabled", value: "1" }
     - { option: "gpgcheck", value: "0" }
-    - { option: "baseurl", value: "http://mirror.centos.org/{{ 'altarch' if (ansible_distribution_major_version | int) <= 7 and ansible_architecture == 'aarch64' else 'centos' }}/{{ ansible_distribution_major_version }}/extras/$basearch/{% if ansible_distribution_major_version | int > 7 %}os/{% endif %}" }
+    - { option: "baseurl", value: "http://vault.centos.org/{{ 'altarch' if (ansible_distribution_major_version | int) <= 7 and ansible_architecture == 'aarch64' else 'centos' }}/{{ ansible_distribution_major_version }}/extras/$basearch/{% if ansible_distribution_major_version | int > 7 %}os/{% endif %}" }
   when:
     - use_oracle_public_repo | default(true)
     - '''ID="ol"'' in os_release.stdout_lines'
     - (ansible_distribution_version | float) >= 7.6
     - (ansible_distribution_version | float) < 9
+
+# CentOS 7 EOL at July 1, 2024.
+- name: Disable CentOS 7 mirrorlist in CentOS-Base.repo
+  replace:
+    path: /etc/yum.repos.d/CentOS-Base.repo
+    regexp: '^mirrorlist='
+    replace: '#mirrorlist='
+  become: true
+  when:
+    - ansible_distribution_major_version == "7"
+
+# CentOS 7 EOL at July 1, 2024.
+- name: Update CentOS 7 baseurl in CentOS-Base.repo
+  replace:
+    path: /etc/yum.repos.d/CentOS-Base.repo
+    regexp: '^#baseurl=http:\/\/mirror.centos.org'
+    replace: 'baseurl=http:\/\/vault.centos.org'
+  become: true
+  when:
+    - ansible_distribution_major_version == "7"
 
 # CentOS ships with python installed
 

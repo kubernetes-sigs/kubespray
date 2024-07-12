@@ -1,13 +1,24 @@
 ---
-yamllint:
-  extends: .job
-  stage: unit-tests
-  tags: [light]
-  variables:
-    LANG: C.UTF-8
+generate-pre-commit:
+  image: 'mikefarah/yq@sha256:bcb889a1f9bdb0613c8a054542d02360c2b1b35521041be3e1bd8fbd0534d411'
+  stage: build
+  before_script: []
   script:
-    - yamllint --strict .
-  except: ['triggers', 'master']
+    - >
+      yq -r < .pre-commit-config.yaml '.repos[].hooks[].id' |
+      sed 's/^/      - /' |
+      cat .gitlab-ci/pre-commit-dynamic-stub.yml - > pre-commit-generated.yml
+  artifacts:
+    paths:
+      - pre-commit-generated.yml
+
+run-pre-commit:
+  stage: unit-tests
+  trigger:
+    include:
+      - artifact: pre-commit-generated.yml
+        job: generate-pre-commit
+    strategy: depend
 
 vagrant-validate:
   extends: .job
@@ -19,108 +30,11 @@ vagrant-validate:
     - ./tests/scripts/vagrant-validate.sh
   except: ['triggers', 'master']
 
-ansible-lint:
-  extends: .job
-  stage: unit-tests
-  tags: [light]
-  script:
-    - ansible-lint -v
-  except: ['triggers', 'master']
 
-jinja-syntax-check:
-  extends: .job
-  stage: unit-tests
-  tags: [light]
-  script:
-    - "find -name '*.j2' -exec tests/scripts/check-templates.py {} +"
-  except: ['triggers', 'master']
-
-syntax-check:
-  extends: .job
-  stage: unit-tests
-  tags: [light]
-  variables:
-    ANSIBLE_INVENTORY: inventory/local-tests.cfg
-    ANSIBLE_REMOTE_USER: root
-    ANSIBLE_BECOME: "true"
-    ANSIBLE_BECOME_USER: root
-    ANSIBLE_VERBOSITY: "3"
-  script:
-    - ansible-playbook --syntax-check cluster.yml
-    - ansible-playbook --syntax-check playbooks/cluster.yml
-    - ansible-playbook --syntax-check upgrade-cluster.yml
-    - ansible-playbook --syntax-check playbooks/upgrade_cluster.yml
-    - ansible-playbook --syntax-check reset.yml
-    - ansible-playbook --syntax-check playbooks/reset.yml
-    - ansible-playbook --syntax-check extra_playbooks/upgrade-only-k8s.yml
-  except: ['triggers', 'master']
-
-collection-build-install-sanity-check:
-  extends: .job
-  stage: unit-tests
-  tags: [light]
-  variables:
-    ANSIBLE_COLLECTIONS_PATH: "./ansible_collections"
-  script:
-    - ansible-galaxy collection build
-    - ansible-galaxy collection install kubernetes_sigs-kubespray-$(grep "^version:" galaxy.yml | awk '{print $2}').tar.gz
-    - ansible-galaxy collection list $(egrep -i '(name:\s+|namespace:\s+)' galaxy.yml | awk '{print $2}' | tr '\n' '.' | sed 's|\.$||g') | grep "^kubernetes_sigs.kubespray"
-    - test -f ansible_collections/kubernetes_sigs/kubespray/playbooks/cluster.yml
-    - test -f ansible_collections/kubernetes_sigs/kubespray/playbooks/reset.yml
-  except: ['triggers', 'master']
-
-tox-inventory-builder:
-  stage: unit-tests
-  tags: [light]
-  extends: .job
-  before_script:
-    - ./tests/scripts/rebase.sh
-  script:
-    - pip3 install tox
-    - cd contrib/inventory_builder && tox
-  except: ['triggers', 'master']
-
-markdownlint:
-  stage: unit-tests
-  tags: [light]
-  image: node
-  before_script:
-    - npm install -g markdownlint-cli@0.22.0
-  script:
-    - markdownlint $(find . -name '*.md' | grep -vF './.git') --ignore docs/_sidebar.md --ignore contrib/dind/README.md
-
-generate-sidebar:
-  extends: .job
-  stage: unit-tests
-  tags: [light]
-  script:
-    - scripts/gen_docs_sidebar.sh
-    - git diff --exit-code
-
-check-readme-versions:
-  stage: unit-tests
-  tags: [light]
-  image: python:3
-  script:
-    - tests/scripts/check_readme_versions.sh
-
+# TODO: convert to pre-commit hook
 check-galaxy-version:
   stage: unit-tests
   tags: [light]
   image: python:3
   script:
     - tests/scripts/check_galaxy_version.sh
-
-check-typo:
-  stage: unit-tests
-  tags: [light]
-  image: python:3
-  script:
-    - tests/scripts/check_typo.sh
-
-ci-matrix:
-  stage: unit-tests
-  tags: [light]
-  image: python:3
-  script:
-    - tests/scripts/md-table/test.sh

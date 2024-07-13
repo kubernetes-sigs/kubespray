@@ -1,0 +1,34 @@
+---
+- name: External OCI Cloud Controller Manager | Get base64 cloud-config
+  set_fact:
+    external_oracle_cloud_config_secret: "{{ lookup('template', 'external-oci-cloud-config.j2') | b64encode }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags: external-oci
+
+- name: External OCI Cloud Controller Manager | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    group: "{{ kube_cert_group }}"
+    mode: "0640"
+  with_items:
+    - {name: external-oci-cloud-config-secret, file: external-oci-cloud-config-secret.yml}
+    - {name: external-oci-cloud-controller-manager-rbac, file: external-oci-cloud-controller-manager-rbac.yml}
+    - {name: external-oci-cloud-controller-manager, file: external-oci-cloud-controller-manager.yml}
+  register: external_oracle_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags: external-oci
+
+- name: External OCI Cloud Controller Manager | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ external_oracle_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+  tags: external-oci

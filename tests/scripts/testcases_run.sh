@@ -122,7 +122,7 @@ EOF
 
 fi
 # Tests Cases
-## Test Master API
+## Test Control Plane API
 run_playbook tests/testcases/010_check-apiserver.yml
 run_playbook tests/testcases/015_check-nodes-ready.yml
 

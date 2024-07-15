@@ -60,17 +60,17 @@ You can create many different kubernetes topologies by setting the number of
 different classes of hosts. For each class there are options for allocating
 floating IP addresses or not.
 
-- Master nodes with etcd
-- Master nodes without etcd
+- Control plane nodes with etcd
+- Control plane nodes without etcd
 - Standalone etcd hosts
 - Kubernetes worker nodes
 
 Note that the Ansible script will report an invalid configuration if you wind up
 with an even number of etcd instances since that is not a valid configuration. This
 restriction includes standalone etcd nodes that are deployed in a cluster along with
-master nodes with etcd replicas. As an example, if you have three master nodes with
-etcd replicas and three standalone etcd nodes, the script will fail since there are
-now six total etcd replicas.
+control plane nodes with etcd replicas. As an example, if you have three control plane
+nodes with etcd replicas and three standalone etcd nodes, the script will fail since
+there are now six total etcd replicas.
 
 ### GlusterFS shared file system
 

@@ -75,8 +75,8 @@ You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mou
 to access the inventory and SSH key in the container, like this:
 
 ```ShellSession
-git checkout v2.24.1
-docker pull quay.io/kubespray/kubespray:v2.24.1
+git checkout v2.24.2
+docker pull quay.io/kubespray/kubespray:v2.24.2
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
   quay.io/kubespray/kubespray:v2.23.2 bash

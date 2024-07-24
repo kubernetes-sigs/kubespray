@@ -136,6 +136,13 @@ variable "loadbalancer_proxy_protocol" {
   default = false
 }
 
+variable "loadbalancer_legacy_network" {
+  description = "If the loadbalancer should use the deprecated network field instead of networks blocks. You probably want to have this set to false"
+
+  type    = bool
+  default = false
+}
+
 variable "loadbalancers" {
   description = "Load balancers"
 

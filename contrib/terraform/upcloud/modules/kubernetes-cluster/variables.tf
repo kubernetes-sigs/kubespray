@@ -98,6 +98,11 @@ variable "loadbalancer_outbound_proxy_protocol" {
   type = string
 }
 
+variable "loadbalancer_legacy_network" {
+  type = bool
+  default = false
+}
+
 variable "loadbalancers" {
   description = "Load balancers"
 

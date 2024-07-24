@@ -134,6 +134,7 @@ terraform destroy --var-file cluster-settings.tfvars \
   * `end_address`: End of address range to allow
 * `loadbalancer_enabled`: Enable managed load balancer
 * `loadbalancer_plan`: Plan to use for load balancer *(development|production-small)*
+* `loadbalancer_legacy_network`: If the loadbalancer should use the deprecated network field instead of networks blocks. You probably want to have this set to false (default value)
 * `loadbalancers`: Ports to load balance and which machines to forward to. Key of this object will be used as the name of the load balancer frontends/backends
   * `port`: Port to load balance.
   * `target_port`: Port to the backend servers.

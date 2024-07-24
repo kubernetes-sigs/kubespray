@@ -175,7 +175,11 @@ gateways = {
   #             static_network = "4.3.2.1/24"
   #           }
   #         }
-  #         remote_address = "1.2.3.4"
+  #         tunnels = {
+  #           "tunnel1" = {
+  #             remote_address = "1.2.3.4"
+  #           }
+  #         }
   #       }
   #     }
   #   }

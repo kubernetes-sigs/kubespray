@@ -150,7 +150,20 @@ terraform destroy --var-file cluster-settings.tfvars \
     * `remote_routes`: Map of local routes for the connection
       * `type`: Type of route
       * `static_network`: Destination prefix of the route; needs to be a valid IPv4 prefix
-    * `remote_address`: The remote address for the tunnel
+    * `tunnels`: The tunnels to create for this connection
+      * `remote_address`: The remote address for the tunnel
+      * `ipsec_properties`: Set properties of IPSec, if not set, defaults will be used
+        * `child_rekey_time`: IKE child SA rekey time in seconds
+        * `dpd_delay`: Delay before sending Dead Peer Detection packets if no traffic is detected, in seconds
+        * `dpd_timeout`: Timeout period for DPD reply before considering the peer to be dead, in seconds
+        * `ike_lifetime`: Maximum IKE SA lifetime in seconds()
+        * `rekey_time`: IKE SA rekey time in seconds
+        * `phase1_algorithms`: List of Phase 1: Proposal algorithms
+        * `phase1_dh_group_numbers`: List of Phase 1 Diffie-Hellman group numbers
+        * `phase1_integrity_algorithms`: List of Phase 1 integrity algorithms
+        * `phase2_algorithms`: List of Phase 2: Security Association algorithms
+        * `phase2_dh_group_numbers`: List of Phase 2 Diffie-Hellman group numbers
+        * `phase2_integrity_algorithms`: List of Phase 2 integrity algorithms
 * `gateway_vpn_psks`: Separate variable for providing psks for connection tunnels. Environment variable can be exported in the following format `export TF_VAR_gateway_vpn_psks='{"${gateway-name}-${connecton-name}-tunnel":{psk:"..."}}'`
 * `static_routes`: Static routes to apply to the router, requires `router_enable` is set to true
 * `network_peerings`: Other UpCloud private networks to peer with, requires `router_enable` is set to true

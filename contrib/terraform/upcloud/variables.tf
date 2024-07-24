@@ -181,7 +181,22 @@ variable "gateways" {
         type           = string
         static_network = string
       })), {})
-      remote_address = string
+      tunnels = optional(map(object({
+        remote_address = string
+        ipsec_properties = optional(object({
+          child_rekey_time            = number
+          dpd_delay                   = number
+          dpd_timeout                 = number
+          ike_lifetime                = number
+          rekey_time                  = number
+          phase1_algorithms           = set(string)
+          phase1_dh_group_numbers     = set(string)
+          phase1_integrity_algorithms = set(string)
+          phase2_algorithms           = set(string)
+          phase2_dh_group_numbers     = set(string)
+          phase2_integrity_algorithms = set(string)
+        }))
+      })), {})
     })), {})
   }))
   default = {}

@@ -35,14 +35,18 @@ locals {
 
   gateway_connection_tunnels = flatten([
     for gateway_name, gateway in var.gateways : [
-      for connection_name, connection in gateway.connections : {
+      for connection_name, connection in gateway.connections : [
+        for tunnel_name, tunnel in connection.tunnels : {
           "gateway_id" = upcloud_gateway.gateway[gateway_name].id
           "gateway_name" = gateway_name
           "connection_id" = upcloud_gateway_connection.gateway_connection["${gateway_name}-${connection_name}"].id
           "connection_name" = connection_name
+          "tunnel_name" = tunnel_name
           "local_address_name" = tolist(upcloud_gateway.gateway[gateway_name].address).0.name
-          "remote_address" = connection.remote_address
-      }
+          "remote_address" = tunnel.remote_address
+          "ipsec_properties" = tunnel.ipsec_properties
+        }
+      ]
     ]
   ])
 
@@ -684,7 +688,7 @@ resource "upcloud_gateway_connection" "gateway_connection" {
 
 resource "upcloud_gateway_connection_tunnel" "gateway_connection_tunnel" {
   for_each = {
-    for gct in local.gateway_connection_tunnels : "${gct.gateway_name}-${gct.connection_name}-tunnel" => gct
+    for gct in local.gateway_connection_tunnels : "${gct.gateway_name}-${gct.connection_name}-${gct.tunnel_name}-tunnel" => gct
   }
 
   connection_id = each.value.connection_id
@@ -694,6 +698,24 @@ resource "upcloud_gateway_connection_tunnel" "gateway_connection_tunnel" {
 
   ipsec_auth_psk {
     psk = var.gateway_vpn_psks[each.key].psk
+  }
+
+  dynamic "ipsec_properties" {
+    for_each = each.value.ipsec_properties != null ? { "ip": each.value.ipsec_properties } : {}
+
+    content {
+        child_rekey_time = ipsec_properties.value["child_rekey_time"]
+        dpd_delay = ipsec_properties.value["dpd_delay"]
+        dpd_timeout = ipsec_properties.value["dpd_timeout"]
+        ike_lifetime = ipsec_properties.value["ike_lifetime"]
+        rekey_time = ipsec_properties.value["rekey_time"]
+        phase1_algorithms = ipsec_properties.value["phase1_algorithms"]
+        phase1_dh_group_numbers = ipsec_properties.value["phase1_dh_group_numbers"]
+        phase1_integrity_algorithms = ipsec_properties.value["phase1_integrity_algorithms"]
+        phase2_algorithms = ipsec_properties.value["phase2_algorithms"]
+        phase2_dh_group_numbers = ipsec_properties.value["phase2_dh_group_numbers"]
+        phase2_integrity_algorithms = ipsec_properties.value["phase2_integrity_algorithms"]
+    }
   }
 }
 

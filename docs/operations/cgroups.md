@@ -1,6 +1,6 @@
 # cgroups
 
-To avoid the rivals for resources between containers or the impact on the host in Kubernetes, the kubelet components will rely on cgroups to limit the container’s resources usage.
+To avoid resource contention between containers and host daemons in Kubernetes, the kubelet components can use cgroups to limit resource usage.
 
 ## Enforcing Node Allocatable
 
@@ -20,8 +20,9 @@ Here is an example:
 ```yaml
 kubelet_enforce_node_allocatable: "pods,kube-reserved,system-reserved"
 
-# Reserve this space for kube resources
-# Set to true to reserve resources for kube daemons
+# Set kube_reserved to true to run kubelet and container-engine daemons in a dedicated cgroup.
+# This is required if you want to enforce limits on the resource usage of these daemons.
+# It is not required if you just want to make resource reservations (kube_memory_reserved, kube_cpu_reserved, etc.)
 kube_reserved: true
 kube_reserved_cgroups_for_service_slice: kube.slice
 kube_reserved_cgroups: "/{{ kube_reserved_cgroups_for_service_slice }}"

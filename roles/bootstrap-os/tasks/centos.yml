@@ -88,24 +88,31 @@
     - (ansible_distribution_version | float) < 9
 
 # CentOS 7 EOL at July 1, 2024.
-- name: Disable CentOS 7 mirrorlist in CentOS-Base.repo
-  replace:
+- name: Check CentOS-Base.repo exists for CentOS 7
+  stat:
     path: /etc/yum.repos.d/CentOS-Base.repo
-    regexp: '^mirrorlist='
-    replace: '#mirrorlist='
-  become: true
+  register: centos_base_repo_stat
   when:
     - ansible_distribution_major_version == "7"
 
 # CentOS 7 EOL at July 1, 2024.
-- name: Update CentOS 7 baseurl in CentOS-Base.repo
-  replace:
-    path: /etc/yum.repos.d/CentOS-Base.repo
-    regexp: '^#baseurl=http:\/\/mirror.centos.org'
-    replace: 'baseurl=http:\/\/vault.centos.org'
-  become: true
+- name: Update CentOS 7 CentOS-Base.repo
   when:
     - ansible_distribution_major_version == "7"
+    - centos_base_repo_stat.stat.exists
+  become: true
+  block:
+    - name: Disable CentOS 7 mirrorlist in CentOS-Base.repo
+      replace:
+        path: "{{ centos_base_repo_stat.stat.path }}"
+        regexp: '^mirrorlist='
+        replace: '#mirrorlist='
+
+    - name: Update CentOS 7 baseurl in CentOS-Base.repo
+      replace:
+        path: "{{ centos_base_repo_stat.stat.path }}"
+        regexp: '^#baseurl=http:\/\/mirror.centos.org'
+        replace: 'baseurl=http:\/\/vault.centos.org'
 
 # CentOS ships with python installed
 

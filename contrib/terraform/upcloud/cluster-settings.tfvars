@@ -1,5 +1,11 @@
 # See: https://developers.upcloud.com/1.3/5-zones/
-zone     = "fi-hel1"
+zone          = "fi-hel1"
+private_cloud = false
+
+# Only used if private_cloud = true, public zone equivalent
+# For example use finnish public zone for finnish private zone
+public_zone = "fi-hel2"
+
 username = "ubuntu"
 
 # Prefix to use for all resources to separate them from other resources

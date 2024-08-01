@@ -9,6 +9,15 @@ variable "zone" {
   description = "The zone where to run the cluster"
 }
 
+variable "private_cloud" {
+  description = "Whether the environment is in the private cloud region"
+  default     = false
+}
+
+variable "public_zone" {
+  description = "The public zone equivalent if the cluster is running in a private cloud zone"
+}
+
 variable "template_name" {
   description = "Block describing the preconfigured operating system"
 }

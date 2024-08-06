@@ -20,7 +20,7 @@ This project will create:
 
 ```commandline
 export TF_VAR_AWS_ACCESS_KEY_ID="www"
-export TF_VAR_AWS_SECRET_ACCESS_KEY ="xxx"
+export TF_VAR_AWS_SECRET_ACCESS_KEY="xxx"
 export TF_VAR_AWS_SSH_KEY_NAME="yyy"
 export TF_VAR_AWS_DEFAULT_REGION="zzz"
 ```
@@ -47,7 +47,7 @@ ssh -F ./ssh-bastion.conf user@$ip
 Example (this one assumes you are using Ubuntu)
 
 ```commandline
-ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_user=ubuntu -b --become-user=root --flush-cache
+ansible-playbook -i ./inventory/hosts ./cluster.yml -e ansible_user=admin -b --become-user=root --flush-cache
 ```
 
 ## Using other distrib than Ubuntu***
@@ -95,8 +95,8 @@ ssh-keyscan -H $CONTROLLER_IP >> ~/.ssh/known_hosts 2>/dev/null
 
 # Get the kubeconfig from the controller.
 mkdir -p ~/.kube
-ssh -F ssh-bastion.conf centos@$CONTROLLER_IP "sudo chmod 644 /etc/kubernetes/admin.conf"
-scp -F ssh-bastion.conf centos@$CONTROLLER_IP:/etc/kubernetes/admin.conf ~/.kube/config
+ssh -F ssh-bastion.conf admin@$CONTROLLER_IP "sudo chmod 644 /etc/kubernetes/admin.conf"
+scp -F ssh-bastion.conf admin@$CONTROLLER_IP:/etc/kubernetes/admin.conf ~/.kube/config
 sed -i "s^server:.*^server: https://$LB_HOST:6443^" ~/.kube/config
 kubectl get nodes
 ```

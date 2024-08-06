@@ -18,6 +18,35 @@
     - kubelet
     - kubeadm
 
+- name: Gather facts about the node
+  setup:
+    filter: ansible_memtotal_mb,ansible_processor_vcpus
+  tags:
+    - kubelet
+    - kubeadm
+
+- name: Check if kube_enable_auto_reserved_resources is set
+  set_fact:
+    kube_master_cpu_reserved: "{{ (ansible_processor_vcpus * 1000 * 0.01) | int + 80 }}m"
+    kube_master_memory_reserved: "{{ (ansible_memtotal_mb * 0.05) | int + 330 }}Mi"
+  tags:
+    - kubelet
+    - kubeadm
+  when:
+    - kube_enable_auto_reserved_resources
+    - is_kube_master
+
+- name: Check if kube_enable_auto_reserved_resources is set
+  set_fact:
+    kube_cpu_reserved: "{{ (ansible_processor_vcpus * 1000 * 0.01) | int + 80 }}m"
+    kube_memory_reserved: "{{ (ansible_memtotal_mb * 0.05) | int + 330 }}Mi"
+  tags:
+    - kubelet
+    - kubeadm
+  when:
+    - kube_enable_auto_reserved_resources
+    - not is_kube_master
+
 - name: Write kubelet config file
   template:
     src: "kubelet-config.{{ kubeletConfig_api_version }}.yaml.j2"

@@ -1,0 +1,33 @@
+---
+- name: Gateway API | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/gateway_api"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Gateway API | Set channel
+  set_fact:
+    gateway_api_channel: "{{ 'experimental' if gateway_api_experimental_channel else 'standard' }}"
+  when:
+    - "inventory_hostname == groups['kube_control_plane'][0]"
+
+- name: Gateway API | Copy Gateway API manifests to remote
+  template:
+    src: "{{ gateway_api_channel }}-install.yaml.j2"
+    dest: "{{ kube_config_dir }}/addons/gateway_api/{{ gateway_api_channel }}-install.yaml"
+    mode: "0644"
+  when:
+    - "inventory_hostname == groups['kube_control_plane'][0]"
+
+- name: Gateway API | Install Gateway API
+  kube:
+    name: Gateway API
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/gateway_api/{{ gateway_api_channel }}-install.yaml"
+    state: latest
+  when:
+    - "inventory_hostname == groups['kube_control_plane'][0]"

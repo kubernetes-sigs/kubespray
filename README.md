@@ -233,6 +233,8 @@ You can choose among ten network plugins. (default: `calico`, except Vagrant use
 
 - [cilium](http://docs.cilium.io/en/latest/): layer 3/4 networking (as well as layer 7 to protect and secure application protocols), supports dynamic insertion of BPF bytecode into the Linux kernel to implement security services, networking and visibility logic.
 
+  - [cilium-helm](https://docs.cilium.io/en/stable/helm-reference/): You can deploy an official Helm Chart managed by Cilium.
+
 - [weave](docs/CNI/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster.
     (Please refer to `weave` [troubleshooting documentation](https://www.weave.works/docs/net/latest/troubleshooting/)).
 

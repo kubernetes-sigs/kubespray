@@ -1,0 +1,40 @@
+---
+cilium_helm_namespace: kube-system
+
+cilium_helm_repository_name: cilium
+cilium_helm_repository_url: https://helm.cilium.io/
+cilium_helm_chart_ref: "{{ cilium_helm_repository_name }}/cilium"
+cilium_helm_chart_version: "{{ cilium_version[1:] }}"
+
+cilium_helm_default_values:
+  ipam:
+    operator:
+      # Cluster Pod CIDRs use the kube_pods_subnet value by default.
+      # If your node network is in the same range you will lose connectivity to other nodes.
+      # Defaults to kube_pods_subnet if not set.
+      clusterPoolIPv4PodCIDRList:
+        - "{{ kube_pods_subnet }}"
+
+      # When cilium_enable_ipv6 is used, you need to set the IPV6 value.  Defaults to kube_pods_subnet_ipv6 if not set.
+      clusterPoolIPv6PodCIDRList:
+        - "{{ kube_pods_subnet_ipv6 }}"
+
+      # When cilium IPAM uses the "Cluster Scope" mode, it will pre-allocate a segment of IP to each node,
+      # schedule the Pod to this node, and then allocate IP from here. cilium_pool_mask_size Specifies
+      # the size allocated from cluster Pod CIDR to node.ipam.podCIDRs
+      # Defaults to kube_network_node_prefix if not set.
+      clusterPoolIPv4MaskSize: "{{ kube_network_node_prefix }}"
+
+      # cilium_pool_mask_size Specifies the size allocated to node.ipam.podCIDRs from cluster Pod IPV6 CIDR
+      # Defaults to kube_network_node_prefix_ipv6 if not set.
+      clusterPoolIPv6MaskSize: "{{ kube_network_node_prefix_ipv6 }}"
+
+  k8sServiceHost: "{{ kube_apiserver_global_endpoint | urlsplit('hostname') }}"
+  k8sServicePort: "{{ kube_apiserver_global_endpoint | urlsplit('port') }}"
+
+  operator:
+    replicas: "{{ 1 if groups.k8s_cluster | length == 1 else 2 }}"
+
+# Fill values override here
+# See upstream https://docs.cilium.io/en/stable/helm-reference/
+cilium_helm_values: {}

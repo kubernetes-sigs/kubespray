@@ -1,12 +1,9 @@
 ---
 stages:
   - build
-  - unit-tests
-  - moderator
+  - test
   - deploy-part1
-  - deploy-part2
-  - deploy-part3
-  - deploy-special
+  - deploy-extended
 
 variables:
   KUBESPRAY_VERSION: v2.24.1
@@ -43,15 +40,26 @@ before_script:
 
 .job: &job
   tags:
-    - packet
+    - ffci
   image: $PIPELINE_IMAGE
   artifacts:
     when: always
     paths:
       - cluster-dump/
+  needs:
+    - pipeline-image
+
+.job-moderated:
+  extends: .job
+  needs:
+    - pipeline-image
+    - ci-not-authorized
+    - check-galaxy-version  # lint
+    - pre-commit            # lint
+    - vagrant-validate      # lint
 
 .testcases: &testcases
-  <<: *job
+  extends: .job-moderated
   retry: 1
   interruptible: true
   before_script:
@@ -61,12 +69,12 @@ before_script:
   script:
     - ./tests/scripts/testcases_run.sh
   after_script:
-    - chronic ./tests/scripts/testcases_cleanup.sh
+    - ./tests/scripts/testcases_cleanup.sh
 
 # For failfast, at least 1 job must be defined in .gitlab-ci.yml
 # Premoderated with manual actions
 ci-not-authorized:
-  stage: moderator
+  stage: build
   before_script: []
   after_script: []
   rules:
@@ -87,8 +95,8 @@ ci-not-authorized:
   script:
     - exit $CI_OK_TO_TEST
   tags:
-    - light
-
+    - ffci
+  needs: []
 
 include:
   - .gitlab-ci/build.yml

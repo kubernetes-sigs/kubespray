@@ -19,7 +19,7 @@ will install Multus and Calico and configure Multus to use Calico as the primary
 
 ### Cilium compatibility
 
-If you are using `cilium` you'll have to set `cilium_cni_exclusive` to `false` to avoid cillium reverting multus config.
+If you are using `cilium` as the primary CNI you'll have to set `cilium_cni_exclusive` to `false` to avoid cillium reverting multus config.
 
 ```yml
 kube_network_plugin: cilium

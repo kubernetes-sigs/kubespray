@@ -17,6 +17,16 @@ kube_network_plugin_multus: true
 
 will install Multus and Calico and configure Multus to use Calico as the primary network plugin.
 
+### Cilium compatibility
+
+If you are using `cilium` as the primary CNI you'll have to set `cilium_cni_exclusive` to `false` to avoid cillium reverting multus config.
+
+```yml
+kube_network_plugin: cilium
+kube_network_plugin_multus: true
+cilium_cni_exclusive: false
+```
+
 ## Using Multus
 
 Once Multus is installed, you can create CNI configurations (as a CRD objects) for additional networks, in this case a macvlan CNI configuration is defined. You may replace the config field with any valid CNI configuration where the CNI binary is available on the nodes.

@@ -1,5 +1,5 @@
 #Global Vars
-aws_cluster_name = "devtest"
+aws_cluster_name = "wilelm"
 
 #VPC Vars
 aws_vpc_cidr_block       = "10.250.192.0/18"

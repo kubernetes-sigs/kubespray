@@ -17,7 +17,7 @@ kube_network_plugin_multus: true
 
 will install Multus and Calico and configure Multus to use Calico as the primary network plugin.
 
-### Cilium support
+### Cilium compatibility
 
 If you are using `cilium` you'll have to set `cilium_cni_exclusive` to `false` to avoid cillium reverting multus config.
 

@@ -45,7 +45,7 @@ module "kubernetes" {
 
   machines = var.machines
 
-  ## Master ##
+  ## Control Plane ##
   master_cores     = var.master_cores
   master_memory    = var.master_memory
   master_disk_size = var.master_disk_size

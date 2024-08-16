@@ -215,7 +215,7 @@ Note: Upstart/SysV init based OS types are not supported.
 Hardware:
 These limits are safeguarded by Kubespray. Actual requirements for your workload can differ. For a sizing guide go to the [Building Large Clusters](https://kubernetes.io/docs/setup/cluster-large/#size-of-master-and-master-components) guide.
 
-- Master
+- Control Plane
   - Memory: 1500 MB
 - Node
   - Memory: 1024 MB

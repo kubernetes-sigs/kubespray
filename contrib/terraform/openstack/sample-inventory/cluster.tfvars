@@ -7,7 +7,7 @@ cluster_name = "i-didnt-read-the-docs"
 # SSH key to use for access to nodes
 public_key_path = "~/.ssh/id_rsa.pub"
 
-# image to use for bastion, masters, standalone etcd instances, and nodes
+# image to use for bastion, control planes, standalone etcd instances, and nodes
 image = "<image name>"
 
 # user on the node (ex. core on Container Linux, ubuntu on Ubuntu, etc.)
@@ -21,7 +21,7 @@ number_of_bastions = 0
 # standalone etcds
 number_of_etcd = 0
 
-# masters
+# control planes
 number_of_k8s_masters = 1
 
 number_of_k8s_masters_no_etcd = 0

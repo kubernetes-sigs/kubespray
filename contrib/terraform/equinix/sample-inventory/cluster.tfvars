@@ -20,7 +20,7 @@ number_of_etcd = 0
 
 plan_etcd = "t1.small.x86"
 
-# masters
+# control planes
 number_of_k8s_masters = 1
 
 number_of_k8s_masters_no_etcd = 0

@@ -8,7 +8,7 @@ See [multus documentation](https://github.com/k8snetworkplumbingwg/multus-cni).
 
 ## Multus installation
 
-Since Multus itself does not implement networking, it requires a master plugin, which is specified through the variable `kube_network_plugin`. To enable Multus an additional variable `kube_network_plugin_multus` must be set to `true`. For example,
+Since Multus itself does not implement networking, it requires a control plane plugin, which is specified through the variable `kube_network_plugin`. To enable Multus an additional variable `kube_network_plugin_multus` must be set to `true`. For example,
 
 ```yml
 kube_network_plugin: calico

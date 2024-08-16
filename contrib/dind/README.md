@@ -104,12 +104,12 @@ CONTAINER ID        IMAGE               COMMAND CREATED             STATUS      
 c581ef662ed2        debian:9.5          "sh -c 'apt-get -qy …"   44 minutes ago      Up 44 minutes                           kube-node1
 
 $ docker exec kube-node1 kubectl get node
-NAME         STATUS   ROLES         AGE   VERSION
-kube-node1   Ready    master,node   18m   v1.12.1
-kube-node2   Ready    master,node   17m   v1.12.1
-kube-node3   Ready    node          17m   v1.12.1
-kube-node4   Ready    node          17m   v1.12.1
-kube-node5   Ready    node          17m   v1.12.1
+NAME         STATUS   ROLES                AGE   VERSION
+kube-node1   Ready    control-plane,node   18m   v1.12.1
+kube-node2   Ready    control-plane,node   17m   v1.12.1
+kube-node3   Ready    node                 17m   v1.12.1
+kube-node4   Ready    node                 17m   v1.12.1
+kube-node5   Ready    node                 17m   v1.12.1
 
 $ docker exec kube-node1 kubectl get pod --all-namespaces
 NAMESPACE     NAME                                    READY   STATUS    RESTARTS   AGE

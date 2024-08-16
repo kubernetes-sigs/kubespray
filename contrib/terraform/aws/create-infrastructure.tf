@@ -68,7 +68,7 @@ resource "aws_instance" "bastion-server" {
 }
 
 /*
-* Create K8s Master and worker nodes and etcd instances
+* Create K8s control plane and worker nodes and etcd instances
 *
 */
 

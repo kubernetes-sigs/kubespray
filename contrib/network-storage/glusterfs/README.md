@@ -4,7 +4,7 @@ You can either deploy using Ansible on its own by supplying your own inventory f
 
 ## Using an Ansible inventory
 
-In the same directory of this ReadMe file you should find a file named `inventory.example` which contains an example setup. Please note that, additionally to the Kubernetes nodes/masters, we define a set of machines for GlusterFS and we add them to the group `[gfs-cluster]`, which in turn is added to the larger `[network-storage]` group as a child group.
+In the same directory of this ReadMe file you should find a file named `inventory.example` which contains an example setup. Please note that, additionally to the Kubernetes nodes/control-planes, we define a set of machines for GlusterFS and we add them to the group `[gfs-cluster]`, which in turn is added to the larger `[network-storage]` group as a child group.
 
 Change that file to reflect your local setup (adding more machines or removing them and setting the adequate ip numbers), and save it to `inventory/sample/k8s_gfs_inventory`. Make sure that the settings on `inventory/sample/group_vars/all.yml` make sense with your deployment. Then execute change to the kubespray root folder, and execute (supposing that the machines are all using ubuntu):
 
@@ -21,9 +21,9 @@ ansible-playbook -b --become-user=root -i inventory/sample/k8s_gfs_inventory --u
 If your machines are not using Ubuntu, you need to change the `--user=ubuntu` to the correct user. Alternatively, if your Kubernetes machines are using one OS and your GlusterFS a different one, you can instead specify the `ansible_ssh_user=<correct-user>` variable in the inventory file that you just created, for each machine/VM:
 
 ```shell
-k8s-master-1 ansible_ssh_host=192.168.0.147 ip=192.168.0.147 ansible_ssh_user=core
-k8s-master-node-1 ansible_ssh_host=192.168.0.148 ip=192.168.0.148 ansible_ssh_user=core
-k8s-master-node-2 ansible_ssh_host=192.168.0.146 ip=192.168.0.146 ansible_ssh_user=core
+k8s-control-plane-1 ansible_ssh_host=192.168.0.147 ip=192.168.0.147 ansible_ssh_user=core
+k8s-control-plane-node-1 ansible_ssh_host=192.168.0.148 ip=192.168.0.148 ansible_ssh_user=core
+k8s-control-plane-node-2 ansible_ssh_host=192.168.0.146 ip=192.168.0.146 ansible_ssh_user=core
 ```
 
 ## Using Terraform and Ansible

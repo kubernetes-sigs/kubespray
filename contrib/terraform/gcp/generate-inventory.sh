@@ -33,7 +33,7 @@ mapfile -t WORKER_NAMES < <(jq -r '.key'  <(echo "${WORKERS}"))
 
 API_LB=$(jq -r '.control_plane_lb_ip_address.value' <(echo "${TF_OUT}"))
 
-# Generate master hosts
+# Generate control plane hosts
 i=1
 for name in "${MASTER_NAMES[@]}"; do
   private_ip=$(jq -r '. | select( .key=='"\"${name}\""' ) | .value.private_ip'  <(echo "${MASTERS}"))

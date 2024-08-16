@@ -30,7 +30,7 @@ kube_memory_reserved: 256Mi
 kube_cpu_reserved: 100m
 # kube_ephemeral_storage_reserved: 2Gi
 # kube_pid_reserved: "1000"
-# Reservation for master hosts
+# Reservation for control plane hosts
 kube_master_memory_reserved: 512Mi
 kube_master_cpu_reserved: 200m
 # kube_master_ephemeral_storage_reserved: 2Gi
@@ -44,7 +44,7 @@ system_memory_reserved: 512Mi
 system_cpu_reserved: 500m
 # system_ephemeral_storage_reserved: 2Gi
 # system_pid_reserved: "1000"
-# Reservation for master hosts
+# Reservation for control plane hosts
 system_master_memory_reserved: 256Mi
 system_master_cpu_reserved: 250m
 # system_master_ephemeral_storage_reserved: 2Gi

@@ -189,7 +189,7 @@
     mode: "0644"
   when: kubeadm_patches is defined and kubeadm_patches.enabled
 
-- name: Kubeadm | Initialize first master
+- name: Kubeadm | Initialize first control plane
   command: >-
     timeout -k {{ kubeadm_init_timeout }} {{ kubeadm_init_timeout }}
     {{ bin_dir }}/kubeadm init
@@ -205,7 +205,7 @@
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
-  notify: Master | restart kubelet
+  notify: Control-Plane | restart kubelet
 
 - name: Set kubeadm certificate key
   set_fact:
@@ -250,7 +250,7 @@
   tags:
     - kubeadm_token
 
-- name: Kubeadm | Join other masters
+- name: Kubeadm | Join other control planes
   include_tasks: kubeadm-secondary.yml
 
 - name: Kubeadm | upgrade kubernetes cluster
@@ -260,7 +260,7 @@
     - kubeadm_already_run.stat.exists
 
 # FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
-- name: Kubeadm | Remove taint for master with node role
+- name: Kubeadm | Remove taint for control plane with node role
   command: "{{ kubectl }} taint node {{ inventory_hostname }} {{ item }}"
   delegate_to: "{{ first_kube_control_plane }}"
   with_items:

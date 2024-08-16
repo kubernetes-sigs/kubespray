@@ -32,7 +32,7 @@ variable "ssh_public_keys" {
 }
 variable "hardware_version" {}
 
-## Master ##
+## Control Plane ##
 variable "master_cores" {}
 variable "master_memory" {}
 variable "master_disk_size" {}

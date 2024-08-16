@@ -199,7 +199,7 @@ The following tags are defined in playbooks:
 | local-path-provisioner         | Configure External provisioner: local-path            |
 | local-volume-provisioner       | Configure External provisioner: local-volume          |
 | macvlan                        | Network plugin macvlan                                |
-| master                         | Configuring K8s master node role                      |
+| master                         | Configuring K8s control plane node role                      |
 | metallb                        | Installing and configuring metallb                    |
 | metrics_server                 | Configuring metrics_server                            |
 | netchecker                     | Installing netchecker K8s app                         |

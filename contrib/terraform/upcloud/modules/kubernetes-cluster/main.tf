@@ -173,7 +173,7 @@ resource "upcloud_firewall_rules" "master" {
 
     content {
       action                 = "accept"
-      comment                = "Allow master API access from this network"
+      comment                = "Allow control plane API access from this network"
       destination_port_end   = "6443"
       destination_port_start = "6443"
       direction              = "in"
@@ -189,7 +189,7 @@ resource "upcloud_firewall_rules" "master" {
 
     content {
       action                 = "drop"
-      comment                = "Deny master API access from other networks"
+      comment                = "Deny control plane API access from other networks"
       destination_port_end   = "6443"
       destination_port_start = "6443"
       direction              = "in"

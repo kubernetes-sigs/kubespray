@@ -101,7 +101,7 @@ Sku of Load Balancer and Public IP. Candidate values are: basic and standard.
 
 ### azure\_exclude\_master\_from\_standard\_lb
 
-azure\_exclude\_master\_from\_standard\_lb excludes master nodes from `standard` load balancer.
+azure\_exclude\_master\_from\_standard\_lb excludes control plane nodes from `standard` load balancer.
 
 ### azure\_disable\_outbound\_snat
 

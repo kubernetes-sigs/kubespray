@@ -3,7 +3,7 @@ variable "cluster_name" {
 }
 
 variable "az_list" {
-  description = "List of Availability Zones to use for masters in your OpenStack cluster"
+  description = "List of Availability Zones to use for control planes in your OpenStack cluster"
   type        = list(string)
   default     = ["nova"]
 }
@@ -179,7 +179,7 @@ variable "dns_nameservers" {
 }
 
 variable "k8s_master_fips" {
-  description = "specific pre-existing floating IPs to use for master nodes"
+  description = "specific pre-existing floating IPs to use for control plane nodes"
   type        = list(string)
   default     = []
 }
@@ -380,7 +380,7 @@ variable "image_master" {
 }
 
 variable "image_master_uuid" {
-  description = "uuid of image to be used on master nodes. If empty defaults to image_uuid"
+  description = "uuid of image to be used on control plane nodes. If empty defaults to image_uuid"
   default     = ""
 }
 

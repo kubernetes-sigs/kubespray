@@ -73,7 +73,7 @@ variable "hardware_version" {
   default = "15"
 }
 
-## Master ##
+## Control Plane ##
 
 variable "master_cores" {
   default = 4

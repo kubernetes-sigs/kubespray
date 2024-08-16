@@ -44,7 +44,7 @@ resource "openstack_networking_secgroup_v2" "k8s_master" {
 resource "openstack_networking_secgroup_v2" "k8s_master_extra" {
   count                = "%{if var.extra_sec_groups}1%{else}0%{endif}"
   name                 = "${var.cluster_name}-k8s-master-${var.extra_sec_groups_name}"
-  description          = "${var.cluster_name} - Kubernetes Master nodes - rules not managed by terraform"
+  description          = "${var.cluster_name} - Kubernetes Control Plane nodes - rules not managed by terraform"
   delete_default_rules = true
 }
 
@@ -269,7 +269,7 @@ resource "openstack_compute_servergroup_v2" "k8s_node_additional" {
 }
 
 locals {
-# master groups
+# control plane groups
   master_sec_groups = compact([
     openstack_networking_secgroup_v2.k8s_master.id,
     openstack_networking_secgroup_v2.k8s.id,

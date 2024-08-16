@@ -86,15 +86,15 @@ variable "aws_bastion_num" {
 }
 
 variable "aws_kube_master_num" {
-  description = "Number of Kubernetes Master Nodes"
+  description = "Number of Kubernetes Control Plane Nodes"
 }
 
 variable "aws_kube_master_disk_size" {
-  description = "Disk size for Kubernetes Master Nodes (in GiB)"
+  description = "Disk size for Kubernetes Control Plane Nodes (in GiB)"
 }
 
 variable "aws_kube_master_size" {
-  description = "Instance size of Kube Master Nodes"
+  description = "Instance size of Kube Control Plane Nodes"
 }
 
 variable "aws_etcd_num" {

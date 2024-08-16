@@ -64,7 +64,7 @@ $download_run_once ||= "True"
 $download_force_cache ||= "False"
 # The first three nodes are etcd servers
 $etcd_instances ||= [$num_instances, 3].min
-# The first two nodes are kube masters
+# The first two nodes are kube control planes
 $kube_master_instances ||= [$num_instances, 2].min
 # All nodes are kube nodes
 $kube_node_instances ||= $num_instances

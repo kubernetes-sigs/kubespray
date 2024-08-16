@@ -23,7 +23,7 @@ experience.
 ## Bastion host
 
 You can enable the use of a Bastion Host by changing **use_bastion** in group_vars/all to **true**. The generated
-templates will then include an additional bastion VM which can then be used to connect to the masters and nodes. The option
+templates will then include an additional bastion VM which can then be used to connect to the control planes and nodes. The option
 also removes all public IPs from all other VMs.
 
 ## Generating and applying

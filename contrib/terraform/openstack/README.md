@@ -60,15 +60,15 @@ You can create many different kubernetes topologies by setting the number of
 different classes of hosts. For each class there are options for allocating
 floating IP addresses or not.
 
-- Master nodes with etcd
-- Master nodes without etcd
+- Control Plane nodes with etcd
+- Control Plane nodes without etcd
 - Standalone etcd hosts
 - Kubernetes worker nodes
 
 Note that the Ansible script will report an invalid configuration if you wind up
 with an even number of etcd instances since that is not a valid configuration. This
 restriction includes standalone etcd nodes that are deployed in a cluster along with
-master nodes with etcd replicas. As an example, if you have three master nodes with
+control plane nodes with etcd replicas. As an example, if you have three control plane nodes with
 etcd replicas and three standalone etcd nodes, the script will fail since there are
 now six total etcd replicas.
 
@@ -254,15 +254,15 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`network_dns_domain` | (Optional) The dns_domain for the internal network that will be generated |
 |`dns_nameservers`| An array of DNS name server names to be used by hosts in the internal subnet. |
 |`floatingip_pool` | Name of the pool from which floating IPs will be allocated |
-|`k8s_master_fips` | A list of floating IPs that you have already pre-allocated; they will be attached to master nodes instead of creating new random floating IPs. |
+|`k8s_master_fips` | A list of floating IPs that you have already pre-allocated; they will be attached to control plane nodes instead of creating new random floating IPs. |
 |`bastion_fips` | A list of floating IPs that you have already pre-allocated; they will be attached to bastion node instead of creating new random floating IPs. |
 |`external_net` | UUID of the external network that will be routed to |
 |`flavor_k8s_master`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through `openstack flavor list` |
 |`image`,`image_gfs` | Name of the image to use in provisioning the compute resources. Should already be loaded into glance. |
 |`ssh_user`,`ssh_user_gfs` | The username to ssh into the image with. This usually depends on the image you have selected |
 |`public_key_path` | Path on your local workstation to the public key file you wish to use in creating the key pairs |
-|`number_of_k8s_masters`, `number_of_k8s_masters_no_floating_ip` | Number of nodes that serve as both master and etcd. These can be provisioned with or without floating IP addresses|
-|`number_of_k8s_masters_no_etcd`, `number_of_k8s_masters_no_floating_ip_no_etcd` |  Number of nodes that serve as just master with no etcd. These can be provisioned with or without floating IP addresses |
+|`number_of_k8s_masters`, `number_of_k8s_masters_no_floating_ip` | Number of nodes that serve as both control plane and etcd. These can be provisioned with or without floating IP addresses|
+|`number_of_k8s_masters_no_etcd`, `number_of_k8s_masters_no_floating_ip_no_etcd` |  Number of nodes that serve as just control plane with no etcd. These can be provisioned with or without floating IP addresses |
 |`number_of_etcd` | Number of pure etcd nodes |
 |`number_of_k8s_nodes`, `number_of_k8s_nodes_no_floating_ip` | Kubernetes worker nodes. These can be provisioned with or without floating ip addresses. |
 |`number_of_bastions` | Number of bastion hosts to create. Scripts assume this is really just zero or one |
@@ -281,8 +281,8 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`k8s_allowed_egress_ipv6_ips` | List of IPv6 CIDRs allowed for egress traffic, `["::/0"]` by default |
 |`worker_allowed_ports` | List of ports to open on worker nodes, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "0.0.0.0/0"}]` by default |
 |`worker_allowed_ports_ipv6` | List of ports to open on worker nodes for IPv6 CIDR blocks, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "::/0"}]` by default |
-|`master_allowed_ports` | List of ports to open on master nodes, expected format is `[{ "protocol" = "tcp", "port_range_min" = 443, "port_range_max" = 443, "remote_ip_prefix" = "0.0.0.0/0"}]`, empty by default |
-|`master_allowed_ports_ipv6` | List of ports to open on master nodes for IPv6 CIDR blocks, expected format is `[{ "protocol" = "tcp", "port_range_min" = 443, "port_range_max" = 443, "remote_ip_prefix" = "::/0"}]`, empty by default |
+|`master_allowed_ports` | List of ports to open on control plane nodes, expected format is `[{ "protocol" = "tcp", "port_range_min" = 443, "port_range_max" = 443, "remote_ip_prefix" = "0.0.0.0/0"}]`, empty by default |
+|`master_allowed_ports_ipv6` | List of ports to open on control plane nodes for IPv6 CIDR blocks, expected format is `[{ "protocol" = "tcp", "port_range_min" = 443, "port_range_max" = 443, "remote_ip_prefix" = "::/0"}]`, empty by default |
 |`node_root_volume_size_in_gb` | Size of the root volume for nodes, 0 to use ephemeral storage |
 |`master_root_volume_size_in_gb` | Size of the root volume for masters, 0 to use ephemeral storage |
 |`master_volume_type` | Volume type of the root volume for control_plane, 'Default' by default |
@@ -290,7 +290,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`gfs_root_volume_size_in_gb` | Size of the root volume for gluster, 0 to use ephemeral storage |
 |`etcd_root_volume_size_in_gb` | Size of the root volume for etcd nodes, 0 to use ephemeral storage |
 |`bastion_root_volume_size_in_gb` | Size of the root volume for bastions, 0 to use ephemeral storage |
-|`master_server_group_policy` | Enable and use openstack nova servergroups for masters with set policy, default: "" (disabled) |
+|`master_server_group_policy` | Enable and use openstack nova servergroups for control planes with set policy, default: "" (disabled) |
 |`node_server_group_policy` | Enable and use openstack nova servergroups for nodes with set policy, default: "" (disabled) |
 |`etcd_server_group_policy` | Enable and use openstack nova servergroups for etcd with set policy, default: "" (disabled) |
 |`additional_server_groups` | Extra server groups to create. Set "policy" to the policy for the group, expected format is `{"new-server-group" = {"policy" = "anti-affinity"}}`, default: {} (to not create any extra groups) |
@@ -298,8 +298,8 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`port_security_enabled` | Allow to disable port security by setting this to `false`. `true` by default |
 |`force_null_port_security` | Set `null` instead of `true` or `false` for `port_security`. `false` by default |
 |`k8s_nodes` | Map containing worker node definition, see explanation below |
-|`k8s_masters` | Map containing master node definition, see explanation for k8s_nodes and `sample-inventory/cluster.tfvars` |
-| `k8s_master_loadbalancer_enabled`| Enable and use an Octavia load balancer for the K8s master nodes |
+|`k8s_masters` | Map containing control plane node definition, see explanation for k8s_nodes and `sample-inventory/cluster.tfvars` |
+| `k8s_master_loadbalancer_enabled`| Enable and use an Octavia load balancer for the K8s control plane nodes |
 | `k8s_master_loadbalancer_listener_port` | Define via which port the K8s Api should be exposed. `6443` by default  |
 | `k8s_master_loadbalancer_server_port` | Define via which port the K8S api is available on the mas. `6443` by default |
 | `k8s_master_loadbalancer_public_ip` | Specify if an existing floating IP should be used for the load balancer. A new floating IP is assigned by default  |
@@ -656,7 +656,7 @@ This will take some time as there are many tasks to run.
 ### Set up kubectl
 
 1. [Install kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your workstation
-2. Add a route to the internal IP of a master node (if needed):
+2. Add a route to the internal IP of a control plane node (if needed):
 
 ```ShellSession
 sudo route add [master-internal-ip] gw [router-ip]

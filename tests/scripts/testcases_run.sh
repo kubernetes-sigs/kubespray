@@ -42,12 +42,13 @@ if [[ "$CI_JOB_NAME" =~ "opensuse" ]]; then
 fi
 
 # Check out latest tag if testing upgrade
-test "${UPGRADE_TEST}" != "false" && git fetch --all && git checkout "$KUBESPRAY_VERSION"
-# Checkout the CI vars file so it is available
-test "${UPGRADE_TEST}" != "false" && git checkout "${CI_COMMIT_SHA}" tests/files/${CI_JOB_NAME}.yml
-test "${UPGRADE_TEST}" != "false" && git checkout "${CI_COMMIT_SHA}" ${CI_TEST_REGISTRY_MIRROR}
-test "${UPGRADE_TEST}" != "false" && git checkout "${CI_COMMIT_SHA}" ${CI_TEST_SETTING}
-
+if [ "${UPGRADE_TEST}" != "false" ]; then
+  git fetch --all && git checkout "$KUBESPRAY_VERSION"
+  # Checkout the CI vars file so it is available
+  git checkout "${CI_COMMIT_SHA}" tests/files/${CI_JOB_NAME}.yml
+  git checkout "${CI_COMMIT_SHA}" ${CI_TEST_REGISTRY_MIRROR}
+  git checkout "${CI_COMMIT_SHA}" ${CI_TEST_SETTING}
+fi
 
 run_playbook () {
 playbook=$1
@@ -67,8 +68,10 @@ ansible-playbook --limit "all:!fake_hosts" \
 run_playbook cluster.yml
 
 # Repeat deployment if testing upgrade
-case "${UPGRADE_TEST}" in
+if [ "${UPGRADE_TEST}" != "false" ]; then
+  git checkout "${CI_COMMIT_SHA}"
 
+  case "${UPGRADE_TEST}" in
     "basic")
         run_playbook cluster.yml
         ;;
@@ -77,7 +80,8 @@ case "${UPGRADE_TEST}" in
         ;;
     *)
         ;;
-esac
+  esac
+fi
 
 # Test control plane recovery
 if [ "${RECOVER_CONTROL_PLANE_TEST}" != "false" ]; then

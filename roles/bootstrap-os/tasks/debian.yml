@@ -63,9 +63,17 @@
     - '"value from" in bootstrap_update_apt_result.stdout'
   ignore_errors: true
 
+- name: Check unattended-upgrades file exist
+  stat:
+    path: /etc/apt/apt.conf.d/50unattended-upgrades
+  register: unattended_upgrades_file_stat
+  when:
+    - os_release_dict['ID'] == 'ubuntu'
+    - ubuntu_kernel_unattended_upgrades_disabled
+
 - name: Disable kernel unattended-upgrades
   lineinfile:
-    path: /etc/apt/apt.conf.d/50unattended-upgrades
+    path: "{{ unattended_upgrades_file_stat.stat.path }}"
     insertafter: "Unattended-Upgrade::Package-Blacklist"
     line: '"linux-";'
     state: present
@@ -73,3 +81,4 @@
   when:
     - os_release_dict['ID'] == 'ubuntu'
     - ubuntu_kernel_unattended_upgrades_disabled
+    - unattended_upgrades_file_stat.stat.exists

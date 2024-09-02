@@ -27,6 +27,7 @@ then run the following steps:
 cp -rfp inventory/sample inventory/mycluster
 
 # Update Ansible inventory file with inventory builder
+# Basides root ``requirements.txt`` , ``inventory builder`` requires some extra Python Packages: ``contrib/inventory_builder/requirements.txt``
 declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
 CONFIG_FILE=inventory/mycluster/hosts.yaml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
 

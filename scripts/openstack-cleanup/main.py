@@ -37,17 +37,6 @@ def main():
     map_if_old(conn.compute.delete_server,
                conn.compute.servers())
 
-    print('Security groups...')
-    try:
-        map_if_old(conn.network.delete_security_group,
-                conn.network.security_groups())
-    except openstack.exceptions.ConflictException as ex:
-        # Need to delete port when security groups is in used
-        map_if_old(conn.network.delete_port,
-                   conn.network.ports())
-        map_if_old(conn.network.delete_security_group,
-                conn.network.security_groups())
-
     print('Ports...')
     try:
         map_if_old(conn.network.delete_port,
@@ -81,6 +70,17 @@ def main():
     for n in conn.network.networks():
         if not n.is_router_external:
             fn_if_old(conn.network.delete_network, n)
+
+    print('Security groups...')
+    try:
+        map_if_old(conn.network.delete_security_group,
+                conn.network.security_groups())
+    except openstack.exceptions.ConflictException as ex:
+        # Need to delete port when security groups is in used
+        map_if_old(conn.network.delete_port,
+                   conn.network.ports())
+        map_if_old(conn.network.delete_security_group,
+                conn.network.security_groups())
 
 
 # runs the given fn to all elements of the that are older than allowed

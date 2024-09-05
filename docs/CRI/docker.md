@@ -16,14 +16,6 @@ Enabling the `overlay2` graph driver:
 docker_storage_options: -s overlay2
 ```
 
-Enabling `docker_container_storage_setup`, it will configure devicemapper driver on Centos7 or RedHat7.
-Deployers must be define a disk path for `docker_container_storage_setup_devs`, otherwise docker-storage-setup will be executed incorrectly.
-
-```yaml
-docker_container_storage_setup: true
-docker_container_storage_setup_devs: /dev/vdb
-```
-
 Changing the Docker cgroup driver (native.cgroupdriver); valid options are `systemd` or `cgroupfs`, default is `systemd`:
 
 ```yaml

@@ -80,7 +80,7 @@ cat << EOF > vagrant/config.rb
 \$instance_name_prefix = "kub"
 \$vm_cpus = 1
 \$num_instances = 3
-\$os = "centos-bento"
+\$os = "centos8-bento"
 \$subnet = "10.0.20"
 \$network_plugin = "flannel"
 \$inventory = "$INV"

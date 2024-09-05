@@ -424,7 +424,7 @@ calico_wireguard_enabled: true
 
 The following OSes will require enabling the EPEL repo in order to bring in wireguard tools:
 
-* CentOS 7 & 8
+* CentOS 8
 * AlmaLinux 8
 * Rocky Linux 8
 * Amazon Linux 2

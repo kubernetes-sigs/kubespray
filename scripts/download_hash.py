@@ -52,6 +52,18 @@ def download_hash(only_downloads: [str]) -> None:
     for download, url in (downloads if only_downloads == []
                           else {k:downloads[k] for k in downloads.keys() & only_downloads}).items():
         checksum_name = f"{download}_checksums"
+        # Propagate new patch versions to all architectures
+        for arch in data[checksum_name].values():
+            for arch2 in data[checksum_name].values():
+                arch.update({
+                    v:("NONE" if arch2[v] == "NONE" else 0)
+                    for v in (set(arch2.keys()) - set(arch.keys()))
+                    if v.split('.')[2] == '0'})
+                    # this is necessary to make the script indempotent,
+                    # by only adding a vX.X.0 version (=minor release) in each arch
+                    # and letting the rest of the script populate the potential
+                    # patch versions
+
         for arch, versions in data[checksum_name].items():
             for minor, patches in groupby(versions.copy().keys(), lambda v : '.'.join(v.split('.')[:-1])):
                 for version in (f"{minor}.{patch}" for patch in

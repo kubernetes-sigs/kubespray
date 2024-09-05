@@ -30,11 +30,16 @@ def version_compare(version):
     return Version(version.removeprefix("v"))
 
 downloads = {
+    "ciliumcli_binary": "https://github.com/cilium/cilium-cli/releases/download/{version}/cilium-{os}-{arch}.tar.gz.sha256sum",
+    "cni_binary": "https://github.com/containernetworking/plugins/releases/download/{version}/cni-plugins-{os}-{arch}-{version}.tgz.sha256",
     "containerd_archive": "https://github.com/containerd/containerd/releases/download/v{version}/containerd-{version}-{os}-{arch}.tar.gz.sha256sum",
+    "crictl": "https://github.com/kubernetes-sigs/cri-tools/releases/download/{version}/critest-{version}-{os}-{arch}.tar.gz.sha256",
+    "crio_archive": "https://storage.googleapis.com/cri-o/artifacts/cri-o.{arch}.{version}.tar.gz.sha256sum",
     "kubeadm": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubeadm.sha256",
     "kubectl": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubectl.sha256",
     "kubelet": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubelet.sha256",
     "runc": "https://github.com/opencontainers/runc/releases/download/{version}/runc.sha256sum",
+    "skopeo_binary": "https://github.com/lework/skopeo-binary/releases/download/{version}/skopeo-{os}-{arch}.sha256",
 }
 
 def download_hash(only_downloads: [str]) -> None:

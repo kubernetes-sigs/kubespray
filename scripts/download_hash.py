@@ -8,6 +8,7 @@ import sys
 
 from itertools import count, groupby
 from collections import defaultdict
+import argparse
 import requests
 from ruamel.yaml import YAML
 from packaging.version import Version
@@ -28,14 +29,15 @@ def open_checksums_yaml():
 def version_compare(version):
     return Version(version.removeprefix("v"))
 
-def download_hash(minors):
-    downloads = {
-        "containerd_archive": "https://github.com/containerd/containerd/releases/download/v{version}/containerd-{version}-{os}-{arch}.tar.gz.sha256sum",
-        "kubeadm": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubeadm.sha256",
-        "kubectl": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubectl.sha256",
-        "kubelet": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubelet.sha256",
-        "runc": "https://github.com/opencontainers/runc/releases/download/{version}/runc.sha256sum",
-    }
+downloads = {
+    "containerd_archive": "https://github.com/containerd/containerd/releases/download/v{version}/containerd-{version}-{os}-{arch}.tar.gz.sha256sum",
+    "kubeadm": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubeadm.sha256",
+    "kubectl": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubectl.sha256",
+    "kubelet": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubelet.sha256",
+    "runc": "https://github.com/opencontainers/runc/releases/download/{version}/runc.sha256sum",
+}
+
+def download_hash(only_downloads: [str]) -> None:
     # Handle hashes not directly in one url per hash. Return dict of hashs indexed by arch
     download_hash_extract = {
             "runc": lambda hashes : {
@@ -47,7 +49,8 @@ def download_hash(minors):
 
     data, yaml = open_checksums_yaml()
 
-    for download, url in downloads.items():
+    for download, url in (downloads if only_downloads == []
+                          else {k:downloads[k] for k in downloads.keys() & only_downloads}).items():
         checksum_name = f"{download}_checksums"
         for arch, versions in data[checksum_name].items():
             for minor, patches in groupby(versions.copy().keys(), lambda v : '.'.join(v.split('.')[:-1])):
@@ -88,15 +91,8 @@ def download_hash(minors):
         yaml.dump(data, checksums_yml)
         print(f"\n\nUpdated {CHECKSUMS_YML}\n")
 
+parser = argparse.ArgumentParser(description=f"Add new patch versions hashes in {CHECKSUMS_YML}")
+parser.add_argument('binaries', nargs='*', choices=downloads.keys())
 
-def usage():
-    print(f"USAGE:\n    {sys.argv[0]} [k8s_version1] [[k8s_version2]....[k8s_versionN]]")
-
-
-def main(argv=None):
-    download_hash(sys.argv[1:])
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+args = parser.parse_args()
+download_hash(args.binaries)

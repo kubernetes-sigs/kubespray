@@ -4,12 +4,12 @@
     {{ kubectl }} get nodes {{ node }}
     -o jsonpath-as-json='{.status.addresses[?(@.type=="InternalIP")].address}'
   register: k8s_node_ips
+  changed_when: false
   when:
-    - groups['kube_control_plane'] | length > 0
-    - ('etcd' in group_names)
-    - ip is not defined
-    - access_ip is not defined
-  delegate_to: "{{ groups['etcd'] | first }}"
+  - groups['kube_control_plane'] | length > 0
+  - ip is not defined
+  - access_ip is not defined
+  delegate_to: "{{ groups['kube_control_plane'] | first }}"
 
 - name: Remove etcd member from cluster
   environment:
@@ -19,7 +19,6 @@
     ETCDCTL_CACERT: "{{ kube_cert_dir + '/etcd/ca.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/ca.pem' }}"
     ETCDCTL_ENDPOINTS: "https://127.0.0.1:2379"
   delegate_to: "{{ groups['etcd'] | first }}"
-  when: ('etcd' in group_names)
   block:
   - name: Lookup members infos
     command: "{{ bin_dir }}/etcdctl member list"
@@ -37,3 +36,5 @@
       - member
       - remove
       - "{{ ((etcd_members.stdout_lines | select('contains', '//' + node_ip + ':'))[0] | split(','))[0] }}"
+    register: etcd_removal_output
+    changed_when: "'Removed member' in etcd_removal_output.stdout"

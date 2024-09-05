@@ -30,25 +30,55 @@ def version_compare(version):
     return Version(version.removeprefix("v"))
 
 downloads = {
+    "calicoctl_binary": "https://github.com/projectcalico/calico/releases/download/{version}/SHA256SUMS",
     "ciliumcli_binary": "https://github.com/cilium/cilium-cli/releases/download/{version}/cilium-{os}-{arch}.tar.gz.sha256sum",
     "cni_binary": "https://github.com/containernetworking/plugins/releases/download/{version}/cni-plugins-{os}-{arch}-{version}.tgz.sha256",
     "containerd_archive": "https://github.com/containerd/containerd/releases/download/v{version}/containerd-{version}-{os}-{arch}.tar.gz.sha256sum",
     "crictl": "https://github.com/kubernetes-sigs/cri-tools/releases/download/{version}/critest-{version}-{os}-{arch}.tar.gz.sha256",
     "crio_archive": "https://storage.googleapis.com/cri-o/artifacts/cri-o.{arch}.{version}.tar.gz.sha256sum",
+    "etcd_binary": "https://github.com/etcd-io/etcd/releases/download/{version}/SHA256SUMS",
     "kubeadm": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubeadm.sha256",
     "kubectl": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubectl.sha256",
     "kubelet": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubelet.sha256",
+    "nerdctl_archive": "https://github.com/containerd/nerdctl/releases/download/v{version}/SHA256SUMS",
     "runc": "https://github.com/opencontainers/runc/releases/download/{version}/runc.sha256sum",
     "skopeo_binary": "https://github.com/lework/skopeo-binary/releases/download/{version}/skopeo-{os}-{arch}.sha256",
+    "yq": "https://github.com/mikefarah/yq/releases/download/{version}/checksums-bsd", # see https://github.com/mikefarah/yq/pull/1691 for why we use this url
 }
 
 def download_hash(only_downloads: [str]) -> None:
-    # Handle hashes not directly in one url per hash. Return dict of hashs indexed by arch
+    # Handle file with multiples hashes, with various formats.
+    # the lambda is expected to produce a dictionary of hashes indexed by arch name
     download_hash_extract = {
+            "calicoctl_binary": lambda hashes : {
+                line.split('-')[-1] : line.split()[0]
+                for line in hashes.strip().split('\n')
+                if line.count('-') == 2 and line.split('-')[-2] == "linux"
+                },
+            "etcd_binary": lambda hashes : {
+                line.split('-')[-1].removesuffix('.tar.gz') : line.split()[0]
+                for line in hashes.strip().split('\n')
+                if line.split('-')[-2] == "linux"
+                },
+             "nerdctl_archive": lambda hashes : {
+                line.split()[1].removesuffix('.tar.gz').split('-')[3] : line.split()[0]
+                for line in hashes.strip().split('\n')
+                if [x for x in line.split(' ') if x][1].split('-')[2] == "linux"
+                },
             "runc": lambda hashes : {
                 parts[1].split('.')[1] : parts[0]
                 for parts in (line.split()
                               for line in hashes.split('\n')[3:9])
+                },
+             "yq": lambda rhashes_bsd : {
+                 pair[0].split('_')[-1] : pair[1]
+                 # pair = (yq_<os>_<arch>, <hash>)
+                 for pair in ((line.split()[1][1:-1], line.split()[3])
+                     for line in rhashes_bsd.splitlines()
+                     if line.startswith("SHA256"))
+                 if pair[0].startswith("yq")
+                     and pair[0].split('_')[1] == "linux"
+                     and not pair[0].endswith(".tar.gz")
                 },
             }
 

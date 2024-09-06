@@ -45,6 +45,21 @@ downloads = {
     "skopeo_binary": "https://github.com/lework/skopeo-binary/releases/download/{version}/skopeo-{os}-{arch}.sha256",
     "yq": "https://github.com/mikefarah/yq/releases/download/{version}/checksums-bsd", # see https://github.com/mikefarah/yq/pull/1691 for why we use this url
 }
+# TODO: downloads not supported
+# youki: no checkusms in releases
+# kata: no checksums in releases
+# gvisor: sha512 checksums
+# crun : PGP signatures
+# cri_dockerd: no checksums or signatures
+# helm_archive: PGP signatures
+# krew_archive: different yaml structure
+# calico_crds_archive: different yaml structure
+
+# TODO:
+# noarch support -> k8s manifests, helm charts
+# different checksum format (needs download role changes)
+# different verification methods (gpg, cosign) ( needs download role changes) (or verify the sig in this script and only use the checksum in the playbook)
+# perf improvements (async)
 
 def download_hash(only_downloads: [str]) -> None:
     # Handle file with multiples hashes, with various formats.

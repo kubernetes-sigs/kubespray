@@ -14,7 +14,7 @@ Installs docker in etcd group members and runs etcd on docker containers. Only u
 
 ### Kubeadm
 
-This deployment method is experimental and is only available for new deployments. This deploys etcd as a static pod in master hosts.
+This deployment method is experimental and is only available for new deployments. This deploys etcd as a static pod on control plane hosts.
 
 ## Metrics
 

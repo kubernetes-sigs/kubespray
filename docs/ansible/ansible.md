@@ -155,6 +155,7 @@ The following tags are defined in playbooks:
 | container_engine_accelerator   | Enable nvidia accelerator for runtimes                |
 | container-engine               | Configuring container engines                         |
 | container-runtimes             | Configuring container runtimes                        |
+| control-plane                  | Configuring K8s control plane node role               |
 | coredns                        | Configuring coredns deployment                        |
 | crio                           | Configuring crio container engine for hosts           |
 | crun                           | Configuring crun runtime                              |
@@ -199,7 +200,7 @@ The following tags are defined in playbooks:
 | local-path-provisioner         | Configure External provisioner: local-path            |
 | local-volume-provisioner       | Configure External provisioner: local-volume          |
 | macvlan                        | Network plugin macvlan                                |
-| master                         | Configuring K8s master node role                      |
+| master (DEPRECATED)            | Deprecated - see `control-plane`                      |
 | metallb                        | Installing and configuring metallb                    |
 | metrics_server                 | Configuring metrics_server                            |
 | netchecker                     | Installing netchecker K8s app                         |
@@ -210,7 +211,7 @@ The following tags are defined in playbooks:
 | node                           | Configuring K8s minion (compute) node role            |
 | nodelocaldns                   | Configuring nodelocaldns daemonset                    |
 | node-label                     | Tasks linked to labeling of nodes                     |
-| node-webhook                   | Tasks linked to webhook (grating access to resources) |
+| node-webhook                   | Tasks linked to webhook (granting access to resources)|
 | nvidia_gpu                     | Enable nvidia accelerator for runtimes                |
 | oci                            | Cloud provider: oci                                   |
 | persistent_volumes             | Configure csi volumes                                 |

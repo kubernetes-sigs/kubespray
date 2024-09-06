@@ -8,6 +8,7 @@ import sys
 
 from itertools import count, groupby
 from collections import defaultdict
+from functools import cache
 import argparse
 import requests
 from ruamel.yaml import YAML
@@ -100,6 +101,20 @@ def download_hash(only_downloads: [str]) -> None:
     data, yaml = open_checksums_yaml()
     s = requests.Session()
 
+    @cache
+    def _get_hash_by_arch(download: str, version: str) -> {str: str}:
+
+        hash_file = s.get(downloads[download].format(
+            version = version,
+            os = "linux",
+            ),
+                          allow_redirects=True)
+        if hash_file.status_code == 404:
+            print(f"Unable to find {download} hash file for version {version} at {hash_file.url}")
+            return None
+        hash_file.raise_for_status()
+        return download_hash_extract[download](hash_file.content.decode())
+
     for download, url in (downloads if only_downloads == []
                           else {k:downloads[k] for k in downloads.keys() & only_downloads}).items():
         checksum_name = f"{download}_checksums"
@@ -125,22 +140,25 @@ def download_hash(only_downloads: [str]) -> None:
                     # to find new versions
                     if version in versions and versions[version] != 0:
                         continue
-                    hash_file = s.get(downloads[download].format(
-                        version = version,
-                        os = "linux",
-                        arch = arch
-                        ),
-                     allow_redirects=True)
-                    if hash_file.status_code == 404:
-                        print(f"Unable to find {download} hash file for version {version} (arch: {arch}) at {hash_file.url}")
-                        break
-                    hash_file.raise_for_status()
-                    sha256sum = hash_file.content.decode()
                     if download in download_hash_extract:
-                        sha256sum = download_hash_extract[download](sha256sum).get(arch)
+                        hashes = _get_hash_by_arch(download, version)
+                        if hashes == None:
+                            break
+                        sha256sum = hashes.get(arch)
                         if sha256sum == None:
                             break
-                    sha256sum = sha256sum.split()[0]
+                    else:
+                        hash_file = s.get(downloads[download].format(
+                            version = version,
+                            os = "linux",
+                            arch = arch
+                            ),
+                         allow_redirects=True)
+                        if hash_file.status_code == 404:
+                            print(f"Unable to find {download} hash file for version {version} (arch: {arch}) at {hash_file.url}")
+                            break
+                        hash_file.raise_for_status()
+                        sha256sum = hash_file.content.decode().split()[0]
 
                     if len(sha256sum) != 64:
                         raise Exception(f"Checksum has an unexpected length: {len(sha256sum)} (binary: {download}, arch: {arch}, release: {version}, checksum: '{sha256sum}')")

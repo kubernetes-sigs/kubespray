@@ -98,6 +98,7 @@ def download_hash(only_downloads: [str]) -> None:
             }
 
     data, yaml = open_checksums_yaml()
+    s = requests.Session()
 
     for download, url in (downloads if only_downloads == []
                           else {k:downloads[k] for k in downloads.keys() & only_downloads}).items():
@@ -124,7 +125,7 @@ def download_hash(only_downloads: [str]) -> None:
                     # to find new versions
                     if version in versions and versions[version] != 0:
                         continue
-                    hash_file = requests.get(downloads[download].format(
+                    hash_file = s.get(downloads[download].format(
                         version = version,
                         os = "linux",
                         arch = arch

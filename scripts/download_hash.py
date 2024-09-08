@@ -172,7 +172,33 @@ def download_hash(only_downloads: [str]) -> None:
         yaml.dump(data, checksums_yml)
         print(f"\n\nUpdated {CHECKSUMS_YML}\n")
 
-parser = argparse.ArgumentParser(description=f"Add new patch versions hashes in {CHECKSUMS_YML}")
+parser = argparse.ArgumentParser(description=f"Add new patch versions hashes in {CHECKSUMS_YML}",
+                                 formatter_class=argparse.RawTextHelpFormatter,
+                                 epilog=f"""
+ This script only lookup new patch versions relative to those already existing
+ in the data in {CHECKSUMS_YML},
+ which means it won't add new major or minor versions.
+ In order to add one of these, edit {CHECKSUMS_YML}
+ by hand, adding the new versions with a patch number of 0 (or the lowest relevant patch versions)
+ ; then run this script.
+
+ Note that the script will try to add the versions on all
+ architecture keys already present for a given download target.
+
+ The '0' value for a version hash is treated as a missing hash, so the script will try to download it again.
+ To notify a non-existing version (yanked, or upstream does not have monotonically increasing versions numbers),
+ use the special value 'NONE'.
+
+ EXAMPLES:
+
+ crictl_checksums:
+      ...
+    amd64:
++     v1.30.0: 0
+      v1.29.0: d16a1ffb3938f5a19d5c8f45d363bd091ef89c0bc4d44ad16b933eede32fdcbb
+      v1.28.0: 8dc78774f7cbeaf787994d386eec663f0a3cf24de1ea4893598096cb39ef2508"""
+
+)
 parser.add_argument('binaries', nargs='*', choices=downloads.keys())
 
 args = parser.parse_args()

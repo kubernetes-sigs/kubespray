@@ -24,6 +24,7 @@ spec:
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      priorityClassName: system-node-critical
       nodeSelector:
         kubernetes.io/arch: {{ image_arch }}
 {% if container_manager_types | length >= 2 %}
@@ -32,16 +33,34 @@ spec:
       tolerations:
       - operator: Exists
       serviceAccountName: multus
+      initContainers:
+      - name: install-multus-binary
+        image: {{ multus_image_repo }}:{{ multus_image_tag }}
+        command: ["/install_multus"]
+        args:
+        - "--type"
+        - "thin"
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "15Mi"
+        securityContext:
+          privileged: true
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - name: cnibin
+          mountPath: {{ multus_cni_bin_dir }}
+          mountPropagation: Bidirectional
       containers:
       - name: kube-multus
         image: {{ multus_image_repo }}:{{ multus_image_tag }}
-        command: ["/entrypoint.sh"]
+        command: ["/thin_entrypoint"]
         args:
         - "--cni-conf-dir={{ multus_cni_conf_dir }}"
+        - "--multus-autoconfig-dir={{ multus_cni_conf_dir }}"
         - "--cni-bin-dir={{ multus_cni_bin_dir }}"
         - "--multus-conf-file={{ multus_conf_file }}"
         - "--multus-kubeconfig-file-host={{ multus_kubeconfig_file_host }}"
-        - "--cni-version={{ multus_cni_version }}"
         resources:
           requests:
             cpu: "100m"
@@ -55,6 +74,7 @@ spec:
           capabilities:
             add: ["SYS_ADMIN"]
 {% endif %}
+        terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
 {% if container_manager == 'crio' %}
         - name: run

@@ -204,7 +204,7 @@ Vagrant.configure("2") do |config|
         node.vm.network "forwarded_port", guest: guest, host: host, auto_correct: true
       end
 
-      if ["rhel7","rhel8"].include? $os
+      if ["rhel8"].include? $os
         # Vagrant synced_folder rsync options cannot be used for RHEL boxes as Rsync package cannot
         # be installed until the host is registered with a valid Red Hat support subscription
         node.vm.synced_folder ".", "/vagrant", disabled: false
@@ -252,7 +252,7 @@ Vagrant.configure("2") do |config|
       end
 
       # Disable firewalld on oraclelinux/redhat vms
-      if ["oraclelinux","oraclelinux8","rhel7","rhel8","rockylinux8"].include? $os
+      if ["oraclelinux","oraclelinux8", "rhel8","rockylinux8"].include? $os
         node.vm.provision "shell", inline: "systemctl stop firewalld; systemctl disable firewalld"
       end
 

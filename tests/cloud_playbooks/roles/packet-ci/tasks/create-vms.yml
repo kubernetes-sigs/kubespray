@@ -21,18 +21,16 @@
   loop: "{{ vms_files }}"
 
 - name: Wait for vms to have ipaddress assigned
-  shell: "set -o pipefail && kubectl get vmis -n {{ test_name }} instance-{{ vm_id }} -o json | jq '.status.interfaces[].ipAddress' | tr -d '\"'"
-  args:
-    executable: /bin/bash
-  changed_when: false
-  register: vm_ips
-  loop: "{{ range(1, vm_count | int + 1, 1) | list }}"
-  loop_control:
-    index_var: vm_id
-  retries: 20
-  delay: 15
-  until:
-    - vm_ips.stdout | ansible.utils.ipaddr
+  kubernetes.core.k8s_info:
+    api_version: kubevirt.io/v1
+    kind: VirtualMachine
+    label_selectors:
+      - "ci_job_id={{ ci_job_id }}"
+    namespace: "{{ pod_namespace }}"
+    wait: true
+    wait_condition:
+      type: Ready
+    wait_timeout: 300
 
 - name: "Create inventory for CI test in file /tmp/{{ test_name }}/inventory"
   template:

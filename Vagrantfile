@@ -55,6 +55,8 @@ $subnet ||= "172.18.8"
 $subnet_ipv6 ||= "fd3c:b398:0698:0756"
 $os ||= "ubuntu2004"
 $network_plugin ||= "flannel"
+$inventory ||= "inventory/sample"
+$inventories ||= [$inventory]
 # Setting multi_networking to true will install Multus: https://github.com/k8snetworkplumbingwg/multus-cni
 $multi_networking ||= "False"
 $download_run_once ||= "True"
@@ -93,19 +95,6 @@ if ! SUPPORTED_OS.key?($os)
 end
 
 $box = SUPPORTED_OS[$os][:box]
-# if $inventory is not set, try to use example
-$inventory = "inventory/sample" if ! $inventory
-$inventory = File.absolute_path($inventory, File.dirname(__FILE__))
-
-# if $inventory has a hosts.ini file use it, otherwise copy over
-# vars etc to where vagrant expects dynamic inventory to be
-if ! File.exist?(File.join(File.dirname($inventory), "hosts.ini"))
-  $vagrant_ansible = File.join(File.absolute_path($vagrant_dir), "provisioners", "ansible")
-  FileUtils.mkdir_p($vagrant_ansible) if ! File.exist?($vagrant_ansible)
-  $vagrant_inventory = File.join($vagrant_ansible,"inventory")
-  FileUtils.rm_f($vagrant_inventory)
-  FileUtils.ln_s($inventory, $vagrant_inventory)
-end
 
 if Vagrant.has_plugin?("vagrant-proxyconf")
   $no_proxy = ENV['NO_PROXY'] || ENV['no_proxy'] || "127.0.0.1,localhost"
@@ -286,14 +275,13 @@ Vagrant.configure("2") do |config|
           ansible.playbook = $playbook
           ansible.compatibility_mode = "2.0"
           ansible.verbose = $ansible_verbosity
-          $ansible_inventory_path = File.join( $inventory, "hosts.ini")
-          if File.exist?($ansible_inventory_path)
-            ansible.inventory_path = $ansible_inventory_path
-          end
           ansible.become = true
           ansible.limit = "all,localhost"
           ansible.host_key_checking = false
-          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
+          ansible.raw_arguments = ["--forks=#{$num_instances}",
+                                   "--flush-cache",
+                                   "-e ansible_become_pass=vagrant"] +
+                                   $inventories.map {|inv| ["-i", inv]}.flatten
           ansible.host_vars = host_vars
           ansible.extra_vars = $extra_vars
           if $ansible_tags != ""

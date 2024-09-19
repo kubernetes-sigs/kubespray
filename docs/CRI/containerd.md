@@ -36,9 +36,10 @@ containerd_registries_mirrors:
 ```
 
 containerd falls back to `https://{{ prefix }}` when none of the mirrors have the image.
-This can be changed with the [`server` field](https://github.com/containerd/containerd/blob/main/docs/hosts.md#server-field):
+This can be changed with the [`server` field](https://github.com/containerd/containerd/blob/main/docs/hosts.md#server-field) (this requires `containerd_use_config_path: true`):
 
 ```yaml
+containerd_use_config_path: true
 containerd_registries_mirrors:
   - prefix: docker.io
     mirrors:

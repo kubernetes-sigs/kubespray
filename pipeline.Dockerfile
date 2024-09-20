@@ -60,4 +60,4 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
     && vagrant plugin install vagrant-libvirt \
     # Install Kubernetes collections
     && pip install --no-compile --no-cache-dir kubernetes \
-    && ansible-galaxy collection install kubernetes.core
+    && ansible-galaxy collection install kubernetes.core kubevirt.core

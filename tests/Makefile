@@ -1,5 +1,3 @@
-INVENTORY=$(PWD)/../inventory/sample/${CI_JOB_NAME}-${BUILD_NUMBER}.ini
-
 init-packet:
 	mkdir -p $(HOME)/.ssh
 	echo $(PACKET_VM_SSH_PRIVATE_KEY) | base64 -d > $(HOME)/.ssh/id_rsa
@@ -18,14 +16,13 @@ create-packet: init-packet
 	-e test_id=$(TEST_ID) \
 	-e branch="$(CI_COMMIT_BRANCH)" \
 	-e pipeline_id="$(CI_PIPELINE_ID)" \
-	-e inventory_path=$(INVENTORY)
+	-e inventory_path=$(INVENTORY_DIR)
 
 delete-packet: ;
 
 create-vagrant:
 	vagrant up
-	cp  $(CI_PROJECT_DIR)/.vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory $(INVENTORY)
-
+	cp $(CI_PROJECT_DIR)/.vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory $(INVENTORY_DIR)
 
 delete-vagrant:
 	vagrant destroy -f

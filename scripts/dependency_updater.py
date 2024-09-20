@@ -75,7 +75,7 @@ def get_current_version(component, component_data):
     placeholder_version = [kube_major_version if item == 'kube_major_version' else item for item in component_data['placeholder_version']]
     if component.startswith('kube'):
         current_version = main_yaml_data
-    else:    
+    else:
         current_version = download_yaml_data
     for key in placeholder_version:
         current_version = current_version.get(key)
@@ -83,7 +83,7 @@ def get_current_version(component, component_data):
 
 def get_release(component, component_data, session, number_of_releases=10):
     release = load_from_cache(component)
-    if not release:    
+    if not release:
         try:
             query = """
                 query {
@@ -231,10 +231,10 @@ def update_yaml_checksum(component_data, checksums, version):
     placeholder_checksum = component_data['placeholder_checksum']
     checksum_structure = component_data['checksum_structure']
     current = checksum_yaml_data[placeholder_checksum]
-    if checksum_structure == 'simple': 
+    if checksum_structure == 'simple':
         # Simple structure (placeholder_checksum -> version -> checksum)
         current[(version)] = checksums[version]
-    elif checksum_structure == 'os_arch':  
+    elif checksum_structure == 'os_arch':
         # OS structure (placeholder_checksum -> os -> arch -> version -> checksum)
         for os_name, arch_dict in checksums.items():
             os_current = current.setdefault(os_name, {})
@@ -266,7 +266,7 @@ def update_yaml_version(component, component_data, version):
     placeholder_version = component_data['placeholder_version']
     resolved_version = resolve_kube_dependent_component_version(component, component_data, version)
     updated_placeholder = [
-        resolved_version if item == 'kube_major_version' else item 
+        resolved_version if item == 'kube_major_version' else item
         for item in placeholder_version
     ]
     current = download_yaml_data
@@ -326,7 +326,7 @@ def save_yaml_file(yaml_file, data):
     except Exception as e:
         logging.error(f'Failed to save {yaml_file}: {e}')
         return False
-    
+
 def open_readme(path_readme):
     try:
         with open(path_readme, 'r') as f:
@@ -342,7 +342,7 @@ def save_readme(path_readme):
     except Exception as e:
         logging.error(f'Failed to save {path_readme}: {e}')
         return False
-    
+
 def process_version_string(component, version):
     if component in ['youki', 'nerdctl', 'cri_dockerd', 'containerd']:
         if version.startswith('v'):
@@ -380,13 +380,13 @@ def process_component(component, component_data, session):
             latest_version = release.get('name')
     else:
         release = get_release(component, component_data, session)
-        latest_version = release.get('tagName')    
+        latest_version = release.get('tagName')
 
     if not latest_version:
         logging.info(f'Stop processing component {component}, latest version unknown.')
         return
-    
-    
+
+
     latest_version = process_version_string(component, latest_version)
 
     if current_version == latest_version:
@@ -396,7 +396,7 @@ def process_component(component, component_data, session):
             return
     else:
         logging.info(f'Component {component} version discrepancy, current={current_version}, latest={latest_version}')
-    
+
     if args.ci_check:
         release['component'] = component
         release['owner'] = component_data['owner']
@@ -409,7 +409,7 @@ def process_component(component, component_data, session):
                 'release' : release # needed for generate_pr_body
             }
         return
-    
+
     checksums = get_checksums(component, component_data, latest_version, session)
     update_yaml_checksum(component_data, checksums, latest_version)
     if component not in ['kubeadm', 'kubectl', 'kubelet']: # kubernetes dependent components
@@ -466,7 +466,7 @@ def main(loglevel, component, max_workers):
 
     if args.ci_check:
         save_json_file(path_version_diff, version_diff)
-    
+
 
     save_yaml_file(path_checksum, checksum_yaml_data)
     save_yaml_file(path_download, download_yaml_data)
@@ -480,7 +480,7 @@ if __name__ == '__main__':
     parser.add_argument('--max-workers', type=int, default=4, help='Maximum number of concurrent workers, use with caution(sometimes less is more)')
     parser.add_argument('--skip-checksum', action='store_true', help='Skip checksum if the current version is up to date')
     parser.add_argument('--ci-check', action='store_true', help='Check versions, store discrepancies in version_diff.json')
-    
+
 
     args = parser.parse_args()
 

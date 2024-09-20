@@ -16,7 +16,7 @@ def get_commits(tag, release, number_of_commits=5):
     owner = release['owner']
     repo = release['repo']
     repo_url = f'https://github.com/{owner}/{repo}'
-    
+
     query = """
     {
         repository(owner: "%s", name: "%s") {
@@ -70,7 +70,7 @@ def get_commits(tag, release, number_of_commits=5):
             else:
                 # print('No commit history found.')
                 return None
-            
+
             pr_commits = '\n<details>\n<summary>Commits</summary>\n\n'
             for commit in commits:
                 node = commit['node']
@@ -99,11 +99,11 @@ def link_pull_requests(input, repo_url):
 
 def format_description(description, length=20):
     lines = description.splitlines()
-    
+
     if len(lines) > length:
         first_part = '\n'.join(lines[:length])
         collapsed_part = '\n'.join(lines[length:])
-        
+
         formatted_description = f"""{first_part}
 
 <details>
@@ -129,7 +129,7 @@ def main(component):
     release = data['release']
     owner = release['owner']
     repo = release['repo']
-    
+
     if component in ['gvisor_containerd_shim','gvisor_runsc']:
         name = release.get('name')
         release_url = f'https://github.com/google/gvisor/releases/tag/{name}'
@@ -153,8 +153,8 @@ def main(component):
         pr_body = f"""
 ### {name}
 
-**Tag**: {tag_name}  
-**Published at**: {published_at}  
+**Tag**: {tag_name}
+**Published at**: {published_at}
 **URL**: [Release {tag_name}]({release_url})
 
 #### Description:
@@ -169,5 +169,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Pull Request body generator')
     parser.add_argument('--component', required=True, help='Specify the component to process')
     args = parser.parse_args()
-    
+
     main(args.component)

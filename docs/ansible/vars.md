@@ -337,6 +337,13 @@ in the form of dicts of key-value pairs of configuration parameters that will be
 * *kube_kubeadm_controller_extra_args*
 * *kube_kubeadm_scheduler_extra_args*
 
+### Kubeadm patches
+
+When extra flags are not sufficient and there is a need to further customize kubernetes components,
+[kubeadm patches](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/control-plane-flags/#patches)
+can be used.
+You should use the [`kubeadm_patches` variable](../../roles/kubernetes/kubeadm_common/defaults/main.yml) for that purpose.
+
 ## App variables
 
 * *helm_version* - Only supports v3.x. Existing v2 installs (with Tiller) will not be modified and need to be removed manually.

@@ -31,8 +31,9 @@ export ANSIBLE_REMOTE_USER=$SSH_USER
 export ANSIBLE_BECOME=true
 export ANSIBLE_BECOME_USER=root
 export ANSIBLE_CALLBACK_PLUGINS="$(python -m ara.setup.callback_plugins)"
+export ANSIBLE_INVENTORY=${CI_PROJECT_DIR}/inventory/sample/
 
-cd tests && make create-${CI_PLATFORM} -s ; cd -
+make -C tests INVENTORY_DIR=${ANSIBLE_INVENTORY} create-${CI_PLATFORM} -s
 ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml
 
 # Flatcar Container Linux needs auto update disabled

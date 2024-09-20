@@ -1,24 +1,11 @@
 ---
-- name: "Create temp dir /tmp/{{ test_name }} for CI files"
-  file:
-    path: "/tmp/{{ test_name }}"
-    state: directory
-    mode: "0755"
-
-- name: Template vm files for CI job
-  set_fact:
-    vms_files: "{{ vms_files + [lookup('ansible.builtin.template', 'vm.yml.j2') | from_yaml] }}"
-  vars:
-    vms_files: []
-  loop: "{{ range(1, vm_count | int + 1, 1) | list }}"
-  loop_control:
-    index_var: vm_id
-
 - name: Start vms for CI job
+  vars:
+    tvars:
+      kubespray_groups: "{{ item }}"
   kubernetes.core.k8s:
-    definition: "{{ item }}"
-  changed_when: false
-  loop: "{{ vms_files }}"
+    definition: "{{ lookup('template', 'vm.yml.j2', template_vars=tvars) }}"
+  loop: "{{ scenarios[mode | d('default')] }}"
 
 - name: Wait for vms to have IP addresses
   kubernetes.core.k8s_info:
@@ -34,10 +21,8 @@
   retries: 30
   delay: 10
 
-- name: "Create inventory for CI test in file /tmp/{{ test_name }}/inventory"
+- name: "Create inventory for CI tests"
   template:
-    src: "inventory.j2"
-    dest: "{{ inventory_path }}"
+    src: "inv.kubevirt.yml.j2"
+    dest: "{{ inventory_path }}/inv.kubevirt.yml"
     mode: "0644"
-  vars:
-    vms: "{{ vm_ips }}"

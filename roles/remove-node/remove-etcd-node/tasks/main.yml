@@ -6,7 +6,7 @@
   register: remove_node_ip
   when:
     - groups['kube_control_plane'] | length > 0
-    - inventory_hostname in groups['etcd']
+    - ('etcd' in group_names)
     - ip is not defined
     - access_ip is not defined
   delegate_to: "{{ groups['etcd'] | first }}"
@@ -16,14 +16,14 @@
   set_fact:
     node_ip: "{{ ip | default(access_ip | default(remove_node_ip.stdout)) | trim }}"
   when:
-    - inventory_hostname in groups['etcd']
+    - ('etcd' in group_names)
 
 - name: Make sure node_ip is set
   assert:
     that: node_ip is defined and node_ip | length > 0
     msg: "Etcd node ip is not set !"
   when:
-    - inventory_hostname in groups['etcd']
+    - ('etcd' in group_names)
 
 - name: Lookup etcd member id
   shell: "set -o pipefail && {{ bin_dir }}/etcdctl member list | grep -w {{ node_ip }} | cut -d, -f1"
@@ -42,7 +42,7 @@
     ETCDCTL_CACERT: "{{ kube_cert_dir + '/etcd/ca.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/ca.pem' }}"
     ETCDCTL_ENDPOINTS: "https://127.0.0.1:2379"
   delegate_to: "{{ groups['etcd'] | first }}"
-  when: inventory_hostname in groups['etcd']
+  when: ('etcd' in group_names)
 
 - name: Remove etcd member from cluster
   command: "{{ bin_dir }}/etcdctl member remove {{ etcd_member_id.stdout }}"
@@ -54,5 +54,5 @@
     ETCDCTL_ENDPOINTS: "https://127.0.0.1:2379"
   delegate_to: "{{ groups['etcd'] | first }}"
   when:
-    - inventory_hostname in groups['etcd']
+    - ('etcd' in group_names)
     - etcd_member_id.stdout | length > 0

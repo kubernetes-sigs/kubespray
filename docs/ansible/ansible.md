@@ -42,14 +42,6 @@ The inventory is composed of 3 groups:
 * **kube_control_plane** : list of servers where kubernetes control plane components (apiserver, scheduler, controller) will run.
 * **etcd**: list of servers to compose the etcd server. You should have at least 3 servers for failover purpose.
 
-Note: do not modify the children of _k8s_cluster_, like putting
-the _etcd_ group into the _k8s_cluster_, unless you are certain
-to do that and you have it fully contained in the latter:
-
-```ShellSession
-etcd ⊂ k8s_cluster => kube_node ∩ etcd = etcd
-```
-
 When _kube_node_ contains _etcd_, you define your etcd cluster to be as well schedulable for Kubernetes workloads.
 If you want it a standalone, make sure those groups do not intersect.
 If you want the server to act both as control-plane and node, the server must be defined
@@ -61,6 +53,9 @@ There are also two special groups:
 
 * **calico_rr** : explained for [advanced Calico networking cases](/docs/CNI/calico.md)
 * **bastion** : configure a bastion host if your nodes are not directly reachable
+
+Lastly, the **k8s_cluster** is dynamically defined as the union of **kube_node**, **kube_control_plane** and **calico_rr**.
+This is used internally and for the purpose of defining whole cluster variables (`<inventory>/group_vars/k8s_cluster/*.yml`)
 
 Below is a complete inventory example:
 
@@ -89,10 +84,6 @@ node3
 node4
 node5
 node6
-
-[k8s_cluster:children]
-kube_node
-kube_control_plane
 ```
 
 ## Group vars and overriding variables precedence

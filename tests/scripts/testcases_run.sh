@@ -15,6 +15,15 @@ else
   fi
 fi
 
+# Check out latest tag if testing upgrade
+if [ "${UPGRADE_TEST}" != "false" ]; then
+  git fetch --all && git checkout "$KUBESPRAY_VERSION"
+  # Checkout the CI vars file so it is available
+  git checkout "${CI_COMMIT_SHA}" tests/files/${CI_JOB_NAME}.yml
+  git checkout "${CI_COMMIT_SHA}" ${CI_TEST_REGISTRY_MIRROR}
+  git checkout "${CI_COMMIT_SHA}" ${CI_TEST_SETTING}
+fi
+
 # needed for ara not to complain
 export TZ=UTC
 
@@ -39,15 +48,6 @@ if [[ "$CI_JOB_NAME" =~ "opensuse" ]]; then
   ansible all -m raw -a 'netconfig update -f'
   # Auto import repo keys
   ansible all -m raw -a 'zypper --gpg-auto-import-keys refresh'
-fi
-
-# Check out latest tag if testing upgrade
-if [ "${UPGRADE_TEST}" != "false" ]; then
-  git fetch --all && git checkout "$KUBESPRAY_VERSION"
-  # Checkout the CI vars file so it is available
-  git checkout "${CI_COMMIT_SHA}" tests/files/${CI_JOB_NAME}.yml
-  git checkout "${CI_COMMIT_SHA}" ${CI_TEST_REGISTRY_MIRROR}
-  git checkout "${CI_COMMIT_SHA}" ${CI_TEST_SETTING}
 fi
 
 run_playbook () {

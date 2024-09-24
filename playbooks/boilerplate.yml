@@ -6,50 +6,29 @@
 # - to ensure we keep compatibility with old style group names
 # - to reduce inventory boilerplate (defining parent groups / empty groups)
 
-- name: Add kube-master nodes to kube_control_plane
-  hosts: kube-master
+- name: Define groups for legacy less structured inventories
+  hosts: all
   gather_facts: false
   tags: always
   tasks:
-    - name: Add nodes to kube_control_plane group
+    - name: Match needed groups by their old names or definition
+      vars:
+        group_mappings:
+          kube_control_plane:
+            - kube-master
+          kube_node:
+            - kube-node
+          calico_rr:
+            - calico-rr
+          no_floating:
+            - no-floating
+          k8s_cluster:
+            - kube_node
+            - kube_control_plane
+            - calico_rr
       group_by:
-        key: 'kube_control_plane'
-
-- name: Add kube-node nodes to kube_node
-  hosts: kube-node
-  gather_facts: false
-  tags: always
-  tasks:
-    - name: Add nodes to kube_node group
-      group_by:
-        key: 'kube_node'
-
-- name: Add calico-rr nodes to calico_rr
-  hosts: calico-rr
-  gather_facts: false
-  tags: always
-  tasks:
-    - name: Add nodes to calico_rr group
-      group_by:
-        key: 'calico_rr'
-
-- name: Define k8s_cluster group
-  hosts: kube_node:kube_control_plane:calico_rr
-  gather_facts: false
-  tags: always
-  tasks:
-    - name: Add nodes to k8s_cluster group
-      group_by:
-        key: 'k8s_cluster'
-
-- name: Add no-floating nodes to no_floating
-  hosts: no-floating
-  gather_facts: false
-  tags: always
-  tasks:
-    - name: Add nodes to no-floating group
-      group_by:
-        key: 'no_floating'
+        key: "{{ (group_names | intersect(item.value) | length > 0) | ternary(item.key, '_all') }}"
+      loop: "{{ group_mappings | dict2items }}"
 
 - name: Install bastion ssh config
   hosts: bastion[0]

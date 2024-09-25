@@ -16,18 +16,37 @@
     - download
     - upload
 
-# The image_info_command depends on the Container Runtime and will output something like the following:
-# {"Digest":"sha256:847423221ed040798e47df36450edce5581ed642cd087ccb210532764da38b23","Repository":"quay.io/coreos/etcd","Tag":"v3.5.12"}
-# {"Digest":"sha256:34fc87c4a60c0b3ba3b3608871f4494de8072c02808a4151953068f2d7c87743","Repository":"flannel/flannel","Tag":"latest"}
-- name: Download | Generate a list of information about the images on a node  # noqa command-instead-of-shell - image_info_command for crio contains a pipe, therefore requiring shell
-  shell: "{{ image_info_command }}"
-  register: node_images
-  changed_when: false
-  check_mode: false
+- name: Download | Get list of images on the node
+  when:
+    - not (download_always_pull or skip_downloads) | default(false)
+  block:
+    - name: Download | Generate a list of information about the images on a node
+      command: "{{ image_info_command }}"
+      register: node_images_raw
+      changed_when: false
+      check_mode: false
+    - name: Download | Set node_images (crictl)
+      set_fact:
+        node_images: >-
+          {{
+            (node_images | default([])) +
+            [{'Digest': (item.repoDigests[0] | split('@'))[1], 'Repository': ((item.repoTags[0] | split(':'))[0] | regex_replace('^docker\.io/(library/)?', '')), 'Tag': (item.repoTags[0] | split(':'))[1]}]
+          }}
+      with_items: "{{ (node_images_raw.stdout | from_json).images }}"
+      when:
+        - image_command_tool == 'crictl'
+    # In case of nerdctl or docker, the output is already in the expected format
+    # {"Digest":"sha256:847423221ed040798e47df36450edce5581ed642cd087ccb210532764da38b23","Repository":"quay.io/coreos/etcd","Tag":"v3.5.12"}
+    # {"Digest":"sha256:34fc87c4a60c0b3ba3b3608871f4494de8072c02808a4151953068f2d7c87743","Repository":"flannel/flannel","Tag":"latest"}
+    - name: Download | Set node_images (nerdctl, docker)
+      set_fact:
+        node_images: "{{ node_images_raw.stdout_lines | map('from_json') | list }}"
+      when:
+        - image_command_tool in ['nerdctl', 'docker']
 
 - name: Show node images
   debug:
-    msg: "{{ node_images.stdout }}"
+    msg: "{{ node_images }}"
 
 - name: Download | Download files / images
   include_tasks: "{{ include_file }}"
@@ -51,10 +70,10 @@
         (
           not (
             (
-              node_images.stdout_lines | map('from_json') | selectattr('Repository', 'equalto', (item.value.repo | regex_replace('^docker\.io/(library/)?', ''))) | selectattr('Tag', 'equalto', item.value.tag) | list | length > 0
+                node_images | selectattr('Repository', 'equalto', (item.value.repo | regex_replace('^docker\.io/(library/)?', ''))) | selectattr('Tag', 'equalto', item.value.tag) | list | length > 0
             )
             or (
-              node_images.stdout_lines | map('from_json') | selectattr('Digest', 'equalto', 'sha256:' ~ (item.value.sha256 | default(None))) | list | length > 0
+              node_images | selectattr('Digest', 'equalto', 'sha256:' ~ (item.value.sha256 | default(None))) | list | length > 0
             )
           )
           or download_always_pull

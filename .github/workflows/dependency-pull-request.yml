@@ -1,4 +1,5 @@
 name: Dependency create bump PR
+run-name: Create bump PR for ${{ inputs.component }} from ${{ inputs.current_version }} to ${{ inputs.latest_version }}
 
 on:
   workflow_dispatch:
@@ -38,7 +39,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/dependency_updater.py --ci-check --component ${{ github.event.inputs.component }}
 
-      - name: Update component version
+      - name: Update component versions and checksums
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/dependency_updater.py --component ${{ github.event.inputs.component }}
@@ -55,10 +56,13 @@ jobs:
           echo "$pr_body" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Cleanup cache and version_diff.json
+        run: rm -r cache/ version_diff.json
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
-          branch: "dependency-${{ github.event.inputs.component }}-${{ github.event.inputs.latest_version }}"
+          branch: "update-dependency-${{ github.event.inputs.component }}"
           commit-message: "Bump ${{ github.event.inputs.component }} from ${{ github.event.inputs.current_version }} to ${{ github.event.inputs.latest_version }}"
           title: "Bump ${{ github.event.inputs.component }} from ${{ github.event.inputs.current_version }} to ${{ github.event.inputs.latest_version }}"
           body: ${{ steps.generate_pr_body.outputs.pr_body }}

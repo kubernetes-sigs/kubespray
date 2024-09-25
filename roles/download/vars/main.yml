@@ -4,7 +4,37 @@ docker_image_info_command: "{{ docker_bin_dir }}/docker images --format='{\"Dige
 nerdctl_image_info_command: "{{ bin_dir }}/nerdctl images --format='{\"Digest\":\"{{ '{{' }}.Digest{{ '}}' }}\",\"Repository\":\"{{ '{{' }}.Repository{{ '}}' }}\",\"Tag\":\"{{ '{{' }}.Tag{{ '}}' }}\"}'"
 # Using the ctr instead of nerdctl to workdaround the https://github.com/kubernetes-sigs/kubespray/issues/10670
 nerdctl_image_pull_command: "{{ bin_dir }}/ctr -n k8s.io images pull{% if containerd_registries_mirrors is defined %} --hosts-dir {{ containerd_cfg_dir }}/certs.d{%- endif -%}"
-crictl_image_info_command: "{{ bin_dir }}/crictl images --output json | jq -cMr '.images[] | {Digest: (.repoDigests[0] | split(\"@\") | .[1]), Repository: (.repoTags[0] | split(\":\") | .[0] | gsub(\"^docker.io/\"; \"\") | gsub(\"^library/\"; \"\")), Tag: (.repoTags[0] | split(\":\") | .[1])}'"
+crictl_image_info_command: |
+  crictl images --output json | awk '
+  BEGIN {
+      RS = "{";
+      FS = ","
+  }
+  {
+      for (i = 1; i <= NF; i++) {
+          if ($i ~ /repoDigests/) {
+              split($i, digest, /@/);
+              gsub(/"/, "", digest[2]);
+              gsub(/[ \n]/, "", digest[2]);
+          }
+          if ($i ~ /repoTags/) {
+              split($i, tag, /:/);
+              gsub(/"/, "", tag[2]);
+              gsub(/"/, "", tag[3]);
+              gsub(/^ \[/, "", tag[2]);
+              gsub(/^ \[/, "", tag[3]);
+              gsub(/\]$/, "", tag[2]);
+              gsub(/\]$/, "", tag[3]);
+              gsub(/[ \n]/, "", tag[2]);
+              gsub(/[ \n]/, "", tag[3]);
+              gsub(/^docker.io\//, "", tag[2]);
+              gsub(/^library\//, "", tag[2]);
+          }
+      }
+      if (digest[2] != "" && tag[1] != "" && tag[2] != "") {
+          print "{\"Digest\":\"" digest[2] "\",\"Repository\":\"" tag[2] "\",\"Tag\":\"" tag[3] "\"}"
+      }
+  }'
 crictl_image_pull_command: "{{ bin_dir }}/crictl pull"
 
 image_command_tool: "{%- if container_manager == 'containerd' -%}nerdctl{%- elif container_manager == 'crio' -%}crictl{%- else -%}{{ container_manager }}{%- endif -%}"

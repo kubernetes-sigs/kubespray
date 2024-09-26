@@ -174,8 +174,6 @@ The following tags are defined in playbooks:
 | init                           | Windows kubernetes init nodes                         |
 | iptables                       | Flush and clear iptable when resetting                |
 | k8s-pre-upgrade                | Upgrading K8s cluster                                 |
-| k8s-secrets                    | Configuring K8s certs/keys                            |
-| k8s-gen-tokens                 | Configuring K8s tokens                                |
 | kata-containers                | Configuring kata-containers runtime                   |
 | krew                           | Install and manage krew                               |
 | kubeadm                        | Roles linked to kubeadm tasks                         |

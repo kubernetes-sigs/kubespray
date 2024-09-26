@@ -392,7 +392,7 @@ ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=etcd --limi
 Upgrade kubelet:
 
 ```ShellSession
-ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=node --skip-tags=k8s-gen-certs,k8s-gen-tokens
+ansible-playbook -b -i inventory/sample/hosts.ini cluster.yml --tags=node --skip-tags=k8s-gen-certs
 ```
 
 Upgrade Kubernetes master components:

@@ -258,7 +258,8 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`bastion_fips` | A list of floating IPs that you have already pre-allocated; they will be attached to bastion node instead of creating new random floating IPs. |
 |`external_net` | UUID of the external network that will be routed to |
 |`flavor_k8s_master`,`flavor_k8s_node`,`flavor_etcd`, `flavor_bastion`,`flavor_gfs_node` | Flavor depends on your openstack installation, you can get available flavor IDs through `openstack flavor list` |
-|`image`,`image_gfs` | Name of the image to use in provisioning the compute resources. Should already be loaded into glance. |
+|`image`,`image_gfs`, `image_master` | Name of the image to use in provisioning the compute resources. Should already be loaded into glance. |
+|`image_uuid`,`image_gfs_uuid`, `image_master_uuid` | UUID of the image to use in provisioning the compute resources. Should already be loaded into glance. |
 |`ssh_user`,`ssh_user_gfs` | The username to ssh into the image with. This usually depends on the image you have selected |
 |`public_key_path` | Path on your local workstation to the public key file you wish to use in creating the key pairs |
 |`number_of_k8s_masters`, `number_of_k8s_masters_no_floating_ip` | Number of nodes that serve as both master and etcd. These can be provisioned with or without floating IP addresses|

@@ -420,7 +420,7 @@ def process_component(component, component_data, repo_metadata, session):
         logging.info(f'Component {component} version discrepancy, current={current_version}, latest={processed_latest_version}')
 
     # CI - write data and return
-    if args.ci_check:
+    if args.ci_check and current_version != latest_version:
         version_diff[component] = {
             # used in dependecy-check.yml workflow
             'current_version' : current_version,

@@ -3,9 +3,20 @@
   tags:
     - always
   block:
-    - name: Set fallback_ips
-      import_tasks: fallback_ips.yml
-      when: fallback_ips is not defined
+    - name: Gather ansible_default_ipv4
+      setup:
+        gather_subset: '!all,network'
+        filter: "ansible_default_ipv4"
+      when: ansible_default_ipv4 is not defined
+      ignore_unreachable: true
+      # Set 127.0.0.1 as fallback IP if we do not have host facts for host
+      # ansible_default_ipv4 isn't what you think.
+      # https://medium.com/opsops/ansible-default-ipv4-is-not-what-you-think-edb8ab154b10
+      # TODO: discard this and update all the location relying on it in "looping on hostvars" templates
+    - name: Set fallback_ip
+      set_fact:
+        fallback_ip: "{{ ansible_default_ipv4.address | d('127.0.0.1') }}"
+      when: fallback_ip is not defined
 
     - name: Set no_proxy
       import_tasks: no_proxy.yml

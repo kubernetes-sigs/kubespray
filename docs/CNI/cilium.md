@@ -170,20 +170,40 @@ Kubespray currently supports Linux distributions with Wireguard Kernel mode on L
 
 ## Bandwidth Manager
 
-Cilium’s bandwidth manager supports the kubernetes.io/egress-bandwidth Pod annotation.
+Cilium's bandwidth manager supports the kubernetes.io/egress-bandwidth Pod annotation.
 
 Bandwidth enforcement currently does not work in combination with L7 Cilium Network Policies.
 In case they select the Pod at egress, then the bandwidth enforcement will be disabled for those Pods.
 
 Bandwidth Manager requires a v5.1.x or more recent Linux kernel.
 
-For further information, make sure to check the official [Cilium documentation.](https://docs.cilium.io/en/v1.12/gettingstarted/bandwidth-manager/)
+For further information, make sure to check the official [Cilium documentation](https://docs.cilium.io/en/latest/network/kubernetes/bandwidth-manager/)
 
 To use this function, set the following parameters
 
 ```yml
 cilium_enable_bandwidth_manager: true
 ```
+
+## Host Firewall
+
+Host Firewall enforces security policies for Kubernetes nodes. It is disable by default, since it can break the cluster connectivity.
+
+```yaml
+cilium_enable_host_firewall: true
+```
+
+For further information, check [host firewall documentation](https://docs.cilium.io/en/latest/security/host-firewall/)
+
+## Policy Audit Mode
+
+When _Policy Audit Mode_ is enabled, no network policy is enforced. This feature helps to validate the impact of host policies before enforcing them.
+
+```yaml
+cilium_policy_audit_mode: true
+```
+
+It is disable by default, and should not be enabled in production.
 
 ## Install Cilium Hubble
 

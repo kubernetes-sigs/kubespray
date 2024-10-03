@@ -2,50 +2,16 @@
 - name: Lookup node IP in kubernetes
   command: >
     {{ kubectl }} get nodes {{ node }}
-    -o jsonpath='{range .status.addresses[?(@.type=="InternalIP")]}{@.address}{"\n"}{end}'
-  register: remove_node_ip
-  when:
-    - groups['kube_control_plane'] | length > 0
-    - ('etcd' in group_names)
-    - ip is not defined
-    - access_ip is not defined
-  delegate_to: "{{ groups['etcd'] | first }}"
-  failed_when: false
-
-- name: Set node IP
-  set_fact:
-    node_ip: "{{ ip | default(access_ip | default(remove_node_ip.stdout)) | trim }}"
-  when:
-    - ('etcd' in group_names)
-
-- name: Make sure node_ip is set
-  assert:
-    that: node_ip is defined and node_ip | length > 0
-    msg: "Etcd node ip is not set !"
-  when:
-    - ('etcd' in group_names)
-
-- name: Lookup etcd member id
-  shell: "set -o pipefail && {{ bin_dir }}/etcdctl member list | grep -w {{ node_ip }} | cut -d, -f1"
-  args:
-    executable: /bin/bash
-  register: etcd_member_id
-  ignore_errors: true  # noqa ignore-errors
+    -o jsonpath-as-json='{.status.addresses[?(@.type=="InternalIP")].address}'
+  register: k8s_node_ips
   changed_when: false
-  check_mode: false
-  tags:
-    - facts
-  environment:
-    ETCDCTL_API: "3"
-    ETCDCTL_CERT: "{{ kube_cert_dir + '/etcd/server.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/admin-' + groups['etcd'] | first + '.pem' }}"
-    ETCDCTL_KEY: "{{ kube_cert_dir + '/etcd/server.key' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/admin-' + groups['etcd'] | first + '-key.pem' }}"
-    ETCDCTL_CACERT: "{{ kube_cert_dir + '/etcd/ca.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/ca.pem' }}"
-    ETCDCTL_ENDPOINTS: "https://127.0.0.1:2379"
-  delegate_to: "{{ groups['etcd'] | first }}"
-  when: ('etcd' in group_names)
+  when:
+  - groups['kube_control_plane'] | length > 0
+  - ip is not defined
+  - access_ip is not defined
+  delegate_to: "{{ groups['kube_control_plane'] | first }}"
 
 - name: Remove etcd member from cluster
-  command: "{{ bin_dir }}/etcdctl member remove {{ etcd_member_id.stdout }}"
   environment:
     ETCDCTL_API: "3"
     ETCDCTL_CERT: "{{ kube_cert_dir + '/etcd/server.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/admin-' + groups['etcd'] | first + '.pem' }}"
@@ -53,6 +19,22 @@
     ETCDCTL_CACERT: "{{ kube_cert_dir + '/etcd/ca.crt' if etcd_deployment_type == 'kubeadm' else etcd_cert_dir + '/ca.pem' }}"
     ETCDCTL_ENDPOINTS: "https://127.0.0.1:2379"
   delegate_to: "{{ groups['etcd'] | first }}"
-  when:
-    - ('etcd' in group_names)
-    - etcd_member_id.stdout | length > 0
+  block:
+  - name: Lookup members infos
+    command: "{{ bin_dir }}/etcdctl member list"
+    register: etcd_members
+    changed_when: false
+    check_mode: false
+    tags:
+    - facts
+  - name: Remove member from cluster
+    vars:
+      node_ip: "{{ ip if ip is defined else (access_ip if access_ip is defined else (k8s_node_ips.stdout | from_json)[0]) }}"
+    command:
+      argv:
+      - "{{ bin_dir }}/etcdctl"
+      - member
+      - remove
+      - "{{ ((etcd_members.stdout_lines | select('contains', '//' + node_ip + ':'))[0] | split(','))[0] }}"
+    register: etcd_removal_output
+    changed_when: "'Removed member' in etcd_removal_output.stdout"

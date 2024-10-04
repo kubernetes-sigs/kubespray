@@ -20,6 +20,10 @@ variable "username" {}
 
 variable "private_network_cidr" {}
 
+variable "dns_servers" {}
+
+variable "use_public_ips" {}
+
 variable "machines" {
   description = "Cluster machines"
   type = map(object({
@@ -29,6 +33,8 @@ variable "machines" {
     mem       = string
     disk_size = number
     server_group : string
+    force_public_ip : optional(bool, false)
+    dns_servers : optional(set(string))
     additional_disks = map(object({
       size = number
       tier = string
@@ -52,6 +58,13 @@ variable "master_allowed_remote_ips" {
 }
 
 variable "k8s_allowed_remote_ips" {
+  type = list(object({
+    start_address = string
+    end_address   = string
+  }))
+}
+
+variable "bastion_allowed_remote_ips" {
   type = list(object({
     start_address = string
     end_address   = string

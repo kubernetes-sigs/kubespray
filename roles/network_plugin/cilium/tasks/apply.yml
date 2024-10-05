@@ -31,3 +31,77 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0] and not item is skipped
     - cilium_enable_hubble and cilium_hubble_install
+
+- name: Cilium | Wait for CiliumLoadBalancerIPPool CRD to be present
+  command: "{{ kubectl }} wait --for condition=established --timeout=60s crd/ciliumloadbalancerippools.cilium.io"
+  register: cillium_lbippool_crd_ready
+  retries: "{{ cilium_rolling_restart_wait_retries_count | int }}"
+  delay: "{{ cilium_rolling_restart_wait_retries_delay_seconds | int }}"
+  # failed_when: false
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_loadbalancer_ip_pools is defined and (cilium_loadbalancer_ip_pools|length>0)
+
+- name: Cilium | Create CiliumLoadBalancerIPPool manifests
+  template:
+    src: "{{ item.name }}/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    mode: "0644"
+  with_items:
+    - {name: cilium, file: clbipp.yml, type: CiliumLoadBalancerIPPool}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_lbippool_crd_ready is defined and cillium_lbippool_crd_ready.rc is defined and cillium_lbippool_crd_ready.rc == 0
+    - cilium_loadbalancer_ip_pools is defined and (cilium_loadbalancer_ip_pools|length>0)
+
+- name: Cilium | Apply CiliumLoadBalancerIPPool from cilium_loadbalancer_ip_pools
+  kube:
+    name: "{{ item.name }}"
+    # namespace: "kube-system"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    state: "latest"
+  loop:
+    - {name: cilium, file: clbipp.yml, type: CiliumLoadBalancerIPPool}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_lbippool_crd_ready is defined and cillium_lbippool_crd_ready.rc is defined and cillium_lbippool_crd_ready.rc == 0
+    - cilium_loadbalancer_ip_pools is defined and (cilium_loadbalancer_ip_pools|length>0)
+
+- name: Cilium | Wait for CiliumBGPPeeringPolicy CRD to be present
+  command: "{{ kubectl }} wait --for condition=established --timeout=60s crd/ciliumbgppeeringpolicies.cilium.io"
+  register: cillium_lbippool_crd_ready
+  retries: "{{ cilium_rolling_restart_wait_retries_count | int }}"
+  delay: "{{ cilium_rolling_restart_wait_retries_delay_seconds | int }}"
+  # failed_when: false
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_bgp_peering_policies is defined and (cilium_bgp_peering_policies|length>0)
+
+- name: Cilium | Create CiliumBGPPeeringPolicy manifests
+  template:
+    src: "{{ item.name }}/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    mode: "0644"
+  with_items:
+    - {name: cilium, file: cbgppp.yml, type: CiliumBGPPeeringPolicy}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_lbippool_crd_ready is defined and cillium_lbippool_crd_ready.rc is defined and cillium_lbippool_crd_ready.rc == 0
+    - cilium_bgp_peering_policies is defined and (cilium_bgp_peering_policies|length>0)
+
+- name: Cilium | Apply CiliumBGPPeeringPolicy from cilium_bgp_peering_policies
+  kube:
+    name: "{{ item.name }}"
+    # namespace: "kube-system"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    state: "latest"
+  loop:
+    - {name: cilium, file: cbgppp.yml, type: CiliumBGPPeeringPolicy}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_lbippool_crd_ready is defined and cillium_lbippool_crd_ready.rc is defined and cillium_lbippool_crd_ready.rc == 0
+    - cilium_bgp_peering_policies is defined and (cilium_bgp_peering_policies|length>0)

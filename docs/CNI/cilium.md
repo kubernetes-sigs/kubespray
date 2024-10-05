@@ -45,6 +45,50 @@ cilium_pool_mask_size Specifies the size allocated to node.ipam.podCIDRs from cl
 cilium_pool_mask_size_ipv6: "120"
 ```
 
+### IP Load Balancer Pools
+
+Cilium's IP Load Balancer Pools can be configured with the `cilium_loadbalancer_ip_pools` variable:
+
+```yml
+cilium_loadbalancer_ip_pools:
+  - name: "blue-pool"
+    cidrs:
+      - "10.0.10.0/24"
+```
+
+For further information, check [LB IPAM documentation](https://docs.cilium.io/en/stable/network/lb-ipam/)
+
+### BGP Control Plane
+
+Cilium's BGP Control Plane can be enabled by setting `cilium_enable_bgp_control_plane` to `true`.:
+
+```yml
+cilium_enable_bgp_control_plane: true
+```
+
+For further information, check [BGP Peering Policy documentation](https://docs.cilium.io/en/latest/network/bgp-control-plane/bgp-control-plane-v1/)
+
+### BGP Peering Policies
+
+Cilium's BGP Peering Policies can be configured with the `cilium_bgp_peering_policies` variable:
+
+```yml
+cilium_bgp_peering_policies:
+  - name: "01-bgp-peering-policy"
+    spec:
+      virtualRouters:
+        - localASN: 64512
+          exportPodCIDR: false
+          neighbors:
+          - peerAddress: '10.47.1.1/24'
+            peerASN: 64512
+          serviceSelector:
+              matchExpressions:
+              - {key: somekey, operator: NotIn, values: ['never-used-value']}
+```
+
+For further information, check [BGP Peering Policy documentation](https://docs.cilium.io/en/latest/network/bgp-control-plane/bgp-control-plane-v1/#bgp-peering-policy-legacy)
+
 ## Kube-proxy replacement with Cilium
 
 Cilium can run without kube-proxy by setting `cilium_kube_proxy_replacement`

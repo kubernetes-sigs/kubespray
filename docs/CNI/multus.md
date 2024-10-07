@@ -17,6 +17,12 @@ kube_network_plugin_multus: true
 
 will install Multus and Calico and configure Multus to use Calico as the primary network plugin.
 
+Namespace isolation enables a mode where Multus only allows pods to access custom resources (the `NetworkAttachmentDefinitions`) within the namespace where that pod resides. To enable namespace isolation:
+
+```yml
+multus_namespace_isolation: true
+```
+
 ### Cilium compatibility
 
 If you are using `cilium` as the primary CNI you'll have to set `cilium_cni_exclusive` to `false` to avoid cillium reverting multus config.

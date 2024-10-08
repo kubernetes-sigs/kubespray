@@ -73,18 +73,12 @@ oom_score = {{ containerd_oom_score }}
       config_path = "{{ containerd_cfg_dir }}/certs.d"
 {% else %}
       [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-{% set insecure_registries_addr = [] %}
 {% for registry in containerd_registries_mirrors %}
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ registry.prefix }}"]
-{% set endpoint = [] %}
-{% for mirror in registry.mirrors %}
-{% if endpoint.append(mirror.host) %}{% endif %}
-{% if mirror.skip_verify is defined and mirror.skip_verify|bool %}{% if insecure_registries_addr.append(mirror.host | urlsplit('netloc')) %}{% endif %}{% endif %}
+          endpoint = {{ registry.mirrors | map(attribute='host') | unique | to_json }}
 {% endfor %}
-          endpoint = ["{{ ( endpoint | unique ) | join('","') }}"]
-{% endfor %}
-{% for addr in insecure_registries_addr | unique %}
-        [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ addr }}".tls]
+{% for mirror in containerd_registries_mirrors | map(attribute='mirrors') | flatten | selectattr('skip_verify', 'defined') | selectattr('skip_verify') | unique %}
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ mirror.host | urlsplit('netloc') }}".tls]
           insecure_skip_verify = true
 {% endfor %}
 {% endif %}

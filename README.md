@@ -160,7 +160,7 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.29.7
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.29.9
   - [etcd](https://github.com/etcd-io/etcd) v3.5.16
   - [docker](https://www.docker.com/) v26.1
   - [containerd](https://containerd.io/) v1.7.22
@@ -181,7 +181,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.11.2
   - [krew](https://github.com/kubernetes-sigs/krew) v0.4.4
   - [argocd](https://argoproj.github.io/) v2.11.0
-  - [helm](https://helm.sh/) v3.14.2
+  - [helm](https://helm.sh/) v3.14.4
   - [metallb](https://metallb.universe.tf/)  v0.13.9
   - [registry](https://github.com/distribution/distribution) v2.8.1
 - Storage Plugin

@@ -816,7 +816,7 @@ resource "upcloud_router" "router" {
 resource "upcloud_gateway" "gateway" {
   for_each = var.router_enable ? var.gateways : {}
   name = "${local.resource-prefix}${each.key}-gateway"
-  zone = var.zone
+  zone = var.private_cloud ? var.public_zone : var.zone
 
   features = each.value.features
   plan = each.value.plan

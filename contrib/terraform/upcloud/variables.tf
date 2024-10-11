@@ -155,11 +155,6 @@ variable "loadbalancer_plan" {
   default     = "development"
 }
 
-variable "loadbalancer_proxy_protocol" {
-  type    = bool
-  default = false
-}
-
 variable "loadbalancer_legacy_network" {
   description = "If the loadbalancer should use the deprecated network field instead of networks blocks. You probably want to have this set to false"
 
@@ -171,6 +166,7 @@ variable "loadbalancers" {
   description = "Load balancers"
 
   type = map(object({
+    proxy_protocol          = bool
     port                    = number
     target_port             = number
     allow_internal_frontend = optional(bool, false)

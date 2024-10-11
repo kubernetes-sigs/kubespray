@@ -107,10 +107,6 @@ variable "loadbalancer_plan" {
   type = string
 }
 
-variable "loadbalancer_outbound_proxy_protocol" {
-  type = string
-}
-
 variable "loadbalancer_legacy_network" {
   type = bool
   default = false
@@ -120,6 +116,7 @@ variable "loadbalancers" {
   description = "Load balancers"
 
   type = map(object({
+    proxy_protocol          = bool
     port                    = number
     target_port             = number
     allow_internal_frontend = optional(bool)

@@ -16,24 +16,38 @@
     - download
     - upload
 
-- name: Download | Generate a list of information about the images on a node
-  command: "{{ image_info_command }}"
-  register: node_images_raw
+- name: Download | Check if image command tool exists
+  command: "{{ image_command_tool }} --version"
+  register: image_command_tool_exists
   changed_when: false
-  check_mode: false
+  failed_when: false
+
+- name: Download | Check if image command tool exists
+  stat:
+    path: "{{ bin_dir }}/{{ image_command_tool }}"
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: image_command_tool_exists
+  changed_when: false
+
+- name: Download | Process and download required files and images
   when:
     - not (download_always_pull or skip_downloads) | default(false)
-
-- name: Download | Set node_images
-  include_tasks: "{{ include_file }}"
-  vars:
-    include_file: "set_node_facts{% if image_command_tool == 'crictl' %}_crictl{% else %}{% endif %}.yml"
-  when:
-    - not (download_always_pull or skip_downloads) | default(false)
-
-- name: Show node images
-  debug:
-    msg: "{{ node_images }}"
+    - image_command_tool_exists.stat.exists
+  block:
+    - name: Download | Get image list from node
+      command: "{{ image_info_command }}"
+      register: node_images_raw
+      changed_when: false
+      check_mode: false
+    - name: Download | Set node_images
+      include_tasks: "{{ include_file }}"
+      vars:
+        include_file: "set_node_facts{% if image_command_tool == 'crictl' %}_crictl{% else %}{% endif %}.yml"
+    - name: Download | Show node images
+      debug:
+        msg: "{{ node_images }}"
 
 - name: Download | Download files / images
   include_tasks: "{{ include_file }}"
@@ -68,6 +82,6 @@
       )
     - (download_run_once and inventory_hostname == download_delegate) or (group_names | intersect(download.groups) | length)
 
-- name: Show downloads
+- name: Download | Show downloads
   debug:
     msg: "{{ downloads }}"

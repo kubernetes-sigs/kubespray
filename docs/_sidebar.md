@@ -15,7 +15,7 @@
   * [Ansible](/docs/ansible/ansible.md)
   * [Ansible Collection](/docs/ansible/ansible_collection.md)
   * [Vars](/docs/ansible/vars.md)
-* Cloud Providers
+* Cloud Providers (deprecated)
   * [Aws](/docs/cloud_providers/aws.md)
   * [Azure](/docs/cloud_providers/azure.md)
   * [Cloud](/docs/cloud_providers/cloud.md)

@@ -51,8 +51,8 @@ variable "machines" {
   type = map(object({
     node_type = string
     plan      = string
-    cpu       = string
-    mem       = string
+    cpu       = optional(number)
+    mem       = optional(number)
     disk_size = number
     server_group : string
     force_public_ip : optional(bool, false)

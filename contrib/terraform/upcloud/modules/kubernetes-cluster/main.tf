@@ -130,8 +130,8 @@ resource "upcloud_server" "master" {
 
   hostname     = "${local.resource-prefix}${each.key}"
   plan         = each.value.plan
-  cpu          = each.value.plan == null ? null : each.value.cpu
-  mem          = each.value.plan == null ? null : each.value.mem
+  cpu          = each.value.cpu
+  mem          = each.value.mem
   zone         = var.zone
   server_group = each.value.server_group == null ? null : upcloud_server_group.server_groups[each.value.server_group].id
 
@@ -194,8 +194,8 @@ resource "upcloud_server" "worker" {
 
   hostname     = "${local.resource-prefix}${each.key}"
   plan         = each.value.plan
-  cpu          = each.value.plan == null ? null : each.value.cpu
-  mem          = each.value.plan == null ? null : each.value.mem
+  cpu          = each.value.cpu
+  mem          = each.value.mem
   zone         = var.zone
   server_group = each.value.server_group == null ? null : upcloud_server_group.server_groups[each.value.server_group].id
 
@@ -259,8 +259,8 @@ resource "upcloud_server" "bastion" {
 
   hostname     = "${local.resource-prefix}${each.key}"
   plan         = each.value.plan
-  cpu          = each.value.plan == null ? null : each.value.cpu
-  mem          = each.value.plan == null ? null : each.value.mem
+  cpu          = each.value.cpu
+  mem          = each.value.mem
   zone         = var.zone
   server_group = each.value.server_group == null ? null : upcloud_server_group.server_groups[each.value.server_group].id
 

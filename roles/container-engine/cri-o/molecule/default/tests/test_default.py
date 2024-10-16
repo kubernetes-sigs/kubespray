@@ -21,7 +21,7 @@ def test_run(host):
     assert "RuntimeName:  cri-o" in cmd.stdout
 
 def test_run_pod(host):
-    runtime = "runc"
+    runtime = "crun"
 
     run_command = "/usr/local/bin/crictl run --with-pull --runtime {} /tmp/container.json /tmp/sandbox.json".format(runtime)
     with host.sudo():

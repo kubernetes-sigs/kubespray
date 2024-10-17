@@ -205,6 +205,10 @@ playbook:
 ```ShellSession
 pip install -r requirements.txt
 ```
+Extra Python Packages are required if you want to use ``inventory builder``:
+```ShellSession
+pip install -r contrib/inventory_builder/requirements.txt
+```
 
 Copy ``inventory/sample`` as ``inventory/mycluster``:
 

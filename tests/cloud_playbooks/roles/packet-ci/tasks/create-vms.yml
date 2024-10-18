@@ -1,50 +1,25 @@
 ---
-
-- name: "Create CI namespace {{ test_name }} for test vms"
-  shell: |-
-    kubectl create namespace {{ test_name }} &&
-      kubectl label namespace {{ test_name }} cijobs=true branch="{{ branch_name_sane }}" pipeline_id="{{ pipeline_id }}"
-  changed_when: false
-
-- name: "Create temp dir /tmp/{{ test_name }} for CI files"
-  file:
-    path: "/tmp/{{ test_name }}"
-    state: directory
-    mode: "0755"
-
-- name: Template vm files for CI job
-  set_fact:
-    vms_files: "{{ vms_files + [lookup('ansible.builtin.template', 'vm.yml.j2') | from_yaml] }}"
-  vars:
-    vms_files: []
-  loop: "{{ range(1, vm_count | int + 1, 1) | list }}"
-  loop_control:
-    index_var: vm_id
-
 - name: Start vms for CI job
+  vars:
+    # Workaround for compatibility when testing upgrades with old == before e9d406ed088d4291ef1d9018c170a4deed2bf928
+    # TODO: drop after 2.27.0
+    legacy_groups: "{{ (['kube_control_plane', 'kube_node', 'calico_rr'] | intersect(item) | length > 0) | ternary(['k8s_cluster'], []) }}"
+    tvars:
+      kubespray_groups: "{{ item + legacy_groups }}"
   kubernetes.core.k8s:
-    definition: "{{ item }}"
-  changed_when: false
-  loop: "{{ vms_files }}"
+    definition: "{{ lookup('template', 'vm.yml.j2', template_vars=tvars) }}"
+  loop: "{{ scenarios[mode | d('default')] }}"
 
 - name: Wait for vms to have ipaddress assigned
-  shell: "set -o pipefail && kubectl get vmis -n {{ test_name }} instance-{{ vm_id }} -o json | jq '.status.interfaces[].ipAddress' | tr -d '\"'"
-  args:
-    executable: /bin/bash
-  changed_when: false
-  register: vm_ips
-  loop: "{{ range(1, vm_count | int + 1, 1) | list }}"
-  loop_control:
-    index_var: vm_id
-  retries: 20
-  delay: 15
-  until:
-    - vm_ips.stdout | ansible.utils.ipaddr
+  kubevirt.core.kubevirt_vmi_info:
+    label_selectors:
+      - "ci_job_id={{ ci_job_id }}"
+    namespace: "{{ pod_namespace }}"
+    wait: true
+    wait_timeout: 300
 
-- name: "Create inventory for CI test in file /tmp/{{ test_name }}/inventory"
+- name: "Create inventory for CI tests"
   template:
-    src: "inventory.j2"
-    dest: "{{ inventory_path }}"
+    src: "inv.kubevirt.yml.j2"
+    dest: "{{ inventory_path }}/inv.kubevirt.yml"
     mode: "0644"
-  vars:
-    vms: "{{ vm_ips }}"

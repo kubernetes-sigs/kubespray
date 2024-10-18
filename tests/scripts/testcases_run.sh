@@ -18,10 +18,9 @@ fi
 # Check out latest tag if testing upgrade
 if [ "${UPGRADE_TEST}" != "false" ]; then
   git fetch --all && git checkout "$KUBESPRAY_VERSION"
-  # Checkout the CI vars file so it is available
-  git checkout "${CI_COMMIT_SHA}" tests/files/${CI_JOB_NAME}.yml
-  git checkout "${CI_COMMIT_SHA}" ${CI_TEST_REGISTRY_MIRROR}
-  git checkout "${CI_COMMIT_SHA}" ${CI_TEST_SETTING}
+  # Checkout the current tests/ directory ; even when testing old version,
+  # we want the up-to-date test setup/provisionning
+  git checkout "${CI_COMMIT_SHA}" -- tests/
 fi
 
 # needed for ara not to complain
@@ -57,9 +56,8 @@ shift
 # We can set --limit here and still pass it as supplemental args because `--limit`  is a 'last one wins' option
 ansible-playbook \
      $ANSIBLE_LOG_LEVEL \
-    -e @${CI_TEST_SETTING} \
-    -e @${CI_TEST_REGISTRY_MIRROR} \
-    -e @${CI_TEST_VARS} \
+    -e @tests/common_vars.yml \
+    -e @tests/files/${CI_JOB_NAME}.yml \
     -e local_release_dir=${PWD}/downloads \
     "$@" \
     ${playbook}

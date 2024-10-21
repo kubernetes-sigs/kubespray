@@ -1,0 +1,59 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: oci-cloud-controller-manager
+  namespace: kube-system
+  labels:
+    k8s-app: oci-cloud-controller-manager
+spec:
+  selector:
+    matchLabels:
+      component: oci-cloud-controller-manager
+      tier: control-plane
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        component: oci-cloud-controller-manager
+        tier: control-plane
+    spec:
+      serviceAccountName: cloud-controller-manager
+      hostNetwork: true
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+      - key: node.cloudprovider.kubernetes.io/uninitialized
+        value: "true"
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      volumes:
+        - name: cfg
+          secret:
+            secretName: oci-cloud-controller-manager
+        - name: kubernetes
+          hostPath:
+            path: /etc/kubernetes
+      containers:
+        - name: oci-cloud-controller-manager
+          image: {{ external_oracle_cloud_controller_image_repo }}:{{ external_oracle_cloud_controller_image_tag }}
+          command: ["/usr/local/bin/oci-cloud-controller-manager"]
+          args:
+            - --cloud-config=/etc/oci/cloud-provider.yaml
+            - --cloud-provider=oci
+            - --leader-elect-resource-lock=leases
+            - --concurrent-service-syncs=3
+            - --v=2
+          volumeMounts:
+            - name: cfg
+              mountPath: /etc/oci
+              readOnly: true
+            - name: kubernetes
+              mountPath: /etc/kubernetes
+              readOnly: true

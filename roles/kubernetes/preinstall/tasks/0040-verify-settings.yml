@@ -1,4 +1,19 @@
 ---
+- name: Stop if any host not in '--limit' does not have a fact cache
+  vars:
+    uncached_hosts: "{{ (hostvars | selectattr('ansible_default_ipv4', 'undefined')).keys() }}"
+    excluded_hosts: "{{ hostvars.keys() | difference(lookup('inventory_hostnames', ansible_limit)) }}"
+  assert:
+    that: uncached_hosts | intersect(excluded_hosts) == 0
+    fail_msg: |
+      Kubespray does not support '--limit' without a populated facts cache for the excluded hosts.
+      Please run the facts.yml playbook first without '--limit'.
+      The following excluded hosts are not cached: {{ uncached_hosts | intersect(excluded_hosts) }}
+  run_once: true
+  when:
+    - ansible_limit is defined
+    - not ignore_assert_errors
+
 - name: Stop if kube_control_plane group is empty
   assert:
     that: groups.get( 'kube_control_plane' )

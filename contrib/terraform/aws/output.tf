@@ -19,7 +19,7 @@ output "aws_nlb_api_fqdn" {
 }
 
 output "inventory" {
-  value = data.template_file.inventory.rendered
+  value = local.inventory
 }
 
 output "default_tags" {

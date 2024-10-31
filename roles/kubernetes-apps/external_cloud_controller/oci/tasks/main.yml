@@ -1,0 +1,53 @@
+---
+- name: "External OCI Cloud Controller Manager | Check credentials"
+  ansible.builtin.assert:
+    that:
+      - external_oracle_auth_key | length > 0
+      - external_oracle_auth_region | length > 0
+      - external_oracle_auth_tenancy | length > 0
+      - external_oracle_auth_user | length > 0
+      - external_oracle_auth_fingerprint | length > 0
+  when: not external_oracle_auth_use_instance_principals
+
+- name: "External OCI Cloud Controller Manager | Check settings"
+  ansible.builtin.assert:
+    that:
+      - external_oracle_compartment | length > 0
+      - external_oracle_vcn | length > 0
+      - external_oracle_load_balancer_subnet1 | length > 0
+      - external_oracle_load_balancer_subnet2 | length > 0
+      - external_oracle_load_balancer_security_list_management_mode in ["All", "Frontend", "None"]
+
+- name: External OCI Cloud Controller Manager | Get base64 cloud-config
+  set_fact:
+    external_oracle_cloud_config_secret: "{{ lookup('template', 'external-oci-cloud-config.j2') | b64encode }}"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags: external-oci
+
+- name: External OCI Cloud Controller Manager | Generate Manifests
+  template:
+    src: "{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.file }}"
+    group: "{{ kube_cert_group }}"
+    mode: "0640"
+  with_items:
+    - {name: external-oci-cloud-config-secret, file: external-oci-cloud-config-secret.yml}
+    - {name: external-oci-cloud-controller-manager-rbac, file: external-oci-cloud-controller-manager-rbac.yml}
+    - {name: external-oci-cloud-controller-manager, file: external-oci-cloud-controller-manager.yml}
+  register: external_oracle_manifests
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  tags: external-oci
+
+- name: External OCI Cloud Controller Manager | Apply Manifests
+  kube:
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  with_items:
+    - "{{ external_oracle_manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - not item is skipped
+  loop_control:
+    label: "{{ item.item.file }}"
+  tags: external-oci

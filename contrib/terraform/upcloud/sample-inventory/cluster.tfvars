@@ -28,6 +28,8 @@ machines = {
     "mem" : "4096"
     # The size of the storage in GB
     "disk_size" : 250
+    "boot_disk_encrypt": false
+    "server_group" : null
     "additional_disks" : {}
   },
   "worker-0" : {
@@ -40,6 +42,8 @@ machines = {
     "mem" : "4096"
     # The size of the storage in GB
     "disk_size" : 250
+    "boot_disk_encrypt": false
+    "server_group" : null
     "additional_disks" : {
       # "some-disk-name-1": {
       #   "size": 100,
@@ -61,6 +65,8 @@ machines = {
     "mem" : "4096"
     # The size of the storage in GB
     "disk_size" : 250
+    "boot_disk_encrypt": false
+    "server_group" : null
     "additional_disks" : {
       # "some-disk-name-1": {
       #   "size": 100,
@@ -82,6 +88,8 @@ machines = {
     "mem" : "4096"
     # The size of the storage in GB
     "disk_size" : 250
+    "boot_disk_encrypt": false
+    "server_group" : null
     "additional_disks" : {
       # "some-disk-name-1": {
       #   "size": 100,

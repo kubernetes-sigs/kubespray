@@ -138,6 +138,7 @@ resource "upcloud_server" "master" {
   template {
     storage = var.template_name
     size    = each.value.disk_size
+    encrypt = each.value.boot_disk_encrypt
   }
 
   dynamic "network_interface" {
@@ -203,6 +204,7 @@ resource "upcloud_server" "worker" {
   template {
     storage = var.template_name
     size    = each.value.disk_size
+    encrypt = each.value.boot_disk_encrypt
   }
 
   dynamic "network_interface" {

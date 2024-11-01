@@ -32,7 +32,8 @@ variable "machines" {
     cpu       = optional(number)
     mem       = optional(number)
     disk_size = number
-    server_group : string
+    boot_disk_encrypt = optional(bool, false)
+    server_group : optional(string,null)
     force_public_ip : optional(bool, false)
     dns_servers : optional(set(string))
     additional_disks = map(object({

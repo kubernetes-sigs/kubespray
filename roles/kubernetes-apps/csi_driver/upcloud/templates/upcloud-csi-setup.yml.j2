@@ -246,20 +246,23 @@ roleRef:
   kind: ClusterRole
   name: csi-upcloud-snapshotter-role
   apiGroup: rbac.authorization.k8s.io
-{% if upcloud_csi_enable_volume_snapshot %}
+
+{% if csi_snapshot_controller_enabled %}
+{% for snapshot_class in snapshot_classes %}
 ---
 apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
-  name: upcloud-csi-snapshotclass
-{% if upcloud_csi_snapshot_is_default %}
+  name: "{{ snapshot_class.name }}"
   annotations:
-    snapshot.storage.kubernetes.io/is-default-class: "true"
-{% endif %}
-{% if velero_upcloud_volumesnapshotclass_enabled %}
+    snapshot.storage.kubernetes.io/is-default-class: "{{ snapshot_class.is_default | default(false) | ternary("true","false") }}"
   labels:
-    velero.io/csi-volumesnapshot-class: "true"
+{% if snapshot_class.labels is defined and snapshot_class.labels | length %}
+{% for label in snapshot_class.labels | dict2items %}
+    {{ label.key }}: {{ label.value }}
+{% endfor %}
 {% endif %}
 driver: storage.csi.upcloud.com
 deletionPolicy: Delete
+{% endfor %}
 {% endif %}

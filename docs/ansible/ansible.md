@@ -7,12 +7,12 @@ Depending on your available python version you may be limited in choosing which 
 
 It is recommended to deploy the ansible version used by kubespray into a python virtual environment.
 
+Ensure to execute these commands from the directory where you have cloned the Kubespray repository.
+
 ```ShellSession
 VENVDIR=kubespray-venv
-KUBESPRAYDIR=kubespray
 python3 -m venv $VENVDIR
 source $VENVDIR/bin/activate
-cd $KUBESPRAYDIR
 pip install -U -r requirements.txt
 ```
 

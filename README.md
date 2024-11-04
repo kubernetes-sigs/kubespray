@@ -176,7 +176,7 @@ Note: Upstart/SysV init based OS types are not supported.
   - [weave](https://github.com/rajch/weave) v2.8.7
   - [kube-vip](https://github.com/kube-vip/kube-vip) v0.8.0
 - Application
-  - [cert-manager](https://github.com/jetstack/cert-manager) v1.14.7
+  - [cert-manager](https://github.com/jetstack/cert-manager) v1.15.3
   - [coredns](https://github.com/coredns/coredns) v1.11.3
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.11.2
   - [krew](https://github.com/kubernetes-sigs/krew) v0.4.4

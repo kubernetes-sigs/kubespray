@@ -55,7 +55,6 @@ playbook=$1
 shift
 # We can set --limit here and still pass it as supplemental args because `--limit`  is a 'last one wins' option
 ansible-playbook \
-     $ANSIBLE_LOG_LEVEL \
     -e @tests/common_vars.yml \
     -e @tests/files/${CI_JOB_NAME}.yml \
     -e local_release_dir=${PWD}/downloads \

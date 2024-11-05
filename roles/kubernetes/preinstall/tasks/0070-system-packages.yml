@@ -60,23 +60,8 @@
     - bootstrap-os
 
 - name: Install packages requirements
-  vars:
-    # The json_query for selecting packages name is split for readability
-    # see files/pkgs-schema.json for the structure of `pkgs`
-    # and the matching semantics
-    full_query: "[? value | (enabled == null || enabled) && ( {{ filters_os }} ) && ( {{ filters_groups }} ) ].key"
-    filters_groups: "groups | @ == null || [? contains(`{{ group_names }}`, @)]"
-    filters_os: "os == null || (os | ( {{ filters_family }} ) || ( {{ filters_distro }} ))"
-    dquote: !unsafe '"'
-    # necessary to workaround Ansible escaping
-    filters_distro: "distributions.{{ dquote }}{{ ansible_distribution  }}{{ dquote }} |
-                          @ == `{}` ||
-                          contains(not_null(major_versions, `[]`), '{{ ansible_distribution_major_version }}') ||
-                          contains(not_null(versions, `[]`), '{{ ansible_distribution_version }}') ||
-                          contains(not_null(releases, `[]`), '{{ ansible_distribution_release }}')"
-    filters_family: "families && contains(families, '{{ ansible_os_family }}')"
   package:
-    name: "{{ pkgs | dict2items | to_json|from_json | community.general.json_query(full_query) }}"
+    name: "{{ pkgs | dict2items | selectattr('value', 'ansible.builtin.all') | map(attribute='key') }}"
     state: present
   register: pkgs_task_result
   until: pkgs_task_result is succeeded

@@ -1,5 +1,4 @@
----
-apiVersion: kubeadm.k8s.io/v1beta3
+apiVersion: kubeadm.k8s.io/{{ kubeadm_config_api_version }}
 kind: JoinConfiguration
 discovery:
 {% if kubeadm_use_file_discovery %}
@@ -13,30 +12,24 @@ discovery:
     apiServerEndpoint: {{ kubeadm_discovery_address }}
 {% endif %}
     token: {{ kubeadm_token }}
-{% if kubeadm_ca_hash.stdout is defined %}
-    caCertHashes:
-    - sha256:{{ kubeadm_ca_hash.stdout }}
-{% else %}
     unsafeSkipCAVerification: true
-{% endif %}
 {% endif %}
   timeout: {{ discovery_timeout }}
   tlsBootstrapToken: {{ kubeadm_token }}
-caCertPath: {{ kube_cert_dir }}/ca.crt
-{% if kubeadm_cert_controlplane is defined and kubeadm_cert_controlplane %}
 controlPlane:
   localAPIEndpoint:
     advertiseAddress: {{ kube_apiserver_address }}
     bindPort: {{ kube_apiserver_port }}
   certificateKey: {{ kubeadm_certificate_key }}
-{% endif %}
 nodeRegistration:
-  name: '{{ kube_override_hostname }}'
+  name: {{ kube_override_hostname | default(inventory_hostname) }}
   criSocket: {{ cri_socket }}
-{% if 'calico_rr' in group_names and 'kube_node' not in group_names %}
+{% if 'kube_control_plane' in group_names and 'kube_node' not in group_names %}
   taints:
   - effect: NoSchedule
-    key: node-role.kubernetes.io/calico-rr
+    key: node-role.kubernetes.io/control-plane
+{% else %}
+  taints: []
 {% endif %}
 {% if kubeadm_patches | length > 0 %}
 patches:

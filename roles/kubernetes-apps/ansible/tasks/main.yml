@@ -32,6 +32,21 @@
     clusterIP: "{{ skydns_server }}"
   when: dns_mode in ['coredns', 'coredns_dual']
 
+- name: Kubernetes Apps | CoreDNS Secondary
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{ lookup('template', item) }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  loop: "{{ coredns_manifests | flatten }}"
+  tags:
+    - coredns
+  vars:
+    clusterIP: "{{ skydns_server_secondary }}"
+    coredns_ordinal_suffix: "-secondary"
+  when:
+    - dns_mode == 'coredns_dual'
+
 - name: Kubernetes Apps | Start Resources
   kube:
     name: "{{ item.item.name }}"
@@ -41,7 +56,6 @@
     filename: "{{ kube_config_dir }}/{{ item.item.file }}"
     state: "latest"
   with_items:
-    - "{{ coredns_secondary_manifests.results | default({}) }}"
     - "{{ nodelocaldns_manifests.results | default({}) }}"
     - "{{ nodelocaldns_second_manifests.results | default({}) }}"
   when:

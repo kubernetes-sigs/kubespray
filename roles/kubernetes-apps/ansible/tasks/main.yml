@@ -11,14 +11,6 @@
   delay: 1
   when: inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Kubernetes Apps | CoreDNS
-  import_tasks: "coredns.yml"
-  when:
-    - dns_mode in ['coredns', 'coredns_dual']
-    - inventory_hostname == groups['kube_control_plane'][0]
-  tags:
-    - coredns
-
 - name: Kubernetes Apps | nodelocalDNS
   import_tasks: "nodelocaldns.yml"
   when:
@@ -26,6 +18,19 @@
     - inventory_hostname == groups['kube_control_plane'] | first
   tags:
     - nodelocaldns
+
+- name: Kubernetes Apps | CoreDNS
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{ lookup('template', item) }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  loop: "{{ coredns_manifests | flatten }}"
+  tags:
+    - coredns
+  vars:
+    clusterIP: "{{ skydns_server }}"
+  when: dns_mode in ['coredns', 'coredns_dual']
 
 - name: Kubernetes Apps | Start Resources
   kube:
@@ -36,7 +41,6 @@
     filename: "{{ kube_config_dir }}/{{ item.item.file }}"
     state: "latest"
   with_items:
-    - "{{ coredns_manifests.results | default({}) }}"
     - "{{ coredns_secondary_manifests.results | default({}) }}"
     - "{{ nodelocaldns_manifests.results | default({}) }}"
     - "{{ nodelocaldns_second_manifests.results | default({}) }}"

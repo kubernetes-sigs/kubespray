@@ -11,14 +11,6 @@
   delay: 1
   when: inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Kubernetes Apps | nodelocalDNS
-  import_tasks: "nodelocaldns.yml"
-  when:
-    - enable_nodelocaldns
-    - inventory_hostname == groups['kube_control_plane'] | first
-  tags:
-    - nodelocaldns
-
 - name: Kubernetes Apps | CoreDNS
   command:
     cmd: "{{ kubectl_apply_stdin }}"
@@ -47,30 +39,38 @@
   when:
     - dns_mode == 'coredns_dual'
 
-- name: Kubernetes Apps | Start Resources
-  kube:
-    name: "{{ item.item.name }}"
-    namespace: "kube-system"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
-    state: "latest"
-  with_items:
-    - "{{ nodelocaldns_manifests.results | default({}) }}"
-    - "{{ nodelocaldns_second_manifests.results | default({}) }}"
+- name: Kubernetes Apps | nodelocalDNS
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{ lookup('template', item) }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  loop: "{{ nodelocaldns_manifests | flatten }}"
   when:
-    - dns_mode != 'none'
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - not item is skipped
-  register: resource_result
-  until: resource_result is succeeded
-  retries: 4
-  delay: 5
+    - enable_nodelocaldns
   tags:
-    - coredns
     - nodelocaldns
-  loop_control:
-    label: "{{ item.item.file }}"
+    - coredns
+  vars:
+    primaryClusterIP: >-
+      {%- if dns_mode in ['coredns', 'coredns_dual'] -%}
+      {{ skydns_server }}
+      {%- elif dns_mode == 'manual' -%}
+      {{ manual_dns_server }}
+      {%- endif -%}
+    secondaryclusterIP: "{{ skydns_server_secondary }}"
+    forwardTarget: >-
+      {%- if secondaryclusterIP is defined and dns_mode == 'coredns_dual' -%}
+      {{ primaryClusterIP }} {{ secondaryclusterIP }}
+      {%- else -%}
+      {{ primaryClusterIP }}
+      {%- endif -%}
+    upstreamForwardTarget: >-
+      {%- if upstream_dns_servers is defined and upstream_dns_servers | length > 0 -%}
+      {{ upstream_dns_servers | join(' ') }}
+      {%- else -%}
+      /etc/resolv.conf
+      {%- endif -%}
 
 - name: Kubernetes Apps | Etcd metrics endpoints
   command:

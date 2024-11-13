@@ -21,8 +21,26 @@
   retries: 30
   delay: 10
 
-- name: "Create inventory for CI tests"
-  template:
-    src: "inv.kubevirt.yml.j2"
-    dest: "{{ inventory_path }}/inv.kubevirt.yml"
+- name: Massage VirtualMachineInstance data into an Ansible inventory structure
+  vars:
+    ips: "{{ vmis.resources | map(attribute='status.interfaces.0.ipAddress') }}"
+    names: "{{ vmis.resources | map(attribute='metadata.name') }}"
+    _groups: "{{ vmis.resources | map(attribute='metadata.annotations.ansible_groups') | map('split', ',') }}"
+    hosts: "{{ ips | zip(_groups, names)
+                | map('zip', ['ansible_host', 'ansible_groups', 'k8s_vmi_name'])
+                | map('map', 'reverse') | map('community.general.dict') }}"
+  loop: "{{ hosts | map(attribute='ansible_groups') | flatten | unique }}"
+  set_fact:
+    ci_inventory: "{{ ci_inventory|d({}) | combine({
+                    item: {
+                      'hosts': hosts | selectattr('ansible_groups', 'contains', item)
+                                     | rekey_on_member('k8s_vmi_name')
+                      }
+                    })
+                  }}"
+
+- name: Create inventory for CI tests
+  copy:
+    content: "{{ ci_inventory | to_yaml }}"
+    dest: "{{ inventory_path }}/ci_inventory.yml"
     mode: "0644"

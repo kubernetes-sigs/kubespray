@@ -85,38 +85,16 @@
   when:
     - ('kube_control_plane' not in group_names)
     - not kubelet_conf.stat.exists
-  block:
-
-    - name: Join to cluster
-      command: >-
-        timeout -k {{ kubeadm_join_timeout }} {{ kubeadm_join_timeout }}
-        {{ bin_dir }}/kubeadm join
-        --config {{ kube_config_dir }}/kubeadm-client.conf
-        --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
-        --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
-      register: kubeadm_join
-      changed_when: kubeadm_join is success
-
-  rescue:
-
-    - name: Join to cluster with ignores
-      command: >-
-        timeout -k {{ kubeadm_join_timeout }} {{ kubeadm_join_timeout }}
-        {{ bin_dir }}/kubeadm join
-        --config {{ kube_config_dir }}/kubeadm-client.conf
-        --ignore-preflight-errors=all
-        --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
-      register: kubeadm_join
-      changed_when: kubeadm_join is success
-
-  always:
-
-    - name: Display kubeadm join stderr if any
-      when: kubeadm_join is failed
-      debug:
-        msg: |
-          Joined with warnings
-          {{ kubeadm_join.stderr_lines }}
+  vars:
+    ignored:
+      - DirAvailable--etc-kubernetes-manifests
+      - "{{ kubeadm_ignore_preflight_errors }}"
+  command: >-
+    timeout -k {{ kubeadm_join_timeout }} {{ kubeadm_join_timeout }}
+    {{ bin_dir }}/kubeadm join
+    --config {{ kube_config_dir }}/kubeadm-client.conf
+    --ignore-preflight-errors={{ ignored | flatten | join(',') }}
+    --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
 
 - name: Update server field in kubelet kubeconfig
   lineinfile:

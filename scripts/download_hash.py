@@ -31,20 +31,62 @@ def version_compare(version):
     return Version(version.removeprefix("v"))
 
 downloads = {
-    "calicoctl_binary": "https://github.com/projectcalico/calico/releases/download/{version}/SHA256SUMS",
-    "ciliumcli_binary": "https://github.com/cilium/cilium-cli/releases/download/{version}/cilium-{os}-{arch}.tar.gz.sha256sum",
-    "cni_binary": "https://github.com/containernetworking/plugins/releases/download/{version}/cni-plugins-{os}-{arch}-{version}.tgz.sha256",
-    "containerd_archive": "https://github.com/containerd/containerd/releases/download/v{version}/containerd-{version}-{os}-{arch}.tar.gz.sha256sum",
-    "crictl": "https://github.com/kubernetes-sigs/cri-tools/releases/download/{version}/crictl-{version}-{os}-{arch}.tar.gz.sha256",
-    "crio_archive": "https://storage.googleapis.com/cri-o/artifacts/cri-o.{arch}.{version}.tar.gz.sha256sum",
-    "etcd_binary": "https://github.com/etcd-io/etcd/releases/download/{version}/SHA256SUMS",
-    "kubeadm": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubeadm.sha256",
-    "kubectl": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubectl.sha256",
-    "kubelet": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubelet.sha256",
-    "nerdctl_archive": "https://github.com/containerd/nerdctl/releases/download/v{version}/SHA256SUMS",
-    "runc": "https://github.com/opencontainers/runc/releases/download/{version}/runc.sha256sum",
-    "skopeo_binary": "https://github.com/lework/skopeo-binary/releases/download/{version}/skopeo-{os}-{arch}.sha256",
-    "yq": "https://github.com/mikefarah/yq/releases/download/{version}/checksums-bsd", # see https://github.com/mikefarah/yq/pull/1691 for why we use this url
+    "calicoctl_binary": {
+        'url': "https://github.com/projectcalico/calico/releases/download/{version}/SHA256SUMS",
+        'graphql_id': "R_kgDOA87D0g",
+        },
+    "ciliumcli_binary": {
+        'url': "https://github.com/cilium/cilium-cli/releases/download/{version}/cilium-{os}-{arch}.tar.gz.sha256sum",
+        'graphql_id': "R_kgDOE0nmLg"
+        },
+    "cni_binary": {
+        'url': "https://github.com/containernetworking/plugins/releases/download/{version}/cni-plugins-{os}-{arch}-{version}.tgz.sha256",
+        'graphql_id': "R_kgDOBQqEpg",
+        },
+    "containerd_archive": {
+        'url': "https://github.com/containerd/containerd/releases/download/v{version}/containerd-{version}-{os}-{arch}.tar.gz.sha256sum",
+        'graphql_id': "R_kgDOAr9FWA"
+        },
+    "crictl": {
+        'url': "https://github.com/kubernetes-sigs/cri-tools/releases/download/{version}/crictl-{version}-{os}-{arch}.tar.gz.sha256",
+        'graphql_id': "R_kgDOBMdURA",
+        },
+    "crio_archive": {
+        'url':"https://storage.googleapis.com/cri-o/artifacts/cri-o.{arch}.{version}.tar.gz.sha256sum",
+        'graphql_id': "R_kgDOBAr5pg",
+        },
+    "etcd_binary": {
+        'url': "https://github.com/etcd-io/etcd/releases/download/{version}/SHA256SUMS",
+        'graphql_id': "R_kgDOAKtHtg",
+        },
+    "kubeadm": {
+        'url': "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubeadm.sha256",
+        'graphql_id': "R_kgDOAToIkg"
+        },
+    "kubectl":  {
+        'url': "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubectl.sha256",
+        'graphql_id': "R_kgDOAToIkg"
+        },
+    "kubelet":  {
+        'url': "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubelet.sha256",
+        'graphql_id': "R_kgDOAToIkg"
+        },
+    "nerdctl_archive": {
+        'url': "https://github.com/containerd/nerdctl/releases/download/v{version}/SHA256SUMS",
+        'graphql_id': "R_kgDOEvuRnQ",
+        },
+    "runc": {
+        'url': "https://github.com/opencontainers/runc/releases/download/{version}/runc.sha256sum",
+        'graphql_id': "R_kgDOAjP4QQ",
+        },
+    "skopeo_binary": {
+        'url': "https://github.com/lework/skopeo-binary/releases/download/{version}/skopeo-{os}-{arch}.sha256",
+        'graphql_id': "R_kgDOHQ6J9w",
+        },
+    "yq": {
+        'url':"https://github.com/mikefarah/yq/releases/download/{version}/checksums-bsd", # see https://github.com/mikefarah/yq/pull/1691 for why we use this url
+        'graphql_id': "R_kgDOApOQGQ"
+        },
 }
 # TODO: downloads not supported
 # youki: no checkusms in releases

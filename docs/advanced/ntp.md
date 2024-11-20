@@ -53,5 +53,4 @@ When using Ubuntu 24.04 or a distribution that already has `systemd-timesyncd` i
 
 ```ShellSession
 ntp_package: ntpsec
-ntp_driftfile: /var/lib/ntpsec/ntp.drift
 ```

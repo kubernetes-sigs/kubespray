@@ -5,7 +5,7 @@
 If you have questions, check the documentation at [kubespray.io](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 You can get your invite [here](http://slack.k8s.io/)
 
-- Can be deployed on **[AWS](docs/cloud_providers/aws.md), GCE, [Azure](docs/cloud_providers/azure.md), [OpenStack](docs/cloud_providers/openstack.md), [vSphere](docs/cloud_providers/vsphere.md), [Equinix Metal](docs/cloud_providers/equinix-metal.md) (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
+- Can be deployed on **[AWS](docs/cloud_providers/aws.md), GCE, [Azure](docs/cloud_providers/azure.md), [OpenStack](docs/cloud_controllers/openstack.md), [vSphere](docs/cloud_controllers/vsphere.md), [Equinix Metal](docs/cloud_providers/equinix-metal.md) (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
 - **Highly available** cluster
 - **Composable** (Choice of the network plugin for instance)
 - Supports most popular **Linux distributions**
@@ -125,7 +125,7 @@ vagrant up
 - [Downloaded artifacts](docs/advanced/downloads.md)
 - [Equinix Metal](docs/cloud_providers/equinix-metal.md)
 - [OpenStack](docs/cloud_controllers/openstack.md)
-- [vSphere](docs/cloud_controllerss/vsphere.md)
+- [vSphere](docs/cloud_controllers/vsphere.md)
 - [Large deployments](docs/operations/large-deployments.md)
 - [Adding/replacing a node](docs/operations/nodes.md)
 - [Upgrades basics](docs/operations/upgrades.md)

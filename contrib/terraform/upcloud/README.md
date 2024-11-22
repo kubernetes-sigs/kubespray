@@ -2,35 +2,6 @@
 
 Provision a Kubernetes cluster on [UpCloud](https://upcloud.com/) using Terraform and Kubespray
 
-## Overview
-
-The setup looks like following
-
-```text
-   Kubernetes cluster
-+--------------------------+
-|      +--------------+    |
-|      | +--------------+  |
-| -->  | |              |  |
-|      | | Master/etcd  |  |
-|      | | node(s)      |  |
-|      +-+              |  |
-|        +--------------+  |
-|              ^           |
-|              |           |
-|              v           |
-|      +--------------+    |
-|      | +--------------+  |
-| -->  | |              |  |
-|      | |    Worker    |  |
-|      | |    node(s)   |  |
-|      +-+              |  |
-|        +--------------+  |
-+--------------------------+
-```
-
-The nodes uses a private network for node to node communication and a public interface for all external communication.
-
 ## Requirements
 
 * Terraform 0.13.0 or newer

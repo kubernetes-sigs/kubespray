@@ -171,7 +171,7 @@ variables to match your requirements.
 * *dns_upstream_forward_extra_opts* - Options to add in the forward section of coredns/nodelocaldns related to upstream DNS servers
 
 For more information, see [DNS
-Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/dns-stack.md).
+Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/advanced/dns-stack.md).
 
 ## Other service variables
 

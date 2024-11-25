@@ -48,3 +48,9 @@ Force sync time immediately by NTP after the ntp installed, which is useful in n
 ```ShellSession
 ntp_force_sync_immediately: true
 ```
+
+When using Ubuntu 24.04 or a distribution that already has `systemd-timesyncd` installed, use the `ntpsec` package.
+
+```ShellSession
+ntp_package: ntpsec
+```

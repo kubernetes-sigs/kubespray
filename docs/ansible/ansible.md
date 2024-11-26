@@ -34,90 +34,22 @@ Based on the table below and the available python version for your ansible host 
 |-----------------|----------------|
 | >= 2.16.4       | 3.10-3.12      |
 
-## Inventory
 
-The inventory is composed of 3 groups:
+## Customize Ansible vars
 
-* **kube_node** : list of kubernetes nodes where the pods will run.
-* **kube_control_plane** : list of servers where kubernetes control plane components (apiserver, scheduler, controller) will run.
-* **etcd**: list of servers to compose the etcd server. You should have at least 3 servers for failover purpose.
-
-When _kube_node_ contains _etcd_, you define your etcd cluster to be as well schedulable for Kubernetes workloads.
-If you want it a standalone, make sure those groups do not intersect.
-If you want the server to act both as control-plane and node, the server must be defined
-on both groups _kube_control_plane_ and _kube_node_. If you want a standalone and
-unschedulable control plane, the server must be defined only in the _kube_control_plane_ and
-not _kube_node_.
-
-There are also two special groups:
-
-* **calico_rr** : explained for [advanced Calico networking cases](/docs/CNI/calico.md)
-* **bastion** : configure a bastion host if your nodes are not directly reachable
-
-Lastly, the **k8s_cluster** is dynamically defined as the union of **kube_node**, **kube_control_plane** and **calico_rr**.
-This is used internally and for the purpose of defining whole cluster variables (`<inventory>/group_vars/k8s_cluster/*.yml`)
-
-Below is a complete inventory example:
-
-```ini
-## Configure 'ip' variable to bind kubernetes services on a
-## different ip than the default iface
-node1 ansible_host=95.54.0.12 ip=10.3.0.1
-node2 ansible_host=95.54.0.13 ip=10.3.0.2
-node3 ansible_host=95.54.0.14 ip=10.3.0.3
-node4 ansible_host=95.54.0.15 ip=10.3.0.4
-node5 ansible_host=95.54.0.16 ip=10.3.0.5
-node6 ansible_host=95.54.0.17 ip=10.3.0.6
-
-[kube_control_plane]
-node1
-node2
-
-[etcd]
-node1
-node2
-node3
-
-[kube_node]
-node2
-node3
-node4
-node5
-node6
-```
-
-## Group vars and overriding variables precedence
-
-The group variables to control main deployment options are located in the directory ``inventory/sample/group_vars``.
-Optional variables are located in the `inventory/sample/group_vars/all.yml`.
-Mandatory variables that are common for at least one role (or a node group) can be found in the
-`inventory/sample/group_vars/k8s_cluster.yml`.
-There are also role vars for docker, kubernetes preinstall and control plane roles.
-According to the [ansible docs](https://docs.ansible.com/ansible/latest/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable),
-those cannot be overridden from the group vars. In order to override, one should use
-the `-e` runtime flags (most simple way) or other layers described in the docs.
-
-Kubespray uses only a few layers to override things (or expect them to
-be overridden for roles):
+Kubespray expects users to use one of the following variables sources for settings and customization:
 
 | Layer                                  | Comment                                                                      |
 |----------------------------------------|------------------------------------------------------------------------------|
-| **role defaults**                      | provides best UX to override things for Kubespray deployments                |
-| inventory vars                         | Unused                                                                       |
-| **inventory group_vars**               | Expects users to use ``all.yml``,``k8s_cluster.yml`` etc. to override things |
-| inventory host_vars                    | Unused                                                                       |
-| playbook group_vars                    | Unused                                                                       |
-| playbook host_vars                     | Unused                                                                       |
-| **host facts**                         | Kubespray overrides for internal roles' logic, like state flags              |
-| play vars                              | Unused                                                                       |
-| play vars_prompt                       | Unused                                                                       |
-| play vars_files                        | Unused                                                                       |
-| registered vars                        | Unused                                                                       |
-| set_facts                              | Kubespray overrides those, for some places                                   |
-| **role and include vars**              | Provides bad UX to override things! Use extra vars to enforce                |
-| block vars (only for tasks in block)   | Kubespray overrides for internal roles' logic                                |
-| task vars (only for the task)          | Unused for roles, but only for helper scripts                                |
+| inventory vars                         |                                                                              |
+|  - **inventory group_vars**            | most used                                                                    |
+|  - inventory host_vars                 | host specifc vars overrides, group_vars is usually more practical            |
 | **extra vars** (always win precedence) | override with ``ansible-playbook -e @foo.yml``                               |
+
+[!IMPORTANT]
+Extra vars are best used to override kubespray internal variables, for instances, roles/vars/.
+Those vars are usually **not expected** (by Kubespray developpers) to be modified by end users, and not part of Kubespray
+interface. Thus they can change, disappear, or break stuff unexpectedly.
 
 ## Ansible tags
 

@@ -14,6 +14,7 @@
 * Ansible
   * [Ansible](/docs/ansible/ansible.md)
   * [Ansible Collection](/docs/ansible/ansible_collection.md)
+  * [Inventory](/docs/ansible/inventory.md)
   * [Vars](/docs/ansible/vars.md)
 * Cloud Controllers
   * [Openstack](/docs/cloud_controllers/openstack.md)

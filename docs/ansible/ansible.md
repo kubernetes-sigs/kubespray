@@ -34,7 +34,6 @@ Based on the table below and the available python version for your ansible host 
 |-----------------|----------------|
 | >= 2.16.4       | 3.10-3.12      |
 
-
 ## Customize Ansible vars
 
 Kubespray expects users to use one of the following variables sources for settings and customization:
@@ -48,7 +47,7 @@ Kubespray expects users to use one of the following variables sources for settin
 
 [!IMPORTANT]
 Extra vars are best used to override kubespray internal variables, for instances, roles/vars/.
-Those vars are usually **not expected** (by Kubespray developpers) to be modified by end users, and not part of Kubespray
+Those vars are usually **not expected** (by Kubespray developers) to be modified by end users, and not part of Kubespray
 interface. Thus they can change, disappear, or break stuff unexpectedly.
 
 ## Ansible tags
@@ -189,42 +188,32 @@ ansible-playbook -i inventory/sample/hosts.ini cluster.yml \
     --tags download --skip-tags upload,upgrade
 ```
 
-Note: use `--tags` and `--skip-tags` wise and only if you're 100% sure what you're doing.
-
-## Bastion host
-
-If you prefer to not make your nodes publicly accessible (nodes with private IPs only),
-you can use a so-called _bastion_ host to connect to your nodes. To specify and use a bastion,
-simply add a line to your inventory, where you have to replace x.x.x.x with the public IP of the
-bastion host.
-
-```ShellSession
-[bastion]
-bastion ansible_host=x.x.x.x
-```
-
-For more information about Ansible and bastion hosts, read
-[Running Ansible Through an SSH Bastion Host](https://blog.scottlowe.org/2015/12/24/running-ansible-through-ssh-bastion-host/)
+Note: use `--tags` and `--skip-tags` wisely and only if you're 100% sure what you're doing.
 
 ## Mitogen
 
 Mitogen support is deprecated, please see [mitogen related docs](/docs/advanced/mitogen.md) for usage and reasons for deprecation.
 
-## Beyond ansible 2.9
+## Troubleshooting Ansible issues
 
-Ansible project has decided, in order to ease their maintenance burden, to split between
-two projects which are now joined under the Ansible umbrella.
-
-Ansible-base (2.10.x branch) will contain just the ansible language implementation while
-ansible modules that were previously bundled into a single repository will be part of the
-ansible 3.x package. Please see [this blog post](https://blog.while-true-do.io/ansible-release-3-0-0/)
-that explains in detail the need and the evolution plan.
-
-**Note:** this change means that ansible virtual envs cannot be upgraded with `pip install -U`.
-You first need to uninstall your old ansible (pre 2.10) version and install the new one.
+Having the wrong version of ansible, ansible collections or python dependencies can cause issue.
+In particular, Kubespray ship custom modules which Ansible needs to find, for which you should specify [ANSIBLE_LIBRAY](https://docs.ansible.com/ansible/latest/dev_guide/developing_locally.html#adding-a-module-or-plugin-outside-of-a-collection)
 
 ```ShellSession
-pip uninstall ansible ansible-base ansible-core
-cd kubespray/
-pip install -U .
+export ANSIBLE_LIBRAY=<kubespray_dir>/library`
+```
+
+A simple way to ensure you get all the correct version of Ansible is to use
+the [pre-built docker image from Quay](https://quay.io/repository/kubespray/kubespray?tab=tags).
+You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mounts/)
+to access the inventory and SSH key in the container, like this:
+
+```ShellSession
+git checkout v2.26.0
+docker pull quay.io/kubespray/kubespray:v2.26.0
+docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
+  --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
+  quay.io/kubespray/kubespray:v2.26.0 bash
+# Inside the container you may now run the kubespray playbooks:
+ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```

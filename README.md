@@ -19,68 +19,7 @@ Below are several ways to use Kubespray to deploy a Kubernetes cluster.
 
 #### Usage
 
-Install Ansible according to [Ansible installation guide](/docs/ansible/ansible.md#installing-ansible)
-then run the following steps:
-
-```ShellSession
-# Copy ``inventory/sample`` as ``inventory/mycluster``
-cp -rfp inventory/sample inventory/mycluster
-
-# Update Ansible inventory file with the ip of your nodes
-
-# Review and change parameters under ``inventory/mycluster/group_vars``
-cat inventory/mycluster/group_vars/all/all.yml
-cat inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
-
-# Clean up old Kubernetes cluster with Ansible Playbook - run the playbook as root
-# The option `--become` is required, as for example cleaning up SSL keys in /etc/,
-# uninstalling old packages and interacting with various systemd daemons.
-# Without --become the playbook will fail to run!
-# And be mind it will remove the current kubernetes cluster (if it's running)!
-ansible-playbook -i inventory/mycluster/hosts.yaml  --become --become-user=root reset.yml
-
-# Deploy Kubespray with Ansible Playbook - run the playbook as root
-# The option `--become` is required, as for example writing SSL keys in /etc/,
-# installing packages and interacting with various systemd daemons.
-# Without --become the playbook will fail to run!
-ansible-playbook -i inventory/mycluster/hosts.yaml  --become --become-user=root cluster.yml
-```
-
-Note: When Ansible is already installed via system packages on the control node,
-Python packages installed via `sudo pip install -r requirements.txt` will go to
-a different directory tree (e.g. `/usr/local/lib/python2.7/dist-packages` on
-Ubuntu) from Ansible's (e.g. `/usr/lib/python2.7/dist-packages/ansible` still on
-Ubuntu). As a consequence, the `ansible-playbook` command will fail with:
-
-```raw
-ERROR! no action detected in task. This often indicates a misspelled module name, or incorrect module path.
-```
-
-This likely indicates that a task depends on a module present in ``requirements.txt``.
-
-One way of addressing this is to uninstall the system Ansible package then
-reinstall Ansible via ``pip``, but this not always possible and one must
-take care regarding package versions.
-A workaround consists of setting the `ANSIBLE_LIBRARY`
-and `ANSIBLE_MODULE_UTILS` environment variables respectively to
-the `ansible/modules` and `ansible/module_utils` subdirectories of the ``pip``
-installation location, which is the ``Location`` shown by running
-`pip show [package]` before executing `ansible-playbook`.
-
-A simple way to ensure you get all the correct version of Ansible is to use
-the [pre-built docker image from Quay](https://quay.io/repository/kubespray/kubespray?tab=tags).
-You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mounts/)
-to access the inventory and SSH key in the container, like this:
-
-```ShellSession
-git checkout v2.26.0
-docker pull quay.io/kubespray/kubespray:v2.26.0
-docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
-  --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.26.0 bash
-# Inside the container you may now run the kubespray playbooks:
-ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
-```
+See [Getting started](/docs/getting_started/getting-started.md)
 
 #### Collection
 

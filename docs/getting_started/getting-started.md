@@ -1,10 +1,8 @@
 # Getting started
 
-## Building your own inventory
+## Install ansible
 
-Ansible inventory can be stored in 3 formats: YAML, JSON, or INI-like. There is
-an example inventory located
-[here](https://github.com/kubernetes-sigs/kubespray/blob/master/inventory/sample/inventory.ini).
+Install Ansible according to [Ansible installation guide](/docs/ansible/ansible.md#installing-ansible).
 
 ## Building your own inventory
 
@@ -13,9 +11,7 @@ Ansible inventory can be stored in 3 formats: YAML, JSON, or INI-like. See the
 and [Ansible documentation on building your inventory](https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html),
 and [details on the inventory structure expected by Kubespray](/docs/ansible/inventory.md).
 
-
 ```ShellSession
-
 <your-favorite-editor> inventory/mycluster/inventory.ini
 
 # Review and change parameters under ``inventory/mycluster/group_vars``
@@ -25,14 +21,12 @@ and [details on the inventory structure expected by Kubespray](/docs/ansible/inv
 <your-favorite-editor> inventory/myclsuter/group_vars/kube_node.yml # for worker nodes
 ```
 
-**IMPORTANT**: Edit my\_inventory/groups\_vars/\*.yaml to override data vars:
+## Installing the cluster
 
 ```ShellSession
-ansible-playbook -i inventory/mycluster/hosts.yml cluster.yml -b -v \
+ansible-playbook -i inventory/mycluster/ cluster.yml -b -v \
   --private-key=~/.ssh/private_key
 ```
-
-See more details in the [ansible guide](/docs/ansible/ansible.md).
 
 ### Adding nodes
 

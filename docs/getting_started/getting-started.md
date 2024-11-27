@@ -1,42 +1,32 @@
 # Getting started
 
+## Install ansible
+
+Install Ansible according to [Ansible installation guide](/docs/ansible/ansible.md#installing-ansible).
+
 ## Building your own inventory
 
-Ansible inventory can be stored in 3 formats: YAML, JSON, or INI-like. There is
-an example inventory located
-[here](https://github.com/kubernetes-sigs/kubespray/blob/master/inventory/sample/inventory.ini).
-
-You can use an
-[inventory generator](https://github.com/kubernetes-sigs/kubespray/blob/master/contrib/inventory_builder/inventory.py)
-to create or modify an Ansible inventory. Currently, it is limited in
-functionality and is only used for configuring a basic Kubespray cluster inventory, but it does
-support creating inventory file for large clusters as well. It now supports
-separated ETCD and Kubernetes control plane roles from node role if the size exceeds a
-certain threshold. Run `python3 contrib/inventory_builder/inventory.py help` for more information.
-
-Example inventory generator usage:
+Ansible inventory can be stored in 3 formats: YAML, JSON, or INI-like. See the
+[example inventory](/inventory/sample/inventory.ini)
+and [Ansible documentation on building your inventory](https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html),
+and [details on the inventory structure expected by Kubespray](/docs/ansible/inventory.md).
 
 ```ShellSession
-cp -r inventory/sample inventory/mycluster
-declare -a IPS=(10.10.1.3 10.10.1.4 10.10.1.5)
-CONFIG_FILE=inventory/mycluster/hosts.yml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+<your-favorite-editor> inventory/mycluster/inventory.ini
+
+# Review and change parameters under ``inventory/mycluster/group_vars``
+<your-favorite-editor> inventory/mycluster/group_vars/all.yml # for every node, including etcd
+<your-favorite-editor> inventory/mycluster/group_vars/k8s_cluster.yml # for every node in the cluster (not etcd when it's separate)
+<your-favorite-editor> inventory/mycluster/group_vars/kube_control_plane.yml # for the control plane
+<your-favorite-editor> inventory/myclsuter/group_vars/kube_node.yml # for worker nodes
 ```
 
-Then use `inventory/mycluster/hosts.yml` as inventory file.
-
-## Starting custom deployment
-
-Once you have an inventory, you may want to customize deployment data vars
-and start the deployment:
-
-**IMPORTANT**: Edit my\_inventory/groups\_vars/\*.yaml to override data vars:
+## Installing the cluster
 
 ```ShellSession
-ansible-playbook -i inventory/mycluster/hosts.yml cluster.yml -b -v \
+ansible-playbook -i inventory/mycluster/ cluster.yml -b -v \
   --private-key=~/.ssh/private_key
 ```
-
-See more details in the [ansible guide](/docs/ansible/ansible.md).
 
 ### Adding nodes
 

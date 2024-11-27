@@ -212,17 +212,15 @@ Copy ``inventory/sample`` as ``inventory/mycluster``:
 cp -rfp inventory/sample inventory/mycluster
 ```
 
-Update Ansible inventory file with inventory builder:
+Update the sample Ansible inventory file with ip given by gcloud:
 
 ```ShellSession
-declare -a IPS=($(gcloud compute instances list --filter="tags.items=kubernetes-the-kubespray-way" --format="value(EXTERNAL_IP)"  | tr '\n' ' '))
-CONFIG_FILE=inventory/mycluster/hosts.yaml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+gcloud compute instances list --filter="tags.items=kubernetes-the-kubespray-way"
 ```
 
-Open the generated `inventory/mycluster/hosts.yaml` file and adjust it so
-that controller-0, controller-1 and controller-2 are control plane nodes and
-worker-0, worker-1 and worker-2 are worker nodes. Also update the `ip` to the respective local VPC IP and
-remove the `access_ip`.
+Open `inventory/mycluster/inventory.ini` file and add it so
+that controller-0, controller-1 and controller-2 in the `kube_control_plane` group and
+worker-0, worker-1 and worker-2 in the `kube_node` group. Add respective `ip` to the respective local VPC IP for each node.
 
 The main configuration for the cluster is stored in
 `inventory/mycluster/group_vars/k8s_cluster/k8s_cluster.yml`. In this file we
@@ -242,7 +240,7 @@ the kubernetes cluster, just change the 'false' to 'true' for
 Now we will deploy the configuration:
 
 ```ShellSession
-ansible-playbook -i inventory/mycluster/hosts.yaml -u $USERNAME -b -v --private-key=~/.ssh/id_rsa cluster.yml
+ansible-playbook -i inventory/mycluster/ -u $USERNAME -b -v --private-key=~/.ssh/id_rsa cluster.yml
 ```
 
 Ansible will now execute the playbook, this can take up to 20 minutes.
@@ -596,7 +594,7 @@ If you want to keep the VMs and just remove the cluster state, you can simply
  run another Ansible playbook:
 
 ```ShellSession
-ansible-playbook -i inventory/mycluster/hosts.yaml -u $USERNAME -b -v --private-key=~/.ssh/id_rsa reset.yml
+ansible-playbook -i inventory/mycluster/ -u $USERNAME -b -v --private-key=~/.ssh/id_rsa reset.yml
 ```
 
 Resetting the cluster to the VMs original state usually takes about a couple

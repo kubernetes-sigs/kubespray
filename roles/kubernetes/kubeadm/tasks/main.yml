@@ -29,20 +29,15 @@
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
 
-- name: Calculate kubeadm CA cert hash
-  shell: |
-    set -o pipefail && openssl x509 -pubkey -in {{ kube_cert_dir }}/ca.crt | \
-    openssl {% if 'RSA' in kube_asymmetric_encryption_algorithm %}rsa{% elif 'ECDSA' in kube_asymmetric_encryption_algorithm %}ec{% else %}rsa{% endif %} -pubin -outform der 2>/dev/null | \
-    openssl dgst -sha256 -hex | sed 's/^.* //'
-  args:
-    executable: /bin/bash
-  register: kubeadm_ca_hash
+- name: Fetch CA certificate from control plane node
+  slurp:
+    src: "{{ kube_cert_dir }}/ca.crt"
+  register: ca_cert_content
   when:
     - kubeadm_ca_stat.stat is defined
     - kubeadm_ca_stat.stat.exists
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
-  changed_when: false
 
 - name: Create kubeadm token for joining nodes with 24h expiration (default)
   command: "{{ bin_dir }}/kubeadm token create"

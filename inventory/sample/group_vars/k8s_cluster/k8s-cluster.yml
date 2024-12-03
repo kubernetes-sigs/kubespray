@@ -17,7 +17,7 @@ kube_token_dir: "{{ kube_config_dir }}/tokens"
 kube_api_anonymous_auth: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.31.1
+kube_version: v1.29.5
 
 # Where the binaries will be downloaded.
 # Note: ensure that you've enough disk space (about 1G)
@@ -140,7 +140,11 @@ kube_proxy_nodeport_addresses: >-
   {%- endif -%}
 
 # If non-empty, will use this string as identification instead of the actual hostname
-# kube_override_hostname: {{ inventory_hostname }}
+# kube_override_hostname: >-
+#   {%- if cloud_provider is defined and cloud_provider in ['aws'] -%}
+#   {%- else -%}
+#   {{ inventory_hostname }}
+#   {%- endif -%}
 
 ## Encrypting Secret Data at Rest
 kube_encrypt_secret_data: false
@@ -258,7 +262,7 @@ default_kubelet_config_dir: "{{ kube_config_dir }}/dynamic_kubelet_dir"
 # kubelet_runtime_cgroups_cgroupfs: "/system.slice/{{ container_manager }}.service"
 # kubelet_kubelet_cgroups_cgroupfs: "/system.slice/kubelet.service"
 
-# Whether to run kubelet and container-engine daemons in a dedicated cgroup.
+# Optionally reserve this space for kube daemons.
 # kube_reserved: false
 ## Uncomment to override default values
 ## The following two items need to be set when kube_reserved is true
@@ -268,7 +272,7 @@ default_kubelet_config_dir: "{{ kube_config_dir }}/dynamic_kubelet_dir"
 # kube_cpu_reserved: 100m
 # kube_ephemeral_storage_reserved: 2Gi
 # kube_pid_reserved: "1000"
-# Reservation for control plane hosts
+# Reservation for master hosts
 # kube_master_memory_reserved: 512Mi
 # kube_master_cpu_reserved: 200m
 # kube_master_ephemeral_storage_reserved: 2Gi
@@ -362,25 +366,11 @@ auto_renew_certificates: false
 # First Monday of each month
 # auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:{{ groups['kube_control_plane'].index(inventory_hostname) }}0:00"
 
-kubeadm_patches_dir: "{{ kube_config_dir }}/patches"
-kubeadm_patches: []
-# See https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/control-plane-flags/#patches
-# Correspondance with this link
-# patchtype = type
-# target = target
-# suffix -> managed automatically
-# extension -> always "yaml"
-# kubeadm_patches:
-# - target: kube-apiserver|kube-controller-manager|kube-scheduler|etcd|kubeletconfiguration
-#   type: strategic(default)|json|merge
-#   patch:
-#    metadata:
-#      annotations:
-#        example.com/test: "true"
-#      labels:
-#        example.com/prod_level: "{{ prod_level }}"
-# - ...
-# Patches are applied in the order they are specified.
+# kubeadm patches path
+kubeadm_patches:
+  enabled: false
+  source_dir: "{{ inventory_dir }}/patches"
+  dest_dir: "{{ kube_config_dir }}/patches"
 
 # Set to true to remove the role binding to anonymous users created by kubeadm
 remove_anonymous_access: false

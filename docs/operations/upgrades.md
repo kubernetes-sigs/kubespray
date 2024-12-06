@@ -425,7 +425,7 @@ Please note that **migrating container engines is not officially supported by Ku
 
 As of Kubespray 2.18.0, containerd is already the default container engine. If you have the chance, it is advisable and safer to reset and redeploy the entire cluster with a new container engine.
 
-* [Migrating from Docker to Containerd](upgrades/migrate_docker2containerd.md)
+* [Migrating from Docker to Containerd](/docs/upgrades/migrate_docker2containerd.md)
 
 ## System upgrade
 

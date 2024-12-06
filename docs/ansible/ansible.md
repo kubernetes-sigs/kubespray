@@ -14,6 +14,7 @@ python3 -m venv $VENVDIR
 source $VENVDIR/bin/activate
 cd $KUBESPRAYDIR
 pip install -U -r requirements.txt
+pip install -U -r contrib/inventory_builder/requirements.txt
 ```
 
 In case you have a similar message when installing the requirements:

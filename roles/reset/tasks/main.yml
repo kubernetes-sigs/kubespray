@@ -414,13 +414,6 @@
     - network
 
 - name: Reset | Restart network
-  become: true
-  vars:
-    network_services:
-      - NetworkManager
-      - systemd-networkd
-      - networking
-      - network
   when:
     - ansible_os_family not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     - reset_restart_network | bool
@@ -429,16 +422,19 @@
     - network
   block:
     - name: Gather active network services
-      # noqa command-instead-of-module
-      command: systemctl is-active {{ item }}
-      loop: "{{ network_services }}"
+      systemd:
+        name: "{{ item }}"
+      loop:
+        - NetworkManager
+        - systemd-networkd
+        - networking
+        - network
       register: service_status
       changed_when: false
       ignore_errors: true
 
     - name: Restart active network services
       systemd:
-        name: "{{ item.item }}"
+        name: "{{ item }}"
         state: restarted
-      loop: "{{ service_status.results }}"
-      when: item.stdout == "active"
+      loop: "{{ service_status.results | selectattr('status.ActiveState', '==', 'active') | map(attribute='item') }}"

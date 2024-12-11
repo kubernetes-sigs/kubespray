@@ -146,7 +146,7 @@ function register_container_images() {
 		if [ "${org_image}" == "ID:" ]; then
 		  org_image=$(echo "${load_image}"  | awk '{print $4}')
 		fi
-		image_id=$(sudo ${runtime} image inspect ${org_image} | grep "\"Id\":" | awk -F: '{print $3}'| sed s/'\",'//)
+		image_id=$(sudo ${runtime} image inspect --format "{{.Id}}" "${org_image}")
 		if [ -z "${file_name}" ]; then
 			echo "Failed to get file_name for line ${line}"
 			exit 1

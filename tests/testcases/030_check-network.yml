@@ -121,13 +121,6 @@
       changed_when: false
       register: pods
 
-  - name: Get hostnet pods
-    command: "{{ bin_dir }}/kubectl get pods -n test -o
-            jsonpath='{range .items[?(.spec.hostNetwork)]}{.metadata.name} {.status.podIP} {.status.containerStatuses} {end}'"
-    changed_when: false
-    register: hostnet_pods
-    ignore_errors: true  # noqa ignore-errors
-
   - name: Get running pods
     command: "{{ bin_dir }}/kubectl get pods -n test -o
             jsonpath='{range .items[?(.status.phase==\"Running\")]}{.metadata.name} {.status.podIP} {.status.containerStatuses} {end}'"
@@ -147,9 +140,6 @@
       kube_pods_subnet: 10.233.64.0/18
       pod_names: "{{ (pods.stdout | from_json)['items'] | map(attribute='metadata.name') | list }}"
       pod_ips: "{{ (pods.stdout | from_json)['items'] | selectattr('status.podIP', 'defined') | map(attribute='status.podIP') | list }}"
-      pods_hostnet: |
-        {% set list = hostnet_pods.stdout.split(" ") %}
-        {{ list }}
       pods_running: |
         {% set list = running_pods.stdout.split(" ") %}
         {{ list }}
@@ -158,24 +148,11 @@
     assert:
       that: item | ansible.utils.ipaddr(kube_pods_subnet)
     when:
-    - not item in pods_hostnet
     - item in pods_running
     with_items: "{{ pod_ips }}"
 
   - name: Curl between pods is working
     command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- curl {{ item[1] }}:8080"
-    when:
-    - not item[0] in pods_hostnet
-    - not item[1] in pods_hostnet
-    with_nested:
-    - "{{ pod_names }}"
-    - "{{ pod_ips }}"
-
-  - name: Curl between hostnet pods is working
-    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- curl {{ item[1] }}:8080"
-    when:
-    - item[0] in pods_hostnet
-    - item[1] in pods_hostnet
     with_nested:
     - "{{ pod_names }}"
     - "{{ pod_ips }}"

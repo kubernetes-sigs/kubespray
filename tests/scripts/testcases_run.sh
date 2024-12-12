@@ -23,13 +23,9 @@ if [ "${UPGRADE_TEST}" != "false" ]; then
   git checkout "${CI_COMMIT_SHA}" -- tests/
 fi
 
-# needed for ara not to complain
-export TZ=UTC
-
 export ANSIBLE_REMOTE_USER=$SSH_USER
 export ANSIBLE_BECOME=true
 export ANSIBLE_BECOME_USER=root
-export ANSIBLE_CALLBACK_PLUGINS="$(python -m ara.setup.callback_plugins)"
 export ANSIBLE_INVENTORY=${CI_PROJECT_DIR}/inventory/sample/
 
 make -C tests INVENTORY_DIR=${ANSIBLE_INVENTORY} create-${CI_PLATFORM} -s

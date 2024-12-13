@@ -29,6 +29,42 @@ export ANSIBLE_BECOME_USER=root
 export ANSIBLE_INVENTORY=${CI_PROJECT_DIR}/inventory/sample/
 
 make -C tests INVENTORY_DIR=${ANSIBLE_INVENTORY} create-${CI_PLATFORM} -s
+
+# Test collection build and install by installing our collection, emptying our repository, adding
+# cluster.yml, reset.yml, and remote-node.yml files that simply point to our collection's playbooks, and then
+# running the same tests as before
+if [[ "${CI_JOB_NAME}" =~ "collection" ]]; then
+  # Build and install collection
+  ansible-galaxy collection build
+  ansible-galaxy collection install kubernetes_sigs-kubespray-$(grep "^version:" galaxy.yml | awk '{print $2}').tar.gz
+
+  # Simply remove all of our files and directories except for our tests directory
+  # to be absolutely certain that none of our playbooks or roles
+  # are interfering with our collection
+  find -mindepth 1 -maxdepth 1 ! -regex './\(tests\|inventory\)' -exec rm -rfv {} +
+
+cat > cluster.yml <<EOF
+- name: Install Kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.cluster
+EOF
+
+cat > upgrade-cluster.yml <<EOF
+- name: Install Kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.upgrade-cluster
+EOF
+
+cat > reset.yml <<EOF
+- name: Remove Kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.reset
+EOF
+
+cat > remove-node.yml <<EOF
+- name: Remove node from Kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.remove_node
+EOF
+
+fi
+
 ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml
 
 run_playbook () {
@@ -42,6 +78,10 @@ ansible-playbook \
     "$@" \
     ${playbook}
 }
+
+
+
+## START KUBESPRAY
 
 # Create cluster
 run_playbook cluster.yml
@@ -68,38 +108,6 @@ if [ "${RECOVER_CONTROL_PLANE_TEST}" != "false" ]; then
     run_playbook recover-control-plane.yml -e etcd_retries=10 --limit "etcd:kube_control_plane"
 fi
 
-# Test collection build and install by installing our collection, emptying our repository, adding
-# cluster.yml, reset.yml, and remote-node.yml files that simply point to our collection's playbooks, and then
-# running the same tests as before
-if [[ "${CI_JOB_NAME}" =~ "collection" ]]; then
-  # Build and install collection
-  ansible-galaxy collection build
-  ansible-galaxy collection install kubernetes_sigs-kubespray-$(grep "^version:" galaxy.yml | awk '{print $2}').tar.gz
-
-  # Simply remove all of our files and directories except for our tests directory
-  # to be absolutely certain that none of our playbooks or roles
-  # are interfering with our collection
-  find -maxdepth 1 ! -name tests -exec rm -rfv {} \;
-
-  # Write cluster.yml
-cat > cluster.yml <<EOF
-- name: Install Kubernetes
-  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.cluster
-EOF
-
-  # Write reset.yml
-cat > reset.yml <<EOF
-- name: Remove Kubernetes
-  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.reset
-EOF
-
-  # Write remove-node.yml
-cat > remove-node.yml <<EOF
-- name: Remove node from Kubernetes
-  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.remove_node
-EOF
-
-fi
 # Tests Cases
 ## Test Control Plane API
 run_playbook tests/testcases/010_check-apiserver.yml

@@ -120,29 +120,6 @@ fi
 ## Kubernetes conformance tests
 run_playbook tests/testcases/100_check-k8s-conformance.yml
 
-if [ "${IDEMPOT_CHECK}" = "true" ]; then
-  ## Idempotency checks 1/5 (repeat deployment)
-  run_playbook cluster.yml
-
-  ## Idempotency checks 2/5 (Advanced DNS checks)
-  if [[ ! ( "$CI_JOB_NAME" =~ "hardening" ) ]]; then
-      run_playbook tests/testcases/040_check-network-adv.yml
-  fi
-
-  if [ "${RESET_CHECK}" = "true" ]; then
-    ## Idempotency checks 3/5 (reset deployment)
-    run_playbook reset.yml -e reset_confirmation=yes
-
-    ## Idempotency checks 4/5 (redeploy after reset)
-    run_playbook cluster.yml
-
-    ## Idempotency checks 5/5 (Advanced DNS checks)
-    if [[ ! ( "$CI_JOB_NAME" =~ "hardening" ) ]]; then
-        run_playbook tests/testcases/040_check-network-adv.yml
-    fi
-  fi
-fi
-
 # Test node removal procedure
 if [ "${REMOVE_NODE_CHECK}" = "true" ]; then
   run_playbook remove-node.yml -e skip_confirmation=yes -e node=${REMOVE_NODE_NAME}

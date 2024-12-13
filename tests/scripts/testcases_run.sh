@@ -31,21 +31,6 @@ export ANSIBLE_INVENTORY=${CI_PROJECT_DIR}/inventory/sample/
 make -C tests INVENTORY_DIR=${ANSIBLE_INVENTORY} create-${CI_PLATFORM} -s
 ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml
 
-# Flatcar Container Linux needs auto update disabled
-if [[ "$CI_JOB_NAME" =~ "coreos" ]]; then
-  ansible all -m raw -a 'systemctl disable locksmithd'
-  ansible all -m raw -a 'systemctl stop locksmithd'
-  mkdir -p /opt/bin && ln -s /usr/bin/python /opt/bin/python
-fi
-
-if [[ "$CI_JOB_NAME" =~ "opensuse" ]]; then
-  # OpenSUSE needs netconfig update to get correct resolv.conf
-  # See https://goinggnu.wordpress.com/2013/10/14/how-to-fix-the-dns-in-opensuse-13-1/
-  ansible all -m raw -a 'netconfig update -f'
-  # Auto import repo keys
-  ansible all -m raw -a 'zypper --gpg-auto-import-keys refresh'
-fi
-
 run_playbook () {
 playbook=$1
 shift

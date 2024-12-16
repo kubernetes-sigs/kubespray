@@ -5,6 +5,7 @@
 # with new hashes.
 
 import sys
+import os
 
 from itertools import count, groupby
 from collections import defaultdict
@@ -95,8 +96,8 @@ downloads = {
 # crun : PGP signatures
 # cri_dockerd: no checksums or signatures
 # helm_archive: PGP signatures
-# krew_archive: different yaml structure
-# calico_crds_archive: different yaml structure
+# krew_archive: different yaml structure (in our download)
+# calico_crds_archive: different yaml structure (in our download)
 
 # TODO:
 # noarch support -> k8s manifests, helm charts
@@ -156,6 +157,36 @@ def download_hash(only_downloads: [str]) -> None:
             return None
         hash_file.raise_for_status()
         return download_hash_extract[download](hash_file.content.decode())
+
+    nodes_ids = [x['graphql_id'] for x in downloads.values()]
+    ql_params = {
+            'repoWithReleases': nodes_ids,
+            'repoWithTags': [],
+    }
+    with open("list_releases.graphql") as query:
+        response = s.post("https://api.github.com/graphql",
+                          json={'query': query.read(), 'variables': ql_params},
+                          headers={
+                              "Authorization": f"Bearer {os.environ['API_KEY']}",
+                              }
+                          )
+    response.raise_for_status()
+    github_versions = dict(zip([k + '_checksums' for k in downloads.keys()],
+                                [
+                                    {r["tagName"] for r in repo["releases"]["nodes"]
+                                     if not r["isPrerelease"] # and r["releaseAssets"]["totalCount"] > 2
+                                                              # instead here we need optionnal custom predicate per-component to filter out
+                                     }
+                                    for repo in response.json()["data"]["with_releases"]
+                                    ],
+                                strict=True))
+
+    new_versions = {
+            component: github_versions[component] - set(list(archs.values())[0].keys())
+            for component, archs in data.items() if component in [k + '_checksums' for k in downloads.keys()]
+            }
+
+
 
     for download, url in (downloads if only_downloads == []
                           else {k:downloads[k] for k in downloads.keys() & only_downloads}).items():

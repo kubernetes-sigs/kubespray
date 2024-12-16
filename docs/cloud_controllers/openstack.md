@@ -76,9 +76,9 @@ The cloud provider is configured to have Octavia by default in Kubespray.
   external_openstack_lbaas_network_id: "Neutron network ID to create LBaaS VIP"
   external_openstack_lbaas_manage_security_groups: false
   external_openstack_lbaas_create_monitor: false
-  external_openstack_lbaas_monitor_delay: 5
+  external_openstack_lbaas_monitor_delay: 5s
   external_openstack_lbaas_monitor_max_retries: 1
-  external_openstack_lbaas_monitor_timeout: 3
+  external_openstack_lbaas_monitor_timeout: 3s
   external_openstack_lbaas_internal_lb: false
 
   ```

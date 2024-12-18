@@ -79,60 +79,47 @@
     command:
       cmd: "{{ bin_dir }}/kubectl apply -f -"
       stdin: |
-        apiVersion: v1
-        kind: Pod
+        apiVersion: apps/v1
+        kind: Deployment
         metadata:
-          name: {{ item }}
-          namespace: test
+          name: agnhost
         spec:
-          containers:
-          - name: agnhost
-            image: {{ test_image_repo }}:{{ test_image_tag }}
-            command: ['/agnhost', 'netexec', '--http-port=8080']
-            securityContext:
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop: ['ALL']
-              runAsUser: 1000
-              runAsNonRoot: true
-              seccompProfile:
-                type: RuntimeDefault
+          replicas: 2
+          selector:
+            matchLabels:
+              app: agnhost
+          template:
+            metadata:
+              labels:
+                app: agnhost
+            spec:
+              containers:
+              - name: agnhost
+                image: {{ test_image_repo }}:{{ test_image_tag }}
+                command: ['/agnhost', 'netexec', '--http-port=8080']
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop: ['ALL']
+                  runAsUser: 1000
+                  runAsNonRoot: true
+                  seccompProfile:
+                    type: RuntimeDefault
     changed_when: false
-    loop:
-    - agnhost1
-    - agnhost2
 
   - import_role:  # noqa name[missing]
       name: cluster-dump
 
   - name: Check that all pods are running and ready
-    command: "{{ bin_dir }}/kubectl get pods --namespace test --no-headers -o yaml"
-    changed_when: false
-    register: run_pods_log
-    until:
-    # Check that all pods are running
-    - '(run_pods_log.stdout | from_yaml)["items"] | map(attribute = "status.phase") | unique | list == ["Running"]'
-    # Check that all pods are ready
-    - '(run_pods_log.stdout | from_yaml)["items"] | map(attribute = "status.containerStatuses") | map("map", attribute = "ready") | map("min") | min'
-    retries: 18
-    delay: 10
-    failed_when: false
-
-  - name: Get pod names
-    command: "{{ bin_dir }}/kubectl get pods -n test -o json"
-    changed_when: false
-    register: pods
-
-  - debug:  # noqa name[missing]
-      msg: "{{ pods.stdout.split('\n') }}"
-    failed_when: not run_pods_log is success
-
-  - name: Get hostnet pods
-    command: "{{ bin_dir }}/kubectl get pods -n test -o
-            jsonpath='{range .items[?(.spec.hostNetwork)]}{.metadata.name} {.status.podIP} {.status.containerStatuses} {end}'"
-    changed_when: false
-    register: hostnet_pods
-    ignore_errors: true  # noqa ignore-errors
+    block:
+    - name: Check Deployment is ready
+      command: "{{ bin_dir }}/kubectl rollout status deploy --namespace test agnhost --timeout=180"
+      changed_when: false
+    rescue:
+    - name: Get pod names
+      command: "{{ bin_dir }}/kubectl get pods -n test -o json"
+      changed_when: false
+      register: pods
 
   - name: Get running pods
     command: "{{ bin_dir }}/kubectl get pods -n test -o
@@ -153,9 +140,6 @@
       kube_pods_subnet: 10.233.64.0/18
       pod_names: "{{ (pods.stdout | from_json)['items'] | map(attribute='metadata.name') | list }}"
       pod_ips: "{{ (pods.stdout | from_json)['items'] | selectattr('status.podIP', 'defined') | map(attribute='status.podIP') | list }}"
-      pods_hostnet: |
-        {% set list = hostnet_pods.stdout.split(" ") %}
-        {{ list }}
       pods_running: |
         {% set list = running_pods.stdout.split(" ") %}
         {{ list }}
@@ -164,24 +148,11 @@
     assert:
       that: item | ansible.utils.ipaddr(kube_pods_subnet)
     when:
-    - not item in pods_hostnet
     - item in pods_running
     with_items: "{{ pod_ips }}"
 
   - name: Curl between pods is working
     command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- curl {{ item[1] }}:8080"
-    when:
-    - not item[0] in pods_hostnet
-    - not item[1] in pods_hostnet
-    with_nested:
-    - "{{ pod_names }}"
-    - "{{ pod_ips }}"
-
-  - name: Curl between hostnet pods is working
-    command: "{{ bin_dir }}/kubectl -n test exec {{ item[0] }} -- curl {{ item[1] }}:8080"
-    when:
-    - item[0] in pods_hostnet
-    - item[1] in pods_hostnet
     with_nested:
     - "{{ pod_names }}"
     - "{{ pod_ips }}"

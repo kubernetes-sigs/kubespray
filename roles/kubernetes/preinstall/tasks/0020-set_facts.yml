@@ -33,30 +33,12 @@
   failed_when: false
   register: resolvconf_stat
 
+  # Used in vars/
 - name: Fetch resolvconf
-  when: resolvconf_stat.stat.exists is defined and resolvconf_stat.stat.exists
-  block:
-
-    - name: Get content of /etc/resolv.conf
-      slurp:
-        src: /etc/resolv.conf
-      register: resolvconf_slurp
-
-    - name: Get currently configured nameservers
-      set_fact:
-        configured_nameservers: "{{ resolvconf_slurp.content | b64decode | regex_findall('^nameserver\\s*(\\S*)', multiline=True) | ansible.utils.ipaddr }}"
-      when: resolvconf_slurp.content is defined
-
-- name: Stop if /etc/resolv.conf not configured nameservers
-  assert:
-    that: configured_nameservers | length>0
-    fail_msg: "nameserver should not empty in /etc/resolv.conf"
-  when:
-    - not ignore_assert_errors
-    - configured_nameservers is defined
-    - not (upstream_dns_servers is defined and upstream_dns_servers | length > 0)
-    - not (disable_host_nameservers | default(false))
-    - dns_mode in ['coredns', 'coredns_dual']
+  when: resolvconf_stat.stat.exists
+  slurp:
+    src: /etc/resolv.conf
+  register: resolvconf_slurp
 
 - name: NetworkManager | Check if host has NetworkManager
   # noqa command-instead-of-module - Should we use service_facts for this?

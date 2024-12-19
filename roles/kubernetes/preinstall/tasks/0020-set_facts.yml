@@ -77,7 +77,7 @@
 - name: Set default dns if remove_default_searchdomains is false
   set_fact:
     default_searchdomains: ["default.svc.{{ dns_domain }}", "svc.{{ dns_domain }}"]
-  when: not remove_default_searchdomains | default() | bool or (remove_default_searchdomains | default() | bool and searchdomains | default([]) | length==0)
+  when: not remove_default_searchdomains | default() | bool or (remove_default_searchdomains | default() | bool and searchdomains | length == 0)
 
 - name: Set dns facts
   set_fact:
@@ -150,43 +150,6 @@
   set_fact:
     dhclienthookfile: /etc/dhcp/dhclient-exit-hooks.d/zdnsupdate
   when: ansible_os_family == "Debian"
-
-- name: Generate search domains to resolvconf
-  set_fact:
-    searchentries:
-      search {{ (default_searchdomains | default([]) + searchdomains | default([])) | join(' ') }}
-    domainentry:
-      domain {{ dns_domain }}
-    supersede_search:
-      supersede domain-search "{{ (default_searchdomains | default([]) + searchdomains | default([])) | join('", "') }}";
-    supersede_domain:
-      supersede domain-name "{{ dns_domain }}";
-
-# This task should only run after cluster/nodelocal DNS is up, otherwise all DNS lookups will timeout
-- name: Generate nameservers for resolvconf, including cluster DNS
-  set_fact:
-    nameserverentries: |-
-      {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique | join(',') }}
-    dhclient_supersede_nameserver_entries_list: |-
-      {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique }}
-  when: not dns_early or dns_late
-
-# This task should run instead of the above task when cluster/nodelocal DNS hasn't
-# been deployed yet (like scale.yml/cluster.yml) or when it's down (reset.yml)
-- name: Generate nameservers for resolvconf, not including cluster DNS
-  set_fact:
-    nameserverentries: |-
-      {{ (nameservers | d([]) + cloud_resolver | d([]) + configured_nameservers | d([])) | unique | join(',') }}
-    dhclient_supersede_nameserver_entries_list: |-
-      {{ (nameservers | d([]) + cloud_resolver | d([])) | unique }}
-  when: dns_early and not dns_late
-
-- name: Generate supersede_nameserver from dhclient_supersede_nameserver_entries_list
-  set_fact:
-    supersede_nameserver: |-
-      {%- if dhclient_supersede_nameserver_entries_list | length > 0 -%}
-      supersede domain-name-servers {{ dhclient_supersede_nameserver_entries_list | join(', ') }};
-      {%- endif -%}
 
 - name: Set etcd vars if using kubeadm mode
   set_fact:

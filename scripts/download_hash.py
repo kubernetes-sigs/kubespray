@@ -48,6 +48,11 @@ downloads = {
         'url': "https://github.com/containerd/containerd/releases/download/v{version}/containerd-{version}-{os}-{arch}.tar.gz.sha256sum",
         'graphql_id': "R_kgDOAr9FWA"
         },
+    "cri_dockerd_archive": {
+        'binary': True,
+        'url': "https://github.com/Mirantis/cri-dockerd/releases/download/v{version}/cri-dockerd-{version}.{arch}.tgz",
+        'graphql_id': "R_kgDOEvvLcQ",
+        },
     "crictl": {
         'url': "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{version}/crictl-v{version}-{os}-{arch}.tar.gz.sha256",
         'graphql_id': "R_kgDOBMdURA",
@@ -56,9 +61,19 @@ downloads = {
         'url':"https://storage.googleapis.com/cri-o/artifacts/cri-o.{arch}.v{version}.tar.gz.sha256sum",
         'graphql_id': "R_kgDOBAr5pg",
         },
+    "crun": {
+        'url': "https://github.com/containers/crun/releases/download/{version}/crun-{version}-linux-{arch}",
+        'binary': True,
+        'graphql_id': "R_kgDOBip3vA",
+        },
     "etcd_binary": {
         'url': "https://github.com/etcd-io/etcd/releases/download/v{version}/SHA256SUMS",
         'graphql_id': "R_kgDOAKtHtg",
+        },
+    "kata_containers_binary": {
+        'url': "https://github.com/kata-containers/kata-containers/releases/download/{version}/kata-static-{version}-{arch}.tar.xz",
+        'binary': True,
+        'graphql_id': "R_kgDOBsJsHQ",
         },
     "kubeadm": {
         'url': "https://dl.k8s.io/release/v{version}/bin/linux/{arch}/kubeadm.sha256",
@@ -84,8 +99,13 @@ downloads = {
         'url': "https://github.com/lework/skopeo-binary/releases/download/v{version}/skopeo-{os}-{arch}.sha256",
         'graphql_id': "R_kgDOHQ6J9w",
         },
+    "youki": {
+        'url': "https://github.com/youki-dev/youki/releases/download/v{version}/youki-{version}-{alt_arch}-gnu.tar.gz",
+        'binary': True,
+        'graphql_id': "R_kgDOFPvgPg",
+        },
     "yq": {
-        'url':"https://github.com/mikefarah/yq/releases/download/v{version}/checksums-bsd", # see https://github.com/mikefarah/yq/pull/1691 for why we use this url
+        'url': "https://github.com/mikefarah/yq/releases/download/v{version}/checksums-bsd", # see https://github.com/mikefarah/yq/pull/1691 for why we use this url
         'graphql_id': "R_kgDOApOQGQ"
         },
 }
@@ -98,11 +118,7 @@ arch_alt_name = {
 }
 
 # TODO: downloads not supported
-# youki: no checkusms in releases
-# kata: no checksums in releases
 # gvisor: sha512 checksums
-# crun : PGP signatures
-# cri_dockerd: no checksums or signatures
 # helm_archive: PGP signatures
 # krew_archive: different yaml structure (in our download)
 # calico_crds_archive: different yaml structure (in our download)

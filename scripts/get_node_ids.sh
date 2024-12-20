@@ -30,7 +30,19 @@ gh api graphql -H "X-Github-Next-Global-ID: 1" -f query='{
     yq: repository(owner: "mikefarah", name: "yq") {
     id
     }
+    youki: repository(owner: "youki-dev", name: "youki") {
+    id
+    }
     kubernetes: repository(owner: "kubernetes", name: "kubernetes") {
+    id
+    }
+    cri_dockerd: repository(owner: "Mirantis", name: "cri-dockerd") {
+    id
+    }
+    kata: repository(owner: "kata-containers", name: "kata-containers") {
+    id
+    }
+    crun: repository(owner: "containers", name: "crun") {
     id
     }
 }'

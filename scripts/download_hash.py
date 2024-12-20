@@ -89,6 +89,14 @@ downloads = {
         'graphql_id': "R_kgDOApOQGQ"
         },
 }
+
+arch_alt_name = {
+    "amd64": "x86_64",
+    "arm64": "aarch64",
+    "ppc64le": None,
+    "arm": None,
+}
+
 # TODO: downloads not supported
 # youki: no checkusms in releases
 # kata: no checksums in releases
@@ -214,7 +222,8 @@ def download_hash(only_downloads: [str]) -> None:
                     downloads[component]['url'].format(
                         version = version,
                         os = "linux",
-                        arch = arch
+                        arch = arch,
+                        alt_arch = arch_alt_name[arch],
                         ),
                     allow_redirects=True)
             hash_file.raise_for_status()

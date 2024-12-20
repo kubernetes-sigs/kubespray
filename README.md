@@ -118,7 +118,6 @@ Note:
   - [cert-manager](https://github.com/jetstack/cert-manager) v1.15.3
   - [coredns](https://github.com/coredns/coredns) v1.11.3
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) v1.12.0
-  - [krew](https://github.com/kubernetes-sigs/krew) v0.4.4
   - [argocd](https://argoproj.github.io/) v2.11.0
   - [helm](https://helm.sh/) v3.16.4
   - [metallb](https://metallb.universe.tf/)  v0.13.9

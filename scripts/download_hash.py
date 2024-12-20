@@ -149,14 +149,11 @@ def download_hash(only_downloads: [str]) -> None:
     @cache
     def _get_hash_by_arch(download: str, version: str) -> {str: str}:
 
-        hash_file = s.get(downloads[download].format(
+        hash_file = s.get(downloads[download]['url'].format(
             version = version,
             os = "linux",
             ),
                           allow_redirects=True)
-        if hash_file.status_code == 404:
-            print(f"Unable to find {download} hash file for version {version} at {hash_file.url}")
-            return None
         hash_file.raise_for_status()
         return download_hash_extract[download](hash_file.content.decode())
 
@@ -206,6 +203,20 @@ def download_hash(only_downloads: [str]) -> None:
             and (cur_v := sorted(Version(k) for k in next(archs.values().__iter__()).keys()))
         }
 
+    def get_hash(component: str, version: Version, arch: str):
+        if component in download_hash_extract:
+            hashes = _get_hash_by_arch(component, version)
+            return hashes[arch]
+        else:
+            hash_file = s.get(
+                    downloads[component]['url'].format(
+                        version = version,
+                        os = "linux",
+                        arch = arch
+                        ),
+                    allow_redirects=True)
+            hash_file.raise_for_status()
+            return (hash_file.content.decode().split()[0])
 
 
     for download, url in (downloads if only_downloads == []

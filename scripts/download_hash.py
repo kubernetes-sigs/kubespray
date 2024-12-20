@@ -12,6 +12,7 @@ from collections import defaultdict
 from functools import cache
 import argparse
 import requests
+import hashlib
 from ruamel.yaml import YAML
 from packaging.version import Version, InvalidVersion
 
@@ -217,6 +218,8 @@ def download_hash(only_downloads: [str]) -> None:
                         ),
                     allow_redirects=True)
             hash_file.raise_for_status()
+            if downloads[component].get('binary', False):
+                return hashlib.sha256(hash_file.content).hexdigest()
             return (hash_file.content.decode().split()[0])
 
 

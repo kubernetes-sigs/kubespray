@@ -176,20 +176,20 @@ def download_hash(only_downloads: [str]) -> None:
         except InvalidVersion:
             return None
 
-    github_versions = dict(zip([k + '_checksums' for k in downloads.keys()],
-                                [
-                                    {
-                                        v for r in repo["releases"]["nodes"]
-                                        if not r["isPrerelease"]
-                                           and (v := valid_version(r["tagName"])) is not None
-                                     }
-                                    for repo in response.json()["data"]["with_releases"]
-                                    ],
-                                strict=True))
+    github_versions = dict(zip(downloads.keys(),
+                               [
+                                   {
+                                       v for r in repo["releases"]["nodes"]
+                                       if not r["isPrerelease"]
+                                          and (v := valid_version(r["tagName"])) is not None
+                                   }
+                                   for repo in response.json()["data"]["with_releases"]
+                               ],
+                               strict=True))
 
     new_versions = {
-            component:
-            {v for v in github_versions[component]
+            c:
+            {v for v in github_versions[c]
                     if any(v > version and (v.major, v.minor) == (version.major, version.minor)
                            for version in [max(minors) for _, minors in groupby(cur_v, lambda v: (v.minor, v.major))])
                            # only get:
@@ -198,7 +198,7 @@ def download_hash(only_downloads: [str]) -> None:
             }
             - set(cur_v)
             for component, archs in data.items()
-            if component in [k + '_checksums' for k in downloads.keys()]
+            if (c := component.removesuffix('_checksums')) in downloads.keys()
             # this is only to bound cur_v in the scope
             and (cur_v := sorted(Version(k) for k in next(archs.values().__iter__()).keys()))
         }

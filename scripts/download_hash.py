@@ -239,17 +239,22 @@ def download_hash(only_downloads: [str]) -> None:
     new_versions = {
             c:
             {v for v in github_versions[c]
-                    if any(v > version and (v.major, v.minor) == (version.major, version.minor)
-                           for version in [max(minors) for _, minors in groupby(cur_v, lambda v: (v.minor, v.major))])
-                           # only get:
-                           # - patch versions (no minor or major bump)
-                           # - newer ones (don't get old patch version)
+                 if any(v > version
+                        and (
+                            (v.major, v.minor) == (version.major, version.minor)
+                            or c.startswith('gvisor')
+                            )
+                           for version in [max(minors) for _, minors in groupby(cur_v, lambda v: (v.minor, v.major))]
+                        )
+                        # only get:
+                        # - patch versions (no minor or major bump) (exception for gvisor which does not have a major.minor.patch scheme
+                        # - newer ones (don't get old patch version)
             }
             - set(cur_v)
             for component, archs in data.items()
             if (c := component.removesuffix('_checksums')) in downloads.keys()
             # this is only to bound cur_v in the scope
-            and (cur_v := sorted(Version(k) for k in next(archs.values().__iter__()).keys()))
+            and (cur_v := sorted(Version(str(k)) for k in next(archs.values().__iter__()).keys()))
         }
 
     def get_hash(component: str, version: Version, arch: str):
@@ -280,7 +285,7 @@ def download_hash(only_downloads: [str]) -> None:
         data[c] = {arch :
                    {v :
                     versions[v] for v in sorted(versions.keys(),
-                                                key=Version,
+                                                key=lambda v: Version(str(v)),
                                                 reverse=True)
                     }
                    for arch, versions in data[c].items()

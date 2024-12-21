@@ -7,7 +7,8 @@
 import sys
 import os
 
-from itertools import groupby
+from itertools import groupby, chain
+from more_itertools import partition
 from collections import defaultdict
 from functools import cache
 import argparse
@@ -69,6 +70,18 @@ downloads = {
     "etcd_binary": {
         'url': "https://github.com/etcd-io/etcd/releases/download/v{version}/SHA256SUMS",
         'graphql_id': "R_kgDOAKtHtg",
+        },
+    "gvisor_containerd_shim_binary": {
+        'url': "https://storage.googleapis.com/gvisor/releases/release/{version}/{alt_arch}/containerd-shim-runsc-v1.sha512",
+        'hashtype': "sha512",
+        'tags': True,
+        'graphql_id': "R_kgDOB9IlXg",
+        },
+    "gvisor_runsc_binary": {
+        'url': "https://storage.googleapis.com/gvisor/releases/release/{version}/{alt_arch}/runsc.sha512",
+        'hashtype': "sha512",
+        'tags': True,
+        'graphql_id': "R_kgDOB9IlXg",
         },
     "kata_containers_binary": {
         'url': "https://github.com/kata-containers/kata-containers/releases/download/{version}/kata-static-{version}-{arch}.tar.xz",
@@ -179,10 +192,14 @@ def download_hash(only_downloads: [str]) -> None:
         hash_file.raise_for_status()
         return download_hash_extract[download](hash_file.content.decode())
 
-    nodes_ids = [x['graphql_id'] for x in downloads.values()]
+
+    releases, tags = map(dict,
+                         partition(lambda r: r[1].get('tags', False),
+                                    {k: downloads[k] for k in (downloads.keys() & only_downloads)}.items()
+                                   ))
     ql_params = {
-            'repoWithReleases': nodes_ids,
-            'repoWithTags': [],
+        'repoWithReleases': [r['graphql_id'] for r in releases.values()],
+        'repoWithTags': [t['graphql_id'] for t in tags.values()],
     }
     with open("list_releases.graphql") as query:
         response = s.post("https://api.github.com/graphql",
@@ -197,15 +214,21 @@ def download_hash(only_downloads: [str]) -> None:
             return Version(possible_version)
         except InvalidVersion:
             return None
-
-    github_versions = dict(zip(downloads.keys(),
+    rep = response.json()["data"]
+    github_versions = dict(zip(chain(releases.keys(), tags.keys()),
                                [
                                    {
                                        v for r in repo["releases"]["nodes"]
                                        if not r["isPrerelease"]
                                           and (v := valid_version(r["tagName"])) is not None
                                    }
-                                   for repo in response.json()["data"]["with_releases"]
+                                   for repo in rep["with_releases"]
+                               ] +
+                               [
+                                   { v for t in repo["refs"]["nodes"]
+                                    if (v := valid_version(t["name"].removeprefix('release-'))) is not None
+                                   }
+                                   for repo in rep["with_tags"]
                                ],
                                strict=True))
 

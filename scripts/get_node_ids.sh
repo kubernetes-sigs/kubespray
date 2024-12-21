@@ -45,4 +45,7 @@ gh api graphql -H "X-Github-Next-Global-ID: 1" -f query='{
     crun: repository(owner: "containers", name: "crun") {
     id
     }
+    gvisor: repository(owner: "google", name: "gvisor") {
+    id
+    }
 }'

@@ -272,7 +272,10 @@ def download_hash(only_downloads: [str]) -> None:
                     allow_redirects=True)
             hash_file.raise_for_status()
             if downloads[component].get('binary', False):
-                return hashlib.sha256(hash_file.content).hexdigest()
+                return hashlib.new(
+                        downloads[component].get('hashtype', 'sha256'),
+                        hash_file.content
+                        ).hexdigest()
             return (hash_file.content.decode().split()[0])
 
 

@@ -257,6 +257,15 @@ def download_hash(only_downloads: [str]) -> None:
             and (cur_v := sorted(Version(str(k)) for k in next(archs.values().__iter__()).keys()))
         }
 
+    hash_set_to_0 = {
+            c: {
+                Version(str(v)) for v, h in chain.from_iterable(a.items() for a in archs.values())
+                if h == 0
+               }
+            for component, archs in data.items()
+            if (c := component.removesuffix('_checksums')) in downloads.keys()
+            }
+
     def get_hash(component: str, version: Version, arch: str):
         if component in download_hash_extract:
             hashes = _get_hash_by_arch(component, version)
@@ -279,7 +288,7 @@ def download_hash(only_downloads: [str]) -> None:
             return (hash_file.content.decode().split()[0])
 
 
-    for component, versions in new_versions.items():
+    for component, versions in chain(new_versions.items(), hash_set_to_0.items()):
         c = component + '_checksums'
         for arch in components_supported_arch[component]:
             for version in versions:
@@ -307,26 +316,24 @@ parser = argparse.ArgumentParser(description=f"Add new patch versions hashes in 
  which means it won't add new major or minor versions.
  In order to add one of these, edit {CHECKSUMS_YML}
  by hand, adding the new versions with a patch number of 0 (or the lowest relevant patch versions)
+ and a hash value of 0.
  ; then run this script.
 
  Note that the script will try to add the versions on all
  architecture keys already present for a given download target.
-
- The '0' value for a version hash is treated as a missing hash, so the script will try to download it again.
- To notify a non-existing version (yanked, or upstream does not have monotonically increasing versions numbers),
- use the special value 'NONE'.
 
  EXAMPLES:
 
  crictl_checksums:
       ...
     amd64:
-+     v1.30.0: 0
-      v1.29.0: d16a1ffb3938f5a19d5c8f45d363bd091ef89c0bc4d44ad16b933eede32fdcbb
-      v1.28.0: 8dc78774f7cbeaf787994d386eec663f0a3cf24de1ea4893598096cb39ef2508"""
++     1.30.0: 0
+      1.29.0: d16a1ffb3938f5a19d5c8f45d363bd091ef89c0bc4d44ad16b933eede32fdcbb
+      1.28.0: 8dc78774f7cbeaf787994d386eec663f0a3cf24de1ea4893598096cb39ef2508"""
 
 )
-parser.add_argument('binaries', nargs='*', choices=downloads.keys())
+parser.add_argument('binaries', nargs='*', choices=downloads.keys(),
+                    help='if provided, only obtain hashes for these compoments')
 
 args = parser.parse_args()
 download_hash(args.binaries)

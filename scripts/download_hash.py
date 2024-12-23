@@ -13,7 +13,9 @@ from functools import cache
 import argparse
 import requests
 from ruamel.yaml import YAML
-from packaging.version import Version
+from packaging.version import Version, InvalidVersion
+
+from typing import Optional
 
 CHECKSUMS_YML = "../roles/kubespray-defaults/defaults/main/checksums.yml"
 
@@ -171,11 +173,18 @@ def download_hash(only_downloads: [str]) -> None:
                               }
                           )
     response.raise_for_status()
+    def valid_version(possible_version: str) -> Optional[Version]:
+        try:
+            return Version(possible_version)
+        except InvalidVersion:
+            return None
+
     github_versions = dict(zip([k + '_checksums' for k in downloads.keys()],
                                 [
-                                    {r["tagName"] for r in repo["releases"]["nodes"]
-                                     if not r["isPrerelease"] # and r["releaseAssets"]["totalCount"] > 2
-                                                              # instead here we need optionnal custom predicate per-component to filter out
+                                    {
+                                        v for r in repo["releases"]["nodes"]
+                                        if not r["isPrerelease"]
+                                           and (v := valid_version(r["tagName"])) is not None
                                      }
                                     for repo in response.json()["data"]["with_releases"]
                                     ],

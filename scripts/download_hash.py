@@ -191,9 +191,20 @@ def download_hash(only_downloads: [str]) -> None:
                                 strict=True))
 
     new_versions = {
-            component: github_versions[component] - set(list(archs.values())[0].keys())
-            for component, archs in data.items() if component in [k + '_checksums' for k in downloads.keys()]
+            component:
+            {v for v in github_versions[component]
+                    if any(v > version and (v.major, v.minor) == (version.major, version.minor)
+                           for version in [max(minors) for _, minors in groupby(cur_v, lambda v: (v.minor, v.major))])
+                           # only get:
+                           # - patch versions (no minor or major bump)
+                           # - newer ones (don't get old patch version)
             }
+            - set(cur_v)
+            for component, archs in data.items()
+            if component in [k + '_checksums' for k in downloads.keys()]
+            # this is only to bound cur_v in the scope
+            and (cur_v := sorted(Version(k) for k in next(archs.values().__iter__()).keys()))
+        }
 
 
 

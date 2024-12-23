@@ -9,7 +9,6 @@ import os
 
 from itertools import groupby, chain
 from more_itertools import partition
-from collections import defaultdict
 from functools import cache
 import argparse
 import requests

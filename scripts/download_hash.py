@@ -184,6 +184,10 @@ def download_hash(only_downloads: [str]) -> None:
                                ],
                                strict=True))
 
+    components_supported_arch = {
+            component.removesuffix('_checksums'): [a for a in archs.keys()]
+            for component, archs in data.items()
+            }
     new_versions = {
             c:
             {v for v in github_versions[c]
@@ -215,6 +219,21 @@ def download_hash(only_downloads: [str]) -> None:
             hash_file.raise_for_status()
             return (hash_file.content.decode().split()[0])
 
+
+    for component, versions in new_versions.items():
+        c = component + '_checksums'
+        for arch in components_supported_arch[component]:
+            for version in versions:
+                data[c][arch][str(version)] = f"{downloads[component].get('hashtype', 'sha256')}:{get_hash(component, version, arch)}"
+
+        data[c] = {arch :
+                   {v :
+                    versions[v] for v in sorted(versions.keys(),
+                                                key=Version,
+                                                reverse=True)
+                    }
+                   for arch, versions in data[c].items()
+                   }
 
 
     with open(CHECKSUMS_YML, "w") as checksums_yml:

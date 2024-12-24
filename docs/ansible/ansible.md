@@ -106,7 +106,6 @@ The following tags are defined in playbooks:
 | iptables                       | Flush and clear iptable when resetting                |
 | k8s-pre-upgrade                | Upgrading K8s cluster                                 |
 | kata-containers                | Configuring kata-containers runtime                   |
-| krew                           | Install and manage krew                               |
 | kubeadm                        | Roles linked to kubeadm tasks                         |
 | kube-apiserver                 | Configuring static pod kube-apiserver                 |
 | kube-controller-manager        | Configuring static pod kube-controller-manager        |

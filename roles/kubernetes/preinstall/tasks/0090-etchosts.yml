@@ -3,8 +3,13 @@
   set_fact:
     etc_hosts_inventory_block: |-
       {% for item in (groups['k8s_cluster'] + groups['etcd'] | default([]) + groups['calico_rr'] | default([])) | unique -%}
-      {% if 'access_ip' in hostvars[item] or 'ip' in hostvars[item] or 'ansible_default_ipv4' in hostvars[item] -%}
+      {% if 'access_ip' in hostvars[item] or 'ip' in hostvars[item] or hostvars[item]['ansible_default_ipv4'] -%}
       {{ hostvars[item]['access_ip'] | default(hostvars[item]['ip'] | default(hostvars[item]['ansible_default_ipv4']['address'])) }}
+      {%- if ('ansible_hostname' in hostvars[item] and item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }} {{ hostvars[item]['ansible_hostname'] }} {% else %} {{ item }}.{{ dns_domain }} {{ item }} {% endif %}
+
+      {% endif %}
+      {% if ('access_ip6' in hostvars[item] or 'ip6' in hostvars[item] or hostvars[item]['ansible_default_ipv6']) and (enable_ipv6only_stack_networks or enable_dual_stack_networks) -%}
+      {{ hostvars[item]['access_ip6'] | default(hostvars[item]['ip6'] | default(hostvars[item]['ansible_default_ipv6']['address'])) }}
       {%- if ('ansible_hostname' in hostvars[item] and item != hostvars[item]['ansible_hostname']) %} {{ hostvars[item]['ansible_hostname'] }}.{{ dns_domain }} {{ hostvars[item]['ansible_hostname'] }} {% else %} {{ item }}.{{ dns_domain }} {{ item }} {% endif %}
 
       {% endif %}

@@ -82,6 +82,29 @@
     mode: "0640"
   when: kube_apiserver_tracing
 
+- name: Kubeadm | Configure Structured Authentication
+  when:
+    - kube_oidc_auth
+    - kube_oidc_structured_auth
+  block:
+    - name: Kubeadm | Check if Structured Authentication Configuration is supported
+      fail:
+        msg: "OIDC structured auth is supported only from Kubernetes 1.30.0"
+      when:
+        - kube_version is version('1.30.0', '<')
+
+    - name: Kubeadm | Create apiserver authentication config directory
+      file:
+        path: "{{ kube_config_dir }}/authentication"
+        state: directory
+        mode: "0640"
+
+    - name: Kubeadm | Write apiserver authentication config yaml
+      template:
+        src: apiserver-authentication-config.yaml.j2
+        dest: "{{ kube_config_dir }}/authentication/apiserver-authentication-config.yaml"
+        mode: "0640"
+
 # Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
 - name: Set kubeadm_config_api_fqdn define
   set_fact:

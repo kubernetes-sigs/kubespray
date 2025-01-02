@@ -1,31 +1,48 @@
 ---
 apiVersion: apiserver.config.k8s.io/v1beta1
 kind: AuthenticationConfiguration
+{% if kube_apiserver_structured_auth_jwt_issuers | length > 0 %}
 jwt:
-  - issuer:
-      audiences: {{ ([kube_oidc_client_id] + kube_oidc_audiences) | to_json }}
-      audienceMatchPolicy: MatchAny
-{% if kube_oidc_ca_file is defined %}
-      certificateAuthority: "{{ kube_oidc_ca_file }}"
+{% for issuer in kube_apiserver_structured_auth_jwt_issuers %}
+- issuer:
+    url: "{{ issuer.issuer.url }}"
+{% if issuer.issuer.discoveryURL is defined %}
+    discoveryURL: "{{ issuer.issuer.discoveryURL }}"
 {% endif %}
-      url: "{{ kube_oidc_url }}"
-    claimMappings:
-{% if kube_oidc_username_claim is defined %}
-      username:
-        claim: "{{ kube_oidc_username_claim }}"
-        prefix: "{{ kube_oidc_username_prefix }}"
-{% endif %}
-{% if kube_oidc_groups_claim is defined %}
-      groups:
-        claim: "{{ kube_oidc_groups_claim }}"
-        prefix: "{{ kube_oidc_groups_prefix }}"
-{% endif %}
-{% if kube_oidc_uid_claim is defined %}
-      uid:
-        claim: "{{ kube_oidc_uid_claim }}"
-{% endif %}
-    userValidationRules:
-{% for rule in kube_oidc_user_validation_rules + kube_oidc_additional_user_validation_rules %}
-      - expression: "{{ rule.expression }}"
-        message: "{{ rule.message }}"
+    audiences:
+{% for audience in issuer.issuer.audiences %}
+    - {{ audience }}
 {% endfor %}
+    audienceMatchPolicy: {{ issuer.issuer.audienceMatchPolicy }}
+{% if issuer.claimValidationRules is defined %}
+  claimValidationRules:
+{% for validationRule in issuer.claimValidationRules %}
+    expression: "{{ validationRule.expression }}"
+    message: "{{ validationRule.message }}"
+{% endfor %}
+{% endif %}
+  claimMappings:
+    username:
+      expression: "{{ issuer.claimMappings.username.expression }}"
+    groups:
+      expression: "{{ issuer.claimMappings.groups.expression }}"
+    uid:
+      expression: "{{ issuer.claimMappings.uid.expression }}"
+{% if issuer.claimMappings.extra is defined %}
+    extra:
+{% for extra in issuer.claimMappings.extra %}
+    - key: "{{ extra.key }}"
+      expression: "{{ extra.expression }}"
+{% endfor %}
+{% endif %}
+{% if issuer.userValidationRules | length > 0 %}
+  userValidationRules:
+{% for rule in issuer.userValidationRules %}
+  - expression: "{{ rule.expression }}"
+    message: "{{ rule.message }}"
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% else %}
+jwt:
+{% endif %}

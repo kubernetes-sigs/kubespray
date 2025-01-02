@@ -83,21 +83,31 @@
   when: kube_apiserver_tracing
 
 - name: Kubeadm | Configure Structured Authentication
+  vars:
+    all_kube_apiserver_feature_gates: "{{ kube_apiserver_feature_gates + kube_feature_gates }}"
   when:
-    - kube_oidc_auth
-    - kube_oidc_structured_auth
+    - not kube_oidc_auth
+    - ("StructuredAuthenticationConfiguration=true" in all_kube_apiserver_feature_gates and kube_version | regex_replace("^v", "") is version("1.30.0", "<", version_type="semver"))
+      or
+      ("StructuredAuthenticationConfiguration=false" not in all_kube_apiserver_feature_gates and kube_version | regex_replace("^v", "") is version("1.30.0", ">=", version_type="semver"))
   block:
-    - name: Kubeadm | Check if Structured Authentication Configuration is supported
-      fail:
-        msg: "OIDC structured auth is supported only from Kubernetes 1.30.0"
-      when:
-        - kube_version is version('1.30.0', '<')
-
     - name: Kubeadm | Create apiserver authentication config directory
       file:
         path: "{{ kube_config_dir }}/authentication"
         state: directory
         mode: "0640"
+
+    - name: Merge additional userValidationRules
+      set_fact:
+        kube_apiserver_structured_auth_jwt_issuers: >-
+          {{
+            kube_apiserver_structured_auth_jwt_issuers | map('combine', {
+              'userValidationRules': item.userValidationRules + additional_user_validation_rules
+            }) | list
+          }}
+      loop: "{{ kube_apiserver_structured_auth_jwt_issuers }}"
+      loop_control:
+        loop_var: item
 
     - name: Kubeadm | Write apiserver authentication config yaml
       template:

@@ -142,8 +142,13 @@ apiServer:
   - name: anonymous-auth
     value: "{{ kube_api_anonymous_auth }}"
 {% endif %}
+{% if kube_apiserver_use_authorization_config_file %}
+  - name: authorization-config
+    value: "{{ kube_config_dir }}/apiserver-authorization-config.yaml"
+{% else %}
   - name: authorization-mode
     value: "{{ authorization_modes | join(',') }}"
+{% endif %}
   - name: bind-address
     value: "{{ kube_apiserver_bind_address }}"
 {% if kube_apiserver_enable_admission_plugins | length > 0 %}
@@ -212,7 +217,7 @@ apiServer:
   - name: authentication-token-webhook-config-file
     value: "{{ kube_config_dir }}/webhook-token-auth-config.yaml"
 {% endif %}
-{% if kube_webhook_authorization | default(false) %}
+{% if kube_webhook_authorization and not kube_apiserver_use_authorization_config_file %}
   - name: authorization-webhook-config-file
     value: "{{ kube_config_dir }}/webhook-authorization-config.yaml"
 {% endif %}
@@ -298,6 +303,11 @@ apiServer:
   - name: webhook-authorization-config
     hostPath: {{ kube_config_dir }}/webhook-authorization-config.yaml
     mountPath: {{ kube_config_dir }}/webhook-authorization-config.yaml
+{% endif %}
+{% if kube_apiserver_use_authorization_config_file %}
+  - name: authorization-config
+    hostPath: {{ kube_config_dir }}/apiserver-authorization-config.yaml
+    mountPath: {{ kube_config_dir }}/apiserver-authorization-config.yaml
 {% endif %}
 {% if kubernetes_audit or kubernetes_audit_webhook %}
   - name: {{ audit_policy_name }}

@@ -94,7 +94,7 @@ Note: Upstart/SysV init based OS types are not supported.
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.31.4
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.32.0
   - [etcd](https://github.com/etcd-io/etcd) v3.5.16
   - [docker](https://www.docker.com/) v26.1
   - [containerd](https://containerd.io/) v1.7.24
@@ -135,7 +135,7 @@ Note: Upstart/SysV init based OS types are not supported.
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.29**
+- **Minimum required version of Kubernetes is v1.30**
 - **Ansible v2.14+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/operations/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.

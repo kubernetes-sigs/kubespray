@@ -487,7 +487,62 @@ external_hcloud_cloud:
 ## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
 ## 'RBAC' modes are tested. Order is important.
 authorization_modes: ['Node', 'RBAC']
-rbac_enabled: "{{ 'RBAC' in authorization_modes }}"
+
+## Structured authorization config
+## Structured AuthorizationConfiguration is a new feature in Kubernetes v1.29+ (GA in v1.32) that configures the API server's authorization modes with a structured configuration file.
+## AuthorizationConfiguration files offer features not available with the `--authorization-mode` flag, although Kubespray supports both methods and authorization-mode remains the default for now.
+## Note: Because the `--authorization-config` and `--authorization-mode` flags are mutually exclusive, the `authorization_modes` ansible variable is ignored when `kube_apiserver_use_authorization_config_file` is set to true. The two features cannot be used at the same time.
+## Docs: https://kubernetes.io/docs/reference/access-authn-authz/authorization/#configuring-the-api-server-using-an-authorization-config-file
+## Examples: https://kubernetes.io/blog/2024/04/26/multi-webhook-and-modular-authorization-made-much-easier/
+## KEP: https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3221-structured-authorization-configuration
+kube_apiserver_use_authorization_config_file: false
+kube_apiserver_authorization_config_authorizers:
+- type: Node
+  name: node
+- type: RBAC
+  name: rbac
+## Example for use with kube_webhook_authorization: true
+# - type: Webhook
+#   name: webhook
+#   webhook:
+#     connectionInfo:
+#       type: KubeConfigFile
+#       kubeConfigFile: "{{ kube_config_dir }}/webhook-authorization-config.yaml"
+#     subjectAccessReviewVersion: v1beta1
+#     matchConditionSubjectAccessReviewVersion: v1
+#     timeout: 3s
+#     failurePolicy: NoOpinion
+#     matchConditions:
+#     # Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/
+#     # only send resource requests to the webhook
+#     - expression: has(request.resourceAttributes)
+#     # Don't intercept requests from kube-system service accounts
+#     - expression: "!('system:serviceaccounts:kube-system' in request.groups)"
+#     ## Below expressions avoid issues with kubeadm init and other system components that should be authorized by Node and RBAC
+#     # Don't process node and bootstrap token requests with the webhook
+#     - expression: "!('system:nodes' in request.groups)"
+#     - expression: "!('system:bootstrappers' in request.groups)"
+#     - expression: "!('system:bootstrappers:kubeadm:default-node-token' in request.groups)"
+#     # Don't process kubeadm requests with the webhook
+#     - expression: "!('kubeadm:cluster-admins' in request.groups)"
+#     - expression: "!('system:masters' in request.groups)"
+
+## Two workarounds are required to use AuthorizationConfiguration with kubeadm v1.29.x:
+## 1. Enable the StructuredAuthorizationConfiguration feature gate:
+# kube_apiserver_feature_gates:
+# - StructuredAuthorizationConfiguration=true
+## 2. Use the following kubeadm_patches to remove defaulted authorization-mode flags (Workaround for a kubeadm defaulting bug on v1.29.x. fixed in 1.30+ via: https://github.com/kubernetes/kubernetes/pull/123654)
+# kubeadm_patches:
+# - target: kube-apiserver
+#   type: strategic
+#   patch:
+#     spec:
+#       containers:
+#       - name: kube-apiserver
+#         $deleteFromPrimitiveList/command:
+#           - --authorization-mode=Node,RBAC
+
+rbac_enabled: "{{ ('RBAC' in authorization_modes and not kube_apiserver_use_authorization_config_file) or (kube_apiserver_use_authorization_config_file and kube_apiserver_authorization_config_authorizers | selectattr('type', 'equalto', 'RBAC') | list | length > 0) }}"
 
 # When enabled, API bearer tokens (including service account tokens) can be used to authenticate to the kubelet's HTTPS endpoint
 kubelet_authentication_token_webhook: true

@@ -18,6 +18,18 @@
     mode: "0640"
   when: kube_webhook_authorization | default(false)
 
+- name: Create structured AuthorizationConfiguration file
+  copy:
+    content: "{{ authz_config | to_nice_yaml(indent=2, sort_keys=false) }}"
+    dest: "{{ kube_config_dir }}/apiserver-authorization-config.yaml"
+    mode: "0640"
+  vars:
+    authz_config:
+      apiVersion: apiserver.config.k8s.io/{{ 'v1alpha1' if kube_version is version('v1.30.0', '<') else 'v1beta1' if kube_version is version('v1.32.0', '<') else 'v1' }}
+      kind: AuthorizationConfiguration
+      authorizers: "{{ kube_apiserver_authorization_config_authorizers }}"
+  when: kube_apiserver_use_authorization_config_file
+
 - name: Create kube-scheduler config
   template:
     src: kubescheduler-config.yaml.j2

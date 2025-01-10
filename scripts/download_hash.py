@@ -6,6 +6,7 @@
 
 import sys
 import os
+import logging
 
 from itertools import groupby, chain
 from more_itertools import partition
@@ -13,12 +14,15 @@ from functools import cache
 import argparse
 import requests
 import hashlib
+from datetime import datetime
 from ruamel.yaml import YAML
 from packaging.version import Version, InvalidVersion
 
 from typing import Optional
 
 CHECKSUMS_YML = "../roles/kubespray-defaults/defaults/main/checksums.yml"
+
+logger = logging.getLogger(__name__)
 
 def open_checksums_yaml():
     yaml = YAML()
@@ -207,7 +211,14 @@ def download_hash(only_downloads: [str]) -> None:
                               "Authorization": f"Bearer {os.environ['API_KEY']}",
                               }
                           )
+    if 'x-ratelimit-used' in response.headers._store:
+        logger.info("Github graphQL API ratelimit status: used %s of %s. Next reset at %s",
+                    response.headers['X-RateLimit-Used'],
+                    response.headers['X-RateLimit-Limit'],
+                    datetime.fromtimestamp(int(response.headers["X-RateLimit-Reset"]))
+                    )
     response.raise_for_status()
+
     def valid_version(possible_version: str) -> Optional[Version]:
         try:
             return Version(possible_version)

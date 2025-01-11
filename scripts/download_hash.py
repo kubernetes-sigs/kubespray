@@ -316,7 +316,7 @@ def download_hash(only_downloads: [str]) -> None:
 
     with open(CHECKSUMS_YML, "w") as checksums_yml:
         yaml.dump(data, checksums_yml)
-        print(f"\n\nUpdated {CHECKSUMS_YML}\n")
+        logger.info("Updated %s", CHECKSUMS_YML)
 
 parser = argparse.ArgumentParser(description=f"Add new patch versions hashes in {CHECKSUMS_YML}",
                                  formatter_class=argparse.RawTextHelpFormatter,

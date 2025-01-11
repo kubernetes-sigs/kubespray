@@ -17,6 +17,7 @@ import hashlib
 from datetime import datetime
 from ruamel.yaml import YAML
 from packaging.version import Version, InvalidVersion
+from importlib.resources import files
 
 from typing import Optional
 
@@ -204,13 +205,13 @@ def download_hash(only_downloads: [str]) -> None:
         'repoWithReleases': [r['graphql_id'] for r in releases.values()],
         'repoWithTags': [t['graphql_id'] for t in tags.values()],
     }
-    with open("list_releases.graphql") as query:
-        response = s.post("https://api.github.com/graphql",
-                          json={'query': query.read(), 'variables': ql_params},
-                          headers={
-                              "Authorization": f"Bearer {os.environ['API_KEY']}",
-                              }
-                          )
+    response = s.post("https://api.github.com/graphql",
+                      json={'query': files(__package__).joinpath('list_releases.graphql').read_text(),
+                            'variables': ql_params},
+                      headers={
+                          "Authorization": f"Bearer {os.environ['API_KEY']}",
+                          }
+                      )
     if 'x-ratelimit-used' in response.headers._store:
         logger.info("Github graphQL API ratelimit status: used %s of %s. Next reset at %s",
                     response.headers['X-RateLimit-Used'],

@@ -7,6 +7,7 @@
 import sys
 import os
 import logging
+import subprocess
 
 from itertools import groupby, chain
 from more_itertools import partition
@@ -18,20 +19,21 @@ from datetime import datetime
 from ruamel.yaml import YAML
 from packaging.version import Version, InvalidVersion
 from importlib.resources import files
+from pathlib import Path
 
 from typing import Optional
 
-CHECKSUMS_YML = "../roles/kubespray-defaults/defaults/main/checksums.yml"
+CHECKSUMS_YML = Path("roles/kubespray-defaults/defaults/main/checksums.yml")
 
 logger = logging.getLogger(__name__)
 
-def open_checksums_yaml():
+def open_yaml(file: Path):
     yaml = YAML()
     yaml.explicit_start = True
     yaml.preserve_quotes = True
     yaml.width = 4096
 
-    with open(CHECKSUMS_YML, "r") as checksums_yml:
+    with open(file, "r") as checksums_yml:
         data = yaml.load(checksums_yml)
 
     return data, yaml
@@ -182,7 +184,11 @@ def download_hash(only_downloads: [str]) -> None:
                 },
             }
 
-    data, yaml = open_checksums_yaml()
+    checksums_file = Path(subprocess.Popen(['git', 'rev-parse', '--show-toplevel'],
+                                           stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
+                     ) / CHECKSUMS_YML
+    logger.info("Opening checksums file %s...", checksums_file)
+    data, yaml = open_yaml(checksums_file)
     s = requests.Session()
 
     @cache
@@ -315,9 +321,9 @@ def download_hash(only_downloads: [str]) -> None:
                    }
 
 
-    with open(CHECKSUMS_YML, "w") as checksums_yml:
+    with open(checksums_file, "w") as checksums_yml:
         yaml.dump(data, checksums_yml)
-        logger.info("Updated %s", CHECKSUMS_YML)
+    logger.info("Updated %s", checksums_file)
 
 
 def main():

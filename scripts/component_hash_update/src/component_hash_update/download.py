@@ -21,7 +21,7 @@ from packaging.version import Version, InvalidVersion
 from importlib.resources import files
 from pathlib import Path
 
-from typing import Optional
+from typing import Optional, Any
 
 CHECKSUMS_YML = Path("roles/kubespray-defaults/defaults/main/checksums.yml")
 
@@ -148,7 +148,7 @@ arch_alt_name = {
 # different verification methods (gpg, cosign) ( needs download role changes) (or verify the sig in this script and only use the checksum in the playbook)
 # perf improvements (async)
 
-def download_hash(only_downloads: [str]) -> None:
+def download_hash(downloads: {str: {str: Any}}) -> None:
     # Handle file with multiples hashes, with various formats.
     # the lambda is expected to produce a dictionary of hashes indexed by arch name
     download_hash_extract = {
@@ -203,10 +203,7 @@ def download_hash(only_downloads: [str]) -> None:
         return download_hash_extract[download](hash_file.content.decode())
 
 
-    releases, tags = map(dict,
-                         partition(lambda r: r[1].get('tags', False),
-                                    {k: downloads[k] for k in (downloads.keys() & only_downloads)}.items()
-                                   ))
+    releases, tags = map(dict, partition(lambda r: r[1].get('tags', False), downloads.items()))
     ql_params = {
         'repoWithReleases': [r['graphql_id'] for r in releases.values()],
         'repoWithTags': [t['graphql_id'] for t in tags.values()],
@@ -353,8 +350,25 @@ def main():
           1.28.0: 8dc78774f7cbeaf787994d386eec663f0a3cf24de1ea4893598096cb39ef2508"""
 
     )
-    parser.add_argument('binaries', nargs='*', choices=downloads.keys(),
-                        help='if provided, only obtain hashes for these compoments')
+
+    # Workaround for https://github.com/python/cpython/issues/53834#issuecomment-2060825835
+    # Fixed in python 3.14
+    class Choices(tuple):
+
+        def __init__(self, _iterable=None, default=None):
+            self.default = default or []
+
+        def __contains__(self, item):
+            return super().__contains__(item) or item == self.default
+
+    choices = Choices(downloads.keys(), default=list(downloads.keys()))
+
+    parser.add_argument('only', nargs='*', choices=choices,
+                        help='if provided, only obtain hashes for these compoments',
+                        default=choices.default)
+    parser.add_argument('-e', '--exclude', action='append', choices=downloads.keys(),
+                        help='do not obtain hashes for this component',
+                        default=[])
 
     args = parser.parse_args()
-    download_hash(args.binaries)
+    download_hash({k: downloads[k] for k in (set(args.only) - set(args.exclude))})

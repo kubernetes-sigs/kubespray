@@ -204,13 +204,13 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
 
 
     releases, tags = map(dict, partition(lambda r: r[1].get('tags', False), downloads.items()))
-    ql_params = {
-        'repoWithReleases': [r['graphql_id'] for r in releases.values()],
-        'repoWithTags': [t['graphql_id'] for t in tags.values()],
+    repos = {
+        'with_releases': [r['graphql_id'] for r in releases.values()],
+        'with_tags': [t['graphql_id'] for t in tags.values()],
     }
     response = s.post("https://api.github.com/graphql",
                       json={'query': files(__package__).joinpath('list_releases.graphql').read_text(),
-                            'variables': ql_params},
+                            'variables': repos},
                       headers={
                           "Authorization": f"Bearer {os.environ['API_KEY']}",
                           }
@@ -228,7 +228,7 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
             return Version(possible_version)
         except InvalidVersion:
             return None
-    rep = response.json()["data"]
+    repos = response.json()["data"]
     github_versions = dict(zip(chain(releases.keys(), tags.keys()),
                                [
                                    {
@@ -236,13 +236,13 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
                                        if not r["isPrerelease"]
                                           and (v := valid_version(r["tagName"])) is not None
                                    }
-                                   for repo in rep["with_releases"]
+                                   for repo in repos["with_releases"]
                                ] +
                                [
                                    { v for t in repo["refs"]["nodes"]
                                     if (v := valid_version(t["name"].removeprefix('release-'))) is not None
                                    }
-                                   for repo in rep["with_tags"]
+                                   for repo in repos["with_tags"]
                                ],
                                strict=True))
 

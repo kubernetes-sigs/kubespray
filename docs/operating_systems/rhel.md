@@ -1,6 +1,10 @@
 # Red Hat Enterprise Linux (RHEL)
 
+The documentation also applies to Red Hat derivatives, including Alma Linux, Rocky Linux, Oracle Linux, and CentOS.
+
 ## RHEL Support Subscription Registration
+
+The content of this section does not apply to open-source derivatives.
 
 In order to install packages via yum or dnf, RHEL 7/8 hosts are required to be registered for a valid Red Hat support subscription.
 
@@ -25,10 +29,12 @@ rh_subscription_role: "Red Hat Enterprise Server"
 rh_subscription_sla: "Self-Support"
 ```
 
-If the RHEL 7/8 hosts are already registered to a valid Red Hat support subscription via an alternative configuration management approach prior to the deployment of Kubespray, the successful RHEL `subscription-manager` status check will simply result in the RHEL subscription registration tasks being skipped.
+If the RHEL 8/9 hosts are already registered to a valid Red Hat support subscription via an alternative configuration management approach prior to the deployment of Kubespray, the successful RHEL `subscription-manager` status check will simply result in the RHEL subscription registration tasks being skipped.
 
 ## RHEL 8
 
 If you have containers that are using iptables in the host network namespace (`hostNetwork=true`),
 you need to ensure they are using iptables-nft.
 An example how k8s do the autodetection can be found [in this PR](https://github.com/kubernetes/kubernetes/pull/82966)
+
+The kernel version is lower than the kubenretes 1.32 system validation, please refer to the [kernel requirements](../operations/kernel-requirements.md).

@@ -30,8 +30,7 @@ def upload_file(file_path, destination_url, username, token):
 
 def upload_files(base_url, username, token):
     """ Recurse current dir and upload each file using urllib.request """
-    # pylint: disable=unused-variable
-    for root, dirs, files in os.walk(os.getcwd()):
+    for root, _, files in os.walk(os.getcwd()):
         for file in files:
             file_path = os.path.join(root, file)
             relative_path = os.path.relpath(file_path, os.getcwd())

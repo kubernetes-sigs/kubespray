@@ -26,6 +26,7 @@ SUPPORTED_OS = {
   "centos8-bento"       => {box: "bento/centos-8",             user: "vagrant"},
   "almalinux8"          => {box: "almalinux/8",                user: "vagrant"},
   "almalinux8-bento"    => {box: "bento/almalinux-8",          user: "vagrant"},
+  "almalinux9"          => {box: "almalinux/9",                user: "vagrant"},
   "rockylinux8"         => {box: "rockylinux/8",               user: "vagrant"},
   "rockylinux9"         => {box: "rockylinux/9",               user: "vagrant"},
   "fedora39"            => {box: "fedora/39-cloud-base",       user: "vagrant"},

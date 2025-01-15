@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
-"""Recursively upload each file to private repo in Artifactory"""
+"""This is a helper script to manage-offline-files.sh.
+
+After running manage-offline-files.sh, you can run upload2artifactory.py
+to recursively upload each file to a generic repository in Artifactory.
+
+This script recurses the current working directory and is intended to
+be started from 'kubespray/contrib/offline/offline-files'
+
+Environment Variables:
+    USERNAME -- At least permissions'Deploy/Cache' and 'Delete/Overwrite'.
+    TOKEN -- Generate this with 'Set Me Up' in your user.
+    BASE_URL -- The URL including the repository name.
+
+"""
 import os
 import urllib.request
 import base64

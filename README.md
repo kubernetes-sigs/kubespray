@@ -77,24 +77,27 @@ vagrant up
 - **Flatcar Container Linux by Kinvolk**
 - **Debian** Bookworm, Bullseye
 - **Ubuntu** 20.04, 22.04, 24.04
-- **CentOS/RHEL** [8, 9](docs/operating_systems/centos.md#centos-8)
+- **CentOS/RHEL** [8, 9](docs/operating_systems/rhel.md#rhel-8)
 - **Fedora** 39, 40
 - **Fedora CoreOS** (see [fcos Note](docs/operating_systems/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
-- **Oracle Linux** [8, 9](docs/operating_systems/centos.md#centos-8)
-- **Alma Linux** [8, 9](docs/operating_systems/centos.md#centos-8)
-- **Rocky Linux** [8, 9](docs/operating_systems/centos.md#centos-8)
+- **Oracle Linux** [8, 9](docs/operating_systems/rhel.md#rhel-8)
+- **Alma Linux** [8, 9](docs/operating_systems/rhel.md#rhel-8)
+- **Rocky Linux** [8, 9](docs/operating_systems/rhel.md#rhel-8)
 - **Kylin Linux Advanced Server V10** (experimental: see [kylin linux notes](docs/operating_systems/kylinlinux.md))
 - **Amazon Linux 2** (experimental: see [amazon linux notes](docs/operating_systems/amazonlinux.md))
 - **UOS Linux** (experimental: see [uos linux notes](docs/operating_systems/uoslinux.md))
 - **openEuler** (experimental: see [openEuler notes](docs/operating_systems/openeuler.md))
 
-Note: Upstart/SysV init based OS types are not supported.
+Note:
+
+- Upstart/SysV init based OS types are not supported.
+- [Kernel requirements](docs/operations/kernel-requirements.md) (please read if the OS kernel version is < 4.19).
 
 ## Supported Components
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.31.4
+  - [kubernetes](https://github.com/kubernetes/kubernetes) v1.32.0
   - [etcd](https://github.com/etcd-io/etcd) v3.5.16
   - [docker](https://www.docker.com/) v26.1
   - [containerd](https://containerd.io/) v1.7.24
@@ -135,7 +138,7 @@ Note: Upstart/SysV init based OS types are not supported.
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.29**
+- **Minimum required version of Kubernetes is v1.30**
 - **Ansible v2.14+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/operations/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.

@@ -58,8 +58,7 @@ $subnet ||= "172.18.8"
 $subnet_ipv6 ||= "fd3c:b398:0698:0756"
 $os ||= "ubuntu2004"
 $network_plugin ||= "flannel"
-$inventory ||= "inventory/sample"
-$inventories ||= [$inventory]
+$inventories ||= []
 # Setting multi_networking to true will install Multus: https://github.com/k8snetworkplumbingwg/multus-cni
 $multi_networking ||= "False"
 $download_run_once ||= "True"

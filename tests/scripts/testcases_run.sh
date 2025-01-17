@@ -26,7 +26,7 @@ fi
 export ANSIBLE_REMOTE_USER=$SSH_USER
 export ANSIBLE_BECOME=true
 export ANSIBLE_BECOME_USER=root
-export ANSIBLE_INVENTORY=${CI_PROJECT_DIR}/inventory/sample/
+export ANSIBLE_INVENTORY=/tmp/inventory/
 
 make -C tests INVENTORY_DIR=${ANSIBLE_INVENTORY} create-${CI_PLATFORM} -s
 

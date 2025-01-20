@@ -39,13 +39,6 @@
     msg: "{{ ansible_distribution }} is not a known OS"
   when: not ignore_assert_errors
 
-- name: Stop if unknown network plugin
-  assert:
-    that: kube_network_plugin in ['calico', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'kube-ovn', 'kube-router', 'macvlan', 'custom_cni', 'none']
-    msg: "{{ kube_network_plugin }} is not supported"
-  when:
-    - not ignore_assert_errors
-
 - name: Warn if `kube_network_plugin` is `none
   debug:
     msg: |
@@ -215,62 +208,28 @@
   when: kube_network_plugin != 'calico'
   run_once: true
 
-- name: Stop if unknown dns mode
+- name: Stop if unsupported options selected
   assert:
-    that: dns_mode in ['coredns', 'coredns_dual', 'manual', 'none']
-    msg: "dns_mode can only be 'coredns', 'coredns_dual', 'manual' or 'none'"
-  when: dns_mode is defined
+    that:
+      - kube_network_plugin in ['calico', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'kube-ovn', 'kube-router', 'macvlan', 'custom_cni', 'none']
+      - dns_mode in ['coredns', 'coredns_dual', 'manual', 'none']
+      - kube_proxy_mode in ['iptables', 'ipvs']
+      - cert_management in ['script', 'none']
+      - resolvconf_mode in ['docker_dns', 'host_resolvconf', 'none']
+      - etcd_deployment_type in ['host', 'docker', 'kubeadm']
+      - etcd_deployment_type in ['host', 'kubeadm'] or container_manager == 'docker'
+      - container_manager in ['docker', 'crio', 'containerd']
+    msg: The selected choice is not supported
   run_once: true
 
 - name: Stop if /etc/resolv.conf has no configured nameservers
   assert:
     that: configured_nameservers | length>0
-    fail_msg: "nameserver should not empty in /etc/resolv.conf"
+    fail_msg: "nameserver should not be empty in /etc/resolv.conf"
   when:
     - upstream_dns_servers | length == 0
     - not disable_host_nameservers
     - dns_mode in ['coredns', 'coredns_dual']
-
-- name: Stop if unknown kube proxy mode
-  assert:
-    that: kube_proxy_mode in ['iptables', 'ipvs']
-    msg: "kube_proxy_mode can only be 'iptables' or 'ipvs'"
-  when: kube_proxy_mode is defined
-  run_once: true
-
-- name: Stop if unknown cert_management
-  assert:
-    that: cert_management | d('script') in ['script', 'none']
-    msg: "cert_management can only be 'script' or 'none'"
-  run_once: true
-
-- name: Stop if unknown resolvconf_mode
-  assert:
-    that: resolvconf_mode in ['docker_dns', 'host_resolvconf', 'none']
-    msg: "resolvconf_mode can only be 'docker_dns', 'host_resolvconf' or 'none'"
-  when: resolvconf_mode is defined
-  run_once: true
-
-- name: Stop if etcd deployment type is not host, docker or kubeadm
-  assert:
-    that: etcd_deployment_type in ['host', 'docker', 'kubeadm']
-    msg: "The etcd deployment type, 'etcd_deployment_type', must be host, docker or kubeadm"
-  when:
-    - inventory_hostname in groups.get('etcd',[])
-
-- name: Stop if container manager is not docker, crio or containerd
-  assert:
-    that: container_manager in ['docker', 'crio', 'containerd']
-    msg: "The container manager, 'container_manager', must be docker, crio or containerd"
-  run_once: true
-
-- name: Stop if etcd deployment type is not host or kubeadm when container_manager != docker
-  assert:
-    that: etcd_deployment_type in ['host', 'kubeadm']
-    msg: "The etcd deployment type, 'etcd_deployment_type', must be host or kubeadm when container_manager is not docker"
-  when:
-    - inventory_hostname in groups.get('etcd',[])
-    - container_manager != 'docker'
 
 # TODO: Clean this task up when we drop backward compatibility support for `etcd_kubeadm_enabled`
 - name: Stop if etcd deployment type is not host or kubeadm when container_manager != docker and etcd_kubeadm_enabled is not defined

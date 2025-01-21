@@ -96,6 +96,8 @@ Note:
 
 ## Supported Components
 
+[//]: # BEGIN ANSIBLE MANAGED BLOCK
+
 - Core
   - [kubernetes](https://github.com/kubernetes/kubernetes) v1.32.0
   - [etcd](https://github.com/etcd-io/etcd) v3.5.16
@@ -131,6 +133,8 @@ Note:
   - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) v0.0.24
   - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) v2.5.0
   - [node-feature-discovery](https://github.com/kubernetes-sigs/node-feature-discovery) v0.16.4
+
+[//]: # END ANSIBLE MANAGED BLOCK
 
 ## Container Runtime Notes
 

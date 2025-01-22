@@ -25,24 +25,27 @@ locals {
   ])
 
   lb_backend_servers = flatten([
-    for lb_name, loadbalancer in var.loadbalancers : [
-      for backend_server in loadbalancer.backend_servers : {
-        port        = loadbalancer.target_port
-        lb_name     = lb_name
-        server_name = backend_server
-      }
+    for lb_name, lb in upcloud_loadbalancer.lb : [
+      for target_name, target in var.loadbalancers[lb_name].targets : [
+        for backend_server in target.backend_servers : {
+          loadbalancer_name = lb_name
+          port              = target.target_port
+          target_name       = target_name
+          server_name       = backend_server
+        }
+      ]
     ]
   ])
 
   gateway_connections = flatten([
     for gateway_name, gateway in var.gateways : [
       for connection_name, connection in gateway.connections : {
-          "gateway_id" = upcloud_gateway.gateway[gateway_name].id
-          "gateway_name" = gateway_name
-          "connection_name" = connection_name
-          "type" = connection.type
-          "local_routes" = connection.local_routes
-          "remote_routes" = connection.remote_routes
+        "gateway_id"      = upcloud_gateway.gateway[gateway_name].id
+        "gateway_name"    = gateway_name
+        "connection_name" = connection_name
+        "type"            = connection.type
+        "local_routes"    = connection.local_routes
+        "remote_routes"   = connection.remote_routes
       }
     ]
   ])
@@ -51,14 +54,14 @@ locals {
     for gateway_name, gateway in var.gateways : [
       for connection_name, connection in gateway.connections : [
         for tunnel_name, tunnel in connection.tunnels : {
-          "gateway_id" = upcloud_gateway.gateway[gateway_name].id
-          "gateway_name" = gateway_name
-          "connection_id" = upcloud_gateway_connection.gateway_connection["${gateway_name}-${connection_name}"].id
-          "connection_name" = connection_name
-          "tunnel_name" = tunnel_name
+          "gateway_id"         = upcloud_gateway.gateway[gateway_name].id
+          "gateway_name"       = gateway_name
+          "connection_id"      = upcloud_gateway_connection.gateway_connection["${gateway_name}-${connection_name}"].id
+          "connection_name"    = connection_name
+          "tunnel_name"        = tunnel_name
           "local_address_name" = tolist(upcloud_gateway.gateway[gateway_name].address).0.name
-          "remote_address" = tunnel.remote_address
-          "ipsec_properties" = tunnel.ipsec_properties
+          "remote_address"     = tunnel.remote_address
+          "ipsec_properties"   = tunnel.ipsec_properties
         }
       ]
     ]
@@ -70,39 +73,39 @@ locals {
 
   master_ip = {
     for instance in upcloud_server.master :
-      instance.hostname => {
-        for nic in instance.network_interface :
-          nic.type => nic.ip_address
-        if nic.ip_address != null
-      }
+    instance.hostname => {
+      for nic in instance.network_interface :
+      nic.type => nic.ip_address
+      if nic.ip_address != null
+    }
   }
   worker_ip = {
     for instance in upcloud_server.worker :
-      instance.hostname => {
-        for nic in instance.network_interface :
-          nic.type => nic.ip_address
-        if nic.ip_address != null
-      }
+    instance.hostname => {
+      for nic in instance.network_interface :
+      nic.type => nic.ip_address
+      if nic.ip_address != null
+    }
   }
 
   bastion_ip = {
     for instance in upcloud_server.bastion :
-      instance.hostname => {
-        for nic in instance.network_interface :
-          nic.type => nic.ip_address
-        if nic.ip_address != null
-      }
+    instance.hostname => {
+      for nic in instance.network_interface :
+      nic.type => nic.ip_address
+      if nic.ip_address != null
+    }
   }
 
   node_user_data = {
     for name, machine in var.machines :
-      name => <<EOF
-%{ if ( length(machine.dns_servers != null ? machine.dns_servers : [] ) > 0 ) || ( length(var.dns_servers) > 0 && machine.dns_servers == null ) ~}
+    name => <<EOF
+%{if(length(machine.dns_servers != null ? machine.dns_servers : []) > 0) || (length(var.dns_servers) > 0 && machine.dns_servers == null)~}
 #!/bin/bash
-echo -e "[Resolve]\nDNS=${ join(" ", length(machine.dns_servers != null ? machine.dns_servers : []) > 0 ? machine.dns_servers : var.dns_servers) }" > /etc/systemd/resolved.conf
+echo -e "[Resolve]\nDNS=${join(" ", length(machine.dns_servers != null ? machine.dns_servers : []) > 0 ? machine.dns_servers : var.dns_servers)}" > /etc/systemd/resolved.conf
 
 systemctl restart systemd-resolved
-%{ endif ~}
+%{endif~}
 EOF
   }
 }
@@ -117,8 +120,8 @@ resource "upcloud_network" "private" {
     # TODO: When support for dhcp_dns for private networks are in, remove the user_data and enable it here.
     #       See more here https://github.com/UpCloudLtd/terraform-provider-upcloud/issues/562
     # dhcp_dns           = length(var.private_network_dns) > 0 ? var.private_network_dns : null
-    dhcp               = true
-    family             = "IPv4"
+    dhcp   = true
+    family = "IPv4"
   }
 
   router = var.router_enable ? upcloud_router.router[0].id : null
@@ -196,7 +199,7 @@ resource "upcloud_server" "master" {
     create_password = false
   }
 
-  metadata = local.node_user_data[each.key] != "" || each.value.metadata == true ? true : null
+  metadata  = local.node_user_data[each.key] != "" || each.value.metadata == true ? true : null
   user_data = local.node_user_data[each.key] != "" ? local.node_user_data[each.key] : null
 }
 
@@ -262,7 +265,7 @@ resource "upcloud_server" "worker" {
     create_password = false
   }
 
-  metadata = local.node_user_data[each.key] != "" || each.value.metadata == true ? true : null
+  metadata  = local.node_user_data[each.key] != "" || each.value.metadata == true ? true : null
   user_data = local.node_user_data[each.key] != "" ? local.node_user_data[each.key] : null
 }
 
@@ -294,7 +297,7 @@ resource "upcloud_server" "bastion" {
 
   # Private network interface
   network_interface {
-    type    = "public"
+    type = "public"
   }
 
   firewall = var.firewall_enabled
@@ -714,15 +717,17 @@ resource "upcloud_firewall_rules" "bastion" {
 }
 
 resource "upcloud_loadbalancer" "lb" {
-  count             = var.loadbalancer_enabled ? 1 : 0
+
+  for_each = var.loadbalancer_enabled ? var.loadbalancers : {}
+
   configured_status = "started"
-  name              = "${local.resource-prefix}lb"
-  plan              = var.loadbalancer_plan
+  name              = "${local.resource-prefix}${each.key}-lb"
+  plan              = each.value.plan
   zone              = var.private_cloud ? var.public_zone : var.zone
-  network           = var.loadbalancer_legacy_network ? upcloud_network.private.id : null
+  network           = each.value.legacy_network ? upcloud_network.private.id : null
 
   dynamic "networks" {
-    for_each = var.loadbalancer_legacy_network ? [] : [1]
+    for_each = each.value.private_network ? [1] : []
 
     content {
       name    = "Private-Net"
@@ -733,7 +738,7 @@ resource "upcloud_loadbalancer" "lb" {
   }
 
   dynamic "networks" {
-    for_each = var.loadbalancer_legacy_network ? [] : [1]
+    for_each = each.value.public_network ? [1] : []
 
     content {
       name   = "Public-Net"
@@ -743,59 +748,74 @@ resource "upcloud_loadbalancer" "lb" {
   }
 
   lifecycle {
-    ignore_changes = [ maintenance_dow, maintenance_time ]
+    ignore_changes = [maintenance_dow, maintenance_time]
   }
 }
 
 resource "upcloud_loadbalancer_backend" "lb_backend" {
-  for_each = var.loadbalancer_enabled ? var.loadbalancers : {}
 
-  loadbalancer = upcloud_loadbalancer.lb[0].id
-  name         = "lb-backend-${each.key}"
+  for_each = {
+    for be_target in local.lb_targets :
+    "${be_target.loadbalancer_name}-${be_target.name}" => be_target
+    if var.loadbalancer_enabled
+  }
+  loadbalancer = each.value.loadbalancer_id
+
+  name = "lb-backend-${each.value.name}"
   properties {
     outbound_proxy_protocol = each.value.proxy_protocol ? "v2" : ""
   }
 }
 
 resource "upcloud_loadbalancer_frontend" "lb_frontend" {
-  for_each = var.loadbalancer_enabled ? var.loadbalancers : {}
+  for_each = {
+    for be_target in local.lb_targets :
+    "${be_target.loadbalancer_name}-${be_target.name}" => be_target
+    if var.loadbalancer_enabled
+  }
 
-  loadbalancer         = upcloud_loadbalancer.lb[0].id
-  name                 = "lb-frontend-${each.key}"
+  loadbalancer         = each.value.loadbalancer_id
+  name                 = "lb-frontend-${each.value.name}"
   mode                 = "tcp"
   port                 = each.value.port
-  default_backend_name = upcloud_loadbalancer_backend.lb_backend[each.key].name
+  default_backend_name = upcloud_loadbalancer_backend.lb_backend["${each.value.loadbalancer_name}-${each.value.name}"].name
 
   dynamic "networks" {
-    for_each = var.loadbalancer_legacy_network ? [] : [1]
+    for_each = each.value.listen_public ? [1] : []
 
     content {
-      name   = "Public-Net"
+      name = "Public-Net"
     }
   }
 
   dynamic "networks" {
-    for_each = each.value.allow_internal_frontend ? [1] : []
+    for_each = each.value.listen_private ? [1] : []
 
-    content{
+    content {
       name = "Private-Net"
     }
+  }
+
+   properties {
+    http2_enabled          = false
+    inbound_proxy_protocol = false
+    timeout_client         = 10
   }
 }
 
 resource "upcloud_loadbalancer_static_backend_member" "lb_backend_member" {
   for_each = {
     for be_server in local.lb_backend_servers :
-    "${be_server.server_name}-lb-backend-${be_server.lb_name}" => be_server
+    "${be_server.loadbalancer_name}-${be_server.server_name}-lb-backend-${be_server.target_name}" => be_server
     if var.loadbalancer_enabled
   }
 
-  backend      = upcloud_loadbalancer_backend.lb_backend[each.value.lb_name].id
-  name         = "${local.resource-prefix}${each.key}"
+  backend      = upcloud_loadbalancer_backend.lb_backend["${each.value.loadbalancer_name}-${each.value.target_name}"].id
+  name         = "${local.resource-prefix}${each.value.server_name}-lb-backend-${each.value.target_name}"
   ip           = merge(local.master_ip, local.worker_ip)["${local.resource-prefix}${each.value.server_name}"].private
   port         = each.value.port
   weight       = 100
-  max_sessions = var.loadbalancer_plan == "production-small" ? 50000 : 1000
+  max_sessions = var.loadbalancers[each.value.loadbalancer_name].plan == "production-small" ? 50000 : 1000
   enabled      = true
 }
 
@@ -805,7 +825,7 @@ resource "upcloud_server_group" "server_groups" {
   anti_affinity_policy = each.value.anti_affinity_policy
   labels               = {}
   # Managed upstream via upcloud_server resource
-  members              = []
+  members = []
   lifecycle {
     ignore_changes = [members]
   }
@@ -823,7 +843,7 @@ resource "upcloud_router" "router" {
       name = static_route.key
 
       nexthop = static_route.value["nexthop"]
-      route = static_route.value["route"]
+      route   = static_route.value["route"]
     }
   }
 
@@ -831,11 +851,11 @@ resource "upcloud_router" "router" {
 
 resource "upcloud_gateway" "gateway" {
   for_each = var.router_enable ? var.gateways : {}
-  name = "${local.resource-prefix}${each.key}-gateway"
-  zone = var.private_cloud ? var.public_zone : var.zone
+  name     = "${local.resource-prefix}${each.key}-gateway"
+  zone     = var.private_cloud ? var.public_zone : var.zone
 
   features = each.value.features
-  plan = each.value.plan
+  plan     = each.value.plan
 
   router {
     id = upcloud_router.router[0].id
@@ -848,8 +868,8 @@ resource "upcloud_gateway_connection" "gateway_connection" {
   }
 
   gateway = each.value.gateway_id
-  name = "${local.resource-prefix}${each.key}-gateway-connection"
-  type = each.value.type
+  name    = "${local.resource-prefix}${each.key}-gateway-connection"
+  type    = each.value.type
 
   dynamic "local_route" {
     for_each = each.value.local_routes
@@ -877,30 +897,30 @@ resource "upcloud_gateway_connection_tunnel" "gateway_connection_tunnel" {
     for gct in local.gateway_connection_tunnels : "${gct.gateway_name}-${gct.connection_name}-${gct.tunnel_name}-tunnel" => gct
   }
 
-  connection_id = each.value.connection_id
-  name = each.key
+  connection_id      = each.value.connection_id
+  name               = each.key
   local_address_name = each.value.local_address_name
-  remote_address = each.value.remote_address
+  remote_address     = each.value.remote_address
 
   ipsec_auth_psk {
     psk = var.gateway_vpn_psks[each.key].psk
   }
 
   dynamic "ipsec_properties" {
-    for_each = each.value.ipsec_properties != null ? { "ip": each.value.ipsec_properties } : {}
+    for_each = each.value.ipsec_properties != null ? { "ip" : each.value.ipsec_properties } : {}
 
     content {
-        child_rekey_time = ipsec_properties.value["child_rekey_time"]
-        dpd_delay = ipsec_properties.value["dpd_delay"]
-        dpd_timeout = ipsec_properties.value["dpd_timeout"]
-        ike_lifetime = ipsec_properties.value["ike_lifetime"]
-        rekey_time = ipsec_properties.value["rekey_time"]
-        phase1_algorithms = ipsec_properties.value["phase1_algorithms"]
-        phase1_dh_group_numbers = ipsec_properties.value["phase1_dh_group_numbers"]
-        phase1_integrity_algorithms = ipsec_properties.value["phase1_integrity_algorithms"]
-        phase2_algorithms = ipsec_properties.value["phase2_algorithms"]
-        phase2_dh_group_numbers = ipsec_properties.value["phase2_dh_group_numbers"]
-        phase2_integrity_algorithms = ipsec_properties.value["phase2_integrity_algorithms"]
+      child_rekey_time            = ipsec_properties.value["child_rekey_time"]
+      dpd_delay                   = ipsec_properties.value["dpd_delay"]
+      dpd_timeout                 = ipsec_properties.value["dpd_timeout"]
+      ike_lifetime                = ipsec_properties.value["ike_lifetime"]
+      rekey_time                  = ipsec_properties.value["rekey_time"]
+      phase1_algorithms           = ipsec_properties.value["phase1_algorithms"]
+      phase1_dh_group_numbers     = ipsec_properties.value["phase1_dh_group_numbers"]
+      phase1_integrity_algorithms = ipsec_properties.value["phase1_integrity_algorithms"]
+      phase2_algorithms           = ipsec_properties.value["phase2_algorithms"]
+      phase2_dh_group_numbers     = ipsec_properties.value["phase2_dh_group_numbers"]
+      phase2_integrity_algorithms = ipsec_properties.value["phase2_integrity_algorithms"]
     }
   }
 }

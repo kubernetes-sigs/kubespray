@@ -36,10 +36,8 @@ module "kubernetes" {
   master_allowed_ports       = var.master_allowed_ports
   worker_allowed_ports       = var.worker_allowed_ports
 
-  loadbalancer_enabled        = var.loadbalancer_enabled
-  loadbalancer_plan           = var.loadbalancer_plan
-  loadbalancer_legacy_network = var.loadbalancer_legacy_network
-  loadbalancers               = var.loadbalancers
+  loadbalancer_enabled = var.loadbalancer_enabled
+  loadbalancers        = var.loadbalancers
 
   router_enable    = var.router_enable
   gateways         = var.gateways

@@ -27,14 +27,14 @@ variable "use_public_ips" {}
 variable "machines" {
   description = "Cluster machines"
   type = map(object({
-    node_type = string
-    plan      = string
-    cpu       = optional(number)
-    mem       = optional(number)
-    disk_size = number
-    template_name = optional(string)
+    node_type         = string
+    plan              = string
+    cpu               = optional(number)
+    mem               = optional(number)
+    disk_size         = number
+    template_name     = optional(string)
     boot_disk_encrypt = optional(bool, false)
-    server_group : optional(string,null)
+    server_group : optional(string, null)
     force_public_ip : optional(bool, false)
     dns_servers : optional(set(string))
     additional_disks = map(object({
@@ -106,24 +106,23 @@ variable "loadbalancer_enabled" {
   type = bool
 }
 
-variable "loadbalancer_plan" {
-  type = string
-}
-
-variable "loadbalancer_legacy_network" {
-  type = bool
-  default = false
-}
-
 variable "loadbalancers" {
   description = "Load balancers"
 
   type = map(object({
-    proxy_protocol          = bool
-    port                    = number
-    target_port             = number
-    allow_internal_frontend = optional(bool)
-    backend_servers         = list(string)
+    plan            = string
+    legacy_network  = bool
+    public_network  = bool
+    private_network = bool
+
+    targets = map(object({
+      proxy_protocol  = bool
+      port            = number
+      target_port     = number
+      listen_public   = bool
+      listen_private  = bool
+      backend_servers = list(string)
+    }))
   }))
 }
 
@@ -146,30 +145,30 @@ variable "gateways" {
 
   type = map(object({
     features = list(string)
-    plan = optional(string)
+    plan     = optional(string)
     connections = optional(map(object({
       type = string
       local_routes = optional(map(object({
-        type = string
+        type           = string
         static_network = string
       })))
       remote_routes = optional(map(object({
-        type = string
+        type           = string
         static_network = string
       })))
       tunnels = optional(map(object({
         remote_address = string
         ipsec_properties = optional(object({
-          child_rekey_time = number
-          dpd_delay = number
-          dpd_timeout = number
-          ike_lifetime = number
-          rekey_time = number
-          phase1_algorithms = set(string)
-          phase1_dh_group_numbers = set(string)
+          child_rekey_time            = number
+          dpd_delay                   = number
+          dpd_timeout                 = number
+          ike_lifetime                = number
+          rekey_time                  = number
+          phase1_algorithms           = set(string)
+          phase1_dh_group_numbers     = set(string)
           phase1_integrity_algorithms = set(string)
-          phase2_algorithms = set(string)
-          phase2_dh_group_numbers = set(string)
+          phase2_algorithms           = set(string)
+          phase2_dh_group_numbers     = set(string)
           phase2_integrity_algorithms = set(string)
         }))
       })))
@@ -183,7 +182,7 @@ variable "gateway_vpn_psks" {
   type = map(object({
     psk = string
   }))
-  default = {}
+  default   = {}
   sensitive = true
 }
 
@@ -192,7 +191,7 @@ variable "static_routes" {
 
   type = map(object({
     nexthop = string
-    route = string
+    route   = string
   }))
 }
 

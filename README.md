@@ -96,20 +96,22 @@ Note:
 
 ## Supported Components
 
+[//]: # BEGIN ANSIBLE MANAGED BLOCK
+
 - Core
   - [kubernetes](https://github.com/kubernetes/kubernetes) v1.32.0
   - [etcd](https://github.com/etcd-io/etcd) v3.5.16
   - [docker](https://www.docker.com/) v26.1
   - [containerd](https://containerd.io/) v1.7.24
-  - [cri-o](http://cri-o.io/) v1.31.0 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [cri-o](http://cri-o.io/) v1.32.0 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
-  - [cni-plugins](https://github.com/containernetworking/plugins) v1.2.0
+  - [cni-plugins](https://github.com/containernetworking/plugins) v1.4.0
   - [calico](https://github.com/projectcalico/calico) v3.29.1
   - [cilium](https://github.com/cilium/cilium) v1.15.9
   - [flannel](https://github.com/flannel-io/flannel) v0.22.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.12.21
   - [kube-router](https://github.com/cloudnativelabs/kube-router) v2.0.0
-  - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) v3.8
+  - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) v4.1.0
   - [weave](https://github.com/rajch/weave) v2.8.7
   - [kube-vip](https://github.com/kube-vip/kube-vip) v0.8.0
 - Application
@@ -131,6 +133,8 @@ Note:
   - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) v0.0.24
   - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) v2.5.0
   - [node-feature-discovery](https://github.com/kubernetes-sigs/node-feature-discovery) v0.16.4
+
+[//]: # END ANSIBLE MANAGED BLOCK
 
 ## Container Runtime Notes
 

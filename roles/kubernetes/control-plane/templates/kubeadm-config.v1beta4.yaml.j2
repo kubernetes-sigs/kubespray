@@ -106,9 +106,9 @@ dns:
   imageTag: {{ coredns_image_tag }}
 networking:
   dnsDomain: {{ dns_domain }}
-  serviceSubnet: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks else '' }}"
+  serviceSubnet: "{{ kube_service_addresses_range }}"
 {% if kube_network_plugin is defined and kube_network_plugin not in ["kube-ovn"] %}
-  podSubnet: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks else '' }}"
+  podSubnet: "{{ kube_pods_subnet_range }}"
 {% endif %}
 {% if kubeadm_feature_gates %}
 featureGates:
@@ -120,7 +120,7 @@ kubernetesVersion: {{ kube_version }}
 {% if kubeadm_config_api_fqdn is defined %}
 controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
 {% else %}
-controlPlaneEndpoint: {{ ip | default(fallback_ip) }}:{{ kube_apiserver_port }}
+controlPlaneEndpoint: "{{ lookup('ansible.builtin.vars', 'ip' + default_net_mode, default=hostvars[inventory_hostname]['fallback_ip' + default_net_mode]) | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}"
 {% endif %}
 certificatesDir: {{ kube_cert_dir }}
 imageRepository: {{ kube_image_repo }}
@@ -174,7 +174,7 @@ apiServer:
   - name: service-node-port-range
     value: "{{ kube_apiserver_node_port_range }}"
   - name: service-cluster-ip-range
-    value: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks else '' }}"
+    value: "{{ kube_service_addresses_range }}"
   - name: kubelet-preferred-address-types
     value: "{{ kubelet_preferred_address_types }}"
   - name: profiling
@@ -351,7 +351,7 @@ apiServer:
 {% endif %}
   certSANs:
 {% for san in apiserver_sans %}
-  - "{{ san }}"
+  - {{ san }}
 {% endfor %}
 controllerManager:
   extraArgs:
@@ -361,15 +361,17 @@ controllerManager:
     value: "{{ kube_controller_node_monitor_period }}"
 {% if kube_network_plugin is defined and kube_network_plugin not in ["kube-ovn"] %}
   - name: cluster-cidr
-    value: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks else '' }}"
+    value: "{{ kube_pods_subnet_range }}"
 {% endif %}
   - name: service-cluster-ip-range
-    value: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks else '' }}"
+    value: "{{ kube_service_addresses_range }}"
 {% if kube_network_plugin is defined and kube_network_plugin == "calico" and not calico_ipam_host_local %}
   - name: allocate-node-cidrs
     value: "false"
-{% else %}
-{% if enable_dual_stack_networks %}
+{% elif enable_ipv6only_stack_networks %}
+  - name: node-cidr-mask-size-ipv6
+    value: "{{ kube_network_node_prefix_ipv6 }}"
+{% elif enable_dual_stack_networks %}
   - name: node-cidr-mask-size-ipv4
     value: "{{ kube_network_node_prefix }}"
   - name: node-cidr-mask-size-ipv6
@@ -377,7 +379,6 @@ controllerManager:
 {% else %}
   - name: node-cidr-mask-size
     value: "{{ kube_network_node_prefix }}"
-{% endif %}
 {% endif %}
   - name: profiling
     value: "{{ kube_profiling }}"
@@ -488,7 +489,7 @@ clientConnection:
   kubeconfig: {{ kube_proxy_client_kubeconfig }}
   qps: {{ kube_proxy_client_qps }}
 {% if kube_network_plugin is defined and kube_network_plugin not in ["kube-ovn"] %}
-clusterCIDR: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks else '' }}"
+clusterCIDR: "{{ kube_pods_subnet_range }}"
 {% endif %}
 configSyncPeriod: {{ kube_proxy_config_sync_period }}
 conntrack:

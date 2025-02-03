@@ -38,16 +38,11 @@ Some variables of note include:
 * *access_ip* - IP to use from other hosts to connect to this host. Often required when deploying
   from a cloud, such as OpenStack or GCE and you have separate public/floating and private IPs.
   This would **usually** be the private ip.
-* *access_ip6* - IPv6 to use from other hosts to connect to this host.
 * *ansible_default_ipv4.address* - Not Kubespray-specific, but it is used if ip
   and access_ip are undefined
-* *ansible_default_ipv6.address* - Not Kubespray-specific, but it is used if ip
-  and access_ip6 are undefined
 * *ip6* - IPv6 address to use for binding services. (host var)
   If *enable_dual_stack_networks* is set to ``true`` and *ip6* is defined,
   kubelet's ``--node-ip`` and node's ``InternalIP`` will be the combination of *ip* and *ip6*.
-  If *enable_ipv6only_stack_networks* is set to ``true``,
-  kubelet's ``--node-ip`` and node's ``InternalIP`` will be use only *ip6*.
 * *loadbalancer_apiserver* - If defined, all hosts will connect to this
   address instead of localhost for kube_control_planes and kube_control_plane[0] for
   kube_nodes. See more details in the
@@ -89,8 +84,6 @@ following default cluster parameters:
   [Calico IP block sizes](https://docs.projectcalico.org/reference/resources/ippool#block-sizes)).
 
 * *enable_dual_stack_networks* - Setting this to true will provision both IPv4 and IPv6 networking for pods and services.
-
-* *enable_ipv6only_stack_networks* - Setting this to true will provision IPv6 only networking for pods and services.
 
 * *kube_service_addresses_ipv6* - Subnet for cluster IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1000/116``). Must not overlap with ``kube_pods_subnet_ipv6``.
 
@@ -162,7 +155,6 @@ and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.
 ## Enabling Dual Stack (IPV4 + IPV6) networking
 
 If *enable_dual_stack_networks* is set to ``true``, Dual Stack networking will be enabled in the cluster. This will use the default IPv4 and IPv6 subnets specified in the defaults file in the ``kubespray-defaults`` role, unless overridden of course. The default config will give you room for up to 256 nodes with 126 pods per node, and up to 4096 services.
-Also you can use *enable_ipv6only_stack_networks* for ipv6 only networking.
 
 ## DNS variables
 

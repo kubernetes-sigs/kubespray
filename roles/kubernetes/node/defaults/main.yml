@@ -1,9 +1,9 @@
 ---
 # advertised host IP for kubelet. This affects network plugin config. Take caution
-kubelet_address: "{{ [ip | default(fallback_ip) if not enable_ipv6only_stack_networks, ip6 | default(fallback_ip6) if (enable_dual_stack_networks or enable_ipv6only_stack_networks)] | reject('match', '^$') | join(',') }}{{ '' }}"
+kubelet_address: "{{ ip | default(fallback_ip) }}{{ (',' + ip6) if enable_dual_stack_networks and ip6 is defined else '' }}"
 
 # bind address for kubelet. Set to 0.0.0.0 to listen on all interfaces
-kubelet_bind_address: "{{ (ip6 if enable_ipv6only_stack_networks else ip) | default('0.0.0.0') }}"
+kubelet_bind_address: "{{ ip | default('0.0.0.0') }}"
 
 # resolv.conf to base dns config
 kube_resolv_conf: "/etc/resolv.conf"
@@ -29,7 +29,7 @@ kubelet_systemd_wants_dependencies: []
 # List of secure IPs for kubelet
 kube_node_addresses: >-
   {%- for host in (groups['k8s_cluster'] | union(groups['etcd'])) -%}
-    {{ hostvars[host]['ip' + default_net_mode] | default(hostvars[host]['fallback_ip' + default_net_mode]) | ansible.utils.ipwrap }}{{ ' ' if not loop.last else '' }}
+    {{ hostvars[host]['ip'] | default(hostvars[host]['fallback_ip']) }}{{ ' ' if not loop.last else '' }}
   {%- endfor -%}
 kubelet_secure_addresses: "localhost link-local {{ kube_pods_subnet }} {{ kube_node_addresses }}"
 

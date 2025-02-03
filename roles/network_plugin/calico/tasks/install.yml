@@ -107,7 +107,7 @@
   changed_when: false
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
-    - (enable_dual_stack_networks or enable_ipv6only_stack_networks)
+    - enable_dual_stack_networks
 
 - name: Calico | Ensure that calico_pool_cidr_ipv6 is within kube_pods_subnet_ipv6 when defined
   assert:
@@ -117,7 +117,7 @@
     - inventory_hostname == groups['kube_control_plane'][0]
     - calico_conf_ipv6.stdout is defined and calico_conf_ipv6.stdout == "0"
     - calico_pool_cidr_ipv6 is defined
-    - (enable_dual_stack_networks or enable_ipv6only_stack_networks)
+    - enable_dual_stack_networks
 
 - name: Calico | kdd specific configuration
   when:
@@ -256,7 +256,7 @@
 - name: Calico | Configure Calico IPv6 Pool
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
-    - (enable_dual_stack_networks or enable_ipv6only_stack_networks) | bool
+    - enable_dual_stack_networks | bool
   block:
     - name: Calico | Get existing calico ipv6 network pool
       command: "{{ bin_dir }}/calicoctl.sh get ippool {{ calico_pool_name }}-ipv6 -o json"
@@ -350,7 +350,7 @@
               {% if not calico_no_global_as_num | default(false) %}"asNumber": {{ global_as_num }},{% endif %}
               "nodeToNodeMeshEnabled": {{ nodeToNodeMeshEnabled | default('true') }} ,
               {% if calico_advertise_cluster_ips | default(false) %}
-              "serviceClusterIPs": [{% for cidr in kube_service_addresses_range.split(",") %}{{ "," if not loop.first }}{"cidr": "{{ cidr }}"}{% endfor %}],{% endif %}
+              "serviceClusterIPs": [{"cidr": "{{ kube_service_addresses }}" } {{ ',{"cidr":"' + kube_service_addresses_ipv6 + '"}' if enable_dual_stack_networks else '' }}],{% endif %}
               {% if calico_advertise_service_loadbalancer_ips | length > 0  %}"serviceLoadBalancerIPs": {{ _service_loadbalancer_ips }},{% endif %}
               "serviceExternalIPs": {{ _service_external_ips | default([]) }}
             }

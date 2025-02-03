@@ -94,9 +94,9 @@ dns:
   imageTag: {{ coredns_image_tag }}
 networking:
   dnsDomain: {{ dns_domain }}
-  serviceSubnet: "{{ kube_service_addresses_range }}"
+  serviceSubnet: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks else '' }}"
 {% if kube_network_plugin is defined and kube_network_plugin not in ["kube-ovn"] %}
-  podSubnet: "{{ kube_pods_subnet_range }}"
+  podSubnet: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks else '' }}"
 {% endif %}
 {% if kubeadm_feature_gates %}
 featureGates:
@@ -108,7 +108,7 @@ kubernetesVersion: {{ kube_version }}
 {% if kubeadm_config_api_fqdn is defined %}
 controlPlaneEndpoint: {{ kubeadm_config_api_fqdn }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
 {% else %}
-controlPlaneEndpoint: "{{ lookup('ansible.builtin.vars', 'ip' + default_net_mode, default=hostvars[inventory_hostname]['fallback_ip' + default_net_mode]) | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}"
+controlPlaneEndpoint: {{ ip | default(fallback_ip) }}:{{ kube_apiserver_port }}
 {% endif %}
 certificatesDir: {{ kube_cert_dir }}
 imageRepository: {{ kube_image_repo }}
@@ -147,7 +147,7 @@ apiServer:
     etcd-servers-overrides: "/events#{{ etcd_events_access_addresses_semicolon }}"
 {% endif %}
     service-node-port-range: {{ kube_apiserver_node_port_range }}
-    service-cluster-ip-range: "{{ kube_service_addresses_range }}"
+    service-cluster-ip-range: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks else '' }}"
     kubelet-preferred-address-types: "{{ kubelet_preferred_address_types }}"
     profiling: "{{ kube_profiling }}"
     request-timeout: "{{ kube_apiserver_request_timeout }}"
@@ -294,7 +294,7 @@ apiServer:
 {% endif %}
   certSANs:
 {% for san in apiserver_sans %}
-  - {{ san }}
+  - "{{ san }}"
 {% endfor %}
   timeoutForControlPlane: 5m0s
 controllerManager:
@@ -302,18 +302,18 @@ controllerManager:
     node-monitor-grace-period: {{ kube_controller_node_monitor_grace_period }}
     node-monitor-period: {{ kube_controller_node_monitor_period }}
 {% if kube_network_plugin is defined and kube_network_plugin not in ["kube-ovn"] %}
-    cluster-cidr: "{{ kube_pods_subnet_range }}"
+    cluster-cidr: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks else '' }}"
 {% endif %}
-    service-cluster-ip-range: "{{ kube_service_addresses_range }}"
+    service-cluster-ip-range: "{{ kube_service_addresses }}{{ ',' + kube_service_addresses_ipv6 if enable_dual_stack_networks else '' }}"
 {% if kube_network_plugin is defined and kube_network_plugin == "calico" and not calico_ipam_host_local %}
     allocate-node-cidrs: "false"
-{% elif enable_ipv6only_stack_networks %}
-    node-cidr-mask-size-ipv6: "{{ kube_network_node_prefix_ipv6 }}"
-{% elif enable_dual_stack_networks %}
+{% else %}
+{% if enable_dual_stack_networks %}
     node-cidr-mask-size-ipv4: "{{ kube_network_node_prefix }}"
     node-cidr-mask-size-ipv6: "{{ kube_network_node_prefix_ipv6 }}"
 {% else %}
     node-cidr-mask-size: "{{ kube_network_node_prefix }}"
+{% endif %}
 {% endif %}
     profiling: "{{ kube_profiling }}"
     terminated-pod-gc-threshold: "{{ kube_controller_terminated_pod_gc_threshold }}"
@@ -392,7 +392,7 @@ clientConnection:
   kubeconfig: {{ kube_proxy_client_kubeconfig }}
   qps: {{ kube_proxy_client_qps }}
 {% if kube_network_plugin is defined and kube_network_plugin not in ["kube-ovn"] %}
-clusterCIDR: "{{ kube_pods_subnet_range }}"
+clusterCIDR: "{{ kube_pods_subnet }}{{ ',' + kube_pods_subnet_ipv6 if enable_dual_stack_networks else '' }}"
 {% endif %}
 configSyncPeriod: {{ kube_proxy_config_sync_period }}
 conntrack:

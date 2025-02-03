@@ -210,19 +210,13 @@ Vagrant.configure("2") do |config|
       end
 
       ip = "#{$subnet}.#{i+100}"
-      ip6 = "#{$subnet_ipv6}::#{i+100}"
       node.vm.network :private_network,
         :ip => ip,
         :libvirt__guest_ipv6 => 'yes',
-        :libvirt__ipv6_address => ip6,
+        :libvirt__ipv6_address => "#{$subnet_ipv6}::#{i+100}",
         :libvirt__ipv6_prefix => "64",
         :libvirt__forward_mode => "none",
         :libvirt__dhcp_enabled => false
-
-      # libvirt__ipv6_address does not work as intended, the address is obtained with the desired prefix, but auto-generated(like fd3c:b398:698:756:5054:ff:fe48:c61e/64)
-      # add default route for detect ansible_default_ipv6
-      # TODO: fix libvirt__ipv6 or use $subnet in shell
-      config.vm.provision "shell", inline: "ip -6 r a fd3c:b398:698:756::/64 dev eth1;ip -6 r add default via fd3c:b398:0698:0756::1 dev eth1 || true"
 
       # Disable swap for each vm
       node.vm.provision "shell", inline: "swapoff -a"

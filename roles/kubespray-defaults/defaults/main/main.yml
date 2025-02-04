@@ -135,8 +135,8 @@ resolvconf_mode: host_resolvconf
 # Deploy netchecker app to verify DNS resolve as an HTTP service
 deploy_netchecker: false
 # Ip address of the kubernetes DNS service (called skydns for historical reasons)
-skydns_server: "{{ kube_service_addresses | ansible.utils.ipaddr('net') | ansible.utils.ipaddr(3) | ansible.utils.ipaddr('address') }}"
-skydns_server_secondary: "{{ kube_service_addresses | ansible.utils.ipaddr('net') | ansible.utils.ipaddr(4) | ansible.utils.ipaddr('address') }}"
+skydns_server: "{{ kube_service_subnets.split(',') | first | ansible.utils.ipaddr('net') | ansible.utils.ipaddr(3) | ansible.utils.ipaddr('address') }}"
+skydns_server_secondary: "{{ kube_service_subnets.split(',') | first | ansible.utils.ipaddr('net') | ansible.utils.ipaddr(4) | ansible.utils.ipaddr('address') }}"
 dns_domain: "{{ cluster_name }}"
 docker_dns_search_domains:
 - 'default.svc.{{ dns_domain }}'
@@ -230,33 +230,39 @@ kube_pods_subnet: 10.233.64.0/18
 kube_network_node_prefix: 24
 
 # Configure Dual Stack networking (i.e. both IPv4 and IPv6)
-enable_dual_stack_networks: false
+# enable_dual_stack_networks: false # deprecated
+
+# Configure IPv4 Stack networking
+ipv4_stack: true
+# Configure IPv6 Stack networking
+ipv6_stack: "{{ enable_dual_stack_networks | default(false) }}"
 
 # Kubernetes internal network for IPv6 services, unused block of space.
-# This is only used if enable_dual_stack_networks is set to true
+# This is only used if ipv6_stack is set to true
 # This provides 4096 IPv6 IPs
 kube_service_addresses_ipv6: fd85:ee78:d8a6:8607::1000/116
 
 # Internal network. When used, it will assign IPv6 addresses from this range to individual pods.
 # This network must not already be in your network infrastructure!
-# This is only used if enable_dual_stack_networks is set to true.
+# This is only used if ipv6_stack is set to true.
 # This provides room for 256 nodes with 254 pods per node.
 kube_pods_subnet_ipv6: fd85:ee78:d8a6:8607::1:0000/112
 
 # IPv6 subnet size allocated to each for pods.
-# This is only used if enable_dual_stack_networks is set to true
+# This is only used if ipv6_stack is set to true
 # This provides room for 254 pods per node.
 kube_network_node_prefix_ipv6: 120
+
 
 # The virtual cluster IP, real host IPs and ports the API Server will be
 # listening on.
 # NOTE: loadbalancer_apiserver_localhost somewhat alters the final API enpdoint
 # access IP value (automatically evaluated below)
-kube_apiserver_ip: "{{ kube_service_addresses | ansible.utils.ipaddr('net') | ansible.utils.ipaddr(1) | ansible.utils.ipaddr('address') }}"
+kube_apiserver_ip: "{{ kube_service_subnets.split(',') | first | ansible.utils.ipaddr('net') | ansible.utils.ipaddr(1) | ansible.utils.ipaddr('address') }}"
 
 # NOTE: If you specific address/interface and use loadbalancer_apiserver_localhost
 # loadbalancer_apiserver_localhost (nginx/haproxy) will deploy on control plane nodes on 127.0.0.1:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }} too.
-kube_apiserver_bind_address: 0.0.0.0
+kube_apiserver_bind_address: "::"
 
 # https
 kube_apiserver_port: 6443
@@ -608,9 +614,9 @@ ssl_ca_dirs: |-
 
 # Vars for pointing to kubernetes api endpoints
 kube_apiserver_count: "{{ groups['kube_control_plane'] | length }}"
-kube_apiserver_address: "{{ ip | default(hostvars[inventory_hostname]['fallback_ip']) }}"
-kube_apiserver_access_address: "{{ access_ip | default(kube_apiserver_address) }}"
-first_kube_control_plane_address: "{{ hostvars[groups['kube_control_plane'][0]]['access_ip'] | default(hostvars[groups['kube_control_plane'][0]]['ip'] | default(hostvars[groups['kube_control_plane'][0]]['fallback_ip'])) }}"
+kube_apiserver_address: "{{ hostvars[inventory_hostname]['main_ip'] }}"
+kube_apiserver_access_address: "{{ hostvars[inventory_hostname]['main_access_ip'] }}"
+first_kube_control_plane_address: "{{ hostvars[groups['kube_control_plane'][0]]['main_access_ip'] }}"
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
@@ -621,7 +627,7 @@ kube_apiserver_global_endpoint: |-
   {%- elif loadbalancer_apiserver_localhost and (loadbalancer_apiserver_port is not defined or loadbalancer_apiserver_port == kube_apiserver_port) -%}
       https://localhost:{{ kube_apiserver_port }}
   {%- else -%}
-      https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
+      https://{{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
@@ -629,9 +635,9 @@ kube_apiserver_endpoint: |-
   {%- elif ('kube_control_plane' not in group_names) and loadbalancer_apiserver_localhost -%}
       https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
   {%- elif 'kube_control_plane' in group_names -%}
-      https://{{ kube_apiserver_bind_address | regex_replace('0\.0\.0\.0', '127.0.0.1') }}:{{ kube_apiserver_port }}
+  https://{{ kube_apiserver_bind_address | regex_replace('::', '127.0.0.1') | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
   {%- else -%}
-      https://{{ first_kube_control_plane_address }}:{{ kube_apiserver_port }}
+      https://{{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_client_cert: "{{ kube_cert_dir }}/ca.crt"
 kube_apiserver_client_key: "{{ kube_cert_dir }}/ca.key"
@@ -643,41 +649,41 @@ etcd_events_cluster_enabled: false
 etcd_hosts: "{{ groups['etcd'] | default(groups['kube_control_plane']) }}"
 
 # Vars for pointing to etcd endpoints
-etcd_address: "{{ ip | default(fallback_ip) }}"
-etcd_access_address: "{{ access_ip | default(etcd_address) }}"
-etcd_events_access_address: "{{ access_ip | default(etcd_address) }}"
-etcd_peer_url: "https://{{ etcd_access_address }}:2380"
-etcd_client_url: "https://{{ etcd_access_address }}:2379"
-etcd_events_peer_url: "https://{{ etcd_events_access_address }}:2382"
-etcd_events_client_url: "https://{{ etcd_events_access_address }}:2383"
+etcd_address: "{{ hostvars[inventory_hostname]['main_ip'] }}"
+etcd_access_address: "{{ hostvars[inventory_hostname]['main_access_ip'] }}"
+etcd_events_access_address: "{{ hostvars[inventory_hostname]['main_access_ip'] }}"
+etcd_peer_url: "https://{{ etcd_access_address | ansible.utils.ipwrap }}:2380"
+etcd_client_url: "https://{{ etcd_access_address | ansible.utils.ipwrap }}:2379"
+etcd_events_peer_url: "https://{{ etcd_events_access_address | ansible.utils.ipwrap }}:2382"
+etcd_events_client_url: "https://{{ etcd_events_access_address | ansible.utils.ipwrap }}:2383"
 etcd_access_addresses: |-
   {% for item in etcd_hosts -%}
-    https://{{ hostvars[item]['etcd_access_address'] | default(hostvars[item]['ip'] | default(hostvars[item]['fallback_ip'])) }}:2379{% if not loop.last %},{% endif %}
+    https://{{ hostvars[item]['main_access_ip'] | ansible.utils.ipwrap }}:2379{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_events_access_addresses_list: |-
   [
   {% for item in etcd_hosts -%}
-    'https://{{ hostvars[item]['etcd_events_access_address'] | default(hostvars[item]['ip'] | default(hostvars[item]['fallback_ip'])) }}:2383'{% if not loop.last %},{% endif %}
+    'https://{{ hostvars[item].main_access_ip | ansible.utils.ipwrap }}:2383'{% if not loop.last %},{% endif %}
   {%- endfor %}
   ]
 etcd_metrics_addresses: |-
   {% for item in etcd_hosts -%}
-    https://{{ hostvars[item]['etcd_access_address'] | default(hostvars[item]['ip'] | default(hostvars[item]['fallback_ip'])) }}:{{ etcd_metrics_port | default(2381) }}{% if not loop.last %},{% endif %}
+    https://{{ hostvars[item]['main_access_ip'] | ansible.utils.ipwrap }}:{{ etcd_metrics_port | default(2381) }}{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_events_access_addresses: "{{ etcd_events_access_addresses_list | join(',') }}"
 etcd_events_access_addresses_semicolon: "{{ etcd_events_access_addresses_list | join(';') }}"
 # user should set etcd_member_name in inventory/mycluster/hosts.ini
 etcd_member_name: |-
   {% for host in groups['etcd'] %}
-  {%   if inventory_hostname == host %}{{ hostvars[host].etcd_member_name | default("etcd" + loop.index | string) }}{% endif %}
+  {% if inventory_hostname == host %}{{ hostvars[host].etcd_member_name | default("etcd" + loop.index | string) }}{% endif %}
   {% endfor %}
 etcd_peer_addresses: |-
   {% for item in groups['etcd'] -%}
-    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index | string) }}=https://{{ hostvars[item].etcd_access_address | default(hostvars[item].ip | default(hostvars[item]['fallback_ip'])) }}:2380{% if not loop.last %},{% endif %}
+    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index | string) }}=https://{{ hostvars[item]['main_access_ip'] | ansible.utils.ipwrap }}:2380{% if not loop.last %},{% endif %}
   {%- endfor %}
 etcd_events_peer_addresses: |-
   {% for item in groups['etcd'] -%}
-    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index | string) }}-events=https://{{ hostvars[item].etcd_events_access_address | default(hostvars[item].ip | default(hostvars[item]['fallback_ip'])) }}:2382{% if not loop.last %},{% endif %}
+    {{ hostvars[item].etcd_member_name | default("etcd" + loop.index | string) }}-events=https://{{ hostvars[item]['main_access_ip'] | ansible.utils.ipwrap }}:2382{% if not loop.last %},{% endif %}
   {%- endfor %}
 
 etcd_heartbeat_interval: "250"

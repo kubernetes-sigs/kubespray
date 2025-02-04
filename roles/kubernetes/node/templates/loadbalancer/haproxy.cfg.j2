@@ -22,7 +22,7 @@ defaults
 {% if loadbalancer_apiserver_healthcheck_port is defined -%}
 frontend healthz
   bind 0.0.0.0:{{ loadbalancer_apiserver_healthcheck_port }}
-  {% if enable_dual_stack_networks -%}
+  {% if ipv6_stack -%}
   bind :::{{ loadbalancer_apiserver_healthcheck_port }}
   {% endif -%}
   mode http
@@ -31,7 +31,7 @@ frontend healthz
 
 frontend kube_api_frontend
   bind 127.0.0.1:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }}
-  {% if enable_dual_stack_networks -%}
+  {% if ipv6_stack -%}
   bind [::1]:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }};
   {% endif -%}
   mode tcp
@@ -45,5 +45,5 @@ backend kube_api_backend
   option httpchk GET /healthz
   http-check expect status 200
   {% for host in groups['kube_control_plane'] -%}
-  server {{ host }} {{ hostvars[host]['access_ip'] | default(hostvars[host]['ip'] | default(hostvars[host]['fallback_ip'])) }}:{{ kube_apiserver_port }} check check-ssl verify none
+  server {{ host }} {{ hostvars[host]['main_access_ip'] | ansible.utils.ipwrap }}:{{ kube_apiserver_port }} check check-ssl verify none
   {% endfor -%}

@@ -18,6 +18,38 @@
         fallback_ip: "{{ ansible_default_ipv4.address | d('127.0.0.1') }}"
       when: fallback_ip is not defined
 
+    - name: Gather ansible_default_ipv6
+      setup:
+        gather_subset: '!all,network'
+        filter: "ansible_default_ipv6"
+      when: ansible_default_ipv6 is not defined
+      ignore_unreachable: true
+    - name: Set fallback_ip6
+      set_fact:
+        fallback_ip6: "{{ ansible_default_ipv6.address | d('::1') }}"
+      when: fallback_ip6 is not defined
+
+    - name: Set main access ip(access_ip based on ipv4_stack/ipv6_stack options).
+      set_fact:
+        main_access_ip: >-
+          {%- if ipv4_stack -%}
+          {{ access_ip | default(ip | default(fallback_ip)) }}
+          {%- else -%}
+          {{ access_ip6 | default(ip6 | default(fallback_ip6)) }}
+          {%- endif -%}
+
+    - name: Set main ip(ip based on ipv4_stack/ipv6_stack options).
+      set_fact:
+        main_ip: "{{ (ip | default(fallback_ip)) if ipv4_stack else (ip6 | default(fallback_ip6)) }}"
+
+    - name: Set main access ips(mixed ips for dualstack).
+      set_fact:
+        main_access_ips: ["{{ (main_access_ip + ',' + (access_ip6 | default(ip6 | default(fallback_ip6)))) if (ipv4_stack and ipv6_stack) else main_access_ip }}"]
+
+    - name: Set main ips(mixed ips for dualstack).
+      set_fact:
+        main_ips: ["{{ (main_ip + ',' + (ip6 | default(fallback_ip6))) if (ipv4_stack and ipv6_stack) else main_ip }}"]
+
     - name: Set no_proxy
       import_tasks: no_proxy.yml
       when:

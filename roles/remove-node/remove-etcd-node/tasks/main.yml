@@ -7,8 +7,6 @@
   changed_when: false
   when:
   - groups['kube_control_plane'] | length > 0
-  - ip is not defined
-  - access_ip is not defined
   delegate_to: "{{ groups['kube_control_plane'] | first }}"
 
 - name: Remove etcd member from cluster
@@ -29,7 +27,12 @@
     - facts
   - name: Remove member from cluster
     vars:
-      node_ip: "{{ ip if ip is defined else (access_ip if access_ip is defined else (k8s_node_ips.stdout | from_json)[0]) }}"
+      node_ip: >-
+        {%- if not ipv4_stack -%}
+        {{ ip6 if ip6 is defined else (access_ip6 if access_ip6 is defined else (k8s_node_ips.stdout | from_json)[0]) | ansible.utils.ipwrap }}
+        {%- else -%}
+        {{ ip if ip is defined else (access_ip if access_ip is defined else (k8s_node_ips.stdout | from_json)[0]) | ansible.utils.ipwrap }}
+        {%- endif -%}
     command:
       argv:
       - "{{ bin_dir }}/etcdctl"

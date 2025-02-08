@@ -33,30 +33,12 @@
   failed_when: false
   register: resolvconf_stat
 
-- name: Fetch resolvconf
-  when: resolvconf_stat.stat.exists is defined and resolvconf_stat.stat.exists
-  block:
-
-    - name: Get content of /etc/resolv.conf
-      slurp:
-        src: /etc/resolv.conf
-      register: resolvconf_slurp
-
-    - name: Get currently configured nameservers
-      set_fact:
-        configured_nameservers: "{{ resolvconf_slurp.content | b64decode | regex_findall('^nameserver\\s*(\\S*)', multiline=True) | ansible.utils.ipaddr }}"
-      when: resolvconf_slurp.content is defined
-
-- name: Stop if /etc/resolv.conf not configured nameservers
-  assert:
-    that: configured_nameservers | length>0
-    fail_msg: "nameserver should not empty in /etc/resolv.conf"
-  when:
-    - not ignore_assert_errors
-    - configured_nameservers is defined
-    - not (upstream_dns_servers is defined and upstream_dns_servers | length > 0)
-    - not (disable_host_nameservers | default(false))
-    - dns_mode in ['coredns', 'coredns_dual']
+  # Used in vars/
+- name: Fetch resolv.conf
+  when: resolvconf_stat.stat.exists
+  slurp:
+    src: /etc/resolv.conf
+  register: resolvconf_slurp
 
 - name: NetworkManager | Check if host has NetworkManager
   # noqa command-instead-of-module - Should we use service_facts for this?
@@ -77,19 +59,12 @@
 - name: Set default dns if remove_default_searchdomains is false
   set_fact:
     default_searchdomains: ["default.svc.{{ dns_domain }}", "svc.{{ dns_domain }}"]
-  when: not remove_default_searchdomains | default() | bool or (remove_default_searchdomains | default() | bool and searchdomains | default([]) | length==0)
+  when: not remove_default_searchdomains | default() | bool or (remove_default_searchdomains | default() | bool and searchdomains | length == 0)
 
 - name: Set dns facts
   set_fact:
     resolvconf: >-
       {%- if resolvconf.rc == 0 and resolvconfd_path.stat.isdir is defined and resolvconfd_path.stat.isdir -%}true{%- else -%}false{%- endif -%}
-    bogus_domains: |-
-      {% for d in default_searchdomains | default([]) + searchdomains | default([]) -%}
-      {{ dns_domain }}.{{ d }}./{{ d }}.{{ d }}./com.{{ d }}./
-      {%- endfor %}
-    cloud_resolver: "{{ ['169.254.169.254'] if cloud_provider is defined and cloud_provider == 'gce' else
-                        ['169.254.169.253'] if cloud_provider is defined and cloud_provider == 'aws' else
-                        [] }}"
 
 - name: Check if kubelet is configured
   stat:
@@ -153,58 +128,6 @@
   set_fact:
     dhclienthookfile: /etc/dhcp/dhclient-exit-hooks.d/zdnsupdate
   when: ansible_os_family == "Debian"
-
-- name: Generate search domains to resolvconf
-  set_fact:
-    searchentries:
-      search {{ (default_searchdomains | default([]) + searchdomains | default([])) | join(' ') }}
-    domainentry:
-      domain {{ dns_domain }}
-    supersede_search:
-      supersede domain-search "{{ (default_searchdomains | default([]) + searchdomains | default([])) | join('", "') }}";
-    supersede_domain:
-      supersede domain-name "{{ dns_domain }}";
-
-- name: Pick coredns cluster IP or default resolver
-  set_fact:
-    coredns_server: |-
-      {%- if dns_mode == 'coredns' and not dns_early | bool -%}
-        {{ [skydns_server] }}
-      {%- elif dns_mode == 'coredns_dual' and not dns_early | bool -%}
-        {{ [skydns_server] + [skydns_server_secondary] }}
-      {%- elif dns_mode == 'manual' and not dns_early | bool -%}
-        {{ (manual_dns_server.split(',') | list) }}
-      {%- elif dns_mode == 'none' and not dns_early | bool -%}
-        []
-      {%- elif dns_early | bool -%}
-        {{ upstream_dns_servers | default([]) }}
-      {%- endif -%}
-
-# This task should only run after cluster/nodelocal DNS is up, otherwise all DNS lookups will timeout
-- name: Generate nameservers for resolvconf, including cluster DNS
-  set_fact:
-    nameserverentries: |-
-      {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique | join(',') }}
-    dhclient_supersede_nameserver_entries_list: |-
-      {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique }}
-  when: not dns_early or dns_late
-
-# This task should run instead of the above task when cluster/nodelocal DNS hasn't
-# been deployed yet (like scale.yml/cluster.yml) or when it's down (reset.yml)
-- name: Generate nameservers for resolvconf, not including cluster DNS
-  set_fact:
-    nameserverentries: |-
-      {{ (nameservers | d([]) + cloud_resolver | d([]) + configured_nameservers | d([])) | unique | join(',') }}
-    dhclient_supersede_nameserver_entries_list: |-
-      {{ (nameservers | d([]) + cloud_resolver | d([])) | unique }}
-  when: dns_early and not dns_late
-
-- name: Generate supersede_nameserver from dhclient_supersede_nameserver_entries_list
-  set_fact:
-    supersede_nameserver: |-
-      {%- if dhclient_supersede_nameserver_entries_list | length > 0 -%}
-      supersede domain-name-servers {{ dhclient_supersede_nameserver_entries_list | join(', ') }};
-      {%- endif -%}
 
 - name: Set etcd vars if using kubeadm mode
   set_fact:

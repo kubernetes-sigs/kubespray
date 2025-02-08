@@ -347,9 +347,6 @@
     - /etc/bash_completion.d/kubectl.sh
     - /etc/bash_completion.d/crictl
     - /etc/bash_completion.d/nerdctl
-    - /etc/bash_completion.d/krew
-    - /etc/bash_completion.d/krew.sh
-    - "{{ krew_root_dir }}"
     - /etc/modules-load.d/kube_proxy-ipvs.conf
     - /etc/modules-load.d/kubespray-br_netfilter.conf
     - /etc/modules-load.d/kubespray-kata-containers.conf
@@ -414,12 +411,27 @@
     - network
 
 - name: Reset | Restart network
-  service:
-    name: "{{ reset_restart_network_service_name }}"
-    state: restarted
   when:
     - ansible_os_family not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     - reset_restart_network | bool
   tags:
     - services
     - network
+  block:
+    - name: Gather active network services
+      systemd:
+        name: "{{ item }}"
+      loop:
+        - NetworkManager
+        - systemd-networkd
+        - networking
+        - network
+      register: service_status
+      changed_when: false
+      ignore_errors: true
+
+    - name: Restart active network services
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop: "{{ service_status.results | selectattr('status.ActiveState', '==', 'active') | map(attribute='item') }}"

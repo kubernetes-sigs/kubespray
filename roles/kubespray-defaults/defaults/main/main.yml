@@ -18,13 +18,17 @@ kubelet_fail_swap_on: true
 kubelet_swap_behavior: LimitedSwap
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-kube_version: v1.31.2
+kube_version: v1.32.0
 
 ## The minimum version working
-kube_version_min_required: v1.29.0
+kube_version_min_required: v1.30.0
 
 ## Kube Proxy mode One of ['iptables', 'ipvs']
 kube_proxy_mode: ipvs
+
+# Kubeadm config api version
+# If kube_version is v1.31 or higher, it will be v1beta4, otherwise it will be v1beta3.
+kubeadm_config_api_version: "{{ 'v1beta4' if kube_version is version('v1.31.0', '>=') else 'v1beta3' }}"
 
 ## The timeout for init first control-plane
 kubeadm_init_timeout: 300s
@@ -39,7 +43,7 @@ kubeadm_init_phases_skip_default: [ "addon/coredns" ]
 kubeadm_init_phases_skip: >-
   {%- if kube_network_plugin == 'kube-router' and (kube_router_run_service_proxy is defined and kube_router_run_service_proxy) -%}
   {{ kubeadm_init_phases_skip_default + ["addon/kube-proxy"] }}
-  {%- elif kube_network_plugin == 'cilium' and (cilium_kube_proxy_replacement is defined and cilium_kube_proxy_replacement == 'strict') -%}
+  {%- elif kube_network_plugin == 'cilium' and (cilium_kube_proxy_replacement is defined and (cilium_kube_proxy_replacement == 'strict' or (cilium_kube_proxy_replacement | bool) or (cilium_kube_proxy_replacement | string | lower == 'true') )) -%}
   {{ kubeadm_init_phases_skip_default + ["addon/kube-proxy"] }}
   {%- elif kube_network_plugin == 'calico' and (calico_bpf_enabled is defined and calico_bpf_enabled) -%}
   {{ kubeadm_init_phases_skip_default + ["addon/kube-proxy"] }}
@@ -110,6 +114,10 @@ dns_mode: coredns
 # Enable dns autoscaler
 enable_dns_autoscaler: true
 
+# DNS servers added after the cluster DNS
+# These will also be used as upstream by Coredns for out-cluster queries
+upstream_dns_servers: []
+
 # Enable nodelocal dns cache
 enable_nodelocaldns: true
 enable_nodelocaldns_secondary: false
@@ -133,6 +141,7 @@ dns_domain: "{{ cluster_name }}"
 docker_dns_search_domains:
 - 'default.svc.{{ dns_domain }}'
 - 'svc.{{ dns_domain }}'
+searchdomains: []
 
 kube_dns_servers:
   coredns: ["{{ skydns_server }}"]
@@ -253,11 +262,7 @@ kube_apiserver_bind_address: 0.0.0.0
 kube_apiserver_port: 6443
 
 # If non-empty, will use this string as identification instead of the actual hostname
-kube_override_hostname: >-
-  {%- if cloud_provider is defined and cloud_provider in ['aws'] -%}
-  {%- else -%}
-  {{ inventory_hostname }}
-  {%- endif -%}
+kube_override_hostname: "{{ inventory_hostname }}"
 
 # define kubelet config dir for dynamic kubelet
 # kubelet_config_dir:
@@ -274,6 +279,16 @@ kubelet_shutdown_grace_period: 60s
 # kubelet_shutdown_grace_period_critical_pods should be less than kubelet_shutdown_grace_period
 # to give normal pods time to be gracefully evacuated
 kubelet_shutdown_grace_period_critical_pods: 20s
+
+# Cloud Provider
+# This variable can only be set to "external" or empty string, otherwise the check will fail.
+cloud_provider: ""
+# External Cloud Controller Manager (Formerly known as cloud provider)
+# cloud_provider must be "external", otherwise this setting is invalid.
+# Supported external cloud controllers are: 'openstack', 'vsphere', 'oci', 'huaweicloud', 'hcloud' and 'manual'
+# 'manual' does not install the cloud controller manager used by Kubespray.
+# If you fill in a value other than the above, the check will fail.
+external_cloud_provider: ""
 
 # Whether to deploy the container engine
 deploy_container_engine: "{{ 'k8s_cluster' in group_names or etcd_deployment_type == 'docker' }}"
@@ -396,7 +411,6 @@ dashboard_enabled: false
 
 # Addons which can be enabled
 helm_enabled: false
-krew_enabled: false
 registry_enabled: false
 metrics_server_enabled: false
 enable_network_policy: true
@@ -473,7 +487,62 @@ external_hcloud_cloud:
 ## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
 ## 'RBAC' modes are tested. Order is important.
 authorization_modes: ['Node', 'RBAC']
-rbac_enabled: "{{ 'RBAC' in authorization_modes }}"
+
+## Structured authorization config
+## Structured AuthorizationConfiguration is a new feature in Kubernetes v1.29+ (GA in v1.32) that configures the API server's authorization modes with a structured configuration file.
+## AuthorizationConfiguration files offer features not available with the `--authorization-mode` flag, although Kubespray supports both methods and authorization-mode remains the default for now.
+## Note: Because the `--authorization-config` and `--authorization-mode` flags are mutually exclusive, the `authorization_modes` ansible variable is ignored when `kube_apiserver_use_authorization_config_file` is set to true. The two features cannot be used at the same time.
+## Docs: https://kubernetes.io/docs/reference/access-authn-authz/authorization/#configuring-the-api-server-using-an-authorization-config-file
+## Examples: https://kubernetes.io/blog/2024/04/26/multi-webhook-and-modular-authorization-made-much-easier/
+## KEP: https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3221-structured-authorization-configuration
+kube_apiserver_use_authorization_config_file: false
+kube_apiserver_authorization_config_authorizers:
+- type: Node
+  name: node
+- type: RBAC
+  name: rbac
+## Example for use with kube_webhook_authorization: true
+# - type: Webhook
+#   name: webhook
+#   webhook:
+#     connectionInfo:
+#       type: KubeConfigFile
+#       kubeConfigFile: "{{ kube_config_dir }}/webhook-authorization-config.yaml"
+#     subjectAccessReviewVersion: v1beta1
+#     matchConditionSubjectAccessReviewVersion: v1
+#     timeout: 3s
+#     failurePolicy: NoOpinion
+#     matchConditions:
+#     # Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/
+#     # only send resource requests to the webhook
+#     - expression: has(request.resourceAttributes)
+#     # Don't intercept requests from kube-system service accounts
+#     - expression: "!('system:serviceaccounts:kube-system' in request.groups)"
+#     ## Below expressions avoid issues with kubeadm init and other system components that should be authorized by Node and RBAC
+#     # Don't process node and bootstrap token requests with the webhook
+#     - expression: "!('system:nodes' in request.groups)"
+#     - expression: "!('system:bootstrappers' in request.groups)"
+#     - expression: "!('system:bootstrappers:kubeadm:default-node-token' in request.groups)"
+#     # Don't process kubeadm requests with the webhook
+#     - expression: "!('kubeadm:cluster-admins' in request.groups)"
+#     - expression: "!('system:masters' in request.groups)"
+
+## Two workarounds are required to use AuthorizationConfiguration with kubeadm v1.29.x:
+## 1. Enable the StructuredAuthorizationConfiguration feature gate:
+# kube_apiserver_feature_gates:
+# - StructuredAuthorizationConfiguration=true
+## 2. Use the following kubeadm_patches to remove defaulted authorization-mode flags (Workaround for a kubeadm defaulting bug on v1.29.x. fixed in 1.30+ via: https://github.com/kubernetes/kubernetes/pull/123654)
+# kubeadm_patches:
+# - target: kube-apiserver
+#   type: strategic
+#   patch:
+#     spec:
+#       containers:
+#       - name: kube-apiserver
+#         $deleteFromPrimitiveList/command:
+#           - --authorization-mode=Node,RBAC
+
+rbac_enabled: "{{ ('RBAC' in authorization_modes and not kube_apiserver_use_authorization_config_file) or (kube_apiserver_use_authorization_config_file and kube_apiserver_authorization_config_authorizers | selectattr('type', 'equalto', 'RBAC') | list | length > 0) }}"
 
 # When enabled, API bearer tokens (including service account tokens) can be used to authenticate to the kubelet's HTTPS endpoint
 kubelet_authentication_token_webhook: true
@@ -675,9 +744,6 @@ proxy_disable_env:
   http_proxy: ''
   https_proxy: ''
   no_proxy: ''
-
-# krew root dir
-krew_root_dir: "/usr/local/krew"
 
 # sysctl_file_path to add sysctl conf to
 sysctl_file_path: "/etc/sysctl.d/99-sysctl.conf"

@@ -30,15 +30,18 @@ spec:
         - /init_module
         image: {{ ingress_nginx_opentelemetry_image_repo }}:{{ ingress_nginx_opentelemetry_image_tag }}
         securityContext:
-          runAsNonRoot: true
-          runAsUser: 65532
           allowPrivilegeEscalation: false
+          capabilities:
+            add:
+            - NET_BIND_SERVICE
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsGroup: 82
+          runAsNonRoot: true
+          runAsUser: 101
           seccompProfile:
             type: RuntimeDefault
-          capabilities:
-            drop:
-              - ALL
-          readOnlyRootFilesystem: true
         volumeMounts:
         - mountPath: /modules_mount
           name: modules
@@ -76,11 +79,12 @@ spec:
 {% if ingress_nginx_without_class %}
             - --watch-ingress-without-class=true
 {% endif %}
-{% if ingress_nginx_host_network %}
-            - --report-node-internal-ip-address
-{% endif %}
 {% if ingress_publish_status_address != "" %}
             - --publish-status-address={{ ingress_publish_status_address }}
+{% elif ingress_nginx_host_network %}
+            - --report-node-internal-ip-address
+{% elif ingress_nginx_publish_service != "" %}
+            - --publish-service={{ ingress_nginx_publish_service }}
 {% endif %}
 {% for extra_arg in ingress_nginx_extra_args %}
             - {{ extra_arg }}
@@ -121,6 +125,26 @@ spec:
               containerPort: 10254
 {% if not ingress_nginx_host_network %}
               hostPort: {{ ingress_nginx_metrics_port }}
+{% endif %}
+{% if ingress_nginx_configmap_tcp_services %}
+{% for port in ingress_nginx_configmap_tcp_services.keys() %}
+            - name: tcp-port-{{ port }}
+              containerPort: "{{ port | int }}"
+              protocol: TCP
+{% if not ingress_nginx_host_network %}
+              hostPort: "{{ port | int }}"
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if ingress_nginx_configmap_udp_services %}
+{% for port in ingress_nginx_configmap_udp_services.keys() %}
+            - name: udp-port-{{ port }}
+              containerPort: "{{ port | int }}"
+              protocol: UDP
+{% if not ingress_nginx_host_network %}
+              hostPort: "{{ port | int }}"
+{% endif %}
+{% endfor %}
 {% endif %}
 {% if ingress_nginx_webhook_enabled %}
             - name: webhook

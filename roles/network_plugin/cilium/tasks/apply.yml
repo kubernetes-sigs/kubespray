@@ -31,3 +31,219 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0] and not item is skipped
     - cilium_enable_hubble and cilium_hubble_install
+
+- name: Cilium | Wait for CiliumLoadBalancerIPPool CRD to be present
+  command: "{{ kubectl }} wait --for condition=established --timeout=60s crd/ciliumloadbalancerippools.cilium.io"
+  register: cillium_lbippool_crd_ready
+  retries: "{{ cilium_rolling_restart_wait_retries_count | int }}"
+  delay: "{{ cilium_rolling_restart_wait_retries_delay_seconds | int }}"
+  failed_when: false
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_loadbalancer_ip_pools is defined and (cilium_loadbalancer_ip_pools|length>0)
+
+- name: Cilium | Create CiliumLoadBalancerIPPool manifests
+  template:
+    src: "{{ item.name }}/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    mode: "0644"
+  with_items:
+    - {name: cilium, file: cilium-loadbalancer-ip-pool.yml, type: CiliumLoadBalancerIPPool}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_lbippool_crd_ready is defined and cillium_lbippool_crd_ready.rc is defined and cillium_lbippool_crd_ready.rc == 0
+    - cilium_loadbalancer_ip_pools is defined and (cilium_loadbalancer_ip_pools|length>0)
+
+- name: Cilium | Apply CiliumLoadBalancerIPPool from cilium_loadbalancer_ip_pools
+  kube:
+    name: "{{ item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    state: "latest"
+  loop:
+    - {name: cilium, file: cilium-loadbalancer-ip-pool.yml, type: CiliumLoadBalancerIPPool}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_lbippool_crd_ready is defined and cillium_lbippool_crd_ready.rc is defined and cillium_lbippool_crd_ready.rc == 0
+    - cilium_loadbalancer_ip_pools is defined and (cilium_loadbalancer_ip_pools|length>0)
+
+- name: Cilium | Wait for CiliumBGPPeeringPolicy CRD to be present
+  command: "{{ kubectl }} wait --for condition=established --timeout=60s crd/ciliumbgppeeringpolicies.cilium.io"
+  register: cillium_bgpppolicy_crd_ready
+  retries: "{{ cilium_rolling_restart_wait_retries_count | int }}"
+  delay: "{{ cilium_rolling_restart_wait_retries_delay_seconds | int }}"
+  failed_when: false
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_bgp_peering_policies is defined and (cilium_bgp_peering_policies|length>0)
+
+- name: Cilium | Create CiliumBGPPeeringPolicy manifests
+  template:
+    src: "{{ item.name }}/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    mode: "0644"
+  with_items:
+    - {name: cilium, file: cilium-bgp-peering-policy.yml, type: CiliumBGPPeeringPolicy}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_bgpppolicy_crd_ready is defined and cillium_bgpppolicy_crd_ready.rc is defined and cillium_bgpppolicy_crd_ready.rc == 0
+    - cilium_bgp_peering_policies is defined and (cilium_bgp_peering_policies|length>0)
+
+- name: Cilium | Apply CiliumBGPPeeringPolicy from cilium_bgp_peering_policies
+  kube:
+    name: "{{ item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    state: "latest"
+  loop:
+    - {name: cilium, file: cilium-bgp-peering-policy.yml, type: CiliumBGPPeeringPolicy}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_bgpppolicy_crd_ready is defined and cillium_bgpppolicy_crd_ready.rc is defined and cillium_bgpppolicy_crd_ready.rc == 0
+    - cilium_bgp_peering_policies is defined and (cilium_bgp_peering_policies|length>0)
+
+- name: Cilium | Wait for CiliumBGPClusterConfig CRD to be present
+  command: "{{ kubectl }} wait --for condition=established --timeout=60s crd/ciliumbgpclusterconfigs.cilium.io"
+  register: cillium_bgpcconfig_crd_ready
+  retries: "{{ cilium_rolling_restart_wait_retries_count | int }}"
+  delay: "{{ cilium_rolling_restart_wait_retries_delay_seconds | int }}"
+  failed_when: false
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_bgp_cluster_configs is defined and (cilium_bgp_cluster_configs|length>0)
+
+- name: Cilium | Create CiliumBGPClusterConfig manifests
+  template:
+    src: "{{ item.name }}/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    mode: "0644"
+  with_items:
+    - {name: cilium, file: cilium-bgp-cluster-config.yml, type: CiliumBGPClusterConfig}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_bgpcconfig_crd_ready is defined and cillium_bgpcconfig_crd_ready.rc is defined and cillium_bgpcconfig_crd_ready.rc == 0
+    - cilium_bgp_cluster_configs is defined and (cilium_bgp_cluster_configs|length>0)
+
+- name: Cilium | Apply CiliumBGPClusterConfig from cilium_bgp_cluster_configs
+  kube:
+    name: "{{ item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    state: "latest"
+  loop:
+    - {name: cilium, file: cilium-bgp-cluster-config.yml, type: CiliumBGPClusterConfig}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_bgpcconfig_crd_ready is defined and cillium_bgpcconfig_crd_ready.rc is defined and cillium_bgpcconfig_crd_ready.rc == 0
+    - cilium_bgp_cluster_configs is defined and (cilium_bgp_cluster_configs|length>0)
+
+- name: Cilium | Wait for CiliumBGPPeerConfig CRD to be present
+  command: "{{ kubectl }} wait --for condition=established --timeout=60s crd/ciliumbgppeerconfigs.cilium.io"
+  register: cillium_bgppconfig_crd_ready
+  retries: "{{ cilium_rolling_restart_wait_retries_count | int }}"
+  delay: "{{ cilium_rolling_restart_wait_retries_delay_seconds | int }}"
+  failed_when: false
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_bgp_peer_configs is defined and (cilium_bgp_peer_configs|length>0)
+
+- name: Cilium | Create CiliumBGPPeerConfig manifests
+  template:
+    src: "{{ item.name }}/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    mode: "0644"
+  with_items:
+    - {name: cilium, file: cilium-bgp-peer-config.yml, type: CiliumBGPPeerConfig}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_bgppconfig_crd_ready is defined and cillium_bgppconfig_crd_ready.rc is defined and cillium_bgppconfig_crd_ready.rc == 0
+    - cilium_bgp_peer_configs is defined and (cilium_bgp_peer_configs|length>0)
+
+- name: Cilium | Apply CiliumBGPPeerConfig from cilium_bgp_peer_configs
+  kube:
+    name: "{{ item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    state: "latest"
+  loop:
+    - {name: cilium, file: cilium-bgp-peer-config.yml, type: CiliumBGPPeerConfig}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_bgppconfig_crd_ready is defined and cillium_bgppconfig_crd_ready.rc is defined and cillium_bgppconfig_crd_ready.rc == 0
+    - cilium_bgp_peer_configs is defined and (cilium_bgp_peer_configs|length>0)
+
+- name: Cilium | Wait for CiliumBGPAdvertisement CRD to be present
+  command: "{{ kubectl }} wait --for condition=established --timeout=60s crd/ciliumbgpadvertisements.cilium.io"
+  register: cillium_bgpadvert_crd_ready
+  retries: "{{ cilium_rolling_restart_wait_retries_count | int }}"
+  delay: "{{ cilium_rolling_restart_wait_retries_delay_seconds | int }}"
+  failed_when: false
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_bgp_advertisements is defined and (cilium_bgp_advertisements|length>0)
+
+- name: Cilium | Create CiliumBGPAdvertisement manifests
+  template:
+    src: "{{ item.name }}/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    mode: "0644"
+  with_items:
+    - {name: cilium, file: cilium-bgp-advertisement.yml, type: CiliumBGPAdvertisement}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_bgpadvert_crd_ready is defined and cillium_bgpadvert_crd_ready.rc is defined and cillium_bgpadvert_crd_ready.rc == 0
+    - cilium_bgp_advertisements is defined and (cilium_bgp_advertisements|length>0)
+
+- name: Cilium | Apply CiliumBGPAdvertisement from cilium_bgp_advertisements
+  kube:
+    name: "{{ item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    state: "latest"
+  loop:
+    - {name: cilium, file: cilium-bgp-advertisement.yml, type: CiliumBGPAdvertisement}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cillium_bgpadvert_crd_ready is defined and cillium_bgpadvert_crd_ready.rc is defined and cillium_bgpadvert_crd_ready.rc == 0
+    - cilium_bgp_advertisements is defined and (cilium_bgp_advertisements|length>0)
+
+- name: Cilium | Wait for CiliumBGPNodeConfigOverride CRD to be present
+  command: "{{ kubectl }} wait --for condition=established --timeout=60s crd/ciliumbgpnodeconfigoverrides.cilium.io"
+  register: cilium_bgp_node_config_crd_ready
+  retries: "{{ cilium_rolling_restart_wait_retries_count | int }}"
+  delay: "{{ cilium_rolling_restart_wait_retries_delay_seconds | int }}"
+  failed_when: false
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_bgp_advertisements is defined and (cilium_bgp_advertisements|length>0)
+
+- name: Cilium | Create CiliumBGPNodeConfigOverride manifests
+  template:
+    src: "{{ item.name }}/{{ item.file }}.j2"
+    dest: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    mode: "0644"
+  with_items:
+    - {name: cilium, file: cilium-bgp-node-config-override.yml, type: CiliumBGPNodeConfigOverride}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_bgp_node_config_crd_ready is defined and cilium_bgp_node_config_crd_ready.rc is defined and cilium_bgp_node_config_crd_ready.rc == 0
+    - cilium_bgp_node_config_overrides is defined and (cilium_bgp_node_config_overrides|length>0)
+
+- name: Cilium | Apply CiliumBGPNodeConfigOverride from cilium_bgp_node_config_overrides
+  kube:
+    name: "{{ item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
+    state: "latest"
+  loop:
+    - {name: cilium, file: cilium-bgp-node-config-override.yml, type: CiliumBGPNodeConfigOverride}
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_bgp_node_config_crd_ready is defined and cilium_bgp_node_config_crd_ready.rc is defined and cilium_bgp_node_config_crd_ready.rc == 0
+    - cilium_bgp_node_config_overrides is defined and (cilium_bgp_node_config_overrides|length>0)

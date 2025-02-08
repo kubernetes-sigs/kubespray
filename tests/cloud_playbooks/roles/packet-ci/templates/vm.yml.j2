@@ -1,54 +1,59 @@
 ---
-apiVersion: kubevirt.io/v1alpha3
-kind: VirtualMachine
+apiVersion: kubevirt.io/v1
+kind: VirtualMachineInstance
 metadata:
-  name: "instance-{{ vm_id }}"
-  namespace: "{{ test_name }}"
+  generateName: test-vm-
+  namespace: {{ pod_namespace }}
   annotations:
     kubespray.com/ci.template-path: "tests/cloud_playbooks/roles/packet-ci/templates/vm.yml.j2"
+    ansible_groups: "{{ kubespray_groups | join(',') }}"
+    # This does not use a dns prefix because dots are hard to escape with map(attribute=) in Jinja
   labels:
     kubevirt.io/os: {{ cloud_image }}
+    kubevirt.io/size: small
+    kubevirt.io/domain: "{{ test_name }}"
+    ci_job_id: "{{ ci_job_id }}"
+    ci_job_name: "{{ ci_job_name }}"
+  # leverage the Kubernetes GC for resources cleanup
+  ownerReferences:
+  - apiVersion: v1
+    kind: Pod
+    name: "{{ pod_name }}"
+    uid: "{{ pod_uid }}"
 spec:
-  running: true
-  template:
-    metadata:
-      labels:
-        kubevirt.io/size: small
-        kubevirt.io/domain: "{{ test_name }}"
-    spec:
-      domain:
-        devices:
-          blockMultiQueue: true
-          disks:
-            - disk:
-                bus: virtio
-              name: containervolume
-              cache: writethrough
-            - disk:
-                bus: virtio
-              name: cloudinitvolume
-          interfaces:
-          - name: default
-            bridge: {}
-        cpu:
-            cores: {{ vm_cpu_cores }}
-            sockets: {{ vm_cpu_sockets }}
-            threads: {{ vm_cpu_threads }}
-        resources:
-          requests:
-            memory: "{{ vm_memory * memory_allocation_ratio }}Mi"
-            cpu: {{ vm_cpu_cores * cpu_allocation_ratio }}
-          limits:
-            memory: "{{ vm_memory }}Mi"
-            cpu: {{ vm_cpu_cores }}
-      networks:
+  domain:
+    devices:
+      blockMultiQueue: true
+      disks:
+        - disk:
+            bus: virtio
+          name: containervolume
+          cache: writethrough
+        - disk:
+            bus: virtio
+          name: cloudinitvolume
+      interfaces:
       - name: default
-        pod: {}
-      terminationGracePeriodSeconds: 0
-      volumes:
-        - name: containervolume
-          containerDisk:
-            image: quay.io/kubespray/vm-{{ cloud_image }}
-        - name: cloudinitvolume
-          cloudInitNoCloud:
-            userDataBase64: {{ cloud_init[cloud_image] }}
+        bridge: {}
+    cpu:
+        cores: {{ vm_cpu_cores }}
+        sockets: {{ vm_cpu_sockets }}
+        threads: {{ vm_cpu_threads }}
+    resources:
+      requests:
+        memory: "{{ vm_memory * memory_allocation_ratio }}Mi"
+        cpu: {{ vm_cpu_cores * cpu_allocation_ratio }}
+      limits:
+        memory: "{{ vm_memory }}Mi"
+        cpu: {{ vm_cpu_cores }}
+  networks:
+  - name: default
+    pod: {}
+  terminationGracePeriodSeconds: 0
+  volumes:
+    - name: containervolume
+      containerDisk:
+        image: quay.io/kubespray/vm-{{ cloud_image }}
+    - name: cloudinitvolume
+      cloudInitNoCloud:
+        userDataBase64: {{ cloud_init[cloud_image] }}

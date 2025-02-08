@@ -12,62 +12,109 @@
   when: inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Kubernetes Apps | CoreDNS
-  import_tasks: "coredns.yml"
-  when:
-    - dns_mode in ['coredns', 'coredns_dual']
-    - inventory_hostname == groups['kube_control_plane'][0]
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{ lookup('template', item) }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  loop: "{{ coredns_manifests | flatten }}"
   tags:
     - coredns
+  vars:
+    clusterIP: "{{ skydns_server }}"
+  when: dns_mode in ['coredns', 'coredns_dual']
+
+- name: Kubernetes Apps | CoreDNS Secondary
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{ lookup('template', item) }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  loop: "{{ coredns_manifests | flatten }}"
+  tags:
+    - coredns
+  vars:
+    clusterIP: "{{ skydns_server_secondary }}"
+    coredns_ordinal_suffix: "-secondary"
+  when:
+    - dns_mode == 'coredns_dual'
 
 - name: Kubernetes Apps | nodelocalDNS
-  import_tasks: "nodelocaldns.yml"
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{ lookup('template', item) }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  loop: "{{ nodelocaldns_manifests | flatten }}"
   when:
     - enable_nodelocaldns
-    - inventory_hostname == groups['kube_control_plane'] | first
   tags:
     - nodelocaldns
-
-- name: Kubernetes Apps | Start Resources
-  kube:
-    name: "{{ item.item.name }}"
-    namespace: "kube-system"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
-    state: "latest"
-  with_items:
-    - "{{ coredns_manifests.results | default({}) }}"
-    - "{{ coredns_secondary_manifests.results | default({}) }}"
-    - "{{ nodelocaldns_manifests.results | default({}) }}"
-    - "{{ nodelocaldns_second_manifests.results | default({}) }}"
-  when:
-    - dns_mode != 'none'
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - not item is skipped
-  register: resource_result
-  until: resource_result is succeeded
-  retries: 4
-  delay: 5
-  tags:
     - coredns
-    - nodelocaldns
-  loop_control:
-    label: "{{ item.item.file }}"
+  vars:
+    primaryClusterIP: >-
+      {%- if dns_mode in ['coredns', 'coredns_dual'] -%}
+      {{ skydns_server }}
+      {%- elif dns_mode == 'manual' -%}
+      {{ manual_dns_server }}
+      {%- endif -%}
+    secondaryclusterIP: "{{ skydns_server_secondary }}"
+    forwardTarget: >-
+      {%- if secondaryclusterIP is defined and dns_mode == 'coredns_dual' -%}
+      {{ primaryClusterIP }} {{ secondaryclusterIP }}
+      {%- else -%}
+      {{ primaryClusterIP }}
+      {%- endif -%}
+    upstreamForwardTarget: >-
+      {%- if upstream_dns_servers | length > 0 -%}
+      {{ upstream_dns_servers | join(' ') }}
+      {%- else -%}
+      /etc/resolv.conf
+      {%- endif -%}
 
 - name: Kubernetes Apps | Etcd metrics endpoints
-  import_tasks: etcd_metrics.yml
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{ lookup('template', item) }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  loop:
+    - etcd_metrics-endpoints.yml.j2
+    - etcd_metrics-service.yml.j2
   when: etcd_metrics_port is defined and etcd_metrics_service_labels is defined
   tags:
     - etcd_metrics
 
 - name: Kubernetes Apps | Netchecker
-  import_tasks: netchecker.yml
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{ lookup('template', item) }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  vars:
+    namespace: "{{ netcheck_namespace }}"
   when: deploy_netchecker
   tags:
     - netchecker
+  loop:
+    - netchecker-ns.yml.j2
+    - netchecker-agent-sa.yml.j2
+    - netchecker-agent-ds.yml.j2
+    - netchecker-agent-hostnet-ds.yml.j2
+    - netchecker-server-sa.yml.j2
+    - netchecker-server-clusterrole.yml.j2
+    - netchecker-server-clusterrolebinding.yml.j2
+    - netchecker-server-deployment.yml.j2
+    - netchecker-server-svc.yml.j2
 
 - name: Kubernetes Apps | Dashboard
-  import_tasks: dashboard.yml
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{ lookup('template', 'dashboard.yml.j2') }}"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  vars:
+    namespace: "{{ dashboard_namespace }}"
   when: dashboard_enabled
   tags:
     - dashboard

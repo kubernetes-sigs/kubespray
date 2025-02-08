@@ -45,10 +45,144 @@ cilium_pool_mask_size Specifies the size allocated to node.ipam.podCIDRs from cl
 cilium_pool_mask_size_ipv6: "120"
 ```
 
+### IP Load Balancer Pools
+
+Cilium's IP Load Balancer Pools can be configured with the `cilium_loadbalancer_ip_pools` variable:
+
+```yml
+cilium_loadbalancer_ip_pools:
+  - name: "blue-pool"
+    cidrs:
+      - "10.0.10.0/24"
+```
+
+For further information, check [LB IPAM documentation](https://docs.cilium.io/en/stable/network/lb-ipam/)
+
+### BGP Control Plane
+
+Cilium's BGP Control Plane can be enabled by setting `cilium_enable_bgp_control_plane` to `true`.:
+
+```yml
+cilium_enable_bgp_control_plane: true
+```
+
+For further information, check [BGP Peering Policy documentation](https://docs.cilium.io/en/latest/network/bgp-control-plane/bgp-control-plane-v1/)
+
+### BGP Control Plane Resources (New bgpv2 API v1.16+)
+
+Cilium BGP control plane is managed by a set of custom resources which provide a flexible way to configure BGP peers, policies, and advertisements.
+
+Cilium's BGP Instances can be configured with the `cilium_bgp_cluster_configs` variable:
+
+```yml
+cilium_bgp_cluster_configs:
+  - name: "cilium-bgp"
+    spec:
+      bgpInstances:
+      - name: "instance-64512"
+        localASN: 64512
+        peers:
+        - name: "peer-64512-tor1"
+          peerASN: 64512
+          peerAddress: '10.47.1.1'
+          peerConfigRef:
+            name: "cilium-peer"
+      nodeSelector:
+        matchExpressions:
+          - {key: somekey, operator: NotIn, values: ['never-used-value']}
+```
+
+Cillium's BGP Peers can be configured with the `cilium_bgp_peer_configs` variable:
+
+```yml
+cilium_bgp_peer_configs:
+  - name: cilium-peer
+    spec:
+      # authSecretRef: bgp-auth-secret
+      gracefulRestart:
+        enabled: true
+        restartTimeSeconds: 15
+      families:
+        - afi: ipv4
+          safi: unicast
+          advertisements:
+            matchLabels:
+              advertise: "bgp"
+        - afi: ipv6
+          safi: unicast
+          advertisements:
+            matchLabels:
+              advertise: "bgp"
+```
+
+Cillium's BGP Advertisements can be configured with the `cilium_bgp_advertisements` variable:
+
+```yml
+cilium_bgp_advertisements:
+  - name: bgp-advertisements
+    labels:
+      advertise: bgp
+    spec:
+      advertisements:
+        - advertisementType: "PodCIDR"
+          attributes:
+            communities:
+              standard: [ "64512:99" ]
+        - advertisementType: "Service"
+          service:
+            addresses:
+              - ClusterIP
+              - ExternalIP
+              - LoadBalancerIP
+          selector:
+            matchExpressions:
+                - {key: somekey, operator: NotIn, values: ['never-used-value']}
+```
+
+Cillium's BGP Node Config Overrides can be configured with the `cilium_bgp_node_config_overrides` variable:
+
+```yml
+cilium_bgp_node_config_overrides:
+  - name: bgpv2-cplane-dev-multi-homing-worker
+    spec:
+    bgpInstances:
+      - name: "instance-65000"
+        routerID: "192.168.10.1"
+        localPort: 1790
+        peers:
+          - name: "peer-65000-tor1"
+            localAddress: fd00:10:0:2::2
+          - name: "peer-65000-tor2"
+            localAddress: fd00:11:0:2::2
+```
+
+For further information, check [BGP Control Plane Resources documentation](https://docs.cilium.io/en/latest/network/bgp-control-plane/bgp-control-plane-v2/)
+
+### BGP Peering Policies (Legacy < v1.16)
+
+Cilium's BGP Peering Policies can be configured with the `cilium_bgp_peering_policies` variable:
+
+```yml
+cilium_bgp_peering_policies:
+  - name: "01-bgp-peering-policy"
+    spec:
+      virtualRouters:
+        - localASN: 64512
+          exportPodCIDR: false
+          neighbors:
+          - peerAddress: '10.47.1.1/24'
+            peerASN: 64512
+          serviceSelector:
+              matchExpressions:
+              - {key: somekey, operator: NotIn, values: ['never-used-value']}
+```
+
+For further information, check [BGP Peering Policy documentation](https://docs.cilium.io/en/latest/network/bgp-control-plane/bgp-control-plane-v1/#bgp-peering-policy-legacy)
+
 ## Kube-proxy replacement with Cilium
 
 Cilium can run without kube-proxy by setting `cilium_kube_proxy_replacement`
-to `strict`.
+to `strict` (< v1.16) or `true` (Cilium v1.16+ no longer accepts `strict`, however this is converted to `true` by kubespray when running v1.16+).
 
 Without kube-proxy, cilium needs to know the address of the kube-apiserver
 and this must be set globally for all Cilium components (agents and operators).

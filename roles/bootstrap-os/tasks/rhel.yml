@@ -1,0 +1,113 @@
+---
+- name: Gather host facts to get ansible_distribution_version ansible_distribution_major_version
+  setup:
+    gather_subset: '!all'
+    filter: ansible_distribution_*version
+
+- name: Add proxy to yum.conf or dnf.conf if http_proxy is defined
+  community.general.ini_file:
+    path: "{{ ((ansible_distribution_major_version | int) < 8) | ternary('/etc/yum.conf', '/etc/dnf/dnf.conf') }}"
+    section: main
+    option: proxy
+    value: "{{ http_proxy | default(omit) }}"
+    state: "{{ http_proxy | default(False) | ternary('present', 'absent') }}"
+    no_extra_spaces: true
+    mode: "0644"
+  become: true
+  when: not skip_http_proxy_on_os_packages
+
+- name: Add proxy to RHEL subscription-manager if http_proxy is defined
+  command: /sbin/subscription-manager config --server.proxy_hostname={{ http_proxy | regex_replace(':\d+$') | regex_replace('^.*://') }} --server.proxy_port={{ http_proxy | regex_replace('^.*:') }}
+  become: true
+  when:
+    - not skip_http_proxy_on_os_packages
+    - http_proxy is defined
+
+- name: Check RHEL subscription-manager status
+  command: /sbin/subscription-manager status
+  register: rh_subscription_status
+  changed_when: "rh_subscription_status.rc != 0"
+  ignore_errors: true  # noqa ignore-errors
+  become: true
+
+- name: RHEL subscription Organization ID/Activation Key registration
+  community.general.redhat_subscription:
+    state: present
+    org_id: "{{ rh_subscription_org_id }}"
+    activationkey: "{{ rh_subscription_activation_key }}"
+    force_register: true
+  notify: RHEL auto-attach subscription
+  become: true
+  when:
+    - rh_subscription_org_id is defined
+    - rh_subscription_status.changed
+
+# this task has no_log set to prevent logging security sensitive information such as subscription passwords
+- name: RHEL subscription Username/Password registration
+  community.general.redhat_subscription:
+    state: present
+    username: "{{ rh_subscription_username }}"
+    password: "{{ rh_subscription_password }}"
+    auto_attach: true
+    force_register: true
+    syspurpose:
+      usage: "{{ rh_subscription_usage }}"
+      role: "{{ rh_subscription_role }}"
+      service_level_agreement: "{{ rh_subscription_sla }}"
+      sync: true
+  notify: RHEL auto-attach subscription
+  become: true
+  no_log: "{{ not (unsafe_show_logs | bool) }}"
+  when:
+    - rh_subscription_username is defined
+    - rh_subscription_status.changed
+
+# container-selinux is in appstream repo
+- name: Enable RHEL 8 repos
+  community.general.rhsm_repository:
+    name:
+      - "rhel-8-for-*-baseos-rpms"
+      - "rhel-8-for-*-appstream-rpms"
+    state: "{{ 'enabled' if (rhel_enable_repos | default(True) | bool) else 'disabled' }}"
+  when:
+    - ansible_distribution_major_version == "8"
+    - (not rh_subscription_status.changed) or (rh_subscription_username is defined) or (rh_subscription_org_id is defined)
+
+- name: Check presence of fastestmirror.conf
+  stat:
+    path: /etc/yum/pluginconf.d/fastestmirror.conf
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: fastestmirror
+
+# the fastestmirror plugin can actually slow down Ansible deployments
+- name: Disable fastestmirror plugin if requested
+  lineinfile:
+    dest: /etc/yum/pluginconf.d/fastestmirror.conf
+    regexp: "^enabled=.*"
+    line: "enabled=0"
+    state: present
+  become: true
+  when:
+    - fastestmirror.stat.exists
+    - not centos_fastestmirror_enabled
+
+# libselinux-python is required on SELinux enabled hosts
+# See https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#managed-node-requirements
+- name: Install libselinux python package
+  package:
+    name: "{{ ((ansible_distribution_major_version | int) < 8) | ternary('libselinux-python', 'python3-libselinux') }}"
+    state: present
+  become: true
+
+# iproute is required for networking related facts gathering
+# See https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_vars_facts.html#package-requirements-for-fact-gathering
+# Note: It is not recommended way, but since the tasks execution order, put it here is the simplest way so far. We can move it to a proper place later.
+# TODO: move this to roles/kubernetes/preinstall/vars/main.yml -> pkgs variables
+# Currently not possible because the collect the network facts before that step, needs reordering of the exec flow.
+- name: Ensure iproute is installed
+  package:
+    name: iproute
+    state: present
+  become: true

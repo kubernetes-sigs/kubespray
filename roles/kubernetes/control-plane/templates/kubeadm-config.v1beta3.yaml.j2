@@ -24,7 +24,7 @@ nodeRegistration:
   taints: []
 {% endif %}
   criSocket: {{ cri_socket }}
-{% if cloud_provider is defined and cloud_provider in ["external"] %}
+{% if cloud_provider == "external" %}
   kubeletExtraArgs:
     cloud-provider: external
 {% endif %}
@@ -126,7 +126,11 @@ apiServer:
 {% if kube_api_anonymous_auth is defined %}
     anonymous-auth: "{{ kube_api_anonymous_auth }}"
 {% endif %}
+{% if kube_apiserver_use_authorization_config_file %}
+    authorization-config: "{{ kube_config_dir }}/apiserver-authorization-config.yaml"
+{% else %}
     authorization-mode: {{ authorization_modes | join(',') }}
+{% endif %}
     bind-address: {{ kube_apiserver_bind_address }}
 {% if kube_apiserver_enable_admission_plugins | length > 0 %}
     enable-admission-plugins: {{ kube_apiserver_enable_admission_plugins | join(',') }}
@@ -176,7 +180,7 @@ apiServer:
 {% if kube_webhook_token_auth | default(false) %}
     authentication-token-webhook-config-file: {{ kube_config_dir }}/webhook-token-auth-config.yaml
 {% endif %}
-{% if kube_webhook_authorization | default(false) %}
+{% if kube_webhook_authorization and not kube_apiserver_use_authorization_config_file %}
     authorization-webhook-config-file: {{ kube_config_dir }}/webhook-authorization-config.yaml
 {% endif %}
 {% if kube_encrypt_secret_data %}
@@ -210,10 +214,6 @@ apiServer:
 {% if kube_apiserver_feature_gates or kube_feature_gates %}
     feature-gates: "{{ kube_apiserver_feature_gates | default(kube_feature_gates, true) | join(',') }}"
 {% endif %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] %}
-    cloud-provider: {{ cloud_provider }}
-    cloud-config: {{ kube_config_dir }}/cloud_config
-{% endif %}
 {% if tls_min_version is defined %}
     tls-min-version: {{ tls_min_version }}
 {% endif %}
@@ -230,13 +230,8 @@ apiServer:
 {% if kube_apiserver_tracing %}
     tracing-config-file: {{ kube_config_dir }}/tracing/apiserver-tracing.yaml
 {% endif %}
-{% if kubernetes_audit or kube_token_auth or kube_webhook_token_auth or ( cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] ) or apiserver_extra_volumes or ssl_ca_dirs | length %}
+{% if kubernetes_audit or kube_token_auth or kube_webhook_token_auth or apiserver_extra_volumes or ssl_ca_dirs | length %}
   extraVolumes:
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] %}
-  - name: cloud-config
-    hostPath: {{ kube_config_dir }}/cloud_config
-    mountPath: {{ kube_config_dir }}/cloud_config
-{% endif %}
 {% if kube_token_auth %}
   - name: token-auth-config
     hostPath: {{ kube_token_dir }}
@@ -251,6 +246,11 @@ apiServer:
   - name: webhook-authorization-config
     hostPath: {{ kube_config_dir }}/webhook-authorization-config.yaml
     mountPath: {{ kube_config_dir }}/webhook-authorization-config.yaml
+{% endif %}
+{% if kube_apiserver_use_authorization_config_file %}
+  - name: authorization-config
+    hostPath: {{ kube_config_dir }}/apiserver-authorization-config.yaml
+    mountPath: {{ kube_config_dir }}/apiserver-authorization-config.yaml
 {% endif %}
 {% if kubernetes_audit or kubernetes_audit_webhook %}
   - name: {{ audit_policy_name }}
@@ -326,10 +326,6 @@ controllerManager:
 {% for key in kube_kubeadm_controller_extra_args %}
     {{ key }}: "{{ kube_kubeadm_controller_extra_args[key] }}"
 {% endfor %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] %}
-    cloud-provider: {{ cloud_provider }}
-    cloud-config: {{ kube_config_dir }}/cloud_config
-{% endif %}
 {% if kube_network_plugin is defined and kube_network_plugin not in ["cloud"] %}
     configure-cloud-routes: "false"
 {% endif %}
@@ -343,18 +339,8 @@ controllerManager:
     tls-cipher-suites: {% for tls in tls_cipher_suites %}{{ tls }}{{ "," if not loop.last else "" }}{% endfor %}
 
 {% endif %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] or controller_manager_extra_volumes %}
+{% if controller_manager_extra_volumes %}
   extraVolumes:
-{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
-  - name: openstackcacert
-    hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
-    mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
-{% endif %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] %}
-  - name: cloud-config
-    hostPath: {{ kube_config_dir }}/cloud_config
-    mountPath: {{ kube_config_dir }}/cloud_config
-{% endif %}
 {% for volume in controller_manager_extra_volumes %}
   - name: {{ volume.name }}
     hostPath: {{ volume.hostPath }}

@@ -1,5 +1,7 @@
 # Azure
 
+> **Removed**: Since v1.31 (the Kubespray counterpart is v2.27), Kubernetes no longer supports `cloud_provider`. (except external cloud provider)
+
 To deploy Kubernetes on [Azure](https://azure.microsoft.com) uncomment the `cloud_provider` option in `group_vars/all/all.yml` and set it to `'azure'`.
 
 All your instances are required to run in a resource group and a routing table has to be attached to the subnet your instances are in.

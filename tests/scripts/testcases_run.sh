@@ -18,51 +18,70 @@ fi
 # Check out latest tag if testing upgrade
 if [ "${UPGRADE_TEST}" != "false" ]; then
   git fetch --all && git checkout "$KUBESPRAY_VERSION"
-  # Checkout the CI vars file so it is available
-  git checkout "${CI_COMMIT_SHA}" tests/files/${CI_JOB_NAME}.yml
-  git checkout "${CI_COMMIT_SHA}" ${CI_TEST_REGISTRY_MIRROR}
-  git checkout "${CI_COMMIT_SHA}" ${CI_TEST_SETTING}
+  # Checkout the current tests/ directory ; even when testing old version,
+  # we want the up-to-date test setup/provisionning
+  git checkout "${CI_COMMIT_SHA}" -- tests/
 fi
-
-# needed for ara not to complain
-export TZ=UTC
 
 export ANSIBLE_REMOTE_USER=$SSH_USER
 export ANSIBLE_BECOME=true
 export ANSIBLE_BECOME_USER=root
-export ANSIBLE_CALLBACK_PLUGINS="$(python -m ara.setup.callback_plugins)"
+export ANSIBLE_INVENTORY=/tmp/inventory/
 
-cd tests && make create-${CI_PLATFORM} -s ; cd -
+make -C tests INVENTORY_DIR=${ANSIBLE_INVENTORY} create-${CI_PLATFORM} -s
+
+# Test collection build and install by installing our collection, emptying our repository, adding
+# cluster.yml, reset.yml, and remote-node.yml files that simply point to our collection's playbooks, and then
+# running the same tests as before
+if [[ "${CI_JOB_NAME}" =~ "collection" ]]; then
+  # Build and install collection
+  ansible-galaxy collection build
+  ansible-galaxy collection install kubernetes_sigs-kubespray-$(grep "^version:" galaxy.yml | awk '{print $2}').tar.gz
+
+  # Simply remove all of our files and directories except for our tests directory
+  # to be absolutely certain that none of our playbooks or roles
+  # are interfering with our collection
+  find -mindepth 1 -maxdepth 1 ! -regex './\(tests\|inventory\)' -exec rm -rfv {} +
+
+cat > cluster.yml <<EOF
+- name: Install Kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.cluster
+EOF
+
+cat > upgrade-cluster.yml <<EOF
+- name: Install Kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.upgrade-cluster
+EOF
+
+cat > reset.yml <<EOF
+- name: Remove Kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.reset
+EOF
+
+cat > remove-node.yml <<EOF
+- name: Remove node from Kubernetes
+  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.remove_node
+EOF
+
+fi
+
 ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml
-
-# Flatcar Container Linux needs auto update disabled
-if [[ "$CI_JOB_NAME" =~ "coreos" ]]; then
-  ansible all -m raw -a 'systemctl disable locksmithd'
-  ansible all -m raw -a 'systemctl stop locksmithd'
-  mkdir -p /opt/bin && ln -s /usr/bin/python /opt/bin/python
-fi
-
-if [[ "$CI_JOB_NAME" =~ "opensuse" ]]; then
-  # OpenSUSE needs netconfig update to get correct resolv.conf
-  # See https://goinggnu.wordpress.com/2013/10/14/how-to-fix-the-dns-in-opensuse-13-1/
-  ansible all -m raw -a 'netconfig update -f'
-  # Auto import repo keys
-  ansible all -m raw -a 'zypper --gpg-auto-import-keys refresh'
-fi
 
 run_playbook () {
 playbook=$1
 shift
 # We can set --limit here and still pass it as supplemental args because `--limit`  is a 'last one wins' option
 ansible-playbook \
-     $ANSIBLE_LOG_LEVEL \
-    -e @${CI_TEST_SETTING} \
-    -e @${CI_TEST_REGISTRY_MIRROR} \
-    -e @${CI_TEST_VARS} \
+    -e @tests/common_vars.yml \
+    -e @tests/files/${CI_JOB_NAME}.yml \
     -e local_release_dir=${PWD}/downloads \
     "$@" \
     ${playbook}
 }
+
+
+
+## START KUBESPRAY
 
 # Create cluster
 run_playbook cluster.yml
@@ -89,38 +108,6 @@ if [ "${RECOVER_CONTROL_PLANE_TEST}" != "false" ]; then
     run_playbook recover-control-plane.yml -e etcd_retries=10 --limit "etcd:kube_control_plane"
 fi
 
-# Test collection build and install by installing our collection, emptying our repository, adding
-# cluster.yml, reset.yml, and remote-node.yml files that simply point to our collection's playbooks, and then
-# running the same tests as before
-if [[ "${CI_JOB_NAME}" =~ "collection" ]]; then
-  # Build and install collection
-  ansible-galaxy collection build
-  ansible-galaxy collection install kubernetes_sigs-kubespray-$(grep "^version:" galaxy.yml | awk '{print $2}').tar.gz
-
-  # Simply remove all of our files and directories except for our tests directory
-  # to be absolutely certain that none of our playbooks or roles
-  # are interfering with our collection
-  find -maxdepth 1 ! -name tests -exec rm -rfv {} \;
-
-  # Write cluster.yml
-cat > cluster.yml <<EOF
-- name: Install Kubernetes
-  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.cluster
-EOF
-
-  # Write reset.yml
-cat > reset.yml <<EOF
-- name: Remove Kubernetes
-  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.reset
-EOF
-
-  # Write remove-node.yml
-cat > remove-node.yml <<EOF
-- name: Remove node from Kubernetes
-  ansible.builtin.import_playbook: kubernetes_sigs.kubespray.remove_node
-EOF
-
-fi
 # Tests Cases
 ## Test Control Plane API
 run_playbook tests/testcases/010_check-apiserver.yml
@@ -140,29 +127,6 @@ fi
 
 ## Kubernetes conformance tests
 run_playbook tests/testcases/100_check-k8s-conformance.yml
-
-if [ "${IDEMPOT_CHECK}" = "true" ]; then
-  ## Idempotency checks 1/5 (repeat deployment)
-  run_playbook cluster.yml
-
-  ## Idempotency checks 2/5 (Advanced DNS checks)
-  if [[ ! ( "$CI_JOB_NAME" =~ "hardening" ) ]]; then
-      run_playbook tests/testcases/040_check-network-adv.yml
-  fi
-
-  if [ "${RESET_CHECK}" = "true" ]; then
-    ## Idempotency checks 3/5 (reset deployment)
-    run_playbook reset.yml -e reset_confirmation=yes
-
-    ## Idempotency checks 4/5 (redeploy after reset)
-    run_playbook cluster.yml
-
-    ## Idempotency checks 5/5 (Advanced DNS checks)
-    if [[ ! ( "$CI_JOB_NAME" =~ "hardening" ) ]]; then
-        run_playbook tests/testcases/040_check-network-adv.yml
-    fi
-  fi
-fi
 
 # Test node removal procedure
 if [ "${REMOVE_NODE_CHECK}" = "true" ]; then

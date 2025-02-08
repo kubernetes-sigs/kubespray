@@ -1,17 +1,49 @@
 ---
-
-- name: "Include custom vars for ci job: {{ ci_job_name }}"
+- name: Include custom vars for ci job
   include_vars: "../files/{{ ci_job_name }}.yml"
 
-- name: Cleamup old VMs
-  import_tasks: cleanup-old-vms.yml
+- name: Start vms for CI job
+  vars:
+    tvars:
+      kubespray_groups: "{{ item }}"
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', 'vm.yml.j2', template_vars=tvars) }}"
+  loop: "{{ scenarios[mode | d('default')] }}"
 
-- name: Create VMs
-  import_tasks: create-vms.yml
-  when:
-    - not vm_cleanup
+- name: Wait for vms to have IP addresses
+  kubernetes.core.k8s_info:
+    api_version: kubevirt.io/v1
+    kind: VirtualMachineInstance
+    label_selectors:
+      - "ci_job_id={{ ci_job_id }}"
+    namespace: "{{ pod_namespace }}"
+  register: vmis
+  until: vmis.resources
+          | map(attribute='status.interfaces.0')
+          | rejectattr('ipAddress', 'defined') == []
+  retries: 30
+  delay: 10
 
-- name: Delete VMs
-  import_tasks: delete-vms.yml
-  when:
-    - vm_cleanup | default(false)
+- name: Massage VirtualMachineInstance data into an Ansible inventory structure
+  vars:
+    ips: "{{ vmis.resources | map(attribute='status.interfaces.0.ipAddress') }}"
+    names: "{{ vmis.resources | map(attribute='metadata.name') }}"
+    _groups: "{{ vmis.resources | map(attribute='metadata.annotations.ansible_groups') | map('split', ',') }}"
+    hosts: "{{ ips | zip(_groups, names)
+                | map('zip', ['ansible_host', 'ansible_groups', 'k8s_vmi_name'])
+                | map('map', 'reverse') | map('community.general.dict') }}"
+  loop: "{{ hosts | map(attribute='ansible_groups') | flatten | unique }}"
+  set_fact:
+    ci_inventory: "{{ ci_inventory|d({}) | combine({
+                    item: {
+                      'hosts': hosts | selectattr('ansible_groups', 'contains', item)
+                                     | rekey_on_member('k8s_vmi_name')
+                      }
+                    })
+                  }}"
+
+- name: Create inventory for CI tests
+  copy:
+    content: "{{ ci_inventory | to_yaml }}"
+    dest: "{{ inventory_path }}/ci_inventory.yml"
+    mode: "0644"

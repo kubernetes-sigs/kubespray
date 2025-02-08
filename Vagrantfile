@@ -26,6 +26,7 @@ SUPPORTED_OS = {
   "centos8-bento"       => {box: "bento/centos-8",             user: "vagrant"},
   "almalinux8"          => {box: "almalinux/8",                user: "vagrant"},
   "almalinux8-bento"    => {box: "bento/almalinux-8",          user: "vagrant"},
+  "almalinux9"          => {box: "almalinux/9",                user: "vagrant"},
   "rockylinux8"         => {box: "rockylinux/8",               user: "vagrant"},
   "rockylinux9"         => {box: "rockylinux/9",               user: "vagrant"},
   "fedora39"            => {box: "fedora/39-cloud-base",       user: "vagrant"},
@@ -57,8 +58,7 @@ $subnet ||= "172.18.8"
 $subnet_ipv6 ||= "fd3c:b398:0698:0756"
 $os ||= "ubuntu2004"
 $network_plugin ||= "flannel"
-$inventory ||= "inventory/sample"
-$inventories ||= [$inventory]
+$inventories ||= []
 # Setting multi_networking to true will install Multus: https://github.com/k8snetworkplumbingwg/multus-cni
 $multi_networking ||= "False"
 $download_run_once ||= "True"

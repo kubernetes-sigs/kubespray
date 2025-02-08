@@ -300,10 +300,10 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`force_null_port_security` | Set `null` instead of `true` or `false` for `port_security`. `false` by default |
 |`k8s_nodes` | Map containing worker node definition, see explanation below |
 |`k8s_masters` | Map containing master node definition, see explanation for k8s_nodes and `sample-inventory/cluster.tfvars` |
-| `k8s_master_loadbalancer_enabled`| Enable and use an Octavia load balancer for the K8s master nodes |
-| `k8s_master_loadbalancer_listener_port` | Define via which port the K8s Api should be exposed. `6443` by default  |
-| `k8s_master_loadbalancer_server_port` | Define via which port the K8S api is available on the mas. `6443` by default |
-| `k8s_master_loadbalancer_public_ip` | Specify if an existing floating IP should be used for the load balancer. A new floating IP is assigned by default  |
+|`k8s_master_loadbalancer_enabled` | Enable and use an Octavia load balancer for the K8s master nodes |
+|`k8s_master_loadbalancer_listener_port` | Define via which port the K8s Api should be exposed. `6443` by default  |
+|`k8s_master_loadbalancer_server_port` | Define via which port the K8S api is available on the master nodes. `6443` by default |
+|`k8s_master_loadbalancer_public_ip` | Specify if an existing floating IP should be used for the load balancer. A new floating IP is assigned by default  |
 
 ##### k8s_nodes
 
@@ -318,7 +318,8 @@ k8s_nodes:
    node-name:
     az: string # Name of the AZ
     flavor: string # Flavor ID to use
-    floating_ip: bool # If floating IPs should be created or not
+    floating_ip: bool # If floating IPs should be used or not
+    reserved_floating_ip: string # If floating_ip is true use existing floating IP, if reserved_floating_ip is an empty string and floating_ip is true, a new floating IP will be created
     extra_groups: string # (optional) Additional groups to add for kubespray, defaults to no groups
     image_id: string # (optional) Image ID to use, defaults to var.image_id or var.image
     root_volume_size_in_gb: number # (optional) Size of the block storage to use as root disk, defaults to var.node_root_volume_size_in_gb or to use volume from flavor otherwise
@@ -620,7 +621,7 @@ Edit `inventory/$CLUSTER/group_vars/k8s_cluster/k8s_cluster.yml`:
 
 - Set variable **kube_network_plugin** to your desired networking plugin.
   - **flannel** works out-of-the-box
-  - **calico** requires [configuring OpenStack Neutron ports](/docs/cloud_providers/openstack.md) to allow service and pod subnets
+  - **calico** requires [configuring OpenStack Neutron ports](/docs/cloud_controllers/openstack.md) to allow service and pod subnets
 
 ```yml
 # Choose network plugin (calico, weave or flannel)

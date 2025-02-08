@@ -1,0 +1,43 @@
+apiVersion: kubeadm.k8s.io/{{ kubeadm_config_api_version }}
+kind: JoinConfiguration
+discovery:
+{% if kubeadm_use_file_discovery %}
+  file:
+    kubeConfigPath: {{ kube_config_dir }}/cluster-info-discovery-kubeconfig.yaml
+{% else %}
+  bootstrapToken:
+{% if kubeadm_config_api_fqdn is defined %}
+    apiServerEndpoint: {{ kubeadm_config_api_fqdn }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
+{% else %}
+    apiServerEndpoint: {{ kubeadm_discovery_address }}
+{% endif %}
+    token: {{ kubeadm_token }}
+    unsafeSkipCAVerification: true
+{% endif %}
+  tlsBootstrapToken: {{ kubeadm_token }}
+{# TODO: drop the if when we drop support for k8s<1.31 #}
+{% if kubeadm_config_api_version == 'v1beta3' %}
+  timeout: {{ discovery_timeout }}
+{% else %}
+timeouts:
+  discovery: {{ discovery_timeout }}
+{% endif %}
+controlPlane:
+  localAPIEndpoint:
+    advertiseAddress: {{ kube_apiserver_address }}
+    bindPort: {{ kube_apiserver_port }}
+  certificateKey: {{ kubeadm_certificate_key }}
+nodeRegistration:
+  name: {{ kube_override_hostname | default(inventory_hostname) }}
+  criSocket: {{ cri_socket }}
+{% if 'kube_control_plane' in group_names and 'kube_node' not in group_names %}
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/control-plane
+{% else %}
+  taints: []
+{% endif %}
+{% if kubeadm_patches | length > 0 %}
+patches:
+  directory: {{ kubeadm_patches_dir }}
+{% endif %}

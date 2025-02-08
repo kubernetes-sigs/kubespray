@@ -3,12 +3,15 @@
   hosts: kube_node
   tasks:
     - name: Test tunl0 routes
-      shell: "set -o pipefail && ! /sbin/ip ro | grep '/{{ calico_pool_blocksize }} | default(26) via' | grep -v tunl0"
-      args:
-        executable: /bin/bash
+      command: "/sbin/ip route"
+      register: routes
+      failed_when: routes.stdout_lines
+        | select('contains', '/' ~ calico_pool_blocksize|d(26))
+        | select('contains', 'tunl0') | length == 0
       when:
-        - (calico_ipip_mode is defined and calico_ipip_mode != 'Never' or cloud_provider is defined)
+        - (calico_ipip_mode is defined and calico_ipip_mode != 'Never')
         - kube_network_plugin | default('calico') == 'calico'
+
 
 - name: Advanced testcases for network
   hosts: k8s_cluster
@@ -16,147 +19,83 @@
     agent_report_interval: 10
     netcheck_namespace: default
     netchecker_port: 31081
+    bin_dir: "/usr/local/bin"
 
   tasks:
-    - name: Force binaries directory for Container Linux by CoreOS and Flatcar
-      set_fact:
-        bin_dir: "/opt/bin"
-      when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
-
-    - name: Force binaries directory on other hosts
-      set_fact:
-        bin_dir: "/usr/local/bin"
-      when: not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
-
     - import_role:  # noqa name[missing]
         name: cluster-dump
 
     - name: Wait for netchecker server
-      shell: "set -o pipefail && {{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep ^netchecker-server"
-      args:
-        executable: /bin/bash
-      register: ncs_pod
-      until: ncs_pod.stdout.find('Running') != -1
+      command: "{{ bin_dir }}/kubectl get pods --field-selector=status.phase==Running -o jsonpath-as-json={.items[*].metadata.name} --namespace {{ netcheck_namespace }}"
+      register: pods_json
+      until:
+        - pods_json.stdout | from_json | select('match', 'netchecker-server.*') | length == 1
+        - (pods_json.stdout | from_json | select('match', 'netchecker-agent.*') | length)
+          >= (groups['k8s_cluster'] | intersect(ansible_play_hosts) | length * 2)
       retries: 3
       delay: 10
-      when: inventory_hostname == groups['kube_control_plane'][0]
-
-    - name: Wait for netchecker agents
-      shell: "set -o pipefail && {{ bin_dir }}/kubectl get pods -o wide --namespace {{ netcheck_namespace }} | grep '^netchecker-agent-.*Running'"
-      args:
-        executable: /bin/bash
-      register: nca_pod
-      until: nca_pod.stdout_lines | length >= groups['k8s_cluster'] | intersect(ansible_play_hosts) | length * 2
-      retries: 3
-      delay: 10
-      failed_when: false
       when: inventory_hostname == groups['kube_control_plane'][0]
 
     - name: Get netchecker pods
       command: "{{ bin_dir }}/kubectl -n {{ netcheck_namespace }} describe pod -l app={{ item }}"
       run_once: true
       delegate_to: "{{ groups['kube_control_plane'][0] }}"
-      no_log: false
       with_items:
         - netchecker-agent
         - netchecker-agent-hostnet
-      when: not nca_pod is success
+      when: not pods_json is success
 
-    - debug:  # noqa name[missing]
-        var: nca_pod.stdout_lines
-      when: inventory_hostname == groups['kube_control_plane'][0]
-
-    - name: Get netchecker agents
-      uri:
-        url: "http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/agents/"
-        return_content: true
+    - name: Perform netchecker tests
       run_once: true
       delegate_to: "{{ groups['kube_control_plane'][0] }}"
-      register: agents
-      retries: 18
-      delay: "{{ agent_report_interval }}"
-      until: agents.content | length > 0 and
-        agents.content[0] == '{' and
-        agents.content | from_json | length >= groups['k8s_cluster'] | intersect(ansible_play_hosts) | length * 2
-      failed_when: false
-      no_log: false
+      block:
+        - name: Get netchecker agents
+          uri:
+            url: "http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/agents/"
+            return_content: true
+            headers:
+              Accept: application/json
+          register: agents
+          retries: 18
+          delay: "{{ agent_report_interval }}"
+          until:
+            - agents is success
+            - (agents.content | from_json | length) == (groups['k8s_cluster'] | length * 2)
 
-    - name: Check netchecker status
-      uri:
-        url: "http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/connectivity_check"
-        status_code: 200
-        return_content: true
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
-      run_once: true
-      register: connectivity_check
-      retries: 3
-      delay: "{{ agent_report_interval }}"
-      until: connectivity_check.content | length > 0 and
-        connectivity_check.content[0] == '{'
-      no_log: false
-      failed_when: false
-      when:
-        - agents.content != '{}'
+        - name: Check netchecker status
+          uri:
+            url: "http://{{ ansible_default_ipv4.address }}:{{ netchecker_port }}/api/v1/connectivity_check"
+            return_content: true
+            headers:
+              Accept: application/json
+          register: connectivity_check
+          retries: 3
+          delay: "{{ agent_report_interval }}"
+          until:
+            - connectivity_check is success
+            - connectivity_check.content | from_json
 
-    - debug:  # noqa name[missing]
-        var: ncs_pod
-      run_once: true
+      rescue:
+        - name: Get kube-proxy logs
+          command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app=kube-proxy"
 
-    - name: Get kube-proxy logs
-      command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app=kube-proxy"
-      no_log: false
-      when:
-        - inventory_hostname == groups['kube_control_plane'][0]
-        - not connectivity_check is success
+        - name: Get logs from other apps
+          command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app={{ item }} --all-containers"
+          with_items:
+            - kube-router
+            - flannel
+            - canal-node
+            - calico-node
+            - cilium
 
-    - name: Get logs from other apps
-      command: "{{ bin_dir }}/kubectl -n kube-system logs -l k8s-app={{ item }} --all-containers"
-      when:
-        - inventory_hostname == groups['kube_control_plane'][0]
-        - not connectivity_check is success
-      no_log: false
-      with_items:
-        - kube-router
-        - flannel
-        - canal-node
-        - calico-node
-        - cilium
-
-    - name: Parse agents list
-      set_fact:
-        agents_check_result: "{{ agents.content | from_json }}"
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
-      run_once: true
-      when:
-        - agents is success
-        - agents.content is defined
-        - agents.content[0] == '{'
-
-    - debug:  # noqa name[missing]
-        var: agents_check_result
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
-      run_once: true
-      when:
-        - agents_check_result is defined
-
-    - name: Parse connectivity check
-      set_fact:
-        connectivity_check_result: "{{ connectivity_check.content | from_json }}"
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
-      run_once: true
-      when:
-        - connectivity_check is success
-        - connectivity_check.content is defined
-        - connectivity_check.content[0] == '{'
-
-    - debug:  # noqa name[missing]
-        var: connectivity_check_result
-      delegate_to: "{{ groups['kube_control_plane'][0] }}"
-      run_once: true
-      when:
-        - connectivity_check_result is defined
+        - name: Netchecker tests failed
+          fail:
+            msg: "netchecker tests failed"
 
     - name: Check connectivity with all netchecker agents
+      vars:
+        connectivity_check_result: "{{ connectivity_check.content | from_json }}"
+        agents_check_result: "{{ agents.content | from_json }}"
       assert:
         that:
           - agents_check_result is defined
@@ -169,14 +108,9 @@
       run_once: true
 
     - name: Create macvlan network conf
-      # We cannot use only shell: below because Ansible will render the text
-      # with leading spaces, which means the shell will never find the string
-      # EOF at the beginning of a line. We can avoid Ansible's unhelpful
-      # heuristics by using the cmd parameter like this:
-      shell:
-        cmd: |
-          set -o pipefail
-          cat <<EOF | {{ bin_dir }}/kubectl create -f -
+      command:
+        cmd: "{{ bin_dir }}/kubectl create -f -"
+        stdin: |
           apiVersion: "k8s.cni.cncf.io/v1"
           kind: NetworkAttachmentDefinition
           metadata:
@@ -198,21 +132,7 @@
               "gateway": "192.168.1.1"
             }
           }'
-          EOF
-        executable: /bin/bash
-      when:
-        - inventory_hostname == groups['kube_control_plane'][0]
-        - kube_network_plugin_multus | default(false) | bool
-
-    - name: Annotate pod with macvlan network
-      # We cannot use only shell: below because Ansible will render the text
-      # with leading spaces, which means the shell will never find the string
-      # EOF at the beginning of a line. We can avoid Ansible's unhelpful
-      # heuristics by using the cmd parameter like this:
-      shell:
-        cmd: |
-          set -o pipefail
-          cat <<EOF | {{ bin_dir }}/kubectl create -f -
+          ---
           apiVersion: v1
           kind: Pod
           metadata:
@@ -224,10 +144,9 @@
             - name: samplepod
               command: ["/bin/bash", "-c", "sleep 2000000000000"]
               image: dougbtv/centos-network
-          EOF
-        executable: /bin/bash
+      delegate_to: groups['kube_control_plane'][0]
+      run_once: true
       when:
-        - inventory_hostname == groups['kube_control_plane'][0]
         - kube_network_plugin_multus | default(false) | bool
 
     - name: Check secondary macvlan interface
@@ -236,6 +155,7 @@
       until: output.rc == 0
       retries: 90
       changed_when: false
+      delegate_to: groups['kube_control_plane'][0]
+      run_once: true
       when:
-        - inventory_hostname == groups['kube_control_plane'][0]
         - kube_network_plugin_multus | default(false) | bool

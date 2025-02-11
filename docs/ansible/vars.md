@@ -41,8 +41,12 @@ Some variables of note include:
 * *ansible_default_ipv4.address* - Not Kubespray-specific, but it is used if ip
   and access_ip are undefined
 * *ip6* - IPv6 address to use for binding services. (host var)
-  If *enable_dual_stack_networks* is set to ``true`` and *ip6* is defined,
+  If *ipv6_stack*(*enable_dual_stack_networks* deprecated) is set to ``true`` and *ip6* is defined,
   kubelet's ``--node-ip`` and node's ``InternalIP`` will be the combination of *ip* and *ip6*.
+  Similarly used for ipv6only scheme.
+* *access_ip6* - similarly ``access_ip`` but IPv6
+* *ansible_default_ipv6.address* - Not Kubespray-specific, but it is used if ip6
+  and access_ip6 are undefined
 * *loadbalancer_apiserver* - If defined, all hosts will connect to this
   address instead of localhost for kube_control_planes and kube_control_plane[0] for
   kube_nodes. See more details in the
@@ -51,6 +55,20 @@ Some variables of note include:
   the apiserver internally load balanced endpoint. Mutual exclusive to the
   `loadbalancer_apiserver`. See more details in the
   [HA guide](/docs/operations/ha-mode.md).
+
+## Special network variables
+
+These variables help avoid a large number of if/else constructs throughout the code associated with enabling different network stack.
+These variables are used in all templates.
+By default, only ipv4_stack is enabled, so it is given priority in dualstack mode.
+Don't change these variables if you don't understand what you're doing.
+
+* *main_access_ip* - equal to ``access_ip`` when ipv4_stack is enabled(even in case of dualstack),
+  and ``access_ip6`` for IPv6 only clusters
+* *main_ip* - equal to ``ip`` when ipv4_stack is enabled(even in case of dualstack),
+  and ``ip6`` for IPv6 only clusters
+* *main_access_ips* - list of ``access_ip`` and ``access_ip6`` for dualstack and one corresponding variable for single
+* *main_ips* - list of ``ip`` and ``ip6`` for dualstack and one corresponding variable for single
 
 ## Cluster variables
 
@@ -83,11 +101,17 @@ following default cluster parameters:
   (assertion not applicable to calico which doesn't use this as a hard limit, see
   [Calico IP block sizes](https://docs.projectcalico.org/reference/resources/ippool#block-sizes)).
 
-* *enable_dual_stack_networks* - Setting this to true will provision both IPv4 and IPv6 networking for pods and services.
-
 * *kube_service_addresses_ipv6* - Subnet for cluster IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1000/116``). Must not overlap with ``kube_pods_subnet_ipv6``.
 
+* *kube_service_subnets* - All service subnets separated by commas (default is a mix of ``kube_service_addresses`` and ``kube_service_addresses_ipv6`` depending on ``ipv4_stack`` and ``ipv6_stacke`` options),
+  for example ``10.233.0.0/18,fd85:ee78:d8a6:8607::1000/116`` for dual stack(ipv4_stack/ipv6_stack set to `true`).
+  It is not recommended to change this variable directly.
+
 * *kube_pods_subnet_ipv6* - Subnet for Pod IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1:0000/112``). Must not overlap with ``kube_service_addresses_ipv6``.
+
+* *kube_pods_subnets* - All pods subnets separated by commas (default is a mix of ``kube_pods_subnet`` and ``kube_pod_subnet_ipv6`` depending on ``ipv4_stack`` and ``ipv6_stacke`` options),
+  for example ``10.233.64.0/18,fd85:ee78:d8a6:8607::1:0000/112`` for dual stack(ipv4_stack/ipv6_stack set to `true`).
+  It is not recommended to change this variable directly.
 
 * *kube_network_node_prefix_ipv6* - Subnet allocated per-node for pod IPv6 IPs. Remaining bits in ``kube_pods_subnet_ipv6`` dictates how many kube_nodes can be in cluster.
 
@@ -152,9 +176,14 @@ Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``
 and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.
 
-## Enabling Dual Stack (IPV4 + IPV6) networking
+## Enabling Dual Stack (IPV4 + IPV6) or IPV6 only networking
 
-If *enable_dual_stack_networks* is set to ``true``, Dual Stack networking will be enabled in the cluster. This will use the default IPv4 and IPv6 subnets specified in the defaults file in the ``kubespray-defaults`` role, unless overridden of course. The default config will give you room for up to 256 nodes with 126 pods per node, and up to 4096 services.
+IPv4 stack enable by *ipv4_stack* is set to ``true``, by default.
+IPv6 stack enable by *ipv6_stack* is set to ``false`` by default.
+This will use the default IPv4 and IPv6 subnets specified in the defaults file in the ``kubespray-defaults`` role, unless overridden of course. The default config will give you room for up to 256 nodes with 126 pods per node, and up to 4096 services.
+Set both variables to ``true`` for Dual Stack mode.
+IPv4 has higher priority in Dual Stack mode(e.g. in variables `main_ip`, `main_access_ip` and other).
+You can also make IPv6 only clusters with ``false`` in *ipv4_stack*.
 
 ## DNS variables
 

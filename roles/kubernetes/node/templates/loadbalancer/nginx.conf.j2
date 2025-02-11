@@ -14,13 +14,13 @@ stream {
   upstream kube_apiserver {
     least_conn;
     {% for host in groups['kube_control_plane'] -%}
-    server {{ hostvars[host]['access_ip'] | default(hostvars[host]['ip'] | default(hostvars[host]['fallback_ip'])) }}:{{ kube_apiserver_port }};
+    server {{ hostvars[host]['main_access_ip'] | ansible.utils.ipwrap }}:{{ kube_apiserver_port }};
     {% endfor -%}
   }
 
   server {
     listen        127.0.0.1:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }};
-    {% if enable_dual_stack_networks -%}
+    {% if ipv6_stack -%}
     listen        [::1]:{{ loadbalancer_apiserver_port|default(kube_apiserver_port) }};
     {% endif -%}
     proxy_pass    kube_apiserver;
@@ -44,7 +44,7 @@ http {
   {% if loadbalancer_apiserver_healthcheck_port is defined -%}
   server {
     listen {{ loadbalancer_apiserver_healthcheck_port }};
-    {% if enable_dual_stack_networks -%}
+    {% if ipv6_stack -%}
     listen [::]:{{ loadbalancer_apiserver_healthcheck_port }};
     {% endif -%}
     location /healthz {

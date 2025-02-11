@@ -1,4 +1,6 @@
-# For CI we are not worried about data persistence across reboot
+$os = "ubuntu2404"
+
+$vm_cpus = 2
 $libvirt_volume_cache = "unsafe"
 
 # Checking for box update can trigger API rate limiting

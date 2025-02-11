@@ -84,6 +84,7 @@
   changed_when: false
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
+    - ipv4_stack | bool
 
 - name: Calico | Ensure that calico_pool_cidr is within kube_pods_subnet when defined
   assert:
@@ -91,8 +92,9 @@
     msg: "{{ calico_pool_cidr }} is not within or equal to {{ kube_pods_subnet }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
-    - 'calico_conf.stdout == "0"'
+    - ipv4_stack | bool
     - calico_pool_cidr is defined
+    - 'calico_conf.stdout == "0"'
 
 - name: Calico | Check if calico IPv6 network pool has already been configured
   # noqa risky-shell-pipe - grep will exit 1 if no match found
@@ -107,7 +109,7 @@
   changed_when: false
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
-    - enable_dual_stack_networks
+    - ipv6_stack
 
 - name: Calico | Ensure that calico_pool_cidr_ipv6 is within kube_pods_subnet_ipv6 when defined
   assert:
@@ -115,9 +117,9 @@
     msg: "{{ calico_pool_cidr_ipv6 }} is not within or equal to {{ kube_pods_subnet_ipv6 }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
+    - ipv6_stack | bool
     - calico_conf_ipv6.stdout is defined and calico_conf_ipv6.stdout == "0"
     - calico_pool_cidr_ipv6 is defined
-    - enable_dual_stack_networks
 
 - name: Calico | kdd specific configuration
   when:
@@ -206,6 +208,7 @@
 - name: Calico | Configure Calico IP Pool
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
+    - ipv4_stack | bool
   block:
     - name: Calico | Get existing calico network pool
       command: "{{ bin_dir }}/calicoctl.sh get ippool {{ calico_pool_name }} -o json"
@@ -256,7 +259,7 @@
 - name: Calico | Configure Calico IPv6 Pool
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
-    - enable_dual_stack_networks | bool
+    - ipv6_stack | bool
   block:
     - name: Calico | Get existing calico ipv6 network pool
       command: "{{ bin_dir }}/calicoctl.sh get ippool {{ calico_pool_name }}-ipv6 -o json"
@@ -350,7 +353,15 @@
               {% if not calico_no_global_as_num | default(false) %}"asNumber": {{ global_as_num }},{% endif %}
               "nodeToNodeMeshEnabled": {{ nodeToNodeMeshEnabled | default('true') }} ,
               {% if calico_advertise_cluster_ips | default(false) %}
-              "serviceClusterIPs": [{"cidr": "{{ kube_service_addresses }}" } {{ ',{"cidr":"' + kube_service_addresses_ipv6 + '"}' if enable_dual_stack_networks else '' }}],{% endif %}
+              "serviceClusterIPs": >-
+                {%- if ipv4_stack and ipv6_stack-%}
+                [{"cidr": "{{ kube_service_addresses }}", "cidr": "{{ kube_service_addresses_ipv6 }}"}],
+                {%- elif ipv6_stack-%}
+                [{"cidr": "{{ kube_service_addresses_ipv6 }}"}],
+                {%- else -%}
+                [{"cidr": "{{ kube_service_addresses }}"}],
+                {%- endif -%}
+              {% endif %}
               {% if calico_advertise_service_loadbalancer_ips | length > 0  %}"serviceLoadBalancerIPs": {{ _service_loadbalancer_ips }},{% endif %}
               "serviceExternalIPs": {{ _service_external_ips | default([]) }}
             }

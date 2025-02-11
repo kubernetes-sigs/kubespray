@@ -1,7 +1,7 @@
 ---
 - name: Stop if any host not in '--limit' does not have a fact cache
   vars:
-    uncached_hosts: "{{ hostvars | dict2items | selectattr('value.ansible_default_ipv4', 'undefined') | map(attribute='key') }}"
+    uncached_hosts: "{{ hostvars | dict2items | selectattr('value.ansible_default_ipv6', 'value.ansible_default_ipv4', 'undefined') | map(attribute='key') }}"
     excluded_hosts: "{{ groups['k8s_cluster'] | difference(query('inventory_hostnames', ansible_limit)) }}"
   assert:
     that: uncached_hosts | intersect(excluded_hosts) == []
@@ -105,6 +105,7 @@
     - not ignore_assert_errors
     - ('k8s_cluster' in group_names)
     - kube_network_plugin not in ['calico', 'none']
+    - ipv4_stack | bool
 
 - name: Stop if ip var does not match local ips
   assert:
@@ -125,16 +126,16 @@
           {%- endif -%}
     state: present
   when:
-    - access_ip is defined
+    - main_access_ip is defined
     - not ignore_assert_errors
     - ping_access_ip
     - not is_fedora_coreos
     - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: Stop if access_ip is not pingable
-  command: ping -c1 {{ access_ip }}
+  command: ping -c1 {{ main_access_ip }}
   when:
-    - access_ip is defined
+    - main_access_ip is defined
     - not ignore_assert_errors
     - ping_access_ip
   changed_when: false
@@ -179,12 +180,19 @@
     - cloud-provider
     - facts
 
+- name: Warn if `enable_dual_stack_networks` is set
+  debug:
+    msg: "WARNING! => `enable_dual_stack_networks` deprecation. Please switch to using ipv4_stack and ipv6_stack."
+  when:
+    - enable_dual_stack_networks is defined
+
 - name: "Check that kube_service_addresses is a network range"
   assert:
     that:
       - kube_service_addresses | ansible.utils.ipaddr('net')
     msg: "kube_service_addresses = '{{ kube_service_addresses }}' is not a valid network range"
   run_once: true
+  when: ipv4_stack | bool
 
 - name: "Check that kube_pods_subnet is a network range"
   assert:
@@ -192,6 +200,7 @@
       - kube_pods_subnet | ansible.utils.ipaddr('net')
     msg: "kube_pods_subnet = '{{ kube_pods_subnet }}' is not a valid network range"
   run_once: true
+  when: ipv4_stack | bool
 
 - name: "Check that kube_pods_subnet does not collide with kube_service_addresses"
   assert:
@@ -199,13 +208,50 @@
       - kube_pods_subnet | ansible.utils.ipaddr(kube_service_addresses) | string == 'None'
     msg: "kube_pods_subnet cannot be the same network segment as kube_service_addresses"
   run_once: true
+  when: ipv4_stack | bool
 
-- name: "Check that IP range is enough for the nodes"
+- name: "Check that ipv4 IP range is enough for the nodes"
   assert:
     that:
       - 2 ** (kube_network_node_prefix - kube_pods_subnet | ansible.utils.ipaddr('prefix')) >= groups['k8s_cluster'] | length
-    msg: "Not enough IPs are available for the desired node count."
-  when: kube_network_plugin != 'calico'
+    msg: "Not enough ipv4 IPs are available for the desired node count."
+  when:
+    - ipv4_stack | bool
+    - kube_network_plugin != 'calico'
+  run_once: true
+
+- name: "Check that kube_service_addresses_ipv6 is a network range"
+  assert:
+    that:
+      - kube_service_addresses_ipv6 | ansible.utils.ipaddr('net')
+    msg: "kube_service_addresses_ipv6 = '{{ kube_service_addresses_ipv6 }}' is not a valid network range"
+  run_once: true
+  when: ipv6_stack | bool
+
+- name: "Check that kube_pods_subnet_ipv6 is a network range"
+  assert:
+    that:
+      - kube_pods_subnet_ipv6 | ansible.utils.ipaddr('net')
+    msg: "kube_pods_subnet_ipv6 = '{{ kube_pods_subnet_ipv6 }}' is not a valid network range"
+  run_once: true
+  when: ipv6_stack | bool
+
+- name: "Check that kube_pods_subnet_ipv6 does not collide with kube_service_addresses_ipv6"
+  assert:
+    that:
+      - kube_pods_subnet_ipv6 | ansible.utils.ipaddr(kube_service_addresses_ipv6) | string == 'None'
+    msg: "kube_pods_subnet_ipv6 cannot be the same network segment as kube_service_addresses_ipv6"
+  run_once: true
+  when: ipv6_stack | bool
+
+- name: "Check that ipv6 IP range is enough for the nodes"
+  assert:
+    that:
+      - 2 ** (kube_network_node_prefix_ipv6 - kube_pods_subnet_ipv6 | ansible.utils.ipaddr('prefix')) >= groups['k8s_cluster'] | length
+    msg: "Not enough ipv6 IPs are available for the desired node count."
+  when:
+    - ipv6_stack | bool
+    - kube_network_plugin != 'calico'
   run_once: true
 
 - name: Stop if unsupported options selected

@@ -20,7 +20,6 @@ Below are several ways to use Kubespray to deploy a Kubernetes cluster.
 Ensure you have installed Docker then
 
 ```ShellSession
-docker pull quay.io/kubespray/kubespray:v2.26.0
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
   quay.io/kubespray/kubespray:v2.26.0 bash

@@ -40,6 +40,7 @@ variable "machines" {
       size = number
       tier = string
     }))
+    metadata : optional(bool, false)
   }))
 }
 

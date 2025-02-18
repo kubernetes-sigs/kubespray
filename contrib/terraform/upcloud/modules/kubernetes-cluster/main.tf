@@ -182,7 +182,7 @@ resource "upcloud_server" "master" {
     create_password = false
   }
 
-  metadata = local.node_user_data[each.key] != "" ? true : null
+  metadata = local.node_user_data[each.key] != "" || each.value.metadata == true ? true : null
   user_data = local.node_user_data[each.key] != "" ? local.node_user_data[each.key] : null
 }
 
@@ -248,7 +248,7 @@ resource "upcloud_server" "worker" {
     create_password = false
   }
 
-  metadata = local.node_user_data[each.key] != "" ? true : null
+  metadata = local.node_user_data[each.key] != "" || each.value.metadata == true ? true : null
   user_data = local.node_user_data[each.key] != "" ? local.node_user_data[each.key] : null
 }
 

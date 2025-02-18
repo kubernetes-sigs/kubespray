@@ -15,6 +15,18 @@ You can get your invite [here](http://slack.k8s.io/)
 
 Below are several ways to use Kubespray to deploy a Kubernetes cluster.
 
+### Docker
+
+Ensure you have installed Docker then
+
+```ShellSession
+docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
+  --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
+  quay.io/kubespray/kubespray:v2.27.0 bash
+# Inside the container you may now run the kubespray playbooks:
+ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
+```
+
 ### Ansible
 
 #### Usage

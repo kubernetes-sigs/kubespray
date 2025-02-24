@@ -22,6 +22,8 @@ Then you need to setup the following services on your offline environment:
 You can get artifact lists with [generate_list.sh](/contrib/offline/generate_list.sh) script.
 In addition, you can find some tools for offline deployment under [contrib/offline](/contrib/offline/README.md).
 
+
+
 ## Configure Inventory
 
 Once all artifacts are accessible from your internal network, **adjust** the following variables
@@ -35,6 +37,7 @@ docker_image_repo: "{{ registry_host }}"
 quay_image_repo: "{{ registry_host }}"
 github_image_repo: "{{ registry_host }}"
 
+local_path_provisioner_helper_image_repo: "{{ registry_host }}/busybox"
 kubeadm_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubeadm"
 kubectl_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubectl"
 kubelet_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubelet"
@@ -50,6 +53,7 @@ calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_version 
 containerd_download_url: "{{ files_repo }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
 runc_download_url: "{{ files_repo }}/runc.{{ image_arch }}"
 nerdctl_download_url: "{{ files_repo }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+get_helm_url: "{{ files_repo }}/get.helm.sh"
 # Insecure registries for containerd
 containerd_registries_mirrors:
   - prefix: "{{ registry_addr }}"

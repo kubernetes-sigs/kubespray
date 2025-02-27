@@ -54,6 +54,7 @@ variable "machines" {
     cpu       = optional(number)
     mem       = optional(number)
     disk_size = number
+    template_name = optional(string)
     boot_disk_encrypt = optional(bool, false)
     server_group : optional(string,null)
     force_public_ip : optional(bool, false)

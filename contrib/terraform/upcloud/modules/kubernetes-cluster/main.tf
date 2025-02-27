@@ -136,7 +136,7 @@ resource "upcloud_server" "master" {
   server_group = each.value.server_group == null ? null : upcloud_server_group.server_groups[each.value.server_group].id
 
   template {
-    storage = var.template_name
+    storage = each.value.template_name == null ? var.template_name : each.value.template_name
     size    = each.value.disk_size
     encrypt = each.value.boot_disk_encrypt
   }
@@ -202,7 +202,7 @@ resource "upcloud_server" "worker" {
 
 
   template {
-    storage = var.template_name
+    storage = each.value.template_name == null ? var.template_name : each.value.template_name
     size    = each.value.disk_size
     encrypt = each.value.boot_disk_encrypt
   }
@@ -268,7 +268,7 @@ resource "upcloud_server" "bastion" {
 
 
   template {
-    storage = var.template_name
+    storage = each.value.template_name == null ? var.template_name : each.value.template_name
     size    = each.value.disk_size
   }
 

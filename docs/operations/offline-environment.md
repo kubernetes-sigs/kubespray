@@ -23,7 +23,7 @@ You can get artifact lists with [generate_list.sh](/contrib/offline/generate_lis
 In addition, you can find some tools for offline deployment under [contrib/offline](/contrib/offline/README.md).
 
 
-### Note: access controlled files_repo
+## Note: access controlled files_repo
 
 To specify a username and password for "{{ files_repo }}", used to download the binaries, you can use url-encoding. Be aware that the Boolean `unsafe_show_logs` will show these credentials when `roles/download/tasks/download_file.yml` runs the task "Download_file | Show url of file to download". You can disable that Boolean in a job-template when running AWX/AAP/Semaphore.
 
@@ -41,7 +41,7 @@ files_repo_pass: !vault |
 files_repo: "https://{{ files_repo_user ~ ':' ~ files_repo_pass ~ '@' ~ files_repo_host ~ files_repo_path }}"
 ```
 
-### Note: access controlled registry
+## Note: access controlled registry
 
 To specify a username and password for "{{ registry_host }}", used to download the container images, you can use url-encoding too.
 

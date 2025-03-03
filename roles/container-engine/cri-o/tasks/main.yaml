@@ -55,6 +55,25 @@
   when:
     - youki_enabled
 
+- name: Cri-o | Stop kubelet service if running
+  service:
+    name: kubelet
+    state: stopped
+  when: ansible_facts.services["kubelet.service"] is defined and ansible_facts.services["kubelet.service"].state == 'running'
+
+- name: Cri-o | Stop all the running containers
+  ansible.builtin.shell: |
+    for container in $({{ bin_dir }}/crictl ps -q); do
+      {{ bin_dir }}/crictl stop $container
+    done
+  when: ansible_facts.services["crio.service"] is defined
+
+- name: Cri-o | stop crio service if running
+  service:
+    name: crio
+    state: stopped
+  when: ansible_facts.services["crio.service"] is defined and ansible_facts.services["crio.service"].state == 'running'
+
 - name: Cri-o | make sure needed folders exist in the system
   with_items:
     - /etc/crio
@@ -87,7 +106,6 @@
     remote_src: true
   with_items:
     - "{{ crio_bin_files }}"
-  notify: Restart crio
 
 - name: Cri-o | create directory for libexec
   file:
@@ -104,7 +122,6 @@
     remote_src: true
   with_items:
     - "{{ crio_libexec_files }}"
-  notify: Restart crio
 
 - name: Cri-o | copy service file
   copy:
@@ -112,7 +129,6 @@
     dest: /etc/systemd/system/crio.service
     mode: "0755"
     remote_src: true
-  notify: Restart crio
 
 - name: Cri-o | configure crio to use kube reserved cgroups
   ansible.builtin.copy:
@@ -133,7 +149,6 @@
     dest: /etc/systemd/system/crio.service
     regexp: "/usr/local/bin/crio"
     replace: "{{ bin_dir }}/crio"
-  notify: Restart crio
 
 - name: Cri-o | copy default policy
   copy:
@@ -141,7 +156,6 @@
     dest: /etc/containers/policy.json
     mode: "0755"
     remote_src: true
-  notify: Restart crio
 
 - name: Cri-o | copy mounts.conf
   copy:
@@ -150,7 +164,6 @@
     mode: "0644"
   when:
     - ansible_os_family == 'RedHat'
-  notify: Restart crio
 
 - name: Cri-o | create directory for oci hooks
   file:
@@ -196,21 +209,18 @@
     dest: "/etc/containers/registries.conf.d/10-{{ item.prefix | default(item.location) | regex_replace(':|/', '_') }}.conf"
     mode: "0644"
   loop: "{{ crio_registries }}"
-  notify: Restart crio
 
 - name: Cri-o | configure unqualified registry settings
   template:
     src: unqualified.conf.j2
     dest: "/etc/containers/registries.conf.d/01-unqualified.conf"
     mode: "0644"
-  notify: Restart crio
 
 - name: Cri-o | write cri-o proxy drop-in
   template:
     src: http-proxy.conf.j2
     dest: /etc/systemd/system/crio.service.d/http-proxy.conf
     mode: "0644"
-  notify: Restart crio
   when: http_proxy is defined or https_proxy is defined
 
 - name: Cri-o | configure the uid/gid space for user namespaces
@@ -235,14 +245,6 @@
     state: started
   register: service_start
 
-- name: Cri-o | trigger service restart only when needed
-  service:
-    name: crio
-    state: restarted
-  when:
-    - config_install.changed or reg_auth_install.changed
-    - not service_start.changed
-
 - name: Cri-o | verify that crio is running
   command: "{{ bin_dir }}/{{ crio_status_command }} info"
   register: get_crio_info
@@ -250,3 +252,9 @@
   changed_when: false
   retries: 5
   delay: "{{ retry_stagger | random + 3 }}"
+
+- name: Cri-o | ensure kubelet service is started if present and stopped
+  service:
+    name: kubelet
+    state: started
+  when: ansible_facts.services["kubelet.service"] is defined

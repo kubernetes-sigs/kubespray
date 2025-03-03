@@ -118,7 +118,7 @@ Note:
   - [cri-o](http://cri-o.io/) v1.32.0 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) v1.4.0
-  - [calico](https://github.com/projectcalico/calico) v3.29.1
+  - [calico](https://github.com/projectcalico/calico) v3.29.2
   - [cilium](https://github.com/cilium/cilium) v1.15.9
   - [flannel](https://github.com/flannel-io/flannel) v0.22.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) v1.12.21

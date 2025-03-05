@@ -2,40 +2,45 @@
 - name: Ensure kube-apiserver is up before upgrade
   import_tasks: check-api.yml
 
-- name: Kubeadm | Upgrade control plane nodes
-  vars:
-    # kubeadm upgrade apply on v1.30 will always fail if --config is used during upgrade, but newer versions support --config if using UpgradeConfiguration
-    # kubeadm-config.v1beta4 with UpgradeConfiguration requires some values that were previously allowed as args to be specified in the config file
-    kubeadm_upgrade_apply_command: >-
-      timeout -k 600s 600s
-      {{ bin_dir }}/kubeadm upgrade apply -y {{ kube_version }}
-      {%- if kube_major_version != 'v1.30' %}
-      --config={{ kube_config_dir }}/kubeadm-config.yaml
-      {%- endif -%}
-      {%- if kubeadm_config_api_version == 'v1beta3' %}
-      --certificate-renewal={{ kubeadm_upgrade_auto_cert_renewal }}
-      --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
-      --allow-experimental-upgrades
-      --etcd-upgrade={{ (etcd_deployment_type == "kubeadm") | lower }}
-      {% if kubeadm_patches | length > 0 %}--patches={{ kubeadm_patches_dir }}{% endif %}
-      --force
-      {%- endif -%}
+  # kubeadm-config.v1beta4 with UpgradeConfiguration requires some values that were previously allowed as args to be specified in the config file
+- name: Kubeadm | Upgrade first control plane node
+  command: >-
+    timeout -k 600s 600s
+    {{ bin_dir }}/kubeadm upgrade apply -y {{ kube_version }}
+    {%- if kubeadm_config_api_version == 'v1beta3' %}
+    --certificate-renewal={{ kubeadm_upgrade_auto_cert_renewal }}
+    --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
+    --allow-experimental-upgrades
+    --etcd-upgrade={{ (etcd_deployment_type == "kubeadm") | lower }}
+    {% if kubeadm_patches | length > 0 %}--patches={{ kubeadm_patches_dir }}{% endif %}
+    --force
+    {%- else %}
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    {%- endif -%}
+  register: kubeadm_upgrade
+  when: inventory_hostname == first_kube_control_plane
+  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
-  block:
-  - name: Kubeadm | Upgrade first control plane node
-    command: "{{ kubeadm_upgrade_apply_command }}"
-    register: kubeadm_upgrade
-    when: inventory_hostname == first_kube_control_plane
-    failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
 
-  - name: Kubeadm | Upgrade other control plane nodes
-    command: "{{ kubeadm_upgrade_apply_command }}"
-    register: kubeadm_upgrade
-    when: inventory_hostname != first_kube_control_plane
-    failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
+- name: Kubeadm | Upgrade other control plane nodes
+  command: >-
+    {{ bin_dir }}/kubeadm upgrade node
+    {%- if kubeadm_config_api_version == 'v1beta3' %}
+    --certificate-renewal={{ kubeadm_upgrade_auto_cert_renewal }}
+    --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
+    --etcd-upgrade={{ (etcd_deployment_type == "kubeadm") | lower }}
+    {% if kubeadm_patches | length > 0 %}--patches={{ kubeadm_patches_dir }}{% endif %}
+    {%- else %}
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    {%- endif -%}
+  register: kubeadm_upgrade
+  when: inventory_hostname != first_kube_control_plane
+  failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
 
-# kubeadm upgrade apply will no longer reconcile ClusterConfiguration changes, this must be done separately after upgrade to ensure the latest config is applied
+# kubeadm upgrade no longer reconciles ClusterConfiguration changes, this must be done separately after upgrade to ensure the latest config is applied
 - name: Update kubeadm configmap after upgrade
   command: "{{ bin_dir }}/kubeadm init phase upload-config kubeadm --config {{ kube_config_dir }}/kubeadm-config.yaml"
   register: kubeadm_upload_config

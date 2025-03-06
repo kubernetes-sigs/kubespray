@@ -40,15 +40,25 @@
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
 
-# kubeadm upgrade no longer reconciles ClusterConfiguration changes, this must be done separately after upgrade to ensure the latest config is applied
-- name: Update kubeadm configmap after upgrade
-  command: "{{ bin_dir }}/kubeadm init phase upload-config kubeadm --config {{ kube_config_dir }}/kubeadm-config.yaml"
+# kubeadm upgrade no longer reconciles ClusterConfiguration and KubeProxyConfiguration changes, this must be done separately after upgrade to ensure the latest config is applied
+- name: Update kubeadm and kubelet configmaps after upgrade
+  command: "{{ bin_dir }}/kubeadm init phase upload-config all --config {{ kube_config_dir }}/kubeadm-config.yaml"
   register: kubeadm_upload_config
   # Retry is because upload config sometimes fails
   retries: 3
   until: kubeadm_upload_config.rc == 0
   when:
   - inventory_hostname == first_kube_control_plane
+
+- name: Update kube-proxy configmap after upgrade
+  command: "{{ bin_dir }}/kubeadm init phase addon kube-proxy --config {{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kube_proxy_upload_config
+  # Retry is because upload config sometimes fails
+  retries: 3
+  until: kube_proxy_upload_config.rc == 0
+  when:
+  - inventory_hostname == first_kube_control_plane
+  - ('addon/kube-proxy' not in kubeadm_init_phases_skip)
 
 - name: Rewrite kubeadm managed etcd static pod manifests with updated configmap
   command: "{{ bin_dir }}/kubeadm init phase control-plane all --config {{ kube_config_dir }}/kubeadm-config.yaml"

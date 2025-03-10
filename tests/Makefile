@@ -1,8 +1,3 @@
-init-packet:
-	mkdir -p $(HOME)/.ssh
-	echo $(PACKET_VM_SSH_PRIVATE_KEY) | base64 -d > $(HOME)/.ssh/id_rsa
-	chmod 400 $(HOME)/.ssh/id_rsa
-
 create-tf:
 	./scripts/create-tf.sh
 
@@ -12,7 +7,7 @@ delete-tf:
 $(ANSIBLE_INVENTORY):
 	mkdir $@
 
-create-packet: init-packet | $(ANSIBLE_INVENTORY)
+create-packet: | $(ANSIBLE_INVENTORY)
 	ansible-playbook cloud_playbooks/create-packet.yml -c local \
 		-e @"files/${CI_JOB_NAME}.yml"
 

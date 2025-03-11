@@ -63,8 +63,6 @@ EOF
 
 fi
 
-ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml
-
 run_playbook () {
 playbook=$1
 shift

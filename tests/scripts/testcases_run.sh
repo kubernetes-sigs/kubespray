@@ -23,12 +23,10 @@ if [ "${UPGRADE_TEST}" != "false" ]; then
   git checkout "${CI_COMMIT_SHA}" -- tests/
 fi
 
-export ANSIBLE_REMOTE_USER=$SSH_USER
 export ANSIBLE_BECOME=true
 export ANSIBLE_BECOME_USER=root
-export ANSIBLE_INVENTORY=/tmp/inventory/
 
-make -C tests INVENTORY_DIR=${ANSIBLE_INVENTORY} create-${CI_PLATFORM} -s
+make -C tests create-${CI_PLATFORM} -s
 
 # Test collection build and install by installing our collection, emptying our repository, adding
 # cluster.yml, reset.yml, and remote-node.yml files that simply point to our collection's playbooks, and then
@@ -64,8 +62,6 @@ cat > remove-node.yml <<EOF
 EOF
 
 fi
-
-ansible-playbook tests/cloud_playbooks/wait-for-ssh.yml
 
 run_playbook () {
 playbook=$1

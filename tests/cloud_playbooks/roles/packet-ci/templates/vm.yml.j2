@@ -2,18 +2,18 @@
 apiVersion: kubevirt.io/v1
 kind: VirtualMachineInstance
 metadata:
-  generateName: test-vm-
+  generateName: {{ cloud_image }}-
   namespace: {{ pod_namespace }}
   annotations:
     kubespray.com/ci.template-path: "tests/cloud_playbooks/roles/packet-ci/templates/vm.yml.j2"
-    ansible_groups: "{{ kubespray_groups | join(',') }}"
+    ansible_groups: "{{ node_groups | join(',') }}"
+    inventory_name: "{{ name | d(cloud_image ~ '-' ~ index) }}"
     # This does not use a dns prefix because dots are hard to escape with map(attribute=) in Jinja
   labels:
     kubevirt.io/os: {{ cloud_image }}
     kubevirt.io/size: small
-    kubevirt.io/domain: "{{ test_name }}"
     ci_job_id: "{{ ci_job_id }}"
-    ci_job_name: "{{ ci_job_name }}"
+    ci_job_name: "{{ lookup('ansible.builtin.env', 'CI_JOB_NAME_SLUG') }}"
   # leverage the Kubernetes GC for resources cleanup
   ownerReferences:
   - apiVersion: v1
@@ -56,4 +56,12 @@ spec:
         image: quay.io/kubespray/vm-{{ cloud_image }}
     - name: cloudinitvolume
       cloudInitNoCloud:
-        userDataBase64: {{ cloud_init[cloud_image] }}
+        userData: |
+          #cloud-config
+           users:
+             - name: {{ lookup('env', 'ANSIBLE_REMOTE_USER') }}
+               sudo: ALL=(ALL) NOPASSWD:ALL
+               shell: /bin/bash
+               lock_passwd: False
+               ssh_authorized_keys:
+                 - {{ ssh_key.public_key }}

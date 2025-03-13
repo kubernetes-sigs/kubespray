@@ -1,14 +1,21 @@
 ---
 - name: Include custom vars for ci job
-  include_vars: "../files/{{ ci_job_name }}.yml"
+  include_vars: "../files/{{ lookup('ansible.builtin.env', 'CI_JOB_NAME') }}.yml"
+  when: molecule_yml is not defined
+
+- name: Generate SSH keypair
+  community.crypto.openssh_keypair:
+    size: 2048
+    path: "{{ lookup('env', 'ANSIBLE_PRIVATE_KEY_FILE') }}"
+    mode: '400'
+  register: ssh_key
 
 - name: Start vms for CI job
-  vars:
-    tvars:
-      kubespray_groups: "{{ item }}"
   kubernetes.core.k8s:
-    definition: "{{ lookup('template', 'vm.yml.j2', template_vars=tvars) }}"
-  loop: "{{ scenarios[mode | d('default')] }}"
+    definition: "{{ lookup('template', 'vm.yml.j2', template_vars=item) }}"
+  loop: "{{ cluster_layout }}"
+  loop_control:
+    index_var: index
 
 - name: Wait for vms to have IP addresses
   kubernetes.core.k8s_info:
@@ -27,17 +34,17 @@
 - name: Massage VirtualMachineInstance data into an Ansible inventory structure
   vars:
     ips: "{{ vmis.resources | map(attribute='status.interfaces.0.ipAddress') }}"
-    names: "{{ vmis.resources | map(attribute='metadata.name') }}"
-    _groups: "{{ vmis.resources | map(attribute='metadata.annotations.ansible_groups') | map('split', ',') }}"
+    names: "{{ vmis.resources | map(attribute='metadata.annotations.inventory_name') }}"
+    _groups: "{{ (vmis.resources | map(attribute='metadata.annotations.ansible_groups') | map('split', ','))}}"
     hosts: "{{ ips | zip(_groups, names)
-                | map('zip', ['ansible_host', 'ansible_groups', 'k8s_vmi_name'])
+                | map('zip', ['ansible_host', 'ansible_groups', 'inventory_name'])
                 | map('map', 'reverse') | map('community.general.dict') }}"
   loop: "{{ hosts | map(attribute='ansible_groups') | flatten | unique }}"
   set_fact:
     ci_inventory: "{{ ci_inventory|d({}) | combine({
                     item: {
                       'hosts': hosts | selectattr('ansible_groups', 'contains', item)
-                                     | rekey_on_member('k8s_vmi_name')
+                                     | rekey_on_member('inventory_name')
                       }
                     })
                   }}"
@@ -45,5 +52,5 @@
 - name: Create inventory for CI tests
   copy:
     content: "{{ ci_inventory | to_yaml }}"
-    dest: "{{ inventory_path }}/ci_inventory.yml"
+    dest: "{{ ansible_inventory_sources[0] }}/ci_inventory.yml"
     mode: "0644"

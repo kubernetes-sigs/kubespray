@@ -16,8 +16,6 @@ fi
 export ANSIBLE_BECOME=true
 export ANSIBLE_BECOME_USER=root
 
-make -C tests create-${CI_PLATFORM} -s
-
 # Test collection build and install by installing our collection, emptying our repository, adding
 # cluster.yml, reset.yml, and remote-node.yml files that simply point to our collection's playbooks, and then
 # running the same tests as before

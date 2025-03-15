@@ -1,55 +1,80 @@
 ---
-- name: Kubeadm | Check api is up
-  uri:
-    url: "https://{{ main_ip | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}/healthz"
-    validate_certs: false
-  when: ('kube_control_plane' in group_names)
-  register: _result
-  retries: 60
-  delay: 5
-  until: _result.status == 200
+- name: Ensure kube-apiserver is up before upgrade
+  import_tasks: check-api.yml
 
+  # kubeadm-config.v1beta4 with UpgradeConfiguration requires some values that were previously allowed as args to be specified in the config file
 - name: Kubeadm | Upgrade first control plane node
   command: >-
     timeout -k 600s 600s
-    {{ bin_dir }}/kubeadm
-    upgrade apply -y v{{ kube_version }}
+    {{ bin_dir }}/kubeadm upgrade apply -y v{{ kube_version }}
+    {%- if kubeadm_config_api_version == 'v1beta3' %}
     --certificate-renewal={{ kubeadm_upgrade_auto_cert_renewal }}
     --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
     --allow-experimental-upgrades
     --etcd-upgrade={{ (etcd_deployment_type == "kubeadm") | lower }}
     {% if kubeadm_patches | length > 0 %}--patches={{ kubeadm_patches_dir }}{% endif %}
     --force
+    {%- else %}
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    {%- endif -%}
   register: kubeadm_upgrade
-  # Retry is because upload config sometimes fails
-  retries: 3
-  until: kubeadm_upgrade.rc == 0
   when: inventory_hostname == first_kube_control_plane
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
-  notify: Control plane | restart kubelet
 
 - name: Kubeadm | Upgrade other control plane nodes
   command: >-
-    timeout -k 600s 600s
-    {{ bin_dir }}/kubeadm
-    upgrade apply -y v{{ kube_version }}
+    {{ bin_dir }}/kubeadm upgrade node
+    {%- if kubeadm_config_api_version == 'v1beta3' %}
     --certificate-renewal={{ kubeadm_upgrade_auto_cert_renewal }}
     --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
-    --allow-experimental-upgrades
     --etcd-upgrade={{ (etcd_deployment_type == "kubeadm") | lower }}
     {% if kubeadm_patches | length > 0 %}--patches={{ kubeadm_patches_dir }}{% endif %}
-    --force
+    {%- else %}
+    --config={{ kube_config_dir }}/kubeadm-config.yaml
+    {%- endif -%}
   register: kubeadm_upgrade
-  # Retry is because upload config sometimes fails
-  retries: 3
-  until: kubeadm_upgrade.rc == 0
   when: inventory_hostname != first_kube_control_plane
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+
+# kubeadm upgrade no longer reconciles ClusterConfiguration and KubeProxyConfiguration changes, this must be done separately after upgrade to ensure the latest config is applied
+- name: Update kubeadm and kubelet configmaps after upgrade
+  command: "{{ bin_dir }}/kubeadm init phase upload-config all --config {{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kubeadm_upload_config
+  # Retry is because upload config sometimes fails
+  retries: 3
+  until: kubeadm_upload_config.rc == 0
+  when:
+  - inventory_hostname == first_kube_control_plane
+
+- name: Update kube-proxy configmap after upgrade
+  command: "{{ bin_dir }}/kubeadm init phase addon kube-proxy --config {{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kube_proxy_upload_config
+  # Retry is because upload config sometimes fails
+  retries: 3
+  until: kube_proxy_upload_config.rc == 0
+  when:
+  - inventory_hostname == first_kube_control_plane
+  - ('addon/kube-proxy' not in kubeadm_init_phases_skip)
+
+- name: Rewrite kubeadm managed etcd static pod manifests with updated configmap
+  command: "{{ bin_dir }}/kubeadm init phase etcd local --config {{ kube_config_dir }}/kubeadm-config.yaml"
+  when:
+  - etcd_deployment_type == "kubeadm"
   notify: Control plane | restart kubelet
+
+- name: Rewrite kubernetes control plane static pod manifests with updated configmap
+  command: "{{ bin_dir }}/kubeadm init phase control-plane all --config {{ kube_config_dir }}/kubeadm-config.yaml"
+  notify: Control plane | restart kubelet
+
+- name: Flush kubelet handlers
+  meta: flush_handlers
+
+- name: Ensure kube-apiserver is up after upgrade and control plane configuration updates
+  import_tasks: check-api.yml
 
 - name: Kubeadm | Remove binding to anonymous user
   command: "{{ kubectl }} -n kube-public delete rolebinding kubeadm:bootstrap-signer-clusterinfo --ignore-not-found"
@@ -60,8 +85,8 @@
     path: "{{ item }}"
     state: absent
   with_items:
-    - /root/.kube/cache
-    - /root/.kube/http-cache
+  - /root/.kube/cache
+  - /root/.kube/http-cache
 
 # FIXME: https://github.com/kubernetes/kubeadm/issues/1318
 - name: Kubeadm | scale down coredns replicas to 0 if not using coredns dns_mode
@@ -75,6 +100,6 @@
   until: scale_down_coredns is succeeded
   run_once: true
   when:
-    - kubeadm_scale_down_coredns_enabled
-    - dns_mode not in ['coredns', 'coredns_dual']
+  - kubeadm_scale_down_coredns_enabled
+  - dns_mode not in ['coredns', 'coredns_dual']
   changed_when: false

@@ -12,7 +12,6 @@ The Kubespray Project is released on an as-needed basis. The process is as follo
 1. (For major releases) On the `master` branch: bump the version in `galaxy.yml` to the next expected major release (X.y.0 with y = Y + 1), make a Pull Request.
 1. (For minor releases) On the `release-X.Y` branch: bump the version in `galaxy.yml` to the next expected minor release (X.Y.z with z = Z + 1), make a Pull Request.
 1. The corresponding version of [quay.io/kubespray/kubespray:vX.Y.Z](https://quay.io/repository/kubespray/kubespray) and [quay.io/kubespray/vagrant:vX.Y.Z](https://quay.io/repository/kubespray/vagrant) container images are built and tagged. See the following `Container image creation` section for the details.
-1. (Only for major releases) The `KUBESPRAY_VERSION` in `.gitlab-ci.yml` is upgraded to the version we just released # TODO clarify this, this variable is for testing upgrades.
 1. The release issue is closed
 1. An announcement email is sent to `dev@kubernetes.io` with the subject `[ANNOUNCE] Kubespray $VERSION is released`
 1. The topic of the #kubespray channel is updated with `vX.Y.Z is released! | ...`

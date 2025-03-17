@@ -17,7 +17,7 @@ fi
 
 # Check out latest tag if testing upgrade
 if [ "${UPGRADE_TEST}" != "false" ]; then
-  git fetch --all && git checkout "$KUBESPRAY_VERSION"
+  git fetch --all && git checkout $(git describe --tags --abbrev=0)
   # Checkout the current tests/ directory ; even when testing old version,
   # we want the up-to-date test setup/provisionning
   git checkout "${CI_COMMIT_SHA}" -- tests/

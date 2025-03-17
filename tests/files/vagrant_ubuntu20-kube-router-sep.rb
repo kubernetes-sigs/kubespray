@@ -2,7 +2,7 @@ $num_instances = 2
 $vm_memory ||= 2048
 $os = "ubuntu2004"
 
-$kube_master_instances = 1
+$control_plane_instances = 1
 $etcd_instances = 1
 
 # For CI we are not worried about data persistence across reboot

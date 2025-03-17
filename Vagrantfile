@@ -63,12 +63,22 @@ $inventories ||= []
 $multi_networking ||= "False"
 $download_run_once ||= "True"
 $download_force_cache ||= "False"
+# Modify those to have separate groups (for instance, to test separate etcd:)
+# first_control_plane = 1
+# first_etcd = 4
+# control_plane_instances = 3
+# etcd_instances = 3
+$first_node ||= 1
+$first_control_plane ||= 1
+$first_etcd ||= 1
+
 # The first three nodes are etcd servers
 $etcd_instances ||= [$num_instances, 3].min
 # The first two nodes are kube masters
-$kube_master_instances ||= [$num_instances, 2].min
+$control_plane_instances ||= [$num_instances, 2].min
 # All nodes are kube nodes
-$kube_node_instances ||= $num_instances
+$kube_node_instances ||= $num_instances - $first_node + 1
+
 # The following only works when using the libvirt provider
 $kube_node_instances_with_disks ||= false
 $kube_node_instances_with_disks_size ||= "20G"
@@ -297,9 +307,9 @@ Vagrant.configure("2") do |config|
             ansible.tags = [$ansible_tags]
           end
           ansible.groups = {
-            "etcd" => ["#{$instance_name_prefix}-[1:#{$etcd_instances}]"],
-            "kube_control_plane" => ["#{$instance_name_prefix}-[1:#{$kube_master_instances}]"],
-            "kube_node" => ["#{$instance_name_prefix}-[1:#{$kube_node_instances}]"],
+            "etcd" => ["#{$instance_name_prefix}-[#{$first_etcd}:#{$etcd_instances + $first_etcd - 1}]"],
+            "kube_control_plane" => ["#{$instance_name_prefix}-[#{$first_control_plane}:#{$control_plane_instances + $first_control_plane - 1}]"],
+            "kube_node" => ["#{$instance_name_prefix}-[#{$first_node}:#{$kube_node_instances + $first_node - 1}]"],
             "k8s_cluster:children" => ["kube_control_plane", "kube_node"],
           }
         end

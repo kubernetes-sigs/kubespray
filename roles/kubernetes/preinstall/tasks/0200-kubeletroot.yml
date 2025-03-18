@@ -1,0 +1,36 @@
+# mount bind the kubelet root to the default location.
+# many csi and software in the ecosystem have this location hardcoded
+
+- name: "Make sure /var/lib/kubelet exists"
+  ansible.builtin.file:
+    path: "/var/lib/kubelet"
+    state: directory
+    mode: '0750'
+  when:
+    - kubelet_root_dir != '/var/lib/kubelet'
+
+- name: "Make sure kubelet_root_dir exists"
+  ansible.builtin.file:
+    path: "{{kubelet_root_dir}}"
+    state: directory
+    mode: '0750'
+  when:
+    - kubelet_root_dir != '/var/lib/kubelet'
+    
+- name: "Synchronize old /var/lib/kubelet to new location before mounting"
+  command: "rsync -avh --ignore-existing /var/lib/kubelet/ {{kubelet_root_dir}}"
+  changed_when: false
+  when:
+    - kubelet_root_dir != '/var/lib/kubelet'
+
+
+- name: "Mount bind kubelet-root to /var/lib/kubelet and add it to fstab"
+  ansible.posix.mount:
+    path: /var/lib/kubelet
+    src: "{{kubelet_root_dir}}"
+    opts: bind,nofail
+    state: mounted
+    boot: true
+    fstype: none
+  when:
+    - kubelet_root_dir != '/var/lib/kubelet'

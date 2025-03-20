@@ -54,7 +54,6 @@ fi
 run_playbook () {
 playbook=$1
 shift
-# We can set --limit here and still pass it as supplemental args because `--limit`  is a 'last one wins' option
 ansible-playbook \
     -e @tests/common_vars.yml \
     -e @tests/files/${TESTCASE}.yml \

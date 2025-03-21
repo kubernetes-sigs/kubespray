@@ -29,6 +29,8 @@ nodeRegistration:
   - name: cloud-provider
     value: external
 {% endif %}
+  imagePullPolicy: {{ k8s_image_pull_policy }}
+  imagePullSerial: {{ kubeadm_image_pull_serial | lower }}
 {% if kubeadm_patches | length > 0 %}
 patches:
   directory: {{ kubeadm_patches_dir }}
@@ -479,6 +481,42 @@ scheduler:
     readOnly: {{ volume.readOnly | d(not (volume.writable | d(false))) }}
 {% endfor %}
 {% endif %}
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: UpgradeConfiguration
+apply:
+  kubernetesVersion: v{{ kube_version }}
+  allowExperimentalUpgrades: true
+  certificateRenewal: {{ kubeadm_upgrade_auto_cert_renewal | lower }}
+  etcdUpgrade: {{ (etcd_deployment_type == "kubeadm") | lower }}
+  forceUpgrade: true
+{% if kubeadm_ignore_preflight_errors | length > 0 %}
+  ignorePreflightErrors:
+{% for ignore_error in kubeadm_ignore_preflight_errors %}
+  - "{{ ignore_error }}"
+{% endfor %}
+{% endif %}
+{% if kubeadm_patches | length > 0 %}
+  patches:
+    directory: {{ kubeadm_patches_dir }}
+{% endif %}
+  imagePullPolicy: {{ k8s_image_pull_policy }}
+  imagePullSerial: {{ kubeadm_image_pull_serial | lower }}
+node:
+  certificateRenewal: {{ kubeadm_upgrade_auto_cert_renewal | lower }}
+  etcdUpgrade: {{ (etcd_deployment_type == "kubeadm") | lower }}
+{% if kubeadm_ignore_preflight_errors | length > 0 %}
+  ignorePreflightErrors:
+{% for ignore_error in kubeadm_ignore_preflight_errors %}
+  - "{{ ignore_error }}"
+{% endfor %}
+{% endif %}
+{% if kubeadm_patches | length > 0 %}
+  patches:
+    directory: {{ kubeadm_patches_dir }}
+{% endif %}
+  imagePullPolicy: {{ k8s_image_pull_policy }}
+  imagePullSerial: {{ kubeadm_image_pull_serial | lower }}
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration

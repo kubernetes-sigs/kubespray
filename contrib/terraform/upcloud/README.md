@@ -2,35 +2,6 @@
 
 Provision a Kubernetes cluster on [UpCloud](https://upcloud.com/) using Terraform and Kubespray
 
-## Overview
-
-The setup looks like following
-
-```text
-   Kubernetes cluster
-+--------------------------+
-|      +--------------+    |
-|      | +--------------+  |
-| -->  | |              |  |
-|      | | Master/etcd  |  |
-|      | | node(s)      |  |
-|      +-+              |  |
-|        +--------------+  |
-|              ^           |
-|              |           |
-|              v           |
-|      +--------------+    |
-|      | +--------------+  |
-| -->  | |              |  |
-|      | |    Worker    |  |
-|      | |    node(s)   |  |
-|      +-+              |  |
-|        +--------------+  |
-+--------------------------+
-```
-
-The nodes uses a private network for node to node communication and a public interface for all external communication.
-
 ## Requirements
 
 * Terraform 0.13.0 or newer
@@ -100,6 +71,8 @@ terraform destroy --var-file cluster-settings.tfvars \
 * `template_name`: The name or UUID  of a base image
 * `username`: a user to access the nodes, defaults to "ubuntu"
 * `private_network_cidr`: CIDR to use for the private network, defaults to "172.16.0.0/24"
+* `dns_servers`: DNS servers that will be used by the nodes. Until [this is solved](https://github.com/UpCloudLtd/terraform-provider-upcloud/issues/562) this is done using user_data to reconfigure resolved. Defaults to `[]`
+* `use_public_ips`: If a NIC connencted to the Public network should be attached to all nodes by default. Can be overridden by `force_public_ip` if this is set to `false`. Defaults to `true`
 * `ssh_public_keys`: List of public SSH keys to install on all machines
 * `zone`: The zone where to run the cluster
 * `machines`: Machines to provision. Key of this object will be used as the name of the machine
@@ -108,6 +81,8 @@ terraform destroy --var-file cluster-settings.tfvars \
   * `cpu`: number of cpu cores
   * `mem`: memory size in MB
   * `disk_size`: The size of the storage in GB
+  * `force_public_ip`: If `use_public_ips` is set to `false`, this forces a public NIC onto the machine anyway when set to `true`. Useful if you're migrating from public nodes to only private. Defaults to `false`
+  * `dns_servers`: This works the same way as the global `dns_severs` but only applies to a single node. If set to `[]` while the global `dns_servers` is set to something else, then it will not add the user_data and thus will not be recreated. Useful if you're migrating from public nodes to only private. Defaults to `null`
   * `additional_disks`: Additional disks to attach to the node.
     * `size`: The size of the additional disk in GB
     * `tier`: The tier of disk to use (`maxiops` is the only one you can choose atm)
@@ -139,6 +114,7 @@ terraform destroy --var-file cluster-settings.tfvars \
   * `port`: Port to load balance.
   * `target_port`: Port to the backend servers.
   * `backend_servers`: List of servers that traffic to the port should be forwarded to.
+  * `proxy_protocol`: If the loadbalancer should set up the backend using proxy protocol.
 * `router_enable`: If a router should be connected to the private network or not
 * `gateways`: Gateways that should be connected to the router, requires router_enable is set to true
   * `features`: List of features for the gateway
@@ -171,3 +147,27 @@ terraform destroy --var-file cluster-settings.tfvars \
 * `server_groups`: Group servers together
   * `servers`: The servers that should be included in the group.
   * `anti_affinity_policy`: Defines if a server group is an anti-affinity group. Setting this to "strict" or yes" will result in all servers in the group being placed on separate compute hosts. The value can be "strict", "yes" or "no". "strict" refers to strict policy doesn't allow servers in the same server group to be on the same host. "yes" refers to best-effort policy and tries to put servers on different hosts, but this is not guaranteed.
+
+## Migration
+
+When `null_resource.inventories` and `data.template_file.inventory` was changed to `local_file.inventory` the old state file needs to be cleaned of the old state.
+The error messages you'll see if you encounter this is:
+
+```text
+Error: failed to read schema for null_resource.inventories in registry.terraform.io/hashicorp/null: failed to instantiate provider "registry.terraform.io/hashicorp/null" to obtain schema: unavailable provider "registry.terraform.io/hashicorp/null"
+Error: failed to read schema for data.template_file.inventory in registry.terraform.io/hashicorp/template: failed to instantiate provider "registry.terraform.io/hashicorp/template" to obtain schema: unavailable provider "registry.terraform.io/hashicorp/template"
+```
+
+This can be fixed with the following lines
+
+```bash
+terraform state rm -state=terraform.tfstate null_resource.inventories
+terraform state rm -state=terraform.tfstate data.template_file.inventory
+```
+
+### Public to Private only migration
+
+Since there's no way to remove the public NIC on a machine without recreating its private NIC it's not possible to inplace change a cluster to only use private IPs.
+The way to migrate is to first set `use_public_ips` to `false`, `dns_servers` to some DNS servers and then update all existing servers to have `force_public_ip` set to `true` and `dns_severs` set to `[]`.
+After that you can add new nodes without `force_public_ip` and `dns_servers` set and create them.
+Add the new nodes into the cluster and when all of them are added, remove the old nodes.

@@ -25,7 +25,7 @@ Some variables of note include:
 * *calico_vxlan_mode* - Configures Calico vxlan encapsulation - valid values are 'Never', 'Always' and 'CrossSubnet' (default 'Always')
 * *calico_network_backend* - Configures Calico network backend - valid values are 'none', 'bird' and 'vxlan' (default 'vxlan')
 * *kube_network_plugin* - Sets k8s network plugin (default Calico)
-* *kube_proxy_mode* - Changes k8s proxy mode to iptables mode
+* *kube_proxy_mode* - Changes k8s proxy mode to iptables, ipvs, nftables mode
 * *kube_version* - Specify a given Kubernetes version
 * *searchdomains* - Array of DNS domains to search when looking up hostnames
 * *remove_default_searchdomains* - Boolean that removes the default searchdomain

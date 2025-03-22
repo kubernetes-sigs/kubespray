@@ -88,7 +88,7 @@ $ pip install -r requirements.txt
 $ vagrant up
 
 # Access the cluster
-$ export INV=.vagrant/provisionners/ansible/inventory
+$ export INV=.vagrant/provisioners/ansible/inventory
 $ export KUBECONFIG=${INV}/artifacts/admin.conf
 # make the kubectl binary available
 $ export PATH=$PATH:$PWD/$INV/artifacts

@@ -1,12 +1,13 @@
 ---
-kind: ConfigMap
 apiVersion: v1
+kind: ConfigMap
 metadata:
   name: kube-flannel-cfg
   namespace: kube-system
   labels:
-    tier: node
     app: flannel
+    k8s-app: flannel
+    tier: node
 data:
   cni-conf.json: |
     {
@@ -38,6 +39,7 @@ data:
       "EnableIPv6": true,
       "IPv6Network": "{{ kube_pods_subnet_ipv6 }}",
 {% endif %}
+      "EnableNFTables": {{ flannel_enable_nftables | to_json }},
       "Backend": {
         "Type": "{{ flannel_backend_type }}"{% if flannel_backend_type == "vxlan" %},
         "VNI": {{ flannel_vxlan_vni }},
@@ -83,7 +85,16 @@ spec:
           requests:
             cpu: {{ flannel_cpu_requests }}
             memory: {{ flannel_memory_requests }}
-        command: [ "/opt/bin/flanneld", "--ip-masq", "--kube-subnet-mgr"{% if flannel_interface is defined %}, "--iface={{ flannel_interface }}"{% endif %}{% if flannel_interface_regexp is defined %}, "--iface-regex={{ flannel_interface_regexp }}"{% endif %} ]
+        command: ["/opt/bin/flanneld"]
+        args: 
+          - --ip-masq
+          - --kube-subnet-mgr
+{% if flannel_interface is defined %}
+          - --iface={{ flannel_interface }}"
+{% endif %}
+{% if flannel_interface_regexp is defined %}
+          - --iface-regex={{ flannel_interface_regexp }}
+{% endif %}
         securityContext:
           privileged: false
           capabilities:

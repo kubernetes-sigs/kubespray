@@ -321,6 +321,8 @@ resource "upcloud_server" "bastion" {
     keys            = var.ssh_public_keys
     create_password = false
   }
+
+  metadata = local.node_user_data[each.key] != "" || each.value.metadata == true ? true : null
 }
 
 resource "upcloud_firewall_rules" "master" {

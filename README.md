@@ -129,7 +129,7 @@ Note:
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) 1.15.3
   - [coredns](https://github.com/coredns/coredns) 1.11.3
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) 1.12.0
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) 1.12.1
   - [argocd](https://argoproj.github.io/) 2.14.5
   - [helm](https://helm.sh/) 3.16.4
   - [metallb](https://metallb.universe.tf/) 0.13.9

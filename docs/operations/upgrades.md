@@ -28,13 +28,13 @@ If you wanted to upgrade just kube_version from v1.18.10 to v1.19.7, you could
 deploy the following way:
 
 ```ShellSession
-ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.18.10 -e upgrade_cluster_setup=true
+ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=1.18.10 -e upgrade_cluster_setup=true
 ```
 
-And then repeat with v1.19.7 as kube_version:
+And then repeat with 1.19.7 as kube_version:
 
 ```ShellSession
-ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=v1.19.7 -e upgrade_cluster_setup=true
+ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=1.19.7 -e upgrade_cluster_setup=true
 ```
 
 The var ```-e upgrade_cluster_setup=true``` is needed to be set in order to migrate the deploys of e.g kube-apiserver inside the cluster immediately which is usually only done in the graceful upgrade. (Refer to [#4139](https://github.com/kubernetes-sigs/kubespray/issues/4139) and [#4736](https://github.com/kubernetes-sigs/kubespray/issues/4736))
@@ -48,7 +48,7 @@ existing cluster. That means there must be at least 1 kube_control_plane already
 deployed.
 
 ```ShellSession
-ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.19.7
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=1.19.7
 ```
 
 After a successful upgrade, the Server Version should be updated:
@@ -62,7 +62,7 @@ Server Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.7", GitCom
 You can control how many nodes are upgraded at the same time by modifying the ansible variable named `serial`, as explained [here](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_strategies.html#setting-the-batch-size-with-serial). If you don't set this variable, it will upgrade the cluster nodes in batches of  20% of the available nodes. Setting `serial=1` would mean upgrade one node at a time.
 
 ```ShellSession
-ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 -e "serial=1"
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=1.20.7 -e "serial=1"
 ```
 
 ### Pausing the upgrade
@@ -90,14 +90,14 @@ ansible-playbook facts.yml -b -i inventory/sample/hosts.ini
 After this upgrade control plane and etcd groups [#5147](https://github.com/kubernetes-sigs/kubespray/issues/5147):
 
 ```ShellSession
-ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 --limit "kube_control_plane:etcd"
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=1.20.7 --limit "kube_control_plane:etcd"
 ```
 
 Now you can upgrade other nodes in any order and quantity:
 
 ```ShellSession
-ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 --limit "node4:node6:node7:node12"
-ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=v1.20.7 --limit "node5*"
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=1.20.7 --limit "node4:node6:node7:node12"
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/hosts.ini -e kube_version=1.20.7 --limit "node5*"
 ```
 
 ## Multiple upgrades
@@ -126,7 +126,7 @@ v.22.0 -> v2.24.0 : ✕
 
 Assuming you don't explicitly define a kubernetes version in your k8s_cluster.yml, you simply check out the next tag and run the upgrade-cluster.yml playbook
 
-* If you do define kubernetes version in your inventory (e.g. group_vars/k8s_cluster.yml) then either make sure to update it before running upgrade-cluster, or specify the new version you're upgrading to: `ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml -e kube_version=v1.11.3`
+* If you do define kubernetes version in your inventory (e.g. group_vars/k8s_cluster.yml) then either make sure to update it before running upgrade-cluster, or specify the new version you're upgrading to: `ansible-playbook -i inventory/mycluster/hosts.ini -b upgrade-cluster.yml -e kube_version=1.11.3`
 
   Otherwise, the upgrade will leave your cluster at the same k8s version defined in your inventory vars.
 

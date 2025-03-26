@@ -1,6 +1,13 @@
 #!/bin/bash
 set -euxo pipefail
 
+if [[ -v TESTCASE ]]; then
+    TESTCASE_FILE=files/${TESTCASE}.yml
+else
+    TESTCASE_FILE=common_vars.yml
+    TESTCASE=default
+fi
+
 echo "TESTCASE is $TESTCASE"
 
 source tests/files/$TESTCASE || true
@@ -56,7 +63,7 @@ playbook=$1
 shift
 ansible-playbook \
     -e @tests/common_vars.yml \
-    -e @tests/files/${TESTCASE}.yml \
+    -e @tests/${TESTCASE_FILE} \
     -e local_release_dir=${PWD}/downloads \
     "$@" \
     ${playbook}

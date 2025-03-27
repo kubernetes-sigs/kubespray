@@ -1,0 +1,54 @@
+name: Upgrade Kubespray components with new patches versions - all branches
+
+on:
+  schedule:
+  - cron: '22 2 * * *' # every day, 02:22 UTC
+  workflow_dispatch:
+
+permissions: {}
+jobs:
+  get-releases-branches:
+    runs-on: ubuntu-latest
+    outputs:
+      branches: ${{ steps.get-branches.outputs.data }}
+    steps:
+    - uses: octokit/graphql-action@v2.3.2
+      id: get-branches
+      with:
+        query: |
+          query get_release_branches($owner:String!, $name:String!) {
+            repository(owner:$owner, name:$name) {
+              refs(refPrefix: "refs/heads/",
+                   first: 0, # TODO increment once we have release branch with the new checksums format
+                   query: "release-",
+                   orderBy: {
+                     field: ALPHABETICAL,
+                     direction: DESC
+                   }) {
+                     nodes {
+                       name
+                     }
+              }
+            }
+          }
+        variables: |
+          owner: ${{ github.repository_owner }}
+          name: ${{ github.event.repository.name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-versions:
+    needs: get-releases-branches
+    strategy:
+      fail-fast: false
+      matrix:
+        branch:
+          - name: ${{ github.event.repository.default_branch }}
+          -  ${{ fromJSON(needs.get-releases-branches.outputs.branches).repository.refs.nodes }}
+    uses: ./.github/workflows/upgrade-patch-versions.yml
+    permissions:
+      contents: write
+      pull-requests: write
+    name: Update patch updates on ${{ matrix.branch.name }}
+    with:
+      branch: ${{ matrix.branch.name }}

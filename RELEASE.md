@@ -45,7 +45,7 @@ The Kubespray Project is released on an as-needed basis. The process is as follo
 
 * Minor releases can change components' versions, but not the major `kube_version`.
   Greater `kube_version` requires a new major or minor release. For example, if Kubespray v2.0.0
-  is bound to `kube_version: 1.4.x`, `calico_version: 0.22.0`, `etcd_version: v3.0.6`,
+  is bound to `kube_version: 1.4.x`, `calico_version: 0.22.0`, `etcd_version: 3.0.6`,
   then Kubespray v2.1.0 may be bound to only minor changes to `kube_version`, like v1.5.1
   and *any* changes to other components, like etcd v4, or calico 1.2.3.
   And Kubespray v3.x.x shall be bound to `kube_version: 2.x.x` respectively.

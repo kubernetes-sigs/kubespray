@@ -122,14 +122,14 @@ Note:
   - [cilium](https://github.com/cilium/cilium) 1.15.9
   - [flannel](https://github.com/flannel-io/flannel) 0.22.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) 1.12.21
-  - [kube-router](https://github.com/cloudnativelabs/kube-router) 2.0.0
+  - [kube-router](https://github.com/cloudnativelabs/kube-router) 2.1.1
   - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) 4.1.0
   - [weave](https://github.com/rajch/weave) 2.8.7
   - [kube-vip](https://github.com/kube-vip/kube-vip) 0.8.0
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) 1.15.3
   - [coredns](https://github.com/coredns/coredns) 1.11.3
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) 1.12.0
+  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) 1.12.1
   - [argocd](https://argoproj.github.io/) 2.14.5
   - [helm](https://helm.sh/) 3.16.4
   - [metallb](https://metallb.universe.tf/) 0.13.9

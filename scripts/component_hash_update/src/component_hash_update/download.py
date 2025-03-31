@@ -50,14 +50,11 @@ arch_alt_name = {
 }
 
 # TODO: downloads not supported
-# gvisor: sha512 checksums
 # helm_archive: PGP signatures
-# krew_archive: different yaml structure (in our download)
 # calico_crds_archive: different yaml structure (in our download)
 
 # TODO:
 # noarch support -> k8s manifests, helm charts
-# different checksum format (needs download role changes)
 # different verification methods (gpg, cosign) ( needs download role changes) (or verify the sig in this script and only use the checksum in the playbook)
 # perf improvements (async)
 

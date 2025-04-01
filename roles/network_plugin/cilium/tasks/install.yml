@@ -30,64 +30,20 @@
   when:
     - cilium_identity_allocation_mode == "kvstore"
 
-- name: Cilium | Create hubble dir
-  file:
-    path: "{{ kube_config_dir }}/addons/hubble"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - cilium_hubble_install
-
-- name: Cilium | Create Cilium node manifests
-  template:
-    src: "{{ item.name }}/{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.name }}-{{ item.file }}"
-    mode: "0644"
-  loop:
-    - {name: cilium, file: config.yml, type: cm}
-    - {name: cilium-operator, file: crb.yml, type: clusterrolebinding}
-    - {name: cilium-operator, file: cr.yml, type: clusterrole}
-    - {name: cilium, file: crb.yml, type: clusterrolebinding}
-    - {name: cilium, file: cr.yml, type: clusterrole}
-    - {name: cilium, file: secret.yml, type: secret, when: "{{ cilium_encryption_enabled and cilium_encryption_type == 'ipsec' }}"}
-    - {name: cilium, file: ds.yml, type: ds}
-    - {name: cilium-operator, file: deploy.yml, type: deploy}
-    - {name: cilium-operator, file: sa.yml, type: sa}
-    - {name: cilium, file: sa.yml, type: sa}
-  register: cilium_node_manifests
-  when:
-    - ('kube_control_plane' in group_names)
-    - item.when | default(True) | bool
-
-- name: Cilium | Create Cilium Hubble manifests
-  template:
-    src: "{{ item.name }}/{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/addons/hubble/{{ item.name }}-{{ item.file }}"
-    mode: "0644"
-  loop:
-    - {name: hubble, file: config.yml, type: cm}
-    - {name: hubble, file: crb.yml, type: clusterrolebinding}
-    - {name: hubble, file: cr.yml, type: clusterrole}
-    - {name: hubble, file: cronjob.yml, type: cronjob, when: "{{ cilium_hubble_tls_generate }}"}
-    - {name: hubble, file: deploy.yml, type: deploy}
-    - {name: hubble, file: job.yml, type: job, when: "{{ cilium_hubble_tls_generate }}"}
-    - {name: hubble, file: sa.yml, type: sa}
-    - {name: hubble, file: service.yml, type: service}
-  register: cilium_hubble_manifests
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - cilium_enable_hubble and cilium_hubble_install
-    - item.when | default(True) | bool
-
 - name: Cilium | Enable portmap addon
   template:
     src: 000-cilium-portmap.conflist.j2
     dest: /etc/cni/net.d/000-cilium-portmap.conflist
     mode: "0644"
   when: cilium_enable_portmap
+
+- name: Cilium | Render values
+  template:
+    src: values.yaml.j2
+    dest: "{{ kube_config_dir }}/cilium-values.yaml"
+    mode: "0644"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Cilium | Copy Ciliumcli binary from download dir
   copy:

@@ -114,11 +114,11 @@ Note:
   - [kubernetes](https://github.com/kubernetes/kubernetes) 1.32.3
   - [etcd](https://github.com/etcd-io/etcd) 3.5.16
   - [docker](https://www.docker.com/) 28.0
-  - [containerd](https://containerd.io/) 2.0.3
+  - [containerd](https://containerd.io/) 2.0.4
   - [cri-o](http://cri-o.io/) 1.32.0 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) 1.4.1
-  - [calico](https://github.com/projectcalico/calico) 3.29.2
+  - [calico](https://github.com/projectcalico/calico) 3.29.3
   - [cilium](https://github.com/cilium/cilium) 1.15.9
   - [flannel](https://github.com/flannel-io/flannel) 0.22.0
   - [kube-ovn](https://github.com/alauda/kube-ovn) 1.12.21

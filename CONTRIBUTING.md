@@ -44,4 +44,3 @@ Vagrant with VirtualBox or libvirt driver helps you to quickly spin test cluster
 6. Sign the CNCF CLA (<https://git.k8s.io/community/CLA.md#the-contributor-license-agreement>)
 7. Submit a pull request.
 8. Work with the reviewers on their suggestions.
-9. Ensure to rebase to the HEAD of your target branch and squash un-necessary commits (<https://blog.carbonfive.com/always-squash-and-rebase-your-git-commits/>) before final merger of your contribution.

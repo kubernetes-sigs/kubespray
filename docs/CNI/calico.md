@@ -180,7 +180,7 @@ calico_group_id=rr1
 The inventory above will deploy the following topology assuming that calico's
 `global_as_num` is set to `65400`:
 
-![Image](figures/kubespray-calico-rr.png?raw=true)
+![Image](../figures/kubespray-calico-rr.png?raw=true)
 
 ### Optional : Define default endpoint to host action
 
@@ -377,7 +377,7 @@ To clean up any ipvs leftovers:
 
 ### Calico access to the kube-api
 
-Calico node, typha and kube-controllers need to be able to talk to the kubernetes API. Please reference the [Enabling eBPF Calico Docs](https://docs.projectcalico.org/maintenance/ebpf/enabling-bpf) for guidelines on how to do this.
+Calico node, typha and kube-controllers need to be able to talk to the kubernetes API. Please reference the [Enabling eBPF Calico Docs](https://docs.tigera.io/calico/latest/operations/ebpf/enabling-ebpf) for guidelines on how to do this.
 
 Kubespray sets up the `kubernetes-services-endpoint` configmap based on the contents of the `loadbalancer_apiserver` inventory variable documented in [HA Mode](/docs/operations/ha-mode.md).
 
@@ -407,7 +407,7 @@ To view the logs you need to use the `tc` command to read the kernel trace buffe
 tc exec bpf debug
 ```
 
-Please see [Calico eBPF troubleshooting guide](https://docs.projectcalico.org/maintenance/troubleshoot/troubleshoot-ebpf#ebpf-program-debug-logs).
+Please see [Calico eBPF troubleshooting guide](https://docs.tigera.io/calico/latest/operations/ebpf/troubleshoot-ebpf#ebpf-program-debug-logs).
 
 ## Wireguard Encryption
 

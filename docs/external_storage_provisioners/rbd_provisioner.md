@@ -52,20 +52,20 @@ The following example uses `rbd-provisioner-1` as the identity for the instance 
 docker run -ti -v /root/.kube:/kube -v /var/run/kubernetes:/var/run/kubernetes --privileged --net=host quay.io/external_storage/rbd-provisioner /usr/local/bin/rbd-provisioner -master=http://127.0.0.1:8080 -kubeconfig=/kube/config -id=rbd-provisioner-1
 ```
 
-Alternatively, deploy it in kubernetes, see [deployment](deploy/README.md).
+Alternatively, deploy it in kubernetes, see [deployment](https://github.com/kubernetes-retired/external-storage/blob/master/ceph/cephfs/deploy/README.md).
 
 * Create a RBD Storage Class
 
-Replace Ceph monitor's IP in [examples/class.yaml](examples/class.yaml) with your own and create storage class:
+Replace Ceph monitor's IP in [examples/class.yaml](https://github.com/kubernetes-retired/external-storage/blob/master/ceph/cephfs/example/class.yaml) with your own and create storage class:
 
 ```bash
-kubectl create -f examples/class.yaml
+kubectl create -f https://github.com/kubernetes-retired/external-storage/blob/master/ceph/cephfs/example/class.yaml
 ```
 
 * Create a claim
 
 ```bash
-kubectl create -f examples/claim.yaml
+kubectl create -f https://github.com/kubernetes-retired/external-storage/blob/master/ceph/cephfs/example/claim.yaml
 ```
 
 * Create a Pod using the claim

@@ -40,26 +40,26 @@ The following example uses `cephfs-provisioner-1` as the identity for the instan
 docker run -ti -v /root/.kube:/kube -v /var/run/kubernetes:/var/run/kubernetes --privileged --net=host cephfs-provisioner /usr/local/bin/cephfs-provisioner -master=http://127.0.0.1:8080 -kubeconfig=/kube/config -id=cephfs-provisioner-1
 ```
 
-Alternatively, deploy it in kubernetes, see [deployment](deploy/README.md).
+Alternatively, deploy it in kubernetes, see [deployment](https://github.com/kubernetes-retired/external-storage/blob/master/ceph/cephfs/deploy/README.md).
 
 - Create a CephFS Storage Class
 
-Replace Ceph monitor's IP in [example class](example/class.yaml) with your own and create storage class:
+Replace Ceph monitor's IP in [example class](https://github.com/kubernetes-retired/external-storage/blob/master/ceph/cephfs/example/class.yaml) with your own and create storage class:
 
 ``` bash
-kubectl create -f example/class.yaml
+kubectl create -f https://github.com/kubernetes-retired/external-storage/blob/master/ceph/cephfs/example/class.yaml
 ```
 
 - Create a claim
 
 ``` bash
-kubectl create -f example/claim.yaml
+kubectl create -f https://github.com/kubernetes-retired/external-storage/blob/master/ceph/cephfs/example/claim.yaml
 ```
 
 - Create a Pod using the claim
 
 ``` bash
-kubectl create -f example/test-pod.yaml
+kubectl create -f https://github.com/kubernetes-retired/external-storage/blob/master/ceph/cephfs/example/test-pod.yaml
 ```
 
 ## Known limitations

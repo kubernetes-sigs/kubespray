@@ -10,7 +10,7 @@ most modern installs of OpenStack that support the basic services.
 
 ### Known compatible public clouds
 
-- [Auro](https://auro.io/)
+- [Auro](https://www.cacloud.com/)
 - [Betacloud](https://www.betacloud.io/)
 - [CityCloud](https://www.citycloud.com/)
 - [DreamHost](https://www.dreamhost.com/cloud/computing/)
@@ -703,18 +703,6 @@ $ kubectl config use-context default-system
 
 ```ShellSession
 kubectl version
-```
-
-## GlusterFS
-
-GlusterFS is not deployed by the standard `cluster.yml` playbook, see the
-[GlusterFS playbook documentation](../../network-storage/glusterfs/README.md)
-for instructions.
-
-Basically you will install Gluster as
-
-```ShellSession
-ansible-playbook --become -i inventory/$CLUSTER/hosts ./contrib/network-storage/glusterfs/glusterfs.yml
 ```
 
 ## What's next

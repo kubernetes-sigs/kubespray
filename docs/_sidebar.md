@@ -52,7 +52,6 @@
   * [Test Cases](/docs/developers/test_cases.md)
   * [Vagrant](/docs/developers/vagrant.md)
 * External Storage Provisioners
-  * [Cephfs Provisioner](/docs/external_storage_provisioners/cephfs_provisioner.md)
   * [Local Volume Provisioner](/docs/external_storage_provisioners/local_volume_provisioner.md)
   * [Rbd Provisioner](/docs/external_storage_provisioners/rbd_provisioner.md)
   * [Scheduler Plugins](/docs/external_storage_provisioners/scheduler_plugins.md)

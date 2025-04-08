@@ -65,7 +65,6 @@ The following tags are defined in playbooks:
 | bootstrap-os                   | Anything related to host OS configuration             |
 | calico                         | Network plugin Calico                                 |
 | calico_rr                      | Configuring Calico route reflector                    |
-| cephfs-provisioner             | Configuring CephFS                                    |
 | cert-manager                   | Configuring certificate manager for K8s               |
 | cilium                         | Network plugin Cilium                                 |
 | cinder-csi-driver              | Configuring csi driver: cinder                        |

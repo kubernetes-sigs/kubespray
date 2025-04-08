@@ -146,7 +146,6 @@ The following tags are defined in playbooks:
 | registry                       | Configuring local docker registry                     |
 | reset                          | Tasks running doing the node reset                    |
 | resolvconf                     | Configuring /etc/resolv.conf for hosts/apps           |
-| rbd-provisioner                | Configure External provisioner: rdb                   |
 | services                       | Remove services (etcd, kubelet etc...) when resetting |
 | snapshot                       | Enabling csi snapshot                                 |
 | snapshot-controller            | Configuring csi snapshot controller                   |

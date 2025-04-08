@@ -53,7 +53,6 @@
   * [Vagrant](/docs/developers/vagrant.md)
 * External Storage Provisioners
   * [Local Volume Provisioner](/docs/external_storage_provisioners/local_volume_provisioner.md)
-  * [Rbd Provisioner](/docs/external_storage_provisioners/rbd_provisioner.md)
   * [Scheduler Plugins](/docs/external_storage_provisioners/scheduler_plugins.md)
 * Getting Started
   * [Comparisons](/docs/getting_started/comparisons.md)

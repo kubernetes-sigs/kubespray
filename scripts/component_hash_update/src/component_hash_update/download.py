@@ -47,14 +47,13 @@ arch_alt_name = {
     "arm64": "aarch64",
     "ppc64le": None,
     "arm": None,
+    "no_arch": None,
 }
 
 # TODO: downloads not supported
 # helm_archive: PGP signatures
-# calico_crds_archive: different yaml structure (in our download)
 
 # TODO:
-# noarch support -> k8s manifests, helm charts
 # different verification methods (gpg, cosign) ( needs download role changes) (or verify the sig in this script and only use the checksum in the playbook)
 # perf improvements (async)
 

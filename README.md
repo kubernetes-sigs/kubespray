@@ -131,7 +131,7 @@ Note:
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) 1.12.1
   - [argocd](https://argoproj.github.io/) 2.14.5
   - [helm](https://helm.sh/) 3.16.4
-  - [metallb](https://metallb.universe.tf/) 0.13.9
+  - [metallb](https://metallb.universe.tf/) 0.14.9
   - [registry](https://github.com/distribution/distribution) 2.8.1
 - Storage Plugin
   - [aws-ebs-csi-plugin](https://github.com/kubernetes-sigs/aws-ebs-csi-driver) 0.5.0

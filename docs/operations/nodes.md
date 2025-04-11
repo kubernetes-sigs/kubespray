@@ -64,8 +64,6 @@ This should be the easiest.
 
 You can use `--limit=NODE_NAME` to limit Kubespray to avoid disturbing other nodes in the cluster.
 
-Before using `--limit` run playbook `facts.yml` without the limit to refresh facts cache for all nodes.
-
 ### 3) Remove an old node with remove-node.yml
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.

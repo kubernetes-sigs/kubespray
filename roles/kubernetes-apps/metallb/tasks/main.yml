@@ -5,24 +5,21 @@
   when:
     - "kube_proxy_mode == 'ipvs' and not kube_proxy_strict_arp"
 
-- name: Kubernetes Apps | Lay Down MetalLB
-  become: true
-  template:
-    src: "metallb.yaml.j2"
-    dest: "{{ kube_config_dir }}/metallb.yaml"
-    mode: "0644"
-  register: metallb_rendering
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-
-- name: Kubernetes Apps | Install and configure MetalLB
-  kube:
-    name: "MetalLB"
-    kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/metallb.yaml"
-    state: "{{ metallb_rendering.changed | ternary('latest', 'present') }}"
-    wait: true
-  become: true
+- name: Kubernetes Apps | Install MetalLB
+  include_role:
+    name: helm-apps
+  vars:
+    releases:
+      - name: metallb
+        namespace: "{{ metallb_namespace }}"
+        chart_ref: metallb/metallb
+        create_namespace: true
+        wait_timeout: "5m"
+        values: "{{ lookup('template', 'values.yaml.j2') | from_yaml }}"
+    repositories:
+      - name: metallb
+        url: "{{ metallb_chart_repo_url }}"
+    release_common_opts: {}
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 

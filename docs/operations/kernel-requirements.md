@@ -2,12 +2,30 @@
 
 For Kubernetes >=1.32.0, the recommended kernel LTS version from the 4.x series is 4.19. Any 5.x or 6.x versions are also supported. For cgroups v2 support, the minimum version is 4.15 and the recommended version is 5.8+. Refer to [this link](https://github.com/kubernetes/kubernetes/blob/v1.32.0/vendor/k8s.io/system-validators/validators/types_unix.go#L33). For more information, see [kernel version requirements](https://kubernetes.io/docs/reference/node/kernel-version-requirements).
 
-If the OS kernel version is lower than required, add the following configuration to ignore the kubeadm preflight errors:
+## Handling Lower Kernel Versions
+
+If the OS kernel version is lower than required, you have two options:
+
+### Option 1: Manually ignore preflight errors
+
+Add the following configuration to ignore the kubeadm preflight errors:
 
 ```yaml
 kubeadm_ignore_preflight_errors:
   - SystemVerification
 ```
+
+### Option 2: Automatically ignore kernel version check
+
+Enable the automatic kernel check bypass option:
+
+```yaml
+kubeadm_auto_ignore_kernel_check: true
+```
+
+When this option is enabled, Kubespray will automatically add SystemVerification to the kubeadm_ignore_preflight_errors list if it detects that:
+* The kernel version is lower than 4.19
+* Kubernetes version is 1.32.0 or higher
 
 The Kernel Version Matrixs:
 

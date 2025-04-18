@@ -5,30 +5,21 @@
   when:
     - "kube_proxy_mode == 'ipvs' and not kube_proxy_strict_arp"
 
-- name: Kubernetes Apps | Check that the deprecated 'matallb_auto_assign' variable is not used anymore
-  fail:
-    msg: "'matallb_auto_assign' configuration variable is deprecated, please use 'metallb_auto_assign' instead"
-  when:
-    - matallb_auto_assign is defined
-
-- name: Kubernetes Apps | Lay Down MetalLB
-  become: true
-  template:
-    src: "metallb.yaml.j2"
-    dest: "{{ kube_config_dir }}/metallb.yaml"
-    mode: "0644"
-  register: metallb_rendering
+- name: Kubernetes Apps | Add MetalLB Repositories
+  kubernetes.core.helm_repository:
+    name: metallb
+    url: "https://metallb.github.io/metallb"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Kubernetes Apps | Install and configure MetalLB
-  kube:
-    name: "MetalLB"
-    kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/metallb.yaml"
-    state: "{{ metallb_rendering.changed | ternary('latest', 'present') }}"
-    wait: true
-  become: true
+- name: Kubernetes Apps | Install MetalLB
+  kubernetes.core.helm:
+    name: metallb
+    namespace: "{{ metallb_namespace }}"
+    create_namespace: true
+    chart_ref: metallb/metallb
+    chart_version: "{{ metallb_chart_version }}"
+    values: "{{ lookup( 'template', 'values.yaml.j2') | from_yaml }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 

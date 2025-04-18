@@ -90,7 +90,7 @@ vagrant up
 - **Debian** Bookworm, Bullseye
 - **Ubuntu** 20.04, 22.04, 24.04
 - **CentOS/RHEL** [8, 9](docs/operating_systems/rhel.md#rhel-8)
-- **Fedora** 39, 40
+- **Fedora** 39, 40, 42
 - **Fedora CoreOS** (see [fcos Note](docs/operating_systems/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
 - **Oracle Linux** [8, 9](docs/operating_systems/rhel.md#rhel-8)

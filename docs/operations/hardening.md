@@ -128,7 +128,7 @@ Let's take a deep look to the resultant **kubernetes** configuration:
   See <https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/> for more information on the subject.
 * If you are installing **kubernetes** in an AppArmor-based OS (eg. Debian/Ubuntu) you can enable the `AppArmor` feature gate uncommenting the lines with the comment `# AppArmor-based OS` on top.
 * The `kubelet_systemd_hardening`, both with `kubelet_secure_addresses` setup a minimal firewall on the system. To better understand how these variables work, here's an explanatory image:
-  ![kubelet hardening](img/kubelet-hardening.png)
+  ![kubelet hardening](../img/kubelet-hardening.png)
 
 Once you have the file properly filled, you can run the **Ansible** command to start the installation:
 

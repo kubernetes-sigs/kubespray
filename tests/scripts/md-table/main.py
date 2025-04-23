@@ -90,7 +90,7 @@ for f in files:
 
     container_manager = y.get('container_manager', 'containerd')
     network_plugin = y.get('kube_network_plugin', 'calico')
-    x = re.match(r"^[a-z-]+_([a-z0-9]+).*", f.name)
-    operating_system = x.group(1)
+    x = re.match(r"^([a-z-]+_)?([a-z0-9]+).*", f.name)
+    operating_system = x.group(2)
     data.set(container_manager=container_manager, network_plugin=network_plugin, os=operating_system)
 print(data.jinja(), file=open(args.output, 'w'))

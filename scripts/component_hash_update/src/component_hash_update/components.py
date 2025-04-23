@@ -7,6 +7,11 @@ infos = {
         "url": "https://github.com/projectcalico/calico/releases/download/v{version}/SHA256SUMS",
         "graphql_id": "R_kgDOA87D0g",
     },
+    "calico_crds_archive": {
+        "url": "https://github.com/projectcalico/calico/archive/v{version}.tar.gz",
+        "graphql_id": "R_kgDOA87D0g",
+        "binary": True,
+    },
     "ciliumcli_binary": {
         "url": "https://github.com/cilium/cilium-cli/releases/download/v{version}/cilium-{os}-{arch}.tar.gz.sha256sum",
         "graphql_id": "R_kgDOE0nmLg",

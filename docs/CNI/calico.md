@@ -377,7 +377,7 @@ To clean up any ipvs leftovers:
 
 ### Calico access to the kube-api
 
-Calico node, typha and kube-controllers need to be able to talk to the kubernetes API. Please reference the [Enabling eBPF Calico Docs](https://docs.projectcalico.org/maintenance/ebpf/enabling-bpf) for guidelines on how to do this.
+Calico node, typha and kube-controllers need to be able to talk to the kubernetes API. Please reference the [Enabling eBPF Calico Docs](https://docs.tigera.io/calico/latest/operations/ebpf/enabling-ebpf) for guidelines on how to do this.
 
 Kubespray sets up the `kubernetes-services-endpoint` configmap based on the contents of the `loadbalancer_apiserver` inventory variable documented in [HA Mode](/docs/operations/ha-mode.md).
 

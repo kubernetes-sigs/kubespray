@@ -65,7 +65,6 @@ The following tags are defined in playbooks:
 | bootstrap-os                   | Anything related to host OS configuration             |
 | calico                         | Network plugin Calico                                 |
 | calico_rr                      | Configuring Calico route reflector                    |
-| cephfs-provisioner             | Configuring CephFS                                    |
 | cert-manager                   | Configuring certificate manager for K8s               |
 | cilium                         | Network plugin Cilium                                 |
 | cinder-csi-driver              | Configuring csi driver: cinder                        |
@@ -147,7 +146,6 @@ The following tags are defined in playbooks:
 | registry                       | Configuring local docker registry                     |
 | reset                          | Tasks running doing the node reset                    |
 | resolvconf                     | Configuring /etc/resolv.conf for hosts/apps           |
-| rbd-provisioner                | Configure External provisioner: rdb                   |
 | services                       | Remove services (etcd, kubelet etc...) when resetting |
 | snapshot                       | Enabling csi snapshot                                 |
 | snapshot-controller            | Configuring csi snapshot controller                   |

@@ -1,0 +1,147 @@
+---
+.kubevirt:
+  extends: .job-moderated
+  interruptible: true
+  script:
+    - ansible-playbook tests/cloud_playbooks/create-kubevirt.yml
+                      -c local -e @"tests/files/${TESTCASE}.yml"
+    - ./tests/scripts/testcases_run.sh
+  variables:
+    ANSIBLE_TIMEOUT: "120"
+  tags:
+    - ffci
+  needs:
+    - pipeline-image
+    - ci-not-authorized
+
+# TODO: generate testcases matrixes from the files in tests/files/
+# this is needed to avoid the need for PR rebasing when a job was added or removed in the target branch
+# (currently, a removed job in the target branch breaks the tests, because the
+# pipeline definition is parsed by gitlab before the rebase.sh script)
+# CI template for PRs
+pr:
+  stage: deploy-part1
+  rules:
+    - if: $PR_LABELS =~ /.*ci-short.*/
+      when: manual
+      allow_failure: true
+    - if: $CI_COMMIT_BRANCH =~ /^pr-.*$/
+      when: on_success
+    - when: manual
+      allow_failure: true
+  extends: .kubevirt
+  parallel:
+    matrix:
+      - TESTCASE:
+          - almalinux8-calico
+          - almalinux9-crio
+          - almalinux9-kube-ovn
+          - debian11-calico-collection
+          - debian11-macvlan
+          - debian12-cilium
+          - fedora39-kube-router
+            # FIXME: this test if broken (perma-failing)
+          - openeuler24-calico
+          - opensuse15-6-calico
+          - rockylinux8-calico
+          - rockylinux9-cilium
+          - ubuntu20-calico-all-in-one-hardening
+          - ubuntu20-cilium-sep
+          - ubuntu20-flannel-collection
+          - ubuntu20-kube-router-sep
+          - ubuntu20-kube-router-svc-proxy
+          - ubuntu22-calico-all-in-one
+          - ubuntu22-calico-all-in-one-upgrade
+          - ubuntu24-calico-etcd-datastore
+
+# The ubuntu20-calico-all-in-one jobs are meant as early stages to prevent running the full CI if something is horribly broken
+ubuntu20-calico-all-in-one:
+  stage: deploy-part1
+  extends: .kubevirt
+  variables:
+    TESTCASE: ubuntu20-calico-all-in-one
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^pr-.*$/
+      when: on_success
+    - when: manual
+      allow_failure: true
+
+pr_full:
+  extends: .kubevirt
+  stage: deploy-extended
+  rules:
+    - if: $PR_LABELS =~ /.*ci-full.*/
+      when: on_success
+    # Else run as manual
+    - when: manual
+      allow_failure: true
+  parallel:
+    matrix:
+      - TESTCASE:
+          - almalinux9-calico-ha-ebpf
+          - almalinux9-calico-nodelocaldns-secondary
+          - debian11-custom-cni
+          - debian11-kubelet-csr-approver
+          - debian12-custom-cni-helm
+          - fedora39-calico-swap-selinux
+          - fedora39-crio
+          - ubuntu20-all-in-one-docker
+          - ubuntu20-calico-ha-wireguard
+          - ubuntu20-flannel-ha
+          - ubuntu20-flannel-ha-once
+
+# Need an update of the container image to use schema v2
+# update: quay.io/kubespray/vm-amazon-linux-2:latest
+manual:
+  extends: pr_full
+  parallel:
+    matrix:
+      - TESTCASE:
+          - amazon-linux-2-all-in-one
+  rules:
+    - when: manual
+      allow_failure: true
+
+pr_extended:
+  extends: .kubevirt
+  stage: deploy-extended
+  rules:
+    - if: $PR_LABELS =~ /.*(ci-extended|ci-full).*/
+      when: on_success
+    - when: manual
+      allow_failure: true
+  parallel:
+    matrix:
+      - TESTCASE:
+          - almalinux9-calico
+          - almalinux9-calico-remove-node
+          - almalinux9-docker
+          - debian11-docker
+          - debian12-calico
+          - debian12-docker
+          - opensuse15-6-docker-cilium
+          - rockylinux9-calico
+          - ubuntu20-calico-etcd-kubeadm
+          - ubuntu20-flannel
+          - ubuntu22-all-in-one-docker
+          - ubuntu24-all-in-one-docker
+          - ubuntu24-calico-all-in-one
+
+# Enabled when PERIODIC_CI_ENABLED var is set
+periodic:
+  only:
+    variables:
+      - $PERIODIC_CI_ENABLED
+  allow_failure: true
+  extends: .kubevirt
+  parallel:
+    matrix:
+      - TESTCASE:
+          - debian11-calico-upgrade
+          - debian11-calico-upgrade-once
+          - debian12-cilium-svc-proxy
+          - fedora39-calico-selinux
+          - fedora40-docker-calico
+          - ubuntu20-calico-etcd-kubeadm-upgrade-ha
+          - ubuntu20-calico-ha-recover
+          - ubuntu20-calico-ha-recover-noquorum

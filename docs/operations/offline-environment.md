@@ -75,17 +75,17 @@ quay_image_repo: "{{ registry_host }}"
 github_image_repo: "{{ registry_host }}"
 
 local_path_provisioner_helper_image_repo: "{{ registry_host }}/busybox"
-kubeadm_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubeadm"
-kubectl_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubectl"
-kubelet_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubelet"
+kubeadm_download_url: "{{ files_repo }}/kubernetes/v{{ kube_version }}/kubeadm"
+kubectl_download_url: "{{ files_repo }}/kubernetes/v{{ kube_version }}/kubectl"
+kubelet_download_url: "{{ files_repo }}/kubernetes/v{{ kube_version }}/kubelet"
 # etcd is optional if you **DON'T** use etcd_deployment=host
-etcd_download_url: "{{ files_repo }}/kubernetes/etcd/etcd-{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
-cni_download_url: "{{ files_repo }}/kubernetes/cni/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
-crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+etcd_download_url: "{{ files_repo }}/kubernetes/etcd/etcd-v{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
+cni_download_url: "{{ files_repo }}/kubernetes/cni/cni-plugins-linux-{{ image_arch }}-v{{ cni_version }}.tgz"
+crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-v{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
 # If using Calico
-calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
+calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/v{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
 # If using Calico with kdd
-calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_version }}.tar.gz"
+calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/v{{ calico_version }}.tar.gz"
 # Containerd
 containerd_download_url: "{{ files_repo }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
 runc_download_url: "{{ files_repo }}/runc.{{ image_arch }}"

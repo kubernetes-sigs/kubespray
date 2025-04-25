@@ -34,6 +34,7 @@ etcd_script_dir: "{{ bin_dir }}/etcd-scripts"
 etcd_heartbeat_interval: "250"
 etcd_election_timeout: "5000"
 
+## Set level of detail for etcd exported metrics, specify 'extensive' to include histogram metrics.
 etcd_metrics: "basic"
 
 # Define in inventory to set a separate port for etcd to expose metrics on
@@ -46,18 +47,21 @@ etcd_metrics: "basic"
 etcd_extra_vars: {}
 
 # Limits
-# Limit memory only if <4GB memory on host. 0=unlimited
-# This value is only relevant when deploying etcd with `etcd_deployment_type: docker`
+## Etcd is restricted by default to 512M on systems under 4GB RAM, 512MB is not enough for much more than testing.
+## Set this if your etcd nodes have less than 4GB but you want more RAM for etcd. Set to 0 for unrestricted RAM.
+## This value is only relevant when deploying etcd with `etcd_deployment_type: docker`
 etcd_memory_limit: "{% if ansible_memtotal_mb < 4096 %}512M{% else %}0{% endif %}"
 
-# The default storage size limit is 2G.
+## Etcd has a default of 2G for its space quota. If you put a value in etcd_memory_limit which is less than
+## etcd_quota_backend_bytes, you may encounter out of memory terminations of the etcd cluster. Please check
+## etcd documentation for more information.
 # 8G is a suggested maximum size for normal environments and etcd warns at startup if the configured value exceeds it.
-# etcd_quota_backend_bytes: "2147483648"
+etcd_quota_backend_bytes: "2147483648"
 
 # Maximum client request size in bytes the server will accept.
 # etcd is designed to handle small key value pairs typical for metadata.
 # Larger requests will work, but may increase the latency of other requests
-# etcd_max_request_bytes: "1572864"
+etcd_max_request_bytes: "1572864"
 
 # Uncomment to set CPU share for etcd
 # etcd_cpu_limit: 300m
@@ -66,6 +70,7 @@ etcd_blkio_weight: 1000
 
 etcd_node_cert_hosts: "{{ groups['k8s_cluster'] }}"
 
+## Etcd auto compaction retention for mvcc key value store in hour
 etcd_compaction_retention: "8"
 
 # Force clients like etcdctl to use TLS certs (different than peer security)
@@ -75,10 +80,10 @@ etcd_secure_client: true
 etcd_peer_client_auth: true
 
 # Maximum number of snapshot files to retain (0 is unlimited)
-# etcd_max_snapshots: 5
+etcd_max_snapshots: 5
 
 # Maximum number of wal files to retain (0 is unlimited)
-# etcd_max_wals: 5
+etcd_max_wals: 5
 
 # Number of loop retries
 etcd_retries: 4
@@ -120,9 +125,11 @@ unsafe_show_logs: false
 # Enable distributed tracing
 # https://etcd.io/docs/v3.5/op-guide/monitoring/#distributed-tracing
 etcd_experimental_enable_distributed_tracing: false
-etcd_experimental_distributed_tracing_sample_rate: 100
+etcd_experimental_distributed_tracing_sample_rate: 100 # Per million spans
 etcd_experimental_distributed_tracing_address: "localhost:4317"
 etcd_experimental_distributed_tracing_service_name: etcd
 
 # The interval for etcd watch progress notify events
 etcd_experimental_watch_progress_notify_interval: 5s
+
+etcd_log_level: info

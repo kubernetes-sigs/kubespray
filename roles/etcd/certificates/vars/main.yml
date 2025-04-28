@@ -1,0 +1,46 @@
+---
+# variables which needs to be defined at task level:
+# step (one of openssl_argv_base_by_step.keys())
+# subj:
+#   CN: # mandatory
+#   O:
+#   OU:
+#   C:
+#   etc
+openssl_argv_by_step:
+  _cert:
+    - -x509
+    - "{{ [] | zip_longest(
+                x509_v3_extensions.keys() |
+                  zip( x509_v3_extensions.values() | map('join', ',')) |
+                  map('join', '=')
+                ,
+                fillvalue='-addext') }}" # x509 extensions '-addext <name=value|multivalue1,multivalue2>'
+    - -days {{ certificates_duration }}
+  csr:
+    - -newkey
+    - "{{ key_alg }}"
+    - -noenc
+    - -keyout {{ etcd_cert_dir }}/{{ cert_role }}-key.pem
+    - "{{ [] | zip_longest(
+                pkey_gen_options.keys() | zip(pkey_gen_options.values()) | map('join', ':'),
+                fillvalue='-pkeyopt') }}" # private key options: -pkeyopt <param>:<value>
+  ca:
+    - "{{ openssl_argv_by_step.csr }}"
+    - "{{ openssl_argv_by_step._cert }}"
+  sign:
+    - "{{ openssl_argv_by_step._cert }}"
+    - -in
+    - -
+    - -CA
+    - "{{ etcd_cert_dir }}/ca.pem"
+    - -CAkey
+    - "{{ etcd_cert_dir }}/ca-key.pem"
+openssl_argv:
+  - openssl
+  - req
+  - "-{{ digest_alg }}"
+  - -quiet
+  - -subj
+  - "{{ ([''] + (subj.keys() | zip(subj.values()) | map('join', '='))) | join('/') }}"
+  - "{{ openssl_argv_by_step[step] }}"

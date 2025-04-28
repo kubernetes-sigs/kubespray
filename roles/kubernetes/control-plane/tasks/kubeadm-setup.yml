@@ -234,12 +234,17 @@
 - name: Kubeadm | Join other control plane nodes
   include_tasks: kubeadm-secondary.yml
 
+- name: Kubeadm | upgrade kubernetes cluster to {{ kube_version }}
+  include_tasks: kubeadm-upgrade.yml
+  when:
+    - upgrade_cluster_setup
+    - kubeadm_already_run.stat.exists
+
 - name: Kubeadm | Trigger restart kube-apiserver
   debug:
     msg: Detected changes in kube-apiserver config files
   changed_when: true
   when:
-    - not upgrade_cluster_setup
     - kubeadm_already_run.stat.exists
     - >
       apiserver_audit_policy_update.changed or
@@ -248,12 +253,6 @@
       apiserver_admission_control_config_update.changed or
       apiserver_admission_control_plugin_config_update.changed
   notify: Control plane | Restart apiserver
-
-- name: Kubeadm | upgrade kubernetes cluster to {{ kube_version }}
-  include_tasks: kubeadm-upgrade.yml
-  when:
-    - upgrade_cluster_setup
-    - kubeadm_already_run.stat.exists
 
 # FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
 - name: Kubeadm | Remove taint for control plane node with node role

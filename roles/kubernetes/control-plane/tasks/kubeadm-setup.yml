@@ -60,6 +60,7 @@
     src: apiserver-audit-policy.yaml.j2
     dest: "{{ audit_policy_file }}"
     mode: "0640"
+  register: apiserver_audit_policy_update
   when: kubernetes_audit or kubernetes_audit_webhook
 
 - name: Write api audit webhook config yaml
@@ -67,6 +68,7 @@
     src: apiserver-audit-webhook-config.yaml.j2
     dest: "{{ audit_webhook_config_file }}"
     mode: "0640"
+  register: apiserver_audit_webhook_config_update
   when: kubernetes_audit_webhook
 
 - name: Create apiserver tracing config directory
@@ -81,6 +83,7 @@
     src: apiserver-tracing.yaml.j2
     dest: "{{ kube_config_dir }}/tracing/apiserver-tracing.yaml"
     mode: "0640"
+  register: apiserver_tracing_config_update
   when: kube_apiserver_tracing
 
 # Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
@@ -108,6 +111,7 @@
     src: "admission-controls.yaml.j2"
     dest: "{{ kube_config_dir }}/admission-controls/admission-controls.yaml"
     mode: "0640"
+  register: apiserver_admission_control_config_update
   when: kube_apiserver_admission_control_config_file
 
 - name: Kubeadm | Push admission control config files
@@ -115,6 +119,7 @@
     src: "{{ item | lower }}.yaml.j2"
     dest: "{{ kube_config_dir }}/admission-controls/{{ item | lower }}.yaml"
     mode: "0640"
+  register: apiserver_admission_control_plugin_config_update
   when:
     - kube_apiserver_admission_control_config_file
     - item in kube_apiserver_admission_plugins_needs_configuration
@@ -228,6 +233,21 @@
 
 - name: Kubeadm | Join other control plane nodes
   include_tasks: kubeadm-secondary.yml
+
+- name: Kubeadm | Trigger restart kube-apiserver
+  debug:
+    msg: Detected changes in kube-apiserver config files
+  changed_when: true
+  when:
+    - not upgrade_cluster_setup
+    - kubeadm_already_run.stat.exists
+    - >
+      apiserver_audit_policy_update.changed or
+      apiserver_audit_webhook_config_update.changed or
+      apiserver_tracing_config_update.changed or
+      apiserver_admission_control_config_update.changed or
+      apiserver_admission_control_plugin_config_update.changed
+  notify: Control plane | Restart apiserver
 
 - name: Kubeadm | upgrade kubernetes cluster to {{ kube_version }}
   include_tasks: kubeadm-upgrade.yml

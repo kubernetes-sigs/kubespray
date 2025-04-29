@@ -19,3 +19,37 @@
   when:
     - ubuntu_kernel_unattended_upgrades_disabled
     - unattended_upgrades_file_stat.stat.exists
+
+- name: Full disable auto unattended upgrades
+  when: ubuntu_auto_upgrades_disabled
+  block:
+    - name: Stop and disable unattended-upgrades service
+      service:
+        name: unattended-upgrades
+        state: stopped
+        enabled: false
+
+    - name: Check auto-upgrades file exist
+      stat:
+        path: /etc/apt/apt.conf.d/20auto-upgrades
+      register: auto_upgrades_file_stat
+
+    - name: Disable update-package-lists
+      lineinfile:
+        path: "{{ auto_upgrades_file_stat.stat.path }}"
+        regexp: "^APT::Periodic::Update-Package-Lists .*"
+        line: "APT::Periodic::Update-Package-Lists \"0\";"
+        state: present
+      become: true
+      when:
+        - auto_upgrades_file_stat.stat.exists
+
+    - name: Disable unattended-upgrade
+      lineinfile:
+        path: "{{ auto_upgrades_file_stat.stat.path }}"
+        regexp: "^APT::Periodic::Unattended-Upgrade .*"
+        line: "APT::Periodic::Unattended-Upgrade \"0\";"
+        state: present
+      become: true
+      when:
+        - auto_upgrades_file_stat.stat.exists

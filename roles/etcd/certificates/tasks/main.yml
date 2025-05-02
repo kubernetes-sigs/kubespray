@@ -25,7 +25,6 @@
       get_checksum: false
       get_mime: false
     register: ca_key
-    changed_when: not ca_key.stat.exists
   - name: Get CA cert
     slurp:
       src: "{{ etcd_cert_dir }}/ca.pem"
@@ -34,26 +33,18 @@
       or ca_settings.public_key_type | lower != key_alg
     # TODO: more settings invalidate the CA
     vars:
-      ca_settings: "{{ ca | b64decode | community.crypto.x509_certificate_info }}"
+      ca_settings: "{{ etcd_ca_base64.content | b64decode | community.crypto.x509_certificate_info }}"
 
     failed_when: false
     register: etcd_ca_base64
   - name: Generate CA
-    when: ca_key is changed or etcd_ca_base64 is changed
+    when: not ca_key.stat.exists or etcd_ca_base64 is changed or openssl_conf is changed
     # TODO -> move to role defaults/
     vars:
       cert_role: ca
       step: ca
       subj:
         CN: etcd-ca
-      x509_v3_extensions:
-        basicConstraints:
-        - critical
-        - 'CA:TRUE'
-        - 'pathlen:0'
-        keyUsage:
-        - critical
-        - keyCertSign
         # - cRLSign # we don't use this because the PKI is fully controlled by kubespray
         # revocation/invalidation happens by changing the root CA, not CRL
     command:
@@ -61,15 +52,8 @@
     register: etcd_ca
 
 - name: Etcd PKI - clients
-  when: >
-    # nodes using etcd directly
-    (kube_network_plugin == "calico" and calico_datastore == "etcd") or
-    kube_network_plugin in ["flannel", "cilium"] or
-    cilium_deploy_additionally or
-    # control plane
-    'kube_control_plane' in group_names
   vars:
-    ca: "{{ (etcd_ca_base64.content | b64decode) if etcd_ca_base64 is success else etcd_ca.stdout }}"
+    ca: "{{ (etcd_ca_base64.content | b64decode) if etcd_ca is skipped else etcd_ca.stdout }}"
   block:
   - name: Propagate etcd CA on etcd member and clients
     ansible.builtin.copy:
@@ -82,57 +66,34 @@
       src: "{{ etcd_cert_dir }}/{{ item }}.pem"
     vars:
       cert_role_by_group:
-        etcd: ['admin', 'member']
+        etcd: ['client', 'member']
         k8s_cluster: ['client']
-      cert_info: "{{ etcd_client_certificate | b64decode | community.crypo.x509_certificate_info }}"
+      cert_info: "{{ etcd_client_certificate.content | b64decode | community.crypto.x509_certificate_info }}"
       ca_info: "{{ ca | community.crypto.x509_certificate_info }}"
       asn1_time_fmt: '%Y%m%d%H%M%S%z'
     loop: "{{ cert_role_by_group | dict2items | selectattr('key', 'in', group_names) | map(attribute='value') | flatten }}"
     register: etcd_client_certificate
     failed_when: false
     # TODO more customization of when a certificate should be regenerated
-    # this handle:
+    #
+    # Currently, handle:
     # - cert does not exist
     # - cert expired or near expiration
     # - certificate authority changed (using serial number)
     changed_when: >
-      # no certificate
       etcd_client_certificate is failed or
-      # certificate expired or will soon be
       (now().astimezone() - (cert_info.notAfter | ansible.builtin.to_datetime(asn1_time_fmt))) <
       (({'days': certificates_duration} | timedelta) / 5) or
-      # CA changed
       cert_info.authority_cert_serial_number != ca_info.serial_number
 
   - name: Etcd | Client certificates
     vars:
-      ext_by_role:
-        member:
-          keyUsage:
-          - digitalSignature
-          - keyEncipherment
-          extendedKeyUsage:
-          - clientAuth
-          - serverAuth
-        client:
-          keyUsage:
-          - digitalSignature
-          - keyEncipherment
-          extendedKeyUsage:
-          - clientAuth
-        server:
-          keyUsage:
-          - digitalSignature
-          - keyEncipherment
-          extendedKeyUsage:
-          - serverAuth
-      x509_v3_extensions: "{{ ext_by_role[cert_role] }}"
+      subj:
+        CN: "etcd-{{ cert_role }}"
     block:
     - name: Etcd | Generate certificate request
       vars:
         step: csr
-        subj:
-          CN: "etcd-{{ cert_role }}"
       command:
         argv: "{{ openssl_argv | flatten }}"
       register: etcd_client_certificate_request
@@ -142,18 +103,19 @@
 
     - name: Etcd | Sign certificate request
       vars:
-        step: sign
         cert_role: "{{ item.cert_role }}"
       delegate_to: "{{ groups['etcd'][0] }}"
       loop: "{{ etcd_client_certificate_request.results }}"
       register: etcd_client_certificate
       command:
-        argv: "{{ openssl_argv | flatten }}"
+        argv: "{{ openssl_argv_ca | flatten }}"
         stdin: "{{ item.stdout }}"
+      loop_control:
+        label: "{{ item.cert_role }}"
 
   - name: Etcd client | Copy certificate
-    loop: "{{ etcd_client_certificate.results }}"
+    loop: "{{ etcd_client_certificate.results | map(attribute='item') }}"
     ansible.builtin.copy:
       content: "{{ item.stdout }}"
-      dest: "{{ etcd_cert_dir }}/{{ item.item }}.pem"
+      dest: "{{ etcd_cert_dir }}/{{ item.cert_role }}.pem"
       mode: "0644"

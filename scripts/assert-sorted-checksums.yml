@@ -1,6 +1,6 @@
 #!/usr/bin/env ansible-playbook
 ---
-- name: Check all checksums are sorted by version
+- name: Verify correct structure of Kubespray variables
   hosts: localhost
   connection: local
   gather_facts: false
@@ -36,3 +36,16 @@
     - (item.1.value | dict2items)[0].value is string or
       (item.1.value | dict2items)[0].value is number
     # only do list, the others are checksums with a different structure
+  - name: Include the packages list variable
+    include_vars: ../roles/kubernetes/preinstall/vars/main.yml
+
+  - name: Verify that the packages list is sorted
+    vars:
+      pkgs_lists: "{{ pkgs.keys() | list }}"
+      ansible_distribution: irrelevant
+      ansible_distribution_major_version: irrelevant
+      ansible_distribution_minor_version: irrelevant
+      ansible_os_family: irrelevant
+    assert:
+      that: "pkgs_lists | sort == pkgs_lists"
+      fail_msg: "pkgs is not sorted: {{ pkgs_lists | ansible.utils.fact_diff(pkgs_lists | sort) }}"

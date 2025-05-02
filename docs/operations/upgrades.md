@@ -84,7 +84,7 @@ If you don't want to upgrade all nodes in one run, you can use `--limit` [patter
 Before using `--limit` run playbook `facts.yml` without the limit to refresh facts cache for all nodes:
 
 ```ShellSession
-ansible-playbook facts.yml -b -i inventory/sample/hosts.ini
+ansible-playbook playbooks/facts.yml -b -i inventory/sample/hosts.ini
 ```
 
 After this upgrade control plane and etcd groups [#5147](https://github.com/kubernetes-sigs/kubespray/issues/5147):

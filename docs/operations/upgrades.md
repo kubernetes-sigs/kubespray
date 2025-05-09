@@ -15,7 +15,6 @@ versions. Here are all version vars for each component:
 * calico_cni_version
 * weave_version
 * flannel_version
-* kubedns_version
 
 > **Warning**
 > [Attempting to upgrade from an older release straight to the latest release is unsupported and likely to break something](https://github.com/kubernetes-sigs/kubespray/issues/3849#issuecomment-451386515)

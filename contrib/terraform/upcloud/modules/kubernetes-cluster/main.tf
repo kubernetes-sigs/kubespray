@@ -10,6 +10,20 @@ locals {
     ]
   ])
 
+  lb_targets = flatten([
+    for lb_name, lb in upcloud_loadbalancer.lb : [
+      for target_name, target in var.loadbalancers[lb_name].targets : {
+        name              = target_name
+        loadbalancer_name = lb_name
+        loadbalancer_id   = lb.id
+        listen_public     = target.listen_public
+        listen_private    = target.listen_private
+        proxy_protocol    = target.proxy_protocol
+        port              = target.port
+      }
+    ]
+  ])
+
   lb_backend_servers = flatten([
     for lb_name, loadbalancer in var.loadbalancers : [
       for backend_server in loadbalancer.backend_servers : {

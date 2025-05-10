@@ -1,8 +1,13 @@
 ---
 .molecule:
   tags: [ffci]
-  only: [/^pr-.*$/]
-  except: ['triggers']
+  rules: # run on ci-short as well
+  - if: $CI_COMMIT_BRANCH =~ /^pr-.*$/
+    when: on_success
+  - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_PIPELINE_SCHEDULE_DESCRIPTION == "daily-ci"
+    when: on_success
+  - when: manual
+    allow_failure: true
   stage: deploy-part1
   image: $PIPELINE_IMAGE
   needs:
@@ -31,23 +36,17 @@ molecule:
       - bastion-ssh-config
       - bootstrap-os
 
-# CI template for periodic CI jobs
-# Enabled when PERIODIC_CI_ENABLED var is set
 molecule_full:
-  only:
-    variables:
-    - $PERIODIC_CI_ENABLED
   allow_failure: true
+  rules:
+  - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_PIPELINE_SCHEDULE_DESCRIPTION == "daily-ci"
+    when: on_success
+  - when: manual
+    allow_failure: true
   extends: molecule
   parallel:
     matrix:
     - ROLE:
-      - container-engine/cri-dockerd
-      - container-engine/containerd
-      - container-engine/cri-o
-      - adduser
-      - bastion-ssh-config
-      - bootstrap-os
       # FIXME : tests below are perma-failing
       - container-engine/kata-containers
       - container-engine/gvisor

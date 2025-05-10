@@ -62,7 +62,7 @@ The following tags are defined in playbooks:
 | aws-ebs-csi-driver             | Configuring csi driver: aws-ebs                       |
 | azure-csi-driver               | Configuring csi driver: azure                         |
 | bastion                        | Setup ssh config for bastion                          |
-| bootstrap-os                   | Anything related to host OS configuration             |
+| bootstrap_os                   | Anything related to host OS configuration             |
 | calico                         | Network plugin Calico                                 |
 | calico_rr                      | Configuring Calico route reflector                    |
 | cert-manager                   | Configuring certificate manager for K8s               |
@@ -167,7 +167,7 @@ Example command to filter and apply only DNS configuration tasks and skip
 everything else related to host OS configuration and downloading images of containers:
 
 ```ShellSession
-ansible-playbook -i inventory/sample/hosts.ini cluster.yml --tags preinstall,facts --skip-tags=download,bootstrap-os
+ansible-playbook -i inventory/sample/hosts.ini cluster.yml --tags preinstall,facts --skip-tags=download,bootstrap_os
 ```
 
 And this play only removes the K8s cluster DNS resolver IP from hosts' /etc/resolv.conf files:

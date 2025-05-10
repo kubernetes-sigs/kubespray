@@ -1,14 +1,7 @@
 ---
-- name: Cilium | Start Resources
-  kube:
-    name: "{{ item.item.name }}"
-    namespace: "kube-system"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/{{ item.item.name }}-{{ item.item.file }}"
-    state: "latest"
-  loop: "{{ cilium_node_manifests.results }}"
-  when: inventory_hostname == groups['kube_control_plane'][0] and not item is skipped
+- name: Cilium | Install
+  command: "{{ bin_dir }}/cilium install --version {{ cilium_version }} -f {{ kube_config_dir }}/cilium-values.yaml"
+  when: inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Cilium | Wait for pods to run
   command: "{{ kubectl }} -n kube-system get pods -l k8s-app=cilium -o jsonpath='{.items[?(@.status.containerStatuses[0].ready==false)].metadata.name}'"  # noqa literal-compare
@@ -18,19 +11,6 @@
   delay: "{{ cilium_rolling_restart_wait_retries_delay_seconds | int }}"
   failed_when: false
   when: inventory_hostname == groups['kube_control_plane'][0]
-
-- name: Cilium | Hubble install
-  kube:
-    name: "{{ item.item.name }}"
-    namespace: "kube-system"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/addons/hubble/{{ item.item.name }}-{{ item.item.file }}"
-    state: "latest"
-  loop: "{{ cilium_hubble_manifests.results }}"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0] and not item is skipped
-    - cilium_enable_hubble and cilium_hubble_install
 
 - name: Cilium | Wait for CiliumLoadBalancerIPPool CRD to be present
   command: "{{ kubectl }} wait --for condition=established --timeout=60s crd/ciliumloadbalancerippools.cilium.io"

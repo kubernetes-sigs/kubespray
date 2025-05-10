@@ -180,7 +180,7 @@ and ``kube_pods_subnet``, for example from the ``172.18.0.0/16``.
 
 IPv4 stack enable by *ipv4_stack* is set to ``true``, by default.
 IPv6 stack enable by *ipv6_stack* is set to ``false`` by default.
-This will use the default IPv4 and IPv6 subnets specified in the defaults file in the ``kubespray-defaults`` role, unless overridden of course. The default config will give you room for up to 256 nodes with 126 pods per node, and up to 4096 services.
+This will use the default IPv4 and IPv6 subnets specified in the defaults file in the ``kubespray_defaults`` role, unless overridden of course. The default config will give you room for up to 256 nodes with 126 pods per node, and up to 4096 services.
 Set both variables to ``true`` for Dual Stack mode.
 IPv4 has higher priority in Dual Stack mode(e.g. in variables `main_ip`, `main_access_ip` and other).
 You can also make IPv6 only clusters with ``false`` in *ipv4_stack*.

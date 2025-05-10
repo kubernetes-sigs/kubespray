@@ -136,7 +136,7 @@ If you use the settings like the one above, you'll need to define in your invent
 
 * `registry_host`: Container image registry. If you _don't_ use the same repository path for the container images that
   the ones defined
-  in [kubesprays-defaults's role defaults](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubespray-defaults/defaults/main/download.yml)
+  in [kubesprays-defaults's role defaults](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubespray_defaults/defaults/main/download.yml)
   , you need to override the `*_image_repo` for these container images. If you want to make your life easier, use the
   same repository path, you won't have to override anything else.
 * `registry_addr`: Container image registry, but only have [domain or ip]:[port].

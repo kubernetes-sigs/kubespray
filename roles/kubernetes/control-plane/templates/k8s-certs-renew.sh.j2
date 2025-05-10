@@ -1,7 +1,29 @@
 #!/bin/bash
 
 echo "## Expiration before renewal ##"
-{{ bin_dir }}/kubeadm certs check-expiration
+expiry_soon=1 # default as True
+expiry_threshold={{ auto_renew_certificates_threshold_seconds }}
+if { ! {{ bin_dir }}/kubeadm certs check-expiration -o json >/dev/null 2>&1; } || [[ "$expiry_threshold" -eq 0 ]]; then
+	# older kubeadm does not supporting --output or --experimental-output
+	echo "Skip expiry comparsion,  due to kubeadm version is too old, or auto_renew_certificates_threshold_seconds was set to 0 "
+	{{ bin_dir }}/kubeadm certs check-expiration
+else
+	expiry_soon=0
+	residual_times=$({{ bin_dir }}/kubeadm certs check-expiration -o jsonpath="{.certificates[*].residualTime}" | awk '{for(i=1;i<=NF;i++) {printf "%.0f ", $i}}')
+	# above "awk" is to transform the scientific notation output by jsonpath
+	for rt in ${residual_times}; do
+		if [ "${rt}" -le "${expiry_threshold}" ]; then
+			expiry_soon=1
+			break
+		fi
+	done
+fi
+
+
+if [ "${expiry_soon}" -eq 0 ]; then
+	echo "Skip cert renew and K8S container restart, since all residualTimes are beyond threshold ($expiry_threshold sec)"
+	exit 0
+fi
 
 echo "## Renewing certificates managed by kubeadm ##"
 {{ bin_dir }}/kubeadm certs renew all

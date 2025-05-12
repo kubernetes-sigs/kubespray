@@ -60,16 +60,16 @@
     src: apiserver-audit-policy.yaml.j2
     dest: "{{ audit_policy_file }}"
     mode: "0640"
-  register: apiserver_audit_policy_update
   when: kubernetes_audit or kubernetes_audit_webhook
+  notify: Control plane | Restart apiserver
 
 - name: Write api audit webhook config yaml
   template:
     src: apiserver-audit-webhook-config.yaml.j2
     dest: "{{ audit_webhook_config_file }}"
     mode: "0640"
-  register: apiserver_audit_webhook_config_update
   when: kubernetes_audit_webhook
+  notify: Control plane | Restart apiserver
 
 - name: Create apiserver tracing config directory
   file:
@@ -83,8 +83,8 @@
     src: apiserver-tracing.yaml.j2
     dest: "{{ kube_config_dir }}/tracing/apiserver-tracing.yaml"
     mode: "0640"
-  register: apiserver_tracing_config_update
   when: kube_apiserver_tracing
+  notify: Control plane | Restart apiserver
 
 # Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
 - name: Set kubeadm_config_api_fqdn define
@@ -111,19 +111,19 @@
     src: "admission-controls.yaml.j2"
     dest: "{{ kube_config_dir }}/admission-controls/admission-controls.yaml"
     mode: "0640"
-  register: apiserver_admission_control_config_update
   when: kube_apiserver_admission_control_config_file
+  notify: Control plane | Restart apiserver
 
 - name: Kubeadm | Push admission control config files
   template:
     src: "{{ item | lower }}.yaml.j2"
     dest: "{{ kube_config_dir }}/admission-controls/{{ item | lower }}.yaml"
     mode: "0640"
-  register: apiserver_admission_control_plugin_config_update
   when:
     - kube_apiserver_admission_control_config_file
     - item in kube_apiserver_admission_plugins_needs_configuration
   loop: "{{ kube_apiserver_enable_admission_plugins }}"
+  notify: Control plane | Restart apiserver
 
 - name: Kubeadm | Check apiserver.crt SANs
   vars:
@@ -239,20 +239,6 @@
   when:
     - upgrade_cluster_setup
     - kubeadm_already_run.stat.exists
-
-- name: Kubeadm | Trigger restart kube-apiserver
-  debug:
-    msg: Detected changes in kube-apiserver config files
-  changed_when: true
-  when:
-    - kubeadm_already_run.stat.exists
-    - >
-      apiserver_audit_policy_update.changed or
-      apiserver_audit_webhook_config_update.changed or
-      apiserver_tracing_config_update.changed or
-      apiserver_admission_control_config_update.changed or
-      apiserver_admission_control_plugin_config_update.changed
-  notify: Control plane | Restart apiserver
 
 # FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
 - name: Kubeadm | Remove taint for control plane node with node role

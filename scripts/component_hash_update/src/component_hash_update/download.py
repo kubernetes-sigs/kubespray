@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # After a new version of Kubernetes has been released,
-# run this script to update roles/kubespray-defaults/defaults/main/download.yml
+# run this script to update roles/kubespray_defaults/defaults/main/download.yml
 # with new hashes.
 
 import sys
@@ -25,7 +25,7 @@ from typing import Optional, Any
 
 from . import components
 
-CHECKSUMS_YML = Path("roles/kubespray-defaults/defaults/main/checksums.yml")
+CHECKSUMS_YML = Path("roles/kubespray_defaults/defaults/main/checksums.yml")
 
 logger = logging.getLogger(__name__)
 

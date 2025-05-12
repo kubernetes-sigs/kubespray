@@ -31,7 +31,7 @@ manage-offline-container-images.sh   register
 
 ## generate_list.sh
 
-This script generates the list of downloaded files and the list of container images by `roles/kubespray-defaults/defaults/main/download.yml` file.
+This script generates the list of downloaded files and the list of container images by `roles/kubespray_defaults/defaults/main/download.yml` file.
 
 Run this script will execute `generate_list.yml` playbook in kubespray root directory and generate four files,
 all downloaded files url in files.list, all container images in images.list, jinja2 templates in *.template.

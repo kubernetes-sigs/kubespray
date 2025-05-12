@@ -81,38 +81,19 @@ Default runtime can be changed by setting `containerd_default_runtime`.
 #### Base runtime specs and limiting number of open files
 
 `base_runtime_spec` key in a runtime dictionary is used to explicitly
-specify a runtime spec json file. `runc` runtime has it set to `cri-base.json`,
-which is generated with `ctr oci spec > /etc/containerd/cri-base.json` and
-updated to include a custom setting for maximum number of file descriptors per
-container.
+specify a runtime spec JSON file. The default `runc` runtime uses `cri-base.json`, generated with `ctr oci spec`, and patched by Kubespray to include a file descriptor limit (`RLIMIT_NOFILE`).
 
-You can change maximum number of file descriptors per container for the default
-`runc` runtime by setting the `containerd_base_runtime_spec_rlimit_nofile`
-variable.
+##### RLIMIT_NOFILE Configuration
 
-You can tune many more [settings][runtime-spec] by supplying your own file name and content with `containerd_base_runtime_specs`:
+To change the maximum number of open file descriptors (`RLIMIT_NOFILE`) per container for the default `runc` runtime, set the following variable in your inventory:
 
 ```yaml
-containerd_base_runtime_specs:
-  cri-spec-custom.json: |
-    {
-      "ociVersion": "1.1.0",
-      "process": {
-        "user": {
-          "uid": 0,
-    ...
+containerd_base_runtime_spec_rlimit_nofile: 102400
 ```
 
-The files in this dict will be placed in containerd config directory,
-`/etc/containerd` by default. The files can then be referenced by filename in a
-runtime:
-
-```yaml
-containerd_runc_runtime:
-  name: runc
-  base_runtime_spec: cri-spec-custom.json
-  ...
-```
+- **Default value:** `65535`
+- **Default location:** `inventory/group_vars/all/containerd.yml`
+- This variable is used to dynamically patch the base runtime spec unless you manually override `containerd_default_base_runtime_spec_patch`.
 
 Config insecure-registry access to self hosted registries.
 

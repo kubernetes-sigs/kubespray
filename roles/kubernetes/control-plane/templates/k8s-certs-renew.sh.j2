@@ -1,27 +1,28 @@
 #!/bin/bash
 
-echo "## Expiration before renewal ##"
-expiry_soon=1 # default as True
-expiry_threshold={{ auto_renew_certificates_threshold_seconds }}
-if { ! {{ bin_dir }}/kubeadm certs check-expiration -o json >/dev/null 2>&1; } || [[ "$expiry_threshold" -eq 0 ]]; then
-	# older kubeadm does not supporting --output or --experimental-output
-	echo "Skip expiry comparsion,  due to kubeadm version is too old, or auto_renew_certificates_threshold_seconds was set to 0 "
+echo "## Check Expiration before renewal ##"
+
+do_renew=1 # default: always do renewal
+days_buffer=7 # set a time margin, should not renew at the last moment
+calendar={{ auto_renew_certificates_systemd_calendar }}
+next_time=$(systemd-analyze calendar "${calendar}" | grep '^ *Next elapse:' | awk -F': ' '{print $2}')
+# or `systemctl show k8s-certs-renew.timer  -p NextElapseUSecRealtime --value`
+
+if [ "${next_time}" == ""]; then
+	echo "Skip expiry comparison due to fail to parse next elapse from systemd calendar"
 	{{ bin_dir }}/kubeadm certs check-expiration
 else
-	expiry_soon=0
-	residual_times=$({{ bin_dir }}/kubeadm certs check-expiration -o jsonpath="{.certificates[*].residualTime}" | awk '{for(i=1;i<=NF;i++) {printf "%.0f ", $i}}')
-	# above "awk" is to transform the scientific notation output by jsonpath
-	for rt in ${residual_times}; do
-		if [ "${rt}" -le "${expiry_threshold}" ]; then
-			expiry_soon=1
-			break
-		fi
-	done
+	current_time=$(date +%s)
+	target_time=$(date -d "${next_time} + ${days_buffer} days" +%s) # $next_time - $days_buffer days
+	expiry_threshold=$(( ${target_time} - ${current_time} ))
+	expired_certs=$({{ bin_dir }}/kubeadm certs check-expiration -o jsonpath="{.certificates[?(@.residualTime<${expiry}.0)]}")
+    if [ "${expired_certs}" == "" ];then
+		do_renew=0 # no need to do renew this time.
+	fi
 fi
 
-
-if [ "${expiry_soon}" -eq 0 ]; then
-	echo "Skip cert renew and K8S container restart, since all residualTimes are beyond threshold ($expiry_threshold sec)"
+if [ "${do_renew}" -eq 0 ]; then
+	echo "Skip cert renew and K8S container restart, since all residualTimes are beyond threshold"
 	exit 0
 fi
 

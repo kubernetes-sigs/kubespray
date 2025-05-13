@@ -1,4 +1,4 @@
-# bootstrap-os
+# bootstrap_os
 
 Bootstrap an Ansible host to be able to run Ansible modules.
 
@@ -49,7 +49,7 @@ Remember to disable fact gathering since Python might not be present on hosts.
   gather_facts: false  # not all hosts might be able to run modules yet
   roles:
     - kubespray_defaults
-    - bootstrap-os
+    - bootstrap_os
 ```
 
 ## License

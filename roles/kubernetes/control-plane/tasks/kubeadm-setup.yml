@@ -171,22 +171,32 @@
     - not kube_external_ca_mode
 
 - name: Kubeadm | Initialize first control plane node
-  command: >-
-    timeout -k {{ kubeadm_init_timeout }} {{ kubeadm_init_timeout }}
-    {{ bin_dir }}/kubeadm init
-    --config={{ kube_config_dir }}/kubeadm-config.yaml
-    --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
-    --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
-    {{ kube_external_ca_mode | ternary('', '--upload-certs') }}
-  register: kubeadm_init
-  # Retry is because upload config sometimes fails
-  retries: 3
-  until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
   when: inventory_hostname == first_kube_control_plane and not kubeadm_already_run.stat.exists
-  failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
+  vars:
+    kubeadm_init_first_control_plane_cmd: >-
+      timeout -k {{ kubeadm_init_timeout }} {{ kubeadm_init_timeout }}
+      {{ bin_dir }}/kubeadm init
+      --config={{ kube_config_dir }}/kubeadm-config.yaml
+      --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
+      --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
+      {{ kube_external_ca_mode | ternary('', '--upload-certs') }}
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Control plane | restart kubelet
+  block:
+    - name: Kubeadm | Initialize first control plane node (1st try)
+      command: "{{ kubeadm_init_first_control_plane_cmd }}"
+      register: kubeadm_init
+      failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
+  rescue:
+    # Retry is because upload config sometimes fails
+    # This retry task is separated from 1st task to show log of failure of 1st task.
+    - name: Kubeadm | Initialize first control plane node (retry)
+      command: "{{ kubeadm_init_first_control_plane_cmd }}"
+      register: kubeadm_init
+      retries: 2
+      until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
+      failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
 
 - name: Set kubeadm certificate key
   set_fact:

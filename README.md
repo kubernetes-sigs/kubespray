@@ -111,7 +111,7 @@ Note:
 <!-- BEGIN ANSIBLE MANAGED BLOCK -->
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.32.4
+  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.32.5
   - [etcd](https://github.com/etcd-io/etcd) 3.5.16
   - [docker](https://www.docker.com/) 28.0
   - [containerd](https://containerd.io/) 2.0.5

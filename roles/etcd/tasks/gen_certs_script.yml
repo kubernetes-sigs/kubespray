@@ -98,28 +98,6 @@
   loop_control:
     label: "{{ item.item }}"
 
-# This is a hack around the fact kubeadm expect the same certs path on all kube_control_plane
-# TODO: fix certs generation to have the same file everywhere
-# OR work with kubeadm on node-specific config
-- name: Gen_certs | Pretend all control plane have all certs (with symlinks)
-  file:
-    state: link
-    src: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}{{ item[0] }}.pem"
-    dest: "{{ etcd_cert_dir }}/node-{{ item[1] }}{{ item[0] }}.pem"
-    mode: "0640"
-  loop: "{{ suffixes | product(groups['kube_control_plane']) }}"
-  vars:
-    suffixes:
-      - ''
-      - '-key'
-  when:
-    - ('kube_control_plane' in group_names)
-    - item[1] != inventory_hostname
-  register: symlink_created
-  failed_when:
-    - symlink_created is failed
-    - ('refusing to convert from file to symlink' not in symlink_created.msg)
-
 - name: Gen_certs | Gather node certs from first etcd node
   slurp:
     src: "{{ item }}"
@@ -175,3 +153,25 @@
     owner: "{{ etcd_owner }}"
     mode: "{{ etcd_cert_dir_mode }}"
     recurse: true
+
+# This is a hack around the fact kubeadm expect the same certs path on all kube_control_plane
+# TODO: fix certs generation to have the same file everywhere
+# OR work with kubeadm on node-specific config
+- name: Gen_certs | Pretend all control plane have all certs (with symlinks)
+  file:
+    state: link
+    src: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}{{ item[0] }}.pem"
+    dest: "{{ etcd_cert_dir }}/node-{{ item[1] }}{{ item[0] }}.pem"
+    mode: "0640"
+  loop: "{{ suffixes | product(groups['kube_control_plane']) }}"
+  vars:
+    suffixes:
+      - ''
+      - '-key'
+  when:
+    - ('kube_control_plane' in group_names)
+    - item[1] != inventory_hostname
+  register: symlink_created
+  failed_when:
+    - symlink_created is failed
+    - ('refusing to convert from file to symlink' not in symlink_created.msg)

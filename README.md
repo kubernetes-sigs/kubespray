@@ -5,7 +5,7 @@
 If you have questions, check the documentation at [kubespray.io](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 You can get your invite [here](http://slack.k8s.io/)
 
-- Can be deployed on **[AWS](docs/cloud_providers/aws.md), GCE, [Azure](docs/cloud_providers/azure.md), [OpenStack](docs/cloud_controllers/openstack.md), [vSphere](docs/cloud_controllers/vsphere.md), [Equinix Metal](docs/cloud_providers/equinix-metal.md) (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
+- Can be deployed on **[AWS](docs/cloud_providers/aws.md), GCE, [Azure](docs/cloud_providers/azure.md), [OpenStack](docs/cloud_controllers/openstack.md), [vSphere](docs/cloud_controllers/vsphere.md), Oracle Cloud Infrastructure (Experimental), or Baremetal**
 - **Highly available** cluster
 - **Composable** (Choice of the network plugin for instance)
 - Supports most popular **Linux distributions**
@@ -72,7 +72,6 @@ vagrant up
 - [Fedora CoreOS bootstrap](docs/operating_systems/fcos.md)
 - [openSUSE setup](docs/operating_systems/opensuse.md)
 - [Downloaded artifacts](docs/advanced/downloads.md)
-- [Equinix Metal](docs/cloud_providers/equinix-metal.md)
 - [OpenStack](docs/cloud_controllers/openstack.md)
 - [vSphere](docs/cloud_controllers/vsphere.md)
 - [Large deployments](docs/operations/large-deployments.md)
@@ -193,7 +192,7 @@ You can choose among ten network plugins. (default: `calico`, except Vagrant use
 
 - [multus](docs/CNI/multus.md): Multus is a meta CNI plugin that provides multiple network interface support to pods. For each interface Multus delegates CNI calls to secondary CNI plugins such as Calico, macvlan, etc.
 
-- [custom_cni](roles/network-plugin/custom_cni/) : You can specify some manifests that will be applied to the clusters to bring you own CNI and use non-supported ones by Kubespray.
+- [custom_cni](roles/network_plugin/custom_cni/) : You can specify some manifests that will be applied to the clusters to bring you own CNI and use non-supported ones by Kubespray.
   See `tests/files/custom_cni/README.md` and `tests/files/custom_cni/values.yaml`for an example with a CNI provided by a Helm Chart.
 
 The network plugin to use is defined by the variable `kube_network_plugin`. There is also an
@@ -208,7 +207,6 @@ See also [Network checker](docs/advanced/netcheck.md).
 
 ## Community docs and resources
 
-- [kubernetes.io/docs/setup/production-environment/tools/kubespray/](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/)
 - [kubespray, monitoring and logging](https://github.com/gregbkr/kubernetes-kargo-logging-monitoring) by @gregbkr
 - [Deploy Kubernetes w/ Ansible & Terraform](https://rsmitty.github.io/Terraform-Ansible-Kubernetes/) by @rsmitty
 - [Deploy a Kubernetes Cluster with Kubespray (video)](https://www.youtube.com/watch?v=CJ5G4GpqDy0)
@@ -223,6 +221,6 @@ See also [Network checker](docs/advanced/netcheck.md).
 
 [![Build graphs](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/badges/master/pipeline.svg)](https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray/-/pipelines)
 
-CI/end-to-end tests sponsored by: [CNCF](https://cncf.io), [Equinix Metal](https://metal.equinix.com/), [OVHcloud](https://www.ovhcloud.com/), [ELASTX](https://elastx.se/).
+CI/end-to-end tests sponsored by: [CNCF](https://cncf.io), [ELASTX](https://elastx.se/).
 
 See the [test matrix](docs/developers/test_cases.md) for details.

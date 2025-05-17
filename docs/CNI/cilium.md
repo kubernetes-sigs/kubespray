@@ -359,7 +359,7 @@ To validate that Hubble UI is properly configured, set up a port forwarding for 
 kubectl port-forward -n kube-system svc/hubble-ui 12000:80
 ```
 
-and then open [http://localhost:12000/](http://localhost:12000/).
+and then open <http://localhost:12000/>.
 
 ## Hubble metrics
 
@@ -384,7 +384,7 @@ Cilium relies on the kernel's BPF support, which is extremely fast at runtime bu
 
 As a result, the Cilium DaemonSet pods can take a significant time to start, which scales with the number of nodes and endpoints in your cluster.
 
-As part of cluster.yml, this DaemonSet is restarted, and Kubespray's [default timeouts for this operation](../roles/network_plugin/cilium/defaults/main.yml)
+As part of cluster.yml, this DaemonSet is restarted, and Kubespray's [default timeouts for this operation](../../roles/network_plugin/cilium/defaults/main.yml)
 are not appropriate for large clusters.
 
 This means that you will likely want to update these timeouts to a value more in-line with your cluster's number of nodes and their respective CPU performance.

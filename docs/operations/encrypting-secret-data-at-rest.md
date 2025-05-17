@@ -19,4 +19,4 @@ Alternatively you can use the values `identity`, `aesgcm`, `aescbc` or `kms`.
 
 ## Details about Secretbox
 
-Secretbox uses [Poly1305](https://cr.yp.to/mac.html) as message-authentication code and [XSalsa20](https://www.xsalsa20.com/) as secret-key authenticated encryption and secret-key encryption.
+Secretbox uses [Poly1305](https://cr.yp.to/mac.html) as message-authentication code and [XSalsa20](https://en.wikipedia.org/wiki/Salsa20#XSalsa20_with_192-bit_nonce) as secret-key authenticated encryption and secret-key encryption.

@@ -118,7 +118,6 @@ The following tags are defined in playbooks:
 | local-path-provisioner         | Configure External provisioner: local-path            |
 | local-volume-provisioner       | Configure External provisioner: local-volume          |
 | macvlan                        | Network plugin macvlan                                |
-| master (DEPRECATED)            | Deprecated - see `control-plane`                      |
 | metallb                        | Installing and configuring metallb                    |
 | metrics_server                 | Configuring metrics_server                            |
 | netchecker                     | Installing netchecker K8s app                         |

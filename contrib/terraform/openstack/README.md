@@ -624,7 +624,7 @@ Edit `inventory/$CLUSTER/group_vars/k8s_cluster/k8s_cluster.yml`:
   - **calico** requires [configuring OpenStack Neutron ports](/docs/cloud_controllers/openstack.md) to allow service and pod subnets
 
 ```yml
-# Choose network plugin (calico, weave or flannel)
+# Choose network plugin (calico or flannel)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
 kube_network_plugin: flannel
 ```

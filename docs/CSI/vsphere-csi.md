@@ -99,4 +99,4 @@ kubectl exec -it nginx -- df -h | grep /usr/share/nginx/html
 
 ## More info
 
-For further information about the vSphere CSI Driver, you can refer to the official [vSphere Cloud Provider documentation](https://cloud-provider-vsphere.sigs.k8s.io/container_storage_interface.html).
+For further information about the vSphere CSI Driver, you can refer to the official [vSphere Cloud Provider documentation](https://cloud-provider-vsphere.sigs.k8s.io/).

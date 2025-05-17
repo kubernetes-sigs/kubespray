@@ -30,17 +30,6 @@
     - hostvars[first_kube_control_plane]['kubeadm_upload_cert'] is defined
     - hostvars[first_kube_control_plane]['kubeadm_upload_cert'] is not skipped
 
-- name: Create kubeadm ControlPlane config
-  template:
-    src: "kubeadm-controlplane.yaml.j2"
-    dest: "{{ kube_config_dir }}/kubeadm-controlplane.yaml"
-    mode: "0640"
-    backup: true
-    validate: "{{ kubeadm_config_validate_enabled | ternary(bin_dir + '/kubeadm config validate --config %s', omit) }}"
-  when:
-    - inventory_hostname != first_kube_control_plane
-    - not kubeadm_already_run.stat.exists
-
 - name: Wait for k8s apiserver
   wait_for:
     host: "{{ kubeadm_discovery_address | regex_replace('\\]?:\\d+$', '') | regex_replace('^\\[', '') }}"
@@ -83,6 +72,17 @@
     - inventory_hostname != first_kube_control_plane
     - kubeadm_use_file_discovery
     - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists
+
+- name: Create kubeadm ControlPlane config
+  template:
+    src: "kubeadm-controlplane.yaml.j2"
+    dest: "{{ kube_config_dir }}/kubeadm-controlplane.yaml"
+    mode: "0640"
+    backup: true
+    validate: "{{ kubeadm_config_validate_enabled | ternary(bin_dir + '/kubeadm config validate --config %s', omit) }}"
+  when:
+    - inventory_hostname != first_kube_control_plane
+    - not kubeadm_already_run.stat.exists
 
 - name: Joining control plane node to the cluster.
   command: >-

@@ -9,7 +9,6 @@ The following table shows the impact of the CPU architecture on compatible featu
 | kube_network_plugin | amd64 | arm64 | amd64 + arm64 |
 |---------------------|-------|-------|---------------|
 | Calico              | Y     | Y     | Y             |
-| Weave               | Y     | Y     | Y             |
 | Flannel             | Y     | N     | N             |
 | Canal               | Y     | N     | N             |
 | Cilium              | Y     | Y     | N             |

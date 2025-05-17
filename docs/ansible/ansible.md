@@ -153,7 +153,6 @@ The following tags are defined in playbooks:
 | upgrade                        | Upgrading, f.e. container images/binaries             |
 | upload                         | Distributing images/binaries across hosts             |
 | vsphere-csi-driver             | Configuring csi driver: vsphere                       |
-| weave                          | Network plugin Weave                                  |
 | win_nodes                      | Running windows specific tasks                        |
 | youki                          | Configuring youki runtime                             |
 

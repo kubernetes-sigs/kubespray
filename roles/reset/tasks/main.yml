@@ -43,7 +43,7 @@
   tags:
     - docker
 
-- name: Reset | systemctl daemon-reload  # noqa no-handler
+- name: Reset | systemctl daemon-reload # noqa no-handler
   systemd_service:
     daemon_reload: true
   when: services_removed.changed
@@ -71,7 +71,7 @@
     - crictl.stat.exists
     - container_manager in ["crio", "containerd"]
     - ansible_facts.services['containerd.service'] is defined or ansible_facts.services['cri-o.service'] is defined
-  ignore_errors: true  # noqa ignore-errors
+  ignore_errors: true # noqa ignore-errors
 
 - name: Reset | force remove all cri containers
   command: "{{ bin_dir }}/crictl rm -a -f"
@@ -87,7 +87,7 @@
     - container_manager in ["crio", "containerd"]
     - deploy_container_engine
     - ansible_facts.services['containerd.service'] is defined or ansible_facts.services['cri-o.service'] is defined
-  ignore_errors: true  # noqa ignore-errors
+  ignore_errors: true # noqa ignore-errors
 
 - name: Reset | stop and disable crio service
   service:
@@ -95,13 +95,13 @@
     state: stopped
     enabled: false
   failed_when: false
-  tags: [ crio ]
+  tags: [crio]
   when: container_manager == "crio"
 
 - name: Reset | forcefully wipe CRI-O's container and image storage
   command: "crio wipe -f"
   failed_when: false
-  tags: [ crio ]
+  tags: [crio]
   when: container_manager == "crio"
 
 - name: Reset | stop all cri pods
@@ -112,12 +112,12 @@
   retries: 5
   until: remove_all_cri_containers.rc == 0
   delay: 5
-  tags: [ containerd ]
+  tags: [containerd]
   when:
     - crictl.stat.exists
     - container_manager == "containerd"
     - ansible_facts.services['containerd.service'] is defined or ansible_facts.services['cri-o.service'] is defined
-  ignore_errors: true  # noqa ignore-errors
+  ignore_errors: true # noqa ignore-errors
 
 - name: Reset | force remove all cri pods
   block:
@@ -127,7 +127,7 @@
       retries: 5
       until: remove_all_cri_containers.rc == 0
       delay: 5
-      tags: [ containerd ]
+      tags: [containerd]
       when:
         - crictl.stat.exists
         - container_manager == "containerd"
@@ -136,7 +136,7 @@
   rescue:
     - name: Reset | force remove all cri pods (rescue)
       shell: "ip netns list | cut -d' ' -f 1 | xargs -n1 ip netns delete && {{ bin_dir }}/crictl rmp -a -f"
-      ignore_errors: true  # noqa ignore-errors
+      ignore_errors: true # noqa ignore-errors
       changed_when: true
 
 - name: Reset | remove containerd
@@ -180,38 +180,47 @@
   tags:
     - mounts
 
-- name: Flush iptables
-  iptables:
-    table: "{{ item }}"
-    flush: true
-  with_items:
-    - filter
-    - nat
-    - mangle
-    - raw
-  when: flush_iptables | bool and ipv4_stack
-  tags:
-    - iptables
+- name: Reset | Safely handle iptables
+  block:
+    - name: Save current iptables rules
+      shell: |
+        mkdir -p /tmp/iptables_backup
+        iptables-save > /tmp/iptables_backup/rules.v4.before
+      changed_when: true
 
-- name: Flush ip6tables
-  iptables:
-    table: "{{ item }}"
-    flush: true
-    ip_version: ipv6
-  with_items:
-    - filter
-    - nat
-    - mangle
-    - raw
-  when: flush_iptables | bool and ipv6_stack
-  tags:
-    - ip6tables
+    - name: Clear IPVS virtual server table
+      command: "ipvsadm -C"
+      ignore_errors: true
+      when:
+        - "'kube_proxy_mode' is defined"
+        - "'k8s_cluster' in group_names"
 
-- name: Clear IPVS virtual server table
-  command: "ipvsadm -C"
-  ignore_errors: true  # noqa ignore-errors
-  when:
-    - kube_proxy_mode == 'ipvs' and 'k8s_cluster' in group_names
+    - name: Selectively remove Kubernetes-related iptables chains
+      shell: |
+        # Clear KUBE chains without affecting SSH
+        for chain in $(iptables -L -n | grep -i "kube" | awk '{print $2}'); do
+          iptables -F $chain 2>/dev/null || true
+          iptables -X $chain 2>/dev/null || true
+        done
+
+        # Clear IPVS chains
+        for chain in $(iptables -L -n | grep -i "IPVS" | awk '{print $2}'); do
+          iptables -F $chain 2>/dev/null || true
+          iptables -X $chain 2>/dev/null || true
+        done
+
+        # Clear Flannel/Calico/Cilium/CNI chains
+        for chain in $(iptables -L -n | grep -iE "cali|flann|cni|cilium" | awk '{print $2}'); do
+          iptables -F $chain 2>/dev/null || true
+          iptables -X $chain 2>/dev/null || true
+        done
+      changed_when: true
+      ignore_errors: true
+
+    - name: Save current iptables rules after cleanup
+      shell: |
+        iptables-save > /tmp/iptables_backup/rules.v4.after
+      changed_when: true
 
 - name: Reset | check kube-ipvs0 network device
   stat:
@@ -355,7 +364,7 @@
     - /etc/origin/ovn
     - "{{ sysctl_file_path }}"
     - /etc/crictl.yaml
-  ignore_errors: true  # noqa ignore-errors
+  ignore_errors: true # noqa ignore-errors
   tags:
     - files
 
@@ -374,7 +383,7 @@
     - ctd-decoder
     - ctr
     - runc
-  ignore_errors: true  # noqa ignore-errors
+  ignore_errors: true # noqa ignore-errors
   when: container_manager == 'containerd'
   tags:
     - files

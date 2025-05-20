@@ -23,7 +23,6 @@
   * [Aws](/docs/cloud_providers/aws.md)
   * [Azure](/docs/cloud_providers/azure.md)
   * [Cloud](/docs/cloud_providers/cloud.md)
-  * [Equinix-metal](/docs/cloud_providers/equinix-metal.md)
 * CNI
   * [Calico](/docs/CNI/calico.md)
   * [Cilium](/docs/CNI/cilium.md)

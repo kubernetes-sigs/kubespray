@@ -1,9 +1,9 @@
 ---
-cilium_min_version_required: "1.10"
+cilium_min_version_required: "1.15"
 # Log-level
 cilium_debug: false
 
-cilium_mtu: ""
+cilium_mtu: "0"
 cilium_enable_ipv4: "{{ ipv4_stack }}"
 cilium_enable_ipv6: "{{ ipv6_stack }}"
 
@@ -11,7 +11,7 @@ cilium_enable_ipv6: "{{ ipv6_stack }}"
 cilium_l2announcements: false
 
 # Cilium agent health port
-cilium_agent_health_port: "{%- if cilium_version is version('1.11.6', '>=') -%}9879{%- else -%}9876{%- endif -%}"
+cilium_agent_health_port: "9879"
 
 # Identity allocation mode selects how identities are shared between cilium
 # nodes by setting how they are stored. The options are "crd" or "kvstore".
@@ -26,7 +26,7 @@ cilium_agent_health_port: "{%- if cilium_version is version('1.11.6', '>=') -%}9
 #   - --synchronize-k8s-nodes
 #   - --identity-allocation-mode=kvstore
 #   - Ref: https://docs.cilium.io/en/stable/internals/cilium_operator/#kvstore-operations
-cilium_identity_allocation_mode: kvstore
+cilium_identity_allocation_mode: crd
 
 # Etcd SSL dirs
 cilium_cert_dir: /etc/cilium/certs
@@ -55,19 +55,19 @@ cilium_enable_prometheus: false
 cilium_enable_portmap: false
 # Monitor aggregation level (none/low/medium/maximum)
 cilium_monitor_aggregation: medium
-# Kube Proxy Replacement mode (strict/partial)
-cilium_kube_proxy_replacement: partial
+# Kube Proxy Replacement mode (true/false)
+cilium_kube_proxy_replacement: false
+
+# If not defined `cilium_dns_proxy_enable_transparent_mode`, it will following the Cilium behavior.
+# When Cilium is configured to replace kube-proxy, it automatically enables dnsProxy, which will conflict with nodelocaldns.
+# You can set `false` avoid conflict with nodelocaldns.
+# https://github.com/cilium/cilium/issues/33144
+# cilium_dns_proxy_enable_transparent_mode:
 
 # If upgrading from Cilium < 1.5, you may want to override some of these options
 # to prevent service disruptions. See also:
 # http://docs.cilium.io/en/stable/install/upgrade/#changes-that-may-require-action
 cilium_preallocate_bpf_maps: false
-
-# `cilium_tofqdns_enable_poller` is deprecated in 1.8, removed in 1.9
-cilium_tofqdns_enable_poller: false
-
-# `cilium_enable_legacy_services` is deprecated in 1.6, removed in 1.9
-cilium_enable_legacy_services: false
 
 # Auto direct nodes routes can be used to advertise pods routes in your cluster
 # without any tunelling (with `cilium_tunnel_mode` sets to `disabled`).
@@ -100,8 +100,8 @@ cilium_encryption_enabled: false
 cilium_encryption_type: "ipsec"
 
 # Enable encryption for pure node to node traffic.
-# This option is only effective when `cilium_encryption_type` is set to `ipsec`.
-cilium_ipsec_node_encryption: false
+# This option is only effective when `cilium_encryption_type` is set to `wireguard`.
+cilium_encryption_node_encryption: false
 
 # If your kernel or distribution does not support WireGuard, Cilium agent can be configured to fall back on the user-space implementation.
 # When this flag is enabled and Cilium detects that the kernel has no native support for WireGuard,
@@ -115,6 +115,7 @@ cilium_wireguard_userspace_fallback: false
 # In case they select the Pod at egress, then the bandwidth enforcement will be disabled for those Pods.
 # Bandwidth Manager requires a v5.1.x or more recent Linux kernel.
 cilium_enable_bandwidth_manager: false
+cilium_enable_bandwidth_manager_bbr: false
 
 # IP Masquerade Agent
 # https://docs.cilium.io/en/stable/concepts/networking/masquerading/
@@ -137,6 +138,7 @@ cilium_non_masquerade_cidrs:
 ### Indicates whether to masquerade traffic to the link local prefix.
 ### If the masqLinkLocal is not set or set to false, then 169.254.0.0/16 is appended to the non-masquerade CIDRs list.
 cilium_masq_link_local: false
+cilium_masq_link_local_ipv6: false
 ### A time interval at which the agent attempts to reload config from disk
 cilium_ip_masq_resync_interval: 60s
 
@@ -145,10 +147,10 @@ cilium_ip_masq_resync_interval: 60s
 cilium_enable_hubble: false
 ### Enable Hubble-ui
 cilium_enable_hubble_ui: "{{ cilium_enable_hubble }}"
-### Enable Hubble Metrics
+### Enable Hubble Metrics (deprecated)
 cilium_enable_hubble_metrics: false
 ### if cilium_enable_hubble_metrics: true
-cilium_hubble_metrics: {}
+cilium_hubble_metrics: []
 # - dns
 # - drop
 # - tcp
@@ -160,11 +162,24 @@ cilium_hubble_install: false
 ### Enable auto generate certs if cilium_hubble_install: true
 cilium_hubble_tls_generate: false
 
+cilium_hubble_export_file_max_backups: "5"
+cilium_hubble_export_file_max_size_mb: "10"
+
+cilium_hubble_export_dynamic_enabled: false
+cilium_hubble_export_dynamic_config_content:
+  - name: all
+    fieldMask: []
+    includeFilters: []
+    excludeFilters: []
+    filePath: "/var/run/cilium/hubble/events.log"
+
 ### Capacity of Hubble events buffer. The provided value must be one less than an integer power of two and no larger than 65535
 ### (ie: 1, 3, ..., 2047, 4095, ..., 65535) (default 4095)
 # cilium_hubble_event_buffer_capacity: 4095
 ### Buffer size of the channel to receive monitor events.
 # cilium_hubble_event_queue_size: 50
+
+cilium_gateway_api_enabled: false
 
 # The default IP address management mode is "Cluster Scope".
 # https://docs.cilium.io/en/stable/concepts/networking/ipam/
@@ -190,7 +205,8 @@ cilium_ipam_mode: cluster-pool
 
 
 # Extra arguments for the Cilium agent
-cilium_agent_custom_args: []
+cilium_agent_custom_args: [] # deprecated
+cilium_agent_extra_args: []
 
 # For adding and mounting extra volumes to the cilium agent
 cilium_agent_extra_volumes: []
@@ -214,13 +230,19 @@ cilium_operator_extra_volumes: []
 cilium_operator_extra_volume_mounts: []
 
 # Extra arguments for the Cilium Operator
-cilium_operator_custom_args: []
+cilium_operator_custom_args: [] # deprecated
+cilium_operator_extra_args: []
 
 # Tolerations of the cilium operator
 cilium_operator_tolerations:
   - operator: "Exists"
 
+# Unique ID of the cluster. Must be unique across all connected
+# clusters and in the range of 1 to 255. Only required for Cluster Mesh,
+# may be 0 if Cluster Mesh is not used.
+cilium_cluster_id: 0
 # Name of the cluster. Only relevant when building a mesh of clusters.
+# The "default" name cannot be used if the Cluster ID is different from 0.
 cilium_cluster_name: default
 
 # Make Cilium take ownership over the `/etc/cni/net.d` directory on the node, renaming all non-Cilium CNI configurations to `*.cilium_bak`.
@@ -263,7 +285,7 @@ cilium_enable_bpf_masquerade: false
 # host stack (true) or directly and more efficiently out of BPF (false) if
 # the kernel supports it. The latter has the implication that it will also
 # bypass netfilter in the host namespace.
-cilium_enable_host_legacy_routing: true
+cilium_enable_host_legacy_routing: false
 
 # -- Enable use of the remote node identity.
 # ref: https://docs.cilium.io/en/v1.7/install/upgrade/#configmap-remote-node-identity
@@ -307,9 +329,9 @@ cilium_rolling_restart_wait_retries_count: 30
 cilium_rolling_restart_wait_retries_delay_seconds: 10
 
 # Cilium changed the default metrics exporter ports in 1.12
-cilium_agent_scrape_port: "{{ cilium_version is version('1.12', '>=') | ternary('9962', '9090') }}"
-cilium_operator_scrape_port: "{{ cilium_version is version('1.12', '>=') | ternary('9963', '6942') }}"
-cilium_hubble_scrape_port: "{{ cilium_version is version('1.12', '>=') | ternary('9965', '9091') }}"
+cilium_agent_scrape_port: "9962"
+cilium_operator_scrape_port: "9963"
+cilium_hubble_scrape_port: "9965"
 
 # Cilium certgen args for generate certificate for hubble mTLS
 cilium_certgen_args:
@@ -328,26 +350,5 @@ cilium_certgen_args:
   hubble-relay-client-cert-secret-name: hubble-relay-client-certs
   hubble-relay-server-cert-generate: false
 
-# A list of extra rules variables to add to clusterrole for cilium operator, formatted like:
-#   cilium_clusterrole_rules_operator_extra_vars:
-#     - apiGroups:
-#       - '""'
-#       resources:
-#       - pods
-#       verbs:
-#       - delete
-#     - apiGroups:
-#       - '""'
-#       resources:
-#       - nodes
-#       verbs:
-#       - list
-#       - watch
-#       resourceNames:
-#       - toto
-cilium_clusterrole_rules_operator_extra_vars: []
 cilium_enable_host_firewall: false
 cilium_policy_audit_mode: false
-
-cilium_hubble_export_file_max_backups: "5"
-cilium_hubble_export_file_max_size_mb: "10"

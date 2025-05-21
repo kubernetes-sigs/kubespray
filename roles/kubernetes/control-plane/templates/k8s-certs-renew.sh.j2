@@ -2,28 +2,23 @@
 
 echo "## Check Expiration before renewal ##"
 
-do_renew=1 # default: always do renewal
-days_buffer=7 # set a time margin, should not renew at the last moment
-calendar={{ auto_renew_certificates_systemd_calendar }}
-next_time=$(systemd-analyze calendar "${calendar}" | grep '^ *Next elapse:' | awk -F': ' '{print $2}')
-# or `systemctl show k8s-certs-renew.timer  -p NextElapseUSecRealtime --value`
+{{ bin_dir }}/kubeadm certs check-expiration
 
-if [ "${next_time}" == ""]; then
-	echo "Skip expiry comparison due to fail to parse next elapse from systemd calendar"
-	{{ bin_dir }}/kubeadm certs check-expiration
+days_buffer=7 # set a time margin, because we should not renew at the last moment
+calendar={{ auto_renew_certificates_systemd_calendar }}
+next_time=$(systemctl show k8s-certs-renew.timer  -p NextElapseUSecRealtime --value)
+
+if [ "${next_time}" == "" ]; then
+	echo "## Skip expiry comparison due to fail to parse next elapse from systemd calendar,do renewal directly ##"
 else
 	current_time=$(date +%s)
 	target_time=$(date -d "${next_time} + ${days_buffer} days" +%s) # $next_time - $days_buffer days
 	expiry_threshold=$(( ${target_time} - ${current_time} ))
-	expired_certs=$({{ bin_dir }}/kubeadm certs check-expiration -o jsonpath="{.certificates[?(@.residualTime<${expiry}.0)]}")
+	expired_certs=$({{ bin_dir }}/kubeadm certs check-expiration -o jsonpath="{.certificates[?(@.residualTime<${expiry_threshold}.0)]}")
     if [ "${expired_certs}" == "" ];then
-		do_renew=0 # no need to do renew this time.
+		echo "## Skip cert renew and K8S container restart, since all residualTimes are beyond threshold ##"
+		exit 0
 	fi
-fi
-
-if [ "${do_renew}" -eq 0 ]; then
-	echo "Skip cert renew and K8S container restart, since all residualTimes are beyond threshold"
-	exit 0
 fi
 
 echo "## Renewing certificates managed by kubeadm ##"

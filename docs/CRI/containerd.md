@@ -114,6 +114,16 @@ containerd_runc_runtime:
   ...
 ```
 
+The `containerd_extra_runtime_args` variable allows you to inject additional configuration options into the containerd CRI runtime plugin section (`[plugins."io.containerd.cri.v1.runtime"]`) without modifying Kubespray's core template files.
+
+This is useful for adding containerd runtime configuration options that aren't explicitly supported by Kubespray's default variables.
+
+```yaml
+containerd_extra_runtime_args: |
+  device_ownership_from_security_context = true
+  restrict_oom_score_adj = true
+```
+
 Config insecure-registry access to self hosted registries.
 
 ```yaml

@@ -1,0 +1,54 @@
+---
+# variables which needs to be defined at task level:
+# step (one of openssl_argv_base_by_step.keys())
+# subj:
+#   CN: # mandatory
+#   O:
+#   OU:
+#   C:
+#   etc
+openssl_argv_by_step__cert:
+  - -x509
+  - -config
+  - "{{ etcd_config_dir}}/openssl.conf"
+  - -extensions
+  - "etcd_{{ cert_role }}"
+  - -days
+  - "{{ certificates_duration }}"
+openssl_argv_by_step_csr:
+  - -newkey
+  - "{{ key_alg }}"
+  - -nodes # TODO: deprececated on newer version (-> noenc). We should make the opt name version dependant
+  - -keyout
+  - "{{ etcd_cert_dir }}/{{ cert_role }}-key.pem"
+  - "{{ [] | zip_longest(
+              pkey_gen_options.keys() | zip(pkey_gen_options.values()) | map('join', ':'),
+              fillvalue='-pkeyopt') }}" # private key options: -pkeyopt <param>:<value>
+openssl_argv_by_step_ca:
+  - "{{ openssl_argv_by_step_csr }}"
+  - "{{ openssl_argv_by_step__cert }}"
+openssl_argv_ca:
+  - openssl
+  - x509
+  - -req
+  - "-{{ digest_alg }}"
+  - -extfile
+  - "{{ etcd_config_dir }}/openssl.conf"
+  - -extensions
+  - "etcd_{{ cert_role }}"
+  - -days
+  - "{{ certificates_duration }}"
+  - -in
+  - "-"
+  - -CA
+  - "{{ etcd_cert_dir }}/ca.pem"
+  - -CAkey
+  - "{{ etcd_cert_dir }}/ca-key.pem"
+  - -CAcreateserial
+openssl_argv:
+  - openssl
+  - req
+  - "-{{ digest_alg }}"
+  - -subj
+  - "{{ ([''] + (subj.keys() | zip(subj.values()) | map('join', '='))) | join('/') }}"
+  - "{{ lookup('vars', 'openssl_argv_by_step_' + step) }}"

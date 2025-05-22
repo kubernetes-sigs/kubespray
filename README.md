@@ -124,7 +124,6 @@ Note:
   - [kube-ovn](https://github.com/alauda/kube-ovn) 1.12.21
   - [kube-router](https://github.com/cloudnativelabs/kube-router) 2.1.1
   - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) 4.1.0
-  - [weave](https://github.com/rajch/weave) 2.8.7
   - [kube-vip](https://github.com/kube-vip/kube-vip) 0.8.0
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) 1.15.3
@@ -182,9 +181,6 @@ You can choose among ten network plugins. (default: `calico`, except Vagrant use
     pods, and (if using Istio and Envoy) applications at the service mesh layer.
 
 - [cilium](http://docs.cilium.io/en/latest/): layer 3/4 networking (as well as layer 7 to protect and secure application protocols), supports dynamic insertion of BPF bytecode into the Linux kernel to implement security services, networking and visibility logic.
-
-- [weave](docs/CNI/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster.
-    (Please refer to `weave` [troubleshooting documentation](https://www.weave.works/docs/net/latest/troubleshooting/)).
 
 - [kube-ovn](docs/CNI/kube-ovn.md): Kube-OVN integrates the OVN-based Network Virtualization with Kubernetes. It offers an advanced Container Network Fabric for Enterprises.
 

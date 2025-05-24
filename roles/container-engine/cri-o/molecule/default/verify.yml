@@ -1,0 +1,32 @@
+---
+- name: Get logs of crio
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+  - name: Verify CRI-O
+    block:
+    - name: Gather services facts
+      service_facts:
+
+    - name: Check CRI-O service state
+      assert:
+        that:
+        - ansible_facts['services']['crio.service']['state'] == 'running'
+        - ansible_facts['services']['crio.service']['status'] == 'enabled'
+
+    - name: Test runtime is crio
+      command: /usr/local/bin/crictl version
+      register: cri_version
+      failed_when: >
+        cri_version is failed or
+        "RuntimeName:  cri-o" not in cri_version.stdout
+
+    - name: Test running a pod
+      command: /usr/local/bin/crictl run --with-pull --runtime crun /tmp/container.json /tmp/sandbox.json
+    rescue:
+    - name: Show journal logs for CRI-O
+      command: journalctl -u crio.service -e -n 300
+
+    - name: Force failure
+      fail:

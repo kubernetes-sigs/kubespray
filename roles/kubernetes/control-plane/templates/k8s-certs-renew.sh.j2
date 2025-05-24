@@ -1,7 +1,25 @@
 #!/bin/bash
 
-echo "## Expiration before renewal ##"
+echo "## Check Expiration before renewal ##"
+
 {{ bin_dir }}/kubeadm certs check-expiration
+
+days_buffer=7 # set a time margin, because we should not renew at the last moment
+calendar={{ auto_renew_certificates_systemd_calendar }}
+next_time=$(systemctl show k8s-certs-renew.timer  -p NextElapseUSecRealtime --value)
+
+if [ "${next_time}" == "" ]; then
+	echo "## Skip expiry comparison due to fail to parse next elapse from systemd calendar,do renewal directly ##"
+else
+	current_time=$(date +%s)
+	target_time=$(date -d "${next_time} + ${days_buffer} days" +%s) # $next_time - $days_buffer days
+	expiry_threshold=$(( ${target_time} - ${current_time} ))
+	expired_certs=$({{ bin_dir }}/kubeadm certs check-expiration -o jsonpath="{.certificates[?(@.residualTime<${expiry_threshold}.0)]}")
+    if [ "${expired_certs}" == "" ];then
+		echo "## Skip cert renew and K8S container restart, since all residualTimes are beyond threshold ##"
+		exit 0
+	fi
+fi
 
 echo "## Renewing certificates managed by kubeadm ##"
 {{ bin_dir }}/kubeadm certs renew all

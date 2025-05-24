@@ -55,6 +55,45 @@
   when:
     - youki_enabled
 
+- name: Cri-o | read default container runtime from crio.conf
+  ansible.builtin.shell: |
+    set -o pipefail && grep "^default_runtime" /etc/crio/crio.conf | awk -F'=' '{print $2}' | xargs
+  register: existing_crio_default_runtime
+  when: ansible_facts.services['crio.service'] is defined
+
+- name: Cri-o | set existing crio default runtime fact
+  ansible.builtin.set_fact:
+    existing_crio_default_runtime_output: "{{ existing_crio_default_runtime.stdout }}"
+  when: ansible_facts.services['crio.service'] is defined
+
+- name: Cri-o | compare existing default runtime with default_runtime
+  ansible.builtin.set_fact:
+    runtime_matches: "{{ existing_crio_default_runtime_output is equalto(crio_default_runtime) }}"
+  when: ansible_facts.services['crio.service'] is defined
+
+- name: Cri-o | Stop kubelet service if running
+  service:
+    name: kubelet
+    state: stopped
+  when:
+    - runtime_matches is defined and runtime_matches is false
+    - ansible_facts.services['kubelet.service'] is defined and ansible_facts.services['kubelet.service'].state == 'running'
+
+- name: Cri-o | Stop all the running containers
+  ansible.builtin.shell: |
+    set -o pipefail && {{ bin_dir }}/crictl ps -q | xargs -r {{ bin_dir }}/crictl stop
+  when:
+    - runtime_matches is defined and runtime_matches is false
+    - ansible_facts.services['crio.service'] is defined
+
+- name: Cri-o | stop crio service if running
+  service:
+    name: crio
+    state: stopped
+  when:
+    - runtime_matches is defined and runtime_matches is false
+    - ansible_facts.services['crio.service'] is defined and ansible_facts.services['crio.service'].state == 'running'
+
 - name: Cri-o | make sure needed folders exist in the system
   with_items:
     - /etc/crio
@@ -250,3 +289,11 @@
   changed_when: false
   retries: 5
   delay: "{{ retry_stagger | random + 3 }}"
+
+- name: Cri-o | ensure kubelet service is started if present and stopped
+  service:
+    name: kubelet
+    state: started
+  when:
+    - runtime_matches is defined and runtime_matches is false
+    - ansible_facts.services['kubelet.service'] is defined and ansible_facts.services['kubelet.service']['status'] != 'not-found'

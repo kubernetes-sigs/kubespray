@@ -20,26 +20,17 @@
       - name: namespace
         file: argocd-namespace.yml
       - name: install
-        file: argocd-install.yml
+        file: "{{ downloads.argocd_install.dest | basename }}"
         namespace: "{{ argocd_namespace }}"
-        url: "{{ argocd_install_url }}"
+        download: "{{ downloads.argocd_install }}"
   when:
     - "inventory_hostname == groups['kube_control_plane'][0]"
 
 - name: Kubernetes Apps | Download ArgoCD remote manifests
   include_tasks: "../../../download/tasks/download_file.yml"
   vars:
-    download_argocd:
-      enabled: "{{ argocd_enabled }}"
-      file: true
-      dest: "{{ local_release_dir }}/{{ item.file }}"
-      url: "{{ item.url }}"
-      unarchive: false
-      owner: "root"
-      mode: "0644"
-      sha256: ""
-    download: "{{ download_defaults | combine(download_argocd) }}"
-  with_items: "{{ argocd_templates | selectattr('url', 'defined') | list }}"
+    download: "{{ download_defaults | combine(item.download) }}"
+  with_items: "{{ argocd_templates | selectattr('download', 'defined') | list }}"
   loop_control:
     label: "{{ item.file }}"
   when:
@@ -54,7 +45,7 @@
     owner: false
     group: false
   delegate_to: "{{ inventory_hostname }}"
-  with_items: "{{ argocd_templates | selectattr('url', 'defined') | list }}"
+  with_items: "{{ argocd_templates | selectattr('download', 'defined') | list }}"
   when:
     - "inventory_hostname == groups['kube_control_plane'][0]"
 
@@ -62,7 +53,7 @@
   become: true
   command: |
     {{ bin_dir }}/yq eval-all -i '.metadata.namespace="{{ argocd_namespace }}"' {{ kube_config_dir }}/{{ item.file }}
-  with_items: "{{ argocd_templates | selectattr('url', 'defined') | list }}"
+  with_items: "{{ argocd_templates | selectattr('download', 'defined') | list }}"
   loop_control:
     label: "{{ item.file }}"
   when:
@@ -74,7 +65,7 @@
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
     mode: "0644"
-  with_items: "{{ argocd_templates | selectattr('url', 'undefined') | list }}"
+  with_items: "{{ argocd_templates | selectattr('download', 'undefined') | list }}"
   loop_control:
     label: "{{ item.file }}"
   when:

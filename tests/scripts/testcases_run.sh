@@ -52,7 +52,12 @@ ansible-playbook \
 ## START KUBESPRAY
 
 # Create cluster
-run_playbook cluster
+if [[ "${TESTCASE}" =~ "scale" ]]; then
+    run_playbook cluster --limit '!for_scale'
+    run_playbook scale --limit 'for_scale'
+else
+    run_playbook cluster
+fi
 
 # Repeat deployment if testing upgrade
 if [ "${UPGRADE_TEST}" != "false" ]; then

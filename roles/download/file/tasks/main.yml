@@ -1,0 +1,56 @@
+---
+- name: Download | instantiate download dir var
+  set_fact:
+    local_release_dir: "{{ local_release_dir }}"
+    # this is needed to make local_release_dir available in hostvars
+- name: Download | Download files
+  delegate_to: "{{ download_delegate }}"
+  become: false
+  vars:
+    download_dir: "{{ hostvars[download_delegate]['local_release_dir'] + '/' }}"
+  block:
+  - name: Download | Create download directory
+    file:
+      path: "{{ download_dir }}"
+      state: directory
+      mode: "0755"
+  - name: Download_file | Download file
+    get_url:
+      url: "{{ item.value.url }}"
+      dest: "{{ download_dir + item.value.dest }}"
+      checksum: "{{ item.value.checksum }}"
+      url_username: "{{ item.value.username | default(omit) }}"
+      url_password: "{{ item.value.password | default(omit) }}"
+      force_basic_auth: "{{ item.value.force_basic_auth | default(omit) }}"
+      mode: "0600" # exec permissions are not needed because the artifact is not used as-is (either copied elsewhere / decompressed)
+    timeout: "{{ item.value.timeout | default(omit) }}"
+    retries: "{{ download_retries }}"
+    delay: "{{ retry_stagger }}"
+    environment: "{{ proxy_env }}"
+    no_log: "{{ not (unsafe_show_logs) }}"
+    loop: "{{ downloads | dict2items | rejectattr('value.container', 'defined') | selectattr('value.enabled', 'all') }}"
+    loop_control:
+      label: "{{ item.key }}: {{ item.value.url }}"
+
+  - name: Download_file | Fetch file to localhost
+    fetch:
+      src: "{{ hostvars[download_delegate]['local_release_dir'] + '/' + item.value.dest }}"
+      dest: "{{ hostvars['localhost']['local_release_dir'] + '/' + item.value.dest }}"
+    when:
+    - download_delegate not in [inventory_hostname, 'localhost']
+    loop: "{{ downloads | dict2items | rejectattr('value.container', 'defined') | selectattr('value.enabled', 'all') }}"
+    loop_control:
+      label: "{{ item.key }}"
+
+  - name: Download_file | Unpack archive
+    unarchive:
+      src: "{{ download_dir + '/' + item.value.dest }}"
+      dest: "{{ download_dir }}"
+      remote_src: true
+      extra_opts: "{{ item.value.unarchive_extra_opts | default(omit) }}"
+    run_once: true
+    delegate_to: localhost
+    loop: "{{ downloads | dict2items | rejectattr('value.container', 'defined') | selectattr('value.enabled', 'all')
+            | selectattr('value.unarchive', 'defined') | selectattr('value.unarchive') }}"
+    loop_control:
+      label: "{{ item.key }}"

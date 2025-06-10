@@ -25,7 +25,7 @@ from typing import Optional, Any
 
 from . import components
 
-CHECKSUMS_YML = Path("roles/kubespray_defaults/defaults/main/checksums.yml")
+CHECKSUMS_YML = Path("roles/kubespray_defaults/vars/main/checksums.yml")
 
 logger = logging.getLogger(__name__)
 

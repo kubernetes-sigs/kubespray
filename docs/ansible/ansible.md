@@ -118,7 +118,6 @@ The following tags are defined in playbooks:
 | local-path-provisioner         | Configure External provisioner: local-path            |
 | local-volume-provisioner       | Configure External provisioner: local-volume          |
 | macvlan                        | Network plugin macvlan                                |
-| master (DEPRECATED)            | Deprecated - see `control-plane`                      |
 | metallb                        | Installing and configuring metallb                    |
 | metrics_server                 | Configuring metrics_server                            |
 | netchecker                     | Installing netchecker K8s app                         |
@@ -153,7 +152,6 @@ The following tags are defined in playbooks:
 | upgrade                        | Upgrading, f.e. container images/binaries             |
 | upload                         | Distributing images/binaries across hosts             |
 | vsphere-csi-driver             | Configuring csi driver: vsphere                       |
-| weave                          | Network plugin Weave                                  |
 | win_nodes                      | Running windows specific tasks                        |
 | youki                          | Configuring youki runtime                             |
 
@@ -206,11 +204,11 @@ You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mou
 to access the inventory and SSH key in the container, like this:
 
 ```ShellSession
-git checkout v2.27.0
-docker pull quay.io/kubespray/kubespray:v2.27.0
+git checkout v2.28.0
+docker pull quay.io/kubespray/kubespray:v2.28.0
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.27.0 bash
+  quay.io/kubespray/kubespray:v2.28.0 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```

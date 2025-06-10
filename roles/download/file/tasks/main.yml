@@ -50,6 +50,21 @@
     loop: "{{ downloads_delegated }}"
     loop_control:
       label: "{{ item.key }}: {{ item.value.url }}"
+    async: 150
+    poll: 0
+    register: download_task
+    changed_when: false
+
+  - name: Download | file | Get result
+    async_status:
+      jid: "{{ item.ansible_job_id }}"
+    register: job_result
+    until: job_result is finished
+    retries: 150
+    delay: 1
+    loop: "{{ download_task.results | select('started') }}"
+    loop_control:
+      label: "{{ item.item.key }}: {{ item.item.value.url }}"
 
   - name: Download | file | Fetch file to localhost
     fetch:

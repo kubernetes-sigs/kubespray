@@ -13,18 +13,18 @@
   before_script:
     - ./tests/scripts/rebase.sh
     - mkdir -p cluster-dump $ANSIBLE_INVENTORY
-    - ./tests/scripts/terraform_install.sh
+    - ./tests/scripts/opentofu_install.sh
     - cp contrib/terraform/$PROVIDER/sample-inventory/cluster.tfvars .
     - ln -rs -t $ANSIBLE_INVENTORY contrib/terraform/$PROVIDER/hosts
-    - terraform -chdir="contrib/terraform/$PROVIDER" init
+    - tofu -chdir="contrib/terraform/$PROVIDER" init
 
 terraform_validate:
   extends: .terraform_install
   tags: [ffci]
   only: ['master', /^pr-.*$/]
   script:
-    - terraform -chdir="contrib/terraform/$PROVIDER" validate
-    - terraform -chdir="contrib/terraform/$PROVIDER" fmt -check -diff
+    - tofu -chdir="contrib/terraform/$PROVIDER" validate
+    - tofu -chdir="contrib/terraform/$PROVIDER" fmt -check -diff
   stage: test
   needs:
     - pipeline-image
@@ -58,11 +58,11 @@ terraform_validate:
     - mkdir -p contrib/terraform/$PROVIDER/group_vars
     # Random subnet to avoid routing conflicts
     - export TF_VAR_subnet_cidr="10.$(( $RANDOM % 256 )).$(( $RANDOM % 256 )).0/24"
-    - terraform -chdir="contrib/terraform/$PROVIDER" apply -auto-approve -parallelism=1
+    - tofu -chdir="contrib/terraform/$PROVIDER" apply -auto-approve -parallelism=1
     - tests/scripts/testcases_run.sh
   after_script:
     # Cleanup regardless of exit code
-    - terraform -chdir="contrib/terraform/$PROVIDER" destroy -auto-approve
+    - tofu -chdir="contrib/terraform/$PROVIDER" destroy -auto-approve
 
 # Elastx is generously donating resources for Kubespray on Openstack CI
 # Contacts: @gix @bl0m1

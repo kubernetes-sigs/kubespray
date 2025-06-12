@@ -6,18 +6,34 @@
   command: "{{ bin_dir }}/kubectl get pods --all-namespaces -owide"
   changed_when: false
 
-- name: Check that all pods are running and ready
-  command: "{{ bin_dir }}/kubectl get pods --all-namespaces --no-headers -o yaml"
-  changed_when: false
-  register: run_pods_log
-  until:
-  # Check that all pods are running
-  - '(run_pods_log.stdout | from_yaml)["items"] | map(attribute = "status.phase") | unique | list == ["Running"]'
-  # Check that all pods are ready
-  - '(run_pods_log.stdout | from_yaml)["items"] | map(attribute = "status.containerStatuses") | map("map", attribute = "ready") | map("min") | min'
-  retries: 30
-  delay: 10
-
-- name: Check kubectl output
-  command: "{{ bin_dir }}/kubectl get pods --all-namespaces -owide"
-  changed_when: false
+- name: Check pods
+  vars:
+    query_pods_not_running: "items[?status.phase != 'Running']"
+    query_pods_not_ready: "items[?(status.conditions[?type == 'Ready'])[0].status != 'True']"
+    pods_not_running: "{{ run_pods_log.stdout | from_json | json_query(query_pods_not_running + '.metadata') }}"
+    pods_not_ready: "{{ run_pods_log.stdout | from_json | json_query(query_pods_not_ready + '.metadata') }}"
+  block:
+  - name: Check that all pods are running
+    command: "{{ bin_dir }}/kubectl get pods --all-namespaces -o json"
+    register: run_pods_log
+    changed_when: false
+    until:
+    # Check that all pods are running
+    - run_pods_log.stdout | from_json | json_query(query_pods_not_running) == []
+    # Check that all pods are ready
+    - run_pods_log.stdout | from_json | json_query(query_pods_not_ready) == []
+    retries: 30
+    delay: 10
+  rescue:
+  - name: Describe broken pods
+    command: "{{ bin_dir }}/kubectl describe pod -n {{ item.namespace }} {{ item.name }}"
+    loop: "{{ pods_not_running + pods_not_ready }}"
+    loop_control:
+      label: "{{ item.namespace }}/{{ item.name }}"
+  - name: Get logs from broken pods
+    command: "{{ bin_dir }}/kubectl logs -n {{ item.namespace }} {{ item.pod }}"
+    loop: "{{ pods_not_running + pods_not_ready }}"
+    loop_control:
+      label: "{{ item.namespace }}/{{ item.name }}"
+  - name: Fail CI
+    fail: {}

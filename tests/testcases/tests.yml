@@ -1,0 +1,54 @@
+---
+- name: Define dynamic groups
+  import_playbook: ../../playbooks/boilerplate.yml
+
+- name: Kubespray CI tests
+  hosts: k8s_cluster
+  gather_facts: false
+  vars:
+    testcase: "{{ lookup('env', 'TESTCASE') }}"
+  tasks:
+    - name: Import Kubespray variables
+      import_role:
+        name: ../../roles/kubespray_defaults
+    - name: Testcases for apiserver
+      import_tasks: 010_check-apiserver.yml
+      when:
+        - ('kube_control_plane') in group_names
+    - name: Test using API
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      run_once: true
+      block:
+        - name: Testcases checking nodes
+          import_tasks: 015_check-nodes-ready.yml
+        - name: Testcases checking pods
+          import_tasks: 020_check-pods-running.yml
+          when: ('macvlan' not in testcase)
+        - name: Testcases for network
+          import_tasks: 030_check-network.yml
+          when: ('macvlan' not in testcase)
+          vars:
+            test_image_repo: registry.k8s.io/e2e-test-images/agnhost
+            test_image_tag: "2.40"
+    - name: Testcases for calico / advanced network
+      import_tasks: 040_check-network-adv.yml
+      when:
+        - ('macvlan' not in testcase)
+        - ('hardening' not in testcase)
+      vars:
+        agent_report_interval: 10
+        netcheck_namespace: default
+        netchecker_port: 31081
+    - name: Testcases for kubernetes conformance
+      import_tasks: 100_check-k8s-conformance.yml
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      run_once: true
+      when:
+        - sonobuoy_enabled is defined
+        - sonobuoy_enabled
+      vars:
+        sonobuoy_version: 0.56.11
+        sonobuoy_arch: amd64
+        sonobuoy_parallel: 30
+        sonobuoy_path: /usr/local/bin/sonobuoy
+        sonobuoy_mode: Quick

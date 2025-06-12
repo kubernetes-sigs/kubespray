@@ -8,8 +8,6 @@
     - kubelet.service
     - cri-dockerd.service
     - cri-dockerd.socket
-    - etcd.service
-    - etcd-events.service
   failed_when: false
   tags:
     - services
@@ -27,8 +25,6 @@
     - crio.service.d/http-proxy.conf
     - k8s-certs-renew.service
     - k8s-certs-renew.timer
-    - etcd.service
-    - etcd-events.service
   register: services_removed
   tags:
     - services
@@ -154,9 +150,39 @@
       file:
         path: /etc/systemd/system/containerd.service
         state: absent
-      register: services_removed
+      register: services_removed_containerd
       tags:
         - services
+
+- name: Reset | stop etcd services
+  service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  with_items:
+    - etcd.service
+    - etcd-events.service
+  failed_when: false
+  tags:
+    - services
+
+- name: Reset | remove etcd services
+  file:
+    path: "/etc/systemd/system/{{ item }}"
+    state: absent
+  with_items:
+    - etcd.service
+    - etcd-events.service
+  register: services_removed_etcd
+  tags:
+    - services
+    - containerd
+    - crio
+
+- name: Reset | systemctl daemon-reload  # noqa no-handler
+  systemd_service:
+    daemon_reload: true
+  when: services_removed_etcd.changed or services_removed_containerd.changed
 
 - name: Reset | gather mounted kubelet dirs
   shell: set -o pipefail && mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac

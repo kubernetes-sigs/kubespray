@@ -78,25 +78,12 @@ if [ "${RECOVER_CONTROL_PLANE_TEST}" != "false" ]; then
     run_playbook recover-control-plane -e etcd_retries=10 --limit "etcd:kube_control_plane"
 fi
 
-# Tests Cases
-## Test Control Plane API
-run_playbook tests/testcases/010_check-apiserver.yml
-run_playbook tests/testcases/015_check-nodes-ready.yml
-
-## Test that all nodes are Ready
-
-if [[ ! ( "$TESTCASE" =~ "macvlan" ) ]]; then
-    run_playbook tests/testcases/020_check-pods-running.yml
-    run_playbook tests/testcases/030_check-network.yml
-    if [[ ! ( "$TESTCASE" =~ "hardening" ) ]]; then
-      # TODO: We need to remove this condition by finding alternative container
-      # image instead of netchecker which doesn't work at hardening environments.
-      run_playbook tests/testcases/040_check-network-adv.yml
-    fi
-fi
-
-## Kubernetes conformance tests
-run_playbook tests/testcases/100_check-k8s-conformance.yml
+# Run tests
+ansible-playbook \
+    -e @tests/common_vars.yml \
+    -e @tests/${TESTCASE_FILE} \
+    -e local_release_dir=${PWD}/downloads \
+    tests/testcases/tests.yml
 
 # Test node removal procedure
 if [ "${REMOVE_NODE_CHECK}" = "true" ]; then

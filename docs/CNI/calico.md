@@ -180,7 +180,7 @@ calico_group_id=rr1
 The inventory above will deploy the following topology assuming that calico's
 `global_as_num` is set to `65400`:
 
-![Image](figures/kubespray-calico-rr.png?raw=true)
+![Image](../figures/kubespray-calico-rr.png?raw=true)
 
 ### Optional : Define default endpoint to host action
 
@@ -407,7 +407,7 @@ To view the logs you need to use the `tc` command to read the kernel trace buffe
 tc exec bpf debug
 ```
 
-Please see [Calico eBPF troubleshooting guide](https://docs.projectcalico.org/maintenance/troubleshoot/troubleshoot-ebpf#ebpf-program-debug-logs).
+Please see [Calico eBPF troubleshooting guide](https://docs.tigera.io/calico/latest/operations/ebpf/troubleshoot-ebpf#ebpf-program-debug-logs).
 
 ## Wireguard Encryption
 

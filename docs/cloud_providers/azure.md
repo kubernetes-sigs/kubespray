@@ -122,4 +122,4 @@ Use instance metadata service where possible
 
 ## Provisioning Azure with Resource Group Templates
 
-You'll find Resource Group Templates and scripts to provision the required infrastructure to Azure in [*contrib/azurerm*](../contrib/azurerm/README.md)
+You'll find Resource Group Templates and scripts to provision the required infrastructure to Azure in [*contrib/azurerm*](../../contrib/azurerm/README.md)

@@ -64,7 +64,6 @@ shift
 ansible-playbook \
     -e @tests/common_vars.yml \
     -e @tests/${TESTCASE_FILE} \
-    -e local_release_dir=${PWD}/downloads \
     "$@" \
     ${playbook}
 }

@@ -1,0 +1,39 @@
+---
+- name: Test containerd CRI
+  import_playbook: ../../../molecule/test_cri.yml
+  vars:
+    container_manager: containerd
+    cri_socket: unix:///var/run/containerd/containerd.sock
+    cri_name: containerd
+
+- name: Test nerdctl
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+  - name: Get kubespray defaults
+    import_role:
+      name: ../../../../../kubespray_defaults
+  - name: Test nerdctl commands
+    command: "{{ bin_dir }}/nerdctl {{ item | join(' ') }}"
+    vars:
+      image: quay.io/kubespray/hello-world:latest
+    loop:
+    - - pull
+      - "{{ image }}"
+    - - save
+      - -o
+      - /tmp/hello-world.tar
+      - "{{ image }}"
+    - - load
+      - -i
+      - /tmp/hello-world.tar
+    - - -n
+      - k8s.io
+      - run
+      - "{{ image }}"
+    register: nerdctl
+  - name: Check log from running a container
+    assert:
+      that:
+      - ('Hello from Docker' in nerdctl.results[3].stdout)

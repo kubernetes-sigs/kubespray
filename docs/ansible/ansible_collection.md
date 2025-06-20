@@ -4,8 +4,8 @@ Kubespray can be installed as an [Ansible collection](https://docs.ansible.com/a
 
 ## Requirements
 
-- An inventory file with the appropriate host groups. See the [README](../README.md#usage).
-- A `group_vars` directory. These group variables **need** to match the appropriate variable names under `inventory/local/group_vars`. See the [README](../README.md#usage).
+- An inventory file with the appropriate host groups. See the [README](../../README.md#usage).
+- A `group_vars` directory. These group variables **need** to match the appropriate variable names under `inventory/local/group_vars`. See the [README](../../README.md#usage).
 
 ## Usage
 

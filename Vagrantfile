@@ -4,6 +4,7 @@
 # For help on using kubespray with vagrant, check out docs/developers/vagrant.md
 
 require 'fileutils'
+require 'ipaddr'
 
 Vagrant.require_version ">= 2.0.0"
 
@@ -98,6 +99,24 @@ $playbook ||= "cluster.yml"
 $extra_vars ||= {}
 
 host_vars = {}
+
+# throw error if ip subnet is in use
+ip_test = IPAddr.new("#{$subnet}.0")
+
+internal_ips = `ip addr`.scan(/inet (\d{1,3}(?:\.\d{1,3}){3}\/\d{1,2})/).flatten
+
+network_ips = internal_ips.map do |ip_cidr|
+  prefix = ip_cidr.split('/').last.to_i
+  ip = IPAddr.new(ip_cidr)
+  net = ip.mask(prefix)
+  IPAddr.new("#{net}/#{prefix}")
+end
+
+if network_ips.any? { |net_ip| net_ip.include?(ip_test) && ip_test != net_ip }
+  puts "Invalid subnet provided, subnet is already in use: #{$subnet}.0"
+  puts "Subnets in use: " + network_ips.inspect
+  exit 1
+end
 
 # throw error if os is not supported
 if ! SUPPORTED_OS.key?($os)

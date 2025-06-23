@@ -1,0 +1,45 @@
+---
+# Remove after 2.29 released
+- name: Cilium | Delete Old Resource
+  command: |
+    {{ kubectl }} delete {{ item.kind | lower }} {{ item.name }} \
+    {{ '-n kube-system' if item.kind not in ['ClusterRole', 'ClusterRoleBinding'] else '' }} \
+  loop:
+    - { kind: ServiceAccount, name: cilium }
+    - { kind: ServiceAccount, name: cilium-operator }
+    - { kind: ServiceAccount, name: hubble-generate-certs }
+    - { kind: ServiceAccount, name: hubble-relay }
+    - { kind: ServiceAccount, name: hubble-ui }
+    - { kind: Service, name: hubble-metrics }
+    - { kind: Service, name: hubble-relay-metrics }
+    - { kind: Service, name: hubble-relay }
+    - { kind: Service, name: hubble-ui }
+    - { kind: Service, name: hubble-peer }
+    - { kind: Deployment, name: cilium-operator }
+    - { kind: Deployment, name: hubble-relay }
+    - { kind: Deployment, name: hubble-ui }
+    - { kind: DaemonSet, name: cilium }
+    - { kind: CronJob, name: hubble-generate-certs }
+    - { kind: Job, name: hubble-generate-certs }
+    - { kind: ConfigMap, name: cilium-config }
+    - { kind: ConfigMap, name: ip-masq-agent }
+    - { kind: ConfigMap, name: hubble-relay-config }
+    - { kind: ConfigMap, name: hubble-ui-nginx }
+    - { kind: ClusterRole, name: cilium }
+    - { kind: ClusterRole, name: cilium-operator }
+    - { kind: ClusterRole, name: hubble-generate-certs }
+    - { kind: ClusterRole, name: hubble-relay }
+    - { kind: ClusterRole, name: hubble-ui }
+    - { kind: ClusterRoleBinding, name: cilium }
+    - { kind: ClusterRoleBinding, name: cilium-operator }
+    - { kind: ClusterRoleBinding, name: hubble-generate-certs }
+    - { kind: ClusterRoleBinding, name: hubble-relay }
+    - { kind: ClusterRoleBinding, name: hubble-ui }
+    - { kind: Secret, name: hubble-ca-secret }
+    - { kind: Secret, name: hubble-relay-client-certs }
+    - { kind: Secret, name: hubble-server-certs }
+  register: patch_result
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  failed_when:
+    - patch_result.rc != 0
+    - "'not found' not in patch_result.stderr"

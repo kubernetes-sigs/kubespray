@@ -1,17 +1,17 @@
 #!/usr/bin/env ansible-playbook
 ---
-- name: Check all checksums are sorted by version
+- name: Verify correct structure of Kubespray variables
   hosts: localhost
   connection: local
   gather_facts: false
   vars:
-    fallback_ip: 'bypass tasks in kubespray-defaults'
+    fallback_ip: 'bypass tasks in kubespray_defaults'
     _keys: "{{ query('ansible.builtin.varnames', '^.+_checksums$') }}"
     _values: "{{ query('ansible.builtin.vars', *_keys) | map('dict2items') }}"
     _components_archs_values: "{{ _keys | zip(_values) | community.general.dict | dict2items | subelements('value') }}"
     _minimal_data_needed: "{{ _components_archs_values | map(attribute='0.key') | zip(_components_archs_values | map(attribute='1')) }}"
   roles:
-  - kubespray-defaults
+  - kubespray_defaults
   tasks:
   - name: Check all versions are strings
     assert:
@@ -36,3 +36,20 @@
     - (item.1.value | dict2items)[0].value is string or
       (item.1.value | dict2items)[0].value is number
     # only do list, the others are checksums with a different structure
+  - name: Include the packages list variable
+    include_vars: ../roles/system_packages/vars/main.yml
+
+  - name: Verify that the packages list is sorted
+    loop:
+    - pkgs_to_remove
+    - pkgs
+    vars:
+      pkgs_lists: "{{ lookup('vars', item).keys() | list }}"
+      ansible_distribution: irrelevant
+      ansible_distribution_major_version: irrelevant
+      ansible_distribution_minor_version: irrelevant
+      ansible_distribution_version: 1.0
+      ansible_os_family: irrelevant
+    assert:
+      that: "pkgs_lists | sort == pkgs_lists"
+      fail_msg: "{{ item }} is not sorted: {{ pkgs_lists | ansible.utils.fact_diff(pkgs_lists | sort) }}"

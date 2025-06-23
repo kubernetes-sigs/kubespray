@@ -1,0 +1,59 @@
+---
+- name: Set facts variables
+  tags:
+    - always
+  block:
+    - name: Gather ansible_default_ipv4
+      setup:
+        gather_subset: '!all,network'
+        filter: "ansible_default_ipv4"
+      when: ansible_default_ipv4 is not defined
+      ignore_unreachable: true
+      # Set 127.0.0.1 as fallback IP if we do not have host facts for host
+      # ansible_default_ipv4 isn't what you think.
+      # https://medium.com/opsops/ansible-default-ipv4-is-not-what-you-think-edb8ab154b10
+      # TODO: discard this and update all the location relying on it in "looping on hostvars" templates
+    - name: Set fallback_ip
+      set_fact:
+        fallback_ip: "{{ ansible_default_ipv4.address | d('127.0.0.1') }}"
+      when: fallback_ip is not defined
+
+    - name: Gather ansible_default_ipv6
+      setup:
+        gather_subset: '!all,network'
+        filter: "ansible_default_ipv6"
+      when: ansible_default_ipv6 is not defined
+      ignore_unreachable: true
+    - name: Set fallback_ip6
+      set_fact:
+        fallback_ip6: "{{ ansible_default_ipv6.address | d('::1') }}"
+      when: fallback_ip6 is not defined
+
+    - name: Set main access ip(access_ip based on ipv4_stack/ipv6_stack options).
+      set_fact:
+        cacheable: true
+        main_access_ip: >-
+          {%- if ipv4_stack -%}
+          {{ access_ip | default(ip | default(fallback_ip)) }}
+          {%- else -%}
+          {{ access_ip6 | default(ip6 | default(fallback_ip6)) }}
+          {%- endif -%}
+
+    - name: Set main ip(ip based on ipv4_stack/ipv6_stack options).
+      set_fact:
+        cacheable: true
+        main_ip: "{{ (ip | default(fallback_ip)) if ipv4_stack else (ip6 | default(fallback_ip6)) }}"
+
+    - name: Set main access ips(mixed ips for dualstack).
+      set_fact:
+        main_access_ips: ["{{ (main_access_ip + ',' + (access_ip6 | default(ip6 | default(fallback_ip6)))) if (ipv4_stack and ipv6_stack) else main_access_ip }}"]
+
+    - name: Set main ips(mixed ips for dualstack).
+      set_fact:
+        main_ips: ["{{ (main_ip + ',' + (ip6 | default(fallback_ip6))) if (ipv4_stack and ipv6_stack) else main_ip }}"]
+
+    - name: Set no_proxy
+      import_tasks: no_proxy.yml
+      when:
+        - http_proxy is defined or https_proxy is defined
+        - no_proxy is not defined

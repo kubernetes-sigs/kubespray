@@ -1,19 +1,24 @@
 ---
 .molecule:
   tags: [ffci]
-  only: [/^pr-.*$/]
-  except: ['triggers']
+  rules: # run on ci-short as well
+  - if: $CI_COMMIT_BRANCH =~ /^pr-.*$/
+    when: on_success
+  - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_PIPELINE_SCHEDULE_DESCRIPTION == "daily-ci"
+    when: on_success
+  - when: manual
+    allow_failure: true
   stage: deploy-part1
   image: $PIPELINE_IMAGE
   needs:
   - pipeline-image
-  # - ci-not-authorized
-  before_script:
-  - ./tests/scripts/rebase.sh
   script:
   - ./tests/scripts/molecule_run.sh
   after_script:
-  - ./tests/scripts/molecule_logs.sh
+  - rm -fr molecule_logs
+  - mkdir -p molecule_logs
+  - find ~/.cache/molecule/ \( -name '*.out' -o -name '*.err' \) -type f | xargs tar -uf molecule_logs/molecule.tar
+  - gzip molecule_logs/molecule.tar
   artifacts:
     when: always
     paths:
@@ -29,28 +34,22 @@ molecule:
       - container-engine/cri-dockerd
       - container-engine/containerd
       - container-engine/cri-o
+      - container-engine/gvisor
+      - container-engine/youki
       - adduser
       - bastion-ssh-config
-      - bootstrap-os
+      - bootstrap_os
 
-# CI template for periodic CI jobs
-# Enabled when PERIODIC_CI_ENABLED var is set
 molecule_full:
-  only:
-    variables:
-    - $PERIODIC_CI_ENABLED
   allow_failure: true
+  rules:
+  - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_PIPELINE_SCHEDULE_DESCRIPTION == "daily-ci"
+    when: on_success
+  - when: manual
+    allow_failure: true
   extends: molecule
   parallel:
     matrix:
     - ROLE:
-      - container-engine/cri-dockerd
-      - container-engine/containerd
-      - container-engine/cri-o
-      - adduser
-      - bastion-ssh-config
-      - bootstrap-os
       # FIXME : tests below are perma-failing
       - container-engine/kata-containers
-      - container-engine/gvisor
-      - container-engine/youki

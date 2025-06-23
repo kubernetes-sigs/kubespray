@@ -8,8 +8,6 @@
     - kubelet.service
     - cri-dockerd.service
     - cri-dockerd.socket
-    - etcd.service
-    - etcd-events.service
   failed_when: false
   tags:
     - services
@@ -27,8 +25,6 @@
     - crio.service.d/http-proxy.conf
     - k8s-certs-renew.service
     - k8s-certs-renew.timer
-    - etcd.service
-    - etcd-events.service
   register: services_removed
   tags:
     - services
@@ -139,24 +135,36 @@
       ignore_errors: true  # noqa ignore-errors
       changed_when: true
 
-- name: Reset | remove containerd
-  when: container_manager == 'containerd'
-  block:
-    - name: Reset | stop containerd service
-      service:
-        name: containerd
-        state: stopped
-      failed_when: false
-      tags:
-        - services
+- name: Reset | stop containerd and etcd services
+  service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  with_items:
+    - containerd.service
+    - etcd.service
+    - etcd-events.service
+  failed_when: false
+  tags:
+    - services
 
-    - name: Reset | remove containerd service
-      file:
-        path: /etc/systemd/system/containerd.service
-        state: absent
-      register: services_removed
-      tags:
-        - services
+- name: Reset | remove containerd and etcd services
+  file:
+    path: "/etc/systemd/system/{{ item }}"
+    state: absent
+  with_items:
+    - containerd.service
+    - etcd.service
+    - etcd-events.service
+  register: services_removed_secondary
+  tags:
+    - services
+    - containerd
+
+- name: Reset | systemctl daemon-reload  # noqa no-handler
+  systemd_service:
+    daemon_reload: true
+  when: services_removed_secondary.changed
 
 - name: Reset | gather mounted kubelet dirs
   shell: set -o pipefail && mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
@@ -304,7 +312,6 @@
     - /etc/NetworkManager/conf.d/calico.conf
     - /etc/NetworkManager/conf.d/dns.conf
     - /etc/NetworkManager/conf.d/k8s.conf
-    - /etc/weave.env
     - /opt/cni
     - /etc/dhcp/dhclient.d/zdnsupdate.sh
     - /etc/dhcp/dhclient-exit-hooks.d/zdnsupdate
@@ -332,7 +339,6 @@
     - "{{ bin_dir }}/calicoctl"
     - "{{ bin_dir }}/calicoctl.sh"
     - "{{ bin_dir }}/calico-upgrade"
-    - "{{ bin_dir }}/weave"
     - "{{ bin_dir }}/crictl"
     - "{{ bin_dir }}/nerdctl"
     - "{{ bin_dir }}/netctl"

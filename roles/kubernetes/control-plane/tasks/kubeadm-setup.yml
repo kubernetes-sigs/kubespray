@@ -53,21 +53,23 @@
     path: "{{ audit_policy_file | dirname }}"
     state: directory
     mode: "0640"
-  when: kubernetes_audit | default(false) or kubernetes_audit_webhook | default(false)
+  when: kubernetes_audit or kubernetes_audit_webhook
 
 - name: Write api audit policy yaml
   template:
     src: apiserver-audit-policy.yaml.j2
     dest: "{{ audit_policy_file }}"
     mode: "0640"
-  when: kubernetes_audit | default(false) or kubernetes_audit_webhook | default(false)
+  when: kubernetes_audit or kubernetes_audit_webhook
+  notify: Control plane | Restart apiserver
 
 - name: Write api audit webhook config yaml
   template:
     src: apiserver-audit-webhook-config.yaml.j2
     dest: "{{ audit_webhook_config_file }}"
     mode: "0640"
-  when: kubernetes_audit_webhook | default(false)
+  when: kubernetes_audit_webhook
+  notify: Control plane | Restart apiserver
 
 - name: Create apiserver tracing config directory
   file:
@@ -82,6 +84,7 @@
     dest: "{{ kube_config_dir }}/tracing/apiserver-tracing.yaml"
     mode: "0640"
   when: kube_apiserver_tracing
+  notify: Control plane | Restart apiserver
 
 # Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
 - name: Set kubeadm_config_api_fqdn define
@@ -109,6 +112,7 @@
     dest: "{{ kube_config_dir }}/admission-controls/admission-controls.yaml"
     mode: "0640"
   when: kube_apiserver_admission_control_config_file
+  notify: Control plane | Restart apiserver
 
 - name: Kubeadm | Push admission control config files
   template:
@@ -119,6 +123,7 @@
     - kube_apiserver_admission_control_config_file
     - item in kube_apiserver_admission_plugins_needs_configuration
   loop: "{{ kube_apiserver_enable_admission_plugins }}"
+  notify: Control plane | Restart apiserver
 
 - name: Kubeadm | Check apiserver.crt SANs
   vars:
@@ -165,23 +170,34 @@
     - apiserver_sans_ip_check.changed or apiserver_sans_host_check.changed
     - not kube_external_ca_mode
 
+  # TODO: Remove --skip-phases from command when v1beta4 UpgradeConfiguration supports skipPhases
 - name: Kubeadm | Initialize first control plane node
-  command: >-
-    timeout -k {{ kubeadm_init_timeout }} {{ kubeadm_init_timeout }}
-    {{ bin_dir }}/kubeadm init
-    --config={{ kube_config_dir }}/kubeadm-config.yaml
-    --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
-    --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
-    {{ kube_external_ca_mode | ternary('', '--upload-certs') }}
-  register: kubeadm_init
-  # Retry is because upload config sometimes fails
-  retries: 3
-  until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
   when: inventory_hostname == first_kube_control_plane and not kubeadm_already_run.stat.exists
-  failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
+  vars:
+    kubeadm_init_first_control_plane_cmd: >-
+      timeout -k {{ kubeadm_init_timeout }} {{ kubeadm_init_timeout }}
+      {{ bin_dir }}/kubeadm init
+      --config={{ kube_config_dir }}/kubeadm-config.yaml
+      --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
+      --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
+      {{ kube_external_ca_mode | ternary('', '--upload-certs') }}
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Control plane | restart kubelet
+  block:
+    - name: Kubeadm | Initialize first control plane node (1st try)
+      command: "{{ kubeadm_init_first_control_plane_cmd }}"
+      register: kubeadm_init
+      failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
+  rescue:
+    # Retry is because upload config sometimes fails
+    # This retry task is separated from 1st task to show log of failure of 1st task.
+    - name: Kubeadm | Initialize first control plane node (retry)
+      command: "{{ kubeadm_init_first_control_plane_cmd }}"
+      register: kubeadm_init
+      retries: 2
+      until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr
+      failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
 
 - name: Set kubeadm certificate key
   set_fact:

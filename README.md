@@ -22,7 +22,7 @@ Ensure you have installed Docker then
 ```ShellSession
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.27.0 bash
+  quay.io/kubespray/kubespray:v2.28.0 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
@@ -88,7 +88,7 @@ vagrant up
 
 - **Flatcar Container Linux by Kinvolk**
 - **Debian** Bookworm, Bullseye
-- **Ubuntu** 20.04, 22.04, 24.04
+- **Ubuntu** 22.04, 24.04
 - **CentOS/RHEL** [8, 9](docs/operating_systems/rhel.md#rhel-8)
 - **Fedora** 39, 40
 - **Fedora CoreOS** (see [fcos Note](docs/operating_systems/fcos.md))
@@ -111,32 +111,29 @@ Note:
 <!-- BEGIN ANSIBLE MANAGED BLOCK -->
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.32.3
-  - [etcd](https://github.com/etcd-io/etcd) 3.5.16
+  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.33.2
+  - [etcd](https://github.com/etcd-io/etcd) 3.5.21
   - [docker](https://www.docker.com/) 28.0
-  - [containerd](https://containerd.io/) 2.0.3
-  - [cri-o](http://cri-o.io/) 1.32.0 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [containerd](https://containerd.io/) 2.0.5
+  - [cri-o](http://cri-o.io/) 1.33.1 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) 1.4.1
-  - [calico](https://github.com/projectcalico/calico) 3.29.2
-  - [cilium](https://github.com/cilium/cilium) 1.15.9
-  - [flannel](https://github.com/flannel-io/flannel) 0.22.0
+  - [calico](https://github.com/projectcalico/calico) 3.29.4
+  - [cilium](https://github.com/cilium/cilium) 1.17.3
+  - [flannel](https://github.com/flannel-io/flannel) 0.26.7
   - [kube-ovn](https://github.com/alauda/kube-ovn) 1.12.21
   - [kube-router](https://github.com/cloudnativelabs/kube-router) 2.1.1
   - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) 4.1.0
-  - [weave](https://github.com/rajch/weave) 2.8.7
   - [kube-vip](https://github.com/kube-vip/kube-vip) 0.8.0
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) 1.15.3
-  - [coredns](https://github.com/coredns/coredns) 1.11.3
+  - [coredns](https://github.com/coredns/coredns) 1.12.0
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) 1.12.1
   - [argocd](https://argoproj.github.io/) 2.14.5
   - [helm](https://helm.sh/) 3.16.4
   - [metallb](https://metallb.universe.tf/) 0.13.9
   - [registry](https://github.com/distribution/distribution) 2.8.1
 - Storage Plugin
-  - [cephfs-provisioner](https://github.com/kubernetes-incubator/external-storage) 2.1.0-k8s1.11
-  - [rbd-provisioner](https://github.com/kubernetes-incubator/external-storage) 2.1.1-k8s1.11
   - [aws-ebs-csi-plugin](https://github.com/kubernetes-sigs/aws-ebs-csi-driver) 0.5.0
   - [azure-csi-plugin](https://github.com/kubernetes-sigs/azuredisk-csi-driver) 1.10.0
   - [cinder-csi-plugin](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/using-cinder-csi-plugin.md) 1.30.0
@@ -184,9 +181,6 @@ You can choose among ten network plugins. (default: `calico`, except Vagrant use
     pods, and (if using Istio and Envoy) applications at the service mesh layer.
 
 - [cilium](http://docs.cilium.io/en/latest/): layer 3/4 networking (as well as layer 7 to protect and secure application protocols), supports dynamic insertion of BPF bytecode into the Linux kernel to implement security services, networking and visibility logic.
-
-- [weave](docs/CNI/weave.md): Weave is a lightweight container overlay network that doesn't require an external K/V database cluster.
-    (Please refer to `weave` [troubleshooting documentation](https://www.weave.works/docs/net/latest/troubleshooting/)).
 
 - [kube-ovn](docs/CNI/kube-ovn.md): Kube-OVN integrates the OVN-based Network Virtualization with Kubernetes. It offers an advanced Container Network Fabric for Enterprises.
 

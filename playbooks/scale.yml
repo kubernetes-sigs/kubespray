@@ -5,22 +5,11 @@
 - name: Gather facts
   import_playbook: facts.yml
 
-- name: Generate the etcd certificates beforehand
-  hosts: etcd:kube_control_plane
-  gather_facts: false
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray-defaults }
-    - role: etcd
-      tags: etcd
-      vars:
-        etcd_cluster_setup: false
-        etcd_events_cluster_setup: false
-      when:
-        - etcd_deployment_type != "kubeadm"
-        - kube_network_plugin in ["calico", "flannel", "canal", "cilium"] or cilium_deploy_additionally | default(false) | bool
-        - kube_network_plugin != "calico" or calico_datastore == "etcd"
+- name: Install etcd
+  vars:
+    etcd_cluster_setup: false
+    etcd_events_cluster_setup: false
+  import_playbook: install_etcd.yml
 
 - name: Download images to ansible host cache via first kube_control_plane node
   hosts: kube_control_plane[0]
@@ -28,7 +17,7 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults, when: "not skip_downloads and download_run_once and not download_localhost" }
+    - { role: kubespray_defaults, when: "not skip_downloads and download_run_once and not download_localhost" }
     - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
     - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
 
@@ -38,7 +27,7 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
+    - { role: kubespray_defaults }
     - { role: kubernetes/preinstall, tags: preinstall }
     - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
     - { role: download, tags: download, when: "not skip_downloads" }
@@ -57,7 +46,7 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
+    - { role: kubespray_defaults }
     - { role: kubernetes/node, tags: node }
 
 - name: Upload control plane certs and retrieve encryption key
@@ -66,7 +55,7 @@
   gather_facts: false
   tags: kubeadm
   roles:
-    - { role: kubespray-defaults }
+    - { role: kubespray_defaults }
   tasks:
     - name: Upload control plane certificates
       command: >-
@@ -88,7 +77,7 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
+    - { role: kubespray_defaults }
     - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: kubernetes/node-label, tags: node-label }
     - { role: kubernetes/node-taint, tags: node-taint }
@@ -100,5 +89,5 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
   roles:
-    - { role: kubespray-defaults }
+    - { role: kubespray_defaults }
     - { role: kubernetes/preinstall, when: "dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'", tags: resolvconf, dns_late: true }

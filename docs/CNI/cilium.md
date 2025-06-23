@@ -54,6 +54,10 @@ cilium_loadbalancer_ip_pools:
   - name: "blue-pool"
     cidrs:
       - "10.0.10.0/24"
+    ranges:
+      - start: "20.0.20.100"
+        stop: "20.0.20.200"
+      - start: "1.2.3.4"
 ```
 
 For further information, check [LB IPAM documentation](https://docs.cilium.io/en/stable/network/lb-ipam/)
@@ -233,7 +237,7 @@ cilium_operator_extra_volume_mounts:
 ## Choose Cilium version
 
 ```yml
-cilium_version: "1.15.9"
+cilium_version: "1.17.3"
 ```
 
 ## Add variable to config

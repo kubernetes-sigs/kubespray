@@ -68,8 +68,8 @@ containerd_runc_runtime:
   engine: ""
   root: ""
   options:
-    systemdCgroup: "false"
-    binaryName: /usr/local/bin/my-runc
+    SystemdCgroup: "false"
+    BinaryName: /usr/local/bin/my-runc
   base_runtime_spec: cri-base.json
 ```
 

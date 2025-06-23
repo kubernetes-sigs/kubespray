@@ -1,0 +1,1103 @@
+---
+local_release_dir: /tmp/releases
+download_cache_dir: /tmp/kubespray_cache
+
+# If this is true, debug information will be displayed but
+# may contain some private data, so it is recommended to set it to false
+# in the production environment.
+unsafe_show_logs: false
+
+# do not delete remote cache files after using them
+# NOTE: Setting this parameter to TRUE is only really useful when developing kubespray
+download_keep_remote_cache: false
+
+# Only useful when download_run_once is false: Localy cached files and images are
+# uploaded to kubernetes nodes. Also, images downloaded on those nodes are copied
+# back to the ansible runner's cache, if they are not yet preset.
+download_force_cache: false
+
+# Used to only evaluate vars from download role
+skip_downloads: false
+
+# Optionally skip kubeadm images download
+skip_kubeadm_images: false
+kubeadm_images: {}
+
+# if this is set to true will only download files once. Doesn't work
+# on Flatcar Container Linux by Kinvolk unless the download_localhost is true and localhost
+# is running another OS type. Default compress level is 1 (fastest).
+download_run_once: false
+download_compress: 1
+
+# if this is set to true will download container
+download_container: true
+
+# if this is set to true, uses the localhost for download_run_once mode
+# (requires docker and sudo to access docker). You may want this option for
+# local caching of docker images or for Flatcar Container Linux by Kinvolk cluster nodes.
+# Otherwise, uses the first node in the kube_control_plane group to store images
+# in the download_run_once mode.
+download_localhost: false
+
+# Always pull images if set to True. Otherwise check by the repo's tag/digest.
+download_always_pull: false
+
+# Some problems may occur when downloading files over https proxy due to ansible bug
+# https://github.com/ansible/ansible/issues/32750. Set this variable to False to disable
+# SSL validation of get_url module. Note that kubespray will still be performing checksum validation.
+download_validate_certs: true
+
+# Use the first kube_control_plane if download_localhost is not set
+download_delegate: "{% if download_localhost %}localhost{% else %}{{ groups['kube_control_plane'][0] }}{% endif %}"
+
+# Allow control the times of download retries for files and containers
+download_retries: 4
+
+# The docker_image_info_command might seems weird but we are using raw/endraw and `{{ `{{` }}` to manage the double jinja2 processing
+docker_image_pull_command: "{{ docker_bin_dir }}/docker pull"
+docker_image_info_command: "{{ docker_bin_dir }}/docker images -q | xargs -i {{ '{{' }} docker_bin_dir }}/docker inspect -f {% raw %}'{{ '{{' }} if .RepoTags }}{{ '{{' }} join .RepoTags \",\" }}{{ '{{' }} end }}{{ '{{' }} if .RepoDigests }},{{ '{{' }} join .RepoDigests \",\" }}{{ '{{' }} end }}' {% endraw %} {} | tr '\n' ','"
+nerdctl_image_info_command: "{{ bin_dir }}/nerdctl -n k8s.io images --format '{% raw %}{{ .Repository }}:{{ .Tag }}{% endraw %}' 2>/dev/null | grep -v ^:$ | tr '\n' ','"
+nerdctl_image_pull_command: "{{ bin_dir }}/nerdctl -n k8s.io pull --quiet"
+crictl_image_info_command: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
+crictl_image_pull_command: "{{ bin_dir }}/crictl pull"
+
+image_command_tool: "{%- if container_manager == 'containerd' -%}nerdctl{%- elif container_manager == 'crio' -%}crictl{%- else -%}{{ container_manager }}{%- endif -%}"
+image_command_tool_on_localhost: "{{ image_command_tool }}"
+
+image_pull_command: "{{ lookup('vars', image_command_tool + '_image_pull_command') }}"
+image_info_command: "{{ lookup('vars', image_command_tool + '_image_info_command') }}"
+image_pull_command_on_localhost: "{{ lookup('vars', image_command_tool_on_localhost + '_image_pull_command') }}"
+image_info_command_on_localhost: "{{ lookup('vars', image_command_tool_on_localhost + '_image_info_command') }}"
+
+# Arch of Docker images and needed packages
+image_arch: "{{ host_architecture | default('amd64') }}"
+
+# Versions
+crun_version: "{{ (crun_checksums['amd64'] | dict2items)[0].key }}"
+runc_version: "{{ (runc_checksums['amd64'] | dict2items)[0].key }}"
+kata_containers_version: "{{ (kata_containers_binary_checksums['amd64'] | dict2items)[0].key }}"
+youki_version: "{{ (youki_checksums['amd64'] | dict2items)[0].key }}"
+gvisor_version: "{{ (gvisor_runsc_binary_checksums['amd64'] | dict2items)[0].key }}"
+containerd_version: "{{ (containerd_archive_checksums['amd64'] | dict2items)[0].key }}"
+cri_dockerd_version: "{{ (cri_dockerd_archive_checksums['amd64'] | dict2items)[0].key }}"
+
+# this is relevant when container_manager == 'docker'
+docker_containerd_version: 1.6.32
+
+# gcr and kubernetes image repo define
+gcr_image_repo: "gcr.io"
+kube_image_repo: "registry.k8s.io"
+
+# docker image repo define
+docker_image_repo: "docker.io"
+
+# quay image repo define
+quay_image_repo: "quay.io"
+
+# github image repo define (ex multus only use that)
+github_image_repo: "ghcr.io"
+
+# TODO(mattymo): Move calico versions to roles/network_plugins/calico/defaults
+# after migration to container download
+calico_version: "{{ (calicoctl_binary_checksums['amd64'] | dict2items)[0].key }}"
+calico_ctl_version: "{{ calico_version }}"
+calico_cni_version: "{{ calico_version }}"
+calico_policy_version: "{{ calico_version }}"
+calico_typha_version: "{{ calico_version }}"
+calico_apiserver_version: "{{ calico_version }}"
+typha_enabled: false
+calico_apiserver_enabled: false
+
+flannel_version: 0.26.7
+flannel_cni_version: 1.7.1-flannel1
+cni_version: "{{ (cni_binary_checksums['amd64'] | dict2items)[0].key }}"
+
+cilium_version: "1.17.3"
+cilium_cli_version: "{{ (ciliumcli_binary_checksums['amd64'] | dict2items)[0].key }}"
+cilium_enable_hubble: false
+
+kube_ovn_version: "1.12.21"
+kube_ovn_dpdk_version: "19.11-v{{ kube_ovn_version }}"
+kube_router_version: "2.1.1"
+multus_version: "4.1.0"
+helm_version: "{{ (helm_archive_checksums['amd64'] | dict2items)[0].key }}"
+nerdctl_version: "{{ (nerdctl_archive_checksums['amd64'] | dict2items)[0].key }}"
+skopeo_version: "{{ (skopeo_binary_checksums['amd64'] | dict2items)[0].key }}"
+
+pod_infra_version: "{{ pod_infra_supported_versions[kube_major_version] }}"
+etcd_version: "{{ etcd_supported_versions[kube_major_version] }}"
+crictl_version: "{{ (crictl_checksums['amd64'].keys() | select('version', kube_major_next_version, '<'))[0] }}"
+crio_version: "{{ (crio_archive_checksums['amd64'].keys() | select('version', kube_major_next_version, '<'))[0] }}"
+
+# Scheduler plugins doesn't build for K8s 1.29 yet
+scheduler_plugins_supported_versions:
+  '1.31': 0
+  '1.30': 0
+  '1.29': 0
+scheduler_plugins_version: "{{ scheduler_plugins_supported_versions[kube_major_version] }}"
+
+yq_version: "{{ (yq_checksums['amd64'] | dict2items)[0].key }}"
+
+gateway_api_version: "1.2.1"
+gateway_api_channel: "standard"
+
+github_url: https://github.com
+dl_k8s_io_url: https://dl.k8s.io
+storage_googleapis_url: https://storage.googleapis.com
+get_helm_url: https://get.helm.sh
+
+# Download URLs
+kubelet_download_url: "{{ dl_k8s_io_url }}/release/v{{ kube_version }}/bin/linux/{{ image_arch }}/kubelet"
+kubectl_download_url: "{{ dl_k8s_io_url }}/release/v{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl"
+kubeadm_download_url: "{{ dl_k8s_io_url }}/release/v{{ kube_version }}/bin/linux/{{ image_arch }}/kubeadm"
+etcd_download_url: "{{ github_url }}/etcd-io/etcd/releases/download/v{{ etcd_version }}/etcd-v{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
+cni_download_url: "{{ github_url }}/containernetworking/plugins/releases/download/v{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-v{{ cni_version }}.tgz"
+calicoctl_download_url: "{{ github_url }}/projectcalico/calico/releases/download/v{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
+calico_crds_download_url: "{{ github_url }}/projectcalico/calico/archive/v{{ calico_version }}.tar.gz"
+ciliumcli_download_url: "{{ github_url }}/cilium/cilium-cli/releases/download/v{{ cilium_cli_version }}/cilium-linux-{{ image_arch }}.tar.gz"
+crictl_download_url: "{{ github_url }}/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+crio_download_url: "{{ storage_googleapis_url }}/cri-o/artifacts/cri-o.{{ image_arch }}.v{{ crio_version }}.tar.gz"
+helm_download_url: "{{ get_helm_url }}/helm-v{{ helm_version }}-linux-{{ image_arch }}.tar.gz"
+runc_download_url: "{{ github_url }}/opencontainers/runc/releases/download/v{{ runc_version }}/runc.{{ image_arch }}"
+crun_download_url: "{{ github_url }}/containers/crun/releases/download/{{ crun_version }}/crun-{{ crun_version }}-linux-{{ image_arch }}"
+youki_download_url: "{{ github_url }}/youki-dev/youki/releases/download/v{{ youki_version }}/youki-{{ youki_version }}-{{ ansible_architecture }}-gnu.tar.gz"
+kata_containers_download_url: "{{ github_url }}/kata-containers/kata-containers/releases/download/{{ kata_containers_version }}/kata-static-{{ kata_containers_version }}-{{ image_arch }}.tar.xz"
+# gVisor only supports amd64 and uses x86_64 to in the download link
+gvisor_runsc_download_url: "{{ storage_googleapis_url }}/gvisor/releases/release/{{ gvisor_version }}/{{ ansible_architecture }}/runsc"
+gvisor_containerd_shim_runsc_download_url: "{{ storage_googleapis_url }}/gvisor/releases/release/{{ gvisor_version }}/{{ ansible_architecture }}/containerd-shim-runsc-v1"
+nerdctl_download_url: "{{ github_url }}/containerd/nerdctl/releases/download/v{{ nerdctl_version }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+containerd_download_url: "{{ github_url }}/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
+cri_dockerd_download_url: "{{ github_url }}/Mirantis/cri-dockerd/releases/download/v{{ cri_dockerd_version }}/cri-dockerd-{{ cri_dockerd_version }}.{{ image_arch }}.tgz"
+skopeo_download_url: "{{ github_url }}/lework/skopeo-binary/releases/download/v{{ skopeo_version }}/skopeo-linux-{{ image_arch }}"
+yq_download_url: "{{ github_url }}/mikefarah/yq/releases/download/v{{ yq_version }}/yq_linux_{{ image_arch }}"
+gateway_api_crds_download_url: "{{ github_url }}/kubernetes-sigs/gateway-api/releases/download/v{{ gateway_api_version }}/{{ gateway_api_channel }}-install.yaml"
+
+etcd_binary_checksum: "{{ etcd_binary_checksums[image_arch][etcd_version] }}"
+cni_binary_checksum: "{{ cni_binary_checksums[image_arch][cni_version] }}"
+kubelet_binary_checksum: "{{ kubelet_checksums[image_arch][kube_version] }}"
+kubectl_binary_checksum: "{{ kubectl_checksums[image_arch][kube_version] }}"
+kubeadm_binary_checksum: "{{ kubeadm_checksums[image_arch][kube_version] }}"
+yq_binary_checksum: "{{ yq_checksums[image_arch][yq_version] }}"
+calicoctl_binary_checksum: "{{ calicoctl_binary_checksums[image_arch][calico_ctl_version] }}"
+ciliumcli_binary_checksum: "{{ ciliumcli_binary_checksums[image_arch][cilium_cli_version] }}"
+crictl_binary_checksum: "{{ crictl_checksums[image_arch][crictl_version] }}"
+crio_archive_checksum: "{{ crio_archive_checksums[image_arch][crio_version] }}"
+cri_dockerd_archive_checksum: "{{ cri_dockerd_archive_checksums[image_arch][cri_dockerd_version] }}"
+helm_archive_checksum: "{{ helm_archive_checksums[image_arch][helm_version] }}"
+runc_binary_checksum: "{{ runc_checksums[image_arch][runc_version] }}"
+crun_binary_checksum: "{{ crun_checksums[image_arch][crun_version] }}"
+youki_archive_checksum: "{{ youki_checksums[image_arch][youki_version] }}"
+kata_containers_binary_checksum: "{{ kata_containers_binary_checksums[image_arch][kata_containers_version] }}"
+gvisor_runsc_binary_checksum: "{{ gvisor_runsc_binary_checksums[image_arch][gvisor_version] }}"
+gvisor_containerd_shim_binary_checksum: "{{ gvisor_containerd_shim_binary_checksums[image_arch][gvisor_version] }}"
+nerdctl_archive_checksum: "{{ nerdctl_archive_checksums[image_arch][nerdctl_version] }}"
+containerd_archive_checksum: "{{ containerd_archive_checksums[image_arch][containerd_version] }}"
+skopeo_binary_checksum: "{{ skopeo_binary_checksums[image_arch][skopeo_version] }}"
+
+# Containers
+# In some cases, we need a way to set --registry-mirror or --insecure-registry for docker,
+# it helps a lot for local private development or bare metal environment.
+# So you need define --registry-mirror or --insecure-registry, and modify the following url address.
+# example:
+# You need to deploy kubernetes cluster on local private development.
+# Also provide the address of your own private registry.
+# And use --insecure-registry options for docker
+kube_proxy_image_repo: "{{ kube_image_repo }}/kube-proxy"
+etcd_image_repo: "{{ quay_image_repo }}/coreos/etcd"
+etcd_image_tag: "v{{ etcd_version }}"
+flannel_image_repo: "{{ docker_image_repo }}/flannel/flannel"
+flannel_image_tag: "v{{ flannel_version }}"
+flannel_init_image_repo: "{{ docker_image_repo }}/flannel/flannel-cni-plugin"
+flannel_init_image_tag: "v{{ flannel_cni_version }}"
+calico_node_image_repo: "{{ quay_image_repo }}/calico/node"
+calico_node_image_tag: "v{{ calico_version }}"
+calico_cni_image_repo: "{{ quay_image_repo }}/calico/cni"
+calico_cni_image_tag: "v{{ calico_cni_version }}"
+calico_policy_image_repo: "{{ quay_image_repo }}/calico/kube-controllers"
+calico_policy_image_tag: "v{{ calico_policy_version }}"
+calico_typha_image_repo: "{{ quay_image_repo }}/calico/typha"
+calico_typha_image_tag: "v{{ calico_typha_version }}"
+calico_apiserver_image_repo: "{{ quay_image_repo }}/calico/apiserver"
+calico_apiserver_image_tag: "v{{ calico_apiserver_version }}"
+pod_infra_image_repo: "{{ kube_image_repo }}/pause"
+pod_infra_image_tag: "{{ pod_infra_version }}"
+netcheck_version: "1.2.2"
+netcheck_agent_image_repo: "{{ docker_image_repo }}/mirantis/k8s-netchecker-agent"
+netcheck_agent_image_tag: "v{{ netcheck_version }}"
+netcheck_server_image_repo: "{{ docker_image_repo }}/mirantis/k8s-netchecker-server"
+netcheck_server_image_tag: "v{{ netcheck_version }}"
+netcheck_etcd_image_tag: "v3.4.17"
+cilium_image_repo: "{{ quay_image_repo }}/cilium/cilium"
+cilium_image_tag: "v{{ cilium_version }}"
+cilium_operator_image_repo: "{{ quay_image_repo }}/cilium/operator"
+cilium_operator_image_tag: "v{{ cilium_version }}"
+cilium_hubble_relay_image_repo: "{{ quay_image_repo }}/cilium/hubble-relay"
+cilium_hubble_relay_image_tag: "v{{ cilium_version }}"
+cilium_hubble_certgen_image_repo: "{{ quay_image_repo }}/cilium/certgen"
+cilium_hubble_certgen_image_tag: "v0.2.1"
+cilium_hubble_ui_image_repo: "{{ quay_image_repo }}/cilium/hubble-ui"
+cilium_hubble_ui_image_tag: "v0.13.2"
+cilium_hubble_ui_backend_image_repo: "{{ quay_image_repo }}/cilium/hubble-ui-backend"
+cilium_hubble_ui_backend_image_tag: "v0.13.2"
+cilium_hubble_envoy_image_repo: "{{ quay_image_repo }}/cilium/cilium-envoy"
+cilium_hubble_envoy_image_tag: "v1.32.5-1744305768-f9ddca7dcd91f7ca25a505560e655c47d3dec2cf"
+kube_ovn_container_image_repo: "{{ docker_image_repo }}/kubeovn/kube-ovn"
+kube_ovn_container_image_tag: "v{{ kube_ovn_version }}"
+kube_ovn_vpc_container_image_repo: "{{ docker_image_repo }}/kubeovn/vpc-nat-gateway"
+kube_ovn_vpc_container_image_tag: "v{{ kube_ovn_version }}"
+kube_ovn_dpdk_container_image_repo: "{{ docker_image_repo }}/kubeovn/kube-ovn-dpdk"
+kube_ovn_dpdk_container_image_tag: "{{ kube_ovn_dpdk_version }}"
+kube_router_image_repo: "{{ docker_image_repo }}/cloudnativelabs/kube-router"
+kube_router_image_tag: "v{{ kube_router_version }}"
+multus_image_repo: "{{ github_image_repo }}/k8snetworkplumbingwg/multus-cni"
+multus_image_tag: "v{{ multus_version }}"
+external_openstack_cloud_controller_image_repo: "{{ kube_image_repo }}/provider-os/openstack-cloud-controller-manager"
+external_openstack_cloud_controller_image_tag: "v1.32.0"
+
+kube_vip_image_repo: "{{ github_image_repo }}/kube-vip/kube-vip{{ '-iptables' if kube_vip_lb_fwdmethod == 'masquerade' else '' }}"
+kube_vip_image_tag: v0.8.9
+nginx_image_repo: "{{ docker_image_repo }}/library/nginx"
+nginx_image_tag: 1.28.0-alpine
+haproxy_image_repo: "{{ docker_image_repo }}/library/haproxy"
+haproxy_image_tag: 3.1.7-alpine
+
+# Coredns version should be supported by corefile-migration (or at least work with)
+# bundle with kubeadm; if not 'basic' upgrade can sometimes fail
+
+coredns_supported_versions:
+  '1.33': 1.12.0
+  '1.32': 1.11.3
+  '1.31': 1.11.3
+coredns_version: "{{ coredns_supported_versions[kube_major_version] }}"
+coredns_image_repo: "{{ kube_image_repo }}{{ '/coredns' if coredns_version is version('1.7.1', '>=') else '' }}/coredns"
+coredns_image_tag: "{{ 'v' if coredns_version is version('1.7.1', '>=') else '' }}{{ coredns_version }}"
+
+nodelocaldns_version: "1.25.0"
+nodelocaldns_image_repo: "{{ kube_image_repo }}/dns/k8s-dns-node-cache"
+nodelocaldns_image_tag: "{{ nodelocaldns_version }}"
+
+dnsautoscaler_version: 1.8.8
+dnsautoscaler_image_repo: "{{ kube_image_repo }}/cpa/cluster-proportional-autoscaler"
+dnsautoscaler_image_tag: "v{{ dnsautoscaler_version }}"
+
+scheduler_plugins_controller_image_repo: "{{ kube_image_repo }}/scheduler-plugins/controller"
+scheduler_plugins_controller_image_tag: "v{{ scheduler_plugins_version }}"
+scheduler_plugins_scheduler_image_repo: "{{ kube_image_repo }}/scheduler-plugins/kube-scheduler"
+scheduler_plugins_scheduler_image_tag: "v{{ scheduler_plugins_version }}"
+
+registry_version: "2.8.1"
+registry_image_repo: "{{ docker_image_repo }}/library/registry"
+registry_image_tag: "{{ registry_version }}"
+metrics_server_version: "0.7.0"
+metrics_server_image_repo: "{{ kube_image_repo }}/metrics-server/metrics-server"
+metrics_server_image_tag: "v{{ metrics_server_version }}"
+local_volume_provisioner_version: "2.5.0"
+local_volume_provisioner_image_repo: "{{ kube_image_repo }}/sig-storage/local-volume-provisioner"
+local_volume_provisioner_image_tag: "v{{ local_volume_provisioner_version }}"
+local_path_provisioner_version: "0.0.24"
+local_path_provisioner_image_repo: "{{ docker_image_repo }}/rancher/local-path-provisioner"
+local_path_provisioner_image_tag: "v{{ local_path_provisioner_version }}"
+ingress_nginx_version: "1.12.1"
+ingress_nginx_controller_image_repo: "{{ kube_image_repo }}/ingress-nginx/controller"
+ingress_nginx_opentelemetry_image_repo: "{{ kube_image_repo }}/ingress-nginx/opentelemetry"
+ingress_nginx_controller_image_tag: "v{{ ingress_nginx_version }}"
+ingress_nginx_opentelemetry_image_tag: "v20230721-3e2062ee5"
+ingress_nginx_kube_webhook_certgen_image_repo: "{{ kube_image_repo }}/ingress-nginx/kube-webhook-certgen"
+ingress_nginx_kube_webhook_certgen_image_tag: "v1.5.2"
+alb_ingress_image_repo: "{{ docker_image_repo }}/amazon/aws-alb-ingress-controller"
+alb_ingress_image_tag: "v1.1.9"
+cert_manager_version: "1.15.3"
+cert_manager_controller_image_repo: "{{ quay_image_repo }}/jetstack/cert-manager-controller"
+cert_manager_controller_image_tag: "v{{ cert_manager_version }}"
+cert_manager_cainjector_image_repo: "{{ quay_image_repo }}/jetstack/cert-manager-cainjector"
+cert_manager_cainjector_image_tag: "v{{ cert_manager_version }}"
+cert_manager_webhook_image_repo: "{{ quay_image_repo }}/jetstack/cert-manager-webhook"
+cert_manager_webhook_image_tag: "v{{ cert_manager_version }}"
+
+csi_attacher_image_repo: "{{ kube_image_repo }}/sig-storage/csi-attacher"
+csi_attacher_image_tag: "v3.3.0"
+csi_provisioner_image_repo: "{{ kube_image_repo }}/sig-storage/csi-provisioner"
+csi_provisioner_image_tag: "v3.0.0"
+csi_snapshotter_image_repo: "{{ kube_image_repo }}/sig-storage/csi-snapshotter"
+csi_snapshotter_image_tag: "v5.0.0"
+csi_resizer_image_repo: "{{ kube_image_repo }}/sig-storage/csi-resizer"
+csi_resizer_image_tag: "v1.3.0"
+csi_node_driver_registrar_image_repo: "{{ kube_image_repo }}/sig-storage/csi-node-driver-registrar"
+csi_node_driver_registrar_image_tag: "v2.4.0"
+csi_livenessprobe_image_repo: "{{ kube_image_repo }}/sig-storage/livenessprobe"
+csi_livenessprobe_image_tag: "v2.5.0"
+
+snapshot_controller_supported_versions:
+  '1.33': "v7.0.2"
+  '1.32': "v7.0.2"
+  '1.31': "v7.0.2"
+snapshot_controller_image_repo: "{{ kube_image_repo }}/sig-storage/snapshot-controller"
+snapshot_controller_image_tag: "{{ snapshot_controller_supported_versions[kube_major_version] }}"
+
+cinder_csi_plugin_version: "1.30.0"
+cinder_csi_plugin_image_repo: "{{ kube_image_repo }}/provider-os/cinder-csi-plugin"
+cinder_csi_plugin_image_tag: "v{{ cinder_csi_plugin_version }}"
+
+aws_ebs_csi_plugin_version: "0.5.0"
+aws_ebs_csi_plugin_image_repo: "{{ docker_image_repo }}/amazon/aws-ebs-csi-driver"
+aws_ebs_csi_plugin_image_tag: "v{{ aws_ebs_csi_plugin_version }}"
+
+gcp_pd_csi_plugin_version: "1.9.2"
+gcp_pd_csi_plugin_image_repo: "{{ kube_image_repo }}/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver"
+gcp_pd_csi_plugin_image_tag: "v{{ gcp_pd_csi_plugin_version }}"
+
+azure_csi_image_repo: "mcr.microsoft.com/oss/kubernetes-csi"
+azure_csi_provisioner_image_tag: "v2.2.2"
+azure_csi_attacher_image_tag: "v3.3.0"
+azure_csi_resizer_image_tag: "v1.3.0"
+azure_csi_livenessprobe_image_tag: "v2.5.0"
+azure_csi_node_registrar_image_tag: "v2.4.0"
+azure_csi_snapshotter_image_tag: "v3.0.3"
+azure_csi_plugin_version: "1.10.0"
+azure_csi_plugin_image_repo: "mcr.microsoft.com/k8s/csi"
+azure_csi_plugin_image_tag: "v{{ azure_csi_plugin_version }}"
+
+gcp_pd_csi_image_repo: "gke.gcr.io"
+gcp_pd_csi_driver_image_tag: "v0.7.0-gke.0"
+gcp_pd_csi_provisioner_image_tag: "v1.5.0-gke.0"
+gcp_pd_csi_attacher_image_tag: "v2.1.1-gke.0"
+gcp_pd_csi_resizer_image_tag: "v0.4.0-gke.0"
+gcp_pd_csi_registrar_image_tag: "v1.2.0-gke.0"
+
+dashboard_image_repo: "{{ docker_image_repo }}/kubernetesui/dashboard"
+dashboard_image_tag: "v2.7.0"
+dashboard_metrics_scraper_repo: "{{ docker_image_repo }}/kubernetesui/metrics-scraper"
+dashboard_metrics_scraper_tag: "v1.0.8"
+
+metallb_speaker_image_repo: "{{ quay_image_repo }}/metallb/speaker"
+metallb_controller_image_repo: "{{ quay_image_repo }}/metallb/controller"
+metallb_version: 0.13.9
+metallb_image_tag: "v{{ metallb_version }}"
+
+node_feature_discovery_version: 0.16.4
+node_feature_discovery_image_repo: "{{ kube_image_repo }}/nfd/node-feature-discovery"
+node_feature_discovery_image_tag: "v{{ node_feature_discovery_version }}"
+
+downloads:
+  netcheck_server:
+    enabled: "{{ deploy_netchecker }}"
+    container: true
+    repo: "{{ netcheck_server_image_repo }}"
+    tag: "{{ netcheck_server_image_tag }}"
+    checksum: "{{ netcheck_server_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  netcheck_agent:
+    enabled: "{{ deploy_netchecker }}"
+    container: true
+    repo: "{{ netcheck_agent_image_repo }}"
+    tag: "{{ netcheck_agent_image_tag }}"
+    checksum: "{{ netcheck_agent_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  etcd:
+    container: "{{ etcd_deployment_type != 'host' }}"
+    file: "{{ etcd_deployment_type == 'host' }}"
+    enabled: true
+    dest: "{{ local_release_dir }}/etcd-{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
+    repo: "{{ etcd_image_repo }}"
+    tag: "{{ etcd_image_tag }}"
+    checksum: >-
+      {{ etcd_binary_checksum if (etcd_deployment_type == 'host')
+      else etcd_digest_checksum | d(None) }}
+    url: "{{ etcd_download_url }}"
+    unarchive: "{{ etcd_deployment_type == 'host' }}"
+    owner: "root"
+    mode: "0755"
+    groups:
+      - etcd
+
+  cni:
+    enabled: true
+    file: true
+    dest: "{{ local_release_dir }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
+    checksum: "{{ cni_binary_checksum }}"
+    url: "{{ cni_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  kubeadm:
+    enabled: true
+    file: true
+    dest: "{{ local_release_dir }}/kubeadm-{{ kube_version }}-{{ image_arch }}"
+    checksum: "{{ kubeadm_binary_checksum }}"
+    url: "{{ kubeadm_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  kubelet:
+    enabled: true
+    file: true
+    dest: "{{ local_release_dir }}/kubelet-{{ kube_version }}-{{ image_arch }}"
+    checksum: "{{ kubelet_binary_checksum }}"
+    url: "{{ kubelet_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  kubectl:
+    enabled: true
+    file: true
+    dest: "{{ local_release_dir }}/kubectl-{{ kube_version }}-{{ image_arch }}"
+    checksum: "{{ kubectl_binary_checksum }}"
+    url: "{{ kubectl_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  crictl:
+    file: true
+    enabled: true
+    dest: "{{ local_release_dir }}/crictl-{{ crictl_version }}-linux-{{ image_arch }}.tar.gz"
+    checksum: "{{ crictl_binary_checksum }}"
+    url: "{{ crictl_download_url }}"
+    unarchive: true
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  crio:
+    file: true
+    enabled: "{{ container_manager == 'crio' }}"
+    dest: "{{ local_release_dir }}/cri-o.{{ image_arch }}.{{ crio_version }}.tar.gz"
+    checksum: "{{ crio_archive_checksum }}"
+    url: "{{ crio_download_url }}"
+    unarchive: true
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  cri_dockerd:
+    file: true
+    enabled: "{{ container_manager == 'docker' }}"
+    dest: "{{ local_release_dir }}/cri-dockerd-{{ cri_dockerd_version }}.{{ image_arch }}.tar.gz"
+    checksum: "{{ cri_dockerd_archive_checksum }}"
+    url: "{{ cri_dockerd_download_url }}"
+    unarchive: true
+    unarchive_extra_opts:
+      - --strip=1
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  crun:
+    file: true
+    enabled: "{{ crun_enabled }}"
+    dest: "{{ local_release_dir }}/crun-{{ crun_version }}-{{ image_arch }}"
+    checksum: "{{ crun_binary_checksum }}"
+    url: "{{ crun_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  youki:
+    file: true
+    enabled: "{{ youki_enabled }}"
+    dest: "{{ local_release_dir }}/youki-{{ youki_version }}-{{ ansible_architecture }}.tar.gz"
+    checksum: "{{ youki_archive_checksum }}"
+    url: "{{ youki_download_url }}"
+    unarchive: true
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  runc:
+    file: true
+    enabled: "{{ container_manager == 'containerd' }}"
+    dest: "{{ local_release_dir }}/runc-{{ runc_version }}.{{ image_arch }}"
+    checksum: "{{ runc_binary_checksum }}"
+    url: "{{ runc_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  kata_containers:
+    enabled: "{{ kata_containers_enabled }}"
+    file: true
+    dest: "{{ local_release_dir }}/kata-static-{{ kata_containers_version }}-{{ image_arch }}.tar.xz"
+    checksum: "{{ kata_containers_binary_checksum }}"
+    url: "{{ kata_containers_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  containerd:
+    enabled: "{{ container_manager == 'containerd' }}"
+    file: true
+    dest: "{{ local_release_dir }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
+    checksum: "{{ containerd_archive_checksum }}"
+    url: "{{ containerd_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  gvisor_runsc:
+    enabled: "{{ gvisor_enabled }}"
+    file: true
+    dest: "{{ local_release_dir }}/gvisor-runsc-{{ gvisor_version }}-{{ ansible_architecture }}"
+    checksum: "{{ gvisor_runsc_binary_checksum }}"
+    url: "{{ gvisor_runsc_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: 755
+    groups:
+      - k8s_cluster
+
+  gvisor_containerd_shim:
+    enabled: "{{ gvisor_enabled }}"
+    file: true
+    dest: "{{ local_release_dir }}/gvisor-containerd-shim-runsc-v1-{{ gvisor_version }}-{{ ansible_architecture }}"
+    checksum: "{{ gvisor_containerd_shim_binary_checksum }}"
+    url: "{{ gvisor_containerd_shim_runsc_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: 755
+    groups:
+      - k8s_cluster
+
+  nerdctl:
+    file: true
+    enabled: "{{ container_manager == 'containerd' }}"
+    dest: "{{ local_release_dir }}/nerdctl-{{ nerdctl_version }}-linux-{{ image_arch }}.tar.gz"
+    checksum: "{{ nerdctl_archive_checksum }}"
+    url: "{{ nerdctl_download_url }}"
+    unarchive: true
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  skopeo:
+    file: true
+    enabled: "{{ container_manager == 'crio' }}"
+    dest: "{{ local_release_dir }}/skopeo-{{ skopeo_version }}-{{ image_arch }}"
+    checksum: "{{ skopeo_binary_checksum }}"
+    url: "{{ skopeo_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  cilium:
+    enabled: "{{ kube_network_plugin == 'cilium' or cilium_deploy_additionally }}"
+    container: true
+    repo: "{{ cilium_image_repo }}"
+    tag: "{{ cilium_image_tag }}"
+    checksum: "{{ cilium_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_operator:
+    enabled: "{{ kube_network_plugin == 'cilium' or cilium_deploy_additionally }}"
+    container: true
+    repo: "{{ cilium_operator_image_repo }}"
+    tag: "{{ cilium_operator_image_tag }}"
+    checksum: "{{ cilium_operator_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_hubble_relay:
+    enabled: "{{ cilium_enable_hubble }}"
+    container: true
+    repo: "{{ cilium_hubble_relay_image_repo }}"
+    tag: "{{ cilium_hubble_relay_image_tag }}"
+    checksum: "{{ cilium_hubble_relay_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_hubble_certgen:
+    enabled: "{{ cilium_enable_hubble }}"
+    container: true
+    repo: "{{ cilium_hubble_certgen_image_repo }}"
+    tag: "{{ cilium_hubble_certgen_image_tag }}"
+    checksum: "{{ cilium_hubble_certgen_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_hubble_ui:
+    enabled: "{{ cilium_enable_hubble }}"
+    container: true
+    repo: "{{ cilium_hubble_ui_image_repo }}"
+    tag: "{{ cilium_hubble_ui_image_tag }}"
+    checksum: "{{ cilium_hubble_ui_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_hubble_ui_backend:
+    enabled: "{{ cilium_enable_hubble }}"
+    container: true
+    repo: "{{ cilium_hubble_ui_backend_image_repo }}"
+    tag: "{{ cilium_hubble_ui_backend_image_tag }}"
+    checksum: "{{ cilium_hubble_ui_backend_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_hubble_envoy:
+    enabled: "{{ cilium_enable_hubble }}"
+    container: true
+    repo: "{{ cilium_hubble_envoy_image_repo }}"
+    tag: "{{ cilium_hubble_envoy_image_tag }}"
+    checksum: "{{ cilium_hubble_envoy_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  ciliumcli:
+    enabled: "{{ kube_network_plugin == 'cilium' or cilium_deploy_additionally }}"
+    file: true
+    dest: "{{ local_release_dir }}/cilium-{{ cilium_cli_version }}-{{ image_arch }}.tar.gz"
+    checksum: "{{ ciliumcli_binary_checksum }}"
+    url: "{{ ciliumcli_download_url }}"
+    unarchive: true
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  multus:
+    enabled: "{{ kube_network_plugin_multus }}"
+    container: true
+    repo: "{{ multus_image_repo }}"
+    tag: "{{ multus_image_tag }}"
+    checksum: "{{ multus_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  flannel:
+    enabled: "{{ kube_network_plugin == 'flannel' }}"
+    container: true
+    repo: "{{ flannel_image_repo }}"
+    tag: "{{ flannel_image_tag }}"
+    checksum: "{{ flannel_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  flannel_init:
+    enabled: "{{ kube_network_plugin == 'flannel' }}"
+    container: true
+    repo: "{{ flannel_init_image_repo }}"
+    tag: "{{ flannel_init_image_tag }}"
+    checksum: "{{ flannel_init_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  calicoctl:
+    enabled: "{{ kube_network_plugin == 'calico' }}"
+    file: true
+    dest: "{{ local_release_dir }}/calicoctl-{{ calico_ctl_version }}-{{ image_arch }}"
+    checksum: "{{ calicoctl_binary_checksum }}"
+    url: "{{ calicoctl_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  calico_node:
+    enabled: "{{ kube_network_plugin == 'calico' }}"
+    container: true
+    repo: "{{ calico_node_image_repo }}"
+    tag: "{{ calico_node_image_tag }}"
+    checksum: "{{ calico_node_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  calico_cni:
+    enabled: "{{ kube_network_plugin == 'calico' }}"
+    container: true
+    repo: "{{ calico_cni_image_repo }}"
+    tag: "{{ calico_cni_image_tag }}"
+    checksum: "{{ calico_cni_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  calico_policy:
+    enabled: "{{ enable_network_policy and kube_network_plugin in ['calico'] }}"
+    container: true
+    repo: "{{ calico_policy_image_repo }}"
+    tag: "{{ calico_policy_image_tag }}"
+    checksum: "{{ calico_policy_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  calico_typha:
+    enabled: "{{ typha_enabled }}"
+    container: true
+    repo: "{{ calico_typha_image_repo }}"
+    tag: "{{ calico_typha_image_tag }}"
+    checksum: "{{ calico_typha_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  calico_apiserver:
+    enabled: "{{ calico_apiserver_enabled }}"
+    container: true
+    repo: "{{ calico_apiserver_image_repo }}"
+    tag: "{{ calico_apiserver_image_tag }}"
+    checksum: "{{ calico_apiserver_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  calico_crds:
+    file: true
+    enabled: "{{ kube_network_plugin == 'calico' and calico_datastore == 'kdd' }}"
+    dest: "{{ local_release_dir }}/calico-{{ calico_version }}-kdd-crds/{{ calico_version }}.tar.gz"
+    checksum: "{{ calico_crds_archive_checksums.no_arch[calico_version] }}"
+    url: "{{ calico_crds_download_url }}"
+    unarchive: true
+    unarchive_extra_opts:
+      - "{{ '--strip=6' if (calico_version is version('3.22.3', '<')) else '--strip=3' }}"
+      - "--wildcards"
+      - "{{ '*/_includes/charts/calico/crds/kdd/' if (calico_version is version('3.22.3', '<')) else '*/libcalico-go/config/crd/' }}"
+    owner: "root"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  kube_ovn:
+    enabled: "{{ kube_network_plugin == 'kube-ovn' }}"
+    container: true
+    repo: "{{ kube_ovn_container_image_repo }}"
+    tag: "{{ kube_ovn_container_image_tag }}"
+    checksum: "{{ kube_ovn_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  kube_router:
+    enabled: "{{ kube_network_plugin == 'kube-router' }}"
+    container: true
+    repo: "{{ kube_router_image_repo }}"
+    tag: "{{ kube_router_image_tag }}"
+    checksum: "{{ kube_router_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  pod_infra:
+    enabled: true
+    container: true
+    repo: "{{ pod_infra_image_repo }}"
+    tag: "{{ pod_infra_image_tag }}"
+    checksum: "{{ pod_infra_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  kube-vip:
+    enabled: "{{ kube_vip_enabled }}"
+    container: true
+    repo: "{{ kube_vip_image_repo }}"
+    tag: "{{ kube_vip_image_tag }}"
+    checksum: "{{ kube_vip_digest_checksum | default(None) }}"
+    groups:
+      - kube_control_plane
+
+  nginx:
+    enabled: "{{ loadbalancer_apiserver_localhost and loadbalancer_apiserver_type == 'nginx' }}"
+    container: true
+    repo: "{{ nginx_image_repo }}"
+    tag: "{{ nginx_image_tag }}"
+    checksum: "{{ nginx_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  haproxy:
+    enabled: "{{ loadbalancer_apiserver_localhost and loadbalancer_apiserver_type == 'haproxy' }}"
+    container: true
+    repo: "{{ haproxy_image_repo }}"
+    tag: "{{ haproxy_image_tag }}"
+    checksum: "{{ haproxy_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  coredns:
+    enabled: "{{ dns_mode in ['coredns', 'coredns_dual'] }}"
+    container: true
+    repo: "{{ coredns_image_repo }}"
+    tag: "{{ coredns_image_tag }}"
+    checksum: "{{ coredns_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  nodelocaldns:
+    enabled: "{{ enable_nodelocaldns }}"
+    container: true
+    repo: "{{ nodelocaldns_image_repo }}"
+    tag: "{{ nodelocaldns_image_tag }}"
+    checksum: "{{ nodelocaldns_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  dnsautoscaler:
+    enabled: "{{ dns_mode in ['coredns', 'coredns_dual'] and enable_dns_autoscaler }}"
+    container: true
+    repo: "{{ dnsautoscaler_image_repo }}"
+    tag: "{{ dnsautoscaler_image_tag }}"
+    checksum: "{{ dnsautoscaler_digest_checksum | default(None) }}"
+    groups:
+      - kube_control_plane
+
+  helm:
+    enabled: "{{ helm_enabled }}"
+    file: true
+    dest: "{{ local_release_dir }}/helm-{{ helm_version }}/helm-{{ helm_version }}-linux-{{ image_arch }}.tar.gz"
+    checksum: "{{ helm_archive_checksum }}"
+    url: "{{ helm_download_url }}"
+    unarchive: true
+    owner: "root"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  registry:
+    enabled: "{{ registry_enabled }}"
+    container: true
+    repo: "{{ registry_image_repo }}"
+    tag: "{{ registry_image_tag }}"
+    checksum: "{{ registry_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  metrics_server:
+    enabled: "{{ metrics_server_enabled }}"
+    container: true
+    repo: "{{ metrics_server_image_repo }}"
+    tag: "{{ metrics_server_image_tag }}"
+    checksum: "{{ metrics_server_digest_checksum | default(None) }}"
+    groups:
+      - kube_control_plane
+
+  local_volume_provisioner:
+    enabled: "{{ local_volume_provisioner_enabled }}"
+    container: true
+    repo: "{{ local_volume_provisioner_image_repo }}"
+    tag: "{{ local_volume_provisioner_image_tag }}"
+    checksum: "{{ local_volume_provisioner_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  local_path_provisioner:
+    enabled: "{{ local_path_provisioner_enabled }}"
+    container: true
+    repo: "{{ local_path_provisioner_image_repo }}"
+    tag: "{{ local_path_provisioner_image_tag }}"
+    checksum: "{{ local_path_provisioner_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  ingress_nginx_controller:
+    enabled: "{{ ingress_nginx_enabled }}"
+    container: true
+    repo: "{{ ingress_nginx_controller_image_repo }}"
+    tag: "{{ ingress_nginx_controller_image_tag }}"
+    checksum: "{{ ingress_nginx_controller_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  ingress_alb_controller:
+    enabled: "{{ ingress_alb_enabled }}"
+    container: true
+    repo: "{{ alb_ingress_image_repo }}"
+    tag: "{{ alb_ingress_image_tag }}"
+    checksum: "{{ ingress_alb_controller_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  cert_manager_controller:
+    enabled: "{{ cert_manager_enabled }}"
+    container: true
+    repo: "{{ cert_manager_controller_image_repo }}"
+    tag: "{{ cert_manager_controller_image_tag }}"
+    checksum: "{{ cert_manager_controller_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  cert_manager_cainjector:
+    enabled: "{{ cert_manager_enabled }}"
+    container: true
+    repo: "{{ cert_manager_cainjector_image_repo }}"
+    tag: "{{ cert_manager_cainjector_image_tag }}"
+    checksum: "{{ cert_manager_cainjector_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  cert_manager_webhook:
+    enabled: "{{ cert_manager_enabled }}"
+    container: true
+    repo: "{{ cert_manager_webhook_image_repo }}"
+    tag: "{{ cert_manager_webhook_image_tag }}"
+    checksum: "{{ cert_manager_webhook_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  gateway_api_crds:
+    enabled: "{{ gateway_api_enabled }}"
+    file: true
+    version: "{{ gateway_api_version }}"
+    dest: "{{ local_release_dir }}/gateway-api-{{ gateway_api_channel }}-install.yaml"
+    checksum: "{{ lookup('vars', 'gateway_api_' + gateway_api_channel + '_crds_checksums').no_arch[gateway_api_version] }}"
+    url: "{{ gateway_api_crds_download_url }}"
+    owner: "root"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  csi_attacher:
+    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
+    container: true
+    repo: "{{ csi_attacher_image_repo }}"
+    tag: "{{ csi_attacher_image_tag }}"
+    checksum: "{{ csi_attacher_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  csi_provisioner:
+    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
+    container: true
+    repo: "{{ csi_provisioner_image_repo }}"
+    tag: "{{ csi_provisioner_image_tag }}"
+    checksum: "{{ csi_provisioner_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  csi_snapshotter:
+    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
+    container: true
+    repo: "{{ csi_snapshotter_image_repo }}"
+    tag: "{{ csi_snapshotter_image_tag }}"
+    checksum: "{{ csi_snapshotter_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  snapshot_controller:
+    enabled: "{{ csi_snapshot_controller_enabled }}"
+    container: true
+    repo: "{{ snapshot_controller_image_repo }}"
+    tag: "{{ snapshot_controller_image_tag }}"
+    checksum: "{{ snapshot_controller_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  csi_resizer:
+    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
+    container: true
+    repo: "{{ csi_resizer_image_repo }}"
+    tag: "{{ csi_resizer_image_tag }}"
+    checksum: "{{ csi_resizer_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  csi_node_driver_registrar:
+    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
+    container: true
+    repo: "{{ csi_node_driver_registrar_image_repo }}"
+    tag: "{{ csi_node_driver_registrar_image_tag }}"
+    checksum: "{{ csi_node_driver_registrar_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  cinder_csi_plugin:
+    enabled: "{{ cinder_csi_enabled }}"
+    container: true
+    repo: "{{ cinder_csi_plugin_image_repo }}"
+    tag: "{{ cinder_csi_plugin_image_tag }}"
+    checksum: "{{ cinder_csi_plugin_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  aws_ebs_csi_plugin:
+    enabled: "{{ aws_ebs_csi_enabled }}"
+    container: true
+    repo: "{{ aws_ebs_csi_plugin_image_repo }}"
+    tag: "{{ aws_ebs_csi_plugin_image_tag }}"
+    checksum: "{{ aws_ebs_csi_plugin_digest_checksum | default(None) }}"
+    groups:
+      - kube_node
+
+  dashboard:
+    enabled: "{{ dashboard_enabled }}"
+    container: true
+    repo: "{{ dashboard_image_repo }}"
+    tag: "{{ dashboard_image_tag }}"
+    checksum: "{{ dashboard_digest_checksum | default(None) }}"
+    groups:
+      - kube_control_plane
+
+  dashboard_metrics_scrapper:
+    enabled: "{{ dashboard_enabled }}"
+    container: true
+    repo: "{{ dashboard_metrics_scraper_repo }}"
+    tag: "{{ dashboard_metrics_scraper_tag }}"
+    checksum: "{{ dashboard_digest_checksum | default(None) }}"
+    groups:
+      - kube_control_plane
+
+  metallb_speaker:
+    enabled: "{{ metallb_speaker_enabled }}"
+    container: true
+    repo: "{{ metallb_speaker_image_repo }}"
+    tag: "{{ metallb_image_tag }}"
+    checksum: "{{ metallb_speaker_digest_checksum | default(None) }}"
+    groups:
+      - kube_control_plane
+
+  metallb_controller:
+    enabled: "{{ metallb_enabled }}"
+    container: true
+    repo: "{{ metallb_controller_image_repo }}"
+    tag: "{{ metallb_image_tag }}"
+    checksum: "{{ metallb_controller_digest_checksum | default(None) }}"
+    groups:
+      - kube_control_plane
+
+  yq:
+    enabled: "{{ argocd_enabled }}"
+    file: true
+    version: "{{ yq_version }}"
+    dest: "{{ local_release_dir }}/yq-{{ yq_version }}-{{ image_arch }}"
+    checksum: "{{ yq_binary_checksum }}"
+    url: "{{ yq_download_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+download_defaults:
+  container: false
+  file: false
+  repo: None
+  tag: None
+  enabled: false
+  dest: None
+  url: None
+  unarchive: false
+  owner: "{{ kube_owner }}"
+  mode: None

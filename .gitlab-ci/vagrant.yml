@@ -1,20 +1,16 @@
 ---
-.vagrant:
-  extends: .testcases
-  needs:
-    - ci-not-authorized
+vagrant:
+  extends: .job-moderated
   variables:
     CI_PLATFORM: "vagrant"
     SSH_USER: "vagrant"
     VAGRANT_DEFAULT_PROVIDER: "libvirt"
-    KUBESPRAY_VAGRANT_CONFIG: tests/files/${CI_JOB_NAME}.rb
+    KUBESPRAY_VAGRANT_CONFIG: tests/files/${TESTCASE}.rb
     DOCKER_NAME: vagrant
     VAGRANT_ANSIBLE_TAGS: facts
     VAGRANT_HOME: "$CI_PROJECT_DIR/.vagrant.d"
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   tags: [ffci-vm-large]
-  # only: [/^pr-.*$/]
-  # except: ['triggers']
   image: quay.io/kubespray/vm-kubespray-ci:v13
   services: []
   before_script:
@@ -28,54 +24,24 @@
     - pip install --no-compile --no-cache-dir -r $CI_PROJECT_DIR/tests/requirements.txt
     - ./tests/scripts/vagrant_clean.sh
   script:
+    - vagrant up
     - ./tests/scripts/testcases_run.sh
+  after_script:
+    - vagrant destroy -f
   cache:
     key: $CI_JOB_NAME_SLUG
     paths:
       - .vagrant.d/boxes
       - .cache/pip
     policy: pull-push # TODO: change to "pull" when not on main
-
-vagrant_ubuntu24-calico-dual-stack:
   stage: deploy-extended
-  extends: .vagrant
   rules:
     - if: $PR_LABELS =~ /.*(ci-extended|ci-full).*/
       when: on_success
-  allow_failure: false
-
-vagrant_ubuntu24-calico-ipv6only-stack:
-  stage: deploy-extended
-  extends: .vagrant
-  rules:
-    - if: $PR_LABELS =~ /.*(ci-extended|ci-full).*/
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_PIPELINE_SCHEDULE_DESCRIPTION == "daily-ci"
       when: on_success
-  allow_failure: false
-
-vagrant_ubuntu20-flannel:
-  stage: deploy-part1
-  extends: .vagrant
-  when: on_success
-  allow_failure: false
-
-vagrant_ubuntu20-flannel-collection:
-  stage: deploy-extended
-  extends: .vagrant
-  when: manual
-
-vagrant_ubuntu20-kube-router-sep:
-  stage: deploy-extended
-  extends: .vagrant
-  when: manual
-
-# Service proxy test fails connectivity testing
-vagrant_ubuntu20-kube-router-svc-proxy:
-  stage: deploy-extended
-  extends: .vagrant
-  when: manual
-
-vagrant_fedora39-kube-router:
-  stage: deploy-extended
-  extends: .vagrant
-  when: manual
-# FIXME: this test if broken (perma-failing)
+  parallel:
+    matrix:
+      - TESTCASE:
+          - ubuntu24-calico-dual-stack
+          - ubuntu24-calico-ipv6only-stack

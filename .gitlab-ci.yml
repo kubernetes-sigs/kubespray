@@ -24,6 +24,7 @@ variables:
   ANSIBLE_REMOTE_USER: kubespray
   ANSIBLE_PRIVATE_KEY_FILE: /tmp/id_rsa
   ANSIBLE_INVENTORY: /tmp/inventory
+  ANSIBLE_STDOUT_CALLBACK: "debug"
   RESET_CHECK: "false"
   REMOVE_NODE_CHECK: "false"
   UPGRADE_TEST: "false"
@@ -31,12 +32,12 @@ variables:
   ANSIBLE_VERBOSITY: 2
   RECOVER_CONTROL_PLANE_TEST: "false"
   RECOVER_CONTROL_PLANE_TEST_GROUPS: "etcd[2:]:kube_control_plane[1:]"
-  TERRAFORM_VERSION: 1.3.7
+  OPENTOFU_VERSION: v1.9.1
   PIPELINE_IMAGE: "$CI_REGISTRY_IMAGE/pipeline:${CI_PIPELINE_ID}-${CI_COMMIT_SHORT_SHA}"
 
 before_script:
   - ./tests/scripts/rebase.sh
-  - mkdir -p /.ssh
+  - mkdir -p cluster-dump $ANSIBLE_INVENTORY
 
 .job: &job
   tags:
@@ -48,60 +49,18 @@ before_script:
       - cluster-dump/
   needs:
     - pipeline-image
-  variables:
-    ANSIBLE_STDOUT_CALLBACK: "debug"
 
 .job-moderated:
   extends: .job
   needs:
     - pipeline-image
-    - ci-not-authorized
     - pre-commit            # lint
     - vagrant-validate      # lint
-
-.testcases: &testcases
-  extends: .job-moderated
-  interruptible: true
-  before_script:
-    - update-alternatives --install /usr/bin/python python /usr/bin/python3 1
-    - ./tests/scripts/rebase.sh
-    - ./tests/scripts/testcases_prepare.sh
-  script:
-    - ./tests/scripts/testcases_run.sh
-  after_script:
-    - ./tests/scripts/testcases_cleanup.sh
-
-# For failfast, at least 1 job must be defined in .gitlab-ci.yml
-# Premoderated with manual actions
-ci-not-authorized:
-  stage: build
-  before_script: []
-  after_script: []
-  rules:
-    # LGTM or ok-to-test labels
-    - if: $PR_LABELS =~ /.*,(lgtm|approved|ok-to-test).*|^(lgtm|approved|ok-to-test).*/i
-      variables:
-        CI_OK_TO_TEST: '0'
-      when: always
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "trigger"
-      variables:
-        CI_OK_TO_TEST: '0'
-    - if: $CI_COMMIT_BRANCH == "master"
-      variables:
-        CI_OK_TO_TEST: '0'
-    - when: always
-      variables:
-        CI_OK_TO_TEST: '1'
-  script:
-    - exit $CI_OK_TO_TEST
-  tags:
-    - ffci
-  needs: []
 
 include:
   - .gitlab-ci/build.yml
   - .gitlab-ci/lint.yml
   - .gitlab-ci/terraform.yml
-  - .gitlab-ci/packet.yml
+  - .gitlab-ci/kubevirt.yml
   - .gitlab-ci/vagrant.yml
   - .gitlab-ci/molecule.yml

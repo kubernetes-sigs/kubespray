@@ -1,0 +1,34 @@
+---
+# Flatcar Container Linux ships without Python installed
+
+- name: Check if bootstrap is needed
+  raw: stat /opt/bin/.bootstrapped
+  register: need_bootstrap
+  failed_when: false
+  changed_when: false
+  tags:
+    - facts
+
+- name: Run bootstrap.sh
+  script: bootstrap.sh
+  become: true
+  environment: "{{ proxy_env }}"
+  when:
+    - need_bootstrap.rc != 0
+
+# Workaround ansible https://github.com/ansible/ansible/pull/82821
+# We set the interpreter rather than ansible_python_interpreter to allow
+# - using virtual env with task level ansible_python_interpreter later
+# - let users specify an ansible_python_interpreter in group_vars
+
+- name: Make interpreter discovery works on Flatcar
+  set_fact:
+    ansible_interpreter_python_fallback: "{{ (ansible_interpreter_python_fallback | default([])) + ['/opt/bin/python'] }}"
+
+- name: Disable auto-upgrade
+  systemd_service:
+    name: locksmithd.service
+    masked: true
+    state: stopped
+  when:
+    - coreos_locksmithd_disable

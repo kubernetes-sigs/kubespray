@@ -102,7 +102,8 @@ Please read the instructions in both repos on how to install it.
 You can teardown your infrastructure using the following Terraform command:
 
 ```bash
-terraform destroy --var-file default.tfvars ../../contrib/terraform/hetzner
+cd ./kubespray
+terraform -chdir=./contrib/terraform/hetzner/ destroy --var-file=../../../inventory/$CLUSTER/default.tfvars
 ```
 
 ## Variables

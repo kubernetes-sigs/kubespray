@@ -1,0 +1,62 @@
+---
+- name: Fetch /etc/os-release
+  raw: cat /etc/os-release
+  register: os_release
+  changed_when: false
+  # This command should always run, even in check mode
+  check_mode: false
+
+- name: Include distro specifics vars and tasks
+  vars:
+    os_release_dict: "{{ os_release.stdout_lines | select('regex', '^.+=.*$') | map('regex_replace', '\"', '') |
+                         map('split', '=') | community.general.dict }}"
+  block:
+  - name: Include vars
+    include_vars: "{{ item }}"
+    tags:
+    - facts
+    with_first_found:
+    - &search
+      files:
+      - "{{ os_release_dict['ID'] }}-{{ os_release_dict['VARIANT_ID'] }}.yml"
+      - "{{ os_release_dict['ID'] }}.yml"
+      paths:
+      - vars/
+      skip: true
+  - name: Include tasks
+    include_tasks: "{{ included_tasks_file }}"
+    with_first_found:
+    - <<: *search
+      paths: []
+    loop_control:
+      loop_var: included_tasks_file
+
+- name: Install system packages
+  import_role:
+    name: system_packages
+  tags:
+  - system-packages
+
+- name: Create remote_tmp for it is used by another module
+  file:
+    path: "{{ ansible_remote_tmp | default('~/.ansible/tmp') }}"
+    state: directory
+    mode: "0700"
+
+- name: Gather facts
+  setup:
+    gather_subset: '!all'
+    filter: ansible_*
+
+- name: Assign inventory name to unconfigured hostnames (non-CoreOS, non-Flatcar, Suse and ClearLinux, non-Fedora)
+  hostname:
+    name: "{{ inventory_hostname }}"
+  when: override_system_hostname
+
+- name: Ensure bash_completion.d folder exists
+  file:
+    name: /etc/bash_completion.d/
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"

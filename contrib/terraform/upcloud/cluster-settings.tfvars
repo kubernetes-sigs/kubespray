@@ -122,11 +122,11 @@ k8s_allowed_remote_ips = [
 master_allowed_ports = []
 worker_allowed_ports = []
 
-loadbalancer_enabled        = false
-loadbalancer_plan           = "development"
-loadbalancer_proxy_protocol = false
+loadbalancer_enabled = false
+loadbalancer_plan    = "development"
 loadbalancers = {
   # "http" : {
+  #   "proxy_protocol" : false
   #   "port" : 80,
   #   "target_port" : 80,
   #   "backend_servers" : [

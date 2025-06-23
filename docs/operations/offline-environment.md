@@ -22,6 +22,45 @@ Then you need to setup the following services on your offline environment:
 You can get artifact lists with [generate_list.sh](/contrib/offline/generate_list.sh) script.
 In addition, you can find some tools for offline deployment under [contrib/offline](/contrib/offline/README.md).
 
+## Access Control
+
+### Note: access controlled files_repo
+
+To specify a username and password for "{{ files_repo }}", used to download the binaries, you can use url-encoding. Be aware that the Boolean `unsafe_show_logs` will show these credentials when `roles/download/tasks/download_file.yml` runs the task "Download_file | Show url of file to download". You can disable that Boolean in a job-template when running AWX/AAP/Semaphore.
+
+```yaml
+files_repo_host: example.com
+files_repo_path: /repo
+files_repo_user: download
+files_repo_pass: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          61663232643236353864663038616361373739613338623338656434386662363539613462626661
+          6435333438313034346164313631303534346564316361370a306661393232626364376436386439
+          64653965663965356137333436616536643132336630313235333232336661373761643766356366
+          6232353233386534380a373262313634613833623537626132633033373064336261383166323230
+          3164
+files_repo: "https://{{ files_repo_user ~ ':' ~ files_repo_pass ~ '@' ~ files_repo_host ~ files_repo_path }}"
+```
+
+### Note: access controlled registry
+
+To specify a username and password for "{{ registry_host }}", used to download the container images, you can use url-encoding too.
+
+```yaml
+registry_pass: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          61663232643236353864663038616361373739613338623338656434386662363539613462626661
+          6435333438313034346164313631303534346564316361370a306661393232626364376436386439
+          64653965663965356137333436616536643132336630313235333232336661373761643766356366
+          6232353233386534380a373262313634613833623537626132633033373064336261383166323230
+          3164
+
+containerd_registry_auth:
+  - registry: "{{ registry_host }}"
+    username: "{{ registry_user }}"
+    password: "{{ registry_pass }}"
+```
+
 ## Configure Inventory
 
 Once all artifacts are accessible from your internal network, **adjust** the following variables
@@ -35,21 +74,23 @@ docker_image_repo: "{{ registry_host }}"
 quay_image_repo: "{{ registry_host }}"
 github_image_repo: "{{ registry_host }}"
 
-kubeadm_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubeadm"
-kubectl_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubectl"
-kubelet_download_url: "{{ files_repo }}/kubernetes/{{ kube_version }}/kubelet"
+local_path_provisioner_helper_image_repo: "{{ registry_host }}/busybox"
+kubeadm_download_url: "{{ files_repo }}/kubernetes/v{{ kube_version }}/kubeadm"
+kubectl_download_url: "{{ files_repo }}/kubernetes/v{{ kube_version }}/kubectl"
+kubelet_download_url: "{{ files_repo }}/kubernetes/v{{ kube_version }}/kubelet"
 # etcd is optional if you **DON'T** use etcd_deployment=host
-etcd_download_url: "{{ files_repo }}/kubernetes/etcd/etcd-{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
-cni_download_url: "{{ files_repo }}/kubernetes/cni/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
-crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+etcd_download_url: "{{ files_repo }}/kubernetes/etcd/etcd-v{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
+cni_download_url: "{{ files_repo }}/kubernetes/cni/cni-plugins-linux-{{ image_arch }}-v{{ cni_version }}.tgz"
+crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-v{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
 # If using Calico
-calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
+calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/v{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
 # If using Calico with kdd
-calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/{{ calico_version }}.tar.gz"
+calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/v{{ calico_version }}.tar.gz"
 # Containerd
 containerd_download_url: "{{ files_repo }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
 runc_download_url: "{{ files_repo }}/runc.{{ image_arch }}"
 nerdctl_download_url: "{{ files_repo }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+get_helm_url: "{{ files_repo }}/get.helm.sh"
 # Insecure registries for containerd
 containerd_registries_mirrors:
   - prefix: "{{ registry_addr }}"
@@ -95,7 +136,7 @@ If you use the settings like the one above, you'll need to define in your invent
 
 * `registry_host`: Container image registry. If you _don't_ use the same repository path for the container images that
   the ones defined
-  in [kubesprays-defaults's role defaults](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubespray-defaults/defaults/main/download.yml)
+  in [kubesprays-defaults's role defaults](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubespray_defaults/defaults/main/download.yml)
   , you need to override the `*_image_repo` for these container images. If you want to make your life easier, use the
   same repository path, you won't have to override anything else.
 * `registry_addr`: Container image registry, but only have [domain or ip]:[port].

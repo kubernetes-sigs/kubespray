@@ -3,6 +3,7 @@
   import_tasks: check-api.yml
 
   # kubeadm-config.v1beta4 with UpgradeConfiguration requires some values that were previously allowed as args to be specified in the config file
+  # TODO: Remove --skip-phases from command when v1beta4 UpgradeConfiguration supports skipPhases
 - name: Kubeadm | Upgrade first control plane node
   command: >-
     timeout -k 600s 600s
@@ -16,13 +17,15 @@
     --force
     {%- else %}
     --config={{ kube_config_dir }}/kubeadm-config.yaml
-    {%- endif -%}
+    {%- endif %}
+    --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
   register: kubeadm_upgrade
   when: inventory_hostname == first_kube_control_plane
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
 
+  # TODO: Remove --skip-phases from command when v1beta4 UpgradeConfiguration supports skipPhases
 - name: Kubeadm | Upgrade other control plane nodes
   command: >-
     {{ bin_dir }}/kubeadm upgrade node
@@ -33,7 +36,8 @@
     {% if kubeadm_patches | length > 0 %}--patches={{ kubeadm_patches_dir }}{% endif %}
     {%- else %}
     --config={{ kube_config_dir }}/kubeadm-config.yaml
-    {%- endif -%}
+    {%- endif %}
+    --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
   register: kubeadm_upgrade
   when: inventory_hostname != first_kube_control_plane
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr

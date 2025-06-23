@@ -8,7 +8,7 @@ $(ANSIBLE_INVENTORY):
 	mkdir $@
 
 create-packet: | $(ANSIBLE_INVENTORY)
-	ansible-playbook cloud_playbooks/create-packet.yml -c local \
+	ansible-playbook cloud_playbooks/create-kubevirt.yml -c local \
 		-e @"files/${CI_JOB_NAME}.yml"
 
 delete-packet: ;

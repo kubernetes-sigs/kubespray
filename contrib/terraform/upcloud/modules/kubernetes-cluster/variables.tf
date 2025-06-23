@@ -20,15 +20,21 @@ variable "username" {}
 
 variable "private_network_cidr" {}
 
+variable "dns_servers" {}
+
+variable "use_public_ips" {}
+
 variable "machines" {
   description = "Cluster machines"
   type = map(object({
     node_type = string
     plan      = string
-    cpu       = string
-    mem       = string
+    cpu       = optional(number)
+    mem       = optional(number)
     disk_size = number
     server_group : string
+    force_public_ip : optional(bool, false)
+    dns_servers : optional(set(string))
     additional_disks = map(object({
       size = number
       tier = string
@@ -52,6 +58,13 @@ variable "master_allowed_remote_ips" {
 }
 
 variable "k8s_allowed_remote_ips" {
+  type = list(object({
+    start_address = string
+    end_address   = string
+  }))
+}
+
+variable "bastion_allowed_remote_ips" {
   type = list(object({
     start_address = string
     end_address   = string
@@ -94,10 +107,6 @@ variable "loadbalancer_plan" {
   type = string
 }
 
-variable "loadbalancer_outbound_proxy_protocol" {
-  type = string
-}
-
 variable "loadbalancer_legacy_network" {
   type = bool
   default = false
@@ -107,6 +116,7 @@ variable "loadbalancers" {
   description = "Load balancers"
 
   type = map(object({
+    proxy_protocol          = bool
     port                    = number
     target_port             = number
     allow_internal_frontend = optional(bool)

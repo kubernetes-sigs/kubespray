@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # After a new version of Kubernetes has been released,
-# run this script to update roles/kubespray-defaults/defaults/main/download.yml
+# run this script to update roles/kubespray_defaults/defaults/main/download.yml
 # with new hashes.
 
 import sys
@@ -25,7 +25,7 @@ from typing import Optional, Any
 
 from . import components
 
-CHECKSUMS_YML = Path("roles/kubespray-defaults/defaults/main/checksums.yml")
+CHECKSUMS_YML = Path("roles/kubespray_defaults/vars/main/checksums.yml")
 
 logger = logging.getLogger(__name__)
 
@@ -47,17 +47,13 @@ arch_alt_name = {
     "arm64": "aarch64",
     "ppc64le": None,
     "arm": None,
+    "no_arch": None,
 }
 
 # TODO: downloads not supported
-# gvisor: sha512 checksums
 # helm_archive: PGP signatures
-# krew_archive: different yaml structure (in our download)
-# calico_crds_archive: different yaml structure (in our download)
 
 # TODO:
-# noarch support -> k8s manifests, helm charts
-# different checksum format (needs download role changes)
 # different verification methods (gpg, cosign) ( needs download role changes) (or verify the sig in this script and only use the checksum in the playbook)
 # perf improvements (async)
 

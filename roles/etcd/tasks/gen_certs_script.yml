@@ -54,7 +54,7 @@
   run_once: true
   delegate_to: "{{ groups['etcd'][0] }}"
   when:
-    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
     - gen_certs | default(false)
   notify: Set etcd_secret_changed
@@ -111,7 +111,7 @@
   when:
     - ('etcd' in group_names)
     - inventory_hostname != groups['etcd'][0]
-    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
   notify: Set etcd_secret_changed
 
@@ -126,7 +126,7 @@
   when:
     - ('etcd' in group_names)
     - inventory_hostname != groups['etcd'][0]
-    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
   loop_control:
     label: "{{ item.item }}"
@@ -140,7 +140,7 @@
 - name: Gen_certs | Generate etcd certs on nodes if needed
   include_tasks: gen_nodes_certs_script.yml
   when:
-    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
+    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
     - ('k8s_cluster' in group_names) and
         sync_certs | default(false) and inventory_hostname not in groups['etcd']
@@ -153,3 +153,25 @@
     owner: "{{ etcd_owner }}"
     mode: "{{ etcd_cert_dir_mode }}"
     recurse: true
+
+# This is a hack around the fact kubeadm expect the same certs path on all kube_control_plane
+# TODO: fix certs generation to have the same file everywhere
+# OR work with kubeadm on node-specific config
+- name: Gen_certs | Pretend all control plane have all certs (with symlinks)
+  file:
+    state: link
+    src: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}{{ item[0] }}.pem"
+    dest: "{{ etcd_cert_dir }}/node-{{ item[1] }}{{ item[0] }}.pem"
+    mode: "0640"
+  loop: "{{ suffixes | product(groups['kube_control_plane']) }}"
+  vars:
+    suffixes:
+      - ''
+      - '-key'
+  when:
+    - ('kube_control_plane' in group_names)
+    - item[1] != inventory_hostname
+  register: symlink_created
+  failed_when:
+    - symlink_created is failed
+    - ('refusing to convert from file to symlink' not in symlink_created.msg)

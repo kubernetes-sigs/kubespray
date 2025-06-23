@@ -1,0 +1,42 @@
+---
+- name: Test container runtime
+  hosts: all
+  gather_facts: false
+  become: true
+  roles:
+  - role: ../../kubespray_defaults
+  tasks:
+  - name: Copy test container files
+    template:
+      src: "{{ item }}.j2"
+      dest: "/tmp/{{ item }}"
+      owner: root
+      mode: "0644"
+    loop:
+    - container.json
+    - sandbox.json
+  - name: Check running a container with runtime {{ container_runtime }}
+    block:
+    - name: Run container
+      command:
+        argv:
+        - "{{ bin_dir }}/crictl"
+        - run
+        - --with-pull
+        - --runtime
+        - "{{ container_runtime }}"
+        - /tmp/container.json
+        - /tmp/sandbox.json
+    - name: Check log file
+      slurp:
+        src: "/tmp/{{ container_runtime }}1.0.log"
+      register: log_file
+      failed_when: >
+        log_file is failed or
+        'Hello from Docker' not in (log_file.content | b64decode)
+    rescue:
+    - name: Display container manager config on error
+      command: "{{ bin_dir }}/crictl info"
+    - name: Check container manager logs
+      command: journalctl -u {{ container_manager }}
+      failed_when: true

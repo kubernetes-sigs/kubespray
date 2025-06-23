@@ -13,7 +13,7 @@ You can get your invite [here](http://slack.k8s.io/)
 
 ## Quick Start
 
-Below are several ways to use Kubespray to deploy a Kubernetes cluster.
+Below are several ways to use Kubespray to deploy a Kubernetes cluster
 
 ### Docker
 

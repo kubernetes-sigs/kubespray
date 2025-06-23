@@ -95,15 +95,14 @@ kubectl --kubeconfig ~/.kube/config-external get nodes
 
 1. **Kube-vip cloud provide installation**
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
-kubectl delete configmap -n kube-system kubevip
 kubectl create configmap -n kube-system kubevip --from-literal range-global=192.168.200.161-192.168.200.165
+kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
 ```
 
 2. **Clabernetes installation**
 TODO
 
-2. **Installation of custom monitoring stack**
+3. **Installation of custom monitoring stack**
 TODO
 
 Congratulations! You can now share the external kubeconfig with authorised users.

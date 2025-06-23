@@ -39,7 +39,7 @@ ansible-playbook -i inventory/ha-calico-kube-vip/inventory.ini \
 
 ---
 
-### 🔍 Validate the Cluster
+### Validate the Cluster
 
 1. **SSH into a control plane node:**
 
@@ -70,7 +70,7 @@ ping <VIP>
 
 ---
 
-### 🌐 Configure External Access
+### Configure External Access
 
 1. **Backup your current kubeconfig:**
 
@@ -91,11 +91,26 @@ sed -i "s|https://127.0.0.1:6443|https://$VIP:6443|" ~/.kube/config-external
 kubectl --kubeconfig ~/.kube/config-external get nodes
 ```
 
-🎉 Congratulations! You can now share the external kubeconfig with authorised users.
+### Manual steps that soon will be automated:
+
+1. **Kube-vip cloud provide installation**
+```bash
+kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
+kubectl delete configmap -n kube-system kubevip
+kubectl create configmap -n kube-system kubevip --from-literal range-global=192.168.200.161-192.168.200.165
+```
+
+2. **Clabernetes installation**
+TODO
+
+2. **Installation of custom monitoring stack**
+TODO
+
+Congratulations! You can now share the external kubeconfig with authorised users.
 
 ---
 
-## 🧹 Clean Up (Uninstallation)
+## Clean Up (Uninstallation)
 
 To remove the Kubernetes cluster:
 

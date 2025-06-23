@@ -1,34 +1,27 @@
-# 🚀 Deploy a Production-Ready Kubernetes Cluster with Kubespray
+# Deploy a Production Ready Kubernetes Cluster
 
 ![Kubernetes Logo](https://raw.githubusercontent.com/kubernetes-sigs/kubespray/master/docs/img/kubernetes-logo.png)
 
-Kubespray helps you deploy highly available, production-grade Kubernetes clusters with ease.
+If you have questions, check the documentation at [kubespray.io](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
+You can get your invite [here](http://slack.k8s.io/)
 
-📘 **Documentation:** [kubespray.io](https://kubespray.io)  
-💬 **Community support:** Join us on the [Kubernetes Slack](https://kubernetes.slack.com), channel **#kubespray**.  
-👉 Get your invite [here](http://slack.k8s.io/)
-
----
-
-## ✅ Features
-
-- Deploy on **[AWS](docs/cloud_providers/aws.md)**, **GCE**, **[Azure](docs/cloud_providers/azure.md)**, **[OpenStack](docs/cloud_controllers/openstack.md)**, **[vSphere](docs/cloud_controllers/vsphere.md)**, **[Equinix Metal](docs/cloud_providers/equinix-metal.md)**, **Oracle Cloud Infrastructure** (Experimental), or **bare metal**
-- **Highly available (HA)** control plane
-- **Composable architecture** (e.g. choose your preferred CNI plugin)
+- Can be deployed on **[AWS](docs/cloud_providers/aws.md), GCE, [Azure](docs/cloud_providers/azure.md), [OpenStack](docs/cloud_controllers/openstack.md), [vSphere](docs/cloud_controllers/vsphere.md), [Equinix Metal](docs/cloud_providers/equinix-metal.md) (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
+- **Highly available** cluster
+- **Composable** (Choice of the network plugin for instance)
 - Supports most popular **Linux distributions**
-- Built-in **CI/CD testing**
+- **Continuous integration tests**
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 > **Note:** This is a simplified guide tailored to a specific setup. For full details, check the [official repository](https://github.com/kubernetes-sigs/kubespray).
 
-### 🛠️ Prepare the Inventory
+### Prepare the Inventory
 
 Before proceeding with the installation, make sure to update your inventory file (`inventory.ini`) with the IP addresses and SSH credentials of all your control plane and worker nodes.
 
-### 🛠️ Cluster Installation
+### Cluster Installation
 
 Provision a highly available Kubernetes cluster:
 

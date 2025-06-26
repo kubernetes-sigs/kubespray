@@ -5,6 +5,7 @@
 
 require 'fileutils'
 require 'ipaddr'
+require 'socket'
 
 Vagrant.require_version ">= 2.0.0"
 
@@ -100,21 +101,30 @@ $extra_vars ||= {}
 
 host_vars = {}
 
-# throw error if ip subnet is in use
-ip_test = IPAddr.new("#{$subnet}.0")
+def collect_networks(subnet, subnet_ipv6)
+  Socket.getifaddrs.filter_map do |iface|
+    next unless iface&.netmask&.ip_address && iface.addr
 
-internal_ips = `ip addr`.scan(/inet (\d{1,3}(?:\.\d{1,3}){3}\/\d{1,2})/).flatten
+    is_ipv6 = iface.addr.ipv6?
+    ip      = IPAddr.new(iface.addr.ip_address.split('%').first)
+    ip_test = is_ipv6 ? IPAddr.new("#{subnet_ipv6}::0") : IPAddr.new("#{subnet}.0")
 
-network_ips = internal_ips.map do |ip_cidr|
-  prefix = ip_cidr.split('/').last.to_i
-  ip = IPAddr.new(ip_cidr)
-  net = ip.mask(prefix)
-  IPAddr.new("#{net}/#{prefix}")
+    prefix  = IPAddr.new(iface.netmask.ip_address).to_i.to_s(2).count('1')
+    network = ip.mask(prefix)
+
+    [IPAddr.new("#{network}/#{prefix}"), ip_test]
+  end
 end
 
-if network_ips.any? { |net_ip| net_ip.include?(ip_test) && ip_test != net_ip }
+def subnet_in_use?(network_ips)
+  network_ips.any? { |net, test_ip| net.include?(test_ip) && test_ip != net }
+end
+
+network_ips = collect_networks($subnet, $subnet_ipv6)
+
+if subnet_in_use?(network_ips)
   puts "Invalid subnet provided, subnet is already in use: #{$subnet}.0"
-  puts "Subnets in use: " + network_ips.inspect
+  puts "Subnets in use: #{network_ips.inspect}"
   exit 1
 end
 

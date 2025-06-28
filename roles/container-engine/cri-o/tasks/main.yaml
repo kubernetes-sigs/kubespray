@@ -55,6 +55,36 @@
   when:
     - youki_enabled
 
+- name: Cri-o | Stop kubelet service if running
+  service:
+    name: kubelet
+    state: stopped
+  when:
+    - crio_runtime_switch
+    - ansible_facts.services['kubelet.service'] is defined and ansible_facts.services['kubelet.service'].state == 'running'
+
+- name: Cri-o | List all the running containers
+  ansible.builtin.command: "{{ bin_dir }}/crictl ps -o json"
+  changed_when: false
+  register: running_containers
+  when:
+    - crio_runtime_switch
+    - ansible_facts.services['crio.service'] is defined
+
+- name: Cri-o | Stop all running containers
+  ansible.builtin.command: "{{ bin_dir }}/crictl stop {{ (running_containers.stdout | from_json).containers | map(attribute='id') | join(' ') }}"
+  when:
+    - crio_runtime_switch
+    - ansible_facts.services['crio.service'] is defined
+
+- name: Cri-o | stop crio service if running
+  service:
+    name: crio
+    state: stopped
+  when:
+    - crio_runtime_switch
+    - ansible_facts.services['crio.service'] is defined and ansible_facts.services['crio.service'].state == 'running'
+
 - name: Cri-o | make sure needed folders exist in the system
   with_items:
     - /etc/crio
@@ -250,3 +280,11 @@
   changed_when: false
   retries: 5
   delay: "{{ retry_stagger | random + 3 }}"
+
+- name: Cri-o | ensure kubelet service is started if present and stopped
+  service:
+    name: kubelet
+    state: started
+  when:
+    - crio_runtime_switch
+    - ansible_facts.services['kubelet.service'] is defined and ansible_facts.services['kubelet.service']['status'] != 'not-found'

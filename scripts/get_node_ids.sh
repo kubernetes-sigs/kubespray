@@ -48,4 +48,8 @@ gh api graphql -H "X-Github-Next-Global-ID: 1" -f query='{
     gvisor: repository(owner: "google", name: "gvisor") {
     id
     }
+    argocd: repository(owner: "argoproj", name: "argo-cd") {
+    id
+    }
+
 }'

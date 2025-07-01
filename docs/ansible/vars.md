@@ -246,6 +246,8 @@ Stack](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/advanced/dn
 
 * *kubelet_max_parallel_image_pulls* - Sets the maximum number of image pulls in parallel. The value is `1` by default which means the default is serial image pulling, set it to a integer great than `1` to enable image pulling in parallel.
 
+
+
 * *kubelet_make_iptables_util_chains* - If `true`, causes the kubelet ensures a set of `iptables` rules are present on host.
 
 * *kubelet_cpu_manager_policy* -  If set to `static`, allows pods with certain resource characteristics to be granted increased CPU affinity and exclusivity on the node. And it should be set with `kube_reserved` or `system-reserved`, enable this with the following guide:[Control CPU Management Policies on the Node](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/)
@@ -319,6 +321,8 @@ node_taints:
   By default, kubeadm creates a rolebinding in the `kube-public` namespace which grants permissions to anonymous users. This rolebinding allows kubeadm to discover and validate cluster information during the join phase.
   In a nutshell, this option removes the rolebinding after the init phase of the first control plane node and then configures kubeadm to use file discovery for the join phase of other nodes.
   This option does not remove the anonymous authentication feature of the API server.
+
+* *kubelet_single_process_oom_kill* - if `true`, will prevent the `memory.oom.group` flag from being set for container cgroups in cgroups v2. This causes processes in the container to be OOM killed individually instead of as a group. It means that if `true`, the behavior aligns with the behavior of cgroups v1. The default value is determined automatically when you don't specify. On non-linux such as windows, only `null` / `absent` is allowed. On cgroup v1 linux, only `null` / `absent` and `true` are allowed. On cgroup v2 linux, `null` / `absent`, `true` and `false` are allowed. The default value is `false`.
 
 ### Custom flags for Kube Components
 

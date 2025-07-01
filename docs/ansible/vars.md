@@ -320,6 +320,8 @@ node_taints:
   In a nutshell, this option removes the rolebinding after the init phase of the first control plane node and then configures kubeadm to use file discovery for the join phase of other nodes.
   This option does not remove the anonymous authentication feature of the API server.
 
+* *kubelet_single_process_oom_kill* - if `true`, will prevent the `memory.oom.group` flag from being set for container cgroups in cgroups v2. This causes processes in the container to be OOM killed individually instead of as a group. It means that if `true`, the behavior aligns with the behavior of cgroups v1. The default value is determined automatically when you don't specify. On non-linux such as windows, only `null` / `absent` is allowed. On cgroup v1 linux, only `null` / `absent` and `true` are allowed. On cgroup v2 linux, `null` / `absent`, `true` and `false` are allowed. The default value is `false`.
+
 ### Custom flags for Kube Components
 
 For all kube components, custom flags can be passed in. This allows for edge cases where users need changes to the default deployment that may not be applicable to all deployments.

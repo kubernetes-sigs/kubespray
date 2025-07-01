@@ -51,6 +51,19 @@ containerd_registries_mirrors:
     server: https://mirror.example.org
 ```
 
+contianerd supports registry authentication using custom HTTP headers. This can be set on [`header'](https://github.com/containerd/containerd/blob/main/docs/hosts.md#header-fields-in-the-toml-table-format) section:
+
+```yaml
+containerd_registries_mirrors:
+  - prefix: docker.io
+    mirrors:
+      - host: https://mirror.gcr.io
+        capabilities: ["pull", "resolve"]
+        skip_verify: false
+        header:
+          authorization: "Basic b3RsY="
+```
+
 The `containerd_registries` and `containerd_insecure_registries` configs are deprecated.
 
 ### Containerd Runtimes

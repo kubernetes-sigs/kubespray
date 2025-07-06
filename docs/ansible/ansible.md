@@ -155,10 +155,6 @@ The following tags are defined in playbooks:
 | win_nodes                      | Running windows specific tasks                        |
 | youki                          | Configuring youki runtime                             |
 
-Note: Use the ``bash scripts/gen_tags.sh`` command to generate a list of all
-tags found in the codebase. New tags will be listed with the empty "Used for"
-field.
-
 ## Example commands
 
 Example command to filter and apply only DNS configuration tasks and skip

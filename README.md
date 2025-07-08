@@ -128,7 +128,7 @@ Note:
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) 1.15.3
   - [coredns](https://github.com/coredns/coredns) 1.14.6
-  - [argocd](https://argoproj.github.io/) 2.14.5
+  - [argocd](https://argoproj.github.io/) 2.14.21
   - [helm](https://helm.sh/) 3.22.0
   - [metallb](https://metallb.universe.tf/) 0.13.9
   - [registry](https://github.com/distribution/distribution) 2.8.1

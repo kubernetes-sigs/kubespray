@@ -71,13 +71,17 @@
       dest: "{{ hostvars['localhost']['local_release_dir'] + '/' }}"
     loop: "{{ (downloads_delegated | difference(downloads_delegated_localhost))
               if (groups['download_delegate_' + inventory_hostname] | d([]) |
-                  difference([inventory_hostname]) == [])
+                  difference([inventory_hostname]) != [])
               else
               []
            }}"
     # we only need to fetch binary which are
     # - not already delegated to localhost
     # - delegated from other hosts
+    # So we compute the set of host which delegate download to this host ('inventory_hostname')
+    # remove the current host (no need to pass by localhost for installing artifacts on the same host)
+    # and if the resulting set is not empty we need to fetch the artifacts to use `copy` when installing.
+    # (this way, there is no need to have special network opened between nodes, if Ansible works, this works)
     loop_control:
       label: "{{ item.key }}"
     register: fetched_to_localhost

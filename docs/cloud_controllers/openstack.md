@@ -73,6 +73,7 @@ The cloud provider is configured to have Octavia by default in Kubespray.
   external_openstack_lbaas_method: ROUND_ROBIN
   external_openstack_lbaas_provider: amphora
   external_openstack_lbaas_subnet_id: "Neutron subnet ID to create LBaaS VIP"
+  external_openstack_lbaas_member_subnet_id: "Neutron subnet ID on which to create the members of the load balancer"
   external_openstack_lbaas_network_id: "Neutron network ID to create LBaaS VIP"
   external_openstack_lbaas_manage_security_groups: false
   external_openstack_lbaas_create_monitor: false

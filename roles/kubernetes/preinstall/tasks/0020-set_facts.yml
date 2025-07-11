@@ -150,3 +150,26 @@
   set_fact:
     kubelet_flexvolumes_plugins_dir: /var/lib/kubelet/volumeplugins
   when: not usr.stat.writeable
+
+- name: Gather glibc version facts
+  when:
+    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+  block:
+    - name: Gather package facts
+      package_facts:
+        manager: auto
+
+    - name: Set glibc package version fact from package_facts
+      set_fact:
+        _glibc_package_version: >-
+          {% if 'glibc' in ansible_facts.packages %}
+            {{ ansible_facts.packages['glibc'][0].version }}
+          {% elif 'libc6' in ansible_facts.packages %}
+            {{ ansible_facts.packages['libc6'][0].version }}
+          {% endif %}
+
+    - name: Set glibc version fact from package_facts
+      set_fact:
+        glibc_version: "{{ _glibc_package_version | trim | regex_search('[0-9]+\\.[0-9]+') }}"
+      when:
+        - _glibc_package_version is defined

@@ -149,3 +149,11 @@ following configuration:
 ```yaml
 nri_enabled: true
 ```
+
+### Optional : Static Binary
+
+To ensure compatibility with older distributions (such as Debian 11), you can use a static containerd binary. By default, this is static binary if the system's glibc version is less than 2.34; otherwise, it is the default binary.
+
+```yaml
+containerd_static_binary: true
+```

@@ -14,7 +14,7 @@ fedora39 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x
 fedora40 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 flatcar4081 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 openeuler24 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
-rockylinux10 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
+rockylinux10 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 ubuntu20 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |

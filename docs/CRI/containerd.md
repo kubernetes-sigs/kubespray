@@ -114,7 +114,6 @@ containerd_runc_runtime:
   ...
 ```
 
-
 Config insecure-registry access to self hosted registries.
 
 ```yaml

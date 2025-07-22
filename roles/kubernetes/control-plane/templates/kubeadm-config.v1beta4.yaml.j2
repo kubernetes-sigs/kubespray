@@ -125,22 +125,14 @@ certificatesDir: {{ kube_cert_dir }}
 imageRepository: {{ kube_image_repo }}
 apiServer:
   extraArgs:
-{% if kube_apiserver_etcd_compaction_interval is defined %}
   - name: etcd-compaction-interval
     value: "{{ kube_apiserver_etcd_compaction_interval }}"
-{% endif %}
-{% if kube_apiserver_pod_eviction_not_ready_timeout_seconds is defined %}
   - name: default-not-ready-toleration-seconds
     value: "{{ kube_apiserver_pod_eviction_not_ready_timeout_seconds }}"
-{% endif %}
-{% if kube_apiserver_pod_eviction_unreachable_timeout_seconds is defined %}
   - name: default-unreachable-toleration-seconds
     value: "{{ kube_apiserver_pod_eviction_unreachable_timeout_seconds }}"
-{% endif %}
-{% if kube_api_anonymous_auth is defined %}
   - name: anonymous-auth
     value: "{{ kube_api_anonymous_auth }}"
-{% endif %}
 {% if kube_apiserver_use_authorization_config_file %}
   - name: authorization-config
     value: "{{ kube_config_dir }}/apiserver-authorization-config-{{ kube_apiserver_authorization_config_api_version }}.yaml"
@@ -186,7 +178,7 @@ apiServer:
   - name: service-account-lookup
     value: "{{ kube_apiserver_service_account_lookup }}"
 {% endif %}
-{% if kube_oidc_auth | default(false) and kube_oidc_url is defined and kube_oidc_client_id is defined %}
+{% if kube_oidc_auth and kube_oidc_url is defined and kube_oidc_client_id is defined %}
   - name: oidc-issuer-url
     value: "{{ kube_oidc_url }}"
   - name: oidc-client-id
@@ -212,7 +204,7 @@ apiServer:
     value: "{{ kube_oidc_groups_prefix }}"
 {%   endif %}
 {% endif %}
-{% if kube_webhook_token_auth | default(false) %}
+{% if kube_webhook_token_auth %}
   - name: authentication-token-webhook-config-file
     value: "{{ kube_config_dir }}/webhook-token-auth-config.yaml"
 {% endif %}
@@ -274,10 +266,8 @@ apiServer:
   - name: tls-cipher-suites
     value: "{% for tls in tls_cipher_suites %}{{ tls }}{{ ',' if not loop.last else '' }}{% endfor %}"
 {% endif %}
-{% if event_ttl_duration is defined %}
   - name: event-ttl
     value: "{{ event_ttl_duration }}"
-{% endif %}
 {% if kubelet_rotate_server_certificates %}
   - name: kubelet-certificate-authority
     value: "{{ kube_cert_dir }}/ca.crt"
@@ -293,12 +283,12 @@ apiServer:
     hostPath: {{ kube_token_dir }}
     mountPath: {{ kube_token_dir }}
 {% endif %}
-{% if kube_webhook_token_auth | default(false) %}
+{% if kube_webhook_token_auth %}
   - name: webhook-token-auth-config
     hostPath: {{ kube_config_dir }}/webhook-token-auth-config.yaml
     mountPath: {{ kube_config_dir }}/webhook-token-auth-config.yaml
 {% endif %}
-{% if kube_webhook_authorization | default(false) %}
+{% if kube_webhook_authorization %}
   - name: webhook-authorization-config
     hostPath: {{ kube_config_dir }}/webhook-authorization-config.yaml
     mountPath: {{ kube_config_dir }}/webhook-authorization-config.yaml
@@ -395,12 +385,6 @@ controllerManager:
   - name: "{{ key }}"
     value: "{{ kube_kubeadm_controller_extra_args[key] }}"
 {% endfor %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] %}
-  - name: cloud-provider
-    value: "{{ cloud_provider }}"
-  - name: cloud-config
-    value: "{{ kube_config_dir }}/cloud_config"
-{% endif %}
 {% if kube_network_plugin is defined and kube_network_plugin not in ["cloud"] %}
   - name: configure-cloud-routes
     value: "false"
@@ -417,18 +401,8 @@ controllerManager:
   - name: tls-cipher-suites
     value: "{% for tls in tls_cipher_suites %}{{ tls }}{{ ',' if not loop.last else '' }}{% endfor %}"
 {% endif %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] or controller_manager_extra_volumes %}
+{% if controller_manager_extra_volumes %}
   extraVolumes:
-{% if cloud_provider is defined and cloud_provider in ["openstack"] and openstack_cacert is defined %}
-  - name: openstackcacert
-    hostPath: "{{ kube_config_dir }}/openstack-cacert.pem"
-    mountPath: "{{ kube_config_dir }}/openstack-cacert.pem"
-{% endif %}
-{% if cloud_provider is defined and cloud_provider in ["openstack", "azure", "vsphere", "aws", "gce"] %}
-  - name: cloud-config
-    hostPath: {{ kube_config_dir }}/cloud_config
-    mountPath: {{ kube_config_dir }}/cloud_config
-{% endif %}
 {% for volume in controller_manager_extra_volumes %}
   - name: {{ volume.name }}
     hostPath: {{ volume.hostPath }}
@@ -496,6 +470,12 @@ apply:
 {% endif %}
   imagePullPolicy: {{ k8s_image_pull_policy }}
   imagePullSerial: {{ kubeadm_image_pull_serial | lower }}
+{% for skip_phase in kubeadm_init_phases_skip %}
+{% if loop.first %}
+  skipPhases:
+{% endif %}
+  - "{{ skip_phase }}"
+{% endfor %}
 node:
   certificateRenewal: {{ kubeadm_upgrade_auto_cert_renewal | lower }}
   etcdUpgrade: {{ (etcd_deployment_type == "kubeadm") | lower }}
@@ -511,6 +491,12 @@ node:
 {% endif %}
   imagePullPolicy: {{ k8s_image_pull_policy }}
   imagePullSerial: {{ kubeadm_image_pull_serial | lower }}
+{% for skip_phase in kubeadm_upgrade_node_phases_skip %}
+{% if loop.first %}
+  skipPhases:
+{% endif %}
+  - "{{ skip_phase }}"
+{% endfor %}
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration

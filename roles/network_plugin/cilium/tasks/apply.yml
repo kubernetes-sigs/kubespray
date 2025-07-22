@@ -1,6 +1,17 @@
 ---
+- name: Check if Cilium Helm release exists (via cilium version)
+  command: "{{ bin_dir }}/cilium version"
+  register: cilium_release_info
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  failed_when: false
+  changed_when: false
+
+- name: Set action to install or upgrade
+  set_fact:
+    cilium_action: "{{ 'install' if ('release: not found' in cilium_release_info.stderr | default('') or 'release: not found' in cilium_release_info.stdout | default('')) else 'upgrade' }}"
+
 - name: Cilium | Install
-  command: "{{ bin_dir }}/cilium install --version {{ cilium_version }} -f {{ kube_config_dir }}/cilium-values.yaml"
+  command: "{{ bin_dir }}/cilium {{ cilium_action }} --version {{ cilium_version }} -f {{ kube_config_dir }}/cilium-values.yaml {{ cilium_install_extra_flags }}"
   when: inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Cilium | Wait for pods to run

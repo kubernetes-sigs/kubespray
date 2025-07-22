@@ -88,7 +88,7 @@ vagrant up
 
 - **Flatcar Container Linux by Kinvolk**
 - **Debian** Bookworm, Bullseye
-- **Ubuntu** 20.04, 22.04, 24.04
+- **Ubuntu** 22.04, 24.04
 - **CentOS/RHEL** [8, 9](docs/operating_systems/rhel.md#rhel-8)
 - **Fedora** 39, 40
 - **Fedora CoreOS** (see [fcos Note](docs/operating_systems/fcos.md))
@@ -111,14 +111,14 @@ Note:
 <!-- BEGIN ANSIBLE MANAGED BLOCK -->
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.33.1
+  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.33.3
   - [etcd](https://github.com/etcd-io/etcd) 3.5.21
   - [docker](https://www.docker.com/) 28.0
-  - [containerd](https://containerd.io/) 2.0.5
-  - [cri-o](http://cri-o.io/) 1.33.0 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [containerd](https://containerd.io/) 2.1.3
+  - [cri-o](http://cri-o.io/) 1.33.2 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) 1.4.1
-  - [calico](https://github.com/projectcalico/calico) 3.29.3
+  - [calico](https://github.com/projectcalico/calico) 3.29.4
   - [cilium](https://github.com/cilium/cilium) 1.17.3
   - [flannel](https://github.com/flannel-io/flannel) 0.26.7
   - [kube-ovn](https://github.com/alauda/kube-ovn) 1.12.21
@@ -130,7 +130,7 @@ Note:
   - [coredns](https://github.com/coredns/coredns) 1.12.0
   - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) 1.12.1
   - [argocd](https://argoproj.github.io/) 2.14.5
-  - [helm](https://helm.sh/) 3.16.4
+  - [helm](https://helm.sh/) 3.18.4
   - [metallb](https://metallb.universe.tf/) 0.13.9
   - [registry](https://github.com/distribution/distribution) 2.8.1
 - Storage Plugin

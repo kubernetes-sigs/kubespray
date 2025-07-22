@@ -1,21 +1,16 @@
 ---
-- name: Testcases for apiserver
-  hosts: kube_control_plane
+- name: Check the API servers are responding
+  uri:
+    url: "https://{{ (access_ip if (ipv4_stack | default(true)) else access_ip6) | default(ansible_default_ipv4.address if (ipv4_stack | default(true)) else ansible_default_ipv6.address) | ansible.utils.ipwrap }}:{{ kube_apiserver_port | default(6443) }}/version"
+    validate_certs: false
+    status_code: 200
+  register: apiserver_response
+  retries: 12
+  delay: 5
+  until: apiserver_response is success
 
-  tasks:
-  - name: Check the API servers are responding
-    uri:
-      url: "https://{{ (access_ip if (ipv4_stack | default(true)) else access_ip6) | default(ansible_default_ipv4.address if (ipv4_stack | default(true)) else ansible_default_ipv6.address) | ansible.utils.ipwrap }}:{{ kube_apiserver_port | default(6443) }}/version"
-      validate_certs: false
-      status_code: 200
-    register: apiserver_response
-    retries: 12
-    delay: 5
-    until: apiserver_response is success
-
-  - name: Check API servers version
-    assert:
-      that:
-      - apiserver_response.json.gitVersion == kube_version
-      fail_msg: "apiserver version different than expected {{ kube_version }}"
-    when: kube_version is defined
+- name: Check API servers version
+  assert:
+    that:
+    - apiserver_response.json.gitVersion == ('v' + kube_version)
+    fail_msg: "apiserver is {{ apiserver_response.json.gitVersion }}, expected {{ kube_version }}"

@@ -80,6 +80,7 @@ youki_version: "{{ (youki_checksums['amd64'] | dict2items)[0].key }}"
 gvisor_version: "{{ (gvisor_runsc_binary_checksums['amd64'] | dict2items)[0].key }}"
 containerd_version: "{{ (containerd_archive_checksums['amd64'] | dict2items)[0].key }}"
 cri_dockerd_version: "{{ (cri_dockerd_archive_checksums['amd64'] | dict2items)[0].key }}"
+argocd_version: "{{ (argocd_install_checksums.no_arch | dict2items)[0].key }}"
 
 # this is relevant when container_manager == 'docker'
 docker_containerd_version: 1.6.32
@@ -124,32 +125,10 @@ helm_version: "{{ (helm_archive_checksums['amd64'] | dict2items)[0].key }}"
 nerdctl_version: "{{ (nerdctl_archive_checksums['amd64'] | dict2items)[0].key }}"
 skopeo_version: "{{ (skopeo_binary_checksums['amd64'] | dict2items)[0].key }}"
 
-# Get kubernetes major version (i.e. 1.17.4 => 1.17)
-kube_major_version: "{{ (kube_version | split('.'))[:-1] | join('.') }}"
-
-pod_infra_supported_versions:
-  '1.33': '3.10'
-  '1.32': '3.10'
-  '1.31': '3.10'
 pod_infra_version: "{{ pod_infra_supported_versions[kube_major_version] }}"
-
-etcd_supported_versions:
-  '1.33': 3.5.21
-  '1.32': 3.5.16
-  '1.31': 3.5.16
 etcd_version: "{{ etcd_supported_versions[kube_major_version] }}"
-
-crictl_supported_versions:
-  '1.33': 1.33.0
-  '1.32': 1.32.0
-  '1.31': 1.31.1
-crictl_version: "{{ crictl_supported_versions[kube_major_version] }}"
-
-crio_supported_versions:
-  '1.33': 1.33.0
-  '1.32': 1.32.0
-  '1.31': 1.31.3
-crio_version: "{{ crio_supported_versions[kube_major_version] }}"
+crictl_version: "{{ (crictl_checksums['amd64'].keys() | select('version', kube_major_next_version, '<'))[0] }}"
+crio_version: "{{ (crio_archive_checksums['amd64'].keys() | select('version', kube_major_next_version, '<'))[0] }}"
 
 # Scheduler plugins doesn't build for K8s 1.29 yet
 scheduler_plugins_supported_versions:
@@ -188,10 +167,11 @@ kata_containers_download_url: "{{ github_url }}/kata-containers/kata-containers/
 gvisor_runsc_download_url: "{{ storage_googleapis_url }}/gvisor/releases/release/{{ gvisor_version }}/{{ ansible_architecture }}/runsc"
 gvisor_containerd_shim_runsc_download_url: "{{ storage_googleapis_url }}/gvisor/releases/release/{{ gvisor_version }}/{{ ansible_architecture }}/containerd-shim-runsc-v1"
 nerdctl_download_url: "{{ github_url }}/containerd/nerdctl/releases/download/v{{ nerdctl_version }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
-containerd_download_url: "{{ github_url }}/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
+containerd_download_url: "{{ github_url }}/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ 'static-' if containerd_static_binary }}{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
 cri_dockerd_download_url: "{{ github_url }}/Mirantis/cri-dockerd/releases/download/v{{ cri_dockerd_version }}/cri-dockerd-{{ cri_dockerd_version }}.{{ image_arch }}.tgz"
 skopeo_download_url: "{{ github_url }}/lework/skopeo-binary/releases/download/v{{ skopeo_version }}/skopeo-linux-{{ image_arch }}"
 yq_download_url: "{{ github_url }}/mikefarah/yq/releases/download/v{{ yq_version }}/yq_linux_{{ image_arch }}"
+argocd_install_url: "https://raw.githubusercontent.com/argoproj/argo-cd/v{{ argocd_version }}/manifests/install.yaml"
 gateway_api_crds_download_url: "{{ github_url }}/kubernetes-sigs/gateway-api/releases/download/v{{ gateway_api_version }}/{{ gateway_api_channel }}-install.yaml"
 
 etcd_binary_checksum: "{{ etcd_binary_checksums[image_arch][etcd_version] }}"
@@ -200,6 +180,7 @@ kubelet_binary_checksum: "{{ kubelet_checksums[image_arch][kube_version] }}"
 kubectl_binary_checksum: "{{ kubectl_checksums[image_arch][kube_version] }}"
 kubeadm_binary_checksum: "{{ kubeadm_checksums[image_arch][kube_version] }}"
 yq_binary_checksum: "{{ yq_checksums[image_arch][yq_version] }}"
+argocd_install_checksum: "{{ argocd_install_checksums.no_arch[argocd_version] }}"
 calicoctl_binary_checksum: "{{ calicoctl_binary_checksums[image_arch][calico_ctl_version] }}"
 ciliumcli_binary_checksum: "{{ ciliumcli_binary_checksums[image_arch][cilium_cli_version] }}"
 crictl_binary_checksum: "{{ crictl_checksums[image_arch][crictl_version] }}"
@@ -214,6 +195,8 @@ gvisor_runsc_binary_checksum: "{{ gvisor_runsc_binary_checksums[image_arch][gvis
 gvisor_containerd_shim_binary_checksum: "{{ gvisor_containerd_shim_binary_checksums[image_arch][gvisor_version] }}"
 nerdctl_archive_checksum: "{{ nerdctl_archive_checksums[image_arch][nerdctl_version] }}"
 containerd_archive_checksum: "{{ containerd_archive_checksums[image_arch][containerd_version] }}"
+containerd_static_archive_checksum: "{{ containerd_static_archive_checksums[image_arch][containerd_version] }}"
+containerd_checksum: "{{ containerd_static_archive_checksum if containerd_static_binary else containerd_archive_checksum }}"
 skopeo_binary_checksum: "{{ skopeo_binary_checksums[image_arch][skopeo_version] }}"
 
 # Containers
@@ -573,8 +556,8 @@ downloads:
   containerd:
     enabled: "{{ container_manager == 'containerd' }}"
     file: true
-    dest: "{{ local_release_dir }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
-    checksum: "{{ containerd_archive_checksum }}"
+    dest: "{{ local_release_dir }}/containerd-{{ 'static-' if containerd_static_binary }}{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
+    checksum: "{{ containerd_checksum }}"
     url: "{{ containerd_download_url }}"
     unarchive: false
     owner: "root"
@@ -1109,6 +1092,19 @@ downloads:
     unarchive: false
     owner: "root"
     mode: "0755"
+    groups:
+      - kube_control_plane
+
+  argocd_install:
+    enabled: "{{ argocd_enabled }}"
+    file: true
+    version: "{{ argocd_version }}"
+    dest: "{{ local_release_dir }}/argocd-install.yml"
+    checksum: "{{ argocd_install_checksum }}"
+    url: "{{ argocd_install_url }}"
+    unarchive: false
+    owner: "root"
+    mode: "0644"
     groups:
       - kube_control_plane
 

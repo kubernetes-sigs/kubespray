@@ -32,7 +32,7 @@ Based on the table below and the available python version for your ansible host 
 
 | Ansible Version | Python Version |
 |-----------------|----------------|
-| >= 2.16.4       | 3.10-3.12      |
+| >= 2.17.3       | 3.10-3.12      |
 
 ## Customize Ansible vars
 
@@ -154,10 +154,6 @@ The following tags are defined in playbooks:
 | vsphere-csi-driver             | Configuring csi driver: vsphere                       |
 | win_nodes                      | Running windows specific tasks                        |
 | youki                          | Configuring youki runtime                             |
-
-Note: Use the ``bash scripts/gen_tags.sh`` command to generate a list of all
-tags found in the codebase. New tags will be listed with the empty "Used for"
-field.
 
 ## Example commands
 

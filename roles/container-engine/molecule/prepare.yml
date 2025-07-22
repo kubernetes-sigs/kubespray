@@ -1,0 +1,43 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+  become: true
+  vars:
+    ignore_assert_errors: true
+  roles:
+    - role: dynamic_groups
+    - role: bootstrap_os
+    - role: network_facts
+    - role: kubernetes/preinstall
+    - role: adduser
+      user: "{{ addusers.kube }}"
+  tasks:
+    - name: Download CNI
+      include_tasks: "../../download/tasks/download_file.yml"
+      vars:
+        download: "{{ download_defaults | combine(downloads.cni) }}"
+
+- name: Prepare CNI
+  hosts: all
+  gather_facts: false
+  become: true
+  vars:
+    ignore_assert_errors: true
+    kube_network_plugin: cni
+  roles:
+    - role: kubespray_defaults
+    - role: network_plugin/cni
+  tasks:
+    - name: Create /etc/cni/net.d directory
+      file:
+        path: /etc/cni/net.d
+        state: directory
+        owner: root
+        mode: "0755"
+    - name: Config bridge host-local CNI
+      copy:
+        src: "10-mynet.conf"
+        dest: "/etc/cni/net.d/"
+        owner: root
+        mode: "0644"

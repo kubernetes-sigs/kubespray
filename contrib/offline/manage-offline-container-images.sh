@@ -36,7 +36,7 @@ function create_container_image_tar() {
 	mkdir  ${IMAGE_DIR}
 	cd     ${IMAGE_DIR}
 
-	sudo ${runtime} pull registry:latest
+	sudo --preserve-env=http_proxy,https_proxy,no_proxy ${runtime} pull registry:latest
 	sudo ${runtime} save -o registry-latest.tar registry:latest
 
 	while read -r image
@@ -45,7 +45,7 @@ function create_container_image_tar() {
 		set +e
 		for step in $(seq 1 ${RETRY_COUNT})
 		do
-			sudo ${runtime} pull ${image}
+			sudo --preserve-env=http_proxy,https_proxy,no_proxy ${runtime} pull ${image}
 			if [ $? -eq 0 ]; then
 				break
 			fi
@@ -148,7 +148,7 @@ function register_container_images() {
 		if [ "${org_image}" == "ID:" ]; then
 		  org_image=$(echo "${load_image}"  | awk '{print $4}')
 		fi
-		image_id=$(sudo ${runtime} image inspect ${org_image} | grep "\"Id\":" | awk -F: '{print $3}'| sed s/'\",'//)
+		image_id=$(sudo ${runtime} image inspect --format "{{.Id}}" "${org_image}")
 		if [ -z "${file_name}" ]; then
 			echo "Failed to get file_name for line ${line}"
 			exit 1

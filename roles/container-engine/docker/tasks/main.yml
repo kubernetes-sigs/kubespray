@@ -60,16 +60,15 @@
   environment: "{{ proxy_env }}"
   when: ansible_pkg_mgr == 'apt'
 
-# ref to https://github.com/kubernetes-sigs/kubespray/issues/11086
-- name: Remove the archived debian apt repository
-  lineinfile:
-    path: /etc/apt/sources.list
-    regexp: 'buster-backports'
-    state: absent
+# ref to https://github.com/kubernetes-sigs/kubespray/issues/11086 & 12424
+- name: Comment out all Debian backports entries in apt sources
+  replace:
+    path: "{{ item }}"
+    regexp: '^([^#].*-backports.*)$'
+    replace: '# \1'
     backup: true
-  when:
-    - ansible_os_family == 'Debian'
-    - ansible_distribution_release == "buster"
+  loop: "{{ query('fileglob', '/etc/apt/sources.list*') }}"
+  when: ansible_os_family == 'Debian'
 
 - name: Ensure docker-ce repository is enabled
   apt_repository:

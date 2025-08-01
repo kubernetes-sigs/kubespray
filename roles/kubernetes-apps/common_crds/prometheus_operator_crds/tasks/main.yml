@@ -1,0 +1,33 @@
+---
+- name: Prometheus Operator CRDs | Download YAML
+  include_tasks: "../../../../download/tasks/download_file.yml"
+  vars:
+    download: "{{ download_defaults | combine(downloads.prometheus_operator_crds) }}"
+
+- name: Prometheus Operator CRDs | Create addon dir
+  file:
+    path: "{{ kube_config_dir }}/addons/prometheus_operator_crds"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Prometheus Operator CRDs | Copy YAML from download dir
+  copy:
+    src: "{{ local_release_dir }}/prometheus-operator-crds.yaml"
+    dest: "{{ kube_config_dir }}/addons/prometheus_operator_crds/prometheus-operator-crds.yaml"
+    mode: "0644"
+    remote_src: true
+  when:
+    - "inventory_hostname == groups['kube_control_plane'][0]"
+
+- name: Prometheus Operator CRDs | Install
+  kube:
+    name: Prometheus Operator CRDs
+    kubectl: "{{ bin_dir }}/kubectl"
+    filename: "{{ kube_config_dir }}/addons/prometheus_operator_crds/prometheus-operator-crds.yaml"
+    state: latest
+  when:
+    - "inventory_hostname == groups['kube_control_plane'][0]"

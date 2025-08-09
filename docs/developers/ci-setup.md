@@ -2,19 +2,14 @@
 
 ## Pipeline
 
-1. build: build a docker image to be used in the pipeline
-2. unit-tests: fast jobs for fast feedback (linting, etc...)
-3. deploy-part1: small number of jobs to test if the PR works with default settings
-4. deploy-extended: slow jobs testing different platforms, OS, settings, CNI, etc...
-5. deploy-extended: very slow jobs (upgrades, etc...)
+See [.gitlab-ci.yml](/.gitlab-ci.yml) and the included files for an overview.
 
 ## Runners
 
-Kubespray has 3 types of GitLab runners:
+Kubespray has 2 types of GitLab runners, both deployed  on the Kubespray CI cluster (hosted on Oracle Cloud Infrastucture):
 
-- packet runners: used for E2E jobs (usually long), running on Equinix Metal (ex-packet), on kubevirt managed VMs
-- light runners: used for short lived jobs, running on Equinix Metal (ex-packet), as managed pods
-- auto scaling runners (managed via docker-machine on Equinix Metal): used for on-demand resources, see [GitLab docs](https://docs.gitlab.com/runner/configuration/autoscale.html) for more info
+- pods: use the [gitlab-ci kubernetes executor](https://docs.gitlab.com/runner/executors/kubernetes/)
+- vagrant: custom executor running in pods with access to the libvirt socket on the nodes
 
 ## Vagrant
 
@@ -22,18 +17,17 @@ Vagrant jobs are using the [quay.io/kubespray/vagrant](/test-infra/vagrant-docke
 
 ## CI Variables
 
-In CI we have a set of overrides we use to ensure greater success of our CI jobs and avoid throttling by various APIs we depend on. See:
+In CI we have a [set of extra vars](/test/common_vars.yml) we use to ensure greater success of our CI jobs and avoid throttling by various APIs we depend on.
 
-- [Docker mirrors](/tests/common/_docker_hub_registry_mirror.yml)
-- [Test settings](/tests/common/_kubespray_test_settings.yml)
+## CI clusters
 
-## CI Environment
+DISCLAIMER: The following information is not fully up to date, in particular, the CI cluster is now on Oracle Cloud Infrastcture, not Equinix.
 
-The CI packet and light runners are deployed on a kubernetes cluster on Equinix Metal. The cluster is deployed with kubespray itself and maintained by the kubespray maintainers.
+The cluster is deployed with kubespray itself and maintained by the kubespray maintainers.
 
 The following files are used for that inventory:
 
-### cluster.tfvars
+### cluster.tfvars (OBSOLETE: this section is no longer accurate)
 
 ```ini
 # your Kubernetes cluster name here
@@ -165,18 +159,6 @@ kube_feature_gates:
 ## Aditional files
 
 This section documents additional files used to complete a deployment of the kubespray CI, these files sit on the control-plane node and assume a working kubernetes cluster.
-
-### /root/nscleanup.sh
-
-```bash
-#!/bin/bash
-
-kubectl=/usr/local/bin/kubectl
-
-$kubectl get ns | grep -P "(\d.+-\d.+)" | awk 'match($3,/[0-9]+d/) {print $1}' | xargs -r $kubectl delete ns
-$kubectl get ns | grep -P "(\d.+-\d.+)" | awk 'match($3,/[3-9]+h/) {print $1}' | xargs -r $kubectl delete ns
-$kubectl get ns | grep Terminating | awk '{print $1}' | xargs -i $kubectl delete vmi/instance-1 vmi/instance-0 vmi/instance-2 -n {} --force --grace-period=0 &
-```
 
 ### /root/path-calico.sh
 

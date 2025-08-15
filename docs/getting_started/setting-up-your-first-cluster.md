@@ -88,7 +88,7 @@ cluster.
 
 ### Compute Instances
 
-The compute instances in this lab will be provisioned using [Ubuntu Server](https://www.ubuntu.com/server) 18.04.
+The compute instances in this lab will be provisioned using [Ubuntu Server](https://www.ubuntu.com/server) 24.04.
 Each compute instance will be provisioned with a fixed private IP address and
  a public IP address (that can be fixed - see [guide](https://cloud.google.com/compute/docs/ip-addresses/reserve-static-external-ip-address)).
 Using fixed public IP addresses has the advantage that our cluster node

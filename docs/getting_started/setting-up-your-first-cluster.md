@@ -61,12 +61,12 @@ gcloud compute networks subnets create kubernetes \
 #### Firewall Rules
 
 Create a firewall rule that allows internal communication across all protocols.
-It is important to note that the vxlan protocol has to be allowed in order for
+It is important to note that the vxlan (udp) protocol has to be allowed in order for
 the calico (see later) networking plugin to work.
 
 ```ShellSession
 gcloud compute firewall-rules create kubernetes-the-kubespray-way-allow-internal \
-  --allow tcp,udp,icmp,vxlan \
+  --allow tcp,udp,icmp \
   --network kubernetes-the-kubespray-way \
   --source-ranges 10.240.0.0/24
 ```
@@ -88,7 +88,7 @@ cluster.
 
 ### Compute Instances
 
-The compute instances in this lab will be provisioned using [Ubuntu Server](https://www.ubuntu.com/server) 18.04.
+The compute instances in this lab will be provisioned using [Ubuntu Server](https://www.ubuntu.com/server) 24.04.
 Each compute instance will be provisioned with a fixed private IP address and
  a public IP address (that can be fixed - see [guide](https://cloud.google.com/compute/docs/ip-addresses/reserve-static-external-ip-address)).
 Using fixed public IP addresses has the advantage that our cluster node
@@ -103,7 +103,7 @@ for i in 0 1 2; do
     --async \
     --boot-disk-size 200GB \
     --can-ip-forward \
-    --image-family ubuntu-1804-lts \
+    --image-family ubuntu-2404-lts-amd64 \
     --image-project ubuntu-os-cloud \
     --machine-type e2-standard-2 \
     --private-network-ip 10.240.0.1${i} \
@@ -124,7 +124,7 @@ for i in 0 1 2; do
     --async \
     --boot-disk-size 200GB \
     --can-ip-forward \
-    --image-family ubuntu-1804-lts \
+    --image-family ubuntu-2404-lts-amd64 \
     --image-project ubuntu-os-cloud \
     --machine-type e2-standard-2 \
     --private-network-ip 10.240.0.2${i} \

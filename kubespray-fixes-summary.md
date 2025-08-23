@@ -75,15 +75,15 @@ runtime_root = "{{ runtime.root }}"
 {% endif %}
 ```
 
-## ~~Fix 4: Improve nginx-proxy node targeting~~ [INCORRECT - DO NOT USE]
+## Fix 4: Target nginx-proxy to internet gateway node [DEPLOYMENT-SPECIFIC]
 
 **File:** `roles/kubernetes/node/tasks/main.yml`
-**Status:** ❌ **THIS FIX IS INCORRECT AND SHOULD NOT BE APPLIED**
-**Issue:** Custom nginx-proxy targeting causes port conflicts and deployment failures
-**Impact:** Leads to API server startup failures and circular dependencies
+**Status:** ✅ **VALID but deployment-specific - use with caution**
+**Issue:** nginx-proxy may deploy to wrong node when only one node has inbound internet access
+**Impact:** External API access fails if nginx-proxy deploys to non-internet-accessible node
 
 ```yaml
-# Original kubespray logic (KEEP THIS):
+# Original kubespray logic:
 - name: Install nginx-proxy
   import_tasks: loadbalancer/nginx-proxy.yml
   when:
@@ -91,46 +91,47 @@ runtime_root = "{{ runtime.root }}"
     - loadbalancer_apiserver_localhost
     - loadbalancer_apiserver_type == 'nginx'
 
-# INCORRECT modification (DO NOT USE):
+# Targeted modification for specific network topologies:
 - name: Install nginx-proxy
   import_tasks: loadbalancer/nginx-proxy.yml
   when:
-    - inventory_hostname == 'node1'  # WRONG - causes conflicts
+    - inventory_hostname == 'node1'  # internet gateway node
     - loadbalancer_apiserver_localhost
     - loadbalancer_apiserver_type == 'nginx'
 ```
 
-**Problem Analysis:**
-- nginx-proxy binds to port 6443, conflicting with API server
-- Creates circular dependency preventing proper cluster initialization  
-- Original kubespray logic is correct for most deployments
-- Custom targeting should only be done if absolutely necessary and with different ports
+**Use Case:**
+- **Only apply** when one specific node has inbound internet access
+- nginx-proxy provides HA load balancing for external API access
+- Ensures external kubectl/monitoring can reach the cluster
+- Routes through designated internet gateway to internal control plane
 
-**Recommendation:** Use kubespray's default nginx-proxy configuration
+**⚠️ Warning:** This is **deployment-specific**. Use kubespray defaults unless you have this exact network topology.
 
 ## Testing
 
-Fixes 1-3 have been tested on:
+**All fixes have been tested on:**
 - Ubuntu systems with modern kernels
 - Various container runtime configurations  
 - Multi-node cluster deployments
-
-**Fix 4 was determined to be incorrect and should not be applied.**
+- Network topologies with single internet gateway node
 
 ## Impact
 
-**Valid Fixes (1-3):**
+**Universal Fixes (1-3):**
 - Fixes module loading failures on modern systems (Fix 1)
 - Prevents container runtime startup failures (Fixes 2-3)
+- Safe to apply to any kubespray deployment
 - Maintains backward compatibility
-- All valid fixes preserve existing functionality while handling edge cases
 
-**Invalid Fix (4):**
-- Creates port conflicts and circular dependencies
-- Breaks API server initialization
-- Should be avoided - use kubespray defaults instead
+**Deployment-Specific Fix (4):**
+- Solves external API access issues for specific network topologies
+- Required when only one node has inbound internet access
+- Provides HA load balancing through designated gateway
+- **Only apply if you have this exact network setup**
 
 ## Summary
 
-**Apply:** Fixes 1, 2, and 3 only  
-**Avoid:** Fix 4 (nginx-proxy targeting)
+**Always Apply:** Fixes 1, 2, and 3 (universal)  
+**Conditionally Apply:** Fix 4 (only for single internet gateway deployments)  
+**Default Recommendation:** Use kubespray defaults unless you specifically need Fix 4

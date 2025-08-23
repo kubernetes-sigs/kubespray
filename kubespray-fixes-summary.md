@@ -75,15 +75,15 @@ runtime_root = "{{ runtime.root }}"
 {% endif %}
 ```
 
-## Fix 4: Target nginx-proxy to internet gateway node [DEPLOYMENT-SPECIFIC]
+## ~~Fix 4: nginx-proxy node targeting~~ [INCORRECT - DO NOT USE]
 
-**File:** `roles/kubernetes/node/tasks/main.yml`
-**Status:** ✅ **VALID but deployment-specific - use with caution**
-**Issue:** nginx-proxy may deploy to wrong node when only one node has inbound internet access
-**Impact:** External API access fails if nginx-proxy deploys to non-internet-accessible node
+**File:** `roles/kubernetes/node/tasks/main.yml`  
+**Status:** ❌ **THIS FIX IS INCORRECT AND SHOULD NOT BE APPLIED**
+**Issue:** Misunderstands nginx-proxy architecture and purpose
+**Impact:** Breaks nginx-proxy's intended function as local API proxy
 
 ```yaml
-# Original kubespray logic:
+# Original kubespray logic (CORRECT - keep this):
 - name: Install nginx-proxy
   import_tasks: loadbalancer/nginx-proxy.yml
   when:
@@ -91,47 +91,48 @@ runtime_root = "{{ runtime.root }}"
     - loadbalancer_apiserver_localhost
     - loadbalancer_apiserver_type == 'nginx'
 
-# Targeted modification for specific network topologies:
+# WRONG modification (DO NOT USE):
 - name: Install nginx-proxy
   import_tasks: loadbalancer/nginx-proxy.yml
   when:
-    - inventory_hostname == 'node1'  # internet gateway node
+    - inventory_hostname == 'specific_node'  # BREAKS the design
     - loadbalancer_apiserver_localhost
     - loadbalancer_apiserver_type == 'nginx'
 ```
 
-**Use Case:**
-- **Only apply** when one specific node has inbound internet access
-- nginx-proxy provides HA load balancing for external API access
-- Ensures external kubectl/monitoring can reach the cluster
-- Routes through designated internet gateway to internal control plane
+**Why this fix is wrong:**
+- nginx-proxy is designed to run on **worker nodes** for localhost:6443 forwarding
+- It provides local API access for kubelet and services on worker nodes
+- Control plane nodes already have direct API server access
+- Custom targeting breaks this architectural pattern
 
-**⚠️ Warning:** This is **deployment-specific**. Use kubespray defaults unless you have this exact network topology.
+**Correct approach:** Use kubespray's default nginx-proxy targeting logic
 
 ## Testing
 
-**All fixes have been tested on:**
+**Fixes 1-3 have been tested on:**
 - Ubuntu systems with modern kernels
 - Various container runtime configurations  
 - Multi-node cluster deployments
-- Network topologies with single internet gateway node
+
+**Fix 4 was determined to be architecturally incorrect.**
 
 ## Impact
 
-**Universal Fixes (1-3):**
+**Valid Fixes (1-3):**
 - Fixes module loading failures on modern systems (Fix 1)
 - Prevents container runtime startup failures (Fixes 2-3)
 - Safe to apply to any kubespray deployment
 - Maintains backward compatibility
 
-**Deployment-Specific Fix (4):**
-- Solves external API access issues for specific network topologies
-- Required when only one node has inbound internet access
-- Provides HA load balancing through designated gateway
-- **Only apply if you have this exact network setup**
+**Invalid Fix (4):**
+- Misunderstands nginx-proxy's role as local API proxy for worker nodes
+- Breaks kubespray's intended architecture
+- Can cause API access issues for worker node components
+- **DO NOT APPLY** - use kubespray defaults instead
 
 ## Summary
 
-**Always Apply:** Fixes 1, 2, and 3 (universal)  
-**Conditionally Apply:** Fix 4 (only for single internet gateway deployments)  
-**Default Recommendation:** Use kubespray defaults unless you specifically need Fix 4
+**Apply:** Fixes 1, 2, and 3 only  
+**Avoid:** Fix 4 (nginx-proxy targeting)  
+**Recommendation:** Always use kubespray's default nginx-proxy configuration

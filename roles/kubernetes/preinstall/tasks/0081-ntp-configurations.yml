@@ -74,8 +74,22 @@
     - not is_fedora_coreos
     - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
-- name: Set timezone
+- name: Gather selinux facts
+  ansible.builtin.setup:
+    gather_subset: selinux
+
+- name: Put SELinux in permissive mode, logging actions that would be blocked.
+  when: ansible_facts.selinux.status == 'enabled'
+  ansible.posix.selinux:
+    policy: targeted
+    state: permissive
+
+- name: Set ntp_timezone
   community.general.timezone:
     name: "{{ ntp_timezone }}"
-  when:
-    - ntp_timezone
+
+- name: Re-enable SELinux
+  when: ansible_facts.selinux.status == 'enabled'
+  ansible.posix.selinux:
+    policy: targeted
+    state: enforcing

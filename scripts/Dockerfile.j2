@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Use imutable image tags rather than mutable tags (like ubuntu:22.04)
+# Use immutable image tags rather than mutable tags (like ubuntu:22.04)
 FROM ubuntu:22.04@sha256:149d67e29f765f4db62aa52161009e99e389544e25a8f43c8c89d4a445a7ca37
 
 # Some tools like yamllint need this

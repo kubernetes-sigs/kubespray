@@ -1,26 +1,35 @@
 ---
-# Todo : selinux configuration
-- name: Confirm selinux deployed
-  stat:
-    path: /etc/selinux/config
-    get_attributes: false
-    get_checksum: false
-    get_mime: false
+- name: SELinux configuration block
   when:
     - ansible_os_family == "RedHat"
     - "'Amazon' not in ansible_distribution"
-  register: slc
+  block:
+    - name: Confirm selinux deployed
+      stat:
+        path: /etc/selinux/config
+        get_attributes: false
+        get_checksum: false
+        get_mime: false
+      register: slc
 
-- name: Set selinux policy
-  ansible.posix.selinux:
-    policy: targeted
-    state: "{{ preinstall_selinux_state }}"
-  when:
-    - ansible_os_family == "RedHat"
-    - "'Amazon' not in ansible_distribution"
-    - slc.stat.exists
-  tags:
-    - bootstrap_os
+    - name: Set selinux policy
+      ansible.posix.selinux:
+        policy: targeted
+        state: "{{ preinstall_selinux_state }}"
+      when: slc.stat.exists
+      tags:
+        - bootstrap_os
+
+    - name: SELinux configuration for download role
+      ansible.posix.seboolean:
+        name: rsync_full_access
+        state: true
+        persistent: true
+      when:
+        - slc.stat.exists
+        - ansible_selinux.status is defined
+        - ansible_selinux.status == "enabled"
+        - preinstall_selinux_state != "disabled"
 
 - name: Disable IPv6 DNS lookup
   lineinfile:

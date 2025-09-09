@@ -59,34 +59,55 @@ def convert_to_v3_structure(attributes, prefix=''):
             result['{}{}'.format(prefix, key)] = value
     return result
 
+def _process_v3_resources(state):
+    """Process terraform state version 3 resources."""
+    for module in state['modules']:
+        name = module['path'][-1]
+        for key, resource in module['resources'].items():
+            yield name, key, resource
+
+
+def _build_v4_resource_data(resource, instance):
+    """Build resource data structure for terraform state version 4."""
+    data = {
+        'type': resource['type'],
+        'provider': resource['provider'],
+        'depends_on': instance.get('depends_on', []),
+        'primary': {
+            'attributes': convert_to_v3_structure(instance['attributes']),
+            'meta': instance['attributes'].get('meta', {})
+        }
+    }
+    
+    if 'id' in instance['attributes']:
+        data['primary']['id'] = instance['attributes']['id']
+    
+    return data
+
+
+def _process_v4_resources(state):
+    """Process terraform state version 4 resources."""
+    for resource in state['resources']:
+        name = resource['provider'].split('.')[-1]
+        for instance in resource['instances']:
+            key = "{}.{}".format(resource['type'], resource['name'])
+            if 'index_key' in instance:
+                key = "{}.{}".format(key, instance['index_key'])
+            
+            data = _build_v4_resource_data(resource, instance)
+            yield name, key, data
+
+
 def iterresources(filenames):
     for filename in filenames:
         with open(filename, 'r') as json_file:
             state = json.load(json_file)
             tf_version = state['version']
+            
             if tf_version == 3:
-                for module in state['modules']:
-                    name = module['path'][-1]
-                    for key, resource in module['resources'].items():
-                        yield name, key, resource
+                yield from _process_v3_resources(state)
             elif tf_version == 4:
-                # In version 4 the structure changes so we need to iterate
-                # each instance inside the resource branch.
-                for resource in state['resources']:
-                    name = resource['provider'].split('.')[-1]
-                    for instance in resource['instances']:
-                        key = "{}.{}".format(resource['type'], resource['name'])
-                        if 'index_key' in instance:
-                           key = "{}.{}".format(key, instance['index_key'])
-                        data = {}
-                        data['type'] = resource['type']
-                        data['provider'] = resource['provider']
-                        data['depends_on'] = instance.get('depends_on', [])
-                        data['primary'] = {'attributes': convert_to_v3_structure(instance['attributes'])}
-                        if 'id' in instance['attributes']:
-                           data['primary']['id'] = instance['attributes']['id']
-                        data['primary']['meta'] = instance['attributes'].get('meta',{})
-                        yield name, key, data
+                yield from _process_v4_resources(state)
             else:
                 raise KeyError('tfstate version %d not supported' % tf_version)
 

@@ -138,7 +138,7 @@ Note:
   - [azure-csi-plugin](https://github.com/kubernetes-sigs/azuredisk-csi-driver) 1.10.0
   - [cinder-csi-plugin](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/using-cinder-csi-plugin.md) 1.30.0
   - [gcp-pd-csi-plugin](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver) 1.9.2
-  - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) 0.0.24
+  - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) 0.0.32
   - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) 2.5.0
   - [node-feature-discovery](https://github.com/kubernetes-sigs/node-feature-discovery) 0.16.4
 

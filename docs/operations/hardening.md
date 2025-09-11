@@ -83,7 +83,7 @@ kube_scheduler_bind_address: 127.0.0.1
 ## etcd
 # Running etcd (on dedicated hosts) outside the Kubernetes cluster is the most secure deployment option,
 # as it isolates etcd from the cluster's CNI network and removes direct pod-level attack vectors.
-# This approach prevents RBAC misconfigurations that potentially comprome etcd,
+# This approach prevents RBAC misconfigurations that potentially compromise etcd,
 # creating an additional security boundary that protects the cluster's critical state store.
 etcd_deployment_type: host
 

@@ -127,10 +127,10 @@ You need to make sure there are always an odd number of etcd nodes in the cluste
 
 ### 1) Add the new node running cluster.yml
 
-Update the inventory and run `cluster.yml` passing `--limit=etcd,kube_control_plane -e ignore_assert_errors=yes`.
+Update the inventory and run `cluster.yml` passing `--limit=etcd,kube_control_plane -e '{"skip_assert_errors": ["etcd-even-numbers"]}'`.
 If the node you want to add as an etcd node is already a worker or control plane node in your cluster, you have to remove him first using `remove-node.yml`.
 
-Run `upgrade-cluster.yml` also passing `--limit=etcd,kube_control_plane -e ignore_assert_errors=yes`. This is necessary to update all etcd configuration in the cluster.
+Run `upgrade-cluster.yml` also passing `--limit=etcd,kube_control_plane -e '{"skip_assert_errors": ["etcd-even-numbers"]}'`. This is necessary to update all etcd configuration in the cluster.
 
 At this point, you will have an even number of nodes.
 Everything should still be working, and you should only have problems if the cluster decides to elect a new etcd leader before you remove a node.

@@ -112,7 +112,7 @@ Note:
 
 - Core
   - [kubernetes](https://github.com/kubernetes/kubernetes) 1.33.5
-  - [etcd](https://github.com/etcd-io/etcd) 3.5.22
+  - [etcd](https://github.com/etcd-io/etcd) 3.5.23
   - [docker](https://www.docker.com/) 28.3
   - [containerd](https://containerd.io/) 2.1.4
   - [cri-o](http://cri-o.io/) 1.33.4 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)

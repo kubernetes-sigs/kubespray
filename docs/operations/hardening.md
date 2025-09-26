@@ -123,7 +123,7 @@ Let's take a deep look to the resultant **kubernetes** configuration:
 * The `rotateCertificates` in `KubeletConfiguration` is set to `true` along with `serverTLSBootstrap`. This could be used in alternative to `tlsCertFile` and `tlsPrivateKeyFile` parameters. Additionally it automatically generates certificates by itself. By default the CSRs are approved automatically via [kubelet-csr-approver](https://github.com/postfinance/kubelet-csr-approver). You can customize approval configuration by modifying Helm values via `kubelet_csr_approver_values`.
   See <https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/> for more information on the subject.
 * The `kubelet_systemd_hardening`, both with `kubelet_secure_addresses` setup a minimal firewall on the system. To better understand how these variables work, here's an explanatory image:
-  ![kubelet hardening](img/kubelet-hardening.png)
+  ![kubelet hardening](../img/kubelet-hardening.png)
 
 Once you have the file properly filled, you can run the **Ansible** command to start the installation:
 

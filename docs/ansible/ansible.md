@@ -13,7 +13,7 @@ KUBESPRAYDIR=kubespray
 python3 -m venv $VENVDIR
 source $VENVDIR/bin/activate
 cd $KUBESPRAYDIR
-pip install -U -r requirements.txt
+pip install -r requirements.txt
 ```
 
 In case you have a similar message when installing the requirements:

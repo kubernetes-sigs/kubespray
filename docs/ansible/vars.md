@@ -103,13 +103,13 @@ following default cluster parameters:
 
 * *kube_service_addresses_ipv6* - Subnet for cluster IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1000/116``). Must not overlap with ``kube_pods_subnet_ipv6``.
 
-* *kube_service_subnets* - All service subnets separated by commas (default is a mix of ``kube_service_addresses`` and ``kube_service_addresses_ipv6`` depending on ``ipv4_stack`` and ``ipv6_stacke`` options),
+* *kube_service_subnets* - All service subnets separated by commas (default is a mix of ``kube_service_addresses`` and ``kube_service_addresses_ipv6`` depending on ``ipv4_stack`` and ``ipv6_stack`` options),
   for example ``10.233.0.0/18,fd85:ee78:d8a6:8607::1000/116`` for dual stack(ipv4_stack/ipv6_stack set to `true`).
   It is not recommended to change this variable directly.
 
 * *kube_pods_subnet_ipv6* - Subnet for Pod IPv6 IPs (default is ``fd85:ee78:d8a6:8607::1:0000/112``). Must not overlap with ``kube_service_addresses_ipv6``.
 
-* *kube_pods_subnets* - All pods subnets separated by commas (default is a mix of ``kube_pods_subnet`` and ``kube_pod_subnet_ipv6`` depending on ``ipv4_stack`` and ``ipv6_stacke`` options),
+* *kube_pods_subnets* - All pods subnets separated by commas (default is a mix of ``kube_pods_subnet`` and ``kube_pod_subnet_ipv6`` depending on ``ipv4_stack`` and ``ipv6_stack`` options),
   for example ``10.233.64.0/18,fd85:ee78:d8a6:8607::1:0000/112`` for dual stack(ipv4_stack/ipv6_stack set to `true`).
   It is not recommended to change this variable directly.
 

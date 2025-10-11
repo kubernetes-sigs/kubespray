@@ -37,4 +37,4 @@ If you have containers that are using iptables in the host network namespace (`h
 you need to ensure they are using iptables-nft.
 An example how k8s do the autodetection can be found [in this PR](https://github.com/kubernetes/kubernetes/pull/82966)
 
-The kernel version is lower than the kubenretes 1.32 system validation, please refer to the [kernel requirements](../operations/kernel-requirements.md).
+The kernel version is lower than the kubenretes 1.32 system validation, please refer to the [kernel requirements](/docs/operations/kernel-requirements.md).

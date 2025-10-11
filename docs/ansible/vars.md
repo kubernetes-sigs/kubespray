@@ -366,7 +366,7 @@ in the form of dicts of key-value pairs of configuration parameters that will be
 When extra flags are not sufficient and there is a need to further customize kubernetes components,
 [kubeadm patches](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/control-plane-flags/#patches)
 can be used.
-You should use the [`kubeadm_patches` variable](../../roles/kubernetes/kubeadm_common/defaults/main.yml) for that purpose.
+You should use the [`kubeadm_patches` variable](/roles/kubernetes/kubeadm_common/defaults/main.yml) for that purpose.
 
 ## App variables
 

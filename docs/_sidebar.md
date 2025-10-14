@@ -6,7 +6,6 @@
   * [Downloads](/docs/advanced/downloads.md)
   * [Gcp-lb](/docs/advanced/gcp-lb.md)
   * [Kubernetes-reliability](/docs/advanced/kubernetes-reliability.md)
-  * [Mitogen](/docs/advanced/mitogen.md)
   * [Netcheck](/docs/advanced/netcheck.md)
   * [Ntp](/docs/advanced/ntp.md)
   * [Proxy](/docs/advanced/proxy.md)

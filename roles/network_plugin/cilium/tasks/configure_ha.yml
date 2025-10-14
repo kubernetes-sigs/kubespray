@@ -1,0 +1,164 @@
+---
+# Cilium HA Configuration
+# Automatically configure Cilium to use the appropriate API server endpoint for HA.
+# This patches the KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT environment
+# variables in both cilium-operator and cilium agent pods to match the cluster's
+# load balancer configuration. Without this, environment variables injected at pod
+# creation time would point to a single control plane IP, breaking HA.
+#
+# Priority order for HOST:
+# 1. Explicit cilium_config_extra_vars (user override)
+# 2. External loadbalancer_apiserver.address (if defined, takes precedence over localhost)
+# 3. Default → 127.0.0.1 (local nginx proxy)
+#
+# Priority order for PORT:
+# 1. Explicit cilium_config_extra_vars (user override)
+# 2. External loadbalancer_apiserver_port or kube_apiserver_port (if external LB defined)
+# 3. Default → 6443
+
+- name: Cilium | Determine API server endpoint for HA
+  set_fact:
+    cilium_k8s_service_host: >-
+      {%- if cilium_config_extra_vars is defined and
+             (cilium_config_extra_vars['k8s-service-host'] is defined or
+              cilium_config_extra_vars['k8sServiceHost'] is defined) -%}
+        {{ cilium_config_extra_vars['k8s-service-host'] | default(cilium_config_extra_vars['k8sServiceHost']) }}
+      {%- elif loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined -%}
+        {{ loadbalancer_apiserver.address }}
+      {%- else -%}
+        127.0.0.1
+      {%- endif -%}
+
+    cilium_k8s_service_port: >-
+      {%- if cilium_config_extra_vars is defined and
+             (cilium_config_extra_vars['k8s-service-port'] is defined or
+              cilium_config_extra_vars['k8sServicePort'] is defined) -%}
+        {{ cilium_config_extra_vars['k8s-service-port'] | default(cilium_config_extra_vars['k8sServicePort']) }}
+      {%- elif loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined -%}
+        {%- if loadbalancer_apiserver_port is defined -%}
+          {{ loadbalancer_apiserver_port }}
+        {%- elif loadbalancer_apiserver.port is defined -%}
+          {{ loadbalancer_apiserver.port }}
+        {%- elif kube_apiserver_port is defined -%}
+          {{ kube_apiserver_port }}
+        {%- else -%}
+          6443
+        {%- endif -%}
+      {%- else -%}
+        6443
+      {%- endif -%}
+  when:
+    - kube_network_plugin == "cilium"
+  tags:
+    - cilium
+    - network
+
+- name: Cilium | Update cilium-operator environment variables for HA
+  shell: |
+    {{ kubectl }} --kubeconfig {{ kube_config_dir }}/admin.conf -n kube-system patch deployment cilium-operator -p \
+      '{
+        "spec": {
+          "template": {
+            "spec": {
+              "containers": [{
+                "name": "cilium-operator",
+                "env": [
+                  {
+                    "name": "KUBERNETES_SERVICE_HOST",
+                    "value": "{{ cilium_k8s_service_host }}"
+                  },
+                  {
+                    "name": "KUBERNETES_SERVICE_PORT",
+                    "value": "{{ cilium_k8s_service_port }}"
+                  }
+                ]
+              }]
+            }
+          }
+        }
+      }'
+  when:
+    - kube_network_plugin == "cilium"
+  retries: 3
+  delay: 10
+  register: cilium_operator_patch
+  until: cilium_operator_patch.rc == 0
+  changed_when: cilium_operator_patch.rc == 0
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  tags:
+    - cilium
+    - network
+
+- name: Cilium | Update cilium agent environment variables for HA
+  shell: |
+    {{ kubectl }} --kubeconfig {{ kube_config_dir }}/admin.conf -n kube-system patch daemonset cilium -p \
+      '{
+        "spec": {
+          "template": {
+            "spec": {
+              "containers": [{
+                "name": "cilium-agent",
+                "env": [
+                  {
+                    "name": "KUBERNETES_SERVICE_HOST",
+                    "value": "{{ cilium_k8s_service_host }}"
+                  },
+                  {
+                    "name": "KUBERNETES_SERVICE_PORT",
+                    "value": "{{ cilium_k8s_service_port }}"
+                  }
+                ]
+              }]
+            }
+          }
+        }
+      }'
+  when:
+    - kube_network_plugin == "cilium"
+  retries: 3
+  delay: 10
+  register: cilium_agent_patch
+  until: cilium_agent_patch.rc == 0
+  changed_when: cilium_agent_patch.rc == 0
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  tags:
+    - cilium
+    - network
+
+- name: Cilium | Wait for cilium-operator rollout to complete
+  command: "{{ kubectl }} --kubeconfig {{ kube_config_dir }}/admin.conf rollout status deployment/cilium-operator -n kube-system"
+  changed_when: false
+  when:
+    - kube_network_plugin == "cilium"
+    - cilium_operator_patch is defined
+    - cilium_operator_patch.rc == 0
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  tags:
+    - cilium
+    - network
+
+- name: Cilium | Wait for cilium agent rollout to complete
+  command: "{{ kubectl }} --kubeconfig {{ kube_config_dir }}/admin.conf rollout status daemonset/cilium -n kube-system"
+  changed_when: false
+  when:
+    - kube_network_plugin == "cilium"
+    - cilium_agent_patch is defined
+    - cilium_agent_patch.rc == 0
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  tags:
+    - cilium
+    - network
+
+- name: Cilium | Display configured API server endpoint
+  debug:
+    msg: "Cilium configured to use API server at {{ cilium_k8s_service_host }}:{{ cilium_k8s_service_port }}"
+  when:
+    - kube_network_plugin == "cilium"
+  run_once: true
+  tags:
+    - cilium
+    - network

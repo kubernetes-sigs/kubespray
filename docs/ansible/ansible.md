@@ -181,10 +181,6 @@ ansible-playbook -i inventory/sample/hosts.ini cluster.yml \
 
 Note: use `--tags` and `--skip-tags` wisely and only if you're 100% sure what you're doing.
 
-## Mitogen
-
-Mitogen support is deprecated, please see [mitogen related docs](/docs/advanced/mitogen.md) for usage and reasons for deprecation.
-
 ## Troubleshooting Ansible issues
 
 Having the wrong version of ansible, ansible collections or python dependencies can cause issue.

@@ -5,7 +5,7 @@ The following components require a highly available endpoints:
 * etcd cluster,
 * kube-apiserver service instances.
 
-The latter relies on a 3rd side reverse proxy, like Nginx or HAProxy, to
+The latter relies on a 3rd party reverse proxy, like HAProxy, to
 achieve the same goal.
 
 ## Etcd
@@ -15,7 +15,7 @@ The etcd clients (kube-api-masters) are configured with the list of all etcd pee
 ## Kube-apiserver
 
 K8s components require a loadbalancer to access the apiservers via a reverse
-proxy. Kubespray includes support for an nginx-based proxy that resides on each
+proxy. Kubespray includes support for an HAProxy-based proxy that resides on each
 non-master Kubernetes node. This is referred to as localhost loadbalancing. It
 is less efficient than a dedicated load balancer because it creates extra
 health checks on the Kubernetes apiserver, but is more practical for scenarios
@@ -26,8 +26,7 @@ You may also define the port the local internal loadbalancer uses by changing,
 `loadbalancer_apiserver_port`.  This defaults to the value of
 `kube_apiserver_port`.  It is also important to note that Kubespray will only
 configure kubelet and kube-proxy on non-master nodes to use the local internal
-loadbalancer.  If you wish to control the name of the loadbalancer container,
-you can set the variable `loadbalancer_apiserver_pod_name`.
+loadbalancer.
 
 If you choose to NOT use the local internal loadbalancer, you will need to
 use the [kube-vip](/docs/ingress/kube-vip.md) ansible role or configure your own loadbalancer to achieve HA. By default, it only configures a non-HA endpoint, which points to the
@@ -111,7 +110,7 @@ Where:
 * `lc` - localhost;
 * `cbip` - a custom bind IP, `kube_apiserver_bind_address`;
 * `dbip` - localhost for the default bind IP '0.0.0.0';
-* `nsp` - nginx secure port, `loadbalancer_apiserver_port`, defers to `sp`;
+* `nsp` - HAProxy secure port, `loadbalancer_apiserver_port`, defers to `sp`;
 * `sp` - secure port, `kube_apiserver_port`;
 * `lp` - LB port, `loadbalancer_apiserver.port`, defers to the secure port;
 * `ip` - the node IP, defers to the ansible IP;

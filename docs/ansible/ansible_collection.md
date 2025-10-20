@@ -5,8 +5,8 @@ Kubespray can be installed as an [Ansible collection](https://docs.ansible.com/a
 ## Usage
 
 1. Set up an inventory with the appropriate host groups and required group vars.
-   See also the documentation on [kubespray inventories](./inventory.md) and the
-   general ["Getting started" documentation](../getting_started/getting-started.md#building-your-own-inventory).
+   See also the documentation on [kubespray inventories](/docs/ansible/inventory.md) and the
+   general ["Getting started" documentation](/docs/getting_started/getting-started.md#building-your-own-inventory).
 
 2. Add Kubespray to your requirements.yml file
 

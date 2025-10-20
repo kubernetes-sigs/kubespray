@@ -32,14 +32,14 @@
     ips: "{{ vmis.resources | map(attribute='status.interfaces.0.ipAddress') }}"
     names: "{{ vmis.resources | map(attribute='metadata.annotations.inventory_name') }}"
     _groups: "{{ (vmis.resources | map(attribute='metadata.annotations.ansible_groups') | map('split', ','))}}"
-    hosts: "{{ ips | zip(_groups, names)
+    vm_hosts: "{{ ips | zip(_groups, names)
                 | map('zip', ['ansible_host', 'ansible_groups', 'inventory_name'])
                 | map('map', 'reverse') | map('community.general.dict') }}"
-  loop: "{{ hosts | map(attribute='ansible_groups') | flatten | unique }}"
+  loop: "{{ vm_hosts | map(attribute='ansible_groups') | flatten | unique }}"
   set_fact:
     ci_inventory: "{{ ci_inventory|d({}) | combine({
                     item: {
-                      'hosts': hosts | selectattr('ansible_groups', 'contains', item)
+                      'hosts': vm_hosts | selectattr('ansible_groups', 'contains', item)
                                      | rekey_on_member('inventory_name')
                       }
                     })

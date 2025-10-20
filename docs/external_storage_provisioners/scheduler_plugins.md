@@ -7,7 +7,7 @@ The kube-scheduler binary includes a list of plugins:
 - [CapacityScheduling](https://github.com/kubernetes-sigs/scheduler-plugins/tree/master/pkg/capacityscheduling) [Beta]
 - [CoScheduling](https://github.com/kubernetes-sigs/scheduler-plugins/tree/master/pkg/coscheduling) [Beta]
 - [NodeResources](https://github.com/kubernetes-sigs/scheduler-plugins/tree/master/pkg/noderesources) [Beta]
-- [NodeResouceTopology](https://github.com/kubernetes-sigs/scheduler-plugins/blob/master/pkg/noderesourcetopology/README.md) [Beta]
+- [NodeResourceTopology](https://github.com/kubernetes-sigs/scheduler-plugins/blob/master/pkg/noderesourcetopology/README.md) [Beta]
 - [PreemptionToleration](https://github.com/kubernetes-sigs/scheduler-plugins/blob/master/pkg/preemptiontoleration/README.md) [Alpha]
 - [Trimaran](https://github.com/kubernetes-sigs/scheduler-plugins/blob/master/pkg/trimaran/README.md) [Alpha]
 - [NetworkAware](https://github.com/kubernetes-sigs/scheduler-plugins/blob/master/pkg/networkaware/README.md) [Sample]

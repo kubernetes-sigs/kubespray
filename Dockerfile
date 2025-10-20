@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Use imutable image tags rather than mutable tags (like ubuntu:22.04)
+# Use immutable image tags rather than mutable tags (like ubuntu:22.04)
 FROM ubuntu:22.04@sha256:149d67e29f765f4db62aa52161009e99e389544e25a8f43c8c89d4a445a7ca37
 
 # Some tools like yamllint need this
@@ -35,8 +35,8 @@ RUN --mount=type=bind,source=requirements.txt,target=requirements.txt \
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN OS_ARCHITECTURE=$(dpkg --print-architecture) \
-    && curl -L "https://dl.k8s.io/release/v1.33.3/bin/linux/${OS_ARCHITECTURE}/kubectl" -o /usr/local/bin/kubectl \
-    && echo "$(curl -L "https://dl.k8s.io/release/v1.33.3/bin/linux/${OS_ARCHITECTURE}/kubectl.sha256")" /usr/local/bin/kubectl | sha256sum --check \
+    && curl -L "https://dl.k8s.io/release/v1.34.1/bin/linux/${OS_ARCHITECTURE}/kubectl" -o /usr/local/bin/kubectl \
+    && echo "$(curl -L "https://dl.k8s.io/release/v1.34.1/bin/linux/${OS_ARCHITECTURE}/kubectl.sha256")" /usr/local/bin/kubectl | sha256sum --check \
     && chmod a+x /usr/local/bin/kubectl
 
 COPY *.yml ./

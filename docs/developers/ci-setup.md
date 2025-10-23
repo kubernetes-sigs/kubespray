@@ -6,7 +6,7 @@ See [.gitlab-ci.yml](/.gitlab-ci.yml) and the included files for an overview.
 
 ## Runners
 
-Kubespray has 2 types of GitLab runners, both deployed  on the Kubespray CI cluster (hosted on Oracle Cloud Infrastucture):
+Kubespray has 2 types of GitLab runners, both deployed on the Kubespray CI cluster (hosted on Oracle Cloud Infrastructure):
 
 - pods: use the [gitlab-ci kubernetes executor](https://docs.gitlab.com/runner/executors/kubernetes/)
 - vagrant: custom executor running in pods with access to the libvirt socket on the nodes
@@ -156,7 +156,7 @@ kube_feature_gates:
   - "NodeSwap=True"
 ```
 
-## Aditional files
+## Additional files
 
 This section documents additional files used to complete a deployment of the kubespray CI, these files sit on the control-plane node and assume a working kubernetes cluster.
 

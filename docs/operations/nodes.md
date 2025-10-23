@@ -31,16 +31,13 @@ That's it.
 
 Append the new host to the inventory and run `cluster.yml`. You can NOT use `scale.yml` for that.
 
-### 2) Restart kube-system/nginx-proxy
+### 2) Restart localhost loadbalancer
 
-In all hosts, restart nginx-proxy pod. This pod is a local proxy for the apiserver. Kubespray will update its static config, but it needs to be restarted in order to reload.
+In all hosts, restart the localhost loadbalancer pod. This pod is a local proxy for the apiserver. Kubespray will update its static config, but it needs to be restarted in order to reload.
 
 ```sh
-# run in every host
-docker ps | grep k8s_nginx-proxy_nginx-proxy | awk '{print $1}' | xargs docker restart
-
-# or with containerd
-crictl ps | grep nginx-proxy | awk '{print $1}' | xargs crictl stop
+# with containerd/cri-o
+crictl ps --name loadbalancer | awk 'NR>1 {print $1}' | xargs crictl stop
 ```
 
 ### 3) Remove old control plane nodes

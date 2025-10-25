@@ -407,7 +407,7 @@ To view the logs you need to use the `tc` command to read the kernel trace buffe
 tc exec bpf debug
 ```
 
-Please see [Calico eBPF troubleshooting guide](https://docs.projectcalico.org/maintenance/troubleshoot/troubleshoot-ebpf#ebpf-program-debug-logs).
+Please see [Calico eBPF troubleshooting guide](https://docs.tigera.io/calico/latest/operations/ebpf/troubleshoot-ebpf#ebpf-program-debug-logs).
 
 ## Wireguard Encryption
 

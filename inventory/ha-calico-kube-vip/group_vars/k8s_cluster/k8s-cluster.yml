@@ -122,10 +122,6 @@ kube_apiserver_port: 6443  # (https)
 # TODO: it needs to be changed to nftables when the upstream use nftables as default
 kube_proxy_mode: ipvs
 
-# configure arp_ignore and arp_announce to avoid answering ARP queries from kube-ipvs0 interface
-# must be set to true for MetalLB, kube-vip(ARP enabled) to work
-kube_proxy_strict_arp: true
-
 # A string slice of values which specify the addresses to use for NodePorts.
 # Values may be valid IP blocks (e.g. 1.2.3.0/24, 1.2.3.4/32).
 # The default empty string slice ([]) means to use all local addresses.
@@ -379,12 +375,29 @@ remove_anonymous_access: false
 ###################################################################################
 # Enable kube-vip to expose the control plane via VIP
 kube_vip_enabled: true
-kube_vip_address: "192.168.200.147"  # <-- Adjust to your chosen VIP
-kube_vip_interface: "ens18"
-kube_vip_arp_enabled: true
-# kube_proxy_strict_arp: true # commented as already present
+kube_vip_address: "192.168.200.147"  # Adjust to your chosen VIP
+kube_vip_interface: "ens18"          # Adjust to interface name
+kube_vip_arp_enabled: true           # Kube-vip mode ARP
+kube_proxy_strict_arp: true          # Kube-vip mode ARP
 
 # Use kube-vip to provide LoadBalancer services
 kube_vip_controlplane_enabled: true
 kube_vip_services_enabled: true
 metallb_enabled: false
+
+###################################################################################
+# Manual stuff that still needs to be done:
+###################################################################################
+
+# 1) Deploy kube-vip cloud provider:
+# kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
+
+# 2) Provide the range of IPs that the LB will use to expose the pods
+# 2.1) Delete the configmap:
+# kubectl delete configmap -n kube-system kubevip
+
+# 2.2) Create the new one: 
+# kubectl create configmap -n kube-system kubevip --from-literal range-global=192.168.200.161-192.168.200.165
+
+# 2.3) Delete the kube-vip-cloud-provider pod (it will be recreated automatically with the new configmap)
+# kubectl delete pod -n kube-system kube-vip-cloud-provider-<pod-id>

@@ -180,7 +180,7 @@ calico_group_id=rr1
 The inventory above will deploy the following topology assuming that calico's
 `global_as_num` is set to `65400`:
 
-![Image](figures/kubespray-calico-rr.png?raw=true)
+![Image](../figures/kubespray-calico-rr.png?raw=true)
 
 ### Optional : Define default endpoint to host action
 

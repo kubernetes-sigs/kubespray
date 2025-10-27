@@ -24,6 +24,10 @@ infos = {
         "url": "https://github.com/containerd/containerd/releases/download/v{version}/containerd-{version}-{os}-{arch}.tar.gz.sha256sum",
         "graphql_id": "R_kgDOAr9FWA",
     },
+    "containerd_static_archive": {
+        "url": "https://github.com/containerd/containerd/releases/download/v{version}/containerd-static-{version}-{os}-{arch}.tar.gz.sha256sum",
+        "graphql_id": "R_kgDOAr9FWA",
+    },
     "cri_dockerd_archive": {
         "binary": True,
         "url": "https://github.com/Mirantis/cri-dockerd/releases/download/v{version}/cri-dockerd-{version}.{arch}.tgz",
@@ -95,5 +99,11 @@ infos = {
     "yq": {
         "url": "https://github.com/mikefarah/yq/releases/download/v{version}/checksums-bsd",  # see https://github.com/mikefarah/yq/pull/1691 for why we use this url
         "graphql_id": "R_kgDOApOQGQ",
+    },
+    "argocd_install": {
+    "url": "https://raw.githubusercontent.com/argoproj/argo-cd/v{version}/manifests/install.yaml",
+    "graphql_id": "R_kgDOBzS60g",
+    "binary": True,
+    "hashtype": "sha256",
     },
 }

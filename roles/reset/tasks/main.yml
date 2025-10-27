@@ -188,6 +188,18 @@
   tags:
     - mounts
 
+- name: Set IPv4 iptables default policies to ACCEPT
+  iptables:
+    chain: "{{ item }}"
+    policy: ACCEPT
+  with_items:
+    - INPUT
+    - FORWARD
+    - OUTPUT
+  when: flush_iptables | bool and ipv4_stack
+  tags:
+    - iptables
+
 - name: Flush iptables
   iptables:
     table: "{{ item }}"
@@ -201,6 +213,25 @@
   tags:
     - iptables
 
+- name: Delete IPv4 user-defined chains # noqa command-instead-of-module
+  command: iptables -X
+  when: flush_iptables | bool and ipv4_stack
+  tags:
+    - iptables
+
+- name: Set IPv6 ip6tables default policies to ACCEPT
+  iptables:
+    chain: "{{ item }}"
+    policy: ACCEPT
+    ip_version: ipv6
+  with_items:
+    - INPUT
+    - FORWARD
+    - OUTPUT
+  when: flush_iptables | bool and ipv6_stack
+  tags:
+    - ip6tables
+
 - name: Flush ip6tables
   iptables:
     table: "{{ item }}"
@@ -211,6 +242,12 @@
     - nat
     - mangle
     - raw
+  when: flush_iptables | bool and ipv6_stack
+  tags:
+    - ip6tables
+
+- name: Delete IPv6 user-defined chains # noqa command-instead-of-module
+  command: ip6tables -X
   when: flush_iptables | bool and ipv6_stack
   tags:
     - ip6tables
@@ -303,9 +340,6 @@
     - /etc/cni
     - /etc/nerdctl
     - "{{ nginx_config_dir }}"
-    - /etc/dnsmasq.d
-    - /etc/dnsmasq.conf
-    - /etc/dnsmasq.d-available
     - /etc/systemd/resolved.conf.d/kubespray.conf
     - /etc/etcd.env
     - /etc/calico
@@ -398,6 +432,7 @@
     - files
     - dns
 
+  # TODO: remove after release 2.29
 - name: Reset | remove host entries from /etc/hosts
   blockinfile:
     path: "/etc/hosts"

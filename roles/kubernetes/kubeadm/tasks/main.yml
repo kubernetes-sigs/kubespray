@@ -91,13 +91,13 @@
     - not kubelet_conf.stat.exists
   vars:
     ignored:
-      - DirAvailable--etc-kubernetes-manifests
+      - "{{ 'DirAvailable--etc-kubernetes-manifests' if 'all' not in kubeadm_ignore_preflight_errors }}"
       - "{{ kubeadm_ignore_preflight_errors }}"
   command: >-
     timeout -k {{ kubeadm_join_timeout }} {{ kubeadm_join_timeout }}
     {{ bin_dir }}/kubeadm join
     --config {{ kube_config_dir }}/kubeadm-client.conf
-    --ignore-preflight-errors={{ ignored | flatten | join(',') }}
+    --ignore-preflight-errors={{ ignored | select | flatten | join(',') }}
     --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
 
 - name: Update server field in kubelet kubeconfig
@@ -208,3 +208,4 @@
     - inventory_hostname not in groups['kube_control_plane']
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - kube_network_plugin != "cilium" or cilium_identity_allocation_mode != 'crd'

@@ -11,6 +11,7 @@ ping_access_ip: true
 
 # Setting this value to false will fail
 # For details, read this comment https://github.com/kubernetes-sigs/kubespray/pull/11016#issuecomment-2004985001
+# if kube_api_anonymous_auth: "{{ undef() }}", remove --anonymous-auth argument
 kube_api_anonymous_auth: true
 
 # Default value, but will be set to true automatically if detected
@@ -26,7 +27,7 @@ kube_version: "{{ (kubelet_checksums['amd64'] | dict2items)[0].key }}"
 ## The minimum version working
 kube_version_min_required: "{{ (kubelet_checksums['amd64'] | dict2items)[-1].key }}"
 
-## Kube Proxy mode One of ['iptables', 'ipvs']
+## Kube Proxy mode One of ['ipvs', 'iptables', 'nftables']
 kube_proxy_mode: ipvs
 
 # Kubeadm config api version
@@ -65,6 +66,15 @@ kubeadm_init_phases_skip: >-
 kubeadm_join_phases_skip_default: []
 kubeadm_join_phases_skip: >-
  {{ kubeadm_join_phases_skip_default }}
+
+# List of kubeadm upgrade node phases that should be skipped when upgrading a secondary control plane node (supports different phases than kubeadm init and kubeadm upgrade apply)
+kubeadm_upgrade_node_phases_skip_default: []
+kubeadm_upgrade_node_phases_skip: >-
+  {%- if kube_version is version('1.32.0', '>=') -%}
+  {{ kubeadm_upgrade_node_phases_skip_default + kubeadm_init_phases_skip }}
+  {%- else -%}
+  {{ kubeadm_upgrade_node_phases_skip_default }}
+  {%- endif -%}
 
 # Set to true to remove the role binding to anonymous users created by kubeadm
 remove_anonymous_access: false
@@ -400,6 +410,9 @@ docker_plugins: []
 # Containerd options - thse are relevant when container_manager == 'containerd'
 containerd_use_systemd_cgroup: true
 
+# Use static containerd binary for compatibility with older distributions (e.g., Debian 11).
+containerd_static_binary: false
+
 # Containerd conf default dir
 containerd_storage_dir: "/var/lib/containerd"
 containerd_state_dir: "/run/containerd"
@@ -450,6 +463,7 @@ metallb_enabled: false
 metallb_speaker_enabled: "{{ metallb_enabled }}"
 argocd_enabled: false
 gateway_api_enabled: false
+prometheus_operator_crds_enabled: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -759,6 +773,9 @@ proxy_disable_env:
 
 # sysctl_file_path to add sysctl conf to
 sysctl_file_path: "/etc/sysctl.d/99-sysctl.conf"
+
+# ignore sysctl errors about unknown keys
+sysctl_ignore_unknown_keys: false
 
 system_upgrade: false
 system_upgrade_reboot: on-upgrade  # never, always

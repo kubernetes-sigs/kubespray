@@ -81,7 +81,11 @@ kube_controller_feature_gates: ["RotateKubeletServerCertificate=true"]
 kube_scheduler_bind_address: 127.0.0.1
 
 ## etcd
-etcd_deployment_type: kubeadm
+# Running etcd (on dedicated hosts) outside the Kubernetes cluster is the most secure deployment option,
+# as it isolates etcd from the cluster's CNI network and removes direct pod-level attack vectors.
+# This approach prevents RBAC misconfigurations that potentially compromise etcd,
+# creating an additional security boundary that protects the cluster's critical state store.
+etcd_deployment_type: host
 
 ## kubelet
 kubelet_authorization_mode_webhook: true
@@ -96,6 +100,8 @@ kubelet_make_iptables_util_chains: true
 kubelet_feature_gates: ["RotateKubeletServerCertificate=true"]
 kubelet_seccomp_default: true
 kubelet_systemd_hardening: true
+# To disable kubelet's staticPodPath (for nodes that don't use static pods like worker nodes)
+kubelet_static_pod_path: ""
 # In case you have multiple interfaces in your
 # control plane nodes and you want to specify the right
 # IP addresses, kubelet_secure_addresses allows you
@@ -121,7 +127,7 @@ Let's take a deep look to the resultant **kubernetes** configuration:
 * The `rotateCertificates` in `KubeletConfiguration` is set to `true` along with `serverTLSBootstrap`. This could be used in alternative to `tlsCertFile` and `tlsPrivateKeyFile` parameters. Additionally it automatically generates certificates by itself. By default the CSRs are approved automatically via [kubelet-csr-approver](https://github.com/postfinance/kubelet-csr-approver). You can customize approval configuration by modifying Helm values via `kubelet_csr_approver_values`.
   See <https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/> for more information on the subject.
 * The `kubelet_systemd_hardening`, both with `kubelet_secure_addresses` setup a minimal firewall on the system. To better understand how these variables work, here's an explanatory image:
-  ![kubelet hardening](img/kubelet-hardening.png)
+  ![kubelet hardening](../img/kubelet-hardening.png)
 
 Once you have the file properly filled, you can run the **Ansible** command to start the installation:
 

@@ -32,7 +32,7 @@ add `kube_proxy_masquerade_all: true` in `group_vars/all/all.yml`
 
 * Disable nodelocaldns
 
-The nodelocal dns IP is not reacheable.
+The nodelocal dns IP is not reachable.
 
 Disable it in `sample/group_vars/k8s_cluster/k8s_cluster.yml`
 

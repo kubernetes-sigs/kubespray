@@ -27,10 +27,28 @@
     - {name: multus-daemonset-crio, file: multus-daemonset-crio.yml, type: daemonset, engine: crio }
   register: multus_manifest_2
   vars:
-    query: "*|[?container_manager=='{{ container_manager }}']|[0].inventory_hostname"
-    vars_from_node: "{{ hostvars | json_query(query) }}"
+    host_query: "*|[?container_manager=='{{ container_manager }}']|[0].inventory_hostname"
+    vars_from_node: "{{ hostvars | json_query(host_query) }}"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   when:
     - item.engine in container_manager_types
     - hostvars[inventory_hostname].container_manager == item.engine
     - inventory_hostname == vars_from_node
+
+- name: Multus | Start resources
+  kube:
+    name: "{{ item.item.name }}"
+    namespace: "kube-system"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.item.type }}"
+    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+    state: "latest"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  with_items: "{{ (multus_manifest_1.results | default([])) + (multus_nodes_list | map('extract', hostvars, 'multus_manifest_2') | map('default', []) | list | json_query('[].results')) }}"
+  loop_control:
+    label: "{{ item.item.name if item != None else 'skipped' }}"
+  vars:
+    multus_nodes_list: "{{ groups['k8s_cluster'] if ansible_play_batch | length == ansible_play_hosts_all | length else ansible_play_batch }}"
+  when:
+    - not item is skipped

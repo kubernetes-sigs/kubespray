@@ -80,7 +80,7 @@ The `crio_remap_enable` configures the `/etc/subuid` and `/etc/subgid` files to 
 By default, 16M uids and gids are reserved for user namespaces (256 pods * 65536 uids/gids) at the end of the uid/gid space.
 
 The `crio_default_capabilities` configure the default containers capabilities for the crio.
-Defaults capabilties are:
+Defaults capabilities are:
 
 ```yaml
 crio_default_capabilities:

@@ -1,4 +1,4 @@
-# Use imutable image tags rather than mutable tags (like ubuntu:22.04)
+# Use immutable image tags rather than mutable tags (like ubuntu:22.04)
 FROM ubuntu:jammy-20230308
 # Some tools like yamllint need this
 # Pip needs this as well at the moment to install ansible
@@ -47,8 +47,8 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
     && pip install --no-compile --no-cache-dir pip -U \
     && pip install --no-compile --no-cache-dir -r tests/requirements.txt \
     && pip install --no-compile --no-cache-dir -r requirements.txt \
-    && curl -L https://dl.k8s.io/release/v1.33.2/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
-    && echo $(curl -L https://dl.k8s.io/release/v1.33.2/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
+    && curl -L https://dl.k8s.io/release/v1.34.1/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
+    && echo $(curl -L https://dl.k8s.io/release/v1.34.1/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
     && chmod a+x /usr/local/bin/kubectl \
     # Install Vagrant
     && curl -LO https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}-1_$(dpkg --print-architecture).deb \

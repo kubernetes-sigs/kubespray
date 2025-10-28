@@ -35,7 +35,7 @@ metallb_config:
       effect: "NoSchedule"
 ```
 
-If you'd like to set additional nodeSelector and tolerations values, you can do so in the following fasion:
+If you'd like to set additional nodeSelector and tolerations values, you can do so in the following fashion:
 
 ```yaml
 metallb_config:

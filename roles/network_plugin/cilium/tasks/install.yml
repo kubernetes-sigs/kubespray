@@ -45,6 +45,29 @@
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
 
+# Use the rendered values file as the default values
+# and recursively merge cilium_chart_values as override values.
+- name: Cilium | Patch values
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_chart_values != None
+  block:
+    - name: Cilium | Read rendered values
+      slurp:
+        src: "{{ kube_config_dir }}/cilium-values.yaml"
+      register: cilium_values_file
+
+    - name: Cilium | Patch rendered values
+      copy:
+        content: >
+          {{
+            cilium_values_file.content | b64decode | from_yaml
+            | combine(cilium_chart_values | default({}), recursive=True)
+            | cilium_values | to_nice_yaml(indent=2) | indent(2)
+          }}
+        dest: "{{ kube_config_dir }}/cilium-values.yaml"
+        mode: "0644"
+
 - name: Cilium | Copy extra values
   copy:
     content: "{{ cilium_extra_values | to_nice_yaml(indent=2) }}"

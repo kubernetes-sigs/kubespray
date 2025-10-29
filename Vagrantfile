@@ -31,6 +31,8 @@ SUPPORTED_OS = {
   "almalinux9"          => {box: "almalinux/9",                user: "vagrant"},
   "rockylinux8"         => {box: "rockylinux/8",               user: "vagrant"},
   "rockylinux9"         => {box: "rockylinux/9",               user: "vagrant"},
+  "navix9"              => {box: "navix/9",                    user: "vagrant"},
+  "navix10"             => {box: "navix/10",                   user: "vagrant"},
   "fedora39"            => {box: "fedora/39-cloud-base",       user: "vagrant"},
   "fedora40"            => {box: "fedora/40-cloud-base",       user: "vagrant"},
   "fedora39-arm64"      => {box: "bento/fedora-39-arm64",      user: "vagrant"},
@@ -289,7 +291,7 @@ Vagrant.configure("2") do |config|
       end
 
       # Disable firewalld on oraclelinux/redhat vms
-      if ["oraclelinux","oraclelinux8", "rhel8","rockylinux8"].include? $os
+      if ["oraclelinux", "oraclelinux8", "rhel8", "rockylinux8", "navix9", "navix10"].include? $os
         node.vm.provision "shell", inline: "systemctl stop firewalld; systemctl disable firewalld"
       end
 

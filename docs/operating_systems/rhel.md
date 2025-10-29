@@ -1,6 +1,6 @@
 # Red Hat Enterprise Linux (RHEL)
 
-The documentation also applies to Red Hat derivatives, including Alma Linux, Rocky Linux, Oracle Linux, and CentOS.
+The documentation also applies to Red Hat derivatives, including Alma Linux, Rocky Linux, Oracle Linux, Navix, and CentOS.
 
 ## RHEL Support Subscription Registration
 

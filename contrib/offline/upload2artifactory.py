@@ -4,8 +4,8 @@
 After running manage-offline-files.sh, you can run upload2artifactory.py
 to recursively upload each file to a generic repository in Artifactory.
 
-This script recurses the current working directory and is intended to
-be started from 'kubespray/contrib/offline/offline-files'
+This script recurses the $BASE_DIR directory and is intended to
+be started from '$HOME/.ansible/collections/ansible_collections/kubernetes_sigs/kubespray/contrib/offline/offline-files'
 
 Environment Variables:
     USERNAME -- At least permissions'Deploy/Cache' and 'Delete/Overwrite'.
@@ -16,6 +16,21 @@ Environment Variables:
 import os
 import urllib.request
 import base64
+import re
+
+
+def clean_version_numbers(path, depth=0):
+    """Remove 'v' prefix from version numbers in the path using recursion"""
+    if depth > 10:
+        return path
+
+    version_pattern = r'([/-])v(\d+(?:\.\d+)*(?:\.\d+)*)'
+    cleaned_path = re.sub(version_pattern, r'\1\2', path)
+
+    if re.search(r'[/-]v\d', cleaned_path):
+        return clean_version_numbers(cleaned_path, depth + 1)
+    else:
+        return cleaned_path
 
 
 def upload_file(file_path, destination_url, username, token):
@@ -41,14 +56,16 @@ def upload_file(file_path, destination_url, username, token):
         print(f"OSError: {e.strerror} for {file_path}")
 
 
-def upload_files(base_url, username, token):
+def upload_files(base_dir, base_url, username, token):
     """ Recurse current dir and upload each file using urllib.request """
-    for root, _, files in os.walk(os.getcwd()):
+    base_dir = os.path.abspath(base_dir)
+    for root, _, files in os.walk(base_dir):
         for file in files:
             file_path = os.path.join(root, file)
-            relative_path = os.path.relpath(file_path, os.getcwd())
-            destination_url = f"{base_url}/{relative_path}"
-
+            relative_path = os.path.relpath(file_path, base_dir).lstrip(os.sep)
+            # Clean version numbers from the path
+            cleaned_relative_path = clean_version_numbers(relative_path)
+            destination_url = f"{base_url}/{cleaned_relative_path}"
             print(f"Uploading {file_path} to {destination_url}")
             upload_file(file_path, destination_url, username, token)
 
@@ -57,9 +74,10 @@ if __name__ == "__main__":
     a_user = os.getenv("USERNAME")
     a_token = os.getenv("TOKEN")
     a_url = os.getenv("BASE_URL")
-    if not a_user or not a_token or not a_url:
+    a_dir = os.getenv("BASE_DIR")
+    if not a_dir or not a_user or not a_token or not a_url:
         print(
-            "Error: Environment variables USERNAME, TOKEN, and BASE_URL must be set." # NOQA
+            "Error: Environment variables BASE_DIR, USERNAME, TOKEN, and BASE_URL must be set." # NOQA
         )
-        exit()
-    upload_files(a_url, a_user, a_token)
+        exit(22)
+    upload_files(a_dir, a_url, a_user, a_token)

@@ -25,13 +25,24 @@
                              map('extract', hostvars, morekeys=['downloads_list']) |
                              flatten | unique(attribute='value.dest') }}"
   block:
+
+  - name: Download | Cleanup previous download directory with bad permissions
+    file:
+      path: "{{ local_release_dir }}"
+      state: absent
+    when: reset_local_release_dir
+    become: true
+    # TODO: delete after 2.31
+    # this is for handling upgrade worflow, where local_release_dir was previously root-owned
+    # As this isn't needed for artefacts, this is no longer the case, but this causes permission problems in some case
+
   - name: Download | file | Create download directory
+    when: ('download_delegate_' + inventory_hostname) in groups
+          or inventory_hostname == 'localhost' # needed to make things transit to localhost
     file:
       path: "{{ local_release_dir }}"
       state: directory
       mode: "0755"
-    when: ('download_delegate_' + inventory_hostname) in groups
-          or inventory_hostname == 'localhost' # needed to make things transit to localhost
 
   - name: Download | file | Download file
     get_url:

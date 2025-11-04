@@ -60,6 +60,8 @@ if [ "${UPGRADE_TEST}" != "false" ]; then
 
   pip install --break-system-packages --no-compile --no-cache-dir -r requirements.txt
 
+  echo 'reset_local_release_dir: true' >> tests/common_vars.yml
+
   case "${UPGRADE_TEST}" in
     "basic")
         run_playbook cluster

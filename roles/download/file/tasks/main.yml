@@ -25,13 +25,20 @@
                              map('extract', hostvars, morekeys=['downloads_list']) |
                              flatten | unique(attribute='value.dest') }}"
   block:
+
   - name: Download | Create download directory
+    when: ('download_delegate_' + inventory_hostname) in groups
+          or inventory_hostname == 'localhost' # needed to make things transit to localhost
     file:
       path: "{{ local_release_dir }}"
       state: directory
       mode: "0755"
-    when: ('download_delegate_' + inventory_hostname) in groups
-          or inventory_hostname == 'localhost' # needed to make things transit to localhost
+      # TODO: everything those line (up to next task) after release 2.30
+      # this is meant to fix the permissions of local_release_dir to use the normal ansible user
+      # without root, since there is no reason to do so for just downloading artifacts
+      recurse: "{{ inventory_hostname != 'localhost' }}"
+      owner: "{{ ansible_user if inventory_hostname != 'localhost' else omit }}"
+    become: "{{ inventory_hostname != 'localhost' }}"
 
   - name: Download_file | Download file
     get_url:

@@ -96,10 +96,6 @@ infos = {
         "binary": True,
         "graphql_id": "R_kgDOFPvgPg",
     },
-    "yq": {
-        "url": "https://github.com/mikefarah/yq/releases/download/v{version}/checksums-bsd",  # see https://github.com/mikefarah/yq/pull/1691 for why we use this url
-        "graphql_id": "R_kgDOApOQGQ",
-    },
     "argocd_install": {
         "url": "https://raw.githubusercontent.com/argoproj/argo-cd/v{version}/manifests/install.yaml",
         "graphql_id": "R_kgDOBzS60g",

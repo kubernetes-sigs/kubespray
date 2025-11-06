@@ -151,7 +151,7 @@
     ETCDCTL_ENDPOINTS: "{{ item.endpoints }}"
   command: "{{ bin_dir }}/etcdctl member list -w json"
   run_once: true
-  delegate_to:
+  delegate_to: "{{ groups['etcd'][0] }}"
   register: etcd_members_in_cluster
   when: item.when
   loop:
@@ -180,6 +180,9 @@
   }}"
     # invert hostvars to map etcd_member_name to inventory_hostname
   block:
+    - name: debug variables
+      debug:
+        var: (etcd_member_names_to_hosts | ansible.utils.remove_keys(target=current_members)).values()
     - name: Configure | Join member(s) to etcd cluster one at a time | Main
       include_tasks:
         file: join_etcd_member.yml
@@ -188,7 +191,9 @@
             etcd_hosts: "{{ (current_members | map('extract', etcd_member_names_to_hosts)) + item }}"
       vars:
         current_members: "{{ (etcd_members_in_cluster.results[0].stdout | from_json).members | map(attribute='name') }}"
-      with_items: "{{ (etcd_member_names_to_hosts | ansible.utils.remove_keys(target=current_members)).values() }}"
+      with_items: "{{ (etcd_member_names_to_hosts |
+      ansible.utils.remove_keys(target=(etcd_members_in_cluster.results[0].stdout
+      | from_json).members | map(attribute='name'))).values() }}"
       # reject etcd hosts which are already in cluster
       when:
         - inventory_hostname == item
@@ -203,7 +208,9 @@
             etcd_hosts: "{{ (current_members | map('extract', etcd_member_names_to_hosts)) + item }}"
       vars:
         current_members: "{{ (etcd_members_in_cluster.results[1].stdout | from_json).members | map(attribute='name') }}"
-      with_items: "{{ (etcd_member_names_to_hosts | ansible.utils.remove_keys(target=current_members)).values() }}"
+      with_items: "{{ (etcd_member_names_to_hosts |
+      ansible.utils.remove_keys(target=(etcd_members_in_cluster.results[1].stdout
+      | from_json).members | map(attribute='name'))).values() }}"
       when:
         - inventory_hostname == item
         - etcd_events_cluster_setup

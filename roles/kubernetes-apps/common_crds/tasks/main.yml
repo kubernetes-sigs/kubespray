@@ -1,0 +1,14 @@
+---
+- name: "Install common CRDs | {{ item.key[:-5] }}"
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{ lookup('file', local_release_dir + item.value.dest) }}"
+  vars:
+    server_side_apply: true
+    # some big crds would overflow the kubectl-last-applied annotations
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  loop: "{{ downloads | dict2items
+            | selectattr('key', 'match', '.*_crds')
+            | selectattr('value.dest', 'match', '.*yaml')
+            | selectattr('value.enabled', 'all') }}"

@@ -173,8 +173,13 @@
 
 - name: Configure | Join member(s) to etcd cluster one at a time
   vars:
-    etcd_member_names_to_hosts: "{{
-    groups['etcd'] | map('extract', hostvars, 'etcd_member_name') |
+    etcd_peer_urls_to_hosts: "{{
+    groups['etcd'] | map('extract', hostvars, 'etcd_peer_url') |
+    zip(groups['etcd']) |
+    community.general.dict
+  }}"
+    etcd_events_peer_urls_to_hosts: "{{
+    groups['etcd'] | map('extract', hostvars, 'etcd_events_peer_url') |
     zip(groups['etcd']) |
     community.general.dict
   }}"
@@ -182,25 +187,27 @@
   block:
     - name: debug variables
       debug:
-        var: (etcd_member_names_to_hosts |
+        var: (etcd_peer_urls_to_hosts |
               ansible.utils.remove_keys(target=(etcd_members_in_cluster.results[0].stdout
-              | from_json).members | map(attribute='name'))).values()
+              | from_json).members | map(attribute='peerURLs.0'))).values()
+
     - name: debug variables
       debug:
         var: etcd_members_in_cluster
 
     - name: debug variables
       debug:
-        var: etcd_member_names_to_hosts
+        var: etcd_peer_urls_to_hosts
+
     - name: Configure | Join member(s) to etcd cluster one at a time | Main
       include_tasks:
         file: join_etcd_member.yml
         apply:
           vars:
-            etcd_hosts: "{{ (current_members | map('extract', etcd_member_names_to_hosts)) + [item] }}"
+            etcd_hosts: "{{ (current_members | map('extract', etcd_peer_urls_to_hosts)) + [item] }}"
       vars:
-        current_members: "{{ (etcd_members_in_cluster.results[0].stdout | from_json).members | map(attribute='name') }}"
-      with_items: "{{ (etcd_member_names_to_hosts |
+        current_members: "{{ (etcd_members_in_cluster.results[0].stdout | from_json).members | map(attribute='peerURLs.0') }}"
+      with_items: "{{ (etcd_peer_urls_to_hosts |
       ansible.utils.remove_keys(target=current_members)).values() }}"
       # reject etcd hosts which are already in cluster
       when:
@@ -213,12 +220,12 @@
         file: join_etcd-events_member.yml
         apply:
           vars:
-            etcd_hosts: "{{ (current_members | map('extract', etcd_member_names_to_hosts)) + [item] }}"
+            etcd_hosts: "{{ (current_members | map('extract', etcd_events_peer_urls_to_hosts)) + [item] }}"
       vars:
-        current_members: "{{ (etcd_members_in_cluster.results[1].stdout | from_json).members | map(attribute='name') }}"
+        current_members: "{{ (etcd_members_in_cluster.results[1].stdout | from_json).members | map(attribute='peerURLs.0') }}"
       with_items: "{{
         [] if etcd_members_in_cluster.results[1] is skipped else
-        (etcd_member_names_to_hosts |
+        (etcd_events_peer_urls_to_hosts |
         ansible.utils.remove_keys(target=current_members)).values() }}"
       when:
         - inventory_hostname == item

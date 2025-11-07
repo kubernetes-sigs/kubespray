@@ -70,7 +70,7 @@ if [ "${UPGRADE_TEST}" != "false" ]; then
         run_playbook cluster
         ;;
     "graceful")
-        run_playbook upgrade-cluster
+        run_playbook upgrade_cluster
         ;;
     *)
         ;;

@@ -92,7 +92,7 @@ ansible-playbook \
 
 # Test node removal procedure
 if [ "${REMOVE_NODE_CHECK}" = "true" ]; then
-  run_playbook remove-node -e skip_confirmation=yes -e node=${REMOVE_NODE_NAME}
+  run_playbook remove-node -e skip_confirmation=yes -e node="${REMOVE_NODE_NAME}"
 fi
 
 # Clean up at the end, this is to allow stage1 tests to include cleanup test

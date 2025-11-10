@@ -1,4 +1,11 @@
 ---
+- name: Reify etcd variables for cluster configuration
+  # Needed to access defaults variables through hostvars
+  set_fact:
+    etcd_member_name: "{{ etcd_member_name }}"
+    etcd_peer_url: "{{ etcd_peer_url }}"
+    etcd_events_peer_url: "{{ etcd_events_peer_url }}"
+
 - name: Configure | Check if etcd cluster is healthy
   shell: "set -o pipefail && {{ bin_dir }}/etcdctl endpoint --cluster status && {{ bin_dir }}/etcdctl endpoint --cluster health  2>&1 | grep -v 'Error: unhealthy cluster' >/dev/null"
   args:
@@ -9,7 +16,6 @@
   check_mode: false
   run_once: true
   when:
-    - ('etcd' in group_names)
     - etcd_cluster_setup
   tags:
     - facts
@@ -30,7 +36,6 @@
   check_mode: false
   run_once: true
   when:
-    - ('etcd' in group_names)
     - etcd_events_cluster_setup
   tags:
     - facts
@@ -42,8 +47,7 @@
     ETCDCTL_ENDPOINTS: "{{ etcd_events_access_addresses }}"
 
 - name: Configure | Refresh etcd config
-  include_tasks: refresh_config.yml
-  when: ('etcd' in group_names)
+  import_tasks: refresh_config.yml
 
 - name: Configure | Copy etcd.service systemd file
   template:
@@ -55,7 +59,6 @@
     # Remove once we drop support for systemd < 250
     validate: "sh -c '[ -f /usr/bin/systemd/system/factory-reset.target ] || exit 0 && systemd-analyze verify %s:etcd-{{ etcd_deployment_type }}.service'"
   when:
-    - ('etcd' in group_names)
     - etcd_cluster_setup
 
 - name: Configure | Copy etcd-events.service systemd file
@@ -68,7 +71,6 @@
     # FIXME: check that systemd version >= 250 (factory-reset.target was introduced in that release)
     # Remove once we drop support for systemd < 250
   when:
-    - ('etcd' in group_names)
     - etcd_events_cluster_setup
 
 - name: Configure | reload systemd
@@ -84,7 +86,6 @@
     enabled: true
   ignore_errors: "{{ etcd_cluster_is_healthy.rc == 0 }}"  # noqa ignore-errors
   when:
-    - ('etcd' in group_names)
     - etcd_cluster_setup
 
 # when scaling new etcd will fail to start
@@ -95,7 +96,6 @@
     enabled: true
   ignore_errors: "{{ etcd_events_cluster_is_healthy.rc != 0 }}"  # noqa ignore-errors
   when:
-    - ('etcd' in group_names)
     - etcd_events_cluster_setup
 
 - name: Configure | Wait for etcd cluster to be healthy
@@ -110,7 +110,6 @@
   check_mode: false
   run_once: true
   when:
-    - ('etcd' in group_names)
     - etcd_cluster_setup
   tags:
     - facts
@@ -133,7 +132,6 @@
   check_mode: false
   run_once: true
   when:
-    - ('etcd' in group_names)
     - etcd_events_cluster_setup
   tags:
     - facts
@@ -144,48 +142,91 @@
     ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
     ETCDCTL_ENDPOINTS: "{{ etcd_events_access_addresses }}"
 
-- name: Configure | Check if member is in etcd cluster
-  shell: "{{ bin_dir }}/etcdctl member list | grep -w -q {{ etcd_access_address | replace('[', '') | replace(']', '') }}"
-  register: etcd_member_in_cluster
-  ignore_errors: true  # noqa ignore-errors
-  changed_when: false
-  check_mode: false
-  when:
-    - ('etcd' in group_names)
-    - etcd_cluster_setup
-  tags:
-    - facts
+- name: Configure | List existing members in etcd cluster
   environment:
     ETCDCTL_API: "3"
     ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
     ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
     ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
-    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
-
-- name: Configure | Check if member is in etcd-events cluster
-  shell: "{{ bin_dir }}/etcdctl member list | grep -w -q {{ etcd_access_address | replace('[', '') | replace(']', '') }}"
-  register: etcd_events_member_in_cluster
-  ignore_errors: true  # noqa ignore-errors
+    ETCDCTL_ENDPOINTS: "{{ item.endpoints }}"
+  command: "{{ bin_dir }}/etcdctl member list -w json"
+  run_once: true
+  delegate_to: "{{ groups['etcd'][0] }}"
+  register: etcd_members_in_cluster
+  when: item.when
+  loop:
+    - cluster: main
+      endpoints: "{{ etcd_access_addresses }}"
+      when: "{{ etcd_cluster_setup }}"
+    - cluster: events
+      endpoints: "{{ etcd_events_access_addresses }}"
+      when: "{{ etcd_events_cluster_setup }}"
+  loop_control:
+    label: item.cluster
+  failed_when:
+    - etcd_members_in_cluster is failed
+    - ('connection refused') not in etcd_members_in_cluster.stderr # Don't fail on cluster creation
   changed_when: false
   check_mode: false
-  when:
-    - ('etcd' in group_names)
-    - etcd_events_cluster_setup
   tags:
     - facts
-  environment:
-    ETCDCTL_API: "3"
-    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
-    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
-    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
-    ETCDCTL_ENDPOINTS: "{{ etcd_events_access_addresses }}"
 
 - name: Configure | Join member(s) to etcd cluster one at a time
-  include_tasks: join_etcd_member.yml
-  with_items: "{{ groups['etcd'] }}"
-  when: inventory_hostname == item and etcd_cluster_setup and etcd_member_in_cluster.rc != 0 and etcd_cluster_is_healthy.rc == 0
+  vars:
+    etcd_peer_urls_to_hosts: "{{
+    groups['etcd'] | map('extract', hostvars, 'etcd_peer_url') |
+    zip(groups['etcd']) |
+    community.general.dict
+  }}"
+    etcd_events_peer_urls_to_hosts: "{{
+    groups['etcd'] | map('extract', hostvars, 'etcd_events_peer_url') |
+    zip(groups['etcd']) |
+    community.general.dict
+  }}"
+    # invert hostvars to map etcd_member_name to inventory_hostname
+  block:
+    - name: debug variables
+      debug:
+        var: (etcd_peer_urls_to_hosts |
+              ansible.utils.remove_keys(target=(etcd_members_in_cluster.results[0].stdout
+              | from_json).members | map(attribute='peerURLs.0'))).values()
 
-- name: Configure | Join member(s) to etcd-events cluster one at a time
-  include_tasks: join_etcd-events_member.yml
-  with_items: "{{ groups['etcd'] }}"
-  when: inventory_hostname == item and etcd_events_cluster_setup and etcd_events_member_in_cluster.rc != 0 and etcd_events_cluster_is_healthy.rc == 0
+    - name: debug variables
+      debug:
+        var: etcd_members_in_cluster
+
+    - name: debug variables
+      debug:
+        var: etcd_peer_urls_to_hosts
+
+    - name: Configure | Join member(s) to etcd cluster one at a time | Main
+      include_tasks:
+        file: join_etcd_member.yml
+        apply:
+          vars:
+            etcd_hosts: "{{ (current_members | map('extract', etcd_peer_urls_to_hosts)) + [item] }}"
+      vars:
+        current_members: "{{ (etcd_members_in_cluster.results[0].stdout | from_json).members | map(attribute='peerURLs.0') }}"
+      with_items: "{{ (etcd_peer_urls_to_hosts |
+      ansible.utils.remove_keys(target=current_members)).values() }}"
+      # reject etcd hosts which are already in cluster
+      when:
+        - inventory_hostname == item
+        - etcd_cluster_setup
+        - etcd_cluster_is_healthy.rc == 0
+
+    - name: Configure | Join member(s) to etcd cluster one at a time | Events
+      include_tasks:
+        file: join_etcd-events_member.yml
+        apply:
+          vars:
+            etcd_hosts: "{{ (current_members | map('extract', etcd_events_peer_urls_to_hosts)) + [item] }}"
+      vars:
+        current_members: "{{ (etcd_members_in_cluster.results[1].stdout | from_json).members | map(attribute='peerURLs.0') }}"
+      with_items: "{{
+        [] if etcd_members_in_cluster.results[1] is skipped else
+        (etcd_events_peer_urls_to_hosts |
+        ansible.utils.remove_keys(target=current_members)).values() }}"
+      when:
+        - inventory_hostname == item
+        - etcd_events_cluster_is_healthy.rc == 0

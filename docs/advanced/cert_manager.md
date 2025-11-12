@@ -6,7 +6,7 @@
     - [Create New TLS Root CA Certificate and Key](#create-new-tls-root-ca-certificate-and-key)
       - [Install Cloudflare PKI/TLS `cfssl` Toolkit.](#install-cloudflare-pkitls-cfssl-toolkit)
       - [Create Root Certificate Authority (CA) Configuration File](#create-root-certificate-authority-ca-configuration-file)
-      - [Create Certficate Signing Request (CSR) Configuration File](#create-certficate-signing-request-csr-configuration-file)
+      - [Create Certificate Signing Request (CSR) Configuration File](#create-certificate-signing-request-csr-configuration-file)
       - [Create TLS Root CA Certificate and Key](#create-tls-root-ca-certificate-and-key)
 
 Cert-Manager is a native Kubernetes certificate management controller. It can help with issuing certificates from a variety of sources, such as Let’s Encrypt, HashiCorp Vault, Venafi, a simple signing key pair, or self signed. It will ensure certificates are valid and up to date, and attempt to renew certificates at a configured time before expiry.
@@ -134,7 +134,7 @@ $ cat > ca-config.json <<EOF
 EOF
 ```
 
-#### Create Certficate Signing Request (CSR) Configuration File
+#### Create Certificate Signing Request (CSR) Configuration File
 
 The TLS certificate `names` details can be updated to your own specific requirements.
 

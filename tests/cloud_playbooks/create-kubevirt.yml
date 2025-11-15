@@ -16,9 +16,18 @@
   gather_facts: false
 
   tasks:
+    # Check ssh access without relying on python - this is an horrible hack
+    # but wait_for_connection does not work without python
+    # and 'until' is incompatible with unreachable errors
+    # https://github.com/ansible/ansible/issues/78358
   - name: Wait until SSH is available
-    wait_for:
-      host: "{{ ansible_host }}"
-      port: 22
-      timeout: 240
+    command: >
+      ssh -i "{{ lookup('env', 'ANSIBLE_PRIVATE_KEY_FILE') }}"
+      -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -o ConnectTimeout=3 "{{ lookup('env', 'ANSIBLE_REMOTE_USER') }}@{{ ansible_host }}"
+    register: ssh_command
+    delay: 0
+    until: ssh_command.rc != 255
+    retries: 60
     delegate_to: localhost

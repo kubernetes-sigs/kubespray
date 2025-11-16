@@ -101,9 +101,9 @@ infos = {
         "graphql_id": "R_kgDOApOQGQ",
     },
     "argocd_install": {
-    "url": "https://raw.githubusercontent.com/argoproj/argo-cd/v{version}/manifests/install.yaml",
-    "graphql_id": "R_kgDOBzS60g",
-    "binary": True,
-    "hashtype": "sha256",
+        "url": "https://raw.githubusercontent.com/argoproj/argo-cd/v{version}/manifests/install.yaml",
+        "graphql_id": "R_kgDOBzS60g",
+        "binary": True,
+        "hashtype": "sha256",
     },
 }

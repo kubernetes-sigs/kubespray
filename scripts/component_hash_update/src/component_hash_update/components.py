@@ -106,4 +106,14 @@ infos = {
         "binary": True,
         "hashtype": "sha256",
     },
+    "gateway_api_standard_crds": {
+        "url": "https://github.com/kubernetes-sigs/gateway-api/releases/download/v{version}/standard-install.yaml",
+        "graphql_id": "R_kgDODQ6RZw",
+        "binary": True,
+    },
+    "gateway_api_experimental_crds": {
+        "url": "https://github.com/kubernetes-sigs/gateway-api/releases/download/v{version}/experimental-install.yaml",
+        "graphql_id": "R_kgDODQ6RZw",
+        "binary": True,
+    },
 }

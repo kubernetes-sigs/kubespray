@@ -96,6 +96,7 @@ vagrant up
 - **Oracle Linux** [8, 9](docs/operating_systems/rhel.md#rhel-8)
 - **Alma Linux** [8, 9](docs/operating_systems/rhel.md#rhel-8)
 - **Rocky Linux** [8, 9](docs/operating_systems/rhel.md#rhel-8)
+- **Navix** [9, 10](docs/operating_systems/rhel.md#rhel-8)
 - **Kylin Linux Advanced Server V10** (experimental: see [kylin linux notes](docs/operating_systems/kylinlinux.md))
 - **Amazon Linux 2** (experimental: see [amazon linux notes](docs/operating_systems/amazonlinux.md))
 - **UOS Linux** (experimental: see [uos linux notes](docs/operating_systems/uoslinux.md))

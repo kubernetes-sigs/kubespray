@@ -111,15 +111,15 @@ Note:
 <!-- BEGIN ANSIBLE MANAGED BLOCK -->
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.34.1
-  - [etcd](https://github.com/etcd-io/etcd) 3.5.23
+  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.34.2
+  - [etcd](https://github.com/etcd-io/etcd) 3.5.25
   - [docker](https://www.docker.com/) 28.3
-  - [containerd](https://containerd.io/) 2.1.4
-  - [cri-o](http://cri-o.io/) 1.34.1 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [containerd](https://containerd.io/) 2.1.5
+  - [cri-o](http://cri-o.io/) 1.34.2 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) 1.8.0
-  - [calico](https://github.com/projectcalico/calico) 3.30.3
-  - [cilium](https://github.com/cilium/cilium) 1.18.3
+  - [calico](https://github.com/projectcalico/calico) 3.30.4
+  - [cilium](https://github.com/cilium/cilium) 1.18.4
   - [flannel](https://github.com/flannel-io/flannel) 0.27.3
   - [kube-ovn](https://github.com/alauda/kube-ovn) 1.12.21
   - [kube-router](https://github.com/cloudnativelabs/kube-router) 2.1.1

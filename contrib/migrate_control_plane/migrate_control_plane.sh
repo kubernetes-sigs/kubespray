@@ -14,11 +14,15 @@ export ANSIBLE_LIBRARY=$KUBESPRAY_ROOT/library
 
 INDEX=0 ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/facts.yml
 
-# Delete last control plane
-INDEX=0 ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/remove_node.yml -e node='{{ [groups.kube_control_plane[-1], groups.etcd[-1] ] | reject("in", groups.new_etcd + groups.new_kube_control_plane) }}'
-# Add new control plane (last place), will be switched to first place in the first loop iteration
-ROTATION=1 INDEX=1 ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/cluster.yml --limit 'kube_control_plane,etcd' -e upgrade_cluster_setup=true
-for ((index=1;index<NUMBER_OF_CONTROL_PLANE;index++))
+if [[ ${STEP:-0} == 0 ]]
+then
+    # Delete last control plane
+    INDEX=0 ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/remove_node.yml -e node='{{ [groups.kube_control_plane[-1], groups.etcd[-1] ] | reject("in", groups.new_etcd + groups.new_kube_control_plane) }}'
+    # Add new control plane (last place), will be switched to first place in the first loop iteration
+    ROTATION=1 INDEX=1 ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/cluster.yml --limit 'kube_control_plane,etcd' -e upgrade_cluster_setup=true
+    STEP=1
+fi
+for ((index=$STEP;index<NUMBER_OF_CONTROL_PLANE;index++))
 do
     # add new control plane / reorder
     INDEX=$index ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/cluster.yml --limit 'kube_control_plane,etcd' -e upgrade_cluster_setup=true

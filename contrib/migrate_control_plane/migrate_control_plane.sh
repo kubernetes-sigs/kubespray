@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-ansible-inventory "$@" --list > /tmp/base_inventory.json
+ansible-inventory "$@" --export --list > /tmp/base_inventory.json
 
 NUMBER_OF_CONTROL_PLANE=$(jq < /tmp/base_inventory.json '[(.kube_control_plane.hosts | length), (.etcd.hosts | length)] | max')
 

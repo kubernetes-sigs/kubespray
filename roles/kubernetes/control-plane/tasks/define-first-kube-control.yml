@@ -16,4 +16,23 @@
 
 - name: Set fact first_kube_control_plane
   set_fact:
-    first_kube_control_plane: "{{ joined_control_planes | default([]) | first | default(groups['kube_control_plane'] | first) }}"
+    first_kube_control_plane: "{{ joined_control_planes | first }}"
+  when:
+    - joined_control_planes is defined
+    - joined_control_planes | length > 0
+    - (joined_control_planes | first) in groups['kube_control_plane']  # ensure that we can delegate to this node later
+
+- name: Set fact first_kube_control_plane by matching hostname
+  set_fact:
+    first_kube_control_plane: "{{ item }}"
+  when:
+    - joined_control_planes is defined
+    - joined_control_planes | length > 0
+    - hostvars[item]['kube_override_hostname'] is defined
+    - (joined_control_planes | first) == hostvars[item]['kube_override_hostname']
+  loop: "{{ groups['kube_control_plane'] }}"
+
+- name: Set fact first_kube_control_plane to first in group if no joined control planes
+  set_fact:
+    first_kube_control_plane: "{{ groups['kube_control_plane'] | first }}"
+  when: first_kube_control_plane is undefined

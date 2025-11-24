@@ -31,6 +31,8 @@ That's it.
 
 Append the new host to the inventory and run `cluster.yml`. You can NOT use `scale.yml` for that.
 
+**Note:** When adding new control plane nodes, always append them to the end of the `kube_control_plane` group in your inventory. Adding control plane nodes in the first position is not supported and will cause the playbook to fail.
+
 ### 2) Restart kube-system/nginx-proxy
 
 In all hosts, restart nginx-proxy pod. This pod is a local proxy for the apiserver. Kubespray will update its static config, but it needs to be restarted in order to reload.

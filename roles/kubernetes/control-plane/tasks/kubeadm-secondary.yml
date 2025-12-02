@@ -11,24 +11,23 @@
   tags:
     - facts
 
-- name: Upload certificates so they are fresh and not expired
-  command: >-
-    {{ bin_dir }}/kubeadm init phase
-    --config {{ kube_config_dir }}/kubeadm-config.yaml
-    upload-certs
-    --upload-certs
-  register: kubeadm_upload_cert
+- name: Obtain kubeadm certificate key for joining control planes nodes
   when:
-    - inventory_hostname == first_kube_control_plane
     - not kube_external_ca_mode
-
-- name: Parse certificate key if not set
-  set_fact:
-    kubeadm_certificate_key: "{{ hostvars[first_kube_control_plane]['kubeadm_upload_cert'].stdout_lines[-1] | trim }}"
   run_once: true
-  when:
-    - hostvars[first_kube_control_plane]['kubeadm_upload_cert'] is defined
-    - hostvars[first_kube_control_plane]['kubeadm_upload_cert'] is not skipped
+  block:
+    - name: Upload certificates so they are fresh and not expired
+      command: >-
+        {{ bin_dir }}/kubeadm init phase
+        --config {{ kube_config_dir }}/kubeadm-config.yaml
+        upload-certs
+        --upload-certs
+      register: kubeadm_upload_cert
+      delegate_to: "{{ first_kube_control_plane }}"
+
+    - name: Parse certificate key if not set
+      set_fact:
+        kubeadm_certificate_key: "{{ kubeadm_upload_cert.stdout_lines[-1] | trim }}"
 
 - name: Wait for k8s apiserver
   wait_for:

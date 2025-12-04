@@ -75,7 +75,7 @@ do
     # - etcd config for network plugin such as calico
     # - container-engine config when using proxy (calico with etcd datastore breaks otherwise, probably because the cni plugin
     #   can't reach the etcd)
-    INDEX=$index ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/upgrade_cluster.yml --tags nginx,haproxy,etcd,network,container-engine --limit kube_node
+    INDEX=$index ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/cluster.yml --tags nginx,haproxy,etcd,network,container-engine --limit kube_node
     # remove old control plane
     INDEX=$index ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/remove_node.yml -e node='{{ [groups.kube_control_plane[-1], groups.etcd[-1] ] | reject("in", groups.new_etcd + groups.new_kube_control_plane) }}'
 
@@ -84,4 +84,4 @@ done
 # Last iteration is done separately because we don't need a remove-node step.
 INDEX=$index ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/cluster.yml --limit 'kube_control_plane,etcd' -e upgrade_cluster_setup=true
 # Update localhost loadbalancer control-plane on nodes
-INDEX=$index ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/upgrade_cluster.yml --tags nginx,haproxy,etcd,network,container-engine --limit kube_node
+INDEX=$index ansible-playbook $ANSIBLE_PLAYBOOKS_ARGS $KUBESPRAY_ROOT/playbooks/cluster.yml --tags nginx,haproxy,etcd,network,container-engine --limit kube_node

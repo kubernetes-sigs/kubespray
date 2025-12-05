@@ -45,7 +45,6 @@ Kubespray expects users to use one of the following variables sources for settin
 |  - inventory host_vars                 | host specific vars overrides, group_vars is usually more practical           |
 | **extra vars** (always win precedence) | override with ``ansible-playbook -e @foo.yml``                               |
 
-> [!IMPORTANT]
 > Extra vars are best used to override kubespray internal variables, for instances, roles/vars/. Those vars are usually **not expected** (by Kubespray developers) to be modified by end users, and not part of Kubespray interface. Thus they can change, disappear, or break stuff unexpectedly.
 
 ## Ansible tags

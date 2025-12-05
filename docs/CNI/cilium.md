@@ -1,5 +1,13 @@
 # Cilium
 
+## Unprivileged agent configuration
+
+By default, Cilium is installed with `securityContext.privileged: false`. You need to set the `kube_owner` variable to `root` in the inventory:
+
+```yml
+kube_owner: root
+```
+
 ## IP Address Management (IPAM)
 
 IP Address Management (IPAM) is responsible for the allocation and management of IP addresses used by network endpoints (container and others) managed by Cilium. The default mode is "Cluster Scope".

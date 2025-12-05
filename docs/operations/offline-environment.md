@@ -99,7 +99,7 @@ containerd_registries_mirrors:
         capabilities: ["pull", "resolve"]
         skip_verify: true
 
-# CentOS/Redhat/AlmaLinux/Rocky Linux
+# CentOS/Redhat/AlmaLinux/Rocky Linux/Navix
 ## Docker / Containerd
 docker_rh_repo_base_url: "{{ yum_repo }}/docker-ce/$releasever/$basearch"
 docker_rh_repo_gpgkey: "{{ yum_repo }}/docker-ce/gpg"

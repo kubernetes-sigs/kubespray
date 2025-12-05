@@ -48,7 +48,7 @@ ansible-playbook \
 
 # Create cluster
 if [[ "${TESTCASE}" =~ "scale" ]]; then
-    run_playbook cluster --limit '!for_scale:localhost'
+    run_playbook cluster --limit 'all:!for_scale:localhost'
     run_playbook scale --limit 'for_scale:localhost'
 else
     run_playbook cluster

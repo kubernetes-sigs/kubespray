@@ -20,7 +20,6 @@ function create_container_image_tar() {
 
 		kubectl describe cronjobs,jobs,pods --all-namespaces | grep " Image:" | awk '{print $2}' | sort | uniq > "${IMAGES}"
 		# NOTE: etcd and pause cannot be seen as pods.
-		# The pause image is used for --pod-infra-container-image option of kubelet.
 		kubectl cluster-info dump | grep -E "quay.io/coreos/etcd:|registry.k8s.io/pause:" | sed s@\"@@g >> "${IMAGES}"
 	else
 		echo "Getting images from file \"${IMAGES_FROM_FILE}\""

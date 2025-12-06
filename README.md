@@ -128,7 +128,6 @@ Note:
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) 1.15.3
   - [coredns](https://github.com/coredns/coredns) 1.12.4
-  - [ingress-nginx](https://github.com/kubernetes/ingress-nginx) 1.13.3
   - [argocd](https://argoproj.github.io/) 2.14.5
   - [helm](https://helm.sh/) 3.18.4
   - [metallb](https://metallb.universe.tf/) 0.13.9
@@ -201,8 +200,6 @@ option to leverage built-in cloud provider networking instead.
 See also [Network checker](docs/advanced/netcheck.md).
 
 ## Ingress Plugins
-
-- [nginx](https://kubernetes.github.io/ingress-nginx): the NGINX Ingress Controller.
 
 - [metallb](docs/ingress/metallb.md): the MetalLB bare-metal service LoadBalancer provider.
 

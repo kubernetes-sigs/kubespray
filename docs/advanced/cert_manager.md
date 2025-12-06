@@ -30,14 +30,7 @@ If you don't have a TLS Root CA certificate and key available, you can create th
 
 A common use-case for cert-manager is requesting TLS signed certificates to secure your ingress resources. This can be done by simply adding annotations to your Ingress resources and cert-manager will facilitate creating the Certificate resource for you. A small sub-component of cert-manager, ingress-shim, is responsible for this.
 
-To enable the Nginx Ingress controller as part of your Kubespray deployment, simply edit your K8s cluster addons inventory e.g. `inventory\sample\group_vars\k8s_cluster\addons.yml` and set `ingress_nginx_enabled` to true.
-
-```ini
-# Nginx ingress controller deployment
-ingress_nginx_enabled: true
-```
-
-For example, if you're using the Nginx ingress controller, you can secure the Prometheus ingress by adding the annotation `cert-manager.io/cluster-issuer: ca-issuer` and the `spec.tls` section to the `Ingress` resource definition.
+For example, if you're using the Traefik ingress controller, you can secure the Prometheus ingress by adding the annotation `cert-manager.io/cluster-issuer: ca-issuer` and the `spec.tls` section to the `Ingress` resource definition.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -48,9 +41,9 @@ metadata:
   labels:
     prometheus: k8s
   annotations:
-    kubernetes.io/ingress.class: "nginx"
     cert-manager.io/cluster-issuer: ca-issuer
 spec:
+  ingressClassName: "traefik"
   tls:
   - hosts:
     - prometheus.example.com
@@ -72,8 +65,8 @@ Once deployed to your K8s cluster, every 3 months cert-manager will automaticall
 
 Please consult the official upstream documentation:
 
-- [cert-manager Ingress Usage](https://cert-manager.io/v1.5-docs/usage/ingress/)
-- [cert-manager Ingress Tutorial](https://cert-manager.io/v1.5-docs/tutorials/acme/ingress/#step-3-assign-a-dns-name)
+- [cert-manager Ingress Usage](https://cert-manager.io/usage/ingress/)
+- [cert-manager Ingress Tutorial](https://cert-manager.io/tutorials/acme/ingress/#step-3-assign-a-dns-name)
 
 ### ACME
 
@@ -81,12 +74,12 @@ The ACME Issuer type represents a single account registered with the Automated C
 
 Certificates issued by public ACME servers are typically trusted by client’s computers by default. This means that, for example, visiting a website that is backed by an ACME certificate issued for that URL, will be trusted by default by most client’s web browsers. ACME certificates are typically free.
 
-- [ACME Configuration](https://cert-manager.io/v1.5-docs/configuration/acme/)
-- [ACME HTTP Validation](https://cert-manager.io/v1.5-docs/tutorials/acme/http-validation/)
-  - [HTTP01 Challenges](https://cert-manager.io/v1.5-docs/configuration/acme/http01/)
-- [ACME DNS Validation](https://cert-manager.io/v1.5-docs/tutorials/acme/dns-validation/)
-  - [DNS01 Challenges](https://cert-manager.io/v1.5-docs/configuration/acme/dns01/)
-- [ACME FAQ](https://cert-manager.io/v1.5-docs/faq/acme/)
+- [ACME Configuration](https://cert-manager.io/docs/configuration/acme/)
+- [ACME HTTP Validation](https://cert-manager.io/docs/tutorials/acme/http-validation/)
+  - [HTTP01 Challenges](https://cert-manager.io/docs/configuration/acme/http01/)
+- [ACME DNS Validation](https://cert-manager.io/docs/tutorials/acme/dns-validation/)
+  - [DNS01 Challenges](https://cert-manager.io/docs/configuration/acme/dns01/)
+- [ACME FAQ](https://cert-manager.io/docs/troubleshooting/acme/)
 
 #### ACME With An Internal Certificate Authority
 

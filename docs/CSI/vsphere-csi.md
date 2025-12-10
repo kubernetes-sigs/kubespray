@@ -14,6 +14,13 @@ To set the number of replicas for the vSphere CSI controller, you can change `vs
 
 You need to source the vSphere credentials you use to deploy your machines that will host Kubernetes.
 
+Note that these components have supported Kubernetes versions and supported vSphere versions. In particular:
+
+- `external_vsphere_cloud_controller_image_tag` should follow the version of Kubernetes. Available versions can be found [in the README](https://github.com/kubernetes/cloud-provider-vsphere/blob/master/README.md).
+- `vsphere_csi_controller` support a window of three versions of Kubernetes, but also have minimum versions of vSphere to follow. Check [the docs here](https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/container-storage-plugin/3-0/getting-started-with-vmware-vsphere-container-storage-plug-in-3-0/vsphere-container-storage-plug-in-concepts/compatibility-matrix-for-vsphere-container-storage-plug-in.html#GUID-D4AAD99E-9128-40CE-B89C-AD451DA8379D-en) to make sure you have a supported version.
+
+Kubespray may update these defaults to the latest versions, but can not know what version of vSphere you are using and does not try to match Kubernetes versions to supported vSphere component versions. You should pin these to supported versions in your environment, and update them along with Kubernetes and Kubespray.
+
 | Variable                                        | Required | Type    | Choices         | Default                 | Comment                                                                                                                     |
 |-------------------------------------------------|----------|---------|-----------------|-------------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | external_vsphere_vcenter_ip                     | TRUE     | string  |                 |                         | IP/URL of the vCenter                                                                                                       |

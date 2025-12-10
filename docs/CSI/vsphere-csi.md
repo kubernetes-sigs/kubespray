@@ -1,6 +1,6 @@
 # vSphere CSI Driver
 
-vSphere CSI driver allows you to provision volumes over a vSphere deployment. The Kubernetes historic in-tree cloud provider is deprecated and will be removed in future versions.
+vSphere CSI driver allows you to provision volumes over a vSphere deployment. The Kubernetes historic in-tree cloud provider was deprecated in Kubernetes 1.19 and removed in 1.30.
 
 ## Prerequisites
 

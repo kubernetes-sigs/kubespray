@@ -21,6 +21,8 @@ The Kernel Version Matrixs:
 | Rocky Linux 8      | 4.18           | :x:                |
 | Oracle Linux 9     | 5.14           | :white_check_mark: |
 | Oracle Linux 8     | 4.18           | :x:                |
+| Navix 9            | 5.14           | :white_check_mark: |
+| Navix 10           | 6.12           | :white_check_mark: |
 | Ubuntu 24.04       | 6.6            | :white_check_mark: |
 | Ubuntu 22.04       | 5.15           | :white_check_mark: |
 | Ubuntu 20.04       | 5.4            | :white_check_mark: |

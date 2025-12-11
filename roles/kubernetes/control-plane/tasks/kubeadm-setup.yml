@@ -179,9 +179,10 @@
       timeout -k {{ kubeadm_init_timeout }} {{ kubeadm_init_timeout }}
       {{ bin_dir }}/kubeadm init
       --config={{ kube_config_dir }}/kubeadm-config.yaml
-      --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
+      --ignore-preflight-errors={{ _ignore_errors | flatten | join(',') }}
       --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
       {{ kube_external_ca_mode | ternary('', '--upload-certs') }}
+    _ignore_errors: "{{ kubeadm_ignore_preflight_errors }}"
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
   notify: Control plane | restart kubelet
@@ -195,6 +196,15 @@
     # This retry task is separated from 1st task to show log of failure of 1st task.
     - name: Kubeadm | Initialize first control plane node (retry)
       command: "{{ kubeadm_init_first_control_plane_cmd }}"
+      vars:
+        _errors_from_first_try:
+          - 'FileAvailable--etc-kubernetes-manifests-kube-controller-manager.yaml'
+          - 'FileAvailable--etc-kubernetes-manifests-kube-scheduler.yaml'
+          - 'FileAvailable--etc-kubernetes-manifests-kube-apiserver.yaml'
+          - 'Port-10250'
+        _ignore_errors:
+          - "{{ kubeadm_ignore_preflight_errors }}"
+          - "{{ _errors_from_first_try if 'all' not in kubeadm_ignore_preflight_errors else [] }}"
       register: kubeadm_init
       retries: 2
       until: kubeadm_init is succeeded or "field is immutable" in kubeadm_init.stderr

@@ -21,11 +21,6 @@
   register: ostree_version
   when: is_ostree
 
-- name: Cri-o | Download cri-o
-  include_tasks: "../../../download/tasks/download_file.yml"
-  vars:
-    download: "{{ download_defaults | combine(downloads.crio) }}"
-
 - name: Cri-o | special handling for amazon linux
   import_tasks: "setup-amazon.yaml"
   when: ansible_distribution in ["Amazon"]
@@ -119,16 +114,6 @@
     mode: "0644"
   register: reg_auth_install
 
-- name: Cri-o | copy binaries
-  copy:
-    src: "{{ local_release_dir }}/cri-o/bin/{{ item }}"
-    dest: "{{ bin_dir }}/{{ item }}"
-    mode: "0755"
-    remote_src: true
-  with_items:
-    - "{{ crio_bin_files }}"
-  notify: Restart crio
-
 - name: Cri-o | create directory for libexec
   file:
     path: "{{ crio_libexec_dir }}"
@@ -136,23 +121,41 @@
     owner: root
     mode: "0755"
 
-- name: Cri-o | copy libexec
-  copy:
-    src: "{{ local_release_dir }}/cri-o/bin/{{ item }}"
-    dest: "{{ crio_libexec_dir }}/{{ item }}"
-    mode: "0755"
-    remote_src: true
-  with_items:
-    - "{{ crio_libexec_files }}"
+- name: Cri-o | Install artefacts
+  vars:
+    _src: "{{ install_source_dir }}/{{ (downloads.crio.dest | splitext)[0] }}"
   notify: Restart crio
+  block:
+    - name: Cri-o | install artifacts | binaries
+      vars:
+        _crio_install_files:
+          - dest: "{{ bin_dir }}"
+            files: "{{ crio_bin_files }}"
+          - dest: "{{ crio_libexec_dir }}"
+            files: "{{ crio_libexec_files }}"
+      copy:
+        src: "{{ _src }}/bin/{{ item.1 }}"
+        dest: "{{ item.0.dest }}/{{ item.1 }}"
+        mode: "0755"
+        remote_src: "{{ download_delegate == inventory_hostname }}"
+      with_subelements:
+        - "{{ _crio_install_files }}"
+        - files
 
-- name: Cri-o | copy service file
-  copy:
-    src: "{{ local_release_dir }}/cri-o/contrib/crio.service"
-    dest: /etc/systemd/system/crio.service
-    mode: "0755"
-    remote_src: true
-  notify: Restart crio
+    - name: Cri-o | install artifacts | service file
+      copy:
+        src: "{{ _src }}/contrib/crio.service"
+        dest: /etc/systemd/system/crio.service
+        mode: "0755"
+        remote_src: "{{ download_delegate == inventory_hostname }}"
+
+    - name: Cri-o | install artifacts | default policy
+      copy:
+        src: "{{ _src }}/contrib/policy.json"
+        dest: /etc/containers/policy.json
+        mode: "0755"
+        remote_src: "{{ download_delegate == inventory_hostname }}"
+
 
 - name: Cri-o | configure crio to use kube reserved cgroups
   ansible.builtin.copy:
@@ -173,14 +176,6 @@
     dest: /etc/systemd/system/crio.service
     regexp: "/usr/local/bin/crio"
     replace: "{{ bin_dir }}/crio"
-  notify: Restart crio
-
-- name: Cri-o | copy default policy
-  copy:
-    src: "{{ local_release_dir }}/cri-o/contrib/policy.json"
-    dest: /etc/containers/policy.json
-    mode: "0755"
-    remote_src: true
   notify: Restart crio
 
 - name: Cri-o | copy mounts.conf

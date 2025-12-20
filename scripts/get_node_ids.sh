@@ -51,5 +51,8 @@ gh api graphql -H "X-Github-Next-Global-ID: 1" -f query='{
     argocd: repository(owner: "argoproj", name: "argo-cd") {
     id
     }
+    gateway_api: repository(owner: "kubernetes-sigs", name: "gateway-api") {
+    id
+    }
 
 }'

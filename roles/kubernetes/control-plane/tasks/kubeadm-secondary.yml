@@ -98,3 +98,18 @@
   when:
     - inventory_hostname != first_kube_control_plane
     - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists
+
+- name: Wait for new control plane nodes to be Ready
+  when: kubeadm_already_run.stat.exists
+  run_once: true
+  command: >
+    {{ kubectl }} get nodes --selector node-role.kubernetes.io/control-plane
+    -o jsonpath-as-json="{.items[*].status.conditions[?(@.type == 'Ready')]}"
+  register: control_plane_node_ready_conditions
+  retries: "{{ control_plane_node_become_ready_tries }}"
+  delay: 5
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  until: >
+    control_plane_node_ready_conditions.stdout
+    | from_json | selectattr('status', '==', 'True')
+    | length == (groups['kube_control_plane'] | length)

@@ -91,16 +91,19 @@
     command: "{{ bin_dir }}/kubectl rollout status deploy --namespace test agnhost --timeout=180s"
     changed_when: false
   - name: Get pod names
-    command: "{{ bin_dir }}/kubectl get pods -n test -o json"
+    command: "{{ bin_dir }}/kubectl get pods -n test --field-selector status.phase=Running -o json"
     changed_when: false
     register: pods_json
 
   - name: Check pods IP are in correct network
     assert:
-      that: pods
-            | selectattr('status.phase', '==', 'Running')
-            | selectattr('status.podIP', 'ansible.utils.in_network', kube_pods_subnet)
-            | length == 2
+      that:
+      - not ipv4_stack or
+        (pods | map(attribute='status.podIPs') | flatten | map(attribute='ip')
+          | select('ansible.utils.in_network', kube_pods_subnet)) | length == 2
+      - not ipv6_stack or
+        (pods | map(attribute='status.podIPs') | flatten | map(attribute='ip')
+        | select('ansible.utils.in_network', kube_pods_subnet_ipv6)) | length == 2
 
   - name: Curl between pods is working
     command: "{{ bin_dir }}/kubectl -n test exec {{ item[0].metadata.name }} -- curl {{ item[1].status.podIP | ansible.utils.ipwrap}}:8080"

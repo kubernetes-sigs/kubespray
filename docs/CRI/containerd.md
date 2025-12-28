@@ -65,9 +65,8 @@ In kubespray, the default runtime name is "runc", and it can be configured with 
 containerd_runc_runtime:
   name: runc
   type: "io.containerd.runc.v2"
-  engine: ""
-  root: ""
   options:
+    Root: ""
     SystemdCgroup: "false"
     BinaryName: /usr/local/bin/my-runc
   base_runtime_spec: cri-base.json

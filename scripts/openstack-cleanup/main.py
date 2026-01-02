@@ -72,6 +72,13 @@ def main():
         if not n.is_router_external:
             fn_if_old(conn.network.delete_network, n)
 
+    log.info("Deleting keypairs...")
+    map_if_old(
+        conn.compute.delete_keypair,
+        (conn.compute.get_keypair(x.name) for x in conn.compute.keypairs()),
+        # LIST API for keypairs does not give us a created_at (WTF)
+    )
+
 
 # runs the given fn to all elements of the that are older than allowed
 def map_if_old(fn, items):

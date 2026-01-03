@@ -95,7 +95,7 @@ vagrant up
 - **openSUSE** Leap 15.x/Tumbleweed
 - **Oracle Linux** [9, 10](docs/operating_systems/rhel.md#rhel-8)
 - **Alma Linux** [9, 10](docs/operating_systems/rhel.md#rhel-8)
-- **Rocky Linux** [9, 10](docs/operating_systems/rhel.md#rhel-8)
+- **Rocky Linux** [9, 10](docs/operating_systems/rhel.md#rhel-8) (experimental in 10: see [Rocky Linux 10 notes](docs/operating_systems/rhel.md#rocky-linux-10))
 - **Kylin Linux Advanced Server V10** (experimental: see [kylin linux notes](docs/operating_systems/kylinlinux.md))
 - **Amazon Linux 2** (experimental: see [amazon linux notes](docs/operating_systems/amazonlinux.md))
 - **UOS Linux** (experimental: see [uos linux notes](docs/operating_systems/uoslinux.md))

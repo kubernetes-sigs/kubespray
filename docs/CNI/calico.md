@@ -425,6 +425,7 @@ The following OSes will require enabling the EPEL repo in order to bring in wire
 * AlmaLinux 8
 * Rocky Linux 8
 * Amazon Linux 2
+* Navix 9
 
 ```yaml
 epel_enabled: true

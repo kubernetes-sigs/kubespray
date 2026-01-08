@@ -81,6 +81,13 @@ The cloud provider is configured to have Octavia by default in Kubespray.
   external_openstack_lbaas_monitor_max_retries: 1
   external_openstack_lbaas_monitor_timeout: 3s
   external_openstack_lbaas_internal_lb: false
+  external_openstack_lbaas_classes:
+    - name: my-class
+      network_id: "Neutron network ID to create LBaaS VIP"
+      subnet_id: "Neutron subnet ID to create LBaaS VIP"
+      floating_network_id: "Neutron network ID to get floating IP from"
+      floating_subnet_id: "Neutron subnet ID to get floating IP from"
+      member_subnet_id: "Neutron subnet ID on which to create the members of the load balancer"
 
   ```
 

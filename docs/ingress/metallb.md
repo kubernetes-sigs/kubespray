@@ -21,6 +21,12 @@ metallb_enabled: true
 metallb_speaker_enabled: true
 ```
 
+By default, MetalLB resources are deployed into the `metallb-system` namespace. You can override this namespace using a variable.
+
+```yaml
+metallb_namespace: woodenlb-system
+```
+
 By default only the MetalLB BGP speaker is allowed to run on control plane nodes. If you have a single node cluster or a cluster where control plane are also worker nodes you may need to enable tolerations for the MetalLB controller:
 
 ```yaml

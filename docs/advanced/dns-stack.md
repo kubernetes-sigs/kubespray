@@ -50,6 +50,160 @@ is not set, a default resolver is chosen (depending on cloud provider or 8.8.8.8
 DNS servers to be added *after* the cluster DNS. Used by all ``resolvconf_mode`` modes. These serve as backup
 DNS servers in early cluster deployment when no cluster DNS is available yet.
 
+#### Format
+
+The `upstream_dns_servers` variable supports multiple formats:
+
+1. **Simple format**: Plain IP addresses (fully supported, legacy compatible)
+
+```yaml
+upstream_dns_servers:
+  - 8.8.8.8
+  - 8.8.4.4
+```
+
+2. **DNS over TLS format**: Using `tls://` prefix with SNI
+
+```yaml
+upstream_dns_servers:
+  - tls://8.8.8.8#dns.google
+  - tls://1.1.1.1#cloudflare-dns.com
+```
+
+3. **Mixed format**: Combining plain and TLS servers
+
+```yaml
+upstream_dns_servers:
+  - tls://8.8.8.8#dns.google         # Public DNS with TLS
+  - 192.168.1.1                      # Local DNS without TLS
+  - 10.0.0.53:5353                  # Custom port
+```
+
+#### Format Syntax
+
+- **Plain DNS**: `8.8.8.8` (port 53 by default)
+- **Plain with custom port**: `8.8.8.8:5353`
+- **DNS over TLS**: `tls://8.8.8.8#sni` (port 853 by default)
+- **TLS with custom port**: `tls://8.8.8.8:8853#sni`
+- **TLS without SNI**: `tls://8.8.8.8` (SNI derived from IP)
+
+#### DNS over TLS Support
+
+DNS over TLS is supported in CoreDNS and NodeLocalDNS:
+
+- **CoreDNS**: Uses `tls://` prefix in forward plugin and `tls_servername` option
+- **NodeLocalDNS**: Same as CoreDNS (uses CoreDNS under the hood)
+
+#### Important - DNS server protocol support
+
+When using DNS over TLS, you must configure Kubespray according to your DNS servers' capabilities:
+
+#### 1. DoT-only servers (port 853 only - RECOMMENDED for security)
+
+If your DNS servers ONLY support DNS over TLS and do NOT support plain DNS on port 53:
+
+```yaml
+dns_upstream_tls_only: true
+resolvconf_mode: none
+upstream_dns_servers:
+  - tls://8.8.8.8#dns.google
+  - tls://1.1.1.1#cloudflare-dns.com
+```
+
+This configuration:
+
+- Enforces `resolvconf_mode: none` (validation will fail otherwise)
+- Host `/etc/resolv.conf` is not managed by Kubespray
+- Pods use CoreDNS/NodeLocalDNS with TLS exclusively
+- Consistent security policy across the entire cluster
+
+#### 2. Dual-protocol servers (both port 53 and 853)
+
+If your DNS servers support BOTH plain DNS (port 53) AND DNS over TLS (port 853):
+
+```yaml
+dns_upstream_tls_only: false  # or omit (default)
+resolvconf_mode: host_resolvconf  # or docker_dns
+upstream_dns_servers:
+  - tls://8.8.8.8#dns.google
+  - tls://1.1.1.1#cloudflare-dns.com
+```
+
+This configuration:
+
+- Host uses plain DNS (port 53) in `/etc/resolv.conf`
+- Pods use CoreDNS/NodeLocalDNS with TLS (port 853)
+- More flexible but less secure for host systems
+
+**Summary table:**
+
+| DNS Server Support | `dns_upstream_tls_only` | `resolvconf_mode` | Host DNS | Pod DNS |
+|-------------------|------------------------|-------------------|----------|---------|
+| DoT only (853) | `true` | `none` | User-managed | TLS (853) |
+| Both (53 + 853) | `false` / omit | `host_resolvconf` / `docker_dns` | Plain (53) | TLS (853) |
+| Both (53 + 853) | `false` / omit | `none` | User-managed | TLS (853) |
+
+When using DNS over TLS:
+
+- Port defaults to 853 if not specified
+- Each server can have a unique SNI (Server Name Indication)
+- CoreDNS and NodeLocalDNS validate the TLS certificate using the SNI
+- Servers with different SNI are placed in separate forward blocks
+- systemd-resolved automatically detects the configuration and applies the appropriate TLS mode
+- By default, the system trust store is used for certificate validation
+
+**Internal PKI Support:**
+
+CoreDNS and NodeLocalDNS pods automatically mount the system CA bundle from the host to validate TLS certificates. By default, the system CA bundle is mounted from:
+
+- Debian/Ubuntu: `/etc/ssl/certs/ca-certificates.crt`
+- RHEL/CentOS/Rocky/AlmaLinux: `/etc/pki/tls/certs/ca-bundle.crt`
+- openSUSE/SLES: `/etc/ssl/ca-bundle.pem`
+
+The correct path is automatically detected based on your OS distribution.
+
+If you need to use a specific CA bundle file instead:
+
+```yaml
+dns_upstream_tls_ca_file: /etc/ssl/certs/internal-ca-bundle.crt
+```
+
+This is only needed if you have a specific CA bundle that is different from the system default.
+
+#### Examples
+
+**Google DNS over TLS:**
+
+```yaml
+upstream_dns_servers:
+  - tls://8.8.8.8#dns.google
+  - tls://8.8.4.4#dns.google
+```
+
+**Cloudflare DNS over TLS:**
+
+```yaml
+upstream_dns_servers:
+  - tls://1.1.1.1#cloudflare-dns.com
+  - tls://1.0.0.1#cloudflare-dns.com
+```
+
+**Quad9 DNS over TLS:**
+
+```yaml
+upstream_dns_servers:
+  - tls://9.9.9.9#dns.quad9.net
+```
+
+**Mixed configuration** (plain and TLS):
+
+```yaml
+upstream_dns_servers:
+  - tls://1.1.1.1#cloudflare-dns.com
+  - 192.168.1.1              # Local DNS without TLS
+  - 10.0.0.53:5353          # Custom port
+```
+
 ### dns_upstream_forward_extra_opts
 
 Whether or not upstream DNS servers come from `upstream_dns_servers` variable or /etc/resolv.conf, related forward block in coredns (and nodelocaldns) configuration can take options (see <https://coredns.io/plugins/forward/> for details).

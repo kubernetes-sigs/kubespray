@@ -78,6 +78,11 @@ spec:
           mountPath: /etc/coredns
         - name: xtables-lock
           mountPath: /run/xtables.lock
+{% if dns_upstream_use_tls %}
+        - name: tls-ca-volume
+          mountPath: /etc/ssl/certs
+          readOnly: true
+{% endif %}
         lifecycle:
           preStop:
             exec:
@@ -100,6 +105,12 @@ spec:
           hostPath:
             path: /run/xtables.lock
             type: FileOrCreate
+{% if dns_upstream_use_tls %}
+        - name: tls-ca-volume
+          hostPath:
+            path: {{ dns_upstream_tls_ca_file if dns_upstream_tls_ca_file else '/etc/ssl/certs' }}
+            type: {{ 'File' if dns_upstream_tls_ca_file else 'Directory' }}
+{% endif %}
       # Implement a time skew between the main nodelocaldns and this secondary.
       # Since the two nodelocaldns instances share the :53 port, we want to keep
       # at least one running at any time even if the manifests are replaced simultaneously

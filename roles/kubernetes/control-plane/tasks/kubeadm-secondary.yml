@@ -25,7 +25,7 @@
 - name: Parse certificate key if not set
   set_fact:
     kubeadm_certificate_key: "{{ hostvars[groups['kube_control_plane'][0]]['kubeadm_upload_cert'].stdout_lines[-1] | trim }}"
-  run_once: yes
+  run_once: true
   when:
     - hostvars[groups['kube_control_plane'][0]]['kubeadm_upload_cert'] is defined
     - hostvars[groups['kube_control_plane'][0]]['kubeadm_upload_cert'] is not skipped
@@ -34,8 +34,8 @@
   template:
     src: "kubeadm-controlplane.{{ kubeadmConfig_api_version }}.yaml.j2"
     dest: "{{ kube_config_dir }}/kubeadm-controlplane.yaml"
-    mode: 0640
-    backup: yes
+    mode: "0640"
+    backup: true
   when:
     - inventory_hostname != first_kube_control_plane
     - not kubeadm_already_run.stat.exists
@@ -62,6 +62,26 @@
     - inventory_hostname != first_kube_control_plane
     - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists
     - not kube_external_ca_mode
+
+- name: Get kubeconfig for join discovery process
+  command: "{{ kubectl }} -n kube-public get cm cluster-info -o jsonpath='{.data.kubeconfig}'"
+  register: kubeconfig_file_discovery
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'] | first }}"
+  when:
+    - kubeadm_use_file_discovery
+    - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists
+
+- name: Copy discovery kubeconfig
+  copy:
+    dest: "{{ kube_config_dir }}/cluster-info-discovery-kubeconfig.yaml"
+    content: "{{ kubeconfig_file_discovery.stdout }}"
+    owner: "root"
+    mode: "0644"
+  when:
+    - inventory_hostname != first_kube_control_plane
+    - kubeadm_use_file_discovery
+    - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists
 
 - name: Joining control plane node to the cluster.
   command: >-

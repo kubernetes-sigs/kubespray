@@ -30,11 +30,11 @@
           Pin-Priority: 1001
         dest: "/etc/apt/preferences.d/libseccomp2"
         owner: "root"
-        mode: 0644
+        mode: "0644"
 
 - name: Update package management cache (APT)
   apt:
-    update_cache: yes
+    update_cache: true
     cache_valid_time: 3600
   when: ansible_os_family == "Debian"
   tags:
@@ -48,20 +48,6 @@
     - ansible_os_family == "RedHat"
     - not is_fedora_coreos
 
-- name: Install python3-dnf for latest RedHat versions
-  command: dnf install -y python3-dnf
-  register: dnf_task_result
-  until: dnf_task_result is succeeded
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  when:
-    - ansible_distribution == "Fedora"
-    - ansible_distribution_major_version | int >= 30
-    - not is_fedora_coreos
-  changed_when: False
-  tags:
-    - bootstrap-os
-
 - name: Install epel-release on RHEL derivatives
   package:
     name: epel-release
@@ -73,27 +59,29 @@
   tags:
     - bootstrap-os
 
-- name: Update common_required_pkgs with ipvsadm when kube_proxy_mode is ipvs
-  set_fact:
-    common_required_pkgs: "{{ common_required_pkgs | default([]) + ['ipvsadm', 'ipset'] }}"
-  when: kube_proxy_mode == 'ipvs'
-
 - name: Install packages requirements
+  vars:
+    # The json_query for selecting packages name is split for readability
+    # see files/pkgs-schema.json for the structure of `pkgs`
+    # and the matching semantics
+    full_query: "[? value | (enabled == null || enabled) && ( {{ filters_os }} ) && ( {{ filters_groups }} ) ].key"
+    filters_groups: "groups | @ == null || [? contains(`{{ group_names }}`, @)]"
+    filters_os: "os == null || (os | ( {{ filters_family }} ) || ( {{ filters_distro }} ))"
+    dquote: !unsafe '"'
+    # necessary to workaround Ansible escaping
+    filters_distro: "distributions.{{ dquote }}{{ ansible_distribution  }}{{ dquote }} |
+                          @ == `{}` ||
+                          contains(not_null(major_versions, `[]`), '{{ ansible_distribution_major_version }}') ||
+                          contains(not_null(versions, `[]`), '{{ ansible_distribution_version }}') ||
+                          contains(not_null(releases, `[]`), '{{ ansible_distribution_release }}')"
+    filters_family: "families && contains(families, '{{ ansible_os_family }}')"
   package:
-    name: "{{ required_pkgs | default([]) | union(common_required_pkgs | default([])) }}"
+    name: "{{ pkgs | dict2items | to_json|from_json | community.general.json_query(full_query) }}"
     state: present
   register: pkgs_task_result
   until: pkgs_task_result is succeeded
   retries: "{{ pkg_install_retries }}"
   delay: "{{ retry_stagger | random + 3 }}"
-  when: not (ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk", "ClearLinux"] or is_fedora_coreos)
+  when: not (ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] or is_fedora_coreos)
   tags:
     - bootstrap-os
-
-- name: Install ipvsadm for ClearLinux
-  package:
-    name: ipvsadm
-    state: present
-  when:
-    - ansible_os_family in ["ClearLinux"]
-    - kube_proxy_mode == 'ipvs'

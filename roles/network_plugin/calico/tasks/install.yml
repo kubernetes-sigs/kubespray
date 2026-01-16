@@ -13,14 +13,14 @@
   copy:
     src: "{{ downloads.calicoctl.dest }}"
     dest: "{{ bin_dir }}/calicoctl"
-    mode: 0755
-    remote_src: yes
+    mode: "0755"
+    remote_src: true
 
 - name: Calico | Create calico certs directory
   file:
     dest: "{{ calico_cert_dir }}"
     state: directory
-    mode: 0750
+    mode: "0750"
     owner: root
     group: root
   when: calico_datastore == "etcd"
@@ -30,8 +30,8 @@
     src: "{{ etcd_cert_dir }}/{{ item.s }}"
     dest: "{{ calico_cert_dir }}/{{ item.d }}"
     state: hard
-    mode: 0640
-    force: yes
+    mode: "0640"
+    force: true
   with_items:
     - {s: "{{ kube_etcd_cacert_file }}", d: "ca_cert.crt"}
     - {s: "{{ kube_etcd_cert_file }}", d: "cert.crt"}
@@ -54,14 +54,14 @@
   template:
     src: "calicoctl.{{ calico_datastore }}.sh.j2"
     dest: "{{ bin_dir }}/calicoctl.sh"
-    mode: 0755
+    mode: "0755"
     owner: root
     group: root
 
 - name: Calico | wait for etcd
   uri:
     url: "{{ etcd_access_addresses.split(',') | first }}/health"
-    validate_certs: no
+    validate_certs: false
     client_cert: "{{ calico_cert_dir }}/cert.crt"
     client_key: "{{ calico_cert_dir }}/key.pem"
   register: result
@@ -142,7 +142,7 @@
       assemble:
         src: "{{ calico_kdd_path }}"
         dest: "{{ kube_config_dir }}/kdd-crds.yml"
-        mode: 0644
+        mode: "0644"
         delimiter: "---\n"
         regexp: ".*\\.yaml"
         remote_src: true
@@ -165,8 +165,8 @@
     - name: Calico | Get existing FelixConfiguration
       command: "{{ bin_dir }}/calicoctl.sh get felixconfig default -o json"
       register: _felix_cmd
-      ignore_errors: True
-      changed_when: False
+      ignore_errors: true
+      changed_when: false
 
     - name: Calico | Set kubespray FelixConfiguration
       set_fact:
@@ -201,7 +201,7 @@
       command:
         cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
         stdin: "{{ _felix_config is string | ternary(_felix_config, _felix_config | to_json) }}"
-      changed_when: False
+      changed_when: false
 
 - name: Calico | Configure Calico IP Pool
   when:
@@ -210,8 +210,8 @@
     - name: Calico | Get existing calico network pool
       command: "{{ bin_dir }}/calicoctl.sh get ippool {{ calico_pool_name }} -o json"
       register: _calico_pool_cmd
-      ignore_errors: True
-      changed_when: False
+      ignore_errors: true
+      changed_when: false
 
     - name: Calico | Set kubespray calico network pool
       set_fact:
@@ -251,7 +251,7 @@
       command:
         cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
         stdin: "{{ _calico_pool is string | ternary(_calico_pool, _calico_pool | to_json) }}"
-      changed_when: False
+      changed_when: false
 
 - name: Calico | Configure Calico IPv6 Pool
   when:
@@ -261,8 +261,8 @@
     - name: Calico | Get existing calico ipv6 network pool
       command: "{{ bin_dir }}/calicoctl.sh get ippool {{ calico_pool_name }}-ipv6 -o json"
       register: _calico_pool_ipv6_cmd
-      ignore_errors: True
-      changed_when: False
+      ignore_errors: true
+      changed_when: false
 
     - name: Calico | Set kubespray calico network pool
       set_fact:
@@ -302,19 +302,19 @@
       command:
         cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
         stdin: "{{ _calico_pool_ipv6 is string | ternary(_calico_pool_ipv6, _calico_pool_ipv6 | to_json) }}"
-      changed_when: False
+      changed_when: false
 
 - name: Populate Service External IPs
   set_fact:
     _service_external_ips: "{{ _service_external_ips | default([]) + [{'cidr': item}] }}"
   with_items: "{{ calico_advertise_service_external_ips }}"
-  run_once: yes
+  run_once: true
 
 - name: Populate Service LoadBalancer IPs
   set_fact:
     _service_loadbalancer_ips: "{{ _service_loadbalancer_ips | default([]) + [{'cidr': item}] }}"
   with_items: "{{ calico_advertise_service_loadbalancer_ips }}"
-  run_once: yes
+  run_once: true
 
 - name: "Determine nodeToNodeMesh needed state"
   set_fact:
@@ -322,7 +322,7 @@
   when:
     - peer_with_router | default(false) or peer_with_calico_rr | default(false)
     - inventory_hostname in groups['k8s_cluster']
-  run_once: yes
+  run_once: true
 
 - name: Calico | Configure Calico BGP
   when:
@@ -331,8 +331,8 @@
     - name: Calico | Get existing BGP Configuration
       command: "{{ bin_dir }}/calicoctl.sh get bgpconfig default -o json"
       register: _bgp_config_cmd
-      ignore_errors: True
-      changed_when: False
+      ignore_errors: true
+      changed_when: false
 
     - name: Calico | Set kubespray BGP Configuration
       set_fact:
@@ -366,13 +366,13 @@
       command:
         cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
         stdin: "{{ _bgp_config is string | ternary(_bgp_config, _bgp_config | to_json) }}"
-      changed_when: False
+      changed_when: false
 
 - name: Calico | Create calico manifests
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: 0644
+    mode: "0644"
   with_items:
     - {name: calico-config, file: calico-config.yml, type: cm}
     - {name: calico-node, file: calico-node.yml, type: ds}
@@ -389,7 +389,7 @@
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: 0644
+    mode: "0644"
   with_items:
     - {name: calico, file: calico-typha.yml, type: typha}
   register: calico_node_typha_manifest
@@ -416,7 +416,7 @@
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: 0644
+    mode: "0644"
   with_items:
     - {name: calico, file: calico-apiserver.yml, type: calico-apiserver}
   register: calico_apiserver_manifest
@@ -469,7 +469,7 @@
   template:
     src: "{{ item.file }}.j2"
     dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: 0644
+    mode: "0644"
   with_items:
     - {name: calico, file: calico-ipamconfig.yml, type: ipam}
   when:

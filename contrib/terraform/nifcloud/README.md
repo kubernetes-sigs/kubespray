@@ -72,6 +72,7 @@ The setup looks like following
 
   ```bash
   ./generate-inventory.sh > sample-inventory/inventory.ini
+  ```
 
 * Export Variables:
 

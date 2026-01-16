@@ -1,40 +1,32 @@
 ---
-.build:
+.build-container:
+  cache:
+    key: $CI_COMMIT_REF_SLUG
+    paths:
+      - image-cache
+  tags:
+    - ffci
   stage: build
   image:
-    name: moby/buildkit:rootless
-    entrypoint: [""]
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: ['']
   variables:
-    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
+    TAG: $CI_COMMIT_SHORT_SHA
+    PROJECT_DIR: $CI_PROJECT_DIR
+    DOCKERFILE: Dockerfile
+    GODEBUG: "http2client=0"
   before_script:
-    - mkdir ~/.docker
-    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > ~/.docker/config.json
-
-pipeline image:
-  extends: .build
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n ${CI_REGISTRY_USER}:${CI_REGISTRY_PASSWORD} | base64)\"}}}" > /kaniko/.docker/config.json
   script:
-    - |
-      buildctl-daemonless.sh build \
-        --frontend=dockerfile.v0 \
-        --local context=. \
-        --local dockerfile=. \
-        --opt filename=./pipeline.Dockerfile \
-        --output type=image,name=$PIPELINE_IMAGE,push=true \
-        --import-cache type=registry,ref=$CI_REGISTRY_IMAGE/pipeline:cache
-  rules:
-    - if: '$CI_COMMIT_REF_NAME != $CI_DEFAULT_BRANCH'
+    - /kaniko/executor --cache=true
+                       --cache-dir=image-cache
+                       --context $PROJECT_DIR
+                       --dockerfile $PROJECT_DIR/$DOCKERFILE
+                       --label 'git-branch'=$CI_COMMIT_REF_SLUG
+                       --label 'git-tag=$CI_COMMIT_TAG'
+                       --destination $PIPELINE_IMAGE
 
-pipeline image and build cache:
-  extends: .build
-  script:
-    - |
-      buildctl-daemonless.sh build \
-        --frontend=dockerfile.v0 \
-        --local context=. \
-        --local dockerfile=. \
-        --opt filename=./pipeline.Dockerfile \
-        --output type=image,name=$PIPELINE_IMAGE,push=true \
-        --import-cache type=registry,ref=$CI_REGISTRY_IMAGE/pipeline:cache \
-        --export-cache type=registry,ref=$CI_REGISTRY_IMAGE/pipeline:cache,mode=max
-  rules:
-    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+pipeline-image:
+  extends: .build-container
+  variables:
+    DOCKERFILE: pipeline.Dockerfile

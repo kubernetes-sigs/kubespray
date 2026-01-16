@@ -23,14 +23,18 @@ kubelet_kubelet_cgroups_cgroupfs: "/system.slice/kubelet.service"
 # Set systemd service hardening features
 kubelet_systemd_hardening: false
 
+# Kubelet service dependencies other than container runtime
+kubelet_systemd_wants_dependencies: []
+
 # List of secure IPs for kubelet
-kubelet_secure_addresses: >-
-  {%- for host in groups['kube_control_plane'] -%}
+kube_node_addresses: >-
+  {%- for host in (groups['kube_control_plane'] + groups['kube_node'] + groups['etcd']) | unique -%}
     {{ hostvars[host]['ip'] | default(fallback_ips[host]) }}{{ ' ' if not loop.last else '' }}
   {%- endfor -%}
+kubelet_secure_addresses: "localhost link-local {{ kube_pods_subnet }} {{ kube_node_addresses }}"
 
 # Reserve this space for kube resources
-# Set to true to reserve resources for kube daemons
+# Whether to run kubelet and container-engine daemons in a dedicated cgroup. (Not required for resource reservations).
 kube_reserved: false
 kube_reserved_cgroups_for_service_slice: kube.slice
 kube_reserved_cgroups: "/{{ kube_reserved_cgroups_for_service_slice }}"
@@ -66,14 +70,16 @@ eviction_hard_control_plane: {}
 kubelet_status_update_frequency: 10s
 
 # kube-vip
-kube_vip_version: v0.5.12
+kube_vip_version: v0.8.0
 
 kube_vip_arp_enabled: false
 kube_vip_interface:
 kube_vip_services_interface:
 kube_vip_cidr: 32
+kube_vip_dns_mode: first
 kube_vip_controlplane_enabled: false
 kube_vip_ddns_enabled: false
+kube_vip_cp_detect: false
 kube_vip_services_enabled: false
 kube_vip_leader_election_enabled: "{{ kube_vip_arp_enabled }}"
 kube_vip_bgp_enabled: false
@@ -87,6 +93,12 @@ kube_vip_address:
 kube_vip_enableServicesElection: false
 kube_vip_lb_enable: false
 kube_vip_lb_fwdmethod: local
+kube_vip_leasename: plndr-cp-lock
+kube_vip_svc_leasename: plndr-svcs-lock
+kube_vip_leaseduration: 5
+kube_vip_renewdeadline: 3
+kube_vip_retryperiod: 1
+kube_vip_enable_node_labeling: false
 
 # Requests for load balancer app
 loadbalancer_apiserver_memory_requests: 32M
@@ -259,3 +271,6 @@ conntrack_modules:
 kubelet_tracing: false
 kubelet_tracing_endpoint: 0.0.0.0:4317
 kubelet_tracing_sampling_rate_per_million: 100
+
+# The maximum number of image pulls in parallel. Set it to a integer great than 1 to enable image pulling in parallel.
+kubelet_max_parallel_image_pulls: 1

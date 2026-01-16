@@ -35,8 +35,8 @@
   unarchive:
     src: "{{ downloads.containerd.dest }}"
     dest: "{{ containerd_bin_dir }}"
-    mode: 0755
-    remote_src: yes
+    mode: "0755"
+    remote_src: true
     extra_opts:
       - --strip-components=1
   notify: Restart containerd
@@ -60,7 +60,7 @@
   template:
     src: containerd.service.j2
     dest: /etc/systemd/system/containerd.service
-    mode: 0644
+    mode: "0644"
     validate: "sh -c '[ -f /usr/bin/systemd/system/factory-reset.target ] || exit 0 && systemd-analyze verify %s:containerd.service'"
     # FIXME: check that systemd version >= 250 (factory-reset.target was introduced in that release)
     # Remove once we drop support for systemd < 250
@@ -70,7 +70,7 @@
   file:
     dest: "{{ item }}"
     state: directory
-    mode: 0755
+    mode: "0755"
     owner: root
     group: root
   with_items:
@@ -83,7 +83,7 @@
   template:
     src: http-proxy.conf.j2
     dest: "{{ containerd_systemd_dir }}/http-proxy.conf"
-    mode: 0644
+    mode: "0644"
   notify: Restart containerd
   when: http_proxy is defined or https_proxy is defined
 
@@ -102,7 +102,7 @@
     content: "{{ item.value }}"
     dest: "{{ containerd_cfg_dir }}/{{ item.key }}"
     owner: "root"
-    mode: 0644
+    mode: "0644"
   with_dict: "{{ containerd_base_runtime_specs | default({}) }}"
   notify: Restart containerd
 
@@ -111,7 +111,7 @@
     src: config.toml.j2
     dest: "{{ containerd_cfg_dir }}/config.toml"
     owner: "root"
-    mode: 0640
+    mode: "0640"
   notify: Restart containerd
 
 - name: Containerd | Configure containerd registries
@@ -121,13 +121,13 @@
       file:
         path: "{{ containerd_cfg_dir }}/certs.d/{{ item.prefix }}"
         state: directory
-        mode: 0755
+        mode: "0755"
       loop: "{{ containerd_registries_mirrors }}"
     - name: Containerd | Write hosts.toml file
       template:
         src: hosts.toml.j2
         dest: "{{ containerd_cfg_dir }}/certs.d/{{ item.prefix }}/hosts.toml"
-        mode: 0640
+        mode: "0640"
       loop: "{{ containerd_registries_mirrors }}"
 
 # you can sometimes end up in a state where everything is installed
@@ -136,8 +136,8 @@
   meta: flush_handlers
 
 - name: Containerd | Ensure containerd is started and enabled
-  systemd:
+  systemd_service:
     name: containerd
-    daemon_reload: yes
-    enabled: yes
+    daemon_reload: true
+    enabled: true
     state: started

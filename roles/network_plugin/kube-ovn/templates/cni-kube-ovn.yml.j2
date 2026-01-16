@@ -1,4 +1,190 @@
 ---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: ovn-vpc-nat-config
+  namespace: kube-system
+  annotations:
+    kubernetes.io/description: |
+      kube-ovn vpc-nat common config
+data:
+  image: {{ kube_ovn_vpc_container_image_repo }}:{{ kube_ovn_vpc_container_image_tag }}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: ovn-vpc-nat-gw-config
+  namespace: kube-system
+data:
+  enable-vpc-nat-gw: "true"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-ovn-cni
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.k8s.io/system-only: "true"
+  name: system:kube-ovn-cni
+rules:
+  - apiGroups:
+      - "kubeovn.io"
+    resources:
+      - subnets
+      - vlans
+      - provider-networks
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+      - "kubeovn.io"
+    resources:
+      - ovn-eips
+      - ovn-eips/status
+      - nodes
+      - pods
+      - vlans
+    verbs:
+      - get
+      - list
+      - patch
+      - watch
+  - apiGroups:
+      - "kubeovn.io"
+    resources:
+      - ips
+    verbs:
+      - get
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-ovn-cni
+roleRef:
+  name: system:kube-ovn-cni
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: kube-ovn-cni
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kube-ovn-cni
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: kube-ovn-cni
+    namespace: kube-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-ovn-app
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.k8s.io/system-only: "true"
+  name: system:kube-ovn-app
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - nodes
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - apps
+    resources:
+      - daemonsets
+    verbs:
+      - get
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-ovn-app
+roleRef:
+  name: system:kube-ovn-app
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: kube-ovn-app
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kube-ovn-app
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: kube-ovn-app
+    namespace: kube-system
+---
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -25,8 +211,20 @@ spec:
         type: infra
     spec:
       tolerations:
-      - operator: Exists
+        - effect: NoSchedule
+          operator: Exists
+        - key: CriticalAddonsOnly
+          operator: Exists
       affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: "ovn.kubernetes.io/ic-gw"
+                operator: NotIn
+                values:
+                - "true"
+            weight: 100
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
@@ -67,7 +265,12 @@ spec:
           - --log_file_max_size=0
           - --enable-lb-svc=false
           - --keep-vm-ip={{ kube_ovn_keep_vm_ip }}
-          - --pod-default-fip-type=""
+          securityContext:
+            runAsUser: 0
+            privileged: false
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
           env:
             - name: ENABLE_SSL
               value: "{{ kube_ovn_enable_ssl | lower }}"
@@ -85,6 +288,10 @@ spec:
                   fieldPath: spec.nodeName
             - name: OVN_DB_IPS
               value: "{{ kube_ovn_central_ips }}"
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: POD_IPS
               valueFrom:
                 fieldRef:
@@ -96,18 +303,24 @@ spec:
               name: localtime
             - mountPath: /var/log/kube-ovn
               name: kube-ovn-log
+            - mountPath: /var/log/ovn
+              name: ovn-log
             - mountPath: /var/run/tls
               name: kube-ovn-tls
           readinessProbe:
             exec:
               command:
-                - /kube-ovn/kube-ovn-controller-healthcheck
+                - /kube-ovn/kube-ovn-healthcheck
+                - --port=10660
+                - --tls=false
             periodSeconds: 3
             timeoutSeconds: 45
           livenessProbe:
             exec:
               command:
-                - /kube-ovn/kube-ovn-controller-healthcheck
+                - /kube-ovn/kube-ovn-healthcheck
+                - --port=10660
+                - --tls=false
             initialDelaySeconds: 300
             periodSeconds: 7
             failureThreshold: 5
@@ -128,6 +341,9 @@ spec:
         - name: kube-ovn-log
           hostPath:
             path: /var/log/kube-ovn
+        - name: ovn-log
+          hostPath:
+            path: /var/log/ovn
         - name: kube-ovn-tls
           secret:
             optional: true
@@ -161,7 +377,7 @@ spec:
         - key: CriticalAddonsOnly
           operator: Exists
       priorityClassName: system-node-critical
-      serviceAccountName: ovn
+      serviceAccountName: kube-ovn-cni
       hostNetwork: true
       hostPID: true
       initContainers:
@@ -202,7 +418,13 @@ spec:
           - --log_file_max_size=0
         securityContext:
           runAsUser: 0
-          privileged: true
+          privileged: false
+          capabilities:
+            add:
+              - NET_ADMIN
+              - NET_BIND_SERVICE
+              - NET_RAW
+              - SYS_ADMIN
         env:
           - name: ENABLE_SSL
             value: "{{ kube_ovn_enable_ssl | lower }}"
@@ -231,14 +453,15 @@ spec:
             mountPath: /lib/modules
             readOnly: true
           - name: shared-dir
-            mountPath: /var/lib/kubelet/pods
+            mountPath: $KUBELET_DIR/pods
           - mountPath: /etc/openvswitch
             name: systemid
+            readOnly: true
           - mountPath: /etc/cni/net.d
             name: cni-conf
           - mountPath: /run/openvswitch
             name: host-run-ovs
-            mountPropagation: Bidirectional
+            mountPropagation: HostToContainer
           - mountPath: /run/ovn
             name: host-run-ovn
           - mountPath: /host/var/run/dbus
@@ -255,6 +478,7 @@ spec:
             name: host-log-ovn
           - mountPath: /etc/localtime
             name: localtime
+            readOnly: true
           - mountPath: /tmp
             name: tmp
         livenessProbe:
@@ -262,17 +486,22 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 7
           successThreshold: 1
-          tcpSocket:
-            port: 10665
-          timeoutSeconds: 3
+          exec:
+            command:
+              - /kube-ovn/kube-ovn-healthcheck
+              - --port=10665
+              - --tls=false
+          timeoutSeconds: 5
         readinessProbe:
           failureThreshold: 3
-          initialDelaySeconds: 30
           periodSeconds: 7
           successThreshold: 1
-          tcpSocket:
-            port: 10665
-          timeoutSeconds: 3
+          exec:
+            command:
+              - /kube-ovn/kube-ovn-healthcheck
+              - --port=10665
+              - --tls=false
+          timeoutSeconds: 5
         resources:
           requests:
             cpu: {{ kube_ovn_cni_server_cpu_request }}
@@ -389,28 +618,23 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
-            - mountPath: /lib/modules
-              name: host-modules
-              readOnly: true
-            - mountPath: /run/openvswitch
-              name: host-run-ovs
             - mountPath: /var/run/openvswitch
               name: host-run-ovs
             - mountPath: /var/run/ovn
               name: host-run-ovn
-            - mountPath: /sys
-              name: host-sys
-              readOnly: true
             - mountPath: /etc/openvswitch
               name: host-config-openvswitch
             - mountPath: /var/log/openvswitch
               name: host-log-ovs
+              readOnly: true
             - mountPath: /var/log/ovn
               name: host-log-ovn
+              readOnly: true
             - mountPath: /var/log/kube-ovn
               name: kube-ovn-log
             - mountPath: /etc/localtime
               name: localtime
+              readOnly: true
             - mountPath: /var/run/tls
               name: kube-ovn-tls
           resources:
@@ -423,18 +647,12 @@ spec:
       nodeSelector:
         kubernetes.io/os: "linux"
       volumes:
-        - name: host-modules
-          hostPath:
-            path: /lib/modules
         - name: host-run-ovs
           hostPath:
             path: /run/openvswitch
         - name: host-run-ovn
           hostPath:
             path: /run/ovn
-        - name: host-sys
-          hostPath:
-            path: /sys
         - name: host-config-openvswitch
           hostPath:
             path: /etc/origin/openvswitch
@@ -500,6 +718,12 @@ spec:
           image: {{ kube_ovn_container_image_repo }}:{{ kube_ovn_container_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
           command: ["/kube-ovn/start-ovn-monitor.sh"]
+          args:
+          - --secure-serving=false
+          - --log_file=/var/log/kube-ovn/kube-ovn-monitor.log
+          - --logtostderr=false
+          - --alsologtostderr=true
+          - --log_file_max_size=200
           securityContext:
             runAsUser: 0
             privileged: false
@@ -510,6 +734,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: POD_IPS
               valueFrom:
                 fieldRef:
@@ -532,30 +760,38 @@ spec:
               name: host-config-openvswitch
             - mountPath: /etc/ovn
               name: host-config-ovn
-            - mountPath: /var/log/openvswitch
-              name: host-log-ovs
             - mountPath: /var/log/ovn
               name: host-log-ovn
+              readOnly: true
             - mountPath: /etc/localtime
               name: localtime
+              readOnly: true
             - mountPath: /var/run/tls
               name: kube-ovn-tls
-          readinessProbe:
-            exec:
-              command:
-              - cat
-              - /var/run/ovn/ovn-controller.pid
-            periodSeconds: 10
-            timeoutSeconds: 45
+            - mountPath: /var/log/kube-ovn
+              name: kube-ovn-log
           livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 7
+            successThreshold: 1
             exec:
               command:
-              - cat
-              - /var/run/ovn/ovn-controller.pid
+                - /kube-ovn/kube-ovn-healthcheck
+                - --port=10661
+                - --tls=false
+            timeoutSeconds: 5
+          readinessProbe:
+            failureThreshold: 3
             initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 5
-            timeoutSeconds: 45
+            periodSeconds: 7
+            successThreshold: 1
+            exec:
+              command:
+                - /kube-ovn/kube-ovn-healthcheck
+                - --port=10661
+                - --tls=false
+            timeoutSeconds: 5
       nodeSelector:
         kubernetes.io/os: "linux"
         kube-ovn/role: "master"
@@ -585,6 +821,9 @@ spec:
           secret:
             optional: true
             secretName: kube-ovn-tls
+        - name: kube-ovn-log
+          hostPath:
+            path: /var/log/kube-ovn
 ---
 kind: Service
 apiVersion: v1
@@ -655,7 +894,7 @@ spec:
   ports:
     - port: 10665
       name: metrics
-      {% if kube_ovn_ic_enable %}
+{% if kube_ovn_ic_enable %}
 ---
 kind: ConfigMap
 apiVersion: v1

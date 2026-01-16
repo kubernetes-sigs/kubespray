@@ -5,9 +5,9 @@
 - name: Cri-o | check if fedora coreos
   stat:
     path: /run/ostree-booted
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: ostree
 
 - name: Cri-o | set is_ostree
@@ -56,27 +56,27 @@
   file:
     path: "{{ item }}"
     state: directory
-    mode: 0755
+    mode: "0755"
 
 - name: Cri-o | install cri-o config
   template:
     src: crio.conf.j2
     dest: /etc/crio/crio.conf
-    mode: 0644
+    mode: "0644"
   register: config_install
 
 - name: Cri-o | install config.json
   template:
     src: config.json.j2
     dest: /etc/crio/config.json
-    mode: 0644
+    mode: "0644"
   register: reg_auth_install
 
 - name: Cri-o | copy binaries
   copy:
     src: "{{ local_release_dir }}/cri-o/bin/{{ item }}"
     dest: "{{ bin_dir }}/{{ item }}"
-    mode: 0755
+    mode: "0755"
     remote_src: true
   with_items:
     - "{{ crio_bin_files }}"
@@ -86,9 +86,23 @@
   copy:
     src: "{{ local_release_dir }}/cri-o/contrib/crio.service"
     dest: /etc/systemd/system/crio.service
-    mode: 0755
+    mode: "0755"
     remote_src: true
   notify: Restart crio
+
+- name: Cri-o | configure crio to use kube reserved cgroups
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/crio.service.d/00-slice.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Service]
+      Slice={{ kube_reserved_cgroups_for_service_slice }}
+  notify: Restart crio
+  when:
+    - kube_reserved is defined and kube_reserved is true
+    - kube_reserved_cgroups_for_service_slice is defined
 
 - name: Cri-o | update the bin dir for crio.service file
   replace:
@@ -101,7 +115,7 @@
   copy:
     src: "{{ local_release_dir }}/cri-o/contrib/policy.json"
     dest: /etc/containers/policy.json
-    mode: 0755
+    mode: "0755"
     remote_src: true
   notify: Restart crio
 
@@ -109,7 +123,7 @@
   copy:
     src: mounts.conf
     dest: /etc/containers/mounts.conf
-    mode: 0644
+    mode: "0644"
   when:
     - ansible_os_family == 'RedHat'
   notify: Restart crio
@@ -119,7 +133,7 @@
     path: /etc/containers/oci/hooks.d
     state: directory
     owner: root
-    mode: 0755
+    mode: "0755"
 
 - name: Cri-o | set overlay driver
   community.general.ini_file:
@@ -127,7 +141,7 @@
     section: storage
     option: "{{ item.option }}"
     value: "{{ item.value }}"
-    mode: 0644
+    mode: "0644"
   with_items:
     - option: driver
       value: '"overlay"'
@@ -143,20 +157,20 @@
     section: storage.options.overlay
     option: mountopt
     value: '{{ ''"nodev"'' if ansible_kernel is version_compare(("4.18" if ansible_os_family == "RedHat" else "4.19"), "<") else ''"nodev,metacopy=on"'' }}'
-    mode: 0644
+    mode: "0644"
 
 - name: Cri-o | create directory registries configs
   file:
     path: /etc/containers/registries.conf.d
     state: directory
     owner: root
-    mode: 0755
+    mode: "0755"
 
 - name: Cri-o | write registries configs
   template:
     src: registry.conf.j2
-    dest: "/etc/containers/registries.conf.d/10-{{ item.prefix | default(item.location) | regex_replace(':', '_') }}.conf"
-    mode: 0644
+    dest: "/etc/containers/registries.conf.d/10-{{ item.prefix | default(item.location) | regex_replace(':|/', '_') }}.conf"
+    mode: "0644"
   loop: "{{ crio_registries }}"
   notify: Restart crio
 
@@ -164,14 +178,14 @@
   template:
     src: unqualified.conf.j2
     dest: "/etc/containers/registries.conf.d/01-unqualified.conf"
-    mode: 0644
+    mode: "0644"
   notify: Restart crio
 
 - name: Cri-o | write cri-o proxy drop-in
   template:
     src: http-proxy.conf.j2
     dest: /etc/systemd/system/crio.service.d/http-proxy.conf
-    mode: 0644
+    mode: "0644"
   notify: Restart crio
   when: http_proxy is defined or https_proxy is defined
 

@@ -35,7 +35,7 @@ now six total etcd replicas.
 ## Requirements
 
 - [Install Terraform](https://www.terraform.io/intro/getting-started/install.html)
-- [Install Ansible dependencies](/docs/ansible.md#installing-ansible)
+- [Install Ansible dependencies](/docs/ansible/ansible.md#installing-ansible)
 - Account with Equinix Metal
 - An SSH key pair
 

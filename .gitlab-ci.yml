@@ -1,15 +1,12 @@
 ---
 stages:
   - build
-  - unit-tests
+  - test
   - deploy-part1
-  - moderator
-  - deploy-part2
-  - deploy-part3
-  - deploy-special
+  - deploy-extended
 
 variables:
-  KUBESPRAY_VERSION: v2.24.1
+  KUBESPRAY_VERSION: v2.25.0
   FAILFASTCI_NAMESPACE: 'kargo-ci'
   GITLAB_REPOSITORY: 'kargo-ci/kubernetes-sigs-kubespray'
   ANSIBLE_FORCE_COLOR: "true"
@@ -43,15 +40,26 @@ before_script:
 
 .job: &job
   tags:
-    - packet
+    - ffci
   image: $PIPELINE_IMAGE
   artifacts:
     when: always
     paths:
       - cluster-dump/
+  needs:
+    - pipeline-image
+
+.job-moderated:
+  extends: .job
+  needs:
+    - pipeline-image
+    - ci-not-authorized
+    - check-galaxy-version  # lint
+    - pre-commit            # lint
+    - vagrant-validate      # lint
 
 .testcases: &testcases
-  <<: *job
+  extends: .job-moderated
   retry: 1
   interruptible: true
   before_script:
@@ -61,23 +69,38 @@ before_script:
   script:
     - ./tests/scripts/testcases_run.sh
   after_script:
-    - chronic ./tests/scripts/testcases_cleanup.sh
+    - ./tests/scripts/testcases_cleanup.sh
 
 # For failfast, at least 1 job must be defined in .gitlab-ci.yml
 # Premoderated with manual actions
-ci-authorized:
-  extends: .job
-  stage: moderator
+ci-not-authorized:
+  stage: build
+  before_script: []
+  after_script: []
+  rules:
+    # LGTM or ok-to-test labels
+    - if: $PR_LABELS =~ /.*,(lgtm|approved|ok-to-test).*|^(lgtm|approved|ok-to-test).*/i
+      variables:
+        CI_OK_TO_TEST: '0'
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "trigger"
+      variables:
+        CI_OK_TO_TEST: '0'
+    - if: $CI_COMMIT_BRANCH == "master"
+      variables:
+        CI_OK_TO_TEST: '0'
+    - when: always
+      variables:
+        CI_OK_TO_TEST: '1'
   script:
-    - /bin/sh scripts/premoderator.sh
-  except: ['triggers', 'master']
-  # Disable ci moderator
-  only: []
+    - exit $CI_OK_TO_TEST
+  tags:
+    - ffci
+  needs: []
 
 include:
   - .gitlab-ci/build.yml
   - .gitlab-ci/lint.yml
-  - .gitlab-ci/shellcheck.yml
   - .gitlab-ci/terraform.yml
   - .gitlab-ci/packet.yml
   - .gitlab-ci/vagrant.yml

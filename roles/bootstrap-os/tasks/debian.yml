@@ -1,0 +1,64 @@
+---
+# Some Debian based distros ship without Python installed
+
+- name: Check if bootstrap is needed
+  raw: which python3
+  register: need_bootstrap
+  failed_when: false
+  changed_when: false
+  # This command should always run, even in check mode
+  check_mode: false
+  tags:
+    - facts
+
+- name: Check http::proxy in apt configuration files
+  raw: apt-config dump | grep -qsi 'Acquire::http::proxy'
+  register: need_http_proxy
+  failed_when: false
+  changed_when: false
+  # This command should always run, even in check mode
+  check_mode: false
+
+- name: Add http_proxy to /etc/apt/apt.conf if http_proxy is defined
+  raw: echo 'Acquire::http::proxy "{{ http_proxy }}";' >> /etc/apt/apt.conf
+  become: true
+  when:
+    - http_proxy is defined
+    - need_http_proxy.rc != 0
+    - not skip_http_proxy_on_os_packages
+
+- name: Check https::proxy in apt configuration files
+  raw: apt-config dump | grep -qsi 'Acquire::https::proxy'
+  register: need_https_proxy
+  failed_when: false
+  changed_when: false
+  # This command should always run, even in check mode
+  check_mode: false
+
+- name: Add https_proxy to /etc/apt/apt.conf if https_proxy is defined
+  raw: echo 'Acquire::https::proxy "{{ https_proxy }}";' >> /etc/apt/apt.conf
+  become: true
+  when:
+    - https_proxy is defined
+    - need_https_proxy.rc != 0
+    - not skip_http_proxy_on_os_packages
+
+- name: Install python3
+  raw:
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y python3-minimal
+  become: true
+  when:
+    - need_bootstrap.rc != 0
+
+- name: Update Apt cache
+  raw: apt-get update --allow-releaseinfo-change
+  become: true
+  when:
+    - os_release_dict['ID'] == 'debian'
+    - os_release_dict['VERSION_ID'] in ["10", "11"]
+  register: bootstrap_update_apt_result
+  changed_when:
+    - '"changed its" in bootstrap_update_apt_result.stdout'
+    - '"value from" in bootstrap_update_apt_result.stdout'
+  ignore_errors: true

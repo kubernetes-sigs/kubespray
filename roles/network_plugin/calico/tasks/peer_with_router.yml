@@ -19,9 +19,41 @@
   until: output.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
-    - "{{ peers | selectattr('scope', 'defined') | selectattr('scope', 'equalto', 'global') | list | default([]) }}"
+    - "{{ peers | default([]) | selectattr('scope', 'defined') | selectattr('scope', 'equalto', 'global') | list }}"
   when:
     - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Calico | Get node for per node peering
+  command:
+    cmd: "{{ bin_dir }}/calicoctl.sh get node {{ inventory_hostname }}"
+  register: output_get_node
+  when:
+    - inventory_hostname in groups['k8s_cluster']
+    - local_as is defined
+    - groups['calico_rr'] | default([]) | length == 0
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: Calico | Patch node asNumber for per node peering
+  command:
+    cmd: |-
+      {{ bin_dir }}/calicoctl.sh patch node "{{ inventory_hostname }}" --patch '{{ patch is string | ternary(patch, patch | to_json) }}'
+  vars:
+    patch: >
+      {"spec": {
+        "bgp": {
+          "asNumber": "{{ local_as }}"
+        },
+        "orchRefs": [{"nodeName": "{{ inventory_hostname }}", "orchestrator": "k8s"}]
+      }}
+  register: output
+  retries: 0
+  until: output.rc == 0
+  delay: "{{ retry_stagger | random + 3 }}"
+  when:
+    - inventory_hostname in groups['k8s_cluster']
+    - local_as is defined
+    - groups['calico_rr'] | default([]) | length == 0
+    - output_get_node.rc == 0
 
 - name: Calico | Configure node asNumber for per node peering
   command:
@@ -48,6 +80,7 @@
     - inventory_hostname in groups['k8s_cluster']
     - local_as is defined
     - groups['calico_rr'] | default([]) | length == 0
+    - output_get_node.rc != 0
 
 - name: Calico | Configure peering with router(s) at node scope
   command:
@@ -64,6 +97,9 @@
         "asNumber": "{{ item.as }}",
         "node": "{{ inventory_hostname }}",
         "peerIP": "{{ item.router_id }}",
+        {% if calico_version is version('v3.26.0', '>=') and (item.filters | default([]) | length > 0) %}
+        "filters": {{ item.filters }},
+        {% endif %}
         "sourceAddress": "{{ item.sourceaddress | default('UseNodeIP') }}"
       }}
   register: output
@@ -71,7 +107,7 @@
   until: output.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
   with_items:
-    - "{{ peers | selectattr('scope', 'undefined') | list | default([]) | union(peers | selectattr('scope', 'defined') | selectattr('scope', 'equalto', 'node') | list | default([])) }}"
+    - "{{ peers | default([]) | selectattr('scope', 'undefined') | list | union(peers | default([]) | selectattr('scope', 'defined') | selectattr('scope', 'equalto', 'node') | list ) }}"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   when:
     - inventory_hostname in groups['k8s_cluster']

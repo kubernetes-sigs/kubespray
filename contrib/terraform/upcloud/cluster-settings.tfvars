@@ -1,5 +1,11 @@
 # See: https://developers.upcloud.com/1.3/5-zones/
-zone     = "fi-hel1"
+zone          = "fi-hel1"
+private_cloud = false
+
+# Only used if private_cloud = true, public zone equivalent
+# For example use finnish public zone for finnish private zone
+public_zone = "fi-hel2"
+
 username = "ubuntu"
 
 # Prefix to use for all resources to separate them from other resources
@@ -116,8 +122,9 @@ k8s_allowed_remote_ips = [
 master_allowed_ports = []
 worker_allowed_ports = []
 
-loadbalancer_enabled = false
-loadbalancer_plan    = "development"
+loadbalancer_enabled        = false
+loadbalancer_plan           = "development"
+loadbalancer_proxy_protocol = false
 loadbalancers = {
   # "http" : {
   #   "port" : 80,

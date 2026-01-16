@@ -7,6 +7,8 @@
     - kubelet.service
     - cri-dockerd.service
     - cri-dockerd.socket
+    - etcd.service
+    - etcd-events.service
   failed_when: false
   tags:
     - services
@@ -24,6 +26,8 @@
     - crio.service.d/http-proxy.conf
     - k8s-certs-renew.service
     - k8s-certs-renew.timer
+    - etcd.service
+    - etcd-events.service
   register: services_removed
   tags:
     - services
@@ -39,16 +43,16 @@
     - docker
 
 - name: Reset | systemctl daemon-reload  # noqa no-handler
-  systemd:
+  systemd_service:
     daemon_reload: true
   when: services_removed.changed
 
 - name: Reset | check if crictl is present
   stat:
     path: "{{ bin_dir }}/crictl"
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: crictl
 
 - name: Reset | stop all cri containers
@@ -134,28 +138,6 @@
       ignore_errors: true  # noqa ignore-errors
       changed_when: true
 
-- name: Reset | stop etcd services
-  service:
-    name: "{{ item }}"
-    state: stopped
-  with_items:
-    - etcd
-    - etcd-events
-  failed_when: false
-  tags:
-    - services
-
-- name: Reset | remove etcd services
-  file:
-    path: "/etc/systemd/system/{{ item }}.service"
-    state: absent
-  with_items:
-    - etcd
-    - etcd-events
-  register: services_removed
-  tags:
-    - services
-
 - name: Reset | remove containerd
   when: container_manager == 'containerd'
   block:
@@ -179,7 +161,7 @@
   shell: set -o pipefail && mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
   args:
     executable: /bin/bash
-  check_mode: no
+  check_mode: false
   register: mounted_dirs
   failed_when: false
   changed_when: false
@@ -200,7 +182,7 @@
 - name: Flush iptables
   iptables:
     table: "{{ item }}"
-    flush: yes
+    flush: true
   with_items:
     - filter
     - nat
@@ -213,7 +195,7 @@
 - name: Flush ip6tables
   iptables:
     table: "{{ item }}"
-    flush: yes
+    flush: true
     ip_version: ipv6
   with_items:
     - filter
@@ -233,9 +215,9 @@
 - name: Reset | check kube-ipvs0 network device
   stat:
     path: /sys/class/net/kube-ipvs0
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: kube_ipvs0
 
 - name: Reset | Remove kube-ipvs0
@@ -247,9 +229,9 @@
 - name: Reset | check nodelocaldns network device
   stat:
     path: /sys/class/net/nodelocaldns
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: nodelocaldns_device
 
 - name: Reset | Remove nodelocaldns
@@ -261,13 +243,13 @@
 - name: Reset | Check whether /var/lib/kubelet directory exists
   stat:
     path: /var/lib/kubelet
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: var_lib_kubelet_directory
 
 - name: Reset | Find files/dirs with immutable flag in /var/lib/kubelet
-  command: lsattr -laR /var/lib/kubelet
+  command: lsattr -laR /var/lib/kubelet/
   become: true
   register: var_lib_kubelet_files_dirs_w_attrs
   changed_when: false
@@ -279,7 +261,7 @@
     path: "{{ filedir_path }}"
     state: touch
     attributes: "-i"
-    mode: 0644
+    mode: "0644"
   loop: "{{ var_lib_kubelet_files_dirs_w_attrs.stdout_lines | select('search', 'Immutable') | list }}"
   loop_control:
     loop_var: file_dir_line
@@ -318,6 +300,7 @@
     - /etc/etcd.env
     - /etc/calico
     - /etc/NetworkManager/conf.d/calico.conf
+    - /etc/NetworkManager/conf.d/dns.conf
     - /etc/NetworkManager/conf.d/k8s.conf
     - /etc/weave.env
     - /opt/cni

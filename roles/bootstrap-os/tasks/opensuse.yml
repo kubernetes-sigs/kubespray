@@ -1,0 +1,85 @@
+---
+# OpenSUSE ships with Python installed
+- name: Gather host facts to get ansible_distribution_version ansible_distribution_major_version
+  setup:
+    gather_subset: '!all'
+    filter: ansible_distribution_*version
+
+- name: Check that /etc/sysconfig/proxy file exists
+  stat:
+    path: /etc/sysconfig/proxy
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: stat_result
+
+- name: Create the /etc/sysconfig/proxy empty file
+  file:  # noqa risky-file-permissions
+    path: /etc/sysconfig/proxy
+    state: touch
+  when:
+    - http_proxy is defined or https_proxy is defined
+    - not stat_result.stat.exists
+
+- name: Set the http_proxy in /etc/sysconfig/proxy
+  lineinfile:
+    path: /etc/sysconfig/proxy
+    regexp: '^HTTP_PROXY='
+    line: 'HTTP_PROXY="{{ http_proxy }}"'
+  become: true
+  when:
+    - http_proxy is defined
+
+- name: Set the https_proxy in /etc/sysconfig/proxy
+  lineinfile:
+    path: /etc/sysconfig/proxy
+    regexp: '^HTTPS_PROXY='
+    line: 'HTTPS_PROXY="{{ https_proxy }}"'
+  become: true
+  when:
+    - https_proxy is defined
+
+- name: Enable proxies
+  lineinfile:
+    path: /etc/sysconfig/proxy
+    regexp: '^PROXY_ENABLED='
+    line: 'PROXY_ENABLED="yes"'
+  become: true
+  when:
+    - http_proxy is defined or https_proxy is defined
+
+# Required for zypper module
+- name: Install python-xml
+  shell: zypper refresh && zypper --non-interactive install python-xml
+  changed_when: false
+  become: true
+  tags:
+    - facts
+
+# Without this package, the get_url module fails when trying to handle https
+- name: Install python-cryptography
+  community.general.zypper:
+    name: python-cryptography
+    state: present
+    update_cache: true
+  become: true
+  when:
+    - ansible_distribution_version is version('15.4', '<')
+
+- name: Install python3-cryptography
+  community.general.zypper:
+    name: python3-cryptography
+    state: present
+    update_cache: true
+  become: true
+  when:
+    - ansible_distribution_version is version('15.4', '>=')
+
+# Nerdctl needs some basic packages to get an environment up
+- name: Install basic dependencies
+  community.general.zypper:
+    name:
+      - iptables
+      - apparmor-parser
+    state: present
+  become: true

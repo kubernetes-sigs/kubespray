@@ -1,0 +1,118 @@
+---
+- name: Gather host facts to get ansible_distribution_version ansible_distribution_major_version
+  setup:
+    gather_subset: '!all'
+    filter: ansible_distribution_*version
+
+- name: Add proxy to yum.conf or dnf.conf if http_proxy is defined
+  community.general.ini_file:
+    path: "{{ ((ansible_distribution_major_version | int) < 8) | ternary('/etc/yum.conf', '/etc/dnf/dnf.conf') }}"
+    section: main
+    option: proxy
+    value: "{{ http_proxy | default(omit) }}"
+    state: "{{ http_proxy | default(False) | ternary('present', 'absent') }}"
+    no_extra_spaces: true
+    mode: "0644"
+  become: true
+  when: not skip_http_proxy_on_os_packages
+
+# For Oracle Linux install public repo
+- name: Download Oracle Linux public yum repo
+  get_url:
+    url: https://yum.oracle.com/public-yum-ol7.repo
+    dest: /etc/yum.repos.d/public-yum-ol7.repo
+    mode: "0644"
+  when:
+    - use_oracle_public_repo | default(true)
+    - '''ID="ol"'' in os_release.stdout_lines'
+    - (ansible_distribution_version | float) < 7.6
+  environment: "{{ proxy_env }}"
+
+- name: Enable Oracle Linux repo
+  community.general.ini_file:
+    dest: /etc/yum.repos.d/public-yum-ol7.repo
+    section: "{{ item }}"
+    option: enabled
+    value: "1"
+    mode: "0644"
+  with_items:
+    - ol7_latest
+    - ol7_addons
+    - ol7_developer_EPEL
+  when:
+    - use_oracle_public_repo | default(true)
+    - '''ID="ol"'' in os_release.stdout_lines'
+    - (ansible_distribution_version | float) < 7.6
+
+- name: Install EPEL for Oracle Linux repo package
+  package:
+    name: "oracle-epel-release-el{{ ansible_distribution_major_version }}"
+    state: present
+  when:
+    - use_oracle_public_repo | default(true)
+    - '''ID="ol"'' in os_release.stdout_lines'
+    - (ansible_distribution_version | float) >= 7.6
+
+- name: Enable Oracle Linux repo
+  community.general.ini_file:
+    dest: "/etc/yum.repos.d/oracle-linux-ol{{ ansible_distribution_major_version }}.repo"
+    section: "ol{{ ansible_distribution_major_version }}_addons"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    mode: "0644"
+  with_items:
+    - { option: "name", value: "ol{{ ansible_distribution_major_version }}_addons" }
+    - { option: "enabled", value: "1" }
+    - { option: "baseurl", value: "http://yum.oracle.com/repo/OracleLinux/OL{{ ansible_distribution_major_version }}/addons/$basearch/" }
+  when:
+    - use_oracle_public_repo | default(true)
+    - '''ID="ol"'' in os_release.stdout_lines'
+    - (ansible_distribution_version | float) >= 7.6
+
+- name: Enable Centos extra repo for Oracle Linux
+  community.general.ini_file:
+    dest: "/etc/yum.repos.d/centos-extras.repo"
+    section: "extras"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    mode: "0644"
+  with_items:
+    - { option: "name", value: "CentOS-{{ ansible_distribution_major_version }} - Extras" }
+    - { option: "enabled", value: "1" }
+    - { option: "gpgcheck", value: "0" }
+    - { option: "baseurl", value: "http://mirror.centos.org/centos/{{ ansible_distribution_major_version }}/extras/$basearch/os/" }
+  when:
+    - use_oracle_public_repo | default(true)
+    - '''ID="ol"'' in os_release.stdout_lines'
+    - (ansible_distribution_version | float) >= 7.6
+    - (ansible_distribution_version | float) < 9
+
+# CentOS ships with python installed
+
+- name: Check presence of fastestmirror.conf
+  stat:
+    path: /etc/yum/pluginconf.d/fastestmirror.conf
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: fastestmirror
+
+# the fastestmirror plugin can actually slow down Ansible deployments
+- name: Disable fastestmirror plugin if requested
+  lineinfile:
+    dest: /etc/yum/pluginconf.d/fastestmirror.conf
+    regexp: "^enabled=.*"
+    line: "enabled=0"
+    state: present
+  become: true
+  when:
+    - fastestmirror.stat.exists
+    - not centos_fastestmirror_enabled
+
+# libselinux-python is required on SELinux enabled hosts
+# See https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#managed-node-requirements
+- name: Install libselinux python package
+  package:
+    name: "{{ ((ansible_distribution_major_version | int) < 8) | ternary('libselinux-python', 'python3-libselinux') }}"
+    state: present
+  become: true

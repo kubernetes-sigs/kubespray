@@ -6,23 +6,23 @@
     state: directory
     owner: "{{ etcd_owner }}"
     mode: "{{ etcd_cert_dir_mode }}"
-    recurse: yes
+    recurse: true
 
 - name: "Gen_certs | create etcd script dir (on {{ groups['etcd'][0] }})"
   file:
     path: "{{ etcd_script_dir }}"
     state: directory
     owner: root
-    mode: 0700
-  run_once: yes
+    mode: "0700"
+  run_once: true
   when: inventory_hostname == groups['etcd'][0]
 
 - name: Gen_certs | write openssl config
   template:
     src: "openssl.conf.j2"
     dest: "{{ etcd_config_dir }}/openssl.conf"
-    mode: 0640
-  run_once: yes
+    mode: "0640"
+  run_once: true
   delegate_to: "{{ groups['etcd'][0] }}"
   when:
     - gen_certs | default(false)
@@ -32,10 +32,9 @@
   template:
     src: "make-ssl-etcd.sh.j2"
     dest: "{{ etcd_script_dir }}/make-ssl-etcd.sh"
-    mode: 0700
-  run_once: yes
+    mode: "0700"
+  run_once: true
   when:
-    - gen_certs | default(false)
     - inventory_hostname == groups['etcd'][0]
 
 - name: Gen_certs | run cert generation script for etcd and kube control plane nodes
@@ -43,7 +42,7 @@
   environment:
     MASTERS: "{{ groups['gen_master_certs_True'] | ansible.builtin.intersect(groups['etcd']) | join(' ') }}"
     HOSTS: "{{ groups['gen_node_certs_True'] | ansible.builtin.intersect(groups['kube_control_plane']) | join(' ') }}"
-  run_once: yes
+  run_once: true
   delegate_to: "{{ groups['etcd'][0] }}"
   when: gen_certs | default(false)
   notify: Set etcd_secret_changed
@@ -52,7 +51,7 @@
   command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
   environment:
     HOSTS: "{{ groups['gen_node_certs_True'] | ansible.builtin.intersect(groups['k8s_cluster']) | join(' ') }}"
-  run_once: yes
+  run_once: true
   delegate_to: "{{ groups['etcd'][0] }}"
   when:
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
@@ -90,7 +89,7 @@
     content: "{{ item.content | b64decode }}"
     group: "{{ etcd_cert_group }}"
     owner: "{{ etcd_owner }}"
-    mode: 0640
+    mode: "0640"
   with_items: "{{ etcd_master_certs.results }}"
   when:
     - inventory_hostname in groups['etcd']
@@ -122,7 +121,7 @@
     content: "{{ item.content | b64decode }}"
     group: "{{ etcd_cert_group }}"
     owner: "{{ etcd_owner }}"
-    mode: 0640
+    mode: "0640"
   with_items: "{{ etcd_master_node_certs.results }}"
   when:
     - inventory_hostname in groups['etcd']
@@ -153,4 +152,26 @@
     state: directory
     owner: "{{ etcd_owner }}"
     mode: "{{ etcd_cert_dir_mode }}"
-    recurse: yes
+    recurse: true
+
+# This is a hack around the fact kubeadm expect the same certs path on all kube_control_plane
+# TODO: fix certs generation to have the same file everywhere
+# OR work with kubeadm on node-specific config
+- name: Gen_certs | Pretend all control plane have all certs (with symlinks)
+  file:
+    state: link
+    src: "{{ etcd_cert_dir }}/node-{{ inventory_hostname }}{{ item[0] }}.pem"
+    dest: "{{ etcd_cert_dir }}/node-{{ item[1] }}{{ item[0] }}.pem"
+    mode: "0640"
+  loop: "{{ suffixes | product(groups['kube_control_plane']) }}"
+  vars:
+    suffixes:
+      - ''
+      - '-key'
+  when:
+    - ('kube_control_plane' in group_names)
+    - item[1] != inventory_hostname
+  register: symlink_created
+  failed_when:
+    - symlink_created is failed
+    - ('refusing to convert from file to symlink' not in symlink_created.msg)

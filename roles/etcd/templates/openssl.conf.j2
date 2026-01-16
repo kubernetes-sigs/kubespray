@@ -25,6 +25,11 @@ authorityKeyIdentifier=keyid:always,issuer
 [alt_names]
 DNS.1 = localhost
 {% for host in groups['etcd'] %}
+{% if hostvars[host]['etcd_access_address'] is defined and not (hostvars[host]['etcd_access_address'] | ansible.utils.ipaddr) %}
+{# If defined, the address which etcd uses to access its members must be included in the SAN, otherwise etcd will fail with a TLS error upon startup. #}
+DNS.{{ counter["dns"] }} = {{ hostvars[host]['etcd_access_address'] }}{{ increment(counter, 'dns') }}
+{% endif %}
+{# This will always expand to inventory_hostname, which can be a completely arbitrary name, that etcd will not know or care about, hence this line is (probably) redundant. #}
 DNS.{{ counter["dns"] }} = {{ host }}{{ increment(counter, 'dns') }}
 {% endfor %}
 {% if apiserver_loadbalancer_domain_name is defined %}

@@ -619,7 +619,7 @@ Edit `inventory/$CLUSTER/group_vars/k8s_cluster/k8s_cluster.yml`:
 
 - Set variable **kube_network_plugin** to your desired networking plugin.
   - **flannel** works out-of-the-box
-  - **calico** requires [configuring OpenStack Neutron ports](/docs/openstack.md) to allow service and pod subnets
+  - **calico** requires [configuring OpenStack Neutron ports](/docs/cloud_providers/openstack.md) to allow service and pod subnets
 
 ```yml
 # Choose network plugin (calico, weave or flannel)

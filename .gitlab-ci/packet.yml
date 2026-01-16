@@ -6,13 +6,55 @@
     CI_PLATFORM: packet
     SSH_USER: kubespray
   tags:
-    - packet
-  except: [triggers]
+    - ffci
+  needs:
+    - pipeline-image
+    - ci-not-authorized
 
 # CI template for PRs
 .packet_pr:
-  only: [/^pr-.*$/]
+  stage: deploy-part1
+  rules:
+    - if: $PR_LABELS =~ /.*ci-short.*/
+      when: manual
+      allow_failure: true
+    - if: $CI_COMMIT_BRANCH =~ /^pr-.*$/
+      when: on_success
+    - when: manual
+      allow_failure: true
   extends: .packet
+
+  ## Uncomment this to have multiple stages
+  # needs:
+  #   - packet_ubuntu20-calico-all-in-one
+
+.packet_pr_short:
+  stage: deploy-part1
+  extends: .packet
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^pr-.*$/
+      when: on_success
+    - when: manual
+      allow_failure: true
+
+.packet_pr_manual:
+  extends: .packet_pr
+  stage: deploy-extended
+  rules:
+    - if: $PR_LABELS =~ /.*ci-full.*/
+      when: on_success
+    # Else run as manual
+    - when: manual
+      allow_failure: true
+
+.packet_pr_extended:
+  extends: .packet_pr
+  stage: deploy-extended
+  rules:
+    - if: $PR_LABELS =~ /.*(ci-extended|ci-full).*/
+      when: on_success
+    - when: manual
+      allow_failure: true
 
 # CI template for periodic CI jobs
 # Enabled when PERIODIC_CI_ENABLED var is set
@@ -34,304 +76,182 @@ packet_cleanup_old:
 # The ubuntu20-calico-all-in-one jobs are meant as early stages to prevent running the full CI if something is horribly broken
 packet_ubuntu20-calico-all-in-one:
   stage: deploy-part1
-  extends: .packet_pr
-  when: on_success
+  extends: .packet_pr_short
   variables:
     RESET_CHECK: "true"
 
 # ### PR JOBS PART2
 
-packet_ubuntu20-all-in-one-docker:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_ubuntu20-calico-all-in-one-hardening:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_ubuntu22-all-in-one-docker:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
+packet_ubuntu20-crio:
+  extends: .packet_pr_manual
 
 packet_ubuntu22-calico-all-in-one:
-  stage: deploy-part2
   extends: .packet_pr
-  when: on_success
 
-packet_ubuntu22-calico-etcd-datastore:
-  stage: deploy-part2
+packet_ubuntu22-calico-all-in-one-upgrade:
   extends: .packet_pr
-  when: on_success
-
-packet_centos7-flannel-addons-ha:
-  extends: .packet_pr
-  stage: deploy-part2
-  when: on_success
-
-packet_almalinux8-crio:
-  extends: .packet_pr
-  stage: deploy-part2
-  when: on_success
-  allow_failure: true
-
-packet_ubuntu20-crio:
-  extends: .packet_pr
-  stage: deploy-part2
-  when: manual
-
-packet_fedora37-crio:
-  extends: .packet_pr
-  stage: deploy-part2
-  when: manual
-
-packet_ubuntu20-flannel-ha:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_debian10-cilium-svc-proxy:
-  stage: deploy-part2
-  extends: .packet_periodic
-  when: on_success
-
-packet_debian10-calico:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_debian10-docker:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_debian11-calico:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_debian11-docker:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_debian12-calico:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_debian12-docker:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_debian12-cilium:
-  stage: deploy-part2
-  extends: .packet_periodic
-  when: on_success
-
-packet_centos7-calico-ha-once-localhost:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-  variables:
-    # This will instruct Docker not to start over TLS.
-    DOCKER_TLS_CERTDIR: ""
-  services:
-    - docker:19.03.9-dind
-
-packet_almalinux8-kube-ovn:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_almalinux8-calico:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_rockylinux8-calico:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_rockylinux9-calico:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_rockylinux9-cilium:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-  variables:
-    RESET_CHECK: "true"
-
-packet_almalinux8-docker:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-
-packet_fedora38-docker-weave:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: on_success
-  allow_failure: true
-
-packet_opensuse-docker-cilium:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-# ### MANUAL JOBS
-
-packet_ubuntu20-docker-weave-sep:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_ubuntu20-cilium-sep:
-  stage: deploy-special
-  extends: .packet_pr
-  when: manual
-
-packet_ubuntu20-flannel-ha-once:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-# Calico HA eBPF
-packet_almalinux8-calico-ha-ebpf:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_debian10-macvlan:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_centos7-calico-ha:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_centos7-multus-calico:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_fedora38-docker-calico:
-  stage: deploy-part2
-  extends: .packet_periodic
-  when: on_success
-  variables:
-    RESET_CHECK: "true"
-
-packet_fedora37-calico-selinux:
-  stage: deploy-part2
-  extends: .packet_periodic
-  when: on_success
-
-packet_fedora37-calico-swap-selinux:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_amazon-linux-2-all-in-one:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_almalinux8-calico-nodelocaldns-secondary:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_fedora38-kube-ovn:
-  stage: deploy-part2
-  extends: .packet_periodic
-  when: on_success
-
-packet_debian11-custom-cni:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_debian11-kubelet-csr-approver:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_debian12-custom-cni-helm:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-# ### PR JOBS PART3
-# Long jobs (45min+)
-
-packet_centos7-weave-upgrade-ha:
-  stage: deploy-part3
-  extends: .packet_periodic
-  when: on_success
-  variables:
-    UPGRADE_TEST: basic
-
-packet_ubuntu20-calico-etcd-kubeadm-upgrade-ha:
-  stage: deploy-part3
-  extends: .packet_periodic
-  when: on_success
-  variables:
-    UPGRADE_TEST: basic
-
-# Calico HA Wireguard
-packet_ubuntu20-calico-ha-wireguard:
-  stage: deploy-part2
-  extends: .packet_pr
-  when: manual
-
-packet_debian11-calico-upgrade:
-  stage: deploy-part3
-  extends: .packet_pr
-  when: on_success
   variables:
     UPGRADE_TEST: graceful
 
-packet_almalinux8-calico-remove-node:
-  stage: deploy-part3
+packet_ubuntu24-calico-etcd-datastore:
   extends: .packet_pr
-  when: on_success
+
+packet_almalinux8-crio:
+  extends: .packet_pr
+
+packet_almalinux8-kube-ovn:
+  extends: .packet_pr
+
+packet_debian11-calico:
+  extends: .packet_pr
+
+packet_debian11-macvlan:
+  extends: .packet_pr
+
+packet_debian12-cilium:
+  extends: .packet_pr
+
+packet_rockylinux8-calico:
+  extends: .packet_pr
+
+packet_rockylinux9-cilium:
+  extends: .packet_pr
+  variables:
+    RESET_CHECK: "true"
+
+# Need an update of the container image to use schema v2
+# update: quay.io/kubespray/vm-amazon-linux-2:latest
+packet_amazon-linux-2-all-in-one:
+  extends: .packet_pr_manual
+  rules:
+    - when: manual
+      allow_failure: true
+
+packet_opensuse-docker-cilium:
+  extends: .packet_pr
+
+packet_ubuntu20-cilium-sep:
+  extends: .packet_pr
+
+## Extended
+packet_debian11-docker:
+  extends: .packet_pr_extended
+
+packet_debian12-docker:
+  extends: .packet_pr_extended
+
+packet_debian12-calico:
+  extends: .packet_pr_extended
+
+packet_almalinux8-calico-remove-node:
+  extends: .packet_pr_extended
   variables:
     REMOVE_NODE_CHECK: "true"
     REMOVE_NODE_NAME: "instance-3"
 
+packet_rockylinux9-calico:
+  extends: .packet_pr_extended
+
+packet_almalinux8-calico:
+  extends: .packet_pr_extended
+
+packet_almalinux8-docker:
+  extends: .packet_pr_extended
+
+packet_ubuntu20-calico-all-in-one-hardening:
+  extends: .packet_pr_extended
+
+packet_ubuntu24-calico-all-in-one:
+  extends: .packet_pr_extended
+
 packet_ubuntu20-calico-etcd-kubeadm:
-  stage: deploy-part3
-  extends: .packet_pr
-  when: on_success
+  extends: .packet_pr_extended
+
+packet_ubuntu24-all-in-one-docker:
+  extends: .packet_pr_extended
+
+packet_ubuntu22-all-in-one-docker:
+  extends: .packet_pr_extended
+
+# ### MANUAL JOBS
+packet_fedora37-crio:
+  extends: .packet_pr_manual
+
+packet_ubuntu20-flannel-ha:
+  extends: .packet_pr_manual
+
+packet_ubuntu20-all-in-one-docker:
+  extends: .packet_pr_manual
+
+packet_ubuntu20-flannel-ha-once:
+  extends: .packet_pr_manual
+
+packet_fedora37-calico-swap-selinux:
+  extends: .packet_pr_manual
+
+packet_almalinux8-calico-ha-ebpf:
+  extends: .packet_pr_manual
+
+packet_almalinux8-calico-nodelocaldns-secondary:
+  extends: .packet_pr_manual
+
+packet_debian11-custom-cni:
+  extends: .packet_pr_manual
+
+packet_debian11-kubelet-csr-approver:
+  extends: .packet_pr_manual
+
+packet_debian12-custom-cni-helm:
+  extends: .packet_pr_manual
+
+packet_ubuntu20-calico-ha-wireguard:
+  extends: .packet_pr_manual
+
+# PERIODIC
+packet_fedora38-docker-calico:
+  stage: deploy-extended
+  extends: .packet_periodic
+  variables:
+    RESET_CHECK: "true"
+
+packet_fedora37-calico-selinux:
+  stage: deploy-extended
+  extends: .packet_periodic
+
+
+packet_ubuntu20-calico-etcd-kubeadm-upgrade-ha:
+  stage: deploy-extended
+  extends: .packet_periodic
+  variables:
+    UPGRADE_TEST: basic
+
 
 packet_debian11-calico-upgrade-once:
-  stage: deploy-part3
+  stage: deploy-extended
   extends: .packet_periodic
-  when: on_success
   variables:
     UPGRADE_TEST: graceful
 
 packet_ubuntu20-calico-ha-recover:
-  stage: deploy-part3
+  stage: deploy-extended
   extends: .packet_periodic
-  when: on_success
   variables:
     RECOVER_CONTROL_PLANE_TEST: "true"
     RECOVER_CONTROL_PLANE_TEST_GROUPS: "etcd[2:]:kube_control_plane[1:]"
 
 packet_ubuntu20-calico-ha-recover-noquorum:
-  stage: deploy-part3
+  stage: deploy-extended
   extends: .packet_periodic
-  when: on_success
   variables:
     RECOVER_CONTROL_PLANE_TEST: "true"
     RECOVER_CONTROL_PLANE_TEST_GROUPS: "etcd[1:]:kube_control_plane[1:]"
+
+packet_debian11-calico-upgrade:
+  stage: deploy-extended
+  extends: .packet_periodic
+  variables:
+    UPGRADE_TEST: graceful
+
+packet_debian12-cilium-svc-proxy:
+  stage: deploy-extended
+  extends: .packet_periodic

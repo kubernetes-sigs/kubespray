@@ -2,21 +2,14 @@
 - name: Check if fedora coreos
   stat:
     path: /run/ostree-booted
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: ostree
 
 - name: Set is_ostree
   set_fact:
     is_ostree: "{{ ostree.stat.exists }}"
-
-- name: Set docker_version for openEuler
-  set_fact:
-    docker_version: '19.03'
-  when: ansible_distribution == "openEuler"
-  tags:
-    - facts
 
 - name: Gather os specific variables
   include_vars: "{{ item }}"
@@ -67,6 +60,17 @@
   environment: "{{ proxy_env }}"
   when: ansible_pkg_mgr == 'apt'
 
+# ref to https://github.com/kubernetes-sigs/kubespray/issues/11086
+- name: Remove the archived debian apt repository
+  lineinfile:
+    path: /etc/apt/sources.list
+    regexp: 'buster-backports'
+    state: absent
+    backup: true
+  when:
+    - ansible_os_family == 'Debian'
+    - ansible_distribution_release == "buster"
+
 - name: Ensure docker-ce repository is enabled
   apt_repository:
     repo: "{{ item }}"
@@ -78,14 +82,14 @@
   template:
     src: "fedora_docker.repo.j2"
     dest: "{{ yum_repo_dir }}/docker.repo"
-    mode: 0644
+    mode: "0644"
   when: ansible_distribution == "Fedora" and not is_ostree
 
 - name: Configure docker repository on RedHat/CentOS/OracleLinux/AlmaLinux/KylinLinux
   template:
     src: "rh_docker.repo.j2"
     dest: "{{ yum_repo_dir }}/docker-ce.repo"
-    mode: 0644
+    mode: "0644"
   when:
     - ansible_os_family == "RedHat"
     - ansible_distribution != "Fedora"
@@ -179,7 +183,7 @@
 - name: Ensure docker service is started and enabled
   service:
     name: "{{ item }}"
-    enabled: yes
+    enabled: true
     state: started
   with_items:
     - docker

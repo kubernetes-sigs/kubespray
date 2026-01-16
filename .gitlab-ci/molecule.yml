@@ -1,30 +1,42 @@
 ---
-
 .molecule:
-  tags: [c3.small.x86]
+  tags: [ffci-vm-med]
   only: [/^pr-.*$/]
   except: ['triggers']
-  image: $PIPELINE_IMAGE
+  image: quay.io/kubespray/vm-kubespray-ci:v6
   services: []
   stage: deploy-part1
+  needs: []
+  # - ci-not-authorized
+  variables:
+    VAGRANT_DEFAULT_PROVIDER: "libvirt"
   before_script:
-    - tests/scripts/rebase.sh
-    - ./tests/scripts/vagrant_clean.sh
+  - groups
+  - python3 -m venv citest
+  - source citest/bin/activate
+  - vagrant plugin expunge --reinstall --force --no-tty
+  - vagrant plugin install vagrant-libvirt
+  - pip install --no-compile --no-cache-dir pip -U
+  - pip install --no-compile --no-cache-dir -r $CI_PROJECT_DIR/requirements.txt
+  - pip install --no-compile --no-cache-dir -r $CI_PROJECT_DIR/tests/requirements.txt
+  - ./tests/scripts/rebase.sh
+  - ./tests/scripts/vagrant_clean.sh
   script:
-    - ./tests/scripts/molecule_run.sh
+  - ./tests/scripts/molecule_run.sh
   after_script:
-    - chronic ./tests/scripts/molecule_logs.sh
+  - ./tests/scripts/molecule_logs.sh
   artifacts:
     when: always
     paths:
-      - molecule_logs/
+    - molecule_logs/
 
 # CI template for periodic CI jobs
 # Enabled when PERIODIC_CI_ENABLED var is set
+
 .molecule_periodic:
   only:
     variables:
-      - $PERIODIC_CI_ENABLED
+    - $PERIODIC_CI_ENABLED
   allow_failure: true
   extends: .molecule
 
@@ -34,50 +46,50 @@ molecule_full:
 molecule_no_container_engines:
   extends: .molecule
   script:
-    - ./tests/scripts/molecule_run.sh -e container-engine
+  - ./tests/scripts/molecule_run.sh -e container-engine
   when: on_success
 
 molecule_docker:
   extends: .molecule
   script:
-    - ./tests/scripts/molecule_run.sh -i container-engine/cri-dockerd
+  - ./tests/scripts/molecule_run.sh -i container-engine/cri-dockerd
   when: on_success
 
 molecule_containerd:
   extends: .molecule
   script:
-    - ./tests/scripts/molecule_run.sh -i container-engine/containerd
+  - ./tests/scripts/molecule_run.sh -i container-engine/containerd
   when: on_success
 
 molecule_cri-o:
   extends: .molecule
-  stage: deploy-part2
+  stage: deploy-part1
   script:
-    - ./tests/scripts/molecule_run.sh -i container-engine/cri-o
+  - ./tests/scripts/molecule_run.sh -i container-engine/cri-o
   allow_failure: true
   when: on_success
 
-# Stage 3 container engines don't get as much attention so allow them to fail
-molecule_kata:
-  extends: .molecule
-  stage: deploy-part3
-  script:
-    - ./tests/scripts/molecule_run.sh -i container-engine/kata-containers
-  when: manual
-# FIXME: this test is broken (perma-failing)
+# # Stage 3 container engines don't get as much attention so allow them to fail
+# molecule_kata:
+#   extends: .molecule
+#   stage: deploy-extended
+#   script:
+#     - ./tests/scripts/molecule_run.sh -i container-engine/kata-containers
+#   when: manual
+# # FIXME: this test is broken (perma-failing)
 
 molecule_gvisor:
   extends: .molecule
-  stage: deploy-part3
+  stage: deploy-extended
   script:
-    - ./tests/scripts/molecule_run.sh -i container-engine/gvisor
+  - ./tests/scripts/molecule_run.sh -i container-engine/gvisor
   when: manual
 # FIXME: this test is broken (perma-failing)
 
 molecule_youki:
   extends: .molecule
-  stage: deploy-part3
+  stage: deploy-extended
   script:
-    - ./tests/scripts/molecule_run.sh -i container-engine/youki
+  - ./tests/scripts/molecule_run.sh -i container-engine/youki
   when: manual
 # FIXME: this test is broken (perma-failing)

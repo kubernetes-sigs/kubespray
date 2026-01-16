@@ -1,11 +1,4 @@
 ---
-- name: Force binaries directory for Flatcar Container Linux by Kinvolk
-  set_fact:
-    bin_dir: "/opt/bin"
-  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
-  tags:
-    - facts
-
 - name: Set os_family fact for other redhat-based operating systems
   set_fact:
     ansible_os_family: "RedHat"
@@ -14,61 +7,33 @@
   tags:
     - facts
 
-- name: Set os_family fact for other debian-based operating systems
-  set_fact:
-    ansible_os_family: "Debian"
-  when: ansible_distribution in debian_os_family_extensions
-  tags:
-    - facts
-
-- name: Check if booted with ostree
-  stat:
-    path: /run/ostree-booted
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
-  register: ostree
-
-- name: Set is_fedora_coreos
-  lineinfile:
-    path: /etc/os-release
-    line: "VARIANT_ID=coreos"
-    state: present
-  check_mode: yes
-  register: os_variant_coreos
-  changed_when: false
-
-- name: Set is_fedora_coreos
-  set_fact:
-    is_fedora_coreos: "{{ ostree.stat.exists and os_variant_coreos is not changed }}"
-
 - name: Check resolvconf
   command: which resolvconf
   register: resolvconf
   failed_when: false
   changed_when: false
-  check_mode: no
+  check_mode: false
 
 - name: Check existence of /etc/resolvconf/resolv.conf.d
   stat:
     path: /etc/resolvconf/resolv.conf.d
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   failed_when: false
   register: resolvconfd_path
 
 - name: Check status of /etc/resolv.conf
   stat:
     path: /etc/resolv.conf
-    follow: no
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    follow: false
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   failed_when: false
   register: resolvconf_stat
 
-- name: Fetch resolconf
+- name: Fetch resolvconf
   when: resolvconf_stat.stat.exists is defined and resolvconf_stat.stat.exists
   block:
 
@@ -107,7 +72,7 @@
   register: systemd_resolved_enabled
   failed_when: false
   changed_when: false
-  check_mode: no
+  check_mode: false
 
 - name: Set default dns if remove_default_searchdomains is false
   set_fact:
@@ -129,9 +94,9 @@
 - name: Check if kubelet is configured
   stat:
     path: "{{ kube_config_dir }}/kubelet.env"
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: kubelet_configured
   changed_when: false
 
@@ -156,9 +121,9 @@
 - name: Check if /etc/dhclient.conf exists
   stat:
     path: /etc/dhclient.conf
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: dhclient_stat
 
 - name: Target dhclient conf file for /etc/dhclient.conf
@@ -169,9 +134,9 @@
 - name: Check if /etc/dhcp/dhclient.conf exists
   stat:
     path: /etc/dhcp/dhclient.conf
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: dhcp_dhclient_stat
 
 - name: Target dhclient conf file for /etc/dhcp/dhclient.conf
@@ -220,8 +185,8 @@
   set_fact:
     nameserverentries: |-
       {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique | join(',') }}
-    supersede_nameserver:
-      supersede domain-name-servers {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique | join(', ') }};
+    dhclient_supersede_nameserver_entries_list: |-
+      {{ (([nodelocaldns_ip] if enable_nodelocaldns else []) + (coredns_server | d([]) if not enable_nodelocaldns else []) + nameservers | d([]) + cloud_resolver | d([]) + (configured_nameservers | d([]) if not disable_host_nameservers | d() | bool else [])) | unique }}
   when: not dns_early or dns_late
 
 # This task should run instead of the above task when cluster/nodelocal DNS hasn't
@@ -230,23 +195,16 @@
   set_fact:
     nameserverentries: |-
       {{ (nameservers | d([]) + cloud_resolver | d([]) + configured_nameservers | d([])) | unique | join(',') }}
-    supersede_nameserver:
-      supersede domain-name-servers {{ (nameservers | d([]) + cloud_resolver | d([])) | unique | join(', ') }};
+    dhclient_supersede_nameserver_entries_list: |-
+      {{ (nameservers | d([]) + cloud_resolver | d([])) | unique }}
   when: dns_early and not dns_late
 
-- name: Gather os specific variables
-  include_vars: "{{ item }}"
-  with_first_found:
-    - files:
-        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower | replace('/', '_') }}.yml"
-        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_release }}.yml"
-        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version | lower | replace('/', '_') }}.yml"
-        - "{{ ansible_distribution | lower }}.yml"
-        - "{{ ansible_os_family | lower }}.yml"
-        - defaults.yml
-      paths:
-        - ../vars
-      skip: true
+- name: Generate supersede_nameserver from dhclient_supersede_nameserver_entries_list
+  set_fact:
+    supersede_nameserver: |-
+      {%- if dhclient_supersede_nameserver_entries_list | length > 0 -%}
+      supersede domain-name-servers {{ dhclient_supersede_nameserver_entries_list | join(', ') }};
+      {%- endif -%}
 
 - name: Set etcd vars if using kubeadm mode
   set_fact:
@@ -260,9 +218,9 @@
 - name: Check /usr readonly
   stat:
     path: "/usr"
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: usr
 
 - name: Set alternate flexvolume path

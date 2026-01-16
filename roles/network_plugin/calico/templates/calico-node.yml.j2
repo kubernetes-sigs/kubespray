@@ -13,6 +13,10 @@ spec:
   selector:
     matchLabels:
       k8s-app: calico-node
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       labels:
@@ -30,15 +34,21 @@ spec:
         {{ calico_ds_nodeselector }}
       priorityClassName: system-node-critical
       hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: calico-node
       tolerations:
-      - operator: Exists
+        # Make sure calico-node gets scheduled on all nodes.
+        - effect: NoSchedule
+          operator: Exists
+        # Mark the pod as a critical add-on for rescheduling.
+        - key: CriticalAddonsOnly
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 0
       initContainers:
-{% if calico_datastore == "kdd" %}
+{% if calico_datastore == "kdd" and not calico_ipam_host_local %}
         # This container performs upgrade from host-local IPAM to calico-ipam.
         # It can be deleted if this is a fresh installation, or if you have already
         # upgraded to use calico-ipam.
@@ -90,9 +100,11 @@ spec:
             # Name of the CNI config file to create.
             - name: CNI_CONF_NAME
               value: "10-calico.conflist"
-            # Install CNI binaries
-            - name: UPDATE_CNI_BINARIES
-              value: "true"
+{% if calico_mtu is defined %}
+            # CNI MTU Config variable
+            - name: CNI_MTU
+              value: "{{ calico_veth_mtu | default(calico_mtu) }}"
+{% endif %}
             # Prevents the container from sleeping forever.
             - name: SLEEP
               value: "false"
@@ -117,14 +129,29 @@ spec:
               name: cni-bin-dir
           securityContext:
             privileged: true
-        # Adds a Flex Volume Driver that creates a per-pod Unix Domain Socket to allow Dikastes
-        # to communicate with Felix over the Policy Sync API.
-        - name: flexvol-driver
-          image: {{ calico_flexvol_image_repo }}:{{ calico_flexvol_image_tag }}
+        # This init container mounts the necessary filesystems needed by the BPF data plane
+        # i.e. bpf at /sys/fs/bpf and cgroup2 at /run/calico/cgroup. Calico-node initialisation is executed
+        # in best effort fashion, i.e. no failure for errors, to not disrupt pod creation in iptable mode.
+        - name: "mount-bpffs"
+          image: {{ calico_node_image_repo }}:{{ calico_node_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
+          command: ["calico-node", "-init", "-best-effort"]
           volumeMounts:
-            - name: flexvol-driver-host
-              mountPath: /host/driver
+            - mountPath: /sys/fs
+              name: sys-fs
+              # Bidirectional is required to ensure that the new mount we make at /sys/fs/bpf propagates to the host
+              # so that it outlives the init container.
+              mountPropagation: Bidirectional
+            - mountPath: /var/run/calico
+              name: var-run-calico
+              # Bidirectional is required to ensure that the new mount we make at /run/calico/cgroup propagates to the host
+              # so that it outlives the init container.
+              mountPropagation: Bidirectional
+            # Mount /proc/ from host which usually is an init program at /nodeproc. It's needed by mountns binary,
+            # executed by calico-node, to mount root cgroup2 fs at /run/calico/cgroup to attach CTLB programs correctly.
+            - mountPath: /nodeproc
+              name: nodeproc
+              readOnly: true
           securityContext:
             privileged: true
       containers:
@@ -205,10 +232,7 @@ spec:
                   key: calico_backend
             # Cluster type to identify the deployment type
             - name: CLUSTER_TYPE
-              valueFrom:
-                configMapKeyRef:
-                  name: calico-config
-                  key: cluster_type
+              value: "k8s,bgp"
             # Set noderef for node controller.
             - name: CALICO_K8S_NODE_REF
               valueFrom:
@@ -230,12 +254,16 @@ spec:
               value: "{{ calico_iptables_backend }}"
             - name: FELIX_IPTABLESLOCKTIMEOUTSECS
               value: "{{ calico_iptables_lock_timeout_secs }}"
-# should be set in etcd before deployment
-#            # Configure the IP Pool from which Pod IPs will be chosen.
-#            - name: CALICO_IPV4POOL_CIDR
-#              value: "{{ calico_pool_cidr | default(kube_pods_subnet) }}"
+            # The default IPv4 pool to create on startup if none exists. Pod IPs will be
+            # chosen from this range. Changing this value after installation will have
+            # no effect. This should fall within `--cluster-cidr`.
+            # - name: CALICO_IPV4POOL_CIDR
+            #   value: "192.168.0.0/16"
             - name: CALICO_IPV4POOL_IPIP
               value: "{{ calico_ipv4pool_ipip }}"
+            # Enable or Disable VXLAN on the default IP pool.
+            - name: CALICO_IPV4POOL_VXLAN
+              value: "Never"
             - name: FELIX_IPV6SUPPORT
               value: "{{ enable_dual_stack_networks | default(false) }}"
             # Set Felix logging to "info"
@@ -310,6 +338,10 @@ spec:
               value: "{{ calico_node_ignorelooserpf }}"
             - name: CALICO_MANAGE_CNI
               value: "true"
+{% if calico_ipam_host_local %}
+            - name: USE_POD_CIDR
+              value: "true"
+{% endif %}
 {% if calico_node_extra_envs is defined %}
 {% for key in calico_node_extra_envs %}
             - name: {{ key }}
@@ -387,15 +419,10 @@ spec:
 {% endif %}
             - name: policysync
               mountPath: /var/run/nodeagent
-{% if calico_bpf_enabled %}
             # For eBPF mode, we need to be able to mount the BPF filesystem at /sys/fs/bpf so we mount in the
             # parent directory.
-            - name: sysfs
-              mountPath: /sys/fs/
-              # Bidirectional means that, if we mount the BPF filesystem at /sys/fs/bpf it will propagate to the host.
-              # If the host is known to mount that filesystem already then Bidirectional can be omitted.
-              mountPropagation: Bidirectional
-{% endif %}
+            - name: bpffs
+              mountPath: /sys/fs/bpf
             - name: cni-log-dir
               mountPath: /var/log/calico/cni
               readOnly: true
@@ -407,9 +434,11 @@ spec:
         - name: var-run-calico
           hostPath:
             path: /var/run/calico
+            type: DirectoryOrCreate
         - name: var-lib-calico
           hostPath:
             path: /var/lib/calico
+            type: DirectoryOrCreate
         # Used to install CNI.
         - name: cni-net-dir
           hostPath:
@@ -417,6 +446,7 @@ spec:
         - name: cni-bin-dir
           hostPath:
             path: /opt/cni/bin
+            type: DirectoryOrCreate
 {% if calico_datastore == "etcd" %}
         # Mount in the etcd TLS secrets.
         - name: etcd-certs
@@ -428,7 +458,7 @@ spec:
           hostPath:
             path: /run/xtables.lock
             type: FileOrCreate
-{% if calico_datastore == "kdd" %}
+{% if calico_datastore == "kdd" and not calico_ipam_host_local %}
         # Mount in the directory for host-local IPAM allocations. This is
         # used when upgrading from host-local to calico-ipam, and can be removed
         # if not using the upgrade-ipam init container.
@@ -449,12 +479,18 @@ spec:
           hostPath:
             path: "/etc/kubernetes/ssl/"
 {% endif %}
-{% if calico_bpf_enabled %}
-        - name: sysfs
+        - name: sys-fs
           hostPath:
             path: /sys/fs/
             type: DirectoryOrCreate
-{% endif %}
+        - name: bpffs
+          hostPath:
+            path: /sys/fs/bpf
+            type: Directory
+        # mount /proc at /nodeproc to be used by mount-bpffs initContainer to mount root cgroup2 fs.
+        - name: nodeproc
+          hostPath:
+            path: /proc
         # Used to access CNI logs.
         - name: cni-log-dir
           hostPath:
@@ -464,12 +500,3 @@ spec:
           hostPath:
             type: DirectoryOrCreate
             path: /var/run/nodeagent
-        # Used to install Flex Volume Driver
-        - name: flexvol-driver-host
-          hostPath:
-            type: DirectoryOrCreate
-            path: "{{ kubelet_flexvolumes_plugins_dir | default('/usr/libexec/kubernetes/kubelet-plugins/volume/exec') }}/nodeagent~uds"
-  updateStrategy:
-    rollingUpdate:
-      maxUnavailable: {{ serial | default('20%') }}
-    type: RollingUpdate

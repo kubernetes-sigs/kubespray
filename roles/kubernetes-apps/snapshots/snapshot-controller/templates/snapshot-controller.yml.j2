@@ -15,11 +15,12 @@ spec:
   replicas: {{ snapshot_controller_replicas }}
   selector:
     matchLabels:
-      app: snapshot-controller
-  # the snapshot controller won't be marked as ready if the v1 CRDs are unavailable
-  # in #504 the snapshot-controller will exit after around 7.5 seconds if it
-  # can't find the v1 CRDs so this value should be greater than that
-  minReadySeconds: 15
+      app.kubernetes.io/name: snapshot-controller
+  # The snapshot controller won't be marked as ready if the v1 CRDs are unavailable.
+  # The flag --retry-crd-interval-max is used to determine how long the controller
+  # will wait for the CRDs to become available before exiting. The default is 30 seconds
+  # so minReadySeconds should be set slightly higher than the flag value.
+  minReadySeconds: 35
   strategy:
     rollingUpdate:
       maxSurge: 0
@@ -28,13 +29,13 @@ spec:
   template:
     metadata:
       labels:
-        app: snapshot-controller
+        app.kubernetes.io/name: snapshot-controller
     spec:
-      serviceAccount: snapshot-controller
+      serviceAccountName: snapshot-controller
       containers:
         - name: snapshot-controller
           image: {{ snapshot_controller_image_repo }}:{{ snapshot_controller_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
           args:
             - "--v=5"
-            - "--leader-election=false"
-          imagePullPolicy: {{ k8s_image_pull_policy }}
+            - "--leader-election={{ 'true' if snapshot_controller_replicas > 1 else 'false' }}"

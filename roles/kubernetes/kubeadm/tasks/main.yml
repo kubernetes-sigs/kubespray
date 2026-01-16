@@ -14,17 +14,17 @@
 - name: Check if kubelet.conf exists
   stat:
     path: "{{ kube_config_dir }}/kubelet.conf"
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: kubelet_conf
 
 - name: Check if kubeadm CA cert is accessible
   stat:
     path: "{{ kube_cert_dir }}/ca.crt"
-    get_attributes: no
-    get_checksum: no
-    get_mime: no
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
   register: kubeadm_ca_stat
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
@@ -57,19 +57,37 @@
   set_fact:
     kubeadmConfig_api_version: v1beta3
 
+- name: Get kubeconfig for join discovery process
+  command: "{{ kubectl }} -n kube-public get cm cluster-info -o jsonpath='{.data.kubeconfig}'"
+  register: kubeconfig_file_discovery
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'] | first }}"
+  when: kubeadm_use_file_discovery
+
+- name: Copy discovery kubeconfig
+  copy:
+    dest: "{{ kube_config_dir }}/cluster-info-discovery-kubeconfig.yaml"
+    content: "{{ kubeconfig_file_discovery.stdout }}"
+    owner: "root"
+    mode: "0644"
+  when:
+    - not is_kube_master
+    - not kubelet_conf.stat.exists
+    - kubeadm_use_file_discovery
+
 - name: Create kubeadm client config
   template:
     src: "kubeadm-client.conf.{{ kubeadmConfig_api_version }}.j2"
     dest: "{{ kube_config_dir }}/kubeadm-client.conf"
-    backup: yes
-    mode: 0640
+    backup: true
+    mode: "0640"
   when: not is_kube_master
 
 - name: Kubeadm | Create directory to store kubeadm patches
   file:
     path: "{{ kubeadm_patches.dest_dir }}"
     state: directory
-    mode: 0640
+    mode: "0640"
   when: kubeadm_patches is defined and kubeadm_patches.enabled
 
 - name: Kubeadm | Copy kubeadm patches from inventory files
@@ -77,7 +95,7 @@
     src: "{{ kubeadm_patches.source_dir }}/"
     dest: "{{ kubeadm_patches.dest_dir }}"
     owner: "root"
-    mode: 0644
+    mode: "0644"
   when: kubeadm_patches is defined and kubeadm_patches.enabled
 
 - name: Join to cluster if needed
@@ -122,7 +140,7 @@
     dest: "{{ kube_config_dir }}/kubelet.conf"
     regexp: 'server:'
     line: '    server: {{ kube_apiserver_endpoint }}'
-    backup: yes
+    backup: true
   when:
     - kubeadm_config_api_fqdn is not defined
     - not is_kube_master
@@ -134,11 +152,22 @@
     dest: "{{ kube_config_dir }}/kubelet.conf"
     regexp: '^    server: https'
     line: '    server: {{ kube_apiserver_endpoint }}'
-    backup: yes
+    backup: true
   when:
     - not is_kube_master
     - loadbalancer_apiserver is defined
   notify: Kubeadm | restart kubelet
+
+- name: Get current resourceVersion of kube-proxy configmap
+  command: "{{ kubectl }} get configmap kube-proxy -n kube-system -o jsonpath='{.metadata.resourceVersion}'"
+  register: original_configmap_resource_version
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'] | first }}"
+  delegate_facts: false
+  when:
+    - kube_proxy_deployed
+  tags:
+    - kube-proxy
 
 # FIXME(mattymo): Need to point to localhost, otherwise masters will all point
 #                 incorrectly to first master, creating SPoF.
@@ -176,6 +205,17 @@
   tags:
     - kube-proxy
 
+- name: Get new resourceVersion of kube-proxy configmap
+  command: "{{ kubectl }} get configmap kube-proxy -n kube-system -o jsonpath='{.metadata.resourceVersion}'"
+  register: new_configmap_resource_version
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'] | first }}"
+  delegate_facts: false
+  when:
+    - kube_proxy_deployed
+  tags:
+    - kube-proxy
+
 - name: Set ca.crt file permission
   file:
     path: "{{ kube_cert_dir }}/ca.crt"
@@ -192,6 +232,7 @@
     - kubeadm_config_api_fqdn is not defined or loadbalancer_apiserver is defined
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "") or loadbalancer_apiserver is defined
     - kube_proxy_deployed
+    - original_configmap_resource_version.stdout != new_configmap_resource_version.stdout
   tags:
     - kube-proxy
 

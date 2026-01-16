@@ -6,57 +6,39 @@
   # This command should always run, even in check mode
   check_mode: false
 
-- name: Bootstrap CentOS
-  include_tasks: bootstrap-centos.yml
-  when: '''ID="centos"'' in os_release.stdout_lines or ''ID="ol"'' in os_release.stdout_lines or ''ID="almalinux"'' in os_release.stdout_lines or ''ID="rocky"'' in os_release.stdout_lines or ''ID="kylin"'' in os_release.stdout_lines  or ''ID="uos"'' in os_release.stdout_lines or ''ID="openEuler"'' in os_release.stdout_lines'
+- name: Include distro specifics vars and tasks
+  vars:
+    os_release_dict: "{{ os_release.stdout_lines | select('regex', '^.+=.*$') | map('regex_replace', '\"', '') |
+                         map('split', '=') | community.general.dict }}"
+  block:
+  - name: Include vars
+    include_vars: "{{ item }}"
+    tags:
+    - facts
+    with_first_found:
+    - &search
+      files:
+      - "{{ os_release_dict['ID'] }}-{{ os_release_dict['VARIANT_ID'] }}.yml"
+      - "{{ os_release_dict['ID'] }}.yml"
+      paths:
+      - vars/
+      skip: true
+  - name: Include tasks
+    include_tasks: "{{ included_tasks_file }}"
+    with_first_found:
+    - <<: *search
+      paths: []
+    loop_control:
+      loop_var: included_tasks_file
 
-- name: Bootstrap Amazon
-  include_tasks: bootstrap-amazon.yml
-  when: '''ID="amzn"'' in os_release.stdout_lines'
-
-- name: Bootstrap RedHat
-  include_tasks: bootstrap-redhat.yml
-  when: '''ID="rhel"'' in os_release.stdout_lines'
-
-- name: Bootstrap Clear Linux
-  include_tasks: bootstrap-clearlinux.yml
-  when: '''ID=clear-linux-os'' in os_release.stdout_lines'
-
-# Fedora CoreOS
-- name: Bootstrap Fedora CoreOS
-  include_tasks: bootstrap-fedora-coreos.yml
-  when:
-    - '''ID=fedora'' in os_release.stdout_lines'
-    - '''VARIANT_ID=coreos'' in os_release.stdout_lines'
-
-- name: Bootstrap Flatcar
-  include_tasks: bootstrap-flatcar.yml
-  when: '''ID=flatcar'' in os_release.stdout_lines'
-
-- name: Bootstrap Debian
-  include_tasks: bootstrap-debian.yml
-  when: '''ID=debian'' in os_release.stdout_lines or ''ID=ubuntu'' in os_release.stdout_lines'
-
-# Fedora "classic"
-- name: Boostrap Fedora
-  include_tasks: bootstrap-fedora.yml
-  when:
-    - '''ID=fedora'' in os_release.stdout_lines'
-    - '''VARIANT_ID=coreos'' not in os_release.stdout_lines'
-
-- name: Bootstrap OpenSUSE
-  include_tasks: bootstrap-opensuse.yml
-  when: '''ID="opensuse-leap"'' in os_release.stdout_lines or ''ID="opensuse-tumbleweed"'' in os_release.stdout_lines'
 
 - name: Create remote_tmp for it is used by another module
   file:
     path: "{{ ansible_remote_tmp | default('~/.ansible/tmp') }}"
     state: directory
-    mode: 0700
+    mode: "0700"
 
-# Workaround for https://github.com/ansible/ansible/issues/42726
-# (1/3)
-- name: Gather host facts to get ansible_os_family
+- name: Gather facts
   setup:
     gather_subset: '!all'
     filter: ansible_*
@@ -64,39 +46,12 @@
 - name: Assign inventory name to unconfigured hostnames (non-CoreOS, non-Flatcar, Suse and ClearLinux, non-Fedora)
   hostname:
     name: "{{ inventory_hostname }}"
-  when:
-    - override_system_hostname
-    - ansible_os_family not in ['Suse', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'ClearLinux']
-    - not ansible_distribution == "Fedora"
-    - not is_fedora_coreos
-
-# (2/3)
-- name: Assign inventory name to unconfigured hostnames (CoreOS, Flatcar, Suse, ClearLinux and Fedora only)
-  command: "hostnamectl set-hostname {{ inventory_hostname }}"
-  register: hostname_changed
-  become: true
-  changed_when: false
-  when: >
-    override_system_hostname
-    and (ansible_os_family in ['Suse', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'ClearLinux']
-    or is_fedora_coreos
-    or ansible_distribution == "Fedora")
-
-# (3/3)
-- name: Update hostname fact (CoreOS, Flatcar, Suse, ClearLinux and Fedora only)
-  setup:
-    gather_subset: '!all'
-    filter: ansible_hostname
-  when: >
-    override_system_hostname
-    and (ansible_os_family in ['Suse', 'Flatcar', 'Flatcar Container Linux by Kinvolk', 'ClearLinux']
-    or is_fedora_coreos
-    or ansible_distribution == "Fedora")
+  when: override_system_hostname
 
 - name: Install ceph-commmon package
   package:
     name:
-      - ceph-common
+    - ceph-common
     state: present
   when: rbd_provisioner_enabled | default(false)
 
@@ -106,4 +61,4 @@
     state: directory
     owner: root
     group: root
-    mode: 0755
+    mode: "0755"

@@ -9,6 +9,15 @@ variable "zone" {
   description = "The zone where to run the cluster"
 }
 
+variable "private_cloud" {
+  description = "Whether the environment is in the private cloud region"
+  default     = false
+}
+
+variable "public_zone" {
+  description = "The public zone equivalent if the cluster is running in a private cloud zone"
+}
+
 variable "template_name" {
   description = "Block describing the preconfigured operating system"
 }
@@ -32,6 +41,7 @@ variable "machines" {
     cpu       = string
     mem       = string
     disk_size = number
+    server_group : string
     additional_disks = map(object({
       size = number
       tier = string
@@ -121,6 +131,11 @@ variable "loadbalancer_plan" {
   default     = "development"
 }
 
+variable "loadbalancer_proxy_protocol" {
+  type    = bool
+  default = false
+}
+
 variable "loadbalancers" {
   description = "Load balancers"
 
@@ -137,7 +152,6 @@ variable "server_groups" {
 
   type = map(object({
     anti_affinity_policy = string
-    servers              = list(string)
   }))
 
   default = {}

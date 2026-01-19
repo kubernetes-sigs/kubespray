@@ -78,7 +78,6 @@ The following tags are defined in playbooks:
 | crio                           | Configuring crio container engine for hosts           |
 | crun                           | Configuring crun runtime                              |
 | csi-driver                     | Configuring csi driver                                |
-| dashboard                      | Installing and configuring the Kubernetes Dashboard   |
 | dns                            | Remove dns entries when resetting                     |
 | docker                         | Configuring docker engine runtime for hosts           |
 | download                       | Fetching container images to a delegate host          |

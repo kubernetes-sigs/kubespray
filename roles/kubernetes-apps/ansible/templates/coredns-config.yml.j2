@@ -68,9 +68,41 @@ data:
 {% endif %}
         }
         prometheus :9153
-        forward . {{ upstream_dns_servers | join(' ') if upstream_dns_servers | length > 0 else '/etc/resolv.conf' }} {
+{% set ns_plain = namespace(groups={}) %}
+{% for server in upstream_dns_servers %}
+{%   if server.startswith('tls://') %}
+{%     set parts = server | regex_replace('^tls://([^:#]+)(?::(\d+))?(?:#(.+))?$', '\\1,\\2,\\3') | split(',') %}
+{%     set addr = parts[0] %}
+{%     set port = parts[1] if parts[1] else '853' %}
+{%     set sni = parts[2] if parts[2] else addr %}
+{%     set server_str = 'tls://' ~ addr ~ ':' ~ port %}
+{%     if sni in ns_plain.groups %}
+{%       set _ = ns_plain.groups[sni].append(server_str) %}
+{%     else %}
+{%       set _ = ns_plain.groups.update({sni: [server_str]}) %}
+{%     endif %}
+{%   else %}
+{%     set parts = server | regex_replace('^([^:]+)(?::(\d+))?$', '\\1,\\2') | split(',') %}
+{%     set addr = parts[0] %}
+{%     set port = parts[1] if parts[1] else '' %}
+{%     set server_str = addr ~ (':' ~ port if port else '') %}
+{%     if '' in ns_plain.groups %}
+{%       set _ = ns_plain.groups[''].append(server_str) %}
+{%     else %}
+{%       set _ = ns_plain.groups.update({'': [server_str]}) %}
+{%     endif %}
+{%   endif %}
+{% endfor %}
+{% if ns_plain.groups | length > 0 %}
+{% for sni, servers in ns_plain.groups.items() %}
+        forward . {{ servers | join(' ') }} {
+{%   if not sni %}
           prefer_udp
+{%   endif %}
           max_concurrent 1000
+{%   if sni %}
+          tls_servername {{ sni }}
+{%   endif %}
 {% if dns_upstream_forward_extra_opts is defined %}
 {% for optname, optvalue in dns_upstream_forward_extra_opts.items() %}
           {{ (optname ~ ' ' ~ optvalue) | trim }}
@@ -79,6 +111,18 @@ data:
 {% endfor %}
 {% endif %}
         }
+{% endfor %}
+{% else %}
+        forward . /etc/resolv.conf {
+          prefer_udp
+          max_concurrent 1000
+{% if dns_upstream_forward_extra_opts is defined %}
+{% for optname, optvalue in dns_upstream_forward_extra_opts.items() %}
+          {{ (optname ~ ' ' ~ optvalue) | trim }}
+{% endfor %}
+{% endif %}
+        }
+{% endif %}
 {% if enable_coredns_k8s_external %}
         k8s_external {{ coredns_k8s_external_zone }}
 {% endif %}

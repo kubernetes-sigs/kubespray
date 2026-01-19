@@ -170,6 +170,41 @@
     msg: The selected choice is not supported
   run_once: true
 
+- name: Stop if DoT-only DNS servers are used without resolvconf_mode none
+  assert:
+    that:
+      - resolvconf_mode == 'none'
+    msg: |
+      dns_upstream_tls_only is set to true, indicating DNS servers ONLY support DoT (port 853).
+      This requires resolvconf_mode='none' to prevent plain DNS fallback failures on host systems.
+      Current resolvconf_mode={{ resolvconf_mode }}
+  when:
+    - dns_upstream_tls_only | default(false) | bool
+  run_once: true
+
+- name: Warn if DNS over TLS is used with mixed mode
+  debug:
+    msg: |
+      INFO: DNS over TLS (tls:// prefix in upstream_dns_servers) is configured with resolvconf_mode={{ resolvconf_mode }}.
+
+      Current behavior:
+      - Pods will use DoT via CoreDNS/NodeLocalDNS (secure, encrypted on port 853)
+      - Host systems will use plain DNS via /etc/resolv.conf (unencrypted on port 53)
+
+      This works ONLY if your DNS servers support BOTH protocols:
+      - Plain DNS on port 53 (for hosts)
+      - DNS over TLS on port 853 (for pods)
+
+      If your DNS servers are DoT-only (port 853 only), set:
+        dns_upstream_tls_only: true
+        resolvconf_mode: none
+  when:
+    - upstream_dns_servers is defined
+    - upstream_dns_servers | select('match', '^tls://') | list | length > 0
+    - resolvconf_mode != 'none'
+    - not (dns_upstream_tls_only | default(false) | bool)
+  run_once: true
+
 - name: Warn if `enable_dual_stack_networks` is set
   debug:
     msg: "WARNING! => `enable_dual_stack_networks` deprecation. Please switch to using ipv4_stack and ipv6_stack."

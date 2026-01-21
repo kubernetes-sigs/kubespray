@@ -28,31 +28,6 @@ jobs:
       - name: Install ansible-builder
         run: pip install ansible-builder
 
-      - name: Build Ansible Image
-        run: |
-          ansible-builder build \
-          --tag=kubespray-ee:${{ github.sha }} \
-          --tag=ghcr.io/${{ env.OWNER }}/kubespray-ee:${{ github.sha }} \
-          --container-runtime=docker
-
-      # - name: Tag image with PR name
-      #   if: github.event_name == 'pull_request'
-      #   run: docker tag kubespray-ee:${{ github.sha }} kubespray-ee:pr-${{ github.event.number }}
-
-      # - name: Tag image with latest
-      #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      #   run: docker tag kubespray-ee:${{ github.sha }} kubespray-ee:latest
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # - name: Push Image to GitHub Container Registry
-      #   run: docker push -a ghcr.io/${{ env.OWNER }}/kubespray-ee
-
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v4
@@ -61,6 +36,19 @@ jobs:
           tags: |
             type=sha
             type=ref,event=tag
+
+      - name: Build Ansible Image
+        run: |
+          ansible-builder build \
+          --tag=ghcr.io/${{ env.OWNER }}/kubespray-ee:${{ steps.meta.outputs.version }} \
+          --container-runtime=docker
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push Image to GitHub Container Registry
         uses: redhat-actions/push-to-registry@v2

@@ -49,13 +49,18 @@ jobs:
         if: github.event_name == 'push'
         id: check-image
         run: |
+          # Use short SHA to match what metadata action creates
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
           # Try to pull the SHA-tagged image that was built in the PR
-          if docker pull ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${{ github.sha }}; then
+          if docker pull ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${SHORT_SHA}; then
             echo "image_exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Found existing image for SHA ${{ github.sha }}"
+            echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+            echo "✅ Found existing image for SHA ${SHORT_SHA}"
           else
             echo "image_exists=false" >> $GITHUB_OUTPUT
-            echo "❌ No existing image found for SHA ${{ github.sha }}"
+            echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+            echo "❌ No existing image found for SHA ${SHORT_SHA}"
           fi
 
       - name: Build Ansible Image
@@ -71,7 +76,7 @@ jobs:
         run: |
           echo "🏷️ Re-tagging existing image with branch name..."
           # Tag the existing SHA image with the branch name
-          docker tag ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${{ github.sha }} \
+          docker tag ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${{ steps.check-image.outputs.short_sha }} \
                      ghcr.io/${{ env.OWNER }}/kubespray-ee:${{ github.ref_name }}
 
       - name: Push Image to GitHub Container Registry

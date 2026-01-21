@@ -28,6 +28,13 @@ jobs:
       - name: Install ansible-builder
         run: pip install ansible-builder
 
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v4
@@ -38,18 +45,34 @@ jobs:
             type=ref,event=tag
             type=ref,event=branch,pattern={{branch}},enable=${{ github.event_name == 'push' }}
 
-      - name: Build Ansible Image
+      - name: Check if image exists (for pushes)
+        if: github.event_name == 'push'
+        id: check-image
         run: |
+          # Try to pull the SHA-tagged image that was built in the PR
+          if docker pull ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${{ github.sha }}; then
+            echo "image_exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Found existing image for SHA ${{ github.sha }}"
+          else
+            echo "image_exists=false" >> $GITHUB_OUTPUT
+            echo "❌ No existing image found for SHA ${{ github.sha }}"
+          fi
+
+      - name: Build Ansible Image
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.check-image.outputs.image_exists == 'false')
+        run: |
+          echo "🔨 Building new image..."
           ansible-builder build \
           --tag=ghcr.io/${{ env.OWNER }}/kubespray-ee:${{ steps.meta.outputs.version }} \
           --container-runtime=docker
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Re-tag existing image
+        if: github.event_name == 'push' && steps.check-image.outputs.image_exists == 'true'
+        run: |
+          echo "🏷️ Re-tagging existing image with branch name..."
+          # Tag the existing SHA image with the branch name
+          docker tag ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${{ github.sha }} \
+                     ghcr.io/${{ env.OWNER }}/kubespray-ee:${{ github.ref_name }}
 
       - name: Push Image to GitHub Container Registry
         uses: redhat-actions/push-to-registry@v2

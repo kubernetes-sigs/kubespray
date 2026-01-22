@@ -52,15 +52,31 @@ jobs:
           # Use short SHA to match what metadata action creates
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
-          # Try to pull the SHA-tagged image that was built in the PR
+
+          # First try the current commit SHA
+          echo "🔍 Checking for image with current SHA: ${SHORT_SHA}"
           if docker pull ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${SHORT_SHA}; then
             echo "image_exists=true" >> $GITHUB_OUTPUT
             echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-            echo "✅ Found existing image for SHA ${SHORT_SHA}"
+            echo "source_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+            echo "✅ Found existing image for current SHA ${SHORT_SHA}"
           else
-            echo "image_exists=false" >> $GITHUB_OUTPUT
-            echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-            echo "❌ No existing image found for SHA ${SHORT_SHA}"
+            # If that fails, try the parent commit (could be PR head before merge)
+            PARENT_SHA=$(git rev-parse HEAD~1)
+            PARENT_SHORT_SHA="${PARENT_SHA:0:7}"
+            echo "🔍 Checking for image with parent SHA: ${PARENT_SHORT_SHA}"
+
+            if docker pull ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${PARENT_SHORT_SHA}; then
+              echo "image_exists=true" >> $GITHUB_OUTPUT
+              echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+              echo "source_sha=${PARENT_SHORT_SHA}" >> $GITHUB_OUTPUT
+              echo "✅ Found existing image for parent SHA ${PARENT_SHORT_SHA}"
+            else
+              echo "image_exists=false" >> $GITHUB_OUTPUT
+              echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+              echo "source_sha=" >> $GITHUB_OUTPUT
+              echo "❌ No existing image found for SHA ${SHORT_SHA} or parent ${PARENT_SHORT_SHA}"
+            fi
           fi
 
       - name: Build Ansible Image
@@ -75,8 +91,20 @@ jobs:
         if: github.event_name == 'push' && steps.check-image.outputs.image_exists == 'true'
         run: |
           echo "🏷️ Re-tagging existing image with branch name..."
-          # Tag the existing SHA image with the branch name
-          docker tag ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${{ steps.check-image.outputs.short_sha }} \
+          # Tag the existing SHA image with the branch name using the source SHA we found
+          SOURCE_SHA="${{ steps.check-image.outputs.source_sha }}"
+          TARGET_SHA="${{ steps.check-image.outputs.short_sha }}"
+
+          # If we found the image under a different SHA, tag it with the current SHA first
+          if [ "${SOURCE_SHA}" != "${TARGET_SHA}" ]; then
+            echo "📋 Tagging source image sha-${SOURCE_SHA} as sha-${TARGET_SHA}"
+            docker tag ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${SOURCE_SHA} \
+                       ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${TARGET_SHA}
+          fi
+
+          # Tag with the branch name
+          echo "🏷️ Tagging as branch: ${{ github.ref_name }}"
+          docker tag ghcr.io/${{ env.OWNER }}/kubespray-ee:sha-${SOURCE_SHA} \
                      ghcr.io/${{ env.OWNER }}/kubespray-ee:${{ github.ref_name }}
 
       - name: Push Image to GitHub Container Registry

@@ -104,23 +104,23 @@
   lineinfile:
     dest: "{{ kube_config_dir }}/kubelet.conf"
     regexp: 'server:'
-    line: '    server: {{ kube_apiserver_endpoint }}'
+    line: '    server: {{ kube_apiserver_cluster_internal_endpoint }}'
     backup: true
   when:
-    - kubeadm_config_api_fqdn is not defined
+    - not (kubeadm_use_control_plane_endpoint | default(false))
     - ('kube_control_plane' not in group_names)
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
   notify: Kubeadm | restart kubelet
 
-- name: Update server field in kubelet kubeconfig - external lb
+- name: Update server field in kubelet kubeconfig - when using control plane endpoint
   lineinfile:
     dest: "{{ kube_config_dir }}/kubelet.conf"
     regexp: '^    server: https'
-    line: '    server: {{ kube_apiserver_endpoint }}'
+    line: '    server: {{ kube_apiserver_cluster_internal_endpoint }}'
     backup: true
   when:
     - ('kube_control_plane' not in group_names)
-    - loadbalancer_apiserver is defined
+    - kubeadm_use_control_plane_endpoint | default(false)
   notify: Kubeadm | restart kubelet
 
 - name: Get current resourceVersion of kube-proxy configmap
@@ -147,17 +147,17 @@
   delegate_to: "{{ groups['kube_control_plane'] | first }}"
   delegate_facts: false
   when:
-    - kubeadm_config_api_fqdn is not defined
+    - not (kubeadm_use_control_plane_endpoint | default(false))
     - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
     - kube_proxy_deployed
     - loadbalancer_apiserver_localhost
   tags:
     - kube-proxy
 
-- name: Update server field in kube-proxy kubeconfig - external lb
+- name: Update server field in kube-proxy kubeconfig - when using control plane endpoint
   shell: >-
     set -o pipefail && {{ kubectl }} get configmap kube-proxy -n kube-system -o yaml
-    | sed 's#server:.*#server: {{kube_apiserver_endpoint}}#g'
+    | sed 's#server:.*#server: {{ kube_apiserver_cluster_internal_endpoint }}#g'
     | {{ kubectl }} replace -f -
   args:
     executable: /bin/bash
@@ -166,7 +166,7 @@
   delegate_facts: false
   when:
     - kube_proxy_deployed
-    - loadbalancer_apiserver is defined
+    - kubeadm_use_control_plane_endpoint | default(false)
   tags:
     - kube-proxy
 
@@ -194,10 +194,9 @@
   delegate_to: "{{ groups['kube_control_plane'] | first }}"
   delegate_facts: false
   when:
-    - kubeadm_config_api_fqdn is not defined or loadbalancer_apiserver is defined
-    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "") or loadbalancer_apiserver is defined
     - kube_proxy_deployed
     - original_configmap_resource_version.stdout != new_configmap_resource_version.stdout
+    - (not (kubeadm_use_control_plane_endpoint | default(false)) and kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")) or (kubeadm_use_control_plane_endpoint | default(false))
   tags:
     - kube-proxy
 

@@ -36,8 +36,7 @@
       - "localhost"
       - "127.0.0.1"
       - "::1"
-      - "{{ apiserver_loadbalancer_domain_name | d('') }}"
-      - "{{ loadbalancer_apiserver.address | d('') }}"
+      - "{{ kube_apiserver_endpoint | urlsplit('hostname') }}"
       - "{{ supplementary_addresses_in_ssl_keys }}"
       - "{{ groups['kube_control_plane'] | map('extract', hostvars, 'main_access_ip') }}"
       - "{{ groups['kube_control_plane'] | map('extract', hostvars, 'main_ip') }}"
@@ -87,11 +86,23 @@
   when: kube_apiserver_tracing
   notify: Control plane | Restart apiserver
 
-# Nginx LB(default), If kubeadm_config_api_fqdn is defined, use other LB by kubeadm controlPlaneEndpoint.
-- name: Set kubeadm_config_api_fqdn define
+# Determine if we should use controlPlaneEndpoint in kubeadm config
+# Use controlPlaneEndpoint when we have an external LB, localhost LB, or custom endpoint
+- name: Set kubeadm_use_control_plane_endpoint
   set_fact:
-    kubeadm_config_api_fqdn: "{{ apiserver_loadbalancer_domain_name }}"
-  when: loadbalancer_apiserver is defined
+    kubeadm_use_control_plane_endpoint: >-
+      {%- if loadbalancer_apiserver is defined -%}
+      true
+      {%- elif loadbalancer_apiserver_localhost -%}
+      true
+      {%- else -%}
+      {%- set endpoint_host = kube_apiserver_endpoint | urlsplit('hostname') | default('') -%}
+      {%- set endpoint_port = kube_apiserver_endpoint | urlsplit('port') | default(kube_apiserver_port | string) | int -%}
+      {%- set default_host = first_kube_control_plane_address -%}
+      {%- set default_port = kube_apiserver_port | int -%}
+      {{ not (endpoint_host == default_host and endpoint_port == default_port) }}
+      {%- endif -%}
+  tags: facts
 
 - name: Kubeadm | Create kubeadm config
   template:

@@ -1,22 +1,9 @@
 ---
 - name: Set external kube-apiserver endpoint
   set_fact:
-    # noqa: jinja[spacing]
-    external_apiserver_address: >-
-      {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined -%}
-      {{ loadbalancer_apiserver.address }}
-      {%- elif kubeconfig_localhost_ansible_host is defined and kubeconfig_localhost_ansible_host -%}
-      {{ hostvars[groups['kube_control_plane'][0]].ansible_host }}
-      {%- else -%}
-      {{ kube_apiserver_access_address }}
-      {%- endif -%}
-    # noqa: jinja[spacing]
-    external_apiserver_port: >-
-      {%- if loadbalancer_apiserver is defined and loadbalancer_apiserver.address is defined and loadbalancer_apiserver.port is defined -%}
-      {{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
-      {%- else -%}
-      {{ kube_apiserver_port }}
-      {%- endif -%}
+    # Use the new endpoint variables
+    external_apiserver_address: "{{ kube_apiserver_endpoint | urlsplit('hostname') }}"
+    external_apiserver_port: "{{ kube_apiserver_endpoint | urlsplit('port') }}"
   tags:
     - facts
 
@@ -47,8 +34,8 @@
 
 - name: Wait for k8s apiserver
   wait_for:
-    host: "{{ kube_apiserver_access_address }}"
-    port: "{{ kube_apiserver_port }}"
+    host: "{{ external_apiserver_address }}"
+    port: "{{ external_apiserver_port }}"
     timeout: 180
 
 - name: Create kubeconfig localhost artifacts

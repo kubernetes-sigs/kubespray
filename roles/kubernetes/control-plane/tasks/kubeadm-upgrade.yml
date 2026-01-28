@@ -2,6 +2,26 @@
 - name: Ensure kube-apiserver is up before upgrade
   import_tasks: check-api.yml
 
+# kubeadm upgrade no longer reconciles ClusterConfiguration and KubeProxyConfiguration changes, this must be done separately to ensure the latest config is applied
+- name: Update kubeadm and kubelet configmaps before upgrade
+  command: "{{ bin_dir }}/kubeadm init phase upload-config all --config {{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kubeadm_upload_config
+  # Retry is because upload config sometimes fails
+  retries: 3
+  until: kubeadm_upload_config.rc == 0
+  when:
+  - inventory_hostname == first_kube_control_plane
+
+- name: Update kube-proxy configmap before upgrade
+  command: "{{ bin_dir }}/kubeadm init phase addon kube-proxy --config {{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kube_proxy_upload_config
+  # Retry is because upload config sometimes fails
+  retries: 3
+  until: kube_proxy_upload_config.rc == 0
+  when:
+  - inventory_hostname == first_kube_control_plane
+  - ('addon/kube-proxy' not in kubeadm_init_phases_skip)
+
   # kubeadm-config.v1beta4 with UpgradeConfiguration requires some values that were previously allowed as args to be specified in the config file
   # TODO: Remove --skip-phases from command when v1beta4 UpgradeConfiguration supports skipPhases
 - name: Kubeadm | Upgrade first control plane node to {{ kube_version }}
@@ -45,26 +65,6 @@
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
-
-# kubeadm upgrade no longer reconciles ClusterConfiguration and KubeProxyConfiguration changes, this must be done separately after upgrade to ensure the latest config is applied
-- name: Update kubeadm and kubelet configmaps after upgrade
-  command: "{{ bin_dir }}/kubeadm init phase upload-config all --config {{ kube_config_dir }}/kubeadm-config.yaml"
-  register: kubeadm_upload_config
-  # Retry is because upload config sometimes fails
-  retries: 3
-  until: kubeadm_upload_config.rc == 0
-  when:
-  - inventory_hostname == first_kube_control_plane
-
-- name: Update kube-proxy configmap after upgrade
-  command: "{{ bin_dir }}/kubeadm init phase addon kube-proxy --config {{ kube_config_dir }}/kubeadm-config.yaml"
-  register: kube_proxy_upload_config
-  # Retry is because upload config sometimes fails
-  retries: 3
-  until: kube_proxy_upload_config.rc == 0
-  when:
-  - inventory_hostname == first_kube_control_plane
-  - ('addon/kube-proxy' not in kubeadm_init_phases_skip)
 
 - name: Rewrite kubeadm managed etcd static pod manifests with updated configmap
   command: "{{ bin_dir }}/kubeadm init phase etcd local --config {{ kube_config_dir }}/kubeadm-config.yaml"

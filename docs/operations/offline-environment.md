@@ -81,7 +81,7 @@ kubelet_download_url: "{{ files_repo }}/kubernetes/v{{ kube_version }}/kubelet"
 # etcd is optional if you **DON'T** use etcd_deployment=host
 etcd_download_url: "{{ files_repo }}/kubernetes/etcd/etcd-v{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
 cni_download_url: "{{ files_repo }}/kubernetes/cni/cni-plugins-linux-{{ image_arch }}-v{{ cni_version }}.tgz"
-crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-v{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-v{{ crictl_version }}-linux-{{ image_arch }}.tar.gz"
 # If using Calico
 calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/v{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
 # If using Calico with kdd
@@ -89,7 +89,7 @@ calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/v{{ calico_version
 # Containerd
 containerd_download_url: "{{ files_repo }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
 runc_download_url: "{{ files_repo }}/runc.{{ image_arch }}"
-nerdctl_download_url: "{{ files_repo }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+nerdctl_download_url: "{{ files_repo }}/nerdctl-{{ nerdctl_version }}-linux-{{ image_arch }}.tar.gz"
 get_helm_url: "{{ files_repo }}/get.helm.sh"
 # Insecure registries for containerd
 containerd_registries_mirrors:

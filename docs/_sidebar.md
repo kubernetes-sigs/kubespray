@@ -57,7 +57,6 @@
   * [Setting-up-your-first-cluster](/docs/getting_started/setting-up-your-first-cluster.md)
 * Ingress
   * [Alb Ingress Controller](/docs/ingress/alb_ingress_controller.md)
-  * [Ingress Nginx](/docs/ingress/ingress_nginx.md)
   * [Kube-vip](/docs/ingress/kube-vip.md)
   * [Metallb](/docs/ingress/metallb.md)
 * Operating Systems

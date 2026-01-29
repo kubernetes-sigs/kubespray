@@ -170,7 +170,7 @@ data "template_file" "inventory" {
     list_node                 = join("\n", aws_instance.k8s-worker.*.private_dns)
     connection_strings_etcd   = join("\n", formatlist("%s ansible_host=%s", aws_instance.k8s-etcd.*.private_dns, aws_instance.k8s-etcd.*.private_ip))
     list_etcd                 = join("\n", ((var.aws_etcd_num > 0) ? (aws_instance.k8s-etcd.*.private_dns) : (aws_instance.k8s-master.*.private_dns)))
-    nlb_api_fqdn              = "apiserver_loadbalancer_domain_name=\"${module.aws-nlb.aws_nlb_api_fqdn}\""
+    nlb_api_fqdn              = "kube_apiserver_endpoint=\"https://${module.aws-nlb.aws_nlb_api_fqdn}:6443\"\nkube_apiserver_cluster_internal_endpoint=\"https://${module.aws-nlb.aws_nlb_api_fqdn}:6443\""
   }
 }
 

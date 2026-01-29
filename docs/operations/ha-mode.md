@@ -70,12 +70,7 @@ And the corresponding example global vars for such a "cluster-aware"
 external LB with the cluster API access modes configured in Kubespray:
 
 ```yml
-## Legacy configuration style, still supported for backward compatibility
-loadbalancer_apiserver:
-  address: <VIP>
-  port: 8383
-
-## New recommended configuration - set endpoints directly
+## Configure endpoints directly
 kube_apiserver_endpoint: "https://<VIP>:8383"
 # Optional: if different from external endpoint
 kube_apiserver_cluster_internal_endpoint: "https://<VIP>:8383"
@@ -87,12 +82,10 @@ kube_apiserver_cluster_internal_endpoint: "https://<VIP>:8383"
   listens on a specific interface (to avoid conflict with haproxy binding the
   port on the VIP address)
 
-When using the legacy `loadbalancer_apiserver` configuration, the endpoints
-will be automatically derived. The endpoint hostname will be inserted
-into the `/etc/hosts` file of all servers in the `k8s_cluster` group and wired
-into the generated self-signed TLS/SSL certificates as well. Note that
-the HAProxy service should as well be HA and requires a VIP management, which
-is out of scope of this doc.
+The endpoint hostname will be inserted into the `/etc/hosts` file of all servers in the
+`k8s_cluster` group and wired into the generated self-signed TLS/SSL certificates as well.
+Note that the HAProxy service should as well be HA and requires a VIP management, which is
+out of scope of this doc.
 
 There is a special case for an internal and an externally configured (not with
 Kubespray) LB used simultaneously. Keep in mind that the cluster is not aware

@@ -1,0 +1,81 @@
+---
+- name: Get images present on each nodes from Kubernetes API
+  register: nodes_images
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  # TODO: ignore failure but only when the cluster isn't provisionned yet
+  command:
+    cmd: "{{ kubectl }} get nodes --output go-template-file=/dev/stdin"
+    # go-template to get the following json, for all cluster nodes
+    # {
+    #   "some_node": [
+    #     "some_image:some_tag",
+    #     "some_image:some_other_tag",
+    #     "some_image@some_hash",
+    #     "some_image2:some_other_tag",
+    #     ...
+    #   ],
+    #   "some_other_node": [
+    #   ...
+    #   ],
+    #   ...
+    # }
+    stdin: !unsafe '
+      { {{ range $n, $node := .items }}
+        {{ if $n }},{{ end }}"{{ .metadata.name }}":
+          [{{ range $i, $image := .status.images }}
+            {{ if $i }},{{end}}
+              {{ range $j, $name := .names }}
+                {{ if $j}},{{end}}"{{ $name }}"
+              {{ end }}
+           {{ end }}]
+        {{ end }} }'
+
+- name: Compute missing images on each node - with architecture prefix
+  vars:
+    current_images: "{{ (nodes_images.stdout | from_json)[inventory_hostname] | default([]) }}"
+    # Default filter handle the cluster setup case (no images on nodes)
+  set_fact:
+    images_to_pull: "{{
+      downloads | dict2items |
+      selectattr('value.container') | selectattr('value.enabled', 'all') |
+      map(attribute='value.image_name') | difference(current_images) |
+      map('regex_replace', '^', ansible_machine + '/')
+    }}"
+
+# - name: Find existing downloaded images on downloader nodes
+#   find:
+#     file_type: directory
+#     depth: 5
+#     recurse: true
+#     paths:
+#       - "{{ local_release_dir }}/images"
+#   when: ('download_delegate_' + inventory_hostname) in groups
+
+- name: Download all needed images
+  vars:
+    _images_to_pull: "{{
+      groups['download_delegate_' + inventory_hostname] |
+      map('extract', hostvars, morekeys=['images_to_pull'] |
+      flatten | unique }}"
+      # |
+      # difference(existing_images.files | map(attribute='path') |
+      # map('relpath', local_release_dir + '/images')) |
+      # TODO: Is pre-checking the image here worth it or should we just relies on `creates:` on the next task ?
+      # (which is simpler)
+
+    # TODO: handle image ref with digest as well as tags
+  loop: "{{ _images_to_pull }}"
+  loop_control:
+    loop_var: arch_image_name
+  vars:
+    image_name: "{{ arch_image_name | regex_replace('^.*?/', '') }}"
+    oci_archive_path: "{{ local_release_dir }}/images/{{ arch_image_name | regex_replace('/', '%') }}.tar"
+    # Replace '/' to have flat file path (no need to create directory)
+    # '%' is:
+    # - not allowed (AFAICT) in image names
+    # - no need to escape in Python regex
+    # - no need to escape in shell (when inspecting downloaded images manually for instance)
+  command:
+    cmd: "{{ bin_dir }}/skopeo copy docker://{{ image_name }} oci-archive:{{ oci_archive_path }}:{{ image_name }}"
+    creates: "{{ oci_archive_path }}"

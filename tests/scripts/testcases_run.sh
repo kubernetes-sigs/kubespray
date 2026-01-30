@@ -18,7 +18,7 @@ if [ "${UPGRADE_TEST}" != "false" ]; then
   # Checkout the current tests/ directory ; even when testing old version,
   # we want the up-to-date test setup/provisionning
   git checkout "${CI_COMMIT_SHA}" -- tests/
-  pip install --no-compile --no-cache-dir -r requirements.txt
+  pip install --break-system-packages --no-compile --no-cache-dir -r requirements.txt
 fi
 
 export ANSIBLE_BECOME=true
@@ -58,7 +58,7 @@ fi
 if [ "${UPGRADE_TEST}" != "false" ]; then
   git checkout "${CI_COMMIT_SHA}"
 
-  pip install --no-compile --no-cache-dir -r requirements.txt
+  pip install --break-system-packages --no-compile --no-cache-dir -r requirements.txt
 
   case "${UPGRADE_TEST}" in
     "basic")

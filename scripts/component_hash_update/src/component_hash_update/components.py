@@ -118,7 +118,7 @@ infos = {
     },
     "prometheus_operator_crds": {
         "url": "https://github.com/prometheus-operator/prometheus-operator/releases/download/v{version}/stripped-down-crds.yaml",
-        "graphql_id": "MDEwOlJlcG9zaXRvcnk2ODk2NDI2Mw==",
+        "graphql_id": "R_kgDOBBxPpw",
         "binary": True,
     },
 }

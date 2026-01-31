@@ -129,6 +129,7 @@ Terraform will be used to provision all of the OpenStack resources with base sof
 Create an inventory directory for your cluster by copying the existing sample and linking the `hosts` script (used to build the inventory based on Terraform state):
 
 ```ShellSession
+CLUSTER=your-cluster-name
 cp -LRp contrib/terraform/openstack/sample-inventory inventory/$CLUSTER
 cd inventory/$CLUSTER
 ln -s ../../contrib/terraform/openstack/hosts
@@ -262,6 +263,7 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`image_uuid`,`image_gfs_uuid`, `image_master_uuid` | UUID of the image to use in provisioning the compute resources. Should already be loaded into glance. |
 |`ssh_user`,`ssh_user_gfs` | The username to ssh into the image with. This usually depends on the image you have selected |
 |`public_key_path` | Path on your local workstation to the public key file you wish to use in creating the key pairs |
+|`group_vars_path` | path to the inventory group vars directory, `./group_vars` by default |
 |`number_of_k8s_masters`, `number_of_k8s_masters_no_floating_ip` | Number of nodes that serve as both master and etcd. These can be provisioned with or without floating IP addresses|
 |`number_of_k8s_masters_no_etcd`, `number_of_k8s_masters_no_floating_ip_no_etcd` |  Number of nodes that serve as just master with no etcd. These can be provisioned with or without floating IP addresses |
 |`number_of_etcd` | Number of pure etcd nodes |
@@ -611,7 +613,13 @@ Edit `inventory/$CLUSTER/group_vars/all/all.yml`:
 bin_dir: /opt/bin
 ```
 
-- and **cloud_provider**:
+- **external_cloud_provider**:
+```yml
+external_cloud_provider: openstack
+```
+
+
+- **Only if K8s < v1.31 - cloud_provider**:
 
 ```yml
 cloud_provider: openstack
@@ -716,6 +724,11 @@ Basically you will install Gluster as
 ```ShellSession
 ansible-playbook --become -i inventory/$CLUSTER/hosts ./contrib/network-storage/glusterfs/glusterfs.yml
 ```
+
+## Relevant Resources
+- [HauptJ - Example cluster.tfvars using floating IPs for all Master and Nodes](https://gist.github.com/HauptJ/d72e2a8fe0698d448283a51e847a5dfa)
+- [openmetal - Deploying a Kubespray cluster to OpenStack using Terraform](https://openmetal.io/docs/manuals/kubernetes-guides/deploying-a-kubespray-cluster-to-openstack-using-terraform/)
+- [Guoqiang Lan - Deploy Kubernetes with Kubespray on OpenStack](https://guoqianglan.github.io/tutorial/cloud/deploy-kubernetes-with-kubespray-on-openstack/)
 
 ## What's next
 

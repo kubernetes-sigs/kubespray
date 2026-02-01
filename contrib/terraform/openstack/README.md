@@ -94,7 +94,7 @@ binaries available on hyperkube v1.4.3_coreos.0 or higher.
 
 ## Requirements
 
-- [Install Terraform](https://www.terraform.io/intro/getting-started/install.html) 0.14 or later
+- [Install Terraform](https://www.terraform.io/intro/getting-started/install.html) 1.3.0 or later
 - [Install Ansible](http://docs.ansible.com/ansible/latest/intro_installation.html)
 - you already have a suitable OS image in Glance
 - you already have a floating IP pool created
@@ -151,7 +151,7 @@ different OpenStack environments may support Identity API version 2 or 3.
 
 These are examples and may vary depending on your OpenStack cloud provider,
 for an exhaustive list on how to authenticate on OpenStack with Terraform
-please read the [OpenStack provider documentation](https://www.terraform.io/docs/providers/openstack/).
+please read the [OpenStack provider documentation](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/latest/docs).
 
 ##### Declarative method (recommended)
 

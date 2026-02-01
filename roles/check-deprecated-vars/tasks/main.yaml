@@ -1,0 +1,55 @@
+---
+- name: Load deprecated variables list
+  include_vars:
+    file: deprecated_vars.yaml
+    name: deprecated_vars_list
+  tags:
+    - always
+
+- name: Check for deprecated variables
+  tags:
+    - always
+  block:
+    - name: Check each deprecated variable and collect them
+      set_fact:
+        deprecated_var_found: "{{ deprecated_var_found | default([]) + [item] }}"
+      when: hostvars[inventory_hostname].get(item.name) is defined
+      loop: "{{ deprecated_vars_list.deprecated_vars }}"
+      tags:
+        - always
+
+    - name: Display warning for deprecated variables
+      debug:
+        msg: >-
+          WARNING: Variable '{{ item.name }}' is deprecated since
+          kubespray {{ item.deprecated_in }}
+          {% if item.removed_in is defined %} and will be removed in {{ item.removed_in }}{% endif %}.
+          {% if item.replacement is defined %}Use '{{ item.replacement }}' instead.{% endif %}
+      when:
+        - deprecated_var_found is defined
+        - item in deprecated_var_found
+      loop: "{{ deprecated_vars_list.deprecated_vars }}"
+      tags:
+        - always
+
+    - name: Check for removed variables
+      set_fact:
+        removed_var_found: "{{ removed_var_found | default([]) + [item] }}"
+      when:
+        - hostvars[inventory_hostname].get(item.name) is defined
+        - item.removed_in is defined
+      loop: "{{ deprecated_vars_list.deprecated_vars }}"
+      tags:
+        - always
+
+    - name: Fail if removed variables are found
+      fail:
+        msg: >-
+          ERROR: Variable '{{ item.name }}' was removed in kubespray {{ item.removed_in }}.
+          {% if item.replacement is defined %}Use '{{ item.replacement }}' instead.{% endif %}
+      when:
+        - removed_var_found is defined
+        - item in removed_var_found
+      loop: "{{ deprecated_vars_list.deprecated_vars }}"
+      tags:
+        - always

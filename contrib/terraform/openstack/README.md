@@ -8,6 +8,11 @@ OpenStack.
 This will install a Kubernetes cluster on an OpenStack Cloud. It should work on
 most modern installs of OpenStack that support the basic services.
 
+## OpenStack Support Documentation
+
+For OpenStack cloud provider configuration (Octavia load balancers, Cinder CSI storage, 
+network plugins like Calico), see the [main OpenStack documentation](../../../docs/cloud_controllers/openstack.md).
+
 ### Known compatible public clouds
 
 - [Auro](https://auro.io/)

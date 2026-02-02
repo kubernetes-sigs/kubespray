@@ -27,14 +27,14 @@ RUN apt update -q \
          ca-certificates \
          curl \
          gnupg2 \
-         software-properties-common \
          unzip \
          libvirt-clients \
          qemu-utils \
          qemu-kvm \
          dnsmasq \
-    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
-    && add-apt-repository "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+        && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
+        && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+            $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | tee /etc/apt/sources.list.d/docker.list \
     && apt update -q \
     && apt install --no-install-recommends -yq docker-ce \
     && apt autoremove -yqq --purge && apt clean && rm -rf /var/lib/apt/lists/* /var/log/*

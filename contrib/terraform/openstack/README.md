@@ -10,7 +10,7 @@ most modern installs of OpenStack that support the basic services.
 
 ## OpenStack Support Documentation
 
-For OpenStack cloud provider configuration (Octavia load balancers, Cinder CSI storage, 
+For OpenStack cloud provider configuration (Octavia load balancers, Cinder CSI storage,
 network plugins like Calico), see the [main OpenStack documentation](../../../docs/cloud_controllers/openstack.md).
 
 ### Known compatible public clouds
@@ -95,7 +95,7 @@ binaries available on hyperkube v1.4.3_coreos.0 or higher.
 ## Requirements
 
 - [Install Terraform](https://www.terraform.io/intro/getting-started/install.html) 1.3.0 or later
-- [Install Ansible](http://docs.ansible.com/ansible/latest/intro_installation.html)
+- [Install Ansible](https://docs.ansible.com/ansible/latest/intro_installation.html)
 - you already have a suitable OS image in Glance
 - you already have a floating IP pool created
 - you have security groups enabled

@@ -45,10 +45,7 @@ Kubespray expects users to use one of the following variables sources for settin
 |  - inventory host_vars                 | host specific vars overrides, group_vars is usually more practical           |
 | **extra vars** (always win precedence) | override with ``ansible-playbook -e @foo.yml``                               |
 
-[!IMPORTANT]
-Extra vars are best used to override kubespray internal variables, for instances, roles/vars/.
-Those vars are usually **not expected** (by Kubespray developers) to be modified by end users, and not part of Kubespray
-interface. Thus they can change, disappear, or break stuff unexpectedly.
+> Extra vars are best used to override kubespray internal variables, for instances, roles/vars/. Those vars are usually **not expected** (by Kubespray developers) to be modified by end users, and not part of Kubespray interface. Thus they can change, disappear, or break stuff unexpectedly.
 
 ## Ansible tags
 
@@ -196,11 +193,11 @@ You will then need to use [bind mounts](https://docs.docker.com/storage/bind-mou
 to access the inventory and SSH key in the container, like this:
 
 ```ShellSession
-git checkout v2.29.0
-docker pull quay.io/kubespray/kubespray:v2.29.0
+git checkout v2.30.0
+docker pull quay.io/kubespray/kubespray:v2.30.0
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.29.0 bash
+  quay.io/kubespray/kubespray:v2.30.0 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```

@@ -5,7 +5,9 @@ download_cache_dir: /tmp/kubespray_cache
 # If this is true, debug information will be displayed but
 # may contain some private data, so it is recommended to set it to false
 # in the production environment.
-unsafe_show_logs: false
+# false by default, unless we're running in CI. (CI_PROJECT_URL should be globally unique even if kubespray happens to run
+# in gitlab-ci in other contexts
+unsafe_show_logs: "{{ lookup('env', 'CI_PROJECT_URL') == 'https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray' }}"
 
 # do not delete remote cache files after using them
 # NOTE: Setting this parameter to TRUE is only really useful when developing kubespray
@@ -114,7 +116,7 @@ flannel_version: 0.27.3
 flannel_cni_version: 1.7.1-flannel1
 cni_version: "{{ (cni_binary_checksums['amd64'] | dict2items)[0].key }}"
 
-cilium_version: "1.18.4"
+cilium_version: "1.18.6"
 cilium_cli_version: "{{ (ciliumcli_binary_checksums['amd64'] | dict2items)[0].key }}"
 cilium_enable_hubble: false
 
@@ -263,8 +265,9 @@ multus_image_tag: "v{{ multus_version }}"
 external_openstack_cloud_controller_image_repo: "{{ kube_image_repo }}/provider-os/openstack-cloud-controller-manager"
 external_openstack_cloud_controller_image_tag: "v1.32.0"
 
+kube_vip_version: 1.0.3
 kube_vip_image_repo: "{{ github_image_repo }}/kube-vip/kube-vip{{ '-iptables' if kube_vip_lb_fwdmethod == 'masquerade' else '' }}"
-kube_vip_image_tag: v0.8.9
+kube_vip_image_tag: "v{{ kube_vip_version }}"
 nginx_image_repo: "{{ docker_image_repo }}/library/nginx"
 nginx_image_tag: 1.28.0-alpine
 haproxy_image_repo: "{{ docker_image_repo }}/library/haproxy"
@@ -784,9 +787,9 @@ downloads:
     url: "{{ calico_crds_download_url }}"
     unarchive: true
     unarchive_extra_opts:
-      - "{{ '--strip=6' if (calico_version is version('3.22.3', '<')) else '--strip=3' }}"
+      - "--strip=3"
       - "--wildcards"
-      - "{{ '*/_includes/charts/calico/crds/kdd/' if (calico_version is version('3.22.3', '<')) else '*/libcalico-go/config/crd/' }}"
+      - "*/libcalico-go/config/crd/"
     owner: "root"
     mode: "0755"
     groups:

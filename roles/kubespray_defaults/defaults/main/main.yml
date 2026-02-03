@@ -96,6 +96,7 @@ ignore_assert_errors: false
 # kube-vip
 kube_vip_enabled: false
 kube_vip_lb_fwdmethod: local
+kube_vip_address:
 
 # nginx-proxy configure
 nginx_config_dir: "/etc/nginx"
@@ -632,6 +633,8 @@ ssl_ca_dirs: |-
   {% endif -%}
   ]
 
+# used for delegating tasks on a working control plane node
+first_kube_control_plane: "{{ groups['kube_control_plane'] | first }}"
 # Vars for pointing to kubernetes api endpoints
 kube_apiserver_count: "{{ groups['kube_control_plane'] | length }}"
 kube_apiserver_address: "{{ hostvars[inventory_hostname]['main_ip'] }}"
@@ -640,18 +643,18 @@ first_kube_control_plane_address: "{{ hostvars[groups['kube_control_plane'][0]][
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
-apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
+apiserver_loadbalancer_domain_name: "{{ 'localhost' if loadbalancer_apiserver_localhost else (loadbalancer_apiserver.address | d(undef())) }}"
 kube_apiserver_global_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
-  {%- elif loadbalancer_apiserver_localhost and (loadbalancer_apiserver_port is not defined or loadbalancer_apiserver_port == kube_apiserver_port) -%}
-      https://localhost:{{ kube_apiserver_port }}
+      https://{{ apiserver_loadbalancer_domain_name | ansible.utils.ipwrap }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
+  {%- elif loadbalancer_apiserver_localhost -%}
+      https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
   {%- else -%}
       https://{{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
+      https://{{ apiserver_loadbalancer_domain_name | ansible.utils.ipwrap }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
   {%- elif ('kube_control_plane' not in group_names) and loadbalancer_apiserver_localhost -%}
       https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
   {%- elif 'kube_control_plane' in group_names -%}

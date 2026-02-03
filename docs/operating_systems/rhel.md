@@ -38,3 +38,11 @@ you need to ensure they are using iptables-nft.
 An example how k8s do the autodetection can be found [in this PR](https://github.com/kubernetes/kubernetes/pull/82966)
 
 The kernel version is lower than the kubernetes 1.32 system validation, please refer to the [kernel requirements](../operations/kernel-requirements.md).
+
+## Rocky Linux 10
+
+(Experimental in Kubespray CI)
+
+The official Rocky Linux 10 cloud image does not include `kernel-module-extra`. Both Kube Proxy and CNI rely on this package, and since it relates to kernel version compatibility (which may require VM reboots, etc.), we haven't found an ideal solution.
+
+However, some users report that it doesn't affect them (minimal version). Therefore, the Kubespray CI Rocky Linux 10 image is built by Kubespray maintainers using `diskimage-builder`. For detailed methods, please refer to [the comments](https://github.com/kubernetes-sigs/kubespray/pull/12355#issuecomment-3705400093).

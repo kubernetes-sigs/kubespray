@@ -82,11 +82,6 @@ kube_apiserver_cluster_internal_endpoint: "https://<VIP>:8383"
   listens on a specific interface (to avoid conflict with haproxy binding the
   port on the VIP address)
 
-The endpoint hostname will be inserted into the `/etc/hosts` file of all servers in the
-`k8s_cluster` group and wired into the generated self-signed TLS/SSL certificates as well.
-Note that the HAProxy service should as well be HA and requires a VIP management, which is
-out of scope of this doc.
-
 There is a special case for an internal and an externally configured (not with
 Kubespray) LB used simultaneously. Keep in mind that the cluster is not aware
 of such an external LB and you need no to specify any configuration variables

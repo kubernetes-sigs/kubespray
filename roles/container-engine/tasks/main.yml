@@ -1,0 +1,48 @@
+---
+- name: Validate container engine
+  import_role:
+    name: container-engine/validate-container-engine
+  tags:
+    - container-engine
+    - validate-container-engine
+
+- name: Container runtimes
+  include_role:
+    name: "container-engine/{{ item.role }}"
+    apply:
+      tags:
+        - container-engine
+        - "{{ item.role }}"
+  loop:
+    - { role: 'kata-containers', enabled: "{{ kata_containers_enabled }}" }
+    - { role: 'gvisor', enabled: "{{ gvisor_enabled and container_manager in ['docker', 'containerd'] }}" }
+    - { role: 'crun', enabled: "{{ crun_enabled }}" }
+    - { role: 'youki', enabled: "{{ youki_enabled and container_manager == 'crio' }}" }
+  # TODO: Technically, this is more container-runtime than engine
+  when: item.enabled
+  tags:
+    - container-engine
+    - kata-containers
+    - gvisor
+    - crun
+    - youki
+
+- name: Container Manager
+  vars:
+    container_manager_role:
+      crio: cri-o
+      docker: cri-dockerd
+      containerd: containerd
+  include_role:
+    name: "container-engine/{{ container_manager_role[container_manager] }}"
+    apply:
+      tags:
+        - container-engine
+        - crio
+        - docker
+        - containerd
+  tags:
+    - container-engine
+    - crio
+    - docker
+    - containerd

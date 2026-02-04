@@ -1,0 +1,110 @@
+---
+- name: Validate container engine
+  import_role:
+    name: container-engine/validate-container-engine
+  tags:
+    - container-engine
+    - validate-container-engine
+
+- name: Container runtimes
+  include_role:
+    name: "container-engine/{{ item.role }}"
+    apply:
+      tags:
+        - container-engine
+        - "{{ item.role }}"
+  loop:
+    - { role: 'kata-containers', enabled: "{{ kata_containers_enabled }}" }
+    - { role: 'gvisor', enabled: "{{ gvisor_enabled and container_manager in ['docker', 'containerd'] }}" }
+    - { role: 'crun', enabled: "{{ crun_enabled }}" }
+    - { role: 'youki', enabled: "{{ youki_enabled and container_manager == 'crio' }}" }
+  # TODO: Technically, this is more container-runtime than engine
+  when: item.enabled
+  tags:
+    - container-engine
+    - kata-containers
+    - gvisor
+    - crun
+    - youki
+
+- name: Container Manager
+  block:
+    - name: Docker | Container Manager
+      when: container_manager == 'docker'
+      tags:
+        - container-engine
+        - docker
+      block:
+        - name: Container Engine | Docker dependencies
+          include_role:
+            name: "container-engine/{{ item }}"
+            apply:
+              tags:
+                - container-engine
+                - docker
+                - "{{ item }}"
+          loop:
+            - docker
+            - crictl
+
+        - name: Container Engine | Docker (cri-dockerd)
+          include_role:
+            name: container-engine/cri-dockerd
+            apply:
+              tags:
+                - container-engine
+                - docker
+
+    - name: Containerd | Container Manager
+      when: container_manager == 'containerd'
+      tags:
+        - container-engine
+        - containerd
+      block:
+        - name: Container Engine | Containerd dependencies
+          include_role:
+            name: "container-engine/{{ item }}"
+            apply:
+              tags:
+                - container-engine
+                - containerd
+                - "{{ item }}"
+          loop:
+            - containerd-common
+            - runc
+            - crictl
+            - nerdctl
+
+        - name: Container Engine | Containerd
+          include_role:
+            name: container-engine/containerd
+            apply:
+              tags:
+                - container-engine
+                - containerd
+
+    - name: CRI-O | Container Manager
+      when: container_manager == 'crio'
+      tags:
+        - container-engine
+        - crio
+      block:
+        - name: Container Engine | CRI-O dependencies
+          include_role:
+            name: "container-engine/{{ item }}"
+            apply:
+              tags:
+                - container-engine
+                - crio
+                - "{{ item }}"
+          loop:
+            - crictl
+            - skopeo
+
+        - name: Container Engine | CRI-O
+          include_role:
+            name: container-engine/cri-o
+            apply:
+              tags:
+                - container-engine
+                - crio

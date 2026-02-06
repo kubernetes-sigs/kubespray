@@ -6,15 +6,30 @@
 # -> nothing depending on facts or similar cluster state
 # Checks depending on current state (of the nodes or the cluster)
 # should be in roles/kubernetes/preinstall/tasks/0040-verify-settings.yml
+
 - name: Fail if removed variables are used
   vars:
     # Always remove items from this list after the release in comments
     removed_vars:
       - kubelet_static_pod_path # 2.31.0
+      - loadbalancer_apiserver  # 2.31.0
+      - apiserver_loadbalancer_domain_name  # 2.31.0
+      - kube_apiserver_global_endpoint  # 2.31.0
+      - kubeadm_config_api_fqdn  # 2.31.0
     removed_vars_found: "{{ query('varnames', '^' + (removed_vars | join('|')) + '$') }}"
   assert:
     that: removed_vars_found | length == 0
-    fail_msg: "Removed variables present: {{ removed_vars_found | join(', ') }}"
+    fail_msg: |
+      Removed variables present: {{ removed_vars_found | join(', ') }}
+
+      API server loadbalancer variables have been deprecated.
+      Please update your inventory to use:
+        - kube_apiserver_endpoint
+        - kube_apiserver_cluster_internal_endpoint
+
+      And optionally:
+        - loadbalancer_apiserver_localhost (true/false)
+        - loadbalancer_apiserver_port
   run_once: true
 
 - name: Stop if kube_control_plane group is empty
@@ -62,27 +77,6 @@
   run_once: true
   when:
     - not ignore_assert_errors
-
-# TODO: remove after release 2.31
-- name: Stop if legacy apiserver LB variables are used
-  assert:
-    that:
-      - loadbalancer_apiserver is not defined
-      - apiserver_loadbalancer_domain_name is not defined
-      - kube_apiserver_global_endpoint is not defined
-      - kubeadm_config_api_fqdn is not defined
-    fail_msg: |-
-      API server loadbalancer variables have been deprecated.
-
-      Please update your inventory to use:
-        - kube_apiserver_endpoint
-        - kube_apiserver_cluster_internal_endpoint
-
-      And optionally:
-        - loadbalancer_apiserver_localhost (true/false)
-        - loadbalancer_apiserver_port
-  run_once: true
-  when: not ignore_assert_errors
 
 # This assertion will fail on the safe side: One can indeed schedule more pods
 # on a node than the CIDR-range has space for when additional pods use the host

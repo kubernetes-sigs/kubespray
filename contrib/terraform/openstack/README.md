@@ -94,7 +94,7 @@ binaries available on hyperkube v1.4.3_coreos.0 or higher.
 
 ## Requirements
 
-- [Install OpenTofu](https://opentofu.org/docs/intro/install/) 1.9clear.0 or later
+- [Install OpenTofu](https://opentofu.org/docs/intro/install/) 1.9.0 or later
 - [Install Ansible](https://docs.ansible.com/ansible/latest/intro_installation.html)
 - you already have a suitable OS image in Glance
 - you already have a floating IP pool created

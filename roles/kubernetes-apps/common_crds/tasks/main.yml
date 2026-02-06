@@ -1,0 +1,17 @@
+---
+- name: "Install common CRDs | {{ item.0[:-5] }}"
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{ lookup('file', install_source_localhost + '/' + item.1.dest) }}"
+  vars:
+    server_side_apply: true
+    # some big crds would overflow the kubectl-last-applied annotations
+    _common_crds:
+      - prometheus_operator_crds
+      - gateway_api_crds
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  loop: "{{ _common_crds | zip(
+            _common_crds | map('extract', downloads)) |
+            selectattr('1.enabled', 'all')
+          }}"

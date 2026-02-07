@@ -83,32 +83,6 @@ authentication. One can get a kubeconfig from kube_control_plane hosts
 For more information on kubeconfig and accessing a Kubernetes cluster, refer to
 the Kubernetes [documentation](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/).
 
-## Accessing Kubernetes Dashboard
-
-Supported version is kubernetes-dashboard v2.0.x :
-
-- Login option : token/kubeconfig by default
-- Deployed by default in "kube-system" namespace, can be overridden with `dashboard_namespace: kubernetes-dashboard` in inventory,
-- Only serves over https
-
-Access is described in [dashboard docs](https://github.com/kubernetes/dashboard/tree/master/docs/user/accessing-dashboard). With kubespray's default deployment in kube-system namespace, instead of kubernetes-dashboard :
-
-- Proxy URL is <http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#/login>
-- kubectl commands must be run with "-n kube-system"
-
-Accessing through Ingress is highly recommended. For proxy access, please note that proxy must listen to [localhost](https://github.com/kubernetes/dashboard/issues/692#issuecomment-220492484) (`proxy  --address="x.x.x.x"` will not work)
-
-For token authentication, guide to create Service Account is provided in [dashboard sample user](https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md) doc. Still take care of default namespace.
-
-Access can also by achieved via ssh tunnel on a control plane :
-
-```bash
-# localhost:8081 will be sent to control-plane-1's own localhost:8081
-ssh -L8001:localhost:8001 user@control-plane-1
-sudo -i
-kubectl proxy
-```
-
 ## Accessing Kubernetes API
 
 The main client of Kubernetes is `kubectl`. It is installed on each kube_control_plane

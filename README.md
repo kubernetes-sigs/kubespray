@@ -115,7 +115,7 @@ Note:
   - [etcd](https://github.com/etcd-io/etcd) 3.5.26
   - [docker](https://www.docker.com/) 28.3
   - [containerd](https://containerd.io/) 2.1.6
-  - [cri-o](http://cri-o.io/) 1.33.8 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [cri-o](http://cri-o.io/) 1.33.9 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) 1.8.0
   - [calico](https://github.com/projectcalico/calico) 3.30.6

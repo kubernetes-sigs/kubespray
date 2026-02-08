@@ -22,6 +22,10 @@ Then you need to setup the following services on your offline environment:
 You can get artifact lists with [generate_list.sh](/contrib/offline/generate_list.sh) script.
 In addition, you can find some tools for offline deployment under [contrib/offline](/contrib/offline/README.md).
 
+## Tip: use the original domains as top directories in the files_repo, i.e `github.com/`, `dl.k8s.io/`, `storage.googleapis.com/`, `get.helm.sh/`
+
+## Tip: for Cilium ensure to mirror <https://helm.cilium.io/index.yaml> and the chart cilium-1.18.2.tgz in files_repo
+
 ## Access Control
 
 ### Note: access controlled files_repo
@@ -44,7 +48,8 @@ files_repo: "https://{{ files_repo_user ~ ':' ~ files_repo_pass ~ '@' ~ files_re
 
 ### Note: access controlled registry
 
-To specify a username and password for "{{ registry_host }}", used to download the container images, you can use url-encoding too.
+Specify a "{{ registry_user }}" and "{{ registry_pass }}" for "{{ registry_addr }}",
+These are used to download the container images. Ensure to encrypt the password (if used) with ansible-vault.
 
 ```yaml
 registry_pass: !vault |
@@ -54,7 +59,30 @@ registry_pass: !vault |
           64653965663965356137333436616536643132336630313235333232336661373761643766356366
           6232353233386534380a373262313634613833623537626132633033373064336261383166323230
           3164
+```
 
+To enable Containerd **2+** to access the private registry:
+
+```yaml
+
+containerd_registries_mirrors:
+  - prefix: docker.io
+    mirrors:
+      - host: https://registry-1.docker.io
+        capabilities: ["pull", "resolve"]
+        skip_verify: false
+  - prefix: "{{ registry_addr }}"
+    mirrors:
+      - host: "https://{{ registry_addr }}"
+        capabilities: ["pull", "resolve"]
+        skip_verify: false
+        header:
+          Authorization: ["Basic {{ (registry_user + ':' + registry_pass) | b64encode }}"]
+```
+
+To enable Containerd **1.7** to access the private registry:
+
+```yaml
 containerd_registry_auth:
   - registry: "{{ registry_host }}"
     username: "{{ registry_user }}"
@@ -73,31 +101,46 @@ gcr_image_repo: "{{ registry_host }}"
 docker_image_repo: "{{ registry_host }}"
 quay_image_repo: "{{ registry_host }}"
 github_image_repo: "{{ registry_host }}"
-
-local_path_provisioner_helper_image_repo: "{{ registry_host }}/busybox"
-kubeadm_download_url: "{{ files_repo }}/kubernetes/v{{ kube_version }}/kubeadm"
-kubectl_download_url: "{{ files_repo }}/kubernetes/v{{ kube_version }}/kubectl"
-kubelet_download_url: "{{ files_repo }}/kubernetes/v{{ kube_version }}/kubelet"
-# etcd is optional if you **DON'T** use etcd_deployment=host
-etcd_download_url: "{{ files_repo }}/kubernetes/etcd/etcd-v{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
-cni_download_url: "{{ files_repo }}/kubernetes/cni/cni-plugins-linux-{{ image_arch }}-v{{ cni_version }}.tgz"
-crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-v{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
-# If using Calico
-calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/v{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
-# If using Calico with kdd
-calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/v{{ calico_version }}.tar.gz"
-# Containerd
-containerd_download_url: "{{ files_repo }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
-runc_download_url: "{{ files_repo }}/runc.{{ image_arch }}"
-nerdctl_download_url: "{{ files_repo }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+github_url: "{{ files_repo }}/github.com"
+dl_k8s_io_url: "{{ files_repo }}/dl.k8s.io"
+storage_googleapis_url: "{{ files_repo }}/storage.googleapis.com"
 get_helm_url: "{{ files_repo }}/get.helm.sh"
-# Insecure registries for containerd
+local_path_provisioner_helper_image_repo: "{{ registry_host }}/busybox"
+# Insecure registries for containerd (see authenticated example above)
 containerd_registries_mirrors:
   - prefix: "{{ registry_addr }}"
     mirrors:
       - host: "{{ registry_host }}"
         capabilities: ["pull", "resolve"]
         skip_verify: true
+
+# Cilium
+cilium_install_extra_flags: "--repository {{ files_repo }}/helm.cilium.io/"
+cilium_extra_values:
+  image:
+    useDigest: false
+  hubble:
+    relay:
+      image:
+        useDigest: false
+    ui:
+      backend:
+        image:
+          useDigest: false
+      frontend:
+        image:
+          useDigest: false
+  operator:
+    image:
+      override: "{{ registry_host }}/cilium/operator-generic:v1.18.2"
+      useDigest: false
+      extension: ""
+  certgen:
+    image:
+      useDigest: false
+  envoy:
+    image:
+      useDigest: false
 
 # CentOS/Redhat/AlmaLinux/Rocky Linux
 ## Docker / Containerd

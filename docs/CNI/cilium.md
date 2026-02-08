@@ -314,6 +314,57 @@ cilium_encryption_type: "wireguard"
 
 Kubespray currently supports Linux distributions with Wireguard Kernel mode on Linux 5.6 and newer.
 
+#### WireGuard Strict Mode (Zero-Trust Networking)
+
+WireGuard Strict Mode provides the highest level of network security by enabling transparent encryption of **ALL** network traffic in your Kubernetes cluster. This includes:
+
+- **Pod-to-Pod traffic**: All communication between pods is encrypted
+- **Node-to-Node traffic**: All communication between Kubernetes nodes is encrypted
+
+When enabled, WireGuard Strict Mode automatically configures Cilium to use WireGuard encryption at the kernel level for complete traffic protection. This makes your cluster "NSA-proof" by ensuring that even if an attacker gains access to the network infrastructure, they cannot intercept or read any traffic between pods or nodes.
+
+**Key Benefits:**
+- **Transparent**: No application changes required - encryption happens automatically at the kernel level
+- **High Performance**: WireGuard is implemented in the kernel using eBPF, providing near-native performance
+- **Complete Coverage**: Encrypts both pod-to-pod and node-to-node traffic
+- **Zero-Trust Architecture**: Implements a true zero-trust networking model
+
+**Requirements:**
+- Linux kernel 5.6.0 or newer
+- WireGuard kernel module support (included in most modern distributions)
+- Cilium 1.10.0 or newer
+
+**Configuration:**
+
+To enable WireGuard Strict Mode, simply set:
+
+```yml
+cilium_encryption_strict_mode: true
+```
+
+This single variable automatically configures:
+- `cilium_encryption_enabled: true`
+- `cilium_encryption_type: "wireguard"`
+- `cilium_encryption_node_encryption: true`
+
+**Note:** When `cilium_encryption_strict_mode` is enabled, the individual encryption settings (`cilium_encryption_enabled`, `cilium_encryption_type`, `cilium_encryption_node_encryption`) are automatically overridden to ensure complete encryption coverage.
+
+**Verification:**
+
+After deployment, you can verify that WireGuard Strict Mode is active by running:
+
+```bash
+kubectl exec -n kube-system ds/cilium -- cilium status | grep Encryption
+```
+
+You should see output indicating that encryption is enabled with WireGuard, and you can also check for the WireGuard interface:
+
+```bash
+kubectl exec -n kube-system ds/cilium -- ip link show type wireguard
+```
+
+For a complete verification script, see `verify-encryption.sh` in the Cilium role directory.
+
 ## Bandwidth Manager
 
 Cilium's bandwidth manager supports the kubernetes.io/egress-bandwidth Pod annotation.

@@ -1006,7 +1006,7 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
   name              = "${var.cluster_name}-gfs-node-nf-${count.index + 1}"
   count             = var.number_of_gfs_nodes_no_floating_ip
   availability_zone = element(var.az_list, count.index)
-  image_name        = var.gfs_root_volume_size_in_gb == 0 ? local.image_to_use_gfs : null
+  image_id          = var.gfs_root_volume_size_in_gb == 0 ? local.image_to_use_gfs : null
   flavor_id         = var.flavor_gfs_node
   key_pair          = openstack_compute_keypair_v2.k8s.name
 
@@ -1078,7 +1078,7 @@ resource "openstack_networking_floatingip_associate_v2" "k8s_nodes" {
   port_id               = openstack_networking_port_v2.k8s_nodes_port[each.key].id
 }
 
-resource "openstack_blockstorage_volume_v2" "glusterfs_volume" {
+resource "openstack_blockstorage_volume_v3" "glusterfs_volume" {
   name        = "${var.cluster_name}-glusterfs_volume-${count.index + 1}"
   count       = var.gfs_root_volume_size_in_gb == 0 ? var.number_of_gfs_nodes_no_floating_ip : 0
   description = "Non-ephemeral volume for GlusterFS"
@@ -1088,5 +1088,5 @@ resource "openstack_blockstorage_volume_v2" "glusterfs_volume" {
 resource "openstack_compute_volume_attach_v2" "glusterfs_volume" {
   count       = var.gfs_root_volume_size_in_gb == 0 ? var.number_of_gfs_nodes_no_floating_ip : 0
   instance_id = element(openstack_compute_instance_v2.glusterfs_node_no_floating_ip.*.id, count.index)
-  volume_id   = element(openstack_blockstorage_volume_v2.glusterfs_volume.*.id, count.index)
+  volume_id   = element(openstack_blockstorage_volume_v3.glusterfs_volume.*.id, count.index)
 }

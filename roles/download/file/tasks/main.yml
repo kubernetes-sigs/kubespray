@@ -1,0 +1,134 @@
+---
+- name: Download | Check localhost is in play
+  assert:
+    that:
+    - ('localhost') in ansible_play_hosts
+    fail_msg: |
+      The control node ('localhost') is required to be in the play downloading artefacts.
+      Please add it to your limit ('--limit <other nodes>:localhost')
+
+- name: Download | instantiate download dir var
+  set_fact:
+    downloads_list: "{{ downloads | dict2items | rejectattr('value.container', 'defined') | selectattr('value.enabled', 'all') }}"
+    # set_fact is required to be able to manipulate variables through hostvars
+    # since roles vars/defaults are not available in hostvars
+
+- name: Download | group hosts by download_delegate
+  group_by:
+    key: download_delegate_{{ download_delegate }}
+
+- name: Download_file | Set downloads delegated to localhost for all hosts
+  set_fact:
+    downloads_delegated_localhost: "{{ groups['download_delegate_localhost'] | d([]) | map('extract', hostvars, morekeys=['downloads_list']) | flatten | unique(attribute='value.dest') }}"
+  run_once: true
+  # For scalability: evaluate the variable once, instead of once per host
+
+- name: Download | Download files
+  become: false
+  vars:
+    downloads_delegated: "{{ downloads_delegated_localhost
+                            if inventory_hostname == 'localhost'
+                            else
+                             groups['download_delegate_' + inventory_hostname] | d([]) |
+                             map('extract', hostvars, morekeys=['downloads_list']) |
+                             flatten | unique(attribute='value.dest') }}"
+  block:
+
+  - name: Download | Create download directory
+    when: ('download_delegate_' + inventory_hostname) in groups
+          or inventory_hostname == 'localhost' # needed to make things transit to localhost
+    file:
+      path: "{{ local_release_dir }}"
+      state: directory
+      mode: "0755"
+      # TODO: everything those line (up to next task) after release 2.30
+      # this is meant to fix the permissions of local_release_dir to use the normal ansible user
+      # without root, since there is no reason to do so for just downloading artifacts
+      recurse: "{{ inventory_hostname != 'localhost' }}"
+      owner: "{{ ansible_user if inventory_hostname != 'localhost' else omit }}"
+    become: "{{ inventory_hostname != 'localhost' }}"
+
+  - name: Download_file | Download file
+    get_url:
+      url: "{{ item.value.url }}"
+      dest: "{{ local_release_dir }}/{{ item.value.dest }}"
+      checksum: "{{ item.value.checksum }}"
+      url_username: "{{ item.value.username | default(omit) }}"
+      url_password: "{{ item.value.password | default(omit) }}"
+      force_basic_auth: "{{ item.value.force_basic_auth | default(omit) }}"
+      mode: "0600" # exec permissions are not needed because the artifact is not used as-is (either copied elsewhere / decompressed)
+    timeout: "{{ item.value.timeout | default(omit) }}"
+    retries: "{{ download_retries }}"
+    delay: "{{ retry_stagger }}"
+    environment: "{{ proxy_env }}"
+    no_log: "{{ not (unsafe_show_logs) }}"
+    loop: "{{ downloads_delegated }}"
+    loop_control:
+      label: "{{ item.key }}: {{ item.value.url }}"
+    async: 150
+    poll: 0
+    register: download_task
+    changed_when: false
+  - name: Download_file | Get result
+    async_status:
+      jid: "{{ item.ansible_job_id }}"
+    register: job_result
+    until: job_result.finished
+    retries: 150
+    delay: 1
+    loop: "{{ download_task.results | select('started') }}"
+    loop_control:
+      label: "{{ item.item.key }}: {{ item.item.value.url }}"
+
+  - name: Download_file | Fetch file to localhost
+    fetch:
+      flat: true
+      src: "{{ local_release_dir }}/{{ item.value.dest }}"
+      dest: "{{ install_source_localhost }}/"
+    loop: "{{ (downloads_delegated | difference(downloads_delegated_localhost))
+              if (groups['download_delegate_' + inventory_hostname] | d([]) |
+                  difference([inventory_hostname]) != [])
+              else
+              []
+           }}"
+    # we only need to fetch binary which are
+    # - not already delegated to localhost
+    # - delegated from other hosts
+    # So we compute the set of host which delegate download to this host ('inventory_hostname')
+    # remove the current host (no need to pass by localhost for installing artifacts on the same host)
+    # and if the resulting set is not empty we need to fetch the artifacts to use `copy` when installing.
+    # (this way, there is no need to have special network opened between nodes, if Ansible works, this works)
+    loop_control:
+      label: "{{ item.key }}"
+    register: fetched_to_localhost
+
+  - name: Download_file | Create archive directories
+    file:
+      path: "{{ local_release_dir }}/{{ (item.value.dest | splitext)[0] }}"
+      state: directory
+      mode: "0755"
+    # -> delegated to localhost + delegated to other hosts and fetched to localhost
+    # or only local downloads
+    loop: "{{ ((downloads_delegated_localhost +
+                   (hostvars | dict2items | selectattr('value.fetched_to_localhost', 'defined') |
+                   map(attribute='value.fetched_to_localhost.results') |
+                   flatten | unique(attribute='dest') | map(attribute='item')))
+              if inventory_hostname == 'localhost'
+              else (downloads_list
+                    if inventory_hostname == download_delegate
+                    else
+                    []))
+              | selectattr('value.unarchive', 'defined') | selectattr('value.unarchive') }}"
+    loop_control:
+      label: "{{ item.value.dest }}"
+    register: archives
+
+  - name: Download_file | Unpack archive
+    unarchive:
+      src: "{{ local_release_dir }}/{{ item.item.value.dest }}"
+      dest: "{{ item.path }}"
+      remote_src: true
+      extra_opts: "{{ item.item.value.unarchive_extra_opts | default(omit) }}"
+    loop: "{{ archives.results }}"
+    loop_control:
+      label: "{{ item.path }}"

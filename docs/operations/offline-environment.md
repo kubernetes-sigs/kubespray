@@ -85,7 +85,7 @@ crictl_download_url: "{{ files_repo }}/kubernetes/cri-tools/crictl-v{{ crictl_ve
 # If using Calico
 calicoctl_download_url: "{{ files_repo }}/kubernetes/calico/v{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
 # If using Calico with kdd
-calico_crds_download_url: "{{ files_repo }}/kubernetes/calico/v{{ calico_version }}.tar.gz"
+calico_crds_download_url: "{{ files_repo }}/github.com/projectcalico/calico/raw/v{{ calico_version }}/manifests/crds.yaml"
 # Containerd
 containerd_download_url: "{{ files_repo }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
 runc_download_url: "{{ files_repo }}/runc.{{ image_arch }}"

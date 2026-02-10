@@ -1,41 +1,63 @@
 ---
-- name: Set facts variables
-  tags:
-    - always
-  block:
-    - name: Gather node IPs
-      setup:
-        gather_subset: '!all,!min,network'
-        filter: "ansible_default_ip*"
-      when: ansible_default_ipv4 is not defined or ansible_default_ipv6 is not defined
-      ignore_unreachable: true
+- name: Gather node IPs
+  setup:
+    gather_subset: '!all,!min,network'
+    filter: "ansible_default_ip*"
+  when: ansible_default_ipv4 is not defined or ansible_default_ipv6 is not defined
+  ignore_unreachable: true
 
-    - name: Set computed IPs varables
-      vars:
-        fallback_ip: "{{ ansible_default_ipv4.address | d('127.0.0.1') }}"
-        fallback_ip6: "{{ ansible_default_ipv6.address | d('::1') }}"
-        # Set 127.0.0.1 as fallback IP if we do not have host facts for host
-        # ansible_default_ipv4 isn't what you think.
-        _ipv4: "{{ ip | default(fallback_ip) }}"
-        _access_ipv4: "{{ access_ip | default(_ipv4) }}"
-        _ipv6: "{{ ip6 | default(fallback_ip6) }}"
-        _access_ipv6: "{{ access_ip6 | default(_ipv6) }}"
-        _access_ips:
-          - "{{ _access_ipv4 if ipv4_stack }}"
-          - "{{ _access_ipv6 if ipv6_stack }}"
-        _ips:
-          - "{{ _ipv4 if ipv4_stack }}"
-          - "{{ _ipv6 if ipv6_stack }}"
-      set_fact:
-        cacheable: true
-        main_access_ip: "{{ _access_ipv4 if ipv4_stack else _access_ipv6 }}"
-        main_ip: "{{ _ipv4 if ipv4_stack else _ipv6  }}"
-        # Mixed IPs - for dualstack
-        main_access_ips: "{{ _access_ips | select }}"
-        main_ips: "{{ _ips | select }}"
+- name: Set computed IPs variables
+  vars:
+    fallback_ip: "{{ ansible_default_ipv4.address | d('127.0.0.1') }}"
+    fallback_ip6: "{{ ansible_default_ipv6.address | d('::1') }}"
+    # Set 127.0.0.1 as fallback IP if we do not have host facts for host
+    # ansible_default_ipv4 isn't what you think.
+    _ipv4: "{{ ip | default(fallback_ip) }}"
+    _access_ipv4: "{{ access_ip | default(_ipv4) }}"
+    _ipv6: "{{ ip6 | default(fallback_ip6) }}"
+    _access_ipv6: "{{ access_ip6 | default(_ipv6) }}"
+    _access_ips:
+      - "{{ _access_ipv4 if ipv4_stack }}"
+      - "{{ _access_ipv6 if ipv6_stack }}"
+    _ips:
+      - "{{ _ipv4 if ipv4_stack }}"
+      - "{{ _ipv6 if ipv6_stack }}"
+  set_fact:
+    cacheable: true
+    main_access_ip: "{{ _access_ipv4 if ipv4_stack else _access_ipv6 }}"
+    main_ip: "{{ _ipv4 if ipv4_stack else _ipv6  }}"
+    # Mixed IPs - for dualstack
+    main_access_ips: "{{ _access_ips | select }}"
+    main_ips: "{{ _ips | select }}"
 
-    - name: Set no_proxy
-      import_tasks: no_proxy.yml
-      when:
-        - http_proxy is defined or https_proxy is defined
-        - no_proxy is not defined
+- name: Set no_proxy to all assigned cluster IPs and hostnames
+  when:
+    - http_proxy is defined or https_proxy is defined
+    - no_proxy is not defined
+  vars:
+    groups_with_no_proxy:
+      - kube_control_plane
+      - "{{ '' if no_proxy_exclude_workers else 'kube_node' }}" # TODO: exclude by a boolean in inventory rather than global variable
+      - etcd
+      - calico_rr
+    hosts_with_no_proxy: "{{ groups_with_no_proxy | select | map('extract', groups) | select('defined') | flatten }}"
+    _hostnames: "{{ (hosts_with_no_proxy +
+                      (hosts_with_no_proxy | map('extract', hostvars, morekeys=['ansible_hostname'])
+                      | select('defined')))
+                    | unique }}"
+    no_proxy_prepare:
+      - "{{ apiserver_loadbalancer_domain_name }}"
+      - "{{ loadbalancer_apiserver.address if loadbalancer_apiserver is defined else '' }}"
+      - "{{ hosts_with_no_proxy | map('extract', hostvars, morekeys=['main_access_ip']) }}"
+      - "{{ _hostnames }}"
+      - "{{ _hostnames | map('regex_replace', '$', '.' + dns_domain ) }}"
+      - "{{ additional_no_proxy_list }}"
+      - 127.0.0.1
+      - localhost
+      - "{{ kube_service_subnets }}"
+      - "{{ kube_pods_subnets }}"
+      - svc
+      - "svc.{{ dns_domain }}"
+  set_fact:
+    no_proxy: "{{ no_proxy_prepare | select | flatten | unique | join(',') }}"
+  run_once: true

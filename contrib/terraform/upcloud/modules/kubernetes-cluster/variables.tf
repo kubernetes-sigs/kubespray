@@ -115,6 +115,9 @@ variable "loadbalancers" {
     public_network  = bool
     private_network = bool
 
+    floating_ip              = optional(string)
+    floating_ip_network_name = optional(string)
+
     targets = map(object({
       proxy_protocol  = bool
       port            = number
@@ -124,6 +127,19 @@ variable "loadbalancers" {
       backend_servers = list(string)
     }))
   }))
+
+  validation {
+    condition = alltrue([
+      for _, lb in var.loadbalancers :
+      (
+        try(lb.floating_ip, null) == null ||
+        try(lb.floating_ip_network_name, null) != null
+      )
+    ])
+    error_message = "If floating_ip is set, floating_ip_network_name must also be set."
+  }
+
+  default = {}
 }
 
 variable "server_groups" {

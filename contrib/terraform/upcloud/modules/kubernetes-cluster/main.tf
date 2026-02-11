@@ -728,6 +728,17 @@ resource "upcloud_loadbalancer" "lb" {
   zone              = var.private_cloud ? var.public_zone : var.zone
   network           = each.value.legacy_network ? upcloud_network.private.id : null
 
+  # Attach floating IPs to the LB (requires provider support)
+  ip_addresses = (
+    try(each.value.floating_ip, null) != null &&
+    try(each.value.floating_ip_network_name, null) != null
+    ) ? [
+    {
+      address      = each.value.floating_ip
+      network_name = each.value.floating_ip_network_name
+    }
+  ] : []
+
   dynamic "networks" {
     for_each = each.value.private_network ? [1] : []
 
@@ -798,7 +809,7 @@ resource "upcloud_loadbalancer_frontend" "lb_frontend" {
     }
   }
 
-   properties {
+  properties {
     http2_enabled          = false
     inbound_proxy_protocol = false
     timeout_client         = 10

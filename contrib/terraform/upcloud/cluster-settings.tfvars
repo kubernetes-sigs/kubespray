@@ -122,19 +122,27 @@ k8s_allowed_remote_ips = [
 master_allowed_ports = []
 worker_allowed_ports = []
 
-loadbalancer_enabled = false
-loadbalancer_plan    = "development"
 loadbalancers = {
-  # "http" : {
-  #   "proxy_protocol" : false
-  #   "port" : 80,
-  #   "target_port" : 80,
-  #   "backend_servers" : [
-  #     "worker-0",
-  #     "worker-1",
-  #     "worker-2"
-  #   ]
-  # }
+  apiserver = {
+    plan            = "development"
+    legacy_network  = false
+    public_network  = true
+    private_network = true
+
+    floating_ip              = "85.9.221.96"
+    floating_ip_network_name = "Public-Net"
+
+    targets = {
+      apiserver = {
+        proxy_protocol  = false
+        port            = 6443
+        target_port     = 6443
+        listen_public   = true
+        listen_private  = true
+        backend_servers = ["master-0", "master-1", "master-2"]
+      }
+    }
+  }
 }
 
 server_groups = {

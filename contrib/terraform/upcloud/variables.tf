@@ -157,11 +157,14 @@ variable "loadbalancers" {
   description = "Load balancers"
 
   type = map(object({
-
     plan            = string
     legacy_network  = bool
     public_network  = bool
     private_network = bool
+
+    # NEW: optional floating IP attachment support
+    floating_ip              = optional(string)
+    floating_ip_network_name = optional(string)
 
     targets = map(object({
       proxy_protocol  = bool
@@ -175,6 +178,8 @@ variable "loadbalancers" {
 
   default = {}
 }
+
+
 
 variable "server_groups" {
   description = "Server groups"

@@ -51,7 +51,7 @@ To generate kubespray inventory based on the terraform state file you can run th
 You should now have a inventory file named `inventory.ini` that you can use with kubespray, e.g.
 
 ```bash
-ansible-playbook -i contrib/terraform/gcs/inventory.ini cluster.yml -b -v
+ansible-playbook -i contrib/terraform/gcp/inventory.ini cluster.yml -b -v
 ```
 
 ## Variables

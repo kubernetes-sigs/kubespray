@@ -36,6 +36,7 @@ SUPPORTED_OS = {
   "fedora39-arm64"      => {box: "bento/fedora-39-arm64",      user: "vagrant"},
   "fedora40-arm64"      => {box: "bento/fedora-40",            user: "vagrant"},
   "fedora41"            => {box: "fedora/41-cloud-base",       user: "vagrant"},
+  "fedora42"            => {box: "fedora/42-cloud-base",       user: "vagrant"},
   "fedora41-bento"      => {box: "bento/fedora-41",            user: "vagrant"},
   "opensuse"            => {box: "opensuse/Leap-15.6.x86_64",  user: "vagrant"},
   "opensuse-tumbleweed" => {box: "opensuse/Tumbleweed.x86_64", user: "vagrant"},

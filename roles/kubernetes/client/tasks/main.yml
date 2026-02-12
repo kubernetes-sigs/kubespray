@@ -26,21 +26,11 @@
     mode: "0700"
     state: directory
 
-- name: Generate admin kubeconfig using kubeadm
-  command: >-
-    {{ bin_dir }}/kubeadm kubeconfig user
-    --client-name=kubernetes-admin
-    --org=kubeadm:cluster-admins
-    --config {{ kube_config_dir }}/kubeadm-config.yaml
-  register: kubeadm_admin_kubeconfig
-  changed_when: false
-  run_once: true
-  delegate_to: "{{ groups['kube_control_plane'][0] }}"
-
 - name: Write admin kubeconfig to current/ansible become user home
   copy:
-    content: "{{ kubeadm_admin_kubeconfig.stdout }}"
+    src: "{{ kube_config_dir }}/admin.conf"
     dest: "{{ ansible_env.HOME | default('/root') }}/.kube/config"
+    remote_src: true
     mode: "0600"
     backup: true
 
@@ -61,28 +51,38 @@
     port: "{{ kube_apiserver_port }}"
     timeout: 180
 
-- name: Write admin kubeconfig on ansible host
-  copy:
-    content: "{{ kubeadm_admin_kubeconfig.stdout | from_yaml | combine(override, recursive=true) | to_nice_yaml(indent=2) }}"
-    dest: "{{ artifacts_dir }}/admin.conf"
-    mode: "0600"
-  vars:
-    admin_kubeconfig: "{{ kubeadm_admin_kubeconfig.stdout | from_yaml }}"
-    username: "kubernetes-admin-{{ cluster_name }}"
-    context: "kubernetes-admin-{{ cluster_name }}@{{ cluster_name }}"
-    override:
-      clusters:
-        - "{{ admin_kubeconfig['clusters'][0] | combine({'name': cluster_name, 'cluster': admin_kubeconfig['clusters'][0]['cluster'] | combine({'server': 'https://' + (external_apiserver_address | ansible.utils.ipwrap) + ':' + (external_apiserver_port | string)})}, recursive=true) }}"
-      contexts:
-        - "{{ admin_kubeconfig['contexts'][0] | combine({'name': context, 'context': admin_kubeconfig['contexts'][0]['context'] | combine({'user': username, 'cluster': cluster_name})}, recursive=true) }}"
-      current-context: "{{ context }}"
-      users:
-        - "{{ admin_kubeconfig['users'][0] | combine({'name': username}, recursive=true) }}"
-  delegate_to: localhost
-  connection: local
-  become: false
-  run_once: true
+- name: Create kubeconfig localhost artifacts
   when: kubeconfig_localhost
+  block:
+    - name: Generate admin kubeconfig using kubeadm
+      command: >-
+        {{ bin_dir }}/kubeadm kubeconfig user
+        --client-name=kubernetes-admin-{{ cluster_name }}
+        --org=kubeadm:cluster-admins
+        --config {{ kube_config_dir }}/kubeadm-config.yaml
+      register: kubeadm_admin_kubeconfig
+      changed_when: false
+      run_once: true
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+    - name: Write admin kubeconfig on ansible host
+      copy:
+        content: "{{ kubeadm_admin_kubeconfig.stdout | from_yaml | combine(override, recursive=true) | to_nice_yaml(indent=2) }}"
+        dest: "{{ artifacts_dir }}/admin.conf"
+        mode: "0600"
+      vars:
+        admin_kubeconfig: "{{ kubeadm_admin_kubeconfig.stdout | from_yaml }}"
+        context: "kubernetes-admin-{{ cluster_name }}@{{ cluster_name }}"
+        override:
+          clusters:
+            - "{{ admin_kubeconfig['clusters'][0] | combine({'name': cluster_name, 'cluster': admin_kubeconfig['clusters'][0]['cluster'] | combine({'server': 'https://' + (external_apiserver_address | ansible.utils.ipwrap) + ':' + (external_apiserver_port | string)})}, recursive=true) }}"
+          contexts:
+            - "{{ admin_kubeconfig['contexts'][0] | combine({'name': context, 'context': admin_kubeconfig['contexts'][0]['context'] | combine({'cluster': cluster_name})}, recursive=true) }}"
+          current-context: "{{ context }}"
+      delegate_to: localhost
+      connection: local
+      become: false
+      run_once: true
 
 - name: Copy kubectl binary to ansible host
   fetch:

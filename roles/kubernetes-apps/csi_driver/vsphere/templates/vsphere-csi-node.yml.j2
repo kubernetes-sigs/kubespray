@@ -30,12 +30,6 @@ spec:
       containers:
       - name: node-driver-registrar
         image: {{ kube_image_repo }}/sig-storage/csi-node-driver-registrar:{{ vsphere_csi_node_driver_registrar_image_tag }}
-{% if external_vsphere_version < "7.0u1" %}
-        lifecycle:
-          preStop:
-            exec:
-              command: ["/bin/sh", "-c", "rm -rf /registration/csi.vsphere.vmware.com-reg.sock /csi/csi.sock"]
-{% endif %}
         args:
         - "--v=5"
         - "--csi-address=$(ADDRESS)"
@@ -93,6 +87,10 @@ spec:
           value: "PRODUCTION" # Options: DEVELOPMENT, PRODUCTION
         - name: GODEBUG
           value: x509sha1=1
+        - name: CSI_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         - name: NODEGETINFO_WATCH_TIMEOUT_MINUTES
           value: "1"
         securityContext:
@@ -115,8 +113,9 @@ spec:
         - name: sys-devices-dir
           mountPath: /sys/devices
         ports:
-          - containerPort: 9808
-            name: healthz
+          - name: healthz
+            containerPort: 9808
+            protocol: TCP
         livenessProbe:
           httpGet:
             path: /healthz
@@ -128,9 +127,7 @@ spec:
       - name: liveness-probe
         image: {{ kube_image_repo }}/sig-storage/livenessprobe:{{ vsphere_csi_liveness_probe_image_tag }}
         args:
-{% if external_vsphere_version >= "7.0u1" %}
           - "--v=4"
-{% endif %}
           - "--csi-address=/csi/csi.sock"
 {% if vsphere_csi_liveness_probe_ds_resources | length > 0 %}
         resources:

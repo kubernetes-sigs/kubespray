@@ -31,6 +31,7 @@
   * [Kube-router](/docs/CNI/kube-router.md)
   * [Macvlan](/docs/CNI/macvlan.md)
   * [Multus](/docs/CNI/multus.md)
+  * [Sriov](/docs/CNI/sriov.md)
 * CRI
   * [Containerd](/docs/CRI/containerd.md)
   * [Cri-o](/docs/CRI/cri-o.md)

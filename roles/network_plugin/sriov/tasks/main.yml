@@ -1,0 +1,69 @@
+---
+- name: SR-IOV Network Operator | Verify Multus is enabled
+  assert:
+    that:
+      - kube_network_plugin_multus | default(false) | bool
+    fail_msg: >-
+      SR-IOV requires Multus CNI. Please set 'kube_network_plugin_multus: true'.
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: SR-IOV Network Operator | Copy helm binary from download dir
+  copy:
+    src: "{{ local_release_dir }}/helm-{{ helm_version }}/linux-{{ image_arch }}/helm"
+    dest: "{{ bin_dir }}/helm"
+    mode: "0755"
+    remote_src: true
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: SR-IOV Network Operator | Render values
+  template:
+    src: values.yaml.j2
+    dest: "{{ kube_config_dir }}/sriov-operator-values.yaml"
+    mode: "0644"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: SR-IOV Network Operator | Copy extra values
+  copy:
+    content: "{{ sriov_operator_extra_values | to_nice_yaml(indent=2) }}"
+    dest: "{{ kube_config_dir }}/sriov-operator-extra-values.yaml"
+    mode: "0644"
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: SR-IOV Network Operator | Deploy via Helm  # noqa no-changed-when
+  environment: "{{ proxy_env }}"
+  command: >-
+    {{ bin_dir }}/helm upgrade --install
+    sriov-network-operator
+    {{ sriov_operator_chart_repo }}/{{ sriov_operator_chart_name }}
+    --version {{ sriov_operator_version }}
+    --namespace {{ sriov_operator_namespace }}
+    --create-namespace
+    --values {{ kube_config_dir }}/sriov-operator-values.yaml
+    --values {{ kube_config_dir }}/sriov-operator-extra-values.yaml
+    --wait
+    --timeout {{ sriov_operator_wait_timeout }}s
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: SR-IOV Network Operator | Wait for operator pod to be ready
+  command: >-
+    {{ kubectl }} -n {{ sriov_operator_namespace }}
+    get pods -l app=sriov-network-operator
+    -o jsonpath='{.items[?(@.status.phase!="Running")].metadata.name}'
+  register: sriov_operator_pods_not_ready
+  until: sriov_operator_pods_not_ready.stdout == ""
+  retries: 30
+  delay: 10
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname == groups['kube_control_plane'][0]
+
+- name: SR-IOV Network Operator | Wait for SriovNetworkNodeState CRD
+  command: >-
+    {{ kubectl }} wait --for condition=established --timeout=60s
+    crd/sriovnetworknodestates.sriovnetwork.openshift.io
+  register: sriov_crd_ready
+  retries: 5
+  delay: 10
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname == groups['kube_control_plane'][0]

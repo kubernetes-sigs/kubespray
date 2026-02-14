@@ -8,6 +8,11 @@ OpenStack.
 This will install a Kubernetes cluster on an OpenStack Cloud. It should work on
 most modern installs of OpenStack that support the basic services.
 
+## OpenStack Support Documentation
+
+For OpenStack cloud provider configuration (Octavia load balancers, Cinder CSI storage,
+network plugins like Calico), see the [main OpenStack documentation](../../../docs/cloud_controllers/openstack.md).
+
 ### Known compatible public clouds
 
 - [Auro](https://auro.io/)
@@ -89,8 +94,8 @@ binaries available on hyperkube v1.4.3_coreos.0 or higher.
 
 ## Requirements
 
-- [Install Terraform](https://www.terraform.io/intro/getting-started/install.html) 0.14 or later
-- [Install Ansible](http://docs.ansible.com/ansible/latest/intro_installation.html)
+- [Install OpenTofu](https://opentofu.org/docs/intro/install/) 1.9.0 or later
+- [Install Ansible](https://docs.ansible.com/ansible/latest/intro_installation.html)
 - you already have a suitable OS image in Glance
 - you already have a floating IP pool created
 - you have security groups enabled
@@ -146,7 +151,7 @@ different OpenStack environments may support Identity API version 2 or 3.
 
 These are examples and may vary depending on your OpenStack cloud provider,
 for an exhaustive list on how to authenticate on OpenStack with Terraform
-please read the [OpenStack provider documentation](https://www.terraform.io/docs/providers/openstack/).
+please read the [OpenStack provider documentation](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/latest/docs).
 
 ##### Declarative method (recommended)
 

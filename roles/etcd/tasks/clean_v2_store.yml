@@ -1,0 +1,43 @@
+---
+# When upgrading from etcd 3.5 to 3.6, need to clean up v2 store before upgrading.
+# Without this, etcd 3.6 will crash with following error:
+#   "panic: detected disallowed v2 WAL for stage --v2-deprecation=write-only [recovered]"
+- name: Cleanup v2 store when upgrade etcd from <3.6 to >=3.6
+  when:
+    - etcd_cluster_setup
+    - etcd_current_version != ''
+    - etcd_current_version is version('3.6.0', '<')
+    - etcd_version is version('3.6.0', '>=')
+  block:
+    - name: Ensure etcd version is >=3.5.26
+      when:
+        - etcd_current_version is version('3.5.26', '<')
+      fail:
+        msg: "You need to upgrade etcd to 3.5.26 or later before upgrade to 3.6. Current version is {{ etcd_current_version }}."
+
+    # Workarounds:
+    # Disable --enable-v2 (recommended in 20289) and do workaround of 20231 (MAX_WALS=1 and SNAPSHOT_COUNT=1)
+    # - https://github.com/etcd-io/etcd/issues/20809
+    # - https://github.com/etcd-io/etcd/discussions/20231#discussioncomment-13958051
+    - name: Change etcd configuration temporally to limit number of WALs and snapshots to clean up v2 store
+      ansible.builtin.lineinfile:
+        path: /etc/etcd.env
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^ETCD_SNAPSHOT_COUNT=', line: 'ETCD_SNAPSHOT_COUNT=1' }
+        - { regexp: '^ETCD_MAX_WALS=', line: 'ETCD_MAX_WALS=1' }
+        - { regexp: '^ETCD_MAX_SNAPSHOTS=', line: 'ETCD_MAX_SNAPSHOTS=1' }
+        - { regexp: '^ETCD_ENABLE_V2=', line: 'ETCD_ENABLE_V2=false' }
+
+    # Restart etcd to apply temporal configuration and prevent some upgrade failures
+    # See also: https://etcd.io/blog/2025/upgrade_from_3.5_to_3.6_issue_followup/
+    - name: Stop etcd
+      service:
+        name: etcd
+        state: stopped
+
+    - name: Start etcd
+      service:
+        name: etcd
+        state: started

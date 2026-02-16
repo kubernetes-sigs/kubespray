@@ -3,8 +3,18 @@
   file:
     path: "{{ kubeadm_patches_dir }}"
     state: directory
-    mode: "0640"
+    mode: "0750"
   when: kubeadm_patches | length > 0
+
+- name: Kubeadm | List existing kubeadm patches
+  find:
+    paths:
+      - "{{ kubeadm_patches_dir }}"
+    file_type: file
+    use_regex: true
+    patterns:
+      - '^(kube-apiserver|kube-controller-manager|kube-scheduler|etcd|kubeletconfiguration)[0-9]+\+(strategic|json|merge).yaml$'
+  register: existing_kubeadm_patches
 
 - name: Kubeadm | Copy kubeadm patches from inventory files
   copy:
@@ -15,3 +25,13 @@
   loop: "{{ kubeadm_patches }}"
   loop_control:
     index_var: suffix
+  register: current_kubeadm_patches
+
+- name: Kubeadm | Delete old patches
+  loop: "{{ existing_kubeadm_patches.files | map(attribute='path') |
+            difference(
+            current_kubeadm_patches.results | map(attribute='dest')
+            ) }}"
+  file:
+    state: absent
+    path: "{{ item }}"

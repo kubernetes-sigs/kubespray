@@ -14,6 +14,14 @@ The etcd clients (kube-api-masters) are configured with the list of all etcd pee
 
 ## Kube-apiserver
 
+Kubespray uses two standardized variables to define API server endpoints:
+
+* `kube_apiserver_endpoint`: The external providing endpoint (e.g. for `admin.conf`). If a load balancer is defined, it uses it. Otherwise it falls back to the first control plane node.
+* `kube_apiserver_cluster_internal_endpoint`: The internal endpoint used by cluster components (kubelet, kube-proxy, pods). It supports the localhost load balancer if enabled, and optimizations for control plane nodes.
+
+### Localhost Loadbalancing
+
+
 K8s components require a loadbalancer to access the apiservers via a reverse
 proxy. Kubespray includes support for an nginx-based proxy that resides on each
 non-master Kubernetes node. This is referred to as localhost loadbalancing. It

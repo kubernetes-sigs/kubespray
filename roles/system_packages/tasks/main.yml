@@ -1,9 +1,31 @@
 ---
-- name: Gather OS information
-  setup:
-    gather_subset:
-      - distribution
-      - pkg_mgr
+- name: Add proxy to yum.conf or dnf.conf if http_proxy is defined
+  community.general.ini_file:
+    path: "/etc/dnf/dnf.conf"
+    section: main
+    option: proxy
+    value: "{{ http_proxy | default(omit) }}"
+    state: "{{ http_proxy | default(False) | ternary('present', 'absent') }}"
+    no_extra_spaces: true
+    mode: "0644"
+  become: true
+  when:
+    - not skip_http_proxy_on_os_packages
+    - ansible_pkg_mgr == 'dnf'
+
+- name: Distribution family specific package config
+  include_tasks: "{{ item }}"
+  with_first_found:
+    - files:
+        - "os_family/{{ ansible_os_family }}.yml"
+      skip: true
+
+- name: Distribution specific package config
+  include_tasks: "{{ item }}"
+  with_first_found:
+    - files:
+        - "os/{{ ansible_distribution }}.yml"
+      skip: true
 
 - name: Update package management cache (zypper) - SUSE
   command: zypper -n --gpg-auto-import-keys ref
@@ -14,25 +36,6 @@
   when:
     - ansible_pkg_mgr == 'zypper'
   tags: bootstrap_os
-
-- name: Remove legacy docker repo file
-  file:
-    path: "{{ yum_repo_dir }}/docker.repo"
-    state: absent
-  when:
-    - ansible_os_family == "RedHat"
-    - not is_fedora_coreos
-
-- name: Install epel-release on RHEL derivatives
-  package:
-    name: epel-release
-    state: present
-  when:
-    - ansible_os_family == "RedHat"
-    - not is_fedora_coreos
-    - epel_enabled | bool
-  tags:
-    - bootstrap_os
 
 # Remove this after ansible-core >= 2.19.0
 # See https://github.com/kubernetes-sigs/kubespray/pull/12138#issuecomment-3019304574

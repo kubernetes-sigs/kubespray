@@ -36,6 +36,15 @@ oom_score = {{ containerd_oom_score }}
     enable_cdi = true
     cdi_spec_dirs = ["/etc/cdi", "/var/run/cdi"]
 {% endif %}
+{% for key, value in containerd_extra_runtime_args.items() %}
+{% if value is string %}
+    {{ key }} = "{{ value }}"
+{% elif value is boolean %}
+    {{ key }} = {{ value | lower }}
+{% else %}
+    {{ key }} = {{ value }}
+{% endif %}
+{% endfor %}
 
    [plugins."io.containerd.cri.v1.runtime".containerd]
      default_runtime_name = "{{ containerd_default_runtime }}"
@@ -43,8 +52,6 @@ oom_score = {{ containerd_oom_score }}
 {% for runtime in [containerd_runc_runtime] + containerd_additional_runtimes %}
        [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.{{ runtime.name }}]
          runtime_type = "{{ runtime.type }}"
-         runtime_engine = "{{ runtime.engine }}"
-         runtime_root = "{{ runtime.root }}"
 {% if runtime.base_runtime_spec is defined %}
          base_runtime_spec = "{{ containerd_cfg_dir }}/{{ runtime.base_runtime_spec }}"
 {% endif %}
@@ -69,7 +76,9 @@ oom_score = {{ containerd_oom_score }}
 
   [plugins."io.containerd.cri.v1.images"]
     snapshotter = "{{ containerd_snapshotter }}"
+{% if containerd_discard_unpacked_layers and containerd_version is version('2.1.0', '<') %}
     discard_unpacked_layers = {{ containerd_discard_unpacked_layers | lower }}
+{% endif %}
     image_pull_progress_timeout = "{{ containerd_image_pull_progress_timeout }}"
   [plugins."io.containerd.cri.v1.images".pinned_images]
     sandbox = "{{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}"

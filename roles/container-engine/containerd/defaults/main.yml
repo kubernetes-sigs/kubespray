@@ -13,10 +13,9 @@ containerd_snapshotter: "overlayfs"
 containerd_runc_runtime:
   name: runc
   type: "io.containerd.runc.v2"
-  engine: ""
-  root: ""
   base_runtime_spec: cri-base.json
   options:
+    Root: ""
     SystemdCgroup: "{{ containerd_use_systemd_cgroup | ternary('true', 'false') }}"
     BinaryName: "{{ bin_dir }}/runc"
 
@@ -24,8 +23,8 @@ containerd_additional_runtimes: []
 # Example for Kata Containers as additional runtime:
 #  - name: kata
 #    type: "io.containerd.kata.v2"
-#    engine: ""
-#    root: ""
+#    options:
+#      Root: ""
 
 containerd_base_runtime_spec_rlimit_nofile: 65535
 
@@ -36,8 +35,8 @@ containerd_default_base_runtime_spec_patch:
         hard: "{{ containerd_base_runtime_spec_rlimit_nofile }}"
         soft: "{{ containerd_base_runtime_spec_rlimit_nofile }}"
 
-# Can help reduce disk usage
-# https://github.com/containerd/containerd/discussions/6295
+# Only for containerd < 2.1; discard unpacked layers to save disk space
+# https://github.com/containerd/containerd/blob/release/2.1/docs/cri/config.md#image-pull-configuration-since-containerd-v21
 containerd_discard_unpacked_layers: true
 
 containerd_base_runtime_specs:
@@ -64,7 +63,8 @@ containerd_registries_mirrors:
         skip_verify: false
 #        ca: ["/etc/certs/mirror.pem"]
 #        client: [["/etc/certs/client.pem", ""],["/etc/certs/client.cert", "/etc/certs/client.key"]]
-
+#        header:
+#          Authorization: "Basic XXX"
 containerd_max_container_log_line_size: 16384
 
 # If enabled it will allow non root users to use port numbers <1024
@@ -82,6 +82,15 @@ containerd_cfg_dir: /etc/containerd
 
 # Extra config to be put in {{ containerd_cfg_dir }}/config.toml literally
 containerd_extra_args: ''
+
+# Extra runtime configuration options to be injected into the containerd CRI runtime plugin section
+# [plugins."io.containerd.cri.v1.runtime"]. This is useful for adding containerd runtime
+# configuration options that aren't explicitly supported by Kubespray's default variables.
+# Example:
+#   containerd_extra_runtime_args:
+#     device_ownership_from_security_context: true
+#     another_option: "value"
+containerd_extra_runtime_args: {}
 
 # Configure registry auth (if applicable to secure/insecure registries)
 containerd_registry_auth: []

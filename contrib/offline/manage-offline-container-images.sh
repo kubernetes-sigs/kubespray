@@ -20,7 +20,6 @@ function create_container_image_tar() {
 
 		kubectl describe cronjobs,jobs,pods --all-namespaces | grep " Image:" | awk '{print $2}' | sort | uniq > "${IMAGES}"
 		# NOTE: etcd and pause cannot be seen as pods.
-		# The pause image is used for --pod-infra-container-image option of kubelet.
 		kubectl cluster-info dump | grep -E "quay.io/coreos/etcd:|registry.k8s.io/pause:" | sed s@\"@@g >> "${IMAGES}"
 	else
 		echo "Getting images from file \"${IMAGES_FROM_FILE}\""
@@ -36,7 +35,7 @@ function create_container_image_tar() {
 	mkdir  ${IMAGE_DIR}
 	cd     ${IMAGE_DIR}
 
-	sudo ${runtime} pull registry:latest
+	sudo --preserve-env=http_proxy,https_proxy,no_proxy ${runtime} pull registry:latest
 	sudo ${runtime} save -o registry-latest.tar registry:latest
 
 	while read -r image
@@ -45,7 +44,7 @@ function create_container_image_tar() {
 		set +e
 		for step in $(seq 1 ${RETRY_COUNT})
 		do
-			sudo ${runtime} pull ${image}
+			sudo --preserve-env=http_proxy,https_proxy,no_proxy ${runtime} pull ${image}
 			if [ $? -eq 0 ]; then
 				break
 			fi
@@ -148,7 +147,7 @@ function register_container_images() {
 		if [ "${org_image}" == "ID:" ]; then
 		  org_image=$(echo "${load_image}"  | awk '{print $4}')
 		fi
-		image_id=$(sudo ${runtime} image inspect ${org_image} | grep "\"Id\":" | awk -F: '{print $3}'| sed s/'\",'//)
+		image_id=$(sudo ${runtime} image inspect --format "{{.Id}}" "${org_image}")
 		if [ -z "${file_name}" ]; then
 			echo "Failed to get file_name for line ${line}"
 			exit 1

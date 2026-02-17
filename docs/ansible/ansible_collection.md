@@ -2,14 +2,13 @@
 
 Kubespray can be installed as an [Ansible collection](https://docs.ansible.com/ansible/latest/user_guide/collections_using.html).
 
-## Requirements
-
-- An inventory file with the appropriate host groups. See the [README](../README.md#usage).
-- A `group_vars` directory. These group variables **need** to match the appropriate variable names under `inventory/local/group_vars`. See the [README](../README.md#usage).
-
 ## Usage
 
-1. Add Kubespray to your requirements.yml file
+1. Set up an inventory with the appropriate host groups and required group vars.
+   See also the documentation on [kubespray inventories](./inventory.md) and the
+   general ["Getting started" documentation](../getting_started/getting-started.md#building-your-own-inventory).
+
+2. Add Kubespray to your requirements.yml file
 
    ```yaml
    collections:
@@ -18,20 +17,20 @@ Kubespray can be installed as an [Ansible collection](https://docs.ansible.com/a
      version: master # use the appropriate tag or branch for the version you need
    ```
 
-2. Install your collection
+3. Install your collection
 
    ```ShellSession
    ansible-galaxy install -r requirements.yml
    ```
 
-3. Create a playbook to install your Kubernetes cluster
+4. Create a playbook to install your Kubernetes cluster
 
    ```yaml
    - name: Install Kubernetes
      ansible.builtin.import_playbook: kubernetes_sigs.kubespray.cluster
    ```
 
-4. Update INVENTORY and PLAYBOOK so that they point to your inventory file and the playbook you created above, and then install Kubespray
+5. Update INVENTORY and PLAYBOOK so that they point to your inventory file and the playbook you created above, and then install Kubespray
 
    ```ShellSession
    ansible-playbook -i INVENTORY --become --become-user=root PLAYBOOK

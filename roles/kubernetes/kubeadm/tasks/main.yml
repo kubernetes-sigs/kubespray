@@ -58,6 +58,11 @@
   delegate_to: "{{ groups['kube_control_plane'] | first }}"
   when: kubeadm_use_file_discovery
 
+- name: Check if discovery kubeconfig exists
+  stat:
+    path: "{{ kube_config_dir }}/cluster-info-discovery-kubeconfig.yaml"
+  register: cluster_info_discovery_kubeconfig
+
 - name: Copy discovery kubeconfig
   copy:
     dest: "{{ kube_config_dir }}/cluster-info-discovery-kubeconfig.yaml"
@@ -66,7 +71,7 @@
     mode: "0644"
   when:
     - ('kube_control_plane' not in group_names)
-    - not kubelet_conf.stat.exists
+    - not kubelet_conf.stat.exists or not cluster_info_discovery_kubeconfig.stat.exists
     - kubeadm_use_file_discovery
 
 - name: Create kubeadm client config
@@ -86,13 +91,13 @@
     - not kubelet_conf.stat.exists
   vars:
     ignored:
-      - DirAvailable--etc-kubernetes-manifests
+      - "{{ 'DirAvailable--etc-kubernetes-manifests' if 'all' not in kubeadm_ignore_preflight_errors }}"
       - "{{ kubeadm_ignore_preflight_errors }}"
   command: >-
     timeout -k {{ kubeadm_join_timeout }} {{ kubeadm_join_timeout }}
     {{ bin_dir }}/kubeadm join
     --config {{ kube_config_dir }}/kubeadm-client.conf
-    --ignore-preflight-errors={{ ignored | flatten | join(',') }}
+    --ignore-preflight-errors={{ ignored | select | flatten | join(',') }}
     --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
 
 - name: Update server field in kubelet kubeconfig
@@ -207,3 +212,4 @@
 - name: Run post kubeadm hooks
   loop: "{{ post_kubeadm_hooks | default([]) }}"
   ansible.builtin.include_tasks: "{{ item }}"
+    - kube_network_plugin != "cilium" or cilium_identity_allocation_mode != 'crd'

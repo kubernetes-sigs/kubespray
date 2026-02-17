@@ -18,8 +18,6 @@ The **kubernetes** version should be at least `v1.23.6` to have all the most rec
 
 ## kube-apiserver
 authorization_modes: ['Node', 'RBAC']
-# AppArmor-based OS
-# kube_apiserver_feature_gates: ['AppArmor=true']
 kube_apiserver_request_timeout: 120s
 kube_apiserver_service_account_lookup: true
 
@@ -77,17 +75,17 @@ remove_anonymous_access: true
 ## kube-controller-manager
 kube_controller_manager_bind_address: 127.0.0.1
 kube_controller_terminated_pod_gc_threshold: 50
-# AppArmor-based OS
-# kube_controller_feature_gates: ["RotateKubeletServerCertificate=true", "AppArmor=true"]
 kube_controller_feature_gates: ["RotateKubeletServerCertificate=true"]
 
 ## kube-scheduler
 kube_scheduler_bind_address: 127.0.0.1
-# AppArmor-based OS
-# kube_scheduler_feature_gates: ["AppArmor=true"]
 
 ## etcd
-etcd_deployment_type: kubeadm
+# Running etcd (on dedicated hosts) outside the Kubernetes cluster is the most secure deployment option,
+# as it isolates etcd from the cluster's CNI network and removes direct pod-level attack vectors.
+# This approach prevents RBAC misconfigurations that potentially compromise etcd,
+# creating an additional security boundary that protects the cluster's critical state store.
+etcd_deployment_type: host
 
 ## kubelet
 kubelet_authorization_mode_webhook: true
@@ -126,9 +124,8 @@ Let's take a deep look to the resultant **kubernetes** configuration:
 * The `encryption-provider-config` provide encryption at rest. This means that the `kube-apiserver` encrypt data that is going to be stored before they reach `etcd`. So the data is completely unreadable from `etcd` (in case an attacker is able to exploit this).
 * The `rotateCertificates` in `KubeletConfiguration` is set to `true` along with `serverTLSBootstrap`. This could be used in alternative to `tlsCertFile` and `tlsPrivateKeyFile` parameters. Additionally it automatically generates certificates by itself. By default the CSRs are approved automatically via [kubelet-csr-approver](https://github.com/postfinance/kubelet-csr-approver). You can customize approval configuration by modifying Helm values via `kubelet_csr_approver_values`.
   See <https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/> for more information on the subject.
-* If you are installing **kubernetes** in an AppArmor-based OS (eg. Debian/Ubuntu) you can enable the `AppArmor` feature gate uncommenting the lines with the comment `# AppArmor-based OS` on top.
 * The `kubelet_systemd_hardening`, both with `kubelet_secure_addresses` setup a minimal firewall on the system. To better understand how these variables work, here's an explanatory image:
-  ![kubelet hardening](img/kubelet-hardening.png)
+  ![kubelet hardening](../img/kubelet-hardening.png)
 
 Once you have the file properly filled, you can run the **Ansible** command to start the installation:
 

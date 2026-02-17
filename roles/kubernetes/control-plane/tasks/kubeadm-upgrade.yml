@@ -3,7 +3,8 @@
   import_tasks: check-api.yml
 
   # kubeadm-config.v1beta4 with UpgradeConfiguration requires some values that were previously allowed as args to be specified in the config file
-- name: Kubeadm | Upgrade first control plane node
+  # TODO: Remove --skip-phases from command when v1beta4 UpgradeConfiguration supports skipPhases
+- name: Kubeadm | Upgrade first control plane node to {{ kube_version }}
   command: >-
     timeout -k 600s 600s
     {{ bin_dir }}/kubeadm upgrade apply -y v{{ kube_version }}
@@ -16,14 +17,18 @@
     --force
     {%- else %}
     --config={{ kube_config_dir }}/kubeadm-config.yaml
-    {%- endif -%}
+    {%- endif %}
+    {%- if kube_version is version('1.32.0', '>=') %}
+    --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
+    {%- endif %}
   register: kubeadm_upgrade
   when: inventory_hostname == first_kube_control_plane
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
 
-- name: Kubeadm | Upgrade other control plane nodes
+# TODO: When we retire kubeadm-config.v1beta3, remove --certificate-renewal, --ignore-preflight-errors, --etcd-upgrade, --patches, and --skip-phases from command, since v1beta4+ supports these in UpgradeConfiguration.node
+- name: Kubeadm | Upgrade other control plane nodes to {{ kube_version }}
   command: >-
     {{ bin_dir }}/kubeadm upgrade node
     {%- if kubeadm_config_api_version == 'v1beta3' %}
@@ -33,7 +38,8 @@
     {% if kubeadm_patches | length > 0 %}--patches={{ kubeadm_patches_dir }}{% endif %}
     {%- else %}
     --config={{ kube_config_dir }}/kubeadm-config.yaml
-    {%- endif -%}
+    {%- endif %}
+    --skip-phases={{ kubeadm_upgrade_node_phases_skip | join(',') }}
   register: kubeadm_upgrade
   when: inventory_hostname != first_kube_control_plane
   failed_when: kubeadm_upgrade.rc != 0 and "field is immutable" not in kubeadm_upgrade.stderr

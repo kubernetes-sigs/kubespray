@@ -50,6 +50,7 @@
     sysctl_file: "{{ sysctl_file_path }}"
     state: present
     reload: true
+    ignoreerrors: "{{ sysctl_ignore_unknown_keys }}"
   when: kube_apiserver_node_port_range is defined
   tags:
     - kube-proxy
@@ -63,8 +64,6 @@
   changed_when: false
   check_mode: false
 
-# TODO: Remove once upstream issue is fixed
-# https://github.com/ansible-collections/community.general/issues/7717
 - name: Verify br_netfilter module path exists
   file:
     path: "{{ item }}"
@@ -102,6 +101,7 @@
     sysctl_file: "{{ sysctl_file_path }}"
     value: "1"
     reload: true
+    ignoreerrors: "{{ sysctl_ignore_unknown_keys }}"
   when: sysctl_bridge_nf_call_iptables.rc == 0
   with_items:
     - net.bridge.bridge-nf-call-iptables
@@ -125,10 +125,12 @@
     persistent: present
   register: modprobe_conntrack_module
   ignore_errors: true  # noqa ignore-errors
-  loop: "{{ conntrack_modules }}"
+  loop:
+    - nf_conntrack
+    - nf_conntrack_ipv4
   when:
     - kube_proxy_mode == 'ipvs'
-    - "(modprobe_conntrack_module|default({'rc': 1})).rc != 0"  # loop until first success
+    - modprobe_conntrack_module is not defined or modprobe_conntrack_module is ansible.builtin.failed  # loop until first success
   tags:
     - kube-proxy
 

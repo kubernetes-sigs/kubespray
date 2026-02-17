@@ -55,21 +55,22 @@
   register: keyserver_task_result
   until: keyserver_task_result is succeeded
   retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
+  delay: "{{ retry_stagger }}"
   with_items: "{{ docker_repo_key_info.repo_keys }}"
   environment: "{{ proxy_env }}"
   when: ansible_pkg_mgr == 'apt'
 
-# ref to https://github.com/kubernetes-sigs/kubespray/issues/11086
-- name: Remove the archived debian apt repository
-  lineinfile:
-    path: /etc/apt/sources.list
-    regexp: 'buster-backports'
-    state: absent
+# ref to https://github.com/kubernetes-sigs/kubespray/issues/11086 & 12424
+- name: Convert -backports sources to archive.debian.org for bullseye and older
+  replace:
+    path: "{{ item }}"
+    regexp: '^(deb(?:-src)?\s+)(?:https?://)?(?:[^ ]+debian\.org)?([^ ]*/debian)(\s+{{ ansible_distribution_release }}-backports\b.*)'
+    replace: '\1http://archive.debian.org/debian\3'
     backup: true
+  loop: "{{ query('fileglob', '/etc/apt/sources.list') }}"
   when:
     - ansible_os_family == 'Debian'
-    - ansible_distribution_release == "buster"
+    - ansible_distribution_release in ['bullseye', 'buster']
 
 - name: Ensure docker-ce repository is enabled
   apt_repository:
@@ -127,7 +128,7 @@
   register: docker_task_result
   until: docker_task_result is succeeded
   retries: 4
-  delay: "{{ retry_stagger | d(3) }}"
+  delay: "{{ retry_stagger }}"
   notify: Restart docker
   when:
     - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]

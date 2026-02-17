@@ -11,10 +11,14 @@ ping_access_ip: true
 
 # Setting this value to false will fail
 # For details, read this comment https://github.com/kubernetes-sigs/kubespray/pull/11016#issuecomment-2004985001
+# if kube_api_anonymous_auth: "{{ undef() }}", remove --anonymous-auth argument
 kube_api_anonymous_auth: true
 
 # Default value, but will be set to true automatically if detected
 is_fedora_coreos: false
+
+# Kubernetes 1.35+: fail on cgroup v1 by default
+kubelet_fail_cgroup_v1: true
 
 # Swap settings
 kubelet_fail_swap_on: true
@@ -26,7 +30,7 @@ kube_version: "{{ (kubelet_checksums['amd64'] | dict2items)[0].key }}"
 ## The minimum version working
 kube_version_min_required: "{{ (kubelet_checksums['amd64'] | dict2items)[-1].key }}"
 
-## Kube Proxy mode One of ['iptables', 'ipvs']
+## Kube Proxy mode One of ['ipvs', 'iptables', 'nftables']
 kube_proxy_mode: ipvs
 
 # Kubeadm config api version
@@ -66,6 +70,15 @@ kubeadm_join_phases_skip_default: []
 kubeadm_join_phases_skip: >-
  {{ kubeadm_join_phases_skip_default }}
 
+# List of kubeadm upgrade node phases that should be skipped when upgrading a secondary control plane node (supports different phases than kubeadm init and kubeadm upgrade apply)
+kubeadm_upgrade_node_phases_skip_default: []
+kubeadm_upgrade_node_phases_skip: >-
+  {%- if kube_version is version('1.32.0', '>=') -%}
+  {{ kubeadm_upgrade_node_phases_skip_default + kubeadm_init_phases_skip }}
+  {%- else -%}
+  {{ kubeadm_upgrade_node_phases_skip_default }}
+  {%- endif -%}
+
 # Set to true to remove the role binding to anonymous users created by kubeadm
 remove_anonymous_access: false
 
@@ -86,6 +99,7 @@ ignore_assert_errors: false
 # kube-vip
 kube_vip_enabled: false
 kube_vip_lb_fwdmethod: local
+kube_vip_address:
 
 # nginx-proxy configure
 nginx_config_dir: "/etc/nginx"
@@ -199,7 +213,7 @@ kube_external_ca_mode: false
 # Cluster Loglevel configuration
 kube_log_level: 2
 
-# Choose network plugin (cilium, calico, kube-ovn, weave or flannel. Use cni for generic cni plugin)
+# Choose network plugin (cilium, calico, kube-ovn or flannel. Use cni for generic cni plugin)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
 kube_network_plugin: calico
 kube_network_plugin_multus: false
@@ -400,6 +414,9 @@ docker_plugins: []
 # Containerd options - thse are relevant when container_manager == 'containerd'
 containerd_use_systemd_cgroup: true
 
+# Use static containerd binary for compatibility with older distributions (e.g., Debian 11).
+containerd_static_binary: false
+
 # Containerd conf default dir
 containerd_storage_dir: "/var/lib/containerd"
 containerd_state_dir: "/run/containerd"
@@ -422,10 +439,6 @@ credentials_dir: "{{ inventory_dir }}/credentials"
 # K8s image pull policy (imagePullPolicy)
 k8s_image_pull_policy: IfNotPresent
 
-# Kubernetes dashboard
-# RBAC required. see docs/getting-started.md for access details.
-dashboard_enabled: false
-
 # Addons which can be enabled
 helm_enabled: false
 registry_enabled: false
@@ -442,7 +455,6 @@ vsphere_csi_enabled: false
 upcloud_csi_enabled: false
 csi_snapshot_controller_enabled: false
 persistent_volumes_enabled: false
-ingress_nginx_enabled: false
 ingress_alb_enabled: false
 cert_manager_enabled: false
 expand_persistent_volumes: false
@@ -450,6 +462,7 @@ metallb_enabled: false
 metallb_speaker_enabled: "{{ metallb_enabled }}"
 argocd_enabled: false
 gateway_api_enabled: false
+prometheus_operator_crds_enabled: false
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
 # openstack_blockstorage_version: "v1/v2/auto (default)"
@@ -606,11 +619,6 @@ local_volume_provisioner_storage_classes: |
     }
   }
 
-# weave's network password for encryption
-# if null then no network encryption
-# you can use --extra-vars to pass the password in command line
-weave_password: EnterPasswordHere
-
 ssl_ca_dirs: |-
   [
   {% if ansible_os_family in ['Flatcar', 'Flatcar Container Linux by Kinvolk'] -%}
@@ -623,6 +631,8 @@ ssl_ca_dirs: |-
   {% endif -%}
   ]
 
+# used for delegating tasks on a working control plane node
+first_kube_control_plane: "{{ groups['kube_control_plane'] | first }}"
 # Vars for pointing to kubernetes api endpoints
 kube_apiserver_count: "{{ groups['kube_control_plane'] | length }}"
 kube_apiserver_address: "{{ hostvars[inventory_hostname]['main_ip'] }}"
@@ -631,18 +641,18 @@ first_kube_control_plane_address: "{{ hostvars[groups['kube_control_plane'][0]][
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
-apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
+apiserver_loadbalancer_domain_name: "{{ 'localhost' if loadbalancer_apiserver_localhost else (loadbalancer_apiserver.address | d(undef())) }}"
 kube_apiserver_global_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
-  {%- elif loadbalancer_apiserver_localhost and (loadbalancer_apiserver_port is not defined or loadbalancer_apiserver_port == kube_apiserver_port) -%}
-      https://localhost:{{ kube_apiserver_port }}
+      https://{{ apiserver_loadbalancer_domain_name | ansible.utils.ipwrap }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
+  {%- elif loadbalancer_apiserver_localhost -%}
+      https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
   {%- else -%}
       https://{{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
+      https://{{ apiserver_loadbalancer_domain_name | ansible.utils.ipwrap }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
   {%- elif ('kube_control_plane' not in group_names) and loadbalancer_apiserver_localhost -%}
       https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
   {%- elif 'kube_control_plane' in group_names -%}
@@ -764,6 +774,9 @@ proxy_disable_env:
 
 # sysctl_file_path to add sysctl conf to
 sysctl_file_path: "/etc/sysctl.d/99-sysctl.conf"
+
+# ignore sysctl errors about unknown keys
+sysctl_ignore_unknown_keys: false
 
 system_upgrade: false
 system_upgrade_reboot: on-upgrade  # never, always

@@ -281,9 +281,9 @@ For your cluster, edit `inventory/$CLUSTER/cluster.tfvars`.
 |`k8s_allowed_remote_ips_ipv6` | List of IPv6 CIDR allowed to initiate a SSH connection, empty by default |
 |`k8s_allowed_egress_ipv6_ips` | List of IPv6 CIDRs allowed for egress traffic, `["::/0"]` by default |
 |`worker_allowed_ports` | List of ports to open on worker nodes, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "0.0.0.0/0"}]` by default |
-|`worker_allowed_ports_ipv6` | List of ports to open on worker nodes for IPv6 CIDR blocks, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "::/0"}]` by default |
+|`worker_allowed_ports_ipv6` | List of ports to open on worker nodes for IPv6 CIDR blocks, `[{ "protocol" = "tcp", "port_range_min" = 30000, "port_range_max" = 32767, "remote_ip_prefix" = "::/0"}, { "protocol" = "ipv6-icmp", "port_range_min" = 0, "port_range_max" = 0, "remote_ip_prefix" = "::/0"}]` by default |
 |`master_allowed_ports` | List of ports to open on master nodes, expected format is `[{ "protocol" = "tcp", "port_range_min" = 443, "port_range_max" = 443, "remote_ip_prefix" = "0.0.0.0/0"}]`, empty by default |
-|`master_allowed_ports_ipv6` | List of ports to open on master nodes for IPv6 CIDR blocks, expected format is `[{ "protocol" = "tcp", "port_range_min" = 443, "port_range_max" = 443, "remote_ip_prefix" = "::/0"}]`, empty by default |
+|`master_allowed_ports_ipv6` | List of ports to open on master nodes for IPv6 CIDR blocks, `[{ "protocol" = "ipv6-icmp", "port_range_min" = 0, "port_range_max" = 0, "remote_ip_prefix" = "::/0"}]` by default |
 |`node_root_volume_size_in_gb` | Size of the root volume for nodes, 0 to use ephemeral storage |
 |`master_root_volume_size_in_gb` | Size of the root volume for masters, 0 to use ephemeral storage |
 |`master_volume_type` | Volume type of the root volume for control_plane, 'Default' by default |
@@ -624,7 +624,7 @@ Edit `inventory/$CLUSTER/group_vars/k8s_cluster/k8s_cluster.yml`:
   - **calico** requires [configuring OpenStack Neutron ports](/docs/cloud_controllers/openstack.md) to allow service and pod subnets
 
 ```yml
-# Choose network plugin (calico, weave or flannel)
+# Choose network plugin (calico or flannel)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
 kube_network_plugin: flannel
 ```

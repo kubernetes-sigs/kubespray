@@ -11,35 +11,23 @@
   tags:
     - facts
 
-- name: Upload certificates so they are fresh and not expired
-  command: >-
-    {{ bin_dir }}/kubeadm init phase
-    --config {{ kube_config_dir }}/kubeadm-config.yaml
-    upload-certs
-    --upload-certs
-  register: kubeadm_upload_cert
+- name: Obtain kubeadm certificate key for joining control planes nodes
   when:
-    - inventory_hostname == first_kube_control_plane
     - not kube_external_ca_mode
-
-- name: Parse certificate key if not set
-  set_fact:
-    kubeadm_certificate_key: "{{ hostvars[first_kube_control_plane]['kubeadm_upload_cert'].stdout_lines[-1] | trim }}"
   run_once: true
-  when:
-    - hostvars[first_kube_control_plane]['kubeadm_upload_cert'] is defined
-    - hostvars[first_kube_control_plane]['kubeadm_upload_cert'] is not skipped
+  block:
+    - name: Upload certificates so they are fresh and not expired
+      command: >-
+        {{ bin_dir }}/kubeadm init phase
+        --config {{ kube_config_dir }}/kubeadm-config.yaml
+        upload-certs
+        --upload-certs
+      register: kubeadm_upload_cert
+      delegate_to: "{{ first_kube_control_plane }}"
 
-- name: Create kubeadm ControlPlane config
-  template:
-    src: "kubeadm-controlplane.yaml.j2"
-    dest: "{{ kube_config_dir }}/kubeadm-controlplane.yaml"
-    mode: "0640"
-    backup: true
-    validate: "{{ kubeadm_config_validate_enabled | ternary(bin_dir + '/kubeadm config validate --config %s', omit) }}"
-  when:
-    - inventory_hostname != first_kube_control_plane
-    - not kubeadm_already_run.stat.exists
+    - name: Parse certificate key if not set
+      set_fact:
+        kubeadm_certificate_key: "{{ kubeadm_upload_cert.stdout_lines[-1] | trim }}"
 
 - name: Wait for k8s apiserver
   wait_for:
@@ -84,6 +72,17 @@
     - kubeadm_use_file_discovery
     - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists
 
+- name: Create kubeadm ControlPlane config
+  template:
+    src: "kubeadm-controlplane.yaml.j2"
+    dest: "{{ kube_config_dir }}/kubeadm-controlplane.yaml"
+    mode: "0640"
+    backup: true
+    validate: "{{ kubeadm_config_validate_enabled | ternary(bin_dir + '/kubeadm config validate --config %s', omit) }}"
+  when:
+    - inventory_hostname != first_kube_control_plane
+    - not kubeadm_already_run.stat.exists
+
 - name: Joining control plane node to the cluster.
   command: >-
     {{ bin_dir }}/kubeadm join
@@ -99,3 +98,18 @@
   when:
     - inventory_hostname != first_kube_control_plane
     - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists
+
+- name: Wait for new control plane nodes to be Ready
+  when: kubeadm_already_run.stat.exists
+  run_once: true
+  command: >
+    {{ kubectl }} get nodes --selector node-role.kubernetes.io/control-plane
+    -o jsonpath-as-json="{.items[*].status.conditions[?(@.type == 'Ready')]}"
+  register: control_plane_node_ready_conditions
+  retries: "{{ control_plane_node_become_ready_tries }}"
+  delay: 5
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  until: >
+    control_plane_node_ready_conditions.stdout
+    | from_json | selectattr('status', '==', 'True')
+    | length == (groups['kube_control_plane'] | length)

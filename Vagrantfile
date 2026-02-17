@@ -4,6 +4,8 @@
 # For help on using kubespray with vagrant, check out docs/developers/vagrant.md
 
 require 'fileutils'
+require 'ipaddr'
+require 'socket'
 
 Vagrant.require_version ">= 2.0.0"
 
@@ -33,6 +35,9 @@ SUPPORTED_OS = {
   "fedora40"            => {box: "fedora/40-cloud-base",       user: "vagrant"},
   "fedora39-arm64"      => {box: "bento/fedora-39-arm64",      user: "vagrant"},
   "fedora40-arm64"      => {box: "bento/fedora-40",            user: "vagrant"},
+  "fedora41"            => {box: "fedora/41-cloud-base",       user: "vagrant"},
+  "fedora42"            => {box: "fedora/42-cloud-base",       user: "vagrant"},
+  "fedora41-bento"      => {box: "bento/fedora-41",            user: "vagrant"},
   "opensuse"            => {box: "opensuse/Leap-15.6.x86_64",  user: "vagrant"},
   "opensuse-tumbleweed" => {box: "opensuse/Tumbleweed.x86_64", user: "vagrant"},
   "oraclelinux"         => {box: "generic/oracle7",            user: "vagrant"},
@@ -98,6 +103,33 @@ $playbook ||= "cluster.yml"
 $extra_vars ||= {}
 
 host_vars = {}
+
+def collect_networks(subnet, subnet_ipv6)
+  Socket.getifaddrs.filter_map do |iface|
+    next unless iface&.netmask&.ip_address && iface.addr
+
+    is_ipv6 = iface.addr.ipv6?
+    ip      = IPAddr.new(iface.addr.ip_address.split('%').first)
+    ip_test = is_ipv6 ? IPAddr.new("#{subnet_ipv6}::0") : IPAddr.new("#{subnet}.0")
+
+    prefix  = IPAddr.new(iface.netmask.ip_address).to_i.to_s(2).count('1')
+    network = ip.mask(prefix)
+
+    [IPAddr.new("#{network}/#{prefix}"), ip_test]
+  end
+end
+
+def subnet_in_use?(network_ips)
+  network_ips.any? { |net, test_ip| net.include?(test_ip) && test_ip != net }
+end
+
+network_ips = collect_networks($subnet, $subnet_ipv6)
+
+if subnet_in_use?(network_ips)
+  puts "Invalid subnet provided, subnet is already in use: #{$subnet}.0"
+  puts "Subnets in use: #{network_ips.inspect}"
+  exit 1
+end
 
 # throw error if os is not supported
 if ! SUPPORTED_OS.key?($os)

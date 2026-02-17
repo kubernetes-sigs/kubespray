@@ -13,18 +13,18 @@
   before_script:
     - ./tests/scripts/rebase.sh
     - mkdir -p cluster-dump $ANSIBLE_INVENTORY
-    - ./tests/scripts/terraform_install.sh
+    - ./tests/scripts/opentofu_install.sh
     - cp contrib/terraform/$PROVIDER/sample-inventory/cluster.tfvars .
     - ln -rs -t $ANSIBLE_INVENTORY contrib/terraform/$PROVIDER/hosts
-    - terraform -chdir="contrib/terraform/$PROVIDER" init
+    - tofu -chdir="contrib/terraform/$PROVIDER" init
 
 terraform_validate:
   extends: .terraform_install
   tags: [ffci]
   only: ['master', /^pr-.*$/]
   script:
-    - terraform -chdir="contrib/terraform/$PROVIDER" validate
-    - terraform -chdir="contrib/terraform/$PROVIDER" fmt -check -diff
+    - tofu -chdir="contrib/terraform/$PROVIDER" validate
+    - tofu -chdir="contrib/terraform/$PROVIDER" fmt -check -diff
   stage: test
   needs:
     - pipeline-image
@@ -37,7 +37,6 @@ terraform_validate:
           - hetzner
           - vsphere
           - upcloud
-          - nifcloud
 
 .terraform_apply:
   extends: .terraform_install
@@ -58,11 +57,11 @@ terraform_validate:
     - mkdir -p contrib/terraform/$PROVIDER/group_vars
     # Random subnet to avoid routing conflicts
     - export TF_VAR_subnet_cidr="10.$(( $RANDOM % 256 )).$(( $RANDOM % 256 )).0/24"
-    - terraform -chdir="contrib/terraform/$PROVIDER" apply -auto-approve -parallelism=1
+    - tofu -chdir="contrib/terraform/$PROVIDER" apply -auto-approve -parallelism=1
     - tests/scripts/testcases_run.sh
   after_script:
     # Cleanup regardless of exit code
-    - terraform -chdir="contrib/terraform/$PROVIDER" destroy -auto-approve
+    - tofu -chdir="contrib/terraform/$PROVIDER" destroy -auto-approve
 
 # Elastx is generously donating resources for Kubespray on Openstack CI
 # Contacts: @gix @bl0m1
@@ -89,11 +88,10 @@ tf-elastx_cleanup:
     - ./scripts/openstack-cleanup/main.py
   allow_failure: true
 
-tf-elastx_ubuntu20-calico:
+tf-elastx_ubuntu24-calico:
   extends: .terraform_apply
   stage: deploy-part1
   when: on_success
-  allow_failure: true
   variables:
     <<: *elastx_variables
     PROVIDER: openstack
@@ -116,5 +114,5 @@ tf-elastx_ubuntu20-calico:
     TF_VAR_az_list_node: '["sto1"]'
     TF_VAR_flavor_k8s_master: 3f73fc93-ec61-4808-88df-2580d94c1a9b    # v1-standard-2
     TF_VAR_flavor_k8s_node: 3f73fc93-ec61-4808-88df-2580d94c1a9b      # v1-standard-2
-    TF_VAR_image: ubuntu-20.04-server-latest
+    TF_VAR_image: ubuntu-24.04-server-latest
     TF_VAR_k8s_allowed_remote_ips: '["0.0.0.0/0"]'

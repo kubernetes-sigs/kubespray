@@ -1,24 +1,18 @@
 ---
-- name: Testcases checking nodes
-  hosts: kube_control_plane[0]
-  vars:
-    bin_dir: /usr/local/bin
-  tasks:
+- import_role:  # noqa name[missing]
+    name: cluster-dump
 
-  - import_role:  # noqa name[missing]
-      name: cluster-dump
+- name: Check kubectl output
+  command: "{{ bin_dir }}/kubectl get nodes"
+  changed_when: false
+  register: get_nodes
 
-  - name: Check kubectl output
-    command: "{{ bin_dir }}/kubectl get nodes"
-    changed_when: false
-    register: get_nodes
-
-  - name: Check that all nodes are running and ready
-    command: "{{ bin_dir }}/kubectl get nodes --no-headers -o yaml"
-    changed_when: false
-    register: get_nodes_yaml
-    until:
-    # Check that all nodes are Status=Ready
-    - '(get_nodes_yaml.stdout | from_yaml)["items"] | map(attribute = "status.conditions") | map("items2dict", key_name="type", value_name="status") | map(attribute="Ready") | list | min'
-    retries: 30
-    delay: 10
+- name: Check that all nodes are running and ready
+  command: "{{ bin_dir }}/kubectl get nodes --no-headers -o yaml"
+  changed_when: false
+  register: get_nodes_yaml
+  until:
+  # Check that all nodes are Status=Ready
+  - '(get_nodes_yaml.stdout | from_yaml)["items"] | map(attribute = "status.conditions") | map("items2dict", key_name="type", value_name="status") | map(attribute="Ready") | list | min'
+  retries: 30
+  delay: 10

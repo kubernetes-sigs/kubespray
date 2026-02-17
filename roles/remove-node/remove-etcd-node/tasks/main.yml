@@ -1,14 +1,4 @@
 ---
-- name: Lookup node IP in kubernetes
-  command: >
-    {{ kubectl }} get nodes {{ node }}
-    -o jsonpath-as-json='{.status.addresses[?(@.type=="InternalIP")].address}'
-  register: k8s_node_ips
-  changed_when: false
-  when:
-  - groups['kube_control_plane'] | length > 0
-  delegate_to: "{{ groups['kube_control_plane'] | first }}"
-
 - name: Remove etcd member from cluster
   environment:
     ETCDCTL_API: "3"
@@ -19,25 +9,22 @@
   delegate_to: "{{ groups['etcd'] | first }}"
   block:
   - name: Lookup members infos
-    command: "{{ bin_dir }}/etcdctl member list"
+    command: "{{ bin_dir }}/etcdctl member list -w json"
     register: etcd_members
     changed_when: false
     check_mode: false
     tags:
     - facts
   - name: Remove member from cluster
-    vars:
-      node_ip: >-
-        {%- if not ipv4_stack -%}
-        {{ ip6 if ip6 is defined else (access_ip6 if access_ip6 is defined else (k8s_node_ips.stdout | from_json)[0]) | ansible.utils.ipwrap }}
-        {%- else -%}
-        {{ ip if ip is defined else (access_ip if access_ip is defined else (k8s_node_ips.stdout | from_json)[0]) | ansible.utils.ipwrap }}
-        {%- endif -%}
     command:
       argv:
       - "{{ bin_dir }}/etcdctl"
       - member
       - remove
-      - "{{ ((etcd_members.stdout_lines | select('contains', '//' + node_ip + ':'))[0] | split(','))[0] }}"
+      - "{{ '%x' | format(etcd_removed_nodes[0].ID) }}"
+    vars:
+      etcd_removed_nodes: "{{ (etcd_members.stdout | from_json).members | selectattr('peerURLs.0', '==', etcd_peer_url) }}"
+      # This should always have at most one member, since the etcd_peer_url should be unique in the etcd cluster
+    when: etcd_removed_nodes != []
     register: etcd_removal_output
     changed_when: "'Removed member' in etcd_removal_output.stdout"

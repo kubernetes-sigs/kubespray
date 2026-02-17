@@ -1,0 +1,54 @@
+---
+- name: Load images to node
+  vars:
+    images_already_loaded: "{{
+      (nodes_images.stdout | d('{}', true) | from_json)[inventory_hostname] | d(
+      (node_images.stdout | d('{}', true) | from_json).get('images', []) | map(attribute='repoTags') | flatten
+      )
+    }}"
+    images_needed: "{{
+      (downloads | combine(kubeadm_images) | dict2items
+      | selectattr('value.container', 'defined') | selectattr('value.container')
+      | selectattr('value.enabled', 'all') | map(attribute='value.image_name'))
+    }}"
+  block:
+
+  - name: Get images on nodes if not already defined
+    when:
+    - images_needed != []
+    - (nodes_images.stdout | d('{}', true) | from_json)[inventory_hostname] is not defined
+    command: "{{ bin_dir }}/crictl images -o json"
+    register: node_images
+
+  - name: Create holding directory on destination node
+    file:
+      state: directory
+      mode: "0755"
+      path: "{{ images_temp_dir }}"
+    when: images_needed != []
+
+  # TODO: Load images as needed on each role where we use them
+  # Loading container images in kubernetes that way is inherently racy
+  # given we can't control kubelet image garbage collection
+  # However putting the load just before using it in pod can probably mitigate that
+  - name: Copy image to destination node
+    copy:
+      src: "{{ install_source_localhost }}/images/{{ oci_archive_filename }}"
+      dest: "{{ images_temp_dir }}/{{ oci_archive_filename }}"
+      mode: "0644"
+    loop: "{{
+      images_needed | difference(images_already_loaded)
+      if download_delegate != inventory_hostname
+      else []
+    }}"
+    register: _images
+
+  - name: Load image into container manager
+    loop: "{{ images_needed | difference(images_already_loaded) }}"
+    vars:
+      load_command_by_container_engine:
+        docker: "{{ bin_dir }}/skopeo --insecure-policy copy oci-archive:{{ images_temp_dir }}/{{ oci_archive_filename }}:{{ item }} docker-daemon:{{ item }}"
+        containerd: "{{ bin_dir }}/ctr --namespace k8s.io image import {{ images_temp_dir }}/{{ oci_archive_filename }}"
+        crio: "{{ bin_dir }}/skopeo copy oci-archive:{{ images_temp_dir }}/{{ oci_archive_filename }}:{{ item }} containers-storage:{{ item }}"
+    command:
+      cmd: "{{ load_command_by_container_engine[container_manager] }}"

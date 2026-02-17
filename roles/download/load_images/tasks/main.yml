@@ -1,0 +1,22 @@
+---
+- name: Copy image to destination node
+  vars:
+    oci_archive_src_path: "{{ install_source_localhost }}/images/{{ ansible_machine }}%{{ item.image_name | regex_replace('/', '%') }}.tar"
+    oci_archive_dest_path: "{{ local_release_dir }}/images/{{ item.image_name | regex_replace('/', '%') }}.tar"
+  copy:
+    src: "{{ oci_archive_path }}"
+    dest: "{{ oci_archive_dest_path }}"
+  loop: "{{
+    resolved_images_to_load if download_delegate != inventory_hostname
+    else []
+  }}"
+
+- name: Load image into container manager
+  loop: "{{ resolved_images_to_load }}"
+  vars:
+    load_command_by_container_engine:
+      docker: "docker image load --input {{ oci_archive_dest_path }}"
+      containerd: "ctr --namespace k8s.io image import {{ oci_archive_dest_path }}"
+      crio: "skopeo copy oci-archive:{{ oci_archive_dest_path }}:{{ item.image_name }} containers-storage:{{ item.image_name }}"
+  command:
+    cmd: "{{ bin_dir }}{{ load_command_by_container_engine[container_manager] }}"

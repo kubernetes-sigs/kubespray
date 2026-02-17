@@ -638,28 +638,20 @@ kube_apiserver_count: "{{ groups['kube_control_plane'] | length }}"
 kube_apiserver_address: "{{ hostvars[inventory_hostname]['main_ip'] }}"
 kube_apiserver_access_address: "{{ hostvars[inventory_hostname]['main_access_ip'] }}"
 first_kube_control_plane_address: "{{ hostvars[groups['kube_control_plane'][0]]['main_access_ip'] }}"
-loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
+# Loadbalancer configuration
+loadbalancer_apiserver_localhost: "{{ kube_apiserver_endpoint is not defined }}"
 loadbalancer_apiserver_type: "nginx"
-# applied if only external loadbalancer_apiserver is defined, otherwise ignored
-apiserver_loadbalancer_domain_name: "{{ 'localhost' if loadbalancer_apiserver_localhost else (loadbalancer_apiserver.address | d(undef())) }}"
-kube_apiserver_global_endpoint: |-
-  {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name | ansible.utils.ipwrap }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
-  {%- elif loadbalancer_apiserver_localhost -%}
-      https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
-  {%- else -%}
-      https://{{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
-  {%- endif %}
-kube_apiserver_endpoint: |-
-  {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name | ansible.utils.ipwrap }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
-  {%- elif ('kube_control_plane' not in group_names) and loadbalancer_apiserver_localhost -%}
-      https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
-  {%- elif 'kube_control_plane' in group_names -%}
-  https://{{ kube_apiserver_bind_address | regex_replace('::', '127.0.0.1') | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
-  {%- else -%}
-      https://{{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
-  {%- endif %}
+loadbalancer_apiserver_port: "{{ kube_apiserver_port }}"
+
+# Primary API endpoint for external access (e.g., kubectl).
+# User should set this in their inventory if they have a Load Balancer.
+# If not provided, resolved internally in vars.
+kube_apiserver_endpoint: "{{ undef() }}"
+
+# Internal endpoint for cluster traffic.
+# Optional override; resolved internally in vars if not provided.
+kube_apiserver_cluster_internal_endpoint: "{{ undef() }}"
+
 kube_apiserver_client_cert: "{{ kube_cert_dir }}/ca.crt"
 kube_apiserver_client_key: "{{ kube_cert_dir }}/ca.key"
 

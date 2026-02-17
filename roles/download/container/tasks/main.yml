@@ -52,9 +52,20 @@
 #       - "{{ local_release_dir }}/images"
 #   when: ('download_delegate_' + inventory_hostname) in groups
 
-- name: Download all needed images
+- name: Compute once the set of image delegated to localhost
+  set_fact:
+    images_to_pull_delegated_localhost: "{{
+      groups['download_delegate_localhost'] | d([]) |
+      map('extract', hostvars, morekeys=['images_to_pull'] |
+      flatten | unique }}"
+  run_once: true
+
+- name: Download and fetch images
   vars:
-    _images_to_pull: "{{
+    images_to_pull_delegated: "{{
+      image_to_pull_delegated_localhost
+      if inventory_hostname == 'localhost'
+      else
       groups['download_delegate_' + inventory_hostname] |
       map('extract', hostvars, morekeys=['images_to_pull'] |
       flatten | unique }}"
@@ -63,19 +74,39 @@
       # map('relpath', local_release_dir + '/images')) |
       # TODO: Is pre-checking the image here worth it or should we just relies on `creates:` on the next task ?
       # (which is simpler)
-
-    # TODO: handle image ref with digest as well as tags
-  loop: "{{ _images_to_pull }}"
-  loop_control:
-    loop_var: arch_image_name
-  vars:
-    image_name: "{{ arch_image_name | regex_replace('^.*?/', '') }}"
     oci_archive_path: "{{ local_release_dir }}/images/{{ arch_image_name | regex_replace('/', '%') }}.tar"
     # Replace '/' to have flat file path (no need to create directory)
     # '%' is:
     # - not allowed (AFAICT) in image names
     # - no need to escape in Python regex
     # - no need to escape in shell (when inspecting downloaded images manually for instance)
-  command:
-    cmd: "{{ bin_dir }}/skopeo copy docker://{{ image_name }} oci-archive:{{ oci_archive_path }}:{{ image_name }}"
-    creates: "{{ oci_archive_path }}"
+
+  block:
+  - name: Download images as OCI archives
+    # TODO: handle image ref with digest as well as tags
+    loop: "{{ images_to_pull_delegated }}"
+    loop_control:
+      loop_var: arch_image_name
+    vars:
+      image_name: "{{ arch_image_name | regex_replace('^.*?/', '') }}"
+      image_arch: "{{ arch_image_name | regex_replace('/.*', '') }}"
+    command:
+      cmd: "{{ bin_dir }}/skopeo --override-arch {{ image_arch }} copy docker://{{ image_name }} oci-archive:{{ oci_archive_path }}:{{ image_name }}"
+      creates: "{{ oci_archive_path }}"
+
+  # See 'Download_file | Fetch file to localhost' in download/file/tasks/main.yml for the logic (which is the same)
+  # TODO: see if it can be refactored in common logic
+  - name: Fetch OCI archives to localhost
+    fetch:
+      flat: true
+      src: "{{ local_release_dir }}/images/{{ oci_archive_path }}"
+      dest: "{{ install_source_localhost }}/images/"
+    loop_control:
+      loop_var: arch_image_name
+    loop: "{{
+      (images_to_pull_delegated | difference(images_to_pull_delegated_localhost))
+      if (groups['download_delegate_' + inventory_hostname] | d([]) |
+          difference([inventory_hostname]) != [])
+      else
+        []
+      }}"

@@ -1,0 +1,26 @@
+#!/usr/bin/env ansible-playbook
+---
+- name: Render versions of components
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+  - kubespray_defaults
+  tasks:
+  - name: Include versions not in kubespray_defaults
+    include_vars: "{{ item }}"
+    loop:
+    - ../roles/container-engine/docker/defaults/main.yml
+    - ../roles/kubernetes/node/defaults/main.yml
+    - ../roles/kubernetes-apps/argocd/defaults/main.yml
+  - name: Get previous versions
+    vars:
+      kubernetes_version: "{{ kube_version }}"
+      versions_vars: "{{ query('varnames', '^(?!(calico_[^v]+(?# Exclude calico sub components but keep version
+                                              )|ansible|scheduler_plugins|.*config_api.*|kube_.*)).+_version$') }}"
+      _versions: "{{ query('vars', *versions_vars) }}"
+      versions: "{{ versions_vars | map('regex_replace', '_version', '')  | zip(_versions) }}"
+    copy:
+      content: "{{ versions | to_json }}"
+      dest: "{{ lookup('env', 'VERSION_FILE_PATH') }}"
+      mode: "0644"

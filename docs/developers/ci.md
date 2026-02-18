@@ -8,6 +8,7 @@ To generate this Matrix run `./tests/scripts/md-table/main.py`
 |---| --- | --- | --- | --- | --- | --- | --- |
 almalinux9 |  :white_check_mark: | :x: | :x: | :x: | :white_check_mark: | :x: | :x: |
 amazon |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
+amazonlinux2023 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :white_check_mark: | :x: | :white_check_mark: | :x: | :x: | :x: | :white_check_mark: |
 debian12 |  :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: |
 debian13 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
@@ -28,6 +29,7 @@ ubuntu24 |  :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: |
 |---| --- | --- | --- | --- | --- | --- | --- |
 almalinux9 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+amazonlinux2023 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian12 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian13 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
@@ -48,6 +50,7 @@ ubuntu24 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 |---| --- | --- | --- | --- | --- | --- | --- |
 almalinux9 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+amazonlinux2023 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian11 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian12 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian13 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |

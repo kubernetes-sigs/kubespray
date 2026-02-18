@@ -4,6 +4,9 @@ kind: ServiceAccount
 metadata:
   name: cloud-controller-manager
   namespace: kube-system
+  labels:
+    vsphere-cpi-infra: service-account
+    component: cloud-controller-manager
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -11,6 +14,8 @@ metadata:
   name: vsphere-cloud-controller-manager
   namespace: kube-system
   labels:
+    component: cloud-controller-manager
+    tier: control-plane
     k8s-app: vsphere-cloud-controller-manager
 spec:
   selector:
@@ -21,12 +26,23 @@ spec:
   template:
     metadata:
       labels:
+        name: vsphere-cloud-controller-manager
+        component: cloud-controller-manager
+        tier: control-plane
         k8s-app: vsphere-cloud-controller-manager
     spec:
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          value: "true"
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+          operator: Exists
+        - key: node.kubernetes.io/not-ready
+          effect: NoSchedule
+          operator: Exists
       securityContext:
-        runAsUser: 0
+        runAsUser: 1001
       tolerations:
       - key: node.cloudprovider.kubernetes.io/uninitialized
         value: "true"
@@ -34,6 +50,7 @@ spec:
       - key: node-role.kubernetes.io/control-plane
         effect: NoSchedule
       serviceAccountName: cloud-controller-manager
+      priorityClassName: system-node-critical
       containers:
         - name: vsphere-cloud-controller-manager
           image: {{ kube_image_repo }}/cloud-pv-vsphere/cloud-provider-vsphere:{{ external_vsphere_cloud_controller_image_tag }}
@@ -56,6 +73,13 @@ spec:
       - name: vsphere-config-volume
         configMap:
           name: cloud-config
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
 ---
 apiVersion: v1
 kind: Service

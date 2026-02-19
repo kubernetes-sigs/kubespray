@@ -18,6 +18,19 @@
     mode: "0640"
   when: kube_webhook_authorization | default(false)
 
+- name: Create structured AuthenticationConfiguration file
+  copy:
+    content: "{{ authn_config | to_nice_yaml(indent=2, sort_keys=false) }}"
+    dest: "{{ kube_config_dir }}/apiserver-authentication-config-{{ kube_apiserver_authentication_config_api_version }}.yaml"
+    mode: "0640"
+  vars:
+    authn_config:
+      apiVersion: apiserver.config.k8s.io/{{ kube_apiserver_authentication_config_api_version }}
+      kind: AuthenticationConfiguration
+      jwt: "{{ kube_apiserver_authentication_config_jwt }}"
+      anonymous: "{{ kube_apiserver_authentication_config_anonymous }}"
+  when: kube_apiserver_use_authentication_config_file
+
 - name: Create structured AuthorizationConfiguration file
   copy:
     content: "{{ authz_config | to_nice_yaml(indent=2, sort_keys=false) }}"
@@ -98,6 +111,13 @@
 - name: Include kubeadm etcd extra tasks
   include_tasks: kubeadm-etcd.yml
   when: etcd_deployment_type == "kubeadm"
+
+- name: Cleanup unused AuthenticationConfiguration file versions
+  file:
+    path: "{{ kube_config_dir }}/apiserver-authentication-config-{{ item }}.yaml"
+    state: absent
+  loop: "{{ ['v1alpha1', 'v1beta1', 'v1'] | reject('equalto', kube_apiserver_authentication_config_api_version) | list }}"
+  when: kube_apiserver_use_authentication_config_file
 
 - name: Cleanup unused AuthorizationConfiguration file versions
   file:

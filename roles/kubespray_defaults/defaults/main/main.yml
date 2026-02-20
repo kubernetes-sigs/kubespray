@@ -512,6 +512,33 @@ external_hcloud_cloud:
   ##    arg2: "value2"
   controller_extra_args: {}
 
+## Structured authentication config
+## Structured AuthenticationConfiguration (GA in k8s v1.34) configures the API server's authentication with a structured configuration file.
+## Note: The `--authentication-config` and `--oidc-*` flags are mutually exclusive. The two features cannot be used at the same time.
+## Docs: https://kubernetes.io/docs/reference/access-authn-authz/authentication/#using-authentication-configuration
+## KEP: https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3331-structured-authentication-configuration
+## Config API Reference: https://kubernetes.io/docs/reference/config-api/apiserver-config.v1/#apiserver-config-k8s-io-v1-AuthenticationConfiguration
+kube_apiserver_use_authentication_config_file: false
+kube_apiserver_authentication_config_api_version: "{{ 'v1beta1' if kube_version is version('1.34.0', '<') else 'v1' }}"
+kube_apiserver_authentication_config_anonymous:
+  enabled: "{{ kube_api_anonymous_auth }}"
+  conditions: []
+kube_apiserver_authentication_config_jwt: []
+## Example structured authentication issuer config that replicates --oidc-* flag based config by reusing the kube_oidc_* variables
+# kube_apiserver_authentication_config_jwt:
+#   - issuer:
+#       url: "{{ kube_oidc_url }}"
+#       certificateAuthority: "{{ kube_oidc_ca_file }}"
+#       audiences:
+#       - "{{ kube_oidc_client_id }}"
+#     claimMappings:
+#       username:
+#         claim: "{{ kube_oidc_username_claim }}"
+#         prefix: "{{ kube_oidc_username_prefix }}"
+#       groups:
+#         claim: "{{ kube_oidc_groups_claim }}"
+#         prefix: "{{ kube_oidc_groups_prefix }}"
+
 ## List of authorization modes that must be configured for
 ## the k8s cluster. Only 'AlwaysAllow', 'AlwaysDeny', 'Node' and
 ## 'RBAC' modes are tested. Order is important.
@@ -556,21 +583,6 @@ kube_apiserver_authorization_config_authorizers:
 #     # Don't process kubeadm requests with the webhook
 #     - expression: "!('kubeadm:cluster-admins' in request.groups)"
 #     - expression: "!('system:masters' in request.groups)"
-
-## Two workarounds are required to use AuthorizationConfiguration with kubeadm v1.29.x:
-## 1. Enable the StructuredAuthorizationConfiguration feature gate:
-# kube_apiserver_feature_gates:
-# - StructuredAuthorizationConfiguration=true
-## 2. Use the following kubeadm_patches to remove defaulted authorization-mode flags (Workaround for a kubeadm defaulting bug on v1.29.x. fixed in 1.30+ via: https://github.com/kubernetes/kubernetes/pull/123654)
-# kubeadm_patches:
-# - target: kube-apiserver
-#   type: strategic
-#   patch:
-#     spec:
-#       containers:
-#       - name: kube-apiserver
-#         $deleteFromPrimitiveList/command:
-#           - --authorization-mode=Node,RBAC
 
 rbac_enabled: "{{ ('RBAC' in authorization_modes and not kube_apiserver_use_authorization_config_file) or (kube_apiserver_use_authorization_config_file and kube_apiserver_authorization_config_authorizers | selectattr('type', 'equalto', 'RBAC') | list | length > 0) }}"
 

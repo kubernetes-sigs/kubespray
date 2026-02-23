@@ -131,4 +131,4 @@ cd kubespray
 ansible-playbook -i inventory/sample/hosts.ini -b -v cluster.yml
 ```
 
-You'll find some useful examples [here](https://github.com/kubernetes/examples/tree/master/staging/volumes/vsphere) to test your configuration.
+You'll find some useful examples [here](https://github.com/kubernetes/examples/tree/master/_archived/volumes/vsphere) to test your configuration.

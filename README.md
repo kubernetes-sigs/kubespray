@@ -89,13 +89,13 @@ vagrant up
 - **Flatcar Container Linux by Kinvolk**
 - **Debian** Bookworm, Bullseye, Trixie
 - **Ubuntu** 22.04, 24.04
-- **CentOS Stream / RHEL** [9, 10](docs/operating_systems/rhel.md#rhel-8)
-- **Fedora** 39, 40, 41
+- **CentOS Stream / RHEL** 9, 10
+- **Fedora** 39, 40, 41, 42
 - **Fedora CoreOS** (see [fcos Note](docs/operating_systems/fcos.md))
 - **openSUSE** Leap 15.x/Tumbleweed
-- **Oracle Linux** [9, 10](docs/operating_systems/rhel.md#rhel-8)
-- **Alma Linux** [9, 10](docs/operating_systems/rhel.md#rhel-8)
-- **Rocky Linux** [9, 10](docs/operating_systems/rhel.md#rhel-8) (experimental in 10: see [Rocky Linux 10 notes](docs/operating_systems/rhel.md#rocky-linux-10))
+- **Oracle Linux** 9, 10
+- **Alma Linux** 9, 10
+- **Rocky Linux** 9, 10 (experimental in 10: see [Rocky Linux 10 notes](docs/operating_systems/rhel.md#rocky-linux-10))
 - **Kylin Linux Advanced Server V10** (experimental: see [kylin linux notes](docs/operating_systems/kylinlinux.md))
 - **Amazon Linux 2** (experimental: see [amazon linux notes](docs/operating_systems/amazonlinux.md))
 - **UOS Linux** (experimental: see [uos linux notes](docs/operating_systems/uoslinux.md))
@@ -111,8 +111,8 @@ Note:
 <!-- BEGIN ANSIBLE MANAGED BLOCK -->
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.35.0
-  - [etcd](https://github.com/etcd-io/etcd) 3.5.26
+  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.35.1
+  - [etcd](https://github.com/etcd-io/etcd) 3.6.8
   - [docker](https://www.docker.com/) 28.3
   - [containerd](https://containerd.io/) 2.2.1
   - [cri-o](http://cri-o.io/) 1.35.0 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)

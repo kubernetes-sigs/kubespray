@@ -15,6 +15,8 @@
   command:
     cmd: "{{ kubectl_apply_stdin }}"
     stdin: "{{ lookup('template', item) }}"
+  register: kubectl_apply_coredns
+  changed_when: "' created' in kubectl_apply_coredns.stdout or ' configured' in kubectl_apply_coredns.stdout"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
   loop: "{{ coredns_manifests | flatten }}"
@@ -30,6 +32,8 @@
   command:
     cmd: "{{ kubectl_apply_stdin }}"
     stdin: "{{ lookup('template', item) }}"
+  register: kubectl_apply_coredns_secondary
+  changed_when: "' created' in kubectl_apply_coredns_secondary.stdout or ' configured' in kubectl_apply_coredns_secondary.stdout"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
   loop: "{{ coredns_manifests | flatten }}"
@@ -46,11 +50,11 @@
   command:
     cmd: "{{ kubectl_apply_stdin }}"
     stdin: "{{ lookup('template', item) }}"
+  register: kubectl_apply_nodelocaldns
+  changed_when: "' created' in kubectl_apply_nodelocaldns.stdout or ' configured' in kubectl_apply_nodelocaldns.stdout"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
   loop: "{{ nodelocaldns_manifests | flatten }}"
-  when:
-    - enable_nodelocaldns
   tags:
     - nodelocaldns
     - coredns
@@ -74,24 +78,34 @@
       {%- else -%}
       /etc/resolv.conf
       {%- endif -%}
+  when:
+    - enable_nodelocaldns
+    - dns_mode in ['coredns', 'coredns_dual', 'manual']
+    - deploy_coredns
 
 - name: Kubernetes Apps | Etcd metrics endpoints
   command:
     cmd: "{{ kubectl_apply_stdin }}"
     stdin: "{{ lookup('template', item) }}"
+  register: kubectl_apply_etcd_metrics
+  changed_when: "' created' in kubectl_apply_etcd_metrics.stdout or ' configured' in kubectl_apply_etcd_metrics.stdout"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
   loop:
     - etcd_metrics-endpoints.yml.j2
     - etcd_metrics-service.yml.j2
-  when: etcd_metrics_port is defined and etcd_metrics_service_labels is defined
   tags:
     - etcd_metrics
+  when:
+    - etcd_deployment_type != 'kubeadm'
+    - etcd_metrics_port is defined and etcd_metrics_service_labels is defined
 
 - name: Kubernetes Apps | Netchecker
   command:
     cmd: "{{ kubectl_apply_stdin }}"
     stdin: "{{ lookup('template', item) }}"
+  register: kubectl_apply_netchecker
+  changed_when: "' created' in kubectl_apply_netchecker.stdout or ' configured' in kubectl_apply_netchecker.stdout"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   run_once: true
   vars:

@@ -54,34 +54,35 @@
 - name: Run 2 agnhost pods in test ns
   command:
     cmd: "{{ bin_dir }}/kubectl apply --namespace test -f -"
-    stdin: |
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: agnhost
-      spec:
-        replicas: 2
-        selector:
-          matchLabels:
+  register: kubectl_apply_agnhost
+  changed_when: "' created' in kubectl_apply_agnhost.stdout or ' configured' in kubectl_apply_agnhost.stdout"
+  stdin: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: agnhost
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: agnhost
+      template:
+        metadata:
+          labels:
             app: agnhost
-        template:
-          metadata:
-            labels:
-              app: agnhost
-          spec:
-            containers:
-            - name: agnhost
-              image: {{ test_image_repo }}:{{ test_image_tag }}
-              command: ['/agnhost', 'netexec', '--http-port=8080']
-              securityContext:
-                allowPrivilegeEscalation: false
-                capabilities:
-                  drop: ['ALL']
+        spec:
+          containers:
+          - name: agnhost
+            image: {{ test_image_repo }}:{{ test_image_tag }}
+            command: ['/agnhost', 'netexec', '--http-port=8080']
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ['ALL']
                 runAsUser: 1000
                 runAsNonRoot: true
                 seccompProfile:
                   type: RuntimeDefault
-  changed_when: false
 
 - name: Check that all pods are running and ready
   vars:

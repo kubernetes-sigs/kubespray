@@ -6,13 +6,16 @@
 # -> nothing depending on facts or similar cluster state
 # Checks depending on current state (of the nodes or the cluster)
 # should be in roles/kubernetes/preinstall/tasks/0040-verify-settings.yml
-- name: Stop if removed tags are used
+- name: Fail if removed variables are used
+  vars:
+    # Always remove items from this list after the release in comments
+    removed_vars:
+      - kubelet_static_pod_path # 2.31.0
+    removed_vars_found: "{{ query('varnames', '^' + (removed_vars | join('|')) + '$') }}"
   assert:
-    msg: The tag 'master' is removed. Use 'control-plane' instead
-    that:
-      - ('master' not in ansible_run_tags)
-      - ('master' not in ansible_skip_tags)
-        # TODO: Remove checks after next release
+    that: removed_vars_found | length == 0
+    fail_msg: "Removed variables present: {{ removed_vars_found | join(', ') }}"
+  run_once: true
 
 - name: Stop if kube_control_plane group is empty
   assert:
@@ -28,7 +31,7 @@
   when:
     - not ignore_assert_errors
 
-- name: Warn if `kube_network_plugin` is `none
+- name: Warn if `kube_network_plugin` is `none`
   debug:
     msg: |
       "WARNING! => `kube_network_plugin` is set to `none`. The network configuration will be skipped.
@@ -46,7 +49,6 @@
   assert:
     that:
       - download_run_once | type_debug == 'bool'
-      - deploy_netchecker | type_debug == 'bool'
       - download_always_pull | type_debug == 'bool'
       - helm_enabled | type_debug == 'bool'
       - openstack_lbaas_enabled | type_debug == 'bool'
@@ -74,13 +76,6 @@
     - ('k8s_cluster' in group_names)
     - kube_network_plugin not in ['calico', 'none']
     - ipv4_stack | bool
-
-- name: Stop if RBAC is not enabled when dashboard is enabled
-  assert:
-    that: rbac_enabled
-  when:
-    - dashboard_enabled
-    - not ignore_assert_errors
 
 - name: Check cloud_provider value
   assert:

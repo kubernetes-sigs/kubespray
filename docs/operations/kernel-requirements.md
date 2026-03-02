@@ -11,7 +11,7 @@ kubeadm_ignore_preflight_errors:
 
 The Kernel Version Matrixs:
 
-| OS Verion          | Kernel Verion  | Kernel >=4.19      |
+| OS Version         | Kernel Version | Kernel >=4.19      |
 |---                 | ---            | ---                |
 | RHEL 9             | 5.14           | :white_check_mark: |
 | RHEL 8             | 4.18           | :x:                |

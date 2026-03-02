@@ -1,4 +1,4 @@
-# GCP Load Balancers for type=LoadBalacer of Kubernetes Services
+# GCP Load Balancers for type=LoadBalancer of Kubernetes Services
 
 > **Removed**: Since v1.31 (the Kubespray counterpart is v2.27), Kubernetes no longer supports `cloud_provider`. (except external cloud provider)
 

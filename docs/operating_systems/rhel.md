@@ -6,9 +6,9 @@ The documentation also applies to Red Hat derivatives, including Alma Linux, Roc
 
 The content of this section does not apply to open-source derivatives.
 
-In order to install packages via yum or dnf, RHEL 7/8 hosts are required to be registered for a valid Red Hat support subscription.
+In order to install packages via yum or dnf, RHEL hosts are required to be registered for a valid Red Hat support subscription.
 
-You can apply for a 1-year Development support subscription by creating a [Red Hat Developers](https://developers.redhat.com/) account. Be aware though that as the Red Hat Developers subscription is limited to only 1 year, it should not be used to register RHEL 7/8 hosts provisioned in Production environments.
+You can apply for a 1-year Development support subscription by creating a [Red Hat Developers](https://developers.redhat.com/) account. Be aware though that as the Red Hat Developers subscription is limited to only 1 year, it should not be used to register RHEL hosts provisioned in Production environments.
 
 Once you have a Red Hat support account, simply add the credentials to the Ansible inventory parameters `rh_subscription_username` and `rh_subscription_password` prior to deploying Kubespray. If your company has a Corporate Red Hat support account, then obtain an **Organization ID** and **Activation Key**, and add these to the Ansible inventory parameters `rh_subscription_org_id` and `rh_subscription_activation_key` instead of using your Red Hat support account credentials.
 
@@ -29,12 +29,12 @@ rh_subscription_role: "Red Hat Enterprise Server"
 rh_subscription_sla: "Self-Support"
 ```
 
-If the RHEL 8/9 hosts are already registered to a valid Red Hat support subscription via an alternative configuration management approach prior to the deployment of Kubespray, the successful RHEL `subscription-manager` status check will simply result in the RHEL subscription registration tasks being skipped.
+If the RHEL hosts are already registered to a valid Red Hat support subscription via an alternative configuration management approach prior to the deployment of Kubespray, the successful RHEL `subscription-manager` status check will simply result in the RHEL subscription registration tasks being skipped.
 
-## RHEL 8
+## Rocky Linux 10
 
-If you have containers that are using iptables in the host network namespace (`hostNetwork=true`),
-you need to ensure they are using iptables-nft.
-An example how k8s do the autodetection can be found [in this PR](https://github.com/kubernetes/kubernetes/pull/82966)
+(Experimental in Kubespray CI)
 
-The kernel version is lower than the kubenretes 1.32 system validation, please refer to the [kernel requirements](../operations/kernel-requirements.md).
+The official Rocky Linux 10 cloud image does not include `kernel-module-extra`. Both Kube Proxy and CNI rely on this package, and since it relates to kernel version compatibility (which may require VM reboots, etc.), we haven't found an ideal solution.
+
+However, some users report that it doesn't affect them (minimal version). Therefore, the Kubespray CI Rocky Linux 10 image is built by Kubespray maintainers using `diskimage-builder`. For detailed methods, please refer to [the comments](https://github.com/kubernetes-sigs/kubespray/pull/12355#issuecomment-3705400093).

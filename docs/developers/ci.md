@@ -13,10 +13,12 @@ debian12 |  :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
 debian13 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 fedora39 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: |
 fedora40 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+fedora41 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: | :x: |
+fedora42 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 flatcar4081 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 openeuler24 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
+rockylinux10 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
-ubuntu20 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu24 |  :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: |
 
@@ -31,12 +33,14 @@ debian12 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian13 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora39 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora40 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
+fedora41 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
+fedora42 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 flatcar4081 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 openeuler24 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+rockylinux10 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-ubuntu20 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
-ubuntu24 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+ubuntu24 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 
 ## docker
 
@@ -49,9 +53,11 @@ debian12 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian13 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora39 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora40 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
+fedora41 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+fedora42 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 flatcar4081 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 openeuler24 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
+rockylinux10 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
-ubuntu20 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu24 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |

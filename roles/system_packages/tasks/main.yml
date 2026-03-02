@@ -34,9 +34,20 @@
   tags:
     - bootstrap_os
 
+# Remove this after ansible-core >= 2.19.0
+# See https://github.com/kubernetes-sigs/kubespray/pull/12138#issuecomment-3019304574
+- name: Install python3-libdnf5 on Fedora >= 41
+  raw: >
+    dnf install --assumeyes python3-libdnf5
+  become: true
+  retries: "{{ pkg_install_retries }}"
+  when:
+    - ansible_distribution == "Fedora"
+    - ansible_distribution_major_version | int >= 41
+
 - name: Manage packages
   package:
-    name: "{{ item.packages | dict2items | selectattr('value', 'ansible.builtin.all') | map(attribute='key') }}"
+    name: "{{ item.packages }}"
     state: "{{ item.state }}"
     update_cache: "{{ true if ansible_pkg_mgr in ['zypper', 'apt', 'dnf'] else omit }}"
     cache_valid_time: "{{ 86400 if ansible_pkg_mgr == 'apt' else omit }}" # 24h
@@ -44,11 +55,19 @@
   until: pkgs_task_result is succeeded
   retries: "{{ pkg_install_retries }}"
   delay: "{{ retry_stagger | random + 3 }}"
-  when: not (ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"] or is_fedora_coreos)
+  when:
+    - ansible_os_family not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+    - not is_fedora_coreos
+    - item.packages != []
   loop:
-    - { packages: "{{ pkgs_to_remove }}", state: "absent", action_label: "remove" }
-    - { packages: "{{ pkgs }}", state: "present", action_label: "install" }
+    - packages: "{{ pkgs_to_remove | dict2items | selectattr('value', 'ansible.builtin.all') | map(attribute='key') }}"
+      state: "absent"
+      action_label: "remove"
+    - packages: "{{ pkgs | dict2items | selectattr('value', 'ansible.builtin.all') | map(attribute='key') }}"
+      state: "present"
+      action_label: "install"
   loop_control:
     label: "{{ item.action_label }}"
   tags:
     - bootstrap_os
+  timeout: "{{ pkg_install_timeout }}"

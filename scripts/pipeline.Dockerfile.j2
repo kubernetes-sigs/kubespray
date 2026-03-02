@@ -1,5 +1,5 @@
-# Use immutable image tags rather than mutable tags (like ubuntu:22.04)
-FROM ubuntu:jammy-20230308
+# Use immutable image tags rather than mutable tags (like ubuntu:24.04)
+FROM ubuntu:noble-20260113@sha256:cd1dba651b3080c3686ecf4e3c4220f026b521fb76978881737d24f200828b2b
 # Some tools like yamllint need this
 # Pip needs this as well at the moment to install ansible
 # (and potentially other packages)
@@ -27,14 +27,14 @@ RUN apt update -q \
          ca-certificates \
          curl \
          gnupg2 \
-         software-properties-common \
          unzip \
          libvirt-clients \
          qemu-utils \
          qemu-kvm \
          dnsmasq \
-    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
-    && add-apt-repository "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+        && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
+        && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+            $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | tee /etc/apt/sources.list.d/docker.list \
     && apt update -q \
     && apt install --no-install-recommends -yq docker-ce \
     && apt autoremove -yqq --purge && apt clean && rm -rf /var/lib/apt/lists/* /var/log/*
@@ -44,9 +44,8 @@ ADD ./requirements.txt  /kubespray/requirements.txt
 ADD ./tests/requirements.txt /kubespray/tests/requirements.txt
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
-    && pip install --no-compile --no-cache-dir pip -U \
-    && pip install --no-compile --no-cache-dir -r tests/requirements.txt \
-    && pip install --no-compile --no-cache-dir -r requirements.txt \
+    && pip install --break-system-packages --ignore-installed --no-compile --no-cache-dir pip -U \
+    && pip install --break-system-packages --no-compile --no-cache-dir -r tests/requirements.txt \
     && curl -L https://dl.k8s.io/release/v{{ kube_version }}/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
     && echo $(curl -L https://dl.k8s.io/release/v{{ kube_version }}/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
     && chmod a+x /usr/local/bin/kubectl \
@@ -56,5 +55,5 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
     && rm vagrant_${VAGRANT_VERSION}-1_$(dpkg --print-architecture).deb \
     && vagrant plugin install vagrant-libvirt \
     # Install Kubernetes collections
-    && pip install --no-compile --no-cache-dir kubernetes \
+    && pip install --break-system-packages --no-compile --no-cache-dir kubernetes \
     && ansible-galaxy collection install kubernetes.core

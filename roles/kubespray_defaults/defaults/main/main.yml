@@ -17,6 +17,9 @@ kube_api_anonymous_auth: true
 # Default value, but will be set to true automatically if detected
 is_fedora_coreos: false
 
+# Kubernetes 1.35+: fail on cgroup v1 by default
+kubelet_fail_cgroup_v1: true
+
 # Swap settings
 kubelet_fail_swap_on: true
 kubelet_swap_behavior: LimitedSwap
@@ -96,6 +99,7 @@ ignore_assert_errors: false
 # kube-vip
 kube_vip_enabled: false
 kube_vip_lb_fwdmethod: local
+kube_vip_address:
 
 # nginx-proxy configure
 nginx_config_dir: "/etc/nginx"
@@ -148,8 +152,6 @@ manual_dns_server: ""
 
 # Can be host_resolvconf, docker_dns or none
 resolvconf_mode: host_resolvconf
-# Deploy netchecker app to verify DNS resolve as an HTTP service
-deploy_netchecker: false
 # Ip address of the kubernetes DNS service (called skydns for historical reasons)
 skydns_server: "{{ kube_service_subnets.split(',') | first | ansible.utils.ipaddr('net') | ansible.utils.ipaddr(3) | ansible.utils.ipaddr('address') }}"
 skydns_server_secondary: "{{ kube_service_subnets.split(',') | first | ansible.utils.ipaddr('net') | ansible.utils.ipaddr(4) | ansible.utils.ipaddr('address') }}"
@@ -435,10 +437,6 @@ credentials_dir: "{{ inventory_dir }}/credentials"
 # K8s image pull policy (imagePullPolicy)
 k8s_image_pull_policy: IfNotPresent
 
-# Kubernetes dashboard
-# RBAC required. see docs/getting-started.md for access details.
-dashboard_enabled: false
-
 # Addons which can be enabled
 helm_enabled: false
 registry_enabled: false
@@ -455,7 +453,6 @@ vsphere_csi_enabled: false
 upcloud_csi_enabled: false
 csi_snapshot_controller_enabled: false
 persistent_volumes_enabled: false
-ingress_nginx_enabled: false
 ingress_alb_enabled: false
 cert_manager_enabled: false
 expand_persistent_volumes: false
@@ -632,6 +629,8 @@ ssl_ca_dirs: |-
   {% endif -%}
   ]
 
+# used for delegating tasks on a working control plane node
+first_kube_control_plane: "{{ groups['kube_control_plane'] | first }}"
 # Vars for pointing to kubernetes api endpoints
 kube_apiserver_count: "{{ groups['kube_control_plane'] | length }}"
 kube_apiserver_address: "{{ hostvars[inventory_hostname]['main_ip'] }}"
@@ -640,18 +639,18 @@ first_kube_control_plane_address: "{{ hostvars[groups['kube_control_plane'][0]][
 loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
 loadbalancer_apiserver_type: "nginx"
 # applied if only external loadbalancer_apiserver is defined, otherwise ignored
-apiserver_loadbalancer_domain_name: "lb-apiserver.kubernetes.local"
+apiserver_loadbalancer_domain_name: "{{ 'localhost' if loadbalancer_apiserver_localhost else (loadbalancer_apiserver.address | d(undef())) }}"
 kube_apiserver_global_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
-  {%- elif loadbalancer_apiserver_localhost and (loadbalancer_apiserver_port is not defined or loadbalancer_apiserver_port == kube_apiserver_port) -%}
-      https://localhost:{{ kube_apiserver_port }}
+      https://{{ apiserver_loadbalancer_domain_name | ansible.utils.ipwrap }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
+  {%- elif loadbalancer_apiserver_localhost -%}
+      https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
   {%- else -%}
       https://{{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
   {%- endif %}
 kube_apiserver_endpoint: |-
   {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
+      https://{{ apiserver_loadbalancer_domain_name | ansible.utils.ipwrap }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
   {%- elif ('kube_control_plane' not in group_names) and loadbalancer_apiserver_localhost -%}
       https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
   {%- elif 'kube_control_plane' in group_names -%}

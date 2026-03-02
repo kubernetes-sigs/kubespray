@@ -18,23 +18,19 @@ if [ "${UPGRADE_TEST}" != "false" ]; then
   # Checkout the current tests/ directory ; even when testing old version,
   # we want the up-to-date test setup/provisionning
   git checkout "${CI_COMMIT_SHA}" -- tests/
-  pip install --no-compile --no-cache-dir -r requirements.txt
+  pip install --break-system-packages --no-compile --no-cache-dir -r requirements.txt
 fi
 
 export ANSIBLE_BECOME=true
 export ANSIBLE_BECOME_USER=root
 
-# Test collection build and install by installing our collection, emptying our repository, adding
-# cluster.yml, reset.yml, and remote-node.yml files that simply point to our collection's playbooks, and then
-# running the same tests as before
-if [[ "${TESTCASE}" =~ "collection" ]]; then
-  # Build and install collection
-  ansible-galaxy collection build
-  ansible-galaxy collection install kubernetes_sigs-kubespray-*.tar.gz
-fi
 run_playbook () {
 if [[ "${TESTCASE}" =~ "collection" ]]; then
     playbook=kubernetes_sigs.kubespray.$1
+    # Handle upgrade case properly
+    rm -f kubernetes_sigs-kubespray-*.tar.gz
+    ansible-galaxy collection build
+    ansible-galaxy collection install kubernetes_sigs-kubespray-*.tar.gz
 else
     playbook=$1.yml
 fi
@@ -43,7 +39,6 @@ shift
 ansible-playbook \
     -e @tests/common_vars.yml \
     -e @tests/${TESTCASE_FILE} \
-    -e local_release_dir=${PWD}/downloads \
     "$@" \
     ${playbook}
 }
@@ -63,14 +58,14 @@ fi
 if [ "${UPGRADE_TEST}" != "false" ]; then
   git checkout "${CI_COMMIT_SHA}"
 
-  pip install --no-compile --no-cache-dir -r requirements.txt
+  pip install --break-system-packages --no-compile --no-cache-dir -r requirements.txt
 
   case "${UPGRADE_TEST}" in
     "basic")
         run_playbook cluster
         ;;
     "graceful")
-        run_playbook upgrade-cluster
+        run_playbook upgrade_cluster
         ;;
     *)
         ;;
@@ -92,7 +87,7 @@ ansible-playbook \
 
 # Test node removal procedure
 if [ "${REMOVE_NODE_CHECK}" = "true" ]; then
-  run_playbook remove-node -e skip_confirmation=yes -e node=${REMOVE_NODE_NAME}
+  run_playbook remove-node -e skip_confirmation=yes -e node="${REMOVE_NODE_NAME}"
 fi
 
 # Clean up at the end, this is to allow stage1 tests to include cleanup test

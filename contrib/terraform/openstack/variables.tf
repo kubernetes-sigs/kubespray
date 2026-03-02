@@ -271,7 +271,14 @@ variable "master_allowed_ports" {
 variable "master_allowed_ports_ipv6" {
   type = list(any)
 
-  default = []
+  default = [
+    {
+      "protocol"         = "ipv6-icmp"
+      "port_range_min"   = 0
+      "port_range_max"   = 0
+      "remote_ip_prefix" = "::/0"
+    },
+  ]
 }
 
 variable "worker_allowed_ports" {
@@ -295,6 +302,12 @@ variable "worker_allowed_ports_ipv6" {
       "protocol"         = "tcp"
       "port_range_min"   = 30000
       "port_range_max"   = 32767
+      "remote_ip_prefix" = "::/0"
+    },
+    {
+      "protocol"         = "ipv6-icmp"
+      "port_range_min"   = 0
+      "port_range_max"   = 0
       "remote_ip_prefix" = "::/0"
     },
   ]

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# Use immutable image tags rather than mutable tags (like ubuntu:22.04)
-FROM ubuntu:22.04@sha256:149d67e29f765f4db62aa52161009e99e389544e25a8f43c8c89d4a445a7ca37
+# Use immutable image tags rather than mutable tags (like ubuntu:24.04)
+FROM ubuntu:noble-20260113@sha256:cd1dba651b3080c3686ecf4e3c4220f026b521fb76978881737d24f200828b2b
 
 # Some tools like yamllint need this
 # Pip needs this as well at the moment to install ansible
@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 RUN --mount=type=bind,source=requirements.txt,target=requirements.txt \
     --mount=type=cache,sharing=locked,id=pipcache,mode=0777,target=/root/.cache/pip \
-    pip install --no-compile --no-cache-dir -r requirements.txt \
+    pip install --break-system-packages --no-compile --no-cache-dir -r requirements.txt \
     && find /usr -type d -name '*__pycache__' -prune -exec rm -rf {} \;
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]

@@ -126,15 +126,20 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
     releases, tags = map(
         dict, partition(lambda r: r[1].get("tags", False), downloads.items())
     )
-    repos = {
-        "with_releases": [r["graphql_id"] for r in releases.values()],
-        "with_tags": [t["graphql_id"] for t in tags.values()],
-    }
+    unique_release_ids = list(dict.fromkeys(
+        r["graphql_id"] for r in releases.values()
+    ))
+    unique_tag_ids = list(dict.fromkeys(
+        t["graphql_id"] for t in tags.values()
+    ))
     response = s.post(
         "https://api.github.com/graphql",
         json={
             "query": files(__package__).joinpath("list_releases.graphql").read_text(),
-            "variables": repos,
+            "variables": {
+                "with_releases": unique_release_ids,
+                "with_tags": unique_tag_ids,
+            },
         },
         headers={
             "Authorization": f"Bearer {os.environ['API_KEY']}",
@@ -155,31 +160,30 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
         except InvalidVersion:
             return None
 
-    repos = response.json()["data"]
-    github_versions = dict(
-        zip(
-            chain(releases.keys(), tags.keys()),
-            [
-                {
-                    v
-                    for r in repo["releases"]["nodes"]
-                    if not r["isPrerelease"]
-                    and (v := valid_version(r["tagName"])) is not None
-                }
-                for repo in repos["with_releases"]
-            ]
-            + [
-                {
-                    v
-                    for t in repo["refs"]["nodes"]
-                    if (v := valid_version(t["name"].removeprefix("release-")))
-                    is not None
-                }
-                for repo in repos["with_tags"]
-            ],
-            strict=True,
-        )
-    )
+    resp_data = response.json()["data"]
+    release_versions_by_id = {
+        gql_id: {
+            v
+            for r in repo["releases"]["nodes"]
+            if not r["isPrerelease"]
+            and (v := valid_version(r["tagName"])) is not None
+        }
+        for gql_id, repo in zip(unique_release_ids, resp_data["with_releases"])
+    }
+    tag_versions_by_id = {
+        gql_id: {
+            v
+            for t in repo["refs"]["nodes"]
+            if (v := valid_version(t["name"].removeprefix("release-")))
+            is not None
+        }
+        for gql_id, repo in zip(unique_tag_ids, resp_data["with_tags"])
+    }
+    github_versions = {}
+    for name, info in releases.items():
+        github_versions[name] = release_versions_by_id[info["graphql_id"]]
+    for name, info in tags.items():
+        github_versions[name] = tag_versions_by_id[info["graphql_id"]]
 
     components_supported_arch = {
         component.removesuffix("_checksums"): [a for a in archs.keys()]

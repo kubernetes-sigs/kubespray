@@ -1,0 +1,57 @@
+---
+- name: Check that uidmap package is installed for containerd userns subid feature
+  command: dpkg-query -W -f='${Status}' uidmap
+  register: uidmap_pkg
+  changed_when: false
+  failed_when: false
+
+- name: Assert uidmap package is installed
+  assert:
+    that:
+      - uidmap_pkg.rc == 0
+      - "'install ok installed' in uidmap_pkg.stdout"
+    fail_msg: "uidmap package is not installed (status={{ uidmap_pkg.stdout | default('missing') }})"
+
+- name: Check subid owner user exists
+  command: "getent passwd {{ containerd_userns_subid_user }}"
+  register: subid_user
+  changed_when: false
+  failed_when: false
+  when: containerd_userns_subid_create_local_user
+
+- name: Assert subid owner user exists
+  assert:
+    that:
+      - subid_user.rc == 0
+    fail_msg: "Configured subid user {{ containerd_userns_subid_user }} was not found"
+  when: containerd_userns_subid_create_local_user
+
+- name: Check /etc/subuid contains configured mapping
+  command: >-
+    grep -E '^{{ containerd_userns_subid_user }}:{{ containerd_userns_subuid_start }}:{{ containerd_userns_subuid_length }}$' /etc/subuid
+  register: subuid_entry
+  changed_when: false
+  failed_when: false
+
+- name: Assert /etc/subuid contains configured mapping
+  assert:
+    that:
+      - subuid_entry.rc == 0
+    fail_msg: >-
+      Missing expected /etc/subuid mapping for {{ containerd_userns_subid_user }}:
+      {{ containerd_userns_subuid_start }}:{{ containerd_userns_subuid_length }}
+
+- name: Check /etc/subgid contains configured mapping
+  command: >-
+    grep -E '^{{ containerd_userns_subid_user }}:{{ containerd_userns_subgid_start }}:{{ containerd_userns_subgid_length }}$' /etc/subgid
+  register: subgid_entry
+  changed_when: false
+  failed_when: false
+
+- name: Assert /etc/subgid contains configured mapping
+  assert:
+    that:
+      - subgid_entry.rc == 0
+    fail_msg: >-
+      Missing expected /etc/subgid mapping for {{ containerd_userns_subid_user }}:
+      {{ containerd_userns_subgid_start }}:{{ containerd_userns_subgid_length }}

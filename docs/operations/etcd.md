@@ -32,18 +32,38 @@ etcd_metrics_service_labels:
   k8s-app: etcd
   app.kubernetes.io/managed-by: Kubespray
   app: kube-prometheus-stack-kube-etcd
-  release: prometheus-stack
+  release: kube-prometheus-stack
 ```
 
-The last two labels in the above example allows to scrape the metrics from the
+The last two labels in the above example allow scraping the metrics from the
 [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)
-chart with the following Helm `values.yaml` :
+chart with the following Helm `values.yaml`:
 
 ```yaml
 kubeEtcd:
   service:
     enabled: false
 ```
+
+Make sure the `release` label matches the Helm release name of your
+`kube-prometheus-stack` installation. The example above assumes the chart was
+installed with the release name `kube-prometheus-stack`.
+
+For host-based etcd deployments, you can also configure
+`kube-prometheus-stack` with the etcd node IPs directly instead of relying on
+label-based discovery:
+
+```yaml
+kubeEtcd:
+  enabled: true
+  endpoints:
+    - 10.141.4.22
+    - 10.141.4.23
+    - 10.141.4.24
+```
+
+Those IPs should match the host deployment listen URLs exposed through
+`/etc/etcd.env`.
 
 To fully override metrics exposition urls, define it in the inventory with:
 

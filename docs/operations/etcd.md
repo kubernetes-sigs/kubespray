@@ -50,3 +50,14 @@ To fully override metrics exposition urls, define it in the inventory with:
 ```yaml
 etcd_listen_metrics_urls: "http://0.0.0.0:2381"
 ```
+
+## IO Scheduling
+
+For host deployment, you can optionally configure [systemd IO scheduling](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html) to prioritize etcd disk access. These settings persist across restarts.
+
+By default, IO scheduling is not configured (kernel default: `none: prio 0`). To enable it, define the following variables in your inventory:
+
+```yaml
+etcd_io_scheduling_class: "best-effort"  # Acceptable values: "realtime", "best-effort", "idle"
+etcd_io_scheduling_priority: 0  # Acceptable values: 0 (highest) to 7 (lowest)
+```

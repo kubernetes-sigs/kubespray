@@ -52,12 +52,12 @@ def _make_strategy(mod, num_workers: int = 10):
     methods we bypass __init__ entirely and set only the attributes that
     those helpers actually access.
     """
-    strat = object.__new__(mod.StrategyModule)
+    sm = object.__new__(mod.StrategyModule)
     # Attributes consumed by the helpers under test:
-    strat._workers = [MagicMock() for _ in range(num_workers)]
-    strat._variable_manager = MagicMock()
-    strat._loader = MagicMock()
-    return strat
+    sm._workers = [MagicMock() for _ in range(num_workers)]
+    sm._variable_manager = MagicMock()
+    sm._loader = MagicMock()
+    return sm
 
 
 # ── Tiny domain helpers ───────────────────────────────────────────────────────
@@ -381,12 +381,12 @@ class TestReadConcurrencyConfig(unittest.TestCase):
     def setUpClass(cls):
         cls.mod = _load_plugin()
 
-    def _make_strat(self, play_vars: dict, num_workers: int = 10):
+    def _make_sm(self, play_vars: dict, num_workers: int = 10):
         """Return a wired-up StrategyModule with play vars and a pass-through
         TemplateEngine mock (values are not Jinja2 expressions in these tests).
         """
-        strat = _make_strategy(self.mod, num_workers)
-        strat._variable_manager.get_vars.return_value = play_vars
+        sm = _make_strategy(self.mod, num_workers)
+        sm._variable_manager.get_vars.return_value = play_vars
 
         # Replace TemplateEngine in the module namespace with an identity stub.
         mock_te = MagicMock()
@@ -395,7 +395,7 @@ class TestReadConcurrencyConfig(unittest.TestCase):
         mock_te.return_value = mock_templar
         self.mod.TemplateEngine = mock_te
 
-        return strat
+        return sm
 
     def _iterator(self):
         it = MagicMock()
@@ -403,30 +403,30 @@ class TestReadConcurrencyConfig(unittest.TestCase):
         return it
 
     def test_defaults_to_fork_count_when_var_absent(self):
-        strat = self._make_strat({}, num_workers=8)
-        concurrency, per_group = strat._read_concurrency_config(
+        sm = self._make_sm({}, num_workers=8)
+        concurrency, per_group = sm._read_concurrency_config(
             self._iterator(), _make_host("h1"), total_hosts=50
         )
         self.assertEqual(concurrency, 8)
         self.assertEqual(per_group, {})
 
     def test_respects_concurrency_variable(self):
-        strat = self._make_strat({"graceful_rolling_concurrency": 3})
-        concurrency, _ = strat._read_concurrency_config(
+        sm = self._make_sm({"graceful_rolling_concurrency": 3})
+        concurrency, _ = sm._read_concurrency_config(
             self._iterator(), _make_host("h1"), total_hosts=50
         )
         self.assertEqual(concurrency, 3)
 
     def test_concurrency_clamped_at_fork_count(self):
         # Requesting more workers than forks → capped at forks.
-        strat = self._make_strat({"graceful_rolling_concurrency": 999}, num_workers=6)
-        concurrency, _ = strat._read_concurrency_config(
+        sm = self._make_sm({"graceful_rolling_concurrency": 999}, num_workers=6)
+        concurrency, _ = sm._read_concurrency_config(
             self._iterator(), _make_host("h1"), total_hosts=50
         )
         self.assertEqual(concurrency, 6)
 
     def test_per_group_limits_parsed_correctly(self):
-        strat = self._make_strat(
+        sm = self._make_sm(
             {
                 "graceful_rolling_concurrency": 5,
                 "graceful_rolling_per_group": {
@@ -435,55 +435,55 @@ class TestReadConcurrencyConfig(unittest.TestCase):
                 },
             }
         )
-        _, per_group = strat._read_concurrency_config(
+        _, per_group = sm._read_concurrency_config(
             self._iterator(), _make_host("h1"), total_hosts=50
         )
         self.assertEqual(per_group, {"kube_control_plane": 1, "kube_node": 8})
 
     def test_concurrency_1_equivalent_to_serial_1(self):
         """concurrency=1 means at most one host active at a time (serial: 1)."""
-        strat = self._make_strat({"graceful_rolling_concurrency": 1})
-        concurrency, _ = strat._read_concurrency_config(
+        sm = self._make_sm({"graceful_rolling_concurrency": 1})
+        concurrency, _ = sm._read_concurrency_config(
             self._iterator(), _make_host("cp-1"), total_hosts=50
         )
         self.assertEqual(concurrency, 1)
 
     def test_empty_per_group_returns_empty_dict(self):
-        strat = self._make_strat({"graceful_rolling_per_group": {}})
-        _, per_group = strat._read_concurrency_config(
+        sm = self._make_sm({"graceful_rolling_per_group": {}})
+        _, per_group = sm._read_concurrency_config(
             self._iterator(), _make_host("h1"), total_hosts=50
         )
         self.assertEqual(per_group, {})
 
     def test_percentage_string_resolved_against_total_hosts(self):
         """'20%' with 100 hosts resolves to concurrency=20."""
-        strat = self._make_strat({"graceful_rolling_concurrency": "20%"}, num_workers=50)
-        concurrency, _ = strat._read_concurrency_config(
+        sm = self._make_sm({"graceful_rolling_concurrency": "20%"}, num_workers=50)
+        concurrency, _ = sm._read_concurrency_config(
             self._iterator(), _make_host("h1"), total_hosts=100
         )
         self.assertEqual(concurrency, 20)
 
     def test_percentage_string_clamped_at_fork_count(self):
         """100% with 200 hosts but only 10 forks → capped at 10."""
-        strat = self._make_strat(
+        sm = self._make_sm(
             {"graceful_rolling_concurrency": "100%"}, num_workers=10
         )
-        concurrency, _ = strat._read_concurrency_config(
+        concurrency, _ = sm._read_concurrency_config(
             self._iterator(), _make_host("h1"), total_hosts=200
         )
         self.assertEqual(concurrency, 10)
 
     def test_percentage_string_rounds_to_nearest_int(self):
         """33% with 10 hosts → round(3.3) = 3."""
-        strat = self._make_strat({"graceful_rolling_concurrency": "33%"})
-        concurrency, _ = strat._read_concurrency_config(
+        sm = self._make_sm({"graceful_rolling_concurrency": "33%"})
+        concurrency, _ = sm._read_concurrency_config(
             self._iterator(), _make_host("h1"), total_hosts=10
         )
         self.assertEqual(concurrency, 3)
 
     def test_per_group_percentage_string_resolved(self):
         """Per-group values also accept percentage strings."""
-        strat = self._make_strat(
+        sm = self._make_sm(
             {
                 "graceful_rolling_per_group": {
                     "kube_node": "20%",
@@ -492,7 +492,7 @@ class TestReadConcurrencyConfig(unittest.TestCase):
             },
             num_workers=50,
         )
-        _, per_group = strat._read_concurrency_config(
+        _, per_group = sm._read_concurrency_config(
             self._iterator(), _make_host("h1"), total_hosts=10
         )
         self.assertEqual(per_group["kube_node"], 2)       # 20% of 10 = 2
@@ -500,11 +500,11 @@ class TestReadConcurrencyConfig(unittest.TestCase):
 
     def test_per_group_percentage_clamped_to_min_1(self):
         """Per-group '1%' with 2 hosts → 0 → clamped to 1."""
-        strat = self._make_strat(
+        sm = self._make_sm(
             {"graceful_rolling_per_group": {"kube_node": "1%"}},
             num_workers=50,
         )
-        _, per_group = strat._read_concurrency_config(
+        _, per_group = sm._read_concurrency_config(
             self._iterator(), _make_host("h1"), total_hosts=2
         )
         self.assertEqual(per_group["kube_node"], 1)
@@ -585,10 +585,10 @@ class TestClassConstants(unittest.TestCase):
 
     def test_default_bucket_used_for_unlisted_host(self):
         """Hosts not in any explicit group are counted under _DEFAULT_BUCKET."""
-        strat = _make_strategy(self.mod)
+        sm = _make_strategy(self.mod)
         host = _make_host("mon-1", "monitoring")
         started, active = set(), {}
-        strat._register_host_start(
+        sm._register_host_start(
             host, started, active, {"kube_node": 5, "default": 2}
         )
         self.assertEqual(active.get(self.SM._DEFAULT_BUCKET), 1)

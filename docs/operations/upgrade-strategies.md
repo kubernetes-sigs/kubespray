@@ -19,7 +19,7 @@ The default Ansible strategy. Nodes are grouped into batches whose size is
 controlled by `upgrade_node_concurrency` (default: `"20%"`). All nodes in a batch
 must complete their tasks before the next batch starts.
 
-```
+```text
 Batch 1: [node1, node2, node3]  ──────────────────────────────────►  all done
 Batch 2: [node4, node5, node6]                                     ──────────────────────────────►  all done
                                                                   ↑
@@ -28,6 +28,7 @@ Batch 2: [node4, node5, node6]                                     ────�
 ```
 
 **When to use:**
+
 - You want maximum predictability and battle-tested behaviour.
 - You are upgrading a small cluster where batch synchronisation is not a bottleneck.
 - Your operations team is familiar with the classic `serial:` model.
@@ -42,7 +43,7 @@ first pod to become ready on its new node. But that pod needs a node that is
 still cordoned (in the same batch). Result: a deadlock that requires manual
 intervention.
 
-```
+```text
 Batch: [node1 (draining), node2 (draining)]
   node1 drain OK → pod rescheduled → tries to land on node3 (available)
   node2 drain BLOCKED → PDB violated (maxUnavailable: 1 already used)
@@ -59,7 +60,7 @@ nodes into fixed batches, it maintains a **sliding window**: as soon as one
 node finishes its upgrade the next waiting node is immediately allowed to start,
 up to the configured concurrency limit.
 
-```
+```text
 Window size: 2
 
 t=0  node1 ══════════════════════╗
@@ -90,6 +91,7 @@ on node1 immediately, the PDB budget is replenished, and node2's eviction
 succeeds without blocking.
 
 **When to use:**
+
 - You have large worker pools (≥ 10 nodes) where batch synchronisation noticeably
   slows down upgrades.
 - Your cluster runs stateful workloads with strict `PodDisruptionBudget` policies.
@@ -97,6 +99,7 @@ succeeds without blocking.
   guarantees.
 
 **Known limitations:**
+
 - `run_once` tasks execute without strict ordering guarantees relative to other
   hosts (identical behaviour to the Ansible `free` strategy; all `run_once`
   usages in kubespray are `delegate_to`-based and unaffected in practice).
@@ -185,7 +188,7 @@ graceful_rolling_per_group:
 
 ## Comparison at a glance
 
-```
+```text
 Cluster: 1 control-plane + 9 workers, upgrade_node_concurrency=3
 
 linear (serial: 3)                                      graceful_rolling (concurrency=3)

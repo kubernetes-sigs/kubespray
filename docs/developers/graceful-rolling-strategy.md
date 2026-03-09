@@ -1,6 +1,6 @@
 # Graceful Rolling Upgrade Strategy Plugin
 
-**Issue**: [#12929](https://github.com/kubernetes-sigs/kubespray/issues/12929)  
+**Issue**: [#12929](https://github.com/kubernetes-sigs/kubespray/issues/12929)
 
 User-facing documentation: [docs/operations/upgrade-strategies.md](../operations/upgrade-strategies.md)
 
@@ -24,7 +24,7 @@ This creates two concrete problems:
 
 Given hosts `A B C D E` and `concurrency: 2`:
 
-```
+```text
 A and B start upgrading (2 active).
 A finishes → C starts immediately (B & C active; no waiting for batch to sync).
 C finishes → D starts (B & D active).
@@ -69,7 +69,7 @@ A custom Ansible strategy plugin that inherits from `host_pinned` and adds:
 
 ### File: `plugins/strategy/graceful_rolling.py`
 
-```
+```text
 class StrategyModule(host_pinned.StrategyModule):
     _active_hosts: dict[hostname → group_name]   # currently running hosts
     _waiting_queue: deque[hostname]              # hosts waiting for a free slot
@@ -189,7 +189,7 @@ reusing an existing one.
 All prior art attempts (including #81744) build on `free` directly. The two strategies
 are related — `host_pinned` is a subclass of `free` — but differ in one critical point:
 
-```
+```text
 FreeStrategyModule:         round-robin task dispatch across ALL hosts
                             → no per-host ordering guarantee
                             → no built-in concurrency cap
@@ -234,7 +234,7 @@ requires_ansible: ">=2.18.0,<2.19.0"
 ansible==11.13.0   # ansible 11 ships ansible-core 2.18.x
 ```
 
-### Why `<2.19.0` (upper bound)?
+### Why `<2.19.0` (upper bound)
 
 The `run()` method in our plugin is a near-verbatim copy of `free.StrategyModule.run()` (see
 `tests/scripts/check_free_strategy_drift.py`). Any upstream change to that method must be reviewed
@@ -258,6 +258,7 @@ strategy_plugins = ./plugins/strategy
 ```
 
 Users set:
+
 ```yaml
 upgrade_strategy: graceful_rolling
 ```
@@ -338,10 +339,12 @@ For each entry in the compatibility table above:
 
 If `post_validate_attribute` returns `True` (available in ansible-core 2.19+), replace the
 task-name comment at `graceful_rolling.py:511–512` with the actual call:
+
 ```python
 task.name = to_text(templar.template(task.post_validate_attribute("name"),
                     fail_on_undefined=False), nonstring='empty')
 ```
+
 This mirrors the upstream `free.py` implementation.
 
 ### Step 4 — Run the full test suite

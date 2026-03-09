@@ -84,6 +84,7 @@
   * [Port-requirements](/docs/operations/port-requirements.md)
   * [Recover-control-plane](/docs/operations/recover-control-plane.md)
   * [Upgrades](/docs/operations/upgrades.md)
+  * [Upgrade-strategies](/docs/operations/upgrade-strategies.md)
 * Roadmap
   * [Roadmap](/docs/roadmap/roadmap.md)
 * Upgrades

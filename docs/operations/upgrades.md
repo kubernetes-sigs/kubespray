@@ -37,6 +37,25 @@ ansible-playbook cluster.yml -i inventory/sample/hosts.ini -e kube_version=1.19.
 
 The var ```-e upgrade_cluster_setup=true``` is needed to be set in order to migrate the deploys of e.g kube-apiserver inside the cluster immediately which is usually only done in the graceful upgrade. (Refer to [#4139](https://github.com/kubernetes-sigs/kubespray/issues/4139) and [#4736](https://github.com/kubernetes-sigs/kubespray/issues/4736))
 
+## Upgrade strategies
+
+Kubespray supports two upgrade execution strategies that control how many nodes
+are upgraded concurrently and whether batches are synchronised.  The default is
+`linear` (classic batch behaviour).  An opt-in `graceful_rolling` strategy is
+also available that uses a sliding-window model and avoids the
+PodDisruptionBudget deadlock that can occur with the batch approach.
+
+See [Upgrade Strategies](/docs/operations/upgrade-strategies.md) for a full
+comparison, usage examples, and concurrency tuning variables.
+
+```ShellSession
+# Opt-in to the graceful_rolling strategy:
+ansible-playbook playbooks/upgrade_cluster.yml -b \
+  -i inventory/mycluster/hosts.ini \
+  -e kube_version=1.35.1 \
+  -e upgrade_strategy=graceful_rolling
+```
+
 ## Graceful upgrade
 
 Kubespray also supports cordon, drain and uncordoning of nodes when performing

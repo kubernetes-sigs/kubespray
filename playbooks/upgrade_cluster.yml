@@ -30,7 +30,26 @@
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
-  serial: "{{ serial | default('20%') }}"
+  strategy: "{{ upgrade_strategy | default('linear') }}"
+  vars:
+    graceful_rolling_concurrency: "{{ upgrade_non_cluster_concurrency | default(1) }}"
+  pre_tasks:
+    - name: Validate upgrade_strategy value
+      # Acceptable values:
+      #   - built-in short names: linear, free, host_pinned (and any other ansible-core built-in)
+      #   - short name 'graceful_rolling' — only valid when strategy_plugins = ./plugins/strategy
+      #     is set in ansible.cfg (repo-clone mode)
+      #   - FQCN 'kubernetes_sigs.kubespray.graceful_rolling' — required for collection installs
+      # If you see "ERROR! [unknown strategy]" after this task, you are running kubespray from a
+      # collection install and must set: upgrade_strategy: kubernetes_sigs.kubespray.graceful_rolling
+      ansible.builtin.assert:
+        that:
+          - upgrade_strategy | default('linear') != ''
+        success_msg: "upgrade_strategy='{{ upgrade_strategy | default('linear') }}' accepted"
+        fail_msg: "upgrade_strategy must not be empty. Use 'linear' or 'graceful_rolling' (repo clone) or 'kubernetes_sigs.kubespray.graceful_rolling' (collection install)."
+      run_once: true
+      delegate_to: localhost
+      tags: always
   roles:
     - { role: kubespray_defaults }
     - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
@@ -46,7 +65,9 @@
   hosts: kube_control_plane
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
-  serial: 1
+  strategy: "{{ upgrade_strategy | default('linear') }}"
+  vars:
+    graceful_rolling_concurrency: "{{ upgrade_control_plane_concurrency | default(1) }}"
   roles:
     - { role: kubespray_defaults }
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }
@@ -67,8 +88,14 @@
   hosts: kube_control_plane:calico_rr:kube_node
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  serial: "{{ serial | default('20%') }}"
   environment: "{{ proxy_disable_env }}"
+  strategy: "{{ upgrade_strategy | default('linear') }}"
+  vars:
+    graceful_rolling_concurrency: "{{ upgrade_network_concurrency | default('20%') }}"
+    graceful_rolling_per_group:
+      kube_control_plane: "{{ upgrade_control_plane_concurrency | default(1) }}"
+      kube_node: "{{ upgrade_network_concurrency | default('20%') }}"
+      calico_rr: "{{ upgrade_non_cluster_concurrency | default('20%') }}"
   roles:
     - { role: kubespray_defaults }
     - { role: kubernetes-apps/external_cloud_controller, tags: external-cloud-controller }
@@ -80,7 +107,13 @@
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
-  serial: "{{ serial | default('20%') }}"
+  # For non-graceful_rolling strategies (e.g. linear), serial: enforces the batch size so that
+  # upgrade_node_concurrency is respected. graceful_rolling manages concurrency internally via
+  # graceful_rolling_concurrency and must receive all hosts at once ('100%') to run its sliding window.
+  serial: "{{ upgrade_node_concurrency | default('20%') if (upgrade_strategy | default('linear')) != 'graceful_rolling' else '100%' }}"
+  strategy: "{{ upgrade_strategy | default('linear') }}"
+  vars:
+    graceful_rolling_concurrency: "{{ upgrade_node_concurrency | default('20%') }}"
   roles:
     - { role: kubespray_defaults }
     - { role: upgrade/pre-upgrade, tags: pre-upgrade }

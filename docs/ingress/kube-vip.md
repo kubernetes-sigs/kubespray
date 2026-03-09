@@ -63,6 +63,8 @@ kube_vip_bgppeers:
 # kube_vip_bgp_peeraddress:
 # kube_vip_bgp_peerpass:
 # kube_vip_bgp_peeras:
+# kube_vip_bgp_sourceip:
+# kube_vip_bgp_sourceif:
 ```
 
 If using [control plane load-balancing](https://kube-vip.io/docs/about/architecture/#control-plane-load-balancing):

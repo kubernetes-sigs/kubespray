@@ -58,8 +58,10 @@
       vars:
         _data: "{{ _node_images_raw.stdout | from_json }}"
         _with_tags: "{{ _data.images | selectattr('repoTags', 'defined') | selectattr('repoTags', '!=', []) | list }}"
-      set_fact:
-        node_image_list: >-
+        # Build the list via a Jinja2 for-loop, emit it as JSON, then parse it back.
+        # This ensures set_fact stores a native list (not a string), which is required
+        # for selectattr() in check_pull_required.yml to work correctly.
+        _json: >-
           {% set result = [] %}
           {% for img in _with_tags %}
             {% set repo_tag = img.repoTags[0] | split(':') %}
@@ -67,7 +69,9 @@
             {% set digest_hash = digest.split('@')[1] if '@' in digest else '' %}
             {% set _ = result.append({'Repository': repo_tag[0] | regex_replace('^docker\.io/(library/)?', ''), 'Tag': repo_tag[1] | default(''), 'Digest': digest_hash}) %}
           {% endfor %}
-          {{ result }}
+          {{ result | to_json }}
+      set_fact:
+        node_image_list: "{{ _json | from_json }}"
       when: container_manager == 'crio'
 
     # ── Cache on localhost when download_localhost is active ──

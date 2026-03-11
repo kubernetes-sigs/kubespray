@@ -1,25 +1,28 @@
 ---
-# The image_info_command depends on the Container Runtime and will output something like the following:
-# nginx:1.15,gcr.io/google-containers/kube-proxy:v1.14.1,gcr.io/google-containers/kube-proxy@sha256:44af2833c6cbd9a7fc2e9d2f5244a39dfd2e31ad91bf9d4b7d810678db738ee9,gcr.io/google-containers/kube-apiserver:v1.14.1,etc...
-- name: Check_pull_required |  Generate a list of information about the images on a node  # noqa command-instead-of-shell - image_info_command contains a pipe, therefore requiring shell
-  shell: "{{ image_info_command }}"
-  register: docker_images
-  changed_when: false
-  check_mode: false
-  when: not download_always_pull
+# node_image_list is populated once before the download loop in main.yml as a list of dicts:
+# [{'Repository': 'registry.k8s.io/pause', 'Tag': '3.10.1', 'Digest': 'sha256:abc...'}, ...]
+# This avoids running the image-info command once per image and enables proper digest comparison.
 
-- name: Check_pull_required | Set pull_required if the desired image is not yet loaded
+- name: Check_pull_required | Set pull_required by tag
   set_fact:
     pull_required: >-
-      {%- if image_reponame | regex_replace('^docker\.io/(library/)?', '') in docker_images.stdout.split(',') %}false{%- else -%}true{%- endif -%}
-  when: not download_always_pull
-
-- name: Check_pull_required | Check that the local digest sha256 corresponds to the given image tag
-  assert:
-    that: "{{ download.repo }}:{{ download.tag }} in docker_images.stdout.split(',')"
+      {{ (node_image_list
+          | selectattr('Repository', 'equalto',
+              image_reponame | regex_replace('^docker\.io/(library/)?', '') | split(':') | first
+              if not pull_by_digest else
+              image_reponame | regex_replace('^docker\.io/(library/)?', '') | split('@') | first)
+          | selectattr('Tag', 'equalto', download.tag)
+          | list | length) == 0 }}
   when:
     - not download_always_pull
-    - not pull_required
+    - not pull_by_digest
+
+- name: Check_pull_required | Set pull_required by digest
+  set_fact:
+    pull_required: >-
+      {{ (node_image_list
+          | selectattr('Digest', 'equalto', 'sha256:' ~ download.sha256)
+          | list | length) == 0 }}
+  when:
+    - not download_always_pull
     - pull_by_digest
-  tags:
-    - asserts

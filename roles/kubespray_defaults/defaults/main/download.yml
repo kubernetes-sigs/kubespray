@@ -55,12 +55,19 @@ download_delegate: "{% if download_localhost %}localhost{% else %}{{ groups['kub
 # Allow control the times of download retries for files and containers
 download_retries: 4
 
-# The docker_image_info_command might seems weird but we are using raw/endraw and `{{ `{{` }}` to manage the double jinja2 processing
+# image_info_commands output one JSON object per line (docker/nerdctl) or a single JSON document (crictl).
+# The structured output enables per-field comparison (Repository, Tag, Digest) instead of fragile
+# comma-separated string matching.  Digest comparison is used when pull_by_digest is true.
 docker_image_pull_command: "{{ docker_bin_dir }}/docker pull"
-docker_image_info_command: "{{ docker_bin_dir }}/docker images -q | xargs -i {{ '{{' }} docker_bin_dir }}/docker inspect -f {% raw %}'{{ '{{' }} if .RepoTags }}{{ '{{' }} join .RepoTags \",\" }}{{ '{{' }} end }}{{ '{{' }} if .RepoDigests }},{{ '{{' }} join .RepoDigests \",\" }}{{ '{{' }} end }}' {% endraw %} {} | tr '\n' ','"
-nerdctl_image_info_command: "{{ bin_dir }}/nerdctl -n k8s.io images --format '{% raw %}{{ .Repository }}:{{ .Tag }}{% endraw %}' 2>/dev/null | grep -v ^:$ | tr '\n' ','"
+docker_image_info_command: >-
+  {{ docker_bin_dir }}/docker images
+  --format '{"Repository":"{% raw %}{{.Repository}}{% endraw %}","Tag":"{% raw %}{{.Tag}}{% endraw %}","Digest":"{% raw %}{{.Digest}}{% endraw %}"}'
+nerdctl_image_info_command: >-
+  {{ bin_dir }}/nerdctl -n k8s.io images
+  --format '{"Repository":"{% raw %}{{.Repository}}{% endraw %}","Tag":"{% raw %}{{.Tag}}{% endraw %}","Digest":"{% raw %}{{.Digest}}{% endraw %}"}'
+  2>/dev/null | grep -v '^{"Repository":""
 nerdctl_image_pull_command: "{{ bin_dir }}/nerdctl -n k8s.io pull --quiet"
-crictl_image_info_command: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
+crictl_image_info_command: "{{ bin_dir }}/crictl images --output json"
 crictl_image_pull_command: "{{ bin_dir }}/crictl pull"
 
 image_command_tool: "{%- if container_manager == 'containerd' -%}nerdctl{%- elif container_manager == 'crio' -%}crictl{%- else -%}{{ container_manager }}{%- endif -%}"

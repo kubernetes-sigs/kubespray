@@ -16,6 +16,67 @@
     - download
     - upload
 
+- name: Download | Build node image list for pull-required checks
+  when:
+    - not skip_downloads | default(false)
+    - not download_always_pull
+    - download_container | default(true)
+  tags:
+    - download
+  block:
+    # ── Gather: run the image-info command once per node (or once on localhost) ──
+    - name: Download | Gather image list from localhost  # noqa command-instead-of-shell
+      shell: "{{ image_info_command_on_localhost }}"
+      register: _node_images_raw
+      changed_when: false
+      check_mode: false
+      delegate_to: localhost
+      run_once: true
+      when: download_localhost | bool
+
+    - name: Download | Gather image list from node  # noqa command-instead-of-shell
+      shell: "{{ image_info_command }}"
+      register: _node_images_raw
+      changed_when: false
+      check_mode: false
+      when: not (download_localhost | bool)
+
+    # ── Parse: docker/nerdctl → one JSON object per line ──
+    - name: Download | Parse node image list (docker / nerdctl)
+      set_fact:
+        node_image_list: >-
+          {{ _node_images_raw.stdout_lines
+             | select('match', '^\s*\{')
+             | map('from_json')
+             | list }}
+      when: container_manager in ['docker', 'containerd']
+
+    # ── Parse: crictl → single JSON document with an 'images' array ──
+    - name: Download | Parse node image list (crictl)
+      vars:
+        _data: "{{ _node_images_raw.stdout | from_json }}"
+        _with_tags: "{{ _data.images | selectattr('repoTags', 'defined') | selectattr('repoTags', '!=', []) | list }}"
+      set_fact:
+        node_image_list: >-
+          {% set result = [] %}
+          {% for img in _with_tags %}
+            {% set repo_tag = img.repoTags[0] | split(':') %}
+            {% set digest = (img.repoDigests | default([]) | first | default('')) %}
+            {% set digest_hash = digest.split('@')[1] if '@' in digest else '' %}
+            {% set _ = result.append({'Repository': repo_tag[0] | regex_replace('^docker\.io/(library/)?', ''), 'Tag': repo_tag[1] | default(''), 'Digest': digest_hash}) %}
+          {% endfor %}
+          {{ result }}
+      when: container_manager == 'crio'
+
+    # ── Cache on localhost when download_localhost is active ──
+    - name: Download | Cache node image list as fact on localhost
+      set_fact:
+        node_image_list: "{{ node_image_list }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
+      when: download_localhost | bool
+
 - name: Download | Download files / images
   include_tasks: "{{ include_file }}"
   loop: "{{ downloads | combine(kubeadm_images) | dict2items }}"

@@ -1,16 +1,4 @@
 ---
-- name: Set kubeadm_discovery_address
-  set_fact:
-    # noqa: jinja[spacing]
-    kubeadm_discovery_address: >-
-      {%- if "127.0.0.1" in kube_apiserver_endpoint or "localhost" in kube_apiserver_endpoint -%}
-      {{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
-      {%- else -%}
-      {{ kube_apiserver_endpoint | regex_replace('https://', '') }}
-      {%- endif %}
-  tags:
-    - facts
-
 - name: Obtain kubeadm certificate key for joining control planes nodes
   when:
     - not kube_external_ca_mode
@@ -31,8 +19,8 @@
 
 - name: Wait for k8s apiserver
   wait_for:
-    host: "{{ kubeadm_discovery_address | regex_replace('\\]?:\\d+$', '') | regex_replace('^\\[', '') }}"
-    port: "{{ kubeadm_discovery_address.split(':')[-1] }}"
+    host: "{{ _kube_apiserver_endpoint | urlsplit('hostname') }}"
+    port: "{{ _kube_apiserver_endpoint | urlsplit('port') | default(kube_apiserver_port) }}"
     timeout: 180
 
 

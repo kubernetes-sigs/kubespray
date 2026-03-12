@@ -92,7 +92,8 @@ options:
     required: false
     default: false
     description:
-      - Use server-side apply instead of client-side apply (implies --force-conflicts).
+      - Use server-side apply instead of client-side apply.
+        When combined with force, uses --force-conflicts instead of --force.
         Required for resources whose manifests exceed the annotation size limit.
 requirements:
   - kubectl
@@ -183,9 +184,12 @@ class KubeManager(object):
         cmd = ['apply']
 
         if self.server_side_apply:
-            cmd.extend(['--server-side', '--force-conflicts'])
-        elif force:
+            cmd.append('--server-side')
+
+        if force:
             cmd.append('--force')
+            if self.server_side_apply:
+                cmd.append('--force-conflicts')
 
         if self.wait:
             cmd.append('--wait')
@@ -205,9 +209,12 @@ class KubeManager(object):
         cmd = ['apply']
 
         if self.server_side_apply:
-            cmd.extend(['--server-side', '--force-conflicts'])
-        elif force:
+            cmd.append('--server-side')
+
+        if force:
             cmd.append('--force')
+            if self.server_side_apply:
+                cmd.append('--force-conflicts')
 
         if self.wait:
             cmd.append('--wait')

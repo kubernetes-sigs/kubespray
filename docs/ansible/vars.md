@@ -305,6 +305,9 @@ node_taints:
   * `audit_policy_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-policy.yaml"
 
   By default, the `audit_policy_file` contains [default rules](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubernetes/control-plane/templates/apiserver-audit-policy.yaml.j2) that can be overridden with the `audit_policy_custom_rules` variable.
+
+  Using the `audit_policy_global_omit_stages` variable set List of audit stages to omit globally in the audit policy. Applied at the top-level omitStages.
+
 * *kubernetes_audit_webhook* - When set to `true`, enables the webhook audit backend.
   The webhook parameters can be tuned via the following variables (which default values are shown below):
   * `audit_webhook_config_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-webhook-config.yaml"

@@ -1,3 +1,35 @@
 ---
-- name: Import Centos boostrap for openEuler
-  import_tasks: centos.yml
+- name: Import CentOS bootstrap for openEuler
+  ansible.builtin.import_tasks: centos.yml
+
+- name: Get existing openEuler repo sections
+  ansible.builtin.shell:
+    cmd: "set -o pipefail && grep '^\\[' /etc/yum.repos.d/openEuler.repo | tr -d '[]'"
+    executable: /bin/bash
+  register: _openeuler_repo_sections
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  become: true
+  when: openeuler_metalink_enabled
+
+- name: Enable metalink for openEuler repos
+  community.general.ini_file:
+    path: /etc/yum.repos.d/openEuler.repo
+    section: "{{ item.key }}"
+    option: metalink
+    value: "{{ item.value }}"
+    no_extra_spaces: true
+    mode: "0644"
+  loop: "{{ _openeuler_metalink_repos | dict2items | selectattr('key', 'in', _openeuler_repo_sections.stdout_lines | default([])) }}"
+  become: true
+  when: openeuler_metalink_enabled
+  vars:
+    _openeuler_metalink_repos:
+      OS: "https://mirrors.openeuler.org/metalink?repo=$releasever/OS&arch=$basearch"
+      everything: "https://mirrors.openeuler.org/metalink?repo=$releasever/everything&arch=$basearch"
+      EPOL: "https://mirrors.openeuler.org/metalink?repo=$releasever/EPOL/main&arch=$basearch"
+      debuginfo: "https://mirrors.openeuler.org/metalink?repo=$releasever/debuginfo&arch=$basearch"
+      source: "https://mirrors.openeuler.org/metalink?repo=$releasever&arch=source"
+      update: "https://mirrors.openeuler.org/metalink?repo=$releasever/update&arch=$basearch"
+      update-source: "https://mirrors.openeuler.org/metalink?repo=$releasever/update&arch=source"

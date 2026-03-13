@@ -30,12 +30,19 @@ spec:
                     values:
                       - vsphere-csi-controller
               topologyKey: "kubernetes.io/hostname"
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+            - matchExpressions:
+              - key: node-role.kubernetes.io/controlplane
+                operator: Exists
       serviceAccountName: vsphere-csi-controller
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: ""
       tolerations:
-        - operator: "Exists"
-          key: node-role.kubernetes.io/control-plane
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
           effect: NoSchedule
 {% if vsphere_csi_aggressive_node_drain %}
         # set below toleration if you need an aggressive pod eviction in case when
@@ -63,6 +70,7 @@ spec:
             - "--leader-election-retry-period=30s"
             - "--kube-api-qps=100"
             - "--kube-api-burst=100"
+            - "--worker-threads=100"
 {% if vsphere_csi_attacher_resources | length > 0 %}
           resources:
             {{ vsphere_csi_attacher_resources | default({}) | to_nice_yaml | trim | indent(width=12) }}
@@ -73,14 +81,13 @@ spec:
           volumeMounts:
             - mountPath: /csi
               name: socket-dir
-{% if external_vsphere_version >= "7.0" %}
         - name: csi-resizer
           image: {{ kube_image_repo }}/sig-storage/csi-resizer:{{ vsphere_csi_resizer_tag }}
           args:
             - "--v=4"
             - "--timeout=300s"
-            - "--csi-address=$(ADDRESS)"
             - "--handle-volume-inuse-error=false"
+            - "--csi-address=$(ADDRESS)"
             - "--kube-api-qps=100"
             - "--kube-api-burst=100"
             - "--leader-election"
@@ -97,12 +104,12 @@ spec:
           volumeMounts:
             - mountPath: /csi
               name: socket-dir
-{% endif %}
         - name: vsphere-csi-controller
           image: {{ kube_image_repo }}/csi-vsphere/driver:{{ vsphere_csi_controller }}
           args:
             - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
             - "--fss-namespace={{ vsphere_csi_namespace }}"
+            - "--enable-profile-server=false"
 {% if vsphere_csi_resources | length > 0 %}
           resources:
             {{ vsphere_csi_resources | default({}) | to_nice_yaml | trim | indent(width=12) }}
@@ -121,22 +128,24 @@ spec:
               value: "/etc/cloud/csi-vsphere.conf"
             - name: LOGGER_LEVEL
               value: "PRODUCTION" # Options: DEVELOPMENT, PRODUCTION
-{% if external_vsphere_version >= "7.0u1" %}
             - name: INCLUSTER_CLIENT_QPS
               value: "100"
             - name: INCLUSTER_CLIENT_BURST
               value: "100"
-{% endif %}
+            - name: CSI_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
           volumeMounts:
             - mountPath: /etc/cloud
               name: vsphere-config-volume
               readOnly: true
             - mountPath: {{ csi_endpoint }}
               name: socket-dir
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 65532
-            runAsGroup: 65532
           ports:
             - name: healthz
               containerPort: 9808
@@ -176,11 +185,8 @@ spec:
             - "--leader-election-retry-period=10s"
             - "--fss-name=internal-feature-states.csi.vsphere.vmware.com"
             - "--fss-namespace={{ vsphere_csi_namespace }}"
+            - "--enable-profile-server=false"
           imagePullPolicy: {{ k8s_image_pull_policy }}
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 65532
-            runAsGroup: 65532
           ports:
             - containerPort: 2113
               name: prometheus
@@ -196,12 +202,18 @@ spec:
               value: "/etc/cloud/csi-vsphere.conf"
             - name: LOGGER_LEVEL
               value: "PRODUCTION" # Options: DEVELOPMENT, PRODUCTION
-{% if external_vsphere_version >= "7.0u1" %}
             - name: INCLUSTER_CLIENT_QPS
               value: "100"
             - name: INCLUSTER_CLIENT_BURST
               value: "100"
-{% endif %}
+            - name: CSI_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
           volumeMounts:
             - mountPath: /etc/cloud
               name: vsphere-config-volume
@@ -218,8 +230,6 @@ spec:
             - "--leader-election-lease-duration=120s"
             - "--leader-election-renew-deadline=60s"
             - "--leader-election-retry-period=30s"
-            - "--default-fstype=ext4"
-            - "--leader-election"
             - "--default-fstype=ext4"
             # needed only for topology aware setup
             #- "--feature-gates=Topology=true"
@@ -246,6 +256,7 @@ spec:
             - "--leader-election-lease-duration=120s"
             - "--leader-election-renew-deadline=60s"
             - "--leader-election-retry-period=30s"
+            - "--extra-create-metadata"
           env:
             - name: ADDRESS
               value: /csi/csi.sock

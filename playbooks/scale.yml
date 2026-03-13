@@ -11,7 +11,7 @@
     etcd_events_cluster_setup: false
   import_playbook: install_etcd.yml
 
-- name: Download binaries
+- name: Download binaries and install tools
   hosts: k8s_cluster:etcd:localhost
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -21,17 +21,8 @@
       tags:
         - download
         - download/file
-
-  # TODO: fold that play in future role download/container
-- name: Download images to ansible host cache via first kube_control_plane node
-  hosts: kube_control_plane[0]
-  gather_facts: false
-  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
-  roles:
-    - { role: kubespray_defaults, when: "not skip_downloads and download_run_once and not download_localhost" }
-    - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
-    - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
+    - role: tools_setup
+    - role: download/container
 
 - name: Target only workers to get kubelet installed and checking in on any new nodes(engine)
   hosts: kube_node

@@ -53,7 +53,7 @@ See [docs/advanced/downloads.md](docs/advanced/downloads.md) for download mechan
 
 From lowest to highest:
 
-1. `roles/<role>/defaults/main.yml` — role defaults
+1. `roles/<role>/defaults/main.yml` or `defaults/main/*.yml` — role defaults
 2. `inventory/<cluster>/group_vars/all/*.yml` — cluster-wide
 3. `inventory/<cluster>/group_vars/k8s_cluster/*.yml` — K8s group
 4. `inventory/<cluster>/host_vars/<host>.yml` — per-host
@@ -74,7 +74,7 @@ All binary/image downloads are centralized in `roles/kubespray_defaults/`:
 
 `roles/network_plugin/tasks/main.yml` dynamically includes `network_plugin/{{ kube_network_plugin }}`:
 
-1. Create `roles/network_plugin/<name>/` with at least `tasks/main.yml`, `defaults/main.yml`, `meta/main.yml`
+1. Create `roles/network_plugin/<name>/` with at least `tasks/main.yml`; add `defaults/`, `vars/`, `meta/` as needed
 2. Add download entries and checksums if the plugin needs binary downloads
 3. Users select via `kube_network_plugin: <name>` in their inventory
 

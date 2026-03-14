@@ -10,6 +10,24 @@
   set_fact:
     cilium_action: "{{ 'install' if ('release: not found' in cilium_release_info.stderr | default('') or 'release: not found' in cilium_release_info.stdout | default('')) else 'upgrade' }}"
 
+- name: Cilium | Create custom IPsec secret
+  kube:
+    name: "cilium"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "Secret"
+    filename: "{{ kube_config_dir }}/cilium-secret.yml"
+    state: "latest"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_encryption_enabled | bool and cilium_encryption_type == 'ipsec' and cilium_ipsec_key is defined
+
+- name: Cilium | Create IPsec secret
+  environment: "{{ proxy_env }}"
+  command: "{{ bin_dir }}/cilium encrypt create-key --auth-algo {{ cilium_ipsec_key_algo | default('rfc4106-gcm-aes') }}"
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]
+    - cilium_encryption_enabled | bool and cilium_encryption_type == 'ipsec' and cilium_ipsec_key is not defined
+
 - name: Cilium | Install
   environment: "{{ proxy_env }}"
   command: "{{ bin_dir }}/cilium {{ cilium_action }} --version {{ cilium_version }} -f {{ kube_config_dir }}/cilium-values.yaml -f {{ kube_config_dir }}/cilium-extra-values.yaml {{ cilium_install_extra_flags }}"

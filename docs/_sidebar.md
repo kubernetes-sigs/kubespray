@@ -46,6 +46,7 @@
 * Developers
   * [Ci-setup](/docs/developers/ci-setup.md)
   * [Ci](/docs/developers/ci.md)
+  * [Graceful-rolling-strategy](/docs/developers/graceful-rolling-strategy.md)
   * [Test Cases](/docs/developers/test_cases.md)
   * [Vagrant](/docs/developers/vagrant.md)
 * External Storage Provisioners
@@ -83,6 +84,7 @@
   * [Offline-environment](/docs/operations/offline-environment.md)
   * [Port-requirements](/docs/operations/port-requirements.md)
   * [Recover-control-plane](/docs/operations/recover-control-plane.md)
+  * [Upgrade-strategies](/docs/operations/upgrade-strategies.md)
   * [Upgrades](/docs/operations/upgrades.md)
 * Roadmap
   * [Roadmap](/docs/roadmap/roadmap.md)

@@ -1,0 +1,57 @@
+---
+# tests/files/pdb-test/nginx-pdb.yml
+#
+# Deploys one nginx pod pinned to k8s-4 and a PodDisruptionBudget that
+# requires minAvailable=1. With exactly one replica this blocks *all*
+# eviction attempts on k8s-4 until the PDB is deleted.
+#
+# The PDB lifter in pdb-upgrade-test.sh removes the PDB after
+# PDB_HOLD_SECONDS (default 300 s) so that the drain can eventually
+# succeed for both strategies — the difference is that graceful_rolling
+# already finished k8s-5 and k8s-6 during the block window.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pdb-test-app
+  namespace: default
+  labels:
+    app.kubernetes.io/name: pdb-test-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pdb-test-app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pdb-test-app
+    spec:
+      # Pin the pod to k8s-4 so the PDB blocks exactly that node's drain
+      nodeSelector:
+        kubernetes.io/hostname: k8s-4
+      # Do not reschedule on eviction — we want the drain to stay blocked
+      tolerations: []
+      containers:
+        - name: nginx
+          image: nginx:stable-alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "32Mi"
+            limits:
+              cpu: "100m"
+              memory: "64Mi"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pdb-test
+  namespace: default
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pdb-test-app

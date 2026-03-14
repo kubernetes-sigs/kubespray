@@ -88,6 +88,13 @@ options:
       - Process the directory used in -f, --filename recursively.
         Useful when you want to manage related manifests organized
         within the same directory.
+  server_side_apply:
+    required: false
+    default: false
+    description:
+      - Use server-side apply instead of client-side apply.
+        When combined with force, uses --force-conflicts instead of --force.
+        Required for resources whose manifests exceed the annotation size limit.
 requirements:
   - kubectl
 author: "Kenny Jones (@kenjones-cisco)"
@@ -149,6 +156,7 @@ class KubeManager(object):
         self.resource = module.params.get('resource')
         self.label = module.params.get('label')
         self.recursive = module.params.get('recursive')
+        self.server_side_apply = module.params.get('server_side_apply')
 
     def _execute(self, cmd):
         args = self.base_cmd + cmd
@@ -175,8 +183,13 @@ class KubeManager(object):
 
         cmd = ['apply']
 
+        if self.server_side_apply:
+            cmd.append('--server-side')
+
         if force:
             cmd.append('--force')
+            if self.server_side_apply:
+                cmd.append('--force-conflicts')
 
         if self.wait:
             cmd.append('--wait')
@@ -195,8 +208,13 @@ class KubeManager(object):
 
         cmd = ['apply']
 
+        if self.server_side_apply:
+            cmd.append('--server-side')
+
         if force:
             cmd.append('--force')
+            if self.server_side_apply:
+                cmd.append('--force-conflicts')
 
         if self.wait:
             cmd.append('--wait')
@@ -325,6 +343,7 @@ def main():
             log_level=dict(default=0, type='int'),
             state=dict(default='present', choices=['present', 'absent', 'latest', 'reloaded', 'stopped', 'exists']),
             recursive=dict(default=False, type='bool'),
+            server_side_apply=dict(default=False, type='bool'),
             ),
             mutually_exclusive=[['filename', 'list']]
         )

@@ -1,0 +1,114 @@
+---
+- name: Get images present on each nodes from Kubernetes API
+  register: nodes_images
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  # TODO: ignore failure but only when the cluster isn't provisionned yet
+  command:
+    cmd: "{{ kubectl }} get nodes --output go-template-file=/dev/stdin"
+    # go-template to get the following json, for all cluster nodes
+    # {
+    #   "some_node": [
+    #     "some_image:some_tag",
+    #     "some_image:some_other_tag",
+    #     "some_image@some_hash",
+    #     "some_image2:some_other_tag",
+    #     ...
+    #   ],
+    #   "some_other_node": [
+    #   ...
+    #   ],
+    #   ...
+    # }
+    # https://github.com/ansible/ansible-lint/issues/4647
+    # noqa: jinja[invalid]
+    stdin: !unsafe '
+      { {{ range $n, $node := .items }}
+        {{ if $n }},{{ end }}"{{ .metadata.name }}":
+          [{{ range $i, $image := .status.images }}
+            {{ if $i }},{{end}}
+              {{ range $j, $name := .names }}
+                {{ if $j}},{{end}}"{{ $name }}"
+              {{ end }}
+           {{ end }}]
+        {{ end }} }'
+
+- name: Compute missing images on each node - with architecture prefix
+  vars:
+    current_images: "{{ (nodes_images.stdout | from_json)[inventory_hostname] | default([]) }}"
+    # Default filter handle the cluster setup case (no images on nodes)
+  set_fact:
+    images_to_pull: "{{
+      downloads | dict2items |
+      selectattr('value.container') | selectattr('value.enabled', 'all') |
+      map(attribute='value.image_name') | difference(current_images) |
+      map('regex_replace', '^', ansible_machine + '/')
+    }}"
+
+# - name: Find existing downloaded images on downloader nodes
+#   find:
+#     file_type: directory
+#     depth: 5
+#     recurse: true
+#     paths:
+#       - "{{ local_release_dir }}/images"
+#   when: ('download_delegate_' + inventory_hostname) in groups
+
+- name: Compute once the set of image delegated to localhost
+  set_fact:
+    images_to_pull_delegated_localhost: "{{
+      groups['download_delegate_localhost'] | d([]) |
+      map('extract', hostvars, morekeys=['images_to_pull']) |
+      flatten | unique }}"
+  run_once: true
+
+- name: Download and fetch images
+  vars:
+    images_to_pull_delegated: "{{
+      image_to_pull_delegated_localhost
+      if inventory_hostname == 'localhost'
+      else
+      groups['download_delegate_' + inventory_hostname] |
+      map('extract', hostvars, morekeys=['images_to_pull']) |
+      flatten | unique }}"
+      # |
+      # difference(existing_images.files | map(attribute='path') |
+      # map('relpath', local_release_dir + '/images')) |
+      # TODO: Is pre-checking the image here worth it or should we just relies on `creates:` on the next task ?
+      # (which is simpler)
+    oci_archive_path: "{{ local_release_dir }}/images/{{ arch_image_name | regex_replace('/', '%') }}.tar"
+    # Replace '/' to have flat file path (no need to create directory)
+    # '%' is:
+    # - not allowed (AFAICT) in image names
+    # - no need to escape in Python regex
+    # - no need to escape in shell (when inspecting downloaded images manually for instance)
+
+  block:
+  - name: Download images as OCI archives
+    # TODO: handle image ref with digest as well as tags
+    loop: "{{ images_to_pull_delegated }}"
+    loop_control:
+      loop_var: arch_image_name
+    vars:
+      image_name: "{{ arch_image_name | regex_replace('^.*?/', '') }}"
+      image_arch: "{{ arch_image_name | regex_replace('/.*', '') }}"
+    command:
+      cmd: "{{ bin_dir }}/skopeo --override-arch {{ image_arch }} copy docker://{{ image_name }} oci-archive:{{ oci_archive_path }}:{{ image_name }}"
+      creates: "{{ oci_archive_path }}"
+
+  # See 'Download_file | Fetch file to localhost' in download/file/tasks/main.yml for the logic (which is the same)
+  # TODO: see if it can be refactored in common logic
+  - name: Fetch OCI archives to localhost
+    fetch:
+      flat: true
+      src: "{{ local_release_dir }}/images/{{ oci_archive_path }}"
+      dest: "{{ install_source_localhost }}/images/"
+    loop_control:
+      loop_var: arch_image_name
+    loop: "{{
+      (images_to_pull_delegated | difference(images_to_pull_delegated_localhost))
+      if (groups['download_delegate_' + inventory_hostname] | d([]) |
+          difference([inventory_hostname]) != [])
+      else
+        []
+      }}"

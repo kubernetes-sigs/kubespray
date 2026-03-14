@@ -65,8 +65,8 @@ Once deployed to your K8s cluster, every 3 months cert-manager will automaticall
 
 Please consult the official upstream documentation:
 
-- [cert-manager Ingress Usage](https://cert-manager.io/usage/ingress/)
-- [cert-manager Ingress Tutorial](https://cert-manager.io/tutorials/acme/ingress/#step-3-assign-a-dns-name)
+- [cert-manager Ingress Usage](https://cert-manager.io/docs/usage/ingress/)
+- [cert-manager Ingress Tutorial](https://cert-manager.io/docs/tutorials/acme/nginx-ingress/#step-3---assign-a-dns-name)
 
 ### ACME
 

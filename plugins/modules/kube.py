@@ -88,6 +88,13 @@ options:
       - Process the directory used in -f, --filename recursively.
         Useful when you want to manage related manifests organized
         within the same directory.
+  server_side:
+    required: false
+    default: false
+    description:
+      - A flag to indicate to use server-side apply.
+        Server-side apply is useful for applying large resources
+        and avoids client-side limitations.
 requirements:
   - kubectl
 author: "Kenny Jones (@kenjones-cisco)"
@@ -149,6 +156,7 @@ class KubeManager(object):
         self.resource = module.params.get('resource')
         self.label = module.params.get('label')
         self.recursive = module.params.get('recursive')
+        self.server_side = module.params.get('server_side')
 
     def _execute(self, cmd):
         args = self.base_cmd + cmd
@@ -169,13 +177,13 @@ class KubeManager(object):
             return None
         return out.splitlines()
 
-    def create(self, check=True, force=True):
+    def create(self, check=True):
         if check and self.exists():
             return []
 
         cmd = ['apply']
 
-        if force:
+        if self.force:
             cmd.append('--force')
 
         if self.wait:
@@ -183,6 +191,9 @@ class KubeManager(object):
 
         if self.recursive:
             cmd.append('--recursive={}'.format(self.recursive))
+
+        if self.server_side:
+            cmd.append('--server-side')
 
         if not self.filename:
             self.module.fail_json(msg='filename required to create')
@@ -191,11 +202,11 @@ class KubeManager(object):
 
         return self._execute(cmd)
 
-    def replace(self, force=True):
+    def replace(self):
 
         cmd = ['apply']
 
-        if force:
+        if self.force:
             cmd.append('--force')
 
         if self.wait:
@@ -203,6 +214,9 @@ class KubeManager(object):
 
         if self.recursive:
             cmd.append('--recursive={}'.format(self.recursive))
+
+        if self.server_side:
+            cmd.append('--server-side')
 
         if not self.filename:
             self.module.fail_json(msg='filename required to reload')
@@ -325,6 +339,7 @@ def main():
             log_level=dict(default=0, type='int'),
             state=dict(default='present', choices=['present', 'absent', 'latest', 'reloaded', 'stopped', 'exists']),
             recursive=dict(default=False, type='bool'),
+            server_side=dict(default=False, type='bool'),
             ),
             mutually_exclusive=[['filename', 'list']]
         )

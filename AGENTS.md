@@ -9,7 +9,7 @@ Kubespray deploys production-ready Kubernetes clusters using Ansible.
 
 ## Directory Layout
 
-```
+```text
 .
 ├── cluster.yml                  # Top-level entry point
 ├── upgrade_cluster.yml          # Cluster upgrade
@@ -84,11 +84,14 @@ Add-ons are wired via `roles/kubernetes-apps/meta/main.yml` dependencies:
 
 1. Create `roles/kubernetes-apps/<name>/` with `tasks/main.yml`, `defaults/main.yml`
 2. Add enable flag in `roles/kubespray_defaults/defaults/main/main.yml`: `<name>_enabled: false`
-3. Add dependency in `roles/kubernetes-apps/meta/main.yml`:
-   ```yaml
-   - role: kubernetes-apps/<name>
-     when: <name>_enabled
-   ```
+3. Add dependency in `roles/kubernetes-apps/meta/main.yml`
+
+Example dependency entry:
+
+```yaml
+- role: kubernetes-apps/<name>
+  when: <name>_enabled
+```
 
 ### Pre-commit Hooks
 

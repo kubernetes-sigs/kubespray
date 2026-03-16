@@ -177,7 +177,7 @@ class KubeManager(object):
             return None
         return out.splitlines()
 
-    def create(self, check=True, force=True):
+    def create(self, check=True):
         if check and self.exists():
             return []
 
@@ -211,7 +211,7 @@ class KubeManager(object):
         if self.server_side_apply:
             cmd.append('--server-side')
 
-        if force:
+        if self.force:
             cmd.append('--force')
             if self.server_side_apply:
                 cmd.append('--force-conflicts')

@@ -111,11 +111,11 @@ Note:
 <!-- BEGIN ANSIBLE MANAGED BLOCK -->
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.34.4
+  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.34.5
   - [etcd](https://github.com/etcd-io/etcd) 3.5.27
   - [docker](https://www.docker.com/) 28.3
-  - [containerd](https://containerd.io/) 2.2.1
-  - [cri-o](http://cri-o.io/) 1.34.5 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [containerd](https://containerd.io/) 2.2.2
+  - [cri-o](http://cri-o.io/) 1.34.6 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
   - [cni-plugins](https://github.com/containernetworking/plugins) 1.8.0
   - [calico](https://github.com/projectcalico/calico) 3.30.6

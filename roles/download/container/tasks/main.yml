@@ -1,4 +1,8 @@
 ---
+- name: Get kubeadm_images definition
+  import_role:
+    name: download/kubeadm_images
+
 - name: Get images present on each nodes from Kubernetes API
   register: nodes_images
   run_once: true
@@ -42,9 +46,13 @@
     current_images: "{{ (nodes_images.stdout | d('{}', true) | from_json).get(inventory_hostname, []) }}"
     # Default filter handle the cluster setup case (no images on nodes)
     # To handle scale cases we also need a default for individual nodes, hence the .get()
+
+  # TODO: separate downloads with container true into a different top-level
+  # var to avoid the select overhead (runtime *AND* mental)
+  # will also avoid the etcd / etcd_container confusion
   set_fact:
     images_to_pull: "{{
-      downloads | dict2items |
+      downloads | combine(kubeadm_images) | dict2items |
       selectattr('value.container', 'defined') | selectattr('value.container') | selectattr('value.enabled', 'all') |
       map(attribute='value.image_name') | difference(current_images) |
       map('regex_replace', '^', host_architecture + '%')

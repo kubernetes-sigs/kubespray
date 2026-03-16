@@ -1,6 +1,4 @@
 ---
-download_cache_dir: /tmp/kubespray_cache
-
 # If this is true, debug information will be displayed but
 # may contain some private data, so it is recommended to set it to false
 # in the production environment.
@@ -8,27 +6,11 @@ download_cache_dir: /tmp/kubespray_cache
 # in gitlab-ci in other contexts
 unsafe_show_logs: "{{ lookup('env', 'CI_PROJECT_URL') == 'https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray' }}"
 
-# do not delete remote cache files after using them
-# NOTE: Setting this parameter to TRUE is only really useful when developing kubespray
-download_keep_remote_cache: false
-
-# Only useful when download_run_once is false: Localy cached files and images are
-# uploaded to kubernetes nodes. Also, images downloaded on those nodes are copied
-# back to the ansible runner's cache, if they are not yet preset.
-download_force_cache: false
-
 # Used to only evaluate vars from download role
 skip_downloads: false
 
 # Optionally skip kubeadm images download
 skip_kubeadm_images: false
-kubeadm_images: {}
-
-# if this is set to true will only download files once. Doesn't work
-# on Flatcar Container Linux by Kinvolk unless the download_localhost is true and localhost
-# is running another OS type. Default compress level is 1 (fastest).
-download_run_once: false
-download_compress: 1
 
 # if this is set to true will download container
 download_container: true
@@ -40,35 +22,11 @@ download_container: true
 # in the download_run_once mode.
 download_localhost: false
 
-# Always pull images if set to True. Otherwise check by the repo's tag/digest.
-download_always_pull: false
-
-# Some problems may occur when downloading files over https proxy due to ansible bug
-# https://github.com/ansible/ansible/issues/32750. Set this variable to False to disable
-# SSL validation of get_url module. Note that kubespray will still be performing checksum validation.
-download_validate_certs: true
-
 # Use the first kube_control_plane if download_localhost is not set
-download_delegate: "{% if download_localhost %}localhost{% else %}{{ groups['kube_control_plane'][0] }}{% endif %}"
+download_delegate: "{{ groups['kube_control_plane'][0] }}"
 
 # Allow control the times of download retries for files and containers
 download_retries: 4
-
-# The docker_image_info_command might seems weird but we are using raw/endraw and `{{ `{{` }}` to manage the double jinja2 processing
-docker_image_pull_command: "{{ docker_bin_dir }}/docker pull"
-docker_image_info_command: "{{ docker_bin_dir }}/docker images -q | xargs -i {{ '{{' }} docker_bin_dir }}/docker inspect -f {% raw %}'{{ '{{' }} if .RepoTags }}{{ '{{' }} join .RepoTags \",\" }}{{ '{{' }} end }}{{ '{{' }} if .RepoDigests }},{{ '{{' }} join .RepoDigests \",\" }}{{ '{{' }} end }}' {% endraw %} {} | tr '\n' ','"
-nerdctl_image_info_command: "{{ bin_dir }}/nerdctl -n k8s.io images --format '{% raw %}{{ .Repository }}:{{ .Tag }}{% endraw %}' 2>/dev/null | grep -v ^:$ | tr '\n' ','"
-nerdctl_image_pull_command: "{{ bin_dir }}/nerdctl -n k8s.io pull --quiet"
-crictl_image_info_command: "{{ bin_dir }}/crictl images --verbose | awk -F ': ' '/RepoTags|RepoDigests/ {print $2}' | tr '\n' ','"
-crictl_image_pull_command: "{{ bin_dir }}/crictl pull"
-
-image_command_tool: "{%- if container_manager == 'containerd' -%}nerdctl{%- elif container_manager == 'crio' -%}crictl{%- else -%}{{ container_manager }}{%- endif -%}"
-image_command_tool_on_localhost: "{{ image_command_tool }}"
-
-image_pull_command: "{{ lookup('vars', image_command_tool + '_image_pull_command') }}"
-image_info_command: "{{ lookup('vars', image_command_tool + '_image_info_command') }}"
-image_pull_command_on_localhost: "{{ lookup('vars', image_command_tool_on_localhost + '_image_pull_command') }}"
-image_info_command_on_localhost: "{{ lookup('vars', image_command_tool_on_localhost + '_image_info_command') }}"
 
 # Arch of Docker images and needed packages
 image_arch: "{{ host_architecture | default('amd64') }}"

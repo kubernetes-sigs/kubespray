@@ -204,7 +204,7 @@ class KubeManager(object):
 
         return self._execute(cmd)
 
-    def replace(self, force=True):
+    def replace(self):
 
         cmd = ['apply']
 

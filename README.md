@@ -26,6 +26,23 @@ docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inve
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
+- ** The image will install kubernetes 1.34.3, you can execute the blow if you need install kubernetes 1.35.1.
+```
+git clone https://github.com/kubernetes-sigs/kubespray.git
+cd kubespray
+cp Dockerfile Dockerfile.bak
+sed -i '1{/^# syntax=docker\/dockerfile:1$/d;}' Dockerfile
+head -3 Dockerfile
+docker build -t my-kubespray:master .
+docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
+  --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
+  quay.io/kubespray/kubespray:v2.30.0 bash
+
+ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
+or
+ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa upgrade-cluster.yml -e '{"kube_version":"1.35.1"}'
+```
+
 
 ### Ansible
 

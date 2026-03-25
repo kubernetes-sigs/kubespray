@@ -1,58 +1,71 @@
 ---
 
-- name: Create image directory
-  file:
-    state: directory
-    path: "{{ images_dir }}"
-    mode: "0755"
+- name: Build kubevirt images
+  vars:
+    kubevirt_images_to_build: "{{ images | dict2items if kubevirt_images_selected | length == 0 else ([images] | community.general.keep_keys(target=kubevirt_images_selected))[0] | dict2items }}"
+  block:
+    - name: Validate selected image names
+      assert:
+        that:
+          - kubevirt_images_selected | length == 0 or kubevirt_images_to_build | length > 0
+        fail_msg: "No matching images found in `images` for `kubevirt_images_selected={{ kubevirt_images_selected }}`"
 
-- name: Download images files
-  get_url:
-    url: "{{ item.value.url }}"
-    dest: "{{ images_dir }}/{{ item.value.filename }}"
-    checksum: "{{ item.value.checksum }}"
-    mode: "0644"
-  loop: "{{ images | dict2items }}"
+    - name: Create image directory
+      file:
+        state: directory
+        path: "{{ images_dir }}"
+        mode: "0755"
 
-- name: Unxz compressed images
-  command: unxz --force {{ images_dir }}/{{ item.value.filename }}
-  loop: "{{ images | dict2items }}"
-  when:
-    - item.value.filename.endswith('.xz')
+    - name: Download images files
+      get_url:
+        url: "{{ item.value.url }}"
+        dest: "{{ images_dir }}/{{ item.value.filename }}"
+        checksum: "{{ item.value.checksum }}"
+        mode: "0644"
+      loop: "{{ kubevirt_images_to_build }}"
 
-- name: Convert images which is not in qcow2 format
-  command: qemu-img convert -O qcow2 {{ images_dir }}/{{ item.value.filename.rstrip('.xz') }} {{ images_dir }}/{{ item.key }}.qcow2
-  loop: "{{ images | dict2items }}"
-  when:
-    - not (item.value.converted | bool)
+    - name: Unxz compressed images
+      command: unxz --force {{ images_dir }}/{{ item.value.filename }}
+      loop: "{{ kubevirt_images_to_build }}"
+      when:
+        - item.value.filename.endswith('.xz')
 
-- name: Make sure all images are ending with qcow2
-  command: cp {{ images_dir }}/{{ item.value.filename.rstrip('.xz') }} {{ images_dir }}/{{ item.key }}.qcow2
-  loop: "{{ images | dict2items }}"
-  when:
-    - item.value.converted | bool
+    - name: Convert images which is not in qcow2 format
+      command: qemu-img convert -O qcow2 {{ images_dir }}/{{ item.value.filename.rstrip('.xz') }} {{ images_dir }}/{{ item.key }}.qcow2
+      loop: "{{ kubevirt_images_to_build }}"
+      when:
+        - not (item.value.converted | bool)
 
-- name: Resize images
-  command: qemu-img resize {{ images_dir }}/{{ item.key }}.qcow2 +8G
-  loop: "{{ images | dict2items }}"
+    - name: Make sure all images are ending with qcow2
+      command: cp {{ images_dir }}/{{ item.value.filename.rstrip('.xz') }} {{ images_dir }}/{{ item.key }}.qcow2
+      loop: "{{ kubevirt_images_to_build }}"
+      when:
+        - item.value.converted | bool
 
-# STEP 2: Include the images inside a container
-- name: Template default Dockerfile
-  template:
-    src: Dockerfile
-    dest: "{{ images_dir }}/Dockerfile"
-    mode: "0644"
+    - name: Resize images
+      command: qemu-img resize {{ images_dir }}/{{ item.key }}.qcow2 +8G
+      loop: "{{ kubevirt_images_to_build }}"
 
-- name: Create docker images for each OS
-  command: docker build -t {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }} --build-arg cloud_image="{{ item.key }}.qcow2" {{ images_dir }}
-  loop: "{{ images | dict2items }}"
+    # STEP 2: Include the images inside a container
+    - name: Template default Dockerfile
+      template:
+        src: Dockerfile
+        dest: "{{ images_dir }}/Dockerfile"
+        mode: "0644"
 
-- name: Docker login
-  command: docker login -u="{{ docker_user }}" -p="{{ docker_password }}" "{{ docker_host }}"
+    - name: Create docker images for each OS
+      command: docker build -t {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }} --build-arg cloud_image="{{ item.key }}.qcow2" {{ images_dir }}
+      loop: "{{ kubevirt_images_to_build }}"
 
-- name: Docker push image
-  command: docker push {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }}
-  loop: "{{ images | dict2items }}"
+    - name: Docker login
+      command: docker login -u="{{ docker_user }}" -p="{{ docker_password }}" "{{ docker_host }}"
+      when: kubevirt_images_push
 
-- name: Docker logout
-  command: docker logout -u="{{ docker_user }}" "{{ docker_host }}"
+    - name: Docker push image
+      command: docker push {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }}
+      loop: "{{ kubevirt_images_to_build }}"
+      when: kubevirt_images_push
+
+    - name: Docker logout
+      command: docker logout -u="{{ docker_user }}" "{{ docker_host }}"
+      when: kubevirt_images_push

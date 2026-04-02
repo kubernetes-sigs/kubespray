@@ -2,6 +2,34 @@
 - name: Ensure kube-apiserver is up before upgrade
   import_tasks: check-api.yml
 
+- name: Kubeadm | Preflight admission readiness check
+  command:
+    cmd: "{{ kubectl }} create --dry-run=server -f -"
+    stdin: >-
+      {"apiVersion":"batch/v1","kind":"Job","metadata":{"name":"upgrade-preflight-probe","namespace":"kube-system"},"spec":{"template":{"spec":{"containers":[{"name":"pause","image":"{{ pod_infra_image_repo }}:{{ pod_infra_image_tag }}"}],"restartPolicy":"Never"}}}}
+  register: preflight_check_result
+  retries: "{{ kubeadm_upgrade_preflight_check_retries }}"
+  delay: "{{ kubeadm_upgrade_preflight_check_delay }}"
+  until: preflight_check_result.rc == 0
+  changed_when: false
+  failed_when: false
+  when:
+  - kubeadm_upgrade_preflight_check_enabled
+  - inventory_hostname == first_kube_control_plane
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+
+- name: Kubeadm | Warn if preflight admission check failed
+  debug:
+    msg: >-
+      WARNING: Preflight admission dry-run failed after {{ kubeadm_upgrade_preflight_check_retries }} retries.
+      The admission pipeline may not be ready. kubeadm upgrade apply may fail with [ERROR CreateJob].
+      See Kubernetes #124237 for details.
+  when:
+  - kubeadm_upgrade_preflight_check_enabled
+  - inventory_hostname == first_kube_control_plane
+  - preflight_check_result.rc is defined and preflight_check_result.rc != 0
+
 - name: Kubeadm | Upgrade first control plane node to {{ kube_version }}
   command: >-
     timeout -k 600s 600s

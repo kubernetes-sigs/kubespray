@@ -2,6 +2,25 @@
 - name: Import CentOS bootstrap for openEuler
   ansible.builtin.import_tasks: centos.yml
 
+- name: Read openEuler release string
+  ansible.builtin.command: cat /etc/openEuler-release
+  register: _openeuler_release_raw
+  changed_when: false
+  check_mode: false
+  become: true
+  when: openeuler_metalink_enabled
+
+# /etc/openEuler-release contains e.g. "openEuler release 24.03 (LTS)"
+# The metalink server expects "24.03LTS" (no spaces/parens/dashes),
+# but DNF's $releasever resolves to just "24.03", causing "invalid repo or arch".
+- name: Set openEuler metalink releasever
+  ansible.builtin.set_fact:
+    _openeuler_releasever: >-
+      {{ _openeuler_release_raw.stdout
+         | regex_replace('.*release\s+', '')
+         | regex_replace('[() -]', '') }}
+  when: openeuler_metalink_enabled
+
 - name: Get existing openEuler repo sections
   ansible.builtin.shell:
     cmd: "set -o pipefail && grep '^\\[' /etc/yum.repos.d/openEuler.repo | tr -d '[]'"
@@ -27,16 +46,16 @@
   register: _openeuler_metalink_result
   vars:
     _openeuler_metalink_repos:
-      OS: "https://mirrors.openeuler.org/metalink?repo=$releasever/OS&arch=$basearch"
-      everything: "https://mirrors.openeuler.org/metalink?repo=$releasever/everything&arch=$basearch"
-      EPOL: "https://mirrors.openeuler.org/metalink?repo=$releasever/EPOL/main&arch=$basearch"
-      debuginfo: "https://mirrors.openeuler.org/metalink?repo=$releasever/debuginfo&arch=$basearch"
-      source: "https://mirrors.openeuler.org/metalink?repo=$releasever&arch=source"
-      update: "https://mirrors.openeuler.org/metalink?repo=$releasever/update&arch=$basearch"
-      update-source: "https://mirrors.openeuler.org/metalink?repo=$releasever/update&arch=source"
+      OS: "https://mirrors.openeuler.org/metalink?repo={{ _openeuler_releasever }}/OS&arch=$basearch"
+      everything: "https://mirrors.openeuler.org/metalink?repo={{ _openeuler_releasever }}/everything&arch=$basearch"
+      EPOL: "https://mirrors.openeuler.org/metalink?repo={{ _openeuler_releasever }}/EPOL/main&arch=$basearch"
+      debuginfo: "https://mirrors.openeuler.org/metalink?repo={{ _openeuler_releasever }}/debuginfo&arch=$basearch"
+      source: "https://mirrors.openeuler.org/metalink?repo={{ _openeuler_releasever }}&arch=source"
+      update: "https://mirrors.openeuler.org/metalink?repo={{ _openeuler_releasever }}/update&arch=$basearch"
+      update-source: "https://mirrors.openeuler.org/metalink?repo={{ _openeuler_releasever }}/update&arch=source"
 
-- name: Clean dnf cache to apply metalink mirror selection
-  ansible.builtin.command: dnf clean all
+- name: Clean dnf metadata cache to apply metalink mirror selection
+  ansible.builtin.command: dnf clean metadata
   become: true
   when:
     - openeuler_metalink_enabled

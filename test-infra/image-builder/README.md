@@ -55,3 +55,24 @@ make docker_password=<quay-robot-token>
 
 3. Submit a PR with the `defaults/main.yml` change so CI can use the new image.
    See [#12379](https://github.com/kubernetes-sigs/kubespray/pull/12379) for an example.
+
+## CI Validation
+
+### Build only
+
+```bash
+cd test-infra/image-builder/
+make validate
+```
+
+### Build only for one image
+
+```bash
+cd test-infra/image-builder/
+make validate-single image_name=ubuntu-2404
+```
+
+## Runtime Variables
+
+- `kubevirt_images_push` (default: `true`): when `false`, skip docker login/push/logout.
+- `kubevirt_images_selected` (default: `[]`): list of image keys to build. Empty list builds all images.

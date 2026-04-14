@@ -274,37 +274,6 @@ class KubeManager(object):
             return False
         return True
 
-    # TODO: This is currently unused, perhaps convert to 'scale' with a replicas param?
-    def stop(self):
-
-        if not self.force and not self.exists():
-            return []
-
-        cmd = ['stop']
-
-        if self.filename:
-            cmd.append('--filename=' + ','.join(self.filename))
-            if self.recursive:
-                cmd.append('--recursive={}'.format(self.recursive))
-        else:
-            if not self.resource:
-                self.module.fail_json(msg='resource required to stop without filename')
-
-            cmd.append(self.resource)
-
-            if self.name:
-                cmd.append(self.name)
-
-            if self.label:
-                cmd.append('--selector=' + self.label)
-
-            if self.all:
-                cmd.append('--all')
-
-            if self.force:
-                cmd.append('--ignore-not-found')
-
-        return self._execute(cmd)
 
 
 def main():

@@ -245,7 +245,7 @@ cilium_operator_extra_volume_mounts:
 ## Choose Cilium version
 
 ```yml
-cilium_version: "1.19.1"
+cilium_version: "1.19.3"
 ```
 
 ## Add variable to config

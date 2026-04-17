@@ -14,14 +14,16 @@
 * Ansible
   * [Ansible](/docs/ansible/ansible.md)
   * [Ansible Collection](/docs/ansible/ansible_collection.md)
+  * [Inventory](/docs/ansible/inventory.md)
   * [Vars](/docs/ansible/vars.md)
+* Cloud Controllers
+  * [Openstack](/docs/cloud_controllers/openstack.md)
+  * [Vsphere](/docs/cloud_controllers/vsphere.md)
 * Cloud Providers
   * [Aws](/docs/cloud_providers/aws.md)
   * [Azure](/docs/cloud_providers/azure.md)
   * [Cloud](/docs/cloud_providers/cloud.md)
   * [Equinix-metal](/docs/cloud_providers/equinix-metal.md)
-  * [Openstack](/docs/cloud_providers/openstack.md)
-  * [Vsphere](/docs/cloud_providers/vsphere.md)
 * CNI
   * [Calico](/docs/CNI/calico.md)
   * [Cilium](/docs/CNI/cilium.md)

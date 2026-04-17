@@ -5,17 +5,17 @@
     state: directory
     owner: "{{ kube_owner }}"
     mode: "0755"
-  when: inventory_hostname in groups['k8s_cluster']
+  when: ('k8s_cluster' in group_names)
   become: true
   tags:
     - kubelet
-    - k8s-secrets
     - kube-controller-manager
     - kube-apiserver
     - bootstrap-os
     - apps
     - network
-    - master
+    - master    # master tag is deprecated and replaced by control-plane
+    - control-plane
     - node
   with_items:
     - "{{ kube_config_dir }}"
@@ -29,17 +29,17 @@
     state: directory
     owner: root
     mode: "0755"
-  when: inventory_hostname in groups['k8s_cluster']
+  when: ('k8s_cluster' in group_names)
   become: true
   tags:
     - kubelet
-    - k8s-secrets
     - kube-controller-manager
     - kube-apiserver
     - bootstrap-os
     - apps
     - network
-    - master
+    - master    # master tag is deprecated and replaced by control-plane
+    - control-plane
     - node
   with_items:
     - "{{ kube_cert_dir }}"
@@ -53,7 +53,7 @@
     get_mime: false
   register: kube_cert_compat_dir_check
   when:
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
     - kube_cert_dir != kube_cert_compat_dir
 
 - name: Create kubernetes kubeadm compat cert dir (kubernetes/kubeadm issue 1498)
@@ -63,7 +63,7 @@
     state: link
     mode: "0755"
   when:
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
     - kube_cert_dir != kube_cert_compat_dir
     - not kube_cert_compat_dir_check.stat.exists
 
@@ -78,7 +78,7 @@
     - "/opt/cni/bin"
   when:
     - kube_network_plugin in ["calico", "weave", "flannel", "cilium", "kube-ovn", "kube-router", "macvlan"]
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
   tags:
     - network
     - cilium
@@ -98,7 +98,7 @@
     - "/var/lib/calico"
   when:
     - kube_network_plugin == "calico"
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
   tags:
     - network
     - calico
@@ -113,7 +113,7 @@
     mode: "{{ local_volume_provisioner_directory_mode }}"
   with_items: "{{ local_volume_provisioner_storage_classes.keys() | list }}"
   when:
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
     - local_volume_provisioner_enabled
   tags:
     - persistent_volumes

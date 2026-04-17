@@ -89,11 +89,15 @@ variable "k8s_node_fips" {
 }
 
 variable "k8s_masters_fips" {
-  type = map
+  type = map(object({
+    address = string
+  }))
 }
 
 variable "k8s_nodes_fips" {
-  type = map
+  type = map(object({
+    address = string
+  }))
 }
 
 variable "bastion_fips" {
@@ -136,8 +140,9 @@ variable "k8s_masters" {
   type = map(object({
     az                     = string
     flavor                 = string
-    floating_ip            = bool
     etcd                   = bool
+    floating_ip            = bool
+    reserved_floating_ip   = optional(string)
     image_id               = optional(string)
     root_volume_size_in_gb = optional(number)
     volume_type            = optional(string)
@@ -150,6 +155,7 @@ variable "k8s_nodes" {
     az                     = string
     flavor                 = string
     floating_ip            = bool
+    reserved_floating_ip   = optional(string)
     extra_groups           = optional(string)
     image_id               = optional(string)
     root_volume_size_in_gb = optional(number)

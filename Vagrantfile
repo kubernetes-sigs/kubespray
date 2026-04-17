@@ -28,8 +28,10 @@ SUPPORTED_OS = {
   "almalinux8-bento"    => {box: "bento/almalinux-8",          user: "vagrant"},
   "rockylinux8"         => {box: "rockylinux/8",               user: "vagrant"},
   "rockylinux9"         => {box: "rockylinux/9",               user: "vagrant"},
-  "fedora37"            => {box: "fedora/37-cloud-base",       user: "vagrant"},
-  "fedora38"            => {box: "fedora/38-cloud-base",       user: "vagrant"},
+  "fedora39"            => {box: "fedora/39-cloud-base",       user: "vagrant"},
+  "fedora40"            => {box: "fedora/40-cloud-base",       user: "vagrant"},
+  "fedora39-arm64"      => {box: "bento/fedora-39-arm64",      user: "vagrant"},
+  "fedora40-arm64"      => {box: "bento/fedora-40",            user: "vagrant"},
   "opensuse"            => {box: "opensuse/Leap-15.4.x86_64",  user: "vagrant"},
   "opensuse-tumbleweed" => {box: "opensuse/Tumbleweed.x86_64", user: "vagrant"},
   "oraclelinux"         => {box: "generic/oracle7",            user: "vagrant"},
@@ -55,6 +57,8 @@ $subnet ||= "172.18.8"
 $subnet_ipv6 ||= "fd3c:b398:0698:0756"
 $os ||= "ubuntu2004"
 $network_plugin ||= "flannel"
+$inventory ||= "inventory/sample"
+$inventories ||= [$inventory]
 # Setting multi_networking to true will install Multus: https://github.com/k8snetworkplumbingwg/multus-cni
 $multi_networking ||= "False"
 $download_run_once ||= "True"
@@ -93,19 +97,6 @@ if ! SUPPORTED_OS.key?($os)
 end
 
 $box = SUPPORTED_OS[$os][:box]
-# if $inventory is not set, try to use example
-$inventory = "inventory/sample" if ! $inventory
-$inventory = File.absolute_path($inventory, File.dirname(__FILE__))
-
-# if $inventory has a hosts.ini file use it, otherwise copy over
-# vars etc to where vagrant expects dynamic inventory to be
-if ! File.exist?(File.join(File.dirname($inventory), "hosts.ini"))
-  $vagrant_ansible = File.join(File.absolute_path($vagrant_dir), "provisioners", "ansible")
-  FileUtils.mkdir_p($vagrant_ansible) if ! File.exist?($vagrant_ansible)
-  $vagrant_inventory = File.join($vagrant_ansible,"inventory")
-  FileUtils.rm_f($vagrant_inventory)
-  FileUtils.ln_s($inventory, $vagrant_inventory)
-end
 
 if Vagrant.has_plugin?("vagrant-proxyconf")
   $no_proxy = ENV['NO_PROXY'] || ENV['no_proxy'] || "127.0.0.1,localhost"
@@ -204,7 +195,7 @@ Vagrant.configure("2") do |config|
         node.vm.network "forwarded_port", guest: guest, host: host, auto_correct: true
       end
 
-      if ["rhel7","rhel8"].include? $os
+      if ["rhel8"].include? $os
         # Vagrant synced_folder rsync options cannot be used for RHEL boxes as Rsync package cannot
         # be installed until the host is registered with a valid Red Hat support subscription
         node.vm.synced_folder ".", "/vagrant", disabled: false
@@ -235,14 +226,15 @@ Vagrant.configure("2") do |config|
         node.vm.provision "shell", inline: "rm -f /etc/modprobe.d/local.conf"
         node.vm.provision "shell", inline: "sed -i '/net.ipv6.conf.all.disable_ipv6/d' /etc/sysctl.d/99-sysctl.conf /etc/sysctl.conf"
       end
-      # Hack for fedora37/38 to get the IP address of the second interface
-      if ["fedora37", "fedora38"].include? $os
+      # Hack for fedora39/40 to get the IP address of the second interface
+      if ["fedora39", "fedora40", "fedora39-arm64", "fedora40-arm64"].include? $os
         config.vm.provision "shell", inline: <<-SHELL
-          nmcli conn modify 'Wired connection 2' ipv4.addresses $(cat /etc/sysconfig/network-scripts/ifcfg-eth1 | grep IPADDR | cut -d "=" -f2)
+          nmcli conn modify 'Wired connection 2' ipv4.addresses $(cat /etc/sysconfig/network-scripts/ifcfg-eth1 | grep IPADDR | cut -d "=" -f2)/24
           nmcli conn modify 'Wired connection 2' ipv4.method manual
           service NetworkManager restart
         SHELL
       end
+
 
       # Rockylinux boxes needs UEFI
       if ["rockylinux8", "rockylinux9"].include? $os
@@ -252,7 +244,7 @@ Vagrant.configure("2") do |config|
       end
 
       # Disable firewalld on oraclelinux/redhat vms
-      if ["oraclelinux","oraclelinux8","rhel7","rhel8","rockylinux8"].include? $os
+      if ["oraclelinux","oraclelinux8", "rhel8","rockylinux8"].include? $os
         node.vm.provision "shell", inline: "systemctl stop firewalld; systemctl disable firewalld"
       end
 
@@ -286,14 +278,13 @@ Vagrant.configure("2") do |config|
           ansible.playbook = $playbook
           ansible.compatibility_mode = "2.0"
           ansible.verbose = $ansible_verbosity
-          $ansible_inventory_path = File.join( $inventory, "hosts.ini")
-          if File.exist?($ansible_inventory_path)
-            ansible.inventory_path = $ansible_inventory_path
-          end
           ansible.become = true
           ansible.limit = "all,localhost"
           ansible.host_key_checking = false
-          ansible.raw_arguments = ["--forks=#{$num_instances}", "--flush-cache", "-e ansible_become_pass=vagrant"]
+          ansible.raw_arguments = ["--forks=#{$num_instances}",
+                                   "--flush-cache",
+                                   "-e ansible_become_pass=vagrant"] +
+                                   $inventories.map {|inv| ["-i", inv]}.flatten
           ansible.host_vars = host_vars
           ansible.extra_vars = $extra_vars
           if $ansible_tags != ""

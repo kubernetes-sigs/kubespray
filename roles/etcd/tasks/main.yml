@@ -16,7 +16,7 @@
 - name: Trust etcd CA
   include_tasks: upd_ca_trust.yml
   when:
-    - inventory_hostname in groups['etcd'] | union(groups['kube_control_plane']) | unique | sort
+    - ('etcd' in group_names) or ('kube_control_plane' in group_names)
   tags:
     - etcd-secrets
 
@@ -25,7 +25,7 @@
   when:
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
   tags:
     - etcd-secrets
 
@@ -37,9 +37,10 @@
   when:
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
   tags:
-    - master
+    - master    # master tag is deprecated and replaced by control-plane
+    - control-plane
     - network
 
 - name: Set etcd_client_cert_serial
@@ -48,9 +49,10 @@
   when:
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally | default(false) | bool
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
   tags:
-    - master
+    - master    # master tag is deprecated and replaced by control-plane
+    - control-plane
     - network
 
 - name: Install etcdctl and etcdutl binary
@@ -61,36 +63,42 @@
     - etcdutl
     - upgrade
   when:
-    - inventory_hostname in groups['etcd']
+    - ('etcd' in group_names)
     - etcd_cluster_setup
 
 - name: Install etcd
   include_tasks: "install_{{ etcd_deployment_type }}.yml"
-  when: is_etcd_master
+  when: ('etcd' in group_names)
   tags:
     - upgrade
 
 - name: Configure etcd
   include_tasks: configure.yml
-  when: is_etcd_master
+  when: ('etcd' in group_names)
 
 - name: Refresh etcd config
   include_tasks: refresh_config.yml
-  when: is_etcd_master
+  when: ('etcd' in group_names)
 
 - name: Restart etcd if certs changed
   command: /bin/true
   notify: Restart etcd
-  when: is_etcd_master and etcd_cluster_setup and etcd_secret_changed | default(false)
+  when:
+    - ('etcd' in group_names)
+    - etcd_cluster_setup
+    - etcd_secret_changed | default(false)
 
 - name: Restart etcd-events if certs changed
   command: /bin/true
   notify: Restart etcd
-  when: is_etcd_master and etcd_events_cluster_setup and etcd_secret_changed | default(false)
+  when:
+    - ('etcd' in group_names)
+    - etcd_events_cluster_setup
+    - etcd_secret_changed | default(false)
 
 # After etcd cluster is assembled, make sure that
 # initial state of the cluster is in `existing`
 # state instead of `new`.
 - name: Refresh etcd config again for idempotency
   include_tasks: refresh_config.yml
-  when: is_etcd_master
+  when: ('etcd' in group_names)

@@ -26,6 +26,7 @@ staticPodPath: {{ kube_manifest_dir }}
 cgroupDriver: {{ kubelet_cgroup_driver | default('systemd') }}
 containerLogMaxFiles: {{ kubelet_logfiles_max_nr }}
 containerLogMaxSize: {{ kubelet_logfiles_max_size }}
+containerRuntimeEndpoint : {{ cri_socket }}
 maxPods: {{ kubelet_max_pods }}
 podPidsLimit: {{ kubelet_pod_pids_limit }}
 address: {{ kubelet_bind_address }}
@@ -60,65 +61,22 @@ clusterDNS:
 - {{ dns_address }}
 {% endfor %}
 {# Node reserved CPU/memory #}
-{% if kube_reserved | bool %}
-kubeReservedCgroup: {{ kube_reserved_cgroups }}
+{% for scope in "kube", "system" %}
+{% if lookup('ansible.builtin.vars', scope + "_reserved") | bool %}
+{{ scope }}ReservedCgroup: {{ lookup('ansible.builtin.vars', scope + '_reserved_cgroups') }}
 {% endif %}
-kubeReserved:
-{% if is_kube_master | bool %}
-  cpu: "{{ kube_master_cpu_reserved }}"
-  memory: {{ kube_master_memory_reserved }}
-{% if kube_master_ephemeral_storage_reserved is defined %}
-  ephemeral-storage: {{ kube_master_ephemeral_storage_reserved }}
-{% endif %}
-{% if kube_master_pid_reserved is defined %}
-  pid: "{{ kube_master_pid_reserved }}"
-{% endif %}
-{% else %}
-  cpu: "{{ kube_cpu_reserved }}"
-  memory: {{ kube_memory_reserved }}
-{% if kube_ephemeral_storage_reserved is defined %}
-  ephemeral-storage: {{ kube_ephemeral_storage_reserved }}
-{% endif %}
-{% if kube_pid_reserved is defined %}
-  pid: "{{ kube_pid_reserved }}"
-{% endif %}
-{% endif %}
-{% if system_reserved | bool %}
-systemReservedCgroup: {{ system_reserved_cgroups }}
-systemReserved:
-{% if is_kube_master | bool %}
-  cpu: "{{ system_master_cpu_reserved }}"
-  memory: {{ system_master_memory_reserved }}
-{% if system_master_ephemeral_storage_reserved is defined %}
-  ephemeral-storage: {{ system_master_ephemeral_storage_reserved }}
-{% endif %}
-{% if system_master_pid_reserved is defined %}
-  pid: "{{ system_master_pid_reserved }}"
-{% endif %}
-{% else %}
-  cpu: "{{ system_cpu_reserved }}"
-  memory: {{ system_memory_reserved }}
-{% if system_ephemeral_storage_reserved is defined %}
-  ephemeral-storage: {{ system_ephemeral_storage_reserved }}
-{% endif %}
-{% if system_pid_reserved is defined %}
-  pid: "{{ system_pid_reserved }}"
-{% endif %}
-{% endif %}
-{% endif %}
-{% if is_kube_master | bool and eviction_hard_control_plane is defined and eviction_hard_control_plane %}
-evictionHard:
-  {{ eviction_hard_control_plane | to_nice_yaml(indent=2) | indent(2) }}
-{% elif not is_kube_master | bool and eviction_hard is defined and eviction_hard %}
+{{ scope }}Reserved:
+{% for resource in "cpu", "memory", "ephemeral-storage", "pid" %}
+  {{ resource }}: "{{ lookup('ansible.builtin.vars', scope + '_' ~ (resource | replace('-', '_')) + '_reserved') }}"
+{% endfor %}
+{% endfor %}
+{% if eviction_hard is defined and eviction_hard %}
 evictionHard:
   {{ eviction_hard | to_nice_yaml(indent=2) | indent(2) }}
 {% endif %}
 resolvConf: "{{ kube_resolv_conf }}"
 {% if kubelet_config_extra_args %}
 {{ kubelet_config_extra_args | to_nice_yaml(indent=2) }}
-{% endif %}
-{% if inventory_hostname in groups['kube_node'] and kubelet_node_config_extra_args %}
-{{ kubelet_node_config_extra_args | to_nice_yaml(indent=2) }}
 {% endif %}
 {% if kubelet_feature_gates or kube_feature_gates %}
 featureGates:

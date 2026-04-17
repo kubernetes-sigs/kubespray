@@ -36,11 +36,18 @@
   when:
     - kata_containers_enabled
 
-- name: Cri-o | build a list of crio runtimes with crun runtime
+## After CRI-O v1.31, crun is default runtime.
+# - name: Cri-o | build a list of crio runtimes with crun runtime
+#   set_fact:
+#     crio_runtimes: "{{ crio_runtimes + [crun_runtime] }}"
+#   when:
+#     - crun_enabled
+
+- name: Cri-o | build a list of crio runtimes with runc runtime
   set_fact:
-    crio_runtimes: "{{ crio_runtimes + [crun_runtime] }}"
+    crio_runtimes: "{{ crio_runtimes + [runc_runtime] }}"
   when:
-    - crun_enabled
+    - runc_enabled
 
 - name: Cri-o | build a list of crio runtimes with youki runtime
   set_fact:
@@ -80,6 +87,23 @@
     remote_src: true
   with_items:
     - "{{ crio_bin_files }}"
+  notify: Restart crio
+
+- name: Cri-o | create directory for libexec
+  file:
+    path: "{{ crio_libexec_dir }}"
+    state: directory
+    owner: root
+    mode: "0755"
+
+- name: Cri-o | copy libexec
+  copy:
+    src: "{{ local_release_dir }}/cri-o/bin/{{ item }}"
+    dest: "{{ crio_libexec_dir }}/{{ item }}"
+    mode: "0755"
+    remote_src: true
+  with_items:
+    - "{{ crio_libexec_files }}"
   notify: Restart crio
 
 - name: Cri-o | copy service file

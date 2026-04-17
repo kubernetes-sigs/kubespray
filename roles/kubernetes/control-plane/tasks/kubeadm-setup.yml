@@ -88,15 +88,12 @@
     kubeadm_config_api_fqdn: "{{ apiserver_loadbalancer_domain_name | default('lb-apiserver.kubernetes.local') }}"
   when: loadbalancer_apiserver is defined
 
-- name: Set kubeadm api version to v1beta3
-  set_fact:
-    kubeadmConfig_api_version: v1beta3
-
 - name: Kubeadm | Create kubeadm config
   template:
-    src: "kubeadm-config.{{ kubeadmConfig_api_version }}.yaml.j2"
+    src: "kubeadm-config.{{ kubeadm_config_api_version }}.yaml.j2"
     dest: "{{ kube_config_dir }}/kubeadm-config.yaml"
     mode: "0640"
+    validate: "{{ bin_dir }}/kubeadm config validate --config %s"
 
 - name: Kubeadm | Create directory to store admission control configurations
   file:
@@ -122,15 +119,6 @@
     - item in kube_apiserver_admission_plugins_needs_configuration
   loop: "{{ kube_apiserver_enable_admission_plugins }}"
 
-- name: Kubeadm | Configure default cluster podnodeslector
-  template:
-    src: "podnodeselector.yaml.j2"
-    dest: "{{ kube_config_dir }}/admission-controls/podnodeselector.yaml"
-    mode: "0640"
-  when:
-    - kube_apiserver_admission_plugins_podnodeselector_default_node_selector is defined
-    - kube_apiserver_admission_plugins_podnodeselector_default_node_selector | length > 0
-
 - name: Kubeadm | Check apiserver.crt SANs
   vars:
     apiserver_ips: "{{ apiserver_sans | map('ansible.utils.ipaddr') | reject('equalto', False) | list }}"
@@ -145,12 +133,14 @@
       loop: "{{ apiserver_ips }}"
       register: apiserver_sans_ip_check
       changed_when: apiserver_sans_ip_check.stdout is not search('does match certificate')
+      failed_when: apiserver_sans_ip_check.rc != 0 and apiserver_sans_ip_check.stdout is not search('does NOT match certificate')
     - name: Kubeadm | Check apiserver.crt SAN hosts
       command:
         cmd: "openssl x509 -noout -in {{ kube_cert_dir }}/apiserver.crt -checkhost {{ item }}"
       loop: "{{ apiserver_hosts }}"
       register: apiserver_sans_host_check
       changed_when: apiserver_sans_host_check.stdout is not search('does match certificate')
+      failed_when: apiserver_sans_host_check.rc != 0 and apiserver_sans_host_check.stdout is not search('does NOT match certificate')
 
 - name: Kubeadm | regenerate apiserver cert 1/2
   file:
@@ -174,27 +164,12 @@
     - apiserver_sans_ip_check.changed or apiserver_sans_host_check.changed
     - not kube_external_ca_mode
 
-- name: Kubeadm | Create directory to store kubeadm patches
-  file:
-    path: "{{ kubeadm_patches.dest_dir }}"
-    state: directory
-    mode: "0640"
-  when: kubeadm_patches is defined and kubeadm_patches.enabled
-
-- name: Kubeadm | Copy kubeadm patches from inventory files
-  copy:
-    src: "{{ kubeadm_patches.source_dir }}/"
-    dest: "{{ kubeadm_patches.dest_dir }}"
-    owner: "root"
-    mode: "0644"
-  when: kubeadm_patches is defined and kubeadm_patches.enabled
-
-- name: Kubeadm | Initialize first master
+- name: Kubeadm | Initialize first control plane node
   command: >-
     timeout -k {{ kubeadm_init_timeout }} {{ kubeadm_init_timeout }}
     {{ bin_dir }}/kubeadm init
     --config={{ kube_config_dir }}/kubeadm-config.yaml
-    --ignore-preflight-errors=all
+    --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
     --skip-phases={{ kubeadm_init_phases_skip | join(',') }}
     {{ kube_external_ca_mode | ternary('', '--upload-certs') }}
   register: kubeadm_init
@@ -205,7 +180,7 @@
   failed_when: kubeadm_init.rc != 0 and "field is immutable" not in kubeadm_init.stderr
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
-  notify: Master | restart kubelet
+  notify: Control plane | restart kubelet
 
 - name: Set kubeadm certificate key
   set_fact:
@@ -250,20 +225,20 @@
   tags:
     - kubeadm_token
 
-- name: Kubeadm | Join other masters
+- name: Kubeadm | Join other control plane nodes
   include_tasks: kubeadm-secondary.yml
 
-- name: Kubeadm | upgrade kubernetes cluster
+- name: Kubeadm | upgrade kubernetes cluster to {{ kube_version }}
   include_tasks: kubeadm-upgrade.yml
   when:
     - upgrade_cluster_setup
     - kubeadm_already_run.stat.exists
 
 # FIXME(mattymo): from docs: If you don't want to taint your control-plane node, set this field to an empty slice, i.e. `taints: {}` in the YAML file.
-- name: Kubeadm | Remove taint for master with node role
+- name: Kubeadm | Remove taint for control plane node with node role
   command: "{{ kubectl }} taint node {{ inventory_hostname }} {{ item }}"
   delegate_to: "{{ first_kube_control_plane }}"
   with_items:
     - "node-role.kubernetes.io/control-plane:NoSchedule-"
-  when: inventory_hostname in groups['kube_node']
+  when: ('kube_node' in group_names)
   failed_when: false

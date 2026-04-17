@@ -3,6 +3,7 @@
   service:
     name: "{{ item }}"
     state: stopped
+    enabled: false
   with_items:
     - kubelet.service
     - cri-dockerd.service
@@ -210,7 +211,7 @@
   command: "ipvsadm -C"
   ignore_errors: true  # noqa ignore-errors
   when:
-    - kube_proxy_mode == 'ipvs' and inventory_hostname in groups['k8s_cluster']
+    - kube_proxy_mode == 'ipvs' and 'k8s_cluster' in group_names
 
 - name: Reset | check kube-ipvs0 network device
   stat:
@@ -290,6 +291,7 @@
     - /var/log/openvswitch
     - /var/log/ovn
     - /var/log/kube-ovn
+    - /var/log/containers
     - /etc/cni
     - /etc/nerdctl
     - "{{ nginx_config_dir }}"
@@ -412,12 +414,27 @@
     - network
 
 - name: Reset | Restart network
-  service:
-    name: "{{ reset_restart_network_service_name }}"
-    state: restarted
   when:
     - ansible_os_family not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     - reset_restart_network | bool
   tags:
     - services
     - network
+  block:
+    - name: Gather active network services
+      systemd:
+        name: "{{ item }}"
+      loop:
+        - NetworkManager
+        - systemd-networkd
+        - networking
+        - network
+      register: service_status
+      changed_when: false
+      ignore_errors: true
+
+    - name: Restart active network services
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop: "{{ service_status.results | selectattr('status.ActiveState', '==', 'active') | map(attribute='item') }}"

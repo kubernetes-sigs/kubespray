@@ -7,14 +7,6 @@
     - not skip_downloads | default(false)
     - downloads.kubeadm.enabled
 
-- name: Prep_kubeadm_images | Create kubeadm config
-  template:
-    src: "kubeadm-images.yaml.j2"
-    dest: "{{ kube_config_dir }}/kubeadm-images.yaml"
-    mode: "0644"
-  when:
-    - not skip_kubeadm_images | default(false)
-
 - name: Prep_kubeadm_images | Copy kubeadm binary from download dir to system path
   copy:
     src: "{{ downloads.kubeadm.dest }}"
@@ -22,11 +14,14 @@
     mode: "0755"
     remote_src: true
 
-- name: Prep_kubeadm_images | Set kubeadm binary permissions
-  file:
-    path: "{{ bin_dir }}/kubeadm"
-    mode: "0755"
-    state: file
+- name: Prep_kubeadm_images | Create kubeadm config
+  template:
+    src: "kubeadm-images.yaml.j2"
+    dest: "{{ kube_config_dir }}/kubeadm-images.yaml"
+    mode: "0644"
+    validate: "{{ bin_dir }}/kubeadm config validate --config %s"
+  when:
+    - not skip_kubeadm_images | default(false)
 
 - name: Prep_kubeadm_images | Generate list of required images
   shell: "set -o pipefail && {{ bin_dir }}/kubeadm config images list --config={{ kube_config_dir }}/kubeadm-images.yaml | grep -Ev 'coredns|pause'"
@@ -49,7 +44,8 @@
         container: true
         repo: "{{ item | regex_replace('^(.*):.*$', '\\1') }}"
         tag: "{{ item | regex_replace('^.*:(.*)$', '\\1') }}"
-        groups: k8s_cluster
+        groups:
+          - k8s_cluster
   loop: "{{ kubeadm_images_list | flatten(levels=1) }}"
   register: kubeadm_images_cooked
   run_once: true

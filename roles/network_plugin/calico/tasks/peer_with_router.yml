@@ -28,7 +28,7 @@
     cmd: "{{ bin_dir }}/calicoctl.sh get node {{ inventory_hostname }}"
   register: output_get_node
   when:
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
     - local_as is defined
     - groups['calico_rr'] | default([]) | length == 0
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
@@ -50,7 +50,7 @@
   until: output.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
   when:
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
     - local_as is defined
     - groups['calico_rr'] | default([]) | length == 0
     - output_get_node.rc == 0
@@ -77,7 +77,7 @@
   until: output.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
   when:
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
     - local_as is defined
     - groups['calico_rr'] | default([]) | length == 0
     - output_get_node.rc != 0
@@ -100,6 +100,9 @@
         {% if calico_version is version('v3.26.0', '>=') and (item.filters | default([]) | length > 0) %}
         "filters": {{ item.filters }},
         {% endif %}
+        {% if calico_version is version('v3.23.0', '>=') and (item.numallowedlocalasnumbers | default(0) > 0) %}
+        "numAllowedLocalASNumbers": {{ item.numallowedlocalasnumbers }},
+        {% endif %}
         "sourceAddress": "{{ item.sourceaddress | default('UseNodeIP') }}"
       }}
   register: output
@@ -110,4 +113,4 @@
     - "{{ peers | default([]) | selectattr('scope', 'undefined') | list | union(peers | default([]) | selectattr('scope', 'defined') | selectattr('scope', 'equalto', 'node') | list ) }}"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
   when:
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)

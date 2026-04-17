@@ -69,25 +69,7 @@ oom_score = {{ containerd_oom_score }}
           runtime_type = "io.containerd.runsc.v1"
 {% endif %}
     [plugins."io.containerd.grpc.v1.cri".registry]
-{% if containerd_use_config_path is defined and containerd_use_config_path|bool %}
       config_path = "{{ containerd_cfg_dir }}/certs.d"
-{% else %}
-      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-{% set insecure_registries_addr = [] %}
-{% for registry in containerd_registries_mirrors %}
-        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ registry.prefix }}"]
-{% set endpoint = [] %}
-{% for mirror in registry.mirrors %}
-{% if endpoint.append(mirror.host) %}{% endif %}
-{% if mirror.skip_verify is defined and mirror.skip_verify|bool %}{% if insecure_registries_addr.append(mirror.host | urlsplit('netloc')) %}{% endif %}{% endif %}
-{% endfor %}
-          endpoint = ["{{ ( endpoint | unique ) | join('","') }}"]
-{% endfor %}
-{% for addr in insecure_registries_addr | unique %}
-        [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ addr }}".tls]
-          insecure_skip_verify = true
-{% endfor %}
-{% endif %}
 {% for registry in containerd_registry_auth if registry['registry'] is defined %}
 {% if (registry['username'] is defined and registry['password'] is defined) or registry['auth'] is defined %}
       [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ registry['registry'] }}".auth]

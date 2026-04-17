@@ -1,4 +1,19 @@
 ---
+- name: Stop if any host not in '--limit' does not have a fact cache
+  vars:
+    uncached_hosts: "{{ hostvars | dict2items | selectattr('value.ansible_default_ipv4', 'undefined') | map(attribute='key') }}"
+    excluded_hosts: "{{ groups['k8s_cluster'] | difference(query('inventory_hostnames', ansible_limit)) }}"
+  assert:
+    that: uncached_hosts | intersect(excluded_hosts) == []
+    fail_msg: |
+      Kubespray does not support '--limit' without a populated facts cache for the excluded hosts.
+      Please run the facts.yml playbook first without '--limit'.
+      The following excluded hosts are not cached: {{ uncached_hosts | intersect(excluded_hosts) }}
+  run_once: true
+  when:
+    - ansible_limit is defined
+    - not ignore_assert_errors
+
 - name: Stop if kube_control_plane group is empty
   assert:
     that: groups.get( 'kube_control_plane' )
@@ -27,11 +42,20 @@
 
 - name: Stop if unknown network plugin
   assert:
-    that: kube_network_plugin in ['calico', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'kube-ovn', 'kube-router', 'macvlan', 'custom_cni']
+    that: kube_network_plugin in ['calico', 'flannel', 'weave', 'cloud', 'cilium', 'cni', 'kube-ovn', 'kube-router', 'macvlan', 'custom_cni', 'none']
     msg: "{{ kube_network_plugin }} is not supported"
   when:
     - kube_network_plugin is defined
     - not ignore_assert_errors
+- name: Warn the user if they are still using `etcd_kubeadm_enabled`
+  debug:
+    msg: >
+      "WARNING! => `kube_network_plugin` is set to `none`. The network configuration will be skipped.
+      The cluster won't be ready to use, we recommend to select one of the available plugins"
+  changed_when: true
+  when:
+    - kube_network_plugin is defined
+    - kube_network_plugin == 'none'
 
 - name: Stop if unsupported version of Kubernetes
   assert:
@@ -60,19 +84,19 @@
     - not ignore_assert_errors
     - inventory_hostname in groups.get('etcd',[])
 
-- name: Stop if memory is too small for masters
+- name: Stop if memory is too small for control plane nodes
   assert:
     that: ansible_memtotal_mb >= minimal_master_memory_mb
   when:
     - not ignore_assert_errors
-    - inventory_hostname in groups['kube_control_plane']
+    - ('kube_control_plane' in group_names)
 
 - name: Stop if memory is too small for nodes
   assert:
     that: ansible_memtotal_mb >= minimal_node_memory_mb
   when:
     - not ignore_assert_errors
-    - inventory_hostname in groups['kube_node']
+    - ('kube_node' in group_names)
 
 # This command will fail if cgroups are not enabled on the node.
 # For reference: https://kubernetes.io/docs/concepts/architecture/cgroups/#check-cgroup-version
@@ -92,7 +116,7 @@
     msg: "Do not schedule more pods on a node than inet addresses are available."
   when:
     - not ignore_assert_errors
-    - inventory_hostname in groups['k8s_cluster']
+    - ('k8s_cluster' in group_names)
     - kube_network_node_prefix is defined
     - kube_network_plugin != 'calico'
 
@@ -136,13 +160,6 @@
     - dashboard_enabled
     - not ignore_assert_errors
 
-- name: Stop if RBAC is not enabled when OCI cloud controller is enabled
-  assert:
-    that: rbac_enabled
-  when:
-    - cloud_provider is defined and cloud_provider == "oci"
-    - not ignore_assert_errors
-
 - name: Stop if kernel version is too low
   assert:
     that: ansible_kernel.split('-')[0] is version('4.9.17', '>=')
@@ -158,10 +175,19 @@
 
 - name: Check cloud_provider value
   assert:
-    that: cloud_provider in ['gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci', 'external']
-    msg: "If set the 'cloud_provider' var must be set either to 'gce', 'aws', 'azure', 'openstack', 'vsphere', 'oci' or 'external'"
+    that: cloud_provider == 'external'
   when:
-    - cloud_provider is defined
+    - cloud_provider
+    - not ignore_assert_errors
+  tags:
+    - cloud-provider
+    - facts
+
+- name: Check external_cloud_provider value
+  assert:
+    that: external_cloud_provider in ['hcloud', 'huaweicloud', 'oci', 'openstack', 'vsphere', 'manual']
+  when:
+    - cloud_provider == 'external'
     - not ignore_assert_errors
   tags:
     - cloud-provider
@@ -202,6 +228,15 @@
     msg: "dns_mode can only be 'coredns', 'coredns_dual', 'manual' or 'none'"
   when: dns_mode is defined
   run_once: true
+
+- name: Stop if /etc/resolv.conf has no configured nameservers
+  assert:
+    that: configured_nameservers | length>0
+    fail_msg: "nameserver should not empty in /etc/resolv.conf"
+  when:
+    - upstream_dns_servers | length == 0
+    - not disable_host_nameservers
+    - dns_mode in ['coredns', 'coredns_dual']
 
 - name: Stop if unknown kube proxy mode
   assert:
@@ -320,11 +355,6 @@
   when:
     - kube_apiserver_enable_admission_plugins is defined
     - kube_apiserver_enable_admission_plugins | length > 0
-
-- name: Verify that the packages list structure is valid
-  ansible.utils.validate:
-    criteria: "{{ lookup('file', 'pkgs-schema.json') }}"
-    data: "{{ pkgs }}"
 
 - name: Verify that the packages list is sorted
   vars:

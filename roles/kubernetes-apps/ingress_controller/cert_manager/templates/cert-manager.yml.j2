@@ -422,7 +422,9 @@ rules:
   - apiGroups: ["cert-manager.io"]
     resources: ["signers"]
     verbs: ["approve"]
-    resourceNames: ["issuers.cert-manager.io/*", "clusterissuers.cert-manager.io/*"]
+    resourceNames:
+    - "issuers.cert-manager.io/*"
+    - "clusterissuers.cert-manager.io/*"
 ---
 # Source: cert-manager/deploy/charts/cert-manager/templates/rbac.yaml
 # Permission to:
@@ -921,9 +923,7 @@ spec:
             capabilities:
               drop:
               - ALL
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
+            readOnlyRootFilesystem: true
 {% if cert_manager_tolerations %}
       tolerations:
         {{ cert_manager_tolerations | to_nice_yaml(indent=2) | indent(width=8) }}
@@ -1009,9 +1009,7 @@ spec:
             capabilities:
               drop:
               - ALL
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
+            readOnlyRootFilesystem: true
           env:
           - name: POD_NAMESPACE
             valueFrom:
@@ -1029,6 +1027,16 @@ spec:
           - name: NO_PROXY
             value: "{{ cert_manager_no_proxy }}"
 {% endif %}
+          livenessProbe:
+            httpGet:
+              port: http-healthz
+              path: /livez
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 15
+            successThreshold: 1
+            failureThreshold: 8
 {% if cert_manager_trusted_internal_ca is defined %}
           volumeMounts:
           - mountPath: /etc/ssl/certs/internal-ca.pem
@@ -1138,9 +1146,7 @@ spec:
             capabilities:
               drop:
               - ALL
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
+            readOnlyRootFilesystem: true
           env:
           - name: POD_NAMESPACE
             valueFrom:
@@ -1189,20 +1195,18 @@ webhooks:
     rules:
       - apiGroups:
           - "cert-manager.io"
-          - "acme.cert-manager.io"
         apiVersions:
           - "v1"
         operations:
           - CREATE
-          - UPDATE
         resources:
-          - "*/*"
+          - "certificaterequests"
     admissionReviewVersions: ["v1"]
     # This webhook only accepts v1 cert-manager resources.
     # Equivalent matchPolicy ensures that non-v1 resource requests are sent to
     # this webhook (after the resources have been converted to v1).
     matchPolicy: Equivalent
-    timeoutSeconds: 10
+    timeoutSeconds: 30
     failurePolicy: Fail
     # Only include 'sideEffects' field in Kubernetes 1.12+
     sideEffects: None
@@ -1229,8 +1233,8 @@ webhooks:
   - name: webhook.cert-manager.io
     namespaceSelector:
       matchExpressions:
-      - key: "cert-manager.io/disable-validation"
-        operator: "NotIn"
+      - key: cert-manager.io/disable-validation
+        operator: NotIn
         values:
         - "true"
     rules:
@@ -1249,7 +1253,7 @@ webhooks:
     # Equivalent matchPolicy ensures that non-v1 resource requests are sent to
     # this webhook (after the resources have been converted to v1).
     matchPolicy: Equivalent
-    timeoutSeconds: 10
+    timeoutSeconds: 30
     failurePolicy: Fail
     sideEffects: None
     clientConfig:

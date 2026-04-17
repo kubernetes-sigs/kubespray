@@ -1,6 +1,6 @@
 # Node Layouts
 
-There are six node layout types: `default`, `separate`, `ha`, `scale`, `all-in-one`, and `node-etcd-client`.
+There are five node layout types: `default`, `separate`, `ha`, `all-in-one`, and `node-etcd-client`.
 
 `default` is a non-HA two nodes setup with one separate `kube_node`
 and the `etcd` group merged with the `kube_control_plane`.
@@ -10,11 +10,6 @@ and the `etcd` group merged with the `kube_control_plane`.
 
 `ha` layout consists of two etcd nodes, two control planes and a single worker node,
 with role intersection.
-
-`scale` layout can be combined with above layouts (`ha-scale`, `separate-scale`). It includes 200 fake hosts
-in the Ansible inventory. This helps test TLS certificate generation at scale
-to prevent regressions and profile certain long-running tasks. These nodes are
-never actually deployed, but certificates are generated for them.
 
 `all-in-one` layout use a single node for with `kube_control_plane`, `etcd` and `kube_node` merged.
 

@@ -40,10 +40,6 @@ Variables are listed with their default values, if applicable.
 * `centos_fastestmirror_enabled: false`
   Whether the [fastestmirror](https://wiki.centos.org/PackageManagement/Yum/FastestMirror) yum plugin should be enabled.
 
-## Dependencies
-
-The `kubespray-defaults` role is expected to be run before this role.
-
 ## Example Playbook
 
 Remember to disable fact gathering since Python might not be present on hosts.

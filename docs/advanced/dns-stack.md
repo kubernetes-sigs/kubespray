@@ -64,6 +64,10 @@ Custom options to be added to the kubernetes coredns plugin.
 
 Extra domains to be forwarded to the kubernetes coredns plugin.
 
+### coredns_additional_configs
+
+Extra configuration to be added to CoreDNS configuration
+
 ### coredns_rewrite_block
 
 [Rewrite](https://coredns.io/plugins/rewrite/) plugin block to perform internal message rewriting.
@@ -289,6 +293,10 @@ nodelocaldns_external_zones:
 ### dns_etchosts (nodelocaldns)
 
 See [dns_etchosts](#dns_etchosts-coredns) above.
+
+### nodelocaldns_additional_configs
+
+Extra configuration to be added to CoreDNS configuration
 
 ### Nodelocal DNS HA
 

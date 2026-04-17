@@ -35,7 +35,7 @@ downloads = {
     "ciliumcli_binary": "https://github.com/cilium/cilium-cli/releases/download/{version}/cilium-{os}-{arch}.tar.gz.sha256sum",
     "cni_binary": "https://github.com/containernetworking/plugins/releases/download/{version}/cni-plugins-{os}-{arch}-{version}.tgz.sha256",
     "containerd_archive": "https://github.com/containerd/containerd/releases/download/v{version}/containerd-{version}-{os}-{arch}.tar.gz.sha256sum",
-    "crictl": "https://github.com/kubernetes-sigs/cri-tools/releases/download/{version}/critest-{version}-{os}-{arch}.tar.gz.sha256",
+    "crictl": "https://github.com/kubernetes-sigs/cri-tools/releases/download/{version}/crictl-{version}-{os}-{arch}.tar.gz.sha256",
     "crio_archive": "https://storage.googleapis.com/cri-o/artifacts/cri-o.{arch}.{version}.tar.gz.sha256sum",
     "etcd_binary": "https://github.com/etcd-io/etcd/releases/download/{version}/SHA256SUMS",
     "kubeadm": "https://dl.k8s.io/release/{version}/bin/linux/{arch}/kubeadm.sha256",

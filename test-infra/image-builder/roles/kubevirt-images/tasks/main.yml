@@ -10,11 +10,62 @@
           - kubevirt_images_selected | length == 0 or kubevirt_images_to_build | length > 0
         fail_msg: "No matching images found in `images` for `kubevirt_images_selected={{ kubevirt_images_selected }}`"
 
+    - name: Validate requested container builder
+      assert:
+        that:
+          - kubevirt_container_builder in ['docker', 'buildkit']
+        fail_msg: "Unsupported kubevirt_container_builder={{ kubevirt_container_builder }}"
+
+    - name: Validate BuildKit push mode
+      assert:
+        that:
+          - not (kubevirt_container_builder == 'buildkit' and kubevirt_images_push)
+        fail_msg: "BuildKit validation currently requires kubevirt_images_push=false"
+
+    - name: Check qemu-img availability
+      command: qemu-img --version
+      changed_when: false
+
+    - name: Check Docker availability
+      command: docker --version
+      changed_when: false
+      when: kubevirt_container_builder == 'docker'
+
+    - name: Detect BuildKit daemonless wrapper availability
+      shell: command -v buildctl-daemonless.sh
+      args:
+        executable: /bin/bash
+      register: kubevirt_buildctl_daemonless_available
+      changed_when: false
+      failed_when: false
+      when: kubevirt_container_builder == 'buildkit'
+
+    - name: Check BuildKit availability
+      shell: |
+        set -euo pipefail
+        if [ "{{ kubevirt_buildctl_daemonless_available.rc | default(1) }}" -eq 0 ]; then
+          buildctl-daemonless.sh --version
+        else
+          buildctl --version
+          buildkitd --version
+        fi
+      args:
+        executable: /bin/bash
+      changed_when: false
+      when: kubevirt_container_builder == 'buildkit'
+
     - name: Create image directory
       file:
         state: directory
         path: "{{ images_dir }}"
         mode: "0755"
+
+    - name: Create buildkit output directory
+      file:
+        state: directory
+        path: "{{ kubevirt_buildkit_output_dir }}"
+        mode: "0755"
+      when: kubevirt_container_builder == 'buildkit'
 
     - name: Download images files
       get_url:
@@ -56,16 +107,65 @@
     - name: Create docker images for each OS
       command: docker build -t {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }} --build-arg cloud_image="{{ item.key }}.qcow2" {{ images_dir }}
       loop: "{{ kubevirt_images_to_build }}"
+      when: kubevirt_container_builder == 'docker'
+
+    - name: Create container images for each OS with BuildKit
+      shell: |
+        set -euo pipefail
+        if [ "{{ kubevirt_buildctl_daemonless_available.rc | default(1) }}" -eq 0 ]; then
+          buildctl-daemonless.sh build \
+            --frontend dockerfile.v0 \
+            --local context={{ images_dir }} \
+            --local dockerfile={{ images_dir }} \
+            --opt filename=Dockerfile \
+            --opt build-arg:cloud_image={{ item.key }}.qcow2 \
+            --output "{{ 'type=image,name=' ~ registry ~ '/vm-' ~ item.key ~ ':' ~ item.value.tag ~ ',push=true' if kubevirt_images_push else 'type=oci,dest=' ~ kubevirt_buildkit_output_dir ~ '/vm-' ~ item.key ~ '-' ~ item.value.tag ~ '.tar' }}"
+        else
+          BUILDKIT_ADDR="unix:///tmp/buildkitd-{{ item.key }}.sock"
+          buildkitd --addr "${BUILDKIT_ADDR}" >/tmp/buildkitd-{{ item.key }}.log 2>&1 &
+          buildkitd_pid=$!
+
+          cleanup() {
+            kill "${buildkitd_pid}" >/dev/null 2>&1 || true
+            wait "${buildkitd_pid}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 50); do
+            if buildctl --addr "${BUILDKIT_ADDR}" debug workers >/dev/null 2>&1; then
+              break
+            fi
+            sleep 0.2
+          done
+
+          buildctl --addr "${BUILDKIT_ADDR}" build \
+            --frontend dockerfile.v0 \
+            --local context={{ images_dir }} \
+            --local dockerfile={{ images_dir }} \
+            --opt filename=Dockerfile \
+            --opt build-arg:cloud_image={{ item.key }}.qcow2 \
+            --output "{{ 'type=image,name=' ~ registry ~ '/vm-' ~ item.key ~ ':' ~ item.value.tag ~ ',push=true' if kubevirt_images_push else 'type=oci,dest=' ~ kubevirt_buildkit_output_dir ~ '/vm-' ~ item.key ~ '-' ~ item.value.tag ~ '.tar' }}"
+        fi
+      args:
+        executable: /bin/bash
+      loop: "{{ kubevirt_images_to_build }}"
+      when: kubevirt_container_builder == 'buildkit'
 
     - name: Docker login
       command: docker login -u="{{ docker_user }}" -p="{{ docker_password }}" "{{ docker_host }}"
-      when: kubevirt_images_push
+      when:
+        - kubevirt_container_builder == 'docker'
+        - kubevirt_images_push
 
     - name: Docker push image
       command: docker push {{ registry }}/vm-{{ item.key }}:{{ item.value.tag }}
       loop: "{{ kubevirt_images_to_build }}"
-      when: kubevirt_images_push
+      when:
+        - kubevirt_container_builder == 'docker'
+        - kubevirt_images_push
 
     - name: Docker logout
-      command: docker logout -u="{{ docker_user }}" "{{ docker_host }}"
-      when: kubevirt_images_push
+      command: docker logout "{{ docker_host }}"
+      when:
+        - kubevirt_container_builder == 'docker'
+        - kubevirt_images_push

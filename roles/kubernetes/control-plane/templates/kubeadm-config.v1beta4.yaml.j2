@@ -131,8 +131,7 @@ apiServer:
     value: "{{ kube_apiserver_pod_eviction_not_ready_timeout_seconds }}"
   - name: default-unreachable-toleration-seconds
     value: "{{ kube_apiserver_pod_eviction_unreachable_timeout_seconds }}"
-{% if kube_api_anonymous_auth is defined %}
-{# TODO: rework once suppport for structured auth lands #}
+{% if kube_api_anonymous_auth is defined and not kube_apiserver_use_authentication_config_file %}
   - name: anonymous-auth
     value: "{{ kube_api_anonymous_auth }}"
 {% endif %}
@@ -181,7 +180,7 @@ apiServer:
   - name: service-account-lookup
     value: "{{ kube_apiserver_service_account_lookup }}"
 {% endif %}
-{% if kube_oidc_auth and kube_oidc_url is defined and kube_oidc_client_id is defined %}
+{% if kube_oidc_auth and kube_oidc_url is defined and kube_oidc_client_id is defined and not kube_apiserver_use_authentication_config_file %}
   - name: oidc-issuer-url
     value: "{{ kube_oidc_url }}"
   - name: oidc-client-id
@@ -206,6 +205,10 @@ apiServer:
   - name: oidc-groups-prefix
     value: "{{ kube_oidc_groups_prefix }}"
 {%   endif %}
+{% endif %}
+{% if kube_apiserver_use_authentication_config_file %}
+  - name: authentication-config
+    value: "{{ kube_config_dir }}/apiserver-authentication-config-{{ kube_apiserver_authentication_config_api_version }}.yaml"
 {% endif %}
 {% if kube_webhook_token_auth %}
   - name: authentication-token-webhook-config-file
@@ -279,7 +282,7 @@ apiServer:
   - name: tracing-config-file
     value: "{{ kube_config_dir }}/tracing/apiserver-tracing.yaml"
 {% endif %}
-{% if kubernetes_audit or kube_token_auth or kube_webhook_token_auth or apiserver_extra_volumes or ssl_ca_dirs | length %}
+{% if kubernetes_audit or kube_token_auth or kube_webhook_token_auth or kube_apiserver_use_authorization_config_file or kube_apiserver_use_authentication_config_file or apiserver_extra_volumes or ssl_ca_dirs | length %}
   extraVolumes:
 {% if kube_token_auth %}
   - name: token-auth-config
@@ -300,6 +303,11 @@ apiServer:
   - name: authorization-config
     hostPath: {{ kube_config_dir }}/apiserver-authorization-config-{{ kube_apiserver_authorization_config_api_version }}.yaml
     mountPath: {{ kube_config_dir }}/apiserver-authorization-config-{{ kube_apiserver_authorization_config_api_version }}.yaml
+{% endif %}
+{% if kube_apiserver_use_authentication_config_file %}
+  - name: authentication-config
+    hostPath: {{ kube_config_dir }}/apiserver-authentication-config-{{ kube_apiserver_authentication_config_api_version }}.yaml
+    mountPath: {{ kube_config_dir }}/apiserver-authentication-config-{{ kube_apiserver_authentication_config_api_version }}.yaml
 {% endif %}
 {% if kubernetes_audit or kubernetes_audit_webhook %}
   - name: {{ audit_policy_name }}

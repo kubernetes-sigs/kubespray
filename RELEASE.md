@@ -58,7 +58,7 @@ You can create a release note with:
 export GITHUB_TOKEN=<your-github-token>
 export ORG=kubernetes-sigs
 export REPO=kubespray
-release-notes --start-sha <The start commit-id> --end-sha <The end commit-id> --dependencies=false --output=/tmp/kubespray-release-note --required-author=""
+release-notes generate --org "${ORG}" --repo "${REPO}" --repo-path "${PWD}" --start-sha <The start commit-id> --end-sha <The end commit-id> --dependencies=false --output=/tmp/kubespray-release-note
 ```
 
 If the release note file(/tmp/kubespray-release-note) contains "### Uncategorized" pull requests, those pull requests don't have a valid kind label(`kind/feature`, etc.).

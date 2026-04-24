@@ -112,7 +112,14 @@
     - name: Create container images for each OS with BuildKit
       shell: |
         set -euo pipefail
+        if [ "$(id -u)" -ne 0 ]; then
+          BUILDKITD_FLAGS="${BUILDKITD_FLAGS:---oci-worker-no-process-sandbox}"
+        else
+          BUILDKITD_FLAGS="${BUILDKITD_FLAGS:-}"
+        fi
+
         if [ "{{ kubevirt_buildctl_daemonless_available.rc | default(1) }}" -eq 0 ]; then
+          export BUILDKITD_FLAGS
           buildctl-daemonless.sh build \
             --frontend dockerfile.v0 \
             --local context={{ images_dir }} \
@@ -122,7 +129,7 @@
             --output "{{ 'type=image,name=' ~ registry ~ '/vm-' ~ item.key ~ ':' ~ item.value.tag ~ ',push=true' if kubevirt_images_push else 'type=oci,dest=' ~ kubevirt_buildkit_output_dir ~ '/vm-' ~ item.key ~ '-' ~ item.value.tag ~ '.tar' }}"
         else
           BUILDKIT_ADDR="unix:///tmp/buildkitd-{{ item.key }}.sock"
-          buildkitd --addr "${BUILDKIT_ADDR}" >/tmp/buildkitd-{{ item.key }}.log 2>&1 &
+          buildkitd ${BUILDKITD_FLAGS} --addr "${BUILDKIT_ADDR}" >/tmp/buildkitd-{{ item.key }}.log 2>&1 &
           buildkitd_pid=$!
 
           cleanup() {

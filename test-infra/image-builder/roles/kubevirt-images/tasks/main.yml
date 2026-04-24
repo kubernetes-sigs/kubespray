@@ -112,13 +112,17 @@
     - name: Create container images for each OS with BuildKit
       shell: |
         set -euo pipefail
-        # Restricted CI needs no process sandbox; only enable rootless for non-root user
+        IMAGE_REF="{{ registry }}/vm-{{ item.key }}:{{ item.value.tag }}"
+        OUTPUT_TAR="{{ kubevirt_buildkit_output_dir }}/vm-{{ item.key }}-{{ item.value.tag }}.tar"
+
+        # Rootless mode is only for non-root users.
         if [ "$(id -u)" -eq 0 ]; then
-          BUILDKITD_FLAGS="${BUILDKITD_FLAGS:---oci-worker-no-process-sandbox}"
+          BUILDKITD_FLAGS="${BUILDKITD_FLAGS:-}"
         else
           BUILDKITD_FLAGS="${BUILDKITD_FLAGS:---rootless --oci-worker-no-process-sandbox}"
         fi
 
+        run_buildkit() {
         if [ "{{ kubevirt_buildctl_daemonless_available.rc | default(1) }}" -eq 0 ]; then
           export BUILDKITD_FLAGS
           buildctl-daemonless.sh build \
@@ -154,6 +158,24 @@
             --opt build-arg:cloud_image={{ item.key }}.qcow2 \
             --output "{{ 'type=image,name=' ~ registry ~ '/vm-' ~ item.key ~ ':' ~ item.value.tag ~ ',push=true' if kubevirt_images_push else 'type=oci,dest=' ~ kubevirt_buildkit_output_dir ~ '/vm-' ~ item.key ~ '-' ~ item.value.tag ~ '.tar' }}"
         fi
+        }
+
+        if run_buildkit; then
+          exit 0
+        fi
+
+        echo "BuildKit failed in this environment; attempting Docker fallback for {{ item.key }}" >&2
+        if ! command -v docker >/dev/null 2>&1; then
+          echo "Docker fallback unavailable: docker command not found" >&2
+          exit 1
+        fi
+
+        docker build -t "${IMAGE_REF}" --build-arg cloud_image="{{ item.key }}.qcow2" {{ images_dir }}
+        {% if kubevirt_images_push %}
+        docker push "${IMAGE_REF}"
+        {% else %}
+        docker save -o "${OUTPUT_TAR}" "${IMAGE_REF}"
+        {% endif %}
       args:
         executable: /bin/bash
       loop: "{{ kubevirt_images_to_build }}"

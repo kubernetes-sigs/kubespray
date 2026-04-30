@@ -237,6 +237,9 @@ rules:
   - apiGroups: ["acme.cert-manager.io"]
     resources: ["orders/finalizers"]
     verbs: ["update"]
+  - apiGroups: ["cert-manager.io"]
+    resources: ["clusterissuers/finalizers", "issuers/finalizers"]
+    verbs: ["update"]
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "watch"]
@@ -284,8 +287,8 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["get", "list", "watch", "create", "delete", "update"]
-  - apiGroups: [ "gateway.networking.k8s.io" ]
-    resources: [ "httproutes" ]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes"]
     verbs: ["get", "list", "watch", "create", "delete", "update"]
   # We require the ability to specify a custom hostname when we are creating
   # new ingress resources.
@@ -333,10 +336,10 @@ rules:
     resources: ["ingresses/finalizers"]
     verbs: ["update"]
   - apiGroups: ["gateway.networking.k8s.io"]
-    resources: ["gateways", "httproutes"]
+    resources: ["gateways", "httproutes", "listenersets"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["gateway.networking.k8s.io"]
-    resources: ["gateways/finalizers", "httproutes/finalizers"]
+    resources: ["gateways/finalizers", "httproutes/finalizers", "listenersets/finalizers"]
     verbs: ["update"]
   - apiGroups: [""]
     resources: ["events"]
@@ -428,7 +431,7 @@ rules:
 ---
 # Source: cert-manager/deploy/charts/cert-manager/templates/rbac.yaml
 # Permission to:
-# - Update and sign CertificatSigningeRequests referencing cert-manager.io Issuers and ClusterIssuers
+# - Update and sign CertificateSigningRequests referencing cert-manager.io Issuers and ClusterIssuers
 # - Perform SubjectAccessReviews to test whether users are able to reference Namespaced Issuers
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -667,8 +670,7 @@ roleRef:
   kind: ClusterRole
   name: cert-manager-webhook:subjectaccessreviews
 subjects:
-- apiGroup: ""
-  kind: ServiceAccount
+- kind: ServiceAccount
   name: cert-manager-webhook
   namespace: {{ cert_manager_namespace }}
 ---
@@ -718,6 +720,24 @@ rules:
     verbs: ["get", "update", "patch"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
+    verbs: ["create"]
+---
+# Source: cert-manager/deploy/charts/cert-manager/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cert-manager-tokenrequest
+  namespace: {{ cert_manager_namespace }}
+  labels:
+    app: cert-manager
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/component: "controller"
+    app.kubernetes.io/version: "{{ cert_manager_version }}"
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    resourceNames: ["cert-manager"]
     verbs: ["create"]
 ---
 # Source: cert-manager/deploy/charts/cert-manager/templates/webhook-rbac.yaml
@@ -785,8 +805,29 @@ roleRef:
   kind: Role
   name: cert-manager:leaderelection
 subjects:
-  - apiGroup: ""
-    kind: ServiceAccount
+  - kind: ServiceAccount
+    name: cert-manager
+    namespace: {{ cert_manager_namespace }}
+---
+# Source: cert-manager/deploy/charts/cert-manager/templates/rbac.yaml
+# grant cert-manager permission to create tokens for the serviceaccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cert-manager-tokenrequest
+  namespace: {{ cert_manager_namespace }}
+  labels:
+    app: cert-manager
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/component: "controller"
+    app.kubernetes.io/version: "{{ cert_manager_version }}"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cert-manager-tokenrequest
+subjects:
+  - kind: ServiceAccount
     name: cert-manager
     namespace: {{ cert_manager_namespace }}
 ---
@@ -807,10 +848,32 @@ roleRef:
   kind: Role
   name: cert-manager-webhook:dynamic-serving
 subjects:
-- apiGroup: ""
-  kind: ServiceAccount
+- kind: ServiceAccount
   name: cert-manager-webhook
   namespace: {{ cert_manager_namespace }}
+---
+# Source: cert-manager/deploy/charts/cert-manager/templates/cainjector-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: cert-manager-cainjector
+  namespace: {{ cert_manager_namespace }}
+  labels:
+    app: cainjector
+    app.kubernetes.io/name: cainjector
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/component: "cainjector"
+    app.kubernetes.io/version: "{{ cert_manager_version }}"
+spec:
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    port: 9402
+    name: http-metrics
+  selector:
+    app.kubernetes.io/name: cainjector
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/component: "cainjector"
 ---
 # Source: cert-manager/deploy/charts/cert-manager/templates/service.yaml
 apiVersion: v1
@@ -830,7 +893,7 @@ spec:
   - protocol: TCP
     port: 9402
     name: tcp-prometheus-servicemonitor
-    targetPort: 9402
+    targetPort: http-metrics
   selector:
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/instance: cert-manager
@@ -855,6 +918,10 @@ spec:
     port: 443
     protocol: TCP
     targetPort: "https"
+  - name: metrics
+    port: 9402
+    protocol: TCP
+    targetPort: "http-metrics"
   selector:
     app.kubernetes.io/name: webhook
     app.kubernetes.io/instance: cert-manager
@@ -887,6 +954,10 @@ spec:
         app.kubernetes.io/instance: cert-manager
         app.kubernetes.io/component: "cainjector"
         app.kubernetes.io/version: "{{ cert_manager_version }}"
+      annotations:
+        prometheus.io/path: "/metrics"
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9402'
     spec:
       serviceAccountName: cert-manager-cainjector
       enableServiceLinks: false
@@ -901,6 +972,10 @@ spec:
           args:
           - --v=2
           - --leader-election-namespace={{ cert_manager_leader_election_namespace }}
+          ports:
+          - containerPort: 9402
+            name: http-metrics
+            protocol: TCP
           env:
           - name: POD_NAMESPACE
             valueFrom:
@@ -1095,6 +1170,10 @@ spec:
         app.kubernetes.io/instance: cert-manager
         app.kubernetes.io/component: "webhook"
         app.kubernetes.io/version: "{{ cert_manager_version }}"
+      annotations:
+        prometheus.io/path: "/metrics"
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9402'
     spec:
       serviceAccountName: cert-manager-webhook
       enableServiceLinks: false
@@ -1121,10 +1200,13 @@ spec:
           - name: healthcheck
             protocol: TCP
             containerPort: 6080
+          - containerPort: 9402
+            name: http-metrics
+            protocol: TCP
           livenessProbe:
             httpGet:
               path: /livez
-              port: 6080
+              port: healthcheck
               scheme: HTTP
             initialDelaySeconds: 60
             periodSeconds: 10
@@ -1134,7 +1216,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /healthz
-              port: 6080
+              port: healthcheck
               scheme: HTTP
             initialDelaySeconds: 5
             periodSeconds: 5

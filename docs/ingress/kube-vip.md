@@ -86,3 +86,10 @@ kube_vip_leaseduration: 30
 kube_vip_renewdeadline: 20
 kube_vip_retryperiod: 4
 ```
+
+To expose [Prometheus metrics](https://kube-vip.io/docs/installation/flags/#environment-variables) from the kube-vip static pod (listen address is passed to `prometheus_server`; the manifest `ports` entry uses the trailing port number for discovery):
+
+```yaml
+kube_vip_metrics_enabled: true
+# kube_vip_metrics_port: ':9090'
+```

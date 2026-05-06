@@ -45,6 +45,34 @@
   changed_when: false
   when: not ignore_assert_errors
 
+# Precheck for cgroup v1 incompatibility with kubelet_fail_cgroup_v1: true (Kubernetes >= 1.35)
+# See: https://github.com/kubernetes-sigs/kubespray/issues/12948
+# See: https://github.com/kubernetes/enhancements/blob/master/keps/sig-node/5573-remove-cgroup-v1/README.md
+- name: Stop if kubelet_fail_cgroup_v1 is true on a cgroup v1 node
+  when:
+    - not ignore_assert_errors
+    - kubelet_fail_cgroup_v1 | default(true) | bool
+    - kube_version is version('1.35.0', '>=')
+  block:
+    - name: Detect cgroup version
+      command: stat -fc %T /sys/fs/cgroup/
+      register: cgroup_stat
+      changed_when: false
+
+    - name: Fail if cgroup v1 detected with kubelet_fail_cgroup_v1 enabled
+      assert:
+        that: cgroup_stat.stdout == "cgroup2fs"
+        fail_msg: >-
+          This node uses cgroup v1 (detected filesystem type: {{ cgroup_stat.stdout }}),
+          but kubelet_fail_cgroup_v1 is set to true (the default for Kubernetes >= 1.35).
+          The kubelet will refuse to start on cgroup v1 nodes with this setting.
+
+          To resolve this, either:
+            1. Migrate the node to cgroup v2 (recommended), or
+            2. Set kubelet_fail_cgroup_v1: false in your inventory/group_vars
+
+          See: https://github.com/kubernetes/enhancements/blob/master/keps/sig-node/5573-remove-cgroup-v1/README.md
+
 - name: Stop if ip var does not match local ips
   assert:
     that: (ip in ansible_all_ipv4_addresses) or (ip in ansible_all_ipv6_addresses)

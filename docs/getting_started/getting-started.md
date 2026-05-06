@@ -6,6 +6,9 @@ Install Ansible according to [Ansible installation guide](/docs/ansible/ansible.
 
 ## Building your own inventory
 
+For a lightweight approach using only the files you need, see the [Minimal Inventory
+guide](minimal-inventory.md).
+
 Ansible inventory can be stored in 3 formats: YAML, JSON, or INI-like. See the
 [example inventory](/inventory/sample/inventory.ini)
 and [Ansible documentation on building your inventory](https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html),

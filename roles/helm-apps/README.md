@@ -22,6 +22,7 @@ Playbook example:
 - hosts: kube_control_plane[0]
   gather_facts: no
   roles:
+    - { role: kubespray_defaults }
     - name: helm-apps
       releases:
         - name: app

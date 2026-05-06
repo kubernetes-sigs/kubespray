@@ -84,17 +84,46 @@
     - not kubeadm_already_run.stat.exists
 
 - name: Joining control plane node to the cluster.
-  command: >-
-    {{ bin_dir }}/kubeadm join
-    --config {{ kube_config_dir }}/kubeadm-controlplane.yaml
-    --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
-    --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
+  vars:
+    kubeadm_join_control_plane_cmd: >-
+      {{ bin_dir }}/kubeadm join
+      --config {{ kube_config_dir }}/kubeadm-controlplane.yaml
+      --ignore-preflight-errors={{ _ignore_errors | flatten | join(',') }}
+      --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
+    _ignore_errors: "{{ kubeadm_ignore_preflight_errors }}"
   environment:
     PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
-  register: kubeadm_join_control_plane
-  retries: 3
   throttle: 1
-  until: kubeadm_join_control_plane is succeeded
+  block:
+    - name: Joining control plane node to the cluster (1st try)
+      command: "{{ kubeadm_join_control_plane_cmd }}"
+      register: kubeadm_join_control_plane
+  rescue:
+    # Retry is because join sometimes fails
+    # This retry task is separated from 1st task to show log of failure of 1st task.
+    - name: Joining control plane node to the cluster (retry)
+      command: "{{ kubeadm_join_control_plane_cmd }}"
+      vars:
+        _errors_from_first_try:
+          - 'FileAvailable--etc-kubernetes-kubelet.conf'
+          - 'FileAvailable--etc-kubernetes-bootstrap-kubelet.conf'
+          - 'Port-10250' # kubelet
+          - 'FileAvailable--etc-kubernetes-manifests-kube-controller-manager.yaml'
+          - 'Port-10257' # kube-controller-manager
+          - 'FileAvailable--etc-kubernetes-manifests-kube-scheduler.yaml'
+          - 'Port-10259' # kube-scheduler
+          - 'FileAvailable--etc-kubernetes-manifests-kube-apiserver.yaml'
+          - 'Port-{{ kube_apiserver_port }}'
+          - "{{ 'FileAvailable--etc-kubernetes-manifests-etcd.yaml' if etcd_deployment_type == 'kubeadm' else '' }}"
+          - "{{ 'DirAvailable--var-lib-etcd' if etcd_deployment_type == 'kubeadm' else '' }}"
+          - "{{ 'Port-2379' if etcd_deployment_type == 'kubeadm' else '' }}" # etcd client
+          - "{{ 'Port-2380' if etcd_deployment_type == 'kubeadm' else '' }}" # etcd peer
+        _ignore_errors:
+          - "{{ kubeadm_ignore_preflight_errors }}"
+          - "{{ _errors_from_first_try if 'all' not in kubeadm_ignore_preflight_errors else [] }}"
+      register: kubeadm_join_control_plane
+      retries: 2
+      until: kubeadm_join_control_plane is succeeded
   when:
     - inventory_hostname != first_kube_control_plane
     - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists

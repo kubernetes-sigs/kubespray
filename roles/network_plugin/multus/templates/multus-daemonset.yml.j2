@@ -86,6 +86,123 @@ spec:
           mountPath: {{ multus_cni_conf_dir }}
         - name: cnibin
           mountPath: {{ multus_cni_bin_dir }}
+      - name: token-reload
+        image: "busybox:1.36"
+        command:
+        - "/bin/sh"
+        args:
+        - "-c"
+        - |
+            set -e
+            set -o pipefail
+
+            function exitonsigterm() {
+              echo "Trapped sigterm, exiting."
+              exit 0
+            }
+            trap exitonsigterm SIGTERM
+
+            function log() {
+              echo "$(date +%Y-%m-%dT%H:%M:%S%z) $1"
+            }
+
+            function info() {
+              log "INFO:  $1"
+            }
+
+            function warn() {
+              log "WARN:  $1"
+            }
+
+            function error() {
+              log "ERROR: $1"
+            }
+
+            CNI_CONF_DIR="{{ multus_cni_conf_dir }}"
+            CNI_CONF_MULTUS_DIR="$CNI_CONF_DIR/multus.d"
+            MULTUS_KUBECONFIG="$CNI_CONF_MULTUS_DIR/multus.kubeconfig"
+            MULTUS_TEMP_KUBECONFIG="/tmp/multus.kubeconfig"
+
+            SERVICE_ACCOUNT_DIR="/var/run/secrets/kubernetes.io/serviceaccount"
+            SERVICE_ACCOUNT_TOKEN_FILE="$SERVICE_ACCOUNT_DIR/token"
+            KUBE_CA_FILE="${KUBE_CA_FILE:-$SERVICE_ACCOUNT_DIR/ca.crt}"
+
+            if [ -z ${KUBERNETES_SERVICE_HOST} ]; then
+              error "KUBERNETES_SERVICE_HOST not set"; exit 1;
+            fi
+            if [ -z ${KUBERNETES_SERVICE_PORT} ]; then
+              error "KUBERNETES_SERVICE_PORT not set"; exit 1;
+            fi
+
+            function generateTempKubeConfig {
+              # Kubeconfig generation logic should be identical to:
+              #   https://github.com/k8snetworkplumbingwg/multus-cni/blob/master/images/entrypoint.sh
+              touch $MULTUS_TEMP_KUBECONFIG
+              chmod ${KUBECONFIG_MODE:-600} $MULTUS_TEMP_KUBECONFIG
+              cat > $MULTUS_TEMP_KUBECONFIG <<EOF
+            # Kubeconfig file for Multus CNI plugin.
+            apiVersion: v1
+            kind: Config
+            clusters:
+            - name: local
+              cluster:
+                server: ${KUBERNETES_SERVICE_PROTOCOL:-https}://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}
+                $TLS_CFG
+            users:
+            - name: multus
+              user:
+                token: "${SERVICE_ACCOUNT_TOKEN}"
+            contexts:
+            - name: multus-context
+              context:
+                cluster: local
+                user: multus
+            current-context: multus-context
+            EOF
+            }
+
+            function reloadToken {
+              if [ -f "$SERVICE_ACCOUNT_TOKEN_FILE" ]; then
+                #
+                if [ "$SKIP_TLS_VERIFY" == "true" ]; then
+                  TLS_CFG="insecure-skip-tls-verify: true"
+                elif [ -f "$KUBE_CA_FILE" ]; then
+                  TLS_CFG="certificate-authority-data: $(cat $KUBE_CA_FILE | base64 | tr -d '\n')"
+                fi
+                SERVICE_ACCOUNT_TOKEN=$(cat $SERVICE_ACCOUNT_TOKEN_FILE)
+                generateTempKubeConfig
+                #
+                KUBECONFIG_SHA256SUM=$(sha256sum $MULTUS_KUBECONFIG | awk '{print $1}')
+                TEMP_KUBECONFIG_SHA256SUM=$(sha256sum $MULTUS_TEMP_KUBECONFIG | awk '{print $1}')
+                if [ "$KUBECONFIG_SHA256SUM" != "$TEMP_KUBECONFIG_SHA256SUM" ]; then
+                  mkdir -p $CNI_CONF_MULTUS_DIR
+                  TEMP_TARGET="${CNI_CONF_MULTUS_DIR}/.multus_kubeconfig.$$"
+                  cp $MULTUS_TEMP_KUBECONFIG $TEMP_TARGET
+                  mv -f $TEMP_TARGET $MULTUS_KUBECONFIG
+                  info "Updated $MULTUS_KUBECONFIG ($TEMP_KUBECONFIG_SHA256SUM) (was $KUBECONFIG_SHA256SUM)"
+                else
+                  info "Same $MULTUS_KUBECONFIG ($KUBECONFIG_SHA256SUM)"
+                fi
+                #
+              else
+                warn "Doesn't look like we're running in a kubernetes environment (missing $SERVICE_ACCOUNT_TOKEN_FILE)"
+              fi
+            }
+
+            while true; do
+              sleep 60
+              reloadToken
+            done
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "50Mi"
+          limits:
+            cpu: "50m"
+            memory: "50Mi"
+        volumeMounts:
+        - name: cni
+          mountPath: {{ multus_cni_conf_dir }}
       volumes:
 {% if container_manager == 'crio' %}
       - name: run

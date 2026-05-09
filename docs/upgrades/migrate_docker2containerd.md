@@ -28,11 +28,11 @@ Everything done here requires full root access to every node.
 Before you begin, adjust your inventory:
 
 ```yaml
-# Filename: k8s_cluster/k8s-cluster.yml
+# Filename: group_vars/k8s_cluster/k8s-cluster.yml
 resolvconf_mode: host_resolvconf
 container_manager: containerd
 
-# Filename: etcd.yml
+# Filename: group_vars/all/etcd.yml
 etcd_deployment_type: host
 ```
 
@@ -66,7 +66,7 @@ apt-get install pigz
 ### 5) Run `cluster.yml` playbook with `--limit`
 
 ```commandline
-ansible-playbook -i inventory/sample/hosts.ini cluster.yml --limit=NODENAME
+ansible-playbook -i inventory/sample/inventory.ini cluster.yml --limit=NODENAME
 ```
 
 This effectively reinstalls containerd and seems to place all config files in the right place. When this completes, kubelet will immediately pick up the new container engine and start spinning up DaemonSets and kube-system Pods.

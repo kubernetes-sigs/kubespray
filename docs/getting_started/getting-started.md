@@ -15,16 +15,15 @@ and [details on the inventory structure expected by Kubespray](/docs/ansible/inv
 <your-favorite-editor> inventory/mycluster/inventory.ini
 
 # Review and change parameters under ``inventory/mycluster/group_vars``
-<your-favorite-editor> inventory/mycluster/group_vars/all.yml # for every node, including etcd
-<your-favorite-editor> inventory/mycluster/group_vars/k8s_cluster.yml # for every node in the cluster (not etcd when it's separate)
-<your-favorite-editor> inventory/mycluster/group_vars/kube_control_plane.yml # for the control plane
-<your-favorite-editor> inventory/myclsuter/group_vars/kube_node.yml # for worker nodes
+<your-favorite-editor> inventory/mycluster/group_vars/all/all.yml # for every node, including etcd
+<your-favorite-editor> inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml # for every node in the cluster (not etcd when it's separate)
+<your-favorite-editor> inventory/mycluster/group_vars/k8s_cluster/kube_control_plane.yml # for the control plane
 ```
 
 ## Installing the cluster
 
 ```ShellSession
-ansible-playbook -i inventory/mycluster/ cluster.yml -b -v \
+ansible-playbook -i inventory/mycluster/inventory.ini cluster.yml -b -v \
   --private-key=~/.ssh/private_key
 ```
 
@@ -36,7 +35,7 @@ You may want to add worker, control plane or etcd nodes to your existing cluster
 - Run the ansible-playbook command, substituting `cluster.yml` for `scale.yml`:
 
 ```ShellSession
-ansible-playbook -i inventory/mycluster/hosts.yml scale.yml -b -v \
+ansible-playbook -i inventory/mycluster/inventory.ini scale.yml -b -v \
   --private-key=~/.ssh/private_key
 ```
 
@@ -54,7 +53,7 @@ is not working, you can remove the node and install it again.
 Use `--extra-vars "node=<nodename>,<nodename2>"` to select the node(s) you want to delete.
 
 ```ShellSession
-ansible-playbook -i inventory/mycluster/hosts.yml remove-node.yml -b -v \
+ansible-playbook -i inventory/mycluster/inventory.ini remove-node.yml -b -v \
 --private-key=~/.ssh/private_key \
 --extra-vars "node=nodename,nodename2"
 ```
@@ -87,7 +86,7 @@ the Kubernetes [documentation](https://kubernetes.io/docs/tasks/access-applicati
 
 The main client of Kubernetes is `kubectl`. It is installed on each kube_control_plane
 host and can optionally be configured on your ansible host by setting
-`kubectl_localhost: true` and `kubeconfig_localhost: true` in the configuration:
+`kubectl_localhost: true` and `kubeconfig_localhost: true` in `inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml`:
 
 - If `kubectl_localhost` enabled, `kubectl` will download onto `/usr/local/bin/` and setup with bash completion. A helper script `inventory/mycluster/artifacts/kubectl.sh` also created for setup with below `admin.conf`.
 - If `kubeconfig_localhost` enabled `admin.conf` will appear in the `inventory/mycluster/artifacts/` directory after deployment.

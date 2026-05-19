@@ -89,7 +89,8 @@
   when:
     - not ignore_assert_errors
     - (groups['kube_control_plane'] | default([])) | length > 0
-    - inventory_hostname == (groups['kube_control_plane'] | first)
+  run_once: true
+  delegate_to: "{{ first_kube_control_plane }}"
   block:
     - name: Stat kubeadm config for cluster identity check
       stat:
@@ -100,25 +101,32 @@
       register: kubeadm_config_cluster_identity_stat
 
     - name: Read existing cluster identity from kubeadm config
-      shell: |
-        f="{{ kube_config_dir }}/kubeadm-config.yaml"
-        grep -E '^clusterName:' "$f" | head -1 | awk -F': ' '{print $2}' || echo ""
-        grep -E '^[[:space:]]*dnsDomain:' "$f" | head -1 | awk -F': ' '{print $2}' || echo ""
-      args:
-        executable: /bin/bash
-      register: kubeadm_cluster_identity_cmd
-      changed_when: false
+      slurp:
+        src: "{{ kube_config_dir }}/kubeadm-config.yaml"
+      register: kubeadm_config_cluster_identity_slurp
       when: kubeadm_config_cluster_identity_stat.stat.exists
 
     - name: Set facts for kubeadm cluster identity comparison
       set_fact:
-        kubespray_existing_kubeadm_cluster_name: "{{ kubeadm_cluster_identity_cmd.stdout_lines[0] | default('', true) | trim }}"
-        kubespray_existing_kubeadm_dns_domain: "{{ kubeadm_cluster_identity_cmd.stdout_lines[1] | default('', true) | trim }}"
+        kubespray_existing_kubeadm_cluster_name: "{{ kubeadm_cluster_configuration.clusterName | default('', true) }}"
+        kubespray_existing_kubeadm_dns_domain: "{{ (kubeadm_cluster_configuration.networking | default({})).dnsDomain | default('', true) }}"
+      vars:
+        kubeadm_cluster_configuration: >-
+          {{
+            kubeadm_config_cluster_identity_slurp.content | b64decode
+            | split('---')
+            | map('trim')
+            | reject('equalto', '')
+            | map('from_yaml')
+            | selectattr('kind', 'equalto', 'ClusterConfiguration')
+            | list
+            | first
+            | default({}, true)
+          }}
       when:
         - kubeadm_config_cluster_identity_stat.stat.exists
-        - kubeadm_cluster_identity_cmd is defined
-        - not kubeadm_cluster_identity_cmd.skipped | default(false)
-        - kubeadm_cluster_identity_cmd.stdout_lines | length > 0
+        - kubeadm_config_cluster_identity_slurp is defined
+        - not kubeadm_config_cluster_identity_slurp.skipped | default(false)
 
     - name: Stop if inventory cluster_name does not match existing kubeadm clusterName
       assert:

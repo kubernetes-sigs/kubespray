@@ -4,7 +4,13 @@ Build and push KubeVirt VM disk images to quay.io for Kubespray CI testing.
 
 ## How It Works
 
-The Ansible playbook downloads upstream cloud images, converts them to qcow2, resizes (+8G), wraps each in a Docker image based on `kubevirt/registry-disk-v1alpha`, and pushes to `quay.io/kubespray/vm-<os-name>:<tag>`.
+The Ansible playbook downloads upstream cloud images, converts them to qcow2, resizes (+8G), wraps each in a Docker image based on `kubevirt/registry-disk-v1alpha`, and pushes to `quay.io/kubespray/vm-<os-name>:<tag>` by default. Trusted CI jobs can override the target registry for staged image publishing.
+
+The trusted staging publish path uses Cloud Build authentication and skips `docker login`:
+
+```bash
+make push-single-staging image_name=ubuntu-2404
+```
 
 ## Prerequisites
 

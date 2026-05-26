@@ -55,5 +55,5 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
     && rm vagrant_${VAGRANT_VERSION}-1_$(dpkg --print-architecture).deb \
     && vagrant plugin install vagrant-libvirt \
     # Install Kubernetes collections
-    && pip install --break-system-packages --no-compile --no-cache-dir kubernetes \
-    && ansible-galaxy collection install kubernetes.core
+    && pip install --break-system-packages --no-compile --no-cache-dir kubernetes==35.0.0 \
+    && ansible-galaxy collection install kubernetes.core:==6.4.0

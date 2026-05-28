@@ -1,0 +1,71 @@
+---
+# Preflight check to detect kubeadm configuration drift before upgrade
+# kubeadm upgrade does not reconcile ClusterConfiguration changes, so we need to warn users
+# if their desired config differs from what's currently in the cluster
+
+- name: Preflight | Get ClusterConfiguration from kubeadm-config ConfigMap
+  command: >-
+    {{ kubectl }} get configmap kubeadm-config -n kube-system
+    -o jsonpath='{.data.ClusterConfiguration}'
+  register: kubeadm_configmap_raw
+  changed_when: false
+  when: inventory_hostname == first_kube_control_plane
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+
+- name: Preflight | Parse current ClusterConfiguration from ConfigMap
+  set_fact:
+    current_cluster_config: "{{ kubeadm_configmap_raw.stdout | from_yaml }}"
+  when:
+    - inventory_hostname == first_kube_control_plane
+    - kubeadm_configmap_raw.stdout | default('') | length > 0
+
+- name: Preflight | Read rendered kubeadm-config.yaml from disk
+  slurp:
+    src: "{{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kubeadm_config_file
+  when:
+    - inventory_hostname == first_kube_control_plane
+    - current_cluster_config is defined
+
+- name: Preflight | Parse desired ClusterConfiguration from rendered config
+  set_fact:
+    desired_cluster_config: >-
+      {{ (kubeadm_config_file.content | b64decode).split('---')
+         | map('from_yaml')
+         | selectattr('kind', 'defined')
+         | selectattr('kind', 'equalto', 'ClusterConfiguration')
+         | first }}
+  when:
+    - inventory_hostname == first_kube_control_plane
+    - kubeadm_config_file is not skipped
+
+- name: Preflight | Check for imageRepository drift
+  assert:
+    that:
+      - current_cluster_config.imageRepository | default('registry.k8s.io') == desired_cluster_config.imageRepository | default('registry.k8s.io')
+      - current_cluster_config.dns.imageRepository | default('') == desired_cluster_config.dns.imageRepository | default('')
+      - (etcd_deployment_type != "kubeadm") or
+        (current_cluster_config.etcd.local.imageRepository | default('') == desired_cluster_config.etcd.local.imageRepository | default(''))
+    fail_msg: |
+      KUBEADM CONFIG DRIFT DETECTED!
+      One or more imageRepository fields in the kubeadm-config ConfigMap differ from your desired configuration:
+
+        imageRepository:       {{ current_cluster_config.imageRepository | default('(not set)') }} -> {{ desired_cluster_config.imageRepository | default('(not set)') }}
+        dns.imageRepository:   {{ current_cluster_config.dns.imageRepository | default('(not set)') }} -> {{ desired_cluster_config.dns.imageRepository | default('(not set)') }}
+      {% if etcd_deployment_type == "kubeadm" %}
+        etcd.imageRepository:  {{ current_cluster_config.etcd.local.imageRepository | default('(not set)') }} -> {{ desired_cluster_config.etcd.local.imageRepository | default('(not set)') }}
+      {% endif %}
+
+      kubeadm upgrade does NOT reconcile ClusterConfiguration changes automatically.
+      This can cause issues during upgrade as components may pull images from the wrong repository.
+
+      To fix this, run the following command on the first control plane node to reconcile the configuration:
+        timeout -k 600s 600s {{ bin_dir }}/kubeadm init phase upload-config kubeadm --config={{ kube_config_dir }}/kubeadm-config.yaml
+
+      Or set 'kubeadm_upgrade_config_drift_check_enabled: false' to skip this check.
+    success_msg: "All imageRepository fields match desired configuration"
+  when:
+    - inventory_hostname == first_kube_control_plane
+    - current_cluster_config is defined
+    - desired_cluster_config is defined

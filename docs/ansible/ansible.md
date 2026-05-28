@@ -32,7 +32,7 @@ Based on the table below and the available python version for your ansible host 
 
 |  Ansible Version  | Python Version |
 |-------------------|----------------|
-| >=2.18.0, <2.19.0 | 3.11-3.13      |
+| >=2.19.0, <2.20.0 | 3.11-3.13      |
 
 ## Customize Ansible vars
 

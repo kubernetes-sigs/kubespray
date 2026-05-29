@@ -11,5 +11,5 @@ You can deploy instances in your cloud environment in several ways. Examples inc
 With ansible-playbook command
 
 ```ShellSession
-ansible-playbook -u smana -e ansible_ssh_user=admin -e cloud_provider=[aws|gce] -b --become-user=root -i inventory/single.cfg cluster.yml
+ansible-playbook -u smana -e ansible_ssh_user=admin -e cloud_provider=[aws|gce] -b --become-user=root -i inventory/sample/inventory.ini cluster.yml
 ```

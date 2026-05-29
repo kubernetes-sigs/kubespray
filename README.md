@@ -22,7 +22,7 @@ Ensure you have installed Docker then
 ```ShellSession
 docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
   --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
-  quay.io/kubespray/kubespray:v2.30.0 bash
+  quay.io/kubespray/kubespray:v2.31.0 bash
 # Inside the container you may now run the kubespray playbooks:
 ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
@@ -111,25 +111,25 @@ Note:
 <!-- BEGIN ANSIBLE MANAGED BLOCK -->
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.35.1
-  - [etcd](https://github.com/etcd-io/etcd) 3.6.8
+  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.36.1
+  - [etcd](https://github.com/etcd-io/etcd) 3.6.11
   - [docker](https://www.docker.com/) 28.3
-  - [containerd](https://containerd.io/) 2.2.1
-  - [cri-o](http://cri-o.io/) 1.35.0 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [containerd](https://containerd.io/) 2.3.0
+  - [cri-o](https://cri-o.io/) 1.36.0 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
-  - [cni-plugins](https://github.com/containernetworking/plugins) 1.8.0
-  - [calico](https://github.com/projectcalico/calico) 3.30.6
-  - [cilium](https://github.com/cilium/cilium) 1.18.6
-  - [flannel](https://github.com/flannel-io/flannel) 0.27.3
+  - [cni-plugins](https://github.com/containernetworking/plugins) 1.9.1
+  - [calico](https://github.com/projectcalico/calico) 3.31.5
+  - [cilium](https://github.com/cilium/cilium) 1.19.4
+  - [flannel](https://github.com/flannel-io/flannel) 0.28.4
   - [kube-ovn](https://github.com/alauda/kube-ovn) 1.12.21
   - [kube-router](https://github.com/cloudnativelabs/kube-router) 2.1.1
   - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) 4.2.2
   - [kube-vip](https://github.com/kube-vip/kube-vip) 1.0.3
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) 1.15.3
-  - [coredns](https://github.com/coredns/coredns) 1.12.4
+  - [coredns](https://github.com/coredns/coredns) 1.14.2
   - [argocd](https://argoproj.github.io/) 2.14.5
-  - [helm](https://helm.sh/) 4.1.1
+  - [helm](https://helm.sh/) 3.18.4
   - [metallb](https://metallb.universe.tf/) 0.13.9
   - [registry](https://github.com/distribution/distribution) 2.8.1
 - Storage Plugin

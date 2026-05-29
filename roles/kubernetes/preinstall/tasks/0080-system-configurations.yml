@@ -7,8 +7,8 @@
     get_checksum: false
     get_mime: false
   when:
-    - ansible_os_family == "RedHat"
-    - "'Amazon' not in ansible_distribution"
+    - ansible_facts['os_family'] == "RedHat"
+    - "'Amazon' not in ansible_facts['distribution']"
   register: slc
 
 - name: Set selinux policy
@@ -16,8 +16,8 @@
     policy: targeted
     state: "{{ preinstall_selinux_state }}"
   when:
-    - ansible_os_family == "RedHat"
-    - "'Amazon' not in ansible_distribution"
+    - ansible_facts['os_family'] == "RedHat"
+    - "'Amazon' not in ansible_facts['distribution']"
     - slc.stat.exists
   tags:
     - bootstrap_os
@@ -32,7 +32,7 @@
     mode: "0644"
   when:
     - disable_ipv6_dns
-    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+    - ansible_facts['os_family'] not in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
   tags:
     - bootstrap_os
 
@@ -124,6 +124,27 @@
     - { name: vm.overcommit_memory, value: 1 }
     - { name: vm.panic_on_oom, value: 0 }
   when: kubelet_protect_kernel_defaults | bool
+
+- name: Read current sysctl values
+  command: sysctl -n {{ item.key }}
+  register: sysctl_settings
+  changed_when: false
+  vars:
+    # For integer sysctls only
+    sysctl_minimum_values:
+      fs.inotify.max_user_instances: 8192
+  loop: "{{ sysctl_minimum_values | dict2items }}"
+
+- name: Increase sysctl value if lower than minimum
+  ansible.posix.sysctl:
+    sysctl_file: "{{ sysctl_file_path }}"
+    name: "{{ item.item.key }}"
+    value: "{{ item.item.value }}"
+    state: present
+    reload: true
+    ignoreerrors: "{{ sysctl_ignore_unknown_keys }}"
+  when: item.stdout | int < item.item.value
+  loop: "{{ sysctl_settings.results }}"
 
 - name: Check dummy module
   community.general.modprobe:

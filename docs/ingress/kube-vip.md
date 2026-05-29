@@ -63,6 +63,8 @@ kube_vip_bgppeers:
 # kube_vip_bgp_peeraddress:
 # kube_vip_bgp_peerpass:
 # kube_vip_bgp_peeras:
+# kube_vip_bgp_sourceip:
+# kube_vip_bgp_sourceif:
 ```
 
 If using [control plane load-balancing](https://kube-vip.io/docs/about/architecture/#control-plane-load-balancing):
@@ -83,4 +85,13 @@ If you want to adjust the parameters of [kube-vip LeaderElection](https://kube-v
 kube_vip_leaseduration: 30
 kube_vip_renewdeadline: 20
 kube_vip_retryperiod: 4
+```
+
+To expose [Prometheus metrics](https://kube-vip.io/docs/installation/flags/#environment-variables) from the kube-vip static pod, set `kube_vip_metrics_enabled`. `kube_vip_metrics_port` is an integer; the manifest sets `prometheus_server` to `:PORT` because kube-vip passes that value to Go's HTTP listen address (see [`servePrometheusHTTPServer` in kube-vip](https://github.com/kube-vip/kube-vip/blob/main/cmd/kube-vip.go)). The manifest `ports` entry uses the same number for tooling that reads the pod spec.
+
+Kubespray defaults `kube_vip_metrics_port` to `2112`, matching upstream kube-vip's `--prometheusHTTPServer` default. Override it if your scrape config expects another port.
+
+```yaml
+kube_vip_metrics_enabled: true
+# kube_vip_metrics_port: 2112
 ```

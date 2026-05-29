@@ -1,7 +1,7 @@
 ---
 - name: Create temporary resolveconf cloud init file
   command: cp -f /etc/resolv.conf "{{ resolvconffile }}"
-  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+  when: ansible_facts['os_family'] in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: Add domain/search/nameservers/options to resolv.conf
   blockinfile:
@@ -12,7 +12,7 @@
       {% for item in nameserverentries %}
       nameserver {{ item }}
       {% endfor %}
-      options ndots:{{ ndots }} timeout:{{ dns_timeout | default('2') }} attempts:{{ dns_attempts | default('2') }}
+      options ndots:{{ ndots }} timeout:{{ dns_timeout }} attempts:{{ dns_attempts }}
     state: present
     insertbefore: BOF
     create: true
@@ -45,7 +45,7 @@
 - name: Get temporary resolveconf cloud init file content
   command: cat {{ resolvconffile }}
   register: cloud_config
-  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+  when: ansible_facts['os_family'] in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
 
 - name: Persist resolvconf cloud init file
   template:
@@ -53,5 +53,5 @@
     src: resolvconf.j2
     owner: root
     mode: "0644"
-  notify: Preinstall | update resolvconf for Flatcar Container Linux by Kinvolk
-  when: ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+  notify: Preinstall | propagate resolvconf to k8s components
+  when: ansible_facts['os_family'] in ["Flatcar", "Flatcar Container Linux by Kinvolk"]

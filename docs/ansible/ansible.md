@@ -157,20 +157,20 @@ Example command to filter and apply only DNS configuration tasks and skip
 everything else related to host OS configuration and downloading images of containers:
 
 ```ShellSession
-ansible-playbook -i inventory/sample/hosts.ini cluster.yml --tags preinstall,facts --skip-tags=download,bootstrap_os
+ansible-playbook -i inventory/sample/inventory.ini cluster.yml --tags preinstall,facts --skip-tags=download,bootstrap_os
 ```
 
 And this play only removes the K8s cluster DNS resolver IP from hosts' /etc/resolv.conf files:
 
 ```ShellSession
-ansible-playbook -i inventory/sample/hosts.ini -e dns_mode='none' cluster.yml --tags resolvconf
+ansible-playbook -i inventory/sample/inventory.ini -e dns_mode='none' cluster.yml --tags resolvconf
 ```
 
 And this prepares all container images locally (at the ansible runner node) without installing
 or upgrading related stuff or trying to upload container to K8s cluster nodes:
 
 ```ShellSession
-ansible-playbook -i inventory/sample/hosts.ini cluster.yml \
+ansible-playbook -i inventory/sample/inventory.ini cluster.yml \
     -e download_run_once=true -e download_localhost=true \
     --tags download --skip-tags upload,upgrade
 ```

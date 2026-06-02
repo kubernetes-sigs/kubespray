@@ -84,23 +84,49 @@
     - not kubeadm_already_run.stat.exists
 
 - name: Joining control plane node to the cluster.
-  command: >-
-    {{ bin_dir }}/kubeadm join
-    --config {{ kube_config_dir }}/kubeadm-controlplane.yaml
-    --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
-    --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
-  environment:
-    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
-  register: kubeadm_join_control_plane
-  retries: 3
-  throttle: 1
-  until: kubeadm_join_control_plane is succeeded
   when:
     - inventory_hostname != first_kube_control_plane
     - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists
+  environment:
+    PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+  block:
+    - name: Joining control plane node to the cluster. (1st try)
+      command: >-
+        {{ bin_dir }}/kubeadm join
+        --config {{ kube_config_dir }}/kubeadm-controlplane.yaml
+        --ignore-preflight-errors={{ kubeadm_ignore_preflight_errors | join(',') }}
+        --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
+      register: kubeadm_join_control_plane
+      throttle: 1
+  rescue:
+    - name: Reset cert directory before retrying control plane join
+      command: "{{ bin_dir }}/kubeadm reset -f --cert-dir {{ kube_cert_dir }}"
+      environment:
+        PATH: "{{ bin_dir }}:{{ ansible_env.PATH }}"
+    - name: Joining control plane node to the cluster. (retry)
+      command: >-
+        {{ bin_dir }}/kubeadm join
+        --config {{ kube_config_dir }}/kubeadm-controlplane.yaml
+        --ignore-preflight-errors={{ _ignore_errors | flatten | join(',') }}
+        --skip-phases={{ kubeadm_join_phases_skip | join(',') }}
+      vars:
+        _errors_from_first_try:
+          - 'FileAvailable--etc-kubernetes-manifests-kube-controller-manager.yaml'
+          - 'FileAvailable--etc-kubernetes-manifests-kube-scheduler.yaml'
+          - 'FileAvailable--etc-kubernetes-manifests-kube-apiserver.yaml'
+          - 'Port-10250'
+        _ignore_errors:
+          - "{{ kubeadm_ignore_preflight_errors }}"
+          - "{{ _errors_from_first_try if 'all' not in kubeadm_ignore_preflight_errors else [] }}"
+      register: kubeadm_join_control_plane
+      retries: 2
+      until: kubeadm_join_control_plane is succeeded
+      throttle: 1
 
 - name: Wait for new control plane nodes to be Ready
-  when: kubeadm_already_run.stat.exists
+  when:
+    - kubeadm_already_run.stat.exists
+    - kube_network_plugin not in ['cni', 'none']
   run_once: true
   command: >
     {{ kubectl }} get nodes --selector node-role.kubernetes.io/control-plane

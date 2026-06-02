@@ -58,6 +58,8 @@ make docker_password=<quay-robot-token>
 
 ## CI Validation
 
+These validation targets are also used by the Kubespray image-builder presubmit job.
+
 ### Build only
 
 ```bash

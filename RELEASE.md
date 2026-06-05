@@ -4,7 +4,7 @@ The Kubespray Project is released on an as-needed basis. The process is as follo
 
 1. An issue is proposing a new release with a changelog since the last release. Please see [a good sample issue](https://github.com/kubernetes-sigs/kubespray/issues/8325)
 1. At least one of the [approvers](OWNERS_ALIASES) must approve this release
-1. (Only for major releases) The `kube_version_min_required` variable is set to `n-1`
+1. (Only for major releases) The `kube_version_min_required` variable is set to `n-2`
 1. (Only for major releases) Remove hashes for [EOL versions](https://github.com/kubernetes/website/blob/main/content/en/releases/patch-releases.md) of kubernetes from `*_checksums` variables.
 1. Create the release note with [Kubernetes Release Notes Generator](https://github.com/kubernetes/release/blob/master/cmd/release-notes/README.md). See the following `Release note creation` section for the details.
 1. An approver creates [new release in GitHub](https://github.com/kubernetes-sigs/kubespray/releases/new) using a version and tag name like `vX.Y.Z` and attaching the release notes

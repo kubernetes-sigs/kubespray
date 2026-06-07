@@ -15,16 +15,16 @@
   include_vars: "{{ item }}"
   with_first_found:
     - files:
-        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower | replace('/', '_') }}.yml"
-        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_release | lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_release | lower }}.yml"
-        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version | lower | replace('/', '_') }}.yml"
-        - "{{ ansible_distribution | lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_distribution | lower }}.yml"
-        - "{{ ansible_distribution.split(' ')[0] | lower }}.yml"
-        - "{{ ansible_os_family | lower }}-{{ ansible_distribution_major_version | lower | replace('/', '_') }}.yml"
-        - "{{ ansible_os_family | lower }}-{{ host_architecture }}.yml"
-        - "{{ ansible_os_family | lower }}.yml"
+        - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_version'] | lower | replace('/', '_') }}.yml"
+        - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_release'] | lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_release'] | lower }}.yml"
+        - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_major_version'] | lower | replace('/', '_') }}.yml"
+        - "{{ ansible_facts['distribution'] | lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_facts['distribution'] | lower }}.yml"
+        - "{{ ansible_facts['distribution'].split(' ')[0] | lower }}.yml"
+        - "{{ ansible_facts['os_family'] | lower }}-{{ ansible_facts['distribution_major_version'] | lower | replace('/', '_') }}.yml"
+        - "{{ ansible_facts['os_family'] | lower }}-{{ host_architecture }}.yml"
+        - "{{ ansible_facts['os_family'] | lower }}.yml"
         - defaults.yml
       paths:
         - ../vars
@@ -35,7 +35,7 @@
 - name: Warn about Docker version on SUSE
   debug:
     msg: "SUSE distributions always install Docker from the distro repos"
-  when: ansible_pkg_mgr == 'zypper'
+  when: ansible_facts['pkg_mgr'] == 'zypper'
 
 - name: Gather DNS facts
   include_tasks: set_facts_dns.yml
@@ -58,33 +58,33 @@
   delay: "{{ retry_stagger }}"
   with_items: "{{ docker_repo_key_info.repo_keys }}"
   environment: "{{ proxy_env }}"
-  when: ansible_pkg_mgr == 'apt'
+  when: ansible_facts['pkg_mgr'] == 'apt'
 
 # ref to https://github.com/kubernetes-sigs/kubespray/issues/11086 & 12424
 - name: Convert -backports sources to archive.debian.org for bullseye and older
   replace:
     path: "{{ item }}"
-    regexp: '^(deb(?:-src)?\s+)(?:https?://)?(?:[^ ]+debian\.org)?([^ ]*/debian)(\s+{{ ansible_distribution_release }}-backports\b.*)'
+    regexp: '^(deb(?:-src)?\s+)(?:https?://)?(?:[^ ]+debian\.org)?([^ ]*/debian)(\s+{{ ansible_facts["distribution_release"] }}-backports\b.*)'
     replace: '\1http://archive.debian.org/debian\3'
     backup: true
   loop: "{{ query('fileglob', '/etc/apt/sources.list') }}"
   when:
-    - ansible_os_family == 'Debian'
-    - ansible_distribution_release in ['bullseye', 'buster']
+    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['distribution_release'] in ['bullseye', 'buster']
 
 - name: Ensure docker-ce repository is enabled
   apt_repository:
     repo: "{{ item }}"
     state: present
   with_items: "{{ docker_repo_info.repos }}"
-  when: ansible_pkg_mgr == 'apt'
+  when: ansible_facts['pkg_mgr'] == 'apt'
 
 - name: Configure docker repository on Fedora
   template:
     src: "fedora_docker.repo.j2"
     dest: "{{ yum_repo_dir }}/docker.repo"
     mode: "0644"
-  when: ansible_distribution == "Fedora" and not is_ostree
+  when: ansible_facts['distribution'] == "Fedora" and not is_ostree
 
 - name: Configure docker repository on RedHat/CentOS/OracleLinux/AlmaLinux/KylinLinux
   template:
@@ -92,15 +92,15 @@
     dest: "{{ yum_repo_dir }}/docker-ce.repo"
     mode: "0644"
   when:
-    - ansible_os_family == "RedHat"
-    - ansible_distribution != "Fedora"
+    - ansible_facts['os_family'] == "RedHat"
+    - ansible_facts['distribution'] != "Fedora"
     - not is_ostree
 
 - name: Remove dpkg hold
   dpkg_selections:
     name: "{{ item }}"
     selection: install
-  when: ansible_pkg_mgr == 'apt'
+  when: ansible_facts['pkg_mgr'] == 'apt'
   register: ret
   changed_when: false
   failed_when:
@@ -131,7 +131,7 @@
   delay: "{{ retry_stagger }}"
   notify: Restart docker
   when:
-    - not ansible_os_family in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
+    - not ansible_facts['os_family'] in ["Flatcar", "Flatcar Container Linux by Kinvolk"]
     - not is_ostree
     - docker_package_info.pkgs | length > 0
 
@@ -140,7 +140,7 @@
   dpkg_selections:
     name: "{{ item }}"
     selection: hold
-  when: ansible_pkg_mgr == 'apt'
+  when: ansible_facts['pkg_mgr'] == 'apt'
   changed_when: false
   with_items:
     - "{{ containerd_package }}"

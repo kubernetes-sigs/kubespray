@@ -40,10 +40,10 @@
   set_fact:
     needs_cordoning: "{{ (kubectl_node_ready.stdout == 'True' and not kubectl_node_unschedulable.stdout) or upgrade_node_always_cordon }}"
 
-- name: Run pre upgrade hooks before draining
+- name: Run pre-cordon hooks before cordoning and draining
   when:
     - needs_cordoning
-  loop: "{{ pre_upgrade_hooks | default([]) }}"
+  loop: "{{ pre_cordon_hooks }}"
   ansible.builtin.include_tasks: "{{ item }}"
 
 - name: Node draining
@@ -106,3 +106,7 @@
       fail:
         msg: "Failed to drain node {{ kube_override_hostname | default(inventory_hostname) }}"
       when: upgrade_node_fail_if_drain_fails
+
+- name: Run pre-upgrade hooks after draining, before upgrade
+  loop: "{{ pre_upgrade_hooks }}"
+  ansible.builtin.include_tasks: "{{ item }}"

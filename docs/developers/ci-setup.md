@@ -17,7 +17,7 @@ Vagrant jobs are using the [quay.io/kubespray/vagrant](/test-infra/vagrant-docke
 
 ## CI Variables
 
-In CI we have a [set of extra vars](/test/common_vars.yml) we use to ensure greater success of our CI jobs and avoid throttling by various APIs we depend on.
+In CI we have a [set of extra vars](/tests/common_vars.yml) we use to ensure greater success of our CI jobs and avoid throttling by various APIs we depend on.
 
 ## CI clusters
 

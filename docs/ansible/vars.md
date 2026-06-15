@@ -277,6 +277,8 @@ kubelet_cpu_manager_policy_options:
 
   If you use nfs dynamically mounted volumes, sometimes rpc-statd does not start within the kubelet. You can fix it with this parameter : `kubelet_systemd_wants_dependencies: ["rpc-statd.service"]` This will add `Wants=rpc-statd.service` in `[Unit]` section of /etc/systemd/system/kubelet.service
 
+* *kubelet_static_pod_path* - Path written to the kubelet `staticPodPath` setting (defaults to *kube_manifest_dir*). Set to `""` in `group_vars` for the `kube_node` group to omit `staticPodPath` from the kubelet config (for example Kubernetes STIG on workers). Keep *kube_manifest_dir* unchanged; control plane nodes and workers with `loadbalancer_apiserver_localhost` still use that directory for static pod manifests.
+
 * *node_labels* - Labels applied to nodes via `kubectl label node`.
   For example, labels can be set in the inventory as variables or more widely in group_vars.
   *node_labels* can only be defined as a dict:

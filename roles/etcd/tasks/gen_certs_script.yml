@@ -62,19 +62,16 @@
   slurp:
     src: "{{ item }}"
   register: etcd_master_certs
-  with_items:
-    - "{{ etcd_cert_dir }}/ca.pem"
-    - "{{ etcd_cert_dir }}/ca-key.pem"
-    - "[{% for node in groups['etcd'] %}
-        '{{ etcd_cert_dir }}/admin-{{ node }}.pem',
-        '{{ etcd_cert_dir }}/admin-{{ node }}-key.pem',
-        '{{ etcd_cert_dir }}/member-{{ node }}.pem',
-        '{{ etcd_cert_dir }}/member-{{ node }}-key.pem',
-        {% endfor %}]"
-    - "[{% for node in (groups['kube_control_plane']) %}
-        '{{ etcd_cert_dir }}/node-{{ node }}.pem',
-        '{{ etcd_cert_dir }}/node-{{ node }}-key.pem',
-        {% endfor %}]"
+  with_items: >-
+    {{
+      [etcd_cert_dir ~ '/ca.pem', etcd_cert_dir ~ '/ca-key.pem']
+      + (groups['etcd'] | map('regex_replace', '^(.*)$', etcd_cert_dir ~ '/admin-\1.pem') | list)
+      + (groups['etcd'] | map('regex_replace', '^(.*)$', etcd_cert_dir ~ '/admin-\1-key.pem') | list)
+      + (groups['etcd'] | map('regex_replace', '^(.*)$', etcd_cert_dir ~ '/member-\1.pem') | list)
+      + (groups['etcd'] | map('regex_replace', '^(.*)$', etcd_cert_dir ~ '/member-\1-key.pem') | list)
+      + (groups['kube_control_plane'] | map('regex_replace', '^(.*)$', etcd_cert_dir ~ '/node-\1.pem') | list)
+      + (groups['kube_control_plane'] | map('regex_replace', '^(.*)$', etcd_cert_dir ~ '/node-\1-key.pem') | list)
+    }}
   delegate_to: "{{ groups['etcd'][0] }}"
   when:
     - ('etcd' in group_names)
@@ -101,11 +98,11 @@
   slurp:
     src: "{{ item }}"
   register: etcd_master_node_certs
-  with_items:
-    - "[{% for node in groups['k8s_cluster'] %}
-        '{{ etcd_cert_dir }}/node-{{ node }}.pem',
-        '{{ etcd_cert_dir }}/node-{{ node }}-key.pem',
-        {% endfor %}]"
+  with_items: >-
+    {{
+      (groups['k8s_cluster'] | map('regex_replace', '^(.*)$', etcd_cert_dir ~ '/node-\1.pem') | list)
+      + (groups['k8s_cluster'] | map('regex_replace', '^(.*)$', etcd_cert_dir ~ '/node-\1-key.pem') | list)
+    }}
   delegate_to: "{{ groups['etcd'][0] }}"
   when:
     - ('etcd' in group_names)

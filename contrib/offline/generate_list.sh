@@ -8,6 +8,7 @@ REPO_ROOT_DIR="${CURRENT_DIR%/contrib/offline}"
 : ${DOWNLOAD_YML:="roles/kubespray_defaults/defaults/main/download.yml"}
 
 mkdir -p ${TEMP_DIR}
+rm -f ${TEMP_DIR}/*.template
 
 # generate all download files url template
 grep 'download_url:' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
@@ -27,7 +28,16 @@ for i in $KUBE_IMAGES; do
     echo "{{ kube_image_repo }}/$i:v{{ kube_version }}" >> ${TEMP_DIR}/images.list.template
 done
 
-# run ansible to expand templates
+# Generate Helm charts list template
+# Extract Helm chart repository URLs from download.yml
+CILIUM_REPO=$(sed -n 's/^cilium_chart_repo:[[:space:]]*//p' "${REPO_ROOT_DIR}/${DOWNLOAD_YML}" | tr -d '"' | head -n1)
+CILIUM_VERSION=$(sed -n 's/^cilium_version:[[:space:]]*//p' "${REPO_ROOT_DIR}/${DOWNLOAD_YML}" | tr -d '"' | head -n1)
+
+if [[ -n "${CILIUM_VERSION}" && -n "${CILIUM_REPO}" ]]; then
+    echo "oci://${CILIUM_REPO}:${CILIUM_VERSION}" >> "${TEMP_DIR}/helm.list.template"
+fi
+
+# Run ansible to expand templates
 /bin/cp ${CURRENT_DIR}/generate_list.yml ${REPO_ROOT_DIR}
 
 (cd ${REPO_ROOT_DIR} && ansible-playbook $* generate_list.yml && /bin/rm generate_list.yml) || exit 1

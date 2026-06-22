@@ -106,7 +106,7 @@ get_helm_url: "{{ files_repo }}/get.helm.sh"
 local_path_provisioner_helper_image_repo: "{{ registry_host }}/busybox"
 
 # Cilium
-cilium_install_extra_flags: "--repository {{ files_repo }}/helm.cilium.io/"
+cilium_chart_repo: ""{{ registry_host }}/quay.io/cilium/charts/cilium"
 cilium_extra_values:
   image:
     useDigest: false
@@ -123,7 +123,7 @@ cilium_extra_values:
           useDigest: false
   operator:
     image:
-      override: "{{ registry_host }}/cilium/operator-generic:v1.18.2"
+      override: "{{ registry_host }}/{{ cilium_operator_image_repo }}-generic:{{ cilium_operator_image_tag }}"
       useDigest: false
       extension: ""
   certgen:

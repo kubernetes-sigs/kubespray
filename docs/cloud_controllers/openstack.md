@@ -4,7 +4,6 @@
 
 Kubespray has been tested on a number of OpenStack Public Clouds including (in alphabetical order):
 
-- [Auro](https://auro.io/)
 - [Betacloud](https://www.betacloud.io/)
 - [CityCloud](https://www.citycloud.com/)
 - [DreamHost](https://www.dreamhost.com/cloud/computing/)

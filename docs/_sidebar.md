@@ -42,6 +42,7 @@
   * [Azure-csi](/docs/CSI/azure-csi.md)
   * [Cinder-csi](/docs/CSI/cinder-csi.md)
   * [Gcp-pd-csi](/docs/CSI/gcp-pd-csi.md)
+  * [Manila-csi](/docs/CSI/manila-csi.md)
   * [Vsphere-csi](/docs/CSI/vsphere-csi.md)
 * Developers
   * [Ci-setup](/docs/developers/ci-setup.md)

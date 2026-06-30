@@ -1,0 +1,37 @@
+---
+
+- name: Manila CSI Driver | Create mount points for Manila and CephFS drivers
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  with_items:
+    - "/var/lib/kubelet/plugins/manila.csi.openstack.org"
+    - "/var/lib/kubelet/plugins/cephfs.csi.ceph.com"
+
+- name: Manila CSI Driver | Deploy Manifests
+  block:
+    - name: Manila CSI Driver | Generate Manifests
+      template:
+        src: "{{ item.file }}.j2"
+        dest: "{{ kube_config_dir }}/{{ item.file }}"
+      with_items:
+        - {name: cephfs-csi-driver, file: cephfs-csi-driver.yml}
+        - {name: manila-csi-driver, file: manila-csi-driver.yml}
+        - {name: manila-csi-secrets, file: manila-csi-secrets.yml}
+        - {name: manila-csi-controllerplugin-rbac, file: manila-csi-controllerplugin-rbac.yml}
+        - {name: manila-csi-nodeplugin-rbac, file: manila-csi-nodeplugin-rbac.yml}
+        - {name: cephfs-csi-nodeplugin, file: cephfs-csi-nodeplugin.yml}
+        - {name: manila-csi-controllerplugin, file: manila-csi-controllerplugin.yml}
+        - {name: manila-csi-nodeplugin, file: manila-csi-nodeplugin.yml}
+      register: manila_csi_manifests
+
+    - name: Manila CSI Driver | Apply Manifests
+      kube:
+        kubectl: "{{ bin_dir }}/kubectl"
+        filename: "{{ kube_config_dir }}/{{ item.item.file }}"
+        state: "latest"
+      with_items: "{{ manila_csi_manifests.results }}"
+      when: not item is skipped
+  when:
+    - inventory_hostname == groups['kube_control_plane'][0]

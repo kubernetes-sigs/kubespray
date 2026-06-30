@@ -24,8 +24,6 @@ In addition, you can find some tools for offline deployment under [contrib/offli
 
 ## Tip: use the original domains as top directories in the files_repo, i.e `github.com/`, `dl.k8s.io/`, `storage.googleapis.com/`, `get.helm.sh/`
 
-## Tip: for Cilium ensure to mirror <https://helm.cilium.io/index.yaml> and the chart cilium-1.18.2.tgz in files_repo
-
 ## Access Control
 
 ### Note: access controlled files_repo
@@ -61,26 +59,26 @@ registry_pass: !vault |
           3164
 ```
 
-To enable Containerd **2+** to access the private registry:
+To enable Containerd **2+** to access the private registry, edit [your inventory](/inventory/sample/group_vars/all/containerd.yml):
 
 ```yaml
 
 containerd_registries_mirrors:
   - prefix: docker.io
     mirrors:
-      - host: https://registry-1.docker.io
+      - host: https://registry-1.docker.io/
         capabilities: ["pull", "resolve"]
         skip_verify: false
   - prefix: "{{ registry_addr }}"
     mirrors:
-      - host: "https://{{ registry_addr }}"
+      - host: "https://{{ registry_addr }}/"
         capabilities: ["pull", "resolve"]
         skip_verify: false
         header:
           Authorization: ["Basic {{ (registry_user + ':' + registry_pass) | b64encode }}"]
 ```
 
-To enable Containerd **1.7** to access the private registry:
+To enable Containerd **1.7** to access the private registry, edit [your inventory](/inventory/sample/group_vars/all/containerd.yml):
 
 ```yaml
 containerd_registry_auth:
@@ -106,16 +104,9 @@ dl_k8s_io_url: "{{ files_repo }}/dl.k8s.io"
 storage_googleapis_url: "{{ files_repo }}/storage.googleapis.com"
 get_helm_url: "{{ files_repo }}/get.helm.sh"
 local_path_provisioner_helper_image_repo: "{{ registry_host }}/busybox"
-# Insecure registries for containerd (see authenticated example above)
-containerd_registries_mirrors:
-  - prefix: "{{ registry_addr }}"
-    mirrors:
-      - host: "{{ registry_host }}"
-        capabilities: ["pull", "resolve"]
-        skip_verify: true
 
 # Cilium
-cilium_install_extra_flags: "--repository {{ files_repo }}/helm.cilium.io/"
+cilium_chart_repo: "{{ registry_host }}/quay.io/cilium/charts/cilium"
 cilium_extra_values:
   image:
     useDigest: false
@@ -132,7 +123,7 @@ cilium_extra_values:
           useDigest: false
   operator:
     image:
-      override: "{{ registry_host }}/cilium/operator-generic:v1.18.2"
+      override: "{{ cilium_operator_image_repo }}-generic:{{ cilium_operator_image_tag }}"
       useDigest: false
       extension: ""
   certgen:

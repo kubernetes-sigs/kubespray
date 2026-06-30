@@ -1,0 +1,103 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-cephfs-node-sa
+  namespace: kube-system
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-cephfs-node-role
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-cephfs-node-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-cephfs-node-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-cephfs-node-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name:  csi-cephfs-nodeplugin
+  namespace: kube-system
+  labels:
+    app: csi-cephfs-nodeplugin
+spec:
+  selector:
+    matchLabels:
+      app: csi-cephfs-nodeplugin
+  template:
+    metadata:
+      labels:
+        app: csi-cephfs-nodeplugin
+    spec:
+      serviceAccountName: csi-cephfs-node-sa
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: csi-cephfsplugin
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          image: {{ cephfs_csi_image_repo }}:{{ cephfs_csi_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--nodeid=$(NODE_ID)"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--v={{ manila_log_level | default(2) }}"
+            - "--type=cephfs"
+            - "--nodeserver"
+            - "--drivername={{ manila_fwd_driver_name }}"
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: kubelet-dir
+              mountPath: {{ kubelet_directory | default('/var/lib/kubelet') }}
+              mountPropagation: "Bidirectional"
+            - name: keys-dir
+              mountPath: /tmp/csi/keys
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: {{ kubelet_directory | default('/var/lib/kubelet') }}/plugins/{{ manila_fwd_driver_name }}
+            type: DirectoryOrCreate
+        - name: kubelet-dir
+          hostPath:
+            path: {{ kubelet_directory | default('/var/lib/kubelet') }}
+            type: Directory
+        - name: keys-dir
+          emptyDir: {}
+      tolerations:
+        - operator: Exists

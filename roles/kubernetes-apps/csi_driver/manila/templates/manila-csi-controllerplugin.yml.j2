@@ -1,0 +1,173 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-manila-controllerplugin
+  namespace: kube-system
+  labels:
+    app: csi-manila-controllerplugin
+spec:
+  selector:
+    app: csi-manila-controllerplugin
+  ports:
+    - name: healthz
+      port: {{ manila_csi_health_port | default(9809) }}
+      targetPort: healthz
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: csi-manila-controllerplugin
+  namespace: kube-system
+  labels:
+    app: csi-manila-controllerplugin
+spec:
+  replicas: {{ manila_csi_controller_replicas | default(1) }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: csi-manila-controllerplugin
+  template:
+    metadata:
+      labels:
+        app: csi-manila-controllerplugin
+    spec:
+      serviceAccountName: csi-manila-controller-sa
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: csi-provisioner
+          image: {{ csi_provisioner_image_repo }}:{{ manila_csi_provisioner_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v={{ manila_log_level | default(2) }}"
+            - "--timeout=3m"
+            - "--extra-create-metadata=true"
+            - "--default-fstype=cephfs"
+{% if manila_csi_controller_replicas is defined and manila_csi_controller_replicas > 1 %}
+            - "--leader-election=true"
+            - "--leader-election-namespace=kube-system"
+{% endif %}
+{% for key, value in manila_csi_provisioner_extra_args.items() %}
+            - "{{ '--' + key + '=' + value }}"
+{% endfor %}
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+
+        - name: csi-snapshotter
+          image: {{ csi_snapshotter_image_repo }}:{{ manila_csi_snapshotter_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v={{ manila_log_level | default(2) }}"
+{% if manila_csi_controller_replicas is defined and manila_csi_controller_replicas > 1 %}
+            - "--leader-election=true"
+{% endif %}
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+
+        - name: csi-resizer
+          image: {{ csi_resizer_image_repo }}:{{ manila_csi_resizer_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v={{ manila_log_level | default(2) }}"
+            - "--handle-volume-inuse-error=false"
+{% if manila_csi_controller_replicas is defined and manila_csi_controller_replicas > 1 %}
+            - "--leader-election=true"
+{% endif %}
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+
+        - name: liveness-probe
+          image: {{ csi_livenessprobe_image_repo }}:{{ manila_csi_livenessprobe_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--health-port={{ manila_csi_health_port | default(9809) }}"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+
+        - name: manila-csi-plugin
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          image: "{{ manila_csi_plugin_image_repo }}:{{ manila_csi_plugin_image_tag }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - /bin/manila-csi-plugin
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--drivername=$(DRIVER_NAME)"
+            - "--share-protocol-selector=$(MANILA_SHARE_PROTO)"
+            - "--fwdendpoint=$(FWD_CSI_ENDPOINT)"
+            - "--pvc-annotations"
+            - "--with-topology=false"
+            - "--v={{ manila_log_level | default(2) }}"
+          env:
+            - name: DRIVER_NAME
+              value: manila.csi.openstack.org
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+            - name: FWD_CSI_ENDPOINT
+              value: "{{ manila_fwd_endpoint }}"
+            - name: MANILA_SHARE_PROTO
+              value: "{{ manila_share_protocol }}"
+          ports:
+            - name: healthz
+              containerPort: {{ manila_csi_health_port | default(9809) }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 5
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+            - name: fwd-plugin-dir
+              mountPath: "{{ manila_fwd_plugin_dir }}"
+              mountPropagation: HostToContainer  # <-- CORRECTION ICI
+            - name: pod-mounts
+              mountPath: /var/lib/kubelet/pods
+              mountPropagation: Bidirectional
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+        - name: fwd-plugin-dir
+          hostPath:
+            path: "{{ manila_fwd_plugin_dir }}"
+            type: DirectoryOrCreate  # <-- SECURITÉ AJOUTÉE
+        - name: pod-mounts
+          hostPath:
+            path: /var/lib/kubelet/pods
+            type: Directory

@@ -1,0 +1,129 @@
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: csi-manila-nodeplugin
+  namespace: kube-system
+  labels:
+    app: csi-manila-nodeplugin
+spec:
+  selector:
+    matchLabels:
+      app: csi-manila-nodeplugin
+  template:
+    metadata:
+      labels:
+        app: csi-manila-nodeplugin
+    spec:
+      serviceAccountName: csi-manila-node-sa
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: node-driver-registrar
+          image: "{{ csi_node_driver_registrar_image_repo }}:{{ csi_node_driver_registrar_image_tag }}"
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+            - "--v={{ manila_log_level | default(2) }}"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: DRIVER_REG_SOCK_PATH
+              value: /var/lib/kubelet/plugins/manila.csi.openstack.org/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+
+        - name: liveness-probe
+          image: {{ csi_livenessprobe_image_repo }}:{{ manila_csi_livenessprobe_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - "--csi-address=/csi/csi.sock"
+            - "--health-port={{ manila_csi_health_port | default(9809) }}"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+
+        - name: manila-csi-plugin
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          image: {{ manila_csi_plugin_image_repo }}:{{ manila_csi_plugin_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          args:
+            - /bin/manila-csi-plugin
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--drivername=$(DRIVER_NAME)"
+            - "--share-protocol-selector=$(MANILA_SHARE_PROTO)"
+            - "--fwdendpoint=$(FWD_CSI_ENDPOINT)"
+            - "--v={{ manila_log_level | default(2) }}"
+          env:
+            - name: DRIVER_NAME
+              value: manila.csi.openstack.org
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix://csi/csi.sock
+            - name: FWD_CSI_ENDPOINT
+              value: "{{ manila_fwd_endpoint }}"
+            - name: MANILA_SHARE_PROTO
+              value: "{{ manila_share_protocol | default('CEPHFS') }}"
+          ports:
+            - containerPort: {{ manila_csi_health_port | default(9809) }}
+              name: healthz
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 5
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: kubelet-dir
+              mountPath: /var/lib/kubelet
+              mountPropagation: "Bidirectional"
+            - name: pod-mounts
+              mountPath: /var/lib/kubelet/pods
+              mountPropagation: "Bidirectional"
+            - name: fwd-plugin-dir
+              mountPath: "{{ manila_fwd_plugin_dir }}"
+              mountPropagation: "HostToContainer"
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/manila.csi.openstack.org
+            type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: Directory
+        - name: kubelet-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        - name: pod-mounts
+          hostPath:
+            path: /var/lib/kubelet/pods
+            type: Directory
+        - name: fwd-plugin-dir
+          hostPath:
+            path: "{{ manila_fwd_plugin_dir }}"
+            type: DirectoryOrCreate
+      tolerations:
+        - operator: Exists

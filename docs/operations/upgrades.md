@@ -436,4 +436,7 @@ ansible-playbook upgrade-cluster.yml -b -i inventory/sample/inventory.ini -e sys
 Nodes will be rebooted when there are package upgrades (`system_upgrade_reboot: on-upgrade`).
 This can be changed to `always` or `never`.
 
+If you want 60 sec delay in playbook execution after reboot use variable `node_post_reboot_delay_seconds: 60`
+This could be useful to give some extra time for services and networking on the node to start after boot, before continue with the playbook tasks.
+
 Note: Downloads will happen twice unless `system_upgrade_reboot` is `never`.

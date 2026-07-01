@@ -68,6 +68,51 @@ Step(2) download files and run nginx container
 
 when nginx container is running, it can be accessed through <http://127.0.0.1:8080/>.
 
+### Using skopeo for image download (optional)
+
+If `skopeo` is installed, it will be used to download the nginx:alpine image with architecture/os override support.
+To skip nginx download, set `DOWNLOAD_NGINX=false`:
+
+```shell
+DOWNLOAD_NGINX=false ./manage-offline-files.sh create
+```
+
+## manage-offline-skopeo-files.sh
+
+Alternative script using skopeo for all image operations. Requires skopeo to be installed.
+
+This script will download all files according to `temp/files.list` and run nginx container to provide offline file download.
+
+Step(1) generate `files.list`
+
+```shell
+./generate_list.sh
+```
+
+Step(2) download files and run nginx container
+
+```shell
+./manage-offline-skopeo-files.sh create
+```
+
+when nginx container is running, it can be accessed through <http://127.0.0.1:8080/>.
+
+## manage-offline-skopeo-container-images.sh
+
+Alternative container image management using skopeo. Requires skopeo to be installed.
+
+Step(1) - Create container image archive:
+
+```shell
+IMAGES_FROM_FILE=contrib/offline/temp/images.list ./manage-offline-skopeo-container-images.sh create
+```
+
+Step(2) - Register images to registry:
+
+```shell
+DESTINATION_REGISTRY=my-registry:5000 ./manage-offline-skopeo-container-images.sh register
+```
+
 ## upload2artifactory.py
 
 After the steps above, this script can recursively upload each file under a directory to a generic repository in Artifactory.
@@ -87,3 +132,10 @@ export TOKEN=...
 export BASE_URL=https://artifactory.example.com/artifactory/a-generic-repo/
 ./upload2artifactory.py
 ```
+
+## Summary
+
+Choose the appropriate script based on available tools:
+
+- **Without skopeo**: Use `manage-offline-files.sh` and `manage-offline-container-images.sh`
+- **With skopeo**: Use `manage-offline-skopeo-files.sh` and `manage-offline-skopeo-container-images.sh` for better architecture/os control and optional image download skipping via `DOWNLOAD_NGINX=false`

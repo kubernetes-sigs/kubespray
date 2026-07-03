@@ -13,12 +13,12 @@ if [ ! -f "${FILES_LIST}" ]; then
     exit 1
 fi
 
-rm -rf "${OFFLINE_FILES_DIR}"
-rm "${OFFLINE_FILES_ARCHIVE}"
-mkdir  "${OFFLINE_FILES_DIR}"
+mkdir -p "${OFFLINE_FILES_DIR}"
+rm -f "${OFFLINE_FILES_ARCHIVE}"
 
-while read -r url; do
-  if ! wget -x -P "${OFFLINE_FILES_DIR}" "${url}"; then
+while read -r url || [ -n "$url" ]; do
+  [[ -z "$url" || "$url" =~ ^# ]] && continue
+  if ! wget -c -x -P "${OFFLINE_FILES_DIR}" "${url}"; then
     exit 1
   fi
 done < "${FILES_LIST}"

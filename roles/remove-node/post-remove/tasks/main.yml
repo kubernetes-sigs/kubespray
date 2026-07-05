@@ -1,11 +1,17 @@
 ---
-- name: Remove-node | Delete node
+- name: post-remove | Get current kubernetes nodes
+  command: "{{ kubectl }} get nodes -o jsonpath='{.items[*].metadata.name}'"
+  delegate_to: "{{ groups['kube_control_plane'] | first }}"
+  register: current_k8s_nodes
+  when: groups['kube_control_plane'] | length > 0
+  changed_when: false
+
+- name: post-remove | Delete node
   command: "{{ kubectl }} delete node {{ kube_override_hostname }}"
   delegate_to: "{{ groups['kube_control_plane'] | first }}"
   when:
     - groups['kube_control_plane'] | length > 0
-    # ignore servers that are not nodes
-    - ('k8s_cluster' in group_names) and kube_override_hostname in nodes.stdout_lines
+    - kube_override_hostname in current_k8s_nodes.stdout.split()
   retries: "{{ delete_node_retries }}"
   # Sometimes the api-server can have a short window of indisponibility when we delete a control plane node
   delay: "{{ delete_node_delay_seconds }}"

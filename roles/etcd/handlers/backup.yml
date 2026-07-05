@@ -3,7 +3,7 @@
   setup:
     filter: ansible_date_time
   listen: Restart etcd
-  when: etcd_cluster_is_healthy.rc == 0
+  when: (etcd_cluster_is_healthy | default(dict(rc=1))).rc == 0
 
 - name: Set Backup Directory
   set_fact:
@@ -18,7 +18,7 @@
     group: root
     mode: "0600"
   listen: Restart etcd
-  when: etcd_cluster_is_healthy.rc == 0
+  when: (etcd_cluster_is_healthy | default(dict(rc=1))).rc == 0
 
 - name: Stat etcd v2 data directory
   stat:
@@ -28,12 +28,12 @@
     get_mime: false
   register: etcd_data_dir_member
   listen: Restart etcd
-  when: etcd_cluster_is_healthy.rc == 0
+  when: (etcd_cluster_is_healthy | default(dict(rc=1))).rc == 0
 
 - name: Backup etcd v2 data
   when:
     - etcd_data_dir_member.stat.exists
-    - etcd_cluster_is_healthy.rc == 0
+    - (etcd_cluster_is_healthy | default(dict(rc=1))).rc == 0
     - etcd_version is version('3.6.0', '<')
   command: >-
     {{ bin_dir }}/etcdctl backup
@@ -62,4 +62,4 @@
   until: etcd_backup_v3_command.rc == 0
   delay: "{{ retry_stagger | random + 3 }}"
   listen: Restart etcd
-  when: etcd_cluster_is_healthy.rc == 0
+  when: (etcd_cluster_is_healthy | default(dict(rc=1))).rc == 0

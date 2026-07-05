@@ -30,7 +30,7 @@ debian11 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian12 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 debian13 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 fedora42 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
-fedora43 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
+fedora43 |  :white_check_mark: | :x: | :x: | :white_check_mark: | :x: | :x: | :x: |
 flatcar4081 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 openeuler24 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux10 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |

@@ -81,9 +81,19 @@ resolvConf: "{{ kube_resolv_conf }}"
 {% if kubelet_config_extra_args %}
 {{ kubelet_config_extra_args | to_nice_yaml(indent=2) }}
 {% endif %}
-{% if kubelet_feature_gates or kube_feature_gates %}
+{% set disable_websockets_to_kubelet = (container_manager == 'docker' and kube_version is version('1.36.0', '>=')) %}
+{% set kubelet_gates = (kubelet_feature_gates | default(kube_feature_gates, true)) %}
+{% if disable_websockets_to_kubelet %}
+{% set kubelet_gates = kubelet_gates | reject('search', '^ExtendWebSocketsToKubelet=') | list %}
+{% endif %}
+{% if kubelet_gates or disable_websockets_to_kubelet %}
 featureGates:
-{% for feature in (kubelet_feature_gates | default(kube_feature_gates, true)) %}
+{% if disable_websockets_to_kubelet %}
+  # cri-dockerd does not support WebSocket streaming
+  # https://github.com/kubernetes-sigs/kubespray/issues/13360
+  ExtendWebSocketsToKubelet: false
+{% endif %}
+{% for feature in kubelet_gates %}
   {{ feature | replace("=", ": ") }}
 {% endfor %}
 {% endif %}

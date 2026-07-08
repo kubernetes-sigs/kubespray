@@ -35,7 +35,7 @@ function create_container_image_tar() {
 	mkdir  ${IMAGE_DIR}
 	cd     ${IMAGE_DIR}
 
-	sudo --preserve-env=http_proxy,https_proxy,no_proxy ${runtime} pull registry:latest
+	sudo --preserve-env=http_proxy,https_proxy,no_proxy ${runtime} pull --platform linux/amd64 registry:latest
 	sudo ${runtime} save -o registry-latest.tar registry:latest
 
 	while read -r image
@@ -44,7 +44,7 @@ function create_container_image_tar() {
 		set +e
 		for step in $(seq 1 ${RETRY_COUNT})
 		do
-			sudo --preserve-env=http_proxy,https_proxy,no_proxy ${runtime} pull ${image}
+			sudo --preserve-env=http_proxy,https_proxy,no_proxy ${runtime} pull --platform linux/amd64 ${image}
 			if [ $? -eq 0 ]; then
 				break
 			fi
@@ -141,32 +141,33 @@ function register_container_images() {
 		file_name=$(echo ${line} | awk '{print $1}')
 		raw_image=$(echo ${line} | awk '{print $2}')
 		new_image="${DESTINATION_REGISTRY}/${raw_image}"
-		load_image=$(sudo ${runtime} load -i ${IMAGE_DIR}/${file_name} | head -n1)
-		org_image=$(echo "${load_image}"  | awk '{print $3}')
-		# special case for tags containing the digest when using docker or podman as the container runtime
-		if [ "${org_image}" == "ID:" ]; then
-		  org_image=$(echo "${load_image}"  | awk '{print $4}')
+
+		load_output=$(sudo ${runtime} load -i "${IMAGE_DIR}/${file_name}")
+		load_image=$(echo "${load_output}" | head -n1)
+		org_image=$(echo "${load_image}" | awk '{print $3}')
+		
+		if [ "${org_image}" = "ID:" ]; then
+			org_image=$(echo "${load_image}" | awk '{print $4}')
 		fi
-		image_id=$(sudo ${runtime} image inspect --format "{{.Id}}" "${org_image}")
+
 		if [ -z "${file_name}" ]; then
 			echo "Failed to get file_name for line ${line}"
 			exit 1
 		fi
+
 		if [ -z "${raw_image}" ]; then
 			echo "Failed to get raw_image for line ${line}"
 			exit 1
 		fi
+
 		if [ -z "${org_image}" ]; then
 			echo "Failed to get org_image for line ${line}"
 			exit 1
 		fi
-		if [ -z "${image_id}" ]; then
-			echo "Failed to get image_id for file ${file_name}"
-			exit 1
-		fi
-		sudo ${runtime} load -i ${IMAGE_DIR}/${file_name}
-		sudo ${runtime} tag  ${image_id} ${new_image}
-		sudo ${runtime} push ${new_image}
+
+		sudo ${runtime} tag "${org_image}" "${new_image}"
+		sudo ${runtime} push "${new_image}"
+
 	done <<< "$(cat ${IMAGE_LIST})"
 
 	echo "Succeeded to register container images to local registry."

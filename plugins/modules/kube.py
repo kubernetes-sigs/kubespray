@@ -325,9 +325,8 @@ def main():
             log_level=dict(default=0, type='int'),
             state=dict(default='present', choices=['present', 'absent', 'latest', 'reloaded', 'stopped', 'exists']),
             recursive=dict(default=False, type='bool'),
-            ),
-            mutually_exclusive=[['filename', 'list']]
-        )
+        ),
+    )
 
     changed = False
 

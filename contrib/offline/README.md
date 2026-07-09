@@ -70,7 +70,7 @@ when nginx container is running, it can be accessed through <http://127.0.0.1:80
 
 ## manage-offline-skopeo-files.sh
 
-Alternative script using skopeo for all image operations. Requires skopeo to be installed.
+Alternative script using skopeo (if installed) for image operations, with a fallback to a container runtime.
 
 This script will download all files according to `temp/files.list` and run nginx container to provide offline file download.
 
@@ -80,10 +80,16 @@ Step(1) generate `files.list`
 ./generate_list.sh
 ```
 
-Step(2) download files and run nginx container
+Step(2) download files and create the offline archive
 
 ```shell
 ./manage-offline-skopeo-files.sh create
+```
+
+Step(3) start the nginx container to serve the downloaded files
+
+```shell
+./manage-offline-skopeo-files.sh serve
 ```
 
 when nginx container is running, it can be accessed through <http://127.0.0.1:8080/>.

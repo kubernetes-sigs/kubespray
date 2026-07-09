@@ -29,8 +29,9 @@ function create_container_image_tar() {
   cd "${IMAGE_DIR}"
 
   echo "[INFO] Downloading registry:latest"
+  : "${SRC_TLS_VERIFY:=false}"
   skopeo copy --override-os="${TARGET_OS}" --override-arch="${TARGET_ARCH}" \
-    --src-tls-verify=false --retry-times="${RETRY_COUNT}" \
+    --src-tls-verify="${SRC_TLS_VERIFY}" --retry-times="${RETRY_COUNT}" \
     "docker://registry:latest" "docker-archive:${IMAGE_DIR}/registry-latest.tar:registry:latest"
 
   total=$(wc -l < "${IMAGES}")
@@ -42,9 +43,9 @@ function create_container_image_tar() {
     echo "[${n}/${total}] ${image}"
 
     skopeo copy --override-os="${TARGET_OS}" --override-arch="${TARGET_ARCH}" \
-      --src-tls-verify=false --retry-times="${RETRY_COUNT}" \
+      --src-tls-verify="${SRC_TLS_VERIFY}" --retry-times="${RETRY_COUNT}" \
       "docker://${image}" "oci-archive:${IMAGE_DIR}/${FILE_NAME}" || \
-    skopeo copy --all --src-tls-verify=false --retry-times="${RETRY_COUNT}" \
+    skopeo copy --all --src-tls-verify="${SRC_TLS_VERIFY}" --retry-times="${RETRY_COUNT}" \
       "docker://${image}" "oci-archive:${IMAGE_DIR}/${FILE_NAME}"
 
 
@@ -105,7 +106,7 @@ function register_container_images() {
   if ${create_registry}; then
     sudo "${runtime}" load -i "${IMAGE_DIR}/registry-latest.tar"
     sudo "${runtime}" container inspect registry >/dev/null 2>&1 || \
-      sudo "${runtime}" run --restart=always -d -p "${REGISTRY_PORT}:${REGISTRY_PORT}" --name registry registry:latest
+      sudo "${runtime}" run --restart=always -d -p "${REGISTRY_PORT}:5000" --name registry registry:latest
   fi
 
   total=$(wc -l < "${IMAGE_LIST}")

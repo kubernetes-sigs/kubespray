@@ -57,7 +57,7 @@ function create_offline_files() {
 
     echo "[INFO] Downloading files from list"
     while read -r url; do
-        wget -nH --cut-dirs=2 -P "${OFFLINE_FILES_DIR}" "${url}" || echo "[WARN] Failed to download: ${url}"
+        wget -x -P "${OFFLINE_FILES_DIR}" "${url}" || { echo "[ERROR] Failed to download: ${url}"; exit 1; }
     done < "${FILES_LIST}"
 
     tar -C "${CURRENT_DIR}" -czvf "${OFFLINE_FILES_ARCHIVE}" "${OFFLINE_FILES_DIR_NAME}"
@@ -78,7 +78,12 @@ function serve_offline_files() {
     fi
 
     if sudo "${runtime}" container inspect nginx-files >/dev/null 2>&1; then
-        echo "[INFO] nginx-files container already running"
+        if sudo "${runtime}" inspect --format '{{.State.Running}}' nginx-files 2>/dev/null | grep -q 'true'; then
+            echo "[INFO] nginx-files container already running"
+            return 0
+        fi
+        echo "[INFO] Starting existing nginx-files container"
+        sudo "${runtime}" start nginx-files >/dev/null 2>&1 || { echo "[ERROR] Failed to start nginx-files container"; exit 1; }
         return 0
     fi
 

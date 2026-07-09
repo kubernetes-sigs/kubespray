@@ -39,9 +39,9 @@ function create_helm_chart_tar() {
 	while read -r chart_url || [[ -n "${chart_url}" ]]; do
 		[[ -z "${chart_url}" || "${chart_url}" =~ ^# ]] && continue
 
-		chart_name=$(echo "${chart_url}" | sed 's@.*/@@' | sed 's/:.*//')
-		chart_version=$(echo "${chart_url}" | sed 's@.*:@@')
-		chart_url_no_version=$(echo "${chart_url}" | sed 's@:[0-9][0-9.]*$@@')
+		chart_url_no_version="${chart_url%:*}"
+		chart_version="${chart_url##*:}"
+		chart_name="$(basename "${chart_url_no_version}")"
 		FILE_NAME="${chart_name}-${chart_version}.tgz"
 
 		echo "Downloading: ${chart_url_no_version}"

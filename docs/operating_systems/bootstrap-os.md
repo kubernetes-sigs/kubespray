@@ -38,7 +38,7 @@ Variables are listed with their default values, if applicable.
 #### CentOS/RHEL/AlmaLinux/Rocky Linux
 
 * `centos_fastestmirror_enabled: false`
-  Whether the [fastestmirror](https://wiki.centos.org/PackageManagement/Yum/FastestMirror) yum plugin should be enabled.
+  Whether the [fastestmirror](https://wiki.centos.org/PackageManagement(2f)Yum(2f)FastestMirror.html) yum plugin should be enabled.
 
 ## Example Playbook
 

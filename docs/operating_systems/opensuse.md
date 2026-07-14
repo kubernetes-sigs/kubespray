@@ -14,4 +14,4 @@ openSUSE Leap installation Notes:
 
   ```sudo zypper -n install python-Jinja2 python-netaddr```
 
-Now you can continue with [Preparing your deployment](getting-started.md#starting-custom-deployment)
+Now you can continue with [Preparing your deployment](../getting_started/getting-started.md)

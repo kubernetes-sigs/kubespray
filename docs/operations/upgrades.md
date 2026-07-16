@@ -437,3 +437,5 @@ Nodes will be rebooted when there are package upgrades (`system_upgrade_reboot: 
 This can be changed to `always` or `never`.
 
 Note: Downloads will happen twice unless `system_upgrade_reboot` is `never`.
+
+Debian based nodes can be cleaned of packages to reduce disk space usage with `system_upgrade_autoclean: true`

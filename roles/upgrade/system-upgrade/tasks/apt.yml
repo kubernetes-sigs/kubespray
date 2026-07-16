@@ -5,10 +5,23 @@
     upgrade: dist
     autoremove: true
     dpkg_options: force-confold,force-confdef
-  register: apt_upgrade
 
-- name: Reboot after APT Dist-Upgrade  # noqa no-handler
+- name: Check if a reboot is required
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+    get_checksum: false
+  register: reboot_required
+
+- name: Reboot server if required to apply updates
+  ansible.builtin.reboot:
+    msg: "The system is going down for reboot NOW!"
+    post_reboot_delay: 30
   when:
-  - apt_upgrade.changed or system_upgrade_reboot == 'always'
-  - system_upgrade_reboot != 'never'
-  reboot:
+    - reboot_required.stat.exists
+    - system_upgrade_reboot != 'never'
+
+- name: APT Autoclean
+  apt:
+    autoclean: true
+  when:
+    - system_upgrade_autoclean

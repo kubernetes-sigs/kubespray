@@ -438,4 +438,4 @@ This can be changed to `always` or `never`.
 
 Note: Downloads will happen twice unless `system_upgrade_reboot` is `never`.
 
-Nodes can be cleaned of packages to reduce disk space usage with `system_upgrade_autoclean: true`
+Debian based nodes can be cleaned of packages to reduce disk space usage with `system_upgrade_autoclean: true`

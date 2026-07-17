@@ -5,8 +5,25 @@
     state: latest
   register: yum_upgrade
 
-- name: Reboot after YUM upgrade  # noqa no-handler
+- name: Check if reboot is required
+  ansible.builtin.command:
+    cmd: needs-restarting --reboothint
+  register: reboot_required
+  changed_when: false
+  failed_when: reboot_required.rc == 2
+
+- name: Reboot server if required or requested to apply updates
+  ansible.builtin.reboot:
+    msg: "The system is going down for reboot NOW!"
+    post_reboot_delay: "{{ node_post_reboot_delay_seconds }}"
   when:
-  - yum_upgrade.changed or system_upgrade_reboot == 'always'
-  - system_upgrade_reboot != 'never'
-  reboot:
+    - reboot_required.rc == 1 or system_upgrade_reboot == 'always'
+    - system_upgrade_reboot != 'never'
+
+- name: Clean all Package caches
+  ansible.builtin.command:
+    cmd: yum clean all
+  changed_when: true
+  failed_when: false
+  when:
+    - system_upgrade_autoclean

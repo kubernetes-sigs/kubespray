@@ -68,6 +68,18 @@
     - kube_network_plugin == 'cilium' or cilium_deploy_additionally
     - not ignore_assert_errors
 
+- name: Stop if kube_owner is not root when using cilium
+  assert:
+    that: kube_owner == 'root'
+    fail_msg: |
+      kube_owner is set to '{{ kube_owner }}', but cilium requires it to be 'root'.
+      Cilium's init containers run as UID 0 with capabilities (including CAP_DAC_OVERRIDE) dropped,
+      so host paths it writes to (e.g. /opt/cni/bin) must be owned by root or it will fail with
+      a permission error. See https://github.com/kubernetes-sigs/kubespray/issues/13378
+  when:
+    - kube_network_plugin == 'cilium' or cilium_deploy_additionally
+    - not ignore_assert_errors
+
 - name: Stop if kernel version is too low for nftables
   assert:
     that: ansible_facts['kernel'].split('-')[0] is version('5.13', '>=')

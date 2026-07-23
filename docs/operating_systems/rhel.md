@@ -35,6 +35,6 @@ If the RHEL hosts are already registered to a valid Red Hat support subscription
 
 (Experimental in Kubespray CI)
 
-The official Rocky Linux 10 cloud image does not include `kernel-module-extra`. Both Kube Proxy and CNI rely on this package, and since it relates to kernel version compatibility (which may require VM reboots, etc.), we haven't found an ideal solution.
+The official Rocky Linux 10 cloud image does not include `kernel-modules-extra`. Both Kube Proxy and CNI rely on this package, and since it relates to kernel version compatibility (which may require VM reboots, etc.), we haven't found an ideal solution.
 
 However, some users report that it doesn't affect them (minimal version). Therefore, the Kubespray CI Rocky Linux 10 image is built by Kubespray maintainers using `diskimage-builder`. For detailed methods, please refer to [the comments](https://github.com/kubernetes-sigs/kubespray/pull/12355#issuecomment-3705400093).

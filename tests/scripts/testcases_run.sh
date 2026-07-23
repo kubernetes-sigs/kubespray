@@ -48,8 +48,8 @@ ansible-playbook \
 
 # Create cluster
 if [[ "${TESTCASE}" =~ "scale" ]]; then
-    run_playbook cluster --limit '!for_scale'
-    run_playbook scale --limit 'for_scale'
+    run_playbook cluster --limit 'all:!for_scale:localhost'
+    run_playbook scale --limit 'for_scale:localhost'
 else
     run_playbook cluster
 fi
@@ -59,6 +59,8 @@ if [ "${UPGRADE_TEST}" != "false" ]; then
   git checkout "${CI_COMMIT_SHA}"
 
   pip install --break-system-packages --no-compile --no-cache-dir -r requirements.txt
+
+  echo 'reset_local_release_dir: true' >> tests/common_vars.yml
 
   case "${UPGRADE_TEST}" in
     "basic")

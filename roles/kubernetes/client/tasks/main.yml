@@ -26,8 +26,8 @@
 
 - name: Wait for k8s apiserver
   wait_for:
-    host: "{{ _kube_apiserver_endpoint | urlsplit('hostname') }}"
-    port: "{{ _kube_apiserver_endpoint | urlsplit('port') | default(kube_apiserver_port, true) }}"
+    host: "{{ _kube_apiserver_local_endpoint | urlsplit('hostname') }}"
+    port: "{{ _kube_apiserver_local_endpoint | urlsplit('port') | default(kube_apiserver_port, true) }}"
     timeout: 180
 
 - name: Create kubeconfig localhost artifacts
@@ -47,6 +47,7 @@
 - name: Convert kubeconfig to YAML
   set_fact:
     admin_kubeconfig: "{{ kubeadm_admin_kubeconfig.stdout | from_yaml }}"
+  run_once: true
   when: kubeconfig_localhost
 
 - name: Override username in kubeconfig
@@ -60,6 +61,7 @@
     override_cluster_name: "{{ {'clusters': [{'cluster': (cluster_infos | combine({'server': _kube_apiserver_endpoint})), 'name': cluster_name}]} }}"
     override_context: "{{ {'contexts': [{'context': {'user': username, 'cluster': cluster_name}, 'name': context}], 'current-context': context} }}"
     override_user: "{{ {'users': [{'name': username, 'user': user_certs}]} }}"
+  run_once: true
   when: kubeconfig_localhost
 
 - name: Write admin kubeconfig on ansible host

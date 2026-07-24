@@ -44,7 +44,10 @@
   run_once: true
   delegate_to: "{{ groups['etcd'][0] }}"
   when: gen_certs
-  notify: Set etcd_secret_changed
+  notify:
+    - Set etcd_secret_changed
+    - Restart etcd
+    - Restart etcd-events
 
 - name: Gen_certs | run cert generation script for all clients
   command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
@@ -56,7 +59,10 @@
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
     - gen_certs
-  notify: Set etcd_secret_changed
+  notify:
+    - Set etcd_secret_changed
+    - Restart etcd
+    - Restart etcd-events
 
 - name: Gen_certs | Gather etcd member/admin and kube_control_plane client certs from first etcd node
   slurp:
@@ -80,7 +86,10 @@
     - ('etcd' in group_names)
     - sync_certs
     - inventory_hostname != groups['etcd'][0]
-  notify: Set etcd_secret_changed
+  notify:
+    - Set etcd_secret_changed
+    - Restart etcd
+    - Restart etcd-events
 
 - name: Gen_certs | Write etcd member/admin and kube_control_plane client certs to other etcd nodes
   copy:
@@ -112,7 +121,10 @@
     - inventory_hostname != groups['etcd'][0]
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
-  notify: Set etcd_secret_changed
+  notify:
+    - Set etcd_secret_changed
+    - Restart etcd
+    - Restart etcd-events
 
 - name: Gen_certs | Write node certs to other etcd nodes
   copy:

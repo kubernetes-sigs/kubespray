@@ -1,16 +1,4 @@
 ---
-- name: Set kubeadm_discovery_address
-  set_fact:
-    # noqa: jinja[spacing]
-    kubeadm_discovery_address: >-
-      {%- if "127.0.0.1" in kube_apiserver_endpoint or "localhost" in kube_apiserver_endpoint -%}
-      {{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
-      {%- else -%}
-      {{ kube_apiserver_endpoint | replace("https://", "") }}
-      {%- endif %}
-  tags:
-    - facts
-
 - name: Check if kubelet.conf exists
   stat:
     path: "{{ kube_config_dir }}/kubelet.conf"
@@ -108,7 +96,7 @@
     backup: true
   when:
     - ('kube_control_plane' not in group_names)
-    - kubeadm_discovery_address != _kube_apiserver_cluster_internal_endpoint | replace("https://", "")
+    - _kube_apiserver_endpoint != _kube_apiserver_cluster_internal_endpoint
   notify: Kubeadm | restart kubelet
 
 - name: Get current resourceVersion of kube-proxy configmap
@@ -136,7 +124,7 @@
   delegate_facts: false
   when:
     - kube_proxy_deployed
-    - kubeadm_discovery_address != _kube_apiserver_cluster_internal_endpoint | replace("https://", "")
+    - _kube_apiserver_endpoint != _kube_apiserver_cluster_internal_endpoint
   tags:
     - kube-proxy
 

@@ -5,13 +5,30 @@ echo "## Check Expiration before renewal ##"
 {{ bin_dir }}/kubeadm certs check-expiration
 
 days_buffer=7 # set a time margin, because we should not renew at the last moment
-next_time=$(systemctl show k8s-certs-renew.timer  -p NextElapseUSecRealtime --value)
-
+# Derive the next scheduled run from the calendar rather than the timer's
+# NextElapseUSecRealtime: systemd clears that property while the service the timer
+# triggered is still running, so it is always empty here and the expiry comparison
+# below is skipped, forcing a renewal on every timer fire (see #13072). Fall back to
+# the timer property if systemd-analyze cannot resolve the calendar.
+next_time=$(LC_ALL=C systemd-analyze calendar "{{ auto_renew_certificates_systemd_calendar }}" 2>/dev/null | sed -n 's/^[[:space:]]*Next elapse:[[:space:]]*//p')
 if [ "${next_time}" == "" ]; then
+	next_time=$(systemctl show k8s-certs-renew.timer -p NextElapseUSecRealtime --value)
+fi
+
+# Convert the next scheduled run into an epoch, adding the safety buffer. Guard the
+# parse: systemd-analyze prints "Next elapse: never" for a calendar with no future run,
+# and any other unparseable value must also fall through to a direct renewal. Without
+# this guard an unparseable next_time leaves target_time empty, the arithmetic below
+# yields a large negative threshold, and the script exits without ever renewing.
+target_time=""
+if [ "${next_time}" != "" ]; then
+	target_time=$(date -d "${next_time} + ${days_buffer} days" +%s 2>/dev/null) || target_time=""
+fi
+
+if [ "${target_time}" == "" ]; then
 	echo "## Skip expiry comparison due to fail to parse next elapse from systemd calendar,do renewal directly ##"
 else
 	current_time=$(date +%s)
-	target_time=$(date -d "${next_time} + ${days_buffer} days" +%s) # $next_time - $days_buffer days
 	expiry_threshold=$(( ${target_time} - ${current_time} ))
 	expired_certs=$({{ bin_dir }}/kubeadm certs check-expiration -o jsonpath="{.certificates[?(@.residualTime<${expiry_threshold}.0)]}")
     if [ "${expired_certs}" == "" ];then

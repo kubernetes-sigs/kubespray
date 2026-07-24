@@ -35,7 +35,12 @@ Kubespray uses two primary variables to configure API server endpoints:
 
 * `kube_apiserver_endpoint` - Used to access the API from outside the cluster (kubectl, CI/CD, etc.)
 * `kube_apiserver_cluster_internal_endpoint` - Used to access the API from inside the cluster (nodes, pods with hostNetwork). Optional, defaults to `kube_apiserver_endpoint` or localhost LB.
-These variables automatically resolve to appropriate values based on your loadbalancer configuration, providing sane defaults for HA, non-HA, and localhost LB scenarios. Legacy variables (`loadbalancer_apiserver`, `apiserver_loadbalancer_domain_name`, `kubeadm_config_api_fqdn`) were removed in v2.31.0 and should be replaced with the endpoint variables above.
+
+These variables automatically resolve to appropriate values based on your
+loadbalancer configuration, providing sane defaults for HA, non-HA, and
+localhost LB scenarios. Legacy variables (`loadbalancer_apiserver`,
+`apiserver_loadbalancer_domain_name`, `kubeadm_config_api_fqdn`) were removed
+in v2.31.0 and should be replaced with the endpoint variables above.
 
 If you choose to NOT use the local internal loadbalancer, you will need to
 use the [kube-vip](/docs/ingress/kube-vip.md) ansible role or configure your own loadbalancer to achieve HA. By default, it only configures a non-HA endpoint, which points to the

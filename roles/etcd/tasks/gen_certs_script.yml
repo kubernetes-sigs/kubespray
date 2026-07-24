@@ -46,6 +46,29 @@
   when: gen_certs
   notify: Set etcd_secret_changed
 
+- name: Gen_certs | Ensure consistent etcd certificate permissions on first etcd node
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ etcd_owner }}"
+    group: "{{ etcd_cert_group }}"
+    mode: "0640"
+  with_items:
+    - "{{ etcd_cert_dir }}/ca.pem"
+    - "{{ etcd_cert_dir }}/ca-key.pem"
+    - "[{% for node in groups['etcd'] %}
+        '{{ etcd_cert_dir }}/admin-{{ node }}.pem',
+        '{{ etcd_cert_dir }}/admin-{{ node }}-key.pem',
+        '{{ etcd_cert_dir }}/member-{{ node }}.pem',
+        '{{ etcd_cert_dir }}/member-{{ node }}-key.pem',
+        {% endfor %}]"
+    - "[{% for node in (groups['kube_control_plane']) %}
+        '{{ etcd_cert_dir }}/node-{{ node }}.pem',
+        '{{ etcd_cert_dir }}/node-{{ node }}-key.pem',
+        {% endfor %}]"
+  run_once: true
+  delegate_to: "{{ groups['etcd'][0] }}"
+  when: gen_certs
+
 - name: Gen_certs | run cert generation script for all clients
   command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
   environment:

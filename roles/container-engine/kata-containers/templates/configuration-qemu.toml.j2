@@ -374,6 +374,20 @@ enable_debug = {{ kata_containers_qemu_debug }}
 # Default 0
 #pcie_root_port = 2
 
+{% if kata_containers_version is version('3.2.0', '>=') %}
+# Enable hot-plugging of VFIO devices to a bridge-port,
+# root-port or switch-port.
+# The default setting is  "no-port"
+# hot_plug_vfio = "no-port"
+
+# In a confidential compute environment hot-plugging can compromise
+# security.
+# Enable cold-plugging of VFIO devices to a bridge-port,
+# root-port or switch-port.
+# The default setting is  "no-port", which means disabled.
+# cold_plug_vfio = "no-port"
+{% endif %}
+
 # If vhost-net backend for virtio-net is not desired, set to true. Default is false, which trades off
 # security (vhost-net runs ring0) for network I/O performance.
 #disable_vhost_net = true
@@ -466,6 +480,16 @@ disable_selinux=false
 # (default: true)
 disable_guest_selinux=true
 
+{% if kata_containers_version is version('3.27.0', '>=') %}
+# NUMA node mapping allows customizing how VM NUMA nodes map to host NUMA nodes.
+# Each entry defines a VM NUMA node and the host NUMA node(s) it maps to.
+# Format: ["<host_nodes>", "<host_nodes>", ...]
+# Example: ["0", "1"] creates 2 VM NUMA nodes, mapping to host nodes 0 and 1
+# Example: ["0-1", "2-3"] creates 2 VM NUMA nodes, first maps to host 0-1, second to 2-3
+# If empty and enable_numa is true, VM NUMA nodes map 1:1 to host NUMA nodes.
+# numa_mapping = []
+{% endif %}
+
 [factory]
 # VM templating support. Once enabled, new VMs are created from template
 # using vm cloning. They will share the same initial kernel, initramfs and
@@ -552,6 +576,12 @@ kernel_modules=[]
 # (default: 30)
 #dial_timeout = 30
 
+{% if kata_containers_version is version('3.9.0', '>=') %}
+# Confidential Data Hub API timeout value in seconds
+# (default: 50)
+# cdh_api_timeout = 50
+{% endif %}
+
 [runtime]
 # If enabled, the runtime will log additional debug messages to the
 # system log
@@ -619,6 +649,17 @@ disable_guest_seccomp=true
 # (default: false)
 #disable_new_netns = true
 
+{% if kata_containers_version is version('3.7.0', '>=') %}
+# Base directory of directly attachable network config.
+# Network devices for VM-based containers are allowed to be placed in the
+# host netns to eliminate as many hops as possible, which is what we
+# called a "Directly Attachable Network". The config, set by special CNI
+# plugins, is used to tell the Kata containers what devices are attached
+# to the hypervisor.
+# (default: /run/kata-containers/dans)
+# dan_conf = "/run/kata-containers/dans"
+{% endif %}
+
 # if enabled, the runtime will add all the kata processes inside one dedicated cgroup.
 # The container cgroups in the host are not created, just one single cgroup per sandbox.
 # The runtime caller is free to restrict or collect cgroup stats of the overall Kata sandbox.
@@ -667,6 +708,20 @@ vfio_mode="guest-kernel"
 # be created on the host and shared via virtio-fs. This is potentially slower, but allows sharing of files from host to guest.
 disable_guest_empty_dir=false
 
+{% if kata_containers_version is version('3.28.0', '>=') %}
+# Specifies how Kubernetes emptyDir volumes are handled.
+# Options:
+#
+#   - shared-fs (default)
+#     Shares the emptyDir folder with the guest using the method given
+#     by the `shared_fs` setting.
+#
+#   - block-encrypted
+#     Plugs a block device to be encrypted in the guest.
+#
+# emptydir_mode = "shared-fs"
+{% endif %}
+
 # Enabled experimental feature list, format: ["a", "b"].
 # Experimental features are features not stable enough for production,
 # they may break compatibility, and are prepared for a big version bump.
@@ -677,6 +732,34 @@ experimental=[]
 # If enabled, user can run pprof tools with shim v2 process through kata-monitor.
 # (default: false)
 # enable_pprof = true
+
+{% if kata_containers_version is version('3.24.0', '>=') %}
+# pod_resource_api_sock specifies the unix socket for the Kubelet's
+# PodResource API endpoint. If empty, kubernetes based cold plug
+# will not be attempted. In order for this feature to work, the
+# KubeletPodResourcesGet featureGate must be enabled in Kubelet,
+# if using Kubelet older than 1.34.
+#
+# The pod resource API's socket is relative to the Kubelet's root-dir,
+# which is defined by the cluster admin, and its location is:
+# ${KubeletRootDir}/pod-resources/kubelet.sock
+#
+# cold_plug_vfio(see hypervisor config) acts as a feature gate:
+#      cold_plug_vfio = no_port (default) => no cold plug
+#      cold_plug_vfio != no_port AND pod_resource_api_sock = "" => need
+#              explicit CDI annotation for cold plug (applies mainly
+#              to non-k8s cases)
+#      cold_plug_vfio != no_port AND pod_resource_api_sock != "" => kubelet
+#              based cold plug.
+# pod_resource_api_sock = ""
+{% endif %}
+
+{% if kata_containers_version is version('3.28.0', '>=') %}
+# kubelet_root_dir is the kubelet root directory used to match ConfigMap/Secret
+# volume paths for propagation. Override for distros that use a different path
+# (e.g. k0s: /var/lib/k0s/kubelet).
+# kubelet_root_dir = "/var/lib/kubelet"
+{% endif %}
 
 {% if kata_containers_version is version('3.4.0', '>=') %}
 # Indicates the CreateContainer request timeout needed for the workload(s)

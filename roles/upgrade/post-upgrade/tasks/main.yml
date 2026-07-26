@@ -11,16 +11,16 @@
     --timeout={{ upgrade_post_cilium_wait_timeout }}
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
+# See the comment in upgrade/pre-upgrade: pause bypasses the host loop and is
+# rejected outright by the free and host_pinned strategies, so it stays behind
+# a dynamic include.
 - name: Confirm node uncordon
-  pause:
-    echo: true
-    prompt: "Ready to uncordon node {{ kube_override_hostname | default(inventory_hostname) }}? (Press Enter to continue or Ctrl+C for other options)"
-  when:
-    - upgrade_node_post_upgrade_confirm
+  include_tasks: confirm_uncordon.yml
+  when: upgrade_node_post_upgrade_confirm
 
 - name: Wait before uncordoning node
-  pause:
-    seconds: "{{ upgrade_node_post_upgrade_pause_seconds }}"
+  wait_for:
+    timeout: "{{ upgrade_node_post_upgrade_pause_seconds }}"
   when:
     - not upgrade_node_post_upgrade_confirm
     - upgrade_node_post_upgrade_pause_seconds != 0

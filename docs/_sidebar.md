@@ -47,6 +47,7 @@
   * [Ci-setup](/docs/developers/ci-setup.md)
   * [Ci](/docs/developers/ci.md)
   * [Test Cases](/docs/developers/test_cases.md)
+  * [Upgrade-slots](/docs/developers/upgrade-slots.md)
   * [Vagrant](/docs/developers/vagrant.md)
 * External Storage Provisioners
   * [Local Volume Provisioner](/docs/external_storage_provisioners/local_volume_provisioner.md)
@@ -83,6 +84,7 @@
   * [Offline-environment](/docs/operations/offline-environment.md)
   * [Port-requirements](/docs/operations/port-requirements.md)
   * [Recover-control-plane](/docs/operations/recover-control-plane.md)
+  * [Upgrade-strategies](/docs/operations/upgrade-strategies.md)
   * [Upgrades](/docs/operations/upgrades.md)
 * Roadmap
   * [Roadmap](/docs/roadmap/roadmap.md)

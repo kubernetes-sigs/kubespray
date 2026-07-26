@@ -1,0 +1,33 @@
+---
+# Exercises upgrade_strategy=graceful_rolling end to end.
+#
+# mode: ha gives one node that is kube_node without also being
+# kube_control_plane, which is what the rolling worker play targets
+# (kube_node:calico_rr:!kube_control_plane). all-in-one would leave that play
+# with no hosts at all and silently test nothing.
+#
+# One worker exercises the whole rolling path - the slot plugins, the
+# validation play, host_pinned, and the separate cluster-scoped kube-proxy
+# play - but not the sliding window itself, which needs at least three
+# workers. Concurrency is covered by tests/unit/plugins/action/.
+
+# Instance settings
+cloud_image: ubuntu-2404
+mode: ha
+
+# Kubespray settings
+upgrade_strategy: graceful_rolling
+
+upgrade_cluster_setup: true
+
+# Currently ipvs not available on KVM: https://packages.ubuntu.com/search?suite=focal&arch=amd64&mode=exactfilename&searchon=contents&keywords=ip_vs_sh.ko
+kube_proxy_mode: iptables
+enable_nodelocaldns: false
+
+# Pin disabling ipip mode to ensure proper upgrade
+ipip: false
+calico_vxlan_mode: Always
+calico_network_backend: bird
+
+# Needed to bypass deprecation check
+ignore_assert_errors: true

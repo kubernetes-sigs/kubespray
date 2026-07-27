@@ -2,16 +2,16 @@
 - name: Gather node IPs
   setup:
     gather_subset: '!all,!min,network'
-    filter: "ansible_default_ip*"
-  when: ansible_default_ipv4 is not defined or ansible_default_ipv6 is not defined
+    filter: "default_ip*"
+  when: "ansible_facts is not defined or 'default_ipv4' not in ansible_facts or 'default_ipv6' not in ansible_facts"
   ignore_unreachable: true
 
 - name: Set computed IPs variables
   vars:
-    fallback_ip: "{{ ansible_default_ipv4.address | d('127.0.0.1') }}"
-    fallback_ip6: "{{ ansible_default_ipv6.address | d('::1') }}"
+    fallback_ip: "{{ (ansible_facts | default({})).get('default_ipv4', {}).address | d('127.0.0.1') }}"
+    fallback_ip6: "{{ (ansible_facts | default({})).get('default_ipv6', {}).address | d('::1') }}"
     # Set 127.0.0.1 as fallback IP if we do not have host facts for host
-    # ansible_default_ipv4 isn't what you think.
+    # ansible_facts['default_ipv4'] isn't what you think.
     _ipv4: "{{ ip | default(fallback_ip) }}"
     _access_ipv4: "{{ access_ip | default(_ipv4) }}"
     _ipv6: "{{ ip6 | default(fallback_ip6) }}"
@@ -42,7 +42,7 @@
       - calico_rr
     hosts_with_no_proxy: "{{ groups_with_no_proxy | select | map('extract', groups) | select('defined') | flatten }}"
     _hostnames: "{{ (hosts_with_no_proxy +
-                      (hosts_with_no_proxy | map('extract', hostvars, morekeys=['ansible_hostname'])
+                      (hosts_with_no_proxy | map('extract', hostvars, morekeys=['ansible_facts', 'hostname'])
                       | select('defined')))
                     | unique }}"
     no_proxy_prepare:

@@ -1,0 +1,23 @@
+---
+## Variables used by roles/download and task installing artefacts on node
+
+# Where ansible should look for artefacts when installing binaries / pre-loading container image
+# This is subtly different from install_source_dir, because it takes into
+# account `download_delegate`, and in particular the scenario where:
+# - hostvars['some_host']['download_delegate'] == 'other_host' or 'localhost' -> both scenario will result in the artefact transiting by localhost
+# - hostvars['localhost']['install_source_dir'] != hostvars['some_host']['local_release_dir']
+# We explicitly check hostvars
+install_source_dir: "{{
+  hostvars[
+  inventory_hostname if download_delegate == inventory_hostname
+  else 'localhost'
+  ]['local_release_dir'] | default(local_release_dir)
+}}"
+
+# This always refer to the value of `local_release_dir` for localhost
+# used by tasks which needs to refer to paths on the controller, for instance, using lookup('file')
+install_source_localhost: "{{ hostvars['localhost']['local_release_dir'] | default(default_local_release_dir) }}"
+
+# This variable is the default for local_release_dir and is used to refer to
+# the default even when `local_release_dir` is overridden by inventory
+default_local_release_dir: /tmp/releases

@@ -1,98 +1,37 @@
 ---
-- name: Kubernetes Apps | Download yq
-  include_tasks: "../../../download/tasks/download_file.yml"
-  vars:
-    download: "{{ download_defaults | combine(downloads.yq) }}"
-
-- name: Kubernetes Apps | Copy yq binary from download dir
-  ansible.posix.synchronize:
-    src: "{{ downloads.yq.dest }}"
-    dest: "{{ bin_dir }}/yq"
-    compress: false
-    perms: true
-    owner: false
-    group: false
-  delegate_to: "{{ inventory_hostname }}"
-
-- name: Kubernetes Apps | Set ArgoCD template list
-  set_fact:
-    argocd_templates:
-      - name: namespace
-        file: argocd-namespace.yml
-      - name: install
-        file: "{{ downloads.argocd_install.dest | basename }}"
-        namespace: "{{ argocd_namespace }}"
-        download: "{{ downloads.argocd_install }}"
-  when:
-    - "inventory_hostname == groups['kube_control_plane'][0]"
-
-- name: Kubernetes Apps | Download ArgoCD remote manifests
-  include_tasks: "../../../download/tasks/download_file.yml"
-  vars:
-    download: "{{ download_defaults | combine(item.download) }}"
-  with_items: "{{ argocd_templates | selectattr('download', 'defined') | list }}"
-  loop_control:
-    label: "{{ item.file }}"
-  when:
-    - "inventory_hostname == groups['kube_control_plane'][0]"
-
-- name: Kubernetes Apps | Copy ArgoCD remote manifests from download dir
-  ansible.posix.synchronize:
-    src: "{{ local_release_dir }}/{{ item.file }}"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-    compress: false
-    perms: true
-    owner: false
-    group: false
-  delegate_to: "{{ inventory_hostname }}"
-  with_items: "{{ argocd_templates | selectattr('download', 'defined') | list }}"
-  when:
-    - "inventory_hostname == groups['kube_control_plane'][0]"
-
-- name: Kubernetes Apps | Set ArgoCD namespace for remote manifests
-  become: true
-  command: |
-    {{ bin_dir }}/yq eval-all -i '.metadata.namespace="{{ argocd_namespace }}"' {{ kube_config_dir }}/{{ item.file }}
-  with_items: "{{ argocd_templates | selectattr('download', 'defined') | list }}"
-  loop_control:
-    label: "{{ item.file }}"
-  when:
-    - "inventory_hostname == groups['kube_control_plane'][0]"
-
-- name: Kubernetes Apps | Create ArgoCD manifests from templates
-  become: true
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: "0644"
-  with_items: "{{ argocd_templates | selectattr('download', 'undefined') | list }}"
-  loop_control:
-    label: "{{ item.file }}"
-  when:
-    - "inventory_hostname == groups['kube_control_plane'][0]"
-
 - name: Kubernetes Apps | Install ArgoCD
   become: true
-  kube:
-    name: ArgoCD
-    kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/{{ item.file }}"
-    state: latest
-  with_items: "{{ argocd_templates }}"
-  when:
-    - "inventory_hostname == groups['kube_control_plane'][0]"
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  vars:
+    k8s_namespace: "{{ argocd_namespace }}"
+    ns_object:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ argocd_namespace }}"
+        labels:
+          app: argocd
+  command:
+    cmd: "{{ kubectl_apply_stdin }}"
+    stdin: "{{[
+              ns_object ,
+              lookup('file', install_source_localhost + '/' + downloads.argocd_install.dest) | from_yaml
+              ]
+              | to_json }}"
 
 # https://github.com/argoproj/argo-cd/blob/master/docs/faq.md#i-forgot-the-admin-password-how-do-i-reset-it
 - name: Kubernetes Apps | Set ArgoCD custom admin password
   become: true
-  shell: |
-    {{ bin_dir }}/kubectl --kubeconfig /etc/kubernetes/admin.conf -n {{ argocd_namespace }} patch secret argocd-secret -p \
-      '{
-        "stringData": {
-          "admin.password": "{{ argocd_admin_password | password_hash('bcrypt') }}",
-          "admin.passwordMtime": "'$(date +%FT%T%Z)'"
-        }
-      }'
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  run_once: true
+  vars:
+    password_patch:
+      stringData:
+        'admin.password': "{{ argocd_admin_password | password_hash('bcrypt') }}"
+        'admin.passwordMtime': "{{ lookup('pipe', 'date +%FT%T%Z') }}"
+  command:
+    cmd: "{{ kubectl }} -n {{ argocd_namespace }} patch secret argocd-secret --patch-file=/dev/stdin"
+    stdin: "{{ password_patch | to_json }}"
   when:
     - argocd_admin_password is defined
-    - "inventory_hostname == groups['kube_control_plane'][0]"

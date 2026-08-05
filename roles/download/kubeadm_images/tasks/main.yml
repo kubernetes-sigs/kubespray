@@ -1,0 +1,54 @@
+---
+- name: kubeadm_images
+  when: not skip_kubeadm_images
+  run_once: true
+  delegate_to: localhost
+  vars:
+    # Handles defaulting for bin_dir while respecting inventory settings
+    # (useful when bin_dir is different between localhost and delegator e.g, Flatcar)
+    # TODO: generalize that if needed
+    default_bin_dir: "/usr/local/bin"
+    bin_dir: "{{ default_bin_dir }}"
+    _bin_dir: "{{ hostvars['localhost']['bin_dir'] | d(default_bin_dir) }}"
+  block:
+
+    - name: kubeadm_images | Create kubeadm config
+      template:
+        src: "kubeadm-images.yaml.j2"
+        dest: "{{ install_source_localhost }}/images/kubeadm-images.yaml"
+        mode: "0644"
+        validate: "{{ kubeadm_config_validate_enabled | ternary(_bin_dir + '/kubeadm config validate --config %s', omit) }}"
+
+    - name: kubeadm_images | Generate list of required images
+      command: "{{ _bin_dir }}/kubeadm config images list --config={{ install_source_localhost }}/images/kubeadm-images.yaml"
+      register: kubeadm_config_images_list
+      changed_when: false
+
+- name: kubeadm_images | Define kubeadm_images
+  vars:
+    kubeadm_images_meta:
+      kube-scheduler: &control_plane
+        enabled:
+          - "{{ 'kube_control_plane' in group_names }}"
+      kube-apiserver: *control_plane
+      kube-controller-manager: *control_plane
+      etcd:
+        enabled:
+          - "{{ 'etcd' in group_names }}"
+          - "{{ etcd_deployment_type != 'host' }}"
+      kube-proxy:
+        enabled:
+          - "{{ 'k8s_cluster' in group_names }}"
+    _kubeadm_images: "{{ kubeadm_config_images_list.stdout_lines }}"
+  set_fact:
+    kubeadm_images: "{{
+      dict(_kubeadm_images
+            | map('regex_replace', '^.*/(.*):.*$', '\\1')
+            | zip(_kubeadm_images
+                  | map('community.general.dict_kv', 'image_name')
+                  | map('combine', {'container': true}))
+          )
+          | ansible.utils.keep_keys(target=(kubeadm_images_meta | list))
+          | combine(kubeadm_images_meta, recursive=true)
+          | ansible.utils.replace_keys(target=[{'before': 'etcd', 'after': 'etcd_container'}])
+      }}"

@@ -75,23 +75,199 @@
     - { role: network_plugin, tags: network }
     - { role: kubernetes-apps/policy_controller, tags: policy-controller }
 
+- name: Validate the worker upgrade settings
+  hosts: kube_node:calico_rr:!kube_control_plane
+  gather_facts: false
+  any_errors_fatal: true
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray_defaults }
+  tasks:
+    - name: Check upgrade_strategy is a known value
+      assert:
+        that: upgrade_strategy in ['linear', 'graceful_rolling']
+        fail_msg: >-
+          upgrade_strategy is '{{ upgrade_strategy }}', expected 'linear' or
+          'graceful_rolling'. See docs/operations/upgrade-strategies.md.
+      run_once: true
+
+    - name: Check the preconditions of the graceful_rolling strategy
+      when: upgrade_strategy == 'graceful_rolling'
+      run_once: true
+      block:
+        # The prompts would arrive interleaved from several nodes on one
+        # terminal, and each waiting prompt pins an Ansible worker.
+        # Both default to false in the upgrade/{pre,post}-upgrade roles, which
+        # this play does not load - so an undefined value means "not set".
+        - name: Check that no interactive pause is configured
+          assert:
+            that:
+              - not (upgrade_node_confirm | default(false) | bool)
+              - not (upgrade_node_post_upgrade_confirm | default(false) | bool)
+            fail_msg: >-
+              upgrade_node_confirm and upgrade_node_post_upgrade_confirm need
+              upgrade_strategy=linear. Under graceful_rolling several nodes
+              upgrade at once, so their prompts cannot be answered in order.
+
+        # The download role only joins this play when system_upgrade reboots a
+        # node, and its run_once tasks are wrong outside the linear strategy.
+        - name: Check that the download role stays node-local
+          assert:
+            that:
+              - not (download_run_once | bool)
+              - not (download_localhost | bool)
+            fail_msg: >-
+              system_upgrade pulls the download role into the rolling worker
+              play, where its run_once tasks would execute on every node at
+              once. Set download_run_once and download_localhost to false, or
+              use upgrade_strategy=linear.
+          when: system_upgrade | bool and system_upgrade_reboot != 'never' and not skip_downloads
+
 - name: Finally handle worker upgrades, based on given batch size
   hosts: kube_node:calico_rr:!kube_control_plane
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env }}"
-  serial: "{{ serial | default('20%') }}"
+  # graceful_rolling drops the batch synchronisation point: host_pinned lets a
+  # node run the whole play without waiting for its peers and hands its worker
+  # to the next node the moment it is done, while serial: 100% puts every node
+  # into a single batch. The window itself is enforced by acquire_upgrade_slot,
+  # not by the strategy, so it can be narrower than the fork count and can vary
+  # per group. These are play keywords, evaluated before kubespray_defaults
+  # runs, hence the explicit default.
+  strategy: "{{ 'host_pinned' if upgrade_strategy | default('linear') == 'graceful_rolling' else 'linear' }}"
+  serial: "{{ '100%' if upgrade_strategy | default('linear') == 'graceful_rolling' else serial | default('20%') }}"
   roles:
     - { role: kubespray_defaults }
-    - { role: upgrade/pre-upgrade, tags: pre-upgrade }
-    - { role: upgrade/system-upgrade, tags: system-upgrade }
-    - { role: download, tags: download, when: "system_upgrade and system_upgrade_reboot != 'never' and not skip_downloads" }
-    - { role: container-engine, tags: "container-engine", when: deploy_container_engine }
-    - { role: kubernetes/node, tags: node }
-    - { role: kubernetes/kubeadm, tags: kubeadm }
-    - { role: kubernetes/node-label, tags: node-label }
-    - { role: kubernetes/node-taint, tags: node-taint }
-    - { role: upgrade/post-upgrade, tags: post-upgrade }
+  tasks:
+    # rescue: records which task broke the node, always: hands the slot back on
+    # every path - a broken node must not shrink the window for the rest of the
+    # cluster. Neither section runs for a host that became unreachable; that
+    # node's lease is reclaimed by upgrade_slot_lease_ttl instead.
+    - name: Upgrade the node while holding an upgrade slot
+      block:
+        - name: Acquire an upgrade slot
+          acquire_upgrade_slot:
+            concurrency: "{{ upgrade_node_concurrency }}"
+            per_group: "{{ upgrade_per_group_concurrency }}"
+            # ansible_play_hosts_all, not ansible_play_hosts: the latter drops
+            # hosts that already failed, which would shrink the percentage
+            # denominator - and with it the window - as a run degrades.
+            total_hosts: "{{ ansible_play_hosts_all | length }}"
+            poll_interval: "{{ upgrade_slot_poll_interval }}"
+            lease_ttl: "{{ upgrade_slot_lease_ttl }}"
+            timeout: "{{ upgrade_slot_timeout }}"
+            abort_on_failure: "{{ upgrade_abort_on_failure }}"
+          when: upgrade_strategy == 'graceful_rolling'
+          tags: always
+
+        - name: Cordon and drain the node
+          import_role:
+            name: upgrade/pre-upgrade
+          tags: pre-upgrade
+
+        - name: Upgrade the operating system packages
+          import_role:
+            name: upgrade/system-upgrade
+          tags: system-upgrade
+
+        - name: Download artifacts again after the system upgrade rebooted
+          import_role:
+            name: download
+          tags: download
+          when: "system_upgrade and system_upgrade_reboot != 'never' and not skip_downloads"
+
+        - name: Upgrade the container engine
+          import_role:
+            name: container-engine
+          tags: container-engine
+          when: deploy_container_engine
+
+        - name: Upgrade the kubelet
+          import_role:
+            name: kubernetes/node
+          tags: node
+
+        - name: Upgrade the node with kubeadm
+          import_role:
+            name: kubernetes/kubeadm
+          tags: kubeadm
+
+        - name: Apply the node labels
+          import_role:
+            name: kubernetes/node-label
+          tags: node-label
+
+        - name: Apply the node taints
+          import_role:
+            name: kubernetes/node-taint
+          tags: node-taint
+
+        - name: Uncordon the node
+          import_role:
+            name: upgrade/post-upgrade
+          tags: post-upgrade
+
+        # Restart kubelet and the container runtime before the slot is handed
+        # on, otherwise the next node could start draining while this one is
+        # still bouncing its services.
+        - name: Run the node's pending handlers before releasing the slot
+          meta: flush_handlers
+
+      rescue:
+        # A rescue: section is the only place where ansible-core exposes which
+        # task failed, so this is where the marker can name it. Blocks are
+        # handled by the play iterator, not by the strategy plugin, so this
+        # works under host_pinned exactly as it does under linear.
+        #
+        # The task name alone is not enough: upgrade/pre-upgrade wraps the
+        # drain in its own rescue and re-raises through 'Fail after rescue',
+        # which is what would reach the marker. The failure message carries
+        # the actual cause, so both are recorded.
+        - name: Record that this node failed its upgrade
+          release_upgrade_slot:
+            mark_failed: true
+            task: "{{ ansible_failed_task.name | default('unknown') }}"
+            reason: "{{ ansible_failed_result.msg | default('') }}"
+          when: upgrade_strategy == 'graceful_rolling'
+          tags: always
+
+        # A rescue: that runs to the end marks the host as recovered. Without
+        # this the node would count as upgraded, the play would carry on to the
+        # next play, and any_errors_fatal would never fire under linear.
+        - name: Fail the node again now that the failure has been recorded
+          fail:
+            msg: >-
+              Upgrade of {{ inventory_hostname }} failed in task
+              '{{ ansible_failed_task.name | default('unknown') }}'.
+          tags: always
+      always:
+        # Releasing a slot that is not held is a no-op, so this stays correct
+        # after the rescue: above already handed it back.
+        - name: Release the upgrade slot
+          release_upgrade_slot:
+          when: upgrade_strategy == 'graceful_rolling'
+          tags: always
+
+# The worker play never patches kube-proxy itself: the tasks are cluster-scoped
+# and rely on run_once, which needs a linear strategy. Doing it here runs them
+# exactly once per upgrade under either strategy - under linear the worker play
+# used to repeat them once per serial batch.
+- name: Point kube-proxy at the right API server endpoint
+  hosts: kube_node:calico_rr:!kube_control_plane
+  gather_facts: false
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray_defaults }
+  tasks:
+    - name: Patch the kube-proxy kubeconfig for the cluster
+      import_role:
+        name: kubernetes/kubeadm
+        tasks_from: kube_proxy_kubeconfig
+      tags:
+        - kubeadm
+        - kube-proxy
 
 - name: Patch Kubernetes for Windows
   hosts: kube_control_plane[0]

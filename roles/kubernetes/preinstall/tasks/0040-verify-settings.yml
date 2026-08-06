@@ -94,6 +94,79 @@
     msg: "Hostname must consist of lower case alphanumeric characters, '.' or '-', and must start and end with an alphanumeric character"
   when: not ignore_assert_errors
 
+# cluster_name (kubeadm clusterName) and dns_domain (kubeadm networking.dnsDomain) are embedded in
+# PKI, service account issuers, and CoreDNS. Changing them on a live cluster is unsupported; fail before
+# templates and kubeadm phases run (see kubernetes-sigs/kubespray#13233).
+- name: Stop if cluster_name or dns_domain would change on an existing cluster
+  when:
+    - not ignore_assert_errors
+    - (groups['kube_control_plane'] | default([])) | length > 0
+  run_once: true
+  delegate_to: "{{ first_kube_control_plane }}"
+  block:
+    - name: Stat kubeadm config for cluster identity check
+      stat:
+        path: "{{ kube_config_dir }}/kubeadm-config.yaml"
+        get_attributes: false
+        get_checksum: false
+        get_mime: false
+      register: kubeadm_config_cluster_identity_stat
+
+    - name: Read existing cluster identity from kubeadm config
+      slurp:
+        src: "{{ kube_config_dir }}/kubeadm-config.yaml"
+      register: kubeadm_config_cluster_identity_slurp
+      no_log: "{{ not (unsafe_show_logs | bool) }}"
+      when: kubeadm_config_cluster_identity_stat.stat.exists
+
+    - name: Set facts for kubeadm cluster identity comparison
+      set_fact:
+        kubespray_existing_kubeadm_cluster_name: "{{ kubeadm_cluster_configuration.clusterName | default('', true) }}"
+        kubespray_existing_kubeadm_dns_domain: "{{ (kubeadm_cluster_configuration.networking | default({})).dnsDomain | default('', true) }}"
+      vars:
+        kubeadm_cluster_configuration: >-
+          {{
+            kubeadm_config_cluster_identity_slurp.content | b64decode
+            | split('---')
+            | map('trim')
+            | reject('equalto', '')
+            | map('from_yaml')
+            | selectattr('kind', 'equalto', 'ClusterConfiguration')
+            | list
+            | first
+            | default({}, true)
+          }}
+      when:
+        - kubeadm_config_cluster_identity_stat.stat.exists
+        - kubeadm_config_cluster_identity_slurp is defined
+        - not kubeadm_config_cluster_identity_slurp.skipped | default(false)
+
+    - name: Stop if inventory cluster_name does not match existing kubeadm clusterName
+      assert:
+        that:
+          - cluster_name == kubespray_existing_kubeadm_cluster_name
+        fail_msg: >-
+          Changing cluster_name on an existing Kubernetes cluster is not supported: it breaks PKI, service account
+          token issuers, the CNI, and in-cluster DNS. Existing kubeadm clusterName (from {{ kube_config_dir }}/kubeadm-config.yaml):
+          {{ kubespray_existing_kubeadm_cluster_name }}. Inventory cluster_name: {{ cluster_name }}.
+          Revert cluster_name to the existing value or provision a new cluster. Ref: https://github.com/kubernetes-sigs/kubespray/issues/13233
+      when:
+        - kubespray_existing_kubeadm_cluster_name is defined
+        - kubespray_existing_kubeadm_cluster_name | length > 0
+
+    - name: Stop if inventory dns_domain does not match existing kubeadm dnsDomain
+      assert:
+        that:
+          - dns_domain == kubespray_existing_kubeadm_dns_domain
+        fail_msg: >-
+          Changing dns_domain on an existing Kubernetes cluster is not supported: it must stay aligned with the
+          cluster service DNS zone and kubeadm networking.dnsDomain. Existing value (from {{ kube_config_dir }}/kubeadm-config.yaml):
+          {{ kubespray_existing_kubeadm_dns_domain }}. Inventory dns_domain: {{ dns_domain }}.
+          Revert dns_domain or provision a new cluster. Ref: https://github.com/kubernetes-sigs/kubespray/issues/13233
+      when:
+        - kubespray_existing_kubeadm_dns_domain is defined
+        - kubespray_existing_kubeadm_dns_domain | length > 0
+
 - name: Stop if /etc/resolv.conf has no configured nameservers
   assert:
     that: configured_nameservers | length>0

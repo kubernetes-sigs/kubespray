@@ -4,7 +4,7 @@ The Kubespray Project is released on an as-needed basis. The process is as follo
 
 1. An issue is proposing a new release with a changelog since the last release. Please see [a good sample issue](https://github.com/kubernetes-sigs/kubespray/issues/8325)
 1. At least one of the [approvers](OWNERS_ALIASES) must approve this release
-1. (Only for major releases) The `kube_version_min_required` variable is set to `n-1`
+1. (Only for major releases) Keep Kubernetes binary checksums and per-minor component mappings for the default Kubernetes minor and the two previous minors (a support floor of `n-2`). The oldest `kubelet_checksums` entry determines `kube_version_min_required`.
 1. (Only for major releases) Remove hashes for [EOL versions](https://github.com/kubernetes/website/blob/main/content/en/releases/patch-releases.md) of kubernetes from `*_checksums` variables.
 1. Create the release note with [Kubernetes Release Notes Generator](https://github.com/kubernetes/release/blob/master/cmd/release-notes/README.md). See the following `Release note creation` section for the details.
 1. An approver creates [new release in GitHub](https://github.com/kubernetes-sigs/kubespray/releases/new) using a version and tag name like `vX.Y.Z` and attaching the release notes
@@ -30,10 +30,11 @@ The Kubespray Project is released on an as-needed basis. The process is as follo
   which ends once the milestone is closed. Then only a next major or minor release
   can be done.
 
-* Kubespray major and minor releases are bound to the given `kube_version` major/minor
-  version numbers and other components' arbitrary versions, like etcd or network plugins.
-  Older or newer component versions are not supported and not tested for the given
-  release (even if included in the checksum variables, like `kubeadm_checksums`).
+* Kubespray major and minor releases support the default `kube_version` major/minor and
+  the two previous Kubernetes minor versions when their Kubernetes binary checksums and
+  required per-minor component mappings are present. Other component versions are supported
+  only when selected by the corresponding version mappings; a checksum entry alone does not
+  imply support.
 
 * There is no unstable releases and no APIs, thus Kubespray doesn't follow
   [semver](https://semver.org/). Every version describes only a stable release.

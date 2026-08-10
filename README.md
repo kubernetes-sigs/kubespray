@@ -145,11 +145,12 @@ Note:
 
 ## Container Runtime Notes
 
-- The cri-o version should be aligned with the respective kubernetes version (i.e. kube_version=1.20.x, crio_version=1.20)
+- The CRI-O minor version should match the Kubernetes minor version.
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.30**
+- **Minimum required version of Kubernetes is v1.34.0**
+
 - **Ansible v2.14+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/operations/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.

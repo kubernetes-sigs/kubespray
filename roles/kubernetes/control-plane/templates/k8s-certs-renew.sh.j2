@@ -13,11 +13,16 @@ else
 	current_time=$(date +%s)
 	target_time=$(date -d "${next_time} + ${days_buffer} days" +%s) # $next_time - $days_buffer days
 	expiry_threshold=$(( ${target_time} - ${current_time} ))
-	expired_certs=$({{ bin_dir }}/kubeadm certs check-expiration -o jsonpath="{.certificates[?(@.residualTime<${expiry_threshold}.0)]}")
+	# super-admin.conf only exists on the node where "kubeadm init" ran, the other
+	# control plane nodes see it as missing (residualTime 0). Don't let missing
+	# certs force a renewal here, kubeadm can't renew them anyway.
+	expired_certs=$({{ bin_dir }}/kubeadm certs check-expiration -o jsonpath="{range .certificates[?(@.residualTime<${expiry_threshold}.0)]}{.name}={.missing}{\"\n\"}{end}" | sed -n 's/=false$//p')
     if [ "${expired_certs}" == "" ];then
 		echo "## Skip cert renew and K8S container restart, since all residualTimes are beyond threshold ##"
 		exit 0
 	fi
+	echo "## Certificates to renew: ##"
+	echo "${expired_certs}"
 fi
 
 echo "## Renewing certificates managed by kubeadm ##"

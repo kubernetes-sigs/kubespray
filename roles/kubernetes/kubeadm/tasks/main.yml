@@ -123,64 +123,6 @@
     - loadbalancer_apiserver is defined
   notify: Kubeadm | restart kubelet
 
-- name: Get current resourceVersion of kube-proxy configmap
-  command: "{{ kubectl }} get configmap kube-proxy -n kube-system -o jsonpath='{.metadata.resourceVersion}'"
-  register: original_configmap_resource_version
-  run_once: true
-  delegate_to: "{{ groups['kube_control_plane'] | first }}"
-  delegate_facts: false
-  when:
-    - kube_proxy_deployed
-  tags:
-    - kube-proxy
-
-# FIXME(mattymo): Need to point to localhost, otherwise control plane nodes will all point
-#                 incorrectly to first control plane node, creating SPoF.
-- name: Update server field in kube-proxy kubeconfig
-  shell: >-
-    set -o pipefail && {{ kubectl }} get configmap kube-proxy -n kube-system -o yaml
-    | sed 's#server:.*#server: https://127.0.0.1:{{ kube_apiserver_port }}#g'
-    | {{ kubectl }} replace -f -
-  args:
-    executable: /bin/bash
-  run_once: true
-  delegate_to: "{{ groups['kube_control_plane'] | first }}"
-  delegate_facts: false
-  when:
-    - kubeadm_config_api_fqdn is not defined
-    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "")
-    - kube_proxy_deployed
-    - loadbalancer_apiserver_localhost
-  tags:
-    - kube-proxy
-
-- name: Update server field in kube-proxy kubeconfig - external lb
-  shell: >-
-    set -o pipefail && {{ kubectl }} get configmap kube-proxy -n kube-system -o yaml
-    | sed 's#server:.*#server: {{kube_apiserver_endpoint}}#g'
-    | {{ kubectl }} replace -f -
-  args:
-    executable: /bin/bash
-  run_once: true
-  delegate_to: "{{ groups['kube_control_plane'] | first }}"
-  delegate_facts: false
-  when:
-    - kube_proxy_deployed
-    - loadbalancer_apiserver is defined
-  tags:
-    - kube-proxy
-
-- name: Get new resourceVersion of kube-proxy configmap
-  command: "{{ kubectl }} get configmap kube-proxy -n kube-system -o jsonpath='{.metadata.resourceVersion}'"
-  register: new_configmap_resource_version
-  run_once: true
-  delegate_to: "{{ groups['kube_control_plane'] | first }}"
-  delegate_facts: false
-  when:
-    - kube_proxy_deployed
-  tags:
-    - kube-proxy
-
 - name: Set ca.crt file permission
   file:
     path: "{{ kube_cert_dir }}/ca.crt"
@@ -188,17 +130,22 @@
     group: root
     mode: "0644"
 
-- name: Restart all kube-proxy pods to ensure that they load the new configmap
-  command: "{{ kubectl }} delete pod -n kube-system -l k8s-app=kube-proxy --force --grace-period=0"
-  run_once: true
-  delegate_to: "{{ groups['kube_control_plane'] | first }}"
-  delegate_facts: false
-  when:
-    - kubeadm_config_api_fqdn is not defined or loadbalancer_apiserver is defined
-    - kubeadm_discovery_address != kube_apiserver_endpoint | replace("https://", "") or loadbalancer_apiserver is defined
-    - kube_proxy_deployed
-    - original_configmap_resource_version.stdout != new_configmap_resource_version.stdout
+# Cluster-scoped and run_once, so only a linear play may ask for this - see
+# kubeadm_patch_kube_proxy in defaults/main.yml. The include is dynamic on
+# purpose: a static import would compile the tasks into every play regardless
+# of the condition, and free/host_pinned warn about run_once at dispatch time,
+# before any when: is evaluated. apply: keeps the tags a static import would
+# have propagated.
+- name: Point kube-proxy at the right API server endpoint
+  include_tasks:
+    file: kube_proxy_kubeconfig.yml
+    apply:
+      tags:
+        - kubeadm
+        - kube-proxy
+  when: kubeadm_patch_kube_proxy
   tags:
+    - kubeadm
     - kube-proxy
 
 - name: Extract etcd certs from control plane if using etcd kubeadm mode

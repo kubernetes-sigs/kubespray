@@ -1,0 +1,74 @@
+---
+
+# To access Manila, the CSI controller will need credentials to access
+# openstack apis. Per default this values will be
+# read from the environment.
+manila_auth_url: "{{ lookup('env', 'OS_AUTH_URL') }}"
+manila_username: "{{ lookup('env', 'OS_USERNAME') }}"
+manila_password: "{{ lookup('env', 'OS_PASSWORD') }}"
+manila_application_credential_id: "{{ lookup('env', 'OS_APPLICATION_CREDENTIAL_ID') }}"
+manila_application_credential_name: "{{ lookup('env', 'OS_APPLICATION_CREDENTIAL_NAME') }}"
+manila_application_credential_secret: "{{ lookup('env', 'OS_APPLICATION_CREDENTIAL_SECRET') }}"
+manila_region: "{{ lookup('env', 'OS_REGION_NAME') }}"
+manila_tenant_id: "{{ lookup('env', 'OS_TENANT_ID') | default(lookup('env', 'OS_PROJECT_ID'), true) }}"
+manila_tenant_name: "{{ lookup('env', 'OS_TENANT_NAME') | default(lookup('env', 'OS_PROJECT_NAME'), true) }}"
+manila_domain_name: "{{ lookup('env', 'OS_USER_DOMAIN_NAME') }}"
+manila_domain_id: "{{ lookup('env', 'OS_USER_DOMAIN_ID') }}"
+manila_project_domain_name: "{{ lookup('env', 'OS_PROJECT_DOMAIN_NAME') }}"
+manila_cacert: "{{ lookup('env', 'OS_CACERT') }}"
+
+# Manila CSI is deployed from the upstream Helm chart (openstack-manila-csi).
+manila_csi_chart_repo_name: cpo
+manila_csi_chart_repo_url: https://kubernetes.github.io/cloud-provider-openstack
+manila_csi_chart_ref: cpo/openstack-manila-csi
+manila_csi_chart_version: "2.36.0"
+
+# Helm release options.
+manila_csi_helm_wait: true
+manila_csi_helm_wait_timeout: "10m"
+manila_csi_helm_atomic: true
+
+# CephFS forwarding node plugin (ceph-csi), deployed by this role and used by
+# Manila CSI to perform the actual mounts. It is not part of the Helm chart.
+manila_cephfs_fwd_plugin_dir: "/var/lib/kubelet/plugins/cephfs.csi.ceph.com"
+manila_fwd_driver_name: "cephfs.csi.ceph.com"
+manila_log_level: 2
+
+# Image tags for the CSI sidecars deployed by the chart, and tolerations applied
+# to both node plugins (empty by default: they do not run on tainted nodes).
+manila_csi_registrar_image_tag: "v2.15.0"
+manila_csi_provisioner_image_tag: "v5.3.0"
+manila_csi_snapshotter_image_tag: "v8.4.0"
+manila_csi_resizer_image_tag: "v1.14.0"
+manila_csi_node_tolerations: []
+
+# Values passed to the Helm chart. CephFS is the only tested protocol.
+manila_csi_values:
+  shareProtocols:
+    - protocolSelector: CEPHFS
+      fsGroupPolicy: None
+      fwdNodePluginEndpoint:
+        dir: "{{ manila_cephfs_fwd_plugin_dir }}"
+        sockFile: csi.sock
+  csimanila:
+    image:
+      repository: "{{ kube_image_repo }}/provider-os/manila-csi-plugin"
+  nodeplugin:
+    tolerations: "{{ manila_csi_node_tolerations }}"
+    registrar:
+      image:
+        repository: "{{ kube_image_repo }}/sig-storage/csi-node-driver-registrar"
+        tag: "{{ manila_csi_registrar_image_tag }}"
+  controllerplugin:
+    provisioner:
+      image:
+        repository: "{{ kube_image_repo }}/sig-storage/csi-provisioner"
+        tag: "{{ manila_csi_provisioner_image_tag }}"
+    snapshotter:
+      image:
+        repository: "{{ kube_image_repo }}/sig-storage/csi-snapshotter"
+        tag: "{{ manila_csi_snapshotter_image_tag }}"
+    resizer:
+      image:
+        repository: "{{ kube_image_repo }}/sig-storage/csi-resizer"
+        tag: "{{ manila_csi_resizer_image_tag }}"

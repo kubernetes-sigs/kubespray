@@ -287,8 +287,8 @@ cilium_encryption_enabled: true
 cilium_encryption_type: "ipsec"
 ```
 
-The third variable is `cilium_ipsec_key`. You need to create a secret key string for this variable.
-Kubespray does not automate this process.
+The third variable is `cilium_ipsec_key`. If you don't want kubespray to create a random key set it here.
+If you want kubespray to create it automatically leave `cilium_ipsec_key` empty and set `cilium_ipsec_key_algo`.
 Cilium documentation currently recommends creating a key using the following command:
 
 ```shell

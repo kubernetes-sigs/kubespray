@@ -1,0 +1,22 @@
+---
+- name: Generate the VMs IP
+  command: limactl shell {{ item }} ip -j addr show dev lima0
+  register: inv
+  with_sequence: start=1 end={{ instance_count }} format={{ instance_prefix }}-%d
+
+- name: Extract hostname and IPv4 from results
+  set_fact:
+    vm_ip_map: "{{ vm_ip_map | default({}) | combine({item.item: (item.stdout | from_json | json_query('[0].addr_info[?family==`inet`].local') | first)}) }}"
+  loop: "{{ inv.results }}"
+
+- name: Set VM names
+  set_fact:
+    etcd_nodes: "{{ lookup('sequence', 'start=1 end={} format=kube-%d'.format(etcd_instance), wantlist=True) }}"
+    control_plane_nodes: "{{ lookup('sequence', 'start=1 end={} format=kube-%d'.format(control_plane_instance), wantlist=True) }}"
+    worker_nodes: "{{ lookup('sequence', 'start=1 end={} format=kube-%d'.format(instance_count), wantlist=True) }}"
+
+- name: Generate Kubespray inventory
+  template:
+    src: hosts.yml.j2
+    dest: local/hosts.yml
+    mode: "0644"

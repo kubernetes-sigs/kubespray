@@ -256,7 +256,9 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
             for version in versions:
                 # Some releases are published without binary artifacts
                 try:
-                    h = get_hash(component, version, arch)
+                    data[c][arch][
+                        str(version)
+                    ] = f"{downloads[component].get('hashtype', 'sha256')}:{get_hash(component, version, arch)}"
                 except requests.exceptions.HTTPError as e:
                     if e.response is not None and e.response.status_code == 404:
                         logger.warning(
@@ -268,9 +270,6 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
                         )
                         continue
                     raise
-                data[c][arch][
-                    str(version)
-                ] = f"{downloads[component].get('hashtype', 'sha256')}:{h}"
 
         data[c] = {
             arch: {

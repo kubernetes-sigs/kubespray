@@ -254,9 +254,22 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
         c = component + "_checksums"
         for arch in components_supported_arch[component]:
             for version in versions:
-                data[c][arch][
-                    str(version)
-                ] = f"{downloads[component].get('hashtype', 'sha256')}:{get_hash(component, version, arch)}"
+                # Some releases are published without binary artifacts
+                try:
+                    data[c][arch][
+                        str(version)
+                    ] = f"{downloads[component].get('hashtype', 'sha256')}:{get_hash(component, version, arch)}"
+                except requests.exceptions.HTTPError as e:
+                    if e.response is not None and e.response.status_code == 404:
+                        logger.warning(
+                            "Skipping %s %s (%s): release asset not found (404) at %s",
+                            component,
+                            version,
+                            arch,
+                            e.response.url,
+                        )
+                        continue
+                    raise
 
         data[c] = {
             arch: {

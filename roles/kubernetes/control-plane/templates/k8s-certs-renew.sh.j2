@@ -5,9 +5,11 @@ echo "## Check Expiration before renewal ##"
 {{ bin_dir }}/kubeadm certs check-expiration
 
 days_buffer=7 # set a time margin, because we should not renew at the last moment
-next_time=$(systemctl show k8s-certs-renew.timer  -p NextElapseUSecRealtime --value)
+# systemctl show reports an empty NextElapseUSecRealtime while the timer's unit is
+# running, so use the calendar spec to get the next scheduled run.
+next_time=$(LC_ALL=C systemd-analyze calendar "{{ auto_renew_certificates_systemd_calendar }}" | grep -oP 'Next elapse:\s*\K.*\S')
 
-if [ "${next_time}" == "" ]; then
+if [ "${next_time}" == "" ] || [ "${next_time}" == "never" ]; then
 	echo "## Skip expiry comparison due to fail to parse next elapse from systemd calendar,do renewal directly ##"
 else
 	current_time=$(date +%s)

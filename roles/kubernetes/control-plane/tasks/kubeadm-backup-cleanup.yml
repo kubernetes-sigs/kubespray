@@ -1,0 +1,46 @@
+---
+- name: Find kubeadm etcd backup directories
+  ansible.builtin.find:
+    paths: "/etc/kubernetes/tmp"
+    file_type: directory
+    recurse: false
+    patterns: "kubeadm-backup-*"
+  register: _kubeadm_etcd_backups
+  when: kubeadm_backup_retention_count >= 0
+
+- name: Remove old kubeadm etcd backups
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: >-
+    {{
+      (_kubeadm_etcd_backups.files
+      | sort(attribute='ctime', reverse=True)
+      )[kubeadm_backup_retention_count:]
+      | map(attribute='path')
+    }}
+  when: kubeadm_backup_retention_count >= 0
+
+- name: Find kubeadm temporary upgrade files
+  ansible.builtin.find:
+    paths: "/etc/kubernetes/tmp"
+    file_type: any
+    recurse: false
+    patterns:
+      - "kubeadm-kubelet-config*"
+      - "kubeadm-kubelet-env*"
+  register: _kubeadm_tmp_files
+  when: kubeadm_backup_retention_count >= 0
+
+- name: Remove old kubeadm temporary upgrade files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: >-
+    {{
+      (_kubeadm_tmp_files.files
+      | sort(attribute='ctime', reverse=True)
+      )[kubeadm_backup_retention_count:]
+      | map(attribute='path')
+    }}
+  when: kubeadm_backup_retention_count >= 0

@@ -63,6 +63,7 @@ validate-docker:
 		-e '{"kubevirt_images_push": false, "kubevirt_container_builder": "docker", "kubevirt_images_target_host": "localhost"}' \
 		cluster.yml
 
+validate-single-docker: image_name ?= ubuntu-2404
 validate-single-docker:
 	ansible-playbook -i localhost, -c local \
 		-e images_dir=$(CURDIR)/.image-builder \

@@ -24,10 +24,18 @@
     - "inventory_hostname == groups['kube_control_plane'][0]"
 
 - name: Gateway API | Install Gateway API
-  kube:
-    name: Gateway API
-    kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/addons/gateway_api/{{ gateway_api_channel }}-install.yaml"
-    state: latest
+  command:
+    cmd: >-
+      {{ bin_dir }}/kubectl apply
+      --server-side={{ server_side_apply | default(false) | lower }}
+      --filename={{ kube_config_dir }}/addons/gateway_api/{{ gateway_api_channel }}-install.yaml
   when:
     - "inventory_hostname == groups['kube_control_plane'][0]"
+  register: gateway_api_apply
+  retries: 3
+  delay: 5
+  until: gateway_api_apply is succeeded
+  changed_when:
+    - "' configured' in gateway_api_apply.stdout
+       or ' created' in gateway_api_apply.stdout
+       or ' serverside-applied' in gateway_api_apply.stdout"

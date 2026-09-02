@@ -22,10 +22,14 @@ Kubespray supports openSUSE MicroOS nodes with `containerd`. Docker and CRI-O
 are not supported.
 
 MicroOS uses a read-only root filesystem and transactional package updates.
-During bootstrap, Kubespray installs required system packages into a new
-snapshot and reboots the node when the package transaction changes the system.
-Ensure nodes can reboot and become reachable through SSH before starting the
-deployment.
+Packages installed into a new snapshot become available only after a reboot.
+When the bootstrap package transaction changes the system, Kubespray reboots
+one node at a time and waits for it to become reachable before continuing.
+
+Kubespray does not cordon or drain nodes for this bootstrap reboot. For an
+existing cluster, schedule an appropriate maintenance window if new bootstrap
+packages might be required. Transactional root filesystem snapshots do not
+replace etcd snapshots or persistent volume backups.
 
 Kubespray does not disable or coordinate the MicroOS
 `transactional-update.timer` and `rebootmgr` services. Configure automatic

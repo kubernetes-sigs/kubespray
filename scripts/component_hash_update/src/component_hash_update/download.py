@@ -250,6 +250,8 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
                 ).hexdigest()
             return hash_file.content.decode().split()[0]
 
+    skipped_404 = set()
+    fetched = set()
     for component, versions in chain(new_versions.items(), hash_set_to_0.items()):
         c = component + "_checksums"
         for arch in components_supported_arch[component]:
@@ -259,6 +261,7 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
                     data[c][arch][
                         str(version)
                     ] = f"{downloads[component].get('hashtype', 'sha256')}:{get_hash(component, version, arch)}"
+                    fetched.add(component)
                 except requests.exceptions.HTTPError as e:
                     if e.response is not None and e.response.status_code == 404:
                         logger.warning(
@@ -268,6 +271,7 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
                             arch,
                             e.response.url,
                         )
+                        skipped_404.add(component)
                         continue
                     raise
 
@@ -280,6 +284,15 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
             }
             for arch, versions in data[c].items()
         }
+
+    # Only 404s for a component means its release layout probably changed
+    all_missing = sorted(skipped_404 - fetched)
+    if all_missing:
+        logger.error(
+            "All hash fetches returned 404 for: %s",
+            ", ".join(all_missing),
+        )
+        sys.exit(1)
 
     with open(checksums_file, "w") as checksums_yml:
         yaml.dump(data, checksums_yml)

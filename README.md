@@ -120,7 +120,7 @@ Note:
   - [cni-plugins](https://github.com/containernetworking/plugins) 1.9.1
   - [calico](https://github.com/projectcalico/calico) 3.31.7
   - [cilium](https://github.com/cilium/cilium) 1.20.1
-  - [flannel](https://github.com/flannel-io/flannel) 0.28.4
+  - [flannel](https://github.com/flannel-io/flannel) 0.28.9
   - [kube-ovn](https://github.com/alauda/kube-ovn) 1.12.21
   - [kube-router](https://github.com/cloudnativelabs/kube-router) 2.1.1
   - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) 4.2.2

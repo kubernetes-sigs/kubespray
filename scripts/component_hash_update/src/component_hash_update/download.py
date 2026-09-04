@@ -77,6 +77,11 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
             for line in hashes.strip().split("\n")
             if [x for x in line.split(" ") if x][1].split("-")[2] == "linux"
         },
+        "gvisor_archive": lambda hashes: {
+            line.split()[1].removesuffix(".tar.bz2").split("-")[1]: line.split()[0]
+            for line in hashes.strip().split("\n")
+            if line.endswith(".tar.bz2")
+        },
         "runc": lambda hashes: {
             parts[1].split(".")[1]: parts[0]
             for parts in (line.split() for line in hashes.split("\n")[3:9])

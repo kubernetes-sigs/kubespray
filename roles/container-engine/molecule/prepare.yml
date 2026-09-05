@@ -1,24 +1,24 @@
 ---
-- name: Prepare
-  hosts: all
+- name: Prepare | facts and download
+  hosts: all:localhost
   gather_facts: false
   become: true
   vars:
-    ignore_assert_errors: true
+    kube_network_plugin: cni
+  pre_tasks:
+    - name: Gather facts on localhost
+      setup:
+        gather_subset: '!all'
+        filter: ansible_*
+      when: inventory_hostname == 'localhost'
   roles:
     - role: dynamic_groups
-    - role: bootstrap_os
     - role: network_facts
-    - role: kubernetes/preinstall
-    - role: adduser
-      user: "{{ addusers.kube }}"
-  tasks:
-    - name: Download CNI
-      include_tasks: "../../download/tasks/download_file.yml"
-      vars:
-        download: "{{ download_defaults | combine(downloads.cni) }}"
+    - role: bootstrap_os
+      when: inventory_hostname != 'localhost'
+    - role: download/file
 
-- name: Prepare CNI
+- name: Prepare
   hosts: all
   gather_facts: false
   become: true
@@ -27,6 +27,7 @@
     kube_network_plugin: cni
   roles:
     - role: kubespray_defaults
+    - role: kubernetes/preinstall
     - role: network_plugin/cni
   tasks:
     - name: Create /etc/cni/net.d directory

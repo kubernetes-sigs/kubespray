@@ -88,7 +88,7 @@ vagrant up
 
 - **Flatcar Container Linux by Kinvolk**
 - **Debian** Bookworm, Bullseye, Trixie
-- **Ubuntu** 22.04, 24.04
+- **Ubuntu** 22.04, 24.04, 26.04
 - **CentOS Stream / RHEL** 9, 10
 - **Fedora** 39, 40, 41, 42
 - **Fedora CoreOS** (see [fcos Note](docs/operating_systems/fcos.md))

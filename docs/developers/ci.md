@@ -19,6 +19,7 @@ rockylinux10 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: 
 rockylinux9 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu24 |  :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: | :x: |
+ubuntu26 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 
 ## crio
 
@@ -37,6 +38,7 @@ rockylinux10 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu24 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
+ubuntu26 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 
 ## docker
 
@@ -55,3 +57,4 @@ rockylinux10 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu24 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: | :x: |
+ubuntu26 |  :x: | :x: | :x: | :x: | :x: | :x: | :x: |

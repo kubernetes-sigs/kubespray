@@ -28,7 +28,7 @@ The Kernel Version Matrixs:
 | Debian 11          | 5.10           | :white_check_mark: |
 | Fedora 40          | 6.8            | :white_check_mark: |
 | Fedora 39          | 6.5            | :white_check_mark: |
-| openSUSE Leap 15.5 | 5.14           | :white_check_mark: |
+| openSUSE Leap 16.0 | 6.12           | :white_check_mark: |
 | Amazon Linux 2     | 4.14           | :x:                |
 | openEuler 24.03    | 6.6            | :white_check_mark: |
 | openEuler 22.03    | 5.10           | :white_check_mark: |

@@ -5,15 +5,20 @@
 - name: Gather facts
   import_playbook: internal_facts.yml
 
-- name: Download images to ansible host cache via first kube_control_plane node
-  hosts: kube_control_plane[0]
+- name: Download binaries and install tools
+  hosts: k8s_cluster:etcd:localhost
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env }}"
+  environment: "{{ proxy_env_defaults }}"
   roles:
-    - { role: kubespray_defaults, when: "not skip_downloads and download_run_once and not download_localhost"}
-    - { role: kubernetes/preinstall, tags: preinstall, when: "not skip_downloads and download_run_once and not download_localhost" }
-    - { role: download, tags: download, when: "not skip_downloads and download_run_once and not download_localhost" }
+    - role: download/file
+      tags:
+        - download
+        - download/file
+    - role: tools_setup
+    - role: download/container
+      tags:
+        - download
 
 - name: Prepare nodes for upgrade
   hosts: k8s_cluster:etcd:calico_rr
@@ -23,7 +28,7 @@
   roles:
     - { role: kubespray_defaults }
     - { role: kubernetes/preinstall, tags: preinstall }
-    - { role: download, tags: download, when: "not skip_downloads" }
+    - role: download/load_images
 
 - name: Upgrade container engine on non-cluster nodes
   hosts: etcd:calico_rr:!k8s_cluster

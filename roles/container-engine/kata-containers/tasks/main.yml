@@ -4,14 +4,48 @@
   vars:
     download: "{{ download_defaults | combine(downloads.kata_containers) }}"
 
+- name: Kata-containers | Ensure install directory exists
+  file:
+    path: "{{ kata_containers_dir }}"
+    state: directory
+    mode: "0755"
+
+# Empty the install dir first so upgrades (and same-version rebuilds) don't leave
+# stale files from a previous version behind. Only the contents are removed,
+# preserving kata_containers_dir itself (it may be a symlink to another fs).
+- name: Kata-containers | Find previous installation
+  find:
+    paths: "{{ kata_containers_dir }}"
+    file_type: any
+    hidden: true
+    follow: true
+  register: kata_installed_files
+
+- name: Kata-containers | Remove previous installation contents
+  file:
+    path: "{{ kata_installed_file.path }}"
+    state: absent
+  loop: "{{ kata_installed_files.files }}"
+  loop_control:
+    loop_var: kata_installed_file
+    label: "{{ kata_installed_file.path }}"
+
+# The archive stores files under an opt/kata/ prefix, so extract into
+# kata_containers_dir with that prefix stripped rather than unarchiving to /.
+# Extracting to / breaks when kata_containers_dir is a symlink onto another
+# filesystem: unarchive's "tar --diff" sees "File type differs"/cross-device,
+# wrongly skips the extract, then fails its attribute pass. Extracting into the
+# dir runs tar inside the target and avoids that.
 - name: Kata-containers | Copy kata-containers binary
   unarchive:
     src: "{{ downloads.kata_containers.dest }}"
-    dest: "/"
+    dest: "{{ kata_containers_dir }}"
     mode: "0755"
     owner: root
     group: root
     remote_src: true
+    extra_opts:
+      - --strip-components=2
 
 - name: Kata-containers | Create config directory
   file:

@@ -1,4 +1,4 @@
-{% set counter = {'dns': 2,'ip': 1,} %}{% macro increment(dct, key, inc=1)%}{% if dct.update({key: dct[key] + inc}) %} {% endif %}{% endmacro %}[req]
+[req]
 req_extensions = v3_req
 distinguished_name = req_distinguished_name
 
@@ -23,28 +23,21 @@ subjectAltName = @alt_names
 authorityKeyIdentifier=keyid:always,issuer
 
 [alt_names]
-DNS.1 = localhost
-{% for host in groups['etcd'] %}
-{% if hostvars[host]['etcd_access_address'] is defined and not (hostvars[host]['etcd_access_address'] | ansible.utils.ipaddr) %}
-{# If defined, the address which etcd uses to access its members must be included in the SAN, otherwise etcd will fail with a TLS error upon startup. #}
-DNS.{{ counter["dns"] }} = {{ hostvars[host]['etcd_access_address'] }}{{ increment(counter, 'dns') }}
-{% endif %}
-{# This will always expand to inventory_hostname, which can be a completely arbitrary name, that etcd will not know or care about, hence this line is (probably) redundant. #}
-DNS.{{ counter["dns"] }} = {{ host }}{{ increment(counter, 'dns') }}
+{#
+List all possible ways etcd instances can be contacted
+
+main_{access_,}ips: those variables are explicitly set by network_facts role
+and thus don't need a defined check
+#}
+{% for san in (
+            groups['etcd'] | map('extract', hostvars, morekeys='etcd_access_address') | select('defined')
+            + groups['etcd']
+            + etcd_cert_alt_names
+            + groups['etcd'] | map('extract', hostvars, morekeys='main_access_ips')
+            + groups['etcd'] | map('extract', hostvars, morekeys='main_ips')
+            + etcd_cert_alt_ips
+            + ['localhost', '127.0.0.1', '::1']
+            ) | flatten | unique
+            %}
+{{ 'IP' if san is ansible.utils.ip_address else 'DNS' }}.{{ loop.index }} = {{ san }}
 {% endfor %}
-{% for etcd_alt_name in etcd_cert_alt_names %}
-DNS.{{ counter["dns"] }} = {{ etcd_alt_name }}{{ increment(counter, 'dns') }}
-{% endfor %}
-{% for host in groups['etcd'] %}
-{% for address in hostvars[host]['main_access_ips'] %}
-IP.{{ counter["ip"] }} = {{ address }}{{ increment(counter, 'ip') }}
-{% endfor %}
-{% for address in hostvars[host]['main_ips'] %}
-IP.{{ counter["ip"] }} = {{ address }}{{ increment(counter, 'ip') }}
-{% endfor %}
-{% endfor %}
-{% for cert_alt_ip in etcd_cert_alt_ips %}
-IP.{{ counter["ip"] }} = {{ cert_alt_ip }}{{ increment(counter, 'ip') }}
-{% endfor %}
-IP.{{ counter["ip"] }} = 127.0.0.1{{ increment(counter, 'ip') }}
-IP.{{ counter["ip"] }} = ::1

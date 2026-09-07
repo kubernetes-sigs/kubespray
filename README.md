@@ -87,7 +87,7 @@ vagrant up
 ## Supported Linux Distributions
 
 - **Flatcar Container Linux by Kinvolk**
-- **Debian** Bookworm, Bullseye, Trixie
+- **Debian** Bookworm, Trixie
 - **Ubuntu** 22.04, 24.04
 - **CentOS Stream / RHEL** 9, 10
 - **Fedora** 39, 40, 41, 42

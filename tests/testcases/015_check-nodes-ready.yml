@@ -5,14 +5,12 @@
 - name: Check kubectl output
   command: "{{ bin_dir }}/kubectl get nodes"
   changed_when: false
-  register: get_nodes
 
 - name: Check that all nodes are running and ready
-  command: "{{ bin_dir }}/kubectl get nodes --no-headers -o yaml"
+  command: >
+    {{ bin_dir }}/kubectl get nodes -o jsonpath-as-json='{.items[*].status.conditions[?(@.type == "Ready")]}'
   changed_when: false
-  register: get_nodes_yaml
-  until:
-  # Check that all nodes are Status=Ready
-  - '(get_nodes_yaml.stdout | from_yaml)["items"] | map(attribute = "status.conditions") | map("items2dict", key_name="type", value_name="status") | map(attribute="Ready") | list | min'
+  register: nodes_ready_conditions
+  until: nodes_ready_conditions.stdout | from_json | selectattr('status', '!=', "True") == []
   retries: 30
   delay: 10

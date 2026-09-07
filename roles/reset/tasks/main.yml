@@ -167,23 +167,25 @@
   when: services_removed_secondary.changed
 
 - name: Reset | gather mounted kubelet dirs
-  shell: set -o pipefail && mount | grep /var/lib/kubelet/ | awk '{print $3}' | tac
-  args:
-    executable: /bin/bash
-  check_mode: false
+  mount_facts:
+    on_timeout: ignore
+    timeout: 15
+    include_aggregate_mounts: true
+    sources:
+      - dynamic
   register: mounted_dirs
-  failed_when: false
-  changed_when: false
   tags:
     - mounts
 
 - name: Reset | unmount kubelet dirs
   command: umount -f {{ item }}
-  with_items: "{{ mounted_dirs.stdout_lines }}"
+  # TODO: use a simple default after ansible-core>=2.19
+  loop: "{{ (mounted_dirs.ansible_facts.aggregate_mounts if mounted_dirs.ansible_facts is defined else [])
+           | map(attribute='mount')
+           | select('match', '/var/lib/kubelet/.*') | reverse }}"
   register: umount_dir
-  when: mounted_dirs
   retries: 4
-  until: umount_dir.rc == 0
+  until: umount_dir is success
   delay: 5
   tags:
     - mounts

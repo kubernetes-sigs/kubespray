@@ -1,23 +1,21 @@
 # Downloading binaries and containers
 
-Kubespray supports several download/upload modes. The default is:
+The inventory variable `download_delegate` control to which node the download will be delegated.
+Any ansible host present in the inventory is a valid value, but there is mainly 3 different mode of operation:
 
-* Each node downloads binaries and container images on its own, which is ``download_run_once: False``.
-* For K8s apps, pull policy is ``k8s_image_pull_policy: IfNotPresent``.
-* For system managed containers, like kubelet or etcd, pull policy is ``download_always_pull: False``, which is pull if only the wanted repo and tag/sha256 digest differs from that the host has.
+- `download_delegate == {{ inventory_hostname }}`: the node will download itself binaries and container images (this is the current default).
+- `download_delegate == localhost`: the Ansible controller will download the binaries and container images for this node.
+- `download_delegate == another_host`: The "other node" (`another_host`) will download binaries and images for this node. In that case, there will be an additional step to fetch back the artefacts from the "other node" to localhost.
 
-There is also a "pull once, push many" mode as well:
+In all cases, the download and the installation (or for containers, side-loading into the container engine) are separate
+steps, which can be done during separate ansible-playbook invocation (with tags, for instance).
 
-* Setting ``download_run_once: True`` will make kubespray download container images and binaries only once and then push them to the cluster nodes. The default download delegate node is the first `kube_control_plane`.
-* Set ``download_localhost: True`` to make localhost the download delegate. This can be useful if cluster nodes cannot access external addresses. To use this requires that the container runtime is installed and running on the Ansible master and that the current user is either in the docker group or can do passwordless sudo, to be able to use the container runtime. Note: even if `download_localhost` is false, files will still be copied to the Ansible server (local host) from the delegated download node, and then distributed from the Ansible server to all cluster nodes.
+Each node can have a different value for `download_delegate`, using inventory variables, but it is recommended to use
+the same value for all nodes, in order to delegate downloads to only one node, because this will download each artefact
+only once to install it on multiples nodes (for multi architecture cluster, there is one artefact per architecture used
+in the cluster).
 
-NOTE: When `download_run_once` is true and `download_localhost` is false, all downloads will be done on the delegate node, including downloads for container images that are not required on that node. As a consequence, the storage required on that node will probably be more than if download_run_once was false, because all images will be loaded into the storage of the container runtime on that node, instead of just the images required for that node.
-
-On caching:
-
-* When `download_run_once` is `True`, all downloaded files will be cached locally in `download_cache_dir`, which defaults to `/tmp/kubespray_cache`. On subsequent provisioning runs, this local cache will be used to provision the nodes, minimizing bandwidth usage and improving provisioning time. Expect about 800MB of disk space to be used on the ansible node for the cache. Disk space required for the image cache on the kubernetes nodes is a much as is needed for the largest image, which is currently slightly less than 150MB.
-* By default, if `download_run_once` is false, kubespray will not retrieve the downloaded images and files from the download delegate node to the local cache, or use that cache to pre-provision those nodes. If you have a full cache with container images and files and you don’t need to download anything, but want to use a cache - set `download_force_cache` to `True`.
-* By default, cached images that are used to pre-provision the remote nodes will be deleted from the remote nodes after use, to save disk space. Setting `download_keep_remote_cache` will prevent the files from being deleted. This can be useful while developing kubespray, as it can decrease provisioning times. As a consequence, the required storage for images on the remote nodes will increase from 150MB to about 550MB, which is currently the combined size of all required container images.
+NOTE: The default is expected to change to `download_delegate` == `localhost` soon.
 
 Container images and binary files are described by the vars like ``foo_version``,
 ``foo_download_url``, ``foo_checksum`` for binaries and ``foo_image_repo``,

@@ -108,13 +108,17 @@ nginx_config_dir: "/etc/nginx"
 haproxy_config_dir: "/etc/haproxy"
 
 # Directory where the binaries will be installed
-bin_dir: /usr/local/bin
+# TODO handle in bin_dir  when the task is delegated (should be the delegated host value)
+# while respecting defaults (control node is special cased because possibly no access to /usr/*)
+bin_dir: "{{ ('/usr/local/bin' if ansible_os_family != 'Flatcar' else '/opt/bin')
+             if inventory_hostname != 'localhost' else
+             (ansible_facts['env'].HOME + '/.cache/kubespray') }}"
 docker_bin_dir: /usr/bin
 containerd_bin_dir: "{{ bin_dir }}"
 etcd_data_dir: /var/lib/etcd
 # Where the binaries will be downloaded.
 # Note: ensure that you've enough disk space (about 1G)
-local_release_dir: "/tmp/releases"
+local_release_dir: "{{ default_local_release_dir }}"
 # Random shifts for retrying failed ops like pushing/downloading
 retry_stagger: 5
 
@@ -367,9 +371,6 @@ crun_enabled: false
 # Enable youki as additional container runtime
 # When enabled, it requires container_manager=crio
 youki_enabled: false
-
-# Container on localhost (download images when download_localhost is true)
-container_manager_on_localhost: "{{ container_manager }}"
 
 # CRI socket path
 cri_socket: >-

@@ -10,8 +10,9 @@ This should be the easiest.
 
 ### 2) Run `scale.yml`
 
-You can use `--limit=NODE_NAME` to limit Kubespray to avoid disturbing other nodes in the cluster.
+You can use `--limit=NODE_1:NODE_2:localhost` to limit Kubespray to avoid disturbing other nodes in the cluster.
 
+(`localhost` is required because Kubespray will use it to download components before installing them on your nodes.)
 Before using `--limit` run playbook `facts.yml` without the limit to refresh facts cache for all nodes.
 
 ### 3) Remove an old node with remove-node.yml

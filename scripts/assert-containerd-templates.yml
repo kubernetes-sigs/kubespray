@@ -1,0 +1,52 @@
+#!/usr/bin/env ansible-playbook
+---
+# CI never sets containerd_version, so only the 2.x branch of the role's template
+# selector is ever rendered. Render both templates here instead.
+- name: Verify the containerd config templates render with the role defaults
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    container_manager: containerd
+    _templates: ../roles/container-engine/containerd/templates
+    # Render config-v1.toml.j2 for a version the role can actually install, not
+    # for containerd_min_version_required, which is older than any shipped archive.
+    _v1_versions: "{{ containerd_archive_checksums['amd64'] | dict2items | map(attribute='key') | map('string') | select('version', '2.0.0', '<') | list }}"
+    # The extra runtime documented in the role defaults: like the shared runtime
+    # defaults, it carries no engine or root.
+    _extra_runtime:
+      name: kata
+      type: io.containerd.kata.v2
+      options:
+        Root: ""
+  vars_files:
+  - ../roles/container-engine/containerd/defaults/main.yml
+  roles:
+  - kubespray_defaults
+  tasks:
+  - name: Check that config-v1.toml.j2 is still reachable
+    assert:
+      that: _v1_versions | length > 0
+      fail_msg: >-
+        No containerd release below 2.0.0 is shipped any more.
+        Drop config-v1.toml.j2 instead of rendering it here.
+      quiet: true
+
+  - name: Render each containerd config template with the role defaults
+    vars:
+      # Scoped to the render: a task var would shadow the loop's containerd_version.
+      _rendered: >-
+        {{ lookup('template', _templates ~ '/' ~ item.template,
+                  template_vars={'containerd_version': item.version,
+                                 'containerd_additional_runtimes': [_extra_runtime]}) }}
+    assert:
+      that: ('runtimes.' ~ _extra_runtime.name ~ ']') in _rendered
+      fail_msg: "{{ item.template }} rendered without the extra runtime at containerd {{ item.version }}"
+      quiet: true
+    loop:
+    - version: "{{ _v1_versions | first }}"
+      template: config-v1.toml.j2
+    - version: "{{ containerd_version }}"
+      template: config.toml.j2
+    loop_control:
+      label: "{{ item.template }} at containerd {{ item.version }}"

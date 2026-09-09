@@ -130,10 +130,9 @@
     _sysctl_minimum_values_effective: "{{ sysctl_minimum_values | combine(additional_sysctl_min) }}"
 
 - name: Read current sysctl values for floor-managed keys
-  command: sysctl -n {{ item.key }}
+  command: sysctl --ignore -n {{ item.key }}
   register: sysctl_settings
   changed_when: false
-  failed_when: false  # tolerate keys not present on this kernel/distro
   check_mode: false  # read-only; must run under --check so later loop has rc/stdout
   loop: "{{ _sysctl_minimum_values_effective | dict2items }}"
 
@@ -145,10 +144,8 @@
     state: present
     reload: true
     ignoreerrors: "{{ sysctl_ignore_unknown_keys }}"
-  when:
-    - item.rc | default(1) == 0
-    - (item.stdout | default('0')) | int < item.item.value | int
-  loop: "{{ sysctl_settings.results }}"
+  when: item.stdout | int < item.item.value | int
+  loop: "{{ sysctl_settings.results | selectattr('stdout') }}"
 
 - name: Check dummy module
   community.general.modprobe:

@@ -10,8 +10,8 @@ almalinux9 |  :white_check_mark: | :x: | :x: | :x: | :white_check_mark: | :x: |
 amazon |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 debian12 |  :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :x: | :x: |
 debian13 |  :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :x: | :x: |
-fedora42 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: |
 fedora43 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: |
+fedora44 |  :white_check_mark: | :x: | :x: | :x: | :x: | :white_check_mark: |
 flatcar4081 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 openeuler24 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 opensuse |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
@@ -29,8 +29,8 @@ almalinux9 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: |
 debian12 |  :x: | :x: | :x: | :x: | :x: | :x: |
 debian13 |  :x: | :x: | :x: | :x: | :x: | :x: |
-fedora42 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 fedora43 |  :white_check_mark: | :x: | :x: | :white_check_mark: | :x: | :x: |
+fedora44 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 flatcar4081 |  :x: | :x: | :x: | :x: | :x: | :x: |
 openeuler24 |  :x: | :x: | :x: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: |
@@ -48,8 +48,8 @@ almalinux9 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: |
 debian12 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 debian13 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
-fedora42 |  :x: | :x: | :x: | :x: | :x: | :x: |
 fedora43 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
+fedora44 |  :x: | :x: | :x: | :x: | :x: | :x: |
 flatcar4081 |  :x: | :x: | :x: | :x: | :x: | :x: |
 openeuler24 |  :x: | :x: | :x: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: |

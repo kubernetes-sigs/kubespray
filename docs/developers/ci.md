@@ -47,7 +47,7 @@ ubuntu26 |  :x: | :x: | :x: | :x: | :x: | :x: |
 almalinux9 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: |
 debian12 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
-debian13 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
+debian13 |  :x: | :x: | :x: | :x: | :x: | :x: |
 fedora43 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 fedora44 |  :x: | :x: | :x: | :x: | :x: | :x: |
 flatcar4081 |  :x: | :x: | :x: | :x: | :x: | :x: |

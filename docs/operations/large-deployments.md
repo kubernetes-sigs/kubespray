@@ -50,3 +50,20 @@ For a large scaled deployments, consider the following configuration changes:
 
 For example, when deploying 200 nodes, you may want to run ansible with
 ``--forks=50``, ``--timeout=600`` and define the ``retry_stagger: 60``.
+
+Sysctl tuning with floor semantics
+----------------------------------
+
+Built-in sysctl floors are only applied when the node's current value is
+lower, so pre-tuned images and newer kernels are left alone. Use
+`additional_sysctl_min` to add or override floors (set a key to `0` to
+disable a default); use `additional_sysctl` for exact-value semantics.
+
+```yaml
+additional_sysctl_min:
+  net.core.somaxconn: 65535
+  kernel.pid_max: 0
+```
+
+See `roles/kubespray_defaults/vars/main/main.yml` for the built-in floor
+set.

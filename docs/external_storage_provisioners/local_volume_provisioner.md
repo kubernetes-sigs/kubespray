@@ -3,7 +3,7 @@
 The [local static storage provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner)
 is NOT a dynamic storage provisioner as you would
 expect from a cloud provider. Instead, it simply creates PersistentVolumes for
-all mounts under the `host_dir` of the specified storage class.
+all mounts under the `hostDir` of the specified storage class.
 These storage classes are specified in the `local_volume_provisioner_storage_classes` nested dictionary.
 
 Example:
@@ -11,16 +11,16 @@ Example:
 ```yaml
 local_volume_provisioner_storage_classes:
   local-storage:
-    host_dir: /mnt/disks
-    mount_dir: /mnt/disks
+    hostDir: /mnt/disks
+    mountDir: /mnt/disks
   fast-disks:
-    host_dir: /mnt/fast-disks
-    mount_dir: /mnt/fast-disks
-    block_cleaner_command:
+    hostDir: /mnt/fast-disks
+    mountDir: /mnt/fast-disks
+    blockCleanerCommand:
       - "/scripts/shred.sh"
       - "2"
-    volume_mode: Filesystem
-    fs_type: ext4
+    volumeMode: Filesystem
+    fsType: ext4
 ```
 
 For each key in `local_volume_provisioner_storage_classes` a "storage class" with
@@ -93,14 +93,14 @@ the rest of this documentation will use that path as an example.
    ```
 
    This saves time of precreating filesystems. Note that your storageclass must have
-   `volume_mode` set to `"Filesystem"` and `fs_type` defined. If either is not set, the
+   `volumeMode` set to `"Filesystem"` and `fsType` defined. If either is not set, the
    disk will be added as a raw block device.
 
 1. PersistentVolumes with `volumeMode="Block"`
 
    Just like above, you can create PersistentVolumes with volumeMode `Block`
    by creating a symbolic link under discovery directory to the block device on
-   the node, if you set `volume_mode` to `"Block"`. This will create a volume
+   the node, if you set `volumeMode` to `"Block"`. This will create a volume
    presented into a Pod as a block device, without any filesystem on it.
 
 1. File-backed sparsefile method

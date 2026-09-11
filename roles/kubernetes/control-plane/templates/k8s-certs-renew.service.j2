@@ -3,4 +3,13 @@ Description=Renew K8S control plane certificates
 
 [Service]
 Type=oneshot
-ExecStart={{ bin_dir }}/k8s-certs-renew.sh
+ExecStart={{ '/opt/bin/python' if ansible_facts['os_family'] in ['Flatcar', 'Flatcar Container Linux by Kinvolk'] else '/usr/bin/python3' }} {{ bin_dir }}/k8s-certs-renew.py \
+    --kubeadm {{ bin_dir }}/kubeadm \
+    --calendar "{{ auto_renew_certificates_systemd_calendar }}" \
+    --admin-conf {{ kube_config_dir }}/admin.conf \
+    --apiserver-port {{ kube_apiserver_port }} \
+{% if container_manager == "docker" %}
+    --docker {{ docker_bin_dir }}/docker
+{% else %}
+    --crictl {{ bin_dir }}/crictl
+{% endif %}

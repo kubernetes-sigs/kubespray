@@ -1,7 +1,8 @@
-#!{{ '/opt/bin/python' if ansible_facts['os_family'] in ['Flatcar', 'Flatcar Container Linux by Kinvolk'] else '/usr/bin/env python3' }}
+#!/usr/bin/env python3
 """Renew the certificates managed by kubeadm if they expire before the next
 scheduled run of the k8s-certs-renew timer."""
 
+import argparse
 import json
 import os
 import shutil
@@ -11,11 +12,25 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 
-KUBEADM = "{{ bin_dir }}/kubeadm"
-SYSTEMD_CALENDAR = "{{ auto_renew_certificates_systemd_calendar }}"
-ADMIN_CONF = "{{ kube_config_dir }}/admin.conf"
-APISERVER_PORT = {{ kube_apiserver_port }}
 DAYS_BUFFER = 7  # time margin, because we should not renew at the last moment
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--kubeadm", required=True,
+                        help="path to the kubeadm binary")
+    parser.add_argument("--calendar", required=True,
+                        help="systemd calendar spec of the renewal timer")
+    parser.add_argument("--admin-conf", required=True,
+                        help="path to the kubeadm admin.conf")
+    parser.add_argument("--apiserver-port", type=int, required=True,
+                        help="local apiserver port to wait on after the restart")
+    runtime = parser.add_mutually_exclusive_group(required=True)
+    runtime.add_argument("--crictl",
+                         help="path to crictl, used to restart the control plane pods")
+    runtime.add_argument("--docker",
+                         help="path to docker, used to restart the control plane pods")
+    return parser.parse_args()
 
 
 def log(message):
@@ -26,14 +41,14 @@ def run(cmd, **kwargs):
     return subprocess.run(cmd, check=True, universal_newlines=True, **kwargs)
 
 
-def next_scheduled_run():
+def next_scheduled_run(calendar):
     """Next elapse of the renewal timer, or None if it cannot be determined."""
     # systemctl show reports an empty NextElapseUSecRealtime while the timer's
     # unit is running, so use the calendar spec to get the next scheduled run.
     env = dict(os.environ, LC_ALL="C", TZ="UTC")
     try:
         output = run(
-            ["systemd-analyze", "calendar", SYSTEMD_CALENDAR],
+            ["systemd-analyze", "calendar", calendar],
             stdout=subprocess.PIPE,
             env=env,
         ).stdout
@@ -51,9 +66,9 @@ def next_scheduled_run():
     return None
 
 
-def certs_to_renew(threshold):
+def certs_to_renew(kubeadm, threshold):
     output = run(
-        [KUBEADM, "certs", "check-expiration", "-o", "json"],
+        [kubeadm, "certs", "check-expiration", "-o", "json"],
         stdout=subprocess.PIPE,
     ).stdout
     expiring = []
@@ -71,46 +86,40 @@ def certs_to_renew(threshold):
     return expiring
 
 
-def restart_control_plane():
-{% if container_manager == "docker" %}
-    docker = "{{ docker_bin_dir }}/docker"
-    pods = run(
-        [docker, "ps", "-a", "-q",
-         "-f", "name=k8s_POD_(kube-apiserver|kube-controller-manager|kube-scheduler|etcd)-*"],
-        stdout=subprocess.PIPE,
-    ).stdout.split()
+def restart_control_plane(args):
+    if args.docker:
+        list_cmd = [args.docker, "ps", "-a", "-q",
+                    "-f", "name=k8s_POD_(kube-apiserver|kube-controller-manager|kube-scheduler|etcd)-*"]
+        remove_cmd = [args.docker, "rm", "-f"]
+    else:
+        list_cmd = [args.crictl, "pods", "--namespace", "kube-system", "-q",
+                    "--name", "kube-scheduler-*|kube-controller-manager-*|kube-apiserver-*|etcd-*"]
+        remove_cmd = [args.crictl, "rmp", "-f"]
+    pods = run(list_cmd, stdout=subprocess.PIPE).stdout.split()
     if pods:
-        run([docker, "rm", "-f"] + pods)
-{% else %}
-    crictl = "{{ bin_dir }}/crictl"
-    pods = run(
-        [crictl, "pods", "--namespace", "kube-system", "-q",
-         "--name", "kube-scheduler-*|kube-controller-manager-*|kube-apiserver-*|etcd-*"],
-        stdout=subprocess.PIPE,
-    ).stdout.split()
-    if pods:
-        run([crictl, "rmp", "-f"] + pods)
-{% endif %}
+        run(remove_cmd + pods)
 
 
-def wait_for_apiserver():
+def wait_for_apiserver(port):
     while True:
         try:
-            with socket.create_connection(("127.0.0.1", APISERVER_PORT), timeout=1):
+            with socket.create_connection(("127.0.0.1", port), timeout=1):
                 return
         except OSError:
             time.sleep(1)
 
 
 def main():
-    log("## Check expiration before renewal ##")
-    run([KUBEADM, "certs", "check-expiration"])
+    args = parse_args()
 
-    next_run = next_scheduled_run()
+    log("## Check expiration before renewal ##")
+    run([args.kubeadm, "certs", "check-expiration"])
+
+    next_run = next_scheduled_run(args.calendar)
     if next_run is None:
         log("## Skip expiry comparison due to fail to parse next elapse from systemd calendar, do renewal directly ##")
     else:
-        expiring = certs_to_renew(next_run + timedelta(days=DAYS_BUFFER))
+        expiring = certs_to_renew(args.kubeadm, next_run + timedelta(days=DAYS_BUFFER))
         if not expiring:
             log("## Skip cert renew and K8S container restart, since all certificates expire after the next scheduled run ##")
             return
@@ -118,19 +127,19 @@ def main():
         log("\n".join(expiring))
 
     log("## Renewing certificates managed by kubeadm ##")
-    run([KUBEADM, "certs", "renew", "all"])
+    run([args.kubeadm, "certs", "renew", "all"])
 
     log("## Restarting control plane pods managed by kubeadm ##")
-    restart_control_plane()
+    restart_control_plane(args)
 
     log("## Updating /root/.kube/config ##")
-    shutil.copy(ADMIN_CONF, "/root/.kube/config")
+    shutil.copy(args.admin_conf, "/root/.kube/config")
 
     log("## Waiting for apiserver to be up again ##")
-    wait_for_apiserver()
+    wait_for_apiserver(args.apiserver_port)
 
     log("## Expiration after renewal ##")
-    run([KUBEADM, "certs", "check-expiration"])
+    run([args.kubeadm, "certs", "check-expiration"])
 
 
 if __name__ == "__main__":

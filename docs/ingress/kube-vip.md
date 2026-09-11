@@ -65,6 +65,18 @@ kube_vip_bgppeers:
 # kube_vip_bgp_peeras:
 # kube_vip_bgp_sourceip:
 # kube_vip_bgp_sourceif:
+# Assign BGP-advertised service VIPs to the configured interface as well:
+# kube_vip_bgp_attach_ip_to_interface: true
+```
+
+If using BGP without [routing table mode](https://kube-vip.io/docs/installation/static/#routing-table), you can have kube-vip poll the control plane over HTTP and withdraw its BGP routes on failure:
+
+```yaml
+kube_vip_control_plane_health_check_address: http://127.0.0.1:6443/healthz
+# kube_vip_control_plane_health_check_period_seconds: 5
+# kube_vip_control_plane_health_check_timeout_seconds: 3
+# kube_vip_control_plane_health_check_failure_threshold: 3
+# kube_vip_control_plane_health_check_ca_path: /etc/kubernetes/pki/ca.crt
 ```
 
 If using [control plane load-balancing](https://kube-vip.io/docs/about/architecture/#control-plane-load-balancing):

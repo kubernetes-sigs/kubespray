@@ -191,44 +191,35 @@
       ignore_errors: true
       changed_when: false
 
-    - name: Calico | Set kubespray calico network pool
-      set_fact:
-        _calico_pool: >
-          {
-            "kind": "IPPool",
-            "apiVersion": "projectcalico.org/v3",
-            "metadata": {
-              "name": "{{ calico_pool_name }}",
-            },
-            "spec": {
-              "blockSize": {{ calico_pool_blocksize }},
-              "cidr": "{{ calico_pool_cidr | default(kube_pods_subnet) }}",
-              "ipipMode": "{{ calico_ipip_mode }}",
-              "vxlanMode": "{{ calico_vxlan_mode }}",
-              "natOutgoing": {{ nat_outgoing | default(false) }}
-            }
-          }
-
-    - name: Calico | Process calico network pool
-      when:
-        - _calico_pool_cmd is success
-      block:
-        - name: Calico | Get current calico network pool blocksize
-          set_fact:
-            _calico_blocksize: >
-              {
-                "spec": {
-                  "blockSize": {{ (_calico_pool_cmd.stdout | from_json).spec.blockSize }}
-                }
-              }
-        - name: Calico | Merge calico network pool
-          set_fact:
-            _calico_pool: "{{ _calico_pool_cmd.stdout | from_json | combine(_calico_pool, _calico_blocksize, recursive=True) }}"
-
     - name: Calico | Configure calico network pool
+      vars:
+        _calico_blocksize:
+          spec:
+            blockSize: "{{ (_calico_pool_cmd.stdout | from_json).spec.blockSize }}"
+        _calico_pool:
+          kind: "IPPool"
+          apiVersion: "projectcalico.org/v3"
+          metadata:
+            name: "{{ calico_pool_name }}"
+          spec:
+            blockSize: "{{ calico_pool_blocksize }}"
+            cidr: "{{ calico_pool_cidr | default(kube_pods_subnet) }}"
+            ipipMode: "{{ calico_ipip_mode }}"
+            vxlanMode: "{{ calico_vxlan_mode }}"
+            natOutgoing: "{{ nat_outgoing | default(false) }}"
+        _calico_pool_merged: "{{ (
+                                    (_calico_pool_cmd.stdout | from_json)
+                                    if _calico_pool_cmd is success else {}
+                                 )
+                                 | combine(
+                                   _calico_pool,
+                                   _calico_blocksize if _calico_pool_cmd is success else {},
+                                   recursive=True) }}"
+                                 # override order is current state < config < blocksize
+                                 # because blocksize is immutable, so we always reuse it
       command:
         cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-        stdin: "{{ _calico_pool is string | ternary(_calico_pool, _calico_pool | to_json) }}"
+        stdin: "{{ _calico_pool_merged | to_json }}"
       changed_when: false
 
 - name: Calico | Configure Calico IPv6 Pool
@@ -242,65 +233,36 @@
       ignore_errors: true
       changed_when: false
 
-    - name: Calico | Set kubespray calico network pool
-      set_fact:
-        _calico_pool_ipv6: >
-          {
-            "kind": "IPPool",
-            "apiVersion": "projectcalico.org/v3",
-            "metadata": {
-              "name": "{{ calico_pool_name }}-ipv6",
-            },
-            "spec": {
-              "blockSize": {{ calico_pool_blocksize_ipv6 }},
-              "cidr": "{{ calico_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}",
-              "ipipMode": "{{ calico_ipip_mode_ipv6 }}",
-              "vxlanMode": "{{ calico_vxlan_mode_ipv6 }}",
-              "natOutgoing": {{ nat_outgoing_ipv6 | default(false) }}
-            }
-          }
-
-    - name: Calico | Process calico ipv6 network pool
-      when:
-        - _calico_pool_ipv6_cmd is success
-      block:
-        - name: Calico | Get current calico ipv6 network pool blocksize
-          set_fact:
-            _calico_blocksize_ipv6: >
-              {
-                "spec": {
-                  "blockSize": {{ (_calico_pool_ipv6_cmd.stdout | from_json).spec.blockSize }}
-                }
-              }
-        - name: Calico | Merge calico ipv6 network pool
-          set_fact:
-            _calico_pool_ipv6: "{{ _calico_pool_ipv6_cmd.stdout | from_json | combine(_calico_pool_ipv6, _calico_blocksize_ipv6, recursive=True) }}"
-
-    - name: Calico | Configure calico ipv6 network pool
+    - name: Calico | Configure calico network pool
+      vars:
+        _calico_blocksize_ipv6:
+          spec:
+            blockSize: "{{ (_calico_pool_cmd_ipv6.stdout | from_json).spec.blockSize }}"
+        _calico_pool_ipv6:
+          kind: "IPPool"
+          apiVersion: "projectcalico.org/v3"
+          metadata:
+            name: "{{ calico_pool_name }}-ipv6"
+          spec:
+            blockSize: "{{ calico_pool_blocksize_ipv6 }}"
+            cidr: "{{ calico_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}"
+            ipipMode: "{{ calico_ipip_mode_ipv6 }}"
+            vxlanMode: "{{ calico_vxlan_mode_ipv6 }}"
+            natOutgoing: "{{ nat_outgoing_ipv6 | default(false) }}"
+        _calico_pool_merged_ipv6: "{{ (
+                                        (_calico_pool_cmd_ipv6.stdout | from_json)
+                                        if _calico_pool_cmd_ipv6 is success else {}
+                                      )
+                                      | combine(
+                                          _calico_pool_ipv6,
+                                          _calico_blocksize_ipv6 if _calico_pool_cmd_ipv6 is success else {},
+                                          recursive=True) }}"
+                                         # override order is current state < config < blocksize
+                                         # because blocksize is immutable, so we always reuse it
       command:
         cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-        stdin: "{{ _calico_pool_ipv6 is string | ternary(_calico_pool_ipv6, _calico_pool_ipv6 | to_json) }}"
+        stdin: "{{ _calico_pool_merged_ipv6 | to_json }}"
       changed_when: false
-
-- name: Populate Service External IPs
-  set_fact:
-    _service_external_ips: "{{ _service_external_ips | default([]) + [{'cidr': item}] }}"
-  with_items: "{{ calico_advertise_service_external_ips }}"
-  run_once: true
-
-- name: Populate Service LoadBalancer IPs
-  set_fact:
-    _service_loadbalancer_ips: "{{ _service_loadbalancer_ips | default([]) + [{'cidr': item}] }}"
-  with_items: "{{ calico_advertise_service_loadbalancer_ips }}"
-  run_once: true
-
-- name: "Determine nodeToNodeMesh needed state"
-  set_fact:
-    nodeToNodeMeshEnabled: "false"
-  when:
-    - peer_with_router | default(false) or peer_with_calico_rr | default(false)
-    - ('k8s_cluster' in group_names)
-  run_once: true
 
 - name: Calico | Configure Calico BGP
   when:
@@ -312,46 +274,40 @@
       ignore_errors: true
       changed_when: false
 
-    - name: Calico | Set kubespray BGP Configuration
-      set_fact:
-        # noqa: jinja[spacing]
-        _bgp_config: >
-          {
-            "kind": "BGPConfiguration",
-            "apiVersion": "projectcalico.org/v3",
-            "metadata": {
-              "name": "default",
-            },
-            "spec": {
-              "listenPort": {{ calico_bgp_listen_port }},
-              "logSeverityScreen": "Info",
-              {% if not calico_no_global_as_num | default(false) %}"asNumber": {{ global_as_num }},{% endif %}
-              "nodeToNodeMeshEnabled": {{ nodeToNodeMeshEnabled | default('true') }} ,
-              {% if calico_advertise_cluster_ips | default(false) %}
-              "serviceClusterIPs":
-                {%- if ipv4_stack and ipv6_stack-%}
-                [{"cidr": "{{ kube_service_addresses }}", "cidr": "{{ kube_service_addresses_ipv6 }}"}],
-                {%- elif ipv6_stack-%}
-                [{"cidr": "{{ kube_service_addresses_ipv6 }}"}],
-                {%- else -%}
-                [{"cidr": "{{ kube_service_addresses }}"}],
-                {%- endif -%}
-              {% endif %}
-              {% if calico_advertise_service_loadbalancer_ips | length > 0  %}"serviceLoadBalancerIPs": {{ _service_loadbalancer_ips }},{% endif %}
-              "serviceExternalIPs": {{ _service_external_ips | default([]) }}
-            }
-          }
-
-    - name: Calico | Process BGP Configuration
-      set_fact:
-        _bgp_config: "{{ _bgp_config_cmd.stdout | from_json | combine(_bgp_config, recursive=True) }}"
-      when:
-        - _bgp_config_cmd is success
-
     - name: Calico | Set up BGP Configuration
+      vars:
+        _service_ips:
+          - "{{ kube_services_addresses if ipv4_stack else undef() }}"
+          - "{{ kube_services_addresses_ipv6 if ipv6_stack else undef() }}"
+        _cluster_ips:
+          spec:
+            serviceClusterIPs: "{{ _service_ips | select('defined') | map('community.general.dict_kv', 'cidr') }}"
+        _lb_ips:
+          spec:
+            serviceLoadBalancerIPs: "{{ calico_advertise_service_loadbalancer_ips | map('community.general.dict_kv', 'cidr') }}"
+        _as_num:
+          spec:
+            asNumber: "{{ global_as_num }}"
+        _bgp_config_base:
+          kind: "BGPConfiguration"
+          apiVersion: "projectcalico.org/v3"
+          metadata:
+            name: "default"
+          spec:
+            listenPort: "{{ calico_bgp_listen_port }}"
+            logSeverityScreen: "Info"
+            nodeToNodeMeshEnabled: "{{ not (peer_with_router or peer_with_calico_rr) and 'k8s_cluster' not in 'group_names' }}"
+            serviceExternalIPs: "{{ calico_advertise_service_external_ips | map('community.general.dict_kv', 'cidr') }}"
+        _bgp_config_merged: "{{ ((bgp_config_cmd.stdout | from_json) if _bgp_config_cmd is success else {})
+                                | combine(_bgp_config_base,
+                                    _cluster_ips if calico_advertise_cluster_ips else {},
+                                    _lb_ips if calico_advertise_service_loadbalancer_ips != [] else {},
+                                    _as_num if not calico_no_global_as_num else {},
+                                    recursive=True)
+                              }}"
       command:
         cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-        stdin: "{{ _bgp_config is string | ternary(_bgp_config, _bgp_config | to_json) }}"
+        stdin: "{{ _bgp_config_merged | to_json }}"
       changed_when: false
 
 - name: Calico | Create calico manifests

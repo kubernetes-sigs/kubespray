@@ -107,3 +107,24 @@
     resource: ConfigMap
     namespace: "{{ metallb_namespace }}"
     state: absent
+
+# The AddressPool CRD was removed in MetalLB v0.14.2 in favor of IPAddressPool,
+# the webhook Secret and Service were renamed in v0.16.0. None of them is part of
+# the manifest anymore, so they have to be cleaned up explicitly on upgrades.
+- name: Kubernetes Apps | Delete MetalLB resources removed upstream
+  kube:
+    name: "{{ item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.resource }}"
+    namespace: "{{ item.namespace | default(omit) }}"
+    state: absent
+  become: true
+  loop:
+    - name: addresspools.metallb.io
+      resource: CustomResourceDefinition
+    - name: webhook-server-cert
+      resource: Secret
+      namespace: "{{ metallb_namespace }}"
+    - name: webhook-service
+      resource: Service
+      namespace: "{{ metallb_namespace }}"

@@ -18,6 +18,38 @@
     get_mime: false
   register: kubeadm_already_run
 
+- name: Kubeadm | Verify cluster_name consistency on existing clusters
+  when: kubeadm_already_run.stat.exists
+  block:
+    - name: Kubeadm | Check if admin.conf is present
+      stat:
+        path: "{{ kube_config_dir }}/admin.conf"
+        get_attributes: false
+        get_checksum: false
+        get_mime: false
+      register: _kubeadm_admin_conf_stat
+
+    - name: Kubeadm | Read admin.conf to detect the existing cluster name
+      when: _kubeadm_admin_conf_stat.stat.exists
+      slurp:
+        src: "{{ kube_config_dir }}/admin.conf"
+      register: _kubeadm_admin_conf_raw
+
+    - name: Kubeadm | Extract existing cluster name
+      when: _kubeadm_admin_conf_stat.stat.exists
+      set_fact:
+        _kubeadm_existing_cluster_name: "{{ (_kubeadm_admin_conf_raw.content | b64decode | from_yaml).clusters[0].name }}"
+
+    - name: Kubeadm | Fail if cluster_name changed
+      when: _kubeadm_admin_conf_stat.stat.exists
+      assert:
+        that: _kubeadm_existing_cluster_name == cluster_name
+        fail_msg: >-
+          cluster_name changed from '{{ _kubeadm_existing_cluster_name }}' to '{{ cluster_name }}'.
+          Changing cluster_name on an existing cluster invalidates certificates, JWT token
+          issuers and networking (CNI) authentication, causing cluster-wide disruption.
+          Restore the original cluster_name or reset the cluster instead.
+
 - name: Kubeadm | Backup kubeadm certs / kubeconfig
   import_tasks: kubeadm-backup.yml
   when:

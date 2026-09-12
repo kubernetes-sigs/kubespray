@@ -1,0 +1,34 @@
+---
+- name: Kata-containers | Get ctr plugin devmapper status
+  shell:
+    cmd: |
+      set -o pipefail #
+      ctr plugin ls | grep devmapper | awk '{print $4}'
+    executable: /bin/bash
+  register: fc_devmapper_status
+  check_mode: false
+  changed_when: false
+
+- name: Kata-containers | Fail firecracker setup if devmapper is not configured
+  fail:
+    msg: "Containerd devmapper is not enabled"
+  when:
+    - fc_devmapper_status.stdout != "ok"
+
+- name: Kata-containers | Set firecracker configuration
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ kata_containers_config_dir }}/{{ item }}"
+    mode: '0644'
+  with_items:
+    - configuration-fc.toml
+
+- name: Kata-containers | Set firecracker bin
+  vars:
+    shim: "{{ item }}"
+  template:
+    dest: "{{ kata_containers_containerd_bin_dir }}/containerd-shim-kata-{{ item }}-v2"
+    src: containerd-shim-kata-v2.j2
+    mode: '0755'
+  with_items:
+    - fc

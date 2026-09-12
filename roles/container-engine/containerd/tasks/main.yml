@@ -62,6 +62,12 @@
   with_dict: "{{ containerd_base_runtime_specs | default({}) }}"
   notify: Restart containerd
 
+- name: Containerd | Configure devmapper plugin
+  include_tasks: "devmapper.yml"
+  when:
+    - containerd_devmapper_enabled | bool
+    - is_eligible_for_fc | bool
+
 - name: Containerd | Copy containerd config file
   template:
     src: "{{ 'config.toml.j2' if containerd_version is version('2.0.0', '>=') else 'config-v1.toml.j2' }}"
@@ -98,3 +104,24 @@
     daemon_reload: true
     enabled: true
     state: started
+
+- name: Containerd | Get ctr plugin devmapper status
+  shell:
+    cmd: |
+      set -o pipefail #
+      ctr plugin ls | grep devmapper | awk '{print $4}'
+    executable: /bin/bash
+  register: devmapper_status
+  when:
+    - containerd_devmapper_enabled | bool
+    - is_eligible_for_fc | bool
+  check_mode: false
+  changed_when: false
+
+- name: Containerd | Fail devmapper plugin setup if ctr plugin status gives error
+  fail:
+    msg: "Containerd devmapper is not enabled"
+  when:
+    - containerd_devmapper_enabled | bool
+    - is_eligible_for_fc | bool
+    - devmapper_status.stdout | default('') != "ok"

@@ -1,0 +1,24 @@
+---
+- name: Import prepare.yml from container-engine/molecule/prepare.yml
+  import_playbook: ../../../molecule/prepare.yml
+
+- name: Prepare fake disk for devmapper
+  hosts: all
+  become: true
+  tasks:
+    - name: Kata-containers (molecule) | Create 20GB sparse file for devmapper
+      command: truncate -s 20G /var/lib/devmapper-vdb.img
+      args:
+        creates: /var/lib/devmapper-vdb.img
+
+    - name: Kata-containers (molecule) | Find next available loop device and bind it
+      command: losetup --find --show /var/lib/devmapper-vdb.img
+      register: loop_device
+      changed_when: false
+
+    - name: Kata-containers (molecule) | Symlink the loop device to /dev/vdb
+      file:
+        src: "{{ loop_device.stdout }}"
+        dest: /dev/vdb
+        state: link
+        force: true

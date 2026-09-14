@@ -1,0 +1,37 @@
+---
+- name: Ensure lvm2 is present
+  ansible.builtin.package:
+    name: lvm2
+    state: present
+
+- name: Containerd | Fail devmapper plugin setup if a disk is not specified
+  fail:
+    msg: "Containerd devmapper: disk not specified"
+  when:
+    - containerd_devmapper_device_name == ""
+
+- name: Containerd | Create a volume group
+  community.general.lvg:
+    vg: "{{ containerd_devmapper_volumegroup_name }}"
+    pvs:
+      - "{{ containerd_devmapper_device_name }}"
+
+- name: Containerd | Create a thin pool of 96%VG
+  community.general.lvol:
+    vg: "{{ containerd_devmapper_volumegroup_name }}"
+    thinpool: "{{ containerd_devmapper_pool_name }}"
+    size: 96%VG
+
+- name: Containerd | Get thinpool dev route
+  shell:
+    cmd: |
+      set -o pipefail #
+      lvs -o "lv_name,lv_dm_path" | grep "devthinpool" | awk '{print $2}' | awk -F "/" '{print $4}'
+    executable: /bin/bash
+  register: devmapper_dev_route
+  check_mode: false
+  changed_when: false
+
+- name: Containerd | Store thinpool dev route
+  set_fact:
+    containerd_devmapper_dev_route: "{{ devmapper_dev_route.stdout }}"

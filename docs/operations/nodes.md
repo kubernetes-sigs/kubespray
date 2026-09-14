@@ -14,6 +14,8 @@ You can use `--limit=NODE_NAME` to limit Kubespray to avoid disturbing other nod
 
 Before using `--limit` run playbook `facts.yml` without the limit to refresh facts cache for all nodes.
 
+**Note:** `facts.yml` must successfully gather facts from every host in `k8s_cluster` before `--limit` can be used at all — `scale.yml` asserts that any host excluded by `--limit` already has a cached fact set. If a host in `k8s_cluster` is permanently unreachable, there is currently no supported way to scale with `--limit` while leaving that host in the inventory; removing it from the inventory is the current workaround (see [#13491](https://github.com/kubernetes-sigs/kubespray/issues/13491) for tracking a proper fix).
+
 ### 3) Remove an old node with remove-node.yml
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.

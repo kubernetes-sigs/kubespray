@@ -15,11 +15,41 @@
       - node_feature_discovery_enable_nodefeature_api # 2.32.0
       - node_feature_discovery_master_crd_controller # 2.32.0
       - node_feature_discovery_master_instance # 2.32.0
-    removed_vars_found: "{{ query('varnames', '^' + (removed_vars | join('|')) + '$') }}"
+      - apiserver_loadbalancer_domain_name # 2.33.0
+      - kube_apiserver_global_endpoint # 2.33.0
+      - kubeadm_config_api_fqdn # 2.33.0
+      - loadbalancer_apiserver # 2.33.0
+    removed_vars_found: "{{ query('varnames', '^(' + (removed_vars | join('|')) + ')$') }}"
   assert:
     that: removed_vars_found | length == 0
     fail_msg: "Removed variables present: {{ removed_vars_found | join(', ') }}"
   run_once: true
+
+- name: Check kube_apiserver_endpoint format
+  assert:
+    that:
+      - kube_apiserver_endpoint | urlsplit('scheme') == 'https'
+      - kube_apiserver_endpoint | urlsplit('hostname') is not none
+      - kube_apiserver_endpoint | urlsplit('hostname') | length > 0
+      - kube_apiserver_endpoint | urlsplit('port') is not none
+    msg: "kube_apiserver_endpoint must be in the format 'https://<host>:<port>' (e.g., 'https://lb.example.com:6443')"
+  run_once: true
+  when:
+    - kube_apiserver_endpoint is defined
+    - not ignore_assert_errors
+
+- name: Check kube_apiserver_cluster_internal_endpoint format
+  assert:
+    that:
+      - kube_apiserver_cluster_internal_endpoint | urlsplit('scheme') == 'https'
+      - kube_apiserver_cluster_internal_endpoint | urlsplit('hostname') is not none
+      - kube_apiserver_cluster_internal_endpoint | urlsplit('hostname') | length > 0
+      - kube_apiserver_cluster_internal_endpoint | urlsplit('port') is not none
+    msg: "kube_apiserver_cluster_internal_endpoint must be in the format 'https://<host>:<port>' (e.g., 'https://lb.internal:6443')"
+  run_once: true
+  when:
+    - kube_apiserver_cluster_internal_endpoint is defined
+    - not ignore_assert_errors
 
 - name: Stop if kube_control_plane group is empty
   assert:

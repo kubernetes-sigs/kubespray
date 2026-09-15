@@ -25,7 +25,7 @@ pre-commit run -a  # To run pre-commit hook on all files in the repository, even
 
 #### Molecule
 
-[molecule](https://github.com/ansible-community/molecule) is designed to help the development and testing of Ansible roles. In Kubespray you can run it all for all roles with `./tests/scripts/molecule_run.sh` or for a specific role (that you are working with) with `molecule test` from the role directory (`cd roles/my-role`).
+[molecule](https://github.com/ansible-community/molecule) is designed to help the development and testing of Ansible roles. In Kubespray you can run it all for all roles with `find roles -name molecule -execdir molecule test --all \;` or for a specific role (that you are working with) with `molecule test` from the role directory (`cd roles/my-role`).
 
 When developing or debugging a role it can be useful to run `molecule create` and `molecule converge` separately. Then you can use `molecule login` to SSH into the test environment.
 

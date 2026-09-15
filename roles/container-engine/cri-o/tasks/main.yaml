@@ -285,6 +285,15 @@
     - config_install.changed or reg_auth_install.changed
     - not service_start.changed
 
+# Flush the "Restart crio" handler here so the cri-o service is actually
+# restarted as part of this role. Without this, the handler only fires when a
+# *different* role (kubernetes/node) runs its own meta: flush_handlers later in
+# the play. If that role is skipped, tagged out, or runs in a separate play
+# (as happens during cluster upgrades), the restart is silently dropped and the
+# node keeps running the old cri-o binary. See kubernetes-sigs/kubespray#13031.
+- name: Cri-o | flush handlers to apply cri-o restart
+  meta: flush_handlers
+
 - name: Cri-o | verify that crio is running
   command: "{{ bin_dir }}/{{ crio_status_command }} info"
   register: get_crio_info

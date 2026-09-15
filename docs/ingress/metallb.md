@@ -63,6 +63,16 @@ metallb_config:
       effect: "NoSchedule"
 ```
 
+## Metrics
+
+Since MetalLB v0.16.0 the metrics endpoint of the controller and of the speaker is served over
+HTTPS and requires authentication and authorization, instead of plain HTTP. The port it listens
+on stays configurable and defaults to 7472:
+
+```yaml
+metallb_port: "7472"
+```
+
 ## Pools
 
 First you need to specify all of the pools you are going to use:

@@ -50,16 +50,10 @@ infos = {
         "url": "https://github.com/etcd-io/etcd/releases/download/v{version}/SHA256SUMS",
         "graphql_id": "R_kgDOAKtHtg",
     },
-    "gvisor_containerd_shim_binary": {
-        "url": "https://storage.googleapis.com/gvisor/releases/release/{version}/{alt_arch}/containerd-shim-runsc-v1.sha512",
+    "gvisor_archive": {
+        "url": "https://github.com/google/gvisor/releases/download/release-{version}/SHA512SUMS",
         "hashtype": "sha512",
-        "tags": True,
-        "graphql_id": "R_kgDOB9IlXg",
-    },
-    "gvisor_runsc_binary": {
-        "url": "https://storage.googleapis.com/gvisor/releases/release/{version}/{alt_arch}/runsc.sha512",
-        "hashtype": "sha512",
-        "tags": True,
+        "tags": False,
         "graphql_id": "R_kgDOB9IlXg",
     },
     "kata_containers_binary": {

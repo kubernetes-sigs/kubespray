@@ -17,7 +17,7 @@ and [details on the inventory structure expected by Kubespray](/docs/ansible/inv
 # Review and change parameters under ``inventory/mycluster/group_vars``
 <your-favorite-editor> inventory/mycluster/group_vars/all/all.yml # for every node, including etcd
 <your-favorite-editor> inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml # for every node in the cluster (not etcd when it's separate)
-<your-favorite-editor> inventory/mycluster/group_vars/k8s_cluster/kube_control_plane.yml # for the control plane
+<your-favorite-editor> inventory/mycluster/group_vars/kube_control_plane.yml # for the control plane
 ```
 
 ## Installing the cluster

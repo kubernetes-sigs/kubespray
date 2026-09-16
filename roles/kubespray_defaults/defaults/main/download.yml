@@ -167,7 +167,8 @@ helm_download_url: "{{ get_helm_url }}/helm-v{{ helm_version }}-linux-{{ image_a
 runc_download_url: "{{ github_url }}/opencontainers/runc/releases/download/v{{ runc_version }}/runc.{{ image_arch }}"
 crun_download_url: "{{ github_url }}/containers/crun/releases/download/{{ crun_version }}/crun-{{ crun_version }}-linux-{{ image_arch }}"
 youki_download_url: "{{ github_url }}/youki-dev/youki/releases/download/v{{ youki_version }}/youki-{{ youki_version }}-{{ ansible_facts['architecture'] }}-gnu.tar.gz"
-kata_containers_download_url: "{{ github_url }}/kata-containers/kata-containers/releases/download/{{ kata_containers_version }}/kata-static-{{ kata_containers_version }}-{{ image_arch }}.tar.zst"
+# Since 4.1.0, the go runtime is shipped in a separate tarball from the (default) rust one
+kata_containers_download_url: "{{ github_url }}/kata-containers/kata-containers/releases/download/{{ kata_containers_version }}/{{ kata_containers_version is version('4.1.0', '<') | ternary('kata-static', 'kata-go-static') }}-{{ kata_containers_version }}-{{ image_arch }}.tar.zst"
 # gVisor only supports amd64 and uses x86_64 to in the download link
 gvisor_runsc_download_url: "{{ storage_googleapis_url }}/gvisor/releases/release/{{ gvisor_version }}/{{ ansible_facts['architecture'] }}/runsc"
 gvisor_containerd_shim_runsc_download_url: "{{ storage_googleapis_url }}/gvisor/releases/release/{{ gvisor_version }}/{{ ansible_facts['architecture'] }}/containerd-shim-runsc-v1"
@@ -196,7 +197,7 @@ helm_archive_checksum: "{{ helm_archive_checksums[image_arch][helm_version] }}"
 runc_binary_checksum: "{{ runc_checksums[image_arch][runc_version] }}"
 crun_binary_checksum: "{{ crun_checksums[image_arch][crun_version] }}"
 youki_archive_checksum: "{{ youki_checksums[image_arch][youki_version] }}"
-kata_containers_binary_checksum: "{{ kata_containers_binary_checksums[image_arch][kata_containers_version] }}"
+kata_containers_binary_checksum: "{{ (kata_containers_version is version('4.1.0', '<') | ternary(kata_containers_binary_checksums, kata_containers_go_binary_checksums))[image_arch][kata_containers_version] }}"
 gvisor_runsc_binary_checksum: "{{ gvisor_runsc_binary_checksums[image_arch][gvisor_version] }}"
 gvisor_containerd_shim_binary_checksum: "{{ gvisor_containerd_shim_binary_checksums[image_arch][gvisor_version] }}"
 nerdctl_archive_checksum: "{{ nerdctl_archive_checksums[image_arch][nerdctl_version] }}"
@@ -515,7 +516,7 @@ downloads:
   kata_containers:
     enabled: "{{ kata_containers_enabled }}"
     file: true
-    dest: "{{ local_release_dir }}/kata-static-{{ kata_containers_version }}-{{ image_arch }}.tar.zst"
+    dest: "{{ local_release_dir }}/{{ kata_containers_download_url | basename }}"
     checksum: "{{ kata_containers_binary_checksum }}"
     url: "{{ kata_containers_download_url }}"
     unarchive: false

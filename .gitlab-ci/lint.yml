@@ -16,11 +16,23 @@ pre-commit:
     when: 'always'
   needs: []
 
+non-root-controller:
+  extends: .job
+  stage: test
+  script:
+  - test "$(id -u)" -ne 0
+  - '! sudo -n true'
+  - test "$HOME" = /home/kubespray
+  - |
+    for directory in "$HOME" "$CI_PROJECT_DIR" "$CI_PROJECT_DIR/.git" "$CI_PROJECT_DIR"/contrib/terraform/*/; do
+      probe=$(mktemp "$directory/.write-check.XXXXXX")
+      rm "$probe"
+    done
+  - ansible localhost --connection=local -m setup -a 'filter=ansible_user_uid'
+
 vagrant-validate:
   extends: .job
   stage: test
   tags: [ffci]
-  variables:
-    VAGRANT_VERSION: 2.3.7
   script:
   - ./tests/scripts/vagrant-validate.sh

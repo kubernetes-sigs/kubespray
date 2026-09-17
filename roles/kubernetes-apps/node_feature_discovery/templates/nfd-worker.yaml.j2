@@ -35,17 +35,32 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
         command:
         - "nfd-worker"
-        args:
-        - "-server=node-feature-discovery-master:8080"
-{% if not node_feature_discovery_enable_nodefeature_api %}
-        - "-enable-nodefeature-api=false"
-{% endif %}
-        - "-metrics=8081"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 10
         ports:
-          - name: metrics
-            containerPort: 8081
+          - name: http
+            containerPort: 8080
         volumeMounts:
         - name: host-boot
           mountPath: "/host-boot"
@@ -56,14 +71,14 @@ spec:
         - name: host-sys
           mountPath: "/host-sys"
           readOnly: true
+        - name: host-proc-swaps
+          mountPath: "/host-proc/swaps"
+          readOnly: true
         - name: host-usr-lib
           mountPath: "/host-usr/lib"
           readOnly: true
         - name: host-lib
           mountPath: "/host-lib"
-          readOnly: true
-        - name: source-d
-          mountPath: "/etc/kubernetes/node-feature-discovery/source.d/"
           readOnly: true
         - name: features-d
           mountPath: "/etc/kubernetes/node-feature-discovery/features.d/"
@@ -81,15 +96,15 @@ spec:
         - name: host-sys
           hostPath:
             path: "/sys"
+        - name: host-proc-swaps
+          hostPath:
+            path: "/proc/swaps"
         - name: host-usr-lib
           hostPath:
             path: "/usr/lib"
         - name: host-lib
           hostPath:
             path: "/lib"
-        - name: source-d
-          hostPath:
-            path: "/etc/kubernetes/node-feature-discovery/source.d/"
         - name: features-d
           hostPath:
             path: "/etc/kubernetes/node-feature-discovery/features.d/"

@@ -18,7 +18,7 @@ Before using `--limit` run playbook `facts.yml` without the limit to refresh fac
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.
 
-If the node you want to remove is not online, you should add `reset_nodes=false` and `allow_ungraceful_removal=true` to your extra-vars: `-e node=NODE_NAME -e reset_nodes=false -e allow_ungraceful_removal=true`.
+If the node you want to remove is not online, you should add the `reset_nodes` and `allow_ungraceful_removal` booleans to your extra-vars: `-e node=NODE_NAME -e '{"reset_nodes": false, "allow_ungraceful_removal": true}'`.
 Use this flag even when you remove other types of nodes like a control plane or etcd nodes.
 
 ### 4) Remove the node from the inventory
@@ -48,7 +48,7 @@ crictl ps | grep nginx-proxy | awk '{print $1}' | xargs crictl stop
 ### 3) Remove old control plane nodes
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=NODE_NAME` to the playbook to limit the execution to the node being removed.
-If the node you want to remove is not online, you should add `reset_nodes=false` and `allow_ungraceful_removal=true` to your extra-vars.
+If the node you want to remove is not online, you should add the `reset_nodes` and `allow_ungraceful_removal` booleans to your extra-vars: `-e '{"reset_nodes": false, "allow_ungraceful_removal": true}'`.
 
 ## Adding/Removal of first `kube_control_plane` and etcd-master
 
@@ -109,7 +109,7 @@ run `upgrade-cluster.yml` or `cluster.yml`. Now you are good to go on with the r
 ### 3) Remove old first control plane node from cluster
 
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=node-1` to the playbook to limit the execution to the node being removed.
-If the node you want to remove is not online, you should add `reset_nodes=false` and `allow_ungraceful_removal=true` to your extra-vars.
+If the node you want to remove is not online, you should add the `reset_nodes` and `allow_ungraceful_removal` booleans to your extra-vars: `-e '{"reset_nodes": false, "allow_ungraceful_removal": true}'`.
 
 ### 4) Edit cluster-info configmap in kube-public namespace
 
@@ -129,10 +129,10 @@ You need to make sure there are always an odd number of etcd nodes in the cluste
 
 ### 1) Add the new node running cluster.yml
 
-Update the inventory and run `cluster.yml` passing `--limit=etcd,kube_control_plane -e ignore_assert_errors=yes`.
+Update the inventory and run `cluster.yml` passing `--limit=etcd,kube_control_plane -e '{"ignore_assert_errors": true}'`.
 If the node you want to add as an etcd node is already a worker or control plane node in your cluster, you have to remove him first using `remove-node.yml`.
 
-Run `upgrade-cluster.yml` also passing `--limit=etcd,kube_control_plane -e ignore_assert_errors=yes`. This is necessary to update all etcd configuration in the cluster.
+Run `upgrade-cluster.yml` also passing `--limit=etcd,kube_control_plane -e '{"ignore_assert_errors": true}'`. This is necessary to update all etcd configuration in the cluster.
 
 At this point, you will have an even number of nodes.
 Everything should still be working, and you should only have problems if the cluster decides to elect a new etcd leader before you remove a node.
@@ -150,7 +150,7 @@ In every control plane node, edit `/etc/kubernetes/manifests/kube-apiserver.yaml
 ### 1) Remove an old etcd node
 
 With the node still in the inventory, run `remove-node.yml` passing `-e node=NODE_NAME` as the name of the node that should be removed.
-If the node you want to remove is not online, you should add `reset_nodes=false` and `allow_ungraceful_removal=true` to your extra-vars.
+If the node you want to remove is not online, you should add the `reset_nodes` and `allow_ungraceful_removal` booleans to your extra-vars: `-e '{"reset_nodes": false, "allow_ungraceful_removal": true}'`.
 
 ### 2) Make sure only remaining nodes are in your inventory
 

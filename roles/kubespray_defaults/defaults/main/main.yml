@@ -302,7 +302,7 @@ kube_apiserver_ip: "{{ kube_service_subnets.split(',') | first | ansible.utils.i
 
 # NOTE: If you specific address/interface and use loadbalancer_apiserver_localhost
 # loadbalancer_apiserver_localhost (nginx/haproxy) will deploy on control plane nodes on 127.0.0.1:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }} too.
-kube_apiserver_bind_address: "::"
+kube_apiserver_bind_address: "{{ '::' if ipv6_stack else '0.0.0.0' }}"
 
 # https
 kube_apiserver_port: 6443
@@ -672,7 +672,7 @@ kube_apiserver_endpoint: |-
   {%- elif ('kube_control_plane' not in group_names) and loadbalancer_apiserver_localhost -%}
       https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
   {%- elif 'kube_control_plane' in group_names -%}
-  https://{{ kube_apiserver_bind_address | regex_replace('::', '127.0.0.1') | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
+  https://{{ ('127.0.0.1' if kube_apiserver_bind_address in ['::', '0.0.0.0'] else kube_apiserver_bind_address) | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
   {%- else -%}
       https://{{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
   {%- endif %}

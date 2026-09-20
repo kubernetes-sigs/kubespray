@@ -57,3 +57,6 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
     # Install Kubernetes collections
     && pip install --break-system-packages --no-compile --no-cache-dir kubernetes==35.0.0 \
     && ansible-galaxy collection install kubernetes.core:==6.4.0
+
+
+#hello

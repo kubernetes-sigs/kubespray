@@ -9,7 +9,7 @@ following artifacts in advance from another environment where has access to the 
 * Container images used by Kubespray. Exhaustive list depends on your setup
 * [Optional] Python packages used by Kubespray (only required if your OS doesn't provide all python packages/versions
   listed in `requirements.txt`)
-* [Optional] Helm chart files (only required if `helm_enabled=true`)
+* [Optional] Helm chart files (only required if `helm_enabled: true`)
 
 Then you need to setup the following services on your offline environment:
 

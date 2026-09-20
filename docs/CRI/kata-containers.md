@@ -97,5 +97,5 @@ kata_containers_version: 2.2.2
 Debug is disabled by default for all the components of Kata Containers. You can change this behaviour with the following configuration:
 
 ```yaml
-kata_containers_qemu_debug: 'false'
+kata_containers_qemu_debug: 'true'
 ```

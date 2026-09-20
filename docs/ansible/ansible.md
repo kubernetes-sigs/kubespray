@@ -32,7 +32,7 @@ Based on the table below and the available python version for your ansible host 
 
 |  Ansible Version  | Python Version |
 |-------------------|----------------|
-| >=2.18.0, <2.19.0 | 3.11-3.13      |
+| >=2.19.0, <2.20.0 | 3.11-3.13      |
 
 ## Customize Ansible vars
 
@@ -46,6 +46,8 @@ Kubespray expects users to use one of the following variables sources for settin
 | **extra vars** (always win precedence) | override with ``ansible-playbook -e @foo.yml``                               |
 
 > Extra vars are best used to override kubespray internal variables, for instances, roles/vars/. Those vars are usually **not expected** (by Kubespray developers) to be modified by end users, and not part of Kubespray interface. Thus they can change, disappear, or break stuff unexpectedly.
+>
+> `-e key=value` always passes strings. Since Ansible 12 (ansible-core 2.19), conditionals must return booleans. Pass booleans using JSON syntax instead, e.g. `-e '{"drain_nodes": true}'`. See the [Ansible 12 porting guide](https://docs.ansible.com/projects/ansible/latest/porting_guides/porting_guide_12.html#broken-conditionals).
 
 ## Ansible tags
 
@@ -171,7 +173,7 @@ or upgrading related stuff or trying to upload container to K8s cluster nodes:
 
 ```ShellSession
 ansible-playbook -i inventory/sample/inventory.ini cluster.yml \
-    -e download_run_once=true -e download_localhost=true \
+    -e '{"download_run_once": true, "download_localhost": true}' \
     --tags download --skip-tags upload,upgrade
 ```
 

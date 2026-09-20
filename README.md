@@ -131,7 +131,7 @@ Note:
   - [argocd](https://argoproj.github.io/) 2.14.21
   - [helm](https://helm.sh/) 3.22.0
   - [metallb](https://metallb.universe.tf/) 0.13.9
-  - [registry](https://github.com/distribution/distribution) 2.8.1
+  - [registry](https://github.com/distribution/distribution) 2.8.3
 - Storage Plugin
   - [aws-ebs-csi-plugin](https://github.com/kubernetes-sigs/aws-ebs-csi-driver) 0.5.0
   - [azure-csi-plugin](https://github.com/kubernetes-sigs/azuredisk-csi-driver) 1.10.0

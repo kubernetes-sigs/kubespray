@@ -60,10 +60,7 @@ ansible-playbook -i inventory/mycluster/inventory.ini remove-node.yml -b -v \
 
 > Note: The playbook does not currently support the removal of the first control plane or etcd node. These nodes are essential for maintaining cluster operations and must remain intact.
 
-If a node is completely unreachable by ssh, add `--extra-vars '{"reset_nodes": false}'`
-to skip the node reset step. If one node is unavailable, but others you wish
-to remove are able to connect via SSH, you could set `reset_nodes=false` as a host
-var in inventory.
+If a node is completely unreachable by ssh, add `--extra-vars '{"reset_nodes": false}'` to skip the node reset step. If one node is unavailable, but others you wish to remove are able to connect via SSH, you could set `reset_nodes=False` as a host var in inventory.
 
 ## Connecting to Kubernetes
 

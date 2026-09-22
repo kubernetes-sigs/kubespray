@@ -15,8 +15,8 @@ grep 'download_url:' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
 
 # generate all images list template
 sed -n '/^downloads:/,/download_defaults:/p' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
-    | sed -n "s/repo: //p;s/tag: //p" | tr -d ' ' \
-    | sed 'N;s#\n# #g' | tr ' ' ':' | sed 's/\"//g' > ${TEMP_DIR}/images.list.template
+    | sed -n "s/image_name: //p" | tr -d ' ' \
+    | tr ' ' ':' | sed 's/\"//g' > ${TEMP_DIR}/images.list.template
 
 # add kube-* images to images list template
 # Those container images are downloaded by kubeadm, then roles/kubespray_defaults/defaults/main/download.yml

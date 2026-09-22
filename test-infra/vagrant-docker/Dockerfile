@@ -10,7 +10,9 @@ ENV VAGRANT_ANSIBLE_TAGS=facts
 RUN apt-get update && apt-get install -y wget libvirt-dev openssh-client rsync git build-essential
 
 # Install Vagrant
+# fog-json 1.4 requires a newer json gem than Vagrant 2.3.7 bundles.
 RUN wget https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}-1_amd64.deb && \
  dpkg -i vagrant_${VAGRANT_VERSION}-1_amd64.deb && \
  rm vagrant_${VAGRANT_VERSION}-1_amd64.deb && \
+ vagrant plugin install fog-json --plugin-version 1.3.0 --entry-point fog/json && \
  vagrant plugin install vagrant-libvirt

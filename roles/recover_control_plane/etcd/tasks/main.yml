@@ -12,24 +12,24 @@
     ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
     ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] | length > 0
 
 - name: Set healthy fact
   set_fact:
     healthy: "{{ etcd_endpoint_health.stderr is match('Error: unhealthy cluster') }}"
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] | length > 0
 
 - name: Set has_quorum fact
   set_fact:
     has_quorum: "{{ etcd_endpoint_health.stdout_lines | select('match', '.*is healthy.*') | list | length >= etcd_endpoint_health.stderr_lines | select('match', '.*is unhealthy.*') | list | length }}"
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] | length > 0
 
 - name: Recover lost etcd quorum
   include_tasks: recover_lost_quorum.yml
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] | length > 0
     - not has_quorum
 
 - name: Remove etcd data dir
@@ -41,7 +41,7 @@
   ignore_errors: true  # noqa ignore-errors
   ignore_unreachable: true
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] | length > 0
     - has_quorum
 
 - name: Delete old certificates
@@ -49,7 +49,7 @@
   with_items: "{{ groups['broken_etcd'] }}"
   register: delete_old_cerificates
   ignore_errors: true
-  when: groups['broken_etcd']
+  when: groups['broken_etcd'] | length > 0
 
 - name: Fail if unable to delete old certificates
   fail:
@@ -57,7 +57,7 @@
   loop: "{{ delete_old_cerificates.results }}"
   changed_when: false
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] | length > 0
     - "item.rc != 0 and not 'No such file or directory' in item.stderr"
 
 - name: Get etcd cluster members
@@ -72,7 +72,7 @@
     ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
     ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] | length > 0
     - not healthy
     - has_quorum
 
@@ -88,7 +88,7 @@
     - "{{ groups['broken_etcd'] }}"
     - "{{ member_list.stdout_lines }}"
   when:
-    - groups['broken_etcd']
+    - groups['broken_etcd'] | length > 0
     - not healthy
     - has_quorum
     - hostvars[item[0]]['etcd_member_name'] == item[1].replace(' ', '').split(',')[2]

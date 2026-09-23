@@ -22,7 +22,7 @@ Playbook example:
 - hosts: kube_control_plane[0]
   gather_facts: no
   roles:
-    - name: helm-apps
+    - name: helm_apps
       releases:
         - name: app
           namespace: app
@@ -31,9 +31,9 @@ Playbook example:
           namespace: app
           chart_ref: simple-app/simple-app
           wait_timeout: "10m" # override the same option in `release_common_opts`
-      repositories: "{{ repos }}"
+      repositories:
         - name: simple-app
           url: "https://blog.leiwang.info/simple-app"
-      release_common_opts: "{{ helm_params }}"
+      release_common_opts:
         wait_timeout: "5m"
 ```

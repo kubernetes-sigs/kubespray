@@ -50,9 +50,6 @@ arch_alt_name = {
     "no_arch": None,
 }
 
-# TODO: downloads not supported
-# helm_archive: PGP signatures
-
 # TODO:
 # different verification methods (gpg, cosign) ( needs download role changes) (or verify the sig in this script and only use the checksum in the playbook)
 # perf improvements (async)

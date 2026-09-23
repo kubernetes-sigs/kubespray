@@ -62,6 +62,10 @@ infos = {
         "tags": True,
         "graphql_id": "R_kgDOB9IlXg",
     },
+    "helm_archive": {
+        "url": "https://get.helm.sh/helm-v{version}-{os}-{arch}.tar.gz.sha256sum",
+        "graphql_id": "R_kgDOApspmQ",
+    },
     "kata_containers_binary": {
         "url": "https://github.com/kata-containers/kata-containers/releases/download/{version}/kata-static-{version}-{arch}.tar.xz",
         "binary": True,

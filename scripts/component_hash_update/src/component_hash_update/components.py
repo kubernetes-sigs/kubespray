@@ -96,7 +96,7 @@ infos = {
         "graphql_id": "R_kgDOHQ6J9w",
     },
     "youki": {
-        "url": "https://github.com/youki-dev/youki/releases/download/v{version}/youki-{version}-{alt_arch}-gnu.tar.gz",
+        "url": "https://github.com/youki-dev/youki/releases/download/v{version}/youki-{version}-{alt_arch}-musl.tar.gz",
         "binary": True,
         "graphql_id": "R_kgDOFPvgPg",
     },

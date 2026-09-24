@@ -67,7 +67,12 @@ infos = {
         "graphql_id": "R_kgDOApspmQ",
     },
     "kata_containers_binary": {
-        "url": "https://github.com/kata-containers/kata-containers/releases/download/{version}/kata-static-{version}-{arch}.tar.xz",
+        "url": "https://github.com/kata-containers/kata-containers/releases/download/{version}/kata-static-{version}-{arch}.tar.zst",
+        "binary": True,
+        "graphql_id": "R_kgDOBsJsHQ",
+    },
+    "kata_containers_go_binary": {
+        "url": "https://github.com/kata-containers/kata-containers/releases/download/{version}/kata-go-static-{version}-{arch}.tar.zst",
         "binary": True,
         "graphql_id": "R_kgDOBsJsHQ",
     },

@@ -111,7 +111,7 @@ Note:
 <!-- BEGIN ANSIBLE MANAGED BLOCK -->
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.36.4
+  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.37.1
   - [etcd](https://github.com/etcd-io/etcd) 3.6.14
   - [docker](https://www.docker.com/) 28.3
   - [containerd](https://containerd.io/) 2.3.5
@@ -127,7 +127,7 @@ Note:
   - [kube-vip](https://github.com/kube-vip/kube-vip) 1.0.3
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) 1.15.3
-  - [coredns](https://github.com/coredns/coredns) 1.14.2
+  - [coredns](https://github.com/coredns/coredns) 1.14.6
   - [argocd](https://argoproj.github.io/) 2.14.5
   - [helm](https://helm.sh/) 3.22.0
   - [metallb](https://metallb.universe.tf/) 0.13.9
@@ -149,7 +149,7 @@ Note:
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.34.0**
+- **Minimum required version of Kubernetes is v1.35.0**
 
 - **Ansible v2.14+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/operations/offline-environment.md))

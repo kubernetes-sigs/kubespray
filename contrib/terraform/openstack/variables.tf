@@ -398,7 +398,7 @@ variable "image_master_uuid" {
 }
 
 variable "group_vars_path" {
-  description = "path to the inventory group vars directory"
+  description = "Path to the inventory group_vars directory (absolute recommended; relative paths may fail when using terraform -chdir)."
   type        = string
   default     = "./group_vars"
 }

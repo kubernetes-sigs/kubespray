@@ -151,7 +151,7 @@ Note:
 
 - **Minimum required version of Kubernetes is v1.35.0**
 
-- **Ansible v2.14+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
+- **Ansible 14 (ansible-core 2.21), Jinja 3.1+ and python-netaddr are installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/operations/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.
 - If using IPv6 for pods and services, the target servers are configured to allow **IPv6 forwarding**.

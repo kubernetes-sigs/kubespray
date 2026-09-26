@@ -2,8 +2,8 @@
 
 ## Installing Ansible
 
-Kubespray supports multiple ansible versions and ships different `requirements.txt` files for them.
-Depending on your available python version you may be limited in choosing which ansible version to use.
+Kubespray pins its supported Ansible version in `requirements.txt`.
+Your available Python version may limit which Ansible version you can use.
 
 It is recommended to deploy the ansible version used by kubespray into a python virtual environment.
 
@@ -19,20 +19,20 @@ pip install -r requirements.txt
 In case you have a similar message when installing the requirements:
 
 ```ShellSession
-ERROR: Could not find a version that satisfies the requirement ansible==7.6.0 (from -r requirements.txt (line 1)) (from versions: [...], 6.7.0)
-ERROR: No matching distribution found for ansible==7.6.0 (from -r requirements.txt (line 1))
+ERROR: Could not find a version that satisfies the requirement ansible==14.4.0 (from -r requirements.txt (line 1)) (from versions: [...])
+ERROR: No matching distribution found for ansible==14.4.0 (from -r requirements.txt (line 1))
 ```
 
 It means that the version of Python you are running is not compatible with the version of Ansible that Kubespray supports.
-If the latest version supported according to pip is 6.7.0 it means you are running Python 3.8 or lower while you need at least Python 3.9 (see the table below).
+Ansible 14 supports Python 3.12 through 3.14 on the Ansible control node (see the table below).
 
 ### Ansible Python Compatibility
 
 Based on the table below and the available python version for your ansible host you should choose the appropriate ansible version to use with kubespray.
 
-|  Ansible Version  | Python Version |
-|-------------------|----------------|
-| >=2.19.0, <2.20.0 | 3.11-3.13      |
+| ansible-core Version | Control Node Python Version | Target Node Python Version |
+|----------------------|-----------------------------|----------------------------|
+| >=2.21.0, <2.22.0    | 3.12-3.14                   | 3.9-3.14                   |
 
 ## Customize Ansible vars
 

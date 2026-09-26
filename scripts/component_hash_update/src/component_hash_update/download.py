@@ -50,6 +50,10 @@ arch_alt_name = {
     "no_arch": None,
 }
 
+
+# upstream (non kubespray) arch names -> the arch keys used in checksums.yml
+arch_alt_name_rev = {v: k for k, v in arch_alt_name.items() if v is not None}
+
 # TODO:
 # different verification methods (gpg, cosign) ( needs download role changes) (or verify the sig in this script and only use the checksum in the playbook)
 # perf improvements (async)
@@ -73,6 +77,15 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
             line.split()[1].removesuffix(".tar.gz").split("-")[3]: line.split()[0]
             for line in hashes.strip().split("\n")
             if [x for x in line.split(" ") if x][1].split("-")[2] == "linux"
+        },
+        "gvisor_archive": lambda hashes: {
+            # filenames are gvisor-x86_64.tar.bz2 / gvisor-aarch64.tar.bz2,
+            # checksums.yml is keyed by amd64 / arm64
+            arch_alt_name_rev[
+                line.split()[1].removesuffix(".tar.bz2").split("-")[1]
+            ]: line.split()[0]
+            for line in hashes.strip().split("\n")
+            if line.endswith(".tar.bz2")
         },
         "runc": lambda hashes: {
             parts[1].split(".")[1]: parts[0]

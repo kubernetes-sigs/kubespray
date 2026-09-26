@@ -110,14 +110,14 @@
     src: crio.conf.j2
     dest: /etc/crio/crio.conf
     mode: "0644"
-  register: config_install
+  notify: Restart crio
 
 - name: Cri-o | install config.json
   template:
     src: config.json.j2
     dest: /etc/crio/config.json
     mode: "0644"
-  register: reg_auth_install
+  notify: Restart crio
 
 - name: Cri-o | copy binaries
   copy:
@@ -275,15 +275,15 @@
     daemon_reload: true
     enabled: true
     state: started
-  register: service_start
 
-- name: Cri-o | trigger service restart only when needed
-  service:
-    name: crio
-    state: restarted
-  when:
-    - config_install.changed or reg_auth_install.changed
-    - not service_start.changed
+# Every config/binary change above notifies "Restart crio", so this flush runs
+# the pending handlers right away instead of leaving the cri-o restart to the
+# end of the play (where it is lost if kubernetes/node is skipped, tagged out,
+# or runs in a separate play, as happens during cluster upgrades).
+# Note: flush_handlers flushes *all* notified handlers in the play, not only
+# "Restart crio". See kubernetes-sigs/kubespray#13031.
+- name: Cri-o | flush handlers to apply cri-o restart
+  meta: flush_handlers
 
 - name: Cri-o | verify that crio is running
   command: "{{ bin_dir }}/{{ crio_status_command }} info"

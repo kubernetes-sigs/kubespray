@@ -14,7 +14,7 @@ grep 'download_url:' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
     | sed 's/^.*_url: //g;s/\"//g' > ${TEMP_DIR}/files.list.template
 
 # generate all images list template
-sed -n '/^downloads:/,/download_defaults:/p' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
+sed -n '/^downloads_container:/,/download_defaults:/p' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
     | sed -n "s/image_name: //p" | tr -d ' ' \
     | tr ' ' ':' | sed 's/\"//g' > ${TEMP_DIR}/images.list.template
 

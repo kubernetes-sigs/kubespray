@@ -27,9 +27,6 @@ gh api graphql -H "X-Github-Next-Global-ID: 1" -f query='{
     skopeo_binary: repository(owner: "lework", name: "skopeo-binary") {
     id
     }
-    yq: repository(owner: "mikefarah", name: "yq") {
-    id
-    }
     youki: repository(owner: "youki-dev", name: "youki") {
     id
     }

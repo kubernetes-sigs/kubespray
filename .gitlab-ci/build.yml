@@ -28,3 +28,32 @@ pipeline-image:
         --export-cache type=registry,ref=$CACHE_IMAGE \
         --import-cache type=registry,ref=$CACHE_IMAGE \
         --output type=image,name=$PIPELINE_IMAGE,push=true
+
+image-build:
+  stage: test
+  needs: []
+  tags: [ffci]
+  image: moby/buildkit:rootless
+  before_script: []
+  cache: []
+  timeout: 30m
+  variables:
+    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
+  parallel:
+    matrix:
+      - BUILD_CONTEXT:
+          - "."
+          - test-infra/vagrant-docker
+  script:
+    - |
+      set -eu
+      set --
+      if [ "$BUILD_CONTEXT" = "test-infra/vagrant-docker" ]; then
+        set -- --opt build-arg:KUBESPRAY_VERSION=v2.32.0
+      fi
+      buildctl-daemonless.sh build \
+        --frontend dockerfile.v0 \
+        --local context="$CI_PROJECT_DIR/$BUILD_CONTEXT" \
+        --local dockerfile="$CI_PROJECT_DIR/$BUILD_CONTEXT" \
+        --opt platform=linux/amd64 \
+        "$@"

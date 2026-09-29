@@ -43,7 +43,13 @@ If the inventory pins an older interpreter, set:
 ansible_python_interpreter: /usr/bin/python3.12
 ```
 
-Run bootstrap before `--check` on fresh hosts. Experimental CI includes `rockylinux8-calico` in the regular PR matrix and `almalinux8-calico` as a manual job. SELinux, runtime, and kernel/cgroup compatibility still need validation; the kernel check and cgroup v1 exceptions are not production recommendations.
+The default containerd binaries require a newer glibc than EL8 provides. Use the static binaries on these systems:
+
+```yaml
+containerd_static_binary: true
+```
+
+Run bootstrap before `--check` on fresh hosts. Experimental CI includes `rockylinux8-calico` in the regular PR matrix and `almalinux8-calico` as a manual job. Both use static containerd binaries. SELinux, runtime, and kernel/cgroup compatibility still need validation; the kernel check and cgroup v1 exceptions are not production recommendations.
 
 ## Rocky Linux 10
 

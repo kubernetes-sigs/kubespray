@@ -6,6 +6,7 @@ To generate this Matrix run `./tests/scripts/md-table/main.py`
 
 | OS / CNI | calico | cilium | custom_cni | flannel | kube-ovn | kube-router |
 |---| --- | --- | --- | --- | --- | --- |
+almalinux8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 almalinux9 |  :white_check_mark: | :x: | :x: | :x: | :white_check_mark: | :x: |
 amazon |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 debian12 |  :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: | :x: | :x: |
@@ -17,6 +18,7 @@ openeuler24 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 opensuse |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 opensusemicroos |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 rockylinux10 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: |
+rockylinux8 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :white_check_mark: | :white_check_mark: | :x: | :x: | :x: | :x: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 ubuntu24 |  :white_check_mark: | :white_check_mark: | :x: | :white_check_mark: | :x: | :white_check_mark: |
@@ -26,6 +28,7 @@ ubuntu26 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 
 | OS / CNI | calico | cilium | custom_cni | flannel | kube-ovn | kube-router |
 |---| --- | --- | --- | --- | --- | --- |
+almalinux8 |  :x: | :x: | :x: | :x: | :x: | :x: |
 almalinux9 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: |
 debian12 |  :x: | :x: | :x: | :x: | :x: | :x: |
@@ -37,6 +40,7 @@ openeuler24 |  :x: | :x: | :x: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: |
 opensusemicroos |  :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux10 |  :x: | :x: | :x: | :x: | :x: | :x: |
+rockylinux8 |  :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 ubuntu24 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
@@ -46,6 +50,7 @@ ubuntu26 |  :x: | :x: | :x: | :x: | :x: | :x: |
 
 | OS / CNI | calico | cilium | custom_cni | flannel | kube-ovn | kube-router |
 |---| --- | --- | --- | --- | --- | --- |
+almalinux8 |  :x: | :x: | :x: | :x: | :x: | :x: |
 almalinux9 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 amazon |  :x: | :x: | :x: | :x: | :x: | :x: |
 debian12 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
@@ -57,6 +62,7 @@ openeuler24 |  :x: | :x: | :x: | :x: | :x: | :x: |
 opensuse |  :x: | :x: | :x: | :x: | :x: | :x: |
 opensusemicroos |  :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux10 |  :x: | :x: | :x: | :x: | :x: | :x: |
+rockylinux8 |  :x: | :x: | :x: | :x: | :x: | :x: |
 rockylinux9 |  :x: | :x: | :x: | :x: | :x: | :x: |
 ubuntu22 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |
 ubuntu24 |  :white_check_mark: | :x: | :x: | :x: | :x: | :x: |

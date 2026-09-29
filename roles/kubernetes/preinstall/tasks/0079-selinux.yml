@@ -1,0 +1,50 @@
+---
+# The ansible.posix.selinux module needs the libselinux Python bindings, which
+# some distributions only package for their system Python. When Kubespray runs
+# with another interpreter (for example the Python 3.12 bootstrapped on EL8)
+# the bindings are missing, so fall back to editing the configuration file.
+- name: Check for the libselinux Python bindings
+  command: "{{ ansible_facts['python']['executable'] }} -c 'import selinux'"
+  register: selinux_bindings
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Set selinux policy
+  ansible.posix.selinux:
+    policy: targeted
+    state: "{{ selinux_state }}"
+  when: selinux_bindings.rc == 0
+
+- name: Set selinux policy without the libselinux Python bindings
+  when: selinux_bindings.rc != 0
+  block:
+    - name: Gather selinux facts
+      setup:
+        gather_subset: selinux
+
+    - name: Set selinux policy type
+      lineinfile:
+        path: /etc/selinux/config
+        regexp: '^SELINUXTYPE='
+        line: "SELINUXTYPE=targeted"
+        mode: "0644"
+        backup: "{{ leave_etc_backup_files }}"
+      when: selinux_state != 'disabled'
+
+    - name: Set selinux state
+      lineinfile:
+        path: /etc/selinux/config
+        regexp: '^SELINUX='
+        line: "SELINUX={{ selinux_state }}"
+        mode: "0644"
+        backup: "{{ leave_etc_backup_files }}"
+
+    # Switching to disabled only takes effect after a reboot.
+    - name: Apply selinux state at runtime
+      command: setenforce {{ (selinux_state == 'enforcing') | ternary('1', '0') }}
+      changed_when: true
+      when:
+        - ansible_facts['selinux']['status'] == 'enabled'
+        - selinux_state != 'disabled'
+        - ansible_facts['selinux']['mode'] != selinux_state

@@ -1,4 +1,42 @@
 ---
+- name: Bootstrap Python
+  when: bootstrap_os_install_python
+  block:
+    - name: Check if Python bootstrap is needed
+      vars:
+        python_interpreter: "{{ lookup('config', 'INTERPRETER_PYTHON') | trim }}"
+        python_candidates: >-
+          {{ lookup('config', 'INTERPRETER_PYTHON_FALLBACK')
+             if python_interpreter in ['', 'auto', 'auto_silent'] else [python_interpreter] }}
+      raw: |
+        for python in {{ python_candidates | map('quote') | join(' ') }}; do
+          if command -v "$python" >/dev/null 2>&1; then
+            "$python" -c 'import sys; sys.exit(sys.version_info[:2] < (3, 9))'
+            exit $?
+          fi
+        done
+        exit 1
+      register: need_bootstrap
+      changed_when: false
+      failed_when: need_bootstrap.rc not in [0, 1]
+      check_mode: false
+
+    # Keep platform-python for the ansible-core DNF helper.
+    - name: Install Python 3.12
+      raw: >-
+        yum --assumeyes
+        {% if not skip_http_proxy_on_os_packages and http_proxy is defined %}
+        --setopt={{ ('proxy=' ~ http_proxy) | quote }}
+        {% endif %}
+        install python3.12
+      become: true
+      register: bootstrap_python
+      until: bootstrap_python is succeeded
+      retries: "{{ pkg_install_retries }}"
+      delay: "{{ retry_stagger | random + 3 }}"
+      timeout: "{{ pkg_install_timeout }}"
+      when: need_bootstrap.rc != 0
+
 - name: Gather host facts to get ansible_distribution_version ansible_distribution_major_version
   setup:
     gather_subset: '!all'
@@ -60,8 +98,6 @@
     - '''ID="ol"'' in os_release.stdout_lines'
     - (ansible_facts['distribution_version'] | float) >= 7.6
     - (ansible_facts['distribution_version'] | float) < 9
-
-# CentOS ships with python installed
 
 - name: Check presence of fastestmirror.conf
   stat:

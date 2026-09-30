@@ -100,6 +100,9 @@ kubelet_make_iptables_util_chains: true
 kubelet_feature_gates: ["RotateKubeletServerCertificate=true"]
 kubelet_seccomp_default: true
 kubelet_systemd_hardening: true
+# Set kube_manifest_dir to "" on worker-only nodes to omit staticPodPath (STIG).
+# Do not set this on control plane nodes or workers using loadbalancer_apiserver_localhost.
+# kube_manifest_dir: ""
 # In case you have multiple interfaces in your
 # control plane nodes and you want to specify the right
 # IP addresses, kubelet_secure_addresses allows you

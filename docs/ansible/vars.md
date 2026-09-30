@@ -47,13 +47,15 @@ Some variables of note include:
 * *access_ip6* - similarly ``access_ip`` but IPv6
 * *ansible_default_ipv6.address* - Not Kubespray-specific, but it is used if ip6
   and access_ip6 are undefined
-* *loadbalancer_apiserver* - If defined, all hosts will connect to this
-  address instead of localhost for kube_control_planes and kube_control_plane[0] for
-  kube_nodes. See more details in the
-  [HA guide](/docs/operations/ha-mode.md).
-* *loadbalancer_apiserver_localhost* - makes all hosts to connect to
-  the apiserver internally load balanced endpoint. Mutual exclusive to the
-  `loadbalancer_apiserver`. See more details in the
+* *kube_apiserver_endpoint* - Primary API endpoint for external access (e.g., kubectl).
+  If you have a load balancer or VIP, set this in your inventory (e.g. `https://lb.example.com:6443`).
+  See more details in the [HA guide](/docs/operations/ha-mode.md).
+* *kube_apiserver_cluster_internal_endpoint* - Internal endpoint used for in-cluster
+  traffic, including nodes and pods. Defaults to localhost LB proxy or `kube_apiserver_endpoint`.
+  See more details in the [HA guide](/docs/operations/ha-mode.md).
+* *loadbalancer_apiserver_localhost* - makes all hosts connect to
+  the apiserver internally via the local load balanced proxy (nginx/haproxy). Defaults to `true`
+  when no external or internal endpoint is defined. See more details in the
   [HA guide](/docs/operations/ha-mode.md).
 
 ## Special network variables

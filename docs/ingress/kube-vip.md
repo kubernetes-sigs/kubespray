@@ -25,9 +25,8 @@ You also need to enable
 # HA for control-plane, requires a VIP
 kube_vip_controlplane_enabled: true
 kube_vip_address: 10.42.42.42
-loadbalancer_apiserver:
-  address: "{{ kube_vip_address }}"
-  port: 6443
+kube_apiserver_endpoint: "https://{{ kube_vip_address }}:6443"
+kube_apiserver_cluster_internal_endpoint: "https://{{ kube_vip_address }}:6443"
 # kube_vip_interface: ens160
 
 # LoadBalancer for services

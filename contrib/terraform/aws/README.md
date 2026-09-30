@@ -86,8 +86,8 @@ You can use the following set of commands to get the kubeconfig file from your n
 CONTROLLER_HOST_NAME=$(cat ./inventory/hosts | grep "\[kube_control_plane\]" -A 1 | tail -n 1)
 CONTROLLER_IP=$(cat ./inventory/hosts | grep $CONTROLLER_HOST_NAME | grep ansible_host | cut -d'=' -f2)
 
-# Get the hostname of the load balancer.
-LB_HOST=$(cat inventory/hosts | grep apiserver_loadbalancer_domain_name | cut -d'"' -f2)
+# Get the API endpoint of the load balancer.
+LB_ENDPOINT=$(cat inventory/hosts | grep kube_apiserver_endpoint | cut -d'"' -f2)
 
 # Get the controller's SSH fingerprint.
 ssh-keygen -R $CONTROLLER_IP > /dev/null 2>&1
@@ -97,7 +97,7 @@ ssh-keyscan -H $CONTROLLER_IP >> ~/.ssh/known_hosts 2>/dev/null
 mkdir -p ~/.kube
 ssh -F ssh-bastion.conf centos@$CONTROLLER_IP "sudo chmod 644 /etc/kubernetes/admin.conf"
 scp -F ssh-bastion.conf centos@$CONTROLLER_IP:/etc/kubernetes/admin.conf ~/.kube/config
-sed -i "s^server:.*^server: https://$LB_HOST:6443^" ~/.kube/config
+sed -i "s^server:.*^server: $LB_ENDPOINT^" ~/.kube/config
 kubectl get nodes
 ```
 

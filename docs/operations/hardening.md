@@ -100,6 +100,12 @@ kubelet_make_iptables_util_chains: true
 kubelet_feature_gates: ["RotateKubeletServerCertificate=true"]
 kubelet_seccomp_default: true
 kubelet_systemd_hardening: true
+# Disable kubelet's staticPodPath on nodes that don't run static pods (STIG recommendation).
+# Set this only in the group_vars of worker nodes (e.g. the kube_node group): control plane
+# nodes always need the manifests dir because kubeadm writes the control plane static pods
+# there. It is also only supported when an external loadbalancer_apiserver is configured, since
+# the default localhost apiserver load balancer relies on a static pod in this directory.
+# kube_manifest_dir: ""
 # In case you have multiple interfaces in your
 # control plane nodes and you want to specify the right
 # IP addresses, kubelet_secure_addresses allows you

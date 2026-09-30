@@ -30,6 +30,16 @@
   - inventory_hostname == first_kube_control_plane
   - preflight_check_result.rc is defined and preflight_check_result.rc != 0
 
+# kubeadm upgrade reads ClusterConfiguration only from the kubeadm-config ConfigMap.
+# Upload it first. Then kubeadm upgrades etcd on one node at a time.
+- name: Kubeadm | Upload ClusterConfiguration before upgrade
+  command: "{{ bin_dir }}/kubeadm init phase upload-config kubeadm --config {{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kubeadm_upload_cluster_config
+  retries: 3
+  until: kubeadm_upload_cluster_config.rc == 0
+  when:
+  - inventory_hostname == first_kube_control_plane
+
 - name: Kubeadm | Upgrade first control plane node to {{ kube_version }}
   command: >-
     timeout -k 600s 600s

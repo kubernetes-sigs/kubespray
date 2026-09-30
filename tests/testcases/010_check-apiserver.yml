@@ -1,4 +1,15 @@
 ---
+- name: Check API server bind address and endpoint
+  assert:
+    that:
+      - kube_apiserver_bind_address == ('::' if ipv6_stack | default(false) else '0.0.0.0')
+      - >-
+        kube_apiserver_bind_address not in ['::', '0.0.0.0'] or
+        kube_apiserver_endpoint == 'https://127.0.0.1:' ~ kube_apiserver_port
+    fail_msg: >-
+      kube_apiserver_bind_address is {{ kube_apiserver_bind_address }} and
+      kube_apiserver_endpoint is {{ kube_apiserver_endpoint }}
+
 - name: Check the API servers are responding
   uri:
     url: "https://{{ (access_ip if (ipv4_stack | default(true)) else access_ip6) | default(ansible_default_ipv4.address if (ipv4_stack | default(true)) else ansible_default_ipv6.address) | ansible.utils.ipwrap }}:{{ kube_apiserver_port | default(6443) }}/version"
@@ -12,5 +23,5 @@
 - name: Check API servers version
   assert:
     that:
-    - apiserver_response.json.gitVersion == ('v' + kube_version)
+      - apiserver_response.json.gitVersion == ('v' + kube_version)
     fail_msg: "apiserver is {{ apiserver_response.json.gitVersion }}, expected {{ kube_version }}"

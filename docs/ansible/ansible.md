@@ -34,10 +34,6 @@ Based on the table below and the available python version for your ansible host 
 |----------------------|-----------------------------|----------------------------|
 | >=2.21.0, <2.22.0    | 3.12-3.14                   | 3.9-3.14                   |
 
-### Target Python Bootstrap
-
-`bootstrap_os_install_python` defaults to `true` and controls Python installation for Debian/Ubuntu, Fedora, Fedora CoreOS, Flatcar, and distributions using the shared `centos.yml` bootstrap. Set it to `false` when a compatible interpreter is already provisioned, selecting it with `ansible_python_interpreter` if needed. This also skips Fedora CoreOS bootstrap preparation and reboot, but not general system package management. The shared CentOS bootstrap installs Python 3.12 using `yum` when the selected interpreter is missing or older than 3.9; configured repositories must provide that package. Other bootstrap paths retain their existing checks and package choices.
-
 ## Customize Ansible vars
 
 Kubespray expects users to use one of the following variables sources for settings and customization:

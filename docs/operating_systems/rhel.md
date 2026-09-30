@@ -31,26 +31,6 @@ rh_subscription_sla: "Self-Support"
 
 If the RHEL hosts are already registered to a valid Red Hat support subscription via an alternative configuration management approach prior to the deployment of Kubespray, the successful RHEL `subscription-manager` status check will simply result in the RHEL subscription registration tasks being skipped.
 
-## RHEL 8 Family
-
-RHEL 8, AlmaLinux 8, and Rocky Linux 8 are not end-of-life, but they are no longer in full or active support. RHEL 8 remains in maintenance support, while AlmaLinux 8 and Rocky Linux 8 receive security maintenance, through May 31, 2029. Prefer a newer major release for new deployments; this guidance is intended primarily for existing RHEL 8 family environments. See the lifecycle documentation for [RHEL](https://access.redhat.com/support/policy/updates/errata), [AlmaLinux](https://wiki.almalinux.org/release-notes/), and [Rocky Linux](https://wiki.rockylinux.org/rocky/version/).
-
-With `bootstrap_os_install_python: true` (the default), the shared `centos.yml` bootstrap checks the selected interpreter before gathering facts, without restricting the distribution or OS version. If Python is missing or older than 3.9, it installs Python 3.12 using `yum`, preserving system Python for DNF. This requires repositories providing `python3.12`, available in AlmaLinux 8.10 and Rocky Linux 8.10. RHEL uses a separate bootstrap path and is unchanged.
-
-If the inventory pins an older interpreter, set:
-
-```yaml
-ansible_python_interpreter: /usr/bin/python3.12
-```
-
-The default containerd binaries require a newer glibc than EL8 provides. Use the static binaries on these systems:
-
-```yaml
-containerd_static_binary: true
-```
-
-Run bootstrap before `--check` on fresh hosts. Experimental CI includes `rockylinux8-calico` in the regular PR matrix and `almalinux8-calico` as a manual job. Both use static containerd binaries. SELinux, runtime, and kernel/cgroup compatibility still need validation; the kernel check and cgroup v1 exceptions are not production recommendations.
-
 ## Rocky Linux 10
 
 (Experimental in Kubespray CI)

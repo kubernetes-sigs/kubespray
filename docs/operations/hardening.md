@@ -20,6 +20,7 @@ The **kubernetes** version should be at least `v1.23.6` to have all the most rec
 authorization_modes: ['Node', 'RBAC']
 kube_apiserver_request_timeout: 120s
 kube_apiserver_service_account_lookup: true
+kube_apiserver_service_account_extend_token_expiration: false
 
 # enable kubernetes audit
 kubernetes_audit: true

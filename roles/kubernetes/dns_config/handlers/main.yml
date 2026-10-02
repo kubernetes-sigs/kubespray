@@ -1,0 +1,126 @@
+---
+- name: DNS config | apply resolvconf cloud-init
+  command: /usr/bin/coreos-cloudinit --from-file {{ resolveconf_cloud_init_conf }}
+  when: ansible_facts['os_family'] == "Flatcar"
+  listen: DNS config | propagate resolvconf to k8s components
+
+- name: DNS config | reload NetworkManager
+  service:
+    name: NetworkManager.service
+    state: restarted
+  listen: DNS config | update resolvconf for networkmanager
+
+- name: DNS config | reload kubelet
+  service:
+    name: kubelet
+    state: restarted
+  notify:
+    - DNS config | kube-controller configured
+    - DNS config | kube-apiserver configured
+    - DNS config | restart kube-controller-manager docker
+    - DNS config | restart kube-controller-manager crio/containerd
+    - DNS config | restart kube-apiserver docker
+    - DNS config | restart kube-apiserver crio/containerd
+  when: not dns_early | bool
+  listen:
+    - DNS config | propagate resolvconf to k8s components
+    - DNS config | update resolvconf for networkmanager
+
+# FIXME(mattymo): Also restart for kubeadm mode
+- name: DNS config | kube-apiserver configured
+  stat:
+    path: "{{ kube_manifest_dir }}/kube-apiserver.yaml"
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: kube_apiserver_set
+  when: ('kube_control_plane' in group_names) and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
+  listen: DNS config | propagate resolvconf to k8s components
+
+# FIXME(mattymo): Also restart for kubeadm mode
+- name: DNS config | kube-controller configured
+  stat:
+    path: "{{ kube_manifest_dir }}/kube-controller-manager.yaml"
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: kube_controller_set
+  when: ('kube_control_plane' in group_names) and dns_mode != 'none' and resolvconf_mode == 'host_resolvconf'
+  listen: DNS config | propagate resolvconf to k8s components
+
+- name: DNS config | restart kube-controller-manager docker
+  shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-controller-manager* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
+  args:
+    executable: /bin/bash
+  when:
+    - container_manager == "docker"
+    - ('kube_control_plane' in group_names)
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - kube_controller_set.stat.exists
+  listen: DNS config | propagate resolvconf to k8s components
+
+- name: DNS config | restart kube-controller-manager crio/containerd
+  shell: "set -o pipefail && {{ bin_dir }}/crictl pods --name kube-controller-manager* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
+  args:
+    executable: /bin/bash
+  register: dns_config_restart_controller_manager
+  retries: 10
+  delay: 1
+  until: dns_config_restart_controller_manager.rc == 0
+  when:
+    - container_manager in ['crio', 'containerd']
+    - ('kube_control_plane' in group_names)
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - kube_controller_set.stat.exists
+  listen: DNS config | propagate resolvconf to k8s components
+
+- name: DNS config | restart kube-apiserver docker
+  shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -f name=k8s_POD_kube-apiserver* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
+  args:
+    executable: /bin/bash
+  when:
+    - container_manager == "docker"
+    - ('kube_control_plane' in group_names)
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - kube_apiserver_set.stat.exists
+  listen: DNS config | propagate resolvconf to k8s components
+
+- name: DNS config | restart kube-apiserver crio/containerd
+  shell: "set -o pipefail && {{ bin_dir }}/crictl pods --name kube-apiserver* -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
+  args:
+    executable: /bin/bash
+  register: dns_config_restart_apiserver
+  retries: 10
+  until: dns_config_restart_apiserver.rc == 0
+  delay: 1
+  when:
+    - container_manager in ['crio', 'containerd']
+    - ('kube_control_plane' in group_names)
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - kube_apiserver_set.stat.exists
+  listen: DNS config | propagate resolvconf to k8s components
+
+# When running this as the last phase ensure we wait for kube-apiserver to come up
+- name: DNS config | wait for the apiserver to be running
+  uri:
+    url: "{{ kube_apiserver_endpoint }}/healthz"
+    validate_certs: false
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 1
+  when:
+    - not dns_early | bool
+    - ('kube_control_plane' in group_names)
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+  listen: DNS config | propagate resolvconf to k8s components
+
+- name: DNS config | Restart systemd-resolved
+  service:
+    name: systemd-resolved
+    state: restarted

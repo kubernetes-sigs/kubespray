@@ -206,10 +206,11 @@ There are three modes available:
 This activates the classic Kubespray behavior that modifies the hosts ``/etc/resolv.conf`` file and dhclient
 configuration to point to the cluster dns server (either coredns or coredns_dual, depending on dns_mode).
 
-As cluster DNS is not available on early deployment stage, this mode is split into 2 stages. In the first
-stage (``dns_early: true``), ``/etc/resolv.conf`` is configured to use the DNS servers found in ``upstream_dns_servers``
-and ``nameservers``. Later, ``/etc/resolv.conf`` is reconfigured to use the cluster DNS server first, leaving
-the other nameservers as backups.
+As cluster DNS is not available during early deployment, the ``kubernetes/dns_config`` role automatically
+detects whether kubelet has been configured. Before kubelet is set up, ``/etc/resolv.conf`` is configured
+to use the DNS servers found in ``upstream_dns_servers`` and ``nameservers``. After the cluster DNS is
+running, the ``kubernetes/dns_config`` role is invoked again and reconfigures ``/etc/resolv.conf`` to use
+the cluster DNS server first, leaving the other nameservers as backups.
 
 Also note, existing records will be purged from the `/etc/resolv.conf`,
 including resolvconf's base/head/cloud-init config files and those that come from dhclient.

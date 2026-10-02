@@ -1,0 +1,64 @@
+---
+- name: Set DNS facts
+  import_tasks: set_facts.yml
+  tags:
+    - resolvconf
+    - facts
+
+- name: Apply resolvconf settings
+  import_tasks: resolvconf.yml
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - systemd_resolved_enabled.rc != 0
+    - networkmanager_enabled.rc != 0
+  tags:
+    - bootstrap_os
+    - resolvconf
+
+- name: Apply systemd-resolved settings
+  import_tasks: systemd-resolved.yml
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - systemd_resolved_enabled.rc == 0
+  tags:
+    - bootstrap_os
+    - resolvconf
+
+- name: Apply networkmanager DNS settings
+  import_tasks: networkmanager-dns.yml
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - networkmanager_enabled.rc == 0
+  tags:
+    - bootstrap_os
+    - resolvconf
+
+- name: Configure dhclient
+  import_tasks: dhclient-hooks.yml
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode == 'host_resolvconf'
+    - dhclientconffile is defined
+    - ansible_facts['os_family'] != "Flatcar"
+  tags:
+    - bootstrap_os
+    - resolvconf
+
+- name: Configure dhclient dhclient hooks
+  import_tasks: dhclient-hooks-undo.yml
+  when:
+    - dns_mode != 'none'
+    - resolvconf_mode != 'host_resolvconf'
+    - dhclientconffile is defined
+    - ansible_facts['os_family'] != "Flatcar"
+  tags:
+    - bootstrap_os
+    - resolvconf
+
+# We need to make sure the network is restarted early enough so that docker can later pick up the correct system
+# nameservers and search domains
+- name: Flush handlers
+  meta: flush_handlers

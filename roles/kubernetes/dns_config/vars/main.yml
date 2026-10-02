@@ -1,0 +1,22 @@
+---
+coredns_server_by_mode:
+  coredns: "{{ [skydns_server] }}"
+  coredns_dual: "{{ [skydns_server, skydns_server_secondary] }}"
+  manual: "{{ manual_dns_server.split(',') }}"
+  none: []
+coredns_server: "{{ upstream_dns_servers if dns_early else coredns_server_by_mode[dns_mode] }}"
+
+_nameserverentries:
+  late:
+    - "{{ nodelocaldns_ip if enable_nodelocaldns else coredns_server }}"
+  early:
+    - "{{ nameservers }}"
+    - "{{ cloud_resolver }}"
+    - "{{ configured_nameservers if not disable_host_nameservers else [] }}"
+nameserverentries: "{{ ((_nameserverentries['late'] if not dns_early else []) + _nameserverentries['early']) | flatten | unique }}"
+dhclient_supersede:
+  domain-name-servers: "{{ ([nameservers, cloud_resolver] | flatten | unique) if dns_early else nameserverentries }}"
+  domain-name: "{{ [dns_domain] }}"
+  domain-search: "{{ default_searchdomains + searchdomains }}"
+configured_nameservers: "{{ (resolvconf_slurp.content | b64decode | regex_findall('^nameserver\\s*(\\S*)', multiline=True) | ansible.utils.ipaddr)
+                            if resolvconf_stat.stat.exists else [] }}"

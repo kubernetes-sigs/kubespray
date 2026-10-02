@@ -32,12 +32,47 @@ crio_registries:
     insecure: false
     blocked: false
     location: registry-1.docker.io
-    unqualified: false
+    unqualified: true
     mirrors:
       - location: 192.168.100.100:5000
         insecure: true
       - location: mirror.gcr.io
         insecure: false
+```
+
+### Unqualified (short) image names
+
+CRI-O refuses to pull unqualified image names, such as `redis:7.0.15-alpine`,
+unless a registry is listed in `unqualified-search-registries`. Kubespray renders
+that list from the entries of `crio_registries` flagged with `unqualified: true`,
+so the default configuration above resolves short names against `docker.io`,
+matching the behaviour of the containerd runtime.
+
+Short names are commonly used by the manifests of the addons that Kubespray
+installs from upstream (ArgoCD is one example, its Redis image is
+`redis:7.0.15-alpine`). If the addon pods stay in `ErrImagePull`/`ImagePullBackOff`
+with an error such as:
+
+```text
+short-name "redis:7.0.15-alpine" did not resolve to an alias and no
+unqualified-search registries are defined in "/etc/containers/registries.conf.d/01-unqualified.conf"
+```
+
+then no registry is flagged as `unqualified`. Add one, for example:
+
+```yaml
+crio_registries:
+  - prefix: docker.io
+    insecure: false
+    blocked: false
+    location: registry-1.docker.io
+    unqualified: true
+```
+
+To disallow unqualified image names, opt out explicitly:
+
+```yaml
+crio_registries: []
 ```
 
 [CRI-O]: https://cri-o.io/

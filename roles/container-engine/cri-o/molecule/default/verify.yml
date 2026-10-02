@@ -8,3 +8,48 @@
   import_playbook: ../../../molecule/test_runtime.yml
   vars:
     container_runtime: crun
+- name: Test unqualified image name resolution
+  hosts: all
+  gather_facts: false
+  become: true
+  vars:
+    cri_socket: unix:///var/run/crio/crio.sock
+  tasks:
+    - name: Get kubespray defaults
+      import_role:
+        name: ../../../../kubespray_defaults
+
+    - name: Read the unqualified search registries config
+      ansible.builtin.slurp:
+        src: /etc/containers/registries.conf.d/01-unqualified.conf
+      register: unqualified_conf
+
+    - name: Store the rendered unqualified search registries config
+      ansible.builtin.set_fact:
+        unqualified_conf_content: "{{ unqualified_conf.content | b64decode }}"
+
+    - name: Check docker.io is configured as an unqualified search registry
+      ansible.builtin.assert:
+        that:
+          - unqualified_conf_content is search('"docker\.io"')
+        fail_msg: >-
+          docker.io is not listed in
+          /etc/containers/registries.conf.d/01-unqualified.conf, CRI-O rejects
+          unqualified image names such as "redis:7.0.15-alpine" without it.
+
+    - name: Pull an image referenced by an unqualified name
+      ansible.builtin.command: "{{ bin_dir }}/crictl --runtime-endpoint {{ cri_socket }} pull alpine:latest"
+      changed_when: false
+
+    - name: List the images known to CRI-O
+      ansible.builtin.command: "{{ bin_dir }}/crictl --runtime-endpoint {{ cri_socket }} images"
+      register: cri_images
+      changed_when: false
+
+    - name: Check the unqualified name was resolved to the docker.io namespace
+      ansible.builtin.assert:
+        that:
+          - cri_images.stdout is search('docker\.io/library/alpine')
+        fail_msg: >-
+          alpine:latest was not resolved to docker.io/library/alpine,
+          got {{ cri_images.stdout_lines }}

@@ -8,6 +8,7 @@ REPO_ROOT_DIR="${CURRENT_DIR%/contrib/offline}"
 : ${DOWNLOAD_YML:="roles/kubespray_defaults/defaults/main/download.yml"}
 
 mkdir -p ${TEMP_DIR}
+rm -f ${TEMP_DIR}/*.template
 
 # generate all download files url template
 grep 'download_url:' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
@@ -27,7 +28,13 @@ for i in $KUBE_IMAGES; do
     echo "{{ kube_image_repo }}/$i:v{{ kube_version }}" >> ${TEMP_DIR}/images.list.template
 done
 
-# run ansible to expand templates
+# Always create the template file (generate_list.yml renders it unconditionally)
+touch "${TEMP_DIR}/helm.list.template"
+
+# Add cilium chart
+echo "oci://{{ quay_image_repo }}/cilium/charts/cilium:{{ cilium_version }}" >> "${TEMP_DIR}/helm.list.template"
+
+# Run ansible to expand templates
 /bin/cp ${CURRENT_DIR}/generate_list.yml ${REPO_ROOT_DIR}
 
 (cd ${REPO_ROOT_DIR} && ansible-playbook $* generate_list.yml && /bin/rm generate_list.yml) || exit 1

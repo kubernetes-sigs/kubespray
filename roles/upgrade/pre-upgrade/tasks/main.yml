@@ -1,15 +1,19 @@
 ---
 # Wait for upgrade
+#
+# The pause module sets BYPASS_HOST_LOOP, which the free and host_pinned
+# strategies reject with a hard error - and the strategy raises before any
+# when: is evaluated, so a false condition does not avoid it. A dynamic
+# include keeps the prompt out of the play unless it is actually wanted.
 - name: Confirm node upgrade
-  pause:
-    echo: true
-    prompt: "Ready to cordon and upgrade node {{ kube_override_hostname | default(inventory_hostname) }}? (Press Enter to continue or Ctrl+C for other options)"
-  when:
-    - upgrade_node_confirm
+  include_tasks: confirm_upgrade.yml
+  when: upgrade_node_confirm
 
+# wait_for without a port or path simply sleeps, and unlike pause it runs per
+# host, so it works under every strategy.
 - name: Wait before upgrade node
-  pause:
-    seconds: "{{ upgrade_node_pause_seconds }}"
+  wait_for:
+    timeout: "{{ upgrade_node_pause_seconds }}"
   when:
     - not upgrade_node_confirm
     - upgrade_node_pause_seconds != 0

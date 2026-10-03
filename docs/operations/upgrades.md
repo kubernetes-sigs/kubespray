@@ -63,6 +63,24 @@ You can control how many nodes are upgraded at the same time by modifying the an
 ansible-playbook upgrade-cluster.yml -b -i inventory/sample/inventory.ini -e kube_version=1.20.7 -e "serial=1"
 ```
 
+Batches have two costs: every node in a batch waits for the slowest one, and the
+whole batch is drained at once, which can deadlock against a
+`PodDisruptionBudget`. The opt-in `graceful_rolling` strategy replaces the batch
+with a sliding window, so a node that finishes frees its slot immediately and
+nodes are never drained in lockstep:
+
+```ShellSession
+ansible-playbook upgrade-cluster.yml -b -i inventory/sample/inventory.ini \
+  -e kube_version=1.36.3 \
+  -e upgrade_strategy=graceful_rolling \
+  -e upgrade_node_concurrency=3 \
+  --forks 10
+```
+
+The fork count has to exceed the concurrency. See
+[Upgrade strategies](/docs/operations/upgrade-strategies.md) for the full
+comparison, the per-group ceilings, and what the strategy gives up.
+
 ### Pausing the upgrade
 
 If you want to manually control the upgrade procedure, you can set some variables to pause the upgrade playbook. Pausing *before* upgrading each upgrade may be useful for inspecting pods running on that node, or performing manual actions on the node:

@@ -25,6 +25,24 @@ non-root-controller:
   - if sudo -n true; then exit 1; fi
   - test "$HOME" = /home/kubespray
   - |
+    if safe_directories=$(git config --show-origin --get-all safe.directory); then
+      echo "safe.directory is unexpectedly configured:"
+      echo "$safe_directories"
+      exit 1
+    fi
+  - |
+    build_uid=$(id -u)
+    id
+    stat -c '%u:%g %a %n' "$CI_PROJECT_DIR" "$CI_PROJECT_DIR/.git"
+    for directory in "$CI_PROJECT_DIR" "$CI_PROJECT_DIR/.git"; do
+      actual_uid=$(stat -c %u "$directory")
+      test "$actual_uid" = "$build_uid" || {
+        echo "$directory is owned by UID $actual_uid; expected $build_uid"
+        exit 1
+      }
+    done
+  - git status --short
+  - |
     for directory in "$HOME" "$CI_PROJECT_DIR" "$CI_PROJECT_DIR/.git" "$CI_PROJECT_DIR"/contrib/terraform/*/; do
       probe=$(mktemp "$directory/.write-check.XXXXXX")
       rm "$probe"

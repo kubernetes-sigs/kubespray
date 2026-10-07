@@ -171,6 +171,7 @@ kube_apiserver_admission_event_rate_limits:
 ```
 
 * *kube_apiserver_service_account_lookup* - Enable validation service account before validating token. Default `true`.
+* *kube_apiserver_service_account_extend_token_expiration* - Extend projected service account token expiration to 1 year (kube-apiserver `--service-account-extend-token-expiration`). Not set by default (kube-apiserver default `true`). Set to `false` to disable.
 
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``

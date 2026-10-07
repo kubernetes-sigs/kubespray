@@ -54,6 +54,24 @@
   run_once: true
   when: not ignore_assert_errors
 
+- name: Stop if feature gates are not dictionaries of booleans
+  assert:
+    that:
+      - lookup('ansible.builtin.vars', item) is mapping
+      - lookup('ansible.builtin.vars', item) | dict2items | rejectattr('value', 'boolean') | length == 0
+    fail_msg: >-
+      {{ item }} must be a dictionary of feature gate names and boolean values.
+      Replace lists such as ["NodeSwap=true"] with {NodeSwap: true}.
+  loop:
+    - kube_feature_gates
+    - kube_apiserver_feature_gates
+    - kube_controller_feature_gates
+    - kube_scheduler_feature_gates
+    - kube_proxy_feature_gates
+    - kubelet_feature_gates
+    - kubeadm_feature_gates
+  when: not ignore_assert_errors
+
 - name: Stop if even number of etcd hosts
   assert:
     that: groups.get('etcd', groups.kube_control_plane) | length is not divisibleby 2

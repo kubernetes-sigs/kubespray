@@ -111,9 +111,7 @@ networking:
 {% endif %}
 {% if kubeadm_feature_gates %}
 featureGates:
-{%   for feature in kubeadm_feature_gates %}
-  {{ feature | replace("=", ": ") }}
-{%   endfor %}
+  {{ kubeadm_feature_gates | to_nice_yaml(indent=2) | indent(2) }}
 {% endif %}
 kubernetesVersion: v{{ kube_version }}
 {% if kubeadm_config_api_fqdn is defined %}
@@ -260,7 +258,7 @@ apiServer:
 {% endfor %}
 {% if kube_apiserver_feature_gates or kube_feature_gates %}
   - name: feature-gates
-    value: "{{ kube_apiserver_feature_gates | default(kube_feature_gates, true) | join(',') }}"
+    value: "{% for key, value in (kube_apiserver_feature_gates | default(kube_feature_gates, true)).items() %}{{ key }}={{ value | lower }}{{ ',' if not loop.last else '' }}{% endfor %}"
 {% endif %}
 {% if tls_min_version is defined %}
   - name: tls-min-version
@@ -398,7 +396,7 @@ controllerManager:
     value: "{{ kube_controller_manager_leader_elect_renew_deadline }}"
 {% if kube_controller_feature_gates or kube_feature_gates %}
   - name: feature-gates
-    value: "{{ kube_controller_feature_gates | default(kube_feature_gates, true) | join(',') }}"
+    value: "{% for key, value in (kube_controller_feature_gates | default(kube_feature_gates, true)).items() %}{{ key }}={{ value | lower }}{{ ',' if not loop.last else '' }}{% endfor %}"
 {% endif %}
 {% for key in kube_kubeadm_controller_extra_args %}
   - name: "{{ key }}"
@@ -437,7 +435,7 @@ scheduler:
     value: "{{ kube_config_dir }}/kubescheduler-config.yaml"
 {% if kube_scheduler_feature_gates or kube_feature_gates %}
   - name: feature-gates
-    value: "{{ kube_scheduler_feature_gates | default(kube_feature_gates, true) | join(',') }}"
+    value: "{% for key, value in (kube_scheduler_feature_gates | default(kube_feature_gates, true)).items() %}{{ key }}={{ value | lower }}{{ ',' if not loop.last else '' }}{% endfor %}"
 {% endif %}
   - name: profiling
     value: "{{ kube_profiling }}"
@@ -560,9 +558,7 @@ portRange: {{ kube_proxy_port_range }}
 {% if kube_proxy_feature_gates or kube_feature_gates %}
 {% set feature_gates = ( kube_proxy_feature_gates | default(kube_feature_gates, true) ) %}
 featureGates:
-{%   for feature in feature_gates %}
-  {{ feature | replace("=", ": ") }}
-{%   endfor %}
+  {{ feature_gates | to_nice_yaml(indent=2) | indent(2) }}
 {% endif %}
 {# DNS settings for kubelet #}
 {% if enable_nodelocaldns %}
@@ -586,19 +582,7 @@ clusterDNS:
 {% for dns_address in kubelet_cluster_dns %}
 - {{ dns_address }}
 {% endfor %}
-{% set disable_websockets_to_kubelet = (container_manager == 'docker' and kube_version is version('1.36.0', '>=')) %}
-{% set feature_gates = ( kubelet_feature_gates | default(kube_feature_gates, true) ) %}
-{% if disable_websockets_to_kubelet %}
-{% set feature_gates = feature_gates | reject('search', '^ExtendWebSocketsToKubelet=') | list %}
-{% endif %}
-{% if feature_gates or disable_websockets_to_kubelet %}
+{% if _kubelet_feature_gates %}
 featureGates:
-{%   if disable_websockets_to_kubelet %}
-  # cri-dockerd does not support WebSocket streaming
-  # https://github.com/kubernetes-sigs/kubespray/issues/13360
-  ExtendWebSocketsToKubelet: false
-{%   endif %}
-{%   for feature in feature_gates %}
-  {{ feature | replace("=", ": ") }}
-{%   endfor %}
+  {{ _kubelet_feature_gates | to_nice_yaml(indent=2) | indent(2) }}
 {% endif %}

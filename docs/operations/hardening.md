@@ -75,7 +75,8 @@ remove_anonymous_access: true
 ## kube-controller-manager
 kube_controller_manager_bind_address: 127.0.0.1
 kube_controller_terminated_pod_gc_threshold: 50
-kube_controller_feature_gates: ["RotateKubeletServerCertificate=true"]
+kube_controller_feature_gates:
+  RotateKubeletServerCertificate: true
 
 ## kube-scheduler
 kube_scheduler_bind_address: 127.0.0.1
@@ -97,7 +98,8 @@ kubelet_event_record_qps: 1
 kubelet_rotate_certificates: true
 kubelet_streaming_connection_idle_timeout: "5m"
 kubelet_make_iptables_util_chains: true
-kubelet_feature_gates: ["RotateKubeletServerCertificate=true"]
+kubelet_feature_gates:
+  RotateKubeletServerCertificate: true
 kubelet_seccomp_default: true
 kubelet_systemd_hardening: true
 # In case you have multiple interfaces in your

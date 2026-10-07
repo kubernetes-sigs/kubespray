@@ -130,8 +130,8 @@ following default cluster parameters:
 
 * *cloud_provider* - The provider for cloud services. (default is unset, Set to `external` for running with an external cloud provider)
 
-* *kube_feature_gates* - A list of key=value pairs that describe feature gates for
-  alpha/experimental Kubernetes features. (defaults is `[]`).
+* *kube_feature_gates* - A dictionary of feature gate names and boolean values for
+  alpha/experimental Kubernetes features (defaults to `{}`).
   Additionally, you can use also the following variables to individually customize your kubernetes components installation (they works exactly like `kube_feature_gates`):
   * *kube_apiserver_feature_gates*
   * *kube_controller_feature_gates*
@@ -139,8 +139,8 @@ following default cluster parameters:
   * *kube_proxy_feature_gates*
   * *kubelet_feature_gates*
 
-* *kubeadm_feature_gates* - A list of key=value pairs that describe feature gates for
-  alpha/experimental Kubeadm features. (defaults is `[]`)
+* *kubeadm_feature_gates* - A dictionary of feature gate names and boolean values for
+  alpha/experimental Kubeadm features (defaults to `{}`).
 
 * *authorization_modes* - A list of [authorization mode](
   https://kubernetes.io/docs/reference/access-authn-authz/authorization/#using-flags-for-your-authorization-module)

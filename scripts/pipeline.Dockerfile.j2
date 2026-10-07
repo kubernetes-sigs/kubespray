@@ -16,6 +16,7 @@ RUN apt update -q \
          libssl-dev \
          python3-dev \
          python3-pip \
+         python3-venv \
          sshpass \
          apt-transport-https \
          jq \
@@ -44,16 +45,22 @@ ADD ./requirements.txt  /kubespray/requirements.txt
 ADD ./tests/requirements.txt /kubespray/tests/requirements.txt
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
-    && pip install --break-system-packages --ignore-installed --no-compile --no-cache-dir pip -U \
-    && pip install --break-system-packages --no-compile --no-cache-dir -r tests/requirements.txt \
     && curl -L https://dl.k8s.io/release/v{{ kube_version }}/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
     && echo $(curl -L https://dl.k8s.io/release/v{{ kube_version }}/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
     && chmod a+x /usr/local/bin/kubectl \
     # Install Vagrant
     && curl -LO https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}-1_$(dpkg --print-architecture).deb \
     && dpkg -i vagrant_${VAGRANT_VERSION}-1_$(dpkg --print-architecture).deb \
-    && rm vagrant_${VAGRANT_VERSION}-1_$(dpkg --print-architecture).deb \
+    && rm vagrant_${VAGRANT_VERSION}-1_$(dpkg --print-architecture).deb
+
+RUN useradd --create-home --uid 1001 kubespray
+ENV HOME=/home/kubespray \
+    PATH="/home/kubespray/.local/bin:/home/kubespray/venv/bin:${PATH}"
+USER kubespray
+
+RUN python3 -m venv /home/kubespray/venv \
+    && pip install --no-compile --no-cache-dir -r tests/requirements.txt \
     && vagrant plugin install vagrant-libvirt \
     # Install Kubernetes collections
-    && pip install --break-system-packages --no-compile --no-cache-dir kubernetes==35.0.0 \
+    && pip install --no-compile --no-cache-dir kubernetes==35.0.0 \
     && ansible-galaxy collection install kubernetes.core:==6.4.0

@@ -63,12 +63,12 @@ crio_registry_auth:
 CRI-O refuses to pull unqualified image names, such as `busybox`,
 unless a registry is listed in `unqualified-search-registries`. Kubespray renders
 that list from the entries of `crio_registries` flagged with `unqualified: true`,
-so the default configuration above resolves short names against `docker.io`,
+so the `crio_registries` default resolves short names against `docker.io`,
 matching the behaviour of the containerd runtime.
 
-Short names are commonly used by the manifests of the addons that Kubespray
-installs from upstream (the local-path-provisioner helper pod is one example,
-its image is `busybox`). If the addon pods stay in `ErrImagePull`/`ImagePullBackOff`
+Some Kubespray addons set short image names in their own defaults, for example
+`local_path_provisioner_helper_image_repo: "busybox"` for the local-path-provisioner
+helper pod. If such pods stay in `ErrImagePull`/`ImagePullBackOff`
 with an error such as:
 
 ```text

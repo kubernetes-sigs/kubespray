@@ -12,7 +12,6 @@ versions. Here are all version vars for each component:
 * kube_version
 * etcd_version
 * calico_version
-* calico_cni_version
 * flannel_version
 
 > **Warning**

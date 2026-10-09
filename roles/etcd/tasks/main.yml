@@ -23,35 +23,11 @@
 - name: Trust etcd CA on nodes if needed
   include_tasks: upd_ca_trust.yml
   when:
-    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally
-    - kube_network_plugin != "calico" or calico_datastore == "etcd"
+    - kube_network_plugin in ["flannel", "cilium"] or cilium_deploy_additionally
+    - kube_network_plugin != "calico"
     - ('k8s_cluster' in group_names)
   tags:
     - etcd-secrets
-
-- name: "Gen_certs | Get etcd certificate serials"
-  command: "openssl x509 -in {{ etcd_cert_dir }}/node-{{ inventory_hostname }}.pem -noout -serial"
-  register: "etcd_client_cert_serial_result"
-  changed_when: false
-  check_mode: false
-  when:
-    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally
-    - kube_network_plugin != "calico" or calico_datastore == "etcd"
-    - ('k8s_cluster' in group_names)
-  tags:
-    - control-plane
-    - network
-
-- name: Set etcd_client_cert_serial
-  set_fact:
-    etcd_client_cert_serial: "{{ etcd_client_cert_serial_result.stdout.split('=')[1] }}"
-  when:
-    - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally
-    - kube_network_plugin != "calico" or calico_datastore == "etcd"
-    - ('k8s_cluster' in group_names)
-  tags:
-    - control-plane
-    - network
 
 - name: Install etcd
   include_tasks: "install_{{ etcd_deployment_type }}.yml"

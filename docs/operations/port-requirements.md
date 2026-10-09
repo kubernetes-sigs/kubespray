@@ -36,7 +36,7 @@ If Calico is used, it requires:
 |----------|--------    | ------------  |
 | TCP      | 179        | Calico networking (BGP) |
 | UDP      | 4789       | Calico CNI with VXLAN enabled |
-| TCP      | 5473       | Calico CNI with Typha enabled  |
+| TCP      | 5473       | Calico Typha (the Tigera operator always runs Typha) |
 | UDP      | 51820      | Calico with IPv4 Wireguard enabled |
 | UDP      | 51821      | Calico with IPv6 Wireguard enabled |
 | IPENCAP / IPIP | -    | Calico CNI with IPIP enabled  |

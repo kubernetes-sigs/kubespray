@@ -7,8 +7,13 @@ infos = {
         "url": "https://github.com/projectcalico/calico/releases/download/v{version}/SHA256SUMS",
         "graphql_id": "R_kgDOA87D0g",
     },
-    "calico_crds": {
-        "url": "https://github.com/projectcalico/calico/raw/v{version}/manifests/crds.yaml",
+    "calico_operator_crds": {
+        "url": "https://github.com/projectcalico/calico/raw/v{version}/manifests/operator-crds.yaml",
+        "graphql_id": "R_kgDOA87D0g",
+        "binary": True,
+    },
+    "calico_operator_manifest": {
+        "url": "https://github.com/projectcalico/calico/raw/v{version}/manifests/tigera-operator.yaml",
         "graphql_id": "R_kgDOA87D0g",
         "binary": True,
     },

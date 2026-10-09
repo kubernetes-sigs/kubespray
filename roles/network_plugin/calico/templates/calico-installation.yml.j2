@@ -1,0 +1,85 @@
+{% macro autodetection(method) -%}
+{%- if method == 'first-found' -%}
+{"firstFound": true}
+{%- elif method == 'kubernetes-internal-ip' -%}
+{"kubernetes": "NodeInternalIP"}
+{%- elif method.startswith('can-reach=') -%}
+{{ {'canReach': method[10:]} | to_json }}
+{%- elif method.startswith('skip-interface=') -%}
+{{ {'skipInterface': method[15:]} | to_json }}
+{%- elif method.startswith('interface=') -%}
+{{ {'interface': method[10:]} | to_json }}
+{%- elif method.startswith('cidr=') -%}
+{{ {'cidrs': method[5:].split(',')} | to_json }}
+{%- endif -%}
+{%- endmacro -%}
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  variant: Calico
+  registry: "{{ quay_image_repo }}"
+  cni:
+    type: Calico
+    ipam:
+      type: {{ 'HostLocal' if calico_ipam_host_local else 'Calico' }}
+  calicoNetwork:
+    bgp: {{ 'Enabled' if calico_network_backend == 'bird' else 'Disabled' }}
+    linuxDataplane: {{ 'BPF' if calico_bpf_enabled else ('Nftables' if calico_nftable_mode == 'Enabled' else 'Iptables') }}
+    hostPorts: Enabled
+    containerIPForwarding: {{ 'Enabled' if calico_allow_ip_forwarding else 'Disabled' }}
+    # Kubespray manages the IP pools with calicoctl
+    ipPools: []
+{% if calico_mtu is defined %}
+    mtu: {{ calico_mtu | int }}
+{% endif %}
+{% if ipv4_stack %}
+    nodeAddressAutodetectionV4: {{ autodetection(calico_ip_auto_method | default('kubernetes-internal-ip')) }}
+{% endif %}
+{% if ipv6_stack %}
+    nodeAddressAutodetectionV6: {{ autodetection(calico_ip6_auto_method | default('first-found')) }}
+{% endif %}
+  flexVolumePath: None
+  kubeletVolumePluginPath: None
+{% if calico_felix_prometheusmetricsenabled %}
+  nodeMetricsPort: {{ calico_felix_prometheusmetricsport | int }}
+{% endif %}
+{% if typha_prometheusmetricsenabled %}
+  typhaMetricsPort: {{ typha_prometheusmetricsport | int }}
+{% endif %}
+  calicoNodeDaemonSet:
+    spec:
+      template:
+        spec:
+          nodeSelector: {{ calico_ds_nodeselector | from_yaml | to_json }}
+          containers:
+            - name: calico-node
+              resources:
+                limits:
+{% if calico_node_cpu_limit != "0" %}
+                  cpu: "{{ calico_node_cpu_limit }}"
+{% endif %}
+                  memory: "{{ calico_node_memory_limit }}"
+                requests:
+                  cpu: "{{ calico_node_cpu_requests }}"
+                  memory: "{{ calico_node_memory_requests }}"
+  calicoKubeControllersDeployment:
+    spec:
+      template:
+        spec:
+          nodeSelector: {{ calico_policy_controller_deployment_nodeselector | from_yaml | to_json }}
+{% if policy_controller_extra_tolerations is defined %}
+          tolerations: {{ ([{'key': 'CriticalAddonsOnly', 'operator': 'Exists'},
+                            {'key': 'node-role.kubernetes.io/control-plane', 'operator': 'Exists', 'effect': 'NoSchedule'}]
+                           + policy_controller_extra_tolerations) | to_json }}
+{% endif %}
+          containers:
+            - name: calico-kube-controllers
+              resources:
+                limits:
+                  cpu: "{{ calico_policy_controller_cpu_limit }}"
+                  memory: "{{ calico_policy_controller_memory_limit }}"
+                requests:
+                  cpu: "{{ calico_policy_controller_cpu_requests }}"
+                  memory: "{{ calico_policy_controller_memory_requests }}"

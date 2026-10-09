@@ -1,5 +1,5 @@
 ---
-# the default value of name
+# The Tigera operator supports only this CNI network name
 calico_cni_name: k8s-pod-network
 
 # Enables Internet connectivity from containers
@@ -8,7 +8,6 @@ nat_outgoing_ipv6: false
 
 # add default ippool name
 calico_pool_name: "default-pool"
-calico_ipv4pool_ipip: "Off"
 
 # Change encapsulation mode, by default we enable vxlan which is the most mature and well tested mode
 calico_ipip_mode: Never  # valid values are 'Always', 'Never' and 'CrossSubnet'
@@ -27,8 +26,6 @@ calico_pool_blocksize_ipv6: 122
 # Calico network backend can be 'bird', 'vxlan' and 'none'
 calico_network_backend: vxlan
 
-calico_cert_dir: /etc/calico/certs
-
 # Global as_num (/calico/bgp/v1/global/as_num)
 global_as_num: "64512"
 
@@ -37,9 +34,8 @@ calico_no_global_as_num: false
 peer_with_router: false
 peer_with_calico_rr: "{{ groups.get('calico_rr', []) != [] }}"
 
-# You can set MTU value here. If left undefined or empty, it will
-# not be specified in calico CNI config, so Calico will use built-in
-# defaults. The value should be a number, not a string.
+# MTU of the workload interfaces and the tunnel devices.
+# If left undefined, Calico detects it. The value should be a number, not a string.
 # calico_mtu: 1500
 
 calico_advertise_cluster_ips: false
@@ -82,31 +78,19 @@ calico_felix_prometheusmetricsport: 9091
 calico_felix_prometheusgometricsenabled: true
 calico_felix_prometheusprocessmetricsenabled: true
 
-# Set the agent log level. Can be debug, warning, info or fatal
+# Set the Felix log level. Can be debug, info, warning, error or fatal
 calico_loglevel: info
-calico_node_startup_loglevel: error
-
-# Set log path for calico CNI plugin. Set to false to disable logging to disk.
-calico_cni_log_file_path: /var/log/calico/cni/cni.log
 
 # Enable or disable usage report to 'usage.projectcalico.org'
 calico_usage_reporting: false
 
-# Should calico ignore kernel's RPF check setting,
-# see https://github.com/projectcalico/felix/blob/ab8799eaea66627e5db7717e62fca61fd9c08646/python/calico/felix/config.py#L198
-calico_node_ignorelooserpf: false
-
 # Define address on which Felix will respond to health requests
 calico_healthhost: "localhost"
 
-# Configure time in seconds that calico will wait for the iptables lock
-calico_iptables_lock_timeout_secs: 10
-
-# Choose Calico iptables backend: "Legacy", "Auto" or "NFT" (FELIX_IPTABLESBACKEND)
+# Choose Calico iptables backend: "Legacy", "Auto" or "NFT"
 calico_iptables_backend: "Auto"
 
-# Calico NFTable Mode Support (tech preview 3.29)
-# Valid option: Disabled (default), Enabled
+# Use the nftables dataplane: Disabled (default), Enabled
 calico_nftable_mode: "Disabled"
 
 # Calico Wireguard support
@@ -117,7 +101,11 @@ calico_wireguard_repo: https://download.copr.fedorainfracloud.org/results/jdoss/
 # If you want to use non default IP_AUTODETECTION_METHOD, IP6_AUTODETECTION_METHOD for calico node set this option to one of:
 # * can-reach=DESTINATION
 # * interface=INTERFACE-REGEX
-# see https://projectcalico.docs.tigera.io/reference/node/configuration#ip-autodetection-methods
+# * skip-interface=INTERFACE-REGEX
+# * cidr=CIDR[,CIDR]
+# * first-found
+# * kubernetes-internal-ip (default for IPv4)
+# see https://docs.tigera.io/calico/latest/networking/ipam/ip-autodetection
 # calico_ip_auto_method: "interface=eth.*"
 # calico_ip6_auto_method: "interface=eth.*"
 
@@ -125,38 +113,15 @@ calico_wireguard_repo: https://download.copr.fedorainfracloud.org/results/jdoss/
 # see https://projectcalico.docs.tigera.io/reference/felix/configuration
 # calico_felix_mtu_iface_pattern: "^((en|wl|ww|sl|ib)[opsx].*|(eth|wlan|wwan).*)"
 
-calico_baremetal_nodename: "{{ kube_override_hostname | default(inventory_hostname) }}"
-
-kube_etcd_cacert_file: ca.pem
-kube_etcd_cert_file: node-{{ inventory_hostname }}.pem
-kube_etcd_key_file: node-{{ inventory_hostname }}-key.pem
-
-# Choose data store type for calico: "etcd" or "kdd" (kubernetes datastore)
-# The default value for calico_datastore is set in role kubespray-default
-
-# Use typha (only with kdd)
-typha_enabled: false
+# Typha always runs with the Tigera operator
 typha_prometheusmetricsenabled: false
 typha_prometheusmetricsport: 9093
-
-# Scaling typha: 1 replica per 100 nodes is adequate
-# Number of typha replicas
-typha_replicas: 1
-
-# Set max typha connections
-typha_max_connections_lower_limit: 300
-
-# Generate certifcates for typha<->calico-node communication
-typha_secure: false
-
-calico_feature_control: {}
 
 # Calico default BGP port
 calico_bgp_listen_port: 179
 
 # Calico FelixConfiguration options
 calico_felix_reporting_interval: 0s
-calico_felix_log_severity_screen: Info
 
 # Calico container settings
 calico_allow_ip_forwarding: false
@@ -171,10 +136,9 @@ calico_ipam_autoallocateblocks: true
 calico_ipam_maxblocksperhost: 0
 
 # Calico host local IPAM (use node .spec.podCIDR)
-
 calico_ipam_host_local: false
 
-# Calico apiserver (only with kdd)
+# Calico apiserver
 calico_apiserver_enabled: false
 
 # Calico feature detect override
@@ -182,3 +146,34 @@ calico_feature_detect_override: ""
 
 # Calico kubeconfig wait timeout in seconds
 calico_kubeconfig_wait_timeout: 300
+
+# calico-kube-controllers settings
+calico_policy_controller_cpu_limit: 1000m
+calico_policy_controller_memory_limit: 256M
+calico_policy_controller_cpu_requests: 30m
+calico_policy_controller_memory_requests: 64M
+calico_policy_controller_deployment_nodeselector: "kubernetes.io/os: linux"
+calico_policy_controller_log_level: info
+
+# More FelixConfiguration spec fields, for example {"bpfConnectTimeLoadBalancing": "TCP"}
+calico_felix_extra_config: {}
+
+# More Installation spec fields, merged recursively over the values that Kubespray sets
+calico_operator_installation_spec: {}
+
+# Seconds to wait for the operator to move a manifest-based Calico to calico-system.
+# The operator moves one node at a time, so the default is 60 seconds for each node and at least 3600.
+calico_operator_migration_timeout: "{{ [3600, (groups['k8s_cluster'] | default([]) | length) * 60] | max }}"
+
+# Seconds to wait for the operator and until Calico is available
+calico_operator_rollout_timeout: 600
+
+# API server address for Calico pods in eBPF mode, where kube-proxy does not run. Pods must reach it.
+calico_kubernetes_service_host: >-
+  {{ apiserver_loadbalancer_domain_name
+     if loadbalancer_apiserver is defined and not loadbalancer_apiserver_localhost
+     else first_kube_control_plane_address }}
+calico_kubernetes_service_port: >-
+  {{ loadbalancer_apiserver.port | default(kube_apiserver_port)
+     if loadbalancer_apiserver is defined and not loadbalancer_apiserver_localhost
+     else kube_apiserver_port }}

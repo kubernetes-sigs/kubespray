@@ -1,0 +1,55 @@
+---
+- name: Calico | Check for the manifest-based calico-node
+  command: "{{ kubectl }} -n kube-system get daemonset calico-node --ignore-not-found -o name"
+  register: calico_cleanup_ds
+  changed_when: false
+  check_mode: false
+
+# The operator keeps these objects of the manifest-based install
+- name: Calico | Remove the leftovers of the manifest-based install
+  when: calico_cleanup_ds.stdout | length == 0
+  block:
+    - name: Calico | Remove the kube-system leftovers
+      command: >-
+        {{ kubectl }} -n kube-system delete --ignore-not-found
+        configmap/calico-config
+        configmap/calico-migration-calico-node
+        configmap/calico-migration-install-cni
+        configmap/calico-migration-upgrade-ipam
+        service/calico-typha
+        poddisruptionbudget/calico-typha
+        serviceaccount/calico-node
+        serviceaccount/calico-cni-plugin
+        serviceaccount/calico-kube-controllers
+        secret/typha-server
+        secret/typha-client
+      register: calico_cleanup_namespaced
+      changed_when: "'deleted' in calico_cleanup_namespaced.stdout"
+
+    - name: Calico | Check for the old Calico API server
+      command: "{{ kubectl }} get namespace calico-apiserver --ignore-not-found -o name"
+      register: calico_cleanup_old_apiserver
+      changed_when: false
+      check_mode: false
+
+    # Keep the RBAC of an old API server that still runs, when calico_apiserver_enabled is false
+    - name: Calico | Get the cluster-scoped objects of the manifest-based install
+      command: "{{ kubectl }} get {{ item }} --ignore-not-found -o json"
+      register: calico_cleanup_cluster_objects
+      changed_when: false
+      check_mode: false
+      loop: >-
+        {{ [] if calico_cleanup_old_apiserver.stdout | length > 0 and not calico_apiserver_enabled else
+           ['clusterrolebinding/calico-apiserver-access-crds',
+            'clusterrolebinding/calico-tier-getter',
+            'clusterrole/calico-tier-getter'] }}
+
+    # Objects with the same name that the operator owns have ownerReferences
+    - name: Calico | Remove the cluster-scoped leftovers
+      command: "{{ kubectl }} delete {{ item.item }}"
+      loop: "{{ calico_cleanup_cluster_objects.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when:
+        - item.stdout | length > 0
+        - (item.stdout | from_json).metadata.ownerReferences is not defined

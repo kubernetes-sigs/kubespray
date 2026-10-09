@@ -1,0 +1,45 @@
+{#- JSON patch that makes the manifest-based calico-node pass the operator converter.
+    The converter reads only .env, so literal values move to ConfigMaps for envFrom. -#}
+{%- set keep = {
+  'calico-node': ['DATASTORE_TYPE', 'WAIT_FOR_DATASTORE', 'CALICO_NETWORKING_BACKEND', 'CLUSTER_TYPE',
+                  'CALICO_DISABLE_FILE_LOGGING', 'IP', 'IP6', 'IP_AUTODETECTION_METHOD', 'IP6_AUTODETECTION_METHOD',
+                  'NODENAME', 'FELIX_IPV6SUPPORT', 'FELIX_NFTABLESMODE', 'FELIX_HEALTHENABLED',
+                  'FELIX_TYPHAK8SSERVICENAME'],
+  'install-cni': ['CNI_NETWORK_CONFIG', 'CNI_CONF_NAME', 'KUBERNETES_NODE_NAME', 'SLEEP'],
+  'upgrade-ipam': ['KUBERNETES_NODE_NAME', 'CALICO_NETWORKING_BACKEND'],
+} -%}
+{%- set ops = [] -%}
+{%- set configmaps = {} -%}
+{%- for kind in ['initContainers', 'containers'] -%}
+{%-   for c in calico_legacy_ds_obj.spec.template.spec[kind] | default([]) -%}
+{%-     set path = '/spec/template/spec/' ~ kind ~ '/' ~ loop.index0 -%}
+{%-     set kept = [] -%}
+{%-     set moved = {} -%}
+{%-     for e in c.env | default([]) -%}
+{%-       if e.name in keep.get(c.name, []) or (c.name == 'calico-node' and e.name is match('CALICO_IPV[46]POOL_')) -%}
+{%-         if e.name == 'IP_AUTODETECTION_METHOD' and e.value | default('') == 'can-reach=$(NODEIP)' -%}
+{%-           set _ = kept.append({'name': e.name, 'value': 'kubernetes-internal-ip'}) -%}
+{%-         else -%}
+{%-           set _ = kept.append(e) -%}
+{%-         endif -%}
+{%-       elif e.valueFrom is not defined -%}
+{%-         set _ = moved.update({e.name: e.value | default('')}) -%}
+{%-       endif -%}
+{%-     endfor -%}
+{%-     if kept != c.env | default([]) -%}
+{%-       set _ = ops.append({'op': 'test', 'path': path ~ '/name', 'value': c.name}) -%}
+{%-       set _ = ops.append({'op': 'replace', 'path': path ~ '/env', 'value': kept}) -%}
+{%-     endif -%}
+{%-     if moved -%}
+{%-       set _ = configmaps.update({'calico-migration-' ~ c.name: moved}) -%}
+{%-       set _ = ops.append({'op': 'add', 'path': path ~ '/envFrom',
+                            'value': c.envFrom | default([]) + [{'configMapRef': {'name': 'calico-migration-' ~ c.name}}]}) -%}
+{%-     endif -%}
+{%-   endfor -%}
+{%- endfor -%}
+{%- set annotations = calico_legacy_ds_obj.spec.template.metadata.annotations | default({}) -%}
+{%- set allowed = annotations | dict2items | selectattr('key', 'match', 'kubectl\\.kubernetes\\.io/|cluster-autoscaler\\.kubernetes\\.io/daemonset-pod$') | items2dict -%}
+{%- if allowed != annotations -%}
+{%-   set _ = ops.append({'op': 'replace', 'path': '/spec/template/metadata/annotations', 'value': allowed}) -%}
+{%- endif -%}
+{{ {'ops': ops, 'configmaps': configmaps} | to_json }}

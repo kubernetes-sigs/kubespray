@@ -54,6 +54,7 @@
 * Getting Started
   * [Comparisons](/docs/getting_started/comparisons.md)
   * [Getting-started](/docs/getting_started/getting-started.md)
+  * [Minimal Inventory](/docs/getting_started/minimal-inventory.md)
   * [Setting-up-your-first-cluster](/docs/getting_started/setting-up-your-first-cluster.md)
 * Ingress
   * [Alb Ingress Controller](/docs/ingress/alb_ingress_controller.md)

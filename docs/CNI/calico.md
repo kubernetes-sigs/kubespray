@@ -38,7 +38,7 @@ calicoctl.sh get hostEndpoint -o wide
 
 The default datastore, Kubernetes API datastore is recommended for on-premises deployments, and supports only Kubernetes workloads; etcd is the best datastore for hybrid deployments.
 
-Allowed values are `kdd` (default) and `etcd`.
+Allowed values are `kdd` (default) and `etcd`. The `etcd` datastore is deprecated and will be removed in a future release.
 
 Note: using kdd and more than 50 nodes, consider using the `typha` daemon to provide scaling.
 
@@ -47,6 +47,21 @@ To re-define you need to edit the inventory and add a group variable `calico_dat
 ```yml
 calico_datastore: kdd
 ```
+
+### Migrate from the etcd datastore
+
+On upgrade, Kubespray keeps the etcd datastore of an existing cluster. To move Calico to the Kubernetes datastore, remove `calico_datastore: etcd` from the inventory if it is there, and run:
+
+```ShellSession
+ansible-playbook -i inventory/mycluster/inventory.ini -b contrib/migration/calico-datastore.yml
+```
+
+The playbook follows the Calico document [Migrate Calico data from an etcdv3 datastore to a Kubernetes datastore](https://docs.tigera.io/calico/latest/operations/datastore-migration).
+It locks the etcd datastore, copies the data to the Kubernetes datastore, moves `calico-node` and `calico-kube-controllers` to it, and unlocks the datastore.
+Existing pods keep their IP addresses. While the datastore is locked, new pods do not start.
+
+Before you run it, make sure that `calico-node` runs `calico_version` and is ready on all nodes.
+If the playbook stops, fix the problem and run it again. It continues the migration.
 
 ### Optional : Define network backend
 

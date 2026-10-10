@@ -1,0 +1,125 @@
+---
+# Move the Calico datastore from etcd to the Kubernetes API datastore (kdd).
+- name: Common tasks for every playbooks
+  import_playbook: ../../playbooks/boilerplate.yml
+
+- name: Gather facts
+  import_playbook: ../../playbooks/internal_facts.yml
+
+- name: Find the Calico datastore
+  hosts: kube_control_plane[0]
+  gather_facts: false
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray_defaults }
+  tasks:
+    # Else the next cluster.yml run moves Calico back to the old etcd data
+    - name: Calico datastore | Check that the inventory does not set the etcd datastore
+      assert:
+        that: calico_datastore != 'etcd'
+        msg: "Remove calico_datastore: etcd from the inventory, then run this playbook again."
+
+    - name: Calico datastore | Read the Calico CNI config
+      slurp:
+        src: /etc/cni/net.d/10-calico.conflist
+        armor: false
+      register: calico_migration_conflist
+
+    # The import writes datastoreReady false to the Kubernetes datastore, and the unlock sets it to true
+    - name: Calico datastore | Read the lock of the Kubernetes datastore
+      command: "{{ kubectl }} get clusterinformations.crd.projectcalico.org default -o jsonpath={.spec.datastoreReady}"
+      register: calico_migration_kdd_ready
+      changed_when: false
+      failed_when: false
+
+    # A locked Kubernetes datastore means that an earlier run stopped, so run the switch again
+    - name: Calico datastore | Set the migration state
+      set_fact:
+        calico_migration_etcd: "{{ 'etcd_endpoints' in calico_migration_conflist.content }}"
+        calico_migration_imported: "{{ calico_migration_kdd_ready.stdout in ['true', 'false'] }}"
+        calico_migration_switch: "{{ 'etcd_endpoints' in calico_migration_conflist.content or calico_migration_kdd_ready.stdout == 'false' }}"
+
+- name: Download the Calico CRDs
+  hosts: kube_control_plane
+  gather_facts: false
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray_defaults }
+    - role: download
+      download_container: false
+      when: hostvars[groups['kube_control_plane'][0]]['calico_migration_switch']
+      tags: download
+
+- name: Lock the etcd datastore and copy its data to the Kubernetes datastore
+  hosts: kube_control_plane[0]
+  gather_facts: false
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray_defaults }
+  tasks:
+    - name: Calico datastore | Copy the data
+      when:
+        - calico_migration_etcd
+        - not calico_migration_imported
+      block:
+        - name: Calico datastore | Lock the etcd datastore
+          command: "{{ bin_dir }}/calicoctl.sh datastore migrate lock"
+
+        - name: Calico datastore | Export the etcd data
+          command: "{{ bin_dir }}/calicoctl.sh datastore migrate export"
+          register: calico_migration_export
+          changed_when: false
+
+        - name: Calico datastore | Save the etcd data
+          copy:
+            content: "{{ calico_migration_export.stdout }}"
+            dest: "{{ kube_config_dir }}/calico-etcd-datastore.yaml"
+            mode: "0600"
+
+        - name: Calico datastore | Import the data into the Kubernetes datastore
+          command: "{{ bin_dir }}/calicoctl datastore migrate import -f {{ kube_config_dir }}/calico-etcd-datastore.yaml"
+          environment:
+            KUBECONFIG: "{{ kube_config_dir }}/admin.conf"
+
+- name: Switch Calico to the Kubernetes datastore
+  hosts: k8s_cluster
+  gather_facts: false
+  any_errors_fatal: "{{ kubespray_any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray_defaults }
+    - role: network_plugin/calico
+      calico_datastore: kdd
+      when: hostvars[groups['kube_control_plane'][0]]['calico_migration_switch']
+      tags: network
+
+- name: Switch calico-kube-controllers to the Kubernetes datastore
+  hosts: kube_control_plane
+  gather_facts: false
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray_defaults }
+    - role: kubernetes-apps/policy_controller/calico
+      calico_datastore: kdd
+      when: hostvars[groups['kube_control_plane'][0]]['calico_migration_switch']
+      tags: policy-controller
+
+- name: Unlock the Kubernetes datastore
+  hosts: kube_control_plane[0]
+  gather_facts: false
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: kubespray_defaults }
+  tasks:
+    - name: Calico datastore | Unlock
+      when: calico_migration_switch
+      block:
+        # calico-node must use the Kubernetes datastore on all nodes before the unlock
+        - name: Calico datastore | Wait for the calico-node rollout
+          command: "{{ kubectl }} -n kube-system rollout status daemonset/calico-node --timeout=10m"
+          changed_when: false
+
+        - name: Calico datastore | Unlock the Kubernetes datastore
+          command: "{{ bin_dir }}/calicoctl datastore migrate unlock"
+          environment:
+            KUBECONFIG: "{{ kube_config_dir }}/admin.conf"

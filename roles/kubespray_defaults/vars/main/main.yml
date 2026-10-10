@@ -20,6 +20,13 @@ etcd_supported_versions:
 
 kube_proxy_deployed: "{{ 'addon/kube-proxy' not in kubeadm_init_phases_skip }}"
 
+# cri-dockerd does not support WebSocket streaming to the kubelet.
+# https://github.com/kubernetes-sigs/kubespray/issues/13360
+_kubelet_feature_gates: >-
+  {{ (kubelet_feature_gates | default(kube_feature_gates, true)) |
+     combine({'ExtendWebSocketsToKubelet': false}
+             if container_manager == 'docker' and kube_version is version('1.36.0', '>=') else {}) }}
+
 # Sysctl floors: only applied when the node's current value is lower than
 # the desired one, so pre-tuned images and newer kernels are not regressed.
 # Values are aligned with OpenShift Node Tuning Operator and kops, and

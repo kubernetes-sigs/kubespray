@@ -152,7 +152,7 @@ metrics_server_enabled: True
 # Enable ZSWAP
 kubelet_fail_swap_on: False
 kube_feature_gates:
-  - "NodeSwap=True"
+  NodeSwap: true
 ```
 
 ## Additional files

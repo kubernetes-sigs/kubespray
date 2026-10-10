@@ -205,6 +205,38 @@ def test_health_check_address_only() -> None:
         assert var not in env
 
 
+def test_health_check_address_is_trimmed() -> None:
+    """Surrounding whitespace must not reach the manifest (kube-vip would
+    reject it as a URL)."""
+    manifest_vars = default_vars()
+    manifest_vars["kube_vip_bgp_enabled"] = True
+    manifest_vars["kube_vip_control_plane_health_check_address"] = "  https://localhost:6443/livez  "
+    env = env_vars(render(manifest_vars))
+    assert env["control_plane_health_check_address"] == "https://localhost:6443/livez"
+
+
+@pytest.mark.parametrize("whitespace", [" ", "   ", "\t", "\n"])
+def test_health_check_blank_address_emits_nothing(whitespace: str) -> None:
+    """A whitespace-only address must not enable the check (regression test)."""
+    manifest_vars = default_vars()
+    manifest_vars["kube_vip_bgp_enabled"] = True
+    manifest_vars["kube_vip_control_plane_health_check_address"] = whitespace
+    manifest_vars["kube_vip_control_plane_health_check_ca_path"] = "  /etc/kubernetes/pki/ca.crt  "
+    env = env_vars(render(manifest_vars))
+    assert HEALTH_CHECK_VARS[0] not in env
+    assert HEALTH_CHECK_VARS[-1] not in env
+
+
+def test_health_check_ca_path_is_trimmed() -> None:
+    """A padded CA path must be trimmed so kube-vip can read the file."""
+    manifest_vars = default_vars()
+    manifest_vars["kube_vip_bgp_enabled"] = True
+    manifest_vars["kube_vip_control_plane_health_check_address"] = "https://localhost:6443/livez"
+    manifest_vars["kube_vip_control_plane_health_check_ca_path"] = "  /etc/kubernetes/pki/ca.crt  "
+    env = env_vars(render(manifest_vars))
+    assert env["control_plane_health_check_ca_path"] == "/etc/kubernetes/pki/ca.crt"
+
+
 @pytest.mark.parametrize("bgp_enabled", [True, False])
 def test_health_check_produces_valid_manifest(bgp_enabled: bool) -> None:
     """Enabling the health check must keep the manifest valid YAML."""

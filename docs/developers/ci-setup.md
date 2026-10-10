@@ -4,6 +4,16 @@
 
 See [.gitlab-ci.yml](/.gitlab-ci.yml) and the included files for an overview.
 
+### Release image build check
+
+The `image-build` job in [.gitlab-ci/build.yml](/.gitlab-ci/build.yml) builds the root [Dockerfile](/Dockerfile) for `linux/amd64` without publishing an image. It runs independently of `pipeline-image` in PR and scheduled pipelines, without path filtering or adding dependencies to existing test jobs.
+
+Run the same build locally from the repository root:
+
+```shell
+docker build --platform linux/amd64 .
+```
+
 ## Runners
 
 Kubespray has 2 types of GitLab runners, both deployed on the Kubespray CI cluster (hosted on Oracle Cloud Infrastructure):

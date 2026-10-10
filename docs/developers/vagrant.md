@@ -7,8 +7,6 @@ Kubernetes cluster by simply running `vagrant up`.
 This will spin up 3 VMs and install kubernetes on them.
 Once they are completed you can connect to any of them by running `vagrant ssh k8s-[1..3]`.
 
-The `quay.io/kubespray/vagrant` container image is no longer published for new releases. Vagrant support is unchanged: install Vagrant on your host with VirtualBox or libvirt/QEMU and follow the setup below.
-
 To give an estimate of the expected duration of a provisioning run:
 On a dual core i5-6300u laptop with an SSD, provisioning takes around 13
 to 15 minutes, once the container images and other files are cached.

@@ -67,6 +67,22 @@ kube_vip_bgppeers:
 # kube_vip_bgp_sourceif:
 ```
 
+Without leader election every control-plane node announces the VIP over BGP, so an upstream router using ECMP keeps
+sending traffic to a node whose kube-apiserver is down. kube-vip >= v1.2.0 can poll an HTTP endpoint and
+[withdraw the BGP route while the control plane is unhealthy](https://kube-vip.io/docs/usage/bgp-health-check/).
+Set `kube_vip_control_plane_health_check_address` to enable it, requiring `kube_vip_version` >= `1.2.0`:
+
+```yaml
+kube_vip_version: 1.2.4
+kube_vip_control_plane_health_check_address: https://localhost:6443/livez
+# kube_vip_control_plane_health_check_period_seconds: 5
+# kube_vip_control_plane_health_check_timeout_seconds: 3
+# kube_vip_control_plane_health_check_failure_threshold: 3
+# kube_vip_control_plane_health_check_ca_path: /etc/kubernetes/pki/ca.crt
+```
+
+`kube_vip_control_plane_health_check_ca_path` is only needed when the endpoint uses a certificate the health check
+client cannot verify with the system trust store, such as the cluster's own CA.
 If using [control plane load-balancing](https://kube-vip.io/docs/about/architecture/#control-plane-load-balancing):
 
 ```yaml

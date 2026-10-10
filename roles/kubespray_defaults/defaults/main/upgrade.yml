@@ -1,0 +1,51 @@
+---
+# How upgrade_cluster.yml walks through the worker nodes.
+#
+#   linear           Ansible's serial: batches (default, unchanged behaviour).
+#                    Every node in a batch waits for the slowest one before the
+#                    next batch starts.
+#   graceful_rolling Sliding window. Nodes advance independently and a node
+#                    that finishes immediately frees its slot for the next one.
+#                    Requires more forks than upgrade_node_concurrency.
+#
+# See docs/operations/upgrade-strategies.md.
+upgrade_strategy: linear
+
+# Nodes allowed to be draining/upgrading at the same time under
+# graceful_rolling. Accepts an integer or a percentage of the play's hosts.
+# Capped at forks - 1, because a node waiting for a slot occupies a worker.
+upgrade_node_concurrency: "20%"
+
+# Per-group ceilings layered on top of upgrade_node_concurrency. A node may
+# start only when every group limit that applies to it has room. The key
+# 'default' covers nodes in none of the listed groups.
+#
+# A percentage counts that group's own hosts in this play, so "50%" under
+# calico_rr means half of the route reflectors - not half of the cluster.
+#
+#   upgrade_per_group_concurrency:
+#     kube_node: 5
+#     calico_rr: 1
+upgrade_per_group_concurrency: {}
+
+# Seconds between checks while a node waits for a free slot.
+upgrade_slot_poll_interval: 5.0
+
+# A lease older than this is treated as abandoned by a killed Ansible process
+# and its slot is reclaimed. Must comfortably exceed a single node's upgrade
+# time, including drain_timeout and any reboot.
+upgrade_slot_lease_ttl: 3600
+
+# Seconds a node may wait for a slot before failing. 0 waits indefinitely,
+# which is correct for a large cluster with a small window - the last node
+# legitimately waits a long time. Abandoned slots are still reclaimed via
+# upgrade_slot_lease_ttl.
+upgrade_slot_timeout: 0
+
+# Stop draining further nodes once one node has failed its upgrade.
+#
+# ansible-core implements any_errors_fatal only in the linear strategy; free
+# and host_pinned ignore it (ansible/plugins/strategy/free.py). This flag
+# restores that safety net for graceful_rolling by failing every node that has
+# not yet been drained.
+upgrade_abort_on_failure: true

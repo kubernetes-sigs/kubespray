@@ -9,11 +9,11 @@ See [.gitlab-ci.yml](/.gitlab-ci.yml) and the included files for an overview.
 Kubespray has 2 types of GitLab runners, both deployed on the Kubespray CI cluster (hosted on Oracle Cloud Infrastructure):
 
 - pods: use the [gitlab-ci kubernetes executor](https://docs.gitlab.com/runner/executors/kubernetes/)
-- vagrant: custom executor running in pods with access to the libvirt socket on the nodes
+- vagrant: custom executor running jobs inside KubeVirt VMs
 
 ## Vagrant
 
-Vagrant jobs are using the [quay.io/kubespray/vagrant](/test-infra/vagrant-docker/Dockerfile) docker image with `/var/run/libvirt/libvirt-sock` exposed from the host, allowing the container to boot VMs on the host.
+Vagrant jobs use the `quay.io/kubespray/vm-kubespray-ci` VM image configured in [.gitlab-ci/vagrant.yml](/.gitlab-ci/vagrant.yml). Vagrant and libvirt run inside the KubeVirt VM to provision the test nodes.
 
 ## CI Variables
 

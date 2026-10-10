@@ -111,17 +111,18 @@ run `upgrade-cluster.yml` or `cluster.yml`. Now you are good to go on with the r
 With the old node still in the inventory, run `remove-node.yml`. You need to pass `-e node=node-1` to the playbook to limit the execution to the node being removed.
 If the node you want to remove is not online, you should add the `reset_nodes` and `allow_ungraceful_removal` booleans to your extra-vars: `-e '{"reset_nodes": false, "allow_ungraceful_removal": true}'`.
 
-### 4) Edit cluster-info configmap in kube-public namespace
-
-`kubectl  edit cm -n kube-public cluster-info`
-
-Change ip of old kube_control_plane node with ip of live kube_control_plane node (`server` field). Also, update `certificate-authority-data` field if you changed certs.
-
-### 5) Add new control plane node
+### 4) Add new control plane node
 
 Update inventory (if needed)
 
 Run `cluster.yml` with `--limit=kube_control_plane`
+
+That run reconciles the advertised control-plane endpoint before any node joins: the
+`server` field of the `cluster-info` ConfigMap in `kube-public`, and `controlPlaneEndpoint`
+in the `kube-system/kubeadm-config` ConfigMap. Editing them by hand is no longer required.
+
+If you replaced the cluster CA, you do still need to update `certificate-authority-data` in
+`cluster-info` yourself, with `kubectl edit cm -n kube-public cluster-info`.
 
 ## Adding an etcd node
 

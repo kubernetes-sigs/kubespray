@@ -86,11 +86,12 @@ containerd_registries_mirrors:
 
 containerd_max_container_log_line_size: 16384
 
-crio_registries_mirrors:
+crio_registries:
   - prefix: docker.io
     insecure: false
     blocked: false
-    location: registry-1.docker.io
+    unqualified: true
+    location: docker.io
     mirrors:
       - location: mirror.gcr.io
         insecure: false

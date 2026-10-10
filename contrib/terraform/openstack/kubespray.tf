@@ -98,7 +98,7 @@ module "compute" {
   etcd_server_group_policy                     = var.etcd_server_group_policy
   extra_sec_groups                             = var.extra_sec_groups
   extra_sec_groups_name                        = var.extra_sec_groups_name
-  group_vars_path                              = var.group_vars_path
+  group_vars_path                              = abspath(var.group_vars_path)
   port_security_enabled                        = var.port_security_enabled
   force_null_port_security                     = var.force_null_port_security
   network_router_id                            = module.network.router_id

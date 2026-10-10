@@ -16,388 +16,53 @@
     mode: "0755"
     remote_src: true
 
-- name: Calico | Create calico certs directory
-  file:
-    dest: "{{ calico_cert_dir }}"
-    state: directory
-    mode: "0750"
-    owner: root
-    group: root
-  when: calico_datastore == "etcd"
-
-- name: Calico | Link etcd certificates for calico-node
-  file:
-    src: "{{ etcd_cert_dir }}/{{ item.s }}"
-    dest: "{{ calico_cert_dir }}/{{ item.d }}"
-    state: hard
-    mode: "0640"
-    force: true
-  with_items:
-    - {s: "{{ kube_etcd_cacert_file }}", d: "ca_cert.crt"}
-    - {s: "{{ kube_etcd_cert_file }}", d: "cert.crt"}
-    - {s: "{{ kube_etcd_key_file }}", d: "key.pem"}
-  when: calico_datastore == "etcd"
-
-- name: Calico | Generate typha certs
-  include_tasks: typha_certs.yml
-  when:
-    - typha_secure
-    - inventory_hostname == groups['kube_control_plane'][0]
-
-- name: Calico | Generate apiserver certs
-  include_tasks: calico_apiserver_certs.yml
-  when:
-    - calico_apiserver_enabled
-    - inventory_hostname == groups['kube_control_plane'][0]
-
 - name: Calico | Install calicoctl wrapper script
   template:
-    src: "calicoctl.{{ calico_datastore }}.sh.j2"
+    src: "calicoctl.sh.j2"
     dest: "{{ bin_dir }}/calicoctl.sh"
     mode: "0755"
     owner: root
     group: root
 
-- name: Calico | wait for etcd
-  uri:
-    url: "{{ etcd_access_addresses.split(',') | first }}/health"
-    validate_certs: false
-    client_cert: "{{ calico_cert_dir }}/cert.crt"
-    client_key: "{{ calico_cert_dir }}/key.pem"
-  register: result
-  until: result.status == 200 or result.status == 401
-  retries: 10
-  delay: 5
-  run_once: true
-  when: calico_datastore == "etcd"
+# The cluster-wide tasks use groups['kube_control_plane'][0], because run_once runs once per serial batch
+- name: Calico | Install the Tigera operator
+  include_tasks: operator.yml
+  when: inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Calico | Check if calico network pool has already been configured
-  # noqa risky-shell-pipe - grep will exit 1 if no match found
-  shell: >
-    {{ bin_dir }}/calicoctl.sh get ippool | grep -w "{{ calico_pool_cidr | default(kube_pods_subnet) }}" | wc -l
-  args:
-    executable: /bin/bash
-  register: calico_conf
-  retries: 4
-  until: calico_conf.rc == 0
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: false
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - ipv4_stack | bool
+- name: Calico | Configure Calico resources
+  import_tasks: config.yml
 
-- name: Calico | Ensure that calico_pool_cidr is within kube_pods_subnet when defined
-  assert:
-    that: "[calico_pool_cidr] | ansible.utils.ipaddr(kube_pods_subnet) | length == 1"
-    msg: "{{ calico_pool_cidr }} is not within or equal to {{ kube_pods_subnet }}"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - ipv4_stack | bool
-    - calico_pool_cidr is defined
-    - 'calico_conf.stdout == "0"'
+- name: Calico | Prepare the manifest-based Calico for the migration
+  include_tasks: migrate_prepare.yml
+  when: inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Calico | Check if calico IPv6 network pool has already been configured
-  # noqa risky-shell-pipe - grep will exit 1 if no match found
-  shell: >
-    {{ bin_dir }}/calicoctl.sh get ippool | grep -w "{{ calico_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}" | wc -l
-  args:
-    executable: /bin/bash
-  register: calico_conf_ipv6
-  retries: 4
-  until: calico_conf_ipv6.rc == 0
-  delay: "{{ retry_stagger | random + 3 }}"
-  changed_when: false
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - ipv6_stack
+- name: Calico | Deploy Calico with the operator
+  include_tasks: installation.yml
+  when: inventory_hostname == groups['kube_control_plane'][0]
 
-- name: Calico | Ensure that calico_pool_cidr_ipv6 is within kube_pods_subnet_ipv6 when defined
-  assert:
-    that: "[calico_pool_cidr_ipv6] | ansible.utils.ipaddr(kube_pods_subnet_ipv6) | length == 1"
-    msg: "{{ calico_pool_cidr_ipv6 }} is not within or equal to {{ kube_pods_subnet_ipv6 }}"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - ipv6_stack | bool
-    - calico_conf_ipv6.stdout is defined and calico_conf_ipv6.stdout == "0"
-    - calico_pool_cidr_ipv6 is defined
-
-- name: Calico | kdd specific configuration
-  when:
-    - ('kube_control_plane' in group_names)
-    - calico_datastore == "kdd"
-  block:
-    - name: Calico | Create calico manifests for kdd
-      copy:
-        src: "{{ downloads.calico_crds.dest }}"
-        dest: "{{ kube_config_dir }}/kdd-crds.yml"
-        mode: "0644"
-        remote_src: true
-
-    - name: Calico | Create Calico Kubernetes datastore resources
-      kube:
-        kubectl: "{{ bin_dir }}/kubectl"
-        filename: "{{ kube_config_dir }}/kdd-crds.yml"
-        state: "latest"
-      register: kubectl_result
-      until: kubectl_result is succeeded
-      retries: 5
-      when:
-        - inventory_hostname == groups['kube_control_plane'][0]
-
-- name: Calico | Configure Felix
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-  block:
-    - name: Calico | Get existing FelixConfiguration
-      command: "{{ bin_dir }}/calicoctl.sh get felixconfig default -o json"
-      register: _felix_cmd
-      ignore_errors: true
-      changed_when: false
-
-    - name: Calico | Configure calico FelixConfiguration
-      vars:
-        _felix_config_defaults:
-          kind: "FelixConfiguration"
-          apiVersion: "projectcalico.org/v3"
-          metadata:
-            name: "default"
-          spec:
-            ipipEnabled: "{{ calico_ipip_mode != 'Never' }}"
-            reportingInterval: "{{ calico_felix_reporting_interval }}"
-            bpfLogLevel: "{{ calico_bpf_log_level }}"
-            bpfEnabled: "{{ calico_bpf_enabled | bool }}"
-            bpfExternalServiceMode: "{{ calico_bpf_service_mode }}"
-            wireguardEnabled: "{{ calico_wireguard_enabled | bool }}"
-            logSeverityScreen: "{{ calico_felix_log_severity_screen }}"
-            vxlanEnabled: "{{ calico_vxlan_mode != 'Never' }}"
-            featureDetectOverride: "{{ calico_feature_detect_override }}"
-            floatingIPs: "{{ calico_felix_floating_ips }}"
-      command:
-        cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-        stdin: "{{ ((_felix_cmd.stdout | from_json
-                  if _felix_cmd is success
-                  else {}) | combine(_felix_config_defaults, recursive=True))
-                  | to_json }}"
-      changed_when: false
-
-- name: Calico | Configure Calico IP Pool
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - ipv4_stack | bool
-  block:
-    - name: Calico | Get existing calico network pool
-      command: "{{ bin_dir }}/calicoctl.sh get ippool {{ calico_pool_name }} -o json"
-      register: _calico_pool_cmd
-      ignore_errors: true
-      changed_when: false
-
-    - name: Calico | Configure calico network pool
-      vars:
-        _calico_blocksize:
-          spec:
-            blockSize: "{{ (_calico_pool_cmd.stdout | from_json).spec.blockSize }}"
-        _calico_pool:
-          kind: "IPPool"
-          apiVersion: "projectcalico.org/v3"
-          metadata:
-            name: "{{ calico_pool_name }}"
-          spec:
-            blockSize: "{{ calico_pool_blocksize }}"
-            cidr: "{{ calico_pool_cidr | default(kube_pods_subnet) }}"
-            ipipMode: "{{ calico_ipip_mode }}"
-            vxlanMode: "{{ calico_vxlan_mode }}"
-            natOutgoing: "{{ nat_outgoing | default(false) }}"
-        _calico_pool_merged: "{{ (
-                                    (_calico_pool_cmd.stdout | from_json)
-                                    if _calico_pool_cmd is success else {}
-                                 )
-                                 | combine(
-                                   _calico_pool,
-                                   _calico_blocksize if _calico_pool_cmd is success else {},
-                                   recursive=True) }}"
-                                 # override order is current state < config < blocksize
-                                 # because blocksize is immutable, so we always reuse it
-      command:
-        cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-        stdin: "{{ _calico_pool_merged | to_json }}"
-      changed_when: false
-
-- name: Calico | Configure Calico IPv6 Pool
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - ipv6_stack | bool
-  block:
-    - name: Calico | Get existing calico ipv6 network pool
-      command: "{{ bin_dir }}/calicoctl.sh get ippool {{ calico_pool_name }}-ipv6 -o json"
-      register: _calico_pool_ipv6_cmd
-      ignore_errors: true
-      changed_when: false
-
-    - name: Calico | Configure calico IPv6 network pool
-      vars:
-        _calico_blocksize_ipv6:
-          spec:
-            blockSize: "{{ (_calico_pool_ipv6_cmd.stdout | from_json).spec.blockSize }}"
-        _calico_pool_ipv6:
-          kind: "IPPool"
-          apiVersion: "projectcalico.org/v3"
-          metadata:
-            name: "{{ calico_pool_name }}-ipv6"
-          spec:
-            blockSize: "{{ calico_pool_blocksize_ipv6 }}"
-            cidr: "{{ calico_pool_cidr_ipv6 | default(kube_pods_subnet_ipv6) }}"
-            ipipMode: "{{ calico_ipip_mode_ipv6 }}"
-            vxlanMode: "{{ calico_vxlan_mode_ipv6 }}"
-            natOutgoing: "{{ nat_outgoing_ipv6 | default(false) }}"
-        _calico_pool_merged_ipv6: "{{ (
-                                        (_calico_pool_ipv6_cmd.stdout | from_json)
-                                        if _calico_pool_ipv6_cmd is success else {}
-                                      )
-                                      | combine(
-                                          _calico_pool_ipv6,
-                                          _calico_blocksize_ipv6 if _calico_pool_ipv6_cmd is success else {},
-                                          recursive=True) }}"
-                                         # override order is current state < config < blocksize
-                                         # because blocksize is immutable, so we always reuse it
-      command:
-        cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-        stdin: "{{ _calico_pool_merged_ipv6 | to_json }}"
-      changed_when: false
-
-- name: Calico | Configure Calico BGP
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-  block:
-    - name: Calico | Get existing BGP Configuration
-      command: "{{ bin_dir }}/calicoctl.sh get bgpconfig default -o json"
-      register: _bgp_config_cmd
-      ignore_errors: true
-      changed_when: false
-
-    - name: Calico | Set up BGP Configuration
-      vars:
-        _service_ips:
-          - "{{ kube_service_addresses if ipv4_stack else '' }}"
-          - "{{ kube_service_addresses_ipv6 if ipv6_stack else '' }}"
-        _cluster_ips:
-          spec:
-            serviceClusterIPs: "{{ _service_ips | select | map('community.general.dict_kv', 'cidr') }}"
-        _lb_ips:
-          spec:
-            serviceLoadBalancerIPs: "{{ calico_advertise_service_loadbalancer_ips | map('community.general.dict_kv', 'cidr') }}"
-        _as_num:
-          spec:
-            asNumber: "{{ global_as_num }}"
-        _bgp_config_base:
-          kind: "BGPConfiguration"
-          apiVersion: "projectcalico.org/v3"
-          metadata:
-            name: "default"
-          spec:
-            listenPort: "{{ calico_bgp_listen_port }}"
-            logSeverityScreen: "Info"
-            nodeToNodeMeshEnabled: "{{ not (peer_with_router or peer_with_calico_rr) }}"
-            serviceExternalIPs: "{{ calico_advertise_service_external_ips | map('community.general.dict_kv', 'cidr') }}"
-        _bgp_config_merged: "{{ ((_bgp_config_cmd.stdout | from_json) if _bgp_config_cmd is success else {})
-                                | combine(_bgp_config_base,
-                                    _cluster_ips if calico_advertise_cluster_ips else {},
-                                    _lb_ips if calico_advertise_service_loadbalancer_ips != [] else {},
-                                    _as_num if not calico_no_global_as_num else {},
-                                    recursive=True)
-                              }}"
-      command:
-        cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
-        stdin: "{{ _bgp_config_merged | to_json }}"
-      changed_when: false
-
-- name: Calico | Create calico manifests
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: "0644"
-  with_items:
-    - {name: calico-config, file: calico-config.yml, type: cm}
-    - {name: calico-node, file: calico-node.yml, type: ds}
-    - {name: calico, file: calico-node-sa.yml, type: sa}
-    - {name: calico, file: calico-cr.yml, type: clusterrole}
-    - {name: calico, file: calico-crb.yml, type: clusterrolebinding}
-    - {name: kubernetes-services-endpoint, file: kubernetes-services-endpoint.yml, type: cm }
-  register: calico_node_manifests
-  when:
-    - ('kube_control_plane' in group_names)
-    - rbac_enabled or item.type not in rbac_resources
-
-- name: Calico | Create calico manifests for typha
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: "0644"
-  with_items:
-    - {name: calico, file: calico-typha.yml, type: typha}
-  register: calico_node_typha_manifest
-  when:
-    - ('kube_control_plane' in group_names)
-    - typha_enabled
-
-- name: Calico | get calico apiserver caBundle
-  command: "{{ bin_dir }}/kubectl get secret -n calico-apiserver calico-apiserver-certs -o jsonpath='{.data.apiserver\\.crt}'"
-  changed_when: false
-  register: calico_apiserver_cabundle
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - calico_apiserver_enabled
-
-- name: Calico | set calico apiserver caBundle fact
-  set_fact:
-    calico_apiserver_cabundle: "{{ calico_apiserver_cabundle.stdout }}"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - calico_apiserver_enabled
-
-- name: Calico | Create calico manifests for apiserver
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: "0644"
-  with_items:
-    - {name: calico, file: calico-apiserver.yml, type: calico-apiserver}
-  register: calico_apiserver_manifest
-  when:
-    - ('kube_control_plane' in group_names)
-    - calico_apiserver_enabled
-
-- name: Start Calico resources
-  kube:
-    name: "{{ item.item.name }}"
-    namespace: "kube-system"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
-    state: "latest"
-  with_items:
-    - "{{ calico_node_manifests.results }}"
-    - "{{ calico_node_typha_manifest.results }}"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - not item is skipped
-  loop_control:
-    label: "{{ item.item.file }}"
-
-- name: Start Calico apiserver resources
-  kube:
-    name: "{{ item.item.name }}"
-    namespace: "calico-apiserver"
-    kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/{{ item.item.file }}"
-    state: "latest"
-  with_items:
-    - "{{ calico_apiserver_manifest.results }}"
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - not item is skipped
-  loop_control:
-    label: "{{ item.item.file }}"
+- name: Calico | Remove the files of the manifest-based install
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ kube_config_dir }}/calico-config.yml"
+    - "{{ kube_config_dir }}/calico-node.yml"
+    - "{{ kube_config_dir }}/calico-node-sa.yml"
+    - "{{ kube_config_dir }}/calico-cr.yml"
+    - "{{ kube_config_dir }}/calico-crb.yml"
+    - "{{ kube_config_dir }}/calico-typha.yml"
+    - "{{ kube_config_dir }}/calico-apiserver.yml"
+    - "{{ kube_config_dir }}/calico-apiserver-ns.yml"
+    - "{{ kube_config_dir }}/calico-kube-controllers.yml"
+    - "{{ kube_config_dir }}/calico-kube-sa.yml"
+    - "{{ kube_config_dir }}/calico-kube-cr.yml"
+    - "{{ kube_config_dir }}/calico-kube-crb.yml"
+    - "{{ kube_config_dir }}/kdd-crds.yml"
+    - "{{ kube_config_dir }}/kubernetes-services-endpoint.yml"
+    - "{{ bin_dir }}/make-ssl-typha.sh"
+    - "{{ bin_dir }}/make-ssl-apiserver.sh"
+    - /etc/calico/certs
+  when: inventory_hostname in groups['kube_control_plane']
 
 - name: Wait for calico kubeconfig to be created
   wait_for:
@@ -405,30 +70,6 @@
     timeout: "{{ calico_kubeconfig_wait_timeout }}"
   when:
     - inventory_hostname not in groups['kube_control_plane']
-    - calico_datastore == "kdd"
-
-- name: Calico | Create Calico ipam manifests
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/{{ item.file }}"
-    mode: "0644"
-  with_items:
-    - {name: calico, file: calico-ipamconfig.yml, type: ipam}
-  when:
-    - ('kube_control_plane' in group_names)
-    - calico_datastore == "kdd"
-
-- name: Calico | Create ipamconfig resources
-  kube:
-    kubectl: "{{ bin_dir }}/kubectl"
-    filename: "{{ kube_config_dir }}/calico-ipamconfig.yml"
-    state: "latest"
-  register: resource_result
-  until: resource_result is succeeded
-  retries: 4
-  when:
-    - inventory_hostname == groups['kube_control_plane'][0]
-    - calico_datastore == "kdd"
 
 - name: Calico | Peer with Calico Route Reflector
   include_tasks: peer_with_calico_rr.yml

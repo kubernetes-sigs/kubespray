@@ -13,8 +13,7 @@ Some variables of note include:
 
 ## Common vars that are used in Kubespray
 
-* *calico_version* - Specify version of Calico to use
-* *calico_cni_version* - Specify version of Calico CNI plugin to use
+* *calico_version* - Specify version of Calico to use. It also selects the Tigera operator version.
 * *docker_version* - Specify version of Docker to use (should be quoted
   string). Must match one of the keys defined for *docker_versioned_pkg*
   in `roles/container-engine/docker/vars/*.yml`.

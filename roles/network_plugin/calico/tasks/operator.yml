@@ -1,0 +1,59 @@
+---
+- name: Calico | Apply the Tigera operator CRDs
+  command: >-
+    {{ kubectl }} apply --server-side --force-conflicts --field-manager=kubespray
+    -f {{ downloads.calico_operator_crds.dest }}
+  register: calico_operator_crds_apply
+  until: calico_operator_crds_apply is succeeded
+  retries: 5
+  delay: 5
+
+- name: Calico | Check for a manifest-based calico-node
+  command: "{{ kubectl }} -n kube-system get daemonset calico-node --ignore-not-found -o name"
+  register: calico_operator_manifest_ds
+  changed_when: false
+  check_mode: false
+
+# Without kube-proxy, Calico pods need an API server address that pods can reach
+- name: Calico | Set the API server endpoint for the eBPF dataplane
+  when: calico_bpf_enabled
+  block:
+    # The operator copies the kube-system ConfigMap during the migration and fails if the copy exists
+    - name: Calico | Create the tigera-operator namespace
+      command: "{{ kubectl }} create namespace tigera-operator"
+      register: calico_operator_ns
+      changed_when: calico_operator_ns.rc == 0
+      failed_when:
+        - calico_operator_ns.rc != 0
+        - "'AlreadyExists' not in calico_operator_ns.stderr"
+      when: calico_operator_manifest_ds.stdout | length == 0
+
+    - name: Calico | Apply the kubernetes-services-endpoint ConfigMap
+      vars:
+        _calico_kse:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: kubernetes-services-endpoint
+            namespace: "{{ 'kube-system' if calico_operator_manifest_ds.stdout | length > 0 else 'tigera-operator' }}"
+          data:
+            KUBERNETES_SERVICE_HOST: "{{ calico_kubernetes_service_host | trim }}"
+            KUBERNETES_SERVICE_PORT: "{{ calico_kubernetes_service_port | trim }}"
+      command:
+        cmd: "{{ kubectl }} apply --server-side --force-conflicts --field-manager=kubespray -f -"
+        stdin: "{{ _calico_kse | to_json }}"
+
+- name: Calico | Apply the Tigera operator
+  command: >-
+    {{ kubectl }} apply --server-side --force-conflicts --field-manager=kubespray
+    -f {{ downloads.calico_operator_manifest.dest }}
+  register: calico_operator_apply
+  until: calico_operator_apply is succeeded
+  retries: 5
+  delay: 5
+
+- name: Calico | Wait for the Tigera operator
+  command: >-
+    {{ kubectl }} -n tigera-operator rollout status deployment/tigera-operator
+    --timeout={{ calico_operator_rollout_timeout }}s
+  changed_when: false

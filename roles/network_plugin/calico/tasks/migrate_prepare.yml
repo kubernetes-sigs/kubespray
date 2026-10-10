@@ -1,0 +1,157 @@
+---
+- name: Calico | Get the manifest-based calico-node DaemonSet
+  command: "{{ kubectl }} -n kube-system get daemonset calico-node --ignore-not-found -o json"
+  register: calico_legacy_ds
+  changed_when: false
+  check_mode: false
+
+- name: Calico | Make the manifest-based Calico ready for the operator migration
+  when: calico_legacy_ds.stdout | length > 0
+  vars:
+    calico_legacy_ds_obj: "{{ calico_legacy_ds.stdout | from_json }}"
+  block:
+    - name: Calico | Find nodes that the operator migration already labeled
+      command: "{{ kubectl }} get nodes -l projectcalico.org/operator-node-migration -o name"
+      register: calico_migration_nodes
+      changed_when: false
+      check_mode: false
+
+    # After the operator starts the migration, a change in kube-system can break it
+    - name: Calico | Check if the operator migration started
+      set_fact:
+        calico_migration_started: >-
+          {{ calico_migration_nodes.stdout | length > 0 or
+             'projectcalico.org/operator-node-migration' in calico_legacy_ds_obj.spec.template.spec.nodeSelector | default({}) }}
+
+    # The migration removes FELIX_DEVICEROUTESOURCEADDRESS (status.hostIP) on all nodes at the same time,
+    # so write the per-node FelixConfiguration of all nodes first, also of the nodes that this run does not include
+    - name: Calico | Get the addresses of the nodes
+      command: >-
+        {{ kubectl }} get nodes
+        -o jsonpath='{range .items[*]}{.metadata.name} {.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}'
+      register: calico_node_addresses
+      changed_when: false
+      check_mode: false
+      when: calico_use_default_route_src_ipaddr | default(false)
+
+    - name: Calico | Set the device route source address of all nodes
+      command:
+        cmd: "{{ bin_dir }}/calicoctl.sh apply -f -"
+        stdin: >-
+          {{ {'apiVersion': 'projectcalico.org/v3', 'kind': 'FelixConfiguration',
+              'metadata': {'name': 'node.' ~ item.split()[0]},
+              'spec': {('deviceRouteSourceAddress' if ipv4_stack else 'deviceRouteSourceAddressIPv6'): item.split()[1]}} | to_json }}
+      loop: "{{ calico_node_addresses.stdout_lines | default([]) | select('match', '^\\S+ \\S') | list }}"
+      changed_when: false
+      when: calico_use_default_route_src_ipaddr | default(false)
+
+    - name: Calico | Make the kube-system objects compatible with the operator converter
+      when: not calico_migration_started
+      vars:
+        _prep: "{{ lookup('template', 'calico-migration-patch.json.j2') | from_json }}"
+      block:
+        - name: Calico | Get the FelixConfiguration bpfEnabled field
+          command: "{{ kubectl }} get felixconfigurations.crd.projectcalico.org default -o jsonpath={.spec.bpfEnabled}"
+          register: calico_felix_bpf_enabled
+          changed_when: false
+          check_mode: false
+
+        # The operator changes bpfEnabled only when this annotation matches the field.
+        # calicoctl also writes it to the v3 metadata, which the operator reads.
+        - name: Calico | Mark the FelixConfiguration bpfEnabled field as set by the operator
+          command:
+            argv:
+              - "{{ bin_dir }}/calicoctl.sh"
+              - patch
+              - felixconfiguration
+              - default
+              - --patch
+              - "{{ {'metadata': {'annotations': {'operator.tigera.io/bpfEnabled': calico_felix_bpf_enabled.stdout}}} | to_json }}"
+          when: calico_felix_bpf_enabled.stdout in ['true', 'false']
+
+        - name: Calico | Get the calico-config ConfigMap
+          command: "{{ kubectl }} -n kube-system get configmap calico-config -o json"
+          register: calico_legacy_config
+          changed_when: false
+          check_mode: false
+
+        - name: Calico | Make the CNI config compatible with the operator converter
+          vars:
+            _data: "{{ (calico_legacy_config.stdout | from_json).data }}"
+            _cni: "{{ _data.cni_network_config | from_json }}"
+            _cni_new: "{{ _cni | ansible.utils.remove_keys(target=['feature_control']) | combine({'name': 'k8s-pod-network'}) }}"
+            _calico_ipam: "{{ (_cni.plugins | selectattr('type', 'equalto', 'calico') | first).ipam.type == 'calico-ipam' }}"
+            _backend: "{{ 'vxlan' if _data.calico_backend == 'none' and _calico_ipam else _data.calico_backend }}"
+          command:
+            cmd: "{{ kubectl }} -n kube-system patch configmap calico-config --type merge --patch-file /dev/stdin"
+            stdin: "{{ {'data': {'cni_network_config': _cni_new | to_json, 'calico_backend': _backend}} | to_json }}"
+          when: _cni_new != _cni or _backend != _data.calico_backend
+
+        - name: Calico | Create the ConfigMaps for the moved env vars
+          vars:
+            _cm:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: "{{ item.key }}"
+                namespace: kube-system
+              data: "{{ item.value }}"
+          command:
+            cmd: "{{ kubectl }} apply --server-side --force-conflicts --field-manager=kubespray -f -"
+            stdin: "{{ _cm | to_json }}"
+          # Ansible evaluates the loop before the block condition
+          loop: "{{ (_prep.configmaps | dict2items) if calico_legacy_ds.stdout | length > 0 else [] }}"
+          loop_control:
+            label: "{{ item.key }}"
+
+        - name: Calico | Patch the calico-node DaemonSet
+          command:
+            cmd: "{{ kubectl }} -n kube-system patch daemonset calico-node --type json --patch-file /dev/stdin"
+            stdin: "{{ _prep.ops | to_json }}"
+          when: _prep.ops | length > 0
+
+        - name: Calico | Get the manifest-based calico-typha Deployment
+          command: "{{ kubectl }} -n kube-system get deployment calico-typha --ignore-not-found -o json"
+          register: calico_legacy_typha
+          changed_when: false
+          check_mode: false
+
+        - name: Calico | Remove the annotations that the converter rejects from calico-typha
+          vars:
+            _annotations: "{{ (calico_legacy_typha.stdout | from_json).spec.template.metadata.annotations | default({}) }}"
+            _allowed: >-
+              {{ _annotations | dict2items
+                 | selectattr('key', 'match', 'kubectl\\.kubernetes\\.io/|cluster-autoscaler\\.kubernetes\\.io/safe-to-evict$')
+                 | items2dict }}
+          command:
+            cmd: "{{ kubectl }} -n kube-system patch deployment calico-typha --type json --patch-file /dev/stdin"
+            stdin: "{{ [{'op': 'replace', 'path': '/spec/template/metadata/annotations', 'value': _allowed}] | to_json }}"
+          when:
+            - calico_legacy_typha.stdout | length > 0
+            - _allowed != _annotations
+
+        - name: Calico | Wait for the calico-typha rollout
+          command: >-
+            {{ kubectl }} -n kube-system rollout status deployment/calico-typha
+            --timeout={{ calico_operator_migration_timeout }}s
+          changed_when: false
+          when: calico_legacy_typha.stdout | length > 0
+
+        - name: Calico | Wait for the calico-node rollout
+          command: >-
+            {{ kubectl }} -n kube-system rollout status daemonset/calico-node
+            --timeout={{ calico_operator_migration_timeout }}s
+          changed_when: false
+
+    - name: Calico | Find cordoned nodes
+      command: "{{ kubectl }} get nodes -o jsonpath={.items[?(@.spec.unschedulable==true)].metadata.name}"
+      register: calico_cordoned_nodes
+      changed_when: false
+      check_mode: false
+
+    - name: Calico | Warn about cordoned nodes
+      debug:
+        msg: >-
+          Nodes {{ calico_cordoned_nodes.stdout }} are cordoned. The operator does not count them
+          for Typha replicas, so the migration can wait until they are uncordoned.
+      when: calico_cordoned_nodes.stdout | length > 0

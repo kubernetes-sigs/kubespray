@@ -1,0 +1,52 @@
+---
+- name: Calico | Wait for the operator migration
+  block:
+    - name: Calico | Wait until the operator moves Calico to calico-system
+      shell: >-
+        {{ kubectl }} -n kube-system get daemonset calico-node --ignore-not-found -o name;
+        echo '---';
+        {{ kubectl }} get tigerastatus calico --ignore-not-found
+        -o jsonpath='{range .status.conditions[?(@.type=="Degraded")]}{.status} {.reason}: {.message}{end}'
+      args:
+        executable: /bin/bash
+      register: calico_migration_state
+      changed_when: false
+      until: >-
+        calico_migration_state.stdout.split('---')[0] | trim | length == 0
+        or 'True MigrationError' in calico_migration_state.stdout
+      retries: "{{ (calico_operator_migration_timeout | int / 10) | round(0, 'ceil') | int }}"
+      delay: 10
+  rescue:
+    - name: Calico | Stop after the migration timeout
+      fail:
+        msg: >-
+          The Tigera operator did not finish the migration in {{ calico_operator_migration_timeout }} seconds.
+          Check 'kubectl describe tigerastatus calico' and the tigera-operator logs, then run the playbook again to continue.
+
+# A failed conversion leaves kube-system unchanged, and the Installation has no finalizers yet
+- name: Calico | Handle a failed conversion
+  when: "'True MigrationError' in calico_migration_state.stdout"
+  block:
+    - name: Calico | Get the Installation finalizers
+      command: "{{ kubectl }} get installation default -o jsonpath={.metadata.finalizers}"
+      register: calico_installation_finalizers
+      changed_when: false
+
+    - name: Calico | Remove the Installation
+      command: "{{ kubectl }} delete installation default --timeout=300s"
+      when: calico_installation_finalizers.stdout in ['', '[]']
+
+    - name: Calico | Remove the endpoint ConfigMap that the converter copied
+      command: "{{ kubectl }} -n tigera-operator delete configmap kubernetes-services-endpoint --ignore-not-found"
+      when:
+        - calico_bpf_enabled
+        - calico_installation_finalizers.stdout in ['', '[]']
+
+    - name: Calico | Stop after the failed conversion
+      fail:
+        msg: >-
+          The Tigera operator cannot migrate the manifest-based Calico:
+          {{ calico_migration_state.stdout.split('---')[1] | trim | regex_replace('^True MigrationError: ', '') }}.
+          {{ 'Kubespray removed the Installation, so Calico in kube-system is unchanged. Fix the problem and run the playbook again.'
+             if calico_installation_finalizers.stdout in ['', '[]']
+             else 'The migration already started. Fix the problem and run the playbook again to continue it.' }}

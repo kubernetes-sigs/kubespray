@@ -1,8 +1,6 @@
 ---
-# see roles/network_plugin/calico/defaults/main.yml
-
-# the default value of name
-calico_cni_name: k8s-pod-network
+# see roles/network_plugin/calico_defaults/defaults/main.yml
+# Kubespray installs Calico with the Tigera operator, see docs/CNI/calico.md
 
 ## With calico it is possible to distributed routes with border routers of the datacenter.
 ## Warning : enabling router peering will disable calico's default behavior ('node mesh').
@@ -35,17 +33,13 @@ calico_pool_blocksize: 26
 # to be true.  All other cases, false.
 # calico_no_global_as_num: false
 
-# You can set MTU value here. If left undefined or empty, it will
-# not be specified in calico CNI config, so Calico will use built-in
-# defaults. The value should be a number, not a string.
-# calico_mtu: 1500
-
 # Configure the MTU to use for workload interfaces and tunnels.
+# If left undefined, Calico detects it. The value should be a number, not a string.
 # - If Wireguard is enabled, subtract 60 from your network MTU (i.e 1500-60=1440)
 # - Otherwise, if VXLAN or BPF mode is enabled, subtract 50 from your network MTU (i.e. 1500-50=1450)
 # - Otherwise, if IPIP is enabled, subtract 20 from your network MTU (i.e. 1500-20=1480)
 # - Otherwise, if not using any encapsulation, set to your network MTU (i.e. 1500)
-# calico_veth_mtu: 1440
+# calico_mtu: 1440
 
 # Advertise Cluster IPs
 # calico_advertise_cluster_ips: true
@@ -60,24 +54,11 @@ calico_pool_blocksize: 26
 # - x.x.x.x/24
 # - y.y.y.y/16
 
-# Choose data store type for calico: "etcd" or "kdd" (kubernetes datastore)
-# calico_datastore: "kdd"
-
 # Choose Calico iptables backend: "Legacy", "Auto" or "NFT"
 # calico_iptables_backend: "Auto"
 
-# Use typha (only with kdd)
-# typha_enabled: false
-
-# Generate TLS certs for secure typha<->calico-node communication
-# typha_secure: false
-
-# Scaling typha: 1 replica per 100 nodes is adequate
-# Number of typha replicas
-# typha_replicas: 1
-
-# Set max typha connections
-# typha_max_connections_lower_limit: 300
+# Typha always runs with the Tigera operator. Enable its Prometheus metrics
+# typha_prometheusmetricsenabled: false
 
 # Set calico network backend: "bird", "vxlan" or "none"
 # bird enable BGP routing, required for ipip and no encapsulation modes
@@ -97,10 +78,17 @@ calico_pool_blocksize: 26
 # Enable eBPF mode
 # calico_bpf_enabled: false
 
+# Use the nftables dataplane: Disabled (default), Enabled
+# calico_nftable_mode: Disabled
+
 # If you want to use non default IP_AUTODETECTION_METHOD, IP6_AUTODETECTION_METHOD for calico node set this option to one of:
 # * can-reach=DESTINATION
 # * interface=INTERFACE-REGEX
-# see https://docs.projectcalico.org/reference/node/configuration
+# * skip-interface=INTERFACE-REGEX
+# * cidr=CIDR[,CIDR]
+# * first-found
+# * kubernetes-internal-ip (default for IPv4)
+# see https://docs.tigera.io/calico/latest/networking/ipam/ip-autodetection
 # calico_ip_auto_method: "interface=eth.*"
 # calico_ip6_auto_method: "interface=eth.*"
 
@@ -112,15 +100,24 @@ calico_pool_blocksize: 26
 # calico_felix_chaininsertmode: Insert
 
 # If you want use the default route interface when you use multiple interface with dynamique route (iproute2)
-# see https://docs.projectcalico.org/reference/node/configuration : FELIX_DEVICEROUTESOURCEADDRESS
+# see https://docs.tigera.io/calico/latest/reference/resources/felixconfig : deviceRouteSourceAddress
 # calico_use_default_route_src_ipaddr: false
 
 # Enable calico traffic encryption with wireguard
 # calico_wireguard_enabled: false
 
-# Under certain situations liveness and readiness probes may need tunning
-# calico_node_livenessprobe_timeout: 10
-# calico_node_readinessprobe_timeout: 10
-
-# Calico apiserver (only with kdd)
+# Calico apiserver
 # calico_apiserver_enabled: false
+
+# More FelixConfiguration spec fields
+# calico_felix_extra_config:
+#   bpfConnectTimeLoadBalancing: TCP
+
+# More Installation spec fields, merged over the values that Kubespray sets
+# see https://docs.tigera.io/calico/latest/reference/installation/api
+# calico_operator_installation_spec:
+#   controlPlaneReplicas: 1
+
+# Seconds to wait for the operator to move a manifest-based Calico to calico-system
+# (default: 60 seconds for each node and at least 3600)
+# calico_operator_migration_timeout: 3600

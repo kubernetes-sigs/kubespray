@@ -1,0 +1,163 @@
+---
+# Checks for the Tigera operator install. They run in preinstall and at the start of the role.
+- name: Calico | Check that Kubespray has the Tigera operator manifests for calico_version
+  assert:
+    that:
+      - calico_version in calico_operator_crds_checksums.no_arch
+      - calico_version in calico_operator_manifest_checksums.no_arch
+    msg: "Calico {{ calico_version }} is not supported. Use one of {{ calico_operator_manifest_checksums.no_arch.keys() | list }}"
+  run_once: true
+
+- name: Calico | Check the CNI network name
+  assert:
+    that: calico_cni_name == 'k8s-pod-network'
+    msg: "The Tigera operator supports only the CNI network name k8s-pod-network. Remove calico_cni_name from the inventory."
+  run_once: true
+
+- name: Calico | Check that network policy is enabled
+  assert:
+    that: enable_network_policy | bool
+    msg: "The Tigera operator always enables network policy. Remove enable_network_policy from the inventory."
+  run_once: true
+
+- name: Calico | Check the Felix health host
+  assert:
+    that: calico_healthhost in ['localhost', '127.0.0.1', '0.0.0.0', '::', '::1']
+    msg: "The probes of the Tigera operator use localhost, so calico_healthhost must include it."
+  run_once: true
+
+- name: Calico | Check that host-local IPAM does not use VXLAN
+  assert:
+    that: >-
+      not calico_ipam_host_local or
+      ((not ipv4_stack or calico_vxlan_mode == 'Never') and (not ipv6_stack or calico_vxlan_mode_ipv6 == 'Never'))
+    msg: "The Tigera operator does not support VXLAN with host-local IPAM."
+  run_once: true
+
+- name: Calico | Check the MTU
+  assert:
+    that: calico_mtu | int > 0
+    msg: "calico_mtu must be a number."
+  run_once: true
+  when: calico_mtu is defined
+
+- name: Calico | Check the extra settings
+  assert:
+    that:
+      - calico_felix_extra_config is mapping
+      - "'bpfEnabled' not in calico_felix_extra_config"
+      - "'nftablesMode' not in calico_felix_extra_config"
+      - calico_operator_installation_spec is mapping
+    msg: >-
+      calico_felix_extra_config and calico_operator_installation_spec must be dictionaries.
+      The operator sets bpfEnabled and nftablesMode, use calico_bpf_enabled and calico_nftable_mode.
+  run_once: true
+
+- name: Calico | Check the IP autodetection methods
+  assert:
+    that: item is match('^(first-found|kubernetes-internal-ip|(can-reach|interface|skip-interface|cidr)=.+)$')
+    msg: "{{ item }} is not a supported IP autodetection method"
+  loop: "{{ [calico_ip_auto_method | default(''), calico_ip6_auto_method | default('')] | select }}"
+  run_once: true
+
+- name: Calico | Check that the image variables match the images of the operator
+  assert:
+    that:
+      - item.repo == quay_image_repo ~ '/calico/' ~ item.name
+      - item.tag == 'v' ~ calico_version
+    msg: >-
+      The Tigera operator pulls {{ quay_image_repo }}/calico/{{ item.name }}:v{{ calico_version }}.
+      Use quay_image_repo for a mirror, not the Calico image variables.
+  loop:
+    - {name: node, repo: "{{ calico_node_image_repo }}", tag: "{{ calico_node_image_tag }}"}
+    - {name: cni, repo: "{{ calico_cni_image_repo }}", tag: "{{ calico_cni_image_tag }}"}
+    - {name: kube-controllers, repo: "{{ calico_policy_image_repo }}", tag: "{{ calico_policy_image_tag }}"}
+    - {name: typha, repo: "{{ calico_typha_image_repo }}", tag: "{{ calico_typha_image_tag }}"}
+    - {name: apiserver, repo: "{{ calico_apiserver_image_repo }}", tag: "{{ calico_apiserver_image_tag }}"}
+  loop_control:
+    label: "{{ item.name }}"
+  run_once: true
+
+- name: Calico | Read the Calico CNI config
+  slurp:
+    src: /etc/cni/net.d/10-calico.conflist
+  register: calico_preflight_conflist
+  failed_when: false
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: Calico | Stop if Calico uses the etcd datastore
+  assert:
+    that: "'etcd_endpoints' not in (calico_preflight_conflist.content | b64decode)"
+    msg: >-
+      Calico on this cluster uses the etcd datastore, which Kubespray no longer supports.
+      Migrate Calico to the Kubernetes datastore with the previous Kubespray release first, see docs/CNI/calico.md.
+  run_once: true
+  when: calico_preflight_conflist.content is defined
+
+- name: Calico | Check for the admin kubeconfig
+  stat:
+    path: "{{ kube_config_dir }}/admin.conf"
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: calico_preflight_admin_conf
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+- name: Calico | Get the manifest-based calico-node DaemonSet
+  command: "{{ kubectl }} -n kube-system get daemonset calico-node --ignore-not-found -o json"
+  register: calico_preflight_manifest_ds
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  run_once: true
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  when: calico_preflight_admin_conf.stat.exists
+
+- name: Calico | Check the manifest-based Calico before the migration starts
+  when:
+    - calico_preflight_manifest_ds.rc | default(1) == 0
+    - calico_preflight_manifest_ds.stdout | length > 0
+    - "'projectcalico.org/operator-node-migration' not in (calico_preflight_manifest_ds.stdout | from_json).spec.template.spec.nodeSelector | default({})"
+  block:
+    - name: Calico | Check that the manifest-based Calico can move to the Tigera operator
+      vars:
+        _ds: "{{ calico_preflight_manifest_ds.stdout | from_json }}"
+        _selector: "{{ _ds.spec.template.spec.nodeSelector | default({}) }}"
+        _image: "{{ (_ds.spec.template.spec.containers | selectattr('name', 'equalto', 'calico-node') | first).image }}"
+        _running: "{{ _image.split(':') | last | regex_replace('^v', '') }}"
+      assert:
+        that:
+          - _running.split('.')[:2] == calico_version.split('.')[:2]
+          - _selector.keys() | difference(['kubernetes.io/os', 'beta.kubernetes.io/os']) | length == 0
+        msg: >-
+          The manifest-based Calico {{ _running }} moves to the Tigera operator on this run.
+          The migration needs the same minor version as calico_version ({{ calico_version }}),
+          so set calico_version to a {{ _running.split('.')[:2] | join('.') }} version for this run.
+          The calico-node DaemonSet must also have no custom nodeSelector ({{ _selector }}).
+      run_once: true
+
+    # The operator moves one node at a time and waits until calico-node on that node is ready
+    - name: Calico | Wait until calico-node is ready on all nodes
+      command: >-
+        {{ kubectl }} -n kube-system get daemonset calico-node
+        -o jsonpath='{.status.numberReady}/{.status.desiredNumberScheduled}'
+      register: calico_preflight_ready
+      until: calico_preflight_ready.rc == 0 and calico_preflight_ready.stdout.split('/') | unique | length == 1
+      retries: 12
+      delay: 10
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      run_once: true
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
+    - name: Calico | Check that calico-node is ready on all nodes
+      assert:
+        that: calico_preflight_ready.rc == 0 and calico_preflight_ready.stdout.split('/') | unique | length == 1
+        msg: >-
+          calico-node is ready on {{ calico_preflight_ready.stdout }} nodes. The Tigera operator moves one node at a time
+          and waits until calico-node is ready, so make calico-node ready on all nodes first.
+          With BGP, calico-node is ready only when all its BGP peers are established.
+      run_once: true

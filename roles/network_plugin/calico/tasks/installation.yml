@@ -1,0 +1,88 @@
+---
+- name: Calico | Apply the Installation
+  command:
+    cmd: "{{ kubectl }} apply --server-side --force-conflicts --field-manager=kubespray -f -"
+    stdin: >-
+      {{ lookup('template', 'calico-installation.yml.j2') | from_yaml
+         | combine({'spec': calico_operator_installation_spec}, recursive=True) | to_json }}
+  register: calico_installation_apply
+  until: calico_installation_apply is succeeded
+  retries: 5
+  delay: 5
+
+- name: Calico | Wait for the operator migration
+  include_tasks: migrate_wait.yml
+  when: calico_legacy_ds.stdout | default('') | length > 0
+
+- name: Calico | Wait until the operator deploys Calico {{ calico_version }}
+  command: >-
+    {{ kubectl }} -n calico-system get daemonset calico-node
+    -o jsonpath='{.spec.template.spec.containers[?(@.name=="calico-node")].image}'
+  register: calico_operator_node_image
+  until: calico_operator_node_image.stdout is search(':v' ~ calico_version ~ '$')
+  retries: 60
+  delay: 5
+  changed_when: false
+
+# As for Cilium, continue when Calico is not available, for example when a BGP peer is down
+- name: Calico | Wait until the operator reports Calico as available
+  command: >-
+    {{ kubectl }} get tigerastatus calico
+    -o jsonpath='{.status.conditions[?(@.type=="Available")].status}'
+  register: calico_tigerastatus
+  until: calico_tigerastatus.stdout == 'True'
+  retries: "{{ (calico_operator_rollout_timeout | int / 10) | round(0, 'ceil') | int }}"
+  delay: 10
+  changed_when: false
+  failed_when: false
+
+- name: Calico | Warn that Calico is not available
+  debug:
+    msg: >-
+      Calico is not available after {{ calico_operator_rollout_timeout }} seconds, see 'kubectl get tigerastatus calico'.
+      With BGP, calico-node is ready only when all its BGP peers are established.
+  when: calico_tigerastatus.stdout | default('') != 'True'
+
+- name: Calico | Apply the APIServer
+  vars:
+    _calico_apiserver:
+      apiVersion: operator.tigera.io/v1
+      kind: APIServer
+      metadata:
+        name: default
+      spec: {}
+  command:
+    cmd: "{{ kubectl }} apply --server-side --force-conflicts --field-manager=kubespray -f -"
+    stdin: "{{ _calico_apiserver | to_json }}"
+  when: calico_apiserver_enabled
+
+- name: Calico | Wait until the operator reports the Calico API server as available
+  command: "{{ kubectl }} get tigerastatus apiserver -o json"
+  register: calico_apiserver_tigerastatus
+  until: >-
+    calico_apiserver_tigerastatus.rc == 0 and
+    (calico_apiserver_tigerastatus.stdout | from_json).status.conditions | default([])
+    | selectattr('type', 'equalto', 'Available') | selectattr('status', 'equalto', 'True') | list | length > 0
+  retries: "{{ (calico_operator_rollout_timeout | int / 10) | round(0, 'ceil') | int }}"
+  delay: 10
+  changed_when: false
+  when: calico_apiserver_enabled
+
+# After the APIServer step, because the old API server uses some of these objects
+- name: Calico | Remove the objects of the manifest-based install
+  import_tasks: migrate_cleanup.yml
+
+- name: Calico | Set the calico-kube-controllers log level
+  command:
+    argv:
+      - "{{ bin_dir }}/calicoctl.sh"
+      - patch
+      - kubecontrollersconfiguration
+      - default
+      - --patch
+      - "{{ {'spec': {'logSeverityScreen': calico_policy_controller_log_level | capitalize}} | to_json }}"
+  register: calico_kcc_patch
+  until: calico_kcc_patch is succeeded
+  retries: 10
+  delay: 5
+  changed_when: false

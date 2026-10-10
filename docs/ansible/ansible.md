@@ -134,7 +134,6 @@ The following tags are defined in playbooks:
 | persistent_volumes_cinder_csi  | Configuring csi driver: cinder                        |
 | persistent_volumes_gcp_pd_csi  | Configuring csi driver: gcp-pd                        |
 | persistent_volumes_openstack   | Configuring csi driver: openstack                     |
-| policy-controller              | Configuring Calico policy controller                  |
 | post-remove                    | Tasks running post-remove operation                   |
 | post-upgrade                   | Tasks running post-upgrade operation                  |
 | pre-remove                     | Tasks running pre-remove operation                    |

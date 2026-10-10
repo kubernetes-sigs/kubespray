@@ -1,9 +1,20 @@
 # Calico
 
-Check if the calico-node container is running
+Kubespray installs Calico with the [Tigera operator](https://docs.tigera.io/calico/latest/getting-started/kubernetes/self-managed-onprem/onpremises).
+For `calico_version`, Kubespray downloads `operator-crds.yaml` and `tigera-operator.yaml` from the Calico release and applies them without changes.
+Then it applies an `Installation` resource named `default`, which it makes from the inventory.
+The operator deploys `calico-node`, `calico-typha` and `calico-kube-controllers` in the `calico-system` namespace.
+
+Kubespray continues to manage these resources with `calicoctl`: the IP pools, `FelixConfiguration`, `BGPConfiguration`, `BGPPeer`, `IPAMConfig` and the route reflector settings of the nodes.
+The operator does not manage IP pools in a Kubespray cluster (`ipPools: []` in the `Installation`).
+
+The Tigera operator supports only the Kubernetes API datastore, so Kubespray does not support the etcd datastore anymore. See [Migrate from the etcd datastore](#migrate-from-the-etcd-datastore).
+
+Check the status of Calico:
 
 ```ShellSession
-docker ps | grep calico
+kubectl get tigerastatus
+kubectl get pods -n calico-system
 ```
 
 The **calicoctl.sh** is wrap script with configured access credentials for command calicoctl allows to check the status of the network workloads.
@@ -32,25 +43,89 @@ and
 calicoctl.sh get hostEndpoint -o wide
 ```
 
+## Upgrade from the manifest-based install
+
+The first `cluster.yml` or `upgrade_cluster.yml` run with this version moves Calico from the manifests in `kube-system` to the Tigera operator,
+with the Calico [operator migration](https://docs.tigera.io/calico/latest/operations/operator-migration).
+
+Requirements:
+
+* Calico uses the Kubernetes API datastore, see [Migrate from the etcd datastore](#migrate-from-the-etcd-datastore).
+* `calico_version` has the same minor version as the running Calico.
+* `calico-node` is ready on all nodes. With BGP, all BGP peers must be established.
+* The nodes can connect to each other on TCP port 5473 (Typha).
+
+If the migration stops, fix the problem and run the playbook again. It continues the migration.
+
+Behavior changes:
+
+* Calico runs in the `calico-system` namespace.
+* Calico accepts the traffic from pods to their node (it was `RETURN`), so the firewall rules of the node do not apply to it. Use a Calico host endpoint policy for such rules.
+* In eBPF mode, Calico connects to `loadbalancer_apiserver` or to the first control plane node, not to the localhost load balancer.
+  For a HA cluster, set `loadbalancer_apiserver` or `calico_kubernetes_service_host`, see [Calico access to the kube-api](#calico-access-to-the-kube-api).
+
+These variables were removed. The playbook stops if your inventory contains them:
+
+| Variable | Replacement |
+|----------|-------------|
+| `calico_datastore` | none, the Kubernetes API datastore is always used |
+| `typha_enabled`, `typha_replicas`, `typha_secure`, `typha_max_connections_lower_limit` | none, the operator manages Typha |
+| `calico_node_extra_envs` | `calico_felix_extra_config` for Felix settings |
+| `calico_cni_version`, `calico_policy_version`, `calico_typha_version`, `calico_apiserver_version` | `calico_version` |
+| `calico_veth_mtu` | `calico_mtu` |
+| `calico_felix_log_severity_screen` | `calico_loglevel` |
+| `calico_endpoint_to_host_action` | none, the operator uses `ACCEPT` |
+| `calico_node_ignorelooserpf` | none, set `net.ipv4.conf.all.rp_filter` to 0 or 1 |
+| `calico_crds_download_url` | `calico_operator_crds_download_url` and `calico_operator_manifest_download_url` |
+| `calico_feature_control`, `calico_cni_log_file_path`, `calico_ipv4pool_ipip`, `calico_iptables_lock_timeout_secs`, `calico_node_startup_loglevel`, `calico_node_livenessprobe_timeout`, `calico_node_readinessprobe_timeout`, `calico_cert_dir` | none |
+
+## Migrate from the etcd datastore
+
+The Tigera operator supports only the Kubernetes API datastore. Before you upgrade to this version, use the previous Kubespray release (2.32) to move Calico to the Kubernetes API datastore.
+The steps follow the Calico document [Migrate Calico data from an etcdv3 datastore to a Kubernetes datastore](https://docs.tigera.io/calico/latest/operations/datastore-migration).
+While the datastore is locked, you cannot change the Calico configuration, and new pods do not start.
+
+On the first control plane node:
+
+1. Apply the Calico CRDs of the running Calico version (change `v3.31.7` to it). Kubespray 2.32 applies the same file in step 4:
+
+   ```ShellSession
+   kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.7/manifests/crds.yaml
+   ```
+
+2. Lock the etcd datastore and export it:
+
+   ```ShellSession
+   calicoctl.sh datastore migrate lock
+   calicoctl.sh datastore migrate export > etcd-data
+   ```
+
+3. Import the data into the Kubernetes API datastore:
+
+   ```ShellSession
+   DATASTORE_TYPE=kubernetes KUBECONFIG=/etc/kubernetes/admin.conf calicoctl datastore migrate import -f etcd-data
+   ```
+
+4. With Kubespray 2.32, run `cluster.yml` with `-e calico_datastore=kdd`. The extra variable is necessary, because Kubespray 2.32 detects the datastore from the CNI configuration. Then wait for the end of the calico-node rollout:
+
+   ```ShellSession
+   kubectl -n kube-system rollout status daemonset calico-node
+   ```
+
+5. Unlock the datastore:
+
+   ```ShellSession
+   DATASTORE_TYPE=kubernetes KUBECONFIG=/etc/kubernetes/admin.conf calicoctl datastore migrate unlock
+   ```
+
+Then remove `calico_datastore` from the inventory and upgrade to this version. It moves the cluster to the Tigera operator.
+
 ## Configuration
-
-### Optional : Define datastore type
-
-The default datastore, Kubernetes API datastore is recommended for on-premises deployments, and supports only Kubernetes workloads; etcd is the best datastore for hybrid deployments.
-
-Allowed values are `kdd` (default) and `etcd`.
-
-Note: using kdd and more than 50 nodes, consider using the `typha` daemon to provide scaling.
-
-To re-define you need to edit the inventory and add a group variable `calico_datastore`
-
-```yml
-calico_datastore: kdd
-```
 
 ### Optional : Define network backend
 
 In some cases you may want to define Calico network backend. Allowed values are `bird`, `vxlan` or `none`. `vxlan` is the default value.
+With `bird`, Kubespray enables BGP in the `Installation`.
 
 To re-define you need to edit the inventory and add a group variable `calico_network_backend`
 
@@ -113,7 +188,7 @@ calico_advertise_service_external_ips:
 
 ### Optional : Define global AS number
 
-Optional parameter `global_as_num` defines Calico global AS number (`/calico/bgp/v1/global/as_num` etcd key).
+Optional parameter `global_as_num` defines Calico global AS number (`asNumber` in the `BGPConfiguration`).
 It defaults to "64512".
 
 ### Optional : BGP Peering with route reflectors
@@ -124,14 +199,13 @@ optimize your BGP topology and improve `calico-node` containers' start times.
 To do so you can deploy BGP route reflectors and peer `calico-node` with them as
 recommended here:
 
-* <https://hub.docker.com/r/calico/routereflector/>
-* <https://docs.projectcalico.org/v3.1/reference/private-cloud/l3-interconnect-fabric>
+* <https://docs.tigera.io/calico/latest/networking/configuring/bgp>
 
 You need to edit your inventory and add:
 
 * `calico_rr` group with nodes in it. `calico_rr` can be combined with
   `kube_node` and/or `kube_control_plane`.
-* `cluster_id` by route reflector node/group (see details [here](https://hub.docker.com/r/calico/routereflector/))
+* `cluster_id` by route reflector node/group
 
 Here's an example of Kubespray inventory with standalone route reflectors:
 
@@ -182,19 +256,10 @@ The inventory above will deploy the following topology assuming that calico's
 
 ![Image](../figures/kubespray-calico-rr.png?raw=true)
 
-### Optional : Define default endpoint to host action
-
-By default Calico blocks traffic from endpoints to the host itself by using an iptables DROP action. When using it in kubernetes the action has to be changed to RETURN (default in kubespray) or ACCEPT (see <https://docs.tigera.io/calico/latest/network-policy/hosts/protect-hosts#control-default-behavior-of-workload-endpoint-to-host-traffic> ) Otherwise all network packets from pods (with hostNetwork=False) to services endpoints (with hostNetwork=True) within the same node are dropped.
-
-To re-define default action please set the following variable in your inventory:
-
-```yml
-calico_endpoint_to_host_action: "ACCEPT"
-```
-
 ### Optional : Define address on which Felix will respond to health requests
 
 Since Calico 3.2.0, HealthCheck default behavior changed from listening on all interfaces to just listening on localhost.
+The probes of the operator use localhost, so the address must include it.
 
 To re-define health host please set the following variable in your inventory:
 
@@ -210,15 +275,6 @@ The VXLAN Offload is disable by default. It can be configured like this to enabl
 calico_feature_detect_override: "ChecksumOffloadBroken=false" # The vxlan offload will enabled (It may cause problem on buggy NIC driver)
 ```
 
-### Optional : Configure Calico Node probe timeouts
-
-Under certain conditions a deployer may need to tune the Calico liveness and readiness probes timeout settings. These can be configured like this:
-
-```yml
-calico_node_livenessprobe_timeout: 10
-calico_node_readinessprobe_timeout: 10
-```
-
 ### Optional :  Enable NAT with IPv6
 
 To allow outgoing IPv6 traffic going from pods to the Internet, enable the following:
@@ -227,18 +283,45 @@ To allow outgoing IPv6 traffic going from pods to the Internet, enable the follo
 nat_outgoing_ipv6: true  # NAT outgoing ipv6 (default value: false).
 ```
 
+### Optional : Felix configuration
+
+Kubespray sets the fields of the `FelixConfiguration` named `default` that its variables control. You can set more fields with `calico_felix_extra_config`,
+see [Felix configuration](https://docs.tigera.io/calico/latest/reference/resources/felixconfig).
+The operator sets `bpfEnabled` and `nftablesMode`, so use `calico_bpf_enabled` and `calico_nftable_mode` for them.
+
+```yml
+calico_felix_extra_config:
+  bpfConnectTimeLoadBalancing: TCP
+```
+
+### Optional : Installation configuration
+
+You can set more fields of the `Installation` with `calico_operator_installation_spec`. Kubespray merges it over the values that it sets,
+see [Installation reference](https://docs.tigera.io/calico/latest/reference/installation/api).
+
+```yml
+calico_operator_installation_spec:
+  controlPlaneReplicas: 1
+```
+
+### Optional : Use Calico CNI host-local IPAM plugin
+
+Calico currently supports two types of CNI IPAM plugins, `host-local` and `calico-ipam` (default).
+
+To allow Calico to determine the subnet to use from the Kubernetes API based on the `Node.podCIDR` field, enable the following setting.
+The operator does not support VXLAN with host-local IPAM.
+
+```yml
+calico_ipam_host_local: true
+```
+
+Refer to Project Calico section [Using host-local IPAM](https://docs.tigera.io/calico/latest/reference/configure-cni-plugins#using-host-local-ipam) for further information.
+
 ## Config encapsulation for cross server traffic
 
-Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.projectcalico.org/v3.11/networking/vxlan-ipip). VXLAN is the more mature implementation and enabled by default, please check your environment if you need *IP in IP* encapsulation.
+Calico supports two types of encapsulation: [VXLAN and IP in IP](https://docs.tigera.io/calico/latest/networking/configuring/vxlan-ipip). VXLAN is the more mature implementation and enabled by default, please check your environment if you need *IP in IP* encapsulation.
 
 *IP in IP* and *VXLAN* is mutually exclusive modes.
-
-Kubespray defaults have changed after version 2.18 from auto-enabling `ipip` mode to auto-enabling `vxlan`. This was done to facilitate wider deployment scenarios including those where vxlan acceleration is provided by the underlying network devices.
-
-If you are running your cluster with the default calico settings and are upgrading to a release post 2.18.x (i.e. 2.19 and later or `master` branch) then you have two options:
-
-* perform a manual migration to vxlan before upgrading kubespray (see migrating from IP in IP to VXLAN below)
-* pin the pre-2.19 settings in your ansible inventory (see IP in IP mode settings below)
 
 **Note:**: Vxlan in ipv6 only supported when kernel >= 3.12. So if your kernel version < 3.12, Please don't set `calico_vxlan_mode_ipv6: Always`. More details see [#Issue 6877](https://github.com/projectcalico/calico/issues/6877).
 
@@ -283,7 +366,8 @@ calicoctl.sh patch felixconfig default -p '{"spec":{"ipipEnabled":false}}'
 
 ## Configuring interface MTU
 
-This is an advanced topic and should usually not be modified unless you know exactly what you are doing. Calico is smart enough to deal with the defaults and calculate the proper MTU. If you do need to set up a custom MTU you can change `calico_veth_mtu` as follows:
+This is an advanced topic and should usually not be modified unless you know exactly what you are doing. Calico is smart enough to deal with the defaults and calculate the proper MTU. If you do need to set up a custom MTU you can change `calico_mtu` as follows.
+The operator uses the same MTU for the workload interfaces and the tunnels.
 
 * If Wireguard is enabled, subtract 60 from your network MTU (i.e. 1500-60=1440)
 * If using VXLAN or BPF mode is enabled, subtract 50 from your network MTU (i.e. 1500-50=1450)
@@ -291,57 +375,38 @@ This is an advanced topic and should usually not be modified unless you know exa
 * if not using any encapsulation, set to your network MTU (i.e. 1500 or 9000)
 
 ```yaml
-calico_veth_mtu: 1440
+calico_mtu: 1440
 ```
 
 ## Cloud providers configuration
 
-Please refer to the official documentation, for example [GCE configuration](http://docs.projectcalico.org/v1.5/getting-started/docker/installation/gce) requires a security rule for calico ip-ip tunnels. Note, calico is always configured with ``calico_ipip_mode: Always`` if the cloud provider was defined.
-
-### Optional : Ignore kernel's RPF check setting
-
-By default the felix agent(calico-node) will abort if the Kernel RPF setting is not 'strict'. If you want Calico to ignore the Kernel setting:
-
-```yml
-calico_node_ignorelooserpf: true
-```
+Please refer to the official documentation, for example [GCE configuration](http://docs.projectcalico.org/v1.5/getting-started/docker/installation/gce) requires a security rule for calico ip-ip tunnels.
 
 Note that in OpenStack you must allow `ipip` traffic in your security groups,
 otherwise you will experience timeouts.
 To do this you must add a rule which allows it, for example:
-
-### Optional : Felix configuration via extraenvs of calico node
-
-Possible environment variable parameters for [configuring Felix](https://docs.projectcalico.org/reference/felix/configuration)
-
-```yml
-calico_node_extra_envs:
-    FELIX_DEVICEROUTESOURCEADDRESS: 172.17.0.1
-```
 
 ```ShellSession
 neutron  security-group-rule-create  --protocol 4  --direction egress  k8s-a0tp4t
 neutron  security-group-rule-create  --protocol 4  --direction igress  k8s-a0tp4t
 ```
 
-### Optional : Use Calico CNI host-local IPAM plugin
+## Offline environment
 
-Calico currently supports two types of CNI IPAM plugins, `host-local` and `calico-ipam` (default).
+The Tigera operator manifest always pulls `quay.io/tigera/operator`. Kubespray does not download this image, so the image list of `contrib/offline` does not contain it.
+Copy the image that `tigera-operator.yaml` names to your registry. In an offline environment, configure a containerd registry mirror for `quay.io`, for example:
 
-To allow Calico to determine the subnet to use from the Kubernetes API based on the `Node.podCIDR` field, enable the following setting.
-
-```yml
-calico_ipam_host_local: true
+```yaml
+containerd_registries_mirrors:
+  - prefix: quay.io
+    mirrors:
+      - host: https://myprivateregistry.com
+        capabilities: ["pull", "resolve"]
+        skip_verify: false
 ```
 
-Refer to Project Calico section [Using host-local IPAM](https://docs.projectcalico.org/reference/cni-plugin/configuration#using-host-local-ipam) for further information.
-
-### Optional : Disable CNI logging to disk
-
-Calico CNI plugin logs to /var/log/calico/cni/cni.log and to stderr.
-stderr of CNI plugins can be found in the logs of container runtime.
-
-You can disable Calico CNI logging to disk by setting `calico_cni_log_file_path: false`.
+The operator pulls the Calico images from `quay_image_repo`. Set `calico_operator_crds_download_url` and `calico_operator_manifest_download_url` to your file server,
+see the sample [offline.yml](/inventory/sample/group_vars/all/offline.yml).
 
 ## eBPF Support
 
@@ -377,11 +442,12 @@ To clean up any ipvs leftovers:
 
 ### Calico access to the kube-api
 
-Calico node, typha and kube-controllers need to be able to talk to the kubernetes API. Please reference the [Enabling eBPF Calico Docs](https://docs.tigera.io/calico/latest/operations/ebpf/enabling-ebpf) for guidelines on how to do this.
-
-Kubespray sets up the `kubernetes-services-endpoint` configmap based on the contents of the `loadbalancer_apiserver` inventory variable documented in [HA Mode](/docs/operations/ha-mode.md).
-
-If no external loadbalancer is used, Calico eBPF can also use the localhost loadbalancer option. We are able to do so only if you use the same port for the localhost apiserver loadbalancer and the kube-apiserver. In this case Calico Automatic Host Endpoints need to be enabled to allow services like `coredns` and `metrics-server` to communicate with the kubernetes host endpoint. See [this blog post](https://www.projectcalico.org/securing-kubernetes-nodes-with-calico-automatic-host-endpoints/) on enabling automatic host endpoints.
+Without kube-proxy, the Calico pods cannot use the `kubernetes` Service to connect to the API server.
+Kubespray writes the `kubernetes-services-endpoint` ConfigMap in the `tigera-operator` namespace with an address that the pods can reach:
+`loadbalancer_apiserver` if it is defined, else the first control plane node.
+Set `calico_kubernetes_service_host` and `calico_kubernetes_service_port` to use another address.
+Calico [requires a load balancer for a HA set-up](https://docs.tigera.io/calico/latest/operations/ebpf/enabling-ebpf), so do not use the first control plane node in a HA cluster.
+See also the [Enabling eBPF Calico Docs](https://docs.tigera.io/calico/latest/operations/ebpf/enabling-ebpf).
 
 ### Tunneled versus Direct Server Return
 
@@ -407,11 +473,11 @@ To view the logs you need to use the `tc` command to read the kernel trace buffe
 tc exec bpf debug
 ```
 
-Please see [Calico eBPF troubleshooting guide](https://docs.projectcalico.org/maintenance/troubleshoot/troubleshoot-ebpf#ebpf-program-debug-logs).
+Please see [Calico eBPF troubleshooting guide](https://docs.tigera.io/calico/latest/operations/ebpf/troubleshoot-ebpf).
 
 ## Wireguard Encryption
 
-Calico supports using Wireguard for encryption. Please see the docs on [encrypt cluster pod traffic](https://docs.projectcalico.org/security/encrypt-cluster-pod-traffic).
+Calico supports using Wireguard for encryption. Please see the docs on [encrypt cluster pod traffic](https://docs.tigera.io/calico/latest/network-policy/encrypt-cluster-pod-traffic).
 
 To enable wireguard support:
 

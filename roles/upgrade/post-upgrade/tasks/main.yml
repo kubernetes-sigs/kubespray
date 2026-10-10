@@ -11,6 +11,19 @@
     --timeout={{ upgrade_post_cilium_wait_timeout }}
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
+# Look in all namespaces: calico-node is still in kube-system before the operator migration
+- name: Wait for calico-node
+  when:
+    - needs_cordoning | default(false)
+    - kube_network_plugin == 'calico'
+  command: >
+    {{ kubectl }}
+    wait pod -A -l k8s-app=calico-node
+    --field-selector 'spec.nodeName=={{ kube_override_hostname | default(inventory_hostname) }}'
+    --for=condition=Ready
+    --timeout={{ upgrade_post_calico_wait_timeout }}
+  delegate_to: "{{ groups['kube_control_plane'][0] }}"
+
 - name: Confirm node uncordon
   pause:
     echo: true

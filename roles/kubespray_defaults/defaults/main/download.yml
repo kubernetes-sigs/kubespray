@@ -104,11 +104,6 @@ github_image_repo: "ghcr.io"
 # after migration to container download
 calico_version: "{{ (calicoctl_binary_checksums['amd64'] | dict2items)[0].key }}"
 calico_ctl_version: "{{ calico_version }}"
-calico_cni_version: "{{ calico_version }}"
-calico_policy_version: "{{ calico_version }}"
-calico_typha_version: "{{ calico_version }}"
-calico_apiserver_version: "{{ calico_version }}"
-typha_enabled: false
 calico_apiserver_enabled: false
 
 flannel_version: 0.28.9
@@ -156,7 +151,8 @@ kubeadm_download_url: "{{ dl_k8s_io_url }}/release/v{{ kube_version }}/bin/linux
 etcd_download_url: "{{ github_url }}/etcd-io/etcd/releases/download/v{{ etcd_version }}/etcd-v{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
 cni_download_url: "{{ github_url }}/containernetworking/plugins/releases/download/v{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-v{{ cni_version }}.tgz"
 calicoctl_download_url: "{{ github_url }}/projectcalico/calico/releases/download/v{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
-calico_crds_download_url: "{{ github_url }}/projectcalico/calico/raw/v{{ calico_version }}/manifests/crds.yaml"
+calico_operator_crds_download_url: "{{ github_url }}/projectcalico/calico/raw/v{{ calico_version }}/manifests/operator-crds.yaml"
+calico_operator_manifest_download_url: "{{ github_url }}/projectcalico/calico/raw/v{{ calico_version }}/manifests/tigera-operator.yaml"
 ciliumcli_download_url: "{{ github_url }}/cilium/cilium-cli/releases/download/v{{ cilium_cli_version }}/cilium-linux-{{ image_arch }}.tar.gz"
 crictl_download_url: "{{ github_url }}/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-{{ ansible_facts['system'] | lower }}-{{ image_arch }}.tar.gz"
 crio_download_url: "{{ storage_googleapis_url }}/cri-o/artifacts/cri-o.{{ image_arch }}.v{{ crio_version }}.tar.gz"
@@ -215,16 +211,17 @@ flannel_image_repo: "{{ docker_image_repo }}/flannel/flannel"
 flannel_image_tag: "{{ 'v' if flannel_version is version('0.28.6', '<') else '' }}{{ flannel_version }}"
 flannel_init_image_repo: "{{ docker_image_repo }}/flannel/flannel-cni-plugin"
 flannel_init_image_tag: "v{{ flannel_cni_version }}"
+# The operator composes these names from quay_image_repo and its own Calico version
 calico_node_image_repo: "{{ quay_image_repo }}/calico/node"
 calico_node_image_tag: "v{{ calico_version }}"
 calico_cni_image_repo: "{{ quay_image_repo }}/calico/cni"
-calico_cni_image_tag: "v{{ calico_cni_version }}"
+calico_cni_image_tag: "v{{ calico_version }}"
 calico_policy_image_repo: "{{ quay_image_repo }}/calico/kube-controllers"
-calico_policy_image_tag: "v{{ calico_policy_version }}"
+calico_policy_image_tag: "v{{ calico_version }}"
 calico_typha_image_repo: "{{ quay_image_repo }}/calico/typha"
-calico_typha_image_tag: "v{{ calico_typha_version }}"
+calico_typha_image_tag: "v{{ calico_version }}"
 calico_apiserver_image_repo: "{{ quay_image_repo }}/calico/apiserver"
-calico_apiserver_image_tag: "v{{ calico_apiserver_version }}"
+calico_apiserver_image_tag: "v{{ calico_version }}"
 pod_infra_image_repo: "{{ kube_image_repo }}/pause"
 pod_infra_image_tag: "{{ pod_infra_version }}"
 cilium_image_repo: "{{ quay_image_repo }}/cilium/cilium"
@@ -652,32 +649,41 @@ downloads:
       - k8s_cluster
 
   calico_policy:
-    enabled: "{{ enable_network_policy and kube_network_plugin in ['calico'] }}"
+    enabled: "{{ kube_network_plugin == 'calico' }}"
     container: true
     image_name: "{{ calico_policy_image_repo }}:{{ calico_policy_image_tag }}"
     groups:
       - k8s_cluster
 
   calico_typha:
-    enabled: "{{ typha_enabled }}"
+    enabled: "{{ kube_network_plugin == 'calico' }}"
     container: true
     image_name: "{{ calico_typha_image_repo }}:{{ calico_typha_image_tag }}"
     groups:
       - k8s_cluster
 
   calico_apiserver:
-    enabled: "{{ calico_apiserver_enabled }}"
+    enabled: "{{ kube_network_plugin == 'calico' and calico_apiserver_enabled }}"
     container: true
     image_name: "{{ calico_apiserver_image_repo }}:{{ calico_apiserver_image_tag }}"
     groups:
       - k8s_cluster
 
-  calico_crds:
+  calico_operator_crds:
     file: true
-    enabled: "{{ kube_network_plugin == 'calico' and calico_datastore == 'kdd' }}"
-    dest: "{{ local_release_dir }}/calico-{{ calico_version }}-kdd-crds.yaml"
-    checksum: "{{ calico_crds_checksums.no_arch[calico_version] }}"
-    url: "{{ calico_crds_download_url }}"
+    enabled: "{{ kube_network_plugin == 'calico' }}"
+    dest: "{{ local_release_dir }}/calico-{{ calico_version }}-operator-crds.yaml"
+    checksum: "{{ calico_operator_crds_checksums.no_arch[calico_version] }}"
+    url: "{{ calico_operator_crds_download_url }}"
+    groups:
+      - kube_control_plane
+
+  calico_operator_manifest:
+    file: true
+    enabled: "{{ kube_network_plugin == 'calico' }}"
+    dest: "{{ local_release_dir }}/calico-{{ calico_version }}-tigera-operator.yaml"
+    checksum: "{{ calico_operator_manifest_checksums.no_arch[calico_version] }}"
+    url: "{{ calico_operator_manifest_download_url }}"
     groups:
       - kube_control_plane
 

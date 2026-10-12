@@ -20,6 +20,7 @@ The **kubernetes** version should be at least `v1.23.6` to have all the most rec
 authorization_modes: ['Node', 'RBAC']
 kube_apiserver_request_timeout: 120s
 kube_apiserver_service_account_lookup: true
+kube_apiserver_service_account_extend_token_expiration: false
 
 # enable kubernetes audit
 kubernetes_audit: true
@@ -120,6 +121,7 @@ kube_pod_security_default_enforce: restricted
 Let's take a deep look to the resultant **kubernetes** configuration:
 
 * The `anonymous-auth` (on `kube-apiserver`) is set to `true` by default. This is fine, because it is considered safe if you enable `RBAC` for the `authorization-mode`.
+* The `service-account-extend-token-expiration` (on `kube-apiserver`) is set to `false`. Admission-injected service account tokens then expire at their normal lifetime (about 1 hour), not after 1 year. Workloads with client libraries that do not reload the token from disk can get authentication errors. To find these workloads before you set it, use the `authentication.k8s.io/stale-token` audit annotation or the `serviceaccount_stale_tokens_total` metric.
 * The `enable-admission-plugins` includes `PodSecurity` (for more details, please take a look here: <https://kubernetes.io/docs/concepts/security/pod-security-admission/>). Then, we set the `EventRateLimit` plugin, providing additional configuration files (that are automatically created under the hood and mounted inside the `kube-apiserver` container) to make it work.
 * The `encryption-provider-config` provide encryption at rest. This means that the `kube-apiserver` encrypt data that is going to be stored before they reach `etcd`. So the data is completely unreadable from `etcd` (in case an attacker is able to exploit this).
 * The `rotateCertificates` in `KubeletConfiguration` is set to `true` along with `serverTLSBootstrap`. This could be used in alternative to `tlsCertFile` and `tlsPrivateKeyFile` parameters. Additionally it automatically generates certificates by itself. By default the CSRs are approved automatically via [kubelet-csr-approver](https://github.com/postfinance/kubelet-csr-approver). You can customize approval configuration by modifying Helm values via `kubelet_csr_approver_values`.

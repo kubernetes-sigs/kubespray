@@ -21,13 +21,29 @@ is less efficient than a dedicated load balancer because it creates extra
 health checks on the Kubernetes apiserver, but is more practical for scenarios
 where an external LB or virtual IP management is inconvenient.  This option is
 configured by the variable `loadbalancer_apiserver_localhost` (defaults to
-`True`. Or `False`, if there is an external `loadbalancer_apiserver` defined).
+`True`. Or `False`, if `kube_apiserver_endpoint` or `kube_apiserver_cluster_internal_endpoint` is defined).
 You may also define the port the local internal loadbalancer uses by changing,
 `loadbalancer_apiserver_port`.  This defaults to the value of
 `kube_apiserver_port`.  It is also important to note that Kubespray will only
 configure kubelet and kube-proxy on non-master nodes to use the local internal
 loadbalancer.  If you wish to control the name of the loadbalancer container,
 you can set the variable `loadbalancer_apiserver_pod_name`.
+
+## API Server Endpoint Configuration
+
+Kubespray uses two primary variables to configure API server endpoints:
+
+* `kube_apiserver_endpoint` - Used to access the API from outside the cluster (kubectl, CI/CD, etc.)
+* `kube_apiserver_cluster_internal_endpoint` - Used to access the API from inside the cluster (nodes, pods with hostNetwork). Optional, defaults to `kube_apiserver_endpoint` or localhost LB.
+
+These variables automatically resolve to appropriate values based on your
+loadbalancer configuration, providing sane defaults for HA, non-HA, and
+localhost LB scenarios. Legacy variables (`loadbalancer_apiserver`,
+`apiserver_loadbalancer_domain_name`, `kubeadm_config_api_fqdn`) were removed
+in v2.33.0 and should be replaced with the endpoint variables above.
+
+> [!NOTE]
+> If your load balancer has both a domain name and an IP address (VIP), set `kube_apiserver_endpoint` to the domain name and add the VIP to `supplementary_addresses_in_ssl_keys` so that both are included in the API server certificate SANs.
 
 If you choose to NOT use the local internal loadbalancer, you will need to
 use the [kube-vip](/docs/ingress/kube-vip.md) ansible role or configure your own loadbalancer to achieve HA. By default, it only configures a non-HA endpoint, which points to the
@@ -61,10 +77,10 @@ And the corresponding example global vars for such a "cluster-aware"
 external LB with the cluster API access modes configured in Kubespray:
 
 ```yml
-apiserver_loadbalancer_domain_name: "my-apiserver-lb.example.com"
-loadbalancer_apiserver:
-  address: <VIP>
-  port: 8383
+## Configure endpoints directly
+kube_apiserver_endpoint: "https://<VIP>:8383"
+# Optional: if different from external endpoint
+kube_apiserver_cluster_internal_endpoint: "https://<VIP>:8383"
 ```
 
   Note: The default kubernetes apiserver configuration binds to all interfaces,
@@ -72,12 +88,6 @@ loadbalancer_apiserver:
   listening on, or set the `kube_apiserver_bind_address` so that the API only
   listens on a specific interface (to avoid conflict with haproxy binding the
   port on the VIP address)
-
-This domain name, or default "lb-apiserver.kubernetes.local", will be inserted
-into the `/etc/hosts` file of all servers in the `k8s_cluster` group and wired
-into the generated self-signed TLS/SSL certificates as well. Note that
-the HAProxy service should as well be HA and requires a VIP management, which
-is out of scope of this doc.
 
 There is a special case for an internal and an externally configured (not with
 Kubespray) LB used simultaneously. Keep in mind that the cluster is not aware
@@ -90,7 +100,7 @@ for it.
   `supplementary_addresses_in_ssl_keys` list. Then, kubespray will add them into
   the generated cluster certificates as well.
 
-Aside of that specific case, the `loadbalancer_apiserver` considered mutually
+Aside of that specific case, defining `kube_apiserver_endpoint` or `kube_apiserver_cluster_internal_endpoint` is considered mutually
 exclusive to `loadbalancer_apiserver_localhost`.
 
 Access API endpoints are evaluated automatically, as the following:
@@ -106,16 +116,19 @@ Access API endpoints are evaluated automatically, as the following:
 Where:
 
 * `m[0]` - the first node in the `kube_control_plane` group;
-* `lb` - LB FQDN, `apiserver_loadbalancer_domain_name`;
+* `lb` - External loadbalancer address from `kube_apiserver_endpoint`;
 * `ext` - Externally load balanced VIP:port and FQDN, not managed by Kubespray;
 * `lc` - localhost;
 * `cbip` - a custom bind IP, `kube_apiserver_bind_address`;
 * `dbip` - localhost for the default bind IP '0.0.0.0';
 * `nsp` - nginx secure port, `loadbalancer_apiserver_port`, defers to `sp`;
 * `sp` - secure port, `kube_apiserver_port`;
-* `lp` - LB port, `loadbalancer_apiserver.port`, defers to the secure port;
+* `lp` - External loadbalancer port from `kube_apiserver_endpoint`;
 * `ip` - the node IP, defers to the ansible IP;
 * `aip` - `access_ip`, defers to the ip.
+
+The `kube_apiserver_endpoint` and `kube_apiserver_cluster_internal_endpoint` variables
+automatically resolve to the appropriate values based on your loadbalancer configuration.
 
 A second and a third column represent internal cluster access modes. The last
 column illustrates an example URI to access the cluster APIs externally.

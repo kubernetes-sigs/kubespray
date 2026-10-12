@@ -19,6 +19,21 @@
       import_role:
         name: ../../../../kubespray_defaults
 
+    - name: Load the cri-o role defaults
+      ansible.builtin.include_vars:
+        dir: ../../../../container-engine/cri-o/defaults
+        depth: 1
+
+    - name: Check the role default resolves unqualified names against docker.io
+      ansible.builtin.assert:
+        that:
+          - crio_registries | selectattr('unqualified', 'equalto', true) | list | length > 0
+          - crio_registries | map(attribute='location') | list is contains('docker.io')
+        fail_msg: >-
+          The cri-o role default does not flag docker.io as an unqualified
+          search registry, so unqualified image names such as "busybox" are
+          not resolvable unless crio_registries is overridden.
+
     - name: Read the unqualified search registries config
       ansible.builtin.slurp:
         src: /etc/containers/registries.conf.d/01-unqualified.conf
@@ -34,8 +49,9 @@
           - unqualified_conf_content is search('"docker\.io"')
         fail_msg: >-
           docker.io is not listed in
-          /etc/containers/registries.conf.d/01-unqualified.conf, CRI-O rejects
-          unqualified image names such as "redis:7.0.15-alpine" without it.
+          /etc/containers/registries.conf.d/01-unqualified.conf, CRI-O does not
+          fall back to a search registry for unqualified image names such as
+          "busybox" without it.
 
     - name: Pull an image referenced by an unqualified name
       ansible.builtin.command: "{{ bin_dir }}/crictl --runtime-endpoint {{ cri_socket }} pull alpine:latest"

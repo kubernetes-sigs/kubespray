@@ -68,6 +68,7 @@
   * [Openeuler](/docs/operating_systems/openeuler.md)
   * [Opensuse](/docs/operating_systems/opensuse.md)
   * [Rhel](/docs/operating_systems/rhel.md)
+  * [Sles](/docs/operating_systems/sles.md)
   * [Uoslinux](/docs/operating_systems/uoslinux.md)
 * Operations
   * [Cgroups](/docs/operations/cgroups.md)

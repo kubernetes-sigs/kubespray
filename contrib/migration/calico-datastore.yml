@@ -32,11 +32,20 @@
       changed_when: false
       failed_when: false
 
+    # A failed import also leaves datastoreReady false, so only this file shows a complete import
+    - name: Calico datastore | Check if the import is complete
+      stat:
+        path: "{{ kube_config_dir }}/calico-etcd-datastore.imported"
+        get_attributes: false
+        get_checksum: false
+        get_mime: false
+      register: calico_migration_imported_file
+
     # A locked Kubernetes datastore means that an earlier run stopped, so run the switch again
     - name: Calico datastore | Set the migration state
       set_fact:
         calico_migration_etcd: "{{ 'etcd_endpoints' in calico_migration_conflist.content }}"
-        calico_migration_imported: "{{ calico_migration_kdd_ready.stdout in ['true', 'false'] }}"
+        calico_migration_imported: "{{ calico_migration_imported_file.stat.exists }}"
         calico_migration_switch: "{{ 'etcd_endpoints' in calico_migration_conflist.content or calico_migration_kdd_ready.stdout == 'false' }}"
 
 - name: Download the Calico CRDs
@@ -80,6 +89,12 @@
           command: "{{ bin_dir }}/calicoctl datastore migrate import -f {{ kube_config_dir }}/calico-etcd-datastore.yaml"
           environment:
             KUBECONFIG: "{{ kube_config_dir }}/admin.conf"
+
+        - name: Calico datastore | Mark the import as complete
+          file:
+            path: "{{ kube_config_dir }}/calico-etcd-datastore.imported"
+            state: touch
+            mode: "0600"
 
 - name: Switch Calico to the Kubernetes datastore
   hosts: k8s_cluster

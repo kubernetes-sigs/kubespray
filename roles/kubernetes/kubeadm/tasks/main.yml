@@ -99,17 +99,6 @@
     - ('kube_control_plane' not in group_names)
   notify: Kubeadm | restart kubelet
 
-- name: Get current resourceVersion of kube-proxy configmap
-  command: "{{ kubectl }} get configmap kube-proxy -n kube-system -o jsonpath='{.metadata.resourceVersion}'"
-  register: original_configmap_resource_version
-  run_once: true
-  delegate_to: "{{ groups['kube_control_plane'] | first }}"
-  delegate_facts: false
-  when:
-    - kube_proxy_deployed
-  tags:
-    - kube-proxy
-
 - name: Update server field in kube-proxy kubeconfig
   shell: >-
     set -o pipefail &&
@@ -120,17 +109,8 @@
     fi
   args:
     executable: /bin/bash
-  run_once: true
-  delegate_to: "{{ groups['kube_control_plane'] | first }}"
-  delegate_facts: false
-  when:
-    - kube_proxy_deployed
-  tags:
-    - kube-proxy
-
-- name: Get new resourceVersion of kube-proxy configmap
-  command: "{{ kubectl }} get configmap kube-proxy -n kube-system -o jsonpath='{.metadata.resourceVersion}'"
-  register: new_configmap_resource_version
+  register: kube_proxy_server_update
+  changed_when: "'replaced' in kube_proxy_server_update.stdout"
   run_once: true
   delegate_to: "{{ groups['kube_control_plane'] | first }}"
   delegate_facts: false
@@ -153,7 +133,7 @@
   delegate_facts: false
   when:
     - kube_proxy_deployed
-    - original_configmap_resource_version.stdout != new_configmap_resource_version.stdout
+    - kube_proxy_server_update is changed
   tags:
     - kube-proxy
 

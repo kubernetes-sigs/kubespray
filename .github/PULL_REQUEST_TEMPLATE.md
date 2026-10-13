@@ -26,7 +26,15 @@ Optionally add one or more of the following kinds if applicable:
 /kind regression
 -->
 
-#### What this PR does / why we need it:
+#### What this PR does
+
+#### Why we need it
+<!--
+Explain:
+- Why does the feature needs kubespray change ? Could users modify their inventory instead ?
+- What capability does it adds ? Why does that capability belong in kubespray ?
+-->
+
 
 #### Which issue(s) this PR is related to:
 

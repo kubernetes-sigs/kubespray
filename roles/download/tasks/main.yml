@@ -7,6 +7,17 @@
     - download
     - upload
 
+- name: Download | Download files
+  include_tasks: download_file.yml
+  loop: "{{ [] if (skip_downloads or _skip_downloads_file)
+               else
+            (downloads_file.values() | selectattr('enabled'))
+          }}"
+  vars:
+    download: "{{ download_defaults | combine(item) }}"
+  when:
+    - (download_run_once and inventory_hostname == download_delegate) or (group_names | intersect(download.groups) != [])
+
 - name: Download | Get kubeadm binary and list of required images
   include_tasks: prep_kubeadm_images.yml
   when:
@@ -16,20 +27,9 @@
     - download
     - upload
 
-- name: Download | Download files
-  include_tasks: download_file.yml
-  loop: "{{ [] if skip_downloads
-               else
-            (downloads_file.values() | selectattr('enabled'))
-          }}"
-  vars:
-    download: "{{ download_defaults | combine(item) }}"
-  when:
-    - (download_run_once and inventory_hostname == download_delegate) or (group_names | intersect(download.groups) != [])
-
 - name: Download | Download images
   include_tasks: download_container.yml
-  loop: "{{ [] if (skip_downloads or not download_container)
+  loop: "{{ [] if (skip_downloads or not download_container or _skip_downloads_container)
             else (
               (downloads_container | combine(kubeadm_images)).values()
               | selectattr('enabled')

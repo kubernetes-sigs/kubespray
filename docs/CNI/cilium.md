@@ -375,8 +375,9 @@ and then open [http://localhost:12000/](http://localhost:12000/).
 
 ## Hubble metrics
 
+Hubble metrics are enabled by listing them in `cilium_hubble_metrics` (requires `cilium_enable_hubble: true`):
+
 ```yml
-cilium_enable_hubble_metrics: true
 cilium_hubble_metrics:
   - dns
   - drop

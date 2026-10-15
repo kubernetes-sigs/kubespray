@@ -1,0 +1,53 @@
+---
+# kubeadm writes controlPlaneEndpoint (kube-system/kubeadm-config) and the server URL
+# (kube-public/cluster-info) once, during init, and no later phase refreshes either.
+
+- name: Kubeadm | Read the rendered kubeadm config
+  slurp:
+    src: "{{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kubeadm_rendered_config
+
+- name: Kubeadm | Determine the advertised control plane endpoint
+  set_fact:
+    kubeadm_advertised_endpoint: >-
+      {{ kubeadm_rendered_config.content | b64decode | from_yaml_all | list
+         | selectattr('kind', 'defined')
+         | selectattr('kind', 'equalto', 'ClusterConfiguration')
+         | map(attribute='controlPlaneEndpoint')
+         | first | default('') }}
+
+- name: Kubeadm | Assert the advertised control plane endpoint was found
+  assert:
+    that:
+      - kubeadm_advertised_endpoint | length > 0
+    fail_msg: >-
+      No controlPlaneEndpoint found in {{ kube_config_dir }}/kubeadm-config.yaml
+
+- name: Kubeadm | Read the uploaded cluster configuration
+  command: "{{ kubectl }} -n kube-system get configmap kubeadm-config -o jsonpath={.data.ClusterConfiguration}"
+  register: kubeadm_uploaded_config
+  changed_when: false
+
+- name: Kubeadm | Upload ClusterConfiguration when the endpoint has drifted
+  command: "{{ bin_dir }}/kubeadm init phase upload-config kubeadm --config {{ kube_config_dir }}/kubeadm-config.yaml"
+  register: kubeadm_endpoint_upload
+  retries: 3
+  until: kubeadm_endpoint_upload.rc == 0
+  when: >-
+    (kubeadm_uploaded_config.stdout | from_yaml).controlPlaneEndpoint | default('')
+    != kubeadm_advertised_endpoint
+
+- name: Kubeadm | Read the discovery kubeconfig from cluster-info
+  command: "{{ kubectl }} -n kube-public get configmap cluster-info -o jsonpath={.data.kubeconfig}"
+  register: kubeadm_cluster_info
+  changed_when: false
+
+- name: Kubeadm | Point cluster-info at the advertised endpoint
+  vars:
+    kubeadm_cluster_info_patched: >-
+      {{ kubeadm_cluster_info.stdout | regex_replace('(?m)^([ \t]*server:[ \t]*).*$',
+                                                     '\1https://' ~ kubeadm_advertised_endpoint) }}
+  command:
+    cmd: "{{ kubectl }} -n kube-public patch configmap cluster-info --type merge --patch-file=/dev/stdin"
+    stdin: "{{ {'data': {'kubeconfig': kubeadm_cluster_info_patched}} | to_json }}"
+  when: kubeadm_cluster_info_patched != kubeadm_cluster_info.stdout

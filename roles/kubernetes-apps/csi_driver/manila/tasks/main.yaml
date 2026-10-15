@@ -1,0 +1,58 @@
+---
+- name: Manila CSI Driver | Deploy Manila CSI
+  when: inventory_hostname == groups['kube_control_plane'][0]
+  environment: "{{ proxy_env }}"
+  block:
+    - name: Manila CSI Driver | Copy OpenStack credentials secret
+      template:
+        src: manila-csi-secrets.yml.j2
+        dest: "{{ kube_config_dir }}/manila-csi-secrets.yml"
+        mode: "0640"
+
+    - name: Manila CSI Driver | Apply OpenStack credentials secret
+      kube:
+        kubectl: "{{ bin_dir }}/kubectl"
+        filename: "{{ kube_config_dir }}/manila-csi-secrets.yml"
+        state: latest
+
+    - name: Manila CSI Driver | Copy CephFS forwarding plugin manifests
+      template:
+        src: "{{ item }}.j2"
+        dest: "{{ kube_config_dir }}/{{ item }}"
+        mode: "0644"
+      loop:
+        - cephfs-csi-driver.yml
+        - cephfs-csi-nodeplugin.yml
+      register: manila_cephfs_manifests
+
+    - name: Manila CSI Driver | Apply CephFS forwarding plugin manifests
+      kube:
+        kubectl: "{{ bin_dir }}/kubectl"
+        filename: "{{ kube_config_dir }}/{{ item.item }}"
+        state: latest
+      loop: "{{ manila_cephfs_manifests.results }}"
+      when: not item is skipped
+
+    - name: Manila CSI Driver | Wait for the CephFS forwarding plugin to be ready
+      command: >-
+        {{ bin_dir }}/kubectl -n kube-system rollout status
+        daemonset/csi-cephfs-nodeplugin --timeout=180s
+      changed_when: false
+
+    - name: Manila CSI Driver | Install the Manila CSI Helm chart
+      include_role:
+        name: helm-apps
+      vars:
+        release_common_opts: {}
+        releases:
+          - name: openstack-manila-csi
+            namespace: kube-system
+            chart_ref: "{{ manila_csi_chart_ref }}"
+            chart_version: "{{ manila_csi_chart_version }}"
+            values: "{{ manila_csi_values }}"
+            wait: "{{ manila_csi_helm_wait }}"
+            wait_timeout: "{{ manila_csi_helm_wait_timeout }}"
+            atomic: "{{ manila_csi_helm_atomic }}"
+        repositories:
+          - name: "{{ manila_csi_chart_repo_name }}"
+            url: "{{ manila_csi_chart_repo_url }}"

@@ -6,6 +6,14 @@ Supported [backends](https://github.com/flannel-io/flannel/blob/master/Documenta
 
 **Warning:** You may encounter this [bug](https://github.com/coreos/flannel/pull/1282) with `VXLAN` backend, while waiting on a newer Flannel version the current workaround (`ethtool --offload flannel.1 rx off tx off`) is showcase in kubespray [networking test](tests/testcases/040_check-network-adv.yml:31).
 
+## Container images
+
+Flannel and its CNI plugin use upstream images from `ghcr.io/flannel-io` with `v`-prefixed tags.
+
+Allow access to `ghcr.io`, or configure `github_image_repo` for a mirror. Override `flannel_image_repo` and `flannel_init_image_repo` if the repository paths differ. `docker_image_repo` no longer controls these defaults.
+
+When using Docker Hub with Flannel 0.28.6 through 0.28.9, set `flannel_image_tag: "{{ flannel_version }}"` to omit the `v` prefix.
+
 ## Verifying flannel install
 
 * Flannel configuration file should have been created there

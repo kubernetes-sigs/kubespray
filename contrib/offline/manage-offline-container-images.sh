@@ -109,13 +109,13 @@ function register_container_images() {
 		set -e
 		# Ubuntu18.04, RHEL7/CentOS7
 		cp ${CURRENT_DIR}/docker-daemon.json      ${TEMP_DIR}/docker-daemon.json
-		sed -i s@"HOSTNAME"@"$(hostname)"@  ${TEMP_DIR}/docker-daemon.json
+		sed -i s@"HOSTNAME:5000"@"$(hostname):${REGISTRY_PORT}"@  ${TEMP_DIR}/docker-daemon.json
 		sudo cp ${TEMP_DIR}/docker-daemon.json           /etc/docker/daemon.json
 	elif [ -d /etc/containers/ ]; then
 		set -e
 		# RHEL8/CentOS8
 		cp ${CURRENT_DIR}/registries.conf         ${TEMP_DIR}/registries.conf
-		sed -i s@"HOSTNAME"@"$(hostname)"@  ${TEMP_DIR}/registries.conf
+		sed -i s@"HOSTNAME:5000"@"$(hostname):${REGISTRY_PORT}"@  ${TEMP_DIR}/registries.conf
 		sudo cp ${TEMP_DIR}/registries.conf   /etc/containers/registries.conf
   elif [ "$(uname)" == "Darwin" ]; then
     echo "This is a Mac, no configuration changes are required"
@@ -132,7 +132,7 @@ function register_container_images() {
 
 		sudo ${runtime} container inspect registry >/dev/null 2>&1
 		if [ $? -ne 0 ]; then
-			sudo ${runtime} run --restart=always -d -p "${REGISTRY_PORT}":"${REGISTRY_PORT}" --name registry registry:latest
+			sudo ${runtime} run --restart=always -d -p "${REGISTRY_PORT}":5000 --name registry registry:latest
 		fi
 		set -e
 	fi

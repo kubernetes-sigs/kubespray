@@ -71,6 +71,7 @@ vagrant up
 - [Flatcar Container Linux bootstrap](docs/operating_systems/flatcar.md)
 - [Fedora CoreOS bootstrap](docs/operating_systems/fcos.md)
 - [openSUSE setup](docs/operating_systems/opensuse.md)
+- [SLES setup](docs/operating_systems/sles.md)
 - [Downloaded artifacts](docs/advanced/downloads.md)
 - [OpenStack](docs/cloud_controllers/openstack.md)
 - [vSphere](docs/cloud_controllers/vsphere.md)
@@ -92,6 +93,7 @@ vagrant up
 - **Fedora** 39, 40, 41, 42
 - **Fedora CoreOS** (see [fcos Note](docs/operating_systems/fcos.md))
 - **openSUSE** Leap 16.x/Tumbleweed/MicroOS (containerd only; see [openSUSE notes](docs/operating_systems/opensuse.md))
+- **SLES** 15 SP7 (experimental: see [SLES notes](docs/operating_systems/sles.md))
 - **Oracle Linux** 9, 10
 - **Alma Linux** 9, 10
 - **Rocky Linux** 9, 10 (experimental in 10: see [Rocky Linux 10 notes](docs/operating_systems/rhel.md#rocky-linux-10))

@@ -77,6 +77,8 @@ is a list of such dictionaries.
 
 Default runtime can be changed by setting `containerd_default_runtime`.
 
+`containerd_extra_args` defaults to `imports = ["{{ containerd_cfg_dir }}/conf.d/*.toml"]`. Custom values replace this default; set `containerd_extra_args: ""` to disable imports.
+
 #### Base runtime specs and limiting number of open files
 
 `base_runtime_spec` key in a runtime dictionary is used to explicitly

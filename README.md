@@ -111,7 +111,7 @@ Note:
 
 - Core
   - [kubernetes](https://github.com/kubernetes/kubernetes) 1.37.1
-  - [etcd](https://github.com/etcd-io/etcd) 3.7.2
+  - [etcd](https://github.com/etcd-io/etcd) 3.7.3
   - [docker](https://www.docker.com/) 28.3
   - [containerd](https://containerd.io/) 2.3.7
   - [cri-o](https://cri-o.io/) 1.36.7 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
@@ -127,8 +127,8 @@ Note:
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) 1.15.3
   - [coredns](https://github.com/coredns/coredns) 1.14.6
-  - [argocd](https://argoproj.github.io/) 3.5.5
-  - [helm](https://helm.sh/) 3.22.0
+  - [argocd](https://argoproj.github.io/) 3.5.6
+  - [helm](https://helm.sh/) 3.22.1
   - [metallb](https://metallb.universe.tf/) 0.13.9
   - [registry](https://github.com/distribution/distribution) 3.1.2
 - Storage Plugin

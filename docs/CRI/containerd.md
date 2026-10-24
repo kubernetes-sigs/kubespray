@@ -151,7 +151,7 @@ nri_enabled: true
 
 ### Optional : Static Binary
 
-To ensure compatibility with older distributions (such as Debian 11), you can use a static containerd binary. By default, this is static binary if the system's glibc version is less than 2.34; otherwise, it is the default binary.
+To ensure compatibility with older distributions whose glibc is older than 2.34 (such as Debian 11 or RHEL/Rocky/Alma/Oracle Linux 8), you can use a static containerd binary. It is not enabled automatically: `containerd_static_binary` defaults to `false`, and the default (dynamically linked) containerd 2.1+ binaries fail on such hosts with errors like ``version `GLIBC_2.34' not found``.
 
 ```yaml
 containerd_static_binary: true

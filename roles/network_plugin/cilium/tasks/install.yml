@@ -1,27 +1,70 @@
 ---
-- name: Cilium | Create Cilium certs directory
-  file:
-    dest: "{{ cilium_cert_dir }}"
-    state: directory
-    mode: "0750"
-    owner: root
-    group: root
-  when:
-    - cilium_identity_allocation_mode == "kvstore"
-
-- name: Cilium | Link etcd certificates for cilium
-  file:
-    src: "{{ etcd_cert_dir }}/{{ item.s }}"
-    dest: "{{ cilium_cert_dir }}/{{ item.d }}"
-    mode: "0644"
-    state: hard
-    force: true
+# When cilium_identity_allocation_mode is "kvstore", Cilium talks to the
+# Kubespray-managed etcd over TLS. The Helm chart expects the client
+# certificates in the kube-system Secret "cilium-etcd-secrets". We build the
+# Secret from the etcd client certificates that already live on this control
+# plane node (node-<inventory_hostname>{,-key}.pem), so no extra copies of the
+# private key are created on disk.
+#
+# If the user configures etcd themselves through `cilium_extra_values.etcd`
+# (the pre-existing manual workaround), Kubespray stays out of the way: it
+# neither renders its own etcd Helm values (see values.yaml.j2) nor manages the
+# Secret, so a user-managed cilium-etcd-secrets is never overwritten.
+- name: Cilium | Stat etcd client certificates for kvstore identity allocation
+  stat:
+    path: "{{ etcd_cert_dir }}/{{ item }}"
   loop:
-    - {s: "{{ kube_etcd_cacert_file }}", d: "ca_cert.crt"}
-    - {s: "{{ kube_etcd_cert_file }}", d: "cert.crt"}
-    - {s: "{{ kube_etcd_key_file }}", d: "key.pem"}
+    - "{{ kube_etcd_cacert_file }}"
+    - "{{ kube_etcd_cert_file }}"
+    - "{{ kube_etcd_key_file }}"
+  register: cilium_etcd_cert_stat
   when:
     - cilium_identity_allocation_mode == "kvstore"
+    - "'etcd' not in cilium_extra_values"
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Cilium | Fail when etcd client certificates are missing for kvstore
+  assert:
+    that: item.stat.exists
+    fail_msg: >-
+      Required etcd client certificate {{ item.item }} was not found in
+      {{ etcd_cert_dir }} on {{ inventory_hostname }}. cilium_identity_allocation_mode=kvstore
+      requires Kubespray-managed etcd certificates (etcd_deployment_type 'host' or 'docker').
+  loop: "{{ cilium_etcd_cert_stat.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item | default('') }}"
+  when:
+    - cilium_identity_allocation_mode == "kvstore"
+    - "'etcd' not in cilium_extra_values"
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Cilium | Generate cilium-etcd-secrets Secret manifest
+  command: >-
+    {{ kubectl }} create secret generic cilium-etcd-secrets
+    --namespace kube-system
+    --from-file=etcd-client-ca.crt={{ etcd_cert_dir }}/{{ kube_etcd_cacert_file }}
+    --from-file=etcd-client.crt={{ etcd_cert_dir }}/{{ kube_etcd_cert_file }}
+    --from-file=etcd-client.key={{ etcd_cert_dir }}/{{ kube_etcd_key_file }}
+    --dry-run=client -o yaml
+  register: cilium_etcd_secret_manifest
+  changed_when: false
+  no_log: true
+  when:
+    - cilium_identity_allocation_mode == "kvstore"
+    - "'etcd' not in cilium_extra_values"
+    - inventory_hostname == groups['kube_control_plane'][0]
+
+- name: Cilium | Apply cilium-etcd-secrets Secret
+  command:
+    cmd: "{{ kubectl }} apply -f -"
+    stdin: "{{ cilium_etcd_secret_manifest.stdout }}"
+  register: cilium_etcd_secret_apply
+  changed_when: "'unchanged' not in cilium_etcd_secret_apply.stdout"
+  no_log: true
+  when:
+    - cilium_identity_allocation_mode == "kvstore"
+    - "'etcd' not in cilium_extra_values"
+    - inventory_hostname == groups['kube_control_plane'][0]
 
 - name: Cilium | Render values
   template:

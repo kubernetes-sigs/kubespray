@@ -272,6 +272,17 @@ Cilium currently supports two different identity allocation modes:
 - "crd" stores identities in kubernetes as CRDs (custom resource definition).
   - These can be queried with `kubectl get ciliumid`
 - "kvstore" stores identities in an etcd kvstore.
+  - By default Kubespray configures this automatically for a Kubespray-managed
+    etcd (`etcd_deployment_type: host` or `docker`): it renders the Helm `etcd`
+    configuration from `etcd_access_addresses` and creates the
+    `cilium-etcd-secrets` Secret in the `kube-system` namespace from the node's
+    etcd client certificates. This automation is not supported with a
+    kubeadm-stacked etcd (`etcd_deployment_type: kubeadm`), whose certificates
+    are not available under `etcd_cert_dir`.
+  - If you set an `etcd` key in `cilium_extra_values`, Kubespray leaves etcd
+    entirely to you: it renders no `etcd` Helm values and does not create or
+    update `cilium-etcd-secrets`. Use this to point Cilium at an external etcd
+    (including a kubeadm-stacked one) with a Secret you manage yourself.
 
 ## Enable Transparent Encryption
 

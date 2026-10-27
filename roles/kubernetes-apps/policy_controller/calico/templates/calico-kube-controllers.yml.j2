@@ -40,6 +40,9 @@ spec:
         - name: calico-kube-controllers
           image: {{ calico_policy_image_repo }}:{{ calico_policy_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
+{% if calico_version is version('3.33.0', '>=') %}
+          args: ["component", "kube-controllers", "--health-port=9440"]
+{% endif %}
           resources:
             limits:
               cpu: {{ calico_policy_controller_cpu_limit }}
@@ -50,16 +53,30 @@ spec:
           livenessProbe:
             exec:
               command:
+{% if calico_version is version('3.33.0', '>=') %}
+              - /usr/bin/calico
+              - health
+              - --port=9440
+              - --type=liveness
+{% else %}
               - /usr/bin/check-status
               - -l
+{% endif %}
             periodSeconds: 10
             initialDelaySeconds: 10
             failureThreshold: 6
           readinessProbe:
             exec:
               command:
+{% if calico_version is version('3.33.0', '>=') %}
+              - /usr/bin/calico
+              - health
+              - --port=9440
+              - --type=readiness
+{% else %}
               - /usr/bin/check-status
               - -r
+{% endif %}
             periodSeconds: 10
           securityContext:
             runAsNonRoot: true

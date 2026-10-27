@@ -1,0 +1,34 @@
+---
+- name: Check presence of fastestmirror.conf
+  stat:
+    path: /etc/yum/pluginconf.d/fastestmirror.conf
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: fastestmirror
+
+# the fastestmirror plugin can actually slow down Ansible deployments
+- name: Disable fastestmirror plugin if requested
+  lineinfile:
+    dest: /etc/yum/pluginconf.d/fastestmirror.conf
+    regexp: "^enabled=.*"
+    line: "enabled=0"
+    state: present
+  become: true
+  when:
+    - fastestmirror.stat.exists
+    - not centos_fastestmirror_enabled
+
+- name: Remove legacy docker repo file
+  file:
+    path: "{{ yum_repo_dir }}/docker.repo"
+    state: absent
+  when: not is_fedora_coreos
+
+- name: Install epel-release on RHEL derivatives
+  package:
+    name: epel-release
+    state: present
+  when:
+    - not is_fedora_coreos
+    - epel_enabled

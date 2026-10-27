@@ -1,15 +1,5 @@
 ---
-# When cilium_identity_allocation_mode is "kvstore", Cilium talks to the
-# Kubespray-managed etcd over TLS. The Helm chart expects the client
-# certificates in the kube-system Secret "cilium-etcd-secrets". We build the
-# Secret from the etcd client certificates that already live on this control
-# plane node (node-<inventory_hostname>{,-key}.pem), so no extra copies of the
-# private key are created on disk.
-#
-# If the user configures etcd themselves through `cilium_extra_values.etcd`
-# (the pre-existing manual workaround), Kubespray stays out of the way: it
-# neither renders its own etcd Helm values (see values.yaml.j2) nor manages the
-# Secret, so a user-managed cilium-etcd-secrets is never overwritten.
+# Build Secret cilium-etcd-secrets from the etcd client certs on this node, no key copy on disk.
 - name: Cilium | Stat etcd client certificates for kvstore identity allocation
   stat:
     path: "{{ etcd_cert_dir }}/{{ item }}"
@@ -26,10 +16,10 @@
 - name: Cilium | Fail when etcd client certificates are missing for kvstore
   assert:
     that: item.stat.exists
+    quiet: true
     fail_msg: >-
       Required etcd client certificate {{ item.item }} was not found in
-      {{ etcd_cert_dir }} on {{ inventory_hostname }}. cilium_identity_allocation_mode=kvstore
-      requires Kubespray-managed etcd certificates (etcd_deployment_type 'host' or 'docker').
+      {{ etcd_cert_dir }} on {{ inventory_hostname }}.
   loop: "{{ cilium_etcd_cert_stat.results | default([]) }}"
   loop_control:
     label: "{{ item.item | default('') }}"

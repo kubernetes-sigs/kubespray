@@ -275,9 +275,6 @@ Cilium currently supports two different identity allocation modes:
   - Kubespray renders the Helm `etcd` values from `etcd_access_addresses` and
     creates the `cilium-etcd-secrets` Secret from the etcd client certificate
     of the first control plane node. Works with every `etcd_deployment_type`.
-  - If `cilium_extra_values` has an `etcd` key, Kubespray renders no `etcd`
-    values and does not touch `cilium-etcd-secrets`. Use this for an external
-    etcd with your own Secret.
 
 ## Enable Transparent Encryption
 

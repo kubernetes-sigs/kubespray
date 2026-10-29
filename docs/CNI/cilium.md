@@ -387,7 +387,7 @@ cilium_hubble_metrics:
   - http
 ```
 
-[More](https://docs.cilium.io/en/v1.9/operations/metrics/#hubble-exported-metrics)
+[More](https://docs.cilium.io/en/stable/observability/metrics/#hubble-metrics)
 
 ## Upgrade considerations
 

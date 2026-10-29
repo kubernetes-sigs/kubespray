@@ -111,8 +111,8 @@ Note:
 <!-- BEGIN ANSIBLE MANAGED BLOCK -->
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.35.9
-  - [etcd](https://github.com/etcd-io/etcd) 3.6.15
+  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.35.10
+  - [etcd](https://github.com/etcd-io/etcd) 3.6.16
   - [docker](https://www.docker.com/) 28.3
   - [containerd](https://containerd.io/) 2.2.10
   - [cri-o](http://cri-o.io/) 1.35.10 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)

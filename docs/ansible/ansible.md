@@ -118,7 +118,6 @@ The following tags are defined in playbooks:
 | macvlan                        | Network plugin macvlan                                |
 | metallb                        | Installing and configuring metallb                    |
 | metrics_server                 | Configuring metrics_server                            |
-| netchecker                     | Installing netchecker K8s app                         |
 | network                        | Configuring networking plugins for K8s                |
 | mounts                         | Umount kubelet dirs when resetting                    |
 | multus                         | Network plugin multus                                 |

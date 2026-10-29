@@ -95,9 +95,6 @@ crio_registries_mirrors:
       - location: mirror.gcr.io
         insecure: false
 
-netcheck_agent_image_repo: "{{ quay_image_repo }}/kubespray/k8s-netchecker-agent"
-netcheck_server_image_repo: "{{ quay_image_repo }}/kubespray/k8s-netchecker-server"
-
 nginx_image_repo: "{{ quay_image_repo }}/kubespray/nginx"
 ```
 

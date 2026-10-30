@@ -20,6 +20,7 @@ With the old node still in the inventory, run `remove-node.yml`. You need to pas
 
 If the node you want to remove is not online, you should add the `reset_nodes` and `allow_ungraceful_removal` booleans to your extra-vars: `-e node=NODE_NAME -e '{"reset_nodes": false, "allow_ungraceful_removal": true}'`.
 Use this flag even when you remove other types of nodes like a control plane or etcd nodes.
+For an etcd node, set `ip` or `access_ip` in the inventory, because no facts are gathered from an offline node.
 
 ### 4) Remove the node from the inventory
 

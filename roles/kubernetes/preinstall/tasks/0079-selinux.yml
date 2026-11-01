@@ -3,27 +3,23 @@
   assert:
     that: selinux_state in ['enforcing', 'permissive', 'disabled']
 
-- name: Check for the libselinux Python bindings
-  command:
-    argv:
-      - "{{ ansible_facts['python']['executable'] }}"
-      - -c
-      - import selinux
-  register: selinux_bindings
-  changed_when: false
-  failed_when: selinux_bindings.rc not in [0, 1]
-  check_mode: false
-
 - name: Set selinux policy
-  ansible.posix.selinux:
-    policy: targeted
-    state: "{{ selinux_state }}"
-  when: selinux_bindings.rc == 0
-
-# The SELinux utilities use libselinux without interpreter-specific bindings.
-- name: Set selinux policy without the libselinux Python bindings
-  when: selinux_bindings.rc != 0
   block:
+    # Preserve the module's attempt to use bindings from a system Python.
+    - name: Set selinux policy with Python bindings
+      ansible.posix.selinux:
+        policy: targeted
+        state: "{{ selinux_state }}"
+
+  rescue:
+    - name: Fail if the SELinux fallback is disabled or the failure is unrelated to Python bindings
+      fail:
+        msg: "{{ ansible_failed_result.msg | default('Failed to configure SELinux.') }}"
+      when: >-
+        not selinux_allow_fallback or
+        not (ansible_failed_result.msg | default('')).startswith('Failed to import the required Python library (libselinux-python)')
+
+    # The SELinux utilities use libselinux without interpreter-specific bindings.
     - name: Read selinux runtime state
       command: getenforce
       register: selinux_runtime

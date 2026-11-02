@@ -197,7 +197,6 @@ You can choose among ten network plugins. (default: `calico`, except Vagrant use
 
 The network plugin to use is defined by the variable `kube_network_plugin`. There is also an
 option to leverage built-in cloud provider networking instead.
-See also [Network checker](docs/advanced/netcheck.md).
 
 ## Ingress Plugins
 

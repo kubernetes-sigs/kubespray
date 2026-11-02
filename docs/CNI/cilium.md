@@ -272,6 +272,9 @@ Cilium currently supports two different identity allocation modes:
 - "crd" stores identities in kubernetes as CRDs (custom resource definition).
   - These can be queried with `kubectl get ciliumid`
 - "kvstore" stores identities in an etcd kvstore.
+  - Kubespray renders the Helm `etcd` values from `etcd_access_addresses` and
+    creates the `cilium-etcd-secrets` Secret from the etcd client certificate
+    of the first control plane node. Works with every `etcd_deployment_type`.
 
 ## Enable Transparent Encryption
 

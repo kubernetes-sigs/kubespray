@@ -164,7 +164,6 @@ function register_container_images() {
 			echo "Failed to get image_id for file ${file_name}"
 			exit 1
 		fi
-		sudo ${runtime} load -i ${IMAGE_DIR}/${file_name}
 		sudo ${runtime} tag  ${image_id} ${new_image}
 		sudo ${runtime} push ${new_image}
 	done <<< "$(cat ${IMAGE_LIST})"

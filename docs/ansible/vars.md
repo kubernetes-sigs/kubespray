@@ -54,7 +54,7 @@ Some variables of note include:
   traffic, including nodes and pods. Defaults to localhost LB proxy or `kube_apiserver_endpoint`.
   See more details in the [HA guide](/docs/operations/ha-mode.md).
 * *loadbalancer_apiserver_localhost* - makes all hosts connect to
-  the apiserver internally via the local load balanced proxy (nginx/haproxy). Defaults to `true`
+  the apiserver internally via the local load balanced proxy (nginx-proxy). Defaults to `true`
   when no external or internal endpoint is defined. See more details in the
   [HA guide](/docs/operations/ha-mode.md).
 

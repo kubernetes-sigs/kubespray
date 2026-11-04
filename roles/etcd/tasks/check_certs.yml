@@ -48,20 +48,9 @@
   with_items: "{{ expected_files }}"
   vars:
     expected_files: >-
-      ['{{ etcd_cert_dir }}/ca.pem',
-      {% set etcd_members = groups['etcd'] %}
-      {% for host in etcd_members %}
-        '{{ etcd_cert_dir }}/admin-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/admin-{{ host }}-key.pem',
-        '{{ etcd_cert_dir }}/member-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/member-{{ host }}-key.pem',
-      {% endfor %}
-      {% set k8s_nodes = groups['kube_control_plane'] %}
-      {% for host in k8s_nodes %}
-        '{{ etcd_cert_dir }}/node-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/node-{{ host }}-key.pem'
-        {% if not loop.last %}{{ ',' }}{% endif %}
-      {% endfor %}]
+      {{ [etcd_cert_dir ~ '/ca.pem']
+      + [etcd_cert_dir ~ '/admin-', etcd_cert_dir ~ '/member-'] | product(groups['etcd'], ['.pem', '-key.pem']) | map('join') | list
+      + [etcd_cert_dir ~ '/node-'] | product(groups['kube_control_plane'], ['.pem', '-key.pem']) | map('join') | list }}
 
 - name: "Check_certs | Set 'gen_certs' to true if expected certificates are not on the first etcd node(2/2)"
   set_fact:
@@ -70,20 +59,9 @@
   with_items: "{{ expected_files }}"
   vars:
     expected_files: >-
-      ['{{ etcd_cert_dir }}/ca.pem',
-      {% set etcd_members = groups['etcd'] %}
-      {% for host in etcd_members %}
-        '{{ etcd_cert_dir }}/admin-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/admin-{{ host }}-key.pem',
-        '{{ etcd_cert_dir }}/member-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/member-{{ host }}-key.pem',
-      {% endfor %}
-      {% set k8s_nodes = groups['k8s_cluster'] | unique | sort %}
-      {% for host in k8s_nodes %}
-        '{{ etcd_cert_dir }}/node-{{ host }}.pem',
-        '{{ etcd_cert_dir }}/node-{{ host }}-key.pem'
-        {% if not loop.last %}{{ ',' }}{% endif %}
-      {% endfor %}]
+      {{ [etcd_cert_dir ~ '/ca.pem']
+      + [etcd_cert_dir ~ '/admin-', etcd_cert_dir ~ '/member-'] | product(groups['etcd'], ['.pem', '-key.pem']) | map('join') | list
+      + [etcd_cert_dir ~ '/node-'] | product(groups['k8s_cluster'] | unique | sort, ['.pem', '-key.pem']) | map('join') | list }}
   when:
     - kube_network_plugin in ["calico", "flannel", "cilium"] or cilium_deploy_additionally
     - kube_network_plugin != "calico" or calico_datastore == "etcd"
@@ -91,7 +69,7 @@
 
 - name: "Check_certs | Set 'gen_*_certs' groups to track which nodes needs to have certs generated on first etcd node"
   vars:
-    existing_certs: etcdcert_master.files | map(attribute='path')
+    existing_certs: "{{ etcdcert_master.files | map(attribute='path') | list }}"
   ansible.builtin.group_by:
     key: "gen_{{ item.node_type }}_certs_{{ force_etcd_cert_refresh or item.certs is not subset(existing_certs) }}"
   loop: "{{ cert_files | dict2items(key_name='node_type', value_name='certs') }}"

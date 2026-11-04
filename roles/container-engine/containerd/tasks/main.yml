@@ -43,6 +43,54 @@
   notify: Restart containerd
   when: http_proxy is defined or https_proxy is defined
 
+- name: Containerd | Assert version supports pod user namespaces subid setup
+  assert:
+    that:
+      - containerd_version is version('2.0.0', '>=')
+    fail_msg: >-
+      containerd_userns_subid_enable requires containerd >= 2.0.0.
+      Current configured version: {{ containerd_version }}
+  when:
+    - containerd_userns_subid_enable
+    - containerd_version not in ['latest', 'edge', 'stable']
+
+- name: Containerd | Create local group for pod user namespaces subid owner
+  group:
+    name: "{{ containerd_userns_subid_user }}"
+    system: true
+  when:
+    - containerd_userns_subid_enable
+    - containerd_userns_subid_create_local_user
+
+- name: Containerd | Create local user for pod user namespaces subid owner
+  user:
+    name: "{{ containerd_userns_subid_user }}"
+    group: "{{ containerd_userns_subid_user }}"
+    shell: "{{ containerd_userns_subid_user_shell }}"
+    create_home: false
+    system: true
+  when:
+    - containerd_userns_subid_enable
+    - containerd_userns_subid_create_local_user
+
+- name: Containerd | Configure uid/gid ranges for pod user namespaces
+  lineinfile:
+    path: "{{ item.path }}"
+    line: "{{ item.entry }}"
+    regex: "^\\s*{{ containerd_userns_subid_user | regex_escape }}:"
+    create: true
+    mode: "0644"
+    state: present
+  loop:
+    - path: /etc/subuid
+      entry: "{{ containerd_userns_subid_user }}:{{ containerd_userns_subuid_start }}:{{ containerd_userns_subuid_length }}"
+    - path: /etc/subgid
+      entry: "{{ containerd_userns_subid_user }}:{{ containerd_userns_subgid_start }}:{{ containerd_userns_subgid_length }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when:
+    - containerd_userns_subid_enable
+
 - name: Containerd | Generate default base_runtime_spec
   register: ctr_oci_spec
   command: "{{ containerd_bin_dir }}/ctr oci spec"

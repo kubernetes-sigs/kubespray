@@ -53,6 +53,30 @@ containerd_registries_mirrors:
 
 The `containerd_registries` and `containerd_insecure_registries` configs are deprecated.
 
+### Optional: Pod user namespaces subid ranges
+
+Kubernetes pod user namespaces require compatible Kubernetes, containerd, OCI runtime
+(`runc`/equivalent), and Linux kernel support. Kubespray can manage the subordinate
+uid/gid ranges used for custom mappings by writing `/etc/subuid` and `/etc/subgid`.
+
+Example:
+
+```yaml
+containerd_userns_subid_enable: true
+containerd_userns_subid_user: kubelet
+containerd_userns_subid_create_local_user: true
+containerd_userns_subuid_start: 2130706432
+containerd_userns_subuid_length: 16777216
+containerd_userns_subgid_start: 2130706432
+containerd_userns_subgid_length: 16777216
+```
+
+Notes:
+
+- Set `containerd_userns_subid_create_local_user: false` if the user is managed by LDAP/SSSD.
+- Kubespray only configures the node-side subid allocation; workloads still need to request pod user namespaces.
+- Kernels without tmpfs idmap support (for example many EL9-era kernels) may prevent userns pods from mounting Secret/ConfigMap volumes.
+
 ### Containerd Runtimes
 
 Containerd supports multiple runtime configurations that can be used with

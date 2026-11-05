@@ -1,0 +1,70 @@
+---
+# Hardens the kubeadm-rendered etcd static-pod manifest by replacing
+# --initial-cluster=<self> and --initial-cluster-state=new with the
+# full live member list and --initial-cluster-state=existing.
+#
+# Without this, a data-dir wipe silently re-bootstraps the local etcd
+# as a new single-node cluster (split brain).
+# References: kubeadm#2005, k/k PR #97372, etcd-io#11732.
+
+- name: Etcd harden | List live etcd cluster members
+  command: "{{ bin_dir }}/etcdctl.sh member list -w json"
+  register: etcd_kubeadm_harden_members
+  changed_when: false
+  check_mode: false
+  retries: 3
+  delay: 5
+  until: etcd_kubeadm_harden_members.rc == 0
+
+- name: Etcd harden | Parse member list
+  set_fact:
+    etcd_kubeadm_harden_member_list: "{{ etcd_kubeadm_harden_members.stdout | from_json }}"
+
+- name: Etcd harden | Assert local member is registered and not a learner
+  assert:
+    that:
+      - local_member is not none
+      - not (local_member.isLearner | default(false))
+      - local_member.name | length > 0
+      - local_member.peerURLs | length > 0
+    fail_msg: "Local etcd member not found in cluster or is a learner; refusing to harden."
+  vars:
+    local_member: >-
+      {{ (etcd_kubeadm_harden_member_list.members | default([]))
+         | selectattr('peerURLs.0', '==', etcd_peer_url)
+         | first | default(none) }}
+
+- name: Etcd harden | Build initial-cluster argument from live members
+  set_fact:
+    etcd_kubeadm_harden_initial_cluster: >-
+      {{ (etcd_kubeadm_harden_member_list.members | default([]))
+         | map(attribute='name') | zip(
+           (etcd_kubeadm_harden_member_list.members | default([]))
+           | map(attribute='peerURLs') | map('first')
+         ) | map('join', '=') | join(',') }}
+
+- name: Etcd harden | Read current etcd static-pod manifest
+  slurp:
+    src: "{{ etcd_kubeadm_harden_manifest_path }}"
+  register: etcd_kubeadm_harden_manifest
+
+- name: Etcd harden | Compute hardened manifest contents
+  set_fact:
+    etcd_kubeadm_harden_new_manifest: >-
+      {{ etcd_kubeadm_harden_manifest.content | b64decode
+         | regex_replace('(\s+)- --initial-cluster=[^\n]*\n',
+             '\1- --initial-cluster=' ~ etcd_kubeadm_harden_initial_cluster ~ '\n')
+         | regex_replace('(\s+)- --initial-cluster-state=[^\n]*\n',
+             '\1- --initial-cluster-state=existing\n') }}
+
+- name: Etcd harden | Apply hardened manifest atomically (serialized across CPs)
+  copy:
+    content: "{{ etcd_kubeadm_harden_new_manifest }}"
+    dest: "{{ etcd_kubeadm_harden_manifest_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+    backup: true
+  throttle: 1
+  when: etcd_kubeadm_harden_new_manifest != (etcd_kubeadm_harden_manifest.content | b64decode)
+  notify: Etcd harden | Wait for etcd to recover

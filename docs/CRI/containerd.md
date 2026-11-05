@@ -53,6 +53,14 @@ containerd_registries_mirrors:
 
 The `containerd_registries` and `containerd_insecure_registries` configs are deprecated.
 
+### Importing configuration files
+
+`containerd_config_imports` defaults to `["{{ containerd_cfg_dir }}/conf.d/*.toml"]` for containerd 1.x and 2.x.
+Set `containerd_config_imports: []` to disable imports, or provide a list of replacement paths.
+
+Review existing matching files before upgrading, as they may override settings managed by Kubespray.
+If `containerd_extra_args` contains an `imports` entry, move its paths to `containerd_config_imports` and remove that entry to avoid duplicate TOML keys.
+
 ### Containerd Runtimes
 
 Containerd supports multiple runtime configurations that can be used with

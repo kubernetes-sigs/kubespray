@@ -1,20 +1,9 @@
 # openSUSE Leap 16.0, Tumbleweed, and MicroOS
 
-openSUSE Leap installation Notes:
-
-- Install Ansible
-
-  ```ShellSession
-  sudo zypper ref
-  sudo zypper -n install ansible
-
-  ```
-
-- Install Jinja2 and Python-Netaddr
-
-  ```sudo zypper -n install python-Jinja2 python-netaddr```
-
-Now you can continue with [Preparing your deployment](getting-started.md#starting-custom-deployment)
+The `ansible` package in the openSUSE Leap 16.0 repositories is older than the
+version Kubespray requires. Install Ansible in a Python virtual environment as
+described in [Installing Ansible](/docs/ansible/ansible.md#installing-ansible),
+then continue with [Getting started](/docs/getting_started/getting-started.md).
 
 ## openSUSE MicroOS
 

@@ -31,6 +31,7 @@ Some variables of note include:
 * *remove_default_searchdomains* - Boolean that removes the default searchdomain
 * *nameservers* - Array of nameservers to use for DNS lookup
 * *preinstall_selinux_state* - Set selinux state, permitted values are permissive, enforcing and disabled.
+* *selinux_allow_fallback* - Allow native SELinux utilities on RedHat-family hosts only when `ansible.posix.selinux` cannot load Python bindings (default `false`).
 
 ## Addressing variables
 

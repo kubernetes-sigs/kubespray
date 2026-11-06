@@ -1,0 +1,84 @@
+---
+- name: Validate selinux state
+  assert:
+    that: selinux_state in ['enforcing', 'permissive', 'disabled']
+
+- name: Set selinux policy
+  block:
+    # Preserve the module's attempt to use bindings from a system Python.
+    - name: Set selinux policy with Python bindings
+      ansible.posix.selinux:
+        policy: targeted
+        state: "{{ selinux_state }}"
+
+  rescue:
+    - name: Fail if the SELinux fallback is disabled or the failure is unrelated to Python bindings
+      fail:
+        msg: "{{ ansible_failed_result.msg | default('Failed to configure SELinux.') }}"
+      when: >-
+        not selinux_allow_fallback or
+        not (ansible_failed_result.msg | default('')).startswith('Failed to import the required Python library (libselinux-python)')
+
+    # The SELinux utilities use libselinux without interpreter-specific bindings.
+    - name: Read selinux runtime state
+      command: getenforce
+      register: selinux_runtime
+      changed_when: false
+      failed_when: selinux_runtime.rc != 0 or selinux_runtime.stdout not in ['Enforcing', 'Permissive', 'Disabled']
+      check_mode: false
+      environment:
+        LC_ALL: C
+
+    - name: Check targeted selinux policy
+      stat:
+        path: /etc/selinux/targeted/policy
+      register: selinux_policy
+      when: selinux_state != 'disabled'
+
+    - name: Require targeted selinux policy
+      assert:
+        that: selinux_policy.stat.isdir | default(false)
+        fail_msg: Install the targeted SELinux policy before configuring SELinux.
+      when: selinux_state != 'disabled'
+
+    - name: Set selinux policy type
+      lineinfile:
+        path: /etc/selinux/config
+        regexp: '^SELINUXTYPE='
+        line: SELINUXTYPE=targeted
+        backup: "{{ leave_etc_backup_files }}"
+      register: selinux_policy_type
+      when: selinux_state != 'disabled'
+
+    - name: Set selinux state
+      lineinfile:
+        path: /etc/selinux/config
+        regexp: '^SELINUX='
+        line: "SELINUX={{ selinux_state }}"
+        backup: "{{ leave_etc_backup_files }}"
+
+    # Disabling SELinux requires a reboot; use permissive mode until then.
+    - name: Update selinux runtime state
+      vars:
+        selinux_runtime_state: "{{ (selinux_state == 'enforcing') | ternary('Enforcing', 'Permissive') }}"
+      when:
+        - selinux_runtime.stdout != 'Disabled'
+        - selinux_runtime.stdout != selinux_runtime_state
+      block:
+        - name: Apply selinux state at runtime
+          command: setenforce {{ (selinux_state == 'enforcing') | ternary('1', '0') }}
+          changed_when: true
+          when: not ansible_check_mode
+
+        - name: Report selinux runtime change in check mode
+          debug:
+            msg: "SELinux runtime state would change to {{ selinux_runtime_state }}"
+          changed_when: true
+          when: ansible_check_mode
+
+    - name: Report pending selinux reboot
+      debug:
+        msg: "A reboot is required to apply the SELinux state or policy change."
+      when: >-
+        (selinux_runtime.stdout == 'Disabled') != (selinux_state == 'disabled') or
+        selinux_policy_type is changed

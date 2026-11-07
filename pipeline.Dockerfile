@@ -45,8 +45,8 @@ ADD ./requirements.txt  /kubespray/requirements.txt
 ADD ./tests/requirements.txt /kubespray/tests/requirements.txt
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 \
-    && curl -L https://dl.k8s.io/release/v1.37.1/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
-    && echo $(curl -L https://dl.k8s.io/release/v1.37.1/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
+    && curl -L https://dl.k8s.io/release/v1.37.2/bin/linux/$(dpkg --print-architecture)/kubectl -o /usr/local/bin/kubectl \
+    && echo $(curl -L https://dl.k8s.io/release/v1.37.2/bin/linux/$(dpkg --print-architecture)/kubectl.sha256) /usr/local/bin/kubectl | sha256sum --check \
     && chmod a+x /usr/local/bin/kubectl \
     # Install Vagrant
     && curl -LO https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}-1_$(dpkg --print-architecture).deb \

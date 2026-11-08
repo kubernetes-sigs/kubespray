@@ -299,14 +299,18 @@ Kubespray does not automate this process.
 Cilium documentation currently recommends creating a key using the following command:
 
 ```shell
-echo "3 rfc4106(gcm(aes)) $(echo $(dd if=/dev/urandom count=20 bs=1 2> /dev/null | xxd -p -c 64)) 128"
+echo "3+ rfc4106(gcm(aes)) $(echo $(dd if=/dev/urandom count=20 bs=1 2> /dev/null | xxd -p -c 64)) 128"
 ```
 
 Note that Kubespray handles secret creation. So you only need to pass the key as the `cilium_ipsec_key` variable, base64 encoded:
 
 ```shell
-echo "cilium_ipsec_key: "$(echo -n "3 rfc4106(gcm(aes)) $(echo $(dd if=/dev/urandom count=20 bs=1 2> /dev/null | xxd -p -c 64)) 128" | base64 -w0)
+echo "cilium_ipsec_key: "$(echo -n "3+ rfc4106(gcm(aes)) $(echo $(dd if=/dev/urandom count=20 bs=1 2> /dev/null | xxd -p -c 64)) 128" | base64 -w0)
 ```
+
+Kubespray creates the `cilium-ipsec-keys` Secret only if it doesn't exist yet. Changing `cilium_ipsec_key` later
+doesn't change the Secret, so rotate the key as described in the
+[Cilium documentation](https://docs.cilium.io/en/stable/security/network/encryption-ipsec/#key-rotation).
 
 ### Wireguard Encryption
 

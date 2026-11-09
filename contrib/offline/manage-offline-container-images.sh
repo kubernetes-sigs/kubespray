@@ -96,35 +96,44 @@ function register_container_images() {
 	fi
 	echo "Images will be pushed to ${DESTINATION_REGISTRY}"
 
-	if [ ! -f ${IMAGE_TAR_FILE} ]; then
-		echo "${IMAGE_TAR_FILE} should exist."
+	# Ensure proxy bypasses destination registry host
+	reg_host=$(echo "${DESTINATION_REGISTRY}" | awk -F'/' '{print $1}')
+	export no_proxy="${no_proxy:+$no_proxy,}${reg_host}"
+	export NO_PROXY="${NO_PROXY:+$NO_PROXY,}${reg_host}"
+
+	if [ ! -f ${IMAGE_TAR_FILE} ] && [ ! -d ${IMAGE_DIR} ]; then
+		echo "${IMAGE_TAR_FILE} or ${IMAGE_DIR} should exist."
 		exit 1
 	fi
 	if [ ! -d ${TEMP_DIR} ]; then
 		mkdir ${TEMP_DIR}
 	fi
 
-	# To avoid "http: server gave http response to https client" error.
-	if [ -d /etc/docker/ ]; then
-		set -e
-		# Ubuntu18.04, RHEL7/CentOS7
-		cp ${CURRENT_DIR}/docker-daemon.json      ${TEMP_DIR}/docker-daemon.json
-		sed -i s@"HOSTNAME:5000"@"$(hostname):${REGISTRY_PORT}"@  ${TEMP_DIR}/docker-daemon.json
-		sudo cp ${TEMP_DIR}/docker-daemon.json           /etc/docker/daemon.json
-	elif [ -d /etc/containers/ ]; then
-		set -e
-		# RHEL8/CentOS8
-		cp ${CURRENT_DIR}/registries.conf         ${TEMP_DIR}/registries.conf
-		sed -i s@"HOSTNAME:5000"@"$(hostname):${REGISTRY_PORT}"@  ${TEMP_DIR}/registries.conf
-		sudo cp ${TEMP_DIR}/registries.conf   /etc/containers/registries.conf
-  elif [ "$(uname)" == "Darwin" ]; then
-    echo "This is a Mac, no configuration changes are required"
-	else
-		echo "runtime package(docker-ce, podman, nerctl, etc.) should be installed"
-		exit 1
+	if ${create_registry}; then
+		# To avoid "http: server gave http response to https client" error.
+		if [ -d /etc/docker/ ]; then
+			set -e
+			# Ubuntu18.04, RHEL7/CentOS7
+			cp ${CURRENT_DIR}/docker-daemon.json      ${TEMP_DIR}/docker-daemon.json
+			sed -i s@"HOSTNAME"@"$(hostname)"@  ${TEMP_DIR}/docker-daemon.json
+			sudo cp ${TEMP_DIR}/docker-daemon.json           /etc/docker/daemon.json
+		elif [ -d /etc/containers/ ]; then
+			set -e
+			# RHEL8/CentOS8
+			cp ${CURRENT_DIR}/registries.conf         ${TEMP_DIR}/registries.conf
+			sed -i s@"HOSTNAME"@"$(hostname)"@  ${TEMP_DIR}/registries.conf
+			sudo cp ${TEMP_DIR}/registries.conf   /etc/containers/registries.conf
+		elif [ "$(uname)" == "Darwin" ]; then
+			echo "This is a Mac, no configuration changes are required"
+		else
+			echo "runtime package(docker-ce, podman, nerctl, etc.) should be installed"
+			exit 1
+		fi
 	fi
 
-	tar -zxvf ${IMAGE_TAR_FILE}
+	if [ ! -d "${IMAGE_DIR}" ]; then
+		tar -zxvf ${IMAGE_TAR_FILE}
+	fi
 
 	if ${create_registry}; then
 		sudo ${runtime} load -i ${IMAGE_DIR}/registry-latest.tar
@@ -132,7 +141,7 @@ function register_container_images() {
 
 		sudo ${runtime} container inspect registry >/dev/null 2>&1
 		if [ $? -ne 0 ]; then
-			sudo ${runtime} run --restart=always -d -p "${REGISTRY_PORT}":5000 --name registry registry:latest
+			sudo ${runtime} run --restart=always -d -p "${REGISTRY_PORT}":"${REGISTRY_PORT}" --name registry registry:latest
 		fi
 		set -e
 	fi
@@ -141,31 +150,38 @@ function register_container_images() {
 		file_name=$(echo ${line} | awk '{print $1}')
 		raw_image=$(echo ${line} | awk '{print $2}')
 		new_image="${DESTINATION_REGISTRY}/${raw_image}"
-		load_image=$(sudo ${runtime} load -i ${IMAGE_DIR}/${file_name} | head -n1)
-		org_image=$(echo "${load_image}"  | awk '{print $3}')
-		# special case for tags containing the digest when using docker or podman as the container runtime
-		if [ "${org_image}" == "ID:" ]; then
-		  org_image=$(echo "${load_image}"  | awk '{print $4}')
-		fi
-		image_id=$(sudo ${runtime} image inspect --format "{{.Id}}" "${org_image}")
-		if [ -z "${file_name}" ]; then
-			echo "Failed to get file_name for line ${line}"
+
+		if [ -z "${file_name}" ] || [ -z "${raw_image}" ]; then
+			echo "Failed to parse line: ${line}"
 			exit 1
 		fi
-		if [ -z "${raw_image}" ]; then
-			echo "Failed to get raw_image for line ${line}"
+
+		echo "==> Registering ${raw_image} -> ${new_image}"
+
+		# Extract the original image reference directly from manifest.json inside the tar
+		target_ref=$(tar -xOf "${IMAGE_DIR}/${file_name}" manifest.json 2>/dev/null | grep -o '"RepoTags":\["[^"]*"' | head -n1 | sed -E 's/"RepoTags":\["([^"]+)".*/\1/')
+
+		# Load image into runtime
+		load_output=$(sudo --preserve-env=no_proxy,NO_PROXY ${runtime} load -i "${IMAGE_DIR}/${file_name}")
+
+		if [ -z "${target_ref}" ]; then
+			target_ref=$(echo "${load_output}" | grep -E -o '(Loaded image( ID)?: )[^ ]+' | head -n1 | awk '{print $NF}')
+		fi
+
+		if [ -z "${target_ref}" ]; then
+			target_ref=$(echo "${load_output}" | grep "unpacking" | head -n1 | awk '{print $2}')
+		fi
+
+		# Strip sha256: prefix or parentheses/ellipses if any
+		target_ref=$(echo "${target_ref}" | sed -E 's/^\(?sha256://; s/\)\.\.\.$//')
+
+		if [ -z "${target_ref}" ]; then
+			echo "Failed to identify loaded reference for ${file_name}"
 			exit 1
 		fi
-		if [ -z "${org_image}" ]; then
-			echo "Failed to get org_image for line ${line}"
-			exit 1
-		fi
-		if [ -z "${image_id}" ]; then
-			echo "Failed to get image_id for file ${file_name}"
-			exit 1
-		fi
-		sudo ${runtime} tag  ${image_id} ${new_image}
-		sudo ${runtime} push ${new_image}
+
+		sudo --preserve-env=no_proxy,NO_PROXY ${runtime} tag "${target_ref}" "${new_image}"
+		sudo --preserve-env=no_proxy,NO_PROXY ${runtime} push "${new_image}"
 	done <<< "$(cat ${IMAGE_LIST})"
 
 	echo "Succeeded to register container images to local registry."
@@ -177,7 +193,9 @@ function register_container_images() {
 }
 
 # get runtime command
-if command -v nerdctl 1>/dev/null 2>&1; then
+if [ -n "${CONTAINER_RUNTIME}" ]; then
+    runtime="${CONTAINER_RUNTIME}"
+elif command -v nerdctl 1>/dev/null 2>&1; then
     runtime="nerdctl"
 elif command -v podman 1>/dev/null 2>&1; then
     runtime="podman"

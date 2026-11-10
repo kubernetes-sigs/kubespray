@@ -68,22 +68,37 @@ $inventories ||= []
 $multi_networking ||= "False"
 $download_run_once ||= "True"
 $download_force_cache ||= "False"
-# Modify those to have separate groups (for instance, to test separate etcd:)
-# first_control_plane = 1
-# first_etcd = 4
-# control_plane_instances = 3
-# etcd_instances = 3
-$first_node ||= 1
-$first_control_plane ||= 1
-$first_etcd ||= 1
+# Set $etcd_count > 0 to instead provision dedicated etcd VMs (external etcd);
+# in that case the 'etcd' group uses those nodes instead of the control plane.
+$etcd_count          ||= 0
+$control_plane_count ||= 1
+$worker_count        ||= 2
 
-# The first three nodes are etcd servers
-$etcd_instances ||= [$num_instances, 3].min
-# The first two nodes are kube masters
-$control_plane_instances ||= [$num_instances, 2].min
-# All nodes are kube nodes
-$kube_node_instances ||= $num_instances - $first_node + 1
+# Hostname prefixes per role.
+$etcd_prefix          ||= "#{$instance_name_prefix}-etcd"
+$control_plane_prefix ||= "#{$instance_name_prefix}-api"
+$worker_prefix        ||= "#{$instance_name_prefix}-worker"
 
+# Build the full node list up front. Each entry is a hash describing one VM:
+#   :name  -> zero-padded hostname (e.g. "etcd-01")
+#   :role  -> :etcd | :control_plane | :worker
+#   :ip4   -> last octet on $subnet (non-overlapping ranges per role)
+# IP layout on $subnet: etcd .101+, control plane .121+, workers .141+.
+$nodes = []
+[[$etcd_prefix, $etcd_count, :etcd, 100],
+ [$control_plane_prefix, $control_plane_count, :control_plane, 120],
+ [$worker_prefix, $worker_count, :worker, 140]].each do |prefix, count, role, ip_base|
+  (1..count).each do |n|
+    $nodes << {
+      :name => "%s-%02d" % [prefix, n],
+      :role => role,
+      :ip4  => ip_base + n,
+    }
+  end
+end
+
+# Total VM count (used for --forks and the "last node" provisioner trigger).
+$num_instances = $nodes.length
 # The following only works when using the libvirt provider
 $kube_node_instances_with_disks ||= false
 $kube_node_instances_with_disks_size ||= "20G"
@@ -93,6 +108,14 @@ $disk_size ||= "20GB"
 $local_path_provisioner_enabled ||= "False"
 $local_path_provisioner_claim_root ||= "/opt/local-path-provisioner/"
 $libvirt_nested ||= false
+# Prefix vagrant-libvirt prepends to the machine name to form the libvirt domain
+# name (shown by 'virsh list'). '' = no prefix, so domains match the VM names.
+# Must be a string: if left unset (nil) the plugin silently falls back to
+# "<project dir name>_", i.e. "kubespray_".
+$libvirt_domain_prefix ||= ''
+# Disable DNSSEC validation in the guests' systemd-resolved before Ansible runs.
+# Needed when the upstream resolver can't validate DNSSEC (e.g. libvirt/WSL2 NAT).
+$disable_dnssec = false if $disable_dnssec.nil?
 # boolean or string (e.g. "-vvv")
 $ansible_verbosity ||= false
 $ansible_tags ||= ENV['VAGRANT_ANSIBLE_TAGS'] || ""
@@ -142,8 +165,8 @@ $box = SUPPORTED_OS[$os][:box]
 
 if Vagrant.has_plugin?("vagrant-proxyconf")
   $no_proxy = ENV['NO_PROXY'] || ENV['no_proxy'] || "127.0.0.1,localhost"
-  (1..$num_instances).each do |i|
-      $no_proxy += ",#{$subnet}.#{i+100}"
+  $nodes.each do |n|
+  $no_proxy += ",#{$subnet}.#{n[:ip4]}"
   end
 end
 
@@ -170,8 +193,11 @@ Vagrant.configure("2") do |config|
     config.disksize.size = $disk_size
   end
 
-  (1..$num_instances).each do |i|
-    config.vm.define vm_name = "%s-%01d" % [$instance_name_prefix, i] do |node|
+$nodes.each_with_index do |node_spec, idx|
+  i = idx + 1
+  vm_name = node_spec[:name]
+  config.vm.define vm_name do |node|
+
 
       node.vm.hostname = vm_name
 
@@ -183,12 +209,14 @@ Vagrant.configure("2") do |config|
 
       ["vmware_fusion", "vmware_workstation"].each do |vmware|
         node.vm.provider vmware do |v|
+          v.vmx['displayName'] = vm_name
           v.vmx['memsize'] = $vm_memory
           v.vmx['numvcpus'] = $vm_cpus
         end
       end
 
       node.vm.provider :virtualbox do |vb|
+        vb.name = vm_name
         vb.memory = $vm_memory
         vb.cpus = $vm_cpus
         vb.gui = $vm_gui
@@ -202,7 +230,7 @@ Vagrant.configure("2") do |config|
         lv.cpu_mode = "host-model"
         lv.memory = $vm_memory
         lv.cpus = $vm_cpus
-        lv.default_prefix = 'kubespray'
+        lv.default_prefix = $libvirt_domain_prefix
         # Fix kernel panic on fedora 28
         if $os == "fedora"
           lv.cpu_mode = "host-passthrough"
@@ -283,6 +311,16 @@ Vagrant.configure("2") do |config|
         SHELL
       end
 
+      # Disable DNSSEC in systemd-resolved before Ansible runs. The Ubuntu box
+      # ships /etc/systemd/resolved.conf with DNSSEC=yes; on hosts whose upstream
+      # resolver can't validate DNSSEC (libvirt/WSL2 NAT) this yields SERVFAIL and
+      # the playbook's early apt step fails to resolve mirrors. Runs at boot, so
+      # DNS works for the whole run.
+      # Controlled by $disable_dnssec in vagrant/config.rb (default: true).
+      if $disable_dnssec
+        node.vm.provision "shell", inline: "if systemctl is-active --quiet systemd-resolved; then mkdir -p /etc/systemd/resolved.conf.d && printf '[Resolve]\\nDNSSEC=no\\n' > /etc/systemd/resolved.conf.d/00-disable-dnssec.conf && systemctl restart systemd-resolved; fi"
+      end
+
 
       # Rockylinux boxes needs UEFI
       if ["rockylinux8", "rockylinux9"].include? $os
@@ -338,10 +376,16 @@ Vagrant.configure("2") do |config|
           if $ansible_tags != ""
             ansible.tags = [$ansible_tags]
           end
+          # Stacked topology: when no dedicated etcd VMs exist ($etcd_count == 0),
+          # etcd runs on the control-plane nodes, so the 'etcd' group points at
+          # them. With dedicated etcd VMs it points at those instead (external).
+          etcd_nodes = $nodes.select { |n| n[:role] == :etcd }.map { |n| n[:name] }
+          control_plane_nodes = $nodes.select { |n| n[:role] == :control_plane }.map { |n| n[:name] }
+          etcd_nodes = control_plane_nodes if etcd_nodes.empty?
           ansible.groups = {
-            "etcd" => ["#{$instance_name_prefix}-[#{$first_etcd}:#{$etcd_instances + $first_etcd - 1}]"],
-            "kube_control_plane" => ["#{$instance_name_prefix}-[#{$first_control_plane}:#{$control_plane_instances + $first_control_plane - 1}]"],
-            "kube_node" => ["#{$instance_name_prefix}-[#{$first_node}:#{$kube_node_instances + $first_node - 1}]"],
+            "etcd" => etcd_nodes,
+            "kube_control_plane" => control_plane_nodes,
+            "kube_node" => $nodes.select { |n| n[:role] == :worker }.map { |n| n[:name] },
             "k8s_cluster:children" => ["kube_control_plane", "kube_node"],
           }
         end

@@ -45,5 +45,11 @@
       {{ kubectl }} label node {% if kube_override_hostname %}{{ kube_override_hostname }}{% else %}{{ inventory_hostname }}{% endif %} {{ item }} --overwrite=true
   loop: "{{ role_node_labels + inventory_node_labels }}"
   delegate_to: "{{ groups['kube_control_plane'][0] }}"
+  register: set_node_label
+  # The Node object is created asynchronously by the kubelet after `kubeadm join` returns,
+  # so it may not exist yet. Retry only on NotFound, fail immediately on any other error.
+  until: set_node_label is succeeded or 'NotFound' not in set_node_label.stderr
+  retries: 10
+  delay: 6
   changed_when: false
 ...

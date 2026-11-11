@@ -70,11 +70,28 @@ kubeadm_join_phases_skip_default: []
 kubeadm_join_phases_skip: >-
  {{ kubeadm_join_phases_skip_default }}
 
+# List of kubeadm upgrade apply phases that should be skipped when upgrading the first control plane node
+# Supports different phases than kubeadm init (e.g. mark-control-plane is not valid for upgrade)
+# Valid phases: preflight, control-plane, upload-config, kubelet-config, bootstrap-token, addon/coredns, addon/kube-proxy, post-upgrade
+kubeadm_upgrade_apply_phases_skip_default: [ "addon/coredns" ]
+kubeadm_upgrade_apply_phases_skip: >-
+  {%- if kube_network_plugin == 'kube-router' and (kube_router_run_service_proxy is defined and kube_router_run_service_proxy) -%}
+  {{ kubeadm_upgrade_apply_phases_skip_default + ["addon/kube-proxy"] }}
+  {%- elif kube_network_plugin == 'cilium' and (cilium_kube_proxy_replacement is defined and (cilium_kube_proxy_replacement == 'strict' or (cilium_kube_proxy_replacement | bool) or (cilium_kube_proxy_replacement | string | lower == 'true') )) -%}
+  {{ kubeadm_upgrade_apply_phases_skip_default + ["addon/kube-proxy"] }}
+  {%- elif kube_network_plugin == 'calico' and (calico_bpf_enabled is defined and calico_bpf_enabled) -%}
+  {{ kubeadm_upgrade_apply_phases_skip_default + ["addon/kube-proxy"] }}
+  {%- elif kube_proxy_remove is defined and kube_proxy_remove -%}
+  {{ kubeadm_upgrade_apply_phases_skip_default + ["addon/kube-proxy"] }}
+  {%- else -%}
+  {{ kubeadm_upgrade_apply_phases_skip_default }}
+  {%- endif -%}
+
 # List of kubeadm upgrade node phases that should be skipped when upgrading a secondary control plane node (supports different phases than kubeadm init and kubeadm upgrade apply)
 kubeadm_upgrade_node_phases_skip_default: []
 kubeadm_upgrade_node_phases_skip: >-
   {%- if kube_version is version('1.32.0', '>=') -%}
-  {{ kubeadm_upgrade_node_phases_skip_default + kubeadm_init_phases_skip }}
+  {{ kubeadm_upgrade_node_phases_skip_default + kubeadm_upgrade_apply_phases_skip }}
   {%- else -%}
   {{ kubeadm_upgrade_node_phases_skip_default }}
   {%- endif -%}

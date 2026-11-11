@@ -1,4 +1,27 @@
 ---
+# resolve variables across delegation
+#
+# this should point to the correct bin_dir in all contexts,
+# but when not using delegation, prefers the usual bin_dir
+
+# TODO: `vars` is deprecated and will be removed in ansible-core 2.24
+# The alternative is way less readable though.
+# Possible alternatives:
+# - custom lookup plugin
+_var_ns: "{{ hostvars[ansible_delegated_vars.keys()[0]] if ansible_delegated_vars is defined else vars }}"
+delegated_bin_dir: "{{ _var_ns['bin_dir'] | d(default_bin_dir) }}"
+
+# Reused for bin_dir, but needs to be a separate variable to allow
+# inventory override without mangling delegated_bin_dir
+default_bin_dir: "{{(
+      '/usr/local/bin'
+      if _var_ns['ansible_facts']['os_family'] != 'Flatcar'
+      else '/opt/bin'
+    )
+    if _var_ns['ansible_facts']['user_id'] == (_var_ns['ansible_become_user'] | d('root'))
+    else
+      (_var_ns['ansible_facts']['env'].HOME + '/.local/bin')
+}}"
 # Internal version manipulation tooling
 
 # Get kubernetes major version (i.e. 1.17.4 => 1.17)

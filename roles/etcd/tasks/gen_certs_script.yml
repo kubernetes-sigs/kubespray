@@ -46,6 +46,50 @@
   when: gen_certs
   notify: Set etcd_secret_changed
 
+- name: Gen_certs | Normalize ownership and mode of generated etcd certs on first etcd node
+  file:
+    path: "{{ etcd_cert_dir }}/{{ item }}.pem"
+    owner: "{{ etcd_owner }}"
+    group: "{{ etcd_cert_group }}"
+    mode: "0644"
+  vars:
+    etcd_cert_stems: >-
+      {{ ['member', 'admin'] | product(groups['etcd']) | map('join', '-') | list
+         + (groups['gen_node_certs_True']
+            | intersect(groups['kube_control_plane'])
+            | map('regex_replace', '^', 'node-') | list)
+         + ['ca'] }}
+  loop: "{{ etcd_cert_stems }}"
+  loop_control:
+    label: "{{ etcd_cert_dir }}/{{ item }}.pem"
+  delegate_to: "{{ groups['etcd'][0] }}"
+  run_once: true
+  when:
+    - gen_certs
+    - inventory_hostname == groups['etcd'][0]
+
+- name: Gen_certs | Normalize ownership and mode of generated etcd private keys on first etcd node
+  file:
+    path: "{{ etcd_cert_dir }}/{{ item }}-key.pem"
+    owner: "{{ etcd_owner }}"
+    group: "{{ etcd_cert_group }}"
+    mode: "0600"
+  vars:
+    etcd_cert_stems: >-
+      {{ ['member', 'admin'] | product(groups['etcd']) | map('join', '-') | list
+         + (groups['gen_node_certs_True']
+            | intersect(groups['kube_control_plane'])
+            | map('regex_replace', '^', 'node-') | list)
+         + ['ca'] }}
+  loop: "{{ etcd_cert_stems }}"
+  loop_control:
+    label: "{{ etcd_cert_dir }}/{{ item }}-key.pem"
+  delegate_to: "{{ groups['etcd'][0] }}"
+  run_once: true
+  when:
+    - gen_certs
+    - inventory_hostname == groups['etcd'][0]
+
 - name: Gen_certs | run cert generation script for all clients
   command: "bash -x {{ etcd_script_dir }}/make-ssl-etcd.sh -f {{ etcd_config_dir }}/openssl.conf -d {{ etcd_cert_dir }}"
   environment:

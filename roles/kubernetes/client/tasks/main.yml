@@ -22,7 +22,7 @@
   connection: local
   become: false
   run_once: true
-  when: kubeconfig_localhost
+  when: kubeconfig_localhost or kubectl_localhost
 
 - name: Wait for k8s apiserver
   wait_for:
@@ -67,6 +67,30 @@
       become: false
       run_once: true
 
+- name: Read CPU type of the Ansible machine
+  setup:
+    gather_subset:
+      - min
+  delegate_to: localhost
+  delegate_facts: true
+  connection: local
+  become: false
+  run_once: true
+  register: ansible_machine_facts
+  when: kubectl_localhost
+
+- name: Set kubectl CPU type for the Ansible machine
+  set_fact:
+    kubectl_ansible_arch: >-
+      {%- set cpu = ansible_machine_facts.ansible_facts.get('ansible_architecture', ansible_machine_facts.ansible_facts.get('architecture')) -%}
+      {%- if cpu in _host_architecture_groups -%}
+      {{ _host_architecture_groups[cpu] }}
+      {%- else -%}
+      {{ cpu }}
+      {%- endif -%}
+  run_once: true
+  when: kubectl_localhost
+
 - name: Copy kubectl binary to ansible host
   fetch:
     src: "{{ bin_dir }}/kubectl"
@@ -78,7 +102,28 @@
   retries: 20
   become: false
   run_once: true
-  when: kubectl_localhost
+  when:
+    - kubectl_localhost
+    - kubectl_ansible_arch == image_arch
+
+- name: Download kubectl for the Ansible machine
+  get_url:
+    url: "{{ dl_k8s_io_url }}/release/v{{ kube_version }}/bin/linux/{{ kubectl_ansible_arch }}/kubectl"
+    dest: "{{ artifacts_dir }}/kubectl"
+    mode: "0755"
+    checksum: "{{ kubectl_checksums[kubectl_ansible_arch][kube_version] }}"
+  environment: "{{ proxy_env }}"
+  delegate_to: localhost
+  connection: local
+  become: false
+  run_once: true
+  register: kubectl_localhost_download
+  until: kubectl_localhost_download is succeeded
+  retries: 20
+  delay: "{{ retry_stagger | default(5) }}"
+  when:
+    - kubectl_localhost
+    - kubectl_ansible_arch != image_arch
 
 - name: Create helper script kubectl.sh on ansible host
   copy:

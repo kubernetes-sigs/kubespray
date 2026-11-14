@@ -212,22 +212,16 @@ Unlike some operators, Cilium Operator does not exist for installation purposes.
 
 ### Adding custom flags to the Cilium Operator
 
-You can set additional cilium-operator container arguments using `cilium_operator_custom_args`.
+You can set additional cilium-operator container arguments using `cilium_operator_extra_args`.
 This is an advanced option, and you should only use it if you know what you are doing.
 
-Accepts an array or a string.
+Accepts a list.
 
 ```yml
-cilium_operator_custom_args: ["--foo=bar", "--baz=qux"]
+cilium_operator_extra_args: ["--foo=bar", "--baz=qux"]
 ```
 
-or
-
-```yml
-cilium_operator_custom_args: "--foo=bar"
-```
-
-You do not need to add a custom flag to enable debugging. Instead, feel free to use the `CILIUM_DEBUG` variable.
+You do not need to add a custom flag to enable debugging. Instead, set `cilium_debug: true`.
 
 ### Adding extra volumes and mounting them
 

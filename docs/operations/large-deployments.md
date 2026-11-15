@@ -27,7 +27,8 @@ For a large scaled deployments, consider the following configuration changes:
   will end up with the 'm' skipped for docker as well. This is required as
   docker does not understand k8s units well.
 
-* Tune ``kubelet_status_update_frequency`` to increase reliability of kubelet.
+* Tune ``kubelet_status_update_frequency`` and ``kubelet_status_report_frequency``
+  to increase reliability of kubelet.
   ``kube_controller_node_monitor_grace_period``,
   ``kube_controller_node_monitor_period``,
   ``kube_apiserver_pod_eviction_not_ready_timeout_seconds`` &

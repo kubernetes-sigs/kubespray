@@ -62,6 +62,10 @@ infos = {
         "tags": True,
         "graphql_id": "R_kgDOB9IlXg",
     },
+    "helm_archive": {
+        "url": "https://get.helm.sh/helm-v{version}-{os}-{arch}.tar.gz.sha256sum",
+        "graphql_id": "R_kgDOApspmQ",
+    },
     "kata_containers_binary": {
         "url": "https://github.com/kata-containers/kata-containers/releases/download/{version}/kata-static-{version}-{arch}.tar.xz",
         "binary": True,
@@ -92,13 +96,9 @@ infos = {
         "graphql_id": "R_kgDOHQ6J9w",
     },
     "youki": {
-        "url": "https://github.com/youki-dev/youki/releases/download/v{version}/youki-{version}-{alt_arch}-gnu.tar.gz",
+        "url": "https://github.com/youki-dev/youki/releases/download/v{version}/youki-{version}-{alt_arch}-musl.tar.gz",
         "binary": True,
         "graphql_id": "R_kgDOFPvgPg",
-    },
-    "yq": {
-        "url": "https://github.com/mikefarah/yq/releases/download/v{version}/checksums-bsd",  # see https://github.com/mikefarah/yq/pull/1691 for why we use this url
-        "graphql_id": "R_kgDOApOQGQ",
     },
     "argocd_install": {
         "url": "https://raw.githubusercontent.com/argoproj/argo-cd/v{version}/manifests/install.yaml",

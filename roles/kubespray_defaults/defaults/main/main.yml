@@ -269,6 +269,9 @@ kube_pods_subnet: 10.233.64.0/18
 #  - kubelet_max_pods: 110
 kube_network_node_prefix: 24
 
+# Controls whether or not the kube_controller_manager allocates subnets for the node object
+kube_controller_manager_allocate_node_cidrs: true
+
 # Configure Dual Stack networking (i.e. both IPv4 and IPv6)
 # enable_dual_stack_networks: false # deprecated
 
@@ -309,10 +312,6 @@ kube_apiserver_port: 6443
 
 # If non-empty, will use this string as identification instead of the actual hostname
 kube_override_hostname: "{{ inventory_hostname }}"
-
-# define kubelet config dir for dynamic kubelet
-# kubelet_config_dir:
-default_kubelet_config_dir: "{{ kube_config_dir }}/dynamic_kubelet_dir"
 
 # Aggregator
 kube_api_aggregator_routing: false
@@ -475,12 +474,10 @@ expand_persistent_volumes: false
 metallb_enabled: false
 metallb_speaker_enabled: "{{ metallb_enabled }}"
 argocd_enabled: false
+argocd_namespace: argocd
 gateway_api_enabled: false
 prometheus_operator_crds_enabled: false
 
-## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (Fixed in 1.9: https://github.com/kubernetes/kubernetes/issues/50461)
-# openstack_blockstorage_version: "v1/v2/auto (default)"
-openstack_blockstorage_ignore_volume_az: "{{ volume_cross_zone_attachment | default('false') }}"
 # set max volumes per node (cinder-csi), default not set
 # node_volume_attach_limit: 25
 # Cinder CSI topology, when false volumes can be cross-mounted between availability zones
@@ -489,21 +486,6 @@ openstack_blockstorage_ignore_volume_az: "{{ volume_cross_zone_attachment | defa
 # cinder_topology_zones:
 #   - nova
 cinder_csi_ignore_volume_az: "{{ volume_cross_zone_attachment | default('false') }}"
-
-## When OpenStack is used, if LBaaSv2 is available you can enable it with the following 2 variables.
-openstack_lbaas_enabled: false
-# openstack_lbaas_subnet_id: "Neutron subnet ID (not network ID) to create LBaaS VIP"
-## To enable automatic floating ip provisioning, specify a subnet.
-# openstack_lbaas_floating_network_id: "Neutron network ID (not subnet ID) to get floating IP from, disabled by default"
-## Override default LBaaS behavior
-# openstack_lbaas_use_octavia: False
-# openstack_lbaas_method: "ROUND_ROBIN"
-# openstack_lbaas_provider: "haproxy"
-openstack_lbaas_create_monitor: "yes"
-openstack_lbaas_monitor_delay: "1m"
-openstack_lbaas_monitor_timeout: "30s"
-openstack_lbaas_monitor_max_retries: "3"
-openstack_cacert: "{{ lookup('env', 'OS_CACERT') }}"
 
 # Default values for the external OpenStack Cloud Controller
 external_openstack_lbaas_enabled: true
@@ -632,15 +614,14 @@ additional_sysctl: []
 #   kernel.pid_max: 0
 additional_sysctl_min: {}
 
-## List of key=value pairs that describe feature gates for
-## the k8s cluster.
-kube_feature_gates: []
-kube_apiserver_feature_gates: []
-kube_controller_feature_gates: []
-kube_scheduler_feature_gates: []
-kube_proxy_feature_gates: []
-kubelet_feature_gates: []
-kubeadm_feature_gates: []
+## Dictionaries of feature gate names and boolean values for the k8s cluster.
+kube_feature_gates: {}
+kube_apiserver_feature_gates: {}
+kube_controller_feature_gates: {}
+kube_scheduler_feature_gates: {}
+kube_proxy_feature_gates: {}
+kubelet_feature_gates: {}
+kubeadm_feature_gates: {}
 
 local_volume_provisioner_storage_class: local-storage
 local_volume_provisioner_base_dir: /mnt/disks
@@ -652,30 +633,21 @@ ssl_ca_dirs: "{{ ssl_ca_dirs_per_os_family[ansible_facts['os_family']] | d([]) }
 first_kube_control_plane: "{{ groups['kube_control_plane'] | first }}"
 # Vars for pointing to kubernetes api endpoints
 kube_apiserver_address: "{{ hostvars[inventory_hostname]['main_ip'] }}"
-kube_apiserver_access_address: "{{ hostvars[inventory_hostname]['main_access_ip'] }}"
 first_kube_control_plane_address: "{{ hostvars[groups['kube_control_plane'][0]]['main_access_ip'] }}"
-loadbalancer_apiserver_localhost: "{{ loadbalancer_apiserver is not defined }}"
+# Loadbalancer configuration
+loadbalancer_apiserver_localhost: "{{ kube_apiserver_endpoint is not defined and kube_apiserver_cluster_internal_endpoint is not defined }}"
 loadbalancer_apiserver_type: "nginx"
-# applied if only external loadbalancer_apiserver is defined, otherwise ignored
-apiserver_loadbalancer_domain_name: "{{ 'localhost' if loadbalancer_apiserver_localhost else (loadbalancer_apiserver.address | d(undef())) }}"
-kube_apiserver_global_endpoint: |-
-  {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name | ansible.utils.ipwrap }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
-  {%- elif loadbalancer_apiserver_localhost -%}
-      https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
-  {%- else -%}
-      https://{{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
-  {%- endif %}
-kube_apiserver_endpoint: |-
-  {% if loadbalancer_apiserver is defined -%}
-      https://{{ apiserver_loadbalancer_domain_name | ansible.utils.ipwrap }}:{{ loadbalancer_apiserver.port | default(kube_apiserver_port) }}
-  {%- elif ('kube_control_plane' not in group_names) and loadbalancer_apiserver_localhost -%}
-      https://localhost:{{ loadbalancer_apiserver_port | default(kube_apiserver_port) }}
-  {%- elif 'kube_control_plane' in group_names -%}
-  https://{{ kube_apiserver_bind_address | regex_replace('::', '127.0.0.1') | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
-  {%- else -%}
-      https://{{ first_kube_control_plane_address | ansible.utils.ipwrap }}:{{ kube_apiserver_port }}
-  {%- endif %}
+loadbalancer_apiserver_port: "{{ kube_apiserver_port }}"
+
+# Primary API endpoint for external access (e.g., kubectl).
+# User should set this in their inventory if they have a Load Balancer.
+# If not provided, resolved internally in vars.
+kube_apiserver_endpoint: "{{ undef() }}"
+
+# Internal endpoint for in-cluster traffic, including nodes and pods.
+# Optional override; resolved internally in vars if not provided.
+kube_apiserver_cluster_internal_endpoint: "{{ undef() }}"
+
 kube_apiserver_client_cert: "{{ kube_cert_dir }}/ca.crt"
 kube_apiserver_client_key: "{{ kube_cert_dir }}/ca.key"
 
@@ -724,7 +696,7 @@ etcd_events_peer_addresses: |-
 
 etcd_heartbeat_interval: "250"
 etcd_election_timeout: "5000"
-etcd_snapshot_count: "100000"
+etcd_snapshot_count: "10000"
 
 certificates_key_size: 2048
 certificates_duration: 36500
@@ -746,17 +718,6 @@ host_architecture: >-
   {{ _host_architecture_groups[ansible_facts['architecture']] }}
   {%- else -%}
   {{ ansible_facts['architecture'] }}
-  {%- endif -%}
-
-_host_os_groups:
-  Linux: linux
-  Darwin: darwin
-  Win32NT: windows
-host_os: >-
-  {%- if ansible_facts['system'] in _host_os_groups -%}
-  {{ _host_os_groups[ansible_facts['system']] }}
-  {%- else -%}
-  {{ ansible_facts['system'] }}
   {%- endif -%}
 
 # Sets the eventRecordQPS parameter in kubelet-config.yaml.
@@ -808,10 +769,10 @@ ntp_enabled: false
 # instead of using a separate variable approach
 
 # The package to install which provides NTP functionality.
-# The default is ntp for most platforms, or chrony on RHEL/CentOS 7 and later.
+# The default is ntp for most platforms, or chrony on RHEL/CentOS 7 and later and on SUSE.
 # The ntp_package can be one of ['ntp', 'ntpsec', 'chrony']
 ntp_package: >-
-      {% if ansible_facts['os_family'] == "RedHat" -%}
+      {% if ansible_facts['os_family'] in ['RedHat', 'Suse'] -%}
       chrony
       {%- else -%}
       ntp

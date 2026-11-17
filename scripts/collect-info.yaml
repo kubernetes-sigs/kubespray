@@ -91,28 +91,23 @@
       - /var/log/messages
       - /var/log/dmesg
 
-  environment:
-    ETCDCTL_API: "3"
-    ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
-    ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
-    ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
-    ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
-
   tasks:
     - name: Set etcd_access_addresses
       set_fact:
-        etcd_access_addresses: |-
-          {% for item in groups['etcd'] -%}
-            https://{{ item }}:2379{% if not loop.last %},{% endif %}
-          {%- endfor %}
-      when: "'etcd' in groups"
+        etcd_access_addresses: "{{ ['https://'] | product(groups.get('etcd', []), [':2379']) | map('join') | join(',') }}"
 
     - name: Storing commands output
-      shell: "{{ item.cmd }} &> {{ item.name }}"
+      shell: "{{ item.cmd }} > {{ item.name }} 2>&1"
       failed_when: false
       with_items: "{{ commands }}"
       when: item.when | default(True)
       no_log: true
+      environment:
+        ETCDCTL_API: "3"
+        ETCDCTL_CERT: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}.pem"
+        ETCDCTL_KEY: "{{ etcd_cert_dir }}/admin-{{ inventory_hostname }}-key.pem"
+        ETCDCTL_CACERT: "{{ etcd_cert_dir }}/ca.pem"
+        ETCDCTL_ENDPOINTS: "{{ etcd_access_addresses }}"
 
     - name: Fetch results
       fetch:

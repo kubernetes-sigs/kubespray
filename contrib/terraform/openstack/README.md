@@ -527,8 +527,8 @@ You can enable debugging output from Terraform by setting
 
 Terraform can output values that are useful for configure Neutron/Octavia LBaaS or Cinder persistent volume provisioning as part of your Kubernetes deployment:
 
-- `private_subnet_id`: the subnet where your instances are running is used for `openstack_lbaas_subnet_id`
-- `floating_network_id`: the network_id where the floating IP are provisioned is used for `openstack_lbaas_floating_network_id`
+- `private_subnet_id`: the subnet where your instances are running is used for `external_openstack_lbaas_subnet_id`
+- `floating_network_id`: the network_id where the floating IP are provisioned is used for `external_openstack_lbaas_floating_network_id`
 
 ## Ansible
 

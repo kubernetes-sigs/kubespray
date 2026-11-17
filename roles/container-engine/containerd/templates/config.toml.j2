@@ -8,24 +8,44 @@ root = "{{ containerd_storage_dir }}"
 state = "{{ containerd_state_dir }}"
 oom_score = {{ containerd_oom_score }}
 
+{% if containerd_config_imports %}
+imports = {{ containerd_config_imports | to_json }}
+{% endif %}
+
 {% if containerd_extra_args is defined %}
 {{ containerd_extra_args }}
 {% endif %}
 
+{% if containerd_version is version('2.3.0', '>=') %}
+[plugins."io.containerd.server.v1.grpc"]
+{% else %}
 [grpc]
+{% endif %}
   max_recv_message_size = {{ containerd_grpc_max_recv_message_size }}
   max_send_message_size = {{ containerd_grpc_max_send_message_size }}
 
 [debug]
-  address = "{{ containerd_debug_address }}"
   level = "{{ containerd_debug_level }}"
   format = "{{ containerd_debug_format }}"
+{% if containerd_version is version('2.3.0', '>=') %}
+
+[plugins."io.containerd.server.v1.debug"]
+{% endif %}
+  address = "{{ containerd_debug_address }}"
   uid = {{ containerd_debug_uid }}
   gid = {{ containerd_debug_gid }}
 
+{% if containerd_version is version('2.3.0', '>=') %}
+[plugins."io.containerd.server.v1.metrics"]
+  address = "{{ containerd_metrics_address }}"
+
+[plugins."io.containerd.metrics.v1.grpc-prometheus"]
+  grpc_histogram = {{ containerd_metrics_grpc_histogram | lower }}
+{% else %}
 [metrics]
   address = "{{ containerd_metrics_address }}"
   grpc_histogram = {{ containerd_metrics_grpc_histogram | lower }}
+{% endif %}
 
 [plugins]
   [plugins."io.containerd.cri.v1.runtime"]
@@ -91,15 +111,3 @@ oom_score = {{ containerd_oom_score }}
 
   [plugins."io.containerd.nri.v1.nri"]
     disable = {{ 'false' if nri_enabled else 'true' }}
-
-{% if containerd_tracing_enabled %}
-  [plugins."io.containerd.tracing.processor.v1.otlp"]
-    endpoint = "{{ containerd_tracing_endpoint }}"
-    protocol = "{{ containerd_tracing_protocol }}"
-{% if containerd_tracing_protocol == "grpc" %}
-    insecure = false
-{% endif %}
-  [plugins."io.containerd.internal.v1.tracing"]
-    sampling_ratio = {{ containerd_tracing_sampling_ratio }}
-    service_name = "{{ containerd_tracing_service_name }}"
-{% endif %}

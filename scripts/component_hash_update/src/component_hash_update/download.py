@@ -50,9 +50,6 @@ arch_alt_name = {
     "no_arch": None,
 }
 
-# TODO: downloads not supported
-# helm_archive: PGP signatures
-
 # TODO:
 # different verification methods (gpg, cosign) ( needs download role changes) (or verify the sig in this script and only use the checksum in the playbook)
 # perf improvements (async)
@@ -80,18 +77,6 @@ def download_hash(downloads: {str: {str: Any}}) -> None:
         "runc": lambda hashes: {
             parts[1].split(".")[1]: parts[0]
             for parts in (line.split() for line in hashes.split("\n")[3:9])
-        },
-        "yq": lambda rhashes_bsd: {
-            pair[0].split("_")[-1]: pair[1]
-            # pair = (yq_<os>_<arch>, <hash>)
-            for pair in (
-                (line.split()[1][1:-1], line.split()[3])
-                for line in rhashes_bsd.splitlines()
-                if line.startswith("SHA256")
-            )
-            if pair[0].startswith("yq")
-            and pair[0].split("_")[1] == "linux"
-            and not pair[0].endswith(".tar.gz")
         },
     }
 

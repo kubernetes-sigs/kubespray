@@ -14,9 +14,9 @@ grep 'download_url:' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
     | sed 's/^.*_url: //g;s/\"//g' > ${TEMP_DIR}/files.list.template
 
 # generate all images list template
-sed -n '/^downloads:/,/download_defaults:/p' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
-    | sed -n "s/repo: //p;s/tag: //p" | tr -d ' ' \
-    | sed 'N;s#\n# #g' | tr ' ' ':' | sed 's/\"//g' > ${TEMP_DIR}/images.list.template
+sed -n '/^downloads_container:/,/download_defaults:/p' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
+    | sed -n "s/image_name: //p" | tr -d ' ' \
+    | tr ' ' ':' | sed 's/\"//g' > ${TEMP_DIR}/images.list.template
 
 # add kube-* images to images list template
 # Those container images are downloaded by kubeadm, then roles/kubespray_defaults/defaults/main/download.yml
@@ -24,7 +24,7 @@ sed -n '/^downloads:/,/download_defaults:/p' ${REPO_ROOT_DIR}/${DOWNLOAD_YML} \
 # list separately.
 KUBE_IMAGES="kube-apiserver kube-controller-manager kube-scheduler kube-proxy"
 for i in $KUBE_IMAGES; do
-    echo "{{ kube_image_repo }}/$i:v{{ kube_version }}" >> ${TEMP_DIR}/images.list.template
+    echo "{{ kubeadm_image_repo }}/$i:v{{ kube_version }}" >> ${TEMP_DIR}/images.list.template
 done
 
 # run ansible to expand templates

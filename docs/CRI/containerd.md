@@ -53,6 +53,14 @@ containerd_registries_mirrors:
 
 The `containerd_registries` and `containerd_insecure_registries` configs are deprecated.
 
+### Importing configuration files
+
+`containerd_config_imports` defaults to `["{{ containerd_cfg_dir }}/conf.d/*.toml"]` for containerd 1.x and 2.x.
+Set `containerd_config_imports: []` to disable imports, or provide a list of replacement paths.
+
+Review existing matching files before upgrading, as they may override settings managed by Kubespray.
+If `containerd_extra_args` contains an `imports` entry, move its paths to `containerd_config_imports` and remove that entry to avoid duplicate TOML keys.
+
 ### Containerd Runtimes
 
 Containerd supports multiple runtime configurations that can be used with
@@ -151,7 +159,7 @@ nri_enabled: true
 
 ### Optional : Static Binary
 
-To ensure compatibility with older distributions (such as Debian 11), you can use a static containerd binary. By default, this is static binary if the system's glibc version is less than 2.34; otherwise, it is the default binary.
+To ensure compatibility with older distributions whose glibc is older than 2.34 (such as Debian 11 or RHEL/Rocky/Alma/Oracle Linux 8), you can use a static containerd binary. It is not enabled automatically: `containerd_static_binary` defaults to `false`, and the default (dynamically linked) containerd 2.1+ binaries fail on such hosts with errors like ``version `GLIBC_2.34' not found``.
 
 ```yaml
 containerd_static_binary: true

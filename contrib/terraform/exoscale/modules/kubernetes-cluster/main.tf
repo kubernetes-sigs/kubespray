@@ -41,7 +41,7 @@ resource "exoscale_compute_instance" "master" {
   template_id        = data.exoscale_template.os_image[each.key].id
   type               = each.value.size
   disk_size          = each.value.boot_disk.root_partition_size + each.value.boot_disk.node_local_partition_size + each.value.boot_disk.ceph_partition_size
-  state              = "Running"
+  state              = "running"
   zone               = var.zone
   security_group_ids = [exoscale_security_group.master_sg.id]
   network_interface {
@@ -73,7 +73,7 @@ resource "exoscale_compute_instance" "worker" {
   template_id        = data.exoscale_template.os_image[each.key].id
   type               = each.value.size
   disk_size          = each.value.boot_disk.root_partition_size + each.value.boot_disk.node_local_partition_size + each.value.boot_disk.ceph_partition_size
-  state              = "Running"
+  state              = "running"
   zone               = var.zone
   security_group_ids = [exoscale_security_group.worker_sg.id]
   network_interface {

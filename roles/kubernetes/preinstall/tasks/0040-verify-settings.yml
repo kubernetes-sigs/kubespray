@@ -24,6 +24,14 @@
     msg: "{{ ansible_facts['distribution'] }} is not a known OS"
   when: not ignore_assert_errors
 
+- name: Stop if the container manager is unsupported on openSUSE MicroOS
+  assert:
+    that: container_manager == "containerd"
+    msg: "openSUSE MicroOS only supports containerd"
+  when:
+    - not ignore_assert_errors
+    - ansible_facts['distribution'] == "openSUSE MicroOS"
+
 - name: Stop if memory is too small for control plane nodes
   assert:
     that: ansible_facts['memtotal_mb'] >= minimal_master_memory_mb
@@ -47,7 +55,7 @@
 
 - name: Stop if ip var does not match local ips
   assert:
-    that: (ip in ansible_facts['all_ipv4_addresses']) or (ip in ansible_facts['all_ipv6_addresses'])
+    that: ip | ansible.utils.ipaddr in (ansible_facts['all_ipv4_addresses'] + ansible_facts['all_ipv6_addresses'])
     msg: "IPv4: '{{ ansible_facts['all_ipv4_addresses'] }}' and IPv6: '{{ ansible_facts['all_ipv6_addresses'] }}' do not contain '{{ ip }}'"
   when:
     - not ignore_assert_errors
@@ -93,15 +101,6 @@
     that: inventory_hostname is match("[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$")
     msg: "Hostname must consist of lower case alphanumeric characters, '.' or '-', and must start and end with an alphanumeric character"
   when: not ignore_assert_errors
-
-- name: Stop if /etc/resolv.conf has no configured nameservers
-  assert:
-    that: configured_nameservers | length>0
-    fail_msg: "nameserver should not be empty in /etc/resolv.conf"
-  when:
-    - upstream_dns_servers | length == 0
-    - not disable_host_nameservers
-    - dns_mode in ['coredns', 'coredns_dual']
 
 - name: Stop if download_localhost is enabled for Flatcar Container Linux
   assert:

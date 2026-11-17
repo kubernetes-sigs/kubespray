@@ -79,9 +79,11 @@ The following is an example of setting up and running kubespray using `vagrant`.
 Customize your settings as shown, above, then run the commands:
 
 ```ShellSession
-# use virtualenv to install all python requirements
+# python3 must be version 3.12 through 3.14
+$ python3 --version
+# use venv to install all Python requirements
 VENVDIR=venv
-$ virtualenv --python=/usr/bin/python3.7 $VENVDIR
+$ python3 -m venv $VENVDIR
 $ source $VENVDIR/bin/activate
 $ pip install -r requirements.txt
 

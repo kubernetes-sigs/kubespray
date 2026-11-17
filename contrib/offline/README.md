@@ -85,5 +85,5 @@ cd kubespray/contrib/offline/offline-files
 export USERNAME=admin
 export TOKEN=...
 export BASE_URL=https://artifactory.example.com/artifactory/a-generic-repo/
-./upload2artifactory.py
+../upload2artifactory.py
 ```

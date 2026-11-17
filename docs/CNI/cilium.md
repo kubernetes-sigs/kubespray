@@ -172,6 +172,10 @@ For further information, check [BGP Control Plane Resources documentation](https
 
 ### BGP Peering Policies (Legacy < v1.16)
 
+> **Warning:** The `cilium_bgp_peering_policies` variable uses the deprecated `CiliumBGPPeeringPolicy` (`cilium.io/v2alpha1`) CRD.
+> Starting with Cilium v1.16, this CRD is deprecated and generates warnings in Cilium logs.
+> Migrate to the new BGP v2 API using `cilium_bgp_cluster_configs`, `cilium_bgp_peer_configs`, `cilium_bgp_advertisements`, and `cilium_bgp_node_config_overrides`.
+
 Cilium's BGP Peering Policies can be configured with the `cilium_bgp_peering_policies` variable:
 
 ```yml
@@ -245,7 +249,7 @@ cilium_operator_extra_volume_mounts:
 ## Choose Cilium version
 
 ```yml
-cilium_version: "1.20.2"
+cilium_version: "1.20.4"
 ```
 
 ## Add variable to config
@@ -268,6 +272,9 @@ Cilium currently supports two different identity allocation modes:
 - "crd" stores identities in kubernetes as CRDs (custom resource definition).
   - These can be queried with `kubectl get ciliumid`
 - "kvstore" stores identities in an etcd kvstore.
+  - Kubespray renders the Helm `etcd` values from `etcd_access_addresses` and
+    creates the `cilium-etcd-secrets` Secret from the etcd client certificate
+    of the first control plane node. Works with every `etcd_deployment_type`.
 
 ## Enable Transparent Encryption
 
@@ -292,14 +299,18 @@ Kubespray does not automate this process.
 Cilium documentation currently recommends creating a key using the following command:
 
 ```shell
-echo "3 rfc4106(gcm(aes)) $(echo $(dd if=/dev/urandom count=20 bs=1 2> /dev/null | xxd -p -c 64)) 128"
+echo "3+ rfc4106(gcm(aes)) $(echo $(dd if=/dev/urandom count=20 bs=1 2> /dev/null | xxd -p -c 64)) 128"
 ```
 
 Note that Kubespray handles secret creation. So you only need to pass the key as the `cilium_ipsec_key` variable, base64 encoded:
 
 ```shell
-echo "cilium_ipsec_key: "$(echo -n "3 rfc4106(gcm(aes)) $(echo $(dd if=/dev/urandom count=20 bs=1 2> /dev/null | xxd -p -c 64)) 128" | base64 -w0)
+echo "cilium_ipsec_key: "$(echo -n "3+ rfc4106(gcm(aes)) $(echo $(dd if=/dev/urandom count=20 bs=1 2> /dev/null | xxd -p -c 64)) 128" | base64 -w0)
 ```
+
+Kubespray creates the `cilium-ipsec-keys` Secret only if it doesn't exist yet. Changing `cilium_ipsec_key` later
+doesn't change the Secret, so rotate the key as described in the
+[Cilium documentation](https://docs.cilium.io/en/stable/security/network/encryption-ipsec/#key-rotation).
 
 ### Wireguard Encryption
 

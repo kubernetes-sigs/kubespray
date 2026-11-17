@@ -5,7 +5,7 @@
 If you have questions, check the documentation at [kubespray.io](https://kubespray.io) and join us on the [kubernetes slack](https://kubernetes.slack.com), channel **\#kubespray**.
 You can get your invite [here](http://slack.k8s.io/)
 
-- Can be deployed on **[AWS](docs/cloud_providers/aws.md), GCE, [Azure](docs/cloud_providers/azure.md), [OpenStack](docs/cloud_controllers/openstack.md), [vSphere](docs/cloud_controllers/vsphere.md), [Equinix Metal](docs/cloud_providers/equinix-metal.md) (bare metal), Oracle Cloud Infrastructure (Experimental), or Baremetal**
+- Can be deployed on **[AWS](docs/cloud_providers/aws.md), GCE, [Azure](docs/cloud_providers/azure.md), [OpenStack](docs/cloud_controllers/openstack.md), [vSphere](docs/cloud_controllers/vsphere.md), Oracle Cloud Infrastructure (Experimental), or Baremetal**
 - **Highly available** cluster
 - **Composable** (Choice of the network plugin for instance)
 - Supports most popular **Linux distributions**
@@ -72,7 +72,6 @@ vagrant up
 - [Fedora CoreOS bootstrap](docs/operating_systems/fcos.md)
 - [openSUSE setup](docs/operating_systems/opensuse.md)
 - [Downloaded artifacts](docs/advanced/downloads.md)
-- [Equinix Metal](docs/cloud_providers/equinix-metal.md)
 - [OpenStack](docs/cloud_controllers/openstack.md)
 - [vSphere](docs/cloud_controllers/vsphere.md)
 - [Large deployments](docs/operations/large-deployments.md)
@@ -92,7 +91,7 @@ vagrant up
 - **CentOS Stream / RHEL** 9, 10
 - **Fedora** 39, 40, 41, 42
 - **Fedora CoreOS** (see [fcos Note](docs/operating_systems/fcos.md))
-- **openSUSE** Leap 16.x/Tumbleweed
+- **openSUSE** Leap 16.x/Tumbleweed/MicroOS (containerd only; see [openSUSE notes](docs/operating_systems/opensuse.md))
 - **Oracle Linux** 9, 10
 - **Alma Linux** 9, 10
 - **Rocky Linux** 9, 10 (experimental in 10: see [Rocky Linux 10 notes](docs/operating_systems/rhel.md#rocky-linux-10))
@@ -111,34 +110,34 @@ Note:
 <!-- BEGIN ANSIBLE MANAGED BLOCK -->
 
 - Core
-  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.36.4
-  - [etcd](https://github.com/etcd-io/etcd) 3.6.14
+  - [kubernetes](https://github.com/kubernetes/kubernetes) 1.37.1
+  - [etcd](https://github.com/etcd-io/etcd) 3.7.2
   - [docker](https://www.docker.com/) 28.3
-  - [containerd](https://containerd.io/) 2.3.5
-  - [cri-o](https://cri-o.io/) 1.36.5 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
+  - [containerd](https://containerd.io/) 2.3.7
+  - [cri-o](https://cri-o.io/) 1.36.7 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
-  - [cni-plugins](https://github.com/containernetworking/plugins) 1.9.1
+  - [cni-plugins](https://github.com/containernetworking/plugins) 1.10.0
   - [calico](https://github.com/projectcalico/calico) 3.31.7
-  - [cilium](https://github.com/cilium/cilium) 1.20.2
-  - [flannel](https://github.com/flannel-io/flannel) 0.28.9
+  - [cilium](https://github.com/cilium/cilium) 1.20.4
+  - [flannel](https://github.com/flannel-io/flannel) 0.28.10
   - [kube-ovn](https://github.com/alauda/kube-ovn) 1.12.21
   - [kube-router](https://github.com/cloudnativelabs/kube-router) 2.1.1
   - [multus](https://github.com/k8snetworkplumbingwg/multus-cni) 4.2.2
   - [kube-vip](https://github.com/kube-vip/kube-vip) 1.0.3
 - Application
   - [cert-manager](https://github.com/jetstack/cert-manager) 1.15.3
-  - [coredns](https://github.com/coredns/coredns) 1.14.2
-  - [argocd](https://argoproj.github.io/) 2.14.5
-  - [helm](https://helm.sh/) 3.18.4
+  - [coredns](https://github.com/coredns/coredns) 1.14.6
+  - [argocd](https://argoproj.github.io/) 3.5.5
+  - [helm](https://helm.sh/) 3.22.0
   - [metallb](https://metallb.universe.tf/) 0.13.9
-  - [registry](https://github.com/distribution/distribution) 2.8.1
+  - [registry](https://github.com/distribution/distribution) 3.1.2
 - Storage Plugin
   - [aws-ebs-csi-plugin](https://github.com/kubernetes-sigs/aws-ebs-csi-driver) 0.5.0
   - [azure-csi-plugin](https://github.com/kubernetes-sigs/azuredisk-csi-driver) 1.10.0
   - [cinder-csi-plugin](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/using-cinder-csi-plugin.md) 1.30.0
   - [gcp-pd-csi-plugin](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver) 1.9.2
   - [local-path-provisioner](https://github.com/rancher/local-path-provisioner) 0.0.37
-  - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) 2.5.0
+  - [local-volume-provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) 2.10.0
   - [node-feature-discovery](https://github.com/kubernetes-sigs/node-feature-discovery) 0.19.0
 
 <!-- END ANSIBLE MANAGED BLOCK -->
@@ -149,9 +148,9 @@ Note:
 
 ## Requirements
 
-- **Minimum required version of Kubernetes is v1.34.0**
+- **Minimum required version of Kubernetes is v1.35.0**
 
-- **Ansible v2.14+, Jinja 2.11+ and python-netaddr is installed on the machine that will run Ansible commands**
+- **Ansible 14 (ansible-core 2.21), Jinja 3.1+ and python-netaddr are installed on the machine that will run Ansible commands**
 - The target servers must have **access to the Internet** in order to pull docker images. Otherwise, additional configuration is required (See [Offline Environment](docs/operations/offline-environment.md))
 - The target servers are configured to allow **IPv4 forwarding**.
 - If using IPv6 for pods and services, the target servers are configured to allow **IPv6 forwarding**.
@@ -198,7 +197,6 @@ You can choose among ten network plugins. (default: `calico`, except Vagrant use
 
 The network plugin to use is defined by the variable `kube_network_plugin`. There is also an
 option to leverage built-in cloud provider networking instead.
-See also [Network checker](docs/advanced/netcheck.md).
 
 ## Ingress Plugins
 

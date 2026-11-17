@@ -2,7 +2,8 @@
 - name: Join Member | Add member to etcd-events cluster
   command: "{{ bin_dir }}/etcdctl member add {{ etcd_member_name }} --peer-urls={{ etcd_events_peer_url }}"
   register: member_add_result
-  until: member_add_result.rc == 0
+  until: member_add_result.rc == 0 or 'Peer URLs already exists' in member_add_result.stderr
+  failed_when: member_add_result.rc != 0 and 'Peer URLs already exists' not in member_add_result.stderr
   retries: "{{ etcd_retries }}"
   delay: "{{ retry_stagger | random + 3 }}"
   environment:
@@ -33,6 +34,9 @@
   register: etcd_events_member_in_cluster
   changed_when: false
   check_mode: false
+  retries: "{{ etcd_retries }}"
+  delay: "{{ retry_stagger | random + 3 }}"
+  until: etcd_events_member_in_cluster.rc == 0
   tags:
     - facts
   environment:

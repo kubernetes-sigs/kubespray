@@ -37,3 +37,24 @@
     assert:
       that:
       - ('Hello from Docker' in nerdctl.results[3].stdout)
+
+- name: Test containerd tracing
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+  - name: Get kubespray defaults
+    import_role:
+      name: ../../../../../kubespray_defaults
+  - name: List containerd plugins and deprecations
+    command: "{{ bin_dir }}/ctr {{ item }}"
+    loop:
+    - plugins ls
+    - deprecations list
+    register: ctr_tracing
+    changed_when: false
+  - name: Check the OTLP exporter is loaded and no tracing config is deprecated
+    assert:
+      that:
+      - ctr_tracing.results[0].stdout_lines | select('search', '^io\.containerd\.tracing\.processor\.v1\s+otlp\s.*\sok\s*$') | list | length == 1
+      - ('tracing' not in ctr_tracing.results[1].stdout)

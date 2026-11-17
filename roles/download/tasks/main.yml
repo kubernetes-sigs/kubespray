@@ -16,15 +16,26 @@
     - download
     - upload
 
-- name: Download | Download files / images
-  include_tasks: "{{ include_file }}"
-  loop: "{{ downloads | combine(kubeadm_images) | dict2items }}"
+- name: Download | Download files
+  include_tasks: download_file.yml
+  loop: "{{ [] if skip_downloads
+               else
+            (downloads_file.values() | selectattr('enabled'))
+          }}"
   vars:
-    download: "{{ download_defaults | combine(item.value) }}"
-    include_file: "download_{% if download.container %}container{% else %}file{% endif %}.yml"
+    download: "{{ download_defaults | combine(item) }}"
   when:
-    - not skip_downloads
-    - download.enabled
-    - item.value.enabled
-    - (not download.container) or (download.container and download_container)
+    - (download_run_once and inventory_hostname == download_delegate) or (group_names | intersect(download.groups) != [])
+
+- name: Download | Download images
+  include_tasks: download_container.yml
+  loop: "{{ [] if (skip_downloads or not download_container)
+            else (
+              (downloads_container | combine(kubeadm_images)).values()
+              | selectattr('enabled')
+            )
+          }}"
+  vars:
+    download: "{{ download_defaults | combine(item) }}"
+  when:
     - (download_run_once and inventory_hostname == download_delegate) or (group_names | intersect(download.groups) != [])

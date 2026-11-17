@@ -10,16 +10,44 @@
   vars:
     # Always remove items from this list after the release in comments
     removed_vars:
-      - kubelet_static_pod_path # 2.31.0
-      - eviction_hard_control_plane # 2.31.0
-      - node_feature_discovery_enable_nodefeature_api # 2.32.0
-      - node_feature_discovery_master_crd_controller # 2.32.0
-      - node_feature_discovery_master_instance # 2.32.0
-    removed_vars_found: "{{ query('varnames', '^' + (removed_vars | join('|')) + '$') }}"
+      - apiserver_loadbalancer_domain_name # 2.33.0
+      - cilium_cert_dir # 2.33.0
+      - gcp_pd_csi_driver_image_tag # 2.33.0
+      - kube_apiserver_access_address # 2.33.0
+      - kube_apiserver_global_endpoint # 2.33.0
+      - kubeadm_config_api_fqdn # 2.33.0
+      - loadbalancer_apiserver # 2.33.0
+    removed_vars_found: "{{ query('varnames', '^(' + (removed_vars | join('|')) + ')$') }}"
   assert:
     that: removed_vars_found | length == 0
     fail_msg: "Removed variables present: {{ removed_vars_found | join(', ') }}"
   run_once: true
+
+- name: Check kube_apiserver_endpoint format
+  assert:
+    that:
+      - kube_apiserver_endpoint | urlsplit('scheme') == 'https'
+      - kube_apiserver_endpoint | urlsplit('hostname') is not none
+      - kube_apiserver_endpoint | urlsplit('hostname') | length > 0
+      - kube_apiserver_endpoint | urlsplit('port') is not none
+    msg: "kube_apiserver_endpoint must be in the format 'https://<host>:<port>' (e.g., 'https://lb.example.com:6443')"
+  run_once: true
+  when:
+    - kube_apiserver_endpoint is defined
+    - not ignore_assert_errors
+
+- name: Check kube_apiserver_cluster_internal_endpoint format
+  assert:
+    that:
+      - kube_apiserver_cluster_internal_endpoint | urlsplit('scheme') == 'https'
+      - kube_apiserver_cluster_internal_endpoint | urlsplit('hostname') is not none
+      - kube_apiserver_cluster_internal_endpoint | urlsplit('hostname') | length > 0
+      - kube_apiserver_cluster_internal_endpoint | urlsplit('port') is not none
+    msg: "kube_apiserver_cluster_internal_endpoint must be in the format 'https://<host>:<port>' (e.g., 'https://lb.internal:6443')"
+  run_once: true
+  when:
+    - kube_apiserver_cluster_internal_endpoint is defined
+    - not ignore_assert_errors
 
 - name: Stop if kube_control_plane group is empty
   assert:
@@ -55,8 +83,25 @@
       - download_run_once | type_debug == 'bool'
       - download_always_pull | type_debug == 'bool'
       - helm_enabled | type_debug == 'bool'
-      - openstack_lbaas_enabled | type_debug == 'bool'
   run_once: true
+  when: not ignore_assert_errors
+
+- name: Stop if feature gates are not dictionaries of booleans
+  assert:
+    that:
+      - lookup('ansible.builtin.vars', item) is mapping
+      - lookup('ansible.builtin.vars', item) | dict2items | rejectattr('value', 'boolean') | length == 0
+    fail_msg: >-
+      {{ item }} must be a dictionary of feature gate names and boolean values.
+      Replace lists such as ["NodeSwap=true"] with {NodeSwap: true}.
+  loop:
+    - kube_feature_gates
+    - kube_apiserver_feature_gates
+    - kube_controller_feature_gates
+    - kube_scheduler_feature_gates
+    - kube_proxy_feature_gates
+    - kubelet_feature_gates
+    - kubeadm_feature_gates
   when: not ignore_assert_errors
 
 - name: Stop if even number of etcd hosts
@@ -73,7 +118,7 @@
 # NOTICE: the check blatantly ignores the inet6-case
 - name: Guarantee that enough network address space is available for all pods
   assert:
-    that: "{{ (kubelet_max_pods | default(110)) | int <= (2 ** (32 - kube_network_node_prefix | int)) - 2 }}"
+    that: (kubelet_max_pods | default(110)) | int <= (2 ** (32 - kube_network_node_prefix | int)) - 2
     msg: "Do not schedule more pods on a node than inet addresses are available."
   when:
     - not ignore_assert_errors
@@ -97,7 +142,7 @@
 - name: "Check that kube_service_addresses is a network range"
   assert:
     that:
-      - kube_service_addresses | ansible.utils.ipaddr('net') is not false
+      - kube_service_addresses | ansible.utils.ipaddr('net') is truthy
     msg: "kube_service_addresses = '{{ kube_service_addresses }}' is not a valid network range"
   run_once: true
   when: ipv4_stack | bool
@@ -105,7 +150,7 @@
 - name: "Check that kube_pods_subnet is a network range"
   assert:
     that:
-      - kube_pods_subnet | ansible.utils.ipaddr('net') is not false
+      - kube_pods_subnet | ansible.utils.ipaddr('net') is truthy
     msg: "kube_pods_subnet = '{{ kube_pods_subnet }}' is not a valid network range"
   run_once: true
   when: ipv4_stack | bool
@@ -124,14 +169,16 @@
       - 2 ** (kube_network_node_prefix - kube_pods_subnet | ansible.utils.ipaddr('prefix')) >= groups['k8s_cluster'] | length
     msg: "Not enough ipv4 IPs are available for the desired node count."
   when:
+    - not ignore_assert_errors
     - ipv4_stack | bool
     - kube_network_plugin != 'calico'
+    - kube_controller_manager_allocate_node_cidrs or kube_network_plugin not in ['cni', 'custom_cni', 'none']
   run_once: true
 
 - name: "Check that kube_service_addresses_ipv6 is a network range"
   assert:
     that:
-      - kube_service_addresses_ipv6 | ansible.utils.ipaddr('net')
+      - kube_service_addresses_ipv6 | ansible.utils.ipaddr('net') is truthy
     msg: "kube_service_addresses_ipv6 = '{{ kube_service_addresses_ipv6 }}' is not a valid network range"
   run_once: true
   when: ipv6_stack | bool
@@ -139,7 +186,7 @@
 - name: "Check that kube_pods_subnet_ipv6 is a network range"
   assert:
     that:
-      - kube_pods_subnet_ipv6 | ansible.utils.ipaddr('net')
+      - kube_pods_subnet_ipv6 | ansible.utils.ipaddr('net') is truthy
     msg: "kube_pods_subnet_ipv6 = '{{ kube_pods_subnet_ipv6 }}' is not a valid network range"
   run_once: true
   when: ipv6_stack | bool
@@ -158,8 +205,10 @@
       - 2 ** (kube_network_node_prefix_ipv6 - kube_pods_subnet_ipv6 | ansible.utils.ipaddr('prefix')) >= groups['k8s_cluster'] | length
     msg: "Not enough ipv6 IPs are available for the desired node count."
   when:
+    - not ignore_assert_errors
     - ipv6_stack | bool
     - kube_network_plugin != 'calico'
+    - kube_controller_manager_allocate_node_cidrs or kube_network_plugin not in ['cni', 'custom_cni', 'none']
   run_once: true
 
 - name: Stop if unsupported options selected

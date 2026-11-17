@@ -47,13 +47,15 @@ Some variables of note include:
 * *access_ip6* - similarly ``access_ip`` but IPv6
 * *ansible_default_ipv6.address* - Not Kubespray-specific, but it is used if ip6
   and access_ip6 are undefined
-* *loadbalancer_apiserver* - If defined, all hosts will connect to this
-  address instead of localhost for kube_control_planes and kube_control_plane[0] for
-  kube_nodes. See more details in the
-  [HA guide](/docs/operations/ha-mode.md).
-* *loadbalancer_apiserver_localhost* - makes all hosts to connect to
-  the apiserver internally load balanced endpoint. Mutual exclusive to the
-  `loadbalancer_apiserver`. See more details in the
+* *kube_apiserver_endpoint* - Primary API endpoint for external access (e.g., kubectl).
+  If you have a load balancer or VIP, set this in your inventory (e.g. `https://lb.example.com:6443`).
+  See more details in the [HA guide](/docs/operations/ha-mode.md).
+* *kube_apiserver_cluster_internal_endpoint* - Internal endpoint used for in-cluster
+  traffic, including nodes and pods. Defaults to localhost LB proxy or `kube_apiserver_endpoint`.
+  See more details in the [HA guide](/docs/operations/ha-mode.md).
+* *loadbalancer_apiserver_localhost* - makes all hosts connect to
+  the apiserver internally via the local load balanced proxy (nginx/haproxy). Defaults to `true`
+  when no external or internal endpoint is defined. See more details in the
   [HA guide](/docs/operations/ha-mode.md).
 
 ## Special network variables
@@ -130,8 +132,8 @@ following default cluster parameters:
 
 * *cloud_provider* - The provider for cloud services. (default is unset, Set to `external` for running with an external cloud provider)
 
-* *kube_feature_gates* - A list of key=value pairs that describe feature gates for
-  alpha/experimental Kubernetes features. (defaults is `[]`).
+* *kube_feature_gates* - A dictionary of feature gate names and boolean values for
+  alpha/experimental Kubernetes features (defaults to `{}`).
   Additionally, you can use also the following variables to individually customize your kubernetes components installation (they works exactly like `kube_feature_gates`):
   * *kube_apiserver_feature_gates*
   * *kube_controller_feature_gates*
@@ -139,8 +141,8 @@ following default cluster parameters:
   * *kube_proxy_feature_gates*
   * *kubelet_feature_gates*
 
-* *kubeadm_feature_gates* - A list of key=value pairs that describe feature gates for
-  alpha/experimental Kubeadm features. (defaults is `[]`)
+* *kubeadm_feature_gates* - A dictionary of feature gate names and boolean values for
+  alpha/experimental Kubeadm features (defaults to `{}`).
 
 * *authorization_modes* - A list of [authorization mode](
   https://kubernetes.io/docs/reference/access-authn-authz/authorization/#using-flags-for-your-authorization-module)
@@ -171,6 +173,7 @@ kube_apiserver_admission_event_rate_limits:
 ```
 
 * *kube_apiserver_service_account_lookup* - Enable validation service account before validating token. Default `true`.
+* *kube_apiserver_service_account_extend_token_expiration* - Extend admission-injected service account tokens to 1 year (kube-apiserver `--service-account-extend-token-expiration`). Not set by default (kube-apiserver default `true`). Set to `false` to disable.
 
 Note, if cloud providers have any use of the ``10.233.0.0/16``, like instances'
 private addresses, make sure to pick another values for ``kube_service_addresses``
@@ -305,6 +308,8 @@ node_taints:
   * `audit_policy_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-policy.yaml"
 
   By default, the `audit_policy_file` contains [default rules](https://github.com/kubernetes-sigs/kubespray/blob/master/roles/kubernetes/control-plane/templates/apiserver-audit-policy.yaml.j2) that can be overridden with the `audit_policy_custom_rules` variable.
+
+  Set `audit_policy_global_omit_stages` to a list of audit stages to omit globally via the audit policy's top-level `omitStages` field.
 * *kubernetes_audit_webhook* - When set to `true`, enables the webhook audit backend.
   The webhook parameters can be tuned via the following variables (which default values are shown below):
   * `audit_webhook_config_file`: "{{ kube_config_dir }}/audit-policy/apiserver-audit-webhook-config.yaml"

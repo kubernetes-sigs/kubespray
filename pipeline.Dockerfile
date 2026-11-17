@@ -4,7 +4,7 @@ FROM ubuntu:noble-20260113@sha256:cd1dba651b3080c3686ecf4e3c4220f026b521fb769788
 # Pip needs this as well at the moment to install ansible
 # (and potentially other packages)
 # See: https://github.com/pypa/pip/issues/10219
-ENV VAGRANT_VERSION=2.4.1 \
+ENV VAGRANT_VERSION=2.4.0 \
     VAGRANT_DEFAULT_PROVIDER=libvirt \
     VAGRANT_ANSIBLE_TAGS=facts \
     LANG=C.UTF-8 \

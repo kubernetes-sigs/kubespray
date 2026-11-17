@@ -116,7 +116,7 @@ Note:
   - [containerd](https://containerd.io/) 2.3.7
   - [cri-o](https://cri-o.io/) 1.36.7 (experimental: see [CRI-O Note](docs/CRI/cri-o.md). Only on fedora, ubuntu and centos based OS)
 - Network Plugin
-  - [cni-plugins](https://github.com/containernetworking/plugins) 1.9.1
+  - [cni-plugins](https://github.com/containernetworking/plugins) 1.10.0
   - [calico](https://github.com/projectcalico/calico) 3.31.7
   - [cilium](https://github.com/cilium/cilium) 1.20.4
   - [flannel](https://github.com/flannel-io/flannel) 0.28.10

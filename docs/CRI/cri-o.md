@@ -60,35 +60,9 @@ crio_registry_auth:
 
 ### Unqualified (short) image names
 
-CRI-O does not fall back to a search registry for unqualified image names, such as
-`busybox`, unless a registry is listed in `unqualified-search-registries`. Kubespray renders
-that list from the entries of `crio_registries` flagged with `unqualified: true`,
-so the `crio_registries` default resolves short names against `docker.io`,
-matching the behaviour of the containerd runtime.
+CRI-O pulls short image names, such as `busybox`, only from registries with `unqualified: true` in `crio_registries`. The default sets it for `docker.io`, the same as containerd. If you set your own `crio_registries`, keep `unqualified: true` on one entry, or short names fail to pull.
 
-Some Kubespray addons set short image names in their own defaults, for example
-`local_path_provisioner_helper_image_repo: "busybox"` for the local-path-provisioner
-helper pod. If such pods stay in `ErrImagePull`/`ImagePullBackOff`
-with an error such as:
-
-```text
-short-name "busybox" did not resolve to an alias and no
-unqualified-search registries are defined in "/etc/containers/registries.conf.d/01-unqualified.conf"
-```
-
-then no registry is flagged as `unqualified`. Add one, for example:
-
-```yaml
-crio_registries:
-  - prefix: docker.io
-    insecure: false
-    blocked: false
-    location: docker.io
-    unqualified: true
-```
-
-To disable the fallback registry search, opt out explicitly. Configured short-name
-aliases still resolve, so this is not a complete block on unqualified names:
+To disable this:
 
 ```yaml
 crio_registries: []

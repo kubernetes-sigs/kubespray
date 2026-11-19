@@ -153,6 +153,11 @@ following default cluster parameters:
   require a service account and cluster role bindings. You can override this
   setting by setting authorization_modes to `[]`.
 
+* *kubespray_system_node_crb_enabled* - Create the legacy `kubespray:system:node`
+  ClusterRoleBinding, which grants the `system:node` ClusterRole to the
+  `system:nodes` group. Defaults to `true` for compatibility. Set to `false`
+  to skip creating this binding.
+
 * *kube_apiserver_admission_control_config_file* - Enable configuration for `kube-apiserver` admission plugins.
   Currently this variable allow you to configure the `EventRateLimit` admission plugin.
 

@@ -328,7 +328,7 @@ def main():
         "only",
         nargs="*",
         choices=choices,
-        help="if provided, only obtain hashes for these compoments",
+        help="if provided, only obtain hashes for these components",
         default=choices.default,
     )
     parser.add_argument(

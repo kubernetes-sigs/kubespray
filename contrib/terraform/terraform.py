@@ -252,14 +252,6 @@ def equinix_metal_device(resource, tfvars=None):
 
 def openstack_floating_ips(resource):
     raw_attrs = resource['primary']['attributes']
-    attrs = {
-        'ip': raw_attrs['floating_ip'],
-        'port_id': raw_attrs['port_id'],
-    }
-    return attrs
-
-def openstack_floating_ips(resource):
-    raw_attrs = resource['primary']['attributes']
     return raw_attrs['port_id'], raw_attrs['floating_ip']
 
 @parses('openstack_compute_instance_v2')

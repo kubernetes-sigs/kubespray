@@ -159,7 +159,8 @@ following default cluster parameters:
   to skip creating this binding. Disabling it does not remove an existing
   binding. Before disabling it, enable Node authorization and ensure each
   kubelet's client certificate uses `CN=system:node:<nodename>` and
-  `O=system:nodes`.
+  `O=system:nodes`. Remove an existing binding with
+  `kubectl delete clusterrolebinding kubespray:system:node`.
 
 * *kube_apiserver_admission_control_config_file* - Enable configuration for `kube-apiserver` admission plugins.
   Currently this variable allow you to configure the `EventRateLimit` admission plugin.

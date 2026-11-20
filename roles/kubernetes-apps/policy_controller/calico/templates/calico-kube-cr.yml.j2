@@ -59,13 +59,22 @@ rules:
       - ipreservations
     verbs:
       - list
+{% if calico_version is version('3.33.0', '>=') %}
+      - watch
+{% endif %}
   # Pools are watched to maintain a mapping of blocks to IP pools.
   - apiGroups: ["crd.projectcalico.org"]
     resources:
       - ippools
+{% if calico_version is version('3.33.0', '>=') %}
+      - ippools/status
+{% endif %}
     verbs:
       - list
       - watch
+{% if calico_version is version('3.33.0', '>=') %}
+      - update
+{% endif %}
   - apiGroups: ["crd.projectcalico.org"]
     resources:
       - blockaffinities
@@ -115,6 +124,15 @@ rules:
       - update
       # watch for changes
       - watch
+{% if calico_version is version('3.33.0', '>=') %}
+  # kube-controllers reports its own status (Calico >= 3.33).
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - kubecontrollersconfigurations/status
+    verbs:
+      - get
+      - update
+{% endif %}
   # Services are monitored for service LoadBalancer IP allocation
   - apiGroups: [""]
     resources:
@@ -133,4 +151,55 @@ rules:
       - get
       - list
       - watch
+{% if calico_version is version('3.33.0', '>=') %}
+  # Calico >= 3.33: kube-controllers manages network policies.
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - networkpolicies
+      - stagednetworkpolicies
+      - globalnetworkpolicies
+      - stagedglobalnetworkpolicies
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  # Calico >= 3.33: kube-controllers watches workload resources.
+  - apiGroups: ["apps"]
+    resources:
+      - daemonsets
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+  # Calico >= 3.33: kube-controllers manages CRDs and API services.
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - get
+      - list
+      - watch
+      - delete
+  - apiGroups: ["apiregistration.k8s.io"]
+    resources:
+      - apiservices
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+  # Calico >= 3.33: kube-controllers watches all Calico CRDs.
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - "*"
+    verbs:
+      - get
+      - list
+      - watch
+{% endif %}
 {% endif %}

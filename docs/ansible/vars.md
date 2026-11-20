@@ -157,7 +157,8 @@ following default cluster parameters:
   ClusterRoleBinding, which grants the `system:node` ClusterRole to the
   `system:nodes` group. Defaults to `true` for compatibility. Set to `false`
   to skip creating this binding. Disabling it does not remove an existing
-  binding. Before disabling it, enable Node authorization and ensure each
+  binding; setting it back to `true` creates the binding again on the next
+  run. Before disabling it, enable Node authorization and ensure each
   kubelet's client certificate uses `CN=system:node:<nodename>` and
   `O=system:nodes`. Remove an existing binding with
   `kubectl delete clusterrolebinding kubespray:system:node`.

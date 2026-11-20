@@ -31,8 +31,8 @@ crio_registries:
   - prefix: docker.io
     insecure: false
     blocked: false
-    location: registry-1.docker.io
-    unqualified: false
+    location: docker.io
+    unqualified: true
     mirrors:
       - location: 192.168.100.100:5000
         insecure: true
@@ -56,6 +56,16 @@ crio_registry_auth:
   - registry: 10.0.0.2:5000
     username: user
     password: pass
+```
+
+### Unqualified (short) image names
+
+CRI-O pulls short image names, such as `busybox`, only from registries with `unqualified: true` in `crio_registries`. The default sets it for `docker.io`, the same as containerd. If you set your own `crio_registries`, keep `unqualified: true` on one entry, or short names fail to pull.
+
+To disable this:
+
+```yaml
+crio_registries: []
 ```
 
 ## Note about user namespaces

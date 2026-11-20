@@ -165,6 +165,31 @@
     - apiserver_sans_ip_check.changed or apiserver_sans_host_check.changed
     - not kube_external_ca_mode
 
+- name: Kubeadm | Update server field in admin kubeconfig
+  lineinfile:
+    dest: "{{ kube_config_dir }}/admin.conf"
+    regexp: '^(\s+)server: https.*'
+    line: '\1server: {{ _kube_apiserver_endpoint }}'
+    backrefs: true
+  when: kubeadm_already_run.stat.exists
+
+# kubeadm join uses this server for the TLS bootstrap of new nodes
+- name: Kubeadm | Update server field in cluster-info kubeconfig
+  shell: >-
+    set -o pipefail &&
+    if ! {{ kubectl }} -n kube-public get configmap cluster-info -o yaml | grep -Fwq "server: {{ _kube_apiserver_endpoint }}"; then
+      {{ kubectl }} -n kube-public get configmap cluster-info -o yaml |
+      sed 's#server:.*#server: {{ _kube_apiserver_endpoint }}#g' |
+      {{ kubectl }} replace -f -
+    fi
+  args:
+    executable: /bin/bash
+  register: cluster_info_server_update
+  changed_when: "'replaced' in cluster_info_server_update.stdout"
+  when:
+    - inventory_hostname == first_kube_control_plane
+    - kubeadm_already_run.stat.exists
+
   # TODO: Remove --skip-phases from command when v1beta4 UpgradeConfiguration supports skipPhases
 - name: Kubeadm | Initialize first control plane node
   when: inventory_hostname == first_kube_control_plane and not kubeadm_already_run.stat.exists

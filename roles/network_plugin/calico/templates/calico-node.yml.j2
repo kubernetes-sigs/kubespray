@@ -55,7 +55,11 @@ spec:
         - name: upgrade-ipam
           image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
+{% if calico_cni_version is version('3.33.0', '>=') %}
+          command: ["/usr/bin/calico-ipam", "-upgrade"]
+{% else %}
           command: ["/opt/cni/bin/calico-ipam", "-upgrade"]
+{% endif %}
           envFrom:
             - configMapRef:
                 # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
@@ -78,13 +82,33 @@ spec:
               name: cni-bin-dir
           securityContext:
             privileged: true
+{% if calico_cni_version is version('3.33.0', '>=') %}
+            runAsUser: 0
+{% endif %}
+{% endif %}
+{% if calico_cni_version is version('3.33.0', '>=') %}
+  # This container stages the upstream CNI plugins that the CNI config
+  # references (portmap, host-local, loopback, tuning, flannel) for
+  # install-cni to copy onto the host.
+        - name: cni-plugins
+          image: {{ calico_cni_plugins_image_repo }}:{{ calico_cni_plugins_image_tag }}
+          imagePullPolicy: {{ k8s_image_pull_policy }}
+          volumeMounts:
+            - mountPath: /stage
+              name: cni-plugins-stage
+          securityContext:
+            runAsUser: 0
 {% endif %}
         # This container installs the Calico CNI binaries
         # and CNI network config file on each node.
         - name: install-cni
           image: {{ calico_cni_image_repo }}:{{ calico_cni_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
+{% if calico_cni_version is version('3.33.0', '>=') %}
+          args: ["component", "cni", "install"]
+{% else %}
           command: ["/opt/cni/bin/install"]
+{% endif %}
           envFrom:
           - configMapRef:
               # Allow KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT to be overridden for eBPF mode.
@@ -127,15 +151,26 @@ spec:
               name: cni-net-dir
             - mountPath: /host/opt/cni/bin
               name: cni-bin-dir
+{% if calico_cni_version is version('3.33.0', '>=') %}
+            - mountPath: /opt/cni/bin
+              name: cni-plugins-stage
+{% endif %}
           securityContext:
             privileged: true
+{% if calico_cni_version is version('3.33.0', '>=') %}
+            runAsUser: 0
+{% endif %}
         # This init container mounts the necessary filesystems needed by the BPF data plane
         # i.e. bpf at /sys/fs/bpf and cgroup2 at /run/calico/cgroup. Calico-node initialisation is executed
         # in best effort fashion, i.e. no failure for errors, to not disrupt pod creation in iptable mode.
         - name: "mount-bpffs"
           image: {{ calico_node_image_repo }}:{{ calico_node_image_tag }}
           imagePullPolicy: {{ k8s_image_pull_policy }}
+{% if calico_version is version('3.33.0', '>=') %}
+          command: ["calico", "component", "node", "init", "--best-effort"]
+{% else %}
           command: ["calico-node", "-init", "-best-effort"]
+{% endif %}
           volumeMounts:
             - mountPath: /sys/fs
               name: sys-fs
@@ -376,15 +411,33 @@ spec:
             preStop:
               exec:
                 command:
+{% if calico_version is version('3.33.0', '>=') %}
+                - calico
+                - component
+                - node
+                - shutdown
+{% else %}
                 - /bin/calico-node
                 - -shutdown
+{% endif %}
           livenessProbe:
             exec:
               command:
+{% if calico_version is version('3.33.0', '>=') %}
+                - calico
+                - component
+                - node
+                - health
+{% if calico_network_backend == "bird" %}
+                - --bird-live
+{% endif %}
+                - --felix-live
+{% else %}
               - /bin/calico-node
               - -felix-live
 {% if calico_network_backend == "bird" %}
               - -bird-live
+{% endif %}
 {% endif %}
             periodSeconds: 10
             initialDelaySeconds: 10
@@ -393,11 +446,22 @@ spec:
           readinessProbe:
             exec:
               command:
+{% if calico_version is version('3.33.0', '>=') %}
+                - calico
+                - component
+                - node
+                - health
+{% if calico_network_backend == "bird" %}
+                - --bird-ready
+{% endif %}
+                - --felix-ready
+{% else %}
               - /bin/calico-node
 {% if calico_network_backend == "bird" %}
               - -bird-ready
 {% endif %}
               - -felix-ready
+{% endif %}
             periodSeconds: 10
             timeoutSeconds: {{ calico_node_readinessprobe_timeout | default(10) }}
             failureThreshold: 6
@@ -454,6 +518,11 @@ spec:
           hostPath:
             path: /var/lib/calico
             type: DirectoryOrCreate
+{% if calico_cni_version is version('3.33.0', '>=') %}
+        # Staged by cni-plugins and read by install-cni.
+        - name: cni-plugins-stage
+          emptyDir: {}
+{% endif %}
         # Used to install CNI.
         - name: cni-net-dir
           hostPath:

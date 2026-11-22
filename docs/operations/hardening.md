@@ -18,6 +18,8 @@ The **kubernetes** version should be at least `v1.23.6` to have all the most rec
 
 ## kube-apiserver
 authorization_modes: ['Node', 'RBAC']
+# the Node authorizer replaces the legacy binding of system:node to all nodes
+kubespray_system_node_crb_enabled: false
 kube_apiserver_request_timeout: 120s
 kube_apiserver_service_account_lookup: true
 kube_apiserver_service_account_extend_token_expiration: false

@@ -1,41 +1,107 @@
 ---
-- name: Local Volume Provisioner | Create addon dir
-  file:
-    path: "{{ kube_config_dir }}/addons/local_volume_provisioner"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
-
-- name: Local Volume Provisioner | Templates list
+- name: Local Volume Provisioner | Build Helm values
   set_fact:
-    local_volume_provisioner_templates:
-      - { name: local-volume-provisioner-ns, file: local-volume-provisioner-ns.yml, type: ns }
-      - { name: local-volume-provisioner-sa, file: local-volume-provisioner-sa.yml, type: sa }
-      - { name: local-volume-provisioner-clusterrole, file: local-volume-provisioner-clusterrole.yml, type: clusterrole }
-      - { name: local-volume-provisioner-clusterrolebinding, file: local-volume-provisioner-clusterrolebinding.yml, type: clusterrolebinding }
-      - { name: local-volume-provisioner-cm, file: local-volume-provisioner-cm.yml, type: cm }
-      - { name: local-volume-provisioner-ds, file: local-volume-provisioner-ds.yml, type: ds }
-      - { name: local-volume-provisioner-sc, file: local-volume-provisioner-sc.yml, type: sc }
+    local_volume_provisioner_chart_values:
+      nameOverride: local-volume-provisioner
+      fullnameOverride: local-volume-provisioner
+      image: "{{ local_volume_provisioner_image_repo }}:{{ local_volume_provisioner_image_tag }}"
+      imagePullPolicy: "{{ k8s_image_pull_policy }}"
+      priorityClassName: "{{ 'system-node-critical' if local_volume_provisioner_namespace == 'kube-system' else 'k8s-cluster-critical' }}"
+      nodeLabels: "{{ local_volume_provisioner_nodelabels }}"
+      tolerations: "{{ local_volume_provisioner_tolerations }}"
+      useNodeNameOnly: "{{ local_volume_provisioner_use_node_name_only }}"
+      additionalArgs:
+        - "-v={{ local_volume_provisioner_log_level }}"
+        - "-stderrthreshold=INFO"
+      classes: []
 
-- name: Local Volume Provisioner | Create manifests
-  template:
-    src: "{{ item.file }}.j2"
-    dest: "{{ kube_config_dir }}/addons/local_volume_provisioner/{{ item.file }}"
-    mode: "0644"
-  with_items: "{{ local_volume_provisioner_templates }}"
-  register: local_volume_provisioner_manifests
-  when: inventory_hostname == groups['kube_control_plane'][0]
+- name: Local Volume Provisioner | Add storage classes to Helm values
+  set_fact:
+    local_volume_provisioner_chart_values: >-
+      {{ local_volume_provisioner_chart_values | combine({
+        'classes': local_volume_provisioner_chart_values.classes + [
+          local_volume_provisioner_storage_class | combine({
+            'name': item.key,
+            'storageClass': {
+              'reclaimPolicy': item.value.reclaimPolicy | default('Delete')
+            }
+          })
+        ]
+      }) }}
+  loop: "{{ local_volume_provisioner_storage_classes | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  vars:
+    local_volume_provisioner_storage_class: >-
+      {{ item.value | dict2items
+         | rejectattr('key', 'equalto', 'reclaimPolicy') | items2dict }}
 
-- name: Local Volume Provisioner | Apply manifests
+- name: Local Volume Provisioner | Check whether legacy manifests manage the DaemonSet
+  command: >-
+    {{ bin_dir }}/kubectl --namespace {{ local_volume_provisioner_namespace }}
+    get daemonset local-volume-provisioner
+    --output=jsonpath={.metadata.labels.app\.kubernetes\.io/managed-by}
+  register: local_volume_provisioner_managed_by
+  changed_when: false
+  failed_when: false
+
+- name: Local Volume Provisioner | Remove legacy namespaced resources
   kube:
-    name: "{{ item.item.name }}"
+    name: "{{ item.name }}"
     namespace: "{{ local_volume_provisioner_namespace }}"
     kubectl: "{{ bin_dir }}/kubectl"
-    resource: "{{ item.item.type }}"
-    filename: "{{ kube_config_dir }}/addons/local_volume_provisioner/{{ item.item.file }}"
-    state: "latest"
-  with_items: "{{ local_volume_provisioner_manifests.results }}"
-  when: inventory_hostname == groups['kube_control_plane'][0]
+    resource: "{{ item.resource }}"
+    state: absent
+    force: true
+  loop:
+    - name: local-volume-provisioner
+      resource: daemonset
+    - name: local-volume-provisioner
+      resource: serviceaccount
+    - name: local-volume-provisioner
+      resource: configmap
+  when: local_volume_provisioner_managed_by.stdout != 'Helm'
+
+- name: Local Volume Provisioner | Remove legacy cluster-scoped resources
+  kube:
+    name: "{{ item.name }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: "{{ item.resource }}"
+    state: absent
+    force: true
+  loop:
+    - name: local-volume-provisioner-node-clusterrole
+      resource: clusterrole
+    - name: local-volume-provisioner-system-node
+      resource: clusterrolebinding
+  when: local_volume_provisioner_managed_by.stdout != 'Helm'
+
+- name: Local Volume Provisioner | Remove legacy storage classes
+  kube:
+    name: "{{ item.key }}"
+    kubectl: "{{ bin_dir }}/kubectl"
+    resource: storageclass
+    state: absent
+    force: true
+  loop: "{{ local_volume_provisioner_storage_classes | dict2items }}"
   loop_control:
-    label: "{{ item.item.file }}"
+    label: "{{ item.key }}"
+  when: local_volume_provisioner_managed_by.stdout != 'Helm'
+
+- name: Local Volume Provisioner | Install Helm
+  include_role:
+    name: kubernetes-apps/helm
+
+- name: Local Volume Provisioner | Install the upstream Helm chart
+  include_role:
+    name: helm_apps
+  vars:
+    release_common_opts: {}
+    releases:
+      - name: "{{ local_volume_provisioner_release_name }}"
+        namespace: "{{ local_volume_provisioner_namespace }}"
+        chart_ref: "{{ local_release_dir }}/local-static-provisioner-{{ local_volume_provisioner_version }}.tgz"
+        wait: true
+        atomic: true
+        values: "{{ local_volume_provisioner_chart_values }}"
+    repositories: []

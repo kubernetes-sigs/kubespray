@@ -52,7 +52,7 @@ For all available options look at the Vagrantfile (search for "CONFIG")
 
 ## Use alternative OS for Vagrant
 
-By default, Vagrant uses Ubuntu 18.04 box to provision a local cluster.
+By default, Vagrant uses the Ubuntu 20.04 box to provision a local cluster.
 You may use an alternative supported operating system for your local cluster.
 
 Customize `$os` variable in `Vagrantfile` or as override, e.g.,:
@@ -63,6 +63,17 @@ echo '$os = "flatcar-stable"' >> vagrant/config.rb
 
 The supported operating systems for vagrant are defined in the `SUPPORTED_OS`
 constant in the `Vagrantfile`.
+
+### WSL and libvirt DNS resolution
+
+When running libvirt from WSL with Docker present, the Ubuntu 20.04 and 22.04
+generic boxes can fail DNS lookups because their default `systemd-resolved`
+configuration enables DNSSEC and the upstream DNS path cannot validate it.
+Use the Ubuntu 24.04 box, which does not enable DNSSEC by default:
+
+```ShellSession
+echo '$os = "ubuntu2404"' >> vagrant/config.rb
+```
 
 ## File and image caching
 

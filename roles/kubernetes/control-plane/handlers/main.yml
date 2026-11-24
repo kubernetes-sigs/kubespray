@@ -32,50 +32,6 @@
   when: container_manager in ['containerd', 'crio']
   listen: Control plane | Restart apiserver
 
-- name: Control plane | Remove scheduler container docker
-  shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -af name=k8s_kube-scheduler* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
-  args:
-    executable: /bin/bash
-  register: remove_scheduler_container
-  retries: 10
-  until: remove_scheduler_container.rc == 0
-  delay: 1
-  when: container_manager == "docker"
-  listen: Control plane | Restart kube-scheduler
-
-- name: Control plane | Remove scheduler container containerd/crio
-  shell: "set -o pipefail && {{ bin_dir }}/crictl pods --name 'kube-scheduler*' -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
-  args:
-    executable: /bin/bash
-  register: remove_scheduler_container
-  retries: 10
-  until: remove_scheduler_container.rc == 0
-  delay: 1
-  when: container_manager in ['containerd', 'crio']
-  listen: Control plane | Restart kube-scheduler
-
-- name: Control plane | Remove controller manager container docker
-  shell: "set -o pipefail && {{ docker_bin_dir }}/docker ps -af name=k8s_kube-controller-manager* -q | xargs --no-run-if-empty {{ docker_bin_dir }}/docker rm -f"
-  args:
-    executable: /bin/bash
-  register: remove_cm_container
-  retries: 10
-  until: remove_cm_container.rc == 0
-  delay: 1
-  when: container_manager == "docker"
-  listen: Control plane | Restart kube-controller-manager
-
-- name: Control plane | Remove controller manager container containerd/crio
-  shell: "set -o pipefail && {{ bin_dir }}/crictl pods --name 'kube-controller-manager*' -q | xargs -I% --no-run-if-empty bash -c '{{ bin_dir }}/crictl stopp % && {{ bin_dir }}/crictl rmp %'"
-  args:
-    executable: /bin/bash
-  register: remove_cm_container
-  retries: 10
-  until: remove_cm_container.rc == 0
-  delay: 1
-  when: container_manager in ['containerd', 'crio']
-  listen: Control plane | Restart kube-controller-manager
-
 - name: Control plane | wait for kube-scheduler
   vars:
     endpoint: "{{ kube_scheduler_bind_address if kube_scheduler_bind_address != '::' else 'localhost' }}"
@@ -88,7 +44,6 @@
   delay: 1
   listen:
     - Control plane | restart kubelet
-    - Control plane | Restart kube-scheduler
 
 - name: Control plane | wait for kube-controller-manager
   vars:
@@ -102,7 +57,6 @@
   delay: 1
   listen:
     - Control plane | restart kubelet
-    - Control plane | Restart kube-controller-manager
 
 - name: Control plane | wait for the apiserver to be running
   uri:

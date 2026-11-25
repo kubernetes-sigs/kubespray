@@ -129,7 +129,7 @@ Note:
   - [coredns](https://github.com/coredns/coredns) 1.14.6
   - [argocd](https://argoproj.github.io/) 3.5.9
   - [helm](https://helm.sh/) 3.22.1
-  - [metallb](https://metallb.universe.tf/) 0.13.9
+  - [metallb](https://metallb.universe.tf/) 0.16.2
   - [registry](https://github.com/distribution/distribution) 3.1.2
 - Storage Plugin
   - [aws-ebs-csi-plugin](https://github.com/kubernetes-sigs/aws-ebs-csi-driver) 0.5.0

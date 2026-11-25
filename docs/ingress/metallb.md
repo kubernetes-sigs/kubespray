@@ -4,6 +4,8 @@ MetalLB hooks into your Kubernetes cluster, and provides a network load-balancer
 It allows you to create Kubernetes services of type "LoadBalancer" in clusters that don't run on a cloud provider, and thus cannot simply hook into 3rd party products to provide load-balancers.
 The default operating mode of MetalLB is in ["Layer2"](https://metallb.universe.tf/concepts/layer2/) but it can also operate in ["BGP"](https://metallb.universe.tf/concepts/bgp/) mode.
 
+Kubespray deploys MetalLB 0.16.2 from the upstream `metallb-native.yaml` manifest, which retains the native BGP implementation as the speaker backend. Since MetalLB 0.16.0, upstream's default and feature-focused BGP backend is [FRR-K8s](https://metallb.universe.tf/configuration/frr-k8s/). New BGP features, such as AS-path prepending, are added only to that backend. Enabling FRR-K8s requires deploying the separate upstream `metallb-frr-k8s.yaml` manifest (which adds four `frrk8s.metallb.io` CRDs and the `frr-k8s` and `frr` images) and is tracked as a separate change.
+
 ## Prerequisites
 
 You have to configure arp_ignore and arp_announce to avoid answering ARP queries from kube-ipvs0 interface for MetalLB to work.
@@ -222,3 +224,11 @@ calico_advertise_service_loadbalancer_ips:
   - 10.6.0.0/16
   - 10.10.0.0/16
 ```
+
+## Upgrading from MetalLB 0.13.x
+
+The bundled manifest now carries the CRDs introduced between MetalLB 0.14 and 0.16: `communities`, `configurationstates`, `servicebgpstatuses` and `servicel2statuses`, along with new fields in `bgpadvertisements` and `l2advertisements`. Existing `IPAddressPool`, `BGPPeer` and advertisement resources are preserved.
+
+Upstream removed the deprecated `addresspools.metallb.io` CRD in 0.14.2 and renamed the webhook Secret and Service in 0.16.0. Because `kubectl apply` does not prune resources, the role explicitly deletes `addresspools.metallb.io`, the old `webhook-server-cert` Secret and the old `webhook-service` Service during the upgrade.
+
+The metrics endpoint is now served over HTTPS with authentication and authorization. Kubespray keeps `metallb_port` at its existing default of `7472` so existing firewall rules keep working; it remains user-overridable and can be set to `0` to disable metrics entirely.

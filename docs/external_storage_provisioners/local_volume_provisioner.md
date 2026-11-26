@@ -6,6 +6,11 @@ expect from a cloud provider. Instead, it simply creates PersistentVolumes for
 all mounts under the `hostDir` of the specified storage class.
 These storage classes are specified in the `local_volume_provisioner_storage_classes` nested dictionary.
 
+Kubespray installs the provisioner from its upstream Helm chart. The chart and
+Helm binary are downloaded through Kubespray's normal download role, so the
+same assets can be staged for offline installations. Existing inventory
+variables remain supported and are translated to chart values.
+
 Example:
 
 ```yaml
@@ -53,6 +58,15 @@ local-storage   kubernetes.io/no-provisioner   Delete
 
 The default StorageClass is `local-storage` on `/mnt/disks`;
 the rest of this documentation will use that path as an example.
+
+## Migration from manifest-managed installations
+
+When upgrading an existing Kubespray installation, the role detects the legacy
+manifest-managed DaemonSet and removes the legacy provisioner resources before
+installing the Helm release. PersistentVolumes and the host directories are not
+owned by those resources and are left intact. The legacy StorageClasses are
+recreated by the chart with the same names and settings from
+`local_volume_provisioner_storage_classes`.
 
 ## Examples to create local storage volumes
 

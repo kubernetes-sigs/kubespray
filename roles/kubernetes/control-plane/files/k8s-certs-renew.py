@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Renew the certificates managed by kubeadm if they expire before the next
 scheduled run of the k8s-certs-renew timer."""
-
+import re
 import argparse
 import json
 import os
@@ -125,7 +125,26 @@ def main():
     restart_control_plane(args.crictl)
 
     log("Updating /root/.kube/config")
-    shutil.copy(args.admin_conf, "/root/.kube/config")
+    root_kubeconfig = "/root/.kube/config"
+    existing_server = None
+    if os.path.exists(root_kubeconfig):
+        with open(root_kubeconfig, encoding="utf-8") as f:
+            match = re.search(r"^\s*server:\s*(\S+)", f.read(), re.MULTILINE)
+            if match:
+                existing_server = match.group(1)
+    shutil.copy(args.admin_conf, root_kubeconfig)
+    if existing_server:
+        with open(root_kubeconfig, encoding="utf-8") as f:
+            content = f.read()
+        content = re.sub(
+            r"^(\s*server:\s*)\S+",
+            rf"\g<1>{existing_server}",
+            content,
+            count=1,
+            flags=re.MULTILINE,
+        )
+        with open(root_kubeconfig, "w", encoding="utf-8") as f:
+            f.write(content)
 
     log("Waiting for apiserver to be up again")
     wait_for_apiserver(args.apiserver_port)

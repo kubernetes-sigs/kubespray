@@ -169,3 +169,15 @@ etcd_client_url: https://2.3.7.9:2379
 etcd_cert_alt_ips:
   - "2.3.7.9"
 ```
+
+### Running Local Loadbalancer on Control Plane Nodes
+
+By default, when `kube_apiserver_bind_address` is set to `::` or `0.0.0.0`, the local loadbalancer (`nginx-proxy` or `haproxy`) is skipped on control plane nodes to avoid port `6443` conflicts with `kube-apiserver`.
+
+To enable the local loadbalancer on control plane nodes without changing `kube_apiserver_bind_address`, configure a non-conflicting port (e.g., `8443`) and set `loadbalancer_apiserver_localhost_on_control_plane: true`:
+
+```yaml
+yaml loadbalancer_apiserver_localhost: true 
+loadbalancer_apiserver_localhost_on_control_plane: true 
+loadbalancer_apiserver_port: 8443   
+```

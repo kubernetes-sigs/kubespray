@@ -75,6 +75,57 @@ Pausing *after* upgrading each node may be useful for rebooting the node to appl
 * `upgrade_node_post_upgrade_confirm: true` - This will pause the playbook execution after upgrading each node, but before the node is uncordoned. The play will resume when manually approved by typing "yes" at the terminal.
 * `upgrade_node_post_upgrade_pause_seconds: 60` - This will pause the playbook execution for 60 seconds after upgrading each node, but before the node is uncordoned. The play will resume automatically after 60 seconds.
 
+### Upgrade hooks
+
+During a graceful upgrade each node passes through a fixed sequence of phases:
+cordon and drain, upgrade, then uncordon. You can inject your own task files at
+four points around that sequence by pointing the following variables at one or
+more Ansible task files. Each variable is a list; every item is a path to a task
+file that is run with `include_tasks`, so the task file is evaluated in the
+context of the node currently being upgraded (`inventory_hostname`, group vars,
+etc. are all available).
+
+| Variable | Runs | Node state | Gated on `needs_cordoning` |
+| --- | --- | --- | --- |
+| `pre_cordon_hooks` | before cordon and drain | still in service | yes |
+| `pre_upgrade_hooks` | after drain, before the upgrade | cordoned and drained | no |
+| `post_upgrade_hooks` | after the upgrade, before uncordon | upgraded, still cordoned | no |
+| `post_uncordon_hooks` | after uncordon | back in service | yes |
+
+The cordon-lifecycle hooks (`pre_cordon_hooks`, `post_uncordon_hooks`) only run
+when the node is actually cordoned/uncordoned. A node that is already cordoned or
+not ready is not cordoned again (unless `upgrade_node_always_cordon: true`), so
+those hooks are skipped for it. The upgrade-lifecycle hooks (`pre_upgrade_hooks`,
+`post_upgrade_hooks`) always run, because the upgrade itself always runs.
+
+**Failure semantics:** hooks are ordinary Ansible tasks and run fail-fast. If a
+hook task fails, the upgrade aborts for that node and the node is left in
+whichever phase it had reached — untouched (`pre_cordon_hooks`), drained
+(`pre_upgrade_hooks`), cordoned (`post_upgrade_hooks`), or already back in
+service (`post_uncordon_hooks`) — for you to inspect and recover manually.
+
+Example — live-migrate OpenStack VMs off a compute node before it is drained,
+then verify they are back afterwards:
+
+```yaml
+# group_vars/all/upgrade-hooks.yml
+pre_cordon_hooks:
+  - /srv/kubespray-hooks/openstack-evacuate.yml
+post_uncordon_hooks:
+  - /srv/kubespray-hooks/openstack-verify.yml
+```
+
+```yaml
+# /srv/kubespray-hooks/openstack-evacuate.yml
+- name: Live-migrate all instances off this compute node
+  ansible.builtin.command: >-
+    openstack --os-cloud admin compute service set
+    --disable {{ inventory_hostname }} nova-compute
+  delegate_to: localhost
+  changed_when: true
+# ... migration tasks ...
+```
+
 ## Node-based upgrade
 
 If you don't want to upgrade all nodes in one run, you can use `--limit` [patterns](https://docs.ansible.com/ansible/latest/user_guide/intro_patterns.html#patterns-and-ansible-playbook-flags).

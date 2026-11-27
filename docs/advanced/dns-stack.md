@@ -307,13 +307,48 @@ Under some circumstances the single POD nodelocaldns implementation may not be a
 enable_nodelocaldns_secondary: true
 ```
 
-**Note:** when the nodelocaldns secondary is enabled, the primary is instructed to no longer tear down the iptables rules it sets up to direct traffic to itself. In case both daemonsets have failing pods on the same node, this can cause a DNS blackout with traffic no longer being forwarded to the coredns central service as a fallback. Please ensure you account for this also if you decide to disable the nodelocaldns cache.
+**Note:** when the nodelocaldns secondary is enabled, the primary is instructed to no longer tear down the iptables rules it sets up to direct traffic to itself. In case both daemonsets have failing pods on the same node, this can cause a DNS blackout with traffic no longer being forwarded to the coredns central service as a fallback. Please ensure you account for this also if you decide to disable the nodelocaldns cache. See [Nodelocal DNS fallback](#nodelocal-dns-fallback) to keep DNS working in this case.
 
 There is a time delta (in seconds) allowed for the secondary nodelocaldns to survive in case both primary and secondary daemonsets are updated at the same time. It is advised to tune this variable after you have performed some tests in your own environment.
 
 ```yaml
 nodelocaldns_secondary_skew_seconds: 5
 ```
+
+### Nodelocal DNS fallback
+
+With NodeLocal DNS enabled, pods using kubelet `clusterDNS` normally receive only `nodelocaldns_ip`. Fallback applies
+to non-host-network pods using `dnsPolicy: ClusterFirst` and pods using `dnsPolicy: ClusterFirstWithHostNet`.
+It does not change the host resolver used by `dnsPolicy: Default` pods, host-network pods using `ClusterFirst`,
+or host processes.
+
+To enable fallback, `dns_mode` must not be `none`, and `manual` mode requires a valid non-loopback `manual_dns_server` IP:
+
+```yaml
+enable_nodelocaldns_fallback: true
+```
+
+This adds the cluster DNS service IP(s) after `nodelocaldns_ip` in the kubelet `clusterDNS`. The primary nodelocaldns
+runs with `-skipteardown` to preserve an already configured link-local IP, which can speed up failover. After a node
+reboot or a failed first start, the IP may not be present and clients may have to wait for the resolver timeout.
+Fallback can be combined with `enable_nodelocaldns_secondary`.
+
+Things to know:
+
+* Existing pods keep their old `resolv.conf` until they are recreated.
+* Kubelet limits pods to three nameservers. With `dns_mode: coredns_dual`, pods using cluster DNS get NodeLocal DNS
+  and both CoreDNS addresses, so any additional `dnsConfig.nameservers` are dropped. With a single fallback server,
+  one slot remains. Move affected private zones to both NodeLocal DNS and the fallback servers, or use `dnsPolicy: None`
+  with explicit `dnsConfig.nameservers` and any required search domains.
+* musl based images (e.g. Alpine) query all nameservers in parallel, so the cluster DNS service also receives their queries.
+* If CoreDNS inherits a resolver configuration that depends on NodeLocal DNS, set `upstream_dns_servers` to independent, reachable resolvers.
+* Before enabling fallback, configure equivalent private zones and rewrites on the fallback servers. CoreDNS does not
+  inherit `nodelocaldns_external_zones` or `nodelocaldns_additional_configs`; use `coredns_external_zones` and
+  `coredns_additional_configs` as needed. Otherwise, a parallel resolver may accept `NXDOMAIN` from CoreDNS even while
+  nodelocaldns is healthy.
+* If nodelocaldns hangs but still holds the socket, clients fall back only after the resolver timeout.
+* glibc fails over fast only while the node sends ICMP port unreachable, which the kernel rate limits per destination (`net.ipv4.icmp_ratelimit`, `net.ipv4.icmp_ratemask`). Past that limit a lookup waits for the resolver timeout (5s by default). Lower it with the pod `dnsConfig` option `timeout`, or remove type 3 from `icmp_ratemask` on the nodes.
+* Network policies that restrict pod DNS traffic to `nodelocaldns_ip` must also allow the cluster DNS service.
 
 ## Limitations
 

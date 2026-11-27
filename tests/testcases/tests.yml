@@ -26,6 +26,14 @@
         - name: Testcases checking pods
           import_tasks: 020_check-pods-running.yml
           when: ('macvlan' not in testcase)
+        - name: Check that NodeLocal DNS fallback sets -skipteardown
+          command: "{{ bin_dir }}/kubectl -n kube-system get daemonset nodelocaldns -o json"
+          register: nodelocaldns_daemonset
+          changed_when: false
+          failed_when: >-
+            nodelocaldns_daemonset.rc != 0 or '-skipteardown' not in
+            (nodelocaldns_daemonset.stdout | from_json | json_query("spec.template.spec.containers[?name == 'node-cache'].args[]"))
+          when: testcase == 'almalinux9-calico-nodelocaldns-fallback'
         - name: Checking CSR approver
           import_tasks: 025_check-csr-request.yml
         - name: Testcases for network

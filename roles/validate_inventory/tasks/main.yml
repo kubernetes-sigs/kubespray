@@ -226,6 +226,20 @@
     msg: The selected choice is not supported
   run_once: true
 
+- name: Stop if NodeLocal DNS fallback is enabled without cluster DNS
+  assert:
+    that:
+      - dns_mode != 'none'
+      - dns_mode != 'manual' or manual_dns_server is ansible.utils.ip_address
+      - dns_mode != 'manual' or not (manual_dns_server | ansible.utils.ipaddr('127.0.0.0/8'))
+      - dns_mode != 'manual' or not (manual_dns_server | ansible.utils.ipaddr('::1/128'))
+      - dns_mode != 'manual' or not (manual_dns_server | ansible.utils.ipaddr('::ffff:127.0.0.0/104'))
+    msg: "NodeLocal DNS fallback requires cluster DNS and a valid non-loopback manual_dns_server IP when dns_mode is 'manual'"
+  when:
+    - "'k8s_cluster' in group_names"
+    - enable_nodelocaldns | bool
+    - enable_nodelocaldns_fallback | bool
+
 - name: Warn if `enable_dual_stack_networks` is set
   debug:
     msg: "WARNING! => `enable_dual_stack_networks` deprecation. Please switch to using ipv4_stack and ipv6_stack."

@@ -138,6 +138,12 @@ variable "default_tags" {
   type        = map(string)
 }
 
+variable "ssh_allowed_cidr_blocks" {
+  description = "CIDRs allowed to SSH to cluster nodes; empty disables the rule"
+  type        = list(string)
+  default     = []
+}
+
 variable "inventory_file" {
   description = "Where to store the generated inventory file"
 }

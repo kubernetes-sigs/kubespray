@@ -26,6 +26,13 @@ export TF_VAR_AWS_DEFAULT_REGION="zzz"
 ```
 
 - Update `contrib/terraform/aws/terraform.tfvars` with your data. By default, the Terraform scripts use Ubuntu 18.04 LTS (Bionic) as base image. If you want to change this behaviour, see note "Using other distrib than Ubuntu" below.
+- External SSH is closed unless you opt in. Set `ssh_allowed_cidr_blocks` in `terraform.tfvars` to the administrator's CIDR before connecting from outside the VPC. Replace the example below with that CIDR:
+
+  ```hcl
+  ssh_allowed_cidr_blocks = ["203.0.113.10/32"]
+  ```
+
+  Leaving it unset keeps port 22 closed, so SSH and Ansible from outside the VPC time out. Reapplying an existing cluster without this setting removes the previous external SSH rule. Traffic inside the VPC CIDR is unchanged.
 - Create an AWS EC2 SSH Key
 - Run with `terraform apply --var-file="credentials.tfvars"` or `terraform apply` depending if you exported your AWS credentials
 

@@ -18,6 +18,12 @@ aws_cidr_subnets_public  = ["10.250.224.0/20", "10.250.240.0/20"]
 aws_bastion_num  = 1
 aws_bastion_size = "t3.small"
 
+# SSH from outside the VPC. Leave commented to keep port 22 closed.
+# Set this to the administrator CIDR, or SSH and Ansible from outside the VPC
+# will time out. Reapplying without it removes a previously open external SSH
+# rule (the old default was 0.0.0.0/0).
+#ssh_allowed_cidr_blocks = ["203.0.113.10/32"]
+
 #Kubernetes Cluster
 aws_kube_master_num       = 3
 aws_kube_master_size      = "t3.medium"

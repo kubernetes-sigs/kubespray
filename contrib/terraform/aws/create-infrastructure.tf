@@ -30,6 +30,7 @@ module "aws-vpc" {
   aws_cidr_subnets_private = var.aws_cidr_subnets_private
   aws_cidr_subnets_public  = var.aws_cidr_subnets_public
   default_tags             = var.default_tags
+  ssh_allowed_cidr_blocks  = var.ssh_allowed_cidr_blocks
 }
 
 module "aws-nlb" {

@@ -128,10 +128,11 @@ resource "aws_security_group_rule" "allow-all-egress" {
 }
 
 resource "aws_security_group_rule" "allow-ssh-connections" {
+  count             = length(var.ssh_allowed_cidr_blocks) > 0 ? 1 : 0
   type              = "ingress"
   from_port         = 22
   to_port           = 22
   protocol          = "TCP"
-  cidr_blocks       = ["0.0.0.0/0"]
+  cidr_blocks       = var.ssh_allowed_cidr_blocks
   security_group_id = aws_security_group.kubernetes.id
 }
